@@ -77,7 +77,7 @@ mergeInto(LibraryManager.library, {
     }
 #if ASYNCIFY == 1
     // Data for a previous async operation that was in flight before us.
-    var previousAsync = Asyncify.currData;
+    var previousAsync = Asyncify.currData.peek();
 #endif
     var ret = func.apply(null, cArgs);
     function onDone(ret) {
@@ -92,7 +92,7 @@ mergeInto(LibraryManager.library, {
     // async, but for simplicity we push and pop in all calls.
     runtimeKeepalivePush();
     var asyncMode = opts && opts.async;
-    if (Asyncify.currData != previousAsync) {
+    if (Asyncify.currData.peek() != previousAsync) {
 #if ASSERTIONS
       // A change in async operation happened. If there was already an async
       // operation in flight before us, that is an error: we should not start
@@ -100,8 +100,8 @@ mergeInto(LibraryManager.library, {
       // either. The only valid combination is to have no change in the async
       // data (so we either had one in flight and left it alone, or we didn't have
       // one), or to have nothing in flight and to start one.
-      assert(!(previousAsync && Asyncify.currData), 'We cannot start an async operation when one is already flight');
-      assert(!(previousAsync && !Asyncify.currData), 'We cannot stop an async operation in flight');
+      assert(!(previousAsync && Asyncify.currData.peek()), 'We cannot start an async operation when one is already flight');
+      assert(!(previousAsync && !Asyncify.currData.peek()), 'We cannot stop an async operation in flight');
 #endif
       // This is a new async operation. The wasm is paused and has unwound its stack.
       // We need to return a Promise that resolves the return value

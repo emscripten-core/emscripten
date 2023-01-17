@@ -168,6 +168,28 @@ mergeInto(LibraryManager.library, {
     },
 
 #if ASYNCIFY == 1
+
+  function Stack()
+  {
+    this.stac=new Array();
+
+    this.pop=function(){
+      return this.stac.pop();
+    }
+
+    this.peek=function(){
+      return this.stac[this.stac.length - 1];
+    }
+
+    this.push=function(item){
+      this.stac.push(item);
+    }
+
+    this.active=function(){
+      return (this.stac.length > 0);
+    }
+  }
+
     //
     // Original implementation of Asyncify.
     //
@@ -179,7 +201,7 @@ mergeInto(LibraryManager.library, {
     },
     state: 0,
     StackSize: {{{ ASYNCIFY_STACK_SIZE }}},
-    currData: null,
+    currData: new Stack(),
     // The return value passed to wakeUp() in
     // Asyncify.handleSleep(function(wakeUp){...}) is stored here,
     // so we can return it later from the C function that called
@@ -209,7 +231,7 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
       dbg('ASYNCIFY: maybe stop unwind', Asyncify.exportCallStack);
 #endif
-      if (Asyncify.currData &&
+      if (Asyncify.currData.active() &&
           Asyncify.state === Asyncify.State.Unwinding &&
           Asyncify.exportCallStack.length === 0) {
         // We just finished unwinding.
@@ -232,7 +254,7 @@ mergeInto(LibraryManager.library, {
 
     whenDone: function() {
 #if ASSERTIONS
-      assert(Asyncify.currData, 'Tried to wait for an async operation when none is in progress.');
+      assert(Asyncify.currData.active(), 'Tried to wait for an async operation when none is in progress.');
       assert(!Asyncify.asyncPromiseHandlers, 'Cannot have multiple async operations in flight at once');
 #endif
       return new Promise((resolve, reject) => {
@@ -347,14 +369,15 @@ mergeInto(LibraryManager.library, {
           }
           var asyncWasmReturnValue, isError = false;
           try {
-            asyncWasmReturnValue = Asyncify.doRewind(Asyncify.currData);
+            var data = Asyncify.currData.peek();
+            asyncWasmReturnValue = Asyncify.doRewind(data);
           } catch (err) {
             asyncWasmReturnValue = err;
             isError = true;
           }
           // Track whether the return value was handled by any promise handlers.
           var handled = false;
-          if (!Asyncify.currData) {
+          if (!Asyncify.currData.active()) {
             // All asynchronous execution has finished.
             // `asyncWasmReturnValue` now contains the final
             // return value of the exported async WASM function.
@@ -386,7 +409,8 @@ mergeInto(LibraryManager.library, {
           // A true async operation was begun; start a sleep.
           Asyncify.state = Asyncify.State.Unwinding;
           // TODO: reuse, don't alloc/free every sleep
-          Asyncify.currData = Asyncify.allocateData();
+          var data = Asyncify.allocateData();
+          Asyncify.currData.push(data);
 #if ASYNCIFY_DEBUG
           dbg('ASYNCIFY: start unwind ' + Asyncify.currData);
 #endif
@@ -402,9 +426,9 @@ mergeInto(LibraryManager.library, {
 #endif
         Asyncify.state = Asyncify.State.Normal;
         runAndAbortIfError(_asyncify_stop_rewind);
-        _free(Asyncify.currData);
-        Asyncify.currData = null;
-        // Call all sleep callbacks now that the sleep-resume is all done.
+        var data = Asyncify.currData.pop();
+        _free(data);
+      // Call all sleep callbacks now that the sleep-resume is all done.
         Asyncify.sleepCallbacks.forEach((func) => callUserCallback(func));
       } else {
         abort('invalid state: ' + Asyncify.state);
