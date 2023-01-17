@@ -1,5 +1,5 @@
 var name;
-var asmLibraryArg = { 'save1': 1, 'number': 33, 'name': name, 'func': function() {}, 'save2': 2 };
+var wasmImports = { 'save1': 1, 'number': 33, 'name': name, 'func': function() {}, 'save2': 2 };
 
 // exports gotten directly in the minimal runtime style
 WebAssembly.instantiate(Module["wasm"], imports).then(function(output) {

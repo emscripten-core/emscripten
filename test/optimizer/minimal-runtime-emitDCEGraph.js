@@ -30,7 +30,7 @@ var __ATINIT__ = [];
 function _emscripten_console_log(str) {
  console.log(UTF8ToString(str));
 }
-var asmLibraryArg = {
+var wasmImports = {
  "a": _emscripten_console_log
 };
 function run() {
@@ -39,7 +39,7 @@ function run() {
 function initRuntime() {
  for (var i in __ATINIT__) __ATINIT__[i].func();
 }
-var env = asmLibraryArg;
+var env = wasmImports;
 env["memory"] = wasmMemory;
 env["table"] = new WebAssembly.Table({
  "initial": 0,

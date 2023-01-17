@@ -803,17 +803,17 @@ function createWasm() {
   // prepare imports
   var info = {
 #if MINIFY_WASM_IMPORTED_MODULES
-    'a': asmLibraryArg,
+    'a': wasmImports,
 #else // MINIFY_WASM_IMPORTED_MODULES
-    'env': asmLibraryArg,
-    '{{{ WASI_MODULE_NAME }}}': asmLibraryArg,
+    'env': wasmImports,
+    '{{{ WASI_MODULE_NAME }}}': wasmImports,
 #endif // MINIFY_WASM_IMPORTED_MODULES
 #if SPLIT_MODULE
     'placeholder': new Proxy({}, splitModuleProxyHandler),
 #endif
 #if RELOCATABLE
-    'GOT.mem': new Proxy(asmLibraryArg, GOTHandler),
-    'GOT.func': new Proxy(asmLibraryArg, GOTHandler),
+    'GOT.mem': new Proxy(wasmImports, GOTHandler),
+    'GOT.func': new Proxy(wasmImports, GOTHandler),
 #endif
   };
   // Load the wasm module and create an instance of using native support in the JS engine.

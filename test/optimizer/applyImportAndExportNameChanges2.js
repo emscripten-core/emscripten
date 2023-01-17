@@ -205,7 +205,7 @@ if (ENVIRONMENT_IS_NODE) {
 } else {
     _emscripten_get_now = Date.now
 }
-var asmLibraryArg = {
+var wasmImports = {
     "abort": abort,
     "___syscall140": ___syscall140,
     "___syscall146": ___syscall146,
@@ -223,7 +223,7 @@ function run() {
 function initRuntime(asm) {
     asm["__GLOBAL__sub_I_test_global_initializer_cpp"]()
 }
-var env = asmLibraryArg;
+var env = wasmImports;
 env["memory"] = wasmMemory;
 env["table"] = new WebAssembly.Table({
     "initial": 6,
