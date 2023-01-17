@@ -136,8 +136,7 @@ function ready() {
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
-
-// {{PRE_JSES}}
+{{{ preJS() }}}
 
 #if USE_PTHREADS
 

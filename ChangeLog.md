@@ -23,6 +23,9 @@ See docs/process.md for more on how version tagging works.
 - The `STACK_SIZE`, `STACK_ALIGN`, `POINTER_SIZE`, and `ASSERTIONS` JavaScript
   globals were removed by default.  In debug builds a clear error is shown if
   you try to use these. (#18503)
+- --pre-js and --post-js files are now fed through the JS preprocesor, just
+  like JS library files and the core runtime JS files.  This means they can
+  now contain #if/#else/#endif blocks and {{{ }}} macro blocks. (#18525)
 
 3.1.30 - 01/11/23
 -----------------
