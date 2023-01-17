@@ -3395,13 +3395,11 @@ Module["preRun"].push(function () {
 
   # Tests that when building with -sMINIMAL_RUNTIME, the build can use -sMODULARIZE as well.
   def test_minimal_runtime_modularize(self):
-    self.compile_btest([test_file('browser_test_hello_world.c'), '-o', 'test.html', '-sMODULARIZE', '-sMINIMAL_RUNTIME'])
-    self.run_browser('test.html', '/report_result?0')
+    self.btest_exit(test_file('browser_test_hello_world.c'), args=['-sMODULARIZE', '-sMINIMAL_RUNTIME'])
 
   # Tests that when building with -sMINIMAL_RUNTIME, the build can use -sEXPORT_NAME=Foo as well.
   def test_minimal_runtime_export_name(self):
-    self.compile_btest([test_file('browser_test_hello_world.c'), '-o', 'test.html', '-sEXPORT_NAME=Foo', '-sMINIMAL_RUNTIME'])
-    self.run_browser('test.html', '/report_result?0')
+    self.btest_exit(test_file('browser_test_hello_world.c'), args=['-sEXPORT_NAME=Foo', '-sMINIMAL_RUNTIME'])
 
   @requires_sync_compilation
   def test_modularize(self):
