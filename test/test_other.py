@@ -2037,6 +2037,11 @@ int f() {
                  'GIF file terminated normally',
                  emcc_args=['--embed-file', 'treescap.gif', '-sUSE_GIFLIB'],
                  args=['treescap.gif'])
+    # Same again with -sMAIN_MODULE (See #18537)
+    self.do_runf(test_file('third_party/giflib/giftext.c'),
+                 'GIF file terminated normally',
+                 emcc_args=['--embed-file', 'treescap.gif', '-sUSE_GIFLIB', '-sMAIN_MODULE'],
+                 args=['treescap.gif'])
 
   def test_libjpeg(self):
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
