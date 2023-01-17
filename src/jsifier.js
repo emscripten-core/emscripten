@@ -495,10 +495,6 @@ function ${name}(${args}) {
       print('\nvar proxiedFunctionTable = [' + proxiedFunctionTable.join() + '];\n');
     }
 
-    if (!MINIMAL_RUNTIME) {
-      print('var ASSERTIONS = ' + !!ASSERTIONS + ';\n');
-    }
-
     if ((SUPPORT_BASE64_EMBEDDING || FORCE_FILESYSTEM) && !MINIMAL_RUNTIME) {
       includeFile('base64Utils.js');
     }
