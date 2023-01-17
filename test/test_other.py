@@ -12259,7 +12259,7 @@ Module['postRun'] = function() {{
     # - object.assign
     create_file('es6_library.js', '''\
     mergeInto(LibraryManager.library, {
-      foo: function() {
+      foo: function(arg="hello") {
         // Object.assign + let
         let obj = Object.assign({}, {prop:1});
         err('prop: ' + obj.prop);
@@ -12277,11 +12277,13 @@ Module['postRun'] = function() {{
     def check_for_es6(filename, expect):
       js = read_file(filename)
       if expect:
+        self.assertContained('foo(arg="hello")', js)
         self.assertContained(['() => 2', '()=>2'], js)
         self.assertContained('const ', js)
         self.assertContained('let ', js)
       else:
         self.verify_es5(filename)
+        self.assertNotContained('foo(arg=', js)
         self.assertNotContained('() => 2', js)
         self.assertNotContained('()=>2', js)
         self.assertNotContained('const ', js)
