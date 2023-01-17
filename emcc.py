@@ -1090,7 +1090,7 @@ def get_subresource_location(path, data_uri=None):
 def package_files(options, target):
   rtn = []
   logger.debug('setting up files')
-  file_args = ['--from-emcc', '--export-name=' + settings.EXPORT_NAME]
+  file_args = ['--from-emcc']
   if options.preload_files:
     file_args.append('--preload')
     file_args += options.preload_files
