@@ -802,14 +802,13 @@ var LibraryDylink = {
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
   $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$isInternalSym', '$mergeLibSymbols'],
   $loadDynamicLibrary__docs: '/** @param {number=} handle */',
-  $loadDynamicLibrary: function(lib, flags, handle) {
+  $loadDynamicLibrary: function(lib, flags = {global: true, nodelete: true}, handle = 0) {
 #if DYLINK_DEBUG
     dbg('loadDynamicLibrary: ' + lib + ' handle:' + handle);
     dbg('existing: ' + Object.keys(LDSO.loadedLibsByName));
 #endif
     // when loadDynamicLibrary did not have flags, libraries were loaded
     // globally & permanently
-    flags = flags || {global: true, nodelete: true}
 
     var dso = LDSO.loadedLibsByName[lib];
     if (dso) {

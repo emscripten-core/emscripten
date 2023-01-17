@@ -1911,9 +1911,7 @@ FS.staticInit();` +
     DB_STORE_NAME: 'FILE_DATA',
 
     // asynchronously saves a list of files to an IndexedDB. The DB will be created if not already existing.
-    saveFilesToDB: (paths, onload, onerror) => {
-      onload = onload || (() => {});
-      onerror = onerror || (() => {});
+    saveFilesToDB: (paths, onload = (() => {}), onerror = (() => {})) => {
       var indexedDB = FS.indexedDB();
       try {
         var openRequest = indexedDB.open(FS.DB_NAME(), FS.DB_VERSION);
@@ -1944,9 +1942,7 @@ FS.staticInit();` +
     },
 
     // asynchronously loads a file from IndexedDB.
-    loadFilesFromDB: (paths, onload, onerror) => {
-      onload = onload || (() => {});
-      onerror = onerror || (() => {});
+    loadFilesFromDB: (paths, onload = (() => {}), onerror = (() => {})) => {
       var indexedDB = FS.indexedDB();
       try {
         var openRequest = indexedDB.open(FS.DB_NAME(), FS.DB_VERSION);

@@ -79,8 +79,7 @@ mergeInto(LibraryManager.library, {
       }
       return current;
     },
-    readFile: (path, opts) => {
-      opts = opts || {};
+    readFile: (path, opts = {}) => {
       opts.encoding = opts.encoding || 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
         throw new Error('Invalid encoding type "' + opts.encoding + '"');

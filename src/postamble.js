@@ -21,7 +21,11 @@ dependenciesFulfilled = function runCaller() {
 };
 
 #if HAS_MAIN
-function callMain(args) {
+#if MAIN_READS_PARAMS
+function callMain(args = []) {
+#else
+function callMain() {
+#endif
 #if ASSERTIONS
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on Module["onRuntimeInitialized"])');
   assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
@@ -52,7 +56,6 @@ function callMain(args) {
 #if MAIN_READS_PARAMS && STANDALONE_WASM
   mainArgs = [thisProgram].concat(args)
 #elif MAIN_READS_PARAMS
-  args = args || [];
   args.unshift(thisProgram);
 
   var argc = args.length;
@@ -154,8 +157,11 @@ var dylibsLoaded = false;
 #endif
 
 /** @type {function(Array=)} */
-function run(args) {
-  args = args || arguments_;
+#if MAIN_READS_PARAMS
+function run(args = arguments_) {
+#else
+function run() {
+#endif
 
   if (runDependencies > 0) {
 #if RUNTIME_LOGGING
@@ -248,7 +254,11 @@ function run(args) {
 #endif
 
 #if HAS_MAIN
+#if MAIN_READS_PARAMS
     if (shouldRunNow) callMain(args);
+#else
+    if (shouldRunNow) callMain();
+#endif
 #else
 #if ASSERTIONS
     assert(!Module['_main'], 'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');
