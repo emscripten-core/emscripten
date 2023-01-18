@@ -96,6 +96,7 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libwebgpu_cpp',
     'libfetch',
     'libwasmfs',
+    'giflib',
 ]
 
 PORTS = sorted(list(ports.ports_by_name.keys()) + list(ports.port_variants.keys()))
