@@ -170,9 +170,7 @@ var LibraryWebGPU = {
       function Manager() {
         this.objects = {};
         this.nextId = 1;
-        this.create = function(object, wrapper /* = {} */) {
-          wrapper = wrapper || {};
-
+        this.create = function(object, wrapper = {}) {
           var id = this.nextId++;
           {{{ gpu.makeCheck("typeof this.objects[id] == 'undefined'") }}}
           wrapper.refcount = 1;

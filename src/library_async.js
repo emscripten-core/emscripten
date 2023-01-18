@@ -318,12 +318,12 @@ mergeInto(LibraryManager.library, {
         // need to do anything.
         var reachedCallback = false;
         var reachedAfterCallback = false;
-        startAsync((handleSleepReturnValue) => {
+        startAsync((handleSleepReturnValue = 0) => {
 #if ASSERTIONS
           assert(!handleSleepReturnValue || typeof handleSleepReturnValue == 'number' || typeof handleSleepReturnValue == 'boolean'); // old emterpretify API supported other stuff
 #endif
           if (ABORT) return;
-          Asyncify.handleSleepReturnValue = handleSleepReturnValue || 0;
+          Asyncify.handleSleepReturnValue = handleSleepReturnValue;
           reachedCallback = true;
           if (!reachedAfterCallback) {
             // We are happening synchronously, so no need for async.

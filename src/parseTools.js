@@ -418,8 +418,7 @@ const UNROLL_LOOP_MAX = 8;
 
 function makeCopyValues(dest, src, num, type, modifier, align, sep = ';') {
   assert(typeof align === 'undefined');
-  function unroll(type, num, jump) {
-    jump = jump || 1;
+  function unroll(type, num, jump = 1) {
     const setValues = range(num).map((i) => makeSetValue(dest, i * jump, makeGetValue(src, i * jump, type), type));
     return setValues.join(sep);
   }

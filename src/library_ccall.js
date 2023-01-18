@@ -130,10 +130,9 @@ mergeInto(LibraryManager.library, {
   $cwrap__deps: ['$getCFunc', '$ccall'],
   $cwrap: function(ident, returnType, argTypes, opts) {
 #if !ASSERTIONS
-    argTypes = argTypes || [];
     // When the function takes numbers and returns a number, we can just return
     // the original function
-    var numericArgs = argTypes.every((type) => type === 'number' || type === 'boolean');
+    var numericArgs = !argTypes || argTypes.every((type) => type === 'number' || type === 'boolean');
     var numericRet = returnType !== 'string';
     if (numericRet && numericArgs && !opts) {
       return getCFunc(ident);
