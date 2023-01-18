@@ -3766,8 +3766,7 @@ def modularize():
     diagnostics.warning('emcc', 'EXPORT_NAME should not be named "config" when targeting Safari')
 
   src = '''
-%(maybe_async)sfunction(config) {
-  var %(EXPORT_NAME)s = config || {};
+%(maybe_async)sfunction(%(EXPORT_NAME)s = {})  {
 
 %(src)s
 
