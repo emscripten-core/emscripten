@@ -283,12 +283,17 @@ function ${name}(${args}) {
           // (not useful to warn/error multiple times)
           LibraryManager.library[ident + '__docs'] = '/** @type {function(...*):?} */';
         } else {
-          const target = `Module['${finalName}']`;
-          let assertion = '';
+          // With dynamic linking we create stubs for any missing symbols that
+          // might be come from the side module.  This is because the main
+          // module is loaded first and we need to satisfy its function imports
+          // before the side modules are actually loaded.
+          let functionBody;
           if (ASSERTIONS) {
-            assertion += `if (!${target}) abort("external symbol '${ident}' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n`;
+            functionBody = `  return callChecked(Module['${finalName}'], '${ident}', arguments);\n`
+            LibraryManager.library[ident + '__deps'] = ['$callChecked']
+          } else {
+            functionBody = `  return Module['${finalName}'].apply(null, arguments);`;
           }
-          const functionBody = assertion + `return ${target}.apply(null, arguments);`;
           LibraryManager.library[ident] = new Function(functionBody);
           isStub = true;
         }

@@ -10,6 +10,18 @@ var dlopenMissingError = "'To use dlopen, you need enable dynamic linking, see h
 
 var LibraryDylink = {
 #if RELOCATABLE
+#if ASSERTIONS
+  // Abort with a meaningful error if a given symbol does not exist in the
+  // symbol table.  This is called from the function stubs that are passed into
+  // the main module (see jsifier.js).
+  $callChecked: function(func, sym, args) {
+    if (!func) {
+      abort("external symbol '" + sym + "' is missing. perhaps a side module was not linked in?")
+    }
+    return func.apply(null, args);
+  },
+#endif
+
   $resolveGlobalSymbol__internal: true,
   $resolveGlobalSymbol__deps: ['$asmjsMangle'],
   $resolveGlobalSymbol: function(symName, direct) {
