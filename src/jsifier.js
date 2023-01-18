@@ -66,36 +66,25 @@ function isDefined(symName) {
   return false;
 }
 
-// JSifier
 function runJSify(symbolsOnly = false) {
-  const functionStubs = [];
-
-  const itemsDict = {type: [], functionStub: [], function: [], globalVariablePostSet: []};
-
-  // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
-  // generateStructInfo in library.js)
+  const libraryItems = [];
+  let postSets = [];
 
   LibraryManager.load();
 
-  const libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
+  const symbolsNeeded = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
   for (const sym of EXPORTED_RUNTIME_METHODS) {
     if ('$' + sym in LibraryManager.library) {
-      libFuncsToInclude.push('$' + sym);
+      symbolsNeeded.push('$' + sym);
     }
   }
   if (INCLUDE_FULL_LIBRARY) {
     for (const key in LibraryManager.library) {
       if (!isJsLibraryConfigIdentifier(key)) {
-        libFuncsToInclude.push(key);
+        symbolsNeeded.push(key);
       }
     }
   }
-  libFuncsToInclude.forEach((ident) => {
-    functionStubs.push({
-      identOrig: ident,
-      identMangled: mangleCSymbolName(ident),
-    });
-  });
 
   function convertPointerParams(snippet, sig) {
     // Automatically convert any incoming pointer arguments from BigInt
@@ -190,8 +179,7 @@ function ${name}(${args}) {
     }
   }
 
-  // functionStub
-  function functionStubHandler(item) {
+  function itemHandler(item) {
     // In LLVM, exceptions generate a set of functions of form
     // __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.  where
     // the number specifies the number of arguments. In Emscripten, route all
@@ -345,7 +333,7 @@ function ${name}(${args}) {
         }
         if (postset && !addedLibraryItems[postsetId]) {
           addedLibraryItems[postsetId] = true;
-          itemsDict.globalVariablePostSet.push({
+          postSets.push({
             JS: postset + ';',
           });
         }
@@ -449,7 +437,7 @@ function ${name}(${args}) {
       return depsText + commentText + contentText;
     }
 
-    itemsDict.functionStub.push(item);
+    libraryItems.push(item);
     item.JS = addFromLibrary(item, TOP_LEVEL);
   }
 
@@ -460,8 +448,8 @@ function ${name}(${args}) {
   }
 
   function finalCombiner() {
-    const splitPostSets = splitter(itemsDict.globalVariablePostSet, (x) => x.ident && x.dependencies);
-    itemsDict.globalVariablePostSet = splitPostSets.leftIn;
+    const splitPostSets = splitter(postSets, (x) => x.ident && x.dependencies);
+    postSets = splitPostSets.leftIn;
     const orderedPostSets = splitPostSets.splitOut;
 
     let limit = orderedPostSets.length * orderedPostSets.length;
@@ -479,7 +467,7 @@ function ${name}(${args}) {
       }
     }
 
-    itemsDict.globalVariablePostSet = itemsDict.globalVariablePostSet.concat(orderedPostSets);
+    postSets = postSets.concat(orderedPostSets);
 
     const shellFile = MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js';
     includeFile(shellFile);
@@ -487,8 +475,9 @@ function ${name}(${args}) {
     const preFile = MINIMAL_RUNTIME ? 'preamble_minimal.js' : 'preamble.js';
     includeFile(preFile);
 
-    const generated = itemsDict.functionStub.concat(itemsDict.globalVariablePostSet);
-    generated.forEach((item) => print(indentify(item.JS || '', 2)));
+    for (const item of libraryItems.concat(postSets)) {
+      print(indentify(item.JS || '', 2));
+    }
 
     if (USE_PTHREADS) {
       print('\n // proxiedFunctionTable specifies the list of functions that can be called either synchronously or asynchronously from other threads in postMessage()d or internally queued events. This way a pthread in a Worker can synchronously access e.g. the DOM on the main thread.');
@@ -538,8 +527,12 @@ function ${name}(${args}) {
     }));
   }
 
-  // Data
-  functionStubs.forEach(functionStubHandler);
+  for (const sym of symbolsNeeded) {
+    itemHandler({
+      identOrig: sym,
+      identMangled: mangleCSymbolName(sym),
+    });
+  }
 
   if (symbolsOnly) {
     print(JSON.stringify(librarySymbols));
