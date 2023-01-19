@@ -1363,6 +1363,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       '-Wno-unused-but-set-variable',
       '-Wno-pointer-bool-conversion',
       '-Wno-shift-negative-value',
+      '-Wno-gnu-offsetof-extensions',
+      # And becuase gnu-offsetof-extensions is a new warning:
+      '-Wno-unknown-warning-option',
     ]
     return self.get_library(os.path.join('third_party', 'freetype'),
                             os.path.join('objs', '.libs', 'libfreetype.a'),
