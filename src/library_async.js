@@ -19,8 +19,30 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  $Stack: function()
+  {
+    this.stac=new Array();
+
+    this.pop=function(){
+      return this.stac.pop();
+    }
+
+    this.peek=function(){
+      return this.stac[this.stac.length - 1];
+    }
+
+    this.push=function(item){
+      this.stac.push(item);
+    }
+
+    this.active=function(){
+      return (this.stac.length > 0);
+    }
+  },
+
+
 #if ASYNCIFY
-  $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback', '$sigToWasmTypes',
+  $Asyncify__deps: ['$runAndAbortIfError', '$Stack', '$callUserCallback', '$sigToWasmTypes',
 #if !MINIMAL_RUNTIME
     '$runtimeKeepalivePush', '$runtimeKeepalivePop'
 #endif
@@ -169,26 +191,26 @@ mergeInto(LibraryManager.library, {
 
 #if ASYNCIFY == 1
 
-  getNewStack: function()
-  {
-    this.stac=new Array();
+    // function Stack()
+    // {
+    //   this.stac=new Array();
 
-    this.pop=function(){
-      return this.stac.pop();
-    }
+    //   this.pop=function(){
+    //     return this.stac.pop();
+    //   }
 
-    this.peek=function(){
-      return this.stac[this.stac.length - 1];
-    }
+    //   this.peek=function(){
+    //     return this.stac[this.stac.length - 1];
+    //   }
 
-    this.push=function(item){
-      this.stac.push(item);
-    }
+    //   this.push=function(item){
+    //     this.stac.push(item);
+    //   }
 
-    this.active=function(){
-      return (this.stac.length > 0);
-    }
-  },
+    //   this.active=function(){
+    //     return (this.stac.length > 0);
+    //   }
+    // },
 
     //
     // Original implementation of Asyncify.
@@ -201,7 +223,7 @@ mergeInto(LibraryManager.library, {
     },
     state: 0,
     StackSize: {{{ ASYNCIFY_STACK_SIZE }}},
-    currData: Asyncify.getNewStack(),
+    currData: {{{ new Stack() }}},
     // The return value passed to wakeUp() in
     // Asyncify.handleSleep(function(wakeUp){...}) is stored here,
     // so we can return it later from the C function that called
