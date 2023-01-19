@@ -935,8 +935,6 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
     if passes:
       # hackish fixups to work around wasm2js style and the js optimizer FIXME
       wasm2js_js = f'// EMSCRIPTEN_START_ASM\n{wasm2js_js}// EMSCRIPTEN_END_ASM\n'
-      wasm2js_js = wasm2js_js.replace('// EMSCRIPTEN_START_FUNCS;\n', '// EMSCRIPTEN_START_FUNCS\n')
-      wasm2js_js = wasm2js_js.replace('// EMSCRIPTEN_END_FUNCS;\n', '// EMSCRIPTEN_END_FUNCS\n')
       wasm2js_js = wasm2js_js.replace('\n function $', '\nfunction $')
       wasm2js_js = wasm2js_js.replace('\n }', '\n}')
       wasm2js_js += '\n// EMSCRIPTEN_GENERATED_FUNCTIONS\n'

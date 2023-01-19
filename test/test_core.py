@@ -2305,6 +2305,7 @@ int main(int argc, char **argv) {
     if self.maybe_closure():
       # verify NO_DYNAMIC_EXECUTION is compatible with closure
       self.set_setting('DYNAMIC_EXECUTION', 0)
+      self.emcc_args.append('-Wno-closure')
     # With typed arrays in particular, it is dangerous to use more memory than INITIAL_MEMORY,
     # since we then need to enlarge the heap(s).
     src = test_file('core/test_memorygrowth.c')
@@ -2320,14 +2321,8 @@ int main(int argc, char **argv) {
 
     if '-O2' in self.emcc_args and not self.is_wasm():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
-      possible_starts = ['// EMSCRIPTEN_START_FUNCS', 'var STACK_SIZE']
-      code_start = None
-      for s in possible_starts:
-        if fail.find(s) >= 0:
-          code_start = s
-          break
-      assert code_start is not None, 'Generated code must contain one of ' + str(possible_starts)
-
+      code_start = '// EMSCRIPTEN_START_FUNCS'
+      self.assertContained(code_start, fail)
       fail = fail[fail.find(code_start):]
       win = win[win.find(code_start):]
       assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
