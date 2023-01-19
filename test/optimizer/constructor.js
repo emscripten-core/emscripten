@@ -58,6 +58,3 @@ return asmFunc({
 )
 
 }// EMSCRIPTEN_END_ASM
-
-// EMSCRIPTEN_GENERATED_FUNCTIONS
-

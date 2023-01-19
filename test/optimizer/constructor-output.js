@@ -55,6 +55,3 @@ function u(a) {
 }
 // EMSCRIPTEN_END_ASM
 
-// EMSCRIPTEN_GENERATED_FUNCTIONS
-
-
