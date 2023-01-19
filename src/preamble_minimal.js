@@ -4,6 +4,15 @@
  * SPDX-License-Identifier: MIT
  */
 
+{{{
+  // Helper function to export a symbol on the module object
+  // if requested.
+  global.maybeExport = function(x) {
+    return MODULARIZE && EXPORT_ALL ? `Module['${x}'] =` : '';
+  };
+  null;
+}}}
+
 #if SAFE_HEAP
 #include "runtime_safe_heap.js"
 #endif
@@ -56,32 +65,25 @@ var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
 #endif
   wasmMemory, wasmTable;
 
-{{{ (function() {
-  global.assignToModuleIfExportAll = function(x) {
-    return MODULARIZE && EXPORT_ALL ? `Module['${x}'] =` : '';
-  };
-  return null;
-})(); }}}
-
 function updateMemoryViews() {
   var b = wasmMemory.buffer;
 #if ASSERTIONS && SHARED_MEMORY
   assert(b instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
 #endif
 #if SUPPORT_BIG_ENDIAN
-  {{{ assignToModuleIfExportAll('HEAP_DATA_VIEW') }}} HEAP_DATA_VIEW = new DataView(b);
+  {{{ maybeExport('HEAP_DATA_VIEW') }}} HEAP_DATA_VIEW = new DataView(b);
 #endif
-  {{{ assignToModuleIfExportAll('HEAP8') }}} HEAP8 = new Int8Array(b);
-  {{{ assignToModuleIfExportAll('HEAP16') }}} HEAP16 = new Int16Array(b);
-  {{{ assignToModuleIfExportAll('HEAP32') }}} HEAP32 = new Int32Array(b);
-  {{{ assignToModuleIfExportAll('HEAPU8') }}} HEAPU8 = new Uint8Array(b);
-  {{{ assignToModuleIfExportAll('HEAPU16') }}} HEAPU16 = new Uint16Array(b);
-  {{{ assignToModuleIfExportAll('HEAPU32') }}} HEAPU32 = new Uint32Array(b);
-  {{{ assignToModuleIfExportAll('HEAPF32') }}} HEAPF32 = new Float32Array(b);
-  {{{ assignToModuleIfExportAll('HEAPF64') }}} HEAPF64 = new Float64Array(b);
+  {{{ maybeExport('HEAP8') }}} HEAP8 = new Int8Array(b);
+  {{{ maybeExport('HEAP16') }}} HEAP16 = new Int16Array(b);
+  {{{ maybeExport('HEAP32') }}} HEAP32 = new Int32Array(b);
+  {{{ maybeExport('HEAPU8') }}} HEAPU8 = new Uint8Array(b);
+  {{{ maybeExport('HEAPU16') }}} HEAPU16 = new Uint16Array(b);
+  {{{ maybeExport('HEAPU32') }}} HEAPU32 = new Uint32Array(b);
+  {{{ maybeExport('HEAPF32') }}} HEAPF32 = new Float32Array(b);
+  {{{ maybeExport('HEAPF64') }}} HEAPF64 = new Float64Array(b);
 #if WASM_BIGINT
-  {{{ assignToModuleIfExportAll('HEAP64') }}} HEAP64 = new BigInt64Array(b);
-  {{{ assignToModuleIfExportAll('HEAPU64') }}} HEAPU64 = new BigUint64Array(b);
+  {{{ maybeExport('HEAP64') }}} HEAP64 = new BigInt64Array(b);
+  {{{ maybeExport('HEAPU64') }}} HEAPU64 = new BigUint64Array(b);
 #endif
 }
 
