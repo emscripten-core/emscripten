@@ -15,14 +15,14 @@ static void dummy()
 {
 }
 
-weak_alias(dummy, _emscripten_thread_sync_code);
+static void dummy2(double now)
+{
+}
 
-/*
- * Called whenever a thread performs a blocking action (or calls sched_yield).
- * This function takes care of running the event queue and other housekeeping
- * tasks.
- */
-void _emscripten_yield() {
+weak_alias(dummy, _emscripten_thread_sync_code);
+weak_alias(dummy2, _emscripten_check_timers);
+
+void _emscripten_yield(double now) {
   int is_runtime_thread = emscripten_is_main_runtime_thread();
 
   // When a secondary thread crashes, we need to be able to interrupt the main
@@ -36,6 +36,9 @@ void _emscripten_yield() {
       // thread.
       emscripten_unwind_to_js_event_loop();
     }
+
+    // This is no-op in programs that don't include use of itimer/alarm.
+    _emscripten_check_timers(now);
 
     // Assist other threads by executing proxied operations that are effectively
     // singlethreaded.

@@ -10,6 +10,7 @@ import shutil
 import sys
 import time
 from subprocess import Popen
+from typing import List
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner sockets')
@@ -60,7 +61,7 @@ class WebsockifyServerHarness():
       process = Popen([os.path.abspath('server')])
       self.processes.append(process)
 
-    import websockify
+    import websockify  # type: ignore
 
     # start the websocket proxy
     print('running websockify on %d, forward to tcp %d' % (self.listen_port, self.target_port), file=sys.stderr)
@@ -153,7 +154,7 @@ def PythonTcpEchoServerProcess(port):
 
 
 class sockets(BrowserCore):
-  emcc_args = []
+  emcc_args: List[str] = []
 
   @classmethod
   def setUpClass(cls):

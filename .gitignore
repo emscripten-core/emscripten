@@ -26,3 +26,6 @@ htmlcov/
 coverage.xml
 
 .DS_Store
+
+# Test output
+/out/

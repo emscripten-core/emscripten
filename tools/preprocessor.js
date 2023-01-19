@@ -16,6 +16,7 @@
 
 const fs = require('fs');
 const path = require('path');
+global.vm = require('vm');
 
 const arguments_ = process['argv'].slice(2);
 const debug = false;
@@ -46,7 +47,7 @@ global.read = function(filename) {
 };
 
 global.load = function(f) {
-  eval.call(null, read(f));
+  (0, eval)(read(f) + '//# sourceURL=' + find(f));
 };
 
 const settingsFile = arguments_[0];
@@ -58,7 +59,6 @@ load('utility.js');
 load('modules.js');
 load('parseTools.js');
 
-const fromHTML = read(shellFile);
-const toHTML = expandMacros ? processMacros(preprocess(fromHTML, shellFile)) : preprocess(fromHTML, shellFile);
+const toHTML = expandMacros ? processMacros(preprocess(shellFile)) : preprocess(shellFile);
 
 print(toHTML);

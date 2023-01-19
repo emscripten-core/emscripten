@@ -4,11 +4,13 @@
 # found in the LICENSE file.
 
 import logging
+from typing import List, Dict
 
 from . import webassembly
 from .webassembly import OpCode, AtomicOpCode, MemoryOpCode
 from .shared import exit_with_error
 from .settings import settings
+
 
 logger = logging.getLogger('extract_metadata')
 
@@ -207,7 +209,7 @@ def get_section_strings(module, export_map, section_name):
   end = seg_offset + size
   while str_start < end:
     str_end = data.find(b'\0', str_start)
-    asm_strings[str(start_addr - seg_offset + str_start)] = data_to_string(data[str_start:str_end])
+    asm_strings[start_addr - seg_offset + str_start] = data_to_string(data[str_start:str_end])
     str_start = str_end + 1
   return asm_strings
 
@@ -252,13 +254,12 @@ def get_export_names(module):
 def update_metadata(filename, metadata):
   imports = []
   invoke_funcs = []
-  em_js_funcs = set(metadata.emJsFuncs)
   with webassembly.Module(filename) as module:
     for i in module.get_imports():
       if i.kind == webassembly.ExternType.FUNC:
         if i.field.startswith('invoke_'):
           invoke_funcs.append(i.field)
-        elif i.field not in em_js_funcs:
+        else:
           imports.append(i.field)
       elif i.kind in (webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG):
         imports.append(i.field)
@@ -277,16 +278,16 @@ def get_string_at(module, address):
 
 
 class Metadata:
-  imports: []
-  export: []
-  asmConsts: []
-  jsDeps: []
-  emJsFuncs: {}
-  emJsFuncTypes: []
-  features: []
-  invokeFuncs: []
+  imports: List[str]
+  export: List[str]
+  asmConsts: Dict[int, str]
+  jsDeps: List[str]
+  emJsFuncs: Dict[str, str]
+  emJsFuncTypes: Dict[str, str]
+  features: List[str]
+  invokeFuncs: List[str]
   mainReadsParams: bool
-  namedGlobals: []
+  namedGlobals: List[str]
 
   def __init__(self):
     pass
@@ -314,10 +315,10 @@ def extract_metadata(filename):
       if i.kind == webassembly.ExternType.FUNC:
         if i.field.startswith('invoke_'):
           invoke_funcs.append(i.field)
-        elif i.field in em_js_funcs:
-          types = module.get_types()
-          em_js_func_types[i.field] = types[i.type]
         else:
+          if i.field in em_js_funcs:
+            types = module.get_types()
+            em_js_func_types[i.field] = types[i.type]
           import_names.append(i.field)
       elif i.kind in (webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG):
         import_names.append(i.field)

@@ -79,8 +79,7 @@ mergeInto(LibraryManager.library, {
       }
       return current;
     },
-    readFile: (path, opts) => {
-      opts = opts || {};
+    readFile: (path, opts = {}) => {
       opts.encoding = opts.encoding || 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
         throw new Error('Invalid encoding type "' + opts.encoding + '"');
@@ -125,7 +124,12 @@ mergeInto(LibraryManager.library, {
     // TODO: open
     // TODO: create
     // TODO: close
-    // TODO: unlink
+    unlink: (path) => {
+      return withStackSave(() => {
+        var buffer = allocateUTF8OnStack(path);
+        return __wasmfs_unlink(buffer);
+      });
+    },
     chdir: (path) => {
       return withStackSave(() => {
         var buffer = allocateUTF8OnStack(path);

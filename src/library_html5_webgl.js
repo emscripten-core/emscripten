@@ -417,9 +417,7 @@ var LibraryHtml5WebGL = {
     if (!target) target = Module['canvas'];
 #endif
 
-    var webGlEventHandlerFunc = function(ev) {
-      var e = ev || event;
-
+    var webGlEventHandlerFunc = function(e = event) {
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, 0, userData);
       else

@@ -163,29 +163,6 @@ var LibraryExceptions = {
     }
   },
 
-  // Exceptions
-  __cxa_allocate_exception__sig: 'pp',
-  __cxa_allocate_exception: function(size) {
-    // Thrown object is prepended by exception metadata block
-    return _malloc(size + {{{ C_STRUCTS.__cxa_exception.__size__ }}}) + {{{ C_STRUCTS.__cxa_exception.__size__ }}};
-  },
-
-  __cxa_free_exception__deps: ['$ExceptionInfo'],
-  __cxa_free_exception__sig: 'vp',
-  __cxa_free_exception: function(ptr) {
-#if ABORTING_MALLOC || ASSERTIONS
-    try {
-#endif
-      return _free(new ExceptionInfo(ptr).ptr);
-#if ABORTING_MALLOC || ASSERTIONS
-    } catch(e) {
-#if ASSERTIONS
-      err('exception during __cxa_free_exception: ' + e);
-#endif
-    }
-#endif
-  },
-
   __cxa_increment_exception_refcount__deps: ['$exception_addRef', '$ExceptionInfo'],
   __cxa_increment_exception_refcount__sig: 'vp',
   __cxa_increment_exception_refcount: function(ptr) {
@@ -498,13 +475,13 @@ var LibraryExceptions = {
 #endif
 };
 
-// In LLVM, exceptions generate a set of functions of form __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.
-// where the number specifies the number of arguments. In Emscripten, route all these to a single function '__cxa_find_matching_catch'
-// that variadically processes all of these functions using JS 'arguments' object.
+// In LLVM, exceptions generate a set of functions of form
+// __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.  where the
+// number specifies the number of arguments.  In Emscripten, route all these to
+// a single function '__cxa_find_matching_catch' that variadically processes all
+// of these functions using JS 'arguments' object.
 addCxaCatch = function(n) {
-  LibraryManager.library['__cxa_find_matching_catch_' + n] = LibraryExceptions['__cxa_find_matching_catch'];
-  LibraryManager.library['__cxa_find_matching_catch_' + n + '__sig'] = new Array(n + 2).join('p');
-  LibraryManager.library['__cxa_find_matching_catch_' + n + '__deps'] = LibraryExceptions['__cxa_find_matching_catch__deps'];
+  LibraryManager.library['__cxa_find_matching_catch_' + n] = '__cxa_find_matching_catch';
 };
 
 mergeInto(LibraryManager.library, LibraryExceptions);

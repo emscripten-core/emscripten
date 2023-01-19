@@ -107,8 +107,6 @@ function _free() {
 // Memory management
 
 var HEAP,
-/** @type {!ArrayBuffer} */
-  buffer,
 /** @type {!Int8Array} */
   HEAP8,
 /** @type {!Uint8Array} */
@@ -138,44 +136,30 @@ var HEAP,
 var HEAP_DATA_VIEW;
 #endif
 
-#if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) {
-  // Grab imports from the pthread to local scope.
-  buffer = Module['buffer'];
-  // Note that not all runtime fields are imported above
-}
-#endif
-
-function updateGlobalBufferAndViews(buf) {
-  buffer = buf;
+function updateMemoryViews() {
+  var b = wasmMemory.buffer;
 #if SUPPORT_BIG_ENDIAN
-  Module['HEAP_DATA_VIEW'] = HEAP_DATA_VIEW = new DataView(buf);
+  Module['HEAP_DATA_VIEW'] = HEAP_DATA_VIEW = new DataView(b);
 #endif
-  Module['HEAP8'] = HEAP8 = new Int8Array(buf);
-  Module['HEAP16'] = HEAP16 = new Int16Array(buf);
-  Module['HEAP32'] = HEAP32 = new Int32Array(buf);
-  Module['HEAPU8'] = HEAPU8 = new Uint8Array(buf);
-  Module['HEAPU16'] = HEAPU16 = new Uint16Array(buf);
-  Module['HEAPU32'] = HEAPU32 = new Uint32Array(buf);
-  Module['HEAPF32'] = HEAPF32 = new Float32Array(buf);
-  Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
+  Module['HEAP8'] = HEAP8 = new Int8Array(b);
+  Module['HEAP16'] = HEAP16 = new Int16Array(b);
+  Module['HEAP32'] = HEAP32 = new Int32Array(b);
+  Module['HEAPU8'] = HEAPU8 = new Uint8Array(b);
+  Module['HEAPU16'] = HEAPU16 = new Uint16Array(b);
+  Module['HEAPU32'] = HEAPU32 = new Uint32Array(b);
+  Module['HEAPF32'] = HEAPF32 = new Float32Array(b);
+  Module['HEAPF64'] = HEAPF64 = new Float64Array(b);
 #if WASM_BIGINT
-  Module['HEAP64'] = HEAP64 = new BigInt64Array(buf);
-  Module['HEAPU64'] = HEAPU64 = new BigUint64Array(buf);
+  Module['HEAP64'] = HEAP64 = new BigInt64Array(b);
+  Module['HEAPU64'] = HEAPU64 = new BigUint64Array(b);
 #endif
 }
 
-var STACK_SIZE = {{{ STACK_SIZE }}};
 #if ASSERTIONS
-if (Module['STACK_SIZE']) assert(STACK_SIZE === Module['STACK_SIZE'], 'the stack size can no longer be determined at runtime')
+assert(!Module['STACK_SIZE'], 'STACK_SIZE can no longer be set at runtime.  Use -sSTACK_SIZE at link time')
 #endif
 
-{{{ makeModuleReceiveWithVar('INITIAL_MEMORY', undefined, INITIAL_MEMORY) }}}
-
 #if ASSERTIONS
-assert(INITIAL_MEMORY >= STACK_SIZE, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + STACK_SIZE + ')');
-
-// check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
        'JS engine does not provide full typed array support');
 #endif
@@ -183,13 +167,11 @@ assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' &
 #if IMPORTED_MEMORY
 // In non-standalone/normal mode, we create the memory here.
 #include "runtime_init_memory.js"
-#else // IMPORTED_MEMORY
-#if ASSERTIONS
-// If memory is defined in wasm, the user can't provide it.
+#elif ASSERTIONS
+// If memory is defined in wasm, the user can't provide it, or set INITIAL_MEMORY
 assert(!Module['wasmMemory'], 'Use of `wasmMemory` detected.  Use -sIMPORTED_MEMORY to define wasmMemory externally');
-assert(INITIAL_MEMORY == {{{INITIAL_MEMORY}}}, 'Detected runtime INITIAL_MEMORY setting.  Use -sIMPORTED_MEMORY to define wasmMemory dynamically');
-#endif // ASSERTIONS
-#endif // IMPORTED_MEMORY
+assert(!Module['INITIAL_MEMORY'], 'Detected runtime INITIAL_MEMORY setting.  Use -sIMPORTED_MEMORY to define wasmMemory dynamically');
+#endif // !IMPORTED_MEMORY && ASSERTIONS
 
 #include "runtime_init_table.js"
 #include "runtime_stack_check.js"
@@ -226,7 +208,6 @@ function preRun() {
 #if ASSERTIONS && USE_PTHREADS
   assert(!ENVIRONMENT_IS_PTHREAD); // PThreads reuse the runtime from the main thread.
 #endif
-
 #if expectToReceiveOnModule('preRun')
   if (Module['preRun']) {
     if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
@@ -235,7 +216,6 @@ function preRun() {
     }
   }
 #endif
-
   callRuntimeCallbacks(__ATPRERUN__);
 }
 
@@ -506,8 +486,6 @@ function abort(what) {
 #endif
 }
 
-// {{MEM_INITIALIZER}}
-
 #include "memoryprofiler.js"
 
 #if ASSERTIONS && !('$FS' in addedLibraryItems) && !WASMFS
@@ -641,7 +619,7 @@ if (Module['locateFile']) {
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE // in single-file mode, repeating WASM_BINARY_FILE would emit the contents again
 } else {
   // Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
-  wasmBinaryFile = new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).toString();
+  wasmBinaryFile = new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).href;
 }
 #endif
 
@@ -825,17 +803,17 @@ function createWasm() {
   // prepare imports
   var info = {
 #if MINIFY_WASM_IMPORTED_MODULES
-    'a': asmLibraryArg,
+    'a': wasmImports,
 #else // MINIFY_WASM_IMPORTED_MODULES
-    'env': asmLibraryArg,
-    '{{{ WASI_MODULE_NAME }}}': asmLibraryArg,
+    'env': wasmImports,
+    '{{{ WASI_MODULE_NAME }}}': wasmImports,
 #endif // MINIFY_WASM_IMPORTED_MODULES
 #if SPLIT_MODULE
     'placeholder': new Proxy({}, splitModuleProxyHandler),
 #endif
 #if RELOCATABLE
-    'GOT.mem': new Proxy(asmLibraryArg, GOTHandler),
-    'GOT.func': new Proxy(asmLibraryArg, GOTHandler),
+    'GOT.mem': new Proxy(wasmImports, GOTHandler),
+    'GOT.func': new Proxy(wasmImports, GOTHandler),
 #endif
   };
   // Load the wasm module and create an instance of using native support in the JS engine.
@@ -890,7 +868,7 @@ function createWasm() {
     // TODO(sbc): Read INITIAL_MEMORY out of the wasm file in post-link mode.
     //assert(wasmMemory.buffer.byteLength === {{{ INITIAL_MEMORY }}});
 #endif
-    updateGlobalBufferAndViews(wasmMemory.buffer);
+    updateMemoryViews();
 #endif
 #if !MEM_INIT_IN_WASM
     runMemoryInitializer();
@@ -933,38 +911,15 @@ function createWasm() {
     wasmModule = module;
 #endif
 
-#if WASM_WORKERS
-    if (!ENVIRONMENT_IS_WASM_WORKER) {
-#endif
 #if USE_PTHREADS
-    // Instantiation is synchronous in pthreads and we assert on run dependencies.
-    if (!ENVIRONMENT_IS_PTHREAD) {
-#if PTHREAD_POOL_SIZE
-      var numWorkersToLoad = PThread.unusedWorkers.length;
-      PThread.unusedWorkers.forEach(function(w) { PThread.loadWasmModuleToWorker(w, function() {
-#if !PTHREAD_POOL_DELAY_LOAD
-        // PTHREAD_POOL_DELAY_LOAD==0: we wanted to synchronously wait until the Worker pool
-        // has loaded up. If all Workers have finished loading up the Wasm Module, proceed with main()
-        if (!--numWorkersToLoad) removeRunDependency('wasm-instantiate');
-#endif
-      })});
-#endif
-#if PTHREAD_POOL_DELAY_LOAD || !PTHREAD_POOL_SIZE
-      // PTHREAD_POOL_DELAY_LOAD==1 (or no preloaded pool in use): do not wait up for the Workers to
-      // instantiate the Wasm module, but proceed with main() immediately.
-      removeRunDependency('wasm-instantiate');
-#endif
-    }
+    PThread.loadWasmModuleToAllWorkers(() => removeRunDependency('wasm-instantiate'));
 #else // singlethreaded build:
     removeRunDependency('wasm-instantiate');
 #endif // ~USE_PTHREADS
-#if WASM_WORKERS
-    }
-#endif
 
   }
-  // we can't run yet (except in a pthread, where we have a custom sync instantiator)
-  {{{ runIfMainThread("addRunDependency('wasm-instantiate');") }}}
+  // wait for the pthread pool (if any)
+  addRunDependency('wasm-instantiate');
 
 #if LOAD_SOURCE_MAP
   {{{ runIfMainThread("addRunDependency('source-map');") }}}
@@ -1181,5 +1136,98 @@ function createWasm() {
 // Globals used by JS i64 conversions (see makeSetValue)
 var tempDouble;
 var tempI64;
+
+#include "runtime_debug.js"
+
+#if RETAIN_COMPILER_SETTINGS
+var compilerSettings = {{{ JSON.stringify(makeRetainedCompilerSettings()) }}} ;
+
+function getCompilerSetting(name) {
+  if (!(name in compilerSettings)) return 'invalid compiler setting: ' + name;
+  return compilerSettings[name];
+}
+#endif // RETAIN_COMPILER_SETTINGS
+
+#if !MEM_INIT_IN_WASM
+var memoryInitializer = <<< MEM_INITIALIZER >>>;
+
+function runMemoryInitializer() {
+#if USE_PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) return;
+#endif
+  if (!isDataURI(memoryInitializer)) {
+    memoryInitializer = locateFile(memoryInitializer);
+  }
+  if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
+    var data = readBinary(memoryInitializer);
+    HEAPU8.set(data, {{{ GLOBAL_BASE }}});
+  } else {
+    addRunDependency('memory initializer');
+    var applyMemoryInitializer = (data) => {
+      if (data.byteLength) data = new Uint8Array(data);
+#if ASSERTIONS
+      for (var i = 0; i < data.length; i++) {
+        assert(HEAPU8[{{{ GLOBAL_BASE }}} + i] === 0, "area for memory initializer should not have been touched before it's loaded");
+      }
+#endif
+      HEAPU8.set(data, {{{ GLOBAL_BASE }}});
+      // Delete the typed array that contains the large blob of the memory initializer request response so that
+      // we won't keep unnecessary memory lying around. However, keep the XHR object itself alive so that e.g.
+      // its .status field can still be accessed later.
+      if (Module['memoryInitializerRequest']) delete Module['memoryInitializerRequest'].response;
+      removeRunDependency('memory initializer');
+    };
+    var doBrowserLoad = () => {
+      readAsync(memoryInitializer, applyMemoryInitializer, function() {
+        var e = new Error('could not load memory initializer ' + memoryInitializer);
+#if MODULARIZE
+          readyPromiseReject(e);
+#else
+          throw e;
+#endif
+      });
+    };
+#if SUPPORT_BASE64_EMBEDDING
+    var memoryInitializerBytes = tryParseAsDataURI(memoryInitializer);
+    if (memoryInitializerBytes) {
+      applyMemoryInitializer(memoryInitializerBytes.buffer);
+    } else
+#endif
+    if (Module['memoryInitializerRequest']) {
+      // a network request has already been created, just use that
+      var useRequest = () => {
+        var request = Module['memoryInitializerRequest'];
+        var response = request.response;
+        if (request.status !== 200 && request.status !== 0) {
+#if SUPPORT_BASE64_EMBEDDING
+          var data = tryParseAsDataURI(Module['memoryInitializerRequestURL']);
+          if (data) {
+            response = data.buffer;
+          } else {
+#endif
+            // If you see this warning, the issue may be that you are using locateFile and defining it in JS. That
+            // means that the HTML file doesn't know about it, and when it tries to create the mem init request early, does it to the wrong place.
+            // Look in your browser's devtools network console to see what's going on.
+            console.warn('a problem seems to have happened with Module.memoryInitializerRequest, status: ' + request.status + ', retrying ' + memoryInitializer);
+            doBrowserLoad();
+            return;
+#if SUPPORT_BASE64_EMBEDDING
+          }
+#endif
+        }
+        applyMemoryInitializer(response);
+      };
+      if (Module['memoryInitializerRequest'].response) {
+        setTimeout(useRequest, 0); // it's already here; but, apply it asynchronously
+      } else {
+        Module['memoryInitializerRequest'].addEventListener('load', useRequest); // wait for it
+      }
+    } else {
+      // fetch it from the network ourselves
+      doBrowserLoad();
+    }
+  }
+}
+#endif // MEM_INIT_IN_WASM == 0
 
 // === Body ===

@@ -103,7 +103,8 @@
             "AT_FDCWD",
             "AT_SYMLINK_NOFOLLOW",
             "AT_REMOVEDIR",
-            "AT_EMPTY_PATH"
+            "AT_EMPTY_PATH",
+            "AT_NO_AUTOMOUNT"
         ],
         "structs": {
             "flock": [

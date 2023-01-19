@@ -230,8 +230,8 @@ def main(args):
 
 def get_args():
   parser = argparse.ArgumentParser()
-  parser.add_argument('-s', '--source', help='Force debug info source type',
-                      default=())
+  parser.add_argument('-s', '--source', choices=['dwarf', 'sourcemap'],
+                      help='Force debug info source type', default=())
   parser.add_argument('-f', '--file', action='store',
                       help='Force debug info source file')
   parser.add_argument('-t', '--addrtype', choices=['code', 'file'],

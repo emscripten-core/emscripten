@@ -47,11 +47,11 @@ def get(ports, settings, shared):
 
     ports.build_port(src_path, final, 'bullet', includes=includes, flags=flags, exclude_dirs=['MiniCL'])
 
-  return [shared.Cache.get_lib('libbullet.a', create)]
+  return [shared.cache.get_lib('libbullet.a', create)]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib('libbullet.a')
+  shared.cache.erase_lib('libbullet.a')
 
 
 def process_args(ports):

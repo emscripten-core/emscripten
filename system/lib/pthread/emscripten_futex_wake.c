@@ -11,8 +11,6 @@
 #include <atomic.h>
 #include <emscripten/threading.h>
 
-int _emscripten_thread_supports_atomics_wait(void);
-
 // Stores the memory address that the main thread is waiting on, if any. If
 // the main thread is waiting, we wake it up before waking up any workers.
 void* _emscripten_main_thread_futex;
@@ -27,21 +25,20 @@ int emscripten_futex_wake(volatile void *addr, int count) {
     return 0;
   }
 
-  // See if main thread is waiting on this address? If so, wake it up by resetting its wake location to zero.
-  // Note that this is not a fair procedure, since we always wake main thread first before any workers, so
+  // See if main thread is waiting on this address? If so, wake it up by
+  // resetting its wake location to zero.  Note that this is not a fair
+  // procedure, since we always wake main thread first before any workers, so
   // this scheme does not adhere to real queue-based waiting.
   int main_thread_woken = 0;
   if (a_cas_p(&_emscripten_main_thread_futex, (void*)addr, 0) == addr) {
-    // We only use __emscripten_main_thread_futex on the main browser thread,
-    // where we cannot block while we wait. Therefore we should only see it set
-    // from other threads (that should always support waiting), and not on the
-    // main thread itself. In other words, the main thread must never try to
-    // wake itself up!
-    assert(_emscripten_thread_supports_atomics_wait());
-    --count;
-    main_thread_woken = 1;
-    if (count <= 0) {
-      return 1;
+    // The main browser thread must never try to wake itself up!
+    assert(!emscripten_is_main_browser_thread());
+    if (count != INT_MAX) {
+      --count;
+      main_thread_woken = 1;
+      if (count <= 0) {
+        return 1;
+      }
     }
   }
 

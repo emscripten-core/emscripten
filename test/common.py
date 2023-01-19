@@ -7,6 +7,7 @@ from enum import Enum
 from functools import wraps
 from pathlib import Path
 from subprocess import PIPE, STDOUT
+from typing import Dict, Tuple
 from urllib.parse import unquote, unquote_plus
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 import contextlib
@@ -29,8 +30,7 @@ import unittest
 
 import clang_native
 import jsrun
-from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
-from tools.shared import EMSCRIPTEN_TEMP_DIR
+from tools.shared import EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import get_canonical_temp_dir, path_from_root
 from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_file, write_binary, exit_with_error
 from tools import shared, line_endings, building, config, utils
@@ -178,6 +178,26 @@ def requires_node(func):
 
   def decorated(self, *args, **kwargs):
     self.require_node()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
+def requires_wasm64(func):
+  assert callable(func)
+
+  def decorated(self, *args, **kwargs):
+    self.require_wasm64()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
+def requires_wasm_eh(func):
+  assert callable(func)
+
+  def decorated(self, *args, **kwargs):
+    self.require_wasm_eh()
     return func(self, *args, **kwargs)
 
   return decorated
@@ -411,8 +431,8 @@ class RunnerMeta(type):
 class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   # default temporary directory settings. set_temp_dir may be called later to
   # override these
-  temp_dir = TEMP_DIR
-  canonical_temp_dir = get_canonical_temp_dir(TEMP_DIR)
+  temp_dir = shared.TEMP_DIR
+  canonical_temp_dir = get_canonical_temp_dir(shared.TEMP_DIR)
 
   # This avoids cluttering the test runner output, which is stderr too, with compiler warnings etc.
   # Change this to None to get stderr reporting, for debugging purposes
@@ -435,7 +455,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.skipTest('test requires v8 and EMTEST_SKIP_V8 is set')
       else:
         self.fail('d8 required to run this test.  Use EMTEST_SKIP_V8 to skip')
-    self.js_engines = [config.V8_ENGINE]
+    self.require_engine(config.V8_ENGINE)
     self.emcc_args.append('-sENVIRONMENT=shell')
 
   def require_node(self):
@@ -444,9 +464,52 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
       else:
         self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
-    if self.get_setting('MEMORY64') == 1:
-      self.skipTest("MEMORY64=1 tests don't yet run under node")
-    self.js_engines = [config.NODE_JS]
+    self.require_engine(config.NODE_JS)
+
+  def require_engine(self, engine):
+    if self.required_engine and self.required_engine != engine:
+      self.skipTest(f'Skipping test that requires `{engine}` when `{self.required_engine}` was previously required')
+    self.required_engine = engine
+    self.js_engines = [engine]
+
+  def require_wasm64(self):
+    if config.NODE_JS and config.NODE_JS in self.js_engines:
+      version = shared.check_node_version()
+      if version >= (16, 0, 0):
+        self.js_engines = [config.NODE_JS]
+        self.node_args.append('--experimental-wasm-memory64')
+        return
+
+    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+      self.emcc_args.append('-sENVIRONMENT=shell')
+      self.js_engines = [config.V8_ENGINE]
+      self.v8_args.append('--experimental-wasm-memory64')
+      return
+
+    if 'EMTEST_SKIP_WASM64' in os.environ:
+      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_WASM64 is set)')
+    else:
+      self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
+
+  def require_wasm_eh(self):
+    if config.NODE_JS and config.NODE_JS in self.js_engines:
+      version = shared.check_node_version()
+      if version >= (16, 0, 0):
+        self.js_engines = [config.NODE_JS]
+        if version < (20, 0, 0):
+          self.node_args.append('--experimental-wasm-eh')
+        return
+
+    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+      self.emcc_args.append('-sENVIRONMENT=shell')
+      self.js_engines = [config.V8_ENGINE]
+      self.v8_args.append('--experimental-wasm-eh')
+      return
+
+    if 'EMTEST_SKIP_EH' in os.environ:
+      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_EH is set)')
+    else:
+      self.fail('either d8 or node >= 16 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
   def setup_node_pthreads(self):
     self.require_node()
@@ -486,20 +549,28 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.settings_mods = {}
     self.emcc_args = ['-Wclosure', '-Werror', '-Wno-limited-postlink-optimizations']
     self.ldflags = []
-    self.node_args = [
-      # Increate stack trace limit to maximise usefulness of test failure reports
-      '--stack-trace-limit=50',
-      # Opt in to node v15 default behaviour:
-      # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
-      '--unhandled-rejections=throw',
-      # Include backtrace for all uncuaght exceptions (not just Error).
-      '--trace-uncaught',
-    ]
-    self.v8_args = []
+    # Increate stack trace limit to maximise usefulness of test failure reports
+    self.node_args = ['--stack-trace-limit=50']
+
+    node_version = shared.check_node_version()
+    if node_version:
+      if node_version < (11, 0, 0):
+        self.node_args.append('--unhandled-rejections=strict')
+        self.node_args.append('--experimental-wasm-se')
+      else:
+        # Include backtrace for all uncuaght exceptions (not just Error).
+        self.node_args.append('--trace-uncaught')
+        if node_version < (15, 0, 0):
+          # Opt in to node v15 default behaviour:
+          # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
+          self.node_args.append('--unhandled-rejections=throw')
+
+    self.v8_args = ['--wasm-staging']
     self.env = {}
     self.temp_files_before_run = []
     self.uses_es6 = False
     self.js_engines = config.JS_ENGINES.copy()
+    self.required_engine = None
     self.wasm_engines = config.WASM_ENGINES.copy()
     self.banned_js_engines = []
     self.use_all_engines = EMTEST_ALL_ENGINES
@@ -532,7 +603,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     if not EMTEST_SAVE_DIR:
       self.has_prev_ll = False
-      for temp_file in os.listdir(TEMP_DIR):
+      for temp_file in os.listdir(shared.TEMP_DIR):
         if temp_file.endswith('.ll'):
           self.has_prev_ll = True
 
@@ -947,7 +1018,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.assertEqual(read_binary(file1),
                      read_binary(file2))
 
-  library_cache = {}
+  library_cache: Dict[str, Tuple[str, object]] = {}
 
   def get_build_dir(self):
     ret = self.in_dir('building')
@@ -1005,8 +1076,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def clear(self):
     utils.delete_contents(self.get_dir())
-    if EMSCRIPTEN_TEMP_DIR:
-      utils.delete_contents(EMSCRIPTEN_TEMP_DIR)
+    if shared.EMSCRIPTEN_TEMP_DIR:
+      utils.delete_contents(shared.EMSCRIPTEN_TEMP_DIR)
 
   def run_process(self, cmd, check=True, **args):
     # Wrapper around shared.run_process.  This is desirable so that the tests
@@ -1043,6 +1114,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.assertContained('Traceback', proc.stderr)
     elif not WINDOWS or 'Access is denied' not in proc.stderr:
       self.assertNotContained('Traceback', proc.stderr)
+    if EMTEST_VERBOSE:
+      sys.stderr.write(proc.stderr)
     return proc.stderr
 
   # excercise dynamic linker.
@@ -1290,6 +1363,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       '-Wno-unused-but-set-variable',
       '-Wno-pointer-bool-conversion',
       '-Wno-shift-negative-value',
+      '-Wno-gnu-offsetof-extensions',
+      # And becuase gnu-offsetof-extensions is a new warning:
+      '-Wno-unknown-warning-option',
     ]
     return self.get_library(os.path.join('third_party', 'freetype'),
                             os.path.join('objs', '.libs', 'libfreetype.a'),

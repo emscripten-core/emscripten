@@ -341,9 +341,9 @@ mergeInto(LibraryManager.library, {
         var allocated;
         var contents = stream.node.contents;
         // Only make a new copy when MAP_PRIVATE is specified.
-        if (!(flags & {{{ cDefine('MAP_PRIVATE') }}}) && contents.buffer === buffer) {
-          // We can't emulate MAP_SHARED when the file is not backed by the buffer
-          // we're mapping to (e.g. the HEAP buffer).
+        if (!(flags & {{{ cDefine('MAP_PRIVATE') }}}) && contents.buffer === HEAP8.buffer) {
+          // We can't emulate MAP_SHARED when the file is not backed by the
+          // buffer we're mapping to (e.g. the HEAP buffer).
           allocated = false;
           ptr = contents.byteOffset;
         } else {

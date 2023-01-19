@@ -235,6 +235,7 @@ function hasSideEffects(node) {
       case 'VariableDeclarator':
       case 'ObjectExpression':
       case 'Property':
+      case 'SpreadElement':
       case 'BlockStatement':
       case 'ArrayExpression':
       case 'EmptyStatement': {
@@ -399,7 +400,11 @@ function runJSDCE(ast, aggressive) {
       ObjectExpression(node, c) {
         // ignore the property identifiers
         node.properties.forEach(function (node) {
-          c(node.value);
+          if (node.value) {
+            c(node.value);
+          } else if (node.argument) {
+            c(node.argument);
+          }
         });
       },
       MemberExpression(node, c) {
@@ -448,18 +453,18 @@ function runAJSDCE(ast) {
   runJSDCE(ast, /* aggressive= */ true);
 }
 
-function isAsmLibraryArgAssign(node) {
-  // var asmLibraryArg = ..
+function isWasmImportsAssign(node) {
+  // var wasmImports = ..
   return (
     node.type === 'VariableDeclaration' &&
     node.declarations.length === 1 &&
-    node.declarations[0].id.name === 'asmLibraryArg' &&
+    node.declarations[0].id.name === 'wasmImports' &&
     node.declarations[0].init &&
     node.declarations[0].init.type === 'ObjectExpression'
   );
 }
 
-function getAsmLibraryArgValue(node) {
+function getWasmImportsValue(node) {
   return node.declarations[0].init;
 }
 
@@ -508,8 +513,8 @@ function isModuleAsmUse(node) {
 function applyImportAndExportNameChanges(ast) {
   const mapping = extraInfo.mapping;
   fullWalk(ast, function (node) {
-    if (isAsmLibraryArgAssign(node)) {
-      const assignedObject = getAsmLibraryArgValue(node);
+    if (isWasmImportsAssign(node)) {
+      const assignedObject = getWasmImportsValue(node);
       assignedObject.properties.forEach(function (item) {
         if (mapping[item.key.value]) {
           setLiteralValue(item.key, mapping[item.key.value]);
@@ -626,7 +631,7 @@ function emitDCEGraph(ast) {
   //
   // The imports that wasm receives look like this:
   //
-  //  var asmLibraryArg = { "abort": abort, "assert": assert, [..] };
+  //  var wasmImports = { "abort": abort, "assert": assert, [..] };
   //
   // The exports are trickier, as they have a different form whether or not
   // async compilation is enabled. It can be either:
@@ -655,7 +660,7 @@ function emitDCEGraph(ast) {
   const modulePropertyToGraphName = {};
   const exportNameToGraphName = {}; // identical to asm['..'] nameToGraphName
   const graph = [];
-  let foundAsmLibraryArgAssign = false;
+  let foundWasmImportsAssign = false;
   let foundMinimalRuntimeExports = false;
 
   function saveAsmExport(name, asmName) {
@@ -671,8 +676,8 @@ function emitDCEGraph(ast) {
   }
 
   fullWalk(ast, function (node) {
-    if (isAsmLibraryArgAssign(node)) {
-      const assignedObject = getAsmLibraryArgValue(node);
+    if (isWasmImportsAssign(node)) {
+      const assignedObject = getWasmImportsValue(node);
       assignedObject.properties.forEach(function (item) {
         let value = item.value;
         if (value.type === 'Literal' || value.type === 'FunctionExpression') {
@@ -686,7 +691,7 @@ function emitDCEGraph(ast) {
         assert(value.type === 'Identifier');
         imports.push(value.name); // the name doesn't matter, only the value which is that actual thing we are importing
       });
-      foundAsmLibraryArgAssign = true;
+      foundWasmImportsAssign = true;
       emptyOut(node); // ignore this in the second pass; this does not root
     } else if (node.type === 'VariableDeclaration') {
       if (node.declarations.length === 1) {
@@ -807,8 +812,8 @@ function emitDCEGraph(ast) {
   });
   // must find the info we need
   assert(
-    foundAsmLibraryArgAssign,
-    'could not find the assigment to "asmLibraryArg". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)'
+    foundWasmImportsAssign,
+    'could not find the assigment to "wasmImports". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)'
   );
   // Read exports that were declared in extraInfo
   if (extraInfo) {
@@ -927,8 +932,8 @@ function applyDCEGraphRemovals(ast) {
   const unused = new Set(extraInfo.unused);
 
   fullWalk(ast, node => {
-    if (isAsmLibraryArgAssign(node)) {
-      const assignedObject = getAsmLibraryArgValue(node);
+    if (isWasmImportsAssign(node)) {
+      const assignedObject = getWasmImportsValue(node);
       assignedObject.properties = assignedObject.properties.filter(item => {
         const name = item.key.value;
         const value = item.value;
@@ -1711,7 +1716,7 @@ function minifyLocals(ast) {
 function minifyGlobals(ast) {
   // The input is in form
   //
-  //   function instantiate(asmLibraryArg, wasmMemory, wasmTable) {
+  //   function instantiate(wasmImports, wasmMemory, wasmTable) {
   //      var helper..
   //      function asmFunc(global, env, buffer) {
   //        var memory = env.memory;
@@ -1725,7 +1730,7 @@ function minifyGlobals(ast) {
   // simple - as wasm2js output is - and looks at all the minifiable names as
   // a whole. A possible bug here is something like
   //
-  //   function instantiate(asmLibraryArg, wasmMemory, wasmTable) {
+  //   function instantiate(wasmImports, wasmMemory, wasmTable) {
   //      var x = foo;
   //      function asmFunc(global, env, buffer) {
   //        var foo = 10;

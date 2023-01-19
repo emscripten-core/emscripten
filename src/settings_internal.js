@@ -192,11 +192,6 @@ var SEPARATE_DWARF = false;
 // New WebAssembly exception handling
 var WASM_EXCEPTIONS = false;
 
-// Used internally when running the JS compiler simply to generate list of all
-// JS symbols. This is used by LLD_REPORT_UNDEFINED to generate a list of all
-// JS library symbols.
-var ONLY_CALC_JS_SYMBOLS = false;
-
 // Set to true if the program has a main function.  By default this is
 // enabled, but if `--no-entry` is passed, or if `_main` is not part of
 // EXPORTED_FUNCTIONS then this gets set to 0.
@@ -247,3 +242,11 @@ var ALL_INCOMING_MODULE_JS_API = [];
 // when weak symbols are undefined.  Only applies in the case of dyanmic linking
 // (MAIN_MODULE).
 var WEAK_IMPORTS = [];
+
+var STACK_FIRST = false;
+
+var HAVE_EM_ASM = true;
+
+var PRE_JS_FILES = [];
+
+var POST_JS_FILES = [];

@@ -615,7 +615,6 @@ var LibraryEmbind = {
 
     // maxRange comes through as -1 for uint64_t (see issue 13902). Work around that temporarily
     if (isUnsignedType) {
-      // Use string because acorn does recognize bigint literals
       maxRange = (1n << 64n) - 1n;
     }
 
@@ -907,7 +906,7 @@ var LibraryEmbind = {
       var heap = HEAPU32;
       var size = heap[handle]; // in elements
       var data = heap[handle + 1]; // byte offset into emscripten heap
-      return new TA(buffer, data, size);
+      return new TA(heap.buffer, data, size);
     }
 
     name = readLatin1String(name);
@@ -1791,7 +1790,7 @@ var LibraryEmbind = {
         // This is more useful than the empty stacktrace of `FinalizationRegistry`
         // callback.
         var cls = $$.ptrType.registeredClass;
-        info.leakWarning = new Error("Embind found a leaked C++ instance " + cls.name + " <0x" + $$.ptr.toString(16) + ">.\n" +
+        info.leakWarning = new Error("Embind found a leaked C++ instance " + cls.name + " <" + ptrToString($$.ptr) + ">.\n" +
         "We'll free it automatically in this case, but this functionality is not reliable across various environments.\n" +
         "Make sure to invoke .delete() manually once you're done with the instance instead.\n" +
         "Originally allocated"); // `.stack` will add "at ..." after this sentence

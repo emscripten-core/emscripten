@@ -18,8 +18,113 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.25 (in development)
+3.1.31 (in development)
 -----------------------
+- The `STACK_SIZE`, `STACK_ALIGN`, `POINTER_SIZE`, and `ASSERTIONS` JavaScript
+  globals were removed by default.  In debug builds a clear error is shown if
+  you try to use these. (#18503)
+- --pre-js and --post-js files are now fed through the JS preprocesor, just
+  like JS library files and the core runtime JS files.  This means they can
+  now contain #if/#else/#endif blocks and {{{ }}} macro blocks. (#18525)
+
+3.1.30 - 01/11/23
+-----------------
+- The default pthread stack size will now be set to match `-sSTACK_SIZE` by
+  default.  Set `DEFAULT_PTHREAD_STACK_SIZE` explicitly to override this.
+  (#18479)
+- The `buffer` JavaScript variable was removed.  This underlying buffer is
+  still accessible via `wasmMemory.buffer` or `HEAPXX.buffer`.  In debug builds,
+  a clear error is shown if you try to use it.  (#18454)
+- The SDLv1 header directory is no longer added to the include path by default.
+  This means if you include SDL headers without the explicit version in them
+  (e.g. `SDL_events.h`) you will now need to add `-sUSE_SDL` explicitly at
+  compile time.  If you include the SDL headers with the directory name included
+  (e.g. `SDL/SDL_events.h`) you will not be affected by this change. (#18443)
+- Significant improvements were made (in the version of LLVM associated with
+  this emsdk release) to the quality of DWARF debug info when building in
+  optimized mode. See https://reviews.llvm.org/D140373. Using the -O1 flag is
+  recommended if a program is too large or slow to debug with -O0 (although
+  -O0 is still better for debugging when feasible).
+
+3.1.29 - 01/03/23
+-----------------
+- Fixed bug in `PROXY_TO_PTHREAD` whereby certain async operations on the main
+  thread would cause the whole program to exit, even when the proxied main
+  function was still running. (#18372)
+- Added `Module.pthreadPoolReady` promise for the `PTHREAD_POOL_DELAY_LOAD`
+  mode that allows to safely join spawned threads. (#18281)
+- PThreads can now be safely spawned on-demand in Node.js even without a PThread
+  pool (`PTHREAD_POOL_SIZE`) or proxying (`PROXY_TO_PTHREAD`) options. (#18305)
+
+3.1.28 - 12/08/22
+-----------------
+- `LLD_REPORT_UNDEFINED` is now enabled by default.  This makes undefined symbol
+  errors more precise by including the name of the object that references the
+  undefined symbol. The old behaviour (of allowing all undefined symbols at
+  wasm-ld time and reporting them later when processing JS library files) is
+  still available using `-sLLD_REPORT_UNDEFINED=0`. (#16003)
+- musl libc updated from v1.2.2 to v1.2.3. (#18270)
+- The default emscripten config file no longer contains `EMSCRIPTEN_ROOT`.  This
+  setting has long been completely ignored by emscripten itself. For
+  applications that wish to know where emscripten is installed looking for
+  `emcc` in the `PATH` has long been the recommended method (i.e. `which emcc`).
+  (#18279)
+- More accurate synchronisation of `emscripten_get_now` clocks between main
+  thread and pthreads.
+  This also changes the absolute value returned by the function, but it shouldn't
+  affect correct usages as the function has always returned different values on
+  different platforms, and is clearly documented as "only meaningful in
+  comparison to other calls to this function". (#18267)
+- Emscripten will now search your PATH for binaryen, llvm, and node if the
+  corresponding config file settings (`BINARYEN_ROOT`, `LLVM_ROOT`, `NODE_JS`)
+  are not set.  Allows emscripten to run with an empty config file given the
+  right tools in the PATH. (#18289)
+
+3.1.27 - 11/29/22
+-----------------
+- Add support for `-sEXPORT_ES6`/`*.mjs` on Node.js. (#17915)
+- Idle workers in a PThread pool no longer prevent Node.js app from exiting. (#18227)
+- The default `STACK_SIZE` was reduced from 5MB to 64KB.  Projects that use more
+  than 64Kb of stack will now need specify `-sSTACK_SIZE` at link time.  For
+  example, `-sSTACK_SIZE=5MB` can be used to restore the previous behaviour.
+  To aid in debugging, as of #18154, we now also place the stack first in memory
+  in debug builds so that overflows will be immediately detected, and result in
+  runtime errors.  This change brings emscripten into line with `wasm-ld` and
+  wasi-sdk defaults, and also reduces memory usage by default.  In general,
+  WebAssembly stack usage should be lower than on other platforms since a lot of
+  state normally stored on the stack is hidden within the runtime and does not
+  occupy linear memory at all.  The default for `DEFAULT_PTHREAD_STACK_SIZE` was
+  also reduced from 2MB to 64KB to match.
+- Improved error messages for writing custom JS libraries. (#18266)
+
+3.1.26 - 11/17/22
+-----------------
+- Inline with the recent changes to llvm and binaryen, emscripten will now, by
+  default, enable the sign-extension and mutable-globals WebAssembly proposals.
+  In order to do so the default minimum safari version (`MIN_SAFARI_VERSION`)
+  was updated from 12.0 to 14.1, and support for the old EdgeHTML engine
+  (`MIN_EDGE_VERSION`) was removed by default.  If you want to continue to
+  support these older engines you can use these settings
+  (`-sMIN_SAFARI_VERSION=120000` and/or `-sMIN_EDGE_VERSION=44`) to revert to
+  the previous defaults, which will result in the new proposals being disabled.
+  Note that in order to avoid support for the sign-extension emscripten uses
+  a binaryen pass, so targeting older browsers requires the running of wasm-opt
+  and is therefore incompatible with `ERROR_ON_WASM_CHANGES_AFTER_LINK` (i.e.
+  fast linking). (#17690)
+- Added `--reproduce` command line flag (or equivalently `EMCC_REPRODUCE`
+  environment variable).  This options specifies the name of a tar file into
+  which emscripten will copy all of the input files along with a response file
+  that will allow the command to be replicated.  This can be useful for sharing
+  reproduction cases with others (inspired by the lld option of the same name).
+  (#18160)
+- In non-optimizing builds emscripten will now place the stack first in memory,
+  before global data.  This is to get more accurate stack overflow errors (since
+  overflow will trap rather corrupting global data first).  This should not
+  be a user-visible change (unless your program does something very odd such
+  depending on the specific location of stack data in memory). (#18154)
+
+3.1.25 - 11/08/22
+-----------------
 - The `TOTAL_STACK` setting was renamed to `STACK_SIZE`.  The old name will
   continue to work as an alias. (#18128)
 - Exporting `print`/`printErr` via `-sEXPORTED_RUNTIME_METHODS` is deprecated in

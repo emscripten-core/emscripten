@@ -91,11 +91,11 @@ def get(ports, settings, shared):
     # copy header to a location so it can be used as 'SDL2/'
     ports.install_headers(source_path, pattern='SDL_*.h', target='SDL2')
 
-  return [shared.Cache.get_lib(libname, create, what='port')]
+  return [shared.cache.get_lib(libname, create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib(get_lib_name(settings))
+  shared.cache.erase_lib(get_lib_name(settings))
 
 
 def process_dependencies(settings):

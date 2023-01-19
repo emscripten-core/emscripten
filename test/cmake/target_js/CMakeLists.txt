@@ -79,16 +79,7 @@ endif()
 include(TestBigEndian)
 test_big_endian(endian_result)
 if (NOT ${endian_result} EQUAL 0)
-        message(FATAL_ERROR "TEST_BIG_ENDIAN did not return 0!")
-endif()
-
-# Requires CMAKE_CROSSCOMPILING_EMULATOR support.
-if (${CMAKE_VERSION} VERSION_GREATER 3.2.20150502)
-  include(CheckTypeSize)
-  check_type_size("int" int_size)
-  if (NOT ${int_size} EQUAL 4)
-    message(FATAL_ERROR "CHECK_TYPE_SIZE with int did not return 4!")
-  endif()
+  message(FATAL_ERROR "TEST_BIG_ENDIAN did not return 0!")
 endif()
 
 add_executable(test_cmake ${sourceFiles})

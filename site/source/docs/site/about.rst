@@ -4,7 +4,7 @@
 About this site
 ===============
 
-The site is built using `Sphinx <http://sphinx-doc.org/latest/index.html>`_ (1.2.2), the open source tool used to create the official Python documentation and many other sites. This is a very mature and stable tool, and was selected for, among other reasons, its support for defining API items and linking to them from code.
+The site is built using `Sphinx <https://www.sphinx-doc.org/en/master/>`_ (2.4.4), the open source tool used to create the official Python documentation and many other sites. This is a very mature and stable tool, and was selected for, among other reasons, its support for defining API items and linking to them from code.
 
 The site uses a custom theme, which is based on the :ref:`read-the-docs-theme`.
 
@@ -48,17 +48,10 @@ The site is published to the **emscripten-core/emscripten-site** *gh-pages* bran
 Installing Sphinx
 -----------------
 
-Notes for installing Sphinx are provided `here <http://sphinx-doc.org/install.html>`_.
+This site requires a specific version of Sphinx to be installed. Run the
+following command to ensure you have the correct version installed: ::
 
-
-Ubuntu
-++++++
-
-The version of Sphinx on Ubuntu package repository (apt-get) fails when building the site. This is an early version (1.1.3), which appears to be dependent on an old version of the Jinja templating library.
-
-The workaround is to use the *Python package installer* (pip) to get version 1.7.8, and then run an upgrade (note, you may have to uninstall Sphinx first): ::
-
-  pip install sphinx==2.4.4
+  pip install -r requirements-dev.txt
 
 
 .. _about-site-builds:

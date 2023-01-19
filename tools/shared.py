@@ -8,7 +8,6 @@ from .toolchain_profiler import ToolchainProfiler
 from functools import wraps
 from subprocess import PIPE
 import atexit
-import binascii
 import json
 import logging
 import os
@@ -45,7 +44,11 @@ from .settings import settings
 
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
-MINIMUM_NODE_VERSION = (4, 1, 1)
+# Minimum node version required to run the emscripten compiler.  This is distinct
+# from the minimum version required to execute the generated code.  This is not an
+# exact requirement, but is the oldest version of node that we do any testing with.
+# This version aligns with the current Ubuuntu TLS 20.04 (Focal).
+MINIMUM_NODE_VERSION = (10, 19, 0)
 EXPECTED_LLVM_VERSION = "16.0"
 
 # Used only when EM_PYTHON_MULTIPROCESSING=1 env. var is set.
@@ -74,6 +77,7 @@ diagnostics.add_warning('transpile')
 diagnostics.add_warning('limited-postlink-optimizations')
 diagnostics.add_warning('em-js-i64')
 diagnostics.add_warning('js-compiler')
+diagnostics.add_warning('compatibility')
 # Closure warning are not (yet) enabled by default
 diagnostics.add_warning('closure', enabled=False)
 
@@ -290,23 +294,22 @@ def check_llvm_version():
   return False
 
 
-def get_llc_targets():
-  if not os.path.exists(LLVM_COMPILER):
-    exit_with_error('llc executable not found at `%s`' % LLVM_COMPILER)
+def get_clang_targets():
+  if not os.path.exists(CLANG_CC):
+    exit_with_error('clang executable not found at `%s`' % CLANG_CC)
   try:
-    llc_version_info = run_process([LLVM_COMPILER, '--version'], stdout=PIPE).stdout
+    target_info = run_process([CLANG_CC, '-print-targets'], stdout=PIPE).stdout
   except subprocess.CalledProcessError:
-    exit_with_error('error running `llc --version`.  Check your llvm installation (%s)' % LLVM_COMPILER)
-  if 'Registered Targets:' not in llc_version_info:
-    exit_with_error('error parsing output of `llc --version`.  Check your llvm installation (%s)' % LLVM_COMPILER)
-  pre, targets = llc_version_info.split('Registered Targets:')
-  return targets
+    exit_with_error('error running `clang -print-targets`.  Check your llvm installation (%s)' % CLANG_CC)
+  if 'Registered Targets:' not in target_info:
+    exit_with_error('error parsing output of `clang -print-targets`.  Check your llvm installation (%s)' % CLANG_CC)
+  return target_info.split('Registered Targets:')[1]
 
 
 def check_llvm():
-  targets = get_llc_targets()
-  if 'wasm32' not in targets and 'WebAssembly 32-bit' not in targets:
-    logger.critical('LLVM has not been built with the WebAssembly backend, llc reports:')
+  targets = get_clang_targets()
+  if 'wasm32' not in targets:
+    logger.critical('LLVM has not been built with the WebAssembly backend, clang reports:')
     print('===========================================================================', file=sys.stderr)
     print(targets, file=sys.stderr)
     print('===========================================================================', file=sys.stderr)
@@ -383,11 +386,7 @@ def set_version_globals():
 
 
 def generate_sanity():
-  sanity_file_content = f'{EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}|{get_clang_version()}'
-  config_data = utils.read_file(config.EM_CONFIG)
-  checksum = binascii.crc32(config_data.encode())
-  sanity_file_content += '|%#x\n' % checksum
-  return sanity_file_content
+  return f'{EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}|{get_clang_version()}'
 
 
 def perform_sanity_checks():
@@ -444,29 +443,35 @@ def check_sanity(force=False):
 
   expected = generate_sanity()
 
-  sanity_file = Cache.get_path('sanity.txt')
+  sanity_file = cache.get_path('sanity.txt')
 
   def sanity_is_correct():
-    if os.path.exists(sanity_file):
+    sanity_data = None
+    # We can't simply check for the existence of sanity_file and then read from
+    # it here because we don't hold the cache lock yet and some other process
+    # could clear the cache between checking for, and reading from, the file.
+    try:
       sanity_data = utils.read_file(sanity_file)
-      if sanity_data == expected:
-        logger.debug(f'sanity file up-to-date: {sanity_file}')
-        # Even if the sanity file is up-to-date we still need to at least
-        # check the llvm version. This comes at no extra performance cost
-        # since the version was already extracted and cached by the
-        # generate_sanity() call above.
-        if force:
-          perform_sanity_checks()
-        else:
-          check_llvm_version()
-        return True # all is well
+    except Exception:
+      pass
+    if sanity_data == expected:
+      logger.debug(f'sanity file up-to-date: {sanity_file}')
+      # Even if the sanity file is up-to-date we still need to at least
+      # check the llvm version. This comes at no extra performance cost
+      # since the version was already extracted and cached by the
+      # generate_sanity() call above.
+      if force:
+        perform_sanity_checks()
+      else:
+        check_llvm_version()
+      return True # all is well
     return False
 
   if sanity_is_correct():
     # Early return without taking the cache lock
     return
 
-  with Cache.lock('sanity'):
+  with cache.lock('sanity'):
     # Check again once the cache lock as aquired
     if sanity_is_correct():
       return
@@ -476,7 +481,7 @@ def check_sanity(force=False):
       logger.info('old sanity: %s' % sanity_data)
       logger.info('new sanity: %s' % expected)
       logger.info('(Emscripten: config changed, clearing cache)')
-      Cache.erase()
+      cache.erase()
     else:
       logger.debug(f'sanity file not found: {sanity_file}')
 
@@ -642,11 +647,6 @@ def asmjs_mangle(name):
   return name
 
 
-def reconfigure_cache():
-  global Cache
-  Cache = cache.Cache(config.CACHE)
-
-
 def suffix(name):
   """Return the file extension"""
   return os.path.splitext(name)[1]
@@ -697,7 +697,7 @@ def read_and_preprocess(filename, expand_macros=False):
   # Create a settings file with the current settings to pass to the JS preprocessor
 
   settings_str = ''
-  for key, value in settings.dict().items():
+  for key, value in settings.external_dict().items():
     assert key == key.upper()  # should only ever be uppercase keys in settings
     jsoned = json.dumps(value, sort_keys=True)
     settings_str += f'var {key} = {jsoned};\n'
@@ -751,11 +751,7 @@ CLANG_CXX = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
 LLVM_AR = build_llvm_tool_path(exe_suffix('llvm-ar'))
 LLVM_DWP = build_llvm_tool_path(exe_suffix('llvm-dwp'))
 LLVM_RANLIB = build_llvm_tool_path(exe_suffix('llvm-ranlib'))
-LLVM_OPT = os.path.expanduser(build_llvm_tool_path(exe_suffix('opt')))
 LLVM_NM = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
-LLVM_MC = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-mc')))
-LLVM_INTERPRETER = os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
-LLVM_COMPILER = os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
 LLVM_DWARFDUMP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dwarfdump')))
 LLVM_OBJCOPY = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-objcopy')))
 LLVM_STRIP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-strip')))
@@ -771,8 +767,12 @@ EM_NM = bat_suffix(path_from_root('emnm'))
 FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
 WASM_SOURCEMAP = bat_suffix(path_from_root('tools/wasm-sourcemap'))
 
+# These get set by setup_temp_dirs
+TEMP_DIR = None
+EMSCRIPTEN_TEMP_DIR = None
+
 setup_temp_dirs()
 
-Cache = cache.Cache(config.CACHE)
+cache.setup(config.CACHE)
 
 PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))

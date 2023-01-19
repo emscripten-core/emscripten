@@ -38,8 +38,6 @@ int __syscall_fchmod(int fd, int mode);
 int __syscall_getpriority(int which, int who);
 int __syscall_setpriority(int which, int who, int prio);
 int __syscall_socketcall(int call, intptr_t args);
-int __syscall_setitimer(int which, intptr_t new_value, intptr_t old_value);
-int __syscall_getitimer(int which, intptr_t  old_value);
 int __syscall_wait4(int pid, intptr_t wstatus, int options, int rusage);
 int __syscall_setdomainname(intptr_t name, size_t size);
 int __syscall_uname(intptr_t buf);

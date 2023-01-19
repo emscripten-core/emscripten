@@ -181,6 +181,10 @@ public:
       return 0;
     }
 
+    std::vector<Entry>& operator*() {
+      return *std::get_if<std::vector<Entry>>(this);
+    }
+
     std::vector<Entry>* operator->() {
       return std::get_if<std::vector<Entry>>(this);
     }
@@ -253,7 +257,7 @@ protected:
   //  1. Ensuring that all insert* and getChild calls returning a particular
   //     file return the same File object.
   //
-  //  2. Clearing the File's parent field in `removeChild`.
+  //  2. Clearing unlinked Files' parents in `removeChild` and `insertMove`.
   //
   //  3. Implementing `getName`, since it cannot be implemented in terms of the
   //     dcache.
@@ -300,9 +304,9 @@ protected:
   std::shared_ptr<File> file;
 
 public:
-  Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
+  Handle(std::shared_ptr<File> file) : lock(file->mutex), file(file) {}
   Handle(std::shared_ptr<File> file, std::defer_lock_t)
-    : file(file), lock(file->mutex, std::defer_lock) {}
+    : lock(file->mutex, std::defer_lock), file(file) {}
   off_t getSize() { return file->getSize(); }
   mode_t getMode() { return file->mode; }
   void setMode(mode_t mode) {

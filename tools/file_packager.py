@@ -73,6 +73,7 @@ import shutil
 import sys
 from subprocess import PIPE
 from textwrap import dedent
+from typing import List
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
@@ -93,7 +94,7 @@ DDS_HEADER_SIZE = 128
 # to work around silly av false positives
 AV_WORKAROUND = 0
 
-excluded_patterns = []
+excluded_patterns: List[str] = []
 new_data_files = []
 
 
@@ -344,9 +345,9 @@ def generate_object_file(data_files):
     target = 'wasm64-unknown-emscripten'
   else:
     target = 'wasm32-unknown-emscripten'
-  shared.check_call([shared.LLVM_MC,
-                     '-filetype=obj',
-                     '-triple=' + target,
+  shared.check_call([shared.EMCC,
+                     '-c',
+                     '--target=' + target,
                      '-o', options.obj_output,
                      asm_file])
 

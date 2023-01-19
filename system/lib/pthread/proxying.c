@@ -210,6 +210,12 @@ static em_task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
 // Exported for use in worker.js, but otherwise an internal function.
 EMSCRIPTEN_KEEPALIVE
 void _emscripten_proxy_execute_task_queue(em_task_queue* tasks) {
+  // Before we attempt to execute a request from another thread make sure we
+  // are in sync with all the loaded code.
+  // For example, in PROXY_TO_PTHREAD the atexit functions are called via
+  // a proxied call, and without this call to syncronize we would crash if
+  // any atexit functions were registered from a side module.
+  _emscripten_thread_sync_code();
   em_task_queue_execute(tasks);
 }
 
@@ -349,4 +355,59 @@ int emscripten_proxy_sync(em_proxying_queue* q,
                           void* arg) {
   task t = {func, arg};
   return emscripten_proxy_sync_with_ctx(q, target_thread, call_then_finish, &t);
+}
+
+// Helper struct for organizing a proxied call and its callback on the original
+// thread.
+struct callback {
+  em_proxying_queue* q;
+  pthread_t caller_thread;
+  void* (*func)(void*);
+  void* arg;
+  void (*callback)(void* arg, void* result);
+  void* callback_arg;
+  void* result;
+};
+
+// Free the callback info on the same thread it was originally allocated on.
+// This may be more efficient.
+static void call_callback_then_free(void* arg) {
+  struct callback* info = (struct callback*)arg;
+  info->callback(info->callback_arg, info->result);
+  free(arg);
+}
+
+static void call_then_schedule_callback(void* arg) {
+  struct callback* info = (struct callback*)arg;
+  info->result = info->func(info->arg);
+  if (!emscripten_proxy_async(
+        info->q, info->caller_thread, call_callback_then_free, arg)) {
+    // No way to gracefully report that we failed to schedule the callback, so
+    // abort.
+    abort();
+  }
+}
+
+int emscripten_proxy_async_with_callback(em_proxying_queue* q,
+                                         pthread_t target_thread,
+                                         void* (*func)(void*),
+                                         void* arg,
+                                         void (*callback)(void* arg,
+                                                          void* result),
+                                         void* callback_arg) {
+  struct callback* info = malloc(sizeof(*info));
+  if (info == NULL) {
+    return 0;
+  }
+  *info = (struct callback){
+    .q = q,
+    .caller_thread = pthread_self(),
+    .func = func,
+    .arg = arg,
+    .callback = callback,
+    .callback_arg = callback_arg,
+    .result = NULL,
+  };
+  return emscripten_proxy_async(
+    q, target_thread, call_then_schedule_callback, info);
 }

@@ -401,7 +401,7 @@ int main() {
   ensure_js("a == 2");
   val::global().set("a", val(3));
   ensure_js("a == 3");
-  val::global().set("a", NULL);
+  val::global().set("a", 0);
   ensure_js("a == 0");
   val::global().set("a", false);
   ensure_js("a == false");

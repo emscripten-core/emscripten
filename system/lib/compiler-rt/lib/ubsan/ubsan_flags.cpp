@@ -26,6 +26,7 @@ extern "C" void emscripten_builtin_free(void *);
 
 namespace __ubsan {
 
+#if !SANITIZER_EMSCRIPTEN
 static const char *GetFlag(const char *flag) {
   // We cannot call getenv() from inside a preinit array initializer
   if (SANITIZER_CAN_USE_PREINIT_ARRAY) {
@@ -34,6 +35,7 @@ static const char *GetFlag(const char *flag) {
     return getenv(flag);
   }
 }
+#endif
 
 Flags ubsan_flags;
 

@@ -43,7 +43,7 @@ bool roundTripCSpecifier() {
   memcpy(&tm, localtime(&t), sizeof(TimeStruct));
 
   char timeBuffer[256];
-  if (strftime(timeBuffer, sizeof(timeBuffer), "%c", &tm) == NULL) {
+  if (strftime(timeBuffer, sizeof(timeBuffer), "%c", &tm) == 0) {
     printf("Failed to format current time\n");
     return false;
   }

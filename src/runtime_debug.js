@@ -38,6 +38,18 @@ function isExportedByForceFilesystem(name) {
          name === 'removeRunDependency';
 }
 
+function missingGlobal(sym, msg) {
+  Object.defineProperty(globalThis, sym, {
+    configurable: true,
+    get: function() {
+      warnOnce('`' + sym + '` is not longer defined by emscripten. ' + msg);
+      return undefined;
+    }
+  });
+}
+
+missingGlobal('buffer', 'Please use HEAP8.buffer or wasmMemory.buffer');
+
 function missingLibrarySymbol(sym) {
   if (typeof globalThis !== 'undefined' && !Object.getOwnPropertyDescriptor(globalThis, sym)) {
     Object.defineProperty(globalThis, sym, {
@@ -103,7 +115,7 @@ function prettyPrint(arg) {
     printObjectList.push(arg);
     return '<' + arg + '|' + (printObjectList.length-1) + '>';
   } else if (typeof arg == 'number') {
-    if (arg > 0) return '0x' + arg.toString(16) + ' (' + arg + ')';
+    if (arg > 0) return ptrToString(arg) + ' (' + arg + ')';
   }
   return arg;
 }

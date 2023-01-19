@@ -8,6 +8,8 @@
 #include <assert.h>
 #include <dirent.h>
 #include <emscripten/emscripten.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <string>
@@ -94,13 +96,8 @@ int main() {
   assert(contents.size() == 2);
   assert(std::find(contents.begin(), contents.end(), "test2.txt") !=
          contents.end());
-#ifdef WASMFS
-  assert(std::find(contents.begin(), contents.end(), "subdir") !=
-         contents.end());
-#else
   assert(std::find(contents.begin(), contents.end(), "Subdir") !=
          contents.end());
-#endif
 
   // Create a file in the directory.
   write_file("SubDir/Test.txt");
@@ -110,13 +107,8 @@ int main() {
   // Check child directory contents and entries name.
   contents = readdir("subdir");
   assert(contents.size() == 1);
-#ifdef WASMFS
-  assert(std::find(contents.begin(), contents.end(), "test.txt") !=
-         contents.end());
-#else
   assert(std::find(contents.begin(), contents.end(), "Test.txt") !=
          contents.end());
-#endif
 
   // Delete a file from a directory.
 #ifdef WASMFS
@@ -132,14 +124,49 @@ int main() {
   assert(chdir("subdir") == 0);
   char buffer[256];
   printf("getcwd: %s\n", getcwd(buffer, sizeof(buffer)));
-  assert(
-    std::string(buffer).ends_with("subdir")); // original case is not preserved
+#ifdef WASMFS
+  assert(std::string(buffer).ends_with("Subdir"));
+#else
+  // original case is not preserved
+  assert(std::string(buffer).ends_with("subdir"));
+#endif
   assert(chdir("..") == 0);
+
+#ifdef WASMFS
+  // Create a directory to be overwritten by the subsequent rename.
+  assert(mkdir("SUBDIR2", S_IRWXUGO) == 0);
+  int overwritten_dir = open("subdir2", O_RDONLY | O_DIRECTORY);
+  assert(overwritten_dir != -1);
+#endif
 
   // Rename a directory.
   assert(rename("subdir", "Subdir2") == 0);
   assert(!exists("subdir"));
   assert(exists("subdir2"));
+
+#ifdef WASMFS
+  // Check that the overwritten dir was properly unlinked.
+  int cwd = open(".", O_DIRECTORY | O_RDONLY);
+  assert(cwd != 0);
+  assert(fchdir(overwritten_dir) == 0);
+  assert(getcwd(buffer, sizeof(buffer)) == NULL);
+  assert(errno == ENOENT);
+  assert(fchdir(cwd) == 0);
+#endif
+
+#ifdef WASMFS
+  // bug in legacy FS
+  // Check that the parent of a moved directory is set correctly.
+  assert(mkdir("subdir2/subsubdir", S_IRWXUGO) == 0);
+  assert(rename("SubDir2/SubSubDir", "SUBSUBDIR") == 0);
+  assert(!exists("SUBDIR2/subsubdir"));
+  assert(exists("SubSubDir"));
+  assert(chdir("subsubdir") == 0);
+  assert(getcwd(buffer, sizeof(buffer)) == buffer);
+  assert(strcmp(buffer, "/SUBSUBDIR") == 0);
+  assert(fchdir(cwd) == 0);
+  assert(rmdir("subsubdir") == 0);
+#endif
 
   // Create a file symlink.
   assert(symlink("test2.txt", "test2.txt.lnk") == 0);
@@ -155,13 +182,8 @@ int main() {
   assert(contents.size() == 4);
   assert(std::find(contents.begin(), contents.end(), "test2.txt.lnk") !=
          contents.end());
-#ifdef WASMFS
-  assert(std::find(contents.begin(), contents.end(), "subdir2.lnk") !=
-         contents.end());
-#else
   assert(std::find(contents.begin(), contents.end(), "SUBDIR2.LNK") !=
          contents.end());
-#endif
 
   // Delete symlinks.
   assert(unlink("Test2.txt.lnk") == 0);

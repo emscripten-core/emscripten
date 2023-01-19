@@ -12,10 +12,12 @@ import shutil
 import textwrap
 from enum import IntEnum, auto
 from glob import iglob
+from typing import List, Optional
 
 from . import shared, building, utils
 from . import deps_info
 from . import diagnostics
+from . import cache
 from tools.shared import demangle_c_symbol_name
 from tools.settings import settings
 
@@ -285,7 +287,7 @@ class Library:
   # automatically get the correct version of the library.
   # This should only be overridden in a concrete library class, e.g. libc,
   # and left as None in an abstract library class, e.g. MTLibrary.
-  name = None
+  name: Optional[str] = None
 
   # Set to true to prevent EMCC_FORCE_STDLIBS from linking this library.
   never_force = False
@@ -296,7 +298,7 @@ class Library:
   # extra code size. The -fno-unroll-loops flags was added here when loop
   # unrolling landed upstream in LLVM to avoid changing behavior but was not
   # specifically evaluated.
-  cflags = ['-O2', '-Werror', '-fno-unroll-loops']
+  cflags = ['-O2', '-Wall', '-Werror', '-fno-unroll-loops']
 
   # A list of directories to put in the include path when building.
   # This is a list of tuples of path components.
@@ -304,7 +306,7 @@ class Library:
   # directory into the include path, you would write:
   #    includes = [('system', 'lib', 'a'), ('system', 'lib', 'b')]
   # The include path of the parent class is automatically inherited.
-  includes = []
+  includes: List[str] = []
 
   # By default, `get_files` look for source files for this library under `src_dir`.
   # It will either use the files listed in `src_files`, or use the glob pattern in
@@ -312,10 +314,10 @@ class Library:
   # When using `src_glob`, you can specify a list of files in `src_glob_exclude`
   # to be excluded from the library.
   # Alternatively, you can override `get_files` to use your own logic.
-  src_dir = None
-  src_files = None
-  src_glob = None
-  src_glob_exclude = None
+  src_dir: Optional[str] = None
+  src_files: Optional[List[str]] = []
+  src_glob: Optional[str] = None
+  src_glob_exclude: Optional[List[str]] = None
 
   # Whether to always generate WASM object files, even when LTO is set
   force_object_files = False
@@ -357,10 +359,10 @@ class Library:
     return True
 
   def erase(self):
-    shared.Cache.erase_file(self.get_path())
+    cache.erase_file(self.get_path())
 
   def get_path(self, absolute=False):
-    return shared.Cache.get_lib_name(self.get_filename(), absolute=absolute)
+    return cache.get_lib_name(self.get_filename(), absolute=absolute)
 
   def build(self, deterministic_paths=False):
     """
@@ -369,7 +371,7 @@ class Library:
     This will trigger a build if this library is not in the cache.
     """
     self.deterministic_paths = deterministic_paths
-    return shared.Cache.get(self.get_path(), self.do_build, force=USE_NINJA == 2, quiet=USE_NINJA)
+    return cache.get(self.get_path(), self.do_build, force=USE_NINJA == 2, quiet=USE_NINJA)
 
   def get_link_flag(self):
     """
@@ -478,7 +480,7 @@ class Library:
   def do_build(self, out_filename):
     """Builds the library and returns the path to the file."""
     assert out_filename == self.get_path(absolute=True)
-    build_dir = os.path.join(shared.Cache.get_path('build'), self.get_base_name())
+    build_dir = os.path.join(cache.get_path('build'), self.get_base_name())
     if USE_NINJA:
       self.build_with_ninja(build_dir, out_filename)
     else:
@@ -871,6 +873,12 @@ class libc(MuslInternalLibrary,
              '-Wno-macro-redefined',
              '-Wno-shift-op-parentheses',
              '-Wno-string-plus-int',
+             '-Wno-missing-braces',
+             '-Wno-logical-op-parentheses',
+             '-Wno-bitwise-op-parentheses',
+             '-Wno-unused-but-set-variable',
+             '-Wno-unused-variable',
+             '-Wno-unused-label',
              '-Wno-pointer-sign']
 
   def __init__(self, **kwargs):
@@ -948,7 +956,7 @@ class libc(MuslInternalLibrary,
     # musl modules
     ignore = [
         'ipc', 'passwd', 'signal', 'sched', 'time', 'linux',
-        'aio', 'exit', 'legacy', 'mq', 'setjmp', 'env',
+        'aio', 'exit', 'legacy', 'mq', 'setjmp',
         'ldso', 'malloc'
     ]
 
@@ -958,13 +966,15 @@ class libc(MuslInternalLibrary,
         'res_query.c', 'res_querydomain.c',
         'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
         'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
-        'alarm.c', 'syscall.c', 'popen.c', 'pclose.c',
+        'syscall.c', 'popen.c', 'pclose.c',
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
         'getentropy.c',
         'getauxval.c',
         # 'process' exclusion
         'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
         '_Fork.c',
+        # 'env' exclusion
+        '__reset_tls.c', '__init_tls.c', '__libc_start_main.c', '__stack_chk_fail.c',
     ]
 
     ignore += LIBC_SOCKETS
@@ -979,8 +989,9 @@ class libc(MuslInternalLibrary,
         '__unmapself.c',
         # Empty files, simply ignore them.
         'syscall_cp.c', 'tls.c',
-        # TODO: Support this. See #12216.
+        # TODO: Support these. See #12216.
         'pthread_setname_np.c',
+        'pthread_getname_np.c',
       ]
       libc_files += files_in_path(
         path='system/lib/pthread',
@@ -1077,9 +1088,6 @@ class libc(MuslInternalLibrary,
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/linux',
         filenames=['getdents.c', 'gettid.c', 'utimes.c'])
-    libc_files += files_in_path(
-        path='system/lib/libc/musl/src/env',
-        filenames=['__environ.c', 'getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/sched',
@@ -1120,29 +1128,26 @@ class libc(MuslInternalLibrary,
         path='system/lib/libc',
         filenames=[
           'dynlink.c',
-          'wasi-helpers.c',
+          'emscripten_console.c',
+          'emscripten_fiber.c',
           'emscripten_get_heap_size.c',
-          'raise.c',
+          'emscripten_memcpy.c',
+          'emscripten_memmove.c',
+          'emscripten_memset.c',
+          'emscripten_mmap.c',
+          'emscripten_scan_stack.c',
+          'emscripten_time.c',
           'kill.c',
+          'pthread_sigmask.c',
+          'raise.c',
           'sigaction.c',
           'sigtimedwait.c',
-          'pthread_sigmask.c',
-          'emscripten_console.c',
-          'emscripten_time.c',
+          'wasi-helpers.c',
         ])
 
     libc_files += files_in_path(
         path='system/lib/pthread',
         filenames=['emscripten_atomic.c', 'thread_profiler.c'])
-
-    libc_files += files_in_path(
-      path='system/lib/libc',
-      filenames=['emscripten_memcpy.c',
-                 'emscripten_memset.c',
-                 'emscripten_scan_stack.c',
-                 'emscripten_memmove.c',
-                 'emscripten_mmap.c'
-                 ])
 
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
 
@@ -1486,7 +1491,7 @@ class libunwind(NoExceptLibrary, MTLibrary):
 class libmalloc(MTLibrary):
   name = 'libmalloc'
 
-  cflags = ['-fno-builtin']
+  cflags = ['-fno-builtin', '-Wno-unused-function', '-Wno-unused-but-set-variable', '-Wno-unused-variable']
   # malloc/free/calloc are runtime functions and can be generated during LTO
   # Therefor they cannot themselves be part of LTO.
   force_object_files = True
@@ -1733,8 +1738,7 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
                    'js_file_backend.cpp',
                    'memory_backend.cpp',
                    'node_backend.cpp',
-                   'opfs_backend.cpp',
-                   'proxied_file_backend.cpp'])
+                   'opfs_backend.cpp'])
     return backends + files_in_path(
         path='system/lib/wasmfs',
         filenames=['file.cpp',
@@ -2192,26 +2196,26 @@ def install_system_headers(stamp):
     ('lib', 'libcxxabi', 'include'): os.path.join('c++', 'v1'),
   }
 
-  target_include_dir = shared.Cache.get_include_dir()
+  target_include_dir = cache.get_include_dir()
   for src, dest in install_dirs.items():
     src = utils.path_from_root('system', *src)
     dest = os.path.join(target_include_dir, dest)
     copytree_exist_ok(src, dest)
 
   pkgconfig_src = utils.path_from_root('system/lib/pkgconfig')
-  pkgconfig_dest = shared.Cache.get_sysroot_dir('lib/pkgconfig')
+  pkgconfig_dest = cache.get_sysroot_dir('lib/pkgconfig')
   copytree_exist_ok(pkgconfig_src, pkgconfig_dest)
 
   bin_src = utils.path_from_root('system/bin')
-  bin_dest = shared.Cache.get_sysroot_dir('bin')
+  bin_dest = cache.get_sysroot_dir('bin')
   copytree_exist_ok(bin_src, bin_dest)
 
   cmake_src = utils.path_from_root('system/lib/cmake')
-  cmake_dest = shared.Cache.get_sysroot_dir('lib/cmake')
+  cmake_dest = cache.get_sysroot_dir('lib/cmake')
   copytree_exist_ok(cmake_src, cmake_dest)
 
   # Create a version header based on the emscripten-version.txt
-  version_file = shared.Cache.get_include_dir('emscripten/version.h')
+  version_file = cache.get_include_dir('emscripten/version.h')
   utils.write_file(version_file, textwrap.dedent(f'''\
   /* Automatically generated by tools/system_libs.py */
   #define __EMSCRIPTEN_major__ {shared.EMSCRIPTEN_VERSION_MAJOR}
@@ -2229,4 +2233,4 @@ def install_system_headers(stamp):
 
 @ToolchainProfiler.profile()
 def ensure_sysroot():
-  shared.Cache.get('sysroot_install.stamp', install_system_headers, what='system headers')
+  cache.get('sysroot_install.stamp', install_system_headers, what='system headers')

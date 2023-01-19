@@ -95,7 +95,10 @@ def main():
   logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
   os.makedirs(target)
   copy_emscripten(target)
-  add_revision_file(target)
+  if os.path.isdir('.git'):
+    # Add revision flag only if the source directory is a Git repository
+    # and not a source archive
+    add_revision_file(target)
   return 0
 
 

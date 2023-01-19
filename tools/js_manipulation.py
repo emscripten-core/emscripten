@@ -6,7 +6,7 @@
 import re
 
 from .settings import settings
-from . import utils
+from . import utils, shared
 
 emscripten_license = '''\
 /**
@@ -25,28 +25,37 @@ emscripten_license = '''\
 #   Copyright 2017 The Emscripten Authors
 #   SPDX-License-Identifier: MIT
 #  */
-emscripten_license_regex = r'\/\*\*?(\s*\*?\s*@license)?(\s*\*?\s*Copyright \d+ The Emscripten Authors\s*\*?\s*SPDX-License-Identifier: MIT)+\s*\*\/'
+emscripten_license_regex = r'\/\*\*?(\s*\*?\s*@license)?(\s*\*?\s*Copyright \d+ The Emscripten Authors\s*\*?\s*SPDX-License-Identifier: MIT)+\s*\*\/\s*'
 
 
-def add_files_pre_js(user_pre_js, files_pre_js):
+def add_files_pre_js(pre_js_list, files_pre_js):
   # the normal thing is to just combine the pre-js content
+  filename = shared.get_temp_files().get('.js').name
+  utils.write_file(filename, files_pre_js)
+  pre_js_list.insert(0, filename)
   if not settings.ASSERTIONS:
-    return files_pre_js + user_pre_js
+    return
 
   # if a user pre-js tramples the file code's changes to Module.preRun
   # that could be confusing. show a clear error at runtime if assertions are
   # enabled
-  return files_pre_js + '''
+  pre = shared.get_temp_files().get('.js').name
+  post = shared.get_temp_files().get('.js').name
+  utils.write_file(pre, '''
     // All the pre-js content up to here must remain later on, we need to run
     // it.
     if (Module['ENVIRONMENT_IS_PTHREAD'] || Module['$ww']) Module['preRun'] = [];
     var necessaryPreJSTasks = Module['preRun'].slice();
-  ''' + user_pre_js + '''
+  ''')
+  utils.write_file(post, '''
     if (!Module['preRun']) throw 'Module.preRun should exist because file support used it; did a pre-js delete it?';
     necessaryPreJSTasks.forEach(function(task) {
       if (Module['preRun'].indexOf(task) < 0) throw 'All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?';
     });
-  '''
+  ''')
+
+  pre_js_list.insert(1, pre)
+  pre_js_list.append(post)
 
 
 def handle_license(js_target):

@@ -56,7 +56,10 @@ void test_proxy_async() {
   // Proxy to looper.
   {
     queue.proxyAsync(looper.native_handle(), [&]() {
-      i = 2;
+      {
+        std::unique_lock<std::mutex> lock(mutex);
+        i = 2;
+      }
       executor = std::this_thread::get_id();
       cond.notify_one();
     });
@@ -68,7 +71,10 @@ void test_proxy_async() {
   // Proxy to returner.
   {
     queue.proxyAsync(returner.native_handle(), [&]() {
-      i = 3;
+      {
+        std::unique_lock<std::mutex> lock(mutex);
+        i = 3;
+      }
       executor = std::this_thread::get_id();
       cond.notify_one();
     });
@@ -106,7 +112,7 @@ void test_proxy_sync() {
 }
 
 void test_proxy_sync_with_ctx(void) {
-  std::cout << "Testing sync proxying\n";
+  std::cout << "Testing sync_with_ctx proxying\n";
 
   int i = 0;
   std::thread::id executor;
@@ -135,6 +141,89 @@ void test_proxy_sync_with_ctx(void) {
   }
 }
 
+void test_proxy_async_with_callback(void) {
+  std::cout << "Testing async_with_callback proxying\n";
+
+  int i = 0;
+  thread_local int j = 0;
+
+  std::mutex mutex;
+  std::condition_variable cond;
+  std::thread::id executor;
+
+  // Proxy to ourselves.
+  queue.proxyAsyncWithCallback(
+    pthread_self(),
+    [&]() {
+      i = 1;
+      executor = std::this_thread::get_id();
+      return (void*)42;
+    },
+    [&](void* result) {
+      assert((intptr_t)result == 42);
+      j++;
+    });
+  assert(i == 0);
+  queue.execute();
+  assert(i == 1);
+  assert(executor == std::this_thread::get_id());
+  assert(j == 1);
+
+  // Proxy to looper.
+  {
+    queue.proxyAsyncWithCallback(
+      looper.native_handle(),
+      [&]() {
+        {
+          std::unique_lock<std::mutex> lock(mutex);
+          i = 2;
+        }
+        executor = std::this_thread::get_id();
+        cond.notify_one();
+        return (void*)1337;
+      },
+      [&](void* result) {
+        assert((intptr_t)result == 1337);
+        j++;
+      });
+    std::unique_lock<std::mutex> lock(mutex);
+    cond.wait(lock, [&]() { return i == 2; });
+    assert(executor == looper.get_id());
+    // TODO: Add a way to wait for work before executing it.
+    while (j < 2) {
+      queue.execute();
+    }
+    assert(j == 2);
+  }
+
+  // Proxy to returner.
+  {
+    queue.proxyAsyncWithCallback(
+      returner.native_handle(),
+      [&]() {
+        {
+          std::unique_lock<std::mutex> lock(mutex);
+          i = 3;
+        }
+        executor = std::this_thread::get_id();
+        cond.notify_one();
+        return nullptr;
+      },
+      [&](void* result) {
+        assert(result == nullptr);
+        j++;
+      });
+    std::unique_lock<std::mutex> lock(mutex);
+    cond.wait(lock, [&]() { return i == 3; });
+    assert(executor == returner.get_id());
+    // TODO: Add a way to wait for work before executing it.
+    while (j < 3) {
+      queue.execute();
+    }
+    assert(j == 3);
+  }
+}
+
 int main(int argc, char* argv[]) {
   looper = std::thread(looper_main);
   returner = std::thread(returner_main);
@@ -142,6 +231,7 @@ int main(int argc, char* argv[]) {
   test_proxy_async();
   test_proxy_sync();
   test_proxy_sync_with_ctx();
+  test_proxy_async_with_callback();
 
   should_quit = true;
   looper.join();

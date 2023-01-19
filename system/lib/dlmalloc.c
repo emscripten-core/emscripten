@@ -21,6 +21,10 @@
 /* XXX Emscripten Tracing API. This defines away the code if tracing is disabled. */
 #include <emscripten/trace.h>
 
+#ifdef __EMSCRIPTEN_WASM_WORKERS__
+#define USE_LOCKS 1
+#endif
+
 /* Make malloc() and free() threadsafe by securing the memory allocations with pthread mutexes. */
 #if __EMSCRIPTEN_PTHREADS__
 #define USE_LOCKS 1
@@ -2913,7 +2917,7 @@ static size_t traverse_and_check(mstate m);
 #define treebin_at(M,i)     (&((M)->treebins[i]))
 
 /* assign tree index for size S to variable I. Use x86 asm if possible  */
-#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__) || defined(__EMSCRIPTEN__))
 #define compute_tree_index(S, I)\
 {\
 unsigned int X = S >> TREEBIN_SHIFT;\
@@ -3016,7 +3020,7 @@ I = (K << 1) + ((S >> (K + (TREEBIN_SHIFT-1)) & 1));\
 
 /* index corresponding to given bit. Use x86 asm if possible */
 
-#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__) || defined(__EMSCRIPTEN__))
 #define compute_bit2idx(X, I)\
 {\
 unsigned int J;\

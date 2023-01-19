@@ -24,11 +24,11 @@ def get(ports, settings, shared):
     flags = ['-DTTF_USE_HARFBUZZ=1', '-sUSE_SDL=2', '-sUSE_FREETYPE', '-sUSE_HARFBUZZ']
     ports.build_port(src_root, final, 'sdl2_ttf', flags=flags, srcs=['SDL_ttf.c'])
 
-  return [shared.Cache.get_lib('libSDL2_ttf.a', create, what='port')]
+  return [shared.cache.get_lib('libSDL2_ttf.a', create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib('libSDL2_ttf.a')
+  shared.cache.erase_lib('libSDL2_ttf.a')
 
 
 def process_dependencies(settings):

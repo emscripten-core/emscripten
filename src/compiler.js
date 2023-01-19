@@ -8,6 +8,7 @@
 // LLVM => JavaScript compiler, main entry point
 
 const fs = require('fs');
+global.vm = require('vm');
 global.assert = require('assert');
 global.nodePath = require('path');
 
@@ -36,14 +37,23 @@ global.read = (filename) => {
 };
 
 function load(f) {
-  eval.call(null, read(f));
+  (0, eval)(read(f) + '//# sourceURL=' + find(f));
 };
 
 // Basic utilities
 load('utility.js');
 
+
+const argv = process.argv.slice(2);
+const symbolsOnlyArg = argv.indexOf('--symbols-only');
+if (symbolsOnlyArg != -1) {
+  argv.splice(symbolsOnlyArg, 1);
+}
+
+const symbolsOnly = symbolsOnlyArg != -1;
+
 // Load settings from JSON passed on the command line
-const settingsFile = process.argv[2];
+const settingsFile = argv[0];
 assert(settingsFile);
 
 const settings = JSON.parse(read(settingsFile));
@@ -54,6 +64,9 @@ WASM_EXPORTS = new Set(WASM_EXPORTS);
 SIDE_MODULE_EXPORTS = new Set(SIDE_MODULE_EXPORTS);
 INCOMING_MODULE_JS_API = new Set(INCOMING_MODULE_JS_API);
 WEAK_IMPORTS = new Set(WEAK_IMPORTS);
+if (symbolsOnly) {
+  INCLUDE_FULL_LIBRARY = 1;
+}
 
 // Side modules are pure wasm and have no JS
 assert(!SIDE_MODULE, 'JS compiler should not run on side modules');
@@ -81,7 +94,7 @@ load('runtime.js');
 B = new Benchmarker();
 
 try {
-  runJSify();
+  runJSify(symbolsOnly);
 
   B.print('glue');
 } catch (err) {
@@ -92,7 +105,7 @@ try {
     // Compiler failed on internal compiler error!
     printErr('Internal compiler error in src/compiler.js!');
     printErr('Please create a bug report at https://github.com/emscripten-core/emscripten/issues/');
-    printErr('with a log of the build and the input files used to run. Exception message: "' + err + '" | ' + err.stack);
+    printErr('with a log of the build and the input files used to run. Exception message: "' + (err.stack || err));
   }
 
   // Work around a node.js bug where stdout buffer is not flushed at process exit:

@@ -8,7 +8,7 @@
  * Tests live in test/other/test_parseTools.js.
  */
 
-const FOUR_GB = 4 * 1024 * 1024 * 1024;
+global.FOUR_GB = 4 * 1024 * 1024 * 1024;
 const FLOAT_TYPES = new Set(['float', 'double']);
 
 let currentlyParsedFilename = '';
@@ -17,8 +17,10 @@ let currentlyParsedFilename = '';
 // {{{ code }}} will be replaced with |eval(code)|.
 // NOTE: Be careful with that ret check. If ret is |0|, |ret ? ret.toString() : ''| would result in ''!
 function processMacros(text) {
-  return text.replace(/{{{([^}]|}(?!}))+}}}/g, (str) => {
-    str = str.substr(3, str.length - 6);
+  // The `?` here in makes the regex non-greedy so it matches with the closest
+  // set of closing braces.
+  // `[\s\S]` works like `.` but include newline.
+  return text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
     try {
       const ret = eval(str);
       return ret !== null ? ret.toString() : '';
@@ -32,15 +34,16 @@ function processMacros(text) {
 // Simple #if/else/endif preprocessing for a file. Checks if the
 // ident checked is true in our global.
 // Also handles #include x.js (similar to C #include <file>)
-// Param filenameHint can be passed as a description to identify the file that is being processed, used
-// to locate errors for reporting and for html files to stop expansion between <style> and </style>.
-function preprocess(text, filenameHint) {
+function preprocess(filename) {
+  let text = read(filename);
   if (EXPORT_ES6 && USE_ES6_IMPORT_META) {
     // `eval`, Terser and Closure don't support module syntax; to allow it,
-    // we need to temporarily replace `import.meta` usages with placeholders
-    // during preprocess phase, and back after all the other ops.
+    // we need to temporarily replace `import.meta` and `await import` usages
+    // with placeholders during preprocess phase, and back after all the other ops.
     // See also: `phase_final_emitting` in emcc.py.
-    text = text.replace(/\bimport\.meta\b/g, 'EMSCRIPTEN$IMPORT$META');
+    text = text
+      .replace(/\bimport\.meta\b/g, 'EMSCRIPTEN$IMPORT$META')
+      .replace(/\bawait import\b/g, 'EMSCRIPTEN$AWAIT$IMPORT');
   }
 
   const IGNORE = 0;
@@ -52,8 +55,8 @@ function preprocess(text, filenameHint) {
   const showStack = [];
   const showCurrentLine = () => showStack.every((x) => x == SHOW);
 
-  currentlyParsedFilename = filenameHint;
-  const fileExt = (filenameHint) ? filenameHint.split('.').pop().toLowerCase() : '';
+  currentlyParsedFilename = filename;
+  const fileExt = filename.split('.').pop().toLowerCase();
   const isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
   let inStyle = false;
   const lines = text.split('\n');
@@ -61,100 +64,93 @@ function preprocess(text, filenameHint) {
   let emptyLine = false;
 
   try {
-    for (let i = 0; i < lines.length; i++) {
-      let line = lines[i];
-      try {
-        if (line[line.length - 1] === '\r') {
-          line = line.substr(0, line.length - 1); // Windows will have '\r' left over from splitting over '\r\n'
-        }
-        if (isHtml && line.includes('<style') && !inStyle) {
-          inStyle = true;
-        }
-        if (isHtml && line.includes('</style') && inStyle) {
-          inStyle = false;
-        }
+    for (let [i, line] of lines.entries()) {
+      if (line[line.length - 1] === '\r') {
+        line = line.substr(0, line.length - 1); // Windows will have '\r' left over from splitting over '\r\n'
+      }
+      if (isHtml && line.includes('<style') && !inStyle) {
+        inStyle = true;
+      }
+      if (isHtml && line.includes('</style') && inStyle) {
+        inStyle = false;
+      }
 
-        if (!inStyle) {
-          const trimmed = line.trim();
-          if (trimmed.startsWith('#')) {
-            const first = trimmed.split(' ', 1)[0];
-            if (first == '#if' || first == '#ifdef' || first == '#elif') {
-              if (first == '#ifdef') {
-                warn('use of #ifdef in js library.  Use #if instead.');
-              }
-              if (first == '#elif') {
-                const curr = showStack.pop();
-                if (curr == SHOW || curr == IGNORE_ALL) {
-                  // If we showed to previous block we enter the IGNORE_ALL state
-                  // and stay there until endif is seen
-                  showStack.push(IGNORE_ALL);
-                  continue;
-                }
-              }
-              const after = trimmed.substring(trimmed.indexOf(' '));
-              const truthy = !!eval(after);
-              showStack.push(truthy ? SHOW : IGNORE);
-            } else if (first === '#include') {
-              if (showCurrentLine()) {
-                let filename = line.substr(line.indexOf(' ') + 1);
-                if (filename.startsWith('"')) {
-                  filename = filename.substr(1, filename.length - 2);
-                }
-                const included = read(filename);
-                const result = preprocess(included, filename);
-                if (result) {
-                  ret += `// include: ${filename}\n`;
-                  ret += result;
-                  ret += `// end include: ${filename}\n`;
-                }
-              }
-            } else if (first === '#else') {
-              assert(showStack.length > 0);
-              const curr = showStack.pop();
-              if (curr == IGNORE) {
-                showStack.push(SHOW);
-              } else {
-                showStack.push(IGNORE);
-              }
-            } else if (first === '#endif') {
-              assert(showStack.length > 0);
-              showStack.pop();
-            } else if (first === '#warning') {
-              if (showCurrentLine()) {
-                printErr(`${filenameHint}:${i + 1}: #warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
-              }
-            } else if (first === '#error') {
-              if (showCurrentLine()) {
-                error(`${filenameHint}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
-              }
-            } else {
-              throw new Error(`Unknown preprocessor directive on line ${i}: ``${line}```);
+      if (!inStyle) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('#')) {
+          const first = trimmed.split(' ', 1)[0];
+          if (first == '#if' || first == '#ifdef' || first == '#elif') {
+            if (first == '#ifdef') {
+              warn('use of #ifdef in js library.  Use #if instead.');
             }
-          } else {
-            if (showCurrentLine()) {
-              // Never emit more than one empty line at a time.
-              if (emptyLine && !line) {
+            if (first == '#elif') {
+              const curr = showStack.pop();
+              if (curr == SHOW || curr == IGNORE_ALL) {
+                // If we showed to previous block we enter the IGNORE_ALL state
+                // and stay there until endif is seen
+                showStack.push(IGNORE_ALL);
                 continue;
               }
-              ret += line + '\n';
-              if (!line) {
-                emptyLine = true;
-              } else {
-                emptyLine = false;
+            }
+            const after = trimmed.substring(trimmed.indexOf(' '));
+            const truthy = !!vm.runInThisContext(after, { filename, lineOffset: i, columnOffset: line.indexOf(after) });
+            showStack.push(truthy ? SHOW : IGNORE);
+          } else if (first === '#include') {
+            if (showCurrentLine()) {
+              let filename = line.substr(line.indexOf(' ') + 1);
+              if (filename.startsWith('"')) {
+                filename = filename.substr(1, filename.length - 2);
+              }
+              const result = preprocess(filename);
+              if (result) {
+                ret += `// include: ${filename}\n`;
+                ret += result;
+                ret += `// end include: ${filename}\n`;
               }
             }
+          } else if (first === '#else') {
+            assert(showStack.length > 0);
+            const curr = showStack.pop();
+            if (curr == IGNORE) {
+              showStack.push(SHOW);
+            } else {
+              showStack.push(IGNORE);
+            }
+          } else if (first === '#endif') {
+            assert(showStack.length > 0);
+            showStack.pop();
+          } else if (first === '#warning') {
+            if (showCurrentLine()) {
+              printErr(`${filename}:${i + 1}: #warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
+            }
+          } else if (first === '#error') {
+            if (showCurrentLine()) {
+              error(`${filename}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
+            }
+          } else {
+            throw new Error(`${filename}:${i + 1}: Unknown preprocessor directive ${first}`);
           }
-        } else { // !inStyle
+        } else {
           if (showCurrentLine()) {
+            // Never emit more than one empty line at a time.
+            if (emptyLine && !line) {
+              continue;
+            }
             ret += line + '\n';
+            if (!line) {
+              emptyLine = true;
+            } else {
+              emptyLine = false;
+            }
           }
         }
-      } catch (e) {
-        printErr('parseTools.js preprocessor error in ' + filenameHint + ':' + (i + 1) + ': \"' + line + '\"!');
-        throw e;
+      } else { // !inStyle
+        if (showCurrentLine()) {
+          ret += line + '\n';
+        }
       }
     }
-    assert(showStack.length == 0, `preprocessing error in file ${filenameHint}, \
+    assert(showStack.length == 0, `preprocessing error in file ${filename}, \
 no matching #endif found (${showStack.length$}' unmatched preprocessing directives on stack)`);
     return ret;
   } finally {
@@ -337,29 +333,10 @@ function asmFloatToInt(x) {
   return '(~~(' + x + '))';
 }
 
-function makeGetTempDouble(i, type, forSet) { // get an aliased part of the tempDouble temporary storage
-  // Cannot use makeGetValue because it uses us
-  // this is a unique case where we *can* use HEAPF64
-  const heap = getHeapForType(type);
-  const ptr = getFastValue('tempDoublePtr', '+', Runtime.getNativeTypeSize(type) * i);
-  let offset;
-  if (type == 'double') {
-    offset = '(' + ptr + ')>>3';
-  } else {
-    offset = getHeapOffset(ptr, type);
-  }
-  let ret = heap + '[' + offset + ']';
-  if (!forSet) ret = asmCoercion(ret, type);
-  return ret;
-}
-
-function makeSetTempDouble(i, type, value) {
-  return makeGetTempDouble(i, type, true) + '=' + asmEnsureFloat(value, type);
-}
-
 // See makeSetValue
 function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
   assert(typeof align === 'undefined', 'makeGetValue no longer supports align parameter');
+  assert(typeof noNeedFirst === 'undefined', 'makeGetValue no longer supports noNeedFirst parameter');
   if (typeof unsigned !== 'undefined') {
     // TODO(sbc): make this into an error at some point.
     printErr('makeGetValue: Please use u8/u16/u32/u64 unsigned types in favor of additional argument');
@@ -371,7 +348,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
     unsigned = true;
   }
 
-  const offset = calcFastOffset(ptr, pos, noNeedFirst);
+  const offset = calcFastOffset(ptr, pos);
   if (type === 'i53' || type === 'u53') {
     return 'readI53From' + (unsigned ? 'U' : 'I') + '64(' + offset + ')';
   }
@@ -401,11 +378,8 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
  */
 function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = ';') {
   assert(typeof align === 'undefined', 'makeSetValue no longer supports align parameter');
-  if (type == 'double' && (align < 8)) {
-    return '(' + makeSetTempDouble(0, 'double', value) + ',' +
-            makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, ',') + ',' +
-            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), makeGetTempDouble(1, 'i32'), 'i32', noNeedFirst, ignore, align, ',') + ')';
-  } else if (type == 'i64' && (!WASM_BIGINT || !MEMORY64)) {
+  assert(typeof noNeedFirst === 'undefined', 'makeSetValue no longer supports noNeedFirst parameter');
+  if (type == 'i64' && (!WASM_BIGINT || !MEMORY64)) {
     // If we lack either BigInt support or Memory64 then we must fall back to an
     // unaligned read of a 64-bit value: without BigInt we do not have HEAP64,
     // and without Memory64 i64 fields are not guaranteed to be aligned to 64
@@ -422,21 +396,16 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = '
     const bytes = Runtime.getNativeTypeSize(type);
     if (needSplitting) {
       let ret = '';
-      if (isIntImplemented(type)) {
-        ret += 'tempBigInt=' + value + sep;
-        for (let i = 0; i < bytes; i++) {
-          ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore, 1);
-          if (i < bytes - 1) ret += sep + 'tempBigInt = tempBigInt>>8' + sep;
-        }
-      } else {
-        ret += makeSetValue('tempDoublePtr', 0, value, type, noNeedFirst, ignore, 8) + sep;
-        ret += makeCopyValues(getFastValue(ptr, '+', pos), 'tempDoublePtr', Runtime.getNativeTypeSize(type), type, null, align, sep);
+      ret += 'tempBigInt=' + value + sep;
+      for (let i = 0; i < bytes; i++) {
+        ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore, 1);
+        if (i < bytes - 1) ret += sep + 'tempBigInt = tempBigInt>>8' + sep;
       }
       return ret;
     }
   }
 
-  const offset = calcFastOffset(ptr, pos, noNeedFirst);
+  const offset = calcFastOffset(ptr, pos);
 
   const slab = getHeapForType(type);
   if (slab == 'HEAPU64' || slab == 'HEAP64') {
@@ -449,8 +418,7 @@ const UNROLL_LOOP_MAX = 8;
 
 function makeCopyValues(dest, src, num, type, modifier, align, sep = ';') {
   assert(typeof align === 'undefined');
-  function unroll(type, num, jump) {
-    jump = jump || 1;
+  function unroll(type, num, jump = 1) {
     const setValues = range(num).map((i) => makeSetValue(dest, i * jump, makeGetValue(src, i * jump, type), type));
     return setValues.join(sep);
   }
@@ -595,10 +563,7 @@ function getFastValue(a, op, b, type) {
   return `(${a})${op}(${b})`;
 }
 
-function calcFastOffset(ptr, pos, noNeedFirst) {
-  assert(!noNeedFirst);
-  if (typeof ptr == 'bigint') ptr = Number(ptr);
-  if (typeof pos == 'bigint') pos = Number(pos);
+function calcFastOffset(ptr, pos) {
   return getFastValue(ptr, '+', pos, 'i32');
 }
 
@@ -706,8 +671,6 @@ function asmFFICoercion(value, type) {
 function makeDynCall(sig, funcPtr) {
   assert(!sig.includes('j'), 'Cannot specify 64-bit signatures ("j" in signature string) with makeDynCall!');
 
-  const returnExpr = (sig[0] == 'v') ? '' : 'return';
-
   let args = [];
   for (let i = 1; i < sig.length; ++i) {
     args.push(`a${i}`);
@@ -751,35 +714,35 @@ Please update to new syntax.`);
     if (DYNCALLS) {
       if (!hasExportedSymbol(`dynCall_${sig}`)) {
         if (ASSERTIONS) {
-          return `(function(${args}) { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!'; })`;
+          return `((${args}) => { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!' })`;
         } else {
-          return `(function(${args}) { /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */ })`;
+          return `((${args}) => {} /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */)`;
         }
       }
-      return `(function(cb, ${args}) { ${returnExpr} getDynCaller("${sig}", cb)(${callArgs}) })`;
+      return `((cb, ${args}) => getDynCaller("${sig}", cb)(${callArgs}))`;
     } else {
-      return `(function(cb, ${args}) { ${returnExpr} getWasmTableEntry(cb)(${callArgs}) })`;
+      return `((cb, ${args}) => getWasmTableEntry(cb)(${callArgs}))`;
     }
   }
 
   if (DYNCALLS) {
     if (!hasExportedSymbol(`dynCall_${sig}`)) {
       if (ASSERTIONS) {
-        return `(function(${args}) { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!'; })`;
+        return `((${args}) => { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!' })`;
       } else {
-        return `(function(${args}) { /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */ })`;
+        return `((${args}) => {} /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */)`;
       }
     }
 
     const dyncall = exportedAsmFunc(`dynCall_${sig}`);
     if (sig.length > 1) {
-      return `(function(${args}) { ${returnExpr} ${dyncall}.apply(null, [${funcPtr}, ${callArgs}]); })`;
+      return `((${args}) => ${dyncall}.apply(null, [${funcPtr}, ${callArgs}]))`;
     }
-    return `(function() { ${returnExpr} ${dyncall}.call(null, ${funcPtr}); })`;
+    return `(() => ${dyncall}.call(null, ${funcPtr}))`;
   }
 
   if (needArgConversion) {
-    return `(function(${args}) { ${returnExpr} getWasmTableEntry(${funcPtr}).call(null, ${callArgs}) })`;
+    return `((${args}) => getWasmTableEntry(${funcPtr}).call(null, ${callArgs}))`;
   }
   return `getWasmTableEntry(${funcPtr})`;
 }
@@ -856,7 +819,7 @@ function modifyFunction(text, func) {
   // Match a function with a name.
   let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   let async_;
-  let names;
+  let name;
   let args;
   let rest;
   if (match) {
@@ -1139,4 +1102,12 @@ function getUnsharedTextDecoderView(heap, start, end) {
   // Otherwise, generate a runtime type check: must do a .slice() if looking at a SAB,
   // or can use .subarray() otherwise.
   return `${heap}.buffer instanceof SharedArrayBuffer ? ${shared} : ${unshared}`;
+}
+
+function preJS() {
+  let result = '';
+  for (const fileName of PRE_JS_FILES) {
+    result += preprocess(fileName);
+  }
+  return result;
 }

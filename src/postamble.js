@@ -8,88 +8,6 @@
 
 {{{ exportRuntime() }}}
 
-#if !MEM_INIT_IN_WASM
-function runMemoryInitializer() {
-#if USE_PTHREADS
-  if (!memoryInitializer || ENVIRONMENT_IS_PTHREAD) return;
-#else
-  if (!memoryInitializer) return
-#endif
-  if (!isDataURI(memoryInitializer)) {
-    memoryInitializer = locateFile(memoryInitializer);
-  }
-  if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
-    var data = readBinary(memoryInitializer);
-    HEAPU8.set(data, {{{ GLOBAL_BASE }}});
-  } else {
-    addRunDependency('memory initializer');
-    var applyMemoryInitializer = (data) => {
-      if (data.byteLength) data = new Uint8Array(data);
-#if ASSERTIONS
-      for (var i = 0; i < data.length; i++) {
-        assert(HEAPU8[{{{ GLOBAL_BASE }}} + i] === 0, "area for memory initializer should not have been touched before it's loaded");
-      }
-#endif
-      HEAPU8.set(data, {{{ GLOBAL_BASE }}});
-      // Delete the typed array that contains the large blob of the memory initializer request response so that
-      // we won't keep unnecessary memory lying around. However, keep the XHR object itself alive so that e.g.
-      // its .status field can still be accessed later.
-      if (Module['memoryInitializerRequest']) delete Module['memoryInitializerRequest'].response;
-      removeRunDependency('memory initializer');
-    };
-    var doBrowserLoad = () => {
-      readAsync(memoryInitializer, applyMemoryInitializer, function() {
-        var e = new Error('could not load memory initializer ' + memoryInitializer);
-#if MODULARIZE
-          readyPromiseReject(e);
-#else
-          throw e;
-#endif
-      });
-    };
-#if SUPPORT_BASE64_EMBEDDING
-    var memoryInitializerBytes = tryParseAsDataURI(memoryInitializer);
-    if (memoryInitializerBytes) {
-      applyMemoryInitializer(memoryInitializerBytes.buffer);
-    } else
-#endif
-    if (Module['memoryInitializerRequest']) {
-      // a network request has already been created, just use that
-      var useRequest = () => {
-        var request = Module['memoryInitializerRequest'];
-        var response = request.response;
-        if (request.status !== 200 && request.status !== 0) {
-#if SUPPORT_BASE64_EMBEDDING
-          var data = tryParseAsDataURI(Module['memoryInitializerRequestURL']);
-          if (data) {
-            response = data.buffer;
-          } else {
-#endif
-            // If you see this warning, the issue may be that you are using locateFile and defining it in JS. That
-            // means that the HTML file doesn't know about it, and when it tries to create the mem init request early, does it to the wrong place.
-            // Look in your browser's devtools network console to see what's going on.
-            console.warn('a problem seems to have happened with Module.memoryInitializerRequest, status: ' + request.status + ', retrying ' + memoryInitializer);
-            doBrowserLoad();
-            return;
-#if SUPPORT_BASE64_EMBEDDING
-          }
-#endif
-        }
-        applyMemoryInitializer(response);
-      };
-      if (Module['memoryInitializerRequest'].response) {
-        setTimeout(useRequest, 0); // it's already here; but, apply it asynchronously
-      } else {
-        Module['memoryInitializerRequest'].addEventListener('load', useRequest); // wait for it
-      }
-    } else {
-      // fetch it from the network ourselves
-      doBrowserLoad();
-    }
-  }
-}
-#endif // MEM_INIT_IN_WASM == 0
-
 var calledRun;
 
 #if STANDALONE_WASM && MAIN_READS_PARAMS
@@ -103,7 +21,11 @@ dependenciesFulfilled = function runCaller() {
 };
 
 #if HAS_MAIN
-function callMain(args) {
+#if MAIN_READS_PARAMS
+function callMain(args = []) {
+#else
+function callMain() {
+#endif
 #if ASSERTIONS
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on Module["onRuntimeInitialized"])');
   assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
@@ -134,7 +56,6 @@ function callMain(args) {
 #if MAIN_READS_PARAMS && STANDALONE_WASM
   mainArgs = [thisProgram].concat(args)
 #elif MAIN_READS_PARAMS
-  args = args || [];
   args.unshift(thisProgram);
 
   var argc = args.length;
@@ -236,8 +157,11 @@ var dylibsLoaded = false;
 #endif
 
 /** @type {function(Array=)} */
-function run(args) {
-  args = args || arguments_;
+#if MAIN_READS_PARAMS
+function run(args = arguments_) {
+#else
+function run() {
+#endif
 
   if (runDependencies > 0) {
 #if RUNTIME_LOGGING
@@ -292,7 +216,7 @@ function run(args) {
     readyPromiseResolve(Module);
 #endif // MODULARIZE
     initRuntime();
-    postMessage({ 'cmd': 'loaded' });
+    startWorker(Module);
     return;
   }
 #endif
@@ -330,7 +254,11 @@ function run(args) {
 #endif
 
 #if HAS_MAIN
+#if MAIN_READS_PARAMS
     if (shouldRunNow) callMain(args);
+#else
+    if (shouldRunNow) callMain();
+#endif
 #else
 #if ASSERTIONS
     assert(!Module['_main'], 'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');

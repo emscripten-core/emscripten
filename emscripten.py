@@ -20,6 +20,7 @@ import pprint
 import shutil
 
 from tools import building
+from tools import cache
 from tools import diagnostics
 from tools import js_manipulation
 from tools import shared
@@ -107,10 +108,6 @@ def align_memory(addr):
   return (addr + 15) & -16
 
 
-def to_nice_ident(ident): # limited version of the JS function toNiceIdent
-  return ident.replace('%', '$').replace('@', '_').replace('.', '_')
-
-
 def get_weak_imports(main_wasm):
   dylink_sec = webassembly.parse_dylink_section(main_wasm)
   for symbols in dylink_sec.import_info.values():
@@ -127,16 +124,20 @@ def update_settings_glue(wasm_file, metadata):
     # we don't need any JS library contents in side modules
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
   else:
-    syms = settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [to_nice_ident(d) for d in metadata.imports]
+    syms = settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + metadata.imports
     syms = set(syms).difference(metadata.exports)
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(syms)
     if settings.MAIN_MODULE:
       get_weak_imports(wasm_file)
 
   settings.WASM_EXPORTS = metadata.exports + list(metadata.namedGlobals.keys())
+  settings.WASM_EXPORTS += list(metadata.emJsFuncs.keys())
+
   # Store function exports so that Closure and metadce can track these even in
   # -sDECLARE_ASM_MODULE_EXPORTS=0 builds.
   settings.WASM_FUNCTION_EXPORTS = metadata.exports
+
+  settings.HAVE_EM_ASM = bool(settings.MAIN_MODULE or len(metadata.asmConsts) != 0)
 
   # start with the MVP features, and add any detected features.
   settings.BINARYEN_FEATURES = ['--mvp-features'] + metadata.features
@@ -178,31 +179,33 @@ def apply_static_code_hooks(forwarded_json, code):
   return code
 
 
-def compile_settings():
+def compile_javascript(symbols_only=False):
   stderr_file = os.environ.get('EMCC_STDERR_FILE')
   if stderr_file:
     stderr_file = os.path.abspath(stderr_file)
     logger.info('logging stderr in js compiler phase into %s' % stderr_file)
     stderr_file = open(stderr_file, 'w')
 
-  # Only the names of the legacy settings are used by the JS compiler
-  # so we can reduce the size of serialized json by simplifying this
-  # otherwise complex value.
-  settings['LEGACY_SETTINGS'] = [l[0] for l in settings['LEGACY_SETTINGS']]
-
   # Save settings to a file to work around v8 issue 1579
   with shared.get_temp_files().get_file('.json') as settings_file:
     with open(settings_file, 'w') as s:
-      json.dump(settings.dict(), s, sort_keys=True, indent=2)
+      json.dump(settings.external_dict(), s, sort_keys=True, indent=2)
 
     # Call js compiler
     env = os.environ.copy()
     env['EMCC_BUILD_DIR'] = os.getcwd()
+    args = [settings_file]
+    if symbols_only:
+      args += ['--symbols-only']
     out = shared.run_js_tool(path_from_root('src/compiler.js'),
-                             [settings_file], stdout=subprocess.PIPE, stderr=stderr_file,
+                             args, stdout=subprocess.PIPE, stderr=stderr_file,
                              cwd=path_from_root('src'), env=env, encoding='utf-8')
-  assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
-  glue, forwarded_data = out.split('//FORWARDED_DATA:')
+  if symbols_only:
+    glue = None
+    forwarded_data = out
+  else:
+    assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
+    glue, forwarded_data = out.split('//FORWARDED_DATA:')
   return glue, forwarded_data
 
 
@@ -214,10 +217,10 @@ def set_memory(static_bump):
   settings.HEAP_BASE = align_memory(stack_high)
 
 
-def report_missing_symbols(js_library_funcs):
+def report_missing_symbols(js_symbols):
   # Report any symbol that was explicitly exported but is present neither
   # as a native function nor as a JS library function.
-  defined_symbols = set(asmjs_mangle(e) for e in settings.WASM_EXPORTS).union(js_library_funcs)
+  defined_symbols = set(asmjs_mangle(e) for e in settings.WASM_EXPORTS).union(js_symbols)
   missing = set(settings.USER_EXPORTED_FUNCTIONS) - defined_symbols
   for symbol in sorted(missing):
     diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
@@ -320,7 +323,8 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     with webassembly.Module(in_wasm) as module:
       types = module.get_types()
       for imp in module.get_imports():
-        import_map[imp.field] = imp
+        if imp.module not in ('GOT.mem', 'GOT.func'):
+          import_map[imp.field] = imp
 
     for em_js_func, raw in metadata.emJsFuncs.items():
       c_sig = raw.split('<::>')[0].strip('()')
@@ -336,8 +340,6 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
           diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, c_sig, signature.params)
 
   if settings.SIDE_MODULE:
-    if metadata.asmConsts:
-      exit_with_error('EM_ASM is not supported in side modules')
     if metadata.emJsFuncs:
       exit_with_error('EM_JS is not supported in side modules')
     logger.debug('emscript: skipping remaining js glue generation')
@@ -368,7 +370,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
   if invoke_funcs:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
 
-  glue, forwarded_data = compile_settings()
+  glue, forwarded_data = compile_javascript()
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
     t = time.time()
@@ -408,11 +410,15 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
   asm_consts = create_asm_consts(metadata)
   em_js_funcs = create_em_js(metadata)
   asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
-  asm_const_map = 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
-  pre = pre.replace(
-    '// === Body ===',
-    ('// === Body ===\n\n' + asm_const_map +
-     '\n'.join(em_js_funcs) + '\n'))
+  extra_code = ''
+  if asm_const_pairs or settings.MAIN_MODULE:
+    extra_code += 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
+  if em_js_funcs:
+    extra_code += '\n'.join(em_js_funcs) + '\n'
+  if extra_code:
+    pre = pre.replace(
+      '// === Body ===\n',
+      '// === Body ===\n\n' + extra_code + '\n')
 
   with open(outfile_js, 'w', encoding='utf-8') as out:
     out.write(normalize_line_endings(pre))
@@ -468,13 +474,6 @@ def finalize_wasm(infile, outfile, memfile):
   if settings.WASM2JS:
     # wasm2js requires full legalization (and will do extra wasm binary
     # later processing later anyhow)
-    modify_wasm = True
-  if settings.USE_PTHREADS and settings.RELOCATABLE:
-    # HACK: When settings.USE_PTHREADS and settings.RELOCATABLE are set finalize needs to scan
-    # more than just the start function for memory.init instructions.  This means it can't run
-    # with setSkipFunctionBodies() enabled.  Currently the only way to force this is to set an
-    # output file.
-    # TODO(sbc): Find a better way to do this.
     modify_wasm = True
   if settings.GENERATE_SOURCE_MAP:
     building.emit_wasm_source_map(infile, infile + '.map', outfile)
@@ -572,7 +571,9 @@ def create_asm_consts(metadata):
       func = f'function({args}) {{ {body} }}'
     else:
       func = f'({args}) => {{ {body} }}'
-    asm_consts[int(addr)] = func
+    if settings.RELOCATABLE:
+      addr += settings.GLOBAL_BASE
+    asm_consts[addr] = func
   asm_consts = [(key, value) for key, value in asm_consts.items()]
   asm_consts.sort()
   return asm_consts
@@ -613,7 +614,7 @@ def create_em_js(metadata):
     arg_names = [arg.split()[-1].replace("*", "") for arg in args if arg]
     args = ','.join(arg_names)
     func = f'function {name}({args}) {body}'
-    if settings.ASYNCIFY == 2 and name in metadata.emJsFuncTypes:
+    if (settings.MAIN_MODULE or settings.ASYNCIFY == 2) and name in metadata.emJsFuncTypes:
       sig = func_type_to_sig(metadata.emJsFuncTypes[name])
       func = func + f'\n{name}.sig = \'{sig}\';'
     em_js_funcs.append(func)
@@ -674,12 +675,13 @@ def create_sending(invoke_funcs, metadata):
   # Map of wasm imports to mangled/external/JS names
   send_items_map = {}
 
-  for name in metadata.emJsFuncs:
-    send_items_map[name] = name
   for name in invoke_funcs:
     send_items_map[name] = name
   for name in metadata.imports:
-    send_items_map[name] = asmjs_mangle(name)
+    if name in metadata.emJsFuncs:
+      send_items_map[name] = name
+    else:
+      send_items_map[name] = asmjs_mangle(name)
 
   add_standard_wasm_imports(send_items_map)
 
@@ -771,12 +773,12 @@ def create_module(sending, receiving, invoke_funcs, metadata):
   receiving += create_named_globals(metadata)
   module = []
 
-  module.append('var asmLibraryArg = %s;\n' % sending)
+  module.append('var wasmImports = %s;\n' % sending)
   if settings.ASYNCIFY and (settings.ASSERTIONS or settings.ASYNCIFY == 2):
     # instrumenting imports is used in asyncify in two ways: to add assertions
     # that check for proper import use, and for ASYNCIFY=2 we use them to set up
     # the Promise API on the import side.
-    module.append('Asyncify.instrumentWasmImports(asmLibraryArg);\n')
+    module.append('Asyncify.instrumentWasmImports(wasmImports);\n')
 
   if not settings.MINIMAL_RUNTIME:
     module.append("var asm = createWasm();\n")
@@ -868,8 +870,8 @@ def normalize_line_endings(text):
 
 
 def clear_struct_info():
-  output_name = shared.Cache.get_lib_name('struct_info.json', varies=False)
-  shared.Cache.erase_file(output_name)
+  output_name = cache.get_lib_name('struct_info.json', varies=False)
+  cache.erase_file(output_name)
 
 
 def generate_struct_info():
@@ -882,8 +884,8 @@ def generate_struct_info():
   def generate_struct_info(out):
     gen_struct_info.main(['-q', '-o', out])
 
-  output_name = shared.Cache.get_lib_name('struct_info.json', varies=False)
-  settings.STRUCT_INFO = shared.Cache.get(output_name, generate_struct_info)
+  output_name = cache.get_lib_name('struct_info.json', varies=False)
+  settings.STRUCT_INFO = cache.get(output_name, generate_struct_info)
 
 
 def run(in_wasm, out_wasm, outfile_js, memfile):

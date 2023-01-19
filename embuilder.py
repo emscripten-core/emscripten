@@ -18,6 +18,7 @@ import sys
 import time
 from contextlib import contextmanager
 
+from tools import cache
 from tools import shared
 from tools import system_libs
 from tools import ports
@@ -95,6 +96,7 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libwebgpu_cpp',
     'libfetch',
     'libwasmfs',
+    'giflib',
 ]
 
 PORTS = sorted(list(ports.ports_by_name.keys()) + list(ports.port_variants.keys()))
@@ -245,7 +247,7 @@ def main():
         library.build(deterministic_paths=True)
     elif what == 'sysroot':
       if do_clear:
-        shared.Cache.erase_file('sysroot_install.stamp')
+        cache.erase_file('sysroot_install.stamp')
       if do_build:
         system_libs.ensure_sysroot()
     elif what == 'struct_info':

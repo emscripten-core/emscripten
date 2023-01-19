@@ -145,7 +145,7 @@ class RandomFile : public DataFile {
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
     uint8_t* end = buf + len;
     for (; buf < end; buf += 256) {
-      int err = getentropy(buf, std::min(end - buf, 256l));
+      [[maybe_unused]] int err = getentropy(buf, std::min(end - buf, 256l));
       assert(err == 0);
     }
     return len;

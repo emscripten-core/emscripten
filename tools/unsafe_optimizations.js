@@ -22,12 +22,12 @@ function visitNodes(root, types, func) {
   for (const member in root) {
     if (Array.isArray(root[member])) {
       for (const elem of root[member]) {
-        if (elem.type) {
+        if (elem?.type) {
           const continueTraversal = visitNodes(elem, types, func);
           if (continueTraversal === false) return false;
         }
       }
-    } else if (root[member] && root[member].type) {
+    } else if (root[member]?.type) {
       const continueTraversal = visitNodes(root[member], types, func);
       if (continueTraversal === false) return false;
     }
@@ -276,6 +276,9 @@ function runTests() {
   // Older versions of terser would produce sub-optimal output for this.
   // We keep this test around to prevent regression.
   test('var i=new Image;i.onload=()=>{}', 'var i=new Image;i.onload=()=>{};');
+
+  // Test that arrays containing nulls don't cause issues
+  test('[,];', '[,];');
 
   process.exit(numTestFailures);
 }

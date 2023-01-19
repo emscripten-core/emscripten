@@ -18,20 +18,20 @@ var LibraryDylink = {
     if (direct) {
       // First look for the orig$ symbol which is the symbols without
       // any legalization performed.
-      sym = asmLibraryArg['orig$' + symName];
+      sym = wasmImports['orig$' + symName];
     }
 #endif
     if (!sym) {
-      sym = asmLibraryArg[symName];
+      sym = wasmImports[symName];
       // Ignore 'stub' symbols that are auto-generated as part of the original
-      // `asmLibraryArg` used to instantate the main module.
+      // `wasmImports` used to instantate the main module.
       if (sym && sym.stub) sym = undefined;
     }
 
     // Check for the symbol on the Module object.  This is the only
     // way to dynamically access JS library symbols that were not
     // referenced by the main module (and therefore not part of the
-    // initial set of symbols included in asmLibraryArg when it
+    // initial set of symbols included in wasmImports when it
     // was declared.
     if (!sym) {
       sym = Module[asmjsMangle(symName)];
@@ -89,6 +89,8 @@ var LibraryDylink = {
       '_emscripten_tls_init',
       '__wasm_init_tls',
       '__wasm_call_ctors',
+      '__start_em_asm',
+      '__stop_em_asm',
     ].includes(symName)
 #if SPLIT_MODULE
         // Exports synthesized by wasm-split should be prefixed with '%'
@@ -237,7 +239,7 @@ var LibraryDylink = {
   _dlopen_js: function(filename, flag) {
     abort(dlopenMissingError);
   },
-  _emscripten_dlopen_js: function(filename, flags, user_data, onsuccess, onerror) {
+  _emscripten_dlopen_js: function(handle, onsuccess, onerror, user_data) {
     abort(dlopenMissingError);
   },
   _dlsym_js: function(handle, symbol) {
@@ -467,12 +469,12 @@ var LibraryDylink = {
       //
       // We should copy the symbols (which include methods and variables) from SIDE_MODULE to MAIN_MODULE.
 
-      if (!asmLibraryArg.hasOwnProperty(sym)) {
-        asmLibraryArg[sym] = exports[sym];
+      if (!wasmImports.hasOwnProperty(sym)) {
+        wasmImports[sym] = exports[sym];
       }
 #if ASSERTIONS == 2
       else {
-        var curr = asmLibraryArg[sym], next = exports[sym];
+        var curr = wasmImports[sym], next = exports[sym];
         // don't warn on functions - might be odr, linkonce_odr, etc.
         if (!(typeof curr == 'function' && typeof next == 'function')) {
           err("warning: symbol '" + sym + "' from '" + libName + "' already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
@@ -528,12 +530,15 @@ var LibraryDylink = {
       // table and memory regions.  Later threads re-use the same table region
       // and can ignore the memory region (since memory is shared between
       // threads already).
-      var needsAllocation = !handle || !{{{ makeGetValue('handle', C_STRUCTS.dso.mem_allocated, 'i8') }}};
-      if (needsAllocation) {
+      // If `handle` is specified than it is assumed that the calling thread has
+      // exclusive access to it for the duration of this function.  See the
+      // locking in `dynlink.c`.
+      var firstLoad = !handle || !{{{ makeGetValue('handle', C_STRUCTS.dso.mem_allocated, 'i8') }}};
+      if (firstLoad) {
         // alignments are powers of 2
         var memAlign = Math.pow(2, metadata.memoryAlign);
         // finalize alignments and verify them
-        memAlign = Math.max(memAlign, STACK_ALIGN); // we at least need stack alignment
+        memAlign = Math.max(memAlign, {{{ STACK_ALIGN }}}); // we at least need stack alignment
         // prepare memory
         var memoryBase = metadata.memorySize ? alignMemory(getMemory(metadata.memorySize + memAlign), memAlign) : 0; // TODO: add to cleanups
         var tableBase = metadata.tableSize ? wasmTable.length : 0;
@@ -608,9 +613,9 @@ var LibraryDylink = {
               return tableBase;
 #endif
           }
-          if (prop in asmLibraryArg) {
+          if (prop in wasmImports) {
             // No stub needed, symbol already exists in symbol table
-            return asmLibraryArg[prop];
+            return wasmImports[prop];
           }
           // Return a stub function that will resolve the symbol
           // when first called.
@@ -657,12 +662,45 @@ var LibraryDylink = {
         }
 #endif
 
+#if MAIN_MODULE
+        function addEmAsm(addr, body) {
+          var args = [];
+          var arity = 0;
+          for (; arity < 16; arity++) {
+            if (body.indexOf('$' + arity) != -1) {
+              args.push('$' + arity);
+            } else {
+              break;
+            }
+          }
+          args = args.join(',');
+          var func = '(' + args +' ) => { ' + body + '};'
+#if DYLINK_DEBUG
+          dbg('adding new EM_ASM constant at: ' + ptrToString(start));
+#endif
+          {{{ makeEval('ASM_CONSTS[start] = eval(func)') }}};
+        }
+
+        // Add any EM_ASM function that exist in the side module
+        if ('__start_em_asm' in moduleExports) {
+          var start = moduleExports['__start_em_asm'];
+          var stop = moduleExports['__stop_em_asm'];
+          {{{ from64('start') }}}
+          {{{ from64('stop') }}}
+          while (start < stop) {
+            var jsString = UTF8ToString(start);
+            addEmAsm(start, jsString);
+            start = HEAPU8.indexOf(0, start) + 1;
+          }
+        }
+#endif
+
         // initialize the module
 #if USE_PTHREADS
-        // Only one thread (currently The main thread) should call
-        // __wasm_call_ctors, but all threads need to call _emscripten_tls_init
+        // Only one thread should call __wasm_call_ctors, but all threads need
+        // to call _emscripten_tls_init
         registerTLSInit(moduleExports['_emscripten_tls_init'], instance.exports, metadata)
-        if (!ENVIRONMENT_IS_PTHREAD) {
+        if (firstLoad) {
 #endif
           var applyRelocs = moduleExports['__wasm_apply_data_relocs'];
           if (applyRelocs) {
@@ -764,14 +802,13 @@ var LibraryDylink = {
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
   $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$isInternalSym', '$mergeLibSymbols'],
   $loadDynamicLibrary__docs: '/** @param {number=} handle */',
-  $loadDynamicLibrary: function(lib, flags, handle) {
+  $loadDynamicLibrary: function(lib, flags = {global: true, nodelete: true}, handle = 0) {
 #if DYLINK_DEBUG
     dbg('loadDynamicLibrary: ' + lib + ' handle:' + handle);
     dbg('existing: ' + Object.keys(LDSO.loadedLibsByName));
 #endif
     // when loadDynamicLibrary did not have flags, libraries were loaded
     // globally & permanently
-    flags = flags || {global: true, nodelete: true}
 
     var dso = LDSO.loadedLibsByName[lib];
     if (dso) {
@@ -820,6 +857,7 @@ var LibraryDylink = {
         return flags.loadAsync ? Promise.resolve(libData) : libData;
       }
 
+      libFile = locateFile(libFile);
       if (flags.loadAsync) {
         return new Promise(function(resolve, reject) {
           readAsync(libFile, (data) => resolve(new Uint8Array(data)), reject);
@@ -985,17 +1023,17 @@ var LibraryDylink = {
   // Async version of dlopen.
   _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError'],
   _emscripten_dlopen_js__sig: 'vppp',
-  _emscripten_dlopen_js: function(handle, onsuccess, onerror) {
+  _emscripten_dlopen_js: function(handle, onsuccess, onerror, user_data) {
     /** @param {Object=} e */
     function errorCallback(e) {
       var filename = UTF8ToString({{{ makeGetValue('handle', C_STRUCTS.dso.name, '*') }}});
       dlSetError('Could not load dynamic lib: ' + filename + '\n' + e);
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function () { {{{ makeDynCall('vi', 'onerror') }}}(handle); });
+      callUserCallback(function () { {{{ makeDynCall('vii', 'onerror') }}}(handle, user_data); });
     }
     function successCallback() {
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function () { {{{ makeDynCall('vii', 'onsuccess') }}}(handle); });
+      callUserCallback(function () { {{{ makeDynCall('vii', 'onsuccess') }}}(handle, user_data); });
     }
 
     {{{ runtimeKeepalivePush() }}}

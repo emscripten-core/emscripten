@@ -12,10 +12,6 @@
 # is not valid, but LLVM='c:\\llvm\\' and LLVM='c:/llvm/'
 # are.
 
-# This is used by external projects in order to find emscripten.  It is not used
-# by emscripten itself.
-EMSCRIPTEN_ROOT = '{{{ EMSCRIPTEN_ROOT }}}' # directory
-
 LLVM_ROOT = '{{{ LLVM_ROOT }}}' # directory
 BINARYEN_ROOT = '{{{ BINARYEN_ROOT }}}' # directory
 

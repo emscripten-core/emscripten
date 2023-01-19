@@ -214,7 +214,7 @@ if (ENVIRONMENT_IS_NODE) {
  _emscripten_get_now = Date.now;
 }
 
-var asmLibraryArg = {
+var wasmImports = {
  "b": abort,
  "h": ___syscall140,
  "a": ___syscall146,
@@ -233,7 +233,7 @@ function initRuntime(asm) {
  asm["i"]();
 }
 
-var env = asmLibraryArg;
+var env = wasmImports;
 
 env["memory"] = wasmMemory;
 

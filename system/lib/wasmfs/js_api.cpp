@@ -44,7 +44,7 @@ void* _wasmfs_read_file(char* path) {
     emscripten_console_error("Fatal error in FS.readFile");
     abort();
   }
-  int numRead = pread(fd, result + sizeof(size), size, 0);
+  [[maybe_unused]] int numRead = pread(fd, result + sizeof(size), size, 0);
   // TODO: Generalize this so that it is thread-proof.
   // Must guarantee that the file size has not changed by the time it is read.
   assert(numRead == size);
@@ -98,6 +98,10 @@ int _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
 
 int _wasmfs_mkdir(char* path, int mode) {
   return __syscall_mkdirat(AT_FDCWD, (intptr_t)path, mode);
+}
+
+int _wasmfs_unlink(char* path) {
+  return __syscall_unlinkat(AT_FDCWD, (intptr_t)path, 0);
 }
 
 int _wasmfs_chdir(char* path) { return __syscall_chdir((intptr_t)path); }

@@ -38,11 +38,11 @@ def get(ports, settings, shared):
 
     ports.build_port(source_path, final, 'libpng', flags=flags, exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
 
-  return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
+  return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib(get_lib_name(settings))
+  shared.cache.erase_lib(get_lib_name(settings))
 
 
 def process_dependencies(settings):

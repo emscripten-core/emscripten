@@ -66,38 +66,24 @@ function isDefined(symName) {
   return false;
 }
 
-// JSifier
-function runJSify(functionsOnly) {
-  const mainPass = !functionsOnly;
-  const functionStubs = [];
+function runJSify(symbolsOnly = false) {
+  const libraryItems = [];
+  let postSets = [];
 
-  const itemsDict = {type: [], functionStub: [], function: [], globalVariablePostSet: []};
+  LibraryManager.load();
 
-  if (mainPass) {
-    // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
-    // generateStructInfo in library.js)
-
-    LibraryManager.load();
-
-    const libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
-    for (const sym of EXPORTED_RUNTIME_METHODS) {
-      if ('$' + sym in LibraryManager.library) {
-        libFuncsToInclude.push('$' + sym);
+  const symbolsNeeded = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
+  for (const sym of EXPORTED_RUNTIME_METHODS) {
+    if ('$' + sym in LibraryManager.library) {
+      symbolsNeeded.push('$' + sym);
+    }
+  }
+  if (INCLUDE_FULL_LIBRARY) {
+    for (const key in LibraryManager.library) {
+      if (!isJsLibraryConfigIdentifier(key)) {
+        symbolsNeeded.push(key);
       }
     }
-    if (INCLUDE_FULL_LIBRARY) {
-      for (const key in LibraryManager.library) {
-        if (!isJsLibraryConfigIdentifier(key)) {
-          libFuncsToInclude.push(key);
-        }
-      }
-    }
-    libFuncsToInclude.forEach((ident) => {
-      functionStubs.push({
-        identOrig: ident,
-        identMangled: mangleCSymbolName(ident),
-      });
-    });
   }
 
   function convertPointerParams(snippet, sig) {
@@ -193,8 +179,7 @@ function ${name}(${args}) {
     }
   }
 
-  // functionStub
-  function functionStubHandler(item) {
+  function itemHandler(item) {
     // In LLVM, exceptions generate a set of functions of form
     // __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.  where
     // the number specifies the number of arguments. In Emscripten, route all
@@ -215,22 +200,35 @@ function ${name}(${args}) {
 
     function addFromLibrary(item, dependent) {
       // dependencies can be JS functions, which we just run
-      if (typeof item == 'function') return item();
+      if (typeof item == 'function') {
+        return item();
+      }
 
       const ident = item.identOrig;
       const finalName = item.identMangled;
 
-      if (ident in addedLibraryItems) return '';
+      if (ident in addedLibraryItems) {
+        return;
+      }
       addedLibraryItems[ident] = true;
 
-      // don't process any special identifiers. These are looked up when processing the base name of the identifier.
+      // don't process any special identifiers. These are looked up when
+      // processing the base name of the identifier.
       if (isJsLibraryConfigIdentifier(ident)) {
-        return '';
+        return;
       }
 
-      // if the function was implemented in compiled code, there is no need to include the js version
+      if (symbolsOnly) {
+        if (!isJsOnlyIdentifier(ident) && LibraryManager.library.hasOwnProperty(ident)) {
+          librarySymbols.push(ident);
+        }
+        return;
+      }
+
+      // if the function was implemented in compiled code, there is no need to
+      // include the js version
       if (WASM_EXPORTS.has(ident)) {
-        return '';
+        return;
       }
 
       // This gets set to true in the case of dynamic linking for symbols that
@@ -239,9 +237,6 @@ function ${name}(${args}) {
       let isStub = false;
 
       if (!LibraryManager.library.hasOwnProperty(ident)) {
-        if (ONLY_CALC_JS_SYMBOLS) {
-          return;
-        }
         const isWeakImport = WEAK_IMPORTS.has(ident);
         if (!isDefined(ident) && !isWeakImport) {
           if (PROXY_TO_PTHREAD && !MAIN_MODULE && ident == '__main_argc_argv') {
@@ -287,6 +282,8 @@ function ${name}(${args}) {
         }
       }
 
+      librarySymbols.push(finalName);
+
       const original = LibraryManager.library[ident];
       let snippet = original;
       const deps = LibraryManager.library[ident + '__deps'] || [];
@@ -294,6 +291,7 @@ function ${name}(${args}) {
         error(`JS library directive ${ident}__deps=${deps.toString()} is of type ${typeof deps}, but it should be an array!`);
         return;
       }
+
       const isUserSymbol = LibraryManager.library[ident + '__user'];
       deps.forEach((dep) => {
         if (typeof snippet == 'string' && !(dep in LibraryManager.library)) {
@@ -325,12 +323,6 @@ function ${name}(${args}) {
         addImplicitDeps(snippet, deps);
       }
 
-      librarySymbols.push(finalName);
-
-      if (ONLY_CALC_JS_SYMBOLS) {
-        return '';
-      }
-
       const postsetId = ident + '__postset';
       let postset = LibraryManager.library[postsetId];
       if (postset) {
@@ -341,7 +333,7 @@ function ${name}(${args}) {
         }
         if (postset && !addedLibraryItems[postsetId]) {
           addedLibraryItems[postsetId] = true;
-          itemsDict.globalVariablePostSet.push({
+          postSets.push({
             JS: postset + ';',
           });
         }
@@ -350,7 +342,8 @@ function ${name}(${args}) {
       if (VERBOSE) {
         printErr(`adding ${finalName} and deps ${deps} : ` + (snippet + '').substr(0, 40));
       }
-      const identDependents = ident + "__deps: ['" + deps.join("','") + "']";
+      const deps_list = deps.join("','");
+      const identDependents = ident + `__deps: ['${deps_list}']`;
       function addDependency(dep) {
         if (typeof dep != 'function') {
           dep = {identOrig: dep, identMangled: mangleCSymbolName(dep)};
@@ -374,14 +367,19 @@ function ${name}(${args}) {
     return _emscripten_proxy_to_main_thread_js(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
   ${body}
 }\n`);
-          } else if (WASM_WORKERS && ASSERTIONS) {
-            // In ASSERTIONS builds add runtime checks that proxied functions are not attempted to be called in Wasm Workers
-            // (since there is no automatic proxying architecture available)
-            contentText = modifyFunction(snippet, (name, args, body) => `
-function ${name}(${args}) {
-  assert(!ENVIRONMENT_IS_WASM_WORKER, "Attempted to call proxied function '${name}' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!");
-  ${body}
-}\n`);
+          } else if (WASM_WORKERS) {
+            if (ASSERTIONS) {
+              // In ASSERTIONS builds add runtime checks that proxied functions are not attempted to be called in Wasm Workers
+              // (since there is no automatic proxying architecture available)
+              contentText = modifyFunction(snippet, (name, args, body) => `
+  function ${name}(${args}) {
+    assert(!ENVIRONMENT_IS_WASM_WORKER, "Attempted to call proxied function '${name}' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!");
+    ${body}
+  }\n`);
+            } else {
+              // In non-ASSERTIONS builds directly emit the original function.
+              contentText = snippet;
+            }
           }
           proxiedFunctionTable.push(finalName);
         } else if ((USE_ASAN || USE_LSAN || UBSAN_RUNTIME) && LibraryManager.library[ident + '__noleakcheck']) {
@@ -439,15 +437,19 @@ function ${name}(${args}) {
       return depsText + commentText + contentText;
     }
 
-    itemsDict.functionStub.push(item);
+    libraryItems.push(item);
     item.JS = addFromLibrary(item, TOP_LEVEL);
   }
 
-  // Final combiner
+  function includeFile(fileName) {
+    print(`// include: ${fileName}`);
+    print(processMacros(preprocess(fileName)));
+    print(`// end include: ${fileName}`);
+  }
 
   function finalCombiner() {
-    const splitPostSets = splitter(itemsDict.globalVariablePostSet, (x) => x.ident && x.dependencies);
-    itemsDict.globalVariablePostSet = splitPostSets.leftIn;
+    const splitPostSets = splitter(postSets, (x) => x.ident && x.dependencies);
+    postSets = splitPostSets.leftIn;
     const orderedPostSets = splitPostSets.splitOut;
 
     let limit = orderedPostSets.length * orderedPostSets.length;
@@ -465,46 +467,25 @@ function ${name}(${args}) {
       }
     }
 
-    itemsDict.globalVariablePostSet = itemsDict.globalVariablePostSet.concat(orderedPostSets);
-
-    //
-
-    if (!mainPass) {
-      const generated = itemsDict.function.concat(itemsDict.type);
-      print(generated.map((item) => item.JS).join('\n'));
-      return;
-    }
+    postSets = postSets.concat(orderedPostSets);
 
     const shellFile = MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js';
+    includeFile(shellFile);
 
-    const shellParts = read(shellFile).split('{{BODY}}');
-    print(processMacros(preprocess(shellParts[0], shellFile)));
-    let pre;
-    if (MINIMAL_RUNTIME) {
-      pre = processMacros(preprocess(read('preamble_minimal.js'), 'preamble_minimal.js'));
-    } else {
-      pre = processMacros(preprocess(read('support.js'), 'support.js')) +
-            processMacros(preprocess(read('preamble.js'), 'preamble.js'));
+    const preFile = MINIMAL_RUNTIME ? 'preamble_minimal.js' : 'preamble.js';
+    includeFile(preFile);
+
+    for (const item of libraryItems.concat(postSets)) {
+      print(indentify(item.JS || '', 2));
     }
-    print(pre);
-
-    // Print out global variables and postsets TODO: batching
-    runJSify(true);
-
-    const generated = itemsDict.functionStub.concat(itemsDict.globalVariablePostSet);
-    generated.forEach((item) => print(indentify(item.JS || '', 2)));
 
     if (USE_PTHREADS) {
       print('\n // proxiedFunctionTable specifies the list of functions that can be called either synchronously or asynchronously from other threads in postMessage()d or internally queued events. This way a pthread in a Worker can synchronously access e.g. the DOM on the main thread.');
       print('\nvar proxiedFunctionTable = [' + proxiedFunctionTable.join() + '];\n');
     }
 
-    if (!MINIMAL_RUNTIME) {
-      print('var ASSERTIONS = ' + !!ASSERTIONS + ';\n');
-    }
-
     if ((SUPPORT_BASE64_EMBEDDING || FORCE_FILESYSTEM) && !MINIMAL_RUNTIME) {
-      print(preprocess(read('base64Utils.js')));
+      includeFile('base64Utils.js');
     }
 
     if (abortExecution) throw Error('Aborting compilation due to previous errors');
@@ -516,28 +497,28 @@ function ${name}(${args}) {
 
     if (HEADLESS) {
       print('if (!ENVIRONMENT_IS_WEB) {');
-      print(read('headlessCanvas.js'));
-      print('\n');
-      print(read('headless.js').replace("'%s'", "'http://emscripten.org'").replace("'?%s'", "''").replace("'?%s'", "'/'").replace('%s,', 'null,').replace('%d', '0'));
+      includeFile('headlessCanvas.js');
+      includeFile('headless.js')
       print('}');
     }
     if (PROXY_TO_WORKER) {
       print('if (ENVIRONMENT_IS_WORKER) {\n');
-      print(read('webGLWorker.js'));
-      print(processMacros(preprocess(read('proxyWorker.js'), 'proxyWorker.js')));
+      includeFile('webGLWorker.js');
+      includeFile('proxyWorker.js');
       print('}');
     }
     if (DETERMINISTIC) {
-      print(read('deterministic.js'));
+      includeFile('deterministic.js');
     }
 
     const postFile = MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js';
-    const post = processMacros(preprocess(read(postFile), postFile));
-    print(post);
+    includeFile(postFile);
 
-    print(processMacros(preprocess(shellParts[1], shellFile)));
+    for (const fileName of POST_JS_FILES) {
+      includeFile(fileName);
+    }
 
-    print('\n//FORWARDED_DATA:' + JSON.stringify({
+    print('//FORWARDED_DATA:' + JSON.stringify({
       librarySymbols: librarySymbols,
       warnings: warnings,
       ATINITS: ATINITS.join('\n'),
@@ -546,10 +527,16 @@ function ${name}(${args}) {
     }));
   }
 
-  // Data
+  for (const sym of symbolsNeeded) {
+    itemHandler({
+      identOrig: sym,
+      identMangled: mangleCSymbolName(sym),
+    });
+  }
 
-  if (mainPass) {
-    functionStubs.forEach(functionStubHandler);
+  if (symbolsOnly) {
+    print(JSON.stringify(librarySymbols));
+    return;
   }
 
   finalCombiner();

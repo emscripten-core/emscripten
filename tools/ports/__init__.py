@@ -9,6 +9,7 @@ import os
 import shutil
 import glob
 from typing import Set
+from tools import cache
 from tools import config
 from tools import shared
 from tools import system_libs
@@ -78,13 +79,29 @@ def dir_is_newer(dir_a, dir_b):
   return newest_a[1] > newest_b[1]
 
 
+def maybe_copy(src, dest):
+  """Just like shutil.copyfile, but will do nothing if the destination already
+  exists and has the same contents as the source.
+
+  In the case where a library is built in multiple different configurations,
+  we want to avoids racing between processes that are reading headers (without
+  holding the cache lock) (e.g. normal compile steps) and a process that is
+  building/installing a new flavor of a given library.  In this case the
+  headers will be "re-installed" but we skip the actual filesystem mods
+  to avoid racing with other processes that might be reading these files.
+  """
+  if os.path.exists(dest) and utils.read_file(src) == utils.read_file(dest):
+    return
+  shutil.copyfile(src, dest)
+
+
 class Ports:
   """emscripten-ports library management (https://github.com/emscripten-ports).
   """
 
   @staticmethod
   def get_include_dir(*parts):
-    dirname = shared.Cache.get_include_dir(*parts)
+    dirname = cache.get_include_dir(*parts)
     shared.safe_ensure_dirs(dirname)
     return dirname
 
@@ -109,7 +126,7 @@ class Ports:
     assert matches, f'no headers found to install in {src_dir}'
     for f in matches:
       logger.debug('installing: ' + os.path.join(dest, os.path.basename(f)))
-      shutil.copyfile(f, os.path.join(dest, os.path.basename(f)))
+      maybe_copy(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
   def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
@@ -131,8 +148,7 @@ class Ports:
       cflags.append('-I' + include)
 
     if system_libs.USE_NINJA:
-      if not os.path.exists(build_dir):
-        os.makedirs(build_dir)
+      os.makedirs(build_dir, exist_ok=True)
       ninja_file = os.path.join(build_dir, 'build.ninja')
       system_libs.ensure_sysroot()
       system_libs.create_ninja_file(srcs, ninja_file, output_path, cflags=cflags)
@@ -144,8 +160,7 @@ class Ports:
         relpath = os.path.relpath(src, src_dir)
         obj = os.path.join(build_dir, relpath) + '.o'
         dirname = os.path.dirname(obj)
-        if not os.path.exists(dirname):
-          os.makedirs(dirname)
+        os.makedirs(dirname, exist_ok=True)
         cmd = [shared.EMCC, '-c', src, '-o', obj] + cflags
         if shared.suffix(src) in ('.cc', '.cxx', '.cpp'):
           cmd[0] = shared.EMXX
@@ -171,7 +186,7 @@ class Ports:
 
   @staticmethod
   def get_build_dir():
-    return shared.Cache.get_path('ports-builds')
+    return cache.get_path('ports-builds')
 
   name_cache: Set[str] = set()
 
@@ -217,7 +232,7 @@ class Ports:
           if os.path.exists(target) and dir_is_newer(path, target):
             logger.warning(uptodate_message)
             return
-          with shared.Cache.lock('unpack local port'):
+          with cache.lock('unpack local port'):
             # Another early out in case another process unpackage the library while we were
             # waiting for the lock
             if os.path.exists(target) and not dir_is_newer(path, target):
@@ -272,7 +287,7 @@ class Ports:
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
     # retrieve the same port at once
-    with shared.Cache.lock('unpack port'):
+    with cache.lock('unpack port'):
       if os.path.exists(fullpath):
         # Another early out in case another process unpackage the library while we were
         # waiting for the lock

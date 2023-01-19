@@ -15,7 +15,7 @@
 
 static backend_t get_backend() {
 #ifdef WASMFS_MEMORY_BACKEND
-  return NULL;
+  return wasmfs_create_memory_backend();
 #else
 #ifdef WASMFS_NODE_BACKEND
   return wasmfs_create_node_backend(".");

@@ -209,6 +209,12 @@ Options that are modified or new in *emcc* are listed below:
 "--tracing"
    [link] Enable the Emscripten Tracing API.
 
+"--reproduce=<file.tar>"
+   [compile+link] Write tar file containing inputs and command to
+   reproduce invocation.  When sharing this file be aware that it will
+   any object files, source files and libraries that that were passed
+   to the compiler.
+
 "--emit-symbol-map"
    [link] Save a map file between function indexes in the wasm and
    function names. By storing the names on a file on the side, you can
@@ -306,8 +312,8 @@ Options that are modified or new in *emcc* are listed below:
 
 "--embed-file <file>"
    [link] Specify a file (with path) to embed inside the generated
-   JavaScript. The path is relative to the current directory at
-   compile time. If a directory is passed here, its entire contents
+   WebAssembly module. The path is relative to the current directory
+   at compile time. If a directory is passed here, its entire contents
    will be embedded.
 
    For example, if the command includes "--embed-file dir/file.dat",
@@ -316,9 +322,8 @@ Options that are modified or new in *emcc* are listed below:
 
    Note:
 
-     Embedding files is much less efficient than preloading them. You
-     should only use it for small files, in small numbers. Instead use
-     "--preload-file", which emits efficient binary data.
+     Embedding files is generally more efficient than preloading as it
+     avoids copying the file data at runtime.
 
    For more information about the "--embed-file" options, see
    Packaging Files.

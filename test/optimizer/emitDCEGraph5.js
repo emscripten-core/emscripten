@@ -10,6 +10,6 @@ var __DUB = Module["__DUB"] = function() { return Module["asm"]["_DUB"].apply(nu
 
 var __UNUSED = Module["__UNUSED"] = function() { return Module["asm"]["_UNUSED"].apply(null, arguments) };
 
-var asmLibraryArg = {
+var wasmImports = {
 };
 

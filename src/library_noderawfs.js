@@ -35,8 +35,7 @@ mergeInto(LibraryManager.library, {
 #endif
       return FS.lookupPath(parent.path + '/' + name).node;
     },
-    lookupPath: function(path, opts) {
-      opts = opts || {};
+    lookupPath: function(path, opts = {}) {
       if (opts.parent) {
         path = nodePath.dirname(path);
       }

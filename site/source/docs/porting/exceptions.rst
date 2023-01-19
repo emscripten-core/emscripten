@@ -1,12 +1,11 @@
-.. Exceptions support:
+.. _exceptions:
 
-==============================
-C++ exceptions support
-==============================
+======================
+C++ Exceptions Support
+======================
 
-By default, exception catching is disabled in Emscripten.
-
-For example, if you compile the following program:
+By default, exception catching is disabled in Emscripten. For example, if you
+compile the following program:
 
 .. code-block:: cpp
 
@@ -23,21 +22,22 @@ For example, if you compile the following program:
       return 0;
     }
 
-The first ``throw`` will abort the program and you'll see something like this in the output:
+The first ``throw`` will abort the program and you'll see something like this in
+the output:
 
 .. code-block:: text
 
-  throw...  
+  throw...
   exception thrown: 5246024 - Exception catching is disabled, this exception cannot be caught. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.
 
 If you want to opt-in, you have two following options.
 
-JavaScript-based exception support
-##################################
 
-First, you can enable exceptions via Emscripten's JavaScript-based support.
+JavaScript-based Exception Support
+==================================
 
-To enable it, pass ``-fexceptions`` at both compile time and link time.
+First, you can enable exceptions via Emscripten's JavaScript-based support. To
+enable it, pass ``-fexceptions`` at both compile time and link time.
 
 When you rebuild the example above with this flag, the output will change to:
 
@@ -46,19 +46,19 @@ When you rebuild the example above with this flag, the output will change to:
   throw...
   catch!
 
-Note that this option has relatively high overhead, but it will work on all JavaScript
-engines with WebAssembly support. You can reduce the overhead by specifying a
-list of allowed functions in which exceptions are enabled, see the
+Note that this option has relatively high overhead, but it will work on all
+JavaScript engines with WebAssembly support. You can reduce the overhead by
+specifying a list of allowed functions in which exceptions are enabled, see the
 ``EXCEPTION_CATCHING_ALLOWED`` setting.
 
-WebAssembly exception handling proposal
-#######################################
+
+WebAssembly Exception Handling-based Support
+============================================
 
 Alternatively, you can opt-in to the `native WebAssembly exception handling
 <https://github.com/WebAssembly/exception-handling/blob/master/proposals/exception-handling/Exceptions.md>`_
-proposal.
-
-To enable it, pass ``-fwasm-exceptions`` at both compile time and link time.
+proposal. To enable it, pass ``-fwasm-exceptions`` at both compile time and link
+time.
 
 Rebuilding the example with this flag will result in the same output as with
 ``-fexceptions`` above:
@@ -69,8 +69,27 @@ Rebuilding the example with this flag will result in the same output as with
   catch!
 
 This option leverages a new feature that brings built-in instructions for
-throwing and catching exceptions to WebAssembly.
+throwing and catching exceptions to WebAssembly. As a result, it can reduce code
+size and performance overhead compared to the JavaScript-based implementation.
+This option is currently supported in several major web browsers, but `may not
+be supported in all WebAssembly engines yet
+<https://webassembly.org/roadmap/>`_.
 
-As a result, it can reduce code size and performance overhead compared
-to the JavaScript-based implementation. However, it's still brand-new
-and `not yet supported by default in most engines <https://webassembly.org/roadmap/>`_.
+
+Debugging Exceptions
+====================
+
+When :ref:`ASSERTIONS <debugging-ASSERTIONS>` is enabled, uncaught exceptions
+will print stack traces for debugging. :ref:`ASSERTIONS <debugging-ASSERTIONS>`
+is enabled by default in :ref:`-O0 <emcc-O0>` and disabled in optimized builds
+(:ref:`-O1 <emcc-O1>` and above). You can enable it by passing ``-sASSERTIONS``
+to the ``emcc`` command line in optimized builds as well.
+
+You can also catch and examine C++ exceptions from JavaScript. See
+:ref:`handling-c-exceptions-from-javascript`.
+
+
+Using Exceptions and setjmp-longjmp Together
+============================================
+
+See :ref:`using-exceptions-and-setjmp-longjmp-together`.

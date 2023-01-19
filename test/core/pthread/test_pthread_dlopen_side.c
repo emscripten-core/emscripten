@@ -1,6 +1,18 @@
+#include <stdio.h>
+#include <stdlib.h>
+
 typedef int (*myfunc_type)();
 
 static int mydata[10] = { 44 };
+
+static void dtor() {
+  puts("side module atexit ..");
+}
+
+__attribute__((constructor)) static void ctor() {
+  puts("side module ctor");
+  atexit(dtor);
+}
 
 static int myfunc() {
   return 43;

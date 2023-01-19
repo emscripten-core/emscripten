@@ -34,6 +34,7 @@
         "AL_VELOCITY": 4102,
         "AT_EMPTY_PATH": 4096,
         "AT_FDCWD": -100,
+        "AT_NO_AUTOMOUNT": 2048,
         "AT_REMOVEDIR": 512,
         "AT_SYMLINK_NOFOLLOW": 256,
         "AUDIO_F32": 33056,
@@ -1257,14 +1258,14 @@
             "d_type": 18
         },
         "dso": {
-            "__size__": 44,
-            "flags": 20,
-            "mem_addr": 28,
-            "mem_allocated": 24,
-            "mem_size": 32,
-            "name": 44,
-            "table_addr": 36,
-            "table_size": 40
+            "__size__": 32,
+            "flags": 8,
+            "mem_addr": 16,
+            "mem_allocated": 12,
+            "mem_size": 20,
+            "name": 32,
+            "table_addr": 24,
+            "table_size": 28
         },
         "emscripten_fetch_attr_t": {
             "__size__": 92,

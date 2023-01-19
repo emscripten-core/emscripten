@@ -12,7 +12,6 @@ VERSION = (3, 39, 0)
 VERSION_YEAR = 2022
 HASH = 'cbaf4adb3e404d9aa403b34f133c5beca5f641ae1e23f84dbb021da1fb9efdc7c56b5922eb533ae5cb6d26410ac60cb3f026085591bc83ebc1c225aed0cf37ca'
 
-deps = []
 variants = {'sqlite3-mt': {'USE_PTHREADS': 1}}
 
 
@@ -74,11 +73,11 @@ def get(ports, settings, shared):
 
     ports.build_port(source_path, final, 'sqlite3', flags=flags, exclude_files=['shell.c'])
 
-  return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
+  return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib(get_lib_name(settings))
+  shared.cache.erase_lib(get_lib_name(settings))
 
 
 def process_args(ports):
