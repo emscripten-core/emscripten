@@ -2358,7 +2358,7 @@ mergeInto(LibraryManager.library, {
                                "  };\n" +
                                "} else " +
 #endif
-#if USE_PTHREADS
+#if USE_PTHREADS && !AUDIO_WORKLET
 // Pthreads need their clocks synchronized to the execution of the main thread, so, when using them,
 // make sure to adjust all timings to the respective time origins.
                                "_emscripten_get_now = () => performance.timeOrigin + performance.now();\n",
@@ -2372,7 +2372,11 @@ mergeInto(LibraryManager.library, {
 // AudioWorkletGlobalScope does not have performance.now() (https://github.com/WebAudio/web-audio-api/issues/2527), so if building with
 // Audio Worklets enabled, do a dynamic check for its presence.
                                "if (typeof performance != 'undefined' && performance.now) {\n" +
+#if USE_PTHREADS
+                               "  _emscripten_get_now = () => performance.timeOrigin + performance.now();\n" +
+#else
                                "  _emscripten_get_now = () => performance.now();\n" +
+#endif
                                "} else {\n" +
                                "  _emscripten_get_now = Date.now;\n" +
                                "}",

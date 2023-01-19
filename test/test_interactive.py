@@ -271,7 +271,7 @@ class interactive(BrowserCore):
   # Tests AudioWorklet with emscripten_futex_wake().
   @also_with_minimal_runtime
   def test_audio_worklet_emscripten_futex_wake(self):
-    self.btest('webaudio/audioworklet_emscripten_futex_wake.cpp', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sUSE_PTHREADS'])
+    self.btest('webaudio/audioworklet_emscripten_futex_wake.cpp', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE=2'])
 
   # Tests a second AudioWorklet example: sine wave tone generator.
   def test_audio_worklet_tone_generator(self):
