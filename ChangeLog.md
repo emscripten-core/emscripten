@@ -26,6 +26,8 @@ See docs/process.md for more on how version tagging works.
 - --pre-js and --post-js files are now fed through the JS preprocesor, just
   like JS library files and the core runtime JS files.  This means they can
   now contain #if/#else/#endif blocks and {{{ }}} macro blocks. (#18525)
+- Added support for Wasm-based AudioWorklets for realtime audio processing
+  (#16449)
 
 3.1.30 - 01/11/23
 -----------------
@@ -227,8 +229,6 @@ See docs/process.md for more on how version tagging works.
 -------------------
 - Old method of metadata extraction via wasm-emscripten-finalize removed
   in favor of local python code. (#16529)
-- Added support for Wasm-based AudioWorklets for realtime audio processing
-  (#16449)
 
 3.1.18 - 08/01/2022
 -------------------
