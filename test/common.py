@@ -836,7 +836,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       if len(line) > 2048:
         # Sanity check that this is really the emscripten program/module on
         # a single line.
-        assert line.startswith('var Module=typeof Module!="undefined"')
+        assert line.startswith('var Module=Module||{}')
         long_lines.append(line)
         line = '<REPLACED ENTIRE PROGRAM ON SINGLE LINE>'
       return line

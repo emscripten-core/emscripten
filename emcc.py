@@ -3761,10 +3761,6 @@ def modularize():
   if not settings.EXPORT_READY_PROMISE:
     return_value = '{}'
 
-  # TODO: Remove when https://bugs.webkit.org/show_bug.cgi?id=223533 is resolved.
-  if async_emit != '' and settings.EXPORT_NAME == 'config':
-    diagnostics.warning('emcc', 'EXPORT_NAME should not be named "config" when targeting Safari')
-
   src = '''
 %(maybe_async)sfunction(%(EXPORT_NAME)s = {})  {
 

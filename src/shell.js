@@ -20,7 +20,11 @@
 // after the generated code, you will need to define   var Module = {};
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
-#if USE_CLOSURE_COMPILER
+#if MODULARIZE && EXPORT_NAME != 'Module'
+// We have a lot internal/library code that depends on `Module` so
+// we create an alias for EXPORT_NAME (which is passed in as arg0).
+var Module = {{{ EXPORT_NAME }}};
+#elif USE_CLOSURE_COMPILER
 // if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
 var /** @type {{
   noImageDecoding: boolean,
@@ -34,9 +38,9 @@ var /** @type {{
 }}
  */ Module;
 if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
-#else
-var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {};
-#endif // USE_CLOSURE_COMPILER
+#elif !MODULARIZE
+var Module = Module || {};
+#endif
 
 #if POLYFILL
 #if ((MAYBE_WASM2JS && WASM != 2) || MODULARIZE) && (MIN_CHROME_VERSION < 33 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 29 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 80000)
