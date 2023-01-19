@@ -146,5 +146,3 @@ function conditions() {
  if ((x + 4 | 0) != 0) y();
  if ((x & 4 | 0) != 0) y();
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["finall", "looop", "conditions"]
-

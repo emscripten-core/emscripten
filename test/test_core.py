@@ -468,8 +468,6 @@ class TestCoreBase(RunnerCore):
   @also_with_wasmfs
   def test_hello_world(self):
     self.do_core_test('test_hello_world.c')
-    # must not emit this unneeded internal thing
-    self.assertNotContained('EMSCRIPTEN_GENERATED_FUNCTIONS', read_file('test_hello_world.js'))
 
   def test_wasm_synchronous_compilation(self):
     self.set_setting('STRICT_JS')
