@@ -742,13 +742,8 @@ var LibraryWebGL2 = {
 #endif
   glWaitSync: function(sync, flags, {{{ defineI64Param('timeout') }}}) {
     // See WebGL2 vs GLES3 difference on GL_TIMEOUT_IGNORED above (https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.15)
-    GLctx.waitSync(GL.syncs[sync], flags,
-#if WASM_BIGINT
-      Number(timeout)
-#else
-      convertI32PairToI53(timeout_low, timeout_high)
-#endif
-    );
+    {{{ receiveI64ParamAsI53Unchecked('timeout'); }}}
+    GLctx.waitSync(GL.syncs[sync], flags, timeout);
   },
 
   glGetSynciv__sig: 'viiiii',
