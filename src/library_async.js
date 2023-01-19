@@ -169,7 +169,7 @@ mergeInto(LibraryManager.library, {
 
 #if ASYNCIFY == 1
 
-  function Stack()
+  getNewStack: function()
   {
     this.stac=new Array();
 
@@ -201,7 +201,7 @@ mergeInto(LibraryManager.library, {
     },
     state: 0,
     StackSize: {{{ ASYNCIFY_STACK_SIZE }}},
-    currData: new Stack(),
+    currData: getNewStack(),
     // The return value passed to wakeUp() in
     // Asyncify.handleSleep(function(wakeUp){...}) is stored here,
     // so we can return it later from the C function that called
