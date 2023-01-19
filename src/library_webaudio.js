@@ -157,7 +157,7 @@ let LibraryWebAudio = {
 #if WEBAUDIO_DEBUG
       console.error(`emscripten_start_wasm_audio_worklet_thread_async() addModule() failed!`);
 #endif
-      {{{ makeDynCall('vii', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, userData);
+      {{{ makeDynCall('viii', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, userData);
     };
 
     // Does browser not support AudioWorklets?
@@ -206,7 +206,7 @@ let LibraryWebAudio = {
 #if WEBAUDIO_DEBUG
       console.log(`emscripten_start_wasm_audio_worklet_thread_async() addModule() of main application JS completed`);
 #endif
-      {{{ makeDynCall('vii', 'callback') }}}(contextHandle, 1/*EM_TRUE*/, userData);
+      {{{ makeDynCall('viii', 'callback') }}}(contextHandle, 1/*EM_TRUE*/, userData);
     }).catch(audioWorkletCreationFailed);
   },
 

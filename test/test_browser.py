@@ -5491,6 +5491,7 @@ Module["preRun"].push(function () {
     'default': ([],),
     'with_fs': (['--preload-file', test_file('hello_world.c') + '@/'],),
     'closure': (['--closure', '1', '-Oz'],),
+    'asyncify': (['-sASYNCIFY'],),
     'pthreads': (['-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE=2'],),
     'pthreads_and_closure': (['-sUSE_PTHREADS', '--closure', '1', '-Oz'],),
     'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
