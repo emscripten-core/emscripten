@@ -93,8 +93,8 @@ for debugging. :ref:`ASSERTIONS <debugging-ASSERTIONS>` is enabled by default
 in :ref:`-O0 <emcc-O0>` and disabled in optimized builds (:ref:`-O1 <emcc-O1>`
 and above). You can enable it by passing ``-sASSERTIONS`` to the ``emcc``
 command line in optimized builds as well. To display Wasm function names in
-stack traces, you also need :ref:`-g <emcc-g>` or :ref:`-gsource-map
-<emcc-gsource-map>`.
+stack traces, you also need :ref:`-g <emcc-g>`, :ref:`-gsource-map
+<emcc-gsource-map>`, or :ref:`--profiling-funcs <emcc-profiling-funcs>`.
 
 In JavaScript, you can also examine the stack traces using
 `WebAssembly.Exception.prototype.stack
