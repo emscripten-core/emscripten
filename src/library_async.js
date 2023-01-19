@@ -188,7 +188,7 @@ mergeInto(LibraryManager.library, {
     this.active=function(){
       return (this.stac.length > 0);
     }
-  }
+  },
 
     //
     // Original implementation of Asyncify.
