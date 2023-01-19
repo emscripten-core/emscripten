@@ -996,9 +996,14 @@ function receiveI64ParamAsI53(name, onError) {
     // Just convert the bigint into a double.
     return `${name} = bigintToI53Checked(${name}); if (isNaN(${name})) return ${onError};`;
   }
-  // Covert the high/low pair to a Number, checking for
+  // Convert the high/low pair to a Number, checking for
   // overflow of the I53 range and returning onError in that case.
   return `var ${name} = convertI32PairToI53Checked(${name}_low, ${name}_high); if (isNaN(${name})) return ${onError};`;
+}
+
+function receiveI64ParamAsI53Unchecked(name) {
+  if (WASM_BIGINT) return `${name} = Number(${name});`;
+  return `var ${name} = convertI32PairToI53(${name}_low, ${name}_high);`;
 }
 
 function sendI64Argument(low, high) {
