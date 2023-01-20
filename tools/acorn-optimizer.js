@@ -63,9 +63,7 @@ function visitChildren(node, c) {
 // Simple post-order walk, calling properties on an object by node type,
 // if the type exists.
 function simpleWalk(node, cs) {
-  visitChildren(node, function (child) {
-    simpleWalk(child, cs);
-  });
+  visitChildren(node, (child) => simpleWalk(child, cs));
   if (node.type in cs) {
     cs[node.type](node);
   }
@@ -73,9 +71,7 @@ function simpleWalk(node, cs) {
 
 // Full post-order walk, calling a single function for all types.
 function fullWalk(node, c) {
-  visitChildren(node, function (child) {
-    fullWalk(child, c);
-  });
+  visitChildren(node, (child) => fullWalk(child, c));
   c(node);
 }
 
@@ -84,9 +80,7 @@ function fullWalk(node, c) {
 function recursiveWalk(node, cs) {
   (function c(node) {
     if (!(node.type in cs)) {
-      visitChildren(node, function (child) {
-        recursiveWalk(child, cs);
-      });
+      visitChildren(node, (child) => recursiveWalk(child, cs));
     } else {
       cs[node.type](node, c);
     }
@@ -178,7 +172,7 @@ function ignoreInnerScopes(node) {
 
 // Mark inner scopes temporarily as empty statements.
 function restoreInnerScopes(node, map) {
-  fullWalk(node, function (node) {
+  fullWalk(node, (node) => {
     if (map.has(node)) {
       node.type = map.get(node);
       map.delete(node);
@@ -220,7 +214,7 @@ function hasSideEffects(node) {
   // Conservative analysis.
   const map = ignoreInnerScopes(node);
   let has = false;
-  fullWalk(node, function (node) {
+  fullWalk(node, (node) => {
     switch (node.type) {
       // TODO: go through all the ESTree spec
       case 'Literal':
@@ -324,7 +318,7 @@ function runJSDCE(ast, aggressive) {
         VariableDeclaration(node, c) {
           const old = node.declarations;
           let removedHere = 0;
-          node.declarations = node.declarations.filter(function (node) {
+          node.declarations = node.declarations.filter((node) => {
             const curr = node.id.name;
             const value = node.init;
             const keep = !(curr in names) || (value && hasSideEffects(value));
@@ -367,7 +361,7 @@ function runJSDCE(ast, aggressive) {
         ensureData(scopes[scopes.length - 1], node.id.name).def = 1;
       }
       const scope = {};
-      node.params.forEach(function (param) {
+      node.params.forEach((param) => {
         const name = param.name;
         ensureData(scope, name).def = 1;
         scope[name].param = 1;
@@ -402,7 +396,7 @@ function runJSDCE(ast, aggressive) {
       },
       ObjectExpression(node, c) {
         // ignore the property identifiers
-        node.properties.forEach(function (node) {
+        node.properties.forEach((node) => {
           if (node.value) {
             c(node.value);
           } else if (node.argument) {
@@ -515,10 +509,10 @@ function isModuleAsmUse(node) {
 // Apply import/export name changes (after minifying them)
 function applyImportAndExportNameChanges(ast) {
   const mapping = extraInfo.mapping;
-  fullWalk(ast, function (node) {
+  fullWalk(ast, (node) => {
     if (isWasmImportsAssign(node)) {
       const assignedObject = getWasmImportsValue(node);
-      assignedObject.properties.forEach(function (item) {
+      assignedObject.properties.forEach((item) => {
         if (mapping[item.key.value]) {
           setLiteralValue(item.key, mapping[item.key.value]);
         }
@@ -714,10 +708,10 @@ function emitDCEGraph(ast) {
     }
   }
 
-  fullWalk(ast, function (node) {
+  fullWalk(ast, (node) => {
     if (isWasmImportsAssign(node)) {
       const assignedObject = getWasmImportsValue(node);
-      assignedObject.properties.forEach(function (item) {
+      assignedObject.properties.forEach((item) => {
         let value = item.value;
         if (value.type === 'Literal' || value.type === 'FunctionExpression') {
           return; // if it's a numeric or function literal, nothing to do here
@@ -759,7 +753,7 @@ function emitDCEGraph(ast) {
             // which looks like a wasm export being received. confirm with the asm use
             let found = 0;
             let asmName;
-            fullWalk(value.right, function (node) {
+            fullWalk(value.right, (node) => {
               if (isAsmUse(node)) {
                 found++;
                 asmName = getAsmOrModuleUseName(node);
@@ -953,15 +947,15 @@ function emitDCEGraph(ast) {
       }
     }
   }
-  defuns.forEach(defun => {
+  defuns.forEach((defun) => {
     const name = getGraphName(defun.id.name, 'defun');
     const info = (infos[name] = {
       name: name,
       reaches: {},
     });
-    fullWalk(defun.body, node => visitNode(node, info));
+    fullWalk(defun.body, (node) => visitNode(node, info));
   });
-  fullWalk(ast, node => visitNode(node, null));
+  fullWalk(ast, (node) => visitNode(node, null));
   // Final work: print out the graph
   // sort for determinism
   function sortedNamesFromMap(map) {
@@ -972,7 +966,7 @@ function emitDCEGraph(ast) {
     names.sort();
     return names;
   }
-  sortedNamesFromMap(infos).forEach(name => {
+  sortedNamesFromMap(infos).forEach((name) => {
     const info = infos[name];
     info.reaches = sortedNamesFromMap(info.reaches);
     graph.push(info);
@@ -984,10 +978,10 @@ function emitDCEGraph(ast) {
 function applyDCEGraphRemovals(ast) {
   const unused = new Set(extraInfo.unused);
 
-  fullWalk(ast, node => {
+  fullWalk(ast, (node) => {
     if (isWasmImportsAssign(node)) {
       const assignedObject = getWasmImportsValue(node);
-      assignedObject.properties = assignedObject.properties.filter(item => {
+      assignedObject.properties = assignedObject.properties.filter((item) => {
         const name = item.key.value;
         const value = item.value;
         const full = 'emcc$import$' + name;
@@ -1207,7 +1201,7 @@ function littleEndianHeap(ast) {
 // in each access), see #8365.
 function growableHeap(ast) {
   recursiveWalk(ast, {
-    AssignmentExpression: node => {
+    AssignmentExpression: (node) => {
       if (node.left.type === 'Identifier' && isEmscriptenHEAP(node.left.name)) {
         // Don't transform initial setup of the arrays.
         return;
@@ -1215,9 +1209,9 @@ function growableHeap(ast) {
       growableHeap(node.left);
       growableHeap(node.right);
     },
-    VariableDeclaration: node => {
+    VariableDeclaration: (node) => {
       // Don't transform the var declarations for HEAP8 etc
-      node.declarations.forEach(function (decl) {
+      node.declarations.forEach((decl) => {
         // but do transform anything that sets a var to
         // something from HEAP8 etc
         if (decl.init) {
@@ -1225,7 +1219,7 @@ function growableHeap(ast) {
         }
       });
     },
-    Identifier: node => {
+    Identifier: (node) => {
       if (node.name.startsWith('HEAP')) {
         // Turn HEAP8 into GROWABLE_HEAP_I8() etc
         switch (node.name) {
@@ -1305,7 +1299,7 @@ function unsignPointers(ast) {
     };
   }
 
-  fullWalk(ast, function (node) {
+  fullWalk(ast, (node) => {
     if (node.type === 'MemberExpression') {
       // Check if this is HEAP*[?]
       if (node.object.type === 'Identifier' && isHeap(node.object.name) && node.computed) {
@@ -1923,7 +1917,7 @@ function reattachComments(ast, comments) {
 
   // Collect all code symbols
   ast.walk(
-    new terser.TreeWalker(function (node) {
+    new terser.TreeWalker((node) => {
       if (node.start && node.start.pos) {
         symbols.push(node);
       }
@@ -2068,7 +2062,7 @@ const registry = {
   minifyGlobals: minifyGlobals,
 };
 
-passes.forEach(pass => registry[pass](ast));
+passes.forEach((pass) => registry[pass](ast));
 
 if (!noPrint) {
   const terserAst = terser.AST_Node.from_mozilla_ast(ast);
