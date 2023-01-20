@@ -421,7 +421,7 @@ function exportRuntime() {
 
   // Add JS library elements such as FS, GL, ENV, etc. These are prefixed with
   // '$ which indicates they are JS methods.
-  const runtimeElementsSet = new Set(runtimeElements);
+  let runtimeElementsSet = new Set(runtimeElements);
   for (const ident in LibraryManager.library) {
     if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !isInternalSymbol(ident)) {
       const jsname = ident.substr(1);
@@ -430,16 +430,16 @@ function exportRuntime() {
     }
   }
 
+  // check all exported things exist, warn about typos
+  runtimeElementsSet = new Set(runtimeElements);
+  for (const name of EXPORTED_RUNTIME_METHODS_SET) {
+    if (!runtimeElementsSet.has(name)) {
+      warn(`invalid item in EXPORTED_RUNTIME_METHODS: ${name}`);
+    }
+  }
+
   let unexportedStubs = '';
   if (ASSERTIONS) {
-    // check all exported things exist, warn about typos
-    const runtimeElementsSet = new Set(runtimeElements);
-    for (const name of EXPORTED_RUNTIME_METHODS_SET) {
-      if (!runtimeElementsSet.has(name)) {
-        warn(`invalid item in EXPORTED_RUNTIME_METHODS: ${name}`);
-      }
-    }
-
     const unexported = [];
     for (const name of runtimeElements) {
       if (!EXPORTED_RUNTIME_METHODS_SET.has(name)) {
