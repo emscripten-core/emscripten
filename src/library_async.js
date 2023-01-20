@@ -223,7 +223,26 @@ mergeInto(LibraryManager.library, {
     },
     state: 0,
     StackSize: {{{ ASYNCIFY_STACK_SIZE }}},
-    currData: {{{ new Stack() }}},
+    currData:   {
+      stac: new Array(),  
+      
+      pop: function(){
+        return this.stac.pop();
+      },
+  
+      peek: function(){
+        return this.stac[this.stac.length - 1];
+      },
+  
+      push: function(item){
+        this.stac.push(item);
+      },
+  
+      active: function(){
+        return (this.stac.length > 0);
+      }
+    },
+  
     // The return value passed to wakeUp() in
     // Asyncify.handleSleep(function(wakeUp){...}) is stored here,
     // so we can return it later from the C function that called
