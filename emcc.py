@@ -1676,9 +1676,6 @@ def setup_pthreads(target):
   # All proxying async backends will need this.
   if settings.WASMFS:
     settings.REQUIRED_EXPORTS += ['emscripten_proxy_finish']
-    # TODO: Remove this once we no longer need the heartbeat hack in
-    # wasmfs/thread_utils.h
-    settings.REQUIRED_EXPORTS += ['emscripten_proxy_execute_queue']
 
   # pthread stack setup and other necessary utilities
   def include_and_export(name):

@@ -96,8 +96,30 @@ var LibraryPThread = {
         PThread.allocateUnusedWorker();
       }
 #endif
+      // Spawn a dedicated worker for passing messages between threads. Instead
+      // of having each thread hold a message port for every other thread, they
+      // can just send messages with a `targetThread` property to the broker and
+      // the broker will forward the message to the intended recipient.
+      // Alternatively, the main thread could play this role, but then messages
+      // could be held up while the main thread is busy with other work.
+      PThread.proxyBroker = new Worker(new URL(
+          'data:text/javascript;base64,' + btoa(
+#if ENVIRONMENT_MAY_BE_NODE
+              (ENVIRONMENT_IS_NODE ?
+               `
+(await import('node:worker_threads'))
+  .parentPort
+  .on('message', (data) => onmessage({ data: data }));
+Object.assign(global, {
+  self: global,
+});
+` : "") +
+#endif
+`
+#include "proxy_broker.js"
+`
+          )));
     },
-
     initWorker: function() {
 #if USE_CLOSURE_COMPILER
       // worker.js is not compiled together with us, and must access certain
@@ -248,18 +270,6 @@ var LibraryPThread = {
         // emscripten_set_mousemove_callback()), so keep track in a globally
         // accessible variable about the thread that initiated the proxying.
         if (worker.pthread_ptr) PThread.currentProxiedOperationCallerThread = worker.pthread_ptr;
-
-        // If this message is intended to a recipient that is not the main thread, forward it to the target thread.
-        if (d['targetThread'] && d['targetThread'] != _pthread_self()) {
-          var targetWorker = PThread.pthreads[d.targetThread];
-          if (targetWorker) {
-            targetWorker.postMessage(d, d['transferList']);
-          } else {
-            err('Internal error! Worker sent a message "' + cmd + '" to target pthread ' + d['targetThread'] + ', but that thread no longer exists!');
-          }
-          PThread.currentProxiedOperationCallerThread = undefined;
-          return;
-        }
 
         if (cmd === 'processProxyingQueue') {
           executeNotifiedProxyingQueue(d['queue']);
@@ -508,6 +518,12 @@ var LibraryPThread = {
     }
   },
 
+  $closeProxyBrokerPort: function() {
+    assert(ENVIRONMENT_IS_PTHREAD);
+    PThread.proxyBroker.close();
+    delete PThread.proxyBroker;
+  },
+
   $killThread__deps: ['_emscripten_thread_free_data'],
   $killThread: function(pthread_ptr) {
 #if PTHREADS_DEBUG
@@ -520,6 +536,7 @@ var LibraryPThread = {
     var worker = PThread.pthreads[pthread_ptr];
     delete PThread.pthreads[pthread_ptr];
     worker.terminate();
+    PThread.proxyBroker.postMessage({'cmd': 'destroy', 'thread': pthread_ptr});
     __emscripten_thread_free_data(pthread_ptr);
     // The worker was completely nuked (not just the pthread execution it was hosting), so remove it from running workers
     // but don't put it back to the pool.
@@ -542,6 +559,7 @@ var LibraryPThread = {
     assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! cleanupThread() can only ever be called from main application thread!');
     assert(pthread_ptr, 'Internal Error! Null pthread_ptr in cleanupThread!');
 #endif
+    PThread.proxyBroker.postMessage({'cmd': 'destroy', 'thread': pthread_ptr});
     var worker = PThread.pthreads[pthread_ptr];
     assert(worker);
     PThread.returnWorkerToPool(worker);
@@ -619,11 +637,14 @@ var LibraryPThread = {
     PThread.pthreads[threadParams.pthread_ptr] = worker;
 
     worker.pthread_ptr = threadParams.pthread_ptr;
+
+    var channel = new MessageChannel();
     var msg = {
         'cmd': 'run',
         'start_routine': threadParams.startRoutine,
         'arg': threadParams.arg,
         'pthread_ptr': threadParams.pthread_ptr,
+        'port': channel.port1,
     };
 #if OFFSCREENCANVAS_SUPPORT
     // Note that we do not need to quote these names because they are only used
@@ -639,7 +660,12 @@ var LibraryPThread = {
       worker.ref();
     }
 #endif
-    worker.postMessage(msg, threadParams.transferList);
+    worker.postMessage(msg, [channel.port1].concat(threadParams.transferList));
+    PThread.proxyBroker.postMessage({
+      'cmd': 'create',
+      'thread': threadParams.pthread_ptr,
+      'port': channel.port2,
+    }, [channel.port2]);
     return 0;
   },
 
@@ -1035,7 +1061,7 @@ var LibraryPThread = {
 #endif
   },
 
-  $invokeEntryPoint__deps: ['_emscripten_thread_exit'],
+  $invokeEntryPoint__deps: ['_emscripten_thread_exit', '$closeProxyBrokerPort'],
   $invokeEntryPoint: function(ptr, arg) {
 #if PTHREADS_DEBUG
     dbg('invokeEntryPoint: ' + ptrToString(ptr));
@@ -1060,6 +1086,7 @@ var LibraryPThread = {
     checkStackCookie();
 #endif
 #if MINIMAL_RUNTIME
+    closeProxyBrokerPort();
     // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to
     // pthreads. To exit a pthread with live runtime, use the function
     // emscripten_unwind_to_js_event_loop() in the pthread body.
@@ -1068,6 +1095,7 @@ var LibraryPThread = {
     if (keepRuntimeAlive()) {
       PThread.setExitStatus(result);
     } else {
+      closeProxyBrokerPort();
       __emscripten_thread_exit(result);
     }
 #endif
@@ -1094,8 +1122,10 @@ var LibraryPThread = {
   _emscripten_notify_task_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
     if (targetThreadId == currThreadId) {
       setTimeout(() => executeNotifiedProxyingQueue(queue));
+    } else if (targetThreadId == mainThreadId) {
+      postMessage({'cmd' : 'processProxyingQueue', 'queue' : queue});
     } else if (ENVIRONMENT_IS_PTHREAD) {
-      postMessage({'targetThread' : targetThreadId, 'cmd' : 'processProxyingQueue', 'queue' : queue});
+      PThread.proxyBroker.postMessage({'targetThread' : targetThreadId, 'cmd' : 'processProxyingQueue', 'queue' : queue});
     } else {
       var worker = PThread.pthreads[targetThreadId];
       if (!worker) {

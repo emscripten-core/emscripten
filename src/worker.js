@@ -217,6 +217,8 @@ function handleMessage(e) {
 #endif
 #endif // MODULARIZE && EXPORT_ES6
     } else if (e.data.cmd === 'run') {
+      Module['PThread'].proxyBroker = e.data.port;
+      e.data.port.onmessage = handleMessage;
       // Pass the thread address to wasm to store it for fast access.
       Module['__emscripten_thread_init'](e.data.pthread_ptr, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0, /*canBlock=*/1);
 
@@ -264,6 +266,7 @@ function handleMessage(e) {
 #if ASSERTIONS
               err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' called exit(), calling _emscripten_thread_exit.');
 #endif
+              closeProxyBrokerPort();
               Module['__emscripten_thread_exit'](ex.status);
             }
           }
@@ -284,6 +287,7 @@ function handleMessage(e) {
       }
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
       if (Module['_pthread_self']()) {
+        closeProxyBrokerPort();
         Module['__emscripten_thread_exit']({{{ cDefine('PTHREAD_CANCELED') }}});
       }
     } else if (e.data.target === 'setimmediate') {
