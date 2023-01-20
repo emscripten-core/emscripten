@@ -102,6 +102,13 @@ var LibraryPThread = {
       // the broker will forward the message to the intended recipient.
       // Alternatively, the main thread could play this role, but then messages
       // could be held up while the main thread is busy with other work.
+#if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE) {
+        // TODO: Node 16+ has btoa, so remove this when we drop support for
+        // older Nodes.
+        var btoa = (s) => { return Buffer.from(s).toString('base64'); };
+      }
+#endif
       PThread.proxyBroker = new Worker(new URL(
           'data:text/javascript;base64,' + btoa(
 #if ENVIRONMENT_MAY_BE_NODE
@@ -638,6 +645,12 @@ Object.assign(global, {
 
     worker.pthread_ptr = threadParams.pthread_ptr;
 
+#if ENVIRONMENT_MAY_BE_NODE
+    if (ENVIRONMENT_IS_NODE) {
+      // TODO: This isn't necessary in Node 18+
+      var { MessageChannel } = require('worker_threads');
+    }
+#endif
     var channel = new MessageChannel();
     var msg = {
         'cmd': 'run',
