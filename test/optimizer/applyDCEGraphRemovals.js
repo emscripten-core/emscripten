@@ -9,16 +9,16 @@ var expD4 = Module['expD4'] = asm['expD4'];
 
 // exports gotten indirectly (async compilation
 var expI1 = Module['expI1'] = (function() {
- return Module['asm']['expI1'].apply(null, arguments);
+ return (expI1 = Module['expI1'] = Module['asm']['expI1']).apply(null, arguments);
 });
 var expI2 = Module['expI2'] = (function() {
- return Module['asm']['expI2'].apply(null, arguments);
+ return (expI2 = Module['expI2'] = Module['asm']['expI2']).apply(null, arguments);
 });
 var expI3 = Module['expI3'] = (function() {
- return Module['asm']['expI3'].apply(null, arguments);
+ return (expI3 = Module['expI3'] = Module['asm']['expI3']).apply(null, arguments);
 });
 var expI4 = Module['expI4'] = (function() {
- return Module['asm']['expI4'].apply(null, arguments);
+ return (expI4 = Module['expI4'] = Module['asm']['expI4']).apply(null, arguments);
 });
 
 // add uses for some of them, leave *4 as non-roots
