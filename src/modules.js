@@ -351,12 +351,6 @@ function exportRuntime() {
     'FS_createLink',
     'FS_createDevice',
     'FS_unlink',
-    'getLEB',
-    'getFunctionTables',
-    'alignFunctionTables',
-    'registerFunctions',
-    'prettyPrint',
-    'getCompilerSetting',
     'out',
     'err',
     'callMain',
@@ -397,6 +391,14 @@ function exportRuntime() {
   if (SUPPORT_BASE64_EMBEDDING) {
     runtimeElements.push('intArrayFromBase64');
     runtimeElements.push('tryParseAsDataURI');
+  }
+
+  if (RETAIN_COMPILER_SETTINGS) {
+    runtimeElements.push('getCompilerSetting')
+  }
+
+  if (RUNTIME_DEBUG) {
+    runtimeElements.push('prettyPrint')
   }
 
   // dynCall_* methods are not hardcoded here, as they
