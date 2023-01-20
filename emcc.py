@@ -2157,9 +2157,19 @@ def phase_linker_setup(options, state, newargs):
     settings.MIN_IE_VERSION = 0
     settings.MIN_EDGE_VERSION = 0
     settings.MIN_CHROME_VERSION = 0
+    settings.MIN_NODE_VERSION = 0
 
   if settings.MIN_CHROME_VERSION <= 37:
     settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 1
+
+  # 10.19.0 is the oldest version of node that we do any testing with.
+  # Keep this in sync with the test-node-compat in .circleci/config.yml
+  # and MINIMUM_NODE_VERSION in tools/shared.py
+  if settings.MIN_NODE_VERSION:
+    if settings.MIN_NODE_VERSION < 101900:
+      exit_with_error('targeting node older than 10.19.00 is not supported')
+    if settings.MIN_NODE_VERSION >= 150000:
+      default_setting('NODEJS_CATCH_REJECTION', 0)
 
   setup_environment_settings()
 
