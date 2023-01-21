@@ -79,7 +79,7 @@ function runJSify(symbolsOnly = false) {
     }
   }
   if (INCLUDE_FULL_LIBRARY) {
-    for (const key in LibraryManager.library) {
+    for (const key of Object.keys(LibraryManager.library)) {
       if (!isJsLibraryConfigIdentifier(key)) {
         symbolsNeeded.push(key);
       }

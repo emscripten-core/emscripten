@@ -232,7 +232,7 @@ global.LibraryManager = {
       }
     }
 
-    for (const ident in this.library) {
+    for (const ident of Object.keys(this.library)) {
       if (isJsLibraryConfigIdentifier(ident)) {
         const index = ident.lastIndexOf('__');
         const basename = ident.slice(0, index);
@@ -279,8 +279,8 @@ function addMissingLibraryStubs() {
   let rtn = '';
   const librarySymbolSet = new Set(librarySymbols);
   const missingSyms = [];
-  for (const ident in LibraryManager.library) {
-    if (typeof LibraryManager.library[ident] === 'function' || typeof LibraryManager.library[ident] === 'number') {
+  for (const [ident, value] of Object.entries(LibraryManager.library)) {
+    if (typeof value === 'function' || typeof value === 'number') {
       if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !isInternalSymbol(ident)) {
         const name = ident.substr(1);
         if (!librarySymbolSet.has(name)) {
@@ -424,7 +424,7 @@ function exportRuntime() {
   // Add JS library elements such as FS, GL, ENV, etc. These are prefixed with
   // '$ which indicates they are JS methods.
   let runtimeElementsSet = new Set(runtimeElements);
-  for (const ident in LibraryManager.library) {
+  for (const ident of Object.keys(LibraryManager.library)) {
     if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !isInternalSymbol(ident)) {
       const jsname = ident.substr(1);
       assert(!runtimeElementsSet.has(jsname), 'runtimeElements contains library symbol: ' + ident);
