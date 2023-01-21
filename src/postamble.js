@@ -33,17 +33,17 @@ function callMain() {
 
 #if STANDALONE_WASM
 #if EXPECT_MAIN
-  var entryFunction = Module['__start'];
+  var entryFunction = __start;
 #else
-  var entryFunction = Module['__initialize'];
+  var entryFunction = __initialize;
 #endif
 #else
 #if PROXY_TO_PTHREAD
   // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
   // that will call the user's real main() for the application.
-  var entryFunction = Module['__emscripten_proxy_main'];
+  var entryFunction = __emscripten_proxy_main;
 #else
-  var entryFunction = Module['_main'];
+  var entryFunction = _main;
 #endif
 #endif
 
