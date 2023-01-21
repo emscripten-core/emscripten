@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 3.1.31 (in development)
 -----------------------
+- Symbols that were previously exported from native code, but only for internal
+  reasons, are no longer exported on the `Module` object by default.  For
+  example, previously if you were using `Module._malloc` but not explicitly
+  including `_malloc` in `EXPORTED_FUNCTIONS`, it might have been exported
+  anyway due to internal use of `malloc` within the JS library code. (#18564)
 - The `STACK_SIZE`, `STACK_ALIGN`, `POINTER_SIZE`, and `ASSERTIONS` JavaScript
   globals were removed by default.  In debug builds a clear error is shown if
   you try to use these. (#18503)

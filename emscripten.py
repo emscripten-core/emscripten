@@ -315,6 +315,9 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
   if settings.RELOCATABLE and settings.MEMORY64 == 2:
     metadata.imports += ['__memory_base32']
 
+  if settings.ASYNCIFY:
+    metadata.exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
+
   update_settings_glue(out_wasm, metadata)
 
   if not settings.WASM_BIGINT and metadata.emJsFuncs:
@@ -390,9 +393,6 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     pre += "}\n"
 
   exports = metadata.exports
-
-  if settings.ASYNCIFY:
-    exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
 
   report_missing_symbols(forwarded_json['librarySymbols'])
 
@@ -696,6 +696,15 @@ def make_export_wrappers(exports, delay_assignment):
     if name == '__cpp_exception':
       continue
     mangled = asmjs_mangle(name)
+    wrapper = '/** @type {function(...*):?} */\nvar %s = ' % mangled
+
+    # TODO(sbc): Can we avoid exporting the dynCall_ functions on the module.
+    if mangled in settings.EXPORTED_FUNCTIONS or name.startswith('dynCall_'):
+      exported = 'Module["%s"] = ' % mangled
+    else:
+      exported = ''
+    wrapper += exported
+
     # The emscripten stack functions are called very early (by writeStackCookie) before
     # the runtime is initialized so we can't create these wrappers that check for
     # runtimeInitialized.
@@ -705,29 +714,20 @@ def make_export_wrappers(exports, delay_assignment):
       # With assertions enabled we create a wrapper that are calls get routed through, for
       # the lifetime of the program.
       if delay_assignment:
-        wrappers.append('''\
-/** @type {function(...*):?} */
-var %(mangled)s = Module["%(mangled)s"] = createExportWrapper("%(name)s");
-''' % {'mangled': mangled, 'name': name})
+        wrapper += 'createExportWrapper("%s");' % name
       else:
-        wrappers.append('''\
-/** @type {function(...*):?} */
-var %(mangled)s = Module["%(mangled)s"] = createExportWrapper("%(name)s", asm);
-''' % {'mangled': mangled, 'name': name})
+        wrapper += 'createExportWrapper("%s", asm);' % name
     elif delay_assignment:
       # With assertions disabled the wrapper will replace the global var and Module var on
       # first use.
-      wrappers.append('''\
-/** @type {function(...*):?} */
-var %(mangled)s = Module["%(mangled)s"] = function() {
-  return (%(mangled)s = Module["%(mangled)s"] = Module["asm"]["%(name)s"]).apply(null, arguments);
+      wrapper += '''function() {
+  return (%(mangled)s = %(exported)sModule["asm"]["%(name)s"]).apply(null, arguments);
 };
-''' % {'mangled': mangled, 'name': name})
+''' % {'mangled': mangled, 'name': name, 'exported': exported}
     else:
-      wrappers.append('''\
-/** @type {function(...*):?} */
-var %(mangled)s = Module["%(mangled)s"] = asm["%(name)s"]
-''' % {'mangled': mangled, 'name': name})
+      wrapper += 'asm["%s"]' % name
+
+    wrappers.append(wrapper)
   return wrappers
 
 

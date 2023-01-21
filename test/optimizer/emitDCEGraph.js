@@ -49,6 +49,8 @@ var expD1 = Module['expD1'] = asm['expD1'];
 var expD2 = Module['expD2'] = asm['expD2'];
 var expD3 = Module['expD3'] = asm['expD3'];
 var expD4 = Module['expD4'] = asm['expD4'];
+// Same as above but not export on the Module
+var expD5 = asm['expD5'];
 
 // exports gotten indirectly (async compilation
 var expI1 = Module['expI1'] = function() {
@@ -62,6 +64,10 @@ var expI3 = Module['expI3'] = function() {
 };
 var expI4 = Module['expI4'] = function() {
  return (expI4 = Module['expI4'] = Module['asm']['expI4']).apply(null, arguments);
+};
+// Same as above but not export on the Module.
+var expI5 = function() {
+ return (expI5 = Module['asm']['expI5']).apply(null, arguments);
 };
 
 // add uses for some of them
