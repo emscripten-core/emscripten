@@ -853,9 +853,9 @@ function createWasm() {
 
 #if USE_PTHREADS
 #if MAIN_MODULE
-    registerTLSInit(Module['asm']['_emscripten_tls_init'], instance.exports, metadata);
+    registerTLSInit(__emscripten_tls_init, instance.exports, metadata);
 #else
-    registerTLSInit(Module['asm']['_emscripten_tls_init']);
+    registerTLSInit(__emscripten_tls_init);
 #endif
 #endif
 
@@ -886,7 +886,7 @@ function createWasm() {
 #endif
 
 #if hasExportedSymbol('__wasm_apply_data_relocs')
-    __RELOC_FUNCS__.push(Module['asm']['__wasm_apply_data_relocs']);
+    __RELOC_FUNCS__.push(___wasm_apply_data_relocs);
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS

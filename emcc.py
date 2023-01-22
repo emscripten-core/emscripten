@@ -1644,6 +1644,7 @@ def setup_pthreads(target):
     'emscripten_main_thread_process_queued_calls',
     'emscripten_run_in_main_runtime_thread_js',
     'emscripten_stack_set_limits',
+    '_emscripten_tls_init',
   ]
 
   if settings.MAIN_MODULE:
@@ -1662,7 +1663,6 @@ def setup_pthreads(target):
     '__emscripten_thread_init',
     '__emscripten_thread_exit',
     '__emscripten_thread_crashed',
-    '__emscripten_tls_init',
     '_pthread_self',
     'executeNotifiedProxyingQueue',
   ]
