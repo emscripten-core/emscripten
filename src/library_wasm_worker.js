@@ -50,7 +50,7 @@ mergeInto(LibraryManager.library, {
 
   // src/postamble_minimal.js brings this symbol in to the build, and calls this function synchronously
   // from main JS file at the startup of each Worker.
-  _wasm_worker_initializeRuntime__deps: ['_wasm_worker_delayedMessageQueue', '_wasm_worker_runPostMessage'],
+  _wasm_worker_initializeRuntime__deps: ['_wasm_worker_delayedMessageQueue', '_wasm_worker_runPostMessage', '_wasm_worker_appendToQueue'],
   _wasm_worker_initializeRuntime: function() {
     let m = Module;
 #if ASSERTIONS
