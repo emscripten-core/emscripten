@@ -24,6 +24,12 @@
         ]
     },
     {
+        "file": "threading_internal.h",
+        "defines": [
+            "EM_QUEUED_JS_CALL_MAX_ARGS"
+        ]
+    },
+    {
         "file": "dynlink.h",
         "structs": {
             "dso": [
