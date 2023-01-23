@@ -256,7 +256,7 @@ var LibraryDylink = {
   },
 
   $dlSetError__internal: true,
-  $dlSetError__deps: ['__dl_seterr', '$allocateUTF8OnStack'],
+  $dlSetError__deps: ['__dl_seterr', '$allocateUTF8OnStack', '$withStackSave'],
   $dlSetError: function(msg) {
     withStackSave(function() {
       var cmsg = allocateUTF8OnStack(msg);
