@@ -6,5 +6,4 @@ env.__table_base
 env.emscripten_memcpy_big
 env.emscripten_resize_heap
 env.memory
-env.setTempRet0
 wasi_snapshot_preview1.fd_write
