@@ -42,18 +42,7 @@ int emscripten_futex_wait(volatile void/*uint32_t*/ *addr, uint32_t val, double 
 // INT_MAX to wake all waiters on that location.
 int emscripten_futex_wake(volatile void/*uint32_t*/ *addr, int count);
 
-// Proxied JS function can support a few more arguments than proxied C/C++
-// functions, because the dispatch is variadic and signature independent.
-#define EM_QUEUED_JS_CALL_MAX_ARGS 20
-
 typedef struct em_queued_call em_queued_call;
-
-void emscripten_sync_run_in_main_thread(em_queued_call *call);
-void *emscripten_sync_run_in_main_thread_0(int function);
-void *emscripten_sync_run_in_main_thread_1(int function, void *arg1);
-void *emscripten_sync_run_in_main_thread_2(int function, void *arg1, void *arg2);
-void *emscripten_sync_run_in_main_thread_3(int function, void *arg1, void *arg2, void *arg3);
-void *emscripten_sync_run_in_main_thread_7(int function, void *arg1, void *arg2, void *arg3, void *arg4, void *arg5, void *arg6, void *arg7);
 
 // Encode function signatures into a single uint32_t integer.
 // N.B. This encoding scheme is internal to the implementation, and can change
