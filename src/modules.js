@@ -268,35 +268,36 @@ function isInternalSymbol(ident) {
   return ident + '__internal' in LibraryManager.library;
 }
 
+function getUnusedLibarySymbols() {
+  const librarySymbolSet = new Set(librarySymbols);
+  const missingSyms = new Set();
+  for (const [ident, value] of Object.entries(LibraryManager.library)) {
+    if (typeof value === 'function' || typeof value === 'number') {
+      if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !isInternalSymbol(ident)) {
+        const name = ident.substr(1);
+        if (!librarySymbolSet.has(name)) {
+          missingSyms.add(name);
+        }
+      }
+    }
+  }
+  return missingSyms;
+}
+
 // When running with ASSERTIONS enabled we create stubs for each library
 // function that that was not included in the build.  This gives useful errors
 // when library dependencies are missing from `__deps` or depended on without
 // being added to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
 // TODO(sbc): These errors could potentially be generated at build time via
 // some kind of acorn pass that searched for uses of these missing symbols.
-function addMissingLibraryStubs() {
-  if (!ASSERTIONS) return '';
+function addMissingLibraryStubs(unusedLibSymbols) {
   let rtn = '';
-  const librarySymbolSet = new Set(librarySymbols);
-  const missingSyms = [];
-  for (const [ident, value] of Object.entries(LibraryManager.library)) {
-    if (typeof value === 'function' || typeof value === 'number') {
-      if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !isInternalSymbol(ident)) {
-        const name = ident.substr(1);
-        if (!librarySymbolSet.has(name)) {
-          missingSyms.push(name);
-        }
-      }
-    }
+  rtn += 'var missingLibrarySymbols = [\n';
+  for (const sym of unusedLibSymbols) {
+    rtn += `  '${sym}',\n`;
   }
-  if (missingSyms.length) {
-    rtn += 'var missingLibrarySymbols = [\n';
-    for (const sym of missingSyms) {
-      rtn += `  '${sym}',\n`;
-    }
-    rtn += '];\n';
-    rtn += 'missingLibrarySymbols.forEach(missingLibrarySymbol)\n';
-  }
+  rtn += '];\n';
+  rtn += 'missingLibrarySymbols.forEach(missingLibrarySymbol)\n';
   return rtn;
 }
 
@@ -440,26 +441,32 @@ function exportRuntime() {
     }
   }
 
-  let unexportedStubs = '';
+  const exports = runtimeElements.map(maybeExport);
+  const results = exports.filter((name) => name);
+
   if (ASSERTIONS) {
+    const unusedLibSymbols = getUnusedLibarySymbols();
+    if (unusedLibSymbols.size) {
+      results.push(addMissingLibraryStubs(unusedLibSymbols));
+    }
+
     const unexported = [];
     for (const name of runtimeElements) {
-      if (!EXPORTED_RUNTIME_METHODS_SET.has(name)) {
+      if (!EXPORTED_RUNTIME_METHODS_SET.has(name) && !unusedLibSymbols.has(name)) {
         unexported.push(name);
       }
     }
 
-    if (unexported.length) {
-      unexportedStubs += 'var unexportedRuntimeSymbols = [\n';
+    if (unexported.length || unusedLibSymbols.size) {
+      let unexportedStubs = 'var unexportedSymbols = [\n';
       for (const sym of unexported) {
         unexportedStubs += `  '${sym}',\n`;
       }
       unexportedStubs += '];\n';
-      unexportedStubs += 'unexportedRuntimeSymbols.forEach(unexportedRuntimeSymbol);\n';
+      unexportedStubs += 'unexportedSymbols.forEach(unexportedRuntimeSymbol);\n';
+      results.push(unexportedStubs);
     }
   }
 
-  let exports = runtimeElements.map((name) => maybeExport(name));
-  exports = exports.filter((name) => name);
-  return exports.join('\n') + '\n' + unexportedStubs + addMissingLibraryStubs();
+  return results.join('\n') + '\n';
 }

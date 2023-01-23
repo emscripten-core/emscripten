@@ -76,6 +76,9 @@ function missingLibrarySymbol(sym) {
       }
     });
   }
+  // Any symbol that is not included from the JS libary is also (by definttion)
+  // not exported on the Module object.
+  unexportedRuntimeSymbol(sym);
 }
 
 function unexportedRuntimeSymbol(sym) {
