@@ -6,7 +6,7 @@
 
 var LibraryStackTrace = {
 #if DEMANGLE_SUPPORT
-  $demangle__deps: ['$withStackSave', '__cxa_demangle'],
+  $demangle__deps: ['$withStackSave', '__cxa_demangle', 'free'],
 #endif
   $demangle: function(func) {
 #if DEMANGLE_SUPPORT
