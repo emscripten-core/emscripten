@@ -32,7 +32,7 @@ See docs/process.md for more on how version tagging works.
   like JS library files and the core runtime JS files.  This means they can
   now contain #if/#else/#endif blocks and {{{ }}} macro blocks. (#18525)
 - `-sEXPORT_ALL` can now be used to export symbols on the `Module` object
-  when used with `-sMINIMA_RUNTIME` and `-sMODULARIZE` together.
+  when used with `-sMINIMA_RUNTIME` and `-sMODULARIZE` together. (#17911)
 
 3.1.30 - 01/11/23
 -----------------
