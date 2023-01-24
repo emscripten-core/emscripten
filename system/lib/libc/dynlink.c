@@ -39,18 +39,34 @@ typedef void (*dlopen_callback_func)(struct dso*, struct async_data* user_data);
 
 void _dlinit(struct dso* main_dso_handle);
 void* _dlopen_js(struct dso* handle);
-void* _dlsym_js(struct dso* handle, const char* symbol);
+void* _dlsym_js(struct dso* handle, const char* symbol, int* sym_index);
 void _emscripten_dlopen_js(struct dso* handle,
                            dlopen_callback_func onsuccess,
                            dlopen_callback_func onerror,
                            struct async_data* user_data);
 void __dl_vseterr(const char*, va_list);
 
-static struct dso * _Atomic head, * _Atomic tail;
+// We maintain a list of all dlopen and dlsym events linked list.
+// In multi-threaded builds this is used to keep all the threads in sync
+// with each other.
+// In single-threaded builds its only used to keep track of valid DSO handles.
+struct dlevent {
+  struct dlevent *next, *prev;
+  // Symbol index resulting from dlsym call. -1 means this is a dso event.
+  int sym_index;
+  // dso handler resulting fomr dleopn call.  Only valid when sym_index is -1.
+  struct dso* dso;
+#ifdef DYLINK_DEBUG
+  int id;
+#endif
+};
+static struct dlevent * _Atomic head, * _Atomic tail;
 
 #ifdef _REENTRANT
-static thread_local struct dso* thread_local_tail;
+static thread_local struct dlevent* thread_local_tail;
 static pthread_mutex_t write_lock = PTHREAD_MUTEX_INITIALIZER;
+
+void* _dlsym_catchup_js(struct dso* handle, int sym_index);
 
 static void dlsync() {
   if (!thread_local_tail) {
@@ -61,22 +77,32 @@ static void dlsync() {
   }
   dbg("dlsync: catching up %p %p", thread_local_tail, tail);
   while (thread_local_tail->next) {
-    struct dso* p = thread_local_tail->next;
-    dbg("dlsync: %s mem_addr=%p "
-        "mem_size=%zu table_addr=%p table_size=%zu",
-        p->name,
-        p->mem_addr,
-        p->mem_size,
-        p->table_addr,
-        p->table_size);
-    void* success = _dlopen_js(p);
-    if (!success) {
-      // If any on the libraries fails to load here then we give up.
-      // TODO(sbc): Ideally this would never happen and we could/should
-      // abort, but on the main thread (where we don't have sync xhr) its
-      // often not possible to syncronously load side module.
-      _emscripten_errf("_dlopen_js failed: %s", dlerror());
-      break;
+    struct dlevent* p = thread_local_tail->next;
+    if (p->sym_index != -1) {
+      dbg("dlsync: id=%d %s sym_index=%d", p->id, p->dso->name, p->sym_index);
+      void* success = _dlsym_catchup_js(p->dso, p->sym_index);
+      if (!success) {
+        _emscripten_errf("_dlsym_catchup_js failed: %s", dlerror());
+        break;
+      }
+    } else {
+      dbg("dlsync: id=%d %s mem_addr=%p "
+          "mem_size=%zu table_addr=%p table_size=%zu",
+          p->id,
+          p->dso->name,
+          p->dso->mem_addr,
+          p->dso->mem_size,
+          p->dso->table_addr,
+          p->dso->table_size);
+      void* success = _dlopen_js(p->dso);
+      if (!success) {
+        // If any on the libraries fails to load here then we give up.
+        // TODO(sbc): Ideally this would never happen and we could/should
+        // abort, but on the main thread (where we don't have sync xhr) its
+        // often not possible to syncronously load side module.
+        _emscripten_errf("_dlopen_js failed: %s", dlerror());
+        break;
+      }
     }
     thread_local_tail = p;
   }
@@ -134,12 +160,43 @@ static void error(const char* fmt, ...) {
 }
 
 int __dl_invalid_handle(void* h) {
-  struct dso* p;
+  struct dlevent* p;
   for (p = head; p; p = p->next)
-    if (h == p)
+    if (p->sym_index == -1 && p->dso == h)
       return 0;
+  dbg("__dl_invalid_handle %p", h);
   error("Invalid library handle %p", (void*)h);
   return 1;
+}
+
+void new_dlevent(struct dso* p, int sym_index) {
+  struct dlevent* ev = calloc(1, sizeof(struct dlevent));
+
+  ev->dso = p;
+  ev->sym_index = sym_index;
+  if (p) p->event = ev;
+
+  // insert into linked list
+  ev->prev = tail;
+  if (tail) {
+    tail->next = ev;
+#ifdef DYLINK_DEBUG
+    ev->id = tail->id + 1;
+#endif
+  }
+  dbg("new_dlevent: id=%d %s dso=%p sym_index=%d",
+      ev->id,
+      p ? p->name : "RTLD_DEFAULT",
+      p,
+      sym_index);
+  tail = ev;
+#if _REENTRANT
+  thread_local_tail = ev;
+#endif
+
+  if (!head) {
+    head = ev;
+  }
 }
 
 static void load_library_done(struct dso* p) {
@@ -150,21 +207,7 @@ static void load_library_done(struct dso* p) {
       p->mem_size,
       p->table_addr,
       p->table_size);
-
-#ifdef _REENTRANT
-  thread_local_tail = p;
-#endif
-
-  // insert into linked list
-  p->prev = tail;
-  if (tail) {
-    tail->next = p;
-  }
-  tail = p;
-
-  if (!head) {
-    head = p;
-  }
+  new_dlevent(p, -1);
 }
 
 static struct dso* load_library_start(const char* name, int flags) {
@@ -188,7 +231,7 @@ static void dlopen_js_onsuccess(struct dso* dso, struct async_data* data) {
       dso->mem_addr,
       dso->mem_size);
   load_library_done(dso);
-  do_write_lock();
+  do_write_unlock();
   data->onsuccess(data->user_data, dso);
   free(data);
 }
@@ -223,23 +266,25 @@ static void ensure_init() {
 void* dlopen(const char* file, int flags) {
   ensure_init();
   if (!file) {
-    return head;
+    return head->dso;
   }
   dbg("dlopen: %s [%d]", file, flags);
 
-  struct dso* p;
   int cs;
   pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
   do_write_lock();
 #ifdef _REENTRANT
-  // Make sure we are in sync before loading any new DSOs.
+  // Make sure we are in sync before performing any write operations.
   dlsync();
 #endif
 
+  struct dso* p;
+
   /* Search for the name to see if it's already loaded */
-  for (p = head; p; p = p->next) {
-    if (!strcmp(p->name, file)) {
-      dbg("dlopen: already opened: %p", p);
+  for (struct dlevent* e = head; e; e = e->next) {
+    if (e->sym_index == -1 && !strcmp(e->dso->name, file)) {
+      dbg("dlopen: already opened: %p", e->dso);
+      p = e->dso;
       goto end;
     }
   }
@@ -272,6 +317,10 @@ void emscripten_dlopen(const char* filename, int flags, void* user_data,
     return;
   }
   do_write_lock();
+#ifdef _REENTRANT
+  // Make sure we are in sync before performing any write operations.
+  dlsync();
+#endif
   struct dso* p = load_library_start(filename, flags);
   if (!p) {
     do_write_unlock();
@@ -291,13 +340,24 @@ void emscripten_dlopen(const char* filename, int flags, void* user_data,
 }
 
 void* __dlsym(void* restrict p, const char* restrict s, void* restrict ra) {
+  ensure_init();
   dbg("__dlsym dso:%p sym:%s", p, s);
   if (p != RTLD_DEFAULT && p != RTLD_NEXT && __dl_invalid_handle(p)) {
     return 0;
   }
   void* res;
-  res = _dlsym_js(p, s);
+  int sym_index = -1;
+  do_write_lock();
+#ifdef _REENTRANT
+  // Make sure we are in sync before performing any write operations.
+  dlsync();
+#endif
+  res = _dlsym_js(p, s, &sym_index);
+  if (sym_index != -1) {
+    new_dlevent(p, sym_index);
+  }
   dbg("__dlsym done dso:%p res:%p", p, res);
+  do_write_unlock();
   return res;
 }
 

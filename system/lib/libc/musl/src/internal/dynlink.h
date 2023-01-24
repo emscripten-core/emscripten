@@ -13,7 +13,8 @@
 #include <emscripten/emscripten.h>
 
 struct dso {
-  struct dso *next, *prev;
+  // Pointer back to the dlevent in the event sequence which loaded this DSO.
+  struct dlevent* event;
 
   // Flags used to open the library.  We need to cache these so that other
   // threads can mirror the open library state.
