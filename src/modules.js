@@ -444,7 +444,7 @@ function exportRuntime() {
   const exports = runtimeElements.map(maybeExport);
   const results = exports.filter((name) => name);
 
-  if (ASSERTIONS) {
+  if (ASSERTIONS && !EXPORT_ALL) {
     const unusedLibSymbols = getUnusedLibarySymbols();
     if (unusedLibSymbols.size) {
       results.push(addMissingLibraryStubs(unusedLibSymbols));

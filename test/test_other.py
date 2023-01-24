@@ -1307,6 +1307,39 @@ int f() {
     self.emcc('lib.c', ['-Oz', '-sEXPORT_ALL', '-sLINKABLE', '--pre-js', 'main.js'], output_filename='a.out.js')
     self.assertContained('libf1\nlibf2\n', self.run_js('a.out.js'))
 
+  def test_minimal_runtime_export_all_modularize(self):
+    """This test ensures that MODULARIZE and EXPORT_ALL work simultaneously.
+
+    In addition, it ensures that EXPORT_ALL is honored while using MINIMAL_RUNTIME.
+    """
+
+    create_file('main.c', r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+      EMSCRIPTEN_KEEPALIVE void libf1() { printf("libf1\n"); }
+      EMSCRIPTEN_KEEPALIVE void libf2() { printf("libf2\n"); }
+    ''')
+
+    self.emcc('main.c', ['-sMODULARIZE=1', '-sMINIMAL_RUNTIME=2', '-sEXPORT_ALL', '-sEXPORT_ES6'], output_filename='test.mjs')
+
+    # We must expose __dirname and require globally because emscripten
+    # uses those under the hood.
+    create_file('main.mjs', '''
+      import { dirname } from 'path';
+      import { createRequire } from 'module';
+      globalThis.__dirname = dirname(import.meta.url).substring(7);
+      globalThis.require = createRequire(import.meta.url);
+
+      import Test from './test.mjs';
+      async function main() {
+        const mod = await Test();
+        mod._libf1();
+        mod._libf2();
+      }
+      main();
+    ''')
+    self.assertContained('libf1\nlibf2\n', self.run_js('main.mjs'))
+
   def test_export_all_and_exported_functions(self):
     # EXPORT_ALL should not export library functions by default.
     # This means that to export library function you also need to explicitly

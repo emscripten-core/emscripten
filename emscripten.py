@@ -756,7 +756,10 @@ def create_receiving(exports):
       for s in exports_that_are_not_initializers:
         mangled = asmjs_mangle(s)
         dynCallAssignment = ('dynCalls["' + s.replace('dynCall_', '') + '"] = ') if generate_dyncall_assignment and mangled.startswith('dynCall_') else ''
-        receiving += [dynCallAssignment + mangled + ' = asm["' + s + '"];']
+        export_assignment = ''
+        if settings.MODULARIZE and settings.EXPORT_ALL:
+          export_assignment = f'Module["{mangled}"] = '
+        receiving += [f'{export_assignment}{dynCallAssignment}{mangled} = asm["{s}"]']
     else:
       receiving += make_export_wrappers(exports, delay_assignment)
   else:
