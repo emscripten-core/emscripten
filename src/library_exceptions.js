@@ -121,7 +121,7 @@ var LibraryExceptions = {
     this.get_exception_ptr = function() {
       // Work around a fastcomp bug, this code is still included for some reason in a build without
       // exceptions support.
-      var isPointer = {{{ exportedAsmFunc('___cxa_is_pointer_type') }}}(this.get_type());
+      var isPointer = ___cxa_is_pointer_type(this.get_type());
       if (isPointer) {
         return {{{ makeGetValue('this.excPtr', '0', '*') }}};
       }
@@ -346,7 +346,7 @@ var LibraryExceptions = {
         break;
       }
       var adjusted_ptr_addr = info.ptr + {{{ C_STRUCTS.__cxa_exception.adjustedPtr }}};
-      if ({{{ exportedAsmFunc('___cxa_can_catch') }}}(caughtType, thrownType, adjusted_ptr_addr)) {
+      if (___cxa_can_catch(caughtType, thrownType, adjusted_ptr_addr)) {
 #if EXCEPTION_DEBUG
         dbg("  __cxa_find_matching_catch found " + [ptrToString(info.get_adjusted_ptr()), caughtType]);
 #endif
