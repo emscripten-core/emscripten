@@ -1308,19 +1308,17 @@ int f() {
     self.assertContained('libf1\nlibf2\n', self.run_js('a.out.js'))
 
   def test_minimal_runtime_export_all_modularize(self):
-    """
-    This test ensures that modularize and export all work simultaneously.
+    """This test ensures that MODULARIZE and EXPORT_ALL work simultaneously.
 
     In addition, it ensures that EXPORT_ALL is honored while using MINIMAL_RUNTIME.
     """
 
-    main = r'''
+    create_file('main.c', r'''
       #include <stdio.h>
       #include <emscripten.h>
       EMSCRIPTEN_KEEPALIVE void libf1() { printf("libf1\n"); }
       EMSCRIPTEN_KEEPALIVE void libf2() { printf("libf2\n"); }
-    '''
-    create_file('main.c', main)
+    ''')
 
     self.emcc('main.c', ['-sMODULARIZE=1', '-sMINIMAL_RUNTIME=2', '-sEXPORT_ALL', '-sEXPORT_ES6'], output_filename='test.mjs')
 
