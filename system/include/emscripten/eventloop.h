@@ -30,10 +30,6 @@ void emscripten_runtime_keepalive_push();
 void emscripten_runtime_keepalive_pop();
 EM_BOOL emscripten_runtime_keepalive_check();
 
-int emscripten_promise_create(void (*start_async)(void* user_data, int promise_id), void* user_data);
-void emscripten_promise_resolve(int promise_id, void* value);
-void emscripten_promise_reject(int promise_id);
-
 #ifdef __cplusplus
 }
 #endif

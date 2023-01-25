@@ -1,7 +1,0 @@
-async_work started: user_data=42 promise_id=0
-async_work started: user_data=99 promise_id=1
-exit_after_promises: 0 1
-main done
-timer_expired promise_id=0
-timer_expired promise_id=1
-promises resolved (100, 100); exiting
