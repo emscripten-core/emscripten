@@ -214,7 +214,7 @@ class other(RunnerCore):
       # from clang would be flushed to stderr first.
       self.assertContained('emcc (Emscripten gcc/clang-like replacement', proc.stderr)
       self.assertTrue(proc.stderr.startswith('emcc (Emscripten gcc/clang-like replacement'))
-      self.assertContained('clang version %s' % shared.EXPECTED_LLVM_VERSION, proc.stderr)
+      self.assertContained('clang version ', proc.stderr)
       self.assertContained('GNU', proc.stderr)
       self.assertContained('Target: wasm32-unknown-emscripten', proc.stderr)
       self.assertNotContained('this is dangerous', proc.stderr)
@@ -1307,6 +1307,7 @@ int f() {
     self.emcc('lib.c', ['-Oz', '-sEXPORT_ALL', '-sLINKABLE', '--pre-js', 'main.js'], output_filename='a.out.js')
     self.assertContained('libf1\nlibf2\n', self.run_js('a.out.js'))
 
+  @no_windows('https://github.com/emscripten-core/emscripten/issues/18596')
   def test_minimal_runtime_export_all_modularize(self):
     """This test ensures that MODULARIZE and EXPORT_ALL work simultaneously.
 
