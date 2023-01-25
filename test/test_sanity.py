@@ -18,7 +18,6 @@ from common import parameterized, EMBUILDER
 from tools.config import EM_CONFIG
 from tools.shared import EMCC
 from tools.shared import config
-from tools.shared import EXPECTED_LLVM_VERSION
 from tools.utils import delete_file, delete_dir
 from tools import cache
 from tools import shared, utils
@@ -27,6 +26,7 @@ from tools import ports
 
 SANITY_FILE = cache.get_path('sanity.txt')
 commands = [[EMCC], [path_from_root('test/runner'), 'blahblah']]
+expected_llvm_version = str(shared.EXPECTED_LLVM_VERSION) + '.0.0'
 
 
 def restore():
@@ -238,9 +238,10 @@ class sanity(RunnerCore):
     with open(EM_CONFIG, 'a') as f:
       f.write('LLVM_ROOT = "' + self.in_dir('fake') + '"')
 
-    real_version_x, real_version_y = (int(x) for x in EXPECTED_LLVM_VERSION.split('.'))
-    make_fake_clang(self.in_dir('fake', 'clang'), EXPECTED_LLVM_VERSION)
-    make_fake_tool(self.in_dir('fake', 'wasm-ld'), EXPECTED_LLVM_VERSION)
+    real_version_x = shared.EXPECTED_LLVM_VERSION
+    real_version_y = 0
+    make_fake_clang(self.in_dir('fake', 'clang'), expected_llvm_version)
+    make_fake_tool(self.in_dir('fake', 'wasm-ld'), expected_llvm_version)
 
     for inc_x in range(-2, 3):
       for inc_y in range(-2, 3):
@@ -253,8 +254,10 @@ class sanity(RunnerCore):
         make_fake_clang(self.in_dir('fake', 'clang'), '%s.%s' % (expected_x, expected_y))
         make_fake_tool(self.in_dir('fake', 'llvm-ar'), '%s.%s' % (expected_x, expected_y))
         make_fake_tool(self.in_dir('fake', 'llvm-nm'), '%s.%s' % (expected_x, expected_y))
-        did_modify = inc_x != 0 or inc_y != 0
-        if did_modify:
+        expect_warning = inc_x != 0
+        if 'BUILDBOT_BUILDNUMBER' in os.environ and inc_x == 1:
+          expect_warning = False
+        if expect_warning:
           output = self.check_working(EMCC, LLVM_WARNING)
         else:
           output = self.check_working(EMCC)
@@ -409,7 +412,7 @@ fi
     # Changing LLVM_ROOT, even without altering .emscripten, clears the cache
     restore_and_set_up()
     self.ensure_cache()
-    make_fake_clang(self.in_dir('fake', 'bin', 'clang'), EXPECTED_LLVM_VERSION)
+    make_fake_clang(self.in_dir('fake', 'bin', 'clang'), expected_llvm_version)
     with env_modify({'EM_LLVM_ROOT': self.in_dir('fake', 'bin')}):
       self.assertExists(cache.cachedir)
       output = self.do([EMCC])
@@ -645,8 +648,8 @@ fi
         # doesn't actually use it.
         f.write('BINARYEN_ROOT = "%s"\n' % self.in_dir('fake', 'bin'))
 
-      make_fake_clang(self.in_dir('fake', 'bin', 'clang'), EXPECTED_LLVM_VERSION, report)
-      make_fake_tool(self.in_dir('fake', 'bin', 'wasm-ld'), EXPECTED_LLVM_VERSION)
+      make_fake_clang(self.in_dir('fake', 'bin', 'clang'), expected_llvm_version, report)
+      make_fake_tool(self.in_dir('fake', 'bin', 'wasm-ld'), expected_llvm_version)
 
     # fake llc output
 
@@ -671,9 +674,9 @@ fi
   def test_empty_config(self):
     restore_and_set_up()
     make_fake_tool(self.in_dir('fake', 'wasm-opt'), 'foo')
-    make_fake_clang(self.in_dir('fake', 'clang'), EXPECTED_LLVM_VERSION)
-    make_fake_tool(self.in_dir('fake', 'llvm-ar'), EXPECTED_LLVM_VERSION)
-    make_fake_tool(self.in_dir('fake', 'llvm-nm'), EXPECTED_LLVM_VERSION)
+    make_fake_clang(self.in_dir('fake', 'clang'), expected_llvm_version)
+    make_fake_tool(self.in_dir('fake', 'llvm-ar'), expected_llvm_version)
+    make_fake_tool(self.in_dir('fake', 'llvm-nm'), expected_llvm_version)
     open(EM_CONFIG, 'w').close()
     with env_modify({'PATH': self.in_dir('fake') + os.pathsep + os.environ['PATH']}):
       self.check_working([EMCC])
@@ -681,9 +684,9 @@ fi
   def test_missing_config(self):
     restore_and_set_up()
     make_fake_tool(self.in_dir('fake', 'wasm-opt'), 'foo')
-    make_fake_clang(self.in_dir('fake', 'clang'), EXPECTED_LLVM_VERSION)
-    make_fake_tool(self.in_dir('fake', 'llvm-ar'), EXPECTED_LLVM_VERSION)
-    make_fake_tool(self.in_dir('fake', 'llvm-nm'), EXPECTED_LLVM_VERSION)
+    make_fake_clang(self.in_dir('fake', 'clang'), expected_llvm_version)
+    make_fake_tool(self.in_dir('fake', 'llvm-ar'), expected_llvm_version)
+    make_fake_tool(self.in_dir('fake', 'llvm-nm'), expected_llvm_version)
     delete_file(EM_CONFIG)
     with env_modify({'PATH': self.in_dir('fake') + os.pathsep + os.environ['PATH']}):
       self.check_working([EMCC])
