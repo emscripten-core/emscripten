@@ -823,7 +823,10 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
   import_name_map = {}
   for item in graph:
     if 'import' in item:
-      import_name_map[item['name']] = 'emcc$import$' + item['import'][1]
+      name = item['import'][1]
+      import_name_map[item['name']] = 'emcc$import$' + name
+      if asmjs_mangle(name) in settings.SIDE_MODULE_IMPORTS:
+        item['root'] = True
   temp = temp_files.get('.json', prefix='emcc_dce_graph_').name
   utils.write_file(temp, json.dumps(graph, indent=2))
   # run wasm-metadce

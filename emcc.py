@@ -832,16 +832,14 @@ def process_dynamic_libs(dylibs, lib_dirs):
     # main module to avoid creating new invoke functions at runtime.
     imports = set(imports)
     imports = set(i for i in imports if not i.startswith('invoke_'))
-    weak_imports = sorted(imports.intersection(exports))
     strong_imports = sorted(imports.difference(exports))
     logger.debug('Adding symbols requirements from `%s`: %s', dylib, imports)
 
     mangled_imports = [shared.asmjs_mangle(e) for e in sorted(imports)]
     mangled_strong_imports = [shared.asmjs_mangle(e) for e in strong_imports]
     settings.SIDE_MODULE_IMPORTS.extend(mangled_imports)
-    settings.EXPORTED_FUNCTIONS.extend(mangled_strong_imports)
-    settings.EXPORT_IF_DEFINED.extend(weak_imports)
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(strong_imports)
+    settings.EXPORT_IF_DEFINED.extend(sorted(imports))
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(sorted(imports))
     building.user_requested_exports.update(mangled_strong_imports)
 
 
@@ -2023,7 +2021,6 @@ def phase_linker_setup(options, state, newargs):
 
   if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
     settings.LINKABLE = 1
-    settings.EXPORT_ALL = 1
 
   if settings.LINKABLE and settings.USER_EXPORTED_FUNCTIONS:
     diagnostics.warning('unused-command-line-argument', 'EXPORTED_FUNCTIONS is not valid with LINKABLE set (normally due to SIDE_MODULE=1/MAIN_MODULE=1) since all functions are exported this mode.  To export only a subset use SIDE_MODULE=2/MAIN_MODULE=2')
