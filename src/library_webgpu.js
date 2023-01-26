@@ -1193,7 +1193,7 @@ var LibraryWebGPU = {
 
     var desc = {
       "label": undefined,
-      "layout":  makePipelineLayout(
+      "layout": WebGPU.makePipelineLayout(
         {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePipelineDescriptor.layout, '*') }}}),
       "compute": WebGPU.makeProgrammableStageDescriptor(
         descriptor + {{{ C_STRUCTS.WGPUComputePipelineDescriptor.compute }}}),
@@ -1386,7 +1386,7 @@ var LibraryWebGPU = {
 
     var desc = {
       "label": undefined,
-      "layout": makePipelineLayout(
+      "layout": WebGPU.makePipelineLayout(
         {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPipelineDescriptor.layout, '*') }}}),
       "vertex": makeVertexState(
         descriptor + {{{ C_STRUCTS.WGPURenderPipelineDescriptor.vertex }}}),
