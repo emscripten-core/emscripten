@@ -86,6 +86,7 @@ var LibraryPThread = {
         PThread.initWorker();
       } else {
         PThread.initMainThread();
+        PThread.initMessageRelay();
       }
     },
     initMainThread: function() {
@@ -96,36 +97,6 @@ var LibraryPThread = {
         PThread.allocateUnusedWorker();
       }
 #endif
-      // Spawn a dedicated worker for passing messages between threads. Instead
-      // of having each thread hold a message port for every other thread, they
-      // can just send messages with a `targetThread` property to the broker and
-      // the broker will forward the message to the intended recipient.
-      // Alternatively, the main thread could play this role, but then messages
-      // could be held up while the main thread is busy with other work.
-#if ENVIRONMENT_MAY_BE_NODE
-      if (ENVIRONMENT_IS_NODE) {
-        // TODO: Node 16+ has btoa, so remove this when we drop support for
-        // older Nodes.
-        var btoa = (s) => { return Buffer.from(s).toString('base64'); };
-      }
-#endif
-      PThread.proxyBroker = new Worker(new URL(
-          'data:text/javascript;base64,' + btoa(
-#if ENVIRONMENT_MAY_BE_NODE
-              (ENVIRONMENT_IS_NODE ?
-               `
-(await import('node:worker_threads'))
-  .parentPort
-  .on('message', (data) => onmessage({ data: data }));
-Object.assign(global, {
-  self: global,
-});
-` : "") +
-#endif
-`
-#include "proxy_broker.js"
-`
-          )));
     },
     initWorker: function() {
 #if USE_CLOSURE_COMPILER
@@ -148,6 +119,85 @@ Object.assign(global, {
       // their main function.  See comment in src/worker.js for more.
       noExitRuntime = false;
 #endif
+    },
+
+    initMessageRelay: function() {
+      // Spawn a dedicated worker for passing messages between threads. Instead
+      // of having each thread hold a message port for every other thread, they
+      // can just send messages with a `targetThread` property to the relay and
+      // the relay will forward the message to the intended recipient.
+      // Alternatively, the main thread could play this role, but then messages
+      // could be held up while the main thread is busy with other work.
+      var relayCode = '';
+
+      // On Node, do the minimal work to get a Web-compatible messaging
+      // interface.
+#if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE) {
+        relayCode +=
+`(await import('node:worker_threads'))
+  .parentPort
+  .on('message', (data) => onmessage({ data: data }));
+Object.assign(global, {
+  self: global,
+});
+`;
+      }
+#endif
+
+      relayCode += '(' + (() => {
+        // Map pthread IDs to message ports we use to communicate with those
+        // pthreads.
+        const threadPorts = new Map();
+
+        // Map recipient pthread IDs for whom we don't yet have a message port
+        // to messages we've received for them.
+        const bufferedMessages = new Map();
+
+        function handleMessage(msg) {
+          const thread = msg.data.targetThread;
+          const port = threadPorts.get(thread);
+          if (port !== undefined) {
+            port.postMessage(msg.data, msg.data.transferList);
+          } else {
+            // Hold on to the message until we receive a port for the recipient.
+            if (!bufferedMessages.has(thread)) {
+              bufferedMessages.set(thread, []);
+            }
+            bufferedMessages.get(thread).push(msg);
+          }
+        }
+
+        self.onmessage = (msg) => {
+          const cmd = msg.data.cmd;
+          const thread = msg.data.thread;
+          if (cmd === 'create') {
+            const port = msg.data.port;
+            threadPorts.set(thread, port);
+            port.onmessage = handleMessage;
+            // Forward any messages we have already received for this thread.
+            if (bufferedMessages.has(thread)) {
+              bufferedMessages.get(thread).forEach(handleMessage);
+              bufferedMessages.delete(thread);
+            }
+            return;
+          }
+          if (cmd === 'destroy') {
+            bufferedMessages.delete(thread);
+          }
+        };
+      }).toString() + ')()';
+
+#if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE) {
+        // TODO: Node 16+ has btoa, so remove this when we drop support for
+        // older Nodes.
+        var btoa = (s) => { return Buffer.from(s).toString('base64'); };
+      }
+#endif
+
+      PThread.messageRelay = new Worker(new URL(
+          'data:text/javascript;base64,' + btoa(relayCode)));
     },
 
 #if PTHREADS_PROFILING
@@ -527,8 +577,8 @@ Object.assign(global, {
 
   $closeProxyBrokerPort: function() {
     assert(ENVIRONMENT_IS_PTHREAD);
-    PThread.proxyBroker.close();
-    delete PThread.proxyBroker;
+    PThread.messageRelay.close();
+    delete PThread.messageRelay;
   },
 
   $killThread__deps: ['_emscripten_thread_free_data'],
@@ -543,7 +593,7 @@ Object.assign(global, {
     var worker = PThread.pthreads[pthread_ptr];
     delete PThread.pthreads[pthread_ptr];
     worker.terminate();
-    PThread.proxyBroker.postMessage({'cmd': 'destroy', 'thread': pthread_ptr});
+    PThread.messageRelay.postMessage({'cmd': 'destroy', 'thread': pthread_ptr});
     __emscripten_thread_free_data(pthread_ptr);
     // The worker was completely nuked (not just the pthread execution it was hosting), so remove it from running workers
     // but don't put it back to the pool.
@@ -566,7 +616,7 @@ Object.assign(global, {
     assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! cleanupThread() can only ever be called from main application thread!');
     assert(pthread_ptr, 'Internal Error! Null pthread_ptr in cleanupThread!');
 #endif
-    PThread.proxyBroker.postMessage({'cmd': 'destroy', 'thread': pthread_ptr});
+    PThread.messageRelay.postMessage({'cmd': 'destroy', 'thread': pthread_ptr});
     var worker = PThread.pthreads[pthread_ptr];
     assert(worker);
     PThread.returnWorkerToPool(worker);
@@ -674,7 +724,7 @@ Object.assign(global, {
     }
 #endif
     worker.postMessage(msg, [channel.port1].concat(threadParams.transferList));
-    PThread.proxyBroker.postMessage({
+    PThread.messageRelay.postMessage({
       'cmd': 'create',
       'thread': threadParams.pthread_ptr,
       'port': channel.port2,
@@ -1138,7 +1188,7 @@ Object.assign(global, {
     } else if (targetThreadId == mainThreadId) {
       postMessage({'cmd' : 'processProxyingQueue', 'queue' : queue});
     } else if (ENVIRONMENT_IS_PTHREAD) {
-      PThread.proxyBroker.postMessage({'targetThread' : targetThreadId, 'cmd' : 'processProxyingQueue', 'queue' : queue});
+      PThread.messageRelay.postMessage({'targetThread' : targetThreadId, 'cmd' : 'processProxyingQueue', 'queue' : queue});
     } else {
       var worker = PThread.pthreads[targetThreadId];
       if (!worker) {
