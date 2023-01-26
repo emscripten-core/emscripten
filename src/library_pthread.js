@@ -130,8 +130,9 @@ var LibraryPThread = {
       // could be held up while the main thread is busy with other work.
       var relayCode = '';
 
-      // On Node, do the minimal work to get a Web-compatible messaging
-      // interface.
+      // On Node, first do the minimal work to get a Web-compatible messaging
+      // interface. Use a template literal to avoid JS parsers failing on the
+      // unexpected `import` token.
 #if ENVIRONMENT_MAY_BE_NODE
       if (ENVIRONMENT_IS_NODE) {
         relayCode +=
@@ -188,16 +189,21 @@ Object.assign(global, {
         };
       }).toString() + ')()';
 
+      var base64;
 #if ENVIRONMENT_MAY_BE_NODE
       if (ENVIRONMENT_IS_NODE) {
         // TODO: Node 16+ has btoa, so remove this when we drop support for
         // older Nodes.
-        var btoa = (s) => { return Buffer.from(s).toString('base64'); };
+        base64 = (s) => { return Buffer.from(s).toString('base64'); };
+      } else {
+        base64 = btoa;
       }
+#else
+      base64 = btoa;
 #endif
 
       PThread.messageRelay = new Worker(new URL(
-          'data:text/javascript;base64,' + btoa(relayCode)));
+          'data:text/javascript;base64,' + base64(relayCode)));
     },
 
 #if PTHREADS_PROFILING
@@ -695,13 +701,18 @@ Object.assign(global, {
 
     worker.pthread_ptr = threadParams.pthread_ptr;
 
+    var MsgChannel;
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
       // TODO: This isn't necessary in Node 18+
-      var { MessageChannel } = require('worker_threads');
+      MsgChannel = require('worker_threads').MessageChannel;
+    } else {
+      MsgChannel = MessageChannel;
     }
+#else
+    MsgChannel = MessageChannel;
 #endif
-    var channel = new MessageChannel();
+    var channel = new MsgChannel();
     var msg = {
         'cmd': 'run',
         'start_routine': threadParams.startRoutine,
