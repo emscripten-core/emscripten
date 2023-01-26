@@ -59,9 +59,7 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  $makePromiseCallback__deps: ['$callUserCallback',
-                               '$withStackSave',
-                               '$getPromise',
+  $makePromiseCallback__deps: ['$getPromise',
                                '$POINTER_SIZE',
                                'emscripten_promise_destroy'],
   $makePromiseCallback: function(callback, userData) {
@@ -69,32 +67,33 @@ mergeInto(LibraryManager.library, {
 #if RUNTIME_DEBUG
       dbg('emscripten promise callback: ' + value);
 #endif
-      return withStackSave(() => {
-        var resultPtr = stackAlloc(POINTER_SIZE);
-        {{{ makeSetValue('resultPtr', 0, '0', '*') }}};
-        var result;
-        callUserCallback(() => {
-          result = {{{ makeDynCall('ippp', 'callback') }}}(
-              resultPtr, userData, value);
-        });
+      var stack = stackSave();
+      // Allocate space for the result value and initialize it to NULL.
+      var resultPtr = stackAlloc(POINTER_SIZE);
+      {{{ makeSetValue('resultPtr', 0, '0', '*') }}};
+      try {
+        var result =
+            {{{ makeDynCall('ippp', 'callback') }}}(resultPtr, userData, value);
         var resultVal = {{{ makeGetValue('resultPtr', 0, '*') }}};
-        if (result == {{{ cDefine('EM_PROMISE_FULFILL') }}}) {
-          return resultVal;
-        } else if (result == {{{ cDefine('EM_PROMISE_MATCH') }}}) {
-          return getPromise(resultVal);
-        } else if (result == {{{ cDefine('EM_PROMISE_MATCH_RELEASE') }}}) {
-          var ret = getPromise(resultVal);
-          _emscripten_promise_destroy(resultVal);
-          return ret;
-        } else if (result == {{{ cDefine('EM_PROMISE_REJECT') }}}) {
-          throw resultVal;
-        } else {
-          // The callback must have thrown an exception intercepted by
-          // `callUserCallback` or otherwise failed. Use a null ptr (0) as the
-          // default rejection value.
-          throw 0;
-        }
-      });
+      } finally {
+        // Thrown errors will reject the promise, but at least we will restore
+        // the stack first.
+        stackRestore(stack);
+      }
+      if (result == {{{ cDefine('EM_PROMISE_FULFILL') }}}) {
+        return resultVal;
+      } else if (result == {{{ cDefine('EM_PROMISE_MATCH') }}}) {
+        return getPromise(resultVal);
+      } else if (result == {{{ cDefine('EM_PROMISE_MATCH_RELEASE') }}}) {
+        var ret = getPromise(resultVal);
+        _emscripten_promise_destroy(resultVal);
+        return ret;
+      } else if (result == {{{ cDefine('EM_PROMISE_REJECT') }}}) {
+        throw resultVal;
+      }
+#if ASSERTIONS
+      abort("unexpected promise callback result " + result);
+#endif
     };
   },
 

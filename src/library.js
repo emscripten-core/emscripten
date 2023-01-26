@@ -588,11 +588,9 @@ mergeInto(LibraryManager.library, {
   $withStackSave__internal: true,
   $withStackSave: function(f) {
     var stack = stackSave();
-    try {
-      return f();
-    } finally {
-      stackRestore(stack);
-    }
+    var ret = f();
+    stackRestore(stack);
+    return ret;
   },
 
   // TODO: Initialize these to defaults on startup from system settings.
