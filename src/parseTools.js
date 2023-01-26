@@ -1038,8 +1038,10 @@ function convertPtrToIdx(ptr, accessWidth) {
 
   let conversion;
   if (MEMORY64) {
-    if (MAXIMUM_MEMORY > MAX_MEMORY53) conversion = /^\d+$/.test(accessWidth) ? `${ptr} >>= ${accessWidth}n` : `${ptr} >>= BigInt(${accessWidth})`;
-    else conversion = `${ptr} = Number(${ptr}) / ${accessWidth}`;
+    // if our address space would ever get larger than 53 bits, we could do something like this:
+    // if (MAXIMUM_MEMORY > MAX_MEMORY53) conversion = /^\d+$/.test(accessWidth) ? `${ptr} >>= ${accessWidth}n` : `${ptr} >>= BigInt(${accessWidth})`;
+    assert(MAXIMUM_MEMORY <= MAX_MEMORY53);
+    else conversion = `${ptr} = Number(${ptr}) / ${1 << accessWidth}`;
   } else if (MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024) {
     conversion = `${ptr} >>>= ${accessWidth}`;
   } else {
@@ -1052,8 +1054,8 @@ function convertPtrToIdx(ptr, accessWidth) {
 // Returns a pointer (either a BigInt or a signed int32 JS Number) shifted to an index on the heap (a BigInt or an unsigned JS Number).
 function ptrToIdx(ptr, accessWidth) {
   if (MEMORY64) {
-    if (MAXIMUM_MEMORY > MAX_MEMORY53) return /^\d+$/.test(accessWidth) ? `${ptr} >> ${accessWidth}n` : `${ptr} >> BigInt(${accessWidth})`;
-    return `Number(${ptr}) / ${accessWidth}`;
+    assert(MAXIMUM_MEMORY <= MAX_MEMORY53);
+    return `Number(${ptr}) / ${1 << accessWidth}`;
   }
   if (MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024) return `${ptr} >>> ${accessWidth}`;
   return accessWidth ? `${ptr} >> ${accessWidth}` : ptr;
