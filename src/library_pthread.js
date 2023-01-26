@@ -120,7 +120,6 @@ var LibraryPThread = {
       noExitRuntime = false;
 #endif
     },
-
     initMessageRelay: function() {
       // Spawn a dedicated worker for passing messages between threads. Instead
       // of having each thread hold a message port for every other thread, they
@@ -145,7 +144,6 @@ Object.assign(global, {
 `;
       }
 #endif
-
       relayCode += '(' + (() => {
         // Map pthread IDs to message ports we use to communicate with those
         // pthreads.
@@ -158,7 +156,7 @@ Object.assign(global, {
         function handleMessage(msg) {
           const thread = msg.data.targetThread;
           const port = threadPorts.get(thread);
-          if (port !== undefined) {
+          if (port) {
             console.log("forwarding message to", thread);
             port.postMessage(msg.data, msg.data.transferList);
           } else {
@@ -183,29 +181,33 @@ Object.assign(global, {
               bufferedMessages.get(thread).forEach(handleMessage);
               bufferedMessages.delete(thread);
             }
-            return;
-          }
-          if (cmd === 'destroy') {
+          } else if (cmd === 'destroy') {
             bufferedMessages.delete(thread);
           }
+#if ASSERTIONS
+          else {
+            console.error('unrecognized message relay command:', cmd);
+          }
+#endif
         };
       }).toString() + ')()';
 
-      var base64;
 #if ENVIRONMENT_MAY_BE_NODE
       if (ENVIRONMENT_IS_NODE) {
         // TODO: Node 16+ has btoa, so remove this when we drop support for
         // older Nodes.
-        base64 = (s) => { return Buffer.from(s).toString('base64'); };
-      } else {
-        base64 = btoa;
+        global.btoa = (s) => { return Buffer.from(s).toString('base64'); };
       }
-#else
-      base64 = btoa;
 #endif
-
       PThread.messageRelay = new Worker(new URL(
-          'data:text/javascript;base64,' + base64(relayCode)));
+          'data:text/javascript;base64,' + btoa(relayCode)));
+#if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE) {
+        // Do not keep Node alive if the message relay is the only thing
+        // running.
+        PThread.messageRelay.unref();
+      }
+#endif
     },
 
 #if PTHREADS_PROFILING
@@ -336,9 +338,9 @@ Object.assign(global, {
         // accessible variable about the thread that initiated the proxying.
         if (worker.pthread_ptr) PThread.currentProxiedOperationCallerThread = worker.pthread_ptr;
 
-        if (d['targetThread'] && d['targetThread'] != _pthread_self()) {
-          abort("unexpected message intended for thread" + d['targetThread']);
-        }
+#if ASSERTIONS
+        assert(!d['targetThread'] || d['targetThread'] == _pthread_self());
+#endif
 
         if (cmd === 'processProxyingQueue') {
           executeNotifiedProxyingQueue(d['queue']);
@@ -593,7 +595,6 @@ Object.assign(global, {
     }
   },
 
-
   $killThread__deps: ['_emscripten_thread_free_data'],
   $killThread: function(pthread_ptr) {
 #if PTHREADS_DEBUG
@@ -708,18 +709,13 @@ Object.assign(global, {
 
     worker.pthread_ptr = threadParams.pthread_ptr;
 
-    var MsgChannel;
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
       // TODO: This isn't necessary in Node 18+
-      MsgChannel = require('worker_threads').MessageChannel;
-    } else {
-      MsgChannel = MessageChannel;
+      global.MessageChannel = require('worker_threads').MessageChannel;
     }
-#else
-    MsgChannel = MessageChannel;
 #endif
-    var channel = new MsgChannel();
+    var channel = new MessageChannel();
     var msg = {
         'cmd': 'run',
         'start_routine': threadParams.startRoutine,
