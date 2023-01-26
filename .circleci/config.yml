@@ -555,6 +555,7 @@ jobs:
       - run-tests:
           title: "selected subset"
           test_targets: "
+            other.test_gen_struct_info
             other.test_native_call_before_init
             other.test_node_unhandled_rejection
             core2.test_hello_world"
@@ -567,6 +568,7 @@ jobs:
           # those flags should not be injected on newer versions.
           title: "selected subset"
           test_targets: "-v
+            other.test_gen_struct_info
             other.test_native_call_before_init
             other.test_node_unhandled_rejection
             core2.test_pthread_create
