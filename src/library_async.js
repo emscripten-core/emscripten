@@ -535,6 +535,7 @@ mergeInto(LibraryManager.library, {
 
   emscripten_load_secondary_module__sig: 'v',
   emscripten_load_secondary_module: async function() {
+    // Mark the module as loading for the wasm module (so it doesn't try to load it again).
     Module['asm']['load_secondary_module_status'].value = 1;
     var imports = {'primary': Module['asm']};
     // Replace '.wasm' suffix with '.deferred.wasm'.
