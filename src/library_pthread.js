@@ -741,7 +741,7 @@ Object.assign(global, {
       worker.ref();
     }
 #endif
-    worker.postMessage(msg, [channel.port1].concat(threadParams.transferList));
+    worker.postMessage(msg, threadParams.transferList.concat([channel.port1]));
     PThread.messageRelay.postMessage({
       'cmd': 'create',
       'thread': threadParams.pthread_ptr,
