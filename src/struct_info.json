@@ -915,7 +915,6 @@
         "file": "emscripten/threading.h",
         "defines": [
             "EM_PROXIED_RESIZE_OFFSCREENCANVAS",
-            "EM_QUEUED_JS_CALL_MAX_ARGS",
             "EM_FUNC_SIG_V",
             "EM_FUNC_SIG_VI",
             "EM_FUNC_SIG_VII",

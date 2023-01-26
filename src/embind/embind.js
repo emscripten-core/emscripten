@@ -1662,7 +1662,7 @@ var LibraryEmbind = {
 #if MEMORY64
     ptr = bigintToI53Checked(ptr);
 #if ASSERTIONS
-    assert(ptr != NaN);
+    assert(Number.isSafeInteger(ptr));
 #endif
 #endif
 

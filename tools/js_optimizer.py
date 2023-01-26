@@ -152,21 +152,12 @@ def run_on_js(filename, passes, extra_info=None, just_split=False, just_concat=F
     if os.linesep != '\n':
       js = js.replace(os.linesep, '\n') # we assume \n in the splitting code
 
-    # Find suffix
-    suffix_marker = '// EMSCRIPTEN_GENERATED_FUNCTIONS'
-    suffix_start = js.find(suffix_marker)
-    suffix = ''
-    if suffix_start >= 0:
-      suffix_end = js.find('\n', suffix_start)
-      suffix = js[suffix_start:suffix_end] + '\n'
-      # if there is metadata, we will run only on the generated functions. If there isn't, we will run on everything.
-
     # Find markers
     start_funcs = js.find(start_funcs_marker)
     end_funcs = js.rfind(end_funcs_marker)
 
-    if start_funcs < 0 or end_funcs < start_funcs or not suffix:
-      shared.exit_with_error('Invalid input file. Did not contain appropriate markers. (start_funcs: %s, end_funcs: %s, suffix_start: %s' % (start_funcs, end_funcs, suffix_start))
+    if start_funcs < 0 or end_funcs < start_funcs:
+      shared.exit_with_error('Invalid input file. Did not contain appropriate markers. (start_funcs: %s, end_funcs: %s' % (start_funcs, end_funcs))
 
     minify_globals = 'minifyNames' in passes
     if minify_globals:
@@ -240,13 +231,7 @@ EMSCRIPTEN_FUNCS();
       # if DEBUG:
       #   print >> sys.stderr, 'minify info:', minify_info
 
-  with ToolchainProfiler.profile_block('js_optimizer.remove_suffix_and_split'):
-    # remove suffix if no longer needed
-    if suffix and 'last' in passes:
-      suffix_start = post.find(suffix_marker)
-      suffix_end = post.find('\n', suffix_start)
-      post = post[:suffix_start] + post[suffix_end:]
-
+  with ToolchainProfiler.profile_block('js_optimizer.split'):
     total_size = len(js)
     funcs = split_funcs(js, just_split)
     js = None
@@ -270,7 +255,7 @@ EMSCRIPTEN_FUNCS();
     funcs = None
 
     if len(chunks):
-      serialized_extra_info = suffix_marker + '\n'
+      serialized_extra_info = ''
       if minify_globals:
         serialized_extra_info += '// EXTRA_INFO:' + json.dumps(minify_info)
       elif extra_info:
@@ -383,7 +368,6 @@ EMSCRIPTEN_FUNCS();
   with ToolchainProfiler.profile_block('write_post'):
     f.write('\n')
     f.write(post)
-    # No need to write suffix: if there was one, it is inside post which exists when suffix is there
     f.write('\n')
     f.close()
 

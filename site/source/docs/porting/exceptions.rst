@@ -33,6 +33,8 @@ the output:
 If you want to opt-in, you have two following options.
 
 
+.. _javascript-based-exception-support:
+
 JavaScript-based Exception Support
 ==================================
 
@@ -51,6 +53,8 @@ JavaScript engines with WebAssembly support. You can reduce the overhead by
 specifying a list of allowed functions in which exceptions are enabled, see the
 ``EXCEPTION_CATCHING_ALLOWED`` setting.
 
+
+.. _webassembly-exception-handling-based-support:
 
 WebAssembly Exception Handling-based Support
 ============================================
@@ -79,14 +83,41 @@ be supported in all WebAssembly engines yet
 Debugging Exceptions
 ====================
 
-When :ref:`ASSERTIONS <debugging-ASSERTIONS>` is enabled, uncaught exceptions
-will print stack traces for debugging. :ref:`ASSERTIONS <debugging-ASSERTIONS>`
-is enabled by default in :ref:`-O0 <emcc-O0>` and disabled in optimized builds
-(:ref:`-O1 <emcc-O1>` and above). You can enable it by passing ``-sASSERTIONS``
-to the ``emcc`` command line in optimized builds as well.
+Stack Traces
+------------
 
-You can also catch and examine C++ exceptions from JavaScript. See
-:ref:`handling-c-exceptions-from-javascript`.
+For :ref:`native Wasm exceptions
+<webassembly-exception-handling-based-support>`, when :ref:`ASSERTIONS
+<debugging-ASSERTIONS>` is enabled, uncaught exceptions will print stack traces
+for debugging. :ref:`ASSERTIONS <debugging-ASSERTIONS>` is enabled by default
+in :ref:`-O0 <emcc-O0>` and disabled in optimized builds (:ref:`-O1 <emcc-O1>`
+and above). You can enable it by passing ``-sASSERTIONS`` to the ``emcc``
+command line in optimized builds as well. To display Wasm function names in
+stack traces, you also need :ref:`--profiling-funcs <emcc-profiling-funcs>`
+(or :ref:`-g <emcc-g>` or :ref:`-gsource-map<emcc-gsource-map>`).
+
+In JavaScript, you can also examine the stack traces using
+`WebAssembly.Exception.prototype.stack
+<https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Exception/stack>`_
+property. For example:
+
+.. code-block:: javascript
+
+  try {
+    ... // some code that calls WebAssembly
+  } catch (e) {
+    // Do something with e.stack
+    console.log(e.stack);
+  }
+
+Stack traces within Wasm code are not supported in :ref:`JavaScipt-based
+exceptions <javascript-based-exception-support>`.
+
+Exception Messages
+------------------
+
+You can also catch and examine the type and the message of C++ exceptions from
+JavaScript. See :ref:`handling-c-exceptions-from-javascript`.
 
 
 Using Exceptions and setjmp-longjmp Together

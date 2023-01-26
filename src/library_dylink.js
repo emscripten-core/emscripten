@@ -10,40 +10,44 @@ var dlopenMissingError = "'To use dlopen, you need enable dynamic linking, see h
 
 var LibraryDylink = {
 #if RELOCATABLE
+  $isSymbolDefined: function(symName) {
+    // Ignore 'stub' symbols that are auto-generated as part of the original
+    // `wasmImports` used to instantate the main module.
+    var existing = wasmImports[symName];
+    if (!existing || existing.stub) {
+      return false;
+    }
+#if ASYNCIFY
+    // Even if a symbol exists in wasmImports, and is not itself a stub, it
+    // could be an ASYNCIFY wrapper function that wraps a stub function.
+    if (symName in asyncifyStubs && !asyncifyStubs[symName]) {
+      return false;
+    }
+#endif
+    return true;
+  },
+
+  $resolveGlobalSymbol__deps: ['$isSymbolDefined'],
   $resolveGlobalSymbol__internal: true,
-  $resolveGlobalSymbol__deps: ['$asmjsMangle'],
-  $resolveGlobalSymbol: function(symName, direct) {
+  $resolveGlobalSymbol: function(symName, direct = false) {
     var sym;
 #if !WASM_BIGINT
     if (direct) {
       // First look for the orig$ symbol which is the symbols without
       // any legalization performed.
       sym = wasmImports['orig$' + symName];
+      if (sym) return sym;
     }
 #endif
-    if (!sym) {
+    if (isSymbolDefined(symName)) {
       sym = wasmImports[symName];
-      // Ignore 'stub' symbols that are auto-generated as part of the original
-      // `wasmImports` used to instantate the main module.
-      if (sym && sym.stub) sym = undefined;
+    } else if (symName.startsWith('invoke_')) {
+      // Create (and cache) new invoke_ functions on demand.
+      sym = wasmImports[symName] = createInvokeFunction(symName.split('_')[1]);
     }
-
-    // Check for the symbol on the Module object.  This is the only
-    // way to dynamically access JS library symbols that were not
-    // referenced by the main module (and therefore not part of the
-    // initial set of symbols included in wasmImports when it
-    // was declared.
-    if (!sym) {
-      sym = Module[asmjsMangle(symName)];
-    }
-
-    if (!sym && symName.startsWith('invoke_')) {
-      sym = createInvokeFunction(symName.split('_')[1]);
-    }
-
 #if !DISABLE_EXCEPTION_CATCHING
-    if (!sym && symName.startsWith("__cxa_find_matching_catch")) {
-      sym = Module["___cxa_find_matching_catch"];
+    else if (symName.startsWith('__cxa_find_matching_catch_')) {
+      sym = wasmImports['__cxa_find_matching_catch'];
     }
 #endif
     return sym;
@@ -256,7 +260,7 @@ var LibraryDylink = {
   },
 
   $dlSetError__internal: true,
-  $dlSetError__deps: ['__dl_seterr', '$allocateUTF8OnStack'],
+  $dlSetError__deps: ['__dl_seterr', '$allocateUTF8OnStack', '$withStackSave'],
   $dlSetError: function(msg) {
     withStackSave(function() {
       var cmsg = allocateUTF8OnStack(msg);
@@ -456,24 +460,15 @@ var LibraryDylink = {
   },
 
   // Module.symbols <- libModule.symbols (flags.global handler)
-  $mergeLibSymbols__deps: ['$asmjsMangle'],
+  $mergeLibSymbols__deps: ['$asmjsMangle', '$isSymbolDefined'],
   $mergeLibSymbols: function(exports, libName) {
     // add symbols into global namespace TODO: weak linking etc.
     for (var sym in exports) {
       if (!exports.hasOwnProperty(sym)) {
         continue;
       }
-
-      // When RTLD_GLOBAL is enable, the symbols defined by this shared object will be made
-      // available for symbol resolution of subsequently loaded shared objects.
-      //
-      // We should copy the symbols (which include methods and variables) from SIDE_MODULE to MAIN_MODULE.
-
-      if (!wasmImports.hasOwnProperty(sym)) {
-        wasmImports[sym] = exports[sym];
-      }
 #if ASSERTIONS == 2
-      else {
+      if (isSymbolDefined(sym)) {
         var curr = wasmImports[sym], next = exports[sym];
         // don't warn on functions - might be odr, linkonce_odr, etc.
         if (!(typeof curr == 'function' && typeof next == 'function')) {
@@ -482,19 +477,40 @@ var LibraryDylink = {
       }
 #endif
 
-      // Export native export on the Module object.
-      // TODO(sbc): Do all users want this?  Should we skip this by default?
-      var module_sym = asmjsMangle(sym);
-      if (!Module.hasOwnProperty(module_sym)) {
-        Module[module_sym] = exports[sym];
+      // When RTLD_GLOBAL is enabled, the symbols defined by this shared object
+      // will be made available for symbol resolution of subsequently loaded
+      // shared objects.
+      //
+      // We should copy the symbols (which include methods and variables) from
+      // SIDE_MODULE to MAIN_MODULE.
+      const setImport = (target) => {
+#if ASYNCIFY
+        if (target in asyncifyStubs) {
+          asyncifyStubs[target] = exports[sym]
+        }
+#endif
+        if (!isSymbolDefined(target)) {
+          wasmImports[target] = exports[sym];
+        }
       }
+      setImport(sym);
+
 #if !hasExportedSymbol('main')
-      // If the main module doesn't define main it could be defined in one of
-      // the side modules, and we need to handle the mangled named.
-      if (sym == '__main_argc_argv') {
-        Module['_main'] = exports[sym];
+      // Special case for handling of main symbol:  If a side module exports
+      // `main` that also acts a definition for `__main_argc_argv` and vice
+      // versa.
+      const main_alias = '__main_argc_argv';
+      if (sym == 'main') {
+        setImport(main_alias)
+      }
+      if (sym == main_alias) {
+        setImport('main')
       }
 #endif
+
+      if (sym.startsWith('dynCall_') && !Module.hasOwnProperty(sym)) {
+        Module[sym] = exports[sym];
+      }
     }
   },
 
@@ -575,7 +591,7 @@ var LibraryDylink = {
       var moduleExports;
 
       function resolveSymbol(sym) {
-        var resolved = resolveGlobalSymbol(sym, false);
+        var resolved = resolveGlobalSymbol(sym);
         if (!resolved) {
           resolved = moduleExports[sym];
         }
@@ -613,7 +629,7 @@ var LibraryDylink = {
               return tableBase;
 #endif
           }
-          if (prop in wasmImports) {
+          if (prop in wasmImports && !wasmImports[prop].stub) {
             // No stub needed, symbol already exists in symbol table
             return wasmImports[prop];
           }
@@ -800,7 +816,7 @@ var LibraryDylink = {
   // If a library was already loaded, it is not loaded a second time. However
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
-  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$isInternalSym', '$mergeLibSymbols'],
+  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$isInternalSym', '$mergeLibSymbols'],
   $loadDynamicLibrary__docs: '/** @param {number=} handle */',
   $loadDynamicLibrary: function(lib, flags = {global: true, nodelete: true}, handle = 0) {
 #if DYLINK_DEBUG

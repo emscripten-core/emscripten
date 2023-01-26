@@ -557,6 +557,9 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   # should not minify these symbol names.
   CLOSURE_EXTERNS = [path_from_root('src/closure-externs/closure-externs.js')]
 
+  if settings.USE_WEBGPU:
+    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/webgpu-externs.js')]
+
   # Closure compiler needs to know about all exports that come from the wasm module, because to optimize for small code size,
   # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
   # externs file for the exports, Closure is able to reason about the exports.
@@ -820,7 +823,10 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
   import_name_map = {}
   for item in graph:
     if 'import' in item:
-      import_name_map[item['name']] = 'emcc$import$' + item['import'][1]
+      name = item['import'][1]
+      import_name_map[item['name']] = 'emcc$import$' + name
+      if asmjs_mangle(name) in settings.SIDE_MODULE_IMPORTS:
+        item['root'] = True
   temp = temp_files.get('.json', prefix='emcc_dce_graph_').name
   utils.write_file(temp, json.dumps(graph, indent=2))
   # run wasm-metadce
@@ -935,11 +941,8 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
     if passes:
       # hackish fixups to work around wasm2js style and the js optimizer FIXME
       wasm2js_js = f'// EMSCRIPTEN_START_ASM\n{wasm2js_js}// EMSCRIPTEN_END_ASM\n'
-      wasm2js_js = wasm2js_js.replace('// EMSCRIPTEN_START_FUNCS;\n', '// EMSCRIPTEN_START_FUNCS\n')
-      wasm2js_js = wasm2js_js.replace('// EMSCRIPTEN_END_FUNCS;\n', '// EMSCRIPTEN_END_FUNCS\n')
       wasm2js_js = wasm2js_js.replace('\n function $', '\nfunction $')
       wasm2js_js = wasm2js_js.replace('\n }', '\n}')
-      wasm2js_js += '\n// EMSCRIPTEN_GENERATED_FUNCTIONS\n'
       temp = shared.get_temp_files().get('.js').name
       utils.write_file(temp, wasm2js_js)
       temp = js_optimizer(temp, passes)

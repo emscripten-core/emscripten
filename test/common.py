@@ -583,7 +583,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           self.temp_files_before_run.append(os.path.normpath(os.path.join(root, filename)))
 
     if EMTEST_SAVE_DIR:
-      self.working_dir = os.path.join(self.temp_dir, 'emscripten_test')
+      self.working_dir = path_from_root('out/test')
       if os.path.exists(self.working_dir):
         if EMTEST_SAVE_DIR == 2:
           print('Not clearing existing test directory')

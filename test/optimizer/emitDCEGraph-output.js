@@ -101,6 +101,11 @@
   "reaches": []
  },
  {
+  "name": "emcc$export$expD5",
+  "export": "expD5",
+  "reaches": []
+ },
+ {
   "name": "emcc$export$expI1",
   "export": "expI1",
   "reaches": [],
@@ -121,6 +126,11 @@
  {
   "name": "emcc$export$expI4",
   "export": "expI4",
+  "reaches": []
+ },
+ {
+  "name": "emcc$export$expI5",
+  "export": "expI5",
   "reaches": []
  },
  {

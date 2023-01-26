@@ -453,15 +453,6 @@ function makeHEAPView(which, start, end) {
   return `HEAP${which}.subarray((${start})${mod}, (${end})${mod})`;
 }
 
-// When dynamically linking, some things like dynCalls may not exist in one module and
-// be provided by a linked module, so they must be accessed indirectly using Module
-function exportedAsmFunc(func) {
-  if (!MAIN_MODULE) {
-    return func;
-  }
-  return `Module['${func}']`;
-}
-
 const TWO_TWENTY = Math.pow(2, 20);
 
 // Given two values and an operation, returns the result of that operation.
@@ -734,7 +725,7 @@ Please update to new syntax.`);
       }
     }
 
-    const dyncall = exportedAsmFunc(`dynCall_${sig}`);
+    const dyncall = `dynCall_${sig}`;
     if (sig.length > 1) {
       return `((${args}) => ${dyncall}.apply(null, [${funcPtr}, ${callArgs}]))`;
     }
@@ -996,9 +987,14 @@ function receiveI64ParamAsI53(name, onError) {
     // Just convert the bigint into a double.
     return `${name} = bigintToI53Checked(${name}); if (isNaN(${name})) return ${onError};`;
   }
-  // Covert the high/low pair to a Number, checking for
+  // Convert the high/low pair to a Number, checking for
   // overflow of the I53 range and returning onError in that case.
   return `var ${name} = convertI32PairToI53Checked(${name}_low, ${name}_high); if (isNaN(${name})) return ${onError};`;
+}
+
+function receiveI64ParamAsI53Unchecked(name) {
+  if (WASM_BIGINT) return `${name} = Number(${name});`;
+  return `var ${name} = convertI32PairToI53(${name}_low, ${name}_high);`;
 }
 
 function sendI64Argument(low, high) {
@@ -1102,6 +1098,25 @@ function getUnsharedTextDecoderView(heap, start, end) {
   // Otherwise, generate a runtime type check: must do a .slice() if looking at a SAB,
   // or can use .subarray() otherwise.
   return `${heap}.buffer instanceof SharedArrayBuffer ? ${shared} : ${unshared}`;
+}
+
+function getEntryFunction() {
+  var entryFunction = 'main';
+  if (STANDALONE_WASM) {
+    if (EXPECT_MAIN) {
+      entryFunction = '_start';
+    } else {
+      entryFunction = '_initialize';
+    }
+  } else if (PROXY_TO_PTHREAD) {
+    // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
+    // that will call the user's real main() for the application.
+    entryFunction = '_emscripten_proxy_main';
+  }
+  if (MAIN_MODULE) {
+    return `resolveGlobalSymbol('${entryFunction}');`
+  }
+  return '_' + entryFunction;
 }
 
 function preJS() {

@@ -468,8 +468,6 @@ class TestCoreBase(RunnerCore):
   @also_with_wasmfs
   def test_hello_world(self):
     self.do_core_test('test_hello_world.c')
-    # must not emit this unneeded internal thing
-    self.assertNotContained('EMSCRIPTEN_GENERATED_FUNCTIONS', read_file('test_hello_world.js'))
 
   def test_wasm_synchronous_compilation(self):
     self.set_setting('STRICT_JS')
@@ -2305,6 +2303,7 @@ int main(int argc, char **argv) {
     if self.maybe_closure():
       # verify NO_DYNAMIC_EXECUTION is compatible with closure
       self.set_setting('DYNAMIC_EXECUTION', 0)
+      self.emcc_args.append('-Wno-closure')
     # With typed arrays in particular, it is dangerous to use more memory than INITIAL_MEMORY,
     # since we then need to enlarge the heap(s).
     src = test_file('core/test_memorygrowth.c')
@@ -2320,14 +2319,8 @@ int main(int argc, char **argv) {
 
     if '-O2' in self.emcc_args and not self.is_wasm():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
-      possible_starts = ['// EMSCRIPTEN_START_FUNCS', 'var STACK_SIZE']
-      code_start = None
-      for s in possible_starts:
-        if fail.find(s) >= 0:
-          code_start = s
-          break
-      assert code_start is not None, 'Generated code must contain one of ' + str(possible_starts)
-
+      code_start = '// EMSCRIPTEN_START_FUNCS'
+      self.assertContained(code_start, fail)
       fail = fail[fail.find(code_start):]
       win = win[win.find(code_start):]
       assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])

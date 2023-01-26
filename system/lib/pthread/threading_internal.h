@@ -17,9 +17,14 @@ typedef union em_variant_val
   char *cp;
 } em_variant_val;
 
+// Proxied JS function can support a few more arguments than proxied C/C++
+// functions, because the dispatch is variadic and signature independent.
+#define EM_QUEUED_JS_CALL_MAX_ARGS 20
+
 // Proxied C/C++ functions support at most this many arguments. Dispatch is
 // static/strongly typed by signature.
 #define EM_QUEUED_CALL_MAX_ARGS 11
+
 typedef struct em_queued_call
 {
   int functionEnum;
