@@ -90,10 +90,25 @@ test_promisify(void** result, void* data, void* value) {
   return EM_PROMISE_MATCH;
 }
 
-static em_promise_result_t throw(void** result, void* data, void* value) {
-  // Check that the stack pointer is restored correctly after this throw.
-  volatile int big_frame[32];
+static em_promise_result_t
+throw_string(void** result, void* data, void* value) {
+  // The stack pointer should not be corrupted even though we don't make it to
+  // the function epilogue.
+  volatile int big_frame[128];
   EM_ASM({ throw "bang!"; });
+  emscripten_console_log("unexpected success!");
+  return EM_PROMISE_FULFILL;
+}
+
+static em_promise_result_t throw_ptr(void** result, void* data, void* value) {
+  // The stack pointer should not be corrupted even though we don't make it to
+  // the function epilogue.
+  volatile int big_frame[128];
+  if (sizeof(void*) == 4) {
+    EM_ASM({ throw 1234; });
+  } else if (sizeof(void*) == 8) {
+    EM_ASM({ throw 1234n; });
+  }
   emscripten_console_log("unexpected success!");
   return EM_PROMISE_FULFILL;
 }
@@ -106,14 +121,14 @@ test_rejection(void** result, void* data, void* value) {
   // Reject by throwing in a success handler.
   em_promise_t start_fulfilled = emscripten_promise_create();
   em_promise_t rejected1 =
-    emscripten_promise_then(start_fulfilled, throw, fail, NULL);
+    emscripten_promise_then(start_fulfilled, throw_string, fail, NULL);
   em_promise_t recovered1 =
     emscripten_promise_then(rejected1, fail, expect_error, NULL);
 
   // Reject by throwing in a rejection handler.
   em_promise_t start_rejected = emscripten_promise_create();
   em_promise_t rejected2 =
-    emscripten_promise_then(start_rejected, fail, throw, NULL);
+    emscripten_promise_then(start_rejected, fail, throw_ptr, NULL);
   em_promise_t recovered2 =
     emscripten_promise_then(rejected2, fail, expect_error, NULL);
 

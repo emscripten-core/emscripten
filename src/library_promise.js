@@ -75,6 +75,19 @@ mergeInto(LibraryManager.library, {
         var result =
             {{{ makeDynCall('ippp', 'callback') }}}(resultPtr, userData, value);
         var resultVal = {{{ makeGetValue('resultPtr', 0, '*') }}};
+      } catch (e) {
+        // If the thrown value is potentially a valid pointer, use it as the
+        // rejection reason. Otherwise use a null pointer as the reason.
+#if MEMORY64
+        if (typeof e !== 'bigint') {
+          throw 0n;
+        }
+#else
+        if (typeof e !== 'number') {
+          throw 0;
+        }
+#endif
+        throw e;
       } finally {
         // Thrown errors will reject the promise, but at least we will restore
         // the stack first.

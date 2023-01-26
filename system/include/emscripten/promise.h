@@ -46,6 +46,11 @@ typedef enum em_promise_result_t {
 //
 //  - `EM_PROMISE_REJECT`: The new promise is rejected with the reason written
 //    to `result` or NULL if no reason is written.
+//
+// If the callback throws a number (or bigint in the case of memory64), the new
+// promise will be rejected with that number converted to a pointer as its
+// rejection reason. If the callback throws any other value, the new promise
+// will be rejected with a NULL rejection reason.
 typedef em_promise_result_t (*promise_callback_t)(void** result,
                                                   void* data,
                                                   void* value);
