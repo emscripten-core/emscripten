@@ -1186,10 +1186,10 @@ var LibraryWebGPU = {
   wgpuDeviceCreateComputePipeline: function(deviceId, descriptor) {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
 
+    var layoutPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePipelineDescriptor.layout, '*') }}};
     var desc = {
       "label": undefined,
-      "layout":  WebGPU.mgrPipelineLayout.get(
-        {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePipelineDescriptor.layout, '*') }}}),
+      "layout":  layoutPtr ? WebGPU.mgrPipelineLayout.get(layoutPtr) : 'auto',
       "compute": WebGPU.makeProgrammableStageDescriptor(
         descriptor + {{{ C_STRUCTS.WGPUComputePipelineDescriptor.compute }}}),
     };
@@ -1379,10 +1379,10 @@ var LibraryWebGPU = {
       };
     }
 
+    var layoutPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPipelineDescriptor.layout, '*') }}};
     var desc = {
       "label": undefined,
-      "layout": WebGPU.mgrPipelineLayout.get(
-        {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPipelineDescriptor.layout, '*') }}}),
+      "layout": layoutPtr ? WebGPU.mgrPipelineLayout.get(layoutPtr) : 'auto',
       "vertex": makeVertexState(
         descriptor + {{{ C_STRUCTS.WGPURenderPipelineDescriptor.vertex }}}),
       "primitive": makePrimitiveState(
@@ -1651,7 +1651,7 @@ var LibraryWebGPU = {
     function makeRenderPassDescriptor(descriptor) {
       {{{ gpu.makeCheck('descriptor') }}}
       var nextInChainPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.nextInChain, '*') }}};
-      
+
       var maxDrawCount = undefined;
       if (nextInChainPtr !== 0) {
         var sType = {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUChainedStruct.sType) }}};
