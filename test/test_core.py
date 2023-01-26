@@ -9726,6 +9726,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('MIN_CHROME_VERSION', '85')
     self.do_core_test('test_promise.c')
 
+  @no_wasm64('TODO: asyncify for wasm64')
+  @with_asyncify_and_stack_switching
+  def test_promise_await_sync(self):
+    self.do_core_test('test_promise_await_sync.c')
+
   def test_emscripten_async_load_script(self):
     create_file('script1.js', 'Module._set(456);''')
     create_file('file1.txt', 'first')

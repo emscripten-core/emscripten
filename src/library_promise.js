@@ -260,5 +260,20 @@ mergeInto(LibraryManager.library, {
     dbg(`create: ${id}`);
 #endif
     return id;
-  }
+  },
+
+#if ASYNCIFY == 2
+  emscripten_promise_await_sync__deps: ['$getPromise'],
+  emscripten_promise_await_sync__sig: 'pp',
+  emscripten_promise_await_sync: function(id) {
+    return getPromise(id);
+  },
+#elif ASYNCIFY == 1
+  emscripten_promise_await_sync__deps: ['$getPromise', '$Asyncify'],
+  emscripten_promise_await_sync__sig: 'pp',
+  emscripten_promise_await_sync: function(id) {
+    return Asyncify.handleSleep((wakeUp) => getPromise(id).then(wakeUp));
+  },
+  #endif
+
 });

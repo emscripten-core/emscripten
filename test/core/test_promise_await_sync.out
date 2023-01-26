@@ -1,0 +1,5 @@
+incrementing counter in promise callback
+incremented counter: 1
+incrementing counter in callback
+incremented again: 2
+done

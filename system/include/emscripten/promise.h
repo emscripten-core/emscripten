@@ -135,6 +135,20 @@ __attribute__((warn_unused_result)) em_promise_t emscripten_promise_any(
 __attribute__((warn_unused_result)) em_promise_t
 emscripten_promise_race(em_promise_t* promises, size_t num_promises);
 
+// Suspend Wasm execution until the given `promise` is resolved. Once the
+// promise is resolved, this function will return the value it was fulfilled
+// with. Since the stack is not unwound while Wasm execution is suspended, it is
+// safe to pass pointers to the stack to asynchronous work that is waited on
+// with this function. If the promise is rejected instead of fulfilled, the
+// suspended Wasm will never be resumed.
+//
+// When Wasm execution suspends, a JS promise will be returned from the Wasm
+// export that led to this call. That promise will be resolved once Wasm resumes
+// execution and returns normally from the export.
+//
+// This function requires ASYNCIFY=1 or ASYNCIFY=2.
+void* emscripten_promise_await_sync(em_promise_t promise);
+
 #ifdef __cplusplus
 }
 #endif

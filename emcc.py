@@ -100,7 +100,7 @@ UNSUPPORTED_LLD_FLAGS = {
 }
 
 DEFAULT_ASYNCIFY_IMPORTS = [
-  'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync', '__asyncjs__*'
+  'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync', '__asyncjs__*', 'emscripten_promise_await_sync'
 ]
 
 DEFAULT_ASYNCIFY_EXPORTS = [
