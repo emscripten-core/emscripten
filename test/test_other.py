@@ -1307,7 +1307,6 @@ int f() {
     self.emcc('lib.c', ['-Oz', '-sEXPORT_ALL', '-sLINKABLE', '--pre-js', 'main.js'], output_filename='a.out.js')
     self.assertContained('libf1\nlibf2\n', self.run_js('a.out.js'))
 
-  @no_windows('https://github.com/emscripten-core/emscripten/issues/18596')
   def test_minimal_runtime_export_all_modularize(self):
     """This test ensures that MODULARIZE and EXPORT_ALL work simultaneously.
 
@@ -1328,7 +1327,10 @@ int f() {
     create_file('main.mjs', '''
       import { dirname } from 'path';
       import { createRequire } from 'module';
-      globalThis.__dirname = dirname(import.meta.url).substring(7);
+      import { fileURLToPath } from 'url';
+
+      // `fileURLToPath` is used to get a valid path on Windows.
+      globalThis.__dirname = dirname(fileURLToPath(import.meta.url));
       globalThis.require = createRequire(import.meta.url);
 
       import Test from './test.mjs';
