@@ -554,7 +554,7 @@ def get_all_js_syms():
     # Limit of the overall size of the cache to 100 files.
     # This code will get test coverage since a full test run of `other` or `core`
     # generates ~1000 unique symbol lists.
-    cache_limit = 100
+    cache_limit = 500
     root = cache.get_path('symbol_lists')
     if len(os.listdir(root)) > cache_limit:
       files = []
