@@ -1019,8 +1019,55 @@ function from64(x) {
 }
 
 function to64(x) {
-  if (!MEMORY64) return x;
-  return `BigInt(${x})`;
+  if (MEMORY64) return /^\d+$/.test(x) ? `${x}n` : `BigInt(${x})`;
+  return x;
+}
+
+// Generates an expression that tests whether a pointer (either a BigInt or a signed int32 JS Number) is aligned to the given byte multiple.
+function isPtrAligned(ptr, alignment) {
+  if (MEMORY64) return /^\d+$/.test(alignment) ? `${ptr} % ${alignment}n == 0` : `${ptr} % BigInt(${alignment}) == 0`;
+  return `${ptr} % ${alignment} == 0`;
+}
+
+let MAX_MEMORY53 = 2**53; // == 9007199254740992
+
+// Converts a pointer (either a BigInt or a signed int32 JS Number) in-place to an index on the heap (a BigInt or an unsigned JS Number).
+// N.B. in ASSERTIONS mode may generate two statements (in form "a;b;").
+function convertPtrToIdx(ptr, accessWidth) {
+  var assertPointerAlignment = ASSERTIONS ? `${isPtrAligned(ptr, accessWidth)};` : '';
+
+  var conversion;
+  if (MEMORY64) {
+    if (MAXIMUM_MEMORY > MAX_MEMORY53) conversion = /^\d+$/.test(accessWidth) ? `${ptr} >>= ${accessWidth}n` : `${ptr} >>= BigInt(${accessWidth})`;
+    else conversion = `${ptr} = Number(${ptr}) / ${accessWidth}`;
+  }
+  else if (MAXIMUM_MEMORY > 2*1024*1024*1024) conversion = `${ptr} >>>= ${accessWidth}`;
+  else conversion = accessWidth ? `${ptr} >>= ${accessWidth}` : '';
+
+  return assertPointerAlignment + conversion;
+}
+
+// Returns a pointer (either a BigInt or a signed int32 JS Number) shifted to an index on the heap (a BigInt or an unsigned JS Number).
+function ptrToIdx(ptr, accessWidth) {
+  if (MEMORY64) {
+    if (MAXIMUM_MEMORY > MAX_MEMORY53) return /^\d+$/.test(accessWidth) ? `${ptr} >> ${accessWidth}n` : `${ptr} >> BigInt(${accessWidth})`;
+    return `Number(${ptr}) / ${accessWidth}`;
+  }
+  if (MAXIMUM_MEMORY > 2*1024*1024*1024) return `${ptr} >>> ${accessWidth}`;
+  return accessWidth ? `${ptr} >> ${accessWidth}` : ptr;
+}
+
+// Converts a given JS Number (e.g. a pointer offset) to a heap index type (either a BigInt or a JS Number)
+function createHeapIdx(number) {
+  if (MAXIMUM_MEMORY > MAX_MEMORY53) return /^-?\d+$/.test(number) ? `${number}n` : `BigInt(${number})`;
+  return number;
+}
+
+// Browsers might not support passing BigInts to different API entry points that take in addresses, so convert those to Number()s before calling into the browser APIs.
+function idxToMemory53(heapIndex) {
+  if (MAXIMUM_MEMORY <= MAX_MEMORY53) return heapIndex; // If not building with large 64-bit memory, heap indices will not be BigInts.
+  if (ASSERTIONS) return `BigInt(Number(${heapIndex})) == ${heapIndex} ? abort('Invalid pointer that does not fit in 53-bits address space!') : Number(${heapIndex})`;
+  return `Number(${heapIndex})`;
 }
 
 // Add assertions to catch common errors when using the Promise object we
