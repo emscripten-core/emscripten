@@ -297,6 +297,11 @@ var LibraryWebGPU = {
       return constants;
     },
 
+    makePipelineLayout: function(layoutPtr) {
+      if (!layoutPtr) return 'auto';
+      return WebGPU.mgrPipelineLayout.get(layoutPtr);
+    },
+
     makeProgrammableStageDescriptor: function(ptr) {
       if (!ptr) return undefined;
       {{{ gpu.makeCheckDescriptor('ptr') }}}
@@ -1188,7 +1193,7 @@ var LibraryWebGPU = {
 
     var desc = {
       "label": undefined,
-      "layout":  WebGPU.mgrPipelineLayout.get(
+      "layout": WebGPU.makePipelineLayout(
         {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePipelineDescriptor.layout, '*') }}}),
       "compute": WebGPU.makeProgrammableStageDescriptor(
         descriptor + {{{ C_STRUCTS.WGPUComputePipelineDescriptor.compute }}}),
@@ -1381,7 +1386,7 @@ var LibraryWebGPU = {
 
     var desc = {
       "label": undefined,
-      "layout": WebGPU.mgrPipelineLayout.get(
+      "layout": WebGPU.makePipelineLayout(
         {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPipelineDescriptor.layout, '*') }}}),
       "vertex": makeVertexState(
         descriptor + {{{ C_STRUCTS.WGPURenderPipelineDescriptor.vertex }}}),
@@ -1651,7 +1656,7 @@ var LibraryWebGPU = {
     function makeRenderPassDescriptor(descriptor) {
       {{{ gpu.makeCheck('descriptor') }}}
       var nextInChainPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.nextInChain, '*') }}};
-      
+
       var maxDrawCount = undefined;
       if (nextInChainPtr !== 0) {
         var sType = {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUChainedStruct.sType) }}};
