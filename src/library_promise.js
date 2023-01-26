@@ -106,14 +106,14 @@ mergeInto(LibraryManager.library, {
     dbg('emscripten_promise_then: ' + id);
 #endif
     var promise = getPromise(id);
-    var id = promiseMap.allocate({
+    var newId = promiseMap.allocate({
       promise: promise.then(makePromiseCallback(onFulfilled, userData),
                             makePromiseCallback(onRejected, userData))
     });
 #if RUNTIME_DEBUG
-    dbg('create: ' + id);
+    dbg('create: ' + newId);
 #endif
-    return id;
+    return newId;
   },
 
   emscripten_promise_all__deps: ['$promiseMap', '$getPromise', '$POINTER_SIZE'],
