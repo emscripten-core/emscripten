@@ -1114,7 +1114,7 @@ function getEntryFunction() {
     entryFunction = '_emscripten_proxy_main';
   }
   if (MAIN_MODULE) {
-    return `resolveGlobalSymbol('${entryFunction}');`
+    return `resolveGlobalSymbol('${entryFunction}').sym;`
   }
   return '_' + entryFunction;
 }
