@@ -9352,6 +9352,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.prep_dlfcn_main()
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', 'jslib_func')
+    create_file('lib.js', r'''
+      mergeInto(LibraryManager.library, {
+        jslib_func__sig: 'v',
+        jslib_func: function() {
+          err('hello from js');
+        }
+      });
+    ''')
+    self.emcc_args.append('--js-library=lib.js')
     self.do_runf(test_file('core/pthread/test_pthread_dlopen_many.c'),
                  ['side module ctor', 'main done', 'side module atexit'],
                  emcc_args=[f'-DNUM_THREADS={nthreads}'],

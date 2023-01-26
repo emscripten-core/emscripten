@@ -1258,14 +1258,14 @@
             "d_type": 18
         },
         "dso": {
-            "__size__": 32,
-            "flags": 8,
-            "mem_addr": 16,
-            "mem_allocated": 12,
-            "mem_size": 20,
-            "name": 32,
-            "table_addr": 24,
-            "table_size": 28
+            "__size__": 28,
+            "flags": 4,
+            "mem_addr": 12,
+            "mem_allocated": 8,
+            "mem_size": 16,
+            "name": 28,
+            "table_addr": 20,
+            "table_size": 24
         },
         "emscripten_fetch_attr_t": {
             "__size__": 92,
