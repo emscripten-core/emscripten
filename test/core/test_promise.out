@@ -5,6 +5,9 @@ expected success: 1
 expected error: 2
 test_promisify
 Hello from a callback
+test_rejection
+expected error: 0
+expected error: 0
 test_all
 promise_all results:
 promise_all results:

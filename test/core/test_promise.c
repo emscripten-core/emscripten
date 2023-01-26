@@ -3,13 +3,14 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/eventloop.h>
 #include <emscripten/promise.h>
+#include <emscripten/stack.h>
 #include <stdint.h>
 #include <stdlib.h>
 
 static void do_exit(void* _) { emscripten_force_exit(0); }
 
 // Report an error and asynchronously schedule a runtime exit.
-static em_promise_result_t fail(void** result, void* data, void* _) {
+static em_promise_result_t fail(void** result, void* data, void* value) {
   emscripten_console_logf("error! data: %ld", (uintptr_t)data);
   emscripten_async_call(do_exit, NULL, 0);
   return EM_PROMISE_REJECT;
@@ -89,6 +90,52 @@ test_promisify(void** result, void* data, void* value) {
   return EM_PROMISE_MATCH;
 }
 
+static em_promise_result_t throw(void** result, void* data, void* value) {
+  // Check that the stack pointer is restored correctly after this throw.
+  volatile int big_frame[32];
+  EM_ASM({ throw "bang!"; });
+  emscripten_console_log("unexpected success!");
+  return EM_PROMISE_FULFILL;
+}
+
+static em_promise_result_t
+test_rejection(void** result, void* data, void* value) {
+  emscripten_console_log("test_rejection");
+  assert(data == (void*)3);
+
+  // Reject by throwing in a success handler.
+  em_promise_t start_fulfilled = emscripten_promise_create();
+  em_promise_t rejected1 =
+    emscripten_promise_then(start_fulfilled, throw, fail, NULL);
+  em_promise_t recovered1 =
+    emscripten_promise_then(rejected1, fail, expect_error, NULL);
+
+  // Reject by throwing in a rejection handler.
+  em_promise_t start_rejected = emscripten_promise_create();
+  em_promise_t rejected2 =
+    emscripten_promise_then(start_rejected, fail, throw, NULL);
+  em_promise_t recovered2 =
+    emscripten_promise_then(rejected2, fail, expect_error, NULL);
+
+  em_promise_t to_finish[2] = {recovered1, recovered2};
+  em_promise_t finish_test_rejection =
+    emscripten_promise_all(to_finish, NULL, 2);
+
+  emscripten_promise_resolve(start_fulfilled, EM_PROMISE_FULFILL, NULL);
+  emscripten_promise_resolve(start_rejected, EM_PROMISE_REJECT, NULL);
+
+  emscripten_promise_destroy(start_fulfilled);
+  emscripten_promise_destroy(rejected1);
+  emscripten_promise_destroy(recovered1);
+
+  emscripten_promise_destroy(start_rejected);
+  emscripten_promise_destroy(rejected2);
+  emscripten_promise_destroy(recovered2);
+
+  *result = finish_test_rejection.handle;
+  return EM_PROMISE_MATCH_RELEASE;
+}
+
 typedef struct promise_all_state {
   size_t size;
   em_promise_t in[3];
@@ -121,7 +168,7 @@ check_promise_all_error(void** result, void* data, void* value) {
 
 static em_promise_result_t test_all(void** result, void* data, void* value) {
   emscripten_console_log("test_all");
-  assert(data == (void*)3);
+  assert(data == (void*)4);
 
   // No input should result in success
   promise_all_state* state = malloc(sizeof(promise_all_state));
@@ -203,21 +250,47 @@ static em_promise_result_t finish(void** result, void* data, void* value) {
   return EM_PROMISE_FULFILL;
 }
 
+static em_promise_result_t check_stack(void** result, void* data, void* value) {
+  // Make sure the stack pointer is the same every time this is called.
+  static uintptr_t expected_stack = 0;
+  uintptr_t curr_stack = emscripten_stack_get_current();
+  if (!expected_stack) {
+    expected_stack = curr_stack;
+    return EM_PROMISE_FULFILL;
+  }
+  if (curr_stack != expected_stack) {
+    emscripten_console_logf("stack pointer at %p, expected %p",
+                            (void*)curr_stack,
+                            (void*)expected_stack);
+    return EM_PROMISE_REJECT;
+  }
+  return EM_PROMISE_FULFILL;
+}
+
 int main() {
   em_promise_t start = emscripten_promise_create();
+  em_promise_t measure_stack =
+    emscripten_promise_then(start, check_stack, fail, NULL);
   em_promise_t test1 =
-    emscripten_promise_then(start, test_create, fail, (void*)1);
+    emscripten_promise_then(measure_stack, test_create, fail, (void*)1);
   em_promise_t test2 =
     emscripten_promise_then(test1, test_promisify, fail, (void*)2);
-  em_promise_t test3 = emscripten_promise_then(test2, test_all, fail, (void*)3);
-  em_promise_t end = emscripten_promise_then(test3, finish, fail, NULL);
+  em_promise_t test3 =
+    emscripten_promise_then(test2, test_rejection, fail, (void*)3);
+  em_promise_t test4 = emscripten_promise_then(test3, test_all, fail, (void*)4);
+  em_promise_t assert_stack =
+    emscripten_promise_then(test4, check_stack, fail, NULL);
+  em_promise_t end = emscripten_promise_then(assert_stack, finish, fail, NULL);
 
   emscripten_promise_resolve(start, EM_PROMISE_FULFILL, NULL);
 
   emscripten_promise_destroy(start);
+  emscripten_promise_destroy(measure_stack);
   emscripten_promise_destroy(test1);
   emscripten_promise_destroy(test2);
   emscripten_promise_destroy(test3);
+  emscripten_promise_destroy(test4);
+  emscripten_promise_destroy(assert_stack);
   emscripten_promise_destroy(end);
 
   emscripten_runtime_keepalive_push();
