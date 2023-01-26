@@ -578,14 +578,15 @@ Object.assign(global, {
 #endif
       }
       return PThread.unusedWorkers.pop();
+    },
+
+    closeMessageRelayPort: function() {
+      assert(ENVIRONMENT_IS_PTHREAD);
+      PThread.messageRelay.close();
+      delete PThread.messageRelay;
     }
   },
 
-  $closeProxyBrokerPort: function() {
-    assert(ENVIRONMENT_IS_PTHREAD);
-    PThread.messageRelay.close();
-    delete PThread.messageRelay;
-  },
 
   $killThread__deps: ['_emscripten_thread_free_data'],
   $killThread: function(pthread_ptr) {
@@ -1135,7 +1136,7 @@ Object.assign(global, {
 #endif
   },
 
-  $invokeEntryPoint__deps: ['_emscripten_thread_exit', '$closeProxyBrokerPort'],
+  $invokeEntryPoint__deps: ['_emscripten_thread_exit'],
   $invokeEntryPoint: function(ptr, arg) {
 #if PTHREADS_DEBUG
     dbg('invokeEntryPoint: ' + ptrToString(ptr));
@@ -1160,7 +1161,7 @@ Object.assign(global, {
     checkStackCookie();
 #endif
 #if MINIMAL_RUNTIME
-    closeProxyBrokerPort();
+    PThread.closeMessageRelayPort();
     // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to
     // pthreads. To exit a pthread with live runtime, use the function
     // emscripten_unwind_to_js_event_loop() in the pthread body.
@@ -1169,7 +1170,7 @@ Object.assign(global, {
     if (keepRuntimeAlive()) {
       PThread.setExitStatus(result);
     } else {
-      closeProxyBrokerPort();
+      PThread.closeMessageRelayPort();
       __emscripten_thread_exit(result);
     }
 #endif
