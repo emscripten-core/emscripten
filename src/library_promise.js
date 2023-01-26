@@ -36,7 +36,9 @@ mergeInto(LibraryManager.library, {
     promiseMap.free(id);
   },
 
-  emscripten_promise_resolve__deps: ['$promiseMap', '$getPromise'],
+  emscripten_promise_resolve__deps: ['$promiseMap',
+                                     '$getPromise',
+                                     'emscripten_promise_destroy'],
   emscripten_promise_resolve__sig: 'vpip',
   emscripten_promise_resolve: function(id, result, value) {
 #if RUNTIME_DEBUG
@@ -59,18 +61,20 @@ mergeInto(LibraryManager.library, {
 
   $makePromiseCallback__deps: ['$callUserCallback',
                                '$withStackSave',
-                               '$getPromise'],
+                               '$getPromise',
+                               '$POINTER_SIZE',
+                               'emscripten_promise_destroy'],
   $makePromiseCallback: function(callback, userData) {
     return (value) => {
 #if RUNTIME_DEBUG
       dbg('emscripten promise callback: ' + value);
 #endif
       return withStackSave(() => {
-        var resultPtr = stackAlloc(8);
+        var resultPtr = stackAlloc(POINTER_SIZE);
         {{{ makeSetValue('resultPtr', 0, '0', '*') }}};
         var result;
         callUserCallback(() => {
-          result = {{{makeDynCall('ippp', 'callback')}}}(
+          result = {{{ makeDynCall('ippp', 'callback') }}}(
               resultPtr, userData, value);
         });
         var resultVal = {{{ makeGetValue('resultPtr', 0, '*') }}};
