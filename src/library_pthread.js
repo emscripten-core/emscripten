@@ -336,6 +336,10 @@ Object.assign(global, {
         // accessible variable about the thread that initiated the proxying.
         if (worker.pthread_ptr) PThread.currentProxiedOperationCallerThread = worker.pthread_ptr;
 
+        if (d['targetThread'] && d['targetThread'] != _pthread_self()) {
+          abort("unexpected message intended for thread" + d['targetThread']);
+        }
+
         if (cmd === 'processProxyingQueue') {
           executeNotifiedProxyingQueue(d['queue']);
         } else if (cmd === 'spawnThread') {
