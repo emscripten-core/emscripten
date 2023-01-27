@@ -157,14 +157,12 @@ Object.assign(global, {
           const thread = msg.data.targetThread;
           const port = threadPorts.get(thread);
           if (port) {
-            console.log("forwarding message to", thread);
             port.postMessage(msg.data, msg.data.transferList);
           } else {
             // Hold on to the message until we receive a port for the recipient.
             if (!bufferedMessages.has(thread)) {
               bufferedMessages.set(thread, []);
             }
-            console.log("buffering message for", thread);
             bufferedMessages.get(thread).push(msg);
           }
         }
