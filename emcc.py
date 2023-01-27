@@ -2534,7 +2534,7 @@ def phase_linker_setup(options, state, newargs):
     settings.REQUIRED_EXPORTS += ['__get_temp_ret', '__set_temp_ret']
 
   if settings.SPLIT_MODULE and settings.ASYNCIFY == 2:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_load_secondary_module']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_load_secondary_module']
 
   # wasm side modules have suffix .wasm
   if settings.SIDE_MODULE and shared.suffix(target) == '.js':
