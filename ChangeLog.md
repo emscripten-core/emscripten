@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.31 (in development)
+3.1.32 (in development)
 -----------------------
+
+3.1.31 - 01/26/23
+-----------------
 - Symbols that were previously exported from native code, but only for internal
   reasons, are no longer exported on the `Module` object by default.  For
   example, previously if you were using `Module._malloc` but not explicitly
