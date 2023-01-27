@@ -5685,6 +5685,11 @@ int main(void) {
     self.assertFalse(output.stderr)
     self.assertEqual(output.stdout, 'hello, world!\nhello, world!\n')
 
+  def test_modularize_strict(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sSTRICT'])
+    stdout = self.run_process(config.NODE_JS + ['-e', 'var m = require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE).stdout
+    self.assertEqual(stdout, 'hello, world!\n')
+
   @node_pthreads
   def test_pthread_print_override_modularize(self):
     self.set_setting('EXPORT_NAME', 'Test')
