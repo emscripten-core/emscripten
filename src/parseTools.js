@@ -75,78 +75,79 @@ function preprocess(filename) {
         inStyle = false;
       }
 
-      if (!inStyle) {
-        const trimmed = line.trim();
-        if (trimmed.startsWith('#')) {
-          const first = trimmed.split(' ', 1)[0];
-          if (first == '#if' || first == '#ifdef' || first == '#elif') {
-            if (first == '#ifdef') {
-              warn('use of #ifdef in js library.  Use #if instead.');
-            }
-            if (first == '#elif') {
-              const curr = showStack.pop();
-              if (curr == SHOW || curr == IGNORE_ALL) {
-                // If we showed to previous block we enter the IGNORE_ALL state
-                // and stay there until endif is seen
-                showStack.push(IGNORE_ALL);
-                continue;
-              }
-            }
-            const after = trimmed.substring(trimmed.indexOf(' '));
-            const truthy = !!vm.runInThisContext(after, { filename, lineOffset: i, columnOffset: line.indexOf(after) });
-            showStack.push(truthy ? SHOW : IGNORE);
-          } else if (first === '#include') {
-            if (showCurrentLine()) {
-              let filename = line.substr(line.indexOf(' ') + 1);
-              if (filename.startsWith('"')) {
-                filename = filename.substr(1, filename.length - 2);
-              }
-              const result = preprocess(filename);
-              if (result) {
-                ret += `// include: ${filename}\n`;
-                ret += result;
-                ret += `// end include: ${filename}\n`;
-              }
-            }
-          } else if (first === '#else') {
-            assert(showStack.length > 0);
-            const curr = showStack.pop();
-            if (curr == IGNORE) {
-              showStack.push(SHOW);
-            } else {
-              showStack.push(IGNORE);
-            }
-          } else if (first === '#endif') {
-            assert(showStack.length > 0);
-            showStack.pop();
-          } else if (first === '#warning') {
-            if (showCurrentLine()) {
-              printErr(`${filename}:${i + 1}: #warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
-            }
-          } else if (first === '#error') {
-            if (showCurrentLine()) {
-              error(`${filename}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
-            }
-          } else {
-            throw new Error(`${filename}:${i + 1}: Unknown preprocessor directive ${first}`);
-          }
-        } else {
-          if (showCurrentLine()) {
-            // Never emit more than one empty line at a time.
-            if (emptyLine && !line) {
-              continue;
-            }
-            ret += line + '\n';
-            if (!line) {
-              emptyLine = true;
-            } else {
-              emptyLine = false;
-            }
-          }
-        }
-      } else { // !inStyle
+      if (inStyle) {
         if (showCurrentLine()) {
           ret += line + '\n';
+        }
+        continue;
+      }
+
+      const trimmed = line.trim();
+      if (trimmed.startsWith('#')) {
+        const first = trimmed.split(' ', 1)[0];
+        if (first == '#if' || first == '#ifdef' || first == '#elif') {
+          if (first == '#ifdef') {
+            warn('use of #ifdef in js library.  Use #if instead.');
+          }
+          if (first == '#elif') {
+            const curr = showStack.pop();
+            if (curr == SHOW || curr == IGNORE_ALL) {
+              // If we showed to previous block we enter the IGNORE_ALL state
+              // and stay there until endif is seen
+              showStack.push(IGNORE_ALL);
+              continue;
+            }
+          }
+          const after = trimmed.substring(trimmed.indexOf(' '));
+          const truthy = !!vm.runInThisContext(after, { filename, lineOffset: i, columnOffset: line.indexOf(after) });
+          showStack.push(truthy ? SHOW : IGNORE);
+        } else if (first === '#include') {
+          if (showCurrentLine()) {
+            let filename = line.substr(line.indexOf(' ') + 1);
+            if (filename.startsWith('"')) {
+              filename = filename.substr(1, filename.length - 2);
+            }
+            const result = preprocess(filename);
+            if (result) {
+              ret += `// include: ${filename}\n`;
+              ret += result;
+              ret += `// end include: ${filename}\n`;
+            }
+          }
+        } else if (first === '#else') {
+          assert(showStack.length > 0);
+          const curr = showStack.pop();
+          if (curr == IGNORE) {
+            showStack.push(SHOW);
+          } else {
+            showStack.push(IGNORE);
+          }
+        } else if (first === '#endif') {
+          assert(showStack.length > 0);
+          showStack.pop();
+        } else if (first === '#warning') {
+          if (showCurrentLine()) {
+            printErr(`${filename}:${i + 1}: #warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
+          }
+        } else if (first === '#error') {
+          if (showCurrentLine()) {
+            error(`${filename}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
+          }
+        } else {
+          throw new Error(`${filename}:${i + 1}: Unknown preprocessor directive ${first}`);
+        }
+      } else {
+        if (showCurrentLine()) {
+          // Never emit more than one empty line at a time.
+          if (emptyLine && !line) {
+            continue;
+          }
+          ret += line + '\n';
+          if (!line) {
+            emptyLine = true;
+          } else {
+            emptyLine = false;
+          }
         }
       }
     }
