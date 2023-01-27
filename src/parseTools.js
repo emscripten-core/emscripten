@@ -45,6 +45,8 @@ function preprocess(filename) {
       .replace(/\bimport\.meta\b/g, 'EMSCRIPTEN$IMPORT$META')
       .replace(/\bawait import\b/g, 'EMSCRIPTEN$AWAIT$IMPORT');
   }
+  // Remove windows line endings, if any
+  text = text.replace(/\r\n/g, '\n');
 
   const IGNORE = 0;
   const SHOW = 1;
@@ -65,21 +67,19 @@ function preprocess(filename) {
 
   try {
     for (let [i, line] of lines.entries()) {
-      if (line[line.length - 1] === '\r') {
-        line = line.substr(0, line.length - 1); // Windows will have '\r' left over from splitting over '\r\n'
-      }
-      if (isHtml && line.includes('<style') && !inStyle) {
-        inStyle = true;
-      }
-      if (isHtml && line.includes('</style') && inStyle) {
-        inStyle = false;
-      }
-
-      if (inStyle) {
-        if (showCurrentLine()) {
-          ret += line + '\n';
+      if (isHtml) {
+        if (line.includes('<style') && !inStyle) {
+          inStyle = true;
         }
-        continue;
+        if (line.includes('</style') && inStyle) {
+          inStyle = false;
+        }
+        if (inStyle) {
+          if (showCurrentLine()) {
+            ret += line + '\n';
+          }
+          continue;
+        }
       }
 
       const trimmed = line.trim();
