@@ -3727,8 +3727,8 @@ mergeInto(LibraryManager.library, {
 #endif
   },
 
-  $handleAllocator__docs: '/** @constructor */',
-  $handleAllocator: function() {
+  $HandleAllocator__docs: '/** @constructor */',
+  $HandleAllocator: function() {
     this.allocated = [];
     this.freelist = [];
     this.get = function(id) {
