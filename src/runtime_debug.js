@@ -124,7 +124,9 @@ function prettyPrint(arg) {
   }
   return arg;
 }
+#endif
 
+#if ASSERTIONS || RUNTIME_DEBUG
 // Used by XXXXX_DEBUG settings to output debug messages.
 function dbg(text) {
   // TODO(sbc): Make this configurable somehow.  Its not always convient for

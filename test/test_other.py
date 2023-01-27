@@ -12857,3 +12857,22 @@ foo/version.txt
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_itimer.c')
+
+  @node_pthreads
+  def test_dbg(self):
+    create_file('pre.js', '''
+    dbg('start');
+    Module.onRuntimeInitialized = () => dbg('done init');
+    ''')
+    self.emcc_args.append('--pre-js=pre.js')
+    # Verify that, after initialization, dbg() messages are prefixed with
+    # worker and thread ID.
+    self.do_runf(test_file('hello_world.c'),
+                 'start\nw:0,t:0x[0-9a-fA-F]+: done init\nhello, world!\n',
+                 regex=True)
+
+    # When assertions are disabled `dbg` function is not defined
+    self.do_runf(test_file('hello_world.c'),
+                 'ReferenceError: dbg is not defined',
+                 emcc_args=['-sASSERTIONS=0'],
+                 assert_returncode=NON_ZERO)
