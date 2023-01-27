@@ -270,7 +270,22 @@ if (ENVIRONMENT_IS_NODE) {
     console.error('The "worker_threads" module is not supported in this node.js build - perhaps a newer version is needed?');
     throw e;
   }
-  global.Worker = nodeWorkerThreads.Worker;
+  /**
+   * @constructor
+   * @param {string|URL} url
+   */
+  let NodeWorker = nodeWorkerThreads.Worker;
+  // Node requires data and file protocol urls to be URLs.
+  class Worker extends NodeWorker {
+    constructor(url, ...rest) {
+      if (typeof url === 'string' &&
+          (url.startsWith('data:') || url.startsWith('file:'))) {
+        url = new URL(url);
+      }
+      super(url, ...rest);
+    }
+  }
+  global.Worker = Worker;
 #endif
 
 #if WASM == 2

@@ -197,8 +197,8 @@ Object.assign(global, {
         global.btoa = (s) => { return Buffer.from(s).toString('base64'); };
       }
 #endif
-      PThread.messageRelay = new Worker(new URL(
-          'data:text/javascript;base64,' + btoa(relayCode)));
+      var url = 'data:text/javascript;base64,' + btoa(relayCode);
+      PThread.messageRelay = new Worker(url);
 #if ENVIRONMENT_MAY_BE_NODE
       if (ENVIRONMENT_IS_NODE) {
         // Do not keep Node alive if the message relay is the only thing
