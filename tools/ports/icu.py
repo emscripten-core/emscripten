@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
 import os
 
 TAG = 'release-68-2'
@@ -35,8 +34,6 @@ def get(ports, settings, shared):
     icu_source_path = os.path.join(source_path, 'source')
 
   def build_lib(lib_output, lib_src, other_includes, build_flags):
-    logging.debug('building port: icu- ' + lib_output)
-
     additional_build_flags = [
         # TODO: investigate why this is needed and remove
         '-Wno-macro-redefined',
