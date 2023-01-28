@@ -217,7 +217,7 @@ function handleMessage(e) {
 #endif
 #endif // MODULARIZE && EXPORT_ES6
     } else if (e.data.cmd === 'run') {
-      Module['PThread'].messageRelay = e.data.port;
+      Module['PThread'].receiveMessageRelayPort(e.data.port);
       e.data.port.onmessage = handleMessage;
       // Pass the thread address to wasm to store it for fast access.
       Module['__emscripten_thread_init'](e.data.pthread_ptr, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0, /*canBlock=*/1);

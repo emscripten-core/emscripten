@@ -104,6 +104,8 @@ var LibraryPThread = {
       // things.
       PThread['receiveObjectTransfer'] = PThread.receiveObjectTransfer;
       PThread['threadInitTLS'] = PThread.threadInitTLS;
+      PThread['receiveMessageRelayPort'] = PThread.receiveMessageRelayPort;
+      PThread['closeMessageRelayPort'] = PThread.closeMessageRelayPort;
 #if !MINIMAL_RUNTIME
       PThread['setExitStatus'] = PThread.setExitStatus;
 #endif
@@ -584,6 +586,11 @@ Object.assign(global, {
 #endif
       }
       return PThread.unusedWorkers.pop();
+    },
+
+    receiveMessageRelayPort: function(port) {
+      assert(ENVIRONMENT_IS_PTHREAD);
+      PThread.messageRelay = port;
     },
 
     closeMessageRelayPort: function() {
