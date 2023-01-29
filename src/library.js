@@ -3411,19 +3411,20 @@ mergeInto(LibraryManager.library, {
 
   _emscripten_out__sig: 'vp',
   _emscripten_out: function(str) {
-#if ASSERTIONS
-    assert(typeof str == 'number');
-#endif
     out(UTF8ToString(str));
   },
 
   _emscripten_err__sig: 'vp',
   _emscripten_err: function(str) {
-#if ASSERTIONS
-    assert(typeof str == 'number');
-#endif
     err(UTF8ToString(str));
   },
+
+#if ASSERTIONS || RUNTIME_DEBUG
+  _emscripten_dbg__sig: 'vp',
+  _emscripten_dbg: function(str) {
+    dbg(UTF8ToString(str));
+  },
+#endif
 
   // Use program_invocation_short_name and program_invocation_name in compiled
   // programs. This function is for implementing them.
