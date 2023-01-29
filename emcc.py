@@ -1913,8 +1913,12 @@ def phase_linker_setup(options, state, newargs):
     # Require explicit -lfoo.js flags to link with JS libraries.
     default_setting('AUTO_JS_LIBRARIES', 0)
 
+  if settings.STRICT_JS and (settings.MODULARIZE or settings.EXPORT_ES6):
+    exit_with_error("STRICT_JS doesn't work with MODULARIZE or EXPORT_ES6")
+
   if settings.STRICT:
-    default_setting('STRICT_JS', 1)
+    if not settings.MODULARIZE and not settings.EXPORT_ES6:
+      default_setting('STRICT_JS', 1)
     default_setting('AUTO_JS_LIBRARIES', 0)
     default_setting('AUTO_NATIVE_LIBRARIES', 0)
     default_setting('AUTO_ARCHIVE_INDEXES', 0)

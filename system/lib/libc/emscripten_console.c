@@ -54,3 +54,12 @@ void _emscripten_errf(const char* fmt, ...) {
   vlogf(fmt, ap, &_emscripten_err);
   va_end(ap);
 }
+
+#ifndef NDEBUG
+void _emscripten_dbgf(const char* fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  vlogf(fmt, ap, &_emscripten_dbg);
+  va_end(ap);
+}
+#endif

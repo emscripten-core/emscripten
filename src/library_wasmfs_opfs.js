@@ -5,14 +5,14 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $wasmfsOPFSDirectoryHandles__deps: ['$handleAllocator'],
-  $wasmfsOPFSDirectoryHandles: "new handleAllocator()",
-  $wasmfsOPFSFileHandles__deps: ['$handleAllocator'],
-  $wasmfsOPFSFileHandles: "new handleAllocator()",
-  $wasmfsOPFSAccessHandles__deps: ['$handleAllocator'],
-  $wasmfsOPFSAccessHandles: "new handleAllocator()",
-  $wasmfsOPFSBlobs__deps: ["$handleAllocator"],
-  $wasmfsOPFSBlobs: "new handleAllocator()",
+  $wasmfsOPFSDirectoryHandles__deps: ['$HandleAllocator'],
+  $wasmfsOPFSDirectoryHandles: "new HandleAllocator()",
+  $wasmfsOPFSFileHandles__deps: ['$HandleAllocator'],
+  $wasmfsOPFSFileHandles: "new HandleAllocator()",
+  $wasmfsOPFSAccessHandles__deps: ['$HandleAllocator'],
+  $wasmfsOPFSAccessHandles: "new HandleAllocator()",
+  $wasmfsOPFSBlobs__deps: ["$HandleAllocator"],
+  $wasmfsOPFSBlobs: "new HandleAllocator()",
 
   _wasmfs_opfs_init_root_directory__deps: ['$wasmfsOPFSDirectoryHandles'],
   _wasmfs_opfs_init_root_directory: async function(ctx) {

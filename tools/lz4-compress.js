@@ -9,20 +9,20 @@
 const fs = require('fs');
 const path = require('path');
 
-const arguments_ = process['argv'].slice(2);
+const arguments_ = process.argv.slice(2);
 const debug = false;
 
 function print(x) {
-  process['stdout'].write(x + '\n');
+  process.stdout.write(x + '\n');
 }
 
 function printErr(x) {
-  process['stderr'].write(x + '\n');
+  process.stderr.write(x + '\n');
 }
 
 function read(filename, binary) {
-  filename = path['normalize'](filename);
-  let ret = fs['readFileSync'](filename);
+  filename = path.normalize(filename);
+  let ret = fs.readFileSync(filename);
   if (ret && !binary) ret = ret.toString();
   return ret;
 }

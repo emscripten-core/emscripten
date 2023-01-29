@@ -25,7 +25,7 @@
 //#define DYLINK_DEBUG
 
 #ifdef DYLINK_DEBUG
-#define dbg(fmt, ...) _emscripten_errf("%p: " fmt, pthread_self(), ##__VA_ARGS__)
+#define dbg(fmt, ...) _emscripten_dbgf(fmt, ##__VA_ARGS__)
 #else
 #define dbg(fmt, ...)
 #endif
