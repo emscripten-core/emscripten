@@ -264,12 +264,16 @@ if (ENVIRONMENT_IS_NODE) {
 
 #if USE_PTHREADS
   let nodeWorkerThreads;
+#if ASSERTIONS
   try {
     nodeWorkerThreads = require('worker_threads');
   } catch (e) {
     console.error('The "worker_threads" module is not supported in this node.js build - perhaps a newer version is needed?');
     throw e;
   }
+#else
+  nodeWorkerThreads = require('worker_threads');
+#endif
   /**
    * @constructor
    * @param {string|URL} url

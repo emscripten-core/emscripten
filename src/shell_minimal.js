@@ -140,6 +140,36 @@ function ready() {
 
 #if USE_PTHREADS
 
+// Worker polyfill copied from shell.js. Keep these in sync.
+// TODO: Deduplicate?
+let nodeWorkerThreads;
+#if ASSERTIONS
+try {
+  nodeWorkerThreads = require('worker_threads');
+} catch (e) {
+  console.error('The "worker_threads" module is not supported in this node.js build - perhaps a newer version is needed?');
+  throw e;
+}
+#else
+nodeWorkerThreads = require('worker_threads');
+#endif
+/**
+ * @constructor
+ * @param {string|URL} url
+ */
+let NodeWorker = nodeWorkerThreads.Worker;
+// Node requires data and file protocol urls to be URLs.
+class Worker extends NodeWorker {
+  constructor(url, ...rest) {
+    if (typeof url === 'string' &&
+        (url.startsWith('data:') || url.startsWith('file:'))) {
+      url = new URL(url);
+    }
+    super(url, ...rest);
+  }
+}
+global.Worker = Worker;
+
 #if !MODULARIZE
 // In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
