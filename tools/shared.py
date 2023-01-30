@@ -246,7 +246,6 @@ def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: mutable defau
   This is used by emcc to run parts of the build process that are written
   implemented in javascript.
   """
-  check_node()
   command = config.NODE_JS + node_args + [filename] + jsargs
   return check_call(command, **kw).stdout
 
@@ -376,7 +375,6 @@ def node_pthread_flags():
 @memoize
 @ToolchainProfiler.profile()
 def check_node():
-  check_node_version()
   try:
     run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
   except Exception as e:
@@ -397,6 +395,7 @@ def generate_sanity():
 
 def perform_sanity_checks():
   # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
+  check_node_version()
   check_llvm_version()
 
   llvm_ok = check_llvm()
@@ -409,6 +408,8 @@ def perform_sanity_checks():
 
   if not llvm_ok:
     exit_with_error('failing sanity checks due to previous llvm failure')
+
+  check_node()
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
     for cmd in [CLANG_CC, LLVM_AR, LLVM_NM]:

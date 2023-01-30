@@ -18,14 +18,14 @@ const fs = require('fs');
 const path = require('path');
 global.vm = require('vm');
 
-const arguments_ = process['argv'].slice(2);
+const arguments_ = process.argv.slice(2);
 const debug = false;
 
 global.print = function(x) {
-  process['stdout'].write(x + '\n');
+  process.stdout.write(x + '\n');
 };
 global.printErr = function(x) {
-  process['stderr'].write(x + '\n');
+  process.stderr.write(x + '\n');
 };
 
 global.assert = require('assert');

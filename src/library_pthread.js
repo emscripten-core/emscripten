@@ -55,7 +55,7 @@ var LibraryPThread = {
     // the reverse mapping, each worker has a `pthread_ptr` when its running a
     // pthread.
     pthreads: {},
-#if PTHREADS_DEBUG
+#if ASSERTIONS
     nextWorkerID: 1,
     debugInit: function() {
       function pthreadLogPrefix() {
@@ -70,16 +70,18 @@ var LibraryPThread = {
         return 'w:' + (Module['workerID'] || 0) + ',t:' + ptrToString(t) + ': ';
       }
 
-      // When PTHREAD_DEBUG is enabled, prefix all err()/dbg() messages with the
-      // calling thread ID.
-      var origErr = err;
-      err = (message) => origErr(pthreadLogPrefix() + message);
+      // Prefix all err()/dbg() messages with the calling thread ID.
       var origDbg = dbg;
       dbg = (message) => origDbg(pthreadLogPrefix() + message);
+#if PTHREADS_DEBUG
+      // With PTHREADS_DEBUG also prefix all err() messages.
+      var origErr = err;
+      err = (message) => origErr(pthreadLogPrefix() + message);
+#endif
     },
 #endif
     init: function() {
-#if PTHREADS_DEBUG
+#if ASSERTIONS
       PThread.debugInit();
 #endif
       if (ENVIRONMENT_IS_PTHREAD) {
@@ -390,7 +392,7 @@ var LibraryPThread = {
 #if MAIN_MODULE
         'dynamicLibraries': Module['dynamicLibraries'],
 #endif
-#if PTHREADS_DEBUG
+#if ASSERTIONS
         'workerID': PThread.nextWorkerID++,
 #endif
       });

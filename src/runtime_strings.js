@@ -105,6 +105,9 @@ function UTF8ArrayToString(heapOrArray, idx, maxBytesToRead) {
  * @return {string}
  */
 function UTF8ToString(ptr, maxBytesToRead) {
+#if ASSERTIONS
+  assert(typeof ptr == 'number');
+#endif
 #if CAN_ADDRESS_2GB
   ptr >>>= 0;
 #endif

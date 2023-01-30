@@ -1307,7 +1307,6 @@ int f() {
     self.emcc('lib.c', ['-Oz', '-sEXPORT_ALL', '-sLINKABLE', '--pre-js', 'main.js'], output_filename='a.out.js')
     self.assertContained('libf1\nlibf2\n', self.run_js('a.out.js'))
 
-  @no_windows('https://github.com/emscripten-core/emscripten/issues/18596')
   def test_minimal_runtime_export_all_modularize(self):
     """This test ensures that MODULARIZE and EXPORT_ALL work simultaneously.
 
@@ -1328,7 +1327,10 @@ int f() {
     create_file('main.mjs', '''
       import { dirname } from 'path';
       import { createRequire } from 'module';
-      globalThis.__dirname = dirname(import.meta.url).substring(7);
+      import { fileURLToPath } from 'url';
+
+      // `fileURLToPath` is used to get a valid path on Windows.
+      globalThis.__dirname = dirname(fileURLToPath(import.meta.url));
       globalThis.require = createRequire(import.meta.url);
 
       import Test from './test.mjs';
@@ -5682,6 +5684,11 @@ int main(void) {
     output = self.run_process(config.NODE_JS + ['-e', 'require("./a.out.js")();var m = require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE)
     self.assertFalse(output.stderr)
     self.assertEqual(output.stdout, 'hello, world!\nhello, world!\n')
+
+  def test_modularize_strict(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sSTRICT'])
+    stdout = self.run_process(config.NODE_JS + ['-e', 'var m = require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE).stdout
+    self.assertEqual(stdout, 'hello, world!\n')
 
   @node_pthreads
   def test_pthread_print_override_modularize(self):
@@ -12850,3 +12857,27 @@ foo/version.txt
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_itimer.c')
+
+  @node_pthreads
+  def test_dbg(self):
+    create_file('pre.js', '''
+    dbg('start');
+    Module.onRuntimeInitialized = () => dbg('done init');
+    ''')
+    expected = '''\
+start
+w:0,t:0x[0-9a-fA-F]+: done init
+hello, world!
+w:0,t:0x[0-9a-fA-F]+: native dbg message
+w:0,t:0x[0-9a-fA-F]+: formatted: 42
+'''
+    self.emcc_args.append('--pre-js=pre.js')
+    # Verify that, after initialization, dbg() messages are prefixed with
+    # worker and thread ID.
+    self.do_runf(test_file('other/test_dbg.c'), expected, regex=True)
+
+    # When assertions are disabled `dbg` function is not defined
+    self.do_runf(test_file('other/test_dbg.c'),
+                 'ReferenceError: dbg is not defined',
+                 emcc_args=['-DNDEBUG', '-sASSERTIONS=0'],
+                 assert_returncode=NON_ZERO)
