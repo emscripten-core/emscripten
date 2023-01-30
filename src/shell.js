@@ -279,7 +279,9 @@ if (ENVIRONMENT_IS_NODE) {
    * @param {string|URL} url
    */
   let NodeWorker = nodeWorkerThreads.Worker;
-  // Node requires data and file protocol urls to be URLs.
+  // Create a polyfill for the Worker Web API based on Node's `worker_threads`.
+  // Specifically, paper over the difference that Node requires data and file
+  // protocol urls to be URLs while the Web expects them to be strings.
   class Worker extends NodeWorker {
     constructor(url, ...rest) {
       if (typeof url === 'string' &&

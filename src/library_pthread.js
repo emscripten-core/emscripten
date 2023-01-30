@@ -1207,10 +1207,16 @@ Object.assign(global, {
     if (targetThreadId == currThreadId) {
       setTimeout(() => executeNotifiedProxyingQueue(queue));
     } else if (targetThreadId == mainThreadId) {
+      // Messages to the main thread do not go through the `messageRelay` since
+      // every worker has the capability to message the main thread directly.
       postMessage({'cmd' : 'processProxyingQueue', 'queue' : queue});
     } else if (ENVIRONMENT_IS_PTHREAD) {
+      // We are a pthread messaging another pthread, so go through the
+      // `messageRelay`.
       PThread.messageRelay.postMessage({'targetThread' : targetThreadId, 'cmd' : 'processProxyingQueue', 'queue' : queue});
     } else {
+      // We are the main thread messaging a pthread. We can message pthreads
+      // directly, so do not go through the `messageRelay`.
       var worker = PThread.pthreads[targetThreadId];
       if (!worker) {
 #if ASSERTIONS
