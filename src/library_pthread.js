@@ -679,6 +679,7 @@ var LibraryPThread = {
     return ___pthread_create_js(pthread_ptr, attr, startRoutine, arg);
   },
 
+#if OFFSCREENCANVAS_SUPPORT
   // ASan wraps the emscripten_builtin_pthread_create call in
   // __lsan::ScopedInterceptorDisabler.  Unfortunately, that only disables it on
   // the thread that made the call.  __pthread_create_js gets proxied to the
@@ -687,6 +688,7 @@ var LibraryPThread = {
   // pthread's internal allocations as leaks.  If/when we remove all the
   // allocations from __pthread_create_js we could also remove this.
   __pthread_create_js__noleakcheck: true,
+#endif
   __pthread_create_js__sig: 'iiiii',
   __pthread_create_js__deps: ['$spawnThread', 'pthread_self', '$pthreadCreateProxied',
 #if OFFSCREENCANVAS_SUPPORT
