@@ -71,7 +71,8 @@ int emscripten_proxy_async_with_callback(em_proxying_queue* q,
 
 // Enqueue `func` on the given queue and thread and wait for it to finish
 // executing before returning. Returns 1 if the task was successfully completed
-// and 0 otherwise.
+// and 0 otherwise, including if the target thread is canceled or exits before
+// the work is completed.
 int emscripten_proxy_sync(em_proxying_queue* q,
                           pthread_t target_thread,
                           void (*func)(void*),
@@ -82,7 +83,8 @@ int emscripten_proxy_sync(em_proxying_queue* q,
 // before returning. `func` need not call `emscripten_proxying_finish` itself;
 // it could instead store the context pointer and call
 // `emscripten_proxying_finish` at an arbitrary later time. Returns 1 if the
-// task was successfully completed and 0 otherwise.
+// task was successfully completed and 0 otherwise, including if the target
+// thread is canceled or exits before the work is completed.
 int emscripten_proxy_sync_with_ctx(em_proxying_queue* q,
                                    pthread_t target_thread,
                                    void (*func)(em_proxying_ctx*, void*),

@@ -135,10 +135,7 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   }
 }
 
-int emscripten_proxy_async(em_proxying_queue* q,
-                           pthread_t target_thread,
-                           void (*func)(void*),
-                           void* arg) {
+static int do_proxy(em_proxying_queue* q, pthread_t target_thread, task t) {
   assert(q != NULL);
   pthread_mutex_lock(&q->mutex);
   em_task_queue* tasks = get_or_add_tasks_for_thread(q, target_thread);
@@ -147,26 +144,105 @@ int emscripten_proxy_async(em_proxying_queue* q,
     return 0;
   }
 
-  return em_task_queue_send(tasks, (task){func, arg});
+  return em_task_queue_send(tasks, t);
 }
+
+int emscripten_proxy_async(em_proxying_queue* q,
+                           pthread_t target_thread,
+                           void (*func)(void*),
+                           void* arg) {
+  return do_proxy(q, target_thread, (task){func, NULL, arg});
+}
+
+enum ctx_state { PENDING, DONE, CANCELED };
 
 struct em_proxying_ctx {
   // The user-provided function and argument.
   void (*func)(em_proxying_ctx*, void*);
   void* arg;
-  // Set `done` to 1 and signal the condition variable once the proxied task is
-  // done.
-  int done;
+  // Update `state` and signal the condition variable once the proxied task is
+  // done or canceled.
+  enum ctx_state state;
   pthread_mutex_t mutex;
   pthread_cond_t cond;
+  // A doubly linked list of contexts associated with active work on a single
+  // thread. If the thread is canceled, it will traverse this list to find
+  // contexts that need to be canceled.
+  struct em_proxying_ctx* next;
+  struct em_proxying_ctx* prev;
 };
+
+// The key that `cancel_active_ctxs` is bound to so that it runs when a thread
+// is canceled or exits.
+static pthread_key_t active_ctxs;
+
+static void cancel_ctx(void* arg);
+static void cancel_active_ctxs(void* arg);
+
+static void init_active_ctxs(void) {
+  int ret = pthread_key_create(&active_ctxs, cancel_active_ctxs);
+  assert(ret == 0);
+  (void)ret;
+}
+
+static void add_active_ctx(em_proxying_ctx* ctx) {
+  assert(ctx != NULL);
+  em_proxying_ctx* head = pthread_getspecific(active_ctxs);
+  if (head == NULL) {
+    // This is the only active context; initialize the active contexts list.
+    ctx->next = ctx->prev = ctx;
+    pthread_setspecific(active_ctxs, ctx);
+  } else {
+    // Insert this context at the tail of the list just before `head`.
+    ctx->next = head;
+    ctx->prev = head->prev;
+    ctx->next->prev = ctx;
+    ctx->prev->next = ctx;
+  }
+}
+
+static void remove_active_ctx(em_proxying_ctx* ctx) {
+  assert(ctx != NULL);
+  assert(ctx->next != NULL);
+  assert(ctx->prev != NULL);
+  if (ctx->next == ctx) {
+    // This is the only active context; clear the active contexts list.
+    ctx->next = ctx->prev = NULL;
+    pthread_setspecific(active_ctxs, NULL);
+    return;
+  }
+
+  // Update the list head if we are removing the current head.
+  em_proxying_ctx* head = pthread_getspecific(active_ctxs);
+  if (ctx == head) {
+    pthread_setspecific(active_ctxs, head->next);
+  }
+
+  // Remove the context from the list.
+  ctx->prev->next = ctx->next;
+  ctx->next->prev = ctx->prev;
+  ctx->next = ctx->prev = NULL;
+}
+
+static void cancel_active_ctxs(void* arg) {
+  pthread_setspecific(active_ctxs, NULL);
+  em_proxying_ctx* head = arg;
+  em_proxying_ctx* curr = head;
+  do {
+    em_proxying_ctx* next = curr->next;
+    cancel_ctx(curr);
+    curr = next;
+  } while (curr != head);
+}
 
 static void em_proxying_ctx_init(em_proxying_ctx* ctx,
                                  void (*func)(em_proxying_ctx*, void*),
                                  void* arg) {
+  static pthread_once_t once = PTHREAD_ONCE_INIT;
+  pthread_once(&once, init_active_ctxs);
   *ctx = (em_proxying_ctx){.func = func,
                            .arg = arg,
-                           .done = 0,
+                           .state = PENDING,
                            .mutex = PTHREAD_MUTEX_INITIALIZER,
                            .cond = PTHREAD_COND_INITIALIZER};
 }
@@ -178,14 +254,24 @@ static void em_proxying_ctx_deinit(em_proxying_ctx* ctx) {
 
 void emscripten_proxy_finish(em_proxying_ctx* ctx) {
   pthread_mutex_lock(&ctx->mutex);
-  ctx->done = 1;
+  ctx->state = DONE;
+  remove_active_ctx(ctx);
+  pthread_mutex_unlock(&ctx->mutex);
+  pthread_cond_signal(&ctx->cond);
+}
+
+static void cancel_ctx(void* arg) {
+  em_proxying_ctx* ctx = arg;
+  pthread_mutex_lock(&ctx->mutex);
+  ctx->state = CANCELED;
   pthread_mutex_unlock(&ctx->mutex);
   pthread_cond_signal(&ctx->cond);
 }
 
 // Helper for wrapping the call with ctx as a `void (*)(void*)`.
-static void call_with_ctx(void* p) {
-  em_proxying_ctx* ctx = (em_proxying_ctx*)p;
+static void call_with_ctx(void* arg) {
+  em_proxying_ctx* ctx = arg;
+  add_active_ctx(ctx);
   ctx->func(ctx, ctx->arg);
 }
 
@@ -197,21 +283,23 @@ int emscripten_proxy_sync_with_ctx(em_proxying_queue* q,
          "Cannot synchronously wait for work proxied to the current thread");
   em_proxying_ctx ctx;
   em_proxying_ctx_init(&ctx, func, arg);
-  if (!emscripten_proxy_async(q, target_thread, call_with_ctx, &ctx)) {
+  if (!do_proxy(q, target_thread, (task){call_with_ctx, cancel_ctx, &ctx})) {
+    em_proxying_ctx_deinit(&ctx);
     return 0;
   }
   pthread_mutex_lock(&ctx.mutex);
-  while (!ctx.done) {
+  while (ctx.state == PENDING) {
     pthread_cond_wait(&ctx.cond, &ctx.mutex);
   }
   pthread_mutex_unlock(&ctx.mutex);
+  int ret = ctx.state == DONE;
   em_proxying_ctx_deinit(&ctx);
-  return 1;
+  return ret;
 }
 
 // Helper for signaling the end of the task after the user function returns.
 static void call_then_finish(em_proxying_ctx* ctx, void* arg) {
-  task* t = (task*)arg;
+  task* t = arg;
   t->func(t->arg);
   emscripten_proxy_finish(ctx);
 }
@@ -220,7 +308,7 @@ int emscripten_proxy_sync(em_proxying_queue* q,
                           pthread_t target_thread,
                           void (*func)(void*),
                           void* arg) {
-  task t = {func, arg};
+  task t = {.func = func, .arg = arg};
   return emscripten_proxy_sync_with_ctx(q, target_thread, call_then_finish, &t);
 }
 

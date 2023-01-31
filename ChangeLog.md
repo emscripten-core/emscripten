@@ -45,6 +45,9 @@ See docs/process.md for more on how version tagging works.
   SjLj, the combination we do not intend to support for the long term.
 - Added support for Wasm-based AudioWorklets for realtime audio processing
   (#16449)
+- Synchronous proxying functions in emscripten/proxying.h now return errors
+  instead of hanging forever when the worker thread dies before the proxied work
+  is finished.
 
 3.1.31 - 01/26/23
 -----------------

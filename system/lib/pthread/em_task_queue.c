@@ -180,6 +180,23 @@ void em_task_queue_execute(em_task_queue* queue) {
   queue->processing = 0;
 }
 
+void em_task_queue_cancel(em_task_queue* queue) {
+  pthread_mutex_lock(&queue->mutex);
+  while (!em_task_queue_is_empty(queue)) {
+    task t = em_task_queue_dequeue(queue);
+    if (t.cancel) {
+      t.cancel(t.arg);
+    }
+  }
+  pthread_mutex_unlock(&queue->mutex);
+  // Any subsequent messages to this queue (for example if a pthread struct is
+  // reused for a future thread, potentially on a different worker) will require
+  // a new notification. Clearing the flag is safe here because in both the
+  // proxying queue and mailbox cases, there are no more outstanding references
+  // to the queue after thread shutdown.
+  queue->notification = NOTIFICATION_NONE;
+}
+
 int em_task_queue_enqueue(em_task_queue* queue, task t) {
   if (em_task_queue_is_full(queue) && !em_task_queue_grow(queue)) {
     return 0;
@@ -202,6 +219,11 @@ static void receive_notification(void* arg) {
   notification_state expected = NOTIFICATION_RECEIVED;
   atomic_compare_exchange_strong(
     &tasks->notification, &expected, NOTIFICATION_NONE);
+}
+
+static void cancel_notification(void* arg) {
+  em_task_queue* tasks = arg;
+  em_task_queue_cancel(tasks);
 }
 
 int em_task_queue_send(em_task_queue* queue, task t) {
@@ -228,8 +250,10 @@ int em_task_queue_send(em_task_queue* queue, task t) {
     return 1;
   }
 
-  emscripten_thread_mailbox_send(
-    queue->thread, (task){.func = receive_notification, .arg = queue});
+  emscripten_thread_mailbox_send(queue->thread,
+                                 (task){.func = receive_notification,
+                                        .cancel = cancel_notification,
+                                        .arg = queue});
   emscripten_thread_mailbox_unref(queue->thread);
   return 1;
 }
