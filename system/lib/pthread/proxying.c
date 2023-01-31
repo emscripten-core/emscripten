@@ -207,6 +207,12 @@ static em_task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
   return tasks;
 }
 
+static void dummy()
+{
+}
+
+weak_alias(dummy, _emscripten_thread_sync_code);
+
 // Exported for use in worker.js, but otherwise an internal function.
 EMSCRIPTEN_KEEPALIVE
 void _emscripten_proxy_execute_task_queue(em_task_queue* tasks) {

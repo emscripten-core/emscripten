@@ -62,7 +62,7 @@ struct dlevent {
 };
 static struct dlevent * _Atomic head, * _Atomic tail;
 
-#ifdef _REENTRANT
+#if defined(_REENTRANT) && defined(__PIC__)
 static thread_local struct dlevent* thread_local_tail;
 static pthread_mutex_t write_lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -143,6 +143,7 @@ static void do_write_unlock() {
   skip_dlsync = false;
 }
 #else
+#define dlsync()
 #define do_write_lock()
 #define do_write_unlock()
 #endif
@@ -190,7 +191,7 @@ void new_dlevent(struct dso* p, int sym_index) {
       p,
       sym_index);
   tail = ev;
-#if _REENTRANT
+#if defined(_REENTRANT) && defined(__PIC__)
   thread_local_tail = ev;
 #endif
 
@@ -273,10 +274,8 @@ void* dlopen(const char* file, int flags) {
   int cs;
   pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
   do_write_lock();
-#ifdef _REENTRANT
   // Make sure we are in sync before performing any write operations.
   dlsync();
-#endif
 
   struct dso* p;
 
@@ -317,10 +316,8 @@ void emscripten_dlopen(const char* filename, int flags, void* user_data,
     return;
   }
   do_write_lock();
-#ifdef _REENTRANT
   // Make sure we are in sync before performing any write operations.
   dlsync();
-#endif
   struct dso* p = load_library_start(filename, flags);
   if (!p) {
     do_write_unlock();
@@ -348,10 +345,8 @@ void* __dlsym(void* restrict p, const char* restrict s, void* restrict ra) {
   void* res;
   int sym_index = -1;
   do_write_lock();
-#ifdef _REENTRANT
   // Make sure we are in sync before performing any write operations.
   dlsync();
-#endif
   res = _dlsym_js(p, s, &sym_index);
   if (sym_index != -1) {
     new_dlevent(p, sym_index);
