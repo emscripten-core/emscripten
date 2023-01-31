@@ -194,14 +194,7 @@ Object.assign(global, {
         };
       }).toString() + ')()';
 
-#if ENVIRONMENT_MAY_BE_NODE
-      if (ENVIRONMENT_IS_NODE) {
-        // TODO: Node 16+ has btoa, so remove this when we drop support for
-        // older Nodes.
-        global.btoa = (s) => { return Buffer.from(s).toString('base64'); };
-      }
-#endif
-      var url = 'data:text/javascript;base64,' + btoa(relayCode);
+      var url = 'data:text/javascript,' + encodeURIComponent(relayCode);
 #if ASSERTIONS
       PThread.messageRelay = new Worker(url, {name: "message-relay"});
 #else
@@ -595,12 +588,16 @@ Object.assign(global, {
     },
 
     receiveMessageRelayPort: function(port) {
+#if ASSERTIONS
       assert(ENVIRONMENT_IS_PTHREAD);
+#endif
       PThread.messageRelay = port;
     },
 
     closeMessageRelayPort: function() {
+#if ASSERTIONS
       assert(ENVIRONMENT_IS_PTHREAD);
+#endif
       PThread.messageRelay.close();
       delete PThread.messageRelay;
     }
