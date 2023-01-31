@@ -15,12 +15,18 @@
 #include <threads.h>
 #include <unistd.h>
 #include <emscripten/heap.h>
+#include <emscripten/threading.h>
 
 #define STACK_ALIGN 16
 #define TSD_ALIGN (sizeof(void*))
 
 // Comment this line to enable tracing of thread creation and destruction:
 // #define PTHREAD_DEBUG
+#ifdef PTHREAD_DEBUG
+#define dbg(fmt, ...) _emscripten_dbgf(fmt, ##__VA_ARGS__)
+#else
+#define dbg(fmt, ...)
+#endif
 
 // See musl's pthread_create.c
 
@@ -218,10 +224,14 @@ int __pthread_create(pthread_t* restrict res,
 #endif
 
   struct pthread *self = __pthread_self();
-#ifdef PTHREAD_DEBUG
-  _emscripten_errf("start __pthread_create: self=%p new=%p new_end=%p stack=%p->%p stack_size=%zu tls_base=%p",
-                   self, new, new+1, (char*)new->stack - new->stack_size, new->stack, new->stack_size, new->tls_base);
-#endif
+  dbg("start __pthread_create: new=%p new_end=%p stack=%p->%p "
+      "stack_size=%zu tls_base=%p",
+      new,
+      new + 1,
+      (char*)new->stack - new->stack_size,
+      new->stack,
+      new->stack_size,
+      new->tls_base);
 
   // thread may already be running/exited after the _pthread_create_js call below
   __tl_lock();
@@ -250,13 +260,14 @@ int __pthread_create(pthread_t* restrict res,
     new->next = new->prev = new;
 
     __tl_unlock();
-    
+
     return rtn;
   }
 
-#ifdef PTHREAD_DEBUG
-  _emscripten_errf("done __pthread_create self=%p next=%p prev=%p new=%p", self, self->next, self->prev, new);
-#endif
+  dbg("done __pthread_create next=%p prev=%p new=%p",
+      self->next,
+      self->prev,
+      new);
   *res = new;
   return 0;
 }
@@ -278,9 +289,7 @@ void _emscripten_thread_free_data(pthread_t t) {
   // musl normally allocates this using mmap).  This region
   // includes the pthread structure itself.
   unsigned char* block = t->map_base;
-#ifdef PTHREAD_DEBUG
-  _emscripten_errf("_emscripten_thread_free_data thread=%p map_base=%p", t, block);
-#endif
+  dbg("_emscripten_thread_free_data thread=%p map_base=%p", t, block);
   // To aid in debugging, set the entire region to zero.
   memset(block, 0, sizeof(struct pthread));
   emscripten_builtin_free(block);
