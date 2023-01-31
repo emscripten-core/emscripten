@@ -240,12 +240,18 @@ var LibraryDylink = {
   _emscripten_dlopen_js__deps: [function() { error(dlopenMissingError); }],
   _dlsym_js__deps: [function() { error(dlopenMissingError); }],
   _dlsym_catchup_js__deps: [function() { error(dlopenMissingError); }],
+  dlopen__deps: [function() { error(dlopenMissingError); }],
+  _emscripten_dlopen__deps: [function() { error(dlopenMissingError); }],
+  __dlsym__deps: [function() { error(dlopenMissingError); }],
 #else
   $dlopenMissingError: `= ${dlopenMissingError}`,
   _dlopen_js__deps: ['$dlopenMissingError'],
   _emscripten_dlopen_js__deps: ['$dlopenMissingError'],
   _dlsym_js__deps: ['$dlopenMissingError'],
   _dlsym_catchup_js__deps: ['$dlopenMissingError'],
+  dlopen__deps: ['$dlopenMissingError'],
+  _emscripten_dlopen__deps: ['$dlopenMissingError'],
+  __dlsym__deps: ['$dlopenMissingError'],
 #endif
   _dlopen_js: function(handle) {
     abort(dlopenMissingError);
@@ -259,6 +265,16 @@ var LibraryDylink = {
   _dlsym_catchup_js: function(handle, symbolIndex) {
     abort(dlopenMissingError);
   },
+  dlopen: function(handle) {
+    abort(dlopenMissingError);
+  },
+  _emscripten_dlopen: function(handle, onsuccess, onerror, user_data) {
+    abort(dlopenMissingError);
+  },
+  __dlsym: function(handle, symbol) {
+    abort(dlopenMissingError);
+  },
+  _dlinit: function(main_dso_handle) {},
   _dlinit: function(main_dso_handle) {},
 #else // MAIN_MODULE != 0
   // dynamic linker/loader (a-la ld.so on ELF systems)
