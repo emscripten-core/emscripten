@@ -1376,6 +1376,10 @@ class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
     ]
   includes = ['system/lib/libcxx/src']
 
+  def __init__(self, **kwargs):
+    super().__init__(**kwargs)
+    self.is_debug |= settings.EXCEPTION_STACK_TRACES
+
   def get_cflags(self):
     cflags = super().get_cflags()
     if not self.is_mt and not self.is_ww:
