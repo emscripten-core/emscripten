@@ -48,17 +48,17 @@ mergeInto(LibraryManager.library, {
     switch (result) {
       case {{{ cDefine('EM_PROMISE_FULFILL') }}}:
         info.resolve(value);
-        break;
+        return;
       case {{{ cDefine('EM_PROMISE_MATCH') }}}:
         info.resolve(getPromise(value));
-        break;
+        return;
       case {{{ cDefine('EM_PROMISE_MATCH_RELEASE') }}}:
         info.resolve(getPromise(value));
         _emscripten_promise_destroy(value);
-        break;
+        return;
       case {{{ cDefine('EM_PROMISE_REJECT') }}}:
         info.reject(value);
-        break;
+        return;
     }
 #if ASSERTIONS
     abort("unexpected promise callback result " + result);
