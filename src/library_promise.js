@@ -5,8 +5,8 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $promiseMap__deps: ['$handleAllocator'],
-  $promiseMap: "new handleAllocator();",
+  $promiseMap__deps: ['$HandleAllocator'],
+  $promiseMap: "new HandleAllocator();",
 
   $getPromise__deps: ['$promiseMap'],
   $getPromise: function(id) {
@@ -45,18 +45,24 @@ mergeInto(LibraryManager.library, {
     err('emscripten_promise_resolve: ' + id);
 #endif
     var info = promiseMap.get(id);
-    if (result == {{{ cDefine('EM_PROMISE_FULFILL') }}}) {
-      info.resolve(value);
-    } else if (result == {{{ cDefine('EM_PROMISE_MATCH') }}}) {
-      info.resolve(getPromise(value));
-    } else if (result == {{{ cDefine('EM_PROMISE_MATCH_RELEASE') }}}) {
-      info.resolve(getPromise(value));
-      _emscripten_promise_destroy(value);
-    } else if (result == {{{ cDefine('EM_PROMISE_REJECT') }}}) {
-      info.reject(value);
-    } else {
-      abort('invalid promise result');
+    switch (result) {
+      case {{{ cDefine('EM_PROMISE_FULFILL') }}}:
+        info.resolve(value);
+        break;
+      case {{{ cDefine('EM_PROMISE_MATCH') }}}:
+        info.resolve(getPromise(value));
+        break;
+      case {{{ cDefine('EM_PROMISE_MATCH_RELEASE') }}}:
+        info.resolve(getPromise(value));
+        _emscripten_promise_destroy(value);
+        break;
+      case {{{ cDefine('EM_PROMISE_REJECT') }}}:
+        info.reject(value);
+        break;
     }
+#if ASSERTIONS
+    abort("unexpected promise callback result " + result);
+#endif
   },
 
   $makePromiseCallback__deps: ['$getPromise',
@@ -77,7 +83,10 @@ mergeInto(LibraryManager.library, {
         var resultVal = {{{ makeGetValue('resultPtr', 0, '*') }}};
       } catch (e) {
         // If the thrown value is potentially a valid pointer, use it as the
-        // rejection reason. Otherwise use a null pointer as the reason.
+        // rejection reason. Otherwise use a null pointer as the reason. If we
+        // allow arbitrary objects to be thrown here, we will get a TypeError in
+        // MEMORY64 mode when they are later converted to void* rejection
+        // values.
 #if MEMORY64
         if (typeof e !== 'bigint') {
           throw 0n;
@@ -93,16 +102,17 @@ mergeInto(LibraryManager.library, {
         // the stack first.
         stackRestore(stack);
       }
-      if (result == {{{ cDefine('EM_PROMISE_FULFILL') }}}) {
-        return resultVal;
-      } else if (result == {{{ cDefine('EM_PROMISE_MATCH') }}}) {
-        return getPromise(resultVal);
-      } else if (result == {{{ cDefine('EM_PROMISE_MATCH_RELEASE') }}}) {
-        var ret = getPromise(resultVal);
-        _emscripten_promise_destroy(resultVal);
-        return ret;
-      } else if (result == {{{ cDefine('EM_PROMISE_REJECT') }}}) {
-        throw resultVal;
+      switch (result) {
+        case {{{ cDefine('EM_PROMISE_FULFILL') }}}:
+          return resultVal;
+        case {{{ cDefine('EM_PROMISE_MATCH') }}}:
+          return getPromise(resultVal);
+        case {{{ cDefine('EM_PROMISE_MATCH_RELEASE') }}}:
+          var ret = getPromise(resultVal);
+          _emscripten_promise_destroy(resultVal);
+          return ret;
+        case {{{ cDefine('EM_PROMISE_REJECT') }}}:
+          throw resultVal;
       }
 #if ASSERTIONS
       abort("unexpected promise callback result " + result);
@@ -132,12 +142,12 @@ mergeInto(LibraryManager.library, {
     return newId;
   },
 
-  emscripten_promise_all__deps: ['$promiseMap', '$getPromise', '$POINTER_SIZE'],
+  emscripten_promise_all__deps: ['$promiseMap', '$getPromise'],
   emscripten_promise_all__sig: 'pppp',
   emscripten_promise_all: function(idBuf, resultBuf, size) {
     var promises = [];
     for (var i = 0; i < size; i++) {
-      var id = {{{ makeGetValue('idBuf', 'i*POINTER_SIZE', 'i32') }}};
+      var id = {{{ makeGetValue('idBuf', `i*${Runtime.POINTER_SIZE}`, 'i32') }}};
       promises[i] = getPromise(id);
     }
 #if RUNTIME_DEBUG
@@ -148,7 +158,7 @@ mergeInto(LibraryManager.library, {
         if (resultBuf) {
           for (var i = 0; i < size; i++) {
             var result = results[i];
-            {{{ makeSetValue('resultBuf', 'i*POINTER_SIZE', 'result', '*') }}};
+            {{{ makeSetValue('resultBuf', `i*${Runtime.POINTER_SIZE}`, 'result', '*') }}};
           }
         }
         return resultBuf;

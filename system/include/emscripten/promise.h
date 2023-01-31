@@ -51,9 +51,9 @@ typedef enum em_promise_result_t {
 // promise will be rejected with that number converted to a pointer as its
 // rejection reason. If the callback throws any other value, the new promise
 // will be rejected with a NULL rejection reason.
-typedef em_promise_result_t (*promise_callback_t)(void** result,
-                                                  void* data,
-                                                  void* value);
+typedef em_promise_result_t (*em_promise_callback_t)(void** result,
+                                                     void* data,
+                                                     void* value);
 
 // Create a new promise that can be explicitly resolved or rejected using
 // `emscripten_promise_resolve`. The returned promise handle must eventually be
@@ -81,14 +81,14 @@ void emscripten_promise_resolve(em_promise_t promise,
                                 void* value);
 
 // Install `on_fulfilled` and `on_rejected` callbacks on the given `promise`,
-// creating and returning a handle to a new promise. See `promise_callback_t`
+// creating and returning a handle to a new promise. See `em_promise_callback_t`
 // for documentation on how the callbacks work. `data` is arbitrary user data
 // that will be passed to the callbacks. The returned promise handle must
 // eventually be freed with `emscripten_promise_destroy`.
 __attribute__((warn_unused_result)) em_promise_t
 emscripten_promise_then(em_promise_t promise,
-                        promise_callback_t on_fulfilled,
-                        promise_callback_t on_rejected,
+                        em_promise_callback_t on_fulfilled,
+                        em_promise_callback_t on_rejected,
                         void* data);
 
 // Call Promise.all to create and return a new promise that is either fulfilled
