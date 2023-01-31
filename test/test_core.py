@@ -2849,6 +2849,13 @@ The current type of b is: 9
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test(test_file('pthread/test_pthread_proxy_to_pthread.c'))
 
+  @node_pthreads
+  @needs_dylink
+  def test_pthread_tls_dylink(self):
+    self.set_setting('MAIN_MODULE', 2)
+    self.emcc_args.append('-Wno-experimental')
+    self.do_run_in_out_file_test('pthread/test_pthread_tls_dylink.c')
+
   def test_tcgetattr(self):
     self.do_runf(test_file('termios/test_tcgetattr.c'), 'success')
 
