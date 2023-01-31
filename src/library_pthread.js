@@ -202,7 +202,11 @@ Object.assign(global, {
       }
 #endif
       var url = 'data:text/javascript;base64,' + btoa(relayCode);
+#if ASSERTIONS
+      PThread.messageRelay = new Worker(url, {name: "message-relay"});
+#else
       PThread.messageRelay = new Worker(url);
+#endif
 #if ENVIRONMENT_MAY_BE_NODE
       if (ENVIRONMENT_IS_NODE) {
         // Do not keep Node alive if the message relay is the only thing
@@ -722,13 +726,13 @@ Object.assign(global, {
       global.MessageChannel = require('worker_threads').MessageChannel;
     }
 #endif
-    var channel = new MessageChannel();
+    var relayChannel = new MessageChannel();
     var msg = {
         'cmd': 'run',
         'start_routine': threadParams.startRoutine,
         'arg': threadParams.arg,
         'pthread_ptr': threadParams.pthread_ptr,
-        'port': channel.port1,
+        'port': relayChannel.port1,
     };
 #if OFFSCREENCANVAS_SUPPORT
     // Note that we do not need to quote these names because they are only used
@@ -744,12 +748,16 @@ Object.assign(global, {
       worker.ref();
     }
 #endif
-    worker.postMessage(msg, threadParams.transferList.concat([channel.port1]));
+    // Send one end of the relay channel to the newly created thread and the
+    // other end to the messageRelay worker so that other threads can send
+    // messages to the new thread through the messageRelay.
+    worker.postMessage(msg,
+                       threadParams.transferList.concat([relayChannel.port1]));
     PThread.messageRelay.postMessage({
       'cmd': 'create',
       'thread': threadParams.pthread_ptr,
-      'port': channel.port2,
-    }, [channel.port2]);
+      'port': relayChannel.port2,
+    }, [relayChannel.port2]);
     return 0;
   },
 
