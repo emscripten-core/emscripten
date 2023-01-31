@@ -142,35 +142,39 @@ function ready() {
 
 // Worker polyfill copied from shell.js. Keep these in sync.
 // TODO: Deduplicate?
-let nodeWorkerThreads;
+#if ENVIRONMENT_MAY_BE_NODE
+if (ENVIRONMENT_IS_NODE) {
+  let nodeWorkerThreads;
 #if ASSERTIONS
-try {
-  nodeWorkerThreads = require('worker_threads');
-} catch (e) {
-  console.error('The "worker_threads" module is not supported in this node.js build - perhaps a newer version is needed?');
-  throw e;
-}
-#else
-nodeWorkerThreads = require('worker_threads');
-#endif
-/**
- * @constructor
- * @param {string|URL} url
- */
-let NodeWorker = nodeWorkerThreads.Worker;
-// Create a polyfill for the Worker Web API based on Node's `worker_threads`.
-// Specifically, paper over the difference that Node requires data and file
-// protocol urls to be URLs while the Web expects them to be strings.
-class Worker extends NodeWorker {
-  constructor(url, ...rest) {
-    if (typeof url === 'string' &&
-        (url.startsWith('data:') || url.startsWith('file:'))) {
-      url = new URL(url);
-    }
-    super(url, ...rest);
+  try {
+    nodeWorkerThreads = require('worker_threads');
+  } catch (e) {
+    console.error('The "worker_threads" module is not supported in this node.js build - perhaps a newer version is needed?');
+    throw e;
   }
+#else
+  nodeWorkerThreads = require('worker_threads');
+#endif
+  /**
+   * @constructor
+   * @param {string|URL} url
+   */
+  let NodeWorker = nodeWorkerThreads.Worker;
+  // Create a polyfill for the Worker Web API based on Node's `worker_threads`.
+  // Specifically, paper over the difference that Node requires data and file
+  // protocol urls to be URLs while the Web expects them to be strings.
+  class Worker extends NodeWorker {
+    constructor(url, ...rest) {
+      if (typeof url === 'string' &&
+          (url.startsWith('data:') || url.startsWith('file:'))) {
+        url = new URL(url);
+      }
+      super(url, ...rest);
+    }
+  }
+  global.Worker = Worker;
 }
-global.Worker = Worker;
+#endif // ENVIRONMENT_MAY_BE_NODE
 
 #if !MODULARIZE
 // In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
