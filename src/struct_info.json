@@ -1033,6 +1033,15 @@
         }
     },
     {
+        "file": "emscripten/promise.h",
+        "defines": [
+            "EM_PROMISE_FULFILL",
+            "EM_PROMISE_MATCH",
+            "EM_PROMISE_MATCH_RELEASE",
+            "EM_PROMISE_REJECT"
+        ]
+    },
+    {
         "file": "AL/al.h",
         "defines": [
           "AL_TRUE",

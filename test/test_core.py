@@ -9641,8 +9641,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_main_reads_args.c', emcc_args=['real.o', '-sEXIT_RUNTIME'], regex=True)
 
   @requires_node
-  def test_native_promise(self):
-    self.do_core_test('test_native_promise.c')
+  def test_promise(self):
+    self.do_core_test('test_promise.c')
 
 
 # Generate tests for everything
