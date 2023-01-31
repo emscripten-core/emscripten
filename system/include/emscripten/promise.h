@@ -13,7 +13,8 @@
 extern "C" {
 #endif
 
-// An opaque handle to a JS Promise object.
+// An opaque handle to a JS Promise object. Wrapped in a struct to facilitate
+// automatic conversions in the C++ API.
 typedef struct em_promise_t {
   void* handle;
 } em_promise_t;
