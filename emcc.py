@@ -1589,8 +1589,8 @@ def phase_setup(options, state, newargs):
       exit_with_error('DISABLE_EXCEPTION_CATCHING is not compatible with -fwasm-exceptions')
     if 'DISABLE_EXCEPTION_THROWING' in user_settings:
       exit_with_error('DISABLE_EXCEPTION_THROWING is not compatible with -fwasm-exceptions')
-    if 'ASYNCIFY' in user_settings:
-      exit_with_error('ASYNCIFY is not compatible with -fwasm-exceptions')
+    if 'ASYNCIFY' in user_settings and user_settings['ASYNCIFY'] == '1':
+      exit_with_error('ASYNCIFY=1 is not compatible with -fwasm-exceptions')
     settings.DISABLE_EXCEPTION_CATCHING = 1
     settings.DISABLE_EXCEPTION_THROWING = 1
 
