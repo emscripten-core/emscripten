@@ -1127,7 +1127,6 @@ class libc(MuslInternalLibrary,
     libc_files += files_in_path(
         path='system/lib/libc',
         filenames=[
-          'dynlink.c',
           'emscripten_console.c',
           'emscripten_fiber.c',
           'emscripten_get_heap_size.c',
@@ -1144,6 +1143,9 @@ class libc(MuslInternalLibrary,
           'sigtimedwait.c',
           'wasi-helpers.c',
         ])
+
+    if settings.RELOCATABLE:
+      libc_files += files_in_path(path='system/lib/libc', filenames=['dynlink.c'])
 
     libc_files += files_in_path(
         path='system/lib/pthread',
