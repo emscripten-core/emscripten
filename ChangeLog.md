@@ -22,10 +22,10 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 - In Wasm exception mode (`-fwasm-exceptions`), when
   `EXCEPTION_STACK_TRACES` is enabled, uncaught exceptions will display stack
-  traces. Note that stack traces are enabled when either of `ASSERTIONS` or this
-  `EXCEPTION_STACK_TRACES` is enabled, so this option is mainly for the users
-  who want only exceptions' stack traces without turning `ASSERTIONS` on. This
-  option currently works only for Wasm exceptions (-fwasm-exceptions). (#????)
+  traces. This defaults to true when `ASSERTIONS` is enabled. This option is
+  mainly for the users who want only exceptions' stack traces without turning
+  `ASSERTIONS` on. This option currently works only for Wasm exceptions
+  (-fwasm-exceptions). (#18642)
 
 3.1.31 - 01/26/23
 -----------------

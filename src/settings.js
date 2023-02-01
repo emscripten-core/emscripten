@@ -709,11 +709,10 @@ var EXCEPTION_CATCHING_ALLOWED = [];
 var EXPORT_EXCEPTION_HANDLING_HELPERS = false;
 
 // When this is enabled, exceptions will contain stack traces and uncaught
-// exceptions will display stack traces upon exiting. Note that stack traces
-// will be shown when either of EXCEPTION_STACK_TRACES or ASSERTIONS is enabled.
-// This option is for users who want exceptions' stack traces but do not want
-// other overheads ASSERTIONS can incur. This currently works only for Wasm
-// exceptions (-fwasm-exceptions).
+// exceptions will display stack traces upon exiting. This defaults to true when
+// ASSERTIONS is enabled. This option is for users who want exceptions' stack
+// traces but do not want other overheads ASSERTIONS can incur. This currently
+// works only for Wasm exceptions (-fwasm-exceptions).
 var EXCEPTION_STACK_TRACES = false;
 
 // Internal: Tracks whether Emscripten should link in exception throwing (C++
