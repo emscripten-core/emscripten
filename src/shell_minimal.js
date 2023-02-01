@@ -16,12 +16,7 @@ if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_E
 // HTML.  Otherwise we must define it here before its first use
 var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {};
 #else
-#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-var Module = typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : {};
-#else
 var Module = {{{ EXPORT_NAME }}};
-#endif
-
 #endif // USE_CLOSURE_COMPILER
 
 #else
