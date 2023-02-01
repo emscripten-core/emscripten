@@ -118,7 +118,10 @@ extern "C" void EMSCRIPTEN_KEEPALIVE finish() {
 
   // attemping to read a lz4 node as a link should be invalid
   buffer[0] = '\0';
-  assert(readlink("file.txt", buffer, sizeof(buffer)) == -1);
+  assert(readlink("file1.txt", buffer, sizeof(buffer)) == -1);
+  assert(buffer[0] == '\0');
+  assert(errno == EINVAL);
+  assert(readlink("subdir/file2.txt", buffer, sizeof(buffer)) == -1);
   assert(buffer[0] == '\0');
   assert(errno == EINVAL);
 
