@@ -30,13 +30,12 @@ var Module = {{{ EXPORT_NAME }}};
 // if (!Module)` is crucial for Closure Compiler here as it will
 // otherwise replace every `Module` occurrence with the object below
 var /** @type{Object} */ Module;
-if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
-#endif
-
-#if !MODULARIZE
+if (!Module) /** @suppress{checkTypes}*/Module = globalThis.{{{ EXPORT_NAME }}} || {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
+#elif !MODULARIZE
 // Use 'globalThis' to refer to the global scope Module variable.
 var Module = globalThis.{{{ EXPORT_NAME }}} || {};
 #endif
+
 #endif
 
 #if MODULARIZE && EXPORT_READY_PROMISE
