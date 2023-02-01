@@ -55,7 +55,7 @@ var LibraryPThread = {
     // the reverse mapping, each worker has a `pthread_ptr` when its running a
     // pthread.
     pthreads: {},
-#if PTHREADS_DEBUG
+#if ASSERTIONS
     nextWorkerID: 1,
     debugInit: function() {
       function pthreadLogPrefix() {
@@ -70,16 +70,18 @@ var LibraryPThread = {
         return 'w:' + (Module['workerID'] || 0) + ',t:' + ptrToString(t) + ': ';
       }
 
-      // When PTHREAD_DEBUG is enabled, prefix all err()/dbg() messages with the
-      // calling thread ID.
-      var origErr = err;
-      err = (message) => origErr(pthreadLogPrefix() + message);
+      // Prefix all err()/dbg() messages with the calling thread ID.
       var origDbg = dbg;
       dbg = (message) => origDbg(pthreadLogPrefix() + message);
+#if PTHREADS_DEBUG
+      // With PTHREADS_DEBUG also prefix all err() messages.
+      var origErr = err;
+      err = (message) => origErr(pthreadLogPrefix() + message);
+#endif
     },
 #endif
     init: function() {
-#if PTHREADS_DEBUG
+#if ASSERTIONS
       PThread.debugInit();
 #endif
       if (ENVIRONMENT_IS_PTHREAD
@@ -394,7 +396,7 @@ var LibraryPThread = {
 #if MAIN_MODULE
         'dynamicLibraries': Module['dynamicLibraries'],
 #endif
-#if PTHREADS_DEBUG
+#if ASSERTIONS
         'workerID': PThread.nextWorkerID++,
 #endif
       });
@@ -681,6 +683,7 @@ var LibraryPThread = {
     return ___pthread_create_js(pthread_ptr, attr, startRoutine, arg);
   },
 
+#if OFFSCREENCANVAS_SUPPORT
   // ASan wraps the emscripten_builtin_pthread_create call in
   // __lsan::ScopedInterceptorDisabler.  Unfortunately, that only disables it on
   // the thread that made the call.  __pthread_create_js gets proxied to the
@@ -689,6 +692,7 @@ var LibraryPThread = {
   // pthread's internal allocations as leaks.  If/when we remove all the
   // allocations from __pthread_create_js we could also remove this.
   __pthread_create_js__noleakcheck: true,
+#endif
   __pthread_create_js__sig: 'iiiii',
   __pthread_create_js__deps: ['$spawnThread', 'pthread_self', '$pthreadCreateProxied',
 #if OFFSCREENCANVAS_SUPPORT

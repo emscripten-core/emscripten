@@ -52,6 +52,7 @@ global.LibraryManager = {
       'library_dylink.js',
       'library_makeDynCall.js',
       'library_eventloop.js',
+      'library_promise.js',
     ];
 
     if (LINK_AS_CXX) {

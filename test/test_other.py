@@ -5685,6 +5685,11 @@ int main(void) {
     self.assertFalse(output.stderr)
     self.assertEqual(output.stdout, 'hello, world!\nhello, world!\n')
 
+  def test_modularize_strict(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sSTRICT'])
+    stdout = self.run_process(config.NODE_JS + ['-e', 'var m = require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE).stdout
+    self.assertEqual(stdout, 'hello, world!\n')
+
   @node_pthreads
   def test_pthread_print_override_modularize(self):
     self.set_setting('EXPORT_NAME', 'Test')
@@ -12852,3 +12857,27 @@ foo/version.txt
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_itimer.c')
+
+  @node_pthreads
+  def test_dbg(self):
+    create_file('pre.js', '''
+    dbg('start');
+    Module.onRuntimeInitialized = () => dbg('done init');
+    ''')
+    expected = '''\
+start
+w:0,t:0x[0-9a-fA-F]+: done init
+hello, world!
+w:0,t:0x[0-9a-fA-F]+: native dbg message
+w:0,t:0x[0-9a-fA-F]+: formatted: 42
+'''
+    self.emcc_args.append('--pre-js=pre.js')
+    # Verify that, after initialization, dbg() messages are prefixed with
+    # worker and thread ID.
+    self.do_runf(test_file('other/test_dbg.c'), expected, regex=True)
+
+    # When assertions are disabled `dbg` function is not defined
+    self.do_runf(test_file('other/test_dbg.c'),
+                 'ReferenceError: dbg is not defined',
+                 emcc_args=['-DNDEBUG', '-sASSERTIONS=0'],
+                 assert_returncode=NON_ZERO)

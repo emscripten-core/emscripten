@@ -177,7 +177,7 @@ function handleMessage(e) {
 
       {{{ makeAsmImportsAccessInPthread('buffer') }}} = {{{ makeAsmImportsAccessInPthread('wasmMemory') }}}.buffer;
 
-#if PTHREADS_DEBUG
+#if ASSERTIONS
       Module['workerID'] = e.data.workerID;
 #endif
 
