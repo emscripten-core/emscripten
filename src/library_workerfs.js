@@ -127,9 +127,6 @@ mergeInto(LibraryManager.library, {
       symlink: function(parent, newName, oldPath) {
         throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
-      readlink: function(node) {
-        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
-      },
     },
     stream_ops: {
       read: function (stream, buffer, offset, length, position) {
