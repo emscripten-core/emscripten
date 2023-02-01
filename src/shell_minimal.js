@@ -31,7 +31,9 @@ var Module = {{{ EXPORT_NAME }}};
 // otherwise replace every `Module` occurrence with the object below
 var /** @type{Object} */ Module;
 if (!Module) /** @suppress{checkTypes}*/Module = globalThis.{{{ EXPORT_NAME }}} || {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
-#elif !MODULARIZE
+#elif MODULARIZE
+var Module = {{{ EXPORT_NAME }}};
+#else
 // Use 'globalThis' to refer to the global scope Module variable.
 var Module = globalThis.{{{ EXPORT_NAME }}} || {};
 #endif
