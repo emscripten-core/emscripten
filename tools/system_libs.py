@@ -1378,6 +1378,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
 
   def __init__(self, **kwargs):
     super().__init__(**kwargs)
+    # EXCEPTION_STACK_TRACES currently requires the debug version of libc++abi
     self.is_debug |= settings.EXCEPTION_STACK_TRACES
 
   def get_cflags(self):
