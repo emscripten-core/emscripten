@@ -401,7 +401,7 @@ var LibraryExceptions = {
 #endif
   },
 
-#if ASSERTIONS
+#if EXCEPTION_STACK_TRACES
   // Throw a WebAssembly.Exception object with the C++ tag with a stack trace
   // embedded. WebAssembly.Exception is a JS object representing a Wasm
   // exception, provided by Wasm JS API:
