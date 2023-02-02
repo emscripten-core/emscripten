@@ -12919,3 +12919,15 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
                  'ReferenceError: dbg is not defined',
                  emcc_args=['-DNDEBUG', '-sASSERTIONS=0'],
                  assert_returncode=NON_ZERO)
+
+  def test_standalone_settings(self):
+    base_cmd = [EMCC, test_file('hello_world.c'), '-sSTANDALONE_WASM']
+
+    err = self.expect_fail(base_cmd + ['-sMINIMAL_RUNTIME'])
+    self.assertContained('error: MINIMAL_RUNTIME reduces JS size, and is incompatible with STANDALONE_WASM which focuses on ignoring JS anyhow and being 100% wasm', err)
+
+    err = self.expect_fail(base_cmd + ['-sMEMORY_GROWTH_GEOMETRIC_CAP=1mb'])
+    self.assertContained('error: MEMORY_GROWTH_GEOMETRIC_CAP is not compatible with STANDALONE_WASM', err)
+
+    err = self.expect_fail(base_cmd + ['-sMEMORY_GROWTH_LINEAR_STEP=1mb'])
+    self.assertContained('error: MEMORY_GROWTH_LINEAR_STEP is not compatible with STANDALONE_WASM', err)
