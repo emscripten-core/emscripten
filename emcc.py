@@ -2360,6 +2360,10 @@ def phase_linker_setup(options, state, newargs):
     if settings.AUDIO_WORKLET == 1:
       settings.AUDIO_WORKLET_FILE = unsuffixed(os.path.basename(target)) + '.aw.js'
     settings.JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_webaudio.js')))
+    if not settings.MINIMAL_RUNTIME:
+      # MINIMAL_RUNTIME exports these manually, since this export mechanism is placed
+      # in global scope that is not suitable for MINIMAL_RUNTIME loader.
+      settings.EXPORTED_RUNTIME_METHODS += ['stackSave', 'stackAlloc', 'stackRestore']
 
   if settings.FORCE_FILESYSTEM and not settings.MINIMAL_RUNTIME:
     # when the filesystem is forced, we export by default methods that filesystem usage
