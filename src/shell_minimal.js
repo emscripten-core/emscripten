@@ -4,35 +4,32 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if !AUDIO_WORKLET && (MIN_CHROME_VERSION < 71 || MIN_EDGE_VERSION < 79 || MIN_FIREFOX_VERSION < 65 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 120100 /*|| MIN_NODE_VERSION < 120000*/)
-
 #if USE_CLOSURE_COMPILER
+
 // if (!Module)` is crucial for Closure Compiler here as it will
 // otherwise replace every `Module` occurrence with the object below
 var /** @type{Object} */ Module;
-if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
-#elif ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+if (!Module) /** @suppress{checkTypes}*/Module = 
+#if AUDIO_WORKLET
+  globalThis.{{{ EXPORT_NAME }}} || 
+#endif
+  {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
+
+#elif !MODULARIZE && (ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL)
+
 // When running on the web we expect Module to be defined externally, in the
 // HTML.  Otherwise we must define it here before its first use
-var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {};
+var Module =
+#if SUPPORTS_GLOBALTHIS
+  // As a small code size optimization, we can use 'globalThis' to refer to the global scope Module variable.
+  globalThis.{{{ EXPORT_NAME }}} || {};
 #else
-var Module = {{{ EXPORT_NAME }}};
-#endif // USE_CLOSURE_COMPILER
-
-#else
-
-#if USE_CLOSURE_COMPILER
-// if (!Module)` is crucial for Closure Compiler here as it will
-// otherwise replace every `Module` occurrence with the object below
-var /** @type{Object} */ Module;
-if (!Module) /** @suppress{checkTypes}*/Module = globalThis.{{{ EXPORT_NAME }}} || {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
-#elif MODULARIZE
-var Module = {{{ EXPORT_NAME }}};
-#else
-// Use 'globalThis' to refer to the global scope Module variable.
-var Module = globalThis.{{{ EXPORT_NAME }}} || {};
+  // Otherwise do a good old typeof check.
+  typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {};
 #endif
 
+#else
+var Module = {{{ EXPORT_NAME }}};
 #endif
 
 #if MODULARIZE && EXPORT_READY_PROMISE
