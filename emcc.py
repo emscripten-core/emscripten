@@ -2788,7 +2788,9 @@ def phase_linker_setup(options, state, newargs):
   # When ASSERTIONS or EXCEPTION_STACK_TRACES is set, we include stack traces in
   # Wasm exception objects using the JS API, which needs this C++ tag exported.
   if settings.ASSERTIONS:
-    settings.EXCEPTION_STACK_TRACES = 1
+    if 'EXCEPTION_STACK_TRACES' in user_settings and not settings.EXCEPTION_STACK_TRACES:
+      exit_with_error('EXCEPTION_STACK_TRACES cannot be disabled when ASSSERTIONS are enabled')
+    default_setting('EXCEPTION_STACK_TRACES', 1)
   if settings.EXCEPTION_STACK_TRACES and settings.WASM_EXCEPTIONS:
     settings.EXPORTED_FUNCTIONS += ['___cpp_exception']
     settings.EXPORT_EXCEPTION_HANDLING_HELPERS = True
