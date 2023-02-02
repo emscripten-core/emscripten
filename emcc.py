@@ -1590,7 +1590,7 @@ def phase_setup(options, state, newargs):
     if 'DISABLE_EXCEPTION_THROWING' in user_settings:
       exit_with_error('DISABLE_EXCEPTION_THROWING is not compatible with -fwasm-exceptions')
     if 'ASYNCIFY' in user_settings and user_settings['ASYNCIFY'] == '1':
-      diagnostics.warning('emcc', 'ASYNCIFY=1 is not compatible with -fwasm-exceptions. Parts of the program that mix ASYNCIFY and exceptions will not compile correctly.')
+      diagnostics.warning('emcc', 'ASYNCIFY=1 is not compatible with -fwasm-exceptions. Parts of the program that mix ASYNCIFY and exceptions will not compile.')
     settings.DISABLE_EXCEPTION_CATCHING = 1
     settings.DISABLE_EXCEPTION_THROWING = 1
 
