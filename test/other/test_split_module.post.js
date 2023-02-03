@@ -5,14 +5,23 @@ function saveProfileData() {
     var offset = _malloc(len);
     var actualLen = __write_profile(offset, len);
     var profile_data = HEAPU8.subarray(offset, offset + len);
-    fs.writeFileSync('profile.data', profile_data);
+    if (typeof fs === 'undefined') {
+      // TODO: Use D8's writeFile when
+      // https://chromium-review.googlesource.com/c/v8/v8/+/4159854 lands.
+      console.log(JSON.stringify(Array.from(profile_data)));
+    } else {
+      fs.writeFileSync('profile.data', profile_data);
+    }
     console.log('profile size is', actualLen, 'bytes (allocated', len, 'bytes)');
     console.log('wrote profile data')
     _free(offset);
   }
 
   // Say hello *after* recording the profile so that all functions are deferred.
-  _say_hello();
+  var result = _say_hello();
+  if (typeof Asyncify !== 'undefined') {
+    console.log((result instanceof Promise) ? 'result is promise' : '');
+  }
 }
 
 addOnPostRun(saveProfileData);

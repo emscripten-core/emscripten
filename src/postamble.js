@@ -140,6 +140,9 @@ function stackCheckInit() {
 
 #if RELOCATABLE
 var dylibsLoaded = false;
+#if '$LDSO' in addedLibraryItems
+LDSO.init();
+#endif
 #endif
 
 /** @type {function(Array=)} */

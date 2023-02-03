@@ -533,6 +533,18 @@ mergeInto(LibraryManager.library, {
     });
   },
 
+  _load_secondary_module__sig: 'v',
+  _load_secondary_module: async function() {
+    // Mark the module as loading for the wasm module (so it doesn't try to load it again).
+    Module['asm']['load_secondary_module_status'].value = 1;
+    var imports = {'primary': Module['asm']};
+    // Replace '.wasm' suffix with '.deferred.wasm'.
+    var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm';
+    await new Promise((resolve) => {
+      instantiateAsync(null, deferred, imports, resolve);
+    });
+  },
+
   $Fibers__deps: ['$Asyncify'],
   $Fibers: {
     nextFiber: 0,

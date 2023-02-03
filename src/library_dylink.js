@@ -274,15 +274,15 @@ var LibraryDylink = {
   __dlsym: function(handle, symbol) {
     abort(dlopenMissingError);
   },
-  _dlinit: function(main_dso_handle) {},
-  _dlinit: function(main_dso_handle) {},
 #else // MAIN_MODULE != 0
   // dynamic linker/loader (a-la ld.so on ELF systems)
+  $LDSO__deps: ['$newDSO'],
   $LDSO: {
     // name -> dso [refcount, name, module, global]; Used by dlopen
     loadedLibsByName: {},
     // handle  -> dso; Used by dlsym
     loadedLibsByHandle: {},
+    init: () => newDSO('__main__', {{{ cDefine('RTLD_DEFAULT') }}}, wasmImports),
   },
 
   $dlSetError__internal: true,
@@ -824,6 +824,20 @@ var LibraryDylink = {
   },
 #endif
 
+  $newDSO: function(name, handle, syms) {
+    var dso = {
+      refcount: Infinity,
+      name: name,
+      module: syms,
+      global: true,
+    };
+    LDSO.loadedLibsByName[name] = dso;
+    if (handle != undefined) {
+      LDSO.loadedLibsByHandle[handle] = dso;
+    }
+    return dso;
+  },
+
   // loadDynamicLibrary loads dynamic library @ lib URL / path and returns
   // handle for loaded DSO.
   //
@@ -845,9 +859,9 @@ var LibraryDylink = {
   // If a library was already loaded, it is not loaded a second time. However
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
-  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$isInternalSym', '$mergeLibSymbols'],
+  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$isInternalSym', '$mergeLibSymbols', '$newDSO'],
   $loadDynamicLibrary__docs: '/** @param {number=} handle */',
-  $loadDynamicLibrary: function(lib, flags = {global: true, nodelete: true}, handle = 0) {
+  $loadDynamicLibrary: function(lib, flags = {global: true, nodelete: true}, handle) {
 #if DYLINK_DEBUG
     dbg('loadDynamicLibrary: ' + lib + ' handle:' + handle);
     dbg('existing: ' + Object.keys(LDSO.loadedLibsByName));
@@ -880,16 +894,9 @@ var LibraryDylink = {
     }
 
     // allocate new DSO
-    dso = {
-      refcount: flags.nodelete ? Infinity : 1,
-      name:     lib,
-      module:   'loading',
-      global:   flags.global,
-    };
-    LDSO.loadedLibsByName[lib] = dso;
-    if (handle) {
-      LDSO.loadedLibsByHandle[handle] = dso;
-    }
+    dso = newDSO(lib, handle, 'loading');
+    dso.refcount = flags.nodelete ? Infinity : 1;
+    dso.global = flags.global;
 
     // libData <- libFile
     function loadLibData(libFile) {
@@ -1095,11 +1102,8 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     dbg("_dlsym_catchup: handle=" + ptrToString(handle) + " symbolIndex=" + symbolIndex);
 #endif
-    var symDict = wasmImports;
-    if (handle != {{{ cDefine('RTLD_DEFAULT') }}}) {
-      var lib = LDSO.loadedLibsByHandle[handle];
-      symDict = lib.module;
-    }
+    var lib = LDSO.loadedLibsByHandle[handle];
+    var symDict = lib.module;
     var symName = Object.keys(symDict)[symbolIndex];
     var sym = symDict[symName];
     var result = addFunction(sym, sym.sig);
@@ -1122,34 +1126,24 @@ var LibraryDylink = {
     var result;
     var newSymIndex;
 
-    if (handle == {{{ cDefine('RTLD_DEFAULT') }}}) {
-      var resolved = resolveGlobalSymbol(symbol, true);
-      result = resolved.sym;
-      if (!result) {
-        dlSetError('Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: RTLD_DEFAULT');
-        return 0;
-      }
-      newSymIndex = Object.keys(wasmImports).indexOf(resolved.name);
-    } else {
-      var lib = LDSO.loadedLibsByHandle[handle];
+    var lib = LDSO.loadedLibsByHandle[handle];
 #if ASSERTIONS
-      assert(lib, 'Tried to dlsym() from an unopened handle: ' + handle);
+    assert(lib, 'Tried to dlsym() from an unopened handle: ' + handle);
 #endif
-      if (!lib.module.hasOwnProperty(symbol)) {
-        dlSetError('Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: ' + lib.name)
-        return 0;
-      }
-      newSymIndex = Object.keys(lib.module).indexOf(symbol);
-#if !WASM_BIGINT
-      var origSym = 'orig$' + symbol;
-      result = lib.module[origSym];
-      if (result) {
-        newSymIndex = Object.keys(lib.module).indexOf(origSym);
-      }
-      else
-#endif
-      result = lib.module[symbol];
+    if (!lib.module.hasOwnProperty(symbol)) {
+      dlSetError('Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: ' + lib.name)
+      return 0;
     }
+    newSymIndex = Object.keys(lib.module).indexOf(symbol);
+#if !WASM_BIGINT
+    var origSym = 'orig$' + symbol;
+    result = lib.module[origSym];
+    if (result) {
+      newSymIndex = Object.keys(lib.module).indexOf(origSym);
+    }
+    else
+#endif
+    result = lib.module[symbol];
 
     if (typeof result == 'function') {
 #if DYLINK_DEBUG
@@ -1185,17 +1179,6 @@ var LibraryDylink = {
 #endif
     return result;
   },
-
-  _dlinit: function(main_dso_handle) {
-    var dso = {
-      refcount: Infinity,   // = nodelete
-      name:     '__main__',
-      module:   Module['asm'],
-      global:   true
-    };
-    LDSO.loadedLibsByName[dso.name] = dso;
-    LDSO.loadedLibsByHandle[main_dso_handle] = dso;
-  }
 #endif // MAIN_MODULE != 0
 };
 

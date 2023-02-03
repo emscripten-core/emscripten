@@ -37,7 +37,6 @@ struct async_data {
 };
 typedef void (*dlopen_callback_func)(struct dso*, struct async_data* user_data);
 
-void _dlinit(struct dso* main_dso_handle);
 void* _dlopen_js(struct dso* handle);
 void* _dlsym_js(struct dso* handle, const char* symbol, int* sym_index);
 void _emscripten_dlopen_js(struct dso* handle,
@@ -60,22 +59,34 @@ struct dlevent {
   int id;
 #endif
 };
-static struct dlevent * _Atomic head, * _Atomic tail;
+
+// Handle to "main" dso, needed for dlopen(NULL,..)
+static struct dso main_dso = {
+  .name = "__main__",
+  .flags = 0,
+};
+
+static struct dlevent main_event = {
+  .prev = NULL,
+  .next = NULL,
+  .sym_index = -1,
+  .dso = &main_dso,
+};
+
+static struct dlevent* _Atomic head = &main_event;
+static struct dlevent* _Atomic tail = &main_event;
 
 #ifdef _REENTRANT
-static thread_local struct dlevent* thread_local_tail;
+static thread_local struct dlevent* thread_local_tail = &main_event;
 static pthread_mutex_t write_lock = PTHREAD_MUTEX_INITIALIZER;
 
 void* _dlsym_catchup_js(struct dso* handle, int sym_index);
 
 static void dlsync() {
-  if (!thread_local_tail) {
-    thread_local_tail = head;
-  }
   if (!thread_local_tail->next) {
     return;
   }
-  dbg("dlsync: catching up %p %p", thread_local_tail, tail);
+  dbg("dlsync: catching up %p", thread_local_tail);
   while (thread_local_tail->next) {
     struct dlevent* p = thread_local_tail->next;
     if (p->sym_index != -1) {
@@ -114,17 +125,9 @@ static void dlsync() {
 // taking the lock below.
 static thread_local bool skip_dlsync = false;
 
-static void ensure_init();
-
 void _emscripten_thread_sync_code() {
-  if (skip_dlsync) {
-    return;
-  }
-  ensure_init();
-  if (!thread_local_tail) {
-    thread_local_tail = head;
-  }
-  if (thread_local_tail != tail) {
+  if (!skip_dlsync && thread_local_tail != tail) {
+    dbg("_emscripten_thread_sync_code: cur=%p head=%p tail=%p", thread_local_tail, head, tail);
     skip_dlsync = true;
     dlsync();
     skip_dlsync = false;
@@ -184,7 +187,8 @@ void new_dlevent(struct dso* p, int sym_index) {
     ev->id = tail->id + 1;
 #endif
   }
-  dbg("new_dlevent: id=%d %s dso=%p sym_index=%d",
+  dbg("new_dlevent: ev=%p id=%d %s dso=%p sym_index=%d",
+      ev,
       ev->id,
       p ? p->name : "RTLD_DEFAULT",
       p,
@@ -193,10 +197,6 @@ void new_dlevent(struct dso* p, int sym_index) {
 #if _REENTRANT
   thread_local_tail = ev;
 #endif
-
-  if (!head) {
-    head = ev;
-  }
 }
 
 static void load_library_done(struct dso* p) {
@@ -244,28 +244,13 @@ static void dlopen_js_onerror(struct dso* dso, struct async_data* data) {
   free(data);
 }
 
-// This function is called at the start of all entry points so that the dso
-// list gets initialized on first use.
-static void ensure_init() {
-  if (head) {
-    return;
-  }
-  // Initialize the dso list.  This happens on first run.
-  do_write_lock();
-  if (!head) {
-    // Flags are not important since the main module is already loaded.
-    struct dso* p = load_library_start("__main__", RTLD_NOW|RTLD_GLOBAL);
-    assert(p);
-    _dlinit(p);
-    load_library_done(p);
-    assert(head);
-  }
-  do_write_unlock();
-}
-
-void* dlopen(const char* file, int flags) {
-  ensure_init();
+// Internal version of dlopen with typed return value.
+// Without this, the compiler won't tell us if we have the wrong return type.
+static struct dso* _dlopen(const char* file, int flags) {
   if (!file) {
+    // If a null pointer is passed in path, dlopen() returns a handle equivalent
+    // to RTLD_DEFAULT.
+    dbg("dlopen: NULL -> %p", head->dso);
     return head->dso;
   }
   dbg("dlopen: %s [%d]", file, flags);
@@ -309,9 +294,12 @@ end:
   return p;
 }
 
+void* dlopen(const char* file, int flags) {
+  return _dlopen(file, flags);
+}
+
 void emscripten_dlopen(const char* filename, int flags, void* user_data,
                        em_dlopen_callback onsuccess, em_arg_callback_func onerror) {
-  ensure_init();
   if (!filename) {
     onsuccess(user_data, head);
     return;
@@ -340,10 +328,14 @@ void emscripten_dlopen(const char* filename, int flags, void* user_data,
 }
 
 void* __dlsym(void* restrict p, const char* restrict s, void* restrict ra) {
-  ensure_init();
   dbg("__dlsym dso:%p sym:%s", p, s);
   if (p != RTLD_DEFAULT && p != RTLD_NEXT && __dl_invalid_handle(p)) {
     return 0;
+  }
+  // The first "dso" is always the default one which is equivelent to
+  // RTLD_DEFAULT.  This is what is returned from `dlopen(NULL, ...)`.
+  if (p == head->dso) {
+    p = RTLD_DEFAULT;
   }
   void* res;
   int sym_index = -1;

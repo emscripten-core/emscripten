@@ -235,7 +235,7 @@ var LibraryPThread = {
     // Called by worker.js each time a thread is started.
     threadInitTLS: function() {
 #if PTHREADS_DEBUG
-      dbg('threadInitTLS.');
+      dbg('threadInitTLS');
 #endif
       // Call thread init functions (these are the _emscripten_tls_init for each
       // module loaded.
