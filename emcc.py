@@ -2352,7 +2352,7 @@ def phase_linker_setup(options, state, newargs):
       settings.WASM_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.ww.js'
     settings.JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_wasm_worker.js')))
 
-  settings.SUPPORTS_GLOBALTHIS = settings.MIN_CHROME_VERSION >= 71 and settings.MIN_EDGE_VERSION >= 79 and settings.MIN_FIREFOX_VERSION >= 65 and settings.MIN_IE_VERSION == settings.TARGET_NOT_SUPPORTED and settings.MIN_SAFARI_VERSION >= 120100 # and settings.MIN_NODE_VERSION >= 120000
+  settings.SUPPORTS_GLOBALTHIS = feature_matrix.caniuse(feature_matrix.Feature.GLOBALTHIS)
 
   if settings.AUDIO_WORKLET:
     if not settings.SUPPORTS_GLOBALTHIS:
