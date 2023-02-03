@@ -1041,7 +1041,7 @@ function convertPtrToIdx(ptr, accessWidth) {
     // if our address space would ever get larger than 53 bits, we could do something like this:
     // if (MAXIMUM_MEMORY > MAX_MEMORY53) conversion = /^\d+$/.test(accessWidth) ? `${ptr} >>= ${accessWidth}n` : `${ptr} >>= BigInt(${accessWidth})`;
     assert(MAXIMUM_MEMORY <= MAX_MEMORY53);
-    else conversion = `${ptr} = Number(${ptr}) / ${1 << accessWidth}`;
+    conversion = `${ptr} = Number(${ptr}) / ${1 << accessWidth}`;
   } else if (MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024) {
     conversion = `${ptr} >>>= ${accessWidth}`;
   } else {
