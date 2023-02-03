@@ -62,7 +62,7 @@ min_browser_versions = {
     'edge': 79,
     'firefox': 65,
     'safari': 120100,
-  # 'node': 120000
+    # 'node': 120000
   },
 }
 
