@@ -1114,7 +1114,6 @@ var LibraryPThread = {
       }
       worker.postMessage({'cmd' : 'processProxyingQueue', 'queue': queue});
     }
-    return 1;
   }
 };
 
