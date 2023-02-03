@@ -1591,14 +1591,19 @@ def phase_setup(options, state, newargs):
     settings.DISABLE_EXCEPTION_CATCHING = 0
 
   if settings.WASM_EXCEPTIONS:
-    if 'DISABLE_EXCEPTION_CATCHING' in user_settings:
-      exit_with_error('DISABLE_EXCEPTION_CATCHING is not compatible with -fwasm-exceptions')
-    if 'DISABLE_EXCEPTION_THROWING' in user_settings:
-      exit_with_error('DISABLE_EXCEPTION_THROWING is not compatible with -fwasm-exceptions')
+    # DISABLE_EXCEPTION_CATCHING is 1 by default. So if it is 0, it means the
+    # user specifies it explicitly
+    if not settings.DISABLE_EXCEPTION_CATCHING:
+      exit_with_error('DISABLE_EXCEPTION_CATCHING=0 is not compatible with -fwasm-exceptions')
+    # DISABLE_EXCEPTION_THROWING is 0 by default, but in Wasm EH, it defaults to
+    # 1. If the user explicitly gives DISABLE_EXCEPTION_THROWING=0, error out.
+    if 'DISABLE_EXCEPTION_THROWING' in user_settings and user_settings['DISABLE_EXCEPTION_THROWING'] == '0':
+      exit_with_error('DISABLE_EXCEPTION_THROWING=0 is not compatible with -fwasm-exceptions')
+    default_setting('DISABLE_EXCEPTION_CATCHING', 1)
+    default_setting('DISABLE_EXCEPTION_THROWING', 1)
+
     if 'ASYNCIFY' in user_settings and user_settings['ASYNCIFY'] == '1':
       diagnostics.warning('emcc', 'ASYNCIFY=1 is not compatible with -fwasm-exceptions. Parts of the program that mix ASYNCIFY and exceptions will not compile.')
-    settings.DISABLE_EXCEPTION_CATCHING = 1
-    settings.DISABLE_EXCEPTION_THROWING = 1
 
   if settings.DISABLE_EXCEPTION_THROWING and not settings.DISABLE_EXCEPTION_CATCHING:
     exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
@@ -1613,17 +1618,17 @@ def phase_setup(options, state, newargs):
 
   # Wasm SjLj cannot be used with Emscripten EH
   if settings.SUPPORT_LONGJMP == 'wasm':
-    # DISABLE_EXCEPTION_THROWING is 0 by default for Emscripten EH throwing, but
-    # Wasm SjLj cannot be used with Emscripten EH. We error out if
-    # DISABLE_EXCEPTION_THROWING=0 is explicitly requested by the user;
-    # otherwise we disable it here.
-    default_setting('DISABLE_EXCEPTION_THROWING', 1)
-    if not settings.DISABLE_EXCEPTION_THROWING:
-      exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_CATCHING=0')
     # We error out for DISABLE_EXCEPTION_CATCHING=0, because it is 1 by default
     # and this can be 0 only if the user specifies so.
     if not settings.DISABLE_EXCEPTION_CATCHING:
       exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_CATCHING=0')
+    # DISABLE_EXCEPTION_THROWING is 0 by default for Emscripten EH throwing, but
+    # Wasm SjLj cannot be used with Emscripten EH. We error out if
+    # DISABLE_EXCEPTION_THROWING=0 is explicitly requested by the user;
+    # otherwise we disable it here.
+    if not settings.DISABLE_EXCEPTION_THROWING:
+      exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_THROWING=0')
+    default_setting('DISABLE_EXCEPTION_THROWING', 1)
 
   return (newargs, input_files)
 
