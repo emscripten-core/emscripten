@@ -109,10 +109,10 @@ task em_task_queue_dequeue(em_task_queue* queue) {
 // target thread so it will execute the queue when it returns to the event loop.
 // Also pass in the current thread and main thread ids to minimize calls back
 // into Wasm.
-extern void _emscripten_notify_task_queue(pthread_t target_thread,
-                                          pthread_t curr_thread,
-                                          pthread_t main_thread,
-                                          em_task_queue* queue);
+void _emscripten_notify_task_queue(pthread_t target_thread,
+                                   pthread_t curr_thread,
+                                   pthread_t main_thread,
+                                   em_task_queue* queue);
 
 void em_task_queue_notify(em_task_queue* queue) {
   // If there is no pending notification for this queue, create one. If an old
