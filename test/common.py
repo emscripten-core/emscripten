@@ -494,10 +494,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def require_wasm_eh(self):
     if config.NODE_JS and config.NODE_JS in self.js_engines:
       version = shared.check_node_version()
-      if version >= (16, 0, 0):
+      if version >= (17, 0, 0):
         self.js_engines = [config.NODE_JS]
-        if version < (20, 0, 0):
-          self.node_args.append('--experimental-wasm-eh')
         return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
