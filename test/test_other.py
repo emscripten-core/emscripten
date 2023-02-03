@@ -8120,8 +8120,10 @@ int main() {
                 assert_returncode=NON_ZERO, expected_output=stack_trace_checks)
 
     # Not allowed
+    self.set_setting('ASSERTIONS', 1)
+    self.set_setting('EXCEPTION_STACK_TRACES', 0)
     create_file('src.cpp', src)
-    err = self.expect_fail([EMCC, 'src.cpp', '-sASSERTIONS=1', '-sEXCEPTION_STACK_TRACES=0'])
+    err = self.expect_fail([EMCC, 'src.cpp'] + self.get_emcc_args())
     self.assertContained('EXCEPTION_STACK_TRACES cannot be disabled when ASSERTIONS are enabled', err)
 
     # Doesn't print stack traces
