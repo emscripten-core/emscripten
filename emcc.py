@@ -1605,16 +1605,14 @@ def phase_setup(options, state, newargs):
     if user_settings.get('ASYNCIFY') == '1':
       diagnostics.warning('emcc', 'ASYNCIFY=1 is not compatible with -fwasm-exceptions. Parts of the program that mix ASYNCIFY and exceptions will not compile.')
 
+    if user_settings['SUPPORT_LONGJMP'] == 'emscripten':
+      exit_with_error('SUPPORT_LONGJMP=emscripten is not compatible with -fwasm-exceptions')
+
   if settings.DISABLE_EXCEPTION_THROWING and not settings.DISABLE_EXCEPTION_CATCHING:
     exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
 
   if settings.MEMORY64:
     diagnostics.warning('experimental', '-sMEMORY64 is still experimental. Many features may not work.')
-
-  # SUPPORT_LONGJMP=1 means the default SjLj handling mechanism, currently
-  # 'emscripten'
-  if settings.SUPPORT_LONGJMP == 1:
-    settings.SUPPORT_LONGJMP = 'emscripten'
 
   # Wasm SjLj cannot be used with Emscripten EH
   if settings.SUPPORT_LONGJMP == 'wasm':
@@ -1629,6 +1627,14 @@ def phase_setup(options, state, newargs):
     if user_settings.get('DISABLE_EXCEPTION_CATCHING') == '0':
       exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_CATCHING=0')
     default_setting('DISABLE_EXCEPTION_THROWING', 1)
+
+  # SUPPORT_LONGJMP=1 means the default SjLj handling mechanism, which is 'wasm'
+  # if Wasm EH is used and 'emscripten' otherwise.
+  if settings.SUPPORT_LONGJMP == 1:
+    if settings.WASM_EXCEPTIONS:
+      settings.SUPPORT_LONGJMP = 'wasm'
+    else:
+      settings.SUPPORT_LONGJMP = 'emscripten'
 
   return (newargs, input_files)
 

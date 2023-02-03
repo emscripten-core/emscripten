@@ -1816,6 +1816,12 @@ int main() {
     self.assertContained('error: You no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions', err)
     clear_all_relevant_settings(self)
 
+    # Emscripten SjLj and Wasm EH cannot mix
+    self.set_setting('SUPPORT_LONGJMP', 'emscripten')
+    err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-fwasm-exceptions'] + self.get_emcc_args())
+    self.assertContained('error: SUPPORT_LONGJMP=emscripten is not compatible with -fwasm-exceptions', err)
+    clear_all_relevant_settings(self)
+
     # Wasm SjLj and Emscripten EH cannot mix
     self.set_setting('SUPPORT_LONGJMP', 'wasm')
     self.set_setting('DISABLE_EXCEPTION_THROWING', 0)

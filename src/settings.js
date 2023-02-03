@@ -1873,7 +1873,8 @@ var USES_DYNAMIC_ALLOC = true;
 // 'emscripten': (default) Emscripten setjmp/longjmp handling using JavaScript
 // 'wasm': setjmp/longjmp handling using Wasm EH instructions (experimental)
 // 0: No setjmp/longjmp handling
-// 1: Default setjmp/longjmp/handling. Currently 'emscripten'.
+// 1: Default setjmp/longjmp/handling, depending on the mode of exceptions.
+//    'wasm' if '-fwasm-exception' is used, 'emscripten' otherwise.
 //
 // [compile+link] - at compile time this enables the transformations needed for
 // longjmp support at codegen time, while at link it allows linking in the
