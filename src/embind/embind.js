@@ -675,6 +675,23 @@ var LibraryEmbind = {
     return this['fromWireType']({{{ makeGetValue('pointer', '0', 'i32') }}});
   },
 
+  _embind_register_std_nullptr_t__sig: 'vpppDn',
+  _embind_register_std_nullptr_t__deps: ['$registerType'],
+  _embind_register_std_nullptr_t: function(rawType, name) {
+
+    registerType(rawType, {
+      name: name,
+      'fromWireType': function (value) {
+        return null;
+      },
+      'toWireType': function (destructors, value) {
+        return null;
+      },
+      'argPackAdvance': 8,
+      destructorFunction: null, // This type does not need a destructor
+    });
+  },
+
   _embind_register_std_string__sig: 'vpp',
   _embind_register_std_string__deps: [
     '$readLatin1String', '$registerType',

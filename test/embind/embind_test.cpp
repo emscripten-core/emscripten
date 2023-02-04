@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <cstddef>
 #include <string>
 #include <malloc.h>
 #include <functional>
@@ -72,6 +73,10 @@ val emval_test_passthrough(val v) {
 }
 
 void emval_test_return_void() {
+}
+
+std::nullptr_t emval_test_return_nullptr_t() {
+    return nullptr;
 }
 
 bool emval_test_not(bool b) {

@@ -565,6 +565,10 @@ module({
             assert.equal(undefined, cm.emval_test_return_void());
         });
 
+        test("nullptr_t return converts to null", function() {
+          assert.equal(null, cm.emval_test_return_null());
+        });
+
         test("booleans can be marshalled", function() {
             assert.equal(false, cm.emval_test_not(true));
             assert.equal(true, cm.emval_test_not(false));

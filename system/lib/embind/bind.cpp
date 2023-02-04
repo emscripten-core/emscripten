@@ -9,6 +9,7 @@
 #endif
 #include <algorithm>
 #include <climits>
+#include <cstddef>
 #include <emscripten/emscripten.h>
 #include <emscripten/wire.h>
 #include <limits>
@@ -142,6 +143,7 @@ EMSCRIPTEN_BINDINGS(builtin) {
   register_float<float>("float");
   register_float<double>("double");
 
+  _embind_register_std_nullptr_t(TypeID<std::nullptr_t>::get(), "std::nullptr_t");
   _embind_register_std_string(TypeID<std::string>::get(), "std::string");
   _embind_register_std_string(
     TypeID<std::basic_string<unsigned char>>::get(), "std::basic_string<unsigned char>");
