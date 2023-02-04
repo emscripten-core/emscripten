@@ -1776,42 +1776,49 @@ int main() {
     self.do_core_test('test_exceptions_longjmp4.cpp')
 
   def test_exception_sjlj_options(self):
+    # Clear all settings used in this test
+    def clear_all_relevant_settings(self):
+      self.clear_setting('DISABLE_EXCEPTION_THROWING')
+      self.clear_setting('DISABLE_EXCEPTION_CATCHING')
+      self.clear_setting('SUPPORT_LONGJMP')
+      self.clear_setting('ASYNCIFY')
+
     # Emscripten EH and Wasm EH cannot be enabled at the same time
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-fwasm-exceptions'] + self.get_emcc_args())
     self.assertContained('error: DISABLE_EXCEPTION_CATCHING=0 is not compatible with -fwasm-exceptions', err)
-    self.clear_all_settings()
+    clear_all_relevant_settings(self)
 
     self.set_setting('DISABLE_EXCEPTION_THROWING', 0)
     err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-fwasm-exceptions'] + self.get_emcc_args())
     self.assertContained('error: DISABLE_EXCEPTION_THROWING=0 is not compatible with -fwasm-exceptions', err)
-    self.clear_all_settings()
+    clear_all_relevant_settings(self)
 
     # Emscripten EH: You can't enable catching and disable throwing
     self.set_setting('DISABLE_EXCEPTION_THROWING', 1)
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     err = self.expect_fail([EMCC, test_file('hello_world.cpp')] + self.get_emcc_args())
     self.assertContained("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions", err)
-    self.clear_all_settings()
+    clear_all_relevant_settings(self)
 
     # Wasm SjLj and Emscripten EH cannot mix
     self.set_setting('SUPPORT_LONGJMP', 'wasm')
     self.set_setting('DISABLE_EXCEPTION_THROWING', 0)
     err = self.expect_fail([EMCC, test_file('hello_world.cpp')] + self.get_emcc_args())
     self.assertContained('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_THROWING=0', err)
-    self.clear_all_settings()
+    clear_all_relevant_settings(self)
 
     self.set_setting('SUPPORT_LONGJMP', 'wasm')
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     err = self.expect_fail([EMCC, test_file('hello_world.cpp')] + self.get_emcc_args())
     self.assertContained('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_CATCHING=0', err)
-    self.clear_all_settings()
+    clear_all_relevant_settings(self)
 
     # Wasm EH does not support ASYNCIFY=1
     self.set_setting('ASYNCIFY', 1)
     err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-fwasm-exceptions'] + self.get_emcc_args())
     self.assertContained('error: ASYNCIFY=1 is not compatible with -fwasm-exceptions. Parts of the program that mix ASYNCIFY and exceptions will not compile.', err)
-    self.clear_all_settings()
+    clear_all_relevant_settings(self)
 
   # Marked as impure since the WASI reactor modules (modules without main)
   # are not yet suppored by the wasm engines we test against.

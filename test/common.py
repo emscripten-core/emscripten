@@ -653,9 +653,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def clear_setting(self, key):
     self.settings_mods.pop(key, None)
 
-  def clear_all_settings(self):
-    self.settings_mods.clear()
-
   def serialize_settings(self):
     ret = []
     for key, value in self.settings_mods.items():
