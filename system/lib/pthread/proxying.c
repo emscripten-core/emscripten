@@ -214,7 +214,6 @@ void _emscripten_proxy_execute_task_queue(em_task_queue* tasks) {
   // For example, in PROXY_TO_PTHREAD the atexit functions are called via
   // a proxied call, and without this call to syncronize we would crash if
   // any atexit functions were registered from a side module.
-  _emscripten_thread_sync_code();
   em_task_queue_execute(tasks);
 }
 

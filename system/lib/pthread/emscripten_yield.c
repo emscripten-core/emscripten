@@ -1,9 +1,11 @@
 #include <stdbool.h>
 #include <sched.h>
 #include <threads.h>
-#include "syscall.h"
 
 #include <emscripten/threading.h>
+
+#include "syscall.h"
+#include "threading_internal.h"
 
 static _Atomic bool thread_crashed = false;
 
@@ -11,16 +13,11 @@ void _emscripten_thread_crashed() {
   thread_crashed = true;
 }
 
-static void dummy()
+static void dummy(double now)
 {
 }
 
-static void dummy2(double now)
-{
-}
-
-weak_alias(dummy, _emscripten_thread_sync_code);
-weak_alias(dummy2, _emscripten_check_timers);
+weak_alias(dummy, _emscripten_check_timers);
 
 void _emscripten_yield(double now) {
   int is_runtime_thread = emscripten_is_main_runtime_thread();
@@ -44,6 +41,9 @@ void _emscripten_yield(double now) {
     // singlethreaded.
     emscripten_main_thread_process_queued_calls();
   }
-
-  _emscripten_thread_sync_code();
+#ifdef __PIC__
+  else {
+    _emscripten_process_dlopen_queue();
+  }
+#endif
 }

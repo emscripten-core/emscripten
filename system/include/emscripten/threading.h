@@ -275,9 +275,6 @@ int emscripten_pthread_attr_settransferredcanvases(pthread_attr_t *a, const char
 // blocking is not enabled, see ALLOW_BLOCKING_ON_MAIN_THREAD.
 void emscripten_check_blocking_allowed(void);
 
-// Experimental API for syncing loaded code between pthreads.
-void _emscripten_thread_sync_code();
-
 #ifdef __cplusplus
 }
 #endif

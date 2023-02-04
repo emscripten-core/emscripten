@@ -79,6 +79,9 @@ struct pthread {
 	// still require dynamic allocation.
 	void* tls_base;
 #endif
+#if _REENTRANT
+	_Atomic char sleeping;
+#endif
 };
 
 enum {
