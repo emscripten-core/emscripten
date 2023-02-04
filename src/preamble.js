@@ -469,20 +469,37 @@ function abort(what) {
   // defintion for WebAssembly.RuntimeError claims it takes no arguments even
   // though it can.
   // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
-#if WASM_EXCEPTIONS == 1
-  // See above, in the meantime, we resort to wasm code for trapping.
-  ___trap();
-#else
-  /** @suppress {checkTypes} */
-  var e = new WebAssembly.RuntimeError(what);
+
+  function throwError(what) {
+    /** @suppress {checkTypes} */
+    var e = new WebAssembly.RuntimeError(what);
 
 #if MODULARIZE
-  readyPromiseReject(e);
+    readyPromiseReject(e);
 #endif
-  // Throw the error whether or not MODULARIZE is set because abort is used
-  // in code paths apart from instantiation where an exception is expected
-  // to be thrown when abort is called.
-  throw e;
+    // Throw the error whether or not MODULARIZE is set because abort is used
+    // in code paths apart from instantiation where an exception is expected
+    // to be thrown when abort is called.
+    throw e;
+  }
+
+#if WASM_EXCEPTIONS == 1
+  // See above, in the meantime, we resort to wasm code for trapping.
+  //
+  // In case abort() is called before the module is initialized, Module['asm']
+  // and its exported '__trap' function is not available, in which case we throw
+  // a RuntimeError.
+  //
+  // We trap instead of throwing RuntimeError to prevent infinite-looping in
+  // Wasm EH code (because RuntimeError is considered as a foreign exception and
+  // caught by 'catch_all'), but in case throwing RuntimeError is fine because
+  // the module has not even been instantiated, even less running.
+  if (typeof Module['asm'] !== 'undefined')
+    ___trap();
+  else
+    throwError(what);
+#else
+  throwError(what);
 #endif
 }
 
