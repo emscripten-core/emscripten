@@ -930,7 +930,7 @@ def generate_js(data_target, data_files, metadata):
     node_support_code = ''
     if options.support_node:
       node_support_code = '''
-        if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
+        if (typeof process === 'object' && !process.browser && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
           require('fs').readFile(packageName, function(err, contents) {
             if (err) {
               errback(err);
