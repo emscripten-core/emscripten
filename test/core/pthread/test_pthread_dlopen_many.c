@@ -14,6 +14,7 @@ typedef func_t (*sidey_func_type)();
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 _Atomic int thread_count = 0;
+_Atomic int dso_count = 0;
 void jslib_func();
 
 void* thread_main(void* arg) {
@@ -32,7 +33,7 @@ void* thread_main(void* arg) {
   sprintf(filename, "liblib%d.so", num);
   printf("loading %s\n", filename);
   void* handle = dlopen(filename, RTLD_NOW|RTLD_GLOBAL);
-  printf("done loading %s\n", filename);
+  printf("done loading %s (total=%d)\n", filename, ++dso_count);
   if (!handle) {
     printf("dlerror: %s\n", dlerror());
   }

@@ -337,6 +337,10 @@ void _emscripten_thread_exit(void* result) {
     // Mark the thread as no longer running, so it can be joined.
     // Once we publish this, any threads that are waiting to join with us can
     // proceed and this worker can be recycled and used on another thread.
+#ifdef __PIC__
+    // When dynamic linking is enabled we need to keep track of zombie threads
+    _emscripten_thread_exit_joinable(self);
+#endif
     a_store(&self->detach_state, DT_EXITED);
     __wake(&self->detach_state, 1, 1); // Wake any joiner.
   }

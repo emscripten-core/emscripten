@@ -6365,10 +6365,11 @@ int main(int argc,char** argv) {
     self.do_other_test('test_dlopen_async.c')
 
   def test_dlopen_blocking(self):
-    create_file('side.c', 'int foo = 42;\n')
-    self.run_process([EMCC, 'side.c', '-o', 'libside.so', '-sSIDE_MODULE'])
+    self.run_process([EMCC, test_file('other/test_dlopen_blocking_side.c'), '-o', 'libside.so', '-sSIDE_MODULE'])
     self.set_setting('MAIN_MODULE', 2)
     self.set_setting('EXIT_RUNTIME')
+    self.set_setting('NO_AUTOLOAD_DYLIBS')
+    self.emcc_args.append('libside.so')
     # Under node this should work both with and without ASYNCIFY
     # because we can do synchronous readBinary
     self.do_other_test('test_dlopen_blocking.c')
@@ -8120,9 +8121,11 @@ int main() {
                 assert_returncode=NON_ZERO, expected_output=stack_trace_checks)
 
     # Not allowed
+    self.set_setting('ASSERTIONS', 1)
+    self.set_setting('EXCEPTION_STACK_TRACES', 0)
     create_file('src.cpp', src)
-    err = self.expect_fail([EMCC, 'src.cpp', '-sASSERTIONS=1', '-sEXCEPTION_STACK_TRACES=0'])
-    self.assertContained('EXCEPTION_STACK_TRACES cannot be disabled when ASSERTIONS are enabled', err)
+    err = self.expect_fail([EMCC, 'src.cpp'] + self.get_emcc_args())
+    self.assertContained('error: EXCEPTION_STACK_TRACES cannot be disabled when ASSERTIONS are enabled', err)
 
     # Doesn't print stack traces
     self.set_setting('ASSERTIONS', 0)
