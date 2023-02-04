@@ -9367,13 +9367,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args.append('-fexceptions')
     self.dylink_testf(test_file('core/pthread/test_pthread_dylink_exceptions.cpp'))
 
-  @parameterized({
-    '': (True,),
-    'no_yield': (False,)
-  })
   @needs_dylink
   @node_pthreads
-  def test_pthread_dlopen(self, do_yield):
+  def test_pthread_dlopen(self):
     self.set_setting('USE_PTHREADS')
     self.emcc_args.append('-Wno-experimental')
     self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_side.c'))
@@ -9381,15 +9377,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.prep_dlfcn_main()
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PROXY_TO_PTHREAD')
-    if do_yield:
-      self.emcc_args.append('-DYIELD')
-      self.do_runf(test_file('core/pthread/test_pthread_dlopen.c'),
-                   ['side module ctor', 'done join'],
-                   assert_all=True)
-    else:
-      self.do_runf(test_file('core/pthread/test_pthread_dlopen.c'),
-                   'invalid index into function table',
-                   assert_returncode=NON_ZERO)
+    self.do_runf(test_file('core/pthread/test_pthread_dlopen.c'),
+                 ['side module ctor', 'done join', 'side module atexit'],
+                 assert_all=True)
 
   @needs_dylink
   @node_pthreads

@@ -9,7 +9,6 @@
 #include <emscripten/proxying.h>
 #include <emscripten/threading.h>
 #include <pthread.h>
-#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -215,7 +214,6 @@ void _emscripten_proxy_execute_task_queue(em_task_queue* tasks) {
   // For example, in PROXY_TO_PTHREAD the atexit functions are called via
   // a proxied call, and without this call to syncronize we would crash if
   // any atexit functions were registered from a side module.
-  _emscripten_thread_sync_code();
   em_task_queue_execute(tasks);
 }
 
@@ -268,18 +266,7 @@ int emscripten_proxy_async(em_proxying_queue* q,
     return 0;
   }
 
-  // If there is no pending notification for this queue, create one. If an old
-  // notification is currently being processed, it may or may not execute this
-  // work. In case it does not, the new notification will ensure the work is
-  // still executed.
-  notification_state previous =
-    atomic_exchange(&tasks->notification, NOTIFICATION_PENDING);
-  if (previous != NOTIFICATION_PENDING) {
-    _emscripten_notify_task_queue(target_thread,
-                                  pthread_self(),
-                                  emscripten_main_browser_thread_id(),
-                                  tasks);
-  }
+  em_task_queue_notify(tasks);
   return 1;
 }
 

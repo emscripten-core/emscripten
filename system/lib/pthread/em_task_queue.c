@@ -5,6 +5,8 @@
  * found in the LICENSE file.
  */
 
+#include <emscripten/threading.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -101,4 +103,28 @@ task em_task_queue_dequeue(em_task_queue* queue) {
   task t = queue->tasks[queue->head];
   queue->head = (queue->head + 1) % queue->capacity;
   return t;
+}
+
+// Send a postMessage notification containing the em_task_queue pointer to the
+// target thread so it will execute the queue when it returns to the event loop.
+// Also pass in the current thread and main thread ids to minimize calls back
+// into Wasm.
+void _emscripten_notify_task_queue(pthread_t target_thread,
+                                   pthread_t curr_thread,
+                                   pthread_t main_thread,
+                                   em_task_queue* queue);
+
+void em_task_queue_notify(em_task_queue* queue) {
+  // If there is no pending notification for this queue, create one. If an old
+  // notification is currently being processed, it may or may not execute this
+  // work. In case it does not, the new notification will ensure the work is
+  // still executed.
+  notification_state previous =
+    atomic_exchange(&queue->notification, NOTIFICATION_PENDING);
+  if (previous != NOTIFICATION_PENDING) {
+    _emscripten_notify_task_queue(queue->thread,
+                                  pthread_self(),
+                                  emscripten_main_browser_thread_id(),
+                                  queue);
+  }
 }

@@ -41,15 +41,6 @@ typedef struct em_task_queue {
   int tail;
 } em_task_queue;
 
-// Send a postMessage notification containing the em_task_queue pointer to the
-// target thread so it will execute the queue when it returns to the event loop.
-// Also pass in the current thread and main thread ids to minimize calls back
-// into Wasm.
-extern int _emscripten_notify_task_queue(pthread_t target_thread,
-                                         pthread_t curr_thread,
-                                         pthread_t main_thread,
-                                         em_task_queue* queue);
-
 em_task_queue* em_task_queue_create(pthread_t thread);
 
 void em_task_queue_destroy(em_task_queue* queue);
@@ -72,3 +63,7 @@ int em_task_queue_enqueue(em_task_queue* queue, task t);
 
 // Not thread safe. Assumes the queue is not empty.
 task em_task_queue_dequeue(em_task_queue* queue);
+
+// Schedule the queue to be executed next time its owning thread returns to its
+// event loop.
+void em_task_queue_notify(em_task_queue* queue);
