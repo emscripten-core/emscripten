@@ -1533,6 +1533,15 @@ var USE_PTHREADS = false;
 // [compile+link] - affects user code at compile and system libraries at link.
 var WASM_WORKERS = 0;
 
+// If true, enables targeting Wasm Web Audio AudioWorklets. Check out the
+// full documentation in site/source/docs/api_reference/wasm_audio_worklets.rst
+// [link]
+var AUDIO_WORKLET = 0;
+
+// If true, enables deep debugging of Web Audio backend.
+// [link]
+var WEBAUDIO_DEBUG = 0;
+
 // In web browsers, Workers cannot be created while the main browser thread
 // is executing JS/Wasm code, but the main thread must regularly yield back
 // to the browser event loop for Worker initialization to occur.

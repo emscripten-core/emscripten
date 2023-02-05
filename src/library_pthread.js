@@ -87,7 +87,11 @@ var LibraryPThread = {
 #if ASSERTIONS
       PThread.debugInit();
 #endif
-      if (ENVIRONMENT_IS_PTHREAD) {
+      if (ENVIRONMENT_IS_PTHREAD
+#if AUDIO_WORKLET
+        || ENVIRONMENT_IS_AUDIO_WORKLET
+#endif
+        ) {
         PThread.initWorker();
       } else {
         PThread.initMainThread();

@@ -44,7 +44,7 @@ def add_files_pre_js(pre_js_list, files_pre_js):
   utils.write_file(pre, '''
     // All the pre-js content up to here must remain later on, we need to run
     // it.
-    if (Module['ENVIRONMENT_IS_PTHREAD']) Module['preRun'] = [];
+    if (Module['ENVIRONMENT_IS_PTHREAD'] || Module['$ww']) Module['preRun'] = [];
     var necessaryPreJSTasks = Module['preRun'].slice();
   ''')
   utils.write_file(post, '''

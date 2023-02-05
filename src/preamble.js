@@ -1004,6 +1004,13 @@ function createWasm() {
 #endif
 #endif
 
+#if AUDIO_WORKLET
+    // If we are in the audio worklet environment, we can only access the Module object
+    // and not the global scope of the main JS script. Therefore we need to export
+    // all functions that the audio worklet scope needs onto the Module object.
+    Module['wasmTable'] = wasmTable;
+#endif
+
 #if hasExportedSymbol('__wasm_call_ctors')
     addOnInit(Module['asm']['__wasm_call_ctors']);
 #endif

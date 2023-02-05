@@ -126,18 +126,12 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   int ret;
   emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_WAITFUTEX);
 
-  // For the main browser thread we can't use
+  // For the main browser thread and audio worklets we can't use
   // __builtin_wasm_memory_atomic_wait32 so we have busy wait instead.
   if (!_emscripten_thread_supports_atomics_wait()) {
-    if (emscripten_is_main_browser_thread()) {
-      ret = futex_wait_main_browser_thread(addr, val, max_wait_ms);
-      emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITFUTEX, EM_THREAD_STATUS_RUNNING);
-      return ret;
-    } else {
-      // TODO: handle non-main threads that also don't support `atomic.wait`.
-      // For example AudioWorklet.
-      assert(0);
-    }
+    ret = futex_wait_main_browser_thread(addr, val, max_wait_ms);
+    emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITFUTEX, EM_THREAD_STATUS_RUNNING);
+    return ret;
   }
 
   // -1 (or any negative number) means wait indefinitely.
