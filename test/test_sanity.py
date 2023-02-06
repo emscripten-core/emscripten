@@ -794,7 +794,7 @@ fi
   def test_binaryen_version(self):
     restore_and_set_up()
     with open(EM_CONFIG, 'a') as f:
-      f.write('\nBINARYEN_ROOT = "' + self.in_dir('fake') + '"')
+      f.write('\nBINARYEN_ROOT = "' + self.in_dir('fake').replace('\\', '/') + '"')
 
     make_fake_tool(self.in_dir('fake', 'bin', 'wasm-opt'), 'foo')
     self.check_working([EMCC, test_file('hello_world.c'), '-O2'], 'error parsing binaryen version (wasm-opt version foo). Please check your binaryen installation')
