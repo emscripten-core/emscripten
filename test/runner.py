@@ -33,6 +33,8 @@ import unittest
 
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
+__tests_path__ = os.path.join(__rootpath__, 'test')
+sys.path.append(__tests_path__)
 
 import jsrun
 import parallel_testsuite

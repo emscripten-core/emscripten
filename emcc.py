@@ -20,6 +20,9 @@ emcc can be influenced by a few environment variables:
                slows down compilation).
 """
 
+__rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(__rootpath__)
+
 from tools.toolchain_profiler import ToolchainProfiler
 
 import base64
