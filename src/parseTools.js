@@ -390,22 +390,6 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = '
             makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempI64[1]', 'i32', noNeedFirst, ignore, align, ',') + ')';
   }
 
-  const bits = getBits(type);
-  const needSplitting = bits > 0 && !isPowerOfTwo(bits); // an unnatural type like i24
-  if (needSplitting) {
-    // Alignment is important here, or we need to split this up for other reasons.
-    const bytes = Runtime.getNativeTypeSize(type);
-    if (needSplitting) {
-      let ret = '';
-      ret += 'tempBigInt=' + value + sep;
-      for (let i = 0; i < bytes; i++) {
-        ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore, 1);
-        if (i < bytes - 1) ret += sep + 'tempBigInt = tempBigInt>>8' + sep;
-      }
-      return ret;
-    }
-  }
-
   const offset = calcFastOffset(ptr, pos);
 
   const slab = getHeapForType(type);
