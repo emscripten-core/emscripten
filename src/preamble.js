@@ -493,7 +493,7 @@ function abort(what) {
   // Throw the error whether or not MODULARIZE is set because abort is used
   // in code paths apart from instantiation where an exception is expected
   // to be thrown when abort is called.
-    throw e;
+  throw e;
 }
 
 #include "memoryprofiler.js"
