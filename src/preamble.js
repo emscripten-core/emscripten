@@ -470,19 +470,6 @@ function abort(what) {
   // though it can.
   // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
 
-  function throwError(what) {
-    /** @suppress {checkTypes} */
-    var e = new WebAssembly.RuntimeError(what);
-
-#if MODULARIZE
-    readyPromiseReject(e);
-#endif
-    // Throw the error whether or not MODULARIZE is set because abort is used
-    // in code paths apart from instantiation where an exception is expected
-    // to be thrown when abort is called.
-    throw e;
-  }
-
 #if WASM_EXCEPTIONS == 1
   // See above, in the meantime, we resort to wasm code for trapping.
   //
@@ -498,7 +485,16 @@ function abort(what) {
     ___trap();
   }
 #endif
-  throwError(what);
+  /** @suppress {checkTypes} */
+  var e = new WebAssembly.RuntimeError(what);
+
+#if MODULARIZE
+  readyPromiseReject(e);
+#endif
+  // Throw the error whether or not MODULARIZE is set because abort is used
+  // in code paths apart from instantiation where an exception is expected
+  // to be thrown when abort is called.
+    throw e;
 }
 
 #include "memoryprofiler.js"
