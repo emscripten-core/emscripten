@@ -469,7 +469,6 @@ function abort(what) {
   // defintion for WebAssembly.RuntimeError claims it takes no arguments even
   // though it can.
   // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
-
 #if WASM_EXCEPTIONS == 1
   // See above, in the meantime, we resort to wasm code for trapping.
   //
@@ -481,7 +480,7 @@ function abort(what) {
   // Wasm EH code (because RuntimeError is considered as a foreign exception and
   // caught by 'catch_all'), but in case throwing RuntimeError is fine because
   // the module has not even been instantiated, even less running.
-  if (typeof Module['asm'] !== 'undefined') {
+  if (runtimeInitialized) {
     ___trap();
   }
 #endif
