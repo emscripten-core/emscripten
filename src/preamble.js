@@ -494,13 +494,11 @@ function abort(what) {
   // Wasm EH code (because RuntimeError is considered as a foreign exception and
   // caught by 'catch_all'), but in case throwing RuntimeError is fine because
   // the module has not even been instantiated, even less running.
-  if (typeof Module['asm'] !== 'undefined')
+  if (typeof Module['asm'] !== 'undefined') {
     ___trap();
-  else
-    throwError(what);
-#else
-  throwError(what);
+  }
 #endif
+  throwError(what);
 }
 
 #include "memoryprofiler.js"
