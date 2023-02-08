@@ -1599,6 +1599,10 @@ def phase_setup(options, state, newargs):
     # 1. If the user explicitly gives DISABLE_EXCEPTION_THROWING=0, error out.
     if 'DISABLE_EXCEPTION_THROWING' in user_settings and user_settings['DISABLE_EXCEPTION_THROWING'] == '0':
       exit_with_error('DISABLE_EXCEPTION_THROWING=0 is not compatible with -fwasm-exceptions')
+    # -fwasm-exceptions takes care of enabling them, so users aren't supposed to
+    # pass them explicitly
+    if 'DISABLE_EXCEPTION_CATCHING' in user_settings or 'DISABLE_EXCEPTION_THROWING' in user_settings:
+      diagnostics.warning('emcc', 'You no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions')
     default_setting('DISABLE_EXCEPTION_CATCHING', 1)
     default_setting('DISABLE_EXCEPTION_THROWING', 1)
 
