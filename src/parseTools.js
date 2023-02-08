@@ -347,11 +347,11 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
 }
 
 /**
- * @param {nunber} ptr The pointer. Used to find both the slab and the offset in that slab. If the pointer
+ * @param {number} ptr The pointer. Used to find both the slab and the offset in that slab. If the pointer
  *            is just an integer, then this is almost redundant, but in general the pointer type
  *            may in the future include information about which slab as well. So, for now it is
  *            possible to put |0| here, but if a pointer is available, that is more future-proof.
- * @param {nunber} pos The position in that slab - the offset. Added to any offset in the pointer itself.
+ * @param {number} pos The position in that slab - the offset. Added to any offset in the pointer itself.
  * @param {number} value The value to set.
  * @param {string} type A string defining the type. Used to find the slab (HEAPU8, HEAP16, HEAPU32, etc.).
  *             which means we should write to all slabs, ignore type differences if any on reads, etc.
