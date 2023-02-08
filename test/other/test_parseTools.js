@@ -25,9 +25,25 @@ mergeInto(LibraryManager.library, {
     return 0;
   },
 
+  test_makeGetValue__deps: ['$readI53FromI64', '$readI53FromU64'],
   test_makeGetValue: function(ptr) {
     out('\ntest_makeGetValue:');
     let val;
+
+    // i53
+    val = {{{ makeGetValue('ptr', '0', 'i53') }}};
+    out('i53: ' + val.toString(16))
+    assert(val == -0xaabb12345678);
+
+    // u53
+    // When interpreted as an unsigned value that bytes stored at in the linear
+    // memory represent a number outside of the i53 range so we get some
+    // rounding here.
+    // readI53FromU64 doesn't currently have any kind of range checkes, even in
+    // debug mode.
+    val = {{{ makeGetValue('ptr', '0', 'u53') }}};
+    out('u53: ' + val.toString(16))
+    assert(val == 0xffff5544edcba800);
 
     // i32
     val = {{{ makeGetValue('ptr', '0', 'i32') }}};
@@ -83,7 +99,37 @@ mergeInto(LibraryManager.library, {
     assert(val == 0xedcba988);
   },
 
-  test_makeSetValue_i64: function(ptr) {
+  test_makeSetValue__deps: ['$writeI53ToI64'],
+  test_makeSetValue: function(ptr) {
+    out('\ntest_makeSetValue:');
+    _clearI64(ptr);
+    {{{ makeSetValue('ptr', '0', 0x12345678AB, 'i64') }}};
+    _printI64(ptr);
+
+    // This value doesn't fit into i64.  The current behaviour here is to
+    // truncate and round (see splitI16 in parseTools.js)
+    _clearI64(ptr);
+    {{{ makeSetValue('ptr', '0', 0x1122334455667788AA, 'i64') }}};
+    _printI64(ptr);
+
+    _clearI64(ptr);
+    {{{ makeSetValue('ptr', '0', 0x12345678AB, 'i53') }}};
+    _printI64(ptr);
+
+    _clearI64(ptr);
+    {{{ makeSetValue('ptr', '0', -1, 'i53') }}};
+    _printI64(ptr);
+
+    _clearI64(ptr);
+    {{{ makeSetValue('ptr', '0', 0xff, 'i32') }}};
+    _printI64(ptr);
+
+    _clearI64(ptr);
+    {{{ makeSetValue('ptr', '0', 0x12345678ab, 'i32') }}};
+    _printI64(ptr);
+  },
+
+  test_makeSetValue_unaligned: function(ptr) {
     {{{ makeSetValue('ptr', '0', 0x12345678AB, 'i64') }}};
   },
 });
