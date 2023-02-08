@@ -259,12 +259,12 @@ Additionally, the emscripten_fetch_t structure passes the XHR object fields
 readyState, status and statusText, which give information about the HTTP loading
 state of the request.
 
-The emscripten_fetch_attr_t object has a timeoutMSecs field which allows
-specifying a timeout duration for the transfer. Additionally,
-emscripten_fetch_close() can be called at any time for asynchronous and waitable
-fetches to abort the download.
-The following example illustrates these fields
-and the onprogress handler.
+The ``emscripten_fetch_attr_t`` object has a ``timeoutMSecs`` field which allows
+specifying a timeout duration for the transfer.  If the operation times out the
+status will be set to 408 (Request Timeout) and the error handler will be
+invoked..  Additionally, ``emscripten_fetch_close()`` can be called at any time
+for asynchronous and waitable fetches to abort the download.
+The following example illustrates these fields and the onprogress handler.
 
 .. code-block:: cpp
 

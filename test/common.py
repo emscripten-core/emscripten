@@ -1515,6 +1515,12 @@ def harness_server_func(in_queue, out_queue, port):
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
+      elif self.path == '/timeout.txt':
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.send_header('Content-length', '1024')
+        self.end_headers()
+        time.sleep(0.5)
       elif self.path == '/check':
         self.send_response(200)
         self.send_header('Content-type', 'text/html')

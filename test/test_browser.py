@@ -4698,6 +4698,10 @@ Module["preRun"].push(function () {
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/idb_delete.cpp', args=['-sUSE_PTHREADS', '-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])
 
+  @also_with_wasm64
+  def test_fetch_timeout(self):
+    self.btest_exit('fetch/test_fetch_timeout.c', args=['-sFETCH_DEBUG', '-sFETCH'])
+
   @requires_threads
   def test_pthread_locale(self):
     self.emcc_args.append('-I' + path_from_root('system/lib/libc/musl/src/internal'))

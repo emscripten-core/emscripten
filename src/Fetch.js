@@ -271,15 +271,21 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   var userNameStr = userName ? UTF8ToString(userName) : undefined;
   var passwordStr = password ? UTF8ToString(password) : undefined;
 
-  var xhr = new XMLHttpRequest();
-  xhr.withCredentials = withCredentials;
 #if FETCH_DEBUG
-  dbg('fetch: xhr.timeout: ' + xhr.timeout + ', xhr.withCredentials: ' + xhr.withCredentials);
+  dbg('fetch: timeoutMsecs: ' + timeoutMsecs + ', withCredentials: ' + withCredentials);
   dbg('fetch: xhr.open(requestMethod="' + requestMethod + '", url: "' + url_ +'", userName: ' + userNameStr + ', password: ' + passwordStr + ');');
 #endif
+  var xhr = new XMLHttpRequest();
+  xhr.withCredentials = withCredentials;
   xhr.open(requestMethod, url_, !fetchAttrSynchronous, userNameStr, passwordStr);
-  if (!fetchAttrSynchronous) xhr.timeout = timeoutMsecs; // XHR timeout field is only accessible in async XHRs, and must be set after .open() but before .send().
-  xhr.url_ = url_; // Save the url for debugging purposes (and for comparing to the responseURL that server side advertised)
+  // XHR timeout field is only accessible in async XHRs, and must be set after
+  // .open() but before .send().
+  if (!fetchAttrSynchronous) {
+    xhr.timeout = timeoutMsecs;
+  }
+  // Save the url for debugging purposes (and for comparing to the responseURL
+  // that server side advertised)
+  xhr.url_ = url_;
 #if ASSERTIONS
   assert(!fetchAttrStreamData, 'streaming uses moz-chunked-arraybuffer which is no longer supported; TODO: rewrite using fetch()');
 #endif
@@ -380,6 +386,8 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     if (!(id in Fetch.xhrs)) { 
       return;
     }
+    HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = 408; // Mimic XHR HTTP status code 408 "Request Timeout"
+
 #if FETCH_DEBUG
     dbg('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" timed out, readyState ' + xhr.readyState + ' and status ' + xhr.status);
 #endif
