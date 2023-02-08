@@ -12934,3 +12934,15 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
     err = self.expect_fail(base_cmd + ['-sMEMORY_GROWTH_LINEAR_STEP=1mb'])
     self.assertContained('error: MEMORY_GROWTH_LINEAR_STEP is not compatible with STANDALONE_WASM', err)
+
+  @is_slow_test
+  def test_googletest(self):
+    # TODO(sbc): Should we package gtest as an emscripten "port"?  I guess we should if
+    # we plan on using it in more places.
+    self.emcc_args += [
+      '-I' + test_file('third_party/googletest/googletest'),
+      '-I' + test_file('third_party/googletest/googletest/include'),
+      test_file('third_party/googletest/googletest/src/gtest-all.cc'),
+      test_file('third_party/googletest/googletest/src/gtest_main.cc'),
+    ]
+    self.do_other_test('test_googletest.cc')
