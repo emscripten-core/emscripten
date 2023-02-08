@@ -191,22 +191,6 @@ function isPointerType(type) {
   return type[type.length - 1] == '*';
 }
 
-function isIntImplemented(type) {
-  return type[0] == 'i' || type[0] == 'u' || isPointerType(type);
-}
-
-// Note: works for iX types and structure types, not pointers (even though they are implemented as ints)
-function getBits(type, allowPointers) {
-  if (allowPointers && isPointerType(type)) return POINTER_SIZE;
-  if (!type) return 0;
-  if (type[0] == 'i' || type[0] == 'u') {
-    const left = type.substr(1);
-    if (!isNumber(left)) return 0;
-    return parseInt(left);
-  }
-  return 0;
-}
-
 // Given an expression like (VALUE=VALUE*2,VALUE<10?VALUE:t+1) , this will
 // replace VALUE with value. If value is not a simple identifier of a variable,
 // value will be replaced with tempVar.
@@ -405,12 +389,13 @@ function makeHEAPView(which, start, end) {
   return `HEAP${which}.subarray((${start})${mod}, (${end})${mod})`;
 }
 
-const TWO_TWENTY = Math.pow(2, 20);
-
 // Given two values and an operation, returns the result of that operation.
 // Tries to do as much as possible at compile time.
-// Leaves overflows etc. unhandled, *except* for integer multiply, in order to be efficient with Math.imul
-function getFastValue(a, op, b, type) {
+function getFastValue(a, op, b) {
+  // In the past we supported many operations, but today we only use addition.
+  assert(op == '+');
+
+  // Convert 'true' and 'false' to '1' and '0'.
   a = a === 'true' ? '1' : (a === 'false' ? '0' : a);
   b = b === 'true' ? '1' : (b === 'false' ? '0' : b);
 
@@ -419,38 +404,23 @@ function getFastValue(a, op, b, type) {
   if (typeof a == 'number') {
     aNumber = a;
     a = a.toString();
-  } else if (isNumber(a)) aNumber = parseFloat(a);
+  } else if (isNumber(a)) {
+    aNumber = parseFloat(a);
+  }
   if (typeof b == 'number') {
     bNumber = b;
     b = b.toString();
-  } else if (isNumber(b)) bNumber = parseFloat(b);
+  } else if (isNumber(b)) {
+    bNumber = parseFloat(b);
+  }
 
+  // First check if we can do the addition at compile time
   if (aNumber !== null && bNumber !== null) {
-    switch (op) {
-      case '+': return (aNumber + bNumber).toString();
-      case '-': return (aNumber - bNumber).toString();
-      case '*': return (aNumber * bNumber).toString();
-      case '/': {
-        if (type[0] === 'i') {
-          return ((aNumber / bNumber) | 0).toString();
-        }
-        return (aNumber / bNumber).toString();
-      }
-      case '%': return (aNumber % bNumber).toString();
-      case '|': return (aNumber | bNumber).toString();
-      case '>>>': return (aNumber >>> bNumber).toString();
-      case '&': return (aNumber & bNumber).toString();
-      case 'pow': return Math.pow(aNumber, bNumber).toString();
-      default: assert(false, 'need to implement getFastValue pn ' + op);
-    }
+    return (aNumber + bNumber).toString();
   }
-  if (op === 'pow') {
-    if (a === '2' && isIntImplemented(type)) {
-      return `(1 << (${b}))`;
-    }
-    return `Math.pow(${a}, ${b})`;
-  }
-  if ((op === '+' || op === '*') && aNumber !== null) { // if one of them is a number, keep it last
+
+  // If one of them is a number, keep it last
+  if (aNumber !== null) {
     const c = b;
     b = a;
     a = c;
@@ -458,56 +428,23 @@ function getFastValue(a, op, b, type) {
     bNumber = aNumber;
     aNumber = cNumber;
   }
-  if (op === '*') {
-    // We can't eliminate where a or b are 0 as that would break things for creating
-    // a negative 0.
-    if ((aNumber === 0 || bNumber === 0) && !FLOAT_TYPES.has(type)) {
-      return '0';
-    } else if (aNumber === 1) {
-      return b;
-    } else if (bNumber === 1) {
-      return a;
-    } else if (bNumber !== null && type && isIntImplemented(type) && Runtime.getNativeTypeSize(type) <= 32) {
-      const shifts = Math.log(bNumber) / Math.LN2;
-      if (shifts % 1 === 0) {
-        return `(${a}<<${shifts})`;
-      }
-    }
-    if (!FLOAT_TYPES.has(type)) {
-      // if guaranteed small enough to not overflow into a double, do a normal multiply
-      // default is 32-bit multiply for things like getelementptr indexes
-      const bits = getBits(type) || 32;
-      // Note that we can emit simple multiple in non-asm.js mode, but asm.js
-      // will not parse "16-bit" multiple, so must do imul there
-      if ((aNumber !== null && Math.abs(a) < TWO_TWENTY) || (bNumber !== null && Math.abs(b) < TWO_TWENTY)) {
-        // keep a non-eliminatable coercion directly on this
-        return `(((${a})*(${b}))&${(Math.pow(2, bits) - 1) | 0})`;
-      }
-      return `(Math.imul(${a}, ${b})|0)`;
-    }
-  } else if (op === '/') {
-    // careful on floats, since 0*NaN is not 0
-    if (a === '0' && !FLOAT_TYPES.has(type)) {
-      return '0';
-    } else if (b === 1) {
-      return a;
-    } // Doing shifts for division is problematic, as getting the rounding right on negatives is tricky
-  } else if (op === '+' || op === '-') {
-    if (b[0] === '-') {
-      op = op === '+' ? '-' : '+';
-      b = b.substr(1);
-    }
-    if (aNumber === 0) {
-      return op === '+' ? b : `(-${b})`;
-    } else if (bNumber === 0) {
-      return a;
-    }
+
+  if (aNumber === 0) {
+    return b;
+  } else if (bNumber === 0) {
+    return a;
   }
+
+  if (b[0] === '-') {
+    op = '-'
+    b = b.substr(1);
+  }
+
   return `(${a})${op}(${b})`;
 }
 
 function calcFastOffset(ptr, pos) {
-  return getFastValue(ptr, '+', pos, 'i32');
+  return getFastValue(ptr, '+', pos);
 }
 
 function getHeapForType(type) {
