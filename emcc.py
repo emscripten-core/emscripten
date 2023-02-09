@@ -1591,14 +1591,19 @@ def phase_setup(options, state, newargs):
     settings.DISABLE_EXCEPTION_CATCHING = 0
 
   if settings.WASM_EXCEPTIONS:
-    if 'DISABLE_EXCEPTION_CATCHING' in user_settings:
-      exit_with_error('DISABLE_EXCEPTION_CATCHING is not compatible with -fwasm-exceptions')
-    if 'DISABLE_EXCEPTION_THROWING' in user_settings:
-      exit_with_error('DISABLE_EXCEPTION_THROWING is not compatible with -fwasm-exceptions')
-    if 'ASYNCIFY' in user_settings and user_settings['ASYNCIFY'] == '1':
-      diagnostics.warning('emcc', 'ASYNCIFY=1 is not compatible with -fwasm-exceptions. Parts of the program that mix ASYNCIFY and exceptions will not compile.')
+    if user_settings.get('DISABLE_EXCEPTION_CATCHING') == '0':
+      exit_with_error('DISABLE_EXCEPTION_CATCHING=0 is not compatible with -fwasm-exceptions')
+    if user_settings.get('DISABLE_EXCEPTION_THROWING') == '0':
+      exit_with_error('DISABLE_EXCEPTION_THROWING=0 is not compatible with -fwasm-exceptions')
+    # -fwasm-exceptions takes care of enabling them, so users aren't supposed to
+    # pass them explicitly, regardless of their values
+    if 'DISABLE_EXCEPTION_CATCHING' in user_settings or 'DISABLE_EXCEPTION_THROWING' in user_settings:
+      diagnostics.warning('emcc', 'You no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions')
     settings.DISABLE_EXCEPTION_CATCHING = 1
     settings.DISABLE_EXCEPTION_THROWING = 1
+
+    if user_settings.get('ASYNCIFY') == '1':
+      diagnostics.warning('emcc', 'ASYNCIFY=1 is not compatible with -fwasm-exceptions. Parts of the program that mix ASYNCIFY and exceptions will not compile.')
 
   if settings.DISABLE_EXCEPTION_THROWING and not settings.DISABLE_EXCEPTION_CATCHING:
     exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
@@ -1617,13 +1622,13 @@ def phase_setup(options, state, newargs):
     # Wasm SjLj cannot be used with Emscripten EH. We error out if
     # DISABLE_EXCEPTION_THROWING=0 is explicitly requested by the user;
     # otherwise we disable it here.
-    default_setting('DISABLE_EXCEPTION_THROWING', 1)
-    if not settings.DISABLE_EXCEPTION_THROWING:
-      exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_CATCHING=0')
+    if user_settings.get('DISABLE_EXCEPTION_THROWING') == '0':
+      exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_THROWING=0')
     # We error out for DISABLE_EXCEPTION_CATCHING=0, because it is 1 by default
     # and this can be 0 only if the user specifies so.
-    if not settings.DISABLE_EXCEPTION_CATCHING:
+    if user_settings.get('DISABLE_EXCEPTION_CATCHING') == '0':
       exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_CATCHING=0')
+    default_setting('DISABLE_EXCEPTION_THROWING', 1)
 
   return (newargs, input_files)
 
