@@ -40,8 +40,10 @@ See docs/process.md for more on how version tagging works.
 - --pre-js and --post-js files are now fed through the JS preprocesor, just
   like JS library files and the core runtime JS files.  This means they can
   now contain #if/#else/#endif blocks and {{{ }}} macro blocks. (#18525)
+- Added support for Wasm-based AudioWorklets for realtime audio processing
+  (#16449)
 - `-sEXPORT_ALL` can now be used to export symbols on the `Module` object
-  when used with `-sMINIMA_RUNTIME` and `-sMODULARIZE` together. (#17911)
+  when used with `-sMINIMAL_RUNTIME` and `-sMODULARIZE` together. (#17911)
 - The llvm version that emscripten uses was updated to 17.0.0 trunk.
 
 3.1.30 - 01/11/23

@@ -191,22 +191,6 @@ function isPointerType(type) {
   return type[type.length - 1] == '*';
 }
 
-function isIntImplemented(type) {
-  return type[0] == 'i' || type[0] == 'u' || isPointerType(type);
-}
-
-// Note: works for iX types and structure types, not pointers (even though they are implemented as ints)
-function getBits(type, allowPointers) {
-  if (allowPointers && isPointerType(type)) return POINTER_SIZE;
-  if (!type) return 0;
-  if (type[0] == 'i' || type[0] == 'u') {
-    const left = type.substr(1);
-    if (!isNumber(left)) return 0;
-    return parseInt(left);
-  }
-  return 0;
-}
-
 // Given an expression like (VALUE=VALUE*2,VALUE<10?VALUE:t+1) , this will
 // replace VALUE with value. If value is not a simple identifier of a variable,
 // value will be replaced with tempVar.
@@ -363,11 +347,11 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
 }
 
 /**
- * @param {nunber} ptr The pointer. Used to find both the slab and the offset in that slab. If the pointer
+ * @param {number} ptr The pointer. Used to find both the slab and the offset in that slab. If the pointer
  *            is just an integer, then this is almost redundant, but in general the pointer type
  *            may in the future include information about which slab as well. So, for now it is
  *            possible to put |0| here, but if a pointer is available, that is more future-proof.
- * @param {nunber} pos The position in that slab - the offset. Added to any offset in the pointer itself.
+ * @param {number} pos The position in that slab - the offset. Added to any offset in the pointer itself.
  * @param {number} value The value to set.
  * @param {string} type A string defining the type. Used to find the slab (HEAPU8, HEAP16, HEAPU32, etc.).
  *             which means we should write to all slabs, ignore type differences if any on reads, etc.
@@ -390,22 +374,6 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = '
             makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempI64[1]', 'i32', noNeedFirst, ignore, align, ',') + ')';
   }
 
-  const bits = getBits(type);
-  const needSplitting = bits > 0 && !isPowerOfTwo(bits); // an unnatural type like i24
-  if (needSplitting) {
-    // Alignment is important here, or we need to split this up for other reasons.
-    const bytes = Runtime.getNativeTypeSize(type);
-    if (needSplitting) {
-      let ret = '';
-      ret += 'tempBigInt=' + value + sep;
-      for (let i = 0; i < bytes; i++) {
-        ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore, 1);
-        if (i < bytes - 1) ret += sep + 'tempBigInt = tempBigInt>>8' + sep;
-      }
-      return ret;
-    }
-  }
-
   const offset = calcFastOffset(ptr, pos);
 
   const slab = getHeapForType(type);
@@ -415,51 +383,19 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = '
   return slab + '[' + getHeapOffset(offset, type) + '] = ' + value;
 }
 
-const UNROLL_LOOP_MAX = 8;
-
-function makeCopyValues(dest, src, num, type, modifier, align, sep = ';') {
-  assert(typeof align === 'undefined');
-  function unroll(type, num, jump = 1) {
-    const setValues = range(num).map((i) => makeSetValue(dest, i * jump, makeGetValue(src, i * jump, type), type));
-    return setValues.join(sep);
-  }
-  // If we don't know how to handle this at compile-time, or handling it is best
-  // done in a large amount of code, call memcpy
-  if (!isNumber(num)) num = stripCorrections(num);
-  if (!isNumber(align)) align = stripCorrections(align);
-  if (!isNumber(num) || (parseInt(num) / align >= UNROLL_LOOP_MAX)) {
-    return '(_memcpy(' + dest + ', ' + src + ', ' + num + ')|0)';
-  }
-  num = parseInt(num);
-  // remove corrections, since we will be correcting after we add anyhow,
-  dest = stripCorrections(dest);
-  src = stripCorrections(src);
-  // and in the heap assignment expression
-  const ret = [];
-  [4, 2, 1].forEach((possibleAlign) => {
-    if (num == 0) return;
-    if (align >= possibleAlign) {
-      ret.push(unroll('i' + (possibleAlign * 8), Math.floor(num / possibleAlign), possibleAlign));
-      src = getFastValue(src, '+', Math.floor(num / possibleAlign) * possibleAlign);
-      dest = getFastValue(dest, '+', Math.floor(num / possibleAlign) * possibleAlign);
-      num %= possibleAlign;
-    }
-  });
-  return ret.join(sep);
-}
-
 function makeHEAPView(which, start, end) {
   const size = parseInt(which.replace('U', '').replace('F', '')) / 8;
   const mod = size == 1 ? '' : ('>>' + Math.log2(size));
   return `HEAP${which}.subarray((${start})${mod}, (${end})${mod})`;
 }
 
-const TWO_TWENTY = Math.pow(2, 20);
-
 // Given two values and an operation, returns the result of that operation.
 // Tries to do as much as possible at compile time.
-// Leaves overflows etc. unhandled, *except* for integer multiply, in order to be efficient with Math.imul
-function getFastValue(a, op, b, type) {
+function getFastValue(a, op, b) {
+  // In the past we supported many operations, but today we only use addition.
+  assert(op == '+');
+
+  // Convert 'true' and 'false' to '1' and '0'.
   a = a === 'true' ? '1' : (a === 'false' ? '0' : a);
   b = b === 'true' ? '1' : (b === 'false' ? '0' : b);
 
@@ -468,38 +404,23 @@ function getFastValue(a, op, b, type) {
   if (typeof a == 'number') {
     aNumber = a;
     a = a.toString();
-  } else if (isNumber(a)) aNumber = parseFloat(a);
+  } else if (isNumber(a)) {
+    aNumber = parseFloat(a);
+  }
   if (typeof b == 'number') {
     bNumber = b;
     b = b.toString();
-  } else if (isNumber(b)) bNumber = parseFloat(b);
+  } else if (isNumber(b)) {
+    bNumber = parseFloat(b);
+  }
 
+  // First check if we can do the addition at compile time
   if (aNumber !== null && bNumber !== null) {
-    switch (op) {
-      case '+': return (aNumber + bNumber).toString();
-      case '-': return (aNumber - bNumber).toString();
-      case '*': return (aNumber * bNumber).toString();
-      case '/': {
-        if (type[0] === 'i') {
-          return ((aNumber / bNumber) | 0).toString();
-        }
-        return (aNumber / bNumber).toString();
-      }
-      case '%': return (aNumber % bNumber).toString();
-      case '|': return (aNumber | bNumber).toString();
-      case '>>>': return (aNumber >>> bNumber).toString();
-      case '&': return (aNumber & bNumber).toString();
-      case 'pow': return Math.pow(aNumber, bNumber).toString();
-      default: assert(false, 'need to implement getFastValue pn ' + op);
-    }
+    return (aNumber + bNumber).toString();
   }
-  if (op === 'pow') {
-    if (a === '2' && isIntImplemented(type)) {
-      return `(1 << (${b}))`;
-    }
-    return `Math.pow(${a}, ${b})`;
-  }
-  if ((op === '+' || op === '*') && aNumber !== null) { // if one of them is a number, keep it last
+
+  // If one of them is a number, keep it last
+  if (aNumber !== null) {
     const c = b;
     b = a;
     a = c;
@@ -507,56 +428,23 @@ function getFastValue(a, op, b, type) {
     bNumber = aNumber;
     aNumber = cNumber;
   }
-  if (op === '*') {
-    // We can't eliminate where a or b are 0 as that would break things for creating
-    // a negative 0.
-    if ((aNumber === 0 || bNumber === 0) && !FLOAT_TYPES.has(type)) {
-      return '0';
-    } else if (aNumber === 1) {
-      return b;
-    } else if (bNumber === 1) {
-      return a;
-    } else if (bNumber !== null && type && isIntImplemented(type) && Runtime.getNativeTypeSize(type) <= 32) {
-      const shifts = Math.log(bNumber) / Math.LN2;
-      if (shifts % 1 === 0) {
-        return `(${a}<<${shifts})`;
-      }
-    }
-    if (!FLOAT_TYPES.has(type)) {
-      // if guaranteed small enough to not overflow into a double, do a normal multiply
-      // default is 32-bit multiply for things like getelementptr indexes
-      const bits = getBits(type) || 32;
-      // Note that we can emit simple multiple in non-asm.js mode, but asm.js
-      // will not parse "16-bit" multiple, so must do imul there
-      if ((aNumber !== null && Math.abs(a) < TWO_TWENTY) || (bNumber !== null && Math.abs(b) < TWO_TWENTY)) {
-        // keep a non-eliminatable coercion directly on this
-        return `(((${a})*(${b}))&${(Math.pow(2, bits) - 1) | 0})`;
-      }
-      return `(Math.imul(${a}, ${b})|0)`;
-    }
-  } else if (op === '/') {
-    // careful on floats, since 0*NaN is not 0
-    if (a === '0' && !FLOAT_TYPES.has(type)) {
-      return '0';
-    } else if (b === 1) {
-      return a;
-    } // Doing shifts for division is problematic, as getting the rounding right on negatives is tricky
-  } else if (op === '+' || op === '-') {
-    if (b[0] === '-') {
-      op = op === '+' ? '-' : '+';
-      b = b.substr(1);
-    }
-    if (aNumber === 0) {
-      return op === '+' ? b : `(-${b})`;
-    } else if (bNumber === 0) {
-      return a;
-    }
+
+  if (aNumber === 0) {
+    return b;
+  } else if (bNumber === 0) {
+    return a;
   }
+
+  if (b[0] === '-') {
+    op = '-'
+    b = b.substr(1);
+  }
+
   return `(${a})${op}(${b})`;
 }
 
 function calcFastOffset(ptr, pos) {
-  return getFastValue(ptr, '+', pos, 'i32');
+  return getFastValue(ptr, '+', pos);
 }
 
 function getHeapForType(type) {
@@ -604,34 +492,6 @@ function makeThrow(what) {
     }
   }
   return `throw ${what};`;
-}
-
-function stripCorrections(param) {
-  let m;
-  while (true) {
-    if (m = /^\((.*)\)$/.exec(param)) {
-      param = m[1];
-      continue;
-    }
-    if (m = /^\(([$_\w]+)\)&\d+$/.exec(param)) {
-      param = m[1];
-      continue;
-    }
-    if (m = /^\(([$_\w()]+)\)\|0$/.exec(param)) {
-      param = m[1];
-      continue;
-    }
-    if (m = /^\(([$_\w()]+)\)\>>>0$/.exec(param)) {
-      param = m[1];
-      continue;
-    }
-    if (m = /CHECK_OVERFLOW\(([^,)]*),.*/.exec(param)) {
-      param = m[1];
-      continue;
-    }
-    break;
-  }
-  return param;
 }
 
 function charCode(char) {

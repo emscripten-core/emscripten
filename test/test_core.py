@@ -1775,6 +1775,66 @@ int main() {
   def test_exceptions_longjmp4(self):
     self.do_core_test('test_exceptions_longjmp4.cpp')
 
+  def test_exception_sjlj_options(self):
+    # Clear all settings used in this test
+    def clear_all_relevant_settings(self):
+      self.clear_setting('DISABLE_EXCEPTION_THROWING')
+      self.clear_setting('DISABLE_EXCEPTION_CATCHING')
+      self.clear_setting('SUPPORT_LONGJMP')
+      self.clear_setting('ASYNCIFY')
+
+    # Emscripten EH and Wasm EH cannot be enabled at the same time
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-fwasm-exceptions'] + self.get_emcc_args())
+    self.assertContained('error: DISABLE_EXCEPTION_CATCHING=0 is not compatible with -fwasm-exceptions', err)
+    clear_all_relevant_settings(self)
+
+    self.set_setting('DISABLE_EXCEPTION_THROWING', 0)
+    err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-fwasm-exceptions'] + self.get_emcc_args())
+    self.assertContained('error: DISABLE_EXCEPTION_THROWING=0 is not compatible with -fwasm-exceptions', err)
+    clear_all_relevant_settings(self)
+
+    # Emscripten EH: You can't enable catching and disable throwing
+    self.set_setting('DISABLE_EXCEPTION_THROWING', 1)
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    err = self.expect_fail([EMCC, test_file('hello_world.cpp')] + self.get_emcc_args())
+    self.assertContained("error: DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions", err)
+    clear_all_relevant_settings(self)
+
+    # When using Wasm EH, users are not supposed to explicitly pass
+    # DISABLE_EXCEPTION_THROWING / DISABLE_EXCEPTION_CATCHING (even in order to
+    # correctly disable them; it will be taken care of by emcc)
+    # We only warn on these cases, but the tests here error out because the
+    # test setting includes -Werror.
+    self.set_setting('DISABLE_EXCEPTION_THROWING', 1)
+    err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-fwasm-exceptions'] + self.get_emcc_args())
+    self.assertContained('error: You no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions', err)
+    clear_all_relevant_settings(self)
+
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
+    err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-fwasm-exceptions'] + self.get_emcc_args())
+    self.assertContained('error: You no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions', err)
+    clear_all_relevant_settings(self)
+
+    # Wasm SjLj and Emscripten EH cannot mix
+    self.set_setting('SUPPORT_LONGJMP', 'wasm')
+    self.set_setting('DISABLE_EXCEPTION_THROWING', 0)
+    err = self.expect_fail([EMCC, test_file('hello_world.cpp')] + self.get_emcc_args())
+    self.assertContained('error: SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_THROWING=0', err)
+    clear_all_relevant_settings(self)
+
+    self.set_setting('SUPPORT_LONGJMP', 'wasm')
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    err = self.expect_fail([EMCC, test_file('hello_world.cpp')] + self.get_emcc_args())
+    self.assertContained('error: SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_CATCHING=0', err)
+    clear_all_relevant_settings(self)
+
+    # Wasm EH does not support ASYNCIFY=1
+    self.set_setting('ASYNCIFY', 1)
+    err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-fwasm-exceptions'] + self.get_emcc_args())
+    self.assertContained('error: ASYNCIFY=1 is not compatible with -fwasm-exceptions. Parts of the program that mix ASYNCIFY and exceptions will not compile.', err)
+    clear_all_relevant_settings(self)
+
   # Marked as impure since the WASI reactor modules (modules without main)
   # are not yet suppored by the wasm engines we test against.
   @also_with_standalone_wasm(impure=True)

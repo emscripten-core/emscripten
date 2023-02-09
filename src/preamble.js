@@ -471,8 +471,19 @@ function abort(what) {
   // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
 #if WASM_EXCEPTIONS == 1
   // See above, in the meantime, we resort to wasm code for trapping.
-  ___trap();
-#else
+  //
+  // In case abort() is called before the module is initialized, Module['asm']
+  // and its exported '__trap' function is not available, in which case we throw
+  // a RuntimeError.
+  //
+  // We trap instead of throwing RuntimeError to prevent infinite-looping in
+  // Wasm EH code (because RuntimeError is considered as a foreign exception and
+  // caught by 'catch_all'), but in case throwing RuntimeError is fine because
+  // the module has not even been instantiated, even less running.
+  if (runtimeInitialized) {
+    ___trap();
+  }
+#endif
   /** @suppress {checkTypes} */
   var e = new WebAssembly.RuntimeError(what);
 
@@ -483,7 +494,6 @@ function abort(what) {
   // in code paths apart from instantiation where an exception is expected
   // to be thrown when abort is called.
   throw e;
-#endif
 }
 
 #include "memoryprofiler.js"
@@ -1002,6 +1012,13 @@ function createWasm() {
 #if ASSERTIONS && !PURE_WASI
     assert(wasmTable, "table not found in wasm exports");
 #endif
+#endif
+
+#if AUDIO_WORKLET
+    // If we are in the audio worklet environment, we can only access the Module object
+    // and not the global scope of the main JS script. Therefore we need to export
+    // all functions that the audio worklet scope needs onto the Module object.
+    Module['wasmTable'] = wasmTable;
 #endif
 
 #if hasExportedSymbol('__wasm_call_ctors')

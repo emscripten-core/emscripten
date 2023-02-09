@@ -87,7 +87,11 @@ var LibraryPThread = {
 #if ASSERTIONS
       PThread.debugInit();
 #endif
-      if (ENVIRONMENT_IS_PTHREAD) {
+      if (ENVIRONMENT_IS_PTHREAD
+#if AUDIO_WORKLET
+        || ENVIRONMENT_IS_AUDIO_WORKLET
+#endif
+        ) {
         PThread.initWorker();
       } else {
         PThread.initMainThread();
@@ -172,28 +176,21 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
       dbg('terminateAllThreads');
 #endif
-      for (var worker of Object.values(PThread.pthreads)) {
-#if ASSERTIONS
-        assert(worker);
-#endif
-        PThread.returnWorkerToPool(worker);
+      // Attempt to kill all workers.  Sadly (at least on the web) there is no
+      // way to terminate a worker synchronously, or to be notified when a
+      // worker in actually terminated.  This means there is some risk that
+      // pthreads will continue to be executing after `worker.terminate` has
+      // returned.  For this reason, we don't call `returnWorkerToPool` here or
+      // free the underlying pthread data structures.
+      for (var worker of PThread.runningWorkers) {
+        worker.terminate();
       }
-
-#if ASSERTIONS
-      // At this point there should be zero pthreads and zero runningWorkers.
-      // All workers should be now be the unused queue.
-      assert(Object.keys(PThread.pthreads).length === 0);
-      assert(PThread.runningWorkers.length === 0);
-#endif
-
       for (var worker of PThread.unusedWorkers) {
-#if ASSERTIONS
-        // This Worker should not be hosting a pthread at this time.
-        assert(!worker.pthread_ptr);
-#endif
         worker.terminate();
       }
       PThread.unusedWorkers = [];
+      PThread.runningWorkers = [];
+      PThread.pthreads = [];
     },
     returnWorkerToPool: function(worker) {
       // We don't want to run main thread queued calls here, since we are doing

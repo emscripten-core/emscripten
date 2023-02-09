@@ -696,6 +696,9 @@ jobs:
           at: ~/
       - checkout
       - run:
+          name: submodule update
+          command: git submodule update --init
+      - run:
           name: Remove Linux binaries
           command: |
             rm -rf ~/emsdk ~/vms

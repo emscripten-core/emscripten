@@ -4391,7 +4391,7 @@ Module["preRun"].push(function () {
     size = os.path.getsize('test.js')
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
-    self.assertLess(abs(size - 5059), 100)
+    self.assertLess(abs(size - 5100), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
@@ -5484,6 +5484,28 @@ Module["preRun"].push(function () {
 
   def test_full_js_library_strict(self):
     self.btest_exit(test_file('hello_world.c'), args=['-sINCLUDE_FULL_LIBRARY', '-sSTRICT_JS'])
+
+  # Tests the AudioWorklet demo
+  @parameterized({
+    'default': ([],),
+    'with_fs': (['--preload-file', test_file('hello_world.c') + '@/'],),
+    'closure': (['--closure', '1', '-Oz'],),
+    'asyncify': (['-sASYNCIFY'],),
+    'pthreads': (['-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE=2'],),
+    'pthreads_and_closure': (['-sUSE_PTHREADS', '--closure', '1', '-Oz'],),
+    'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
+    'minimal_runtime_pthreads_and_closure': (['-sMINIMAL_RUNTIME', '-sUSE_PTHREADS', '--closure', '1', '-Oz'],),
+  })
+  def test_audio_worklet(self, args):
+    self.btest_exit(test_file('webaudio/audioworklet.c'), args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args)
+
+  # Tests that posting functions between the main thread and the audioworklet thread works
+  @parameterized({
+    'default': ([],),
+    'closure': (['--closure', '1', '-Oz'],),
+  })
+  def test_audio_worklet_post_function(self, args):
+    self.btest(test_file('webaudio/audioworklet_post_function.c'), args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args, expected='1')
 
 
 class emrun(RunnerCore):

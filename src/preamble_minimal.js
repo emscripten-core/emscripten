@@ -10,6 +10,12 @@
   global.maybeExport = function(x) {
     return MODULARIZE && EXPORT_ALL ? `Module['${x}'] = ` : '';
   };
+  // Export to the AudioWorkletGlobalScope the needed variables to access
+  // the heap. AudioWorkletGlobalScope is unable to access global JS vars
+  // in the compiled main JS file.
+  global.maybeExportIfAudioWorklet = function(x) {
+    return (MODULARIZE && EXPORT_ALL) || AUDIO_WORKLET ? `Module['${x}'] = ` : '';
+  };
   null;
 }}}
 
@@ -71,19 +77,19 @@ function updateMemoryViews() {
   assert(b instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
 #endif
 #if SUPPORT_BIG_ENDIAN
-  {{{ maybeExport('HEAP_DATA_VIEW') }}}HEAP_DATA_VIEW = new DataView(b);
+  {{{ maybeExport('HEAP_DATA_VIEW') }}} HEAP_DATA_VIEW = new DataView(b);
 #endif
-  {{{ maybeExport('HEAP8') }}}HEAP8 = new Int8Array(b);
-  {{{ maybeExport('HEAP16') }}}HEAP16 = new Int16Array(b);
-  {{{ maybeExport('HEAP32') }}}HEAP32 = new Int32Array(b);
-  {{{ maybeExport('HEAPU8') }}}HEAPU8 = new Uint8Array(b);
-  {{{ maybeExport('HEAPU16') }}}HEAPU16 = new Uint16Array(b);
-  {{{ maybeExport('HEAPU32') }}}HEAPU32 = new Uint32Array(b);
-  {{{ maybeExport('HEAPF32') }}}HEAPF32 = new Float32Array(b);
-  {{{ maybeExport('HEAPF64') }}}HEAPF64 = new Float64Array(b);
+  {{{ maybeExport('HEAP8') }}} HEAP8 = new Int8Array(b);
+  {{{ maybeExport('HEAP16') }}} HEAP16 = new Int16Array(b);
+  {{{ maybeExport('HEAP32') }}} HEAP32 = new Int32Array(b);
+  {{{ maybeExport('HEAPU8') }}} HEAPU8 = new Uint8Array(b);
+  {{{ maybeExport('HEAPU16') }}} HEAPU16 = new Uint16Array(b);
+  {{{ maybeExportIfAudioWorklet('HEAPU32') }}} HEAPU32 = new Uint32Array(b);
+  {{{ maybeExportIfAudioWorklet('HEAPF32') }}} HEAPF32 = new Float32Array(b);
+  {{{ maybeExport('HEAPF64') }}} HEAPF64 = new Float64Array(b);
 #if WASM_BIGINT
-  {{{ maybeExport('HEAP64') }}}HEAP64 = new BigInt64Array(b);
-  {{{ maybeExport('HEAPU64') }}}HEAPU64 = new BigUint64Array(b);
+  {{{ maybeExport('HEAP64') }}} HEAP64 = new BigInt64Array(b);
+  {{{ maybeExport('HEAPU64') }}} HEAPU64 = new BigUint64Array(b);
 #endif
 }
 

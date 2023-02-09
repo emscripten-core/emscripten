@@ -1591,14 +1591,19 @@ def phase_setup(options, state, newargs):
     settings.DISABLE_EXCEPTION_CATCHING = 0
 
   if settings.WASM_EXCEPTIONS:
-    if 'DISABLE_EXCEPTION_CATCHING' in user_settings:
-      exit_with_error('DISABLE_EXCEPTION_CATCHING is not compatible with -fwasm-exceptions')
-    if 'DISABLE_EXCEPTION_THROWING' in user_settings:
-      exit_with_error('DISABLE_EXCEPTION_THROWING is not compatible with -fwasm-exceptions')
-    if 'ASYNCIFY' in user_settings and user_settings['ASYNCIFY'] == '1':
-      diagnostics.warning('emcc', 'ASYNCIFY=1 is not compatible with -fwasm-exceptions. Parts of the program that mix ASYNCIFY and exceptions will not compile.')
+    if user_settings.get('DISABLE_EXCEPTION_CATCHING') == '0':
+      exit_with_error('DISABLE_EXCEPTION_CATCHING=0 is not compatible with -fwasm-exceptions')
+    if user_settings.get('DISABLE_EXCEPTION_THROWING') == '0':
+      exit_with_error('DISABLE_EXCEPTION_THROWING=0 is not compatible with -fwasm-exceptions')
+    # -fwasm-exceptions takes care of enabling them, so users aren't supposed to
+    # pass them explicitly, regardless of their values
+    if 'DISABLE_EXCEPTION_CATCHING' in user_settings or 'DISABLE_EXCEPTION_THROWING' in user_settings:
+      diagnostics.warning('emcc', 'You no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions')
     settings.DISABLE_EXCEPTION_CATCHING = 1
     settings.DISABLE_EXCEPTION_THROWING = 1
+
+    if user_settings.get('ASYNCIFY') == '1':
+      diagnostics.warning('emcc', 'ASYNCIFY=1 is not compatible with -fwasm-exceptions. Parts of the program that mix ASYNCIFY and exceptions will not compile.')
 
   if settings.DISABLE_EXCEPTION_THROWING and not settings.DISABLE_EXCEPTION_CATCHING:
     exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
@@ -1617,13 +1622,13 @@ def phase_setup(options, state, newargs):
     # Wasm SjLj cannot be used with Emscripten EH. We error out if
     # DISABLE_EXCEPTION_THROWING=0 is explicitly requested by the user;
     # otherwise we disable it here.
-    default_setting('DISABLE_EXCEPTION_THROWING', 1)
-    if not settings.DISABLE_EXCEPTION_THROWING:
-      exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_CATCHING=0')
+    if user_settings.get('DISABLE_EXCEPTION_THROWING') == '0':
+      exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_THROWING=0')
     # We error out for DISABLE_EXCEPTION_CATCHING=0, because it is 1 by default
     # and this can be 0 only if the user specifies so.
-    if not settings.DISABLE_EXCEPTION_CATCHING:
+    if user_settings.get('DISABLE_EXCEPTION_CATCHING') == '0':
       exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_CATCHING=0')
+    default_setting('DISABLE_EXCEPTION_THROWING', 1)
 
   return (newargs, input_files)
 
@@ -2360,7 +2365,7 @@ def phase_linker_setup(options, state, newargs):
   if settings.WASM_WORKERS:
     # TODO: After #15982 is resolved, these dependencies can be declared in library_wasm_worker.js
     #       instead of having to record them here.
-    wasm_worker_imports = ['_emscripten_wasm_worker_initialize']
+    wasm_worker_imports = ['_emscripten_wasm_worker_initialize', '___set_thread_state']
     settings.EXPORTED_FUNCTIONS += wasm_worker_imports
     building.user_requested_exports.update(wasm_worker_imports)
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_wasm_worker_initializeRuntime']
@@ -2368,6 +2373,19 @@ def phase_linker_setup(options, state, newargs):
     if settings.WASM_WORKERS == 1:
       settings.WASM_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.ww.js'
     settings.JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_wasm_worker.js')))
+
+  settings.SUPPORTS_GLOBALTHIS = feature_matrix.caniuse(feature_matrix.Feature.GLOBALTHIS)
+
+  if settings.AUDIO_WORKLET:
+    if not settings.SUPPORTS_GLOBALTHIS:
+      exit_with_error('Must target recent enough browser versions that will support globalThis in order to target Wasm Audio Worklets!')
+    if settings.AUDIO_WORKLET == 1:
+      settings.AUDIO_WORKLET_FILE = unsuffixed(os.path.basename(target)) + '.aw.js'
+    settings.JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_webaudio.js')))
+    if not settings.MINIMAL_RUNTIME:
+      # MINIMAL_RUNTIME exports these manually, since this export mechanism is placed
+      # in global scope that is not suitable for MINIMAL_RUNTIME loader.
+      settings.EXPORTED_RUNTIME_METHODS += ['stackSave', 'stackAlloc', 'stackRestore']
 
   if settings.FORCE_FILESYSTEM and not settings.MINIMAL_RUNTIME:
     # when the filesystem is forced, we export by default methods that filesystem usage
@@ -3143,6 +3161,17 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
       minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
       write_file(worker_output, minified_worker)
 
+  # Deploy the Audio Worklet module bootstrap file (*.aw.js)
+  if settings.AUDIO_WORKLET == 1:
+    worklet_output = os.path.join(target_dir, settings.AUDIO_WORKLET_FILE)
+    with open(worklet_output, 'w') as f:
+      f.write(shared.read_and_preprocess(shared.path_from_root('src', 'audio_worklet.js'), expand_macros=True))
+
+    # Minify the audio_worklet.js file in optimized builds
+    if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
+      minified_worker = building.acorn_optimizer(worklet_output, ['minifyWhitespace'], return_output=True)
+      open(worklet_output, 'w').write(minified_worker)
+
   # track files that will need native eols
   generated_text_files_with_native_eols = []
 
@@ -3800,11 +3829,16 @@ def modularize():
 
   return %(return_value)s
 }
+%(capture_module_function_for_audio_worklet)s
 ''' % {
     'maybe_async': async_emit,
     'EXPORT_NAME': settings.EXPORT_NAME,
     'src': src,
-    'return_value': return_value
+    'return_value': return_value,
+    # Given the async nature of how the Module function and Module object come into existence in AudioWorkletGlobalScope,
+    # store the Module function under a different variable name so that AudioWorkletGlobalScope will be able to reference
+    # it without aliasing/conflicting with the Module variable name.
+    'capture_module_function_for_audio_worklet': 'globalThis.AudioWorkletModule = Module;' if settings.AUDIO_WORKLET and settings.MODULARIZE else ''
   }
 
   if settings.MINIMAL_RUNTIME and not settings.USE_PTHREADS:
@@ -3864,14 +3898,15 @@ def module_export_name_substitution():
   logger.debug(f'Private module export name substitution with {settings.EXPORT_NAME}')
   src = read_file(final_js)
   final_js += '.module_export_name_substitution.js'
-  if settings.MINIMAL_RUNTIME and not settings.ENVIRONMENT_MAY_BE_NODE and not settings.ENVIRONMENT_MAY_BE_SHELL:
+  if settings.MINIMAL_RUNTIME and not settings.ENVIRONMENT_MAY_BE_NODE and not settings.ENVIRONMENT_MAY_BE_SHELL and not settings.AUDIO_WORKLET:
     # On the web, with MINIMAL_RUNTIME, the Module object is always provided
     # via the shell html in order to provide the .asm.js/.wasm content.
     replacement = settings.EXPORT_NAME
   else:
     replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": settings.EXPORT_NAME}
-  src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
-  write_file(final_js, src)
+  new_src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
+  assert new_src != src, 'Unable to find Closure syntax __EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__ in source!'
+  write_file(final_js, new_src)
   shared.get_temp_files().note(final_js)
   save_intermediate('module_export_name_substitution')
 
