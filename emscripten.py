@@ -678,7 +678,7 @@ def create_sending(metadata, library_symbols):
   # Map of wasm imports to mangled/external/JS names
   send_items_map = {}
 
-  for name in metadata.invoke_funcs:
+  for name in metadata.invokeFuncs:
     send_items_map[name] = name
   for name in metadata.imports:
     if name in metadata.emJsFuncs:
@@ -822,7 +822,7 @@ def create_module(receiving, metadata, library_symbols):
 def create_invoke_wrappers(metadata):
   """Asm.js-style exception handling: invoke wrapper generation."""
   invoke_wrappers = ''
-  for invoke in metadata.invoke_funcs:
+  for invoke in metadata.invokeFuncs:
     sig = strip_prefix(invoke, 'invoke_')
     invoke_wrappers += '\n' + js_manipulation.make_invoke(sig) + '\n'
   return invoke_wrappers
