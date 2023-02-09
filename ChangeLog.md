@@ -26,6 +26,12 @@ See docs/process.md for more on how version tagging works.
   mainly for the users who want only exceptions' stack traces without turning
   `ASSERTIONS` on. This option currently works only for Wasm exceptions
   (-fwasm-exceptions). (#18642)
+- `SUPPORT_LONGJMP`'s default value now depends on the exception mode. If Wasm
+  EH (`-fwasm-exception`) is used, it defaults to `wasm`, and if Emscripten EH
+  (`-sDISABLE_EXCEPTION_CATCHING=0`) is used or no exception support is used, it
+  defaults to `emscripten`. Previously it always defaulted to `emscripten`, so
+  when a user specified `-fwasm-exceptions`, it resulted in Wasm EH + Emscripten
+  SjLj, the combination we do not intend to support for the long term.
 
 3.1.31 - 01/26/23
 -----------------
