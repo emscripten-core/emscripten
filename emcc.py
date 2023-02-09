@@ -1605,7 +1605,7 @@ def phase_setup(options, state, newargs):
     if user_settings.get('ASYNCIFY') == '1':
       diagnostics.warning('emcc', 'ASYNCIFY=1 is not compatible with -fwasm-exceptions. Parts of the program that mix ASYNCIFY and exceptions will not compile.')
 
-    if user_settings['SUPPORT_LONGJMP'] == 'emscripten':
+    if user_settings.get('SUPPORT_LONGJMP') == 'emscripten':
       exit_with_error('SUPPORT_LONGJMP=emscripten is not compatible with -fwasm-exceptions')
 
   if settings.DISABLE_EXCEPTION_THROWING and not settings.DISABLE_EXCEPTION_CATCHING:
