@@ -98,7 +98,8 @@ function WasmOffsetConverter(wasmBytes, wasmModule) {
               offset += 2; // skip type id byte and mutability byte
               break;
             case 4: // tag import
-              ++offset; // // FIXME: should be SLEB128
+              ++offset; // attribute
+              unsignedLEB128(); // skip tag type
               break;
 #if ASSERTIONS
             default: throw 'bad import kind: ' + kind;
