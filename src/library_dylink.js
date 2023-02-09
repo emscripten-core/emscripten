@@ -51,10 +51,13 @@ var LibraryDylink = {
 #endif
     if (isSymbolDefined(symName)) {
       sym = wasmImports[symName];
+#if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
+    // Asm.js-style exception handling: invoke wrapper generation
     } else if (symName.startsWith('invoke_')) {
       // Create (and cache) new invoke_ functions on demand.
       sym = wasmImports[symName] = createInvokeFunction(symName.split('_')[1]);
     }
+#endif
     return {sym: sym, name: symName};
   },
 
@@ -300,12 +303,9 @@ var LibraryDylink = {
   // Dynamic version of shared.py:make_invoke.  This is needed for invokes
   // that originate from side modules since these are not known at JS
   // generation time.
-  $createInvokeFunction__internal: true,
-  $createInvokeFunction__deps: ['$dynCall'
 #if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
-    , 'setThrew'
-#endif
-  ],
+  $createInvokeFunction__internal: true,
+  $createInvokeFunction__deps: ['$dynCall', 'setThrew'],
   $createInvokeFunction: function(sig) {
     return function() {
       var sp = stackSave();
@@ -313,19 +313,15 @@ var LibraryDylink = {
         return dynCall(sig, arguments[0], Array.prototype.slice.call(arguments, 1));
       } catch(e) {
         stackRestore(sp);
-        // Create a try-catch guard that rethrows the Emscripten EH exception, if any.
-#if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
         // Exceptions thrown from C++ will be an integer number and longjmp will throw
-        // the number Infinity. Use the compact and fast "e !== e+0" test to check if 
+        // the number Infinity. Use the compact and fast "e !== e+0" test to check if
         // e was not a Number.
         if (e !== e+0) throw e;
         _setThrew(1, 0);
-#else
-        throw e;
-#endif
       }
     }
   },
+#endif
 
   // We support some amount of allocation during startup in the case of
   // dynamic linking, which needs to allocate memory for dynamic libraries that
@@ -563,12 +559,15 @@ var LibraryDylink = {
   // promise that resolves to its exports if the loadAsync flag is set.
   $loadWebAssemblyModule__docs: '/** @param {number=} handle */',
   $loadWebAssemblyModule__deps: [
-    '$loadDynamicLibrary', '$createInvokeFunction', '$getMemory',
+    '$loadDynamicLibrary', '$getMemory',
     '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler',
     '$getDylinkMetadata', '$alignMemory', '$zeroMemory',
     '$alignMemory', '$zeroMemory',
     '$CurrentModuleWeakSymbols', '$alignMemory', '$zeroMemory',
-    '$updateTableMap',
+    '$updateTableMap'
+#if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
+     , '$createInvokeFunction'
+#endif
   ],
   $loadWebAssemblyModule: function(binary, flags, handle) {
     var metadata = getDylinkMetadata(binary);
