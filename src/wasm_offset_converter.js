@@ -88,7 +88,7 @@ function WasmOffsetConverter(wasmBytes, wasmModule) {
               unsignedLEB128(); // skip function type
               break;
             case 1: // table import
-              ++offset; // skip elem type
+              unsignedLEB128(); // skip elem type
               skipLimits();
               break;
             case 2: // memory import
