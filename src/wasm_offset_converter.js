@@ -88,7 +88,8 @@ function WasmOffsetConverter(wasmBytes, wasmModule) {
               unsignedLEB128(); // skip function type
               break;
             case 1: // table import
-              ++offset; // FIXME: should be SLEB128
+              ++offset; // skip elem type
+              unsignedLEB128(); // skip function type
               skipLimits();
               break;
             case 2: // memory import
@@ -98,7 +99,7 @@ function WasmOffsetConverter(wasmBytes, wasmModule) {
               offset += 2; // skip type id byte and mutability byte
               break;
             case 4: // tag import
-              ++offset; // attribute
+              ++offset; // skip attribute
               unsignedLEB128(); // skip tag type
               break;
 #if ASSERTIONS
