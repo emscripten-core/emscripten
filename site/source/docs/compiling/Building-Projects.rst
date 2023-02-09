@@ -99,7 +99,7 @@ This list is not exhaustive, but illustrates most commonly used combinations.
 
 .. note::
    Regardless of the name of the output file ``emcc`` will always perform
-   linking and produce a final exectuable, unless a specific flags (e.g. ``-c``)
+   linking and produce a final executable, unless a specific flags (e.g. ``-c``)
    direct it do something else.  This differs to previous behaviour where
    ``emcc`` would default to combining object files (essentially assuming
    ``-r``) unless given a specific executable extension (e.g. ``.js`` or

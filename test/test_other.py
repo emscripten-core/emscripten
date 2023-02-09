@@ -3979,7 +3979,7 @@ int main() {
       self.assertContainedIf(warning, output, no_exit and assertions and not flush and not keepalive)
 
     # Run just one test with KEEPALIVE set.  In this case we don't expect to see any kind
-    # of warning becasue we are explictly requesting the runtime stay alive for later use.
+    # of warning because we are explicitly requesting the runtime stay alive for later use.
     test(cxx=0, no_exit=1, assertions=1, keepalive=1)
     test(cxx=0, no_exit=1, assertions=1, filesystem=0)
 
@@ -4092,7 +4092,7 @@ Waste<3> *getMore() {
       self.assertContainedIf('globalCtors', src, has_global)
 
   def test_implicit_func(self):
-    # EMCC makes -Wimplict-function-declaration an error by default in all modes. Upstream LLVM
+    # EMCC makes -Wimplicit-function-declaration an error by default in all modes. Upstream LLVM
     # emits a warning in gnu89 mode, but otherwise emcc's behavior is identical to upstream.
     IMPLICIT_C89 = "error: implicit declaration of function 'strnlen'"
     # Also check for -Wincompatible-function-pointer-types (it became an error in LLVM 16)
@@ -10949,7 +10949,7 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     output = test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
     self.assertContained('hello, world!', output)
 
-    # unless we explictly disable polyfills
+    # unless we explicitly disable polyfills
     test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
 
   def test_webgpu_compiletest(self):
@@ -11199,7 +11199,7 @@ int main () {
     self.assertContained('linking a library with `-shared` will emit a static object', err)
     self.assertIsObjectFile('out.foo')
 
-    # Test that using an exectuable output name overides the `-shared` flag, but produces a warning.
+    # Test that using an executable output name overrides the `-shared` flag, but produces a warning.
     err = self.run_process([EMCC, '-shared', test_file('hello_world.c'), '-o', 'out.js'],
                            stderr=PIPE).stderr
     self.assertContained('warning: -shared/-r used with executable output suffix', err)
@@ -11211,7 +11211,7 @@ int main () {
     self.assertNotContained('linking a library with `-shared` will emit a static object', err)
     self.assertIsWasmDylib('out.foo')
 
-    # Test that `-shared` and `-sSIDE_MODULE` flag causes wasm dylib generation without a warning even if given exectuable output name.
+    # Test that `-shared` and `-sSIDE_MODULE` flag causes wasm dylib generation without a warning even if given executable output name.
     err = self.run_process([EMCC, '-shared', '-sSIDE_MODULE', test_file('hello_world.c'), '-o', 'out.wasm'],
                            stderr=PIPE).stderr
     self.assertNotContained('warning: -shared/-r used with executable output suffix', err)
@@ -11603,7 +11603,7 @@ exec "$@"
     self.assertIn('Hello from lib!', result)
 
   def test_gen_struct_info(self):
-    # This tests is fragile and will need updating any time any of the refereced
+    # This tests is fragile and will need updating any time any of the referenced
     # structs or defines change.   However its easy to rebaseline with
     # --rebaseline and it prevents regressions or unintended changes
     # to the output json.
@@ -11641,7 +11641,7 @@ exec "$@"
     # of each function.  Once compiled the resulting JavaScript code should
     # contain a reference to each of the dependencies.
 
-    # When debugging set this valud to the function that you want to start
+    # When debugging set this value to the function that you want to start
     # with.  All symbols prior will be skipped over.
     start_at = None
     assert not start_at or start_at in deps_info.get_deps_info()
@@ -11660,7 +11660,7 @@ exec "$@"
       ''' % (function, function))
       # Compile with -O2 so we get JSDCE run to remove any false positives.  This
       # also makes the string quotes consistent which makes the test below simpler.
-      # Including -sREVERSE_DEPS=auto explictly (even though its the default) to
+      # Including -sREVERSE_DEPS=auto explicitly (even though its the default) to
       # be clear this is what we are testing (and in case the default ever changes).
       cmd = [EMCC, function + '.c', '-O2', '--minify=0', '--profiling-funcs', '-Wno-incompatible-library-redeclaration', '-sREVERSE_DEPS=auto']
       print(f'compiling test program for: {function}')
@@ -11755,7 +11755,7 @@ exec "$@"
     self.do_runf(test_file('other/test_em_js_main_module_address.c'), expected, assert_returncode=NON_ZERO)
 
   # On Windows maximum command line length is 32767 characters. Create such a long build line by linking together
-  # several .o files to test that emcc internally uses response files properly when calling llvmn-nm and wasm-ld.
+  # several .o files to test that emcc internally uses response files properly when calling llvm-nm and wasm-ld.
   @is_slow_test
   def test_windows_long_link_response_file(self):
     decls = ''
@@ -11802,10 +11802,10 @@ exec "$@"
     self.run_process([EMCC, '@a.rsp']) # ... and test that it is properly autodetected.
 
   def test_output_name_collision(self):
-    # Ensure that the seconday filenames never collide with the primary output filename
-    # In this case we explcitly ask for JS to be ceated in a file with the `.wasm` suffix.
-    # Even though this doesn't make much sense the `--oformat` flag is designed to overide
-    # any implict type that we might infer from the output name.
+    # Ensure that the secondary filenames never collide with the primary output filename
+    # In this case we explicitly ask for JS to be created in a file with the `.wasm` suffix.
+    # Even though this doesn't make much sense the `--oformat` flag is designed to override
+    # any implicit type that we might infer from the output name.
     self.run_process([EMCC, '-o', 'hello.wasm', '--oformat=js', test_file('hello_world.c')])
     self.assertExists('hello.wasm')
     self.assertExists('hello_.wasm')
@@ -11928,16 +11928,16 @@ kill -9 $$
     libs = ['-lc', '-lcompiler_rt', '-lmalloc']
     err = self.run_process([EMCC, test_file('hello_world.c'), '-pthread', '-nodefaultlibs', '-v'] + libs, stderr=PIPE).stderr
 
-    # Check the the linker was run with `-mt` variants because `-pthread` was passed.
+    # Check that the linker was run with `-mt` variants because `-pthread` was passed.
     self.assertContained(' -lc-mt-debug ', err)
     self.assertContained(' -ldlmalloc-mt ', err)
     self.assertContained(' -lcompiler_rt-mt ', err)
 
-  def test_explict_gl_linking(self):
-    # Test that libGL can be linked explictly via `-lGL` rather than implictly.
-    # Here we use NO_AUTO_NATIVE_LIBRARIES to disable the implictly linking that normally
+  def test_explicit_gl_linking(self):
+    # Test that libGL can be linked explicitly via `-lGL` rather than implicitly.
+    # Here we use NO_AUTO_NATIVE_LIBRARIES to disable the implicitly linking that normally
     # includes the native GL library.
-    self.run_process([EMCC, test_file('other/test_explict_gl_linking.c'), '-sNO_AUTO_NATIVE_LIBRARIES', '-lGL'])
+    self.run_process([EMCC, test_file('other/test_explicit_gl_linking.c'), '-sNO_AUTO_NATIVE_LIBRARIES', '-lGL'])
 
   def test_no_main_with_PROXY_TO_PTHREAD(self):
     create_file('lib.cpp', r'''
@@ -12391,14 +12391,14 @@ Module['postRun'] = function() {{
     check_for_es6('test.js', True)
 
     # If we select and older browser than closure will kick in by default
-    # to traspile.
+    # to transpile.
     print('with old browser')
     self.emcc_args.remove('-Werror')
     self.set_setting('MIN_CHROME_VERSION', '10')
     self.do_runf('test.c', 'prop: 1\nbar: 2\n', output_basename='test2')
     check_for_es6('test2.js', False)
 
-    # If we add `--closure=0` that traspiler (closure) is not run at all
+    # If we add `--closure=0` that transpiler (closure) is not run at all
     print('with old browser + --closure=0')
     self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=0'], output_basename='test3')
     check_for_es6('test3.js', True)

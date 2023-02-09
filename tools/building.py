@@ -202,7 +202,7 @@ def lld_flags_for_executable(external_symbols):
       cmd.append('--growable-table')
 
   if not settings.SIDE_MODULE:
-    # Export these two section start symbols so that we can extact the string
+    # Export these two section start symbols so that we can extract the string
     # data that they contain.
     cmd += [
       '-z', 'stack-size=%s' % settings.STACK_SIZE,
@@ -266,7 +266,7 @@ def link_lld(args, target, external_symbols=None):
     cmd.append('-mwasm64')
 
   # For relocatable output (generating an object file) we don't pass any of the
-  # normal linker flags that are used when building and exectuable
+  # normal linker flags that are used when building and executable
   if '--relocatable' not in args and '-r' not in args:
     cmd += lld_flags_for_executable(external_symbols)
 
@@ -289,7 +289,7 @@ def get_command_with_possible_response_file(cmd):
   return new_cmd
 
 
-# Parses the output of llnm-nm and returns a dictionary of symbols for each file in the output.
+# Parses the output of llvm-nm and returns a dictionary of symbols for each file in the output.
 # This function can be called either for a single file output listing ("llvm-nm a.o", or for
 # multiple files listing ("llvm-nm a.o b.o").
 def parse_llvm_nm_symbols(output):
@@ -463,11 +463,11 @@ def eval_ctors(js_file, wasm_file, debug_info):
 
 
 def get_closure_compiler():
-  # First check if the user configured a specific CLOSURE_COMPILER in thier settings
+  # First check if the user configured a specific CLOSURE_COMPILER in their settings
   if config.CLOSURE_COMPILER:
     return config.CLOSURE_COMPILER
 
-  # Otherwise use the one installed vai npm
+  # Otherwise use the one installed via npm
   cmd = shared.get_npm_cmd('google-closure-compiler')
   if not WINDOWS:
     # Work around an issue that Closure compiler can take up a lot of memory and crash in an error
@@ -641,7 +641,7 @@ def run_closure_cmd(cmd, filename, env, pretty):
 
   for i in range(len(cmd)):
     for prefix in ('--externs', '--js'):
-      # Handle the case where the the flag and the value are two separate arguments.
+      # Handle the case where the flag and the value are two separate arguments.
       if cmd[i] == prefix:
         cmd[i + 1] = move_to_safe_7bit_ascii_filename(cmd[i + 1])
       # and the case where they are one argument, e.g. --externs=foo.js
@@ -1159,7 +1159,7 @@ def map_to_js_libs(library_name):
     'rt': [],
     'pthread': [],
     # This is the name of GNU's C++ standard library. We ignore it here
-    # for compatability with GNU toolchains.
+    # for compatibility with GNU toolchains.
     'stdc++': [],
   }
   # And some are hybrid and require JS and native libraries to be included
@@ -1325,7 +1325,7 @@ save_intermediate.counter = 0  # type: ignore
 def js_legalization_pass_flags():
   flags = []
   if settings.RELOCATABLE:
-    # When builing in relocatable mode, we also want access the original
+    # When building in relocatable mode, we also want access the original
     # non-legalized wasm functions (since wasm modules can and do link to
     # the original, non-legalized, functions).
     flags += ['--pass-arg=legalize-js-interface-export-originals']

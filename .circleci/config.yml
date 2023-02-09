@@ -52,7 +52,7 @@ commands:
           command: |
             EMSDK_BASH=1 ~/emsdk/emsdk construct_env >> $BASH_ENV
             # In order make our external version of emscripten use the emsdk
-            # config we need to explictly set EM_CONFIG here.
+            # config we need to explicitly set EM_CONFIG here.
             echo "export EM_CONFIG=~/emsdk/.emscripten" >> $BASH_ENV
   npm-install:
     description: "npm ci"
@@ -313,7 +313,7 @@ commands:
           environment:
             EMTEST_LACKS_SOUND_HARDWARE: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
-            # --no-sandbox becasue we are running as root and chrome requires
+            # --no-sandbox because we are running as root and chrome requires
             # this flag for now: https://crbug.com/638180
             CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features"
             CHROME_FLAGS_HEADLESS: "--headless --remote-debugging-port=1234"

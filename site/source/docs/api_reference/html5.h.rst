@@ -67,7 +67,7 @@ The ``target`` parameter is the ID of the HTML element to which the callback reg
   - ``EMSCRIPTEN_EVENT_TARGET_SCREEN``: The event listener is applied to the JavaScript ``window.screen`` object.
   - ``0`` or ``NULL``: If building with the option ``-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR`` (default), ``NULL`` denotes an invalid element. If building with legacy option ``-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0`` (not recommended), a default element is chosen automatically based on the event type.
   - ``#canvas``: If building with legacy option ``-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0`` (not recommended), the event listener is applied to the Emscripten default WebGL canvas element. If building with the option ``-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR`` (default), ``#canvas`` is interpreted as a CSS query selector: "the first element with CSS ID 'canvas'".
-  - Any other string: A CSS selector lookup is performed to the DOM with the passed string, and the the event listener is applied to the first element that matches the query.
+  - Any other string: A CSS selector lookup is performed to the DOM with the passed string, and the event listener is applied to the first element that matches the query.
 
 If the above are insufficient for you, you can add custom mappings in JavaScript
 using something like
