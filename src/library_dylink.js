@@ -51,9 +51,10 @@ var LibraryDylink = {
 #endif
     if (isSymbolDefined(symName)) {
       sym = wasmImports[symName];
+    }
 #if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
     // Asm.js-style exception handling: invoke wrapper generation
-    } else if (symName.startsWith('invoke_')) {
+    else if (symName.startsWith('invoke_')) {
       // Create (and cache) new invoke_ functions on demand.
       sym = wasmImports[symName] = createInvokeFunction(symName.split('_')[1]);
     }
