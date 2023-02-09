@@ -1591,22 +1591,18 @@ def phase_setup(options, state, newargs):
     settings.DISABLE_EXCEPTION_CATCHING = 0
 
   if settings.WASM_EXCEPTIONS:
-    # DISABLE_EXCEPTION_CATCHING is 1 by default. So if it is 0, it means the
-    # user specifies it explicitly
-    if not settings.DISABLE_EXCEPTION_CATCHING:
+    if user_settings.get('DISABLE_EXCEPTION_CATCHING') == '0':
       exit_with_error('DISABLE_EXCEPTION_CATCHING=0 is not compatible with -fwasm-exceptions')
-    # DISABLE_EXCEPTION_THROWING is 0 by default, but in Wasm EH, it defaults to
-    # 1. If the user explicitly gives DISABLE_EXCEPTION_THROWING=0, error out.
-    if 'DISABLE_EXCEPTION_THROWING' in user_settings and user_settings['DISABLE_EXCEPTION_THROWING'] == '0':
+    if user_settings.get('DISABLE_EXCEPTION_THROWING') == '0':
       exit_with_error('DISABLE_EXCEPTION_THROWING=0 is not compatible with -fwasm-exceptions')
     # -fwasm-exceptions takes care of enabling them, so users aren't supposed to
-    # pass them explicitly
+    # pass them explicitly, regardless of their values
     if 'DISABLE_EXCEPTION_CATCHING' in user_settings or 'DISABLE_EXCEPTION_THROWING' in user_settings:
       diagnostics.warning('emcc', 'You no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions')
-    default_setting('DISABLE_EXCEPTION_CATCHING', 1)
-    default_setting('DISABLE_EXCEPTION_THROWING', 1)
+    settings.DISABLE_EXCEPTION_CATCHING = 1
+    settings.DISABLE_EXCEPTION_THROWING = 1
 
-    if 'ASYNCIFY' in user_settings and user_settings['ASYNCIFY'] == '1':
+    if user_settings.get('ASYNCIFY') == '1':
       diagnostics.warning('emcc', 'ASYNCIFY=1 is not compatible with -fwasm-exceptions. Parts of the program that mix ASYNCIFY and exceptions will not compile.')
 
   if settings.DISABLE_EXCEPTION_THROWING and not settings.DISABLE_EXCEPTION_CATCHING:
@@ -1630,7 +1626,7 @@ def phase_setup(options, state, newargs):
     # Wasm SjLj cannot be used with Emscripten EH. We error out if
     # DISABLE_EXCEPTION_THROWING=0 is explicitly requested by the user;
     # otherwise we disable it here.
-    if 'DISABLE_EXCEPTION_THROWING' in user_settings and user_settings['DISABLE_EXCEPTION_THROWING'] == '0':
+    if user_settings.get('DISABLE_EXCEPTION_THROWING') == '0':
       exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_THROWING=0')
     default_setting('DISABLE_EXCEPTION_THROWING', 1)
 
