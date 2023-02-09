@@ -3122,7 +3122,7 @@ The current type of b is: 9
     # Link against the side modules but don't load them on startup.
     self.set_setting('NO_AUTOLOAD_DYLIBS')
     self.emcc_args.append('liblib.so')
-    # This means we can use MAIN_MODULE=2 without needing to explictly
+    # This means we can use MAIN_MODULE=2 without needing to explicitly
     # specify EXPORTED_FUNCTIONS.
     self.set_setting('MAIN_MODULE', 2)
 
@@ -7029,7 +7029,7 @@ void* operator new(size_t size) {
 
         return output
 
-      # Explictly disable EXIT_RUNTIME, since otherwise addOnPostRun does not work.
+      # Explicitly disable EXIT_RUNTIME, since otherwise addOnPostRun does not work.
       # https://github.com/emscripten-core/emscripten/issues/15080
       self.set_setting('EXIT_RUNTIME', 0)
       self.emcc_args += ['--minify=0'] # to compare the versions
@@ -8753,7 +8753,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_postrun_exception(self):
     # verify that an exception thrown in postRun() will not trigger the
     # compilation failed handler, and will be printed to stderr.
-    # Explictly disable EXIT_RUNTIME, since otherwise addOnPostRun does not work.
+    # Explicitly disable EXIT_RUNTIME, since otherwise addOnPostRun does not work.
     # https://github.com/emscripten-core/emscripten/issues/15080
     self.set_setting('EXIT_RUNTIME', 0)
     self.add_post_run('ThisFunctionDoesNotExist()')
@@ -9544,9 +9544,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.clear_setting('EXPORTED_FUNCTIONS')
 
   # Marked as impure since the WASI reactor modules (modules without main)
-  # are not yet suppored by the wasm engines we test against.
+  # are not yet supported by the wasm engines we test against.
   @also_with_standalone_wasm(impure=True)
-  def test_undefined_main_explict(self):
+  def test_undefined_main_explicit(self):
     # If we pass --no-entry this test should compile without issue
     self.emcc_args.append('--no-entry')
     self.do_core_test('test_ctors_no_main.cpp')
@@ -9586,7 +9586,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # Tests settings.ABORT_ON_WASM_EXCEPTIONS
   @no_wasm64('missing "crashing"')
   def test_abort_on_exceptions(self):
-    # Explictly disable EXIT_RUNTIME, since otherwise addOnPostRun does not work.
+    # Explicitly disable EXIT_RUNTIME, since otherwise addOnPostRun does not work.
     # https://github.com/emscripten-core/emscripten/issues/15080
     self.set_setting('EXIT_RUNTIME', 0)
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')

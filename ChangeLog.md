@@ -37,7 +37,7 @@ See docs/process.md for more on how version tagging works.
 - The `STACK_SIZE`, `STACK_ALIGN`, `POINTER_SIZE`, and `ASSERTIONS` JavaScript
   globals were removed by default.  In debug builds a clear error is shown if
   you try to use these. (#18503)
-- --pre-js and --post-js files are now fed through the JS preprocesor, just
+- --pre-js and --post-js files are now fed through the JS preprocessor, just
   like JS library files and the core runtime JS files.  This means they can
   now contain #if/#else/#endif blocks and {{{ }}} macro blocks. (#18525)
 - Added support for Wasm-based AudioWorklets for realtime audio processing
@@ -305,7 +305,7 @@ See docs/process.md for more on how version tagging works.
   However, they all still available by default due to a new setting called
   `LEGACY_RUNTIME` which is enabled by default.  When `LEGACY_RUNTIME` is
   disabled (which it may be in the future) these symbols would only be included
-  if there were explictly exported via `EXPORTED_RUNTIME_METHODS` or added to
+  if there were explicitly exported via `EXPORTED_RUNTIME_METHODS` or added to
   `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`.  `LEGACY_RUNTIME` is disabled by default
   in `STRICT` mode so this change only effects users of `STRICT` mode. (#17370,
   #17403)
@@ -439,7 +439,7 @@ See docs/process.md for more on how version tagging works.
 3.1.5 - 02/17/2022
 ------------------
 - Emscripten no longer uses the `allocate()` runtime function.  For backwards
-  compatabiliy with external JS code we still include this function by default
+  compatibility with external JS code we still include this function by default
   but it will no longer be included in `-sSTRICT` mode.  Usages of this function
   are generally best replaced with `_malloc`, `stackAlloc` or `allocateUTF8`.
 
@@ -509,7 +509,7 @@ See docs/process.md for more on how version tagging works.
   For most users targeting the default set of browsers this is a code size win.
   For projects targeting older browsers (e.g. `-sMIN_CHROME_VERSION=10`),
   emscripten will now run closure compiler in `WHITESPACE_ONLY` mode in order to
-  traspile any ES6 down to ES5.  When this automatic transpilation is performed
+  transpile any ES6 down to ES5.  When this automatic transpilation is performed
   we generate a warning which can be disabled (using `-Wno-transpile`) or by
   explicitly opting in-to or out-of closure using `--closure=1` or
   `--closure=0`. (#15763).
@@ -586,7 +586,7 @@ See docs/process.md for more on how version tagging works.
   EM_WORKAROUND_PYTHON_BUG_34780 and EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG that
   can be enabled to work around a Windows Python issue
   https://bugs.python.org/issue34780 , and a Windows 7 exit code issue (#15146)
-- Support a new CMake propert `EMSCRIPTEN_SYSTEM_PROCESSOR` which can be used
+- Support a new CMake property `EMSCRIPTEN_SYSTEM_PROCESSOR` which can be used
   to override the default value of `CMAKE_SYSTEM_PROCESSOR` set by the
   toolchain file.
 - Remove support for the `EMIT_EMSCRIPTEN_METADATA` setting.  This setting has
@@ -747,7 +747,7 @@ See docs/process.md for more on how version tagging works.
   list of symbols can now use a simple one-symbol-per-line format.  This new
   format is much simpler and doesn't require commas between symbols, opening
   or closing braces, or any kind of escaping for special characters.
-- The WebAssembly linker (`wasm-ld`) now performes string tail merging on any
+- The WebAssembly linker (`wasm-ld`) now performs string tail merging on any
   static string data in your program.   This has long been part of the native
   ELF linker and should not be observable in well-behaved programs.  This
   behavior can be disabled by passing `-Wl,-O0`.
@@ -812,9 +812,9 @@ See docs/process.md for more on how version tagging works.
   list explicit `EXPORTED_FUNCTIONS`.  Also, users of `MAIN_MODULE=1` with
   dynamic linking (not dlopen) who list all side modules on the command line,
   should be able to switch to `MAIN_MODULE=2` and get a reduction in code size.
-- When building with `MAIN_MODULE` it is now possbile to warn or error on
+- When building with `MAIN_MODULE` it is now possible to warn or error on
   undefined symbols assuming all the side modules are passed at link time.  This
-  means that for many projects it should now be possbile to enable
+  means that for many projects it should now be possible to enable
   `ERROR_ON_UNDEFINED_SYMBOLS` along with `MAIN_MODULE`.
 
 2.0.17: 04/10/2021

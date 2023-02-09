@@ -1902,7 +1902,7 @@ def phase_linker_setup(options, state, newargs):
     # For a command we always want EXIT_RUNTIME=1
     # For a reactor we always want EXIT_RUNTIME=0
     if 'EXIT_RUNTIME' in user_settings:
-      exit_with_error('Explictly setting EXIT_RUNTIME not compatible with STANDALONE_WASM.  EXIT_RUNTIME will always be True for programs (with a main function) and False for reactors (not main function).')
+      exit_with_error('Explicitly setting EXIT_RUNTIME not compatible with STANDALONE_WASM.  EXIT_RUNTIME will always be True for programs (with a main function) and False for reactors (not main function).')
     settings.EXIT_RUNTIME = settings.EXPECT_MAIN
     settings.IGNORE_MISSING_MAIN = 0
     # the wasm must be runnable without the JS, so there cannot be anything that

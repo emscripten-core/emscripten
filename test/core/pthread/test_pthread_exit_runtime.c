@@ -28,7 +28,7 @@ int main() {
   void* thread_rtn = 0;
   rc = pthread_join(t, &thread_rtn);
   assert(rc == 0);
-  // pthread_join should never return becasue the runtime should
+  // pthread_join should never return because the runtime should
   // exit first.
   join_returned = true;
   printf("done join %d -- should never get here\n", rc);

@@ -1934,7 +1934,7 @@ var USE_OFFSET_CONVERTER = false;
 var LOAD_SOURCE_MAP = false;
 
 // If set to 0, delay undefined symbol report until after wasm-ld runs.  This
-// avoids running the the JS compiler prior to wasm-ld, but reduces the amount
+// avoids running the JS compiler prior to wasm-ld, but reduces the amount
 // of information in the undefined symbol message (Since JS compiler cannot
 // report the name of the object file that contains the reference to the
 // undefined symbol).
