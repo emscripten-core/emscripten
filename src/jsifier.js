@@ -151,6 +151,33 @@ function ${name}(${args}) {
 }`);
     }
 
+    if (SHARED_MEMORY) {
+      const proxyingMode = LibraryManager.library[symbol + '__proxy'];
+      if (proxyingMode) {
+        if (proxyingMode !== 'sync' && proxyingMode !== 'async') {
+          throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
+        }
+        const sync = proxyingMode === 'sync';
+        if (USE_PTHREADS) {
+          snippet = modifyFunction(snippet, (name, args, body) => `
+function ${name}(${args}) {
+if (ENVIRONMENT_IS_PTHREAD)
+  return _emscripten_proxy_to_main_thread_js(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
+${body}
+}\n`);
+        } else if (WASM_WORKERS && ASSERTIONS) {
+          // In ASSERTIONS builds add runtime checks that proxied functions are not attempted to be called in Wasm Workers
+          // (since there is no automatic proxying architecture available)
+          snippet = modifyFunction(snippet, (name, args, body) => `
+function ${name}(${args}) {
+  assert(!ENVIRONMENT_IS_WASM_WORKER, "Attempted to call proxied function '${name}' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!");
+  ${body}
+}\n`);
+        }
+        proxiedFunctionTable.push(mangled);
+      }
+    }
+
     if (MEMORY64) {
       const sig = LibraryManager.library[symbol + '__sig'];
       if (sig && sig.includes('p')) {
@@ -362,36 +389,7 @@ function ${name}(${args}) {
       let contentText;
       if (isFunction) {
         // Emit the body of a JS library function.
-        const proxyingMode = LibraryManager.library[symbol + '__proxy'];
-        if (SHARED_MEMORY && proxyingMode) {
-          if (proxyingMode !== 'sync' && proxyingMode !== 'async') {
-            throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
-          }
-          const sync = proxyingMode === 'sync';
-          assert(typeof original == 'function');
-          if (USE_PTHREADS) {
-            contentText = modifyFunction(snippet, (name, args, body) => `
-function ${name}(${args}) {
-  if (ENVIRONMENT_IS_PTHREAD)
-    return _emscripten_proxy_to_main_thread_js(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
-  ${body}
-}\n`);
-          } else if (WASM_WORKERS) {
-            if (ASSERTIONS) {
-              // In ASSERTIONS builds add runtime checks that proxied functions are not attempted to be called in Wasm Workers
-              // (since there is no automatic proxying architecture available)
-              contentText = modifyFunction(snippet, (name, args, body) => `
-  function ${name}(${args}) {
-    assert(!ENVIRONMENT_IS_WASM_WORKER, "Attempted to call proxied function '${name}' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!");
-    ${body}
-  }\n`);
-            } else {
-              // In non-ASSERTIONS builds directly emit the original function.
-              contentText = snippet;
-            }
-          }
-          proxiedFunctionTable.push(mangled);
-        } else if ((USE_ASAN || USE_LSAN || UBSAN_RUNTIME) && LibraryManager.library[symbol + '__noleakcheck']) {
+        if ((USE_ASAN || USE_LSAN || UBSAN_RUNTIME) && LibraryManager.library[symbol + '__noleakcheck']) {
           contentText = modifyFunction(snippet, (name, args, body) => `
 function ${name}(${args}) {
   return withBuiltinMalloc(function() {
