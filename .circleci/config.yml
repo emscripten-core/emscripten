@@ -571,10 +571,12 @@ jobs:
             other.test_gen_struct_info
             other.test_native_call_before_init
             other.test_node_unhandled_rejection
+            other.test_node_emscripten_num_logical_cores
             core2.test_pthread_create
             core2.test_i64_invoke_bigint
             core2.test_source_map
-            core2.test_exceptions_wasm"
+            core2.test_exceptions_wasm
+            core2.test_pthread_unhandledrejection"
       - upload-test-results
   test-other:
     executor: bionic
