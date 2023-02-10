@@ -21,10 +21,10 @@ input file, which is expected to be a JS file. The wasm file is expected to be
 in the same directory, and have the same basename with a '.wasm' extension.
 """
 
-import argparse
 import os
 import subprocess
 import sys
+import mimetypes
 
 from tools import shared
 
@@ -35,34 +35,47 @@ def error(text):
   print(text, file=sys.stderr, flush=True)
   return 1
 
-
 def parse_args(argv):
-  parser = argparse.ArgumentParser(description=__doc__)
-  parser.add_argument('-format', '--format')
-  parser.add_argument('file')
-  args = parser.parse_args(argv)
-  return args.file
+  files = []
+  params = []
+  appendFormat = True
+  ret = 0
+  for arg in argv:
+    if (arg.startswith('-')):
+      params.append(arg)
+    else:
+      files.append(arg)
+    if (arg.startswith('--format')):
+      appendFormat = False
+  if appendFormat:
+    params.append('--format=sysv')
+  for file in files:
+    ret = print_sizes(file, params)
+  return ret
 
+def print_sizes(file, params):
+  if not os.path.isfile(file):
+    return error('Input file %s not foune' % file)
+  ftype, fencoding = mimetypes.guess_type(file)
+  if(ftype == 'application/wasm' or ftype == 'text/vnd.a'):
+    js_size = 0
+    wasm_file = file
+  else:
+    if '.' in file:
+      file, extension = file.rsplit('.', 1)
 
-def print_sizes(js_file):
-  if not os.path.isfile(js_file):
-    return error('Input JS file %s not foune' % js_file)
-  if not js_file.endswith('.js'):
-    return error('Input file %s does not have a JS extension' % js_file)
+    # Find the JS file size
+    st = os.stat(file)
+    js_size = st.st_size
 
-  basename = js_file[:-3]
+    # Find the rest of the sizes
+    wasm_file = file + '.wasm'
 
-  # Find the JS file size
-  st = os.stat(js_file)
-  js_size = st.st_size
-
-  # Find the rest of the sizes
-  wasm_file = basename + '.wasm'
   if not os.path.isfile(wasm_file):
     return error('Wasm file %s not found' % wasm_file)
 
-  sizes = shared.check_call([LLVM_SIZE, '--format=sysv', wasm_file],
-                            stdout=subprocess.PIPE).stdout
+  callArgs = [LLVM_SIZE] + params + [wasm_file]
+  sizes = shared.check_call(callArgs, stdout=subprocess.PIPE).stdout
   # llvm-size may emit some number of blank lines (after the total), ignore them
   lines = [line for line in sizes.splitlines() if line]
 
@@ -73,9 +86,9 @@ def print_sizes(js_file):
   for line in lines[:-1]:
     print(line)
 
-  print('JS\t\t%s\t0' % js_size)
-  print('Total\t\t%s' % total)
-
+  print('%s%16d%7d' % ('JS', js_size, 0))
+  print('%s%13s' % ('Total', total))
+  print('\n')
 
 if __name__ == '__main__':
-  sys.exit(print_sizes(parse_args(sys.argv[1:])))
+  sys.exit(parse_args(sys.argv[1:]))
