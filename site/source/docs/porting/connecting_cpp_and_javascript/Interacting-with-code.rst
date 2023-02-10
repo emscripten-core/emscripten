@@ -801,12 +801,12 @@ for defining the binding:
 
 .. _interacting-with-code-emnapi:
 
-Binding C/C++ and JavaScript — Emnapi (Node-API for Emscripten)
+Binding C/C++ and JavaScript - Emnapi
 ===============================================================
 
-`Emnapi`_ is an unofficial `Node-API`_ implementation for Emscripten.
-If you prefer Node-API, or you would like to port your Node.js addon
-written in Node-API to WebAssembly, you can give it a try. See
+`Emnapi`_ is an unofficial `Node-API`_ implementation which can be used
+in Emscripten. If you would like to port existing Node-API addon
+to WebAssembly, you can give it a try. See
 `Emnapi documentation`_ for more details.
 
 .. _library.js: https://github.com/emscripten-core/emscripten/blob/main/src/library.js
@@ -820,5 +820,5 @@ written in Node-API to WebAssembly, you can give it a try. See
 .. _Box2D: https://github.com/kripken/box2d.js/#box2djs
 .. _Bullet: https://github.com/kripken/ammo.js/#ammojs
 .. _Emnapi: https://github.com/toyobayashi/emnapi
-.. _Node-API: https://nodejs.org/dist/latest-v16.x/docs/api/n-api.html
+.. _Node-API: https://nodejs.org/dist/latest/docs/api/n-api.html
 .. _Emnapi documentation: https://emnapi-docs.vercel.app/guide/getting-started.html
