@@ -1628,6 +1628,9 @@ def phase_setup(options, state, newargs):
       exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_CATCHING=0')
     default_setting('DISABLE_EXCEPTION_THROWING', 1)
 
+  if user_settings.get('EXPORT_EXCEPTION_HANDLING_HELPERS') == '1' and (settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS):
+    exit_with_error('EXPORT_EXCEPTION_HANDLING_HELPERS requires either of -fexceptions or -fwasm-exceptions')
+
   # SUPPORT_LONGJMP=1 means the default SjLj handling mechanism, which is 'wasm'
   # if Wasm EH is used and 'emscripten' otherwise.
   if settings.SUPPORT_LONGJMP == 1:
