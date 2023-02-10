@@ -133,7 +133,7 @@ def make_invoke(sig):
   # wasm won't implicitly convert undefined to 0 in this case.
   exceptional_ret = '\n    return 0n;' if legal_sig[0] == 'j' else ''
   body = '%s%s;' % (ret, make_dynCall(sig, args))
-  # Exceptions thrown from C++ will be an integer number and longjmp will throw
+  # Exceptions thrown from C++ will be a pointer (number) and longjmp will throw
   # the number Infinity. Create a try-catch guard that rethrows the exception
   # if anything else than a Number was thrown. Use the compact and fast
   # "e !== e+0" test to check if e was not a Number.

@@ -814,6 +814,8 @@ def create_module(receiving, metadata, library_symbols):
   module.append(receiving)
   if not settings.DISABLE_EXCEPTION_CATCHING or settings.SUPPORT_LONGJMP == 'emscripten':
     module.append(create_invoke_wrappers(metadata))
+  else:
+    assert not metadata.invokeFuncs, "invoke_ functions exported but exceptions and longjmp are both disabled"
   if settings.MEMORY64:
     module.append(create_wasm64_wrappers(metadata))
   return module
