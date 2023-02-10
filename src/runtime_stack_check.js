@@ -23,8 +23,8 @@ function writeStackCookie() {
   // The stack grow downwards towards _emscripten_stack_get_end.
   // We write cookies to the final two words in the stack and detect if they are
   // ever overwritten.
-  {{{ makeSetValue('max', 0, '0x2135467', 'u32' ) }}};
-  {{{ makeSetValue('max', 4, '0x89BACDFE', 'u32' ) }}};
+  {{{ makeSetValue('max', 0, '0x02135467', 'u32') }}};
+  {{{ makeSetValue('max', 4, '0x89BACDFE', 'u32') }}};
 #if !USE_ASAN && !SAFE_HEAP // ASan and SAFE_HEAP check address 0 themselves
   // Also test the global address 0 for integrity.
   HEAPU32[0] = 0x63736d65; /* 'emsc' */
@@ -45,7 +45,7 @@ function checkStackCookie() {
   }
   var cookie1 = {{{ makeGetValue('max', 0, 'u32') }}};
   var cookie2 = {{{ makeGetValue('max', 4, 'u32') }}};
-  if (cookie1 != 0x2135467 || cookie2 != 0x89BACDFE) {
+  if (cookie1 != 0x02135467 || cookie2 != 0x89BACDFE) {
     abort('Stack overflow! Stack cookie has been overwritten at ' + ptrToString(max) + ', expected hex dwords 0x89BACDFE and 0x2135467, but received ' + ptrToString(cookie2) + ' ' + ptrToString(cookie1));
   }
 #if !USE_ASAN && !SAFE_HEAP // ASan and SAFE_HEAP check address 0 themselves

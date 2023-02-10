@@ -376,6 +376,10 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = '
 
   const offset = calcFastOffset(ptr, pos);
 
+  if (type === 'i53') {
+    return `writeI53ToI64(${offset}, ${value})`;
+  }
+
   const slab = getHeapForType(type);
   if (slab == 'HEAPU64' || slab == 'HEAP64') {
     value = `BigInt(${value})`;
