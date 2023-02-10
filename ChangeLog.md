@@ -20,6 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 3.1.32 (in development)
 -----------------------
+- Add support for Audio Worklets. (#16449)
 - In Wasm exception mode (`-fwasm-exceptions`), when
   `EXCEPTION_STACK_TRACES` is enabled, uncaught exceptions will display stack
   traces. This defaults to true when `ASSERTIONS` is enabled. This option is
