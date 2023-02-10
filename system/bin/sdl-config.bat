@@ -1,2 +1,2 @@
 @echo off
-python "%~dp0\sdl-config" %*
+python3 "%~dp0\sdl-config" %*
