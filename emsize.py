@@ -35,6 +35,7 @@ def error(text):
   print(text, file=sys.stderr, flush=True)
   return 1
 
+
 def parse_args(argv):
   files = []
   params = []
@@ -53,11 +54,12 @@ def parse_args(argv):
     ret = print_sizes(file, params)
   return ret
 
+
 def print_sizes(file, params):
   if not os.path.isfile(file):
     return error('Input file %s not foune' % file)
   ftype, fencoding = mimetypes.guess_type(file)
-  if(ftype == 'application/wasm' or ftype == 'text/vnd.a'):
+  if (ftype == 'application/wasm' or ftype == 'text/vnd.a'):
     js_size = 0
     wasm_file = file
   else:
@@ -89,6 +91,7 @@ def print_sizes(file, params):
   print('%s%16d%7d' % ('JS', js_size, 0))
   print('%s%13s' % ('Total', total))
   print('\n')
+
 
 if __name__ == '__main__':
   sys.exit(parse_args(sys.argv[1:]))
