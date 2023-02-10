@@ -667,7 +667,8 @@ jobs:
             other.test_emcc_print_search_dirs
             other.test_emcc_print_file_name
             other.test_minimal_runtime_export_all_modularize
-            other.test_pkg_config*"
+            other.test_pkg_config*
+            other.test_sdl2_config"
       - upload-test-results
       # Run a single websockify-based test to ensure it works on windows.
       - run-tests:
