@@ -314,9 +314,9 @@ var LibraryDylink = {
         return dynCall(sig, arguments[0], Array.prototype.slice.call(arguments, 1));
       } catch(e) {
         stackRestore(sp);
-        // Exceptions thrown from C++ will be an integer number and longjmp will throw
-        // the number Infinity. Use the compact and fast "e !== e+0" test to check if
-        // e was not a Number.
+        // Exceptions thrown from C++ will be an integer number and longjmp will
+        // throw the number Infinity. Use the compact and fast "e !== e+0" test
+        // to check if e was not a Number, and rethrow it if not.
         if (e !== e+0) throw e;
         _setThrew(1, 0);
       }
