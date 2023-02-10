@@ -565,9 +565,9 @@ var LibraryDylink = {
     '$getDylinkMetadata', '$alignMemory', '$zeroMemory',
     '$alignMemory', '$zeroMemory',
     '$CurrentModuleWeakSymbols', '$alignMemory', '$zeroMemory',
-    '$updateTableMap'
+    '$updateTableMap',
 #if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
-     , '$createInvokeFunction'
+    '$createInvokeFunction',
 #endif
   ],
   $loadWebAssemblyModule: function(binary, flags, handle) {
