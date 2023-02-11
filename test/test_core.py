@@ -1841,10 +1841,16 @@ int main() {
     self.assertContained('error: ASYNCIFY=1 is not compatible with -fwasm-exceptions. Parts of the program that mix ASYNCIFY and exceptions will not compile.', err)
     clear_all_relevant_settings(self)
 
-    # EXPORT_EXCEPTION_HANDLING_HELPERS requires either Emscripten EH or Wasm EH
+    # EXPORT_EXCEPTION_HANDLING_HELPERS and EXCEPTION_STACK_TRACES requires
+    # either Emscripten EH or Wasm EH
     self.set_setting('EXPORT_EXCEPTION_HANDLING_HELPERS')
     err = self.expect_fail([EMCC, test_file('hello_world.cpp')] + self.get_emcc_args())
     self.assertContained('error: EXPORT_EXCEPTION_HANDLING_HELPERS requires either of -fexceptions or -fwasm-exceptions', err)
+    clear_all_relevant_settings(self)
+
+    self.set_setting('EXCEPTION_STACK_TRACES')
+    err = self.expect_fail([EMCC, test_file('hello_world.cpp')] + self.get_emcc_args())
+    self.assertContained('error: EXCEPTION_STACK_TRACES requires either of -fexceptions or -fwasm-exceptions', err)
     clear_all_relevant_settings(self)
 
   # Marked as impure since the WASI reactor modules (modules without main)

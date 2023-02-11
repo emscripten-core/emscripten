@@ -1628,9 +1628,6 @@ def phase_setup(options, state, newargs):
       exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_CATCHING=0')
     default_setting('DISABLE_EXCEPTION_THROWING', 1)
 
-  if user_settings.get('EXPORT_EXCEPTION_HANDLING_HELPERS') == '1' and (settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS):
-    exit_with_error('EXPORT_EXCEPTION_HANDLING_HELPERS requires either of -fexceptions or -fwasm-exceptions')
-
   # SUPPORT_LONGJMP=1 means the default SjLj handling mechanism, which is 'wasm'
   # if Wasm EH is used and 'emscripten' otherwise.
   if settings.SUPPORT_LONGJMP == 1:
@@ -2830,13 +2827,25 @@ def phase_linker_setup(options, state, newargs):
   if settings.ASSERTIONS:
     if 'EXCEPTION_STACK_TRACES' in user_settings and not settings.EXCEPTION_STACK_TRACES:
       exit_with_error('EXCEPTION_STACK_TRACES cannot be disabled when ASSERTIONS are enabled')
-    default_setting('EXCEPTION_STACK_TRACES', 1)
-  if settings.EXCEPTION_STACK_TRACES and settings.WASM_EXCEPTIONS:
-    settings.EXPORTED_FUNCTIONS += ['___cpp_exception']
+    if not settings.DISABLE_EXCEPTION_CATCHING or settings.WASM_EXCEPTIONS:
+      settings.EXCEPTION_STACK_TRACES = 1
+
+  if settings.EXCEPTION_STACK_TRACES:
+    # If the user explicitly gave EXCEPTION_STACK_TRACES=1 without enagling EH,
+    # errors out.
+    if settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS:
+      exit_with_error('EXCEPTION_STACK_TRACES requires either of -fexceptions or -fwasm-exceptions')
+    # EXCEPTION_STACK_TRACES implies EXPORT_EXCEPTION_HANDLING_HELPERS
     settings.EXPORT_EXCEPTION_HANDLING_HELPERS = True
+    if settings.WASM_EXCEPTIONS:
+      settings.EXPORTED_FUNCTIONS += ['___cpp_exception']
 
   # Make `getExceptionMessage` and other necessary functions available for use.
   if settings.EXPORT_EXCEPTION_HANDLING_HELPERS:
+    # If the user explicitly gave EXPORT_EXCEPTION_HANDLING_HELPERS=1 without
+    # enagling EH, errors out.
+    if settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS:
+      exit_with_error('EXPORT_EXCEPTION_HANDLING_HELPERS requires either of -fexceptions or -fwasm-exceptions')
     # We also export refcount increasing and decreasing functions because if you
     # catch an exception, be it an Emscripten exception or a Wasm exception, in
     # JS, you may need to manipulate the refcount manually not to leak memory.
