@@ -13,7 +13,7 @@ mergeInto(LibraryManager.library, {
     mount: function(mount) {
       // If Module['websocket'] has already been defined (e.g. for configuring
       // the subprotocol/url) use that, if not initialise it to a new object.
-      Module['websocket'] = (Module['websocket'] && 
+      Module['websocket'] = (Module['websocket'] &&
                              ('object' === typeof Module['websocket'])) ? Module['websocket'] : {};
 
       // Add the Event registration mechanism to the exported websocket configuration
@@ -349,7 +349,7 @@ mergeInto(LibraryManager.library, {
           });
           peer.socket.on('error', function(error) {
             // Although the ws library may pass errors that may be more descriptive than
-            // ECONNREFUSED they are not necessarily the expected error code e.g. 
+            // ECONNREFUSED they are not necessarily the expected error code e.g.
             // ENOTFOUND on getaddrinfo seems to be node.js specific, so using ECONNREFUSED
             // is still probably the most useful thing to do.
             sock.error = {{{ cDefine('ECONNREFUSED') }}}; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
@@ -461,7 +461,7 @@ mergeInto(LibraryManager.library, {
           try {
             sock.sock_ops.listen(sock, 0);
           } catch (e) {
-            if (!(e instanceof FS.ErrnoError)) throw e;
+            if (!(e.name === 'ErrnoError')) throw e;
             if (e.errno !== {{{ cDefine('EOPNOTSUPP') }}}) throw e;
           }
         }
@@ -545,7 +545,7 @@ mergeInto(LibraryManager.library, {
         });
         sock.server.on('error', function(error) {
           // Although the ws library may pass errors that may be more descriptive than
-          // ECONNREFUSED they are not necessarily the expected error code e.g. 
+          // ECONNREFUSED they are not necessarily the expected error code e.g.
           // ENOTFOUND on getaddrinfo seems to be node.js specific, so using EHOSTUNREACH
           // is still probably the most useful thing to do. This error shouldn't
           // occur in a well written app as errors should get trapped in the compiled
