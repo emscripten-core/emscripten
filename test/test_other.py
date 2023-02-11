@@ -3335,6 +3335,12 @@ m2.ccall('myread0','number',[],[]);
 print("m0 read m0");
 m0.ccall('myread0','number',[],[]);
 
+section = "parent m0 renames a file in child fs.";
+m0.FS.writeFile('/working/test', 'testme');
+m0.FS.rename('/working/test', '/working/test.bak');
+console.log(section + ":renamed file accessible by the new name:" + m0.FS.analyzePath('/working/test.bak').exists);
+console.log(section + ":renamed file accessible by the old name:" + m0.FS.analyzePath('/working/test').exists);
+
 section = "test seek.";
 print("file size");
 m0.ccall('myreadSeekEnd', 'number', [], []);
@@ -3490,6 +3496,9 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
     self.assertContained(section + ":m1 read:test1", out)
     self.assertContained(section + ":m2 read:test2", out)
     self.assertContained(section + ":m0 read m0:test0_0", out)
+    section = "parent m0 renames a file in child fs."
+    self.assertContained(section + ":renamed file accessible by the new name:true", out)
+    self.assertContained(section + ":renamed file accessible by the old name:false", out)
     section = "test seek."
     self.assertContained(section + ":file size:6", out)
 
