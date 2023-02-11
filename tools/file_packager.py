@@ -739,9 +739,9 @@ def generate_js(data_target, data_files, metadata):
     remote_package_name = os.path.basename(package_name)
     ret += '''
       var PACKAGE_PATH = '';
-      if (typeof window === 'object') {
+      if (ENVIRONMENT_IS_WEB) {
         PACKAGE_PATH = window['encodeURIComponent'](window.location.pathname.toString().substring(0, window.location.pathname.toString().lastIndexOf('/')) + '/');
-      } else if (typeof process === 'undefined' && typeof location !== 'undefined') {
+      } else if (!ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_WORKER) {
         // web worker
         PACKAGE_PATH = encodeURIComponent(location.pathname.toString().substring(0, location.pathname.toString().lastIndexOf('/')) + '/');
       }
@@ -765,9 +765,9 @@ def generate_js(data_target, data_files, metadata):
       code += r'''
         var PACKAGE_UUID = metadata['package_uuid'];
         var indexedDB;
-        if (typeof window === 'object') {
+        if (ENVIRONMENT_IS_WEB) {
           indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
-        } else if (typeof location !== 'undefined') {
+        } else if (ENVIRONMENT_IS_WORKER) {
           // worker
           indexedDB = self.indexedDB;
         } else {
@@ -929,7 +929,7 @@ def generate_js(data_target, data_files, metadata):
     node_support_code = ''
     if options.support_node:
       node_support_code = '''
-        if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
+        if (ENVIRONMENT_IS_NODE) {
           require('fs').readFile(packageName, function(err, contents) {
             if (err) {
               errback(err);
