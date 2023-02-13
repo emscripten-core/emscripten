@@ -1050,6 +1050,7 @@ function createWasm() {
     removeRunDependency('wasm-instantiate');
 #endif // ~USE_PTHREADS
 
+    return exports;
   }
   // wait for the pthread pool (if any)
   addRunDependency('wasm-instantiate');
@@ -1106,11 +1107,7 @@ function createWasm() {
     wasmSourceMap = resetPrototype(WasmSourceMap, Module['wasmSourceMapData']);
 #endif
     try {
-      var exports = Module['instantiateWasm'](info, receiveInstance);
-#if ASYNCIFY
-      exports = Asyncify.instrumentWasmExports(exports);
-#endif
-      return exports;
+      return Module['instantiateWasm'](info, receiveInstance);
     } catch(e) {
       err('Module.instantiateWasm callback failed with error: ' + e);
       #if MODULARIZE
@@ -1140,14 +1137,13 @@ function createWasm() {
 #else
   var result = instantiateSync(wasmBinaryFile, info);
 #if USE_PTHREADS || MAIN_MODULE
-  receiveInstance(result[0], result[1]);
+  return receiveInstance(result[0], result[1]);
 #else
   // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193,
   // the above line no longer optimizes out down to the following line.
   // When the regression is fixed, we can remove this if/else.
-  receiveInstance(result[0]);
+  return receiveInstance(result[0]);
 #endif
-  return Module['asm']; // exports were assigned here
 #endif
 }
 
