@@ -801,7 +801,7 @@ function instantiateSync(file, info) {
 }
 #endif
 
-#if LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER
+#if expectToReceiveOnModule('instantiateWasm') && (LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER)
 // When using postMessage to send an object, it is processed by the structured clone algorithm.
 // The prototype, and hence methods, on that object is then lost. This function adds back the lost prototype.
 // This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
@@ -1083,6 +1083,7 @@ function createWasm() {
   }
 #endif // WASM_ASYNC_COMPILATION
 
+#if expectToReceiveOnModule('instantiateWasm')
   // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
   // to manually instantiate the Wasm module themselves. This allows pages to run the instantiation parallel
   // to any other async startup actions they are performing.
@@ -1120,6 +1121,7 @@ function createWasm() {
       #endif
     }
   }
+#endif
 
 #if WASM_ASYNC_COMPILATION
 #if RUNTIME_LOGGING
