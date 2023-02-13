@@ -2353,7 +2353,7 @@ mergeInto(LibraryManager.library, {
 #if ENVIRONMENT_MAY_BE_NODE
                                "if (ENVIRONMENT_IS_NODE) {\n" +
                                "  _emscripten_get_now = () => {\n" +
-                               "    var t = process['hrtime']();\n" +
+                               "    var t = process.hrtime();\n" +
                                "    return t[0] * 1e3 + t[1] / 1e6;\n" +
                                "  };\n" +
                                "} else " +
@@ -3191,8 +3191,8 @@ mergeInto(LibraryManager.library, {
   $getExecutableName: function() {
 #if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global runtime variable thisProgram
 #if ENVIRONMENT_MAY_BE_NODE
-    if (ENVIRONMENT_IS_NODE && process['argv'].length > 1) {
-      return process['argv'][1].replace(/\\/g, '/');
+    if (ENVIRONMENT_IS_NODE && process.argv.length > 1) {
+      return process.argv[1].replace(/\\/g, '/');
     }
 #endif
     return "./this.program";

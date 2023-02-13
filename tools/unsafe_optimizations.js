@@ -283,7 +283,7 @@ function runTests() {
   process.exit(numTestFailures);
 }
 
-const args = process['argv'].slice(2);
+const args = process.argv.slice(2);
 
 function readBool(arg) {
   let ret = false;
