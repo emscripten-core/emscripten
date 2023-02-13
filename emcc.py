@@ -2831,7 +2831,7 @@ def phase_linker_setup(options, state, newargs):
       settings.EXCEPTION_STACK_TRACES = 1
 
   if settings.EXCEPTION_STACK_TRACES:
-    # If the user explicitly gave EXCEPTION_STACK_TRACES=1 without enagling EH,
+    # If the user explicitly gave EXCEPTION_STACK_TRACES=1 without enabling EH,
     # errors out.
     if settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS:
       exit_with_error('EXCEPTION_STACK_TRACES requires either of -fexceptions or -fwasm-exceptions')
