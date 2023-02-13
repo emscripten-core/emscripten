@@ -926,7 +926,7 @@ var LibraryPThread = {
 #endif
   },
 
-  emscripten_proxy_to_main_thread_js__deps: ['$withStackSave', 'emscripten_run_in_main_runtime_thread_js'],
+  emscripten_proxy_to_main_thread_js__deps: ['$withStackSave', '_emscripten_run_in_main_runtime_thread_js'],
   emscripten_proxy_to_main_thread_js__docs: '/** @type{function(number, (number|boolean), ...(number|boolean))} */',
   emscripten_proxy_to_main_thread_js: function(index, sync) {
     // Additional arguments are passed after those two, which are the actual
@@ -969,7 +969,7 @@ var LibraryPThread = {
         HEAPF64[b + i] = arg;
 #endif
       }
-      return _emscripten_run_in_main_runtime_thread_js(index, serializedNumCallArgs, args, sync);
+      return __emscripten_run_in_main_runtime_thread_js(index, serializedNumCallArgs, args, sync);
     });
   },
 

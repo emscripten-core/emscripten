@@ -1,7 +1,7 @@
 if (!ENVIRONMENT_IS_PTHREAD) {
   if (ENVIRONMENT_IS_NODE) {
-    process.on('error', (e) => {
-      if (e === 'rejected!') {
+    process.on('uncaughtException', (e) => {
+      if (e.message.includes('rejected!')) {
         console.log('passed');
       }
     });

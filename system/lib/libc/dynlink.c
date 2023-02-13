@@ -529,6 +529,37 @@ void emscripten_dlopen(const char* filename, int flags, void* user_data,
   _emscripten_dlopen_js(p, dlopen_onsuccess, dlopen_onerror, d);
 }
 
+static void promise_onsuccess(void* user_data, void* handle) {
+  em_promise_t p = (em_promise_t)user_data;
+  dbg("promise_onsuccess: %p", p);
+  emscripten_promise_resolve(p, EM_PROMISE_FULFILL, handle);
+  emscripten_promise_destroy(p);
+}
+
+static void promise_onerror(void* user_data) {
+  em_promise_t p = (em_promise_t)user_data;
+  dbg("promise_onerror: %p", p);
+  emscripten_promise_resolve(p, EM_PROMISE_REJECT, NULL);
+  emscripten_promise_destroy(p);
+}
+
+// emscripten_dlopen_promise is currently implemented on top of the callback
+// based API (emscripten_dlopen).
+// TODO(sbc): Consider inverting this and perhaps deprecating/removing
+// the old API.
+em_promise_t emscripten_dlopen_promise(const char* filename, int flags) {
+  // Create a promise that is resolved (and destroyed) once the operation
+  // succeeds.
+  em_promise_t p = emscripten_promise_create();
+  emscripten_dlopen(filename, flags, p, promise_onsuccess, promise_onerror);
+
+  // Create a second promise bound the first one to return the caller.  It's
+  // then up to the caller to destroy this promise.
+  em_promise_t ret = emscripten_promise_create();
+  emscripten_promise_resolve(ret, EM_PROMISE_MATCH, p);
+  return ret;
+}
+
 void* __dlsym(void* restrict p, const char* restrict s, void* restrict ra) {
   dbg("__dlsym dso:%p sym:%s", p, s);
   if (p != RTLD_DEFAULT && p != RTLD_NEXT && __dl_invalid_handle(p)) {
