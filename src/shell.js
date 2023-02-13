@@ -183,11 +183,9 @@ var read_,
 function logExceptionOnExit(e) {
   if (e instanceof ExitStatus) return;
   let toLog = e;
-#if EXCEPTION_STACK_TRACES
   if (e && typeof e == 'object' && e.stack) {
     toLog = [e, e.stack];
   }
-#endif
   err('exiting due to exception: ' + toLog);
 }
 #endif
