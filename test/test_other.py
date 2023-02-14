@@ -3568,22 +3568,8 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
     err = self.expect_fail([EMCC, 'duplicated_func.c'] + self.get_emcc_args())
     self.assertContained('error: Symbol re-definition in JavaScript library: duplicatedFunc. Do not use noOverride if this is intended', err)
 
-
   def test_override_stub(self):
-    create_file('override_fork.c', '''
-      int fork() {
-        return 0;
-      }
-
-      int main() {
-        fork();
-        return 0;
-      }
-    ''')
-
-    proc = self.run_process([EMCC, 'override_fork.c', '-sALLOW_UNIMPLEMENTED_SYSCALLS=1'], stderr=PIPE)
-    self.assertEqual(proc.returncode, 0, 'subprocess failed. stderr:\n' + proc.stderr)
-
+    self.do_run_from_file(test_file('other/test_override_stub.c'), test_file('other/test_override_stub.out'))
 
   def test_js_lib_missing_sig(self):
     create_file('some_func.c', '''
