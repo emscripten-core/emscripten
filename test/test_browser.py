@@ -3872,7 +3872,7 @@ Module["preRun"].push(function () {
     def test(args):
       print(args)
       self.btest_exit(test_file('pthread/test_pthread_create.cpp'),
-                      args=['-sINITIAL_MEMORY=64MB', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE=8'] + args,
+                      args=['-sINITIAL_MEMORY=64MB', '-sPROXY_TO_PTHREAD', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE=8'] + args,
                       extra_tries=0) # this should be 100% deterministic
     print() # new line
     test([])

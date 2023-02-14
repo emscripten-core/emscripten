@@ -257,7 +257,7 @@ void emscripten_thread_sleep(double msecs);
 // The name parameter is a UTF-8 encoded string which is truncated to 32 bytes.
 // When thread profiler is not enabled (not building with --threadprofiler),
 // this is a no-op.
-void emscripten_set_thread_name(pthread_t threadId, const char *name);
+void emscripten_set_thread_name(pthread_t thread, const char *name);
 
 // Gets the stored pointer to a string representing the canvases to transfer to
 // the created thread.

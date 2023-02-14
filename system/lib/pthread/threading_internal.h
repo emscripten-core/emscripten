@@ -8,6 +8,7 @@
 #pragma once
 
 #include <pthread.h>
+#include <stdint.h>
 
 typedef union em_variant_val {
   int i;
