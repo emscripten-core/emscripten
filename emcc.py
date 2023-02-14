@@ -2203,7 +2203,7 @@ def phase_linker_setup(options, state, newargs):
       exit_with_error('targeting node older than 10.19.00 is not supported')
     if settings.MIN_NODE_VERSION >= 150000:
       default_setting('NODEJS_CATCH_REJECTION', 0)
-  
+
   # Do not catch rejections or exits in modularize mode, as these options
   # are for use when running emscripten modules standalone
   # see https://github.com/emscripten-core/emscripten/issues/18723#issuecomment-1429236996
