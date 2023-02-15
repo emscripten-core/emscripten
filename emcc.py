@@ -1932,7 +1932,8 @@ def phase_linker_setup(options, state, newargs):
     # set and when building with either -fexceptions or -fwasm-exceptions.
     if 'EXCEPTION_STACK_TRACES' in user_settings and not settings.EXCEPTION_STACK_TRACES:
       exit_with_error('EXCEPTION_STACK_TRACES cannot be disabled when ASSERTIONS are enabled')
-    default_setting('EXCEPTION_STACK_TRACES', not settings.DISABLE_EXCEPTION_CATCHING or settings.WASM_EXCEPTIONS)
+    if settings.WASM_EXCEPTIONS or not settings.DISABLE_EXCEPTION_CATCHING:
+      settings.EXCEPTION_STACK_TRACES = 1
 
     # -sASSERTIONS implies basic stack overflow checks, and ASSERTIONS=2
     # implies full stack overflow checks. However, we don't set this default in
