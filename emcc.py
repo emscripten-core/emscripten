@@ -2237,7 +2237,7 @@ def phase_linker_setup(options, state, newargs):
                           settings.MIN_SAFARI_VERSION >= 90000 and
                           settings.MIN_IE_VERSION == 0x7FFFFFFF)
 
-  if settings.EXCEPTION_STACK_TRACES and not supports_es6_classes:
+  if not settings.DISABLE_EXCEPTION_CATCHING and settings.EXCEPTION_STACK_TRACES and not supports_es6_classes:
     diagnostics.warning('transpile', '-sEXCEPTION_STACK_TRACES requires an engine that support ES6 classes.')
     settings.EXCEPTION_STACK_TRACES = 0
 
