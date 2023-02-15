@@ -710,8 +710,7 @@ var EXPORT_EXCEPTION_HANDLING_HELPERS = false;
 
 // When this is enabled, exceptions will contain stack traces and uncaught
 // exceptions will display stack traces upon exiting. This defaults to true when
-// ASSERTIONS is enabled and when building with either -fexceptions or
-// -fwasm-exceptions. This option is for users who want exceptions' stack
+// ASSERTIONS is enabled. This option is for users who want exceptions' stack
 // traces but do not want other overheads ASSERTIONS can incur.
 // This option implies EXPORT_EXCEPTION_HANDLING_HELPERS.
 // [link]

@@ -22,8 +22,7 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 - Added new linker option `-sEXCEPTION_STACK_TRACES` which will display a stack
   trace when an uncaught exception occurs. This defaults to true when
-  `ASSERTIONS` is enabled and when building with either `-fexceptions` or
-  `-fwasm-exceptions`. This option is mainly for the users who want only
+  `ASSERTIONS` is enabled. This option is mainly for the users who want only
   exceptions' stack traces without turning `ASSERTIONS` on. (#18642 and #18535)
 - `SUPPORT_LONGJMP`'s default value now depends on the exception mode. If Wasm
   EH (`-fwasm-exception`) is used, it defaults to `wasm`, and if Emscripten EH

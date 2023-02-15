@@ -543,8 +543,8 @@ function createExportWrapper(name, fixedasm) {
 }
 #endif
 
-#if SUPPORTS_ES6_CLASSES
-#include "runtime_es6_classes.js"
+#if EXCEPTION_STACK_TRACES && !WASM_EXCEPTIONS
+#include "runtime_exceptions.js"
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS

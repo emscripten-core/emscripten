@@ -146,8 +146,8 @@ var runtimeInitialized = false;
 
 #include "runtime_math.js"
 #include "memoryprofiler.js"
-#if SUPPORTS_ES6_CLASSES
-#include "runtime_es6_classes.js"
+#if EXCEPTION_STACK_TRACES && !WASM_EXCEPTIONS
+#include "runtime_exceptions.js"
 #endif
 #include "runtime_debug.js"
 

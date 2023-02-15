@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if EXCEPTION_STACK_TRACES && !WASM_EXCEPTIONS
 // Base Emscripten EH error class
 class EmscriptenEH extends Error {}
 
@@ -22,4 +21,3 @@ class CppException extends EmscriptenEH {
 #endif
   }
 }
-#endif // EXCEPTION_STACK_TRACES && !WASM_EXCEPTIONS
