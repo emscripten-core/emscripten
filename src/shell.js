@@ -183,11 +183,9 @@ var read_,
 function logExceptionOnExit(e) {
   if (e instanceof ExitStatus) return;
   let toLog = e;
-#if EXCEPTION_STACK_TRACES
   if (e && typeof e == 'object' && e.stack) {
     toLog = [e, e.stack];
   }
-#endif
   err('exiting due to exception: ' + toLog);
 }
 #endif
@@ -226,11 +224,11 @@ if (ENVIRONMENT_IS_NODE) {
 
 #include "node_shell_read.js"
 
-  if (process['argv'].length > 1) {
-    thisProgram = process['argv'][1].replace(/\\/g, '/');
+  if (process.argv.length > 1) {
+    thisProgram = process.argv[1].replace(/\\/g, '/');
   }
 
-  arguments_ = process['argv'].slice(2);
+  arguments_ = process.argv.slice(2);
 
 #if MODULARIZE
   // MODULARIZE will export the module in the proper place outside, we don't need to export here
@@ -241,7 +239,7 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 
 #if NODEJS_CATCH_EXIT
-  process['on']('uncaughtException', function(ex) {
+  process.on('uncaughtException', function(ex) {
     // suppress ExitStatus exceptions from showing an error
     if (!(ex instanceof ExitStatus)) {
       throw ex;
@@ -257,17 +255,17 @@ if (ENVIRONMENT_IS_NODE) {
   // See https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
   var nodeMajor = process.version.match(/^v(\d+)\./)[1];
   if (nodeMajor < 15) {
-    process['on']('unhandledRejection', function(reason) { throw reason; });
+    process.on('unhandledRejection', function(reason) { throw reason; });
   }
 #endif
 
   quit_ = (status, toThrow) => {
     if (keepRuntimeAlive()) {
-      process['exitCode'] = status;
+      process.exitCode = status;
       throw toThrow;
     }
     logExceptionOnExit(toThrow);
-    process['exit'](status);
+    process.exit(status);
   };
 
   Module['inspect'] = function () { return '[Emscripten Module object]'; };

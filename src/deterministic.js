@@ -12,7 +12,7 @@ Math.random = () => {
 var TIME = 10000;
 Date.now = () => TIME++;
 if (typeof performance == 'object') performance.now = Date.now;
-if (ENVIRONMENT_IS_NODE) process['hrtime'] = Date.now;
+if (ENVIRONMENT_IS_NODE) process.hrtime = Date.now;
 
 Module['thisProgram'] = 'thisProgram'; // for consistency between different builds than between runs of the same build
 

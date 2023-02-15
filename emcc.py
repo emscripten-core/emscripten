@@ -2840,11 +2840,19 @@ def phase_linker_setup(options, state, newargs):
     settings.REQUIRED_EXPORTS += ['__trap']
 
   if settings.EXCEPTION_STACK_TRACES:
+    # If the user explicitly gave EXCEPTION_STACK_TRACES=1 without enabling EH,
+    # errors out.
+    if settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS:
+      exit_with_error('EXCEPTION_STACK_TRACES requires either of -fexceptions or -fwasm-exceptions')
     # EXCEPTION_STACK_TRACES implies EXPORT_EXCEPTION_HANDLING_HELPERS
     settings.EXPORT_EXCEPTION_HANDLING_HELPERS = True
 
   # Make `getExceptionMessage` and other necessary functions available for use.
   if settings.EXPORT_EXCEPTION_HANDLING_HELPERS:
+    # If the user explicitly gave EXPORT_EXCEPTION_HANDLING_HELPERS=1 without
+    # enabling EH, errors out.
+    if settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS:
+      exit_with_error('EXPORT_EXCEPTION_HANDLING_HELPERS requires either of -fexceptions or -fwasm-exceptions')
     # We also export refcount increasing and decreasing functions because if you
     # catch an exception, be it an Emscripten exception or a Wasm exception, in
     # JS, you may need to manipulate the refcount manually not to leak memory.

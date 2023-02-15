@@ -118,8 +118,8 @@ commands:
             mv ~/emsdk-main ~/emsdk
             cd ~/emsdk
             ./emsdk update-tags
-            ./emsdk install tot-upstream
-            ./emsdk activate tot-upstream
+            ./emsdk install tot
+            ./emsdk activate tot
             # Remove the emsdk version of emscripten to save space in the
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
