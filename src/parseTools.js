@@ -495,11 +495,11 @@ function makeThrow(excPtr) {
       excPtr += ' + " (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)"';
     }
     return `throw ${excPtr};`;
-  } else if (EXCEPTION_STACK_TRACES) {
-    return `throw new CppException(${excPtr});`;
-  } else {
-    return `throw ${excPtr};`;
   }
+  if (EXCEPTION_STACK_TRACES) {
+    return `throw new CppException(${excPtr});`;
+  }
+  return `throw ${excPtr};`;
 }
 
 function charCode(char) {
