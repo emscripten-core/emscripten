@@ -513,8 +513,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.require_node()
     self.set_setting('USE_PTHREADS')
     self.emcc_args += ['-Wno-pthreads-mem-growth']
-    if self.get_setting('MEMORY64'):
-      self.skipTest('node pthreads not yet supported with MEMORY64')
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
     self.js_engines = [config.NODE_JS]

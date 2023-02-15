@@ -539,6 +539,7 @@ var LibraryPThread = {
     worker.pthread_ptr = 0;
   },
 
+  __emscripten_thread_cleanup__sig: 'vp',
   __emscripten_thread_cleanup: function(thread) {
     // Called when a thread needs to be cleaned up so it can be reused.
     // A thread is considered reusable when it either returns from its
@@ -708,7 +709,7 @@ var LibraryPThread = {
   // allocations from __pthread_create_js we could also remove this.
   __pthread_create_js__noleakcheck: true,
 #endif
-  __pthread_create_js__sig: 'iiiii',
+  __pthread_create_js__sig: 'ipppp',
   __pthread_create_js__deps: ['$spawnThread', 'pthread_self', '$pthreadCreateProxied',
 #if OFFSCREENCANVAS_SUPPORT
     'malloc',
@@ -975,6 +976,7 @@ var LibraryPThread = {
 
   emscripten_receive_on_main_thread_js_callArgs: '=[]',
 
+  emscripten_receive_on_main_thread_js__sig: 'diip',
   emscripten_receive_on_main_thread_js__deps: [
     'emscripten_proxy_to_main_thread_js',
     'emscripten_receive_on_main_thread_js_callArgs'],
@@ -1078,7 +1080,7 @@ var LibraryPThread = {
     // *ThreadMain(void *arg) form, or try linking with the Emscripten linker
     // flag -sEMULATE_FUNCTION_POINTER_CASTS to add in emulation for this x86
     // ABI extension.
-    var result = {{{ makeDynCall('ii', 'ptr') }}}(arg);
+    var result = {{{ makeDynCall('pp', 'ptr') }}}(arg);
 #if STACK_OVERFLOW_CHECK
     checkStackCookie();
 #endif
@@ -1097,6 +1099,7 @@ var LibraryPThread = {
   },
 
 #if MAIN_MODULE
+  _emscripten_thread_exit_joinable__sig: 'vp',
   _emscripten_thread_exit_joinable: function(thread) {
     // Called when a thread exits and is joinable.  We mark these threads
     // as finished, which means that are in state where are no longer actually
@@ -1207,6 +1210,7 @@ var LibraryPThread = {
   },
 
   _emscripten_notify_task_queue__deps: ['$executeNotifiedProxyingQueue'],
+  _emscripten_notify_task_queue__sig: 'vpppp',
   _emscripten_notify_task_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
     if (targetThreadId == currThreadId) {
       setTimeout(() => executeNotifiedProxyingQueue(queue));

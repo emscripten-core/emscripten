@@ -89,9 +89,6 @@ emscripten_wasm_worker_initialize:
   local.get 0
   .globaltype __tls_size, PTR, immutable
   global.get __tls_size
-#ifdef __wasm64__
-  i64.extend_i32_u
-#endif
   PTR.add
   PTR.const 0xf
   PTR.add
