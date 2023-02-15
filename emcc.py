@@ -2619,14 +2619,14 @@ def phase_linker_setup(options, state, newargs):
     # let us sanitize memory access from the JS side, by calling into C where
     # it has been instrumented.
     ASAN_C_HELPERS = [
-      'asan_c_load_1', 'asan_c_load_1u',
-      'asan_c_load_2', 'asan_c_load_2u',
-      'asan_c_load_4', 'asan_c_load_4u',
-      'asan_c_load_f', 'asan_c_load_d',
-      'asan_c_store_1', 'asan_c_store_1u',
-      'asan_c_store_2', 'asan_c_store_2u',
-      'asan_c_store_4', 'asan_c_store_4u',
-      'asan_c_store_f', 'asan_c_store_d',
+      '_asan_c_load_1', '_asan_c_load_1u',
+      '_asan_c_load_2', '_asan_c_load_2u',
+      '_asan_c_load_4', '_asan_c_load_4u',
+      '_asan_c_load_f', '_asan_c_load_d',
+      '_asan_c_store_1', '_asan_c_store_1u',
+      '_asan_c_store_2', '_asan_c_store_2u',
+      '_asan_c_store_4', '_asan_c_store_4u',
+      '_asan_c_store_f', '_asan_c_store_d',
     ]
 
     settings.REQUIRED_EXPORTS += ASAN_C_HELPERS
