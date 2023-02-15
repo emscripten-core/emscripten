@@ -543,9 +543,7 @@ function createExportWrapper(name, fixedasm) {
 }
 #endif
 
-#if EXCEPTION_STACK_TRACES && !WASM_EXCEPTIONS
 #include "runtime_exceptions.js"
-#endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
 // `abortWrapperDepth` counts the recursion level of the wrapper function so

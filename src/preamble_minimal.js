@@ -146,9 +146,7 @@ var runtimeInitialized = false;
 
 #include "runtime_math.js"
 #include "memoryprofiler.js"
-#if EXCEPTION_STACK_TRACES && !WASM_EXCEPTIONS
 #include "runtime_exceptions.js"
-#endif
 #include "runtime_debug.js"
 
 // === Body ===
