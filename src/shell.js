@@ -255,7 +255,7 @@ if (ENVIRONMENT_IS_NODE) {
   // not be needed with node v15 and about because it is now the default
   // behaviour:
   // See https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
-  var nodeMajor = Number(process.versions.node.split(".")[0]);
+  var nodeMajor = process.versions.node.split(".")[0];
   if (nodeMajor < 15) {
     process['on']('unhandledRejection', function(reason) { throw reason; });
   }
