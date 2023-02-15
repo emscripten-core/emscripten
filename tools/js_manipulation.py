@@ -137,12 +137,12 @@ def make_invoke(sig):
   if settings.EXCEPTION_STACK_TRACES:
     # Exceptions thrown from C++ and longjmps will be an instance of
     # EmscriptenEH.
-    rethrow = 'if (!(e instanceof EmscriptenEH)) throw e;'
+    maybe_rethrow = 'if (!(e instanceof EmscriptenEH)) throw e;'
   else:
     # Exceptions thrown from C++ will be a pointer (number) and longjmp will
     # throw the number Infinity. Use the compact and fast "e !== e+0" test to
     # check if e was not a Number.
-    rethrow = 'if (e !== e+0) throw e;'
+    maybe_rethrow = 'if (e !== e+0) throw e;'
 
   ret = '''\
 function invoke_%s(%s) {
@@ -154,7 +154,7 @@ function invoke_%s(%s) {
     %s
     _setThrew(1, 0);%s
   }
-}''' % (sig, ','.join(args), body, rethrow, exceptional_ret)
+}''' % (sig, ','.join(args), body, maybe_rethrow, exceptional_ret)
 
   return ret
 
