@@ -530,7 +530,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
     global last_message_time, page_exit_code, emrun_not_enabled_nag_printed
     self.is_running = True
     self.timeout = timeout
-    logi('Now listening at http://%s/' % ':'.join(map(str,self.socket.getsockname())))
+    logi('Now listening at http://%s/' % ':'.join(map(str, self.socket.getsockname())))
     logv("Entering web server loop.")
     while self.is_running:
       now = tick()
