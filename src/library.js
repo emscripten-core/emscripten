@@ -73,7 +73,9 @@ mergeInto(LibraryManager.library, {
 #if USE_PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
       // implict exit can never happen on a pthread
+#if ASSERTIONS
       assert(!implicit);
+#endif
 #if PTHREADS_DEBUG
       dbg('Pthread ' + ptrToString(_pthread_self()) + ' called exit(), posting exitOnMainThread.');
 #endif
