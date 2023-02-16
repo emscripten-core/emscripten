@@ -303,9 +303,15 @@ bool _emscripten_dlsync_self() {
   return true;
 }
 
-static void* do_thread_sync(void* arg) {
+struct promise_result {
+  em_promise_t promise;
+  bool result;
+};
+
+static void do_thread_sync(void* arg) {
   dbg("do_thread_sync");
-  return (void*)_emscripten_dlsync_self();
+  struct promise_result* info = arg;
+  info->result = _emscripten_dlsync_self();
 }
 
 static void do_thread_sync_out(void* arg) {
@@ -315,10 +321,11 @@ static void do_thread_sync_out(void* arg) {
 }
 
 // Called once _emscripten_proxy_dlsync completes
-static void done_thread_sync(void* arg, void* result) {
-  em_promise_t promise = (em_promise_t)arg;
-  dbg("done_thread_sync: promise=%p result=%p", promise, result);
-  if (result) {
+static void done_thread_sync(void* arg) {
+  struct promise_result* info = arg;
+  em_promise_t promise = info->promise;
+  dbg("done_thread_sync: promise=%p result=%i", promise, info->result);
+  if (info->result) {
     emscripten_promise_resolve(promise, EM_PROMISE_FULFILL, NULL);
   } else {
 #if ABORT_ON_SYNC_FAILURE
@@ -328,6 +335,7 @@ static void done_thread_sync(void* arg, void* result) {
 #endif
   }
   emscripten_promise_destroy(promise);
+  free(info);
 }
 
 // Proxying queue specically for handling code loading (dlopen) events.
@@ -356,13 +364,28 @@ int _emscripten_proxy_dlsync_async(pthread_t target_thread, em_promise_t promise
   if (!dlopen_proxying_queue) {
     dlopen_proxying_queue = em_proxying_queue_create();
   }
-  int rtn = emscripten_proxy_async_with_callback(dlopen_proxying_queue,
-                                                 target_thread,
-                                                 do_thread_sync,
-                                                 NULL,
-                                                 done_thread_sync,
-                                                 promise);
-  if (target_thread->sleeping) {
+
+  struct promise_result* info = malloc(sizeof(struct promise_result));
+  if (!info) {
+    return false;
+  }
+  *info = (struct promise_result){
+    .promise = promise,
+    .result = false,
+  };
+  int rtn = emscripten_proxy_callback(dlopen_proxying_queue,
+                                      target_thread,
+                                      do_thread_sync,
+                                      done_thread_sync,
+                                      done_thread_sync,
+                                      info);
+  if (!rtn) {
+    // If we failed to proxy, then the target thread is no longer alive and no
+    // longer needs to be caught up, so we can resolve the promise early.
+    emscripten_promise_resolve(promise, EM_PROMISE_FULFILL, NULL);
+    emscripten_promise_destroy(promise);
+    free(info);
+  } else if (target_thread->sleeping) {
     // If the target thread is in the sleeping state (and this check is
     // performed after the enqueuing of the async work) then we know its safe to
     // resolve the promise early, since the thread will process our event as

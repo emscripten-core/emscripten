@@ -1085,6 +1085,13 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
     dbg('invokeEntryPoint: ' + ptrToString(ptr));
 #endif
+#if EXIT_RUNTIME
+    // An old thread on this worker may have been canceled without returning the
+    // `runtimeKeepaliveCounter` to zero. Reset it now so the new thread won't
+    // be affected.
+    runtimeKeepaliveCounter = 0;
+#endif
+
 #if MAIN_MODULE
     // Before we call the thread entry point, make sure any shared libraries
     // have been loaded on this there.  Otherwise our table migth be not be

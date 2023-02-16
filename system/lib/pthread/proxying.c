@@ -240,11 +240,13 @@ static void em_proxying_ctx_init(em_proxying_ctx* ctx,
                                  void* arg) {
   static pthread_once_t once = PTHREAD_ONCE_INIT;
   pthread_once(&once, init_active_ctxs);
-  *ctx = (em_proxying_ctx){.func = func,
-                           .arg = arg,
-                           .state = PENDING,
-                           .mutex = PTHREAD_MUTEX_INITIALIZER,
-                           .cond = PTHREAD_COND_INITIALIZER};
+  *ctx = (em_proxying_ctx){
+    .func = func,
+    .arg = arg,
+    .state = PENDING,
+    .mutex = PTHREAD_MUTEX_INITIALIZER,
+    .cond = PTHREAD_COND_INITIALIZER,
+  };
 }
 
 static void em_proxying_ctx_deinit(em_proxying_ctx* ctx) {
@@ -315,54 +317,80 @@ int emscripten_proxy_sync(em_proxying_queue* q,
 // Helper struct for organizing a proxied call and its callback on the original
 // thread.
 struct callback {
-  em_proxying_queue* q;
+  em_proxying_queue* queue;
   pthread_t caller_thread;
-  void* (*func)(void*);
+  void (*func)(void*);
+  void (*callback)(void*);
+  void (*cancel)(void*);
   void* arg;
-  void (*callback)(void* arg, void* result);
-  void* callback_arg;
-  void* result;
 };
+
+static void free_callback(void* arg) {
+  struct callback* info = arg;
+  free(info);
+}
 
 // Free the callback info on the same thread it was originally allocated on.
 // This may be more efficient.
 static void call_callback_then_free(void* arg) {
-  struct callback* info = (struct callback*)arg;
-  info->callback(info->callback_arg, info->result);
-  free(arg);
+  struct callback* info = arg;
+  info->callback(info->arg);
+  free(info);
 }
 
 static void call_then_schedule_callback(void* arg) {
-  struct callback* info = (struct callback*)arg;
-  info->result = info->func(info->arg);
-  if (!emscripten_proxy_async(
-        info->q, info->caller_thread, call_callback_then_free, arg)) {
-    // No way to gracefully report that we failed to schedule the callback, so
-    // abort.
-    abort();
+  struct callback* info = arg;
+  info->func(info->arg);
+  // Schedule the callback on the caller thread. If the caller thread has
+  // already died or dies before the callback is executed, then at least make
+  // sure the callback info is freed.
+  if (!do_proxy(info->queue,
+                info->caller_thread,
+                (task){call_callback_then_free, free_callback, info})) {
+    free(info);
   }
 }
 
-int emscripten_proxy_async_with_callback(em_proxying_queue* q,
-                                         pthread_t target_thread,
-                                         void* (*func)(void*),
-                                         void* arg,
-                                         void (*callback)(void* arg,
-                                                          void* result),
-                                         void* callback_arg) {
+static void cancel_callback_then_free(void* arg) {
+  struct callback* info = arg;
+  info->cancel(info->arg);
+  free(info);
+}
+
+static void schedule_cancel_callback(void* arg) {
+  struct callback* info = arg;
+  if (info->cancel == NULL ||
+      !do_proxy(info->queue,
+                info->caller_thread,
+                (task){cancel_callback_then_free, free_callback, info})) {
+    free(info);
+  }
+}
+
+int emscripten_proxy_callback(em_proxying_queue* q,
+                              pthread_t target_thread,
+                              void (*func)(void*),
+                              void (*callback)(void*),
+                              void (*cancel)(void*),
+                              void* arg) {
   struct callback* info = malloc(sizeof(*info));
   if (info == NULL) {
     return 0;
   }
   *info = (struct callback){
-    .q = q,
+    .queue = q,
     .caller_thread = pthread_self(),
     .func = func,
-    .arg = arg,
     .callback = callback,
-    .callback_arg = callback_arg,
-    .result = NULL,
+    .cancel = cancel,
+    .arg = arg,
   };
-  return emscripten_proxy_async(
-    q, target_thread, call_then_schedule_callback, info);
+  if (!do_proxy(
+        q,
+        target_thread,
+        (task){call_then_schedule_callback, schedule_cancel_callback, info})) {
+    free(info);
+    return 0;
+  }
+  return 1;
 }

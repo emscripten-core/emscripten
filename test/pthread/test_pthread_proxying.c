@@ -99,11 +99,6 @@ void await_widget(widget* w) {
 
 void do_run_widget(void* arg) { run_widget((widget*)arg); }
 
-void* do_run_widget_42(void* arg) {
-  run_widget((widget*)arg);
-  return (void*)42;
-}
-
 void finish_running_widget(void* arg) {
   widget* w = (widget*)arg;
   run_widget(w);
@@ -208,16 +203,15 @@ void test_proxy_sync_with_ctx(void) {
   destroy_widget(&w7);
 }
 
-void add_one(void* arg, void* result) {
-  assert((intptr_t)result == 42);
-  int* j = (int*)arg;
-  *j = *j + 1;
-}
-
 thread_local int j = 0;
 
-void test_proxy_async_with_callback(void) {
-  printf("Testing async_with_callback proxying\n");
+void set_j(void* arg) {
+  widget* widget = arg;
+  j = widget->val;
+}
+
+void test_proxy_callback(void) {
+  printf("Testing callback proxying\n");
 
   int i = 0;
   widget w8, w9, w10;
@@ -226,44 +220,42 @@ void test_proxy_async_with_callback(void) {
   init_widget(&w10, &i, 10);
 
   // Proxy to ourselves.
-  emscripten_proxy_async_with_callback(
-    proxy_queue, pthread_self(), do_run_widget_42, &w8, add_one, &j);
+
+  emscripten_proxy_callback(
+    proxy_queue, pthread_self(), do_run_widget, set_j, NULL, &w8);
   assert(!w8.done);
   assert(j == 0);
   emscripten_proxy_execute_queue(proxy_queue);
   assert(i == 8);
   assert(w8.done);
   assert(pthread_equal(w8.thread, pthread_self()));
-  assert(j == 1);
+  assert(j == 8);
 
   // Proxy to looper.
-  emscripten_proxy_async_with_callback(
-    proxy_queue, looper, do_run_widget_42, &w9, add_one, &j);
+  emscripten_proxy_callback(
+    proxy_queue, looper, do_run_widget, set_j, NULL, &w9);
   await_widget(&w9);
   assert(i == 9);
   assert(w9.done);
   assert(pthread_equal(w9.thread, looper));
-  assert(j == 1);
+  assert(j == 8);
   // TODO: Add a way to wait for work before executing it.
-  while (j < 2) {
+  while (j != 9) {
     emscripten_proxy_execute_queue(proxy_queue);
   }
-  assert(j == 2);
 
   // Proxy to returner.
-  emscripten_proxy_async_with_callback(
-    proxy_queue, returner, do_run_widget_42, &w10, add_one, &j);
+  emscripten_proxy_callback(
+    proxy_queue, returner, do_run_widget, set_j, NULL, &w10);
   await_widget(&w10);
   assert(i == 10);
   assert(w10.done);
   assert(pthread_equal(w10.thread, returner));
-  assert(j == 2);
-  emscripten_proxy_execute_queue(proxy_queue);
+  assert(j == 9);
   // TODO: Add a way to wait for work before executing it.
-  while (j < 3) {
+  while (j != 10) {
     emscripten_proxy_execute_queue(proxy_queue);
   }
-  assert(j == 3);
 
   destroy_widget(&w8);
   destroy_widget(&w9);
@@ -400,7 +392,7 @@ int main(int argc, char* argv[]) {
   test_proxy_async();
   test_proxy_sync();
   test_proxy_sync_with_ctx();
-  test_proxy_async_with_callback();
+  test_proxy_callback();
 
   should_quit = 1;
   pthread_join(looper, NULL);

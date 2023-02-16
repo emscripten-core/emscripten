@@ -48,6 +48,9 @@ See docs/process.md for more on how version tagging works.
 - Synchronous proxying functions in emscripten/proxying.h now return errors
   instead of hanging forever when the worker thread dies before the proxied work
   is finished.
+- The `emscripten_proxy_async_with_callback` API was replaced with a simpler
+  `emscripten_proxy_callback` API that takes a second callback to be called if
+  the worker thread dies before completing the proxied work.
 
 3.1.31 - 01/26/23
 -----------------
