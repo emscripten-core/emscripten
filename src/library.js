@@ -71,28 +71,29 @@ mergeInto(LibraryManager.library, {
 #endif // ASSERTIONS && !EXIT_RUNTIME
 
 #if USE_PTHREADS
-    if (!implicit) {
-      if (ENVIRONMENT_IS_PTHREAD) {
-#if PTHREADS_DEBUG
-        dbg('Pthread ' + ptrToString(_pthread_self()) + ' called exit(), posting exitOnMainThread.');
+    if (ENVIRONMENT_IS_PTHREAD) {
+      // implict exit can never happen on a pthread
+#if ASSERTIONS
+      assert(!implicit);
 #endif
-        // When running in a pthread we propagate the exit back to the main thread
-        // where it can decide if the whole process should be shut down or not.
-        // The pthread may have decided not to exit its own runtime, for example
-        // because it runs a main loop, but that doesn't affect the main thread.
-        exitOnMainThread(status);
-        throw 'unwind';
-      } else {
+#if PTHREADS_DEBUG
+      dbg('Pthread ' + ptrToString(_pthread_self()) + ' called exit(), posting exitOnMainThread.');
+#endif
+      // When running in a pthread we propagate the exit back to the main thread
+      // where it can decide if the whole process should be shut down or not.
+      // The pthread may have decided not to exit its own runtime, for example
+      // because it runs a main loop, but that doesn't affect the main thread.
+      exitOnMainThread(status);
+      throw 'unwind';
+    }
 #if PTHREADS_DEBUG
 #if EXIT_RUNTIME
-        err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
+    err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
 #else
-        err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive());
-#endif
-#endif
-      }
-    }
-#endif
+    err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive());
+#endif // EXIT_RUNTIME
+#endif // PTHREADS_DEBUG
+#endif // USE_PTHREADS
 
 #if EXIT_RUNTIME
     if (!keepRuntimeAlive()) {
