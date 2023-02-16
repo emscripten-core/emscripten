@@ -61,6 +61,11 @@ mergeInto(LibraryManager.library, {
   },
 
 #if !MINIMAL_RUNTIME
+  // Handles exiting the entire program.  This function only ever runs on the
+  // main thread and will be proxied synchronously when called from a worker.
+  // In either case this function never returns.
+  // Programs that call the lower level `_exit` end will bypass this code and
+  $exitJS__proxy: 'sync',
   $exitJS__docs: '/** @param {boolean|number=} implicit */',
   $exitJS__deps: ['proc_exit'],
   $exitJS: function(status, implicit) {
@@ -70,26 +75,12 @@ mergeInto(LibraryManager.library, {
     checkUnflushedContent();
 #endif // ASSERTIONS && !EXIT_RUNTIME
 
-#if USE_PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) {
-      // implict exit can never happen on a pthread
-#if ASSERTIONS
-      assert(!implicit);
+#if PROXY_TO_PTHREAD
+    {{{ runtimeKeepalivePop() }}};
 #endif
-#if PTHREADS_DEBUG
-      dbg('Pthread ' + ptrToString(_pthread_self()) + ' called exit(), posting exitOnMainThread.');
+#if USE_PTHREADS && PTHREADS_DEBUG
+    dbg('exit called: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
 #endif
-      // When running in a pthread we propagate the exit back to the main thread
-      // where it can decide if the whole process should be shut down or not.
-      // The pthread may have decided not to exit its own runtime, for example
-      // because it runs a main loop, but that doesn't affect the main thread.
-      exitOnMainThread(status);
-      throw 'unwind';
-    }
-#if PTHREADS_DEBUG
-    err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
-#endif // PTHREADS_DEBUG
-#endif // USE_PTHREADS
 
 #if EXIT_RUNTIME
     if (!keepRuntimeAlive()) {

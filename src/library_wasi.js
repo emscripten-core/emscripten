@@ -15,6 +15,10 @@ var WasiLibrary = {
   proc_exit__deps: ['$ExitStatus'],
 #endif
 
+  // Handles exiting the entire program.  This function only ever runs on the
+  // main thread and will be proxied synchronously when called from a worker.
+  // (wrapSyscallFunction handles the proxying).  In either case this function
+  // never returns.
   proc_exit__nothrow: true,
   proc_exit__sig: 'vi',
   proc_exit: function(code) {

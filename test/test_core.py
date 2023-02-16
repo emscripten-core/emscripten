@@ -9295,8 +9295,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_exit_process(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.emcc_args += ['-DEXIT_RUNTIME', '--pre-js', test_file('core/pthread/test_pthread_exit_runtime.pre.js')]
+    self.emcc_args += ['--pre-js', test_file('core/pthread/test_pthread_exit_runtime.pre.js')]
     self.do_run_in_out_file_test('core/pthread/test_pthread_exit_runtime.c', assert_returncode=42)
+    # Run the same test again but with `_exit` rather than `exit`
+    self.emcc_args += ['-D_EXIT']
+    self.do_run_in_out_file_test('core/pthread/test_pthread_exit_runtime.c', assert_returncode=43,
+                                 out_suffix='_immediate')
 
   @node_pthreads
   def test_pthread_keepalive(self):
