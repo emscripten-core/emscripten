@@ -744,7 +744,7 @@ f.close()
 
         # Run through node, if CMake produced a .js file.
         if output_file.endswith('.js'):
-          ret = self.run_process(config.NODE_JS + [os.path.abspath(output_file)], stdout=PIPE).stdout
+          ret = self.run_js(output_file)
           self.assertTextDataIdentical(read_file(cmakelistsdir + '/out.txt').strip(), ret.strip())
 
         if test_dir == 'post_build':
@@ -3223,10 +3223,10 @@ int main()
       out = self.run_js('a.out.js', engine=engine)
       self.assertContained('File size: 724', out)
 
-  @requires_node
+  @node_pthreads
   def test_node_emscripten_num_logical_cores(self):
     # Test with node.js that the emscripten_num_logical_cores method is working
-    create_file('src.cpp', r'''
+    create_file('src.c', r'''
 #include <emscripten/threading.h>
 #include <stdio.h>
 #include <assert.h>
@@ -3237,9 +3237,7 @@ int main() {
   puts("ok");
 }
 ''')
-    self.run_process([EMXX, 'src.cpp', '-sUSE_PTHREADS', '-sENVIRONMENT=node'])
-    ret = self.run_process(config.NODE_JS + shared.node_pthread_flags() + ['a.out.js'], stdout=PIPE).stdout
-    self.assertContained('ok', ret)
+    self.do_runf('src.c', 'ok')
 
   def test_proxyfs(self):
     # This test supposes that 3 different programs share the same directory and files.
