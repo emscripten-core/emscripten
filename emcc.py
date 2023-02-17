@@ -2100,7 +2100,7 @@ def phase_linker_setup(options, state, newargs):
       ]
 
     # Emscripten EH dependency in library_dylink.js
-    if not settings.DISABLE_EXCEPTION_CATCHING or settings.SUPPORT_LONGJMP == 'emscripten':
+    if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
       settings.REQUIRED_EXPORTS += ['setThrew']
 
     if settings.MINIMAL_RUNTIME:
