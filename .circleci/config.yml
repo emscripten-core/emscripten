@@ -52,7 +52,7 @@ commands:
           command: |
             EMSDK_BASH=1 ~/emsdk/emsdk construct_env >> $BASH_ENV
             # In order make our external version of emscripten use the emsdk
-            # config we need to explictly set EM_CONFIG here.
+            # config we need to explicitly set EM_CONFIG here.
             echo "export EM_CONFIG=~/emsdk/.emscripten" >> $BASH_ENV
   npm-install:
     description: "npm ci"
@@ -75,24 +75,38 @@ commands:
       node_version:
         description: "version of node to install"
         type: string
+      canary:
+        description: "install a canary version of node"
+        type: boolean
+        default: false
     steps:
       - run:
           name: setup node v<< parameters.node_version >>
           command: |
             cd $HOME
             version=<< parameters.node_version >>
-            wget https://nodejs.org/dist/v${version}/node-v${version}-linux-x64.tar.xz
+            if [[ << parameters.canary >> == "true" ]]; then
+              wget https://nodejs.org/download/v8-canary/v${version}/node-v${version}-linux-x64.tar.xz
+            else
+              wget https://nodejs.org/dist/v${version}/node-v${version}-linux-x64.tar.xz
+            fi
             tar xf node-v${version}-linux-x64.tar.xz
             echo "NODE_JS = [os.path.expanduser('~/node-v${version}-linux-x64/bin/node')]" >> ~/emsdk/.emscripten
             echo "JS_ENGINES = [NODE_JS]" >> ~/emsdk/.emscripten
             echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> ~/emsdk/.emscripten
             cat ~/emsdk/.emscripten
             echo "export PATH=\"$HOME/node-v${version}-linux-x64/bin:\$PATH\"" >> $BASH_ENV
-  install-latest-node:
+  install-node-latest:
     description: "install latest version of node"
     steps:
       - install-node-version:
          node_version: "19.0.0"
+  install-node-canary:
+    description: "install canary version of node"
+    steps:
+      - install-node-version:
+         node_version: "20.0.0-v8-canary202302081604228b65"
+         canary: true
   install-v8:
     description: "install v8 using jsvu"
     steps:
@@ -118,8 +132,8 @@ commands:
             mv ~/emsdk-main ~/emsdk
             cd ~/emsdk
             ./emsdk update-tags
-            ./emsdk install tot-upstream
-            ./emsdk activate tot-upstream
+            ./emsdk install tot
+            ./emsdk activate tot
             # Remove the emsdk version of emscripten to save space in the
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
@@ -313,7 +327,7 @@ commands:
           environment:
             EMTEST_LACKS_SOUND_HARDWARE: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
-            # --no-sandbox becasue we are running as root and chrome requires
+            # --no-sandbox because we are running as root and chrome requires
             # this flag for now: https://crbug.com/638180
             CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features"
             CHROME_FLAGS_HEADLESS: "--headless --remote-debugging-port=1234"
@@ -532,7 +546,7 @@ jobs:
       - run-tests:
           title: "wasm64l"
           test_targets: "wasm64l"
-      - install-latest-node
+      - install-node-canary
       - run-tests:
           title: "wasm64"
           test_targets: "wasm64"
@@ -548,6 +562,14 @@ jobs:
           command: git submodule update --init
       - pip-install
       - build
+      - install-node-canary
+      - run-tests:
+          title: "selected subset"
+          test_targets: "
+            other.test_gen_struct_info
+            other.test_native_call_before_init
+            other.test_node_unhandled_rejection
+            core2.test_hello_world"
       # Run some basic tests with the minimum version of node that we currently
       # support.
       - install-node-version:
@@ -562,7 +584,7 @@ jobs:
       # Run a few test with the most recent version of node
       # In particular we have some tests that require node flags on older
       # versions of node but not with the most recent version.
-      - install-latest-node
+      - install-node-latest
       - run-tests:
           # Run tests that on older versions of node would require flags, but
           # those flags should not be injected on newer versions.
@@ -571,10 +593,12 @@ jobs:
             other.test_gen_struct_info
             other.test_native_call_before_init
             other.test_node_unhandled_rejection
+            other.test_node_emscripten_num_logical_cores
             core2.test_pthread_create
             core2.test_i64_invoke_bigint
             core2.test_source_map
-            core2.test_exceptions_wasm"
+            core2.test_exceptions_wasm
+            core2.test_pthread_unhandledrejection"
       - upload-test-results
   test-other:
     executor: bionic
@@ -665,7 +689,8 @@ jobs:
             other.test_emcc_print_search_dirs
             other.test_emcc_print_file_name
             other.test_minimal_runtime_export_all_modularize
-            other.test_pkg_config*"
+            other.test_pkg_config*
+            other.test_sdl2_config"
       - upload-test-results
       # Run a single websockify-based test to ensure it works on windows.
       - run-tests:
@@ -695,6 +720,9 @@ jobs:
       - attach_workspace:
           at: ~/
       - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
       - run:
           name: Remove Linux binaries
           command: |

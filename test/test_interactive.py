@@ -11,7 +11,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner.py interactive')
 
 from common import parameterized
-from common import BrowserCore, test_file
+from common import BrowserCore, test_file, also_with_minimal_runtime
 from tools.shared import WINDOWS
 from tools.utils import which
 
@@ -256,3 +256,27 @@ class interactive(BrowserCore):
   def test_webgl_offscreen_canvas_in_two_pthreads(self):
     for args in [['-sOFFSCREENCANVAS_SUPPORT', '-DTEST_OFFSCREENCANVAS=1'], ['-sOFFSCREEN_FRAMEBUFFER']]:
       self.btest('gl_in_two_pthreads.cpp', expected='1', args=args + ['-sUSE_PTHREADS', '-lGL', '-sGL_DEBUG', '-sPROXY_TO_PTHREAD'])
+
+  # Tests creating a Web Audio context using Emscripten library_webaudio.js feature.
+  @also_with_minimal_runtime
+  def test_web_audio(self):
+    self.btest('webaudio/create_webaudio.c', expected='0', args=['-lwebaudio.js'])
+
+  # Tests simple AudioWorklet noise generation
+  @also_with_minimal_runtime
+  def test_audio_worklet(self):
+    self.btest('webaudio/audioworklet.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '--preload-file', test_file('hello_world.c') + '@/'])
+    self.btest('webaudio/audioworklet.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sUSE_PTHREADS'])
+
+  # Tests AudioWorklet with emscripten_futex_wake().
+  @also_with_minimal_runtime
+  def test_audio_worklet_emscripten_futex_wake(self):
+    self.btest('webaudio/audioworklet_emscripten_futex_wake.cpp', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE=2'])
+
+  # Tests a second AudioWorklet example: sine wave tone generator.
+  def test_audio_worklet_tone_generator(self):
+    self.btest('webaudio/tone_generator.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
+
+  # Tests that AUDIO_WORKLET+MINIMAL_RUNTIME+MODULARIZE combination works together.
+  def test_audio_worklet_modularize(self):
+    self.btest('webaudio/audioworklet.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMINIMAL_RUNTIME', '-sMODULARIZE'])

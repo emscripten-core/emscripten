@@ -594,7 +594,7 @@ function handleWebGLProxying(funcs) {
     // Is this a function that takes GL context handle as first argument?
     var proxyContextHandle = funcs[i + '__proxy'] == 'sync_on_webgl_context_handle_thread';
 
-    // Is this a function that operates on the implict current GL context object?
+    // Is this a function that operates on the implicit current GL context object?
     var proxyCurrentContext = funcs[i + '__proxy'] == 'sync_on_current_webgl_context_thread';
 
     if (!proxyContextHandle && !proxyCurrentContext) {

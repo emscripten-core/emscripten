@@ -102,7 +102,7 @@ protected:
   // A mutex is needed for multiple accesses to the same file.
   std::recursive_mutex mutex;
 
-  // The the size in bytes of a file or return a negative error code. May be
+  // The size in bytes of a file or return a negative error code. May be
   // called on files that have not been opened.
   virtual off_t getSize() = 0;
 

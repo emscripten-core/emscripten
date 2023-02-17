@@ -711,8 +711,9 @@ var EXPORT_EXCEPTION_HANDLING_HELPERS = false;
 // When this is enabled, exceptions will contain stack traces and uncaught
 // exceptions will display stack traces upon exiting. This defaults to true when
 // ASSERTIONS is enabled. This option is for users who want exceptions' stack
-// traces but do not want other overheads ASSERTIONS can incur. This currently
-// works only for Wasm exceptions (-fwasm-exceptions).
+// traces but do not want other overheads ASSERTIONS can incur.
+// This option implies EXPORT_EXCEPTION_HANDLING_HELPERS.
+// [link]
 var EXCEPTION_STACK_TRACES = false;
 
 // Internal: Tracks whether Emscripten should link in exception throwing (C++
@@ -1533,6 +1534,15 @@ var USE_PTHREADS = false;
 // [compile+link] - affects user code at compile and system libraries at link.
 var WASM_WORKERS = 0;
 
+// If true, enables targeting Wasm Web Audio AudioWorklets. Check out the
+// full documentation in site/source/docs/api_reference/wasm_audio_worklets.rst
+// [link]
+var AUDIO_WORKLET = 0;
+
+// If true, enables deep debugging of Web Audio backend.
+// [link]
+var WEBAUDIO_DEBUG = 0;
+
 // In web browsers, Workers cannot be created while the main browser thread
 // is executing JS/Wasm code, but the main thread must regularly yield back
 // to the browser event loop for Worker initialization to occur.
@@ -1864,7 +1874,8 @@ var USES_DYNAMIC_ALLOC = true;
 // 'emscripten': (default) Emscripten setjmp/longjmp handling using JavaScript
 // 'wasm': setjmp/longjmp handling using Wasm EH instructions (experimental)
 // 0: No setjmp/longjmp handling
-// 1: Default setjmp/longjmp/handling. Currently 'emscripten'.
+// 1: Default setjmp/longjmp/handling, depending on the mode of exceptions.
+//    'wasm' if '-fwasm-exception' is used, 'emscripten' otherwise.
 //
 // [compile+link] - at compile time this enables the transformations needed for
 // longjmp support at codegen time, while at link it allows linking in the
@@ -1925,7 +1936,7 @@ var USE_OFFSET_CONVERTER = false;
 var LOAD_SOURCE_MAP = false;
 
 // If set to 0, delay undefined symbol report until after wasm-ld runs.  This
-// avoids running the the JS compiler prior to wasm-ld, but reduces the amount
+// avoids running the JS compiler prior to wasm-ld, but reduces the amount
 // of information in the undefined symbol message (Since JS compiler cannot
 // report the name of the object file that contains the reference to the
 // undefined symbol).

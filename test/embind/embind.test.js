@@ -162,17 +162,16 @@ module({
         });
 
         test("setting and getting property on unrelated class throws error", function() {
-            var className = cm['DYNAMIC_EXECUTION'] ? 'HasTwoBases' : '';
             var a = new cm.HasTwoBases;
             var e = assert.throws(cm.BindingError, function() {
                 Object.getOwnPropertyDescriptor(cm.HeldBySmartPtr.prototype, 'i').set.call(a, 10);
             });
-            assert.equal('HeldBySmartPtr.i setter incompatible with "this" of type ' + className, e.message);
+            assert.equal('HeldBySmartPtr.i setter incompatible with "this" of type HasTwoBases', e.message);
 
             var e = assert.throws(cm.BindingError, function() {
                 Object.getOwnPropertyDescriptor(cm.HeldBySmartPtr.prototype, 'i').get.call(a);
             });
-            assert.equal('HeldBySmartPtr.i getter incompatible with "this" of type ' + className, e.message);
+            assert.equal('HeldBySmartPtr.i getter incompatible with "this" of type HasTwoBases', e.message);
 
             a.delete();
         });
@@ -1766,8 +1765,7 @@ module({
 
         test("smart pointer object has correct constructor name", function() {
             var e = new cm.HeldBySmartPtr(10, "foo");
-            var expectedName = cm['DYNAMIC_EXECUTION'] ? "HeldBySmartPtr" : "";
-            assert.equal(expectedName, e.constructor.name);
+            assert.equal("HeldBySmartPtr", e.constructor.name);
             e.delete();
         });
 
@@ -2510,12 +2508,11 @@ module({
     });
 
     BaseFixture.extend("function names", function() {
+        assert.equal('ValHolder', cm.ValHolder.name);
         if (!cm['DYNAMIC_EXECUTION']) {
-          assert.equal('', cm.ValHolder.name);
           assert.equal('', cm.ValHolder.prototype.setVal.name);
           assert.equal('', cm.ValHolder.makeConst.name);
         } else {
-          assert.equal('ValHolder', cm.ValHolder.name);
           assert.equal('ValHolder$setVal', cm.ValHolder.prototype.setVal.name);
           assert.equal('ValHolder$makeConst', cm.ValHolder.makeConst.name);
         }

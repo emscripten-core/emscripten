@@ -10,11 +10,12 @@ by the ``SUPPORT_LONGJMP`` setting, which can take these values:
 * ``emscripten``: JavaScript-based support
 * ``wasm``: WebAssembly exception handling-based support
 * 0: No support
-* 1: Default support (currently ``emscripten``) (default)
+* 1: Default support, depending on the exception mode. ``wasm`` if ``-fwasm-exception`` is used, ``emscripten`` otherwise.
 
-Currently ``-sSUPPORT_LONGJMP=1`` is the same as
-``-sSUPPORT_LONGJMP=emscripten``, and turned on by default. This default will
-eventually be the new ``wasm`` when most browsers support it.
+If :ref:`native Wasm exceptions <webassembly-exception-handling-based-support>`
+are used, ``SUPPORT_LONGJMP`` defaults to ``wasm``, and if :ref:`JavaScipt-based
+exceptions <javascript-based-exception-support>` are used or no exception
+support is used, it defaults to ``emscripten``.
 
 ``setjmp`` saves information about the calling environment into a buffer, and
 ``longjmp`` transfers the control back to the point where ``setjmp`` was called
@@ -78,8 +79,9 @@ For example, to use the JavaScript-based EH and setjmp-longjmp support together:
 
   em++ -fexceptions test.cpp -o test.js
 
-``-sSUPPORT_LONGJMP=1``, which defaults to ``emscripten``, is enabled by
-default, so you don't need to pass it explicitly.
+``-sSUPPORT_LONGJMP``, which defaults to ``emscripten`` or ``wasm`` depending on
+the exception mode, is enabled by default, so you don't need to pass it
+explicitly.
 
 To use the WebAssembly EH and setjmp-longjmp support together:
 

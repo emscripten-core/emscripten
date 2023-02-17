@@ -1944,7 +1944,7 @@ class libstubs(DebugLibrary):
 # If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
 # confusing, so issue a warning.
 def warn_on_unexported_main(symbolses):
-  # In STANDALONE_WASM we don't expect main to be explictly exported.
+  # In STANDALONE_WASM we don't expect main to be explicitly exported.
   # In PROXY_TO_PTHREAD we export emscripten_proxy_main instead of main.
   if settings.STANDALONE_WASM or settings.PROXY_TO_PTHREAD:
     return
@@ -1959,7 +1959,7 @@ def handle_reverse_deps(input_files):
   if settings.REVERSE_DEPS == 'none' or settings.SIDE_MODULE:
     return
   elif settings.REVERSE_DEPS == 'all':
-    # When not optimzing we add all possible reverse dependencies rather
+    # When not optimizing we add all possible reverse dependencies rather
     # than scanning the input files
     for symbols in deps_info.get_deps_info().values():
       for symbol in symbols:
@@ -2234,7 +2234,7 @@ def install_system_headers(stamp):
   #define __EMSCRIPTEN_tiny__ {shared.EMSCRIPTEN_VERSION_TINY}
   '''))
 
-  # Create a stamp file that signal the the header have been installed
+  # Create a stamp file that signal that the headers have been installed
   # Removing this file, or running `emcc --clear-cache` or running
   # `./embuilder build sysroot --force` will cause the re-installation of
   # the system headers.

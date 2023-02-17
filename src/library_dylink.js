@@ -314,10 +314,17 @@ var LibraryDylink = {
         return dynCall(sig, arguments[0], Array.prototype.slice.call(arguments, 1));
       } catch(e) {
         stackRestore(sp);
+        // Create a try-catch guard that rethrows the Emscripten EH exception.
+#if EXCEPTION_STACK_TRACES
+        // Exceptions thrown from C++ and longjmps will be an instance of
+        // EmscriptenEH.
+        if (!(e instanceof EmscriptenEH)) throw e;
+#else
         // Exceptions thrown from C++ will be a pointer (number) and longjmp
         // will throw the number Infinity. Use the compact and fast "e !== e+0"
-        // test to check if e was not a Number, and rethrow it if not.
+        // test to check if e was not a Number.
         if (e !== e+0) throw e;
+#endif
         _setThrew(1, 0);
       }
     }
@@ -1090,11 +1097,11 @@ var LibraryDylink = {
       var filename = UTF8ToString({{{ makeGetValue('handle', C_STRUCTS.dso.name, '*') }}});
       dlSetError('Could not load dynamic lib: ' + filename + '\n' + e);
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function () { {{{ makeDynCall('vii', 'onerror') }}}(handle, user_data); });
+      callUserCallback(function () { {{{ makeDynCall('vpp', 'onerror') }}}(handle, user_data); });
     }
     function successCallback() {
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function () { {{{ makeDynCall('vii', 'onsuccess') }}}(handle, user_data); });
+      callUserCallback(function () { {{{ makeDynCall('vpp', 'onsuccess') }}}(handle, user_data); });
     }
 
     {{{ runtimeKeepalivePush() }}}
@@ -1124,7 +1131,7 @@ var LibraryDylink = {
 
   // void* dlsym(void* handle, const char* symbol);
   _dlsym_js__deps: ['$dlSetError', '$getFunctionAddress', '$addFunction'],
-  _dlsym_js__sig: 'ppp',
+  _dlsym_js__sig: 'pppp',
   _dlsym_js: function(handle, symbol, symbolIndex) {
     // void *dlsym(void *restrict handle, const char *restrict name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlsym.html

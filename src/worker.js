@@ -93,18 +93,18 @@ var dbg = threadPrintErr;
 Module['instantiateWasm'] = (info, receiveInstance) => {
   // Instantiate from the module posted from the main thread.
   // We can just use sync instantiation in the worker.
-  var instance = new WebAssembly.Instance(Module['wasmModule'], info);
+  var module = Module['wasmModule'];
+  // We don't need the module anymore; new threads will be spawned from the main thread.
+  Module['wasmModule'] = null;
+  var instance = new WebAssembly.Instance(module, info);
 #if RELOCATABLE || MAIN_MODULE
-  receiveInstance(instance, Module['wasmModule']);
+  return receiveInstance(instance, module);
 #else
   // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193,
   // the above line no longer optimizes out down to the following line.
   // When the regression is fixed, we can remove this if/else.
-  receiveInstance(instance);
+  return receiveInstance(instance);
 #endif
-  // We don't need the module anymore; new threads will be spawned from the main thread.
-  Module['wasmModule'] = null;
-  return instance.exports;
 }
 #endif
 
@@ -253,34 +253,14 @@ function handleMessage(e) {
         Module['invokeEntryPoint'](e.data.start_routine, e.data.arg);
       } catch(ex) {
         if (ex != 'unwind') {
-          // ExitStatus not present in MINIMAL_RUNTIME
-#if !MINIMAL_RUNTIME
-          if (ex instanceof Module['ExitStatus']) {
-            if (Module['keepRuntimeAlive']()) {
-#if ASSERTIONS
-              err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' called exit(), staying alive due to noExitRuntime.');
-#endif
-            } else {
-#if ASSERTIONS
-              err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' called exit(), calling _emscripten_thread_exit.');
-#endif
-              Module['__emscripten_thread_exit'](ex.status);
-            }
-          }
-          else
-#endif // !MINIMAL_RUNTIME
-          {
-            // The pthread "crashed".  Do not call `_emscripten_thread_exit` (which
-            // would make this thread joinable.  Instead, re-throw the exception
-            // and let the top level handler propagate it back to the main thread.
-            throw ex;
-          }
-#if ASSERTIONS
-        } else {
-          // else e == 'unwind', and we should fall through here and keep the pthread alive for asynchronous events.
-          err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' completed its main entry point with an `unwind`, keeping the worker alive for asynchronous operation.');
-#endif
+          // The pthread "crashed".  Do not call `_emscripten_thread_exit` (which
+          // would make this thread joinable).  Instead, re-throw the exception
+          // and let the top level handler propagate it back to the main thread.
+          throw ex;
         }
+#if ASSERTIONS
+        err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' completed its main entry point with an `unwind`, keeping the worker alive for asynchronous operation.');
+#endif
       }
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
       if (Module['_pthread_self']()) {

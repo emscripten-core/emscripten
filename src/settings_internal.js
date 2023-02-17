@@ -97,7 +97,7 @@ var FETCH_WORKER_FILE = '';
 
 var WASI_MODULE_NAME = "wasi_snapshot_preview1";
 
-// List of JS libraries explictly linked against.  This includes JS system
+// List of JS libraries explicitly linked against.  This includes JS system
 // libraries (specified via -lfoo or -lfoo.js) in addition to user libraries
 // passed via `--js-library`.  It does not include implicitly linked libraries
 // added by the JS compiler.
@@ -137,6 +137,9 @@ var PTHREAD_WORKER_FILE = '';
 // name of the file containing the Wasm Worker *.ww.js, if relevant
 var WASM_WORKER_FILE = '';
 
+// name of the file containing the Audio Worklet *.aw.js, if relevant
+var AUDIO_WORKLET_FILE = '';
+
 // Base URL the source mapfile, if relevant
 var SOURCE_MAP_BASE = '';
 
@@ -165,6 +168,9 @@ var MINIFY_ASMJS_EXPORT_NAMES = true;
 
 // Internal: represents a browser version that is not supported at all.
 var TARGET_NOT_SUPPORTED = 0x7FFFFFFF;
+
+// Used to track whether target environment supports the 'globalThis' attribute.
+var SUPPORTS_GLOBALTHIS = false;
 
 // Wasm backend symbols that are considered system symbols and don't
 // have the normal C symbol name mangled applied (== prefix with an underscore)
@@ -226,7 +232,7 @@ var HAS_MAIN = false;
 var LINK_AS_CXX = false;
 
 // Set when some minimum browser version triggers doesn't support the
-// minimum set of ES6 featurs.  This triggers transpilation to ES5
+// minimum set of ES6 features.  This triggers transpilation to ES5
 // using closure compiler.
 var TRANSPILE_TO_ES5 = false;
 
