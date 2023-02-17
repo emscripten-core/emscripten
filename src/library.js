@@ -3581,11 +3581,6 @@ mergeInto(LibraryManager.library, {
 #endif
   ],
   $maybeExit: function() {
-#if PROXY_TO_PTHREAD
-    // In PROXY_TO_PTHREAD mode the main thread never implicitly exits, but
-    // waits for the proxied main function to exit.
-    if (!ENVIRONMENT_IS_PTHREAD) return;
-#endif
 #if RUNTIME_DEBUG
     dbg('maybeExit: user callback done: runtimeKeepaliveCounter=' + runtimeKeepaliveCounter);
 #endif

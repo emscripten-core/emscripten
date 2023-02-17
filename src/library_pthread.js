@@ -939,6 +939,9 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
     dbg('exitOnMainThread');
 #endif
+#if PROXY_TO_PTHREAD
+    {{{ runtimeKeepalivePop() }}};
+#endif
 #if MINIMAL_RUNTIME
     _exit(returnCode);
 #else

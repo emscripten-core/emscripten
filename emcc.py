@@ -2358,6 +2358,7 @@ def phase_linker_setup(options, state, newargs):
     settings.JS_LIBRARIES.append((0, 'library_pthread.js'))
     if settings.PROXY_TO_PTHREAD:
       settings.PTHREAD_POOL_SIZE_STRICT = 0
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$runtimeKeepalivePush']
   else:
     if settings.PROXY_TO_PTHREAD:
       exit_with_error('-sPROXY_TO_PTHREAD requires -sUSE_PTHREADS to work!')
