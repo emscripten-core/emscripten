@@ -490,11 +490,11 @@ function makeReturn64(value) {
 
 function makeThrow(excPtr) {
   if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING) {
-    excPtr += ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch."';
+    var assertInfo = 'Exception catching is disabled, this exception cannot be caught. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.';
     if (MAIN_MODULE) {
-      excPtr += ' + " (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)"';
+      assertInfo += ' (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)';
     }
-    return `throw ${excPtr};`;
+    return `throw '${assertInfo}';`;
   }
   if (EXCEPTION_STACK_TRACES) {
     return `throw new CppException(${excPtr});`;
