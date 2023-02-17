@@ -4501,7 +4501,7 @@ int main(int argc, char **argv) {
               continue
             print(code, call_exit, async_compile, engine)
             proc = self.run_process(engine + ['a.out.js'], stderr=PIPE, check=False)
-            msg = 'but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)'
+            msg = 'but keepRuntimeAlive() is set (counter=0) due to an async operation, so halting execution but not exiting the runtime'
             if no_exit and call_exit:
               self.assertContained(msg, proc.stderr)
             else:

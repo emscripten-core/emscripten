@@ -193,16 +193,13 @@ var runtimeInitialized = false;
 
 #if EXIT_RUNTIME
 var runtimeExited = false;
+#endif
+
 var runtimeKeepaliveCounter = 0;
 
 function keepRuntimeAlive() {
   return noExitRuntime || runtimeKeepaliveCounter > 0;
 }
-#else
-function keepRuntimeAlive() {
-  return noExitRuntime;
-}
-#endif
 
 function preRun() {
 #if ASSERTIONS && USE_PTHREADS
@@ -267,6 +264,9 @@ function preMain() {
 function exitRuntime() {
 #if RUNTIME_DEBUG
   dbg('exitRuntime');
+#endif
+#if ASSERTIONS
+  assert(!runtimeExited);
 #endif
 #if ASYNCIFY == 1 && ASSERTIONS
   // ASYNCIFY cannot be used once the runtime starts shutting down.
