@@ -8121,13 +8121,11 @@ int main() {
       out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
       self.assertContained('no native wasm support detected', out)
 
-  # FIXME Node v18.13 (LTS as of Jan 2023) has not yet implemented the new
-  # optional 'traceStack' option in WebAssembly.Exception constructor
-  # (https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Exception/Exception)
-  # and embeds stack traces unconditionally. Change this back to
-  # @requires_wasm_eh if this issue is fixed later.
-  @requires_v8
-  def test_wasm_exceptions_stack_trace_and_message(self):
+  @parameterized({
+    '': (False,),
+    'wasm': (True,),
+  })
+  def test_exceptions_stack_trace_and_message(self, wasm_eh):
     src = r'''
       #include <stdexcept>
 
@@ -8142,10 +8140,10 @@ int main() {
         return 0;
       }
     '''
-    emcc_args = ['-g', '-fwasm-exceptions']
+    emcc_args = ['-g']
 
     # Stack trace and message example for this example code:
-    # exiting due to exception: [object WebAssembly.Exception],Error: std::runtime_error, my message
+    # exiting due to exception: [object WebAssembly.Exception],Error: std::runtime_error,my message
     #     at __cxa_throw (wasm://wasm/009a7c9a:wasm-function[1551]:0x24367)
     #     at bar() (wasm://wasm/009a7c9a:wasm-function[12]:0xf53)
     #     at foo() (wasm://wasm/009a7c9a:wasm-function[19]:0x154e)
@@ -8156,11 +8154,23 @@ int main() {
     #     at doRun (test.js:4621:23)
     #     at run (test.js:4636:5)
     stack_trace_checks = [
-      'std::runtime_error,my message',
-      'at __cxa_throw',
+      'std::runtime_error[:,][ ]?my message',  # 'std::runtime_error: my message' for Emscripten EH
+      'at [_]{2,3}cxa_throw',  # '___cxa_throw' (JS symbol) for Emscripten EH
       'at bar',
       'at foo',
       'at main']
+
+    if wasm_eh:
+      # FIXME Node v18.13 (LTS as of Jan 2023) has not yet implemented the new
+      # optional 'traceStack' option in WebAssembly.Exception constructor
+      # (https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Exception/Exception)
+      # and embeds stack traces unconditionally. Change this back to
+      # self.require_wasm_eh() if this issue is fixed later.
+      self.require_v8()
+
+      emcc_args += ['-fwasm-exceptions']
+    else:
+      emcc_args += ['-fexceptions']
 
     # Stack traces are enabled when either of ASSERTIONS or
     # EXCEPTION_STACK_TRACES is enabled. You can't disable
@@ -8170,13 +8180,15 @@ int main() {
     self.set_setting('ASSERTIONS', 1)
     self.set_setting('EXCEPTION_STACK_TRACES', 1)
     self.do_run(src, emcc_args=emcc_args, assert_all=True,
-                assert_returncode=NON_ZERO, expected_output=stack_trace_checks)
+                assert_returncode=NON_ZERO, expected_output=stack_trace_checks,
+                regex=True)
 
     # Prints stack traces
     self.set_setting('ASSERTIONS', 0)
     self.set_setting('EXCEPTION_STACK_TRACES', 1)
     self.do_run(src, emcc_args=emcc_args, assert_all=True,
-                assert_returncode=NON_ZERO, expected_output=stack_trace_checks)
+                assert_returncode=NON_ZERO, expected_output=stack_trace_checks,
+                regex=True)
 
     # Not allowed
     self.set_setting('ASSERTIONS', 1)
@@ -8190,7 +8202,7 @@ int main() {
     self.set_setting('EXCEPTION_STACK_TRACES', 0)
     err = self.do_run(src, emcc_args=emcc_args, assert_returncode=NON_ZERO)
     for check in stack_trace_checks:
-      self.assertNotContained(check, err)
+      self.assertFalse(re.search(check, err), 'Expected regex "%s" to not match on:\n%s' % (check, err))
 
   @requires_node
   def test_jsrun(self):
