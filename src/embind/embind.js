@@ -194,25 +194,16 @@ var LibraryEmbind = {
   },
 
 
-  // from https://github.com/imvu/imvujs/blob/master/src/function.js
   $createNamedFunction__deps: ['$makeLegalFunctionName'],
   $createNamedFunction: function(name, body) {
     name = makeLegalFunctionName(name);
-#if DYNAMIC_EXECUTION == 0
-    return function() {
-      "use strict";
-      return body.apply(this, arguments);
-    };
-#else
-    /*jshint evil:true*/
-    return new Function(
-        "body",
-        "return function " + name + "() {\n" +
-        "    \"use strict\";" +
-        "    return body.apply(this, arguments);\n" +
-        "};\n"
-    )(body);
-#endif
+    // Use an abject with a computed property name to create a new function with
+    // a name specified at runtime, but without using `new Function` or `eval`.
+    return {
+      [name]: function() {
+        return body.apply(this, arguments);
+      }
+    }[name];
   },
 
   $embindRepr: function(v) {

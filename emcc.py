@@ -736,13 +736,18 @@ def get_binaryen_passes():
 
 def make_js_executable(script):
   src = read_file(script)
-  cmd = config.JS_ENGINES[0]
-  if settings.WASM_BIGINT:
+  cmd = config.NODE_JS
+  if settings.MEMORY64 == 1:
+    cmd += shared.node_memory64_flags()
+  elif settings.WASM_BIGINT:
     cmd += shared.node_bigint_flags()
-  cmd = shared.shlex_join(cmd)
-  if not os.path.isabs(cmd[0]):
-    # TODO: use whereis etc. And how about non-*NIX?
-    cmd = '/usr/bin/env -S ' + cmd
+  if len(cmd) > 1 or not os.path.isabs(cmd[0]):
+    # Using -S (--split-string) here means that arguments to the executable are
+    # correctly parsed.  We don't do this by default because old versions of env
+    # don't support -S.
+    cmd = '/usr/bin/env -S ' + shared.shlex_join(cmd)
+  else:
+    cmd = shared.shlex_join(cmd)
   logger.debug('adding `#!` to JavaScript file: %s' % cmd)
   # add shebang
   with open(script, 'w') as f:
@@ -1927,11 +1932,18 @@ def phase_linker_setup(options, state, newargs):
   if '_main' in settings.EXPORTED_FUNCTIONS:
     settings.EXPORT_IF_DEFINED.append('__main_argc_argv')
 
-  # -sASSERTIONS implies basic stack overflow checks, and ASSERTIONS=2
-  # implies full stack overflow checks.
   if settings.ASSERTIONS:
-    # However, we don't set this default in PURE_WASI, or when we are linking without standard
-    # libraries because STACK_OVERFLOW_CHECK depends on emscripten_stack_get_end which is defined
+    # Exceptions are thrown with a stack trace by default when ASSERTIONS is
+    # set and when building with either -fexceptions or -fwasm-exceptions.
+    if 'EXCEPTION_STACK_TRACES' in user_settings and not settings.EXCEPTION_STACK_TRACES:
+      exit_with_error('EXCEPTION_STACK_TRACES cannot be disabled when ASSERTIONS are enabled')
+    if settings.WASM_EXCEPTIONS or not settings.DISABLE_EXCEPTION_CATCHING:
+      settings.EXCEPTION_STACK_TRACES = 1
+
+    # -sASSERTIONS implies basic stack overflow checks, and ASSERTIONS=2
+    # implies full stack overflow checks. However, we don't set this default in
+    # PURE_WASI, or when we are linking without standard libraries because
+    # STACK_OVERFLOW_CHECK depends on emscripten_stack_get_end which is defined
     # in libcompiler-rt.
     if not settings.PURE_WASI and '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
       default_setting('STACK_OVERFLOW_CHECK', max(settings.ASSERTIONS, settings.STACK_OVERFLOW_CHECK))
@@ -2087,8 +2099,9 @@ def phase_linker_setup(options, state, newargs):
         '__asyncify_data'
       ]
 
-    # Unconditional dependency in library_dylink.js
-    settings.REQUIRED_EXPORTS += ['setThrew']
+    # Emscripten EH dependency in library_dylink.js
+    if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
+      settings.REQUIRED_EXPORTS += ['setThrew']
 
     if settings.MINIMAL_RUNTIME:
       exit_with_error('MINIMAL_RUNTIME is not compatible with relocatable output')
@@ -2224,6 +2237,17 @@ def phase_linker_setup(options, state, newargs):
     if options.use_closure_compiler is None and settings.TRANSPILE_TO_ES5:
       diagnostics.warning('transpile', 'enabling transpilation via closure due to browser version settings.  This warning can be suppressed by passing `--closure=1` or `--closure=0` to opt into our explicitly.')
 
+  # https://caniuse.com/class: EDGE:13 FF:45 CHROME:49 SAFARI:9
+  supports_es6_classes = (settings.MIN_EDGE_VERSION >= 13 and
+                          settings.MIN_FIREFOX_VERSION >= 45 and
+                          settings.MIN_CHROME_VERSION >= 49 and
+                          settings.MIN_SAFARI_VERSION >= 90000 and
+                          settings.MIN_IE_VERSION == 0x7FFFFFFF)
+
+  if not settings.DISABLE_EXCEPTION_CATCHING and settings.EXCEPTION_STACK_TRACES and not supports_es6_classes:
+    diagnostics.warning('transpile', '-sEXCEPTION_STACK_TRACES requires an engine that support ES6 classes.')
+    settings.EXCEPTION_STACK_TRACES = 0
+
   # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
   if not settings.WASM2JS:
     settings.POLYFILL_OLD_MATH_FUNCTIONS = 0
@@ -2358,6 +2382,7 @@ def phase_linker_setup(options, state, newargs):
     settings.JS_LIBRARIES.append((0, 'library_pthread.js'))
     if settings.PROXY_TO_PTHREAD:
       settings.PTHREAD_POOL_SIZE_STRICT = 0
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$runtimeKeepalivePush']
   else:
     if settings.PROXY_TO_PTHREAD:
       exit_with_error('-sPROXY_TO_PTHREAD requires -sUSE_PTHREADS to work!')
@@ -2619,14 +2644,14 @@ def phase_linker_setup(options, state, newargs):
     # let us sanitize memory access from the JS side, by calling into C where
     # it has been instrumented.
     ASAN_C_HELPERS = [
-      'asan_c_load_1', 'asan_c_load_1u',
-      'asan_c_load_2', 'asan_c_load_2u',
-      'asan_c_load_4', 'asan_c_load_4u',
-      'asan_c_load_f', 'asan_c_load_d',
-      'asan_c_store_1', 'asan_c_store_1u',
-      'asan_c_store_2', 'asan_c_store_2u',
-      'asan_c_store_4', 'asan_c_store_4u',
-      'asan_c_store_f', 'asan_c_store_d',
+      '_asan_c_load_1', '_asan_c_load_1u',
+      '_asan_c_load_2', '_asan_c_load_2u',
+      '_asan_c_load_4', '_asan_c_load_4u',
+      '_asan_c_load_f', '_asan_c_load_d',
+      '_asan_c_store_1', '_asan_c_store_1u',
+      '_asan_c_store_2', '_asan_c_store_2u',
+      '_asan_c_store_4', '_asan_c_store_4u',
+      '_asan_c_store_f', '_asan_c_store_d',
     ]
 
     settings.REQUIRED_EXPORTS += ASAN_C_HELPERS
@@ -2822,18 +2847,20 @@ def phase_linker_setup(options, state, newargs):
   if settings.WASM_EXCEPTIONS:
     settings.REQUIRED_EXPORTS += ['__trap']
 
-  # When ASSERTIONS or EXCEPTION_STACK_TRACES is set, we include stack traces in
-  # Wasm exception objects using the JS API, which needs this C++ tag exported.
-  if settings.ASSERTIONS:
-    if 'EXCEPTION_STACK_TRACES' in user_settings and not settings.EXCEPTION_STACK_TRACES:
-      exit_with_error('EXCEPTION_STACK_TRACES cannot be disabled when ASSERTIONS are enabled')
-    default_setting('EXCEPTION_STACK_TRACES', 1)
-  if settings.EXCEPTION_STACK_TRACES and settings.WASM_EXCEPTIONS:
-    settings.EXPORTED_FUNCTIONS += ['___cpp_exception']
+  if settings.EXCEPTION_STACK_TRACES:
+    # If the user explicitly gave EXCEPTION_STACK_TRACES=1 without enabling EH,
+    # errors out.
+    if settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS:
+      exit_with_error('EXCEPTION_STACK_TRACES requires either of -fexceptions or -fwasm-exceptions')
+    # EXCEPTION_STACK_TRACES implies EXPORT_EXCEPTION_HANDLING_HELPERS
     settings.EXPORT_EXCEPTION_HANDLING_HELPERS = True
 
   # Make `getExceptionMessage` and other necessary functions available for use.
   if settings.EXPORT_EXCEPTION_HANDLING_HELPERS:
+    # If the user explicitly gave EXPORT_EXCEPTION_HANDLING_HELPERS=1 without
+    # enabling EH, errors out.
+    if settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS:
+      exit_with_error('EXPORT_EXCEPTION_HANDLING_HELPERS requires either of -fexceptions or -fwasm-exceptions')
     # We also export refcount increasing and decreasing functions because if you
     # catch an exception, be it an Emscripten exception or a Wasm exception, in
     # JS, you may need to manipulate the refcount manually not to leak memory.

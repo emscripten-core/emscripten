@@ -1627,6 +1627,7 @@ int main(int argc, char **argv) {
   @no_wasm64('MEMORY64 does not yet support exceptions')
   @with_both_eh_sjlj
   def test_EXPORT_EXCEPTION_HANDLING_HELPERS(self):
+    self.set_setting('ASSERTIONS', 0)
     self.set_setting('EXPORT_EXCEPTION_HANDLING_HELPERS')
     # FIXME Temporary workaround. See 'FIXME' in the test source code below for
     # details.
@@ -1839,6 +1840,18 @@ int main() {
     self.set_setting('ASYNCIFY', 1)
     err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-fwasm-exceptions'] + self.get_emcc_args())
     self.assertContained('error: ASYNCIFY=1 is not compatible with -fwasm-exceptions. Parts of the program that mix ASYNCIFY and exceptions will not compile.', err)
+    clear_all_relevant_settings(self)
+
+    # EXPORT_EXCEPTION_HANDLING_HELPERS and EXCEPTION_STACK_TRACES requires
+    # either Emscripten EH or Wasm EH
+    self.set_setting('EXPORT_EXCEPTION_HANDLING_HELPERS')
+    err = self.expect_fail([EMCC, test_file('hello_world.cpp')] + self.get_emcc_args())
+    self.assertContained('error: EXPORT_EXCEPTION_HANDLING_HELPERS requires either of -fexceptions or -fwasm-exceptions', err)
+    clear_all_relevant_settings(self)
+
+    self.set_setting('EXCEPTION_STACK_TRACES')
+    err = self.expect_fail([EMCC, test_file('hello_world.cpp')] + self.get_emcc_args())
+    self.assertContained('error: EXCEPTION_STACK_TRACES requires either of -fexceptions or -fwasm-exceptions', err)
     clear_all_relevant_settings(self)
 
   # Marked as impure since the WASI reactor modules (modules without main)
@@ -6892,7 +6905,6 @@ void* operator new(size_t size) {
 
   @needs_make('make')
   @is_slow_test
-  @no_wasm64('TODO produces different output')
   @no_ubsan('it seems that bullet contains UB')
   @parameterized({
     'cmake': (True,),
@@ -6904,12 +6916,13 @@ void* operator new(size_t size) {
       self.skipTest("Windows cannot run configure sh scripts")
 
     self.emcc_args += [
-        '-Wno-c++11-narrowing',
-        '-Wno-deprecated-register',
-        '-Wno-writable-strings',
-        '-Wno-shift-negative-value',
-        '-Wno-format',
-        '-Wno-bitfield-constant-conversion',
+      '-Wno-c++11-narrowing',
+      '-Wno-deprecated-register',
+      '-Wno-writable-strings',
+      '-Wno-shift-negative-value',
+      '-Wno-format',
+      '-Wno-bitfield-constant-conversion',
+      '-Wno-int-to-void-pointer-cast',
     ]
 
     # extra testing for ASSERTIONS == 2
@@ -9272,6 +9285,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('core/pthread/create.cpp')
 
   @node_pthreads
+  @no_wasm64('MEMORY64 does not yet support exceptions')
   def test_pthread_exceptions(self):
     self.set_setting('PTHREAD_POOL_SIZE', 2)
     self.set_setting('EXIT_RUNTIME')
@@ -9383,6 +9397,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dylink
   @node_pthreads
+  @no_wasm64('MEMORY64 does not yet support exceptions')
   def test_pthread_dylink_exceptions(self):
     self.emcc_args.append('-Wno-experimental')
     self.set_setting('USE_PTHREADS')

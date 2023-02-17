@@ -93,7 +93,7 @@ typedef struct {
     union {
         int __i[10];
         volatile int __vi[10];
-        unsigned __s[10];
+        unsigned long __s[10];
     } __u;
 #ifdef __EMSCRIPTEN__
     // For canvas transfer implementation in Emscripten, use an extra control field

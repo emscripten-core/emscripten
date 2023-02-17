@@ -488,14 +488,18 @@ function makeReturn64(value) {
   return `(setTempRet0(${pair[1]}), ${pair[0]})`;
 }
 
-function makeThrow(what) {
+function makeThrow(excPtr) {
   if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING) {
-    what += ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch."';
+    excPtr += ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch."';
     if (MAIN_MODULE) {
-      what += ' + " (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)"';
+      excPtr += ' + " (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)"';
     }
+    return `throw ${excPtr};`;
   }
-  return `throw ${what};`;
+  if (EXCEPTION_STACK_TRACES) {
+    return `throw new CppException(${excPtr});`;
+  }
+  return `throw ${excPtr};`;
 }
 
 function charCode(char) {

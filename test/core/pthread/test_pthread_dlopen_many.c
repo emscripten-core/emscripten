@@ -59,7 +59,7 @@ int main() {
   // start a bunch of threads while holding the lock
   pthread_t threads[NUM_THREADS];
   for (int i = 0; i < NUM_THREADS; i++) {
-    pthread_create(&threads[i], NULL, thread_main, (void*)i);
+    pthread_create(&threads[i], NULL, thread_main, (void*)(intptr_t)i);
   }
 
   // busy wait until all threads are running

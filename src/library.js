@@ -71,28 +71,29 @@ mergeInto(LibraryManager.library, {
 #endif // ASSERTIONS && !EXIT_RUNTIME
 
 #if USE_PTHREADS
-    if (!implicit) {
-      if (ENVIRONMENT_IS_PTHREAD) {
-#if PTHREADS_DEBUG
-        dbg('Pthread ' + ptrToString(_pthread_self()) + ' called exit(), posting exitOnMainThread.');
+    if (ENVIRONMENT_IS_PTHREAD) {
+      // implict exit can never happen on a pthread
+#if ASSERTIONS
+      assert(!implicit);
 #endif
-        // When running in a pthread we propagate the exit back to the main thread
-        // where it can decide if the whole process should be shut down or not.
-        // The pthread may have decided not to exit its own runtime, for example
-        // because it runs a main loop, but that doesn't affect the main thread.
-        exitOnMainThread(status);
-        throw 'unwind';
-      } else {
+#if PTHREADS_DEBUG
+      dbg('Pthread ' + ptrToString(_pthread_self()) + ' called exit(), posting exitOnMainThread.');
+#endif
+      // When running in a pthread we propagate the exit back to the main thread
+      // where it can decide if the whole process should be shut down or not.
+      // The pthread may have decided not to exit its own runtime, for example
+      // because it runs a main loop, but that doesn't affect the main thread.
+      exitOnMainThread(status);
+      throw 'unwind';
+    }
 #if PTHREADS_DEBUG
 #if EXIT_RUNTIME
-        err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
+    err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
 #else
-        err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive());
-#endif
-#endif
-      }
-    }
-#endif
+    err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive());
+#endif // EXIT_RUNTIME
+#endif // PTHREADS_DEBUG
+#endif // USE_PTHREADS
 
 #if EXIT_RUNTIME
     if (!keepRuntimeAlive()) {
@@ -1244,7 +1245,13 @@ mergeInto(LibraryManager.library, {
 
 #if SUPPORT_LONGJMP == 'emscripten'
   _emscripten_throw_longjmp__sig: 'v',
-  _emscripten_throw_longjmp: function() { throw Infinity; },
+  _emscripten_throw_longjmp: function() {
+#if EXCEPTION_STACK_TRACES
+    throw new EmscriptenSjLj;
+#else
+    throw Infinity;
+#endif
+  },
 #elif !SUPPORT_LONGJMP
 #if !INCLUDE_FULL_LIBRARY
   // These are in order to print helpful error messages when either longjmp of
@@ -2353,7 +2360,7 @@ mergeInto(LibraryManager.library, {
 #if ENVIRONMENT_MAY_BE_NODE
                                "if (ENVIRONMENT_IS_NODE) {\n" +
                                "  _emscripten_get_now = () => {\n" +
-                               "    var t = process['hrtime']();\n" +
+                               "    var t = process.hrtime();\n" +
                                "    return t[0] * 1e3 + t[1] / 1e6;\n" +
                                "  };\n" +
                                "} else " +
@@ -3191,8 +3198,8 @@ mergeInto(LibraryManager.library, {
   $getExecutableName: function() {
 #if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global runtime variable thisProgram
 #if ENVIRONMENT_MAY_BE_NODE
-    if (ENVIRONMENT_IS_NODE && process['argv'].length > 1) {
-      return process['argv'][1].replace(/\\/g, '/');
+    if (ENVIRONMENT_IS_NODE && process.argv.length > 1) {
+      return process.argv[1].replace(/\\/g, '/');
     }
 #endif
     return "./this.program";
@@ -3580,11 +3587,6 @@ mergeInto(LibraryManager.library, {
 #endif
   ],
   $maybeExit: function() {
-#if PROXY_TO_PTHREAD
-    // In PROXY_TO_PTHREAD mode the main thread never implicitly exits, but
-    // waits for the proxied main function to exit.
-    if (!ENVIRONMENT_IS_PTHREAD) return;
-#endif
 #if RUNTIME_DEBUG
     dbg('maybeExit: user callback done: runtimeKeepaliveCounter=' + runtimeKeepaliveCounter);
 #endif

@@ -169,6 +169,7 @@ var LibraryPThread = {
     },
 #endif
 
+    terminateAllThreads__deps: ['$terminateWorker'],
     terminateAllThreads: function() {
 #if ASSERTIONS
       assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! terminateAllThreads() can only ever be called from main application thread!');
@@ -183,10 +184,10 @@ var LibraryPThread = {
       // returned.  For this reason, we don't call `returnWorkerToPool` here or
       // free the underlying pthread data structures.
       for (var worker of PThread.runningWorkers) {
-        worker.terminate();
+        terminateWorker(worker);
       }
       for (var worker of PThread.unusedWorkers) {
-        worker.terminate();
+        terminateWorker(worker);
       }
       PThread.unusedWorkers = [];
       PThread.runningWorkers = [];
@@ -370,6 +371,10 @@ var LibraryPThread = {
         }
       }
 
+#if ASSERTIONS
+      worker.workerID = PThread.nextWorkerID++;
+#endif
+
       // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
       worker.postMessage({
         'cmd': 'load',
@@ -403,7 +408,7 @@ var LibraryPThread = {
         'dynamicLibraries': Module['dynamicLibraries'],
 #endif
 #if ASSERTIONS
-        'workerID': PThread.nextWorkerID++,
+        'workerID': worker.workerID,
 #endif
       });
     }),
@@ -520,7 +525,22 @@ var LibraryPThread = {
     }
   },
 
-  $killThread__deps: ['_emscripten_thread_free_data'],
+  $terminateWorker: function(worker) {
+    worker.terminate();
+    // terminate() can be asynchronous, so in theory the worker can continue
+    // to run for some amount of time after termination.  However from our POV
+    // the worker now dead and we don't want to hear from it again, so we stub
+    // out its message handler here.  This avoids having to check in each of
+    // the onmessage handlers if the message was coming from valid worker.
+    worker.onmessage = (e) => {
+#if ASSERTIONS
+      var cmd = e['data']['cmd'];
+      err('received "' + cmd + '" command from terminated worker: ' + worker.workerID);
+#endif
+    };
+  },
+
+  $killThread__deps: ['_emscripten_thread_free_data', '$terminateWorker'],
   $killThread: function(pthread_ptr) {
 #if PTHREADS_DEBUG
     dbg('killThread ' + ptrToString(pthread_ptr));
@@ -531,7 +551,7 @@ var LibraryPThread = {
 #endif
     var worker = PThread.pthreads[pthread_ptr];
     delete PThread.pthreads[pthread_ptr];
-    worker.terminate();
+    terminateWorker(worker);
     __emscripten_thread_free_data(pthread_ptr);
     // The worker was completely nuked (not just the pthread execution it was hosting), so remove it from running workers
     // but don't put it back to the pool.
@@ -539,12 +559,16 @@ var LibraryPThread = {
     worker.pthread_ptr = 0;
   },
 
+  __emscripten_thread_cleanup__sig: 'vp',
   __emscripten_thread_cleanup: function(thread) {
     // Called when a thread needs to be cleaned up so it can be reused.
     // A thread is considered reusable when it either returns from its
     // entry point, calls pthread_exit, or acts upon a cancellation.
     // Detached threads are responsible for calling this themselves,
     // otherwise pthread_join is responsible for calling this.
+#if PTHREADS_DEBUG
+    dbg('__emscripten_thread_cleanup: ' + ptrToString(thread))
+#endif
     if (!ENVIRONMENT_IS_PTHREAD) cleanupThread(thread);
     else postMessage({ 'cmd': 'cleanupThread', 'thread': thread });
   },
@@ -708,7 +732,7 @@ var LibraryPThread = {
   // allocations from __pthread_create_js we could also remove this.
   __pthread_create_js__noleakcheck: true,
 #endif
-  __pthread_create_js__sig: 'iiiii',
+  __pthread_create_js__sig: 'ipppp',
   __pthread_create_js__deps: ['$spawnThread', 'pthread_self', '$pthreadCreateProxied',
 #if OFFSCREENCANVAS_SUPPORT
     'malloc',
@@ -915,6 +939,9 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
     dbg('exitOnMainThread');
 #endif
+#if PROXY_TO_PTHREAD
+    {{{ runtimeKeepalivePop() }}};
+#endif
 #if MINIMAL_RUNTIME
     _exit(returnCode);
 #else
@@ -975,6 +1002,7 @@ var LibraryPThread = {
 
   emscripten_receive_on_main_thread_js_callArgs: '=[]',
 
+  emscripten_receive_on_main_thread_js__sig: 'diip',
   emscripten_receive_on_main_thread_js__deps: [
     'emscripten_proxy_to_main_thread_js',
     'emscripten_receive_on_main_thread_js_callArgs'],
@@ -1078,7 +1106,7 @@ var LibraryPThread = {
     // *ThreadMain(void *arg) form, or try linking with the Emscripten linker
     // flag -sEMULATE_FUNCTION_POINTER_CASTS to add in emulation for this x86
     // ABI extension.
-    var result = {{{ makeDynCall('ii', 'ptr') }}}(arg);
+    var result = {{{ makeDynCall('pp', 'ptr') }}}(arg);
 #if STACK_OVERFLOW_CHECK
     checkStackCookie();
 #endif
@@ -1097,6 +1125,7 @@ var LibraryPThread = {
   },
 
 #if MAIN_MODULE
+  _emscripten_thread_exit_joinable__sig: 'vp',
   _emscripten_thread_exit_joinable: function(thread) {
     // Called when a thread exits and is joinable.  We mark these threads
     // as finished, which means that are in state where are no longer actually
@@ -1207,6 +1236,7 @@ var LibraryPThread = {
   },
 
   _emscripten_notify_task_queue__deps: ['$executeNotifiedProxyingQueue'],
+  _emscripten_notify_task_queue__sig: 'vpppp',
   _emscripten_notify_task_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
     if (targetThreadId == currThreadId) {
       setTimeout(() => executeNotifiedProxyingQueue(queue));

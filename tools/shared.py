@@ -363,6 +363,10 @@ def node_bigint_flags():
     return []
 
 
+def node_memory64_flags():
+  return ['--experimental-wasm-memory64']
+
+
 def node_pthread_flags():
   node_version = check_node_version()
   # bulk memory and wasm threads were enabled by default in node v16.

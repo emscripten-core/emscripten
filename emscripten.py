@@ -369,8 +369,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     if settings.ASYNCIFY:
       metadata.imports += ['__asyncify_state', '__asyncify_data']
 
-  invoke_funcs = metadata.invokeFuncs
-  if invoke_funcs:
+  if metadata.invokeFuncs:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
 
   glue, forwarded_data = compile_javascript()
@@ -431,7 +430,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
         post = compute_minimal_runtime_initializer_and_exports(post, exports, receiving)
       receiving = ''
 
-    module = create_module(receiving, invoke_funcs, metadata, forwarded_json['librarySymbols'])
+    module = create_module(receiving, metadata, forwarded_json['librarySymbols'])
 
     write_output_file(out, module)
 
@@ -675,11 +674,11 @@ def add_standard_wasm_imports(send_items_map):
     send_items_map[s] = s
 
 
-def create_sending(invoke_funcs, metadata, library_symbols):
+def create_sending(metadata, library_symbols):
   # Map of wasm imports to mangled/external/JS names
   send_items_map = {}
 
-  for name in invoke_funcs:
+  for name in metadata.invokeFuncs:
     send_items_map[name] = name
   for name in metadata.imports:
     if name in metadata.emJsFuncs:
@@ -797,12 +796,11 @@ def create_receiving(exports):
     return '\n'.join(receiving) + '\n'
 
 
-def create_module(receiving, invoke_funcs, metadata, library_symbols):
-  invoke_wrappers = create_invoke_wrappers(invoke_funcs)
+def create_module(receiving, metadata, library_symbols):
   receiving += create_named_globals(metadata)
   module = []
 
-  sending = create_sending(invoke_funcs, metadata, library_symbols)
+  sending = create_sending(metadata, library_symbols)
   module.append('var wasmImports = %s;\n' % sending)
   if settings.ASYNCIFY and (settings.ASSERTIONS or settings.ASYNCIFY == 2):
     # instrumenting imports is used in asyncify in two ways: to add assertions
@@ -814,16 +812,19 @@ def create_module(receiving, invoke_funcs, metadata, library_symbols):
     module.append("var asm = createWasm();\n")
 
   module.append(receiving)
-  module.append(invoke_wrappers)
+  if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
+    module.append(create_invoke_wrappers(metadata))
+  else:
+    assert not metadata.invokeFuncs, "invoke_ functions exported but exceptions and longjmp are both disabled"
   if settings.MEMORY64:
     module.append(create_wasm64_wrappers(metadata))
   return module
 
 
-def create_invoke_wrappers(invoke_funcs):
+def create_invoke_wrappers(metadata):
   """Asm.js-style exception handling: invoke wrapper generation."""
   invoke_wrappers = ''
-  for invoke in invoke_funcs:
+  for invoke in metadata.invokeFuncs:
     sig = strip_prefix(invoke, 'invoke_')
     invoke_wrappers += '\n' + js_manipulation.make_invoke(sig) + '\n'
   return invoke_wrappers
@@ -865,6 +866,13 @@ def create_wasm64_wrappers(metadata):
     '__cxa_can_catch': '_ppp',
     '_wasmfs_write_file': '_ppp',
     '__dl_seterr': '_pp',
+    '_emscripten_run_in_main_runtime_thread_js': '___p_',
+    '_emscripten_proxy_execute_task_queue': '_p',
+    '_emscripten_thread_exit': '_p',
+    '_emscripten_thread_init': '_p____',
+    '_emscripten_thread_free_data': '_p',
+    '_emscripten_dlsync_self_async': '_p',
+    '_emscripten_proxy_dlsync_async': '_pp',
   }
 
   wasm64_wrappers = '''

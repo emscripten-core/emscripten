@@ -232,7 +232,7 @@ var HAS_MAIN = false;
 var LINK_AS_CXX = false;
 
 // Set when some minimum browser version triggers doesn't support the
-// minimum set of ES6 featurs.  This triggers transpilation to ES5
+// minimum set of ES6 features.  This triggers transpilation to ES5
 // using closure compiler.
 var TRANSPILE_TO_ES5 = false;
 

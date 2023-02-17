@@ -744,7 +744,7 @@ f.close()
 
         # Run through node, if CMake produced a .js file.
         if output_file.endswith('.js'):
-          ret = self.run_process(config.NODE_JS + [os.path.abspath(output_file)], stdout=PIPE).stdout
+          ret = self.run_js(output_file)
           self.assertTextDataIdentical(read_file(cmakelistsdir + '/out.txt').strip(), ret.strip())
 
         if test_dir == 'post_build':
@@ -3223,10 +3223,10 @@ int main()
       out = self.run_js('a.out.js', engine=engine)
       self.assertContained('File size: 724', out)
 
-  @requires_node
+  @node_pthreads
   def test_node_emscripten_num_logical_cores(self):
     # Test with node.js that the emscripten_num_logical_cores method is working
-    create_file('src.cpp', r'''
+    create_file('src.c', r'''
 #include <emscripten/threading.h>
 #include <stdio.h>
 #include <assert.h>
@@ -3237,9 +3237,7 @@ int main() {
   puts("ok");
 }
 ''')
-    self.run_process([EMXX, 'src.cpp', '-sUSE_PTHREADS', '-sENVIRONMENT=node'])
-    ret = self.run_process(config.NODE_JS + shared.node_pthread_flags() + ['a.out.js'], stdout=PIPE).stdout
-    self.assertContained('ok', ret)
+    self.do_runf('src.c', 'ok')
 
   def test_proxyfs(self):
     # This test supposes that 3 different programs share the same directory and files.
@@ -3281,7 +3279,6 @@ m1.ccall('mywrite0','number',['number'],[1]);
 print("m1 read");
 m1.ccall('myread0','number',[],[]);
 
-
 section = "child m2 reads and writes local file.";
 print("m2 read embed");
 m2.ccall('myreade','number',[],[]);
@@ -3293,6 +3290,18 @@ m2.ccall('myread0','number',[],[]);
 section = "child m1 reads local file.";
 print("m1 read");
 m1.ccall('myread0','number',[],[]);
+
+section = "parent m0 accesses children's file.";
+print("m0 access existing");
+m0.ccall('myaccess0existing','number',[],[]);
+print("m0 access absent");
+m0.ccall('myaccess0absent','number',[],[]);
+
+section = "child m1 accesses local file.";
+print("m1 access existing");
+m1.ccall('myaccess1existing','number',[],[]);
+print("m1 access absent");
+m1.ccall('myaccess1absent','number',[],[]);
 
 section = "parent m0 reads and writes local and children's file.";
 print("m0 read embed");
@@ -3345,6 +3354,12 @@ m0.ccall('mymmap1', 'number',[],[]);
 print("m0 mmap m2");console.log("");
 m0.ccall('mymmap2', 'number',[],[]);
 
+section = "parent m0 renames a file in child fs.";
+m0.FS.writeFile('/working/test', 'testme');
+m0.FS.rename('/working/test', '/working/test.bak');
+console.log(section + ":renamed file accessible by the new name:" + m0.FS.analyzePath('/working/test.bak').exists);
+console.log(section + ":renamed file accessible by the old name:" + m0.FS.analyzePath('/working/test').exists);
+
 section = "test seek.";
 print("file size");
 m0.ccall('myreadSeekEnd', 'number', [], []);
@@ -3359,6 +3374,8 @@ Module["noExitRuntime"]=true;
 
     create_file('proxyfs_test.c', r'''
 #include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <emscripten/emscripten.h>
 #include <assert.h>
 #include <fcntl.h>
@@ -3432,6 +3449,30 @@ EMSCRIPTEN_KEEPALIVE int myread0() {
     }
   }
   fclose(in);
+  return 0;
+}
+
+EMSCRIPTEN_KEEPALIVE int myaccess0existing() {
+  int canAccess = access("/working/hoge.txt",O_RDONLY);
+  printf("access=%d\n", canAccess);
+  return 0;
+}
+
+EMSCRIPTEN_KEEPALIVE int myaccess0absent() {
+  int canAccess = access("/working/nosuchfile",O_RDONLY);
+  printf("access=%d\n", canAccess);
+  return 0;
+}
+
+EMSCRIPTEN_KEEPALIVE int myaccess1existing() {
+  int canAccess = access("/hoge.txt",O_RDONLY);
+  printf("access=%d\n", canAccess);
+  return 0;
+}
+
+EMSCRIPTEN_KEEPALIVE int myaccess1absent() {
+  int canAccess = access("/nosuchfile",O_RDONLY);
+  printf("access=%d\n", canAccess);
   return 0;
 }
 
@@ -3513,6 +3554,12 @@ EMSCRIPTEN_KEEPALIVE int mymmap2() {
     self.assertContained(section + ":m2 read:test0_2", out)
     section = "child m1 reads local file."
     self.assertContained(section + ":m1 read:test0_1", out)
+    section = "parent m0 accesses children's file."
+    self.assertContained(section + ":m0 access existing:access=0", out)
+    self.assertContained(section + ":m0 access absent:access=-1", out)
+    section = "child m1 accesses local file."
+    self.assertContained(section + ":m1 access existing:access=0", out)
+    self.assertContained(section + ":m1 access absent:access=-1", out)
     section = "parent m0 reads and writes local and children's file."
     self.assertContained(section + ":m0 read embed:test", out)
     self.assertContained(section + ":m0 read m1:test0_1", out)
@@ -3538,7 +3585,9 @@ EMSCRIPTEN_KEEPALIVE int mymmap2() {
     self.assertContained(section + ":m0 write m2:", out)
     self.assertContained(section + ":m0 mmap m1:", out)
     self.assertContained(section + ":m0 mmap m2:", out)
-
+    section = "parent m0 renames a file in child fs."
+    self.assertContained(section + ":renamed file accessible by the new name:true", out)
+    self.assertContained(section + ":renamed file accessible by the old name:false", out)
     section = "test seek."
     self.assertContained(section + ":file size:6", out)
 
@@ -8120,13 +8169,11 @@ int main() {
       out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
       self.assertContained('no native wasm support detected', out)
 
-  # FIXME Node v18.13 (LTS as of Jan 2023) has not yet implemented the new
-  # optional 'traceStack' option in WebAssembly.Exception constructor
-  # (https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Exception/Exception)
-  # and embeds stack traces unconditionally. Change this back to
-  # @requires_wasm_eh if this issue is fixed later.
-  @requires_v8
-  def test_wasm_exceptions_stack_trace_and_message(self):
+  @parameterized({
+    '': (False,),
+    'wasm': (True,),
+  })
+  def test_exceptions_stack_trace_and_message(self, wasm_eh):
     src = r'''
       #include <stdexcept>
 
@@ -8141,10 +8188,10 @@ int main() {
         return 0;
       }
     '''
-    emcc_args = ['-g', '-fwasm-exceptions']
+    emcc_args = ['-g']
 
     # Stack trace and message example for this example code:
-    # exiting due to exception: [object WebAssembly.Exception],Error: std::runtime_error, my message
+    # exiting due to exception: [object WebAssembly.Exception],Error: std::runtime_error,my message
     #     at __cxa_throw (wasm://wasm/009a7c9a:wasm-function[1551]:0x24367)
     #     at bar() (wasm://wasm/009a7c9a:wasm-function[12]:0xf53)
     #     at foo() (wasm://wasm/009a7c9a:wasm-function[19]:0x154e)
@@ -8155,11 +8202,23 @@ int main() {
     #     at doRun (test.js:4621:23)
     #     at run (test.js:4636:5)
     stack_trace_checks = [
-      'std::runtime_error,my message',
-      'at __cxa_throw',
+      'std::runtime_error[:,][ ]?my message',  # 'std::runtime_error: my message' for Emscripten EH
+      'at [_]{2,3}cxa_throw',  # '___cxa_throw' (JS symbol) for Emscripten EH
       'at bar',
       'at foo',
       'at main']
+
+    if wasm_eh:
+      # FIXME Node v18.13 (LTS as of Jan 2023) has not yet implemented the new
+      # optional 'traceStack' option in WebAssembly.Exception constructor
+      # (https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Exception/Exception)
+      # and embeds stack traces unconditionally. Change this back to
+      # self.require_wasm_eh() if this issue is fixed later.
+      self.require_v8()
+
+      emcc_args += ['-fwasm-exceptions']
+    else:
+      emcc_args += ['-fexceptions']
 
     # Stack traces are enabled when either of ASSERTIONS or
     # EXCEPTION_STACK_TRACES is enabled. You can't disable
@@ -8169,13 +8228,15 @@ int main() {
     self.set_setting('ASSERTIONS', 1)
     self.set_setting('EXCEPTION_STACK_TRACES', 1)
     self.do_run(src, emcc_args=emcc_args, assert_all=True,
-                assert_returncode=NON_ZERO, expected_output=stack_trace_checks)
+                assert_returncode=NON_ZERO, expected_output=stack_trace_checks,
+                regex=True)
 
     # Prints stack traces
     self.set_setting('ASSERTIONS', 0)
     self.set_setting('EXCEPTION_STACK_TRACES', 1)
     self.do_run(src, emcc_args=emcc_args, assert_all=True,
-                assert_returncode=NON_ZERO, expected_output=stack_trace_checks)
+                assert_returncode=NON_ZERO, expected_output=stack_trace_checks,
+                regex=True)
 
     # Not allowed
     self.set_setting('ASSERTIONS', 1)
@@ -8189,7 +8250,7 @@ int main() {
     self.set_setting('EXCEPTION_STACK_TRACES', 0)
     err = self.do_run(src, emcc_args=emcc_args, assert_returncode=NON_ZERO)
     for check in stack_trace_checks:
-      self.assertNotContained(check, err)
+      self.assertFalse(re.search(check, err), 'Expected regex "%s" to not match on:\n%s' % (check, err))
 
   @requires_node
   def test_jsrun(self):
@@ -10381,7 +10442,7 @@ int main(void) {
     # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
     # Check an absolute code size as well, with some slack.
-    self.assertLess(abs(changed - 4690), 150)
+    self.assertLess(abs(changed - 4491), 150)
 
   def test_INCOMING_MODULE_JS_API_missing(self):
     create_file('pre.js', '''
@@ -12419,6 +12480,13 @@ Module['postRun'] = function() {{
         // arror funcs + const
         const bar = () => 2;
         err('bar: ' + bar());
+
+        // Computed property names
+        var key = 'mykey';
+        var obj2 = {
+          [key]: 42,
+        };
+        err('value: ' + obj2[key]);
       }
     });
     ''')
@@ -12452,19 +12520,19 @@ Module['postRun'] = function() {{
     print('with old browser')
     self.emcc_args.remove('-Werror')
     self.set_setting('MIN_CHROME_VERSION', '10')
-    self.do_runf('test.c', 'prop: 1\nbar: 2\n', output_basename='test2')
-    check_for_es6('test2.js', False)
+    self.do_runf('test.c', 'prop: 1\nbar: 2\n', output_basename='test_old')
+    check_for_es6('test_old.js', False)
 
     # If we add `--closure=0` that transpiler (closure) is not run at all
     print('with old browser + --closure=0')
-    self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=0'], output_basename='test3')
-    check_for_es6('test3.js', True)
+    self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=0'], output_basename='test_no_closure')
+    check_for_es6('test_no_closure.js', True)
 
     # If we use `--closure=1` closure will run in full optimization mode
     # and also transpile to ES5
     print('with old browser + --closure=1')
-    self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=1'], output_basename='test4')
-    check_for_es6('test4.js', False)
+    self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=1'], output_basename='test_closure')
+    check_for_es6('test_closure.js', False)
 
   def test_gmtime_noleak(self):
     # Confirm that gmtime_r does not leak when called in isolation.
