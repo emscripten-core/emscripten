@@ -2099,8 +2099,9 @@ def phase_linker_setup(options, state, newargs):
         '__asyncify_data'
       ]
 
-    # Unconditional dependency in library_dylink.js
-    settings.REQUIRED_EXPORTS += ['setThrew']
+    # Emscripten EH dependency in library_dylink.js
+    if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
+      settings.REQUIRED_EXPORTS += ['setThrew']
 
     if settings.MINIMAL_RUNTIME:
       exit_with_error('MINIMAL_RUNTIME is not compatible with relocatable output')
