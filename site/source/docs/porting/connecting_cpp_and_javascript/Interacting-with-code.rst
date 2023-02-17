@@ -801,13 +801,13 @@ for defining the binding:
 
 .. _interacting-with-code-emnapi:
 
-Binding C/C++ and JavaScript - Emnapi
+Binding C/C++ and JavaScript - Node-API
 ===============================================================
 
 `Emnapi`_ is an unofficial `Node-API`_ implementation which can be used
-in Emscripten. If you would like to port existing Node-API addon
-to WebAssembly, you can give it a try. See
-`Emnapi documentation`_ for more details.
+on Emscripten. If you would like to port existing Node-API addon to WebAssembly
+or compile the same binding code to both Node.js native addon and WebAssembly,
+you can give it a try. See `Emnapi documentation`_ for more details.
 
 .. _library.js: https://github.com/emscripten-core/emscripten/blob/main/src/library.js
 .. _test_js_libraries: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L5043
