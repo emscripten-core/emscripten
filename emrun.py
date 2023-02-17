@@ -1656,6 +1656,7 @@ def run():
       logi('Web server root directory: ' + os.path.abspath('.'))
     logv('Starting web server: http://%s:%i/' % (options.hostname, options.port))
     httpd = HTTPWebServer((options.hostname, options.port), HTTPHandler)
+    # to support binding to port zero we must allow the server to open to socket then retrieve the final port number
     options.port = httpd.socket.getsockname()[1]
 
   if options.android:
