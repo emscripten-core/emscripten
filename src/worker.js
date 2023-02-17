@@ -254,7 +254,7 @@ function handleMessage(e) {
       } catch(ex) {
         if (ex != 'unwind') {
           // The pthread "crashed".  Do not call `_emscripten_thread_exit` (which
-          // would make this thread joinable.  Instead, re-throw the exception
+          // would make this thread joinable).  Instead, re-throw the exception
           // and let the top level handler propagate it back to the main thread.
           throw ex;
         }
