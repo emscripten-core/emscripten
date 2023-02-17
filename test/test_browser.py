@@ -2018,11 +2018,11 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_gles2_uniform_arrays(self):
-    self.btest('gles2_uniform_arrays.cpp', args=['-sGL_ASSERTIONS', '-lGL', '-lSDL'], expected=['1'], also_proxied=True)
+    self.btest('gles2_uniform_arrays.cpp', args=['-sGL_ASSERTIONS', '-lGL', '-lSDL'], expected='1', also_proxied=True)
 
   @requires_graphics_hardware
   def test_gles2_conformance(self):
-    self.btest('gles2_conformance.cpp', args=['-sGL_ASSERTIONS', '-lGL', '-lSDL'], expected=['1'])
+    self.btest('gles2_conformance.cpp', args=['-sGL_ASSERTIONS', '-lGL', '-lSDL'], expected='1')
 
   @requires_graphics_hardware
   def test_matrix_identity(self):
@@ -2177,7 +2177,7 @@ void *getBindBuffer() {
 
   @requires_graphics_hardware
   def test_glgettexenv(self):
-    self.btest('glgettexenv.c', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], expected=['1'])
+    self.btest('glgettexenv.c', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], expected='1')
 
   def test_sdl_canvas_blank(self):
     self.btest('browser/test_sdl_canvas_blank.c', args=['-lSDL', '-lGL'], reference='browser/test_sdl_canvas_blank.png')
@@ -5469,14 +5469,14 @@ Module["preRun"].push(function () {
   def test_assert_failure(self):
     self.btest(test_file('browser/test_assert_failure.c'), 'abort:Assertion failed: false && "this is a test"')
 
-  @no_firefox('output slightly different in FireFox')
   def test_pthread_unhandledrejection(self):
     # Check that an unhandled promise rejection is propagated to the main thread
     # as an error. This test is failing if it hangs!
     self.btest(test_file('pthread/test_pthread_unhandledrejection.c'),
                args=['-pthread', '-sPROXY_TO_PTHREAD', '--post-js',
                      test_file('pthread/test_pthread_unhandledrejection.post.js')],
-               expected='exception:Uncaught [object ErrorEvent] / undefined')
+               # Firefox and Chrome report this slightly differently
+               expected=['exception:Uncaught rejected!', 'exception:uncaught exception: rejected!'])
 
   @requires_threads
   def test_pthread_key_recreation(self):
@@ -5506,6 +5506,15 @@ Module["preRun"].push(function () {
   })
   def test_audio_worklet_post_function(self, args):
     self.btest(test_file('webaudio/audioworklet_post_function.c'), args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args, expected='1')
+
+  def test_error_reporting(self):
+    # Test catching/reporting Error objects
+    create_file('post.js', 'throw new Error("oops");')
+    self.btest(test_file('hello_world.c'), args=['--post-js=post.js'], expected='exception:oops')
+
+    # Test catching/reporting non-Error objects
+    create_file('post.js', 'throw "foo";')
+    self.btest(test_file('hello_world.c'), args=['--post-js=post.js'], expected='exception:foo')
 
 
 class emrun(RunnerCore):
