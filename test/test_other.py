@@ -10543,7 +10543,7 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
 '''
     self.do_runf('src.cpp', expected, emcc_args=['-sASSERTIONS'])
 
-  def test_modularized_assertions_on_ready_promise(self):
+  def test_modularize_assertions_on_ready_promise(self):
     # check that when assertions are on we give useful error messages for
     # mistakenly thinking the Promise is an instance. I.e., once you could do
     # Module()._main to get an instance and the main function, but after
