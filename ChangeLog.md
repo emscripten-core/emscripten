@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.32 (in development)
+3.1.33 (in development)
 -----------------------
+
+3.1.32 - 02/17/23
+-----------------
 - Added new linker option `-sEXCEPTION_STACK_TRACES` which will display a stack
   trace when an uncaught exception occurs. This defaults to true when
   `ASSERTIONS` is enabled. This option is mainly for the users who want only
