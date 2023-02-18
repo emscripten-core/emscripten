@@ -934,6 +934,18 @@ f.close()
       self.expect_fail([compiler, test_file('hello_world.c'), 'this_file_is_missing.c', '-o', 'out.js'])
       self.assertFalse(os.path.exists('out.js'))
 
+  def test_failure_modularize_and_catch_rejection(self):
+    for compiler in [EMCC, EMXX]:
+      # Test that if sMODULARIZE and sNODEJS_CATCH_REJECTION are both enabled, then emcc shouldn't succeed, and shouldn't produce an output file.
+      self.expect_fail([compiler, test_file('hello_world.c'), '-sMODULARIZE', '-sNODEJS_CATCH_REJECTION', '-o', 'out.js'])
+      self.assertFalse(os.path.exists('out.js'))
+
+  def test_failure_modularize_and_catch_exit(self):
+    for compiler in [EMCC, EMXX]:
+      # Test that if sMODULARIZE and sNODEJS_CATCH_EXIT are both enabled, then emcc shouldn't succeed, and shouldn't produce an output file.
+      self.expect_fail([compiler, test_file('hello_world.c'), '-sMODULARIZE', '-sNODEJS_CATCH_EXIT', '-o', 'out.js'])
+      self.assertFalse(os.path.exists('out.js'))
+
   def test_use_cxx(self):
     create_file('empty_file', ' ')
     dash_xc = self.run_process([EMCC, '-v', '-xc', 'empty_file'], stderr=PIPE).stderr
