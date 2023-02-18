@@ -2049,6 +2049,15 @@ var LibraryEmbind = {
                                                   upcast,
                                                   downcast);
 
+        if (registeredClass.baseClass) {
+          // Keep track of class hierarchy. USed to allow sub-classes to inherit class functions.
+          if (registeredClass.baseClass.__derivedClasses === undefined) {
+            registeredClass.baseClass.__derivedClasses = [];
+          }
+
+          registeredClass.baseClass.__derivedClasses.push(registeredClass);
+        }
+
         var referenceConverter = new RegisteredPointer(name,
                                                        registeredClass,
                                                        true,
@@ -2355,6 +2364,15 @@ var LibraryEmbind = {
         } else {
           proto[methodName].overloadTable[argCount-1] = func;
         }
+
+        if (classType.registeredClass.__derivedClasses) {
+          for (const derivedClass of classType.registeredClass.__derivedClasses) {
+            if (!derivedClass.constructor.hasOwnProperty(methodName)) {
+              derivedClass.constructor[methodName] = func;
+            }
+          }
+        }
+
         return [];
       });
       return [];
