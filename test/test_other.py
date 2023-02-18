@@ -10539,6 +10539,28 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     # the instance you must use .then() to get a callback with the instance.
     create_file('test.js', r'''
       try {
+        Module._main;
+      } catch(e) {
+        console.log(e);
+      }
+      try {
+      } catch(e) {
+        console.log(e);
+      }
+    ''')
+    self.run_process([EMCC, test_file('hello_world.c'), '-sASSERTIONS', '--extern-post-js', 'test.js'])
+    # A return code of 7 is from the unhandled Promise rejection
+    out = self.run_js('a.out.js', assert_returncode=0)
+    self.assertContained('hello, world!', out)
+
+  def test_assertions_on_ready_promise_modularized(self):
+    # check that when assertions are on we give useful error messages for
+    # mistakenly thinking the Promise is an instance. I.e., once you could do
+    # Module()._main to get an instance and the main function, but after
+    # the breaking change in #10697 Module() now returns a promise, and to get
+    # the instance you must use .then() to get a callback with the instance.
+    create_file('test.js', r'''
+      try {
         Module()._main;
       } catch(e) {
         console.log(e);
@@ -10551,9 +10573,22 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     ''')
     self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sASSERTIONS', '--extern-post-js', 'test.js'])
     # A return code of 7 is from the unhandled Promise rejection
-    out = self.run_js('a.out.js', assert_returncode=7)
+    out = self.run_js('a.out.js', assert_returncode=1)
     self.assertContained('You are getting _main on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js', out)
     self.assertContained('You are setting onRuntimeInitialized on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js', out)
+
+  def test_assertions_on_reject_promise(self):
+    # check that when assertions are on we give useful error messages for
+    # mistakenly thinking the Promise is an instance. I.e., once you could do
+    # Module()._main to get an instance and the main function, but after
+    # the breaking change in #10697 Module() now returns a promise, and to get
+    # the instance you must use .then() to get a callback with the instance.
+    create_file('test.js', r'''
+      Promise.reject();
+    ''')
+    self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sASSERTIONS', '--extern-post-js', 'test.js'])
+    out = self.run_js('a.out.js', assert_returncode=1)
+    self.assertContained('UnhandledPromiseRejection: This error originated either by throwing inside of an async function without a catch block, or by rejecting a promise which was not handled with .catch(). The promise rejected with the reason "undefined".', out)
 
   def test_em_asm_duplicate_strings(self):
     # We had a regression where tow different EM_ASM strings from two diffferent
