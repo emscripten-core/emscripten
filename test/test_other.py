@@ -2716,7 +2716,7 @@ int f() {
          '-sWASM_ASYNC_COMPILATION=0',
          # This test uses a `CustomSmartPtr` class which has 1MB of data embedded in
          # it which means we need more stack space than normal.
-         '-sTOTAL_STACK=2MB',
+         '-sSTACK_SIZE=2MB',
          '-sIN_TEST_HARNESS'] + args)
 
       if '-sDYNAMIC_EXECUTION=0' in args:
