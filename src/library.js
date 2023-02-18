@@ -87,11 +87,7 @@ mergeInto(LibraryManager.library, {
       throw 'unwind';
     }
 #if PTHREADS_DEBUG
-#if EXIT_RUNTIME
     err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
-#else
-    err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive());
-#endif // EXIT_RUNTIME
 #endif // PTHREADS_DEBUG
 #endif // USE_PTHREADS
 
@@ -104,11 +100,7 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     // if exit() was called explicitly, warn the user if the runtime isn't actually being shut down
     if (keepRuntimeAlive() && !implicit) {
-#if !EXIT_RUNTIME
-      var msg = 'program exited (with status: ' + status + '), but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)';
-#else
       var msg = 'program exited (with status: ' + status + '), but keepRuntimeAlive() is set (counter=' + runtimeKeepaliveCounter + ') due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)';
-#endif // EXIT_RUNTIME
 #if MODULARIZE
       readyPromiseReject(msg);
 #endif // MODULARIZE
@@ -3410,14 +3402,15 @@ mergeInto(LibraryManager.library, {
   emscripten_force_exit__proxy: 'sync',
   emscripten_force_exit__sig: 'vi',
   emscripten_force_exit: function(status) {
+#if RUNTIME_DEBUG
+    dbg('emscripten_force_exit');
+#endif
 #if !EXIT_RUNTIME && ASSERTIONS
     warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set');
 #endif
 #if !MINIMAL_RUNTIME
     noExitRuntime = false;
-#if EXIT_RUNTIME
     runtimeKeepaliveCounter = 0;
-#endif
 #endif
     _exit(status);
   },
@@ -3495,6 +3488,9 @@ mergeInto(LibraryManager.library, {
     // 2. "unwind", which is thrown by emscripten_unwind_to_js_event_loop() and others
     //    that wish to return to JS event loop.
     if (e instanceof ExitStatus || e == 'unwind') {
+#if RUNTIME_DEBUG
+      dbg('handleException: unwinding: EXITSTATUS=' + EXITSTATUS);
+#endif
       return EXITSTATUS;
     }
 #if STACK_OVERFLOW_CHECK
@@ -3515,24 +3511,20 @@ mergeInto(LibraryManager.library, {
   // Callable in pthread without __proxy needed.
   $runtimeKeepalivePush__sig: 'v',
   $runtimeKeepalivePush: function() {
-#if EXIT_RUNTIME
     runtimeKeepaliveCounter += 1;
 #if RUNTIME_DEBUG
     dbg('runtimeKeepalivePush -> counter=' + runtimeKeepaliveCounter);
-#endif
 #endif
   },
 
   $runtimeKeepalivePop__sig: 'v',
   $runtimeKeepalivePop: function() {
-#if EXIT_RUNTIME
 #if ASSERTIONS
     assert(runtimeKeepaliveCounter > 0);
 #endif
     runtimeKeepaliveCounter -= 1;
 #if RUNTIME_DEBUG
     dbg('runtimeKeepalivePop -> counter=' + runtimeKeepaliveCounter);
-#endif
 #endif
   },
 
@@ -3551,11 +3543,7 @@ mergeInto(LibraryManager.library, {
   // The job of this wrapper is the handle emscripten-specfic exceptions such
   // as ExitStatus and 'unwind' and prevent these from escaping to the top
   // level.
-  $callUserCallback__deps: ['$handleException',
-#if EXIT_RUNTIME
-    '$maybeExit',
-#endif
-  ],
+  $callUserCallback__deps: ['$handleException', '$maybeExit'],
   $callUserCallback: function(func) {
 #if EXIT_RUNTIME
     if (runtimeExited || ABORT) {
@@ -3569,24 +3557,23 @@ mergeInto(LibraryManager.library, {
     }
     try {
       func();
-#if EXIT_RUNTIME
-#if USE_PTHREADS && !EXIT_RUNTIME
-      if (ENVIRONMENT_IS_PTHREAD)
-#endif
-        maybeExit();
-#endif // EXIT_RUNTIME
+      maybeExit();
     } catch (e) {
       handleException(e);
     }
   },
 
-#if EXIT_RUNTIME
   $maybeExit__deps: ['exit', '$handleException',
 #if USE_PTHREADS
     '_emscripten_thread_exit',
 #endif
   ],
   $maybeExit: function() {
+#if EXIT_RUNTIME
+    if (runtimeExited) {
+      return;
+    }
+#endif
 #if RUNTIME_DEBUG
     dbg('maybeExit: user callback done: runtimeKeepaliveCounter=' + runtimeKeepaliveCounter);
 #endif
@@ -3605,12 +3592,6 @@ mergeInto(LibraryManager.library, {
       }
     }
   },
-#else
-  // Define as stub function in case legacy code has unconditionally dependency
-  // on this function.  We also have at least one test that expects this
-  // library function to always exist.
-  $maybeExit: function() {},
-#endif // EXIT_RUNTIME
 
 #else // MINIMAL_RUNTIME
   // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff

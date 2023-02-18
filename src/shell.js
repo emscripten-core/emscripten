@@ -241,6 +241,9 @@ if (ENVIRONMENT_IS_NODE) {
 #if NODEJS_CATCH_EXIT
   process.on('uncaughtException', function(ex) {
     // suppress ExitStatus exceptions from showing an error
+#if RUNTIME_DEBUG
+    dbg('node: uncaughtException: ' + ex)
+#endif
     if (!(ex instanceof ExitStatus)) {
       throw ex;
     }
