@@ -3618,6 +3618,9 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
     err = self.expect_fail([EMCC, 'duplicated_func.c'] + self.get_emcc_args())
     self.assertContained('error: Symbol re-definition in JavaScript library: duplicatedFunc. Do not use noOverride if this is intended', err)
 
+  def test_override_stub(self):
+    self.do_run_from_file(test_file('other/test_override_stub.c'), test_file('other/test_override_stub.out'))
+
   def test_js_lib_missing_sig(self):
     create_file('some_func.c', '''
       #include <stdio.h>
