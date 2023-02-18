@@ -716,6 +716,22 @@ def create_sending(metadata, library_symbols):
 
 def make_export_wrappers(exports, delay_assignment):
   wrappers = []
+
+  # The emscripten stack functions are called very early (by writeStackCookie) before
+  # the runtime is initialized so we can't create these wrappers that check for
+  # runtimeInitialized.
+  # Likewise `__trap` can occur before the runtime is initialized since it is used in
+  # abort.
+  # pthread_self and _emscripten_proxy_execute_task_queue are currently called in some
+  # cases after the runtime has exited.
+  # TODO: Look into removing these, and improving our robustness around thread termination.
+  def install_wrapper(sym):
+    if sym.startswith('_asan_') or sym.startswith('emscripten_stack_'):
+      return False
+    if sym in ('__trap', 'pthread_self', '_emscripten_proxy_execute_task_queue'):
+      return False
+    return True
+
   for name in exports:
     # Tags cannot be wrapped in createExportWrapper
     if name == '__cpp_exception':
@@ -730,12 +746,7 @@ def make_export_wrappers(exports, delay_assignment):
       exported = ''
     wrapper += exported
 
-    # The emscripten stack functions are called very early (by writeStackCookie) before
-    # the runtime is initialized so we can't create these wrappers that check for
-    # runtimeInitialized.
-    # Likewise `__trap` can occur before the runtime is initialized since it is used in
-    # abort.
-    if settings.ASSERTIONS and not name.startswith('emscripten_stack_') and name != '__trap':
+    if settings.ASSERTIONS and install_wrapper(name):
       # With assertions enabled we create a wrapper that are calls get routed through, for
       # the lifetime of the program.
       if delay_assignment:

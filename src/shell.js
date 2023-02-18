@@ -172,24 +172,6 @@ var read_,
     readBinary,
     setWindowTitle;
 
-#if ENVIRONMENT_MAY_BE_SHELL || ENVIRONMENT_MAY_BE_NODE || ASSERTIONS
-// Normally we don't log exceptions but instead let them bubble out the top
-// level where the embedding environment (e.g. the browser) can handle
-// them.
-// However under v8 and node we sometimes exit the process direcly in which case
-// its up to use us to log the exception before exiting.
-// If we fix https://github.com/emscripten-core/emscripten/issues/15080
-// this may no longer be needed under node.
-function logExceptionOnExit(e) {
-  if (e instanceof ExitStatus) return;
-  let toLog = e;
-  if (e && typeof e == 'object' && e.stack) {
-    toLog = [e, e.stack];
-  }
-  err('exiting due to exception: ' + toLog);
-}
-#endif
-
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT && ASSERTIONS
@@ -244,7 +226,7 @@ if (ENVIRONMENT_IS_NODE) {
 #if RUNTIME_DEBUG
     dbg('node: uncaughtException: ' + ex)
 #endif
-    if (!(ex instanceof ExitStatus)) {
+    if (ex !== 'unwind' && !(ex instanceof ExitStatus) && !(ex.context instanceof ExitStatus)) {
       throw ex;
     }
   });
@@ -263,12 +245,8 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 
   quit_ = (status, toThrow) => {
-    if (keepRuntimeAlive()) {
-      process.exitCode = status;
-      throw toThrow;
-    }
-    logExceptionOnExit(toThrow);
-    process.exit(status);
+    process.exitCode = status;
+    throw toThrow;
   };
 
   Module['inspect'] = function () { return '[Emscripten Module object]'; };
@@ -360,7 +338,13 @@ if (ENVIRONMENT_IS_SHELL) {
         throw toThrow;
       }
 #endif
-      logExceptionOnExit(toThrow);
+      if (!(toThrow instanceof ExitStatus)) {
+        let toLog = toThrow;
+        if (toThrow && typeof toThrow == 'object' && toThrow.stack) {
+          toLog = [toThrow, toThrow.stack];
+        }
+        err('exiting due to exception: ' + toLog);
+      }
       quit(status);
     };
   }
