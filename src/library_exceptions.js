@@ -421,9 +421,11 @@ var LibraryExceptions = {
     //
     // Remove this JS function name, which is in the second line, from the stack
     // trace.
-    var arr = e.stack.split('\n');
-    arr.splice(1,1);
-    e.stack = arr.join('\n');
+    if (e.stack) {
+      var arr = e.stack.split('\n');
+      arr.splice(1,1);
+      e.stack = arr.join('\n');
+    }
     throw e;
   },
 #endif
