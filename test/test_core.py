@@ -7807,7 +7807,7 @@ void* operator new(size_t size) {
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.set_setting('PTHREAD_POOL_DELAY_LOAD', 1)
     self.set_setting('PTHREAD_POOL_SIZE', 1)
-    self.emcc_args += ['--bind', '--post-js=' + test_file('core/pthread/test_embind_sync_if_pthread_delayed.post.js')]
+    self.emcc_args += ['-lembind', '--post-js=' + test_file('core/pthread/test_embind_sync_if_pthread_delayed.post.js')]
     self.do_run_in_out_file_test(test_file('core/pthread/test_embind_sync_if_pthread_delayed.cpp'))
 
   ### Tests for tools
