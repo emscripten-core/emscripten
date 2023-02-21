@@ -41,7 +41,7 @@ global.Runtime = {
   // sure there are not external users.
   // See: https://github.com/emscripten-core/emscripten/issues/15242
   getNativeFieldSize: function(type) {
-    return Math.max(getNativeTypeSize(type), Runtime.QUANTUM_SIZE);
+    return Math.max(getNativeTypeSize(type), Runtime.POINTER_SIZE);
   },
 
   POINTER_SIZE: POINTER_SIZE,
