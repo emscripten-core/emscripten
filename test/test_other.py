@@ -2736,7 +2736,7 @@ int f() {
       [EMXX,
        test_file('embind/test_finalization.cpp'),
        '--pre-js', test_file('embind/test_finalization.js'),
-       '--bind']
+       '-lembind']
     )
     self.node_args += ['--expose-gc']
     output = self.run_js('a.out.js', engine=config.NODE_JS)
