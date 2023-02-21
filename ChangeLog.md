@@ -33,6 +33,8 @@ See docs/process.md for more on how version tagging works.
   defaults to `emscripten`. Previously it always defaulted to `emscripten`, so
   when a user specified `-fwasm-exceptions`, it resulted in Wasm EH + Emscripten
   SjLj, the combination we do not intend to support for the long term.
+- Added support for Wasm-based AudioWorklets for realtime audio processing
+  (#16449)
 
 3.1.31 - 01/26/23
 -----------------
@@ -47,8 +49,6 @@ See docs/process.md for more on how version tagging works.
 - --pre-js and --post-js files are now fed through the JS preprocessor, just
   like JS library files and the core runtime JS files.  This means they can
   now contain #if/#else/#endif blocks and {{{ }}} macro blocks. (#18525)
-- Added support for Wasm-based AudioWorklets for realtime audio processing
-  (#16449)
 - `-sEXPORT_ALL` can now be used to export symbols on the `Module` object
   when used with `-sMINIMAL_RUNTIME` and `-sMODULARIZE` together. (#17911)
 - The llvm version that emscripten uses was updated to 17.0.0 trunk.
