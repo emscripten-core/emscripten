@@ -1932,7 +1932,7 @@ var ASAN_SHADOW_SIZE = -1
 var USE_OFFSET_CONVERTER = false;
 
 // Whether we should load the WASM source map at runtime.
-// This is enabled automatically when using -g4 with sanitizers.
+// This is enabled automatically when using -gsource-map with sanitizers.
 var LOAD_SOURCE_MAP = false;
 
 // If set to 0, delay undefined symbol report until after wasm-ld runs.  This
