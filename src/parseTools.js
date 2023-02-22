@@ -260,12 +260,12 @@ function indentify(text, indent) {
 // Correction tools
 
 function getHeapOffset(offset, type) {
-  if (!WASM_BIGINT && Runtime.getNativeFieldSize(type) > 4 && type == 'i64') {
+  if (!WASM_BIGINT && getNativeFieldSize(type) > 4 && type == 'i64') {
     // we emulate 64-bit integer values as 32 in asmjs-unknown-emscripten, but not double
     type = 'i32';
   }
 
-  const sz = Runtime.getNativeTypeSize(type);
+  const sz = getNativeTypeSize(type);
   const shifts = Math.log(sz) / Math.LN2;
   return `((${offset})>>${shifts})`;
 }
@@ -371,7 +371,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = '
     // bits, so HEAP64[ptr>>3] might be broken.
     return '(tempI64 = [' + splitI64(value) + '],' +
             makeSetValue(ptr, pos, 'tempI64[0]', 'i32', noNeedFirst, ignore, align, ',') + ',' +
-            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempI64[1]', 'i32', noNeedFirst, ignore, align, ',') + ')';
+            makeSetValue(ptr, getFastValue(pos, '+', getNativeTypeSize('i32')), 'tempI64[1]', 'i32', noNeedFirst, ignore, align, ',') + ')';
   }
 
   const offset = calcFastOffset(ptr, pos);
