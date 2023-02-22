@@ -526,6 +526,9 @@ var LibraryPThread = {
   },
 
   $terminateWorker: function(worker) {
+#if PTHREADS_DEBUG
+    dbg('terminateWorker: ' + worker.workerID);
+#endif
     worker.terminate();
     // terminate() can be asynchronous, so in theory the worker can continue
     // to run for some amount of time after termination.  However from our POV
@@ -942,15 +945,7 @@ var LibraryPThread = {
 #if PROXY_TO_PTHREAD
     {{{ runtimeKeepalivePop() }}};
 #endif
-#if MINIMAL_RUNTIME
     _exit(returnCode);
-#else
-    try {
-      _exit(returnCode);
-    } catch (e) {
-      handleException(e);
-    }
-#endif
   },
 
   emscripten_proxy_to_main_thread_js__deps: ['$withStackSave', '_emscripten_run_in_main_runtime_thread_js'],

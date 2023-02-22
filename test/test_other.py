@@ -2716,7 +2716,7 @@ int f() {
          '-sWASM_ASYNC_COMPILATION=0',
          # This test uses a `CustomSmartPtr` class which has 1MB of data embedded in
          # it which means we need more stack space than normal.
-         '-sTOTAL_STACK=2MB',
+         '-sSTACK_SIZE=2MB',
          '-sIN_TEST_HARNESS'] + args)
 
       if '-sDYNAMIC_EXECUTION=0' in args:
@@ -2736,7 +2736,7 @@ int f() {
       [EMXX,
        test_file('embind/test_finalization.cpp'),
        '--pre-js', test_file('embind/test_finalization.js'),
-       '--bind']
+       '-lembind']
     )
     self.node_args += ['--expose-gc']
     output = self.run_js('a.out.js', engine=config.NODE_JS)
