@@ -1832,7 +1832,10 @@ var SUPPORT_ERRNO = true;
 // MINIMAL_RUNTIME=2 to further enable even more code size optimizations. These
 // opts are quite hacky, and work around limitations in Closure and other parts
 // of the build system, so they may not work in all generated programs (But can
-// be useful for really small programs)
+// be useful for really small programs).
+//
+// By default, no symbols will be exported on the `Module` object. In order
+// to export kept alive symbols, please use `-sEXPORT_KEEPALIVE=1`.
 // [link]
 var MINIMAL_RUNTIME = 0;
 
