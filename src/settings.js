@@ -997,9 +997,6 @@ var EXPORT_ALL = false;
 // If true, we export the symbols that are present in JS onto the Module
 // object.
 // It only does Module['X'] = X;
-//
-// This only applies to MINIMAL_RUNTIME, where symbols aren't exported by
-// default.
 var EXPORT_KEEPALIVE = true;
 
 // Remembers the values of these settings, and makes them accessible

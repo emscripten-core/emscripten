@@ -1313,23 +1313,18 @@ int f() {
       EMSCRIPTEN_KEEPALIVE int libf1() { return 42; }
     ''')
 
-    create_file('main.js', '''
-      var Module = {
-        onRuntimeInitialized: function() {
-          console.log(Module._libf1 ? Module._libf1() : 'unexported');
-        }
+    create_file('pre.js', '''
+      Module.onRuntimeInitialized = () => {
+        console.log(Module._libf1 ? Module._libf1() : 'unexported');
       };
     ''')
 
     # By default, all kept alive functions should be exported.
-    self.emcc('main.c', ['--pre-js', 'main.js'], output_filename='test.js')
-    self.assertContained('42\n', self.run_js('test.js'))
+    self.do_runf('main.c', '42\n', emcc_args=['--pre-js', 'pre.js'])
 
     # Ensures that EXPORT_KEEPALIVE=0 remove the exports
-    self.emcc('main.c', ['-sEXPORT_KEEPALIVE=0', '--pre-js', 'main.js'], output_filename='test.js')
-    self.assertContained('unexported', self.run_js('test.js'))
+    self.do_runf('main.c', 'unexported\n', emcc_args=['-sEXPORT_KEEPALIVE=0', '--pre-js', 'pre.js'])
 
-  @requires_node
   def test_minimal_modularize_export_keepalive(self):
     create_file('main.c', r'''
       #include <emscripten.h>
@@ -1342,16 +1337,14 @@ int f() {
       write_file('main.js', f'{runtime}\nModule().then((mod) => console.log(mod._libf1()));')
 
     # By default, no symbols should be exported when using MINIMAL_RUNTIME.
-    self.emcc('main.c', ['-sMODULARIZE=1', '-sMINIMAL_RUNTIME=2'], output_filename='test.js')
+    self.emcc('main.c', ['-sMODULARIZE=1', '-sMINIMAL_RUNTIME=2', '-sASSERTIONS=0'], output_filename='test.js')
     write_js_main()
-    output = self.expect_fail(config.NODE_JS + ['main.js'])
-    self.assertContained('TypeError: mod._libf1 is not a function', output)
+    self.assertContained('TypeError: mod._libf1 is not a function', self.run_js('main.js', assert_returncode=NON_ZERO))
 
     # Ensures that EXPORT_KEEPALIVE=1 exports the symbols.
-    self.emcc('main.c', ['-sMODULARIZE=1', '-sMINIMAL_RUNTIME=2', '-sEXPORT_KEEPALIVE=1'], output_filename='test.js')
+    self.emcc('main.c', ['-sMODULARIZE=1', '-sMINIMAL_RUNTIME=2', '-sEXPORT_KEEPALIVE=1', '-sASSERTIONS=0'], output_filename='test.js')
     write_js_main()
-    output = self.run_process(config.NODE_JS + ['main.js'], stdout=PIPE, stderr=PIPE)
-    self.assertContained('42\n', output.stdout)
+    self.assertContained('42\n', self.run_js('main.js'))
 
   def test_minimal_runtime_export_all_modularize(self):
     """This test ensures that MODULARIZE and EXPORT_ALL work simultaneously.
