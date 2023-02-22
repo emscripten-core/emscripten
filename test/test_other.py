@@ -1307,6 +1307,37 @@ int f() {
     self.emcc('lib.c', ['-Oz', '-sEXPORT_ALL', '-sLINKABLE', '--pre-js', 'main.js'], output_filename='a.out.js')
     self.assertContained('libf1\nlibf2\n', self.run_js('a.out.js'))
 
+  def test_modularize_export_keepalive(self):
+    create_file('main.c', r'''
+      #include <emscripten.h>
+      EMSCRIPTEN_KEEPALIVE int libf1() { return 42; }
+    ''')
+
+    # By default, all kept alive functions should be exported.
+    self.emcc('main.c', ['-sMODULARIZE=1'], output_filename='test.js')
+
+    # print(read_file('test.js'))
+
+    assert ("Module[\"_libf1\"] = " in read_file('test.js'))
+
+    # Ensures that EXPORT_KEEPALIVE=0 remove the exports
+    self.emcc('main.c', ['-sMODULARIZE=1', '-sEXPORT_KEEPALIVE=0'], output_filename='test.js')
+    assert (not ("Module[\"_libf1\"] = " in read_file('test.js')))
+
+  def test_minimal_modularize_export_keepalive(self):
+    create_file('main.c', r'''
+      #include <emscripten.h>
+      EMSCRIPTEN_KEEPALIVE int libf1() { return 42; }
+    ''')
+
+    # By default, no symbols should be exported when using MINIMAL_RUNTIME.
+    self.emcc('main.c', ['-sMODULARIZE=1', '-sMINIMAL_RUNTIME=2'], output_filename='test.js')
+    assert (not ("Module[\"_libf1\"] = " in read_file('test.js')))
+
+    # Ensures that EXPORT_KEEPALIVE=1 exports the symbols.
+    self.emcc('main.c', ['-sMODULARIZE=1', '-sMINIMAL_RUNTIME=2', '-sEXPORT_KEEPALIVE'], output_filename='test.js')
+    assert ("Module[\"_libf1\"] = " in read_file('test.js'))
+
   def test_minimal_runtime_export_all_modularize(self):
     """This test ensures that MODULARIZE and EXPORT_ALL work simultaneously.
 
