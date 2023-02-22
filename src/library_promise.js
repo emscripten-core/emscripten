@@ -155,7 +155,7 @@ mergeInto(LibraryManager.library, {
   emscripten_promise_all: function(idBuf, resultBuf, size) {
     var promises = [];
     for (var i = 0; i < size; i++) {
-      var id = {{{ makeGetValue('idBuf', `i*${Runtime.POINTER_SIZE}`, 'i32') }}};
+      var id = {{{ makeGetValue('idBuf', `i*${POINTER_SIZE}`, 'i32') }}};
       promises[i] = getPromise(id);
     }
 #if RUNTIME_DEBUG
@@ -166,7 +166,7 @@ mergeInto(LibraryManager.library, {
         if (resultBuf) {
           for (var i = 0; i < size; i++) {
             var result = results[i];
-            {{{ makeSetValue('resultBuf', `i*${Runtime.POINTER_SIZE}`, 'result', '*') }}};
+            {{{ makeSetValue('resultBuf', `i*${POINTER_SIZE}`, 'result', '*') }}};
           }
         }
         return resultBuf;

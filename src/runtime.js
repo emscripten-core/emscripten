@@ -34,16 +34,6 @@ function getNativeTypeSize(type) {
   }
 }
 
-global.Runtime = {
-  getNativeTypeSize: getNativeTypeSize,
-
-  // TODO(sbc): This function is unused by emscripten but we can't be
-  // sure there are not external users.
-  // See: https://github.com/emscripten-core/emscripten/issues/15242
-  getNativeFieldSize: function(type) {
-    return Math.max(getNativeTypeSize(type), Runtime.POINTER_SIZE);
-  },
-
-  POINTER_SIZE: POINTER_SIZE,
-  QUANTUM_SIZE: POINTER_SIZE,
-};
+function getNativeFieldSize(type) {
+  return Math.max(getNativeTypeSize(type), POINTER_SIZE);
+}

@@ -392,7 +392,7 @@ mergeInto(LibraryManager.library, {
     // int getloadavg(double loadavg[], int nelem);
     // http://linux.die.net/man/3/getloadavg
     var limit = Math.min(nelem, 3);
-    var doubleSize = {{{ Runtime.getNativeTypeSize('double') }}};
+    var doubleSize = {{{ getNativeTypeSize('double') }}};
     for (var i = 0; i < limit; i++) {
       {{{ makeSetValue('loadavg', 'i * doubleSize', '0.1', 'double') }}};
     }
@@ -624,10 +624,10 @@ mergeInto(LibraryManager.library, {
     if (summerOffset < winterOffset) {
       // Northern hemisphere
       {{{ makeSetValue('tzname', '0', 'winterNamePtr', POINTER_TYPE) }}};
-      {{{ makeSetValue('tzname', Runtime.POINTER_SIZE, 'summerNamePtr', POINTER_TYPE) }}};
+      {{{ makeSetValue('tzname', POINTER_SIZE, 'summerNamePtr', POINTER_TYPE) }}};
     } else {
       {{{ makeSetValue('tzname', '0', 'summerNamePtr', POINTER_TYPE) }}};
-      {{{ makeSetValue('tzname', Runtime.POINTER_SIZE, 'winterNamePtr', POINTER_TYPE) }}};
+      {{{ makeSetValue('tzname', POINTER_SIZE, 'winterNamePtr', POINTER_TYPE) }}};
     }
   },
 

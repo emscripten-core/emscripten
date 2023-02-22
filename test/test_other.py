@@ -13026,3 +13026,18 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       test_file('third_party/googletest/googletest/src/gtest_main.cc'),
     ]
     self.do_other_test('test_googletest.cc')
+
+  def test_parseTools_legacy(self):
+    create_file('post.js', '''
+      err(_foo());
+    ''')
+    create_file('lib.js', '''
+      mergeInto(LibraryManager.library, {
+        foo: function() {
+            return {{{ Runtime.POINTER_SIZE }}};
+          }
+      });
+    ''')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', 'foo')
+    self.do_runf(test_file('hello_world.c'), '4\nhello, world!',
+                 emcc_args=['--post-js=post.js', '--js-library=lib.js'])
