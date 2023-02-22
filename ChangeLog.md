@@ -21,6 +21,7 @@ See docs/process.md for more on how version tagging works.
 3.1.33 (in development)
 -----------------------
 - Update SDL2_ttf port to 2.20.2 (#18804)
+- Update Harfbuzz port from 3.2.0 to 7.0.1 (#18821)
 
 3.1.32 - 02/17/23
 -----------------
