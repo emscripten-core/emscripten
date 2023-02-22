@@ -994,6 +994,14 @@ var EXPORTED_FUNCTIONS = [];
 // [link]
 var EXPORT_ALL = false;
 
+// If true, we export the symbols that are present in JS onto the Module
+// object.
+// It only does Module['X'] = X;
+//
+// This only applies to MINIMAL_RUNTIME, where symbols aren't exported by
+// default.
+var EXPORT_KEEPALIVE = true;
+
 // Remembers the values of these settings, and makes them accessible
 // through getCompilerSetting and emscripten_get_compiler_setting.
 // To see what is retained, look for compilerSettings in the generated code.
