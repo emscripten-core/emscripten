@@ -1494,7 +1494,7 @@ Default value: false
 NODERAWFS
 =========
 
-Enables support for the NODERAWFS filesystem backend. This is a special
+Enables support for the ``NODERAWFS`` filesystem backend. This is a special
 backend as it replaces all normal filesystem access with direct Node.js
 operations, without the need to do ``FS.mount()``, and this backend only
 works with Node.js. The initial working directory will be same as
@@ -1503,6 +1503,20 @@ Node.js to access the real local filesystem on your OS, the code will not
 necessarily be portable between OSes - it will be as portable as a Node.js
 program would be, which means that differences in how the underlying OS
 handles permissions and errors and so forth may be noticeable.
+
+Enabling this setting will also enable :ref:`NODE_HOST_ENV` by default.
+
+Default value: false
+
+.. _node_host_env:
+
+NODE_HOST_ENV
+=============
+
+When running under Node, expose the underlying OS environment variables.
+This is similar to how ``NODERAWFS`` exposes the underlying FS.
+This setting gets enabled by default when ``NODERAWFS`` is enabled, but can
+also be controlled separately.
 
 Default value: false
 

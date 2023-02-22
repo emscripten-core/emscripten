@@ -1405,7 +1405,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   # see https://github.com/emscripten-core/emscripten/issues/18723#issuecomment-1429236996
   if settings.MODULARIZE:
     default_setting('NODEJS_CATCH_REJECTION', 0)
-    default_setting('NODEJS_CATCH_EXIT', 0)
 
   if settings.POLYFILL:
     # Emscripten requires certain ES6+ constructs by default in library code
@@ -1883,6 +1882,20 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.REQUIRED_EXPORTS.append('__wasm_call_ctors')
   if settings.PTHREADS:
     settings.REQUIRED_EXPORTS.append('_emscripten_tls_init')
+
+  if settings.NODERAWFS:
+    default_setting('NODE_HOST_ENV', 1)
+
+  if not settings.ENVIRONMENT_MAY_BE_NODE:
+    # Node-specific settings only make sense if ENVIRONMENT_MAY_BE_NODE
+    if settings.NODERAWFS:
+      diagnostics.warning('unused-command-line-argument', 'NODERAWFS ignored since `node` not in `ENVIRONMENT`')
+    if settings.NODE_CODE_CACHING:
+      diagnostics.warning('unused-command-line-argument', 'NODE_CODE_CACHING ignored since `node` not in `ENVIRONMENT`')
+    if settings.NODEJS_CATCH_EXIT:
+      diagnostics.warning('unused-command-line-argument', 'NODEJS_CATCH_EXIT ignored since `node` not in `ENVIRONMENT`')
+    if settings.NODEJS_CATCH_REJECTION and 'NODEJS_CATCH_REJECTION' in user_settings:
+      diagnostics.warning('unused-command-line-argument', 'NODEJS_CATCH_REJECTION ignored since `node` not in `ENVIRONMENT`')
 
   settings.PRE_JS_FILES = options.pre_js
   settings.POST_JS_FILES = options.post_js
