@@ -17,7 +17,6 @@ JavaScript and compiled C or C++:
   created with:
 
   - :ref:`Embind or WebIDL-Binder<interacting-with-code-binding-cpp>`
-  - :ref:`Emnapi (Node-API)<interacting-with-code-emnapi>`
 
 - Call JavaScript functions from **C/C++**:
 
