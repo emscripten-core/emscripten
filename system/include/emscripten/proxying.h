@@ -8,6 +8,7 @@
 #pragma once
 
 #include <emscripten/emscripten.h>
+#include <emscripten/promise.h>
 #include <pthread.h>
 
 #ifdef __cplusplus
@@ -101,6 +102,18 @@ int emscripten_proxy_callback_with_ctx(em_proxying_queue* q,
                                        void (*callback)(void*),
                                        void (*cancel)(void*),
                                        void* arg);
+
+__attribute__((warn_unused_result)) em_promise_t
+emscripten_proxy_promise(em_proxying_queue* q,
+                         pthread_t target_thread,
+                         void (*func)(void*),
+                         void* arg);
+
+__attribute__((warn_unused_result)) em_promise_t
+emscripten_proxy_promise_with_ctx(em_proxying_queue* q,
+                                  pthread_t target_thread,
+                                  void (*func)(em_proxying_ctx*, void*),
+                                  void* arg);
 
 #ifdef __cplusplus
 } // extern "C"
