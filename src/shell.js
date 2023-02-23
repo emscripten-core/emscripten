@@ -330,7 +330,7 @@ if (ENVIRONMENT_IS_SHELL) {
       // consistency with node (and the web) we schedule the actual quit call
       // using a setTimeout to give the current stack and any exception handlers
       // a chance to run.  This enables features such as addOnPostRun (which
-      // expected to be able to run code main returns).
+      // expected to be able to run code after main returns).
       setTimeout(() => {
         if (!(toThrow instanceof ExitStatus)) {
           let toLog = toThrow;
