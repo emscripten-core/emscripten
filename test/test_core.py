@@ -7047,9 +7047,6 @@ void* operator new(size_t size) {
 
         return output
 
-      # Explicitly disable EXIT_RUNTIME, since otherwise addOnPostRun does not work.
-      # https://github.com/emscripten-core/emscripten/issues/15080
-      self.set_setting('EXIT_RUNTIME', 0)
       self.emcc_args += ['--minify=0'] # to compare the versions
       self.emcc_args += ['--pre-js', 'pre.js']
 
@@ -8771,14 +8768,22 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_postrun_exception(self):
     # verify that an exception thrown in postRun() will not trigger the
     # compilation failed handler, and will be printed to stderr.
-    # Explicitly disable EXIT_RUNTIME, since otherwise addOnPostRun does not work.
-    # https://github.com/emscripten-core/emscripten/issues/15080
-    self.set_setting('EXIT_RUNTIME', 0)
     self.add_post_run('ThisFunctionDoesNotExist()')
     self.build(test_file('core/test_hello_world.c'))
     output = self.run_js('test_hello_world.js', assert_returncode=NON_ZERO)
     self.assertStartswith(output, 'hello, world!')
     self.assertContained('ThisFunctionDoesNotExist is not defined', output)
+
+  # Depends on addOnPostRun, which doesn't currently work under v8 shell
+  # See https://github.com/emscripten-core/emscripten/issues/15080
+  @requires_node
+  def test_postrun_exit_runtime(self):
+    create_file('post.js', '''
+      addOnPostRun(() => err('post run\\n'));
+    ''')
+    self.set_setting('EXIT_RUNTIME')
+    self.emcc_args.append('--post-js=post.js')
+    self.do_runf(test_file('hello_world.c'), 'post run')
 
   # Tests that building with -sDECLARE_ASM_MODULE_EXPORTS=0 works
   def test_no_declare_asm_module_exports(self):
@@ -9609,11 +9614,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_stack_get_free.c')
 
   # Tests settings.ABORT_ON_WASM_EXCEPTIONS
-  @no_wasm64('missing "crashing"')
+  # Depends on addOnPostRun, which doesn't currently work under v8 shell
+  # See https://github.com/emscripten-core/emscripten/issues/15080
+  @requires_node
   def test_abort_on_exceptions(self):
-    # Explicitly disable EXIT_RUNTIME, since otherwise addOnPostRun does not work.
-    # https://github.com/emscripten-core/emscripten/issues/15080
-    self.set_setting('EXIT_RUNTIME', 0)
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('ALLOW_TABLE_GROWTH')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
