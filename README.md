@@ -48,3 +48,5 @@ you to do pretty much anything you want with a compiler, including
 commercial and non-commercial use).
 
 See `LICENSE` for the full content of the licenses.
+
+test
