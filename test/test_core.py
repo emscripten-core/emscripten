@@ -8774,9 +8774,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertStartswith(output, 'hello, world!')
     self.assertContained('ThisFunctionDoesNotExist is not defined', output)
 
-  # Depends on addOnPostRun, which doesn't currently work under v8 shell
-  # See https://github.com/emscripten-core/emscripten/issues/15080
-  @requires_node
   def test_postrun_exit_runtime(self):
     create_file('post.js', '''
       addOnPostRun(() => err('post run\\n'));
@@ -9614,9 +9611,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_stack_get_free.c')
 
   # Tests settings.ABORT_ON_WASM_EXCEPTIONS
-  # Depends on addOnPostRun, which doesn't currently work under v8 shell
-  # See https://github.com/emscripten-core/emscripten/issues/15080
-  @requires_node
   def test_abort_on_exceptions(self):
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('ALLOW_TABLE_GROWTH')
