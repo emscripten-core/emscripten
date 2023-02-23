@@ -6,69 +6,13 @@
 import os
 import logging
 
-VERSION = '3.2.0'
-HASH = '2e5ab5ad83a0d8801abd3f82a276f776a0ad330edc0ab843f879dd7ad3fd2e0dc0e9a3efbb6c5f2e67d14c0e37f0d9abdb40c5e25d8231a357c0025669f219c3'
+TAG = '7.0.1'
+HASH = 'd276f3a8c9db2efccc310747c2eac0b2eed0c8f709e74a6603cffa30847cca449ab3bb42e2cc2cfa3f192306662b901a382ff41df55aac28d1c6e928ff2f83eb'
 
 deps = ['freetype']
 variants = {'harfbuzz-mt': {'USE_PTHREADS': 1}}
 
-srcs = '''
-hb-aat-layout.cc
-hb-aat-map.cc
-hb-blob.cc
-hb-buffer-serialize.cc
-hb-buffer.cc
-hb-common.cc
-hb-draw.cc
-hb-face.cc
-hb-fallback-shape.cc
-hb-font.cc
-hb-map.cc
-hb-number.cc
-hb-ot-cff1-table.cc
-hb-ot-cff2-table.cc
-hb-ot-color.cc
-hb-ot-face.cc
-hb-ot-font.cc
-hb-ot-layout.cc
-hb-ot-map.cc
-hb-ot-math.cc
-hb-ot-meta.cc
-hb-ot-metrics.cc
-hb-ot-name.cc
-hb-ot-shape-complex-arabic.cc
-hb-ot-shape-complex-default.cc
-hb-ot-shape-complex-hangul.cc
-hb-ot-shape-complex-hebrew.cc
-hb-ot-shape-complex-indic-table.cc
-hb-ot-shape-complex-indic.cc
-hb-ot-shape-complex-khmer.cc
-hb-ot-shape-complex-myanmar.cc
-hb-ot-shape-complex-syllabic.cc
-hb-ot-shape-complex-thai.cc
-hb-ot-shape-complex-use.cc
-hb-ot-shape-complex-vowel-constraints.cc
-hb-ot-shape-fallback.cc
-hb-ot-shape-normalize.cc
-hb-ot-shape.cc
-hb-ot-tag.cc
-hb-ot-var.cc
-hb-set.cc
-hb-shape-plan.cc
-hb-shape.cc
-hb-shaper.cc
-hb-static.cc
-hb-style.cc
-hb-ucd.cc
-hb-unicode.cc
-hb-glib.cc
-hb-ft.cc
-hb-graphite2.cc
-hb-uniscribe.cc
-hb-gdi.cc
-hb-directwrite.cc
-hb-coretext.cc
-'''.split()
+srcs = ['harfbuzz.cc']
 
 
 def needed(settings):
@@ -80,15 +24,12 @@ def get_lib_name(settings):
 
 
 def get(ports, settings, shared):
-  # Harfbuzz only published `.xz` packages, but not all python builds support
-  # unpacking lzma archives, so we mirror a `.gz` version:
-  # See https://github.com/emscripten-core/emsdk/issues/982
-  ports.fetch_project('harfbuzz', f'https://storage.googleapis.com/webassembly/emscripten-ports/harfbuzz-{VERSION}.tar.gz', sha512hash=HASH)
+  ports.fetch_project('harfbuzz', f'https://github.com/harfbuzz/harfbuzz/archive/refs/tags/{TAG}.tar.gz', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: harfbuzz')
 
-    source_path = os.path.join(ports.get_dir(), 'harfbuzz', 'harfbuzz-' + VERSION)
+    source_path = os.path.join(ports.get_dir(), 'harfbuzz', 'harfbuzz-' + TAG)
     freetype_include = ports.get_include_dir('freetype2')
     ports.install_headers(os.path.join(source_path, 'src'), target='harfbuzz')
 
