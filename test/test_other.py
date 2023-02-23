@@ -1326,23 +1326,31 @@ int f() {
     self.do_runf('main.c', 'unexported\n', emcc_args=['-sEXPORT_KEEPALIVE=0', '--pre-js', 'pre.js'])
 
   def test_minimal_modularize_export_keepalive(self):
+    self.set_setting('MODULARIZE')
+    self.set_setting('MINIMAL_RUNTIME')
+
     create_file('main.c', r'''
       #include <emscripten.h>
       EMSCRIPTEN_KEEPALIVE int libf1() { return 42; }
     ''')
 
-    # With MINIMAL_RUNTIME, the module isn't exported.
     def write_js_main():
+      """
+      With MINIMAL_RUNTIME, the module instantiation function isn't exported neither as a UMD nor as an ES6 module.
+      Thus, it's impossible to use `require` or `import`.
+
+      This function simply appends the instantiation code to the generated code.
+      """
       runtime = read_file('test.js')
       write_file('main.js', f'{runtime}\nModule().then((mod) => console.log(mod._libf1()));')
 
     # By default, no symbols should be exported when using MINIMAL_RUNTIME.
-    self.emcc('main.c', ['-sMODULARIZE=1', '-sMINIMAL_RUNTIME=2', '-sASSERTIONS=0'], output_filename='test.js')
+    self.emcc('main.c', [], output_filename='test.js')
     write_js_main()
     self.assertContained('TypeError: mod._libf1 is not a function', self.run_js('main.js', assert_returncode=NON_ZERO))
 
     # Ensures that EXPORT_KEEPALIVE=1 exports the symbols.
-    self.emcc('main.c', ['-sMODULARIZE=1', '-sMINIMAL_RUNTIME=2', '-sEXPORT_KEEPALIVE=1', '-sASSERTIONS=0'], output_filename='test.js')
+    self.emcc('main.c', ['-sEXPORT_KEEPALIVE=1'], output_filename='test.js')
     write_js_main()
     self.assertContained('42\n', self.run_js('main.js'))
 
