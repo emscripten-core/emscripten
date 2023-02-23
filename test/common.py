@@ -193,6 +193,16 @@ def requires_wasm64(func):
   return decorated
 
 
+def requires_externref(func):
+  assert callable(func)
+
+  def decorated(self, *args, **kwargs):
+    self.require_externref()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 def requires_wasm_eh(func):
   assert callable(func)
 
@@ -507,6 +517,23 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_SIMD is set)')
     else:
       self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
+
+  def require_externref(self):
+    if config.NODE_JS and config.NODE_JS in self.js_engines:
+      version = shared.check_node_version()
+      if version >= (15, 0, 0):
+        self.js_engines = [config.NODE_JS]
+        self.node_args += ['--experimental-wasm-reftypes']
+
+    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+      self.emcc_args.append('-sENVIRONMENT=shell')
+      self.js_engines = [config.V8_ENGINE]
+      return
+
+    if 'EMTEST_SKIP_EXTERNREF' in os.environ:
+      self.skipTest('test requires node >= 15 or d8 (and EMTEST_SKIP_EXTERNREF is set)')
+    else:
+      self.fail('either d8 or node >= 15 required to run externref tests.  Use EMTEST_SKIP_EXTERNREF to skip')
 
   def require_wasm_eh(self):
     if config.NODE_JS and config.NODE_JS in self.js_engines:

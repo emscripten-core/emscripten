@@ -27,7 +27,7 @@ import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, node_pthreads, also_with_wasm_bigint
-from common import read_file, read_binary, requires_v8, requires_node, compiler_for
+from common import read_file, read_binary, requires_v8, requires_node, compiler_for, requires_externref
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
 
@@ -237,7 +237,6 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
         # if we are impure, disallow all wasm engines
         if impure:
           self.wasm_engines = []
-        self.js_engines = [config.NODE_JS]
         self.node_args += shared.node_bigint_flags()
         func(self)
         if wasm2c:
@@ -8251,11 +8250,6 @@ int main() {
 
     self.do_runf('main.c', 'hello 0\nhello 1\nhello 2\nhello 3\nhello 4\n')
 
-  @requires_v8
-  @no_wasm64('TODO: asyncify for wasm64')
-  def test_async_hello_v8(self):
-    self.test_async_hello()
-
   @no_wasm64('TODO: asyncify for wasm64')
   def test_async_ccall_bad(self):
     # check bad ccall use
@@ -8632,8 +8626,8 @@ Module['onRuntimeInitialized'] = function() {
     if not self.is_wasm():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
 
-    cmd = [EMCC, test_file('small_hello_world.c'), '-sWASM=2'] + args
-    self.run_process(cmd)
+    self.emcc_args += args
+    self.run_process([EMCC, test_file('small_hello_world.c'), '-sWASM=2'] + self.get_emcc_args())
 
     # First run with WebAssembly support enabled
     # Move the Wasm2js fallback away to test it is not accidentally getting loaded.
@@ -9745,8 +9739,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.maybe_closure()
     self.do_core_test('test_em_async_js.c')
 
-  @requires_v8
   @no_wasm2js('wasm2js does not support reference types')
+  @requires_externref
   def test_externref(self):
     self.run_process([EMCC, '-c', test_file('core/test_externref.s'), '-o', 'asm.o'] + self.get_emcc_args(ldflags=False))
     self.emcc_args += ['--js-library', test_file('core/test_externref.js')]
@@ -9845,6 +9839,8 @@ core2g = make_run('core2g', emcc_args=['-O2', '-g'])
 core3 = make_run('core3', emcc_args=['-O3'])
 cores = make_run('cores', emcc_args=['-Os'])
 corez = make_run('corez', emcc_args=['-Oz'])
+
+corev8 = make_run('corev8', emcc_args=[], require_v8=True)
 
 # MEMORY64=1
 wasm64 = make_run('wasm64', emcc_args=['-Wno-experimental', '--profiling-funcs'],

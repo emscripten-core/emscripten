@@ -438,6 +438,11 @@ jobs:
     steps:
       - run-tests-linux:
           test_targets: "posixtest"
+  test-corev8:
+    executor: bionic
+    steps:
+      - run-tests-linux:
+          test_targets: "corev8"
   test-core0:
     executor: bionic
     steps:
@@ -756,6 +761,9 @@ workflows:
           requires:
             - build-linux
       - test-posixtest:
+          requires:
+            - build-linux
+      - test-corev8:
           requires:
             - build-linux
       - test-core0:

@@ -342,16 +342,24 @@ if (ENVIRONMENT_IS_SHELL) {
       // using a setTimeout to give the current stack and any exception handlers
       // a chance to run.  This enables features such as addOnPostRun (which
       // expected to be able to run code after main returns).
-      setTimeout(() => {
-        if (!(toThrow instanceof ExitStatus)) {
-          let toLog = toThrow;
-          if (toThrow && typeof toThrow == 'object' && toThrow.stack) {
-            toLog = [toThrow, toThrow.stack];
+      if (!runtimeKeepaliveCounter) {
+        setTimeout(() => {
+          if (!(toThrow instanceof ExitStatus)) {
+            let toLog = toThrow;
+            if (toThrow && typeof toThrow == 'object' && toThrow.stack) {
+              toLog = [toThrow, toThrow.stack];
+            }
+            err('exiting due to exception: ' + toLog);
           }
-          err('exiting due to exception: ' + toLog);
-        }
-        quit(status);
-      });
+#if RUNTIME_DEBUG
+          dbg('d8: calling quit: ' + status);
+#endif
+          quit(status);
+        });
+      }
+#if RUNTIME_DEBUG
+      dbg('d8: rethowing from quit_: ' + status);
+#endif
       throw toThrow;
     };
   }

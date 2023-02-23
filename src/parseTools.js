@@ -936,7 +936,7 @@ function makeMalloc(source, param) {
 // We skip this completely in MINIMAL_RUNTIME and also in builds that
 // don't ever need to exit the runtime.
 function runtimeKeepalivePush() {
-  if (MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && PTHREADS == 0)) return '';
+  if (MINIMAL_RUNTIME) return '';
   return 'runtimeKeepalivePush();';
 }
 
@@ -945,7 +945,7 @@ function runtimeKeepalivePush() {
 // We skip this completely in MINIMAL_RUNTIME and also in builds that
 // don't ever need to exit the runtime.
 function runtimeKeepalivePop() {
-  if (MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && PTHREADS == 0)) return '';
+  if (MINIMAL_RUNTIME) return '';
   return 'runtimeKeepalivePop();';
 }
 
