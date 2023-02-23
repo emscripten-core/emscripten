@@ -5030,10 +5030,10 @@ Module["preRun"].push(function () {
 
   @requires_threads
   def test_embind_with_pthreads(self):
-    self.btest_exit(test_file('embind/test_pthreads.cpp'), args=['--bind', '-pthread', '-sPTHREAD_POOL_SIZE=2'])
+    self.btest_exit(test_file('embind/test_pthreads.cpp'), args=['-lembind', '-pthread', '-sPTHREAD_POOL_SIZE=2'])
 
   def test_embind_with_asyncify(self):
-    self.btest('embind_with_asyncify.cpp', '1', args=['--bind', '-sASYNCIFY'])
+    self.btest('embind_with_asyncify.cpp', '1', args=['-lembind', '-sASYNCIFY'])
 
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):

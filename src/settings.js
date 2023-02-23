@@ -333,9 +333,9 @@ var EXCEPTION_DEBUG = false;
 var DEMANGLE_SUPPORT = false;
 
 // Print out when we enter a library call (library*.js). You can also unset
-// Runtime.debug at runtime for logging to cease, and can set it when you want
+// runtimeDebug at runtime for logging to cease, and can set it when you want
 // it back. A simple way to set it in C++ is
-//   emscripten_run_script("Runtime.debug = ...;");
+//   emscripten_run_script("runtimeDebug = ...;");
 // [link]
 var LIBRARY_DEBUG = false;
 
@@ -995,7 +995,7 @@ var EXPORTED_FUNCTIONS = [];
 var EXPORT_ALL = false;
 
 // Remembers the values of these settings, and makes them accessible
-// through Runtime.getCompilerSetting and emscripten_get_compiler_setting.
+// through getCompilerSetting and emscripten_get_compiler_setting.
 // To see what is retained, look for compilerSettings in the generated code.
 // [link]
 var RETAIN_COMPILER_SETTINGS = false;
@@ -1265,7 +1265,7 @@ var EXPORT_NAME = 'Module';
 // in particular the 'unsafe-eval' and 'wasm-unsafe-eval' policies.
 //
 // When this flag is set, the following features (linker flags) are unavailable:
-//  -sRELOCATABLE: the function Runtime.loadDynamicLibrary would need to eval().
+//  -sRELOCATABLE: the function loadDynamicLibrary would need to eval().
 // and some features may fall back to slower code paths when they need to:
 // Embind: uses eval() to jit functions for speed.
 //
@@ -1932,7 +1932,7 @@ var ASAN_SHADOW_SIZE = -1
 var USE_OFFSET_CONVERTER = false;
 
 // Whether we should load the WASM source map at runtime.
-// This is enabled automatically when using -g4 with sanitizers.
+// This is enabled automatically when using -gsource-map with sanitizers.
 var LOAD_SOURCE_MAP = false;
 
 // If set to 0, delay undefined symbol report until after wasm-ld runs.  This

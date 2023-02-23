@@ -1240,7 +1240,7 @@ var LibraryGLFW = {
   glfwGetMonitors: function(count) {
     {{{ makeSetValue('count', '0', '1', 'i32') }}};
     if (!GLFW.monitors) {
-      GLFW.monitors = {{{ makeMalloc('glfwGetMonitors', Runtime.POINTER_SIZE) }}};
+      GLFW.monitors = {{{ makeMalloc('glfwGetMonitors', POINTER_SIZE) }}};
       {{{ makeSetValue('GLFW.monitors', '0', '1', 'i32') }}};
     }
     return GLFW.monitors;
