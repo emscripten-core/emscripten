@@ -4224,11 +4224,6 @@ ok
     self.do_basic_dylink_test()
 
   @needs_dylink
-  def test_dylink_basics_no_lld_report_undefined(self):
-    self.set_setting('LLD_REPORT_UNDEFINED', 0)
-    self.do_basic_dylink_test()
-
-  @needs_dylink
   def test_dylink_no_export(self):
     self.set_setting('NO_DECLARE_ASM_MODULE_EXPORTS')
     self.do_basic_dylink_test()
