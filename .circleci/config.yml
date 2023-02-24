@@ -591,6 +591,7 @@ jobs:
             other.test_node_emscripten_num_logical_cores
             core2.test_pthread_create
             core2.test_i64_invoke_bigint
+            core2.test_sse2
             core2.test_source_map
             core2.test_exceptions_wasm
             core2.test_pthread_unhandledrejection"
@@ -630,6 +631,7 @@ jobs:
       EMTEST_SKIP_V8: "1"
       EMTEST_SKIP_EH: "1"
       EMTEST_SKIP_WASM64: "1"
+      EMTEST_SKIP_SIMD: "1"
     steps:
       - checkout
       - run:
@@ -701,6 +703,7 @@ jobs:
       EMTEST_SKIP_V8: "1"
       EMTEST_SKIP_EH: "1"
       EMTEST_SKIP_WASM64: "1"
+      EMTEST_SKIP_SIMD: "1"
       EMCC_SKIP_SANITY_CHECK: "1"
     steps:
       - run:
