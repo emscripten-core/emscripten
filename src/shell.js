@@ -120,9 +120,37 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
 #endif
 #endif // ENVIRONMENT
 
+#if ENVIRONMENT_MAY_BE_NODE && USE_PTHREADS
+if (ENVIRONMENT_IS_NODE) {
+  // Polyfill the performance object, which emscripten pthreads support
+  // depends on for good timing.
+  if (typeof performance == 'undefined') {
+    global.performance = require('perf_hooks').performance;
+  }
+}
+
+// Set up the out() and err() hooks, which are how we can print to stdout or
+// stderr, respectively.
+// Normally just binding console.log/console.warn here works fine, but
+// under node (with workers) we see missing/out-of-order messages so route
+// directly to stdout and stderr.
+// See https://github.com/emscripten-core/emscripten/issues/14804
+var defaultPrint = console.log.bind(console);
+var defaultPrintErr = console.warn.bind(console);
+if (ENVIRONMENT_IS_NODE) {
+  defaultPrint = (str) => fs.writeSync(1, str + '\n');
+  defaultPrintErr = (str) => fs.writeSync(2, str + '\n');
+}
+{{{ makeModuleReceiveWithVar('out', 'print',    'defaultPrint',    true) }}}
+{{{ makeModuleReceiveWithVar('err', 'printErr', 'defaultPrintErr', true) }}}
+#else
+{{{ makeModuleReceiveWithVar('out', 'print',    'console.log.bind(console)',  true) }}}
+{{{ makeModuleReceiveWithVar('err', 'printErr', 'console.error.bind(console)', true) }}}
+#endif
+
 #if ASSERTIONS
 if (Module['ENVIRONMENT']) {
-  throw new Error('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node)');
+  abort('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node)');
 }
 #endif
 
@@ -175,7 +203,9 @@ var read_,
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT && ASSERTIONS
-  if (typeof process == 'undefined' || !process.release || process.release.name !== 'node') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+  if (typeof process == 'undefined' || !process.release || process.release.name !== 'node') {
+    abort('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+  }
 #endif
 
 #if ASSERTIONS
@@ -184,7 +214,7 @@ if (ENVIRONMENT_IS_NODE) {
   numericVersion = (numericVersion[0] * 10000) + (numericVersion[1] * 100) + numericVersion[2] * 1;
   var minVersion = {{{ MIN_NODE_VERSION }}};
   if (numericVersion < {{{ MIN_NODE_VERSION }}}) {
-    throw new Error('This emscripten-generated code requires node {{{ formattedMinNodeVersion() }}} (detected v' + nodeVersion + ')');
+    abort('This emscripten-generated code requires node {{{ formattedMinNodeVersion() }}} (detected v' + nodeVersion + ')');
   }
 #endif
 
@@ -286,7 +316,9 @@ if (ENVIRONMENT_IS_NODE) {
 if (ENVIRONMENT_IS_SHELL) {
 
 #if ENVIRONMENT && ASSERTIONS
-  if ((typeof process == 'object' && typeof require === 'function') || typeof window == 'object' || typeof importScripts == 'function') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+  if ((typeof process == 'object' && typeof require === 'function') || typeof window == 'object' || typeof importScripts == 'function') {
+    abort('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+  }
 #endif
 
   if (typeof read != 'undefined') {
@@ -357,10 +389,8 @@ if (ENVIRONMENT_IS_SHELL) {
   }
 
   if (typeof print != 'undefined') {
-    // Prefer to use print/printErr where they exist, as they usually work better.
-    if (typeof console == 'undefined') console = /** @type{!Console} */({});
-    console.log = /** @type{!function(this:Console, ...*): undefined} */ (print);
-    console.warn = console.error = /** @type{!function(this:Console, ...*): undefined} */ (typeof printErr != 'undefined' ? printErr : print);
+    out = print;
+    err = printErr;
   }
 
 #if WASM == 2
@@ -403,7 +433,9 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   }
 
 #if ENVIRONMENT && ASSERTIONS
-  if (!(typeof window == 'object' || typeof importScripts == 'function')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+  if (!(typeof window == 'object' || typeof importScripts == 'function')) {
+    abort('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+  }
 #endif
 
   // Differentiate the Web Worker from the Node Worker case, as reading must
@@ -423,37 +455,9 @@ if (!ENVIRONMENT_IS_AUDIO_WORKLET)
 #endif
 {
 #if ASSERTIONS
-  throw new Error('environment detection error');
+  abort('environment detection error');
 #endif // ASSERTIONS
 }
-
-#if ENVIRONMENT_MAY_BE_NODE && USE_PTHREADS
-if (ENVIRONMENT_IS_NODE) {
-  // Polyfill the performance object, which emscripten pthreads support
-  // depends on for good timing.
-  if (typeof performance == 'undefined') {
-    global.performance = require('perf_hooks').performance;
-  }
-}
-
-// Set up the out() and err() hooks, which are how we can print to stdout or
-// stderr, respectively.
-// Normally just binding console.log/console.warn here works fine, but
-// under node (with workers) we see missing/out-of-order messages so route
-// directly to stdout and stderr.
-// See https://github.com/emscripten-core/emscripten/issues/14804
-var defaultPrint = console.log.bind(console);
-var defaultPrintErr = console.warn.bind(console);
-if (ENVIRONMENT_IS_NODE) {
-  defaultPrint = (str) => fs.writeSync(1, str + '\n');
-  defaultPrintErr = (str) => fs.writeSync(2, str + '\n');
-}
-{{{ makeModuleReceiveWithVar('out', 'print',    'defaultPrint',    true) }}}
-{{{ makeModuleReceiveWithVar('err', 'printErr', 'defaultPrintErr', true) }}}
-#else
-{{{ makeModuleReceiveWithVar('out', 'print',    'console.log.bind(console)',  true) }}}
-{{{ makeModuleReceiveWithVar('err', 'printErr', 'console.warn.bind(console)', true) }}}
-#endif
 
 // Merge back in the overrides
 Object.assign(Module, moduleOverrides);
