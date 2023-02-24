@@ -1370,7 +1370,6 @@ var LibraryGLFW = {
     // from glfw docs -> we just ignore this.
     // Some hints are platform specific.  These may be set on any platform but they
     // will only affect their specific platform.  Other platforms will ignore them.
-    
   },
   
   glfwCreateWindow__sig: 'iiiiii',
