@@ -22,6 +22,8 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 - Update SDL2_ttf port to 2.20.2 (#18804)
 - Update glfw header to 3.3.8 (#18826)
+- The `LLD_REPORT_UNDEFINED` setting has been removed.  It's now essentially
+  always enabled. (#18342)
 
 3.1.32 - 02/17/23
 -----------------

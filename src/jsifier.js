@@ -278,9 +278,6 @@ function ${name}(${args}) {
           if (dependent) msg += ` (referenced by ${dependent})`;
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
             error(msg);
-            if (dependent == TOP_LEVEL && !LLD_REPORT_UNDEFINED) {
-              warnOnce('Link with `-sLLD_REPORT_UNDEFINED` to get more information on undefined symbols');
-            }
             warnOnce('To disable errors for undefined symbols use `-sERROR_ON_UNDEFINED_SYMBOLS=0`');
             warnOnce(mangled + ' may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library');
           } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {

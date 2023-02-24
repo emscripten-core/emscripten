@@ -39,7 +39,7 @@ logger = logging.getLogger("test_core")
 def wasm_simd(f):
   @wraps(f)
   def decorated(self, *args, **kwargs):
-    self.require_v8()
+    self.require_simd()
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4638')
     if not self.is_wasm():
@@ -4224,11 +4224,6 @@ ok
     self.do_basic_dylink_test()
 
   @needs_dylink
-  def test_dylink_basics_no_lld_report_undefined(self):
-    self.set_setting('LLD_REPORT_UNDEFINED', 0)
-    self.do_basic_dylink_test()
-
-  @needs_dylink
   def test_dylink_no_export(self):
     self.set_setting('NO_DECLARE_ASM_MODULE_EXPORTS')
     self.do_basic_dylink_test()
@@ -7047,9 +7042,6 @@ void* operator new(size_t size) {
 
         return output
 
-      # Explicitly disable EXIT_RUNTIME, since otherwise addOnPostRun does not work.
-      # https://github.com/emscripten-core/emscripten/issues/15080
-      self.set_setting('EXIT_RUNTIME', 0)
       self.emcc_args += ['--minify=0'] # to compare the versions
       self.emcc_args += ['--pre-js', 'pre.js']
 
@@ -8771,14 +8763,19 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_postrun_exception(self):
     # verify that an exception thrown in postRun() will not trigger the
     # compilation failed handler, and will be printed to stderr.
-    # Explicitly disable EXIT_RUNTIME, since otherwise addOnPostRun does not work.
-    # https://github.com/emscripten-core/emscripten/issues/15080
-    self.set_setting('EXIT_RUNTIME', 0)
     self.add_post_run('ThisFunctionDoesNotExist()')
     self.build(test_file('core/test_hello_world.c'))
     output = self.run_js('test_hello_world.js', assert_returncode=NON_ZERO)
     self.assertStartswith(output, 'hello, world!')
     self.assertContained('ThisFunctionDoesNotExist is not defined', output)
+
+  def test_postrun_exit_runtime(self):
+    create_file('post.js', '''
+      addOnPostRun(() => err('post run\\n'));
+    ''')
+    self.set_setting('EXIT_RUNTIME')
+    self.emcc_args.append('--post-js=post.js')
+    self.do_runf(test_file('hello_world.c'), 'post run')
 
   # Tests that building with -sDECLARE_ASM_MODULE_EXPORTS=0 works
   def test_no_declare_asm_module_exports(self):
@@ -9609,11 +9606,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_stack_get_free.c')
 
   # Tests settings.ABORT_ON_WASM_EXCEPTIONS
-  @no_wasm64('missing "crashing"')
   def test_abort_on_exceptions(self):
-    # Explicitly disable EXIT_RUNTIME, since otherwise addOnPostRun does not work.
-    # https://github.com/emscripten-core/emscripten/issues/15080
-    self.set_setting('EXIT_RUNTIME', 0)
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('ALLOW_TABLE_GROWTH')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])

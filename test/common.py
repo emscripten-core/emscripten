@@ -279,7 +279,6 @@ def also_with_wasm_bigint(f):
       if self.get_setting('WASM_BIGINT') is not None:
         self.skipTest('redundant in bigint test config')
       self.set_setting('WASM_BIGINT')
-      self.require_node()
       self.node_args += shared.node_bigint_flags()
       f(self)
     else:
@@ -467,6 +466,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.require_engine(config.NODE_JS)
 
   def require_engine(self, engine):
+    logger.debug(f'require_engine: {engine}')
     if self.required_engine and self.required_engine != engine:
       self.skipTest(f'Skipping test that requires `{engine}` when `{self.required_engine}` was previously required')
     self.required_engine = engine
@@ -490,6 +490,23 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_WASM64 is set)')
     else:
       self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
+
+  def require_simd(self):
+    if config.NODE_JS and config.NODE_JS in self.js_engines:
+      version = shared.check_node_version()
+      if version >= (16, 0, 0):
+        self.js_engines = [config.NODE_JS]
+        return
+
+    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+      self.emcc_args.append('-sENVIRONMENT=shell')
+      self.js_engines = [config.V8_ENGINE]
+      return
+
+    if 'EMTEST_SKIP_SIMD' in os.environ:
+      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_SIMD is set)')
+    else:
+      self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
 
   def require_wasm_eh(self):
     if config.NODE_JS and config.NODE_JS in self.js_engines:
