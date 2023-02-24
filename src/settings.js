@@ -2180,5 +2180,5 @@ var LEGACY_SETTINGS = [
   ['LIBRARY_DEPS_TO_AUTOEXPORT', [[]], 'No longer needed'],
   ['EMIT_EMSCRIPTEN_METADATA', [0], 'No longer supported'],
   ['SHELL_FILE', [''], 'No longer supported'],
-  ['LLD_REPORT_UNDEFINED', [1], 'No longer supported'],
+  ['LLD_REPORT_UNDEFINED', [1], 'Disabling is no longer supported'],
 ];
