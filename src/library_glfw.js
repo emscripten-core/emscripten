@@ -1121,6 +1121,7 @@ var LibraryGLFW = {
 /*******************************************************************************
  * GLFW FUNCTIONS
  ******************************************************************************/
+  glfwInit__deps: ['emscripten_get_device_pixel_ratio'],
   glfwInit__sig: 'i',
   glfwInit: function() {
     if (GLFW.windows) return 1; // GL_TRUE
@@ -1129,8 +1130,7 @@ var LibraryGLFW = {
     GLFW.hints = GLFW.defaultHints;
     GLFW.windows = new Array()
     GLFW.active = null;
-    // from emscripten_get_device_pixel_ratio
-    GLFW.scale  = window.devicePixelRatio || 1.0;
+    GLFW.scale  = _emscripten_get_device_pixel_ratio();
 
 
     window.addEventListener("gamepadconnected", GLFW.onGamepadConnected, true);
@@ -1144,7 +1144,7 @@ var LibraryGLFW = {
     (function updatePixelRatio(){
       window.matchMedia("(resolution: " + window.devicePixelRatio + "dppx)")
       .addEventListener('change', updatePixelRatio, {once: true});
-      GLFW.onWindowContentScaleChanged(window.devicePixelRatio || 1.0);
+      GLFW.onWindowContentScaleChanged(_emscripten_get_device_pixel_ratio());
       })();
     Module["canvas"].addEventListener("touchmove", GLFW.onMousemove, true);
     Module["canvas"].addEventListener("touchstart", GLFW.onMouseButtonDown, true);
