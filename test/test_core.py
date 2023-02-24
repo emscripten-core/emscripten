@@ -39,7 +39,7 @@ logger = logging.getLogger("test_core")
 def wasm_simd(f):
   @wraps(f)
   def decorated(self, *args, **kwargs):
-    self.require_v8()
+    self.require_simd()
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4638')
     if not self.is_wasm():
