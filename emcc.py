@@ -112,7 +112,8 @@ DEFAULT_ASYNCIFY_IMPORTS = [
 
 DEFAULT_ASYNCIFY_EXPORTS = [
   'main',
-  '__main_argc_argv'
+  '__main_argc_argv',
+  '_ZN10emscripten8internal5async*' # Embind's async functions.
 ]
 
 # Target options
@@ -2141,7 +2142,7 @@ def phase_linker_setup(options, state, newargs):
   if settings.ASYNCIFY_LAZY_LOAD_CODE:
     settings.ASYNCIFY = 1
 
-  if settings.ASYNCIFY:
+  if settings.ASYNCIFY == 1:
     # See: https://github.com/emscripten-core/emscripten/issues/12065
     # See: https://github.com/emscripten-core/emscripten/issues/12066
     settings.DYNCALLS = 1

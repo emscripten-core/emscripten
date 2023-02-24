@@ -2695,6 +2695,18 @@ int f() {
     ''')
     self.do_runf('main.cpp', 'done', emcc_args=['-lembind', '-sASYNCIFY', '--post-js', 'post.js'])
 
+  @parameterized({
+    '': ['-sDYNAMIC_EXECUTION=1'],
+    'no_dynamic': ['-sDYNAMIC_EXECUTION=0'],
+  })
+  def test_embind_jspi(self, extra):
+    self.require_v8()
+    self.v8_args.append('--experimental-wasm-stack-switching')
+    self.emcc_args += ['-lembind', '-g', '-sASYNCIFY=2', '-Wno-experimental']
+    self.emcc_args += [extra]
+
+    self.do_runf(test_file('embind/embind_jspi_test.cpp'), 'done')
+
   def test_embind_no_function(self):
     create_file('post.js', '''
       Module['onRuntimeInitialized'] = function() {
