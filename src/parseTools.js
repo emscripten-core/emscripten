@@ -995,3 +995,10 @@ function preJS() {
   }
   return result;
 }
+
+function formattedMinNodeVersion() {
+  var major = MIN_NODE_VERSION / 10000
+  var minor = (MIN_NODE_VERSION / 100) % 100
+  var rev = MIN_NODE_VERSION % 100
+  return `v${major}.${minor}.${rev}`;
+}
