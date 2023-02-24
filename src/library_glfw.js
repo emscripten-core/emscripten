@@ -114,7 +114,6 @@ var LibraryGLFW = {
       0x0002000A:0, // GLFW_TRANSPARENT_FRAMEBUFFER
       0x0002200C:0, // GLFW_SCALE_TO_MONITOR. can we emulate this?
 
-
       0x00021001:8, // GLFW_RED_BITS
       0x00021002:8, // GLFW_GREEN_BITS
       0x00021003:8, // GLFW_BLUE_BITS
@@ -1143,7 +1142,7 @@ var LibraryGLFW = {
     // from https://stackoverflow.com/a/70514686/7484780 . maybe add this to browser.js?
     // no idea how to remove this listener.
     (function updatePixelRatio(){
-      window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
+      window.matchMedia("(resolution: " + window.devicePixelRatio + "dppx)")
       .addEventListener('change', updatePixelRatio, {once: true});
       GLFW.onWindowContentScaleChanged(window.devicePixelRatio || 1.0);
       })();
@@ -1274,7 +1273,7 @@ var LibraryGLFW = {
   glfwGetMonitors: function(count) {
     {{{ makeSetValue('count', '0', '1', 'i32') }}};
     if (!GLFW.monitors) {
-      GLFW.monitors = {{{ makeMalloc('glfwGetMonitors', Runtime.POINTER_SIZE) }}};
+      GLFW.monitors = {{{ makeMalloc('glfwGetMonitors', POINTER_SIZE) }}};
       {{{ makeSetValue('GLFW.monitors', '0', '1', 'i32') }}};
     }
     return GLFW.monitors;
@@ -1312,7 +1311,6 @@ var LibraryGLFW = {
 
   glfwGetMonitorContentScale__sig: 'viii',
   glfwGetMonitorContentScale: function(monitor, x, y) {
-    
     {{{ makeSetValue('x', '0', 'GLFW.scale', 'float') }}};
     {{{ makeSetValue('y', '0', 'GLFW.scale', 'float') }}};
   },

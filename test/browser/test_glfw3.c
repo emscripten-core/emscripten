@@ -14,7 +14,7 @@ static void errorcb(int error, const char *msg) { (void)error; (void)msg; }
 static void monitcb(GLFWmonitor *monitor, int event) { assert(monitor != NULL); (void)event; }
 static void wposicb(GLFWwindow *window, int x, int y) { assert(window != NULL); (void)x; (void)y; }
 static void wsizecb(GLFWwindow *window, int w, int h) { assert(window != NULL); (void)w; (void)h; }
-static void wscalcb(GLFWwindow *window, float xscale, float yscale) {assert(window != NULL); (void)xscale; (void)yscale; }
+static void wscalcb(GLFWwindow *window, float xscale, float yscale) { assert(window != NULL); (void)xscale; (void)yscale; }
 static void wcloscb(GLFWwindow *window) { assert(window != NULL); }
 static void wrfrscb(GLFWwindow *window) { assert(window != NULL); }
 static void wfocucb(GLFWwindow *window, int focused) { assert(window != NULL); (void)focused; }
