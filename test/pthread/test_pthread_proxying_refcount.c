@@ -40,6 +40,8 @@ void register_processed(void) {
 void task(void* arg) { *(_Atomic int*)arg = 1; }
 
 void* execute_and_free_queue(void* arg) {
+  *((_Atomic int*)arg) = 1;
+
   // Wait until we are signaled to execute the queue.
   while (!should_execute) {
   }
@@ -56,7 +58,7 @@ void* execute_and_free_queue(void* arg) {
       var oldOnMessage = onmessage;
       onmessage = (e) => {
         oldOnMessage(e);
-        if (e.data.cmd == 'processProxyingQueue') {
+        if (e.data.cmd == 'checkMailbox') {
           _register_processed();
         }
       };
@@ -80,7 +82,10 @@ int main() {
 
   // Create the worker and send it tasks.
   pthread_t worker;
-  pthread_create(&worker, NULL, execute_and_free_queue, NULL);
+  _Atomic int running = 0;
+  pthread_create(&worker, NULL, execute_and_free_queue, &running);
+  while (!running) {
+  }
   for (int i = 0; i < 2; i++) {
     emscripten_proxy_async(queues[i], worker, task, &executed[i]);
   }
@@ -90,8 +95,8 @@ int main() {
   while (!executed[0] || !executed[1]) {
   }
 
-  // Wait for the notifications to be received.
-  while (processed < 2) {
+  // Wait for the postMessage notification to be received.
+  while (processed < 1) {
   }
 
 #ifndef SANITIZER

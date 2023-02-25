@@ -2839,6 +2839,14 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_proxying_dropped_work.c')
 
   @node_pthreads
+  def test_pthread_proxying_canceled_work(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.do_run_in_out_file_test(
+        'pthread/test_pthread_proxying_canceled_work.c',
+        interleaved_output=False)
+
+  @node_pthreads
   def test_pthread_proxying_refcount(self):
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PTHREAD_POOL_SIZE=1')

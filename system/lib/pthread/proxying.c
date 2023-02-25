@@ -9,11 +9,12 @@
 #include <emscripten/proxying.h>
 #include <emscripten/threading.h>
 #include <pthread.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "em_task_queue.h"
-#include "proxying_notification_state.h"
+#include "thread_mailbox.h"
 
 struct em_proxying_queue {
   // Protects all accesses to em_task_queues, size, and capacity.
@@ -103,17 +104,6 @@ static em_task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
   return tasks;
 }
 
-// Exported for use in worker.js, but otherwise an internal function.
-EMSCRIPTEN_KEEPALIVE
-void _emscripten_proxy_execute_task_queue(em_task_queue* tasks) {
-  // Before we attempt to execute a request from another thread make sure we
-  // are in sync with all the loaded code.
-  // For example, in PROXY_TO_PTHREAD the atexit functions are called via
-  // a proxied call, and without this call to syncronize we would crash if
-  // any atexit functions were registered from a side module.
-  em_task_queue_execute(tasks);
-}
-
 void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   assert(q != NULL);
   assert(pthread_self());
@@ -156,15 +146,8 @@ int emscripten_proxy_async(em_proxying_queue* q,
   if (tasks == NULL) {
     return 0;
   }
-  pthread_mutex_lock(&tasks->mutex);
-  int enqueued = em_task_queue_enqueue(tasks, (task){func, arg});
-  pthread_mutex_unlock(&tasks->mutex);
-  if (!enqueued) {
-    return 0;
-  }
 
-  em_task_queue_notify(tasks);
-  return 1;
+  return em_task_queue_send(tasks, (task){func, arg});
 }
 
 struct em_proxying_ctx {

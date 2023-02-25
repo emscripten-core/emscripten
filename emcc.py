@@ -1712,7 +1712,8 @@ def setup_pthreads(target):
     '__emscripten_thread_crashed',
     '__emscripten_tls_init',
     '_pthread_self',
-    'executeNotifiedProxyingQueue',
+    '__emscripten_check_mailbox',
+    'checkMailbox',
   ]
   settings.EXPORTED_FUNCTIONS += worker_imports
   building.user_requested_exports.update(worker_imports)
