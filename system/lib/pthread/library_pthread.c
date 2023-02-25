@@ -597,4 +597,5 @@ void __emscripten_init_main_thread(void) {
   __main_pthread.tsd = (void **)__pthread_tsd_main;
 
   _emscripten_thread_mailbox_init(&__main_pthread);
+  _emscripten_thread_mailbox_await(&__main_pthread);
 }

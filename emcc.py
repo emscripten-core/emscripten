@@ -1713,6 +1713,7 @@ def setup_pthreads(target):
     '__emscripten_tls_init',
     '_pthread_self',
     'checkMailbox',
+    '__emscripten_thread_mailbox_await',
   ]
   settings.EXPORTED_FUNCTIONS += worker_imports
   building.user_requested_exports.update(worker_imports)
