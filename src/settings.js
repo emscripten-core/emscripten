@@ -2101,6 +2101,10 @@ var RUNTIME_DEBUG = false;
 // library symbol.
 var LEGACY_RUNTIME = false;
 
+// Mark JS output file as executable and include #! line at the top.
+// This defaults to true when node is included in ENVIRONMENT.
+var EXECUTABLE_OUTPUT = false;
+
 //===========================================
 // Internal, used for testing only, from here
 //===========================================
