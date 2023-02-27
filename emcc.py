@@ -1712,7 +1712,6 @@ def setup_pthreads(target):
     '__emscripten_thread_crashed',
     '__emscripten_tls_init',
     '_pthread_self',
-    '__emscripten_check_mailbox',
     'checkMailbox',
   ]
   settings.EXPORTED_FUNCTIONS += worker_imports

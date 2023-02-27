@@ -20,7 +20,6 @@ void* proxy_to_self(void* arg) {
 }
 
 void* do_nothing(void* arg) {
-  *((_Atomic int*)arg) = 1;
   return NULL;
 }
 
@@ -32,10 +31,7 @@ int main() {
   // Check that proxying to a thread that exits without a live runtime causes
   // the work to be dropped without other errors.
   pthread_t worker;
-  _Atomic int running = 0;
-  pthread_create(&worker, NULL, do_nothing, &running);
-  while (!running) {
-  }
+  pthread_create(&worker, NULL, do_nothing, NULL);
   emscripten_proxy_async(queue, worker, explode, NULL);
 
   // Check that a thread proxying to itself but exiting without a live runtime

@@ -40,8 +40,6 @@ void register_processed(void) {
 void task(void* arg) { *(_Atomic int*)arg = 1; }
 
 void* execute_and_free_queue(void* arg) {
-  *((_Atomic int*)arg) = 1;
-
   // Wait until we are signaled to execute the queue.
   while (!should_execute) {
   }
@@ -82,10 +80,7 @@ int main() {
 
   // Create the worker and send it tasks.
   pthread_t worker;
-  _Atomic int running = 0;
-  pthread_create(&worker, NULL, execute_and_free_queue, &running);
-  while (!running) {
-  }
+  pthread_create(&worker, NULL, execute_and_free_queue, NULL);
   for (int i = 0; i < 2; i++) {
     emscripten_proxy_async(queues[i], worker, task, &executed[i]);
   }

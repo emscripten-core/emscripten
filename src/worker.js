@@ -233,12 +233,6 @@ function handleMessage(e) {
         // We only do this once per worker since they get reused
         Module['__embind_initialize_bindings']();
 #endif // EMBIND
-
-        // Execute any proxied work that came in before the thread was
-        // initialized. Only do this once because it is only possible for
-        // notifications to arrive before thread initialization on fresh
-        // workers.
-        Module['__emscripten_check_mailbox']();
         initializedJS = true;
       }
 
