@@ -2760,11 +2760,13 @@ int f() {
         [EMXX, test_file('embind/embind_test.cpp'),
          '--pre-js', test_file('embind/test.pre.js'),
          '--post-js', test_file('embind/test.post.js'),
+         '--js-library', test_file('embind/helpers.js'),
          '-sWASM_ASYNC_COMPILATION=0',
          # This test uses a `CustomSmartPtr` class which has 1MB of data embedded in
          # it which means we need more stack space than normal.
          '-sSTACK_SIZE=2MB',
-         '-sIN_TEST_HARNESS'] + args)
+         '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$EMBIND_STD_STRING_IS_UTF8,$DYNAMIC_EXECUTION,$ASSERTIONS',
+         '-sEXPORTED_FUNCTIONS=EMBIND_STD_STRING_IS_UTF8,DYNAMIC_EXECUTION,ASSERTIONS'] + args)
 
       if '-sDYNAMIC_EXECUTION=0' in args:
         js_binary_str = read_file('a.out.js')

@@ -1826,7 +1826,6 @@ class BrowserCore(RunnerCore):
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
     # the header as there may be multiple files being compiled here).
-    args += ['-sIN_TEST_HARNESS']
     if reporting != Reporting.NONE:
       # For basic reporting we inject JS helper funtions to report result back to server.
       args += ['-DEMTEST_PORT_NUMBER=%d' % self.port,

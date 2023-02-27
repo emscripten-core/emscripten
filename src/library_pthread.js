@@ -901,7 +901,7 @@ var LibraryPThread = {
 
   emscripten_check_blocking_allowed__deps: ['$warnOnce'],
   emscripten_check_blocking_allowed: function() {
-#if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
+#if ASSERTIONS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) return;
 #endif
