@@ -32,14 +32,6 @@ function run() {
 
 #endif
 
-#if IN_TEST_HARNESS && hasExportedSymbol('flush')
-  // flush any stdio streams for test harness, since there are existing
-  // tests that depend on this behavior.
-  // For production use, instead print full lines to avoid this kind of lazy
-  // behavior.
-  _fflush();
-#endif
-
 #if EXIT_RUNTIME
 
 #if ASSERTIONS
