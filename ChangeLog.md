@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.33 (in development)
 -----------------------
+- Removed `sys/sysctl.h` compatibility header.  We don't implement the function
+  it defines. (#18863)
 - Update SDL2_ttf port to 2.20.2 (#18804)
 - Update glfw header to 3.3.8 (#18826)
 - The `LLD_REPORT_UNDEFINED` setting has been removed.  It's now essentially
