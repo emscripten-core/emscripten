@@ -740,7 +740,8 @@ def make_export_wrappers(exports, delay_assignment):
     wrapper = '/** @type {function(...*):?} */\nvar %s = ' % mangled
 
     # TODO(sbc): Can we avoid exporting the dynCall_ functions on the module.
-    if mangled in settings.EXPORTED_FUNCTIONS or name.startswith('dynCall_'):
+    should_export = settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS
+    if name.startswith('dynCall_') or should_export:
       exported = 'Module["%s"] = ' % mangled
     else:
       exported = ''
@@ -792,8 +793,9 @@ def create_receiving(exports):
       for s in exports_that_are_not_initializers:
         mangled = asmjs_mangle(s)
         dynCallAssignment = ('dynCalls["' + s.replace('dynCall_', '') + '"] = ') if generate_dyncall_assignment and mangled.startswith('dynCall_') else ''
+        should_export = settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS)
         export_assignment = ''
-        if settings.MODULARIZE and settings.EXPORT_ALL:
+        if settings.MODULARIZE and should_export:
           export_assignment = f'Module["{mangled}"] = '
         receiving += [f'{export_assignment}{dynCallAssignment}{mangled} = asm["{s}"]']
     else:
