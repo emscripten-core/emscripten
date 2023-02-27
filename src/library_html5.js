@@ -1012,7 +1012,7 @@ var LibraryHTML5 = {
 
     var orientationChangeEventHandlerFunc = function(e = event) {
 #if USE_PTHREADS
-      var orientationChangeEvent = targetThread ? _malloc( {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}} ) : JSEvents.orientationChangeEvent;
+      var orientationChangeEvent = targetThread ? _malloc( {{{ C_STRUCTS.EmscriptenOrientationChangeEvent.__size__ }}} ) : JSEvents.orientationChangeEvent;
 #else
       var orientationChangeEvent = JSEvents.orientationChangeEvent;
 #endif
