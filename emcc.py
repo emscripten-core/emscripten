@@ -1959,6 +1959,8 @@ def phase_linker_setup(options, state, newargs):
     default_setting('SUPPORT_ERRNO', 0)
     # Require explicit -lfoo.js flags to link with JS libraries.
     default_setting('AUTO_JS_LIBRARIES', 0)
+    # When using MINIMAL_RUNTIME, symbols should only be exported if requested.
+    default_setting('EXPORT_KEEPALIVE', 0)
 
   if settings.STRICT_JS and (settings.MODULARIZE or settings.EXPORT_ES6):
     exit_with_error("STRICT_JS doesn't work with MODULARIZE or EXPORT_ES6")

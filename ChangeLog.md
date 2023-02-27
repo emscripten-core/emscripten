@@ -24,6 +24,10 @@ See docs/process.md for more on how version tagging works.
 - Update glfw header to 3.3.8 (#18826)
 - The `LLD_REPORT_UNDEFINED` setting has been removed.  It's now essentially
   always enabled. (#18342)
+- Added `-sEXPORT_KEEPALIVE` to export symbols. When using
+  `MINIMAL_RUNTIME`, the option will be **disabled** by default.
+  This option simply exports the symbols on the module object, i.e.,
+  `Module['X'] = X;`
 
 3.1.32 - 02/17/23
 -----------------
