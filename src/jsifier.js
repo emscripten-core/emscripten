@@ -66,6 +66,25 @@ function isDefined(symName) {
   return false;
 }
 
+function getTransitiveDeps(symbol) {
+  const transitiveDeps = new Set();
+  const seen = new Set();
+  const toVisit = [symbol];
+  while (toVisit.length) {
+    const sym = toVisit.pop();
+    if (!seen.has(sym)) {
+      let directDeps = LibraryManager.library[sym + '__deps'] || [];
+      directDeps = directDeps.filter((d) => typeof d === 'string');
+      if (directDeps.length) {
+        directDeps.forEach(transitiveDeps.add, transitiveDeps);
+        toVisit.push(...directDeps);
+      }
+      seen.add(sym);
+    }
+  }
+  return Array.from(transitiveDeps);
+}
+
 function runJSify(symbolsOnly = false) {
   const libraryItems = [];
   const symbolDeps = {};
@@ -254,8 +273,8 @@ function ${name}(${args}) {
 
       if (symbolsOnly) {
         if (!isJsOnlySymbol(symbol) && LibraryManager.library.hasOwnProperty(symbol)) {
-          externalDeps = deps.filter((d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library) && typeof d === 'string');
-          symbolDeps[symbol] = externalDeps;
+          var transtiveDeps = getTransitiveDeps(symbol);
+          symbolDeps[symbol] = transtiveDeps.filter((d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library));
         }
         return;
       }
