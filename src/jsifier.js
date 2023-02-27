@@ -68,6 +68,7 @@ function isDefined(symName) {
 
 function runJSify(symbolsOnly = false) {
   const libraryItems = [];
+  const symbolDeps = {};
   let postSets = [];
 
   LibraryManager.load();
@@ -245,9 +246,16 @@ function ${name}(${args}) {
         return;
       }
 
+      const deps = LibraryManager.library[symbol + '__deps'] || [];
+      if (!Array.isArray(deps)) {
+        error(`JS library directive ${symbol}__deps=${deps.toString()} is of type ${typeof deps}, but it should be an array!`);
+        return;
+      }
+
       if (symbolsOnly) {
         if (!isJsOnlySymbol(symbol) && LibraryManager.library.hasOwnProperty(symbol)) {
-          librarySymbols.push(symbol);
+          externalDeps = deps.filter((d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library) && typeof d === 'string');
+          symbolDeps[symbol] = externalDeps;
         }
         return;
       }
@@ -319,11 +327,6 @@ function ${name}(${args}) {
 
       const original = LibraryManager.library[symbol];
       let snippet = original;
-      const deps = LibraryManager.library[symbol + '__deps'] || [];
-      if (!Array.isArray(deps)) {
-        error(`JS library directive ${symbol}__deps=${deps.toString()} is of type ${typeof deps}, but it should be an array!`);
-        return;
-      }
 
       const isUserSymbol = LibraryManager.library[symbol + '__user'];
       deps.forEach((dep) => {
@@ -542,7 +545,7 @@ function ${name}(${args}) {
   }
 
   if (symbolsOnly) {
-    print(JSON.stringify(librarySymbols));
+    print(JSON.stringify(symbolDeps));
     return;
   }
 
