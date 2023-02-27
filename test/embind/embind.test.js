@@ -378,6 +378,9 @@ module({
     });
 
     BaseFixture.extend("string", function() {
+        // The test harness should set this value one way or the other.
+        assert.true(cm['EMBIND_STD_STRING_IS_UTF8'] !== undefined);
+
         var stdStringIsUTF8 = (cm['EMBIND_STD_STRING_IS_UTF8'] === true);
 
         test("non-ascii strings", function() {
@@ -642,8 +645,7 @@ module({
             assert.throws(TypeError, function() { cm.const_ref_adder(0n, 1); });
         });
 
-        // The test harness should set assertions to either be enabled, or not;
-        // this value should not be unset.
+        // The test harness should set this value one way or the other.
         assert.true(cm['ASSERTIONS'] !== undefined);
 
         if (cm['ASSERTIONS']) {
@@ -2513,6 +2515,10 @@ module({
 
     BaseFixture.extend("function names", function() {
         assert.equal('ValHolder', cm.ValHolder.name);
+
+        // The test harness should set this value one way or the other.
+        assert.true(cm['DYNAMIC_EXECUTION'] !== undefined);
+
         if (!cm['DYNAMIC_EXECUTION']) {
           assert.equal('', cm.ValHolder.prototype.setVal.name);
           assert.equal('', cm.ValHolder.makeConst.name);
