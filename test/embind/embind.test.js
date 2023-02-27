@@ -642,6 +642,10 @@ module({
             assert.throws(TypeError, function() { cm.const_ref_adder(0n, 1); });
         });
 
+        // The test harness should set assertions to either be enabled, or not;
+        // this value should not be unset.
+        assert.true(cm['ASSERTIONS'] !== undefined);
+
         if (cm['ASSERTIONS']) {
             test("can pass only number and boolean as floats with assertions", function() {
                 assert.throws(TypeError, function() { cm.const_ref_adder(1, undefined); });
