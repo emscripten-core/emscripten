@@ -916,7 +916,6 @@ var LibraryPThread = {
 #endif
   },
 
-  __pthread_kill_js__deps: ['emscripten_main_browser_thread_id'],
   __pthread_kill_js: function(thread, signal) {
     if (signal === {{{ cDefine('SIGCANCEL') }}}) { // Used by pthread_cancel in musl
       if (!ENVIRONMENT_IS_PTHREAD) cancelThread(thread);
