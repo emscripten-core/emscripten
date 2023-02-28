@@ -1085,7 +1085,7 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
     dbg('invokeEntryPoint: ' + ptrToString(ptr));
 #endif
-#if EXIT_RUNTIME
+#if EXIT_RUNTIME && !MINIMAL_RUNTIME
     // An old thread on this worker may have been canceled without returning the
     // `runtimeKeepaliveCounter` to zero. Reset it now so the new thread won't
     // be affected.
