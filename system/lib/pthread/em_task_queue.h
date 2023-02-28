@@ -17,7 +17,9 @@ typedef struct task {
   void* arg;
 } task;
 
-// A task queue holding tasks to be processed by a particular thread.
+// A task queue holding tasks to be processed by a particular thread. The only
+// "public" field is `notification`. All other fields should be considered
+// private implementation details.
 typedef struct em_task_queue {
   // Flag encoding the state of postMessage notifications for this task queue.
   // Accessed directly from JS, so must be the first member.
@@ -30,8 +32,7 @@ typedef struct em_task_queue {
   // Recursion guard. Only accessed on the target thread, so there's no need to
   // hold the lock when accessing it. TODO: We disallow recursive processing
   // because that's what the old proxying API does, so it is safer to start with
-  // the same behavior. Experiment with relaxing this restriction once the old
-  // API uses these queues as well.
+  // the same behavior. Experiment with relaxing this restriction.
   int processing;
   // Ring buffer of tasks of size `capacity`. New tasks are enqueued at
   // `tail` and dequeued at `head`.
@@ -39,6 +40,10 @@ typedef struct em_task_queue {
   int capacity;
   int head;
   int tail;
+  // Doubly linked list pointers for the zombie list. See em_task_queue.c for
+  // details.
+  struct em_task_queue* zombie_prev;
+  struct em_task_queue* zombie_next;
 } em_task_queue;
 
 em_task_queue* em_task_queue_create(pthread_t thread);

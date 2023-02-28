@@ -15,51 +15,6 @@
 #include "em_task_queue.h"
 #include "proxying_notification_state.h"
 
-// Proxy Queue Lifetime Management
-// -------------------------------
-//
-// Proxied tasks are executed either when the user manually calls
-// `emscripten_proxy_execute_queue` on the target thread or when the target
-// thread returns to the event loop. The queue does not know which execution
-// path will be used ahead of time when the work is proxied, so it must
-// conservatively send a message to the target thread's event loop in case the
-// user expects the event loop to drive the execution. These notifications
-// contain references to the queue that will be dereferenced when the target
-// thread returns to its event loop and receives the notification, even if the
-// user manages the execution of the queue themselves.
-//
-// To avoid use-after-free bugs, we cannot free a queue immediately when a user
-// calls `em_proxying_queue_destroy`; instead, we have to defer freeing the
-// queue until all of its outstanding notifications have been processed. We
-// defer freeing the queue using a reference counting scheme. Each time a
-// notification containing a reference to the a thread-local task queue is
-// generated, we set a flag on that task queue. Each time that task queue is
-// processed, we clear the flag. The proxying queue can only be freed once
-// `em_proxying_queue_destroy` has been called and the notification flags on
-// each of its task queues have been cleared.
-//
-// But an extra complication is that the target thread may have died by the time
-// it gets back to its event loop to process its notifications. This can happen
-// when a user proxies some work to a thread, then calls
-// `emscripten_proxy_execute_queue` on that thread, then destroys the queue and
-// exits the thread. In that situation no work will be dropped, but the thread's
-// worker will still receive a notification and have to clear the notification
-// flag without a live runtime. Without a live runtime, there is no stack, so
-// the worker cannot safely free the queue at this point even if the refcount
-// goes to zero. We need a separate thread with a live runtime to perform the
-// free.
-//
-// To ensure that queues are eventually freed, we place destroyed queues in a
-// global "zombie list" where they wait for their notification flags to be
-// cleared. The zombie list is scanned whenever a new queue is constructed and
-// any of the zombie queues without outstanding notifications are freed. In
-// principle the zombie list could be scanned at any time, but the queue
-// constructor is a nice place to do it because scanning there is sufficient to
-// keep the number of zombie queues from growing without bound; creating a new
-// zombie ultimately requires creating a new queue.
-//
-// -------------------------------
-
 struct em_proxying_queue {
   // Protects all accesses to em_task_queues, size, and capacity.
   pthread_mutex_t mutex;
@@ -67,103 +22,45 @@ struct em_proxying_queue {
   em_task_queue** task_queues;
   int size;
   int capacity;
-  // Doubly linked list pointers for the zombie list.
-  em_proxying_queue* zombie_prev;
-  em_proxying_queue* zombie_next;
 };
 
 // The system proxying queue.
-static em_proxying_queue system_proxying_queue = {.mutex =
-                                                    PTHREAD_MUTEX_INITIALIZER,
-                                                  .task_queues = NULL,
-                                                  .size = 0,
-                                                  .capacity = 0,
-                                                  .zombie_prev = NULL,
-                                                  .zombie_next = NULL};
+static em_proxying_queue system_proxying_queue = {
+  .mutex = PTHREAD_MUTEX_INITIALIZER,
+  .task_queues = NULL,
+  .size = 0,
+  .capacity = 0,
+};
 
 em_proxying_queue* emscripten_proxy_get_system_queue(void) {
   return &system_proxying_queue;
 }
 
-// The head of the zombie list. Its mutex protects access to the list and its
-// other fields are not used.
-static em_proxying_queue zombie_list_head = {.mutex = PTHREAD_MUTEX_INITIALIZER,
-                                             .zombie_prev = &zombie_list_head,
-                                             .zombie_next = &zombie_list_head};
-
-static void em_proxying_queue_free(em_proxying_queue* q) {
-  pthread_mutex_destroy(&q->mutex);
-  for (int i = 0; i < q->size; i++) {
-    em_task_queue_destroy(q->task_queues[i]);
-  }
-  free(q->task_queues);
-  free(q);
-}
-
-// Does not lock `q` because it should only be called after `q` has been
-// destroyed when it would be UB for new work to come in and race to generate a
-// new notification.
-static int has_notification(em_proxying_queue* q) {
-  for (int i = 0; i < q->size; i++) {
-    if (q->task_queues[i]->notification != NOTIFICATION_NONE) {
-      return 1;
-    }
-  }
-  return 0;
-}
-
-static void cull_zombies() {
-  pthread_mutex_lock(&zombie_list_head.mutex);
-  em_proxying_queue* curr = zombie_list_head.zombie_next;
-  while (curr != &zombie_list_head) {
-    em_proxying_queue* next = curr->zombie_next;
-    if (!has_notification(curr)) {
-      // Remove the zombie from the list and free it.
-      curr->zombie_prev->zombie_next = curr->zombie_next;
-      curr->zombie_next->zombie_prev = curr->zombie_prev;
-      em_proxying_queue_free(curr);
-    }
-    curr = next;
-  }
-  pthread_mutex_unlock(&zombie_list_head.mutex);
-}
-
 em_proxying_queue* em_proxying_queue_create(void) {
-  // Free any queue that has been destroyed and is safe to free.
-  cull_zombies();
-
   // Allocate the new queue.
   em_proxying_queue* q = malloc(sizeof(em_proxying_queue));
   if (q == NULL) {
     return NULL;
   }
-  *q = (em_proxying_queue){.mutex = PTHREAD_MUTEX_INITIALIZER,
-                           .task_queues = NULL,
-                           .size = 0,
-                           .capacity = 0,
-                           .zombie_prev = NULL,
-                           .zombie_next = NULL};
+  *q = (em_proxying_queue){
+    .mutex = PTHREAD_MUTEX_INITIALIZER,
+    .task_queues = NULL,
+    .size = 0,
+    .capacity = 0,
+  };
   return q;
 }
 
 void em_proxying_queue_destroy(em_proxying_queue* q) {
   assert(q != NULL);
   assert(q != &system_proxying_queue && "cannot destroy system proxying queue");
-  assert(!q->zombie_next && !q->zombie_prev &&
-         "double freeing em_proxying_queue!");
-  if (!has_notification(q)) {
-    // No outstanding references to the queue, so we can go ahead and free it.
-    em_proxying_queue_free(q);
-    return;
+
+  pthread_mutex_destroy(&q->mutex);
+  for (int i = 0; i < q->size; i++) {
+    em_task_queue_destroy(q->task_queues[i]);
   }
-  // Otherwise add the queue to the zombie list so that it will eventually be
-  // freed safely.
-  pthread_mutex_lock(&zombie_list_head.mutex);
-  q->zombie_next = zombie_list_head.zombie_next;
-  q->zombie_prev = &zombie_list_head;
-  q->zombie_next->zombie_prev = q;
-  q->zombie_prev->zombie_next = q;
-  pthread_mutex_unlock(&zombie_list_head.mutex);
+  free(q->task_queues);
+  free(q);
 }
 
 // Not thread safe. Returns NULL if there are no tasks for the thread.
