@@ -400,9 +400,8 @@ static void run_dlsync_async(em_proxying_ctx* ctx, void* arg) {
 static void dlsync() {
   // Call dlsync process.  This call will block until all threads are in sync.
   // This gets called after a shared library is loaded by a worker.
-  pthread_t main_thread = emscripten_main_browser_thread_id();
-  dbg("dlsync main=%p", main_thread);
-  if (pthread_self() == main_thread) {
+  dbg("dlsync main=%p", emscripten_main_runtime_thread_id());
+  if (emscripten_is_main_runtime_thread()) {
     // dlsync was called on the main thread.  In this case we have no choice by
     // to run the blocking version of emscripten_dlsync_threads.
     _emscripten_dlsync_threads();
@@ -411,7 +410,7 @@ static void dlsync() {
     // thread.
     em_proxying_queue* q = emscripten_proxy_get_system_queue();
     int success = emscripten_proxy_sync_with_ctx(
-      q, main_thread, run_dlsync_async, pthread_self());
+      q, emscripten_main_runtime_thread_id(), run_dlsync_async, pthread_self());
     assert(success);
   }
 }
