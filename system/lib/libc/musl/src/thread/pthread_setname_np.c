@@ -2,12 +2,18 @@
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
+#ifndef __EMSCRIPTEN__
 #include <sys/prctl.h>
+#endif
 
 #include "pthread_impl.h"
 
 int pthread_setname_np(pthread_t thread, const char *name)
 {
+#if __EMSCRIPTEN__
+	emscripten_set_thread_name(thread, name);
+	return 0;
+#else
 	int fd, cs, status = 0;
 	char f[sizeof "/proc/self/task//comm" + 3*sizeof(int)];
 	size_t len;
@@ -23,4 +29,5 @@ int pthread_setname_np(pthread_t thread, const char *name)
 	if (fd >= 0) close(fd);
 	pthread_setcancelstate(cs, 0);
 	return status;
+#endif
 }

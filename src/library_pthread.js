@@ -60,6 +60,9 @@ var LibraryPThread = {
     pthreads: {},
 #if ASSERTIONS
     nextWorkerID: 1,
+    // This doesn't seem to current do anything in chrome devtools and the
+    // worker name is instead fixed at worker creation time
+    setName: (name) => { globalThis.name = name; },
     debugInit: function() {
       function pthreadLogPrefix() {
         var t = 0;
@@ -484,7 +487,7 @@ var LibraryPThread = {
         worker = new Worker(p.createScriptURL('ignored'));
       } else
 #endif
-      worker = new Worker(pthreadMainJs);
+      worker = new Worker(pthreadMainJs, {name: 'xxx'});
 #if EXPORT_ES6 && USE_ES6_IMPORT_META
     }
 #endif
@@ -916,6 +919,15 @@ var LibraryPThread = {
 #endif
   },
 
+#if ASSERTIONS
+  _emscripten_set_js_thread_name__sig: 'vp',
+  _emscripten_set_js_thread_name: function(name) {
+    if (ENVIRONMENT_IS_PTHREAD) {
+      PThread.setName(UTF8ToString(name));
+    }
+  },
+#endif
+
   __pthread_kill_js__deps: ['emscripten_main_browser_thread_id'],
   __pthread_kill_js: function(thread, signal) {
     if (signal === {{{ cDefine('SIGCANCEL') }}}) { // Used by pthread_cancel in musl
@@ -1085,6 +1097,9 @@ var LibraryPThread = {
   $invokeEntryPoint: function(ptr, arg) {
 #if PTHREADS_DEBUG
     dbg('invokeEntryPoint: ' + ptrToString(ptr));
+#endif
+#if ASSERTIONS
+    PThread.setName('pthread worker ' + Module['workerID']);
 #endif
 #if MAIN_MODULE
     // Before we call the thread entry point, make sure any shared libraries

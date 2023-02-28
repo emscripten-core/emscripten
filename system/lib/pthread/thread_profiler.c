@@ -15,7 +15,6 @@
 static bool enabled = false;
 
 #ifndef NDEBUG
-
 void _emscripten_thread_profiler_init(pthread_t thread) {
   assert(thread);
   if (!enabled) {
@@ -61,12 +60,4 @@ void _emscripten_thread_profiler_enable() {
   _emscripten_thread_profiler_init(pthread_self());
   emscripten_set_thread_name(pthread_self(), "Browser main thread");
 }
-
 #endif
-
-void emscripten_set_thread_name(pthread_t thread, const char* name) {
-  if (!enabled) {
-    return;
-  }
-  strncpy(thread->profilerBlock->name, name, EM_THREAD_NAME_MAX-1);
-}

@@ -989,8 +989,7 @@ class libc(MuslInternalLibrary,
         '__unmapself.c',
         # Empty files, simply ignore them.
         'syscall_cp.c', 'tls.c',
-        # TODO: Support these. See #12216.
-        'pthread_setname_np.c',
+        # TODO: Support this. See #12216.
         'pthread_getname_np.c',
       ]
       libc_files += files_in_path(
@@ -1006,12 +1005,14 @@ class libc(MuslInternalLibrary,
           'emscripten_futex_wait.c',
           'emscripten_futex_wake.c',
           'emscripten_yield.c',
+          'thread_profiler.c',
         ])
     else:
       ignore += ['thread']
       libc_files += files_in_path(
         path='system/lib/libc/musl/src/thread',
         filenames=[
+          'pthread_setname_np.c',
           'pthread_self.c',
           'pthread_cleanup_push.c',
           'pthread_attr_get.c',
@@ -1149,7 +1150,7 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
         path='system/lib/pthread',
-        filenames=['emscripten_atomic.c', 'thread_profiler.c'])
+        filenames=['emscripten_atomic.c', 'emscripten_set_thread_name.c'])
 
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
 
