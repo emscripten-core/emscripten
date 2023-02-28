@@ -2760,7 +2760,6 @@ int f() {
         [EMXX, test_file('embind/embind_test.cpp'),
          '--pre-js', test_file('embind/test.pre.js'),
          '--post-js', test_file('embind/test.post.js'),
-         '--js-library', test_file('embind/helpers.js'),
          '-sWASM_ASYNC_COMPILATION=0',
          # This test uses a `CustomSmartPtr` class which has 1MB of data embedded in
          # it which means we need more stack space than normal.
