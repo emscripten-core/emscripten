@@ -2729,12 +2729,22 @@ int f() {
 
   @is_slow_test
   @parameterized({
-    '': [[]],
-    'no_utf8': [['-sEMBIND_STD_STRING_IS_UTF8=0']],
-    'no_dynamic': [['-sDYNAMIC_EXECUTION=0']],
+    '': [{}],
+    'asserts': [{'ASSERTIONS': '1'}],
+    'no_utf8': [{'EMBIND_STD_STRING_IS_UTF8': '0'}],
+    'no_dynamic': [{'DYNAMIC_EXECUTION': '0'}],
   })
   @with_env_modify({'EMCC_CLOSURE_ARGS': '--externs ' + shlex.quote(test_file('embind/underscore-externs.js'))})
-  def test_embind(self, extra_args):
+  def test_embind(self, override_args_dict):
+    # Start with defaults and apply the test-specific overrides.
+    args_dict = {
+      'ASSERTIONS': '1',
+      'EMBIND_STD_STRING_IS_UTF8': '0',
+      'DYNAMIC_EXECUTION': '0'
+    }
+    for key, val in override_args_dict.items():
+      args_dict[key] = val
+    extra_args = [f'-s{key}={val}' for key, val in args_dict.items()]
     test_cases = [
       (['-lembind']),
       # Ensure embind compiles under C++17 where "noexcept" became part of the function signature.
@@ -2750,7 +2760,10 @@ int f() {
       print(args)
       self.clear()
 
+      create_file('testSettings.js', f'var testSettings = {args_dict};\n')
+
       testFiles = [
+        'testSettings.js',
         test_file('embind/underscore-1.4.2.js'),
         test_file('embind/imvu_test_adapter.js'),
         test_file('embind/embind.test.js'),

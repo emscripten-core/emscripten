@@ -379,9 +379,9 @@ module({
 
     BaseFixture.extend("string", function() {
         // The test harness should set this value one way or the other.
-        assert.true(cm['EMBIND_STD_STRING_IS_UTF8'] !== undefined);
+        assert.true(testSettings['EMBIND_STD_STRING_IS_UTF8'] !== undefined);
 
-        var stdStringIsUTF8 = (cm['EMBIND_STD_STRING_IS_UTF8'] === true);
+        var stdStringIsUTF8 = (testSettings['EMBIND_STD_STRING_IS_UTF8'] === true);
 
         test("non-ascii strings", function() {
 
@@ -646,9 +646,9 @@ module({
         });
 
         // The test harness should set this value one way or the other.
-        assert.true(cm['ASSERTIONS'] !== undefined);
+        assert.true(testSettings['ASSERTIONS'] !== undefined);
 
-        if (cm['ASSERTIONS']) {
+        if (testSettings['ASSERTIONS']) {
             test("can pass only number and boolean as floats with assertions", function() {
                 assert.throws(TypeError, function() { cm.const_ref_adder(1, undefined); });
                 assert.throws(TypeError, function() { cm.const_ref_adder(1, null); });
@@ -830,7 +830,7 @@ module({
             assert.equal("-2147483648", cm.long_to_string(-2147483648));
 
             // passing out of range values should fail with assertions.
-            if (cm['ASSERTIONS']) {
+            if (testSettings['ASSERTIONS']) {
                 assert.throws(TypeError, function() { cm.char_to_string(-129); });
                 assert.throws(TypeError, function() { cm.char_to_string(128); });
                 assert.throws(TypeError, function() { cm.signed_char_to_string(-129); });
@@ -869,7 +869,7 @@ module({
             assert.equal(2147483648, cm.load_unsigned_long());
         });
 
-        if (cm['ASSERTIONS']) {
+        if (testSettings['ASSERTIONS']) {
             test("throws type error when attempting to coerce null to int", function() {
                 var e = assert.throws(TypeError, function() {
                     cm.int_to_string(null);
@@ -1050,13 +1050,13 @@ module({
 
             assert.equal(undefined, vec.get(4));
             // only test a negative index without assertions.
-            if (!cm['ASSERTIONS']) {
+            if (!testSettings['ASSERTIONS']) {
                 assert.equal(undefined, vec.get(-1));
             }
             vec.delete();
         });
 
-        if (cm['ASSERTIONS']) {
+        if (testSettings['ASSERTIONS']) {
             test("out of type range array index throws with assertions", function() {
                 var vec = cm.emval_test_return_vector();
 
@@ -1451,7 +1451,7 @@ module({
             c.delete();
         });
 
-        if (cm['ASSERTIONS']) {
+        if (testSettings['ASSERTIONS']) {
             test("assigning string or object to integer raises TypeError with assertions", function() {
                 var c = new cm.CustomStruct();
                 var e = assert.throws(TypeError, function() {
@@ -2517,9 +2517,9 @@ module({
         assert.equal('ValHolder', cm.ValHolder.name);
 
         // The test harness should set this value one way or the other.
-        assert.true(cm['DYNAMIC_EXECUTION'] !== undefined);
+        assert.true(testSettings['DYNAMIC_EXECUTION'] !== undefined);
 
-        if (!cm['DYNAMIC_EXECUTION']) {
+        if (!testSettings['DYNAMIC_EXECUTION']) {
           assert.equal('', cm.ValHolder.prototype.setVal.name);
           assert.equal('', cm.ValHolder.makeConst.name);
         } else {
