@@ -218,10 +218,13 @@ int emscripten_dispatch_to_thread_async_(pthread_t target_thread,
   emscripten_dispatch_to_thread_async_(                                        \
     (target_thread), (sig), (void*)(func_ptr), (satellite), ##__VA_ARGS__)
 
-// Returns 1 if the current thread is the thread that hosts the Emscripten runtime.
+// Returns 1 if the current thread is the thread that hosts the Emscripten
+// runtime.
 int emscripten_is_main_runtime_thread(void);
 
-// Returns 1 if the current thread is the main browser thread.
+// Returns 1 if the current thread is the main browser thread.  In the case that
+// the emscripten module is run in a worker there may be no pthread for which
+// this returns 1.
 int emscripten_is_main_browser_thread(void);
 
 // A temporary workaround to issue
@@ -233,7 +236,11 @@ void emscripten_main_thread_process_queued_calls(void);
 
 void emscripten_current_thread_process_queued_calls(void);
 
-pthread_t emscripten_main_browser_thread_id(void);
+// Returns the thread ID of the thread that hosts the Emscripten runtime.
+pthread_t emscripten_main_runtime_thread_id(void);
+
+#define emscripten_main_browser_thread_id() emscripten_main_runtime_thread_id()
+#pragma clang deprecated(emscripten_main_browser_thread_id, "use emscripten_main_runtime_thread_id instead")
 
 // Synchronously sleeps the calling thread for the given number of milliseconds.
 // Note: Calling this on the main browser thread is _very_ _very_ bad for
