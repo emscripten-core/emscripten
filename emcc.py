@@ -1697,9 +1697,6 @@ def setup_pthreads(target):
       '__dl_seterr',
     ]
 
-  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-    '$exitOnMainThread',
-  ]
   # Some symbols are required by worker.js.
   # Because emitDCEGraph only considers the main js file, and not worker.js
   # we have explicitly mark these symbols as user-exported so that they will

@@ -4,21 +4,34 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <emscripten/emscripten.h>
 
 pthread_t t;
 
-void* thread_main_exit(void* arg) {
-  printf("calling exit\n");
-  exit(42);
-}
-
 // This location should never get set to true.
 // We verify that it false from JS after the program exits.
-atomic_bool join_returned = false;
+// If the main thread ever returns from `join` or the worker thread returns
+// from `exit` this gets set to true, which would be bug.
+atomic_bool fail = false;
 
-EMSCRIPTEN_KEEPALIVE atomic_bool* join_returned_address() {
-  return &join_returned;
+EMSCRIPTEN_KEEPALIVE atomic_bool* fail_address() {
+  return &fail;
+}
+
+void* thread_main_exit(void* arg) {
+  // This test run with both _EXIT defined and without to test low level
+  // and high level exit.
+#ifdef _EXIT
+  printf("calling _exit\n");
+  _exit(43);
+#else
+  printf("calling exit\n");
+  exit(42);
+#endif
+  fail = true;
+  printf("after exit -- should never get here\n");
+  __builtin_trap();
 }
 
 int main() {
@@ -30,7 +43,7 @@ int main() {
   assert(rc == 0);
   // pthread_join should never return because the runtime should
   // exit first.
-  join_returned = true;
+  fail = true;
   printf("done join %d -- should never get here\n", rc);
   __builtin_trap();
 }
