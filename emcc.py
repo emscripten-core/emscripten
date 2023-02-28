@@ -391,7 +391,7 @@ def minify_whitespace():
 
 def embed_memfile():
   return (settings.SINGLE_FILE or
-          (settings.MEM_INIT_METHOD == 0 and
+          (settings.WASM2JS and settings.MEM_INIT_METHOD == 0 and
            (not settings.MAIN_MODULE and
             not settings.SIDE_MODULE and
             not settings.GENERATE_SOURCE_MAP)))
@@ -1808,9 +1808,6 @@ def phase_linker_setup(options, state, newargs):
   options.extern_pre_js = read_js_files(options.extern_pre_js)
   options.extern_post_js = read_js_files(options.extern_post_js)
 
-  if options.memory_init_file is None:
-    options.memory_init_file = settings.OPT_LEVEL >= 2
-
   # TODO: support source maps with js_transform
   if options.js_transform and settings.GENERATE_SOURCE_MAP:
     logger.warning('disabling source maps because a js transform is being done')
@@ -2079,10 +2076,6 @@ def phase_linker_setup(options, state, newargs):
     if settings.MAIN_MODULE == 1:
       settings.INCLUDE_FULL_LIBRARY = 1
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$preloadDylibs']
-  elif settings.SIDE_MODULE:
-    assert not settings.MAIN_MODULE
-    # memory init file is not supported with side modules, must be executable synchronously (for dlopen)
-    options.memory_init_file = False
 
   # If we are including the entire JS library then we know for sure we will, by definition,
   # require all the reverse dependencies.
@@ -2581,6 +2574,10 @@ def phase_linker_setup(options, state, newargs):
     exit_with_error('MEM_INIT_METHOD is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
 
   if settings.WASM2JS:
+    if options.memory_init_file is None:
+      options.memory_init_file = settings.OPT_LEVEL >= 2
+    if options.memory_init_file:
+      settings.MEM_INIT_METHOD = 1
     settings.MAYBE_WASM2JS = 1
     # when using wasm2js, if the memory segments are in the wasm then they
     # end up converted by wasm2js into base64 encoded JS. alternatively, we
@@ -2593,7 +2590,7 @@ def phase_linker_setup(options, state, newargs):
   else:
     # wasm includes the mem init in the wasm binary. The exception is
     # wasm2js, which behaves more like js.
-    options.memory_init_file = True
+    # TODO(sbc): Error out here in --memory-init-file used.
     settings.MEM_INIT_IN_WASM = True
 
   if (
@@ -3119,7 +3116,7 @@ def phase_post_link(options, state, in_wasm, wasm_target, target):
   else:
     memfile = shared.replace_or_append_suffix(target, '.mem')
 
-  phase_emscript(options, in_wasm, wasm_target, memfile)
+  phase_emscript(in_wasm, wasm_target, memfile)
 
   if options.js_transform:
     phase_source_transforms(options)
@@ -3137,13 +3134,9 @@ def phase_post_link(options, state, in_wasm, wasm_target, target):
 
 
 @ToolchainProfiler.profile_block('emscript')
-def phase_emscript(options, in_wasm, wasm_target, memfile):
+def phase_emscript(in_wasm, wasm_target, memfile):
   # Emscripten
   logger.debug('emscript')
-  if options.memory_init_file:
-    settings.MEM_INIT_METHOD = 1
-  else:
-    assert settings.MEM_INIT_METHOD != 1
 
   if embed_memfile():
     settings.SUPPORT_BASE64_EMBEDDING = 1
