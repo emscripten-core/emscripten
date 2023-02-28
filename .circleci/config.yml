@@ -536,9 +536,6 @@ jobs:
       - run: rm -rf $HOME/.jsvu
       - install-v8
       - run-tests:
-          title: "wasm64_v8"
-          test_targets: "wasm64_v8"
-      - run-tests:
           title: "wasm64l"
           test_targets: "wasm64l"
       - install-node-canary

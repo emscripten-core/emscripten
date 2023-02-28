@@ -1520,10 +1520,6 @@ var SDL2_MIXER_FORMATS = ["ogg"];
 // [compile+link]
 var USE_SQLITE3 = false;
 
-// If true, the current build is performed for the Emscripten test harness.
-// [other]
-var IN_TEST_HARNESS = false;
-
 // If 1, target compiling a shared Wasm Memory.
 // [compile+link] - affects user code at compile and system libraries at link.
 var SHARED_MEMORY = false;
