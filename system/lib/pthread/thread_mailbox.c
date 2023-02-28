@@ -6,6 +6,7 @@
  */
 
 #include <assert.h>
+#include <math.h>
 #include <pthread.h>
 #include <stdatomic.h>
 
@@ -39,7 +40,7 @@ void emscripten_thread_mailbox_unref(pthread_t thread) {
     // The count is now zero. The thread that owns this queue may be waiting to
     // shut down. Notify the thread that it is safe to proceed now that the
     // mailbox is closed.
-    __builtin_wasm_memory_atomic_notify((int*)&thread->mailbox_refcount, -1);
+    emscripten_futex_wake(&thread->mailbox_refcount, INT_MAX);
   }
 }
 
@@ -54,12 +55,7 @@ void _emscripten_thread_mailbox_shutdown(pthread_t thread) {
   int count = atomic_fetch_sub(&thread->mailbox_refcount, 1) - 1;
 
   while (count != 0) {
-    // Wait if possible and otherwise spin.
-    if (_emscripten_thread_supports_atomics_wait() &&
-        __builtin_wasm_memory_atomic_wait32(
-          (int*)&thread->mailbox_refcount, count, -1) == 0) {
-      break;
-    }
+    emscripten_futex_wait(&thread->mailbox_refcount, count, INFINITY);
     count = thread->mailbox_refcount;
   }
   // TODO: Cancel tasks.
