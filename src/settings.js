@@ -91,14 +91,6 @@ var INVOKE_RUN = true;
 // [link]
 var EXIT_RUNTIME = false;
 
-// How to represent the initial memory content.
-// 0: embed a base64 string literal representing the initial memory data
-// 1: create a *.mem file containing the binary data of the initial memory;
-
-//    use the --memory-init-file command line switch to select this method
-// [link]
-var MEM_INIT_METHOD = 0;
-
 // The total stack size. There is no way to enlarge the stack, so this
 // value must be large enough for the program's requirements. If
 // assertions are on, we will assert on not exceeding this, otherwise,
@@ -2185,4 +2177,5 @@ var LEGACY_SETTINGS = [
   ['EMIT_EMSCRIPTEN_METADATA', [0], 'No longer supported'],
   ['SHELL_FILE', [''], 'No longer supported'],
   ['LLD_REPORT_UNDEFINED', [1], 'Disabling is no longer supported'],
+  ['MEM_INIT_METHOD', [0], 'No longer supported'],
 ];
