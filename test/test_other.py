@@ -13058,3 +13058,19 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.set_setting('MIN_NODE_VERSION', 210000)
     expected = 'This emscripten-generated code requires node v21.0.0 (detected v%s)' % node_version
     self.do_runf(test_file('hello_world.c'), expected, assert_returncode=NON_ZERO)
+
+  def test_deprecated_macros(self):
+    create_file('main.c', '''
+    #include <assert.h>
+    #include <stdio.h>
+    #include <emscripten/threading.h>
+
+    int main() {
+      printf("%d\\n", emscripten_main_browser_thread_id());
+      assert(emscripten_main_browser_thread_id());
+      return 0;
+    }
+    ''')
+    err = self.run_process([EMCC, 'main.c'], stderr=PIPE).stderr
+    expected = "warning: macro 'emscripten_main_browser_thread_id' has been marked as deprecated: use emscripten_main_runtime_thread_id instead [-Wdeprecated-pragma]"
+    self.assertContained(expected, err)

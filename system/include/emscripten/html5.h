@@ -434,8 +434,11 @@ EMSCRIPTEN_RESULT emscripten_get_element_css_size(const char *target, double *wi
 
 void emscripten_html5_remove_all_event_listeners(void);
 
-#define EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD ((pthread_t)0x1)
+#define EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD ((pthread_t)0x1)
 #define EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD ((pthread_t)0x2)
+
+// Legacy name for EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD
+#define EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD
 
 #define emscripten_set_keypress_callback(target, userData, useCapture, callback)              emscripten_set_keypress_callback_on_thread(             (target), (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 #define emscripten_set_keydown_callback(target, userData, useCapture, callback)               emscripten_set_keydown_callback_on_thread(              (target), (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
@@ -471,7 +474,7 @@ void emscripten_html5_remove_all_event_listeners(void);
 #define emscripten_set_gamepaddisconnected_callback(userData, useCapture, callback)           emscripten_set_gamepaddisconnected_callback_on_thread(            (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 #define emscripten_set_batterychargingchange_callback(userData, callback)                     emscripten_set_batterychargingchange_callback_on_thread(          (userData),               (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 #define emscripten_set_batterylevelchange_callback(userData, callback)                        emscripten_set_batterylevelchange_callback_on_thread(             (userData),               (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
-#define emscripten_set_beforeunload_callback(userData, callback)                              emscripten_set_beforeunload_callback_on_thread(                   (userData),               (callback), EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD)
+#define emscripten_set_beforeunload_callback(userData, callback)                              emscripten_set_beforeunload_callback_on_thread(                   (userData),               (callback), EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD)
 
 long emscripten_request_animation_frame(EM_BOOL (*cb)(double time, void *userData), void *userData);
 void emscripten_cancel_animation_frame(long requestAnimationFrameId);

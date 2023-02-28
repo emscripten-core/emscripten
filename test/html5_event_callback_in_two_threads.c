@@ -99,14 +99,14 @@ EM_BOOL keyup_callback_on_application_main_thread(int eventType, const Emscripte
 
 int main()
 {
-  main_browser_thread_id = emscripten_main_browser_thread_id();
-  assert(main_browser_thread_id);
+  main_runtime_thread_id = emscripten_main_runtime_thread_id();
+  assert(main_runtime_thread_id);
   application_main_thread_id = (void*)pthread_self();
   assert(application_main_thread_id);
 
-  printf("Main browser thread ID: %p, application main thread ID: %p\n", main_browser_thread_id, application_main_thread_id);
+  printf("Main runtime thread ID: %p, application main thread ID: %p\n", main_runtime_thread_id, application_main_thread_id);
 
-  emscripten_set_keydown_callback_on_thread(0, 0, 1, keydown_callback_on_main_browser_thread, EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD);
+  emscripten_set_keydown_callback_on_thread(0, 0, 1, keydown_callback_on_main_browser_thread, EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD);
   emscripten_set_keypress_callback_on_thread(0, 0, 1, keypress_callback_on_application_main_thread, EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD);
   emscripten_set_keyup_callback_on_thread(0, 0, 1, keyup_callback_on_application_main_thread, EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD);
 

@@ -124,7 +124,7 @@ void em_task_queue_notify(em_task_queue* queue) {
   if (previous != NOTIFICATION_PENDING) {
     _emscripten_notify_task_queue(queue->thread,
                                   pthread_self(),
-                                  emscripten_main_browser_thread_id(),
+                                  emscripten_main_runtime_thread_id(),
                                   queue);
   }
 }

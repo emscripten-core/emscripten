@@ -97,7 +97,7 @@ var EXIT_RUNTIME = false;
 
 //    use the --memory-init-file command line switch to select this method
 // [link]
-var MEM_INIT_METHOD = false;
+var MEM_INIT_METHOD = 0;
 
 // The total stack size. There is no way to enlarge the stack, so this
 // value must be large enough for the program's requirements. If

@@ -319,7 +319,7 @@ void _emscripten_thread_exit(void* result) {
 
   __tl_unlock();
 
-  if (self == emscripten_main_browser_thread_id()) {
+  if (emscripten_is_main_runtime_thread()) {
     exit(0);
     return;
   }

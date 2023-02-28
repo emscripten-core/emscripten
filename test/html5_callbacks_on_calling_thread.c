@@ -17,7 +17,13 @@ EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userD
   static int once;
 
   void *threadId = pthread_self();
-  if (!once) printf("pthread_self()=%p, registeringThreadId=%p, mainRuntimeThreadId=%p, emscripten_main_browser_thread_id()=%p\n", threadId, registeringThreadId, mainRuntimeThreadId, emscripten_main_browser_thread_id());
+  if (!once)
+    printf("pthread_self()=%p, registeringThreadId=%p, mainRuntimeThreadId=%p, "
+           "emscripten_main_runtime_thread_id()=%p\n",
+           threadId,
+           registeringThreadId,
+           mainRuntimeThreadId,
+           emscripten_main_runtime_thread_id());
   printf("eventType: %d, mouseEvent: %p, userData: %p, screen: (%ld,%ld), client: (%ld,%ld),%s%s%s%s button: %hu, buttons: %hu, movement: (%ld,%ld), canvas: (%ld,%ld)\n",
     eventType, e, userData,
     e->screenX, e->screenY, e->clientX, e->clientY,
