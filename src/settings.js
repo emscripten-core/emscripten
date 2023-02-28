@@ -1520,6 +1520,10 @@ var SDL2_MIXER_FORMATS = ["ogg"];
 // [compile+link]
 var USE_SQLITE3 = false;
 
+// 1 = use utf8proc from emscripten-ports
+// [compile+link]
+var USE_UTF8PROC = false;
+
 // If 1, target compiling a shared Wasm Memory.
 // [compile+link] - affects user code at compile and system libraries at link.
 var SHARED_MEMORY = false;
