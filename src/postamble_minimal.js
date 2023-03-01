@@ -32,14 +32,6 @@ function run() {
 
 #endif
 
-#if IN_TEST_HARNESS && hasExportedSymbol('flush')
-  // flush any stdio streams for test harness, since there are existing
-  // tests that depend on this behavior.
-  // For production use, instead print full lines to avoid this kind of lazy
-  // behavior.
-  _fflush();
-#endif
-
 #if EXIT_RUNTIME
 
 #if ASSERTIONS
@@ -227,7 +219,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   updateMemoryViews();
 #endif
 
-#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE
+#if !MEM_INIT_IN_WASM && !SINGLE_FILE
 #if ASSERTIONS
   if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
 #endif

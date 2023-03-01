@@ -48,19 +48,6 @@ var LibraryEmbind = {
     Module['getLiveInheritedInstances'] = getLiveInheritedInstances;
     Module['flushPendingDeletes'] = flushPendingDeletes;
     Module['setDelayFunction'] = setDelayFunction;
-#if IN_TEST_HARNESS
-#if ASSERTIONS
-    Module['ASSERTIONS'] = true;
-#endif
-#if DYNAMIC_EXECUTION
-    // Without dynamic execution, dynamically created functions will have no
-    // names. This lets the test suite know that.
-    Module['DYNAMIC_EXECUTION'] = true;
-#endif
-#if EMBIND_STD_STRING_IS_UTF8
-    Module['EMBIND_STD_STRING_IS_UTF8'] = true;
-#endif
-#endif
   },
 
   $throwInternalError__deps: ['$InternalError'],

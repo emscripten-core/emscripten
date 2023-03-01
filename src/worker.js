@@ -52,10 +52,6 @@ if (ENVIRONMENT_IS_NODE) {
 // Thread-local guard variable for one-time init of the JS state
 var initializedJS = false;
 
-// Proxying queues that were notified before the thread started and need to be
-// executed as part of startup.
-var pendingNotifiedProxyingQueues = [];
-
 #if ASSERTIONS
 function assert(condition, text) {
   if (!condition) abort('Assertion failed: ' + text);
@@ -237,15 +233,6 @@ function handleMessage(e) {
         // We only do this once per worker since they get reused
         Module['__embind_initialize_bindings']();
 #endif // EMBIND
-
-        // Execute any proxied work that came in before the thread was
-        // initialized. Only do this once because it is only possible for
-        // proxying notifications to arrive before thread initialization on
-        // fresh workers.
-        pendingNotifiedProxyingQueues.forEach(queue => {
-          Module['executeNotifiedProxyingQueue'](queue);
-        });
-        pendingNotifiedProxyingQueues = [];
         initializedJS = true;
       }
 
@@ -253,34 +240,14 @@ function handleMessage(e) {
         Module['invokeEntryPoint'](e.data.start_routine, e.data.arg);
       } catch(ex) {
         if (ex != 'unwind') {
-          // ExitStatus not present in MINIMAL_RUNTIME
-#if !MINIMAL_RUNTIME
-          if (ex instanceof Module['ExitStatus']) {
-            if (Module['keepRuntimeAlive']()) {
-#if ASSERTIONS
-              err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' called exit(), staying alive due to noExitRuntime.');
-#endif
-            } else {
-#if ASSERTIONS
-              err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' called exit(), calling _emscripten_thread_exit.');
-#endif
-              Module['__emscripten_thread_exit'](ex.status);
-            }
-          }
-          else
-#endif // !MINIMAL_RUNTIME
-          {
-            // The pthread "crashed".  Do not call `_emscripten_thread_exit` (which
-            // would make this thread joinable.  Instead, re-throw the exception
-            // and let the top level handler propagate it back to the main thread.
-            throw ex;
-          }
-#if ASSERTIONS
-        } else {
-          // else e == 'unwind', and we should fall through here and keep the pthread alive for asynchronous events.
-          err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' completed its main entry point with an `unwind`, keeping the worker alive for asynchronous operation.');
-#endif
+          // The pthread "crashed".  Do not call `_emscripten_thread_exit` (which
+          // would make this thread joinable).  Instead, re-throw the exception
+          // and let the top level handler propagate it back to the main thread.
+          throw ex;
         }
+#if ASSERTIONS
+        err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' completed its main entry point with an `unwind`, keeping the worker alive for asynchronous operation.');
+#endif
       }
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
       if (Module['_pthread_self']()) {
@@ -288,12 +255,9 @@ function handleMessage(e) {
       }
     } else if (e.data.target === 'setimmediate') {
       // no-op
-    } else if (e.data.cmd === 'processProxyingQueue') {
+    } else if (e.data.cmd === 'checkMailbox') {
       if (initializedJS) {
-        Module['executeNotifiedProxyingQueue'](e.data.queue);
-      } else {
-        // Defer executing this queue until the runtime is initialized.
-        pendingNotifiedProxyingQueues.push(e.data.queue);
+        Module['checkMailbox']();
       }
     } else if (e.data.cmd) {
       // The received message looks like something that should be handled by this message

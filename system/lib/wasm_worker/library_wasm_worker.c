@@ -199,7 +199,7 @@ void emscripten_condvar_waitinf(emscripten_condvar_t *condvar, emscripten_lock_t
 	emscripten_lock_waitinf_acquire(lock);
 }
 
-int emscripten_condvar_wait(emscripten_condvar_t *condvar, emscripten_lock_t *lock, int64_t maxWaitNanoseconds)
+EM_BOOL emscripten_condvar_wait(emscripten_condvar_t *condvar, emscripten_lock_t *lock, int64_t maxWaitNanoseconds)
 {
 	int val = emscripten_atomic_load_u32((void*)condvar);
 	emscripten_lock_release(lock);

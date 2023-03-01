@@ -10,9 +10,6 @@ executors:
   linux-python:
     docker:
       - image: cimg/python:3.10.7
-    environment:
-      # Currently pinned due to https://github.com/emscripten-core/emscripten/issues/17846
-      V8_VERSION: "10.7.186"
   bionic:
     docker:
       - image: emscripten/emscripten-ci
@@ -23,8 +20,6 @@ executors:
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
       EMTEST_BUILD_VERBOSE: "2"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
-      # Currently pinned due to https://github.com/emscripten-core/emscripten/issues/17846
-      V8_VERSION: "10.7.186"
   mac:
     environment:
       EMSDK_NOTTY: "1"
@@ -120,7 +115,7 @@ commands:
             tar -xf node-v15.14.0-linux-x64.tar.xz
             export PATH="`pwd`/node-v15.14.0-linux-x64/bin:${PATH}"
             npm install jsvu -g
-            jsvu --os=default --engines=v8 v8@${V8_VERSION}
+            jsvu --os=default --engines=v8
   build:
     description: "Install emsdk"
     steps:
@@ -143,7 +138,7 @@ commands:
             # persisted workspace (see below).
             echo "CACHE = os.path.expanduser('~/cache')" >> .emscripten
             # Refer to commit 0bc3640 if we need to pin V8 version.
-            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/bin/v8-${V8_VERSION}')]" >> .emscripten
+            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/bin/v8')]" >> .emscripten
             echo "JS_ENGINES = [NODE_JS]" >> .emscripten
             echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> .emscripten
             echo "WASM_ENGINES = []" >> .emscripten
@@ -541,9 +536,6 @@ jobs:
       - run: rm -rf $HOME/.jsvu
       - install-v8
       - run-tests:
-          title: "wasm64_v8"
-          test_targets: "wasm64_v8"
-      - run-tests:
           title: "wasm64l"
           test_targets: "wasm64l"
       - install-node-canary
@@ -596,6 +588,7 @@ jobs:
             other.test_node_emscripten_num_logical_cores
             core2.test_pthread_create
             core2.test_i64_invoke_bigint
+            core2.test_sse2
             core2.test_source_map
             core2.test_exceptions_wasm
             core2.test_pthread_unhandledrejection"
@@ -635,6 +628,7 @@ jobs:
       EMTEST_SKIP_V8: "1"
       EMTEST_SKIP_EH: "1"
       EMTEST_SKIP_WASM64: "1"
+      EMTEST_SKIP_SIMD: "1"
     steps:
       - checkout
       - run:
@@ -706,6 +700,7 @@ jobs:
       EMTEST_SKIP_V8: "1"
       EMTEST_SKIP_EH: "1"
       EMTEST_SKIP_WASM64: "1"
+      EMTEST_SKIP_SIMD: "1"
       EMCC_SKIP_SANITY_CHECK: "1"
     steps:
       - run:
@@ -726,7 +721,7 @@ jobs:
       - run:
           name: Remove Linux binaries
           command: |
-            rm -rf ~/emsdk ~/vms
+            rm -rf ~/emsdk ~/vms ~/.jsvu
       - build
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand

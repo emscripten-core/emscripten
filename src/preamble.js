@@ -193,16 +193,13 @@ var runtimeInitialized = false;
 
 #if EXIT_RUNTIME
 var runtimeExited = false;
+#endif
+
 var runtimeKeepaliveCounter = 0;
 
 function keepRuntimeAlive() {
   return noExitRuntime || runtimeKeepaliveCounter > 0;
 }
-#else
-function keepRuntimeAlive() {
-  return noExitRuntime;
-}
-#endif
 
 function preRun() {
 #if ASSERTIONS && USE_PTHREADS
@@ -267,6 +264,9 @@ function preMain() {
 function exitRuntime() {
 #if RUNTIME_DEBUG
   dbg('exitRuntime');
+#endif
+#if ASSERTIONS
+  assert(!runtimeExited);
 #endif
 #if ASYNCIFY == 1 && ASSERTIONS
   // ASYNCIFY cannot be used once the runtime starts shutting down.
@@ -543,6 +543,8 @@ function createExportWrapper(name, fixedasm) {
 }
 #endif
 
+#include "runtime_exceptions.js"
+
 #if ABORT_ON_WASM_EXCEPTIONS
 // `abortWrapperDepth` counts the recursion level of the wrapper function so
 // that we only handle exceptions at the top level letting the exception
@@ -566,9 +568,14 @@ function makeAbortWrapper(original) {
       if (
         ABORT // rethrow exception if abort() was called in the original function call above
         || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
-#if SUPPORT_LONGJMP == 'emscripten'
-        || e === Infinity // rethrow longjmp if enabled (In Emscripten EH format longjmp will throw Infinity)
+#if SUPPORT_LONGJMP == 'emscripten' // Rethrow longjmp if enabled
+#if EXCEPTION_STACK_TRACES
+        || e instanceof EmscriptenSjLj // EXCEPTION_STACK_TRACES=1 will throw an instance of EmscriptenSjLj
+#else
+        || e === Infinity // EXCEPTION_STACK_TRACES=0 will throw Infinity
+#endif // EXCEPTION_STACK_TRACES
 #endif
+        || e === 'unwind'
       ) {
         throw e;
       }

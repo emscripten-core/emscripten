@@ -186,7 +186,7 @@
         "EMSGSIZE": 35,
         "EMULTIHOP": 36,
         "EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD": 2,
-        "EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD": 1,
+        "EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD": 1,
         "EM_FUNC_SIG_I": 536870912,
         "EM_FUNC_SIG_II": 570425344,
         "EM_FUNC_SIG_III": 603979776,
@@ -1351,7 +1351,7 @@
             "p_proto": 8
         },
         "pthread": {
-            "__size__": 120,
+            "__size__": 128,
             "profilerBlock": 112,
             "stack": 52,
             "stack_size": 56

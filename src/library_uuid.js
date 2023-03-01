@@ -24,6 +24,7 @@ mergeInto(LibraryManager.library, {
   },
 
   // Copies the 'compact' UUID variable from src to dst.
+  uuid_copy__deps: ['memcpy'],
   uuid_copy: function(dst, src) {
     // void uuid_copy(uuid_t dst, const uuid_t src);
     _memcpy(dst, src, 16);

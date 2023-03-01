@@ -18,20 +18,39 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.32 (in development)
+3.1.33 (in development)
 -----------------------
-- In Wasm exception mode (`-fwasm-exceptions`), when
-  `EXCEPTION_STACK_TRACES` is enabled, uncaught exceptions will display stack
-  traces. This defaults to true when `ASSERTIONS` is enabled. This option is
-  mainly for the users who want only exceptions' stack traces without turning
-  `ASSERTIONS` on. This option currently works only for Wasm exceptions
-  (-fwasm-exceptions). (#18642)
+- Removed `sys/sysctl.h` compatibility header.  We don't implement the function
+  it defines. (#18863)
+- Update SDL2_ttf port to 2.20.2 (#18804)
+- Update glfw header to 3.3.8 (#18826)
+- The `LLD_REPORT_UNDEFINED` setting has been removed.  It's now essentially
+  always enabled. (#18342)
+- Added `-sEXPORT_KEEPALIVE` to export symbols. When using
+  `MINIMAL_RUNTIME`, the option will be **disabled** by default.
+  This option simply exports the symbols on the module object, i.e.,
+  `Module['X'] = X;`
+
+3.1.32 - 02/17/23
+-----------------
+- Added new linker option `-sEXCEPTION_STACK_TRACES` which will display a stack
+  trace when an uncaught exception occurs. This defaults to true when
+  `ASSERTIONS` is enabled. This option is mainly for the users who want only
+  exceptions' stack traces without turning `ASSERTIONS` on. (#18642 and #18535)
 - `SUPPORT_LONGJMP`'s default value now depends on the exception mode. If Wasm
   EH (`-fwasm-exception`) is used, it defaults to `wasm`, and if Emscripten EH
   (`-sDISABLE_EXCEPTION_CATCHING=0`) is used or no exception support is used, it
   defaults to `emscripten`. Previously it always defaulted to `emscripten`, so
   when a user specified `-fwasm-exceptions`, it resulted in Wasm EH + Emscripten
   SjLj, the combination we do not intend to support for the long term.
+- Added support for Wasm-based AudioWorklets for realtime audio processing
+  (#16449)
+- Synchronous proxying functions in emscripten/proxying.h now return errors
+  instead of hanging forever when the worker thread dies before the proxied work
+  is finished.
+- The `emscripten_proxy_async_with_callback` API was replaced with a simpler
+  `emscripten_proxy_callback` API that takes a second callback to be called if
+  the worker thread dies before completing the proxied work.
 
 3.1.31 - 01/26/23
 -----------------
@@ -46,8 +65,6 @@ See docs/process.md for more on how version tagging works.
 - --pre-js and --post-js files are now fed through the JS preprocessor, just
   like JS library files and the core runtime JS files.  This means they can
   now contain #if/#else/#endif blocks and {{{ }}} macro blocks. (#18525)
-- Added support for Wasm-based AudioWorklets for realtime audio processing
-  (#16449)
 - `-sEXPORT_ALL` can now be used to export symbols on the `Module` object
   when used with `-sMINIMAL_RUNTIME` and `-sMODULARIZE` together. (#17911)
 - The llvm version that emscripten uses was updated to 17.0.0 trunk.

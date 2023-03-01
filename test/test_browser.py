@@ -2018,11 +2018,11 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_gles2_uniform_arrays(self):
-    self.btest('gles2_uniform_arrays.cpp', args=['-sGL_ASSERTIONS', '-lGL', '-lSDL'], expected=['1'], also_proxied=True)
+    self.btest('gles2_uniform_arrays.cpp', args=['-sGL_ASSERTIONS', '-lGL', '-lSDL'], expected='1', also_proxied=True)
 
   @requires_graphics_hardware
   def test_gles2_conformance(self):
-    self.btest('gles2_conformance.cpp', args=['-sGL_ASSERTIONS', '-lGL', '-lSDL'], expected=['1'])
+    self.btest('gles2_conformance.cpp', args=['-sGL_ASSERTIONS', '-lGL', '-lSDL'], expected='1')
 
   @requires_graphics_hardware
   def test_matrix_identity(self):
@@ -2177,7 +2177,7 @@ void *getBindBuffer() {
 
   @requires_graphics_hardware
   def test_glgettexenv(self):
-    self.btest('glgettexenv.c', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], expected=['1'])
+    self.btest('glgettexenv.c', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], expected='1')
 
   def test_sdl_canvas_blank(self):
     self.btest('browser/test_sdl_canvas_blank.c', args=['-lSDL', '-lGL'], reference='browser/test_sdl_canvas_blank.png')
@@ -4059,7 +4059,7 @@ Module["preRun"].push(function () {
 
     # Test that it is possible to define "Module.locateFile" string to locate where worker.js will be loaded from.
     create_file('shell.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
-    self.compile_btest(['main.cpp', '--shell-file', 'shell.html', '-sWASM=0', '-sIN_TEST_HARNESS', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE', '-o', 'test.html'], reporting=Reporting.JS_ONLY)
+    self.compile_btest(['main.cpp', '--shell-file', 'shell.html', '-sWASM=0', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE', '-o', 'test.html'], reporting=Reporting.JS_ONLY)
     shutil.move('test.worker.js', Path('cdn/test.worker.js'))
     if os.path.exists('test.html.mem'):
       shutil.copyfile('test.html.mem', Path('cdn/test.html.mem'))
@@ -4067,7 +4067,7 @@ Module["preRun"].push(function () {
 
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
     create_file('shell2.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.worker.js") return "cdn/test.worker.js"; else return filename; }, '))
-    self.compile_btest(['main.cpp', '--shell-file', 'shell2.html', '-sWASM=0', '-sIN_TEST_HARNESS', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE', '-o', 'test2.html'], reporting=Reporting.JS_ONLY)
+    self.compile_btest(['main.cpp', '--shell-file', 'shell2.html', '-sWASM=0', '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE', '-o', 'test2.html'], reporting=Reporting.JS_ONLY)
     delete_file('test.worker.js')
     self.run_browser('test2.html', '/report_result?exit:0')
 
@@ -5030,10 +5030,10 @@ Module["preRun"].push(function () {
 
   @requires_threads
   def test_embind_with_pthreads(self):
-    self.btest_exit(test_file('embind/test_pthreads.cpp'), args=['--bind', '-pthread', '-sPTHREAD_POOL_SIZE=2'])
+    self.btest_exit(test_file('embind/test_pthreads.cpp'), args=['-lembind', '-pthread', '-sPTHREAD_POOL_SIZE=2'])
 
   def test_embind_with_asyncify(self):
-    self.btest('embind_with_asyncify.cpp', '1', args=['--bind', '-sASYNCIFY'])
+    self.btest('embind_with_asyncify.cpp', '1', args=['-lembind', '-sASYNCIFY'])
 
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):
@@ -5469,14 +5469,14 @@ Module["preRun"].push(function () {
   def test_assert_failure(self):
     self.btest(test_file('browser/test_assert_failure.c'), 'abort:Assertion failed: false && "this is a test"')
 
-  @no_firefox('output slightly different in FireFox')
   def test_pthread_unhandledrejection(self):
     # Check that an unhandled promise rejection is propagated to the main thread
     # as an error. This test is failing if it hangs!
     self.btest(test_file('pthread/test_pthread_unhandledrejection.c'),
                args=['-pthread', '-sPROXY_TO_PTHREAD', '--post-js',
                      test_file('pthread/test_pthread_unhandledrejection.post.js')],
-               expected='exception:Uncaught [object ErrorEvent] / undefined')
+               # Firefox and Chrome report this slightly differently
+               expected=['exception:Uncaught rejected!', 'exception:uncaught exception: rejected!'])
 
   @requires_threads
   def test_pthread_key_recreation(self):
@@ -5506,6 +5506,15 @@ Module["preRun"].push(function () {
   })
   def test_audio_worklet_post_function(self, args):
     self.btest(test_file('webaudio/audioworklet_post_function.c'), args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args, expected='1')
+
+  def test_error_reporting(self):
+    # Test catching/reporting Error objects
+    create_file('post.js', 'throw new Error("oops");')
+    self.btest(test_file('hello_world.c'), args=['--post-js=post.js'], expected='exception:oops')
+
+    # Test catching/reporting non-Error objects
+    create_file('post.js', 'throw "foo";')
+    self.btest(test_file('hello_world.c'), args=['--post-js=post.js'], expected='exception:foo')
 
 
 class emrun(RunnerCore):

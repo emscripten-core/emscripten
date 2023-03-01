@@ -94,6 +94,8 @@ def shlex_quote(arg):
 # Switch to shlex.join once we can depend on python 3.8:
 # https://docs.python.org/3/library/shlex.html#shlex.join
 def shlex_join(cmd):
+  if type(cmd) is str:
+    return cmd
   return ' '.join(shlex_quote(x) for x in cmd)
 
 
@@ -361,6 +363,10 @@ def node_bigint_flags():
     return ['--experimental-wasm-bigint']
   else:
     return []
+
+
+def node_memory64_flags():
+  return ['--experimental-wasm-memory64']
 
 
 def node_pthread_flags():

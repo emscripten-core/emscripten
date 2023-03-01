@@ -31,7 +31,7 @@ void _emscripten_yield(double now) {
     if (thread_crashed) {
       // Return the event loop so we can handle the message from the crashed
       // thread.
-      emscripten_unwind_to_js_event_loop();
+      emscripten_exit_with_live_runtime();
     }
 
     // This is no-op in programs that don't include use of itimer/alarm.

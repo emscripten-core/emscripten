@@ -20,7 +20,6 @@ int main(int argc, char **argv) {
     EM_ASM(out('hello dere3'); out('hello dere' + 4););
   }
   EM_ASM({ out('hello input ' + $0) }, 123);
-  EM_ASM_ARGS({ out('hello input ' + $0) }, 456);
   int sum = 0;
   for (int i = 0; i < argc * 3; i++) {
     sum += EM_ASM_INT({
