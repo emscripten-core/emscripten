@@ -2742,10 +2742,10 @@ int f() {
       (['-lembind', '-O1']),
       (['-lembind', '-O2']),
       (['-lembind', '-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')]),
+      (['-lembind', '-O2', '--closure=1']),
     ]
+    extra_args = extra_args + ['-sRETAIN_COMPILER_SETTINGS', '-sEXPORTED_RUNTIME_METHODS=getCompilerSetting']
     test_cases = [t + extra_args for t in test_cases]
-    # closure compiler doesn't work with DYNAMIC_EXECUTION=0
-    test_cases.append((['-lembind', '-O2', '--closure=1']))
     for args in test_cases:
       print(args)
       self.clear()
@@ -2760,13 +2760,10 @@ int f() {
         [EMXX, test_file('embind/embind_test.cpp'),
          '--pre-js', test_file('embind/test.pre.js'),
          '--post-js', test_file('embind/test.post.js'),
-         '--js-library', test_file('embind/helpers.js'),
          '-sWASM_ASYNC_COMPILATION=0',
          # This test uses a `CustomSmartPtr` class which has 1MB of data embedded in
          # it which means we need more stack space than normal.
-         '-sSTACK_SIZE=2MB',
-         '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$EMBIND_STD_STRING_IS_UTF8,$DYNAMIC_EXECUTION,$ASSERTIONS',
-         '-sEXPORTED_FUNCTIONS=EMBIND_STD_STRING_IS_UTF8,DYNAMIC_EXECUTION,ASSERTIONS'] + args)
+         '-sSTACK_SIZE=2MB'] + args)
 
       if '-sDYNAMIC_EXECUTION=0' in args:
         js_binary_str = read_file('a.out.js')
