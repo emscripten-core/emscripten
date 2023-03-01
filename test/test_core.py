@@ -2839,6 +2839,14 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_proxying_dropped_work.c')
 
   @node_pthreads
+  def test_pthread_proxying_canceled_work(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.do_run_in_out_file_test(
+        'pthread/test_pthread_proxying_canceled_work.c',
+        interleaved_output=False)
+
+  @node_pthreads
   def test_pthread_proxying_refcount(self):
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PTHREAD_POOL_SIZE=1')
@@ -9421,6 +9429,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dylink
   @node_pthreads
+  @no_asan("Transient memory leaks to be solved by #18776")
   def test_pthread_dlopen_many(self):
     nthreads = 10
     self.set_setting('USE_PTHREADS')

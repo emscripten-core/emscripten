@@ -19,13 +19,14 @@ $__wasm_call_ctors
 $__wasm_init_memory
 $__wasm_init_tls
 $_do_call
-$_emscripten_proxy_execute_task_queue
+$_emscripten_check_mailbox
 $_emscripten_proxy_main
 $_emscripten_run_in_main_runtime_thread_js
 $_emscripten_thread_crashed
 $_emscripten_thread_exit
 $_emscripten_thread_free_data
 $_emscripten_thread_init
+$_emscripten_thread_mailbox_init
 $_emscripten_tls_init
 $_emscripten_yield
 $_main_thread
@@ -42,7 +43,10 @@ $dlfree
 $dlmalloc
 $do_dispatch_to_thread
 $em_queued_call_malloc
+$em_task_queue_create
+$em_task_queue_enqueue
 $em_task_queue_execute
+$em_task_queue_free
 $em_task_queue_is_empty
 $emscripten_async_run_in_main_thread
 $emscripten_current_thread_process_queued_calls
@@ -55,6 +59,7 @@ $init_mparams
 $main
 $memset
 $pthread_attr_destroy
+$receive_notification
 $sbrk
 $stackAlloc
 $stackRestore

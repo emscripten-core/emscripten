@@ -13,6 +13,7 @@
 
 #include "em_task_queue.h"
 #include "proxying_notification_state.h"
+#include "thread_mailbox.h"
 
 #define EM_TASK_QUEUE_INITIAL_CAPACITY 128
 
@@ -194,26 +195,41 @@ task em_task_queue_dequeue(em_task_queue* queue) {
   return t;
 }
 
-// Send a postMessage notification containing the em_task_queue pointer to the
-// target thread so it will execute the queue when it returns to the event loop.
-// Also pass in the current thread and main thread ids to minimize calls back
-// into Wasm.
-void _emscripten_notify_task_queue(pthread_t target_thread,
-                                   pthread_t curr_thread,
-                                   pthread_t main_thread,
-                                   em_task_queue* queue);
+static void receive_notification(void* arg) {
+  em_task_queue* tasks = arg;
+  tasks->notification = NOTIFICATION_RECEIVED;
+  em_task_queue_execute(tasks);
+  notification_state expected = NOTIFICATION_RECEIVED;
+  atomic_compare_exchange_strong(
+    &tasks->notification, &expected, NOTIFICATION_NONE);
+}
 
-void em_task_queue_notify(em_task_queue* queue) {
-  // If there is no pending notification for this queue, create one. If an old
-  // notification is currently being processed, it may or may not execute this
-  // work. In case it does not, the new notification will ensure the work is
-  // still executed.
+int em_task_queue_send(em_task_queue* queue, task t) {
+  // Ensure the target mailbox will remain open or detect that it is already
+  // closed.
+  if (!emscripten_thread_mailbox_ref(queue->thread)) {
+    return 0;
+  }
+
+  pthread_mutex_lock(&queue->mutex);
+  int enqueued = em_task_queue_enqueue(queue, t);
+  pthread_mutex_unlock(&queue->mutex);
+  if (!enqueued) {
+    emscripten_thread_mailbox_unref(queue->thread);
+    return 0;
+  }
+
+  // We're done if there is already a pending notification for this task queue.
+  // Otherwise, we will send one.
   notification_state previous =
     atomic_exchange(&queue->notification, NOTIFICATION_PENDING);
-  if (previous != NOTIFICATION_PENDING) {
-    _emscripten_notify_task_queue(queue->thread,
-                                  pthread_self(),
-                                  emscripten_main_runtime_thread_id(),
-                                  queue);
+  if (previous == NOTIFICATION_PENDING) {
+    emscripten_thread_mailbox_unref(queue->thread);
+    return 1;
   }
+
+  emscripten_thread_mailbox_send(
+    queue->thread, (task){.func = receive_notification, .arg = queue});
+  emscripten_thread_mailbox_unref(queue->thread);
+  return 1;
 }

@@ -50,7 +50,7 @@ em_task_queue* em_task_queue_create(pthread_t thread);
 
 void em_task_queue_destroy(em_task_queue* queue);
 
-// Execute tasks until an empty queue is observed.
+// Execute tasks until an empty queue is observed. Internally locks the queue.
 void em_task_queue_execute(em_task_queue* queue);
 
 // Not thread safe.
@@ -69,6 +69,7 @@ int em_task_queue_enqueue(em_task_queue* queue, task t);
 // Not thread safe. Assumes the queue is not empty.
 task em_task_queue_dequeue(em_task_queue* queue);
 
-// Schedule the queue to be executed next time its owning thread returns to its
-// event loop.
-void em_task_queue_notify(em_task_queue* queue);
+// Atomically enqueue the task and schedule the queue to be executed next time
+// its owning thread returns to its event loop. Returns 1 on success and 0
+// otherwise. Internally locks the queue.
+int em_task_queue_send(em_task_queue* queue, task t);

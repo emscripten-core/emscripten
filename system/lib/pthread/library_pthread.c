@@ -595,4 +595,6 @@ void __emscripten_init_main_thread(void) {
   // this is used by pthread_key_delete for deleting thread-specific data.
   __main_pthread.next = __main_pthread.prev = &__main_pthread;
   __main_pthread.tsd = (void **)__pthread_tsd_main;
+
+  _emscripten_thread_mailbox_init(&__main_pthread);
 }
