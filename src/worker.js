@@ -52,10 +52,6 @@ if (ENVIRONMENT_IS_NODE) {
 // Thread-local guard variable for one-time init of the JS state
 var initializedJS = false;
 
-// Proxying queues that were notified before the thread started and need to be
-// executed as part of startup.
-var pendingNotifiedProxyingQueues = [];
-
 #if ASSERTIONS
 function assert(condition, text) {
   if (!condition) abort('Assertion failed: ' + text);
@@ -237,15 +233,6 @@ function handleMessage(e) {
         // We only do this once per worker since they get reused
         Module['__embind_initialize_bindings']();
 #endif // EMBIND
-
-        // Execute any proxied work that came in before the thread was
-        // initialized. Only do this once because it is only possible for
-        // proxying notifications to arrive before thread initialization on
-        // fresh workers.
-        pendingNotifiedProxyingQueues.forEach(queue => {
-          Module['executeNotifiedProxyingQueue'](queue);
-        });
-        pendingNotifiedProxyingQueues = [];
         initializedJS = true;
       }
 
@@ -268,12 +255,9 @@ function handleMessage(e) {
       }
     } else if (e.data.target === 'setimmediate') {
       // no-op
-    } else if (e.data.cmd === 'processProxyingQueue') {
+    } else if (e.data.cmd === 'checkMailbox') {
       if (initializedJS) {
-        Module['executeNotifiedProxyingQueue'](e.data.queue);
-      } else {
-        // Defer executing this queue until the runtime is initialized.
-        pendingNotifiedProxyingQueues.push(e.data.queue);
+        Module['checkMailbox']();
       }
     } else if (e.data.cmd) {
       // The received message looks like something that should be handled by this message

@@ -56,7 +56,7 @@ void* execute_and_free_queue(void* arg) {
       var oldOnMessage = onmessage;
       onmessage = (e) => {
         oldOnMessage(e);
-        if (e.data.cmd == 'processProxyingQueue') {
+        if (e.data.cmd == 'checkMailbox') {
           _register_processed();
         }
       };
@@ -90,8 +90,8 @@ int main() {
   while (!executed[0] || !executed[1]) {
   }
 
-  // Wait for the notifications to be received.
-  while (processed < 2) {
+  // Wait for the postMessage notification to be received.
+  while (processed < 1) {
   }
 
 #ifndef SANITIZER
