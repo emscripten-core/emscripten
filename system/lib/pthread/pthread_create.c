@@ -270,6 +270,7 @@ int __pthread_create(pthread_t* restrict res,
       self->next,
       self->prev,
       new);
+
   *res = new;
   return 0;
 }

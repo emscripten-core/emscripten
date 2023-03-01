@@ -58,9 +58,12 @@ void _emscripten_thread_mailbox_shutdown(pthread_t thread) {
     emscripten_futex_wait(&thread->mailbox_refcount, count, INFINITY);
     count = thread->mailbox_refcount;
   }
-  // TODO: Cancel tasks.
 
-  // The mailbox will not be accessed again after this point.
+  // The mailbox is now closed. No more messages will be enqueued. Run the
+  // shutdown handler for any message already in the queue.
+  em_task_queue_cancel(thread->mailbox);
+
+  // The mailbox is now empty and will not be accessed again after this point.
   em_task_queue_destroy(thread->mailbox);
 }
 

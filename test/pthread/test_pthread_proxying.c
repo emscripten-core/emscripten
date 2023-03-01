@@ -293,7 +293,7 @@ void test_tasks_queue_growth(void) {
   printf("Testing tasks queue growth\n");
 
   em_proxying_queue* queue = em_proxying_queue_create();
-  assert(proxy_queue != NULL);
+  assert(queue != NULL);
 
   int incremented = 0;
 

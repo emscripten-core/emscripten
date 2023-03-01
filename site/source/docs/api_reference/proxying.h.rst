@@ -91,7 +91,9 @@ Functions
 
   Enqueue ``func`` to be called with argument ``arg`` on the given queue and
   thread then wait for ``func`` to be executed synchronously before returning.
-  Returns 1 if the ``func`` was successfully completed and 0 otherwise.
+  Returns 1 if the ``func`` was successfully completed and 0 otherwise,
+  including if the target thread is canceled or exits before the work is
+  completed.
 
 .. c:function:: int emscripten_proxy_sync_with_ctx(em_proxying_queue* q, pthread_t target_thread, void (*func)(em_proxying_ctx*, void*), void* arg)
 

@@ -14,6 +14,7 @@
 // A task is an arbitrary function combined with some arbitrary state.
 typedef struct task {
   void (*func)(void*);
+  void (*cancel)(void*);
   void* arg;
 } task;
 
@@ -52,6 +53,9 @@ void em_task_queue_destroy(em_task_queue* queue);
 
 // Execute tasks until an empty queue is observed. Internally locks the queue.
 void em_task_queue_execute(em_task_queue* queue);
+
+// Cancel all tasks in the queue. Internally locks the queue.
+void em_task_queue_cancel(em_task_queue* queue);
 
 // Not thread safe.
 static inline int em_task_queue_is_empty(em_task_queue* queue) {
