@@ -421,29 +421,17 @@ struct Invoker<void, Args...> {
 
 namespace async {
 
-template<typename ReturnType, typename... Args>
-struct Invoker {
-    EMSCRIPTEN_KEEPALIVE static typename internal::BindingType<ReturnType>::WireType invoke(
-        ReturnType (*fn)(Args...),
-        typename internal::BindingType<Args>::WireType... args
-    ) {
-        return internal::BindingType<ReturnType>::toWireType(
-            fn(
-                internal::BindingType<Args>::fromWireType(args)...
-            )
-        );
+template<typename F, F f> struct Wrapper;
+template<typename ReturnType, typename... Args, ReturnType(*f)(Args...)>
+struct Wrapper<ReturnType(*)(Args...), f> {
+    EMSCRIPTEN_KEEPALIVE static ReturnType invoke(Args... args) {
+        return f(args...);
     }
 };
-
-template<typename... Args>
-struct Invoker<void, Args...> {
-    EMSCRIPTEN_KEEPALIVE static void invoke(
-        void (*fn)(Args...),
-        typename internal::BindingType<Args>::WireType... args
-    ) {
-        return fn(
-            internal::BindingType<Args>::fromWireType(args)...
-        );
+template<typename... Args, void(*f)(Args...)>
+struct Wrapper<void(*)(Args...), f> {
+    EMSCRIPTEN_KEEPALIVE static void invoke(Args... args) {
+        f(args...);
     }
 };
 
@@ -472,34 +460,6 @@ struct FunctorInvoker<FunctorType, void, Args...> {
             internal::BindingType<Args>::fromWireType(args)...);
     }
 };
-
-namespace async {
-
-template<typename FunctorType, typename ReturnType, typename... Args>
-struct FunctorInvoker {
-    EMSCRIPTEN_KEEPALIVE static typename internal::BindingType<ReturnType>::WireType invoke(
-        FunctorType& function,
-        typename internal::BindingType<Args>::WireType... args
-    ) {
-        return internal::BindingType<ReturnType>::toWireType(
-            function(
-                internal::BindingType<Args>::fromWireType(args)...)
-        );
-    }
-};
-
-template<typename FunctorType, typename... Args>
-struct FunctorInvoker<FunctorType, void, Args...> {
-    EMSCRIPTEN_KEEPALIVE static void invoke(
-        FunctorType& function,
-        typename internal::BindingType<Args>::WireType... args
-    ) {
-        function(
-            internal::BindingType<Args>::fromWireType(args)...);
-    }
-};
-
-} // end namespace async
 
 } // end namespace internal
 
@@ -597,11 +557,12 @@ template<typename ReturnType, typename... Args, typename... Policies>
 void function(const char* name, ReturnType (*fn)(Args...), Policies...) {
     using namespace internal;
     typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-    typedef typename std::conditional<
+    using OriginalInvoker = Invoker<ReturnType, Args...>;
+    using InvokerType = std::conditional<
         internal::isAsync<Policies...>::value,
-        internal::async::Invoker<ReturnType, Args...>,
-        Invoker<ReturnType, Args...>
-        >::type InvokerType;
+        internal::async::Wrapper<decltype(&OriginalInvoker::invoke), &OriginalInvoker::invoke>,
+        OriginalInvoker
+        >::type;
     auto invoker = &InvokerType::invoke;
     _embind_register_function(
         name,
@@ -667,38 +628,6 @@ struct FunctionInvoker<FunctionPointerType, void, ThisType, Args...> {
     }
 };
 
-namespace async {
-
-template<typename FunctionPointerType, typename ReturnType, typename ThisType, typename... Args>
-struct FunctionInvoker {
-    EMSCRIPTEN_KEEPALIVE static typename internal::BindingType<ReturnType>::WireType invoke(
-        FunctionPointerType* function,
-        typename internal::BindingType<ThisType>::WireType wireThis,
-        typename internal::BindingType<Args>::WireType... args
-    ) {
-        return internal::BindingType<ReturnType>::toWireType(
-            (*function)(
-                internal::BindingType<ThisType>::fromWireType(wireThis),
-                internal::BindingType<Args>::fromWireType(args)...)
-        );
-    }
-};
-
-template<typename FunctionPointerType, typename ThisType, typename... Args>
-struct FunctionInvoker<FunctionPointerType, void, ThisType, Args...> {
-    EMSCRIPTEN_KEEPALIVE static void invoke(
-        FunctionPointerType* function,
-        typename internal::BindingType<ThisType>::WireType wireThis,
-        typename internal::BindingType<Args>::WireType... args
-    ) {
-        (*function)(
-            internal::BindingType<ThisType>::fromWireType(wireThis),
-            internal::BindingType<Args>::fromWireType(args)...);
-    }
-};
-
-} // end namespace async
-
 template<typename MemberPointer,
          typename ReturnType,
          typename ThisType,
@@ -731,43 +660,6 @@ struct MethodInvoker<MemberPointer, void, ThisType, Args...> {
         );
     }
 };
-
-namespace async {
-
-template<typename MemberPointer,
-         typename ReturnType,
-         typename ThisType,
-         typename... Args>
-struct MethodInvoker {
-    EMSCRIPTEN_KEEPALIVE static typename internal::BindingType<ReturnType>::WireType invoke(
-        const MemberPointer& method,
-        typename internal::BindingType<ThisType>::WireType wireThis,
-        typename internal::BindingType<Args>::WireType... args
-    ) {
-        return internal::BindingType<ReturnType>::toWireType(
-            (internal::BindingType<ThisType>::fromWireType(wireThis)->*method)(
-                internal::BindingType<Args>::fromWireType(args)...
-            )
-        );
-    }
-};
-
-template<typename MemberPointer,
-         typename ThisType,
-         typename... Args>
-struct MethodInvoker<MemberPointer, void, ThisType, Args...> {
-    EMSCRIPTEN_KEEPALIVE static void invoke(
-        const MemberPointer& method,
-        typename internal::BindingType<ThisType>::WireType wireThis,
-        typename internal::BindingType<Args>::WireType... args
-    ) {
-        return (internal::BindingType<ThisType>::fromWireType(wireThis)->*method)(
-            internal::BindingType<Args>::fromWireType(args)...
-        );
-    }
-};
-
-} // end namespace async
 
 template<typename InstanceType, typename MemberType>
 struct MemberAccess {
@@ -1530,11 +1422,12 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...)> {
     template <typename CT, typename... Policies>
     static void invoke(const char* methodName,
                        ReturnType (ClassType::*memberFunction)(Args...)) {
-        typedef typename std::conditional<
+        using OriginalInvoker = MethodInvoker<decltype(memberFunction), ReturnType, ClassType*, Args...>;
+        using InvokerType = std::conditional<
             internal::isAsync<Policies...>::value,
-            internal::async::MethodInvoker<decltype(memberFunction), ReturnType, ClassType*, Args...>,
-            MethodInvoker<decltype(memberFunction), ReturnType, ClassType*, Args...>
-            >::type InvokerType;
+            internal::async::Wrapper<decltype(&OriginalInvoker::invoke), &OriginalInvoker::invoke>,
+            OriginalInvoker
+            >::type;
         auto invoker = &InvokerType::invoke;
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<ClassType>, Args...> args;
@@ -1563,11 +1456,12 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {
     template <typename CT, typename... Policies>
     static void invoke(const char* methodName,
                        ReturnType (ClassType::*memberFunction)(Args...) const)  {
-        typedef typename std::conditional<
+        using OriginalInvoker = MethodInvoker<decltype(memberFunction), ReturnType, const ClassType*, Args...>;
+        using InvokerType = std::conditional<
             internal::isAsync<Policies...>::value,
-            internal::async::MethodInvoker<decltype(memberFunction), ReturnType, const ClassType*, Args...>,
-            MethodInvoker<decltype(memberFunction), ReturnType, const ClassType*, Args...>
-            >::type InvokerType;
+            internal::async::Wrapper<decltype(&OriginalInvoker::invoke), &OriginalInvoker::invoke>,
+            OriginalInvoker
+            >::type;
         auto invoker = &InvokerType::invoke;
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<const ClassType>, Args...> args;
@@ -1597,11 +1491,12 @@ struct RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {
     static void invoke(const char* methodName,
                        ReturnType (*function)(ThisType, Args...)) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
-        typedef typename std::conditional<
+        using OriginalInvoker = FunctionInvoker<decltype(function), ReturnType, ThisType, Args...>;
+        using InvokerType = std::conditional<
             internal::isAsync<Policies...>::value,
-            internal::async::FunctionInvoker<decltype(function), ReturnType, ThisType, Args...>,
-            FunctionInvoker<decltype(function), ReturnType, ThisType, Args...>
-            >::type InvokerType;
+            internal::async::Wrapper<decltype(&OriginalInvoker::invoke), &OriginalInvoker::invoke>,
+            OriginalInvoker
+            >::type;
         auto invoke = &InvokerType::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
@@ -1629,11 +1524,12 @@ struct RegisterClassMethod<std::function<ReturnType (ThisType, Args...)>> {
     static void invoke(const char* methodName,
                        std::function<ReturnType (ThisType, Args...)> function) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
-        typedef typename std::conditional<
+        using OriginalInvoker = FunctorInvoker<decltype(function), ReturnType, ThisType, Args...>;
+        using InvokerType = std::conditional<
             internal::isAsync<Policies...>::value,
-            internal::async::FunctorInvoker<decltype(function), ReturnType, ThisType, Args...>,
-            FunctorInvoker<decltype(function), ReturnType, ThisType, Args...>
-            >::type InvokerType;
+            internal::async::Wrapper<decltype(&OriginalInvoker::invoke), &OriginalInvoker::invoke>,
+            OriginalInvoker
+            >::type;
         auto invoke = &InvokerType::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
@@ -1655,11 +1551,12 @@ struct RegisterClassMethod<ReturnType (ThisType, Args...)> {
     static void invoke(const char* methodName,
                        Callable& callable) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
-        typedef typename std::conditional<
+        using OriginalInvoker = FunctorInvoker<decltype(callable), ReturnType, ThisType, Args...>;
+        using InvokerType = std::conditional<
             internal::isAsync<Policies...>::value,
-            internal::async::FunctorInvoker<decltype(callable), ReturnType, ThisType, Args...>,
-            FunctorInvoker<decltype(callable), ReturnType, ThisType, Args...>
-            >::type InvokerType;
+            internal::async::Wrapper<decltype(&OriginalInvoker::invoke), &OriginalInvoker::invoke>,
+            OriginalInvoker
+            >::type;
         auto invoke = &InvokerType::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
@@ -1941,11 +1838,12 @@ public:
         using namespace internal;
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-        typedef typename std::conditional<
+        using OriginalInvoker = internal::Invoker<ReturnType, Args...>;
+        using InvokerType = std::conditional<
             internal::isAsync<Policies...>::value,
-            internal::async::Invoker<ReturnType, Args...>,
-            internal::Invoker<ReturnType, Args...>
-            >::type InvokerType;
+            internal::async::Wrapper<decltype(&OriginalInvoker::invoke), &OriginalInvoker::invoke>,
+            OriginalInvoker
+            >::type;
         auto invoke = &InvokerType::invoke;
         _embind_register_class_class_function(
             TypeID<ClassType>::get(),
