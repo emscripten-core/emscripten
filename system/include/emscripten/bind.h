@@ -431,6 +431,13 @@ struct Wrapper<ReturnType(*)(Args...), f> {
 
 } // end namespace async
 
+template<typename T, typename... Policies>
+using maybe_wrap_async = typename std::conditional<
+        isAsync<Policies...>::value,
+        async::Wrapper<decltype(&T::invoke), &T::invoke>,
+        T
+        >::type;
+
 template<typename FunctorType, typename ReturnType, typename... Args>
 struct FunctorInvoker {
     static typename internal::BindingType<ReturnType>::WireType invoke(
@@ -552,20 +559,15 @@ void function(const char* name, ReturnType (*fn)(Args...), Policies...) {
     using namespace internal;
     typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
     using OriginalInvoker = Invoker<ReturnType, Args...>;
-    using InvokerType = std::conditional<
-        internal::isAsync<Policies...>::value,
-        internal::async::Wrapper<decltype(&OriginalInvoker::invoke), &OriginalInvoker::invoke>,
-        OriginalInvoker
-        >::type;
-    auto invoker = &InvokerType::invoke;
+    auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
     _embind_register_function(
         name,
         args.getCount(),
         args.getTypes(),
-        getSignature(invoker),
-        reinterpret_cast<GenericFunction>(invoker),
+        getSignature(invoke),
+        reinterpret_cast<GenericFunction>(invoke),
         reinterpret_cast<GenericFunction>(fn),
-        internal::isAsync<Policies...>::value);
+        isAsync<Policies...>::value);
 }
 
 namespace internal {
@@ -1417,12 +1419,7 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...)> {
     static void invoke(const char* methodName,
                        ReturnType (ClassType::*memberFunction)(Args...)) {
         using OriginalInvoker = MethodInvoker<decltype(memberFunction), ReturnType, ClassType*, Args...>;
-        using InvokerType = std::conditional<
-            internal::isAsync<Policies...>::value,
-            internal::async::Wrapper<decltype(&OriginalInvoker::invoke), &OriginalInvoker::invoke>,
-            OriginalInvoker
-            >::type;
-        auto invoker = &InvokerType::invoke;
+        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<ClassType>, Args...> args;
         _embind_register_class_function(
@@ -1430,11 +1427,11 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...)> {
             methodName,
             args.getCount(),
             args.getTypes(),
-            getSignature(invoker),
-            reinterpret_cast<GenericFunction>(invoker),
+            getSignature(invoke),
+            reinterpret_cast<GenericFunction>(invoke),
             getContext(memberFunction),
             isPureVirtual<Policies...>::value,
-            internal::isAsync<Policies...>::value);
+            isAsync<Policies...>::value);
     }
 };
 
@@ -1451,12 +1448,7 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {
     static void invoke(const char* methodName,
                        ReturnType (ClassType::*memberFunction)(Args...) const)  {
         using OriginalInvoker = MethodInvoker<decltype(memberFunction), ReturnType, const ClassType*, Args...>;
-        using InvokerType = std::conditional<
-            internal::isAsync<Policies...>::value,
-            internal::async::Wrapper<decltype(&OriginalInvoker::invoke), &OriginalInvoker::invoke>,
-            OriginalInvoker
-            >::type;
-        auto invoker = &InvokerType::invoke;
+        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<const ClassType>, Args...> args;
         _embind_register_class_function(
@@ -1464,11 +1456,11 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {
             methodName,
             args.getCount(),
             args.getTypes(),
-            getSignature(invoker),
-            reinterpret_cast<GenericFunction>(invoker),
+            getSignature(invoke),
+            reinterpret_cast<GenericFunction>(invoke),
             getContext(memberFunction),
             isPureVirtual<Policies...>::value,
-            internal::isAsync<Policies...>::value);
+            isAsync<Policies...>::value);
     }
 };
 
@@ -1486,12 +1478,7 @@ struct RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {
                        ReturnType (*function)(ThisType, Args...)) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
         using OriginalInvoker = FunctionInvoker<decltype(function), ReturnType, ThisType, Args...>;
-        using InvokerType = std::conditional<
-            internal::isAsync<Policies...>::value,
-            internal::async::Wrapper<decltype(&OriginalInvoker::invoke), &OriginalInvoker::invoke>,
-            OriginalInvoker
-            >::type;
-        auto invoke = &InvokerType::invoke;
+        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
             methodName,
@@ -1501,7 +1488,7 @@ struct RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {
             reinterpret_cast<GenericFunction>(invoke),
             getContext(function),
             false,
-            internal::isAsync<Policies...>::value);
+            isAsync<Policies...>::value);
     }
 };
 
@@ -1519,12 +1506,7 @@ struct RegisterClassMethod<std::function<ReturnType (ThisType, Args...)>> {
                        std::function<ReturnType (ThisType, Args...)> function) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
         using OriginalInvoker = FunctorInvoker<decltype(function), ReturnType, ThisType, Args...>;
-        using InvokerType = std::conditional<
-            internal::isAsync<Policies...>::value,
-            internal::async::Wrapper<decltype(&OriginalInvoker::invoke), &OriginalInvoker::invoke>,
-            OriginalInvoker
-            >::type;
-        auto invoke = &InvokerType::invoke;
+        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
             methodName,
@@ -1534,7 +1516,7 @@ struct RegisterClassMethod<std::function<ReturnType (ThisType, Args...)>> {
             reinterpret_cast<GenericFunction>(invoke),
             getContext(function),
             false,
-            internal::isAsync<Policies...>::value);
+            isAsync<Policies...>::value);
     }
 };
 
@@ -1546,12 +1528,7 @@ struct RegisterClassMethod<ReturnType (ThisType, Args...)> {
                        Callable& callable) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
         using OriginalInvoker = FunctorInvoker<decltype(callable), ReturnType, ThisType, Args...>;
-        using InvokerType = std::conditional<
-            internal::isAsync<Policies...>::value,
-            internal::async::Wrapper<decltype(&OriginalInvoker::invoke), &OriginalInvoker::invoke>,
-            OriginalInvoker
-            >::type;
-        auto invoke = &InvokerType::invoke;
+        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
             methodName,
@@ -1561,7 +1538,7 @@ struct RegisterClassMethod<ReturnType (ThisType, Args...)> {
             reinterpret_cast<GenericFunction>(invoke),
             getContext(callable),
             false,
-            internal::isAsync<Policies...>::value);
+            isAsync<Policies...>::value);
     }
 };
 
@@ -1833,12 +1810,7 @@ public:
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
         using OriginalInvoker = internal::Invoker<ReturnType, Args...>;
-        using InvokerType = std::conditional<
-            internal::isAsync<Policies...>::value,
-            internal::async::Wrapper<decltype(&OriginalInvoker::invoke), &OriginalInvoker::invoke>,
-            OriginalInvoker
-            >::type;
-        auto invoke = &InvokerType::invoke;
+        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
         _embind_register_class_class_function(
             TypeID<ClassType>::get(),
             methodName,
@@ -1847,7 +1819,7 @@ public:
             getSignature(invoke),
             reinterpret_cast<GenericFunction>(invoke),
             reinterpret_cast<GenericFunction>(classMethod),
-            internal::isAsync<Policies...>::value);
+            isAsync<Policies...>::value);
         return *this;
     }
 
