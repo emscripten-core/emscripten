@@ -428,12 +428,6 @@ struct Wrapper<ReturnType(*)(Args...), f> {
         return f(args...);
     }
 };
-template<typename... Args, void(*f)(Args...)>
-struct Wrapper<void(*)(Args...), f> {
-    EMSCRIPTEN_KEEPALIVE static void invoke(Args... args) {
-        f(args...);
-    }
-};
 
 } // end namespace async
 
