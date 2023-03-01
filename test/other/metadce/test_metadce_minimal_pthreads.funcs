@@ -4,7 +4,10 @@ $__memcpy
 $__pthread_mutex_lock
 $__pthread_mutex_trylock
 $__pthread_mutex_unlock
+$__pthread_rwlock_rdlock
+$__pthread_rwlock_timedrdlock
 $__pthread_rwlock_tryrdlock
+$__pthread_rwlock_unlock
 $__pthread_self_internal
 $__pthread_setcancelstate
 $__set_thread_state
@@ -38,12 +41,15 @@ $a_inc
 $a_store
 $a_swap
 $add
+$cancel_notification
 $dispose_chunk
 $dlfree
 $dlmalloc
 $do_dispatch_to_thread
 $em_queued_call_malloc
+$em_task_queue_cancel
 $em_task_queue_create
+$em_task_queue_dequeue
 $em_task_queue_enqueue
 $em_task_queue_execute
 $em_task_queue_free
@@ -58,6 +64,7 @@ $init_file_lock
 $init_mparams
 $main
 $memset
+$nodtor
 $pthread_attr_destroy
 $receive_notification
 $sbrk
