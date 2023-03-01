@@ -35,6 +35,8 @@ Usage:
 
   --obj-output=FILE create an object file from embedded files, for direct linking into a wasm binary.
 
+  --depfile=FILE Writes a dependency list containing the list of directories and files walked, compatible with Make, Ninja, CMake, etc.
+
   --wasm64 When used with `--obj-output` create a wasm64 object file
 
   --export-name=EXPORT_NAME Use custom export name (default is `Module`)
@@ -96,6 +98,7 @@ AV_WORKAROUND = 0
 
 excluded_patterns: List[str] = []
 new_data_files = []
+walked = []
 
 
 class Options:
@@ -105,6 +108,7 @@ class Options:
     self.has_embedded = False
     self.jsoutput = None
     self.obj_output = None
+    self.depfile = None
     self.from_emcc = False
     self.force = True
     # If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally
@@ -183,11 +187,13 @@ def add(mode, rootpathsrc, rootpathdst):
   rootpathdst: The name we want to make the source path available on the
                emscripten virtual FS.
   """
+  walked.append(rootpathsrc)
   for dirpath, dirnames, filenames in os.walk(rootpathsrc):
     new_dirnames = []
     for name in dirnames:
       fullname = os.path.join(dirpath, name)
       if not should_ignore(fullname):
+        walked.append(fullname)
         new_dirnames.append(name)
       elif DEBUG:
         err('Skipping directory "%s" from inclusion in the emscripten '
@@ -195,6 +201,7 @@ def add(mode, rootpathsrc, rootpathdst):
     for name in filenames:
       fullname = os.path.join(dirpath, name)
       if not should_ignore(fullname):
+        walked.append(fullname)
         # Convert source filename relative to root directory of target FS.
         dstpath = os.path.join(rootpathdst,
                                os.path.relpath(fullname, rootpathsrc))
@@ -400,6 +407,9 @@ def main():
     elif arg.startswith('--obj-output'):
       options.obj_output = arg.split('=', 1)[1] if '=' in arg else None
       leading = ''
+    elif arg.startswith('--depfile'):
+      options.depfile = arg.split('=', 1)[1] if '=' in arg else None
+      leading = ''
     elif arg == '--wasm64':
       options.wasm64 = True
     elif arg.startswith('--export-name'):
@@ -458,11 +468,13 @@ def main():
     err('error: TARGET should not be the same value of --js-output')
     return 1
 
+  walked.append(__file__)
   for file_ in data_files:
     if not should_ignore(file_.srcpath):
       if os.path.isdir(file_.srcpath):
         add(file_.mode, file_.srcpath, file_.dstpath)
       else:
+        walked.append(file_.srcpath)
         new_data_files.append(file_)
   data_files = [file_ for file_ in new_data_files
                 if not os.path.isdir(file_.srcpath)]
@@ -567,6 +579,17 @@ def main():
       if options.separate_metadata:
         with open(options.jsoutput + '.metadata', 'w') as f:
           json.dump(metadata, f, separators=(',', ':'))
+
+  if options.depfile:
+    with open(options.depfile, 'w') as f:
+      for target in [data_target, options.jsoutput]:
+        if target:
+          f.write(target.replace('$', '$$').replace('#', '\\#').replace(' ', '\\ '))
+          f.write(' \\\n')
+      f.write(': \\\n')
+      for dependency in walked:
+        f.write(dependency.replace('$', '$$').replace('#', '\\#').replace(' ', '\\ '))
+        f.write(' \\\n')
 
   return 0
 
