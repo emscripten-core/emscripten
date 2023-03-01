@@ -9430,7 +9430,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dylink
   @node_pthreads
-  @no_asan("Transient memory leaks to be solved by #18776")
   def test_pthread_dlopen_many(self):
     nthreads = 10
     self.set_setting('USE_PTHREADS')
