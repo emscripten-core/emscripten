@@ -219,7 +219,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   updateMemoryViews();
 #endif
 
-#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE
+#if !MEM_INIT_IN_WASM && !SINGLE_FILE
 #if ASSERTIONS
   if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
 #endif

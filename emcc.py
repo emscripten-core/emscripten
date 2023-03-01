@@ -389,9 +389,9 @@ def minify_whitespace():
   return settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0
 
 
-def embed_memfile():
+def embed_memfile(options):
   return (settings.SINGLE_FILE or
-          (settings.WASM2JS and settings.MEM_INIT_METHOD == 0 and
+          (settings.WASM2JS and not options.memory_init_file and
            (not settings.MAIN_MODULE and
             not settings.SIDE_MODULE and
             not settings.GENERATE_SOURCE_MAP)))
@@ -2570,14 +2570,9 @@ def phase_linker_setup(options, state, newargs):
   if options.use_closure_compiler == 2 and not settings.WASM2JS:
     exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
 
-  if 'MEM_INIT_METHOD' in user_settings:
-    exit_with_error('MEM_INIT_METHOD is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
-
   if settings.WASM2JS:
     if options.memory_init_file is None:
       options.memory_init_file = settings.OPT_LEVEL >= 2
-    if options.memory_init_file:
-      settings.MEM_INIT_METHOD = 1
     settings.MAYBE_WASM2JS = 1
     # when using wasm2js, if the memory segments are in the wasm then they
     # end up converted by wasm2js into base64 encoded JS. alternatively, we
@@ -2587,11 +2582,6 @@ def phase_linker_setup(options, state, newargs):
     # shared memory builds we must keep the memory segments in the wasm as
     # they will be passive segments which the .mem format cannot handle.
     settings.MEM_INIT_IN_WASM = not options.memory_init_file or settings.SINGLE_FILE or settings.SHARED_MEMORY
-  else:
-    # wasm includes the mem init in the wasm binary. The exception is
-    # wasm2js, which behaves more like js.
-    # TODO(sbc): Error out here in --memory-init-file used.
-    settings.MEM_INIT_IN_WASM = True
 
   if (
       settings.MAYBE_WASM2JS or
@@ -3116,7 +3106,7 @@ def phase_post_link(options, state, in_wasm, wasm_target, target):
   else:
     memfile = shared.replace_or_append_suffix(target, '.mem')
 
-  phase_emscript(in_wasm, wasm_target, memfile)
+  phase_emscript(options, in_wasm, wasm_target, memfile)
 
   if options.js_transform:
     phase_source_transforms(options)
@@ -3134,11 +3124,11 @@ def phase_post_link(options, state, in_wasm, wasm_target, target):
 
 
 @ToolchainProfiler.profile_block('emscript')
-def phase_emscript(in_wasm, wasm_target, memfile):
+def phase_emscript(options, in_wasm, wasm_target, memfile):
   # Emscripten
   logger.debug('emscript')
 
-  if embed_memfile():
+  if embed_memfile(options):
     settings.SUPPORT_BASE64_EMBEDDING = 1
     # _read in shell.js depends on intArrayToString when SUPPORT_BASE64_EMBEDDING is set
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$intArrayToString')
@@ -3275,7 +3265,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   elif settings.PROXY_TO_WORKER:
     generate_worker_js(target, js_target, target_basename)
 
-  if embed_memfile() and memfile:
+  if embed_memfile(options) and memfile:
     delete_file(memfile)
 
   if settings.SPLIT_MODULE:
@@ -3528,6 +3518,8 @@ def parse_args(newargs):
       ports.show_ports()
       should_exit = True
     elif check_arg('--memory-init-file'):
+      # This flag is ignored unless targetting wasm2js.
+      # TODO(sbc): Error out if used without wasm2js.
       options.memory_init_file = int(consume_arg())
     elif check_flag('--proxy-to-worker'):
       settings_changes.append('PROXY_TO_WORKER=1')
