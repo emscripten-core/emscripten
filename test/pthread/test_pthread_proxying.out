@@ -8,7 +8,7 @@ running widget 5 on returner
 Testing sync_with_ctx proxying
 running widget 6 on looper
 running widget 7 on returner
-Testing async_with_callback proxying
+Testing callback proxying
 running widget 8 on main
 running widget 9 on looper
 running widget 10 on returner
