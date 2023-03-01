@@ -113,9 +113,9 @@ DEFAULT_ASYNCIFY_IMPORTS = [
 DEFAULT_ASYNCIFY_EXPORTS = [
   'main',
   '__main_argc_argv',
-   # Embind's async template wrapper functions. These functions are usually in
-   # the function pointer table and not called from exports, but we need to name
-   # them so the JSPI pass can find and convert them.
+  # Embind's async template wrapper functions. These functions are usually in
+  # the function pointer table and not called from exports, but we need to name
+  # them so the JSPI pass can find and convert them.
   '_ZN10emscripten8internal5async*'
 ]
 
