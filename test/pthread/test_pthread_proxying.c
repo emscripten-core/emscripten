@@ -262,6 +262,58 @@ void test_proxy_callback(void) {
   destroy_widget(&w10);
 }
 
+void test_proxy_callback_with_ctx(void) {
+  printf("Testing callback_with_ctx proxying\n");
+
+  int i = 0;
+  widget w11, w12, w13;
+  init_widget(&w11, &i, 11);
+  init_widget(&w12, &i, 12);
+  init_widget(&w13, &i, 13);
+
+  // Proxy to ourselves.
+
+  emscripten_proxy_callback_with_ctx(
+    proxy_queue, pthread_self(), start_and_finish_running_widget, set_j, NULL, &w11);
+  assert(!w11.done);
+  assert(j == 10);
+  emscripten_proxy_execute_queue(proxy_queue);
+  assert(i == 11);
+  assert(w11.done);
+  assert(pthread_equal(w11.thread, pthread_self()));
+  assert(j == 11);
+
+  // Proxy to looper.
+  emscripten_proxy_callback_with_ctx(
+    proxy_queue, looper, start_and_finish_running_widget, set_j, NULL, &w12);
+  await_widget(&w12);
+  assert(i == 12);
+  assert(w12.done);
+  assert(pthread_equal(w12.thread, looper));
+  assert(j == 11);
+  // TODO: Add a way to wait for work before executing it.
+  while (j != 12) {
+    emscripten_proxy_execute_queue(proxy_queue);
+  }
+
+  // Proxy to returner.
+  emscripten_proxy_callback_with_ctx(
+    proxy_queue, returner, start_running_widget, set_j, NULL, &w13);
+  await_widget(&w13);
+  assert(i == 13);
+  assert(w13.done);
+  assert(pthread_equal(w13.thread, returner));
+  assert(j == 12);
+  // TODO: Add a way to wait for work before executing it.
+  while (j != 13) {
+    emscripten_proxy_execute_queue(proxy_queue);
+  }
+
+  destroy_widget(&w11);
+  destroy_widget(&w12);
+  destroy_widget(&w13);
+}
+
 typedef struct increment_to_arg {
   em_proxying_queue* queue;
   int* ip;
@@ -393,6 +445,7 @@ int main(int argc, char* argv[]) {
   test_proxy_sync();
   test_proxy_sync_with_ctx();
   test_proxy_callback();
+  test_proxy_callback_with_ctx();
 
   should_quit = 1;
   pthread_join(looper, NULL);

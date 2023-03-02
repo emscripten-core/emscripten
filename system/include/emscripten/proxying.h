@@ -64,12 +64,12 @@ int emscripten_proxy_sync(em_proxying_queue* q,
                           void* arg);
 
 // Enqueue `func` on the given queue and thread and wait for it to be executed
-// and for the task to be marked finished with `emscripten_proxying_finish`
-// before returning. `func` need not call `emscripten_proxying_finish` itself;
-// it could instead store the context pointer and call
-// `emscripten_proxying_finish` at an arbitrary later time. Returns 1 if the
-// task was successfully completed and 0 otherwise, including if the target
-// thread is canceled or exits before the work is completed.
+// and for the task to be marked finished with `emscripten_proxy_finish` before
+// returning. `func` need not call `emscripten_proxy_finish` itself; it could
+// instead store the context pointer and call `emscripten_proxy_finish` at an
+// arbitrary later time. Returns 1 if the task was successfully completed and 0
+// otherwise, including if the target thread is canceled or exits before the
+// work is completed.
 int emscripten_proxy_sync_with_ctx(em_proxying_queue* q,
                                    pthread_t target_thread,
                                    void (*func)(em_proxying_ctx*, void*),
@@ -88,6 +88,20 @@ int emscripten_proxy_callback(em_proxying_queue* q,
                               void (*cancel)(void*),
                               void* arg);
 
+// Enqueue `func` on the given queue and thread. Once (and if) it finishes the
+// task by calling `emscripten_proxy_finish` on the given `em_proxying_ctx`, it
+// will asynchronously proxy `callback` back to the current thread on the same
+// queue, or if the target thread dies before the work can be completed,
+// `cancel` will be proxied back instead. All three function will receive the
+// same argument, `arg`. Returns 1 if `func` was successfully enqueued and the
+// target thread notified or 0 otherwise.
+int emscripten_proxy_callback_with_ctx(em_proxying_queue* q,
+                                       pthread_t target_thread,
+                                       void (*func)(em_proxying_ctx*, void*),
+                                       void (*callback)(void*),
+                                       void (*cancel)(void*),
+                                       void* arg);
+
 #ifdef __cplusplus
 } // extern "C"
 
@@ -103,6 +117,18 @@ namespace emscripten {
 
 // A thin C++ wrapper around the underlying C API.
 class ProxyingQueue {
+public:
+  // Simple wrapper around `em_proxying_ctx*` providing a `finish` method as an
+  // alternative to `emscripten_proxy_finish`.
+  struct ProxyingCtx {
+    em_proxying_ctx* ctx;
+
+    ProxyingCtx() = default;
+    ProxyingCtx(em_proxying_ctx* ctx) : ctx(ctx) {}
+    void finish() { emscripten_proxy_finish(ctx); }
+  };
+
+private:
   static void runAndFree(void* arg) {
     auto* f = (std::function<void()>*)arg;
     (*f)();
@@ -150,6 +176,37 @@ class ProxyingQueue {
     delete info;
   }
 
+  struct CallbackWithCtxFuncs {
+    std::function<void(ProxyingCtx)> func;
+    std::function<void()> callback;
+    std::function<void()> cancel;
+
+    CallbackWithCtxFuncs(std::function<void(ProxyingCtx)>&& func,
+                         std::function<void()>&& callback,
+                         std::function<void()>&& cancel)
+      : func(std::move(func)), callback(std::move(callback)),
+        cancel(std::move(cancel)) {}
+  };
+
+  static void runFuncWithCtx(em_proxying_ctx* ctx, void* arg) {
+    auto* info = (CallbackWithCtxFuncs*)arg;
+    info->func(ProxyingCtx{ctx});
+  }
+
+  static void runCallbackWithCtx(void* arg) {
+    auto* info = (CallbackWithCtxFuncs*)arg;
+    info->callback();
+    delete info;
+  }
+
+  static void runCancelWithCtx(void* arg) {
+    auto* info = (CallbackWithCtxFuncs*)arg;
+    if (info->cancel) {
+      info->cancel();
+    }
+    delete info;
+  }
+
 public:
   em_proxying_queue* queue = em_proxying_queue_create();
 
@@ -178,16 +235,6 @@ public:
       em_proxying_queue_destroy(queue);
     }
   }
-
-  // Simple wrapper around `em_proxying_ctx*` providing a `finish` method as an
-  // alternative to `emscripten_proxy_finish`.
-  struct ProxyingCtx {
-    em_proxying_ctx* ctx;
-
-    ProxyingCtx() = default;
-    ProxyingCtx(em_proxying_ctx* ctx) : ctx(ctx) {}
-    void finish() { emscripten_proxy_finish(ctx); }
-  };
 
   void execute() { emscripten_proxy_execute_queue(queue); }
 
@@ -220,6 +267,24 @@ public:
       std::move(func), std::move(callback), std::move(cancel));
     if (!emscripten_proxy_callback(
           queue, target, runFunc, runCallback, runCancel, info)) {
+      delete info;
+      return false;
+    }
+    return true;
+  }
+
+  bool proxyCallbackWithCtx(pthread_t target,
+                            std::function<void(ProxyingCtx)>&& func,
+                            std::function<void()>&& callback,
+                            std::function<void()>&& cancel) {
+    CallbackWithCtxFuncs* info = new CallbackWithCtxFuncs(
+      std::move(func), std::move(callback), std::move(cancel));
+    if (!emscripten_proxy_callback_with_ctx(queue,
+                                            target,
+                                            runFuncWithCtx,
+                                            runCallbackWithCtx,
+                                            runCancelWithCtx,
+                                            info)) {
       delete info;
       return false;
     }
