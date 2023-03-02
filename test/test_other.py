@@ -2989,6 +2989,28 @@ int f() {
     output = self.run_js('a.out.js')
     self.assertContained('hello data', output)
 
+  def test_file_packager_depfile(self):
+    create_file('data1.txt', 'data1')
+    ensure_dir('subdir')
+    create_file('subdir/data2.txt', 'data2')
+
+    self.run_process([FILE_PACKAGER, 'test.data', '--js-output=test.js', '--depfile=test.data.d', '--from-emcc', '--preload', '.'])
+    lines = read_file('test.data.d').split('\n')
+    split = lines.index(': \\')
+    before, after = set(lines[:split]), set(lines[split+1:])
+    try:
+      # Set comparison used because depfile is not order-sensitive.
+      self.assertTrue('test.data \\' in before)
+      self.assertTrue('test.js \\' in before)
+      self.assertTrue(FILE_PACKAGER + '.py \\' in after)
+      self.assertTrue('. \\' in after)
+      self.assertTrue('./data1.txt \\' in after)
+      self.assertTrue('./subdir \\' in after)
+      self.assertTrue('./subdir/data2.txt \\' in after)
+    except:
+      print(before, after)
+      raise
+
   def test_sdl_headless(self):
     shutil.copyfile(test_file('screenshot.png'), 'example.png')
     self.do_other_test('test_sdl_headless.c', emcc_args=['-sHEADLESS'])
