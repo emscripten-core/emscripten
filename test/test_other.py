@@ -2997,19 +2997,15 @@ int f() {
     self.run_process([FILE_PACKAGER, 'test.data', '--js-output=test.js', '--depfile=test.data.d', '--from-emcc', '--preload', '.'])
     lines = read_file('test.data.d').split('\n')
     split = lines.index(': \\')
-    before, after = set(lines[:split]), set(lines[split+1:])
-    try:
-      # Set comparison used because depfile is not order-sensitive.
-      self.assertTrue('test.data \\' in before)
-      self.assertTrue('test.js \\' in before)
-      self.assertTrue(FILE_PACKAGER + '.py \\' in after)
-      self.assertTrue('. \\' in after)
-      self.assertTrue('./data1.txt \\' in after)
-      self.assertTrue('./subdir \\' in after)
-      self.assertTrue('./subdir/data2.txt \\' in after)
-    except:
-      print(before, after)
-      raise
+    before, after = set(lines[:split]), set(lines[split + 1:])
+    # Set comparison used because depfile is not order-sensitive.
+    self.assertTrue('test.data \\' in before)
+    self.assertTrue('test.js \\' in before)
+    self.assertTrue(FILE_PACKAGER + '.py \\' in after)
+    self.assertTrue('. \\' in after)
+    self.assertTrue('./data1.txt \\' in after)
+    self.assertTrue('./subdir \\' in after)
+    self.assertTrue('./subdir/data2.txt \\' in after)
 
   def test_sdl_headless(self):
     shutil.copyfile(test_file('screenshot.png'), 'example.png')
