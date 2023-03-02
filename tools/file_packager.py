@@ -584,14 +584,21 @@ def main():
     with open(options.depfile, 'w') as f:
       for target in [data_target, options.jsoutput]:
         if target:
-          f.write(target.replace('$', '$$').replace('#', '\\#').replace(' ', '\\ '))
+          f.write(escape_for_makefile(target))
           f.write(' \\\n')
       f.write(': \\\n')
       for dependency in walked:
-        f.write(dependency.replace('$', '$$').replace('#', '\\#').replace(' ', '\\ '))
+        f.write(escape_for_makefile(dependency))
         f.write(' \\\n')
 
   return 0
+
+
+def escape_for_makefile(fpath):
+  # Escapes for CMake's "pathname" grammar as described here:
+  #   https://cmake.org/cmake/help/latest/command/add_custom_command.html#grammar-token-depfile-pathname
+  # Which is congruent with how Ninja and GNU Make expect characters escaped.
+  return fpath.replace('$', '$$').replace('#', '\\#').replace(' ', '\\ ')
 
 
 def generate_js(data_target, data_files, metadata):
