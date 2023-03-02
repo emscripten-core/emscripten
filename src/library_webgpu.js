@@ -674,7 +674,18 @@ var LibraryWebGPU = {
 
   // *Destroy
 
-  wgpuBufferDestroy: function(bufferId) { WebGPU.mgrBuffer.get(bufferId)["destroy"](); },
+  wgpuBufferDestroy: function(bufferId) {
+    var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
+    {{{ gpu.makeCheckDefined('bufferWrapper') }}}
+    if (bufferWrapper.onUnmap) {
+      for (var i = 0; i < bufferWrapper.onUnmap.length; ++i) {
+        bufferWrapper.onUnmap[i]();
+      }
+      bufferWrapper.onUnmap = undefined;
+    }
+
+    WebGPU.mgrBuffer.get(bufferId)["destroy"]();
+  },
   wgpuTextureDestroy: function(textureId) { WebGPU.mgrTexture.get(textureId)["destroy"](); },
   wgpuQuerySetDestroy: function(querySetId) { WebGPU.mgrQuerySet.get(querySetId)["destroy"](); },
 
