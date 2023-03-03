@@ -16,11 +16,11 @@
 extern "C" {
 #endif
 
-// Returns the starting address of the wasm stack. This is the address
+// Returns the starting address of the stack. This is the address
 // that the stack pointer would point to when no bytes are in use on the stack.
 uintptr_t emscripten_stack_get_base(void);
 
-// Returns the end address of the wasm stack. This is the address that the stack
+// Returns the end address of the stack. This is the address that the stack
 // pointer would point to when the whole stack is in use.  (the address pointed
 // to by the end is not part of the stack itself). Note that the stack grows
 // down so the address returned by emscripten_stack_get_end() is smaller than
@@ -28,13 +28,13 @@ uintptr_t emscripten_stack_get_base(void);
 uintptr_t emscripten_stack_get_end(void);
 
 // Setup internal base/end values based on the initial values that were either
-// set at compile time (in static linking) or instantiations time (for dynamic
+// set at compile time (in static linking) or instantiation time (for dynamic
 // linking).
 void emscripten_stack_init(void);
 
-// Sets the internal values reported by emscripten_stack_get_base and
-// emscripten_stack_get_end.  This should only used by low level libraries
-// such as asyncify fibres.
+// Sets the internal values reported by emscripten_stack_get_base() and
+// emscripten_stack_get_end().  This should be only used by low level libraries
+// such as asyncify fibers.
 void emscripten_stack_set_limits(void* base, void* end);
 
 // Returns the current stack pointer.
