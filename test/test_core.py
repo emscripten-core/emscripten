@@ -8792,7 +8792,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.maybe_closure()
-    self.do_runf(test_file('declare_asm_module_exports.cpp'), 'jsFunction: 1')
+    self.do_runf(test_file('declare_asm_module_exports.c'), 'jsFunction: 1')
     js = read_file('declare_asm_module_exports.js')
     occurances = js.count('cFunction')
     if self.is_optimizing() and '-g' not in self.emcc_args:
@@ -8814,7 +8814,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.maybe_closure()
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
-    self.do_runf(test_file('declare_asm_module_exports.cpp'), 'jsFunction: 1')
+    self.do_runf(test_file('declare_asm_module_exports.c'), 'jsFunction: 1')
 
   # Tests that -sMINIMAL_RUNTIME works well in different build modes
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
