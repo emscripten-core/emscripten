@@ -126,7 +126,7 @@ let LibraryWebAudio = {
   emscripten_start_wasm_audio_worklet_thread_async__deps: [
     'wasm_workers_id',
     '$_EmAudioDispatchProcessorCallback'],
-  emscripten_start_wasm_audio_worklet_thread_async: function(contextHandle, stackLowestAddress, stackSize, callback, userData) {
+  emscripten_start_wasm_audio_worklet_thread_async: function(contextHandle, stackLowestAddress, stackSize, callback, inputChannels, outputChannels, inbuffer, outbuffer, stream_callback, userData) {
 #if !AUDIO_WORKLET
     abort('emscripten_create_wasm_audio_worklet() requires building with -s AUDIO_WORKLET=1 enabled!');
 #endif
@@ -157,7 +157,7 @@ let LibraryWebAudio = {
 #if WEBAUDIO_DEBUG
       console.error(`emscripten_start_wasm_audio_worklet_thread_async() addModule() failed!`);
 #endif
-      {{{ makeDynCall('viii', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, userData);
+      {{{ makeDynCall('viiiiiiii', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, inputChannels, outputChannels, inbuffer, outbuffer, stream_callback, userData);
     };
 
     // Does browser not support AudioWorklets?
@@ -206,7 +206,7 @@ let LibraryWebAudio = {
 #if WEBAUDIO_DEBUG
       console.log(`emscripten_start_wasm_audio_worklet_thread_async() addModule() of main application JS completed`);
 #endif
-      {{{ makeDynCall('viii', 'callback') }}}(contextHandle, 1/*EM_TRUE*/, userData);
+      {{{ makeDynCall('init_viiiiiiii', 'callback') }}}(contextHandle, 1/*EM_TRUE*/, inputChannels, outputChannels, inbuffer, outbuffer, stream_callback, userData);
     }).catch(audioWorkletCreationFailed);
   },
 
@@ -215,7 +215,7 @@ let LibraryWebAudio = {
     wasmCall && getWasmTableEntry(wasmCall)(...data['x']);
   },
 
-  emscripten_create_wasm_audio_worklet_processor_async: function(contextHandle, options, callback, userData) {
+  emscripten_create_wasm_audio_worklet_processor_async: function(contextHandle, options, callback, inputChannels, outputChannels, inbuffer, outbuffer, stream_callback, userData) {
 #if ASSERTIONS
     assert(contextHandle, `Called emscripten_create_wasm_audio_worklet_processor_async() with a null Web Audio Context handle!`);
     assert(EmAudio[contextHandle], `Called emscripten_create_wasm_audio_worklet_processor_async() with a nonexisting/already freed Web Audio Context handle ${contextHandle}!`);
@@ -247,11 +247,16 @@ let LibraryWebAudio = {
       audioParams: audioParams,
       contextHandle: contextHandle,
       callback: callback,
+      inputChannels: inputChannels,
+      outputChannels: outputChannels,
+      inbuffer: inbuffer,
+      outbuffer: outbuffer,
+      stream_callback: stream_callback,
       userData: userData
     });
   },
 
-  emscripten_create_wasm_audio_worklet_node: function(contextHandle, name, options, callback, userData) {
+  emscripten_create_wasm_audio_worklet_node: function(contextHandle, name, options, inputChannels, outputChannels, inbuffer, outbuffer, stream_callback, userData) {
 #if ASSERTIONS
     assert(contextHandle, `Called emscripten_create_wasm_audio_worklet_node() with a null Web Audio Context handle!`);
     assert(EmAudio[contextHandle], `Called emscripten_create_wasm_audio_worklet_node() with a nonexisting/already freed Web Audio Context handle ${contextHandle}!`);
@@ -269,7 +274,7 @@ let LibraryWebAudio = {
       numberOfInputs: HEAP32[options],
       numberOfOutputs: HEAP32[options+1],
       outputChannelCount: HEAPU32[options+2] ? readChannelCountArray(HEAPU32[options+2]>>2, HEAP32[options+1]) : void 0,
-      processorOptions: { 'cb': callback, 'ud': userData }
+      processorOptions: {'inputChannels': inputChannels, 'outputChannels': outputChannels, 'inbuffer': inbuffer, 'outbuffer': outbuffer, 'stream_callback': stream_callback, 'userData': userData}
     } : void 0;
 
 #if WEBAUDIO_DEBUG

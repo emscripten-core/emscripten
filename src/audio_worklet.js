@@ -27,93 +27,41 @@ function createWasmAudioWorkletProcessor(audioParams) {
 
       // Capture the Wasm function callback to invoke.
       let opts = args.processorOptions;
-      this.callbackFunction = Module['wasmTable'].get(opts['cb']);
-      this.userData = opts['ud'];
+      this.bufferSize = 128;
+      this.inputChannels = opts['inputChannels'];
+      this.outputChannels = opts['outputChannels'];
+      this.userData = opts['userData'];
+      this.inbuffer = opts['inbuffer'];
+      this.outbuffer = opts['outbuffer'];
+      this.stream_callback = Module['wasmTable'].get(opts['stream_callback']);
     }
 
     static get parameterDescriptors() {
       return audioParams;
     }
 
-    process(inputList, outputList, parameters) {
-      // Marshal all inputs and parameters to the Wasm memory on the thread stack,
-      // then perform the wasm audio worklet call,
-      // and finally marshal audio output data back.
-
-      let numInputs = inputList.length,
-        numOutputs = outputList.length,
-        numParams = 0, i, j, k, dataPtr,
-        stackMemoryNeeded = (numInputs + numOutputs) * 8,
-        oldStackPtr = stackSave(),
-        inputsPtr, outputsPtr, outputDataPtr, paramsPtr,
-        didProduceAudio, paramArray;
-
-      // Calculate how much stack space is needed.
-      for(i of inputList) stackMemoryNeeded += i.length * 512;
-      for(i of outputList) stackMemoryNeeded += i.length * 512;
-      for(i in parameters) stackMemoryNeeded += parameters[i].byteLength + 8, ++numParams;
-
-      // Allocate the necessary stack space.
-      inputsPtr = stackAlloc(stackMemoryNeeded);
-
-      // Copy input audio descriptor structs and data to Wasm
-      k = inputsPtr >> 2;
-      dataPtr = inputsPtr + numInputs * 8;
-      for(i of inputList) {
-        // Write the AudioSampleFrame struct instance
-        HEAPU32[k++] = i.length;
-        HEAPU32[k++] = dataPtr;
-        // Marshal the input audio sample data for each audio channel of this input
-        for(j of i) {
-          HEAPF32.set(j, dataPtr>>2);
-          dataPtr += 512;
-        }
-      }
-
-      // Copy output audio descriptor structs to Wasm
-      outputsPtr = dataPtr;
-      k = outputsPtr >> 2;
-      outputDataPtr = (dataPtr += numOutputs * 8) >> 2;
-      for(i of outputList) {
-        // Write the AudioSampleFrame struct instance
-        HEAPU32[k++] = i.length;
-        HEAPU32[k++] = dataPtr;
-        // Reserve space for the output data
-        dataPtr += 512 * i.length;
-      }
-
-      // Copy parameters descriptor structs and data to Wasm
-      paramsPtr = dataPtr;
-      k = paramsPtr >> 2;
-      dataPtr += numParams * 8;
-      for(i = 0; paramArray = parameters[i++];) {
-        // Write the AudioParamFrame struct instance
-        HEAPU32[k++] = paramArray.length;
-        HEAPU32[k++] = dataPtr;
-        // Marshal the audio parameters array
-        HEAPF32.set(paramArray, dataPtr>>2);
-        dataPtr += paramArray.length*4;
-      }
-
-      // Call out to Wasm callback to perform audio processing
-      if (didProduceAudio = this.callbackFunction(numInputs, inputsPtr, numOutputs, outputsPtr, numParams, paramsPtr, this.userData)) {
-        // Read back the produced audio data to all outputs and their channels.
-        // (A garbage-free function TypedArray.copy(dstTypedArray, dstOffset, srcTypedArray, srcOffset, count) would sure be handy..
-        //  but web does not have one, so manually copy all bytes in)
-        for(i of outputList) {
-          for(j of i) {
-            for(k = 0; k < 128; ++k) {
-              j[k] = HEAPF32[outputDataPtr++];
-            }
-          }
-        }
-      }
-
-      stackRestore(oldStackPtr);
-
-      // Return 'true' to tell the browser to continue running this processor. (Returning 1 or any other truthy value won't work in Chrome)
-      return !!didProduceAudio;
-    }
+	process(inputList, outputList, parameters) {
+		this.stream_callback(this.bufferSize,this.inputChannels,this.outputChannels,this.userData);
+		const input = inputList[0];
+		const output = outputList[0];
+		if (this.outputChannels > 0) {
+			for (let c = 0; c < this.outputChannels; ++c) {
+				var outChannel = output[c];
+				for (let i = 0, j = c; i < this.bufferSize; ++i, j += this.outputChannels) {
+					outChannel[i] = Module.HEAPF32.subarray(this.outbuffer >> 2 + this.bufferSize * 2, (this.outbuffer >> 2) + this.bufferSize * this.outputChannels)[j]
+				}
+			}
+		}
+		if(this.inputChannels > 0){
+			for(let c = 0; c < input.length; ++c){
+				var inChannel = input[c];
+				for(let i = 0, j = c; i < this.bufferSize; ++i, j += this.inputChannels){
+					Module.HEAPF32.subarray(this.inbuffer >> 2, (this.inbuffer >> 2) + this.bufferSize * this.inputChannels)[j] = inChannel[i];
+				}
+			}
+		}  
+	return true
+	}
   }
   return WasmAudioWorkletProcessor;
 }
@@ -160,7 +108,7 @@ class BootstrapMessages extends AudioWorkletProcessor {
 #endif
         // Post a Wasm Call message back telling that we have now registered the AudioWorkletProcessor class,
         // and should trigger the user onSuccess callback of the emscripten_create_wasm_audio_worklet_processor_async() call.
-        p.postMessage({'_wsc': d['callback'], 'x': [d['contextHandle'], 1/*EM_TRUE*/, d['userData']] }); // "WaSm Call"
+        p.postMessage({'_wsc': d['callback'], 'x': [d['contextHandle'], 1/*EM_TRUE*/, d['inputChannels'], d['outputChannels'], d['inbuffer'], d['outbuffer'], d['stream_callback'], d['userData']]}); // "WaSm Call"
       } else if (d['_wsc']) { // '_wsc' is short for 'wasm call', using an identifier that will never conflict with user messages
         Module['wasmTable'].get(d['_wsc'])(...d['x']);
       };
