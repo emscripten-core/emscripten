@@ -166,8 +166,8 @@ var MINIFY_WASM_IMPORTS_AND_EXPORTS = false;
 // Whether to minify imported module names.
 var MINIFY_WASM_IMPORTED_MODULES = false;
 
-// Whether to minify functions exported from Asm.js/Wasm module.
-var MINIFY_ASMJS_EXPORT_NAMES = true;
+// Whether to minify exports from the Wasm module.
+var MINIFY_WASM_EXPORT_NAMES = true;
 
 // Internal: represents a browser version that is not supported at all.
 var TARGET_NOT_SUPPORTED = 0x7FFFFFFF;

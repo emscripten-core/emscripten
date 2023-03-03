@@ -745,7 +745,10 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespac
       logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
       js_file = acorn_optimizer(js_file, passes)
       if settings.MINIFY_WASM_IMPORTS_AND_EXPORTS:
-        js_file = minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=settings.MINIFY_ASMJS_EXPORT_NAMES, debug_info=debug_info)
+        js_file = minify_wasm_imports_and_exports(js_file, wasm_file,
+                                                  minify_whitespace=minify_whitespace,
+                                                  minify_exports=settings.MINIFY_WASM_EXPORT_NAMES,
+                                                  debug_info=debug_info)
   return js_file
 
 
