@@ -36,11 +36,11 @@ typedef int AUDIO_CONTEXT_STATE;
 #define AUDIO_CONTEXT_STATE_CLOSED 2
 #define AUDIO_CONTEXT_STATE_INTERRUPTED 3
 
-typedef void (*EmscriptenResumeAudioContextCallback)(EMSCRIPTEN_WEBAUDIO_T audioContext, AUDIO_CONTEXT_STATE state);
+typedef void (*EmscriptenResumeAudioContextCallback)(EMSCRIPTEN_WEBAUDIO_T audioContext, AUDIO_CONTEXT_STATE state, void *userData);
 
 // Resumes the given AudioContext. The specified callback will fire when the AudioContext has completed resuming. Call this function
 // inside a user event handler (mousedown, button click, etc.)
-void emscripten_resume_audio_context_async(EMSCRIPTEN_WEBAUDIO_T audioContext, EmscriptenResumeAudioContextCallback callback);
+void emscripten_resume_audio_context_async(EMSCRIPTEN_WEBAUDIO_T audioContext, EmscriptenResumeAudioContextCallback callback, void *userData);
 
 // Synchronously attempts to resume the given AudioContext.
 void emscripten_resume_audio_context_sync(EMSCRIPTEN_WEBAUDIO_T audioContext);
@@ -86,6 +86,7 @@ typedef struct WebAudioParamDescriptor
 typedef struct WebAudioWorkletProcessorCreateOptions
 {
 	const char *name; // The name of the AudioWorkletProcessor that is being created.
+
 	int numAudioParams;
 	const WebAudioParamDescriptor *audioParamDescriptors;
 } WebAudioWorkletProcessorCreateOptions;
