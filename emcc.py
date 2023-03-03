@@ -2507,6 +2507,7 @@ def phase_linker_setup(options, state, newargs):
       settings.DEBUG_LEVEL <= 2 and \
       options.oformat not in (OFormat.WASM, OFormat.BARE) and \
       settings.ASYNCIFY != 2 and \
+      not settings.PRESERVE_IMPORT_AND_EXPORT_NAMES and \
       not settings.LINKABLE and \
       not settings.STANDALONE_WASM and \
       not settings.AUTODEBUG and \

@@ -991,6 +991,9 @@ var EXPORT_ALL = false;
 // It only does Module['X'] = X;
 var EXPORT_KEEPALIVE = true;
 
+// If true, avoids minifying import and export names during compilation.
+var PRESERVE_IMPORT_AND_EXPORT_NAMES = false;
+
 // Remembers the values of these settings, and makes them accessible
 // through getCompilerSetting and emscripten_get_compiler_setting.
 // To see what is retained, look for compilerSettings in the generated code.
