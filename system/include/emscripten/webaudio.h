@@ -19,6 +19,8 @@ extern "C" {
 
 typedef int EMSCRIPTEN_WEBAUDIO_T;
 
+typedef void (*html5audio_stream_callback)(int bufferSize, int inputChannels, int outputChannels, void * userData);
+
 typedef struct EmscriptenWebAudioCreateAttributes
 {
 	const char *latencyHint; // Specify one of "balanced", "interactive" or "playback"
@@ -32,13 +34,13 @@ typedef int AUDIO_CONTEXT_STATE;
 #define AUDIO_CONTEXT_STATE_SUSPENDED 0
 #define AUDIO_CONTEXT_STATE_RUNNING 1
 #define AUDIO_CONTEXT_STATE_CLOSED 2
-#define AUDIO_CONTEXT_STATE_INTERRUPTED	3
+#define AUDIO_CONTEXT_STATE_INTERRUPTED 3
 
-typedef void (*EmscriptenResumeAudioContextCallback)(EMSCRIPTEN_WEBAUDIO_T audioContext, AUDIO_CONTEXT_STATE state, void *userData);
+typedef void (*EmscriptenResumeAudioContextCallback)(EMSCRIPTEN_WEBAUDIO_T audioContext, AUDIO_CONTEXT_STATE state);
 
 // Resumes the given AudioContext. The specified callback will fire when the AudioContext has completed resuming. Call this function
 // inside a user event handler (mousedown, button click, etc.)
-void emscripten_resume_audio_context_async(EMSCRIPTEN_WEBAUDIO_T audioContext, EmscriptenResumeAudioContextCallback callback, void *userData);
+void emscripten_resume_audio_context_async(EMSCRIPTEN_WEBAUDIO_T audioContext, EmscriptenResumeAudioContextCallback callback);
 
 // Synchronously attempts to resume the given AudioContext.
 void emscripten_resume_audio_context_sync(EMSCRIPTEN_WEBAUDIO_T audioContext);
@@ -46,7 +48,7 @@ void emscripten_resume_audio_context_sync(EMSCRIPTEN_WEBAUDIO_T audioContext);
 // Returns the current AudioContext state.
 AUDIO_CONTEXT_STATE emscripten_audio_context_state(EMSCRIPTEN_WEBAUDIO_T audioContext);
 
-typedef void (*EmscriptenStartWebAudioWorkletCallback)(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, void *userData);
+typedef void (*EmscriptenStartWebAudioWorkletCallback)(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, int inputChannels, int outputChannels, int inbuffer, int outbuffer, int stream_callback, int userData);
 
 // Calls .suspend() on the given AudioContext and releases the JS object table
 // reference to the given audio context. The specified handle is invalid
@@ -66,7 +68,8 @@ void emscripten_destroy_web_audio_node(EMSCRIPTEN_WEBAUDIO_T objectHandle);
 // stackSize: The size of the thread's stack. Must be a multiple of 16 bytes.
 // callback: The callback function that will be run when thread creation either succeeds or fails.
 // userData: A custom userdata pointer to pass to the callback function.
-void emscripten_start_wasm_audio_worklet_thread_async(EMSCRIPTEN_WEBAUDIO_T audioContext, void *stackLowestAddress, uint32_t stackSize, EmscriptenStartWebAudioWorkletCallback callback, void *userData);
+void emscripten_start_wasm_audio_worklet_thread_async(EMSCRIPTEN_WEBAUDIO_T audioContext, void *stackLowestAddress, uint32_t stackSize, EmscriptenStartWebAudioWorkletCallback callback, 
+int inputChannels, int outputChannels, float* inbuffer, float* outbuffer, html5audio_stream_callback stream_callback, void* userData);
 
 typedef int WEBAUDIO_PARAM_AUTOMATION_RATE;
 #define WEBAUDIO_PARAM_A_RATE 0
@@ -83,15 +86,14 @@ typedef struct WebAudioParamDescriptor
 typedef struct WebAudioWorkletProcessorCreateOptions
 {
 	const char *name; // The name of the AudioWorkletProcessor that is being created.
-
 	int numAudioParams;
 	const WebAudioParamDescriptor *audioParamDescriptors;
 } WebAudioWorkletProcessorCreateOptions;
 
-typedef void (*EmscriptenWorkletProcessorCreatedCallback)(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, void *userData);
+typedef void (*EmscriptenWorkletProcessorCreatedCallback)(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, int inputChannels, int outputChannels, int inbuffer, int outbuffer, int stream_callback, int userData);
 
 // Creates a new AudioWorkletProcessor with the given name and specified set of control parameters.
-void emscripten_create_wasm_audio_worklet_processor_async(EMSCRIPTEN_WEBAUDIO_T audioContext, const WebAudioWorkletProcessorCreateOptions *options, EmscriptenWorkletProcessorCreatedCallback callback, void *userData);
+void emscripten_create_wasm_audio_worklet_processor_async(EMSCRIPTEN_WEBAUDIO_T audioContext, const WebAudioWorkletProcessorCreateOptions *options, EmscriptenWorkletProcessorCreatedCallback callback, int inputChannels, int outputChannels, int inbuffer, int outbuffer, int stream_callback, int userData);
 
 typedef int EMSCRIPTEN_AUDIO_WORKLET_NODE_T;
 
@@ -111,8 +113,6 @@ typedef struct AudioParamFrame
 	float *data;
 } AudioParamFrame;
 
-typedef EM_BOOL (*EmscriptenWorkletNodeProcessCallback)(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData);
-
 typedef struct EmscriptenAudioWorkletNodeCreateOptions
 {
 	// How many audio nodes does this node take inputs from? Default=1
@@ -124,7 +124,7 @@ typedef struct EmscriptenAudioWorkletNodeCreateOptions
 } EmscriptenAudioWorkletNodeCreateOptions;
 
 // Instantiates the given AudioWorkletProcessor as an AudioWorkletNode, which continuously calls the specified processCallback() function on the browser's audio thread to perform audio processing.
-EMSCRIPTEN_AUDIO_WORKLET_NODE_T emscripten_create_wasm_audio_worklet_node(EMSCRIPTEN_WEBAUDIO_T audioContext, const char *name, const EmscriptenAudioWorkletNodeCreateOptions *options, EmscriptenWorkletNodeProcessCallback processCallback, void *userData);
+EMSCRIPTEN_AUDIO_WORKLET_NODE_T emscripten_create_wasm_audio_worklet_node(EMSCRIPTEN_WEBAUDIO_T audioContext, const char *name, const EmscriptenAudioWorkletNodeCreateOptions *options, int inputChannels, int outputChannels, int inbuffer, int outbuffer, int stream_callback, int userData);
 
 // Returns EM_TRUE if the current thread is executing a Wasm AudioWorklet, EM_FALSE otherwise.
 // Note that calling this function can be relatively slow as it incurs a Wasm->JS transition,
