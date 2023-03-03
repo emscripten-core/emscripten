@@ -502,7 +502,7 @@ var LibraryDylink = {
   },
 
   // Module.symbols <- libModule.symbols (flags.global handler)
-  $mergeLibSymbols__deps: ['$asmjsMangle', '$isSymbolDefined'],
+  $mergeLibSymbols__deps: ['$isSymbolDefined'],
   $mergeLibSymbols: function(exports, libName) {
     // add symbols into global namespace TODO: weak linking etc.
     for (var sym in exports) {
