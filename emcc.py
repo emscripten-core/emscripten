@@ -2491,7 +2491,7 @@ def phase_linker_setup(options, state, newargs):
   # wasm module export names so that the names can be passed directly to the outer scope.
   # Also, if using library_exports.js API, disable minification so that the feature can work.
   if not settings.DECLARE_ASM_MODULE_EXPORTS or '-lexports.js' in [x for _, x in state.link_flags]:
-    settings.MINIFY_ASMJS_EXPORT_NAMES = 0
+    settings.MINIFY_WASM_EXPORT_NAMES = 0
 
   if '-lembind' in [x for _, x in state.link_flags]:
     settings.EMBIND = 1
@@ -2513,7 +2513,7 @@ def phase_linker_setup(options, state, newargs):
       not settings.ASSERTIONS and \
       not settings.RELOCATABLE and \
       not settings.ASYNCIFY_LAZY_LOAD_CODE and \
-          settings.MINIFY_ASMJS_EXPORT_NAMES:
+          settings.MINIFY_WASM_EXPORT_NAMES:
     settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
     settings.MINIFY_WASM_IMPORTED_MODULES = 1
 
