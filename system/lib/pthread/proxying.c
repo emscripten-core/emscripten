@@ -465,7 +465,8 @@ int emscripten_proxy_callback(em_proxying_queue* q,
                               void (*callback)(void*),
                               void (*cancel)(void*),
                               void* arg) {
-  // Allocate the em_proxying_ctx and the user ctx as a single block.
+  // Allocate the em_proxying_ctx and the user ctx as a single block that will
+  // be freed when the `em_proxying_ctx` is freed.
   struct block {
     em_proxying_ctx ctx;
     callback_ctx cb_ctx;
@@ -538,7 +539,8 @@ em_promise_t emscripten_proxy_promise_with_ctx(em_proxying_queue* q,
                                                             void*),
                                                void* arg) {
   em_promise_t promise = emscripten_promise_create();
-  // Allocate the em_proxying_ctx and promise ctx as a single block.
+  // Allocate the em_proxying_ctx and promise ctx as a single block that will be
+  // freed when the `em_proxying_ctx` is freed.
   struct block {
     em_proxying_ctx ctx;
     promise_ctx promise_ctx;
@@ -552,13 +554,13 @@ em_promise_t emscripten_proxy_promise_with_ctx(em_proxying_queue* q,
     q, target_thread, func, arg, promise, &block->ctx, &block->promise_ctx);
 }
 
-__attribute__((warn_unused_result)) em_promise_t
-emscripten_proxy_promise(em_proxying_queue* q,
-                         pthread_t target_thread,
-                         void (*func)(void*),
-                         void* arg) {
+em_promise_t emscripten_proxy_promise(em_proxying_queue* q,
+                                      pthread_t target_thread,
+                                      void (*func)(void*),
+                                      void* arg) {
   em_promise_t promise = emscripten_promise_create();
-  // Allocate the em_proxying_ctx, promise ctx, and user task as a single block.
+  // Allocate the em_proxying_ctx, promise ctx, and user task as a single block
+  // that will be freed when the `em_proxying_ctx` is freed.
   struct block {
     em_proxying_ctx ctx;
     promise_ctx promise_ctx;
