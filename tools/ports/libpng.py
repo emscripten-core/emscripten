@@ -18,7 +18,7 @@ def needed(settings):
 
 
 def get_lib_name(settings):
-  return 'libpng' + ('-mt' if settings.USE_PTHREADS else '') + '.a'
+  return 'libpng' + ('-mt' if settings.USE_PTHREADS or settings.WASM_WORKERS else '') + '.a'
 
 
 def get(ports, settings, shared):
@@ -35,6 +35,8 @@ def get(ports, settings, shared):
     flags = ['-sUSE_ZLIB']
     if settings.USE_PTHREADS:
       flags += ['-sUSE_PTHREADS']
+    if settings.WASM_WORKERS:
+      flags += ['-sWASM_WORKERS']
 
     ports.build_port(source_path, final, 'libpng', flags=flags, exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
 

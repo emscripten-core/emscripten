@@ -12,6 +12,8 @@ deps = ['sdl2']
 variants = {
   'sdl2_image_jpg':  {'SDL2_IMAGE_FORMATS': ["jpg"]},
   'sdl2_image_png': {'SDL2_IMAGE_FORMATS': ["png"]},
+  'sdl2_image_jpg-mt':  {'SDL2_IMAGE_FORMATS': ["jpg"], 'USE_PTHREADS': 1},
+  'sdl2_image_png-mt': {'SDL2_IMAGE_FORMATS': ["png"], 'USE_PTHREADS': 1}
 }
 
 
@@ -26,7 +28,7 @@ def get_lib_name(settings):
   libname = 'libSDL2_image'
   if formats != '':
     libname += '_' + formats
-  return libname + '.a'
+  return libname + ('-mt' if settings.USE_PTHREADS or settings.WASM_WORKERS else '') + '.a'
 
 
 def get(ports, settings, shared):
@@ -51,6 +53,11 @@ def get(ports, settings, shared):
 
     if 'jpg' in settings.SDL2_IMAGE_FORMATS:
       defs += ['-sUSE_LIBJPEG']
+
+    if settings.USE_PTHREADS:
+      defs += ['-sUSE_PTHREADS']
+    if settings.WASM_WORKERS:
+      defs += ['-sWASM_WORKERS']
 
     ports.build_port(src_dir, final, 'sdl2_image', flags=defs, srcs=srcs)
 
