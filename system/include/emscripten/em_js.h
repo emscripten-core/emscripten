@@ -39,7 +39,7 @@
 //
 //   __attribute__((import_name("foo"))) int foo(int x, int y);
 //
-//   __attribute__((used, visibility("default")))
+//   __attribute__((export_name("__em_js__foo")), (section("em_js")))
 //   char __em_js__foo[] = "(int x, int y)<::>{ return 2 * x + y; }";
 //
 // We pack the arguments and function body into a constant string so it's
@@ -59,12 +59,12 @@
 // emJsFuncs metadata is read in emscripten.py's create_em_js, which creates an
 // array of JS function strings to be included in the JS output.
 
-#define _EM_JS(ret, c_name, js_name, params, code)                                                 \
-  _EM_JS_CPP_BEGIN                                                                                 \
-  ret c_name params EM_IMPORT(js_name);                                                            \
-  EMSCRIPTEN_KEEPALIVE                                                                             \
-  __attribute__((section("em_js"), aligned(1))) char __em_js__##js_name[] =                        \
-    #params "<::>" code;                                                                           \
+#define _EM_JS(ret, c_name, js_name, params, code)                             \
+  _EM_JS_CPP_BEGIN                                                             \
+  ret c_name params EM_IMPORT(js_name);                                        \
+  __attribute__((export_name("__em_js__##js_name"),                            \
+                 section("em_js"),                                             \
+                 aligned(1))) char __em_js__##js_name[] = #params "<::>" code; \
   _EM_JS_CPP_END
 
 #define EM_JS(ret, name, params, ...) _EM_JS(ret, name, name, params, #__VA_ARGS__)
