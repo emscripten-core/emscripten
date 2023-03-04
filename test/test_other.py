@@ -12081,7 +12081,7 @@ void foo() {}
       self.assertNotContained('warning: unsupported syscall', err)
 
   def test_unimplemented_syscalls_dlopen(self):
-    cmd = [EMCC, test_file('other/test_dlopen_blocking.c'), '-sASSERTIONS']
+    cmd = [EMCC, test_file('other/test_dlopen_blocking.c')]
     self.run_process(cmd)
     err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained('Aborted(To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking)', err)
@@ -12091,6 +12091,20 @@ void foo() {}
     cmd += ['-sALLOW_UNIMPLEMENTED_SYSCALLS=0']
     err = self.expect_fail(cmd)
     self.assertContained('To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking', err)
+
+  def test_unimplemented_syscalls_dladdr(self):
+    create_file('main.c', '''
+    #include <dlfcn.h>
+
+    int main() {
+      dladdr(0, 0);
+      return 0;
+    }
+    ''')
+
+    self.run_process([EMCC, 'main.c'])
+    err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
+    self.assertContained('Aborted(To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking)', err)
 
   @requires_v8
   def test_missing_shell_support(self):
