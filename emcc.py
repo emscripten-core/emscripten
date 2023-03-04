@@ -253,7 +253,7 @@ class EmccOptions:
   def __init__(self):
     self.output_file = None
     self.post_link = False
-    self.executable = False
+    self.autoconf = False
     self.compiler_wrapper = None
     self.oformat = None
     self.requested_debug = ''
@@ -749,20 +749,23 @@ def get_binaryen_passes():
   return passes
 
 
-def make_js_executable(script):
+def make_js_executable(options, script):
   src = read_file(script)
-  cmd = config.NODE_JS
-  if settings.MEMORY64 == 1:
-    cmd += shared.node_memory64_flags()
-  elif settings.WASM_BIGINT:
-    cmd += shared.node_bigint_flags()
-  if len(cmd) > 1 or not os.path.isabs(cmd[0]):
-    # Using -S (--split-string) here means that arguments to the executable are
-    # correctly parsed.  We don't do this by default because old versions of env
-    # don't support -S.
-    cmd = '/usr/bin/env -S ' + shared.shlex_join(cmd)
+  if options.autoconf:
+    cmd = config.NODE_JS
+    if settings.MEMORY64 == 1:
+      cmd += shared.node_memory64_flags()
+    elif settings.WASM_BIGINT:
+      cmd += shared.node_bigint_flags()
+    if len(cmd) > 1 or not os.path.isabs(cmd[0]):
+      # Using -S (--split-string) here means that arguments to the executable are
+      # correctly parsed.  We don't do this by default because old versions of env
+      # don't support -S.
+      cmd = '/usr/bin/env -S ' + shared.shlex_join(cmd)
+    else:
+      cmd = shared.shlex_join(cmd)
   else:
-    cmd = shared.shlex_join(cmd)
+    cmd = '/usr/bin/env node'
   logger.debug('adding `#!` to JavaScript file: %s' % cmd)
   # add shebang
   with open(script, 'w') as f:
@@ -1760,20 +1763,23 @@ def setup_pthreads(target):
 
 @ToolchainProfiler.profile_block('linker_setup')
 def phase_linker_setup(options, state, newargs):
-  autoconf = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in state.orig_args or 'conftest.cpp' in state.orig_args
-  if autoconf:
+  options.autoconf = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in state.orig_args or 'conftest.cpp' in state.orig_args
+  if options.autoconf:
     # configure tests want a more shell-like style, where we emit return codes on exit()
     settings.EXIT_RUNTIME = 1
     # use node.js raw filesystem access, to behave just like a native executable
     settings.NODERAWFS = 1
     # Add `#!` line to output JS and make it executable.
-    options.executable = True
+    settings.EXECUTABLE_OUTPUT = True
 
   system_libpath = '-L' + str(cache.get_lib_dir(absolute=True))
   add_link_flag(state, sys.maxsize, system_libpath)
 
   if settings.OPT_LEVEL >= 1:
     default_setting('ASSERTIONS', 0)
+
+  if settings.ENVIRONMENT_MAY_BE_NODE and not settings.MODULARIZE:
+    default_setting('EXECUTABLE_OUTPUT', 1)
 
   if options.emrun:
     options.pre_js.append(utils.path_from_root('src/emrun_prejs.js'))
@@ -1823,7 +1829,7 @@ def phase_linker_setup(options, state, newargs):
     dirname = os.path.dirname(target)
     if dirname and not os.path.isdir(dirname):
       exit_with_error("specified output file (%s) is in a directory that does not exist" % target)
-  elif autoconf:
+  elif options.autoconf:
     # Autoconf expects the executable output file to be called `a.out`
     target = 'a.out'
   elif settings.SIDE_MODULE:
@@ -3274,8 +3280,8 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   for f in generated_text_files_with_native_eols:
     tools.line_endings.convert_line_endings_in_file(f, os.linesep, options.output_eol)
 
-  if options.executable:
-    make_js_executable(js_target)
+  if settings.EXECUTABLE_OUTPUT and settings.ENVIRONMENT_MAY_BE_NODE:
+    make_js_executable(options, js_target)
 
 
 def version_string():

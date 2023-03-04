@@ -429,9 +429,7 @@ class TestCoreBase(RunnerCore):
     self.assertEqual(prefix, output[:len(prefix)])
 
   def verify_in_strict_mode(self, filename):
-    js = read_file(filename)
-    filename += '.strict.js'
-    write_file(filename, '"use strict";\n' + js)
+    self.node_args.append('--use_strict')
     self.run_js(filename)
 
   def do_core_test(self, testname, **kwargs):

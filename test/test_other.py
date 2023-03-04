@@ -11306,6 +11306,12 @@ int main () {
     output = self.run_process([os.path.abspath('a.out')], stdout=PIPE).stdout
     self.assertContained('hello, world!', output)
 
+  @no_windows('windows does not support shbang syntax')
+  def test_executable_output(self):
+    self.run_process([EMCC, test_file('hello_world.c')])
+    output = self.run_process([os.path.abspath('a.out.js')], stdout=PIPE).stdout
+    self.assertContained('hello, world!', output)
+
   def test_standalone_export_main(self):
     # Tests that explicitly exported `_main` does not fail, even though `_start` is the entry
     # point.
