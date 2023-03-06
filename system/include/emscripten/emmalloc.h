@@ -118,6 +118,10 @@ size_t emmalloc_unclaimed_heap_memory(void);
 // iterates through all free memory blocks.
 size_t emmalloc_compute_free_dynamic_memory_fragmentation_map(size_t freeMemorySizeMap[32]);
 
+// Same as above, but instead of returning the information in an array, prints it directly
+// to stdout.
+void emmalloc_dump_free_dynamic_memory_fragmentation_map(void);
+
 #ifdef __cplusplus
 }
 #endif
