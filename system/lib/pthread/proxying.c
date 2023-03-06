@@ -389,7 +389,7 @@ int emscripten_proxy_sync_with_ctx(em_proxying_queue* q,
 }
 
 // Helper for signaling the end of the task after the user function returns.
-static void call_then_finish_sync(em_proxying_ctx* ctx, void* arg) {
+static void call_then_finish_task(em_proxying_ctx* ctx, void* arg) {
   task* t = arg;
   t->func(t->arg);
   emscripten_proxy_finish(ctx);
@@ -401,7 +401,7 @@ int emscripten_proxy_sync(em_proxying_queue* q,
                           void* arg) {
   task t = {.func = func, .arg = arg};
   return emscripten_proxy_sync_with_ctx(
-    q, target_thread, call_then_finish_sync, &t);
+    q, target_thread, call_then_finish_task, &t);
 }
 
 static int do_proxy_callback(em_proxying_queue* q,
@@ -465,7 +465,8 @@ int emscripten_proxy_callback(em_proxying_queue* q,
                               void (*callback)(void*),
                               void (*cancel)(void*),
                               void* arg) {
-  // Allocate the em_proxying_ctx and the user ctx as a single block.
+  // Allocate the em_proxying_ctx and the user ctx as a single block that will
+  // be freed when the `em_proxying_ctx` is freed.
   struct block {
     em_proxying_ctx ctx;
     callback_ctx cb_ctx;
@@ -482,4 +483,100 @@ int emscripten_proxy_callback(em_proxying_queue* q,
                            callback_cancel,
                            &block->cb_ctx,
                            &block->ctx);
+}
+
+typedef struct promise_ctx {
+  void (*func)(em_proxying_ctx*, void*);
+  void* arg;
+  em_promise_t promise;
+} promise_ctx;
+
+static void promise_call(em_proxying_ctx* ctx, void* arg) {
+  promise_ctx* promise_ctx = arg;
+  promise_ctx->func(ctx, promise_ctx->arg);
+}
+
+static void promise_fulfill(void* arg) {
+  promise_ctx* promise_ctx = arg;
+  emscripten_promise_resolve(promise_ctx->promise, EM_PROMISE_FULFILL, NULL);
+  emscripten_promise_destroy(promise_ctx->promise);
+}
+
+static void promise_reject(void* arg) {
+  promise_ctx* promise_ctx = arg;
+  emscripten_promise_resolve(promise_ctx->promise, EM_PROMISE_REJECT, NULL);
+  emscripten_promise_destroy(promise_ctx->promise);
+}
+
+static em_promise_t do_proxy_promise(em_proxying_queue* q,
+                                     pthread_t target_thread,
+                                     void (*func)(em_proxying_ctx*, void*),
+                                     void* arg,
+                                     em_promise_t promise,
+                                     em_proxying_ctx* ctx,
+                                     promise_ctx* promise_ctx) {
+  *promise_ctx = (struct promise_ctx){func, arg, promise};
+  if (!do_proxy_callback(q,
+                         target_thread,
+                         promise_call,
+                         promise_fulfill,
+                         promise_reject,
+                         promise_ctx,
+                         ctx)) {
+    emscripten_promise_resolve(promise, EM_PROMISE_REJECT, NULL);
+    return promise;
+  }
+  // Return a separate promise to ensure that the internal promise will stay
+  // alive until the callbacks are called.
+  em_promise_t ret = emscripten_promise_create();
+  emscripten_promise_resolve(ret, EM_PROMISE_MATCH, promise);
+  return ret;
+}
+
+em_promise_t emscripten_proxy_promise_with_ctx(em_proxying_queue* q,
+                                               pthread_t target_thread,
+                                               void (*func)(em_proxying_ctx*,
+                                                            void*),
+                                               void* arg) {
+  em_promise_t promise = emscripten_promise_create();
+  // Allocate the em_proxying_ctx and promise ctx as a single block that will be
+  // freed when the `em_proxying_ctx` is freed.
+  struct block {
+    em_proxying_ctx ctx;
+    promise_ctx promise_ctx;
+  };
+  struct block* block = malloc(sizeof(*block));
+  if (block == NULL) {
+    emscripten_promise_resolve(promise, EM_PROMISE_REJECT, NULL);
+    return promise;
+  }
+  return do_proxy_promise(
+    q, target_thread, func, arg, promise, &block->ctx, &block->promise_ctx);
+}
+
+em_promise_t emscripten_proxy_promise(em_proxying_queue* q,
+                                      pthread_t target_thread,
+                                      void (*func)(void*),
+                                      void* arg) {
+  em_promise_t promise = emscripten_promise_create();
+  // Allocate the em_proxying_ctx, promise ctx, and user task as a single block
+  // that will be freed when the `em_proxying_ctx` is freed.
+  struct block {
+    em_proxying_ctx ctx;
+    promise_ctx promise_ctx;
+    task task;
+  };
+  struct block* block = malloc(sizeof(*block));
+  if (block == NULL) {
+    emscripten_promise_resolve(promise, EM_PROMISE_REJECT, NULL);
+    return promise;
+  }
+  block->task = (task){.func = func, .arg = arg};
+  return do_proxy_promise(q,
+                          target_thread,
+                          call_then_finish_task,
+                          &block->task,
+                          promise,
+                          &block->ctx,
+                          &block->promise_ctx);
 }
