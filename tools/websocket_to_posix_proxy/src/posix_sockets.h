@@ -20,8 +20,8 @@
 #define SEND_FORMATTING_SPECIFIER "%ld"
 #define CLOSE_SOCKET(x) close(x)
 
-#define CREATE_SOCKET_CALL_RETURNS_AN_ERROR(x) ((x) < 0)
-#define SOCKET_API_CALL_RETURNS_AN_ERROR(x) ((x) < 0)
+#define IS_CREATE_SOCKET_ERROR(x) ((x) < 0)
+#define IS_SOCKET_API_ERROR(x) ((x) < 0)
 #define GET_SOCKET_ERROR() (errno)
 
 #define PRINT_SOCKET_ERROR(errorCode) do { \
@@ -48,8 +48,8 @@
 
 // On Windows, API calls that return a socket should test against INVALID_SOCKET:
 // https://docs.microsoft.com/en-us/windows/win32/winsock/handling-winsock-errors
-#define CREATE_SOCKET_CALL_RETURNS_AN_ERROR(x) ((x) == INVALID_SOCKET)
-#define SOCKET_API_CALL_RETURNS_AN_ERROR(x) ((x) == SOCKET_ERROR)
+#define IS_CREATE_SOCKET_ERROR(x) ((x) == INVALID_SOCKET)
+#define IS_SOCKET_API_ERROR(x) ((x) == SOCKET_ERROR)
 
 #define GET_SOCKET_ERROR() (WSAGetLastError())
 
