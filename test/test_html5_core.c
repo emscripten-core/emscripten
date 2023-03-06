@@ -72,7 +72,7 @@ EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *user
     TEST_RESULT(emscripten_get_pointerlock_status);
     if (!plce.isActive) {
       printf("Requesting pointer lock..\n");
-      ret = emscripten_request_pointerlock(0, 1);
+      ret = emscripten_request_pointerlock("#canvas", 1);
       TEST_RESULT(emscripten_request_pointerlock);
     } else {
       printf("Exiting pointer lock..\n");
