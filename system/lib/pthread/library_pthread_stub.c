@@ -287,10 +287,6 @@ int pthread_getattr_np(pthread_t thread, pthread_attr_t *attr) {
   return 0;
 }
 
-int pthread_attr_destroy(pthread_attr_t *attr) {
-  return 0;
-}
-
 int pthread_setcancelstate(int state, int* oldstate) {
   return 0;
 }
@@ -364,18 +360,6 @@ int pthread_spin_trylock(pthread_spinlock_t *lock) {
 }
 
 int pthread_spin_unlock(pthread_spinlock_t *lock) {
-  return 0;
-}
-
-int pthread_attr_setdetachstate(pthread_attr_t* attr, int detachstate) {
-  return 0;
-}
-
-int pthread_attr_setschedparam(pthread_attr_t* attr, const struct sched_param* param) {
-  return 0;
-}
-
-int pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize) {
   return 0;
 }
 
