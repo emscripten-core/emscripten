@@ -1,4 +1,6 @@
 #include <assert.h>
+#include <emscripten/eventloop.h>
+#include <emscripten/promise.h>
 #include <emscripten/proxying.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -6,6 +8,30 @@
 em_proxying_queue* queue;
 
 void explode(void* arg) { assert(0 && "the work should not be run!"); }
+
+em_promise_result_t explode_reject(void** result, void* data, void* val) {
+  assert(0 && "unexpected promise result");
+  return EM_PROMISE_REJECT;
+}
+
+em_promise_result_t fulfill(void** result, void* data, void* val) {
+  return EM_PROMISE_FULFILL;
+}
+
+void fulfill_promise(void* arg) {
+  em_promise_t promise = arg;
+  emscripten_promise_resolve(promise, EM_PROMISE_FULFILL, NULL);
+}
+
+// The promises we need to wait for at the end of the test.
+#define MAX_PROMISES 6
+int promise_count = 0;
+em_promise_t promises[MAX_PROMISES];
+
+void add_promise(em_promise_t promise) {
+  assert(promise_count < MAX_PROMISES);
+  promises[promise_count++] = promise;
+}
 
 void set_flag(void* flag) {
   // Schedule the flag to be set on the next turn of the event loop so that we
@@ -53,6 +79,11 @@ void test_cancel_then_proxy() {
     emscripten_proxy_callback(queue, thread, explode, explode, explode, NULL);
   assert(ret == 0);
 
+  // Or should result in a rejected promise.
+  em_promise_t promise = emscripten_proxy_promise(queue, thread, explode, NULL);
+  add_promise(emscripten_promise_then(promise, explode_reject, fulfill, NULL));
+  emscripten_promise_destroy(promise);
+
   pthread_join(thread, NULL);
 }
 
@@ -73,6 +104,11 @@ void test_exit_then_proxy() {
   ret =
     emscripten_proxy_callback(queue, thread, explode, explode, explode, NULL);
   assert(ret == 0);
+
+  // Or should result in a rejected promise.
+  em_promise_t promise = emscripten_proxy_promise(queue, thread, explode, NULL);
+  add_promise(emscripten_promise_then(promise, explode_reject, fulfill, NULL));
+  emscripten_promise_destroy(promise);
 
   pthread_join(thread, NULL);
 }
@@ -117,7 +153,17 @@ void test_proxy_then_cancel() {
   }
 
   // The pending proxied work should be canceled when the thread is canceled.
-  int ret = emscripten_proxy_sync(queue, thread, explode, NULL);
+  em_promise_t promise = emscripten_proxy_promise(queue, thread, explode, NULL);
+  add_promise(emscripten_promise_then(promise, explode_reject, fulfill, NULL));
+  emscripten_promise_destroy(promise);
+
+  promise = emscripten_promise_create();
+  int ret = emscripten_proxy_callback(
+    queue, thread, explode, explode, fulfill_promise, promise);
+  assert(ret == 1);
+  add_promise(promise);
+
+  ret = emscripten_proxy_sync(queue, thread, explode, NULL);
   assert(ret == 0);
 
   pthread_join(thread, NULL);
@@ -134,104 +180,20 @@ void test_proxy_then_exit() {
   }
 
   // The pending proxied work should be canceled when the thread exits.
-  int ret = emscripten_proxy_sync(queue, thread, explode, NULL);
+  em_promise_t promise = emscripten_proxy_promise(queue, thread, explode, NULL);
+  add_promise(emscripten_promise_then(promise, explode_reject, fulfill, NULL));
+  emscripten_promise_destroy(promise);
+
+  promise = emscripten_promise_create();
+  int ret = emscripten_proxy_callback(
+    queue, thread, explode, explode, fulfill_promise, promise);
+  assert(ret == 1);
+  add_promise(promise);
+
+  ret = emscripten_proxy_sync(queue, thread, explode, NULL);
   assert(ret == 0);
 
   pthread_join(thread, NULL);
-}
-
-struct callback_info {
-  pthread_t worker;
-  pthread_t proxier;
-  _Atomic int worker_running;
-  _Atomic int should_exit;
-  _Atomic int callback_called;
-};
-
-void* report_running_then_cancel(void* arg) {
-  struct callback_info* info = arg;
-
-  info->worker_running = 1;
-
-  while (!info->should_exit) {
-  }
-
-  // The callback will never be dequeued because we exit before returning to the
-  // event loop.
-  pthread_cancel(pthread_self());
-  pthread_testcancel();
-  assert(0 && "thread should have been canceled!");
-  return NULL;
-}
-
-void* report_running_then_exit(void* arg) {
-  struct callback_info* info = arg;
-
-  info->worker_running = 1;
-
-  while (!info->should_exit) {
-  }
-
-  // The callback will never be dequeued because we exit before returning to the
-  // event loop.
-  pthread_exit(NULL);
-  assert(0 && "thread should have been canceled!");
-  return NULL;
-}
-
-void cancel_callback(void* arg) {
-  struct callback_info* info = arg;
-  info->callback_called = 1;
-}
-
-void* proxy_with_callback(void* arg) {
-  struct callback_info* info = arg;
-
-  while (!info->worker_running) {
-  }
-
-  int ret = emscripten_proxy_callback(
-    queue, info->worker, explode, explode, cancel_callback, info);
-  assert(ret == 1);
-
-  info->should_exit = 1;
-
-  // Keep runtime alive so we can receive the cancellation callback.
-  emscripten_exit_with_live_runtime();
-}
-
-void test_proxy_callback_then_cancel() {
-  printf("testing callback proxy followed by cancel\n");
-
-  struct callback_info info = {0};
-
-  pthread_create(&info.worker, NULL, report_running_then_cancel, &info);
-  pthread_create(&info.proxier, NULL, proxy_with_callback, &info);
-
-  while (!info.callback_called) {
-  }
-
-  pthread_join(info.worker, NULL);
-
-  pthread_cancel(info.proxier);
-  pthread_join(info.proxier, NULL);
-}
-
-void test_proxy_callback_then_exit() {
-  printf("testing callback proxy followed by exit\n");
-
-  struct callback_info info = {0};
-
-  pthread_create(&info.worker, NULL, report_running_then_exit, &info);
-  pthread_create(&info.proxier, NULL, proxy_with_callback, &info);
-
-  while (!info.callback_called) {
-  }
-
-  pthread_join(info.worker, NULL);
-
-  pthread_cancel(info.proxier);
-  pthread_join(info.proxier, NULL);
 }
 
 enum proxy_kind { SYNC, CALLBACK };
@@ -369,6 +331,19 @@ void test_cancel_in_progress() {
   }
 }
 
+void do_exit(void* arg) { emscripten_runtime_keepalive_pop(); }
+
+em_promise_result_t cleanup(void** result, void* data, void* val) {
+  for (int i = 0; i < MAX_PROMISES; i++) {
+    emscripten_promise_destroy(promises[i]);
+  }
+  em_proxying_queue_destroy(queue);
+  // TODO: exit directly here
+  emscripten_async_call(do_exit, NULL, 0);
+  printf("done\n");
+  return EM_PROMISE_FULFILL;
+}
+
 int main() {
   queue = em_proxying_queue_create();
   pthread_key_create(&dtor_key, set_flag);
@@ -377,12 +352,14 @@ int main() {
   test_exit_then_proxy();
   test_proxy_then_cancel();
   test_proxy_then_exit();
-  test_proxy_callback_then_cancel();
-  test_proxy_callback_then_exit();
 
   test_cancel_in_progress();
 
-  em_proxying_queue_destroy(queue);
-
-  printf("done\n");
+  // Wait for the promises to resolve.
+  assert(promise_count == MAX_PROMISES);
+  em_promise_t done = emscripten_promise_all(promises, NULL, MAX_PROMISES);
+  emscripten_promise_destroy(
+    emscripten_promise_then(done, cleanup, explode_reject, NULL));
+  emscripten_promise_destroy(done);
+  emscripten_runtime_keepalive_push();
 }

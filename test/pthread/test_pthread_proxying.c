@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <emscripten.h>
 #include <emscripten/console.h>
+#include <emscripten/eventloop.h>
 #include <emscripten/proxying.h>
 #include <pthread.h>
 #include <sched.h>
@@ -15,6 +16,9 @@
 pthread_t main_thread;
 pthread_t looper;
 pthread_t returner;
+
+// Used as the main test runner thread in the proxy_promise* tests.
+pthread_t worker;
 
 // The queue used to send work to both `looper` and `returner`.
 em_proxying_queue* proxy_queue = NULL;
@@ -51,7 +55,7 @@ typedef struct widget {
   // Nonzero iff the widget has been run.
   int done;
 
-  // Only used for async_as_sync tests.
+  // Only used for *_with_ctx tests.
   em_proxying_ctx* ctx;
 } widget;
 
@@ -75,6 +79,7 @@ void run_widget(widget* w) {
   const char* name = pthread_equal(self, main_thread) ? "main"
                      : pthread_equal(self, looper)    ? "looper"
                      : pthread_equal(self, returner)  ? "returner"
+                     : pthread_equal(self, worker)    ? "worker"
                                                       : "unknown";
   printf("running widget %d on %s\n", w->val, name);
   pthread_mutex_lock(&w->mutex);
@@ -113,6 +118,13 @@ void start_running_widget(em_proxying_ctx* ctx, void* arg) {
 void start_and_finish_running_widget(em_proxying_ctx* ctx, void* arg) {
   ((widget*)arg)->ctx = ctx;
   finish_running_widget(arg);
+}
+
+em_promise_result_t check_widget(void** result, void* data, void* value) {
+  widget* w = data;
+  assert(w->done);
+  assert(*w->out == w->val);
+  return EM_PROMISE_FULFILL;
 }
 
 // Main test functions
@@ -220,7 +232,6 @@ void test_proxy_callback(void) {
   init_widget(&w10, &i, 10);
 
   // Proxy to ourselves.
-
   emscripten_proxy_callback(
     proxy_queue, pthread_self(), do_run_widget, set_j, NULL, &w8);
   assert(!w8.done);
@@ -272,7 +283,6 @@ void test_proxy_callback_with_ctx(void) {
   init_widget(&w13, &i, 13);
 
   // Proxy to ourselves.
-
   emscripten_proxy_callback_with_ctx(
     proxy_queue, pthread_self(), start_and_finish_running_widget, set_j, NULL, &w11);
   assert(!w11.done);
@@ -312,6 +322,186 @@ void test_proxy_callback_with_ctx(void) {
   destroy_widget(&w11);
   destroy_widget(&w12);
   destroy_widget(&w13);
+}
+
+em_promise_result_t explode(void** result, void* data, void* value) {
+  printf("error!");
+  abort();
+  return EM_PROMISE_REJECT;
+}
+
+em_promise_result_t test_promise_self(void** result, void* data, void* value) {
+  widget* w14 = data;
+
+  em_promise_t promise =
+    emscripten_proxy_promise(proxy_queue, pthread_self(), do_run_widget, w14);
+
+  *result = emscripten_promise_then(promise, check_widget, explode, w14);
+  emscripten_promise_destroy(promise);
+
+  return EM_PROMISE_MATCH_RELEASE;
+}
+
+em_promise_result_t
+test_promise_looper(void** result, void* data, void* value) {
+  widget* w15 = data;
+
+  em_promise_t promise =
+    emscripten_proxy_promise(proxy_queue, looper, do_run_widget, w15);
+
+  *result = emscripten_promise_then(promise, check_widget, explode, w15);
+  emscripten_promise_destroy(promise);
+
+  return EM_PROMISE_MATCH_RELEASE;
+}
+
+em_promise_result_t
+test_promise_returner(void** result, void* data, void* value) {
+  widget* w16 = data;
+
+  em_promise_t promise =
+    emscripten_proxy_promise(proxy_queue, returner, do_run_widget, w16);
+
+  *result = emscripten_promise_then(promise, check_widget, explode, w16);
+  emscripten_promise_destroy(promise);
+
+  return EM_PROMISE_MATCH_RELEASE;
+}
+
+void do_exit_thread(void* arg) { emscripten_runtime_keepalive_pop(); }
+
+em_promise_result_t exit_thread(void** result, void* data, void* value) {
+  // TODO: exit the thread directly rather than on the next turn of the event
+  // loop.
+  emscripten_async_call(do_exit_thread, NULL, 0);
+  return EM_PROMISE_FULFILL;
+}
+
+struct promise_widgets {
+  widget w14, w15, w16;
+};
+
+void* do_test_proxy_promise(void* arg) {
+  struct promise_widgets* widgets = arg;
+
+  em_promise_t start = emscripten_promise_create();
+  em_promise_t test1 =
+    emscripten_promise_then(start, test_promise_self, explode, &widgets->w14);
+  em_promise_t test2 =
+    emscripten_promise_then(test1, test_promise_looper, explode, &widgets->w15);
+  em_promise_t test3 = emscripten_promise_then(
+    test2, test_promise_returner, explode, &widgets->w16);
+  em_promise_t end = emscripten_promise_then(test3, exit_thread, explode, NULL);
+
+  emscripten_promise_resolve(start, EM_PROMISE_FULFILL, NULL);
+  emscripten_promise_destroy(start);
+  emscripten_promise_destroy(test1);
+  emscripten_promise_destroy(test2);
+  emscripten_promise_destroy(test3);
+  emscripten_promise_destroy(end);
+
+  emscripten_runtime_keepalive_push();
+  return NULL;
+}
+
+void test_proxy_promise() {
+  printf("Testing promise proxying\n");
+
+  int i = 0;
+  struct promise_widgets widgets;
+  init_widget(&widgets.w14, &i, 14);
+  init_widget(&widgets.w15, &i, 15);
+  init_widget(&widgets.w16, &i, 16);
+
+  pthread_create(&worker, NULL, do_test_proxy_promise, &widgets);
+  pthread_join(worker, NULL);
+
+  destroy_widget(&widgets.w14);
+  destroy_widget(&widgets.w15);
+  destroy_widget(&widgets.w16);
+}
+
+em_promise_result_t
+test_promise_ctx_self(void** result, void* data, void* value) {
+  widget* w17 = data;
+
+  em_promise_t promise = emscripten_proxy_promise_with_ctx(
+    proxy_queue, pthread_self(), start_running_widget, w17);
+
+  *result = emscripten_promise_then(promise, check_widget, explode, w17);
+  emscripten_promise_destroy(promise);
+
+  return EM_PROMISE_MATCH_RELEASE;
+}
+
+em_promise_result_t
+test_promise_ctx_looper(void** result, void* data, void* value) {
+  widget* w18 = data;
+
+  em_promise_t promise = emscripten_proxy_promise_with_ctx(
+    proxy_queue, looper, start_and_finish_running_widget, w18);
+
+  *result = emscripten_promise_then(promise, check_widget, explode, w18);
+  emscripten_promise_destroy(promise);
+
+  return EM_PROMISE_MATCH_RELEASE;
+}
+
+em_promise_result_t
+test_promise_ctx_returner(void** result, void* data, void* value) {
+  widget* w19 = data;
+
+  em_promise_t promise = emscripten_proxy_promise_with_ctx(
+    proxy_queue, returner, start_running_widget, w19);
+
+  *result = emscripten_promise_then(promise, check_widget, explode, w19);
+  emscripten_promise_destroy(promise);
+
+  return EM_PROMISE_MATCH_RELEASE;
+}
+
+struct promise_ctx_widgets {
+  widget w17, w18, w19;
+};
+
+void* do_test_proxy_promise_with_ctx(void* arg) {
+  struct promise_ctx_widgets* widgets = arg;
+
+  em_promise_t start = emscripten_promise_create();
+  em_promise_t test1 = emscripten_promise_then(
+    start, test_promise_ctx_self, explode, &widgets->w17);
+  em_promise_t test2 = emscripten_promise_then(
+    test1, test_promise_ctx_looper, explode, &widgets->w18);
+  em_promise_t test3 = emscripten_promise_then(
+    test2, test_promise_ctx_returner, explode, &widgets->w19);
+  em_promise_t end = emscripten_promise_then(test3, exit_thread, explode, NULL);
+
+  emscripten_promise_resolve(start, EM_PROMISE_FULFILL, NULL);
+  emscripten_promise_destroy(start);
+  emscripten_promise_destroy(test1);
+  emscripten_promise_destroy(test2);
+  emscripten_promise_destroy(test3);
+  emscripten_promise_destroy(end);
+
+  emscripten_runtime_keepalive_push();
+  return NULL;
+}
+
+void test_proxy_promise_with_ctx() {
+  printf("Testing promise_with_ctx proxying\n");
+
+  int i = 0;
+  struct promise_ctx_widgets widgets;
+  init_widget(&widgets.w17, &i, 17);
+  init_widget(&widgets.w18, &i, 18);
+  init_widget(&widgets.w19, &i, 19);
+
+  pthread_create(&worker, NULL, do_test_proxy_promise_with_ctx, &widgets);
+  pthread_join(worker, NULL);
+
+  destroy_widget(&widgets.w17);
+  destroy_widget(&widgets.w18);
+  destroy_widget(&widgets.w19);
 }
 
 typedef struct increment_to_arg {
@@ -446,6 +636,8 @@ int main(int argc, char* argv[]) {
   test_proxy_sync_with_ctx();
   test_proxy_callback();
   test_proxy_callback_with_ctx();
+  test_proxy_promise();
+  test_proxy_promise_with_ctx();
 
   should_quit = 1;
   pthread_join(looper, NULL);
