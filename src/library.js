@@ -3612,6 +3612,9 @@ mergeInto(LibraryManager.library, {
 
   $asmjsMangle: function(x) {
     var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};
+    if (x == '__main_argc_argv') {
+      x = 'main';
+    }
     return x.indexOf('dynCall_') == 0 || unmangledSymbols.includes(x) ? x : '_' + x;
   },
 
