@@ -129,7 +129,7 @@ LibraryJSEventLoop = {
         ev = setTimeout(msecs);
       callUserCallback(function() {
         if (!({{{ makeDynCall('idi', 'cb') }}}(t, userData))) {
-          cancelTimeout(ev);
+          clearTimeout(ev);
           {{{ runtimeKeepalivePop() }}}
         }
       });
