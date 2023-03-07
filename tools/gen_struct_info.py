@@ -249,6 +249,12 @@ def inspect_headers(headers, cflags):
                                '-sBOOTSTRAPPING_STRUCT_INFO',
                                '-sSTRICT',
                                '-sASSERTIONS=0',
+                               # We cannot bootstrap in wasmfs mode, as we do so
+                               # using -nostdlib, but it requires malloc/free.
+                               # We don't need a filesystem when bootstrapping
+                               # anyhow, so there is no real reason to get this
+                               # working in that mode.
+                               '-sWASMFS=0',
                                # Use SINGLE_FILE so there is only a single
                                # file to cleanup.
                                '-sSINGLE_FILE']
