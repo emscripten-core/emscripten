@@ -36,7 +36,8 @@ void emscripten_force_num_logical_cores(int cores);
 
 // If the given memory address contains value val, puts the calling thread to
 // sleep waiting for that address to be notified.
-int emscripten_futex_wait(volatile void/*uint32_t*/ *addr __attribute__((nonnull)), uint32_t val, double maxWaitMilliseconds);
+// Returns -EINVAL if addr is null.
+int emscripten_futex_wait(volatile void/*uint32_t*/ * _Nonnull addr, uint32_t val, double maxWaitMilliseconds);
 
 // Wakes the given number of threads waiting on a location. Pass count ==
 // INT_MAX to wake all waiters on that location.
