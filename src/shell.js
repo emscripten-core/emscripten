@@ -98,7 +98,7 @@ var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined
 
 #if ENVIRONMENT && !ENVIRONMENT.includes(',')
 var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT === 'web' }}};
-#if USE_PTHREADS && ENVIRONMENT_MAY_BE_NODE
+#if PTHREADS && ENVIRONMENT_MAY_BE_NODE
 // node+pthreads always supports workers; detect which we are at runtime
 var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function';
 #else
@@ -126,7 +126,7 @@ if (Module['ENVIRONMENT']) {
 }
 #endif
 
-#if USE_PTHREADS
+#if PTHREADS
 // Three configurations we can be running in:
 // 1) We could be the application main() thread running in the main JS UI thread. (ENVIRONMENT_IS_WORKER == false and ENVIRONMENT_IS_PTHREAD == false)
 // 2) We could be the application main() thread proxied to worker. (with Emscripten -sPROXY_TO_WORKER) (ENVIRONMENT_IS_WORKER == true, ENVIRONMENT_IS_PTHREAD == false)
@@ -262,7 +262,7 @@ if (ENVIRONMENT_IS_NODE) {
 
   Module['inspect'] = function () { return '[Emscripten Module object]'; };
 
-#if USE_PTHREADS
+#if PTHREADS
   let nodeWorkerThreads;
   try {
     nodeWorkerThreads = require('worker_threads');
@@ -408,7 +408,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 
   // Differentiate the Web Worker from the Node Worker case, as reading must
   // be done differently.
-#if USE_PTHREADS && ENVIRONMENT_MAY_BE_NODE
+#if PTHREADS && ENVIRONMENT_MAY_BE_NODE
   if (!ENVIRONMENT_IS_NODE)
 #endif
   {
@@ -427,7 +427,7 @@ if (!ENVIRONMENT_IS_AUDIO_WORKLET)
 #endif // ASSERTIONS
 }
 
-#if ENVIRONMENT_MAY_BE_NODE && USE_PTHREADS
+#if ENVIRONMENT_MAY_BE_NODE && PTHREADS
 if (ENVIRONMENT_IS_NODE) {
   // Polyfill the performance object, which emscripten pthreads support
   // depends on for good timing.
@@ -495,14 +495,14 @@ assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has be
 {{{ makeRemovedFSAssert('NODEFS') }}}
 #endif
 
-#if USE_PTHREADS
+#if PTHREADS
 assert(
 #if AUDIO_WORKLET
   ENVIRONMENT_IS_AUDIO_WORKLET ||
 #endif
   ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_NODE, 'Pthreads do not work in this environment yet (need Web Workers, or an alternative to them)');
 #else
-#endif // USE_PTHREADS
+#endif // PTHREADS
 
 #if !ENVIRONMENT_MAY_BE_WEB
 assert(!ENVIRONMENT_IS_WEB, "web environment detected but not enabled at build time.  Add 'web' to `-sENVIRONMENT` to enable.");

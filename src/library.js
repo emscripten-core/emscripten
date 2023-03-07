@@ -70,7 +70,7 @@ mergeInto(LibraryManager.library, {
     checkUnflushedContent();
 #endif // ASSERTIONS && !EXIT_RUNTIME
 
-#if USE_PTHREADS
+#if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
       // implict exit can never happen on a pthread
 #if ASSERTIONS
@@ -89,7 +89,7 @@ mergeInto(LibraryManager.library, {
 #if PTHREADS_DEBUG
     err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
 #endif // PTHREADS_DEBUG
-#endif // USE_PTHREADS
+#endif // PTHREADS
 
 #if EXIT_RUNTIME
     if (!keepRuntimeAlive()) {
@@ -2357,7 +2357,7 @@ mergeInto(LibraryManager.library, {
                                "  };\n" +
                                "} else " +
 #endif
-#if USE_PTHREADS && !AUDIO_WORKLET
+#if PTHREADS && !AUDIO_WORKLET
 // Pthreads need their clocks synchronized to the execution of the main thread, so, when using them,
 // make sure to adjust all timings to the respective time origins.
                                "_emscripten_get_now = () => performance.timeOrigin + performance.now();\n",
@@ -2371,7 +2371,7 @@ mergeInto(LibraryManager.library, {
 // AudioWorkletGlobalScope does not have performance.now() (https://github.com/WebAudio/web-audio-api/issues/2527), so if building with
 // Audio Worklets enabled, do a dynamic check for its presence.
                                "if (typeof performance != 'undefined' && performance.now) {\n" +
-#if USE_PTHREADS
+#if PTHREADS
                                "  _emscripten_get_now = () => performance.timeOrigin + performance.now();\n" +
 #else
                                "  _emscripten_get_now = () => performance.now();\n" +
@@ -3044,7 +3044,7 @@ mergeInto(LibraryManager.library, {
   $runMainThreadEmAsm__sig: 'iippi',
   $runMainThreadEmAsm: function(code, sigPtr, argbuf, sync) {
     var args = readEmAsmArgs(sigPtr, argbuf);
-#if USE_PTHREADS
+#if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
       // EM_ASM functions are variadic, receiving the actual arguments as a buffer
       // in memory. the last parameter (argBuf) points to that data. We need to
@@ -3564,7 +3564,7 @@ mergeInto(LibraryManager.library, {
   },
 
   $maybeExit__deps: ['exit', '$handleException',
-#if USE_PTHREADS
+#if PTHREADS
     '_emscripten_thread_exit',
 #endif
   ],
@@ -3582,7 +3582,7 @@ mergeInto(LibraryManager.library, {
       dbg('maybeExit: calling exit() implicitly after user callback completed: ' + EXITSTATUS);
 #endif
       try {
-#if USE_PTHREADS
+#if PTHREADS
         if (ENVIRONMENT_IS_PTHREAD) __emscripten_thread_exit(EXITSTATUS);
         else
 #endif

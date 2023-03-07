@@ -117,7 +117,7 @@ function stackCheckInit() {
   // This is normally called automatically during __wasm_call_ctors but need to
   // get these values before even running any of the ctors so we call it redundantly
   // here.
-#if ASSERTIONS && USE_PTHREADS
+#if ASSERTIONS && PTHREADS
   // See $establishStackSpace for the equivelent code that runs on a thread
   assert(!ENVIRONMENT_IS_PTHREAD);
 #endif
@@ -152,7 +152,7 @@ function run() {
   }
 
 #if STACK_OVERFLOW_CHECK
-#if USE_PTHREADS
+#if PTHREADS
   if (!ENVIRONMENT_IS_PTHREAD)
 #endif
     stackCheckInit();
@@ -188,7 +188,7 @@ function run() {
   }
 #endif
 
-#if USE_PTHREADS
+#if PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) {
 #if MODULARIZE
     // The promise resolve function typically gets called as part of the execution

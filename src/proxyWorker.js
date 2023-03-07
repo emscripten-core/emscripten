@@ -382,12 +382,12 @@ Module['postMainLoop'] = function() {
 
 // Wait to start running until we receive some info from the client
 
-#if USE_PTHREADS
+#if PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
   addRunDependency('gl-prefetch');
   addRunDependency('worker-init');
-#if USE_PTHREADS
+#if PTHREADS
 }
 #endif
 
@@ -484,7 +484,7 @@ function onMessageFromMainEmscriptenThread(message) {
       screen.height = Module.canvas.height_ = message.data.height;
       Module.canvas.boundingClientRect = message.data.boundingClientRect;
       document.URL = message.data.URL;
-#if USE_PTHREADS
+#if PTHREADS
       currentScriptUrl = message.data.currentScriptUrl;
 #endif
       window.fireEvent({ type: 'load' });
@@ -507,11 +507,11 @@ function onMessageFromMainEmscriptenThread(message) {
   }
 };
 
-#if USE_PTHREADS
+#if PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
   onmessage = onMessageFromMainEmscriptenThread;
-#if USE_PTHREADS
+#if PTHREADS
 }
 #endif
 

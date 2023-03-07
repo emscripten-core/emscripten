@@ -1087,7 +1087,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   library[x] = eval('(' + t + ')');
   if (!library[x + '__deps']) library[x + '__deps'] = [];
   library[x + '__deps'].push('$SYSCALLS');
-#if USE_PTHREADS
+#if PTHREADS
   // Most syscalls need to happen on the main JS thread (e.g. because the
   // filesystem is in JS and on that thread). Proxy synchronously to there.
   // There are some exceptions, syscalls that we know are ok to just run in

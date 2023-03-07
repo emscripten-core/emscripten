@@ -197,11 +197,11 @@ def get_deps_info():
     _deps_info['__cxa_find_matching_catch_7'] = ['__cxa_can_catch', 'setTempRet0']
     _deps_info['__cxa_find_matching_catch_8'] = ['__cxa_can_catch', 'setTempRet0']
     _deps_info['__cxa_find_matching_catch_9'] = ['__cxa_can_catch', 'setTempRet0']
-  if settings.USE_PTHREADS and settings.OFFSCREENCANVAS_SUPPORT:
+  if settings.PTHREADS and settings.OFFSCREENCANVAS_SUPPORT:
     _deps_info['pthread_create'] = ['malloc']
   if settings.FILESYSTEM and settings.SYSCALLS_REQUIRE_FILESYSTEM:
     _deps_info['mmap'] = ['emscripten_builtin_memalign']
-  if settings.USE_PTHREADS:
+  if settings.PTHREADS:
     _deps_info['glutCreateWindow'] = ['malloc']
     _deps_info['emscripten_webgl_create_context'] = ['malloc']
     _deps_info['emscripten_webgl_destroy_context'] = ['free']

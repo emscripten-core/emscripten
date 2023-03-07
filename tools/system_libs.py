@@ -650,7 +650,7 @@ class MTLibrary(Library):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(is_mt=settings.USE_PTHREADS, is_ww=settings.WASM_WORKERS and not settings.USE_PTHREADS, **kwargs)
+    return super().get_default_variation(is_mt=settings.PTHREADS, is_ww=settings.WASM_WORKERS and not settings.PTHREADS, **kwargs)
 
   @classmethod
   def variations(cls):

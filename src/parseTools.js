@@ -705,11 +705,11 @@ function modifyFunction(text, func) {
 }
 
 function runIfMainThread(text) {
-  if (WASM_WORKERS && USE_PTHREADS) {
+  if (WASM_WORKERS && PTHREADS) {
     return 'if (!ENVIRONMENT_IS_WASM_WORKER && !ENVIRONMENT_IS_PTHREAD) { ' + text + ' }';
   } else if (WASM_WORKERS) {
     return 'if (!ENVIRONMENT_IS_WASM_WORKER) { ' + text + ' }';
-  } else if (USE_PTHREADS) {
+  } else if (PTHREADS) {
     return 'if (!ENVIRONMENT_IS_PTHREAD) { ' + text + ' }';
   } else {
     return text;
@@ -936,7 +936,7 @@ function makeMalloc(source, param) {
 // We skip this completely in MINIMAL_RUNTIME and also in builds that
 // don't ever need to exit the runtime.
 function runtimeKeepalivePush() {
-  if (MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && USE_PTHREADS == 0)) return '';
+  if (MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && PTHREADS == 0)) return '';
   return 'runtimeKeepalivePush();';
 }
 
@@ -945,7 +945,7 @@ function runtimeKeepalivePush() {
 // We skip this completely in MINIMAL_RUNTIME and also in builds that
 // don't ever need to exit the runtime.
 function runtimeKeepalivePop() {
-  if (MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && USE_PTHREADS == 0)) return '';
+  if (MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && PTHREADS == 0)) return '';
   return 'runtimeKeepalivePop();';
 }
 

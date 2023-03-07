@@ -26,7 +26,7 @@ function run() {
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
-#if USE_PTHREADS
+#if PTHREADS
   PThread.terminateAllThreads();
 #endif
 
@@ -53,7 +53,7 @@ function initRuntime(asm) {
   runtimeInitialized = true;
 #endif
 
-#if USE_PTHREADS
+#if PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) {
     // Export needed variables that worker.js needs to Module.
     Module['HEAPU32'] = HEAPU32;
@@ -76,7 +76,7 @@ function initRuntime(asm) {
 #endif
 #endif
 
-#if USE_PTHREADS
+#if PTHREADS
   PThread.tlsInitFunctions.push(asm['_emscripten_tls_init']);
 #endif
 
@@ -104,7 +104,7 @@ var imports = {
 var asm;
 #endif
 
-#if USE_PTHREADS
+#if PTHREADS
 var wasmModule;
 #endif
 
@@ -151,14 +151,14 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   // output.module objects. But if Module['wasm'] is an already compiled
   // WebAssembly module, then output is the WebAssembly instance itself.
   // Depending on the build mode, Module['wasm'] can mean a different thing.
-#if MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION || MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION || USE_PTHREADS
+#if MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION || MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION || PTHREADS
   // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
   // Firefox 52 added Wasm support, but only Firefox 58 added compileStreaming &
   // instantiateStreaming.
   // Chrome 57 added Wasm support, but only Chrome 61 added compileStreaming &
   // instantiateStreaming.
   // Node.js and Safari do not support compileStreaming or instantiateStreaming.
-#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || ENVIRONMENT_MAY_BE_NODE || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || USE_PTHREADS
+#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || ENVIRONMENT_MAY_BE_NODE || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || PTHREADS
   // In pthreads, Module['wasm'] is an already compiled WebAssembly.Module. In
   // that case, 'output' is a WebAssembly.Instance.
   // In main thread, Module['wasm'] is either a typed array or a fetch stream.
@@ -176,7 +176,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 
 #if USE_OFFSET_CONVERTER
-#if USE_PTHREADS
+#if PTHREADS
   if (!ENVIRONMENT_IS_PTHREAD)
 #endif
     wasmOffsetConverter = new WasmOffsetConverter(Module['wasm'], output.module);
@@ -227,7 +227,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 
   initRuntime(asm);
-#if USE_PTHREADS
+#if PTHREADS
   // Export Wasm module for pthread creation to access.
   wasmModule = output.module || Module['wasm'];
   PThread.loadWasmModuleToAllWorkers(ready);
