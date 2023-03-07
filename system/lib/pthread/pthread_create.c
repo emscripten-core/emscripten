@@ -223,6 +223,8 @@ int __pthread_create(pthread_t* restrict res,
   _emscripten_thread_profiler_init(new);
 #endif
 
+  _emscripten_thread_mailbox_init(new);
+
   struct pthread *self = __pthread_self();
   dbg("start __pthread_create: new=%p new_end=%p stack=%p->%p "
       "stack_size=%zu tls_base=%p",
@@ -268,6 +270,7 @@ int __pthread_create(pthread_t* restrict res,
       self->next,
       self->prev,
       new);
+
   *res = new;
   return 0;
 }
@@ -303,6 +306,8 @@ void _emscripten_thread_exit(void* result) {
   self->cancelasync = PTHREAD_CANCEL_DEFERRED;
   self->result = result;
 
+  _emscripten_thread_mailbox_shutdown(self);
+
   // Run any handlers registered with pthread_cleanup_push
   __run_cleanup_handlers();
 
@@ -319,7 +324,7 @@ void _emscripten_thread_exit(void* result) {
 
   __tl_unlock();
 
-  if (self == emscripten_main_browser_thread_id()) {
+  if (emscripten_is_main_runtime_thread()) {
     exit(0);
     return;
   }

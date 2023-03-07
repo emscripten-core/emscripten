@@ -94,7 +94,7 @@ if (ENVIRONMENT_IS_NODE) {
   Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
 #endif
 #endif
-#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
+#if !MEM_INIT_IN_WASM
   Module['mem'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.mem');
 #endif
 }
@@ -110,7 +110,7 @@ if (ENVIRONMENT_IS_SHELL) {
   Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
 #endif
 #endif
-#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
+#if !MEM_INIT_IN_WASM
   Module['mem'] = read('{{{ TARGET_BASENAME }}}.mem', 'binary');
 #endif
 }

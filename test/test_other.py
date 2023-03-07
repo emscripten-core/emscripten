@@ -28,7 +28,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner other')
 
 from tools.shared import config
-from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, FILE_PACKAGER, WINDOWS
+from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, FILE_PACKAGER, WINDOWS, LLVM_NM
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, EMCMAKE, EMCONFIGURE
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
@@ -149,7 +149,28 @@ def requires_pkg_config(func):
 
 
 def llvm_nm(file):
-  return building.llvm_nm_multiple([file])[0]
+  output = shared.run_process([LLVM_NM, file], stdout=PIPE).stdout
+
+  symbols = {
+    'defs': set(),
+    'undefs': set(),
+    'commons': set(),
+  }
+
+  for line in output.splitlines():
+    # Skip address, which is always fixed-length 8 chars (plus 2
+    # leading chars `: ` and one trailing space)
+    status = line[9]
+    symbol = line[11:]
+
+    if status == 'U':
+      symbols['undefs'].add(symbol)
+    elif status == 'C':
+      symbols['commons'].add(symbol)
+    elif status == status.upper():
+      symbols['defs'].add(symbol)
+
+  return symbols
 
 
 class other(RunnerCore):
@@ -2742,10 +2763,10 @@ int f() {
       (['-lembind', '-O1']),
       (['-lembind', '-O2']),
       (['-lembind', '-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')]),
+      (['-lembind', '-O2', '--closure=1']),
     ]
+    extra_args = extra_args + ['-sRETAIN_COMPILER_SETTINGS', '-sEXPORTED_RUNTIME_METHODS=getCompilerSetting']
     test_cases = [t + extra_args for t in test_cases]
-    # closure compiler doesn't work with DYNAMIC_EXECUTION=0
-    test_cases.append((['-lembind', '-O2', '--closure=1']))
     for args in test_cases:
       print(args)
       self.clear()
@@ -2760,13 +2781,10 @@ int f() {
         [EMXX, test_file('embind/embind_test.cpp'),
          '--pre-js', test_file('embind/test.pre.js'),
          '--post-js', test_file('embind/test.post.js'),
-         '--js-library', test_file('embind/helpers.js'),
          '-sWASM_ASYNC_COMPILATION=0',
          # This test uses a `CustomSmartPtr` class which has 1MB of data embedded in
          # it which means we need more stack space than normal.
-         '-sSTACK_SIZE=2MB',
-         '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$EMBIND_STD_STRING_IS_UTF8,$DYNAMIC_EXECUTION,$ASSERTIONS',
-         '-sEXPORTED_FUNCTIONS=EMBIND_STD_STRING_IS_UTF8,DYNAMIC_EXECUTION,ASSERTIONS'] + args)
+         '-sSTACK_SIZE=2MB'] + args)
 
       if '-sDYNAMIC_EXECUTION=0' in args:
         js_binary_str = read_file('a.out.js')
@@ -7790,6 +7808,7 @@ int main() {
     'Os_mr': (['-Os', '-sMINIMAL_RUNTIME'], [], [], 74), # noqa
     # EVAL_CTORS also removes the __wasm_call_ctors function
     'Oz-ctors': (['-Oz', '-sEVAL_CTORS'], [], []), # noqa
+    '64': (['-Oz', '-sMEMORY64', '-Wno-experimental'], [], []), # noqa
   })
   def test_metadce_minimal(self, *args):
     self.set_setting('INCOMING_MODULE_JS_API', [])
@@ -12084,7 +12103,7 @@ void foo() {}
       self.assertNotContained('warning: unsupported syscall', err)
 
   def test_unimplemented_syscalls_dlopen(self):
-    cmd = [EMCC, test_file('other/test_dlopen_blocking.c'), '-sASSERTIONS']
+    cmd = [EMCC, test_file('other/test_dlopen_blocking.c')]
     self.run_process(cmd)
     err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained('Aborted(To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking)', err)
@@ -12094,6 +12113,20 @@ void foo() {}
     cmd += ['-sALLOW_UNIMPLEMENTED_SYSCALLS=0']
     err = self.expect_fail(cmd)
     self.assertContained('To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking', err)
+
+  def test_unimplemented_syscalls_dladdr(self):
+    create_file('main.c', '''
+    #include <dlfcn.h>
+
+    int main() {
+      dladdr(0, 0);
+      return 0;
+    }
+    ''')
+
+    self.run_process([EMCC, 'main.c'])
+    err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
+    self.assertContained('Aborted(To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking)', err)
 
   @requires_v8
   def test_missing_shell_support(self):
@@ -13059,3 +13092,19 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.set_setting('MIN_NODE_VERSION', 210000)
     expected = 'This emscripten-generated code requires node v21.0.0 (detected v%s)' % node_version
     self.do_runf(test_file('hello_world.c'), expected, assert_returncode=NON_ZERO)
+
+  def test_deprecated_macros(self):
+    create_file('main.c', '''
+    #include <assert.h>
+    #include <stdio.h>
+    #include <emscripten/threading.h>
+
+    int main() {
+      printf("%d\\n", emscripten_main_browser_thread_id());
+      assert(emscripten_main_browser_thread_id());
+      return 0;
+    }
+    ''')
+    err = self.run_process([EMCC, 'main.c'], stderr=PIPE).stderr
+    expected = "warning: macro 'emscripten_main_browser_thread_id' has been marked as deprecated: use emscripten_main_runtime_thread_id instead [-Wdeprecated-pragma]"
+    self.assertContained(expected, err)

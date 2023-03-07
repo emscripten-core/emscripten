@@ -352,14 +352,14 @@ EMSCRIPTEN_RESULT emscripten_wait_for_call_i(
 
 static struct pthread __main_pthread;
 
-pthread_t emscripten_main_browser_thread_id() {
+pthread_t emscripten_main_runtime_thread_id() {
   return &__main_pthread;
 }
 
 static pthread_t normalize_thread(pthread_t target_thread) {
   assert(target_thread);
-  if (target_thread == EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD) {
-    return emscripten_main_browser_thread_id();
+  if (target_thread == EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD) {
+    return emscripten_main_runtime_thread_id();
   }
   if (target_thread == EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD) {
     return pthread_self();
@@ -392,7 +392,7 @@ static int do_dispatch_to_thread(pthread_t target_thread,
 }
 
 void emscripten_async_run_in_main_thread(em_queued_call* call) {
-  do_dispatch_to_thread(emscripten_main_browser_thread_id(), call);
+  do_dispatch_to_thread(emscripten_main_runtime_thread_id(), call);
 }
 
 static void sync_run_in_main_thread(em_queued_call* call) {
@@ -595,4 +595,6 @@ void __emscripten_init_main_thread(void) {
   // this is used by pthread_key_delete for deleting thread-specific data.
   __main_pthread.next = __main_pthread.prev = &__main_pthread;
   __main_pthread.tsd = (void **)__pthread_tsd_main;
+
+  _emscripten_thread_mailbox_init(&__main_pthread);
 }

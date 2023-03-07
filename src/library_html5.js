@@ -202,7 +202,7 @@ var LibraryHTML5 = {
 #if USE_PTHREADS
     getTargetThreadForEventCallback: function(targetThread) {
       switch (targetThread) {
-        case {{{ cDefine('EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD') }}}: return 0; // The event callback for the current event should be called on the main browser thread. (0 == don't proxy)
+        case {{{ cDefine('EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD') }}}: return 0; // The event callback for the current event should be called on the main browser thread. (0 == don't proxy)
         case {{{ cDefine('EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD') }}}: return PThread.currentProxiedOperationCallerThread; // The event callback for the current event should be backproxied to the thread that is registering the event.
         default: return targetThread; // The event callback for the current event should be proxied to the given specific thread.
       }
@@ -2311,7 +2311,7 @@ var LibraryHTML5 = {
     if (typeof onbeforeunload == 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     // beforeunload callback can only be registered on the main browser thread, because the page will go away immediately after returning from the handler,
     // and there is no time to start proxying it anywhere.
-    if (targetThread !== {{{ cDefine('EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD') }}}) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
+    if (targetThread !== {{{ cDefine('EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD') }}}) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
     registerBeforeUnloadEventCallback({{{ cDefine('EMSCRIPTEN_EVENT_TARGET_WINDOW') }}}, userData, true, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_BEFOREUNLOAD') }}}, "beforeunload");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },

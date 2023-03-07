@@ -270,8 +270,8 @@ var LibraryPThread = {
           return;
         }
 
-        if (cmd === 'processProxyingQueue') {
-          executeNotifiedProxyingQueue(d['queue']);
+        if (cmd === 'checkMailbox') {
+          checkMailbox();
         } else if (cmd === 'spawnThread') {
           spawnThread(d);
         } else if (cmd === 'cleanupThread') {
@@ -916,7 +916,6 @@ var LibraryPThread = {
 #endif
   },
 
-  __pthread_kill_js__deps: ['emscripten_main_browser_thread_id'],
   __pthread_kill_js: function(thread, signal) {
     if (signal === {{{ cDefine('SIGCANCEL') }}}) { // Used by pthread_cancel in musl
       if (!ENVIRONMENT_IS_PTHREAD) cancelThread(thread);
@@ -1086,6 +1085,13 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
     dbg('invokeEntryPoint: ' + ptrToString(ptr));
 #endif
+#if EXIT_RUNTIME && !MINIMAL_RUNTIME
+    // An old thread on this worker may have been canceled without returning the
+    // `runtimeKeepaliveCounter` to zero. Reset it now so the new thread won't
+    // be affected.
+    runtimeKeepaliveCounter = 0;
+#endif
+
 #if MAIN_MODULE
     // Before we call the thread entry point, make sure any shared libraries
     // have been loaded on this there.  Otherwise our table migth be not be
@@ -1213,29 +1219,22 @@ var LibraryPThread = {
   },
 #endif // MAIN_MODULE
 
-  $executeNotifiedProxyingQueue__deps: ['$callUserCallback'],
-  $executeNotifiedProxyingQueue: function(queue) {
-    // Set the notification state to processing.
-    Atomics.store(HEAP32, queue >> 2, {{{ cDefine('NOTIFICATION_RECEIVED') }}});
-    // Only execute the queue if we have a live pthread runtime. We
-    // implement pthread_self to return 0 if there is no live runtime.
+  $checkMailbox__deps: ['$callUserCallback'],
+  $checkMailbox: function() {
+    // Only check the mailbox if we have a live pthread runtime. We implement
+    // pthread_self to return 0 if there is no live runtime.
     if (_pthread_self()) {
-      callUserCallback(() => __emscripten_proxy_execute_task_queue(queue));
+      callUserCallback(() => __emscripten_check_mailbox());
     }
-    // Set the notification state to none as long as a new notification has not
-    // been sent while we were processing.
-    Atomics.compareExchange(HEAP32, queue >> 2,
-                            {{{ cDefine('NOTIFICATION_RECEIVED') }}},
-                            {{{ cDefine('NOTIFICATION_NONE') }}});
   },
 
-  _emscripten_notify_task_queue__deps: ['$executeNotifiedProxyingQueue'],
-  _emscripten_notify_task_queue__sig: 'vpppp',
-  _emscripten_notify_task_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
+  _emscripten_notify_mailbox__deps: ['$checkMailbox'],
+  _emscripten_notify_mailbox__sig: 'vppp',
+  _emscripten_notify_mailbox: function(targetThreadId, currThreadId, mainThreadId) {
     if (targetThreadId == currThreadId) {
-      setTimeout(() => executeNotifiedProxyingQueue(queue));
+      setTimeout(() => checkMailbox());
     } else if (ENVIRONMENT_IS_PTHREAD) {
-      postMessage({'targetThread' : targetThreadId, 'cmd' : 'processProxyingQueue', 'queue' : queue});
+      postMessage({'targetThread' : targetThreadId, 'cmd' : 'checkMailbox'});
     } else {
       var worker = PThread.pthreads[targetThreadId];
       if (!worker) {
@@ -1244,7 +1243,7 @@ var LibraryPThread = {
 #endif
         return /*0*/;
       }
-      worker.postMessage({'cmd' : 'processProxyingQueue', 'queue': queue});
+      worker.postMessage({'cmd' : 'checkMailbox'});
     }
   }
 };

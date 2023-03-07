@@ -389,9 +389,9 @@ def minify_whitespace():
   return settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0
 
 
-def embed_memfile():
+def embed_memfile(options):
   return (settings.SINGLE_FILE or
-          (settings.MEM_INIT_METHOD == 0 and
+          (settings.WASM2JS and not options.memory_init_file and
            (not settings.MAIN_MODULE and
             not settings.SIDE_MODULE and
             not settings.GENERATE_SOURCE_MAP)))
@@ -1682,7 +1682,7 @@ def setup_pthreads(target):
   settings.REQUIRED_EXPORTS += [
     'emscripten_dispatch_to_thread_',
     '_emscripten_thread_free_data',
-    'emscripten_main_browser_thread_id',
+    'emscripten_main_runtime_thread_id',
     'emscripten_main_thread_process_queued_calls',
     '_emscripten_run_in_main_runtime_thread_js',
     'emscripten_stack_set_limits',
@@ -1712,7 +1712,7 @@ def setup_pthreads(target):
     '__emscripten_thread_crashed',
     '__emscripten_tls_init',
     '_pthread_self',
-    'executeNotifiedProxyingQueue',
+    'checkMailbox',
   ]
   settings.EXPORTED_FUNCTIONS += worker_imports
   building.user_requested_exports.update(worker_imports)
@@ -1807,9 +1807,6 @@ def phase_linker_setup(options, state, newargs):
 
   options.extern_pre_js = read_js_files(options.extern_pre_js)
   options.extern_post_js = read_js_files(options.extern_post_js)
-
-  if options.memory_init_file is None:
-    options.memory_init_file = settings.OPT_LEVEL >= 2
 
   # TODO: support source maps with js_transform
   if options.js_transform and settings.GENERATE_SOURCE_MAP:
@@ -2079,10 +2076,6 @@ def phase_linker_setup(options, state, newargs):
     if settings.MAIN_MODULE == 1:
       settings.INCLUDE_FULL_LIBRARY = 1
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$preloadDylibs']
-  elif settings.SIDE_MODULE:
-    assert not settings.MAIN_MODULE
-    # memory init file is not supported with side modules, must be executable synchronously (for dlopen)
-    options.memory_init_file = False
 
   # If we are including the entire JS library then we know for sure we will, by definition,
   # require all the reverse dependencies.
@@ -2498,7 +2491,7 @@ def phase_linker_setup(options, state, newargs):
   # wasm module export names so that the names can be passed directly to the outer scope.
   # Also, if using library_exports.js API, disable minification so that the feature can work.
   if not settings.DECLARE_ASM_MODULE_EXPORTS or '-lexports.js' in [x for _, x in state.link_flags]:
-    settings.MINIFY_ASMJS_EXPORT_NAMES = 0
+    settings.MINIFY_WASM_EXPORT_NAMES = 0
 
   if '-lembind' in [x for _, x in state.link_flags]:
     settings.EMBIND = 1
@@ -2520,7 +2513,7 @@ def phase_linker_setup(options, state, newargs):
       not settings.ASSERTIONS and \
       not settings.RELOCATABLE and \
       not settings.ASYNCIFY_LAZY_LOAD_CODE and \
-          settings.MINIFY_ASMJS_EXPORT_NAMES:
+          settings.MINIFY_WASM_EXPORT_NAMES:
     settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
     settings.MINIFY_WASM_IMPORTED_MODULES = 1
 
@@ -2545,16 +2538,13 @@ def phase_linker_setup(options, state, newargs):
   if settings.SHARED_MEMORY or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE or settings.WASM2JS:
     settings.IMPORTED_MEMORY = 1
 
-  # Any "pointers" passed to JS will now be i64's, in both modes.
-  # Also turn off minifying, which clashes with instrumented functions in preamble.js
   if settings.MEMORY64:
     if settings.ASYNCIFY and settings.MEMORY64 == 1:
       exit_with_error('MEMORY64=1 is not compatible with ASYNCIFY')
     if not settings.DISABLE_EXCEPTION_CATCHING:
       exit_with_error('MEMORY64 is not compatible with DISABLE_EXCEPTION_CATCHING=0')
+    # Any "pointers" passed to JS will now be i64's, in both modes.
     settings.WASM_BIGINT = 1
-    settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 0
-    settings.MINIFY_WASM_IMPORTED_MODULES = 0
 
   if settings.WASM_BIGINT:
     settings.LEGALIZE_JS_FFI = 0
@@ -2576,10 +2566,9 @@ def phase_linker_setup(options, state, newargs):
   if options.use_closure_compiler == 2 and not settings.WASM2JS:
     exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
 
-  if 'MEM_INIT_METHOD' in user_settings:
-    exit_with_error('MEM_INIT_METHOD is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
-
   if settings.WASM2JS:
+    if options.memory_init_file is None:
+      options.memory_init_file = settings.OPT_LEVEL >= 2
     settings.MAYBE_WASM2JS = 1
     # when using wasm2js, if the memory segments are in the wasm then they
     # end up converted by wasm2js into base64 encoded JS. alternatively, we
@@ -2589,11 +2578,6 @@ def phase_linker_setup(options, state, newargs):
     # shared memory builds we must keep the memory segments in the wasm as
     # they will be passive segments which the .mem format cannot handle.
     settings.MEM_INIT_IN_WASM = not options.memory_init_file or settings.SINGLE_FILE or settings.SHARED_MEMORY
-  else:
-    # wasm includes the mem init in the wasm binary. The exception is
-    # wasm2js, which behaves more like js.
-    options.memory_init_file = True
-    settings.MEM_INIT_IN_WASM = True
 
   if (
       settings.MAYBE_WASM2JS or
@@ -3139,12 +3123,8 @@ def phase_post_link(options, state, in_wasm, wasm_target, target):
 def phase_emscript(options, in_wasm, wasm_target, memfile):
   # Emscripten
   logger.debug('emscript')
-  if options.memory_init_file:
-    settings.MEM_INIT_METHOD = 1
-  else:
-    assert settings.MEM_INIT_METHOD != 1
 
-  if embed_memfile():
+  if embed_memfile(options):
     settings.SUPPORT_BASE64_EMBEDDING = 1
     # _read in shell.js depends on intArrayToString when SUPPORT_BASE64_EMBEDDING is set
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$intArrayToString')
@@ -3281,7 +3261,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   elif settings.PROXY_TO_WORKER:
     generate_worker_js(target, js_target, target_basename)
 
-  if embed_memfile() and memfile:
+  if embed_memfile(options) and memfile:
     delete_file(memfile)
 
   if settings.SPLIT_MODULE:
@@ -3534,6 +3514,8 @@ def parse_args(newargs):
       ports.show_ports()
       should_exit = True
     elif check_arg('--memory-init-file'):
+      # This flag is ignored unless targetting wasm2js.
+      # TODO(sbc): Error out if used without wasm2js.
       options.memory_init_file = int(consume_arg())
     elif check_flag('--proxy-to-worker'):
       settings_changes.append('PROXY_TO_WORKER=1')

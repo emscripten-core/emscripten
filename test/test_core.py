@@ -2839,6 +2839,16 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_proxying_dropped_work.c')
 
   @node_pthreads
+  def test_pthread_proxying_canceled_work(self):
+    # TODO: remove EXIT_RUNTIME from this and similar tests once #18782 is
+    # fixed.
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.do_run_in_out_file_test(
+        'pthread/test_pthread_proxying_canceled_work.c',
+        interleaved_output=False)
+
+  @node_pthreads
   def test_pthread_proxying_refcount(self):
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PTHREAD_POOL_SIZE=1')
@@ -8782,7 +8792,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.maybe_closure()
-    self.do_runf(test_file('declare_asm_module_exports.cpp'), 'jsFunction: 1')
+    self.do_runf(test_file('declare_asm_module_exports.c'), 'jsFunction: 1')
     js = read_file('declare_asm_module_exports.js')
     occurances = js.count('cFunction')
     if self.is_optimizing() and '-g' not in self.emcc_args:
@@ -8804,7 +8814,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.maybe_closure()
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
-    self.do_runf(test_file('declare_asm_module_exports.cpp'), 'jsFunction: 1')
+    self.do_runf(test_file('declare_asm_module_exports.c'), 'jsFunction: 1')
 
   # Tests that -sMINIMAL_RUNTIME works well in different build modes
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
@@ -9351,6 +9361,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_emscripten_futexes(self):
     self.set_setting('USE_PTHREADS')
+    self.emcc_args += ['-Wno-nonnull']
     self.do_run_in_out_file_test('core/pthread/emscripten_futexes.c')
 
   @node_pthreads
@@ -9420,6 +9431,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dylink
   @node_pthreads
+  @disabled('https://github.com/emscripten-core/emscripten/issues/18887')
   def test_pthread_dlopen_many(self):
     nthreads = 10
     self.set_setting('USE_PTHREADS')
