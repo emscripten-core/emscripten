@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.33 (in development)
 -----------------------
+- Initial support for C++20 modules.  We have added a very simple test in form
+  of `other.test_cpp_module`. (#)
 - Removed `sys/sysctl.h` compatibility header.  We don't implement the function
   it defines. (#18863)
 - Update SDL2_ttf port to 2.20.2 (#18804)
