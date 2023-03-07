@@ -1348,7 +1348,7 @@ var LibrarySDL = {
     return SDL.version;
   },
 
-  SDL_Init__deps: ['$zeroMemory'],
+  SDL_Init__deps: ['$zeroMemory', 'malloc', 'free', 'memcpy'],
   SDL_Init__proxy: 'sync',
   SDL_Init__sig: 'ii',
   SDL_Init__docs: '/** @param{number=} initFlags */', 
@@ -1846,15 +1846,18 @@ var LibrarySDL = {
   SDL_SetError: function() {},
 
   SDL_malloc__sig: 'ii',
+  SDL_malloc__deps: ['malloc'],
   SDL_malloc: function(size) {
     return _malloc(size);
   },
 
   SDL_free__sig: 'vi',
+  SDL_free__deps: ['free'],
   SDL_free: function(ptr) {
     _free(ptr);
   },
 
+  SDL_CreateRGBSurface__deps: ['malloc', 'free'],
   SDL_CreateRGBSurface__proxy: 'sync',
   SDL_CreateRGBSurface__sig: 'iiiiiiiii',
   SDL_CreateRGBSurface: function(flags, width, height, depth, rmask, gmask, bmask, amask) {
@@ -2067,6 +2070,7 @@ var LibrarySDL = {
 
   SDL_PushEvent__proxy: 'sync',
   SDL_PushEvent__sig: 'ii',
+  SDL_PushEvent__deps: ['malloc'],
   SDL_PushEvent: function(ptr) {
     var copy = _malloc({{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
     _memcpy(copy, ptr, {{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
@@ -2117,6 +2121,7 @@ var LibrarySDL = {
   // An Emscripten-specific extension to SDL: Some browser APIs require that they are called from within an event handler function.
   // Allow recording a callback that will be called for each received event.
   emscripten_SDL_SetEventHandler__proxy: 'sync',
+  emscripten_SDL_SetEventHandler__deps: ['malloc'],
   emscripten_SDL_SetEventHandler__sig: 'vii',
   emscripten_SDL_SetEventHandler: function(handler, userdata) {
     SDL.eventHandler = handler;
@@ -2245,7 +2250,7 @@ var LibrarySDL = {
     return flags; // We support JPG, PNG, TIF because browsers do
   },
 
-  IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS'],
+  IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS', 'malloc'],
   IMG_Load_RW__proxy: 'sync',
   IMG_Load_RW__sig: 'iii',
   IMG_Load_RW: function(rwopsID, freeSrc) {
@@ -2413,7 +2418,7 @@ var LibrarySDL = {
 
   // SDL_Audio
 
-  SDL_OpenAudio__deps: ['$autoResumeAudioContext', '$safeSetTimeout'],
+  SDL_OpenAudio__deps: ['$autoResumeAudioContext', '$safeSetTimeout', 'malloc'],
   SDL_OpenAudio__proxy: 'sync',
   SDL_OpenAudio__sig: 'iii',
   SDL_OpenAudio: function(desired, obtained) {

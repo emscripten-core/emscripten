@@ -63,7 +63,7 @@ function report_error(e) {
 }
 
 if (typeof window === 'object' && window) {
-  window.addEventListener('error', event => report_error(event));
+  window.addEventListener('error', event => report_error(event.error));
   window.addEventListener('unhandledrejection', event => report_error(event.reason));
 }
 

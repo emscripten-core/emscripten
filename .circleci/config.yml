@@ -10,9 +10,6 @@ executors:
   linux-python:
     docker:
       - image: cimg/python:3.10.7
-    environment:
-      # Currently pinned due to https://github.com/emscripten-core/emscripten/issues/17846
-      V8_VERSION: "10.7.186"
   bionic:
     docker:
       - image: emscripten/emscripten-ci
@@ -23,8 +20,6 @@ executors:
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
       EMTEST_BUILD_VERBOSE: "2"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
-      # Currently pinned due to https://github.com/emscripten-core/emscripten/issues/17846
-      V8_VERSION: "10.7.186"
   mac:
     environment:
       EMSDK_NOTTY: "1"
@@ -75,24 +70,38 @@ commands:
       node_version:
         description: "version of node to install"
         type: string
+      canary:
+        description: "install a canary version of node"
+        type: boolean
+        default: false
     steps:
       - run:
           name: setup node v<< parameters.node_version >>
           command: |
             cd $HOME
             version=<< parameters.node_version >>
-            wget https://nodejs.org/dist/v${version}/node-v${version}-linux-x64.tar.xz
+            if [[ << parameters.canary >> == "true" ]]; then
+              wget https://nodejs.org/download/v8-canary/v${version}/node-v${version}-linux-x64.tar.xz
+            else
+              wget https://nodejs.org/dist/v${version}/node-v${version}-linux-x64.tar.xz
+            fi
             tar xf node-v${version}-linux-x64.tar.xz
             echo "NODE_JS = [os.path.expanduser('~/node-v${version}-linux-x64/bin/node')]" >> ~/emsdk/.emscripten
             echo "JS_ENGINES = [NODE_JS]" >> ~/emsdk/.emscripten
             echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> ~/emsdk/.emscripten
             cat ~/emsdk/.emscripten
             echo "export PATH=\"$HOME/node-v${version}-linux-x64/bin:\$PATH\"" >> $BASH_ENV
-  install-latest-node:
+  install-node-latest:
     description: "install latest version of node"
     steps:
       - install-node-version:
          node_version: "19.0.0"
+  install-node-canary:
+    description: "install canary version of node"
+    steps:
+      - install-node-version:
+         node_version: "20.0.0-v8-canary202302081604228b65"
+         canary: true
   install-v8:
     description: "install v8 using jsvu"
     steps:
@@ -106,7 +115,7 @@ commands:
             tar -xf node-v15.14.0-linux-x64.tar.xz
             export PATH="`pwd`/node-v15.14.0-linux-x64/bin:${PATH}"
             npm install jsvu -g
-            jsvu --os=default --engines=v8 v8@${V8_VERSION}
+            jsvu --os=default --engines=v8
   build:
     description: "Install emsdk"
     steps:
@@ -118,8 +127,8 @@ commands:
             mv ~/emsdk-main ~/emsdk
             cd ~/emsdk
             ./emsdk update-tags
-            ./emsdk install tot-upstream
-            ./emsdk activate tot-upstream
+            ./emsdk install tot
+            ./emsdk activate tot
             # Remove the emsdk version of emscripten to save space in the
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
@@ -129,7 +138,7 @@ commands:
             # persisted workspace (see below).
             echo "CACHE = os.path.expanduser('~/cache')" >> .emscripten
             # Refer to commit 0bc3640 if we need to pin V8 version.
-            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/bin/v8-${V8_VERSION}')]" >> .emscripten
+            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/bin/v8')]" >> .emscripten
             echo "JS_ENGINES = [NODE_JS]" >> .emscripten
             echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> .emscripten
             echo "WASM_ENGINES = []" >> .emscripten
@@ -527,12 +536,9 @@ jobs:
       - run: rm -rf $HOME/.jsvu
       - install-v8
       - run-tests:
-          title: "wasm64_v8"
-          test_targets: "wasm64_v8"
-      - run-tests:
           title: "wasm64l"
           test_targets: "wasm64l"
-      - install-latest-node
+      - install-node-canary
       - run-tests:
           title: "wasm64"
           test_targets: "wasm64"
@@ -548,6 +554,14 @@ jobs:
           command: git submodule update --init
       - pip-install
       - build
+      - install-node-canary
+      - run-tests:
+          title: "selected subset"
+          test_targets: "
+            other.test_gen_struct_info
+            other.test_native_call_before_init
+            other.test_node_unhandled_rejection
+            core2.test_hello_world"
       # Run some basic tests with the minimum version of node that we currently
       # support.
       - install-node-version:
@@ -562,7 +576,7 @@ jobs:
       # Run a few test with the most recent version of node
       # In particular we have some tests that require node flags on older
       # versions of node but not with the most recent version.
-      - install-latest-node
+      - install-node-latest
       - run-tests:
           # Run tests that on older versions of node would require flags, but
           # those flags should not be injected on newer versions.
@@ -574,6 +588,7 @@ jobs:
             other.test_node_emscripten_num_logical_cores
             core2.test_pthread_create
             core2.test_i64_invoke_bigint
+            core2.test_sse2
             core2.test_source_map
             core2.test_exceptions_wasm
             core2.test_pthread_unhandledrejection"
@@ -613,6 +628,7 @@ jobs:
       EMTEST_SKIP_V8: "1"
       EMTEST_SKIP_EH: "1"
       EMTEST_SKIP_WASM64: "1"
+      EMTEST_SKIP_SIMD: "1"
     steps:
       - checkout
       - run:
@@ -667,7 +683,8 @@ jobs:
             other.test_emcc_print_search_dirs
             other.test_emcc_print_file_name
             other.test_minimal_runtime_export_all_modularize
-            other.test_pkg_config*"
+            other.test_pkg_config*
+            other.test_sdl2_config"
       - upload-test-results
       # Run a single websockify-based test to ensure it works on windows.
       - run-tests:
@@ -683,6 +700,7 @@ jobs:
       EMTEST_SKIP_V8: "1"
       EMTEST_SKIP_EH: "1"
       EMTEST_SKIP_WASM64: "1"
+      EMTEST_SKIP_SIMD: "1"
       EMCC_SKIP_SANITY_CHECK: "1"
     steps:
       - run:
@@ -703,7 +721,7 @@ jobs:
       - run:
           name: Remove Linux binaries
           command: |
-            rm -rf ~/emsdk ~/vms
+            rm -rf ~/emsdk ~/vms ~/.jsvu
       - build
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand

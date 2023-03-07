@@ -72,7 +72,7 @@ void emscripten_condvar_init(emscripten_condvar_t *condvar) {
 void emscripten_condvar_waitinf(emscripten_condvar_t *condvar, emscripten_lock_t *lock) {
 }
 
-int emscripten_condvar_wait(emscripten_condvar_t *condvar, emscripten_lock_t *lock, int64_t maxWaitNanoseconds) {
+EM_BOOL emscripten_condvar_wait(emscripten_condvar_t *condvar, emscripten_lock_t *lock, int64_t maxWaitNanoseconds) {
   return EM_TRUE;
 }
 

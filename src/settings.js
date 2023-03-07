@@ -91,14 +91,6 @@ var INVOKE_RUN = true;
 // [link]
 var EXIT_RUNTIME = false;
 
-// How to represent the initial memory content.
-// 0: embed a base64 string literal representing the initial memory data
-// 1: create a *.mem file containing the binary data of the initial memory;
-
-//    use the --memory-init-file command line switch to select this method
-// [link]
-var MEM_INIT_METHOD = false;
-
 // The total stack size. There is no way to enlarge the stack, so this
 // value must be large enough for the program's requirements. If
 // assertions are on, we will assert on not exceeding this, otherwise,
@@ -333,9 +325,9 @@ var EXCEPTION_DEBUG = false;
 var DEMANGLE_SUPPORT = false;
 
 // Print out when we enter a library call (library*.js). You can also unset
-// Runtime.debug at runtime for logging to cease, and can set it when you want
+// runtimeDebug at runtime for logging to cease, and can set it when you want
 // it back. A simple way to set it in C++ is
-//   emscripten_run_script("Runtime.debug = ...;");
+//   emscripten_run_script("runtimeDebug = ...;");
 // [link]
 var LIBRARY_DEBUG = false;
 
@@ -711,8 +703,9 @@ var EXPORT_EXCEPTION_HANDLING_HELPERS = false;
 // When this is enabled, exceptions will contain stack traces and uncaught
 // exceptions will display stack traces upon exiting. This defaults to true when
 // ASSERTIONS is enabled. This option is for users who want exceptions' stack
-// traces but do not want other overheads ASSERTIONS can incur. This currently
-// works only for Wasm exceptions (-fwasm-exceptions).
+// traces but do not want other overheads ASSERTIONS can incur.
+// This option implies EXPORT_EXCEPTION_HANDLING_HELPERS.
+// [link]
 var EXCEPTION_STACK_TRACES = false;
 
 // Internal: Tracks whether Emscripten should link in exception throwing (C++
@@ -993,8 +986,13 @@ var EXPORTED_FUNCTIONS = [];
 // [link]
 var EXPORT_ALL = false;
 
+// If true, we export the symbols that are present in JS onto the Module
+// object.
+// It only does Module['X'] = X;
+var EXPORT_KEEPALIVE = true;
+
 // Remembers the values of these settings, and makes them accessible
-// through Runtime.getCompilerSetting and emscripten_get_compiler_setting.
+// through getCompilerSetting and emscripten_get_compiler_setting.
 // To see what is retained, look for compilerSettings in the generated code.
 // [link]
 var RETAIN_COMPILER_SETTINGS = false;
@@ -1264,7 +1262,7 @@ var EXPORT_NAME = 'Module';
 // in particular the 'unsafe-eval' and 'wasm-unsafe-eval' policies.
 //
 // When this flag is set, the following features (linker flags) are unavailable:
-//  -sRELOCATABLE: the function Runtime.loadDynamicLibrary would need to eval().
+//  -sRELOCATABLE: the function loadDynamicLibrary would need to eval().
 // and some features may fall back to slower code paths when they need to:
 // Embind: uses eval() to jit functions for speed.
 //
@@ -1513,10 +1511,6 @@ var SDL2_MIXER_FORMATS = ["ogg"];
 // 1 = use sqlite3 from emscripten-ports
 // [compile+link]
 var USE_SQLITE3 = false;
-
-// If true, the current build is performed for the Emscripten test harness.
-// [other]
-var IN_TEST_HARNESS = false;
 
 // If 1, target compiling a shared Wasm Memory.
 // [compile+link] - affects user code at compile and system libraries at link.
@@ -1823,7 +1817,10 @@ var SUPPORT_ERRNO = true;
 // MINIMAL_RUNTIME=2 to further enable even more code size optimizations. These
 // opts are quite hacky, and work around limitations in Closure and other parts
 // of the build system, so they may not work in all generated programs (But can
-// be useful for really small programs)
+// be useful for really small programs).
+//
+// By default, no symbols will be exported on the `Module` object. In order
+// to export kept alive symbols, please use `-sEXPORT_KEEPALIVE=1`.
 // [link]
 var MINIMAL_RUNTIME = 0;
 
@@ -1931,16 +1928,8 @@ var ASAN_SHADOW_SIZE = -1
 var USE_OFFSET_CONVERTER = false;
 
 // Whether we should load the WASM source map at runtime.
-// This is enabled automatically when using -g4 with sanitizers.
+// This is enabled automatically when using -gsource-map with sanitizers.
 var LOAD_SOURCE_MAP = false;
-
-// If set to 0, delay undefined symbol report until after wasm-ld runs.  This
-// avoids running the JS compiler prior to wasm-ld, but reduces the amount
-// of information in the undefined symbol message (Since JS compiler cannot
-// report the name of the object file that contains the reference to the
-// undefined symbol).
-// [link]
-var LLD_REPORT_UNDEFINED = true;
 
 // Default to c++ mode even when run as `emcc` rather then `emc++`.
 // When this is disabled `em++` is required when compiling and linking C++
@@ -2187,4 +2176,6 @@ var LEGACY_SETTINGS = [
   ['LIBRARY_DEPS_TO_AUTOEXPORT', [[]], 'No longer needed'],
   ['EMIT_EMSCRIPTEN_METADATA', [0], 'No longer supported'],
   ['SHELL_FILE', [''], 'No longer supported'],
+  ['LLD_REPORT_UNDEFINED', [1], 'Disabling is no longer supported'],
+  ['MEM_INIT_METHOD', [0], 'No longer supported'],
 ];

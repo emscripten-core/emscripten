@@ -53,15 +53,10 @@ from tools.settings import settings
 _deps_info = {
   'alarm': ['_emscripten_timeout'],
   'setitimer': ['_emscripten_timeout'],
-  'Mix_LoadWAV_RW': ['fileno'],
-  'SDL_CreateRGBSurface': ['malloc', 'free'],
   'SDL_GL_GetProcAddress': ['malloc'],
-  'SDL_Init': ['malloc', 'free', 'memcpy'],
   'SDL_LockSurface': ['malloc', 'free'],
   'SDL_OpenAudio': ['malloc', 'free'],
   'SDL_PushEvent': ['malloc', 'free'],
-  'SDL_free': ['free'],
-  'SDL_malloc': ['malloc', 'free'],
   '_embind_register_class': ['free'],
   '_embind_register_enum_value': ['free'],
   '_embind_register_function': ['free'],
@@ -86,8 +81,6 @@ _deps_info = {
   'emscripten_async_wget_data': ['malloc', 'free'],
   'emscripten_create_worker': ['malloc', 'free'],
   'emscripten_get_compiler_setting': ['malloc'],
-  'emscripten_get_preloaded_image_data': ['malloc'],
-  'emscripten_get_preloaded_image_data_from_FILE': ['fileno'],
   'emscripten_get_window_title': ['malloc'],
   'emscripten_idb_async_load': ['malloc', 'free'],
   'emscripten_idb_load': ['malloc', 'free'],
@@ -100,10 +93,7 @@ _deps_info = {
   'emscripten_longjmp': ['malloc', 'free', 'saveSetjmp', 'setThrew'],
   'emscripten_pc_get_file': ['malloc', 'free'],
   'emscripten_pc_get_function': ['malloc', 'free'],
-  'emscripten_run_preload_plugins_data': ['malloc'],
   'emscripten_run_script_string': ['malloc', 'free'],
-  'emscripten_set_batterychargingchange_callback_on_thread': ['malloc'],
-  'emscripten_set_batterylevelchange_callback_on_thread': ['malloc'],
   'emscripten_set_blur_callback_on_thread': ['malloc'],
   'emscripten_set_click_callback_on_thread': ['malloc'],
   'emscripten_set_dblclick_callback_on_thread': ['malloc'],
@@ -176,17 +166,19 @@ _deps_info = {
   # directly include invokes in deps_info.py, so we list it as a setjmp's
   # dependency.
   'setjmp': ['malloc', 'free', 'saveSetjmp', 'setThrew'],
-  'setprotoent': ['malloc'],
   'syslog': ['malloc', 'ntohs', 'htons'],
   'vsyslog': ['malloc', 'ntohs', 'htons'],
   'timegm': ['malloc'],
   'tzset': ['malloc'],
-  'uuid_compare': ['memcmp'],
-  'uuid_copy': ['memcpy'],
-  'wgpuBufferGetMappedRange': ['malloc', 'free'],
-  'wgpuBufferGetConstMappedRange': ['malloc', 'free'],
   'emscripten_glGetString': ['malloc'],
 }
+
+
+def append_deps_info(js_symbol_deps):
+  for key, value in js_symbol_deps.items():
+    if value:
+      _deps_info.setdefault(key, [])
+      _deps_info[key] += value
 
 
 def get_deps_info():

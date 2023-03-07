@@ -71,28 +71,25 @@ mergeInto(LibraryManager.library, {
 #endif // ASSERTIONS && !EXIT_RUNTIME
 
 #if USE_PTHREADS
-    if (!implicit) {
-      if (ENVIRONMENT_IS_PTHREAD) {
+    if (ENVIRONMENT_IS_PTHREAD) {
+      // implict exit can never happen on a pthread
+#if ASSERTIONS
+      assert(!implicit);
+#endif
 #if PTHREADS_DEBUG
-        dbg('Pthread ' + ptrToString(_pthread_self()) + ' called exit(), posting exitOnMainThread.');
+      dbg('Pthread ' + ptrToString(_pthread_self()) + ' called exit(), posting exitOnMainThread.');
 #endif
-        // When running in a pthread we propagate the exit back to the main thread
-        // where it can decide if the whole process should be shut down or not.
-        // The pthread may have decided not to exit its own runtime, for example
-        // because it runs a main loop, but that doesn't affect the main thread.
-        exitOnMainThread(status);
-        throw 'unwind';
-      } else {
-#if PTHREADS_DEBUG
-#if EXIT_RUNTIME
-        err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
-#else
-        err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive());
-#endif
-#endif
-      }
+      // When running in a pthread we propagate the exit back to the main thread
+      // where it can decide if the whole process should be shut down or not.
+      // The pthread may have decided not to exit its own runtime, for example
+      // because it runs a main loop, but that doesn't affect the main thread.
+      exitOnMainThread(status);
+      throw 'unwind';
     }
-#endif
+#if PTHREADS_DEBUG
+    err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
+#endif // PTHREADS_DEBUG
+#endif // USE_PTHREADS
 
 #if EXIT_RUNTIME
     if (!keepRuntimeAlive()) {
@@ -103,11 +100,7 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     // if exit() was called explicitly, warn the user if the runtime isn't actually being shut down
     if (keepRuntimeAlive() && !implicit) {
-#if !EXIT_RUNTIME
-      var msg = 'program exited (with status: ' + status + '), but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)';
-#else
       var msg = 'program exited (with status: ' + status + '), but keepRuntimeAlive() is set (counter=' + runtimeKeepaliveCounter + ') due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)';
-#endif // EXIT_RUNTIME
 #if MODULARIZE
       readyPromiseReject(msg);
 #endif // MODULARIZE
@@ -399,7 +392,7 @@ mergeInto(LibraryManager.library, {
     // int getloadavg(double loadavg[], int nelem);
     // http://linux.die.net/man/3/getloadavg
     var limit = Math.min(nelem, 3);
-    var doubleSize = {{{ Runtime.getNativeTypeSize('double') }}};
+    var doubleSize = {{{ getNativeTypeSize('double') }}};
     for (var i = 0; i < limit; i++) {
       {{{ makeSetValue('loadavg', 'i * doubleSize', '0.1', 'double') }}};
     }
@@ -631,10 +624,10 @@ mergeInto(LibraryManager.library, {
     if (summerOffset < winterOffset) {
       // Northern hemisphere
       {{{ makeSetValue('tzname', '0', 'winterNamePtr', POINTER_TYPE) }}};
-      {{{ makeSetValue('tzname', Runtime.POINTER_SIZE, 'summerNamePtr', POINTER_TYPE) }}};
+      {{{ makeSetValue('tzname', POINTER_SIZE, 'summerNamePtr', POINTER_TYPE) }}};
     } else {
       {{{ makeSetValue('tzname', '0', 'summerNamePtr', POINTER_TYPE) }}};
-      {{{ makeSetValue('tzname', Runtime.POINTER_SIZE, 'winterNamePtr', POINTER_TYPE) }}};
+      {{{ makeSetValue('tzname', POINTER_SIZE, 'winterNamePtr', POINTER_TYPE) }}};
     }
   },
 
@@ -1244,7 +1237,13 @@ mergeInto(LibraryManager.library, {
 
 #if SUPPORT_LONGJMP == 'emscripten'
   _emscripten_throw_longjmp__sig: 'v',
-  _emscripten_throw_longjmp: function() { throw Infinity; },
+  _emscripten_throw_longjmp: function() {
+#if EXCEPTION_STACK_TRACES
+    throw new EmscriptenSjLj;
+#else
+    throw Infinity;
+#endif
+  },
 #elif !SUPPORT_LONGJMP
 #if !INCLUDE_FULL_LIBRARY
   // These are in order to print helpful error messages when either longjmp of
@@ -2112,7 +2111,7 @@ mergeInto(LibraryManager.library, {
     list: [],
     map: {}
   },
-  setprotoent__deps: ['$Protocols', '$writeAsciiToMemory'],
+  setprotoent__deps: ['$Protocols', '$writeAsciiToMemory', 'malloc'],
   setprotoent: function(stayopen) {
     // void setprotoent(int stayopen);
 
@@ -2353,7 +2352,7 @@ mergeInto(LibraryManager.library, {
 #if ENVIRONMENT_MAY_BE_NODE
                                "if (ENVIRONMENT_IS_NODE) {\n" +
                                "  _emscripten_get_now = () => {\n" +
-                               "    var t = process['hrtime']();\n" +
+                               "    var t = process.hrtime();\n" +
                                "    return t[0] * 1e3 + t[1] / 1e6;\n" +
                                "  };\n" +
                                "} else " +
@@ -3191,8 +3190,8 @@ mergeInto(LibraryManager.library, {
   $getExecutableName: function() {
 #if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global runtime variable thisProgram
 #if ENVIRONMENT_MAY_BE_NODE
-    if (ENVIRONMENT_IS_NODE && process['argv'].length > 1) {
-      return process['argv'][1].replace(/\\/g, '/');
+    if (ENVIRONMENT_IS_NODE && process.argv.length > 1) {
+      return process.argv[1].replace(/\\/g, '/');
     }
 #endif
     return "./this.program";
@@ -3403,14 +3402,15 @@ mergeInto(LibraryManager.library, {
   emscripten_force_exit__proxy: 'sync',
   emscripten_force_exit__sig: 'vi',
   emscripten_force_exit: function(status) {
+#if RUNTIME_DEBUG
+    dbg('emscripten_force_exit');
+#endif
 #if !EXIT_RUNTIME && ASSERTIONS
     warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set');
 #endif
 #if !MINIMAL_RUNTIME
     noExitRuntime = false;
-#if EXIT_RUNTIME
     runtimeKeepaliveCounter = 0;
-#endif
 #endif
     _exit(status);
   },
@@ -3488,6 +3488,9 @@ mergeInto(LibraryManager.library, {
     // 2. "unwind", which is thrown by emscripten_unwind_to_js_event_loop() and others
     //    that wish to return to JS event loop.
     if (e instanceof ExitStatus || e == 'unwind') {
+#if RUNTIME_DEBUG
+      dbg('handleException: unwinding: EXITSTATUS=' + EXITSTATUS);
+#endif
       return EXITSTATUS;
     }
 #if STACK_OVERFLOW_CHECK
@@ -3508,24 +3511,20 @@ mergeInto(LibraryManager.library, {
   // Callable in pthread without __proxy needed.
   $runtimeKeepalivePush__sig: 'v',
   $runtimeKeepalivePush: function() {
-#if EXIT_RUNTIME
     runtimeKeepaliveCounter += 1;
 #if RUNTIME_DEBUG
     dbg('runtimeKeepalivePush -> counter=' + runtimeKeepaliveCounter);
-#endif
 #endif
   },
 
   $runtimeKeepalivePop__sig: 'v',
   $runtimeKeepalivePop: function() {
-#if EXIT_RUNTIME
 #if ASSERTIONS
     assert(runtimeKeepaliveCounter > 0);
 #endif
     runtimeKeepaliveCounter -= 1;
 #if RUNTIME_DEBUG
     dbg('runtimeKeepalivePop -> counter=' + runtimeKeepaliveCounter);
-#endif
 #endif
   },
 
@@ -3544,11 +3543,7 @@ mergeInto(LibraryManager.library, {
   // The job of this wrapper is the handle emscripten-specfic exceptions such
   // as ExitStatus and 'unwind' and prevent these from escaping to the top
   // level.
-  $callUserCallback__deps: ['$handleException',
-#if EXIT_RUNTIME
-    '$maybeExit',
-#endif
-  ],
+  $callUserCallback__deps: ['$handleException', '$maybeExit'],
   $callUserCallback: function(func) {
 #if EXIT_RUNTIME
     if (runtimeExited || ABORT) {
@@ -3562,28 +3557,22 @@ mergeInto(LibraryManager.library, {
     }
     try {
       func();
-#if EXIT_RUNTIME
-#if USE_PTHREADS && !EXIT_RUNTIME
-      if (ENVIRONMENT_IS_PTHREAD)
-#endif
-        maybeExit();
-#endif // EXIT_RUNTIME
+      maybeExit();
     } catch (e) {
       handleException(e);
     }
   },
 
-#if EXIT_RUNTIME
   $maybeExit__deps: ['exit', '$handleException',
 #if USE_PTHREADS
     '_emscripten_thread_exit',
 #endif
   ],
   $maybeExit: function() {
-#if PROXY_TO_PTHREAD
-    // In PROXY_TO_PTHREAD mode the main thread never implicitly exits, but
-    // waits for the proxied main function to exit.
-    if (!ENVIRONMENT_IS_PTHREAD) return;
+#if EXIT_RUNTIME
+    if (runtimeExited) {
+      return;
+    }
 #endif
 #if RUNTIME_DEBUG
     dbg('maybeExit: user callback done: runtimeKeepaliveCounter=' + runtimeKeepaliveCounter);
@@ -3603,12 +3592,6 @@ mergeInto(LibraryManager.library, {
       }
     }
   },
-#else
-  // Define as stub function in case legacy code has unconditionally dependency
-  // on this function.  We also have at least one test that expects this
-  // library function to always exist.
-  $maybeExit: function() {},
-#endif // EXIT_RUNTIME
 
 #else // MINIMAL_RUNTIME
   // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff
@@ -3629,6 +3612,9 @@ mergeInto(LibraryManager.library, {
 
   $asmjsMangle: function(x) {
     var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};
+    if (x == '__main_argc_argv') {
+      x = 'main';
+    }
     return x.indexOf('dynCall_') == 0 || unmangledSymbols.includes(x) ? x : '_' + x;
   },
 

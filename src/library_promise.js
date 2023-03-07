@@ -79,6 +79,7 @@ mergeInto(LibraryManager.library, {
 #if RUNTIME_DEBUG
       dbg('emscripten promise callback: ' + value);
 #endif
+      {{{ runtimeKeepalivePop() }}};
       var stack = stackSave();
       // Allocate space for the result value and initialize it to NULL.
       var resultPtr = stackAlloc(POINTER_SIZE);
@@ -137,13 +138,14 @@ mergeInto(LibraryManager.library, {
 #if RUNTIME_DEBUG
     dbg('emscripten_promise_then: ' + id);
 #endif
+    {{{ runtimeKeepalivePush() }}};
     var promise = getPromise(id);
     var newId = promiseMap.allocate({
       promise: promise.then(makePromiseCallback(onFulfilled, userData),
                             makePromiseCallback(onRejected, userData))
     });
 #if RUNTIME_DEBUG
-    dbg('create: ' + newId);
+    dbg('emscripten_promise_then: -> ' + newId);
 #endif
     return newId;
   },
@@ -153,7 +155,7 @@ mergeInto(LibraryManager.library, {
   emscripten_promise_all: function(idBuf, resultBuf, size) {
     var promises = [];
     for (var i = 0; i < size; i++) {
-      var id = {{{ makeGetValue('idBuf', `i*${Runtime.POINTER_SIZE}`, 'i32') }}};
+      var id = {{{ makeGetValue('idBuf', `i*${POINTER_SIZE}`, 'i32') }}};
       promises[i] = getPromise(id);
     }
 #if RUNTIME_DEBUG
@@ -164,7 +166,7 @@ mergeInto(LibraryManager.library, {
         if (resultBuf) {
           for (var i = 0; i < size; i++) {
             var result = results[i];
-            {{{ makeSetValue('resultBuf', `i*${Runtime.POINTER_SIZE}`, 'result', '*') }}};
+            {{{ makeSetValue('resultBuf', `i*${POINTER_SIZE}`, 'result', '*') }}};
           }
         }
         return resultBuf;

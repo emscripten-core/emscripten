@@ -11,25 +11,18 @@
 #define SANITIZER
 #endif
 
-// The first two queues will be zombies and the next two will be created just to
-// cull the zombies.
-em_proxying_queue* queues[4];
+// Proxying queues accessed from the worker thread.
+em_proxying_queue* queues[2];
 
 #ifndef SANITIZER
 
 // If we are not using sanitizers (which need to use their own allocators),
 // override free so we can track when queues are actually freed.
 
-int queues_freed[4] = {};
+_Atomic int frees = 0;
 
 void __attribute__((noinline)) free(void* ptr) {
-  for (int i = 0; i < 4; i++) {
-    if (ptr && queues[i] == ptr) {
-      queues_freed[i] = 1;
-      queues[i] = NULL;
-      break;
-    }
-  }
+  frees++;
   emscripten_builtin_free(ptr);
 }
 
@@ -63,7 +56,7 @@ void* execute_and_free_queue(void* arg) {
       var oldOnMessage = onmessage;
       onmessage = (e) => {
         oldOnMessage(e);
-        if (e.data.cmd == 'processProxyingQueue') {
+        if (e.data.cmd == 'checkMailbox') {
           _register_processed();
         }
       };
@@ -75,6 +68,8 @@ void* execute_and_free_queue(void* arg) {
   // can free it.
   emscripten_exit_with_live_runtime();
 }
+
+void nop(void* arg) {}
 
 int main() {
   emscripten_console_log("start");
@@ -95,41 +90,35 @@ int main() {
   while (!executed[0] || !executed[1]) {
   }
 
-  // Wait for the notifications to be received.
-  while (processed < 2) {
+  // Wait for the postMessage notification to be received.
+  while (processed < 1) {
   }
 
 #ifndef SANITIZER
   // Our zombies should not have been freed yet.
-  assert(!queues_freed[0]);
-  assert(!queues_freed[1]);
+  int frees_before_cull = frees;
 #endif // SANITIZER
 
-  // Cull the zombies!
-  queues[2] = em_proxying_queue_create();
+  // Cull the zombies! (by forcing a new task queue to be allocated)
+  em_proxying_queue* culler = em_proxying_queue_create();
+  emscripten_proxy_async(culler, pthread_self(), nop, NULL);
 
 #ifndef SANITIZER
   // Now they should be free.
-  assert(queues_freed[0]);
-  assert(queues_freed[1]);
-  assert(!queues_freed[2]);
+  int frees_after_cull = frees;
+  assert(frees_after_cull > frees_before_cull);
 #endif // SANITIZER
 
-  em_proxying_queue_destroy(queues[2]);
+  // If we try again, there should be nothing left to cull.
+  em_proxying_queue* non_culler = em_proxying_queue_create();
+  emscripten_proxy_async(non_culler, pthread_self(), nop, NULL);
 
 #ifndef SANITIZER
-  // The new queue should have been immediately freed.
-  assert(queues_freed[2]);
-#endif // SANITIZER
+  assert(frees == frees_after_cull);
+#endif
 
-  // Cull again, but this time there should be nothing to cull.
-  queues[3] = em_proxying_queue_create();
-  em_proxying_queue_destroy(queues[3]);
-
-#ifndef SANITIZER
-  // The new queue should have been immediately freed.
-  assert(queues_freed[3]);
-#endif // SANITIZER
+  em_proxying_queue_destroy(culler);
+  em_proxying_queue_destroy(non_culler);
 
   emscripten_console_log("done");
 }

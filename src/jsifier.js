@@ -68,6 +68,7 @@ function isDefined(symName) {
 
 function runJSify(symbolsOnly = false) {
   const libraryItems = [];
+  const symbolDeps = {};
   let postSets = [];
 
   LibraryManager.load();
@@ -151,6 +152,33 @@ function ${name}(${args}) {
 }`);
     }
 
+    if (SHARED_MEMORY) {
+      const proxyingMode = LibraryManager.library[symbol + '__proxy'];
+      if (proxyingMode) {
+        if (proxyingMode !== 'sync' && proxyingMode !== 'async') {
+          throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
+        }
+        const sync = proxyingMode === 'sync';
+        if (USE_PTHREADS) {
+          snippet = modifyFunction(snippet, (name, args, body) => `
+function ${name}(${args}) {
+if (ENVIRONMENT_IS_PTHREAD)
+  return _emscripten_proxy_to_main_thread_js(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
+${body}
+}\n`);
+        } else if (WASM_WORKERS && ASSERTIONS) {
+          // In ASSERTIONS builds add runtime checks that proxied functions are not attempted to be called in Wasm Workers
+          // (since there is no automatic proxying architecture available)
+          snippet = modifyFunction(snippet, (name, args, body) => `
+function ${name}(${args}) {
+  assert(!ENVIRONMENT_IS_WASM_WORKER, "Attempted to call proxied function '${name}' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!");
+  ${body}
+}\n`);
+        }
+        proxiedFunctionTable.push(mangled);
+      }
+    }
+
     if (MEMORY64) {
       const sig = LibraryManager.library[symbol + '__sig'];
       if (sig && sig.includes('p')) {
@@ -218,9 +246,16 @@ function ${name}(${args}) {
         return;
       }
 
+      const deps = LibraryManager.library[symbol + '__deps'] || [];
+      if (!Array.isArray(deps)) {
+        error(`JS library directive ${symbol}__deps=${deps.toString()} is of type ${typeof deps}, but it should be an array!`);
+        return;
+      }
+
       if (symbolsOnly) {
         if (!isJsOnlySymbol(symbol) && LibraryManager.library.hasOwnProperty(symbol)) {
-          librarySymbols.push(symbol);
+          externalDeps = deps.filter((d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library) && typeof d === 'string');
+          symbolDeps[symbol] = externalDeps;
         }
         return;
       }
@@ -251,9 +286,6 @@ function ${name}(${args}) {
           if (dependent) msg += ` (referenced by ${dependent})`;
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
             error(msg);
-            if (dependent == TOP_LEVEL && !LLD_REPORT_UNDEFINED) {
-              warnOnce('Link with `-sLLD_REPORT_UNDEFINED` to get more information on undefined symbols');
-            }
             warnOnce('To disable errors for undefined symbols use `-sERROR_ON_UNDEFINED_SYMBOLS=0`');
             warnOnce(mangled + ' may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library');
           } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
@@ -295,11 +327,6 @@ function ${name}(${args}) {
 
       const original = LibraryManager.library[symbol];
       let snippet = original;
-      const deps = LibraryManager.library[symbol + '__deps'] || [];
-      if (!Array.isArray(deps)) {
-        error(`JS library directive ${symbol}__deps=${deps.toString()} is of type ${typeof deps}, but it should be an array!`);
-        return;
-      }
 
       const isUserSymbol = LibraryManager.library[symbol + '__user'];
       deps.forEach((dep) => {
@@ -362,36 +389,7 @@ function ${name}(${args}) {
       let contentText;
       if (isFunction) {
         // Emit the body of a JS library function.
-        const proxyingMode = LibraryManager.library[symbol + '__proxy'];
-        if (SHARED_MEMORY && proxyingMode) {
-          if (proxyingMode !== 'sync' && proxyingMode !== 'async') {
-            throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
-          }
-          const sync = proxyingMode === 'sync';
-          assert(typeof original == 'function');
-          if (USE_PTHREADS) {
-            contentText = modifyFunction(snippet, (name, args, body) => `
-function ${name}(${args}) {
-  if (ENVIRONMENT_IS_PTHREAD)
-    return _emscripten_proxy_to_main_thread_js(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
-  ${body}
-}\n`);
-          } else if (WASM_WORKERS) {
-            if (ASSERTIONS) {
-              // In ASSERTIONS builds add runtime checks that proxied functions are not attempted to be called in Wasm Workers
-              // (since there is no automatic proxying architecture available)
-              contentText = modifyFunction(snippet, (name, args, body) => `
-  function ${name}(${args}) {
-    assert(!ENVIRONMENT_IS_WASM_WORKER, "Attempted to call proxied function '${name}' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!");
-    ${body}
-  }\n`);
-            } else {
-              // In non-ASSERTIONS builds directly emit the original function.
-              contentText = snippet;
-            }
-          }
-          proxiedFunctionTable.push(mangled);
-        } else if ((USE_ASAN || USE_LSAN || UBSAN_RUNTIME) && LibraryManager.library[symbol + '__noleakcheck']) {
+        if ((USE_ASAN || USE_LSAN || UBSAN_RUNTIME) && LibraryManager.library[symbol + '__noleakcheck']) {
           contentText = modifyFunction(snippet, (name, args, body) => `
 function ${name}(${args}) {
   return withBuiltinMalloc(function() {
@@ -547,7 +545,7 @@ function ${name}(${args}) {
   }
 
   if (symbolsOnly) {
-    print(JSON.stringify(librarySymbols));
+    print(JSON.stringify(symbolDeps));
     return;
   }
 

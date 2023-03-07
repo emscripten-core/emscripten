@@ -804,6 +804,7 @@ var LibraryBrowser = {
   },
 
   emscripten_run_preload_plugins_data__proxy: 'sync',
+  emscripten_run_preload_plugins_data__deps: ['malloc'],
   emscripten_run_preload_plugins_data__sig: 'viiiiii',
   emscripten_run_preload_plugins_data: function(data, size, suffix, arg, onload, onerror) {
     {{{ runtimeKeepalivePush() }}}
@@ -1355,7 +1356,7 @@ var LibraryBrowser = {
     return info.awaited;
   },
 
-  emscripten_get_preloaded_image_data__deps: ['$PATH_FS'],
+  emscripten_get_preloaded_image_data__deps: ['$PATH_FS', 'malloc'],
   emscripten_get_preloaded_image_data__proxy: 'sync',
   emscripten_get_preloaded_image_data__sig: 'iiii',
   emscripten_get_preloaded_image_data: function(path, w, h) {

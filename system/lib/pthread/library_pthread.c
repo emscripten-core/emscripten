@@ -190,7 +190,7 @@ static void _do_call(void* arg) {
       break;
     case EM_PROXIED_JS_FUNCTION:
       q->returnValue.d =
-        emscripten_receive_on_main_thread_js((int)(size_t)q->functionPtr, q->args[0].i, &q->args[1].d);
+        emscripten_receive_on_main_thread_js((intptr_t)q->functionPtr, q->args[0].i, &q->args[1].d);
       break;
     case EM_FUNC_SIG_V:
       ((em_func_v)q->functionPtr)();
@@ -352,14 +352,14 @@ EMSCRIPTEN_RESULT emscripten_wait_for_call_i(
 
 static struct pthread __main_pthread;
 
-pthread_t emscripten_main_browser_thread_id() {
+pthread_t emscripten_main_runtime_thread_id() {
   return &__main_pthread;
 }
 
 static pthread_t normalize_thread(pthread_t target_thread) {
   assert(target_thread);
-  if (target_thread == EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD) {
-    return emscripten_main_browser_thread_id();
+  if (target_thread == EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD) {
+    return emscripten_main_runtime_thread_id();
   }
   if (target_thread == EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD) {
     return pthread_self();
@@ -392,7 +392,7 @@ static int do_dispatch_to_thread(pthread_t target_thread,
 }
 
 void emscripten_async_run_in_main_thread(em_queued_call* call) {
-  do_dispatch_to_thread(emscripten_main_browser_thread_id(), call);
+  do_dispatch_to_thread(emscripten_main_runtime_thread_id(), call);
 }
 
 static void sync_run_in_main_thread(em_queued_call* call) {
@@ -422,7 +422,7 @@ int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void* fun
   return q.returnValue.i;
 }
 
-double emscripten_run_in_main_runtime_thread_js(int index, int num_args, int64_t* buffer, int sync) {
+double _emscripten_run_in_main_runtime_thread_js(int index, int num_args, int64_t* buffer, int sync) {
   em_queued_call q;
   em_queued_call *c;
   if (sync) {
@@ -435,7 +435,7 @@ double emscripten_run_in_main_runtime_thread_js(int index, int num_args, int64_t
   c->calleeDelete = 1-sync;
   c->functionEnum = EM_PROXIED_JS_FUNCTION;
   // Index not needed to ever be more than 32-bit.
-  c->functionPtr = (void*)(size_t)index;
+  c->functionPtr = (void*)(intptr_t)index;
   assert(num_args+1 <= EM_QUEUED_JS_CALL_MAX_ARGS);
   // The types are only known at runtime in these calls, so we store values that
   // must be able to contain any valid JS value, including a 64-bit BigInt if
@@ -595,4 +595,6 @@ void __emscripten_init_main_thread(void) {
   // this is used by pthread_key_delete for deleting thread-specific data.
   __main_pthread.next = __main_pthread.prev = &__main_pthread;
   __main_pthread.tsd = (void **)__pthread_tsd_main;
+
+  _emscripten_thread_mailbox_init(&__main_pthread);
 }
