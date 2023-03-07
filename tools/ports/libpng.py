@@ -34,7 +34,7 @@ def get(ports, settings, shared):
 
     flags = ['-sUSE_ZLIB']
     if settings.USE_PTHREADS:
-      flags += ['-sUSE_PTHREADS']
+      flags += ['-pthread']
 
     ports.build_port(source_path, final, 'libpng', flags=flags, exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
 

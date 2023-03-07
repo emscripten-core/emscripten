@@ -1678,7 +1678,7 @@ def setup_pthreads(target):
     elif settings.LINKABLE:
       diagnostics.warning('experimental', '-sLINKABLE + pthreads is experimental')
   if settings.ALLOW_MEMORY_GROWTH:
-    diagnostics.warning('pthreads-mem-growth', 'USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
+    diagnostics.warning('pthreads-mem-growth', '-pthread + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
 
   default_setting('DEFAULT_PTHREAD_STACK_SIZE', settings.STACK_SIZE)
 
@@ -2404,7 +2404,7 @@ def phase_linker_setup(options, state, newargs):
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$runtimeKeepalivePush']
   else:
     if settings.PROXY_TO_PTHREAD:
-      exit_with_error('-sPROXY_TO_PTHREAD requires -sUSE_PTHREADS to work!')
+      exit_with_error('-sPROXY_TO_PTHREAD requires -pthread work!')
     settings.JS_LIBRARIES.append((0, 'library_pthread_stub.js'))
 
   # TODO: Move this into the library JS file once it becomes possible.

@@ -1937,23 +1937,21 @@ int f() {
       ])
 
   def test_dylink_pthread_warning(self):
-    err = self.expect_fail([EMCC, '-Werror', '-sMAIN_MODULE', '-sUSE_PTHREADS', test_file('hello_world.c')])
+    err = self.expect_fail([EMCC, '-Werror', '-sMAIN_MODULE', '-pthread', test_file('hello_world.c')])
     self.assertContained('error: -sMAIN_MODULE + pthreads is experimental', err)
 
   @node_pthreads
   def test_dylink_pthread_bigint_em_asm(self):
     self.set_setting('MAIN_MODULE', 2)
-    self.set_setting('USE_PTHREADS')
     self.set_setting('WASM_BIGINT')
-    self.emcc_args += ['-Wno-experimental']
+    self.emcc_args += ['-Wno-experimental', '-pthread']
     self.do_runf(test_file('hello_world_em_asm.c'), 'hello, world')
 
   @node_pthreads
   def test_dylink_pthread_bigint_em_js(self):
     self.set_setting('MAIN_MODULE', 2)
-    self.set_setting('USE_PTHREADS')
     self.set_setting('WASM_BIGINT')
-    self.emcc_args += ['-Wno-experimental']
+    self.emcc_args += ['-Wno-experimental', '-pthread']
     self.do_runf(test_file('core/test_em_js.cpp'))
 
   @node_pthreads
@@ -2133,7 +2131,7 @@ int f() {
   def test_libpng_with_pthreads(self):
     shutil.copyfile(test_file('third_party/libpng/pngtest.png'), 'pngtest.png')
     self.do_runf(test_file('third_party/libpng/pngtest.c'), 'libpng passes test',
-                 emcc_args=['--embed-file', 'pngtest.png', '-sUSE_LIBPNG', '-sUSE_PTHREADS'])
+                 emcc_args=['--embed-file', 'pngtest.png', '-sUSE_LIBPNG', '-pthread'])
 
   def test_giflib(self):
     shutil.copyfile(test_file('third_party/giflib/treescap.gif'), 'treescap.gif')
@@ -2192,7 +2190,7 @@ int f() {
 
   def test_freetype_with_pthreads(self):
     # Verify that freetype supports compilation requiring pthreads
-    self.emcc(test_file('freetype_test.c'), ['-sUSE_PTHREADS', '-sUSE_FREETYPE'], output_filename='a.out.js')
+    self.emcc(test_file('freetype_test.c'), ['-pthread', '-sUSE_FREETYPE'], output_filename='a.out.js')
 
   def test_icu(self):
     self.set_setting('USE_ICU')
@@ -7765,7 +7763,7 @@ int main() {
       wasm_size = os.path.getsize('a.out.nodebug.wasm')
       size_file = expected_basename + '.size'
       js_size = os.path.getsize('a.out.js')
-      if self.get_setting('USE_PTHREADS'):
+      if '-pthread' in args:
         js_size += os.path.getsize('a.out.worker.js')
       js_size_file = expected_basename + '.jssize'
       self.check_expected_size_in_file('wasm', size_file, wasm_size)
@@ -7828,7 +7826,7 @@ int main() {
 
   @node_pthreads
   def test_metadce_minimal_pthreads(self):
-    self.run_metadce_test('minimal_main.c', ['-Oz', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
+    self.run_metadce_test('minimal_main.c', ['-Oz', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   @parameterized({
     'noexcept': (['-O2'],                    [], ['waka']), # noqa
@@ -9329,7 +9327,7 @@ test_module().then((test_module_instance) => {
     create_file(os.path.join('subdir', moduleLoader), moduleLoaderContents)
 
     # build hello_world.c
-    self.run_process([EMCC, test_file('hello_world.c'), '-o', Path('subdir/module.js'), '-sUSE_PTHREADS', '-sPTHREAD_POOL_SIZE=2', '-sMODULARIZE', '-sEXPORT_NAME=test_module', '-sENVIRONMENT=worker,node'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', Path('subdir/module.js'), '-pthread', '-sPTHREAD_POOL_SIZE=2', '-sMODULARIZE', '-sEXPORT_NAME=test_module', '-sENVIRONMENT=worker,node'])
 
     # run the module
     ret = self.run_process(config.NODE_JS + shared.node_pthread_flags() + [os.path.join('subdir', moduleLoader)], stdout=PIPE).stdout
@@ -10366,7 +10364,7 @@ int main(void) {
     # DEFAULT_PTHREAD_STACK_SIZE.
     self.do_runf(test_file('other/test_proxy_to_pthread_stack.c'),
                  ['success'],
-                 emcc_args=['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD',
+                 emcc_args=['-pthread', '-sPROXY_TO_PTHREAD',
                             '-sDEFAULT_PTHREAD_STACK_SIZE=64kb',
                             '-sSTACK_SIZE=128kb', '-sEXIT_RUNTIME',
                             '--profiling-funcs'])
@@ -10863,9 +10861,9 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     stderr = self.expect_fail(cmd + ['-Werror=legacy-settings', '-sTOTAL_MEMORY'])
     self.assertContained('error: use of legacy setting: TOTAL_MEMORY (setting renamed to INITIAL_MEMORY) [-Wlegacy-settings] [-Werror]', stderr)
 
-    # check that `-Wno-pthreads-mem` disables USE_PTHREADS + ALLOW_GROWTH_MEMORY warning
-    stderr = self.run_process(cmd + ['-Wno-pthreads-mem-growth', '-sUSE_PTHREADS', '-sALLOW_MEMORY_GROWTH'], stderr=PIPE).stderr
-    self.assertNotContained('USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271', stderr)
+    # check that `-Wno-pthreads-mem` disables pthread + ALLOW_GROWTH_MEMORY warning
+    stderr = self.run_process(cmd + ['-Wno-pthreads-mem-growth', '-pthread', '-sALLOW_MEMORY_GROWTH'], stderr=PIPE).stderr
+    self.assertNotContained('pthreads + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271', stderr)
 
   def test_emranlib(self):
     create_file('foo.c', 'int foo = 1;')
@@ -11619,11 +11617,11 @@ exec "$@"
   # Make sure that --threadprofiler compiles with --closure 1
   def test_threadprofiler_closure(self):
     # TODO: Enable '-Werror=closure' in the following, but that has currently regressed.
-    self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-sUSE_PTHREADS', '--closure=1', '--threadprofiler', '-sASSERTIONS'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-pthread', '--closure=1', '--threadprofiler', '-sASSERTIONS'])
 
   @node_pthreads
   def test_threadprofiler(self):
-    self.run_process([EMCC, test_file('test_threadprofiler.cpp'), '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '--threadprofiler', '-sASSERTIONS'])
+    self.run_process([EMCC, test_file('test_threadprofiler.cpp'), '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '--threadprofiler', '-sASSERTIONS'])
     output = self.run_js('a.out.js')
     self.assertRegex(output, r'Thread "Browser main thread" \(0x.*\) now: running.')
     self.assertRegex(output, r'Thread "Application main thread" \(0x.*\) now: waiting for a futex.')
@@ -11790,7 +11788,7 @@ exec "$@"
       if function == 'Mix_LoadWAV_RW':
         cmd += ['-sUSE_SDL=2']
       if 'thread' in function:
-        cmd.append('-sUSE_PTHREADS')
+        cmd.append('-pthread')
       if 'glGetStringi' in function:
         cmd.append('-sUSE_WEBGL2')
       if 'glMapBufferRange' in function:
@@ -11804,7 +11802,7 @@ exec "$@"
         cmd.append('-sASYNCIFY')
       if function.startswith('emscripten_webgl_') or 'offscreencanvas' in function:
         cmd.append('-sOFFSCREENCANVAS_SUPPORT')
-        cmd.append('-sUSE_PTHREADS')
+        cmd.append('-pthread')
       if function.startswith('wgpu'):
         cmd.append('-sUSE_WEBGPU')
       if function.startswith('__cxa_'):
@@ -12167,20 +12165,18 @@ void foo() {}
 
   @node_pthreads
   def test_pthread_lsan_no_leak(self):
-    self.set_setting('USE_PTHREADS')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.emcc_args += ['-gsource-map']
+    self.emcc_args += ['-gsource-map', '-pthread']
     self.do_run_in_out_file_test(test_file('pthread/test_pthread_lsan_no_leak.cpp'), emcc_args=['-fsanitize=leak'])
     self.do_run_in_out_file_test(test_file('pthread/test_pthread_lsan_no_leak.cpp'), emcc_args=['-fsanitize=address'])
 
   @node_pthreads
   def test_pthread_lsan_leak(self):
-    self.set_setting('USE_PTHREADS')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.add_pre_run("Module['LSAN_OPTIONS'] = 'exitcode=0'")
-    self.emcc_args += ['-gsource-map']
+    self.emcc_args += ['-gsource-map', '-pthread']
     expected = [
       'Direct leak of 3432 byte(s) in 1 object(s) allocated from',
       'test_pthread_lsan_leak.cpp:18:17',
@@ -12204,7 +12200,7 @@ void foo() {}
   def test_pthread_js_exception(self):
     # Ensure that JS exceptions propagate back to the main main thread and cause node
     # to exit with an error.
-    self.set_setting('USE_PTHREADS')
+    self.emcc_args.append('-pthread')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.build(test_file('other/test_pthread_js_exception.c'))
@@ -12262,7 +12258,7 @@ void foo() {}
   @node_pthreads
   def test_default_pthread_stack_size(self):
     self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
-    self.emcc_args.append('-sUSE_PTHREADS')
+    self.emcc_args.append('-pthread')
     self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
 
   def test_emscripten_set_immediate(self):
@@ -12276,16 +12272,15 @@ void foo() {}
     # TODO(https://github.com/emscripten-core/emscripten/issues/15161):
     # Make this work without PROXY_TO_PTHREAD
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('USE_PTHREADS')
     self.set_setting('EXIT_RUNTIME')
-    self.emcc_args += ['--profiling-funcs']
+    self.emcc_args += ['--profiling-funcs', '-pthread']
     output = self.do_runf(test_file('pthread/test_pthread_trap.c'), assert_returncode=NON_ZERO)
     self.assertContained('sent an error!', output)
     self.assertContained('at thread_main', output)
 
   @node_pthreads
   def test_emscripten_set_interval(self):
-    self.do_runf(test_file('emscripten_set_interval.c'), args=['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
+    self.do_runf(test_file('emscripten_set_interval.c'), args=['-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):
@@ -12297,11 +12292,11 @@ void foo() {}
 
   @node_pthreads
   def test_emscripten_set_timeout(self):
-    self.do_runf(test_file('emscripten_set_timeout.c'), args=['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
+    self.do_runf(test_file('emscripten_set_timeout.c'), args=['-pthread', '-sPROXY_TO_PTHREAD'])
 
   @node_pthreads
   def test_emscripten_set_timeout_loop(self):
-    self.do_runf(test_file('emscripten_set_timeout_loop.c'), args=['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
+    self.do_runf(test_file('emscripten_set_timeout_loop.c'), args=['-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Verify that we are able to successfully compile a script when the Windows 7
   # and Python workaround env. vars are enabled.
@@ -12314,17 +12309,17 @@ void foo() {}
 
   @node_pthreads
   def test_pthread_out_err(self):
-    self.set_setting('USE_PTHREADS')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
+    self.emcc_args.append('-pthread')
     self.do_other_test('test_pthread_out_err.c')
 
   @node_pthreads
   def test_pthread_icu(self):
-    self.set_setting('USE_PTHREADS')
     self.set_setting('USE_ICU')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
+    self.emcc_args.append('-pthread')
     self.do_other_test('test_pthread_icu.cpp')
 
   # unistd tests
@@ -13120,3 +13115,11 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     err = self.run_process([EMCC, 'main.c'], stderr=PIPE).stderr
     expected = "warning: macro 'emscripten_main_browser_thread_id' has been marked as deprecated: use emscripten_main_runtime_thread_id instead [-Wdeprecated-pragma]"
     self.assertContained(expected, err)
+
+  @node_pthreads
+  def test_USE_PTHREADS(self):
+    self.emcc_args.remove('-pthread')
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_runf(test_file('pthread/test_pthread_create.cpp'))
