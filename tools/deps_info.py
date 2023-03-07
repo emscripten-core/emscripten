@@ -52,6 +52,7 @@ from tools.settings import settings
 
 _deps_info = {
   'alarm': ['_emscripten_timeout'],
+  'sched_yield': ['_emscripten_timeout'],
   'setitimer': ['_emscripten_timeout'],
   'SDL_GL_GetProcAddress': ['malloc'],
   'SDL_LockSurface': ['malloc', 'free'],
@@ -125,6 +126,7 @@ _deps_info = {
   'emscripten_set_touchstart_callback_on_thread': ['malloc'],
   'emscripten_set_visibilitychange_callback_on_thread': ['malloc'],
   'emscripten_set_wheel_callback_on_thread': ['malloc'],
+  'emscripten_thread_sleep': ['_emscripten_timeout'],
   'emscripten_webgl_get_parameter_utf8': ['malloc'],
   'emscripten_webgl_get_program_info_log_utf8': ['malloc'],
   'emscripten_webgl_get_shader_info_log_utf8': ['malloc'],
@@ -135,6 +137,7 @@ _deps_info = {
   'emscripten_websocket_set_onmessage_callback_on_thread': ['malloc', 'free'],
   'emscripten_websocket_set_onopen_callback_on_thread': ['malloc'],
   'emscripten_wget_data': ['malloc', 'free'],
+  'emscripten_yield': ['_emscripten_timeout'],
   'getaddrinfo': ['malloc', 'htonl', 'htons', 'ntohs'],
   'gethostbyaddr': ['malloc', 'htons'],
   'gethostbyname': ['malloc', 'htons'],
