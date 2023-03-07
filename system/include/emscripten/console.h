@@ -25,7 +25,7 @@ void emscripten_console_error(const char *utf8String __attribute__((nonnull)));
 // See https://github.com/emscripten-core/emscripten/issues/14804
 void _emscripten_out(const char *utf8String __attribute__((nonnull)));
 void _emscripten_err(const char *utf8String __attribute__((nonnull)));
-void _emscripten_dbg(const char *utf8String);
+void _emscripten_dbg(const char *utf8String __attribute__((nonnull)));
 
 // Similar to the above functions but operate with printf-like semantics.
 void emscripten_console_logf(const char *utf8String __attribute__((nonnull)), ...) __attribute__((__format__(printf, 1, 2)));
@@ -33,7 +33,7 @@ void emscripten_console_warnf(const char *utf8String __attribute__((nonnull)), .
 void emscripten_console_errorf(const char *utf8String __attribute__((nonnull)), ...)__attribute__((__format__(printf, 1, 2)));
 void _emscripten_outf(const char *utf8String __attribute__((nonnull)), ...) __attribute__((__format__(printf, 1, 2)));
 void _emscripten_errf(const char *utf8String __attribute__((nonnull)), ...) __attribute__((__format__(printf, 1, 2)));
-void _emscripten_dbgf(const char *utf8String, ...) __attribute__((__format__(printf, 1, 2)));
+void _emscripten_dbgf(const char *utf8String __attribute__((nonnull)), ...) __attribute__((__format__(printf, 1, 2)));
 
 #ifdef __cplusplus
 }
