@@ -9361,7 +9361,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_emscripten_futexes(self):
     self.set_setting('USE_PTHREADS')
-    self.emcc_args += ['-Wno-nonnull']
+    self.emcc_args += ['-Wno-nonnull'] # This test explicitly checks behavior of passing NULL to emscripten_futex_wake().
     self.do_run_in_out_file_test('core/pthread/emscripten_futexes.c')
 
   @node_pthreads
