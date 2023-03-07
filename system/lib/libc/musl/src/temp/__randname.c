@@ -8,10 +8,14 @@ char *__randname(char *template)
 	int i;
 	struct timespec ts;
 	unsigned long r;
-	static unsigned int seed = 0;
 
 	__clock_gettime(CLOCK_REALTIME, &ts);
-	r = ts.tv_nsec*65537 ^ (uintptr_t)&ts / 16 + (uintptr_t)template + seed++;
+	r = ts.tv_nsec*65537 ^ (uintptr_t)&ts / 16 + (uintptr_t)template;
+
+	/* XXX EMSCRIPTEN: avoid repeating the same result when __clock_gettime does not change between calls. */
+	static unsigned int seed = 0;
+	r += seed++;
+
 	for (i=0; i<6; i++, r>>=5)
 		template[i] = 'A'+(r&15)+(r&16)*2;
 
