@@ -204,7 +204,7 @@ var LibraryWebGL2 = {
       var query = GL.queries[id];
       if (!query) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
       GLctx['deleteQuery'](query);
-      GL.queries[id] = null;
+      delete GL.queries[id];
     }
   },
 
@@ -285,7 +285,7 @@ var LibraryWebGL2 = {
       if (!sampler) continue;
       GLctx['deleteSampler'](sampler);
       sampler.name = 0;
-      GL.samplers[id] = null;
+      delete GL.samplers[id];
     }
   },
 
@@ -389,7 +389,7 @@ var LibraryWebGL2 = {
       if (!transformFeedback) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
       GLctx['deleteTransformFeedback'](transformFeedback);
       transformFeedback.name = 0;
-      GL.transformFeedbacks[id] = null;
+      delete GL.transformFeedbacks[id];
     }
   },
 
@@ -720,7 +720,7 @@ var LibraryWebGL2 = {
     }
     GLctx.deleteSync(sync);
     sync.name = 0;
-    GL.syncs[id] = null;
+    delete GL.syncs[id];
   },
 
   glClientWaitSync__sig: 'iiij',

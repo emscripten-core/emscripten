@@ -185,27 +185,27 @@ var LibraryGL = {
 */
 
     counter: 1, // 0 is reserved as 'null' in gl
-    buffers: [],
+    buffers: {},
 #if FULL_ES3
     mappedBuffers: {},
 #endif
-    programs: [],
-    framebuffers: [],
-    renderbuffers: [],
-    textures: [],
-    shaders: [],
-    vaos: [],
+    programs: {},
+    framebuffers: {},
+    renderbuffers: {},
+    textures: {},
+    shaders: {},
+    vaos: {},
 #if USE_PTHREADS // with pthreads a context is a location in memory with some synchronized data between threads
     contexts: {},
 #else            // without pthreads, it's just an integer ID
-    contexts: [],
+    contexts: {},
 #endif
     offscreenCanvases: {}, // DOM ID -> OffscreenCanvas mappings of <canvas> elements that have their rendering control transferred to offscreen.
-    queries: [], // on WebGL1 stores WebGLTimerQueryEXT, on WebGL2 WebGLQuery
+    queries: {}, // on WebGL1 stores WebGLTimerQueryEXT, on WebGL2 WebGLQuery
 #if MAX_WEBGL_VERSION >= 2
-    samplers: [],
-    transformFeedbacks: [],
-    syncs: [],
+    samplers: {},
+    transformFeedbacks: {},
+    syncs: {},
 #endif
 
 #if FULL_ES2 || LEGACY_GL_EMULATION
@@ -244,9 +244,6 @@ var LibraryGL = {
     // Get a new ID for a texture/buffer/etc., while keeping the table dense and fast. Creation is fairly rare so it is worth optimizing lookups later.
     getNewId: function(table) {
       var ret = GL.counter++;
-      for (var i = table.length; i < ret; i++) {
-        table[i] = null;
-      }
       return ret;
     },
 
@@ -1075,7 +1072,7 @@ var LibraryGL = {
 #if USE_PTHREADS
       _free(GL.contexts[contextHandle].handle);
 #endif
-      GL.contexts[contextHandle] = null;
+      delete GL.contexts[contextHandle];
     },
 
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
@@ -1426,7 +1423,7 @@ var LibraryGL = {
       if (!texture) continue; // GL spec: "glDeleteTextures silently ignores 0s and names that do not correspond to existing textures".
       GLctx.deleteTexture(texture);
       texture.name = 0;
-      GL.textures[id] = null;
+      delete GL.textures[id];
     }
   },
 
@@ -1738,7 +1735,7 @@ var LibraryGL = {
 
       GLctx.deleteBuffer(buffer);
       buffer.name = 0;
-      GL.buffers[id] = null;
+      delete GL.buffers[id];
 
 #if FULL_ES2 || LEGACY_GL_EMULATION
       if (id == GLctx.currentArrayBufferBinding) GLctx.currentArrayBufferBinding = 0;
@@ -1842,7 +1839,7 @@ var LibraryGL = {
       var query = GL.queries[id];
       if (!query) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
       GLctx.disjointTimerQueryExt['deleteQueryEXT'](query);
-      GL.queries[id] = null;
+      delete GL.queries[id];
     }
   },
 
@@ -1980,7 +1977,7 @@ var LibraryGL = {
       if (!renderbuffer) continue; // GL spec: "glDeleteRenderbuffers silently ignores 0s and names that do not correspond to existing renderbuffer objects".
       GLctx.deleteRenderbuffer(renderbuffer);
       renderbuffer.name = 0;
-      GL.renderbuffers[id] = null;
+      delete GL.renderbuffers[id];
     }
   },
 
@@ -3025,7 +3022,7 @@ var LibraryGL = {
       return;
     }
     GLctx.deleteShader(shader);
-    GL.shaders[id] = null;
+    delete GL.shaders[id];
   },
 
   glGetAttachedShaders__sig: 'viiii',
@@ -3372,7 +3369,7 @@ var LibraryGL = {
     }
     GLctx.deleteProgram(program);
     program.name = 0;
-    GL.programs[id] = null;
+    delete GL.programs[id];
   },
 
   glAttachShader__sig: 'vii',
@@ -3593,7 +3590,7 @@ var LibraryGL = {
       if (!framebuffer) continue; // GL spec: "glDeleteFramebuffers silently ignores 0s and names that do not correspond to existing framebuffer objects".
       GLctx.deleteFramebuffer(framebuffer);
       framebuffer.name = 0;
-      GL.framebuffers[id] = null;
+      delete GL.framebuffers[id];
     }
   },
 
@@ -3667,7 +3664,7 @@ var LibraryGL = {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
       GLctx['deleteVertexArray'](GL.vaos[id]);
-      GL.vaos[id] = null;
+      delete GL.vaos[id];
     }
 #endif
   },
@@ -4124,7 +4121,7 @@ var LibraryGL = {
       err('buffer was never mapped in glUnmapBuffer');
       return 0;
     }
-    GL.mappedBuffers[buffer] = null;
+    delete GL.mappedBuffers[buffer];
 
     if (!(mapping.access & 0x10)) /* GL_MAP_FLUSH_EXPLICIT_BIT */
       if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
