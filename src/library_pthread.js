@@ -1242,7 +1242,7 @@ var LibraryPThread = {
 #if ASSERTIONS
       assert(wait.async);
 #endif
-      wait.value.then(() => checkMailbox());
+      wait.value.then(checkMailbox);
       var waitingAsync = pthread_ptr + {{{ C_STRUCTS.pthread.waiting_async }}};
       Atomics.store(HEAP32, waitingAsync >> 2, 1);
     }

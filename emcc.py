@@ -1710,10 +1710,10 @@ def setup_pthreads(target):
     '__emscripten_thread_init',
     '__emscripten_thread_exit',
     '__emscripten_thread_crashed',
+    '__emscripten_thread_mailbox_await',
     '__emscripten_tls_init',
     '_pthread_self',
     'checkMailbox',
-    '__emscripten_thread_mailbox_await',
   ]
   settings.EXPORTED_FUNCTIONS += worker_imports
   building.user_requested_exports.update(worker_imports)
