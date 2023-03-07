@@ -126,7 +126,7 @@ LibraryJSEventLoop = {
       // as little as possible from the mandated minimum 4ms setTimeout throttling delay.
       // If the user does not want to continue the loop, we will cancel it below.
       var t = performance.now(),
-        ev = setTimeout(msecs);
+        ev = setTimeout(tick, msecs);
       callUserCallback(function() {
         if (!({{{ makeDynCall('idi', 'cb') }}}(t, userData))) {
           clearTimeout(ev);
