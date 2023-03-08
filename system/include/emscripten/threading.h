@@ -148,7 +148,7 @@ typedef struct em_queued_call em_queued_call;
 // pthread), the function
 // will be proxied to be called by the main thread.
 //  - Calling emscripten_sync_* functions requires that the application was
-//    compiled with pthreads support enabled (-sUSE_PTHREADS=1/2) and that the
+//    compiled with pthreads support enabled (-pthread) and that the
 //    browser supports SharedArrayBuffer specification.
 int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr __attribute__((nonnull)), ...);
 

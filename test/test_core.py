@@ -2328,8 +2328,8 @@ int main(int argc, char **argv) {
 
   @parameterized({
     '': ([], False),
-    'pthreads': (['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], False),
-    'pthreads_dylink': (['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '-sMAIN_MODULE=2', '-Wno-experimental'], False),
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], False),
+    'pthreads_dylink': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '-sMAIN_MODULE=2', '-Wno-experimental'], False),
     'c': ([], True),
     'dylink': (['-sMAIN_MODULE=2'], False),
     'dylink_c': (['-sMAIN_MODULE=2'], True),
@@ -2340,7 +2340,7 @@ int main(int argc, char **argv) {
     else:
       self.emcc_args += ['-sEXPORTED_FUNCTIONS=_main,_malloc']
     self.emcc_args += args
-    if '-sUSE_PTHREADS' in args:
+    if '-pthread' in args:
       self.setup_node_pthreads()
 
     self.do_core_test('test_em_js.cpp', force_c=force_c)
@@ -6315,7 +6315,6 @@ PORT: 3979
     # the wasm backend has lock-free atomics, but not asm.js or asm2wasm
     self.emcc_args += ['-DIS_64BIT_LOCK_FREE=1']
     self.do_core_test('test_atomic_cxx.cpp')
-    # TODO: test with USE_PTHREADS in wasm backend as well
 
   def test_phiundef(self):
     self.do_core_test('test_phiundef.c')
@@ -6878,7 +6877,7 @@ void* operator new(size_t size) {
   })
   def test_sqlite(self, use_pthreads):
     if use_pthreads:
-      self.set_setting('USE_PTHREADS')
+      self.emcc_args.append('-pthread')
       self.setup_node_pthreads()
     self.emcc_args += ['-sUSE_SQLITE3']
     self.do_run_in_out_file_test(test_file('sqlite/benchmark.c'))
@@ -8710,7 +8709,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   def test_binaryen_2170_emscripten_atomic_cas_u8(self):
-    self.set_setting('USE_PTHREADS')
+    self.emcc_args.append('-pthread')
     self.do_run_in_out_file_test('binaryen_2170_emscripten_atomic_cas_u8.cpp')
 
   @also_with_standalone_wasm()
@@ -9161,7 +9160,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('STACK_SIZE', 65536)
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('USE_PTHREADS')
+    self.emcc_args.append('-pthread')
     if self.is_optimizing():
       expected = ['Aborted(stack overflow']
     else:
@@ -9354,13 +9353,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_asan('incompatibility with atomics')
   @node_pthreads
   def test_emscripten_atomics(self):
-    self.set_setting('USE_PTHREADS')
+    self.emcc_args.append('-pthread')
     self.do_run_in_out_file_test('core/pthread/emscripten_atomics.c')
 
   @no_asan('incompatibility with atomics')
   @node_pthreads
   def test_emscripten_futexes(self):
-    self.set_setting('USE_PTHREADS')
+    self.emcc_args.append('-pthread')
     self.emcc_args += ['-Wno-nonnull'] # This test explicitly checks behavior of passing NULL to emscripten_futex_wake().
     self.do_run_in_out_file_test('core/pthread/emscripten_futexes.c')
 
@@ -9380,8 +9379,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @needs_dylink
   @node_pthreads
   def test_pthread_dylink(self):
-    self.emcc_args.append('-Wno-experimental')
-    self.set_setting('USE_PTHREADS')
+    self.emcc_args += ['-Wno-experimental', '-pthread']
     self.set_setting('PTHREAD_POOL_SIZE', 2)
     main = test_file('core/pthread/test_pthread_dylink.c')
 
@@ -9400,8 +9398,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @needs_dylink
   @node_pthreads
   def test_pthread_dylink_entry_point(self, args):
-    self.emcc_args.append('-Wno-experimental')
-    self.set_setting('USE_PTHREADS')
+    self.emcc_args += ['-Wno-experimental', '-pthread']
     self.set_setting('PTHREAD_POOL_SIZE', 1)
     main = test_file('core/pthread/test_pthread_dylink_entry_point.c')
     self.dylink_testf(main, need_reverse=False, emcc_args=args)
@@ -9410,16 +9407,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   @no_wasm64('MEMORY64 does not yet support exceptions')
   def test_pthread_dylink_exceptions(self):
-    self.emcc_args.append('-Wno-experimental')
-    self.set_setting('USE_PTHREADS')
+    self.emcc_args += ['-Wno-experimental', '-pthread']
     self.emcc_args.append('-fexceptions')
     self.dylink_testf(test_file('core/pthread/test_pthread_dylink_exceptions.cpp'))
 
   @needs_dylink
   @node_pthreads
   def test_pthread_dlopen(self):
-    self.set_setting('USE_PTHREADS')
-    self.emcc_args.append('-Wno-experimental')
+    self.emcc_args += ['-Wno-experimental', '-pthread']
     self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_side.c'))
 
     self.prep_dlfcn_main()
@@ -9434,8 +9429,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @disabled('https://github.com/emscripten-core/emscripten/issues/18887')
   def test_pthread_dlopen_many(self):
     nthreads = 10
-    self.set_setting('USE_PTHREADS')
-    self.emcc_args.append('-Wno-experimental')
+    self.emcc_args += ['-Wno-experimental', '-pthread']
     self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_side.c'))
     for i in range(nthreads):
       shutil.copyfile('liblib.so', f'liblib{i}.so')
@@ -9461,8 +9455,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @needs_dylink
   @node_pthreads
   def test_pthread_dlsym(self):
-    self.set_setting('USE_PTHREADS')
-    self.emcc_args.append('-Wno-experimental')
+    self.emcc_args += ['-Wno-experimental', '-pthread']
     self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlsym_side.c'))
 
     self.prep_dlfcn_main()
@@ -9473,8 +9466,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @needs_dylink
   @node_pthreads
   def test_pthread_dylink_tls(self):
-    self.emcc_args.append('-Wno-experimental')
-    self.set_setting('USE_PTHREADS')
+    self.emcc_args += ['-Wno-experimental', '-pthread']
     self.set_setting('PTHREAD_POOL_SIZE', 1)
     main = test_file('core/pthread/test_pthread_dylink_tls.c')
     self.dylink_testf(main, need_reverse=False)
@@ -9482,8 +9474,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @needs_dylink
   @node_pthreads
   def test_pthread_dylink_longjmp(self):
-    self.emcc_args.append('-Wno-experimental')
-    self.set_setting('USE_PTHREADS')
+    self.emcc_args += ['-Wno-experimental', '-pthread']
     self.set_setting('PTHREAD_POOL_SIZE=1')
     main = test_file('core/pthread/test_pthread_dylink_longjmp.c')
     self.dylink_testf(main, need_reverse=False)
@@ -9491,8 +9482,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @needs_dylink
   @node_pthreads
   def test_pthread_dylink_main_module_1(self):
-    self.emcc_args.append('-Wno-experimental')
-    self.set_setting('USE_PTHREADS')
+    self.emcc_args += ['-Wno-experimental', '-pthread']
     self.set_setting('MAIN_MODULE')
     self.do_runf(test_file('hello_world.c'))
 

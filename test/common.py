@@ -528,8 +528,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def setup_node_pthreads(self):
     self.require_node()
-    self.set_setting('USE_PTHREADS')
-    self.emcc_args += ['-Wno-pthreads-mem-growth']
+    self.emcc_args += ['-Wno-pthreads-mem-growth', '-pthread']
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
     self.js_engines = [config.NODE_JS]

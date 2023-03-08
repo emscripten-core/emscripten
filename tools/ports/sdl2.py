@@ -71,7 +71,7 @@ def get(ports, settings, shared):
     flags = ['-sUSE_SDL=0']
     includes = [ports.get_include_dir('SDL2')]
     if settings.USE_PTHREADS:
-      flags += ['-sUSE_PTHREADS']
+      flags += ['-pthread']
     ports.build_port(src_dir, final, 'sdl2', srcs=srcs, includes=includes, flags=flags)
 
   return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
