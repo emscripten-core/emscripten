@@ -70,6 +70,7 @@ void _emscripten_thread_mailbox_shutdown(pthread_t thread) {
 void _emscripten_thread_mailbox_init(pthread_t thread) {
   thread->mailbox = em_task_queue_create(thread);
   thread->mailbox_refcount = 1;
+  thread->waiting_async = 0;
 }
 
 // Exported for use in worker.js, but otherwise an internal function.
@@ -92,9 +93,9 @@ void _emscripten_check_mailbox() {
 // Send a postMessage notification telling the target thread to check its
 // mailbox when it returns to its event loop. Pass in the current thread and
 // main thread ids to minimize calls back into Wasm.
-void _emscripten_notify_mailbox(pthread_t target_thread,
-                                pthread_t curr_thread,
-                                pthread_t main_thread);
+void _emscripten_notify_mailbox_postmessage(pthread_t target_thread,
+                                            pthread_t curr_thread,
+                                            pthread_t main_thread);
 
 void emscripten_thread_mailbox_send(pthread_t thread, task t) {
   assert(thread->mailbox_refcount > 0);
@@ -112,8 +113,11 @@ void emscripten_thread_mailbox_send(pthread_t thread, task t) {
   notification_state previous =
     atomic_exchange(&thread->mailbox->notification, NOTIFICATION_PENDING);
   if (previous != NOTIFICATION_PENDING) {
-    _emscripten_notify_mailbox(thread,
-                               pthread_self(),
-                               emscripten_main_runtime_thread_id());
+    if (thread->waiting_async) {
+      __builtin_wasm_memory_atomic_notify((int*)thread, -1);
+    } else {
+      _emscripten_notify_mailbox_postmessage(
+        thread, pthread_self(), emscripten_main_runtime_thread_id());
+    }
   }
 }

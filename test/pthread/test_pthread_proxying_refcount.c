@@ -50,18 +50,6 @@ void* execute_and_free_queue(void* arg) {
     em_proxying_queue_destroy(queues[i]);
   }
 
-  // Wrap the normal worker event listener so that we can determine when our
-  // proxying events have been received and handled.
-  EM_ASM({
-      var oldOnMessage = onmessage;
-      onmessage = (e) => {
-        oldOnMessage(e);
-        if (e.data.cmd == 'checkMailbox') {
-          _register_processed();
-        }
-      };
-    });
-
   // Exit with a live runtime so the queued work notification is received and we
   // try to execute the queue again, even though we already executed all its
   // work and we are now just waiting for the notifications to be received so we
@@ -90,9 +78,12 @@ int main() {
   while (!executed[0] || !executed[1]) {
   }
 
-  // Wait for the postMessage notification to be received.
-  while (processed < 1) {
-  }
+  // Wait a bit (20 ms) for the notification to be received.
+  struct timespec time = {
+    .tv_sec = 0,
+    .tv_nsec = 20 * 1000 * 1000,
+  };
+  nanosleep(&time, NULL);
 
 #ifndef SANITIZER
   // Our zombies should not have been freed yet.

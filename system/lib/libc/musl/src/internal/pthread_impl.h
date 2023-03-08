@@ -97,6 +97,10 @@ struct pthread {
 	// wait until it reaches 0, at which point the mailbox is considered
 	// closed and no further messages will be enqueued.
 	_Atomic int mailbox_refcount;
+	// Whether the thread has executed a `waitAsync` on this pthread struct
+	// and can be notified of new mailbox messages via `Atomics.notify`.
+	// Otherwise the notification has to fall back to the postMessage path.
+	_Atomic int waiting_async;
 #endif
 #if _REENTRANT
 	_Atomic char sleeping;
