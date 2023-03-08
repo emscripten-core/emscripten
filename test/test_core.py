@@ -2812,7 +2812,6 @@ The current type of b is: 9
   def test_pthread_proxying(self, modularize):
     if modularize and self.get_setting('WASM') == 0:
       self.skipTest('MODULARIZE + WASM=0 + pthreads does not work (#16794)')
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('INITIAL_MEMORY=32mb')
     args = []
@@ -2840,9 +2839,6 @@ The current type of b is: 9
 
   @node_pthreads
   def test_pthread_proxying_canceled_work(self):
-    # TODO: remove EXIT_RUNTIME from this and similar tests once #18782 is
-    # fixed.
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('PROXY_TO_PTHREAD')
     self.do_run_in_out_file_test(
         'pthread/test_pthread_proxying_canceled_work.c',
