@@ -63,7 +63,7 @@ logger = logging.getLogger('emcc')
 
 # endings = dot + a suffix, compare against result of shared.suffix()
 C_ENDINGS = ['.c', '.i']
-CXX_ENDINGS = ['.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii']
+CXX_ENDINGS = ['.cppm', '.pcm', '.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii']
 OBJC_ENDINGS = ['.m', '.mi']
 PREPROCESSED_ENDINGS = ['.i', '.ii']
 OBJCXX_ENDINGS = ['.mm', '.mii']
@@ -1548,7 +1548,7 @@ def phase_setup(options, state, newargs):
   # so it won't think about generating native x86 SSE code.
   newargs = [x for x in newargs if x not in SIMD_INTEL_FEATURE_TOWER and x not in SIMD_NEON_FLAGS]
 
-  state.has_dash_c = '-c' in newargs
+  state.has_dash_c = '-c' in newargs or '--precompile' in newargs
   state.has_dash_S = '-S' in newargs
   state.has_dash_E = '-E' in newargs
 
@@ -3021,6 +3021,8 @@ def phase_compile_inputs(options, state, newargs, input_files):
       cmd = get_clang_command_preprocessed(input_file)
     else:
       cmd = get_clang_command(input_file)
+      if get_file_suffix(input_file) in ['.pcm']:
+        cmd = [c for c in cmd if not c.startswith('-fprebuilt-module-path=')]
     if not state.has_dash_c:
       cmd += ['-c']
     cmd += ['-o', output_file]
