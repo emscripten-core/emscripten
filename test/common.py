@@ -1140,7 +1140,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   #          C
   #
   # this test is used by both test_core and test_browser.
-  # when run under broswer it excercises how dynamic linker handles concurrency
+  # when run under browser it excercises how dynamic linker handles concurrency
   # - because B and C are loaded in parallel.
   def _test_dylink_dso_needed(self, do_run):
     create_file('liba.cpp', r'''

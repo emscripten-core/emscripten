@@ -6411,7 +6411,7 @@ int main() {
 
       int main() {
         void (*check) (void);
-        void* h = dlopen("libside.wasm", RTLD_NOW|RTLD_GLOBAL);
+        void* h = dlopen("libside.wasm", RTLD_NOW);
         assert(h);
         check = dlsym(h, "check_relocations");
         assert(check);

@@ -10,6 +10,7 @@ var dlopenMissingError = "'To use dlopen, you need enable dynamic linking, see h
 
 var LibraryDylink = {
 #if RELOCATABLE
+
   $isSymbolDefined: function(symName) {
     // Ignore 'stub' symbols that are auto-generated as part of the original
     // `wasmImports` used to instantate the main module.
@@ -570,7 +571,11 @@ var LibraryDylink = {
 
   // Loads a side module from binary data or compiled Module. Returns the module's exports or a
   // promise that resolves to its exports if the loadAsync flag is set.
-  $loadWebAssemblyModule__docs: '/** @param {number=} handle */',
+  $loadWebAssemblyModule__docs: `
+   /**
+    * @param {Object=} localScope
+    * @param {number=} handle
+    */`,
   $loadWebAssemblyModule__deps: [
     '$loadDynamicLibrary', '$getMemory',
     '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler',
@@ -582,7 +587,7 @@ var LibraryDylink = {
     '$createInvokeFunction',
 #endif
   ],
-  $loadWebAssemblyModule: function(binary, flags, handle) {
+  $loadWebAssemblyModule: function(binary, flags, localScope, handle) {
     var metadata = getDylinkMetadata(binary);
     CurrentModuleWeakSymbols = metadata.weakImports;
 #if ASSERTIONS
@@ -635,13 +640,15 @@ var LibraryDylink = {
       // This is the export map that we ultimately return.  We declare it here
       // so it can be used within resolveSymbol.  We resolve symbols against
       // this local symbol map in the case there they are not present on the
-      // global Module object.  We need this fallback because:
-      // a) Modules sometime need to import their own symbols
-      // b) Symbols from side modules are not always added to the global namespace.
+      // global Module object.  We need this fallback because Modules sometime
+      // need to import their own symbols
       var moduleExports;
 
       function resolveSymbol(sym) {
         var resolved = resolveGlobalSymbol(sym).sym;
+        if (!resolved && localScope) {
+          resolved = localScope[sym];
+        }
         if (!resolved) {
           resolved = moduleExports[sym];
         }
@@ -821,7 +828,7 @@ var LibraryDylink = {
     }
 
     metadata.neededDynlibs.forEach(function(dynNeeded) {
-      loadDynamicLibrary(dynNeeded, flags);
+      loadDynamicLibrary(dynNeeded, flags, localScope);
     });
     return loadModule();
   },
@@ -881,8 +888,12 @@ var LibraryDylink = {
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
   $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$isInternalSym', '$mergeLibSymbols', '$newDSO'],
-  $loadDynamicLibrary__docs: '/** @param {number=} handle */',
-  $loadDynamicLibrary: function(lib, flags = {global: true, nodelete: true}, handle) {
+  $loadDynamicLibrary__docs: `
+    /**
+     * @param {number=} handle
+     * @param {Object=} localScope
+     */`,
+  $loadDynamicLibrary: function(lib, flags = {global: true, nodelete: true}, localScope, handle) {
 #if DYLINK_DEBUG
     dbg('loadDynamicLibrary: ' + lib + ' handle:' + handle);
     dbg('existing: ' + Object.keys(LDSO.loadedLibsByName));
@@ -955,17 +966,19 @@ var LibraryDylink = {
       // module not preloaded - load lib data and create new module from it
       if (flags.loadAsync) {
         return loadLibData(lib).then(function(libData) {
-          return loadWebAssemblyModule(libData, flags, handle);
+          return loadWebAssemblyModule(libData, flags, localScope, handle);
         });
       }
 
-      return loadWebAssemblyModule(loadLibData(lib), flags, handle);
+      return loadWebAssemblyModule(loadLibData(lib), flags, localScope, handle);
     }
 
     // module for lib is loaded - update the dso & global namespace
     function moduleLoaded(libModule) {
       if (dso.global) {
         mergeLibSymbols(libModule, lib);
+      } else if (localScope) {
+        Object.assign(localScope, libModule);
       }
       dso.module = libModule;
     }
@@ -1049,20 +1062,23 @@ var LibraryDylink = {
       }
     }
 
+    var global = Boolean(flags & {{{ cDefine('RTLD_GLOBAL') }}});
+    var localScope = global ? null : {};
+
     // We don't care about RTLD_NOW and RTLD_LAZY.
     var combinedFlags = {
-      global:    Boolean(flags & {{{ cDefine('RTLD_GLOBAL') }}}),
+      global,
       nodelete:  Boolean(flags & {{{ cDefine('RTLD_NODELETE') }}}),
       loadAsync: jsflags.loadAsync,
       fs:        jsflags.fs,
     }
 
     if (jsflags.loadAsync) {
-      return loadDynamicLibrary(filename, combinedFlags, handle);
+      return loadDynamicLibrary(filename, combinedFlags, localScope, handle);
     }
 
     try {
-      return loadDynamicLibrary(filename, combinedFlags, handle)
+      return loadDynamicLibrary(filename, combinedFlags, localScope, handle)
     } catch (e) {
 #if ASSERTIONS
       err('Error in loading dynamic library ' + filename + ": " + e);
@@ -1151,7 +1167,7 @@ var LibraryDylink = {
 #if ASSERTIONS
     assert(lib, 'Tried to dlsym() from an unopened handle: ' + handle);
 #endif
-    if (!lib.module.hasOwnProperty(symbol)) {
+    if (!lib.module.hasOwnProperty(symbol) || lib.module[symbol].stub) {
       dlSetError('Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: ' + lib.name)
       return 0;
     }
