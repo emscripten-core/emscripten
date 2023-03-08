@@ -73,7 +73,7 @@ The following POSIX sockets functions are currently not proxied (and will not wo
  - ``poll()``, ``close()`` (use ``shutdown()`` instead), ``select()``
 
 To use POSIX sockets proxying, link the application with flags ``-lwebsocket.js
--sPROXY_POSIX_SOCKETS -sUSE_PTHREADS -sPROXY_TO_PTHREAD``. That is,
+-sPROXY_POSIX_SOCKETS -pthread -sPROXY_TO_PTHREAD``. That is,
 POSIX sockets proxying builds on top of the Emscripten WebSockets library, and
 requires multithreading and proxying the application ``main()`` to a pthread.
 
