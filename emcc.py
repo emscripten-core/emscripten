@@ -2304,6 +2304,7 @@ def phase_linker_setup(options, state, newargs):
       # JS API directly.
       settings.REQUIRED_EXPORTS += [
         '_wasmfs_write_file',
+        '_wasmfs_open',
         '_wasmfs_mkdir',
         '_wasmfs_unlink',
         '_wasmfs_chdir',

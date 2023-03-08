@@ -61,6 +61,25 @@ mergeInto(LibraryManager.library, {
       if (canWrite) mode |= {{{ cDefine('S_IWUGO') }}};
       return mode;
     },
+    modeStringToFlags: (str) => {
+      var flags = FS.flagModes[str];
+      if (typeof flags == 'undefined') {
+        throw new Error('Unknown file open mode: ' + str);
+      }
+      return flags;
+    },
+    flagModes: {
+      // copied directly from library_fs.js
+      // Extra quotes used here on the keys to this object otherwise jsifier will
+      // erase them in the process of reading and then writing the JS library
+      // code.
+      '"r"': {{{ cDefine('O_RDONLY') }}},
+      '"r+"': {{{ cDefine('O_RDWR') }}},
+      '"w"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}},
+      '"w+"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}},
+      '"a"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}},
+      '"a+"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}},
+    },
     createDataFile: (parent, name, data, canRead, canWrite, canOwn) => {
       // Data files must be cached until the file system itself has been initialized.
       var mode = FS.getMode(canRead, canWrite);
@@ -122,6 +141,22 @@ mergeInto(LibraryManager.library, {
     // TODO: mkdirTree
     // TDOO: rmdir
     // TODO: open
+    open: (path, flags, mode) => {
+      // According to the existing File System docs, Emscripten does not
+      // support user permissions
+
+      // "The underlying implementation does not support user 
+      // or group permissions. The file permissions set in mode 
+      // are only used if the file is created. The caller is always 
+      // treated as the owner of the file, and only those permissions apply."
+      
+      flags = typeof flags == 'string' ? FS.modeStringToFlags(flags) : flags;
+      mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
+      return withStackSave(() => {
+        var buffer = allocateUTF8OnStack(path);
+        return __wasmfs_open(buffer, flags, mode);
+      })
+    },
     // TODO: create
     // TODO: close
     unlink: (path) => {
