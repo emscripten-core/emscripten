@@ -3579,6 +3579,8 @@ def parse_args(newargs):
     # Record USE_PTHREADS setting because it controls whether --shared-memory is passed to lld
     elif arg == '-pthread':
       settings_changes.append('USE_PTHREADS=1')
+    elif arg == '-pthreads':
+      exit_with_error('unrecognized command-line option ‘-pthreads’; did you mean ‘-pthread’?')
     elif arg in ('-fno-diagnostics-color', '-fdiagnostics-color=never'):
       colored_logger.disable()
       diagnostics.color_enabled = False
