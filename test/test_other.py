@@ -13123,3 +13123,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.do_runf(test_file('pthread/test_pthread_create.cpp'))
+
+  def test_cpp_module(self):
+    self.run_process([EMXX, '-std=c++20', test_file('other/hello_world.cppm'), '--precompile', '-o', 'hello_world.pcm'])
+    self.do_other_test('test_cpp_module.cpp', emcc_args=['-std=c++20', '-fprebuilt-module-path=.', 'hello_world.pcm'])
