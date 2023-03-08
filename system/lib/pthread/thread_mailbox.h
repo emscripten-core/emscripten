@@ -28,5 +28,7 @@ void emscripten_thread_mailbox_send(pthread_t thread, task t);
 // Initialize the mailbox on a pthread struct. Called during `pthread_create`.
 void _emscripten_thread_mailbox_init(pthread_t thread);
 
+void _emscripten_thread_mailbox_await(pthread_t thread);
+
 // Close the mailbox and cancel any pending messages.
 void _emscripten_thread_mailbox_shutdown(pthread_t thread);

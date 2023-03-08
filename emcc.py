@@ -1714,6 +1714,7 @@ def setup_pthreads(target):
     '__emscripten_thread_init',
     '__emscripten_thread_exit',
     '__emscripten_thread_crashed',
+    '__emscripten_thread_mailbox_await',
     '__emscripten_tls_init',
     '_pthread_self',
     'checkMailbox',
