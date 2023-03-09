@@ -18,13 +18,16 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.33 (in development)
+3.1.34 (in development)
 -----------------------
 - The prefered way to enable pthread is now to just the the standard `-pthread`
   flag.  The `-sUSE_PTHREADS` setting still works but is marked as legacy and
   will generate a warning in `-sSTRICT` mode.
+
+3.1.33 - 03/08/23
+-----------------
 - Initial support for C++20 modules.  We have added a very simple test in form
-  of `other.test_cpp_module`. (#)
+  of `other.test_cpp_module`. (#18915)
 - Removed `sys/sysctl.h` compatibility header.  We don't implement the function
   it defines. (#18863)
 - Update SDL2_ttf port to 2.20.2 (#18804)
@@ -35,6 +38,9 @@ See docs/process.md for more on how version tagging works.
   `MINIMAL_RUNTIME`, the option will be **disabled** by default.
   This option simply exports the symbols on the module object, i.e.,
   `Module['X'] = X;`
+- The WasmFS OPFS backend is now faster in browsers that implement
+  [`Atomics.waitAsync`](https://caniuse.com/mdn-javascript_builtins_atomics_waitasync).
+  (#18861)
 
 3.1.32 - 02/17/23
 -----------------
