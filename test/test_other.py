@@ -11914,6 +11914,29 @@ exec "$@"
     expected = 'Aborted(Assertion failed: Missing signature argument to addFunction: function foo() { err("hello"); })'
     self.do_runf(test_file('other/test_em_js_main_module_address.c'), expected, assert_returncode=NON_ZERO)
 
+  def test_em_js_external_usage(self):
+    # Verify that EM_JS functions can be called from other source files, even in the case
+    # when they are not used within the defining file.
+    create_file('em_js.c', r'''
+      #include <emscripten/em_js.h>
+
+      EM_JS(void, js_func, (), {
+        out('js_func called');
+      });
+
+      // js_func is unused within this file
+    ''')
+    create_file('main.c', '''
+      #include <stdio.h>
+
+      void js_func();
+      int main() {
+        js_func();
+      }
+    ''')
+    self.run_process([EMCC, 'em_js.c', '-c'])
+    self.do_runf('main.c', 'js_func called\n', emcc_args=['em_js.o'])
+
   # On Windows maximum command line length is 32767 characters. Create such a long build line by linking together
   # several .o files to test that emcc internally uses response files properly when calling llvm-nm and wasm-ld.
   @is_slow_test
