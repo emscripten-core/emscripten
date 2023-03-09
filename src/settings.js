@@ -1516,11 +1516,6 @@ var USE_SQLITE3 = false;
 // [compile+link] - affects user code at compile and system libraries at link.
 var SHARED_MEMORY = false;
 
-// If true, enables support for pthreads. This implies SHARED_MEMORY.
-// This setting is equivalent to `-pthread`, which should be preferred.
-// [compile+link] - affects user code at compile and system libraries at link.
-var USE_PTHREADS = false;
-
 // If true, enables support for Wasm Workers. Wasm Workers enable applications
 // to create threads using a lightweight web-specific API that builds on top
 // of Wasm SharedArrayBuffer + Atomics API.
@@ -2015,7 +2010,7 @@ var PURE_WASI = false;
 // it to JavaScript.
 // Use of the following settings will enable this settings since they
 // depend on being able to define the memory in JavaScript:
-// - USE_PTHREADS
+// - -pthread
 // - RELOCATABLE
 // - ASYNCIFY_LAZY_LOAD_CODE
 // - WASM2JS (WASM=0)
@@ -2178,4 +2173,5 @@ var LEGACY_SETTINGS = [
   ['SHELL_FILE', [''], 'No longer supported'],
   ['LLD_REPORT_UNDEFINED', [1], 'Disabling is no longer supported'],
   ['MEM_INIT_METHOD', [0], 'No longer supported'],
+  ['USE_PTHREADS', [0, 1], 'No longer needed. Use -pthread instead'],
 ];

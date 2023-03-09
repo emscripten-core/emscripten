@@ -719,7 +719,7 @@ var LibraryDylink = {
         }
 #if STACK_OVERFLOW_CHECK >= 2
         if (moduleExports['__set_stack_limits']) {
-#if USE_PTHREADS
+#if PTHREADS
           // When we are on an uninitialized pthread we delay calling
           // __set_stack_limits until $setDylinkStackLimits.
           if (!ENVIRONMENT_IS_PTHREAD || runtimeInitialized)
@@ -762,7 +762,7 @@ var LibraryDylink = {
 #endif
 
         // initialize the module
-#if USE_PTHREADS
+#if PTHREADS
         // Only one thread should call __wasm_call_ctors, but all threads need
         // to call _emscripten_tls_init
         registerTLSInit(moduleExports['_emscripten_tls_init'], instance.exports, metadata)
@@ -788,7 +788,7 @@ var LibraryDylink = {
               __ATINIT__.push(init);
             }
           }
-#if USE_PTHREADS
+#if PTHREADS
         }
 #endif
         return moduleExports;
@@ -826,8 +826,8 @@ var LibraryDylink = {
     return loadModule();
   },
 
-#if STACK_OVERFLOW_CHECK >= 2 && USE_PTHREADS
-  // With USE_PTHREADS we load libraries before we are running a pthread and
+#if STACK_OVERFLOW_CHECK >= 2 && PTHREADS
+  // With PTHREADS we load libraries before we are running a pthread and
   // therefore before we have a stack.  Instead we delay calling
   // `__set_stack_limits` until we start running a thread.  We also need to call
   // this again for each new thread that the runs on a worker (since each thread

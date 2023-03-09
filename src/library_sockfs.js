@@ -619,7 +619,7 @@ mergeInto(LibraryManager.library, {
         }
 
         var data;
-#if USE_PTHREADS
+#if PTHREADS
         // WebSockets .send() does not allow passing a SharedArrayBuffer, so clone the portion of the SharedArrayBuffer as a regular
         // ArrayBuffer that we want to send.
         if (buffer instanceof SharedArrayBuffer) {
@@ -627,7 +627,7 @@ mergeInto(LibraryManager.library, {
         } else {
 #endif
           data = buffer.slice(offset, offset + length);
-#if USE_PTHREADS
+#if PTHREADS
         }
 #endif
 

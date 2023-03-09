@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.33 (in development)
 -----------------------
+- The prefered way to enable pthread is now to just the the standard `-pthread`
+  flag.  The `-sUSE_PTHREADS` setting still works but is marked as legacy and
+  will generate a warning in `-sSTRICT` mode.
 - Initial support for C++20 modules.  We have added a very simple test in form
   of `other.test_cpp_module`. (#)
 - Removed `sys/sysctl.h` compatibility header.  We don't implement the function

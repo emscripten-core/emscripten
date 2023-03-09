@@ -150,7 +150,7 @@ var LibraryGL = {
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
   // If GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS is enabled, GL.initExtensions() will call to initialize these.
   $GL__deps: [
-#if USE_PTHREADS
+#if PTHREADS
     'malloc', // Needed by registerContext
 #endif
 #if MIN_WEBGL_VERSION == 1
@@ -195,7 +195,7 @@ var LibraryGL = {
     textures: [],
     shaders: [],
     vaos: [],
-#if USE_PTHREADS // with pthreads a context is a location in memory with some synchronized data between threads
+#if PTHREADS // with pthreads a context is a location in memory with some synchronized data between threads
     contexts: {},
 #else            // without pthreads, it's just an integer ID
     contexts: [],
@@ -972,7 +972,7 @@ var LibraryGL = {
 #endif
 
     registerContext: function(ctx, webGLContextAttributes) {
-#if USE_PTHREADS
+#if PTHREADS
       // with pthreads a context is a location in memory with some synchronized data between threads
       var handle = _malloc(8);
 #if GL_ASSERTIONS
@@ -982,10 +982,10 @@ var LibraryGL = {
       {{{ makeSetValue('handle', 0, 'webGLContextAttributes.explicitSwapControl', 'i32')}}}; // explicitSwapControl
 #endif
       {{{ makeSetValue('handle', 4, '_pthread_self()', 'i32')}}}; // the thread pointer of the thread that owns the control of the context
-#else // USE_PTHREADS
+#else // PTHREADS
       // without pthreads a context is just an integer ID
       var handle = GL.getNewId(GL.contexts);
-#endif // USE_PTHREADS
+#endif // PTHREADS
 
       var context = {
         handle: handle,
@@ -1051,7 +1051,7 @@ var LibraryGL = {
     makeContextCurrent: function(contextHandle) {
 #if GL_DEBUG
       if (contextHandle && !GL.contexts[contextHandle]) {
-#if USE_PTHREADS
+#if PTHREADS
         dbg('GL.makeContextCurrent() failed! WebGL context ' + contextHandle + ' does not exist, or was created on another thread!');
 #else
         dbg('GL.makeContextCurrent() failed! WebGL context ' + contextHandle + ' does not exist!');
@@ -1072,7 +1072,7 @@ var LibraryGL = {
       if (GL.currentContext === GL.contexts[contextHandle]) GL.currentContext = null;
       if (typeof JSEvents == 'object') JSEvents.removeAllHandlersOnTarget(GL.contexts[contextHandle].GLctx.canvas); // Release all JS event handlers on the DOM element that the GL context is associated with since the context is now deleted.
       if (GL.contexts[contextHandle] && GL.contexts[contextHandle].GLctx.canvas) GL.contexts[contextHandle].GLctx.canvas.GLctxObject = undefined; // Make sure the canvas object no longer refers to the context object so there are no GC surprises.
-#if USE_PTHREADS
+#if PTHREADS
       _free(GL.contexts[contextHandle].handle);
 #endif
       GL.contexts[contextHandle] = null;

@@ -7,14 +7,14 @@
  * features within this file (ES2020).
  */
 
-#if !USE_PTHREADS
-#error "Internal error! USE_PTHREADS should be enabled when including library_pthread.js."
+#if !PTHREADS
+#error "Internal error! PTHREADS should be enabled when including library_pthread.js."
 #endif
 #if !SHARED_MEMORY
 #error "Internal error! SHARED_MEMORY should be enabled when including library_pthread.js."
 #endif
-#if USE_PTHREADS == 2
-#error "USE_PTHREADS=2 is no longer supported"
+#if PTHREADS == 2
+#error "PTHREADS=2 is no longer supported"
 #endif
 #if BUILD_AS_WORKER
 #error "pthreads + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854"

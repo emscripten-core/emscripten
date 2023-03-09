@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if USE_PTHREADS
-#error "Internal error! USE_PTHREADS should not be enabled when including library_pthread_stub.js."
+#if PTHREADS
+#error "Internal error! PTHREADS should not be enabled when including library_pthread_stub.js."
 #endif
 #if STANDALONE_WASM && SHARED_MEMORY
 #error "STANDALONE_WASM does not support shared memories yet"
