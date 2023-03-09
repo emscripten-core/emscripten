@@ -12,14 +12,14 @@ mergeInto(LibraryManager.library, {
   $FS__postset: '/**@suppress {duplicate, undefinedVars}*/var Browser;',
 #endif
   $FS__deps: [
-    '$wasmFSPreloadedFiles',
-    '$wasmFSPreloadedDirs',
-    '$asyncLoad',
-    '$PATH',
-    '$allocateUTF8',
-    '$allocateUTF8OnStack',
-    '$withStackSave',
-    '$readI53FromI64',
+    // '$wasmFSPreloadedFiles',
+    // '$wasmFSPreloadedDirs',
+    // '$asyncLoad',
+    // '$PATH',
+    // '$allocateUTF8',
+    // '$allocateUTF8OnStack',
+    // '$withStackSave',
+    // '$readI53FromI64',
   ],
   $FS : {
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.
@@ -57,8 +57,8 @@ mergeInto(LibraryManager.library, {
     },
     getMode: (canRead, canWrite) => {
       var mode = 0;
-      if (canRead) mode |= {{{ cDefine('S_IRUGO') }}} | {{{ cDefine('S_IXUGO') }}};
-      if (canWrite) mode |= {{{ cDefine('S_IWUGO') }}};
+      if (canRead) mode |= 1| 0;
+      if (canWrite) mode |= 0;
       return mode;
     },
     createDataFile: (parent, name, data, canRead, canWrite, canOwn) => {
@@ -108,7 +108,7 @@ mergeInto(LibraryManager.library, {
       // User code should not be using FS.cwd().
       // For file preloading, cwd should be '/' to begin with.
       return withStackSave(() => {
-        var buffer = allocateUTF8OnStack(path);
+        var buffer = stackAlloc({{{PATH_MAX}}});
         var result = _wasmfs_getcwd(buffer,buffer.length);
         return UTF8ToString(buffer);
       });
