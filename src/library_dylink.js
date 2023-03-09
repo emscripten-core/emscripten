@@ -63,12 +63,12 @@ var LibraryDylink = {
   },
 
   $GOT: {},
-  $CurrentModuleWeakSymbols: '=new Set({{{ JSON.stringify(Array.from(WEAK_IMPORTS)) }}})',
+  $currentModuleWeakSymbols: '=new Set({{{ JSON.stringify(Array.from(WEAK_IMPORTS)) }}})',
 
   // Create globals to each imported symbol.  These are all initialized to zero
   // and get assigned later in `updateGOT`
   $GOTHandler__internal: true,
-  $GOTHandler__deps: ['$GOT', '$CurrentModuleWeakSymbols'],
+  $GOTHandler__deps: ['$GOT', '$currentModuleWeakSymbols'],
   $GOTHandler: {
     'get': function(obj, symName) {
       var rtn = GOT[symName];
@@ -78,7 +78,7 @@ var LibraryDylink = {
         dbg("new GOT entry: " + symName);
 #endif
       }
-      if (!CurrentModuleWeakSymbols.has(symName)) {
+      if (!currentModuleWeakSymbols.has(symName)) {
         // Any non-weak reference to a symbol marks it as `required`, which
         // enabled `reportUndefinedSymbols` to report undefeind symbol errors
         // correctly.
@@ -576,7 +576,7 @@ var LibraryDylink = {
     '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler',
     '$getDylinkMetadata', '$alignMemory', '$zeroMemory',
     '$alignMemory', '$zeroMemory',
-    '$CurrentModuleWeakSymbols', '$alignMemory', '$zeroMemory',
+    '$currentModuleWeakSymbols', '$alignMemory', '$zeroMemory',
     '$updateTableMap',
 #if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
     '$createInvokeFunction',
@@ -584,7 +584,7 @@ var LibraryDylink = {
   ],
   $loadWebAssemblyModule: function(binary, flags, handle) {
     var metadata = getDylinkMetadata(binary);
-    CurrentModuleWeakSymbols = metadata.weakImports;
+    currentModuleWeakSymbols = metadata.weakImports;
 #if ASSERTIONS
     var originalTable = wasmTable;
 #endif
