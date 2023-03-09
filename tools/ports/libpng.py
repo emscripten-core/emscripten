@@ -10,7 +10,7 @@ TAG = '1.6.37'
 HASH = '2ce2b855af307ca92a6e053f521f5d262c36eb836b4810cb53c809aa3ea2dcc08f834aee0ffd66137768a54397e28e92804534a74abb6fc9f6f3127f14c9c338'
 
 deps = ['zlib']
-variants = {'libpng-mt': {'USE_PTHREADS': 1}}
+variants = {'libpng-mt': {'PTHREADS': 1}}
 
 
 def needed(settings):
@@ -18,7 +18,7 @@ def needed(settings):
 
 
 def get_lib_name(settings):
-  return 'libpng' + ('-mt' if settings.USE_PTHREADS else '') + '.a'
+  return 'libpng' + ('-mt' if settings.PTHREADS else '') + '.a'
 
 
 def get(ports, settings, shared):
@@ -33,7 +33,7 @@ def get(ports, settings, shared):
     ports.install_headers(source_path)
 
     flags = ['-sUSE_ZLIB']
-    if settings.USE_PTHREADS:
+    if settings.PTHREADS:
       flags += ['-pthread']
 
     ports.build_port(source_path, final, 'libpng', flags=flags, exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])

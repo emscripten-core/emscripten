@@ -10,7 +10,7 @@ VERSION = '3.2.0'
 HASH = '2e5ab5ad83a0d8801abd3f82a276f776a0ad330edc0ab843f879dd7ad3fd2e0dc0e9a3efbb6c5f2e67d14c0e37f0d9abdb40c5e25d8231a357c0025669f219c3'
 
 deps = ['freetype']
-variants = {'harfbuzz-mt': {'USE_PTHREADS': 1}}
+variants = {'harfbuzz-mt': {'PTHREADS': 1}}
 
 srcs = '''
 hb-aat-layout.cc
@@ -76,7 +76,7 @@ def needed(settings):
 
 
 def get_lib_name(settings):
-  return 'libharfbuzz' + ('-mt' if settings.USE_PTHREADS else '') + '.a'
+  return 'libharfbuzz' + ('-mt' if settings.PTHREADS else '') + '.a'
 
 
 def get(ports, settings, shared):
@@ -124,7 +124,7 @@ def get(ports, settings, shared):
     if settings.RELOCATABLE:
       cflags.append('-fPIC')
 
-    if settings.USE_PTHREADS:
+    if settings.PTHREADS:
       cflags.append('-pthread')
       cflags.append('-DHAVE_PTHREAD')
     else:

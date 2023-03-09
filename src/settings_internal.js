@@ -256,3 +256,6 @@ var HAVE_EM_ASM = true;
 var PRE_JS_FILES = [];
 
 var POST_JS_FILES = [];
+
+// Set when -pthread / -sPTHREADS is passed
+var PTHREADS = false;
