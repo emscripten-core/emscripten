@@ -142,14 +142,6 @@ mergeInto(LibraryManager.library, {
     // TDOO: rmdir
     // TODO: open
     open: (path, flags, mode) => {
-      // According to the existing File System docs, Emscripten does not
-      // support user permissions
-
-      // "The underlying implementation does not support user 
-      // or group permissions. The file permissions set in mode 
-      // are only used if the file is created. The caller is always 
-      // treated as the owner of the file, and only those permissions apply."
-      
       flags = typeof flags == 'string' ? FS.modeStringToFlags(flags) : flags;
       mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
       return withStackSave(() => {

@@ -5993,6 +5993,11 @@ Module = {
 
   def test_fs_write(self):
     self.do_run_in_out_file_test('fs/test_write.cpp')
+  
+  def test_fs_write_wasmfs(self):
+    self.emcc_args += ['-sWASMFS']
+    self.emcc_args += ['-sFORCE_FILESYSTEM']
+    self.do_run_in_out_file_test('fs/test_write.cpp')
 
   @also_with_noderawfs
   def test_fs_emptyPath(self):
