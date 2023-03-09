@@ -27,7 +27,7 @@ import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, node_pthreads, also_with_wasm_bigint
-from common import read_file, read_binary, requires_v8, requires_node
+from common import read_file, read_binary, requires_v8, requires_node, compiler_for
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
 
@@ -3141,20 +3141,24 @@ The current type of b is: 9
       expected = '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,1,2,64,68,69,72*\n*2*'
     self.do_run(src, expected)
 
-  def prep_dlfcn_main(self):
+  def prep_dlfcn_main(self, libs=None):
+    if libs is None:
+      libs = ['liblib.so']
     self.clear_setting('SIDE_MODULE')
     # Link against the side modules but don't load them on startup.
     self.set_setting('NO_AUTOLOAD_DYLIBS')
-    self.emcc_args.append('liblib.so')
+    self.emcc_args += libs
     # This means we can use MAIN_MODULE=2 without needing to explicitly
     # specify EXPORTED_FUNCTIONS.
     self.set_setting('MAIN_MODULE', 2)
 
-  def build_dlfcn_lib(self, filename):
+  def build_dlfcn_lib(self, filename, outfile='liblib.so', emcc_args=None):
     self.clear_setting('MAIN_MODULE')
     self.set_setting('SIDE_MODULE')
-    outfile = self.build(filename, js_outfile=not self.is_wasm())
-    shutil.move(outfile, 'liblib.so')
+    cmd = [compiler_for(filename), filename, '-o', outfile] + self.get_emcc_args()
+    if emcc_args:
+      cmd += emcc_args
+    self.run_process(cmd)
 
   @needs_dylink
   def test_dlfcn_missing(self):
@@ -4019,10 +4023,8 @@ ok
       } _;
     ''')
 
-    self.build_dlfcn_lib('a.cpp')
-    shutil.move(indir('liblib.so'), indir('liba.so'))
-    self.build_dlfcn_lib('b.cpp')
-    shutil.move(indir('liblib.so'), indir('libb.so'))
+    self.build_dlfcn_lib('a.cpp', outfile='liba.so')
+    self.build_dlfcn_lib('b.cpp', outfile='libb.so')
 
     self.set_setting('MAIN_MODULE')
     self.clear_setting('SIDE_MODULE')
@@ -4126,6 +4128,62 @@ ok
       }
       '''
     self.do_run(src, 'before sleep\nafter sleep\n42\n')
+
+  @needs_dylink
+  def test_dlfcn_rtld_local(self):
+    create_file('liba.c', r'''
+      #include <stdio.h>
+
+      void func_b();
+
+      void func_a() {
+        printf("func_a\n");
+        // Call a function from a dependent DSO. This symbol should
+        // be available here even though liba itself is loaded with RTLD_LOCAL.
+        func_b();
+      }
+      ''')
+
+    create_file('libb.c', r'''
+      #include <stdio.h>
+
+      void func_b() {
+        printf("func_b\n");
+      }
+    ''')
+
+    self.build_dlfcn_lib('libb.c', outfile='libb.so')
+    self.build_dlfcn_lib('liba.c', outfile='liba.so', emcc_args=['libb.so'])
+
+    self.prep_dlfcn_main(['liba.so', 'libb.so', '-L.'])
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <dlfcn.h>
+      #include <stdio.h>
+
+      int main() {
+        printf("main\n");
+        void* handle = dlopen("liba.so", RTLD_NOW|RTLD_LOCAL);
+        assert(handle);
+
+        void (*f)();
+        f = dlsym(handle, "func_a");
+        assert(f);
+        f();
+
+        // Verify that symbols from liba.so and libb.so are not globally
+        // visible.
+        void* func_a = dlsym(RTLD_DEFAULT, "func_a");
+        assert(func_a == NULL);
+        void* func_b = dlsym(RTLD_DEFAULT, "func_b");
+        assert(func_b == NULL);
+
+        printf("done\n");
+        return 0;
+      }
+      ''')
+
+    self.do_runf('main.c', 'main\nfunc_a\nfunc_b\ndone\n')
 
   def dylink_test(self, main, side, expected=None, header=None, force_c=False,
                   main_module=2, **kwargs):
