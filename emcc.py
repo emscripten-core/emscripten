@@ -2083,7 +2083,7 @@ def phase_linker_setup(options, state, newargs):
     assert not settings.SIDE_MODULE
     if settings.MAIN_MODULE == 1:
       settings.INCLUDE_FULL_LIBRARY = 1
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$preloadDylibs']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDylibs']
 
   # If we are including the entire JS library then we know for sure we will, by definition,
   # require all the reverse dependencies.
