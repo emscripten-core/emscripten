@@ -158,6 +158,9 @@ def get_system_tasks():
   return system_libraries, system_tasks
 
 
+def should_use_ninja():
+  return os.environ.get('EMCC_USE_NINJA', 0)
+
 def main():
   all_build_start_time = time.time()
 
@@ -178,7 +181,7 @@ def main():
   parser.add_argument('targets', nargs='+', help='see below')
   args = parser.parse_args()
 
-  if args.operation not in ('build', 'clear'):
+  if args.operation not in ('build', 'clear', 'rebuild'):
     shared.exit_with_error('unfamiliar operation: ' + args.operation)
 
   # process flags
@@ -245,7 +248,7 @@ def main():
       if do_clear:
         library.erase()
       if do_build:
-        if os.environ.get('EMCC_USE_NINJA', 0):
+        if should_use_ninja():
           library.generate()
         else:
           library.build(deterministic_paths=True)
@@ -271,7 +274,7 @@ def main():
     time_taken = time.time() - start_time
     logger.info('...success. Took %s(%.2fs)' % (('%02d:%02d mins ' % (time_taken // 60, time_taken % 60) if time_taken >= 60 else ''), time_taken))
 
-  if len(tasks) > 1:
+  if should_use_ninja() or args.operation == 'rebuild':
     system_libs.build_deferred()
     all_build_time_taken = time.time() - all_build_start_time
     logger.info('Built %d targets in %s(%.2fs)' % (len(tasks), ('%02d:%02d mins ' % (all_build_time_taken // 60, all_build_time_taken % 60) if all_build_time_taken >= 60 else ''), all_build_time_taken))
