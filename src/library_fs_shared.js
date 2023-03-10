@@ -5,6 +5,31 @@
  */
 
 mergeInto(LibraryManager.library, {
+  $preloadPlugins: "{{{ makeModuleReceiveExpr('preloadPlugins', '[]') }}}",
+
+#if !MINIMAL_RUNTIME
+  // Tries to handle an input byteArray using preload plugins. Returns true if
+  // it was handled.
+  $FS_handledByPreloadPlugin__internal: true,
+  $FS_handledByPreloadPlugin__deps: ['$preloadPlugins'],
+  $FS_handledByPreloadPlugin: function(byteArray, fullname, finish, onerror) {
+#if LibraryManager.has('library_browser.js')
+    // Ensure plugins are ready.
+    if (typeof Browser != 'undefined') Browser.init();
+#endif
+
+    var handled = false;
+    preloadPlugins.forEach(function(plugin) {
+      if (handled) return;
+      if (plugin['canHandle'](fullname)) {
+        plugin['handle'](byteArray, fullname, finish, onerror);
+        handled = true;
+      }
+    });
+    return handled;
+  },
+#endif
+
   // Preloads a file asynchronously. You can call this before run, for example in
   // preRun. run will be delayed until this file arrives and is set up.
   // If you call it after run(), you may want to pause the main loop until it
@@ -17,7 +42,11 @@ mergeInto(LibraryManager.library, {
   // You can also call this with a typed array instead of a url. It will then
   // do preloading for the Image/Audio part, as if the typed array were the
   // result of an XHR that you did manually.
-  $FS_createPreloadedFile__deps: ['$asyncLoad'],
+  $FS_createPreloadedFile__deps: ['$asyncLoad',
+#if !MINIMAL_RUNTIME
+    '$FS_handledByPreloadPlugin',
+#endif
+  ],
   $FS_createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
 #if WASMFS
     // TODO: use WasmFS code to resolve and join the path here?
@@ -38,7 +67,7 @@ mergeInto(LibraryManager.library, {
         removeRunDependency(dep);
       }
 #if !MINIMAL_RUNTIME
-      if (Browser.handledByPreloadPlugin(byteArray, fullname, finish, () => {
+      if (FS_handledByPreloadPlugin(byteArray, fullname, finish, () => {
         if (onerror) onerror();
         removeRunDependency(dep);
       })) {
@@ -76,4 +105,5 @@ mergeInto(LibraryManager.library, {
     if (canWrite) mode |= {{{ cDefs.S_IWUGO }}};
     return mode;
   },
+
 });

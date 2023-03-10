@@ -12,6 +12,10 @@ var LibraryBrowser = {
     '$safeSetTimeout',
     '$warnOnce',
     'emscripten_set_main_loop_timing',
+    '$preloadPlugins',
+#if MAIN_MODULE
+    '$preloadedWasm',
+#endif
   ],
   $Browser__postset: `
     // exports
@@ -25,9 +29,6 @@ var LibraryBrowser = {
     Module["resumeMainLoop"] = function Module_resumeMainLoop() { Browser.mainLoop.resume() };
     Module["getUserMedia"] = function Module_getUserMedia() { Browser.getUserMedia() };
     Module["createContext"] = function Module_createContext(canvas, useWebGL, setInModule, webGLContextAttributes) { return Browser.createContext(canvas, useWebGL, setInModule, webGLContextAttributes) };
-#if MAIN_MODULE
-    var preloadedWasm = {};
-#endif
     var preloadedImages = {};
     var preloadedAudios = {};`,
 
@@ -101,13 +102,11 @@ var LibraryBrowser = {
     workers: [],
 
     init: function() {
-      if (!Module["preloadPlugins"]) Module["preloadPlugins"] = []; // needs to exist even in workers
-
       if (Browser.initted) return;
       Browser.initted = true;
 
       // Support for plugins that can process preloaded files. You can add more of these to
-      // your app by creating and appending to Module.preloadPlugins.
+      // your app by creating and appending to preloadPlugins.
       //
       // Each plugin is asked if it can handle a file based on the file's name. If it can,
       // it is given the file's raw data. When it is done, it calls a callback with the file's
@@ -146,7 +145,7 @@ var LibraryBrowser = {
         };
         img.src = url;
       };
-      Module['preloadPlugins'].push(imagePlugin);
+      preloadPlugins.push(imagePlugin);
 
       var audioPlugin = {};
       audioPlugin['canHandle'] = function audioPlugin_canHandle(name) {
@@ -209,34 +208,7 @@ var LibraryBrowser = {
           finish(audio); // try to use it even though it is not necessarily ready to play
         }, 10000);
       };
-      Module['preloadPlugins'].push(audioPlugin);
-
-#if MAIN_MODULE
-      // Use string keys here to avoid minification since the plugin consumer
-      // also uses string keys.
-      var wasmPlugin = {
-        'promiseChainEnd': Promise.resolve(),
-        'canHandle': function(name) {
-          return !Module.noWasmDecoding && name.endsWith('.so')
-        },
-        'handle': function(byteArray, name, onload, onerror) {
-          // loadWebAssemblyModule can not load modules out-of-order, so rather
-          // than just running the promises in parallel, this makes a chain of
-          // promises to run in series.
-          wasmPlugin['promiseChainEnd'] = wasmPlugin['promiseChainEnd'].then(
-            () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true})).then(
-              (module) => {
-                preloadedWasm[name] = module;
-                onload();
-              },
-              (err) => {
-                console.warn("Couldn't instantiate wasm: " + name + " '" + err + "'");
-                onerror();
-              });
-        }
-      };
-      Module['preloadPlugins'].push(wasmPlugin);
-#endif // MAIN_MODULE
+      preloadPlugins.push(audioPlugin);
 
       // Canvas event setup
 
@@ -277,23 +249,6 @@ var LibraryBrowser = {
           }, false);
         }
       }
-    },
-
-    // Tries to handle an input byteArray using preload plugins. Returns true if
-    // it was handled.
-    handledByPreloadPlugin: function(byteArray, fullname, finish, onerror) {
-      // Ensure plugins are ready.
-      Browser.init();
-
-      var handled = false;
-      Module['preloadPlugins'].forEach((plugin) => {
-        if (handled) return;
-        if (plugin['canHandle'](fullname)) {
-          plugin['handle'](byteArray, fullname, finish, onerror);
-          handled = true;
-        }
-      });
-      return handled;
     },
 
     createContext: function(/** @type {HTMLCanvasElement} */ canvas, useWebGL, setInModule, webGLContextAttributes) {

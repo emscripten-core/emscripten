@@ -6,7 +6,7 @@
 
 #if LZ4
 mergeInto(LibraryManager.library, {
-  $LZ4__deps: ['$FS'],
+  $LZ4__deps: ['$FS', '$preloadPlugins'],
   $LZ4: {
     DIR_MODE: {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */,
     FILE_MODE: {{{ cDefs.S_IFREG }}} | 511 /* 0777 */,
@@ -52,7 +52,7 @@ mergeInto(LibraryManager.library, {
         pack['metadata'].files.forEach(function(file) {
           var handled = false;
           var fullname = file.filename;
-          Module['preloadPlugins'].forEach(function(plugin) {
+          preloadPlugins.forEach(function(plugin) {
             if (handled) return;
             if (plugin['canHandle'](fullname)) {
               var dep = getUniqueRunDependency('fp ' + fullname);

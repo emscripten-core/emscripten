@@ -10,6 +10,39 @@ var dlopenMissingError = "'To use dlopen, you need enable dynamic linking, see h
 
 var LibraryDylink = {
 #if RELOCATABLE
+  $registerWasmPlugin__deps: ['$preloadPlugins'],
+  $registerWasmPlugin: function() {
+    // Use string keys here to avoid minification since the plugin consumer
+    // also uses string keys.
+    var wasmPlugin = {
+      'promiseChainEnd': Promise.resolve(),
+      'canHandle': function(name) {
+        return !Module.noWasmDecoding && name.endsWith('.so')
+      },
+      'handle': function(byteArray, name, onload, onerror) {
+        // loadWebAssemblyModule can not load modules out-of-order, so rather
+        // than just running the promises in parallel, this makes a chain of
+        // promises to run in series.
+        wasmPlugin['promiseChainEnd'] = wasmPlugin['promiseChainEnd'].then(
+          () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true})).then(
+            (module) => {
+              preloadedWasm[name] = module;
+              onload();
+            },
+            (error) => {
+              err('failed to instantiate wasm: ' + name + ': ' + error);
+              onerror();
+            });
+      }
+    };
+    preloadPlugins.push(wasmPlugin);
+  },
+
+  $preloadedWasm__deps: ['$registerWasmPlugin'],
+  $preloadedWasm__postset: `
+    registerWasmPlugin();
+    `,
+  $preloadedWasm: {},
 
   $isSymbolDefined: function(symName) {
     // Ignore 'stub' symbols that are auto-generated as part of the original
@@ -884,7 +917,9 @@ var LibraryDylink = {
   // If a library was already loaded, it is not loaded a second time. However
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
-  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$isInternalSym', '$mergeLibSymbols', '$newDSO', '$asyncLoad'],
+  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule',
+                              '$isInternalSym', '$mergeLibSymbols', '$newDSO',
+                              '$asyncLoad', '$preloadedWasm'],
   $loadDynamicLibrary__docs: `
     /**
      * @param {number=} handle
@@ -955,7 +990,10 @@ var LibraryDylink = {
     // libName -> exports
     function getExports() {
       // lookup preloaded cache first
-      if (typeof preloadedWasm != 'undefined' && preloadedWasm[libName]) {
+      if (preloadedWasm[libName]) {
+#if DYLINK_DEBUG
+        err('using preloaded module for: ' + libName);
+#endif
         var libModule = preloadedWasm[libName];
         return flags.loadAsync ? Promise.resolve(libModule) : libModule;
       }
