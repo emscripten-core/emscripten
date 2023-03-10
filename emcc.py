@@ -3595,7 +3595,7 @@ def parse_args(newargs):
       # Also set the legacy setting name, in case use JS code depends on it.
       settings.USE_PTHREADS = 1
     elif arg == '-pthreads':
-      exit_with_error('unrecognized command-line option ‘-pthreads’; did you mean ‘-pthread’?')
+      exit_with_error('unrecognized command-line option `-pthreads`; did you mean `-pthread`?')
     elif arg in ('-fno-diagnostics-color', '-fdiagnostics-color=never'):
       colored_logger.disable()
       diagnostics.color_enabled = False
