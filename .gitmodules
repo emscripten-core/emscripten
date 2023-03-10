@@ -1,3 +1,6 @@
 [submodule "test/third_party/posixtestsuite"]
 	path = test/third_party/posixtestsuite
 	url = https://github.com/emscripten-core/posixtestsuite
+[submodule "test/third_party/googletest"]
+	path = test/third_party/googletest
+	url = https://github.com/google/googletest

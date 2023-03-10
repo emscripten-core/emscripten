@@ -439,7 +439,7 @@ var SyscallsLibrary = {
     for (var i = 0; i < num; i++) {
       var iovbase = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_base, POINTER_TYPE) }}};
       var iovlen = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
-      for (var j = 0; j < iovlen; j++) {  
+      for (var j = 0; j < iovlen; j++) {
         view[offset++] = {{{ makeGetValue('iovbase', 'j', 'i8') }}};
       }
     }
@@ -520,7 +520,7 @@ var SyscallsLibrary = {
 #endif
 
     var total = 0;
-    
+
     var srcReadLow = (readfds ? {{{ makeGetValue('readfds', 0, 'i32') }}} : 0),
         srcReadHigh = (readfds ? {{{ makeGetValue('readfds', 4, 'i32') }}} : 0);
     var srcWriteLow = (writefds ? {{{ makeGetValue('writefds', 0, 'i32') }}} : 0),
@@ -1061,7 +1061,7 @@ function wrapSyscallFunction(x, library, isWasi) {
     pre += 'try {\n';
     handler +=
     "} catch (e) {\n" +
-    "  if (typeof FS == 'undefined' || !(e instanceof FS.ErrnoError)) throw e;\n";
+    "  if (typeof FS == 'undefined' || !(e.name === 'ErrnoError')) throw e;\n";
 #if SYSCALL_DEBUG
     handler +=
     "  dbg('error: syscall failed with ' + e.errno + ' (' + ERRNO_MESSAGES[e.errno] + ')');\n" +
@@ -1087,7 +1087,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   library[x] = eval('(' + t + ')');
   if (!library[x + '__deps']) library[x + '__deps'] = [];
   library[x + '__deps'].push('$SYSCALLS');
-#if USE_PTHREADS
+#if PTHREADS
   // Most syscalls need to happen on the main JS thread (e.g. because the
   // filesystem is in JS and on that thread). Proxy synchronously to there.
   // There are some exceptions, syscalls that we know are ok to just run in

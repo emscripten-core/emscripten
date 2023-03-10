@@ -530,6 +530,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
     global last_message_time, page_exit_code, emrun_not_enabled_nag_printed
     self.is_running = True
     self.timeout = timeout
+    logi('Now listening at http://%s/' % ':'.join(map(str, self.socket.getsockname())))
     logv("Entering web server loop.")
     while self.is_running:
       now = tick()
@@ -650,7 +651,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
       ctype = 'application/javascript'
     self.send_header('Content-type', ctype)
     fs = os.fstat(f.fileno())
-    self.send_header("Content-Length", str(fs[6]))
+    self.send_header("Content-Length", str(fs.st_size))
     self.send_header("Last-Modified", self.date_time_string(fs.st_mtime))
     self.send_header('Cache-Control', 'no-cache, must-revalidate')
     self.send_header('Connection', 'close')
@@ -1653,6 +1654,10 @@ def run():
       logv('Web server root directory: ' + os.path.abspath('.'))
     else:
       logi('Web server root directory: ' + os.path.abspath('.'))
+    logv('Starting web server: http://%s:%i/' % (options.hostname, options.port))
+    httpd = HTTPWebServer((options.hostname, options.port), HTTPHandler)
+    # to support binding to port zero we must allow the server to open to socket then retrieve the final port number
+    options.port = httpd.socket.getsockname()[1]
 
   if options.android:
     if options.run_browser or options.browser_info:
@@ -1792,11 +1797,6 @@ def run():
       browser_stderr_handle = browser_stdout_handle
     else:
       browser_stderr_handle = open(options.log_stderr, 'a')
-
-  if options.run_server:
-    logv('Starting web server: http://%s:%i/' % (options.hostname, options.port))
-    httpd = HTTPWebServer((options.hostname, options.port), HTTPHandler)
-
   if options.run_browser:
     logv("Starting browser: %s" % ' '.join(browser))
     # if browser[0] == 'cmd':
@@ -1817,8 +1817,6 @@ def run():
     # represent a browser and no point killing it.
     if options.android:
       browser_process = None
-  elif options.run_server:
-    logi('Now listening at http://%s:%i/' % (options.hostname, options.port))
 
   if browser_process:
     premature_quit_code = browser_process.poll()

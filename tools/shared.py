@@ -49,7 +49,7 @@ DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 # exact requirement, but is the oldest version of node that we do any testing with.
 # This version aligns with the current Ubuuntu TLS 20.04 (Focal).
 MINIMUM_NODE_VERSION = (10, 19, 0)
-EXPECTED_LLVM_VERSION = "16.0"
+EXPECTED_LLVM_VERSION = 17
 
 # Used only when EM_PYTHON_MULTIPROCESSING=1 env. var is set.
 multiprocessing_pool = None
@@ -94,6 +94,8 @@ def shlex_quote(arg):
 # Switch to shlex.join once we can depend on python 3.8:
 # https://docs.python.org/3/library/shlex.html#shlex.join
 def shlex_join(cmd):
+  if type(cmd) is str:
+    return cmd
   return ' '.join(shlex_quote(x) for x in cmd)
 
 
@@ -246,7 +248,6 @@ def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: mutable defau
   This is used by emcc to run parts of the build process that are written
   implemented in javascript.
   """
-  check_node()
   command = config.NODE_JS + node_args + [filename] + jsargs
   return check_call(command, **kw).stdout
 
@@ -288,8 +289,14 @@ def get_clang_version():
 
 def check_llvm_version():
   actual = get_clang_version()
-  if EXPECTED_LLVM_VERSION in actual:
+  if actual.startswith('%d.' % EXPECTED_LLVM_VERSION):
     return True
+  # When running in CI environment we also silently allow the next major
+  # version of LLVM here so that new versions of LLVM can be rolled in
+  # without disruption.
+  if 'BUILDBOT_BUILDNUMBER' in os.environ:
+    if actual.startswith('%d.' % (EXPECTED_LLVM_VERSION + 1)):
+      return True
   diagnostics.warning('version-check', 'LLVM version for clang executable "%s" appears incorrect (seeing "%s", expected "%s")', CLANG_CC, actual, EXPECTED_LLVM_VERSION)
   return False
 
@@ -299,7 +306,7 @@ def get_clang_targets():
     exit_with_error('clang executable not found at `%s`' % CLANG_CC)
   try:
     target_info = run_process([CLANG_CC, '-print-targets'], stdout=PIPE).stdout
-  except subprocess.CalldProcessError:
+  except subprocess.CalledProcessError:
     exit_with_error('error running `clang -print-targets`.  Check your llvm installation (%s)' % CLANG_CC)
   if 'Registered Targets:' not in target_info:
     exit_with_error('error parsing output of `clang -print-targets`.  Check your llvm installation (%s)' % CLANG_CC)
@@ -358,6 +365,10 @@ def node_bigint_flags():
     return []
 
 
+def node_memory64_flags():
+  return ['--experimental-wasm-memory64']
+
+
 def node_pthread_flags():
   node_version = check_node_version()
   # bulk memory and wasm threads were enabled by default in node v16.
@@ -370,7 +381,6 @@ def node_pthread_flags():
 @memoize
 @ToolchainProfiler.profile()
 def check_node():
-  check_node_version()
   try:
     run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
   except Exception as e:
@@ -391,6 +401,7 @@ def generate_sanity():
 
 def perform_sanity_checks():
   # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
+  check_node_version()
   check_llvm_version()
 
   llvm_ok = check_llvm()
@@ -403,6 +414,8 @@ def perform_sanity_checks():
 
   if not llvm_ok:
     exit_with_error('failing sanity checks due to previous llvm failure')
+
+  check_node()
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
     for cmd in [CLANG_CC, LLVM_AR, LLVM_NM]:
@@ -446,19 +459,25 @@ def check_sanity(force=False):
   sanity_file = cache.get_path('sanity.txt')
 
   def sanity_is_correct():
-    if os.path.exists(sanity_file):
+    sanity_data = None
+    # We can't simply check for the existence of sanity_file and then read from
+    # it here because we don't hold the cache lock yet and some other process
+    # could clear the cache between checking for, and reading from, the file.
+    try:
       sanity_data = utils.read_file(sanity_file)
-      if sanity_data == expected:
-        logger.debug(f'sanity file up-to-date: {sanity_file}')
-        # Even if the sanity file is up-to-date we still need to at least
-        # check the llvm version. This comes at no extra performance cost
-        # since the version was already extracted and cached by the
-        # generate_sanity() call above.
-        if force:
-          perform_sanity_checks()
-        else:
-          check_llvm_version()
-        return True # all is well
+    except Exception:
+      pass
+    if sanity_data == expected:
+      logger.debug(f'sanity file up-to-date: {sanity_file}')
+      # Even if the sanity file is up-to-date we still need to at least
+      # check the llvm version. This comes at no extra performance cost
+      # since the version was already extracted and cached by the
+      # generate_sanity() call above.
+      if force:
+        perform_sanity_checks()
+      else:
+        check_llvm_version()
+      return True # all is well
     return False
 
   if sanity_is_correct():

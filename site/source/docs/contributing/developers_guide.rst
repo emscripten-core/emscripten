@@ -22,12 +22,13 @@ get using the emsdk:
 
 ::
 
-    emsdk install tot-upstream
-    emsdk activate tot-upstream
+    emsdk install tot
+    emsdk activate tot
 
-That gets a "tip-of-tree" build of the very latest binaries. You can use those
-binaries with a checkout of the core Emscripten repository, simply by calling
-``emcc.py`` from that checkout, and it will use the binaries from the emsdk.
+This with install the latest "tip-of-tree" binaries needed to run Emscripten.
+You can use these emsdk-provided binaries with a git checkout of the Emscripten
+repository.  To do this, you can either edit your local ``.emscripten`` config
+file, or set ``EM_CONFIG=/path/to/emsdk/.emscripten`` in your environment.
 
 If you do want to contribute to LLVM or Binaryen, or to test modifications
 to them, you can

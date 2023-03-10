@@ -21,7 +21,12 @@ def get(ports, settings, shared):
     logging.info('building port: giflib')
     source_path = os.path.join(ports.get_dir(), 'giflib', f'giflib-{VERSION}')
     ports.install_headers(source_path)
-    ports.build_port(source_path, final, 'giflib')
+    exclude_files = [
+      'giffix.c', 'gifecho.c', 'giffilter.c', 'gifcolor.c', 'gifecho.c', 'gifinto.c',
+      'gifsponge.c', 'gif2rgb.c', 'gifbg.c', 'gifbuild.c', 'gifclrmp.c', 'gifhisto.c',
+      'gifbuild.c', 'gifclrmp.c', 'gifhisto.c', 'giftext.c', 'giftool.c', 'gifwedge.c',
+    ]
+    ports.build_port(source_path, final, 'giflib', exclude_files=exclude_files)
 
   return [shared.cache.get_lib('libgif.a', create, what='port')]
 

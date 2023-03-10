@@ -1421,6 +1421,13 @@ FS.staticInit();` +
     ensureErrnoError: () => {
       if (FS.ErrnoError) return;
       FS.ErrnoError = /** @this{Object} */ function ErrnoError(errno, node) {
+        // We set the `name` property to be able to identify `FS.ErrnoError`
+        // - the `name` is a standard ECMA-262 property of error objects. Kind of good to have it anyway.
+        // - when using PROXYFS, an error can come from an underlying FS
+        // as different FS objects have their own FS.ErrnoError each,
+        // the test `err instanceof FS.ErrnoError` won't detect an error coming from another filesystem, causing bugs.
+        // we'll use the reliable test `err.name == "ErrnoError"` instead
+        this.name = 'ErrnoError';
         this.node = node;
         this.setErrno = /** @this{Object} */ function(errno) {
           this.errno = errno;
@@ -1911,9 +1918,7 @@ FS.staticInit();` +
     DB_STORE_NAME: 'FILE_DATA',
 
     // asynchronously saves a list of files to an IndexedDB. The DB will be created if not already existing.
-    saveFilesToDB: (paths, onload, onerror) => {
-      onload = onload || (() => {});
-      onerror = onerror || (() => {});
+    saveFilesToDB: (paths, onload = (() => {}), onerror = (() => {})) => {
       var indexedDB = FS.indexedDB();
       try {
         var openRequest = indexedDB.open(FS.DB_NAME(), FS.DB_VERSION);
@@ -1944,9 +1949,7 @@ FS.staticInit();` +
     },
 
     // asynchronously loads a file from IndexedDB.
-    loadFilesFromDB: (paths, onload, onerror) => {
-      onload = onload || (() => {});
-      onerror = onerror || (() => {});
+    loadFilesFromDB: (paths, onload = (() => {}), onerror = (() => {})) => {
       var indexedDB = FS.indexedDB();
       try {
         var openRequest = indexedDB.open(FS.DB_NAME(), FS.DB_VERSION);

@@ -186,7 +186,7 @@
         "EMSGSIZE": 35,
         "EMULTIHOP": 36,
         "EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD": 2,
-        "EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD": 1,
+        "EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD": 1,
         "EM_FUNC_SIG_I": 536870912,
         "EM_FUNC_SIG_II": 570425344,
         "EM_FUNC_SIG_III": 603979776,
@@ -214,6 +214,10 @@
         "EM_LOG_JS_STACK": 16,
         "EM_LOG_NO_PATHS": 64,
         "EM_LOG_WARN": 2,
+        "EM_PROMISE_FULFILL": 0,
+        "EM_PROMISE_MATCH": 1,
+        "EM_PROMISE_MATCH_RELEASE": 2,
+        "EM_PROMISE_REJECT": 3,
         "EM_PROXIED_RESIZE_OFFSCREENCANVAS": 654311424,
         "EM_QUEUED_JS_CALL_MAX_ARGS": 20,
         "ENAMETOOLONG": 37,
@@ -1258,14 +1262,14 @@
             "d_type": 18
         },
         "dso": {
-            "__size__": 32,
-            "flags": 8,
-            "mem_addr": 16,
-            "mem_allocated": 12,
-            "mem_size": 20,
-            "name": 32,
-            "table_addr": 24,
-            "table_size": 28
+            "__size__": 28,
+            "flags": 4,
+            "mem_addr": 12,
+            "mem_allocated": 8,
+            "mem_size": 16,
+            "name": 28,
+            "table_addr": 20,
+            "table_size": 24
         },
         "emscripten_fetch_attr_t": {
             "__size__": 92,
@@ -1347,10 +1351,11 @@
             "p_proto": 8
         },
         "pthread": {
-            "__size__": 120,
+            "__size__": 132,
             "profilerBlock": 112,
             "stack": 52,
-            "stack_size": 56
+            "stack_size": 56,
+            "waiting_async": 128
         },
         "pthread_attr_t": {
             "__size__": 44,

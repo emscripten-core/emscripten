@@ -197,7 +197,7 @@ function _emscripten_memcpy_big(dest, src, num) {
 
 if (ENVIRONMENT_IS_NODE) {
  _emscripten_get_now = function _emscripten_get_now_actual() {
-  var t = process["hrtime"]();
+  var t = process.hrtime();
   return t[0] * 1e3 + t[1] / 1e6;
  };
 } else if (typeof dateNow !== "undefined") {
@@ -214,7 +214,7 @@ if (ENVIRONMENT_IS_NODE) {
  _emscripten_get_now = Date.now;
 }
 
-var asmLibraryArg = {
+var wasmImports = {
  "b": abort,
  "h": ___syscall140,
  "a": ___syscall146,
@@ -233,7 +233,7 @@ function initRuntime(asm) {
  asm["i"]();
 }
 
-var env = asmLibraryArg;
+var env = wasmImports;
 
 env["memory"] = wasmMemory;
 

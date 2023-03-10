@@ -346,7 +346,6 @@ var LibrarySDL = {
     },
 
     makeSurface: function(width, height, flags, usePageCanvas, source, rmask, gmask, bmask, amask) {
-      flags = flags || 0;
       var is_SDL_HWSURFACE = flags & 0x00000001;
       var is_SDL_HWPALETTE = flags & 0x00200000;
       var is_SDL_OPENGL = flags & 0x04000000;
@@ -1349,7 +1348,7 @@ var LibrarySDL = {
     return SDL.version;
   },
 
-  SDL_Init__deps: ['$zeroMemory'],
+  SDL_Init__deps: ['$zeroMemory', 'malloc', 'free', 'memcpy'],
   SDL_Init__proxy: 'sync',
   SDL_Init__sig: 'ii',
   SDL_Init__docs: '/** @param{number=} initFlags */', 
@@ -1847,15 +1846,18 @@ var LibrarySDL = {
   SDL_SetError: function() {},
 
   SDL_malloc__sig: 'ii',
+  SDL_malloc__deps: ['malloc'],
   SDL_malloc: function(size) {
     return _malloc(size);
   },
 
   SDL_free__sig: 'vi',
+  SDL_free__deps: ['free'],
   SDL_free: function(ptr) {
     _free(ptr);
   },
 
+  SDL_CreateRGBSurface__deps: ['malloc', 'free'],
   SDL_CreateRGBSurface__proxy: 'sync',
   SDL_CreateRGBSurface__sig: 'iiiiiiiii',
   SDL_CreateRGBSurface: function(flags, width, height, depth, rmask, gmask, bmask, amask) {
@@ -2068,6 +2070,7 @@ var LibrarySDL = {
 
   SDL_PushEvent__proxy: 'sync',
   SDL_PushEvent__sig: 'ii',
+  SDL_PushEvent__deps: ['malloc'],
   SDL_PushEvent: function(ptr) {
     var copy = _malloc({{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
     _memcpy(copy, ptr, {{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
@@ -2118,6 +2121,7 @@ var LibrarySDL = {
   // An Emscripten-specific extension to SDL: Some browser APIs require that they are called from within an event handler function.
   // Allow recording a callback that will be called for each received event.
   emscripten_SDL_SetEventHandler__proxy: 'sync',
+  emscripten_SDL_SetEventHandler__deps: ['malloc'],
   emscripten_SDL_SetEventHandler__sig: 'vii',
   emscripten_SDL_SetEventHandler: function(handler, userdata) {
     SDL.eventHandler = handler;
@@ -2246,7 +2250,7 @@ var LibrarySDL = {
     return flags; // We support JPG, PNG, TIF because browsers do
   },
 
-  IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS'],
+  IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS', 'malloc'],
   IMG_Load_RW__proxy: 'sync',
   IMG_Load_RW__sig: 'iii',
   IMG_Load_RW: function(rwopsID, freeSrc) {
@@ -2263,13 +2267,13 @@ var LibrarySDL = {
         }
       }
       var callStbImage = function(func, params) {
-        var x = Module['_malloc']({{{ getNativeTypeSize('i32') }}});
-        var y = Module['_malloc']({{{ getNativeTypeSize('i32') }}});
-        var comp = Module['_malloc']({{{ getNativeTypeSize('i32') }}});
+        var x = _malloc({{{ getNativeTypeSize('i32') }}});
+        var y = _malloc({{{ getNativeTypeSize('i32') }}});
+        var comp = _malloc({{{ getNativeTypeSize('i32') }}});
         addCleanup(function() {
-          Module['_free'](x);
-          Module['_free'](y);
-          Module['_free'](comp);
+          _free(x);
+          _free(y);
+          _free(comp);
           if (data) Module['_stbi_image_free'](data);
         });
         var data = Module['_' + func].apply(null, params.concat([x, y, comp, 0]));
@@ -2308,10 +2312,10 @@ var LibrarySDL = {
           if (raw === null) err('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');
 #if STB_IMAGE
           var lengthBytes = lengthBytesUTF8(filename)+1;
-          var name = Module['_malloc'](lengthBytes);
+          var name = _malloc(lengthBytes);
           stringToUTF8(filename, name, lengthBytes);
           addCleanup(function() {
-            Module['_free'](name);
+            _free(name);
           });
           raw = callStbImage('stbi_load', [name]);
           if (!raw) return 0;
@@ -2414,7 +2418,7 @@ var LibrarySDL = {
 
   // SDL_Audio
 
-  SDL_OpenAudio__deps: ['$autoResumeAudioContext', '$safeSetTimeout'],
+  SDL_OpenAudio__deps: ['$autoResumeAudioContext', '$safeSetTimeout', 'malloc'],
   SDL_OpenAudio__proxy: 'sync',
   SDL_OpenAudio__sig: 'iii',
   SDL_OpenAudio: function(desired, obtained) {
@@ -2766,7 +2770,7 @@ var LibrarySDL = {
     return 1;
   },
 
-  Mix_LoadWAV_RW__deps: ['$PATH_FS'],
+  Mix_LoadWAV_RW__deps: ['$PATH_FS', 'fileno'],
   Mix_LoadWAV_RW__proxy: 'sync',
   Mix_LoadWAV_RW__sig: 'iii',
   Mix_LoadWAV_RW__docs: '/** @param {number|boolean=} freesrc */',
@@ -2779,7 +2783,7 @@ var LibrarySDL = {
 
       if (type === 2/*SDL_RWOPS_STDFILE*/) {
         var fp = {{{ makeGetValue('rwopsID + ' + 28 /*hidden.stdio.fp*/, '0', 'i32') }}};
-        var fd = Module['_fileno'](fp);
+        var fd = _fileno(fp);
         var stream = FS.getStream(fd);
         if (stream) {
           rwops = { filename: stream.path };

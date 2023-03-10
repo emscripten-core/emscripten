@@ -18,5 +18,3 @@ function _did_set_title__async_cb($0) {
  }
  STACKTOP = sp;return;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS
-

@@ -4,8 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-//== HEADLESS ==//
-
 var headlessPrint = (x) => {
   //print(x);
 };
@@ -14,14 +12,17 @@ var window = {
   // adjustable parameters
   location: {
     toString: function() {
-      return '%s';
+      return 'http://emscripten.org';
     },
-    search: '?%s',
-    pathname: '%s',
+    search: '',
+    pathname: null,
   },
-  onIdle: function(){ headlessPrint('triggering click'); document.querySelector('.fullscreen-button.low-res').callEventListeners('click'); window.onIdle = null; },
+  onIdle: function() {
+    headlessPrint('triggering click');
+    document.querySelector('.fullscreen-button.low-res').callEventListeners('click');
+    window.onIdle = null;
+  },
   dirsToDrop: 0, // go back to root dir if first_js is in a subdir
-  //
 
   headless: true,
 
@@ -312,6 +313,3 @@ var MozBlobBuilder = () => {
 if (!Module['canvas']) {
   Module['canvas'] = document.getElementById('canvas');
 }
-
-//== HEADLESS ==//
-

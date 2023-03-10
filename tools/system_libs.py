@@ -657,7 +657,7 @@ class MTLibrary(Library):
   def get_cflags(self):
     cflags = super().get_cflags()
     if self.is_mt:
-      cflags += ['-sUSE_PTHREADS', '-sWASM_WORKERS']
+      cflags += ['-pthread', '-sWASM_WORKERS']
     if self.is_ww:
       cflags += ['-sWASM_WORKERS']
     return cflags
@@ -676,7 +676,7 @@ class MTLibrary(Library):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(is_mt=settings.USE_PTHREADS, is_ww=settings.WASM_WORKERS and not settings.USE_PTHREADS, **kwargs)
+    return super().get_default_variation(is_mt=settings.PTHREADS, is_ww=settings.WASM_WORKERS and not settings.PTHREADS, **kwargs)
 
   @classmethod
   def variations(cls):
@@ -982,7 +982,7 @@ class libc(MuslInternalLibrary,
     # musl modules
     ignore = [
         'ipc', 'passwd', 'signal', 'sched', 'time', 'linux',
-        'aio', 'exit', 'legacy', 'mq', 'setjmp', 'env',
+        'aio', 'exit', 'legacy', 'mq', 'setjmp',
         'ldso', 'malloc'
     ]
 
@@ -992,13 +992,15 @@ class libc(MuslInternalLibrary,
         'res_query.c', 'res_querydomain.c',
         'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
         'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
-        'alarm.c', 'syscall.c', 'popen.c', 'pclose.c',
+        'syscall.c', 'popen.c', 'pclose.c',
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
         'getentropy.c',
         'getauxval.c',
         # 'process' exclusion
         'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
         '_Fork.c',
+        # 'env' exclusion
+        '__reset_tls.c', '__init_tls.c', '__libc_start_main.c', '__stack_chk_fail.c',
     ]
 
     ignore += LIBC_SOCKETS
@@ -1023,6 +1025,7 @@ class libc(MuslInternalLibrary,
           'library_pthread.c',
           'em_task_queue.c',
           'proxying.c',
+          'thread_mailbox.c',
           'pthread_create.c',
           'pthread_kill.c',
           'emscripten_thread_init.c',
@@ -1038,7 +1041,21 @@ class libc(MuslInternalLibrary,
         filenames=[
           'pthread_self.c',
           'pthread_cleanup_push.c',
+          'pthread_attr_destroy.c',
           'pthread_attr_get.c',
+          'pthread_attr_setdetachstate.c',
+          'pthread_attr_setguardsize.c',
+          'pthread_attr_setinheritsched.c',
+          'pthread_attr_setschedparam.c',
+          'pthread_attr_setschedpolicy.c',
+          'pthread_attr_setscope.c',
+          'pthread_attr_setstack.c',
+          'pthread_attr_setstacksize.c',
+          'pthread_getconcurrency.c',
+          'pthread_getcpuclockid.c',
+          'pthread_getschedparam.c',
+          'pthread_setschedprio.c',
+          'pthread_setconcurrency.c',
           # C11 thread library functions
           'call_once.c',
           'tss_create.c',
@@ -1112,9 +1129,6 @@ class libc(MuslInternalLibrary,
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/linux',
         filenames=['getdents.c', 'gettid.c', 'utimes.c'])
-    libc_files += files_in_path(
-        path='system/lib/libc/musl/src/env',
-        filenames=['__environ.c', 'getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/sched',
@@ -1154,7 +1168,6 @@ class libc(MuslInternalLibrary,
     libc_files += files_in_path(
         path='system/lib/libc',
         filenames=[
-          'dynlink.c',
           'emscripten_console.c',
           'emscripten_fiber.c',
           'emscripten_get_heap_size.c',
@@ -1164,6 +1177,8 @@ class libc(MuslInternalLibrary,
           'emscripten_mmap.c',
           'emscripten_scan_stack.c',
           'emscripten_time.c',
+          'mktime.c',
+          'tzset.c',
           'kill.c',
           'pthread_sigmask.c',
           'raise.c',
@@ -1171,6 +1186,9 @@ class libc(MuslInternalLibrary,
           'sigtimedwait.c',
           'wasi-helpers.c',
         ])
+
+    if settings.RELOCATABLE:
+      libc_files += files_in_path(path='system/lib/libc', filenames=['dynlink.c'])
 
     libc_files += files_in_path(
         path='system/lib/pthread',
@@ -1278,7 +1296,11 @@ class libwasm_workers(MTLibrary):
 
   def get_cflags(self):
     cflags = get_base_cflags() + ['-D_DEBUG' if self.debug else '-Oz']
-    if not self.debug:
+    if self.debug:
+      # library_wasm_worker.c contains an assert that a nonnull paramater
+      # is no NULL, which llvm now warns is redundant/tautological.
+      cflags += ['-Wno-tautological-pointer-compare']
+    else:
       cflags += ['-DNDEBUG']
     if self.is_ww or self.is_mt:
       cflags += ['-pthread', '-sWASM_WORKERS']
@@ -1378,7 +1400,7 @@ class crt1_proxy_main(MuslInternalLibrary):
 
 class crtbegin(MuslInternalLibrary):
   name = 'crtbegin'
-  cflags = ['-sUSE_PTHREADS']
+  cflags = ['-pthread']
   src_dir = 'system/lib/pthread'
   src_files = ['emscripten_tls_init.c']
 
@@ -1402,6 +1424,15 @@ class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
       '-std=c++20',
     ]
   includes = ['system/lib/libcxx/src']
+
+  def __init__(self, **kwargs):
+    super().__init__(**kwargs)
+    # TODO EXCEPTION_STACK_TRACES currently requires the debug version of
+    # libc++abi, causing the debug version of libc++abi to be linked, which
+    # increases code size. libc++abi is not a big library to begin with, but if
+    # this becomes a problem, consider making EXCEPTION_STACK_TRACES work with
+    # the non-debug version of libc++abi.
+    self.is_debug |= settings.EXCEPTION_STACK_TRACES
 
   def get_cflags(self):
     cflags = super().get_cflags()
@@ -1960,7 +1991,7 @@ class libstubs(DebugLibrary):
 # If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
 # confusing, so issue a warning.
 def warn_on_unexported_main(symbolses):
-  # In STANDALONE_WASM we don't expect main to be explictly exported.
+  # In STANDALONE_WASM we don't expect main to be explicitly exported.
   # In PROXY_TO_PTHREAD we export emscripten_proxy_main instead of main.
   if settings.STANDALONE_WASM or settings.PROXY_TO_PTHREAD:
     return
@@ -1975,7 +2006,7 @@ def handle_reverse_deps(input_files):
   if settings.REVERSE_DEPS == 'none' or settings.SIDE_MODULE:
     return
   elif settings.REVERSE_DEPS == 'all':
-    # When not optimzing we add all possible reverse dependencies rather
+    # When not optimizing we add all possible reverse dependencies rather
     # than scanning the input files
     for symbols in deps_info.get_deps_info().values():
       for symbol in symbols:
@@ -2009,7 +2040,7 @@ def handle_reverse_deps(input_files):
     symbolses.append({'defs': set(), 'undefs': set()})
 
   # depend on exported functions
-  for export in settings.EXPORTED_FUNCTIONS:
+  for export in settings.EXPORTED_FUNCTIONS + settings.SIDE_MODULE_IMPORTS:
     if settings.VERBOSE:
       logger.debug('adding dependency on export %s' % export)
     symbolses[0]['undefs'].add(demangle_c_symbol_name(export))
@@ -2250,7 +2281,7 @@ def install_system_headers(stamp):
   #define __EMSCRIPTEN_tiny__ {shared.EMSCRIPTEN_VERSION_TINY}
   '''))
 
-  # Create a stamp file that signal the the header have been installed
+  # Create a stamp file that signal that the headers have been installed
   # Removing this file, or running `emcc --clear-cache` or running
   # `./embuilder build sysroot --force` will cause the re-installation of
   # the system headers.

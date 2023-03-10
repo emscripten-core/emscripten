@@ -587,9 +587,8 @@ def generate_js(data_target, data_files, metadata):
 
   Module.expectedDataFileDownloads++;
   (function() {
-    // When running as a pthread, FS operations are proxied to the main thread, so we don't need to
-    // fetch the .data bundle on the worker
-    if (Module['ENVIRONMENT_IS_PTHREAD']) return;
+    // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
+    if (Module['ENVIRONMENT_IS_PTHREAD'] || Module['$ww']) return;
     var loadPackage = function(metadata) {\n'''
 
   code = '''

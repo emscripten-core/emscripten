@@ -193,6 +193,16 @@ def requires_wasm64(func):
   return decorated
 
 
+def requires_wasm_eh(func):
+  assert callable(func)
+
+  def decorated(self, *args, **kwargs):
+    self.require_wasm_eh()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 def requires_v8(func):
   assert callable(func)
 
@@ -269,7 +279,6 @@ def also_with_wasm_bigint(f):
       if self.get_setting('WASM_BIGINT') is not None:
         self.skipTest('redundant in bigint test config')
       self.set_setting('WASM_BIGINT')
-      self.require_node()
       self.node_args += shared.node_bigint_flags()
       f(self)
     else:
@@ -457,6 +466,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.require_engine(config.NODE_JS)
 
   def require_engine(self, engine):
+    logger.debug(f'require_engine: {engine}')
     if self.required_engine and self.required_engine != engine:
       self.skipTest(f'Skipping test that requires `{engine}` when `{self.required_engine}` was previously required')
     self.required_engine = engine
@@ -467,13 +477,13 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       version = shared.check_node_version()
       if version >= (16, 0, 0):
         self.js_engines = [config.NODE_JS]
-        self.node_args += ['--experimental-wasm-memory64']
+        self.node_args += shared.node_memory64_flags()
         return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
       self.emcc_args.append('-sENVIRONMENT=shell')
       self.js_engines = [config.V8_ENGINE]
-      self.v8_args += ['--experimental-wasm-memory64']
+      self.v8_args.append('--experimental-wasm-memory64')
       return
 
     if 'EMTEST_SKIP_WASM64' in os.environ:
@@ -481,12 +491,44 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     else:
       self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
+  def require_simd(self):
+    if config.NODE_JS and config.NODE_JS in self.js_engines:
+      version = shared.check_node_version()
+      if version >= (16, 0, 0):
+        self.js_engines = [config.NODE_JS]
+        return
+
+    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+      self.emcc_args.append('-sENVIRONMENT=shell')
+      self.js_engines = [config.V8_ENGINE]
+      return
+
+    if 'EMTEST_SKIP_SIMD' in os.environ:
+      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_SIMD is set)')
+    else:
+      self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
+
+  def require_wasm_eh(self):
+    if config.NODE_JS and config.NODE_JS in self.js_engines:
+      version = shared.check_node_version()
+      if version >= (17, 0, 0):
+        self.js_engines = [config.NODE_JS]
+        return
+
+    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+      self.emcc_args.append('-sENVIRONMENT=shell')
+      self.js_engines = [config.V8_ENGINE]
+      self.v8_args.append('--experimental-wasm-eh')
+      return
+
+    if 'EMTEST_SKIP_EH' in os.environ:
+      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_EH is set)')
+    else:
+      self.fail('either d8 or node >= 16 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
+
   def setup_node_pthreads(self):
     self.require_node()
-    self.set_setting('USE_PTHREADS')
-    self.emcc_args += ['-Wno-pthreads-mem-growth']
-    if self.get_setting('MEMORY64'):
-      self.skipTest('node pthreads not yet supported with MEMORY64')
+    self.emcc_args += ['-Wno-pthreads-mem-growth', '-pthread']
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
     self.js_engines = [config.NODE_JS]
@@ -553,7 +595,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           self.temp_files_before_run.append(os.path.normpath(os.path.join(root, filename)))
 
     if EMTEST_SAVE_DIR:
-      self.working_dir = os.path.join(self.temp_dir, 'emscripten_test')
+      self.working_dir = path_from_root('out/test')
       if os.path.exists(self.working_dir):
         if EMTEST_SAVE_DIR == 2:
           print('Not clearing existing test directory')
@@ -1098,7 +1140,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   #          C
   #
   # this test is used by both test_core and test_browser.
-  # when run under broswer it excercises how dynamic linker handles concurrency
+  # when run under browser it excercises how dynamic linker handles concurrency
   # - because B and C are loaded in parallel.
   def _test_dylink_dso_needed(self, do_run):
     create_file('liba.cpp', r'''
@@ -1333,6 +1375,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       '-Wno-unused-but-set-variable',
       '-Wno-pointer-bool-conversion',
       '-Wno-shift-negative-value',
+      '-Wno-gnu-offsetof-extensions',
+      # And becuase gnu-offsetof-extensions is a new warning:
+      '-Wno-unknown-warning-option',
     ]
     return self.get_library(os.path.join('third_party', 'freetype'),
                             os.path.join('objs', '.libs', 'libfreetype.a'),
@@ -1780,7 +1825,6 @@ class BrowserCore(RunnerCore):
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
     # the header as there may be multiple files being compiled here).
-    args += ['-sIN_TEST_HARNESS']
     if reporting != Reporting.NONE:
       # For basic reporting we inject JS helper funtions to report result back to server.
       args += ['-DEMTEST_PORT_NUMBER=%d' % self.port,

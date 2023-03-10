@@ -51,16 +51,13 @@
 from tools.settings import settings
 
 _deps_info = {
-  'alarm': ['raise'],
-  'Mix_LoadWAV_RW': ['fileno'],
-  'SDL_CreateRGBSurface': ['malloc', 'free'],
+  'alarm': ['_emscripten_timeout'],
+  'sched_yield': ['_emscripten_timeout'],
+  'setitimer': ['_emscripten_timeout'],
   'SDL_GL_GetProcAddress': ['malloc'],
-  'SDL_Init': ['malloc', 'free', 'memcpy'],
   'SDL_LockSurface': ['malloc', 'free'],
   'SDL_OpenAudio': ['malloc', 'free'],
   'SDL_PushEvent': ['malloc', 'free'],
-  'SDL_free': ['free'],
-  'SDL_malloc': ['malloc', 'free'],
   '_embind_register_class': ['free'],
   '_embind_register_enum_value': ['free'],
   '_embind_register_function': ['free'],
@@ -85,8 +82,6 @@ _deps_info = {
   'emscripten_async_wget_data': ['malloc', 'free'],
   'emscripten_create_worker': ['malloc', 'free'],
   'emscripten_get_compiler_setting': ['malloc'],
-  'emscripten_get_preloaded_image_data': ['malloc'],
-  'emscripten_get_preloaded_image_data_from_FILE': ['fileno'],
   'emscripten_get_window_title': ['malloc'],
   'emscripten_idb_async_load': ['malloc', 'free'],
   'emscripten_idb_load': ['malloc', 'free'],
@@ -99,10 +94,7 @@ _deps_info = {
   'emscripten_longjmp': ['malloc', 'free', 'saveSetjmp', 'setThrew'],
   'emscripten_pc_get_file': ['malloc', 'free'],
   'emscripten_pc_get_function': ['malloc', 'free'],
-  'emscripten_run_preload_plugins_data': ['malloc'],
   'emscripten_run_script_string': ['malloc', 'free'],
-  'emscripten_set_batterychargingchange_callback_on_thread': ['malloc'],
-  'emscripten_set_batterylevelchange_callback_on_thread': ['malloc'],
   'emscripten_set_blur_callback_on_thread': ['malloc'],
   'emscripten_set_click_callback_on_thread': ['malloc'],
   'emscripten_set_dblclick_callback_on_thread': ['malloc'],
@@ -134,6 +126,7 @@ _deps_info = {
   'emscripten_set_touchstart_callback_on_thread': ['malloc'],
   'emscripten_set_visibilitychange_callback_on_thread': ['malloc'],
   'emscripten_set_wheel_callback_on_thread': ['malloc'],
+  'emscripten_thread_sleep': ['_emscripten_timeout'],
   'emscripten_webgl_get_parameter_utf8': ['malloc'],
   'emscripten_webgl_get_program_info_log_utf8': ['malloc'],
   'emscripten_webgl_get_shader_info_log_utf8': ['malloc'],
@@ -175,17 +168,19 @@ _deps_info = {
   # directly include invokes in deps_info.py, so we list it as a setjmp's
   # dependency.
   'setjmp': ['malloc', 'free', 'saveSetjmp', 'setThrew'],
-  'setprotoent': ['malloc'],
   'syslog': ['malloc', 'ntohs', 'htons'],
   'vsyslog': ['malloc', 'ntohs', 'htons'],
   'timegm': ['malloc'],
   'tzset': ['malloc'],
-  'uuid_compare': ['memcmp'],
-  'uuid_copy': ['memcpy'],
-  'wgpuBufferGetMappedRange': ['malloc', 'free'],
-  'wgpuBufferGetConstMappedRange': ['malloc', 'free'],
   'emscripten_glGetString': ['malloc'],
 }
+
+
+def append_deps_info(js_symbol_deps):
+  for key, value in js_symbol_deps.items():
+    if value:
+      _deps_info.setdefault(key, [])
+      _deps_info[key] += value
 
 
 def get_deps_info():
@@ -202,11 +197,11 @@ def get_deps_info():
     _deps_info['__cxa_find_matching_catch_7'] = ['__cxa_can_catch', 'setTempRet0']
     _deps_info['__cxa_find_matching_catch_8'] = ['__cxa_can_catch', 'setTempRet0']
     _deps_info['__cxa_find_matching_catch_9'] = ['__cxa_can_catch', 'setTempRet0']
-  if settings.USE_PTHREADS and settings.OFFSCREENCANVAS_SUPPORT:
+  if settings.PTHREADS and settings.OFFSCREENCANVAS_SUPPORT:
     _deps_info['pthread_create'] = ['malloc']
   if settings.FILESYSTEM and settings.SYSCALLS_REQUIRE_FILESYSTEM:
     _deps_info['mmap'] = ['emscripten_builtin_memalign']
-  if settings.USE_PTHREADS:
+  if settings.PTHREADS:
     _deps_info['glutCreateWindow'] = ['malloc']
     _deps_info['emscripten_webgl_create_context'] = ['malloc']
     _deps_info['emscripten_webgl_destroy_context'] = ['free']

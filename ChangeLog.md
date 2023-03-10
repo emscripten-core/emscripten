@@ -18,8 +18,70 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.30 (in development)
+3.1.34 (in development)
 -----------------------
+- The prefered way to enable pthread is now to just the the standard `-pthread`
+  flag.  The `-sUSE_PTHREADS` setting still works but is marked as legacy and
+  will generate a warning in `-sSTRICT` mode.
+
+3.1.33 - 03/08/23
+-----------------
+- Initial support for C++20 modules.  We have added a very simple test in form
+  of `other.test_cpp_module`. (#18915)
+- Removed `sys/sysctl.h` compatibility header.  We don't implement the function
+  it defines. (#18863)
+- Update SDL2_ttf port to 2.20.2 (#18804)
+- Update glfw header to 3.3.8 (#18826)
+- The `LLD_REPORT_UNDEFINED` setting has been removed.  It's now essentially
+  always enabled. (#18342)
+- Added `-sEXPORT_KEEPALIVE` to export symbols. When using
+  `MINIMAL_RUNTIME`, the option will be **disabled** by default.
+  This option simply exports the symbols on the module object, i.e.,
+  `Module['X'] = X;`
+- The WasmFS OPFS backend is now faster in browsers that implement
+  [`Atomics.waitAsync`](https://caniuse.com/mdn-javascript_builtins_atomics_waitasync).
+  (#18861)
+
+3.1.32 - 02/17/23
+-----------------
+- Added new linker option `-sEXCEPTION_STACK_TRACES` which will display a stack
+  trace when an uncaught exception occurs. This defaults to true when
+  `ASSERTIONS` is enabled. This option is mainly for the users who want only
+  exceptions' stack traces without turning `ASSERTIONS` on. (#18642 and #18535)
+- `SUPPORT_LONGJMP`'s default value now depends on the exception mode. If Wasm
+  EH (`-fwasm-exception`) is used, it defaults to `wasm`, and if Emscripten EH
+  (`-sDISABLE_EXCEPTION_CATCHING=0`) is used or no exception support is used, it
+  defaults to `emscripten`. Previously it always defaulted to `emscripten`, so
+  when a user specified `-fwasm-exceptions`, it resulted in Wasm EH + Emscripten
+  SjLj, the combination we do not intend to support for the long term.
+- Added support for Wasm-based AudioWorklets for realtime audio processing
+  (#16449)
+- Synchronous proxying functions in emscripten/proxying.h now return errors
+  instead of hanging forever when the worker thread dies before the proxied work
+  is finished.
+- The `emscripten_proxy_async_with_callback` API was replaced with a simpler
+  `emscripten_proxy_callback` API that takes a second callback to be called if
+  the worker thread dies before completing the proxied work.
+
+3.1.31 - 01/26/23
+-----------------
+- Symbols that were previously exported from native code, but only for internal
+  reasons, are no longer exported on the `Module` object by default.  For
+  example, previously if you were using `Module._malloc` but not explicitly
+  including `_malloc` in `EXPORTED_FUNCTIONS`, it might have been exported
+  anyway due to internal use of `malloc` within the JS library code. (#18564)
+- The `STACK_SIZE`, `STACK_ALIGN`, `POINTER_SIZE`, and `ASSERTIONS` JavaScript
+  globals were removed by default.  In debug builds a clear error is shown if
+  you try to use these. (#18503)
+- --pre-js and --post-js files are now fed through the JS preprocessor, just
+  like JS library files and the core runtime JS files.  This means they can
+  now contain #if/#else/#endif blocks and {{{ }}} macro blocks. (#18525)
+- `-sEXPORT_ALL` can now be used to export symbols on the `Module` object
+  when used with `-sMINIMAL_RUNTIME` and `-sMODULARIZE` together. (#17911)
+- The llvm version that emscripten uses was updated to 17.0.0 trunk.
+
+3.1.30 - 01/11/23
+-----------------
 - The default pthread stack size will now be set to match `-sSTACK_SIZE` by
   default.  Set `DEFAULT_PTHREAD_STACK_SIZE` explicitly to override this.
   (#18479)
@@ -31,6 +93,11 @@ See docs/process.md for more on how version tagging works.
   (e.g. `SDL_events.h`) you will now need to add `-sUSE_SDL` explicitly at
   compile time.  If you include the SDL headers with the directory name included
   (e.g. `SDL/SDL_events.h`) you will not be affected by this change. (#18443)
+- Significant improvements were made (in the version of LLVM associated with
+  this emsdk release) to the quality of DWARF debug info when building in
+  optimized mode. See https://reviews.llvm.org/D140373. Using the -O1 flag is
+  recommended if a program is too large or slow to debug with -O0 (although
+  -O0 is still better for debugging when feasible).
 
 3.1.29 - 01/03/23
 -----------------
@@ -272,7 +339,7 @@ See docs/process.md for more on how version tagging works.
   However, they all still available by default due to a new setting called
   `LEGACY_RUNTIME` which is enabled by default.  When `LEGACY_RUNTIME` is
   disabled (which it may be in the future) these symbols would only be included
-  if there were explictly exported via `EXPORTED_RUNTIME_METHODS` or added to
+  if there were explicitly exported via `EXPORTED_RUNTIME_METHODS` or added to
   `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`.  `LEGACY_RUNTIME` is disabled by default
   in `STRICT` mode so this change only effects users of `STRICT` mode. (#17370,
   #17403)
@@ -368,7 +435,7 @@ See docs/process.md for more on how version tagging works.
   binaryen optimizations are limited due to DWARF information being requested.
   Several binaryen passed are not compatible with the preservation of DWARF
   information. (#16428)
-- Use normalized mouse wheel delta for GLFW 3 in `library_glfw.js`. This changes 
+- Use normalized mouse wheel delta for GLFW 3 in `library_glfw.js`. This changes
   the vertical scroll amount for GLFW 3. (#16480)
 - The emsdk binaries for macOS now require macOS 10.14 Mojave (or above).
   Prior versions of emsdk could run on 10.11 (or above), but supporting those
@@ -406,7 +473,7 @@ See docs/process.md for more on how version tagging works.
 3.1.5 - 02/17/2022
 ------------------
 - Emscripten no longer uses the `allocate()` runtime function.  For backwards
-  compatabiliy with external JS code we still include this function by default
+  compatibility with external JS code we still include this function by default
   but it will no longer be included in `-sSTRICT` mode.  Usages of this function
   are generally best replaced with `_malloc`, `stackAlloc` or `allocateUTF8`.
 
@@ -476,7 +543,7 @@ See docs/process.md for more on how version tagging works.
   For most users targeting the default set of browsers this is a code size win.
   For projects targeting older browsers (e.g. `-sMIN_CHROME_VERSION=10`),
   emscripten will now run closure compiler in `WHITESPACE_ONLY` mode in order to
-  traspile any ES6 down to ES5.  When this automatic transpilation is performed
+  transpile any ES6 down to ES5.  When this automatic transpilation is performed
   we generate a warning which can be disabled (using `-Wno-transpile`) or by
   explicitly opting in-to or out-of closure using `--closure=1` or
   `--closure=0`. (#15763).
@@ -553,7 +620,7 @@ See docs/process.md for more on how version tagging works.
   EM_WORKAROUND_PYTHON_BUG_34780 and EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG that
   can be enabled to work around a Windows Python issue
   https://bugs.python.org/issue34780 , and a Windows 7 exit code issue (#15146)
-- Support a new CMake propert `EMSCRIPTEN_SYSTEM_PROCESSOR` which can be used
+- Support a new CMake property `EMSCRIPTEN_SYSTEM_PROCESSOR` which can be used
   to override the default value of `CMAKE_SYSTEM_PROCESSOR` set by the
   toolchain file.
 - Remove support for the `EMIT_EMSCRIPTEN_METADATA` setting.  This setting has
@@ -714,7 +781,7 @@ See docs/process.md for more on how version tagging works.
   list of symbols can now use a simple one-symbol-per-line format.  This new
   format is much simpler and doesn't require commas between symbols, opening
   or closing braces, or any kind of escaping for special characters.
-- The WebAssembly linker (`wasm-ld`) now performes string tail merging on any
+- The WebAssembly linker (`wasm-ld`) now performs string tail merging on any
   static string data in your program.   This has long been part of the native
   ELF linker and should not be observable in well-behaved programs.  This
   behavior can be disabled by passing `-Wl,-O0`.
@@ -779,9 +846,9 @@ See docs/process.md for more on how version tagging works.
   list explicit `EXPORTED_FUNCTIONS`.  Also, users of `MAIN_MODULE=1` with
   dynamic linking (not dlopen) who list all side modules on the command line,
   should be able to switch to `MAIN_MODULE=2` and get a reduction in code size.
-- When building with `MAIN_MODULE` it is now possbile to warn or error on
+- When building with `MAIN_MODULE` it is now possible to warn or error on
   undefined symbols assuming all the side modules are passed at link time.  This
-  means that for many projects it should now be possbile to enable
+  means that for many projects it should now be possible to enable
   `ERROR_ON_UNDEFINED_SYMBOLS` along with `MAIN_MODULE`.
 
 2.0.17: 04/10/2021

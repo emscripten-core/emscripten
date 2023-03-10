@@ -8,7 +8,8 @@
             "pthread": [
               "profilerBlock",
               "stack",
-              "stack_size"
+              "stack_size",
+              "waiting_async"
             ],
             "pthread_attr_t#": [
               "_a_transferredcanvases"
@@ -21,6 +22,12 @@
         },
         "defines": [
           "SIGCANCEL"
+        ]
+    },
+    {
+        "file": "threading_internal.h",
+        "defines": [
+            "EM_QUEUED_JS_CALL_MAX_ARGS"
         ]
     },
     {

@@ -11,7 +11,7 @@ mergeInto(LibraryManager.library, {
     isWindows: false,
     staticInit: () => {
       NODEFS.isWindows = !!process.platform.match(/^win/);
-      var flags = process["binding"]("constants");
+      var flags = process.binding("constants");
       // Node.js 4 compatibility: it has no namespaces for constants
       if (flags["fs"]) {
         flags = flags["fs"];

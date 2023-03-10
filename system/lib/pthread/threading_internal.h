@@ -7,8 +7,9 @@
 
 #pragma once
 
-typedef union em_variant_val
-{
+#include <pthread.h>
+
+typedef union em_variant_val {
   int i;
   int64_t i64;
   float f;
@@ -17,11 +18,15 @@ typedef union em_variant_val
   char *cp;
 } em_variant_val;
 
+// Proxied JS function can support a few more arguments than proxied C/C++
+// functions, because the dispatch is variadic and signature independent.
+#define EM_QUEUED_JS_CALL_MAX_ARGS 20
+
 // Proxied C/C++ functions support at most this many arguments. Dispatch is
 // static/strongly typed by signature.
 #define EM_QUEUED_CALL_MAX_ARGS 11
-typedef struct em_queued_call
-{
+
+typedef struct em_queued_call {
   int functionEnum;
   void *functionPtr;
   _Atomic uint32_t operationDone;
@@ -96,6 +101,16 @@ typedef struct thread_profiler_block {
   char name[EM_THREAD_NAME_MAX];
 } thread_profiler_block;
 
+// Called whenever a thread performs a blocking action (or calls sched_yield).
+// This function takes care of running the event queue and other housekeeping
+// tasks.
+//
+// If that caller already know the current time it can pass it vai the now
+// argument.  This can save _emscripten_check_timers from needing to call out to
+// JS to get the current time.  Passing 0 means that caller doesn't know the
+// the current time.
+void _emscripten_yield(double now);
+
 void __emscripten_init_main_thread_js(void* tb);
 void _emscripten_thread_profiler_enable();
 void __emscripten_thread_cleanup(pthread_t thread);
@@ -108,6 +123,11 @@ hidden void _emscripten_tls_free(void);
 // behaviour, but we have a couple of places where we add these checks so that
 // we can pass more of the posixtest suite that vanilla musl.
 int _emscripten_thread_is_valid(pthread_t thread);
+
+#ifdef __PIC__
+void _emscripten_thread_exit_joinable(pthread_t thread);
+void _emscripten_process_dlopen_queue(void);
+#endif
 
 #ifdef NDEBUG
 #define emscripten_set_current_thread_status(newStatus)

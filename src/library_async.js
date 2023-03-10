@@ -34,7 +34,7 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
       dbg('asyncify instrumenting imports');
 #endif
-      var ASYNCIFY_IMPORTS = {{{ JSON.stringify(ASYNCIFY_IMPORTS) }}}.map((x) => x.split('.')[1]);
+      var ASYNCIFY_IMPORTS = {{{ JSON.stringify(ASYNCIFY_IMPORTS.map((x) => x.split('.')[1])) }}};
       for (var x in imports) {
         (function(x) {
           var original = imports[x];
@@ -116,22 +116,7 @@ mergeInto(LibraryManager.library, {
             // Wrap all exports with a promising WebAssembly function.
             var isAsyncifyExport = ASYNCIFY_EXPORTS.indexOf(x) >= 0;
             if (isAsyncifyExport) {
-#if ASYNCIFY_DEBUG
-              dbg('asyncify: returnPromiseOnSuspend for', x, original);
-#endif
-              var type = WebAssembly.Function.type(original);
-              var parameters = type.parameters;
-              var results = type.results;
-#if ASSERTIONS
-              assert(results.length !== 0, 'There must be a return result')
-              assert(parameters[0] === 'externref', 'First param must be externref.');
-#endif
-              // Remove the extern ref.
-              parameters.shift();
-              original = new WebAssembly.Function(
-                { parameters , results: ['externref'] },
-                original,
-                { promising : 'first' });
+              original = Asyncify.makeAsyncFunction(original);
             }
 #endif
             ret[x] = function() {
@@ -283,7 +268,7 @@ mergeInto(LibraryManager.library, {
       // Exported functions in side modules are not listed in `Module["asm"]`,
       // So we should use `resolveGlobalSymbol` helper function, which is defined in `library_dylink.js`.
       if (!func) {
-        func = resolveGlobalSymbol(name, false);
+        func = resolveGlobalSymbol(name, false).sym;
       }
 #endif
       return func;
@@ -318,12 +303,12 @@ mergeInto(LibraryManager.library, {
         // need to do anything.
         var reachedCallback = false;
         var reachedAfterCallback = false;
-        startAsync((handleSleepReturnValue) => {
+        startAsync((handleSleepReturnValue = 0) => {
 #if ASSERTIONS
           assert(!handleSleepReturnValue || typeof handleSleepReturnValue == 'number' || typeof handleSleepReturnValue == 'boolean'); // old emterpretify API supported other stuff
 #endif
           if (ABORT) return;
-          Asyncify.handleSleepReturnValue = handleSleepReturnValue || 0;
+          Asyncify.handleSleepReturnValue = handleSleepReturnValue;
           reachedCallback = true;
           if (!reachedAfterCallback) {
             // We are happening synchronously, so no need for async.
@@ -444,6 +429,24 @@ mergeInto(LibraryManager.library, {
         startAsync().then(wakeUp);
       });
     },
+    makeAsyncFunction: function(original) {
+#if ASYNCIFY_DEBUG
+      dbg('asyncify: returnPromiseOnSuspend for', original);
+#endif
+      var type = WebAssembly.Function.type(original);
+      var parameters = type.parameters;
+      var results = type.results;
+#if ASSERTIONS
+      assert(results.length !== 0, 'There must be a return result')
+      assert(parameters[0] === 'externref', 'First param must be externref.');
+#endif
+      // Remove the extern ref.
+      parameters.shift();
+      return new WebAssembly.Function(
+        { parameters , results: ['externref'] },
+        original,
+        { promising : 'first' });
+    },
 #endif
   },
 
@@ -530,6 +533,18 @@ mergeInto(LibraryManager.library, {
       dependenciesFulfilled = wakeUp;
       // Load the new wasm.
       asm = createWasm();
+    });
+  },
+
+  _load_secondary_module__sig: 'v',
+  _load_secondary_module: async function() {
+    // Mark the module as loading for the wasm module (so it doesn't try to load it again).
+    Module['asm']['load_secondary_module_status'].value = 1;
+    var imports = {'primary': Module['asm']};
+    // Replace '.wasm' suffix with '.deferred.wasm'.
+    var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm';
+    await new Promise((resolve) => {
+      instantiateAsync(null, deferred, imports, resolve);
     });
   },
 

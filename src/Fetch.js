@@ -21,6 +21,7 @@ var Fetch = {
   },
 
 #if FETCH_SUPPORT_INDEXEDDB
+  // Be cautious that `onerror` may be run synchronously
   openDatabase: function(dbname, dbversion, onsuccess, onerror) {
     try {
 #if FETCH_DEBUG
@@ -45,35 +46,26 @@ var Fetch = {
 #endif
 
   staticInit: function() {
-    var isMainThread = true;
-
 #if FETCH_SUPPORT_INDEXEDDB
     var onsuccess = (db) => {
 #if FETCH_DEBUG
       dbg('fetch: IndexedDB successfully opened.');
 #endif
       Fetch.dbInstance = db;
-
-      if (isMainThread) {
-        removeRunDependency('library_fetch_init');
-      }
+      removeRunDependency('library_fetch_init');
     };
+
     var onerror = () => {
 #if FETCH_DEBUG
       dbg('fetch: IndexedDB open failed.');
 #endif
       Fetch.dbInstance = false;
-
-      if (isMainThread) {
-        removeRunDependency('library_fetch_init');
-      }
+      removeRunDependency('library_fetch_init');
     };
+
+    addRunDependency('library_fetch_init');
     Fetch.openDatabase('emscripten_filesystem', 1, onsuccess, onerror);
 #endif // ~FETCH_SUPPORT_INDEXEDDB
-
-#if FETCH_SUPPORT_INDEXEDDB
-    if (typeof ENVIRONMENT_IS_FETCH_WORKER == 'undefined' || !ENVIRONMENT_IS_FETCH_WORKER) addRunDependency('library_fetch_init');
-#endif
   }
 }
 

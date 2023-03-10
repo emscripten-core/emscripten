@@ -21,6 +21,7 @@ class Feature(IntEnum):
   MUTABLE_GLOBALS = auto()
   JS_BIGINT_INTEGRATION = auto()
   THREADS = auto()
+  GLOBALTHIS = auto()
 
 
 default_features = {Feature.SIGN_EXT, Feature.MUTABLE_GLOBALS}
@@ -55,6 +56,13 @@ min_browser_versions = {
     'chrome': 74,
     'firefox': 79,
     'safari': 140100,
+  },
+  Feature.GLOBALTHIS: {
+    'chrome': 71,
+    'edge': 79,
+    'firefox': 65,
+    'safari': 120100,
+    # 'node': 120000
   },
 }
 
@@ -101,6 +109,6 @@ def enable_feature(feature, reason):
 def apply_min_browser_versions():
   if settings.WASM_BIGINT:
     enable_feature(Feature.JS_BIGINT_INTEGRATION, 'WASM_BIGINT')
-  if settings.USE_PTHREADS:
+  if settings.PTHREADS:
     enable_feature(Feature.THREADS, 'pthreads')
     enable_feature(Feature.BULK_MEMORY, 'pthreads')

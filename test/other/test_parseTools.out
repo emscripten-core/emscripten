@@ -1,7 +1,10 @@
 MAX_SAFE_INTEGER: 9007199254740992
 MIN_SAFE_INTEGER: -9007199254740992
+printI64: 0xffff5544edcba988
 
 test_makeGetValue:
+i53: -aabb12345678
+u53: ffff5544edcba800
 i32: -12345678
 u32: edcba988
 u32 legacy: edcba988
@@ -13,6 +16,14 @@ u8: 88
 u8 legacy: 88
 ptr: edcba988
 ptr: edcba988
+
+test_makeSetValue:
+printI64: 0x12345678ab
+printI64: 0xffffffff66780000
+printI64: 0x12345678ab
+printI64: 0xffffffffffffffff
+printI64: 0xff
+printI64: 0x345678ab
 
 test_receiveI64ParamAsI53:
 arg1: 42
@@ -50,7 +61,7 @@ arg1: -9007199254740992
 arg2: 0
 rtn = 0
 
-test_makeSetValue_i64
+test_makeSetValue_unaligned
 i64 = 0x12345678ab
 i64 = 0x12345678ab
 

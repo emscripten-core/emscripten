@@ -7,6 +7,7 @@
 
 #include <emscripten/heap.h>
 #include <emscripten/threading.h>
+#include <emscripten/console.h>
 #include <stdlib.h>
 #include <malloc.h>
 
@@ -15,7 +16,9 @@
 // Uncomment to trace TLS allocations.
 // #define DEBUG_TLS
 #ifdef DEBUG_TLS
-#include <stdio.h>
+#define dbg(fmt, ...) _emscripten_dbgf(fmt, ##__VA_ARGS__)
+#else
+#define dbg(fmt, ...)
 #endif
 
 // linker-generated symbol that loads static TLS data at the given location.
@@ -49,9 +52,7 @@ static int needs_dynamic_alloc(void) {
 void _emscripten_tls_free() {
   void* tls_block = __builtin_wasm_tls_base();
   if (tls_block && needs_dynamic_alloc()) {
-#ifdef DEBUG_TLS
-    _emscripten_errf("tls free: thread=%p dso=%p <- %p", pthread_self(), &__dso_handle, tls_block);
-#endif
+    dbg("tls free: dso=%p <- %p", &__dso_handle, tls_block);
     emscripten_builtin_free(tls_block);
   }
 }
@@ -69,9 +70,7 @@ void* _emscripten_tls_init(void) {
     set_needs_dynamic_alloc();
     tls_block = emscripten_builtin_memalign(__builtin_wasm_tls_align(), tls_size);
   }
-#ifdef DEBUG_TLS
-  _emscripten_errf("tls init: size=%zu thread=%p dso=%p -> %p:%p", tls_size, pthread_self(), &__dso_handle, tls_block, ((char*)tls_block)+tls_size);
-#endif
+  dbg("tls init: size=%zu dso=%p -> %p:%p", tls_size, &__dso_handle, tls_block, ((char*)tls_block)+tls_size);
   __wasm_init_tls(tls_block);
   return tls_block;
 }

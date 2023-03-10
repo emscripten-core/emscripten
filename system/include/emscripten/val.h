@@ -109,7 +109,7 @@ bool _emval_is_number(EM_VAL object);
 bool _emval_is_string(EM_VAL object);
 bool _emval_in(EM_VAL item, EM_VAL object);
 bool _emval_delete(EM_VAL object, EM_VAL property);
-bool _emval_throw(EM_VAL object);
+[[noreturn]] bool _emval_throw(EM_VAL object);
 EM_VAL _emval_await(EM_VAL promise);
 
 } // extern "C"

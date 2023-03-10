@@ -9,11 +9,17 @@
 {{{ throw "this file should not be be included when IMPORTED_MEMORY is set"; }}}
 #endif
 
-#if USE_PTHREADS
+{{{ makeModuleReceiveWithVar('INITIAL_MEMORY', undefined, INITIAL_MEMORY) }}}
+
+assert(INITIAL_MEMORY >= {{{STACK_SIZE}}}, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + {{{STACK_SIZE}}} + ')');
+
+// check for full engine support (use string 'subarray' to avoid closure compiler confusion)
+
+#if PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
   wasmMemory = Module['wasmMemory'];
 } else {
-#endif // USE_PTHREADS
+#endif // PTHREADS
 
 #if expectToReceiveOnModule('wasmMemory')
   if (Module['wasmMemory']) {
@@ -49,7 +55,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
   }
 
-#if USE_PTHREADS
+#if PTHREADS
 }
 #endif
 

@@ -250,6 +250,7 @@ def load_test_suites(args, modules):
   error_on_legacy_suite_names(args)
   unmatched_test_names = set(args)
   suites = []
+  total_tests = 0
   for m in modules:
     names_in_module = []
     for name in list(unmatched_test_names):
@@ -262,10 +263,13 @@ def load_test_suites(args, modules):
     if len(names_in_module):
       loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
       tests = flattened_tests(loaded_tests)
+      total_tests += len(tests)
       suite = suite_for_module(m, tests)
       for test in tests:
         suite.addTest(test)
       suites.append((m.__name__, suite))
+  if total_tests == 1:
+    common.EMTEST_SAVE_DIR = True
   return suites, unmatched_test_names
 
 
@@ -328,7 +332,7 @@ def parse_args(args):
   parser = argparse.ArgumentParser(prog='runner.py', description=__doc__)
   parser.add_argument('--save-dir', action='store_true', default=None,
                       help='Save the temporary directory used during for each '
-                           'test.  Implies --cores=1.')
+                           'test.  Implies --cores=1.  Defaults to true when running a single test')
   parser.add_argument('--no-clean', action='store_true',
                       help='Do not clean the temporary directory before each test run')
   parser.add_argument('--verbose', '-v', action='store_true', default=None)
@@ -396,7 +400,6 @@ def main(args):
 
   set_env('EMTEST_BROWSER', options.browser)
   set_env('EMTEST_DETECT_TEMPFILE_LEAKS', options.detect_leaks)
-  set_env('EMTEST_SAVE_DIR', options.save_dir)
   if options.no_clean:
     set_env('EMTEST_SAVE_DIR', 2)
   else:

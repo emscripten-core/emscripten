@@ -80,8 +80,7 @@ var emscriptenMemoryProfiler = {
   drawContext: null,
 
   // Converts number f to string with at most two decimals, without redundant trailing zeros.
-  truncDec: function truncDec(f) {
-    f = f || 0;
+  truncDec: function truncDec(f = 0) {
     var str = f.toFixed(2);
     if (str.includes('.00', str.length-3)) return str.substr(0, str.length-3);
     else if (str.includes('0', str.length-1)) return str.substr(0, str.length-1);

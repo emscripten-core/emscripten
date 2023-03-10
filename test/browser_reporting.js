@@ -9,7 +9,7 @@ function reportResultToServer(result, sync, port) {
     reportErrorToServer("excessive reported results, sending " + result + ", test will fail");
   }
   reportResultToServer.reported = true;
-  if (typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) {
+  if ((typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) || (typeof ENVIRONMENT_IS_AUDIO_WORKLET !== 'undefined' && ENVIRONMENT_IS_AUDIO_WORKLET)) {
     out('RESULT: ' + result);
   } else {
     var xhr = new XMLHttpRequest();
@@ -63,7 +63,7 @@ function report_error(e) {
 }
 
 if (typeof window === 'object' && window) {
-  window.addEventListener('error', event => report_error(event));
+  window.addEventListener('error', event => report_error(event.error));
   window.addEventListener('unhandledrejection', event => report_error(event.reason));
 }
 
