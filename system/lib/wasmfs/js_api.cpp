@@ -169,8 +169,8 @@ void _wasmfs_readdir_finish(struct wasmfs_readdir_state* state) {
   free(state);
 }
 
-int _wasmfs_getcwd(char* path, size_t size){
-    return __syscall_getcwd((intptr_t)path,size);
+int _wasmfs_getcwd(char* buffer, size_t size){
+  return __syscall_getcwd((intptr_t)buffer, size);
 }
 
 } // extern "C"

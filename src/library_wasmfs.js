@@ -109,7 +109,7 @@ mergeInto(LibraryManager.library, {
       // For file preloading, cwd should be '/' to begin with.
       return withStackSave(() => {
         var buffer = stackAlloc({{{PATH_MAX}}});
-        var result = _wasmfs_getcwd(buffer,buffer.length);
+        var result = _wasmfs_getcwd(buffer, buffer.length);
         return UTF8ToString(buffer);
       });
     },
