@@ -19,6 +19,10 @@ Module.realPrint = out;
 out = err = () => {};
 #endif
 
+#if FORCE_FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
+{{{ makeModuleReceiveWithVar('preloadPlugins', undefined, '[]') }}}
+#endif
+
 #if RELOCATABLE
 {{{ makeModuleReceiveWithVar('dynamicLibraries', undefined, '[]', true) }}}
 #endif

@@ -86,10 +86,6 @@ Object.defineProperties(FSNode.prototype, {
 });
 FS.FSNode = FSNode;
 FS.staticInit();` +
-#if USE_CLOSURE_COMPILER
-           // Declare variable for Closure, FS.createPreloadedFile() below calls Browser.handledByPreloadPlugin()
-           '/**@suppress {duplicate, undefinedVars}*/var Browser;' +
-#endif
            // Get module methods from settings
            '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}';
   },
@@ -1862,6 +1858,24 @@ FS.staticInit();` +
       node.stream_ops = stream_ops;
       return node;
     },
+
+    // Tries to handle an input byteArray using preload plugins. Returns true if
+    // it was handled.
+    handledByPreloadPlugin: function(byteArray, fullname, finish, onerror) {
+      // Ensure plugins are ready.
+      if (typeof browser != 'undefined') Browser.init();
+
+      var handled = false;
+      preloadPlugins.forEach(function(plugin) {
+        if (handled) return;
+        if (plugin['canHandle'](fullname)) {
+          plugin['handle'](byteArray, fullname, finish, onerror);
+          handled = true;
+        }
+      });
+      return handled;
+    },
+
     // Preloads a file asynchronously. You can call this before run, for example in
     // preRun. run will be delayed until this file arrives and is set up.
     // If you call it after run(), you may want to pause the main loop until it
@@ -1888,7 +1902,7 @@ FS.staticInit();` +
           if (onload) onload();
           removeRunDependency(dep);
         }
-        if (Browser.handledByPreloadPlugin(byteArray, fullname, finish, () => {
+        if (FS.handledByPreloadPlugin(byteArray, fullname, finish, () => {
           if (onerror) onerror();
           removeRunDependency(dep);
         })) {

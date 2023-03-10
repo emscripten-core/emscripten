@@ -13228,3 +13228,45 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     # See https://github.com/llvm/llvm-project/commit/c800391fb974cdaaa62bd74435f76408c2e5ceae
     err = self.expect_fail([EMCC, '-pthreads', '-c', test_file('hello_world.c')])
     self.assertContained('emcc: error: unrecognized command-line option `-pthreads`; did you mean `-pthread`?', err)
+
+  def test_preload_module(self):
+    # TODO(sbc): This test is copyied from test_browser.py.  Perhaps find a better way to
+    # share code between them.
+    create_file('library.c', r'''
+      #include <stdio.h>
+      int library_func() {
+        return 42;
+      }
+    ''')
+    self.run_process([EMCC, 'library.c', '-sSIDE_MODULE', '-o', 'library.so'])
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <dlfcn.h>
+      #include <stdio.h>
+      #include <emscripten.h>
+      int main() {
+#ifdef PRELOAD
+        int found = EM_ASM_INT(
+          return preloadedWasm['/library.so'] !== undefined;
+        );
+        assert(found);
+#endif
+        // Remove the shared library from the host filesystem.
+        // When not preloaded, which should cause the dlopen to fail.
+        EM_ASM(require('fs').unlinkSync('library.so'));
+        void *lib_handle = dlopen("/library.so", RTLD_NOW);
+        assert(lib_handle);
+        typedef int (*voidfunc)();
+        voidfunc x = (voidfunc)dlsym(lib_handle, "library_func");
+        assert(x);
+        assert(x() == 42);
+        printf("done\n");
+        return 0;
+      }
+    ''')
+    self.do_runf('main.c', 'done\n', emcc_args=['-sMAIN_MODULE=2', '-DPRELOAD', '--preload-file', '.@/', '--use-preload-plugins'])
+
+    # Run the test again but without preloading.  In this case the removal of the shared
+    # library file should cause the dlopen to fail.
+    self.run_process([EMCC, 'library.c', '-sSIDE_MODULE', '-o', 'library.so'])
+    self.do_runf('main.c', 'Error in loading dynamic library', emcc_args=['-sMAIN_MODULE=2'], assert_returncode=NON_ZERO)
