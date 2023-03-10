@@ -5606,6 +5606,7 @@ class emrun(RunnerCore):
 
     for args in [
         args_base,
+        args_base + [ '--port', '0'],
         args_base + ['--private_browsing', '--port', '6941'],
         args_base + ['--dump_out_directory', 'other dir/multiple', '--port', '6942']
     ]:

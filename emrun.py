@@ -1659,7 +1659,7 @@ def run():
     if len(options.cmdlineparams):
       url += '?' + '&'.join(options.cmdlineparams)
     hostname = socket.gethostbyname(socket.gethostname()) if options.android else options.hostname
-    # to support binding to port zero we must allow the server to open to socket then retrieve the final port number
+    # create url for browser after opening the server so we have the final port number in case we are binding to port 0 
     url = 'http://' + hostname + ':' + str(options.port) + '/' + url
 
   if options.android:
