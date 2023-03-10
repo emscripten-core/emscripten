@@ -629,7 +629,7 @@ def generate_js(data_target, data_files, metadata):
           Module['FS_createPreloadedFile'](this.name, null, byteArray, true, true, function() {
             Module['removeRunDependency']('fp ' + that.name);
           }, function() {
-            err('Preloading file ' + that.name + ' failed');
+            abort('Preloading file ' + that.name + ' failed');
           }, false, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change\n'''
     create_data = '''// canOwn this data in the filesystem, it is a slide into the heap that will never change
           Module['FS_createDataFile'](this.name, null, byteArray, true, true, true);

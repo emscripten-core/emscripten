@@ -13436,4 +13436,9 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
         return 0;
       }
     ''')
-    self.do_runf('main.c', 'done\n', emcc_args=['-sMAIN_MODULE=2', '--preload-file', 'tmp.so@library.so', '--use-preload-plugins'] + args)
+    self.emcc_args += args + ['-sMAIN_MODULE=2', '--preload-file', 'tmp.so@library.so', '--use-preload-plugins']
+    self.do_runf('main.c', 'done\n')
+
+    # Now test the failure case, for example if the file doesn't contain a wasm module
+    create_file('tmp.so', 'not a wasm file')
+    self.do_runf('main.c', 'Aborted(Preloading file /library.so failed)', assert_returncode=NON_ZERO)
