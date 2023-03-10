@@ -13203,4 +13203,4 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     # Clang supports the plural form too but I think just due to historical accident:
     # See https://github.com/llvm/llvm-project/commit/c800391fb974cdaaa62bd74435f76408c2e5ceae
     err = self.expect_fail([EMCC, '-pthreads', '-c', test_file('hello_world.c')])
-    self.assertContained('emcc: error: unrecognized command-line option ‘-pthreads’; did you mean ‘-pthread’?', err)
+    self.assertContained('emcc: error: unrecognized command-line option `-pthreads`; did you mean `-pthread`?', err)
