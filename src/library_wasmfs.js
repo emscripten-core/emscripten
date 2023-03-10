@@ -7,10 +7,6 @@
 mergeInto(LibraryManager.library, {
   $wasmFSPreloadedFiles: [],
   $wasmFSPreloadedDirs: [],
-#if USE_CLOSURE_COMPILER
-  // Declare variable for Closure, FS.createPreloadedFile() below calls Browser.handledByPreloadPlugin()
-  $FS__postset: '/**@suppress {duplicate, undefinedVars}*/var Browser;',
-#endif
   $FS__deps: [
     '$wasmFSPreloadedFiles',
     '$wasmFSPreloadedDirs',
@@ -23,6 +19,21 @@ mergeInto(LibraryManager.library, {
   ],
   $FS : {
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.
+    handledByPreloadPlugin: function(byteArray, fullname, finish, onerror) {
+      // Ensure plugins are ready.
+      if (typeof browser != 'undefined') Browser.init();
+
+      var handled = false;
+      preloadPlugins.forEach(function(plugin) {
+        if (handled) return;
+        if (plugin['canHandle'](fullname)) {
+          plugin['handle'](byteArray, fullname, finish, onerror);
+          handled = true;
+        }
+      });
+      return handled;
+    },
+
     createPreloadedFile: (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
       // TODO: use WasmFS code to resolve and join the path here?
       var fullname = name ? parent + '/' + name : parent;
@@ -37,7 +48,7 @@ mergeInto(LibraryManager.library, {
           removeRunDependency(dep);
         }
 #if !MINIMAL_RUNTIME
-        if (Browser.handledByPreloadPlugin(byteArray, fullname, finish, () => {
+        if (FS.handledByPreloadPlugin(byteArray, fullname, finish, () => {
           if (onerror) onerror();
           removeRunDependency(dep);
         })) {
