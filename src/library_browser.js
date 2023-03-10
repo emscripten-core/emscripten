@@ -249,7 +249,7 @@ var LibraryBrowser = {
       // Use string keys here to avoid minification since the plugin consumer
       // also uses string keys.
       var wasmPlugin = {
-        'asyncWasmLoadPromise': new Promise(function(resolve, reject) { return resolve(); }),
+        'promiseChainEnd': Promise.resolve(),
         'canHandle': function(name) {
           return !Module.noWasmDecoding && name.endsWith('.so')
         },
@@ -257,7 +257,7 @@ var LibraryBrowser = {
           // loadWebAssemblyModule can not load modules out-of-order, so rather
           // than just running the promises in parallel, this makes a chain of
           // promises to run in series.
-          wasmPlugin['asyncWasmLoadPromise'] = wasmPlugin['asyncWasmLoadPromise'].then(
+          wasmPlugin['promiseChainEnd'] = wasmPlugin['promiseChainEnd'].then(
             () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true})).then(
               (module) => {
                 preloadedWasm[name] = module;
