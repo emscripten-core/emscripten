@@ -1270,7 +1270,11 @@ class libwasm_workers(MTLibrary):
 
   def get_cflags(self):
     cflags = get_base_cflags() + ['-D_DEBUG' if self.debug else '-Oz']
-    if not self.debug:
+    if self.debug:
+      # library_wasm_worker.c contains an assert that a nonnull paramater
+      # is no NULL, which llvm now warns is redundant/tautological.
+      cflags += ['-Wno-tautological-pointer-compare']
+    else:
       cflags += ['-DNDEBUG']
     if self.is_ww or self.is_mt:
       cflags += ['-pthread', '-sWASM_WORKERS']
