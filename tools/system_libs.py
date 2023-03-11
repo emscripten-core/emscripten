@@ -2290,5 +2290,5 @@ def ensure_sysroot():
 
 
 def build_deferred():
-  if os.path.isfile(os.path.join(cache.get_path('build'), 'build.ninja')):
+  if USE_NINJA and os.path.isfile(os.path.join(cache.get_path('build'), 'build.ninja')):
     run_ninja(cache.get_path('build'))

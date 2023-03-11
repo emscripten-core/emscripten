@@ -182,7 +182,7 @@ def main():
   parser.add_argument('targets', nargs='+', help='see below')
   args = parser.parse_args()
 
-  if args.operation not in ('build', 'clear', 'rebuild'):
+  if args.operation not in ('build', 'clear'):
     shared.exit_with_error('unfamiliar operation: ' + args.operation)
 
   # process flags
@@ -268,6 +268,10 @@ def main():
         clear_port(what)
       if do_build:
         build_port(what)
+    elif what == 'rebuild':
+      if not should_use_ninja():
+        logger.error('"rebuild" target only works with Ninja')
+        return 1
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1
@@ -275,8 +279,10 @@ def main():
     time_taken = time.time() - start_time
     logger.info('...success. Took %s(%.2fs)' % (('%02d:%02d mins ' % (time_taken // 60, time_taken % 60) if time_taken >= 60 else ''), time_taken))
 
-  if should_use_ninja() or args.operation == 'rebuild':
+  if should_use_ninja():
     system_libs.build_deferred()
+
+  if len(tasks) > 1 or should_use_ninja():
     all_build_time_taken = time.time() - all_build_start_time
     logger.info('Built %d targets in %s(%.2fs)' % (len(tasks), ('%02d:%02d mins ' % (all_build_time_taken // 60, all_build_time_taken % 60) if all_build_time_taken >= 60 else ''), all_build_time_taken))
 
