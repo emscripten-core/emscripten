@@ -161,6 +161,7 @@ def get_system_tasks():
 def should_use_ninja():
   return os.environ.get('EMCC_USE_NINJA', 0)
 
+
 def main():
   all_build_start_time = time.time()
 

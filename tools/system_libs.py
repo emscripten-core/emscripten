@@ -178,7 +178,7 @@ rule archive
   case_insensitive = is_case_insensitive(os.path.dirname(filename))
   if suffix == '.o':
     assert len(input_files) == 1
-    depfile = shared.unsuffixed_basename(input_files[0]) + '.d' # fix this?
+    depfile = shared.unsuffixed_basename(input_files[0]) + '.d'
     out += f'build {libname}: direct_cc {input_files[0]}\n'
     out += f'  with_depfile = {depfile}\n'
   else:
@@ -499,12 +499,7 @@ class Library:
     build_dir = os.path.join(cache.get_path('build'), self.get_base_name())
     if USE_NINJA:
       self.generate_ninja(build_dir, out_filename)
-      if generate_only:
-        # TODO: should we only write into the parent ninja if we are doing a deferred build, or everytime we generate any ninja?
-        pass
-        #parent_ninja = os.path.join(shared.Cache.get_path('build'), 'build.ninja')
-        #ensure_in_file(parent_ninja, f'subninja {ninja_file}')
-      else:
+      if not generate_only:
         run_ninja(build_dir)
     else:
       # Use a seperate build directory to the ninja flavor so that building without
@@ -2292,6 +2287,7 @@ def install_system_headers(stamp):
 @ToolchainProfiler.profile()
 def ensure_sysroot():
   cache.get('sysroot_install.stamp', install_system_headers, what='system headers')
+
 
 def build_deferred():
   if os.path.isfile(os.path.join(cache.get_path('build'), 'build.ninja')):
