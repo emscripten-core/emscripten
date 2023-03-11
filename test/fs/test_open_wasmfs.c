@@ -12,7 +12,7 @@
 
 int main() {
   EM_ASM(
-    FS.writeFile('testfile', 'a=1\nb=2\n'); // writeFile already works with WasmFS
+    FS.writeFile('testfile', 'a=1\nb=2\n');
     var readStream = FS.open('testfile', 'r');
     assert(readStream >= 0);
 
