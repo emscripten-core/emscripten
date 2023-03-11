@@ -23,6 +23,7 @@ See docs/process.md for more on how version tagging works.
 - The prefered way to enable pthread is now to just the the standard `-pthread`
   flag.  The `-sUSE_PTHREADS` setting still works but is marked as legacy and
   will generate a warning in `-sSTRICT` mode.
+- Exits and promise rejections are no longer caught in `-sModularize` mode; and attempting to explicitly enable them in `-sModularize` mode results in a compilation error. It is expected that the code calling the module will handle these events.
 
 3.1.33 - 03/08/23
 -----------------
