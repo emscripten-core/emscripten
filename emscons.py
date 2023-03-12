@@ -17,5 +17,6 @@ tool_path = utils.path_from_root('tools/scons/site_scons/site_tools/emscripten')
 
 env = os.environ.copy()
 env['EMSCRIPTEN_TOOL_PATH'] = tool_path
+env['EMSCRIPTEN_ROOT'] = utils.path_from_root()
 
 sys.exit(subprocess.call(sys.argv[1:], env=env))

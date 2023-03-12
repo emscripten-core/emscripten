@@ -9,21 +9,6 @@ import os
 import sys
 
 
-def find_emscripten(env):
-  external_path = os.environ.get('PATH')
-
-  if external_path is None:
-     return None
-
-  as_list = external_path.split(os.pathsep)
-  emcc = env.FindFile('emcc', as_list)
-
-  if emcc is None:
-     return None
-
-  return os.path.dirname(str(emcc))
-
-
 def get_building_env_variables(emscripten_path):
   sys.path.append(emscripten_path)
   import tools.building
@@ -35,7 +20,7 @@ def generate(env, emscripten_path=None, **kw):
   """ SCons tool entry point """
 
   if emscripten_path is None:
-    emscripten_path = os.environ.get('EMSCRIPTEN_ROOT') or find_emscripten(env)
+    emscripten_path = os.environ.get('EMSCRIPTEN_ROOT')
     if not emscripten_path:
       raise 'Unable to find emscripten. Please set EMSCRIPTEN_ROOT'
 
