@@ -6,18 +6,41 @@
 
 from __future__ import print_function
 import os
+import sys
+
+
+def find_emscripten(env):
+  external_path = os.environ.get('PATH')
+
+  if external_path is None:
+     return None
+
+  as_list = external_path.split(os.pathsep)
+  emcc = env.FindFile('emcc', as_list)
+
+  if emcc is None:
+     return None
+
+  return os.path.dirname(str(emcc))
+
+
+def get_building_env_variables(emscripten_path):
+  sys.path.append(emscripten_path)
+  import tools.building
+
+  return tools.building.get_building_env_variables()
 
 
 def generate(env, emscripten_path=None, **kw):
   """ SCons tool entry point """
 
   if emscripten_path is None:
-    emscripten_path = os.environ.get('EMSCRIPTEN_ROOT')
+    emscripten_path = os.environ.get('EMSCRIPTEN_ROOT') or find_emscripten(env)
     if not emscripten_path:
       raise 'Unable to find emscripten. Please set EMSCRIPTEN_ROOT'
 
   # SCons does not by default invoke the compiler with the
-  # environment variabls from the parent calling process,
+  # environment variables from the parent calling process,
   # so manually route all environment variables referenced
   # by Emscripten to the child.
   for var in ['EM_CACHE', 'EMCC_DEBUG', 'EM_CONFIG',
@@ -31,21 +54,25 @@ def generate(env, emscripten_path=None, **kw):
               'EMCC_FORCE_STDLIBS', 'EMCC_ONLY_FORCED_STDLIBS', 'EM_PORTS', 'IDL_CHECKS', 'IDL_VERBOSE']:
     if os.environ.get(var):
       env['ENV'][var] = os.environ.get(var)
+
   try:
     emscPath = emscripten_path.abspath
   except:
     emscPath = emscripten_path
 
-  env.Replace(CC=os.path.join(emscPath, "emcc"))
-  env.Replace(CXX=os.path.join(emscPath, "em++"))
+  building_env_variables = get_building_env_variables(emscPath)
+  env['ENV'].update(building_env_variables)
+
+  env.Replace(CC=building_env_variables['CC'])
+  env.Replace(CXX=building_env_variables['CXX'])
   # LINK uses smark_link by default which will choose
   # either emcc or em++ depending on if there are any C++ sources
   # in the program, so no need to change that.
   # SHLINK and LDMODULE should use LINK so no
   # need to change them here
 
-  env.Replace(AR=os.path.join(emscPath, "emar"))
-  env.Replace(RANLIB=os.path.join(emscPath, "emranlib"))
+  env.Replace(AR=building_env_variables['AR'])
+  env.Replace(RANLIB=building_env_variables['RANLIB'])
 
   env.Replace(OBJSUFFIX=[".js", ".bc", ".o"][2])
   env.Replace(LIBSUFFIX=[".js", ".bc", ".o"][2])
