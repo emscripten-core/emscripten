@@ -121,6 +121,12 @@ mergeInto(LibraryManager.library, {
     },
     // TODO: mkdirTree
     // TDOO: rmdir
+    rmdir: (path) => {
+      return withStackSave(() => {
+        var buffer = allocateUTF8OnStack(path);
+        return __wasmfs_rmdir(buffer);
+      })
+    },
     // TODO: open
     // TODO: create
     // TODO: close
