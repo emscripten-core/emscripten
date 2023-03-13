@@ -255,7 +255,7 @@ function handleMessage(e) {
       }
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
       if (Module['_pthread_self']()) {
-        Module['__emscripten_thread_exit']({{{ cDefine('PTHREAD_CANCELED') }}});
+        Module['__emscripten_thread_exit']({{{ cDefs.PTHREAD_CANCELED }}});
       }
     } else if (e.data.target === 'setimmediate') {
       // no-op

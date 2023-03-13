@@ -255,10 +255,30 @@ if (!BOOTSTRAPPING_STRUCT_INFO) {
   C_DEFINES = {};
 }
 
-// Safe way to access a C define. We check that we don't add library functions with missing defines.
+// Use proxy objects for C_DEFINES and C_STRUCTS so that we can give useful
+// error messages.
+C_STRUCTS = new Proxy(C_STRUCTS, {
+  get(target, prop, receiver) {
+    if (!(prop in target)) {
+      throw new Error(`Missing C struct ${prop}! If you just added it to struct_info.json, you need to ./emcc --clear-cache`);
+    }
+    return target[prop]
+  }
+});
+
+cDefs = C_DEFINES = new Proxy(C_DEFINES, {
+  get(target, prop, receiver) {
+    if (!(prop in target)) {
+      throw new Error(`Missing C define ${prop}! If you just added it to struct_info.json, you need to ./emcc --clear-cache`);
+    }
+    return target[prop]
+  }
+});
+
+// Legacy function that existed solely to give error message.  These are now
+// provided by the cDefs proxy object above.
 function cDefine(key) {
-  if (key in C_DEFINES) return C_DEFINES[key];
-  throw new Error(`Missing C define ${key}! If you just added it to struct_info.json, you need to ./emcc --clear-cache`);
+  return cDefs[key];
 }
 
 function isFSPrefixed(name) {

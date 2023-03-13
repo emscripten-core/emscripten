@@ -27,6 +27,8 @@ See docs/process.md for more on how version tagging works.
   folks who had JS files with lines that start with `#` so can't be run through
   the pre-processor.  If folks want to re-enable this we can looks into ways to
   make it conditional/optional.
+- The `{{{ cDefine('name') }}}` helper macro can now be simplified to just `{{{
+  cDefs.name }}}`.
 
 3.1.34 - 03/14/23
 -----------------

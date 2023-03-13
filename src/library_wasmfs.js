@@ -57,8 +57,8 @@ mergeInto(LibraryManager.library, {
     },
     getMode: (canRead, canWrite) => {
       var mode = 0;
-      if (canRead) mode |= {{{ cDefine('S_IRUGO') }}} | {{{ cDefine('S_IXUGO') }}};
-      if (canWrite) mode |= {{{ cDefine('S_IWUGO') }}};
+      if (canRead) mode |= {{{ cDefs.S_IRUGO }}} | {{{ cDefs.S_IXUGO }}};
+      if (canWrite) mode |= {{{ cDefs.S_IWUGO }}};
       return mode;
     },
     modeStringToFlags: (str) => {
@@ -73,12 +73,12 @@ mergeInto(LibraryManager.library, {
       // Extra quotes used here on the keys to this object otherwise jsifier will
       // erase them in the process of reading and then writing the JS library
       // code.
-      '"r"': {{{ cDefine('O_RDONLY') }}},
-      '"r+"': {{{ cDefine('O_RDWR') }}},
-      '"w"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}},
-      '"w+"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}},
-      '"a"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}},
-      '"a+"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}},
+      '"r"': {{{ cDefs.O_RDONLY }}},
+      '"r+"': {{{ cDefs.O_RDWR }}},
+      '"w"': {{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_WRONLY }}},
+      '"w+"': {{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_RDWR }}},
+      '"a"': {{{ cDefs.O_APPEND }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_WRONLY }}},
+      '"a+"': {{{ cDefs.O_APPEND }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_RDWR }}},
     },
     createDataFile: (parent, name, data, canRead, canWrite, canOwn) => {
       // Data files must be cached until the file system itself has been initialized.
@@ -215,11 +215,11 @@ mergeInto(LibraryManager.library, {
     // TODO: utime
     findObject: (path) => {
       var result = __wasmfs_identify(path);
-      if (result == {{{ cDefine('ENOENT') }}}) {
+      if (result == {{{ cDefs.ENOENT }}}) {
         return null;
       }
       return {
-        isFolder: result == {{{ cDefine('EISDIR') }}},
+        isFolder: result == {{{ cDefs.EISDIR }}},
         isDevice: false, // TODO: wasmfs support for devices
       };
     },

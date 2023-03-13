@@ -362,7 +362,7 @@ mergeInto(LibraryManager.library, {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/system.html
     // Can't call external programs.
     if (!command) return 0; // no shell available
-    setErrNo({{{ cDefine('ENOSYS') }}});
+    setErrNo({{{ cDefs.ENOSYS }}});
     return -1;
   },
 
@@ -1280,251 +1280,251 @@ mergeInto(LibraryManager.library, {
   // ==========================================================================
 
   $ERRNO_CODES__postset: `ERRNO_CODES = {
-    'EPERM': {{{ cDefine('EPERM') }}},
-    'ENOENT': {{{ cDefine('ENOENT') }}},
-    'ESRCH': {{{ cDefine('ESRCH') }}},
-    'EINTR': {{{ cDefine('EINTR') }}},
-    'EIO': {{{ cDefine('EIO') }}},
-    'ENXIO': {{{ cDefine('ENXIO') }}},
-    'E2BIG': {{{ cDefine('E2BIG') }}},
-    'ENOEXEC': {{{ cDefine('ENOEXEC') }}},
-    'EBADF': {{{ cDefine('EBADF') }}},
-    'ECHILD': {{{ cDefine('ECHILD') }}},
-    'EAGAIN': {{{ cDefine('EAGAIN') }}},
-    'EWOULDBLOCK': {{{ cDefine('EWOULDBLOCK') }}},
-    'ENOMEM': {{{ cDefine('ENOMEM') }}},
-    'EACCES': {{{ cDefine('EACCES') }}},
-    'EFAULT': {{{ cDefine('EFAULT') }}},
-    'ENOTBLK': {{{ cDefine('ENOTBLK') }}},
-    'EBUSY': {{{ cDefine('EBUSY') }}},
-    'EEXIST': {{{ cDefine('EEXIST') }}},
-    'EXDEV': {{{ cDefine('EXDEV') }}},
-    'ENODEV': {{{ cDefine('ENODEV') }}},
-    'ENOTDIR': {{{ cDefine('ENOTDIR') }}},
-    'EISDIR': {{{ cDefine('EISDIR') }}},
-    'EINVAL': {{{ cDefine('EINVAL') }}},
-    'ENFILE': {{{ cDefine('ENFILE') }}},
-    'EMFILE': {{{ cDefine('EMFILE') }}},
-    'ENOTTY': {{{ cDefine('ENOTTY') }}},
-    'ETXTBSY': {{{ cDefine('ETXTBSY') }}},
-    'EFBIG': {{{ cDefine('EFBIG') }}},
-    'ENOSPC': {{{ cDefine('ENOSPC') }}},
-    'ESPIPE': {{{ cDefine('ESPIPE') }}},
-    'EROFS': {{{ cDefine('EROFS') }}},
-    'EMLINK': {{{ cDefine('EMLINK') }}},
-    'EPIPE': {{{ cDefine('EPIPE') }}},
-    'EDOM': {{{ cDefine('EDOM') }}},
-    'ERANGE': {{{ cDefine('ERANGE') }}},
-    'ENOMSG': {{{ cDefine('ENOMSG') }}},
-    'EIDRM': {{{ cDefine('EIDRM') }}},
-    'ECHRNG': {{{ cDefine('ECHRNG') }}},
-    'EL2NSYNC': {{{ cDefine('EL2NSYNC') }}},
-    'EL3HLT': {{{ cDefine('EL3HLT') }}},
-    'EL3RST': {{{ cDefine('EL3RST') }}},
-    'ELNRNG': {{{ cDefine('ELNRNG') }}},
-    'EUNATCH': {{{ cDefine('EUNATCH') }}},
-    'ENOCSI': {{{ cDefine('ENOCSI') }}},
-    'EL2HLT': {{{ cDefine('EL2HLT') }}},
-    'EDEADLK': {{{ cDefine('EDEADLK') }}},
-    'ENOLCK': {{{ cDefine('ENOLCK') }}},
-    'EBADE': {{{ cDefine('EBADE') }}},
-    'EBADR': {{{ cDefine('EBADR') }}},
-    'EXFULL': {{{ cDefine('EXFULL') }}},
-    'ENOANO': {{{ cDefine('ENOANO') }}},
-    'EBADRQC': {{{ cDefine('EBADRQC') }}},
-    'EBADSLT': {{{ cDefine('EBADSLT') }}},
-    'EDEADLOCK': {{{ cDefine('EDEADLOCK') }}},
-    'EBFONT': {{{ cDefine('EBFONT') }}},
-    'ENOSTR': {{{ cDefine('ENOSTR') }}},
-    'ENODATA': {{{ cDefine('ENODATA') }}},
-    'ETIME': {{{ cDefine('ETIME') }}},
-    'ENOSR': {{{ cDefine('ENOSR') }}},
-    'ENONET': {{{ cDefine('ENONET') }}},
-    'ENOPKG': {{{ cDefine('ENOPKG') }}},
-    'EREMOTE': {{{ cDefine('EREMOTE') }}},
-    'ENOLINK': {{{ cDefine('ENOLINK') }}},
-    'EADV': {{{ cDefine('EADV') }}},
-    'ESRMNT': {{{ cDefine('ESRMNT') }}},
-    'ECOMM': {{{ cDefine('ECOMM') }}},
-    'EPROTO': {{{ cDefine('EPROTO') }}},
-    'EMULTIHOP': {{{ cDefine('EMULTIHOP') }}},
-    'EDOTDOT': {{{ cDefine('EDOTDOT') }}},
-    'EBADMSG': {{{ cDefine('EBADMSG') }}},
-    'ENOTUNIQ': {{{ cDefine('ENOTUNIQ') }}},
-    'EBADFD': {{{ cDefine('EBADFD') }}},
-    'EREMCHG': {{{ cDefine('EREMCHG') }}},
-    'ELIBACC': {{{ cDefine('ELIBACC') }}},
-    'ELIBBAD': {{{ cDefine('ELIBBAD') }}},
-    'ELIBSCN': {{{ cDefine('ELIBSCN') }}},
-    'ELIBMAX': {{{ cDefine('ELIBMAX') }}},
-    'ELIBEXEC': {{{ cDefine('ELIBEXEC') }}},
-    'ENOSYS': {{{ cDefine('ENOSYS') }}},
-    'ENOTEMPTY': {{{ cDefine('ENOTEMPTY') }}},
-    'ENAMETOOLONG': {{{ cDefine('ENAMETOOLONG') }}},
-    'ELOOP': {{{ cDefine('ELOOP') }}},
-    'EOPNOTSUPP': {{{ cDefine('EOPNOTSUPP') }}},
-    'EPFNOSUPPORT': {{{ cDefine('EPFNOSUPPORT') }}},
-    'ECONNRESET': {{{ cDefine('ECONNRESET') }}},
-    'ENOBUFS': {{{ cDefine('ENOBUFS') }}},
-    'EAFNOSUPPORT': {{{ cDefine('EAFNOSUPPORT') }}},
-    'EPROTOTYPE': {{{ cDefine('EPROTOTYPE') }}},
-    'ENOTSOCK': {{{ cDefine('ENOTSOCK') }}},
-    'ENOPROTOOPT': {{{ cDefine('ENOPROTOOPT') }}},
-    'ESHUTDOWN': {{{ cDefine('ESHUTDOWN') }}},
-    'ECONNREFUSED': {{{ cDefine('ECONNREFUSED') }}},
-    'EADDRINUSE': {{{ cDefine('EADDRINUSE') }}},
-    'ECONNABORTED': {{{ cDefine('ECONNABORTED') }}},
-    'ENETUNREACH': {{{ cDefine('ENETUNREACH') }}},
-    'ENETDOWN': {{{ cDefine('ENETDOWN') }}},
-    'ETIMEDOUT': {{{ cDefine('ETIMEDOUT') }}},
-    'EHOSTDOWN': {{{ cDefine('EHOSTDOWN') }}},
-    'EHOSTUNREACH': {{{ cDefine('EHOSTUNREACH') }}},
-    'EINPROGRESS': {{{ cDefine('EINPROGRESS') }}},
-    'EALREADY': {{{ cDefine('EALREADY') }}},
-    'EDESTADDRREQ': {{{ cDefine('EDESTADDRREQ') }}},
-    'EMSGSIZE': {{{ cDefine('EMSGSIZE') }}},
-    'EPROTONOSUPPORT': {{{ cDefine('EPROTONOSUPPORT') }}},
-    'ESOCKTNOSUPPORT': {{{ cDefine('ESOCKTNOSUPPORT') }}},
-    'EADDRNOTAVAIL': {{{ cDefine('EADDRNOTAVAIL') }}},
-    'ENETRESET': {{{ cDefine('ENETRESET') }}},
-    'EISCONN': {{{ cDefine('EISCONN') }}},
-    'ENOTCONN': {{{ cDefine('ENOTCONN') }}},
-    'ETOOMANYREFS': {{{ cDefine('ETOOMANYREFS') }}},
-    'EUSERS': {{{ cDefine('EUSERS') }}},
-    'EDQUOT': {{{ cDefine('EDQUOT') }}},
-    'ESTALE': {{{ cDefine('ESTALE') }}},
-    'ENOTSUP': {{{ cDefine('ENOTSUP') }}},
-    'ENOMEDIUM': {{{ cDefine('ENOMEDIUM') }}},
-    'EILSEQ': {{{ cDefine('EILSEQ') }}},
-    'EOVERFLOW': {{{ cDefine('EOVERFLOW') }}},
-    'ECANCELED': {{{ cDefine('ECANCELED') }}},
-    'ENOTRECOVERABLE': {{{ cDefine('ENOTRECOVERABLE') }}},
-    'EOWNERDEAD': {{{ cDefine('EOWNERDEAD') }}},
-    'ESTRPIPE': {{{ cDefine('ESTRPIPE') }}},
+    'EPERM': {{{ cDefs.EPERM }}},
+    'ENOENT': {{{ cDefs.ENOENT }}},
+    'ESRCH': {{{ cDefs.ESRCH }}},
+    'EINTR': {{{ cDefs.EINTR }}},
+    'EIO': {{{ cDefs.EIO }}},
+    'ENXIO': {{{ cDefs.ENXIO }}},
+    'E2BIG': {{{ cDefs.E2BIG }}},
+    'ENOEXEC': {{{ cDefs.ENOEXEC }}},
+    'EBADF': {{{ cDefs.EBADF }}},
+    'ECHILD': {{{ cDefs.ECHILD }}},
+    'EAGAIN': {{{ cDefs.EAGAIN }}},
+    'EWOULDBLOCK': {{{ cDefs.EWOULDBLOCK }}},
+    'ENOMEM': {{{ cDefs.ENOMEM }}},
+    'EACCES': {{{ cDefs.EACCES }}},
+    'EFAULT': {{{ cDefs.EFAULT }}},
+    'ENOTBLK': {{{ cDefs.ENOTBLK }}},
+    'EBUSY': {{{ cDefs.EBUSY }}},
+    'EEXIST': {{{ cDefs.EEXIST }}},
+    'EXDEV': {{{ cDefs.EXDEV }}},
+    'ENODEV': {{{ cDefs.ENODEV }}},
+    'ENOTDIR': {{{ cDefs.ENOTDIR }}},
+    'EISDIR': {{{ cDefs.EISDIR }}},
+    'EINVAL': {{{ cDefs.EINVAL }}},
+    'ENFILE': {{{ cDefs.ENFILE }}},
+    'EMFILE': {{{ cDefs.EMFILE }}},
+    'ENOTTY': {{{ cDefs.ENOTTY }}},
+    'ETXTBSY': {{{ cDefs.ETXTBSY }}},
+    'EFBIG': {{{ cDefs.EFBIG }}},
+    'ENOSPC': {{{ cDefs.ENOSPC }}},
+    'ESPIPE': {{{ cDefs.ESPIPE }}},
+    'EROFS': {{{ cDefs.EROFS }}},
+    'EMLINK': {{{ cDefs.EMLINK }}},
+    'EPIPE': {{{ cDefs.EPIPE }}},
+    'EDOM': {{{ cDefs.EDOM }}},
+    'ERANGE': {{{ cDefs.ERANGE }}},
+    'ENOMSG': {{{ cDefs.ENOMSG }}},
+    'EIDRM': {{{ cDefs.EIDRM }}},
+    'ECHRNG': {{{ cDefs.ECHRNG }}},
+    'EL2NSYNC': {{{ cDefs.EL2NSYNC }}},
+    'EL3HLT': {{{ cDefs.EL3HLT }}},
+    'EL3RST': {{{ cDefs.EL3RST }}},
+    'ELNRNG': {{{ cDefs.ELNRNG }}},
+    'EUNATCH': {{{ cDefs.EUNATCH }}},
+    'ENOCSI': {{{ cDefs.ENOCSI }}},
+    'EL2HLT': {{{ cDefs.EL2HLT }}},
+    'EDEADLK': {{{ cDefs.EDEADLK }}},
+    'ENOLCK': {{{ cDefs.ENOLCK }}},
+    'EBADE': {{{ cDefs.EBADE }}},
+    'EBADR': {{{ cDefs.EBADR }}},
+    'EXFULL': {{{ cDefs.EXFULL }}},
+    'ENOANO': {{{ cDefs.ENOANO }}},
+    'EBADRQC': {{{ cDefs.EBADRQC }}},
+    'EBADSLT': {{{ cDefs.EBADSLT }}},
+    'EDEADLOCK': {{{ cDefs.EDEADLOCK }}},
+    'EBFONT': {{{ cDefs.EBFONT }}},
+    'ENOSTR': {{{ cDefs.ENOSTR }}},
+    'ENODATA': {{{ cDefs.ENODATA }}},
+    'ETIME': {{{ cDefs.ETIME }}},
+    'ENOSR': {{{ cDefs.ENOSR }}},
+    'ENONET': {{{ cDefs.ENONET }}},
+    'ENOPKG': {{{ cDefs.ENOPKG }}},
+    'EREMOTE': {{{ cDefs.EREMOTE }}},
+    'ENOLINK': {{{ cDefs.ENOLINK }}},
+    'EADV': {{{ cDefs.EADV }}},
+    'ESRMNT': {{{ cDefs.ESRMNT }}},
+    'ECOMM': {{{ cDefs.ECOMM }}},
+    'EPROTO': {{{ cDefs.EPROTO }}},
+    'EMULTIHOP': {{{ cDefs.EMULTIHOP }}},
+    'EDOTDOT': {{{ cDefs.EDOTDOT }}},
+    'EBADMSG': {{{ cDefs.EBADMSG }}},
+    'ENOTUNIQ': {{{ cDefs.ENOTUNIQ }}},
+    'EBADFD': {{{ cDefs.EBADFD }}},
+    'EREMCHG': {{{ cDefs.EREMCHG }}},
+    'ELIBACC': {{{ cDefs.ELIBACC }}},
+    'ELIBBAD': {{{ cDefs.ELIBBAD }}},
+    'ELIBSCN': {{{ cDefs.ELIBSCN }}},
+    'ELIBMAX': {{{ cDefs.ELIBMAX }}},
+    'ELIBEXEC': {{{ cDefs.ELIBEXEC }}},
+    'ENOSYS': {{{ cDefs.ENOSYS }}},
+    'ENOTEMPTY': {{{ cDefs.ENOTEMPTY }}},
+    'ENAMETOOLONG': {{{ cDefs.ENAMETOOLONG }}},
+    'ELOOP': {{{ cDefs.ELOOP }}},
+    'EOPNOTSUPP': {{{ cDefs.EOPNOTSUPP }}},
+    'EPFNOSUPPORT': {{{ cDefs.EPFNOSUPPORT }}},
+    'ECONNRESET': {{{ cDefs.ECONNRESET }}},
+    'ENOBUFS': {{{ cDefs.ENOBUFS }}},
+    'EAFNOSUPPORT': {{{ cDefs.EAFNOSUPPORT }}},
+    'EPROTOTYPE': {{{ cDefs.EPROTOTYPE }}},
+    'ENOTSOCK': {{{ cDefs.ENOTSOCK }}},
+    'ENOPROTOOPT': {{{ cDefs.ENOPROTOOPT }}},
+    'ESHUTDOWN': {{{ cDefs.ESHUTDOWN }}},
+    'ECONNREFUSED': {{{ cDefs.ECONNREFUSED }}},
+    'EADDRINUSE': {{{ cDefs.EADDRINUSE }}},
+    'ECONNABORTED': {{{ cDefs.ECONNABORTED }}},
+    'ENETUNREACH': {{{ cDefs.ENETUNREACH }}},
+    'ENETDOWN': {{{ cDefs.ENETDOWN }}},
+    'ETIMEDOUT': {{{ cDefs.ETIMEDOUT }}},
+    'EHOSTDOWN': {{{ cDefs.EHOSTDOWN }}},
+    'EHOSTUNREACH': {{{ cDefs.EHOSTUNREACH }}},
+    'EINPROGRESS': {{{ cDefs.EINPROGRESS }}},
+    'EALREADY': {{{ cDefs.EALREADY }}},
+    'EDESTADDRREQ': {{{ cDefs.EDESTADDRREQ }}},
+    'EMSGSIZE': {{{ cDefs.EMSGSIZE }}},
+    'EPROTONOSUPPORT': {{{ cDefs.EPROTONOSUPPORT }}},
+    'ESOCKTNOSUPPORT': {{{ cDefs.ESOCKTNOSUPPORT }}},
+    'EADDRNOTAVAIL': {{{ cDefs.EADDRNOTAVAIL }}},
+    'ENETRESET': {{{ cDefs.ENETRESET }}},
+    'EISCONN': {{{ cDefs.EISCONN }}},
+    'ENOTCONN': {{{ cDefs.ENOTCONN }}},
+    'ETOOMANYREFS': {{{ cDefs.ETOOMANYREFS }}},
+    'EUSERS': {{{ cDefs.EUSERS }}},
+    'EDQUOT': {{{ cDefs.EDQUOT }}},
+    'ESTALE': {{{ cDefs.ESTALE }}},
+    'ENOTSUP': {{{ cDefs.ENOTSUP }}},
+    'ENOMEDIUM': {{{ cDefs.ENOMEDIUM }}},
+    'EILSEQ': {{{ cDefs.EILSEQ }}},
+    'EOVERFLOW': {{{ cDefs.EOVERFLOW }}},
+    'ECANCELED': {{{ cDefs.ECANCELED }}},
+    'ENOTRECOVERABLE': {{{ cDefs.ENOTRECOVERABLE }}},
+    'EOWNERDEAD': {{{ cDefs.EOWNERDEAD }}},
+    'ESTRPIPE': {{{ cDefs.ESTRPIPE }}},
   };`,
   $ERRNO_CODES: {},
   $ERRNO_MESSAGES: {
     0: 'Success',
-    {{{ cDefine('EPERM') }}}: 'Not super-user',
-    {{{ cDefine('ENOENT') }}}: 'No such file or directory',
-    {{{ cDefine('ESRCH') }}}: 'No such process',
-    {{{ cDefine('EINTR') }}}: 'Interrupted system call',
-    {{{ cDefine('EIO') }}}: 'I/O error',
-    {{{ cDefine('ENXIO') }}}: 'No such device or address',
-    {{{ cDefine('E2BIG') }}}: 'Arg list too long',
-    {{{ cDefine('ENOEXEC') }}}: 'Exec format error',
-    {{{ cDefine('EBADF') }}}: 'Bad file number',
-    {{{ cDefine('ECHILD') }}}: 'No children',
-    {{{ cDefine('EWOULDBLOCK') }}}: 'No more processes',
-    {{{ cDefine('ENOMEM') }}}: 'Not enough core',
-    {{{ cDefine('EACCES') }}}: 'Permission denied',
-    {{{ cDefine('EFAULT') }}}: 'Bad address',
-    {{{ cDefine('ENOTBLK') }}}: 'Block device required',
-    {{{ cDefine('EBUSY') }}}: 'Mount device busy',
-    {{{ cDefine('EEXIST') }}}: 'File exists',
-    {{{ cDefine('EXDEV') }}}: 'Cross-device link',
-    {{{ cDefine('ENODEV') }}}: 'No such device',
-    {{{ cDefine('ENOTDIR') }}}: 'Not a directory',
-    {{{ cDefine('EISDIR') }}}: 'Is a directory',
-    {{{ cDefine('EINVAL') }}}: 'Invalid argument',
-    {{{ cDefine('ENFILE') }}}: 'Too many open files in system',
-    {{{ cDefine('EMFILE') }}}: 'Too many open files',
-    {{{ cDefine('ENOTTY') }}}: 'Not a typewriter',
-    {{{ cDefine('ETXTBSY') }}}: 'Text file busy',
-    {{{ cDefine('EFBIG') }}}: 'File too large',
-    {{{ cDefine('ENOSPC') }}}: 'No space left on device',
-    {{{ cDefine('ESPIPE') }}}: 'Illegal seek',
-    {{{ cDefine('EROFS') }}}: 'Read only file system',
-    {{{ cDefine('EMLINK') }}}: 'Too many links',
-    {{{ cDefine('EPIPE') }}}: 'Broken pipe',
-    {{{ cDefine('EDOM') }}}: 'Math arg out of domain of func',
-    {{{ cDefine('ERANGE') }}}: 'Math result not representable',
-    {{{ cDefine('ENOMSG') }}}: 'No message of desired type',
-    {{{ cDefine('EIDRM') }}}: 'Identifier removed',
-    {{{ cDefine('ECHRNG') }}}: 'Channel number out of range',
-    {{{ cDefine('EL2NSYNC') }}}: 'Level 2 not synchronized',
-    {{{ cDefine('EL3HLT') }}}: 'Level 3 halted',
-    {{{ cDefine('EL3RST') }}}: 'Level 3 reset',
-    {{{ cDefine('ELNRNG') }}}: 'Link number out of range',
-    {{{ cDefine('EUNATCH') }}}: 'Protocol driver not attached',
-    {{{ cDefine('ENOCSI') }}}: 'No CSI structure available',
-    {{{ cDefine('EL2HLT') }}}: 'Level 2 halted',
-    {{{ cDefine('EDEADLK') }}}: 'Deadlock condition',
-    {{{ cDefine('ENOLCK') }}}: 'No record locks available',
-    {{{ cDefine('EBADE') }}}: 'Invalid exchange',
-    {{{ cDefine('EBADR') }}}: 'Invalid request descriptor',
-    {{{ cDefine('EXFULL') }}}: 'Exchange full',
-    {{{ cDefine('ENOANO') }}}: 'No anode',
-    {{{ cDefine('EBADRQC') }}}: 'Invalid request code',
-    {{{ cDefine('EBADSLT') }}}: 'Invalid slot',
-    {{{ cDefine('EDEADLOCK') }}}: 'File locking deadlock error',
-    {{{ cDefine('EBFONT') }}}: 'Bad font file fmt',
-    {{{ cDefine('ENOSTR') }}}: 'Device not a stream',
-    {{{ cDefine('ENODATA') }}}: 'No data (for no delay io)',
-    {{{ cDefine('ETIME') }}}: 'Timer expired',
-    {{{ cDefine('ENOSR') }}}: 'Out of streams resources',
-    {{{ cDefine('ENONET') }}}: 'Machine is not on the network',
-    {{{ cDefine('ENOPKG') }}}: 'Package not installed',
-    {{{ cDefine('EREMOTE') }}}: 'The object is remote',
-    {{{ cDefine('ENOLINK') }}}: 'The link has been severed',
-    {{{ cDefine('EADV') }}}: 'Advertise error',
-    {{{ cDefine('ESRMNT') }}}: 'Srmount error',
-    {{{ cDefine('ECOMM') }}}: 'Communication error on send',
-    {{{ cDefine('EPROTO') }}}: 'Protocol error',
-    {{{ cDefine('EMULTIHOP') }}}: 'Multihop attempted',
-    {{{ cDefine('EDOTDOT') }}}: 'Cross mount point (not really error)',
-    {{{ cDefine('EBADMSG') }}}: 'Trying to read unreadable message',
-    {{{ cDefine('ENOTUNIQ') }}}: 'Given log. name not unique',
-    {{{ cDefine('EBADFD') }}}: 'f.d. invalid for this operation',
-    {{{ cDefine('EREMCHG') }}}: 'Remote address changed',
-    {{{ cDefine('ELIBACC') }}}: 'Can   access a needed shared lib',
-    {{{ cDefine('ELIBBAD') }}}: 'Accessing a corrupted shared lib',
-    {{{ cDefine('ELIBSCN') }}}: '.lib section in a.out corrupted',
-    {{{ cDefine('ELIBMAX') }}}: 'Attempting to link in too many libs',
-    {{{ cDefine('ELIBEXEC') }}}: 'Attempting to exec a shared library',
-    {{{ cDefine('ENOSYS') }}}: 'Function not implemented',
-    {{{ cDefine('ENOTEMPTY') }}}: 'Directory not empty',
-    {{{ cDefine('ENAMETOOLONG') }}}: 'File or path name too long',
-    {{{ cDefine('ELOOP') }}}: 'Too many symbolic links',
-    {{{ cDefine('EOPNOTSUPP') }}}: 'Operation not supported on transport endpoint',
-    {{{ cDefine('EPFNOSUPPORT') }}}: 'Protocol family not supported',
-    {{{ cDefine('ECONNRESET') }}}: 'Connection reset by peer',
-    {{{ cDefine('ENOBUFS') }}}: 'No buffer space available',
-    {{{ cDefine('EAFNOSUPPORT') }}}: 'Address family not supported by protocol family',
-    {{{ cDefine('EPROTOTYPE') }}}: 'Protocol wrong type for socket',
-    {{{ cDefine('ENOTSOCK') }}}: 'Socket operation on non-socket',
-    {{{ cDefine('ENOPROTOOPT') }}}: 'Protocol not available',
-    {{{ cDefine('ESHUTDOWN') }}}: 'Can\'t send after socket shutdown',
-    {{{ cDefine('ECONNREFUSED') }}}: 'Connection refused',
-    {{{ cDefine('EADDRINUSE') }}}: 'Address already in use',
-    {{{ cDefine('ECONNABORTED') }}}: 'Connection aborted',
-    {{{ cDefine('ENETUNREACH') }}}: 'Network is unreachable',
-    {{{ cDefine('ENETDOWN') }}}: 'Network interface is not configured',
-    {{{ cDefine('ETIMEDOUT') }}}: 'Connection timed out',
-    {{{ cDefine('EHOSTDOWN') }}}: 'Host is down',
-    {{{ cDefine('EHOSTUNREACH') }}}: 'Host is unreachable',
-    {{{ cDefine('EINPROGRESS') }}}: 'Connection already in progress',
-    {{{ cDefine('EALREADY') }}}: 'Socket already connected',
-    {{{ cDefine('EDESTADDRREQ') }}}: 'Destination address required',
-    {{{ cDefine('EMSGSIZE') }}}: 'Message too long',
-    {{{ cDefine('EPROTONOSUPPORT') }}}: 'Unknown protocol',
-    {{{ cDefine('ESOCKTNOSUPPORT') }}}: 'Socket type not supported',
-    {{{ cDefine('EADDRNOTAVAIL') }}}: 'Address not available',
-    {{{ cDefine('ENETRESET') }}}: 'Connection reset by network',
-    {{{ cDefine('EISCONN') }}}: 'Socket is already connected',
-    {{{ cDefine('ENOTCONN') }}}: 'Socket is not connected',
-    {{{ cDefine('ETOOMANYREFS') }}}: 'Too many references',
-    {{{ cDefine('EUSERS') }}}: 'Too many users',
-    {{{ cDefine('EDQUOT') }}}: 'Quota exceeded',
-    {{{ cDefine('ESTALE') }}}: 'Stale file handle',
-    {{{ cDefine('ENOTSUP') }}}: 'Not supported',
-    {{{ cDefine('ENOMEDIUM') }}}: 'No medium (in tape drive)',
-    {{{ cDefine('EILSEQ') }}}: 'Illegal byte sequence',
-    {{{ cDefine('EOVERFLOW') }}}: 'Value too large for defined data type',
-    {{{ cDefine('ECANCELED') }}}: 'Operation canceled',
-    {{{ cDefine('ENOTRECOVERABLE') }}}: 'State not recoverable',
-    {{{ cDefine('EOWNERDEAD') }}}: 'Previous owner died',
-    {{{ cDefine('ESTRPIPE') }}}: 'Streams pipe error',
+    {{{ cDefs.EPERM }}}: 'Not super-user',
+    {{{ cDefs.ENOENT }}}: 'No such file or directory',
+    {{{ cDefs.ESRCH }}}: 'No such process',
+    {{{ cDefs.EINTR }}}: 'Interrupted system call',
+    {{{ cDefs.EIO }}}: 'I/O error',
+    {{{ cDefs.ENXIO }}}: 'No such device or address',
+    {{{ cDefs.E2BIG }}}: 'Arg list too long',
+    {{{ cDefs.ENOEXEC }}}: 'Exec format error',
+    {{{ cDefs.EBADF }}}: 'Bad file number',
+    {{{ cDefs.ECHILD }}}: 'No children',
+    {{{ cDefs.EWOULDBLOCK }}}: 'No more processes',
+    {{{ cDefs.ENOMEM }}}: 'Not enough core',
+    {{{ cDefs.EACCES }}}: 'Permission denied',
+    {{{ cDefs.EFAULT }}}: 'Bad address',
+    {{{ cDefs.ENOTBLK }}}: 'Block device required',
+    {{{ cDefs.EBUSY }}}: 'Mount device busy',
+    {{{ cDefs.EEXIST }}}: 'File exists',
+    {{{ cDefs.EXDEV }}}: 'Cross-device link',
+    {{{ cDefs.ENODEV }}}: 'No such device',
+    {{{ cDefs.ENOTDIR }}}: 'Not a directory',
+    {{{ cDefs.EISDIR }}}: 'Is a directory',
+    {{{ cDefs.EINVAL }}}: 'Invalid argument',
+    {{{ cDefs.ENFILE }}}: 'Too many open files in system',
+    {{{ cDefs.EMFILE }}}: 'Too many open files',
+    {{{ cDefs.ENOTTY }}}: 'Not a typewriter',
+    {{{ cDefs.ETXTBSY }}}: 'Text file busy',
+    {{{ cDefs.EFBIG }}}: 'File too large',
+    {{{ cDefs.ENOSPC }}}: 'No space left on device',
+    {{{ cDefs.ESPIPE }}}: 'Illegal seek',
+    {{{ cDefs.EROFS }}}: 'Read only file system',
+    {{{ cDefs.EMLINK }}}: 'Too many links',
+    {{{ cDefs.EPIPE }}}: 'Broken pipe',
+    {{{ cDefs.EDOM }}}: 'Math arg out of domain of func',
+    {{{ cDefs.ERANGE }}}: 'Math result not representable',
+    {{{ cDefs.ENOMSG }}}: 'No message of desired type',
+    {{{ cDefs.EIDRM }}}: 'Identifier removed',
+    {{{ cDefs.ECHRNG }}}: 'Channel number out of range',
+    {{{ cDefs.EL2NSYNC }}}: 'Level 2 not synchronized',
+    {{{ cDefs.EL3HLT }}}: 'Level 3 halted',
+    {{{ cDefs.EL3RST }}}: 'Level 3 reset',
+    {{{ cDefs.ELNRNG }}}: 'Link number out of range',
+    {{{ cDefs.EUNATCH }}}: 'Protocol driver not attached',
+    {{{ cDefs.ENOCSI }}}: 'No CSI structure available',
+    {{{ cDefs.EL2HLT }}}: 'Level 2 halted',
+    {{{ cDefs.EDEADLK }}}: 'Deadlock condition',
+    {{{ cDefs.ENOLCK }}}: 'No record locks available',
+    {{{ cDefs.EBADE }}}: 'Invalid exchange',
+    {{{ cDefs.EBADR }}}: 'Invalid request descriptor',
+    {{{ cDefs.EXFULL }}}: 'Exchange full',
+    {{{ cDefs.ENOANO }}}: 'No anode',
+    {{{ cDefs.EBADRQC }}}: 'Invalid request code',
+    {{{ cDefs.EBADSLT }}}: 'Invalid slot',
+    {{{ cDefs.EDEADLOCK }}}: 'File locking deadlock error',
+    {{{ cDefs.EBFONT }}}: 'Bad font file fmt',
+    {{{ cDefs.ENOSTR }}}: 'Device not a stream',
+    {{{ cDefs.ENODATA }}}: 'No data (for no delay io)',
+    {{{ cDefs.ETIME }}}: 'Timer expired',
+    {{{ cDefs.ENOSR }}}: 'Out of streams resources',
+    {{{ cDefs.ENONET }}}: 'Machine is not on the network',
+    {{{ cDefs.ENOPKG }}}: 'Package not installed',
+    {{{ cDefs.EREMOTE }}}: 'The object is remote',
+    {{{ cDefs.ENOLINK }}}: 'The link has been severed',
+    {{{ cDefs.EADV }}}: 'Advertise error',
+    {{{ cDefs.ESRMNT }}}: 'Srmount error',
+    {{{ cDefs.ECOMM }}}: 'Communication error on send',
+    {{{ cDefs.EPROTO }}}: 'Protocol error',
+    {{{ cDefs.EMULTIHOP }}}: 'Multihop attempted',
+    {{{ cDefs.EDOTDOT }}}: 'Cross mount point (not really error)',
+    {{{ cDefs.EBADMSG }}}: 'Trying to read unreadable message',
+    {{{ cDefs.ENOTUNIQ }}}: 'Given log. name not unique',
+    {{{ cDefs.EBADFD }}}: 'f.d. invalid for this operation',
+    {{{ cDefs.EREMCHG }}}: 'Remote address changed',
+    {{{ cDefs.ELIBACC }}}: 'Can   access a needed shared lib',
+    {{{ cDefs.ELIBBAD }}}: 'Accessing a corrupted shared lib',
+    {{{ cDefs.ELIBSCN }}}: '.lib section in a.out corrupted',
+    {{{ cDefs.ELIBMAX }}}: 'Attempting to link in too many libs',
+    {{{ cDefs.ELIBEXEC }}}: 'Attempting to exec a shared library',
+    {{{ cDefs.ENOSYS }}}: 'Function not implemented',
+    {{{ cDefs.ENOTEMPTY }}}: 'Directory not empty',
+    {{{ cDefs.ENAMETOOLONG }}}: 'File or path name too long',
+    {{{ cDefs.ELOOP }}}: 'Too many symbolic links',
+    {{{ cDefs.EOPNOTSUPP }}}: 'Operation not supported on transport endpoint',
+    {{{ cDefs.EPFNOSUPPORT }}}: 'Protocol family not supported',
+    {{{ cDefs.ECONNRESET }}}: 'Connection reset by peer',
+    {{{ cDefs.ENOBUFS }}}: 'No buffer space available',
+    {{{ cDefs.EAFNOSUPPORT }}}: 'Address family not supported by protocol family',
+    {{{ cDefs.EPROTOTYPE }}}: 'Protocol wrong type for socket',
+    {{{ cDefs.ENOTSOCK }}}: 'Socket operation on non-socket',
+    {{{ cDefs.ENOPROTOOPT }}}: 'Protocol not available',
+    {{{ cDefs.ESHUTDOWN }}}: 'Can\'t send after socket shutdown',
+    {{{ cDefs.ECONNREFUSED }}}: 'Connection refused',
+    {{{ cDefs.EADDRINUSE }}}: 'Address already in use',
+    {{{ cDefs.ECONNABORTED }}}: 'Connection aborted',
+    {{{ cDefs.ENETUNREACH }}}: 'Network is unreachable',
+    {{{ cDefs.ENETDOWN }}}: 'Network interface is not configured',
+    {{{ cDefs.ETIMEDOUT }}}: 'Connection timed out',
+    {{{ cDefs.EHOSTDOWN }}}: 'Host is down',
+    {{{ cDefs.EHOSTUNREACH }}}: 'Host is unreachable',
+    {{{ cDefs.EINPROGRESS }}}: 'Connection already in progress',
+    {{{ cDefs.EALREADY }}}: 'Socket already connected',
+    {{{ cDefs.EDESTADDRREQ }}}: 'Destination address required',
+    {{{ cDefs.EMSGSIZE }}}: 'Message too long',
+    {{{ cDefs.EPROTONOSUPPORT }}}: 'Unknown protocol',
+    {{{ cDefs.ESOCKTNOSUPPORT }}}: 'Socket type not supported',
+    {{{ cDefs.EADDRNOTAVAIL }}}: 'Address not available',
+    {{{ cDefs.ENETRESET }}}: 'Connection reset by network',
+    {{{ cDefs.EISCONN }}}: 'Socket is already connected',
+    {{{ cDefs.ENOTCONN }}}: 'Socket is not connected',
+    {{{ cDefs.ETOOMANYREFS }}}: 'Too many references',
+    {{{ cDefs.EUSERS }}}: 'Too many users',
+    {{{ cDefs.EDQUOT }}}: 'Quota exceeded',
+    {{{ cDefs.ESTALE }}}: 'Stale file handle',
+    {{{ cDefs.ENOTSUP }}}: 'Not supported',
+    {{{ cDefs.ENOMEDIUM }}}: 'No medium (in tape drive)',
+    {{{ cDefs.EILSEQ }}}: 'Illegal byte sequence',
+    {{{ cDefs.EOVERFLOW }}}: 'Value too large for defined data type',
+    {{{ cDefs.ECANCELED }}}: 'Operation canceled',
+    {{{ cDefs.ENOTRECOVERABLE }}}: 'State not recoverable',
+    {{{ cDefs.EOWNERDEAD }}}: 'Previous owner died',
+    {{{ cDefs.ESTRPIPE }}}: 'Streams pipe error',
   },
 #if SUPPORT_ERRNO
   $setErrNo__deps: ['__errno_location'],
@@ -1720,16 +1720,16 @@ mergeInto(LibraryManager.library, {
     var addr;
 
     switch (family) {
-      case {{{ cDefine('AF_INET') }}}:
+      case {{{ cDefs.AF_INET }}}:
         if (salen !== {{{ C_STRUCTS.sockaddr_in.__size__ }}}) {
-          return { errno: {{{ cDefine('EINVAL') }}} };
+          return { errno: {{{ cDefs.EINVAL }}} };
         }
         addr = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_addr.s_addr, 'i32') }}};
         addr = inetNtop4(addr);
         break;
-      case {{{ cDefine('AF_INET6') }}}:
+      case {{{ cDefs.AF_INET6 }}}:
         if (salen !== {{{ C_STRUCTS.sockaddr_in6.__size__ }}}) {
-          return { errno: {{{ cDefine('EINVAL') }}} };
+          return { errno: {{{ cDefs.EINVAL }}} };
         }
         addr = [
           {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in6.sin6_addr.__in6_union.__s6_addr+0, 'i32') }}},
@@ -1740,7 +1740,7 @@ mergeInto(LibraryManager.library, {
         addr = inetNtop6(addr);
         break;
       default:
-        return { errno: {{{ cDefine('EAFNOSUPPORT') }}} };
+        return { errno: {{{ cDefs.EAFNOSUPPORT }}} };
     }
 
     return { family: family, addr: addr, port: port };
@@ -1749,7 +1749,7 @@ mergeInto(LibraryManager.library, {
   $writeSockaddr__deps: ['$Sockets', '$inetPton4', '$inetPton6', '$zeroMemory'],
   $writeSockaddr: function (sa, family, addr, port, addrlen) {
     switch (family) {
-      case {{{ cDefine('AF_INET') }}}:
+      case {{{ cDefs.AF_INET }}}:
         addr = inetPton4(addr);
         zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in.__size__ }}});
         if (addrlen) {
@@ -1759,7 +1759,7 @@ mergeInto(LibraryManager.library, {
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_addr.s_addr, 'addr', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_port, '_htons(port)', 'i16') }}};
         break;
-      case {{{ cDefine('AF_INET6') }}}:
+      case {{{ cDefs.AF_INET6 }}}:
         addr = inetPton6(addr);
         zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in6.__size__ }}});
         if (addrlen) {
@@ -1773,7 +1773,7 @@ mergeInto(LibraryManager.library, {
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_port, '_htons(port)', 'i16') }}};
         break;
       default:
-        return {{{ cDefine('EAFNOSUPPORT') }}};
+        return {{{ cDefs.EAFNOSUPPORT }}};
     }
     return 0;
   },
@@ -1833,8 +1833,8 @@ mergeInto(LibraryManager.library, {
   gethostbyaddr__proxy: 'sync',
   gethostbyaddr__sig: 'ppii',
   gethostbyaddr: function (addr, addrlen, type) {
-    if (type !== {{{ cDefine('AF_INET') }}}) {
-      setErrNo({{{ cDefine('EAFNOSUPPORT') }}});
+    if (type !== {{{ cDefs.AF_INET }}}) {
+      setErrNo({{{ cDefs.EAFNOSUPPORT }}});
       // TODO: set h_errno
       return null;
     }
@@ -1864,7 +1864,7 @@ mergeInto(LibraryManager.library, {
     var aliasesBuf = _malloc(4);
     {{{ makeSetValue('aliasesBuf', '0', '0', POINTER_TYPE) }}};
     {{{ makeSetValue('ret', C_STRUCTS.hostent.h_aliases, 'aliasesBuf', 'i8**') }}};
-    var afinet = {{{ cDefine('AF_INET') }}};
+    var afinet = {{{ cDefs.AF_INET }}};
     {{{ makeSetValue('ret', C_STRUCTS.hostent.h_addrtype, 'afinet', 'i32') }}};
     {{{ makeSetValue('ret', C_STRUCTS.hostent.h_length, '4', 'i32') }}};
     var addrListBuf = _malloc(12);
@@ -1899,7 +1899,7 @@ mergeInto(LibraryManager.library, {
     var addr = 0;
     var port = 0;
     var flags = 0;
-    var family = {{{ cDefine('AF_UNSPEC') }}};
+    var family = {{{ cDefs.AF_UNSPEC }}};
     var type = 0;
     var proto = 0;
     var ai, last;
@@ -1908,10 +1908,10 @@ mergeInto(LibraryManager.library, {
       var sa, salen, ai;
       var errno;
 
-      salen = family === {{{ cDefine('AF_INET6') }}} ?
+      salen = family === {{{ cDefs.AF_INET6 }}} ?
         {{{ C_STRUCTS.sockaddr_in6.__size__ }}} :
         {{{ C_STRUCTS.sockaddr_in.__size__ }}};
-      addr = family === {{{ cDefine('AF_INET6') }}} ?
+      addr = family === {{{ cDefs.AF_INET6 }}} ?
         inetNtop6(addr) :
         inetNtop4(addr);
       sa = _malloc(salen);
@@ -1924,7 +1924,7 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_protocol, 'proto', 'i32') }}};
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_canonname, 'canon', 'i32') }}};
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addr, 'sa', '*') }}};
-      if (family === {{{ cDefine('AF_INET6') }}}) {
+      if (family === {{{ cDefs.AF_INET6 }}}) {
         {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addrlen, C_STRUCTS.sockaddr_in6.__size__, 'i32') }}};
       } else {
         {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addrlen, C_STRUCTS.sockaddr_in.__size__, 'i32') }}};
@@ -1941,40 +1941,40 @@ mergeInto(LibraryManager.library, {
       proto = {{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_protocol, 'i32') }}};
     }
     if (type && !proto) {
-      proto = type === {{{ cDefine('SOCK_DGRAM') }}} ? {{{ cDefine('IPPROTO_UDP') }}} : {{{ cDefine('IPPROTO_TCP') }}};
+      proto = type === {{{ cDefs.SOCK_DGRAM }}} ? {{{ cDefs.IPPROTO_UDP }}} : {{{ cDefs.IPPROTO_TCP }}};
     }
     if (!type && proto) {
-      type = proto === {{{ cDefine('IPPROTO_UDP') }}} ? {{{ cDefine('SOCK_DGRAM') }}} : {{{ cDefine('SOCK_STREAM') }}};
+      type = proto === {{{ cDefs.IPPROTO_UDP }}} ? {{{ cDefs.SOCK_DGRAM }}} : {{{ cDefs.SOCK_STREAM }}};
     }
 
     // If type or proto are set to zero in hints we should really be returning multiple addrinfo values, but for
     // now default to a TCP STREAM socket so we can at least return a sensible addrinfo given NULL hints.
     if (proto === 0) {
-      proto = {{{ cDefine('IPPROTO_TCP') }}};
+      proto = {{{ cDefs.IPPROTO_TCP }}};
     }
     if (type === 0) {
-      type = {{{ cDefine('SOCK_STREAM') }}};
+      type = {{{ cDefs.SOCK_STREAM }}};
     }
 
     if (!node && !service) {
-      return {{{ cDefine('EAI_NONAME') }}};
+      return {{{ cDefs.EAI_NONAME }}};
     }
-    if (flags & ~({{{ cDefine('AI_PASSIVE') }}}|{{{ cDefine('AI_CANONNAME') }}}|{{{ cDefine('AI_NUMERICHOST') }}}|
-        {{{ cDefine('AI_NUMERICSERV') }}}|{{{ cDefine('AI_V4MAPPED') }}}|{{{ cDefine('AI_ALL') }}}|{{{ cDefine('AI_ADDRCONFIG') }}})) {
-      return {{{ cDefine('EAI_BADFLAGS') }}};
+    if (flags & ~({{{ cDefs.AI_PASSIVE }}}|{{{ cDefs.AI_CANONNAME }}}|{{{ cDefs.AI_NUMERICHOST }}}|
+        {{{ cDefs.AI_NUMERICSERV }}}|{{{ cDefs.AI_V4MAPPED }}}|{{{ cDefs.AI_ALL }}}|{{{ cDefs.AI_ADDRCONFIG }}})) {
+      return {{{ cDefs.EAI_BADFLAGS }}};
     }
-    if (hint !== 0 && ({{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}} & {{{ cDefine('AI_CANONNAME') }}}) && !node) {
-      return {{{ cDefine('EAI_BADFLAGS') }}};
+    if (hint !== 0 && ({{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}} & {{{ cDefs.AI_CANONNAME }}}) && !node) {
+      return {{{ cDefs.EAI_BADFLAGS }}};
     }
-    if (flags & {{{ cDefine('AI_ADDRCONFIG') }}}) {
+    if (flags & {{{ cDefs.AI_ADDRCONFIG }}}) {
       // TODO
-      return {{{ cDefine('EAI_NONAME') }}};
+      return {{{ cDefs.EAI_NONAME }}};
     }
-    if (type !== 0 && type !== {{{ cDefine('SOCK_STREAM') }}} && type !== {{{ cDefine('SOCK_DGRAM') }}}) {
-      return {{{ cDefine('EAI_SOCKTYPE') }}};
+    if (type !== 0 && type !== {{{ cDefs.SOCK_STREAM }}} && type !== {{{ cDefs.SOCK_DGRAM }}}) {
+      return {{{ cDefs.EAI_SOCKTYPE }}};
     }
-    if (family !== {{{ cDefine('AF_UNSPEC') }}} && family !== {{{ cDefine('AF_INET') }}} && family !== {{{ cDefine('AF_INET6') }}}) {
-      return {{{ cDefine('EAI_FAMILY') }}};
+    if (family !== {{{ cDefs.AF_UNSPEC }}} && family !== {{{ cDefs.AF_INET }}} && family !== {{{ cDefs.AF_INET6 }}}) {
+      return {{{ cDefs.EAI_FAMILY }}};
     }
 
     if (service) {
@@ -1982,22 +1982,22 @@ mergeInto(LibraryManager.library, {
       port = parseInt(service, 10);
 
       if (isNaN(port)) {
-        if (flags & {{{ cDefine('AI_NUMERICSERV') }}}) {
-          return {{{ cDefine('EAI_NONAME') }}};
+        if (flags & {{{ cDefs.AI_NUMERICSERV }}}) {
+          return {{{ cDefs.EAI_NONAME }}};
         }
         // TODO support resolving well-known service names from:
         // http://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.txt
-        return {{{ cDefine('EAI_SERVICE') }}};
+        return {{{ cDefs.EAI_SERVICE }}};
       }
     }
 
     if (!node) {
-      if (family === {{{ cDefine('AF_UNSPEC') }}}) {
-        family = {{{ cDefine('AF_INET') }}};
+      if (family === {{{ cDefs.AF_UNSPEC }}}) {
+        family = {{{ cDefs.AF_INET }}};
       }
-      if ((flags & {{{ cDefine('AI_PASSIVE') }}}) === 0) {
-        if (family === {{{ cDefine('AF_INET') }}}) {
-          addr = _htonl({{{ cDefine('INADDR_LOOPBACK') }}});
+      if ((flags & {{{ cDefs.AI_PASSIVE }}}) === 0) {
+        if (family === {{{ cDefs.AF_INET }}}) {
+          addr = _htonl({{{ cDefs.INADDR_LOOPBACK }}});
         } else {
           addr = [0, 0, 0, 1];
         }
@@ -2014,23 +2014,23 @@ mergeInto(LibraryManager.library, {
     addr = inetPton4(node);
     if (addr !== null) {
       // incoming node is a valid ipv4 address
-      if (family === {{{ cDefine('AF_UNSPEC') }}} || family === {{{ cDefine('AF_INET') }}}) {
-        family = {{{ cDefine('AF_INET') }}};
+      if (family === {{{ cDefs.AF_UNSPEC }}} || family === {{{ cDefs.AF_INET }}}) {
+        family = {{{ cDefs.AF_INET }}};
       }
-      else if (family === {{{ cDefine('AF_INET6') }}} && (flags & {{{ cDefine('AI_V4MAPPED') }}})) {
+      else if (family === {{{ cDefs.AF_INET6 }}} && (flags & {{{ cDefs.AI_V4MAPPED }}})) {
         addr = [0, 0, _htonl(0xffff), addr];
-        family = {{{ cDefine('AF_INET6') }}};
+        family = {{{ cDefs.AF_INET6 }}};
       } else {
-        return {{{ cDefine('EAI_NONAME') }}};
+        return {{{ cDefs.EAI_NONAME }}};
       }
     } else {
       addr = inetPton6(node);
       if (addr !== null) {
         // incoming node is a valid ipv6 address
-        if (family === {{{ cDefine('AF_UNSPEC') }}} || family === {{{ cDefine('AF_INET6') }}}) {
-          family = {{{ cDefine('AF_INET6') }}};
+        if (family === {{{ cDefs.AF_UNSPEC }}} || family === {{{ cDefs.AF_INET6 }}}) {
+          family = {{{ cDefs.AF_INET6 }}};
         } else {
-          return {{{ cDefine('EAI_NONAME') }}};
+          return {{{ cDefs.EAI_NONAME }}};
         }
       }
     }
@@ -2039,8 +2039,8 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('out', '0', 'ai', '*') }}};
       return 0;
     }
-    if (flags & {{{ cDefine('AI_NUMERICHOST') }}}) {
-      return {{{ cDefine('EAI_NONAME') }}};
+    if (flags & {{{ cDefs.AI_NUMERICHOST }}}) {
+      return {{{ cDefs.EAI_NONAME }}};
     }
 
     //
@@ -2049,9 +2049,9 @@ mergeInto(LibraryManager.library, {
     // resolve the hostname to a temporary fake address
     node = DNS.lookup_name(node);
     addr = inetPton4(node);
-    if (family === {{{ cDefine('AF_UNSPEC') }}}) {
-      family = {{{ cDefine('AF_INET') }}};
-    } else if (family === {{{ cDefine('AF_INET6') }}}) {
+    if (family === {{{ cDefs.AF_UNSPEC }}}) {
+      family = {{{ cDefs.AF_INET }}};
+    } else if (family === {{{ cDefs.AF_INET6 }}}) {
       addr = [0, 0, _htonl(0xffff), addr];
     }
     ai = allocaddrinfo(family, type, proto, null, addr, port);
@@ -2064,7 +2064,7 @@ mergeInto(LibraryManager.library, {
   getnameinfo: function (sa, salen, node, nodelen, serv, servlen, flags) {
     var info = readSockaddr(sa, salen);
     if (info.errno) {
-      return {{{ cDefine('EAI_FAMILY') }}};
+      return {{{ cDefs.EAI_FAMILY }}};
     }
     var port = info.port;
     var addr = info.addr;
@@ -2073,9 +2073,9 @@ mergeInto(LibraryManager.library, {
 
     if (node && nodelen) {
       var lookup;
-      if ((flags & {{{ cDefine('NI_NUMERICHOST') }}}) || !(lookup = DNS.lookup_addr(addr))) {
-        if (flags & {{{ cDefine('NI_NAMEREQD') }}}) {
-          return {{{ cDefine('EAI_NONAME') }}};
+      if ((flags & {{{ cDefs.NI_NUMERICHOST }}}) || !(lookup = DNS.lookup_addr(addr))) {
+        if (flags & {{{ cDefs.NI_NAMEREQD }}}) {
+          return {{{ cDefs.EAI_NONAME }}};
         }
       } else {
         addr = lookup;
@@ -2098,7 +2098,7 @@ mergeInto(LibraryManager.library, {
 
     if (overflowed) {
       // Note: even when we overflow, getnameinfo() is specced to write out the truncated results.
-      return {{{ cDefine('EAI_OVERFLOW') }}};
+      return {{{ cDefs.EAI_OVERFLOW }}};
     }
 
     return 0;
@@ -2488,20 +2488,20 @@ mergeInto(LibraryManager.library, {
     var iNextLine = callstack.indexOf('\n', Math.max(iThisFunc, iThisFunc2))+1;
     callstack = callstack.slice(iNextLine);
 
-    if (flags & {{{ cDefine('EM_LOG_DEMANGLE') }}}) {
+    if (flags & {{{ cDefs.EM_LOG_DEMANGLE }}}) {
       warnOnce('EM_LOG_DEMANGLE is deprecated; ignoring');
     }
 
     // If user requested to see the original source stack, but no source map
     // information is available, just fall back to showing the JS stack.
-    if (flags & {{{ cDefine('EM_LOG_C_STACK') }}} && typeof emscripten_source_map == 'undefined') {
+    if (flags & {{{ cDefs.EM_LOG_C_STACK }}} && typeof emscripten_source_map == 'undefined') {
       warnOnce('Source map information is not available, emscripten_log with EM_LOG_C_STACK will be ignored. Build with "--pre-js $EMSCRIPTEN/src/emscripten-source-map.min.js" linker flag to add source map loading to code.');
-      flags ^= {{{ cDefine('EM_LOG_C_STACK') }}};
-      flags |= {{{ cDefine('EM_LOG_JS_STACK') }}};
+      flags ^= {{{ cDefs.EM_LOG_C_STACK }}};
+      flags |= {{{ cDefs.EM_LOG_JS_STACK }}};
     }
 
     var stack_args = null;
-    if (flags & {{{ cDefine('EM_LOG_FUNC_PARAMS') }}}) {
+    if (flags & {{{ cDefs.EM_LOG_FUNC_PARAMS }}}) {
       // To get the actual parameters to the functions, traverse the stack via
       // the unfortunately deprecated 'arguments.callee' method, if it works:
       stack_args = traverseStack(arguments);
@@ -2556,18 +2556,18 @@ mergeInto(LibraryManager.library, {
 
       var haveSourceMap = false;
 
-      if (flags & {{{ cDefine('EM_LOG_C_STACK') }}}) {
+      if (flags & {{{ cDefs.EM_LOG_C_STACK }}}) {
         var orig = emscripten_source_map.originalPositionFor({line: lineno, column: column});
         haveSourceMap = (orig && orig.source);
         if (haveSourceMap) {
-          if (flags & {{{ cDefine('EM_LOG_NO_PATHS') }}}) {
+          if (flags & {{{ cDefs.EM_LOG_NO_PATHS }}}) {
             orig.source = orig.source.substring(orig.source.replace(/\\/g, "/").lastIndexOf('/')+1);
           }
           callstack += '    at ' + symbolName + ' (' + orig.source + ':' + orig.line + ':' + orig.column + ')\n';
         }
       }
-      if ((flags & {{{ cDefine('EM_LOG_JS_STACK') }}}) || !haveSourceMap) {
-        if (flags & {{{ cDefine('EM_LOG_NO_PATHS') }}}) {
+      if ((flags & {{{ cDefs.EM_LOG_JS_STACK }}}) || !haveSourceMap) {
+        if (flags & {{{ cDefs.EM_LOG_NO_PATHS }}}) {
           file = file.substring(file.replace(/\\/g, "/").lastIndexOf('/')+1);
         }
         callstack += (haveSourceMap ? ('     = ' + symbolName) : ('    at '+ symbolName)) + ' (' + file + ':' + lineno + ':' + column + ')\n';
@@ -2575,7 +2575,7 @@ mergeInto(LibraryManager.library, {
 
       // If we are still keeping track with the callstack by traversing via
       // 'arguments.callee', print the function parameters as well.
-      if (flags & {{{ cDefine('EM_LOG_FUNC_PARAMS') }}} && stack_args[0]) {
+      if (flags & {{{ cDefs.EM_LOG_FUNC_PARAMS }}} && stack_args[0]) {
         if (stack_args[1] == symbolName && stack_args[2].length > 0) {
           callstack = callstack.replace(/\s+$/, '');
           callstack += ' with values: ' + stack_args[1] + stack_args[2] + '\n';
@@ -2608,24 +2608,24 @@ mergeInto(LibraryManager.library, {
 
   $emscriptenLog__deps: ['$getCallstack'],
   $emscriptenLog: function(flags, str) {
-    if (flags & {{{ cDefine('EM_LOG_C_STACK') | cDefine('EM_LOG_JS_STACK') }}}) {
+    if (flags & {{{ cDefs.EM_LOG_C_STACK | cDefs.EM_LOG_JS_STACK }}}) {
       str = str.replace(/\s+$/, ''); // Ensure the message and the callstack are joined cleanly with exactly one newline.
       str += (str.length > 0 ? '\n' : '') + getCallstack(flags);
     }
 
-    if (flags & {{{ cDefine('EM_LOG_CONSOLE') }}}) {
-      if (flags & {{{ cDefine('EM_LOG_ERROR') }}}) {
+    if (flags & {{{ cDefs.EM_LOG_CONSOLE }}}) {
+      if (flags & {{{ cDefs.EM_LOG_ERROR }}}) {
         console.error(str);
-      } else if (flags & {{{ cDefine('EM_LOG_WARN') }}}) {
+      } else if (flags & {{{ cDefs.EM_LOG_WARN }}}) {
         console.warn(str);
-      } else if (flags & {{{ cDefine('EM_LOG_INFO') }}}) {
+      } else if (flags & {{{ cDefs.EM_LOG_INFO }}}) {
         console.info(str);
-      } else if (flags & {{{ cDefine('EM_LOG_DEBUG') }}}) {
+      } else if (flags & {{{ cDefs.EM_LOG_DEBUG }}}) {
         console.debug(str);
       } else {
         console.log(str);
       }
-    } else if (flags & {{{ cDefine('EM_LOG_ERROR') | cDefine('EM_LOG_WARN') }}}) {
+    } else if (flags & {{{ cDefs.EM_LOG_ERROR | cDefs.EM_LOG_WARN }}}) {
       err(str);
     } else {
       out(str);

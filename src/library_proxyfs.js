@@ -196,9 +196,9 @@ mergeInto(LibraryManager.library, {
       },
       llseek: function (stream, offset, whence) {
         var position = offset;
-        if (whence === {{{ cDefine('SEEK_CUR') }}}) {
+        if (whence === {{{ cDefs.SEEK_CUR }}}) {
           position += stream.position;
-        } else if (whence === {{{ cDefine('SEEK_END') }}}) {
+        } else if (whence === {{{ cDefs.SEEK_END }}}) {
           if (FS.isFile(stream.node.mode)) {
             try {
               var stat = stream.node.node_ops.getattr(stream.node);

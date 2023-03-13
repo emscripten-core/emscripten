@@ -655,7 +655,7 @@ var LibraryPThread = {
     var worker = PThread.getNewWorker();
     if (!worker) {
       // No available workers in the PThread pool.
-      return {{{ cDefine('EAGAIN') }}};
+      return {{{ cDefs.EAGAIN }}};
     }
 #if ASSERTIONS
     assert(!worker.pthread_ptr, 'Internal error!');
@@ -744,7 +744,7 @@ var LibraryPThread = {
   __pthread_create_js: function(pthread_ptr, attr, startRoutine, arg) {
     if (typeof SharedArrayBuffer == 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
-      return {{{ cDefine('EAGAIN') }}};
+      return {{{ cDefs.EAGAIN }}};
     }
 #if PTHREADS_DEBUG
     dbg("createThread: " + ptrToString(pthread_ptr));
@@ -782,7 +782,7 @@ var LibraryPThread = {
         if (name == '#canvas') {
           if (!Module['canvas']) {
             err('pthread_create: could not find canvas with ID "' + name + '" to transfer to thread!');
-            error = {{{ cDefine('EINVAL') }}};
+            error = {{{ cDefs.EINVAL }}};
             break;
           }
           name = Module['canvas'].id;
@@ -798,12 +798,12 @@ var LibraryPThread = {
           var canvas = (Module['canvas'] && Module['canvas'].id === name) ? Module['canvas'] : document.querySelector(name);
           if (!canvas) {
             err('pthread_create: could not find canvas with ID "' + name + '" to transfer to thread!');
-            error = {{{ cDefine('EINVAL') }}};
+            error = {{{ cDefs.EINVAL }}};
             break;
           }
           if (canvas.controlTransferredOffscreen) {
             err('pthread_create: cannot transfer canvas with ID "' + name + '" to thread, since the current thread does not have control over it!');
-            error = {{{ cDefine('EPERM') }}}; // Operation not permitted, some other thread is accessing the canvas.
+            error = {{{ cDefs.EPERM }}}; // Operation not permitted, some other thread is accessing the canvas.
             break;
           }
           if (canvas.transferControlToOffscreen) {
@@ -837,7 +837,7 @@ var LibraryPThread = {
             // proxied from worker to main thread.
 #if !OFFSCREEN_FRAMEBUFFER
             err('pthread_create: Build with -sOFFSCREEN_FRAMEBUFFER to enable fallback proxying of GL commands from pthread to main thread.');
-            return {{{ cDefine('ENOSYS') }}}; // Function not implemented, browser doesn't have support for this.
+            return {{{ cDefs.ENOSYS }}}; // Function not implemented, browser doesn't have support for this.
 #endif
           }
         }
@@ -847,7 +847,7 @@ var LibraryPThread = {
         }
       } catch(e) {
         err('pthread_create: failed to transfer control of canvas "' + name + '" to OffscreenCanvas! Error: ' + e);
-        return {{{ cDefine('EINVAL') }}}; // Hitting this might indicate an implementation bug or some other internal error
+        return {{{ cDefs.EINVAL }}}; // Hitting this might indicate an implementation bug or some other internal error
       }
     }
 #endif // OFFSCREENCANVAS_SUPPORT
@@ -917,7 +917,7 @@ var LibraryPThread = {
   },
 
   __pthread_kill_js: function(thread, signal) {
-    if (signal === {{{ cDefine('SIGCANCEL') }}}) { // Used by pthread_cancel in musl
+    if (signal === {{{ cDefs.SIGCANCEL }}}) { // Used by pthread_cancel in musl
       if (!ENVIRONMENT_IS_PTHREAD) cancelThread(thread);
       else postMessage({ 'cmd': 'cancelThread', 'thread': thread });
     } else {
@@ -958,7 +958,7 @@ var LibraryPThread = {
     var numCallArgs = arguments.length - 2;
     var outerArgs = arguments;
 #if ASSERTIONS
-    var maxArgs = {{{ cDefine('EM_QUEUED_JS_CALL_MAX_ARGS') - 1 }}};
+    var maxArgs = {{{ cDefs.EM_QUEUED_JS_CALL_MAX_ARGS - 1 }}};
     if (numCallArgs > maxArgs) {
       throw 'emscripten_proxy_to_main_thread_js: Too many arguments ' + numCallArgs + ' to proxied function idx=' + index + ', maximum supported is ' + maxArgs;
     }
