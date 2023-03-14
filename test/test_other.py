@@ -10841,11 +10841,17 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.assertContained('error: unable to find library -lbar', err)
 
   def test_linker_flags_pass_through(self):
-    err = self.expect_fail([EMXX, test_file('hello_world.cpp'), '-Wl,--waka'])
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wl,--waka'])
     self.assertContained('wasm-ld: error: unknown argument: --waka', err)
 
-    err = self.expect_fail([EMXX, test_file('hello_world.cpp'), '-Xlinker', '--waka'])
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Xlinker', '--waka'])
     self.assertContained('wasm-ld: error: unknown argument: --waka', err)
+
+    err = self.run_process([EMCC, test_file('hello_world.c'), '-z', 'foo'], stderr=PIPE).stderr
+    self.assertContained('wasm-ld: warning: unknown -z value: foo', err)
+
+    err = self.run_process([EMCC, test_file('hello_world.c'), '-zfoo'], stderr=PIPE).stderr
+    self.assertContained('wasm-ld: warning: unknown -z value: foo', err)
 
   def test_linker_flags_unused(self):
     err = self.run_process([EMXX, test_file('hello_world.cpp'), '-c', '-lbar'], stderr=PIPE).stderr

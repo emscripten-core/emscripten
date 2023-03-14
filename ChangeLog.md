@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.34 (in development)
 -----------------------
+- `-z` arguments are now passed directly to wasm-ld without the need for the
+  `-Wl,` prefix.  This matches the behaviour of both clang and gcc. (#18956)
 - The prefered way to enable pthread is now to just the the standard `-pthread`
   flag.  The `-sUSE_PTHREADS` setting still works but is marked as legacy and
   will generate a warning in `-sSTRICT` mode.
