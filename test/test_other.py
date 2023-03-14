@@ -20,7 +20,6 @@ import subprocess
 import sys
 import tarfile
 import time
-import unittest
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
@@ -128,6 +127,21 @@ def requires_ninja(func):
   def decorated(self, *args, **kwargs):
     if not utils.which('ninja'):
       self.fail('test requires ninja to be installed (available in PATH)')
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
+def requires_scons(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    if not utils.which('scons'):
+      if 'EMTEST_SKIP_SCONS' in os.environ:
+        self.skipTest('test requires scons and EMTEST_SKIP_SCONS is set')
+      else:
+        self.fail('scons required to run this test.  Use EMTEST_SKIP_SKIP to skip')
     return func(self, *args, **kwargs)
 
   return decorated
@@ -2662,7 +2676,7 @@ int f() {
     self.verify_dwarf_exists(wasm_file)
     self.verify_source_map_exists(map_file)
 
-  @unittest.skipIf(not scons_path, 'scons not found in PATH')
+  @requires_scons
   @with_env_modify({'EMSCRIPTEN_ROOT': path_from_root()})
   def test_scons(self):
     # this test copies the site_scons directory alongside the test
@@ -2673,7 +2687,7 @@ int f() {
       output = self.run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
 
-  @unittest.skipIf(not scons_path, 'scons not found in PATH')
+  @requires_scons
   @with_env_modify({'EMSCRIPTEN_TOOLPATH': path_from_root('tools/scons/site_scons'),
                     'EMSCRIPTEN_ROOT': path_from_root()})
   def test_emscons(self):
