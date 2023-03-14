@@ -908,6 +908,10 @@ f.close()
     self.assertContained('AL_VERSION: 1.1', output)
     self.assertContained('SDL version: 2.', output)
 
+  def test_cmake_threads(self):
+    self.run_process([EMCMAKE, 'cmake', test_file('cmake/threads')])
+    self.run_process(['cmake', '--build', '.'])
+
   @requires_pkg_config
   def test_cmake_find_pkg_config(self):
     out = self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_pkg_config')], stdout=PIPE).stdout
