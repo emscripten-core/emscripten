@@ -596,7 +596,7 @@ jobs:
   test-other:
     executor: bionic
     steps:
-      - run: apt-get install ninja-build
+      - run: apt-get install ninja-build scons
       - run-tests-linux:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
@@ -629,6 +629,7 @@ jobs:
       EMTEST_SKIP_EH: "1"
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SIMD: "1"
+      EMTEST_SKIP_SCONS: "1"
     steps:
       - checkout
       - run:
@@ -702,6 +703,7 @@ jobs:
       EMTEST_SKIP_EH: "1"
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SIMD: "1"
+      EMTEST_SKIP_SCONS: "1"
       EMCC_SKIP_SANITY_CHECK: "1"
     steps:
       - run:
