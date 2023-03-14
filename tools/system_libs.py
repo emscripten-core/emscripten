@@ -105,7 +105,7 @@ def create_lib(libname, inputs):
 
 def run_ninja(build_dir):
   diagnostics.warning('experimental', 'ninja support is experimental')
-  cmd = ['ninja', '-C', build_dir, f'-j {shared.get_num_cores()}']
+  cmd = ['ninja', '-C', build_dir, f'-j{shared.get_num_cores()}']
   if shared.PRINT_STAGES:
     cmd.append('-v')
   shared.check_call(cmd, env=clean_env())

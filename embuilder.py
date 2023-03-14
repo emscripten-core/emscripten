@@ -178,12 +178,15 @@ def main():
                       help='show build commands')
   parser.add_argument('--wasm64', action='store_true',
                       help='use wasm64 architecture')
-  parser.add_argument('operation', help='currently only "build" and "clear" are supported')
-  parser.add_argument('targets', nargs='+', help='see below')
+  parser.add_argument('operation', choices=['build', 'clear', 'rebuild'])
+  parser.add_argument('targets', nargs='*', help='see below')
   args = parser.parse_args()
 
-  if args.operation not in ('build', 'clear'):
-    shared.exit_with_error('unfamiliar operation: ' + args.operation)
+  if args.operation != 'rebuild' and len(args.targets) == 0:
+    shared.exit_with_error('no build targets specified')
+
+  if args.operation == 'rebuild' and not should_use_ninja():
+    shared.exit_with_error('"rebuild" operation is only valid when using Ninja')
 
   # process flags
 
@@ -279,7 +282,7 @@ def main():
     time_taken = time.time() - start_time
     logger.info('...success. Took %s(%.2fs)' % (('%02d:%02d mins ' % (time_taken // 60, time_taken % 60) if time_taken >= 60 else ''), time_taken))
 
-  if should_use_ninja():
+  if should_use_ninja() and not do_clear:
     system_libs.build_deferred()
 
   if len(tasks) > 1 or should_use_ninja():
