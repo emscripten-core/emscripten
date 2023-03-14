@@ -20,6 +20,7 @@ from . import diagnostics
 from . import cache
 from tools.shared import demangle_c_symbol_name
 from tools.settings import settings
+from tools.utils import read_file
 
 logger = logging.getLogger('system_libs')
 
@@ -113,9 +114,8 @@ def run_ninja(build_dir):
 
 def ensure_in_file(ninja_file, target):
   if os.path.isfile(ninja_file):
-    with open(ninja_file, 'r') as f:
-      if target in f.read():
-        return
+    if target in read_file(ninja_file):
+      return
   with open(ninja_file, 'a') as f:
     f.write(target + '\n')
 
