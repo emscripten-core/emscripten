@@ -113,7 +113,7 @@ def also_with_wasm64(f):
 
   def metafunc(self, with_wasm64):
     if with_wasm64:
-      self.set_setting('MEMORY64', 2)
+      self.set_setting('MEMORY64')
       self.emcc_args.append('-Wno-experimental')
       f(self)
     else:

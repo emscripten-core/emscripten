@@ -266,7 +266,7 @@ commands:
       - run:
           name: download firefox
           command: |
-            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-devedition-latest-ssl&os=linux64&lang=en-US"
+            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
             tar -C ~ -xf ~/ff.tar.bz2
       - run:
           name: configure firefox
@@ -275,6 +275,7 @@ commands:
             cat > ~/tmp-firefox-profile/user.js \<<EOF
             user_pref("gfx.offscreencanvas.enabled", true);
             user_pref("javascript.options.shared_memory", true);
+            user_pref("javascript.options.wasm_memory64", true);
             user_pref("dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled", true);
             EOF
       - run:
@@ -326,7 +327,7 @@ commands:
             # this flag for now: https://crbug.com/638180
             CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features"
             CHROME_FLAGS_HEADLESS: "--headless --remote-debugging-port=1234"
-            CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features"
+            CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-memory64\""
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
@@ -352,7 +353,7 @@ commands:
             # this flag for now: https://crbug.com/638180
             CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile"
             CHROME_FLAGS_HEADLESS: "--headless --remote-debugging-port=1234"
-            CHROME_FLAGS_WASM: "--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer --no-wasm-disable-structured-cloning\""
+            CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-memory64\""
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
