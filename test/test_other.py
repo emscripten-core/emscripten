@@ -2684,29 +2684,66 @@ int f() {
 
   @requires_node
   @requires_scons
+  @with_env_modify({'EMSCRIPTEN_ROOT': path_from_root()})
   def test_scons(self):
-    new_path = path_from_root() + os.pathsep + os.environ.get('PATH')
-
     # this test copies the site_scons directory alongside the test
     shutil.copytree(test_file('scons/simple'), 'test')
     shutil.copytree(path_from_root('tools/scons/site_scons'), Path('test/site_scons'))
     with utils.chdir('test'):
-      with env_modify({'PATH': new_path}):
-        self.run_process(['scons'])
-
+      self.run_process(['scons'])
       output = self.run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
+
+  @requires_scons
+  @with_env_modify({
+    'EMSCRIPTEN_ROOT': path_from_root(),
+    'EMSCONS_PKG_CONFIG_LIBDIR': '/pkg/config/libdir',
+    'EMSCONS_PKG_CONFIG_PATH': '/pkg/config/path',
+  })
+  def test_scons_env(self):
+    # this test copies the site_scons directory alongside the test
+    shutil.copytree(test_file('scons/env'), 'test')
+    shutil.copytree(path_from_root('tools/scons/site_scons'), Path('test/site_scons'))
+
+    expected_to_propagate = json.dumps({
+      'CC': path_from_root('emcc'),
+      'CXX': path_from_root('em++'),
+      'AR': path_from_root('emar'),
+      'RANLIB': path_from_root('emranlib'),
+      'ENV': {
+        'PKG_CONFIG_LIBDIR': '/pkg/config/libdir',
+        'PKG_CONFIG_PATH': '/pkg/config/path',
+      }
+    })
+
+    with utils.chdir('test'):
+      self.run_process(['scons', '--expected-env', expected_to_propagate])
+
+  @requires_scons
+  def test_scons_env_no_emscons(self):
+    shutil.copytree(test_file('scons/env'), 'test')
+    shutil.copytree(path_from_root('tools/scons/site_scons'), Path('test/site_scons'))
+
+    expected_to_propagate = json.dumps({
+      'CC': 'emcc',
+      'CXX': 'em++',
+      'AR': 'emar',
+      'RANLIB': 'emranlib',
+      'ENV': {
+        'PKG_CONFIG_LIBDIR': None,
+        'PKG_CONFIG_PATH': None,
+      }
+    })
+
+    with utils.chdir('test'):
+      self.run_process(['scons', '--expected-env', expected_to_propagate])
 
   @requires_node
   @requires_scons
   def test_emscons(self):
-    new_path = path_from_root() + os.pathsep + os.environ.get('PATH')
-
     shutil.copytree(test_file('scons/simple'), 'test')
     with utils.chdir('test'):
-      with env_modify({'PATH': new_path}):
-        self.run_process([path_from_root('emscons'), 'scons'])
-
+      self.run_process([path_from_root('emscons'), 'scons'])
       output = self.run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
 
@@ -2715,15 +2752,19 @@ int f() {
     shutil.copytree(test_file('scons/env'), 'test')
 
     building_env = get_building_env()
-    expected_to_propagate = {
-      'PKG_CONFIG_LIBDIR': building_env['PKG_CONFIG_LIBDIR'],
-      'PKG_CONFIG_PATH': building_env['PKG_CONFIG_PATH'],
-    }
-
-    as_json = json.dumps(expected_to_propagate)
+    expected_to_propagate = json.dumps({
+      'CC': path_from_root('emcc'),
+      'CXX': path_from_root('em++'),
+      'AR': path_from_root('emar'),
+      'RANLIB': path_from_root('emranlib'),
+      'ENV': {
+        'PKG_CONFIG_LIBDIR': building_env['PKG_CONFIG_LIBDIR'],
+        'PKG_CONFIG_PATH': building_env['PKG_CONFIG_PATH'],
+      }
+    })
 
     with utils.chdir('test'):
-      self.run_process([path_from_root('emscons'), 'scons', '--expected-env', as_json])
+      self.run_process([path_from_root('emscons'), 'scons', '--expected-env', expected_to_propagate])
 
   def test_embind_fail(self):
     out = self.expect_fail([EMXX, test_file('embind/test_unsigned.cpp')])

@@ -1,9 +1,5 @@
 import os
 env = Environment(toolpath=[os.environ.get('EMSCRIPTEN_TOOL_PATH')])
 env.Tool('emscripten')
-
-# SCons does not inherit the environment
-env.AppendENVPath('PATH', os.environ.get('PATH'))
-
 env.Append(CXXFLAGS='-std=c++11')
 env.Program('scons_integration', ['integration.cpp', 'other.c'])

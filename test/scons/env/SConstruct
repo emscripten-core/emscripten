@@ -14,17 +14,21 @@ env['ENV'] = dict()
 env.Tool('emscripten')
 
 AddOption(
-    '--expected-env',
-    dest='expected',
-    type='string',
-    nargs=1,
-    action='store',
-    help='JSON with the expected environment variables',
+  '--expected-env',
+  dest='expected',
+  type='string',
+  nargs=1,
+  action='store',
+  help='JSON with the expected environment parameters',
 )
 
 expected_env = json.loads(GetOption('expected'))
+expected_env_env = expected_env.pop('ENV')
+
+for key in expected_env_env:
+  assert_(env['ENV'].get(key), expected_env_env[key])
 
 for key in expected_env:
-    assert_(env['ENV'].get(key), expected_env[key])
+  assert_(env.get(key), expected_env[key])
 
 Exit(0)

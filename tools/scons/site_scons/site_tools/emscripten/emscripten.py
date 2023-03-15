@@ -8,6 +8,13 @@ from __future__ import print_function
 import os
 
 
+def path_to_bin(emscripten_root, bin_name):
+  if emscripten_root is None:
+    return bin_name
+  else:
+    return os.path.join(emscripten_root, bin_name)
+
+
 def generate(env, **kw):
   """ SCons tool entry point """
 
@@ -25,22 +32,34 @@ def generate(env, **kw):
     'EMCC_CLOSURE_ARGS', 'JAVA_HEAP_SIZE', 'EMCC_FORCE_STDLIBS',
     'EMCC_ONLY_FORCED_STDLIBS', 'EM_PORTS', 'IDL_CHECKS', 'IDL_VERBOSE']
 
-  emscons_env_vars = ['PKG_CONFIG_LIBDIR', 'PKG_CONFIG_PATH']
+  pkg_config_vars = {
+    'EMSCONS_PKG_CONFIG_LIBDIR': 'PKG_CONFIG_LIBDIR',
+    'EMSCONS_PKG_CONFIG_PATH': 'PKG_CONFIG_PATH',
+  }
 
-  for var in emscripten_env_vars + emscons_env_vars:
+  for var in emscripten_env_vars:
     if var in os.environ:
       env['ENV'][var] = os.environ[var]
 
-  env.Replace(CC='emcc')
-  env.Replace(CXX='em++')
+  for var in pkg_config_vars:
+    if var in os.environ:
+      real_key = pkg_config_vars[var]
+      env['ENV'][real_key] = os.environ[var]
+
+  # Binary paths will be constructed from here if available.
+  # Otherwise they are assumed to be in the PATH.
+  emscripten_root = os.environ.get('EMSCRIPTEN_ROOT')
+
+  env.Replace(CC=path_to_bin(emscripten_root, 'emcc'))
+  env.Replace(CXX=path_to_bin(emscripten_root, 'em++'))
   # LINK uses smark_link by default which will choose
   # either emcc or em++ depending on if there are any C++ sources
   # in the program, so no need to change that.
   # SHLINK and LDMODULE should use LINK so no
   # need to change them here
 
-  env.Replace(AR='emar')
-  env.Replace(RANLIB='emranlib')
+  env.Replace(AR=path_to_bin(emscripten_root, 'emar'))
+  env.Replace(RANLIB=path_to_bin(emscripten_root, 'emranlib'))
 
   env.Replace(PROGSUFFIX='.js')
 
