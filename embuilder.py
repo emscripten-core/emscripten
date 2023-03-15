@@ -267,10 +267,6 @@ def main():
         clear_port(what)
       if do_build:
         build_port(what)
-    elif what == 'rebuild':
-      if not USE_NINJA:
-        logger.error('"rebuild" target only works with Ninja')
-        return 1
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1
