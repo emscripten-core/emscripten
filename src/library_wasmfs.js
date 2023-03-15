@@ -20,6 +20,7 @@ mergeInto(LibraryManager.library, {
     '$allocateUTF8OnStack',
     '$withStackSave',
     '$readI53FromI64',
+
   ],
   $FS : {
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.
@@ -109,7 +110,7 @@ mergeInto(LibraryManager.library, {
       // For file preloading, cwd should be '/' to begin with.
       return withStackSave(() => {
         var buffer = stackAlloc({{{ cDefine('PATH_MAX') }}});
-        var result = _wasmfs_getcwd(buffer, buffer.length);
+        var result = __wasmfs_getcwd(buffer, buffer.length);
         return UTF8ToString(buffer);
       });
     },
