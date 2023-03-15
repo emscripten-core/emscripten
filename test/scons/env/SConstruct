@@ -27,9 +27,4 @@ expected_env = json.loads(GetOption('expected'))
 for key in expected_env:
     assert_(env['ENV'].get(key), expected_env[key])
 
-assert_(env['CC'], expected_env['CC'])
-assert_(env['CXX'], expected_env['CXX'])
-assert_(env['AR'], expected_env['AR'])
-assert_(env['RANLIB'], expected_env['RANLIB'])
-
 Exit(0)

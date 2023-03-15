@@ -61,33 +61,26 @@ def remove_quotes(arg):
     return arg
 
 
-def get_building_env_variables():
-  variables = dict()
-  variables['CC'] = EMCC
-  variables['CXX'] = EMXX
-  variables['AR'] = EMAR
-  variables['LD'] = EMCC
-  variables['NM'] = LLVM_NM
-  variables['LDSHARED'] = EMCC
-  variables['RANLIB'] = EMRANLIB
-  variables['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
-  variables['HOST_CC'] = CLANG_CC
-  variables['HOST_CXX'] = CLANG_CXX
-  variables['HOST_CFLAGS'] = '-W' # if set to nothing, CFLAGS is used, which we don't want
-  variables['HOST_CXXFLAGS'] = '-W' # if set to nothing, CXXFLAGS is used, which we don't want
-  variables['PKG_CONFIG_LIBDIR'] = cache.get_sysroot_dir('local/lib/pkgconfig') + os.path.pathsep + cache.get_sysroot_dir('lib/pkgconfig')
-  variables['PKG_CONFIG_PATH'] = os.environ.get('EM_PKG_CONFIG_PATH', '')
-  variables['EMSCRIPTEN'] = path_from_root()
-  variables['PATH'] = cache.get_sysroot_dir('bin') + os.pathsep + os.environ['PATH']
-  variables['CROSS_COMPILE'] = path_from_root('em') # produces /path/to/emscripten/em , which then can have 'cc', 'ar', etc appended to it
-  return variables
-
-
 def get_building_env():
   env = os.environ.copy()
-
   # point CC etc. to the em* tools.
-  env.update(get_building_env_variables())
+  env['CC'] = EMCC
+  env['CXX'] = EMXX
+  env['AR'] = EMAR
+  env['LD'] = EMCC
+  env['NM'] = LLVM_NM
+  env['LDSHARED'] = EMCC
+  env['RANLIB'] = EMRANLIB
+  env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
+  env['HOST_CC'] = CLANG_CC
+  env['HOST_CXX'] = CLANG_CXX
+  env['HOST_CFLAGS'] = '-W' # if set to nothing, CFLAGS is used, which we don't want
+  env['HOST_CXXFLAGS'] = '-W' # if set to nothing, CXXFLAGS is used, which we don't want
+  env['PKG_CONFIG_LIBDIR'] = cache.get_sysroot_dir('local/lib/pkgconfig') + os.path.pathsep + cache.get_sysroot_dir('lib/pkgconfig')
+  env['PKG_CONFIG_PATH'] = os.environ.get('EM_PKG_CONFIG_PATH', '')
+  env['EMSCRIPTEN'] = path_from_root()
+  env['PATH'] = cache.get_sysroot_dir('bin') + os.pathsep + env['PATH']
+  env['CROSS_COMPILE'] = path_from_root('em') # produces /path/to/emscripten/em , which then can have 'cc', 'ar', etc appended to it
   return env
 
 

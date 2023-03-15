@@ -23,8 +23,12 @@ See docs/process.md for more on how version tagging works.
 - The prefered way to enable pthread is now to just the the standard `-pthread`
   flag.  The `-sUSE_PTHREADS` setting still works but is marked as legacy and
   will generate a warning in `-sSTRICT` mode.
-- Updated `emscons` to also provide the `EMSCRIPTEN_ROOT` environment variable.
-- Updated the SCons tool to apply the same environment variables as `emmake`.
+- Updated the SCons tool to not require the `EMSCRIPTEN_ROOT` environment
+  variable, instead assuming that SCons will find the binaries in `PATH`.
+- Updated `emscons`and the SCons tool to apply the `PKG_CONFIG_LIBDIR` and
+  `PKG_CONFIG_PATH` environment variables in order for `pkg-config` to work
+  properly in SCons. Note that the tool, if not run through `emscons`, will use
+  whatever values are set for those variables in the environment.
 
 3.1.33 - 03/08/23
 -----------------
