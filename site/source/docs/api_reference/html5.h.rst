@@ -1662,7 +1662,7 @@ Struct
 
     An ID for the brand or style of the connected gamepad device. Typically, this will include the USB vendor and a product ID.
 
-    Maximum size 64 ``char`` (i.e. ``EM_UTF8 id[128]``).
+    Maximum size 64 ``char`` (i.e. ``EM_UTF8 id[64]``).
 
   .. c:member:: EM_UTF8 mapping
 
