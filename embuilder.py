@@ -14,7 +14,6 @@ running multiple build commands in parallel, confusion can occur).
 
 import argparse
 import logging
-import os
 import sys
 import time
 from contextlib import contextmanager
@@ -24,6 +23,7 @@ from tools import shared
 from tools import system_libs
 from tools import ports
 from tools.settings import settings
+from tools.system_libs import USE_NINJA
 import emscripten
 
 
@@ -158,10 +158,6 @@ def get_system_tasks():
   return system_libraries, system_tasks
 
 
-def should_use_ninja():
-  return os.environ.get('EMCC_USE_NINJA', 0)
-
-
 def main():
   all_build_start_time = time.time()
 
@@ -185,7 +181,7 @@ def main():
   if args.operation != 'rebuild' and len(args.targets) == 0:
     shared.exit_with_error('no build targets specified')
 
-  if args.operation == 'rebuild' and not should_use_ninja():
+  if args.operation == 'rebuild' and not USE_NINJA:
     shared.exit_with_error('"rebuild" operation is only valid when using Ninja')
 
   # process flags
@@ -252,7 +248,7 @@ def main():
       if do_clear:
         library.erase()
       if do_build:
-        if should_use_ninja():
+        if USE_NINJA:
           library.generate()
         else:
           library.build(deterministic_paths=True)
@@ -272,7 +268,7 @@ def main():
       if do_build:
         build_port(what)
     elif what == 'rebuild':
-      if not should_use_ninja():
+      if not USE_NINJA:
         logger.error('"rebuild" target only works with Ninja')
         return 1
     else:
@@ -282,10 +278,10 @@ def main():
     time_taken = time.time() - start_time
     logger.info('...success. Took %s(%.2fs)' % (('%02d:%02d mins ' % (time_taken // 60, time_taken % 60) if time_taken >= 60 else ''), time_taken))
 
-  if should_use_ninja() and not do_clear:
+  if USE_NINJA and not do_clear:
     system_libs.build_deferred()
 
-  if len(tasks) > 1 or should_use_ninja():
+  if len(tasks) > 1 or USE_NINJA:
     all_build_time_taken = time.time() - all_build_start_time
     logger.info('Built %d targets in %s(%.2fs)' % (len(tasks), ('%02d:%02d mins ' % (all_build_time_taken // 60, all_build_time_taken % 60) if all_build_time_taken >= 60 else ''), all_build_time_taken))
 

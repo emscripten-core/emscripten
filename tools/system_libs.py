@@ -104,6 +104,10 @@ def create_lib(libname, inputs):
     building.emar('cr', libname, inputs)
 
 
+def get_top_level_ninja_file():
+  return os.path.join(cache.get_path('build'), 'build.ninja')
+
+
 def run_ninja(build_dir):
   diagnostics.warning('experimental', 'ninja support is experimental')
   cmd = ['ninja', '-C', build_dir, f'-j{shared.get_num_cores()}']
@@ -112,10 +116,9 @@ def run_ninja(build_dir):
   shared.check_call(cmd, env=clean_env())
 
 
-def ensure_in_file(ninja_file, target):
-  if os.path.isfile(ninja_file):
-    if target in read_file(ninja_file):
-      return
+def ensure_target_in_ninja_file(ninja_file, target):
+  if os.path.isfile(ninja_file) and target in read_file(ninja_file):
+    return
   with open(ninja_file, 'a') as f:
     f.write(target + '\n')
 
@@ -220,8 +223,7 @@ rule archive
     out += f'build {libname}: archive {objects}\n'
 
   utils.write_file(filename, out)
-  parent_ninja = os.path.join(os.path.dirname(build_dir), 'build.ninja')
-  ensure_in_file(parent_ninja, f'subninja {filename}')
+  ensure_target_in_ninja_file(get_top_level_ninja_file(), f'subninja {filename}')
 
 
 def is_case_insensitive(path):
@@ -2290,5 +2292,7 @@ def ensure_sysroot():
 
 
 def build_deferred():
-  if USE_NINJA and os.path.isfile(os.path.join(cache.get_path('build'), 'build.ninja')):
-    run_ninja(cache.get_path('build'))
+  assert USE_NINJA
+  top_level_ninja = get_top_level_ninja_file()
+  if os.path.isfile(top_level_ninja):
+    run_ninja(os.path.dirname(top_level_ninja))
