@@ -2682,7 +2682,6 @@ int f() {
     self.verify_dwarf_exists(wasm_file)
     self.verify_source_map_exists(map_file)
 
-  @requires_node
   @requires_scons
   @with_env_modify({'EMSCRIPTEN_ROOT': path_from_root()})
   def test_scons(self):
@@ -2738,7 +2737,6 @@ int f() {
     with utils.chdir('test'):
       self.run_process(['scons', '--expected-env', expected_to_propagate])
 
-  @requires_node
   @requires_scons
   def test_emscons(self):
     shutil.copytree(test_file('scons/simple'), 'test')
