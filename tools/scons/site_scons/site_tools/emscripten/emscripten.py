@@ -6,7 +6,6 @@
 
 from __future__ import print_function
 import os
-import sys
 
 
 def generate(env, **kw):
@@ -43,7 +42,7 @@ def generate(env, **kw):
   env.Replace(AR='emar')
   env.Replace(RANLIB='emranlib')
 
-  env.Replace(PROGSUFFIX=".js")
+  env.Replace(PROGSUFFIX='.js')
 
 
 def exists(env):
