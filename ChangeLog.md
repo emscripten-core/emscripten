@@ -20,6 +20,12 @@ See docs/process.md for more on how version tagging works.
 
 3.1.35 (in development)
 -----------------------
+- Updated the SCons tool to not require the `EMSCRIPTEN_ROOT` environment
+  variable, in which case it will assume that SCons will find the binaries in
+  (its) `PATH`.
+- Updated `emscons` to apply the `EMSCRIPTEN_ROOT`, `EMSCONS_PKG_CONFIG_LIBDIR`
+  and `EMSCONS_PKG_CONFIG_PATH` environment variables. The SCons tool will use
+  last two to set up `PKG_CONFIG_LIBDIR` and `PKG_CONFIG_PATH` respetively.
 - `-z` arguments are now passed directly to wasm-ld without the need for the
   `-Wl,` prefix.  This matches the behaviour of both clang and gcc. (#18956)
 
@@ -31,12 +37,6 @@ See docs/process.md for more on how version tagging works.
 - The prefered way to enable pthread is now to just the the standard `-pthread`
   flag.  The `-sUSE_PTHREADS` setting still works but is marked as legacy and
   will generate a warning in `-sSTRICT` mode.
-- Updated the SCons tool to not require the `EMSCRIPTEN_ROOT` environment
-  variable, instead assuming that SCons will find the binaries in `PATH`.
-- Updated `emscons`and the SCons tool to apply the `PKG_CONFIG_LIBDIR` and
-  `PKG_CONFIG_PATH` environment variables in order for `pkg-config` to work
-  properly in SCons. Note that the tool, if not run through `emscons`, will use
-  whatever values are set for those variables in the environment.
 
 3.1.33 - 03/08/23
 -----------------
