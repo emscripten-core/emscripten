@@ -32,6 +32,7 @@ var LibraryFetch = {
     '$Fetch',
     '$fetchXHR',
     '$callUserCallback',
+    '$writeI53ToI64',
 #if FETCH_SUPPORT_INDEXEDDB
     '$fetchCacheData',
     '$fetchLoadCachedData',
