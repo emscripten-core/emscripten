@@ -1668,7 +1668,7 @@ Struct
 
     A string that identifies the layout or control mapping of this device.
 
-    Maximum size 128 ``char`` (i.e. ``EM_UTF8 mapping[128]``).
+    Maximum size 64 ``char`` (i.e. ``EM_UTF8 mapping[64]``).
 
 
 
