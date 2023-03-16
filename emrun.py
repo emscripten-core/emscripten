@@ -1643,10 +1643,6 @@ def run():
     url = file_to_serve
   else:
     url = os.path.relpath(os.path.abspath(file_to_serve), serve_dir)
-    if len(options.cmdlineparams):
-      url += '?' + '&'.join(options.cmdlineparams)
-    hostname = socket.gethostbyname(socket.gethostname()) if options.android else options.hostname
-    url = 'http://' + hostname + ':' + str(options.port) + '/' + url
 
   os.chdir(serve_dir)
   if options.run_server:
@@ -1658,6 +1654,13 @@ def run():
     httpd = HTTPWebServer((options.hostname, options.port), HTTPHandler)
     # to support binding to port zero we must allow the server to open to socket then retrieve the final port number
     options.port = httpd.socket.getsockname()[1]
+
+  if not file_to_serve_is_url:
+    if len(options.cmdlineparams):
+      url += '?' + '&'.join(options.cmdlineparams)
+    hostname = socket.gethostbyname(socket.gethostname()) if options.android else options.hostname
+    # create url for browser after opening the server so we have the final port number in case we are binding to port 0
+    url = 'http://' + hostname + ':' + str(options.port) + '/' + url
 
   if options.android:
     if options.run_browser or options.browser_info:
