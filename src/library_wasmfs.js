@@ -213,6 +213,50 @@ mergeInto(LibraryManager.library, {
         return entries;
       });
     },
+    optionsToFlags:(opts) => {
+      let flags = 0;
+      const MountFlags = {
+        RDONLY: 0x1,
+        WRONLY: 0x2,
+        RDWR: 0x4,
+        CREATE: 0x8,
+        EXCL: 0x10,
+        TRUNC: 0x20,
+        APPEND: 0x40,
+        IRUGO: cDefine(S_IRUSR) | cDefine(S_IRGRP) | cDefine(S_IROTH),
+      };
+
+
+      for (let i = 0; i < opts.length; i++) {
+        switch (opts[i]) {
+            case 'r':
+                flags |= MountFlags.RDONLY;
+                break;
+            case 'w':
+                flags |= MountFlags.WRONLY;
+                break;
+            case '+':
+                flags |= MountFlags.RDWR;
+                break;
+            case 'a':
+                flags |= MountFlags.APPEND;
+                break;
+            case 't':
+                flags |= MountFlags.TRUNC;
+                break;
+            case 'c':
+                flags |= MountFlags.CREATE;
+                break;
+            case 'x':
+                flags |= MountFlags.EXCL;
+                break;
+            default:
+                throw new Error(`Unknown mount option: ${opts[i]}`);
+        }
+      }
+    
+      return flags;
+    },
     mount: (type, opts, mountpoint) => {
       return withStackSave(() => {
         var mountFlags = FS.optionsToFlags(opts);
