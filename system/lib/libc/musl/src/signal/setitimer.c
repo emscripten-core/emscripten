@@ -9,6 +9,8 @@
 #include <stdio.h>
 #include <emscripten/emscripten.h>
 
+#include "emscripten_internal.h"
+
 // Timeouts can either fire directly from the JS event loop (which calls
 // `_emscripten_timeout`), or from `_emscripten_check_timers` (which is called
 // from `_emscripten_yield`).  In order to be able to check the timers here we
@@ -18,8 +20,6 @@ static double current_timeout_ms[3];
 static double current_intervals_ms[3];
 
 #define MAX(a,b) ((a)>(b)?(a):(b))
-
-int _setitimer_js(int which, double timeout);
 
 void __getitimer(int which, struct itimerval *old, double now)
 {

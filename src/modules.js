@@ -37,6 +37,9 @@ global.LibraryManager = {
     // Core system libraries (always linked against)
     let libraries = [
       'library.js',
+      // TODO(sbc): Start using this auto-generated file instead of the hand
+      // written signatures in the indivudual libraries.
+      //'library_sigs.js',
       'library_int53.js',
       'library_ccall.js',
       'library_addfunction.js',
@@ -114,12 +117,14 @@ global.LibraryManager = {
         'library_glut.js',
         'library_xlib.js',
         'library_egl.js',
-        'library_glfw.js',
         'library_uuid.js',
         'library_glew.js',
         'library_idbstore.js',
         'library_async.js',
       ]);
+      if (USE_GLFW) {
+        libraries.push('library_glfw.js');
+      }
     } else {
       if (ASYNCIFY) {
         libraries.push('library_async.js');

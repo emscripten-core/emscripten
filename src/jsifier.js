@@ -66,7 +66,7 @@ function isDefined(symName) {
   return false;
 }
 
-function runJSify(symbolsOnly = false) {
+function runJSify() {
   const libraryItems = [];
   const symbolDeps = {};
   let postSets = [];

@@ -3029,16 +3029,11 @@ mergeInto(LibraryManager.library, {
     return runEmAsmFunction(code, sigPtr, argbuf);
   },
 
-#if MEMORY64
-  // We can't use the alias in wasm64 mode becuase the function signature differs
   emscripten_asm_const_ptr__sig: 'pppp',
   emscripten_asm_const_ptr__deps: ['$runEmAsmFunction'],
   emscripten_asm_const_ptr: function(code, sigPtr, argbuf) {
     return runEmAsmFunction(code, sigPtr, argbuf);
   },
-#else
-  emscripten_asm_const_ptr: 'emscripten_asm_const_int',
-#endif
 
   $runMainThreadEmAsm__deps: ['$readEmAsmArgs'],
   $runMainThreadEmAsm__sig: 'iippi',

@@ -119,6 +119,18 @@ function mergeInto(obj, other, options = null) {
     }
   }
 
+  for (const key of Object.keys(other)) {
+    if (key.endsWith('__sig')) {
+      if (obj.hasOwnProperty(key)) {
+        const oldsig = obj[key];
+        const newsig = other[key];
+        if (oldsig != newsig) {
+          console.warn(`Signature redefinition mismatch for : ${key}. (old=${oldsig} vs new=${newsig})`);
+        }
+      }
+    }
+  }
+
   return Object.assign(obj, other);
 }
 
