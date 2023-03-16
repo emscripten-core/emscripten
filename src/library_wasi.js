@@ -26,7 +26,7 @@ var WasiLibrary = {
 #endif
     EXITSTATUS = code;
     if (!keepRuntimeAlive()) {
-#if USE_PTHREADS
+#if PTHREADS
       PThread.terminateAllThreads();
 #endif
 #if expectToReceiveOnModule('onExit')

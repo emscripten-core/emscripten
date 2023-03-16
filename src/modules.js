@@ -365,7 +365,7 @@ function exportRuntime() {
   // them via EXPORTED_RUNTIME_METHODS for backwards compat.
   runtimeElements = runtimeElements.concat(WASM_SYSTEM_EXPORTS);
 
-  if (USE_PTHREADS && ALLOW_MEMORY_GROWTH) {
+  if (PTHREADS && ALLOW_MEMORY_GROWTH) {
     runtimeElements = runtimeElements.concat([
       'GROWABLE_HEAP_I8',
       'GROWABLE_HEAP_U8',

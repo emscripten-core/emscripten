@@ -48,19 +48,6 @@ var LibraryEmbind = {
     Module['getLiveInheritedInstances'] = getLiveInheritedInstances;
     Module['flushPendingDeletes'] = flushPendingDeletes;
     Module['setDelayFunction'] = setDelayFunction;
-#if IN_TEST_HARNESS
-#if ASSERTIONS
-    Module['ASSERTIONS'] = true;
-#endif
-#if DYNAMIC_EXECUTION
-    // Without dynamic execution, dynamically created functions will have no
-    // names. This lets the test suite know that.
-    Module['DYNAMIC_EXECUTION'] = true;
-#endif
-#if EMBIND_STD_STRING_IS_UTF8
-    Module['EMBIND_STD_STRING_IS_UTF8'] = true;
-#endif
-#endif
   },
 
   $throwInternalError__deps: ['$InternalError'],
@@ -960,7 +947,7 @@ var LibraryEmbind = {
     '$Asyncify',
   #endif
   ],
-  $craftInvokerFunction: function(humanName, argTypes, classType, cppInvokerFunc, cppTargetFunc) {
+  $craftInvokerFunction: function(humanName, argTypes, classType, cppInvokerFunc, cppTargetFunc, isAsync) {
     // humanName: a human-readable string name for the function to be generated.
     // argTypes: An array that contains the embind type objects for all types in the function signature.
     //    argTypes[0] is the type object for the function return value.
@@ -974,6 +961,10 @@ var LibraryEmbind = {
     if (argCount < 2) {
       throwBindingError("argTypes array size mismatch! Must at least get return value and 'this' types!");
     }
+
+#if ASSERTIONS && ASYNCIFY != 2
+    assert(!isAsync, 'Async bindings are only supported with JSPI.');
+#endif
 
     var isClassMethodFunc = (argTypes[1] !== null && classType !== null);
 
@@ -996,6 +987,12 @@ var LibraryEmbind = {
     }
 
     var returns = (argTypes[0].name !== "void");
+
+#if ASYNCIFY
+    if (isAsync) {
+      cppInvokerFunc = Asyncify.makeAsyncFunction(cppInvokerFunc);
+    }
+#endif
 
 #if DYNAMIC_EXECUTION == 0
     var expectedArgCount = argCount - 2;
@@ -1047,9 +1044,13 @@ var LibraryEmbind = {
         }
       }
 
-#if ASYNCIFY
+#if ASYNCIFY == 1
       if (Asyncify.currData) {
         return Asyncify.whenDone().then(onDone);
+      }
+#elif ASYNCIFY == 2
+      if (isAsync) {
+        return rv.then(onDone);
       }
 #endif
 
@@ -1101,11 +1102,13 @@ var LibraryEmbind = {
     }
 
     invokerFnBody +=
-        (returns?"var rv = ":"") + "invoker(fn"+(argsListWired.length>0?", ":"")+argsListWired+");\n";
+        (returns || isAsync ? "var rv = ":"") + "invoker(fn"+(argsListWired.length>0?", ":"")+argsListWired+");\n";
 
-#if ASYNCIFY
+#if ASYNCIFY == 1
     args1.push("Asyncify");
     args2.push(Asyncify);
+#endif
+#if ASYNCIFY
     invokerFnBody += "function onDone(" + (returns ? "rv" : "") + ") {\n";
 #endif
 
@@ -1134,9 +1137,12 @@ var LibraryEmbind = {
 #endif
     }
 
-#if ASYNCIFY
+#if ASYNCIFY == 1
     invokerFnBody += "}\n";
     invokerFnBody += "return Asyncify.currData ? Asyncify.whenDone().then(onDone) : onDone(" + (returns ? "rv" : "") +");\n"
+#elif ASYNCIFY == 2
+    invokerFnBody += "}\n";
+    invokerFnBody += "return " + (isAsync ? "rv.then(onDone)" : "onDone(rv)") + ";";
 #endif
 
     invokerFnBody += "}\n";
@@ -1180,12 +1186,12 @@ var LibraryEmbind = {
     return fp;
   },
 
-  _embind_register_function__sig: 'vpipppp',
+  _embind_register_function__sig: 'vpippppi',
   _embind_register_function__deps: [
     '$craftInvokerFunction', '$exposePublicSymbol', '$heap32VectorToArray',
     '$readLatin1String', '$replacePublicSymbol', '$embind__requireFunction',
     '$throwUnboundTypeError', '$whenDependentTypesAreResolved'],
-  _embind_register_function: function(name, argCount, rawArgTypesAddr, signature, rawInvoker, fn) {
+  _embind_register_function: function(name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync) {
     var argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = readLatin1String(name);
 
@@ -1197,7 +1203,7 @@ var LibraryEmbind = {
 
     whenDependentTypesAreResolved([], argTypes, function(argTypes) {
       var invokerArgsArray = [argTypes[0] /* return value */, null /* no class 'this'*/].concat(argTypes.slice(1) /* actual params */);
-      replacePublicSymbol(name, craftInvokerFunction(name, invokerArgsArray, null /* no class 'this'*/, rawInvoker, fn), argCount - 1);
+      replacePublicSymbol(name, craftInvokerFunction(name, invokerArgsArray, null /* no class 'this'*/, rawInvoker, fn, isAsync), argCount - 1);
       return [];
     });
   },
@@ -2181,7 +2187,7 @@ var LibraryEmbind = {
                          classType.registeredClass);
   },
 
-  _embind_register_class_function__sig: 'vppippppi',
+  _embind_register_class_function__sig: 'vppippppii',
   _embind_register_class_function__deps: [
     '$craftInvokerFunction', '$heap32VectorToArray', '$readLatin1String',
     '$embind__requireFunction', '$throwUnboundTypeError',
@@ -2193,7 +2199,8 @@ var LibraryEmbind = {
                                             invokerSignature,
                                             rawInvoker,
                                             context,
-                                            isPureVirtual) {
+                                            isPureVirtual,
+                                            isAsync) {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
     rawInvoker = embind__requireFunction(invokerSignature, rawInvoker);
@@ -2230,7 +2237,7 @@ var LibraryEmbind = {
       }
 
       whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
-        var memberFunction = craftInvokerFunction(humanName, argTypes, classType, rawInvoker, context);
+        var memberFunction = craftInvokerFunction(humanName, argTypes, classType, rawInvoker, context, isAsync);
 
         // Replace the initial unbound-handler-stub function with the appropriate member function, now that all types
         // are resolved. If multiple overloads are registered for this function, the function goes into an overload table.
@@ -2320,7 +2327,7 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_class_class_function__sig: 'vppipppp',
+  _embind_register_class_class_function__sig: 'vppippppi',
   _embind_register_class_class_function__deps: [
     '$craftInvokerFunction', '$ensureOverloadTable', '$heap32VectorToArray',
     '$readLatin1String', '$embind__requireFunction', '$throwUnboundTypeError',
@@ -2331,7 +2338,8 @@ var LibraryEmbind = {
                                                   rawArgTypesAddr,
                                                   invokerSignature,
                                                   rawInvoker,
-                                                  fn) {
+                                                  fn,
+                                                  isAsync) {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
     rawInvoker = embind__requireFunction(invokerSignature, rawInvoker);
@@ -2364,7 +2372,7 @@ var LibraryEmbind = {
         // function. If multiple overloads are registered, the function handlers
         // go into an overload table.
         var invokerArgsArray = [argTypes[0] /* return value */, null /* no class 'this'*/].concat(argTypes.slice(1) /* actual params */);
-        var func = craftInvokerFunction(humanName, invokerArgsArray, null /* no class 'this'*/, rawInvoker, fn);
+        var func = craftInvokerFunction(humanName, invokerArgsArray, null /* no class 'this'*/, rawInvoker, fn, isAsync);
         if (undefined === proto[methodName].overloadTable) {
           func.argCount = argCount-1;
           proto[methodName] = func;

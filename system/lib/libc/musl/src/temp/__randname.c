@@ -11,6 +11,11 @@ char *__randname(char *template)
 
 	__clock_gettime(CLOCK_REALTIME, &ts);
 	r = ts.tv_nsec*65537 ^ (uintptr_t)&ts / 16 + (uintptr_t)template;
+
+	/* XXX EMSCRIPTEN: avoid repeating the same result when __clock_gettime does not change between calls. */
+	static unsigned int counter = 0;
+	r += counter++;
+
 	for (i=0; i<6; i++, r>>=5)
 		template[i] = 'A'+(r&15)+(r&16)*2;
 

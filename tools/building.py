@@ -38,7 +38,7 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 111
+EXPECTED_BINARYEN_VERSION = 112
 
 # cache results of nm - it can be slow to run
 nm_cache = {}
@@ -148,7 +148,7 @@ def link_to_object(args, target):
 
 def lld_flags_for_executable(external_symbols):
   cmd = []
-  if external_symbols:
+  if settings.ERROR_ON_UNDEFINED_SYMBOLS:
     undefs = shared.get_temp_files().get('.undefined').name
     utils.write_file(undefs, '\n'.join(external_symbols))
     cmd.append('--allow-undefined-file=%s' % undefs)
@@ -176,9 +176,8 @@ def lld_flags_for_executable(external_symbols):
   # Strip the leading underscores
   c_exports = [demangle_c_symbol_name(e) for e in c_exports]
   c_exports += settings.EXPORT_IF_DEFINED
-  if external_symbols:
-    # Filter out symbols external/JS symbols
-    c_exports = [e for e in c_exports if e not in external_symbols]
+  # Filter out symbols external/JS symbols
+  c_exports = [e for e in c_exports if e not in external_symbols]
   for export in c_exports:
     cmd.append('--export-if-defined=' + export)
 
@@ -746,7 +745,10 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespac
       logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
       js_file = acorn_optimizer(js_file, passes)
       if settings.MINIFY_WASM_IMPORTS_AND_EXPORTS:
-        js_file = minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=settings.MINIFY_ASMJS_EXPORT_NAMES, debug_info=debug_info)
+        js_file = minify_wasm_imports_and_exports(js_file, wasm_file,
+                                                  minify_whitespace=minify_whitespace,
+                                                  minify_exports=settings.MINIFY_WASM_EXPORT_NAMES,
+                                                  debug_info=debug_info)
   return js_file
 
 

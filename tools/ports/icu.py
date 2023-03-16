@@ -10,7 +10,7 @@ TAG = 'release-68-2'
 VERSION = '68_2'
 HASH = '12c3db5966c234c94e7918fb8acc8bd0838edc36a620f3faa788e7ff27b06f1aa431eb117401026e3963622b9323212f444b735d5c9dd3d0b82d772a4834b993'
 
-variants = {'icu-mt': {'USE_PTHREADS': 1}}
+variants = {'icu-mt': {'PTHREADS': 1}}
 
 libname_libicu_common = 'libicu_common'
 libname_libicu_stubdata = 'libicu_stubdata'
@@ -22,7 +22,7 @@ def needed(settings):
 
 
 def get_lib_name(base_name, settings):
-  return base_name + ('-mt' if settings.USE_PTHREADS else '') + '.a'
+  return base_name + ('-mt' if settings.PTHREADS else '') + '.a'
 
 
 def get(ports, settings, shared):
@@ -53,7 +53,7 @@ def get(ports, settings, shared):
         # CXXFLAGS
         '-std=c++11'
     ]
-    if settings.USE_PTHREADS:
+    if settings.PTHREADS:
       additional_build_flags.append('-pthread')
 
     ports.build_port(lib_src, lib_output, 'icu', includes=other_includes, flags=build_flags + additional_build_flags)

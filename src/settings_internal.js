@@ -143,7 +143,10 @@ var AUDIO_WORKLET_FILE = '';
 // Base URL the source mapfile, if relevant
 var SOURCE_MAP_BASE = '';
 
-var MEM_INIT_IN_WASM = false;
+// When this is false we use an external memory init file
+// See --memory-init-file.  When not using wasm2js this flag is ignored, and
+// this setting will always be true.
+var MEM_INIT_IN_WASM = true;
 
 // If set to 1, src/base64Utils.js will be included in the bundle.
 // This is set internally when needed (SINGLE_FILE)
@@ -163,8 +166,8 @@ var MINIFY_WASM_IMPORTS_AND_EXPORTS = false;
 // Whether to minify imported module names.
 var MINIFY_WASM_IMPORTED_MODULES = false;
 
-// Whether to minify functions exported from Asm.js/Wasm module.
-var MINIFY_ASMJS_EXPORT_NAMES = true;
+// Whether to minify exports from the Wasm module.
+var MINIFY_WASM_EXPORT_NAMES = true;
 
 // Internal: represents a browser version that is not supported at all.
 var TARGET_NOT_SUPPORTED = 0x7FFFFFFF;
@@ -253,3 +256,6 @@ var HAVE_EM_ASM = true;
 var PRE_JS_FILES = [];
 
 var POST_JS_FILES = [];
+
+// Set when -pthread / -sPTHREADS is passed
+var PTHREADS = false;

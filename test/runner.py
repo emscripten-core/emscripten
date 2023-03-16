@@ -65,6 +65,8 @@ passing_core_test_modes = [
   'asan',
   'lsan',
   'ubsan',
+  'wasm64',
+  'wasm64_v8',
 ]
 
 # The default core test mode, used when none is specified

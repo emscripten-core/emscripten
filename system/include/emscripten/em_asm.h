@@ -235,7 +235,7 @@ const char __em_asm_sig_builder<__em_asm_type_tuple<Args...> >::buffer[] = { __e
 #define EM_ASM_DOUBLE(code, ...) emscripten_asm_const_double(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
 
 // Runs the given JavaScript code synchronously on the main browser thread, and returns no value back.
-// Call this function for example to access DOM elements in a pthread when building with -sUSE_PTHREADS.
+// Call this function for example to access DOM elements in a pthread when building with -pthread.
 // Avoid calling this function in performance sensitive code, because this will effectively sleep the
 // calling thread until the main browser thread is able to service the proxied function call. If you have
 // multiple MAIN_THREAD_EM_ASM() code blocks to call in succession, it will likely be much faster to

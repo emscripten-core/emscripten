@@ -17,7 +17,7 @@ extern "C" {
 typedef struct Backend* backend_t;
 
 // Obtains the backend_t of a specified path.
-backend_t wasmfs_get_backend_by_path(char* path);
+backend_t wasmfs_get_backend_by_path(char* path __attribute__((nonnull)));
 
 // Obtains the backend_t of a specified fd.
 backend_t wasmfs_get_backend_by_fd(int fd);
@@ -26,11 +26,11 @@ backend_t wasmfs_get_backend_by_fd(int fd);
 // Returns the file descriptor for the new file like `open`. Returns a negative
 // value on error. TODO: It might be worth returning a more specialized type
 // like __wasi_fd_t here.
-int wasmfs_create_file(const char* pathname, mode_t mode, backend_t backend);
+int wasmfs_create_file(const char* pathname __attribute__((nonnull)), mode_t mode, backend_t backend);
 
 // Creates a new directory in the new file system under a specific backend.
 // Returns 0 on success like `mkdir`, or a negative value on error.
-int wasmfs_create_directory(const char* path, mode_t mode, backend_t backend);
+int wasmfs_create_directory(const char* path __attribute__((nonnull)), mode_t mode, backend_t backend);
 
 // Backend creation
 
@@ -51,9 +51,9 @@ backend_t wasmfs_create_memory_backend(void);
 //
 // TODO: Add an async version of this function that will work on the main
 // thread.
-backend_t wasmfs_create_fetch_backend(const char* base_url);
+backend_t wasmfs_create_fetch_backend(const char* base_url __attribute__((nonnull)));
 
-backend_t wasmfs_create_node_backend(const char* root);
+backend_t wasmfs_create_node_backend(const char* root __attribute__((nonnull)));
 
 // Note: this cannot be called on the browser main thread because it might
 // deadlock while waiting for the OPFS dedicated worker thread to be spawned.
