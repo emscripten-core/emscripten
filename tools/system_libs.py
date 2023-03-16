@@ -20,6 +20,7 @@ from . import diagnostics
 from . import cache
 from tools.shared import demangle_c_symbol_name
 from tools.settings import settings
+from tools.utils import read_file
 
 logger = logging.getLogger('system_libs')
 
@@ -103,12 +104,23 @@ def create_lib(libname, inputs):
     building.emar('cr', libname, inputs)
 
 
+def get_top_level_ninja_file():
+  return os.path.join(cache.get_path('build'), 'build.ninja')
+
+
 def run_ninja(build_dir):
   diagnostics.warning('experimental', 'ninja support is experimental')
-  cmd = ['ninja', '-C', build_dir]
+  cmd = ['ninja', '-C', build_dir, f'-j{shared.get_num_cores()}']
   if shared.PRINT_STAGES:
     cmd.append('-v')
   shared.check_call(cmd, env=clean_env())
+
+
+def ensure_target_in_ninja_file(ninja_file, target):
+  if os.path.isfile(ninja_file) and target in read_file(ninja_file):
+    return
+  with open(ninja_file, 'a') as f:
+    f.write(target + '\n')
 
 
 def create_ninja_file(input_files, filename, libname, cflags, asflags=None, customize_build_flags=None):
@@ -164,6 +176,7 @@ rule archive
 
 '''
   suffix = shared.suffix(libname)
+  build_dir = os.path.dirname(filename)
 
   case_insensitive = is_case_insensitive(os.path.dirname(filename))
   if suffix == '.o':
@@ -177,7 +190,7 @@ rule archive
       # Resolve duplicates by appending unique.
       # This is needed on case insensitve filesystem to handle,
       # for example, _exit.o and _Exit.o.
-      o = shared.unsuffixed_basename(src) + '.o'
+      o = os.path.join(build_dir, shared.unsuffixed_basename(src) + '.o')
       object_uuid = 0
       if case_insensitive:
         o = o.lower()
@@ -210,6 +223,7 @@ rule archive
     out += f'build {libname}: archive {objects}\n'
 
   utils.write_file(filename, out)
+  ensure_target_in_ninja_file(get_top_level_ninja_file(), f'subninja {filename}')
 
 
 def is_case_insensitive(path):
@@ -373,6 +387,11 @@ class Library:
     self.deterministic_paths = deterministic_paths
     return cache.get(self.get_path(), self.do_build, force=USE_NINJA == 2, quiet=USE_NINJA)
 
+  def generate(self):
+    self.deterministic_paths = False
+    return cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA,
+                     deferred=True)
+
   def get_link_flag(self):
     """
     Gets the link flags needed to use the library.
@@ -405,7 +424,7 @@ class Library:
 
     raise NotImplementedError()
 
-  def build_with_ninja(self, build_dir, libname):
+  def generate_ninja(self, build_dir, libname):
     ensure_sysroot()
     utils.safe_ensure_dirs(build_dir)
 
@@ -418,7 +437,6 @@ class Library:
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
     create_ninja_file(input_files, ninja_file, libname, cflags, asflags=asflags, customize_build_flags=self.customize_build_cmd)
-    run_ninja(build_dir)
 
   def build_objects(self, build_dir):
     """
@@ -477,12 +495,14 @@ class Library:
     For example, libc uses this to replace -Oz with -O2 for some subset of files."""
     return cmd
 
-  def do_build(self, out_filename):
+  def do_build(self, out_filename, generate_only=False):
     """Builds the library and returns the path to the file."""
     assert out_filename == self.get_path(absolute=True)
     build_dir = os.path.join(cache.get_path('build'), self.get_base_name())
     if USE_NINJA:
-      self.build_with_ninja(build_dir, out_filename)
+      self.generate_ninja(build_dir, out_filename)
+      if not generate_only:
+        run_ninja(build_dir)
     else:
       # Use a seperate build directory to the ninja flavor so that building without
       # EMCC_USE_NINJA doesn't clobber the ninja build tree
@@ -491,6 +511,9 @@ class Library:
       create_lib(out_filename, self.build_objects(build_dir))
       if not shared.DEBUG:
         utils.delete_dir(build_dir)
+
+  def do_generate(self, out_filename):
+    self.do_build(out_filename, generate_only=True)
 
   @classmethod
   def _inherit_list(cls, attr):
@@ -2266,3 +2289,10 @@ def install_system_headers(stamp):
 @ToolchainProfiler.profile()
 def ensure_sysroot():
   cache.get('sysroot_install.stamp', install_system_headers, what='system headers')
+
+
+def build_deferred():
+  assert USE_NINJA
+  top_level_ninja = get_top_level_ninja_file()
+  if os.path.isfile(top_level_ninja):
+    run_ninja(os.path.dirname(top_level_ninja))
