@@ -20,7 +20,6 @@ import subprocess
 import sys
 import tarfile
 import time
-import unittest
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
@@ -128,6 +127,21 @@ def requires_ninja(func):
   def decorated(self, *args, **kwargs):
     if not utils.which('ninja'):
       self.fail('test requires ninja to be installed (available in PATH)')
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
+def requires_scons(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    if not utils.which('scons'):
+      if 'EMTEST_SKIP_SCONS' in os.environ:
+        self.skipTest('test requires scons and EMTEST_SKIP_SCONS is set')
+      else:
+        self.fail('scons required to run this test.  Use EMTEST_SKIP_SKIP to skip')
     return func(self, *args, **kwargs)
 
   return decorated
@@ -819,7 +833,7 @@ f.close()
       print(str(build))
       self.run_process(build)
 
-      out = self.run_process(config.NODE_JS + ['cmake_with_emval.js'], stdout=PIPE).stdout
+      out = self.run_js('cmake_with_emval.js')
       if '-DNO_GNU_EXTENSIONS=1' in args:
         self.assertContained('Hello! __STRICT_ANSI__: 1, __cplusplus: 201103', out)
       else:
@@ -893,6 +907,10 @@ f.close()
     output = self.run_js('test_prog.js')
     self.assertContained('AL_VERSION: 1.1', output)
     self.assertContained('SDL version: 2.', output)
+
+  def test_cmake_threads(self):
+    self.run_process([EMCMAKE, 'cmake', test_file('cmake/threads')])
+    self.run_process(['cmake', '--build', '.'])
 
   @requires_pkg_config
   def test_cmake_find_pkg_config(self):
@@ -1717,6 +1735,7 @@ int f() {
     'preload': (['--preload-file', 'somefile.txt'],),
     'preload_and_embed': (['--preload-file', 'somefile.txt', '--embed-file', 'hello.txt'],)
   })
+  @requires_node
   def test_include_file(self, args):
     create_file('somefile.txt', 'hello from a file with lots of data and stuff in it thank you very much')
     create_file('hello.txt', 'hello world')
@@ -1738,7 +1757,7 @@ int f() {
 
     self.run_process([EMCC, 'main.c'] + args)
     # run in node.js to ensure we verify that file preloading works there
-    result = self.run_js('a.out.js', engine=config.NODE_JS)
+    result = self.run_js('a.out.js')
     self.assertContained('|hello from a file wi|', result)
 
   @parameterized({
@@ -2662,7 +2681,7 @@ int f() {
     self.verify_dwarf_exists(wasm_file)
     self.verify_source_map_exists(map_file)
 
-  @unittest.skipIf(not scons_path, 'scons not found in PATH')
+  @requires_scons
   @with_env_modify({'EMSCRIPTEN_ROOT': path_from_root()})
   def test_scons(self):
     # this test copies the site_scons directory alongside the test
@@ -2673,7 +2692,7 @@ int f() {
       output = self.run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
 
-  @unittest.skipIf(not scons_path, 'scons not found in PATH')
+  @requires_scons
   @with_env_modify({'EMSCRIPTEN_TOOLPATH': path_from_root('tools/scons/site_scons'),
                     'EMSCRIPTEN_ROOT': path_from_root()})
   def test_emscons(self):
@@ -2821,6 +2840,7 @@ int f() {
       output = self.run_js('a.out.js')
       self.assertNotContained('FAIL', output)
 
+  @requires_node
   def test_embind_finalization(self):
     self.run_process(
       [EMXX,
@@ -2829,7 +2849,7 @@ int f() {
        '-lembind']
     )
     self.node_args += ['--expose-gc']
-    output = self.run_js('a.out.js', engine=config.NODE_JS)
+    output = self.run_js('a.out.js')
     self.assertContained('Constructed from C++ destructed', output)
     self.assertContained('Constructed from JS destructed', output)
     self.assertNotContained('Foo* destructed', output)
@@ -5120,7 +5140,7 @@ int main() {
       if 'EMCC_ONLY_FORCED_STDLIBS' in env:
         self.assertContained('EMCC_ONLY_FORCED_STDLIBS is deprecated', err)
       if fail:
-        output = self.expect_fail(config.NODE_JS + ['a.out.js'], stdout=PIPE)
+        output = self.run_js('a.out.js', assert_returncode=NON_ZERO)
         self.assertContained('missing function', output)
       else:
         self.assertContained('hello, world!', self.run_js('a.out.js'))
@@ -5805,33 +5825,33 @@ int main(void) {
   def test_require(self):
     inname = test_file('hello_world.c')
     self.emcc(inname, args=['-sASSERTIONS=0'], output_filename='a.out.js')
-    output = self.run_process(config.NODE_JS + ['-e', 'require("./a.out.js")'], stdout=PIPE, stderr=PIPE)
-    assert output.stdout == 'hello, world!\n' and output.stderr == '', 'expected no output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % (output.stdout, output.stderr)
+    create_file('run.js', 'require("./a.out.js")')
+    output = self.run_js('run.js')
+    self.assertEqual('hello, world!\n', output)
 
   @requires_node
   def test_require_modularize(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sASSERTIONS=0'])
     src = read_file('a.out.js')
     self.assertContained('module.exports = Module;', src)
-    output = self.run_process(config.NODE_JS + ['-e', 'var m = require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE)
-    self.assertFalse(output.stderr)
-    self.assertEqual(output.stdout, 'hello, world!\n')
+    create_file('run.js', 'var m = require("./a.out.js"); m();')
+    output = self.run_js('run.js')
+    self.assertEqual(output, 'hello, world!\n')
     self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sEXPORT_NAME="NotModule"', '-sASSERTIONS=0'])
-    src = read_file('a.out.js')
-    self.assertContained('module.exports = NotModule;', src)
-    output = self.run_process(config.NODE_JS + ['-e', 'var m = require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE)
-    self.assertFalse(output.stderr)
-    self.assertEqual(output.stdout, 'hello, world!\n')
+    self.assertContained('module.exports = NotModule;', read_file('a.out.js'))
+    output = self.run_js('run.js')
+    self.assertEqual(output, 'hello, world!\n')
     self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE'])
     # We call require() twice to ensure it returns wrapper function each time
-    output = self.run_process(config.NODE_JS + ['-e', 'require("./a.out.js")();var m = require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE)
-    self.assertFalse(output.stderr)
-    self.assertEqual(output.stdout, 'hello, world!\nhello, world!\n')
+    create_file('require_twice.js', 'require("./a.out.js")();var m = require("./a.out.js"); m();')
+    output = self.run_js('require_twice.js')
+    self.assertEqual(output, 'hello, world!\nhello, world!\n')
 
   def test_modularize_strict(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sSTRICT'])
-    stdout = self.run_process(config.NODE_JS + ['-e', 'var m = require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE).stdout
-    self.assertEqual(stdout, 'hello, world!\n')
+    create_file('run.js', 'var m = require("./a.out.js"); m();')
+    output = self.run_js('run.js')
+    self.assertEqual(output, 'hello, world!\n')
 
   @node_pthreads
   def test_pthread_print_override_modularize(self):
@@ -5868,15 +5888,19 @@ int main(void) {
     self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sASSERTIONS=0'])
     src = 'var module = 0; ' + read_file('a.out.js')
     create_file('a.out.js', src)
-    assert "define([], function() { return Module; });" in src
-    output = self.run_process(config.NODE_JS + ['-e', 'var m; (global.define = function(deps, factory) { m = factory(); }).amd = true; require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE)
-    assert output.stdout == 'hello, world!\n' and output.stderr == '', 'expected output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % (output.stdout, output.stderr)
+    self.assertContained("define([], function() { return Module; });", src)
+
+    create_file('run_module.js', 'var m; (global.define = function(deps, factory) { m = factory(); }).amd = true; require("./a.out.js"); m();')
+    output = self.run_js('run_module.js')
+    self.assertContained('hello, world!\n', output)
+
     self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sEXPORT_NAME="NotModule"', '-sASSERTIONS=0'])
     src = 'var module = 0; ' + read_file('a.out.js')
     create_file('a.out.js', src)
-    assert "define([], function() { return NotModule; });" in src
-    output = self.run_process(config.NODE_JS + ['-e', 'var m; (global.define = function(deps, factory) { m = factory(); }).amd = true; require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE)
-    assert output.stdout == 'hello, world!\n' and output.stderr == '', 'expected output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % (output.stdout, output.stderr)
+    self.assertContained("define([], function() { return NotModule; });", src)
+
+    output = self.run_js('run_module.js')
+    self.assertContained('hello, world!\n', output)
 
   def test_EXPORT_NAME_with_html(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', 'a.html', '-sEXPORT_NAME=Other'])
@@ -7074,6 +7098,7 @@ Resolved: "/" => "/"
     'normal': (['-sWASM_BIGINT=0'], 'testbind.js'),
     'bigint': (['-sWASM_BIGINT'], 'testbind_bigint.js'),
   })
+  @requires_node
   def test_i64_return_value(self, args, bind_js):
     # This test checks that the most significant 32 bits of a 64 bit long are correctly made available
     # to native JavaScript applications that wish to interact with compiled code returning 64 bit longs.
@@ -7097,7 +7122,8 @@ Resolved: "/" => "/"
     ''')
 
     # Run the test and confirm the output is as expected.
-    out = self.run_js('testrun.js', engine=config.NODE_JS + shared.node_bigint_flags())
+    self.node_args += shared.node_bigint_flags()
+    out = self.run_js('testrun.js')
     self.assertContained('''\
 input = 0xaabbccdd11223344
 low = 5678
@@ -7351,9 +7377,7 @@ int main() {}
 
   def test_override_c_environ(self):
     create_file('pre.js', r'''
-      var Module = {
-        preRun: [function() { ENV.hello = 'world'; ENV.LANG = undefined; }]
-      };
+      Module.preRun = () => { ENV.hello = 'world'; ENV.LANG = undefined; }
     ''')
     create_file('src.cpp', r'''
       #include <stdlib.h>
@@ -7369,16 +7393,15 @@ int main() {}
     self.assertContained('LANG is not set', output)
 
     create_file('pre.js', r'''
-      var Module = {
-        preRun: [function(module) { module.ENV.hello = 'world' }]
-      };
+      Module.preRun = (module) => { module.ENV.hello = 'world' }
     ''')
     self.run_process([EMXX, 'src.cpp', '--pre-js', 'pre.js', '-sEXPORTED_RUNTIME_METHODS=ENV'])
     self.assertContained('|world|', self.run_js('a.out.js'))
 
     self.run_process([EMXX, 'src.cpp', '--pre-js', 'pre.js', '-sEXPORTED_RUNTIME_METHODS=ENV', '-sMODULARIZE'])
-    output = self.run_process(config.NODE_JS + ['-e', 'require("./a.out.js")();'], stdout=PIPE, stderr=PIPE)
-    self.assertContained('|world|', output.stdout)
+    create_file('run.js', 'require("./a.out.js")();')
+    output = self.run_js('run.js')
+    self.assertContained('|world|', output)
 
   def test_warn_no_filesystem(self):
     error = 'Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with -sFORCE_FILESYSTEM'
@@ -9322,28 +9345,26 @@ T6:(else) !ASSERTIONS""", output)
   def test_node_js_run_from_different_directory(self):
     ensure_dir('subdir')
     self.run_process([EMCC, test_file('hello_world.c'), '-o', Path('subdir/a.js'), '-O3'])
-    ret = self.run_process(config.NODE_JS + [Path('subdir/a.js')], stdout=PIPE).stdout
+    ret = self.run_js('subdir/a.js')
     self.assertContained('hello, world!', ret)
 
   # Tests that a pthreads + modularize build can be run in node js
-  @requires_node
+  @node_pthreads
   def test_node_js_pthread_module(self):
     # create module loader script
-    moduleLoader = 'moduleLoader.js'
-    moduleLoaderContents = '''
+    ensure_dir('subdir')
+    create_file('subdir/moduleLoader.js', '''
 const test_module = require("./module");
 test_module().then((test_module_instance) => {
   test_module_instance._main();
 });
-'''
-    ensure_dir('subdir')
-    create_file(os.path.join('subdir', moduleLoader), moduleLoaderContents)
+''')
 
     # build hello_world.c
     self.run_process([EMCC, test_file('hello_world.c'), '-o', Path('subdir/module.js'), '-pthread', '-sPTHREAD_POOL_SIZE=2', '-sMODULARIZE', '-sEXPORT_NAME=test_module', '-sENVIRONMENT=worker,node'])
 
     # run the module
-    ret = self.run_process(config.NODE_JS + shared.node_pthread_flags() + [os.path.join('subdir', moduleLoader)], stdout=PIPE).stdout
+    ret = self.run_js('subdir/moduleLoader.js')
     self.assertContained('hello, world!', ret)
 
   @no_windows('node system() does not seem to work, see https://github.com/emscripten-core/emscripten/pull/10547')
@@ -9353,7 +9374,7 @@ test_module().then((test_module_instance) => {
 
   def test_node_eval(self):
     self.run_process([EMCC, '-sENVIRONMENT=node', test_file('hello_world.c'), '-o', 'a.js', '-O3'])
-    js = open('a.js').read()
+    js = read_file('a.js')
     ret = self.run_process(config.NODE_JS + ['-e', js], stdout=PIPE).stdout
     self.assertContained('hello, world!', ret)
 
@@ -9793,7 +9814,7 @@ int main () {
         print(' '.join(args))
         self.run_process(args)
 
-        ret = self.run_process(config.NODE_JS + ['a.js'], stdout=PIPE).stdout
+        ret = self.run_js('a.js')
         self.assertTextDataIdentical('Sum of numbers from 1 to 1000: 500500 (expected 500500)', ret.strip())
 
         check_size('a.js', 150000)
@@ -10841,11 +10862,17 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.assertContained('error: unable to find library -lbar', err)
 
   def test_linker_flags_pass_through(self):
-    err = self.expect_fail([EMXX, test_file('hello_world.cpp'), '-Wl,--waka'])
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wl,--waka'])
     self.assertContained('wasm-ld: error: unknown argument: --waka', err)
 
-    err = self.expect_fail([EMXX, test_file('hello_world.cpp'), '-Xlinker', '--waka'])
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Xlinker', '--waka'])
     self.assertContained('wasm-ld: error: unknown argument: --waka', err)
+
+    err = self.run_process([EMCC, test_file('hello_world.c'), '-z', 'foo'], stderr=PIPE).stderr
+    self.assertContained('wasm-ld: warning: unknown -z value: foo', err)
+
+    err = self.run_process([EMCC, test_file('hello_world.c'), '-zfoo'], stderr=PIPE).stderr
+    self.assertContained('wasm-ld: warning: unknown -z value: foo', err)
 
   def test_linker_flags_unused(self):
     err = self.run_process([EMXX, test_file('hello_world.cpp'), '-c', '-lbar'], stderr=PIPE).stderr
@@ -11299,8 +11326,8 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.add_pre_run('console.log("calling foo"); Module["_foo"]();')
     create_file('foo.c', '#include <stdio.h>\nint foo() { puts("foo called"); return 3; }')
     self.build('foo.c')
-    err = self.expect_fail(config.NODE_JS + ['foo.js'], stdout=PIPE)
-    self.assertContained('native function `foo` called before runtime initialization', err)
+    out = self.run_js('foo.js', assert_returncode=NON_ZERO)
+    self.assertContained('native function `foo` called before runtime initialization', out)
 
   def test_native_call_after_exit(self):
     self.set_setting('ASSERTIONS')
@@ -11308,8 +11335,8 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.add_on_exit('console.log("calling main again"); Module["_main"]();')
     create_file('foo.c', '#include <stdio.h>\nint main() { puts("foo called"); return 0; }')
     self.build('foo.c')
-    err = self.expect_fail(config.NODE_JS + ['foo.js'], stdout=PIPE)
-    self.assertContained('native function `main` called after runtime exit', err)
+    out = self.run_js('foo.js', assert_returncode=NON_ZERO)
+    self.assertContained('native function `main` called after runtime exit', out)
 
   def test_metadce_wasm2js_i64(self):
     # handling i64 unsigned remainder brings in some i64 support code. metadce

@@ -105,7 +105,7 @@ int __syscall_prlimit64(int pid, int resource, intptr_t new_limit, intptr_t old_
 int __syscall_sendmmsg(int sockfd, intptr_t msgvec, size_t vlen, int flags, ...);
 int __syscall_socket(int domain, int type, int protocol, int dummy1, int dummy2, int dummy3);
 int __syscall_socketpair(int domain, int type, int protocol, intptr_t fds, int dummy, int dummy2);
-int __syscall_bind(int sockfd, intptr_t addr, size_t alen, int dummy, int dymmy2, int dummy3);
+int __syscall_bind(int sockfd, intptr_t addr, size_t alen, int dummy, int dummy2, int dummy3);
 int __syscall_connect(int sockfd, intptr_t addr, size_t len, int dummy, int dummy2, int dummy3);
 int __syscall_listen(int sockfd, int backlock, int dummy1, int dummy2, int dummy3, int dummy4);
 int __syscall_accept4(int sockfd, intptr_t addr, intptr_t addrlen, int flags, int dummy1, int dummy2);

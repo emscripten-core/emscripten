@@ -1663,7 +1663,7 @@ int __syscall_accept4(int sockfd,
 }
 
 int __syscall_bind(
-  int sockfd, intptr_t addr, size_t alen, int dummy, int dymmy2, int dummy3) {
+  int sockfd, intptr_t addr, size_t alen, int dummy, int dummy2, int dummy3) {
   return -ENOSYS;
 }
 
