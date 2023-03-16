@@ -2338,6 +2338,7 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_readdir_start',
         '_wasmfs_readdir_get',
         '_wasmfs_readdir_finish',
+        '_wasmfs_mount',
       ]
 
   # Explicitly drop linking in a malloc implementation if program is not using any dynamic allocation calls.

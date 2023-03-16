@@ -1003,6 +1003,12 @@ var SyscallsLibrary = {
     if (suggest) FS.close(suggest);
     return FS.createStream(old, suggestFD, suggestFD + 1).fd;
   },
+  __syscall_mount__sig:'mou', //REMINDER: change the sig here, I just put anything here
+  __syscall_mount: function(type, opts, path){
+    path = SYSCALLS.getStr(path);
+    FS.mount(type, opts, path);
+    return 0;
+  },
 };
 
 function wrapSyscallFunction(x, library, isWasi) {

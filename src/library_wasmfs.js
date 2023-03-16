@@ -212,8 +212,16 @@ mergeInto(LibraryManager.library, {
         __wasmfs_readdir_finish(state);
         return entries;
       });
+    },
+    mount: (type, opts, mountpoint) => {
+      return withStackSave(() => {
+        var mountFlags = FS.optionsToFlags(opts);
+        var mountPointBuffer = allocateUTF8OnStack(mountpoint);
+        var typeBuffer = allocateUTF8OnStack(type)
+        return __wasmfs_mount(typeBuffer, mountFlags, mountPointBuffer)
+
+      })
     }
-    // TODO: mount
     // TODO: unmount
     // TODO: lookup
     // TODO: mknod

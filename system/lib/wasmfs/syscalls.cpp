@@ -19,6 +19,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
+#include <sys/mount.h>
 #include <syscall_arch.h>
 #include <unistd.h>
 #include <utility>
@@ -1723,6 +1724,14 @@ int __syscall_recvfrom(int sockfd,
 int __syscall_recvmsg(
   int sockfd, intptr_t msg, int flags, int dummy, int dummy2, int dummy3) {
   return -ENOSYS;
+}
+
+int __syscall_mount(char* type, int flag, char* path){
+  const char* target = "/tmp";
+  //REMINDER: change the target path
+
+  mount(path, target, type, flag, NULL);
+  return 0;
 }
 
 } // extern "C"
