@@ -908,4 +908,7 @@ sigs = {
   uuid_variant__sig: 'ip',
   zoomSurface__sig: 'ppddi',
 }
-mergeInto(LibraryManager.library, sigs);
+
+// We have to merge with `allowMissing` since this file contains signatures
+// for functions that might not exist in all build configurations.
+mergeInto(LibraryManager.library, sigs, {allowMissing: true});
