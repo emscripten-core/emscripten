@@ -1109,7 +1109,7 @@ var LibraryDylink = {
 
   // Async version of dlopen.
   _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError'],
-  _emscripten_dlopen_js__sig: 'vppp',
+  _emscripten_dlopen_js__sig: 'vpppp',
   _emscripten_dlopen_js: function(handle, onsuccess, onerror, user_data) {
     /** @param {Object=} e */
     function errorCallback(e) {

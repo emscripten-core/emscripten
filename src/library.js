@@ -1225,9 +1225,9 @@ mergeInto(LibraryManager.library, {
 
     return 0;
   },
-  strptime_l__sig: 'pppp',
+  strptime_l__sig: 'ppppp',
   strptime_l__deps: ['strptime'],
-  strptime_l: function(buf, format, tm) {
+  strptime_l: function(buf, format, tm, locale) {
     return _strptime(buf, format, tm); // no locale support yet
   },
 
@@ -3149,27 +3149,6 @@ mergeInto(LibraryManager.library, {
     err('TODO: Unwind_DeleteException');
   },
 #endif
-
-  // autodebugging
-
-  emscripten_autodebug_i64: function(line, valuel, valueh) {
-    out('AD:' + [line, valuel, valueh]);
-  },
-  emscripten_autodebug_i32: function(line, value) {
-    out('AD:' + [line, value]);
-  },
-  emscripten_autodebug_i16: function(line, value) {
-    out('AD:' + [line, value]);
-  },
-  emscripten_autodebug_i8: function(line, value) {
-    out('AD:' + [line, value]);
-  },
-  emscripten_autodebug_float: function(line, value) {
-    out('AD:' + [line, value]);
-  },
-  emscripten_autodebug_double: function(line, value) {
-    out('AD:' + [line, value]);
-  },
 
   // special runtime support
 

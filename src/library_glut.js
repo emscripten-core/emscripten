@@ -599,7 +599,7 @@ var LibraryGLUT = {
 
   glutReshapeWindow__proxy: 'sync',
   glutReshapeWindow__deps: ['$GLUT', 'glutPostRedisplay'],
-  glutReshapeWindow__sig: 'vi',
+  glutReshapeWindow__sig: 'vii',
   glutReshapeWindow: function(width, height) {
     Browser.exitFullscreen();
     Browser.setCanvasSize(width, height, true); // N.B. GLUT.reshapeFunc is also registered as a canvas resize callback.

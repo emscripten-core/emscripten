@@ -1398,8 +1398,8 @@ var LibrarySDL = {
 
   SDL_WasInit__deps: ['SDL_Init'],
   SDL_WasInit__proxy: 'sync',
-  SDL_WasInit__sig: 'i',
-  SDL_WasInit: function() {
+  SDL_WasInit__sig: 'ii',
+  SDL_WasInit: function(flags) {
     if (SDL.startTime === null) {
       _SDL_Init();
     }
@@ -1845,18 +1845,6 @@ var LibrarySDL = {
 
   SDL_SetError: function() {},
 
-  SDL_malloc__sig: 'ii',
-  SDL_malloc__deps: ['malloc'],
-  SDL_malloc: function(size) {
-    return _malloc(size);
-  },
-
-  SDL_free__sig: 'vi',
-  SDL_free__deps: ['free'],
-  SDL_free: function(ptr) {
-    _free(ptr);
-  },
-
   SDL_CreateRGBSurface__deps: ['malloc', 'free'],
   SDL_CreateRGBSurface__proxy: 'sync',
   SDL_CreateRGBSurface__sig: 'iiiiiiiii',
@@ -1949,7 +1937,7 @@ var LibrarySDL = {
   },
 
   SDL_SetClipRect__proxy: 'sync',
-  SDL_SetClipRect__sig: 'vii',
+  SDL_SetClipRect__sig: 'iii',
   SDL_SetClipRect: function(surf, rect) {
     var surfData = SDL.surfaces[surf];
 
@@ -1988,18 +1976,6 @@ var LibrarySDL = {
     surfData.ctx.fillRect(r.x, r.y, r.w, r.h);
     surfData.ctx.restore();
     return 0;
-  },
-
-  SDL_BlitSurface__proxy: 'sync',
-  SDL_BlitSurface__sig: 'iiiii',
-  SDL_BlitSurface: function(src, srcrect, dst, dstrect) {
-    return SDL.blitSurface(src, srcrect, dst, dstrect, false);
-  },
-
-  SDL_BlitScaled__proxy: 'sync',
-  SDL_BlitScaled__sig: 'iiiii',
-  SDL_BlitScaled: function(src, srcrect, dst, dstrect) {
-    return SDL.blitSurface(src, srcrect, dst, dstrect, true);
   },
 
   zoomSurface: function(src, x, y, smooth) {
@@ -2400,7 +2376,6 @@ var LibrarySDL = {
       cleanup();
     }
   },
-  SDL_LoadBMP: 'IMG_Load',
   SDL_LoadBMP_RW: 'IMG_Load_RW',
 
   IMG_Load__deps: ['IMG_Load_RW', 'SDL_RWFromFile'],
@@ -2682,8 +2657,6 @@ var LibrarySDL = {
   SDL_UnlockAudio: function() {},
 
   SDL_CreateMutex: function() { return 0 },
-  SDL_LockMutex: function() {},
-  SDL_UnlockMutex: function() {},
   SDL_mutexP: function() { return 0 },
   SDL_mutexV: function() { return 0 },
   SDL_DestroyMutex: function() {},
@@ -2931,10 +2904,11 @@ var LibrarySDL = {
   Mix_ReserveChannels: function(num) {
     SDL.channelMinimumNumber = num;
   },
-  Mix_PlayChannel__proxy: 'sync',
-  Mix_PlayChannel__sig: 'iiii',
-  Mix_PlayChannel: function(channel, id, loops) {
+  Mix_PlayChannelTimed__proxy: 'sync',
+  Mix_PlayChannelTimed__sig: 'iiiii',
+  Mix_PlayChannelTimed: function(channel, id, loops, ticks) {
     // TODO: handle fixed amount of N loops. Currently loops either 0 or infinite times.
+    assert(ticks == -1);
 
     // Get the audio element associated with the ID
     var info = SDL.audios[id];
@@ -2984,7 +2958,6 @@ var LibrarySDL = {
     audio.play();
     return channel;
   },
-  Mix_PlayChannelTimed: 'Mix_PlayChannel', // XXX ignore Timing
 
   Mix_FadingChannel: function(channel) {
     return 0; // MIX_NO_FADING, TODO
@@ -3487,8 +3460,8 @@ var LibrarySDL = {
   SDL_DestroyRenderer: function(renderer) {},
 
   SDL_GetWindowFlags__proxy: 'sync',
-  SDL_GetWindowFlags__sig: 'iii',
-  SDL_GetWindowFlags: function(x, y) {
+  SDL_GetWindowFlags__sig: 'ip',
+  SDL_GetWindowFlags: function(window) {
     if (Browser.isFullscreen) {
        return 1;
     }
@@ -3503,8 +3476,8 @@ var LibrarySDL = {
   SDL_GL_DeleteContext: function(context) {},
 
   SDL_GL_GetSwapInterval__proxy: 'sync',
-  SDL_GL_GetSwapInterval__sig: 'ii',
-  SDL_GL_GetSwapInterval: function(state) {
+  SDL_GL_GetSwapInterval__sig: 'i',
+  SDL_GL_GetSwapInterval: function() {
     if (Browser.mainLoop.timingMode == 1/*EM_TIMING_RAF*/) return Browser.mainLoop.timingValue;
     else return 0;
   },
@@ -3540,8 +3513,6 @@ var LibrarySDL = {
     }
     return 0;
   },
-
-  SDL_GetWindowFlags: function() {},
 
   SDL_ClearError: function() {},
 
