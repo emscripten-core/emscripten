@@ -31,11 +31,11 @@ var LibraryGL = {
     + 'miniTempWebGLFloatBuffers[i] = miniTempWebGLFloatBuffersStorage.subarray(0, i+1);\n'
     + '}\n',
 
-  _miniTempWebGLIntBuffers: [],
-  _miniTempWebGLIntBuffers__postset:
-      'var __miniTempWebGLIntBuffersStorage = new Int32Array(' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + ');\n'
+  $miniTempWebGLIntBuffers: [],
+  $miniTempWebGLIntBuffers__postset:
+      'var miniTempWebGLIntBuffersStorage = new Int32Array(' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + ');\n'
     + 'for (/**@suppress{duplicate}*/var i = 0; i < ' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + '; ++i) {\n'
-    + '__miniTempWebGLIntBuffers[i] = __miniTempWebGLIntBuffersStorage.subarray(0, i+1);\n'
+    + 'miniTempWebGLIntBuffers[i] = miniTempWebGLIntBuffersStorage.subarray(0, i+1);\n'
     + '}\n',
 
   $heapObjectForWebGLType: function(type) {
@@ -88,7 +88,7 @@ var LibraryGL = {
   },
 
 #if MIN_WEBGL_VERSION == 1
-  _webgl_enable_ANGLE_instanced_arrays: function(ctx) {
+  $webgl_enable_ANGLE_instanced_arrays: function(ctx) {
     // Extension available in WebGL 1 from Firefox 26 and Google Chrome 30 onwards. Core feature in WebGL 2.
     var ext = ctx.getExtension('ANGLE_instanced_arrays');
     if (ext) {
@@ -99,12 +99,12 @@ var LibraryGL = {
     }
   },
 
-  emscripten_webgl_enable_ANGLE_instanced_arrays__deps: ['_webgl_enable_ANGLE_instanced_arrays'],
+  emscripten_webgl_enable_ANGLE_instanced_arrays__deps: ['$webgl_enable_ANGLE_instanced_arrays'],
   emscripten_webgl_enable_ANGLE_instanced_arrays: function(ctx) {
-    return __webgl_enable_ANGLE_instanced_arrays(GL.contexts[ctx].GLctx);
+    return webgl_enable_ANGLE_instanced_arrays(GL.contexts[ctx].GLctx);
   },
 
-  _webgl_enable_OES_vertex_array_object: function(ctx) {
+  $webgl_enable_OES_vertex_array_object: function(ctx) {
     // Extension available in WebGL 1 from Firefox 25 and WebKit 536.28/desktop Safari 6.0.3 onwards. Core feature in WebGL 2.
     var ext = ctx.getExtension('OES_vertex_array_object');
     if (ext) {
@@ -116,12 +116,12 @@ var LibraryGL = {
     }
   },
 
-  emscripten_webgl_enable_OES_vertex_array_object__deps: ['_webgl_enable_OES_vertex_array_object'],
+  emscripten_webgl_enable_OES_vertex_array_object__deps: ['$webgl_enable_OES_vertex_array_object'],
   emscripten_webgl_enable_OES_vertex_array_object: function(ctx) {
-    return __webgl_enable_OES_vertex_array_object(GL.contexts[ctx].GLctx);
+    return webgl_enable_OES_vertex_array_object(GL.contexts[ctx].GLctx);
   },
 
-  _webgl_enable_WEBGL_draw_buffers: function(ctx) {
+  $webgl_enable_WEBGL_draw_buffers: function(ctx) {
     // Extension available in WebGL 1 from Firefox 28 onwards. Core feature in WebGL 2.
     var ext = ctx.getExtension('WEBGL_draw_buffers');
     if (ext) {
@@ -130,20 +130,20 @@ var LibraryGL = {
     }
   },
 
-  emscripten_webgl_enable_WEBGL_draw_buffers__deps: ['_webgl_enable_WEBGL_draw_buffers'],
+  emscripten_webgl_enable_WEBGL_draw_buffers__deps: ['$webgl_enable_WEBGL_draw_buffers'],
   emscripten_webgl_enable_WEBGL_draw_buffers: function(ctx) {
-    return __webgl_enable_WEBGL_draw_buffers(GL.contexts[ctx].GLctx);
+    return webgl_enable_WEBGL_draw_buffers(GL.contexts[ctx].GLctx);
   },
 #endif
 
-  _webgl_enable_WEBGL_multi_draw: function(ctx) {
+  $webgl_enable_WEBGL_multi_draw: function(ctx) {
     // Closure is expected to be allowed to minify the '.multiDrawWebgl' property, so not accessing it quoted.
     return !!(ctx.multiDrawWebgl = ctx.getExtension('WEBGL_multi_draw'));
   },
 
-  emscripten_webgl_enable_WEBGL_multi_draw__deps: ['_webgl_enable_WEBGL_multi_draw'],
+  emscripten_webgl_enable_WEBGL_multi_draw__deps: ['$webgl_enable_WEBGL_multi_draw'],
   emscripten_webgl_enable_WEBGL_multi_draw: function(ctx) {
-    return __webgl_enable_WEBGL_multi_draw(GL.contexts[ctx].GLctx);
+    return webgl_enable_WEBGL_multi_draw(GL.contexts[ctx].GLctx);
   },
 
   $GL__postset: 'var GLctx;',
@@ -154,16 +154,16 @@ var LibraryGL = {
     'malloc', // Needed by registerContext
 #endif
 #if MIN_WEBGL_VERSION == 1
-    '_webgl_enable_ANGLE_instanced_arrays',
-    '_webgl_enable_OES_vertex_array_object',
-    '_webgl_enable_WEBGL_draw_buffers',
+    '$webgl_enable_ANGLE_instanced_arrays',
+    '$webgl_enable_OES_vertex_array_object',
+    '$webgl_enable_WEBGL_draw_buffers',
 #endif
 #if MAX_WEBGL_VERSION >= 2
-    '_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
-    '_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance',
+    '$webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
+    '$webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance',
 #endif
-    '_webgl_enable_WEBGL_multi_draw',
-    ],
+    '$webgl_enable_WEBGL_multi_draw',
+  ],
 #endif
   $GL: {
 #if GL_DEBUG
@@ -1099,14 +1099,14 @@ var LibraryGL = {
 
 #if MIN_WEBGL_VERSION == 1
       // Extensions that are only available in WebGL 1 (the calls will be no-ops if called on a WebGL 2 context active)
-      __webgl_enable_ANGLE_instanced_arrays(GLctx);
-      __webgl_enable_OES_vertex_array_object(GLctx);
-      __webgl_enable_WEBGL_draw_buffers(GLctx);
+      webgl_enable_ANGLE_instanced_arrays(GLctx);
+      webgl_enable_OES_vertex_array_object(GLctx);
+      webgl_enable_WEBGL_draw_buffers(GLctx);
 #endif
 #if MAX_WEBGL_VERSION >= 2
       // Extensions that are available from WebGL >= 2 (no-op if called on a WebGL 1 context active)
-      __webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GLctx);
-      __webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GLctx);
+      webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GLctx);
+      webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GLctx);
 #endif
 
 #if MAX_WEBGL_VERSION >= 2
@@ -1126,7 +1126,7 @@ var LibraryGL = {
         GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
       }
 
-      __webgl_enable_WEBGL_multi_draw(GLctx);
+      webgl_enable_WEBGL_multi_draw(GLctx);
 
       // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
       var exts = GLctx.getSupportedExtensions() || [];
@@ -1473,7 +1473,7 @@ var LibraryGL = {
     return height * alignedRowSize;
   },
 
-  _colorChannelsInGlTextureFormat: function(format) {
+  $colorChannelsInGlTextureFormat: function(format) {
     // Micro-optimizations for size: map format to size by subtracting smallest enum value (0x1902) from all values first.
     // Also omit the most common size value (1) from the list, which is assumed by formats not on the list.
     var colorChannels = {
@@ -1501,18 +1501,18 @@ var LibraryGL = {
       && format != 0x1909 /* GL_LUMINANCE */
       && format != 0x1903 /* GL_RED */
       && format != 0x8D94 /* GL_RED_INTEGER */) {
-      err('Invalid format=' + ptrToString(format) + ' passed to function _colorChannelsInGlTextureFormat()!');
+      err('Invalid format=' + ptrToString(format) + ' passed to function colorChannelsInGlTextureFormat()!');
     }
 #endif
     return colorChannels[format - 0x1902]||1;
   },
 
-  $emscriptenWebGLGetTexPixelData__deps: ['$computeUnpackAlignedImageSize', '_colorChannelsInGlTextureFormat', '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'],
+  $emscriptenWebGLGetTexPixelData__deps: ['$computeUnpackAlignedImageSize', '$colorChannelsInGlTextureFormat', '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'],
   $emscriptenWebGLGetTexPixelData: function(type, format, width, height, pixels, internalFormat) {
     var heap = heapObjectForWebGLType(type);
     var shift = heapAccessShiftForWebGLHeap(heap);
     var byteSize = 1<<shift;
-    var sizePerPixel = __colorChannelsInGlTextureFormat(format) * byteSize;
+    var sizePerPixel = colorChannelsInGlTextureFormat(format) * byteSize;
     var bytes = computeUnpackAlignedImageSize(width, height, sizePerPixel, GL.unpackAlignment);
 #if GL_ASSERTIONS
     assert((pixels >> shift) << shift == pixels, 'Pointer to texture data passed to texture get function must be aligned to the byte size of the pixel type!');
@@ -1684,8 +1684,8 @@ var LibraryGL = {
   // merge the functions together to only have one generated copy of this. 'createFunction' refers to the WebGL context function name to do
   // the actual creation, 'objectTable' points to the GL object table where to populate the created objects, and 'functionName' carries
   // the name of the caller for debug information.
-  _glGenObject__sig: 'vii',
-  _glGenObject: function(n, buffers, createFunction, objectTable
+  $__glGenObject__sig: 'vii',
+  $__glGenObject: function(n, buffers, createFunction, objectTable
 #if GL_ASSERTIONS
     , functionName
 #endif
@@ -1706,7 +1706,7 @@ var LibraryGL = {
     }
   },
 
-  glGenBuffers__deps: ['_glGenObject'],
+  glGenBuffers__deps: ['$__glGenObject'],
   glGenBuffers__sig: 'vii',
   glGenBuffers: function(n, buffers) {
     __glGenObject(n, buffers, 'createBuffer', GL.buffers
@@ -1716,7 +1716,7 @@ var LibraryGL = {
       );
   },
 
-  glGenTextures__deps: ['_glGenObject'],
+  glGenTextures__deps: ['$__glGenObject'],
   glGenTextures__sig: 'vii',
   glGenTextures: function(n, textures) {
     __glGenObject(n, textures, 'createTexture', GL.textures
@@ -1963,7 +1963,7 @@ var LibraryGL = {
   },
 
   glGenRenderbuffers__sig: 'vii',
-  glGenRenderbuffers__deps: ['_glGenObject'],
+  glGenRenderbuffers__deps: ['$__glGenObject'],
   glGenRenderbuffers: function(n, renderbuffers) {
     __glGenObject(n, renderbuffers, 'createRenderbuffer', GL.renderbuffers
 #if GL_ASSERTIONS
@@ -2360,7 +2360,7 @@ var LibraryGL = {
   glUniform1iv__sig: 'viii',
   glUniform1iv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-    , '_miniTempWebGLIntBuffers'
+    , '$miniTempWebGLIntBuffers'
 #endif
   ],
   glUniform1iv: function(location, count, value) {
@@ -2386,7 +2386,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempWebGLIntBuffers[count-1];
+      var view = miniTempWebGLIntBuffers[count-1];
       for (var i = 0; i < count; ++i) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
       }
@@ -2405,7 +2405,7 @@ var LibraryGL = {
   glUniform2iv__sig: 'viii',
   glUniform2iv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-    , '_miniTempWebGLIntBuffers'
+    , '$miniTempWebGLIntBuffers'
 #endif
   ],
   glUniform2iv: function(location, count, value) {
@@ -2431,7 +2431,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 2 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempWebGLIntBuffers[2*count-1];
+      var view = miniTempWebGLIntBuffers[2*count-1];
       for (var i = 0; i < 2*count; i += 2) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
@@ -2451,7 +2451,7 @@ var LibraryGL = {
   glUniform3iv__sig: 'viii',
   glUniform3iv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-    , '_miniTempWebGLIntBuffers'
+    , '$miniTempWebGLIntBuffers'
 #endif
   ],
   glUniform3iv: function(location, count, value) {
@@ -2477,7 +2477,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 3 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempWebGLIntBuffers[3*count-1];
+      var view = miniTempWebGLIntBuffers[3*count-1];
       for (var i = 0; i < 3*count; i += 3) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
@@ -2498,7 +2498,7 @@ var LibraryGL = {
   glUniform4iv__sig: 'viii',
   glUniform4iv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-    , '_miniTempWebGLIntBuffers'
+    , '$miniTempWebGLIntBuffers'
 #endif
   ],
   glUniform4iv: function(location, count, value) {
@@ -2524,7 +2524,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempWebGLIntBuffers[4*count-1];
+      var view = miniTempWebGLIntBuffers[4*count-1];
       for (var i = 0; i < 4*count; i += 4) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
@@ -2977,7 +2977,7 @@ var LibraryGL = {
     return GLctx.getAttribLocation(GL.programs[program], UTF8ToString(name));
   },
 
-  _glGetActiveAttribOrUniform: function(funcName, program, index, bufSize, length, size, type, name) {
+  $__glGetActiveAttribOrUniform: function(funcName, program, index, bufSize, length, size, type, name) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, funcName, 'program');
 #endif
@@ -2992,13 +2992,13 @@ var LibraryGL = {
   },
 
   glGetActiveAttrib__sig: 'viiiiiii',
-  glGetActiveAttrib__deps: ['_glGetActiveAttribOrUniform'],
+  glGetActiveAttrib__deps: ['$__glGetActiveAttribOrUniform'],
   glGetActiveAttrib: function(program, index, bufSize, length, size, type, name) {
     __glGetActiveAttribOrUniform('getActiveAttrib', program, index, bufSize, length, size, type, name);
   },
 
   glGetActiveUniform__sig: 'viiiiiii',
-  glGetActiveUniform__deps: ['_glGetActiveAttribOrUniform'],
+  glGetActiveUniform__deps: ['$__glGetActiveAttribOrUniform'],
   glGetActiveUniform: function(program, index, bufSize, length, size, type, name) {
     __glGetActiveAttribOrUniform('getActiveUniform', program, index, bufSize, length, size, type, name);
   },
@@ -3576,7 +3576,7 @@ var LibraryGL = {
   },
 
   glGenFramebuffers__sig: 'vii',
-  glGenFramebuffers__deps: ['_glGenObject'],
+  glGenFramebuffers__deps: ['$__glGenObject'],
   glGenFramebuffers: function(n, ids) {
     __glGenObject(n, ids, 'createFramebuffer', GL.framebuffers
 #if GL_ASSERTIONS
@@ -3632,7 +3632,7 @@ var LibraryGL = {
     return GLctx.isFramebuffer(fb);
   },
 
-  glGenVertexArrays__deps: ['_glGenObject'
+  glGenVertexArrays__deps: ['$__glGenObject'
 #if LEGACY_GL_EMULATION
   , 'emulGlGenVertexArrays'
 #endif
