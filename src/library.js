@@ -3150,27 +3150,6 @@ mergeInto(LibraryManager.library, {
   },
 #endif
 
-  // autodebugging
-
-  emscripten_autodebug_i64: function(line, valuel, valueh) {
-    out('AD:' + [line, valuel, valueh]);
-  },
-  emscripten_autodebug_i32: function(line, value) {
-    out('AD:' + [line, value]);
-  },
-  emscripten_autodebug_i16: function(line, value) {
-    out('AD:' + [line, value]);
-  },
-  emscripten_autodebug_i8: function(line, value) {
-    out('AD:' + [line, value]);
-  },
-  emscripten_autodebug_float: function(line, value) {
-    out('AD:' + [line, value]);
-  },
-  emscripten_autodebug_double: function(line, value) {
-    out('AD:' + [line, value]);
-  },
-
   // special runtime support
 
 #if STACK_OVERFLOW_CHECK
