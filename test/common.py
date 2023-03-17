@@ -221,6 +221,11 @@ def node_pthreads(f):
   return decorated
 
 
+def crossplatform(f):
+  f.is_crossplatform_test = True
+  return f
+
+
 @contextlib.contextmanager
 def env_modify(updates):
   """A context manager that updates os.environ."""

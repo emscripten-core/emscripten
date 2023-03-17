@@ -127,6 +127,21 @@ def get_all_tests(modules):
   return all_tests
 
 
+def get_crossplatform_tests(modules):
+  suites = ['core2', 'other'] # We don't need all versions of every test
+  crossplatform_tests = []
+  # Walk over the test suites and find the test functions with the
+  # is_crossplatform_test attribute applied by @crossplatform decorator
+  for m in modules:
+    for s in suites:
+      if hasattr(m, s):
+        testclass = getattr(m, s)
+        for funcname in dir(testclass):
+          if hasattr(getattr(testclass, funcname), 'is_crossplatform_test'):
+            crossplatform_tests.append(s + '.' + funcname)
+  return crossplatform_tests
+
+
 def tests_with_expanded_wildcards(args, all_tests):
   # Process wildcards, e.g. "browser.test_pthread_*" should expand to list all pthread tests
   new_args = []
@@ -353,6 +368,7 @@ def parse_args(args):
                       const=True, default=False)
   parser.add_argument('--force64', dest='force64', action='store_const',
                       const=True, default=None)
+  parser.add_argument('--crossplatform-only', action='store_true')
   return parser.parse_args()
 
 
@@ -426,9 +442,12 @@ def main(args):
 
   modules = get_and_import_modules()
   all_tests = get_all_tests(modules)
-  tests = tests_with_expanded_wildcards(tests, all_tests)
-  tests = skip_requested_tests(tests, modules)
-  tests = args_for_random_tests(tests, modules)
+  if options.crossplatform_only:
+    tests = get_crossplatform_tests(modules)
+  else:
+    tests = tests_with_expanded_wildcards(tests, all_tests)
+    tests = skip_requested_tests(tests, modules)
+    tests = args_for_random_tests(tests, modules)
   suites, unmatched_tests = load_test_suites(tests, modules)
   if unmatched_tests:
     print('ERROR: could not find the following tests: ' + ' '.join(unmatched_tests))
