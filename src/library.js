@@ -445,7 +445,7 @@ mergeInto(LibraryManager.library, {
   // time.h
   // ==========================================================================
 
-  _mktime_js__deps: ['_yday_from_date'],
+  _mktime_js__deps: ['$ydayFromDate'],
   _mktime_js__sig: 'ip',
   _mktime_js: function(tmPtr) {
     var date = new Date({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
@@ -476,7 +476,7 @@ mergeInto(LibraryManager.library, {
     }
 
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getDay()', 'i32') }}};
-    var yday = __yday_from_date(date)|0;
+    var yday = ydayFromDate(date)|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
     // To match expected behavior, update fields from date
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}};
@@ -524,7 +524,7 @@ mergeInto(LibraryManager.library, {
     return (date.getTime() / 1000)|0;
   },
 
-  _localtime_js__deps: ['$readI53FromI64', '_yday_from_date'],
+  _localtime_js__deps: ['$readI53FromI64', '$ydayFromDate'],
   _localtime_js__sig: 'ipp',
   _localtime_js: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i53') }}}*1000);
@@ -536,7 +536,7 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getFullYear()-1900', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getDay()', 'i32') }}};
 
-    var yday = __yday_from_date(date)|0;
+    var yday = ydayFromDate(date)|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, '-(date.getTimezoneOffset() * 60)', 'i32') }}};
 
@@ -631,25 +631,25 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  _MONTH_DAYS_REGULAR: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
-  _MONTH_DAYS_LEAP: [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
-  _MONTH_DAYS_REGULAR_CUMULATIVE: [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334],
-  _MONTH_DAYS_LEAP_CUMULATIVE: [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335],
+  $MONTH_DAYS_REGULAR: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
+  $MONTH_DAYS_LEAP: [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
+  $MONTH_DAYS_REGULAR_CUMULATIVE: [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334],
+  $MONTH_DAYS_LEAP_CUMULATIVE: [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335],
 
-  _isLeapYear: function(year) {
+  $isLeapYear: function(year) {
       return year%4 === 0 && (year%100 !== 0 || year%400 === 0);
   },
 
-  _yday_from_date__deps: ['_isLeapYear', '_MONTH_DAYS_LEAP_CUMULATIVE', '_MONTH_DAYS_REGULAR_CUMULATIVE'],
-  _yday_from_date: function(date) {
-    var isLeapYear = __isLeapYear(date.getFullYear());
-    var monthDaysCumulative = (isLeapYear ? __MONTH_DAYS_LEAP_CUMULATIVE : __MONTH_DAYS_REGULAR_CUMULATIVE);
+  $ydayFromDate__deps: ['$isLeapYear', '$MONTH_DAYS_LEAP_CUMULATIVE', '$MONTH_DAYS_REGULAR_CUMULATIVE'],
+  $ydayFromDate: function(date) {
+    var leap = isLeapYear(date.getFullYear());
+    var monthDaysCumulative = (leap ? MONTH_DAYS_LEAP_CUMULATIVE : MONTH_DAYS_REGULAR_CUMULATIVE);
     var yday = monthDaysCumulative[date.getMonth()] + date.getDate() - 1; // -1 since it's days since Jan 1
 
     return yday;
   },
 
-  _arraySum: function(array, index) {
+  $arraySum: function(array, index) {
     var sum = 0;
     for (var i = 0; i <= index; sum += array[i++]) {
       // no-op
@@ -657,13 +657,13 @@ mergeInto(LibraryManager.library, {
     return sum;
   },
 
-  _addDays__deps: ['_isLeapYear', '_MONTH_DAYS_LEAP', '_MONTH_DAYS_REGULAR'],
-  _addDays: function(date, days) {
+  $addDays__deps: ['$isLeapYear', '$MONTH_DAYS_LEAP', '$MONTH_DAYS_REGULAR'],
+  $addDays: function(date, days) {
     var newDate = new Date(date.getTime());
     while (days > 0) {
-      var leap = __isLeapYear(newDate.getFullYear());
+      var leap = isLeapYear(newDate.getFullYear());
       var currentMonth = newDate.getMonth();
-      var daysInCurrentMonth = (leap ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR)[currentMonth];
+      var daysInCurrentMonth = (leap ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR)[currentMonth];
 
       if (days > daysInCurrentMonth-newDate.getDate()) {
         // we spill over to next month
@@ -687,7 +687,7 @@ mergeInto(LibraryManager.library, {
 
   // Note: this is not used in STANDALONE_WASM mode, because it is more
   //       compact to do it in JS.
-  strftime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP',
+  strftime__deps: ['$isLeapYear', '$arraySum', '$addDays', '$MONTH_DAYS_REGULAR', '$MONTH_DAYS_LEAP',
                    '$intArrayFromString', '$writeArrayToMemory'
   ],
   strftime__sig: 'ppppp',
@@ -798,7 +798,7 @@ mergeInto(LibraryManager.library, {
     }
 
     function getWeekBasedYear(date) {
-        var thisDate = __addDays(new Date(date.tm_year+1900, 0, 1), date.tm_yday);
+        var thisDate = addDays(new Date(date.tm_year+1900, 0, 1), date.tm_yday);
 
         var janFourthThisYear = new Date(thisDate.getFullYear(), 0, 4);
         var janFourthNextYear = new Date(thisDate.getFullYear()+1, 0, 4);
@@ -866,7 +866,7 @@ mergeInto(LibraryManager.library, {
       },
       '%j': function(date) {
         // Day of the year (001-366)
-        return leadingNulls(date.tm_mday+__arraySum(__isLeapYear(date.tm_year+1900) ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, date.tm_mon-1), 3);
+        return leadingNulls(date.tm_mday + arraySum(isLeapYear(date.tm_year+1900) ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, date.tm_mon-1), 3);
       },
       '%m': function(date) {
         return leadingNulls(date.tm_mon+1, 2);
@@ -913,14 +913,14 @@ mergeInto(LibraryManager.library, {
           // If 31 December of prev year a Thursday, or Friday of a
           // leap year, then the prev year has 53 weeks.
           var dec31 = (date.tm_wday + 7 - date.tm_yday - 1) % 7;
-          if (dec31 == 4 || (dec31 == 5 && __isLeapYear(date.tm_year%400-1))) {
+          if (dec31 == 4 || (dec31 == 5 && isLeapYear(date.tm_year%400-1))) {
             val++;
           }
         } else if (val == 53) {
           // If 1 January is not a Thursday, and not a Wednesday of a
           // leap year, then this year has only 52 weeks.
           var jan1 = (date.tm_wday + 371 - date.tm_yday) % 7;
-          if (jan1 != 4 && (jan1 != 3 || !__isLeapYear(date.tm_year)))
+          if (jan1 != 4 && (jan1 != 3 || !isLeapYear(date.tm_year)))
             val = 1;
         }
         return leadingNulls(val, 2);
@@ -982,7 +982,7 @@ mergeInto(LibraryManager.library, {
     return _strftime(s, maxsize, format, tm); // no locale support yet
   },
 
-  strptime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP',
+  strptime__deps: ['$isLeapYear', '$arraySum', '$addDays', '$MONTH_DAYS_REGULAR', '$MONTH_DAYS_LEAP',
                    '$jstoi_q', '$intArrayFromString' ],
   strptime__sig: 'pppp',
   strptime: function(buf, format, tm) {
@@ -1143,10 +1143,10 @@ mergeInto(LibraryManager.library, {
       } else if ((value=getMatch('j'))) {
         // get day of month from day of year ...
         var day = jstoi_q(value);
-        var leapYear = __isLeapYear(date.year);
+        var leapYear = isLeapYear(date.year);
         for (var month=0; month<12; ++month) {
-          var daysUntilMonth = __arraySum(leapYear ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, month-1);
-          if (day<=daysUntilMonth+(leapYear ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR)[month]) {
+          var daysUntilMonth = arraySum(leapYear ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, month-1);
+          if (day<=daysUntilMonth+(leapYear ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR)[month]) {
             date.day = day-daysUntilMonth;
           }
         }
@@ -1165,10 +1165,10 @@ mergeInto(LibraryManager.library, {
           var endDate;
           if (janFirst.getDay() === 0) {
             // Jan 1st is a Sunday, and, hence in the 1st CW
-            endDate = __addDays(janFirst, weekDayNumber+7*(weekNumber-1));
+            endDate = addDays(janFirst, weekDayNumber+7*(weekNumber-1));
           } else {
             // Jan 1st is not a Sunday, and, hence still in the 0th CW
-            endDate = __addDays(janFirst, 7-janFirst.getDay()+weekDayNumber+7*(weekNumber-1));
+            endDate = addDays(janFirst, 7-janFirst.getDay()+weekDayNumber+7*(weekNumber-1));
           }
           date.day = endDate.getDate();
           date.month = endDate.getMonth();
@@ -1184,10 +1184,10 @@ mergeInto(LibraryManager.library, {
           var endDate;
           if (janFirst.getDay()===1) {
             // Jan 1st is a Monday, and, hence in the 1st CW
-             endDate = __addDays(janFirst, weekDayNumber+7*(weekNumber-1));
+             endDate = addDays(janFirst, weekDayNumber+7*(weekNumber-1));
           } else {
             // Jan 1st is not a Monday, and, hence still in the 0th CW
-            endDate = __addDays(janFirst, 7-janFirst.getDay()+1+weekDayNumber+7*(weekNumber-1));
+            endDate = addDays(janFirst, 7-janFirst.getDay()+1+weekDayNumber+7*(weekNumber-1));
           }
 
           date.day = endDate.getDate();
@@ -1215,7 +1215,7 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_mon, 'fullDate.getMonth()', 'i32') }}};
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_year, 'fullDate.getFullYear()-1900', 'i32') }}};
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_wday, 'fullDate.getDay()', 'i32') }}};
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_yday, '__arraySum(__isLeapYear(fullDate.getFullYear()) ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, fullDate.getMonth()-1)+fullDate.getDate()-1', 'i32') }}};
+      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_yday, 'arraySum(isLeapYear(fullDate.getFullYear()) ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, fullDate.getMonth()-1)+fullDate.getDate()-1', 'i32') }}};
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_isdst, '0', 'i32') }}};
 
       // we need to convert the matched sequence into an integer array to take care of UTF-8 characters > 0x7F
@@ -2475,9 +2475,9 @@ mergeInto(LibraryManager.library, {
     return [args, funcname, str];
   },
 
-  emscripten_get_callstack_js__deps: ['$traverseStack', '$jsStackTrace', '$warnOnce'],
-  emscripten_get_callstack_js__docs: '/** @param {number=} flags */',
-  emscripten_get_callstack_js: function(flags) {
+  $getCallstack__deps: ['$traverseStack', '$jsStackTrace', '$warnOnce'],
+  $getCallstack__docs: '/** @param {number=} flags */',
+  $getCallstack: function(flags) {
     var callstack = jsStackTrace();
 
     // Find the symbols in the callstack that corresponds to the functions that
@@ -2588,13 +2588,13 @@ mergeInto(LibraryManager.library, {
     return callstack;
   },
 
-  emscripten_get_callstack__deps: ['emscripten_get_callstack_js'],
+  emscripten_get_callstack__deps: ['$getCallstack'],
   emscripten_get_callstack: function(flags, str, maxbytes) {
     // Use explicit calls to from64 rather then using the __sig
     // magic here.  This is because the __sig wrapper uses arrow function
     // notation which causes the inner call to traverseStack to fail.
     {{{ from64('str') }}};
-    var callstack = _emscripten_get_callstack_js(flags);
+    var callstack = getCallstack(flags);
     // User can query the required amount of bytes to hold the callstack.
     if (!str || maxbytes <= 0) {
       return lengthBytesUTF8(callstack)+1;
@@ -2606,11 +2606,11 @@ mergeInto(LibraryManager.library, {
     return bytesWrittenExcludingNull+1;
   },
 
-  emscripten_log_js__deps: ['emscripten_get_callstack_js'],
-  emscripten_log_js: function(flags, str) {
+  $emscriptenLog__deps: ['$getCallstack'],
+  $emscriptenLog: function(flags, str) {
     if (flags & {{{ cDefine('EM_LOG_C_STACK') | cDefine('EM_LOG_JS_STACK') }}}) {
       str = str.replace(/\s+$/, ''); // Ensure the message and the callstack are joined cleanly with exactly one newline.
-      str += (str.length > 0 ? '\n' : '') + _emscripten_get_callstack_js(flags);
+      str += (str.length > 0 ? '\n' : '') + getCallstack(flags);
     }
 
     if (flags & {{{ cDefine('EM_LOG_CONSOLE') }}}) {
@@ -2633,11 +2633,11 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_log__sig: 'vipp',
-  emscripten_log__deps: ['$formatString', 'emscripten_log_js'],
+  emscripten_log__deps: ['$formatString', '$emscriptenLog'],
   emscripten_log: function(flags, format, varargs) {
     var result = formatString(format, varargs);
     var str = UTF8ArrayToString(result, 0);
-    _emscripten_log_js(flags, str);
+    emscriptenLog(flags, str);
   },
 
   // We never free the return values of this function so we need to allocate
@@ -3121,9 +3121,9 @@ mergeInto(LibraryManager.library, {
 #if LINK_AS_CXX
   // libunwind
 
-  _Unwind_Backtrace__deps: ['emscripten_get_callstack_js'],
+  _Unwind_Backtrace__deps: ['$getCallstack'],
   _Unwind_Backtrace: function(func, arg) {
-    var trace = _emscripten_get_callstack_js();
+    var trace = getCallstack();
     var parts = trace.split('\n');
     for (var i = 0; i < parts.length; i++) {
       var ret = {{{ makeDynCall('iii', 'func') }}}(0, arg);
