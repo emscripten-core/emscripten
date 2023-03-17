@@ -222,7 +222,7 @@ def node_pthreads(f):
 
 
 def crossplatform(f):
-  setattr(f, 'is_crossplatform_test', True)
+  f.is_crossplatform_test = True
   return f
 
 
