@@ -3824,8 +3824,8 @@ var LibraryGL = {
   },
 #endif // ~#if !LEGACY_GL_EMULATION
 
-  glShaderBinary__sig: 'v',
-  glShaderBinary: function() {
+  glShaderBinary__sig: 'vipipi',
+  glShaderBinary: function(count, shaders, binaryformat, binary, length) {
     GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
     err("GL_INVALID_ENUM in glShaderBinary: WebGL does not support binary shader formats! Calls to glShaderBinary always fail.");

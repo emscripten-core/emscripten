@@ -2305,7 +2305,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_beforeunload_callback_on_thread__proxy: 'sync',
-  emscripten_set_beforeunload_callback_on_thread__sig: 'iii',
+  emscripten_set_beforeunload_callback_on_thread__sig: 'ippp',
   emscripten_set_beforeunload_callback_on_thread__deps: ['$registerBeforeUnloadEventCallback'],
   emscripten_set_beforeunload_callback_on_thread: function(userData, callbackfunc, targetThread) {
     if (typeof onbeforeunload == 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
@@ -2358,7 +2358,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_batterychargingchange_callback_on_thread__proxy: 'sync',
-  emscripten_set_batterychargingchange_callback_on_thread__sig: 'iii',
+  emscripten_set_batterychargingchange_callback_on_thread__sig: 'ippp',
   emscripten_set_batterychargingchange_callback_on_thread__deps: ['$registerBatteryEventCallback', '$battery', 'malloc'],
   emscripten_set_batterychargingchange_callback_on_thread: function(userData, callbackfunc, targetThread) {
     if (!battery()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}}; 
@@ -2367,7 +2367,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_batterylevelchange_callback_on_thread__proxy: 'sync',
-  emscripten_set_batterylevelchange_callback_on_thread__sig: 'iii',
+  emscripten_set_batterylevelchange_callback_on_thread__sig: 'ippp',
   emscripten_set_batterylevelchange_callback_on_thread__deps: ['$registerBatteryEventCallback', '$battery', 'malloc'],
   emscripten_set_batterylevelchange_callback_on_thread: function(userData, callbackfunc, targetThread) {
     if (!battery()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}}; 

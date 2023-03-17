@@ -1398,8 +1398,8 @@ var LibrarySDL = {
 
   SDL_WasInit__deps: ['SDL_Init'],
   SDL_WasInit__proxy: 'sync',
-  SDL_WasInit__sig: 'i',
-  SDL_WasInit: function() {
+  SDL_WasInit__sig: 'ii',
+  SDL_WasInit: function(flags) {
     if (SDL.startTime === null) {
       _SDL_Init();
     }
@@ -1937,7 +1937,7 @@ var LibrarySDL = {
   },
 
   SDL_SetClipRect__proxy: 'sync',
-  SDL_SetClipRect__sig: 'vii',
+  SDL_SetClipRect__sig: 'iii',
   SDL_SetClipRect: function(surf, rect) {
     var surfData = SDL.surfaces[surf];
 
@@ -2905,9 +2905,10 @@ var LibrarySDL = {
     SDL.channelMinimumNumber = num;
   },
   Mix_PlayChannelTimed__proxy: 'sync',
-  Mix_PlayChannelTimed__sig: 'iiii',
-  Mix_PlayChannelTimed: function(channel, id, loops) {
+  Mix_PlayChannelTimed__sig: 'iiiii',
+  Mix_PlayChannelTimed: function(channel, id, loops, ticks) {
     // TODO: handle fixed amount of N loops. Currently loops either 0 or infinite times.
+    assert(ticks == -1);
 
     // Get the audio element associated with the ID
     var info = SDL.audios[id];
@@ -3459,8 +3460,8 @@ var LibrarySDL = {
   SDL_DestroyRenderer: function(renderer) {},
 
   SDL_GetWindowFlags__proxy: 'sync',
-  SDL_GetWindowFlags__sig: 'iii',
-  SDL_GetWindowFlags: function(x, y) {
+  SDL_GetWindowFlags__sig: 'ip',
+  SDL_GetWindowFlags: function(window) {
     if (Browser.isFullscreen) {
        return 1;
     }
@@ -3475,8 +3476,8 @@ var LibrarySDL = {
   SDL_GL_DeleteContext: function(context) {},
 
   SDL_GL_GetSwapInterval__proxy: 'sync',
-  SDL_GL_GetSwapInterval__sig: 'ii',
-  SDL_GL_GetSwapInterval: function(state) {
+  SDL_GL_GetSwapInterval__sig: 'i',
+  SDL_GL_GetSwapInterval: function() {
     if (Browser.mainLoop.timingMode == 1/*EM_TIMING_RAF*/) return Browser.mainLoop.timingValue;
     else return 0;
   },
@@ -3512,8 +3513,6 @@ var LibrarySDL = {
     }
     return 0;
   },
-
-  SDL_GetWindowFlags: function() {},
 
   SDL_ClearError: function() {},
 

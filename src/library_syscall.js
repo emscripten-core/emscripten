@@ -328,8 +328,8 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_connect__deps: ['$getSocketFromFD', '$getSocketAddress'],
-  __syscall_connect__sig: 'iipi',
-  __syscall_connect: function(fd, addr, addrlen) {
+  __syscall_connect__sig: 'iipiiii',
+  __syscall_connect: function(fd, addr, addrlen, d1, d2, d3) {
     var sock = getSocketFromFD(fd);
     var info = getSocketAddress(addr, addrlen);
     sock.sock_ops.connect(sock, info.addr, info.port);
@@ -353,8 +353,8 @@ var SyscallsLibrary = {
     return newsock.stream.fd;
   },
   __syscall_bind__deps: ['$getSocketFromFD', '$getSocketAddress'],
-  __syscall_bind__sig: 'iipi',
-  __syscall_bind: function(fd, addr, addrlen) {
+  __syscall_bind__sig: 'iipiiii',
+  __syscall_bind: function(fd, addr, addrlen, d1, d2, d3) {
     var sock = getSocketFromFD(fd);
     var info = getSocketAddress(addr, addrlen);
     sock.sock_ops.bind(sock, info.addr, info.port);

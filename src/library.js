@@ -1225,9 +1225,9 @@ mergeInto(LibraryManager.library, {
 
     return 0;
   },
-  strptime_l__sig: 'pppp',
+  strptime_l__sig: 'ppppp',
   strptime_l__deps: ['strptime'],
-  strptime_l: function(buf, format, tm) {
+  strptime_l: function(buf, format, tm, locale) {
     return _strptime(buf, format, tm); // no locale support yet
   },
 

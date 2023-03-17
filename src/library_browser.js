@@ -1174,7 +1174,7 @@ var LibraryBrowser = {
   },
 
   emscripten_get_window_title__proxy: 'sync',
-  emscripten_get_window_title__sig: 'iv',
+  emscripten_get_window_title__sig: 'p',
   emscripten_get_window_title: function() {
     var buflen = 256;
 
@@ -1349,7 +1349,7 @@ var LibraryBrowser = {
 #endif
 
   emscripten_get_worker_queue_size__proxy: 'sync',
-  emscripten_get_worker_queue_size__sig: 'i',
+  emscripten_get_worker_queue_size__sig: 'ii',
   emscripten_get_worker_queue_size: function(id) {
     var info = Browser.workers[id];
     if (!info) return -1;
