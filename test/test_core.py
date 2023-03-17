@@ -27,7 +27,7 @@ import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, node_pthreads, also_with_wasm_bigint
-from common import read_file, read_binary, requires_v8, requires_node, compiler_for, crossplatform_test
+from common import read_file, read_binary, requires_v8, requires_node, compiler_for, crossplatform
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
 
@@ -2294,7 +2294,7 @@ int main(int argc, char **argv) {
   def test_main_thread_em_asm_signatures(self):
     self.do_core_test('test_em_asm_signatures.cpp', assert_returncode=NON_ZERO)
 
-  @crossplatform_test
+  @crossplatform
   def test_em_asm_unicode(self):
     self.do_core_test('test_em_asm_unicode.cpp')
     self.do_core_test('test_em_asm_unicode.cpp', force_c=True)
@@ -2335,7 +2335,7 @@ int main(int argc, char **argv) {
     'dylink': (['-sMAIN_MODULE=2'], False),
     'dylink_c': (['-sMAIN_MODULE=2'], True),
   })
-  @crossplatform_test
+  @crossplatform
   def test_em_js(self, args, force_c):
     if '-sMAIN_MODULE=2' in args:
       self.check_dylink()
@@ -4275,7 +4275,7 @@ ok
     ''', 'other says 11.', 'int sidey();', force_c=True, **kwargs)
 
   @needs_dylink
-  @crossplatform_test
+  @crossplatform
   def test_dylink_basics(self):
     self.do_basic_dylink_test(need_reverse=False)
     self.verify_in_strict_mode('main.js')
@@ -5908,7 +5908,7 @@ Module = {
     self.do_runf(test_file('utf32.cpp'), 'OK.')
     self.do_runf(test_file('utf32.cpp'), 'OK.', args=['-fshort-wchar'])
 
-  @crossplatform_test
+  @crossplatform
   def test_utf16(self):
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['writeAsciiToMemory', 'UTF16ToString', 'stringToUTF16'])
     self.do_runf(test_file('core/test_utf16.cpp'), 'OK.')
@@ -6461,7 +6461,7 @@ PORT: 3979
     self.do_runf('main.cpp', 'hello from lib!\n*32*\n')
 
   @with_env_modify({'LC_ALL': 'latin-1', 'PYTHONUTF8': '0', 'PYTHONCOERCECLOCALE': '0'})
-  @crossplatform_test
+  @crossplatform
   def test_unicode_js_library(self):
     create_file('main.c', '''
       #include <stdio.h>
@@ -6741,7 +6741,7 @@ void* operator new(size_t size) {
 
   # Tests invoking the SIMD API via x86 SSE1 xmmintrin.h header (_mm_x() functions)
   @wasm_simd
-  @crossplatform_test
+  @crossplatform
   @requires_native_clang
   @no_safe_heap('has unaligned 64-bit operations in wasm')
   @no_ubsan('test contains UB')
@@ -7175,7 +7175,7 @@ void* operator new(size_t size) {
 
   ### Integration tests
 
-  @crossplatform_test
+  @crossplatform
   def test_ccall(self):
     self.emcc_args.append('-Wno-return-stack-address')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap', 'STACK_SIZE'])

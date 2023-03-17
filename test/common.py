@@ -221,7 +221,7 @@ def node_pthreads(f):
   return decorated
 
 
-def crossplatform_test(f):
+def crossplatform(f):
   setattr(f, 'is_crossplatform_test', True)
   return f
 
