@@ -329,7 +329,7 @@ function(em_add_tracked_link_flag target flagname)
       get_filename_component(jsname "${jsfile}" NAME)
       string(REGEX REPLACE "[/:\\\\.\ ]" "_" dummy_js_target ${jsname})
       set(dummy_lib_name ${target}_${link_js_counter}_${dummy_js_target})
-      set(dummy_c_name "${CMAKE_BINARY_DIR}/${dummy_js_target}_tracker.c")
+      set(dummy_c_name "${CMAKE_CURRENT_BINARY_DIR}/${dummy_js_target}_tracker.c")
 
       # Create a new static library target that with a single dummy .c file.
       add_library(${dummy_lib_name} STATIC ${dummy_c_name})
