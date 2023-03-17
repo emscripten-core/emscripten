@@ -175,13 +175,6 @@ var SyscallsLibrary = {
     FS.chmod(path, mode);
     return 0;
   },
-  __syscall_rename__sig: 'ipp',
-  __syscall_rename: function(old_path, new_path) {
-    old_path = SYSCALLS.getStr(old_path);
-    new_path = SYSCALLS.getStr(new_path);
-    FS.rename(old_path, new_path);
-    return 0;
-  },
   __syscall_rmdir__sig: 'ip',
   __syscall_rmdir: function(path) {
     path = SYSCALLS.getStr(path);
