@@ -126,6 +126,7 @@ mergeInto(LibraryManager.library, {
       });
     },
     // TODO: mkdirTree
+    // Implemented the mKdirTree
     // Creates a whole directory tree chain if it doesn't yet exist
     mkdirTree: (path, mode) => {
       return withStackSave(() => {
