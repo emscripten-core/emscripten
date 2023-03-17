@@ -77,7 +77,7 @@ void emscripten_force_exit(int status) __attribute__((__noreturn__));
 
 double emscripten_get_device_pixel_ratio(void);
 
-char *emscripten_get_window_title();
+char *emscripten_get_window_title(void);
 void emscripten_set_window_title(const char *);
 void emscripten_get_screen_size(int *width __attribute__((nonnull)), int *height __attribute__((nonnull)));
 void emscripten_hide_mouse(void);
