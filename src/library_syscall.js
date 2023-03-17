@@ -175,13 +175,6 @@ var SyscallsLibrary = {
     FS.chmod(path, mode);
     return 0;
   },
-  __syscall_rename__sig: 'ipp',
-  __syscall_rename: function(old_path, new_path) {
-    old_path = SYSCALLS.getStr(old_path);
-    new_path = SYSCALLS.getStr(new_path);
-    FS.rename(old_path, new_path);
-    return 0;
-  },
   __syscall_rmdir__sig: 'ip',
   __syscall_rmdir: function(path) {
     path = SYSCALLS.getStr(path);
@@ -335,8 +328,8 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_connect__deps: ['$getSocketFromFD', '$getSocketAddress'],
-  __syscall_connect__sig: 'iipi',
-  __syscall_connect: function(fd, addr, addrlen) {
+  __syscall_connect__sig: 'iipiiii',
+  __syscall_connect: function(fd, addr, addrlen, d1, d2, d3) {
     var sock = getSocketFromFD(fd);
     var info = getSocketAddress(addr, addrlen);
     sock.sock_ops.connect(sock, info.addr, info.port);
@@ -360,8 +353,8 @@ var SyscallsLibrary = {
     return newsock.stream.fd;
   },
   __syscall_bind__deps: ['$getSocketFromFD', '$getSocketAddress'],
-  __syscall_bind__sig: 'iipi',
-  __syscall_bind: function(fd, addr, addrlen) {
+  __syscall_bind__sig: 'iipiiii',
+  __syscall_bind: function(fd, addr, addrlen, d1, d2, d3) {
     var sock = getSocketFromFD(fd);
     var info = getSocketAddress(addr, addrlen);
     sock.sock_ops.bind(sock, info.addr, info.port);
