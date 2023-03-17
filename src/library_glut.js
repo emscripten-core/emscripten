@@ -307,7 +307,7 @@ var LibraryGLUT = {
 
   glutInit__deps: ['$Browser'],
   glutInit__proxy: 'sync',
-  glutInit__sig: 'vii',
+  glutInit__sig: 'vpp',
   glutInit: function(argcp, argv) {
     // Ignore arguments
     GLUT.initTime = Date.now();
@@ -419,7 +419,7 @@ var LibraryGLUT = {
 
   glutIdleFunc__proxy: 'sync',
   glutIdleFunc__deps: ['$safeSetTimeout'],
-  glutIdleFunc__sig: 'vi',
+  glutIdleFunc__sig: 'vp',
   glutIdleFunc: function(func) {
     function callback() {
       if (GLUT.idleFunc) {
@@ -435,61 +435,61 @@ var LibraryGLUT = {
 
   glutTimerFunc__proxy: 'sync',
   glutTimerFunc__deps: ['$safeSetTimeout'],
-  glutTimerFunc__sig: 'viii',
+  glutTimerFunc__sig: 'vipi',
   glutTimerFunc: function(msec, func, value) {
     safeSetTimeout(function() { {{{ makeDynCall('vi', 'func') }}}(value); }, msec);
   },
 
   glutDisplayFunc__proxy: 'sync',
-  glutDisplayFunc__sig: 'vi',
+  glutDisplayFunc__sig: 'vp',
   glutDisplayFunc: function(func) {
     GLUT.displayFunc = func;
   },
 
   glutKeyboardFunc__proxy: 'sync',
-  glutKeyboardFunc__sig: 'vi',
+  glutKeyboardFunc__sig: 'vp',
   glutKeyboardFunc: function(func) {
     GLUT.keyboardFunc = func;
   },
 
   glutKeyboardUpFunc__proxy: 'sync',
-  glutKeyboardUpFunc__sig: 'vi',
+  glutKeyboardUpFunc__sig: 'vp',
   glutKeyboardUpFunc: function(func) {
     GLUT.keyboardUpFunc = func;
   },
 
   glutSpecialFunc__proxy: 'sync',
-  glutSpecialFunc__sig: 'vi',
+  glutSpecialFunc__sig: 'vp',
   glutSpecialFunc: function(func) {
     GLUT.specialFunc = func;
   },
 
   glutSpecialUpFunc__proxy: 'sync',
-  glutSpecialUpFunc__sig: 'vi',
+  glutSpecialUpFunc__sig: 'vp',
   glutSpecialUpFunc: function(func) {
     GLUT.specialUpFunc = func;
   },
 
   glutReshapeFunc__proxy: 'sync',
-  glutReshapeFunc__sig: 'vi',
+  glutReshapeFunc__sig: 'vp',
   glutReshapeFunc: function(func) {
     GLUT.reshapeFunc = func;
   },
 
   glutMotionFunc__proxy: 'sync',
-  glutMotionFunc__sig: 'vi',
+  glutMotionFunc__sig: 'vp',
   glutMotionFunc: function(func) {
     GLUT.motionFunc = func;
   },
 
   glutPassiveMotionFunc__proxy: 'sync',
-  glutPassiveMotionFunc__sig: 'vi',
+  glutPassiveMotionFunc__sig: 'vp',
   glutPassiveMotionFunc: function(func) {
     GLUT.passiveMotionFunc = func;
   },
 
   glutMouseFunc__proxy: 'sync',
-  glutMouseFunc__sig: 'vi',
+  glutMouseFunc__sig: 'vp',
   glutMouseFunc: function(func) {
     GLUT.mouseFunc = func;
   },
@@ -573,7 +573,7 @@ var LibraryGLUT = {
 
   glutCreateWindow__proxy: 'sync',
   glutCreateWindow__deps: ['$Browser'],
-  glutCreateWindow__sig: 'ii',
+  glutCreateWindow__sig: 'ip',
   glutCreateWindow: function(name) {
     var contextAttributes = {
       antialias: ((GLUT.initDisplayMode & 0x0080 /*GLUT_MULTISAMPLE*/) != 0),
@@ -591,7 +591,7 @@ var LibraryGLUT = {
 
   glutDestroyWindow__proxy: 'sync',
   glutDestroyWindow__deps: ['$Browser'],
-  glutDestroyWindow__sig: 'ii',
+  glutDestroyWindow__sig: 'vi',
   glutDestroyWindow: function(name) {
     Module.ctx = Browser.destroyContext(Module['canvas'], true, true);
     return 1;

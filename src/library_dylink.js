@@ -1132,7 +1132,7 @@ var LibraryDylink = {
     }
   },
 
-  _dlsym_catchup_js__sig: 'ppp',
+  _dlsym_catchup_js__sig: 'ppi',
   _dlsym_catchup_js: function(handle, symbolIndex) {
 #if DYLINK_DEBUG
     dbg("_dlsym_catchup: handle=" + ptrToString(handle) + " symbolIndex=" + symbolIndex);

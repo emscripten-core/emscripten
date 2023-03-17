@@ -779,7 +779,7 @@ var LibraryBrowser = {
 
   emscripten_run_preload_plugins__deps: ['$PATH'],
   emscripten_run_preload_plugins__proxy: 'sync',
-  emscripten_run_preload_plugins__sig: 'iiii',
+  emscripten_run_preload_plugins__sig: 'ippp',
   emscripten_run_preload_plugins: function(file, onload, onerror) {
     {{{ runtimeKeepalivePush() }}}
 
@@ -805,7 +805,7 @@ var LibraryBrowser = {
 
   emscripten_run_preload_plugins_data__proxy: 'sync',
   emscripten_run_preload_plugins_data__deps: ['malloc'],
-  emscripten_run_preload_plugins_data__sig: 'viiiiii',
+  emscripten_run_preload_plugins_data__sig: 'vpipppp',
   emscripten_run_preload_plugins_data: function(data, size, suffix, arg, onload, onerror) {
     {{{ runtimeKeepalivePush() }}}
 
@@ -875,7 +875,7 @@ var LibraryBrowser = {
   },
 
   // Runs natively in pthread, no __proxy needed.
-  emscripten_get_main_loop_timing__sig: 'vii',
+  emscripten_get_main_loop_timing__sig: 'vpp',
   emscripten_get_main_loop_timing: function(mode, value) {
     if (mode) {{{ makeSetValue('mode', 0, 'Browser.mainLoop.timingMode', 'i32') }}};
     if (value) {{{ makeSetValue('value', 0, 'Browser.mainLoop.timingValue', 'i32') }}};
@@ -942,7 +942,7 @@ var LibraryBrowser = {
   },
 
   emscripten_set_main_loop__deps: ['$setMainLoop'],
-  emscripten_set_main_loop__sig: 'viii',
+  emscripten_set_main_loop__sig: 'vpii',
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop) {
     var browserIterationFunc = {{{ makeDynCall('v', 'func') }}};
     setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop);
@@ -1104,7 +1104,7 @@ var LibraryBrowser = {
 
   // Runs natively in pthread, no __proxy needed.
   emscripten_set_main_loop_arg__deps: ['$setMainLoop'],
-  emscripten_set_main_loop_arg__sig: 'viiii',
+  emscripten_set_main_loop_arg__sig: 'vppii',
   emscripten_set_main_loop_arg: function(func, arg, fps, simulateInfiniteLoop) {
     var browserIterationFunc = () => {{{ makeDynCall('vi', 'func') }}}(arg);
     setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop, arg);
@@ -1188,13 +1188,13 @@ var LibraryBrowser = {
   },
 
   emscripten_set_window_title__proxy: 'sync',
-  emscripten_set_window_title__sig: 'vi',
+  emscripten_set_window_title__sig: 'vp',
   emscripten_set_window_title: function(title) {
     setWindowTitle(UTF8ToString(title));
   },
 
   emscripten_get_screen_size__proxy: 'sync',
-  emscripten_get_screen_size__sig: 'vii',
+  emscripten_get_screen_size__sig: 'vpp',
   emscripten_get_screen_size: function(width, height) {
     {{{ makeSetValue('width', '0', 'screen.width', 'i32') }}};
     {{{ makeSetValue('height', '0', 'screen.height', 'i32') }}};
@@ -1221,7 +1221,7 @@ var LibraryBrowser = {
   },
 
   emscripten_get_canvas_size__proxy: 'sync',
-  emscripten_get_canvas_size__sig: 'viii',
+  emscripten_get_canvas_size__sig: 'vppp',
   emscripten_get_canvas_size: function(width, height, isFullscreen) {
     var canvas = Module['canvas'];
     {{{ makeSetValue('width', '0', 'canvas.width', 'i32') }}};
@@ -1231,7 +1231,7 @@ var LibraryBrowser = {
 
   // To avoid creating worker parent->child chains, always proxies to execute on the main thread.
   emscripten_create_worker__proxy: 'sync',
-  emscripten_create_worker__sig: 'ii',
+  emscripten_create_worker__sig: 'ip',
   emscripten_create_worker: function(url) {
     url = UTF8ToString(url);
     var id = Browser.workers.length;
@@ -1283,7 +1283,7 @@ var LibraryBrowser = {
   },
 
   emscripten_call_worker__proxy: 'sync',
-  emscripten_call_worker__sig: 'viiiiii',
+  emscripten_call_worker__sig: 'vippipp',
   emscripten_call_worker: function(id, funcName, data, size, callback, arg) {
     funcName = UTF8ToString(funcName);
     var info = Browser.workers[id];
@@ -1358,7 +1358,7 @@ var LibraryBrowser = {
 
   emscripten_get_preloaded_image_data__deps: ['$PATH_FS', 'malloc'],
   emscripten_get_preloaded_image_data__proxy: 'sync',
-  emscripten_get_preloaded_image_data__sig: 'iiii',
+  emscripten_get_preloaded_image_data__sig: 'pppp',
   emscripten_get_preloaded_image_data: function(path, w, h) {
     if ((path | 0) === path) path = UTF8ToString(path);
 
@@ -1382,7 +1382,7 @@ var LibraryBrowser = {
 
   emscripten_get_preloaded_image_data_from_FILE__deps: ['emscripten_get_preloaded_image_data', 'fileno'],
   emscripten_get_preloaded_image_data_from_FILE__proxy: 'sync',
-  emscripten_get_preloaded_image_data_from_FILE__sig: 'iiii',
+  emscripten_get_preloaded_image_data_from_FILE__sig: 'pppp',
   emscripten_get_preloaded_image_data_from_FILE: function(file, w, h) {
     var fd = _fileno(file);
     var stream = FS.getStream(fd);

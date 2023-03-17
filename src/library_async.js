@@ -608,7 +608,7 @@ mergeInto(LibraryManager.library, {
     },
   },
 
-  emscripten_fiber_swap__sig: 'vii',
+  emscripten_fiber_swap__sig: 'vpp',
   emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
   emscripten_fiber_swap: function(oldFiber, newFiber) {
     if (ABORT) return;

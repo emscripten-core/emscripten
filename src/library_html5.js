@@ -399,7 +399,7 @@ var LibraryHTML5 = {
 #endif
 
   emscripten_set_keypress_callback_on_thread__proxy: 'sync',
-  emscripten_set_keypress_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_keypress_callback_on_thread__sig: 'ippipp',
   emscripten_set_keypress_callback_on_thread__deps: ['$registerKeyEventCallback'],
   emscripten_set_keypress_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerKeyEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_KEYPRESS') }}}, "keypress", targetThread);
@@ -407,7 +407,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_keydown_callback_on_thread__proxy: 'sync',
-  emscripten_set_keydown_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_keydown_callback_on_thread__sig: 'ippipp',
   emscripten_set_keydown_callback_on_thread__deps: ['$registerKeyEventCallback'],
   emscripten_set_keydown_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerKeyEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_KEYDOWN') }}}, "keydown", targetThread);
@@ -415,7 +415,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_keyup_callback_on_thread__proxy: 'sync',
-  emscripten_set_keyup_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_keyup_callback_on_thread__sig: 'ippipp',
   emscripten_set_keyup_callback_on_thread__deps: ['$registerKeyEventCallback'],
   emscripten_set_keyup_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerKeyEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_KEYUP') }}}, "keyup", targetThread);
@@ -546,7 +546,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_click_callback_on_thread__proxy: 'sync',
-  emscripten_set_click_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_click_callback_on_thread__sig: 'ippipp',
   emscripten_set_click_callback_on_thread__deps: ['$registerMouseEventCallback'],
   emscripten_set_click_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerMouseEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_CLICK') }}}, "click", targetThread);
@@ -554,7 +554,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_mousedown_callback_on_thread__proxy: 'sync',
-  emscripten_set_mousedown_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_mousedown_callback_on_thread__sig: 'ippipp',
   emscripten_set_mousedown_callback_on_thread__deps: ['$registerMouseEventCallback'],
   emscripten_set_mousedown_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerMouseEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_MOUSEDOWN') }}}, "mousedown", targetThread);
@@ -562,7 +562,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_mouseup_callback_on_thread__proxy: 'sync',
-  emscripten_set_mouseup_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_mouseup_callback_on_thread__sig: 'ippipp',
   emscripten_set_mouseup_callback_on_thread__deps: ['$registerMouseEventCallback'],
   emscripten_set_mouseup_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerMouseEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_MOUSEUP') }}}, "mouseup", targetThread);
@@ -570,7 +570,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_dblclick_callback_on_thread__proxy: 'sync',
-  emscripten_set_dblclick_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_dblclick_callback_on_thread__sig: 'ippipp',
   emscripten_set_dblclick_callback_on_thread__deps: ['$registerMouseEventCallback'],
   emscripten_set_dblclick_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerMouseEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_DBLCLICK') }}}, "dblclick", targetThread);
@@ -578,7 +578,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_mousemove_callback_on_thread__proxy: 'sync',
-  emscripten_set_mousemove_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_mousemove_callback_on_thread__sig: 'ippipp',
   emscripten_set_mousemove_callback_on_thread__deps: ['$registerMouseEventCallback'],
   emscripten_set_mousemove_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerMouseEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_MOUSEMOVE') }}}, "mousemove", targetThread);
@@ -586,7 +586,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_mouseenter_callback_on_thread__proxy: 'sync',
-  emscripten_set_mouseenter_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_mouseenter_callback_on_thread__sig: 'ippipp',
   emscripten_set_mouseenter_callback_on_thread__deps: ['$registerMouseEventCallback'],
   emscripten_set_mouseenter_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerMouseEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_MOUSEENTER') }}}, "mouseenter", targetThread);
@@ -594,7 +594,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_mouseleave_callback_on_thread__proxy: 'sync',
-  emscripten_set_mouseleave_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_mouseleave_callback_on_thread__sig: 'ippipp',
   emscripten_set_mouseleave_callback_on_thread__deps: ['$registerMouseEventCallback'],
   emscripten_set_mouseleave_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerMouseEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_MOUSELEAVE') }}}, "mouseleave", targetThread);
@@ -602,7 +602,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_mouseover_callback_on_thread__proxy: 'sync',
-  emscripten_set_mouseover_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_mouseover_callback_on_thread__sig: 'ippipp',
   emscripten_set_mouseover_callback_on_thread__deps: ['$registerMouseEventCallback'],
   emscripten_set_mouseover_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerMouseEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_MOUSEOVER') }}}, "mouseover", targetThread);
@@ -610,7 +610,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_mouseout_callback_on_thread__proxy: 'sync',
-  emscripten_set_mouseout_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_mouseout_callback_on_thread__sig: 'ippipp',
   emscripten_set_mouseout_callback_on_thread__deps: ['$registerMouseEventCallback'],
   emscripten_set_mouseout_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerMouseEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_MOUSEOUT') }}}, "mouseout", targetThread);
@@ -618,7 +618,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_get_mouse_status__proxy: 'sync',
-  emscripten_get_mouse_status__sig: 'ii',
+  emscripten_get_mouse_status__sig: 'ip',
   emscripten_get_mouse_status__deps: ['$JSEvents'],
   emscripten_get_mouse_status: function(mouseState) {
     if (!JSEvents.mouseEvent) return {{{ cDefine('EMSCRIPTEN_RESULT_NO_DATA') }}};
@@ -689,7 +689,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_wheel_callback_on_thread__proxy: 'sync',
-  emscripten_set_wheel_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_wheel_callback_on_thread__sig: 'ippipp',
   emscripten_set_wheel_callback_on_thread__deps: ['$JSEvents', '$registerWheelEventCallback', '$findEventTarget'],
   emscripten_set_wheel_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     target = findEventTarget(target);
@@ -769,7 +769,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_resize_callback_on_thread__proxy: 'sync',
-  emscripten_set_resize_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_resize_callback_on_thread__sig: 'ippipp',
   emscripten_set_resize_callback_on_thread__deps: ['$registerUiEventCallback'],
   emscripten_set_resize_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerUiEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_RESIZE') }}}, "resize", targetThread);
@@ -777,7 +777,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_scroll_callback_on_thread__proxy: 'sync',
-  emscripten_set_scroll_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_scroll_callback_on_thread__sig: 'ippipp',
   emscripten_set_scroll_callback_on_thread__deps: ['$registerUiEventCallback'],
   emscripten_set_scroll_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerUiEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_SCROLL') }}}, "scroll", targetThread);
@@ -821,7 +821,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_blur_callback_on_thread__proxy: 'sync',
-  emscripten_set_blur_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_blur_callback_on_thread__sig: 'ippipp',
   emscripten_set_blur_callback_on_thread__deps: ['$registerFocusEventCallback'],
   emscripten_set_blur_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerFocusEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_BLUR') }}}, "blur", targetThread);
@@ -829,7 +829,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_focus_callback_on_thread__proxy: 'sync',
-  emscripten_set_focus_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_focus_callback_on_thread__sig: 'ippipp',
   emscripten_set_focus_callback_on_thread__deps: ['$registerFocusEventCallback'],
   emscripten_set_focus_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerFocusEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_FOCUS') }}}, "focus", targetThread);
@@ -837,7 +837,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_focusin_callback_on_thread__proxy: 'sync',
-  emscripten_set_focusin_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_focusin_callback_on_thread__sig: 'ippipp',
   emscripten_set_focusin_callback_on_thread__deps: ['$registerFocusEventCallback'],
   emscripten_set_focusin_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerFocusEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_FOCUSIN') }}}, "focusin", targetThread);
@@ -845,7 +845,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_focusout_callback_on_thread__proxy: 'sync',
-  emscripten_set_focusout_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_focusout_callback_on_thread__sig: 'ippipp',
   emscripten_set_focusout_callback_on_thread__deps: ['$registerFocusEventCallback'],
   emscripten_set_focusout_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerFocusEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_FOCUSOUT') }}}, "focusout", targetThread);
@@ -891,7 +891,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_deviceorientation_callback_on_thread__proxy: 'sync',
-  emscripten_set_deviceorientation_callback_on_thread__sig: 'iiiii',
+  emscripten_set_deviceorientation_callback_on_thread__sig: 'ipipp',
   emscripten_set_deviceorientation_callback_on_thread__deps: ['$registerDeviceOrientationEventCallback'],
   emscripten_set_deviceorientation_callback_on_thread: function(userData, useCapture, callbackfunc, targetThread) {
     registerDeviceOrientationEventCallback({{{ cDefine('EMSCRIPTEN_EVENT_TARGET_WINDOW') }}}, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_DEVICEORIENTATION') }}}, "deviceorientation", targetThread);
@@ -899,7 +899,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_get_deviceorientation_status__proxy: 'sync',
-  emscripten_get_deviceorientation_status__sig: 'ii',
+  emscripten_get_deviceorientation_status__sig: 'ip',
   emscripten_get_deviceorientation_status__deps: ['$JSEvents', '$registerDeviceOrientationEventCallback'],
   emscripten_get_deviceorientation_status: function(orientationState) {
     if (!JSEvents.deviceOrientationEvent) return {{{ cDefine('EMSCRIPTEN_RESULT_NO_DATA') }}};
@@ -964,7 +964,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_devicemotion_callback_on_thread__proxy: 'sync',
-  emscripten_set_devicemotion_callback_on_thread__sig: 'iiiii',
+  emscripten_set_devicemotion_callback_on_thread__sig: 'ipipp',
   emscripten_set_devicemotion_callback_on_thread__deps: ['$registerDeviceMotionEventCallback'],
   emscripten_set_devicemotion_callback_on_thread: function(userData, useCapture, callbackfunc, targetThread) {
     registerDeviceMotionEventCallback({{{ cDefine('EMSCRIPTEN_EVENT_TARGET_WINDOW') }}}, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_DEVICEMOTION') }}}, "devicemotion", targetThread);
@@ -972,7 +972,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_get_devicemotion_status__proxy: 'sync',
-  emscripten_get_devicemotion_status__sig: 'ii',
+  emscripten_get_devicemotion_status__sig: 'ip',
   emscripten_get_devicemotion_status__deps: ['$JSEvents'],
   emscripten_get_devicemotion_status: function(motionState) {
     if (!JSEvents.deviceMotionEvent) return {{{ cDefine('EMSCRIPTEN_RESULT_NO_DATA') }}};
@@ -1041,7 +1041,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_orientationchange_callback_on_thread__proxy: 'sync',
-  emscripten_set_orientationchange_callback_on_thread__sig: 'iiiii',
+  emscripten_set_orientationchange_callback_on_thread__sig: 'ipipp',
   emscripten_set_orientationchange_callback_on_thread__deps: ['$registerOrientationChangeEventCallback'],
   emscripten_set_orientationchange_callback_on_thread: function(userData, useCapture, callbackfunc, targetThread) {
     if (!screen || !screen['addEventListener']) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
@@ -1050,7 +1050,7 @@ var LibraryHTML5 = {
   },
   
   emscripten_get_orientation_status__proxy: 'sync',
-  emscripten_get_orientation_status__sig: 'ii',
+  emscripten_get_orientation_status__sig: 'ip',
   emscripten_get_orientation_status__deps: ['$fillOrientationChangeEventData', '$screenOrientation'],
   emscripten_get_orientation_status: function(orientationChangeEvent) {
     if (!screenOrientation() && typeof orientation == 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
@@ -1161,7 +1161,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_fullscreenchange_callback_on_thread__proxy: 'sync',
-  emscripten_set_fullscreenchange_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_fullscreenchange_callback_on_thread__sig: 'ippipp',
   emscripten_set_fullscreenchange_callback_on_thread__deps: ['$JSEvents', '$registerFullscreenChangeEventCallback', '$findEventTarget', '$specialHTMLTargets'],
   emscripten_set_fullscreenchange_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     if (!JSEvents.fullscreenEnabled()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
@@ -1190,7 +1190,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_get_fullscreen_status__proxy: 'sync',
-  emscripten_get_fullscreen_status__sig: 'ii',
+  emscripten_get_fullscreen_status__sig: 'ip',
   emscripten_get_fullscreen_status__deps: ['$JSEvents', '$fillFullscreenChangeEventData'],
   emscripten_get_fullscreen_status: function(fullscreenStatus) {
     if (!JSEvents.fullscreenEnabled()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
@@ -1559,7 +1559,7 @@ var LibraryHTML5 = {
 
   emscripten_request_fullscreen__deps: ['$doRequestFullscreen'],
   emscripten_request_fullscreen__proxy: 'sync',
-  emscripten_request_fullscreen__sig: 'iii',
+  emscripten_request_fullscreen__sig: 'ipi',
   emscripten_request_fullscreen: function(target, deferUntilInEventHandler) {
     var strategy = {
       // These options perform no added logic, but just bare request fullscreen.
@@ -1576,7 +1576,7 @@ var LibraryHTML5 = {
 
   emscripten_request_fullscreen_strategy__deps: ['$doRequestFullscreen', '$currentFullscreenStrategy', '$registerRestoreOldStyle'],
   emscripten_request_fullscreen_strategy__proxy: 'sync',
-  emscripten_request_fullscreen_strategy__sig: 'iiii',
+  emscripten_request_fullscreen_strategy__sig: 'ipip',
   emscripten_request_fullscreen_strategy: function(target, deferUntilInEventHandler, fullscreenStrategy) {
     var strategy = {
       scaleMode: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.scaleMode, 'i32') }}},
@@ -1597,7 +1597,7 @@ var LibraryHTML5 = {
 
   emscripten_enter_soft_fullscreen__deps: ['$JSEvents', '$setLetterbox', '$hideEverythingExceptGivenElement', '$restoreOldWindowedStyle', '$registerRestoreOldStyle', '$restoreHiddenElements', '$currentFullscreenStrategy', '$softFullscreenResizeWebGLRenderTarget', '$getCanvasElementSize', '$setCanvasElementSize', '$JSEvents_resizeCanvasForFullscreen', '$findEventTarget'],
   emscripten_enter_soft_fullscreen__proxy: 'sync',
-  emscripten_enter_soft_fullscreen__sig: 'iii',
+  emscripten_enter_soft_fullscreen__sig: 'ipp',
   emscripten_enter_soft_fullscreen: function(target, fullscreenStrategy) {
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     if (!target) target = '#canvas';
@@ -1745,7 +1745,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_pointerlockchange_callback_on_thread__proxy: 'sync',
-  emscripten_set_pointerlockchange_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_pointerlockchange_callback_on_thread__sig: 'ippipp',
   emscripten_set_pointerlockchange_callback_on_thread__deps: ['$JSEvents', '$registerPointerlockChangeEventCallback', '$findEventTarget', '$specialHTMLTargets'],
   emscripten_set_pointerlockchange_callback_on_thread__docs: '/** @suppress {missingProperties} */', // Closure does not see document.body.mozRequestPointerLock etc.
   emscripten_set_pointerlockchange_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
@@ -1792,7 +1792,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_pointerlockerror_callback_on_thread__proxy: 'sync',
-  emscripten_set_pointerlockerror_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_pointerlockerror_callback_on_thread__sig: 'ippipp',
   emscripten_set_pointerlockerror_callback_on_thread__deps: ['$JSEvents', '$registerPointerlockErrorEventCallback', '$findEventTarget', '$specialHTMLTargets'],
   emscripten_set_pointerlockerror_callback_on_thread__docs: '/** @suppress {missingProperties} */', // Closure does not see document.body.mozRequestPointerLock etc.
   emscripten_set_pointerlockerror_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
@@ -1816,7 +1816,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_get_pointerlock_status__proxy: 'sync',
-  emscripten_get_pointerlock_status__sig: 'ii',
+  emscripten_get_pointerlock_status__sig: 'ip',
   emscripten_get_pointerlock_status__deps: ['$fillPointerlockChangeEventData'],
   emscripten_get_pointerlock_status__docs: '/** @suppress {missingProperties} */', // Closure does not see document.body.mozRequestPointerLock etc.
   emscripten_get_pointerlock_status: function(pointerlockStatus) {
@@ -1864,7 +1864,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_request_pointerlock__proxy: 'sync',
-  emscripten_request_pointerlock__sig: 'iii',
+  emscripten_request_pointerlock__sig: 'ipi',
   emscripten_request_pointerlock__deps: ['$JSEvents', '$requestPointerLock', '$findEventTarget'],
   emscripten_request_pointerlock: function(target, deferUntilInEventHandler) {
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
@@ -1940,7 +1940,7 @@ var LibraryHTML5 = {
   },
   
   emscripten_vibrate_pattern__proxy: 'sync',
-  emscripten_vibrate_pattern__sig: 'iii',
+  emscripten_vibrate_pattern__sig: 'ipi',
   emscripten_vibrate_pattern: function(msecsArray, numEntries) {
     if (!navigator.vibrate) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
 
@@ -1999,7 +1999,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_visibilitychange_callback_on_thread__proxy: 'sync',
-  emscripten_set_visibilitychange_callback_on_thread__sig: 'iiiii',
+  emscripten_set_visibilitychange_callback_on_thread__sig: 'ipipp',
   emscripten_set_visibilitychange_callback_on_thread__deps: ['$registerVisibilityChangeEventCallback', '$specialHTMLTargets'],
   emscripten_set_visibilitychange_callback_on_thread: function(userData, useCapture, callbackfunc, targetThread) {
 #if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
@@ -2012,7 +2012,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_get_visibility_status__proxy: 'sync',
-  emscripten_get_visibility_status__sig: 'ii',
+  emscripten_get_visibility_status__sig: 'ip',
   emscripten_get_visibility_status__deps: ['$fillVisibilityChangeEventData'],
   emscripten_get_visibility_status: function(visibilityStatus) {
     if (typeof document.visibilityState == 'undefined' && typeof document.hidden == 'undefined') {
@@ -2122,7 +2122,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_touchstart_callback_on_thread__proxy: 'sync',
-  emscripten_set_touchstart_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_touchstart_callback_on_thread__sig: 'ippipp',
   emscripten_set_touchstart_callback_on_thread__deps: ['$registerTouchEventCallback'],
   emscripten_set_touchstart_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerTouchEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_TOUCHSTART') }}}, "touchstart", targetThread);
@@ -2130,7 +2130,7 @@ var LibraryHTML5 = {
   },
   
   emscripten_set_touchend_callback_on_thread__proxy: 'sync',
-  emscripten_set_touchend_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_touchend_callback_on_thread__sig: 'ippipp',
   emscripten_set_touchend_callback_on_thread__deps: ['$registerTouchEventCallback'],
   emscripten_set_touchend_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerTouchEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_TOUCHEND') }}}, "touchend", targetThread);
@@ -2138,7 +2138,7 @@ var LibraryHTML5 = {
   },
   
   emscripten_set_touchmove_callback_on_thread__proxy: 'sync',
-  emscripten_set_touchmove_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_touchmove_callback_on_thread__sig: 'ippipp',
   emscripten_set_touchmove_callback_on_thread__deps: ['$registerTouchEventCallback'],
   emscripten_set_touchmove_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerTouchEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_TOUCHMOVE') }}}, "touchmove", targetThread);
@@ -2146,7 +2146,7 @@ var LibraryHTML5 = {
   },
   
   emscripten_set_touchcancel_callback_on_thread__proxy: 'sync',
-  emscripten_set_touchcancel_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_touchcancel_callback_on_thread__sig: 'ippipp',
   emscripten_set_touchcancel_callback_on_thread__deps: ['$registerTouchEventCallback'],
   emscripten_set_touchcancel_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerTouchEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_TOUCHCANCEL') }}}, "touchcancel", targetThread);
@@ -2220,7 +2220,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_gamepadconnected_callback_on_thread__proxy: 'sync',
-  emscripten_set_gamepadconnected_callback_on_thread__sig: 'iiiii',
+  emscripten_set_gamepadconnected_callback_on_thread__sig: 'ipipp',
   emscripten_set_gamepadconnected_callback_on_thread__deps: ['$registerGamepadEventCallback'],
   emscripten_set_gamepadconnected_callback_on_thread: function(userData, useCapture, callbackfunc, targetThread) {
     if (!navigator.getGamepads && !navigator.webkitGetGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
@@ -2229,7 +2229,7 @@ var LibraryHTML5 = {
   },
   
   emscripten_set_gamepaddisconnected_callback_on_thread__proxy: 'sync',
-  emscripten_set_gamepaddisconnected_callback_on_thread__sig: 'iiiii',
+  emscripten_set_gamepaddisconnected_callback_on_thread__sig: 'ipipp',
   emscripten_set_gamepaddisconnected_callback_on_thread__deps: ['$registerGamepadEventCallback'],
   emscripten_set_gamepaddisconnected_callback_on_thread: function(userData, useCapture, callbackfunc, targetThread) {
     if (!navigator.getGamepads && !navigator.webkitGetGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
@@ -2258,7 +2258,7 @@ var LibraryHTML5 = {
   },
   
   emscripten_get_gamepad_status__proxy: 'sync',
-  emscripten_get_gamepad_status__sig: 'iii',
+  emscripten_get_gamepad_status__sig: 'iip',
   emscripten_get_gamepad_status__deps: ['$JSEvents', '$fillGamepadEventData'],
   emscripten_get_gamepad_status: function(index, gamepadState) {
 #if ASSERTIONS
@@ -2376,7 +2376,7 @@ var LibraryHTML5 = {
   },
   
   emscripten_get_battery_status__proxy: 'sync',
-  emscripten_get_battery_status__sig: 'ii',
+  emscripten_get_battery_status__sig: 'ip',
   emscripten_get_battery_status__deps: ['$fillBatteryEventData', '$battery'],
   emscripten_get_battery_status: function(batteryState) {
     if (!battery()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}}; 
@@ -2492,7 +2492,7 @@ var LibraryHTML5 = {
   emscripten_set_canvas_element_size_main_thread: function(target, width, height) { return _emscripten_set_canvas_element_size_calling_thread(target, width, height); },
 
   emscripten_set_canvas_element_size__deps: ['$JSEvents', 'emscripten_set_canvas_element_size_calling_thread', 'emscripten_set_canvas_element_size_main_thread', '$findCanvasEventTarget'],
-  emscripten_set_canvas_element_size__sig: 'iiii',
+  emscripten_set_canvas_element_size__sig: 'ipii',
   emscripten_set_canvas_element_size: function(target, width, height) {
 #if GL_DEBUG
     dbg('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
@@ -2505,7 +2505,7 @@ var LibraryHTML5 = {
   },
 #else
   emscripten_set_canvas_element_size__deps: ['$JSEvents', '$findCanvasEventTarget'],
-  emscripten_set_canvas_element_size__sig: 'iiii',
+  emscripten_set_canvas_element_size__sig: 'ipii',
   emscripten_set_canvas_element_size: function(target, width, height) {
 #if GL_DEBUG
     dbg('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
@@ -2577,7 +2577,7 @@ var LibraryHTML5 = {
   emscripten_get_canvas_element_size_main_thread__deps: ['emscripten_get_canvas_element_size_calling_thread'],
   emscripten_get_canvas_element_size_main_thread: function(target, width, height) { return _emscripten_get_canvas_element_size_calling_thread(target, width, height); },
 
-  emscripten_get_canvas_element_size__sig: 'ipii',
+  emscripten_get_canvas_element_size__sig: 'ippp',
   emscripten_get_canvas_element_size__deps: ['$JSEvents', 'emscripten_get_canvas_element_size_calling_thread', 'emscripten_get_canvas_element_size_main_thread', '$findCanvasEventTarget'],
   emscripten_get_canvas_element_size: function(target, width, height) {
     var canvas = findCanvasEventTarget(target);
@@ -2613,7 +2613,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_element_css_size__proxy: 'sync',
-  emscripten_set_element_css_size__sig: 'iiii',
+  emscripten_set_element_css_size__sig: 'ipdd',
   emscripten_set_element_css_size__deps: ['$JSEvents', '$findEventTarget'],
   emscripten_set_element_css_size: function(target, width, height) {
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
@@ -2630,7 +2630,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_get_element_css_size__proxy: 'sync',
-  emscripten_get_element_css_size__sig: 'iiii',
+  emscripten_get_element_css_size__sig: 'ippp',
   emscripten_get_element_css_size__deps: ['$JSEvents', '$findEventTarget', '$getBoundingClientRect'],
   emscripten_get_element_css_size: function(target, width, height) {
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR

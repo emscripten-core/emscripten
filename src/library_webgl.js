@@ -1149,7 +1149,7 @@ var LibraryGL = {
     GLctx.pixelStorei(pname, param);
   },
 
-  glGetString__sig: 'ii',
+  glGetString__sig: 'pi',
   glGetString__deps: ['$stringToNewUTF8'],
   glGetString: function(name_) {
     var ret = GL.stringCache[name_];
@@ -1400,25 +1400,25 @@ var LibraryGL = {
     }
   },
 
-  glGetIntegerv__sig: 'vii',
+  glGetIntegerv__sig: 'vip',
   glGetIntegerv__deps: ['$emscriptenWebGLGet'],
   glGetIntegerv: function(name_, p) {
     emscriptenWebGLGet(name_, p, {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}});
   },
 
-  glGetFloatv__sig: 'vii',
+  glGetFloatv__sig: 'vip',
   glGetFloatv__deps: ['$emscriptenWebGLGet'],
   glGetFloatv: function(name_, p) {
     emscriptenWebGLGet(name_, p, {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}});
   },
 
-  glGetBooleanv__sig: 'vii',
+  glGetBooleanv__sig: 'vip',
   glGetBooleanv__deps: ['$emscriptenWebGLGet'],
   glGetBooleanv: function(name_, p) {
     emscriptenWebGLGet(name_, p, {{{ cDefine('EM_FUNC_SIG_PARAM_B') }}});
   },
 
-  glDeleteTextures__sig: 'vii',
+  glDeleteTextures__sig: 'vip',
   glDeleteTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('textures', 'i*4', 'i32') }}};
@@ -1430,7 +1430,7 @@ var LibraryGL = {
     }
   },
 
-  glCompressedTexImage2D__sig: 'viiiiiiii',
+  glCompressedTexImage2D__sig: 'viiiiiiip',
   glCompressedTexImage2D: function(target, level, internalFormat, width, height, border, imageSize, data) {
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
@@ -1446,7 +1446,7 @@ var LibraryGL = {
   },
 
 
-  glCompressedTexSubImage2D__sig: 'viiiiiiiii',
+  glCompressedTexSubImage2D__sig: 'viiiiiiiip',
   glCompressedTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, imageSize, data) {
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
@@ -1520,7 +1520,7 @@ var LibraryGL = {
     return heap.subarray(pixels >> shift, pixels + bytes >> shift);
   },
 
-  glTexImage2D__sig: 'viiiiiiiii',
+  glTexImage2D__sig: 'viiiiiiiip',
   glTexImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
 #if MAX_WEBGL_VERSION >= 2
                        , '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'
@@ -1562,7 +1562,7 @@ var LibraryGL = {
     GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels ? emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat) : null);
   },
 
-  glTexSubImage2D__sig: 'viiiiiiiii',
+  glTexSubImage2D__sig: 'viiiiiiiip',
   glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
 #if MAX_WEBGL_VERSION >= 2
                           , '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'
@@ -1596,7 +1596,7 @@ var LibraryGL = {
     GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixelData);
   },
 
-  glReadPixels__sig: 'viiiiiii',
+  glReadPixels__sig: 'viiiiiip',
   glReadPixels__deps: ['$emscriptenWebGLGetTexPixelData'
 #if MAX_WEBGL_VERSION >= 2
                        , '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'
@@ -1633,7 +1633,7 @@ var LibraryGL = {
     GLctx.bindTexture(target, GL.textures[texture]);
   },
 
-  glGetTexParameterfv__sig: 'viii',
+  glGetTexParameterfv__sig: 'viip',
   glGetTexParameterfv: function(target, pname, params) {
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
@@ -1647,7 +1647,7 @@ var LibraryGL = {
     {{{ makeSetValue('params', '0', 'GLctx.getTexParameter(target, pname)', 'float') }}};
   },
 
-  glGetTexParameteriv__sig: 'viii',
+  glGetTexParameteriv__sig: 'viip',
   glGetTexParameteriv: function(target, pname, params) {
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
@@ -1661,13 +1661,13 @@ var LibraryGL = {
     {{{ makeSetValue('params', '0', 'GLctx.getTexParameter(target, pname)', 'i32') }}};
   },
 
-  glTexParameterfv__sig: 'viii',
+  glTexParameterfv__sig: 'viip',
   glTexParameterfv: function(target, pname, params) {
     var param = {{{ makeGetValue('params', '0', 'float') }}};
     GLctx.texParameterf(target, pname, param);
   },
 
-  glTexParameteriv__sig: 'viii',
+  glTexParameteriv__sig: 'viip',
   glTexParameteriv: function(target, pname, params) {
     var param = {{{ makeGetValue('params', '0', 'i32') }}};
     GLctx.texParameteri(target, pname, param);
@@ -1707,7 +1707,7 @@ var LibraryGL = {
   },
 
   glGenBuffers__deps: ['$__glGenObject'],
-  glGenBuffers__sig: 'vii',
+  glGenBuffers__sig: 'vip',
   glGenBuffers: function(n, buffers) {
     __glGenObject(n, buffers, 'createBuffer', GL.buffers
 #if GL_ASSERTIONS
@@ -1717,7 +1717,7 @@ var LibraryGL = {
   },
 
   glGenTextures__deps: ['$__glGenObject'],
-  glGenTextures__sig: 'vii',
+  glGenTextures__sig: 'vip',
   glGenTextures: function(n, textures) {
     __glGenObject(n, textures, 'createTexture', GL.textures
 #if GL_ASSERTIONS
@@ -1726,7 +1726,7 @@ var LibraryGL = {
       );
   },
 
-  glDeleteBuffers__sig: 'vii',
+  glDeleteBuffers__sig: 'vip',
   glDeleteBuffers: function(n, buffers) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('buffers', 'i*4', 'i32') }}};
@@ -1751,7 +1751,7 @@ var LibraryGL = {
     }
   },
 
-  glGetBufferParameteriv__sig: 'viii',
+  glGetBufferParameteriv__sig: 'viip',
   glGetBufferParameteriv: function(target, value, data) {
     if (!data) {
       // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
@@ -1765,7 +1765,7 @@ var LibraryGL = {
     {{{ makeSetValue('data', '0', 'GLctx.getBufferParameter(target, value)', 'i32') }}};
   },
 
-  glBufferData__sig: 'viiii',
+  glBufferData__sig: 'vippi',
   glBufferData: function(target, size, data, usage) {
 #if LEGACY_GL_EMULATION
     switch (usage) { // fix usages, WebGL 1 only has *_DRAW
@@ -1804,7 +1804,7 @@ var LibraryGL = {
 #endif
   },
 
-  glBufferSubData__sig: 'viiii',
+  glBufferSubData__sig: 'vippp',
   glBufferSubData: function(target, offset, size, data) {
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
@@ -1962,7 +1962,7 @@ var LibraryGL = {
     return GLctx.isBuffer(b);
   },
 
-  glGenRenderbuffers__sig: 'vii',
+  glGenRenderbuffers__sig: 'vip',
   glGenRenderbuffers__deps: ['$__glGenObject'],
   glGenRenderbuffers: function(n, renderbuffers) {
     __glGenObject(n, renderbuffers, 'createRenderbuffer', GL.renderbuffers
@@ -1972,7 +1972,7 @@ var LibraryGL = {
       );
   },
 
-  glDeleteRenderbuffers__sig: 'vii',
+  glDeleteRenderbuffers__sig: 'vip',
   glDeleteRenderbuffers: function(n, renderbuffers) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('renderbuffers', 'i*4', 'i32') }}};
@@ -1992,7 +1992,7 @@ var LibraryGL = {
     GLctx.bindRenderbuffer(target, GL.renderbuffers[renderbuffer]);
   },
 
-  glGetRenderbufferParameteriv__sig: 'viii',
+  glGetRenderbufferParameteriv__sig: 'viip',
   glGetRenderbufferParameteriv: function(target, pname, params) {
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
@@ -2053,13 +2053,13 @@ var LibraryGL = {
     }
   },
 
-  glGetUniformfv__sig: 'viii',
+  glGetUniformfv__sig: 'viip',
   glGetUniformfv__deps: ['$emscriptenWebGLGetUniform'],
   glGetUniformfv: function(program, location, params) {
     emscriptenWebGLGetUniform(program, location, params, {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}});
   },
 
-  glGetUniformiv__sig: 'viii',
+  glGetUniformiv__sig: 'viip',
   glGetUniformiv__deps: ['$emscriptenWebGLGetUniform'],
   glGetUniformiv: function(program, location, params) {
     emscriptenWebGLGetUniform(program, location, params, {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}});
@@ -2151,7 +2151,7 @@ var LibraryGL = {
     return name.slice(-1) == ']' && name.lastIndexOf('[');
   },
 
-  glGetUniformLocation__sig: 'iii',
+  glGetUniformLocation__sig: 'iip',
   glGetUniformLocation__deps: ['$jstoi_q', '$webglPrepareUniformLocationsBeforeFirstUse', '$webglGetLeftBracePos'],
   glGetUniformLocation: function(program, name) {
 
@@ -2250,7 +2250,7 @@ var LibraryGL = {
     }
   },
 
-  glGetVertexAttribfv__sig: 'viii',
+  glGetVertexAttribfv__sig: 'viip',
   glGetVertexAttribfv__deps: ['$emscriptenWebGLGetVertexAttrib'],
   glGetVertexAttribfv: function(index, pname, params) {
     // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttrib*f(),
@@ -2258,7 +2258,7 @@ var LibraryGL = {
     emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}});
   },
 
-  glGetVertexAttribiv__sig: 'viii',
+  glGetVertexAttribiv__sig: 'viip',
   glGetVertexAttribiv__deps: ['$emscriptenWebGLGetVertexAttrib'],
   glGetVertexAttribiv: function(index, pname, params) {
     // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttrib*f(),
@@ -2266,7 +2266,7 @@ var LibraryGL = {
     emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefine('EM_FUNC_SIG_PARAM_F2I') }}});
   },
 
-  glGetVertexAttribPointerv__sig: 'viii',
+  glGetVertexAttribPointerv__sig: 'viip',
   glGetVertexAttribPointerv: function(index, pname, pointer) {
     if (!pointer) {
       // GLES2 specification does not specify how to behave if pointer is a null pointer. Since calling this function does not make sense
@@ -2357,7 +2357,7 @@ var LibraryGL = {
     GLctx.uniform4i(webglGetUniformLocation(location), v0, v1, v2, v3);
   },
 
-  glUniform1iv__sig: 'viii',
+  glUniform1iv__sig: 'viip',
   glUniform1iv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
     , '$miniTempWebGLIntBuffers'
@@ -2402,7 +2402,7 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glUniform2iv__sig: 'viii',
+  glUniform2iv__sig: 'viip',
   glUniform2iv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
     , '$miniTempWebGLIntBuffers'
@@ -2448,7 +2448,7 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glUniform3iv__sig: 'viii',
+  glUniform3iv__sig: 'viip',
   glUniform3iv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
     , '$miniTempWebGLIntBuffers'
@@ -2495,7 +2495,7 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glUniform4iv__sig: 'viii',
+  glUniform4iv__sig: 'viip',
   glUniform4iv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
     , '$miniTempWebGLIntBuffers'
@@ -2543,7 +2543,7 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glUniform1fv__sig: 'viii',
+  glUniform1fv__sig: 'viip',
   glUniform1fv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
     , '$miniTempWebGLFloatBuffers'
@@ -2588,7 +2588,7 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glUniform2fv__sig: 'viii',
+  glUniform2fv__sig: 'viip',
   glUniform2fv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
     , '$miniTempWebGLFloatBuffers'
@@ -2634,7 +2634,7 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glUniform3fv__sig: 'viii',
+  glUniform3fv__sig: 'viip',
   glUniform3fv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
     , '$miniTempWebGLFloatBuffers'
@@ -2681,7 +2681,7 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glUniform4fv__sig: 'viii',
+  glUniform4fv__sig: 'viip',
   glUniform4fv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
     , '$miniTempWebGLFloatBuffers'
@@ -2733,7 +2733,7 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glUniformMatrix2fv__sig: 'viiii',
+  glUniformMatrix2fv__sig: 'viiip',
   glUniformMatrix2fv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
     , '$miniTempWebGLFloatBuffers'
@@ -2781,7 +2781,7 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glUniformMatrix3fv__sig: 'viiii',
+  glUniformMatrix3fv__sig: 'viiip',
   glUniformMatrix3fv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
     , '$miniTempWebGLFloatBuffers'
@@ -2834,7 +2834,7 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glUniformMatrix4fv__sig: 'viiii',
+  glUniformMatrix4fv__sig: 'viiip',
   glUniformMatrix4fv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
     , '$miniTempWebGLFloatBuffers'
@@ -2932,7 +2932,7 @@ var LibraryGL = {
     GLctx.bindBuffer(target, GL.buffers[buffer]);
   },
 
-  glVertexAttrib1fv__sig: 'vii',
+  glVertexAttrib1fv__sig: 'vip',
   glVertexAttrib1fv: function(index, v) {
 #if GL_ASSERTIONS
     assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib1fv must be aligned to four bytes!');
@@ -2942,7 +2942,7 @@ var LibraryGL = {
     GLctx.vertexAttrib1f(index, HEAPF32[v>>2]);
   },
 
-  glVertexAttrib2fv__sig: 'vii',
+  glVertexAttrib2fv__sig: 'vip',
   glVertexAttrib2fv: function(index, v) {
 #if GL_ASSERTIONS
     assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib2fv must be aligned to four bytes!');
@@ -2952,7 +2952,7 @@ var LibraryGL = {
     GLctx.vertexAttrib2f(index, HEAPF32[v>>2], HEAPF32[v+4>>2]);
   },
 
-  glVertexAttrib3fv__sig: 'vii',
+  glVertexAttrib3fv__sig: 'vip',
   glVertexAttrib3fv: function(index, v) {
 #if GL_ASSERTIONS
     assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib3fv must be aligned to four bytes!');
@@ -2962,7 +2962,7 @@ var LibraryGL = {
     GLctx.vertexAttrib3f(index, HEAPF32[v>>2], HEAPF32[v+4>>2], HEAPF32[v+8>>2]);
   },
 
-  glVertexAttrib4fv__sig: 'vii',
+  glVertexAttrib4fv__sig: 'vip',
   glVertexAttrib4fv: function(index, v) {
 #if GL_ASSERTIONS
     assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib4fv must be aligned to four bytes!');
@@ -2972,7 +2972,7 @@ var LibraryGL = {
     GLctx.vertexAttrib4f(index, HEAPF32[v>>2], HEAPF32[v+4>>2], HEAPF32[v+8>>2], HEAPF32[v+12>>2]);
   },
 
-  glGetAttribLocation__sig: 'iii',
+  glGetAttribLocation__sig: 'iip',
   glGetAttribLocation: function(program, name) {
     return GLctx.getAttribLocation(GL.programs[program], UTF8ToString(name));
   },
@@ -2991,13 +2991,13 @@ var LibraryGL = {
     }
   },
 
-  glGetActiveAttrib__sig: 'viiiiiii',
+  glGetActiveAttrib__sig: 'viiipppp',
   glGetActiveAttrib__deps: ['$__glGetActiveAttribOrUniform'],
   glGetActiveAttrib: function(program, index, bufSize, length, size, type, name) {
     __glGetActiveAttribOrUniform('getActiveAttrib', program, index, bufSize, length, size, type, name);
   },
 
-  glGetActiveUniform__sig: 'viiiiiii',
+  glGetActiveUniform__sig: 'viiipppp',
   glGetActiveUniform__deps: ['$__glGetActiveAttribOrUniform'],
   glGetActiveUniform: function(program, index, bufSize, length, size, type, name) {
     __glGetActiveAttribOrUniform('getActiveUniform', program, index, bufSize, length, size, type, name);
@@ -3028,7 +3028,7 @@ var LibraryGL = {
     GL.shaders[id] = null;
   },
 
-  glGetAttachedShaders__sig: 'viiii',
+  glGetAttachedShaders__sig: 'viipp',
   glGetAttachedShaders: function(program, maxCount, count, shaders) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetAttachedShaders', 'program');
@@ -3048,7 +3048,7 @@ var LibraryGL = {
     }
   },
 
-  glShaderSource__sig: 'viiii',
+  glShaderSource__sig: 'viipp',
 #if GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING
   glShaderSource__deps: ['$preprocess_c_code', '$remove_cpp_comments_in_shaders', '$jstoi_q', '$find_closing_parens_index'],
 #endif
@@ -3213,7 +3213,7 @@ var LibraryGL = {
     GLctx.shaderSource(GL.shaders[shader], source);
   },
 
-  glGetShaderSource__sig: 'viiii',
+  glGetShaderSource__sig: 'viipp',
   glGetShaderSource: function(shader, bufSize, length, source) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.shaders, shader, 'glGetShaderSource', 'shader');
@@ -3236,7 +3236,7 @@ var LibraryGL = {
 #endif
   },
 
-  glGetShaderInfoLog__sig: 'viiii',
+  glGetShaderInfoLog__sig: 'viipp',
   glGetShaderInfoLog: function(shader, maxLength, length, infoLog) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.shaders, shader, 'glGetShaderInfoLog', 'shader');
@@ -3249,7 +3249,7 @@ var LibraryGL = {
     if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
   },
 
-  glGetShaderiv__sig: 'viii',
+  glGetShaderiv__sig: 'viip',
   glGetShaderiv : function(shader, pname, p) {
     if (!p) {
       // GLES2 specification does not specify how to behave if p is a null pointer. Since calling this function does not make sense
@@ -3285,7 +3285,7 @@ var LibraryGL = {
     }
   },
 
-  glGetProgramiv__sig: 'viii',
+  glGetProgramiv__sig: 'viip',
   glGetProgramiv : function(program, pname, p) {
     if (!p) {
       // GLES2 specification does not specify how to behave if p is a null pointer. Since calling this function does not make sense
@@ -3400,7 +3400,7 @@ var LibraryGL = {
     GLctx.detachShader(GL.programs[program], GL.shaders[shader]);
   },
 
-  glGetShaderPrecisionFormat__sig: 'viiii',
+  glGetShaderPrecisionFormat__sig: 'viipp',
   glGetShaderPrecisionFormat: function(shaderType, precisionType, range, precision) {
     var result = GLctx.getShaderPrecisionFormat(shaderType, precisionType);
     {{{ makeSetValue('range', '0', 'result.rangeMin', 'i32') }}};
@@ -3463,7 +3463,7 @@ var LibraryGL = {
 #endif
   },
 
-  glGetProgramInfoLog__sig: 'viiii',
+  glGetProgramInfoLog__sig: 'viipp',
   glGetProgramInfoLog: function(program, maxLength, length, infoLog) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetProgramInfoLog', 'program');
@@ -3550,7 +3550,7 @@ var LibraryGL = {
     return GLctx.isProgram(program);
   },
 
-  glBindAttribLocation__sig: 'viii',
+  glBindAttribLocation__sig: 'viip',
   glBindAttribLocation: function(program, index, name) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glBindAttribLocation', 'program');
@@ -3575,7 +3575,7 @@ var LibraryGL = {
 
   },
 
-  glGenFramebuffers__sig: 'vii',
+  glGenFramebuffers__sig: 'vip',
   glGenFramebuffers__deps: ['$__glGenObject'],
   glGenFramebuffers: function(n, ids) {
     __glGenObject(n, ids, 'createFramebuffer', GL.framebuffers
@@ -3585,7 +3585,7 @@ var LibraryGL = {
       );
   },
 
-  glDeleteFramebuffers__sig: 'vii',
+  glDeleteFramebuffers__sig: 'vip',
   glDeleteFramebuffers: function(n, framebuffers) {
     for (var i = 0; i < n; ++i) {
       var id = {{{ makeGetValue('framebuffers', 'i*4', 'i32') }}};
@@ -3615,7 +3615,7 @@ var LibraryGL = {
                                     GL.textures[texture], level);
   },
 
-  glGetFramebufferAttachmentParameteriv__sig: 'viiii',
+  glGetFramebufferAttachmentParameteriv__sig: 'viiip',
   glGetFramebufferAttachmentParameteriv: function(target, attachment, pname, params) {
     var result = GLctx.getFramebufferAttachmentParameter(target, attachment, pname);
     if (result instanceof WebGLRenderbuffer ||
@@ -3637,7 +3637,7 @@ var LibraryGL = {
   , 'emulGlGenVertexArrays'
 #endif
   ],
-  glGenVertexArrays__sig: 'vii',
+  glGenVertexArrays__sig: 'vip',
   glGenVertexArrays: function (n, arrays) {
 #if LEGACY_GL_EMULATION
     _emulGlGenVertexArrays(n, arrays);
@@ -3656,7 +3656,7 @@ var LibraryGL = {
 #if LEGACY_GL_EMULATION
   glDeleteVertexArrays__deps: ['emulGlDeleteVertexArrays'],
 #endif
-  glDeleteVertexArrays__sig: 'vii',
+  glDeleteVertexArrays__sig: 'vip',
   glDeleteVertexArrays: function(n, vaos) {
 #if LEGACY_GL_EMULATION
     _emulGlDeleteVertexArrays(n, vaos);
@@ -3727,7 +3727,7 @@ var LibraryGL = {
 
   // GLES2 emulation
 
-  glVertexAttribPointer__sig: 'viiiiii',
+  glVertexAttribPointer__sig: 'viiiiip',
   glVertexAttribPointer: function(index, size, type, normalized, stride, ptr) {
 #if FULL_ES2
     var cb = GL.currentContext.clientBuffers[index];
@@ -3793,7 +3793,7 @@ var LibraryGL = {
 #endif
   },
 
-  glDrawElements__sig: 'viiii',
+  glDrawElements__sig: 'viiip',
   glDrawElements: function(mode, count, type, indices) {
 #if FULL_ES2
     var buf;
@@ -3866,7 +3866,7 @@ var LibraryGL = {
     GLctx['drawArraysInstanced'](mode, first, count, primcount);
   },
 
-  glDrawElementsInstanced__sig: 'viiiii',
+  glDrawElementsInstanced__sig: 'viiipi',
   glDrawElementsInstanced: function(mode, count, type, indices, primcount) {
 #if GL_ASSERTIONS
     assert(GLctx['drawElementsInstanced'], 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
@@ -3891,7 +3891,7 @@ var LibraryGL = {
 
 
   glDrawBuffers__deps: ['$tempFixedLengthArray'],
-  glDrawBuffers__sig: 'vii',
+  glDrawBuffers__sig: 'vip',
   glDrawBuffers: function(n, bufs) {
 #if GL_ASSERTIONS
     assert(GLctx['drawBuffers'], 'Must have WebGL2 or WEBGL_draw_buffers extension to use drawBuffers');
@@ -3925,12 +3925,12 @@ var LibraryGL = {
     GLctx.depthMask(!!flag);
   },
 
-  glSampleCoverage__sig: 'vii',
+  glSampleCoverage__sig: 'vfi',
   glSampleCoverage: function(value, invert) {
     GLctx.sampleCoverage(value, !!invert);
   },
 
-  glMultiDrawArraysWEBGL__sig: 'viiii',
+  glMultiDrawArraysWEBGL__sig: 'vippi',
   glMultiDrawArrays: 'glMultiDrawArraysWEBGL',
   glMultiDrawArraysANGLE: 'glMultiDrawArraysWEBGL',
   glMultiDrawArraysWEBGL: function(mode, firsts, counts, drawcount) {
@@ -3957,7 +3957,7 @@ var LibraryGL = {
       drawcount);
   },
 
-  glMultiDrawElementsWEBGL__sig: 'viiiii',
+  glMultiDrawElementsWEBGL__sig: 'vipipi',
   glMultiDrawElements: 'glMultiDrawElementsWEBGL',
   glMultiDrawElementsANGLE: 'glMultiDrawElementsWEBGL',
   glMultiDrawElementsWEBGL: function(mode, counts, type, offsets, drawcount) {
@@ -4023,7 +4023,7 @@ var LibraryGL = {
     }
   },
 
-  glMapBufferRange__sig: 'iiiii',
+  glMapBufferRange__sig: 'pippi',
   glMapBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget'],
   glMapBufferRange: function(target, offset, length, access) {
     if ((access & (0x1/*GL_MAP_READ_BIT*/ | 0x20/*GL_MAP_UNSYNCHRONIZED_BIT*/)) != 0) {
@@ -4059,7 +4059,7 @@ var LibraryGL = {
     return mem;
   },
 
-  glGetBufferPointerv__sig: 'viii',
+  glGetBufferPointerv__sig: 'viip',
   glGetBufferPointerv__deps: ['$emscriptenWebGLGetBufferBinding'],
   glGetBufferPointerv: function(target, pname, params) {
     if (pname == 0x88BD/*GL_BUFFER_MAP_POINTER*/) {
@@ -4075,7 +4075,7 @@ var LibraryGL = {
     }
   },
 
-  glFlushMappedBufferRange__sig: 'viii',
+  glFlushMappedBufferRange__sig: 'vipp',
   glFlushMappedBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget'],
   glFlushMappedBufferRange: function(target, offset, length) {
     if (!emscriptenWebGLValidateMapBufferTarget(target)) {

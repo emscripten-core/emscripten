@@ -490,7 +490,7 @@ mergeInto(LibraryManager.library, {
   },
 
   _gmtime_js__deps: ['$readI53FromI64'],
-  _gmtime_js__sig: 'ipp',
+  _gmtime_js__sig: 'vpp',
   _gmtime_js: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i53') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
@@ -525,7 +525,7 @@ mergeInto(LibraryManager.library, {
   },
 
   _localtime_js__deps: ['$readI53FromI64', '$ydayFromDate'],
-  _localtime_js__sig: 'ipp',
+  _localtime_js__sig: 'vpp',
   _localtime_js: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i53') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}};
@@ -1831,7 +1831,7 @@ mergeInto(LibraryManager.library, {
   // note: lots of leaking here!
   gethostbyaddr__deps: ['$DNS', '$getHostByName', '$inetNtop4', '$setErrNo'],
   gethostbyaddr__proxy: 'sync',
-  gethostbyaddr__sig: 'ipii',
+  gethostbyaddr__sig: 'ppii',
   gethostbyaddr: function (addr, addrlen, type) {
     if (type !== {{{ cDefine('AF_INET') }}}) {
       setErrNo({{{ cDefine('EAFNOSUPPORT') }}});
@@ -1877,7 +1877,7 @@ mergeInto(LibraryManager.library, {
 
   gethostbyname_r__deps: ['gethostbyname', 'memcpy', 'free'],
   gethostbyname_r__proxy: 'sync',
-  gethostbyname_r__sig: 'ipppipp',
+  gethostbyname_r__sig: 'ipppppp',
   gethostbyname_r: function(name, ret, buf, buflen, out, err) {
     var data = _gethostbyname(name);
     _memcpy(ret, data, {{{ C_STRUCTS.hostent.__size__ }}});
@@ -2671,7 +2671,7 @@ mergeInto(LibraryManager.library, {
     debugger;
   },
 
-  emscripten_print_double__sig: 'iipi',
+  emscripten_print_double__sig: 'idpi',
   emscripten_print_double: function(x, to, max) {
     var str = x + '';
     if (to) return stringToUTF8(str, to, max);
@@ -3066,7 +3066,7 @@ mergeInto(LibraryManager.library, {
     return ASM_CONSTS[code].apply(null, args);
   },
   emscripten_asm_const_int_sync_on_main_thread__deps: ['$runMainThreadEmAsm'],
-  emscripten_asm_const_int_sync_on_main_thread__sig: 'iiii',
+  emscripten_asm_const_int_sync_on_main_thread__sig: 'ippp',
   emscripten_asm_const_int_sync_on_main_thread: function(code, sigPtr, argbuf) {
     return runMainThreadEmAsm(code, sigPtr, argbuf, 1);
   },
@@ -3413,7 +3413,7 @@ mergeInto(LibraryManager.library, {
 
   // Use program_invocation_short_name and program_invocation_name in compiled
   // programs. This function is for implementing them.
-  _emscripten_get_progname__sig: 'vpp',
+  _emscripten_get_progname__sig: 'vpi',
   _emscripten_get_progname: function(str, len) {
 #if !MINIMAL_RUNTIME
 #if ASSERTIONS

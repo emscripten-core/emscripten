@@ -12,7 +12,7 @@ var LibraryWebSocket = {
 
   emscripten_websocket_get_ready_state__deps: ['$WS'],
   emscripten_websocket_get_ready_state__proxy: 'sync',
-  emscripten_websocket_get_ready_state__sig: 'iii',
+  emscripten_websocket_get_ready_state__sig: 'iip',
   emscripten_websocket_get_ready_state: function(socketId, readyState) {
     var socket = WS.sockets[socketId];
     if (!socket) {
@@ -28,7 +28,7 @@ var LibraryWebSocket = {
 
   emscripten_websocket_get_buffered_amount__deps: ['$WS'],
   emscripten_websocket_get_buffered_amount__proxy: 'sync',
-  emscripten_websocket_get_buffered_amount__sig: 'iii',
+  emscripten_websocket_get_buffered_amount__sig: 'iip',
   emscripten_websocket_get_buffered_amount: function(socketId, bufferedAmount) {
     var socket = WS.sockets[socketId];
     if (!socket) {
@@ -44,7 +44,7 @@ var LibraryWebSocket = {
 
   emscripten_websocket_get_extensions__deps: ['$WS'],
   emscripten_websocket_get_extensions__proxy: 'sync',
-  emscripten_websocket_get_extensions__sig: 'iiii',
+  emscripten_websocket_get_extensions__sig: 'iipi',
   emscripten_websocket_get_extensions: function(socketId, extensions, extensionsLength) {
     var socket = WS.sockets[socketId];
     if (!socket) {
@@ -60,7 +60,7 @@ var LibraryWebSocket = {
 
   emscripten_websocket_get_extensions_length__deps: ['$WS'],
   emscripten_websocket_get_extensions_length__proxy: 'sync',
-  emscripten_websocket_get_extensions_length__sig: 'iii',
+  emscripten_websocket_get_extensions_length__sig: 'iip',
   emscripten_websocket_get_extensions_length: function(socketId, extensionsLength) {
     var socket = WS.sockets[socketId];
     if (!socket) {
@@ -76,7 +76,7 @@ var LibraryWebSocket = {
 
   emscripten_websocket_get_protocol__deps: ['$WS'],
   emscripten_websocket_get_protocol__proxy: 'sync',
-  emscripten_websocket_get_protocol__sig: 'iiii',
+  emscripten_websocket_get_protocol__sig: 'iipi',
   emscripten_websocket_get_protocol: function(socketId, protocol, protocolLength) {
     var socket = WS.sockets[socketId];
     if (!socket) {
@@ -92,7 +92,7 @@ var LibraryWebSocket = {
 
   emscripten_websocket_get_protocol_length__deps: ['$WS'],
   emscripten_websocket_get_protocol_length__proxy: 'sync',
-  emscripten_websocket_get_protocol_length__sig: 'iii',
+  emscripten_websocket_get_protocol_length__sig: 'iip',
   emscripten_websocket_get_protocol_length: function(socketId, protocolLength) {
     var socket = WS.sockets[socketId];
     if (!socket) {
@@ -108,7 +108,7 @@ var LibraryWebSocket = {
 
   emscripten_websocket_get_url__deps: ['$WS'],
   emscripten_websocket_get_url__proxy: 'sync',
-  emscripten_websocket_get_url__sig: 'iiii',
+  emscripten_websocket_get_url__sig: 'iipi',
   emscripten_websocket_get_url: function(socketId, url, urlLength) {
     var socket = WS.sockets[socketId];
     if (!socket) {
@@ -124,7 +124,7 @@ var LibraryWebSocket = {
 
   emscripten_websocket_get_url_length__deps: ['$WS'],
   emscripten_websocket_get_url_length__proxy: 'sync',
-  emscripten_websocket_get_url_length__sig: 'iii',
+  emscripten_websocket_get_url_length__sig: 'iip',
   emscripten_websocket_get_url_length: function(socketId, urlLength) {
     var socket = WS.sockets[socketId];
     if (!socket) {
@@ -140,7 +140,7 @@ var LibraryWebSocket = {
 
   emscripten_websocket_set_onopen_callback_on_thread__deps: ['$WS'],
   emscripten_websocket_set_onopen_callback_on_thread__proxy: 'sync',
-  emscripten_websocket_set_onopen_callback_on_thread__sig: 'iiiii',
+  emscripten_websocket_set_onopen_callback_on_thread__sig: 'iippp',
   emscripten_websocket_set_onopen_callback_on_thread: function(socketId, userData, callbackFunc, thread) {
 // TODO:
 //    if (thread == {{{ cDefine('EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD') }}} ||
@@ -171,7 +171,7 @@ var LibraryWebSocket = {
 
   emscripten_websocket_set_onerror_callback_on_thread__deps: ['$WS'],
   emscripten_websocket_set_onerror_callback_on_thread__proxy: 'sync',
-  emscripten_websocket_set_onerror_callback_on_thread__sig: 'iiiii',
+  emscripten_websocket_set_onerror_callback_on_thread__sig: 'iippp',
   emscripten_websocket_set_onerror_callback_on_thread: function(socketId, userData, callbackFunc, thread) {
     if (!WS.socketEvent) WS.socketEvent = _malloc(1024); // TODO: sizeof(EmscriptenWebSocketCloseEvent), which is the largest event struct
 
@@ -198,7 +198,7 @@ var LibraryWebSocket = {
 
   emscripten_websocket_set_onclose_callback_on_thread__deps: ['$WS'],
   emscripten_websocket_set_onclose_callback_on_thread__proxy: 'sync',
-  emscripten_websocket_set_onclose_callback_on_thread__sig: 'iiiii',
+  emscripten_websocket_set_onclose_callback_on_thread__sig: 'iippp',
   emscripten_websocket_set_onclose_callback_on_thread: function(socketId, userData, callbackFunc, thread) {
     if (!WS.socketEvent) WS.socketEvent = _malloc(1024); // TODO: sizeof(EmscriptenWebSocketCloseEvent), which is the largest event struct
 
@@ -228,7 +228,7 @@ var LibraryWebSocket = {
 
   emscripten_websocket_set_onmessage_callback_on_thread__deps: ['$WS'],
   emscripten_websocket_set_onmessage_callback_on_thread__proxy: 'sync',
-  emscripten_websocket_set_onmessage_callback_on_thread__sig: 'iiiii',
+  emscripten_websocket_set_onmessage_callback_on_thread__sig: 'iippp',
   emscripten_websocket_set_onmessage_callback_on_thread: function(socketId, userData, callbackFunc, thread) {
     if (!WS.socketEvent) WS.socketEvent = _malloc(1024); // TODO: sizeof(EmscriptenWebSocketCloseEvent), which is the largest event struct
 
@@ -283,7 +283,7 @@ var LibraryWebSocket = {
 
   emscripten_websocket_new__deps: ['$WS'],
   emscripten_websocket_new__proxy: 'sync',
-  emscripten_websocket_new__sig: 'ii',
+  emscripten_websocket_new__sig: 'ip',
   emscripten_websocket_new: function(createAttributes) {
     if (typeof WebSocket == 'undefined') {
 #if WEBSOCKET_DEBUG
@@ -319,7 +319,7 @@ var LibraryWebSocket = {
 
   emscripten_websocket_send_utf8_text__deps: ['$WS'],
   emscripten_websocket_send_utf8_text__proxy: 'sync',
-  emscripten_websocket_send_utf8_text__sig: 'iii',
+  emscripten_websocket_send_utf8_text__sig: 'iip',
   emscripten_websocket_send_utf8_text: function(socketId, textData) {
     var socket = WS.sockets[socketId];
     if (!socket) {
@@ -343,7 +343,7 @@ var LibraryWebSocket = {
 
   emscripten_websocket_send_binary__deps: ['$WS'],
   emscripten_websocket_send_binary__proxy: 'sync',
-  emscripten_websocket_send_binary__sig: 'iiii',
+  emscripten_websocket_send_binary__sig: 'iipi',
   emscripten_websocket_send_binary: function(socketId, binaryData, dataLength) {
     var socket = WS.sockets[socketId];
     if (!socket) {
@@ -375,7 +375,7 @@ var LibraryWebSocket = {
 
   emscripten_websocket_close__deps: ['$WS'],
   emscripten_websocket_close__proxy: 'sync',
-  emscripten_websocket_close__sig: 'iiii',
+  emscripten_websocket_close__sig: 'iiip',
   emscripten_websocket_close: function(socketId, code, reason) {
     var socket = WS.sockets[socketId];
     if (!socket) {
