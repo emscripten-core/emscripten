@@ -38,7 +38,7 @@ var LibraryWebSocket = {
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     }
 
-    {{{ makeSetValue('bufferedAmount', '0', 'socket.bufferedAmount', 'i64') }}};
+    {{{ makeSetValue('bufferedAmount', '0', 'socket.bufferedAmount', '*') }}};
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
