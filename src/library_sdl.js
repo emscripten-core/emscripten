@@ -1845,18 +1845,6 @@ var LibrarySDL = {
 
   SDL_SetError: function() {},
 
-  SDL_malloc__sig: 'ii',
-  SDL_malloc__deps: ['malloc'],
-  SDL_malloc: function(size) {
-    return _malloc(size);
-  },
-
-  SDL_free__sig: 'vi',
-  SDL_free__deps: ['free'],
-  SDL_free: function(ptr) {
-    _free(ptr);
-  },
-
   SDL_CreateRGBSurface__deps: ['malloc', 'free'],
   SDL_CreateRGBSurface__proxy: 'sync',
   SDL_CreateRGBSurface__sig: 'iiiiiiiii',
@@ -1988,18 +1976,6 @@ var LibrarySDL = {
     surfData.ctx.fillRect(r.x, r.y, r.w, r.h);
     surfData.ctx.restore();
     return 0;
-  },
-
-  SDL_BlitSurface__proxy: 'sync',
-  SDL_BlitSurface__sig: 'iiiii',
-  SDL_BlitSurface: function(src, srcrect, dst, dstrect) {
-    return SDL.blitSurface(src, srcrect, dst, dstrect, false);
-  },
-
-  SDL_BlitScaled__proxy: 'sync',
-  SDL_BlitScaled__sig: 'iiiii',
-  SDL_BlitScaled: function(src, srcrect, dst, dstrect) {
-    return SDL.blitSurface(src, srcrect, dst, dstrect, true);
   },
 
   zoomSurface: function(src, x, y, smooth) {
@@ -2400,7 +2376,6 @@ var LibrarySDL = {
       cleanup();
     }
   },
-  SDL_LoadBMP: 'IMG_Load',
   SDL_LoadBMP_RW: 'IMG_Load_RW',
 
   IMG_Load__deps: ['IMG_Load_RW', 'SDL_RWFromFile'],
@@ -2682,8 +2657,6 @@ var LibrarySDL = {
   SDL_UnlockAudio: function() {},
 
   SDL_CreateMutex: function() { return 0 },
-  SDL_LockMutex: function() {},
-  SDL_UnlockMutex: function() {},
   SDL_mutexP: function() { return 0 },
   SDL_mutexV: function() { return 0 },
   SDL_DestroyMutex: function() {},
@@ -2931,9 +2904,9 @@ var LibrarySDL = {
   Mix_ReserveChannels: function(num) {
     SDL.channelMinimumNumber = num;
   },
-  Mix_PlayChannel__proxy: 'sync',
-  Mix_PlayChannel__sig: 'iiii',
-  Mix_PlayChannel: function(channel, id, loops) {
+  Mix_PlayChannelTimed__proxy: 'sync',
+  Mix_PlayChannelTimed__sig: 'iiii',
+  Mix_PlayChannelTimed: function(channel, id, loops) {
     // TODO: handle fixed amount of N loops. Currently loops either 0 or infinite times.
 
     // Get the audio element associated with the ID
@@ -2984,7 +2957,6 @@ var LibrarySDL = {
     audio.play();
     return channel;
   },
-  Mix_PlayChannelTimed: 'Mix_PlayChannel', // XXX ignore Timing
 
   Mix_FadingChannel: function(channel) {
     return 0; // MIX_NO_FADING, TODO
