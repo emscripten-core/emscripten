@@ -1610,7 +1610,7 @@ var LibraryGLFW = {
     return prevcbfun;
   },
 
-  glfwSetWindowContentScaleCallback_sig: 'iii',
+  glfwSetWindowContentScaleCallback__sig: 'iii',
   glfwSetWindowContentScaleCallback: function(winid, cbfun) {
     var win = GLFW.WindowFromId(winid);
     if (!win) return null;

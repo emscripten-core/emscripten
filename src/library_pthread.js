@@ -7,20 +7,20 @@
  * features within this file (ES2020).
  */
 
-#if !USE_PTHREADS
-#error "Internal error! USE_PTHREADS should be enabled when including library_pthread.js."
+#if !PTHREADS
+#error "Internal error! PTHREADS should be enabled when including library_pthread.js."
 #endif
 #if !SHARED_MEMORY
 #error "Internal error! SHARED_MEMORY should be enabled when including library_pthread.js."
 #endif
-#if USE_PTHREADS == 2
-#error "USE_PTHREADS=2 is no longer supported"
+#if PTHREADS == 2
+#error "PTHREADS=2 is no longer supported"
 #endif
 #if BUILD_AS_WORKER
-#error "USE_PTHREADS + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854"
+#error "pthreads + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854"
 #endif
 #if PROXY_TO_WORKER
-#error "--proxy-to-worker is not supported with -sUSE_PTHREADS>0! Use the option -sPROXY_TO_PTHREAD if you want to run the main thread of a multithreaded application in a web worker."
+#error "--proxy-to-worker is not supported with -pthread! Use the option -sPROXY_TO_PTHREAD if you want to run the main thread of a multithreaded application in a web worker."
 #endif
 #if EVAL_CTORS
 #error "EVAL_CTORS is not compatible with pthreads yet (passive segments)"
@@ -901,7 +901,7 @@ var LibraryPThread = {
 
   emscripten_check_blocking_allowed__deps: ['$warnOnce'],
   emscripten_check_blocking_allowed: function() {
-#if ASSERTIONS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
+#if (ASSERTIONS || !ALLOW_BLOCKING_ON_MAIN_THREAD) && !MINIMAL_RUNTIME
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) return;
 #endif
@@ -1219,18 +1219,40 @@ var LibraryPThread = {
   },
 #endif // MAIN_MODULE
 
-  $checkMailbox__deps: ['$callUserCallback'],
+  $checkMailbox__deps: ['$callUserCallback',
+                        '_emscripten_thread_mailbox_await'],
   $checkMailbox: function() {
     // Only check the mailbox if we have a live pthread runtime. We implement
     // pthread_self to return 0 if there is no live runtime.
-    if (_pthread_self()) {
+    var pthread_ptr = _pthread_self();
+    if (pthread_ptr) {
+      // If we are using Atomics.waitAsync as our notification mechanism, wait for
+      // a notification before processing the mailbox to avoid missing any work.
+      __emscripten_thread_mailbox_await(pthread_ptr);
       callUserCallback(() => __emscripten_check_mailbox());
     }
   },
 
-  _emscripten_notify_mailbox__deps: ['$checkMailbox'],
-  _emscripten_notify_mailbox__sig: 'vppp',
-  _emscripten_notify_mailbox: function(targetThreadId, currThreadId, mainThreadId) {
+  _emscripten_thread_mailbox_await__deps: ['$checkMailbox'],
+  _emscripten_thread_mailbox_await__sig: 'vp',
+  _emscripten_thread_mailbox_await: function(pthread_ptr) {
+    if (typeof Atomics.waitAsync === 'function') {
+      // TODO: How to make this work with wasm64?
+      var wait = Atomics.waitAsync(HEAP32, pthread_ptr >> 2, pthread_ptr);
+#if ASSERTIONS
+      assert(wait.async);
+#endif
+      wait.value.then(checkMailbox);
+      var waitingAsync = pthread_ptr + {{{ C_STRUCTS.pthread.waiting_async }}};
+      Atomics.store(HEAP32, waitingAsync >> 2, 1);
+    }
+  },
+
+  _emscripten_notify_mailbox_postmessage__deps: ['$checkMailbox'],
+  _emscripten_notify_mailbox_postmessage__sig: 'vppp',
+  _emscripten_notify_mailbox_postmessage: function(targetThreadId,
+                                                   currThreadId,
+                                                   mainThreadId) {
     if (targetThreadId == currThreadId) {
       setTimeout(() => checkMailbox());
     } else if (ENVIRONMENT_IS_PTHREAD) {
@@ -1241,7 +1263,7 @@ var LibraryPThread = {
 #if ASSERTIONS
         err('Cannot send message to thread with ID ' + targetThreadId + ', unknown thread ID!');
 #endif
-        return /*0*/;
+        return;
       }
       worker.postMessage({'cmd' : 'checkMailbox'});
     }

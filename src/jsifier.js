@@ -159,7 +159,7 @@ function ${name}(${args}) {
           throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
         }
         const sync = proxyingMode === 'sync';
-        if (USE_PTHREADS) {
+        if (PTHREADS) {
           snippet = modifyFunction(snippet, (name, args, body) => `
 function ${name}(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
@@ -489,7 +489,7 @@ function ${name}(${args}) {
       print(indentify(item.JS || '', 2));
     }
 
-    if (USE_PTHREADS) {
+    if (PTHREADS) {
       print('\n // proxiedFunctionTable specifies the list of functions that can be called either synchronously or asynchronously from other threads in postMessage()d or internally queued events. This way a pthread in a Worker can synchronously access e.g. the DOM on the main thread.');
       print('\nvar proxiedFunctionTable = [' + proxiedFunctionTable.join() + '];\n');
     }

@@ -16,6 +16,14 @@ Testing callback_with_ctx proxying
 running widget 11 on main
 running widget 12 on looper
 running widget 13 on returner
+Testing promise proxying
+running widget 14 on worker
+running widget 15 on looper
+running widget 16 on returner
+Testing promise_with_ctx proxying
+running widget 17 on worker
+running widget 18 on looper
+running widget 19 on returner
 Testing tasks queue growth
 Testing proxying queue growth
 work

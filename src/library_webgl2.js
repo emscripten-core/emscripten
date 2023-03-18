@@ -188,7 +188,7 @@ var LibraryWebGL2 = {
 
   // Queries
   glGenQueries__sig: 'vii',
-  glGenQueries__deps: ['_glGenObject'],
+  glGenQueries__deps: ['$__glGenObject'],
   glGenQueries: function(n, ids) {
     __glGenObject(n, ids, 'createQuery', GL.queries
 #if GL_ASSERTIONS
@@ -268,7 +268,7 @@ var LibraryWebGL2 = {
 
   // Sampler objects
   glGenSamplers__sig: 'vii',
-  glGenSamplers__deps: ['_glGenObject'],
+  glGenSamplers__deps: ['$__glGenObject'],
   glGenSamplers: function(n, samplers) {
     __glGenObject(n, samplers, 'createSampler', GL.samplers
 #if GL_ASSERTIONS
@@ -372,7 +372,7 @@ var LibraryWebGL2 = {
 
   // Transform Feedback
   glGenTransformFeedbacks__sig: 'vii',
-  glGenTransformFeedbacks__deps: ['_glGenObject'],
+  glGenTransformFeedbacks__deps: ['$__glGenObject'],
   glGenTransformFeedbacks: function(n, ids) {
     __glGenObject(n, ids, 'createTransformFeedback', GL.transformFeedbacks
 #if GL_ASSERTIONS
@@ -1044,14 +1044,14 @@ var LibraryWebGL2 = {
   },
   glDrawElementsInstancedBaseVertexBaseInstanceANGLE: 'glDrawElementsInstancedBaseVertexBaseInstanceWEBGL',
 
-  _webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance: function(ctx) {
+  $webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance: function(ctx) {
     // Closure is expected to be allowed to minify the '.dibvbi' property, so not accessing it quoted.
     return !!(ctx.dibvbi = ctx.getExtension('WEBGL_draw_instanced_base_vertex_base_instance'));
   },
 
-  emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance__deps: ['_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance'],
+  emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance__deps: ['$webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance'],
   emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance: function(ctx) {
-    return __webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GL.contexts[ctx].GLctx);
+    return webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GL.contexts[ctx].GLctx);
   },
 
   glMultiDrawArraysInstancedBaseInstanceWEBGL__sig: 'viiiiii',
@@ -1089,14 +1089,14 @@ var LibraryWebGL2 = {
   },
   glMultiDrawElementsInstancedBaseVertexBaseInstanceANGLE: 'glMultiDrawElementsInstancedBaseVertexBaseInstanceWEBGL',
 
-  _webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance: function(ctx) {
+  $webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance: function(ctx) {
     // Closure is expected to be allowed to minify the '.mdibvbi' property, so not accessing it quoted.
     return !!(ctx.mdibvbi = ctx.getExtension('WEBGL_multi_draw_instanced_base_vertex_base_instance'));
   },
 
-  emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance__deps: ['_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance'],
+  emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance__deps: ['$webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance'],
   emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance: function(ctx) {
-    return __webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GL.contexts[ctx].GLctx);
+    return webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GL.contexts[ctx].GLctx);
   },
 
   glVertexAttribI4i__sig: 'viiiii',

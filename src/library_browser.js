@@ -249,7 +249,7 @@ var LibraryBrowser = {
       // Use string keys here to avoid minification since the plugin consumer
       // also uses string keys.
       var wasmPlugin = {
-        'asyncWasmLoadPromise': new Promise(function(resolve, reject) { return resolve(); }),
+        'promiseChainEnd': Promise.resolve(),
         'canHandle': function(name) {
           return !Module.noWasmDecoding && name.endsWith('.so')
         },
@@ -257,7 +257,7 @@ var LibraryBrowser = {
           // loadWebAssemblyModule can not load modules out-of-order, so rather
           // than just running the promises in parallel, this makes a chain of
           // promises to run in series.
-          wasmPlugin['asyncWasmLoadPromise'] = wasmPlugin['asyncWasmLoadPromise'].then(
+          wasmPlugin['promiseChainEnd'] = wasmPlugin['promiseChainEnd'].then(
             () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true})).then(
               (module) => {
                 preloadedWasm[name] = module;
@@ -846,7 +846,7 @@ var LibraryBrowser = {
     onload = {{{ makeDynCall('v', 'onload') }}};
     onerror = {{{ makeDynCall('v', 'onerror') }}};
 
-#if USE_PTHREADS
+#if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
       err('emscripten_async_load_script("' + UTF8ToString(url) + '") failed, emscripten_async_load_script is currently not available in pthreads!');
       return onerror ? onerror() : undefined;
@@ -1049,7 +1049,7 @@ var LibraryBrowser = {
       GL.newRenderingFrameStarted();
 #endif
 
-#if USE_PTHREADS && OFFSCREEN_FRAMEBUFFER && GL_SUPPORT_EXPLICIT_SWAP_CONTROL
+#if PTHREADS && OFFSCREEN_FRAMEBUFFER && GL_SUPPORT_EXPLICIT_SWAP_CONTROL
       // If the current GL context is a proxied regular WebGL context, and was initialized with implicit swap mode on the main thread, and we are on the parent thread,
       // perform the swap on behalf of the user.
       if (typeof GL != 'undefined' && GL.currentContext && GL.currentContextIsProxied) {
@@ -1174,7 +1174,7 @@ var LibraryBrowser = {
   },
 
   emscripten_get_window_title__proxy: 'sync',
-  emscripten_get_window_title__sig: 'iv',
+  emscripten_get_window_title__sig: 'p',
   emscripten_get_window_title: function() {
     var buflen = 256;
 
@@ -1349,7 +1349,7 @@ var LibraryBrowser = {
 #endif
 
   emscripten_get_worker_queue_size__proxy: 'sync',
-  emscripten_get_worker_queue_size__sig: 'i',
+  emscripten_get_worker_queue_size__sig: 'ii',
   emscripten_get_worker_queue_size: function(id) {
     var info = Browser.workers[id];
     if (!info) return -1;

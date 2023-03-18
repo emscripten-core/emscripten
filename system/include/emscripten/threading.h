@@ -36,11 +36,13 @@ void emscripten_force_num_logical_cores(int cores);
 
 // If the given memory address contains value val, puts the calling thread to
 // sleep waiting for that address to be notified.
-int emscripten_futex_wait(volatile void/*uint32_t*/ *addr, uint32_t val, double maxWaitMilliseconds);
+// Returns -EINVAL if addr is null.
+int emscripten_futex_wait(volatile void/*uint32_t*/ * _Nonnull addr, uint32_t val, double maxWaitMilliseconds);
 
 // Wakes the given number of threads waiting on a location. Pass count ==
 // INT_MAX to wake all waiters on that location.
-int emscripten_futex_wake(volatile void/*uint32_t*/ *addr, int count);
+// Returns -EINVAL if addr is null.
+int emscripten_futex_wake(volatile void/*uint32_t*/ * _Nonnull addr, int count);
 
 typedef struct em_queued_call em_queued_call;
 
@@ -146,9 +148,9 @@ typedef struct em_queued_call em_queued_call;
 // pthread), the function
 // will be proxied to be called by the main thread.
 //  - Calling emscripten_sync_* functions requires that the application was
-//    compiled with pthreads support enabled (-sUSE_PTHREADS=1/2) and that the
+//    compiled with pthreads support enabled (-pthread) and that the
 //    browser supports SharedArrayBuffer specification.
-int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr, ...);
+int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr __attribute__((nonnull)), ...);
 
 // The 'async' variant of the run_in_main_thread functions are otherwise the
 // same as the synchronous ones, except that the operation is performed in a
@@ -158,7 +160,7 @@ int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *fun
 //  - Note that multiple asynchronous commands from a single pthread/Worker are
 //    guaranteed to be executed on the main thread in the program order they
 //    were called in.
-void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr, ...);
+void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr __attribute__((nonnull)), ...);
 
 // The 'async_waitable' variant of the run_in_main_runtime_thread functions run
 // like the 'async' variants, except that while the operation starts off
@@ -167,7 +169,7 @@ void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *f
 //  - The object returned by this function call is dynamically allocated, and
 //    should be freed up via a call to emscripten_async_waitable_close() after
 //    the wait has been performed.
-em_queued_call *emscripten_async_waitable_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr, ...);
+em_queued_call *emscripten_async_waitable_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr __attribute__((nonnull)), ...);
 
 // Since we can't validate the function pointer type, allow implicit casting of
 // functions to void* without complaining.
@@ -175,10 +177,10 @@ em_queued_call *emscripten_async_waitable_run_in_main_runtime_thread_(EM_FUNC_SI
 #define emscripten_async_run_in_main_runtime_thread(sig, func_ptr, ...) emscripten_async_run_in_main_runtime_thread_((sig), (void*)(func_ptr),##__VA_ARGS__)
 #define emscripten_async_waitable_run_in_main_runtime_thread(sig, func_ptr, ...) emscripten_async_waitable_run_in_main_runtime_thread_((sig), (void*)(func_ptr),##__VA_ARGS__)
 
-EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call *call, double timeoutMSecs);
-EMSCRIPTEN_RESULT emscripten_wait_for_call_i(em_queued_call *call, double timeoutMSecs, int *outResult);
+EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call *call __attribute__((nonnull)), double timeoutMSecs);
+EMSCRIPTEN_RESULT emscripten_wait_for_call_i(em_queued_call *call __attribute__((nonnull)), double timeoutMSecs, int *outResult);
 
-void emscripten_async_waitable_close(em_queued_call *call);
+void emscripten_async_waitable_close(em_queued_call *call __attribute__((nonnull)));
 
 // Runs the given function on the specified thread. If we are currently on
 // that target thread then we just execute the call synchronously; otherwise it
@@ -187,12 +189,12 @@ void emscripten_async_waitable_close(em_queued_call *call);
 // otherwise.
 int emscripten_dispatch_to_thread_args(pthread_t target_thread,
                                        EM_FUNC_SIGNATURE sig,
-                                       void* func_ptr,
+                                       void* func_ptr __attribute__((nonnull)),
                                        void* satellite,
                                        va_list args);
 int emscripten_dispatch_to_thread_(pthread_t target_thread,
                                    EM_FUNC_SIGNATURE sig,
-                                   void* func_ptr,
+                                   void* func_ptr __attribute__((nonnull)),
                                    void* satellite,
                                    ...);
 #define emscripten_dispatch_to_thread(                                         \
@@ -205,12 +207,12 @@ int emscripten_dispatch_to_thread_(pthread_t target_thread,
 // but may be simpler to reason about in some cases.
 int emscripten_dispatch_to_thread_async_args(pthread_t target_thread,
                                              EM_FUNC_SIGNATURE sig,
-                                             void* func_ptr,
+                                             void* func_ptr __attribute__((nonnull)),
                                              void* satellite,
                                              va_list args);
 int emscripten_dispatch_to_thread_async_(pthread_t target_thread,
                                          EM_FUNC_SIGNATURE sig,
-                                         void* func_ptr,
+                                         void* func_ptr __attribute__((nonnull)),
                                          void* satellite,
                                          ...);
 #define emscripten_dispatch_to_thread_async(                                   \
@@ -264,11 +266,11 @@ void emscripten_thread_sleep(double msecs);
 // The name parameter is a UTF-8 encoded string which is truncated to 32 bytes.
 // When thread profiler is not enabled (not building with --threadprofiler),
 // this is a no-op.
-void emscripten_set_thread_name(pthread_t threadId, const char *name);
+void emscripten_set_thread_name(pthread_t threadId, const char *name __attribute__((nonnull)));
 
 // Gets the stored pointer to a string representing the canvases to transfer to
 // the created thread.
-int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t *a, const char **str);
+int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t *a __attribute__((nonnull)), const char **str __attribute__((nonnull)));
 
 // Specifies a comma-delimited list of canvas DOM element IDs to transfer to the
 // thread to be created.
@@ -276,7 +278,7 @@ int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t *a, cons
 // so must be held alive until pthread_create() has been called. If 0 or "", no
 // canvases are transferred.
 // The special value "#canvas" denotes the element stored in Module.canvas.
-int emscripten_pthread_attr_settransferredcanvases(pthread_attr_t *a, const char *str);
+int emscripten_pthread_attr_settransferredcanvases(pthread_attr_t *a __attribute__((nonnull)), const char *str __attribute__((nonnull)));
 
 // Called when blocking on the main thread. This will error if main thread
 // blocking is not enabled, see ALLOW_BLOCKING_ON_MAIN_THREAD.
