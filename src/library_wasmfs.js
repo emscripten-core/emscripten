@@ -104,11 +104,16 @@ mergeInto(LibraryManager.library, {
       return ret;
     },
     cwd: () => {
-      // dummy commit 
+      //Implemented cwd
+      //test commit
       // TODO: Remove dependency on FS.cwd().
       // User code should not be using FS.cwd().
       // For file preloading, cwd should be '/' to begin with.
-      return '/';
+      return withStackSave(() => {
+        var buffer = stackAlloc({{{ cDefine('PATH_MAX') }}});
+        var buf = __wasmfs_getcwd(buffer, buffer.length);
+        return UTF8ToString(buf);
+      });
     },
 
 #if FORCE_FILESYSTEM
