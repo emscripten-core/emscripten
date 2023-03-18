@@ -2050,7 +2050,7 @@ var LibraryEmbind = {
                                                   downcast);
 
         if (registeredClass.baseClass) {
-          // Keep track of class hierarchy. USed to allow sub-classes to inherit class functions.
+          // Keep track of class hierarchy. Used to allow sub-classes to inherit class functions.
           if (registeredClass.baseClass.__derivedClasses === undefined) {
             registeredClass.baseClass.__derivedClasses = [];
           }
