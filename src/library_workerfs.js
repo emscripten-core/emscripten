@@ -46,6 +46,9 @@ mergeInto(LibraryManager.library, {
       (mount.opts["blobs"] || []).forEach(function(obj) {
         WORKERFS.createNode(ensureParent(obj["name"]), base(obj["name"]), WORKERFS.FILE_MODE, 0, obj["data"]);
       });
+      (mount.opts["writables"] || []).forEach(function(obj) {
+        WORKERFS.createNode(ensureParent(obj["name"]), base(obj["name"]), WORKERFS.FILE_MODE, 0, obj);
+      });
       (mount.opts["packages"] || []).forEach(function(pack) {
         pack['metadata'].files.forEach(function(file) {
           var name = file.filename.substr(1); // remove initial slash
@@ -137,7 +140,14 @@ mergeInto(LibraryManager.library, {
         return chunk.size;
       },
       write: function (stream, buffer, offset, length, position) {
-        throw new FS.ErrnoError({{{ cDefine('EIO') }}});
+        postMessage({
+          type: "write",
+          file: stream.node.name,
+          position,
+          buffer: buffer.slice(offset, offset + length),
+          length: length,
+        });
+        return length;
       },
       llseek: function (stream, offset, whence) {
         var position = offset;
