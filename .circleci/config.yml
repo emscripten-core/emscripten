@@ -695,17 +695,8 @@ jobs:
       - pip-install:
           python: "$EMSDK_PYTHON"
       - run-tests:
-          # skip other.test_stack_switching_size as we do not currently install
-          # d8 on mac
-          title: "other+extras"
-          test_targets: "
-            other
-            sockets.test_nodejs_sockets_echo*
-            core0.test_lua
-            core0.test_longjmp_standalone
-            core2.test_sse1
-            skip:other.test_native_link_error_message
-            skip:other.test_stack_switching_size"
+          title: "crossplatform tests"
+          test_targets: "--crossplatform-only"
       - upload-test-results
 
 workflows:

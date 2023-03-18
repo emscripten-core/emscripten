@@ -1108,6 +1108,7 @@ base align: 0, 0, 0, 0'''])
   def test_regex(self):
     self.do_core_test('test_regex.c')
 
+  @crossplatform
   @also_with_standalone_wasm(wasm2c=True, impure=True)
   def test_longjmp_standalone(self):
     self.do_core_test('test_longjmp.c')
@@ -6867,6 +6868,7 @@ void* operator new(size_t size) {
     self.do_runf(test_file('third_party/libiberty/cp-demangle.c'), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
 
   @needs_make('make')
+  @crossplatform
   def test_lua(self):
     self.emcc_args.remove('-Werror')
     env_init = {
