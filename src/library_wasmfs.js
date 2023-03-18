@@ -146,7 +146,7 @@ mergeInto(LibraryManager.library, {
       mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
       return withStackSave(() => {
         var buffer = allocateUTF8OnStack(path);
-        return __wasmfs_open(buffer, flags, mode);
+        return __wasmfs_open({{{ to64('buffer') }}}, flags, mode);
       })
     },
     // TODO: create
