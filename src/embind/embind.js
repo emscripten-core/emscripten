@@ -2368,6 +2368,7 @@ var LibraryEmbind = {
         if (classType.registeredClass.__derivedClasses) {
           for (const derivedClass of classType.registeredClass.__derivedClasses) {
             if (!derivedClass.constructor.hasOwnProperty(methodName)) {
+              // TODO: Add support for overloads
               derivedClass.constructor[methodName] = func;
             }
           }
