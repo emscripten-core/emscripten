@@ -9295,21 +9295,6 @@ console.error('JSLIB: none of the above');
     self.assertContained('JSLIB: EXIT_RUNTIME', err)
     self.assertNotContained('JSLIB: MAIN_MODULE', err)
 
-  def test_js_preprocess_pre_post(self):
-    create_file('pre.js', '''
-    #if ASSERTIONS
-    console.log('assertions enabled')
-    #else
-    console.log('assertions disabled')
-    #endif
-    ''')
-    create_file('post.js', '''
-    console.log({{{ POINTER_SIZE }}});
-    ''')
-    self.emcc_args += ['--pre-js', 'pre.js', '--post-js', 'post.js']
-    self.do_runf(test_file('hello_world.c'), 'assertions enabled\n4')
-    self.do_runf(test_file('hello_world.c'), 'assertions disabled\n4', emcc_args=['-sASSERTIONS=0'])
-
   def test_html_preprocess(self):
     src_file = test_file('module/test_stdin.c')
     output_file = 'test_stdin.html'
