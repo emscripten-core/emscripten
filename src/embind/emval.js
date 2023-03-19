@@ -328,7 +328,7 @@ var LibraryEmVal = {
 
   _emval_as_int64__deps: ['$Emval', '$requireRegisteredType'],
   _emval_as_int64__sig: 'jpp',
-  _emval_as_int64: function(handle, returnType, destructorsRef) {
+  _emval_as_int64: function(handle, returnType) {
     handle = Emval.toValue(handle);
     returnType = requireRegisteredType(returnType, 'emval::as');
     return returnType['toWireType'](null, handle);
@@ -336,7 +336,7 @@ var LibraryEmVal = {
 
   _emval_as_uint64__deps: ['$Emval', '$requireRegisteredType'],
   _emval_as_uint64__sig: 'jpp',
-  _emval_as_uint64: function(handle, returnType, destructorsRef) {
+  _emval_as_uint64: function(handle, returnType) {
     handle = Emval.toValue(handle);
     returnType = requireRegisteredType(returnType, 'emval::as');
     return returnType['toWireType'](null, handle);
