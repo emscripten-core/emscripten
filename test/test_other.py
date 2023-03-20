@@ -11803,12 +11803,16 @@ exec "$@"
     self.assertIn('Hello from lib!', result)
 
   def test_gen_struct_info(self):
-    # This tests is fragile and will need updating any time any of the referenced
-    # structs or defines change.   However its easy to rebaseline with
-    # --rebaseline and it prevents regressions or unintended changes
-    # to the output json.
+    # This test will start failing whenever the struct info changes (e.g. offset or defines
+    # change).  However it's easy to rebaseline with --rebaseline.
     self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
-    self.assertFileContents(test_file('reference_struct_info.json'), read_file('out.json'))
+    self.assertFileContents(path_from_root('src/generated_struct_info32.json'), read_file('out.json'))
+
+    # Same again for wasm64
+    node_version = shared.check_node_version()
+    if node_version and node_version >= (14, 0, 0):
+      self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '--wasm64', '-o', 'out.json'])
+      self.assertFileContents(path_from_root('src/generated_struct_info64.json'), read_file('out.json'))
 
   def test_gen_struct_info_env(self):
     # gen_struct_info.py builds C code in a very specific and low level way.  We don't want
@@ -13258,10 +13262,10 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       {{{ C_STRUCTS.Foo }}}
     ''')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js'])
-    self.assertContained('Error: Missing C struct Foo! If you just added it to struct_info.json, you need to ./emcc --clear-cache', err)
+    self.assertContained('Error: Missing C struct Foo! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py', err)
 
     create_file('lib.js', '''
       {{{ C_DEFINES.Foo }}}
     ''')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js'])
-    self.assertContained('Error: Missing C define Foo! If you just added it to struct_info.json, you need to ./emcc --clear-cache', err)
+    self.assertContained('Error: Missing C define Foo! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py', err)

@@ -20,12 +20,10 @@ import pprint
 import shutil
 
 from tools import building
-from tools import cache
 from tools import diagnostics
 from tools import js_manipulation
 from tools import shared
 from tools import utils
-from tools import gen_struct_info
 from tools import webassembly
 from tools import extract_metadata
 from tools.utils import exit_with_error, path_from_root
@@ -920,26 +918,5 @@ def normalize_line_endings(text):
   return text
 
 
-def clear_struct_info():
-  output_name = cache.get_lib_name('struct_info.json', varies=False)
-  cache.erase_file(output_name)
-
-
-def generate_struct_info():
-  # If we are running in BOOTSTRAPPING_STRUCT_INFO we don't populate STRUCT_INFO
-  # otherwise that would lead to infinite recursion.
-  if settings.BOOTSTRAPPING_STRUCT_INFO:
-    return
-
-  @ToolchainProfiler.profile()
-  def generate_struct_info(out):
-    gen_struct_info.main(['-q', '-o', out])
-
-  output_name = cache.get_lib_name('struct_info.json', varies=False)
-  settings.STRUCT_INFO = cache.get(output_name, generate_struct_info)
-
-
 def run(in_wasm, out_wasm, outfile_js, memfile):
-  generate_struct_info()
-
   emscript(in_wasm, out_wasm, outfile_js, memfile)

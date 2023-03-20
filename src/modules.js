@@ -246,8 +246,12 @@ global.LibraryManager = {
 };
 
 if (!BOOTSTRAPPING_STRUCT_INFO) {
+  let structInfoFile = 'generated_struct_info32.json';
+  if (MEMORY64) {
+    structInfoFile = 'generated_struct_info64.json'
+  }
   // Load struct and define information.
-  const temp = JSON.parse(read(STRUCT_INFO));
+  const temp = JSON.parse(read(structInfoFile));
   C_STRUCTS = temp.structs;
   C_DEFINES = temp.defines;
 } else {
@@ -260,7 +264,7 @@ if (!BOOTSTRAPPING_STRUCT_INFO) {
 C_STRUCTS = new Proxy(C_STRUCTS, {
   get(target, prop, receiver) {
     if (!(prop in target)) {
-      throw new Error(`Missing C struct ${prop}! If you just added it to struct_info.json, you need to ./emcc --clear-cache`);
+      throw new Error(`Missing C struct ${prop}! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py`);
     }
     return target[prop]
   }
@@ -269,7 +273,7 @@ C_STRUCTS = new Proxy(C_STRUCTS, {
 cDefs = C_DEFINES = new Proxy(C_DEFINES, {
   get(target, prop, receiver) {
     if (!(prop in target)) {
-      throw new Error(`Missing C define ${prop}! If you just added it to struct_info.json, you need to ./emcc --clear-cache`);
+      throw new Error(`Missing C define ${prop}! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py`);
     }
     return target[prop]
   }
