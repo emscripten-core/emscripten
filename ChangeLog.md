@@ -20,6 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 3.1.35 (in development)
 -----------------------
+- `SDL_image` port was updated to version 2.6.0.
 - `-z` arguments are now passed directly to wasm-ld without the need for the
   `-Wl,` prefix.  This matches the behaviour of both clang and gcc. (#18956)
 - Reverted #18525 which runs the JS pre-processor over files passed via
