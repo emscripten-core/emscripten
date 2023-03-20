@@ -328,7 +328,7 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_connect__deps: ['$getSocketFromFD', '$getSocketAddress'],
-  __syscall_connect__sig: 'iipiiii',
+  __syscall_connect__sig: 'iippiii',
   __syscall_connect: function(fd, addr, addrlen, d1, d2, d3) {
     var sock = getSocketFromFD(fd);
     var info = getSocketAddress(addr, addrlen);
@@ -353,7 +353,7 @@ var SyscallsLibrary = {
     return newsock.stream.fd;
   },
   __syscall_bind__deps: ['$getSocketFromFD', '$getSocketAddress'],
-  __syscall_bind__sig: 'iipiiii',
+  __syscall_bind__sig: 'iippiii',
   __syscall_bind: function(fd, addr, addrlen, d1, d2, d3) {
     var sock = getSocketFromFD(fd);
     var info = getSocketAddress(addr, addrlen);
@@ -381,7 +381,7 @@ var SyscallsLibrary = {
     return msg.buffer.byteLength;
   },
   __syscall_sendto__deps: ['$getSocketFromFD', '$getSocketAddress'],
-  __syscall_sendto__sig: 'iipiipi',
+  __syscall_sendto__sig: 'iippipp',
   __syscall_sendto: function(fd, message, length, flags, addr, addr_len) {
     var sock = getSocketFromFD(fd);
     var dest = getSocketAddress(addr, addr_len, true);
@@ -655,7 +655,7 @@ var SyscallsLibrary = {
     FS.fchown(fd, owner, group);
     return 0;
   },
-  __syscall_getdents64__sig: 'iipi',
+  __syscall_getdents64__sig: 'iipp',
   __syscall_getdents64: function(fd, dirp, count) {
     var stream = SYSCALLS.getStreamFromFD(fd)
     if (!stream.getdents) {
@@ -899,7 +899,7 @@ var SyscallsLibrary = {
     FS.symlink(target, linkpath);
     return 0;
   },
-  __syscall_readlinkat__sig: 'vippp',
+  __syscall_readlinkat__sig: 'iippp',
   __syscall_readlinkat: function(dirfd, path, buf, bufsize) {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);

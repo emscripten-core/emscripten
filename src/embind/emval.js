@@ -327,7 +327,7 @@ var LibraryEmVal = {
   },
 
   _emval_as_int64__deps: ['$Emval', '$requireRegisteredType'],
-  _emval_as_int64__sig: 'dppp',
+  _emval_as_int64__sig: 'jpp',
   _emval_as_int64: function(handle, returnType, destructorsRef) {
     handle = Emval.toValue(handle);
     returnType = requireRegisteredType(returnType, 'emval::as');
@@ -335,7 +335,7 @@ var LibraryEmVal = {
   },
 
   _emval_as_uint64__deps: ['$Emval', '$requireRegisteredType'],
-  _emval_as_uint64__sig: 'dppp',
+  _emval_as_uint64__sig: 'jpp',
   _emval_as_uint64: function(handle, returnType, destructorsRef) {
     handle = Emval.toValue(handle);
     returnType = requireRegisteredType(returnType, 'emval::as');
@@ -381,7 +381,7 @@ var LibraryEmVal = {
     return !object;
   },
 
-  _emval_call__sig: 'ppppp',
+  _emval_call__sig: 'ppipp',
   _emval_call__deps: ['$emval_lookupTypes', '$Emval'],
   _emval_call: function(handle, argCount, argTypes, argv) {
     handle = Emval.toValue(handle);
@@ -427,7 +427,7 @@ var LibraryEmVal = {
   },
 
   $emval_registeredMethods: [],
-  _emval_get_method_caller__sig: 'ppp',
+  _emval_get_method_caller__sig: 'pip',
   _emval_get_method_caller__deps: ['$emval_addMethodCaller', '$emval_lookupTypes', '$new_', '$makeLegalFunctionName', '$emval_registeredMethods'],
   _emval_get_method_caller: function(argCount, argTypes) {
     var types = emval_lookupTypes(argCount, argTypes);
@@ -564,7 +564,7 @@ var LibraryEmVal = {
   },
 
   _emval_throw__deps: ['$Emval'],
-  _emval_throw__sig: 'vp',
+  _emval_throw__sig: 'ip',
   _emval_throw: function(object) {
     object = Emval.toValue(object);
     throw object;

@@ -61,7 +61,7 @@ var LibraryHtml5WebGL = {
 #else
   // When not in offscreen framebuffer mode, these functions are implemented
   // in JS and forwarded without any proxying.
-  emscripten_webgl_create_context__sig: 'iii',
+  emscripten_webgl_create_context__sig: 'ipp',
   emscripten_webgl_create_context: 'emscripten_webgl_do_create_context',
 
   emscripten_webgl_get_current_context__sig: 'i',
@@ -84,7 +84,7 @@ var LibraryHtml5WebGL = {
 #endif
   '$JSEvents', '$emscripten_webgl_power_preferences', '$findEventTarget', '$findCanvasEventTarget'],
   // This function performs proxying manually, depending on the style of context that is to be created.
-  emscripten_webgl_do_create_context__sig: 'iii',
+  emscripten_webgl_do_create_context__sig: 'ipp',
   emscripten_webgl_do_create_context: function(target, attributes) {
 #if ASSERTIONS
     assert(attributes);
@@ -243,7 +243,7 @@ var LibraryHtml5WebGL = {
   },
 
   emscripten_webgl_get_drawing_buffer_size__proxy: 'sync_on_webgl_context_handle_thread',
-  emscripten_webgl_get_drawing_buffer_size__sig: 'iiii',
+  emscripten_webgl_get_drawing_buffer_size__sig: 'iipp',
   emscripten_webgl_get_drawing_buffer_size: function(contextHandle, width, height) {
     var GLContext = GL.getContext(contextHandle);
 
@@ -290,7 +290,7 @@ var LibraryHtml5WebGL = {
   },
 
   emscripten_webgl_get_context_attributes__proxy: 'sync_on_webgl_context_handle_thread',
-  emscripten_webgl_get_context_attributes__sig: 'iii',
+  emscripten_webgl_get_context_attributes__sig: 'iip',
   emscripten_webgl_get_context_attributes__deps: ['$emscripten_webgl_power_preferences'],
   emscripten_webgl_get_context_attributes: function(c, a) {
     if (!a) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
@@ -321,7 +321,7 @@ var LibraryHtml5WebGL = {
   },
 
   emscripten_webgl_destroy_context__proxy: 'sync_on_webgl_context_handle_thread',
-  emscripten_webgl_destroy_context__sig: 'vi',
+  emscripten_webgl_destroy_context__sig: 'ii',
   emscripten_webgl_destroy_context: function(contextHandle) {
     if (GL.currentContext == contextHandle) GL.currentContext = 0;
     GL.deleteContext(contextHandle);
@@ -351,7 +351,7 @@ var LibraryHtml5WebGL = {
 #endif
   ],
   emscripten_webgl_enable_extension__proxy: 'sync_on_webgl_context_handle_thread',
-  emscripten_webgl_enable_extension__sig: 'iii',
+  emscripten_webgl_enable_extension__sig: 'iip',
   emscripten_webgl_enable_extension: function(contextHandle, extension) {
     var context = GL.getContext(contextHandle);
     var extString = UTF8ToString(extension);
@@ -436,7 +436,7 @@ var LibraryHtml5WebGL = {
   },
 
   emscripten_set_webglcontextlost_callback_on_thread__proxy: 'sync',
-  emscripten_set_webglcontextlost_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_webglcontextlost_callback_on_thread__sig: 'ippipp',
   emscripten_set_webglcontextlost_callback_on_thread__deps: ['$registerWebGlEventCallback'],
   emscripten_set_webglcontextlost_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerWebGlEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST') }}}, "webglcontextlost", targetThread);
@@ -444,7 +444,7 @@ var LibraryHtml5WebGL = {
   },
 
   emscripten_set_webglcontextrestored_callback_on_thread__proxy: 'sync',
-  emscripten_set_webglcontextrestored_callback_on_thread__sig: 'iiiiii',
+  emscripten_set_webglcontextrestored_callback_on_thread__sig: 'ippipp',
   emscripten_set_webglcontextrestored_callback_on_thread__deps: ['$registerWebGlEventCallback'],
   emscripten_set_webglcontextrestored_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     registerWebGlEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WEBGLCONTEXTRESTORED') }}}, "webglcontextrestored", targetThread);
@@ -457,47 +457,47 @@ var LibraryHtml5WebGL = {
     return !GL.contexts[contextHandle] || GL.contexts[contextHandle].GLctx.isContextLost(); // No context ~> lost context.
   },
 
-  emscripten_webgl_get_supported_extensions__sig: 'i',
+  emscripten_webgl_get_supported_extensions__sig: 'p',
   emscripten_webgl_get_supported_extensions__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_supported_extensions__deps: ['$stringToNewUTF8'],
   emscripten_webgl_get_supported_extensions: function() {
     return stringToNewUTF8(GLctx.getSupportedExtensions().join(' '));
   },
 
-  emscripten_webgl_get_program_parameter_d__sig: 'fii',
+  emscripten_webgl_get_program_parameter_d__sig: 'dii',
   emscripten_webgl_get_program_parameter_d__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_program_parameter_d: function(program, param) {
     return GLctx.getProgramParameter(GL.programs[program], param);
   },
 
-  emscripten_webgl_get_program_info_log_utf8__sig: 'ii',
+  emscripten_webgl_get_program_info_log_utf8__sig: 'pi',
   emscripten_webgl_get_program_info_log_utf8__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_program_info_log_utf8__deps: ['$stringToNewUTF8'],
   emscripten_webgl_get_program_info_log_utf8: function(program) {
     return stringToNewUTF8(GLctx.getProgramInfoLog(GL.programs[program]));
   },
 
-  emscripten_webgl_get_shader_parameter_d__sig: 'fii',
+  emscripten_webgl_get_shader_parameter_d__sig: 'dii',
   emscripten_webgl_get_shader_parameter_d__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_shader_parameter_d: function(shader, param) {
     return GLctx.getShaderParameter(GL.shaders[shader], param);
   },
 
-  emscripten_webgl_get_shader_info_log_utf8__sig: 'ii',
+  emscripten_webgl_get_shader_info_log_utf8__sig: 'pi',
   emscripten_webgl_get_shader_info_log_utf8__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_shader_info_log_utf8__deps: ['$stringToNewUTF8'],
   emscripten_webgl_get_shader_info_log_utf8: function(shader) {
     return stringToNewUTF8(GLctx.getShaderInfoLog(GL.shaders[shader]));
   },
 
-  emscripten_webgl_get_shader_source_utf8__sig: 'ii',
+  emscripten_webgl_get_shader_source_utf8__sig: 'pi',
   emscripten_webgl_get_shader_source_utf8__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_shader_source_utf8__deps: ['$stringToNewUTF8'],
   emscripten_webgl_get_shader_source_utf8: function(shader) {
     return stringToNewUTF8(GLctx.getShaderSource(GL.shaders[shader]));
   },
 
-  emscripten_webgl_get_vertex_attrib_d__sig: 'iii',
+  emscripten_webgl_get_vertex_attrib_d__sig: 'dii',
   emscripten_webgl_get_vertex_attrib_d__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_vertex_attrib_d: function(index, param) {
     return GLctx.getVertexAttrib(index, param);
@@ -510,35 +510,35 @@ var LibraryHtml5WebGL = {
     return obj && obj.name;
   },
 
-  emscripten_webgl_get_vertex_attrib_v__sig: 'iiiiii',
+  emscripten_webgl_get_vertex_attrib_v__sig: 'iiipii',
   emscripten_webgl_get_vertex_attrib_v__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_vertex_attrib_v__deps: ['$writeGLArray'],
   emscripten_webgl_get_vertex_attrib_v: function(index, param, dst, dstLength, dstType) {
     return writeGLArray(GLctx.getVertexAttrib(index, param), dst, dstLength, dstType);
   },
 
-  emscripten_webgl_get_uniform_d__sig: 'fii',
+  emscripten_webgl_get_uniform_d__sig: 'dii',
   emscripten_webgl_get_uniform_d__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_uniform_d__deps: ['$webglGetUniformLocation'],
   emscripten_webgl_get_uniform_d: function(program, location) {
     return GLctx.getUniform(GL.programs[program], webglGetUniformLocation(location));
   },
 
-  emscripten_webgl_get_uniform_v__sig: 'iiiiii',
+  emscripten_webgl_get_uniform_v__sig: 'iiipii',
   emscripten_webgl_get_uniform_v__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_uniform_v__deps: ['$writeGLArray', '$webglGetUniformLocation'],
   emscripten_webgl_get_uniform_v: function(program, location, dst, dstLength, dstType) {
     return writeGLArray(GLctx.getUniform(GL.programs[program], webglGetUniformLocation(location)), dst, dstLength, dstType);
   },
 
-  emscripten_webgl_get_parameter_v__sig: 'iiiii',
+  emscripten_webgl_get_parameter_v__sig: 'iipii',
   emscripten_webgl_get_parameter_v__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_parameter_v__deps: ['$writeGLArray'],
   emscripten_webgl_get_parameter_v: function(param, dst, dstLength, dstType) {
     return writeGLArray(GLctx.getParameter(param), dst, dstLength, dstType);
   },
 
-  emscripten_webgl_get_parameter_d__sig: 'fi',
+  emscripten_webgl_get_parameter_d__sig: 'di',
   emscripten_webgl_get_parameter_d__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_parameter_d: function(param) {
     return GLctx.getParameter(param);
@@ -551,14 +551,14 @@ var LibraryHtml5WebGL = {
     return obj && obj.name;
   },
 
-  emscripten_webgl_get_parameter_utf8__sig: 'ii',
+  emscripten_webgl_get_parameter_utf8__sig: 'pi',
   emscripten_webgl_get_parameter_utf8__deps: ['$stringToNewUTF8'],
   emscripten_webgl_get_parameter_utf8__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_parameter_utf8: function(param) {
     return stringToNewUTF8(GLctx.getParameter(param));
   },
 
-  emscripten_webgl_get_parameter_i64v__sig: 'vii',
+  emscripten_webgl_get_parameter_i64v__sig: 'vip',
   emscripten_webgl_get_parameter_i64v__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_parameter_i64v__deps: ['$writeI53ToI64'],
   emscripten_webgl_get_parameter_i64v: function(param, dst) {
