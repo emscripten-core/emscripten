@@ -2276,6 +2276,7 @@ def phase_linker_setup(options, state, newargs):
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
     settings.JS_LIBRARIES.append((0, 'library_wasmfs.js'))
     settings.REQUIRED_EXPORTS += ['_wasmfs_read_file']
+    settings.REQUIRED_EXPORTS += ['_wasmfs_getcwd']
     if settings.MAIN_MODULE:
       # Dynamic library support uses JS API internals, so include it all
       # TODO: rewriting more of the dynamic linking support code into wasm could
@@ -2289,7 +2290,6 @@ def phase_linker_setup(options, state, newargs):
       # JS API directly.
       settings.REQUIRED_EXPORTS += [
         '_wasmfs_write_file',
-        '_wasmfs_getcwd',
         '_wasmfs_mkdir',
         '_wasmfs_unlink',
         '_wasmfs_chdir',
