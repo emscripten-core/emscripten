@@ -52,17 +52,17 @@ mergeInto(LibraryManager.library, {
 #endif
     var info = promiseMap.get(id);
     switch (result) {
-      case {{{ cDefine('EM_PROMISE_FULFILL') }}}:
+      case {{{ cDefs.EM_PROMISE_FULFILL }}}:
         info.resolve(value);
         return;
-      case {{{ cDefine('EM_PROMISE_MATCH') }}}:
+      case {{{ cDefs.EM_PROMISE_MATCH }}}:
         info.resolve(getPromise(value));
         return;
-      case {{{ cDefine('EM_PROMISE_MATCH_RELEASE') }}}:
+      case {{{ cDefs.EM_PROMISE_MATCH_RELEASE }}}:
         info.resolve(getPromise(value));
         _emscripten_promise_destroy(value);
         return;
-      case {{{ cDefine('EM_PROMISE_REJECT') }}}:
+      case {{{ cDefs.EM_PROMISE_REJECT }}}:
         info.reject(value);
         return;
     }
@@ -110,15 +110,15 @@ mergeInto(LibraryManager.library, {
         stackRestore(stack);
       }
       switch (result) {
-        case {{{ cDefine('EM_PROMISE_FULFILL') }}}:
+        case {{{ cDefs.EM_PROMISE_FULFILL }}}:
           return resultVal;
-        case {{{ cDefine('EM_PROMISE_MATCH') }}}:
+        case {{{ cDefs.EM_PROMISE_MATCH }}}:
           return getPromise(resultVal);
-        case {{{ cDefine('EM_PROMISE_MATCH_RELEASE') }}}:
+        case {{{ cDefs.EM_PROMISE_MATCH_RELEASE }}}:
           var ret = getPromise(resultVal);
           _emscripten_promise_destroy(resultVal);
           return ret;
-        case {{{ cDefine('EM_PROMISE_REJECT') }}}:
+        case {{{ cDefs.EM_PROMISE_REJECT }}}:
           throw resultVal;
       }
 #if ASSERTIONS

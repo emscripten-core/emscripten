@@ -118,14 +118,14 @@ var LibraryHtml5WebGL = {
 #if PTHREADS && OFFSCREEN_FRAMEBUFFER
     // Create a WebGL context that is proxied to main thread if canvas was not found on worker, or if explicitly requested to do so.
     if (ENVIRONMENT_IS_PTHREAD) {
-      if (contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS') }}} ||
-         (!canvas && contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK') }}})) {
+      if (contextAttributes.proxyContextToMainThread === {{{ cDefs.EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS }}} ||
+         (!canvas && contextAttributes.proxyContextToMainThread === {{{ cDefs.EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK }}})) {
         // When WebGL context is being proxied via the main thread, we must render using an offscreen FBO render target to avoid WebGL's
         // "implicit swap when callback exits" behavior. TODO: If OffscreenCanvas is supported, explicitSwapControl=true and still proxying,
         // then this can be avoided, since OffscreenCanvas enables explicit swap control.
 #if GL_DEBUG
-        if (contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS') }}}) dbg('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS enabled, proxying WebGL rendering from pthread to main thread.');
-        if (!canvas && contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK') }}}) dbg('Specified canvas target "' + targetStr + '" is not an OffscreenCanvas in the current pthread, but EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK is set. Proxying WebGL rendering from pthread to main thread.');
+        if (contextAttributes.proxyContextToMainThread === {{{ cDefs.EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS }}}) dbg('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS enabled, proxying WebGL rendering from pthread to main thread.');
+        if (!canvas && contextAttributes.proxyContextToMainThread === {{{ cDefs.EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK }}}) dbg('Specified canvas target "' + targetStr + '" is not an OffscreenCanvas in the current pthread, but EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK is set. Proxying WebGL rendering from pthread to main thread.');
         dbg('Performance warning: forcing renderViaOffscreenBackBuffer=true and preserveDrawingBuffer=true since proxying WebGL rendering.');
 #endif
         // We will be proxying - if OffscreenCanvas is supported, we can proxy a bit more efficiently by avoiding having to create an Offscreen FBO.
@@ -220,7 +220,7 @@ var LibraryHtml5WebGL = {
   emscripten_webgl_make_context_current_calling_thread: function(contextHandle) {
     var success = GL.makeContextCurrent(contextHandle);
     if (success) GL.currentContextIsProxied = false; // If succeeded above, we will have a local GL context from this thread (worker or main).
-    return success ? {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}} : {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
+    return success ? {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}} : {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
   },
   // This function gets called in a pthread, after it has successfully activated (with make_current()) a proxied GL context to itself from the main thread.
   // In this scenario, the pthread does not hold a high-level JS object to the GL context, because it lives on the main thread, in which case we record
@@ -234,7 +234,7 @@ var LibraryHtml5WebGL = {
   emscripten_webgl_make_context_current__sig: 'ii',
   emscripten_webgl_make_context_current: function(contextHandle) {
     var success = GL.makeContextCurrent(contextHandle);
-    return success ? {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}} : {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
+    return success ? {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}} : {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
   },
 #endif
 
@@ -248,11 +248,11 @@ var LibraryHtml5WebGL = {
     var GLContext = GL.getContext(contextHandle);
 
     if (!GLContext || !GLContext.GLctx || !width || !height) {
-      return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
+      return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
     }
     {{{ makeSetValue('width', '0', 'GLContext.GLctx.drawingBufferWidth', 'i32') }}};
     {{{ makeSetValue('height', '0', 'GLContext.GLctx.drawingBufferHeight', 'i32') }}};
-    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+    return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
   emscripten_webgl_do_commit_frame__sig: 'i',
@@ -265,7 +265,7 @@ var LibraryHtml5WebGL = {
 #if GL_DEBUG
       dbg('emscripten_webgl_commit_frame() failed: no GL context set current via emscripten_webgl_make_context_current()!');
 #endif
-      return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
+      return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     }
 
 #if OFFSCREEN_FRAMEBUFFER
@@ -274,30 +274,30 @@ var LibraryHtml5WebGL = {
 #if GL_DEBUG && OFFSCREENCANVAS_SUPPORT
       if (GL.currentContext.GLctx.commit) dbg('emscripten_webgl_commit_frame(): Offscreen framebuffer should never have gotten created when canvas is in OffscreenCanvas mode, since it is redundant and not necessary');
 #endif
-      return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+      return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
     }
 #endif
     if (!GL.currentContext.attributes.explicitSwapControl) {
 #if GL_DEBUG
       dbg('emscripten_webgl_commit_frame() cannot be called for canvases with implicit swap control mode!');
 #endif
-      return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
+      return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     }
     // We would do GL.currentContext.GLctx.commit(); here, but the current implementation
     // in browsers has removed it - swap is implicit, so this function is a no-op for now
     // (until/unless the spec changes).
-    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+    return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
   emscripten_webgl_get_context_attributes__proxy: 'sync_on_webgl_context_handle_thread',
   emscripten_webgl_get_context_attributes__sig: 'iip',
   emscripten_webgl_get_context_attributes__deps: ['$emscripten_webgl_power_preferences'],
   emscripten_webgl_get_context_attributes: function(c, a) {
-    if (!a) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
+    if (!a) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
     c = GL.contexts[c];
-    if (!c) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
+    if (!c) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     var t = c.GLctx;
-    if (!t) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
+    if (!t) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     t = t.getContextAttributes();
 
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.alpha, 't.alpha', 'i32') }}};
@@ -317,7 +317,7 @@ var LibraryHtml5WebGL = {
 #if GL_SUPPORT_EXPLICIT_SWAP_CONTROL
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl, 'c.attributes.explicitSwapControl', 'i32') }}};
 #endif
-    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+    return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
   emscripten_webgl_destroy_context__proxy: 'sync_on_webgl_context_handle_thread',
@@ -439,16 +439,16 @@ var LibraryHtml5WebGL = {
   emscripten_set_webglcontextlost_callback_on_thread__sig: 'ippipp',
   emscripten_set_webglcontextlost_callback_on_thread__deps: ['$registerWebGlEventCallback'],
   emscripten_set_webglcontextlost_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
-    registerWebGlEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST') }}}, "webglcontextlost", targetThread);
-    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+    registerWebGlEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST }}}, "webglcontextlost", targetThread);
+    return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
   emscripten_set_webglcontextrestored_callback_on_thread__proxy: 'sync',
   emscripten_set_webglcontextrestored_callback_on_thread__sig: 'ippipp',
   emscripten_set_webglcontextrestored_callback_on_thread__deps: ['$registerWebGlEventCallback'],
   emscripten_set_webglcontextrestored_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
-    registerWebGlEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WEBGLCONTEXTRESTORED') }}}, "webglcontextrestored", targetThread);
-    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+    registerWebGlEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_WEBGLCONTEXTRESTORED }}}, "webglcontextrestored", targetThread);
+    return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
   emscripten_is_webgl_context_lost__proxy: 'sync_on_webgl_context_handle_thread',

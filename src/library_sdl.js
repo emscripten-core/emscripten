@@ -65,7 +65,7 @@ var LibrarySDL = {
       volume: 1.0
     },
     mixerFrequency: 22050,
-    mixerFormat: {{{ cDefine('AUDIO_S16LSB') }}},
+    mixerFormat: {{{ cDefs.AUDIO_S16LSB }}},
     mixerNumChannels: 2,
     mixerChunkSize: 1024,
     channelMinimumNumber: 0,
@@ -317,7 +317,7 @@ var LibrarySDL = {
 #if ASSERTIONS
       // Canvas screens are always RGBA.
       var format = {{{ makeGetValue('fmt', C_STRUCTS.SDL_PixelFormat.format, 'i32') }}};
-      if (format != {{{ cDefine('SDL_PIXELFORMAT_RGBA8888') }}}) {
+      if (format != {{{ cDefs.SDL_PIXELFORMAT_RGBA8888 }}}) {
         warnOnce('Unsupported pixel format!');
       }
 #endif
@@ -377,7 +377,7 @@ var LibrarySDL = {
 
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.refcount, '1', 'i32') }}};
 
-      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.format, cDefine('SDL_PIXELFORMAT_RGBA8888'), 'i32') }}};
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.format, cDefs.SDL_PIXELFORMAT_RGBA8888, 'i32') }}};
       {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.palette, '0', 'i32') }}};// TODO
       {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.BitsPerPixel, 'bpp * 8', 'i8') }}};
       {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.BytesPerPixel, 'bpp', 'i8') }}};
@@ -655,7 +655,7 @@ var LibrarySDL = {
               type: 'touchmove',
               touch: {
                 identifier: 0,
-                deviceID: {{{ cDefine('SDL_TOUCH_MOUSEID') }}},
+                deviceID: {{{ cDefs.SDL_TOUCH_MOUSEID }}},
                 pageX: event.pageX,
                 pageY: event.pageY
               }
@@ -691,7 +691,7 @@ var LibrarySDL = {
               type: 'touchstart',
               touch: {
                 identifier: 0,
-                deviceID: {{{ cDefine('SDL_TOUCH_MOUSEID') }}},
+                deviceID: {{{ cDefs.SDL_TOUCH_MOUSEID }}},
                 pageX: event.pageX,
                 pageY: event.pageY
               }
@@ -707,7 +707,7 @@ var LibrarySDL = {
               type: 'touchend',
               touch: {
                 identifier: 0,
-                deviceID: {{{ cDefine('SDL_TOUCH_MOUSEID') }}},
+                deviceID: {{{ cDefs.SDL_TOUCH_MOUSEID }}},
                 pageX: event.pageX,
                 pageY: event.pageY
               }
@@ -1197,16 +1197,16 @@ var LibrarySDL = {
         if (channelData.length != sizeSamplesPerChannel) {
           throw 'Web Audio output buffer length mismatch! Destination size: ' + channelData.length + ' samples vs expected ' + sizeSamplesPerChannel + ' samples!';
         }
-        if (audio.format == {{{ cDefine('AUDIO_S16LSB') }}}) {
+        if (audio.format == {{{ cDefs.AUDIO_S16LSB }}}) {
           for (var j = 0; j < sizeSamplesPerChannel; ++j) {
             channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*2', 'i16') }}}) / 0x8000;
           }
-        } else if (audio.format == {{{ cDefine('AUDIO_U8') }}}) {
+        } else if (audio.format == {{{ cDefs.AUDIO_U8 }}}) {
           for (var j = 0; j < sizeSamplesPerChannel; ++j) {
             var v = ({{{ makeGetValue('heapPtr', 'j*numChannels + c', 'i8') }}});
             channelData[j] = ((v >= 0) ? v-128 : v+128) /128;
           }
-        } else if (audio.format == {{{ cDefine('AUDIO_F32') }}}) {
+        } else if (audio.format == {{{ cDefs.AUDIO_F32 }}}) {
           for (var j = 0; j < sizeSamplesPerChannel; ++j) {
             channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*4', 'float') }}});
           }
@@ -2409,11 +2409,11 @@ var LibrarySDL = {
         timer: null
       };
       // The .silence field tells the constant sample value that corresponds to the safe un-skewed silence value for the wave data.
-      if (SDL.audio.format == {{{ cDefine('AUDIO_U8') }}}) {
+      if (SDL.audio.format == {{{ cDefs.AUDIO_U8 }}}) {
         SDL.audio.silence = 128; // Audio ranges in [0, 255], so silence is half-way in between.
-      } else if (SDL.audio.format == {{{ cDefine('AUDIO_S16LSB') }}}) {
+      } else if (SDL.audio.format == {{{ cDefs.AUDIO_S16LSB }}}) {
         SDL.audio.silence = 0; // Signed data in range [-32768, 32767], silence is 0.
-      } else if (SDL.audio.format == {{{ cDefine('AUDIO_F32') }}}) {
+      } else if (SDL.audio.format == {{{ cDefs.AUDIO_F32 }}}) {
         SDL.audio.silence = 0.0; // Float data in range [-1.0, 1.0], silence is 0.0
       } else {
         throw 'Invalid SDL audio format ' + SDL.audio.format + '!';
@@ -2449,11 +2449,11 @@ var LibrarySDL = {
       }
 
       var totalSamples = SDL.audio.samples*SDL.audio.channels;
-      if (SDL.audio.format == {{{ cDefine('AUDIO_U8') }}}) {
+      if (SDL.audio.format == {{{ cDefs.AUDIO_U8 }}}) {
         SDL.audio.bytesPerSample = 1;
-      } else if (SDL.audio.format == {{{ cDefine('AUDIO_S16LSB') }}}) {
+      } else if (SDL.audio.format == {{{ cDefs.AUDIO_S16LSB }}}) {
         SDL.audio.bytesPerSample = 2;
-      } else if (SDL.audio.format == {{{ cDefine('AUDIO_F32') }}}) {
+      } else if (SDL.audio.format == {{{ cDefs.AUDIO_F32 }}}) {
         SDL.audio.bytesPerSample = 4;
       } else {
         throw 'Invalid SDL audio format ' + SDL.audio.format + '!';

@@ -13252,3 +13252,16 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     # See https://github.com/llvm/llvm-project/commit/c800391fb974cdaaa62bd74435f76408c2e5ceae
     err = self.expect_fail([EMCC, '-pthreads', '-c', test_file('hello_world.c')])
     self.assertContained('emcc: error: unrecognized command-line option `-pthreads`; did you mean `-pthread`?', err)
+
+  def test_missing_struct_info(self):
+    create_file('lib.js', '''
+      {{{ C_STRUCTS.Foo }}}
+    ''')
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js'])
+    self.assertContained('Error: Missing C struct Foo! If you just added it to struct_info.json, you need to ./emcc --clear-cache', err)
+
+    create_file('lib.js', '''
+      {{{ C_DEFINES.Foo }}}
+    ''')
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js'])
+    self.assertContained('Error: Missing C define Foo! If you just added it to struct_info.json, you need to ./emcc --clear-cache', err)

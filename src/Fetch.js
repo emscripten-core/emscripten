@@ -253,15 +253,15 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   var dataPtr = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.requestData }}} >> 2];
   var dataLength = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.requestDataSize }}} >> 2];
 
-  var fetchAttrLoadToMemory = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_LOAD_TO_MEMORY') }}});
-  var fetchAttrStreamData = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_STREAM_DATA') }}});
+  var fetchAttrLoadToMemory = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_LOAD_TO_MEMORY }}});
+  var fetchAttrStreamData = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_STREAM_DATA }}});
 #if FETCH_SUPPORT_INDEXEDDB
-  var fetchAttrPersistFile = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_PERSIST_FILE') }}});
+  var fetchAttrPersistFile = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_PERSIST_FILE }}});
 #endif
-  var fetchAttrAppend = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_APPEND') }}});
-  var fetchAttrReplace = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_REPLACE') }}});
-  var fetchAttrSynchronous = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_SYNCHRONOUS') }}});
-  var fetchAttrWaitable = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_WAITABLE') }}});
+  var fetchAttrAppend = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_APPEND }}});
+  var fetchAttrReplace = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_REPLACE }}});
+  var fetchAttrSynchronous = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_SYNCHRONOUS }}});
+  var fetchAttrWaitable = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_WAITABLE }}});
 
   var userNameStr = userName ? UTF8ToString(userName) : undefined;
   var passwordStr = password ? UTF8ToString(password) : undefined;
@@ -449,15 +449,15 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
   var onprogress = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.onprogress }}} >> 2];
   var onreadystatechange = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.onreadystatechange }}} >> 2];
   var fetchAttributes = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.attributes }}} >> 2];
-  var fetchAttrLoadToMemory = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_LOAD_TO_MEMORY') }}});
-  var fetchAttrStreamData = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_STREAM_DATA') }}});
+  var fetchAttrLoadToMemory = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_LOAD_TO_MEMORY }}});
+  var fetchAttrStreamData = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_STREAM_DATA }}});
 #if FETCH_SUPPORT_INDEXEDDB
-  var fetchAttrPersistFile = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_PERSIST_FILE') }}});
-  var fetchAttrNoDownload = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_NO_DOWNLOAD') }}});
+  var fetchAttrPersistFile = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_PERSIST_FILE }}});
+  var fetchAttrNoDownload = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_NO_DOWNLOAD }}});
 #endif
-  var fetchAttrAppend = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_APPEND') }}});
-  var fetchAttrReplace = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_REPLACE') }}});
-  var fetchAttrSynchronous = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_SYNCHRONOUS') }}});
+  var fetchAttrAppend = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_APPEND }}});
+  var fetchAttrReplace = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_REPLACE }}});
+  var fetchAttrSynchronous = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_SYNCHRONOUS }}});
 
   function doCallback(f) {
     if (fetchAttrSynchronous) {
