@@ -643,6 +643,12 @@ class HTTPHandler(SimpleHTTPRequestHandler):
       guess_file_type = guess_file_type[:-2]
       if guess_file_type.endswith('.'):
         guess_file_type = guess_file_type[:-1]
+    elif path.lower().endswith('br'):
+      self.send_header('Content-Encoding', 'br')
+      logv('Serving ' + path + ' as brotli-compressed.')
+      guess_file_type = guess_file_type[:-2]
+      if guess_file_type.endswith('.'):
+        guess_file_type = guess_file_type[:-1]
 
     ctype = self.guess_type(guess_file_type)
     if guess_file_type.lower().endswith('.wasm'):
