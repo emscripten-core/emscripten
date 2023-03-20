@@ -22,6 +22,11 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 - `-z` arguments are now passed directly to wasm-ld without the need for the
   `-Wl,` prefix.  This matches the behaviour of both clang and gcc. (#18956)
+- Reverted #18525 which runs the JS pre-processor over files passed via
+  --pre-js and --post-js.  It turned out this change caused issue for several
+  folks who had JS files with lines that start with `#` so can't be run through
+  the pre-processor.  If folks want to re-enable this we can looks into ways to
+  make it conditional/optional.
 
 3.1.34 - 03/14/23
 -----------------

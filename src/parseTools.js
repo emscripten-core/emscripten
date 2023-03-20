@@ -991,7 +991,7 @@ function getEntryFunction() {
 function preJS() {
   let result = '';
   for (const fileName of PRE_JS_FILES) {
-    result += preprocess(fileName);
+    result += read(fileName);
   }
   return result;
 }

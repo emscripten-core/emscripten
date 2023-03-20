@@ -457,6 +457,12 @@ function ${name}(${args}) {
     print(`// end include: ${fileName}`);
   }
 
+  function includeFileRaw(fileName) {
+    print(`// include: ${fileName}`);
+    print(read(fileName));
+    print(`// end include: ${fileName}`);
+  }
+
   function finalCombiner() {
     const splitPostSets = splitter(postSets, (x) => x.symbol && x.dependencies);
     postSets = splitPostSets.leftIn;
@@ -525,7 +531,7 @@ function ${name}(${args}) {
     includeFile(postFile);
 
     for (const fileName of POST_JS_FILES) {
-      includeFile(fileName);
+      includeFileRaw(fileName);
     }
 
     print('//FORWARDED_DATA:' + JSON.stringify({
