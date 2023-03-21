@@ -514,7 +514,6 @@ def generate_js_symbols():
   # TODO(sbc): Find a way to optimize this.  Potentially we could add a super-set
   # mode of the js compiler that would generate a list of all possible symbols
   # that could be checked in.
-  emscripten.generate_struct_info()
   _, forwarded_data = emscripten.compile_javascript(symbols_only=True)
   # When running in symbols_only mode compiler.js outputs a flat list of C symbols.
   return json.loads(forwarded_data)

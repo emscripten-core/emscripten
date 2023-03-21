@@ -207,9 +207,6 @@ var EXPECT_MAIN = true;
 // MODULARIZE, and returned from the factory function.
 var EXPORT_READY_PROMISE = true;
 
-// struct_info that is either generated or cached
-var STRUCT_INFO = '';
-
 // If true, building against Emscripten's wasm heap memory profiler.
 var MEMORYPROFILER = false;
 

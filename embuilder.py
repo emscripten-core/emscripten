@@ -24,7 +24,6 @@ from tools import system_libs
 from tools import ports
 from tools.settings import settings
 from tools.system_libs import USE_NINJA
-import emscripten
 
 
 # Minimal subset of targets used by CI systems to build enough to useful
@@ -61,7 +60,6 @@ MINIMAL_TASKS = [
     'libsockets',
     'libstubs',
     'libstubs-debug',
-    'struct_info',
     'libstandalonewasm',
     'crt1',
     'crt1_proxy_main',
@@ -150,11 +148,6 @@ def build_port(port_name):
 def get_system_tasks():
   system_libraries = system_libs.Library.get_all_variations()
   system_tasks = list(system_libraries.keys())
-  # This is needed to build the generated_struct_info.json file.
-  # It is not a system library, but it needs to be built before
-  # running with FROZEN_CACHE.
-  system_tasks += ['struct_info']
-
   return system_libraries, system_tasks
 
 
@@ -257,11 +250,6 @@ def main():
         cache.erase_file('sysroot_install.stamp')
       if do_build:
         system_libs.ensure_sysroot()
-    elif what == 'struct_info':
-      if do_clear:
-        emscripten.clear_struct_info()
-      if do_build:
-        emscripten.generate_struct_info()
     elif what in PORTS:
       if do_clear:
         clear_port(what)
