@@ -462,7 +462,7 @@
         ]
     },
     {
-        "file": "limit.h",
+        "file": "limits.h",
         "defines": [
             "PATH_MAX"
         ]
