@@ -246,7 +246,7 @@ var LibraryDylink = {
   _dlsym_js__deps: [function() { error(dlopenMissingError); }],
   _dlsym_catchup_js__deps: [function() { error(dlopenMissingError); }],
   dlopen__deps: [function() { error(dlopenMissingError); }],
-  _emscripten_dlopen__deps: [function() { error(dlopenMissingError); }],
+  emscripten_dlopen__deps: [function() { error(dlopenMissingError); }],
   __dlsym__deps: [function() { error(dlopenMissingError); }],
   dladdr__deps: [function() { error(dlopenMissingError); }],
 #else
@@ -256,7 +256,7 @@ var LibraryDylink = {
   _dlsym_js__deps: ['$dlopenMissingError'],
   _dlsym_catchup_js__deps: ['$dlopenMissingError'],
   dlopen__deps: ['$dlopenMissingError'],
-  _emscripten_dlopen__deps: ['$dlopenMissingError'],
+  emscripten_dlopen__deps: ['$dlopenMissingError'],
   __dlsym__deps: ['$dlopenMissingError'],
   dladdr__deps: ['$dlopenMissingError'],
 #endif
@@ -275,7 +275,7 @@ var LibraryDylink = {
   dlopen: function(handle) {
     abort(dlopenMissingError);
   },
-  _emscripten_dlopen: function(handle, onsuccess, onerror, user_data) {
+  emscripten_dlopen: function(handle, onsuccess, onerror, user_data) {
     abort(dlopenMissingError);
   },
   __dlsym: function(handle, symbol) {
