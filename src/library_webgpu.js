@@ -2103,24 +2103,14 @@ var LibraryWebGPU = {
 
   wgpuComputePassEncoderDispatchWorkgroups: function(passId, x, y, z) {
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
-    // TODO(shrekshao): Remove deprecated dispatch path
-    if (pass["dispatchWorkgroups"]) {
-      pass["dispatchWorkgroups"](x, y, z);
-    } else {
-      pass["dispatch"](x, y, z);
-    }
+    pass["dispatchWorkgroups"](x, y, z);
   },
   wgpuComputePassEncoderDispatchWorkgroupsIndirect: function(passId, indirectBufferId, {{{ defineI64Param('indirectOffset') }}}) {
     {{{ receiveI64ParamAsI32s('indirectOffset') }}}
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
     var indirectOffset = {{{ gpu.makeI32I32ToU53('indirectOffset_low', 'indirectOffset_high') }}};
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
-    // TODO(shrekshao): Remove deprecated dispatchIndirect path
-    if (pass["dispatchWorkgroupsIndirect"]) {
-      pass["dispatchWorkgroupsIndirect"](indirectBuffer, indirectOffset);
-    } else {
-      pass["dispatchIndirect"](indirectBuffer, indirectOffset);
-    }
+    pass["dispatchWorkgroupsIndirect"](indirectBuffer, indirectOffset);
   },
 
   wgpuComputePassEncoderBeginPipelineStatisticsQuery: function(passId, querySetId, queryIndex) {
