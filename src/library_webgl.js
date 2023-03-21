@@ -4172,18 +4172,18 @@ var LibraryGL = {
   glFrontFace__sig: 'vi',
 };
 
-// Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
-var glFuncs = [[0, 'finish flush'],
- [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation isEnabled*'],
- [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset vertexAttrib1f'],
- [3, 'texParameteri texParameterf vertexAttrib2f stencilFunc stencilOp'],
- [4, 'viewport clearColor scissor vertexAttrib3f renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
- [5, 'vertexAttrib4f'],
- [6, ''],
- [7, ''],
- [8, 'copyTexImage2D copyTexSubImage2D'],
- [9, ''],
- [10, '']];
+// Simple pass-through functions.
+// - Starred ones have return values.
+// - [X] ones have X in the C name but not in the JS name
+var glPassthroughFuncs = [
+  [0, 'finish flush'],
+  [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation isEnabled*'],
+  [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset vertexAttrib1f'],
+  [3, 'texParameteri texParameterf vertexAttrib2f stencilFunc stencilOp'],
+  [4, 'viewport clearColor scissor vertexAttrib3f renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
+  [5, 'vertexAttrib4f'],
+  [8, 'copyTexImage2D copyTexSubImage2D'],
+];
 
 function createGLPassthroughFunctions(lib, funcs) {
   funcs.forEach((data) => {
@@ -4194,11 +4194,10 @@ function createGLPassthroughFunctions(lib, funcs) {
     const returnStub = '(function(' + args + ') { return GLctx[\'NAME\'](' + args + ') })';
     const sigEnd = range(num).map(() => 'i').join('');
     names.split(' ').forEach((name) => {
-      if (name.length == 0) return;
       let stub = plainStub;
       let sig;
-      if (name[name.length-1] == '*') {
-        name = name.substr(0, name.length-1);
+      if (name.endsWith('*')) {
+        name = name.slice(0, -1);
         stub = returnStub;
         sig = 'i' + sigEnd;
       } else {
@@ -4207,7 +4206,7 @@ function createGLPassthroughFunctions(lib, funcs) {
       let cName = name;
       if (name.includes('[')) {
         cName = name.replace('[', '').replace(']', '');
-        name = cName.substr(0, cName.length-1);
+        name = cName.slice(0, -1);
       }
       cName = 'gl' + cName[0].toUpperCase() + cName.substr(1);
       assert(!(cName in lib), "Cannot reimplement the existing function " + cName);
@@ -4217,7 +4216,7 @@ function createGLPassthroughFunctions(lib, funcs) {
   });
 }
 
-createGLPassthroughFunctions(LibraryGL, glFuncs);
+createGLPassthroughFunctions(LibraryGL, glPassthroughFuncs);
 
 autoAddDeps(LibraryGL, '$GL');
 
