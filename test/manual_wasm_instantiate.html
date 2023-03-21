@@ -173,7 +173,7 @@
           console.log('wasm download finished, begin instantiating');
           var wasmInstantiate = WebAssembly.instantiate(new Uint8Array(wasmBinary), imports).then(function(output) {
             // When overriding instantiateWasm, in asan builds, we also need
-            // to take case of creating the WasmOffsetConverter
+            // to take care of creating the WasmOffsetConverter
             if (typeof WasmOffsetConverter != "undefined") {
               wasmOffsetConverter = new WasmOffsetConverter(wasmBinary, output.module);
             }
