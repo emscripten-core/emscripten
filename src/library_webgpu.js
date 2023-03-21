@@ -2008,7 +2008,6 @@ var LibraryWebGPU = {
 
   wgpuTextureGetFormat: function(textureId) {
     var texture = WebGPU.mgrTexture.get(textureId);
-    // TODO(#18962): use reverse-lookup table.
     // Should return the enum integer instead of string.
     return WebGPU.TextureFormat.indexOf(texture.format);
   },
