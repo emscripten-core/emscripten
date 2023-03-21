@@ -246,8 +246,12 @@ global.LibraryManager = {
 };
 
 if (!BOOTSTRAPPING_STRUCT_INFO) {
+  let structInfoFile = 'generated_struct_info32.json';
+  if (MEMORY64) {
+    structInfoFile = 'generated_struct_info64.json'
+  }
   // Load struct and define information.
-  const temp = JSON.parse(read(STRUCT_INFO));
+  const temp = JSON.parse(read(structInfoFile));
   C_STRUCTS = temp.structs;
   C_DEFINES = temp.defines;
 } else {
@@ -255,10 +259,30 @@ if (!BOOTSTRAPPING_STRUCT_INFO) {
   C_DEFINES = {};
 }
 
-// Safe way to access a C define. We check that we don't add library functions with missing defines.
+// Use proxy objects for C_DEFINES and C_STRUCTS so that we can give useful
+// error messages.
+C_STRUCTS = new Proxy(C_STRUCTS, {
+  get(target, prop, receiver) {
+    if (!(prop in target)) {
+      throw new Error(`Missing C struct ${prop}! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py`);
+    }
+    return target[prop]
+  }
+});
+
+cDefs = C_DEFINES = new Proxy(C_DEFINES, {
+  get(target, prop, receiver) {
+    if (!(prop in target)) {
+      throw new Error(`Missing C define ${prop}! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py`);
+    }
+    return target[prop]
+  }
+});
+
+// Legacy function that existed solely to give error message.  These are now
+// provided by the cDefs proxy object above.
 function cDefine(key) {
-  if (key in C_DEFINES) return C_DEFINES[key];
-  throw new Error(`Missing C define ${key}! If you just added it to struct_info.json, you need to ./emcc --clear-cache`);
+  return cDefs[key];
 }
 
 function isFSPrefixed(name) {
@@ -365,7 +389,7 @@ function exportRuntime() {
   // them via EXPORTED_RUNTIME_METHODS for backwards compat.
   runtimeElements = runtimeElements.concat(WASM_SYSTEM_EXPORTS);
 
-  if (USE_PTHREADS && ALLOW_MEMORY_GROWTH) {
+  if (PTHREADS && ALLOW_MEMORY_GROWTH) {
     runtimeElements = runtimeElements.concat([
       'GROWABLE_HEAP_I8',
       'GROWABLE_HEAP_U8',

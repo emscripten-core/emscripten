@@ -15,11 +15,11 @@ assert(INITIAL_MEMORY >= {{{STACK_SIZE}}}, 'INITIAL_MEMORY should be larger than
 
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 
-#if USE_PTHREADS
+#if PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
   wasmMemory = Module['wasmMemory'];
 } else {
-#endif // USE_PTHREADS
+#endif // PTHREADS
 
 #if expectToReceiveOnModule('wasmMemory')
   if (Module['wasmMemory']) {
@@ -55,7 +55,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
   }
 
-#if USE_PTHREADS
+#if PTHREADS
 }
 #endif
 

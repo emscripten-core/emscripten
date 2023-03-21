@@ -1038,10 +1038,6 @@ int __syscall_renameat(int olddirfd,
   return 0;
 }
 
-int __syscall_rename(intptr_t oldpath, intptr_t newpath) {
-  return __syscall_renameat(AT_FDCWD, oldpath, AT_FDCWD, newpath);
-}
-
 // TODO: Test this with non-AT_FDCWD values.
 int __syscall_symlinkat(intptr_t target, int newdirfd, intptr_t linkpath) {
   auto parsed = path::parseParent((char*)linkpath, newdirfd);
@@ -1663,7 +1659,7 @@ int __syscall_accept4(int sockfd,
 }
 
 int __syscall_bind(
-  int sockfd, intptr_t addr, size_t alen, int dummy, int dymmy2, int dummy3) {
+  int sockfd, intptr_t addr, size_t alen, int dummy, int dummy2, int dummy3) {
   return -ENOSYS;
 }
 

@@ -26,7 +26,7 @@ var WasiLibrary = {
 #endif
     EXITSTATUS = code;
     if (!keepRuntimeAlive()) {
-#if USE_PTHREADS
+#if PTHREADS
       PThread.terminateAllThreads();
 #endif
 #if expectToReceiveOnModule('onExit')
@@ -140,10 +140,10 @@ var WasiLibrary = {
 #endif
 
   $checkWasiClock: function(clock_id) {
-    return clock_id == {{{ cDefine('__WASI_CLOCKID_REALTIME') }}} ||
-           clock_id == {{{ cDefine('__WASI_CLOCKID_MONOTONIC') }}} ||
-           clock_id == {{{ cDefine('__WASI_CLOCKID_PROCESS_CPUTIME_ID') }}} ||
-           clock_id == {{{ cDefine('__WASI_CLOCKID_THREAD_CPUTIME_ID') }}};
+    return clock_id == {{{ cDefs.__WASI_CLOCKID_REALTIME }}} ||
+           clock_id == {{{ cDefs.__WASI_CLOCKID_MONOTONIC }}} ||
+           clock_id == {{{ cDefs.__WASI_CLOCKID_PROCESS_CPUTIME_ID }}} ||
+           clock_id == {{{ cDefs.__WASI_CLOCKID_THREAD_CPUTIME_ID }}};
   },
 
   // TODO: the i64 in the API here must be legalized for this JS code to run,
@@ -155,16 +155,16 @@ var WasiLibrary = {
   clock_time_get__deps: ['emscripten_get_now', '$nowIsMonotonic', '$checkWasiClock'],
   clock_time_get: function(clk_id, {{{ defineI64Param('ignored_precision') }}}, ptime) {
     if (!checkWasiClock(clk_id)) {
-      return {{{ cDefine('EINVAL') }}};
+      return {{{ cDefs.EINVAL }}};
     }
     var now;
     // all wasi clocks but realtime are monotonic
-    if (clk_id === {{{ cDefine('__WASI_CLOCKID_REALTIME') }}}) {
+    if (clk_id === {{{ cDefs.__WASI_CLOCKID_REALTIME }}}) {
       now = Date.now();
     } else if (nowIsMonotonic) {
       now = _emscripten_get_now();
     } else {
-      return {{{ cDefine('ENOSYS') }}};
+      return {{{ cDefs.ENOSYS }}};
     }
     // "now" is in ms, and wasi times are in ns.
     var nsec = Math.round(now * 1000 * 1000);
@@ -178,16 +178,16 @@ var WasiLibrary = {
   clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_res', '$nowIsMonotonic', '$checkWasiClock'],
   clock_res_get: function(clk_id, pres) {
     if (!checkWasiClock(clk_id)) {
-      return {{{ cDefine('EINVAL') }}};
+      return {{{ cDefs.EINVAL }}};
     }
     var nsec;
     // all wasi clocks but realtime are monotonic
-    if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
+    if (clk_id === {{{ cDefs.CLOCK_REALTIME }}}) {
       nsec = 1000 * 1000; // educated guess that it's milliseconds
     } else if (nowIsMonotonic) {
       nsec = _emscripten_get_now_res();
     } else {
-      return {{{ cDefine('ENOSYS') }}};
+      return {{{ cDefs.ENOSYS }}};
     }
     {{{ makeSetValue('pres', 0, 'nsec >>> 0', 'i32') }}};
     {{{ makeSetValue('pres', 4, '(nsec / Math.pow(2, 32)) >>> 0', 'i32') }}};
@@ -297,7 +297,7 @@ var WasiLibrary = {
   fd_pwrite__sig: 'iippjp',
   fd_pwrite: function(fd, iov, iovcnt, {{{ defineI64Param('offset') }}}, pnum) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    {{{ receiveI64ParamAsI53('offset', cDefine('EOVERFLOW')) }}}
+    {{{ receiveI64ParamAsI53('offset', cDefs.EOVERFLOW) }}}
     var stream = SYSCALLS.getStreamFromFD(fd)
     var num = doWritev(stream, iov, iovcnt, offset);
     {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
@@ -305,7 +305,7 @@ var WasiLibrary = {
 #elif ASSERTIONS
     abort('fd_pwrite called without SYSCALLS_REQUIRE_FILESYSTEM');
 #else
-    return {{{ cDefine('ENOSYS') }}};
+    return {{{ cDefs.ENOSYS }}};
 #endif
   },
 
@@ -325,7 +325,7 @@ var WasiLibrary = {
 #elif ASSERTIONS
     abort('fd_close called without SYSCALLS_REQUIRE_FILESYSTEM');
 #else
-    return {{{ cDefine('ENOSYS') }}};
+    return {{{ cDefs.ENOSYS }}};
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
@@ -342,7 +342,7 @@ var WasiLibrary = {
 #elif ASSERTIONS
     abort('fd_read called without SYSCALLS_REQUIRE_FILESYSTEM');
 #else
-    return {{{ cDefine('ENOSYS') }}};
+    return {{{ cDefs.ENOSYS }}};
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
@@ -354,7 +354,7 @@ var WasiLibrary = {
   fd_pread__sig: 'iippjp',
   fd_pread: function(fd, iov, iovcnt, {{{ defineI64Param('offset') }}}, pnum) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    {{{ receiveI64ParamAsI53('offset', cDefine('EOVERFLOW')) }}}
+    {{{ receiveI64ParamAsI53('offset', cDefs.EOVERFLOW) }}}
     var stream = SYSCALLS.getStreamFromFD(fd)
     var num = doReadv(stream, iov, iovcnt, offset);
     {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
@@ -362,7 +362,7 @@ var WasiLibrary = {
 #elif ASSERTIONS
     abort('fd_pread called without SYSCALLS_REQUIRE_FILESYSTEM');
 #else
-    return {{{ cDefine('ENOSYS') }}};
+    return {{{ cDefs.ENOSYS }}};
 #endif
   },
 
@@ -370,14 +370,14 @@ var WasiLibrary = {
   fd_seek__deps: i53ConversionDeps,
   fd_seek: function(fd, {{{ defineI64Param('offset') }}}, whence, newOffset) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    {{{ receiveI64ParamAsI53('offset', cDefine('EOVERFLOW')) }}}
+    {{{ receiveI64ParamAsI53('offset', cDefs.EOVERFLOW) }}}
     var stream = SYSCALLS.getStreamFromFD(fd);
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('newOffset', '0', 'stream.position', 'i64') }}};
-    if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
+    if (stream.getdents && offset === 0 && whence === {{{ cDefs.SEEK_SET }}}) stream.getdents = null; // reset readdir state
     return 0;
 #else
-    return {{{ cDefine('ESPIPE') }}};
+    return {{{ cDefs.ESPIPE }}};
 #endif
   },
 
@@ -387,13 +387,13 @@ var WasiLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     // All character devices are terminals (other things a Linux system would
     // assume is a character device, like the mouse, we have special APIs for).
-    var type = stream.tty ? {{{ cDefine('__WASI_FILETYPE_CHARACTER_DEVICE') }}} :
-               FS.isDir(stream.mode) ? {{{ cDefine('__WASI_FILETYPE_DIRECTORY') }}} :
-               FS.isLink(stream.mode) ? {{{ cDefine('__WASI_FILETYPE_SYMBOLIC_LINK') }}} :
-               {{{ cDefine('__WASI_FILETYPE_REGULAR_FILE') }}};
+    var type = stream.tty ? {{{ cDefs.__WASI_FILETYPE_CHARACTER_DEVICE }}} :
+               FS.isDir(stream.mode) ? {{{ cDefs.__WASI_FILETYPE_DIRECTORY }}} :
+               FS.isLink(stream.mode) ? {{{ cDefs.__WASI_FILETYPE_SYMBOLIC_LINK }}} :
+               {{{ cDefs.__WASI_FILETYPE_REGULAR_FILE }}};
 #else
     // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
-    var type = fd == 1 || fd == 2 ? {{{ cDefine('__WASI_FILETYPE_CHARACTER_DEVICE') }}} : abort();
+    var type = fd == 1 || fd == 2 ? {{{ cDefs.__WASI_FILETYPE_CHARACTER_DEVICE }}} : abort();
 #endif
     {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_filetype, 'type', 'i8') }}};
     // TODO {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_flags, '?', 'i16') }}};
@@ -416,7 +416,7 @@ var WasiLibrary = {
       }
       mount.type.syncfs(mount, false, function(err) {
         if (err) {
-          wakeUp(function() { return {{{ cDefine('EIO') }}} });
+          wakeUp(function() { return {{{ cDefs.EIO }}} });
           return;
         }
         wakeUp(0);
@@ -431,7 +431,7 @@ var WasiLibrary = {
 #elif ASSERTIONS
     abort('fd_sync called without SYSCALLS_REQUIRE_FILESYSTEM');
 #else
-    return {{{ cDefine('ENOSYS') }}};
+    return {{{ cDefs.ENOSYS }}};
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 };

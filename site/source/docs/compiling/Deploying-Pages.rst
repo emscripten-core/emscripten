@@ -149,7 +149,7 @@ When planning a testing matrix before pushing a site live, the following items c
 
 - Likewise, verify that the page layout does not break when resizing the browser window, or when visiting the site having already initially sized the browser window to very small or large size, or to a disproportionate aspect ratio.
 
-- Especially if targeting mobile, be aware of the `<meta viewport> tag <https://developer.mozilla.org/en-US/docs/Mozilla/Mobile/Viewport_meta_tag>`_ for how to develop a site layout that works well on mobile.
+- Especially if targeting mobile, be aware of the `<meta viewport> tag <https://developer.mozilla.org/en-US/docs/Web/HTML/Viewport_meta_tag>`_ for how to develop a site layout that works well on mobile.
 
 - If the page uses WebGL, test out different GPUs on target platforms. In particular, verify the site behavior when simulating the lack of any needed WebGL extensions, and compressed texture format support.
 

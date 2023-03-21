@@ -39,9 +39,6 @@ def make_command(filename, engine, args=None):
   is_jsc = 'jsc' in jsengine
   is_wasmer = 'wasmer' in jsengine
   is_wasmtime = 'wasmtime' in jsengine
-  # Disable true async compilation (async apis will in fact be synchronous) for now
-  # due to https://bugs.chromium.org/p/v8/issues/detail?id=6263
-  shell_option_flags = ['--no-wasm-async-compilation'] if is_d8 else []
   command_flags = []
   if is_wasmer:
     command_flags += ['run']
@@ -50,7 +47,7 @@ def make_command(filename, engine, args=None):
     filename = shared.replace_suffix(filename, '.wasm')
   # Separates engine flags from script flags
   flag_separator = ['--'] if is_d8 or is_jsc else []
-  return engine + command_flags + [filename] + shell_option_flags + flag_separator + args
+  return engine + command_flags + [filename] + flag_separator + args
 
 
 def check_engine(engine):

@@ -116,22 +116,7 @@ mergeInto(LibraryManager.library, {
             // Wrap all exports with a promising WebAssembly function.
             var isAsyncifyExport = ASYNCIFY_EXPORTS.indexOf(x) >= 0;
             if (isAsyncifyExport) {
-#if ASYNCIFY_DEBUG
-              dbg('asyncify: returnPromiseOnSuspend for', x, original);
-#endif
-              var type = WebAssembly.Function.type(original);
-              var parameters = type.parameters;
-              var results = type.results;
-#if ASSERTIONS
-              assert(results.length !== 0, 'There must be a return result')
-              assert(parameters[0] === 'externref', 'First param must be externref.');
-#endif
-              // Remove the extern ref.
-              parameters.shift();
-              original = new WebAssembly.Function(
-                { parameters , results: ['externref'] },
-                original,
-                { promising : 'first' });
+              original = Asyncify.makeAsyncFunction(original);
             }
 #endif
             ret[x] = function() {
@@ -444,6 +429,24 @@ mergeInto(LibraryManager.library, {
         startAsync().then(wakeUp);
       });
     },
+    makeAsyncFunction: function(original) {
+#if ASYNCIFY_DEBUG
+      dbg('asyncify: returnPromiseOnSuspend for', original);
+#endif
+      var type = WebAssembly.Function.type(original);
+      var parameters = type.parameters;
+      var results = type.results;
+#if ASSERTIONS
+      assert(results.length !== 0, 'There must be a return result')
+      assert(parameters[0] === 'externref', 'First param must be externref.');
+#endif
+      // Remove the extern ref.
+      parameters.shift();
+      return new WebAssembly.Function(
+        { parameters , results: ['externref'] },
+        original,
+        { promising : 'first' });
+    },
 #endif
   },
 
@@ -605,7 +608,7 @@ mergeInto(LibraryManager.library, {
     },
   },
 
-  emscripten_fiber_swap__sig: 'vii',
+  emscripten_fiber_swap__sig: 'vpp',
   emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
   emscripten_fiber_swap: function(oldFiber, newFiber) {
     if (ABORT) return;

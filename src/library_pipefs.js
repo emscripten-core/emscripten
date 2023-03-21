@@ -14,7 +14,7 @@ mergeInto(LibraryManager.library, {
     mount: function (mount) {
       // Do not pollute the real root directory or its child nodes with pipes
       // Looks like it is OK to create another pseudo-root node not linked to the FS.root hierarchy this way
-      return FS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */, 0);
+      return FS.createNode(null, '/', {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */, 0);
     },
     createPipe: function () {
       var pipe = {
@@ -32,8 +32,8 @@ mergeInto(LibraryManager.library, {
 
       var rName = PIPEFS.nextname();
       var wName = PIPEFS.nextname();
-      var rNode = FS.createNode(PIPEFS.root, rName, {{{ cDefine('S_IFIFO') }}}, 0);
-      var wNode = FS.createNode(PIPEFS.root, wName, {{{ cDefine('S_IFIFO') }}}, 0);
+      var rNode = FS.createNode(PIPEFS.root, rName, {{{ cDefs.S_IFIFO }}}, 0);
+      var wNode = FS.createNode(PIPEFS.root, wName, {{{ cDefs.S_IFIFO }}}, 0);
 
       rNode.pipe = pipe;
       wNode.pipe = pipe;
@@ -41,7 +41,7 @@ mergeInto(LibraryManager.library, {
       var readableStream = FS.createStream({
         path: rName,
         node: rNode,
-        flags: {{{ cDefine('O_RDONLY') }}},
+        flags: {{{ cDefs.O_RDONLY }}},
         seekable: false,
         stream_ops: PIPEFS.stream_ops
       });
@@ -50,7 +50,7 @@ mergeInto(LibraryManager.library, {
       var writableStream = FS.createStream({
         path: wName,
         node: wNode,
-        flags: {{{ cDefine('O_WRONLY') }}},
+        flags: {{{ cDefs.O_WRONLY }}},
         seekable: false,
         stream_ops: PIPEFS.stream_ops
       });
@@ -65,14 +65,14 @@ mergeInto(LibraryManager.library, {
       poll: function (stream) {
         var pipe = stream.node.pipe;
 
-        if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_WRONLY') }}}) {
-          return ({{{ cDefine('POLLWRNORM') }}} | {{{ cDefine('POLLOUT') }}});
+        if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_WRONLY }}}) {
+          return ({{{ cDefs.POLLWRNORM }}} | {{{ cDefs.POLLOUT }}});
         }
         if (pipe.buckets.length > 0) {
           for (var i = 0; i < pipe.buckets.length; i++) {
             var bucket = pipe.buckets[i];
             if (bucket.offset - bucket.roffset > 0) {
-              return ({{{ cDefine('POLLRDNORM') }}} | {{{ cDefine('POLLIN') }}});
+              return ({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
             }
           }
         }
@@ -80,10 +80,10 @@ mergeInto(LibraryManager.library, {
         return 0;
       },
       ioctl: function (stream, request, varargs) {
-        return {{{ cDefine('EINVAL') }}};
+        return {{{ cDefs.EINVAL }}};
       },
       fsync: function (stream) {
-        return {{{ cDefine('EINVAL') }}};
+        return {{{ cDefs.EINVAL }}};
       },
       read: function (stream, buffer, offset, length, position /* ignored */) {
         var pipe = stream.node.pipe;
@@ -94,7 +94,7 @@ mergeInto(LibraryManager.library, {
           currentLength += bucket.offset - bucket.roffset;
         }
 
-#if USE_PTHREADS
+#if PTHREADS
         assert(buffer instanceof ArrayBuffer || buffer instanceof SharedArrayBuffer || ArrayBuffer.isView(buffer));
 #else
         assert(buffer instanceof ArrayBuffer || ArrayBuffer.isView(buffer));
@@ -106,7 +106,7 @@ mergeInto(LibraryManager.library, {
         }
         if (currentLength == 0) {
           // Behave as if the read end is always non-blocking
-          throw new FS.ErrnoError({{{ cDefine('EAGAIN') }}});
+          throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
         }
         var toRead = Math.min(currentLength, length);
 
@@ -151,7 +151,7 @@ mergeInto(LibraryManager.library, {
       write: function (stream, buffer, offset, length, position /* ignored */) {
         var pipe = stream.node.pipe;
 
-#if USE_PTHREADS
+#if PTHREADS
         assert(buffer instanceof ArrayBuffer || buffer instanceof SharedArrayBuffer || ArrayBuffer.isView(buffer));
 #else
         assert(buffer instanceof ArrayBuffer || ArrayBuffer.isView(buffer));

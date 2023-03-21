@@ -7,7 +7,7 @@
 #include Fetch.js
 
 var LibraryFetch = {
-#if USE_PTHREADS
+#if PTHREADS
   $Fetch__postset: 'if (!ENVIRONMENT_IS_PTHREAD) Fetch.staticInit();',
 #else
   $Fetch__postset: 'Fetch.staticInit();',
@@ -32,6 +32,7 @@ var LibraryFetch = {
     '$Fetch',
     '$fetchXHR',
     '$callUserCallback',
+    '$writeI53ToI64',
 #if FETCH_SUPPORT_INDEXEDDB
     '$fetchCacheData',
     '$fetchLoadCachedData',

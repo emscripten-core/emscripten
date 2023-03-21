@@ -9,7 +9,7 @@ TAG = 'release-2.24.2'
 HASH = 'b178bdc8f7c40271e09a72f639649d1d61953dda4dc12b77437259667b63b961fd3b2c67b0de6fdc5f9f9c80c49bfafd164e4c13715bc1056e550acc8bad5a3c'
 SUBDIR = 'SDL-' + TAG
 
-variants = {'sdl2-mt': {'USE_PTHREADS': 1}}
+variants = {'sdl2-mt': {'PTHREADS': 1}}
 
 
 def needed(settings):
@@ -17,7 +17,7 @@ def needed(settings):
 
 
 def get_lib_name(settings):
-  return 'libSDL2' + ('-mt' if settings.USE_PTHREADS else '') + '.a'
+  return 'libSDL2' + ('-mt' if settings.PTHREADS else '') + '.a'
 
 
 def get(ports, settings, shared):
@@ -64,14 +64,14 @@ def get(ports, settings, shared):
     main/dummy/SDL_dummy_main.c locale/SDL_locale.c locale/emscripten/SDL_syslocale.c misc/SDL_url.c
     misc/emscripten/SDL_sysurl.c'''.split()
     thread_srcs = ['SDL_syscond.c', 'SDL_sysmutex.c', 'SDL_syssem.c', 'SDL_systhread.c', 'SDL_systls.c']
-    thread_backend = 'generic' if not settings.USE_PTHREADS else 'pthread'
+    thread_backend = 'generic' if not settings.PTHREADS else 'pthread'
     srcs += ['thread/%s/%s' % (thread_backend, s) for s in thread_srcs]
 
     srcs = [os.path.join(src_dir, 'src', s) for s in srcs]
     flags = ['-sUSE_SDL=0']
     includes = [ports.get_include_dir('SDL2')]
-    if settings.USE_PTHREADS:
-      flags += ['-sUSE_PTHREADS']
+    if settings.PTHREADS:
+      flags += ['-pthread']
     ports.build_port(src_dir, final, 'sdl2', srcs=srcs, includes=includes, flags=flags)
 
   return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]

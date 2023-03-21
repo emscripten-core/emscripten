@@ -39,6 +39,8 @@
 //
 //   __attribute__((import_name("foo"))) int foo(int x, int y);
 //
+//   __attribute__((used)) static void* __em_js_ref_foo = (void*)&foo;
+//
 //   __attribute__((used, visibility("default")))
 //   char __em_js__foo[] = "(int x, int y)<::>{ return 2 * x + y; }";
 //
@@ -50,6 +52,11 @@
 // We use <::> to separate the arguments from the function body because it isn't
 // valid anywhere in a C function declaration.
 
+// The __em_js_ref_foo pointer simply exists in order to force a reference to
+// `foo` to exist in the object file, even if there are no other local uses.
+// This means the linker will always use the import_name attribute for this
+// function even if it is not locally used.
+
 // Generated __em_js__-prefixed symbols are read by binaryen, and the string
 // data is extracted into the Emscripten metadata dictionary under the
 // "emJsFuncs" key. emJsFuncs itself is a dictionary where the keys are function
@@ -59,12 +66,13 @@
 // emJsFuncs metadata is read in emscripten.py's create_em_js, which creates an
 // array of JS function strings to be included in the JS output.
 
-#define _EM_JS(ret, c_name, js_name, params, code)                                                 \
-  _EM_JS_CPP_BEGIN                                                                                 \
-  ret c_name params EM_IMPORT(js_name);                                                            \
-  EMSCRIPTEN_KEEPALIVE                                                                             \
-  __attribute__((section("em_js"), aligned(1))) char __em_js__##js_name[] =                        \
-    #params "<::>" code;                                                                           \
+#define _EM_JS(ret, c_name, js_name, params, code)                             \
+  _EM_JS_CPP_BEGIN                                                             \
+  ret c_name params EM_IMPORT(js_name);                                        \
+  __attribute__((used)) static void* __em_js_ref_##c_name = (void*)&c_name;    \
+  EMSCRIPTEN_KEEPALIVE                                                         \
+  __attribute__((section("em_js"), aligned(1))) char __em_js__##js_name[] =    \
+    #params "<::>" code;                                                       \
   _EM_JS_CPP_END
 
 #define EM_JS(ret, name, params, ...) _EM_JS(ret, name, name, params, #__VA_ARGS__)
