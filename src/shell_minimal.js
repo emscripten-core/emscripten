@@ -56,7 +56,7 @@ var ENVIRONMENT_IS_SHELL = typeof read == 'function';
 var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined';
 #endif
 
-#if ASSERTIONS || USE_PTHREADS
+#if ASSERTIONS || PTHREADS
 #if !ENVIRONMENT_MAY_BE_NODE && !ENVIRONMENT_MAY_BE_SHELL
 var ENVIRONMENT_IS_WEB = true
 #elif ENVIRONMENT && !ENVIRONMENT.includes(',')
@@ -68,7 +68,7 @@ var ENVIRONMENT_IS_WEB = !ENVIRONMENT_IS_SHELL;
 #else
 var ENVIRONMENT_IS_WEB = !ENVIRONMENT_IS_NODE;
 #endif
-#endif // ASSERTIONS || USE_PTHREADS
+#endif // ASSERTIONS || PTHREADS
 
 #if WASM_WORKERS
 var ENVIRONMENT_IS_WASM_WORKER = Module['$ww'];
@@ -94,7 +94,7 @@ if (ENVIRONMENT_IS_NODE) {
   Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
 #endif
 #endif
-#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
+#if !MEM_INIT_IN_WASM
   Module['mem'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.mem');
 #endif
 }
@@ -110,7 +110,7 @@ if (ENVIRONMENT_IS_SHELL) {
   Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
 #endif
 #endif
-#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
+#if !MEM_INIT_IN_WASM
   Module['mem'] = read('{{{ TARGET_BASENAME }}}.mem', 'binary');
 #endif
 }
@@ -138,7 +138,7 @@ function ready() {
 #elif ASSERTIONS
   out('ready() called, and INVOKE_RUN=0. The runtime is now ready for you to call run() to invoke application _main(). You can also override ready() in a --pre-js file to get this signal as a callback')
 #endif
-#if USE_PTHREADS
+#if PTHREADS
   // This Worker is now ready to host pthreads, tell the main thread we can proceed.
   if (ENVIRONMENT_IS_PTHREAD) {
     startWorker(Module);
@@ -157,7 +157,7 @@ function ready() {
 // refer to Module (if they choose; they can also define Module)
 {{{ preJS() }}}
 
-#if USE_PTHREADS
+#if PTHREADS
 
 #if !MODULARIZE
 // In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
@@ -175,4 +175,4 @@ var ENVIRONMENT_IS_WORKER = ENVIRONMENT_IS_PTHREAD = typeof importScripts == 'fu
 #endif
 
 var currentScriptUrl = typeof _scriptDir != 'undefined' ? _scriptDir : ((typeof document != 'undefined' && document.currentScript) ? document.currentScript.src : undefined);
-#endif // USE_PTHREADS
+#endif // PTHREADS

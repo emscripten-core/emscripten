@@ -289,27 +289,51 @@ let LibraryWebAudio = {
     (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : globalThis['messagePort']).postMessage({'_wsc': funcPtr, 'x': [] }); // "WaSm Call"
   },
 
-  emscripten_audio_worklet_post_function_1__sig: 'vipd',
-  emscripten_audio_worklet_post_function_1: function(audioContext, funcPtr, arg0) {
+  $emscripten_audio_worklet_post_function_1: function(audioContext, funcPtr, arg0) {
     (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : globalThis['messagePort']).postMessage({'_wsc': funcPtr, 'x': [arg0] }); // "WaSm Call"
   },
 
-  emscripten_audio_worklet_post_function_vi: 'emscripten_audio_worklet_post_function_1',
-  emscripten_audio_worklet_post_function_vd: 'emscripten_audio_worklet_post_function_1',
+  emscripten_audio_worklet_post_function_vi__sig: 'vipi',
+  emscripten_audio_worklet_post_function_vi__deps: ['$emscripten_audio_worklet_post_function_1'],
+  emscripten_audio_worklet_post_function_vi(audioContext, funcPtr, arg0) {
+    emscripten_audio_worklet_post_function_1(audioContext, funcPtr, arg0)
+  },
 
-  emscripten_audio_worklet_post_function_2__sig: 'vipdd',
-  emscripten_audio_worklet_post_function_2: function(audioContext, funcPtr, arg0, arg1) {
+  emscripten_audio_worklet_post_function_vd__sig: 'vipd',
+  emscripten_audio_worklet_post_function_vd__deps: ['$emscripten_audio_worklet_post_function_1'],
+  emscripten_audio_worklet_post_function_vd(audioContext, funcPtr, arg0) {
+    emscripten_audio_worklet_post_function_1(audioContext, funcPtr, arg0)
+  },
+
+  $emscripten_audio_worklet_post_function_2: function(audioContext, funcPtr, arg0, arg1) {
     (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : globalThis['messagePort']).postMessage({'_wsc': funcPtr, 'x': [arg0, arg1] }); // "WaSm Call"
   },
-  emscripten_audio_worklet_post_function_vii: 'emscripten_audio_worklet_post_function_2',
-  emscripten_audio_worklet_post_function_vdd: 'emscripten_audio_worklet_post_function_2',
 
-  emscripten_audio_worklet_post_function_3__sig: 'vipddd',
-  emscripten_audio_worklet_post_function_3: function(audioContext, funcPtr, arg0, arg1, arg2) {
+  emscripten_audio_worklet_post_function_vii__sig: 'vipii',
+  emscripten_audio_worklet_post_function_vii__deps: ['$emscripten_audio_worklet_post_function_2'],
+  emscripten_audio_worklet_post_function_vii: function(audioContext, funcPtr, arg0, arg1) {
+    emscripten_audio_worklet_post_function_2(audioContext, funcPtr, arg0, arg1);
+  },
+
+  emscripten_audio_worklet_post_function_vdd__sig: 'vipdd',
+  emscripten_audio_worklet_post_function_vdd__deps: ['$emscripten_audio_worklet_post_function_2'],
+  emscripten_audio_worklet_post_function_vdd: function(audioContext, funcPtr, arg0, arg1) {
+    emscripten_audio_worklet_post_function_2(audioContext, funcPtr, arg0, arg1);
+  },
+
+  $emscripten_audio_worklet_post_function_3: function(audioContext, funcPtr, arg0, arg1, arg2) {
     (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : globalThis['messagePort']).postMessage({'_wsc': funcPtr, 'x': [arg0, arg1, arg2] }); // "WaSm Call"
   },
-  emscripten_audio_worklet_post_function_viii: 'emscripten_audio_worklet_post_function_3',
-  emscripten_audio_worklet_post_function_vddd: 'emscripten_audio_worklet_post_function_3',
+  emscripten_audio_worklet_post_function_viii__sig: 'vipiii',
+  emscripten_audio_worklet_post_function_viii__deps: ['$emscripten_audio_worklet_post_function_3'],
+  emscripten_audio_worklet_post_function_viii: function(audioContext, funcPtr, arg0, arg1, arg2) {
+    emscripten_audio_worklet_post_function_3(audioContext, funcPtr, arg0, arg1, arg2);
+  },
+  emscripten_audio_worklet_post_function_vddd__sig: 'vipddd',
+  emscripten_audio_worklet_post_function_vddd__deps: ['$emscripten_audio_worklet_post_function_3'],
+  emscripten_audio_worklet_post_function_vddd: function(audioContext, funcPtr, arg0, arg1, arg2) {
+    emscripten_audio_worklet_post_function_3(audioContext, funcPtr, arg0, arg1, arg2);
+  },
 
   emscripten_audio_worklet_post_function_sig__deps: ['$readAsmConstArgs'],
   emscripten_audio_worklet_post_function_sig__sig: 'vippp',

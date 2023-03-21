@@ -9,12 +9,12 @@ mergeInto(LibraryManager.library, {
   $MEMFS: {
     ops_table: null,
     mount: function(mount) {
-      return MEMFS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */, 0);
+      return MEMFS.createNode(null, '/', {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */, 0);
     },
     createNode: function(parent, name, mode, dev) {
       if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
         // no supported
-        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
+        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       }
       if (!MEMFS.ops_table) {
         MEMFS.ops_table = {
@@ -181,7 +181,7 @@ mergeInto(LibraryManager.library, {
         }
       },
       lookup: function(parent, name) {
-        throw FS.genericErrors[{{{ cDefine('ENOENT') }}}];
+        throw FS.genericErrors[{{{ cDefs.ENOENT }}}];
       },
       mknod: function(parent, name, mode, dev) {
         return MEMFS.createNode(parent, name, mode, dev);
@@ -196,7 +196,7 @@ mergeInto(LibraryManager.library, {
           }
           if (new_node) {
             for (var i in new_node.contents) {
-              throw new FS.ErrnoError({{{ cDefine('ENOTEMPTY') }}});
+              throw new FS.ErrnoError({{{ cDefs.ENOTEMPTY }}});
             }
           }
         }
@@ -215,7 +215,7 @@ mergeInto(LibraryManager.library, {
       rmdir: function(parent, name) {
         var node = FS.lookupNode(parent, name);
         for (var i in node.contents) {
-          throw new FS.ErrnoError({{{ cDefine('ENOTEMPTY') }}});
+          throw new FS.ErrnoError({{{ cDefs.ENOTEMPTY }}});
         }
         delete parent.contents[name];
         parent.timestamp = Date.now();
@@ -231,13 +231,13 @@ mergeInto(LibraryManager.library, {
         return entries;
       },
       symlink: function(parent, newname, oldpath) {
-        var node = MEMFS.createNode(parent, newname, 511 /* 0777 */ | {{{ cDefine('S_IFLNK') }}}, 0);
+        var node = MEMFS.createNode(parent, newname, 511 /* 0777 */ | {{{ cDefs.S_IFLNK }}}, 0);
         node.link = oldpath;
         return node;
       },
       readlink: function(node) {
         if (!FS.isLink(node.mode)) {
-          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
+          throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
         }
         return node.link;
       },
@@ -317,15 +317,15 @@ mergeInto(LibraryManager.library, {
 
       llseek: function(stream, offset, whence) {
         var position = offset;
-        if (whence === {{{ cDefine('SEEK_CUR') }}}) {
+        if (whence === {{{ cDefs.SEEK_CUR }}}) {
           position += stream.position;
-        } else if (whence === {{{ cDefine('SEEK_END') }}}) {
+        } else if (whence === {{{ cDefs.SEEK_END }}}) {
           if (FS.isFile(stream.node.mode)) {
             position += stream.node.usedBytes;
           }
         }
         if (position < 0) {
-          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
+          throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
         }
         return position;
       },
@@ -335,13 +335,13 @@ mergeInto(LibraryManager.library, {
       },
       mmap: function(stream, length, position, prot, flags) {
         if (!FS.isFile(stream.node.mode)) {
-          throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
+          throw new FS.ErrnoError({{{ cDefs.ENODEV }}});
         }
         var ptr;
         var allocated;
         var contents = stream.node.contents;
         // Only make a new copy when MAP_PRIVATE is specified.
-        if (!(flags & {{{ cDefine('MAP_PRIVATE') }}}) && contents.buffer === HEAP8.buffer) {
+        if (!(flags & {{{ cDefs.MAP_PRIVATE }}}) && contents.buffer === HEAP8.buffer) {
           // We can't emulate MAP_SHARED when the file is not backed by the
           // buffer we're mapping to (e.g. the HEAP buffer).
           allocated = false;
@@ -358,7 +358,7 @@ mergeInto(LibraryManager.library, {
           allocated = true;
           ptr = mmapAlloc(length);
           if (!ptr) {
-            throw new FS.ErrnoError({{{ cDefine('ENOMEM') }}});
+            throw new FS.ErrnoError({{{ cDefs.ENOMEM }}});
           }
 #if CAN_ADDRESS_2GB
           ptr >>>= 0;

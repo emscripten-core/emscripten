@@ -68,6 +68,7 @@ function isDefined(symName) {
 
 function runJSify(symbolsOnly = false) {
   const libraryItems = [];
+  const symbolDeps = {};
   let postSets = [];
 
   LibraryManager.load();
@@ -158,7 +159,7 @@ function ${name}(${args}) {
           throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
         }
         const sync = proxyingMode === 'sync';
-        if (USE_PTHREADS) {
+        if (PTHREADS) {
           snippet = modifyFunction(snippet, (name, args, body) => `
 function ${name}(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
@@ -245,9 +246,16 @@ function ${name}(${args}) {
         return;
       }
 
+      const deps = LibraryManager.library[symbol + '__deps'] || [];
+      if (!Array.isArray(deps)) {
+        error(`JS library directive ${symbol}__deps=${deps.toString()} is of type ${typeof deps}, but it should be an array!`);
+        return;
+      }
+
       if (symbolsOnly) {
         if (!isJsOnlySymbol(symbol) && LibraryManager.library.hasOwnProperty(symbol)) {
-          librarySymbols.push(symbol);
+          externalDeps = deps.filter((d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library) && typeof d === 'string');
+          symbolDeps[symbol] = externalDeps;
         }
         return;
       }
@@ -278,9 +286,6 @@ function ${name}(${args}) {
           if (dependent) msg += ` (referenced by ${dependent})`;
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
             error(msg);
-            if (dependent == TOP_LEVEL && !LLD_REPORT_UNDEFINED) {
-              warnOnce('Link with `-sLLD_REPORT_UNDEFINED` to get more information on undefined symbols');
-            }
             warnOnce('To disable errors for undefined symbols use `-sERROR_ON_UNDEFINED_SYMBOLS=0`');
             warnOnce(mangled + ' may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library');
           } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
@@ -322,11 +327,6 @@ function ${name}(${args}) {
 
       const original = LibraryManager.library[symbol];
       let snippet = original;
-      const deps = LibraryManager.library[symbol + '__deps'] || [];
-      if (!Array.isArray(deps)) {
-        error(`JS library directive ${symbol}__deps=${deps.toString()} is of type ${typeof deps}, but it should be an array!`);
-        return;
-      }
 
       const isUserSymbol = LibraryManager.library[symbol + '__user'];
       deps.forEach((dep) => {
@@ -457,6 +457,12 @@ function ${name}(${args}) {
     print(`// end include: ${fileName}`);
   }
 
+  function includeFileRaw(fileName) {
+    print(`// include: ${fileName}`);
+    print(read(fileName));
+    print(`// end include: ${fileName}`);
+  }
+
   function finalCombiner() {
     const splitPostSets = splitter(postSets, (x) => x.symbol && x.dependencies);
     postSets = splitPostSets.leftIn;
@@ -489,7 +495,7 @@ function ${name}(${args}) {
       print(indentify(item.JS || '', 2));
     }
 
-    if (USE_PTHREADS) {
+    if (PTHREADS) {
       print('\n // proxiedFunctionTable specifies the list of functions that can be called either synchronously or asynchronously from other threads in postMessage()d or internally queued events. This way a pthread in a Worker can synchronously access e.g. the DOM on the main thread.');
       print('\nvar proxiedFunctionTable = [' + proxiedFunctionTable.join() + '];\n');
     }
@@ -525,7 +531,7 @@ function ${name}(${args}) {
     includeFile(postFile);
 
     for (const fileName of POST_JS_FILES) {
-      includeFile(fileName);
+      includeFileRaw(fileName);
     }
 
     print('//FORWARDED_DATA:' + JSON.stringify({
@@ -545,7 +551,7 @@ function ${name}(${args}) {
   }
 
   if (symbolsOnly) {
-    print(JSON.stringify(librarySymbols));
+    print(JSON.stringify(symbolDeps));
     return;
   }
 

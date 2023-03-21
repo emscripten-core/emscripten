@@ -57,9 +57,28 @@ mergeInto(LibraryManager.library, {
     },
     getMode: (canRead, canWrite) => {
       var mode = 0;
-      if (canRead) mode |= {{{ cDefine('S_IRUGO') }}} | {{{ cDefine('S_IXUGO') }}};
-      if (canWrite) mode |= {{{ cDefine('S_IWUGO') }}};
+      if (canRead) mode |= {{{ cDefs.S_IRUGO }}} | {{{ cDefs.S_IXUGO }}};
+      if (canWrite) mode |= {{{ cDefs.S_IWUGO }}};
       return mode;
+    },
+    modeStringToFlags: (str) => {
+      var flags = FS.flagModes[str];
+      if (typeof flags == 'undefined') {
+        throw new Error('Unknown file open mode: ' + str);
+      }
+      return flags;
+    },
+    flagModes: {
+      // copied directly from library_fs.js
+      // Extra quotes used here on the keys to this object otherwise jsifier will
+      // erase them in the process of reading and then writing the JS library
+      // code.
+      '"r"': {{{ cDefs.O_RDONLY }}},
+      '"r+"': {{{ cDefs.O_RDWR }}},
+      '"w"': {{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_WRONLY }}},
+      '"w+"': {{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_RDWR }}},
+      '"a"': {{{ cDefs.O_APPEND }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_WRONLY }}},
+      '"a+"': {{{ cDefs.O_APPEND }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_RDWR }}},
     },
     createDataFile: (parent, name, data, canRead, canWrite, canOwn) => {
       // Data files must be cached until the file system itself has been initialized.
@@ -126,6 +145,14 @@ mergeInto(LibraryManager.library, {
     // TODO: mkdirTree
     //TODO: rmdir
     // TODO: open
+    open: (path, flags, mode) => {
+      flags = typeof flags == 'string' ? FS.modeStringToFlags(flags) : flags;
+      mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
+      return withStackSave(() => {
+        var buffer = allocateUTF8OnStack(path);
+        return __wasmfs_open({{{ to64('buffer') }}}, flags, mode);
+      })
+    },
     // TODO: create
     // TODO: close
     unlink: (path) => {
@@ -192,11 +219,11 @@ mergeInto(LibraryManager.library, {
     // TODO: utime
     findObject: (path) => {
       var result = __wasmfs_identify(path);
-      if (result == {{{ cDefine('ENOENT') }}}) {
+      if (result == {{{ cDefs.ENOENT }}}) {
         return null;
       }
       return {
-        isFolder: result == {{{ cDefine('EISDIR') }}},
+        isFolder: result == {{{ cDefs.EISDIR }}},
         isDevice: false, // TODO: wasmfs support for devices
       };
     },

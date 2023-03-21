@@ -209,6 +209,9 @@ function restoreForVars(node) {
     ForInStatement(node) {
       fix(node.left);
     },
+    ForOfStatement(node) {
+      fix(node.left);
+    },
   });
   return restored;
 }

@@ -43,7 +43,7 @@ mergeInto(LibraryManager.library, {
       open: function(stream) {
         var tty = TTY.ttys[stream.node.rdev];
         if (!tty) {
-          throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
+          throw new FS.ErrnoError({{{ cDefs.ENODEV }}});
         }
         stream.tty = tty;
         stream.seekable = false;
@@ -57,7 +57,7 @@ mergeInto(LibraryManager.library, {
       },
       read: function(stream, buffer, offset, length, pos /* ignored */) {
         if (!stream.tty || !stream.tty.ops.get_char) {
-          throw new FS.ErrnoError({{{ cDefine('ENXIO') }}});
+          throw new FS.ErrnoError({{{ cDefs.ENXIO }}});
         }
         var bytesRead = 0;
         for (var i = 0; i < length; i++) {
@@ -65,10 +65,10 @@ mergeInto(LibraryManager.library, {
           try {
             result = stream.tty.ops.get_char(stream.tty);
           } catch (e) {
-            throw new FS.ErrnoError({{{ cDefine('EIO') }}});
+            throw new FS.ErrnoError({{{ cDefs.EIO }}});
           }
           if (result === undefined && bytesRead === 0) {
-            throw new FS.ErrnoError({{{ cDefine('EAGAIN') }}});
+            throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
           }
           if (result === null || result === undefined) break;
           bytesRead++;
@@ -81,14 +81,14 @@ mergeInto(LibraryManager.library, {
       },
       write: function(stream, buffer, offset, length, pos) {
         if (!stream.tty || !stream.tty.ops.put_char) {
-          throw new FS.ErrnoError({{{ cDefine('ENXIO') }}});
+          throw new FS.ErrnoError({{{ cDefs.ENXIO }}});
         }
         try {
           for (var i = 0; i < length; i++) {
             stream.tty.ops.put_char(stream.tty, buffer[offset+i]);
           }
         } catch (e) {
-          throw new FS.ErrnoError({{{ cDefine('EIO') }}});
+          throw new FS.ErrnoError({{{ cDefs.EIO }}});
         }
         if (length) {
           stream.node.timestamp = Date.now();

@@ -19,7 +19,7 @@
 //  - If set, manually update CSS pixel size of the canvas. If unset, leave the CSS size to auto and expect the browser to resize the canvas size.
 
 #if !defined(TEST_EMSCRIPTEN_SET_MAIN_LOOP) && !defined(__EMSCRIPTEN_PTHREADS__)
-#error TEST_EMSCRIPTEN_SET_MAIN_LOOP=false, but blocking main loops require using -sPROXY_TO_PTHREADS= and multithreading (build with -sPROXY_TO_PTHREAD and -sUSE_PTHREADS)
+#error TEST_EMSCRIPTEN_SET_MAIN_LOOP=false, but blocking main loops require using -sPROXY_TO_PTHREADS= and multithreading (build with -sPROXY_TO_PTHREAD and -pthread)
 #endif
 
 #if !defined(TEST_EMSCRIPTEN_SET_MAIN_LOOP) && !defined(TEST_EXPLICIT_CONTEXT_SWAP)

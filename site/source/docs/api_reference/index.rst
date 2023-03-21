@@ -48,6 +48,9 @@ high level it consists of:
 - :ref:`proxying-h`:
   API for synchronously or asynchronously proxying work to a target pthread.
 
+- :ref:`stack-h`:
+  Inspecting the WebAssembly data stack.
+
 - :ref:`api-reference-advanced-apis`:
   APIs for advanced users/core developers.
 
@@ -66,6 +69,7 @@ high level it consists of:
    trace.h
    fiber.h
    proxying.h
+   stack.h
    wasm_workers
    wasm_audio_worklets
    advanced-apis

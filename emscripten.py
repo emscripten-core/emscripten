@@ -20,12 +20,10 @@ import pprint
 import shutil
 
 from tools import building
-from tools import cache
 from tools import diagnostics
 from tools import js_manipulation
 from tools import shared
 from tools import utils
-from tools import gen_struct_info
 from tools import webassembly
 from tools import extract_metadata
 from tools.utils import exit_with_error, path_from_root
@@ -144,7 +142,7 @@ def update_settings_glue(wasm_file, metadata):
   if settings.ASYNCIFY == 2:
     settings.BINARYEN_FEATURES += ['--enable-reference-types']
 
-  if settings.USE_PTHREADS:
+  if settings.PTHREADS:
     assert '--enable-threads' in settings.BINARYEN_FEATURES
   if settings.MEMORY64:
     assert '--enable-memory64' in settings.BINARYEN_FEATURES
@@ -239,7 +237,7 @@ def report_missing_symbols(js_symbols):
 
   if settings.EXPECT_MAIN and 'main' not in settings.WASM_EXPORTS and '__main_argc_argv' not in settings.WASM_EXPORTS:
     # For compatibility with the output of wasm-ld we use the same wording here in our
-    # error message as if wasm-ld had failed (i.e. in LLD_REPORT_UNDEFINED mode).
+    # error message as if wasm-ld had failed.
     exit_with_error('entry symbol not defined (pass --no-entry to suppress): main')
 
 
@@ -625,7 +623,7 @@ def add_standard_wasm_imports(send_items_map):
 
   if settings.IMPORTED_MEMORY:
     memory_import = 'wasmMemory'
-    if settings.MODULARIZE and settings.USE_PTHREADS:
+    if settings.MODULARIZE and settings.PTHREADS:
       # Pthreads assign wasmMemory in their worker startup. In MODULARIZE mode, they cannot assign inside the
       # Module scope, so lookup via Module as well.
       memory_import += " || Module['wasmMemory']"
@@ -740,7 +738,8 @@ def make_export_wrappers(exports, delay_assignment):
     wrapper = '/** @type {function(...*):?} */\nvar %s = ' % mangled
 
     # TODO(sbc): Can we avoid exporting the dynCall_ functions on the module.
-    if mangled in settings.EXPORTED_FUNCTIONS or name.startswith('dynCall_'):
+    should_export = settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS
+    if name.startswith('dynCall_') or should_export:
       exported = 'Module["%s"] = ' % mangled
     else:
       exported = ''
@@ -792,8 +791,9 @@ def create_receiving(exports):
       for s in exports_that_are_not_initializers:
         mangled = asmjs_mangle(s)
         dynCallAssignment = ('dynCalls["' + s.replace('dynCall_', '') + '"] = ') if generate_dyncall_assignment and mangled.startswith('dynCall_') else ''
+        should_export = settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS)
         export_assignment = ''
-        if settings.MODULARIZE and settings.EXPORT_ALL:
+        if settings.MODULARIZE and should_export:
           export_assignment = f'Module["{mangled}"] = '
         receiving += [f'{export_assignment}{dynCallAssignment}{mangled} = asm["{s}"]']
     else:
@@ -918,26 +918,5 @@ def normalize_line_endings(text):
   return text
 
 
-def clear_struct_info():
-  output_name = cache.get_lib_name('struct_info.json', varies=False)
-  cache.erase_file(output_name)
-
-
-def generate_struct_info():
-  # If we are running in BOOTSTRAPPING_STRUCT_INFO we don't populate STRUCT_INFO
-  # otherwise that would lead to infinite recursion.
-  if settings.BOOTSTRAPPING_STRUCT_INFO:
-    return
-
-  @ToolchainProfiler.profile()
-  def generate_struct_info(out):
-    gen_struct_info.main(['-q', '-o', out])
-
-  output_name = cache.get_lib_name('struct_info.json', varies=False)
-  settings.STRUCT_INFO = cache.get(output_name, generate_struct_info)
-
-
 def run(in_wasm, out_wasm, outfile_js, memfile):
-  generate_struct_info()
-
   emscript(in_wasm, out_wasm, outfile_js, memfile)

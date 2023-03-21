@@ -33,7 +33,7 @@ var emscriptenThreadProfiler = {
   },
 
   dumpState: function dumpState() {
-    var mainThread = _emscripten_main_browser_thread_id();
+    var mainThread = _emscripten_main_runtime_thread_id();
 
     var threads = [mainThread];
     for (var i in PThread.pthreads) {
@@ -60,7 +60,7 @@ var emscriptenThreadProfiler = {
       return;
     }
     var str = '';
-    var mainThread = _emscripten_main_browser_thread_id();
+    var mainThread = _emscripten_main_runtime_thread_id();
 
     var threads = [mainThread];
     for (var i in PThread.pthreads) {

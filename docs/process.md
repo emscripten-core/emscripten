@@ -114,7 +114,7 @@ How:
 1. [Tag][emscripten_tags] the `emscripten` repo with the new version number, on
    the commit referred to in the [DEPS][DEPS] (or DEPS.tagged-release) file
    above.
-1. Run the [`tools/maint/create_release_emsdk.py`][create_release_emscripten]
+1. Run the [`tools/maint/create_release.py`][create_release_emscripten]
    tool in the emscripten repo to update
    [`emscripten-version.txt`][emscripten_version] and
    [`ChangeLog.md`][changelog].  An example of such PR is

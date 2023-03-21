@@ -494,7 +494,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--threadprofiler``
   [link]
-  Embeds a thread activity profiler onto the generated page. Use this to profile the application usage of pthreads when targeting multithreaded builds (-sUSE_PTHREADS=1/2).
+  Embeds a thread activity profiler onto the generated page. Use this to profile the application usage of pthreads when targeting multithreaded builds (-pthread).
 
 .. _emcc-config:
 
