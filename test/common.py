@@ -323,13 +323,21 @@ def ensure_dir(dirname):
   dirname.mkdir(parents=True, exist_ok=True)
 
 
-def limit_size(string, maxbytes=800000 * 20, maxlines=100000, max_line=5000):
+def limit_size(string):
+  maxbytes = 800000 * 20
+  if sys.stdout.isatty():
+    maxlines = 500
+    max_line = 500
+  else:
+    max_line = 5000
+    maxlines = 100000
   lines = string.splitlines()
   for i, line in enumerate(lines):
     if len(line) > max_line:
       lines[i] = line[:max_line] + '[..]'
   if len(lines) > maxlines:
     lines = lines[0:maxlines // 2] + ['[..]'] + lines[-maxlines // 2:]
+    lines.append('(not all output shown. See `limit_size`)')
   string = '\n'.join(lines) + '\n'
   if len(string) > maxbytes:
     string = string[0:maxbytes // 2] + '\n[..]\n' + string[-maxbytes // 2:]

@@ -1428,14 +1428,14 @@ var LibraryGL = {
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding || !imageSize) {
-        GLctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, imageSize, data);
+        GLctx.compressedTexImage2D(target, level, internalFormat, width, height, border, imageSize, data);
       } else {
-        GLctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, HEAPU8, data, imageSize);
+        GLctx.compressedTexImage2D(target, level, internalFormat, width, height, border, HEAPU8, data, imageSize);
       }
       return;
     }
 #endif
-    GLctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
+    GLctx.compressedTexImage2D(target, level, internalFormat, width, height, border, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
   },
 
 
@@ -1443,14 +1443,14 @@ var LibraryGL = {
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding || !imageSize) {
-        GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, format, imageSize, data);
+        GLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, imageSize, data);
       } else {
-        GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, format, HEAPU8, data, imageSize);
+        GLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, HEAPU8, data, imageSize);
       }
       return;
     }
 #endif
-    GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, format, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
+    GLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
   },
 
   $computeUnpackAlignedImageSize: function(width, height, sizePerPixel, alignment) {
@@ -1918,7 +1918,7 @@ var LibraryGL = {
     }
 #if MAX_WEBGL_VERSION >= 2
     else {
-      param = GLctx['getQueryParameter'](query, pname);
+      param = GLctx.getQueryParameter(query, pname);
     }
 #endif
     var ret;
@@ -3553,7 +3553,7 @@ var LibraryGL = {
     _emulGlGenVertexArrays(n, arrays);
 #else
 #if GL_ASSERTIONS
-    assert(GLctx['createVertexArray'], 'Must have WebGL2 or OES_vertex_array_object to use vao');
+    assert(GLctx.createVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
     __glGenObject(n, arrays, 'createVertexArray', GL.vaos
 #if GL_ASSERTIONS
@@ -3571,11 +3571,11 @@ var LibraryGL = {
     _emulGlDeleteVertexArrays(n, vaos);
 #else
 #if GL_ASSERTIONS
-    assert(GLctx['deleteVertexArray'], 'Must have WebGL2 or OES_vertex_array_object to use vao');
+    assert(GLctx.deleteVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
-      GLctx['deleteVertexArray'](GL.vaos[id]);
+      GLctx.deleteVertexArray(GL.vaos[id]);
       GL.vaos[id] = null;
     }
 #endif
@@ -3589,9 +3589,9 @@ var LibraryGL = {
     _emulGlBindVertexArray(vao);
 #else
 #if GL_ASSERTIONS
-    assert(GLctx['bindVertexArray'], 'Must have WebGL2 or OES_vertex_array_object to use vao');
+    assert(GLctx.bindVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
-    GLctx['bindVertexArray'](GL.vaos[vao]);
+    GLctx.bindVertexArray(GL.vaos[vao]);
 #endif
 #if FULL_ES2 || LEGACY_GL_EMULATION
     var ibo = GLctx.getParameter(0x8895 /*ELEMENT_ARRAY_BUFFER_BINDING*/);
@@ -3607,12 +3607,12 @@ var LibraryGL = {
     return _emulGlIsVertexArray(array);
 #else
 #if GL_ASSERTIONS
-    assert(GLctx['isVertexArray'], 'Must have WebGL2 or OES_vertex_array_object to use vao');
+    assert(GLctx.isVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
 
     var vao = GL.vaos[array];
     if (!vao) return 0;
-    return GLctx['isVertexArray'](vao);
+    return GLctx.isVertexArray(vao);
 #endif
   },
 
@@ -3759,23 +3759,23 @@ var LibraryGL = {
 
   glVertexAttribDivisor: function(index, divisor) {
 #if GL_ASSERTIONS
-    assert(GLctx['vertexAttribDivisor'], 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
+    assert(GLctx.vertexAttribDivisor, 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
 #endif
-    GLctx['vertexAttribDivisor'](index, divisor);
+    GLctx.vertexAttribDivisor(index, divisor);
   },
 
   glDrawArraysInstanced: function(mode, first, count, primcount) {
 #if GL_ASSERTIONS
-    assert(GLctx['drawArraysInstanced'], 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
+    assert(GLctx.drawArraysInstanced, 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
 #endif
-    GLctx['drawArraysInstanced'](mode, first, count, primcount);
+    GLctx.drawArraysInstanced(mode, first, count, primcount);
   },
 
   glDrawElementsInstanced: function(mode, count, type, indices, primcount) {
 #if GL_ASSERTIONS
-    assert(GLctx['drawElementsInstanced'], 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
+    assert(GLctx.drawElementsInstanced, 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
 #endif
-    GLctx['drawElementsInstanced'](mode, count, type, indices, primcount);
+    GLctx.drawElementsInstanced(mode, count, type, indices, primcount);
   },
 
   // OpenGL Desktop/ES 2.0 instancing extensions compatibility
@@ -3797,7 +3797,7 @@ var LibraryGL = {
   glDrawBuffers__deps: ['$tempFixedLengthArray'],
   glDrawBuffers: function(n, bufs) {
 #if GL_ASSERTIONS
-    assert(GLctx['drawBuffers'], 'Must have WebGL2 or WEBGL_draw_buffers extension to use drawBuffers');
+    assert(GLctx.drawBuffers, 'Must have WebGL2 or WEBGL_draw_buffers extension to use drawBuffers');
 #endif
 #if GL_ASSERTIONS
     assert(n < tempFixedLengthArray.length, 'Invalid count of numBuffers=' + n + ' passed to glDrawBuffers (that many draw buffer points do not exist in GL)');
@@ -3808,7 +3808,7 @@ var LibraryGL = {
       bufArray[i] = {{{ makeGetValue('bufs', 'i*4', 'i32') }}};
     }
 
-    GLctx['drawBuffers'](bufArray);
+    GLctx.drawBuffers(bufArray);
   },
 
   // OpenGL ES 2.0 draw buffer extensions compatibility
@@ -4052,8 +4052,8 @@ function createGLPassthroughFunctions(lib, funcs) {
     const num = data[0];
     const names = data[1];
     const args = range(num).map((i) => 'x' + i ).join(', ');
-    const plainStub = '(function(' + args + ') { GLctx[\'NAME\'](' + args + ') })';
-    const returnStub = '(function(' + args + ') { return GLctx[\'NAME\'](' + args + ') })';
+    const plainStub = '(function(' + args + ') { GLctx.NAME(' + args + ') })';
+    const returnStub = '(function(' + args + ') { return GLctx.NAME(' + args + ') })';
     const sigEnd = range(num).map(() => 'i').join('');
     names.split(' ').forEach((name) => {
       let stub = plainStub;

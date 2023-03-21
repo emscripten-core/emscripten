@@ -72,7 +72,7 @@ var LibraryWebGL2 = {
       return;
     }
 #endif
-    var ret = GLctx['getInternalformatParameter'](target, internalformat, pname);
+    var ret = GLctx.getInternalformatParameter(target, internalformat, pname);
     if (ret === null) return;
     for (var i = 0; i < ret.length && i < bufSize; ++i) {
       {{{ makeSetValue('params', 'i*4', 'ret[i]', 'i32') }}};
@@ -81,17 +81,17 @@ var LibraryWebGL2 = {
 
   glCompressedTexImage3D: function(target, level, internalFormat, width, height, depth, border, imageSize, data) {
     if (GLctx.currentPixelUnpackBufferBinding) {
-      GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, imageSize, data);
+      GLctx.compressedTexImage3D(target, level, internalFormat, width, height, depth, border, imageSize, data);
     } else {
-      GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, HEAPU8, data, imageSize);
+      GLctx.compressedTexImage3D(target, level, internalFormat, width, height, depth, border, HEAPU8, data, imageSize);
     }
   },
 
   glCompressedTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, imageSize, data) {
     if (GLctx.currentPixelUnpackBufferBinding) {
-      GLctx['compressedTexSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, imageSize, data);
+      GLctx.compressedTexSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, imageSize, data);
     } else {
-      GLctx['compressedTexSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, HEAPU8, data, imageSize);
+      GLctx.compressedTexSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, HEAPU8, data, imageSize);
     }
   },
 
@@ -123,7 +123,7 @@ var LibraryWebGL2 = {
       return;
     }
 #endif
-    size && GLctx['getBufferSubData'](target, offset, HEAPU8, data, size);
+    size && GLctx.getBufferSubData(target, offset, HEAPU8, data, size);
   },
 
   glInvalidateFramebuffer__deps: ['$tempFixedLengthArray'],
@@ -136,7 +136,7 @@ var LibraryWebGL2 = {
       list[i] = {{{ makeGetValue('attachments', 'i*4', 'i32') }}};
     }
 
-    GLctx['invalidateFramebuffer'](target, list);
+    GLctx.invalidateFramebuffer(target, list);
   },
 
   glInvalidateSubFramebuffer__deps: ['$tempFixedLengthArray'],
@@ -149,30 +149,30 @@ var LibraryWebGL2 = {
       list[i] = {{{ makeGetValue('attachments', 'i*4', 'i32') }}};
     }
 
-    GLctx['invalidateSubFramebuffer'](target, list, x, y, width, height);
+    GLctx.invalidateSubFramebuffer(target, list, x, y, width, height);
   },
 
   glTexImage3D__deps: ['$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'],
   glTexImage3D: function(target, level, internalFormat, width, height, depth, border, format, type, pixels) {
     if (GLctx.currentPixelUnpackBufferBinding) {
-      GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, pixels);
+      GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, pixels);
     } else if (pixels) {
       var heap = heapObjectForWebGLType(type);
-      GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
+      GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
     } else {
-      GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, null);
+      GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, null);
     }
   },
 
   glTexSubImage3D__deps: ['$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'],
   glTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels) {
     if (GLctx.currentPixelUnpackBufferBinding) {
-      GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
+      GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
     } else if (pixels) {
       var heap = heapObjectForWebGLType(type);
-      GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
+      GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
     } else {
-      GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, null);
+      GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, null);
     }
   },
 
@@ -191,7 +191,7 @@ var LibraryWebGL2 = {
       var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
       var query = GL.queries[id];
       if (!query) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
-      GLctx['deleteQuery'](query);
+      GLctx.deleteQuery(query);
       GL.queries[id] = null;
     }
   },
@@ -199,14 +199,14 @@ var LibraryWebGL2 = {
   glIsQuery: function(id) {
     var query = GL.queries[id];
     if (!query) return 0;
-    return GLctx['isQuery'](query);
+    return GLctx.isQuery(query);
   },
 
   glBeginQuery: function(target, id) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.queries, id, 'glBeginQuery', 'id');
 #endif
-    GLctx['beginQuery'](target, GL.queries[id]);
+    GLctx.beginQuery(target, GL.queries[id]);
   },
 
   glGetQueryiv: function(target, pname, params) {
@@ -221,7 +221,7 @@ var LibraryWebGL2 = {
       return;
     }
 #endif
-    {{{ makeSetValue('params', '0', 'GLctx[\'getQuery\'](target, pname)', 'i32') }}};
+    {{{ makeSetValue('params', '0', 'GLctx.getQuery(target, pname)', 'i32') }}};
   },
 
   glGetQueryObjectuiv: function(id, pname, params) {
@@ -240,7 +240,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.queries, id, 'glGetQueryObjectuiv', 'id');
 #endif
     var query = GL.queries[id];
-    var param = GLctx['getQueryParameter'](query, pname);
+    var param = GLctx.getQueryParameter(query, pname);
     var ret;
     if (typeof param == 'boolean') {
       ret = param ? 1 : 0;
@@ -265,7 +265,7 @@ var LibraryWebGL2 = {
       var id = {{{ makeGetValue('samplers', 'i*4', 'i32') }}};
       var sampler = GL.samplers[id];
       if (!sampler) continue;
-      GLctx['deleteSampler'](sampler);
+      GLctx.deleteSampler(sampler);
       sampler.name = 0;
       GL.samplers[id] = null;
     }
@@ -274,28 +274,28 @@ var LibraryWebGL2 = {
   glIsSampler: function(id) {
     var sampler = GL.samplers[id];
     if (!sampler) return 0;
-    return GLctx['isSampler'](sampler);
+    return GLctx.isSampler(sampler);
   },
 
   glBindSampler: function(unit, sampler) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
-    GLctx['bindSampler'](unit, GL.samplers[sampler]);
+    GLctx.bindSampler(unit, GL.samplers[sampler]);
   },
 
   glSamplerParameterf: function(sampler, pname, param) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
-    GLctx['samplerParameterf'](GL.samplers[sampler], pname, param);
+    GLctx.samplerParameterf(GL.samplers[sampler], pname, param);
   },
 
   glSamplerParameteri: function(sampler, pname, param) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
-    GLctx['samplerParameteri'](GL.samplers[sampler], pname, param);
+    GLctx.samplerParameteri(GL.samplers[sampler], pname, param);
   },
 
   glSamplerParameterfv: function(sampler, pname, params) {
@@ -303,7 +303,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
     var param = {{{ makeGetValue('params', '0', 'float') }}};
-    GLctx['samplerParameterf'](GL.samplers[sampler], pname, param);
+    GLctx.samplerParameterf(GL.samplers[sampler], pname, param);
   },
 
   glSamplerParameteriv: function(sampler, pname, params) {
@@ -311,7 +311,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
     var param = {{{ makeGetValue('params', '0', 'i32') }}};
-    GLctx['samplerParameteri'](GL.samplers[sampler], pname, param);
+    GLctx.samplerParameteri(GL.samplers[sampler], pname, param);
   },
 
   glGetSamplerParameterfv: function(sampler, pname, params) {
@@ -326,7 +326,7 @@ var LibraryWebGL2 = {
       return;
     }
 #endif
-    {{{ makeSetValue('params', '0', 'GLctx[\'getSamplerParameter\'](GL.samplers[sampler], pname)', 'float') }}};
+    {{{ makeSetValue('params', '0', 'GLctx.getSamplerParameter(GL.samplers[sampler], pname)', 'float') }}};
   },
 
   glGetSamplerParameteriv: function(sampler, pname, params) {
@@ -341,7 +341,7 @@ var LibraryWebGL2 = {
       return;
     }
 #endif
-    {{{ makeSetValue('params', '0', 'GLctx[\'getSamplerParameter\'](GL.samplers[sampler], pname)', 'i32') }}};
+    {{{ makeSetValue('params', '0', 'GLctx.getSamplerParameter(GL.samplers[sampler], pname)', 'i32') }}};
   },
 
   // Transform Feedback
@@ -359,21 +359,21 @@ var LibraryWebGL2 = {
       var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
       var transformFeedback = GL.transformFeedbacks[id];
       if (!transformFeedback) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
-      GLctx['deleteTransformFeedback'](transformFeedback);
+      GLctx.deleteTransformFeedback(transformFeedback);
       transformFeedback.name = 0;
       GL.transformFeedbacks[id] = null;
     }
   },
 
   glIsTransformFeedback: function(id) {
-    return GLctx['isTransformFeedback'](GL.transformFeedbacks[id]);
+    return GLctx.isTransformFeedback(GL.transformFeedbacks[id]);
   },
 
   glBindTransformFeedback: function(target, id) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.transformFeedbacks, id, 'glBindTransformFeedback', 'id');
 #endif
-    GLctx['bindTransformFeedback'](target, GL.transformFeedbacks[id]);
+    GLctx.bindTransformFeedback(target, GL.transformFeedbacks[id]);
   },
 
   glTransformFeedbackVaryings: function(program, count, varyings, bufferMode) {
@@ -385,7 +385,7 @@ var LibraryWebGL2 = {
     for (var i = 0; i < count; i++)
       vars.push(UTF8ToString({{{ makeGetValue('varyings', 'i*4', 'i32') }}}));
 
-    GLctx['transformFeedbackVaryings'](program, vars, bufferMode);
+    GLctx.transformFeedbackVaryings(program, vars, bufferMode);
   },
 
   glGetTransformFeedbackVarying: function(program, index, bufSize, length, size, type, name) {
@@ -393,7 +393,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.programs, program, 'glGetTransformFeedbackVarying', 'program');
 #endif
     program = GL.programs[program];
-    var info = GLctx['getTransformFeedbackVarying'](program, index);
+    var info = GLctx.getTransformFeedbackVarying(program, index);
     if (!info) return; // If an error occurred, the return parameters length, size, type and name will be unmodified.
 
     if (name && bufSize > 0) {
@@ -420,7 +420,7 @@ var LibraryWebGL2 = {
       return;
     }
 #endif
-    var result = GLctx['getIndexedParameter'](target, index);
+    var result = GLctx.getIndexedParameter(target, index);
     var ret;
     switch (typeof result) {
       case 'boolean':
@@ -486,14 +486,14 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.buffers, buffer, 'glBindBufferBase', 'buffer');
 #endif
-    GLctx['bindBufferBase'](target, index, GL.buffers[buffer]);
+    GLctx.bindBufferBase(target, index, GL.buffers[buffer]);
   },
 
   glBindBufferRange: function(target, index, buffer, offset, ptrsize) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.buffers, buffer, 'glBindBufferRange', 'buffer');
 #endif
-    GLctx['bindBufferRange'](target, index, GL.buffers[buffer], offset, ptrsize);
+    GLctx.bindBufferRange(target, index, GL.buffers[buffer], offset, ptrsize);
   },
 
   glGetUniformIndices: function(program, uniformCount, uniformNames, uniformIndices) {
@@ -520,7 +520,7 @@ var LibraryWebGL2 = {
     for (var i = 0; i < uniformCount; i++)
       names.push(UTF8ToString({{{ makeGetValue('uniformNames', 'i*4', 'i32') }}}));
 
-    var result = GLctx['getUniformIndices'](program, names);
+    var result = GLctx.getUniformIndices(program, names);
     if (!result) return; // GL spec: If an error is generated, nothing is written out to uniformIndices.
 
     var len = result.length;
@@ -554,7 +554,7 @@ var LibraryWebGL2 = {
       ids.push({{{ makeGetValue('uniformIndices', 'i*4', 'i32') }}});
     }
 
-    var result = GLctx['getActiveUniforms'](program, ids, pname);
+    var result = GLctx.getActiveUniforms(program, ids, pname);
     if (!result) return; // GL spec: If an error is generated, nothing is written out to params.
 
     var len = result.length;
@@ -567,7 +567,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetUniformBlockIndex', 'program');
 #endif
-    return GLctx['getUniformBlockIndex'](GL.programs[program], UTF8ToString(uniformBlockName));
+    return GLctx.getUniformBlockIndex(GL.programs[program], UTF8ToString(uniformBlockName));
   },
 
   glGetActiveUniformBlockiv: function(program, uniformBlockIndex, pname, params) {
@@ -588,12 +588,12 @@ var LibraryWebGL2 = {
     program = GL.programs[program];
 
     if (pname == 0x8A41 /* GL_UNIFORM_BLOCK_NAME_LENGTH */) {
-      var name = GLctx['getActiveUniformBlockName'](program, uniformBlockIndex);
+      var name = GLctx.getActiveUniformBlockName(program, uniformBlockIndex);
       {{{ makeSetValue('params', 0, 'name.length+1', 'i32') }}};
       return;
     }
 
-    var result = GLctx['getActiveUniformBlockParameter'](program, uniformBlockIndex, pname);
+    var result = GLctx.getActiveUniformBlockParameter(program, uniformBlockIndex, pname);
     if (result === null) return; // If an error occurs, nothing should be written to params.
     if (pname == 0x8A43 /*GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES*/) {
       for (var i = 0; i < result.length; i++) {
@@ -610,7 +610,7 @@ var LibraryWebGL2 = {
 #endif
     program = GL.programs[program];
 
-    var result = GLctx['getActiveUniformBlockName'](program, uniformBlockIndex);
+    var result = GLctx.getActiveUniformBlockName(program, uniformBlockIndex);
     if (!result) return; // If an error occurs, nothing will be written to uniformBlockName or length.
     if (uniformBlockName && bufSize > 0) {
       var numBytesWrittenExclNull = stringToUTF8(result, uniformBlockName, bufSize);
@@ -626,7 +626,7 @@ var LibraryWebGL2 = {
 #endif
     program = GL.programs[program];
 
-    GLctx['uniformBlockBinding'](program, uniformBlockIndex, uniformBlockBinding);
+    GLctx.uniformBlockBinding(program, uniformBlockIndex, uniformBlockBinding);
   },
 
   glClearBufferiv: function(buffer, drawbuffer, value) {
@@ -634,7 +634,7 @@ var LibraryWebGL2 = {
     assert((value & 3) == 0, 'Pointer to integer data passed to glClearBufferiv must be aligned to four bytes!');
 #endif
 
-    GLctx['clearBufferiv'](buffer, drawbuffer, HEAP32, value>>2);
+    GLctx.clearBufferiv(buffer, drawbuffer, HEAP32, value>>2);
   },
 
   glClearBufferuiv: function(buffer, drawbuffer, value) {
@@ -642,7 +642,7 @@ var LibraryWebGL2 = {
     assert((value & 3) == 0, 'Pointer to integer data passed to glClearBufferuiv must be aligned to four bytes!');
 #endif
 
-    GLctx['clearBufferuiv'](buffer, drawbuffer, HEAPU32, value>>2);
+    GLctx.clearBufferuiv(buffer, drawbuffer, HEAPU32, value>>2);
   },
 
   glClearBufferfv: function(buffer, drawbuffer, value) {
@@ -650,7 +650,7 @@ var LibraryWebGL2 = {
     assert((value & 3) == 0, 'Pointer to float data passed to glClearBufferfv must be aligned to four bytes!');
 #endif
 
-    GLctx['clearBufferfv'](buffer, drawbuffer, HEAPF32, value>>2);
+    GLctx.clearBufferfv(buffer, drawbuffer, HEAPF32, value>>2);
   },
 
   glFenceSync: function(condition, flags) {
@@ -738,7 +738,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetFragDataLocation', 'program');
 #endif
-    return GLctx['getFragDataLocation'](GL.programs[program], UTF8ToString(name));
+    return GLctx.getFragDataLocation(GL.programs[program], UTF8ToString(name));
   },
 
   glGetVertexAttribIiv__deps: ['$emscriptenWebGLGetVertexAttrib'],
@@ -942,7 +942,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
     GL.validateVertexAttribPointer(size, type, stride, ptr);
 #endif
-    GLctx['vertexAttribIPointer'](index, size, type, stride, ptr);
+    GLctx.vertexAttribIPointer(index, size, type, stride, ptr);
   },
 
 #if !LEGACY_GL_EMULATION

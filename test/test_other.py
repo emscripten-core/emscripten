@@ -8701,6 +8701,7 @@ end
     # Test for closure errors and warnings in the entire JS library.
     self.build(test_file('hello_world.c'), emcc_args=[
       '--closure=1',
+      '--minify=0',
       '-Werror=closure',
       '-sINCLUDE_FULL_LIBRARY',
       # Enable as many features as possible in order to maximise
@@ -8711,6 +8712,43 @@ end
       '-sLEGACY_GL_EMULATION',
       '-sMAX_WEBGL_VERSION=2',
     ] + args)
+
+    # Check that closure doesn't minify certain attributes.
+    # This list allows us to verify that it's safe to use normal accessors over
+    # string accessors.
+    glsyms = [
+      'compressedTexImage2D',
+      'compressedTexSubImage2D',
+      'compressedTexImage3D',
+      'compressedTexSubImage3D',
+      'bindVertexArray',
+      'deleteVertexArray',
+      'createVertexArray',
+      'isVertexArray',
+      'getQueryParameter',
+      'drawElementsInstanced',
+      'drawBuffers',
+      'drawArraysInstanced',
+      'vertexAttribDivisor',
+      'getInternalformatParameter',
+      'beginQuery',
+      'getQuery',
+      'clearBufferfv',
+      'clearBufferuiv',
+      'getFragDataLocation',
+      'vertexAttribIPointer',
+      'samplerParameteri',
+      'samplerParameterf',
+      'isTransformFeedback',
+      'deleteTransformFeedback',
+      'transformFeedbackVaryings',
+      'getSamplerParameter',
+      'uniformBlockBindin',
+      'vertexAttribIPointer',
+    ]
+    js = read_file('hello_world.js')
+    for sym in glsyms:
+      self.assertContained('.' + sym, js)
 
   def test_closure_webgpu(self):
     # This test can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
