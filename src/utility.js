@@ -40,6 +40,15 @@ function dump(item) {
 }
 
 global.warnings = false;
+global.currentFile = null;
+
+function errorPrefix() {
+  if (currentFile) {
+    return currentFile + ': '
+  } else {
+    return '';
+  }
+}
 
 function warn(a, msg) {
   global.warnings = true;
@@ -48,7 +57,7 @@ function warn(a, msg) {
     a = false;
   }
   if (!a) {
-    printErr('warning: ' + msg);
+    printErr(`warning: ${errorPrefix()}${msg}`);
   }
 }
 
@@ -69,7 +78,7 @@ global.abortExecution = false;
 
 function error(msg) {
   abortExecution = true;
-  printErr('error: ' + msg);
+  printErr(`error: ${errorPrefix()}${msg}`);
 }
 
 function range(size) {

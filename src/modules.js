@@ -210,6 +210,7 @@ global.LibraryManager = {
           },
         });
       }
+      currentFile = filename;
       try {
         processed = processMacros(preprocess(filename));
         vm.runInThisContext(processed, { filename: filename.replace(/\.\w+$/, '.preprocessed$&') });
@@ -227,6 +228,7 @@ global.LibraryManager = {
         }
         throw e;
       } finally {
+        currentFile = null;
         if (origLibrary) {
           this.library = origLibrary;
         }
