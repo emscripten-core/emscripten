@@ -12533,7 +12533,7 @@ Module['postRun'] = function() {{
   @also_with_wasmfs
   def test_unistd_cwd(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_chdir.c')
-    
+
   @also_with_wasmfs
   def test_unistd_getcwd(self):
     self.emcc_args += ['-sWASMFS']
