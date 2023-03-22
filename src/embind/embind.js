@@ -28,16 +28,16 @@
 var LibraryEmbind = {
   $InternalError__postset: "InternalError = Module['InternalError'] = extendError(Error, 'InternalError');",
   $InternalError__deps: ['$extendError'],
-  $InternalError:  undefined,
+  $InternalError: null,
   $BindingError__postset: "BindingError = Module['BindingError'] = extendError(Error, 'BindingError');",
   $BindingError__deps: ['$extendError'],
-  $BindingError: undefined,
+  $BindingError: null,
   $UnboundTypeError__postset: "UnboundTypeError = Module['UnboundTypeError'] = extendError(Error, 'UnboundTypeError');",
   $UnboundTypeError__deps: ['$extendError'],
-  $UnboundTypeError: undefined,
+  $UnboundTypeError: null,
   $PureVirtualError__postset: "PureVirtualError = Module['PureVirtualError'] = extendError(Error, 'PureVirtualError');",
   $PureVirtualError__deps: ['$extendError'],
-  $PureVirtualError: undefined,
+  $PureVirtualError: null,
 
   $init_embind__deps: [
     '$getInheritedInstanceCount', '$getLiveInheritedInstances',
@@ -352,7 +352,7 @@ var LibraryEmbind = {
 
   $embind_charCodes__deps: ['$embind_init_charCodes'],
   $embind_charCodes__postset: "embind_init_charCodes()",
-  $embind_charCodes: undefined,
+  $embind_charCodes: null,
   $embind_init_charCodes: function() {
     var codes = new Array(256);
     for (var i = 0; i < 256; ++i) {
@@ -1946,7 +1946,7 @@ var LibraryEmbind = {
     }
   },
 
-  $delayFunction: undefined,
+  $delayFunction: null,
 
   $setDelayFunction__deps: ['$delayFunction', '$deletionQueue', '$flushPendingDeletes'],
   $setDelayFunction: function(fn) {

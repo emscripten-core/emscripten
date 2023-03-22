@@ -142,7 +142,7 @@ mergeInto(LibraryManager.library, {
   $freeTableIndexes: [],
 
   // Weak map of functions in the table to their indexes, created on first use.
-  $functionsInTableMap: undefined,
+  $functionsInTableMap: null,
 
   $getEmptyTableSlot__deps: ['$freeTableIndexes'],
   $getEmptyTableSlot: function() {

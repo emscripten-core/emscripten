@@ -326,6 +326,7 @@ function ${name}(${args}) {
       librarySymbols.push(mangled);
 
       const original = LibraryManager.library[symbol];
+      assert(typeof original != 'undefined', 'undefined symbol in LibraryManager: ' + symbol);
       let snippet = original;
 
       const isUserSymbol = LibraryManager.library[symbol + '__user'];
