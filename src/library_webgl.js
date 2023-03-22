@@ -1684,7 +1684,6 @@ var LibraryGL = {
   // merge the functions together to only have one generated copy of this. 'createFunction' refers to the WebGL context function name to do
   // the actual creation, 'objectTable' points to the GL object table where to populate the created objects, and 'functionName' carries
   // the name of the caller for debug information.
-  $__glGenObject__sig: 'vii',
   $__glGenObject: function(n, buffers, createFunction, objectTable
 #if GL_ASSERTIONS
     , functionName
