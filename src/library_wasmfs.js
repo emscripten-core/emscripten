@@ -128,7 +128,7 @@ mergeInto(LibraryManager.library, {
       // For file preloading, cwd should be '/' to begin with.
       return withStackSave(() => {
         var buffer = stackAlloc({{{cDefine('PATH_MAX')}}});
-        var result = _wasmfs_getcwd(buffer, buffer.length);
+        var result = __wasmfs_getcwd(buffer, buffer.length);
         return UTF8ToString(buffer);
       });
     },
@@ -143,7 +143,7 @@ mergeInto(LibraryManager.library, {
       });
     },
     // TODO: mkdirTree
-    //TODO: rmdir
+    // TODO: rmdir
     // TODO: open
     open: (path, flags, mode) => {
       flags = typeof flags == 'string' ? FS.modeStringToFlags(flags) : flags;
