@@ -4220,40 +4220,14 @@ createGLPassthroughFunctions(LibraryGL, glPassthroughFuncs);
 
 autoAddDeps(LibraryGL, '$GL');
 
-function copyLibEntry(lib, a, b) {
-  lib[a] = lib[b];
-  lib[a + '__postset'] = lib[b + '__postset'];
-  lib[a + '__proxy'] = lib[b + '__proxy'];
-  lib[a + '__sig'] = lib[b + '__sig'];
-  lib[a + '__deps'] = (lib[b + '__deps'] || []).slice(0);
-}
-
 function recordGLProcAddressGet(lib) {
-  // GL proc address retrieval - allow access through glX and emscripten_glX, to allow name collisions with user-implemented things having the same name (see gl.c)
+  // GL proc address retrieval - allow access through glX and emscripten_glX, to
+  // allow name collisions with user-implemented things having the same name
+  // (see gl.c)
   Object.keys(lib).forEach((x) => {
-    if (isJsLibraryConfigIdentifier(x)) return;
-    if (x.substr(0, 2) != 'gl') return;
-    while (typeof lib[x] == 'string') {
-      // resolve aliases right here, simpler for fastcomp
-      copyLibEntry(lib, x, lib[x]);
+    if (x.startsWith('gl') && !isJsLibraryConfigIdentifier(x)) {
+      lib['emscripten_' + x] = x;
     }
-    const y = 'emscripten_' + x;
-    lib[x + '__deps'] = (lib[x + '__deps'] || []).map((dep) => {
-      // prefix dependencies as well
-      if (typeof dep == 'string' && dep[0] == 'g' && dep[1] == 'l' && lib[dep]) {
-        const orig = dep;
-        dep = 'emscripten_' + dep;
-        let fixed = lib[x].toString().replace(new RegExp('_' + orig + '\\(', 'g'), '_' + dep + '(');
-        // `function` is 8 characters, add space and an explicit name after if there isn't one already
-        if (fixed.startsWith('function(') || fixed.startsWith('function (')) {
-          fixed = fixed.substr(0, 8) + ' _' + y + fixed.substr(8);
-        }
-        lib[x] = eval('(function() { return ' + fixed + ' })()');
-      }
-      return dep;
-    });
-    // copy it
-    copyLibEntry(lib, y, x);
   });
 }
 
