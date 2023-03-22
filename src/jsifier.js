@@ -350,6 +350,16 @@ function ${name}(${args}) {
             // Redirection for aliases. We include the parent, and at runtime make ourselves equal to it.
             // This avoid having duplicate functions with identical content.
             const redirectedTarget = snippet;
+            if (!(redirectedTarget in LibraryManager.library)) {
+              error(`${symbol}: alias target not found in JS library: ${redirectedTarget}`);
+            }
+            if (WASM_EXPORTS.has(redirectedTarget)) {
+              // JS symbols cannot currently alias native symbols, because
+              // the JS symbols are declared earlier in the output file.
+              // e.g. we cannot output `foo = _bar;` if `_bar` is native symbol
+              // otherwise closure compilains of JSC_REFERENCE_BEFORE_DECLARE.
+              error(`${symbol}: alias target cannot be a native symbol: ${redirectedTarget}`);
+            }
             deps.push(redirectedTarget);
             snippet = mangleCSymbolName(redirectedTarget);
           }

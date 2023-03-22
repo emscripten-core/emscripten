@@ -8656,6 +8656,7 @@ end
       '-sFETCH',
       '-sFETCH_SUPPORT_INDEXEDDB',
       '-sLEGACY_GL_EMULATION',
+      '-sMAX_WEBGL_VERSION=2',
     ] + args)
 
   def test_closure_webgpu(self):
