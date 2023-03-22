@@ -87,7 +87,7 @@ function runJSify() {
     }
   }
 
-  function convertPointerParams(snippet, sig) {
+  function convertPointerParams(symbol, snippet, sig) {
     // Automatically convert any incoming pointer arguments from BigInt
     // to double (this limits the range to int53).
     // And convert the return value if the function returns a pointer.
@@ -99,6 +99,10 @@ function runJSify() {
       let argConvertions = '';
       for (let i = 1; i < sig.length; i++) {
         const name = argNames[i - 1];
+        if (!name) {
+          error(`convertPointerParams: missing name for argument ${i} in ${symbol}`);
+          return snippet;
+        }
         if (sig[i] == 'p') {
           argConvertions += `  ${name} = Number(${name});\n`;
           newArgs.push(`Number(${name})`);
@@ -182,7 +186,7 @@ function ${name}(${args}) {
     if (MEMORY64) {
       const sig = LibraryManager.library[symbol + '__sig'];
       if (sig && sig.includes('p')) {
-        snippet = convertPointerParams(snippet, sig);
+        snippet = convertPointerParams(symbol, snippet, sig);
       }
     }
 

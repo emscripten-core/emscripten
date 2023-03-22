@@ -1843,7 +1843,7 @@ var LibrarySDL = {
     return SDL.errorMessage;
   },
 
-  SDL_SetError: function() {},
+  SDL_SetError: function(fmt, varargs) {},
 
   SDL_CreateRGBSurface__deps: ['malloc', 'free'],
   SDL_CreateRGBSurface__proxy: 'sync',
@@ -2657,14 +2657,14 @@ var LibrarySDL = {
   SDL_UnlockAudio: function() {},
 
   SDL_CreateMutex: function() { return 0 },
-  SDL_mutexP: function() { return 0 },
-  SDL_mutexV: function() { return 0 },
-  SDL_DestroyMutex: function() {},
+  SDL_mutexP: function(mutex) { return 0 },
+  SDL_mutexV: function(mutex) { return 0 },
+  SDL_DestroyMutex: function(mutex) {},
 
   SDL_CreateCond: function() { return 0 },
-  SDL_CondSignal: function() {},
-  SDL_CondWait: function() {},
-  SDL_DestroyCond: function() {},
+  SDL_CondSignal: function(cond) {},
+  SDL_CondWait: function(cond, mutex) {},
+  SDL_DestroyCond: function(cond) {},
 
   SDL_StartTextInput__proxy: 'sync',
   SDL_StartTextInput__sig: 'v',
@@ -3716,30 +3716,30 @@ var LibrarySDL = {
   },
 
   // TODO:
-  SDL_CreateThread: function() {
+  SDL_CreateThread: function(fs, data, pfnBeginThread, pfnEndThread) {
     throw 'SDL threads cannot be supported in the web platform because they assume shared state. See emscripten_create_worker etc. for a message-passing concurrency model that does let you run code in another thread.'
   },
 
-  SDL_WaitThread: function() { throw 'SDL_WaitThread' },
-  SDL_GetThreadID: function() { throw 'SDL_GetThreadID' },
+  SDL_WaitThread: function(thread, status) { throw 'SDL_WaitThread' },
+  SDL_GetThreadID: function(thread) { throw 'SDL_GetThreadID' },
   SDL_ThreadID: function() { return 0; },
   SDL_AllocRW: function() { throw 'SDL_AllocRW: TODO' },
-  SDL_CondBroadcast: function() { throw 'SDL_CondBroadcast: TODO' },
-  SDL_CondWaitTimeout: function() { throw 'SDL_CondWaitTimeout: TODO' },
+  SDL_CondBroadcast: function(cond) { throw 'SDL_CondBroadcast: TODO' },
+  SDL_CondWaitTimeout: function(cond, mutex, ms) { throw 'SDL_CondWaitTimeout: TODO' },
   SDL_WM_IconifyWindow: function() { throw 'SDL_WM_IconifyWindow TODO' },
 
-  Mix_SetPostMix: function() { warnOnce('Mix_SetPostMix: TODO') },
+  Mix_SetPostMix: function(func, arg) { warnOnce('Mix_SetPostMix: TODO') },
 
   Mix_VolumeChunk: function(chunk, volume) { throw 'Mix_VolumeChunk: TODO' },
   Mix_SetPosition: function(channel, angle, distance) { throw 'Mix_SetPosition: TODO' },
-  Mix_QuerySpec: function() { throw 'Mix_QuerySpec: TODO' },
-  Mix_FadeInChannelTimed: function() { throw 'Mix_FadeInChannelTimed' },
+  Mix_QuerySpec: function(frequency, format, channels) { throw 'Mix_QuerySpec: TODO' },
+  Mix_FadeInChannelTimed: function(channel, chunk, loop, ms, ticks) { throw 'Mix_FadeInChannelTimed' },
   Mix_FadeOutChannel: function() { throw 'Mix_FadeOutChannel' },
 
   Mix_Linked_Version: function() { throw 'Mix_Linked_Version: TODO' },
-  SDL_SaveBMP_RW: function() { throw 'SDL_SaveBMP_RW: TODO' },
+  SDL_SaveBMP_RW: function(surface, dst, freedst) { throw 'SDL_SaveBMP_RW: TODO' },
 
-  SDL_WM_SetIcon: function() { /* This function would set the application window icon surface, which doesn't apply for web canvases, so a no-op. */ },
+  SDL_WM_SetIcon: function(icon, mask) { /* This function would set the application window icon surface, which doesn't apply for web canvases, so a no-op. */ },
   SDL_HasRDTSC: function() { return 0; },
   SDL_HasMMX: function() { return 0; },
   SDL_HasMMXExt: function() { return 0; },
