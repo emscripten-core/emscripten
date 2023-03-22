@@ -8643,6 +8643,7 @@ end
     # bigint support is interesting to test here because it changes which
     # binaryen tools get run, which can affect how debug info is kept around
     'bigint': [['-sWASM_BIGINT']],
+    'pthread': [['-pthread', '-Wno-experimental']],
   })
   def test_closure_full_js_library(self, args):
     # Test for closure errors and warnings in the entire JS library.
