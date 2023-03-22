@@ -3008,7 +3008,6 @@ mergeInto(LibraryManager.library, {
   },
 
 #if HAVE_EM_ASM
-  $runEmAsmFunction__sig: 'ippp',
   $runEmAsmFunction__deps: ['$readEmAsmArgs'],
   $runEmAsmFunction: function(code, sigPtr, argbuf) {
     var args = readEmAsmArgs(sigPtr, argbuf);
@@ -3036,7 +3035,6 @@ mergeInto(LibraryManager.library, {
   },
 
   $runMainThreadEmAsm__deps: ['$readEmAsmArgs'],
-  $runMainThreadEmAsm__sig: 'iippi',
   $runMainThreadEmAsm: function(code, sigPtr, argbuf, sync) {
     var args = readEmAsmArgs(sigPtr, argbuf);
 #if PTHREADS
@@ -3067,6 +3065,7 @@ mergeInto(LibraryManager.library, {
   },
   emscripten_asm_const_double_sync_on_main_thread: 'emscripten_asm_const_int_sync_on_main_thread',
   emscripten_asm_const_async_on_main_thread__deps: ['$runMainThreadEmAsm'],
+  emscripten_asm_const_async_on_main_thread__sig: 'vppp',
   emscripten_asm_const_async_on_main_thread: function(code, sigPtr, argbuf) {
     return runMainThreadEmAsm(code, sigPtr, argbuf, 0);
   },
