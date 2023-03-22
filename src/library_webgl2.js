@@ -1116,28 +1116,28 @@ var LibraryWebGL2 = {
   glClearBufferfi__sig: 'viifi',
 };
 
-// Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
-var webgl2Funcs = [[0, 'endTransformFeedback pauseTransformFeedback resumeTransformFeedback'],
- [1, 'beginTransformFeedback readBuffer endQuery'],
- [2, ''],
- [3, ''],
- [4, 'clearBufferfi'],
- [5, 'vertexAttribI4i vertexAttribI4ui copyBufferSubData texStorage2D renderbufferStorageMultisample'],
- [6, 'texStorage3D'],
- [7, ''],
- [8, ''],
- [9, 'copyTexSubImage3D'],
- [10, 'blitFramebuffer']];
-
 #if MAX_WEBGL_VERSION >= 2
 
-// If user passes -sMAX_WEBGL_VERSION >= 2 -sSTRICT but not -lGL (to link in WebGL 1), then WebGL2 library should not
-// be linked in as well.
+// Simple pass-through functions.
+// - Starred ones have return values.
+// - [X] ones have X in the C name but not in the JS name
+var webgl2PassthroughFuncs = [
+  [0, 'endTransformFeedback pauseTransformFeedback resumeTransformFeedback'],
+  [1, 'beginTransformFeedback readBuffer endQuery'],
+  [4, 'clearBufferfi'],
+  [5, 'vertexAttribI4i vertexAttribI4ui copyBufferSubData texStorage2D renderbufferStorageMultisample'],
+  [6, 'texStorage3D'],
+  [9, 'copyTexSubImage3D'],
+  [10, 'blitFramebuffer']
+];
+
+// If user passes -sMAX_WEBGL_VERSION >= 2 -sSTRICT but not -lGL (to link in
+// WebGL 1), then WebGL2 library should not be linked in as well.
 if (typeof createGLPassthroughFunctions == 'undefined') {
   throw 'In order to use WebGL 2 in strict mode with -sMAX_WEBGL_VERSION=2, you need to link in WebGL support with -lGL!';
 }
 
-createGLPassthroughFunctions(LibraryWebGL2, webgl2Funcs);
+createGLPassthroughFunctions(LibraryWebGL2, webgl2PassthroughFuncs);
 
 recordGLProcAddressGet(LibraryWebGL2);
 

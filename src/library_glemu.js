@@ -3881,16 +3881,16 @@ var LibraryGLEmulation = {
 
   // Open GLES1.1 compatibility
 
-  glGenFramebuffersOES : 'glGenFramebuffers',
-  glGenRenderbuffersOES : 'glGenRenderbuffers',
-  glBindFramebufferOES : 'glBindFramebuffer',
-  glBindRenderbufferOES : 'glBindRenderbuffer',
-  glGetRenderbufferParameterivOES : 'glGetRenderbufferParameteriv',
-  glFramebufferRenderbufferOES : 'glFramebufferRenderbuffer',
-  glRenderbufferStorageOES : 'glRenderbufferStorage',
-  glCheckFramebufferStatusOES : 'glCheckFramebufferStatus',
-  glDeleteFramebuffersOES : 'glDeleteFramebuffers',
-  glDeleteRenderbuffersOES : 'glDeleteRenderbuffers',
+  glGenFramebuffersOES: 'glGenFramebuffers',
+  glGenRenderbuffersOES: 'glGenRenderbuffers',
+  glBindFramebufferOES: 'glBindFramebuffer',
+  glBindRenderbufferOES: 'glBindRenderbuffer',
+  glGetRenderbufferParameterivOES: 'glGetRenderbufferParameteriv',
+  glFramebufferRenderbufferOES: 'glFramebufferRenderbuffer',
+  glRenderbufferStorageOES: 'glRenderbufferStorage',
+  glCheckFramebufferStatusOES: 'glCheckFramebufferStatus',
+  glDeleteFramebuffersOES: 'glDeleteFramebuffers',
+  glDeleteRenderbuffersOES: 'glDeleteRenderbuffers',
   glFramebufferTexture2DOES: 'glFramebufferTexture2D',
 
   // GLU

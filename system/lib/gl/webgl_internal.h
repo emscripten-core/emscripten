@@ -1,5 +1,12 @@
 #pragma once
 
+EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_do_get_current_context(void);
+EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_do_create_context(const char *target, const EmscriptenWebGLContextAttributes *attributes);
+EMSCRIPTEN_RESULT emscripten_webgl_make_context_current_calling_thread(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+EMSCRIPTEN_RESULT emscripten_webgl_do_commit_frame(void);
+EM_BOOL emscripten_supports_offscreencanvas(void);
+void _emscripten_proxied_gl_context_activated_from_main_browser_thread(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+
 #ifdef EMSCRIPTEN_WEBGL_TRACE
 #define GL_FUNCTION_TRACE(func) printf(#func "\n")
 #else

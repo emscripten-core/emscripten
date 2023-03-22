@@ -40,6 +40,15 @@ function dump(item) {
 }
 
 global.warnings = false;
+global.currentFile = null;
+
+function errorPrefix() {
+  if (currentFile) {
+    return currentFile + ': '
+  } else {
+    return '';
+  }
+}
 
 function warn(a, msg) {
   global.warnings = true;
@@ -48,7 +57,7 @@ function warn(a, msg) {
     a = false;
   }
   if (!a) {
-    printErr('warning: ' + msg);
+    printErr(`warning: ${errorPrefix()}${msg}`);
   }
 }
 
@@ -69,7 +78,7 @@ global.abortExecution = false;
 
 function error(msg) {
   abortExecution = true;
-  printErr('error: ' + msg);
+  printErr(`error: ${errorPrefix()}${msg}`);
 }
 
 function range(size) {
@@ -114,6 +123,18 @@ function mergeInto(obj, other, options = null) {
         if (typeof value === 'function' && !other.hasOwnProperty(key + '__sig')) {
           error(`__sig is missing for function: ${key}. Do not use checkSig if this is intended`);
           return;
+        }
+      }
+    }
+  }
+
+  for (const key of Object.keys(other)) {
+    if (key.endsWith('__sig')) {
+      if (obj.hasOwnProperty(key)) {
+        const oldsig = obj[key];
+        const newsig = other[key];
+        if (oldsig != newsig) {
+          console.warn(`Signature redefinition mismatch for : ${key}. (old=${oldsig} vs new=${newsig})`);
         }
       }
     }

@@ -808,10 +808,12 @@ function instantiateSync(file, info) {
 }
 #endif
 
-#if expectToReceiveOnModule('instantiateWasm') && (LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER)
-// When using postMessage to send an object, it is processed by the structured clone algorithm.
-// The prototype, and hence methods, on that object is then lost. This function adds back the lost prototype.
-// This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
+#if PTHREADS && (LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER)
+// When using postMessage to send an object, it is processed by the structured
+// clone algorithm.  The prototype, and hence methods, on that object is then
+// lost. This function adds back the lost prototype.  This does not work with
+// nested objects that has prototypes, but it suffices for WasmSourceMap and
+// WasmOffsetConverter.
 function resetPrototype(constructor, attrs) {
   var object = Object.create(constructor.prototype);
   return Object.assign(object, attrs);
@@ -1093,26 +1095,31 @@ function createWasm() {
 
 #if expectToReceiveOnModule('instantiateWasm')
   // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
-  // to manually instantiate the Wasm module themselves. This allows pages to run the instantiation parallel
-  // to any other async startup actions they are performing.
-  // Also pthreads and wasm workers initialize the wasm instance through this path.
+  // to manually instantiate the Wasm module themselves. This allows pages to
+  // run the instantiation parallel to any other async startup actions they are
+  // performing.
+  // Also pthreads and wasm workers initialize the wasm instance through this
+  // path.
   if (Module['instantiateWasm']) {
-#if USE_OFFSET_CONVERTER
-#if ASSERTIONS && PTHREADS
+
+#if USE_OFFSET_CONVERTER && PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
+#if ASSERTIONS
       assert(Module['wasmOffsetData'], 'wasmOffsetData not found on Module object');
+#endif
+      wasmOffsetConverter = resetPrototype(WasmOffsetConverter, Module['wasmOffsetData']);
     }
 #endif
-    wasmOffsetConverter = resetPrototype(WasmOffsetConverter, Module['wasmOffsetData']);
-#endif
-#if LOAD_SOURCE_MAP
-#if ASSERTIONS && PTHREADS
+
+#if LOAD_SOURCE_MAP && PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
+#if ASSERTIONS
       assert(Module['wasmSourceMapData'], 'wasmSourceMapData not found on Module object');
+#endif
+      wasmSourceMap = resetPrototype(WasmSourceMap, Module['wasmSourceMapData']);
     }
 #endif
-    wasmSourceMap = resetPrototype(WasmSourceMap, Module['wasmSourceMapData']);
-#endif
+
     try {
       return Module['instantiateWasm'](info, receiveInstance);
     } catch(e) {

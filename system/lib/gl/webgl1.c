@@ -12,13 +12,6 @@
 
 #if defined(__EMSCRIPTEN_PTHREADS__) && defined(__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__)
 
-extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_do_create_context(const char *target, const EmscriptenWebGLContextAttributes *attributes);
-extern EMSCRIPTEN_RESULT emscripten_webgl_make_context_current_calling_thread(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
-extern EMSCRIPTEN_RESULT emscripten_webgl_do_commit_frame(void);
-extern EM_BOOL emscripten_supports_offscreencanvas(void);
-extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_do_get_current_context(void);
-extern void _emscripten_proxied_gl_context_activated_from_main_browser_thread(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
-
 pthread_key_t currentActiveWebGLContext;
 pthread_key_t currentThreadOwnsItsWebGLContext;
 static pthread_once_t tlsInit = PTHREAD_ONCE_INIT;

@@ -3740,7 +3740,7 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
 
     self.emcc_args += ['--js-library', 'duplicated_func_1.js', '--js-library', 'duplicated_func_2.js']
     err = self.expect_fail([EMCC, 'duplicated_func.c'] + self.get_emcc_args())
-    self.assertContained('error: Symbol re-definition in JavaScript library: duplicatedFunc. Do not use noOverride if this is intended', err)
+    self.assertContained('duplicated_func_2.js: Symbol re-definition in JavaScript library: duplicatedFunc. Do not use noOverride if this is intended', err)
 
   def test_override_stub(self):
     self.do_run_from_file(test_file('other/test_override_stub.c'), test_file('other/test_override_stub.out'))
@@ -3767,7 +3767,7 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
 
     self.emcc_args += ['--js-library', 'some_func.js']
     err = self.expect_fail([EMCC, 'some_func.c'] + self.get_emcc_args())
-    self.assertContained('error: __sig is missing for function: someFunc. Do not use checkSig if this is intended', err)
+    self.assertContained('some_func.js: __sig is missing for function: someFunc. Do not use checkSig if this is intended', err)
 
   def test_js_lib_quoted_key(self):
     create_file('lib.js', r'''
@@ -11592,7 +11592,7 @@ exec "$@"
       #endif
       ''')
     proc = self.run_process([EMCC, test_file('hello_world.c'), '--js-library=lib.js'], stderr=PIPE)
-    self.assertContained('warning: use of #ifdef in js library.  Use #if instead.', proc.stderr)
+    self.assertContained('lib.js: use of #ifdef in js library.  Use #if instead.', proc.stderr)
 
   def test_jslib_mangling(self):
     create_file('lib.js', '''
@@ -11803,6 +11803,7 @@ exec "$@"
     self.assertIn('Hello from main!', result)
     self.assertIn('Hello from lib!', result)
 
+  @crossplatform
   def test_gen_struct_info(self):
     # This test will start failing whenever the struct info changes (e.g. offset or defines
     # change).  However it's easy to rebaseline with --rebaseline.
@@ -11814,6 +11815,14 @@ exec "$@"
     if node_version and node_version >= (14, 0, 0):
       self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '--wasm64', '-o', 'out.json'])
       self.assertFileContents(path_from_root('src/generated_struct_info64.json'), read_file('out.json'))
+
+  @crossplatform
+  def test_gen_sig_info(self):
+    # This tests is fragile and will need updating any time a JS library
+    # function is added or its signature changed.  However it's easy to
+    # rebaseline with --rebaseline.
+    self.run_process([PYTHON, path_from_root('tools/gen_sig_info.py'), '-o', 'out.js'])
+    self.assertFileContents(path_from_root('src/library_sigs.js'), read_file('out.js'))
 
   def test_gen_struct_info_env(self):
     # gen_struct_info.py builds C code in a very specific and low level way.  We don't want
