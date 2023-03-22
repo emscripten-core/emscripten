@@ -111,6 +111,7 @@ mergeInto(LibraryManager.library, {
 #endif
 #if ASYNCIFY == 2
       var exportPatterns = [{{{ ASYNCIFY_EXPORTS.map(x => new RegExp('^' + x.replace(/\*/g, '.*') + '$')) }}}];
+      Asyncify.asyncExports = new Set();
 #endif
       var ret = {};
       for (var x in exports) {
@@ -120,6 +121,7 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY == 2
             // Wrap all exports with a promising WebAssembly function.
             var isAsyncifyExport = exportPatterns.some(pattern => !!x.match(pattern));
+            Asyncify.asyncExports.add(original);
             if (isAsyncifyExport) {
               original = Asyncify.makeAsyncFunction(original);
             }
@@ -415,6 +417,13 @@ mergeInto(LibraryManager.library, {
     //
     // JSPI implementation of Asyncify.
     //
+
+    // Stores all the exported raw Wasm functions that are wrapped with async
+    // WebAssembly.Functions.
+    asyncExports: null,
+    isAsyncExport: function(func) {
+      return Asyncify.asyncExports && Asyncify.asyncExports.has(func);
+    },
     handleSleep: function(startAsync) {
       {{{ runtimeKeepalivePush(); }}}
       var promise = new Promise((resolve) => {

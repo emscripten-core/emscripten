@@ -8448,6 +8448,18 @@ Module.onRuntimeInitialized = () => {
     self.set_setting('MAIN_MODULE', 2)
     self.do_core_test('test_hello_world.c')
 
+  # Test that pthread_join works correctly with asyncify.
+  @requires_node
+  def test_pthread_join_and_asyncify(self):
+    # TODO Test with ASYNCIFY=1 https://github.com/emscripten-core/emscripten/issues/17552
+    self.require_jspi()
+    self.do_runf(test_file('core/test_pthread_join_and_asyncify.c'), 'joining thread!\njoined thread!',
+                 emcc_args=['-sASYNCIFY=2',
+                            '-sASYNCIFY_EXPORTS=run_thread',
+                            '-sEXIT_RUNTIME=1',
+                            '-pthread', '-sPROXY_TO_PTHREAD',
+                            '-Wno-experimental'])
+
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm64('TODO: asyncify for wasm64')
   @no_wasm2js('TODO: lazy loading in wasm2js')
