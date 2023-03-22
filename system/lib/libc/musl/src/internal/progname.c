@@ -9,13 +9,12 @@
 #include <limits.h>
 #include <string.h>
 
+#include "emscripten_internal.h"
+
 char *__progname=0, *__progname_full=0;
 
 weak_alias(__progname, program_invocation_short_name);
 weak_alias(__progname_full, program_invocation_name);
-
-/* See src/library.js for the implementation. */
-extern void _emscripten_get_progname(char*, int);
 
 __attribute__((constructor))
 static void __progname_ctor(void)
