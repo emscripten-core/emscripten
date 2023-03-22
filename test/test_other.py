@@ -3849,7 +3849,7 @@ int main() {
     err = self.run_process([EMCC, 'src.c', '--js-library', 'lib.js'], stderr=PIPE).stderr
     self.assertContained("warning: user library symbol 'jslibfunc' depends on internal symbol '$callRuntimeCallbacks'", err)
 
-  def test_js_lib_sig_mismatch(self):
+  def test_js_lib_sig_redefinition(self):
     create_file('lib.js', r'''
 mergeInto(LibraryManager.library, {
   jslibfunc__sig: 'ii',
@@ -3857,10 +3857,9 @@ mergeInto(LibraryManager.library, {
 });
 
 mergeInto(LibraryManager.library, {
-  jslibfunc__sig: 'dd',
+  jslibfunc__sig: 'ii',
   jslibfunc: function(x) {},
 });
-
 ''')
     create_file('src.c', r'''
 #include <stdio.h>
@@ -3869,8 +3868,18 @@ int main() {
   printf("c calling: %d\n", jslibfunc());
 }
 ''')
-    err = self.expect_fail([EMCC, 'src.c', '--js-library', 'lib.js'])
-    self.assertContained('lib.js: Signature redefinition for: jslibfunc__sig. (old=ii vs new=dd)', err)
+    err = self.run_process([EMCC, 'src.c', '--js-library', 'lib.js'], stderr=PIPE).stderr
+    self.assertContained('lib.js: signature redefinition for: jslibfunc__sig. (old=ii vs new=ii)', err)
+
+    # Add another redefinition, this time not matching
+    create_file('lib2.js', r'''
+mergeInto(LibraryManager.library, {
+  jslibfunc__sig: 'pp',
+  jslibfunc: function(x) {},
+});
+''')
+    err = self.expect_fail([EMCC, 'src.c', '--js-library', 'lib.js', '--js-library', 'lib2.js'])
+    self.assertContained('lib2.js: signature redefinition for: jslibfunc__sig. (old=ii vs new=pp)', err)
 
   def test_js_lib_invalid_deps(self):
     create_file('lib.js', r'''
