@@ -26,14 +26,9 @@
 #include <emscripten/stack.h>
 #include <sys/types.h>
 
-namespace __sanitizer {
+#include "emscripten_internal.h"
 
-extern "C" {
-char* emscripten_get_module_name(char *buf, size_t length);
-void* emscripten_builtin_mmap(void *addr, size_t length, int prot, int flags,
-                             int fd, off_t offset);
-int emscripten_builtin_munmap(void *addr, size_t length);
-}
+namespace __sanitizer {
 
 void ListOfModules::init() {
   modules_.Initialize(2);

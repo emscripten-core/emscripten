@@ -1684,7 +1684,6 @@ var LibraryGL = {
   // merge the functions together to only have one generated copy of this. 'createFunction' refers to the WebGL context function name to do
   // the actual creation, 'objectTable' points to the GL object table where to populate the created objects, and 'functionName' carries
   // the name of the caller for debug information.
-  $__glGenObject__sig: 'vii',
   $__glGenObject: function(n, buffers, createFunction, objectTable
 #if GL_ASSERTIONS
     , functionName
@@ -3711,10 +3710,18 @@ var LibraryGL = {
 
 #if !LEGACY_GL_EMULATION
 
-  glVertexPointer: function(){ throw 'Legacy GL function (glVertexPointer) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.'; },
-  glMatrixMode: function(){ throw 'Legacy GL function (glMatrixMode) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.'; },
-  glBegin: function(){ throw 'Legacy GL function (glBegin) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.'; },
-  glLoadIdentity: function(){ throw 'Legacy GL function (glLoadIdentity) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.'; },
+  glVertexPointer: function(size, type, stride, ptr) {
+    throw 'Legacy GL function (glVertexPointer) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.';
+  },
+  glMatrixMode: function() {
+    throw 'Legacy GL function (glMatrixMode) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.';
+  },
+  glBegin: function() {
+    throw 'Legacy GL function (glBegin) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.';
+  },
+  glLoadIdentity: function() {
+    throw 'Legacy GL function (glLoadIdentity) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.';
+  },
 
 #endif // LEGACY_GL_EMULATION
 
@@ -4172,18 +4179,18 @@ var LibraryGL = {
   glFrontFace__sig: 'vi',
 };
 
-// Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
-var glFuncs = [[0, 'finish flush'],
- [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation isEnabled*'],
- [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset vertexAttrib1f'],
- [3, 'texParameteri texParameterf vertexAttrib2f stencilFunc stencilOp'],
- [4, 'viewport clearColor scissor vertexAttrib3f renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
- [5, 'vertexAttrib4f'],
- [6, ''],
- [7, ''],
- [8, 'copyTexImage2D copyTexSubImage2D'],
- [9, ''],
- [10, '']];
+// Simple pass-through functions.
+// - Starred ones have return values.
+// - [X] ones have X in the C name but not in the JS name
+var glPassthroughFuncs = [
+  [0, 'finish flush'],
+  [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation isEnabled*'],
+  [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset vertexAttrib1f'],
+  [3, 'texParameteri texParameterf vertexAttrib2f stencilFunc stencilOp'],
+  [4, 'viewport clearColor scissor vertexAttrib3f renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
+  [5, 'vertexAttrib4f'],
+  [8, 'copyTexImage2D copyTexSubImage2D'],
+];
 
 function createGLPassthroughFunctions(lib, funcs) {
   funcs.forEach((data) => {
@@ -4194,11 +4201,10 @@ function createGLPassthroughFunctions(lib, funcs) {
     const returnStub = '(function(' + args + ') { return GLctx[\'NAME\'](' + args + ') })';
     const sigEnd = range(num).map(() => 'i').join('');
     names.split(' ').forEach((name) => {
-      if (name.length == 0) return;
       let stub = plainStub;
       let sig;
-      if (name[name.length-1] == '*') {
-        name = name.substr(0, name.length-1);
+      if (name.endsWith('*')) {
+        name = name.slice(0, -1);
         stub = returnStub;
         sig = 'i' + sigEnd;
       } else {
@@ -4207,7 +4213,7 @@ function createGLPassthroughFunctions(lib, funcs) {
       let cName = name;
       if (name.includes('[')) {
         cName = name.replace('[', '').replace(']', '');
-        name = cName.substr(0, cName.length-1);
+        name = cName.slice(0, -1);
       }
       cName = 'gl' + cName[0].toUpperCase() + cName.substr(1);
       assert(!(cName in lib), "Cannot reimplement the existing function " + cName);
@@ -4217,44 +4223,18 @@ function createGLPassthroughFunctions(lib, funcs) {
   });
 }
 
-createGLPassthroughFunctions(LibraryGL, glFuncs);
+createGLPassthroughFunctions(LibraryGL, glPassthroughFuncs);
 
 autoAddDeps(LibraryGL, '$GL');
 
-function copyLibEntry(lib, a, b) {
-  lib[a] = lib[b];
-  lib[a + '__postset'] = lib[b + '__postset'];
-  lib[a + '__proxy'] = lib[b + '__proxy'];
-  lib[a + '__sig'] = lib[b + '__sig'];
-  lib[a + '__deps'] = (lib[b + '__deps'] || []).slice(0);
-}
-
 function recordGLProcAddressGet(lib) {
-  // GL proc address retrieval - allow access through glX and emscripten_glX, to allow name collisions with user-implemented things having the same name (see gl.c)
+  // GL proc address retrieval - allow access through glX and emscripten_glX, to
+  // allow name collisions with user-implemented things having the same name
+  // (see gl.c)
   Object.keys(lib).forEach((x) => {
-    if (isJsLibraryConfigIdentifier(x)) return;
-    if (x.substr(0, 2) != 'gl') return;
-    while (typeof lib[x] == 'string') {
-      // resolve aliases right here, simpler for fastcomp
-      copyLibEntry(lib, x, lib[x]);
+    if (x.startsWith('gl') && !isJsLibraryConfigIdentifier(x)) {
+      lib['emscripten_' + x] = x;
     }
-    const y = 'emscripten_' + x;
-    lib[x + '__deps'] = (lib[x + '__deps'] || []).map((dep) => {
-      // prefix dependencies as well
-      if (typeof dep == 'string' && dep[0] == 'g' && dep[1] == 'l' && lib[dep]) {
-        const orig = dep;
-        dep = 'emscripten_' + dep;
-        let fixed = lib[x].toString().replace(new RegExp('_' + orig + '\\(', 'g'), '_' + dep + '(');
-        // `function` is 8 characters, add space and an explicit name after if there isn't one already
-        if (fixed.startsWith('function(') || fixed.startsWith('function (')) {
-          fixed = fixed.substr(0, 8) + ' _' + y + fixed.substr(8);
-        }
-        lib[x] = eval('(function() { return ' + fixed + ' })()');
-      }
-      return dep;
-    });
-    // copy it
-    copyLibEntry(lib, y, x);
   });
 }
 

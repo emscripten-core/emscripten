@@ -5,7 +5,7 @@
  */
 
 var LibraryXlib = {
-  XOpenDisplay: function() {
+  XOpenDisplay: function(name) {
     return 1; // We support 1 display, the canvas
   },
 
@@ -16,12 +16,12 @@ var LibraryXlib = {
     return 2;
   },
 
-  XChangeWindowAttributes: function(){},
-  XSetWMHints: function(){},
-  XMapWindow: function(){},
-  XStoreName: function(){},
+  XChangeWindowAttributes: function(display, window, valuemask, attributes){},
+  XSetWMHints: function(display, win, hints){},
+  XMapWindow: function(display, win){},
+  XStoreName: function(display, win, name){},
   XInternAtom: function(display, name_, hmm) { return 0 },
-  XSendEvent: function(){},
+  XSendEvent: function(display, win, propagate, event_mask, even_send){},
   XPending: function(display) { return 0 },
 };
 
