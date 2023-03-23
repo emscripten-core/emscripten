@@ -251,10 +251,6 @@ function ${name}(${args}) {
       }
 
       const deps = LibraryManager.library[symbol + '__deps'] || [];
-      if (!Array.isArray(deps)) {
-        error(`JS library directive ${symbol}__deps=${deps.toString()} is of type ${typeof deps}, but it should be an array!`);
-        return;
-      }
 
       if (symbolsOnly) {
         if (!isJsOnlySymbol(symbol) && LibraryManager.library.hasOwnProperty(symbol)) {
