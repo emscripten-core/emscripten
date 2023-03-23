@@ -2223,7 +2223,7 @@ mergeInto(LibraryManager.library, {
 
   // random.h
 
-  $initRandomDevice: function() {
+  $initRandomFill: function() {
     if (typeof crypto == 'object' && typeof crypto['getRandomValues'] == 'function') {
       // for modern web browsers
 #if SHARED_MEMORY
@@ -2268,10 +2268,10 @@ mergeInto(LibraryManager.library, {
 #endif
   },
 
-  $randomFill__deps: ['$initRandomDevice'],
+  $randomFill__deps: ['$initRandomFill'],
   $randomFill: function(view) {
     // Lazily init on the first invocation.
-    return (randomFill = initRandomDevice())(view);
+    return (randomFill = initRandomFill())(view);
   },
 
   getentropy__deps: ['$randomFill'],
