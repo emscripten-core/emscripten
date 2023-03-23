@@ -305,7 +305,7 @@ var SyscallsLibrary = {
     return sock.stream.fd;
   },
   __syscall_getsockname__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
-  __syscall_getsockname: function(fd, addr, addrlen) {
+  __syscall_getsockname: function(fd, addr, addrlen, d1, d2, d3) {
     err("__syscall_getsockname " + fd);
     var sock = getSocketFromFD(fd);
     // TODO: sock.saddr should never be undefined, see TODO in websocket_sock_ops.getname
@@ -316,7 +316,7 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_getpeername__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
-  __syscall_getpeername: function(fd, addr, addrlen) {
+  __syscall_getpeername: function(fd, addr, addrlen, d1, d2, d3) {
     var sock = getSocketFromFD(fd);
     if (!sock.daddr) {
       return -{{{ cDefs.ENOTCONN }}}; // The socket is not connected.
@@ -341,7 +341,7 @@ var SyscallsLibrary = {
     return -{{{ cDefs.ENOSYS }}}; // unsupported feature
   },
   __syscall_accept4__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
-  __syscall_accept4: function(fd, addr, addrlen, flags) {
+  __syscall_accept4: function(fd, addr, addrlen, flags, d1, d2) {
     var sock = getSocketFromFD(fd);
     var newsock = sock.sock_ops.accept(sock);
     if (addr) {
@@ -393,7 +393,7 @@ var SyscallsLibrary = {
     return sock.sock_ops.sendmsg(sock, {{{ heapAndOffset('HEAP8', 'message') }}}, length, dest.addr, dest.port);
   },
   __syscall_getsockopt__deps: ['$getSocketFromFD'],
-  __syscall_getsockopt: function(fd, level, optname, optval, optlen) {
+  __syscall_getsockopt: function(fd, level, optname, optval, optlen, d1) {
     var sock = getSocketFromFD(fd);
     // Minimal getsockopt aimed at resolving https://github.com/emscripten-core/emscripten/issues/2211
     // so only supports SOL_SOCKET with SO_ERROR.
@@ -408,7 +408,7 @@ var SyscallsLibrary = {
     return -{{{ cDefs.ENOPROTOOPT }}}; // The option is unknown at the level indicated.
   },
   __syscall_sendmsg__deps: ['$getSocketFromFD', '$readSockaddr', '$DNS'],
-  __syscall_sendmsg: function(fd, message, flags) {
+  __syscall_sendmsg: function(fd, message, flags, d1, d2, d3) {
     var sock = getSocketFromFD(fd);
     var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
     var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};
@@ -440,7 +440,7 @@ var SyscallsLibrary = {
     return sock.sock_ops.sendmsg(sock, view, 0, total, addr, port);
   },
   __syscall_recvmsg__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
-  __syscall_recvmsg: function(fd, message, flags) {
+  __syscall_recvmsg: function(fd, message, flags, d1, d2, d3) {
     var sock = getSocketFromFD(fd);
     var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, POINTER_TYPE) }}};
     var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};

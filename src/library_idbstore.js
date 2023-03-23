@@ -157,16 +157,16 @@ var LibraryIDBStore = {
     IDBStore.blobs[blobId] = null;
   },
 #else
-  emscripten_idb_load: function() {
+  emscripten_idb_load: function(db, id, pbuffer, pnum, perror) {
     throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_load, etc.';
   },
-  emscripten_idb_store: function() {
+  emscripten_idb_store: function(db, id, ptr, num, perror) {
     throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_store, etc.';
   },
-  emscripten_idb_delete: function() {
+  emscripten_idb_delete: function(db, id, perror) {
     throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_delete, etc.';
   },
-  emscripten_idb_exists: function() {
+  emscripten_idb_exists: function(db, id, pexists, perror) {
     throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_exists, etc.';
   },
 #endif // ASYNCIFY
