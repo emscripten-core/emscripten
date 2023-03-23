@@ -33,7 +33,7 @@ from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disable
 from common import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64
-from common import requires_wasm_eh
+from common import requires_wasm_eh, crossplatform, with_both_sjlj
 from common import also_with_minimal_runtime, also_with_wasm_bigint, EMTEST_BUILD_VERBOSE, PYTHON
 from tools import shared, building, utils, deps_info, response_file, cache
 from tools.utils import read_file, write_file, delete_file, read_binary
@@ -241,6 +241,7 @@ class other(RunnerCore):
   # This needs to work because many tools run `emcc -v` internally and it should
   # always work even if the user has `EMCC_CFLAGS` set.
   @with_env_modify({'EMCC_CFLAGS': '-should -be -ignored'})
+  @crossplatform
   def test_emcc_v(self):
     for compiler in [EMCC, EMXX]:
       # -v, without input files
@@ -566,6 +567,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   def test_tsearch(self):
     self.do_other_test('test_tsearch.c')
 
+  @crossplatform
   def test_libc_progname(self):
     self.do_other_test('test_libc_progname.c')
 
@@ -676,6 +678,7 @@ f.close()
     self.run_process([EMCC, 'out.o'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
+  @crossplatform
   def test_emcc_print_search_dirs(self):
     output = self.run_process([EMCC, '-print-search-dirs'], stdout=PIPE).stdout
     self.assertContained('programs: =', output)
@@ -686,6 +689,7 @@ f.close()
     print(libpath)
     self.assertIn(cache.get_lib_dir(absolute=True), libpath)
 
+  @crossplatform
   def test_emcc_print_file_name(self):
     self.run_process([EMBUILDER, 'build', 'libc'])
     output = self.run_process([EMCC, '-print-file-name=libc.a'], stdout=PIPE).stdout
@@ -722,6 +726,7 @@ f.close()
     self.assertNotContained('.debug_info', output)
 
   @is_slow_test
+  @crossplatform
   @parameterized({
     # ('directory to the test', 'output filename', ['extra args to pass to
     # CMake']) Testing all combinations would be too much work and the test
@@ -920,6 +925,7 @@ f.close()
     self.assertContained('PKG_CONFIG_LIBDIR: ' + libdir, out)
 
   @requires_pkg_config
+  @crossplatform
   def test_pkg_config_packages(self):
     packages = [
       ('egl', '10.2.2'),
@@ -943,6 +949,7 @@ f.close()
     # execution.
     self.run_process(cmd + ['-DCMAKE_CROSSCOMPILING_EMULATOR=/missing_binary'])
 
+  @crossplatform
   def test_system_include_paths(self):
     # Verify that all default include paths are within `emscripten/system`
 
@@ -1325,6 +1332,7 @@ int f() {
     self.assertContained('result: 1', self.run_js('a.out.js'))
 
   @no_mac('https://github.com/emscripten-core/emscripten/issues/16649')
+  @crossplatform
   def test_dot_a_all_contents_invalid(self):
     # check that we error if an object file in a .a is not valid bitcode.
     # do not silently ignore native object files, which may have been
@@ -1406,6 +1414,7 @@ int f() {
     write_js_main()
     self.assertContained('42\n', self.run_js('main.js'))
 
+  @crossplatform
   def test_minimal_runtime_export_all_modularize(self):
     """This test ensures that MODULARIZE and EXPORT_ALL work simultaneously.
 
@@ -1470,6 +1479,7 @@ int f() {
     self.emcc('lib.c', ['-sEXPORTED_FUNCTIONS=_libfunc2', '-sEXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
     self.assertContained('libfunc\n', self.run_js('a.out.js'))
 
+  @crossplatform
   def test_stdin(self):
     def run_test():
       for engine in config.JS_ENGINES:
@@ -1764,6 +1774,7 @@ int f() {
     '': ([],),
     'wasmfs': (['-sWASMFS'],),
   })
+  @crossplatform
   def test_embed_file_dup(self, args):
     ensure_dir(self.in_dir('tst', 'test1'))
     ensure_dir(self.in_dir('tst', 'test2'))
@@ -2194,6 +2205,7 @@ int f() {
     self.do_runf(test_file('bzip2_test.c'), 'usage: unzcrash filename',
                  emcc_args=['-sUSE_BZIP2', '-Wno-pointer-sign'])
 
+  @with_both_sjlj
   def test_freetype(self):
     # copy the Liberation Sans Bold truetype file located in the
     # <emscripten_root>/test/freetype to the compilation folder
@@ -2510,6 +2522,7 @@ int f() {
     'safeHeap': ('optimizer/test-safeHeap.js', ['safeHeap']),
     'LittleEndianHeap': ('optimizer/test-LittleEndianHeap.js', ['littleEndianHeap']),
   })
+  @crossplatform
   def test_js_optimizer(self, input, passes):
     input = test_file(input)
     expected_file = os.path.splitext(input)[0] + '-output.js'
@@ -2524,6 +2537,7 @@ int f() {
     'wasm2js': ('wasm2js', ['minifyNames', 'last']),
     'constructor': ('constructor', ['minifyNames'])
   })
+  @crossplatform
   def test_js_optimizer_py(self, name, passes):
     # run the js optimizer python script. this differs from test_js_optimizer
     # which runs the internal js optimizer JS script directly (which the python
@@ -3726,7 +3740,7 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
 
     self.emcc_args += ['--js-library', 'duplicated_func_1.js', '--js-library', 'duplicated_func_2.js']
     err = self.expect_fail([EMCC, 'duplicated_func.c'] + self.get_emcc_args())
-    self.assertContained('error: Symbol re-definition in JavaScript library: duplicatedFunc. Do not use noOverride if this is intended', err)
+    self.assertContained('duplicated_func_2.js: Symbol re-definition in JavaScript library: duplicatedFunc. Do not use noOverride if this is intended', err)
 
   def test_override_stub(self):
     self.do_run_from_file(test_file('other/test_override_stub.c'), test_file('other/test_override_stub.out'))
@@ -3753,7 +3767,7 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
 
     self.emcc_args += ['--js-library', 'some_func.js']
     err = self.expect_fail([EMCC, 'some_func.c'] + self.get_emcc_args())
-    self.assertContained('error: __sig is missing for function: someFunc. Do not use checkSig if this is intended', err)
+    self.assertContained('some_func.js: __sig is missing for function: someFunc. Do not use checkSig if this is intended', err)
 
   def test_js_lib_quoted_key(self):
     create_file('lib.js', r'''
@@ -3825,15 +3839,55 @@ mergeInto(LibraryManager.library, {
   },
 });
 ''')
-    create_file('src.cpp', r'''
+    create_file('src.c', r'''
 #include <stdio.h>
-extern "C" int jslibfunc();
+int jslibfunc();
 int main() {
   printf("c calling: %d\n", jslibfunc());
 }
 ''')
-    err = self.run_process([EMXX, 'src.cpp', '--js-library', 'lib.js'], stderr=PIPE).stderr
+    err = self.run_process([EMCC, 'src.c', '--js-library', 'lib.js'], stderr=PIPE).stderr
     self.assertContained("warning: user library symbol 'jslibfunc' depends on internal symbol '$callRuntimeCallbacks'", err)
+
+  def test_js_lib_sig_mismatch(self):
+    create_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  jslibfunc__sig: 'ii',
+  jslibfunc: function(x) {},
+});
+
+mergeInto(LibraryManager.library, {
+  jslibfunc__sig: 'dd',
+  jslibfunc: function(x) {},
+});
+
+''')
+    create_file('src.c', r'''
+#include <stdio.h>
+int jslibfunc();
+int main() {
+  printf("c calling: %d\n", jslibfunc());
+}
+''')
+    err = self.expect_fail([EMCC, 'src.c', '--js-library', 'lib.js'])
+    self.assertContained('lib.js: Signature redefinition for: jslibfunc__sig. (old=ii vs new=dd)', err)
+
+  def test_js_lib_invalid_deps(self):
+    create_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  jslibfunc__deps: 'hello',
+  jslibfunc: function(x) {},
+});
+''')
+    create_file('src.c', r'''
+#include <stdio.h>
+int jslibfunc();
+int main() {
+  printf("c calling: %d\n", jslibfunc());
+}
+''')
+    err = self.expect_fail([EMCC, 'src.c', '--js-library', 'lib.js'])
+    self.assertContained('lib.js: JS library directive jslibfunc__deps=hello is of type string, but it should be an array', err)
 
   def test_EMCC_BUILD_DIR(self):
     # EMCC_BUILD_DIR env var contains the dir we were building in, when running the js compiler (e.g. when
@@ -4267,6 +4321,7 @@ Waste<3> *getMore() {
     self.assertContained(INCOMPATIBLE, stderr)
 
   @requires_native_clang
+  @crossplatform
   def test_bad_triple(self):
     # compile a minimal program, with as few dependencies as possible, as
     # native building on CI may not always work well
@@ -5996,6 +6051,7 @@ print(os.environ.get('NM'))
     # the existence of an executable.
     self.run_process([emmake, PYTHON, test_file('emmake/make.py')])
 
+  @crossplatform
   def test_sdl2_config(self):
     for args, expected in [
       [['--version'], '2.0.10'],
@@ -6825,6 +6881,7 @@ int main() {
     # there should be no musl syscalls in hello world output
     self.assertNotContained('__syscall', src)
 
+  @crossplatform
   def test_emcc_dev_null(self):
     out = self.run_process([EMCC, '-dM', '-E', '-x', 'c', os.devnull], stdout=PIPE).stdout
     self.assertContained('#define __EMSCRIPTEN__ 1', out) # all our defines should show up
@@ -6909,6 +6966,7 @@ int main(int argc, char** argv) {
 
     self.do_runf('test.c', 'dddddddddd\n', emcc_args=['--js-library', 'lib.js'])
 
+  @crossplatform
   def test_realpath(self):
     create_file('src.c', r'''
 #include <stdlib.h>
@@ -6932,6 +6990,7 @@ int main(int argc, char **argv) {
     self.run_process([EMCC, 'src.c', '-sSAFE_HEAP', '--embed-file', 'boot'])
     self.assertContained('Resolved: /boot/README.txt', self.run_js('a.out.js'))
 
+  @crossplatform
   def test_realpath_nodefs(self):
     create_file('src.c', r'''
 #include <stdlib.h>
@@ -7017,6 +7076,7 @@ Resolved: "/" => "/"
     err = self.run_process([EMXX, test_file('hello_libcxx.cpp')], stderr=PIPE).stderr
     self.assertEqual(err, '')
 
+  @crossplatform
   def test_dlmalloc_modes(self):
     create_file('src.cpp', r'''
       #include <stdlib.h>
@@ -7664,6 +7724,7 @@ int main() {
       assert correct == seen, correct + '\n vs \n' + seen
 
   # test debug info and debuggability of JS output
+  @crossplatform
   def test_binaryen_debug(self):
     for args, expect_dash_g, expect_emit_text, expect_clean_js, expect_whitespace_js, expect_closured in [
         (['-O0'], False, False, False, True, False),
@@ -8499,6 +8560,7 @@ end
     create_file('file1', ' ')
     self.run_process([EMAR, 'cr', 'file1.a', 'file1', 'file1'])
 
+  @crossplatform
   def test_emar_response_file(self):
     # Test that special character such as single quotes in filenames survive being
     # sent via response file
@@ -8616,11 +8678,13 @@ end
   def test_full_js_library_minimal_runtime(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY', '-sMINIMAL_RUNTIME'])
 
+  @crossplatform
   @parameterized({
     '': [[]],
     # bigint support is interesting to test here because it changes which
     # binaryen tools get run, which can affect how debug info is kept around
     'bigint': [['-sWASM_BIGINT']],
+    'pthread': [['-pthread', '-Wno-experimental']],
   })
   def test_closure_full_js_library(self, args):
     # Test for closure errors and warnings in the entire JS library.
@@ -8646,6 +8710,7 @@ end
     ])
 
   # Tests --closure-args command line flag
+  @crossplatform
   def test_closure_externs(self):
     # Test with relocate path to the externs file to ensure that incoming relative paths
     # are translated correctly (Since closure runs with a different CWD)
@@ -8728,6 +8793,7 @@ end
       if 'my ' + attribute in code:
         self.assertFalse('Attribute `%s` could not be DCEd' % attribute)
 
+  @crossplatform
   @with_env_modify({'EMPROFILE': '1'})
   def test_toolchain_profiler(self):
     # Verify some basic functionality of EMPROFILE
@@ -8858,6 +8924,7 @@ EMSCRIPTEN_KEEPALIVE void foo() {
 ''')
     self.do_runf('src.c', 'bar', emcc_args=['--pre-js', 'pre.js', '-sMAIN_MODULE=2'])
 
+  @crossplatform
   def test_js_optimizer_parse_error(self):
     # check we show a proper understandable error for JS parse problems
     create_file('src.cpp', r'''
@@ -8875,6 +8942,7 @@ int main() {
                          ^
 '''), stderr)
 
+  @crossplatform
   def test_js_optimizer_chunk_size_determinism(self):
     def build():
       self.run_process([EMCC, test_file('hello_world.c'), '-O3', '-sWASM=0'])
@@ -8898,6 +8966,7 @@ int main() {
     self.assertIdentical(normal, tiny)
     self.assertIdentical(normal, huge)
 
+  @crossplatform
   def test_js_optimizer_verbose(self):
     # build at -O3 with wasm2js to use as much as possible of the JS
     # optimization code, and verify it works ok in verbose mode
@@ -9268,21 +9337,6 @@ console.error('JSLIB: none of the above');
     err = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js', '-sEXIT_RUNTIME'], stderr=PIPE).stderr
     self.assertContained('JSLIB: EXIT_RUNTIME', err)
     self.assertNotContained('JSLIB: MAIN_MODULE', err)
-
-  def test_js_preprocess_pre_post(self):
-    create_file('pre.js', '''
-    #if ASSERTIONS
-    console.log('assertions enabled')
-    #else
-    console.log('assertions disabled')
-    #endif
-    ''')
-    create_file('post.js', '''
-    console.log({{{ POINTER_SIZE }}});
-    ''')
-    self.emcc_args += ['--pre-js', 'pre.js', '--post-js', 'post.js']
-    self.do_runf(test_file('hello_world.c'), 'assertions enabled\n4')
-    self.do_runf(test_file('hello_world.c'), 'assertions disabled\n4', emcc_args=['-sASSERTIONS=0'])
 
   def test_html_preprocess(self):
     src_file = test_file('module/test_stdin.c')
@@ -10075,6 +10129,7 @@ int main () {
       self.assertEqual(total_output_size, total_expected_size)
 
   # Tests the library_c_preprocessor.js functionality.
+  @crossplatform
   def test_c_preprocessor(self):
     self.do_runf(test_file('test_c_preprocessor.c'), emcc_args=['--js-library', path_from_root('src/library_c_preprocessor.js')])
 
@@ -11054,6 +11109,7 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     fail(required_flags + ['-O2'], optimization_message)
     fail(required_flags + ['-O3'], optimization_message)
 
+  @crossplatform
   def test_output_to_nowhere(self):
     self.run_process([EMXX, test_file('hello_world.cpp'), '-o', os.devnull, '-c'])
 
@@ -11578,7 +11634,7 @@ exec "$@"
       #endif
       ''')
     proc = self.run_process([EMCC, test_file('hello_world.c'), '--js-library=lib.js'], stderr=PIPE)
-    self.assertContained('warning: use of #ifdef in js library.  Use #if instead.', proc.stderr)
+    self.assertContained('lib.js: use of #ifdef in js library.  Use #if instead.', proc.stderr)
 
   def test_jslib_mangling(self):
     create_file('lib.js', '''
@@ -11789,13 +11845,26 @@ exec "$@"
     self.assertIn('Hello from main!', result)
     self.assertIn('Hello from lib!', result)
 
+  @crossplatform
   def test_gen_struct_info(self):
-    # This tests is fragile and will need updating any time any of the referenced
-    # structs or defines change.   However its easy to rebaseline with
-    # --rebaseline and it prevents regressions or unintended changes
-    # to the output json.
+    # This test will start failing whenever the struct info changes (e.g. offset or defines
+    # change).  However it's easy to rebaseline with --rebaseline.
     self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
-    self.assertFileContents(test_file('reference_struct_info.json'), read_file('out.json'))
+    self.assertFileContents(path_from_root('src/generated_struct_info32.json'), read_file('out.json'))
+
+    # Same again for wasm64
+    node_version = shared.check_node_version()
+    if node_version and node_version >= (14, 0, 0):
+      self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '--wasm64', '-o', 'out.json'])
+      self.assertFileContents(path_from_root('src/generated_struct_info64.json'), read_file('out.json'))
+
+  @crossplatform
+  def test_gen_sig_info(self):
+    # This tests is fragile and will need updating any time a JS library
+    # function is added or its signature changed.  However it's easy to
+    # rebaseline with --rebaseline.
+    self.run_process([PYTHON, path_from_root('tools/gen_sig_info.py'), '-o', 'out.js'])
+    self.assertFileContents(path_from_root('src/library_sigs.js'), read_file('out.js'))
 
   def test_gen_struct_info_env(self):
     # gen_struct_info.py builds C code in a very specific and low level way.  We don't want
@@ -11923,6 +11992,7 @@ exec "$@"
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_runtime_keepalive.cpp')
 
+  @crossplatform
   def test_em_js_side_module(self):
     err = self.expect_fail([EMXX, '-sSIDE_MODULE', test_file('core/test_em_js.cpp')])
     self.assertContained('EM_JS is not supported in side modules', err)
@@ -11996,6 +12066,7 @@ exec "$@"
     self.assertContained(str(count * (count - 1) // 2), self.run_js('a.out.js'))
 
   # Tests that the filename suffix of the response files can be used to detect which encoding the file is.
+  @crossplatform
   def test_response_file_encoding(self):
     open('äö.c', 'w').write('int main(){}')
 
@@ -12074,6 +12145,7 @@ exec "$@"
       '-D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR',
       '-Wno-deprecated-declarations'])
 
+  @crossplatform
   def test_special_chars_in_arguments(self):
     # We had some regressions where the windows `.bat` files that run the compiler
     # driver were failing to accept certain special characters such as `(`, `)` and `!`.
@@ -12565,6 +12637,7 @@ Module['postRun'] = function() {{
     '': ([],),
     'O2': (['-O2'],),
   })
+  @crossplatform
   def test_es5_transpile(self, args):
     self.emcc_args += args
 
@@ -12897,6 +12970,7 @@ int main() {
     self.set_setting('EXIT_RUNTIME')
     self.do_runf(test_file('other/test_lto_atexit.c'), 'main done\nmy_dtor\n')
 
+  @crossplatform
   def test_prejs_unicode(self):
     create_file('script.js', r'''
       console.log('↓');
@@ -13055,6 +13129,7 @@ j1: 8589934599, j2: 30064771074, j3: 12884901891
     self.do_runf('f2.c', emcc_args=['f1.c'])
 
   @no_mac('https://github.com/emscripten-core/emscripten/issues/18175')
+  @crossplatform
   def test_stack_overflow(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 1)
     self.emcc_args += ['-O1', '--profiling-funcs']
@@ -13062,6 +13137,7 @@ j1: 8589934599, j2: 30064771074, j3: 12884901891
                  'Stack overflow detected.  You can try increasing -sSTACK_SIZE',
                  assert_returncode=NON_ZERO)
 
+  @crossplatform
   def test_reproduce(self):
     self.run_process([EMCC, '-sASSERTIONS=1', '--reproduce=foo.tar', test_file('hello_world.c')])
     self.assertExists('foo.tar')
@@ -13225,9 +13301,23 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.run_process([EMXX, '-std=c++20', test_file('other/hello_world.cppm'), '--precompile', '-o', 'hello_world.pcm'])
     self.do_other_test('test_cpp_module.cpp', emcc_args=['-std=c++20', '-fprebuilt-module-path=.', 'hello_world.pcm'])
 
+  @crossplatform
   def test_pthreads_flag(self):
     # We support just the singular form of `-pthread`, like gcc
     # Clang supports the plural form too but I think just due to historical accident:
     # See https://github.com/llvm/llvm-project/commit/c800391fb974cdaaa62bd74435f76408c2e5ceae
     err = self.expect_fail([EMCC, '-pthreads', '-c', test_file('hello_world.c')])
     self.assertContained('emcc: error: unrecognized command-line option `-pthreads`; did you mean `-pthread`?', err)
+
+  def test_missing_struct_info(self):
+    create_file('lib.js', '''
+      {{{ C_STRUCTS.Foo }}}
+    ''')
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js'])
+    self.assertContained('Error: Missing C struct Foo! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py', err)
+
+    create_file('lib.js', '''
+      {{{ C_DEFINES.Foo }}}
+    ''')
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js'])
+    self.assertContained('Error: Missing C define Foo! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py', err)

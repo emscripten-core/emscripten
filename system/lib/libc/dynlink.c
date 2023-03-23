@@ -18,14 +18,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dynlink.h>
 
 #include <emscripten/console.h>
 #include <emscripten/threading.h>
 #include <emscripten/promise.h>
 #include <emscripten/proxying.h>
 
+#include "dynlink.h"
 #include "pthread_impl.h"
+#include "emscripten_internal.h"
 
 //#define DYLINK_DEBUG
 
@@ -40,14 +41,7 @@ struct async_data {
   em_arg_callback_func onerror;
   void* user_data;
 };
-typedef void (*dlopen_callback_func)(struct dso*, void* user_data);
 
-void* _dlopen_js(struct dso* handle);
-void* _dlsym_js(struct dso* handle, const char* symbol, int* sym_index);
-void _emscripten_dlopen_js(struct dso* handle,
-                           dlopen_callback_func onsuccess,
-                           dlopen_callback_func onerror,
-                           void* user_data);
 void __dl_vseterr(const char*, va_list);
 
 // We maintain a list of all dlopen and dlsym events linked list.
@@ -82,8 +76,6 @@ static struct dlevent* _Atomic head = &main_event;
 static struct dlevent* _Atomic tail = &main_event;
 
 #ifdef _REENTRANT
-void* _dlsym_catchup_js(struct dso* handle, int sym_index);
-
 static thread_local struct dlevent* thread_local_tail = &main_event;
 static pthread_mutex_t write_lock = PTHREAD_MUTEX_INITIALIZER;
 static thread_local bool skip_dlsync = false;

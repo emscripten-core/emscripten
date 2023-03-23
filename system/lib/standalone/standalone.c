@@ -24,6 +24,7 @@
 #include <wasi/wasi-helpers.h>
 
 #include "lock.h"
+#include "emscripten_internal.h"
 
 /*
  * WASI support code. These are compiled with the program, and call out
@@ -122,8 +123,6 @@ int getentropy(void* buffer, size_t length) {
 }
 
 // Emscripten additions
-
-extern void emscripten_notify_memory_growth(size_t memory_index);
 
 // Should never be called in standalone mode
 void emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) {

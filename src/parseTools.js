@@ -11,8 +11,6 @@
 global.FOUR_GB = 4 * 1024 * 1024 * 1024;
 const FLOAT_TYPES = new Set(['float', 'double']);
 
-let currentlyParsedFilename = '';
-
 // Does simple 'macro' substitution, using Django-like syntax,
 // {{{ code }}} will be replaced with |eval(code)|.
 // NOTE: Be careful with that ret check. If ret is |0|, |ret ? ret.toString() : ''| would result in ''!
@@ -57,7 +55,8 @@ function preprocess(filename) {
   const showStack = [];
   const showCurrentLine = () => showStack.every((x) => x == SHOW);
 
-  currentlyParsedFilename = filename;
+  const oldFilename = currentFile;
+  currentFile = filename;
   const fileExt = filename.split('.').pop().toLowerCase();
   const isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
   let inStyle = false;
@@ -155,7 +154,7 @@ function preprocess(filename) {
 no matching #endif found (${showStack.length$}' unmatched preprocessing directives on stack)`);
     return ret;
   } finally {
-    currentlyParsedFilename = null;
+    currentFile = oldFilename;
   }
 }
 
@@ -565,7 +564,7 @@ function makeDynCall(sig, funcPtr) {
 
 
   if (funcPtr === undefined) {
-    warn(`${currentlyParsedFilename}: \
+    warn(`
 Legacy use of {{{ makeDynCall("${sig}") }}}(funcPtr, arg1, arg2, ...). \
 Starting from Emscripten 2.0.2 (Aug 31st 2020), syntax for makeDynCall has changed. \
 New syntax is {{{ makeDynCall("${sig}", "funcPtr") }}}(arg1, arg2, ...). \
@@ -650,7 +649,7 @@ function addAtExit(code) {
 }
 
 function makeRetainedCompilerSettings() {
-  const ignore = new Set(['STRUCT_INFO']);
+  const ignore = new Set();
   if (STRICT) {
     for (const setting of LEGACY_SETTINGS) {
       ignore.add(setting);
@@ -991,7 +990,7 @@ function getEntryFunction() {
 function preJS() {
   let result = '';
   for (const fileName of PRE_JS_FILES) {
-    result += preprocess(fileName);
+    result += read(fileName);
   }
   return result;
 }

@@ -637,9 +637,15 @@ class HTTPHandler(SimpleHTTPRequestHandler):
     # gzipped file, instead of having the browser decompress it immediately,
     # then it can't use the suffix .gz when using emrun.
     # To work around, one can use the suffix .gzip instead.
-    if 'Accept-Encoding' in self.headers and 'gzip' in self.headers['Accept-Encoding'] and path.lower().endswith('gz'):
+    if path.lower().endswith('gz'):
       self.send_header('Content-Encoding', 'gzip')
       logv('Serving ' + path + ' as gzip-compressed.')
+      guess_file_type = guess_file_type[:-2]
+      if guess_file_type.endswith('.'):
+        guess_file_type = guess_file_type[:-1]
+    elif path.lower().endswith('br'):
+      self.send_header('Content-Encoding', 'br')
+      logv('Serving ' + path + ' as brotli-compressed.')
       guess_file_type = guess_file_type[:-2]
       if guess_file_type.endswith('.'):
         guess_file_type = guess_file_type[:-1]

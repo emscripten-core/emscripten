@@ -608,7 +608,7 @@ mergeInto(LibraryManager.library, {
     },
   },
 
-  emscripten_fiber_swap__sig: 'vii',
+  emscripten_fiber_swap__sig: 'vpp',
   emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
   emscripten_fiber_swap: function(oldFiber, newFiber) {
     if (ABORT) return;
@@ -647,13 +647,13 @@ mergeInto(LibraryManager.library, {
   emscripten_sleep: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
   },
-  emscripten_wget: function() {
+  emscripten_wget: function(url, file) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget';
   },
-  emscripten_wget_data: function() {
+  emscripten_wget_data: function(url, pbuffer, pnum, perror) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget_data';
   },
-  emscripten_scan_registers: function() {
+  emscripten_scan_registers: function(func) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers';
   },
   emscripten_fiber_init: function() {
@@ -662,7 +662,7 @@ mergeInto(LibraryManager.library, {
   emscripten_fiber_init_from_current_context: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_init_from_current_context';
   },
-  emscripten_fiber_swap: function() {
+  emscripten_fiber_swap: function(oldFiber, newFiber) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_swap';
   },
 #endif // ASYNCIFY

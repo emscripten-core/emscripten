@@ -90,7 +90,7 @@ LibraryJSEventLoop = {
     emClearImmediate(id);
   },
 
-  emscripten_set_immediate_loop__sig: 'ipp' ,
+  emscripten_set_immediate_loop__sig: 'vpp',
   emscripten_set_immediate_loop__deps: ['$polyfillSetImmediate', '$callUserCallback'],
   emscripten_set_immediate_loop: function(cb, userData) {
     polyfillSetImmediate();

@@ -8,9 +8,18 @@ import os
 TAG = 'version_1'
 HASH = '0d0b1280ba0501ad0a23cf1daa1f86821c722218b59432734d3087a89acd22aabd5c3e5e1269700dcd41e87073046e906060f167c032eb91a3ac8c5808a02783'
 
+variants = {'freetype-wasm-sjlj': {'SUPPORT_LONGJMP': 'wasm'}}
+
 
 def needed(settings):
   return settings.USE_FREETYPE
+
+
+def get_lib_name(settings):
+  if settings.SUPPORT_LONGJMP == 'wasm':
+    return 'libfreetype-wasm-sjlj.a'
+  else:
+    return 'libfreetype.a'
 
 
 def get(ports, settings, shared):
@@ -90,13 +99,16 @@ def get(ports, settings, shared):
       '-pthread'
     ]
 
+    if settings.SUPPORT_LONGJMP == 'wasm':
+      flags.append('-sSUPPORT_LONGJMP=wasm')
+
     ports.build_port(source_path, final, 'freetype', flags=flags, srcs=srcs)
 
-  return [shared.cache.get_lib('libfreetype.a', create, what='port')]
+  return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.cache.erase_lib('libfreetype.a')
+  shared.cache.erase_lib(get_lib_name(settings))
 
 
 def process_args(ports):
