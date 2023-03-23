@@ -86,6 +86,7 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libdlmalloc-mt',
     'libGL-emu',
     'libGL-mt',
+    'libGL-mt-emu',
     'libsockets_proxy',
     'libsockets-mt',
     'crtbegin',
