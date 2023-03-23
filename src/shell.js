@@ -27,6 +27,7 @@ var /** @type {{
   noAudioDecoding: boolean,
   noWasmDecoding: boolean,
   canvas: HTMLCanvasElement,
+  ctx: Object,
   dataFileDownloads: Object,
   preloadResults: Object,
   useWebGL: boolean,
