@@ -329,6 +329,7 @@
         "O_RDONLY": 0,
         "O_RDWR": 2,
         "O_TRUNC": 512,
+        "PATH_MAX": 4096,
         "O_WRONLY": 1,
         "POLLERR": 8,
         "POLLHUP": 16,
