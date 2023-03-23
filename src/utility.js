@@ -134,8 +134,15 @@ function mergeInto(obj, other, options = null) {
         const oldsig = obj[key];
         const newsig = other[key];
         if (oldsig != newsig) {
-          console.warn(`Signature redefinition mismatch for : ${key}. (old=${oldsig} vs new=${newsig})`);
+          error(`Signature redefinition for: ${key}. (old=${oldsig} vs new=${newsig})`);
         }
+      }
+    }
+
+    if (key.endsWith('__deps')) {
+      const deps = other[key];
+      if (!Array.isArray(deps)) {
+        error(`JS library directive ${key}=${deps.toString()} is of type ${typeof deps}, but it should be an array`);
       }
     }
   }
