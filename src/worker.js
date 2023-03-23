@@ -249,8 +249,8 @@ function handleMessage(e) {
           // and let the top level handler propagate it back to the main thread.
           throw ex;
         }
-#if ASSERTIONS
-        err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' completed its main entry point with an `unwind`, keeping the worker alive for asynchronous operation.');
+#if RUNTIME_DEBUG
+        dbg('Pthread 0x' + Module['_pthread_self']().toString(16) + ' completed its main entry point with an `unwind`, keeping the worker alive for asynchronous operation.');
 #endif
       }
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
