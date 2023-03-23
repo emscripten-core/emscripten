@@ -94,6 +94,7 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libwasm_workers_stub-debug',
     'libwebgpu_cpp',
     'libfetch',
+    'libfetch-mt',
     'libwasmfs',
     'giflib',
 ]

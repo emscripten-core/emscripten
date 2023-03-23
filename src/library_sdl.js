@@ -1351,7 +1351,7 @@ var LibrarySDL = {
   SDL_Init__deps: ['$zeroMemory', 'malloc', 'free', 'memcpy'],
   SDL_Init__proxy: 'sync',
   SDL_Init__sig: 'ii',
-  SDL_Init__docs: '/** @param{number=} initFlags */', 
+  SDL_Init__docs: '/** @param{number} initFlags */',
   SDL_Init: function(initFlags) {
     SDL.startTime = Date.now();
     SDL.initFlags = initFlags;
@@ -1401,7 +1401,7 @@ var LibrarySDL = {
   SDL_WasInit__sig: 'ii',
   SDL_WasInit: function(flags) {
     if (SDL.startTime === null) {
-      _SDL_Init();
+      _SDL_Init(0);
     }
     return 1;
   },
@@ -1760,7 +1760,7 @@ var LibrarySDL = {
 
   SDL_GetKeyboardState__proxy: 'sync',
   SDL_GetKeyboardState__sig: 'pp',
-  SDL_GetKeyboardState__docs: '/** @param {number=} numKeys */',
+  SDL_GetKeyboardState__docs: '/** @param {number} numKeys */',
   SDL_GetKeyboardState: function(numKeys) {
     if (numKeys) {
       {{{ makeSetValue('numKeys', 0, 0x10000, 'i32') }}};
@@ -1770,7 +1770,7 @@ var LibrarySDL = {
 
   SDL_GetKeyState__deps: ['SDL_GetKeyboardState'],
   SDL_GetKeyState: function() {
-    return _SDL_GetKeyboardState();
+    return _SDL_GetKeyboardState(0);
   },
 
   SDL_GetKeyName__proxy: 'sync',
@@ -1884,7 +1884,7 @@ var LibrarySDL = {
 
   SDL_ConvertSurface__proxy: 'sync',
   SDL_ConvertSurface__sig: 'pppi',
-  SDL_ConvertSurface__docs: '/** @param {number=} format @param {number=} flags */',
+  SDL_ConvertSurface__docs: '/** @param {number} format @param {number} flags */',
   SDL_ConvertSurface: function(surf, format, flags) {
     if  (format) {
       SDL.checkPixelFormat(format);
@@ -1902,7 +1902,7 @@ var LibrarySDL = {
 
   SDL_DisplayFormatAlpha__deps: ['SDL_ConvertSurface'],
   SDL_DisplayFormatAlpha: function(surf) {
-    return _SDL_ConvertSurface(surf);
+    return _SDL_ConvertSurface(surf, 0, 0);
   },
 
   SDL_FreeSurface__proxy: 'sync',
@@ -2382,7 +2382,7 @@ var LibrarySDL = {
   IMG_Load__proxy: 'sync',
   IMG_Load__sig: 'pp',
   IMG_Load: function(filename){
-    var rwops = _SDL_RWFromFile(filename);
+    var rwops = _SDL_RWFromFile(filename, 0);
     var result = _IMG_Load_RW(rwops, 1);
     return result;
   },
@@ -2746,7 +2746,7 @@ var LibrarySDL = {
   Mix_LoadWAV_RW__deps: ['$PATH_FS', 'fileno'],
   Mix_LoadWAV_RW__proxy: 'sync',
   Mix_LoadWAV_RW__sig: 'ppi',
-  Mix_LoadWAV_RW__docs: '/** @param {number|boolean=} freesrc */',
+  Mix_LoadWAV_RW__docs: '/** @param {number} freesrc */',
   Mix_LoadWAV_RW: function(rwopsID, freesrc) {
     var rwops = SDL.rwops[rwopsID];
 
@@ -2854,8 +2854,8 @@ var LibrarySDL = {
   Mix_LoadWAV__proxy: 'sync',
   Mix_LoadWAV__sig: 'pp',
   Mix_LoadWAV: function(filename) {
-    var rwops = _SDL_RWFromFile(filename);
-    var result = _Mix_LoadWAV_RW(rwops);
+    var rwops = _SDL_RWFromFile(filename, 0);
+    var result = _Mix_LoadWAV_RW(rwops, 0);
     _SDL_FreeRW(rwops);
     return result;
   },
@@ -3000,15 +3000,15 @@ var LibrarySDL = {
     return SDL.setGetVolume(SDL.music, volume);
   },
 
-  Mix_LoadMUS_RW__docs: '/** @param {number|boolean=} a1 */',
+  Mix_LoadMUS_RW__docs: '/** @param {number} a1 */',
   Mix_LoadMUS_RW: 'Mix_LoadWAV_RW',
 
   Mix_LoadMUS__deps: ['Mix_LoadMUS_RW', 'SDL_RWFromFile', 'SDL_FreeRW'],
   Mix_LoadMUS__proxy: 'sync',
   Mix_LoadMUS__sig: 'pp',
   Mix_LoadMUS: function(filename) {
-    var rwops = _SDL_RWFromFile(filename);
-    var result = _Mix_LoadMUS_RW(rwops);
+    var rwops = _SDL_RWFromFile(filename, 0);
+    var result = _Mix_LoadMUS_RW(rwops, 0);
     _SDL_FreeRW(rwops);
     return result;
   },
@@ -3664,7 +3664,7 @@ var LibrarySDL = {
 
   SDL_RWFromFile__proxy: 'sync',
   SDL_RWFromFile__sig: 'ppp',
-  SDL_RWFromFile__docs: '/** @param {number=} mode */',
+  SDL_RWFromFile__docs: '/** @param {number} mode */',
   SDL_RWFromFile: function(_name, mode) {
     var id = SDL.rwops.length; // TODO: recycle ids when they are null
     var name = UTF8ToString(_name);
