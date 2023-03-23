@@ -138,6 +138,7 @@ mergeInto(LibraryManager.library, {
         return __wasmfs_mkdir({{{ to64('buffer') }}}, mode);
       });
     },
+      // testing data
     // TODO: mkdirTree
     // Creates a whole directory tree chain if it doesn't yet exist
     mkdirTree: (path, mode) => {
