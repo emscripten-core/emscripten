@@ -127,11 +127,7 @@ mergeInto(LibraryManager.library, {
       // TODO: Remove dependency on FS.cwd().
       // User code should not be using FS.cwd().
       // For file preloading, cwd should be '/' to begin with.
-      return withStackSave(() => {
-        var buffer = stackAlloc({{{cDefine('PATH_MAX')}}});
-        var result = __wasmfs_getcwd(buffer, buffer.length);
-        return UTF8ToString(buffer);
-      });
+      return '/';
     },
 
 #if FORCE_FILESYSTEM

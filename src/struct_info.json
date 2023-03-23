@@ -462,12 +462,6 @@
         ]
     },
     {
-        "file": "limits.h",
-        "defines": [
-            "PATH_MAX"
-        ]
-    },
-    {
         "file": "sys/mman.h",
         "defines": [
             "MAP_ANONYMOUS",

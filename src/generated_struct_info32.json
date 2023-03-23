@@ -330,7 +330,6 @@
         "O_RDWR": 2,
         "O_TRUNC": 512,
         "O_WRONLY": 1,
-        "PATH_MAX": 4096,
         "POLLERR": 8,
         "POLLHUP": 16,
         "POLLIN": 1,

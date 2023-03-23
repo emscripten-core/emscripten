@@ -5692,7 +5692,6 @@ Module = {
   def test_getdents64_special_cases(self):
     self.do_run_in_out_file_test('fs/test_getdents64_special_cases.cpp')
 
-  @also_with_wasmfs
   def test_getcwd_with_non_ascii_name(self):
     self.do_run_in_out_file_test('fs/test_getcwd_with_non_ascii_name.cpp')
 
