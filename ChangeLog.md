@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.35 (in development)
 -----------------------
+- `FS.loadFilesFromDB` and `FS.saveFilesToDB` were removed.  We think its
+  unlikly there were any users of these functions since there is now a separate
+  IDBFS filesystem for folks that want persistence.
 - `SDL_image` port was updated to version 2.6.0.
 - `-z` arguments are now passed directly to wasm-ld without the need for the
   `-Wl,` prefix.  This matches the behaviour of both clang and gcc. (#18956)

@@ -7488,7 +7488,6 @@ int main() {}
     test("FS.createPreloadedFile('waka waka, just warning check')")
     test("FS.createDataFile('waka waka, just warning check')")
     test("FS.analyzePath('waka waka, just warning check')")
-    test("FS.loadFilesFromDB('waka waka, just warning check')")
     # might appear in filesystem code from a separate script tag
     test("Module['FS_createDataFile']('waka waka, just warning check')")
     test("Module['FS_createPreloadedFile']('waka waka, just warning check')")
