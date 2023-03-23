@@ -16,6 +16,7 @@
 #include <unistd.h>
 
 int main() {
+  EM_ASM(
   // Set up test directories.
   assert(mkdir("working", 0777) != -1);
   assert(mkdir("/working/test", 0777) != -1);
@@ -98,4 +99,5 @@ int main() {
   FS.cwd(smallBuffer, 1);
   assert(errno == ERANGE);
   return 0;
+  );
 }
