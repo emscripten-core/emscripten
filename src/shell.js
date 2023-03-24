@@ -182,7 +182,7 @@ if (ENVIRONMENT_IS_NODE) {
 #if ASSERTIONS
   var nodeVersion = process.versions.node;
   var numericVersion = nodeVersion.split('.').slice(0, 3);
-  numericVersion = (numericVersion[0] * 10000) + (numericVersion[1] * 100) + numericVersion[2] * 1;
+  numericVersion = (numericVersion[0] * 10000) + (numericVersion[1] * 100) + (numericVersion[2].split('-')[0] * 1);
   var minVersion = {{{ MIN_NODE_VERSION }}};
   if (numericVersion < {{{ MIN_NODE_VERSION }}}) {
     throw new Error('This emscripten-generated code requires node {{{ formattedMinNodeVersion() }}} (detected v' + nodeVersion + ')');
