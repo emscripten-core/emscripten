@@ -458,8 +458,7 @@
             "S_IWUGO",
             "S_IRUGO",
             "S_IRWXUGO",
-            "S_IXUGO",
-            "PATH_MAX"
+            "S_IXUGO"
 
         ]
     },
