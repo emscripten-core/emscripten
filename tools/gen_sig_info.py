@@ -221,6 +221,7 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None):
     'USE_PTHREADS': 1,
     'STACK_OVERFLOW_CHECK': 1,
     'FULL_ES3': 1,
+    'USE_SDL': 1,
     # Currently GLFW symbols have different sigs for the same symbol because the
     # signatures changed between v2 and v3, so for now we continue to maintain
     # them by hand.

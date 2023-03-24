@@ -113,7 +113,6 @@ global.LibraryManager = {
         'library_webgl.js',
         'library_html5_webgl.js',
         'library_openal.js',
-        'library_sdl.js',
         'library_glut.js',
         'library_xlib.js',
         'library_egl.js',
@@ -122,8 +121,8 @@ global.LibraryManager = {
         'library_idbstore.js',
         'library_async.js',
       ]);
-      if (USE_GLFW) {
-        libraries.push('library_glfw.js');
+      if (USE_SDL != 2) {
+        libraries.push('library_sdl.js');
       }
     } else {
       if (ASYNCIFY) {
@@ -135,6 +134,10 @@ global.LibraryManager = {
       if (USE_SDL == 2) {
         libraries.push('library_egl.js', 'library_webgl.js', 'library_html5_webgl.js');
       }
+    }
+
+    if (USE_GLFW) {
+      libraries.push('library_glfw.js');
     }
 
     if (LZ4) {
