@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#include <emscripten/emscripten.h>
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
