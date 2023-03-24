@@ -37,9 +37,7 @@ global.LibraryManager = {
     // Core system libraries (always linked against)
     let libraries = [
       'library.js',
-      // TODO(sbc): Start using this auto-generated file instead of the hand
-      // written signatures in the indivudual libraries.
-      //'library_sigs.js',
+      'library_sigs.js',
       'library_int53.js',
       'library_ccall.js',
       'library_addfunction.js',
@@ -239,16 +237,6 @@ global.LibraryManager = {
         currentFile = null;
         if (origLibrary) {
           this.library = origLibrary;
-        }
-      }
-    }
-
-    for (const ident of Object.keys(this.library)) {
-      if (isJsLibraryConfigIdentifier(ident)) {
-        const index = ident.lastIndexOf('__');
-        const basename = ident.slice(0, index);
-        if (!(basename in this.library)) {
-          error(`Missing library element '${basename}' for library config '${ident}'`);
         }
       }
     }
