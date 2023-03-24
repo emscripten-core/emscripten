@@ -74,7 +74,7 @@ mergeInto(LibraryManager.library, {
         try {
           await getFile(file);
         } catch (response) {
-          return response.status === 404 ? -{{{ cDefine('ENOENT') }}} : -{{{ cDefine('EBADF') }}};
+          return response.status === 404 ? -{{{ cDefs.ENOENT }}} : -{{{ cDefs.EBADF }}};
         }
         return jsFileOps.read(file, buffer, length, offset);
       },

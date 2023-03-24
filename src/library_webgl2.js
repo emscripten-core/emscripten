@@ -52,7 +52,7 @@ var LibraryWebGL2 = {
   glGetInteger64v__sig: 'vii',
   glGetInteger64v__deps: ['$emscriptenWebGLGet'],
   glGetInteger64v: function(name_, p) {
-    emscriptenWebGLGet(name_, p, {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}});
+    emscriptenWebGLGet(name_, p, {{{ cDefs.EM_FUNC_SIG_PARAM_I64 }}});
   },
 
   glGetInternalformativ__sig: 'viiiii',
@@ -188,7 +188,7 @@ var LibraryWebGL2 = {
 
   // Queries
   glGenQueries__sig: 'vii',
-  glGenQueries__deps: ['_glGenObject'],
+  glGenQueries__deps: ['$__glGenObject'],
   glGenQueries: function(n, ids) {
     __glGenObject(n, ids, 'createQuery', GL.queries
 #if GL_ASSERTIONS
@@ -268,7 +268,7 @@ var LibraryWebGL2 = {
 
   // Sampler objects
   glGenSamplers__sig: 'vii',
-  glGenSamplers__deps: ['_glGenObject'],
+  glGenSamplers__deps: ['$__glGenObject'],
   glGenSamplers: function(n, samplers) {
     __glGenObject(n, samplers, 'createSampler', GL.samplers
 #if GL_ASSERTIONS
@@ -372,7 +372,7 @@ var LibraryWebGL2 = {
 
   // Transform Feedback
   glGenTransformFeedbacks__sig: 'vii',
-  glGenTransformFeedbacks__deps: ['_glGenObject'],
+  glGenTransformFeedbacks__deps: ['$__glGenObject'],
   glGenTransformFeedbacks: function(n, ids) {
     __glGenObject(n, ids, 'createTransformFeedback', GL.transformFeedbacks
 #if GL_ASSERTIONS
@@ -495,10 +495,10 @@ var LibraryWebGL2 = {
     }
 
     switch (type) {
-      case {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}}: writeI53ToI64(data, ret); break;
-      case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('data', '0', 'ret', 'i32') }}}; break;
-      case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('data', '0', 'ret', 'float') }}}; break;
-      case {{{ cDefine('EM_FUNC_SIG_PARAM_B') }}}: {{{ makeSetValue('data', '0', 'ret ? 1 : 0', 'i8') }}}; break;
+      case {{{ cDefs.EM_FUNC_SIG_PARAM_I64 }}}: writeI53ToI64(data, ret); break;
+      case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('data', '0', 'ret', 'i32') }}}; break;
+      case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('data', '0', 'ret', 'float') }}}; break;
+      case {{{ cDefs.EM_FUNC_SIG_PARAM_B }}}: {{{ makeSetValue('data', '0', 'ret ? 1 : 0', 'i8') }}}; break;
       default: throw 'internal emscriptenWebGLGetIndexed() error, bad type: ' + type;
     }
   },
@@ -506,13 +506,13 @@ var LibraryWebGL2 = {
   glGetIntegeri_v__sig: 'viii',
   glGetIntegeri_v__deps: ['$emscriptenWebGLGetIndexed'],
   glGetIntegeri_v: function(target, index, data) {
-    emscriptenWebGLGetIndexed(target, index, data, {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}});
+    emscriptenWebGLGetIndexed(target, index, data, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}});
   },
 
   glGetInteger64i_v__sig: 'viii',
   glGetInteger64i_v__deps: ['$emscriptenWebGLGetIndexed'],
   glGetInteger64i_v: function(target, index, data) {
-    emscriptenWebGLGetIndexed(target, index, data, {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}});
+    emscriptenWebGLGetIndexed(target, index, data, {{{ cDefs.EM_FUNC_SIG_PARAM_I64 }}});
   },
 
   // Uniform Buffer objects
@@ -783,7 +783,7 @@ var LibraryWebGL2 = {
   glGetUniformuiv__sig: 'viii',
   glGetUniformuiv__deps: ['$emscriptenWebGLGetUniform'],
   glGetUniformuiv: function(program, location, params) {
-    emscriptenWebGLGetUniform(program, location, params, {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}});
+    emscriptenWebGLGetUniform(program, location, params, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}});
   },
 
   glGetFragDataLocation__sig: 'iii',
@@ -799,7 +799,7 @@ var LibraryWebGL2 = {
   glGetVertexAttribIiv: function(index, pname, params) {
     // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttribI4iv(),
     // otherwise the results are undefined. (GLES3 spec 6.1.12)
-    emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}});
+    emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}});
   },
 
   // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttribI4uiv(),
@@ -1044,14 +1044,14 @@ var LibraryWebGL2 = {
   },
   glDrawElementsInstancedBaseVertexBaseInstanceANGLE: 'glDrawElementsInstancedBaseVertexBaseInstanceWEBGL',
 
-  _webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance: function(ctx) {
+  $webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance: function(ctx) {
     // Closure is expected to be allowed to minify the '.dibvbi' property, so not accessing it quoted.
     return !!(ctx.dibvbi = ctx.getExtension('WEBGL_draw_instanced_base_vertex_base_instance'));
   },
 
-  emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance__deps: ['_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance'],
+  emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance__deps: ['$webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance'],
   emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance: function(ctx) {
-    return __webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GL.contexts[ctx].GLctx);
+    return webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GL.contexts[ctx].GLctx);
   },
 
   glMultiDrawArraysInstancedBaseInstanceWEBGL__sig: 'viiiiii',
@@ -1089,14 +1089,14 @@ var LibraryWebGL2 = {
   },
   glMultiDrawElementsInstancedBaseVertexBaseInstanceANGLE: 'glMultiDrawElementsInstancedBaseVertexBaseInstanceWEBGL',
 
-  _webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance: function(ctx) {
+  $webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance: function(ctx) {
     // Closure is expected to be allowed to minify the '.mdibvbi' property, so not accessing it quoted.
     return !!(ctx.mdibvbi = ctx.getExtension('WEBGL_multi_draw_instanced_base_vertex_base_instance'));
   },
 
-  emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance__deps: ['_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance'],
+  emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance__deps: ['$webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance'],
   emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance: function(ctx) {
-    return __webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GL.contexts[ctx].GLctx);
+    return webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GL.contexts[ctx].GLctx);
   },
 
   glVertexAttribI4i__sig: 'viiiii',
@@ -1116,28 +1116,28 @@ var LibraryWebGL2 = {
   glClearBufferfi__sig: 'viifi',
 };
 
-// Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
-var webgl2Funcs = [[0, 'endTransformFeedback pauseTransformFeedback resumeTransformFeedback'],
- [1, 'beginTransformFeedback readBuffer endQuery'],
- [2, ''],
- [3, ''],
- [4, 'clearBufferfi'],
- [5, 'vertexAttribI4i vertexAttribI4ui copyBufferSubData texStorage2D renderbufferStorageMultisample'],
- [6, 'texStorage3D'],
- [7, ''],
- [8, ''],
- [9, 'copyTexSubImage3D'],
- [10, 'blitFramebuffer']];
-
 #if MAX_WEBGL_VERSION >= 2
 
-// If user passes -sMAX_WEBGL_VERSION >= 2 -sSTRICT but not -lGL (to link in WebGL 1), then WebGL2 library should not
-// be linked in as well.
+// Simple pass-through functions.
+// - Starred ones have return values.
+// - [X] ones have X in the C name but not in the JS name
+var webgl2PassthroughFuncs = [
+  [0, 'endTransformFeedback pauseTransformFeedback resumeTransformFeedback'],
+  [1, 'beginTransformFeedback readBuffer endQuery'],
+  [4, 'clearBufferfi'],
+  [5, 'vertexAttribI4i vertexAttribI4ui copyBufferSubData texStorage2D renderbufferStorageMultisample'],
+  [6, 'texStorage3D'],
+  [9, 'copyTexSubImage3D'],
+  [10, 'blitFramebuffer']
+];
+
+// If user passes -sMAX_WEBGL_VERSION >= 2 -sSTRICT but not -lGL (to link in
+// WebGL 1), then WebGL2 library should not be linked in as well.
 if (typeof createGLPassthroughFunctions == 'undefined') {
   throw 'In order to use WebGL 2 in strict mode with -sMAX_WEBGL_VERSION=2, you need to link in WebGL support with -lGL!';
 }
 
-createGLPassthroughFunctions(LibraryWebGL2, webgl2Funcs);
+createGLPassthroughFunctions(LibraryWebGL2, webgl2PassthroughFuncs);
 
 recordGLProcAddressGet(LibraryWebGL2);
 

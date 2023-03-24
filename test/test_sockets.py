@@ -18,7 +18,7 @@ if __name__ == '__main__':
 import clang_native
 import common
 from common import BrowserCore, no_windows, create_file, test_file, read_file
-from common import parameterized, requires_native_clang, PYTHON
+from common import parameterized, requires_native_clang, crossplatform, PYTHON
 from tools import config, utils
 from tools.shared import EMCC, path_from_root, run_process, CLANG_CC
 
@@ -277,6 +277,7 @@ class sockets(BrowserCore):
     with CompiledServerHarness(test_file('sockets/test_enet_server.c'), enet, 49210) as harness:
       self.btest_exit(test_file('sockets/test_enet_client.c'), args=enet + ['-DSOCKK=%d' % harness.listen_port])
 
+  @crossplatform
   @parameterized({
     'native': [WebsockifyServerHarness, 59160, ['-DTEST_DGRAM=0']],
     'tcp': [CompiledServerHarness, 59162, ['-DTEST_DGRAM=0']],

@@ -1318,7 +1318,7 @@ var LibraryEmbind = {
 
   $structRegistrations: {},
 
-  _embind_register_value_object__sig: 'viiiiii',
+  _embind_register_value_object__sig: 'vpppppp',
   _embind_register_value_object__deps: [
     '$structRegistrations', '$readLatin1String', '$embind__requireFunction'],
   _embind_register_value_object: function(
@@ -1337,7 +1337,7 @@ var LibraryEmbind = {
     };
   },
 
-  _embind_register_value_object_field__sig: 'viiiiiiiiii',
+  _embind_register_value_object_field__sig: 'vpppppppppp',
   _embind_register_value_object_field__deps: [
     '$structRegistrations', '$readLatin1String', '$embind__requireFunction'],
   _embind_register_value_object_field: function(
@@ -1363,7 +1363,7 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_finalize_value_object__sig: 'ii',
+  _embind_finalize_value_object__sig: 'vp',
   _embind_finalize_value_object__deps: [
     '$structRegistrations', '$runDestructors',
     '$simpleReadValueFromPointer', '$whenDependentTypesAreResolved'],
@@ -2598,7 +2598,7 @@ var LibraryEmbind = {
     exposePublicSymbol(name, ctor);
   },
 
-  _embind_register_enum_value__sig: 'vppi',
+  _embind_register_enum_value__sig: 'vppp',
   _embind_register_enum_value__deps: ['$createNamedFunction', '$readLatin1String', '$requireRegisteredType'],
   _embind_register_enum_value: function(rawEnumType, name, enumValue) {
     var enumType = requireRegisteredType(rawEnumType, 'enum');

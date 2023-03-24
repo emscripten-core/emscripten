@@ -65,7 +65,7 @@ var LibrarySDL = {
       volume: 1.0
     },
     mixerFrequency: 22050,
-    mixerFormat: {{{ cDefine('AUDIO_S16LSB') }}},
+    mixerFormat: {{{ cDefs.AUDIO_S16LSB }}},
     mixerNumChannels: 2,
     mixerChunkSize: 1024,
     channelMinimumNumber: 0,
@@ -317,7 +317,7 @@ var LibrarySDL = {
 #if ASSERTIONS
       // Canvas screens are always RGBA.
       var format = {{{ makeGetValue('fmt', C_STRUCTS.SDL_PixelFormat.format, 'i32') }}};
-      if (format != {{{ cDefine('SDL_PIXELFORMAT_RGBA8888') }}}) {
+      if (format != {{{ cDefs.SDL_PIXELFORMAT_RGBA8888 }}}) {
         warnOnce('Unsupported pixel format!');
       }
 #endif
@@ -377,7 +377,7 @@ var LibrarySDL = {
 
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.refcount, '1', 'i32') }}};
 
-      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.format, cDefine('SDL_PIXELFORMAT_RGBA8888'), 'i32') }}};
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.format, cDefs.SDL_PIXELFORMAT_RGBA8888, 'i32') }}};
       {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.palette, '0', 'i32') }}};// TODO
       {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.BitsPerPixel, 'bpp * 8', 'i8') }}};
       {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.BytesPerPixel, 'bpp', 'i8') }}};
@@ -655,7 +655,7 @@ var LibrarySDL = {
               type: 'touchmove',
               touch: {
                 identifier: 0,
-                deviceID: {{{ cDefine('SDL_TOUCH_MOUSEID') }}},
+                deviceID: {{{ cDefs.SDL_TOUCH_MOUSEID }}},
                 pageX: event.pageX,
                 pageY: event.pageY
               }
@@ -691,7 +691,7 @@ var LibrarySDL = {
               type: 'touchstart',
               touch: {
                 identifier: 0,
-                deviceID: {{{ cDefine('SDL_TOUCH_MOUSEID') }}},
+                deviceID: {{{ cDefs.SDL_TOUCH_MOUSEID }}},
                 pageX: event.pageX,
                 pageY: event.pageY
               }
@@ -707,7 +707,7 @@ var LibrarySDL = {
               type: 'touchend',
               touch: {
                 identifier: 0,
-                deviceID: {{{ cDefine('SDL_TOUCH_MOUSEID') }}},
+                deviceID: {{{ cDefs.SDL_TOUCH_MOUSEID }}},
                 pageX: event.pageX,
                 pageY: event.pageY
               }
@@ -1197,16 +1197,16 @@ var LibrarySDL = {
         if (channelData.length != sizeSamplesPerChannel) {
           throw 'Web Audio output buffer length mismatch! Destination size: ' + channelData.length + ' samples vs expected ' + sizeSamplesPerChannel + ' samples!';
         }
-        if (audio.format == {{{ cDefine('AUDIO_S16LSB') }}}) {
+        if (audio.format == {{{ cDefs.AUDIO_S16LSB }}}) {
           for (var j = 0; j < sizeSamplesPerChannel; ++j) {
             channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*2', 'i16') }}}) / 0x8000;
           }
-        } else if (audio.format == {{{ cDefine('AUDIO_U8') }}}) {
+        } else if (audio.format == {{{ cDefs.AUDIO_U8 }}}) {
           for (var j = 0; j < sizeSamplesPerChannel; ++j) {
             var v = ({{{ makeGetValue('heapPtr', 'j*numChannels + c', 'i8') }}});
             channelData[j] = ((v >= 0) ? v-128 : v+128) /128;
           }
-        } else if (audio.format == {{{ cDefine('AUDIO_F32') }}}) {
+        } else if (audio.format == {{{ cDefs.AUDIO_F32 }}}) {
           for (var j = 0; j < sizeSamplesPerChannel; ++j) {
             channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*4', 'float') }}});
           }
@@ -1337,7 +1337,7 @@ var LibrarySDL = {
   },
 
   SDL_Linked_Version__proxy: 'sync',
-  SDL_Linked_Version__sig: 'i',
+  SDL_Linked_Version__sig: 'p',
   SDL_Linked_Version: function() {
     if (SDL.version === null) {
       SDL.version = _malloc({{{ C_STRUCTS.SDL_version.__size__ }}});
@@ -1351,7 +1351,7 @@ var LibrarySDL = {
   SDL_Init__deps: ['$zeroMemory', 'malloc', 'free', 'memcpy'],
   SDL_Init__proxy: 'sync',
   SDL_Init__sig: 'ii',
-  SDL_Init__docs: '/** @param{number=} initFlags */', 
+  SDL_Init__docs: '/** @param{number} initFlags */',
   SDL_Init: function(initFlags) {
     SDL.startTime = Date.now();
     SDL.initFlags = initFlags;
@@ -1398,17 +1398,17 @@ var LibrarySDL = {
 
   SDL_WasInit__deps: ['SDL_Init'],
   SDL_WasInit__proxy: 'sync',
-  SDL_WasInit__sig: 'i',
-  SDL_WasInit: function() {
+  SDL_WasInit__sig: 'ii',
+  SDL_WasInit: function(flags) {
     if (SDL.startTime === null) {
-      _SDL_Init();
+      _SDL_Init(0);
     }
     return 1;
   },
 
   SDL_GetVideoInfo__deps: ['$zeroMemory'],
   SDL_GetVideoInfo__proxy: 'sync',
-  SDL_GetVideoInfo__sig: 'i',
+  SDL_GetVideoInfo__sig: 'p',
   SDL_GetVideoInfo: function() {
     var ret = _malloc({{{ C_STRUCTS.SDL_VideoInfo.__size__ }}});
     zeroMemory(ret, {{{ C_STRUCTS.SDL_version.__size__ }}});
@@ -1433,7 +1433,7 @@ var LibrarySDL = {
   },
 
   SDL_VideoDriverName__proxy: 'sync',
-  SDL_VideoDriverName__sig: 'iii',
+  SDL_VideoDriverName__sig: 'ppi',
   SDL_VideoDriverName: function(buf, max_size) {
     if (SDL.startTime === null) {
       return 0; //return NULL
@@ -1461,7 +1461,7 @@ var LibrarySDL = {
 
   SDL_SetVideoMode__deps: ['$GL'],
   SDL_SetVideoMode__proxy: 'sync',
-  SDL_SetVideoMode__sig: 'iiiii',
+  SDL_SetVideoMode__sig: 'piiii',
   SDL_SetVideoMode: function(width, height, depth, flags) {
     ['touchstart', 'touchend', 'touchmove', 'mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'wheel', 'mouseout'].forEach(function(event) {
       Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
@@ -1506,7 +1506,7 @@ var LibrarySDL = {
   },
 
   SDL_GetVideoSurface__proxy: 'sync',
-  SDL_GetVideoSurface__sig: 'i',
+  SDL_GetVideoSurface__sig: 'p',
   SDL_GetVideoSurface: function() {
     return SDL.screen;
   },
@@ -1542,7 +1542,7 @@ var LibrarySDL = {
 
   // Copy data from the canvas backing to a C++-accessible storage
   SDL_LockSurface__proxy: 'sync',
-  SDL_LockSurface__sig: 'ii',
+  SDL_LockSurface__sig: 'ip',
   SDL_LockSurface: function(surf) {
     var surfData = SDL.surfaces[surf];
 
@@ -1612,7 +1612,7 @@ var LibrarySDL = {
 
   // Copy data from the C++-accessible storage to the canvas backing
   SDL_UnlockSurface__proxy: 'sync',
-  SDL_UnlockSurface__sig: 'vi',
+  SDL_UnlockSurface__sig: 'vp',
   SDL_UnlockSurface: function(surf) {
     assert(!SDL.GL); // in GL mode we do not keep around 2D canvases and contexts
 
@@ -1746,7 +1746,7 @@ var LibrarySDL = {
 #endif
 
   SDL_WM_SetCaption__proxy: 'sync',
-  SDL_WM_SetCaption__sig: 'vii',
+  SDL_WM_SetCaption__sig: 'vpp',
   SDL_WM_SetCaption: function(title, icon) {
     if (title && typeof setWindowTitle != 'undefined') {
       setWindowTitle(UTF8ToString(title));
@@ -1759,8 +1759,8 @@ var LibrarySDL = {
   },
 
   SDL_GetKeyboardState__proxy: 'sync',
-  SDL_GetKeyboardState__sig: 'ii',
-  SDL_GetKeyboardState__docs: '/** @param {number=} numKeys */',
+  SDL_GetKeyboardState__sig: 'pp',
+  SDL_GetKeyboardState__docs: '/** @param {number} numKeys */',
   SDL_GetKeyboardState: function(numKeys) {
     if (numKeys) {
       {{{ makeSetValue('numKeys', 0, 0x10000, 'i32') }}};
@@ -1770,11 +1770,11 @@ var LibrarySDL = {
 
   SDL_GetKeyState__deps: ['SDL_GetKeyboardState'],
   SDL_GetKeyState: function() {
-    return _SDL_GetKeyboardState();
+    return _SDL_GetKeyboardState(0);
   },
 
   SDL_GetKeyName__proxy: 'sync',
-  SDL_GetKeyName__sig: 'ii',
+  SDL_GetKeyName__sig: 'pi',
   SDL_GetKeyName__deps: ['$allocateUTF8'],
   SDL_GetKeyName: function(key) {
     if (!SDL.keyName) {
@@ -1790,7 +1790,7 @@ var LibrarySDL = {
   },
 
   SDL_GetMouseState__proxy: 'sync',
-  SDL_GetMouseState__sig: 'iii',
+  SDL_GetMouseState__sig: 'ipp',
   SDL_GetMouseState: function(x, y) {
     if (x) {{{ makeSetValue('x', '0', 'Browser.mouseX', 'i32') }}};
     if (y) {{{ makeSetValue('y', '0', 'Browser.mouseY', 'i32') }}};
@@ -1834,7 +1834,7 @@ var LibrarySDL = {
   },
 
   SDL_GetError__proxy: 'sync',
-  SDL_GetError__sig: 'i',
+  SDL_GetError__sig: 'p',
   SDL_GetError__deps: ['$allocateUTF8'],
   SDL_GetError: function() {
     if (!SDL.errorMessage) {
@@ -1843,29 +1843,17 @@ var LibrarySDL = {
     return SDL.errorMessage;
   },
 
-  SDL_SetError: function() {},
-
-  SDL_malloc__sig: 'ii',
-  SDL_malloc__deps: ['malloc'],
-  SDL_malloc: function(size) {
-    return _malloc(size);
-  },
-
-  SDL_free__sig: 'vi',
-  SDL_free__deps: ['free'],
-  SDL_free: function(ptr) {
-    _free(ptr);
-  },
+  SDL_SetError: function(fmt, varargs) {},
 
   SDL_CreateRGBSurface__deps: ['malloc', 'free'],
   SDL_CreateRGBSurface__proxy: 'sync',
-  SDL_CreateRGBSurface__sig: 'iiiiiiiii',
+  SDL_CreateRGBSurface__sig: 'piiiiiiii',
   SDL_CreateRGBSurface: function(flags, width, height, depth, rmask, gmask, bmask, amask) {
     return SDL.makeSurface(width, height, flags, false, 'CreateRGBSurface', rmask, gmask, bmask, amask);
   },
 
   SDL_CreateRGBSurfaceFrom__proxy: 'sync',
-  SDL_CreateRGBSurfaceFrom__sig: 'iiiiiiiiii',
+  SDL_CreateRGBSurfaceFrom__sig: 'ppiiiiiiii',
   SDL_CreateRGBSurfaceFrom: function(pixels, width, height, depth, pitch, rmask, gmask, bmask, amask) {
     var surf = SDL.makeSurface(width, height, 0, false, 'CreateRGBSurfaceFrom', rmask, gmask, bmask, amask);
 
@@ -1895,8 +1883,8 @@ var LibrarySDL = {
   },
 
   SDL_ConvertSurface__proxy: 'sync',
-  SDL_ConvertSurface__sig: 'iiii',
-  SDL_ConvertSurface__docs: '/** @param {number=} format @param {number=} flags */',
+  SDL_ConvertSurface__sig: 'pppi',
+  SDL_ConvertSurface__docs: '/** @param {number} format @param {number} flags */',
   SDL_ConvertSurface: function(surf, format, flags) {
     if  (format) {
       SDL.checkPixelFormat(format);
@@ -1914,23 +1902,23 @@ var LibrarySDL = {
 
   SDL_DisplayFormatAlpha__deps: ['SDL_ConvertSurface'],
   SDL_DisplayFormatAlpha: function(surf) {
-    return _SDL_ConvertSurface(surf);
+    return _SDL_ConvertSurface(surf, 0, 0);
   },
 
   SDL_FreeSurface__proxy: 'sync',
-  SDL_FreeSurface__sig: 'vi',
+  SDL_FreeSurface__sig: 'vp',
   SDL_FreeSurface: function(surf) {
     if (surf) SDL.freeSurface(surf);
   },
 
   SDL_UpperBlit__proxy: 'sync',
-  SDL_UpperBlit__sig: 'iiiii',
+  SDL_UpperBlit__sig: 'ipppp',
   SDL_UpperBlit: function(src, srcrect, dst, dstrect) {
     return SDL.blitSurface(src, srcrect, dst, dstrect, false);
   },
 
   SDL_UpperBlitScaled__proxy: 'sync',
-  SDL_UpperBlitScaled__sig: 'iiiii',
+  SDL_UpperBlitScaled__sig: 'ipppp',
   SDL_UpperBlitScaled: function(src, srcrect, dst, dstrect) {
     return SDL.blitSurface(src, srcrect, dst, dstrect, true);
   },
@@ -1939,7 +1927,7 @@ var LibrarySDL = {
   SDL_LowerBlitScaled: 'SDL_UpperBlitScaled',
 
   SDL_GetClipRect__proxy: 'sync',
-  SDL_GetClipRect__sig: 'vii',
+  SDL_GetClipRect__sig: 'vpp',
   SDL_GetClipRect: function(surf, rect) {
     assert(rect);
 
@@ -1949,7 +1937,7 @@ var LibrarySDL = {
   },
 
   SDL_SetClipRect__proxy: 'sync',
-  SDL_SetClipRect__sig: 'vii',
+  SDL_SetClipRect__sig: 'ipp',
   SDL_SetClipRect: function(surf, rect) {
     var surfData = SDL.surfaces[surf];
 
@@ -1961,7 +1949,7 @@ var LibrarySDL = {
   },
 
   SDL_FillRect__proxy: 'sync',
-  SDL_FillRect__sig: 'iiii',
+  SDL_FillRect__sig: 'ippi',
   SDL_FillRect: function(surf, rect, color) {
     var surfData = SDL.surfaces[surf];
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
@@ -1988,18 +1976,6 @@ var LibrarySDL = {
     surfData.ctx.fillRect(r.x, r.y, r.w, r.h);
     surfData.ctx.restore();
     return 0;
-  },
-
-  SDL_BlitSurface__proxy: 'sync',
-  SDL_BlitSurface__sig: 'iiiii',
-  SDL_BlitSurface: function(src, srcrect, dst, dstrect) {
-    return SDL.blitSurface(src, srcrect, dst, dstrect, false);
-  },
-
-  SDL_BlitScaled__proxy: 'sync',
-  SDL_BlitScaled__sig: 'iiiii',
-  SDL_BlitScaled: function(src, srcrect, dst, dstrect) {
-    return SDL.blitSurface(src, srcrect, dst, dstrect, true);
   },
 
   zoomSurface: function(src, x, y, smooth) {
@@ -2038,7 +2014,7 @@ var LibrarySDL = {
   },
 
   SDL_SetAlpha__proxy: 'sync',
-  SDL_SetAlpha__sig: 'iiii',
+  SDL_SetAlpha__sig: 'ipii',
   SDL_SetAlpha: function(surf, flag, alpha) {
     var surfData = SDL.surfaces[surf];
     surfData.alpha = alpha;
@@ -2063,13 +2039,13 @@ var LibrarySDL = {
   },
 
   SDL_PollEvent__proxy: 'sync',
-  SDL_PollEvent__sig: 'ii',
+  SDL_PollEvent__sig: 'ip',
   SDL_PollEvent: function(ptr) {
     return SDL.pollEvent(ptr);
   },
 
   SDL_PushEvent__proxy: 'sync',
-  SDL_PushEvent__sig: 'ii',
+  SDL_PushEvent__sig: 'ip',
   SDL_PushEvent__deps: ['malloc'],
   SDL_PushEvent: function(ptr) {
     var copy = _malloc({{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
@@ -2079,7 +2055,7 @@ var LibrarySDL = {
   },
 
   SDL_PeepEvents__proxy: 'sync',
-  SDL_PeepEvents__sig: 'iiiiii',
+  SDL_PeepEvents__sig: 'ipiiii',
   SDL_PeepEvents: function(events, requestedEventCount, action, from, to) {
     switch (action) {
       case 2: { // SDL_GETEVENT
@@ -2122,7 +2098,7 @@ var LibrarySDL = {
   // Allow recording a callback that will be called for each received event.
   emscripten_SDL_SetEventHandler__proxy: 'sync',
   emscripten_SDL_SetEventHandler__deps: ['malloc'],
-  emscripten_SDL_SetEventHandler__sig: 'vii',
+  emscripten_SDL_SetEventHandler__sig: 'vpp',
   emscripten_SDL_SetEventHandler: function(handler, userdata) {
     SDL.eventHandler = handler;
     SDL.eventHandlerContext = userdata;
@@ -2132,7 +2108,7 @@ var LibrarySDL = {
   },
 
   SDL_SetColors__proxy: 'sync',
-  SDL_SetColors__sig: 'iiiii',
+  SDL_SetColors__sig: 'ippii',
   SDL_SetColors: function(surf, colors, firstColor, nColors) {
     var surfData = SDL.surfaces[surf];
 
@@ -2163,7 +2139,7 @@ var LibrarySDL = {
   },
 
   SDL_MapRGB__proxy: 'sync',
-  SDL_MapRGB__sig: 'iiiii',
+  SDL_MapRGB__sig: 'ipiii',
   SDL_MapRGB: function(fmt, r, g, b) {
     SDL.checkPixelFormat(fmt);
     // We assume the machine is little-endian.
@@ -2171,7 +2147,7 @@ var LibrarySDL = {
   },
 
   SDL_MapRGBA__proxy: 'sync',
-  SDL_MapRGBA__sig: 'iiiiii',
+  SDL_MapRGBA__sig: 'ipiiii',
   SDL_MapRGBA: function(fmt, r, g, b, a) {
     SDL.checkPixelFormat(fmt);
     // We assume the machine is little-endian.
@@ -2179,7 +2155,7 @@ var LibrarySDL = {
   },
 
   SDL_GetRGB__proxy: 'sync',
-  SDL_GetRGB__sig: 'viiiii',
+  SDL_GetRGB__sig: 'vipppp',
   SDL_GetRGB: function(pixel, fmt, r, g, b) {
     SDL.checkPixelFormat(fmt);
     // We assume the machine is little-endian.
@@ -2195,7 +2171,7 @@ var LibrarySDL = {
   },
 
   SDL_GetRGBA__proxy: 'sync',
-  SDL_GetRGBA__sig: 'viiiiii',
+  SDL_GetRGBA__sig: 'vippppp',
   SDL_GetRGBA: function(pixel, fmt, r, g, b, a) {
     SDL.checkPixelFormat(fmt);
     // We assume the machine is little-endian.
@@ -2232,7 +2208,7 @@ var LibrarySDL = {
   SDL_WM_GrabInput: function() {},
 
   SDL_WM_ToggleFullScreen__proxy: 'sync',
-  SDL_WM_ToggleFullScreen__sig: 'ii',
+  SDL_WM_ToggleFullScreen__sig: 'ip',
   SDL_WM_ToggleFullScreen: function(surf) {
     if (Browser.exitFullscreen()) {
       return 1;
@@ -2252,7 +2228,7 @@ var LibrarySDL = {
 
   IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS', 'malloc'],
   IMG_Load_RW__proxy: 'sync',
-  IMG_Load_RW__sig: 'iii',
+  IMG_Load_RW__sig: 'ppi',
   IMG_Load_RW: function(rwopsID, freeSrc) {
     try {
       // stb_image integration support
@@ -2400,14 +2376,13 @@ var LibrarySDL = {
       cleanup();
     }
   },
-  SDL_LoadBMP: 'IMG_Load',
   SDL_LoadBMP_RW: 'IMG_Load_RW',
 
   IMG_Load__deps: ['IMG_Load_RW', 'SDL_RWFromFile'],
   IMG_Load__proxy: 'sync',
-  IMG_Load__sig: 'ii',
+  IMG_Load__sig: 'pp',
   IMG_Load: function(filename){
-    var rwops = _SDL_RWFromFile(filename);
+    var rwops = _SDL_RWFromFile(filename, 0);
     var result = _IMG_Load_RW(rwops, 1);
     return result;
   },
@@ -2420,7 +2395,7 @@ var LibrarySDL = {
 
   SDL_OpenAudio__deps: ['$autoResumeAudioContext', '$safeSetTimeout', 'malloc'],
   SDL_OpenAudio__proxy: 'sync',
-  SDL_OpenAudio__sig: 'iii',
+  SDL_OpenAudio__sig: 'ipp',
   SDL_OpenAudio: function(desired, obtained) {
     try {
       SDL.audio = {
@@ -2434,11 +2409,11 @@ var LibrarySDL = {
         timer: null
       };
       // The .silence field tells the constant sample value that corresponds to the safe un-skewed silence value for the wave data.
-      if (SDL.audio.format == {{{ cDefine('AUDIO_U8') }}}) {
+      if (SDL.audio.format == {{{ cDefs.AUDIO_U8 }}}) {
         SDL.audio.silence = 128; // Audio ranges in [0, 255], so silence is half-way in between.
-      } else if (SDL.audio.format == {{{ cDefine('AUDIO_S16LSB') }}}) {
+      } else if (SDL.audio.format == {{{ cDefs.AUDIO_S16LSB }}}) {
         SDL.audio.silence = 0; // Signed data in range [-32768, 32767], silence is 0.
-      } else if (SDL.audio.format == {{{ cDefine('AUDIO_F32') }}}) {
+      } else if (SDL.audio.format == {{{ cDefs.AUDIO_F32 }}}) {
         SDL.audio.silence = 0.0; // Float data in range [-1.0, 1.0], silence is 0.0
       } else {
         throw 'Invalid SDL audio format ' + SDL.audio.format + '!';
@@ -2474,11 +2449,11 @@ var LibrarySDL = {
       }
 
       var totalSamples = SDL.audio.samples*SDL.audio.channels;
-      if (SDL.audio.format == {{{ cDefine('AUDIO_U8') }}}) {
+      if (SDL.audio.format == {{{ cDefs.AUDIO_U8 }}}) {
         SDL.audio.bytesPerSample = 1;
-      } else if (SDL.audio.format == {{{ cDefine('AUDIO_S16LSB') }}}) {
+      } else if (SDL.audio.format == {{{ cDefs.AUDIO_S16LSB }}}) {
         SDL.audio.bytesPerSample = 2;
-      } else if (SDL.audio.format == {{{ cDefine('AUDIO_F32') }}}) {
+      } else if (SDL.audio.format == {{{ cDefs.AUDIO_F32 }}}) {
         SDL.audio.bytesPerSample = 4;
       } else {
         throw 'Invalid SDL audio format ' + SDL.audio.format + '!';
@@ -2682,16 +2657,14 @@ var LibrarySDL = {
   SDL_UnlockAudio: function() {},
 
   SDL_CreateMutex: function() { return 0 },
-  SDL_LockMutex: function() {},
-  SDL_UnlockMutex: function() {},
-  SDL_mutexP: function() { return 0 },
-  SDL_mutexV: function() { return 0 },
-  SDL_DestroyMutex: function() {},
+  SDL_mutexP: function(mutex) { return 0 },
+  SDL_mutexV: function(mutex) { return 0 },
+  SDL_DestroyMutex: function(mutex) {},
 
   SDL_CreateCond: function() { return 0 },
-  SDL_CondSignal: function() {},
-  SDL_CondWait: function() {},
-  SDL_DestroyCond: function() {},
+  SDL_CondSignal: function(cond) {},
+  SDL_CondWait: function(cond, mutex) {},
+  SDL_DestroyCond: function(cond) {},
 
   SDL_StartTextInput__proxy: 'sync',
   SDL_StartTextInput__sig: 'v',
@@ -2737,7 +2710,7 @@ var LibrarySDL = {
   },
 
   Mix_ChannelFinished__proxy: 'sync',
-  Mix_ChannelFinished__sig: 'vi',
+  Mix_ChannelFinished__sig: 'vp',
   Mix_ChannelFinished: function(func) {
     SDL.channelFinished = func;
   },
@@ -2772,8 +2745,8 @@ var LibrarySDL = {
 
   Mix_LoadWAV_RW__deps: ['$PATH_FS', 'fileno'],
   Mix_LoadWAV_RW__proxy: 'sync',
-  Mix_LoadWAV_RW__sig: 'iii',
-  Mix_LoadWAV_RW__docs: '/** @param {number|boolean=} freesrc */',
+  Mix_LoadWAV_RW__sig: 'ppi',
+  Mix_LoadWAV_RW__docs: '/** @param {number} freesrc */',
   Mix_LoadWAV_RW: function(rwopsID, freesrc) {
     var rwops = SDL.rwops[rwopsID];
 
@@ -2879,16 +2852,16 @@ var LibrarySDL = {
 
   Mix_LoadWAV__deps: ['Mix_LoadWAV_RW', 'SDL_RWFromFile', 'SDL_FreeRW'],
   Mix_LoadWAV__proxy: 'sync',
-  Mix_LoadWAV__sig: 'ii',
+  Mix_LoadWAV__sig: 'pp',
   Mix_LoadWAV: function(filename) {
-    var rwops = _SDL_RWFromFile(filename);
-    var result = _Mix_LoadWAV_RW(rwops);
+    var rwops = _SDL_RWFromFile(filename, 0);
+    var result = _Mix_LoadWAV_RW(rwops, 0);
     _SDL_FreeRW(rwops);
     return result;
   },
 
   Mix_QuickLoad_RAW__proxy: 'sync',
-  Mix_QuickLoad_RAW__sig: 'iii',
+  Mix_QuickLoad_RAW__sig: 'ppi',
   Mix_QuickLoad_RAW: function(mem, len) {
     var audio;
     var webAudio;
@@ -2922,7 +2895,7 @@ var LibrarySDL = {
   },
 
   Mix_FreeChunk__proxy: 'sync',
-  Mix_FreeChunk__sig: 'vi',
+  Mix_FreeChunk__sig: 'vp',
   Mix_FreeChunk: function(id) {
     SDL.audios[id] = null;
   },
@@ -2931,10 +2904,11 @@ var LibrarySDL = {
   Mix_ReserveChannels: function(num) {
     SDL.channelMinimumNumber = num;
   },
-  Mix_PlayChannel__proxy: 'sync',
-  Mix_PlayChannel__sig: 'iiii',
-  Mix_PlayChannel: function(channel, id, loops) {
+  Mix_PlayChannelTimed__proxy: 'sync',
+  Mix_PlayChannelTimed__sig: 'iipii',
+  Mix_PlayChannelTimed: function(channel, id, loops, ticks) {
     // TODO: handle fixed amount of N loops. Currently loops either 0 or infinite times.
+    assert(ticks == -1);
 
     // Get the audio element associated with the ID
     var info = SDL.audios[id];
@@ -2984,7 +2958,6 @@ var LibrarySDL = {
     audio.play();
     return channel;
   },
-  Mix_PlayChannelTimed: 'Mix_PlayChannel', // XXX ignore Timing
 
   Mix_FadingChannel: function(channel) {
     return 0; // MIX_NO_FADING, TODO
@@ -3013,7 +2986,7 @@ var LibrarySDL = {
 
   Mix_HookMusicFinished__deps: ['Mix_HaltMusic'],
   Mix_HookMusicFinished__proxy: 'sync',
-  Mix_HookMusicFinished__sig: 'vi',
+  Mix_HookMusicFinished__sig: 'vp',
   Mix_HookMusicFinished: function(func) {
     SDL.hookMusicFinished = func;
     if (SDL.music.audio) { // ensure the callback will be called, if a music is already playing
@@ -3027,15 +3000,15 @@ var LibrarySDL = {
     return SDL.setGetVolume(SDL.music, volume);
   },
 
-  Mix_LoadMUS_RW__docs: '/** @param {number|boolean=} a1 */',
+  Mix_LoadMUS_RW__docs: '/** @param {number} a1 */',
   Mix_LoadMUS_RW: 'Mix_LoadWAV_RW',
 
   Mix_LoadMUS__deps: ['Mix_LoadMUS_RW', 'SDL_RWFromFile', 'SDL_FreeRW'],
   Mix_LoadMUS__proxy: 'sync',
-  Mix_LoadMUS__sig: 'ii',
+  Mix_LoadMUS__sig: 'pp',
   Mix_LoadMUS: function(filename) {
-    var rwops = _SDL_RWFromFile(filename);
-    var result = _Mix_LoadMUS_RW(rwops);
+    var rwops = _SDL_RWFromFile(filename, 0);
+    var result = _Mix_LoadMUS_RW(rwops, 0);
     _SDL_FreeRW(rwops);
     return result;
   },
@@ -3044,7 +3017,7 @@ var LibrarySDL = {
 
   Mix_PlayMusic__deps: ['Mix_HaltMusic'],
   Mix_PlayMusic__proxy: 'sync',
-  Mix_PlayMusic__sig: 'iii',
+  Mix_PlayMusic__sig: 'ipi',
   Mix_PlayMusic: function(id, loops) {
     // Pause old music if it exists.
     if (SDL.music.audio) {
@@ -3218,7 +3191,7 @@ var LibrarySDL = {
   },
 
   TTF_OpenFont__proxy: 'sync',
-  TTF_OpenFont__sig: 'iii',
+  TTF_OpenFont__sig: 'ppi',
   TTF_OpenFont: function(filename, size) {
     filename = PATH.normalize(UTF8ToString(filename));
     var id = SDL.fonts.length;
@@ -3230,13 +3203,13 @@ var LibrarySDL = {
   },
 
   TTF_CloseFont__proxy: 'sync',
-  TTF_CloseFont__sig: 'vi',
+  TTF_CloseFont__sig: 'vp',
   TTF_CloseFont: function(font) {
     SDL.fonts[font] = null;
   },
 
   TTF_RenderText_Solid__proxy: 'sync',
-  TTF_RenderText_Solid__sig: 'iiii',
+  TTF_RenderText_Solid__sig: 'pppp',
   TTF_RenderText_Solid: function(font, text, color) {
     // XXX the font and color are ignored
     text = UTF8ToString(text) || ' '; // if given an empty string, still return a valid surface
@@ -3264,7 +3237,7 @@ var LibrarySDL = {
   TTF_SizeUTF8: 'TTF_SizeText',
 
   TTF_SizeText__proxy: 'sync',
-  TTF_SizeText__sig: 'iiiii',
+  TTF_SizeText__sig: 'ipppp',
   TTF_SizeText: function(font, text, w, h) {
     var fontData = SDL.fonts[font];
     if (w) {
@@ -3277,7 +3250,7 @@ var LibrarySDL = {
   },
 
   TTF_GlyphMetrics__proxy: 'sync',
-  TTF_GlyphMetrics__sig: 'iiiiiiii',
+  TTF_GlyphMetrics__sig: 'ipippppp',
   TTF_GlyphMetrics: function(font, ch, minx, maxx, miny, maxy, advance) {
     var fontData = SDL.fonts[font];
     var width = SDL.estimateTextWidth(fontData,  String.fromCharCode(ch));
@@ -3300,21 +3273,21 @@ var LibrarySDL = {
   },
 
   TTF_FontAscent__proxy: 'sync',
-  TTF_FontAscent__sig: 'ii',
+  TTF_FontAscent__sig: 'ip',
   TTF_FontAscent: function(font) {
     var fontData = SDL.fonts[font];
     return (fontData.size*0.98)|0; // XXX
   },
 
   TTF_FontDescent__proxy: 'sync',
-  TTF_FontDescent__sig: 'ii',
+  TTF_FontDescent__sig: 'ip',
   TTF_FontDescent: function(font) {
     var fontData = SDL.fonts[font];
     return (fontData.size*0.02)|0; // XXX
   },
 
   TTF_FontHeight__proxy: 'sync',
-  TTF_FontHeight__sig: 'ii',
+  TTF_FontHeight__sig: 'ip',
   TTF_FontHeight: function(font) {
     var fontData = SDL.fonts[font];
     return fontData.size;
@@ -3457,7 +3430,7 @@ var LibrarySDL = {
   },
 
   SDL_GL_GetAttribute__proxy: 'sync',
-  SDL_GL_GetAttribute__sig: 'iii',
+  SDL_GL_GetAttribute__sig: 'iip',
   SDL_GL_GetAttribute: function(attr, value) {
     if (!(attr in SDL.glAttributes)) {
       abort('Unknown SDL GL attribute (' + attr + '). Please check if your SDL version is supported.');
@@ -3477,7 +3450,7 @@ var LibrarySDL = {
   // SDL 2
 
   SDL_GL_ExtensionSupported__proxy: 'sync',
-  SDL_GL_ExtensionSupported__sig: 'ii',
+  SDL_GL_ExtensionSupported__sig: 'ip',
   SDL_GL_ExtensionSupported: function(extension) {
     return Module.ctx.getExtension(extension) | 0;
   },
@@ -3487,8 +3460,8 @@ var LibrarySDL = {
   SDL_DestroyRenderer: function(renderer) {},
 
   SDL_GetWindowFlags__proxy: 'sync',
-  SDL_GetWindowFlags__sig: 'iii',
-  SDL_GetWindowFlags: function(x, y) {
+  SDL_GetWindowFlags__sig: 'ip',
+  SDL_GetWindowFlags: function(window) {
     if (Browser.isFullscreen) {
        return 1;
     }
@@ -3503,8 +3476,8 @@ var LibrarySDL = {
   SDL_GL_DeleteContext: function(context) {},
 
   SDL_GL_GetSwapInterval__proxy: 'sync',
-  SDL_GL_GetSwapInterval__sig: 'ii',
-  SDL_GL_GetSwapInterval: function(state) {
+  SDL_GL_GetSwapInterval__sig: 'i',
+  SDL_GL_GetSwapInterval: function() {
     if (Browser.mainLoop.timingMode == 1/*EM_TIMING_RAF*/) return Browser.mainLoop.timingValue;
     else return 0;
   },
@@ -3515,13 +3488,13 @@ var LibrarySDL = {
   },
 
   SDL_SetWindowTitle__proxy: 'sync',
-  SDL_SetWindowTitle__sig: 'vii',
+  SDL_SetWindowTitle__sig: 'vpp',
   SDL_SetWindowTitle: function(window, title) {
     if (title) document.title = UTF8ToString(title);
   },
 
   SDL_GetWindowSize__proxy: 'sync',
-  SDL_GetWindowSize__sig: 'viii',
+  SDL_GetWindowSize__sig: 'vppp',
   SDL_GetWindowSize: function(window, width, height){
     var w = Module['canvas'].width;
     var h = Module['canvas'].height;
@@ -3532,7 +3505,7 @@ var LibrarySDL = {
   SDL_LogSetOutputFunction: function(callback, userdata) {},
 
   SDL_SetWindowFullscreen__proxy: 'sync',
-  SDL_SetWindowFullscreen__sig: 'iii',
+  SDL_SetWindowFullscreen__sig: 'ipi',
   SDL_SetWindowFullscreen: function(window, fullscreen) {
     if (Browser.isFullscreen) {
       Module['canvas'].exitFullscreen();
@@ -3540,8 +3513,6 @@ var LibrarySDL = {
     }
     return 0;
   },
-
-  SDL_GetWindowFlags: function() {},
 
   SDL_ClearError: function() {},
 
@@ -3570,7 +3541,7 @@ var LibrarySDL = {
   },
 
   SDL_JoystickName__proxy: 'sync',
-  SDL_JoystickName__sig: 'ii',
+  SDL_JoystickName__sig: 'pi',
   SDL_JoystickName__deps: ['$allocateUTF8'],
   SDL_JoystickName: function(deviceIndex) {
     var gamepad = SDL.getGamepad(deviceIndex);
@@ -3585,7 +3556,7 @@ var LibrarySDL = {
   },
 
   SDL_JoystickOpen__proxy: 'sync',
-  SDL_JoystickOpen__sig: 'ii',
+  SDL_JoystickOpen__sig: 'pi',
   SDL_JoystickOpen: function(deviceIndex) {
     var gamepad = SDL.getGamepad(deviceIndex);
     if (gamepad) {
@@ -3609,7 +3580,7 @@ var LibrarySDL = {
   },
 
   SDL_JoystickNumAxes__proxy: 'sync',
-  SDL_JoystickNumAxes__sig: 'ii',
+  SDL_JoystickNumAxes__sig: 'ip',
   SDL_JoystickNumAxes: function(joystick) {
     var gamepad = SDL.getGamepad(joystick - 1);
     if (gamepad) {
@@ -3623,7 +3594,7 @@ var LibrarySDL = {
   SDL_JoystickNumHats: function(joystick) { return 0; },
 
   SDL_JoystickNumButtons__proxy: 'sync',
-  SDL_JoystickNumButtons__sig: 'ii',
+  SDL_JoystickNumButtons__sig: 'ip',
   SDL_JoystickNumButtons: function(joystick) {
     var gamepad = SDL.getGamepad(joystick - 1);
     if (gamepad) {
@@ -3649,7 +3620,7 @@ var LibrarySDL = {
   },
 
   SDL_JoystickGetAxis__proxy: 'sync',
-  SDL_JoystickGetAxis__sig: 'iii',
+  SDL_JoystickGetAxis__sig: 'ipi',
   SDL_JoystickGetAxis: function(joystick, axis) {
     var gamepad = SDL.getGamepad(joystick - 1);
     if (gamepad && gamepad.axes.length > axis) {
@@ -3663,7 +3634,7 @@ var LibrarySDL = {
   SDL_JoystickGetBall: function(joystick, ball, dxptr, dyptr) { return -1; },
 
   SDL_JoystickGetButton__proxy: 'sync',
-  SDL_JoystickGetButton__sig: 'iii',
+  SDL_JoystickGetButton__sig: 'ipi',
   SDL_JoystickGetButton: function(joystick, button) {
     var gamepad = SDL.getGamepad(joystick - 1);
     if (gamepad && gamepad.buttons.length > button) {
@@ -3673,7 +3644,7 @@ var LibrarySDL = {
   },
 
   SDL_JoystickClose__proxy: 'sync',
-  SDL_JoystickClose__sig: 'vi',
+  SDL_JoystickClose__sig: 'vp',
   SDL_JoystickClose: function(joystick) {
     delete SDL.lastJoystickState[joystick];
   },
@@ -3683,7 +3654,7 @@ var LibrarySDL = {
   SDL_InitSubSystem: function(flags) { return 0 },
 
   SDL_RWFromConstMem__proxy: 'sync',
-  SDL_RWFromConstMem__sig: 'iii',
+  SDL_RWFromConstMem__sig: 'ppi',
   SDL_RWFromConstMem: function(mem, size) {
     var id = SDL.rwops.length; // TODO: recycle ids when they are null
     SDL.rwops.push({ bytes: mem, count: size });
@@ -3692,8 +3663,8 @@ var LibrarySDL = {
   SDL_RWFromMem: 'SDL_RWFromConstMem',
 
   SDL_RWFromFile__proxy: 'sync',
-  SDL_RWFromFile__sig: 'iii',
-  SDL_RWFromFile__docs: '/** @param {number=} mode */',
+  SDL_RWFromFile__sig: 'ppp',
+  SDL_RWFromFile__docs: '/** @param {number} mode */',
   SDL_RWFromFile: function(_name, mode) {
     var id = SDL.rwops.length; // TODO: recycle ids when they are null
     var name = UTF8ToString(_name);
@@ -3702,7 +3673,7 @@ var LibrarySDL = {
   },
 
   SDL_FreeRW__proxy: 'sync',
-  SDL_FreeRW__sig: 'vi',
+  SDL_FreeRW__sig: 'vp',
   SDL_FreeRW: function(rwopsID) {
     SDL.rwops[rwopsID] = null;
     while (SDL.rwops.length > 0 && SDL.rwops[SDL.rwops.length-1] === null) {
@@ -3731,7 +3702,7 @@ var LibrarySDL = {
 
   SDL_AddTimer__proxy: 'sync',
   SDL_AddTimer__deps: ['$safeSetTimeout'],
-  SDL_AddTimer__sig: 'iiii',
+  SDL_AddTimer__sig: 'iipp',
   SDL_AddTimer: function(interval, callback, param) {
     return safeSetTimeout(
       () => {{{ makeDynCall('iii', 'callback') }}}(interval, param),
@@ -3745,30 +3716,30 @@ var LibrarySDL = {
   },
 
   // TODO:
-  SDL_CreateThread: function() {
+  SDL_CreateThread: function(fs, data, pfnBeginThread, pfnEndThread) {
     throw 'SDL threads cannot be supported in the web platform because they assume shared state. See emscripten_create_worker etc. for a message-passing concurrency model that does let you run code in another thread.'
   },
 
-  SDL_WaitThread: function() { throw 'SDL_WaitThread' },
-  SDL_GetThreadID: function() { throw 'SDL_GetThreadID' },
+  SDL_WaitThread: function(thread, status) { throw 'SDL_WaitThread' },
+  SDL_GetThreadID: function(thread) { throw 'SDL_GetThreadID' },
   SDL_ThreadID: function() { return 0; },
   SDL_AllocRW: function() { throw 'SDL_AllocRW: TODO' },
-  SDL_CondBroadcast: function() { throw 'SDL_CondBroadcast: TODO' },
-  SDL_CondWaitTimeout: function() { throw 'SDL_CondWaitTimeout: TODO' },
+  SDL_CondBroadcast: function(cond) { throw 'SDL_CondBroadcast: TODO' },
+  SDL_CondWaitTimeout: function(cond, mutex, ms) { throw 'SDL_CondWaitTimeout: TODO' },
   SDL_WM_IconifyWindow: function() { throw 'SDL_WM_IconifyWindow TODO' },
 
-  Mix_SetPostMix: function() { warnOnce('Mix_SetPostMix: TODO') },
+  Mix_SetPostMix: function(func, arg) { warnOnce('Mix_SetPostMix: TODO') },
 
   Mix_VolumeChunk: function(chunk, volume) { throw 'Mix_VolumeChunk: TODO' },
   Mix_SetPosition: function(channel, angle, distance) { throw 'Mix_SetPosition: TODO' },
-  Mix_QuerySpec: function() { throw 'Mix_QuerySpec: TODO' },
-  Mix_FadeInChannelTimed: function() { throw 'Mix_FadeInChannelTimed' },
+  Mix_QuerySpec: function(frequency, format, channels) { throw 'Mix_QuerySpec: TODO' },
+  Mix_FadeInChannelTimed: function(channel, chunk, loop, ms, ticks) { throw 'Mix_FadeInChannelTimed' },
   Mix_FadeOutChannel: function() { throw 'Mix_FadeOutChannel' },
 
   Mix_Linked_Version: function() { throw 'Mix_Linked_Version: TODO' },
-  SDL_SaveBMP_RW: function() { throw 'SDL_SaveBMP_RW: TODO' },
+  SDL_SaveBMP_RW: function(surface, dst, freedst) { throw 'SDL_SaveBMP_RW: TODO' },
 
-  SDL_WM_SetIcon: function() { /* This function would set the application window icon surface, which doesn't apply for web canvases, so a no-op. */ },
+  SDL_WM_SetIcon: function(icon, mask) { /* This function would set the application window icon surface, which doesn't apply for web canvases, so a no-op. */ },
   SDL_HasRDTSC: function() { return 0; },
   SDL_HasMMX: function() { return 0; },
   SDL_HasMMXExt: function() { return 0; },

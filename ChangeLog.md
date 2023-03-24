@@ -26,8 +26,16 @@ See docs/process.md for more on how version tagging works.
 - Updated `emscons` to apply the `EMSCRIPTEN_ROOT`, `EMSCONS_PKG_CONFIG_LIBDIR`
   and `EMSCONS_PKG_CONFIG_PATH` environment variables. The SCons tool will use
   last two to set up `PKG_CONFIG_LIBDIR` and `PKG_CONFIG_PATH` respetively.
+- `SDL_image` port was updated to version 2.6.0.
 - `-z` arguments are now passed directly to wasm-ld without the need for the
   `-Wl,` prefix.  This matches the behaviour of both clang and gcc. (#18956)
+- Reverted #18525 which runs the JS pre-processor over files passed via
+  --pre-js and --post-js.  It turned out this change caused issue for several
+  folks who had JS files with lines that start with `#` so can't be run through
+  the pre-processor.  If folks want to re-enable this we can looks into ways to
+  make it conditional/optional.
+- The `{{{ cDefine('name') }}}` helper macro can now be simplified to just `{{{
+  cDefs.name }}}`.
 
 3.1.34 - 03/14/23
 -----------------
@@ -37,6 +45,10 @@ See docs/process.md for more on how version tagging works.
 - The prefered way to enable pthread is now to just the the standard `-pthread`
   flag.  The `-sUSE_PTHREADS` setting still works but is marked as legacy and
   will generate a warning in `-sSTRICT` mode.
+- When targeting node, and using `-sMODULARIZE`, we no longer internally catch
+  unhandled promise rejections or exit status code. That is to say the,
+  `NODEJS_CATCH_REJECTION` and `NODEJS_CATCH_EXIT` are no longer compatible
+  with `-sMODULARIZE`.   
 
 3.1.33 - 03/08/23
 -----------------
