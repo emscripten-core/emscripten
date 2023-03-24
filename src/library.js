@@ -2662,6 +2662,9 @@ mergeInto(LibraryManager.library, {
   // using builtin_malloc to avoid LSan reporting these as leaks.
   emscripten_get_compiler_setting__noleakcheck: true,
   emscripten_get_compiler_setting__sig: 'pp',
+#if RETAIN_COMPILER_SETTINGS
+  emscripten_get_compiler_setting__deps: ['$allocateUTF8'],
+#endif
   emscripten_get_compiler_setting: function(name) {
 #if RETAIN_COMPILER_SETTINGS
     name = UTF8ToString(name);
@@ -2673,9 +2676,7 @@ mergeInto(LibraryManager.library, {
     var cache = _emscripten_get_compiler_setting.cache;
     var fullret = cache[name];
     if (fullret) return fullret;
-    cache[name] = _malloc(ret.length + 1);
-    stringToUTF8(ret + '', cache[name], ret.length + 1);
-    return cache[name];
+    return cache[name] = allocateUTF8(ret);
 #else
     throw 'You must build with -sRETAIN_COMPILER_SETTINGS for getCompilerSetting or emscripten_get_compiler_setting to work';
 #endif
