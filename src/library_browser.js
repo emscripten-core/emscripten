@@ -803,16 +803,14 @@ var LibraryBrowser = {
   },
 
   emscripten_run_preload_plugins_data__proxy: 'sync',
-  emscripten_run_preload_plugins_data__deps: ['malloc'],
+  emscripten_run_preload_plugins_data__deps: ['$allocateUTF8'],
   emscripten_run_preload_plugins_data: function(data, size, suffix, arg, onload, onerror) {
     {{{ runtimeKeepalivePush() }}}
 
     var _suffix = UTF8ToString(suffix);
     if (!Browser.asyncPrepareDataCounter) Browser.asyncPrepareDataCounter = 0;
     var name = 'prepare_data_' + (Browser.asyncPrepareDataCounter++) + '.' + _suffix;
-    var lengthAsUTF8 = lengthBytesUTF8(name);
-    var cname = _malloc(lengthAsUTF8+1);
-    stringToUTF8(name, cname, lengthAsUTF8+1);
+    var cname = allocateUTF8(name);
     FS.createPreloadedFile(
       '/',
       name,

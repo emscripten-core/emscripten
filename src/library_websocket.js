@@ -215,7 +215,7 @@ var LibraryWebSocket = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_websocket_set_onmessage_callback_on_thread__deps: ['$WS'],
+  emscripten_websocket_set_onmessage_callback_on_thread__deps: ['$WS', '$allocateUTF8'],
   emscripten_websocket_set_onmessage_callback_on_thread__proxy: 'sync',
   emscripten_websocket_set_onmessage_callback_on_thread: function(socketId, userData, callbackFunc, thread) {
     if (!WS.socketEvent) WS.socketEvent = _malloc(1024); // TODO: sizeof(EmscriptenWebSocketCloseEvent), which is the largest event struct
@@ -237,10 +237,9 @@ var LibraryWebSocket = {
 #endif
       HEAPU32[WS.socketEvent>>2] = socketId;
       if (typeof e.data == 'string') {
-        var len = lengthBytesUTF8(e.data)+1;
-        var buf = _malloc(len);
-        stringToUTF8(e.data, buf, len);
+        var buf = allocateUTF8(e.data);
 #if WEBSOCKET_DEBUG
+        var len = lengthBytesUTF8(e.data)+1;
         var s = (e.data.length < 256) ? e.data : (e.data.substr(0, 256) + ' (' + (e.data.length-256) + ' more characters)');
         dbg('WebSocket onmessage, received data: "' + e.data + '", ' + e.data.length + ' chars, ' + len + ' bytes encoded as UTF-8: "' + s + '"');
 #endif

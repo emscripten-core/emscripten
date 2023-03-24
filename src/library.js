@@ -52,13 +52,7 @@ mergeInto(LibraryManager.library, {
   // JavaScript <-> C string interop
   // ==========================================================================
 
-  $stringToNewUTF8__deps: ['malloc'],
-  $stringToNewUTF8: function(jsString) {
-    var length = lengthBytesUTF8(jsString)+1;
-    var cString = _malloc(length);
-    stringToUTF8(jsString, cString, length);
-    return cString;
-  },
+  $stringToNewUTF8: '$allocateUTF8',
 
 #if !MINIMAL_RUNTIME
   $exitJS__docs: '/** @param {boolean|number=} implicit */',
@@ -1833,12 +1827,11 @@ mergeInto(LibraryManager.library, {
     return getHostByName(UTF8ToString(name));
   },
 
-  $getHostByName__deps: ['malloc', '$DNS', '$inetPton4'],
+  $getHostByName__deps: ['malloc', '$allocateUTF8', '$DNS', '$inetPton4'],
   $getHostByName: function(name) {
     // generate hostent
     var ret = _malloc({{{ C_STRUCTS.hostent.__size__ }}}); // XXX possibly leaked, as are others here
-    var nameBuf = {{{ makeMalloc('getHostByName', 'name.length+1') }}};
-    stringToUTF8(name, nameBuf, name.length+1);
+    var nameBuf = allocateUTF8(name);
     {{{ makeSetValue('ret', C_STRUCTS.hostent.h_name, 'nameBuf', POINTER_TYPE) }}};
     var aliasesBuf = _malloc(4);
     {{{ makeSetValue('aliasesBuf', '0', '0', POINTER_TYPE) }}};
@@ -2628,6 +2621,9 @@ mergeInto(LibraryManager.library, {
   // We never free the return values of this function so we need to allocate
   // using builtin_malloc to avoid LSan reporting these as leaks.
   emscripten_get_compiler_setting__noleakcheck: true,
+#if RETAIN_COMPILER_SETTINGS
+  emscripten_get_compiler_setting__deps: ['$allocateUTF8'],
+#endif
   emscripten_get_compiler_setting: function(name) {
 #if RETAIN_COMPILER_SETTINGS
     name = UTF8ToString(name);
@@ -2639,9 +2635,7 @@ mergeInto(LibraryManager.library, {
     var cache = _emscripten_get_compiler_setting.cache;
     var fullret = cache[name];
     if (fullret) return fullret;
-    cache[name] = _malloc(ret.length + 1);
-    stringToUTF8(ret + '', cache[name], ret.length + 1);
-    return cache[name];
+    return cache[name] = allocateUTF8(ret);
 #else
     throw 'You must build with -sRETAIN_COMPILER_SETTINGS for getCompilerSetting or emscripten_get_compiler_setting to work';
 #endif
