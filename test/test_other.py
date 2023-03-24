@@ -11419,13 +11419,13 @@ int main(int argc, char **argv) {
 int main () {
   timespec now;
   clock_gettime(CLOCK_REALTIME, &now);
-  printf("C now: %ld %ld\n", now.tv_sec, now.tv_nsec);
+  printf("C now: %lld %ld\n", now.tv_sec, now.tv_nsec);
   printf("js now: %f\n", emscripten_get_now());
   printf("C randoms: %d %d %d\n", rand(), rand(), rand());
   printf("JS random: %d\n", EM_ASM_INT({ return Math.random() }));
 }
 ''')
-    self.run_process([EMXX, 'src.cpp', '-sDETERMINISTIC'])
+    self.run_process([EMXX, 'src.cpp', '-sDETERMINISTIC'] + self.get_emcc_args())
     one = self.run_js('a.out.js')
     # ensure even if the time resolution is 1 second, that if we see the real
     # time we'll see a difference
