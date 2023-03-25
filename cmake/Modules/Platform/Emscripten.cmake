@@ -307,7 +307,7 @@ function(em_validate_asmjs_after_build target)
 endfunction()
 
 # A global counter to guarantee unique names for js library files.
-set(link_js_counter 1)
+set(link_js_counter 0 CACHE INTERNAL "")
 
 # Internal function: Do not call from user CMakeLists.txt files. Use one of
 # em_link_js_library()/em_link_pre_js()/em_link_post_js() instead.
@@ -350,6 +350,7 @@ function(em_add_tracked_link_flag target flagname)
       target_link_libraries(${target} "${flagname} \"${js_file_absolute_path}\"")
 
       math(EXPR link_js_counter "${link_js_counter} + 1")
+      set(link_js_counter ${link_js_counter} CACHE INTERNAL "")
     endforeach()
   endforeach()
 endfunction()
