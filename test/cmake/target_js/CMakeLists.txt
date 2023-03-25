@@ -4,17 +4,11 @@ project(test_cmake)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../cpp_lib ${CMAKE_CURRENT_BINARY_DIR}/cpp_lib)
 
-file(GLOB sourceFiles main.cpp)
-
-file(GLOB preJsFiles pre*.js)
-file(GLOB postJsFiles post*.js)
-file(GLOB libraryJsFiles jslibrary*.js)
-
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
-  set(linkFlags "-g4 -sNO_EXIT_RUNTIME")
+  set(linkFlags "-g")
 else()
   # Either MinSizeRel, RelWithDebInfo or Release, all which run with optimizations enabled.
-  set(linkFlags "-O2 -sNO_EXIT_RUNTIME")
+  set(linkFlags "-O2")
 endif()
 
 # Ensure synchronous startup for this test, whose output expects it
@@ -82,19 +76,23 @@ if (NOT ${endian_result} EQUAL 0)
   message(FATAL_ERROR "TEST_BIG_ENDIAN did not return 0!")
 endif()
 
-add_executable(test_cmake ${sourceFiles})
+add_executable(test_cmake "main.cpp")
 target_link_libraries( test_cmake cpp_lib)
 
 # GOTCHA: If your project has custom link flags, these must be set *before*
 # calling any of the em_link_xxx functions!
 set_target_properties(test_cmake PROPERTIES LINK_FLAGS "${linkFlags}")
 
+file(GLOB libraryJsFiles jslibrary*.js)
 message(STATUS "js libs '${libraryJsFiles}'")
 # To link .js files using the --js-library flag, use the following helper function.
 em_link_js_library(test_cmake ${libraryJsFiles})
 
 # To link .js files using the --pre-js flag, use the following helper function.
-em_link_pre_js(test_cmake ${preJsFiles})
+em_link_pre_js(test_cmake "prejs.js")
+
+# Ensure that calling em_link_pre_js multiple times works as expected.
+em_link_pre_js(test_cmake "prejs.js")
 
 # To link .js files using the --post-js flag, use the following helper function.
-em_link_post_js(test_cmake ${postJsFiles})
+em_link_post_js(test_cmake "postjs.js")
