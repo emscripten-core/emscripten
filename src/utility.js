@@ -128,6 +128,18 @@ function mergeInto(obj, other, options = null) {
     }
   }
 
+  if (!options || !options.allowMissing) {
+    for (const ident of Object.keys(other)) {
+      if (isJsLibraryConfigIdentifier(ident)) {
+        const index = ident.lastIndexOf('__');
+        const basename = ident.slice(0, index);
+        if (!(basename in obj) && !(basename in other)) {
+          error(`Missing library element '${basename}' for library config '${ident}'`);
+        }
+      }
+    }
+  }
+
   for (const key of Object.keys(other)) {
     if (key.endsWith('__sig')) {
       if (obj.hasOwnProperty(key)) {
