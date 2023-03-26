@@ -46,7 +46,8 @@ public:
         // progress even if the main thread is blocked.
         //
         // TODO: Remove this once we can postMessage directly between workers
-        // without involving the main thread.
+        // without involving the main thread or once all browsers ship
+        // Atomics.waitAsync.
         //
         // Note that this requires adding _emscripten_proxy_execute_queue to
         // EXPORTED_FUNCTIONS.

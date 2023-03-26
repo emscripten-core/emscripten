@@ -127,7 +127,6 @@ var LibraryGLEW = {
     return GLEW.extensionIsSupported(UTF8ToString(name));
   },
 
-  glewGetErrorString__sig: 'ii',
   glewGetErrorString: function(error) {
     return GLEW.errorString(error);
   },

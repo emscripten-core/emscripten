@@ -109,6 +109,6 @@ def enable_feature(feature, reason):
 def apply_min_browser_versions():
   if settings.WASM_BIGINT:
     enable_feature(Feature.JS_BIGINT_INTEGRATION, 'WASM_BIGINT')
-  if settings.USE_PTHREADS:
+  if settings.PTHREADS:
     enable_feature(Feature.THREADS, 'pthreads')
     enable_feature(Feature.BULK_MEMORY, 'pthreads')

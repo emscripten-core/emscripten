@@ -116,22 +116,7 @@ mergeInto(LibraryManager.library, {
             // Wrap all exports with a promising WebAssembly function.
             var isAsyncifyExport = ASYNCIFY_EXPORTS.indexOf(x) >= 0;
             if (isAsyncifyExport) {
-#if ASYNCIFY_DEBUG
-              dbg('asyncify: returnPromiseOnSuspend for', x, original);
-#endif
-              var type = WebAssembly.Function.type(original);
-              var parameters = type.parameters;
-              var results = type.results;
-#if ASSERTIONS
-              assert(results.length !== 0, 'There must be a return result')
-              assert(parameters[0] === 'externref', 'First param must be externref.');
-#endif
-              // Remove the extern ref.
-              parameters.shift();
-              original = new WebAssembly.Function(
-                { parameters , results: ['externref'] },
-                original,
-                { promising : 'first' });
+              original = Asyncify.makeAsyncFunction(original);
             }
 #endif
             ret[x] = function() {
@@ -444,10 +429,27 @@ mergeInto(LibraryManager.library, {
         startAsync().then(wakeUp);
       });
     },
+    makeAsyncFunction: function(original) {
+#if ASYNCIFY_DEBUG
+      dbg('asyncify: returnPromiseOnSuspend for', original);
+#endif
+      var type = WebAssembly.Function.type(original);
+      var parameters = type.parameters;
+      var results = type.results;
+#if ASSERTIONS
+      assert(results.length !== 0, 'There must be a return result')
+      assert(parameters[0] === 'externref', 'First param must be externref.');
+#endif
+      // Remove the extern ref.
+      parameters.shift();
+      return new WebAssembly.Function(
+        { parameters , results: ['externref'] },
+        original,
+        { promising : 'first' });
+    },
 #endif
   },
 
-  emscripten_sleep__sig: 'vi',
   emscripten_sleep__deps: ['$safeSetTimeout'],
   emscripten_sleep: function(ms) {
     // emscripten_sleep() does not return a value, but we still need a |return|
@@ -457,7 +459,6 @@ mergeInto(LibraryManager.library, {
     return Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms));
   },
 
-  emscripten_wget__sig: 'vpp',
   emscripten_wget__deps: ['$Browser', '$PATH_FS', '$FS'],
   emscripten_wget: function(url, file) {
     return Asyncify.handleSleep((wakeUp) => {
@@ -485,7 +486,6 @@ mergeInto(LibraryManager.library, {
     });
   },
 
-  emscripten_wget_data__sig: 'vpppp',
   emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
   emscripten_wget_data: function(url, pbuffer, pnum, perror) {
     return Asyncify.handleSleep((wakeUp) => {
@@ -504,7 +504,6 @@ mergeInto(LibraryManager.library, {
     });
   },
 
-  emscripten_scan_registers__sig: 'vp',
   emscripten_scan_registers__deps: ['$safeSetTimeout'],
   emscripten_scan_registers: function(func) {
     return Asyncify.handleSleep((wakeUp) => {
@@ -605,7 +604,6 @@ mergeInto(LibraryManager.library, {
     },
   },
 
-  emscripten_fiber_swap__sig: 'vii',
   emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
   emscripten_fiber_swap: function(oldFiber, newFiber) {
     if (ABORT) return;
@@ -644,13 +642,13 @@ mergeInto(LibraryManager.library, {
   emscripten_sleep: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
   },
-  emscripten_wget: function() {
+  emscripten_wget: function(url, file) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget';
   },
-  emscripten_wget_data: function() {
+  emscripten_wget_data: function(url, pbuffer, pnum, perror) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget_data';
   },
-  emscripten_scan_registers: function() {
+  emscripten_scan_registers: function(func) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers';
   },
   emscripten_fiber_init: function() {
@@ -659,7 +657,7 @@ mergeInto(LibraryManager.library, {
   emscripten_fiber_init_from_current_context: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_init_from_current_context';
   },
-  emscripten_fiber_swap: function() {
+  emscripten_fiber_swap: function(oldFiber, newFiber) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_swap';
   },
 #endif // ASYNCIFY

@@ -530,6 +530,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
     global last_message_time, page_exit_code, emrun_not_enabled_nag_printed
     self.is_running = True
     self.timeout = timeout
+    logi('Now listening at http://%s/' % ':'.join(map(str, self.socket.getsockname())))
     logv("Entering web server loop.")
     while self.is_running:
       now = tick()
@@ -636,9 +637,15 @@ class HTTPHandler(SimpleHTTPRequestHandler):
     # gzipped file, instead of having the browser decompress it immediately,
     # then it can't use the suffix .gz when using emrun.
     # To work around, one can use the suffix .gzip instead.
-    if 'Accept-Encoding' in self.headers and 'gzip' in self.headers['Accept-Encoding'] and path.lower().endswith('gz'):
+    if path.lower().endswith('gz'):
       self.send_header('Content-Encoding', 'gzip')
       logv('Serving ' + path + ' as gzip-compressed.')
+      guess_file_type = guess_file_type[:-2]
+      if guess_file_type.endswith('.'):
+        guess_file_type = guess_file_type[:-1]
+    elif path.lower().endswith('br'):
+      self.send_header('Content-Encoding', 'br')
+      logv('Serving ' + path + ' as brotli-compressed.')
       guess_file_type = guess_file_type[:-2]
       if guess_file_type.endswith('.'):
         guess_file_type = guess_file_type[:-1]
@@ -1642,10 +1649,6 @@ def run():
     url = file_to_serve
   else:
     url = os.path.relpath(os.path.abspath(file_to_serve), serve_dir)
-    if len(options.cmdlineparams):
-      url += '?' + '&'.join(options.cmdlineparams)
-    hostname = socket.gethostbyname(socket.gethostname()) if options.android else options.hostname
-    url = 'http://' + hostname + ':' + str(options.port) + '/' + url
 
   os.chdir(serve_dir)
   if options.run_server:
@@ -1653,6 +1656,17 @@ def run():
       logv('Web server root directory: ' + os.path.abspath('.'))
     else:
       logi('Web server root directory: ' + os.path.abspath('.'))
+    logv('Starting web server: http://%s:%i/' % (options.hostname, options.port))
+    httpd = HTTPWebServer((options.hostname, options.port), HTTPHandler)
+    # to support binding to port zero we must allow the server to open to socket then retrieve the final port number
+    options.port = httpd.socket.getsockname()[1]
+
+  if not file_to_serve_is_url:
+    if len(options.cmdlineparams):
+      url += '?' + '&'.join(options.cmdlineparams)
+    hostname = socket.gethostbyname(socket.gethostname()) if options.android else options.hostname
+    # create url for browser after opening the server so we have the final port number in case we are binding to port 0
+    url = 'http://' + hostname + ':' + str(options.port) + '/' + url
 
   if options.android:
     if options.run_browser or options.browser_info:
@@ -1792,11 +1806,6 @@ def run():
       browser_stderr_handle = browser_stdout_handle
     else:
       browser_stderr_handle = open(options.log_stderr, 'a')
-
-  if options.run_server:
-    logv('Starting web server: http://%s:%i/' % (options.hostname, options.port))
-    httpd = HTTPWebServer((options.hostname, options.port), HTTPHandler)
-
   if options.run_browser:
     logv("Starting browser: %s" % ' '.join(browser))
     # if browser[0] == 'cmd':
@@ -1817,8 +1826,6 @@ def run():
     # represent a browser and no point killing it.
     if options.android:
       browser_process = None
-  elif options.run_server:
-    logi('Now listening at http://%s:%i/' % (options.hostname, options.port))
 
   if browser_process:
     premature_quit_code = browser_process.poll()

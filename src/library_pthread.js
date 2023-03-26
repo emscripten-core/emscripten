@@ -7,20 +7,20 @@
  * features within this file (ES2020).
  */
 
-#if !USE_PTHREADS
-#error "Internal error! USE_PTHREADS should be enabled when including library_pthread.js."
+#if !PTHREADS
+#error "Internal error! PTHREADS should be enabled when including library_pthread.js."
 #endif
 #if !SHARED_MEMORY
 #error "Internal error! SHARED_MEMORY should be enabled when including library_pthread.js."
 #endif
-#if USE_PTHREADS == 2
-#error "USE_PTHREADS=2 is no longer supported"
+#if PTHREADS == 2
+#error "PTHREADS=2 is no longer supported"
 #endif
 #if BUILD_AS_WORKER
-#error "USE_PTHREADS + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854"
+#error "pthreads + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854"
 #endif
 #if PROXY_TO_WORKER
-#error "--proxy-to-worker is not supported with -sUSE_PTHREADS>0! Use the option -sPROXY_TO_PTHREAD if you want to run the main thread of a multithreaded application in a web worker."
+#error "--proxy-to-worker is not supported with -pthread! Use the option -sPROXY_TO_PTHREAD if you want to run the main thread of a multithreaded application in a web worker."
 #endif
 #if EVAL_CTORS
 #error "EVAL_CTORS is not compatible with pthreads yet (passive segments)"
@@ -270,8 +270,8 @@ var LibraryPThread = {
           return;
         }
 
-        if (cmd === 'processProxyingQueue') {
-          executeNotifiedProxyingQueue(d['queue']);
+        if (cmd === 'checkMailbox') {
+          checkMailbox();
         } else if (cmd === 'spawnThread') {
           spawnThread(d);
         } else if (cmd === 'cleanupThread') {
@@ -526,6 +526,9 @@ var LibraryPThread = {
   },
 
   $terminateWorker: function(worker) {
+#if PTHREADS_DEBUG
+    dbg('terminateWorker: ' + worker.workerID);
+#endif
     worker.terminate();
     // terminate() can be asynchronous, so in theory the worker can continue
     // to run for some amount of time after termination.  However from our POV
@@ -652,7 +655,7 @@ var LibraryPThread = {
     var worker = PThread.getNewWorker();
     if (!worker) {
       // No available workers in the PThread pool.
-      return {{{ cDefine('EAGAIN') }}};
+      return {{{ cDefs.EAGAIN }}};
     }
 #if ASSERTIONS
     assert(!worker.pthread_ptr, 'Internal error!');
@@ -741,7 +744,7 @@ var LibraryPThread = {
   __pthread_create_js: function(pthread_ptr, attr, startRoutine, arg) {
     if (typeof SharedArrayBuffer == 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
-      return {{{ cDefine('EAGAIN') }}};
+      return {{{ cDefs.EAGAIN }}};
     }
 #if PTHREADS_DEBUG
     dbg("createThread: " + ptrToString(pthread_ptr));
@@ -779,7 +782,7 @@ var LibraryPThread = {
         if (name == '#canvas') {
           if (!Module['canvas']) {
             err('pthread_create: could not find canvas with ID "' + name + '" to transfer to thread!');
-            error = {{{ cDefine('EINVAL') }}};
+            error = {{{ cDefs.EINVAL }}};
             break;
           }
           name = Module['canvas'].id;
@@ -795,12 +798,12 @@ var LibraryPThread = {
           var canvas = (Module['canvas'] && Module['canvas'].id === name) ? Module['canvas'] : document.querySelector(name);
           if (!canvas) {
             err('pthread_create: could not find canvas with ID "' + name + '" to transfer to thread!');
-            error = {{{ cDefine('EINVAL') }}};
+            error = {{{ cDefs.EINVAL }}};
             break;
           }
           if (canvas.controlTransferredOffscreen) {
             err('pthread_create: cannot transfer canvas with ID "' + name + '" to thread, since the current thread does not have control over it!');
-            error = {{{ cDefine('EPERM') }}}; // Operation not permitted, some other thread is accessing the canvas.
+            error = {{{ cDefs.EPERM }}}; // Operation not permitted, some other thread is accessing the canvas.
             break;
           }
           if (canvas.transferControlToOffscreen) {
@@ -834,7 +837,7 @@ var LibraryPThread = {
             // proxied from worker to main thread.
 #if !OFFSCREEN_FRAMEBUFFER
             err('pthread_create: Build with -sOFFSCREEN_FRAMEBUFFER to enable fallback proxying of GL commands from pthread to main thread.');
-            return {{{ cDefine('ENOSYS') }}}; // Function not implemented, browser doesn't have support for this.
+            return {{{ cDefs.ENOSYS }}}; // Function not implemented, browser doesn't have support for this.
 #endif
           }
         }
@@ -844,7 +847,7 @@ var LibraryPThread = {
         }
       } catch(e) {
         err('pthread_create: failed to transfer control of canvas "' + name + '" to OffscreenCanvas! Error: ' + e);
-        return {{{ cDefine('EINVAL') }}}; // Hitting this might indicate an implementation bug or some other internal error
+        return {{{ cDefs.EINVAL }}}; // Hitting this might indicate an implementation bug or some other internal error
       }
     }
 #endif // OFFSCREENCANVAS_SUPPORT
@@ -898,7 +901,7 @@ var LibraryPThread = {
 
   emscripten_check_blocking_allowed__deps: ['$warnOnce'],
   emscripten_check_blocking_allowed: function() {
-#if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
+#if (ASSERTIONS || !ALLOW_BLOCKING_ON_MAIN_THREAD) && !MINIMAL_RUNTIME
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) return;
 #endif
@@ -913,9 +916,8 @@ var LibraryPThread = {
 #endif
   },
 
-  __pthread_kill_js__deps: ['emscripten_main_browser_thread_id'],
   __pthread_kill_js: function(thread, signal) {
-    if (signal === {{{ cDefine('SIGCANCEL') }}}) { // Used by pthread_cancel in musl
+    if (signal === {{{ cDefs.SIGCANCEL }}}) { // Used by pthread_cancel in musl
       if (!ENVIRONMENT_IS_PTHREAD) cancelThread(thread);
       else postMessage({ 'cmd': 'cancelThread', 'thread': thread });
     } else {
@@ -942,15 +944,7 @@ var LibraryPThread = {
 #if PROXY_TO_PTHREAD
     {{{ runtimeKeepalivePop() }}};
 #endif
-#if MINIMAL_RUNTIME
     _exit(returnCode);
-#else
-    try {
-      _exit(returnCode);
-    } catch (e) {
-      handleException(e);
-    }
-#endif
   },
 
   emscripten_proxy_to_main_thread_js__deps: ['$withStackSave', '_emscripten_run_in_main_runtime_thread_js'],
@@ -964,7 +958,7 @@ var LibraryPThread = {
     var numCallArgs = arguments.length - 2;
     var outerArgs = arguments;
 #if ASSERTIONS
-    var maxArgs = {{{ cDefine('EM_QUEUED_JS_CALL_MAX_ARGS') - 1 }}};
+    var maxArgs = {{{ cDefs.EM_QUEUED_JS_CALL_MAX_ARGS - 1 }}};
     if (numCallArgs > maxArgs) {
       throw 'emscripten_proxy_to_main_thread_js: Too many arguments ' + numCallArgs + ' to proxied function idx=' + index + ', maximum supported is ' + maxArgs;
     }
@@ -1091,6 +1085,13 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
     dbg('invokeEntryPoint: ' + ptrToString(ptr));
 #endif
+#if EXIT_RUNTIME && !MINIMAL_RUNTIME
+    // An old thread on this worker may have been canceled without returning the
+    // `runtimeKeepaliveCounter` to zero. Reset it now so the new thread won't
+    // be affected.
+    runtimeKeepaliveCounter = 0;
+#endif
+
 #if MAIN_MODULE
     // Before we call the thread entry point, make sure any shared libraries
     // have been loaded on this there.  Otherwise our table migth be not be
@@ -1218,39 +1219,53 @@ var LibraryPThread = {
   },
 #endif // MAIN_MODULE
 
-  $executeNotifiedProxyingQueue: function(queue) {
-    // Set the notification state to processing.
-    Atomics.store(HEAP32, queue >> 2, {{{ cDefine('NOTIFICATION_RECEIVED') }}});
-    // Only execute the queue if we have a live pthread runtime. We
-    // implement pthread_self to return 0 if there is no live runtime.
-    // TODO: Use `callUserCallback` to correctly handle unwinds, etc. once
-    //       `runtimeExited` is correctly unset on workers.
-    if (_pthread_self()) {
-      __emscripten_proxy_execute_task_queue(queue);
+  $checkMailbox__deps: ['$callUserCallback',
+                        '_emscripten_thread_mailbox_await'],
+  $checkMailbox: function() {
+    // Only check the mailbox if we have a live pthread runtime. We implement
+    // pthread_self to return 0 if there is no live runtime.
+    var pthread_ptr = _pthread_self();
+    if (pthread_ptr) {
+      // If we are using Atomics.waitAsync as our notification mechanism, wait for
+      // a notification before processing the mailbox to avoid missing any work.
+      __emscripten_thread_mailbox_await(pthread_ptr);
+      callUserCallback(() => __emscripten_check_mailbox());
     }
-    // Set the notification state to none as long as a new notification has not
-    // been sent while we were processing.
-    Atomics.compareExchange(HEAP32, queue >> 2,
-                            {{{ cDefine('NOTIFICATION_RECEIVED') }}},
-                            {{{ cDefine('NOTIFICATION_NONE') }}});
   },
 
-  _emscripten_notify_task_queue__deps: ['$executeNotifiedProxyingQueue'],
-  _emscripten_notify_task_queue__sig: 'vpppp',
-  _emscripten_notify_task_queue: function(targetThreadId, currThreadId, mainThreadId, queue) {
+  _emscripten_thread_mailbox_await__deps: ['$checkMailbox'],
+  _emscripten_thread_mailbox_await__sig: 'vp',
+  _emscripten_thread_mailbox_await: function(pthread_ptr) {
+    if (typeof Atomics.waitAsync === 'function') {
+      // TODO: How to make this work with wasm64?
+      var wait = Atomics.waitAsync(HEAP32, pthread_ptr >> 2, pthread_ptr);
+#if ASSERTIONS
+      assert(wait.async);
+#endif
+      wait.value.then(checkMailbox);
+      var waitingAsync = pthread_ptr + {{{ C_STRUCTS.pthread.waiting_async }}};
+      Atomics.store(HEAP32, waitingAsync >> 2, 1);
+    }
+  },
+
+  _emscripten_notify_mailbox_postmessage__deps: ['$checkMailbox'],
+  _emscripten_notify_mailbox_postmessage__sig: 'vppp',
+  _emscripten_notify_mailbox_postmessage: function(targetThreadId,
+                                                   currThreadId,
+                                                   mainThreadId) {
     if (targetThreadId == currThreadId) {
-      setTimeout(() => executeNotifiedProxyingQueue(queue));
+      setTimeout(() => checkMailbox());
     } else if (ENVIRONMENT_IS_PTHREAD) {
-      postMessage({'targetThread' : targetThreadId, 'cmd' : 'processProxyingQueue', 'queue' : queue});
+      postMessage({'targetThread' : targetThreadId, 'cmd' : 'checkMailbox'});
     } else {
       var worker = PThread.pthreads[targetThreadId];
       if (!worker) {
 #if ASSERTIONS
         err('Cannot send message to thread with ID ' + targetThreadId + ', unknown thread ID!');
 #endif
-        return /*0*/;
+        return;
       }
-      worker.postMessage({'cmd' : 'processProxyingQueue', 'queue': queue});
+      worker.postMessage({'cmd' : 'checkMailbox'});
     }
   }
 };

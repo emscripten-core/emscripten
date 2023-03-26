@@ -24,6 +24,7 @@ mergeInto(LibraryManager.library, {
   },
 
   // Copies the 'compact' UUID variable from src to dst.
+  uuid_copy__deps: ['memcpy'],
   uuid_copy: function(dst, src) {
     // void uuid_copy(uuid_t dst, const uuid_t src);
     _memcpy(dst, src, 16);
@@ -139,12 +140,12 @@ mergeInto(LibraryManager.library, {
 
   uuid_type: function(uu) {
     // int uuid_type(const uuid_t uu);
-    return {{{ cDefine('UUID_TYPE_DCE_RANDOM') }}};
+    return {{{ cDefs.UUID_TYPE_DCE_RANDOM }}};
   },
 
   uuid_variant: function(uu) {
     // int uuid_variant(const uuid_t uu);
-    return {{{ cDefine('UUID_VARIANT_DCE') }}};
+    return {{{ cDefs.UUID_VARIANT_DCE }}};
   }
 });
 

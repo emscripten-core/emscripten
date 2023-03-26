@@ -28,13 +28,11 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_promise_create__deps: ['$makePromise'],
-  emscripten_promise_create__sig: 'p',
   emscripten_promise_create: function() {
     return makePromise().id;
   },
 
   emscripten_promise_destroy__deps: ['$promiseMap'],
-  emscripten_promise_destroy__sig: 'vp',
   emscripten_promise_destroy: function(id) {
 #if RUNTIME_DEBUG
     dbg('emscripten_promise_destroy: ' + id);
@@ -45,24 +43,23 @@ mergeInto(LibraryManager.library, {
   emscripten_promise_resolve__deps: ['$promiseMap',
                                      '$getPromise',
                                      'emscripten_promise_destroy'],
-  emscripten_promise_resolve__sig: 'vpip',
   emscripten_promise_resolve: function(id, result, value) {
 #if RUNTIME_DEBUG
     dbg('emscripten_promise_resolve: ' + id);
 #endif
     var info = promiseMap.get(id);
     switch (result) {
-      case {{{ cDefine('EM_PROMISE_FULFILL') }}}:
+      case {{{ cDefs.EM_PROMISE_FULFILL }}}:
         info.resolve(value);
         return;
-      case {{{ cDefine('EM_PROMISE_MATCH') }}}:
+      case {{{ cDefs.EM_PROMISE_MATCH }}}:
         info.resolve(getPromise(value));
         return;
-      case {{{ cDefine('EM_PROMISE_MATCH_RELEASE') }}}:
+      case {{{ cDefs.EM_PROMISE_MATCH_RELEASE }}}:
         info.resolve(getPromise(value));
         _emscripten_promise_destroy(value);
         return;
-      case {{{ cDefine('EM_PROMISE_REJECT') }}}:
+      case {{{ cDefs.EM_PROMISE_REJECT }}}:
         info.reject(value);
         return;
     }
@@ -110,15 +107,15 @@ mergeInto(LibraryManager.library, {
         stackRestore(stack);
       }
       switch (result) {
-        case {{{ cDefine('EM_PROMISE_FULFILL') }}}:
+        case {{{ cDefs.EM_PROMISE_FULFILL }}}:
           return resultVal;
-        case {{{ cDefine('EM_PROMISE_MATCH') }}}:
+        case {{{ cDefs.EM_PROMISE_MATCH }}}:
           return getPromise(resultVal);
-        case {{{ cDefine('EM_PROMISE_MATCH_RELEASE') }}}:
+        case {{{ cDefs.EM_PROMISE_MATCH_RELEASE }}}:
           var ret = getPromise(resultVal);
           _emscripten_promise_destroy(resultVal);
           return ret;
-        case {{{ cDefine('EM_PROMISE_REJECT') }}}:
+        case {{{ cDefs.EM_PROMISE_REJECT }}}:
           throw resultVal;
       }
 #if ASSERTIONS
@@ -130,7 +127,6 @@ mergeInto(LibraryManager.library, {
   emscripten_promise_then__deps: ['$promiseMap',
                                   '$getPromise',
                                   '$makePromiseCallback'],
-  emscripten_promise_then__sig: 'ppppp',
   emscripten_promise_then: function(id,
                                     onFulfilled,
                                     onRejected,
@@ -151,11 +147,10 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_promise_all__deps: ['$promiseMap', '$getPromise'],
-  emscripten_promise_all__sig: 'pppp',
   emscripten_promise_all: function(idBuf, resultBuf, size) {
     var promises = [];
     for (var i = 0; i < size; i++) {
-      var id = {{{ makeGetValue('idBuf', `i*${Runtime.POINTER_SIZE}`, 'i32') }}};
+      var id = {{{ makeGetValue('idBuf', `i*${POINTER_SIZE}`, 'i32') }}};
       promises[i] = getPromise(id);
     }
 #if RUNTIME_DEBUG
@@ -166,7 +161,7 @@ mergeInto(LibraryManager.library, {
         if (resultBuf) {
           for (var i = 0; i < size; i++) {
             var result = results[i];
-            {{{ makeSetValue('resultBuf', `i*${Runtime.POINTER_SIZE}`, 'result', '*') }}};
+            {{{ makeSetValue('resultBuf', `i*${POINTER_SIZE}`, 'result', '*') }}};
           }
         }
         return resultBuf;

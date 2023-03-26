@@ -13,7 +13,6 @@ var LibraryIDBStore = {
   $IDBStore:
 #include IDBStore.js
   ,
-  emscripten_idb_async_load__sig: 'vppppp',
   emscripten_idb_async_load: function(db, id, arg, onload, onerror) {
     IDBStore.getFile(UTF8ToString(db), UTF8ToString(id), function(error, byteArray) {
       if (error) {
@@ -26,7 +25,6 @@ var LibraryIDBStore = {
       _free(buffer);
     });
   },
-  emscripten_idb_async_store__sig: 'vpppippp',
   emscripten_idb_async_store: function(db, id, ptr, num, arg, onstore, onerror) {
     // note that we copy the data here, as these are async operatins - changes to HEAPU8 meanwhile should not affect us!
     IDBStore.setFile(UTF8ToString(db), UTF8ToString(id), new Uint8Array(HEAPU8.subarray(ptr, ptr+num)), function(error) {
@@ -37,7 +35,6 @@ var LibraryIDBStore = {
       if (onstore) {{{ makeDynCall('vi', 'onstore') }}}(arg);
     });
   },
-  emscripten_idb_async_delete__sig: 'vppppp',
   emscripten_idb_async_delete: function(db, id, arg, ondelete, onerror) {
     IDBStore.deleteFile(UTF8ToString(db), UTF8ToString(id), function(error) {
       if (error) {
@@ -47,7 +44,6 @@ var LibraryIDBStore = {
       if (ondelete) {{{ makeDynCall('vi', 'ondelete') }}}(arg);
     });
   },
-  emscripten_idb_async_exists__sig: 'vppppp',
   emscripten_idb_async_exists: function(db, id, arg, oncheck, onerror) {
     IDBStore.existsFile(UTF8ToString(db), UTF8ToString(id), function(error, exists) {
       if (error) {
@@ -157,16 +153,16 @@ var LibraryIDBStore = {
     IDBStore.blobs[blobId] = null;
   },
 #else
-  emscripten_idb_load: function() {
+  emscripten_idb_load: function(db, id, pbuffer, pnum, perror) {
     throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_load, etc.';
   },
-  emscripten_idb_store: function() {
+  emscripten_idb_store: function(db, id, ptr, num, perror) {
     throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_store, etc.';
   },
-  emscripten_idb_delete: function() {
+  emscripten_idb_delete: function(db, id, perror) {
     throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_delete, etc.';
   },
-  emscripten_idb_exists: function() {
+  emscripten_idb_exists: function(db, id, pexists, perror) {
     throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_exists, etc.';
   },
 #endif // ASYNCIFY

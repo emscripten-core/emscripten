@@ -51,7 +51,7 @@ function callMain() {
   args.unshift(thisProgram);
 
   var argc = args.length;
-  var argv = stackAlloc((argc + 1) * {{{ Runtime.POINTER_SIZE }}});
+  var argv = stackAlloc((argc + 1) * {{{ POINTER_SIZE }}});
   var argv_ptr = argv >> {{{ POINTER_SHIFT }}};
   args.forEach((arg) => {
     {{{ POINTER_HEAP }}}[argv_ptr++] = {{{ to64('allocateUTF8OnStack(arg)') }}};
@@ -117,7 +117,7 @@ function stackCheckInit() {
   // This is normally called automatically during __wasm_call_ctors but need to
   // get these values before even running any of the ctors so we call it redundantly
   // here.
-#if ASSERTIONS && USE_PTHREADS
+#if ASSERTIONS && PTHREADS
   // See $establishStackSpace for the equivelent code that runs on a thread
   assert(!ENVIRONMENT_IS_PTHREAD);
 #endif
@@ -152,7 +152,7 @@ function run() {
   }
 
 #if STACK_OVERFLOW_CHECK
-#if USE_PTHREADS
+#if PTHREADS
   if (!ENVIRONMENT_IS_PTHREAD)
 #endif
     stackCheckInit();
@@ -163,7 +163,7 @@ function run() {
   // Loading of dynamic libraries needs to happen on each thread, so we can't
   // use the normal __ATPRERUN__ mechanism.
 #if MAIN_MODULE
-    preloadDylibs();
+    loadDylibs();
 #else
     reportUndefinedSymbols();
 #endif
@@ -172,7 +172,7 @@ function run() {
     // Loading dylibs can add run dependencies.
     if (runDependencies > 0) {
 #if RUNTIME_LOGGING
-      err('preloadDylibs added run() dependencies, not running yet');
+      err('loadDylibs added run() dependencies, not running yet');
 #endif
       return;
     }
@@ -188,7 +188,7 @@ function run() {
   }
 #endif
 
-#if USE_PTHREADS
+#if PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) {
 #if MODULARIZE
     // The promise resolve function typically gets called as part of the execution

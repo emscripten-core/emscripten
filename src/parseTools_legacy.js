@@ -84,3 +84,10 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep = ';') {
   });
   return ret.join(sep);
 }
+
+global.Runtime = {
+  getNativeTypeSize: getNativeTypeSize,
+  getNativeFieldSize: getNativeFieldSize,
+  POINTER_SIZE: POINTER_SIZE,
+  QUANTUM_SIZE: POINTER_SIZE,
+};

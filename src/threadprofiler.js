@@ -20,18 +20,20 @@ var emscriptenThreadProfiler = {
       document.body.appendChild(div);
       this.threadProfilerDiv = document.getElementById('threadprofiler');
     }
-    setInterval(function() { emscriptenThreadProfiler.updateUi() }, this.uiUpdateIntervalMsecs);
+    var i = setInterval(function() { emscriptenThreadProfiler.updateUi() }, this.uiUpdateIntervalMsecs);
+    addOnExit(() => clearInterval(i));
   },
 
   initializeNode: function initializeNode() {
     addOnInit(() => {
       emscriptenThreadProfiler.dumpState();
-      setInterval(function() { emscriptenThreadProfiler.dumpState() }, this.uiUpdateIntervalMsecs);
+      var i = setInterval(function() { emscriptenThreadProfiler.dumpState() }, this.uiUpdateIntervalMsecs);
+      addOnExit(() => clearInterval(i));
     });
   },
 
   dumpState: function dumpState() {
-    var mainThread = _emscripten_main_browser_thread_id();
+    var mainThread = _emscripten_main_runtime_thread_id();
 
     var threads = [mainThread];
     for (var i in PThread.pthreads) {
@@ -58,7 +60,7 @@ var emscriptenThreadProfiler = {
       return;
     }
     var str = '';
-    var mainThread = _emscripten_main_browser_thread_id();
+    var mainThread = _emscripten_main_runtime_thread_id();
 
     var threads = [mainThread];
     for (var i in PThread.pthreads) {

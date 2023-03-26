@@ -16,7 +16,7 @@ int pthread_kill(pthread_t t, int sig) {
   if (sig < 0 || sig >= _NSIG) {
     return EINVAL;
   }
-  if (t == emscripten_main_browser_thread_id()) {
+  if (t == emscripten_main_runtime_thread_id()) {
     if (sig == 0) return 0; // signal == 0 is a no-op.
     return ESRCH;
   }

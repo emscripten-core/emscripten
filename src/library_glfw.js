@@ -68,7 +68,9 @@ var LibraryGLFW = {
       this.windowRefreshFunc = null; // GLFWwindowrefreshfun
       this.windowFocusFunc = null; // GLFWwindowfocusfun
       this.windowIconifyFunc = null; // GLFWwindowiconifyfun
+      this.windowMaximizeFunc = null; // GLFWwindowmaximizefun
       this.framebufferSizeFunc = null; // GLFWframebuffersizefun
+      this.windowContentScaleFunc = null; // GLFWwindowcontentscalefun
       this.mouseButtonFunc = null; // GLFWmousebuttonfun
       this.cursorPosFunc = null; // GLFWcursorposfun
       this.cursorEnterFunc = null; // GLFWcursorenterfun
@@ -95,6 +97,7 @@ var LibraryGLFW = {
     errorFunc: null, // GLFWerrorfun
     monitorFunc: null, // GLFWmonitorfun
     active: null, // active window
+    scale: null,
     windows: null,
     monitors: null,
     monitorString: null,
@@ -108,6 +111,8 @@ var LibraryGLFW = {
       0x00020003:1, // GLFW_RESIZABLE
       0x00020004:1, // GLFW_VISIBLE
       0x00020005:1, // GLFW_DECORATED
+      0x0002000A:0, // GLFW_TRANSPARENT_FRAMEBUFFER
+      0x0002200C:0, // GLFW_SCALE_TO_MONITOR. can we emulate this?
 
       0x00021001:8, // GLFW_RED_BITS
       0x00021002:8, // GLFW_GREEN_BITS
@@ -350,6 +355,7 @@ var LibraryGLFW = {
       if (win.keys[341]) mod |= 0x0002; // GLFW_MOD_CONTROL
       if (win.keys[342]) mod |= 0x0004; // GLFW_MOD_ALT
       if (win.keys[343]) mod |= 0x0008; // GLFW_MOD_SUPER
+      // add caps and num lock keys? only if lock_key_mod is set
       return mod;
     },
 
@@ -606,6 +612,15 @@ var LibraryGLFW = {
 
 #if USE_GLFW == 3
       {{{ makeDynCall('viii', 'GLFW.active.framebufferSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
+#endif
+    },
+
+    onWindowContentScaleChanged: function(scale) {
+      GLFW.scale = scale;
+      if (!GLFW.active) return;
+
+#if USE_GLFW == 3
+      {{{ makeDynCall('viff', 'GLFW.active.windowContentScaleFunc') }}}(GLFW.active.id, GLFW.scale, GLFW.scale);
 #endif
     },
 
@@ -873,6 +888,14 @@ var LibraryGLFW = {
           out("glfwSetInputMode called with GLFW_STICKY_MOUSE_BUTTONS mode not implemented.");
           break;
         }
+        case 0x00033004: { // GLFW_LOCK_KEY_MODS
+          out("glfwSetInputMode called with GLFW_LOCK_KEY_MODS mode not implemented.");
+          break;
+        }
+        case 0x000330005: { // GLFW_RAW_MOUSE_MOTION
+          out("glfwSetInputMode called with GLFW_RAW_MOUSE_MOTION mode not implemented.");
+          break;
+        }
         default: {
           out("glfwSetInputMode called with unknown mode parameter value: " + mode + ".");
           break;
@@ -1098,6 +1121,7 @@ var LibraryGLFW = {
 /*******************************************************************************
  * GLFW FUNCTIONS
  ******************************************************************************/
+  glfwInit__deps: ['emscripten_get_device_pixel_ratio'],
   glfwInit__sig: 'i',
   glfwInit: function() {
     if (GLFW.windows) return 1; // GL_TRUE
@@ -1106,6 +1130,8 @@ var LibraryGLFW = {
     GLFW.hints = GLFW.defaultHints;
     GLFW.windows = new Array()
     GLFW.active = null;
+    GLFW.scale  = _emscripten_get_device_pixel_ratio();
+
 
     window.addEventListener("gamepadconnected", GLFW.onGamepadConnected, true);
     window.addEventListener("gamepaddisconnected", GLFW.onGamepadDisconnected, true);
@@ -1113,6 +1139,13 @@ var LibraryGLFW = {
     window.addEventListener("keypress", GLFW.onKeyPress, true);
     window.addEventListener("keyup", GLFW.onKeyup, true);
     window.addEventListener("blur", GLFW.onBlur, true);
+    // from https://stackoverflow.com/a/70514686/7484780 . maybe add this to browser.js?
+    // no idea how to remove this listener.
+    (function updatePixelRatio(){
+      window.matchMedia("(resolution: " + window.devicePixelRatio + "dppx)")
+      .addEventListener('change', updatePixelRatio, {once: true});
+      GLFW.onWindowContentScaleChanged(_emscripten_get_device_pixel_ratio());
+      })();
     Module["canvas"].addEventListener("touchmove", GLFW.onMousemove, true);
     Module["canvas"].addEventListener("touchstart", GLFW.onMouseButtonDown, true);
     Module["canvas"].addEventListener("touchcancel", GLFW.onMouseButtonUp, true);
@@ -1240,7 +1273,7 @@ var LibraryGLFW = {
   glfwGetMonitors: function(count) {
     {{{ makeSetValue('count', '0', '1', 'i32') }}};
     if (!GLFW.monitors) {
-      GLFW.monitors = {{{ makeMalloc('glfwGetMonitors', Runtime.POINTER_SIZE) }}};
+      GLFW.monitors = {{{ makeMalloc('glfwGetMonitors', POINTER_SIZE) }}};
       {{{ makeSetValue('GLFW.monitors', '0', '1', 'i32') }}};
     }
     return GLFW.monitors;
@@ -1257,6 +1290,15 @@ var LibraryGLFW = {
     {{{ makeSetValue('y', '0', '0', 'i32') }}};
   },
 
+  glfwGetMonitorWorkarea__sig: 'viiiii',
+  glfwGetMonitorWorkarea: function(monitor, x, y, w, h) {
+    {{{ makeSetValue('x', '0', '0', 'i32') }}};
+    {{{ makeSetValue('y', '0', '0', 'i32') }}};
+    
+    {{{ makeSetValue('w', '0', 'screen.availWidth', 'i32') }}};
+    {{{ makeSetValue('h', '0', 'screen.availHeight', 'i32') }}};
+  },
+  
   glfwGetMonitorPhysicalSize__sig: 'viii',
   glfwGetMonitorPhysicalSize: function(monitor, width, height) {
     // AFAIK there is no way to do this in javascript
@@ -1265,6 +1307,12 @@ var LibraryGLFW = {
     // Lets report 0 now which is wrong as it can get for end user.
     {{{ makeSetValue('width', '0', '0', 'i32') }}};
     {{{ makeSetValue('height', '0', '0', 'i32') }}};
+  },
+
+  glfwGetMonitorContentScale__sig: 'viii',
+  glfwGetMonitorContentScale: function(monitor, x, y) {
+    {{{ makeSetValue('x', '0', 'GLFW.scale', 'float') }}};
+    {{{ makeSetValue('y', '0', 'GLFW.scale', 'float') }}};
   },
 
   glfwGetMonitorName__sig: 'ii',
@@ -1317,6 +1365,13 @@ var LibraryGLFW = {
     GLFW.hints[target] = hint;
   },
 
+  glfwWindowHintString__sig: 'vii',
+  glfwWindowHintString: function(hint, value) {
+    // from glfw docs -> we just ignore this.
+    // Some hints are platform specific.  These may be set on any platform but they
+    // will only affect their specific platform.  Other platforms will ignore them.
+  },
+  
   glfwCreateWindow__sig: 'iiiiii',
   glfwCreateWindow: function(width, height, title, monitor, share) {
     return GLFW.createWindow(width, height, title, monitor, share);
@@ -1386,6 +1441,24 @@ var LibraryGLFW = {
     }
   },
 
+  glfwGetWindowContentScale__sig: 'viii',
+  glfwGetWindowContentScale: function(winid, x, y) {
+    // winid doesn't matter. all windows will use same scale anyway.
+    // hope i used this makeSetValue correctly 
+    {{{ makeSetValue('x', '0', 'GLFW.scale', 'float') }}};
+    {{{ makeSetValue('y', '0', 'GLFW.scale', 'float') }}};
+  },
+
+  glfwGetWindowOpacity__sig: 'fi',
+  glfwGetWindowOpacity: function(winid) {
+    return 1.0;
+  },
+
+  glfwSetWindowOpacity__sig: 'vif',
+  glfwSetWindowOpacity: function(winid, opacity) {
+    // error
+  },
+
   glfwIconifyWindow__sig: 'vi',
   glfwIconifyWindow: function(winid) {
 #if ASSERTIONS
@@ -1420,6 +1493,13 @@ var LibraryGLFW = {
     return win.attributes[attrib];
   },
 
+  glfwSetWindowAttrib__sig: 'viii',
+  glfwSetWindowAttrib: function(winid, attrib, value) {
+    var win = GLFW.WindowFromId(winid);
+    if (!win) return;
+    win.attributes[attrib] = value;
+  },
+  
   glfwSetWindowUserPointer__sig: 'vii',
   glfwSetWindowUserPointer: function(winid, ptr) {
     var win = GLFW.WindowFromId(winid);
@@ -1476,6 +1556,15 @@ var LibraryGLFW = {
     return prevcbfun;
   },
 
+  glfwSetWindowMaximizeCallback__sig: 'iii',
+  glfwSetWindowMaximizeCallback: function(winid, cbfun) {
+    var win = GLFW.WindowFromId(winid);
+    if (!win) return null;
+    var prevcbfun = win.windowMaximizeFunc;
+    win.windowMaximizeFunc = cbfun;
+    return prevcbfun;
+  },
+
   glfwSetWindowIcon__sig: 'viii',
   glfwSetWindowIcon: function(winid, count, images) {},
 
@@ -1493,6 +1582,9 @@ var LibraryGLFW = {
 
   glfwFocusWindow__sig: 'vi',
   glfwFocusWindow: function(winid) {},
+
+  glfwRequestWindowAttention__sig: 'vi',
+  glfwRequestWindowAttention: function(winid) {}, // maybe do window.focus()?
 
   glfwSetWindowMonitor__sig: 'viiiiiii',
   glfwSetWindowMonitor: function(winid, monitor, xpos, ypos, width, height, refreshRate) { throw "glfwSetWindowMonitor not implemented."; },
@@ -1515,6 +1607,15 @@ var LibraryGLFW = {
     if (!win) return null;
     var prevcbfun = win.framebufferSizeFunc;
     win.framebufferSizeFunc = cbfun;
+    return prevcbfun;
+  },
+
+  glfwSetWindowContentScaleCallback__sig: 'iii',
+  glfwSetWindowContentScaleCallback: function(winid, cbfun) {
+    var win = GLFW.WindowFromId(winid);
+    if (!win) return null;
+    var prevcbfun = win.windowContentScaleFunc;
+    win.windowContentScaleFunc = cbfun;
     return prevcbfun;
   },
 
@@ -1541,6 +1642,11 @@ var LibraryGLFW = {
     GLFW.setInputMode(winid, mode, value);
   },
 
+  glfwRawMouseMotionSupported__sig: 'i',
+  glfwRawMouseMotionSupported: function() {
+    return 0;
+  },
+
   glfwGetKey__sig: 'iii',
   glfwGetKey: function(winid, key) {
     return GLFW.getKey(winid, key);
@@ -1549,6 +1655,9 @@ var LibraryGLFW = {
   glfwGetKeyName__sig: 'iii',
   glfwGetKeyName: function(key, scancode) { throw "glfwGetKeyName not implemented."; },
 
+  glfwGetKeyScancode__sig: 'ii',
+  glfwGetKeyScancode: function(key) { throw "glfwGetKeyScancode not implemented."; },
+  
   glfwGetMouseButton__sig: 'iii',
   glfwGetMouseButton: function(winid, button) {
     return GLFW.getMouseButton(winid, button);
@@ -1665,12 +1774,37 @@ var LibraryGLFW = {
     return state.buttons;
   },
 
+  glfwGetJoystickHats__sig: 'iii',
+  glfwGetJoystickHats: function(joy, count) {
+    throw "glfwGetJoystickHats is not implemented";
+  },
+
   glfwGetJoystickName__sig: 'ii',
   glfwGetJoystickName: function(joy) {
     if (GLFW.joys[joy]) {
       return GLFW.joys[joy].id;
     }
     return 0;
+  },
+
+  glfwGetJoystickGUID__sig: 'ii',
+  glfwGetJoystickGUID: function(jid) {
+    throw "glfwGetJoystickGUID not implemented";
+  },
+
+  glfwSetJoystickUserPointer__sig: 'vii',
+  glfwSetJoystickUserPointer: function(jid, ptr) {
+    throw "glfwSetJoystickUserPointer not implemented";
+  },
+  
+  glfwGetJoystickUserPointer__sig: 'ii',
+  glfwGetJoystickUserPointer: function(jid) {
+    throw "glfwSetJoystickUserPointer not implemented";
+  },
+    
+  glfwJoystickIsGamepad__sig: 'ii',
+  glfwJoystickIsGamepad: function(jid) {
+    throw "glfwSetJoystickUserPointer not implemented";
   },
 
   glfwSetJoystickCallback__sig: 'ii',

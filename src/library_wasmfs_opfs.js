@@ -16,7 +16,8 @@ mergeInto(LibraryManager.library, {
 
   _wasmfs_opfs_init_root_directory__deps: ['$wasmfsOPFSDirectoryHandles'],
   _wasmfs_opfs_init_root_directory: async function(ctx) {
-    if (wasmfsOPFSDirectoryHandles.allocated.length == 0) {
+    // allocated.length start of as 1 since 0 is a reserved handle
+    if (wasmfsOPFSDirectoryHandles.allocated.length == 1) {
       // Directory 0 is reserved as the root
       let root = await navigator.storage.getDirectory();
       wasmfsOPFSDirectoryHandles.allocated.push(root);
@@ -36,15 +37,15 @@ mergeInto(LibraryManager.library, {
       fileHandle = await parentHandle.getFileHandle(name, {create: create});
     } catch (e) {
       if (e.name === "NotFoundError") {
-        return -{{{ cDefine('EEXIST') }}};
+        return -{{{ cDefs.EEXIST }}};
       }
       if (e.name === "TypeMismatchError") {
-        return -{{{ cDefine('EISDIR') }}};
+        return -{{{ cDefs.EISDIR }}};
       }
 #if ASSERTIONS
       err('unexpected error:', e, e.stack);
 #endif
-      return -{{{ cDefine('EIO') }}};
+      return -{{{ cDefs.EIO }}};
     }
     return wasmfsOPFSFileHandles.allocate(fileHandle);
   },
@@ -61,15 +62,15 @@ mergeInto(LibraryManager.library, {
           await parentHandle.getDirectoryHandle(name, {create: create});
     } catch (e) {
       if (e.name === "NotFoundError") {
-        return -{{{ cDefine('EEXIST') }}};
+        return -{{{ cDefs.EEXIST }}};
       }
       if (e.name === "TypeMismatchError") {
-        return -{{{ cDefine('ENOTDIR') }}};
+        return -{{{ cDefs.ENOTDIR }}};
       }
 #if ASSERTIONS
       err('unexpected error:', e, e.stack);
 #endif
-      return -{{{ cDefine('EIO') }}};
+      return -{{{ cDefs.EIO }}};
     }
     return wasmfsOPFSDirectoryHandles.allocate(childHandle);
   },
@@ -81,7 +82,7 @@ mergeInto(LibraryManager.library, {
     let name = UTF8ToString(namePtr);
     let childType = 1;
     let childID = await wasmfsOPFSGetOrCreateFile(parent, name, false);
-    if (childID == -{{{ cDefine('EISDIR') }}}) {
+    if (childID == -{{{ cDefs.EISDIR }}}) {
       childType = 2;
       childID = await wasmfsOPFSGetOrCreateDir(parent, name, false);
     }
@@ -108,7 +109,7 @@ mergeInto(LibraryManager.library, {
         });
       }
     } catch {
-      let err = -{{{ cDefine('EIO') }}};
+      let err = -{{{ cDefs.EIO }}};
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     _emscripten_proxy_finish(ctx);
@@ -140,7 +141,7 @@ mergeInto(LibraryManager.library, {
     try {
       await fileHandle.move(newDirHandle, name);
     } catch {
-      let err = -{{{ cDefine('EIO') }}};
+      let err = -{{{ cDefs.EIO }}};
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     _emscripten_proxy_finish(ctx);
@@ -153,7 +154,7 @@ mergeInto(LibraryManager.library, {
     try {
       await dirHandle.removeEntry(name);
     } catch {
-      let err = -{{{ cDefine('EIO') }}};
+      let err = -{{{ cDefs.EIO }}};
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     _emscripten_proxy_finish(ctx);
@@ -188,12 +189,12 @@ mergeInto(LibraryManager.library, {
       // TODO: Presumably only one of these will appear in the final API?
       if (e.name === "InvalidStateError" ||
           e.name === "NoModificationAllowedError") {
-        accessID = -{{{ cDefine('EACCES') }}};
+        accessID = -{{{ cDefs.EACCES }}};
       } else {
 #if ASSERTIONS
         err('unexpected error:', e, e.stack);
 #endif
-        accessID = -{{{ cDefine('EIO') }}};
+        accessID = -{{{ cDefs.EIO }}};
       }
     }
     {{{ makeSetValue('accessIDPtr', 0, 'accessID', 'i32') }}};
@@ -210,12 +211,12 @@ mergeInto(LibraryManager.library, {
       blobID = wasmfsOPFSBlobs.allocate(blob);
     } catch (e) {
       if (e.name === "NotAllowedError") {
-        blobID = -{{{ cDefine('EACCES') }}};
+        blobID = -{{{ cDefs.EACCES }}};
       } else {
 #if ASSERTIONS
         err('unexpected error:', e, e.stack);
 #endif
-        blobID = -{{{ cDefine('EIO') }}};
+        blobID = -{{{ cDefs.EIO }}};
       }
     }
     {{{ makeSetValue('blobIDPtr', 0, 'blobID', 'i32') }}};
@@ -228,7 +229,7 @@ mergeInto(LibraryManager.library, {
     try {
       await accessHandle.close();
     } catch {
-      let err = -{{{ cDefine('EIO') }}};
+      let err = -{{{ cDefs.EIO }}};
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSAccessHandles.free(accessID);
@@ -248,12 +249,12 @@ mergeInto(LibraryManager.library, {
       return accessHandle.read(data, {at: pos});
     } catch (e) {
       if (e.name == "TypeError") {
-        return -{{{ cDefine('EINVAL') }}};
+        return -{{{ cDefs.EINVAL }}};
       }
 #if ASSERTIONS
       err('unexpected error:', e, e.stack);
 #endif
-      return -{{{ cDefine('EIO') }}};
+      return -{{{ cDefs.EIO }}};
     }
   },
 
@@ -273,12 +274,12 @@ mergeInto(LibraryManager.library, {
       nread += data.length;
     } catch (e) {
       if (e instanceof RangeError) {
-        nread = -{{{ cDefine('EFAULT') }}};
+        nread = -{{{ cDefs.EFAULT }}};
       } else {
 #if ASSERTIONS
         err('unexpected error:', e, e.stack);
 #endif
-        nread = -{{{ cDefine('EIO') }}};
+        nread = -{{{ cDefs.EIO }}};
       }
     }
 
@@ -294,12 +295,12 @@ mergeInto(LibraryManager.library, {
       return accessHandle.write(data, {at: pos});
     } catch (e) {
       if (e.name == "TypeError") {
-        return -{{{ cDefine('EINVAL') }}};
+        return -{{{ cDefs.EINVAL }}};
       }
 #if ASSERTIONS
       err('unexpected error:', e, e.stack);
 #endif
-      return -{{{ cDefine('EIO') }}};
+      return -{{{ cDefs.EIO }}};
     }
   },
 
@@ -310,7 +311,7 @@ mergeInto(LibraryManager.library, {
     try {
       size = await accessHandle.getSize();
     } catch {
-      size = -{{{ cDefine('EIO') }}};
+      size = -{{{ cDefs.EIO }}};
     }
     {{{ makeSetValue('sizePtr', 0, 'size', 'i64') }}};
     _emscripten_proxy_finish(ctx);
@@ -329,7 +330,7 @@ mergeInto(LibraryManager.library, {
     try {
       size = (await fileHandle.getFile()).size;
     } catch {
-      size = -{{{ cDefine('EIO') }}};
+      size = -{{{ cDefs.EIO }}};
     }
     {{{ makeSetValue('sizePtr', 0, 'size', 'i64') }}};
     _emscripten_proxy_finish(ctx);
@@ -344,7 +345,7 @@ mergeInto(LibraryManager.library, {
     try {
       await accessHandle.truncate(size);
     } catch {
-      let err = -{{{ cDefine('EIO') }}};
+      let err = -{{{ cDefs.EIO }}};
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     _emscripten_proxy_finish(ctx);
@@ -361,7 +362,7 @@ mergeInto(LibraryManager.library, {
       await writable.truncate(size);
       await writable.close();
     } catch {
-      let err = -{{{ cDefine('EIO') }}};
+      let err = -{{{ cDefs.EIO }}};
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     _emscripten_proxy_finish(ctx);
@@ -373,7 +374,7 @@ mergeInto(LibraryManager.library, {
     try {
       await accessHandle.flush();
     } catch {
-      let err = -{{{ cDefine('EIO') }}};
+      let err = -{{{ cDefs.EIO }}};
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     _emscripten_proxy_finish(ctx);
