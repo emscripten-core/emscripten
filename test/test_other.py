@@ -6754,7 +6754,7 @@ int main(int argc, char** argv) {
 
     build_main([])
     out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('Exception catching is disabled, this exception cannot be caught.', out)
+    self.assertContained('Exception thrown, but exception catching is not enabled.', out)
     self.assertContained('note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support', out)
 
     build_main(['-fexceptions'])

@@ -28,7 +28,7 @@ the output:
 .. code-block:: text
 
   throw...
-  exception thrown: 5246024 - Exception catching is disabled, this exception cannot be caught. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.
+  Aborted(Assertion failed: Exception thrown, but exception catching is not enabled. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.)
 
 If you want to opt-in, you have two following options.
 
