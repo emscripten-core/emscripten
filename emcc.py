@@ -3908,28 +3908,22 @@ def modularize():
     # document.currentScript, so a simple export declaration is enough.
     src = 'var %s=%s' % (settings.EXPORT_NAME, src)
   else:
-    script_url_node = ''
+    script_url_web = ''
     # When MODULARIZE this JS may be executed later,
     # after document.currentScript is gone, so we save it.
-    # In EXPORT_ES6 + PTHREADS the 'thread' is actually an ES6 module webworker running in strict mode,
-    # so doesn't have access to 'document'. In this case use 'import.meta' instead.
-    if settings.EXPORT_ES6 and settings.USE_ES6_IMPORT_META:
-      script_url = 'import.meta.url'
-    else:
-      script_url = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
-      if shared.target_environment_may_be('node'):
-        script_url_node = "if (typeof __filename !== 'undefined') _scriptDir = _scriptDir || __filename;"
+    # In EXPORT_ES6 mode we can just use 'import.meta'.
+    if shared.target_environment_may_be('web') and \
+       not settings.EXPORT_ES6 or not settings.USE_ES6_IMPORT_META:
+      script_url_web = "var _scriptSrc = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : '';"
     src = '''%(node_imports)s
 var %(EXPORT_NAME)s = (() => {
-  var _scriptDir = %(script_url)s;
-  %(script_url_node)s
+  %(script_url_web)s
   return (%(src)s);
 })();
 ''' % {
       'node_imports': node_es6_imports(),
       'EXPORT_NAME': settings.EXPORT_NAME,
-      'script_url': script_url,
-      'script_url_node': script_url_node,
+      'script_url_web': script_url_web,
       'src': src
     }
 

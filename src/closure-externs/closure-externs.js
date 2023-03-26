@@ -212,13 +212,13 @@ var removeEventListener = function (type, listener) {};
  */
 var close;
 
-// Due to the way MODULARIZE works, Closure is run on generated code that does not define _scriptDir,
-// but only after MODULARIZE has finished, _scriptDir is injected to the generated code.
+// Due to the way MODULARIZE works, Closure is run on generated code that does not define _scriptSrc,
+// but only after MODULARIZE has finished, _scriptSrc is injected to the generated code.
 // Therefore it cannot be minified.
 /**
  * @suppress {duplicate, undefinedVars}
  */
-var _scriptDir;
+var _scriptSrc;
 
 // Closure run on asm.js uses a hack to execute only on shell code, declare externs needed for it.
 /**

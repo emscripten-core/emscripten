@@ -159,12 +159,6 @@ function ready() {
 
 #if PTHREADS
 
-#if !MODULARIZE
-// In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
-// before the page load. In non-MODULARIZE modes generate it here.
-var _scriptDir = (typeof document != 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
-#endif
-
 // MINIMAL_RUNTIME does not support --proxy-to-worker option, so Worker and Pthread environments
 // coincide.
 #if WASM_WORKERS
@@ -174,5 +168,30 @@ var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function',
 var ENVIRONMENT_IS_WORKER = ENVIRONMENT_IS_PTHREAD = typeof importScripts == 'function';
 #endif
 
-var currentScriptUrl = typeof _scriptDir != 'undefined' ? _scriptDir : ((typeof document != 'undefined' && document.currentScript) ? document.currentScript.src : undefined);
+#if EXPORT_ES6 && USE_ES6_IMPORT_META
+var currentScript = import.meta.url;
+#else
+var currentScript;
+
+#if ENVIRONMENT_MAY_BE_NODE
+if (typeof __filename !== 'undefined') { // Node
+  currentScript = __filename;
+} else
+#endif // ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_WEB
+#if MODULARIZE
+// When MODULARIZE this JS may be executed later, after document.currentScript is gone, so we store it in _scriptSrc.
+if (ENVIRONMENT_IS_WEB) {
+  currentScript = _scriptSrc;
+} else
+#else
+// In non-MODULARIZE mode we generate it here.
+if (typeof document != 'undefined' && document.currentScript) { // web
+  currentScript = document.currentScript.src;
+} else
+#endif
+#endif // ENVIRONMENT_MAY_BE_WEB
+  currentScript = '';
+#endif // EXPORT_ES6 && USE_ES6_IMPORT_META
+
 #endif // PTHREADS

@@ -133,7 +133,7 @@ mergeInto(LibraryManager.library, {
       'mem': wasmMemory,
 #else
       'wasm': wasmModule,
-      'js': Module['mainScriptUrlOrBlob'] || _scriptDir,
+      'js': Module['mainScriptUrlOrBlob'] || currentScript,
       'wasmMemory': wasmMemory,
 #endif
       'sb': stackLowestAddress, // sb = stack bottom (lowest stack address, SP points at this when stack is full)
