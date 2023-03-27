@@ -4,11 +4,11 @@ mergeInto(LibraryManager.library, {
   // Because it accesses the DOM, it must be called on the main thread.
   getDomElementContents__proxy: 'sync',
   getDomElementContents__sig: 'viii',
-  getDomElementContents__deps: ['$stringToNewUTF8'],
+  getDomElementContents__deps: ['$allocateUTF8'],
   getDomElementContents: function(domElementSelector) {
     var selector = UTF8ToString(domElementSelector);
     var text = document.querySelector(selector).innerHTML;
-    return stringToNewUTF8(text);
+    return allocateUTF8(text);
   },
 
   receivesAndReturnsAnInteger__proxy: 'sync',

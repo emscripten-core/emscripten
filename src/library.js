@@ -52,8 +52,6 @@ mergeInto(LibraryManager.library, {
   // JavaScript <-> C string interop
   // ==========================================================================
 
-  $stringToNewUTF8: '$allocateUTF8',
-
 #if !MINIMAL_RUNTIME
   $exitJS__docs: '/** @param {boolean|number=} implicit */',
   $exitJS__deps: ['proc_exit'],

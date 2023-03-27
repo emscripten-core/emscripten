@@ -1148,7 +1148,7 @@ var LibraryGL = {
     GLctx.pixelStorei(pname, param);
   },
 
-  glGetString__deps: ['$stringToNewUTF8'],
+  glGetString__deps: ['$allocateUTF8'],
   glGetString: function(name_) {
     var ret = GL.stringCache[name_];
     if (!ret) {
@@ -1158,7 +1158,7 @@ var LibraryGL = {
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
           exts = exts.concat(exts.map(function(e) { return "GL_" + e; }));
 #endif
-          ret = stringToNewUTF8(exts.join(' '));
+          ret = allocateUTF8(exts.join(' '));
           break;
         case 0x1F00 /* GL_VENDOR */:
         case 0x1F01 /* GL_RENDERER */:
@@ -1177,7 +1177,7 @@ var LibraryGL = {
 #endif
           }
 #endif
-          ret = s && stringToNewUTF8(s);
+          ret = s && allocateUTF8(s);
           break;
 
 #if GL_EMULATE_GLES_VERSION_STRING_FORMAT
@@ -1191,7 +1191,7 @@ var LibraryGL = {
           {
             glVersion = 'OpenGL ES 2.0 (' + glVersion + ')';
           }
-          ret = stringToNewUTF8(glVersion);
+          ret = allocateUTF8(glVersion);
           break;
         case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
           var glslVersion = GLctx.getParameter(0x8B8C /*GL_SHADING_LANGUAGE_VERSION*/);
@@ -1202,7 +1202,7 @@ var LibraryGL = {
             if (ver_num[1].length == 3) ver_num[1] = ver_num[1] + '0'; // ensure minor version has 2 digits
             glslVersion = 'OpenGL ES GLSL ES ' + ver_num[1] + ' (' + glslVersion + ')';
           }
-          ret = stringToNewUTF8(glslVersion);
+          ret = allocateUTF8(glslVersion);
           break;
 #endif
 #if GL_TRACK_ERRORS

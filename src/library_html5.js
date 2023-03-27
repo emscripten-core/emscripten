@@ -2396,14 +2396,14 @@ var LibraryHTML5 = {
 #if OFFSCREENCANVAS_SUPPORT
   _emscripten_set_offscreencanvas_size: 'emscripten_set_canvas_element_size',
 
-  $setOffscreenCanvasSizeOnTargetThread__deps: ['$stringToNewUTF8', 'emscripten_dispatch_to_thread_', '$withStackSave'],
+  $setOffscreenCanvasSizeOnTargetThread__deps: ['$allocateUTF8', 'emscripten_dispatch_to_thread_', '$withStackSave'],
   $setOffscreenCanvasSizeOnTargetThread: function(targetThread, targetCanvas, width, height) {
     targetCanvas = targetCanvas ? UTF8ToString(targetCanvas) : '';
     withStackSave(function() {
       var varargs = stackAlloc(12);
       var targetCanvasPtr = 0;
       if (targetCanvas) {
-        targetCanvasPtr = stringToNewUTF8(targetCanvas);
+        targetCanvasPtr = allocateUTF8(targetCanvas);
       }
       {{{ makeSetValue('varargs', 0, 'targetCanvasPtr', 'i32')}}};
       {{{ makeSetValue('varargs', 4, 'width', 'i32')}}};

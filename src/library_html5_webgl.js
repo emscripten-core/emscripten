@@ -445,9 +445,9 @@ var LibraryHtml5WebGL = {
   },
 
   emscripten_webgl_get_supported_extensions__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_supported_extensions__deps: ['$stringToNewUTF8'],
+  emscripten_webgl_get_supported_extensions__deps: ['$allocateUTF8'],
   emscripten_webgl_get_supported_extensions: function() {
-    return stringToNewUTF8(GLctx.getSupportedExtensions().join(' '));
+    return allocateUTF8(GLctx.getSupportedExtensions().join(' '));
   },
 
   emscripten_webgl_get_program_parameter_d__proxy: 'sync_on_current_webgl_context_thread',
@@ -456,9 +456,9 @@ var LibraryHtml5WebGL = {
   },
 
   emscripten_webgl_get_program_info_log_utf8__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_program_info_log_utf8__deps: ['$stringToNewUTF8'],
+  emscripten_webgl_get_program_info_log_utf8__deps: ['$allocateUTF8'],
   emscripten_webgl_get_program_info_log_utf8: function(program) {
-    return stringToNewUTF8(GLctx.getProgramInfoLog(GL.programs[program]));
+    return allocateUTF8(GLctx.getProgramInfoLog(GL.programs[program]));
   },
 
   emscripten_webgl_get_shader_parameter_d__proxy: 'sync_on_current_webgl_context_thread',
@@ -467,15 +467,15 @@ var LibraryHtml5WebGL = {
   },
 
   emscripten_webgl_get_shader_info_log_utf8__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_shader_info_log_utf8__deps: ['$stringToNewUTF8'],
+  emscripten_webgl_get_shader_info_log_utf8__deps: ['$allocateUTF8'],
   emscripten_webgl_get_shader_info_log_utf8: function(shader) {
-    return stringToNewUTF8(GLctx.getShaderInfoLog(GL.shaders[shader]));
+    return allocateUTF8(GLctx.getShaderInfoLog(GL.shaders[shader]));
   },
 
   emscripten_webgl_get_shader_source_utf8__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_shader_source_utf8__deps: ['$stringToNewUTF8'],
+  emscripten_webgl_get_shader_source_utf8__deps: ['$allocateUTF8'],
   emscripten_webgl_get_shader_source_utf8: function(shader) {
-    return stringToNewUTF8(GLctx.getShaderSource(GL.shaders[shader]));
+    return allocateUTF8(GLctx.getShaderSource(GL.shaders[shader]));
   },
 
   emscripten_webgl_get_vertex_attrib_d__proxy: 'sync_on_current_webgl_context_thread',
@@ -524,10 +524,10 @@ var LibraryHtml5WebGL = {
     return obj && obj.name;
   },
 
-  emscripten_webgl_get_parameter_utf8__deps: ['$stringToNewUTF8'],
+  emscripten_webgl_get_parameter_utf8__deps: ['$allocateUTF8'],
   emscripten_webgl_get_parameter_utf8__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_parameter_utf8: function(param) {
-    return stringToNewUTF8(GLctx.getParameter(param));
+    return allocateUTF8(GLctx.getParameter(param));
   },
 
   emscripten_webgl_get_parameter_i64v__proxy: 'sync_on_current_webgl_context_thread',

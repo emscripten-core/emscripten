@@ -37,4 +37,6 @@ mergeInto(LibraryManager.library, {
     HEAPU8.set(slab, ret);
     return ret;
   },
+
+  $stringToNewUTF8: '$allocateUTF8',
 });

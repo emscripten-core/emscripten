@@ -5,7 +5,7 @@
  */
 
 var LibraryWebGL2 = {
-  glGetStringi__deps: ['$stringToNewUTF8'],
+  glGetStringi__deps: ['$allocateUTF8'],
   glGetStringi__sig: 'iii',
   glGetStringi: function(name, index) {
     if (GL.currentContext.version < 2) {
@@ -29,7 +29,7 @@ var LibraryWebGL2 = {
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
         exts = exts.concat(exts.map(function(e) { return "GL_" + e; }));
 #endif
-        exts = exts.map(function(e) { return stringToNewUTF8(e); });
+        exts = exts.map(function(e) { return allocateUTF8(e); });
 
         stringiCache = GL.stringiCache[name] = exts;
         if (index < 0 || index >= stringiCache.length) {
