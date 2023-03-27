@@ -5971,6 +5971,7 @@ Module = {
       # regression check for issue #273
       self.set_setting('LINKABLE', linkable)
       self.do_core_test('test_istream.cpp')
+      
   @also_with_wasmfs
   def test_fs_dir_wasmfs(self):
     self.emcc_args += ['-sWASMFS']
