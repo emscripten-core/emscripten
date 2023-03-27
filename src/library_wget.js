@@ -173,13 +173,13 @@ var LibraryWget = {
 
     function onerrorjs() {
       if (onerror) {
-        var statusText = 0;
-        if (http.statusText) {
-          var len = lengthBytesUTF8(http.statusText) + 1;
-          statusText = stackAlloc(len);
-          stringToUTF8(http.statusText, statusText, len);
-        }
-        {{{ makeDynCall('viiii', 'onerror') }}}(handle, arg, http.status, statusText);
+        withStackSave(() => {
+          var statusText = 0;
+          if (http.statusText) {
+            statusText = allocateUTF8OnStack(http.statusText);
+          }
+          {{{ makeDynCall('viiii', 'onerror') }}}(handle, arg, http.status, statusText);
+        });
       }
     }
 
