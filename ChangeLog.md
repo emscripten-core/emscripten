@@ -20,6 +20,12 @@ See docs/process.md for more on how version tagging works.
 
 3.1.35 (in development)
 -----------------------
+- Updated the SCons tool to not require the `EMSCRIPTEN_ROOT` environment
+  variable, in which case it will assume that SCons will find the binaries in
+  (its) `PATH`.
+- Updated `emscons` to apply the `EMSCRIPTEN_ROOT`, `EMSCONS_PKG_CONFIG_LIBDIR`
+  and `EMSCONS_PKG_CONFIG_PATH` environment variables. The SCons tool will use
+  last two to set up `PKG_CONFIG_LIBDIR` and `PKG_CONFIG_PATH` respetively.
 - `SDL_image` port was updated to version 2.6.0.
 - `-z` arguments are now passed directly to wasm-ld without the need for the
   `-Wl,` prefix.  This matches the behaviour of both clang and gcc. (#18956)
