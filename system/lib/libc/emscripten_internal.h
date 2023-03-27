@@ -107,6 +107,13 @@ void _emscripten_throw_longjmp(void);
 
 void __handle_stack_overflow(void* addr);
 
+// Internal fetch API
+struct emscripten_fetch_t;
+void emscripten_start_fetch(struct emscripten_fetch_t* fetch);
+size_t _emscripten_fetch_get_response_headers_length(int32_t fetchID);
+size_t _emscripten_fetch_get_response_headers(int32_t fetchID, char *dst, size_t dstSizeBytes);
+void _emscripten_fetch_free(unsigned int);
+
 #ifdef __cplusplus
 }
 #endif
