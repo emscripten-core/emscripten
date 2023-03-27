@@ -5976,7 +5976,7 @@ Module = {
   def test_fs_dir_wasmfs(self):
     self.emcc_args += ['-sWASMFS']
     self.emcc_args += ['-sFORCE_FILESYSTEM']
-    self.do_in_out_file_test('fs/test_dir.c')
+    self.do_runf(test_file('fs/test_dir.c'), 'success')
 
   def test_fs_base(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
