@@ -450,7 +450,6 @@ mergeInto(LibraryManager.library, {
 #endif
   },
 
-  emscripten_sleep__sig: 'vi',
   emscripten_sleep__deps: ['$safeSetTimeout'],
   emscripten_sleep: function(ms) {
     // emscripten_sleep() does not return a value, but we still need a |return|
@@ -460,7 +459,6 @@ mergeInto(LibraryManager.library, {
     return Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms));
   },
 
-  emscripten_wget__sig: 'vpp',
   emscripten_wget__deps: ['$Browser', '$PATH_FS', '$FS'],
   emscripten_wget: function(url, file) {
     return Asyncify.handleSleep((wakeUp) => {
@@ -488,7 +486,6 @@ mergeInto(LibraryManager.library, {
     });
   },
 
-  emscripten_wget_data__sig: 'vpppp',
   emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
   emscripten_wget_data: function(url, pbuffer, pnum, perror) {
     return Asyncify.handleSleep((wakeUp) => {
@@ -507,7 +504,6 @@ mergeInto(LibraryManager.library, {
     });
   },
 
-  emscripten_scan_registers__sig: 'vp',
   emscripten_scan_registers__deps: ['$safeSetTimeout'],
   emscripten_scan_registers: function(func) {
     return Asyncify.handleSleep((wakeUp) => {
@@ -608,7 +604,6 @@ mergeInto(LibraryManager.library, {
     },
   },
 
-  emscripten_fiber_swap__sig: 'vpp',
   emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
   emscripten_fiber_swap: function(oldFiber, newFiber) {
     if (ABORT) return;
