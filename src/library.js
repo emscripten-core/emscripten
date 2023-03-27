@@ -3654,7 +3654,7 @@ mergeInto(LibraryManager.library, {
 
   $HandleAllocator__docs: '/** @constructor */',
   $HandleAllocator: function() {
-    // Reserve slot 0 so that 0 is always and invalid handle
+    // Reserve slot 0 so that 0 is always an invalid handle
     this.allocated = [undefined];
     this.freelist = [];
     this.get = function(id) {
