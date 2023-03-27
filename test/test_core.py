@@ -5971,6 +5971,11 @@ Module = {
       # regression check for issue #273
       self.set_setting('LINKABLE', linkable)
       self.do_core_test('test_istream.cpp')
+  @also_with_wasmfs
+  def test_fs_dir_wasmfs(self):
+    self.emcc_args += ['-sWASMFS']
+    self.emcc_args += ['-sFORCE_FILESYSTEM']
+    self.do_in_out_file_test('fs/test_dir.c')
 
   def test_fs_base(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
