@@ -5546,6 +5546,14 @@ Module["preRun"].push(function () {
     shutil.copyfile('webpack/src/hello.wasm', 'webpack/dist/hello.wasm')
     self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
 
+  def test_webpack_es6(self):
+    shutil.copytree(test_file('webpack'), 'webpack')
+    with utils.chdir('webpack'):
+      self.compile_btest([test_file('hello_world.c'), '-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web',
+                          '-sEXPORT_ES6=1', '-o', 'src/hello.mjs'])
+      self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool', './src/index.mjs'])
+    self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
+
 
 class emrun(RunnerCore):
   def test_emrun_info(self):
