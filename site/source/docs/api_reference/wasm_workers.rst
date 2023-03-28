@@ -185,9 +185,9 @@ In order to enable flexible synchronous execution of code on other threads, and 
 APIs for example for MEMFS filesystem and Offscreen Framebuffer (WebGL emulated from a Worker) features,
 main browser thread and each pthread have a system-backed "proxy message queue" to receive messages.
 
-This enables user code to call API functions ``emscripten_sync_run_in_main_thread*()``,
-``emscripten_sync_run_in_main_runtime_thread()``, ``emscripten_async_run_in_main_runtime_thread()``,
-``emscripten_dispatch_to_thread()``, etc. from ``emscripten/threading.h`` to perform proxied calls.
+This enables user code to call API functions, ``emscripten_sync_run_in_main_runtime_thread()``,
+``emscripten_async_run_in_main_runtime_thread()``, ``emscripten_dispatch_to_thread()``, etc. from
+``emscripten/threading.h`` to perform proxied calls.
 
 Wasm Workers do not provide this functionality. If needed, such messaging should be implemented manually
 by users via regular multithreaded synchronized programming techniques (mutexes, futexes, semaphores, etc.)

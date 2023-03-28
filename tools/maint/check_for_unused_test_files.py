@@ -45,7 +45,7 @@ def check_file(dirpath, filename):
   relpath = os.path.relpath(normpath, test_dir)
   stem, ext = os.path.splitext(normpath)
 
-  # Ignore explict exceptions
+  # Ignore explicit exceptions
   if dirpath == test_dir:
     if filename in ignore_root_files:
       return

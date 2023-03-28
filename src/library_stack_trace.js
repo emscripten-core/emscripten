@@ -5,24 +5,21 @@
  */
 
 var LibraryStackTrace = {
-  $demangle__deps: ['$withStackSave'],
+#if DEMANGLE_SUPPORT
+  $demangle__deps: ['$withStackSave', '__cxa_demangle', 'free', '$allocateUTF8OnStack'],
+#endif
   $demangle: function(func) {
 #if DEMANGLE_SUPPORT
     // If demangle has failed before, stop demangling any further function names
     // This avoids an infinite recursion with malloc()->abort()->stackTrace()->demangle()->malloc()->...
     demangle.recursionGuard = (demangle.recursionGuard|0)+1;
     if (demangle.recursionGuard > 1) return func;
-#if ASSERTIONS
-    assert(___cxa_demangle);
-#endif
     return withStackSave(function() {
       try {
         var s = func;
         if (s.startsWith('__Z'))
           s = s.substr(1);
-        var len = lengthBytesUTF8(s)+1;
-        var buf = stackAlloc(len);
-        stringToUTF8(s, buf, len);
+        var buf = allocateUTF8OnStack(s);
         var status = stackAlloc(4);
         var ret = ___cxa_demangle(buf, 0, 0, status);
         if ({{{ makeGetValue('status', '0', 'i32') }}} === 0 && ret) {

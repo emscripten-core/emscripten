@@ -212,13 +212,6 @@ var removeEventListener = function (type, listener) {};
  */
 var close;
 
-// Fetch.js/Fetch Worker
-
-/**
- * @suppress {undefinedVars}
- */
-var ENVIRONMENT_IS_FETCH_WORKER;
-
 // Due to the way MODULARIZE works, Closure is run on generated code that does not define _scriptDir,
 // but only after MODULARIZE has finished, _scriptDir is injected to the generated code.
 // Therefore it cannot be minified.
@@ -267,46 +260,6 @@ var registerProcessor = function(name, obj) {};
 var currentFrame;
 var currentTime;
 var sampleRate;
-
-/*
- * WebGPU globals
- */
-var GPUBufferUsage;
-var GPUColorWrite;
-var GPUMapMode;
-var GPUShaderStage;
-var GPUTextureUsage;
-var GPU;
-var GPUAdapter;
-var GPUBindGroup;
-var GPUBindGroupLayout;
-var GPUBuffer;
-var GPUCanvasContext;
-var GPUCommandBuffer;
-var GPUCommandEncoder;
-var GPUCompilationInfo;
-var GPUCompilationMessage;
-var GPUComputePassEncoder;
-var GPUComputePipeline;
-var GPUDevice;
-var GPUDeviceLostInfo;
-var GPUExternalTexture;
-var GPUOutOfMemoryError;
-var GPUPipelineLayout;
-var GPUQuerySet;
-var GPUQueue;
-var GPURenderBundle;
-var GPURenderBundleEncoder;
-var GPURenderPassEncoder;
-var GPURenderPipeline;
-var GPUSampler;
-var GPUShaderModule;
-var GPUSupportedFeatures;
-var GPUSupportedLimits;
-var GPUTexture;
-var GPUTextureView;
-var GPUUncapturedErrorEvent;
-var GPUValidationError;
 
 /*
  * Avoid closure minifying anything to "id". See #13965

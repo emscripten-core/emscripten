@@ -30,7 +30,7 @@ int main() {
 
   printf("ok!\n");
   // Implicit return from main with ASYNCIFY + EXIT_RUNTIME
-  // currently doesn't work so we need to explictly exit.
+  // currently doesn't work so we need to explicitly exit.
   // https://github.com/emscripten-core/emscripten/issues/14417
   exit(0);
 }

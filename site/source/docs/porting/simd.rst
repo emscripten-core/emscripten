@@ -31,7 +31,7 @@ When porting native SIMD code, it should be noted that because of portability co
 
  - Cache line prefetch instructions are not available, and calls to these functions will compile, but are treated as no-ops.
 
- - Asymmetric memory fence operations are not available, but will be implemented as fully synchronous memory fences when SharedArrayBuffer is enabled (-sUSE_PTHREADS) or as no-ops when multithreading is not enabled (default, -sUSE_PTHREADS=0).
+ - Asymmetric memory fence operations are not available, but will be implemented as fully synchronous memory fences when SharedArrayBuffer is enabled (-pthread) or as no-ops when multithreading is not enabled (the default).
 
 SIMD-related bug reports are tracked in the `Emscripten bug tracker with the label SIMD <https://github.com/emscripten-core/emscripten/issues?q=is%3Aopen+is%3Aissue+label%3ASIMD>`_.
 

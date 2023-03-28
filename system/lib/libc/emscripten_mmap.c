@@ -14,6 +14,7 @@
 
 #include <emscripten/heap.h>
 
+#include "emscripten_internal.h"
 #include "lock.h"
 #include "syscall.h"
 
@@ -33,18 +34,6 @@ struct map {
 // Linked list of all mapping, guarded by a musl-style lock (LOCK/UNLOCK)
 static volatile int lock[1];
 static struct map* mappings;
-
-// JS library functions.  Used only when mapping files (not MAP_ANONYMOUS)
-int _mmap_js(size_t length,
-             int prot,
-             int flags,
-             int fd,
-             size_t offset,
-             int* allocated,
-             void** addr);
-int _munmap_js(intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset);
-int _msync_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset);
 
 static struct map* find_mapping(intptr_t addr, struct map** prev) {
   struct map* map = mappings;

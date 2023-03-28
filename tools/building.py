@@ -38,7 +38,7 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 111
+EXPECTED_BINARYEN_VERSION = 112
 
 # cache results of nm - it can be slow to run
 nm_cache = {}
@@ -148,7 +148,7 @@ def link_to_object(args, target):
 
 def lld_flags_for_executable(external_symbols):
   cmd = []
-  if external_symbols:
+  if settings.ERROR_ON_UNDEFINED_SYMBOLS:
     undefs = shared.get_temp_files().get('.undefined').name
     utils.write_file(undefs, '\n'.join(external_symbols))
     cmd.append('--allow-undefined-file=%s' % undefs)
@@ -176,9 +176,8 @@ def lld_flags_for_executable(external_symbols):
   # Strip the leading underscores
   c_exports = [demangle_c_symbol_name(e) for e in c_exports]
   c_exports += settings.EXPORT_IF_DEFINED
-  if external_symbols:
-    # Filter out symbols external/JS symbols
-    c_exports = [e for e in c_exports if e not in external_symbols]
+  # Filter out symbols external/JS symbols
+  c_exports = [e for e in c_exports if e not in external_symbols]
   for export in c_exports:
     cmd.append('--export-if-defined=' + export)
 
@@ -202,7 +201,7 @@ def lld_flags_for_executable(external_symbols):
       cmd.append('--growable-table')
 
   if not settings.SIDE_MODULE:
-    # Export these two section start symbols so that we can extact the string
+    # Export these two section start symbols so that we can extract the string
     # data that they contain.
     cmd += [
       '-z', 'stack-size=%s' % settings.STACK_SIZE,
@@ -266,7 +265,7 @@ def link_lld(args, target, external_symbols=None):
     cmd.append('-mwasm64')
 
   # For relocatable output (generating an object file) we don't pass any of the
-  # normal linker flags that are used when building and exectuable
+  # normal linker flags that are used when building and executable
   if '--relocatable' not in args and '-r' not in args:
     cmd += lld_flags_for_executable(external_symbols)
 
@@ -289,7 +288,7 @@ def get_command_with_possible_response_file(cmd):
   return new_cmd
 
 
-# Parses the output of llnm-nm and returns a dictionary of symbols for each file in the output.
+# Parses the output of llvm-nm and returns a dictionary of symbols for each file in the output.
 # This function can be called either for a single file output listing ("llvm-nm a.o", or for
 # multiple files listing ("llvm-nm a.o b.o").
 def parse_llvm_nm_symbols(output):
@@ -463,11 +462,11 @@ def eval_ctors(js_file, wasm_file, debug_info):
 
 
 def get_closure_compiler():
-  # First check if the user configured a specific CLOSURE_COMPILER in thier settings
+  # First check if the user configured a specific CLOSURE_COMPILER in their settings
   if config.CLOSURE_COMPILER:
     return config.CLOSURE_COMPILER
 
-  # Otherwise use the one installed vai npm
+  # Otherwise use the one installed via npm
   cmd = shared.get_npm_cmd('google-closure-compiler')
   if not WINDOWS:
     # Work around an issue that Closure compiler can take up a lot of memory and crash in an error
@@ -557,6 +556,9 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   # should not minify these symbol names.
   CLOSURE_EXTERNS = [path_from_root('src/closure-externs/closure-externs.js')]
 
+  if settings.USE_WEBGPU:
+    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/webgpu-externs.js')]
+
   # Closure compiler needs to know about all exports that come from the wasm module, because to optimize for small code size,
   # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
   # externs file for the exports, Closure is able to reason about the exports.
@@ -638,7 +640,7 @@ def run_closure_cmd(cmd, filename, env, pretty):
 
   for i in range(len(cmd)):
     for prefix in ('--externs', '--js'):
-      # Handle the case where the the flag and the value are two separate arguments.
+      # Handle the case where the flag and the value are two separate arguments.
       if cmd[i] == prefix:
         cmd[i + 1] = move_to_safe_7bit_ascii_filename(cmd[i + 1])
       # and the case where they are one argument, e.g. --externs=foo.js
@@ -743,7 +745,10 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespac
       logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
       js_file = acorn_optimizer(js_file, passes)
       if settings.MINIFY_WASM_IMPORTS_AND_EXPORTS:
-        js_file = minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=settings.MINIFY_ASMJS_EXPORT_NAMES, debug_info=debug_info)
+        js_file = minify_wasm_imports_and_exports(js_file, wasm_file,
+                                                  minify_whitespace=minify_whitespace,
+                                                  minify_exports=settings.MINIFY_WASM_EXPORT_NAMES,
+                                                  debug_info=debug_info)
   return js_file
 
 
@@ -757,7 +762,7 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     # This means that any usages of data symbols within the JS or in the side modules can/will keep
     # these exports alive on the wasm module.
     # This is important today for weak data symbols that are defined by the main and the side module
-    # (i.e.  RTTI info).  We want to make sure the main module's symbols get added to asmLibraryArg
+    # (i.e.  RTTI info).  We want to make sure the main module's symbols get added to wasmImports
     # when the main module is loaded.  If this doesn't happen then the symbols in the side module
     # will take precedence.
     exports = settings.WASM_EXPORTS
@@ -820,7 +825,10 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
   import_name_map = {}
   for item in graph:
     if 'import' in item:
-      import_name_map[item['name']] = 'emcc$import$' + item['import'][1]
+      name = item['import'][1]
+      import_name_map[item['name']] = 'emcc$import$' + name
+      if asmjs_mangle(name) in settings.SIDE_MODULE_IMPORTS:
+        item['root'] = True
   temp = temp_files.get('.json', prefix='emcc_dce_graph_').name
   utils.write_file(temp, json.dumps(graph, indent=2))
   # run wasm-metadce
@@ -935,11 +943,8 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
     if passes:
       # hackish fixups to work around wasm2js style and the js optimizer FIXME
       wasm2js_js = f'// EMSCRIPTEN_START_ASM\n{wasm2js_js}// EMSCRIPTEN_END_ASM\n'
-      wasm2js_js = wasm2js_js.replace('// EMSCRIPTEN_START_FUNCS;\n', '// EMSCRIPTEN_START_FUNCS\n')
-      wasm2js_js = wasm2js_js.replace('// EMSCRIPTEN_END_FUNCS;\n', '// EMSCRIPTEN_END_FUNCS\n')
       wasm2js_js = wasm2js_js.replace('\n function $', '\nfunction $')
       wasm2js_js = wasm2js_js.replace('\n }', '\n}')
-      wasm2js_js += '\n// EMSCRIPTEN_GENERATED_FUNCTIONS\n'
       temp = shared.get_temp_files().get('.js').name
       utils.write_file(temp, wasm2js_js)
       temp = js_optimizer(temp, passes)
@@ -1156,7 +1161,7 @@ def map_to_js_libs(library_name):
     'rt': [],
     'pthread': [],
     # This is the name of GNU's C++ standard library. We ignore it here
-    # for compatability with GNU toolchains.
+    # for compatibility with GNU toolchains.
     'stdc++': [],
   }
   # And some are hybrid and require JS and native libraries to be included
@@ -1322,7 +1327,7 @@ save_intermediate.counter = 0  # type: ignore
 def js_legalization_pass_flags():
   flags = []
   if settings.RELOCATABLE:
-    # When builing in relocatable mode, we also want access the original
+    # When building in relocatable mode, we also want access the original
     # non-legalized wasm functions (since wasm modules can and do link to
     # the original, non-legalized, functions).
     flags += ['--pass-arg=legalize-js-interface-export-originals']

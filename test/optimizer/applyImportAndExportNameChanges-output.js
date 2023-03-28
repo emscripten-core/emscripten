@@ -1,6 +1,6 @@
 var name;
 
-var asmLibraryArg = {
+var wasmImports = {
  "a": 1,
  "A": 33,
  "b": ___syscall6,

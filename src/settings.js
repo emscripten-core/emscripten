@@ -1,14 +1,8 @@
+// Settings that control the emscripten compiler.  These are available to the
+// python code and also as global variables when the JS compiler runs. They
+// are set via the command line.  For example:
 //
-// @license
-// Copyright 2010 The Emscripten Authors
-// SPDX-License-Identifier: MIT
-//
-
-//
-// Various compiler settings. These are simply variables present when the
-// JS compiler runs. To set them, do something like:
-//
-//   emcc -sOPTION1=VALUE1 -sOPTION2=VALUE2 [..other stuff..]
+//   emcc -sOPTION1=VALUE1 -sOPTION2=ITEM1,ITEM2 [..other stuff..]
 //
 // For convenience and readability `-sOPTION` expands to `-sOPTION=1`
 // and `-sNO_OPTION` expands to `-sOPTION=0` (assuming OPTION is a valid
@@ -96,14 +90,6 @@ var INVOKE_RUN = true;
 //  - For a reactor (no a main function) this is always 0
 // [link]
 var EXIT_RUNTIME = false;
-
-// How to represent the initial memory content.
-// 0: embed a base64 string literal representing the initial memory data
-// 1: create a *.mem file containing the binary data of the initial memory;
-
-//    use the --memory-init-file command line switch to select this method
-// [link]
-var MEM_INIT_METHOD = false;
 
 // The total stack size. There is no way to enlarge the stack, so this
 // value must be large enough for the program's requirements. If
@@ -339,9 +325,9 @@ var EXCEPTION_DEBUG = false;
 var DEMANGLE_SUPPORT = false;
 
 // Print out when we enter a library call (library*.js). You can also unset
-// Runtime.debug at runtime for logging to cease, and can set it when you want
+// runtimeDebug at runtime for logging to cease, and can set it when you want
 // it back. A simple way to set it in C++ is
-//   emscripten_run_script("Runtime.debug = ...;");
+//   emscripten_run_script("runtimeDebug = ...;");
 // [link]
 var LIBRARY_DEBUG = false;
 
@@ -714,6 +700,14 @@ var EXCEPTION_CATCHING_ALLOWED = [];
 // example usage.
 var EXPORT_EXCEPTION_HANDLING_HELPERS = false;
 
+// When this is enabled, exceptions will contain stack traces and uncaught
+// exceptions will display stack traces upon exiting. This defaults to true when
+// ASSERTIONS is enabled. This option is for users who want exceptions' stack
+// traces but do not want other overheads ASSERTIONS can incur.
+// This option implies EXPORT_EXCEPTION_HANDLING_HELPERS.
+// [link]
+var EXCEPTION_STACK_TRACES = false;
+
 // Internal: Tracks whether Emscripten should link in exception throwing (C++
 // 'throw') support library. This does not need to be set directly, but pass
 // -fno-exceptions to the build disable exceptions support. (This is basically
@@ -731,21 +725,22 @@ var DISABLE_EXCEPTION_THROWING = false;
 
 // By default we handle exit() in node, by catching the Exit exception. However,
 // this means we catch all process exceptions. If you disable this, then we no
-// longer do that, and exceptions work normally, which can be useful for libraries
-// or programs that don't need exit() to work.
-
+// longer do that, and exceptions work normally, which can be useful for
+// libraries or programs that don't need exit() to work.
+//
 // Emscripten uses an ExitStatus exception to halt when exit() is called.
 // With this option, we prevent that from showing up as an unhandled
 // exception.
 // [link]
 var NODEJS_CATCH_EXIT = true;
 
-// Catch unhandled rejections in node. Without this, node may print the error,
-// and that this behavior will change in future node, wait a few seconds, and
-// then exit with 0 (which hides the error if you don't read the log). With
-// this, we catch any unhandled rejection and throw an actual error, which will
-// make the process exit immediately with a non-0 return code.
-// This should be fixed in Node 15+.
+// Catch unhandled rejections in node. This only effect versions of node older
+// than 15.  Without this, old version node will print a warning, but exit
+// with a zero return code.  With this setting enabled, we handle any unhandled
+// rejection and throw an exception, which will cause  the process exit
+// immediately with a non-0 return code.
+// This not needed in Node 15+ so this setting will default to false if
+// MIN_NODE_VERSION is 150000 or above.
 // [link]
 var NODEJS_CATCH_REJECTION = true;
 
@@ -991,8 +986,13 @@ var EXPORTED_FUNCTIONS = [];
 // [link]
 var EXPORT_ALL = false;
 
+// If true, we export the symbols that are present in JS onto the Module
+// object.
+// It only does Module['X'] = X;
+var EXPORT_KEEPALIVE = true;
+
 // Remembers the values of these settings, and makes them accessible
-// through Runtime.getCompilerSetting and emscripten_get_compiler_setting.
+// through getCompilerSetting and emscripten_get_compiler_setting.
 // To see what is retained, look for compilerSettings in the generated code.
 // [link]
 var RETAIN_COMPILER_SETTINGS = false;
@@ -1262,7 +1262,7 @@ var EXPORT_NAME = 'Module';
 // in particular the 'unsafe-eval' and 'wasm-unsafe-eval' policies.
 //
 // When this flag is set, the following features (linker flags) are unavailable:
-//  -sRELOCATABLE: the function Runtime.loadDynamicLibrary would need to eval().
+//  -sRELOCATABLE: the function loadDynamicLibrary would need to eval().
 // and some features may fall back to slower code paths when they need to:
 // Embind: uses eval() to jit functions for speed.
 //
@@ -1292,6 +1292,7 @@ var EMSCRIPTEN_TRACING = false;
 // Specify the GLFW version that is being linked against.  Only relevant, if you
 // are linking against the GLFW library.  Valid options are 2 for GLFW2 and 3
 // for GLFW3.
+// In MINIMAL_RUNTIME builds, this option defaults to 0.
 // [link]
 var USE_GLFW = 2;
 
@@ -1412,7 +1413,7 @@ var LEGALIZE_JS_FFI = true;
 // When AUTO_JS_LIBRARIES is set to 0 this defaults to 0 and SDL
 // is not linked in.
 // [compile+link]
-var USE_SDL = 1;
+var USE_SDL = 0;
 
 // Specify the SDL_gfx version that is being linked against. Must match USE_SDL
 // [compile+link]
@@ -1512,24 +1513,24 @@ var SDL2_MIXER_FORMATS = ["ogg"];
 // [compile+link]
 var USE_SQLITE3 = false;
 
-// If true, the current build is performed for the Emscripten test harness.
-// [other]
-var IN_TEST_HARNESS = false;
-
 // If 1, target compiling a shared Wasm Memory.
 // [compile+link] - affects user code at compile and system libraries at link.
 var SHARED_MEMORY = false;
-
-// If true, enables support for pthreads. This implies SHARED_MEMORY.
-// This setting is equivalent to `-pthread`, which should be preferred.
-// [compile+link] - affects user code at compile and system libraries at link.
-var USE_PTHREADS = false;
 
 // If true, enables support for Wasm Workers. Wasm Workers enable applications
 // to create threads using a lightweight web-specific API that builds on top
 // of Wasm SharedArrayBuffer + Atomics API.
 // [compile+link] - affects user code at compile and system libraries at link.
 var WASM_WORKERS = 0;
+
+// If true, enables targeting Wasm Web Audio AudioWorklets. Check out the
+// full documentation in site/source/docs/api_reference/wasm_audio_worklets.rst
+// [link]
+var AUDIO_WORKLET = 0;
+
+// If true, enables deep debugging of Web Audio backend.
+// [link]
+var WEBAUDIO_DEBUG = 0;
 
 // In web browsers, Workers cannot be created while the main browser thread
 // is executing JS/Wasm code, but the main thread must regularly yield back
@@ -1587,18 +1588,14 @@ var PTHREAD_POOL_SIZE_STRICT = 1;
 // [link] - affects generated JS runtime code at link time
 var PTHREAD_POOL_DELAY_LOAD = false;
 
-// If not explicitly specified, this is the stack size to use for newly created
-// pthreads.  According to
-// http://man7.org/linux/man-pages/man3/pthread_create.3.html, default stack
-// size on Linux/x86-32 for a new thread is 2 megabytes, so follow the same
-// convention. Use pthread_attr_setstacksize() at thread creation time to
-// explicitly specify the stack size, in which case this value is ignored. Note
-// that the wasm function call control flow stack is separate from this
-// stack, and this stack only contains certain function local variables, such as
-// those that have their addresses taken, or ones that are too large to fit as
-// local vars in wasm code.
+// Default stack size to use for newly created pthreads.  When not set, this
+// defaults to STACK_SIZE (which in turn defaults to 64k).  Can also be set at
+// runtime using pthread_attr_setstacksize().  Note that the wasm control flow
+// stack is separate from this stack.  This stack only contains certain function
+// local variables, such as those that have their addresses taken, or ones that
+// are too large to fit as local vars in wasm code.
 // [link]
-var DEFAULT_PTHREAD_STACK_SIZE = 64*1024;
+var DEFAULT_PTHREAD_STACK_SIZE = 0;
 
 // True when building with --threadprofiler
 // [link]
@@ -1795,6 +1792,12 @@ var MIN_EDGE_VERSION = 0x7FFFFFFF;
 // [link]
 var MIN_CHROME_VERSION = 75;
 
+// Specifies minimum node version to target for the generated code.  This is
+// distinct from the minimum version required run the emscripten compiler.
+// This version aligns with the current Ubuuntu TLS 20.04 (Focal).
+// Version is encoded in MMmmVV, e.g. 1814101 denotes Node 18.14.01.
+var MIN_NODE_VERSION = 101900;
+
 // Tracks whether we are building with errno support enabled. Set to 0
 // to disable compiling errno support in altogether. This saves a little
 // bit of generated code size in applications that do not care about
@@ -1810,7 +1813,10 @@ var SUPPORT_ERRNO = true;
 // MINIMAL_RUNTIME=2 to further enable even more code size optimizations. These
 // opts are quite hacky, and work around limitations in Closure and other parts
 // of the build system, so they may not work in all generated programs (But can
-// be useful for really small programs)
+// be useful for really small programs).
+//
+// By default, no symbols will be exported on the `Module` object. In order
+// to export kept alive symbols, please use `-sEXPORT_KEEPALIVE=1`.
 // [link]
 var MINIMAL_RUNTIME = 0;
 
@@ -1860,7 +1866,8 @@ var USES_DYNAMIC_ALLOC = true;
 // 'emscripten': (default) Emscripten setjmp/longjmp handling using JavaScript
 // 'wasm': setjmp/longjmp handling using Wasm EH instructions (experimental)
 // 0: No setjmp/longjmp handling
-// 1: Default setjmp/longjmp/handling. Currently 'emscripten'.
+// 1: Default setjmp/longjmp/handling, depending on the mode of exceptions.
+//    'wasm' if '-fwasm-exception' is used, 'emscripten' otherwise.
 //
 // [compile+link] - at compile time this enables the transformations needed for
 // longjmp support at codegen time, while at link it allows linking in the
@@ -1917,16 +1924,8 @@ var ASAN_SHADOW_SIZE = -1
 var USE_OFFSET_CONVERTER = false;
 
 // Whether we should load the WASM source map at runtime.
-// This is enabled automatically when using -g4 with sanitizers.
+// This is enabled automatically when using -gsource-map with sanitizers.
 var LOAD_SOURCE_MAP = false;
-
-// If set to 0, delay undefined symbol report until after wasm-ld runs.  This
-// avoids running the the JS compiler prior to wasm-ld, but reduces the amount
-// of information in the undefined symbol message (Since JS compiler cannot
-// report the name of the object file that contains the reference to the
-// undefined symbol).
-// [link]
-var LLD_REPORT_UNDEFINED = true;
 
 // Default to c++ mode even when run as `emcc` rather then `emc++`.
 // When this is disabled `em++` is required when compiling and linking C++
@@ -2012,7 +2011,7 @@ var PURE_WASI = false;
 // it to JavaScript.
 // Use of the following settings will enable this settings since they
 // depend on being able to define the memory in JavaScript:
-// - USE_PTHREADS
+// - -pthread
 // - RELOCATABLE
 // - ASYNCIFY_LAZY_LOAD_CODE
 // - WASM2JS (WASM=0)
@@ -2173,4 +2172,7 @@ var LEGACY_SETTINGS = [
   ['LIBRARY_DEPS_TO_AUTOEXPORT', [[]], 'No longer needed'],
   ['EMIT_EMSCRIPTEN_METADATA', [0], 'No longer supported'],
   ['SHELL_FILE', [''], 'No longer supported'],
+  ['LLD_REPORT_UNDEFINED', [1], 'Disabling is no longer supported'],
+  ['MEM_INIT_METHOD', [0], 'No longer supported'],
+  ['USE_PTHREADS', [0, 1], 'No longer needed. Use -pthread instead'],
 ];

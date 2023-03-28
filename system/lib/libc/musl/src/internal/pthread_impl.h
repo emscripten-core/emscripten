@@ -10,8 +10,10 @@
 #include "syscall.h"
 #include "atomic.h"
 #ifdef __EMSCRIPTEN__
-#include <emscripten/threading.h>
+#include "em_task_queue.h"
+#include "thread_mailbox.h"
 #include "threading_internal.h"
+#include <emscripten/threading.h>
 #endif
 #include "futex.h"
 
@@ -78,6 +80,30 @@ struct pthread {
 	// The TLS base to use the main module TLS data.  Secondary modules
 	// still require dynamic allocation.
 	void* tls_base;
+	// The lowest level of the proxying system. Other threads can enqueue
+	// messages on the mailbox and notify this thread to asynchronously
+	// process them once it returns to its event loop. When this thread is
+	// shut down, the mailbox is closed (see below) to prevent further
+	// messages from being enqueued and all the remaining queued messages
+	// are dequeued and their shutdown handlers are executed. This allows
+	// other threads waiting for their messages to be processed to be
+	// notified that their messages will not be processed after all.
+	em_task_queue* mailbox;
+	// To ensure that no other thread is concurrently enqueueing a message
+	// when this thread shuts down, maintain an atomic refcount. Enqueueing
+	// threads atomically increment the count from a nonzero number to
+	// acquire the mailbox and decrement the count when they finish. When
+	// this thread shuts down it will atomically decrement the count and
+	// wait until it reaches 0, at which point the mailbox is considered
+	// closed and no further messages will be enqueued.
+	_Atomic int mailbox_refcount;
+	// Whether the thread has executed a `waitAsync` on this pthread struct
+	// and can be notified of new mailbox messages via `Atomics.notify`.
+	// Otherwise the notification has to fall back to the postMessage path.
+	_Atomic int waiting_async;
+#endif
+#if _REENTRANT
+	_Atomic char sleeping;
 #endif
 };
 

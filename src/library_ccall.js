@@ -15,7 +15,7 @@ mergeInto(LibraryManager.library, {
   },
 
   // C calling interface.
-  $ccall__deps: ['$getCFunc', '$writeArrayToMemory'],
+  $ccall__deps: ['$getCFunc', '$writeArrayToMemory', '$allocateUTF8OnStack'],
   $ccall__docs: `
   /**
    * @param {string|null=} returnType
@@ -33,9 +33,7 @@ mergeInto(LibraryManager.library, {
         var ret = 0;
         if (str !== null && str !== undefined && str !== 0) { // null string
           // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
-          var len = (str.length << 2) + 1;
-          ret = stackAlloc(len);
-          stringToUTF8(str, ret, len);
+          ret = allocateUTF8OnStack(str);
         }
         return {{{ to64('ret') }}};
       },
@@ -130,10 +128,9 @@ mergeInto(LibraryManager.library, {
   $cwrap__deps: ['$getCFunc', '$ccall'],
   $cwrap: function(ident, returnType, argTypes, opts) {
 #if !ASSERTIONS
-    argTypes = argTypes || [];
     // When the function takes numbers and returns a number, we can just return
     // the original function
-    var numericArgs = argTypes.every((type) => type === 'number' || type === 'boolean');
+    var numericArgs = !argTypes || argTypes.every((type) => type === 'number' || type === 'boolean');
     var numericRet = returnType !== 'string';
     if (numericRet && numericArgs && !opts) {
       return getCFunc(ident);

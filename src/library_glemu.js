@@ -3036,13 +3036,10 @@ var LibraryGLEmulation = {
       }
     },
 
-    flush: function flush(numProvidedIndexes, startIndex, ptr) {
+    flush: function flush(numProvidedIndexes, startIndex = 0, ptr = 0) {
 #if ASSERTIONS
       assert(numProvidedIndexes >= 0 || !numProvidedIndexes);
 #endif
-      startIndex = startIndex || 0;
-      ptr = ptr || 0;
-
       var renderer = GLImmediate.getRenderer();
 
       // Generate index data in a format suitable for GLES 2.0/WebGL
@@ -3884,16 +3881,16 @@ var LibraryGLEmulation = {
 
   // Open GLES1.1 compatibility
 
-  glGenFramebuffersOES : 'glGenFramebuffers',
-  glGenRenderbuffersOES : 'glGenRenderbuffers',
-  glBindFramebufferOES : 'glBindFramebuffer',
-  glBindRenderbufferOES : 'glBindRenderbuffer',
-  glGetRenderbufferParameterivOES : 'glGetRenderbufferParameteriv',
-  glFramebufferRenderbufferOES : 'glFramebufferRenderbuffer',
-  glRenderbufferStorageOES : 'glRenderbufferStorage',
-  glCheckFramebufferStatusOES : 'glCheckFramebufferStatus',
-  glDeleteFramebuffersOES : 'glDeleteFramebuffers',
-  glDeleteRenderbuffersOES : 'glDeleteRenderbuffers',
+  glGenFramebuffersOES: 'glGenFramebuffers',
+  glGenRenderbuffersOES: 'glGenRenderbuffers',
+  glBindFramebufferOES: 'glBindFramebuffer',
+  glBindRenderbufferOES: 'glBindRenderbuffer',
+  glGetRenderbufferParameterivOES: 'glGetRenderbufferParameteriv',
+  glFramebufferRenderbufferOES: 'glFramebufferRenderbuffer',
+  glRenderbufferStorageOES: 'glRenderbufferStorage',
+  glCheckFramebufferStatusOES: 'glCheckFramebufferStatus',
+  glDeleteFramebuffersOES: 'glDeleteFramebuffers',
+  glDeleteRenderbuffersOES: 'glDeleteRenderbuffers',
   glFramebufferTexture2DOES: 'glFramebufferTexture2D',
 
   // GLU

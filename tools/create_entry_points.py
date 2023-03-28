@@ -39,6 +39,8 @@ emdwp
 emnm
 emstrip
 emsymbolizer
+system/bin/sdl-config
+system/bin/sdl2-config
 tools/file_packager
 tools/webidl_binder
 test/runner

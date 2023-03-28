@@ -26,18 +26,10 @@ function run() {
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
-#if USE_PTHREADS
+#if PTHREADS
   PThread.terminateAllThreads();
 #endif
 
-#endif
-
-#if IN_TEST_HARNESS && hasExportedSymbol('flush')
-  // flush any stdio streams for test harness, since there are existing
-  // tests that depend on this behavior.
-  // For production use, instead print full lines to avoid this kind of lazy
-  // behavior.
-  _fflush();
 #endif
 
 #if EXIT_RUNTIME
@@ -61,7 +53,7 @@ function initRuntime(asm) {
   runtimeInitialized = true;
 #endif
 
-#if USE_PTHREADS
+#if PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) {
     // Export needed variables that worker.js needs to Module.
     Module['HEAPU32'] = HEAPU32;
@@ -84,7 +76,7 @@ function initRuntime(asm) {
 #endif
 #endif
 
-#if USE_PTHREADS
+#if PTHREADS
   PThread.tlsInitFunctions.push(asm['_emscripten_tls_init']);
 #endif
 
@@ -99,10 +91,10 @@ function initRuntime(asm) {
 
 var imports = {
 #if MINIFY_WASM_IMPORTED_MODULES
-  'a': asmLibraryArg,
+  'a': wasmImports,
 #else // MINIFY_WASM_IMPORTED_MODULES
-  'env': asmLibraryArg
-  , '{{{ WASI_MODULE_NAME }}}': asmLibraryArg
+  'env': wasmImports,
+  '{{{ WASI_MODULE_NAME }}}': wasmImports,
 #endif // MINIFY_WASM_IMPORTED_MODULES
 };
 
@@ -112,7 +104,7 @@ var imports = {
 var asm;
 #endif
 
-#if USE_PTHREADS
+#if PTHREADS
 var wasmModule;
 #endif
 
@@ -159,14 +151,14 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   // output.module objects. But if Module['wasm'] is an already compiled
   // WebAssembly module, then output is the WebAssembly instance itself.
   // Depending on the build mode, Module['wasm'] can mean a different thing.
-#if MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION || MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION || USE_PTHREADS
+#if MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION || MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION || PTHREADS
   // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
   // Firefox 52 added Wasm support, but only Firefox 58 added compileStreaming &
   // instantiateStreaming.
   // Chrome 57 added Wasm support, but only Chrome 61 added compileStreaming &
   // instantiateStreaming.
   // Node.js and Safari do not support compileStreaming or instantiateStreaming.
-#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || ENVIRONMENT_MAY_BE_NODE || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || USE_PTHREADS
+#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || ENVIRONMENT_MAY_BE_NODE || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || PTHREADS
   // In pthreads, Module['wasm'] is an already compiled WebAssembly.Module. In
   // that case, 'output' is a WebAssembly.Instance.
   // In main thread, Module['wasm'] is either a typed array or a fetch stream.
@@ -184,7 +176,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 
 #if USE_OFFSET_CONVERTER
-#if USE_PTHREADS
+#if PTHREADS
   if (!ENVIRONMENT_IS_PTHREAD)
 #endif
     wasmOffsetConverter = new WasmOffsetConverter(Module['wasm'], output.module);
@@ -200,16 +192,34 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   assert(wasmTable);
 #endif
 
+#if AUDIO_WORKLET
+  // If we are in the audio worklet environment, we can only access the Module object
+  // and not the global scope of the main JS script. Therefore we need to export
+  // all functions that the audio worklet scope needs onto the Module object.
+  Module['wasmTable'] = wasmTable;
+#if ASSERTIONS
+  // In ASSERTIONS-enabled builds, the following symbols have gotten read-only getters
+  // saved to the Module. Remove those getters so we can manually export the stack
+  // functions here.
+  delete Module['stackSave'];
+  delete Module['stackAlloc'];
+  delete Module['stackRestore'];
+#endif
+  Module['stackSave'] = stackSave;
+  Module['stackAlloc'] = stackAlloc;
+  Module['stackRestore'] = stackRestore;
+#endif
+
 #if !IMPORTED_MEMORY
   wasmMemory = asm['memory'];
 #if ASSERTIONS
   assert(wasmMemory);
   assert(wasmMemory.buffer.byteLength === {{{ INITIAL_MEMORY }}});
 #endif
-  updateGlobalBufferAndViews(wasmMemory.buffer);
+  updateMemoryViews();
 #endif
 
-#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE
+#if !MEM_INIT_IN_WASM && !SINGLE_FILE
 #if ASSERTIONS
   if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
 #endif
@@ -217,7 +227,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 
   initRuntime(asm);
-#if USE_PTHREADS
+#if PTHREADS
   // Export Wasm module for pthread creation to access.
   wasmModule = output.module || Module['wasm'];
   PThread.loadWasmModuleToAllWorkers(ready);

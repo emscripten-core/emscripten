@@ -83,10 +83,10 @@ int main()
 		{
 			if (thread[i])
 			{
-				int status;
+				intptr_t status;
 				int rc = pthread_join(thread[i], (void**)&status);
 				assert(rc == 0);
-				printf("Main: Joined thread idx %ld with status %d\n", i, status);
+				printf("Main: Joined thread idx %ld with status %lu\n", i, status);
 				assert(status == 0);
 				thread[i] = 0;
 				if (numThreadsToCreate > 0)
@@ -102,10 +102,10 @@ int main()
 	{
 			if (thread[i])
 			{
-				int status = 1;
+				intptr_t status = 1;
 				int rc = pthread_join(thread[i], (void**)&status);
 				assert(rc == 0);
-				printf("Main: Joined thread idx %d with status %d\n", i, status);
+				printf("Main: Joined thread idx %d with status %lu\n", i, status);
 				assert(status == 0);
 			}
 	}

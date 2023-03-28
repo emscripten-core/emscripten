@@ -93,6 +93,12 @@ EM_JS(int, _prefixed, (void), {
   return 1;
 });
 
+EM_JS(int, transitive, (void), {
+  // Verify that EM_JS functions can call other EM_JS functions by their
+  // unmangled name.
+  return noarg_int();
+});
+
 int main() {
   printf("BEGIN\n");
   noarg();
@@ -118,6 +124,7 @@ int main() {
   free(s2);
 
   printf("    _prefixed: %d\n", _prefixed());
+  printf("    transitive: %d\n", transitive());
 
   printf("END\n");
   return 0;

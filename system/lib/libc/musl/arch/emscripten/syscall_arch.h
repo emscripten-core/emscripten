@@ -38,8 +38,6 @@ int __syscall_fchmod(int fd, int mode);
 int __syscall_getpriority(int which, int who);
 int __syscall_setpriority(int which, int who, int prio);
 int __syscall_socketcall(int call, intptr_t args);
-int __syscall_setitimer(int which, intptr_t new_value, intptr_t old_value);
-int __syscall_getitimer(int which, intptr_t  old_value);
 int __syscall_wait4(int pid, intptr_t wstatus, int options, int rusage);
 int __syscall_setdomainname(intptr_t name, size_t size);
 int __syscall_uname(intptr_t buf);
@@ -107,7 +105,7 @@ int __syscall_prlimit64(int pid, int resource, intptr_t new_limit, intptr_t old_
 int __syscall_sendmmsg(int sockfd, intptr_t msgvec, size_t vlen, int flags, ...);
 int __syscall_socket(int domain, int type, int protocol, int dummy1, int dummy2, int dummy3);
 int __syscall_socketpair(int domain, int type, int protocol, intptr_t fds, int dummy, int dummy2);
-int __syscall_bind(int sockfd, intptr_t addr, size_t alen, int dummy, int dymmy2, int dummy3);
+int __syscall_bind(int sockfd, intptr_t addr, size_t alen, int dummy, int dummy2, int dummy3);
 int __syscall_connect(int sockfd, intptr_t addr, size_t len, int dummy, int dummy2, int dummy3);
 int __syscall_listen(int sockfd, int backlock, int dummy1, int dummy2, int dummy3, int dummy4);
 int __syscall_accept4(int sockfd, intptr_t addr, intptr_t addrlen, int flags, int dummy1, int dummy2);

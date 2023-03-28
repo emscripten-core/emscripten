@@ -738,7 +738,7 @@
             "EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK",
             "EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS",
 
-            "EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD",
+            "EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD",
             "EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD",
 
             "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION",
@@ -915,7 +915,6 @@
         "file": "emscripten/threading.h",
         "defines": [
             "EM_PROXIED_RESIZE_OFFSCREENCANVAS",
-            "EM_QUEUED_JS_CALL_MAX_ARGS",
             "EM_FUNC_SIG_V",
             "EM_FUNC_SIG_VI",
             "EM_FUNC_SIG_VII",
@@ -1032,6 +1031,15 @@
                 "asyncify_data"
             ]
         }
+    },
+    {
+        "file": "emscripten/promise.h",
+        "defines": [
+            "EM_PROMISE_FULFILL",
+            "EM_PROMISE_MATCH",
+            "EM_PROMISE_MATCH_RELEASE",
+            "EM_PROMISE_REJECT"
+        ]
     },
     {
         "file": "AL/al.h",

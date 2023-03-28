@@ -9,12 +9,17 @@
 {{{ throw "this file should not be be included when IMPORTED_MEMORY is set"; }}}
 #endif
 
-#if USE_PTHREADS
+{{{ makeModuleReceiveWithVar('INITIAL_MEMORY', undefined, INITIAL_MEMORY) }}}
+
+assert(INITIAL_MEMORY >= {{{STACK_SIZE}}}, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + {{{STACK_SIZE}}} + ')');
+
+// check for full engine support (use string 'subarray' to avoid closure compiler confusion)
+
+#if PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
   wasmMemory = Module['wasmMemory'];
-  buffer = Module['buffer'];
 } else {
-#endif // USE_PTHREADS
+#endif // PTHREADS
 
 #if expectToReceiveOnModule('wasmMemory')
   if (Module['wasmMemory']) {
@@ -50,18 +55,15 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
   }
 
-#if USE_PTHREADS
+#if PTHREADS
 }
 #endif
 
-if (wasmMemory) {
-  buffer = wasmMemory.buffer;
-}
+updateMemoryViews();
 
 // If the user provides an incorrect length, just use that length instead rather than providing the user to
 // specifically provide the memory length with Module['INITIAL_MEMORY'].
-INITIAL_MEMORY = buffer.byteLength;
+INITIAL_MEMORY = wasmMemory.buffer.byteLength;
 #if ASSERTIONS
 assert(INITIAL_MEMORY % {{{ WASM_PAGE_SIZE }}} === 0);
 #endif
-updateGlobalBufferAndViews(buffer);

@@ -249,7 +249,7 @@ var LibraryBrowser = {
       // Use string keys here to avoid minification since the plugin consumer
       // also uses string keys.
       var wasmPlugin = {
-        'asyncWasmLoadPromise': new Promise(function(resolve, reject) { return resolve(); }),
+        'promiseChainEnd': Promise.resolve(),
         'canHandle': function(name) {
           return !Module.noWasmDecoding && name.endsWith('.so')
         },
@@ -257,7 +257,7 @@ var LibraryBrowser = {
           // loadWebAssemblyModule can not load modules out-of-order, so rather
           // than just running the promises in parallel, this makes a chain of
           // promises to run in series.
-          wasmPlugin['asyncWasmLoadPromise'] = wasmPlugin['asyncWasmLoadPromise'].then(
+          wasmPlugin['promiseChainEnd'] = wasmPlugin['promiseChainEnd'].then(
             () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true})).then(
               (module) => {
                 preloadedWasm[name] = module;
@@ -779,7 +779,6 @@ var LibraryBrowser = {
 
   emscripten_run_preload_plugins__deps: ['$PATH'],
   emscripten_run_preload_plugins__proxy: 'sync',
-  emscripten_run_preload_plugins__sig: 'iiii',
   emscripten_run_preload_plugins: function(file, onload, onerror) {
     {{{ runtimeKeepalivePush() }}}
 
@@ -804,16 +803,14 @@ var LibraryBrowser = {
   },
 
   emscripten_run_preload_plugins_data__proxy: 'sync',
-  emscripten_run_preload_plugins_data__sig: 'viiiiii',
+  emscripten_run_preload_plugins_data__deps: ['$allocateUTF8'],
   emscripten_run_preload_plugins_data: function(data, size, suffix, arg, onload, onerror) {
     {{{ runtimeKeepalivePush() }}}
 
     var _suffix = UTF8ToString(suffix);
     if (!Browser.asyncPrepareDataCounter) Browser.asyncPrepareDataCounter = 0;
     var name = 'prepare_data_' + (Browser.asyncPrepareDataCounter++) + '.' + _suffix;
-    var lengthAsUTF8 = lengthBytesUTF8(name);
-    var cname = _malloc(lengthAsUTF8+1);
-    stringToUTF8(name, cname, lengthAsUTF8+1);
+    var cname = allocateUTF8(name);
     FS.createPreloadedFile(
       '/',
       name,
@@ -845,7 +842,7 @@ var LibraryBrowser = {
     onload = {{{ makeDynCall('v', 'onload') }}};
     onerror = {{{ makeDynCall('v', 'onerror') }}};
 
-#if USE_PTHREADS
+#if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
       err('emscripten_async_load_script("' + UTF8ToString(url) + '") failed, emscripten_async_load_script is currently not available in pthreads!');
       return onerror ? onerror() : undefined;
@@ -874,14 +871,12 @@ var LibraryBrowser = {
   },
 
   // Runs natively in pthread, no __proxy needed.
-  emscripten_get_main_loop_timing__sig: 'vii',
   emscripten_get_main_loop_timing: function(mode, value) {
     if (mode) {{{ makeSetValue('mode', 0, 'Browser.mainLoop.timingMode', 'i32') }}};
     if (value) {{{ makeSetValue('value', 0, 'Browser.mainLoop.timingValue', 'i32') }}};
   },
 
   // Runs natively in pthread, no __proxy needed.
-  emscripten_set_main_loop_timing__sig: 'iii',
   emscripten_set_main_loop_timing: function(mode, value) {
     Browser.mainLoop.timingMode = mode;
     Browser.mainLoop.timingValue = value;
@@ -941,7 +936,6 @@ var LibraryBrowser = {
   },
 
   emscripten_set_main_loop__deps: ['$setMainLoop'],
-  emscripten_set_main_loop__sig: 'viii',
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop) {
     var browserIterationFunc = {{{ makeDynCall('v', 'func') }}};
     setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop);
@@ -1048,7 +1042,7 @@ var LibraryBrowser = {
       GL.newRenderingFrameStarted();
 #endif
 
-#if USE_PTHREADS && OFFSCREEN_FRAMEBUFFER && GL_SUPPORT_EXPLICIT_SWAP_CONTROL
+#if PTHREADS && OFFSCREEN_FRAMEBUFFER && GL_SUPPORT_EXPLICIT_SWAP_CONTROL
       // If the current GL context is a proxied regular WebGL context, and was initialized with implicit swap mode on the main thread, and we are on the parent thread,
       // perform the swap on behalf of the user.
       if (typeof GL != 'undefined' && GL.currentContext && GL.currentContextIsProxied) {
@@ -1103,27 +1097,23 @@ var LibraryBrowser = {
 
   // Runs natively in pthread, no __proxy needed.
   emscripten_set_main_loop_arg__deps: ['$setMainLoop'],
-  emscripten_set_main_loop_arg__sig: 'viiii',
   emscripten_set_main_loop_arg: function(func, arg, fps, simulateInfiniteLoop) {
     var browserIterationFunc = () => {{{ makeDynCall('vi', 'func') }}}(arg);
     setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop, arg);
   },
 
   // Runs natively in pthread, no __proxy needed.
-  emscripten_cancel_main_loop__sig: 'v',
   emscripten_cancel_main_loop: function() {
     Browser.mainLoop.pause();
     Browser.mainLoop.func = null;
   },
 
   // Runs natively in pthread, no __proxy needed.
-  emscripten_pause_main_loop__sig: 'v',
   emscripten_pause_main_loop: function() {
     Browser.mainLoop.pause();
   },
 
   // Runs natively in pthread, no __proxy needed.
-  emscripten_resume_main_loop__sig: 'v',
   emscripten_resume_main_loop: function() {
     Browser.mainLoop.resume();
   },
@@ -1145,7 +1135,6 @@ var LibraryBrowser = {
   },
 
   // Runs natively in pthread, no __proxy needed.
-  emscripten_set_main_loop_expected_blockers__sig: 'vi',
   emscripten_set_main_loop_expected_blockers: function(num) {
     Browser.mainLoop.expectedBlockers = num;
     Browser.mainLoop.remainingBlockers = num;
@@ -1153,7 +1142,6 @@ var LibraryBrowser = {
   },
 
   // Runs natively in pthread, no __proxy needed.
-  emscripten_async_call__sig: 'vppi',
   emscripten_async_call__deps: ['$safeSetTimeout'],
   emscripten_async_call: function(func, arg, millis) {
     function wrapper() {
@@ -1173,7 +1161,6 @@ var LibraryBrowser = {
   },
 
   emscripten_get_window_title__proxy: 'sync',
-  emscripten_get_window_title__sig: 'iv',
   emscripten_get_window_title: function() {
     var buflen = 256;
 
@@ -1187,20 +1174,17 @@ var LibraryBrowser = {
   },
 
   emscripten_set_window_title__proxy: 'sync',
-  emscripten_set_window_title__sig: 'vi',
   emscripten_set_window_title: function(title) {
     setWindowTitle(UTF8ToString(title));
   },
 
   emscripten_get_screen_size__proxy: 'sync',
-  emscripten_get_screen_size__sig: 'vii',
   emscripten_get_screen_size: function(width, height) {
     {{{ makeSetValue('width', '0', 'screen.width', 'i32') }}};
     {{{ makeSetValue('height', '0', 'screen.height', 'i32') }}};
   },
 
   emscripten_hide_mouse__proxy: 'sync',
-  emscripten_hide_mouse__sig: 'v',
   emscripten_hide_mouse: function() {
     var styleSheet = document.styleSheets[0];
     var rules = styleSheet.cssRules;
@@ -1214,13 +1198,11 @@ var LibraryBrowser = {
   },
 
   emscripten_set_canvas_size__proxy: 'sync',
-  emscripten_set_canvas_size__sig: 'vii',
   emscripten_set_canvas_size: function(width, height) {
     Browser.setCanvasSize(width, height);
   },
 
   emscripten_get_canvas_size__proxy: 'sync',
-  emscripten_get_canvas_size__sig: 'viii',
   emscripten_get_canvas_size: function(width, height, isFullscreen) {
     var canvas = Module['canvas'];
     {{{ makeSetValue('width', '0', 'canvas.width', 'i32') }}};
@@ -1230,7 +1212,6 @@ var LibraryBrowser = {
 
   // To avoid creating worker parent->child chains, always proxies to execute on the main thread.
   emscripten_create_worker__proxy: 'sync',
-  emscripten_create_worker__sig: 'ii',
   emscripten_create_worker: function(url) {
     url = UTF8ToString(url);
     var id = Browser.workers.length;
@@ -1273,7 +1254,6 @@ var LibraryBrowser = {
   },
 
   emscripten_destroy_worker__proxy: 'sync',
-  emscripten_destroy_worker__sig: 'vi',
   emscripten_destroy_worker: function(id) {
     var info = Browser.workers[id];
     info.worker.terminate();
@@ -1282,7 +1262,6 @@ var LibraryBrowser = {
   },
 
   emscripten_call_worker__proxy: 'sync',
-  emscripten_call_worker__sig: 'viiiiii',
   emscripten_call_worker: function(id, funcName, data, size, callback, arg) {
     funcName = UTF8ToString(funcName);
     var info = Browser.workers[id];
@@ -1348,16 +1327,14 @@ var LibraryBrowser = {
 #endif
 
   emscripten_get_worker_queue_size__proxy: 'sync',
-  emscripten_get_worker_queue_size__sig: 'i',
   emscripten_get_worker_queue_size: function(id) {
     var info = Browser.workers[id];
     if (!info) return -1;
     return info.awaited;
   },
 
-  emscripten_get_preloaded_image_data__deps: ['$PATH_FS'],
+  emscripten_get_preloaded_image_data__deps: ['$PATH_FS', 'malloc'],
   emscripten_get_preloaded_image_data__proxy: 'sync',
-  emscripten_get_preloaded_image_data__sig: 'iiii',
   emscripten_get_preloaded_image_data: function(path, w, h) {
     if ((path | 0) === path) path = UTF8ToString(path);
 
@@ -1379,11 +1356,10 @@ var LibraryBrowser = {
     return 0;
   },
 
-  emscripten_get_preloaded_image_data_from_FILE__deps: ['emscripten_get_preloaded_image_data'],
+  emscripten_get_preloaded_image_data_from_FILE__deps: ['emscripten_get_preloaded_image_data', 'fileno'],
   emscripten_get_preloaded_image_data_from_FILE__proxy: 'sync',
-  emscripten_get_preloaded_image_data_from_FILE__sig: 'iiii',
   emscripten_get_preloaded_image_data_from_FILE: function(file, w, h) {
-    var fd = Module['_fileno'](file);
+    var fd = _fileno(file);
     var stream = FS.getStream(fd);
     if (stream) {
       return _emscripten_get_preloaded_image_data(stream.path, w, h);

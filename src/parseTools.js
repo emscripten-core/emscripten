@@ -8,10 +8,8 @@
  * Tests live in test/other/test_parseTools.js.
  */
 
-globalThis.FOUR_GB = 4 * 1024 * 1024 * 1024;
+global.FOUR_GB = 4 * 1024 * 1024 * 1024;
 const FLOAT_TYPES = new Set(['float', 'double']);
-
-let currentlyParsedFilename = '';
 
 // Does simple 'macro' substitution, using Django-like syntax,
 // {{{ code }}} will be replaced with |eval(code)|.
@@ -34,9 +32,8 @@ function processMacros(text) {
 // Simple #if/else/endif preprocessing for a file. Checks if the
 // ident checked is true in our global.
 // Also handles #include x.js (similar to C #include <file>)
-// Param filenameHint can be passed as a description to identify the file that is being processed, used
-// to locate errors for reporting and for html files to stop expansion between <style> and </style>.
-function preprocess(text, filenameHint) {
+function preprocess(filename) {
+  let text = read(filename);
   if (EXPORT_ES6 && USE_ES6_IMPORT_META) {
     // `eval`, Terser and Closure don't support module syntax; to allow it,
     // we need to temporarily replace `import.meta` and `await import` usages
@@ -46,6 +43,8 @@ function preprocess(text, filenameHint) {
       .replace(/\bimport\.meta\b/g, 'EMSCRIPTEN$IMPORT$META')
       .replace(/\bawait import\b/g, 'EMSCRIPTEN$AWAIT$IMPORT');
   }
+  // Remove windows line endings, if any
+  text = text.replace(/\r\n/g, '\n');
 
   const IGNORE = 0;
   const SHOW = 1;
@@ -56,8 +55,9 @@ function preprocess(text, filenameHint) {
   const showStack = [];
   const showCurrentLine = () => showStack.every((x) => x == SHOW);
 
-  currentlyParsedFilename = filenameHint;
-  const fileExt = (filenameHint) ? filenameHint.split('.').pop().toLowerCase() : '';
+  const oldFilename = currentFile;
+  currentFile = filename;
+  const fileExt = filename.split('.').pop().toLowerCase();
   const isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
   let inStyle = false;
   const lines = text.split('\n');
@@ -66,97 +66,95 @@ function preprocess(text, filenameHint) {
 
   try {
     for (let [i, line] of lines.entries()) {
-      if (line[line.length - 1] === '\r') {
-        line = line.substr(0, line.length - 1); // Windows will have '\r' left over from splitting over '\r\n'
-      }
-      if (isHtml && line.includes('<style') && !inStyle) {
-        inStyle = true;
-      }
-      if (isHtml && line.includes('</style') && inStyle) {
-        inStyle = false;
+      if (isHtml) {
+        if (line.includes('<style') && !inStyle) {
+          inStyle = true;
+        }
+        if (line.includes('</style') && inStyle) {
+          inStyle = false;
+        }
+        if (inStyle) {
+          if (showCurrentLine()) {
+            ret += line + '\n';
+          }
+          continue;
+        }
       }
 
-      if (!inStyle) {
-        const trimmed = line.trim();
-        if (trimmed.startsWith('#')) {
-          const first = trimmed.split(' ', 1)[0];
-          if (first == '#if' || first == '#ifdef' || first == '#elif') {
-            if (first == '#ifdef') {
-              warn('use of #ifdef in js library.  Use #if instead.');
-            }
-            if (first == '#elif') {
-              const curr = showStack.pop();
-              if (curr == SHOW || curr == IGNORE_ALL) {
-                // If we showed to previous block we enter the IGNORE_ALL state
-                // and stay there until endif is seen
-                showStack.push(IGNORE_ALL);
-                continue;
-              }
-            }
-            const after = trimmed.substring(trimmed.indexOf(' '));
-            const truthy = !!vm.runInThisContext(after, { filename: filenameHint, lineOffset: i, columnOffset: line.indexOf(after) });
-            showStack.push(truthy ? SHOW : IGNORE);
-          } else if (first === '#include') {
-            if (showCurrentLine()) {
-              let filename = line.substr(line.indexOf(' ') + 1);
-              if (filename.startsWith('"')) {
-                filename = filename.substr(1, filename.length - 2);
-              }
-              const included = read(filename);
-              const result = preprocess(included, filename);
-              if (result) {
-                ret += `// include: ${filename}\n`;
-                ret += result;
-                ret += `// end include: ${filename}\n`;
-              }
-            }
-          } else if (first === '#else') {
-            assert(showStack.length > 0);
-            const curr = showStack.pop();
-            if (curr == IGNORE) {
-              showStack.push(SHOW);
-            } else {
-              showStack.push(IGNORE);
-            }
-          } else if (first === '#endif') {
-            assert(showStack.length > 0);
-            showStack.pop();
-          } else if (first === '#warning') {
-            if (showCurrentLine()) {
-              printErr(`${filenameHint}:${i + 1}: #warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
-            }
-          } else if (first === '#error') {
-            if (showCurrentLine()) {
-              error(`${filenameHint}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
-            }
-          } else {
-            throw new Error(`${filenameHint}:${i + 1}: Unknown preprocessor directive ${first}`);
+      const trimmed = line.trim();
+      if (trimmed.startsWith('#')) {
+        const first = trimmed.split(' ', 1)[0];
+        if (first == '#if' || first == '#ifdef' || first == '#elif') {
+          if (first == '#ifdef') {
+            warn('use of #ifdef in js library.  Use #if instead.');
           }
-        } else {
-          if (showCurrentLine()) {
-            // Never emit more than one empty line at a time.
-            if (emptyLine && !line) {
+          if (first == '#elif') {
+            const curr = showStack.pop();
+            if (curr == SHOW || curr == IGNORE_ALL) {
+              // If we showed to previous block we enter the IGNORE_ALL state
+              // and stay there until endif is seen
+              showStack.push(IGNORE_ALL);
               continue;
             }
-            ret += line + '\n';
-            if (!line) {
-              emptyLine = true;
-            } else {
-              emptyLine = false;
+          }
+          const after = trimmed.substring(trimmed.indexOf(' '));
+          const truthy = !!vm.runInThisContext(after, { filename, lineOffset: i, columnOffset: line.indexOf(after) });
+          showStack.push(truthy ? SHOW : IGNORE);
+        } else if (first === '#include') {
+          if (showCurrentLine()) {
+            let filename = line.substr(line.indexOf(' ') + 1);
+            if (filename.startsWith('"')) {
+              filename = filename.substr(1, filename.length - 2);
+            }
+            const result = preprocess(filename);
+            if (result) {
+              ret += `// include: ${filename}\n`;
+              ret += result;
+              ret += `// end include: ${filename}\n`;
             }
           }
+        } else if (first === '#else') {
+          assert(showStack.length > 0);
+          const curr = showStack.pop();
+          if (curr == IGNORE) {
+            showStack.push(SHOW);
+          } else {
+            showStack.push(IGNORE);
+          }
+        } else if (first === '#endif') {
+          assert(showStack.length > 0);
+          showStack.pop();
+        } else if (first === '#warning') {
+          if (showCurrentLine()) {
+            printErr(`${filename}:${i + 1}: #warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
+          }
+        } else if (first === '#error') {
+          if (showCurrentLine()) {
+            error(`${filename}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
+          }
+        } else {
+          throw new Error(`${filename}:${i + 1}: Unknown preprocessor directive ${first}`);
         }
-      } else { // !inStyle
+      } else {
         if (showCurrentLine()) {
+          // Never emit more than one empty line at a time.
+          if (emptyLine && !line) {
+            continue;
+          }
           ret += line + '\n';
+          if (!line) {
+            emptyLine = true;
+          } else {
+            emptyLine = false;
+          }
         }
       }
     }
-    assert(showStack.length == 0, `preprocessing error in file ${filenameHint}, \
+    assert(showStack.length == 0, `preprocessing error in file ${filename}, \
 no matching #endif found (${showStack.length$}' unmatched preprocessing directives on stack)`);
     return ret;
   } finally {
-    currentlyParsedFilename = null;
+    currentFile = oldFilename;
   }
 }
 
@@ -190,22 +188,6 @@ const POINTER_WASM_TYPE = 'i' + POINTER_BITS;
 
 function isPointerType(type) {
   return type[type.length - 1] == '*';
-}
-
-function isIntImplemented(type) {
-  return type[0] == 'i' || type[0] == 'u' || isPointerType(type);
-}
-
-// Note: works for iX types and structure types, not pointers (even though they are implemented as ints)
-function getBits(type, allowPointers) {
-  if (allowPointers && isPointerType(type)) return POINTER_SIZE;
-  if (!type) return 0;
-  if (type[0] == 'i' || type[0] == 'u') {
-    const left = type.substr(1);
-    if (!isNumber(left)) return 0;
-    return parseInt(left);
-  }
-  return 0;
 }
 
 // Given an expression like (VALUE=VALUE*2,VALUE<10?VALUE:t+1) , this will
@@ -277,12 +259,12 @@ function indentify(text, indent) {
 // Correction tools
 
 function getHeapOffset(offset, type) {
-  if (!WASM_BIGINT && Runtime.getNativeFieldSize(type) > 4 && type == 'i64') {
+  if (!WASM_BIGINT && getNativeFieldSize(type) > 4 && type == 'i64') {
     // we emulate 64-bit integer values as 32 in asmjs-unknown-emscripten, but not double
     type = 'i32';
   }
 
-  const sz = Runtime.getNativeTypeSize(type);
+  const sz = getNativeTypeSize(type);
   const shifts = Math.log(sz) / Math.LN2;
   return `((${offset})>>${shifts})`;
 }
@@ -335,29 +317,10 @@ function asmFloatToInt(x) {
   return '(~~(' + x + '))';
 }
 
-function makeGetTempDouble(i, type, forSet) { // get an aliased part of the tempDouble temporary storage
-  // Cannot use makeGetValue because it uses us
-  // this is a unique case where we *can* use HEAPF64
-  const heap = getHeapForType(type);
-  const ptr = getFastValue('tempDoublePtr', '+', Runtime.getNativeTypeSize(type) * i);
-  let offset;
-  if (type == 'double') {
-    offset = '(' + ptr + ')>>3';
-  } else {
-    offset = getHeapOffset(ptr, type);
-  }
-  let ret = heap + '[' + offset + ']';
-  if (!forSet) ret = asmCoercion(ret, type);
-  return ret;
-}
-
-function makeSetTempDouble(i, type, value) {
-  return makeGetTempDouble(i, type, true) + '=' + asmEnsureFloat(value, type);
-}
-
 // See makeSetValue
 function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
   assert(typeof align === 'undefined', 'makeGetValue no longer supports align parameter');
+  assert(typeof noNeedFirst === 'undefined', 'makeGetValue no longer supports noNeedFirst parameter');
   if (typeof unsigned !== 'undefined') {
     // TODO(sbc): make this into an error at some point.
     printErr('makeGetValue: Please use u8/u16/u32/u64 unsigned types in favor of additional argument');
@@ -369,7 +332,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
     unsigned = true;
   }
 
-  const offset = calcFastOffset(ptr, pos, noNeedFirst);
+  const offset = calcFastOffset(ptr, pos);
   if (type === 'i53' || type === 'u53') {
     return 'readI53From' + (unsigned ? 'U' : 'I') + '64(' + offset + ')';
   }
@@ -383,11 +346,11 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
 }
 
 /**
- * @param {nunber} ptr The pointer. Used to find both the slab and the offset in that slab. If the pointer
+ * @param {number} ptr The pointer. Used to find both the slab and the offset in that slab. If the pointer
  *            is just an integer, then this is almost redundant, but in general the pointer type
  *            may in the future include information about which slab as well. So, for now it is
  *            possible to put |0| here, but if a pointer is available, that is more future-proof.
- * @param {nunber} pos The position in that slab - the offset. Added to any offset in the pointer itself.
+ * @param {number} pos The position in that slab - the offset. Added to any offset in the pointer itself.
  * @param {number} value The value to set.
  * @param {string} type A string defining the type. Used to find the slab (HEAPU8, HEAP16, HEAPU32, etc.).
  *             which means we should write to all slabs, ignore type differences if any on reads, etc.
@@ -399,42 +362,22 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
  */
 function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = ';') {
   assert(typeof align === 'undefined', 'makeSetValue no longer supports align parameter');
-  if (type == 'double' && (align < 8)) {
-    return '(' + makeSetTempDouble(0, 'double', value) + ',' +
-            makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, ',') + ',' +
-            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), makeGetTempDouble(1, 'i32'), 'i32', noNeedFirst, ignore, align, ',') + ')';
-  } else if (type == 'i64' && (!WASM_BIGINT || !MEMORY64)) {
+  assert(typeof noNeedFirst === 'undefined', 'makeSetValue no longer supports noNeedFirst parameter');
+  if (type == 'i64' && (!WASM_BIGINT || !MEMORY64)) {
     // If we lack either BigInt support or Memory64 then we must fall back to an
     // unaligned read of a 64-bit value: without BigInt we do not have HEAP64,
     // and without Memory64 i64 fields are not guaranteed to be aligned to 64
     // bits, so HEAP64[ptr>>3] might be broken.
     return '(tempI64 = [' + splitI64(value) + '],' +
             makeSetValue(ptr, pos, 'tempI64[0]', 'i32', noNeedFirst, ignore, align, ',') + ',' +
-            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempI64[1]', 'i32', noNeedFirst, ignore, align, ',') + ')';
+            makeSetValue(ptr, getFastValue(pos, '+', getNativeTypeSize('i32')), 'tempI64[1]', 'i32', noNeedFirst, ignore, align, ',') + ')';
   }
 
-  const bits = getBits(type);
-  const needSplitting = bits > 0 && !isPowerOfTwo(bits); // an unnatural type like i24
-  if (needSplitting) {
-    // Alignment is important here, or we need to split this up for other reasons.
-    const bytes = Runtime.getNativeTypeSize(type);
-    if (needSplitting) {
-      let ret = '';
-      if (isIntImplemented(type)) {
-        ret += 'tempBigInt=' + value + sep;
-        for (let i = 0; i < bytes; i++) {
-          ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore, 1);
-          if (i < bytes - 1) ret += sep + 'tempBigInt = tempBigInt>>8' + sep;
-        }
-      } else {
-        ret += makeSetValue('tempDoublePtr', 0, value, type, noNeedFirst, ignore, 8) + sep;
-        ret += makeCopyValues(getFastValue(ptr, '+', pos), 'tempDoublePtr', Runtime.getNativeTypeSize(type), type, null, align, sep);
-      }
-      return ret;
-    }
-  }
+  const offset = calcFastOffset(ptr, pos);
 
-  const offset = calcFastOffset(ptr, pos, noNeedFirst);
+  if (type === 'i53') {
+    return `writeI53ToI64(${offset}, ${value})`;
+  }
 
   const slab = getHeapForType(type);
   if (slab == 'HEAPU64' || slab == 'HEAP64') {
@@ -443,61 +386,19 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = '
   return slab + '[' + getHeapOffset(offset, type) + '] = ' + value;
 }
 
-const UNROLL_LOOP_MAX = 8;
-
-function makeCopyValues(dest, src, num, type, modifier, align, sep = ';') {
-  assert(typeof align === 'undefined');
-  function unroll(type, num, jump) {
-    jump = jump || 1;
-    const setValues = range(num).map((i) => makeSetValue(dest, i * jump, makeGetValue(src, i * jump, type), type));
-    return setValues.join(sep);
-  }
-  // If we don't know how to handle this at compile-time, or handling it is best
-  // done in a large amount of code, call memcpy
-  if (!isNumber(num)) num = stripCorrections(num);
-  if (!isNumber(align)) align = stripCorrections(align);
-  if (!isNumber(num) || (parseInt(num) / align >= UNROLL_LOOP_MAX)) {
-    return '(_memcpy(' + dest + ', ' + src + ', ' + num + ')|0)';
-  }
-  num = parseInt(num);
-  // remove corrections, since we will be correcting after we add anyhow,
-  dest = stripCorrections(dest);
-  src = stripCorrections(src);
-  // and in the heap assignment expression
-  const ret = [];
-  [4, 2, 1].forEach((possibleAlign) => {
-    if (num == 0) return;
-    if (align >= possibleAlign) {
-      ret.push(unroll('i' + (possibleAlign * 8), Math.floor(num / possibleAlign), possibleAlign));
-      src = getFastValue(src, '+', Math.floor(num / possibleAlign) * possibleAlign);
-      dest = getFastValue(dest, '+', Math.floor(num / possibleAlign) * possibleAlign);
-      num %= possibleAlign;
-    }
-  });
-  return ret.join(sep);
-}
-
 function makeHEAPView(which, start, end) {
   const size = parseInt(which.replace('U', '').replace('F', '')) / 8;
   const mod = size == 1 ? '' : ('>>' + Math.log2(size));
   return `HEAP${which}.subarray((${start})${mod}, (${end})${mod})`;
 }
 
-// When dynamically linking, some things like dynCalls may not exist in one module and
-// be provided by a linked module, so they must be accessed indirectly using Module
-function exportedAsmFunc(func) {
-  if (!MAIN_MODULE) {
-    return func;
-  }
-  return `Module['${func}']`;
-}
-
-const TWO_TWENTY = Math.pow(2, 20);
-
 // Given two values and an operation, returns the result of that operation.
 // Tries to do as much as possible at compile time.
-// Leaves overflows etc. unhandled, *except* for integer multiply, in order to be efficient with Math.imul
-function getFastValue(a, op, b, type) {
+function getFastValue(a, op, b) {
+  // In the past we supported many operations, but today we only use addition.
+  assert(op == '+');
+
+  // Convert 'true' and 'false' to '1' and '0'.
   a = a === 'true' ? '1' : (a === 'false' ? '0' : a);
   b = b === 'true' ? '1' : (b === 'false' ? '0' : b);
 
@@ -506,38 +407,23 @@ function getFastValue(a, op, b, type) {
   if (typeof a == 'number') {
     aNumber = a;
     a = a.toString();
-  } else if (isNumber(a)) aNumber = parseFloat(a);
+  } else if (isNumber(a)) {
+    aNumber = parseFloat(a);
+  }
   if (typeof b == 'number') {
     bNumber = b;
     b = b.toString();
-  } else if (isNumber(b)) bNumber = parseFloat(b);
+  } else if (isNumber(b)) {
+    bNumber = parseFloat(b);
+  }
 
+  // First check if we can do the addition at compile time
   if (aNumber !== null && bNumber !== null) {
-    switch (op) {
-      case '+': return (aNumber + bNumber).toString();
-      case '-': return (aNumber - bNumber).toString();
-      case '*': return (aNumber * bNumber).toString();
-      case '/': {
-        if (type[0] === 'i') {
-          return ((aNumber / bNumber) | 0).toString();
-        }
-        return (aNumber / bNumber).toString();
-      }
-      case '%': return (aNumber % bNumber).toString();
-      case '|': return (aNumber | bNumber).toString();
-      case '>>>': return (aNumber >>> bNumber).toString();
-      case '&': return (aNumber & bNumber).toString();
-      case 'pow': return Math.pow(aNumber, bNumber).toString();
-      default: assert(false, 'need to implement getFastValue pn ' + op);
-    }
+    return (aNumber + bNumber).toString();
   }
-  if (op === 'pow') {
-    if (a === '2' && isIntImplemented(type)) {
-      return `(1 << (${b}))`;
-    }
-    return `Math.pow(${a}, ${b})`;
-  }
-  if ((op === '+' || op === '*') && aNumber !== null) { // if one of them is a number, keep it last
+
+  // If one of them is a number, keep it last
+  if (aNumber !== null) {
     const c = b;
     b = a;
     a = c;
@@ -545,59 +431,23 @@ function getFastValue(a, op, b, type) {
     bNumber = aNumber;
     aNumber = cNumber;
   }
-  if (op === '*') {
-    // We can't eliminate where a or b are 0 as that would break things for creating
-    // a negative 0.
-    if ((aNumber === 0 || bNumber === 0) && !FLOAT_TYPES.has(type)) {
-      return '0';
-    } else if (aNumber === 1) {
-      return b;
-    } else if (bNumber === 1) {
-      return a;
-    } else if (bNumber !== null && type && isIntImplemented(type) && Runtime.getNativeTypeSize(type) <= 32) {
-      const shifts = Math.log(bNumber) / Math.LN2;
-      if (shifts % 1 === 0) {
-        return `(${a}<<${shifts})`;
-      }
-    }
-    if (!FLOAT_TYPES.has(type)) {
-      // if guaranteed small enough to not overflow into a double, do a normal multiply
-      // default is 32-bit multiply for things like getelementptr indexes
-      const bits = getBits(type) || 32;
-      // Note that we can emit simple multiple in non-asm.js mode, but asm.js
-      // will not parse "16-bit" multiple, so must do imul there
-      if ((aNumber !== null && Math.abs(a) < TWO_TWENTY) || (bNumber !== null && Math.abs(b) < TWO_TWENTY)) {
-        // keep a non-eliminatable coercion directly on this
-        return `(((${a})*(${b}))&${(Math.pow(2, bits) - 1) | 0})`;
-      }
-      return `(Math.imul(${a}, ${b})|0)`;
-    }
-  } else if (op === '/') {
-    // careful on floats, since 0*NaN is not 0
-    if (a === '0' && !FLOAT_TYPES.has(type)) {
-      return '0';
-    } else if (b === 1) {
-      return a;
-    } // Doing shifts for division is problematic, as getting the rounding right on negatives is tricky
-  } else if (op === '+' || op === '-') {
-    if (b[0] === '-') {
-      op = op === '+' ? '-' : '+';
-      b = b.substr(1);
-    }
-    if (aNumber === 0) {
-      return op === '+' ? b : `(-${b})`;
-    } else if (bNumber === 0) {
-      return a;
-    }
+
+  if (aNumber === 0) {
+    return b;
+  } else if (bNumber === 0) {
+    return a;
   }
+
+  if (b[0] === '-') {
+    op = '-'
+    b = b.substr(1);
+  }
+
   return `(${a})${op}(${b})`;
 }
 
-function calcFastOffset(ptr, pos, noNeedFirst) {
-  assert(!noNeedFirst);
-  if (typeof ptr == 'bigint') ptr = Number(ptr);
-  if (typeof pos == 'bigint') pos = Number(pos);
-  return getFastValue(ptr, '+', pos, 'i32');
+function calcFastOffset(ptr, pos) {
+  return getFastValue(ptr, '+', pos);
 }
 
 function getHeapForType(type) {
@@ -637,42 +487,18 @@ function makeReturn64(value) {
   return `(setTempRet0(${pair[1]}), ${pair[0]})`;
 }
 
-function makeThrow(what) {
+function makeThrow(excPtr) {
   if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING) {
-    what += ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch."';
+    excPtr += ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch."';
     if (MAIN_MODULE) {
-      what += ' + " (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)"';
+      excPtr += ' + " (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)"';
     }
+    return `throw ${excPtr};`;
   }
-  return `throw ${what};`;
-}
-
-function stripCorrections(param) {
-  let m;
-  while (true) {
-    if (m = /^\((.*)\)$/.exec(param)) {
-      param = m[1];
-      continue;
-    }
-    if (m = /^\(([$_\w]+)\)&\d+$/.exec(param)) {
-      param = m[1];
-      continue;
-    }
-    if (m = /^\(([$_\w()]+)\)\|0$/.exec(param)) {
-      param = m[1];
-      continue;
-    }
-    if (m = /^\(([$_\w()]+)\)\>>>0$/.exec(param)) {
-      param = m[1];
-      continue;
-    }
-    if (m = /CHECK_OVERFLOW\(([^,)]*),.*/.exec(param)) {
-      param = m[1];
-      continue;
-    }
-    break;
+  if (EXCEPTION_STACK_TRACES) {
+    return `throw new CppException(${excPtr});`;
   }
-  return param;
+  return `throw ${excPtr};`;
 }
 
 function charCode(char) {
@@ -738,7 +564,7 @@ function makeDynCall(sig, funcPtr) {
 
 
   if (funcPtr === undefined) {
-    warn(`${currentlyParsedFilename}: \
+    warn(`
 Legacy use of {{{ makeDynCall("${sig}") }}}(funcPtr, arg1, arg2, ...). \
 Starting from Emscripten 2.0.2 (Aug 31st 2020), syntax for makeDynCall has changed. \
 New syntax is {{{ makeDynCall("${sig}", "funcPtr") }}}(arg1, arg2, ...). \
@@ -767,7 +593,7 @@ Please update to new syntax.`);
       }
     }
 
-    const dyncall = exportedAsmFunc(`dynCall_${sig}`);
+    const dyncall = `dynCall_${sig}`;
     if (sig.length > 1) {
       return `((${args}) => ${dyncall}.apply(null, [${funcPtr}, ${callArgs}]))`;
     }
@@ -823,7 +649,7 @@ function addAtExit(code) {
 }
 
 function makeRetainedCompilerSettings() {
-  const ignore = new Set(['STRUCT_INFO']);
+  const ignore = new Set();
   if (STRICT) {
     for (const setting of LEGACY_SETTINGS) {
       ignore.add(setting);
@@ -878,11 +704,11 @@ function modifyFunction(text, func) {
 }
 
 function runIfMainThread(text) {
-  if (WASM_WORKERS && USE_PTHREADS) {
+  if (WASM_WORKERS && PTHREADS) {
     return 'if (!ENVIRONMENT_IS_WASM_WORKER && !ENVIRONMENT_IS_PTHREAD) { ' + text + ' }';
   } else if (WASM_WORKERS) {
     return 'if (!ENVIRONMENT_IS_WASM_WORKER) { ' + text + ' }';
-  } else if (USE_PTHREADS) {
+  } else if (PTHREADS) {
     return 'if (!ENVIRONMENT_IS_PTHREAD) { ' + text + ' }';
   } else {
     return text;
@@ -1029,9 +855,14 @@ function receiveI64ParamAsI53(name, onError) {
     // Just convert the bigint into a double.
     return `${name} = bigintToI53Checked(${name}); if (isNaN(${name})) return ${onError};`;
   }
-  // Covert the high/low pair to a Number, checking for
+  // Convert the high/low pair to a Number, checking for
   // overflow of the I53 range and returning onError in that case.
   return `var ${name} = convertI32PairToI53Checked(${name}_low, ${name}_high); if (isNaN(${name})) return ${onError};`;
+}
+
+function receiveI64ParamAsI53Unchecked(name) {
+  if (WASM_BIGINT) return `${name} = Number(${name});`;
+  return `var ${name} = convertI32PairToI53(${name}_low, ${name}_high);`;
 }
 
 function sendI64Argument(low, high) {
@@ -1104,7 +935,7 @@ function makeMalloc(source, param) {
 // We skip this completely in MINIMAL_RUNTIME and also in builds that
 // don't ever need to exit the runtime.
 function runtimeKeepalivePush() {
-  if (MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && USE_PTHREADS == 0)) return '';
+  if (MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && PTHREADS == 0)) return '';
   return 'runtimeKeepalivePush();';
 }
 
@@ -1113,7 +944,7 @@ function runtimeKeepalivePush() {
 // We skip this completely in MINIMAL_RUNTIME and also in builds that
 // don't ever need to exit the runtime.
 function runtimeKeepalivePop() {
-  if (MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && USE_PTHREADS == 0)) return '';
+  if (MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && PTHREADS == 0)) return '';
   return 'runtimeKeepalivePop();';
 }
 
@@ -1135,4 +966,38 @@ function getUnsharedTextDecoderView(heap, start, end) {
   // Otherwise, generate a runtime type check: must do a .slice() if looking at a SAB,
   // or can use .subarray() otherwise.
   return `${heap}.buffer instanceof SharedArrayBuffer ? ${shared} : ${unshared}`;
+}
+
+function getEntryFunction() {
+  var entryFunction = 'main';
+  if (STANDALONE_WASM) {
+    if (EXPECT_MAIN) {
+      entryFunction = '_start';
+    } else {
+      entryFunction = '_initialize';
+    }
+  } else if (PROXY_TO_PTHREAD) {
+    // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
+    // that will call the user's real main() for the application.
+    entryFunction = '_emscripten_proxy_main';
+  }
+  if (MAIN_MODULE) {
+    return `resolveGlobalSymbol('${entryFunction}').sym;`
+  }
+  return '_' + entryFunction;
+}
+
+function preJS() {
+  let result = '';
+  for (const fileName of PRE_JS_FILES) {
+    result += read(fileName);
+  }
+  return result;
+}
+
+function formattedMinNodeVersion() {
+  var major = MIN_NODE_VERSION / 10000
+  var minor = (MIN_NODE_VERSION / 100) % 100
+  var rev = MIN_NODE_VERSION % 100
+  return `v${major}.${minor}.${rev}`;
 }

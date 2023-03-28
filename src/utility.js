@@ -40,6 +40,15 @@ function dump(item) {
 }
 
 global.warnings = false;
+global.currentFile = null;
+
+function errorPrefix() {
+  if (currentFile) {
+    return currentFile + ': '
+  } else {
+    return '';
+  }
+}
 
 function warn(a, msg) {
   global.warnings = true;
@@ -48,7 +57,7 @@ function warn(a, msg) {
     a = false;
   }
   if (!a) {
-    printErr('warning: ' + msg);
+    printErr(`warning: ${errorPrefix()}${msg}`);
   }
 }
 
@@ -69,7 +78,7 @@ global.abortExecution = false;
 
 function error(msg) {
   abortExecution = true;
-  printErr('error: ' + msg);
+  printErr(`error: ${errorPrefix()}${msg}`);
 }
 
 function range(size) {
@@ -115,6 +124,39 @@ function mergeInto(obj, other, options = null) {
           error(`__sig is missing for function: ${key}. Do not use checkSig if this is intended`);
           return;
         }
+      }
+    }
+  }
+
+  if (!options || !options.allowMissing) {
+    for (const ident of Object.keys(other)) {
+      if (isJsLibraryConfigIdentifier(ident)) {
+        const index = ident.lastIndexOf('__');
+        const basename = ident.slice(0, index);
+        if (!(basename in obj) && !(basename in other)) {
+          error(`Missing library element '${basename}' for library config '${ident}'`);
+        }
+      }
+    }
+  }
+
+  for (const key of Object.keys(other)) {
+    if (key.endsWith('__sig')) {
+      if (obj.hasOwnProperty(key)) {
+        const oldsig = obj[key];
+        const newsig = other[key];
+        if (oldsig == newsig) {
+          warn(`signature redefinition for: ${key}. (old=${oldsig} vs new=${newsig})`);
+        } else {
+          error(`signature redefinition for: ${key}. (old=${oldsig} vs new=${newsig})`);
+        }
+      }
+    }
+
+    if (key.endsWith('__deps')) {
+      const deps = other[key];
+      if (!Array.isArray(deps)) {
+        error(`JS library directive ${key}=${deps.toString()} is of type ${typeof deps}, but it should be an array`);
       }
     }
   }

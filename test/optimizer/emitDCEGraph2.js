@@ -10,6 +10,6 @@ function dynCall(sig) {
 }
 Module['dynCall'] = dynCall; // exported, so all dyncalls must be rooted!
 
-var asmLibraryArg = {
+var wasmImports = {
 };
 

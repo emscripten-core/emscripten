@@ -294,7 +294,7 @@ returning a ``Promise`` to the return value, as demonstrated below.
 Build with
 ::
 
-    emcc -O3 example.cpp --bind -sASYNCIFY
+    emcc -O3 example.cpp -lembind -sASYNCIFY
 
 Then invoke from JavaScript
 

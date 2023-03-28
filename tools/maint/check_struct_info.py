@@ -13,8 +13,7 @@ root_dir = os.path.dirname(os.path.dirname(script_dir))
 
 sys.path.append(root_dir)
 
-import emscripten
-from tools.settings import settings
+from tools import utils
 
 
 def check_structs(info):
@@ -34,15 +33,15 @@ def check_structs(info):
 
 def check_defines(info):
   for define in info['defines'].keys():
-    key = 'cDefine(.' + define + '.)'
+    key = r'cDefs\.' + define + r'\>'
     # grep --quiet ruturns 0 when there is a match
     if subprocess.run(['git', 'grep', '--quiet', key], check=False).returncode != 0:
       print(define)
 
 
 def main():
-  emscripten.generate_struct_info()
-  info = json.loads(open(settings.STRUCT_INFO).read())
+  json_file = utils.path_from_root('src/generated_struct_info32.json')
+  info = json.loads(utils.read_file(json_file))
   check_structs(info)
   check_defines(info)
   return 0

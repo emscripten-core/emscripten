@@ -157,7 +157,7 @@ def make_test(name, testfile, browser):
             '-Werror',
             '-Wno-format-security',
             '-Wno-int-conversion',
-            '-sUSE_PTHREADS',
+            '-pthread',
             '-sEXIT_RUNTIME',
             '-sTOTAL_MEMORY=256mb',
             '-sPTHREAD_POOL_SIZE=40']

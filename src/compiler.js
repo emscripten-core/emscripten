@@ -21,6 +21,7 @@ global.printErr = (x) => {
 };
 
 function find(filename) {
+  assert(filename);
   const prefixes = [__dirname, process.cwd()];
   for (let i = 0; i < prefixes.length; ++i) {
     const combined = nodePath.join(prefixes[i], filename);
@@ -32,6 +33,7 @@ function find(filename) {
 }
 
 global.read = (filename) => {
+  assert(filename);
   const absolute = find(filename);
   return fs.readFileSync(absolute).toString();
 };
@@ -43,6 +45,9 @@ function load(f) {
 // Basic utilities
 load('utility.js');
 
+// Load default settings
+load('./settings.js');
+load('./settings_internal.js');
 
 const argv = process.argv.slice(2);
 const symbolsOnlyArg = argv.indexOf('--symbols-only');
@@ -50,14 +55,14 @@ if (symbolsOnlyArg != -1) {
   argv.splice(symbolsOnlyArg, 1);
 }
 
-const symbolsOnly = symbolsOnlyArg != -1;
-
 // Load settings from JSON passed on the command line
 const settingsFile = argv[0];
 assert(settingsFile);
 
 const settings = JSON.parse(read(settingsFile));
 Object.assign(global, settings);
+
+global.symbolsOnly = symbolsOnlyArg != -1;
 
 EXPORTED_FUNCTIONS = new Set(EXPORTED_FUNCTIONS);
 WASM_EXPORTS = new Set(WASM_EXPORTS);
@@ -81,11 +86,11 @@ if (VERBOSE) {
 
 load('modules.js');
 load('parseTools.js');
+load('jsifier.js');
+load('runtime.js');
 if (!STRICT) {
   load('parseTools_legacy.js');
 }
-load('jsifier.js');
-load('runtime.js');
 
 // ===============================
 // Main
@@ -94,7 +99,7 @@ load('runtime.js');
 B = new Benchmarker();
 
 try {
-  runJSify(symbolsOnly);
+  runJSify();
 
   B.print('glue');
 } catch (err) {

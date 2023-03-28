@@ -109,7 +109,7 @@ class OpCode(IntEnum):
   F32_CONST = 0x43
   F64_CONST = 0x44
   I32_ADD = 0x6a
-  I64_ADD = 0x6b
+  I64_ADD = 0x7c
   REF_NULL = 0xd0
   ATOMIC_PREFIX = 0xfe
   MEMORY_PREFIX = 0xfc

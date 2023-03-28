@@ -46,8 +46,14 @@ void emscripten_current_thread_process_queued_calls() {
   // nop
 }
 
-void _emscripten_yield() {
-  // nop
+static void dummy(double now)
+{
+}
+
+weak_alias(dummy, _emscripten_check_timers);
+
+void _emscripten_yield(double now) {
+  _emscripten_check_timers(now);
 }
 
 int pthread_mutex_init(
@@ -281,10 +287,6 @@ int pthread_getattr_np(pthread_t thread, pthread_attr_t *attr) {
   return 0;
 }
 
-int pthread_attr_destroy(pthread_attr_t *attr) {
-  return 0;
-}
-
 int pthread_setcancelstate(int state, int* oldstate) {
   return 0;
 }
@@ -361,18 +363,6 @@ int pthread_spin_unlock(pthread_spinlock_t *lock) {
   return 0;
 }
 
-int pthread_attr_setdetachstate(pthread_attr_t* attr, int detachstate) {
-  return 0;
-}
-
-int pthread_attr_setschedparam(pthread_attr_t* attr, const struct sched_param* param) {
-  return 0;
-}
-
-int pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize) {
-  return 0;
-}
-
 int sem_init(sem_t *sem, int pshared, unsigned int value) {
   return 0;
 }
@@ -403,7 +393,9 @@ void __unlock(void* ptr) {}
 // proper sleeps, so simulate a busy spin wait loop instead.
 void emscripten_thread_sleep(double msecs) {
   double start = emscripten_get_now();
-  while (emscripten_get_now() - start < msecs) {
-    // Do nothing.
-  }
+  double now = start;
+  do {
+    _emscripten_yield(now);
+    now = emscripten_get_now();
+  } while (now - start < msecs);
 }

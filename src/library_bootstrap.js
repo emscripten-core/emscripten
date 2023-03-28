@@ -28,9 +28,10 @@ mergeInto(LibraryManager.library, {
   },
 
   $handleException: function(e) {
-    if (e !== 'unwind') {
-      throw e;
+    if (e instanceof ExitStatus || e == 'unwind') {
+      return EXITSTATUS;
     }
+    quit_(1, e);
   },
 
   // printf/puts implementations for when musl is not pulled in - very

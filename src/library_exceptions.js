@@ -121,7 +121,7 @@ var LibraryExceptions = {
     this.get_exception_ptr = function() {
       // Work around a fastcomp bug, this code is still included for some reason in a build without
       // exceptions support.
-      var isPointer = {{{ exportedAsmFunc('___cxa_is_pointer_type') }}}(this.get_type());
+      var isPointer = ___cxa_is_pointer_type(this.get_type());
       if (isPointer) {
         return {{{ makeGetValue('this.excPtr', '0', '*') }}};
       }
@@ -346,7 +346,7 @@ var LibraryExceptions = {
         break;
       }
       var adjusted_ptr_addr = info.ptr + {{{ C_STRUCTS.__cxa_exception.adjustedPtr }}};
-      if ({{{ exportedAsmFunc('___cxa_can_catch') }}}(caughtType, thrownType, adjusted_ptr_addr)) {
+      if (___cxa_can_catch(caughtType, thrownType, adjusted_ptr_addr)) {
 #if EXCEPTION_DEBUG
         dbg("  __cxa_find_matching_catch found " + [ptrToString(info.get_adjusted_ptr()), caughtType]);
 #endif
@@ -401,7 +401,7 @@ var LibraryExceptions = {
 #endif
   },
 
-#if ASSERTIONS
+#if EXCEPTION_STACK_TRACES
   // Throw a WebAssembly.Exception object with the C++ tag with a stack trace
   // embedded. WebAssembly.Exception is a JS object representing a Wasm
   // exception, provided by Wasm JS API:
@@ -420,10 +420,12 @@ var LibraryExceptions = {
     //     ...
     //
     // Remove this JS function name, which is in the second line, from the stack
-    // trace.
-    var arr = e.stack.split('\n');
-    arr.splice(1,1);
-    e.stack = arr.join('\n');
+    // trace. Note that .stack does not yet exist in all browsers (see #18828).
+    if (e.stack) {
+      var arr = e.stack.split('\n');
+      arr.splice(1,1);
+      e.stack = arr.join('\n');
+    }
     throw e;
   },
 #endif
@@ -475,13 +477,13 @@ var LibraryExceptions = {
 #endif
 };
 
-// In LLVM, exceptions generate a set of functions of form __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.
-// where the number specifies the number of arguments. In Emscripten, route all these to a single function '__cxa_find_matching_catch'
-// that variadically processes all of these functions using JS 'arguments' object.
+// In LLVM, exceptions generate a set of functions of form
+// __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.  where the
+// number specifies the number of arguments.  In Emscripten, route all these to
+// a single function '__cxa_find_matching_catch' that variadically processes all
+// of these functions using JS 'arguments' object.
 addCxaCatch = function(n) {
-  LibraryManager.library['__cxa_find_matching_catch_' + n] = LibraryExceptions['__cxa_find_matching_catch'];
-  LibraryManager.library['__cxa_find_matching_catch_' + n + '__sig'] = new Array(n + 2).join('p');
-  LibraryManager.library['__cxa_find_matching_catch_' + n + '__deps'] = LibraryExceptions['__cxa_find_matching_catch__deps'];
+  LibraryManager.library['__cxa_find_matching_catch_' + n] = '__cxa_find_matching_catch';
 };
 
 mergeInto(LibraryManager.library, LibraryExceptions);

@@ -46,7 +46,7 @@ var LibraryOpenAL = {
     },
     set alcErr(val) {
       // Errors should not be overwritten by later errors until they are cleared by a query.
-      if (this._alcErr === {{{ cDefine('ALC_NO_ERROR') }}} || val === {{{ cDefine('ALC_NO_ERROR') }}}) {
+      if (this._alcErr === {{{ cDefs.ALC_NO_ERROR }}} || val === {{{ cDefs.ALC_NO_ERROR }}}) {
         this._alcErr = val;
       }
     },
@@ -407,7 +407,7 @@ var LibraryOpenAL = {
         }
       }
       // Create a panner if AL_SOURCE_SPATIALIZE_SOFT is set to true, or alternatively if it's set to auto and the source is mono
-      if (src.spatialize === {{{ cDefine('AL_TRUE') }}} || (src.spatialize === 2 /* AL_AUTO_SOFT */ && templateBuf.channels === 1)) {
+      if (src.spatialize === {{{ cDefs.AL_TRUE }}} || (src.spatialize === 2 /* AL_AUTO_SOFT */ && templateBuf.channels === 1)) {
         if (src.panner) {
           return;
         }
@@ -452,7 +452,7 @@ var LibraryOpenAL = {
       // Use the source's distance model if AL_SOURCE_DISTANCE_MODEL is enabled
       var distanceModel = src.context.sourceDistanceModel ? src.distanceModel : src.context.distanceModel;
       switch (distanceModel) {
-      case {{{ cDefine('AL_NONE') }}}:
+      case {{{ cDefs.AL_NONE }}}:
         panner.distanceModel = 'inverse';
         panner.refDistance = 3.40282e38 /* FLT_MAX */;
         break;
@@ -753,17 +753,17 @@ var LibraryOpenAL = {
       }
 
       switch (param) {
-      case {{{ cDefine('AL_DOPPLER_FACTOR') }}}:
+      case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
         return AL.currentCtx.dopplerFactor;
-      case {{{ cDefine('AL_SPEED_OF_SOUND') }}}:
+      case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
         return AL.currentCtx.speedOfSound;
-      case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
+      case {{{ cDefs.AL_DISTANCE_MODEL }}}:
         return AL.currentCtx.distanceModel;
       default:
 #if OPENAL_DEBUG
         dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return null;
       }
     },
@@ -777,33 +777,33 @@ var LibraryOpenAL = {
       }
 
       switch (param) {
-      case {{{ cDefine('AL_DOPPLER_FACTOR') }}}:
+      case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
         if (!Number.isFinite(value) || value < 0.0) { // Strictly negative values are disallowed
 #if OPENAL_DEBUG
           dbg(funcname + '() value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
         AL.currentCtx.dopplerFactor = value;
         AL.updateListenerSpace(AL.currentCtx);
         break;
-      case {{{ cDefine('AL_SPEED_OF_SOUND') }}}:
+      case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
         if (!Number.isFinite(value) || value <= 0.0) { // Negative or zero values are disallowed
 #if OPENAL_DEBUG
           dbg(funcname + '() value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
         AL.currentCtx.speedOfSound = value;
         AL.updateListenerSpace(AL.currentCtx);
         break;
-      case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
+      case {{{ cDefs.AL_DISTANCE_MODEL }}}:
         switch (value) {
-        case {{{ cDefine('AL_NONE') }}}:
+        case {{{ cDefs.AL_NONE }}}:
         case 0xd001 /* AL_INVERSE_DISTANCE */:
         case 0xd002 /* AL_INVERSE_DISTANCE_CLAMPED */:
         case 0xd003 /* AL_LINEAR_DISTANCE */:
@@ -817,7 +817,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           dbg(funcname + '() value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
         break;
@@ -825,7 +825,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
       }
     },
@@ -839,19 +839,19 @@ var LibraryOpenAL = {
       }
 
       switch (param) {
-      case {{{ cDefine('AL_POSITION') }}}:
+      case {{{ cDefs.AL_POSITION }}}:
         return AL.currentCtx.listener.position;
-      case {{{ cDefine('AL_VELOCITY') }}}:
+      case {{{ cDefs.AL_VELOCITY }}}:
         return AL.currentCtx.listener.velocity;
-      case {{{ cDefine('AL_ORIENTATION') }}}:
+      case {{{ cDefs.AL_ORIENTATION }}}:
         return AL.currentCtx.listener.direction.concat(AL.currentCtx.listener.up);
-      case {{{ cDefine('AL_GAIN') }}}:
+      case {{{ cDefs.AL_GAIN }}}:
         return AL.currentCtx.gain.gain.value;
       default:
 #if OPENAL_DEBUG
         dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return null;
       }
     },
@@ -867,18 +867,18 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg(funcname + '(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
       }
 
       var listener = AL.currentCtx.listener;
       switch (param) {
-      case {{{ cDefine('AL_POSITION') }}}:
+      case {{{ cDefs.AL_POSITION }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_POSITION value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -887,12 +887,12 @@ var LibraryOpenAL = {
         listener.position[2] = value[2];
         AL.updateListenerSpace(AL.currentCtx);
         break;
-      case {{{ cDefine('AL_VELOCITY') }}}:
+      case {{{ cDefs.AL_VELOCITY }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_VELOCITY value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -901,25 +901,25 @@ var LibraryOpenAL = {
         listener.velocity[2] = value[2];
         AL.updateListenerSpace(AL.currentCtx);
         break;
-      case {{{ cDefine('AL_GAIN') }}}:
+      case {{{ cDefs.AL_GAIN }}}:
         if (!Number.isFinite(value) || value < 0.0) {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_GAIN value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
         AL.currentCtx.gain.gain.value = value;
         break;
-      case {{{ cDefine('AL_ORIENTATION') }}}:
+      case {{{ cDefs.AL_ORIENTATION }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])
           || !Number.isFinite(value[3]) || !Number.isFinite(value[4]) || !Number.isFinite(value[5])
         ) {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_ORIENTATION value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -935,7 +935,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
       }
     },
@@ -952,7 +952,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg(funcname + '() called with an invalid buffer');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
       }
 
@@ -977,7 +977,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return null;
       }
     },
@@ -994,14 +994,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg(funcname + '() called with an invalid buffer');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
       }
       if (value === null) {
 #if OPENAL_DEBUG
         dbg(funcname + '(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
       }
 
@@ -1011,7 +1011,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_SIZE value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -1022,14 +1022,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_LOOP_POINTS_SOFT value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
         if (buf.refCount > 0) {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_LOOP_POINTS_SOFT set on bound buffer');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_OPERATION') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_OPERATION }}};
           return;
         }
 
@@ -1042,7 +1042,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
       }
     },
@@ -1059,7 +1059,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg(funcname + '() called with an invalid source');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return null;
       }
 
@@ -1072,11 +1072,11 @@ var LibraryOpenAL = {
         return src.coneOuterAngle;
       case 0x1003 /* AL_PITCH */:
         return src.pitch;
-      case {{{ cDefine('AL_POSITION') }}}:
+      case {{{ cDefs.AL_POSITION }}}:
         return src.position;
-      case {{{ cDefine('AL_DIRECTION') }}}:
+      case {{{ cDefs.AL_DIRECTION }}}:
         return src.direction;
-      case {{{ cDefine('AL_VELOCITY') }}}:
+      case {{{ cDefs.AL_VELOCITY }}}:
         return src.velocity;
       case 0x1007 /* AL_LOOPING */:
         return src.looping;
@@ -1085,7 +1085,7 @@ var LibraryOpenAL = {
           return src.bufQueue[0].id;
         }
         return 0;
-      case {{{ cDefine('AL_GAIN') }}}:
+      case {{{ cDefs.AL_GAIN }}}:
         return src.gain.gain.value;
        case 0x100D /* AL_MIN_GAIN */:
         return src.minGain;
@@ -1147,13 +1147,13 @@ var LibraryOpenAL = {
         return length;
       case 0x200B /* AL_SEC_LENGTH_SOFT */:
         return AL.sourceDuration(src);
-      case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
+      case {{{ cDefs.AL_DISTANCE_MODEL }}}:
         return src.distanceModel;
       default:
 #if OPENAL_DEBUG
         dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return null;
       }
     },
@@ -1170,30 +1170,30 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg('alSourcef() called with an invalid source');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
       }
       if (value === null) {
 #if OPENAL_DEBUG
         dbg(funcname + '(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
       }
 
       switch (param) {
       case 0x202 /* AL_SOURCE_RELATIVE */:
-        if (value === {{{ cDefine('AL_TRUE') }}}) {
+        if (value === {{{ cDefs.AL_TRUE }}}) {
           src.relative = true;
           AL.updateSourceSpace(src);
-        } else if (value === {{{ cDefine('AL_FALSE') }}}) {
+        } else if (value === {{{ cDefs.AL_FALSE }}}) {
           src.relative = false;
           AL.updateSourceSpace(src);
         } else {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_SOURCE_RELATIVE value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
         break;
@@ -1202,7 +1202,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_CONE_INNER_ANGLE value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -1216,7 +1216,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_CONE_OUTER_ANGLE value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -1230,7 +1230,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_PITCH value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -1241,12 +1241,12 @@ var LibraryOpenAL = {
         src.pitch = value;
         AL.updateSourceRate(src);
         break;
-      case {{{ cDefine('AL_POSITION') }}}:
+      case {{{ cDefs.AL_POSITION }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_POSITION value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -1255,12 +1255,12 @@ var LibraryOpenAL = {
         src.position[2] = value[2];
         AL.updateSourceSpace(src);
         break;
-      case {{{ cDefine('AL_DIRECTION') }}}:
+      case {{{ cDefs.AL_DIRECTION }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_DIRECTION value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -1269,12 +1269,12 @@ var LibraryOpenAL = {
         src.direction[2] = value[2];
         AL.updateSourceSpace(src);
         break;
-      case {{{ cDefine('AL_VELOCITY') }}}:
+      case {{{ cDefs.AL_VELOCITY }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_VELOCITY value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -1284,7 +1284,7 @@ var LibraryOpenAL = {
         AL.updateSourceSpace(src);
         break;
       case 0x1007 /* AL_LOOPING */:
-        if (value === {{{ cDefine('AL_TRUE') }}}) {
+        if (value === {{{ cDefs.AL_TRUE }}}) {
           src.looping = true;
           AL.updateSourceTime(src);
           if (src.type === 0x1028 /* AL_STATIC */ && src.audioQueue.length > 0) {
@@ -1292,7 +1292,7 @@ var LibraryOpenAL = {
             audioSrc.loop = true;
             audioSrc._duration = Number.POSITIVE_INFINITY;
           }
-        } else if (value === {{{ cDefine('AL_FALSE') }}}) {
+        } else if (value === {{{ cDefs.AL_FALSE }}}) {
           src.looping = false;
           var currentTime = AL.updateSourceTime(src);
           if (src.type === 0x1028 /* AL_STATIC */ && src.audioQueue.length > 0) {
@@ -1305,7 +1305,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_LOOPING value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
         break;
@@ -1314,7 +1314,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           dbg(funcname + '(AL_BUFFER) called while source is playing or paused');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_OPERATION') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_OPERATION }}};
           return;
         }
 
@@ -1333,7 +1333,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
             dbg('alSourcei(AL_BUFFER) called with an invalid buffer');
 #endif
-            AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+            AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
             return;
           }
 
@@ -1351,12 +1351,12 @@ var LibraryOpenAL = {
         AL.initSourcePanner(src);
         AL.scheduleSourceAudio(src);
         break;
-      case {{{ cDefine('AL_GAIN') }}}:
+      case {{{ cDefs.AL_GAIN }}}:
         if (!Number.isFinite(value) || value < 0.0) {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_GAIN value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
         src.gain.gain.value = value;
@@ -1366,7 +1366,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_MIN_GAIN value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 #if OPENAL_DEBUG
@@ -1379,7 +1379,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_MAX_GAIN value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 #if OPENAL_DEBUG
@@ -1392,7 +1392,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_REFERENCE_DISTANCE value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
         src.refDistance = value;
@@ -1405,7 +1405,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_ROLLOFF_FACTOR value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
         src.rolloffFactor = value;
@@ -1418,7 +1418,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_CORE_OUTER_GAIN value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
         src.coneOuterGain = value;
@@ -1431,7 +1431,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_MAX_DISTANCE value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
         src.maxDistance = value;
@@ -1444,7 +1444,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_SEC_OFFSET value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -1466,7 +1466,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_SAMPLE_OFFSET value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -1489,18 +1489,18 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_BYTE_OFFSET value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
         AL.sourceSeek(src, value);
         break;
       case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
-        if (value !== {{{ cDefine('AL_FALSE') }}} && value !== {{{ cDefine('AL_TRUE') }}} && value !== 2 /* AL_AUTO_SOFT */) {
+        if (value !== {{{ cDefs.AL_FALSE }}} && value !== {{{ cDefs.AL_TRUE }}} && value !== 2 /* AL_AUTO_SOFT */) {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_SOURCE_SPATIALIZE_SOFT value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -1513,11 +1513,11 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg(funcname + '() param AL_*_LENGTH_SOFT is read only');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_OPERATION') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_OPERATION }}};
         break;
-      case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
+      case {{{ cDefs.AL_DISTANCE_MODEL }}}:
         switch (value) {
-        case {{{ cDefine('AL_NONE') }}}:
+        case {{{ cDefs.AL_NONE }}}:
         case 0xd001 /* AL_INVERSE_DISTANCE */:
         case 0xd002 /* AL_INVERSE_DISTANCE_CLAMPED */:
         case 0xd003 /* AL_LINEAR_DISTANCE */:
@@ -1533,7 +1533,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           dbg(funcname + '() param AL_DISTANCE_MODEL value ' + value + ' is out of range');
 #endif
-          AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
         break;
@@ -1541,7 +1541,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
       }
     },
@@ -1567,7 +1567,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg(funcname+'() on a NULL device is an error');
 #endif
-        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return null;
       }
       var c = AL.captures[deviceId];
@@ -1575,7 +1575,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg(funcname+'() on an invalid device');
 #endif
-        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return null;
       }
       var err = c.mediaStreamError;
@@ -1593,7 +1593,7 @@ var LibraryOpenAL = {
           break;
         }
 #endif
-        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return null;
       }
       return c;
@@ -1613,7 +1613,6 @@ var LibraryOpenAL = {
   // bufferFrameCapacity here for clarity.
   alcCaptureOpenDevice__deps: ['$autoResumeAudioContext'],
   alcCaptureOpenDevice__proxy: 'sync',
-  alcCaptureOpenDevice__sig: 'iiiii',
   alcCaptureOpenDevice: function(pDeviceName, requestedSampleRate, format, bufferFrameCapacity) {
 
     var resolvedDeviceName = AL.CAPTURE_DEVICE_NAME;
@@ -1640,7 +1639,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alcCaptureOpenDevice() with negative bufferSize');
 #endif
-      AL.alcErr = {{{ cDefine('ALC_INVALID_VALUE') }}};
+      AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
       return 0;
     }
 
@@ -1695,7 +1694,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alcCaptureOpenDevice() with unsupported format ' + format);
 #endif
-      AL.alcErr = {{{ cDefine('ALC_INVALID_VALUE') }}};
+      AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
       return 0;
     }
 
@@ -1905,7 +1904,6 @@ var LibraryOpenAL = {
   },
 
   alcCaptureCloseDevice__proxy: 'sync',
-  alcCaptureCloseDevice__sig: 'ii',
   alcCaptureCloseDevice: function(deviceId) {
     var c = AL.requireValidCaptureDevice(deviceId, 'alcCaptureCloseDevice');
     if (!c) return false;
@@ -1938,7 +1936,6 @@ var LibraryOpenAL = {
   },
 
   alcCaptureStart__proxy: 'sync',
-  alcCaptureStart__sig: 'vi',
   alcCaptureStart: function(deviceId) {
     var c = AL.requireValidCaptureDevice(deviceId, 'alcCaptureStart');
     if (!c) return;
@@ -1959,7 +1956,6 @@ var LibraryOpenAL = {
   },
 
   alcCaptureStop__proxy: 'sync',
-  alcCaptureStop__sig: 'vi',
   alcCaptureStop: function(deviceId) {
     var c = AL.requireValidCaptureDevice(deviceId, 'alcCaptureStop');
     if (!c) return;
@@ -1978,7 +1974,6 @@ var LibraryOpenAL = {
   // The last parameter is actually 'number of sample frames', so was
   // renamed accordingly here
   alcCaptureSamples__proxy: 'sync',
-  alcCaptureSamples__sig: 'viii',
   alcCaptureSamples: function(deviceId, pFrames, requestedFrameCount) {
     var c = AL.requireValidCaptureDevice(deviceId, 'alcCaptureSamples');
     if (!c) return;
@@ -1999,7 +1994,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alcCaptureSamples() with invalid bufferSize');
 #endif
-      AL.alcErr = {{{ cDefine('ALC_INVALID_VALUE') }}};
+      AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
       return;
     }
 
@@ -2066,7 +2061,6 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alcOpenDevice__proxy: 'sync',
-  alcOpenDevice__sig: 'ii',
   alcOpenDevice: function(pDeviceName) {
     if (pDeviceName) {
       var name = UTF8ToString(pDeviceName);
@@ -2084,20 +2078,18 @@ var LibraryOpenAL = {
   },
 
   alcCloseDevice__proxy: 'sync',
-  alcCloseDevice__sig: 'ii',
   alcCloseDevice: function(deviceId) {
     if (!(deviceId in AL.deviceRefCounts) || AL.deviceRefCounts[deviceId] > 0) {
-      return {{{ cDefine('ALC_FALSE') }}};
+      return {{{ cDefs.ALC_FALSE }}};
     }
 
     delete AL.deviceRefCounts[deviceId];
     AL.freeIds.push(deviceId);
-    return {{{ cDefine('ALC_TRUE') }}};
+    return {{{ cDefs.ALC_TRUE }}};
   },
 
   alcCreateContext__deps: ['$autoResumeAudioContext'],
   alcCreateContext__proxy: 'sync',
-  alcCreateContext__sig: 'iii',
   alcCreateContext: function(deviceId, pAttrList) {
     if (!(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
@@ -2137,10 +2129,10 @@ var LibraryOpenAL = {
           break
         case 0x1992 /* ALC_HRTF_SOFT */:
           switch (val) {
-            case {{{ cDefine('ALC_FALSE') }}}:
+            case {{{ cDefs.ALC_FALSE }}}:
               hrtf = false;
               break;
-            case {{{ cDefine('ALC_TRUE') }}}:
+            case {{{ cDefs.ALC_TRUE }}}:
               hrtf = true;
               break;
             case 2 /* ALC_DONT_CARE_SOFT */:
@@ -2149,7 +2141,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
               dbg('Unsupported ALC_HRTF_SOFT mode ' + val);
 #endif
-              AL.alcErr = {{{ cDefine('ALC_INVALID_VALUE') }}};
+              AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
               return 0;
           }
           break;
@@ -2158,7 +2150,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
             dbg('Invalid ALC_HRTF_ID_SOFT index ' + val);
 #endif
-            AL.alcErr = {{{ cDefine('ALC_INVALID_VALUE') }}};
+            AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
             return 0;
           }
           break;
@@ -2229,7 +2221,7 @@ var LibraryOpenAL = {
       },
       set err(val) {
         // Errors should not be overwritten by later errors until they are cleared by a query.
-        if (this._err === {{{ cDefine('AL_NO_ERROR') }}} || val === {{{ cDefine('AL_NO_ERROR') }}}) {
+        if (this._err === {{{ cDefs.AL_NO_ERROR }}} || val === {{{ cDefs.AL_NO_ERROR }}}) {
           this._err = val;
         }
       }
@@ -2252,7 +2244,6 @@ var LibraryOpenAL = {
   },
 
   alcDestroyContext__proxy: 'sync',
-  alcDestroyContext__sig: 'vi',
   alcDestroyContext: function(contextId) {
     var ctx = AL.contexts[contextId];
     if (AL.currentCtx === ctx) {
@@ -2277,15 +2268,13 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alcGetError__proxy: 'sync',
-  alcGetError__sig: 'ii',
   alcGetError: function(deviceId) {
     var err = AL.alcErr;
-    AL.alcErr = {{{ cDefine('ALC_NO_ERROR') }}};
+    AL.alcErr = {{{ cDefs.ALC_NO_ERROR }}};
     return err;
   },
 
   alcGetCurrentContext__proxy: 'sync',
-  alcGetCurrentContext__sig: 'i',
   alcGetCurrentContext: function() {
     if (AL.currentCtx !== null) {
       return AL.currentCtx.id;
@@ -2294,18 +2283,16 @@ var LibraryOpenAL = {
   },
 
   alcMakeContextCurrent__proxy: 'sync',
-  alcMakeContextCurrent__sig: 'ii',
   alcMakeContextCurrent: function(contextId) {
     if (contextId === 0) {
       AL.currentCtx = null;
     } else {
       AL.currentCtx = AL.contexts[contextId];
     }
-    return {{{ cDefine('ALC_TRUE') }}};
+    return {{{ cDefs.ALC_TRUE }}};
   },
 
   alcGetContextsDevice__proxy: 'sync',
-  alcGetContextsDevice__sig: 'ii',
   alcGetContextsDevice: function(contextId) {
     if (contextId in AL.contexts) {
       return AL.contexts[contextId].deviceId;
@@ -2314,13 +2301,10 @@ var LibraryOpenAL = {
   },
 
   // The spec is vague about what these are actually supposed to do, and NOP is a reasonable implementation
-  alcProcessContext__sig: 'vi',
   alcProcessContext: function(contextId) {},
-  alcSuspendContext__sig: 'vi',
   alcSuspendContext: function(contextId) {},
 
   alcIsExtensionPresent__proxy: 'sync',
-  alcIsExtensionPresent__sig: 'iii',
   alcIsExtensionPresent: function(deviceId, pExtName) {
     var name = UTF8ToString(pExtName);
 
@@ -2328,7 +2312,6 @@ var LibraryOpenAL = {
   },
 
   alcGetEnumValue__proxy: 'sync',
-  alcGetEnumValue__sig: 'iii',
   alcGetEnumValue: function(deviceId, pEnumName) {
     // Spec says :
     // Using a NULL handle is legal, but only the
@@ -2341,7 +2324,7 @@ var LibraryOpenAL = {
       // this function, sadly.
       return 0;
     } else if (!pEnumName) {
-      AL.alcErr = {{{ cDefine('ALC_INVALID_VALUE') }}};
+      AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
       return 0;
     }
     var name = UTF8ToString(pEnumName);
@@ -2387,13 +2370,12 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('No value for `' + pEnumName + '` is known by alcGetEnumValue()');
 #endif
-      AL.alcErr = {{{ cDefine('ALC_INVALID_VALUE') }}};
-      return {{{ cDefine('AL_NONE') }}};
+      AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
+      return {{{ cDefs.AL_NONE }}};
     }
   },
 
   alcGetString__proxy: 'sync',
-  alcGetString__sig: 'iii',
   alcGetString__deps: ['$allocateUTF8'],
   alcGetString: function(deviceId, param) {
     if (AL.alcStringCache[param]) {
@@ -2402,19 +2384,19 @@ var LibraryOpenAL = {
 
     var ret;
     switch (param) {
-    case {{{ cDefine('ALC_NO_ERROR') }}}:
+    case {{{ cDefs.ALC_NO_ERROR }}}:
       ret = 'No Error';
       break;
-    case {{{ cDefine('ALC_INVALID_DEVICE') }}}:
+    case {{{ cDefs.ALC_INVALID_DEVICE }}}:
       ret = 'Invalid Device';
       break;
     case 0xA002 /* ALC_INVALID_CONTEXT */:
       ret = 'Invalid Context';
       break;
-    case {{{ cDefine('ALC_INVALID_ENUM') }}}:
+    case {{{ cDefs.ALC_INVALID_ENUM }}}:
       ret = 'Invalid Enum';
       break;
-    case {{{ cDefine('ALC_INVALID_VALUE') }}}:
+    case {{{ cDefs.ALC_INVALID_VALUE }}}:
       ret = 'Invalid Value';
       break;
     case 0xA005 /* ALC_OUT_OF_MEMORY */:
@@ -2452,7 +2434,7 @@ var LibraryOpenAL = {
       break;
     case 0x1006 /* ALC_EXTENSIONS */:
       if (!deviceId) {
-        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return 0;
       }
 
@@ -2464,7 +2446,7 @@ var LibraryOpenAL = {
       ret = ret.trim();
       break;
     default:
-      AL.alcErr = {{{ cDefine('ALC_INVALID_ENUM') }}};
+      AL.alcErr = {{{ cDefs.ALC_INVALID_ENUM }}};
       return 0;
     }
 
@@ -2474,7 +2456,6 @@ var LibraryOpenAL = {
   },
 
   alcGetIntegerv__proxy: 'sync',
-  alcGetIntegerv__sig: 'viiii',
   alcGetIntegerv: function(deviceId, param, size, pValues) {
     if (size === 0 || !pValues) {
       // Ignore the query, per the spec
@@ -2490,7 +2471,7 @@ var LibraryOpenAL = {
       break;
     case 0x1002 /* ALC_ATTRIBUTES_SIZE */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return;
       }
       if (!AL.currentCtx) {
@@ -2502,7 +2483,7 @@ var LibraryOpenAL = {
       break;
     case 0x1003 /* ALC_ALL_ATTRIBUTES */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return;
       }
       if (!AL.currentCtx) {
@@ -2516,7 +2497,7 @@ var LibraryOpenAL = {
       break;
     case 0x1007 /* ALC_FREQUENCY */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return;
       }
       if (!AL.currentCtx) {
@@ -2529,7 +2510,7 @@ var LibraryOpenAL = {
     case 0x1010 /* ALC_MONO_SOURCES */:
     case 0x1011 /* ALC_STEREO_SOURCES */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return;
       }
       if (!AL.currentCtx) {
@@ -2542,7 +2523,7 @@ var LibraryOpenAL = {
     case 0x1992 /* ALC_HRTF_SOFT */:
     case 0x1993 /* ALC_HRTF_STATUS_SOFT */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return;
       }
 
@@ -2557,14 +2538,14 @@ var LibraryOpenAL = {
       break;
     case 0x1994 /* ALC_NUM_HRTF_SPECIFIERS_SOFT */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return;
       }
       {{{ makeSetValue('pValues', '0', '1', 'i32') }}};
       break;
     case 0x20003 /* ALC_MAX_AUXILIARY_SENDS */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return;
       }
       if (!AL.currentCtx) {
@@ -2588,7 +2569,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alcGetIntegerv() with param ' + ptrToString(param) + ' not implemented yet');
 #endif
-      AL.alcErr = {{{ cDefine('ALC_INVALID_ENUM') }}};
+      AL.alcErr = {{{ cDefs.ALC_INVALID_ENUM }}};
       return;
     }
   },
@@ -2600,7 +2581,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alcDevicePauseSOFT() called with an invalid device');
 #endif
-      AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
+      AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
       return;
     }
 
@@ -2628,7 +2609,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alcDeviceResumeSOFT() called with an invalid device');
 #endif
-      AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
+      AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
       return;
     }
 
@@ -2656,7 +2637,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alcGetStringiSOFT() called with an invalid device');
 #endif
-      AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
+      AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
       return 0;
     }
 
@@ -2673,7 +2654,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg('alcGetStringiSOFT() with param ALC_HRTF_SPECIFIER_SOFT index ' + index + ' is out of range');
 #endif
-        AL.alcErr = {{{ cDefine('ALC_INVALID_VALUE') }}};
+        AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
         return 0;
       }
       break;
@@ -2682,7 +2663,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg('alcGetStringiSOFT() with param ' + ptrToString(param) + ' not implemented yet');
 #endif
-        AL.alcErr = {{{ cDefine('ALC_INVALID_ENUM') }}};
+        AL.alcErr = {{{ cDefs.ALC_INVALID_ENUM }}};
         return 0;
       }
       return _alcGetString(deviceId, param);
@@ -2700,8 +2681,8 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alcResetDeviceSOFT() called with an invalid device');
 #endif
-      AL.alcErr = {{{ cDefine('ALC_INVALID_DEVICE') }}};
-      return {{{ cDefine('ALC_FALSE') }}};
+      AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
+      return {{{ cDefs.ALC_FALSE }}};
     }
 
     var hrtf = null;
@@ -2718,9 +2699,9 @@ var LibraryOpenAL = {
 
         switch (attr) {
         case 0x1992 /* ALC_HRTF_SOFT */:
-          if (val === {{{ cDefine('ALC_TRUE') }}}) {
+          if (val === {{{ cDefs.ALC_TRUE }}}) {
             hrtf = true;
-          } else if (val === {{{ cDefine('ALC_FALSE') }}}) {
+          } else if (val === {{{ cDefs.ALC_FALSE }}}) {
             hrtf = false;
           }
           break;
@@ -2739,7 +2720,7 @@ var LibraryOpenAL = {
       }
     }
 
-    return {{{ cDefine('ALC_TRUE') }}};
+    return {{{ cDefs.ALC_TRUE }}};
   },
 
   // ***************************************************************************
@@ -2751,7 +2732,6 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alGenBuffers__proxy: 'sync',
-  alGenBuffers__sig: 'vii',
   alGenBuffers: function(count, pBufferIds) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -2778,7 +2758,6 @@ var LibraryOpenAL = {
   },
 
   alDeleteBuffers__proxy: 'sync',
-  alDeleteBuffers__sig: 'vii',
   alDeleteBuffers: function(count, pBufferIds) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -2799,7 +2778,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg('alDeleteBuffers() called with an invalid buffer');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
       }
 
@@ -2808,7 +2787,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg('alDeleteBuffers() called with a used buffer');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_OPERATION') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_OPERATION }}};
         return;
       }
     }
@@ -2826,7 +2805,6 @@ var LibraryOpenAL = {
   },
 
   alGenSources__proxy: 'sync',
-  alGenSources__sig: 'vii',
   alGenSources: function(count, pSourceIds) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -2878,7 +2856,6 @@ var LibraryOpenAL = {
 
   alDeleteSources__deps: ['alSourcei'],
   alDeleteSources__proxy: 'sync',
-  alDeleteSources__sig: 'vii',
   alDeleteSources: function(count, pSourceIds) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -2893,7 +2870,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg('alDeleteSources() called with an invalid source');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
       }
     }
@@ -2912,19 +2889,17 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alGetError__proxy: 'sync',
-  alGetError__sig: 'i',
   alGetError: function() {
     if (!AL.currentCtx) {
-      return {{{ cDefine('AL_INVALID_OPERATION') }}};
+      return {{{ cDefs.AL_INVALID_OPERATION }}};
     }
     // Reset error on get.
     var err = AL.currentCtx.err;
-    AL.currentCtx.err = {{{ cDefine('AL_NO_ERROR') }}};
+    AL.currentCtx.err = {{{ cDefs.AL_NO_ERROR }}};
     return err;
   },
 
   alIsExtensionPresent__proxy: 'sync',
-  alIsExtensionPresent__sig: 'ii',
   alIsExtensionPresent: function(pExtName) {
     var name = UTF8ToString(pExtName);
 
@@ -2932,7 +2907,6 @@ var LibraryOpenAL = {
   },
 
   alGetEnumValue__proxy: 'sync',
-  alGetEnumValue__sig: 'ii',
   alGetEnumValue: function(pEnumName) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -2945,8 +2919,8 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetEnumValue() called with null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
-      return {{{ cDefine('AL_NONE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
+      return {{{ cDefs.AL_NONE }}};
     }
     var name = UTF8ToString(pEnumName);
 
@@ -3038,13 +3012,12 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('No value for `' + name + '` is known by alGetEnumValue()');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return 0;
     }
   },
 
   alGetString__proxy: 'sync',
-  alGetString__sig: 'ii',
   alGetString__deps: ['$allocateUTF8'],
   alGetString: function(param) {
     if (AL.stringCache[param]) {
@@ -3053,19 +3026,19 @@ var LibraryOpenAL = {
 
     var ret;
     switch (param) {
-    case {{{ cDefine('AL_NO_ERROR') }}}:
+    case {{{ cDefs.AL_NO_ERROR }}}:
       ret = 'No Error';
       break;
-    case {{{ cDefine('AL_INVALID_NAME') }}}:
+    case {{{ cDefs.AL_INVALID_NAME }}}:
       ret = 'Invalid Name';
       break;
-    case {{{ cDefine('AL_INVALID_ENUM') }}}:
+    case {{{ cDefs.AL_INVALID_ENUM }}}:
       ret = 'Invalid Enum';
       break;
-    case {{{ cDefine('AL_INVALID_VALUE') }}}:
+    case {{{ cDefs.AL_INVALID_VALUE }}}:
       ret = 'Invalid Value';
       break;
-    case {{{ cDefine('AL_INVALID_OPERATION') }}}:
+    case {{{ cDefs.AL_INVALID_OPERATION }}}:
       ret = 'Invalid Operation';
       break;
     case 0xA005 /* AL_OUT_OF_MEMORY */:
@@ -3090,7 +3063,7 @@ var LibraryOpenAL = {
       break;
     default:
       if (AL.currentCtx) {
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       } else {
   #if OPENAL_DEBUG
         dbg('alGetString() called without a valid context');
@@ -3105,7 +3078,6 @@ var LibraryOpenAL = {
   },
 
   alEnable__proxy: 'sync',
-  alEnable__sig: 'vi',
   alEnable: function(param) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -3122,13 +3094,12 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alEnable() with param ' + ptrToString(param) + ' not implemented yet');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alDisable__proxy: 'sync',
-  alDisable__sig: 'vi',
   alDisable: function(param) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -3145,13 +3116,12 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alDisable() with param ' + ptrToString(param) + ' not implemented yet');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alIsEnabled__proxy: 'sync',
-  alIsEnabled__sig: 'ii',
   alIsEnabled: function(param) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -3161,18 +3131,17 @@ var LibraryOpenAL = {
     }
     switch (param) {
     case 'AL_SOURCE_DISTANCE_MODEL':
-      return AL.currentCtx.sourceDistanceModel ? {{{ cDefine('AL_FALSE') }}} : {{{ cDefine('AL_TRUE') }}};
+      return AL.currentCtx.sourceDistanceModel ? {{{ cDefs.AL_FALSE }}} : {{{ cDefs.AL_TRUE }}};
     default:
 #if OPENAL_DEBUG
       dbg('alIsEnabled() with param ' + ptrToString(param) + ' not implemented yet');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return 0;
     }
   },
 
   alGetDouble__proxy: 'sync',
-  alGetDouble__sig: 'di',
   alGetDouble: function(param) {
     var val = AL.getGlobalParam('alGetDouble', param);
     if (val === null) {
@@ -3180,21 +3149,20 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case {{{ cDefine('AL_DOPPLER_FACTOR') }}}:
-    case {{{ cDefine('AL_SPEED_OF_SOUND') }}}:
-    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
+    case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
+    case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       return val;
     default:
 #if OPENAL_DEBUG
       dbg('alGetDouble(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return 0.0;
     }
   },
 
   alGetDoublev__proxy: 'sync',
-  alGetDoublev__sig: 'vii',
   alGetDoublev: function(param, pValues) {
     var val = AL.getGlobalParam('alGetDoublev', param);
     // Silently ignore null destinations, as per the spec for global state functions
@@ -3203,22 +3171,21 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case {{{ cDefine('AL_DOPPLER_FACTOR') }}}:
-    case {{{ cDefine('AL_SPEED_OF_SOUND') }}}:
-    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
+    case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
+    case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       {{{ makeSetValue('pValues', '0', 'val', 'double') }}};
       break;
     default:
 #if OPENAL_DEBUG
       dbg('alGetDoublev(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetFloat__proxy: 'sync',
-  alGetFloat__sig: 'fi',
   alGetFloat: function(param) {
     var val = AL.getGlobalParam('alGetFloat', param);
     if (val === null) {
@@ -3226,9 +3193,9 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case {{{ cDefine('AL_DOPPLER_FACTOR') }}}:
-    case {{{ cDefine('AL_SPEED_OF_SOUND') }}}:
-    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
+    case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
+    case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       return val;
     default:
 #if OPENAL_DEBUG
@@ -3239,7 +3206,6 @@ var LibraryOpenAL = {
   },
 
   alGetFloatv__proxy: 'sync',
-  alGetFloatv__sig: 'vii',
   alGetFloatv: function(param, pValues) {
     var val = AL.getGlobalParam('alGetFloatv', param);
     // Silently ignore null destinations, as per the spec for global state functions
@@ -3248,22 +3214,21 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case {{{ cDefine('AL_DOPPLER_FACTOR') }}}:
-    case {{{ cDefine('AL_SPEED_OF_SOUND') }}}:
-    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
+    case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
+    case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       {{{ makeSetValue('pValues', '0', 'val', 'float') }}};
       break;
     default:
 #if OPENAL_DEBUG
       dbg('alGetFloatv(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetInteger__proxy: 'sync',
-  alGetInteger__sig: 'ii',
   alGetInteger: function(param) {
     var val = AL.getGlobalParam('alGetInteger', param);
     if (val === null) {
@@ -3271,21 +3236,20 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case {{{ cDefine('AL_DOPPLER_FACTOR') }}}:
-    case {{{ cDefine('AL_SPEED_OF_SOUND') }}}:
-    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
+    case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
+    case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       return val;
     default:
 #if OPENAL_DEBUG
       dbg('alGetInteger(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return 0;
     }
   },
 
   alGetIntegerv__proxy: 'sync',
-  alGetIntegerv__sig: 'vii',
   alGetIntegerv: function(param, pValues) {
     var val = AL.getGlobalParam('alGetIntegerv', param);
     // Silently ignore null destinations, as per the spec for global state functions
@@ -3294,44 +3258,42 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case {{{ cDefine('AL_DOPPLER_FACTOR') }}}:
-    case {{{ cDefine('AL_SPEED_OF_SOUND') }}}:
-    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
+    case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
+    case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       {{{ makeSetValue('pValues', '0', 'val', 'i32') }}};
       break;
     default:
 #if OPENAL_DEBUG
       dbg('alGetIntegerv(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetBoolean__proxy: 'sync',
-  alGetBoolean__sig: 'ii',
   alGetBoolean: function(param) {
     var val = AL.getGlobalParam('alGetBoolean', param);
     if (val === null) {
-      return {{{ cDefine('AL_FALSE') }}};
+      return {{{ cDefs.AL_FALSE }}};
     }
 
     switch (param) {
-    case {{{ cDefine('AL_DOPPLER_FACTOR') }}}:
-    case {{{ cDefine('AL_SPEED_OF_SOUND') }}}:
-    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
-      return val !== 0 ? {{{ cDefine('AL_TRUE') }}} : {{{ cDefine('AL_FALSE') }}};
+    case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
+    case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
+      return val !== 0 ? {{{ cDefs.AL_TRUE }}} : {{{ cDefs.AL_FALSE }}};
     default:
 #if OPENAL_DEBUG
       dbg('alGetBoolean(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
-      return {{{ cDefine('AL_FALSE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
+      return {{{ cDefs.AL_FALSE }}};
     }
   },
 
   alGetBooleanv__proxy: 'sync',
-  alGetBooleanv__sig: 'vii',
   alGetBooleanv: function(param, pValues) {
     var val = AL.getGlobalParam('alGetBooleanv', param);
     // Silently ignore null destinations, as per the spec for global state functions
@@ -3340,36 +3302,33 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case {{{ cDefine('AL_DOPPLER_FACTOR') }}}:
-    case {{{ cDefine('AL_SPEED_OF_SOUND') }}}:
-    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
+    case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
+    case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       {{{ makeSetValue('pValues', '0', 'val', 'i8') }}};
       break;
     default:
 #if OPENAL_DEBUG
       dbg('alGetBooleanv(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alDistanceModel__proxy: 'sync',
-  alDistanceModel__sig: 'vi',
   alDistanceModel: function(model) {
-    AL.setGlobalParam('alDistanceModel', {{{ cDefine('AL_DISTANCE_MODEL') }}}, model);
+    AL.setGlobalParam('alDistanceModel', {{{ cDefs.AL_DISTANCE_MODEL }}}, model);
   },
 
   alSpeedOfSound__proxy: 'sync',
-  alSpeedOfSound__sig: 'vi',
   alSpeedOfSound: function(value) {
-    AL.setGlobalParam('alSpeedOfSound', {{{ cDefine('AL_SPEED_OF_SOUND') }}}, value);
+    AL.setGlobalParam('alSpeedOfSound', {{{ cDefs.AL_SPEED_OF_SOUND }}}, value);
   },
 
   alDopplerFactor__proxy: 'sync',
-  alDopplerFactor__sig: 'vi',
   alDopplerFactor: function(value) {
-    AL.setGlobalParam('alDopplerFactor', {{{ cDefine('AL_DOPPLER_FACTOR') }}}, value);
+    AL.setGlobalParam('alDopplerFactor', {{{ cDefs.AL_DOPPLER_FACTOR }}}, value);
   },
 
   // http://openal.996291.n3.nabble.com/alSpeedOfSound-or-alDopperVelocity-tp1960.html
@@ -3377,7 +3336,6 @@ var LibraryOpenAL = {
   // It's deprecated since it's equivalent to directly calling
   // alSpeedOfSound() with an appropriately premultiplied value.
   alDopplerVelocity__proxy: 'sync',
-  alDopplerVelocity__sig: 'vi',
   alDopplerVelocity: function(value) {
     warnOnce('alDopplerVelocity() is deprecated, and only kept for compatibility with OpenAL 1.0. Use alSpeedOfSound() instead.');
     if (!AL.currentCtx) {
@@ -3387,7 +3345,7 @@ var LibraryOpenAL = {
       return;
     }
     if (value <= 0) { // Negative or zero values are disallowed
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
   },
@@ -3397,7 +3355,6 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alGetListenerf__proxy: 'sync',
-  alGetListenerf__sig: 'vii',
   alGetListenerf: function(param, pValue) {
     var val = AL.getListenerParam('alGetListenerf', param);
     if (val === null) {
@@ -3407,25 +3364,24 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetListenerf() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
     switch (param) {
-    case {{{ cDefine('AL_GAIN') }}}:
+    case {{{ cDefs.AL_GAIN }}}:
       {{{ makeSetValue('pValue', '0', 'val', 'float') }}};
       break;
     default:
 #if OPENAL_DEBUG
       dbg('alGetListenerf(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetListener3f__proxy: 'sync',
-  alGetListener3f__sig: 'viiii',
   alGetListener3f: function(param, pValue0, pValue1, pValue2) {
     var val = AL.getListenerParam('alGetListener3f', param);
     if (val === null) {
@@ -3435,13 +3391,13 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetListener3f() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
     switch (param) {
-    case {{{ cDefine('AL_POSITION') }}}:
-    case {{{ cDefine('AL_VELOCITY') }}}:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       {{{ makeSetValue('pValue0', '0', 'val[0]', 'float') }}};
       {{{ makeSetValue('pValue1', '0', 'val[1]', 'float') }}};
       {{{ makeSetValue('pValue2', '0', 'val[2]', 'float') }}};
@@ -3450,13 +3406,12 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetListener3f(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetListenerfv__proxy: 'sync',
-  alGetListenerfv__sig: 'vii',
   alGetListenerfv: function(param, pValues) {
     var val = AL.getListenerParam('alGetListenerfv', param);
     if (val === null) {
@@ -3466,18 +3421,18 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetListenerfv() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
     switch (param) {
-    case {{{ cDefine('AL_POSITION') }}}:
-    case {{{ cDefine('AL_VELOCITY') }}}:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'float') }}};
       {{{ makeSetValue('pValues', '4', 'val[1]', 'float') }}};
       {{{ makeSetValue('pValues', '8', 'val[2]', 'float') }}};
       break;
-    case {{{ cDefine('AL_ORIENTATION') }}}:
+    case {{{ cDefs.AL_ORIENTATION }}}:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'float') }}};
       {{{ makeSetValue('pValues', '4', 'val[1]', 'float') }}};
       {{{ makeSetValue('pValues', '8', 'val[2]', 'float') }}};
@@ -3489,13 +3444,12 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetListenerfv(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetListeneri__proxy: 'sync',
-  alGetListeneri__sig: 'vii',
   alGetListeneri: function(param, pValue) {
     var val = AL.getListenerParam('alGetListeneri', param);
     if (val === null) {
@@ -3505,18 +3459,17 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetListeneri() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
 #if OPENAL_DEBUG
     dbg('alGetListeneri(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-    AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+    AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
   },
 
   alGetListener3i__proxy: 'sync',
-  alGetListener3i__sig: 'viiii',
   alGetListener3i: function(param, pValue0, pValue1, pValue2) {
     var val = AL.getListenerParam('alGetListener3i', param);
     if (val === null) {
@@ -3526,13 +3479,13 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetListener3i() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
     switch (param) {
-    case {{{ cDefine('AL_POSITION') }}}:
-    case {{{ cDefine('AL_VELOCITY') }}}:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       {{{ makeSetValue('pValue0', '0', 'val[0]', 'i32') }}};
       {{{ makeSetValue('pValue1', '0', 'val[1]', 'i32') }}};
       {{{ makeSetValue('pValue2', '0', 'val[2]', 'i32') }}};
@@ -3541,13 +3494,12 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetListener3i(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetListeneriv__proxy: 'sync',
-  alGetListeneriv__sig: 'vii',
   alGetListeneriv: function(param, pValues) {
     var val = AL.getListenerParam('alGetListeneriv', param);
     if (val === null) {
@@ -3557,18 +3509,18 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetListeneriv() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
     switch (param) {
-    case {{{ cDefine('AL_POSITION') }}}:
-    case {{{ cDefine('AL_VELOCITY') }}}:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'i32') }}};
       {{{ makeSetValue('pValues', '4', 'val[1]', 'i32') }}};
       {{{ makeSetValue('pValues', '8', 'val[2]', 'i32') }}};
       break;
-    case {{{ cDefine('AL_ORIENTATION') }}}:
+    case {{{ cDefs.AL_ORIENTATION }}}:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'i32') }}};
       {{{ makeSetValue('pValues', '4', 'val[1]', 'i32') }}};
       {{{ makeSetValue('pValues', '8', 'val[2]', 'i32') }}};
@@ -3580,16 +3532,15 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetListeneriv(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alListenerf__proxy: 'sync',
-  alListenerf__sig: 'vif',
   alListenerf: function(param, value) {
     switch (param) {
-    case {{{ cDefine('AL_GAIN') }}}:
+    case {{{ cDefs.AL_GAIN }}}:
       AL.setListenerParam('alListenerf', param, value);
       break;
     default:
@@ -3599,11 +3550,10 @@ var LibraryOpenAL = {
   },
 
   alListener3f__proxy: 'sync',
-  alListener3f__sig: 'vifff',
   alListener3f: function(param, value0, value1, value2) {
     switch (param) {
-    case {{{ cDefine('AL_POSITION') }}}:
-    case {{{ cDefine('AL_VELOCITY') }}}:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       AL.paramArray[0] = value0;
       AL.paramArray[1] = value1;
       AL.paramArray[2] = value2;
@@ -3616,7 +3566,6 @@ var LibraryOpenAL = {
   },
 
   alListenerfv__proxy: 'sync',
-  alListenerfv__sig: 'vii',
   alListenerfv: function(param, pValues) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -3628,19 +3577,19 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alListenerfv() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
     switch (param) {
-    case {{{ cDefine('AL_POSITION') }}}:
-    case {{{ cDefine('AL_VELOCITY') }}}:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'float') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'float') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'float') }}};
       AL.setListenerParam('alListenerfv', param, AL.paramArray);
       break;
-    case {{{ cDefine('AL_ORIENTATION') }}}:
+    case {{{ cDefs.AL_ORIENTATION }}}:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'float') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'float') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'float') }}};
@@ -3656,17 +3605,15 @@ var LibraryOpenAL = {
   },
 
   alListeneri__proxy: 'sync',
-  alListeneri__sig: 'vii',
   alListeneri: function(param, value) {
     AL.setListenerParam('alListeneri', param, null);
   },
 
   alListener3i__proxy: 'sync',
-  alListener3i__sig: 'viiii',
   alListener3i: function(param, value0, value1, value2) {
     switch (param) {
-    case {{{ cDefine('AL_POSITION') }}}:
-    case {{{ cDefine('AL_VELOCITY') }}}:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       AL.paramArray[0] = value0;
       AL.paramArray[1] = value1;
       AL.paramArray[2] = value2;
@@ -3679,7 +3626,6 @@ var LibraryOpenAL = {
   },
 
   alListeneriv__proxy: 'sync',
-  alListeneriv__sig: 'vii',
   alListeneriv: function(param, pValues) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -3691,19 +3637,19 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alListeneriv() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
     switch (param) {
-    case {{{ cDefine('AL_POSITION') }}}:
-    case {{{ cDefine('AL_VELOCITY') }}}:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'i32') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'i32') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'i32') }}};
       AL.setListenerParam('alListeneriv', param, AL.paramArray);
       break;
-    case {{{ cDefine('AL_ORIENTATION') }}}:
+    case {{{ cDefs.AL_ORIENTATION }}}:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'i32') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'i32') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'i32') }}};
@@ -3723,7 +3669,6 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alIsBuffer__proxy: 'sync',
-  alIsBuffer__sig: 'ii',
   alIsBuffer: function(bufferId) {
     if (!AL.currentCtx) {
       return false;
@@ -3739,7 +3684,6 @@ var LibraryOpenAL = {
   },
 
   alBufferData__proxy: 'sync',
-  alBufferData__sig: 'viiiii',
   alBufferData: function(bufferId, format, pData, size, freq) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -3752,14 +3696,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alBufferData() called with an invalid buffer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
     if (freq <= 0) {
 #if OPENAL_DEBUG
       dbg('alBufferData() called with an invalid frequency');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -3852,7 +3796,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg('alBufferData() called with invalid format ' + format);
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
         return;
       }
       buf.frequency = freq;
@@ -3861,13 +3805,12 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alBufferData() upload failed with an exception ' + e);
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
   },
 
   alGetBufferf__proxy: 'sync',
-  alGetBufferf__sig: 'viii',
   alGetBufferf: function(bufferId, param, pValue) {
     var val = AL.getBufferParam('alGetBufferf', bufferId, param);
     if (val === null) {
@@ -3877,18 +3820,17 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetBufferf() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
 #if OPENAL_DEBUG
     dbg('alGetBufferf(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-    AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+    AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
   },
 
   alGetBuffer3f__proxy: 'sync',
-  alGetBuffer3f__sig: 'viiiii',
   alGetBuffer3f: function(bufferId, param, pValue0, pValue1, pValue2) {
     var val = AL.getBufferParam('alGetBuffer3f', bufferId, param);
     if (val === null) {
@@ -3898,18 +3840,17 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetBuffer3f() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
 #if OPENAL_DEBUG
     dbg('alGetBuffer3f(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-    AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+    AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
   },
 
   alGetBufferfv__proxy: 'sync',
-  alGetBufferfv__sig: 'viii',
   alGetBufferfv: function(bufferId, param, pValues) {
     var val = AL.getBufferParam('alGetBufferfv', bufferId, param);
     if (val === null) {
@@ -3919,18 +3860,17 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetBufferfv() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
 #if OPENAL_DEBUG
     dbg('alGetBufferfv(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-    AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+    AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
   },
 
   alGetBufferi__proxy: 'sync',
-  alGetBufferi__sig: 'viii',
   alGetBufferi: function(bufferId, param, pValue) {
     var val = AL.getBufferParam('alGetBufferi', bufferId, param);
     if (val === null) {
@@ -3940,7 +3880,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetBufferi() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -3955,13 +3895,12 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetBufferi(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetBuffer3i__proxy: 'sync',
-  alGetBuffer3i__sig: 'viiiii',
   alGetBuffer3i: function(bufferId, param, pValue0, pValue1, pValue2) {
     var val = AL.getBufferParam('alGetBuffer3i', bufferId, param);
     if (val === null) {
@@ -3971,18 +3910,17 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetBuffer3i() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
 #if OPENAL_DEBUG
     dbg('alGetBuffer3i(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-    AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+    AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
   },
 
   alGetBufferiv__proxy: 'sync',
-  alGetBufferiv__sig: 'viii',
   alGetBufferiv: function(bufferId, param, pValues) {
     var val = AL.getBufferParam('alGetBufferiv', bufferId, param);
     if (val === null) {
@@ -3992,7 +3930,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetBufferiv() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -4011,7 +3949,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetBufferiv(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
@@ -4021,19 +3959,16 @@ var LibraryOpenAL = {
   // property for these.
 
   alBufferf__proxy: 'sync',
-  alBufferf__sig: 'viif',
   alBufferf: function(bufferId, param, value) {
     AL.setBufferParam('alBufferf', bufferId, param, null);
   },
 
   alBuffer3f__proxy: 'sync',
-  alBuffer3f__sig: 'viifff',
   alBuffer3f: function(bufferId, param, value0, value1, value2) {
     AL.setBufferParam('alBuffer3f', bufferId, param, null);
   },
 
   alBufferfv__proxy: 'sync',
-  alBufferfv__sig: 'viii',
   alBufferfv: function(bufferId, param, pValues) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4045,7 +3980,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alBufferfv() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -4053,19 +3988,16 @@ var LibraryOpenAL = {
   },
 
   alBufferi__proxy: 'sync',
-  alBufferi__sig: 'viii',
   alBufferi: function(bufferId, param, value) {
     AL.setBufferParam('alBufferi', bufferId, param, null);
   },
 
   alBuffer3i__proxy: 'sync',
-  alBuffer3i__sig: 'viiiii',
   alBuffer3i: function(bufferId, param, value0, value1, value2) {
     AL.setBufferParam('alBuffer3i', bufferId, param, null);
   },
 
   alBufferiv__proxy: 'sync',
-  alBufferiv__sig: 'viii',
   alBufferiv: function(bufferId, param, pValues) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4077,7 +4009,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alBufferiv() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -4098,7 +4030,6 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alIsSource__proxy: 'sync',
-  alIsSource__sig: 'ii',
   alIsSource: function(sourceId) {
     if (!AL.currentCtx) {
       return false;
@@ -4111,7 +4042,6 @@ var LibraryOpenAL = {
   },
 
   alSourceQueueBuffers__proxy: 'sync',
-  alSourceQueueBuffers__sig: 'viii',
   alSourceQueueBuffers: function(sourceId, count, pBufferIds) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4124,14 +4054,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alSourceQueueBuffers() called with an invalid source');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
       return;
     }
     if (src.type === 0x1028 /* AL_STATIC */) {
 #if OPENAL_DEBUG
       dbg('alSourceQueueBuffers() called while a static buffer is bound');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_OPERATION') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_OPERATION }}};
       return;
     }
 
@@ -4155,7 +4085,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg('alSourceQueueBuffers() called with an invalid buffer');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
       }
 
@@ -4168,7 +4098,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg('alSourceQueueBuffers() called with a buffer of different format');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_OPERATION') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_OPERATION }}};
       }
     }
 
@@ -4195,7 +4125,6 @@ var LibraryOpenAL = {
   },
 
   alSourceUnqueueBuffers__proxy: 'sync',
-  alSourceUnqueueBuffers__sig: 'viii',
   alSourceUnqueueBuffers: function(sourceId, count, pBufferIds) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4208,11 +4137,11 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alSourceUnqueueBuffers() called with an invalid source');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
       return;
     }
     if (count > (src.bufQueue.length === 1 && src.bufQueue[0].id === 0 ? 0 : src.bufsProcessed)) {
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -4238,7 +4167,6 @@ var LibraryOpenAL = {
   },
 
   alSourcePlay__proxy: 'sync',
-  alSourcePlay__sig: 'vi',
   alSourcePlay: function(sourceId) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4251,14 +4179,13 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alSourcePlay() called with an invalid source');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
       return;
     }
     AL.setSourceState(src, 0x1012 /* AL_PLAYING */);
   },
 
   alSourcePlayv__proxy: 'sync',
-  alSourcePlayv__sig: 'vii',
   alSourcePlayv: function(count, pSourceIds) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4270,14 +4197,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alSourcePlayv() called with null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
     }
     for (var i = 0; i < count; ++i) {
       if (!AL.currentCtx.sources[{{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}]) {
 #if OPENAL_DEBUG
         dbg('alSourcePlayv() called with an invalid source');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
       }
     }
@@ -4289,7 +4216,6 @@ var LibraryOpenAL = {
   },
 
   alSourceStop__proxy: 'sync',
-  alSourceStop__sig: 'vi',
   alSourceStop: function(sourceId) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4302,14 +4228,13 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alSourceStop() called with an invalid source');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
       return;
     }
     AL.setSourceState(src, 0x1014 /* AL_STOPPED */);
   },
 
   alSourceStopv__proxy: 'sync',
-  alSourceStopv__sig: 'vii',
   alSourceStopv: function(count, pSourceIds) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4321,14 +4246,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alSourceStopv() called with null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
     }
     for (var i = 0; i < count; ++i) {
       if (!AL.currentCtx.sources[{{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}]) {
 #if OPENAL_DEBUG
         dbg('alSourceStopv() called with an invalid source');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
       }
     }
@@ -4340,7 +4265,6 @@ var LibraryOpenAL = {
   },
 
   alSourceRewind__proxy: 'sync',
-  alSourceRewind__sig: 'vi',
   alSourceRewind: function(sourceId) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4353,7 +4277,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alSourceRewind() called with an invalid source');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
       return;
     }
     // Stop the source first to clear the source queue
@@ -4363,7 +4287,6 @@ var LibraryOpenAL = {
   },
 
   alSourceRewindv__proxy: 'sync',
-  alSourceRewindv__sig: 'vii',
   alSourceRewindv: function(count, pSourceIds) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4375,14 +4298,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alSourceRewindv() called with null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
     }
     for (var i = 0; i < count; ++i) {
       if (!AL.currentCtx.sources[{{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}]) {
 #if OPENAL_DEBUG
         dbg('alSourceRewindv() called with an invalid source');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
       }
     }
@@ -4394,7 +4317,6 @@ var LibraryOpenAL = {
   },
 
   alSourcePause__proxy: 'sync',
-  alSourcePause__sig: 'vi',
   alSourcePause: function(sourceId) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4407,14 +4329,13 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alSourcePause() called with an invalid source');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
       return;
     }
     AL.setSourceState(src, 0x1013 /* AL_PAUSED */);
   },
 
   alSourcePausev__proxy: 'sync',
-  alSourcePausev__sig: 'vii',
   alSourcePausev: function(count, pSourceIds) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4426,14 +4347,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alSourcePausev() called with null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
     }
     for (var i = 0; i < count; ++i) {
       if (!AL.currentCtx.sources[{{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}]) {
 #if OPENAL_DEBUG
         dbg('alSourcePausev() called with an invalid source');
 #endif
-        AL.currentCtx.err = {{{ cDefine('AL_INVALID_NAME') }}};
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
       }
     }
@@ -4445,7 +4366,6 @@ var LibraryOpenAL = {
   },
 
   alGetSourcef__proxy: 'sync',
-  alGetSourcef__sig: 'viii',
   alGetSourcef: function(sourceId, param, pValue) {
     var val = AL.getSourceParam('alGetSourcef', sourceId, param);
     if (val === null) {
@@ -4455,7 +4375,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetSourcef() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -4463,7 +4383,7 @@ var LibraryOpenAL = {
     case 0x1001 /* AL_CONE_INNER_ANGLE */:
     case 0x1002 /* AL_CONE_OUTER_ANGLE */:
     case 0x1003 /* AL_PITCH */:
-    case {{{ cDefine('AL_GAIN') }}}:
+    case {{{ cDefs.AL_GAIN }}}:
     case 0x100D /* AL_MIN_GAIN */:
     case 0x100E /* AL_MAX_GAIN */:
     case 0x1020 /* AL_REFERENCE_DISTANCE */:
@@ -4480,13 +4400,12 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetSourcef(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetSource3f__proxy: 'sync',
-  alGetSource3f__sig: 'viiiii',
   alGetSource3f: function(sourceId, param, pValue0, pValue1, pValue2) {
     var val = AL.getSourceParam('alGetSource3f', sourceId, param);
     if (val === null) {
@@ -4496,14 +4415,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetSource3f() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
     switch (param) {
-    case {{{ cDefine('AL_POSITION') }}}:
-    case {{{ cDefine('AL_DIRECTION') }}}:
-    case {{{ cDefine('AL_VELOCITY') }}}:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_DIRECTION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       {{{ makeSetValue('pValue0', '0', 'val[0]', 'float') }}};
       {{{ makeSetValue('pValue1', '0', 'val[1]', 'float') }}};
       {{{ makeSetValue('pValue2', '0', 'val[2]', 'float') }}};
@@ -4512,13 +4431,12 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetSource3f(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetSourcefv__proxy: 'sync',
-  alGetSourcefv__sig: 'viii',
   alGetSourcefv: function(sourceId, param, pValues) {
     var val = AL.getSourceParam('alGetSourcefv', sourceId, param);
     if (val === null) {
@@ -4528,7 +4446,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetSourcefv() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -4536,7 +4454,7 @@ var LibraryOpenAL = {
     case 0x1001 /* AL_CONE_INNER_ANGLE */:
     case 0x1002 /* AL_CONE_OUTER_ANGLE */:
     case 0x1003 /* AL_PITCH */:
-    case {{{ cDefine('AL_GAIN') }}}:
+    case {{{ cDefs.AL_GAIN }}}:
     case 0x100D /* AL_MIN_GAIN */:
     case 0x100E /* AL_MAX_GAIN */:
     case 0x1020 /* AL_REFERENCE_DISTANCE */:
@@ -4549,9 +4467,9 @@ var LibraryOpenAL = {
     case 0x200B /* AL_SEC_LENGTH_SOFT */:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'float') }}};
       break;
-    case {{{ cDefine('AL_POSITION') }}}:
-    case {{{ cDefine('AL_DIRECTION') }}}:
-    case {{{ cDefine('AL_VELOCITY') }}}:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_DIRECTION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'float') }}};
       {{{ makeSetValue('pValues', '4', 'val[1]', 'float') }}};
       {{{ makeSetValue('pValues', '8', 'val[2]', 'float') }}};
@@ -4560,13 +4478,12 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetSourcefv(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetSourcei__proxy: 'sync',
-  alGetSourcei__sig: 'viii',
   alGetSourcei: function(sourceId, param, pValue) {
     var val = AL.getSourceParam('alGetSourcei', sourceId, param);
     if (val === null) {
@@ -4576,7 +4493,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetSourcei() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -4599,20 +4516,19 @@ var LibraryOpenAL = {
     case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
     case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
-    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       {{{ makeSetValue('pValue', '0', 'val', 'i32') }}};
       break;
     default:
 #if OPENAL_DEBUG
       dbg('alGetSourcei(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetSource3i__proxy: 'sync',
-  alGetSource3i__sig: 'viiiii',
   alGetSource3i: function(sourceId, param, pValue0, pValue1, pValue2) {
     var val = AL.getSourceParam('alGetSource3i', sourceId, param);
     if (val === null) {
@@ -4622,14 +4538,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetSource3i() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
     switch (param) {
-    case {{{ cDefine('AL_POSITION') }}}:
-    case {{{ cDefine('AL_DIRECTION') }}}:
-    case {{{ cDefine('AL_VELOCITY') }}}:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_DIRECTION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       {{{ makeSetValue('pValue0', '0', 'val[0]', 'i32') }}};
       {{{ makeSetValue('pValue1', '0', 'val[1]', 'i32') }}};
       {{{ makeSetValue('pValue2', '0', 'val[2]', 'i32') }}};
@@ -4638,13 +4554,12 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetSource3i(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetSourceiv__proxy: 'sync',
-  alGetSourceiv__sig: 'viii',
   alGetSourceiv: function(sourceId, param, pValues) {
     var val = AL.getSourceParam('alGetSourceiv', sourceId, param);
     if (val === null) {
@@ -4654,7 +4569,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetSourceiv() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -4677,12 +4592,12 @@ var LibraryOpenAL = {
     case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
     case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
-    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       {{{ makeSetValue('pValues', '0', 'val', 'i32') }}};
       break;
-    case {{{ cDefine('AL_POSITION') }}}:
-    case {{{ cDefine('AL_DIRECTION') }}}:
-    case {{{ cDefine('AL_VELOCITY') }}}:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_DIRECTION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'i32') }}};
       {{{ makeSetValue('pValues', '4', 'val[1]', 'i32') }}};
       {{{ makeSetValue('pValues', '8', 'val[2]', 'i32') }}};
@@ -4691,19 +4606,18 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alGetSourceiv(): param ' + ptrToString(param) + ' has wrong signature');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_ENUM') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alSourcef__proxy: 'sync',
-  alSourcef__sig: 'viif',
   alSourcef: function(sourceId, param, value) {
     switch (param) {
     case 0x1001 /* AL_CONE_INNER_ANGLE */:
     case 0x1002 /* AL_CONE_OUTER_ANGLE */:
     case 0x1003 /* AL_PITCH */:
-    case {{{ cDefine('AL_GAIN') }}}:
+    case {{{ cDefs.AL_GAIN }}}:
     case 0x100D /* AL_MIN_GAIN */:
     case 0x100E /* AL_MAX_GAIN */:
     case 0x1020 /* AL_REFERENCE_DISTANCE */:
@@ -4723,12 +4637,11 @@ var LibraryOpenAL = {
   },
 
   alSource3f__proxy: 'sync',
-  alSource3f__sig: 'viifff',
   alSource3f: function(sourceId, param, value0, value1, value2) {
     switch (param) {
-    case {{{ cDefine('AL_POSITION') }}}:
-    case {{{ cDefine('AL_DIRECTION') }}}:
-    case {{{ cDefine('AL_VELOCITY') }}}:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_DIRECTION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       AL.paramArray[0] = value0;
       AL.paramArray[1] = value1;
       AL.paramArray[2] = value2;
@@ -4741,7 +4654,6 @@ var LibraryOpenAL = {
   },
 
   alSourcefv__proxy: 'sync',
-  alSourcefv__sig: 'viii',
   alSourcefv: function(sourceId, param, pValues) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4753,7 +4665,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alSourcefv() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -4761,7 +4673,7 @@ var LibraryOpenAL = {
     case 0x1001 /* AL_CONE_INNER_ANGLE */:
     case 0x1002 /* AL_CONE_OUTER_ANGLE */:
     case 0x1003 /* AL_PITCH */:
-    case {{{ cDefine('AL_GAIN') }}}:
+    case {{{ cDefs.AL_GAIN }}}:
     case 0x100D /* AL_MIN_GAIN */:
     case 0x100E /* AL_MAX_GAIN */:
     case 0x1020 /* AL_REFERENCE_DISTANCE */:
@@ -4775,9 +4687,9 @@ var LibraryOpenAL = {
       var val = {{{ makeGetValue('pValues', '0', 'float') }}};
       AL.setSourceParam('alSourcefv', sourceId, param, val);
       break;
-    case {{{ cDefine('AL_POSITION') }}}:
-    case {{{ cDefine('AL_DIRECTION') }}}:
-    case {{{ cDefine('AL_VELOCITY') }}}:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_DIRECTION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'float') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'float') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'float') }}};
@@ -4790,7 +4702,6 @@ var LibraryOpenAL = {
   },
 
   alSourcei__proxy: 'sync',
-  alSourcei__sig: 'viii',
   alSourcei: function(sourceId, param, value) {
     switch (param) {
     case 0x202 /* AL_SOURCE_RELATIVE */:
@@ -4807,7 +4718,7 @@ var LibraryOpenAL = {
     case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
     case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
-    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       AL.setSourceParam('alSourcei', sourceId, param, value);
       break;
     default:
@@ -4817,12 +4728,11 @@ var LibraryOpenAL = {
   },
 
   alSource3i__proxy: 'sync',
-  alSource3i__sig: 'viiiii',
   alSource3i: function(sourceId, param, value0, value1, value2) {
     switch (param) {
-    case {{{ cDefine('AL_POSITION') }}}:
-    case {{{ cDefine('AL_DIRECTION') }}}:
-    case {{{ cDefine('AL_VELOCITY') }}}:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_DIRECTION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       AL.paramArray[0] = value0;
       AL.paramArray[1] = value1;
       AL.paramArray[2] = value2;
@@ -4835,7 +4745,6 @@ var LibraryOpenAL = {
   },
 
   alSourceiv__proxy: 'sync',
-  alSourceiv__sig: 'viii',
   alSourceiv: function(sourceId, param, pValues) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4847,7 +4756,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alSourceiv() called with a null pointer');
 #endif
-      AL.currentCtx.err = {{{ cDefine('AL_INVALID_VALUE') }}};
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -4866,13 +4775,13 @@ var LibraryOpenAL = {
     case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
     case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
-    case {{{ cDefine('AL_DISTANCE_MODEL') }}}:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       var val = {{{ makeGetValue('pValues', '0', 'i32') }}};
       AL.setSourceParam('alSourceiv', sourceId, param, val);
       break;
-    case {{{ cDefine('AL_POSITION') }}}:
-    case {{{ cDefine('AL_DIRECTION') }}}:
-    case {{{ cDefine('AL_VELOCITY') }}}:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_DIRECTION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'i32') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'i32') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'i32') }}};

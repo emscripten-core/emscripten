@@ -93,14 +93,12 @@ def get_sysroot_dir(*parts):
   return str(Path(get_sysroot(absolute=True), *parts))
 
 
-def get_lib_dir(absolute, varies=True):
+def get_lib_dir(absolute):
   path = Path(get_sysroot(absolute=absolute), 'lib')
   if settings.MEMORY64:
     path = Path(path, 'wasm64-emscripten')
   else:
     path = Path(path, 'wasm32-emscripten')
-  if not varies:
-    return path
   # if relevant, use a subdir of the cache
   subdir = []
   if settings.LTO:
@@ -115,8 +113,8 @@ def get_lib_dir(absolute, varies=True):
   return path
 
 
-def get_lib_name(name, varies=True, absolute=False):
-  return str(get_lib_dir(absolute=absolute, varies=varies).joinpath(name))
+def get_lib_name(name, absolute=False):
+  return str(get_lib_dir(absolute=absolute).joinpath(name))
 
 
 def erase_lib(name):
@@ -138,7 +136,7 @@ def get_lib(libname, *args, **kwargs):
 
 # Request a cached file. If it isn't in the cache, it will be created with
 # the given creator function
-def get(shortname, creator, what=None, force=False, quiet=False):
+def get(shortname, creator, what=None, force=False, quiet=False, deferred=False):
   cachename = Path(cachedir, shortname)
   # Check for existence before taking the lock in case we can avoid the
   # lock completely.
@@ -162,7 +160,8 @@ def get(shortname, creator, what=None, force=False, quiet=False):
     logger.info(message)
     utils.safe_ensure_dirs(cachename.parent)
     creator(str(cachename))
-    assert cachename.exists()
+    if not deferred:
+      assert cachename.exists()
     if not quiet:
       logger.info(' - ok')
 

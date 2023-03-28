@@ -20,8 +20,6 @@
 #define SYS_fchmod		 __syscall_fchmod
 #define SYS_getpriority	 __syscall_getpriority
 #define SYS_setpriority	 __syscall_setpriority
-#define SYS_setitimer		__syscall_setitimer
-#define SYS_getitimer		__syscall_getitimer
 #define SYS_wait4		__syscall_wait4
 #define SYS_setdomainname	__syscall_setdomainname
 #define SYS_uname		__syscall_uname
