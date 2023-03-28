@@ -13,6 +13,7 @@ import time
 from contextlib import ContextDecorator
 
 logger = logging.getLogger('profiler')
+logger.setLevel(logging.INFO)
 
 from . import response_file
 

@@ -29,9 +29,15 @@ from . import colored_logger
 # Configure logging before importing any other local modules so even
 # log message during import are shown as expected.
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
+EMCC_VERBOSE = int(os.getenv('EMCC_VERBOSE', '0'))
+if DEBUG:
+  log_level = logging.DEBUG
+elif EMCC_VERBOSE:
+  log_level = logging.INFO
+else:
+  log_level = logging.WARN
 # can add  %(asctime)s  to see timestamps
-logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
-                    level=logging.DEBUG if DEBUG else logging.INFO)
+logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s', level=log_level)
 colored_logger.enable()
 
 from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
@@ -618,7 +624,7 @@ def target_environment_may_be(environment):
 def print_compiler_stage(cmd):
   """Emulate the '-v' of clang/gcc by printing the name of the sub-command
   before executing it."""
-  if PRINT_STAGES:
+  if EMCC_VERBOSE:
     print(' "%s" %s' % (cmd[0], shlex_join(cmd[1:])), file=sys.stderr)
     sys.stderr.flush()
 
@@ -787,5 +793,3 @@ EMSCRIPTEN_TEMP_DIR = None
 setup_temp_dirs()
 
 cache.setup(config.CACHE)
-
-PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))

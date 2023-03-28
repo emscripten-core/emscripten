@@ -308,6 +308,7 @@ fi
         output = self.do(cmd)
         self.assertNotContained(NODE_WARNING, output)
 
+  @with_env_modify({'EMCC_VERBOSE': '1'})
   def test_emcc(self):
     SANITY_FAIL_MESSAGE = 'sanity check failed to run'
 
@@ -379,6 +380,7 @@ fi
   def ensure_cache(self):
     self.do([EMCC, '-O2', test_file('hello_world.c')])
 
+  @with_env_modify({'EMCC_VERBOSE': '1'})
   def test_emcc_caching(self):
     BUILDING_MESSAGE = 'generating system library: %s'
 
@@ -398,6 +400,7 @@ fi
       self.assertExists(cache.cachedir)
       self.assertExists(os.path.join(cache.cachedir, libname))
 
+  @with_env_modify({'EMCC_VERBOSE': '1'})
   def test_cache_clearing_manual(self):
     # Manual cache clearing
     restore_and_set_up()
@@ -408,6 +411,7 @@ fi
     self.assertIn(SANITY_MESSAGE, output)
     self.assertCacheEmpty()
 
+  @with_env_modify({'EMCC_VERBOSE': '1'})
   def test_cache_clearing_auto(self):
     # Changing LLVM_ROOT, even without altering .emscripten, clears the cache
     restore_and_set_up()
@@ -691,6 +695,7 @@ fi
     with env_modify({'PATH': self.in_dir('fake') + os.pathsep + os.environ['PATH']}):
       self.check_working([EMCC])
 
+  @with_env_modify({'EMCC_VERBOSE': '1'})
   def test_embuilder_force(self):
     restore_and_set_up()
     self.do([EMBUILDER, 'build', 'libemmalloc'])
@@ -699,6 +704,7 @@ fi
     # Unless --force is specified
     self.assertContained('generating system library', self.do([EMBUILDER, 'build', 'libemmalloc', '--force']))
 
+  @with_env_modify({'EMCC_VERBOSE': '1'})
   def test_embuilder_force_port(self):
     restore_and_set_up()
     self.do([EMBUILDER, 'build', 'zlib'])

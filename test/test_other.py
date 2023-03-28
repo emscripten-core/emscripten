@@ -256,6 +256,7 @@ class other(RunnerCore):
       self.assertContained('Target: wasm32-unknown-emscripten', proc.stderr)
       self.assertNotContained('this is dangerous', proc.stderr)
 
+  @with_env_modify({'EMCC_VERBOSE': '1'})
   def test_emcc_check(self):
     proc = self.run_process([EMCC, '--check'], stdout=PIPE, stderr=PIPE)
     self.assertEqual(proc.stdout, '')

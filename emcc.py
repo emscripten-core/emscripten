@@ -3504,7 +3504,7 @@ def parse_args(newargs):
     elif check_flag('--ignore-dynamic-linking'):
       options.ignore_dynamic_linking = True
     elif arg == '-v':
-      shared.PRINT_STAGES = True
+      shared.EMCC_VERBOSE = True
     elif check_arg('--shell-file'):
       options.shell_path = consume_arg_file()
     elif check_arg('--source-map-base'):

@@ -243,7 +243,7 @@ def get_args():
   parser.add_argument('address', help='Address to lookup')
   args = parser.parse_args()
   if args.verbose:
-    shared.PRINT_STAGES = 1
+    shared.EMCC_VERBOSE = True
     shared.DEBUG = True
   return args
 
