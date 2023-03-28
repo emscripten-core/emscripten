@@ -5563,6 +5563,14 @@ Module["preRun"].push(function () {
       self.run_process(config.NODE_JS + ['build.mjs'])
     self.run_browser('esbuild/dist/index.html', '/report_result?exit:0')
 
+  def test_rollup(self):
+    shutil.copytree(test_file('rollup'), 'rollup')
+    with utils.chdir('rollup'):
+      self.compile_btest([test_file('hello_world.c'), '-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web',
+                          '-sEXPORT_ES6=1', '-o', 'src/hello.mjs'])
+      self.run_process(shared.get_npm_cmd('rollup') + ['-c', 'rollup.config.mjs'])
+    self.run_browser('rollup/dist/index.html', '/report_result?exit:0')
+
 
 class emrun(RunnerCore):
   def test_emrun_info(self):
