@@ -1,4 +1,4 @@
-//===------------------------- cxa_emscripten.cpp -------------------------===//
+//===-------------------- cxa_exception_emscripten.cpp --------------------===//
 //
 //  Most code in the file is directly copied from cxa_exception.cpp.
 //  TODO(sbc): consider merging them
