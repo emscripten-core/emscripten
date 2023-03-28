@@ -1,7 +1,9 @@
 {
   "private": true,
   "devDependencies": {
+    "@chialab/esbuild-plugin-meta-url": "^0.17.5",
     "es-check": "^6.2.1",
+    "esbuild": "^0.17.14",
     "eslint": "^8.16.0",
     "eslint-config-prettier": "^8.5.0",
     "prettier": "^2.7.1",
