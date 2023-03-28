@@ -69,6 +69,7 @@ function isDefined(symName) {
 function runJSify() {
   const libraryItems = [];
   const symbolDeps = {};
+  const asyncFuncs = [];
   let postSets = [];
 
   LibraryManager.load();
@@ -247,6 +248,18 @@ function ${name}(${args}) {
 
       const deps = LibraryManager.library[symbol + '__deps'] || [];
 
+      let isAsyncFunction = false;
+      if (ASYNCIFY) {
+        const original = LibraryManager.library[symbol];
+        if (typeof original == 'function' ) {
+          isAsyncFunction = LibraryManager.library[symbol + '__async'] ||
+                            original.constructor.name == 'AsyncFunction'
+        }
+        if (isAsyncFunction) {
+          asyncFuncs.push(symbol);
+        }
+      }
+
       if (symbolsOnly) {
         if (!isJsOnlySymbol(symbol) && LibraryManager.library.hasOwnProperty(symbol)) {
           externalDeps = deps.filter((d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library) && typeof d === 'string');
@@ -423,6 +436,9 @@ function ${name}(${args}) {
       if (sig && (RELOCATABLE || ASYNCIFY == 2)) {
         contentText += `\n${mangled}.sig = '${sig}';`;
       }
+      if (ASYNCIFY && isAsyncFunction) {
+        contentText += `\n${mangled}.isAsync = true;`;
+      }
       if (isStub) {
         contentText += `\n${mangled}.stub = true;`;
         if (ASYNCIFY) {
@@ -529,6 +545,7 @@ function ${name}(${args}) {
     print('//FORWARDED_DATA:' + JSON.stringify({
       librarySymbols: librarySymbols,
       warnings: warnings,
+      asyncFuncs,
       ATINITS: ATINITS.join('\n'),
       ATMAINS: ATMAINS.join('\n'),
       ATEXITS: ATEXITS.join('\n'),
@@ -540,7 +557,10 @@ function ${name}(${args}) {
   }
 
   if (symbolsOnly) {
-    print(JSON.stringify(symbolDeps));
+    print(JSON.stringify({
+      deps: symbolDeps,
+      asyncFuncs
+    }));
     return;
   }
 

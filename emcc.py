@@ -101,7 +101,7 @@ UNSUPPORTED_LLD_FLAGS = {
 }
 
 DEFAULT_ASYNCIFY_IMPORTS = [
-  'emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load',
+  'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load',
   'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
   'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay',
   'emscripten_scan_registers', 'emscripten_lazy_load_code',
@@ -507,7 +507,7 @@ def ensure_archive_index(archive_file):
     run_process([shared.LLVM_RANLIB, archive_file])
 
 
-def generate_js_symbols():
+def generate_js_sym_info():
   # Runs the js compiler to generate a list of all symbols available in the JS
   # libraries.  This must be done separately for each linker invokation since the
   # list of symbols depends on what settings are used.
@@ -520,11 +520,11 @@ def generate_js_symbols():
 
 
 @ToolchainProfiler.profile_block('JS symbol generation')
-def get_all_js_syms():
+def get_js_sym_info():
   # Avoiding using the cache when generating struct info since
   # this step is performed while the cache is locked.
   if DEBUG or settings.BOOTSTRAPPING_STRUCT_INFO or config.FROZEN_CACHE:
-    return generate_js_symbols()
+    return generate_js_sym_info()
 
   # We define a cache hit as when the settings and `--js-library` contents are
   # identical.
@@ -545,29 +545,16 @@ def get_all_js_syms():
   def build_symbol_list(filename):
     """Only called when there is no existing symbol list for a given content hash.
     """
-    library_syms = generate_js_symbols()
-    lines = []
+    library_syms = generate_js_sym_info()
 
-    for name, deps in library_syms.items():
-      if deps:
-        lines.append('%s: %s' % (name, ','.join(deps)))
-      else:
-        lines.append(name)
-    write_file(filename, '\n'.join(lines) + '\n')
+    write_file(filename, json.dumps(library_syms, separators=(',', ':')))
 
   # We need to use a separate lock here for symbol lists because, unlike with system libraries,
   # it's normally for these file to get pruned as part of normal operation.  This means that it
   # can be deleted between the `cache.get()` then the `read_file`.
   with filelock.FileLock(cache.get_path(cache.get_path('symbol_lists.lock'))):
     filename = cache.get(f'symbol_lists/{content_hash}.txt', build_symbol_list)
-    lines = read_file(filename).splitlines()
-    library_syms = {}
-    for line in lines:
-      if ':' in line:
-        name, deps = line.split(':')
-        library_syms[name] = deps.strip().split(',')
-      else:
-        library_syms[line] = []
+    library_syms = json.loads(read_file(filename))
 
     # Limit of the overall size of the cache to 100 files.
     # This code will get test coverage since a full test run of `other` or `core`
@@ -1334,9 +1321,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     return 0
 
   js_syms = {}
-  if not settings.SIDE_MODULE:
-    js_syms = get_all_js_syms()
-    deps_info.append_deps_info(js_syms)
+  if not settings.SIDE_MODULE or settings.ASYNCIFY:
+    js_info = get_js_sym_info()
+    if not settings.SIDE_MODULE:
+      js_syms = js_info['deps']
+      deps_info.append_deps_info(js_syms)
+    if settings.ASYNCIFY:
+      settings.ASYNCIFY_IMPORTS += ['env.' + x for x in js_info['asyncFuncs']]
 
   phase_calculate_system_libraries(state, linker_arguments, linker_inputs, newargs)
 

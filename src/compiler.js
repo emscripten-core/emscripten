@@ -74,7 +74,7 @@ if (symbolsOnly) {
 }
 
 // Side modules are pure wasm and have no JS
-assert(!SIDE_MODULE, 'JS compiler should not run on side modules');
+assert(!SIDE_MODULE || (ASYNCIFY && global.symbolsOnly), 'JS compiler should only run on side modules if asyncify is used.');
 
 // Output some info and warnings based on settings
 
