@@ -30,8 +30,9 @@ mergeInto(LibraryManager.library, {
     }
     async read(buffer, options = { at: 0 }) {
       let file = await this.handle.getFile();
-      let fileBuffer = await file.arrayBuffer();
-      let array = new Uint8Array(fileBuffer, options.at);
+      let slice = await file.slice(options.at);
+      let fileBuffer = await slice.arrayBuffer();
+      let array = new Uint8Array(fileBuffer);
       buffer.set(array);
       return array.length;
     }
