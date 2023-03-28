@@ -422,6 +422,7 @@ If manually bisecting:
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   @requires_threads
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/19080')
   def test_preload_file_with_manual_data_download(self, args):
     src = test_file('manual_download_data.cpp')
 
@@ -3320,6 +3321,7 @@ Module["preRun"].push(function () {
     self.btest('cocos2d_hello.cpp', reference='cocos2d_hello.png', reference_slack=1,
                args=['-sUSE_COCOS2D=3', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
                      '-Wno-js-compiler',
+                     '-Wno-experimental',
                      '--preload-file', preload_file, '--use-preload-plugins',
                      '-Wno-inconsistent-missing-override',
                      '-Wno-deprecated-declarations'])

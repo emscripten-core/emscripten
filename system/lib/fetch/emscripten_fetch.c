@@ -17,6 +17,8 @@
 #include <emscripten/threading.h>
 #include <emscripten/console.h>
 
+#include "emscripten_internal.h"
+
 // From https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/readyState
 #define STATE_UNSENT           0 // Client has been created. open() not called yet.
 #define STATE_OPENED           1 // open() has been called.
@@ -30,12 +32,6 @@
 // enable internal debugging. #define FETCH_DEBUG
 
 static void fetch_free(emscripten_fetch_t* fetch);
-
-// APIs defined in JS
-void emscripten_start_fetch(emscripten_fetch_t* fetch);
-size_t _emscripten_fetch_get_response_headers_length(int32_t fetchID);
-size_t _emscripten_fetch_get_response_headers(int32_t fetchID, char *dst, size_t dstSizeBytes);
-void _emscripten_fetch_free(unsigned int);
 
 typedef struct emscripten_fetch_queue {
   emscripten_fetch_t** queuedOperations;

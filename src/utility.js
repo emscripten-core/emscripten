@@ -145,8 +145,10 @@ function mergeInto(obj, other, options = null) {
       if (obj.hasOwnProperty(key)) {
         const oldsig = obj[key];
         const newsig = other[key];
-        if (oldsig != newsig) {
-          error(`Signature redefinition for: ${key}. (old=${oldsig} vs new=${newsig})`);
+        if (oldsig == newsig) {
+          warn(`signature redefinition for: ${key}. (old=${oldsig} vs new=${newsig})`);
+        } else {
+          error(`signature redefinition for: ${key}. (old=${oldsig} vs new=${newsig})`);
         }
       }
     }

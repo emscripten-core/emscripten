@@ -2185,7 +2185,7 @@ var LibrarySDL = {
     return flags; // We support JPG, PNG, TIF because browsers do
   },
 
-  IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS', 'malloc'],
+  IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS', 'malloc', '$allocateUTF8'],
   IMG_Load_RW__proxy: 'sync',
   IMG_Load_RW: function(rwopsID, freeSrc) {
     try {
@@ -2245,9 +2245,7 @@ var LibrarySDL = {
         if (!raw) {
           if (raw === null) err('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');
 #if STB_IMAGE
-          var lengthBytes = lengthBytesUTF8(filename)+1;
-          var name = _malloc(lengthBytes);
-          stringToUTF8(filename, name, lengthBytes);
+          var name = allocateUTF8(filename);
           addCleanup(function() {
             _free(name);
           });
