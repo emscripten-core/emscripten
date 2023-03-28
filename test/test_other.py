@@ -13011,7 +13011,7 @@ int main() {
           return 0;
         }
       }
-    ''', assert_returncode=NON_ZERO)
+    ''', assert_returncode=NON_ZERO, emcc_args=['-fexceptions'])
 
   def test_bigint64array_polyfill(self):
     bigint64array = read_file(path_from_root('src/polyfill/bigint64array.js'))
