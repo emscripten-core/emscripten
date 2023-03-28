@@ -917,6 +917,14 @@ function addReadyPromiseAssertions(promise) {
 });`;
 }
 
+function asyncIf(condition) {
+  return condition ? 'async' : '';
+}
+
+function awaitIf(condition) {
+  return condition ? 'await' : '';
+}
+
 function makeMalloc(source, param) {
   if (hasExportedSymbol('malloc')) {
     return `_malloc(${param})`;

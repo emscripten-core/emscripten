@@ -312,19 +312,11 @@ mergeInto(LibraryManager.library, {
 
   _wasmfs_opfs_read_access__sig: 'iipii',
   _wasmfs_opfs_read_access__deps: ['$wasmfsOPFSAccessHandles'],
-#if USE_PTHREADS
-  _wasmfs_opfs_read_access: function(accessID, bufPtr, len, pos) {
-#else
-  _wasmfs_opfs_read_access: async function(accessID, bufPtr, len, pos) {
-#endif
+  _wasmfs_opfs_read_access: {{{ asyncIf(!USE_PTHREADS) }}}  function(accessID, bufPtr, len, pos) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     let data = HEAPU8.subarray(bufPtr, bufPtr + len);
     try {
-#if USE_PTHREADS
-      return accessHandle.read(data, {at: pos});
-#else
-      return await accessHandle.read(data, {at: pos});
-#endif
+      return {{{ awaitIf(!USE_PTHREADS) }}} accessHandle.read(data, {at: pos});
     } catch (e) {
       if (e.name == "TypeError") {
         return -{{{ cDefs.EINVAL }}};
@@ -368,19 +360,11 @@ mergeInto(LibraryManager.library, {
 
   _wasmfs_opfs_write_access__sig: 'iipii',
   _wasmfs_opfs_write_access__deps: ['$wasmfsOPFSAccessHandles'],
-#if USE_PTHREADS
-  _wasmfs_opfs_write_access: function(accessID, bufPtr, len, pos) {
-#else
-  _wasmfs_opfs_write_access: async function(accessID, bufPtr, len, pos) {
-#endif
+  _wasmfs_opfs_write_access: {{{ asyncIf(!USE_PTHREADS) }}} function(accessID, bufPtr, len, pos) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     let data = HEAPU8.subarray(bufPtr, bufPtr + len);
     try {
-#if USE_PTHREADS
-      return accessHandle.write(data, {at: pos});
-#else
-      return await accessHandle.write(data, {at: pos});
-#endif
+      return {{{ awaitIf(!USE_PTHREADS) }}} accessHandle.write(data, {at: pos});
     } catch (e) {
       if (e.name == "TypeError") {
         return -{{{ cDefs.EINVAL }}};
