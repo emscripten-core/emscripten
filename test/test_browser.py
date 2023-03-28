@@ -422,7 +422,6 @@ If manually bisecting:
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   @requires_threads
-  @no_firefox('https://github.com/emscripten-core/emscripten/issues/19080')
   def test_preload_file_with_manual_data_download(self, args):
     src = test_file('manual_download_data.cpp')
 
