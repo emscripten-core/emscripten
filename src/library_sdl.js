@@ -1762,10 +1762,10 @@ var LibrarySDL = {
   },
 
   SDL_GetKeyName__proxy: 'sync',
-  SDL_GetKeyName__deps: ['$allocateUTF8'],
+  SDL_GetKeyName__deps: ['$stringToNewUTF8'],
   SDL_GetKeyName: function(key) {
     if (!SDL.keyName) {
-      SDL.keyName = allocateUTF8('unknown key');
+      SDL.keyName = stringToNewUTF8('unknown key');
     }
     return SDL.keyName;
   },
@@ -1817,10 +1817,10 @@ var LibrarySDL = {
   },
 
   SDL_GetError__proxy: 'sync',
-  SDL_GetError__deps: ['$allocateUTF8'],
+  SDL_GetError__deps: ['$stringToNewUTF8'],
   SDL_GetError: function() {
     if (!SDL.errorMessage) {
-      SDL.errorMessage = allocateUTF8("unknown SDL-emscripten error");
+      SDL.errorMessage = stringToNewUTF8("unknown SDL-emscripten error");
     }
     return SDL.errorMessage;
   },
@@ -2185,7 +2185,7 @@ var LibrarySDL = {
     return flags; // We support JPG, PNG, TIF because browsers do
   },
 
-  IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS', 'malloc', '$allocateUTF8'],
+  IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS', 'malloc', '$stringToNewUTF8'],
   IMG_Load_RW__proxy: 'sync',
   IMG_Load_RW: function(rwopsID, freeSrc) {
     try {
@@ -2245,7 +2245,7 @@ var LibrarySDL = {
         if (!raw) {
           if (raw === null) err('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');
 #if STB_IMAGE
-          var name = allocateUTF8(filename);
+          var name = stringToNewUTF8(filename);
           addCleanup(function() {
             _free(name);
           });
@@ -3447,7 +3447,7 @@ var LibrarySDL = {
   },
 
   SDL_JoystickName__proxy: 'sync',
-  SDL_JoystickName__deps: ['$allocateUTF8'],
+  SDL_JoystickName__deps: ['$stringToNewUTF8'],
   SDL_JoystickName: function(deviceIndex) {
     var gamepad = SDL.getGamepad(deviceIndex);
     if (gamepad) {
@@ -3455,7 +3455,7 @@ var LibrarySDL = {
       if (SDL.joystickNamePool.hasOwnProperty(name)) {
         return SDL.joystickNamePool[name];
       }
-      return SDL.joystickNamePool[name] = allocateUTF8(name);
+      return SDL.joystickNamePool[name] = stringToNewUTF8(name);
     }
     return 0;
   },
@@ -3575,9 +3575,9 @@ var LibrarySDL = {
   },
 
   SDL_GetNumAudioDrivers: function() { return 1 },
-  SDL_GetCurrentAudioDriver__deps: ['$allocateUTF8'],
+  SDL_GetCurrentAudioDriver__deps: ['$stringToNewUTF8'],
   SDL_GetCurrentAudioDriver: function() {
-    return allocateUTF8('Emscripten Audio');
+    return stringToNewUTF8('Emscripten Audio');
   },
   SDL_GetScancodeFromKey: function (key) {
     return SDL.scanCodes[key]; 

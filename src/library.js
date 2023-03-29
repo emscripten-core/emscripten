@@ -52,8 +52,6 @@ mergeInto(LibraryManager.library, {
   // JavaScript <-> C string interop
   // ==========================================================================
 
-  $stringToNewUTF8: '$allocateUTF8',
-
 #if !MINIMAL_RUNTIME
   $exitJS__docs: '/** @param {boolean|number=} implicit */',
   $exitJS__deps: ['proc_exit'],
@@ -569,7 +567,7 @@ mergeInto(LibraryManager.library, {
 
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
-  _tzset_js__deps: ['$allocateUTF8'],
+  _tzset_js__deps: ['$stringToNewUTF8'],
   _tzset_js__internal: true,
   _tzset_js: function(timezone, daylight, tzname) {
     // TODO: Use (malleable) environment variables instead of system settings.
@@ -599,8 +597,8 @@ mergeInto(LibraryManager.library, {
     };
     var winterName = extractZone(winter);
     var summerName = extractZone(summer);
-    var winterNamePtr = allocateUTF8(winterName);
-    var summerNamePtr = allocateUTF8(summerName);
+    var winterNamePtr = stringToNewUTF8(winterName);
+    var summerNamePtr = stringToNewUTF8(summerName);
     if (summerOffset < winterOffset) {
       // Northern hemisphere
       {{{ makeSetValue('tzname', '0', 'winterNamePtr', POINTER_TYPE) }}};
@@ -1827,11 +1825,11 @@ mergeInto(LibraryManager.library, {
     return getHostByName(UTF8ToString(name));
   },
 
-  $getHostByName__deps: ['malloc', '$allocateUTF8', '$DNS', '$inetPton4'],
+  $getHostByName__deps: ['malloc', '$stringToNewUTF8', '$DNS', '$inetPton4'],
   $getHostByName: function(name) {
     // generate hostent
     var ret = _malloc({{{ C_STRUCTS.hostent.__size__ }}}); // XXX possibly leaked, as are others here
-    var nameBuf = allocateUTF8(name);
+    var nameBuf = stringToNewUTF8(name);
     {{{ makeSetValue('ret', C_STRUCTS.hostent.h_name, 'nameBuf', POINTER_TYPE) }}};
     var aliasesBuf = _malloc(4);
     {{{ makeSetValue('aliasesBuf', '0', '0', POINTER_TYPE) }}};
@@ -2622,7 +2620,7 @@ mergeInto(LibraryManager.library, {
   // using builtin_malloc to avoid LSan reporting these as leaks.
   emscripten_get_compiler_setting__noleakcheck: true,
 #if RETAIN_COMPILER_SETTINGS
-  emscripten_get_compiler_setting__deps: ['$allocateUTF8'],
+  emscripten_get_compiler_setting__deps: ['$stringToNewUTF8'],
 #endif
   emscripten_get_compiler_setting: function(name) {
 #if RETAIN_COMPILER_SETTINGS
@@ -2635,7 +2633,7 @@ mergeInto(LibraryManager.library, {
     var cache = _emscripten_get_compiler_setting.cache;
     var fullret = cache[name];
     if (fullret) return fullret;
-    return cache[name] = allocateUTF8(ret);
+    return cache[name] = stringToNewUTF8(ret);
 #else
     throw 'You must build with -sRETAIN_COMPILER_SETTINGS for getCompilerSetting or emscripten_get_compiler_setting to work';
 #endif
@@ -2803,7 +2801,7 @@ mergeInto(LibraryManager.library, {
 
   // Look up the function name from our stack frame cache with our PC representation.
 #if USE_OFFSET_CONVERTER
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'free', '$allocateUTF8'],
+  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'free', '$stringToNewUTF8'],
   // Don't treat allocation of _emscripten_pc_get_function.ret as a leak
   emscripten_pc_get_function__noleakcheck: true,
 #endif
@@ -2829,7 +2827,7 @@ mergeInto(LibraryManager.library, {
       name = wasmOffsetConverter.getName(pc);
     }
     if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
-    _emscripten_pc_get_function.ret = allocateUTF8(name);
+    _emscripten_pc_get_function.ret = stringToNewUTF8(name);
     return _emscripten_pc_get_function.ret;
 #endif
   },
@@ -2863,7 +2861,7 @@ mergeInto(LibraryManager.library, {
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['$convertPCtoSourceLocation', 'free', '$allocateUTF8'],
+  emscripten_pc_get_file__deps: ['$convertPCtoSourceLocation', 'free', '$stringToNewUTF8'],
   // Don't treat allocation of _emscripten_pc_get_file.ret as a leak
   emscripten_pc_get_file__noleakcheck: true,
   emscripten_pc_get_file: function (pc) {
@@ -2871,7 +2869,7 @@ mergeInto(LibraryManager.library, {
     if (!result) return 0;
 
     if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
-    _emscripten_pc_get_file.ret = allocateUTF8(result.file);
+    _emscripten_pc_get_file.ret = stringToNewUTF8(result.file);
     return _emscripten_pc_get_file.ret;
   },
 
@@ -3714,7 +3712,7 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
   '$UTF32ToString',
   '$stringToUTF32',
   '$lengthBytesUTF32',
-  '$allocateUTF8',
+  '$stringToNewUTF8',
   '$allocateUTF8OnStack',
   '$writeStringToMemory',
   '$writeArrayToMemory',

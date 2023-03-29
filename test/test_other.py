@@ -11522,18 +11522,18 @@ int main () {
     # requires malloc
     create_file('unincluded_malloc.c', r'''
       #include <emscripten.h>
-      EM_JS_DEPS(main, "$allocateUTF8");
+      EM_JS_DEPS(main, "$stringToNewUTF8");
       int main() {
         EM_ASM({
           try {
-            allocateUTF8("foo");
+            stringToNewUTF8("foo");
           } catch(e) {
             console.log('exception:', e);
           }
         });
       }
     ''')
-    self.do_runf('unincluded_malloc.c', 'malloc was not included, but is needed in allocateUTF8. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.')
+    self.do_runf('unincluded_malloc.c', 'malloc was not included, but is needed in stringToNewUTF8. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.')
 
   def test_getrusage(self):
     self.do_runf(test_file('other/test_getrusage.c'))

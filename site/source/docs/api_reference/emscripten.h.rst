@@ -111,7 +111,7 @@ Defines
       var jsString = 'Hello with some exotic Unicode characters: Tässä on yksi lumiukko: ☃, ole hyvä.';
       // 'jsString.length' would return the length of the string as UTF-16
       // units, but Emscripten C strings operate as UTF-8.
-      return allocateUTF8(jsString);
+      return stringToNewUTF8(jsString);
     });
 
     int main() {
@@ -191,7 +191,7 @@ Defines
       var lengthBytes = lengthBytesUTF8(jsString)+1;
       // 'jsString.length' would return the length of the string as UTF-16
       // units, but Emscripten C strings operate as UTF-8.
-      return allocateUTF8(jsString);
+      return stringToNewUTF8(jsString);
     });
     printf("UTF8 string says: %s\n", str);
     free(str); // Each call to _malloc() must be paired with free(), or heap memory will leak!

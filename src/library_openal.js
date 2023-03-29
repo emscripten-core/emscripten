@@ -2376,7 +2376,7 @@ var LibraryOpenAL = {
   },
 
   alcGetString__proxy: 'sync',
-  alcGetString__deps: ['$allocateUTF8'],
+  alcGetString__deps: ['$stringToNewUTF8'],
   alcGetString: function(deviceId, param) {
     if (AL.alcStringCache[param]) {
       return AL.alcStringCache[param];
@@ -2450,7 +2450,7 @@ var LibraryOpenAL = {
       return 0;
     }
 
-    ret = allocateUTF8(ret);
+    ret = stringToNewUTF8(ret);
     AL.alcStringCache[param] = ret;
     return ret;
   },
@@ -2631,7 +2631,7 @@ var LibraryOpenAL = {
 
   emscripten_alcGetStringiSOFT__proxy: 'sync',
   emscripten_alcGetStringiSOFT__sig: 'iiii',
-  emscripten_alcGetStringiSOFT__deps: ['alcGetString', '$allocateUTF8'],
+  emscripten_alcGetStringiSOFT__deps: ['alcGetString', '$stringToNewUTF8'],
   emscripten_alcGetStringiSOFT: function(deviceId, param, index) {
     if (!(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
@@ -2669,7 +2669,7 @@ var LibraryOpenAL = {
       return _alcGetString(deviceId, param);
     }
 
-    ret = allocateUTF8(ret);
+    ret = stringToNewUTF8(ret);
     AL.alcStringCache[param] = ret;
     return ret;
   },
@@ -3018,7 +3018,7 @@ var LibraryOpenAL = {
   },
 
   alGetString__proxy: 'sync',
-  alGetString__deps: ['$allocateUTF8'],
+  alGetString__deps: ['$stringToNewUTF8'],
   alGetString: function(param) {
     if (AL.stringCache[param]) {
       return AL.stringCache[param];
@@ -3072,7 +3072,7 @@ var LibraryOpenAL = {
       return 0;
     }
 
-    ret = allocateUTF8(ret);
+    ret = stringToNewUTF8(ret);
     AL.stringCache[param] = ret;
     return ret;
   },

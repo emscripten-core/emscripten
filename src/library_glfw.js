@@ -82,7 +82,7 @@ var LibraryGLFW = {
     },
 
   $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
-    '$allocateUTF8',
+    '$stringToNewUTF8',
 #if FILESYSTEM
     '$FS',
 #endif
@@ -662,7 +662,7 @@ var LibraryGLFW = {
             if (!GLFW.joys[joy]) {
               out('glfw joystick connected:',joy);
               GLFW.joys[joy] = {
-                id: allocateUTF8(gamepad.id),
+                id: stringToNewUTF8(gamepad.id),
                 buttonsCount: gamepad.buttons.length,
                 axesCount: gamepad.axes.length,
                 buttons: _malloc(gamepad.buttons.length),
@@ -789,7 +789,7 @@ var LibraryGLFW = {
         };
         reader.readAsArrayBuffer(file);
 
-        var filename = allocateUTF8(path);
+        var filename = stringToNewUTF8(path);
         filenamesArray.push(filename);
         {{{ makeSetValue('filenames + i*4', '0', 'filename', POINTER_TYPE) }}};
       }
@@ -1251,7 +1251,7 @@ var LibraryGLFW = {
   glfwGetVersionString__sig: 'i',
   glfwGetVersionString: function() {
     if (!GLFW.versionString) {
-      GLFW.versionString = allocateUTF8("3.2.1 JS WebGL Emscripten");
+      GLFW.versionString = stringToNewUTF8("3.2.1 JS WebGL Emscripten");
     }
     return GLFW.versionString;
   },
@@ -1318,7 +1318,7 @@ var LibraryGLFW = {
   glfwGetMonitorName__sig: 'ii',
   glfwGetMonitorName: function(mon) {
     if (!GLFW.monitorString) {
-      GLFW.monitorString = allocateUTF8("HTML5 WebGL Canvas");
+      GLFW.monitorString = stringToNewUTF8("HTML5 WebGL Canvas");
     }
     return GLFW.monitorString;
   },
