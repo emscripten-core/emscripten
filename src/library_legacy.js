@@ -44,12 +44,13 @@ mergeInto(LibraryManager.library, {
   // in a maximum length that can be used to be secure from out of bounds
   // writes.
   $writeStringToMemory__docs: '/** @deprecated @param {boolean=} dontAddNull */',
+  $writeStringToMemory__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   $writeStringToMemory: function(string, buffer, dontAddNull) {
     warnOnce('writeStringToMemory is deprecated and should not be called! Use stringToUTF8() instead!');
 
     var /** @type {number} */ lastChar, /** @type {number} */ end;
     if (dontAddNull) {
-      // stringToUTF8Array always appends null. If we don't want to do that, remember the
+      // stringToUTF8 always appends null. If we don't want to do that, remember the
       // character that existed at the location where the null will be placed, and restore
       // that after the write (below).
       end = buffer + lengthBytesUTF8(string);

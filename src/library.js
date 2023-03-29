@@ -2027,7 +2027,7 @@ mergeInto(LibraryManager.library, {
     return 0;
   },
 
-  getnameinfo__deps: ['$Sockets', '$DNS', '$readSockaddr'],
+  getnameinfo__deps: ['$Sockets', '$DNS', '$readSockaddr', '$stringToUTF8'],
   getnameinfo: function (sa, salen, node, nodelen, serv, servlen, flags) {
     var info = readSockaddr(sa, salen);
     if (info.errno) {
@@ -2305,6 +2305,7 @@ mergeInto(LibraryManager.library, {
   // Mark as `noleakcheck` otherwise lsan will report the last returned string
   // as a leak.
   emscripten_run_script_string__noleakcheck: true,
+  emscripten_run_script_string__deps: ['$lengthBytesUTF8', '$stringToUTF8', 'malloc'],
   emscripten_run_script_string: function(ptr) {
     {{{ makeEval("var s = eval(UTF8ToString(ptr));") }}}
     if (s == null) {
@@ -2565,7 +2566,7 @@ mergeInto(LibraryManager.library, {
     return callstack;
   },
 
-  emscripten_get_callstack__deps: ['$getCallstack'],
+  emscripten_get_callstack__deps: ['$getCallstack', '$lengthBytesUTF8', '$stringToUTF8'],
   emscripten_get_callstack: function(flags, str, maxbytes) {
     // Use explicit calls to from64 rather then using the __sig
     // magic here.  This is because the __sig wrapper uses arrow function
@@ -2647,6 +2648,7 @@ mergeInto(LibraryManager.library, {
     debugger;
   },
 
+  emscripten_print_double__deps: ['$stringToUTF8', '$lengthBytesUTF8'],
   emscripten_print_double: function(x, to, max) {
     var str = x + '';
     if (to) return stringToUTF8(str, to, max);
@@ -2887,6 +2889,7 @@ mergeInto(LibraryManager.library, {
     return result ? result.column || 0 : 0;
   },
 
+  emscripten_get_module_name__deps: ['$stringToUTF8'],
   emscripten_get_module_name: function(buf, length) {
 #if MINIMAL_RUNTIME
     return stringToUTF8('{{{ TARGET_BASENAME }}}.wasm', buf, length);
@@ -3363,6 +3366,9 @@ mergeInto(LibraryManager.library, {
 
   // Use program_invocation_short_name and program_invocation_name in compiled
   // programs. This function is for implementing them.
+#if !MINIMAL_RUNTIME
+  _emscripten_get_progname__deps: ['$stringToUTF8'],
+#endif
   _emscripten_get_progname: function(str, len) {
 #if !MINIMAL_RUNTIME
 #if ASSERTIONS
@@ -3723,5 +3729,10 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
   '$ccall',
   '$cwrap',
   '$ExitStatus',
+  '$UTF8ArrayToString',
+  '$UTF8ToString',
+  '$stringToUTF8Array',
+  '$stringToUTF8',
+  '$lengthBytesUTF8',
 );
 #endif

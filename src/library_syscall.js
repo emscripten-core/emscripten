@@ -598,6 +598,7 @@ var SyscallsLibrary = {
     }
     return nonzero;
   },
+  __syscall_getcwd__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_getcwd: function(buf, size) {
     if (size === 0) return -{{{ cDefs.EINVAL }}};
     var cwd = FS.cwd();
@@ -635,6 +636,7 @@ var SyscallsLibrary = {
     FS.fchown(fd, owner, group);
     return 0;
   },
+  __syscall_getdents64__deps: ['$stringToUTF8'],
   __syscall_getdents64: function(fd, dirp, count) {
     var stream = SYSCALLS.getStreamFromFD(fd)
     if (!stream.getdents) {
@@ -869,6 +871,7 @@ var SyscallsLibrary = {
     FS.symlink(target, linkpath);
     return 0;
   },
+  __syscall_readlinkat__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_readlinkat: function(dirfd, path, buf, bufsize) {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);

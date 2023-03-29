@@ -355,11 +355,6 @@ function exportRuntime() {
   // All possible runtime elements that can be exported
   let runtimeElements = [
     'run',
-    'UTF8ArrayToString',
-    'UTF8ToString',
-    'stringToUTF8Array',
-    'stringToUTF8',
-    'lengthBytesUTF8',
     'addOnPreRun',
     'addOnInit',
     'addOnPreMain',

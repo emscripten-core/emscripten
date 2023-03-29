@@ -226,7 +226,7 @@ var WasiLibrary = {
   $printCharBuffers: [null, [], []], // 1 => stdout, 2 => stderr
   $printCharBuffers__internal: true,
   $printChar__internal: true,
-  $printChar__deps: ['$printCharBuffers'],
+  $printChar__deps: ['$printCharBuffers', '$UTF8ArrayToString'],
   $printChar: function(stream, curr) {
     var buffer = printCharBuffers[stream];
 #if ASSERTIONS
