@@ -133,11 +133,12 @@ function dbg(text) {
   // Avoid using the console for debugging in multi-threaded node applications
   // See https://github.com/emscripten-core/emscripten/issues/14804
   if (ENVIRONMENT_IS_NODE) {
-    fs.writeSync(2, text + '\n');
+    let output = arguments.length === 1 ? text : Array.from(arguments).join(' ');
+    fs.writeSync(2, output + '\n');
   } else
 #endif
   // TODO(sbc): Make this configurable somehow.  Its not always convenient for
   // logging to show up as errors.
-  console.error(text);
+  console.error.apply(console, arguments);
 }
 #endif
