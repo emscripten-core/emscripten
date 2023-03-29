@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $FS__deps: ['$getRandomDevice', '$PATH', '$PATH_FS', '$TTY', '$MEMFS', '$asyncLoad', '$intArrayFromString',
+  $FS__deps: ['$randomFill', '$PATH', '$PATH_FS', '$TTY', '$MEMFS', '$asyncLoad', '$intArrayFromString',
 #if LibraryManager.has('library_idbfs.js')
     '$IDBFS',
 #endif
@@ -1348,9 +1348,16 @@ FS.staticInit();` +
       FS.mkdev('/dev/tty', FS.makedev(5, 0));
       FS.mkdev('/dev/tty1', FS.makedev(6, 0));
       // setup /dev/[u]random
-      var random_device = getRandomDevice();
-      FS.createDevice('/dev', 'random', random_device);
-      FS.createDevice('/dev', 'urandom', random_device);
+      // use a buffer to avoid overhead of individual crypto calls per byte
+      var randomBuffer = new Uint8Array(1024), randomLeft = 0;
+      var randomByte = () => {
+        if (randomLeft === 0) {
+          randomLeft = randomFill(randomBuffer).byteLength;
+        }
+        return randomBuffer[--randomLeft];
+      };
+      FS.createDevice('/dev', 'random', randomByte);
+      FS.createDevice('/dev', 'urandom', randomByte);
       // we're not going to emulate the actual shm device,
       // just create the tmp dirs that reside in it commonly
       FS.mkdir('/dev/shm');

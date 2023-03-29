@@ -37,9 +37,7 @@ global.LibraryManager = {
     // Core system libraries (always linked against)
     let libraries = [
       'library.js',
-      // TODO(sbc): Start using this auto-generated file instead of the hand
-      // written signatures in the indivudual libraries.
-      //'library_sigs.js',
+      'library_sigs.js',
       'library_int53.js',
       'library_ccall.js',
       'library_addfunction.js',
@@ -113,7 +111,6 @@ global.LibraryManager = {
         'library_webgl.js',
         'library_html5_webgl.js',
         'library_openal.js',
-        'library_sdl.js',
         'library_glut.js',
         'library_xlib.js',
         'library_egl.js',
@@ -122,8 +119,8 @@ global.LibraryManager = {
         'library_idbstore.js',
         'library_async.js',
       ]);
-      if (USE_GLFW) {
-        libraries.push('library_glfw.js');
+      if (USE_SDL != 2) {
+        libraries.push('library_sdl.js');
       }
     } else {
       if (ASYNCIFY) {
@@ -135,6 +132,10 @@ global.LibraryManager = {
       if (USE_SDL == 2) {
         libraries.push('library_egl.js', 'library_webgl.js', 'library_html5_webgl.js');
       }
+    }
+
+    if (USE_GLFW) {
+      libraries.push('library_glfw.js');
     }
 
     if (LZ4) {
@@ -236,16 +237,6 @@ global.LibraryManager = {
         currentFile = null;
         if (origLibrary) {
           this.library = origLibrary;
-        }
-      }
-    }
-
-    for (const ident of Object.keys(this.library)) {
-      if (isJsLibraryConfigIdentifier(ident)) {
-        const index = ident.lastIndexOf('__');
-        const basename = ident.slice(0, index);
-        if (!(basename in this.library)) {
-          error(`Missing library element '${basename}' for library config '${ident}'`);
         }
       }
     }

@@ -3849,7 +3849,7 @@ int main() {
     err = self.run_process([EMCC, 'src.c', '--js-library', 'lib.js'], stderr=PIPE).stderr
     self.assertContained("warning: user library symbol 'jslibfunc' depends on internal symbol '$callRuntimeCallbacks'", err)
 
-  def test_js_lib_sig_mismatch(self):
+  def test_js_lib_sig_redefinition(self):
     create_file('lib.js', r'''
 mergeInto(LibraryManager.library, {
   jslibfunc__sig: 'ii',
@@ -3857,10 +3857,9 @@ mergeInto(LibraryManager.library, {
 });
 
 mergeInto(LibraryManager.library, {
-  jslibfunc__sig: 'dd',
+  jslibfunc__sig: 'ii',
   jslibfunc: function(x) {},
 });
-
 ''')
     create_file('src.c', r'''
 #include <stdio.h>
@@ -3869,8 +3868,18 @@ int main() {
   printf("c calling: %d\n", jslibfunc());
 }
 ''')
-    err = self.expect_fail([EMCC, 'src.c', '--js-library', 'lib.js'])
-    self.assertContained('lib.js: Signature redefinition for: jslibfunc__sig. (old=ii vs new=dd)', err)
+    err = self.run_process([EMCC, 'src.c', '--js-library', 'lib.js'], stderr=PIPE).stderr
+    self.assertContained('lib.js: signature redefinition for: jslibfunc__sig. (old=ii vs new=ii)', err)
+
+    # Add another redefinition, this time not matching
+    create_file('lib2.js', r'''
+mergeInto(LibraryManager.library, {
+  jslibfunc__sig: 'pp',
+  jslibfunc: function(x) {},
+});
+''')
+    err = self.expect_fail([EMCC, 'src.c', '--js-library', 'lib.js', '--js-library', 'lib2.js'])
+    self.assertContained('lib2.js: signature redefinition for: jslibfunc__sig. (old=ii vs new=pp)', err)
 
   def test_js_lib_invalid_deps(self):
     create_file('lib.js', r'''
@@ -6754,7 +6763,7 @@ int main(int argc, char** argv) {
 
     build_main([])
     out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('Exception catching is disabled, this exception cannot be caught.', out)
+    self.assertContained('Exception thrown, but exception catching is not enabled.', out)
     self.assertContained('note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support', out)
 
     build_main(['-fexceptions'])
@@ -11418,13 +11427,13 @@ int main(int argc, char **argv) {
 int main () {
   timespec now;
   clock_gettime(CLOCK_REALTIME, &now);
-  printf("C now: %ld %ld\n", now.tv_sec, now.tv_nsec);
+  printf("C now: %lld %ld\n", now.tv_sec, now.tv_nsec);
   printf("js now: %f\n", emscripten_get_now());
   printf("C randoms: %d %d %d\n", rand(), rand(), rand());
   printf("JS random: %d\n", EM_ASM_INT({ return Math.random() }));
 }
 ''')
-    self.run_process([EMXX, 'src.cpp', '-sDETERMINISTIC'])
+    self.run_process([EMXX, 'src.cpp', '-sDETERMINISTIC'] + self.get_emcc_args())
     one = self.run_js('a.out.js')
     # ensure even if the time resolution is 1 second, that if we see the real
     # time we'll see a difference
@@ -11512,18 +11521,18 @@ int main () {
     # requires malloc
     create_file('unincluded_malloc.c', r'''
       #include <emscripten.h>
-      EM_JS_DEPS(main, "$allocateUTF8");
+      EM_JS_DEPS(main, "$stringToNewUTF8");
       int main() {
         EM_ASM({
           try {
-            allocateUTF8("foo");
+            stringToNewUTF8("foo");
           } catch(e) {
             console.log('exception:', e);
           }
         });
       }
     ''')
-    self.do_runf('unincluded_malloc.c', 'malloc was not included, but is needed in allocateUTF8. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.')
+    self.do_runf('unincluded_malloc.c', 'malloc was not included, but is needed in stringToNewUTF8. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.')
 
   def test_getrusage(self):
     self.do_runf(test_file('other/test_getrusage.c'))
@@ -11624,7 +11633,7 @@ exec "$@"
       });
       ''')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js'])
-    self.assertContained("error: Missing library element 'foo' for library config 'foo__sig'", err)
+    self.assertContained("lib.js: Missing library element 'foo' for library config 'foo__sig'", err)
 
   def test_jslib_ifdef(self):
     create_file('lib.js', '''
@@ -13269,7 +13278,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     node_version = shared.check_node_version()
     node_version = '.'.join(str(x) for x in node_version)
     self.set_setting('MIN_NODE_VERSION', 210000)
-    expected = 'This emscripten-generated code requires node v21.0.0 (detected v%s)' % node_version
+    expected = 'This emscripten-generated code requires node v21.0.0 (detected v%s' % node_version
     self.do_runf(test_file('hello_world.c'), expected, assert_returncode=NON_ZERO)
 
   def test_deprecated_macros(self):

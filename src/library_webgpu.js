@@ -770,7 +770,7 @@ var LibraryWebGPU = {
     device["pushErrorScope"](WebGPU.ErrorFilter[filter]);
   },
 
-  wgpuDevicePopErrorScope__deps: ['$callUserCallback', '$allocateUTF8'],
+  wgpuDevicePopErrorScope__deps: ['$callUserCallback', '$stringToNewUTF8'],
   wgpuDevicePopErrorScope: function(deviceId, callback, userdata) {
     var device = WebGPU.mgrDevice.get(deviceId);
     {{{ runtimeKeepalivePush() }}}
@@ -787,7 +787,7 @@ var LibraryWebGPU = {
 #if ASSERTIONS
           assert(gpuError instanceof GPUValidationError);
 #endif
-          var messagePtr = allocateUTF8(gpuError.message);
+          var messagePtr = stringToNewUTF8(gpuError.message);
           {{{ makeDynCall('viii', 'callback') }}}({{{ gpu.ErrorType.Validation }}}, messagePtr, userdata);
           _free(messagePtr);
         }
@@ -795,7 +795,7 @@ var LibraryWebGPU = {
     }, function(ex) {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(function() {
-        var messagePtr = allocateUTF8(ex.message);
+        var messagePtr = stringToNewUTF8(ex.message);
         // TODO: This can mean either the device was lost or the error scope stack was empty. Figure
         // out how to synthesize the DeviceLost error type. (Could be by simply tracking the error
         // scope depth, but that isn't ideal.)
@@ -810,7 +810,7 @@ var LibraryWebGPU = {
     device.label = UTF8ToString(labelPtr);
   },
 
-  wgpuDeviceSetDeviceLostCallback__deps: ['$callUserCallback', '$allocateUTF8'],
+  wgpuDeviceSetDeviceLostCallback__deps: ['$callUserCallback', '$stringToNewUTF8'],
   wgpuDeviceSetDeviceLostCallback: function(deviceId, callback, userdata) {
     var deviceWrapper = WebGPU.mgrDevice.objects[deviceId];
     {{{ gpu.makeCheckDefined('deviceWrapper') }}}
@@ -823,14 +823,14 @@ var LibraryWebGPU = {
     deviceWrapper.lostCallback = function(info) {
       // This will skip the callback if the runtime is no longer alive.
       callUserCallback(function() {
-        var messagePtr = allocateUTF8(info.message);
+        var messagePtr = stringToNewUTF8(info.message);
         {{{ makeDynCall('viii', 'callback') }}}(WebGPU.DeviceLostReason[info.reason], messagePtr, userdata);
         _free(messagePtr);
       });
     };
   },
 
-  wgpuDeviceSetUncapturedErrorCallback__deps: ['$callUserCallback', '$allocateUTF8'],
+  wgpuDeviceSetUncapturedErrorCallback__deps: ['$callUserCallback', '$stringToNewUTF8'],
   wgpuDeviceSetUncapturedErrorCallback: function(deviceId, callback, userdata) {
     var device = WebGPU.mgrDevice.get(deviceId);
     device["onuncapturederror"] = function(ev) {
@@ -847,7 +847,7 @@ var LibraryWebGPU = {
         if (ev.error instanceof GPUValidationError) type = Validation;
         else if (ev.error instanceof GPUOutOfMemoryError) type = OutOfMemory;
 
-        var messagePtr = allocateUTF8(ev.error.message);
+        var messagePtr = stringToNewUTF8(ev.error.message);
         {{{ makeDynCall('viii', 'callback') }}}(type, messagePtr, userdata);
         _free(messagePtr);
       });
@@ -2432,7 +2432,7 @@ var LibraryWebGPU = {
 #endif
   },
 
-  wgpuInstanceRequestAdapter__deps: ['$callUserCallback', '$allocateUTF8'],
+  wgpuInstanceRequestAdapter__deps: ['$callUserCallback', '$stringToNewUTF8'],
   wgpuInstanceRequestAdapter: function(instanceId, options, callback, userdata) {
     {{{ gpu.makeCheck('instanceId === 0, "WGPUInstance is ignored"') }}}
 
@@ -2448,7 +2448,7 @@ var LibraryWebGPU = {
     }
 
     if (!('gpu' in navigator)) {
-      var messagePtr = allocateUTF8('WebGPU not available on this browser (navigator.gpu is not available)');
+      var messagePtr = stringToNewUTF8('WebGPU not available on this browser (navigator.gpu is not available)');
       {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestAdapterStatus.Unavailable }}}, 0, messagePtr, userdata);
       _free(messagePtr);
       return;
@@ -2462,7 +2462,7 @@ var LibraryWebGPU = {
           var adapterId = WebGPU.mgrAdapter.create(adapter);
           {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestAdapterStatus.Success }}}, adapterId, 0, userdata);
         } else {
-          var messagePtr = allocateUTF8('WebGPU not available on this system (requestAdapter returned null)');
+          var messagePtr = stringToNewUTF8('WebGPU not available on this system (requestAdapter returned null)');
           {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestAdapterStatus.Unavailable }}}, 0, messagePtr, userdata);
           _free(messagePtr);
         }
@@ -2470,7 +2470,7 @@ var LibraryWebGPU = {
     }, function(ex) {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(function() {
-        var messagePtr = allocateUTF8(ex.message);
+        var messagePtr = stringToNewUTF8(ex.message);
         {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestAdapterStatus.Error }}}, 0, messagePtr, userdata);
         _free(messagePtr);
       });
@@ -2513,7 +2513,7 @@ var LibraryWebGPU = {
     return adapter.features.has(WebGPU.FeatureName[featureEnumValue]);
   },
 
-  wgpuAdapterRequestDevice__deps: ['$callUserCallback', '$allocateUTF8'],
+  wgpuAdapterRequestDevice__deps: ['$callUserCallback', '$stringToNewUTF8'],
   wgpuAdapterRequestDevice: function(adapterId, descriptor, callback, userdata) {
     var adapter = WebGPU.mgrAdapter.get(adapterId);
 
@@ -2602,7 +2602,7 @@ var LibraryWebGPU = {
     }, function(ex) {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(function() {
-        var messagePtr = allocateUTF8(ex.message);
+        var messagePtr = stringToNewUTF8(ex.message);
         {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestDeviceStatus.Error }}}, 0, messagePtr, userdata);
         _free(messagePtr);
       });

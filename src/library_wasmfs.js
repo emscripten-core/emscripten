@@ -16,7 +16,7 @@ mergeInto(LibraryManager.library, {
     '$wasmFSPreloadedDirs',
     '$asyncLoad',
     '$PATH',
-    '$allocateUTF8',
+    '$stringToNewUTF8',
     '$allocateUTF8OnStack',
     '$withStackSave',
     '$readI53FromI64',
@@ -104,7 +104,7 @@ mergeInto(LibraryManager.library, {
         throw new Error('Invalid encoding type "' + opts.encoding + '"');
       }
 
-      var pathName = allocateUTF8(path);
+      var pathName = stringToNewUTF8(path);
 
       // Copy the file into a JS buffer on the heap.
       var buf = __wasmfs_read_file(pathName);

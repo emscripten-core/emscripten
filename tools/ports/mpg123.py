@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-import logging
 
 TAG = '1.26.2'
 HASH = 'aa63fcb08b243a1e09f7701b3d84a19d7412a87253d54d49f014fdb9e75bbc81d152a41ed750fccde901453929b2a001585a7645351b41845ad205c17a73dcc9'
@@ -18,8 +17,6 @@ def get(ports, settings, shared):
   ports.fetch_project('mpg123', f'https://www.mpg123.de/download/mpg123-{TAG}.tar.bz2', sha512hash=HASH)
 
   def create(final):
-    logging.info('building port: mpg123')
-
     source_path = os.path.join(ports.get_dir(), 'mpg123', 'mpg123-' + TAG)
 
     src_path = os.path.join(source_path, 'src')

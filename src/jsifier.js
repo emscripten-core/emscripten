@@ -211,33 +211,28 @@ function ${name}(${args}) {
     }
   }
 
-  function itemHandler(item) {
+  function symbolHandler(symbol) {
     // In LLVM, exceptions generate a set of functions of form
     // __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.  where
     // the number specifies the number of arguments. In Emscripten, route all
     // these to a single function '__cxa_find_matching_catch' that variadically
     // processes all of these functions using JS 'arguments' object.
-    if (item.mangled.startsWith('___cxa_find_matching_catch_')) {
+    if (symbol.startsWith('__cxa_find_matching_catch_')) {
       if (DISABLE_EXCEPTION_THROWING) {
         error('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-except (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.');
         return;
       }
-      const num = +item.mangled.split('_').slice(-1)[0];
+      const num = +symbol.split('_').slice(-1)[0];
       addCxaCatch(num);
       // Continue, with the code below emitting the proper JavaScript based on
       // what we just added to the library.
     }
 
-    const TOP_LEVEL = 'top-level compiled C/C++ code';
-
-    function addFromLibrary(item, dependent) {
+    function addFromLibrary(symbol, dependent) {
       // dependencies can be JS functions, which we just run
-      if (typeof item == 'function') {
-        return item();
+      if (typeof symbol == 'function') {
+        return symbol();
       }
-
-      const symbol = item.symbol;
-      const mangled = item.mangled;
 
       if (symbol in addedLibraryItems) {
         return;
@@ -270,6 +265,8 @@ function ${name}(${args}) {
       // are undefined in the main module.  In this case we create a stub that
       // will resolve the correct symbol at runtime, or assert if its missing.
       let isStub = false;
+
+      const mangled = mangleCSymbolName(symbol);
 
       if (!LibraryManager.library.hasOwnProperty(symbol)) {
         const isWeakImport = WEAK_IMPORTS.has(symbol);
@@ -369,9 +366,7 @@ function ${name}(${args}) {
         }
         if (postset && !addedLibraryItems[postsetId]) {
           addedLibraryItems[postsetId] = true;
-          postSets.push({
-            JS: postset + ';',
-          });
+          postSets.push(postset + ';');
         }
       }
 
@@ -381,9 +376,6 @@ function ${name}(${args}) {
       const deps_list = deps.join("','");
       const identDependents = symbol + `__deps: ['${deps_list}']`;
       function addDependency(dep) {
-        if (typeof dep != 'function') {
-          dep = {symbol: dep, mangled: mangleCSymbolName(dep)};
-        }
         return addFromLibrary(dep, `${identDependents}, referenced by ${dependent}`);
       }
       let contentText;
@@ -447,8 +439,8 @@ function ${name}(${args}) {
       return depsText + commentText + contentText;
     }
 
-    libraryItems.push(item);
-    item.JS = addFromLibrary(item, TOP_LEVEL);
+    const JS = addFromLibrary(symbol, 'top-level compiled C/C++ code');
+    libraryItems.push(JS);
   }
 
   function includeFile(fileName) {
@@ -492,7 +484,7 @@ function ${name}(${args}) {
     includeFile(preFile);
 
     for (const item of libraryItems.concat(postSets)) {
-      print(indentify(item.JS || '', 2));
+      print(indentify(item || '', 2));
     }
 
     if (PTHREADS) {
@@ -544,10 +536,7 @@ function ${name}(${args}) {
   }
 
   for (const sym of symbolsNeeded) {
-    itemHandler({
-      symbol: sym,
-      mangled: mangleCSymbolName(sym),
-    });
+    symbolHandler(sym);
   }
 
   if (symbolsOnly) {
