@@ -100,7 +100,7 @@ mergeInto(LibraryManager.library, {
       for (let entry; entry = await iter.next(), !entry.done;) {
         let [name, child] = entry.value;
         withStackSave(() => {
-          let namePtr = allocateUTF8OnStack(name);
+          let namePtr = stringToUTF8OnStack(name);
           let type = child.kind == "file" ?
               {{{ cDefine('File::DataFileKind') }}} :
           {{{ cDefine('File::DirectoryKind') }}};

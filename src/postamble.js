@@ -54,7 +54,7 @@ function callMain() {
   var argv = stackAlloc((argc + 1) * {{{ POINTER_SIZE }}});
   var argv_ptr = argv >> {{{ POINTER_SHIFT }}};
   args.forEach((arg) => {
-    {{{ POINTER_HEAP }}}[argv_ptr++] = {{{ to64('allocateUTF8OnStack(arg)') }}};
+    {{{ POINTER_HEAP }}}[argv_ptr++] = {{{ to64('stringToUTF8OnStack(arg)') }}};
   });
   {{{ POINTER_HEAP }}}[argv_ptr] = {{{ to64('0') }}};
 #else

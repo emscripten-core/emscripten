@@ -234,7 +234,7 @@ mergeInto(LibraryManager.library, {
   },
 
   // Allocate stack space for a JS string, and write it there.
-  $allocateUTF8OnStack: function(str) {
+  $stringToUTF8OnStack: function(str) {
     var size = lengthBytesUTF8(str) + 1;
     var ret = stackAlloc(size);
     stringToUTF8Array(str, HEAP8, ret, size);
