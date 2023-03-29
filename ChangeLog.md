@@ -22,7 +22,7 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 - `FS.loadFilesFromDB` and `FS.saveFilesToDB` were removed.  We think it's
   unlikly there were any users of these functions since there is now a separate
-  IDBFS filesystem for folks that want persistence.
+  IDBFS filesystem for folks that want persistence. (#19049)
 - `allocateUTF8` library function moved to `library_legacy.js`.  Prefer the
   more accurately named `stringToNewUTF8`.
 - `SDL_image` port was updated to version 2.6.0.
