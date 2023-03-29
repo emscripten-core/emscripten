@@ -512,7 +512,6 @@ var FS = {
   mkdev: function() { FS.error() },
   registerDevice: function() { FS.error() },
   analyzePath: function() { FS.error() },
-  loadFilesFromDB: function() { FS.error() },
 
   ErrnoError: function ErrnoError() { FS.error() },
 };
