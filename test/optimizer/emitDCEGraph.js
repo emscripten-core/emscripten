@@ -110,3 +110,7 @@ dynCall('vii', ptr, [2, 3]); // use indirectly, depending on analysis of dynCall
   x++;
 });
 
+// Don't crash on this code pattern, which we should ignore.
+var _bad = function() {
+  return something();
+};
