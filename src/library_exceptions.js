@@ -188,12 +188,7 @@ var LibraryExceptions = {
     var info = new ExceptionInfo(ptr);
     // Initialize ExceptionInfo content after it was allocated in __cxa_allocate_exception.
     info.init(type, destructor);
-    exceptionLast = 
-#if EXCEPTION_STACK_TRACES
-      new CppException(ptr);
-#else
-      ptr;
-#endif
+    {{{ storeException('exceptionLast', 'ptr') }}}
     uncaughtExceptionCount++;
     {{{ makeThrow('exceptionLast') }}}
   },
@@ -220,12 +215,7 @@ var LibraryExceptions = {
     dbg('__cxa_rethrow, popped ' +
       [ptrToString(ptr), exceptionLast, 'stack', exceptionCaught]);
 #endif
-    exceptionLast = 
-#if EXCEPTION_STACK_TRACES
-      new CppException(ptr);
-#else
-      ptr;
-#endif
+    {{{ storeException('exceptionLast', 'ptr') }}}
     {{{ makeThrow('exceptionLast') }}}
   },
 
@@ -380,12 +370,7 @@ var LibraryExceptions = {
     dbg("__resumeException " + [ptrToString(ptr), exceptionLast]);
 #endif
     if (!exceptionLast) { 
-      exceptionLast = 
-#if EXCEPTION_STACK_TRACES
-        new CppException(ptr);
-#else
-        ptr;
-#endif
+      {{{ storeException('exceptionLast', 'ptr') }}}
     }
     {{{ makeThrow('exceptionLast') }}}
   },

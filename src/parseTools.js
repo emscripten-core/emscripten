@@ -498,6 +498,11 @@ function makeThrow(excPtr) {
   return `throw ${excPtr};`;
 }
 
+function storeException(varName, excPtr) {
+  var exceptionToStore = EXCEPTION_STACK_TRACES ? `new CppException(${excPtr})` : `${excPtr}`;
+  return `${varName} = ${exceptionToStore};`;
+}
+
 function charCode(char) {
   return char.charCodeAt(0);
 }
