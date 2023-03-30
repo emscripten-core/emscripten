@@ -39,4 +39,5 @@ mergeInto(LibraryManager.library, {
   },
 
   $allocateUTF8: '$stringToNewUTF8',
+  $allocateUTF8OnStack: '$stringToUTF8OnStack',
 });

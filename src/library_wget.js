@@ -16,7 +16,7 @@ var LibraryWget = {
     },
   },
 
-  emscripten_async_wget__deps: ['$PATH_FS', '$wget', '$callUserCallback', '$Browser', '$withStackSave', '$allocateUTF8OnStack'],
+  emscripten_async_wget__deps: ['$PATH_FS', '$wget', '$callUserCallback', '$Browser', '$withStackSave', '$stringToUTF8OnStack'],
   emscripten_async_wget__proxy: 'sync',
   emscripten_async_wget: function(url, file, onload, onerror) {
     {{{ runtimeKeepalivePush() }}}
@@ -29,7 +29,7 @@ var LibraryWget = {
         {{{ runtimeKeepalivePop() }}}
         callUserCallback(function() {
           withStackSave(function() {
-            {{{ makeDynCall('vi', 'callback') }}}(allocateUTF8OnStack(_file));
+            {{{ makeDynCall('vi', 'callback') }}}(stringToUTF8OnStack(_file));
           });
         });
       }
@@ -80,7 +80,7 @@ var LibraryWget = {
     }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
   },
 
-  emscripten_async_wget2__deps: ['$PATH_FS', '$wget', '$withStackSave', '$allocateUTF8OnStack'],
+  emscripten_async_wget2__deps: ['$PATH_FS', '$wget', '$withStackSave', '$stringToUTF8OnStack'],
   emscripten_async_wget2__proxy: 'sync',
   emscripten_async_wget2: function(url, file, request, param, arg, onload, onerror, onprogress) {
     {{{ runtimeKeepalivePush() }}}
@@ -114,7 +114,7 @@ var LibraryWget = {
         FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(/** @type{ArrayBuffer}*/(http.response)), true, true, false);
         if (onload) {
           withStackSave(function() {
-            {{{ makeDynCall('viii', 'onload') }}}(handle, arg, allocateUTF8OnStack(_file));
+            {{{ makeDynCall('viii', 'onload') }}}(handle, arg, stringToUTF8OnStack(_file));
           });
         }
       } else {
@@ -176,7 +176,7 @@ var LibraryWget = {
         withStackSave(() => {
           var statusText = 0;
           if (http.statusText) {
-            statusText = allocateUTF8OnStack(http.statusText);
+            statusText = stringToUTF8OnStack(http.statusText);
           }
           {{{ makeDynCall('viiii', 'onerror') }}}(handle, arg, http.status, statusText);
         });

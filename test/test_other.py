@@ -13117,7 +13117,7 @@ j1: 8589934599, j2: 30064771074, j3: 12884901891
     create_file('f1.c', '''
     #include <emscripten.h>
 
-    EM_JS_DEPS(other, "$allocateUTF8OnStack");
+    EM_JS_DEPS(other, "$stringToUTF8OnStack");
     ''')
     create_file('f2.c', '''
     #include <emscripten.h>
@@ -13128,7 +13128,7 @@ j1: 8589934599, j2: 30064771074, j3: 12884901891
       EM_ASM({
         err(getHeapMax());
         var x = stackSave();
-        allocateUTF8OnStack("hello");
+        stringToUTF8OnStack("hello");
         stackRestore(x);
       });
       return 0;

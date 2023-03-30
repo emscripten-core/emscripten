@@ -3713,7 +3713,7 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
   '$stringToUTF32',
   '$lengthBytesUTF32',
   '$stringToNewUTF8',
-  '$allocateUTF8OnStack',
+  '$stringToUTF8OnStack',
   '$writeStringToMemory',
   '$writeArrayToMemory',
   '$writeAsciiToMemory',
