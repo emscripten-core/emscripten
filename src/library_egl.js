@@ -520,7 +520,7 @@ var LibraryEGL = {
   },
 
   // EGLAPI const char * EGLAPIENTRY eglQueryString(EGLDisplay dpy, EGLint name);
-  eglQueryString__deps: ['$allocateUTF8'],
+  eglQueryString__deps: ['$stringToNewUTF8'],
   eglQueryString__proxy: 'sync',
   eglQueryString__sig: 'iii',
   eglQueryString: function(display, name) {
@@ -533,10 +533,10 @@ var LibraryEGL = {
     if (EGL.stringCache[name]) return EGL.stringCache[name];
     var ret;
     switch (name) {
-      case 0x3053 /* EGL_VENDOR */: ret = allocateUTF8("Emscripten"); break;
-      case 0x3054 /* EGL_VERSION */: ret = allocateUTF8("1.4 Emscripten EGL"); break;
-      case 0x3055 /* EGL_EXTENSIONS */:  ret = allocateUTF8(""); break; // Currently not supporting any EGL extensions.
-      case 0x308D /* EGL_CLIENT_APIS */: ret = allocateUTF8("OpenGL_ES"); break;
+      case 0x3053 /* EGL_VENDOR */: ret = stringToNewUTF8("Emscripten"); break;
+      case 0x3054 /* EGL_VERSION */: ret = stringToNewUTF8("1.4 Emscripten EGL"); break;
+      case 0x3055 /* EGL_EXTENSIONS */:  ret = stringToNewUTF8(""); break; // Currently not supporting any EGL extensions.
+      case 0x308D /* EGL_CLIENT_APIS */: ret = stringToNewUTF8("OpenGL_ES"); break;
       default:
         EGL.setErrorCode(0x300C /* EGL_BAD_PARAMETER */);
         return 0;

@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $FS__deps: ['$getRandomDevice', '$PATH', '$PATH_FS', '$TTY', '$MEMFS', '$asyncLoad', '$intArrayFromString',
+  $FS__deps: ['$randomFill', '$PATH', '$PATH_FS', '$TTY', '$MEMFS', '$asyncLoad', '$intArrayFromString',
 #if LibraryManager.has('library_idbfs.js')
     '$IDBFS',
 #endif
@@ -1348,9 +1348,16 @@ FS.staticInit();` +
       FS.mkdev('/dev/tty', FS.makedev(5, 0));
       FS.mkdev('/dev/tty1', FS.makedev(6, 0));
       // setup /dev/[u]random
-      var random_device = getRandomDevice();
-      FS.createDevice('/dev', 'random', random_device);
-      FS.createDevice('/dev', 'urandom', random_device);
+      // use a buffer to avoid overhead of individual crypto calls per byte
+      var randomBuffer = new Uint8Array(1024), randomLeft = 0;
+      var randomByte = () => {
+        if (randomLeft === 0) {
+          randomLeft = randomFill(randomBuffer).byteLength;
+        }
+        return randomBuffer[--randomLeft];
+      };
+      FS.createDevice('/dev', 'random', randomByte);
+      FS.createDevice('/dev', 'urandom', randomByte);
       // we're not going to emulate the actual shm device,
       // just create the tmp dirs that reside in it commonly
       FS.mkdir('/dev/shm');
@@ -1902,89 +1909,6 @@ FS.staticInit();` +
       } else {
         processData(url);
       }
-    },
-
-    //
-    // persistence
-    //
-    indexedDB: () => {
-      return window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
-    },
-
-    DB_NAME: () => {
-      return 'EM_FS_' + window.location.pathname;
-    },
-    DB_VERSION: 20,
-    DB_STORE_NAME: 'FILE_DATA',
-
-    // asynchronously saves a list of files to an IndexedDB. The DB will be created if not already existing.
-    saveFilesToDB: (paths, onload = (() => {}), onerror = (() => {})) => {
-      var indexedDB = FS.indexedDB();
-      try {
-        var openRequest = indexedDB.open(FS.DB_NAME(), FS.DB_VERSION);
-      } catch (e) {
-        return onerror(e);
-      }
-      openRequest.onupgradeneeded = () => {
-        out('creating db');
-        var db = openRequest.result;
-        db.createObjectStore(FS.DB_STORE_NAME);
-      };
-      openRequest.onsuccess = () => {
-        var db = openRequest.result;
-        var transaction = db.transaction([FS.DB_STORE_NAME], 'readwrite');
-        var files = transaction.objectStore(FS.DB_STORE_NAME);
-        var ok = 0, fail = 0, total = paths.length;
-        function finish() {
-          if (fail == 0) onload(); else onerror();
-        }
-        paths.forEach((path) => {
-          var putRequest = files.put(FS.analyzePath(path).object.contents, path);
-          putRequest.onsuccess = () => { ok++; if (ok + fail == total) finish() };
-          putRequest.onerror = () => { fail++; if (ok + fail == total) finish() };
-        });
-        transaction.onerror = onerror;
-      };
-      openRequest.onerror = onerror;
-    },
-
-    // asynchronously loads a file from IndexedDB.
-    loadFilesFromDB: (paths, onload = (() => {}), onerror = (() => {})) => {
-      var indexedDB = FS.indexedDB();
-      try {
-        var openRequest = indexedDB.open(FS.DB_NAME(), FS.DB_VERSION);
-      } catch (e) {
-        return onerror(e);
-      }
-      openRequest.onupgradeneeded = onerror; // no database to load from
-      openRequest.onsuccess = () => {
-        var db = openRequest.result;
-        try {
-          var transaction = db.transaction([FS.DB_STORE_NAME], 'readonly');
-        } catch(e) {
-          onerror(e);
-          return;
-        }
-        var files = transaction.objectStore(FS.DB_STORE_NAME);
-        var ok = 0, fail = 0, total = paths.length;
-        function finish() {
-          if (fail == 0) onload(); else onerror();
-        }
-        paths.forEach((path) => {
-          var getRequest = files.get(path);
-          getRequest.onsuccess = () => {
-            if (FS.analyzePath(path).exists) {
-              FS.unlink(path);
-            }
-            FS.createDataFile(PATH.dirname(path), PATH.basename(path), getRequest.result, true, true, true);
-            ok++;
-            if (ok + fail == total) finish();
-          };
-          getRequest.onerror = () => { fail++; if (ok + fail == total) finish() };
-        });
-        transaction.onerror = onerror;
-      };
-      openRequest.onerror = onerror;
     },
 
     // Removed v1 functions

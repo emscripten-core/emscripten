@@ -601,7 +601,9 @@ function isExportWrapperFunction(f) {
   const expr = f.body.body[0];
   if (expr.type == 'ReturnStatement') {
     const rtn = expr.argument;
-    if (rtn.type == 'CallExpression') {
+    // We are looking for a call of special target, like (x = y)(), and not a
+    // non-call or a normal direct call such as z().
+    if (rtn.type == 'CallExpression' && rtn.callee.object) {
       let target = rtn.callee.object;
       if (target.type == 'ParenthesizedExpression') {
         target = target.expression;

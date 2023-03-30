@@ -1743,6 +1743,7 @@ class libembind(Library):
 class libfetch(MTLibrary):
   name = 'libfetch'
   never_force = True
+  includes = ['system/lib/libc']
 
   def get_files(self):
     return [utils.path_from_root('system/lib/fetch/emscripten_fetch.c')]

@@ -29,9 +29,15 @@ mergeInto(LibraryManager.library, {
   // Copies the given Javascript String object 'str' to the emscripten HEAP at
   // address 'outPtr', null-terminated and encoded in ASCII form. The copy will
   // require at most str.length+1 bytes of space in the HEAP.
-  $stringToAscii__deps: ['$writeAsciiToMemory'],
-  $stringToAscii: function(str, outPtr) {
-    return writeAsciiToMemory(str, outPtr, false);
+  $stringToAscii: function(str, buffer) {
+    for (var i = 0; i < str.length; ++i) {
+#if ASSERTIONS
+      assert(str.charCodeAt(i) === (str.charCodeAt(i) & 0xff));
+#endif
+      {{{ makeSetValue('buffer++', 0, 'str.charCodeAt(i)', 'i8') }}};
+    }
+    // Null-terminate the string
+    {{{ makeSetValue('buffer', 0, 0, 'i8') }}};
   },
 
 #if TEXTDECODER == 2
@@ -226,40 +232,19 @@ mergeInto(LibraryManager.library, {
 
   // Allocate heap space for a JS string, and write it there.
   // It is the responsibility of the caller to free() that memory.
-  $allocateUTF8: function(str) {
+  $stringToNewUTF8: function(str) {
     var size = lengthBytesUTF8(str) + 1;
-    var ret = {{{ makeMalloc('allocateUTF8', 'size') }}};
-    if (ret) stringToUTF8Array(str, HEAP8, ret, size);
+    var ret = {{{ makeMalloc('stringToNewUTF8', 'size') }}};
+    if (ret) stringToUTF8(str, ret, size);
     return ret;
   },
 
   // Allocate stack space for a JS string, and write it there.
-  $allocateUTF8OnStack: function(str) {
+  $stringToUTF8OnStack: function(str) {
     var size = lengthBytesUTF8(str) + 1;
     var ret = stackAlloc(size);
-    stringToUTF8Array(str, HEAP8, ret, size);
+    stringToUTF8(str, ret, size);
     return ret;
-  },
-
-  // Deprecated: This function should not be called because it is unsafe and
-  // does not provide a maximum length limit of how many bytes it is allowed to
-  // write. Prefer calling the function stringToUTF8Array() instead, which takes
-  // in a maximum length that can be used to be secure from out of bounds
-  // writes.
-  $writeStringToMemory__docs: '/** @deprecated @param {boolean=} dontAddNull */',
-  $writeStringToMemory: function(string, buffer, dontAddNull) {
-    warnOnce('writeStringToMemory is deprecated and should not be called! Use stringToUTF8() instead!');
-
-    var /** @type {number} */ lastChar, /** @type {number} */ end;
-    if (dontAddNull) {
-      // stringToUTF8Array always appends null. If we don't want to do that, remember the
-      // character that existed at the location where the null will be placed, and restore
-      // that after the write (below).
-      end = buffer + lengthBytesUTF8(string);
-      lastChar = HEAP8[end];
-    }
-    stringToUTF8(string, buffer, Infinity);
-    if (dontAddNull) HEAP8[end] = lastChar; // Restore the value under the null character.
   },
 
   $writeArrayToMemory: function(array, buffer) {
@@ -267,17 +252,5 @@ mergeInto(LibraryManager.library, {
     assert(array.length >= 0, 'writeArrayToMemory array must have a length (should be an array or typed array)')
 #endif
     HEAP8.set(array, buffer);
-  },
-
-  $writeAsciiToMemory__docs: '/** @param {boolean=} dontAddNull */',
-  $writeAsciiToMemory: function(str, buffer, dontAddNull) {
-    for (var i = 0; i < str.length; ++i) {
-#if ASSERTIONS
-      assert(str.charCodeAt(i) === (str.charCodeAt(i) & 0xff));
-#endif
-      {{{ makeSetValue('buffer++', 0, 'str.charCodeAt(i)', 'i8') }}};
-    }
-    // Null-terminate the pointer to the HEAP.
-    if (!dontAddNull) {{{ makeSetValue('buffer', 0, 0, 'i8') }}};
   },
 });

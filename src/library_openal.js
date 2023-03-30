@@ -1613,7 +1613,6 @@ var LibraryOpenAL = {
   // bufferFrameCapacity here for clarity.
   alcCaptureOpenDevice__deps: ['$autoResumeAudioContext'],
   alcCaptureOpenDevice__proxy: 'sync',
-  alcCaptureOpenDevice__sig: 'ppiii',
   alcCaptureOpenDevice: function(pDeviceName, requestedSampleRate, format, bufferFrameCapacity) {
 
     var resolvedDeviceName = AL.CAPTURE_DEVICE_NAME;
@@ -1905,7 +1904,6 @@ var LibraryOpenAL = {
   },
 
   alcCaptureCloseDevice__proxy: 'sync',
-  alcCaptureCloseDevice__sig: 'ip',
   alcCaptureCloseDevice: function(deviceId) {
     var c = AL.requireValidCaptureDevice(deviceId, 'alcCaptureCloseDevice');
     if (!c) return false;
@@ -1938,7 +1936,6 @@ var LibraryOpenAL = {
   },
 
   alcCaptureStart__proxy: 'sync',
-  alcCaptureStart__sig: 'vp',
   alcCaptureStart: function(deviceId) {
     var c = AL.requireValidCaptureDevice(deviceId, 'alcCaptureStart');
     if (!c) return;
@@ -1959,7 +1956,6 @@ var LibraryOpenAL = {
   },
 
   alcCaptureStop__proxy: 'sync',
-  alcCaptureStop__sig: 'vp',
   alcCaptureStop: function(deviceId) {
     var c = AL.requireValidCaptureDevice(deviceId, 'alcCaptureStop');
     if (!c) return;
@@ -1978,7 +1974,6 @@ var LibraryOpenAL = {
   // The last parameter is actually 'number of sample frames', so was
   // renamed accordingly here
   alcCaptureSamples__proxy: 'sync',
-  alcCaptureSamples__sig: 'vppi',
   alcCaptureSamples: function(deviceId, pFrames, requestedFrameCount) {
     var c = AL.requireValidCaptureDevice(deviceId, 'alcCaptureSamples');
     if (!c) return;
@@ -2066,7 +2061,6 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alcOpenDevice__proxy: 'sync',
-  alcOpenDevice__sig: 'pp',
   alcOpenDevice: function(pDeviceName) {
     if (pDeviceName) {
       var name = UTF8ToString(pDeviceName);
@@ -2084,7 +2078,6 @@ var LibraryOpenAL = {
   },
 
   alcCloseDevice__proxy: 'sync',
-  alcCloseDevice__sig: 'ip',
   alcCloseDevice: function(deviceId) {
     if (!(deviceId in AL.deviceRefCounts) || AL.deviceRefCounts[deviceId] > 0) {
       return {{{ cDefs.ALC_FALSE }}};
@@ -2097,7 +2090,6 @@ var LibraryOpenAL = {
 
   alcCreateContext__deps: ['$autoResumeAudioContext'],
   alcCreateContext__proxy: 'sync',
-  alcCreateContext__sig: 'ppp',
   alcCreateContext: function(deviceId, pAttrList) {
     if (!(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
@@ -2252,7 +2244,6 @@ var LibraryOpenAL = {
   },
 
   alcDestroyContext__proxy: 'sync',
-  alcDestroyContext__sig: 'vp',
   alcDestroyContext: function(contextId) {
     var ctx = AL.contexts[contextId];
     if (AL.currentCtx === ctx) {
@@ -2277,7 +2268,6 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alcGetError__proxy: 'sync',
-  alcGetError__sig: 'ip',
   alcGetError: function(deviceId) {
     var err = AL.alcErr;
     AL.alcErr = {{{ cDefs.ALC_NO_ERROR }}};
@@ -2285,7 +2275,6 @@ var LibraryOpenAL = {
   },
 
   alcGetCurrentContext__proxy: 'sync',
-  alcGetCurrentContext__sig: 'p',
   alcGetCurrentContext: function() {
     if (AL.currentCtx !== null) {
       return AL.currentCtx.id;
@@ -2294,7 +2283,6 @@ var LibraryOpenAL = {
   },
 
   alcMakeContextCurrent__proxy: 'sync',
-  alcMakeContextCurrent__sig: 'ip',
   alcMakeContextCurrent: function(contextId) {
     if (contextId === 0) {
       AL.currentCtx = null;
@@ -2305,7 +2293,6 @@ var LibraryOpenAL = {
   },
 
   alcGetContextsDevice__proxy: 'sync',
-  alcGetContextsDevice__sig: 'pp',
   alcGetContextsDevice: function(contextId) {
     if (contextId in AL.contexts) {
       return AL.contexts[contextId].deviceId;
@@ -2314,13 +2301,10 @@ var LibraryOpenAL = {
   },
 
   // The spec is vague about what these are actually supposed to do, and NOP is a reasonable implementation
-  alcProcessContext__sig: 'vp',
   alcProcessContext: function(contextId) {},
-  alcSuspendContext__sig: 'vp',
   alcSuspendContext: function(contextId) {},
 
   alcIsExtensionPresent__proxy: 'sync',
-  alcIsExtensionPresent__sig: 'ipp',
   alcIsExtensionPresent: function(deviceId, pExtName) {
     var name = UTF8ToString(pExtName);
 
@@ -2328,7 +2312,6 @@ var LibraryOpenAL = {
   },
 
   alcGetEnumValue__proxy: 'sync',
-  alcGetEnumValue__sig: 'ipp',
   alcGetEnumValue: function(deviceId, pEnumName) {
     // Spec says :
     // Using a NULL handle is legal, but only the
@@ -2393,8 +2376,7 @@ var LibraryOpenAL = {
   },
 
   alcGetString__proxy: 'sync',
-  alcGetString__sig: 'ppi',
-  alcGetString__deps: ['$allocateUTF8'],
+  alcGetString__deps: ['$stringToNewUTF8'],
   alcGetString: function(deviceId, param) {
     if (AL.alcStringCache[param]) {
       return AL.alcStringCache[param];
@@ -2468,13 +2450,12 @@ var LibraryOpenAL = {
       return 0;
     }
 
-    ret = allocateUTF8(ret);
+    ret = stringToNewUTF8(ret);
     AL.alcStringCache[param] = ret;
     return ret;
   },
 
   alcGetIntegerv__proxy: 'sync',
-  alcGetIntegerv__sig: 'vpiip',
   alcGetIntegerv: function(deviceId, param, size, pValues) {
     if (size === 0 || !pValues) {
       // Ignore the query, per the spec
@@ -2650,7 +2631,7 @@ var LibraryOpenAL = {
 
   emscripten_alcGetStringiSOFT__proxy: 'sync',
   emscripten_alcGetStringiSOFT__sig: 'iiii',
-  emscripten_alcGetStringiSOFT__deps: ['alcGetString', '$allocateUTF8'],
+  emscripten_alcGetStringiSOFT__deps: ['alcGetString', '$stringToNewUTF8'],
   emscripten_alcGetStringiSOFT: function(deviceId, param, index) {
     if (!(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
@@ -2688,7 +2669,7 @@ var LibraryOpenAL = {
       return _alcGetString(deviceId, param);
     }
 
-    ret = allocateUTF8(ret);
+    ret = stringToNewUTF8(ret);
     AL.alcStringCache[param] = ret;
     return ret;
   },
@@ -2751,7 +2732,6 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alGenBuffers__proxy: 'sync',
-  alGenBuffers__sig: 'vip',
   alGenBuffers: function(count, pBufferIds) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -2778,7 +2758,6 @@ var LibraryOpenAL = {
   },
 
   alDeleteBuffers__proxy: 'sync',
-  alDeleteBuffers__sig: 'vip',
   alDeleteBuffers: function(count, pBufferIds) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -2826,7 +2805,6 @@ var LibraryOpenAL = {
   },
 
   alGenSources__proxy: 'sync',
-  alGenSources__sig: 'vip',
   alGenSources: function(count, pSourceIds) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -2878,7 +2856,6 @@ var LibraryOpenAL = {
 
   alDeleteSources__deps: ['alSourcei'],
   alDeleteSources__proxy: 'sync',
-  alDeleteSources__sig: 'vip',
   alDeleteSources: function(count, pSourceIds) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -2912,7 +2889,6 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alGetError__proxy: 'sync',
-  alGetError__sig: 'i',
   alGetError: function() {
     if (!AL.currentCtx) {
       return {{{ cDefs.AL_INVALID_OPERATION }}};
@@ -2924,7 +2900,6 @@ var LibraryOpenAL = {
   },
 
   alIsExtensionPresent__proxy: 'sync',
-  alIsExtensionPresent__sig: 'ip',
   alIsExtensionPresent: function(pExtName) {
     var name = UTF8ToString(pExtName);
 
@@ -2932,7 +2907,6 @@ var LibraryOpenAL = {
   },
 
   alGetEnumValue__proxy: 'sync',
-  alGetEnumValue__sig: 'ip',
   alGetEnumValue: function(pEnumName) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -3044,8 +3018,7 @@ var LibraryOpenAL = {
   },
 
   alGetString__proxy: 'sync',
-  alGetString__sig: 'pi',
-  alGetString__deps: ['$allocateUTF8'],
+  alGetString__deps: ['$stringToNewUTF8'],
   alGetString: function(param) {
     if (AL.stringCache[param]) {
       return AL.stringCache[param];
@@ -3099,13 +3072,12 @@ var LibraryOpenAL = {
       return 0;
     }
 
-    ret = allocateUTF8(ret);
+    ret = stringToNewUTF8(ret);
     AL.stringCache[param] = ret;
     return ret;
   },
 
   alEnable__proxy: 'sync',
-  alEnable__sig: 'vi',
   alEnable: function(param) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -3128,7 +3100,6 @@ var LibraryOpenAL = {
   },
 
   alDisable__proxy: 'sync',
-  alDisable__sig: 'vi',
   alDisable: function(param) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -3151,7 +3122,6 @@ var LibraryOpenAL = {
   },
 
   alIsEnabled__proxy: 'sync',
-  alIsEnabled__sig: 'ii',
   alIsEnabled: function(param) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -3172,7 +3142,6 @@ var LibraryOpenAL = {
   },
 
   alGetDouble__proxy: 'sync',
-  alGetDouble__sig: 'di',
   alGetDouble: function(param) {
     var val = AL.getGlobalParam('alGetDouble', param);
     if (val === null) {
@@ -3194,7 +3163,6 @@ var LibraryOpenAL = {
   },
 
   alGetDoublev__proxy: 'sync',
-  alGetDoublev__sig: 'vip',
   alGetDoublev: function(param, pValues) {
     var val = AL.getGlobalParam('alGetDoublev', param);
     // Silently ignore null destinations, as per the spec for global state functions
@@ -3218,7 +3186,6 @@ var LibraryOpenAL = {
   },
 
   alGetFloat__proxy: 'sync',
-  alGetFloat__sig: 'fi',
   alGetFloat: function(param) {
     var val = AL.getGlobalParam('alGetFloat', param);
     if (val === null) {
@@ -3239,7 +3206,6 @@ var LibraryOpenAL = {
   },
 
   alGetFloatv__proxy: 'sync',
-  alGetFloatv__sig: 'vip',
   alGetFloatv: function(param, pValues) {
     var val = AL.getGlobalParam('alGetFloatv', param);
     // Silently ignore null destinations, as per the spec for global state functions
@@ -3263,7 +3229,6 @@ var LibraryOpenAL = {
   },
 
   alGetInteger__proxy: 'sync',
-  alGetInteger__sig: 'ii',
   alGetInteger: function(param) {
     var val = AL.getGlobalParam('alGetInteger', param);
     if (val === null) {
@@ -3285,7 +3250,6 @@ var LibraryOpenAL = {
   },
 
   alGetIntegerv__proxy: 'sync',
-  alGetIntegerv__sig: 'vip',
   alGetIntegerv: function(param, pValues) {
     var val = AL.getGlobalParam('alGetIntegerv', param);
     // Silently ignore null destinations, as per the spec for global state functions
@@ -3309,7 +3273,6 @@ var LibraryOpenAL = {
   },
 
   alGetBoolean__proxy: 'sync',
-  alGetBoolean__sig: 'ii',
   alGetBoolean: function(param) {
     var val = AL.getGlobalParam('alGetBoolean', param);
     if (val === null) {
@@ -3331,7 +3294,6 @@ var LibraryOpenAL = {
   },
 
   alGetBooleanv__proxy: 'sync',
-  alGetBooleanv__sig: 'vip',
   alGetBooleanv: function(param, pValues) {
     var val = AL.getGlobalParam('alGetBooleanv', param);
     // Silently ignore null destinations, as per the spec for global state functions
@@ -3355,19 +3317,16 @@ var LibraryOpenAL = {
   },
 
   alDistanceModel__proxy: 'sync',
-  alDistanceModel__sig: 'vi',
   alDistanceModel: function(model) {
     AL.setGlobalParam('alDistanceModel', {{{ cDefs.AL_DISTANCE_MODEL }}}, model);
   },
 
   alSpeedOfSound__proxy: 'sync',
-  alSpeedOfSound__sig: 'vf',
   alSpeedOfSound: function(value) {
     AL.setGlobalParam('alSpeedOfSound', {{{ cDefs.AL_SPEED_OF_SOUND }}}, value);
   },
 
   alDopplerFactor__proxy: 'sync',
-  alDopplerFactor__sig: 'vf',
   alDopplerFactor: function(value) {
     AL.setGlobalParam('alDopplerFactor', {{{ cDefs.AL_DOPPLER_FACTOR }}}, value);
   },
@@ -3377,7 +3336,6 @@ var LibraryOpenAL = {
   // It's deprecated since it's equivalent to directly calling
   // alSpeedOfSound() with an appropriately premultiplied value.
   alDopplerVelocity__proxy: 'sync',
-  alDopplerVelocity__sig: 'vf',
   alDopplerVelocity: function(value) {
     warnOnce('alDopplerVelocity() is deprecated, and only kept for compatibility with OpenAL 1.0. Use alSpeedOfSound() instead.');
     if (!AL.currentCtx) {
@@ -3397,7 +3355,6 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alGetListenerf__proxy: 'sync',
-  alGetListenerf__sig: 'vip',
   alGetListenerf: function(param, pValue) {
     var val = AL.getListenerParam('alGetListenerf', param);
     if (val === null) {
@@ -3425,7 +3382,6 @@ var LibraryOpenAL = {
   },
 
   alGetListener3f__proxy: 'sync',
-  alGetListener3f__sig: 'vippp',
   alGetListener3f: function(param, pValue0, pValue1, pValue2) {
     var val = AL.getListenerParam('alGetListener3f', param);
     if (val === null) {
@@ -3456,7 +3412,6 @@ var LibraryOpenAL = {
   },
 
   alGetListenerfv__proxy: 'sync',
-  alGetListenerfv__sig: 'vip',
   alGetListenerfv: function(param, pValues) {
     var val = AL.getListenerParam('alGetListenerfv', param);
     if (val === null) {
@@ -3495,7 +3450,6 @@ var LibraryOpenAL = {
   },
 
   alGetListeneri__proxy: 'sync',
-  alGetListeneri__sig: 'vip',
   alGetListeneri: function(param, pValue) {
     var val = AL.getListenerParam('alGetListeneri', param);
     if (val === null) {
@@ -3516,7 +3470,6 @@ var LibraryOpenAL = {
   },
 
   alGetListener3i__proxy: 'sync',
-  alGetListener3i__sig: 'vippp',
   alGetListener3i: function(param, pValue0, pValue1, pValue2) {
     var val = AL.getListenerParam('alGetListener3i', param);
     if (val === null) {
@@ -3547,7 +3500,6 @@ var LibraryOpenAL = {
   },
 
   alGetListeneriv__proxy: 'sync',
-  alGetListeneriv__sig: 'vip',
   alGetListeneriv: function(param, pValues) {
     var val = AL.getListenerParam('alGetListeneriv', param);
     if (val === null) {
@@ -3586,7 +3538,6 @@ var LibraryOpenAL = {
   },
 
   alListenerf__proxy: 'sync',
-  alListenerf__sig: 'vif',
   alListenerf: function(param, value) {
     switch (param) {
     case {{{ cDefs.AL_GAIN }}}:
@@ -3599,7 +3550,6 @@ var LibraryOpenAL = {
   },
 
   alListener3f__proxy: 'sync',
-  alListener3f__sig: 'vifff',
   alListener3f: function(param, value0, value1, value2) {
     switch (param) {
     case {{{ cDefs.AL_POSITION }}}:
@@ -3616,7 +3566,6 @@ var LibraryOpenAL = {
   },
 
   alListenerfv__proxy: 'sync',
-  alListenerfv__sig: 'vip',
   alListenerfv: function(param, pValues) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -3656,13 +3605,11 @@ var LibraryOpenAL = {
   },
 
   alListeneri__proxy: 'sync',
-  alListeneri__sig: 'vii',
   alListeneri: function(param, value) {
     AL.setListenerParam('alListeneri', param, null);
   },
 
   alListener3i__proxy: 'sync',
-  alListener3i__sig: 'viiii',
   alListener3i: function(param, value0, value1, value2) {
     switch (param) {
     case {{{ cDefs.AL_POSITION }}}:
@@ -3679,7 +3626,6 @@ var LibraryOpenAL = {
   },
 
   alListeneriv__proxy: 'sync',
-  alListeneriv__sig: 'vip',
   alListeneriv: function(param, pValues) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -3723,7 +3669,6 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alIsBuffer__proxy: 'sync',
-  alIsBuffer__sig: 'ii',
   alIsBuffer: function(bufferId) {
     if (!AL.currentCtx) {
       return false;
@@ -3739,7 +3684,6 @@ var LibraryOpenAL = {
   },
 
   alBufferData__proxy: 'sync',
-  alBufferData__sig: 'viipii',
   alBufferData: function(bufferId, format, pData, size, freq) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -3867,7 +3811,6 @@ var LibraryOpenAL = {
   },
 
   alGetBufferf__proxy: 'sync',
-  alGetBufferf__sig: 'viip',
   alGetBufferf: function(bufferId, param, pValue) {
     var val = AL.getBufferParam('alGetBufferf', bufferId, param);
     if (val === null) {
@@ -3888,7 +3831,6 @@ var LibraryOpenAL = {
   },
 
   alGetBuffer3f__proxy: 'sync',
-  alGetBuffer3f__sig: 'viippp',
   alGetBuffer3f: function(bufferId, param, pValue0, pValue1, pValue2) {
     var val = AL.getBufferParam('alGetBuffer3f', bufferId, param);
     if (val === null) {
@@ -3909,7 +3851,6 @@ var LibraryOpenAL = {
   },
 
   alGetBufferfv__proxy: 'sync',
-  alGetBufferfv__sig: 'viip',
   alGetBufferfv: function(bufferId, param, pValues) {
     var val = AL.getBufferParam('alGetBufferfv', bufferId, param);
     if (val === null) {
@@ -3930,7 +3871,6 @@ var LibraryOpenAL = {
   },
 
   alGetBufferi__proxy: 'sync',
-  alGetBufferi__sig: 'viip',
   alGetBufferi: function(bufferId, param, pValue) {
     var val = AL.getBufferParam('alGetBufferi', bufferId, param);
     if (val === null) {
@@ -3961,7 +3901,6 @@ var LibraryOpenAL = {
   },
 
   alGetBuffer3i__proxy: 'sync',
-  alGetBuffer3i__sig: 'viippp',
   alGetBuffer3i: function(bufferId, param, pValue0, pValue1, pValue2) {
     var val = AL.getBufferParam('alGetBuffer3i', bufferId, param);
     if (val === null) {
@@ -3982,7 +3921,6 @@ var LibraryOpenAL = {
   },
 
   alGetBufferiv__proxy: 'sync',
-  alGetBufferiv__sig: 'viip',
   alGetBufferiv: function(bufferId, param, pValues) {
     var val = AL.getBufferParam('alGetBufferiv', bufferId, param);
     if (val === null) {
@@ -4021,19 +3959,16 @@ var LibraryOpenAL = {
   // property for these.
 
   alBufferf__proxy: 'sync',
-  alBufferf__sig: 'viif',
   alBufferf: function(bufferId, param, value) {
     AL.setBufferParam('alBufferf', bufferId, param, null);
   },
 
   alBuffer3f__proxy: 'sync',
-  alBuffer3f__sig: 'viifff',
   alBuffer3f: function(bufferId, param, value0, value1, value2) {
     AL.setBufferParam('alBuffer3f', bufferId, param, null);
   },
 
   alBufferfv__proxy: 'sync',
-  alBufferfv__sig: 'viip',
   alBufferfv: function(bufferId, param, pValues) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4053,19 +3988,16 @@ var LibraryOpenAL = {
   },
 
   alBufferi__proxy: 'sync',
-  alBufferi__sig: 'viii',
   alBufferi: function(bufferId, param, value) {
     AL.setBufferParam('alBufferi', bufferId, param, null);
   },
 
   alBuffer3i__proxy: 'sync',
-  alBuffer3i__sig: 'viiiii',
   alBuffer3i: function(bufferId, param, value0, value1, value2) {
     AL.setBufferParam('alBuffer3i', bufferId, param, null);
   },
 
   alBufferiv__proxy: 'sync',
-  alBufferiv__sig: 'viip',
   alBufferiv: function(bufferId, param, pValues) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4098,7 +4030,6 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alIsSource__proxy: 'sync',
-  alIsSource__sig: 'ii',
   alIsSource: function(sourceId) {
     if (!AL.currentCtx) {
       return false;
@@ -4111,7 +4042,6 @@ var LibraryOpenAL = {
   },
 
   alSourceQueueBuffers__proxy: 'sync',
-  alSourceQueueBuffers__sig: 'viip',
   alSourceQueueBuffers: function(sourceId, count, pBufferIds) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4195,7 +4125,6 @@ var LibraryOpenAL = {
   },
 
   alSourceUnqueueBuffers__proxy: 'sync',
-  alSourceUnqueueBuffers__sig: 'viip',
   alSourceUnqueueBuffers: function(sourceId, count, pBufferIds) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4238,7 +4167,6 @@ var LibraryOpenAL = {
   },
 
   alSourcePlay__proxy: 'sync',
-  alSourcePlay__sig: 'vi',
   alSourcePlay: function(sourceId) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4258,7 +4186,6 @@ var LibraryOpenAL = {
   },
 
   alSourcePlayv__proxy: 'sync',
-  alSourcePlayv__sig: 'vip',
   alSourcePlayv: function(count, pSourceIds) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4289,7 +4216,6 @@ var LibraryOpenAL = {
   },
 
   alSourceStop__proxy: 'sync',
-  alSourceStop__sig: 'vi',
   alSourceStop: function(sourceId) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4309,7 +4235,6 @@ var LibraryOpenAL = {
   },
 
   alSourceStopv__proxy: 'sync',
-  alSourceStopv__sig: 'vip',
   alSourceStopv: function(count, pSourceIds) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4340,7 +4265,6 @@ var LibraryOpenAL = {
   },
 
   alSourceRewind__proxy: 'sync',
-  alSourceRewind__sig: 'vi',
   alSourceRewind: function(sourceId) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4363,7 +4287,6 @@ var LibraryOpenAL = {
   },
 
   alSourceRewindv__proxy: 'sync',
-  alSourceRewindv__sig: 'vip',
   alSourceRewindv: function(count, pSourceIds) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4394,7 +4317,6 @@ var LibraryOpenAL = {
   },
 
   alSourcePause__proxy: 'sync',
-  alSourcePause__sig: 'vi',
   alSourcePause: function(sourceId) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4414,7 +4336,6 @@ var LibraryOpenAL = {
   },
 
   alSourcePausev__proxy: 'sync',
-  alSourcePausev__sig: 'vip',
   alSourcePausev: function(count, pSourceIds) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4445,7 +4366,6 @@ var LibraryOpenAL = {
   },
 
   alGetSourcef__proxy: 'sync',
-  alGetSourcef__sig: 'viip',
   alGetSourcef: function(sourceId, param, pValue) {
     var val = AL.getSourceParam('alGetSourcef', sourceId, param);
     if (val === null) {
@@ -4486,7 +4406,6 @@ var LibraryOpenAL = {
   },
 
   alGetSource3f__proxy: 'sync',
-  alGetSource3f__sig: 'viippp',
   alGetSource3f: function(sourceId, param, pValue0, pValue1, pValue2) {
     var val = AL.getSourceParam('alGetSource3f', sourceId, param);
     if (val === null) {
@@ -4518,7 +4437,6 @@ var LibraryOpenAL = {
   },
 
   alGetSourcefv__proxy: 'sync',
-  alGetSourcefv__sig: 'viip',
   alGetSourcefv: function(sourceId, param, pValues) {
     var val = AL.getSourceParam('alGetSourcefv', sourceId, param);
     if (val === null) {
@@ -4566,7 +4484,6 @@ var LibraryOpenAL = {
   },
 
   alGetSourcei__proxy: 'sync',
-  alGetSourcei__sig: 'viip',
   alGetSourcei: function(sourceId, param, pValue) {
     var val = AL.getSourceParam('alGetSourcei', sourceId, param);
     if (val === null) {
@@ -4612,7 +4529,6 @@ var LibraryOpenAL = {
   },
 
   alGetSource3i__proxy: 'sync',
-  alGetSource3i__sig: 'viippp',
   alGetSource3i: function(sourceId, param, pValue0, pValue1, pValue2) {
     var val = AL.getSourceParam('alGetSource3i', sourceId, param);
     if (val === null) {
@@ -4644,7 +4560,6 @@ var LibraryOpenAL = {
   },
 
   alGetSourceiv__proxy: 'sync',
-  alGetSourceiv__sig: 'viip',
   alGetSourceiv: function(sourceId, param, pValues) {
     var val = AL.getSourceParam('alGetSourceiv', sourceId, param);
     if (val === null) {
@@ -4697,7 +4612,6 @@ var LibraryOpenAL = {
   },
 
   alSourcef__proxy: 'sync',
-  alSourcef__sig: 'viif',
   alSourcef: function(sourceId, param, value) {
     switch (param) {
     case 0x1001 /* AL_CONE_INNER_ANGLE */:
@@ -4723,7 +4637,6 @@ var LibraryOpenAL = {
   },
 
   alSource3f__proxy: 'sync',
-  alSource3f__sig: 'viifff',
   alSource3f: function(sourceId, param, value0, value1, value2) {
     switch (param) {
     case {{{ cDefs.AL_POSITION }}}:
@@ -4741,7 +4654,6 @@ var LibraryOpenAL = {
   },
 
   alSourcefv__proxy: 'sync',
-  alSourcefv__sig: 'viip',
   alSourcefv: function(sourceId, param, pValues) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
@@ -4790,7 +4702,6 @@ var LibraryOpenAL = {
   },
 
   alSourcei__proxy: 'sync',
-  alSourcei__sig: 'viii',
   alSourcei: function(sourceId, param, value) {
     switch (param) {
     case 0x202 /* AL_SOURCE_RELATIVE */:
@@ -4817,7 +4728,6 @@ var LibraryOpenAL = {
   },
 
   alSource3i__proxy: 'sync',
-  alSource3i__sig: 'viiiii',
   alSource3i: function(sourceId, param, value0, value1, value2) {
     switch (param) {
     case {{{ cDefs.AL_POSITION }}}:
@@ -4835,7 +4745,6 @@ var LibraryOpenAL = {
   },
 
   alSourceiv__proxy: 'sync',
-  alSourceiv__sig: 'viip',
   alSourceiv: function(sourceId, param, pValues) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG

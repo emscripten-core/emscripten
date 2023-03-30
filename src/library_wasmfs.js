@@ -16,8 +16,8 @@ mergeInto(LibraryManager.library, {
     '$wasmFSPreloadedDirs',
     '$asyncLoad',
     '$PATH',
-    '$allocateUTF8',
-    '$allocateUTF8OnStack',
+    '$stringToNewUTF8',
+    '$stringToUTF8OnStack',
     '$withStackSave',
     '$readI53FromI64',
   ],
@@ -104,7 +104,7 @@ mergeInto(LibraryManager.library, {
         throw new Error('Invalid encoding type "' + opts.encoding + '"');
       }
 
-      var pathName = allocateUTF8(path);
+      var pathName = stringToNewUTF8(path);
 
       // Copy the file into a JS buffer on the heap.
       var buf = __wasmfs_read_file(pathName);
@@ -134,7 +134,7 @@ mergeInto(LibraryManager.library, {
     mkdir: (path, mode) => {
       return withStackSave(() => {
         mode = mode !== undefined ? mode : 511 /* 0777 */;
-        var buffer = allocateUTF8OnStack(path);
+        var buffer = stringToUTF8OnStack(path);
         return __wasmfs_mkdir({{{ to64('buffer') }}}, mode);
       });
     },
@@ -145,7 +145,7 @@ mergeInto(LibraryManager.library, {
       flags = typeof flags == 'string' ? FS.modeStringToFlags(flags) : flags;
       mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
       return withStackSave(() => {
-        var buffer = allocateUTF8OnStack(path);
+        var buffer = stringToUTF8OnStack(path);
         return __wasmfs_open({{{ to64('buffer') }}}, flags, mode);
       })
     },
@@ -153,13 +153,13 @@ mergeInto(LibraryManager.library, {
     // TODO: close
     unlink: (path) => {
       return withStackSave(() => {
-        var buffer = allocateUTF8OnStack(path);
+        var buffer = stringToUTF8OnStack(path);
         return __wasmfs_unlink(buffer);
       });
     },
     chdir: (path) => {
       return withStackSave(() => {
-        var buffer = allocateUTF8OnStack(path);
+        var buffer = stringToUTF8OnStack(path);
         return __wasmfs_chdir(buffer);
       });
     },
@@ -171,7 +171,7 @@ mergeInto(LibraryManager.library, {
     // TODO: munmap
     writeFile: (path, data) => {
       return withStackSave(() => {
-        var pathBuffer = allocateUTF8OnStack(path);
+        var pathBuffer = stringToUTF8OnStack(path);
         if (typeof data == 'string') {
           var buf = new Uint8Array(lengthBytesUTF8(data) + 1);
           var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
@@ -191,8 +191,8 @@ mergeInto(LibraryManager.library, {
     },
     symlink: (target, linkpath) => {
       return withStackSave(() => {
-        var targetBuffer = allocateUTF8OnStack(target);
-        var linkpathBuffer = allocateUTF8OnStack(linkpath);
+        var targetBuffer = stringToUTF8OnStack(target);
+        var linkpathBuffer = stringToUTF8OnStack(linkpath);
         return __wasmfs_symlink(targetBuffer, linkpathBuffer);
       });
     },
@@ -201,7 +201,7 @@ mergeInto(LibraryManager.library, {
     // TODO: lstat
     chmod: (path, mode) => {
       return withStackSave(() => {
-        var buffer = allocateUTF8OnStack(path);
+        var buffer = stringToUTF8OnStack(path);
         return __wasmfs_chmod(buffer, mode);
       });
     },
@@ -225,7 +225,7 @@ mergeInto(LibraryManager.library, {
     },
     readdir: (path) => {
       return withStackSave(() => {
-        var pathBuffer = allocateUTF8OnStack(path);
+        var pathBuffer = stringToUTF8OnStack(path);
         var entries = [];
         var state = __wasmfs_readdir_start(pathBuffer);
         if (!state) {
