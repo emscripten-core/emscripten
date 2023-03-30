@@ -328,7 +328,7 @@ var LibraryExceptions = {
   __cxa_find_matching_catch: function() {
     var thrown = 
 #if EXCEPTION_STACK_TRACES
-      exceptionLast.excPtr;
+      exceptionLast && exceptionLast.excPtr;
 #else
       exceptionLast;
 #endif
