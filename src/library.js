@@ -2078,7 +2078,7 @@ mergeInto(LibraryManager.library, {
     list: [],
     map: {}
   },
-  setprotoent__deps: ['$Protocols', '$writeAsciiToMemory', 'malloc'],
+  setprotoent__deps: ['$Protocols', '$stringToAscii', 'malloc'],
   setprotoent: function(stayopen) {
     // void setprotoent(int stayopen);
 
@@ -2086,7 +2086,7 @@ mergeInto(LibraryManager.library, {
     function allocprotoent(name, proto, aliases) {
       // write name into buffer
       var nameBuf = _malloc(name.length + 1);
-      writeAsciiToMemory(name, nameBuf);
+      stringToAscii(name, nameBuf);
 
       // write aliases into buffer
       var j = 0;
@@ -2096,7 +2096,7 @@ mergeInto(LibraryManager.library, {
       for (var i = 0; i < length; i++, j += 4) {
         var alias = aliases[i];
         var aliasBuf = _malloc(alias.length + 1);
-        writeAsciiToMemory(alias, aliasBuf);
+        stringToAscii(alias, aliasBuf);
         {{{ makeSetValue('aliasListBuf', 'j', 'aliasBuf', POINTER_TYPE) }}};
       }
       {{{ makeSetValue('aliasListBuf', 'j', '0', POINTER_TYPE) }}}; // Terminating NULL pointer.
