@@ -246,7 +246,7 @@ var LibraryDylink = {
   _dlsym_js__deps: [function() { error(dlopenMissingError); }],
   _dlsym_catchup_js__deps: [function() { error(dlopenMissingError); }],
   dlopen__deps: [function() { error(dlopenMissingError); }],
-  _emscripten_dlopen__deps: [function() { error(dlopenMissingError); }],
+  emscripten_dlopen__deps: [function() { error(dlopenMissingError); }],
   __dlsym__deps: [function() { error(dlopenMissingError); }],
   dladdr__deps: [function() { error(dlopenMissingError); }],
 #else
@@ -256,7 +256,7 @@ var LibraryDylink = {
   _dlsym_js__deps: ['$dlopenMissingError'],
   _dlsym_catchup_js__deps: ['$dlopenMissingError'],
   dlopen__deps: ['$dlopenMissingError'],
-  _emscripten_dlopen__deps: ['$dlopenMissingError'],
+  emscripten_dlopen__deps: ['$dlopenMissingError'],
   __dlsym__deps: ['$dlopenMissingError'],
   dladdr__deps: ['$dlopenMissingError'],
 #endif
@@ -275,7 +275,7 @@ var LibraryDylink = {
   dlopen: function(handle) {
     abort(dlopenMissingError);
   },
-  _emscripten_dlopen: function(handle, onsuccess, onerror, user_data) {
+  emscripten_dlopen: function(handle, onsuccess, onerror, user_data) {
     abort(dlopenMissingError);
   },
   __dlsym: function(handle, symbol) {
@@ -292,7 +292,7 @@ var LibraryDylink = {
     loadedLibsByName: {},
     // handle  -> dso; Used by dlsym
     loadedLibsByHandle: {},
-    init: () => newDSO('__main__', {{{ cDefine('RTLD_DEFAULT') }}}, wasmImports),
+    init: () => newDSO('__main__', {{{ cDefs.RTLD_DEFAULT }}}, wasmImports),
   },
 
   $dlSetError__internal: true,
@@ -1060,13 +1060,13 @@ var LibraryDylink = {
       }
     }
 
-    var global = Boolean(flags & {{{ cDefine('RTLD_GLOBAL') }}});
+    var global = Boolean(flags & {{{ cDefs.RTLD_GLOBAL }}});
     var localScope = global ? null : {};
 
     // We don't care about RTLD_NOW and RTLD_LAZY.
     var combinedFlags = {
       global,
-      nodelete:  Boolean(flags & {{{ cDefine('RTLD_NODELETE') }}}),
+      nodelete:  Boolean(flags & {{{ cDefs.RTLD_NODELETE }}}),
       loadAsync: jsflags.loadAsync,
       fs:        jsflags.fs,
     }
@@ -1087,7 +1087,6 @@ var LibraryDylink = {
   },
 
   _dlopen_js__deps: ['$dlopenInternal'],
-  _dlopen_js__sig: 'pp',
   _dlopen_js: function(handle) {
 #if ASYNCIFY
     return Asyncify.handleSleep(function(wakeUp) {
@@ -1109,7 +1108,6 @@ var LibraryDylink = {
 
   // Async version of dlopen.
   _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError'],
-  _emscripten_dlopen_js__sig: 'vppp',
   _emscripten_dlopen_js: function(handle, onsuccess, onerror, user_data) {
     /** @param {Object=} e */
     function errorCallback(e) {
@@ -1132,7 +1130,6 @@ var LibraryDylink = {
     }
   },
 
-  _dlsym_catchup_js__sig: 'ppp',
   _dlsym_catchup_js: function(handle, symbolIndex) {
 #if DYLINK_DEBUG
     dbg("_dlsym_catchup: handle=" + ptrToString(handle) + " symbolIndex=" + symbolIndex);
@@ -1150,7 +1147,6 @@ var LibraryDylink = {
 
   // void* dlsym(void* handle, const char* symbol);
   _dlsym_js__deps: ['$dlSetError', '$getFunctionAddress', '$addFunction'],
-  _dlsym_js__sig: 'pppp',
   _dlsym_js: function(handle, symbol, symbolIndex) {
     // void *dlsym(void *restrict handle, const char *restrict name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlsym.html

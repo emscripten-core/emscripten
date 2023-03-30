@@ -176,7 +176,4 @@ EMSCRIPTEN_BINDINGS(builtin) {
 
   register_memory_view<float>("emscripten::memory_view<float>");
   register_memory_view<double>("emscripten::memory_view<double>");
-#if __SIZEOF_LONG_DOUBLE__ == __SIZEOF_DOUBLE__
-  register_memory_view<long double>("emscripten::memory_view<long double>");
-#endif
 }

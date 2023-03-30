@@ -18,7 +18,6 @@ var LibraryWget = {
 
   emscripten_async_wget__deps: ['$PATH_FS', '$wget', '$callUserCallback', '$Browser', '$withStackSave', '$allocateUTF8OnStack'],
   emscripten_async_wget__proxy: 'sync',
-  emscripten_async_wget__sig: 'viiii',
   emscripten_async_wget: function(url, file, onload, onerror) {
     {{{ runtimeKeepalivePush() }}}
 
@@ -61,7 +60,6 @@ var LibraryWget = {
 
   emscripten_async_wget_data__deps: ['$asyncLoad', 'malloc', 'free', '$callUserCallback'],
   emscripten_async_wget_data__proxy: 'sync',
-  emscripten_async_wget_data__sig: 'viiii',
   emscripten_async_wget_data: function(url, arg, onload, onerror) {
     {{{ runtimeKeepalivePush() }}}
     asyncLoad(UTF8ToString(url), function(byteArray) {
@@ -84,7 +82,6 @@ var LibraryWget = {
 
   emscripten_async_wget2__deps: ['$PATH_FS', '$wget', '$withStackSave', '$allocateUTF8OnStack'],
   emscripten_async_wget2__proxy: 'sync',
-  emscripten_async_wget2__sig: 'iiiiiiiii',
   emscripten_async_wget2: function(url, file, request, param, arg, onload, onerror, onprogress) {
     {{{ runtimeKeepalivePush() }}}
 
@@ -163,7 +160,6 @@ var LibraryWget = {
 
   emscripten_async_wget2_data__deps: ['$wget', 'malloc', 'free'],
   emscripten_async_wget2_data__proxy: 'sync',
-  emscripten_async_wget2_data__sig: 'iiiiiiiii',
   emscripten_async_wget2_data: function(url, request, param, arg, free, onload, onerror, onprogress) {
     var _url = UTF8ToString(url);
     var _request = UTF8ToString(request);
@@ -177,13 +173,13 @@ var LibraryWget = {
 
     function onerrorjs() {
       if (onerror) {
-        var statusText = 0;
-        if (http.statusText) {
-          var len = lengthBytesUTF8(http.statusText) + 1;
-          statusText = stackAlloc(len);
-          stringToUTF8(http.statusText, statusText, len);
-        }
-        {{{ makeDynCall('viiii', 'onerror') }}}(handle, arg, http.status, statusText);
+        withStackSave(() => {
+          var statusText = 0;
+          if (http.statusText) {
+            statusText = allocateUTF8OnStack(http.statusText);
+          }
+          {{{ makeDynCall('viiii', 'onerror') }}}(handle, arg, http.status, statusText);
+        });
       }
     }
 
@@ -232,7 +228,6 @@ var LibraryWget = {
 
   emscripten_async_wget2_abort__deps: ['$wget'],
   emscripten_async_wget2_abort__proxy: 'sync',
-  emscripten_async_wget2_abort__sig: 'vi',
   emscripten_async_wget2_abort: function(handle) {
     var http = wget.wgetRequests[handle];
     if (http) {

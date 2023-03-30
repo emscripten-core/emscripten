@@ -476,8 +476,8 @@ void emscripten_html5_remove_all_event_listeners(void);
 #define emscripten_set_batterylevelchange_callback(userData, callback)                        emscripten_set_batterylevelchange_callback_on_thread(             (userData),               (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 #define emscripten_set_beforeunload_callback(userData, callback)                              emscripten_set_beforeunload_callback_on_thread(                   (userData),               (callback), EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD)
 
-long emscripten_request_animation_frame(EM_BOOL (*cb)(double time, void *userData), void *userData);
-void emscripten_cancel_animation_frame(long requestAnimationFrameId);
+int emscripten_request_animation_frame(EM_BOOL (*cb)(double time, void *userData), void *userData);
+void emscripten_cancel_animation_frame(int requestAnimationFrameId);
 void emscripten_request_animation_frame_loop(EM_BOOL (*cb)(double time, void *userData), void *userData);
 
 double emscripten_date_now(void);

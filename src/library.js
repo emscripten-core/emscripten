@@ -52,14 +52,6 @@ mergeInto(LibraryManager.library, {
   // JavaScript <-> C string interop
   // ==========================================================================
 
-  $stringToNewUTF8__deps: ['malloc'],
-  $stringToNewUTF8: function(jsString) {
-    var length = lengthBytesUTF8(jsString)+1;
-    var cString = _malloc(length);
-    stringToUTF8(jsString, cString, length);
-    return cString;
-  },
-
 #if !MINIMAL_RUNTIME
   $exitJS__docs: '/** @param {boolean|number=} implicit */',
   $exitJS__deps: ['proc_exit'],
@@ -112,7 +104,6 @@ mergeInto(LibraryManager.library, {
   },
 #endif
 
-  exit__sig: 'vi',
 #if MINIMAL_RUNTIME
   // minimal runtime doesn't do any exit cleanup handling so just
   // map exit directly to the lower-level proc_exit syscall.
@@ -124,7 +115,6 @@ mergeInto(LibraryManager.library, {
   // Returns a pointer ('p'), which means an i32 on wasm32 and an i64 wasm64
   // We have a separate JS version `getHeapMax()` which can be called directly
   // avoiding any wrapper added for wasm64.
-  emscripten_get_heap_max__sig: 'p',
   emscripten_get_heap_max__deps: ['$getHeapMax'],
   emscripten_get_heap_max: function() {
     return getHeapMax();
@@ -189,7 +179,6 @@ mergeInto(LibraryManager.library, {
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
-  emscripten_resize_heap__sig: 'ip',
   emscripten_resize_heap__deps: [
     '$getHeapMax',
 #if ASSERTIONS == 2
@@ -322,7 +311,6 @@ mergeInto(LibraryManager.library, {
   },
 
   system__deps: ['$setErrNo'],
-  system__sig: 'ip',
   system: function(command) {
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
@@ -362,7 +350,7 @@ mergeInto(LibraryManager.library, {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/system.html
     // Can't call external programs.
     if (!command) return 0; // no shell available
-    setErrNo({{{ cDefine('ENOSYS') }}});
+    setErrNo({{{ cDefs.ENOSYS }}});
     return -1;
   },
 
@@ -374,7 +362,6 @@ mergeInto(LibraryManager.library, {
   // module scope: the built-in runtime function abort(), and this library
   // function _abort(). Remove one of these, importing two functions for the
   // same purpose is wasteful.
-  abort__sig: 'v',
   abort: function() {
 #if ASSERTIONS
     abort('native code called abort()');
@@ -387,7 +374,6 @@ mergeInto(LibraryManager.library, {
   // the initial values of the environment accessible by getenv.
   $ENV: {},
 
-  getloadavg__sig: 'ipi',
   getloadavg: function(loadavg, nelem) {
     // int getloadavg(double loadavg[], int nelem);
     // http://linux.die.net/man/3/getloadavg
@@ -407,7 +393,6 @@ mergeInto(LibraryManager.library, {
   // so we cannot override parts of it, and therefore cannot use libc_optz.
 #if (SHRINK_LEVEL < 2 || LINKABLE || process.env.EMCC_FORCE_STDLIBS) && !STANDALONE_WASM
 
-  emscripten_memcpy_big__sig: 'vppp',
 #if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/copyWithin lists browsers that support TypedArray.prototype.copyWithin, but it
   // has outdated information for Safari, saying it would not support it.
@@ -436,7 +421,6 @@ mergeInto(LibraryManager.library, {
   // assert.h
   // ==========================================================================
 
-  __assert_fail__sig: 'vppip',
   __assert_fail: function(condition, filename, line, func) {
     abort('Assertion failed: ' + UTF8ToString(condition) + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
@@ -445,8 +429,7 @@ mergeInto(LibraryManager.library, {
   // time.h
   // ==========================================================================
 
-  _mktime_js__deps: ['_yday_from_date'],
-  _mktime_js__sig: 'ip',
+  _mktime_js__deps: ['$ydayFromDate'],
   _mktime_js: function(tmPtr) {
     var date = new Date({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
@@ -476,7 +459,7 @@ mergeInto(LibraryManager.library, {
     }
 
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getDay()', 'i32') }}};
-    var yday = __yday_from_date(date)|0;
+    var yday = ydayFromDate(date)|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
     // To match expected behavior, update fields from date
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}};
@@ -490,7 +473,6 @@ mergeInto(LibraryManager.library, {
   },
 
   _gmtime_js__deps: ['$readI53FromI64'],
-  _gmtime_js__sig: 'ipp',
   _gmtime_js: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i53') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
@@ -505,7 +487,6 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
   },
 
-  _timegm_js__sig: 'ip',
   _timegm_js: function(tmPtr) {
     var time = Date.UTC({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
@@ -524,8 +505,7 @@ mergeInto(LibraryManager.library, {
     return (date.getTime() / 1000)|0;
   },
 
-  _localtime_js__deps: ['$readI53FromI64', '_yday_from_date'],
-  _localtime_js__sig: 'ipp',
+  _localtime_js__deps: ['$readI53FromI64', '$ydayFromDate'],
   _localtime_js: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i53') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}};
@@ -536,7 +516,7 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getFullYear()-1900', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getDay()', 'i32') }}};
 
-    var yday = __yday_from_date(date)|0;
+    var yday = ydayFromDate(date)|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, '-(date.getTimezoneOffset() * 60)', 'i32') }}};
 
@@ -549,7 +529,6 @@ mergeInto(LibraryManager.library, {
   },
 
   // musl-internal function used to implement both `asctime` and `asctime_r`
-  __asctime_r__sig: 'ppp',
   __asctime_r: function(tmPtr, buf) {
     var date = {
       tm_sec: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
@@ -588,9 +567,8 @@ mergeInto(LibraryManager.library, {
 
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
-  _tzset_js__deps: ['$allocateUTF8'],
+  _tzset_js__deps: ['$stringToNewUTF8'],
   _tzset_js__internal: true,
-  _tzset_js__sig: 'vppp',
   _tzset_js: function(timezone, daylight, tzname) {
     // TODO: Use (malleable) environment variables instead of system settings.
     var currentYear = new Date().getFullYear();
@@ -619,8 +597,8 @@ mergeInto(LibraryManager.library, {
     };
     var winterName = extractZone(winter);
     var summerName = extractZone(summer);
-    var winterNamePtr = allocateUTF8(winterName);
-    var summerNamePtr = allocateUTF8(summerName);
+    var winterNamePtr = stringToNewUTF8(winterName);
+    var summerNamePtr = stringToNewUTF8(summerName);
     if (summerOffset < winterOffset) {
       // Northern hemisphere
       {{{ makeSetValue('tzname', '0', 'winterNamePtr', POINTER_TYPE) }}};
@@ -631,25 +609,25 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  _MONTH_DAYS_REGULAR: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
-  _MONTH_DAYS_LEAP: [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
-  _MONTH_DAYS_REGULAR_CUMULATIVE: [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334],
-  _MONTH_DAYS_LEAP_CUMULATIVE: [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335],
+  $MONTH_DAYS_REGULAR: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
+  $MONTH_DAYS_LEAP: [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
+  $MONTH_DAYS_REGULAR_CUMULATIVE: [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334],
+  $MONTH_DAYS_LEAP_CUMULATIVE: [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335],
 
-  _isLeapYear: function(year) {
+  $isLeapYear: function(year) {
       return year%4 === 0 && (year%100 !== 0 || year%400 === 0);
   },
 
-  _yday_from_date__deps: ['_isLeapYear', '_MONTH_DAYS_LEAP_CUMULATIVE', '_MONTH_DAYS_REGULAR_CUMULATIVE'],
-  _yday_from_date: function(date) {
-    var isLeapYear = __isLeapYear(date.getFullYear());
-    var monthDaysCumulative = (isLeapYear ? __MONTH_DAYS_LEAP_CUMULATIVE : __MONTH_DAYS_REGULAR_CUMULATIVE);
+  $ydayFromDate__deps: ['$isLeapYear', '$MONTH_DAYS_LEAP_CUMULATIVE', '$MONTH_DAYS_REGULAR_CUMULATIVE'],
+  $ydayFromDate: function(date) {
+    var leap = isLeapYear(date.getFullYear());
+    var monthDaysCumulative = (leap ? MONTH_DAYS_LEAP_CUMULATIVE : MONTH_DAYS_REGULAR_CUMULATIVE);
     var yday = monthDaysCumulative[date.getMonth()] + date.getDate() - 1; // -1 since it's days since Jan 1
 
     return yday;
   },
 
-  _arraySum: function(array, index) {
+  $arraySum: function(array, index) {
     var sum = 0;
     for (var i = 0; i <= index; sum += array[i++]) {
       // no-op
@@ -657,13 +635,13 @@ mergeInto(LibraryManager.library, {
     return sum;
   },
 
-  _addDays__deps: ['_isLeapYear', '_MONTH_DAYS_LEAP', '_MONTH_DAYS_REGULAR'],
-  _addDays: function(date, days) {
+  $addDays__deps: ['$isLeapYear', '$MONTH_DAYS_LEAP', '$MONTH_DAYS_REGULAR'],
+  $addDays: function(date, days) {
     var newDate = new Date(date.getTime());
     while (days > 0) {
-      var leap = __isLeapYear(newDate.getFullYear());
+      var leap = isLeapYear(newDate.getFullYear());
       var currentMonth = newDate.getMonth();
-      var daysInCurrentMonth = (leap ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR)[currentMonth];
+      var daysInCurrentMonth = (leap ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR)[currentMonth];
 
       if (days > daysInCurrentMonth-newDate.getDate()) {
         // we spill over to next month
@@ -687,10 +665,9 @@ mergeInto(LibraryManager.library, {
 
   // Note: this is not used in STANDALONE_WASM mode, because it is more
   //       compact to do it in JS.
-  strftime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP',
+  strftime__deps: ['$isLeapYear', '$arraySum', '$addDays', '$MONTH_DAYS_REGULAR', '$MONTH_DAYS_LEAP',
                    '$intArrayFromString', '$writeArrayToMemory'
   ],
-  strftime__sig: 'ppppp',
   strftime: function(s, maxsize, format, tm) {
     // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html
@@ -798,7 +775,7 @@ mergeInto(LibraryManager.library, {
     }
 
     function getWeekBasedYear(date) {
-        var thisDate = __addDays(new Date(date.tm_year+1900, 0, 1), date.tm_yday);
+        var thisDate = addDays(new Date(date.tm_year+1900, 0, 1), date.tm_yday);
 
         var janFourthThisYear = new Date(thisDate.getFullYear(), 0, 4);
         var janFourthNextYear = new Date(thisDate.getFullYear()+1, 0, 4);
@@ -866,7 +843,7 @@ mergeInto(LibraryManager.library, {
       },
       '%j': function(date) {
         // Day of the year (001-366)
-        return leadingNulls(date.tm_mday+__arraySum(__isLeapYear(date.tm_year+1900) ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, date.tm_mon-1), 3);
+        return leadingNulls(date.tm_mday + arraySum(isLeapYear(date.tm_year+1900) ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, date.tm_mon-1), 3);
       },
       '%m': function(date) {
         return leadingNulls(date.tm_mon+1, 2);
@@ -913,14 +890,14 @@ mergeInto(LibraryManager.library, {
           // If 31 December of prev year a Thursday, or Friday of a
           // leap year, then the prev year has 53 weeks.
           var dec31 = (date.tm_wday + 7 - date.tm_yday - 1) % 7;
-          if (dec31 == 4 || (dec31 == 5 && __isLeapYear(date.tm_year%400-1))) {
+          if (dec31 == 4 || (dec31 == 5 && isLeapYear(date.tm_year%400-1))) {
             val++;
           }
         } else if (val == 53) {
           // If 1 January is not a Thursday, and not a Wednesday of a
           // leap year, then this year has only 52 weeks.
           var jan1 = (date.tm_wday + 371 - date.tm_yday) % 7;
-          if (jan1 != 4 && (jan1 != 3 || !__isLeapYear(date.tm_year)))
+          if (jan1 != 4 && (jan1 != 3 || !isLeapYear(date.tm_year)))
             val = 1;
         }
         return leadingNulls(val, 2);
@@ -977,14 +954,12 @@ mergeInto(LibraryManager.library, {
     return bytes.length-1;
   },
   strftime_l__deps: ['strftime'],
-  strftime_l__sig: 'pppppp',
   strftime_l: function(s, maxsize, format, tm, loc) {
     return _strftime(s, maxsize, format, tm); // no locale support yet
   },
 
-  strptime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP',
+  strptime__deps: ['$isLeapYear', '$arraySum', '$addDays', '$MONTH_DAYS_REGULAR', '$MONTH_DAYS_LEAP',
                    '$jstoi_q', '$intArrayFromString' ],
-  strptime__sig: 'pppp',
   strptime: function(buf, format, tm) {
     // char *strptime(const char *restrict buf, const char *restrict format, struct tm *restrict tm);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strptime.html
@@ -1143,10 +1118,10 @@ mergeInto(LibraryManager.library, {
       } else if ((value=getMatch('j'))) {
         // get day of month from day of year ...
         var day = jstoi_q(value);
-        var leapYear = __isLeapYear(date.year);
+        var leapYear = isLeapYear(date.year);
         for (var month=0; month<12; ++month) {
-          var daysUntilMonth = __arraySum(leapYear ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, month-1);
-          if (day<=daysUntilMonth+(leapYear ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR)[month]) {
+          var daysUntilMonth = arraySum(leapYear ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, month-1);
+          if (day<=daysUntilMonth+(leapYear ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR)[month]) {
             date.day = day-daysUntilMonth;
           }
         }
@@ -1165,10 +1140,10 @@ mergeInto(LibraryManager.library, {
           var endDate;
           if (janFirst.getDay() === 0) {
             // Jan 1st is a Sunday, and, hence in the 1st CW
-            endDate = __addDays(janFirst, weekDayNumber+7*(weekNumber-1));
+            endDate = addDays(janFirst, weekDayNumber+7*(weekNumber-1));
           } else {
             // Jan 1st is not a Sunday, and, hence still in the 0th CW
-            endDate = __addDays(janFirst, 7-janFirst.getDay()+weekDayNumber+7*(weekNumber-1));
+            endDate = addDays(janFirst, 7-janFirst.getDay()+weekDayNumber+7*(weekNumber-1));
           }
           date.day = endDate.getDate();
           date.month = endDate.getMonth();
@@ -1184,10 +1159,10 @@ mergeInto(LibraryManager.library, {
           var endDate;
           if (janFirst.getDay()===1) {
             // Jan 1st is a Monday, and, hence in the 1st CW
-             endDate = __addDays(janFirst, weekDayNumber+7*(weekNumber-1));
+             endDate = addDays(janFirst, weekDayNumber+7*(weekNumber-1));
           } else {
             // Jan 1st is not a Monday, and, hence still in the 0th CW
-            endDate = __addDays(janFirst, 7-janFirst.getDay()+1+weekDayNumber+7*(weekNumber-1));
+            endDate = addDays(janFirst, 7-janFirst.getDay()+1+weekDayNumber+7*(weekNumber-1));
           }
 
           date.day = endDate.getDate();
@@ -1215,7 +1190,7 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_mon, 'fullDate.getMonth()', 'i32') }}};
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_year, 'fullDate.getFullYear()-1900', 'i32') }}};
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_wday, 'fullDate.getDay()', 'i32') }}};
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_yday, '__arraySum(__isLeapYear(fullDate.getFullYear()) ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, fullDate.getMonth()-1)+fullDate.getDate()-1', 'i32') }}};
+      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_yday, 'arraySum(isLeapYear(fullDate.getFullYear()) ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, fullDate.getMonth()-1)+fullDate.getDate()-1', 'i32') }}};
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_isdst, '0', 'i32') }}};
 
       // we need to convert the matched sequence into an integer array to take care of UTF-8 characters > 0x7F
@@ -1225,9 +1200,8 @@ mergeInto(LibraryManager.library, {
 
     return 0;
   },
-  strptime_l__sig: 'pppp',
   strptime_l__deps: ['strptime'],
-  strptime_l: function(buf, format, tm) {
+  strptime_l: function(buf, format, tm, locale) {
     return _strptime(buf, format, tm); // no locale support yet
   },
 
@@ -1236,7 +1210,6 @@ mergeInto(LibraryManager.library, {
   // ==========================================================================
 
 #if SUPPORT_LONGJMP == 'emscripten'
-  _emscripten_throw_longjmp__sig: 'v',
   _emscripten_throw_longjmp: function() {
 #if EXCEPTION_STACK_TRACES
     throw new EmscriptenSjLj;
@@ -1280,251 +1253,251 @@ mergeInto(LibraryManager.library, {
   // ==========================================================================
 
   $ERRNO_CODES__postset: `ERRNO_CODES = {
-    'EPERM': {{{ cDefine('EPERM') }}},
-    'ENOENT': {{{ cDefine('ENOENT') }}},
-    'ESRCH': {{{ cDefine('ESRCH') }}},
-    'EINTR': {{{ cDefine('EINTR') }}},
-    'EIO': {{{ cDefine('EIO') }}},
-    'ENXIO': {{{ cDefine('ENXIO') }}},
-    'E2BIG': {{{ cDefine('E2BIG') }}},
-    'ENOEXEC': {{{ cDefine('ENOEXEC') }}},
-    'EBADF': {{{ cDefine('EBADF') }}},
-    'ECHILD': {{{ cDefine('ECHILD') }}},
-    'EAGAIN': {{{ cDefine('EAGAIN') }}},
-    'EWOULDBLOCK': {{{ cDefine('EWOULDBLOCK') }}},
-    'ENOMEM': {{{ cDefine('ENOMEM') }}},
-    'EACCES': {{{ cDefine('EACCES') }}},
-    'EFAULT': {{{ cDefine('EFAULT') }}},
-    'ENOTBLK': {{{ cDefine('ENOTBLK') }}},
-    'EBUSY': {{{ cDefine('EBUSY') }}},
-    'EEXIST': {{{ cDefine('EEXIST') }}},
-    'EXDEV': {{{ cDefine('EXDEV') }}},
-    'ENODEV': {{{ cDefine('ENODEV') }}},
-    'ENOTDIR': {{{ cDefine('ENOTDIR') }}},
-    'EISDIR': {{{ cDefine('EISDIR') }}},
-    'EINVAL': {{{ cDefine('EINVAL') }}},
-    'ENFILE': {{{ cDefine('ENFILE') }}},
-    'EMFILE': {{{ cDefine('EMFILE') }}},
-    'ENOTTY': {{{ cDefine('ENOTTY') }}},
-    'ETXTBSY': {{{ cDefine('ETXTBSY') }}},
-    'EFBIG': {{{ cDefine('EFBIG') }}},
-    'ENOSPC': {{{ cDefine('ENOSPC') }}},
-    'ESPIPE': {{{ cDefine('ESPIPE') }}},
-    'EROFS': {{{ cDefine('EROFS') }}},
-    'EMLINK': {{{ cDefine('EMLINK') }}},
-    'EPIPE': {{{ cDefine('EPIPE') }}},
-    'EDOM': {{{ cDefine('EDOM') }}},
-    'ERANGE': {{{ cDefine('ERANGE') }}},
-    'ENOMSG': {{{ cDefine('ENOMSG') }}},
-    'EIDRM': {{{ cDefine('EIDRM') }}},
-    'ECHRNG': {{{ cDefine('ECHRNG') }}},
-    'EL2NSYNC': {{{ cDefine('EL2NSYNC') }}},
-    'EL3HLT': {{{ cDefine('EL3HLT') }}},
-    'EL3RST': {{{ cDefine('EL3RST') }}},
-    'ELNRNG': {{{ cDefine('ELNRNG') }}},
-    'EUNATCH': {{{ cDefine('EUNATCH') }}},
-    'ENOCSI': {{{ cDefine('ENOCSI') }}},
-    'EL2HLT': {{{ cDefine('EL2HLT') }}},
-    'EDEADLK': {{{ cDefine('EDEADLK') }}},
-    'ENOLCK': {{{ cDefine('ENOLCK') }}},
-    'EBADE': {{{ cDefine('EBADE') }}},
-    'EBADR': {{{ cDefine('EBADR') }}},
-    'EXFULL': {{{ cDefine('EXFULL') }}},
-    'ENOANO': {{{ cDefine('ENOANO') }}},
-    'EBADRQC': {{{ cDefine('EBADRQC') }}},
-    'EBADSLT': {{{ cDefine('EBADSLT') }}},
-    'EDEADLOCK': {{{ cDefine('EDEADLOCK') }}},
-    'EBFONT': {{{ cDefine('EBFONT') }}},
-    'ENOSTR': {{{ cDefine('ENOSTR') }}},
-    'ENODATA': {{{ cDefine('ENODATA') }}},
-    'ETIME': {{{ cDefine('ETIME') }}},
-    'ENOSR': {{{ cDefine('ENOSR') }}},
-    'ENONET': {{{ cDefine('ENONET') }}},
-    'ENOPKG': {{{ cDefine('ENOPKG') }}},
-    'EREMOTE': {{{ cDefine('EREMOTE') }}},
-    'ENOLINK': {{{ cDefine('ENOLINK') }}},
-    'EADV': {{{ cDefine('EADV') }}},
-    'ESRMNT': {{{ cDefine('ESRMNT') }}},
-    'ECOMM': {{{ cDefine('ECOMM') }}},
-    'EPROTO': {{{ cDefine('EPROTO') }}},
-    'EMULTIHOP': {{{ cDefine('EMULTIHOP') }}},
-    'EDOTDOT': {{{ cDefine('EDOTDOT') }}},
-    'EBADMSG': {{{ cDefine('EBADMSG') }}},
-    'ENOTUNIQ': {{{ cDefine('ENOTUNIQ') }}},
-    'EBADFD': {{{ cDefine('EBADFD') }}},
-    'EREMCHG': {{{ cDefine('EREMCHG') }}},
-    'ELIBACC': {{{ cDefine('ELIBACC') }}},
-    'ELIBBAD': {{{ cDefine('ELIBBAD') }}},
-    'ELIBSCN': {{{ cDefine('ELIBSCN') }}},
-    'ELIBMAX': {{{ cDefine('ELIBMAX') }}},
-    'ELIBEXEC': {{{ cDefine('ELIBEXEC') }}},
-    'ENOSYS': {{{ cDefine('ENOSYS') }}},
-    'ENOTEMPTY': {{{ cDefine('ENOTEMPTY') }}},
-    'ENAMETOOLONG': {{{ cDefine('ENAMETOOLONG') }}},
-    'ELOOP': {{{ cDefine('ELOOP') }}},
-    'EOPNOTSUPP': {{{ cDefine('EOPNOTSUPP') }}},
-    'EPFNOSUPPORT': {{{ cDefine('EPFNOSUPPORT') }}},
-    'ECONNRESET': {{{ cDefine('ECONNRESET') }}},
-    'ENOBUFS': {{{ cDefine('ENOBUFS') }}},
-    'EAFNOSUPPORT': {{{ cDefine('EAFNOSUPPORT') }}},
-    'EPROTOTYPE': {{{ cDefine('EPROTOTYPE') }}},
-    'ENOTSOCK': {{{ cDefine('ENOTSOCK') }}},
-    'ENOPROTOOPT': {{{ cDefine('ENOPROTOOPT') }}},
-    'ESHUTDOWN': {{{ cDefine('ESHUTDOWN') }}},
-    'ECONNREFUSED': {{{ cDefine('ECONNREFUSED') }}},
-    'EADDRINUSE': {{{ cDefine('EADDRINUSE') }}},
-    'ECONNABORTED': {{{ cDefine('ECONNABORTED') }}},
-    'ENETUNREACH': {{{ cDefine('ENETUNREACH') }}},
-    'ENETDOWN': {{{ cDefine('ENETDOWN') }}},
-    'ETIMEDOUT': {{{ cDefine('ETIMEDOUT') }}},
-    'EHOSTDOWN': {{{ cDefine('EHOSTDOWN') }}},
-    'EHOSTUNREACH': {{{ cDefine('EHOSTUNREACH') }}},
-    'EINPROGRESS': {{{ cDefine('EINPROGRESS') }}},
-    'EALREADY': {{{ cDefine('EALREADY') }}},
-    'EDESTADDRREQ': {{{ cDefine('EDESTADDRREQ') }}},
-    'EMSGSIZE': {{{ cDefine('EMSGSIZE') }}},
-    'EPROTONOSUPPORT': {{{ cDefine('EPROTONOSUPPORT') }}},
-    'ESOCKTNOSUPPORT': {{{ cDefine('ESOCKTNOSUPPORT') }}},
-    'EADDRNOTAVAIL': {{{ cDefine('EADDRNOTAVAIL') }}},
-    'ENETRESET': {{{ cDefine('ENETRESET') }}},
-    'EISCONN': {{{ cDefine('EISCONN') }}},
-    'ENOTCONN': {{{ cDefine('ENOTCONN') }}},
-    'ETOOMANYREFS': {{{ cDefine('ETOOMANYREFS') }}},
-    'EUSERS': {{{ cDefine('EUSERS') }}},
-    'EDQUOT': {{{ cDefine('EDQUOT') }}},
-    'ESTALE': {{{ cDefine('ESTALE') }}},
-    'ENOTSUP': {{{ cDefine('ENOTSUP') }}},
-    'ENOMEDIUM': {{{ cDefine('ENOMEDIUM') }}},
-    'EILSEQ': {{{ cDefine('EILSEQ') }}},
-    'EOVERFLOW': {{{ cDefine('EOVERFLOW') }}},
-    'ECANCELED': {{{ cDefine('ECANCELED') }}},
-    'ENOTRECOVERABLE': {{{ cDefine('ENOTRECOVERABLE') }}},
-    'EOWNERDEAD': {{{ cDefine('EOWNERDEAD') }}},
-    'ESTRPIPE': {{{ cDefine('ESTRPIPE') }}},
+    'EPERM': {{{ cDefs.EPERM }}},
+    'ENOENT': {{{ cDefs.ENOENT }}},
+    'ESRCH': {{{ cDefs.ESRCH }}},
+    'EINTR': {{{ cDefs.EINTR }}},
+    'EIO': {{{ cDefs.EIO }}},
+    'ENXIO': {{{ cDefs.ENXIO }}},
+    'E2BIG': {{{ cDefs.E2BIG }}},
+    'ENOEXEC': {{{ cDefs.ENOEXEC }}},
+    'EBADF': {{{ cDefs.EBADF }}},
+    'ECHILD': {{{ cDefs.ECHILD }}},
+    'EAGAIN': {{{ cDefs.EAGAIN }}},
+    'EWOULDBLOCK': {{{ cDefs.EWOULDBLOCK }}},
+    'ENOMEM': {{{ cDefs.ENOMEM }}},
+    'EACCES': {{{ cDefs.EACCES }}},
+    'EFAULT': {{{ cDefs.EFAULT }}},
+    'ENOTBLK': {{{ cDefs.ENOTBLK }}},
+    'EBUSY': {{{ cDefs.EBUSY }}},
+    'EEXIST': {{{ cDefs.EEXIST }}},
+    'EXDEV': {{{ cDefs.EXDEV }}},
+    'ENODEV': {{{ cDefs.ENODEV }}},
+    'ENOTDIR': {{{ cDefs.ENOTDIR }}},
+    'EISDIR': {{{ cDefs.EISDIR }}},
+    'EINVAL': {{{ cDefs.EINVAL }}},
+    'ENFILE': {{{ cDefs.ENFILE }}},
+    'EMFILE': {{{ cDefs.EMFILE }}},
+    'ENOTTY': {{{ cDefs.ENOTTY }}},
+    'ETXTBSY': {{{ cDefs.ETXTBSY }}},
+    'EFBIG': {{{ cDefs.EFBIG }}},
+    'ENOSPC': {{{ cDefs.ENOSPC }}},
+    'ESPIPE': {{{ cDefs.ESPIPE }}},
+    'EROFS': {{{ cDefs.EROFS }}},
+    'EMLINK': {{{ cDefs.EMLINK }}},
+    'EPIPE': {{{ cDefs.EPIPE }}},
+    'EDOM': {{{ cDefs.EDOM }}},
+    'ERANGE': {{{ cDefs.ERANGE }}},
+    'ENOMSG': {{{ cDefs.ENOMSG }}},
+    'EIDRM': {{{ cDefs.EIDRM }}},
+    'ECHRNG': {{{ cDefs.ECHRNG }}},
+    'EL2NSYNC': {{{ cDefs.EL2NSYNC }}},
+    'EL3HLT': {{{ cDefs.EL3HLT }}},
+    'EL3RST': {{{ cDefs.EL3RST }}},
+    'ELNRNG': {{{ cDefs.ELNRNG }}},
+    'EUNATCH': {{{ cDefs.EUNATCH }}},
+    'ENOCSI': {{{ cDefs.ENOCSI }}},
+    'EL2HLT': {{{ cDefs.EL2HLT }}},
+    'EDEADLK': {{{ cDefs.EDEADLK }}},
+    'ENOLCK': {{{ cDefs.ENOLCK }}},
+    'EBADE': {{{ cDefs.EBADE }}},
+    'EBADR': {{{ cDefs.EBADR }}},
+    'EXFULL': {{{ cDefs.EXFULL }}},
+    'ENOANO': {{{ cDefs.ENOANO }}},
+    'EBADRQC': {{{ cDefs.EBADRQC }}},
+    'EBADSLT': {{{ cDefs.EBADSLT }}},
+    'EDEADLOCK': {{{ cDefs.EDEADLOCK }}},
+    'EBFONT': {{{ cDefs.EBFONT }}},
+    'ENOSTR': {{{ cDefs.ENOSTR }}},
+    'ENODATA': {{{ cDefs.ENODATA }}},
+    'ETIME': {{{ cDefs.ETIME }}},
+    'ENOSR': {{{ cDefs.ENOSR }}},
+    'ENONET': {{{ cDefs.ENONET }}},
+    'ENOPKG': {{{ cDefs.ENOPKG }}},
+    'EREMOTE': {{{ cDefs.EREMOTE }}},
+    'ENOLINK': {{{ cDefs.ENOLINK }}},
+    'EADV': {{{ cDefs.EADV }}},
+    'ESRMNT': {{{ cDefs.ESRMNT }}},
+    'ECOMM': {{{ cDefs.ECOMM }}},
+    'EPROTO': {{{ cDefs.EPROTO }}},
+    'EMULTIHOP': {{{ cDefs.EMULTIHOP }}},
+    'EDOTDOT': {{{ cDefs.EDOTDOT }}},
+    'EBADMSG': {{{ cDefs.EBADMSG }}},
+    'ENOTUNIQ': {{{ cDefs.ENOTUNIQ }}},
+    'EBADFD': {{{ cDefs.EBADFD }}},
+    'EREMCHG': {{{ cDefs.EREMCHG }}},
+    'ELIBACC': {{{ cDefs.ELIBACC }}},
+    'ELIBBAD': {{{ cDefs.ELIBBAD }}},
+    'ELIBSCN': {{{ cDefs.ELIBSCN }}},
+    'ELIBMAX': {{{ cDefs.ELIBMAX }}},
+    'ELIBEXEC': {{{ cDefs.ELIBEXEC }}},
+    'ENOSYS': {{{ cDefs.ENOSYS }}},
+    'ENOTEMPTY': {{{ cDefs.ENOTEMPTY }}},
+    'ENAMETOOLONG': {{{ cDefs.ENAMETOOLONG }}},
+    'ELOOP': {{{ cDefs.ELOOP }}},
+    'EOPNOTSUPP': {{{ cDefs.EOPNOTSUPP }}},
+    'EPFNOSUPPORT': {{{ cDefs.EPFNOSUPPORT }}},
+    'ECONNRESET': {{{ cDefs.ECONNRESET }}},
+    'ENOBUFS': {{{ cDefs.ENOBUFS }}},
+    'EAFNOSUPPORT': {{{ cDefs.EAFNOSUPPORT }}},
+    'EPROTOTYPE': {{{ cDefs.EPROTOTYPE }}},
+    'ENOTSOCK': {{{ cDefs.ENOTSOCK }}},
+    'ENOPROTOOPT': {{{ cDefs.ENOPROTOOPT }}},
+    'ESHUTDOWN': {{{ cDefs.ESHUTDOWN }}},
+    'ECONNREFUSED': {{{ cDefs.ECONNREFUSED }}},
+    'EADDRINUSE': {{{ cDefs.EADDRINUSE }}},
+    'ECONNABORTED': {{{ cDefs.ECONNABORTED }}},
+    'ENETUNREACH': {{{ cDefs.ENETUNREACH }}},
+    'ENETDOWN': {{{ cDefs.ENETDOWN }}},
+    'ETIMEDOUT': {{{ cDefs.ETIMEDOUT }}},
+    'EHOSTDOWN': {{{ cDefs.EHOSTDOWN }}},
+    'EHOSTUNREACH': {{{ cDefs.EHOSTUNREACH }}},
+    'EINPROGRESS': {{{ cDefs.EINPROGRESS }}},
+    'EALREADY': {{{ cDefs.EALREADY }}},
+    'EDESTADDRREQ': {{{ cDefs.EDESTADDRREQ }}},
+    'EMSGSIZE': {{{ cDefs.EMSGSIZE }}},
+    'EPROTONOSUPPORT': {{{ cDefs.EPROTONOSUPPORT }}},
+    'ESOCKTNOSUPPORT': {{{ cDefs.ESOCKTNOSUPPORT }}},
+    'EADDRNOTAVAIL': {{{ cDefs.EADDRNOTAVAIL }}},
+    'ENETRESET': {{{ cDefs.ENETRESET }}},
+    'EISCONN': {{{ cDefs.EISCONN }}},
+    'ENOTCONN': {{{ cDefs.ENOTCONN }}},
+    'ETOOMANYREFS': {{{ cDefs.ETOOMANYREFS }}},
+    'EUSERS': {{{ cDefs.EUSERS }}},
+    'EDQUOT': {{{ cDefs.EDQUOT }}},
+    'ESTALE': {{{ cDefs.ESTALE }}},
+    'ENOTSUP': {{{ cDefs.ENOTSUP }}},
+    'ENOMEDIUM': {{{ cDefs.ENOMEDIUM }}},
+    'EILSEQ': {{{ cDefs.EILSEQ }}},
+    'EOVERFLOW': {{{ cDefs.EOVERFLOW }}},
+    'ECANCELED': {{{ cDefs.ECANCELED }}},
+    'ENOTRECOVERABLE': {{{ cDefs.ENOTRECOVERABLE }}},
+    'EOWNERDEAD': {{{ cDefs.EOWNERDEAD }}},
+    'ESTRPIPE': {{{ cDefs.ESTRPIPE }}},
   };`,
   $ERRNO_CODES: {},
   $ERRNO_MESSAGES: {
     0: 'Success',
-    {{{ cDefine('EPERM') }}}: 'Not super-user',
-    {{{ cDefine('ENOENT') }}}: 'No such file or directory',
-    {{{ cDefine('ESRCH') }}}: 'No such process',
-    {{{ cDefine('EINTR') }}}: 'Interrupted system call',
-    {{{ cDefine('EIO') }}}: 'I/O error',
-    {{{ cDefine('ENXIO') }}}: 'No such device or address',
-    {{{ cDefine('E2BIG') }}}: 'Arg list too long',
-    {{{ cDefine('ENOEXEC') }}}: 'Exec format error',
-    {{{ cDefine('EBADF') }}}: 'Bad file number',
-    {{{ cDefine('ECHILD') }}}: 'No children',
-    {{{ cDefine('EWOULDBLOCK') }}}: 'No more processes',
-    {{{ cDefine('ENOMEM') }}}: 'Not enough core',
-    {{{ cDefine('EACCES') }}}: 'Permission denied',
-    {{{ cDefine('EFAULT') }}}: 'Bad address',
-    {{{ cDefine('ENOTBLK') }}}: 'Block device required',
-    {{{ cDefine('EBUSY') }}}: 'Mount device busy',
-    {{{ cDefine('EEXIST') }}}: 'File exists',
-    {{{ cDefine('EXDEV') }}}: 'Cross-device link',
-    {{{ cDefine('ENODEV') }}}: 'No such device',
-    {{{ cDefine('ENOTDIR') }}}: 'Not a directory',
-    {{{ cDefine('EISDIR') }}}: 'Is a directory',
-    {{{ cDefine('EINVAL') }}}: 'Invalid argument',
-    {{{ cDefine('ENFILE') }}}: 'Too many open files in system',
-    {{{ cDefine('EMFILE') }}}: 'Too many open files',
-    {{{ cDefine('ENOTTY') }}}: 'Not a typewriter',
-    {{{ cDefine('ETXTBSY') }}}: 'Text file busy',
-    {{{ cDefine('EFBIG') }}}: 'File too large',
-    {{{ cDefine('ENOSPC') }}}: 'No space left on device',
-    {{{ cDefine('ESPIPE') }}}: 'Illegal seek',
-    {{{ cDefine('EROFS') }}}: 'Read only file system',
-    {{{ cDefine('EMLINK') }}}: 'Too many links',
-    {{{ cDefine('EPIPE') }}}: 'Broken pipe',
-    {{{ cDefine('EDOM') }}}: 'Math arg out of domain of func',
-    {{{ cDefine('ERANGE') }}}: 'Math result not representable',
-    {{{ cDefine('ENOMSG') }}}: 'No message of desired type',
-    {{{ cDefine('EIDRM') }}}: 'Identifier removed',
-    {{{ cDefine('ECHRNG') }}}: 'Channel number out of range',
-    {{{ cDefine('EL2NSYNC') }}}: 'Level 2 not synchronized',
-    {{{ cDefine('EL3HLT') }}}: 'Level 3 halted',
-    {{{ cDefine('EL3RST') }}}: 'Level 3 reset',
-    {{{ cDefine('ELNRNG') }}}: 'Link number out of range',
-    {{{ cDefine('EUNATCH') }}}: 'Protocol driver not attached',
-    {{{ cDefine('ENOCSI') }}}: 'No CSI structure available',
-    {{{ cDefine('EL2HLT') }}}: 'Level 2 halted',
-    {{{ cDefine('EDEADLK') }}}: 'Deadlock condition',
-    {{{ cDefine('ENOLCK') }}}: 'No record locks available',
-    {{{ cDefine('EBADE') }}}: 'Invalid exchange',
-    {{{ cDefine('EBADR') }}}: 'Invalid request descriptor',
-    {{{ cDefine('EXFULL') }}}: 'Exchange full',
-    {{{ cDefine('ENOANO') }}}: 'No anode',
-    {{{ cDefine('EBADRQC') }}}: 'Invalid request code',
-    {{{ cDefine('EBADSLT') }}}: 'Invalid slot',
-    {{{ cDefine('EDEADLOCK') }}}: 'File locking deadlock error',
-    {{{ cDefine('EBFONT') }}}: 'Bad font file fmt',
-    {{{ cDefine('ENOSTR') }}}: 'Device not a stream',
-    {{{ cDefine('ENODATA') }}}: 'No data (for no delay io)',
-    {{{ cDefine('ETIME') }}}: 'Timer expired',
-    {{{ cDefine('ENOSR') }}}: 'Out of streams resources',
-    {{{ cDefine('ENONET') }}}: 'Machine is not on the network',
-    {{{ cDefine('ENOPKG') }}}: 'Package not installed',
-    {{{ cDefine('EREMOTE') }}}: 'The object is remote',
-    {{{ cDefine('ENOLINK') }}}: 'The link has been severed',
-    {{{ cDefine('EADV') }}}: 'Advertise error',
-    {{{ cDefine('ESRMNT') }}}: 'Srmount error',
-    {{{ cDefine('ECOMM') }}}: 'Communication error on send',
-    {{{ cDefine('EPROTO') }}}: 'Protocol error',
-    {{{ cDefine('EMULTIHOP') }}}: 'Multihop attempted',
-    {{{ cDefine('EDOTDOT') }}}: 'Cross mount point (not really error)',
-    {{{ cDefine('EBADMSG') }}}: 'Trying to read unreadable message',
-    {{{ cDefine('ENOTUNIQ') }}}: 'Given log. name not unique',
-    {{{ cDefine('EBADFD') }}}: 'f.d. invalid for this operation',
-    {{{ cDefine('EREMCHG') }}}: 'Remote address changed',
-    {{{ cDefine('ELIBACC') }}}: 'Can   access a needed shared lib',
-    {{{ cDefine('ELIBBAD') }}}: 'Accessing a corrupted shared lib',
-    {{{ cDefine('ELIBSCN') }}}: '.lib section in a.out corrupted',
-    {{{ cDefine('ELIBMAX') }}}: 'Attempting to link in too many libs',
-    {{{ cDefine('ELIBEXEC') }}}: 'Attempting to exec a shared library',
-    {{{ cDefine('ENOSYS') }}}: 'Function not implemented',
-    {{{ cDefine('ENOTEMPTY') }}}: 'Directory not empty',
-    {{{ cDefine('ENAMETOOLONG') }}}: 'File or path name too long',
-    {{{ cDefine('ELOOP') }}}: 'Too many symbolic links',
-    {{{ cDefine('EOPNOTSUPP') }}}: 'Operation not supported on transport endpoint',
-    {{{ cDefine('EPFNOSUPPORT') }}}: 'Protocol family not supported',
-    {{{ cDefine('ECONNRESET') }}}: 'Connection reset by peer',
-    {{{ cDefine('ENOBUFS') }}}: 'No buffer space available',
-    {{{ cDefine('EAFNOSUPPORT') }}}: 'Address family not supported by protocol family',
-    {{{ cDefine('EPROTOTYPE') }}}: 'Protocol wrong type for socket',
-    {{{ cDefine('ENOTSOCK') }}}: 'Socket operation on non-socket',
-    {{{ cDefine('ENOPROTOOPT') }}}: 'Protocol not available',
-    {{{ cDefine('ESHUTDOWN') }}}: 'Can\'t send after socket shutdown',
-    {{{ cDefine('ECONNREFUSED') }}}: 'Connection refused',
-    {{{ cDefine('EADDRINUSE') }}}: 'Address already in use',
-    {{{ cDefine('ECONNABORTED') }}}: 'Connection aborted',
-    {{{ cDefine('ENETUNREACH') }}}: 'Network is unreachable',
-    {{{ cDefine('ENETDOWN') }}}: 'Network interface is not configured',
-    {{{ cDefine('ETIMEDOUT') }}}: 'Connection timed out',
-    {{{ cDefine('EHOSTDOWN') }}}: 'Host is down',
-    {{{ cDefine('EHOSTUNREACH') }}}: 'Host is unreachable',
-    {{{ cDefine('EINPROGRESS') }}}: 'Connection already in progress',
-    {{{ cDefine('EALREADY') }}}: 'Socket already connected',
-    {{{ cDefine('EDESTADDRREQ') }}}: 'Destination address required',
-    {{{ cDefine('EMSGSIZE') }}}: 'Message too long',
-    {{{ cDefine('EPROTONOSUPPORT') }}}: 'Unknown protocol',
-    {{{ cDefine('ESOCKTNOSUPPORT') }}}: 'Socket type not supported',
-    {{{ cDefine('EADDRNOTAVAIL') }}}: 'Address not available',
-    {{{ cDefine('ENETRESET') }}}: 'Connection reset by network',
-    {{{ cDefine('EISCONN') }}}: 'Socket is already connected',
-    {{{ cDefine('ENOTCONN') }}}: 'Socket is not connected',
-    {{{ cDefine('ETOOMANYREFS') }}}: 'Too many references',
-    {{{ cDefine('EUSERS') }}}: 'Too many users',
-    {{{ cDefine('EDQUOT') }}}: 'Quota exceeded',
-    {{{ cDefine('ESTALE') }}}: 'Stale file handle',
-    {{{ cDefine('ENOTSUP') }}}: 'Not supported',
-    {{{ cDefine('ENOMEDIUM') }}}: 'No medium (in tape drive)',
-    {{{ cDefine('EILSEQ') }}}: 'Illegal byte sequence',
-    {{{ cDefine('EOVERFLOW') }}}: 'Value too large for defined data type',
-    {{{ cDefine('ECANCELED') }}}: 'Operation canceled',
-    {{{ cDefine('ENOTRECOVERABLE') }}}: 'State not recoverable',
-    {{{ cDefine('EOWNERDEAD') }}}: 'Previous owner died',
-    {{{ cDefine('ESTRPIPE') }}}: 'Streams pipe error',
+    {{{ cDefs.EPERM }}}: 'Not super-user',
+    {{{ cDefs.ENOENT }}}: 'No such file or directory',
+    {{{ cDefs.ESRCH }}}: 'No such process',
+    {{{ cDefs.EINTR }}}: 'Interrupted system call',
+    {{{ cDefs.EIO }}}: 'I/O error',
+    {{{ cDefs.ENXIO }}}: 'No such device or address',
+    {{{ cDefs.E2BIG }}}: 'Arg list too long',
+    {{{ cDefs.ENOEXEC }}}: 'Exec format error',
+    {{{ cDefs.EBADF }}}: 'Bad file number',
+    {{{ cDefs.ECHILD }}}: 'No children',
+    {{{ cDefs.EWOULDBLOCK }}}: 'No more processes',
+    {{{ cDefs.ENOMEM }}}: 'Not enough core',
+    {{{ cDefs.EACCES }}}: 'Permission denied',
+    {{{ cDefs.EFAULT }}}: 'Bad address',
+    {{{ cDefs.ENOTBLK }}}: 'Block device required',
+    {{{ cDefs.EBUSY }}}: 'Mount device busy',
+    {{{ cDefs.EEXIST }}}: 'File exists',
+    {{{ cDefs.EXDEV }}}: 'Cross-device link',
+    {{{ cDefs.ENODEV }}}: 'No such device',
+    {{{ cDefs.ENOTDIR }}}: 'Not a directory',
+    {{{ cDefs.EISDIR }}}: 'Is a directory',
+    {{{ cDefs.EINVAL }}}: 'Invalid argument',
+    {{{ cDefs.ENFILE }}}: 'Too many open files in system',
+    {{{ cDefs.EMFILE }}}: 'Too many open files',
+    {{{ cDefs.ENOTTY }}}: 'Not a typewriter',
+    {{{ cDefs.ETXTBSY }}}: 'Text file busy',
+    {{{ cDefs.EFBIG }}}: 'File too large',
+    {{{ cDefs.ENOSPC }}}: 'No space left on device',
+    {{{ cDefs.ESPIPE }}}: 'Illegal seek',
+    {{{ cDefs.EROFS }}}: 'Read only file system',
+    {{{ cDefs.EMLINK }}}: 'Too many links',
+    {{{ cDefs.EPIPE }}}: 'Broken pipe',
+    {{{ cDefs.EDOM }}}: 'Math arg out of domain of func',
+    {{{ cDefs.ERANGE }}}: 'Math result not representable',
+    {{{ cDefs.ENOMSG }}}: 'No message of desired type',
+    {{{ cDefs.EIDRM }}}: 'Identifier removed',
+    {{{ cDefs.ECHRNG }}}: 'Channel number out of range',
+    {{{ cDefs.EL2NSYNC }}}: 'Level 2 not synchronized',
+    {{{ cDefs.EL3HLT }}}: 'Level 3 halted',
+    {{{ cDefs.EL3RST }}}: 'Level 3 reset',
+    {{{ cDefs.ELNRNG }}}: 'Link number out of range',
+    {{{ cDefs.EUNATCH }}}: 'Protocol driver not attached',
+    {{{ cDefs.ENOCSI }}}: 'No CSI structure available',
+    {{{ cDefs.EL2HLT }}}: 'Level 2 halted',
+    {{{ cDefs.EDEADLK }}}: 'Deadlock condition',
+    {{{ cDefs.ENOLCK }}}: 'No record locks available',
+    {{{ cDefs.EBADE }}}: 'Invalid exchange',
+    {{{ cDefs.EBADR }}}: 'Invalid request descriptor',
+    {{{ cDefs.EXFULL }}}: 'Exchange full',
+    {{{ cDefs.ENOANO }}}: 'No anode',
+    {{{ cDefs.EBADRQC }}}: 'Invalid request code',
+    {{{ cDefs.EBADSLT }}}: 'Invalid slot',
+    {{{ cDefs.EDEADLOCK }}}: 'File locking deadlock error',
+    {{{ cDefs.EBFONT }}}: 'Bad font file fmt',
+    {{{ cDefs.ENOSTR }}}: 'Device not a stream',
+    {{{ cDefs.ENODATA }}}: 'No data (for no delay io)',
+    {{{ cDefs.ETIME }}}: 'Timer expired',
+    {{{ cDefs.ENOSR }}}: 'Out of streams resources',
+    {{{ cDefs.ENONET }}}: 'Machine is not on the network',
+    {{{ cDefs.ENOPKG }}}: 'Package not installed',
+    {{{ cDefs.EREMOTE }}}: 'The object is remote',
+    {{{ cDefs.ENOLINK }}}: 'The link has been severed',
+    {{{ cDefs.EADV }}}: 'Advertise error',
+    {{{ cDefs.ESRMNT }}}: 'Srmount error',
+    {{{ cDefs.ECOMM }}}: 'Communication error on send',
+    {{{ cDefs.EPROTO }}}: 'Protocol error',
+    {{{ cDefs.EMULTIHOP }}}: 'Multihop attempted',
+    {{{ cDefs.EDOTDOT }}}: 'Cross mount point (not really error)',
+    {{{ cDefs.EBADMSG }}}: 'Trying to read unreadable message',
+    {{{ cDefs.ENOTUNIQ }}}: 'Given log. name not unique',
+    {{{ cDefs.EBADFD }}}: 'f.d. invalid for this operation',
+    {{{ cDefs.EREMCHG }}}: 'Remote address changed',
+    {{{ cDefs.ELIBACC }}}: 'Can   access a needed shared lib',
+    {{{ cDefs.ELIBBAD }}}: 'Accessing a corrupted shared lib',
+    {{{ cDefs.ELIBSCN }}}: '.lib section in a.out corrupted',
+    {{{ cDefs.ELIBMAX }}}: 'Attempting to link in too many libs',
+    {{{ cDefs.ELIBEXEC }}}: 'Attempting to exec a shared library',
+    {{{ cDefs.ENOSYS }}}: 'Function not implemented',
+    {{{ cDefs.ENOTEMPTY }}}: 'Directory not empty',
+    {{{ cDefs.ENAMETOOLONG }}}: 'File or path name too long',
+    {{{ cDefs.ELOOP }}}: 'Too many symbolic links',
+    {{{ cDefs.EOPNOTSUPP }}}: 'Operation not supported on transport endpoint',
+    {{{ cDefs.EPFNOSUPPORT }}}: 'Protocol family not supported',
+    {{{ cDefs.ECONNRESET }}}: 'Connection reset by peer',
+    {{{ cDefs.ENOBUFS }}}: 'No buffer space available',
+    {{{ cDefs.EAFNOSUPPORT }}}: 'Address family not supported by protocol family',
+    {{{ cDefs.EPROTOTYPE }}}: 'Protocol wrong type for socket',
+    {{{ cDefs.ENOTSOCK }}}: 'Socket operation on non-socket',
+    {{{ cDefs.ENOPROTOOPT }}}: 'Protocol not available',
+    {{{ cDefs.ESHUTDOWN }}}: 'Can\'t send after socket shutdown',
+    {{{ cDefs.ECONNREFUSED }}}: 'Connection refused',
+    {{{ cDefs.EADDRINUSE }}}: 'Address already in use',
+    {{{ cDefs.ECONNABORTED }}}: 'Connection aborted',
+    {{{ cDefs.ENETUNREACH }}}: 'Network is unreachable',
+    {{{ cDefs.ENETDOWN }}}: 'Network interface is not configured',
+    {{{ cDefs.ETIMEDOUT }}}: 'Connection timed out',
+    {{{ cDefs.EHOSTDOWN }}}: 'Host is down',
+    {{{ cDefs.EHOSTUNREACH }}}: 'Host is unreachable',
+    {{{ cDefs.EINPROGRESS }}}: 'Connection already in progress',
+    {{{ cDefs.EALREADY }}}: 'Socket already connected',
+    {{{ cDefs.EDESTADDRREQ }}}: 'Destination address required',
+    {{{ cDefs.EMSGSIZE }}}: 'Message too long',
+    {{{ cDefs.EPROTONOSUPPORT }}}: 'Unknown protocol',
+    {{{ cDefs.ESOCKTNOSUPPORT }}}: 'Socket type not supported',
+    {{{ cDefs.EADDRNOTAVAIL }}}: 'Address not available',
+    {{{ cDefs.ENETRESET }}}: 'Connection reset by network',
+    {{{ cDefs.EISCONN }}}: 'Socket is already connected',
+    {{{ cDefs.ENOTCONN }}}: 'Socket is not connected',
+    {{{ cDefs.ETOOMANYREFS }}}: 'Too many references',
+    {{{ cDefs.EUSERS }}}: 'Too many users',
+    {{{ cDefs.EDQUOT }}}: 'Quota exceeded',
+    {{{ cDefs.ESTALE }}}: 'Stale file handle',
+    {{{ cDefs.ENOTSUP }}}: 'Not supported',
+    {{{ cDefs.ENOMEDIUM }}}: 'No medium (in tape drive)',
+    {{{ cDefs.EILSEQ }}}: 'Illegal byte sequence',
+    {{{ cDefs.EOVERFLOW }}}: 'Value too large for defined data type',
+    {{{ cDefs.ECANCELED }}}: 'Operation canceled',
+    {{{ cDefs.ENOTRECOVERABLE }}}: 'State not recoverable',
+    {{{ cDefs.EOWNERDEAD }}}: 'Previous owner died',
+    {{{ cDefs.ESTRPIPE }}}: 'Streams pipe error',
   },
 #if SUPPORT_ERRNO
   $setErrNo__deps: ['__errno_location'],
@@ -1720,16 +1693,16 @@ mergeInto(LibraryManager.library, {
     var addr;
 
     switch (family) {
-      case {{{ cDefine('AF_INET') }}}:
+      case {{{ cDefs.AF_INET }}}:
         if (salen !== {{{ C_STRUCTS.sockaddr_in.__size__ }}}) {
-          return { errno: {{{ cDefine('EINVAL') }}} };
+          return { errno: {{{ cDefs.EINVAL }}} };
         }
         addr = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_addr.s_addr, 'i32') }}};
         addr = inetNtop4(addr);
         break;
-      case {{{ cDefine('AF_INET6') }}}:
+      case {{{ cDefs.AF_INET6 }}}:
         if (salen !== {{{ C_STRUCTS.sockaddr_in6.__size__ }}}) {
-          return { errno: {{{ cDefine('EINVAL') }}} };
+          return { errno: {{{ cDefs.EINVAL }}} };
         }
         addr = [
           {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in6.sin6_addr.__in6_union.__s6_addr+0, 'i32') }}},
@@ -1740,7 +1713,7 @@ mergeInto(LibraryManager.library, {
         addr = inetNtop6(addr);
         break;
       default:
-        return { errno: {{{ cDefine('EAFNOSUPPORT') }}} };
+        return { errno: {{{ cDefs.EAFNOSUPPORT }}} };
     }
 
     return { family: family, addr: addr, port: port };
@@ -1749,7 +1722,7 @@ mergeInto(LibraryManager.library, {
   $writeSockaddr__deps: ['$Sockets', '$inetPton4', '$inetPton6', '$zeroMemory'],
   $writeSockaddr: function (sa, family, addr, port, addrlen) {
     switch (family) {
-      case {{{ cDefine('AF_INET') }}}:
+      case {{{ cDefs.AF_INET }}}:
         addr = inetPton4(addr);
         zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in.__size__ }}});
         if (addrlen) {
@@ -1759,7 +1732,7 @@ mergeInto(LibraryManager.library, {
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_addr.s_addr, 'addr', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_port, '_htons(port)', 'i16') }}};
         break;
-      case {{{ cDefine('AF_INET6') }}}:
+      case {{{ cDefs.AF_INET6 }}}:
         addr = inetPton6(addr);
         zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in6.__size__ }}});
         if (addrlen) {
@@ -1773,7 +1746,7 @@ mergeInto(LibraryManager.library, {
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_port, '_htons(port)', 'i16') }}};
         break;
       default:
-        return {{{ cDefine('EAFNOSUPPORT') }}};
+        return {{{ cDefs.EAFNOSUPPORT }}};
     }
     return 0;
   },
@@ -1831,10 +1804,9 @@ mergeInto(LibraryManager.library, {
   // note: lots of leaking here!
   gethostbyaddr__deps: ['$DNS', '$getHostByName', '$inetNtop4', '$setErrNo'],
   gethostbyaddr__proxy: 'sync',
-  gethostbyaddr__sig: 'ipii',
   gethostbyaddr: function (addr, addrlen, type) {
-    if (type !== {{{ cDefine('AF_INET') }}}) {
-      setErrNo({{{ cDefine('EAFNOSUPPORT') }}});
+    if (type !== {{{ cDefs.AF_INET }}}) {
+      setErrNo({{{ cDefs.EAFNOSUPPORT }}});
       // TODO: set h_errno
       return null;
     }
@@ -1849,22 +1821,20 @@ mergeInto(LibraryManager.library, {
 
   gethostbyname__deps: ['$getHostByName'],
   gethostbyname__proxy: 'sync',
-  gethostbyname__sig: 'pp',
   gethostbyname: function(name) {
     return getHostByName(UTF8ToString(name));
   },
 
-  $getHostByName__deps: ['malloc', '$DNS', '$inetPton4'],
+  $getHostByName__deps: ['malloc', '$stringToNewUTF8', '$DNS', '$inetPton4'],
   $getHostByName: function(name) {
     // generate hostent
     var ret = _malloc({{{ C_STRUCTS.hostent.__size__ }}}); // XXX possibly leaked, as are others here
-    var nameBuf = {{{ makeMalloc('getHostByName', 'name.length+1') }}};
-    stringToUTF8(name, nameBuf, name.length+1);
+    var nameBuf = stringToNewUTF8(name);
     {{{ makeSetValue('ret', C_STRUCTS.hostent.h_name, 'nameBuf', POINTER_TYPE) }}};
     var aliasesBuf = _malloc(4);
     {{{ makeSetValue('aliasesBuf', '0', '0', POINTER_TYPE) }}};
     {{{ makeSetValue('ret', C_STRUCTS.hostent.h_aliases, 'aliasesBuf', 'i8**') }}};
-    var afinet = {{{ cDefine('AF_INET') }}};
+    var afinet = {{{ cDefs.AF_INET }}};
     {{{ makeSetValue('ret', C_STRUCTS.hostent.h_addrtype, 'afinet', 'i32') }}};
     {{{ makeSetValue('ret', C_STRUCTS.hostent.h_length, '4', 'i32') }}};
     var addrListBuf = _malloc(12);
@@ -1877,7 +1847,6 @@ mergeInto(LibraryManager.library, {
 
   gethostbyname_r__deps: ['gethostbyname', 'memcpy', 'free'],
   gethostbyname_r__proxy: 'sync',
-  gethostbyname_r__sig: 'ipppipp',
   gethostbyname_r: function(name, ret, buf, buflen, out, err) {
     var data = _gethostbyname(name);
     _memcpy(ret, data, {{{ C_STRUCTS.hostent.__size__ }}});
@@ -1889,7 +1858,6 @@ mergeInto(LibraryManager.library, {
 
   getaddrinfo__deps: ['$Sockets', '$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr'],
   getaddrinfo__proxy: 'sync',
-  getaddrinfo__sig: 'ipppp',
   getaddrinfo: function(node, service, hint, out) {
     // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
     // hints are specified or ai_family set to AF_UNSPEC or ai_socktype or ai_protocol set to 0 then we
@@ -1899,7 +1867,7 @@ mergeInto(LibraryManager.library, {
     var addr = 0;
     var port = 0;
     var flags = 0;
-    var family = {{{ cDefine('AF_UNSPEC') }}};
+    var family = {{{ cDefs.AF_UNSPEC }}};
     var type = 0;
     var proto = 0;
     var ai, last;
@@ -1908,10 +1876,10 @@ mergeInto(LibraryManager.library, {
       var sa, salen, ai;
       var errno;
 
-      salen = family === {{{ cDefine('AF_INET6') }}} ?
+      salen = family === {{{ cDefs.AF_INET6 }}} ?
         {{{ C_STRUCTS.sockaddr_in6.__size__ }}} :
         {{{ C_STRUCTS.sockaddr_in.__size__ }}};
-      addr = family === {{{ cDefine('AF_INET6') }}} ?
+      addr = family === {{{ cDefs.AF_INET6 }}} ?
         inetNtop6(addr) :
         inetNtop4(addr);
       sa = _malloc(salen);
@@ -1924,7 +1892,7 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_protocol, 'proto', 'i32') }}};
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_canonname, 'canon', 'i32') }}};
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addr, 'sa', '*') }}};
-      if (family === {{{ cDefine('AF_INET6') }}}) {
+      if (family === {{{ cDefs.AF_INET6 }}}) {
         {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addrlen, C_STRUCTS.sockaddr_in6.__size__, 'i32') }}};
       } else {
         {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addrlen, C_STRUCTS.sockaddr_in.__size__, 'i32') }}};
@@ -1941,40 +1909,40 @@ mergeInto(LibraryManager.library, {
       proto = {{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_protocol, 'i32') }}};
     }
     if (type && !proto) {
-      proto = type === {{{ cDefine('SOCK_DGRAM') }}} ? {{{ cDefine('IPPROTO_UDP') }}} : {{{ cDefine('IPPROTO_TCP') }}};
+      proto = type === {{{ cDefs.SOCK_DGRAM }}} ? {{{ cDefs.IPPROTO_UDP }}} : {{{ cDefs.IPPROTO_TCP }}};
     }
     if (!type && proto) {
-      type = proto === {{{ cDefine('IPPROTO_UDP') }}} ? {{{ cDefine('SOCK_DGRAM') }}} : {{{ cDefine('SOCK_STREAM') }}};
+      type = proto === {{{ cDefs.IPPROTO_UDP }}} ? {{{ cDefs.SOCK_DGRAM }}} : {{{ cDefs.SOCK_STREAM }}};
     }
 
     // If type or proto are set to zero in hints we should really be returning multiple addrinfo values, but for
     // now default to a TCP STREAM socket so we can at least return a sensible addrinfo given NULL hints.
     if (proto === 0) {
-      proto = {{{ cDefine('IPPROTO_TCP') }}};
+      proto = {{{ cDefs.IPPROTO_TCP }}};
     }
     if (type === 0) {
-      type = {{{ cDefine('SOCK_STREAM') }}};
+      type = {{{ cDefs.SOCK_STREAM }}};
     }
 
     if (!node && !service) {
-      return {{{ cDefine('EAI_NONAME') }}};
+      return {{{ cDefs.EAI_NONAME }}};
     }
-    if (flags & ~({{{ cDefine('AI_PASSIVE') }}}|{{{ cDefine('AI_CANONNAME') }}}|{{{ cDefine('AI_NUMERICHOST') }}}|
-        {{{ cDefine('AI_NUMERICSERV') }}}|{{{ cDefine('AI_V4MAPPED') }}}|{{{ cDefine('AI_ALL') }}}|{{{ cDefine('AI_ADDRCONFIG') }}})) {
-      return {{{ cDefine('EAI_BADFLAGS') }}};
+    if (flags & ~({{{ cDefs.AI_PASSIVE }}}|{{{ cDefs.AI_CANONNAME }}}|{{{ cDefs.AI_NUMERICHOST }}}|
+        {{{ cDefs.AI_NUMERICSERV }}}|{{{ cDefs.AI_V4MAPPED }}}|{{{ cDefs.AI_ALL }}}|{{{ cDefs.AI_ADDRCONFIG }}})) {
+      return {{{ cDefs.EAI_BADFLAGS }}};
     }
-    if (hint !== 0 && ({{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}} & {{{ cDefine('AI_CANONNAME') }}}) && !node) {
-      return {{{ cDefine('EAI_BADFLAGS') }}};
+    if (hint !== 0 && ({{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}} & {{{ cDefs.AI_CANONNAME }}}) && !node) {
+      return {{{ cDefs.EAI_BADFLAGS }}};
     }
-    if (flags & {{{ cDefine('AI_ADDRCONFIG') }}}) {
+    if (flags & {{{ cDefs.AI_ADDRCONFIG }}}) {
       // TODO
-      return {{{ cDefine('EAI_NONAME') }}};
+      return {{{ cDefs.EAI_NONAME }}};
     }
-    if (type !== 0 && type !== {{{ cDefine('SOCK_STREAM') }}} && type !== {{{ cDefine('SOCK_DGRAM') }}}) {
-      return {{{ cDefine('EAI_SOCKTYPE') }}};
+    if (type !== 0 && type !== {{{ cDefs.SOCK_STREAM }}} && type !== {{{ cDefs.SOCK_DGRAM }}}) {
+      return {{{ cDefs.EAI_SOCKTYPE }}};
     }
-    if (family !== {{{ cDefine('AF_UNSPEC') }}} && family !== {{{ cDefine('AF_INET') }}} && family !== {{{ cDefine('AF_INET6') }}}) {
-      return {{{ cDefine('EAI_FAMILY') }}};
+    if (family !== {{{ cDefs.AF_UNSPEC }}} && family !== {{{ cDefs.AF_INET }}} && family !== {{{ cDefs.AF_INET6 }}}) {
+      return {{{ cDefs.EAI_FAMILY }}};
     }
 
     if (service) {
@@ -1982,22 +1950,22 @@ mergeInto(LibraryManager.library, {
       port = parseInt(service, 10);
 
       if (isNaN(port)) {
-        if (flags & {{{ cDefine('AI_NUMERICSERV') }}}) {
-          return {{{ cDefine('EAI_NONAME') }}};
+        if (flags & {{{ cDefs.AI_NUMERICSERV }}}) {
+          return {{{ cDefs.EAI_NONAME }}};
         }
         // TODO support resolving well-known service names from:
         // http://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.txt
-        return {{{ cDefine('EAI_SERVICE') }}};
+        return {{{ cDefs.EAI_SERVICE }}};
       }
     }
 
     if (!node) {
-      if (family === {{{ cDefine('AF_UNSPEC') }}}) {
-        family = {{{ cDefine('AF_INET') }}};
+      if (family === {{{ cDefs.AF_UNSPEC }}}) {
+        family = {{{ cDefs.AF_INET }}};
       }
-      if ((flags & {{{ cDefine('AI_PASSIVE') }}}) === 0) {
-        if (family === {{{ cDefine('AF_INET') }}}) {
-          addr = _htonl({{{ cDefine('INADDR_LOOPBACK') }}});
+      if ((flags & {{{ cDefs.AI_PASSIVE }}}) === 0) {
+        if (family === {{{ cDefs.AF_INET }}}) {
+          addr = _htonl({{{ cDefs.INADDR_LOOPBACK }}});
         } else {
           addr = [0, 0, 0, 1];
         }
@@ -2014,23 +1982,23 @@ mergeInto(LibraryManager.library, {
     addr = inetPton4(node);
     if (addr !== null) {
       // incoming node is a valid ipv4 address
-      if (family === {{{ cDefine('AF_UNSPEC') }}} || family === {{{ cDefine('AF_INET') }}}) {
-        family = {{{ cDefine('AF_INET') }}};
+      if (family === {{{ cDefs.AF_UNSPEC }}} || family === {{{ cDefs.AF_INET }}}) {
+        family = {{{ cDefs.AF_INET }}};
       }
-      else if (family === {{{ cDefine('AF_INET6') }}} && (flags & {{{ cDefine('AI_V4MAPPED') }}})) {
+      else if (family === {{{ cDefs.AF_INET6 }}} && (flags & {{{ cDefs.AI_V4MAPPED }}})) {
         addr = [0, 0, _htonl(0xffff), addr];
-        family = {{{ cDefine('AF_INET6') }}};
+        family = {{{ cDefs.AF_INET6 }}};
       } else {
-        return {{{ cDefine('EAI_NONAME') }}};
+        return {{{ cDefs.EAI_NONAME }}};
       }
     } else {
       addr = inetPton6(node);
       if (addr !== null) {
         // incoming node is a valid ipv6 address
-        if (family === {{{ cDefine('AF_UNSPEC') }}} || family === {{{ cDefine('AF_INET6') }}}) {
-          family = {{{ cDefine('AF_INET6') }}};
+        if (family === {{{ cDefs.AF_UNSPEC }}} || family === {{{ cDefs.AF_INET6 }}}) {
+          family = {{{ cDefs.AF_INET6 }}};
         } else {
-          return {{{ cDefine('EAI_NONAME') }}};
+          return {{{ cDefs.EAI_NONAME }}};
         }
       }
     }
@@ -2039,8 +2007,8 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('out', '0', 'ai', '*') }}};
       return 0;
     }
-    if (flags & {{{ cDefine('AI_NUMERICHOST') }}}) {
-      return {{{ cDefine('EAI_NONAME') }}};
+    if (flags & {{{ cDefs.AI_NUMERICHOST }}}) {
+      return {{{ cDefs.EAI_NONAME }}};
     }
 
     //
@@ -2049,9 +2017,9 @@ mergeInto(LibraryManager.library, {
     // resolve the hostname to a temporary fake address
     node = DNS.lookup_name(node);
     addr = inetPton4(node);
-    if (family === {{{ cDefine('AF_UNSPEC') }}}) {
-      family = {{{ cDefine('AF_INET') }}};
-    } else if (family === {{{ cDefine('AF_INET6') }}}) {
+    if (family === {{{ cDefs.AF_UNSPEC }}}) {
+      family = {{{ cDefs.AF_INET }}};
+    } else if (family === {{{ cDefs.AF_INET6 }}}) {
       addr = [0, 0, _htonl(0xffff), addr];
     }
     ai = allocaddrinfo(family, type, proto, null, addr, port);
@@ -2060,11 +2028,10 @@ mergeInto(LibraryManager.library, {
   },
 
   getnameinfo__deps: ['$Sockets', '$DNS', '$readSockaddr'],
-  getnameinfo__sig: 'ipipipii',
   getnameinfo: function (sa, salen, node, nodelen, serv, servlen, flags) {
     var info = readSockaddr(sa, salen);
     if (info.errno) {
-      return {{{ cDefine('EAI_FAMILY') }}};
+      return {{{ cDefs.EAI_FAMILY }}};
     }
     var port = info.port;
     var addr = info.addr;
@@ -2073,9 +2040,9 @@ mergeInto(LibraryManager.library, {
 
     if (node && nodelen) {
       var lookup;
-      if ((flags & {{{ cDefine('NI_NUMERICHOST') }}}) || !(lookup = DNS.lookup_addr(addr))) {
-        if (flags & {{{ cDefine('NI_NAMEREQD') }}}) {
-          return {{{ cDefine('EAI_NONAME') }}};
+      if ((flags & {{{ cDefs.NI_NUMERICHOST }}}) || !(lookup = DNS.lookup_addr(addr))) {
+        if (flags & {{{ cDefs.NI_NAMEREQD }}}) {
+          return {{{ cDefs.EAI_NONAME }}};
         }
       } else {
         addr = lookup;
@@ -2098,7 +2065,7 @@ mergeInto(LibraryManager.library, {
 
     if (overflowed) {
       // Note: even when we overflow, getnameinfo() is specced to write out the truncated results.
-      return {{{ cDefine('EAI_OVERFLOW') }}};
+      return {{{ cDefs.EAI_OVERFLOW }}};
     }
 
     return 0;
@@ -2223,21 +2190,38 @@ mergeInto(LibraryManager.library, {
 
   // random.h
 
-  // TODO: consider allowing the API to get a parameter for the number of
-  // bytes.
-  $getRandomDevice: function() {
+  $initRandomFill: function() {
     if (typeof crypto == 'object' && typeof crypto['getRandomValues'] == 'function') {
       // for modern web browsers
-      var randomBuffer = new Uint8Array(1);
-      return () => { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
+#if SHARED_MEMORY
+      // like with most Web APIs, we can't use Web Crypto API directly on shared memory,
+      // so we need to create an intermediate buffer and copy it to the destination
+      return (view) => (
+        view.set(crypto.getRandomValues(new Uint8Array(view.byteLength))),
+        // Return the original view to match modern native implementations.
+        view
+      );
+#else
+      return (view) => crypto.getRandomValues(view);
+#endif
     } else
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
       // for nodejs with or without crypto support included
       try {
         var crypto_module = require('crypto');
-        // nodejs has crypto support
-        return () => crypto_module['randomBytes'](1)[0];
+        var randomFillSync = crypto_module['randomFillSync'];
+        if (randomFillSync) {
+          // nodejs with LTS crypto support
+          return (view) => crypto_module['randomFillSync'](view);
+        }
+        // very old nodejs with the original crypto API
+        var randomBytes = crypto_module['randomBytes'];
+        return (view) => (
+          view.set(randomBytes(view.byteLength)),
+          // Return the original view to match modern native implementations.
+          view
+        );
       } catch (e) {
         // nodejs doesn't have crypto support
       }
@@ -2245,21 +2229,21 @@ mergeInto(LibraryManager.library, {
 #endif // ENVIRONMENT_MAY_BE_NODE
     // we couldn't find a proper implementation, as Math.random() is not suitable for /dev/random, see emscripten-core/emscripten/pull/7096
 #if ASSERTIONS
-    return () => abort("no cryptographic support found for randomDevice. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: function(array) { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };");
+    abort("no cryptographic support found for randomDevice. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: function(array) { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };");
 #else
-    return () => abort("randomDevice");
+    abort("initRandomDevice");
 #endif
   },
 
-  getentropy__deps: ['$getRandomDevice'],
-  getentropy__sig: 'ipp',
+  $randomFill__deps: ['$initRandomFill'],
+  $randomFill: function(view) {
+    // Lazily init on the first invocation.
+    return (randomFill = initRandomFill())(view);
+  },
+
+  getentropy__deps: ['$randomFill'],
   getentropy: function(buffer, size) {
-    if (!_getentropy.randomDevice) {
-      _getentropy.randomDevice = getRandomDevice();
-    }
-    for (var i = 0; i < size; i++) {
-      {{{ makeSetValue('buffer', 'i', '_getentropy.randomDevice()', 'i8') }}};
-    }
+    randomFill(HEAPU8.subarray(buffer, buffer + size));
     return 0;
   },
 
@@ -2268,7 +2252,6 @@ mergeInto(LibraryManager.library, {
   // Helper function for setitimer that registers timers with the eventloop.
   // Timers always fire on the main thread, either directly from JS (here) or
   // or when the main thread is busy waiting calling _emscripten_yield.
-  _setitimer_js__sig: 'iid',
   _setitimer_js__proxy: 'sync',
   _setitimer_js__deps: ['$timers', '$callUserCallback',
                         '_emscripten_timeout', 'emscripten_get_now'],
@@ -2302,7 +2285,6 @@ mergeInto(LibraryManager.library, {
 
   // Helper for raise() to avoid signature mismatch failures:
   // https://github.com/emscripten-core/posixtestsuite/issues/6
-  __call_sighandler__sig: 'vpi',
   __call_sighandler: function(fp, sig) {
     {{{ makeDynCall('vi', 'fp') }}}(sig);
   },
@@ -2311,12 +2293,10 @@ mergeInto(LibraryManager.library, {
   // emscripten.h
   // ==========================================================================
 
-  emscripten_run_script__sig: 'vp',
   emscripten_run_script: function(ptr) {
     {{{ makeEval('eval(UTF8ToString(ptr));') }}}
   },
 
-  emscripten_run_script_int__sig: 'ip',
   emscripten_run_script_int__docs: '/** @suppress{checkTypes} */',
   emscripten_run_script_int: function(ptr) {
     {{{ makeEval('return eval(UTF8ToString(ptr))|0;') }}}
@@ -2325,7 +2305,6 @@ mergeInto(LibraryManager.library, {
   // Mark as `noleakcheck` otherwise lsan will report the last returned string
   // as a leak.
   emscripten_run_script_string__noleakcheck: true,
-  emscripten_run_script_string__sig: 'pp',
   emscripten_run_script_string: function(ptr) {
     {{{ makeEval("var s = eval(UTF8ToString(ptr));") }}}
     if (s == null) {
@@ -2347,7 +2326,6 @@ mergeInto(LibraryManager.library, {
     return Math.random();
   },
 
-  emscripten_get_now__sig: 'd',
   emscripten_get_now: ';' +
 #if ENVIRONMENT_MAY_BE_NODE
                                "if (ENVIRONMENT_IS_NODE) {\n" +
@@ -2427,7 +2405,6 @@ mergeInto(LibraryManager.library, {
   $nowIsMonotonic: 'true;',
 #endif
 
-  _emscripten_get_now_is_monotonic__sig: 'i',
   _emscripten_get_now_is_monotonic__internal: true,
   _emscripten_get_now_is_monotonic__deps: ['$nowIsMonotonic'],
   _emscripten_get_now_is_monotonic: function() {
@@ -2475,9 +2452,9 @@ mergeInto(LibraryManager.library, {
     return [args, funcname, str];
   },
 
-  emscripten_get_callstack_js__deps: ['$traverseStack', '$jsStackTrace', '$warnOnce'],
-  emscripten_get_callstack_js__docs: '/** @param {number=} flags */',
-  emscripten_get_callstack_js: function(flags) {
+  $getCallstack__deps: ['$traverseStack', '$jsStackTrace', '$warnOnce'],
+  $getCallstack__docs: '/** @param {number=} flags */',
+  $getCallstack: function(flags) {
     var callstack = jsStackTrace();
 
     // Find the symbols in the callstack that corresponds to the functions that
@@ -2488,20 +2465,20 @@ mergeInto(LibraryManager.library, {
     var iNextLine = callstack.indexOf('\n', Math.max(iThisFunc, iThisFunc2))+1;
     callstack = callstack.slice(iNextLine);
 
-    if (flags & {{{ cDefine('EM_LOG_DEMANGLE') }}}) {
+    if (flags & {{{ cDefs.EM_LOG_DEMANGLE }}}) {
       warnOnce('EM_LOG_DEMANGLE is deprecated; ignoring');
     }
 
     // If user requested to see the original source stack, but no source map
     // information is available, just fall back to showing the JS stack.
-    if (flags & {{{ cDefine('EM_LOG_C_STACK') }}} && typeof emscripten_source_map == 'undefined') {
+    if (flags & {{{ cDefs.EM_LOG_C_STACK }}} && typeof emscripten_source_map == 'undefined') {
       warnOnce('Source map information is not available, emscripten_log with EM_LOG_C_STACK will be ignored. Build with "--pre-js $EMSCRIPTEN/src/emscripten-source-map.min.js" linker flag to add source map loading to code.');
-      flags ^= {{{ cDefine('EM_LOG_C_STACK') }}};
-      flags |= {{{ cDefine('EM_LOG_JS_STACK') }}};
+      flags ^= {{{ cDefs.EM_LOG_C_STACK }}};
+      flags |= {{{ cDefs.EM_LOG_JS_STACK }}};
     }
 
     var stack_args = null;
-    if (flags & {{{ cDefine('EM_LOG_FUNC_PARAMS') }}}) {
+    if (flags & {{{ cDefs.EM_LOG_FUNC_PARAMS }}}) {
       // To get the actual parameters to the functions, traverse the stack via
       // the unfortunately deprecated 'arguments.callee' method, if it works:
       stack_args = traverseStack(arguments);
@@ -2556,18 +2533,18 @@ mergeInto(LibraryManager.library, {
 
       var haveSourceMap = false;
 
-      if (flags & {{{ cDefine('EM_LOG_C_STACK') }}}) {
+      if (flags & {{{ cDefs.EM_LOG_C_STACK }}}) {
         var orig = emscripten_source_map.originalPositionFor({line: lineno, column: column});
         haveSourceMap = (orig && orig.source);
         if (haveSourceMap) {
-          if (flags & {{{ cDefine('EM_LOG_NO_PATHS') }}}) {
+          if (flags & {{{ cDefs.EM_LOG_NO_PATHS }}}) {
             orig.source = orig.source.substring(orig.source.replace(/\\/g, "/").lastIndexOf('/')+1);
           }
           callstack += '    at ' + symbolName + ' (' + orig.source + ':' + orig.line + ':' + orig.column + ')\n';
         }
       }
-      if ((flags & {{{ cDefine('EM_LOG_JS_STACK') }}}) || !haveSourceMap) {
-        if (flags & {{{ cDefine('EM_LOG_NO_PATHS') }}}) {
+      if ((flags & {{{ cDefs.EM_LOG_JS_STACK }}}) || !haveSourceMap) {
+        if (flags & {{{ cDefs.EM_LOG_NO_PATHS }}}) {
           file = file.substring(file.replace(/\\/g, "/").lastIndexOf('/')+1);
         }
         callstack += (haveSourceMap ? ('     = ' + symbolName) : ('    at '+ symbolName)) + ' (' + file + ':' + lineno + ':' + column + ')\n';
@@ -2575,7 +2552,7 @@ mergeInto(LibraryManager.library, {
 
       // If we are still keeping track with the callstack by traversing via
       // 'arguments.callee', print the function parameters as well.
-      if (flags & {{{ cDefine('EM_LOG_FUNC_PARAMS') }}} && stack_args[0]) {
+      if (flags & {{{ cDefs.EM_LOG_FUNC_PARAMS }}} && stack_args[0]) {
         if (stack_args[1] == symbolName && stack_args[2].length > 0) {
           callstack = callstack.replace(/\s+$/, '');
           callstack += ' with values: ' + stack_args[1] + stack_args[2] + '\n';
@@ -2588,13 +2565,13 @@ mergeInto(LibraryManager.library, {
     return callstack;
   },
 
-  emscripten_get_callstack__deps: ['emscripten_get_callstack_js'],
+  emscripten_get_callstack__deps: ['$getCallstack'],
   emscripten_get_callstack: function(flags, str, maxbytes) {
     // Use explicit calls to from64 rather then using the __sig
     // magic here.  This is because the __sig wrapper uses arrow function
     // notation which causes the inner call to traverseStack to fail.
     {{{ from64('str') }}};
-    var callstack = _emscripten_get_callstack_js(flags);
+    var callstack = getCallstack(flags);
     // User can query the required amount of bytes to hold the callstack.
     if (!str || maxbytes <= 0) {
       return lengthBytesUTF8(callstack)+1;
@@ -2606,44 +2583,45 @@ mergeInto(LibraryManager.library, {
     return bytesWrittenExcludingNull+1;
   },
 
-  emscripten_log_js__deps: ['emscripten_get_callstack_js'],
-  emscripten_log_js: function(flags, str) {
-    if (flags & {{{ cDefine('EM_LOG_C_STACK') | cDefine('EM_LOG_JS_STACK') }}}) {
+  $emscriptenLog__deps: ['$getCallstack'],
+  $emscriptenLog: function(flags, str) {
+    if (flags & {{{ cDefs.EM_LOG_C_STACK | cDefs.EM_LOG_JS_STACK }}}) {
       str = str.replace(/\s+$/, ''); // Ensure the message and the callstack are joined cleanly with exactly one newline.
-      str += (str.length > 0 ? '\n' : '') + _emscripten_get_callstack_js(flags);
+      str += (str.length > 0 ? '\n' : '') + getCallstack(flags);
     }
 
-    if (flags & {{{ cDefine('EM_LOG_CONSOLE') }}}) {
-      if (flags & {{{ cDefine('EM_LOG_ERROR') }}}) {
+    if (flags & {{{ cDefs.EM_LOG_CONSOLE }}}) {
+      if (flags & {{{ cDefs.EM_LOG_ERROR }}}) {
         console.error(str);
-      } else if (flags & {{{ cDefine('EM_LOG_WARN') }}}) {
+      } else if (flags & {{{ cDefs.EM_LOG_WARN }}}) {
         console.warn(str);
-      } else if (flags & {{{ cDefine('EM_LOG_INFO') }}}) {
+      } else if (flags & {{{ cDefs.EM_LOG_INFO }}}) {
         console.info(str);
-      } else if (flags & {{{ cDefine('EM_LOG_DEBUG') }}}) {
+      } else if (flags & {{{ cDefs.EM_LOG_DEBUG }}}) {
         console.debug(str);
       } else {
         console.log(str);
       }
-    } else if (flags & {{{ cDefine('EM_LOG_ERROR') | cDefine('EM_LOG_WARN') }}}) {
+    } else if (flags & {{{ cDefs.EM_LOG_ERROR | cDefs.EM_LOG_WARN }}}) {
       err(str);
     } else {
       out(str);
     }
   },
 
-  emscripten_log__sig: 'vipp',
-  emscripten_log__deps: ['$formatString', 'emscripten_log_js'],
+  emscripten_log__deps: ['$formatString', '$emscriptenLog'],
   emscripten_log: function(flags, format, varargs) {
     var result = formatString(format, varargs);
     var str = UTF8ArrayToString(result, 0);
-    _emscripten_log_js(flags, str);
+    emscriptenLog(flags, str);
   },
 
   // We never free the return values of this function so we need to allocate
   // using builtin_malloc to avoid LSan reporting these as leaks.
   emscripten_get_compiler_setting__noleakcheck: true,
-  emscripten_get_compiler_setting__sig: 'pp',
+#if RETAIN_COMPILER_SETTINGS
+  emscripten_get_compiler_setting__deps: ['$stringToNewUTF8'],
+#endif
   emscripten_get_compiler_setting: function(name) {
 #if RETAIN_COMPILER_SETTINGS
     name = UTF8ToString(name);
@@ -2655,9 +2633,7 @@ mergeInto(LibraryManager.library, {
     var cache = _emscripten_get_compiler_setting.cache;
     var fullret = cache[name];
     if (fullret) return fullret;
-    cache[name] = _malloc(ret.length + 1);
-    stringToUTF8(ret + '', cache[name], ret.length + 1);
-    return cache[name];
+    return cache[name] = stringToNewUTF8(ret);
 #else
     throw 'You must build with -sRETAIN_COMPILER_SETTINGS for getCompilerSetting or emscripten_get_compiler_setting to work';
 #endif
@@ -2671,7 +2647,6 @@ mergeInto(LibraryManager.library, {
     debugger;
   },
 
-  emscripten_print_double__sig: 'iipi',
   emscripten_print_double: function(x, to, max) {
     var str = x + '';
     if (to) return stringToUTF8(str, to, max);
@@ -2714,7 +2689,6 @@ mergeInto(LibraryManager.library, {
   // Returns a representation of a call site of the caller of this function, in a manner
   // similar to __builtin_return_address. If level is 0, we return the call site of the
   // caller of this function.
-  emscripten_return_address__sig: 'pi',
   emscripten_return_address__deps: ['$convertFrameToPC', '$jsStackTrace'],
   emscripten_return_address: function(level) {
     var callstack = jsStackTrace().split('\n');
@@ -2772,7 +2746,6 @@ mergeInto(LibraryManager.library, {
   // must be able to unwind from a PC value that may no longer be on the
   // execution stack, and so we are forced to cache the entire call stack.
   emscripten_stack_snapshot__deps: ['$convertFrameToPC', '$UNWIND_CACHE', '$saveInUnwindCache', '$jsStackTrace'],
-  emscripten_stack_snapshot__sig: 'p',
   emscripten_stack_snapshot: function () {
     var callstack = jsStackTrace().split('\n');
     if (callstack[0] == 'Error') {
@@ -2803,7 +2776,6 @@ mergeInto(LibraryManager.library, {
   // emscripten_stack_snapshot, or this function will instead use the current
   // call stack.
   emscripten_stack_unwind_buffer__deps: ['$UNWIND_CACHE', '$saveInUnwindCache', '$convertFrameToPC', '$jsStackTrace'],
-  emscripten_stack_unwind_buffer__sig: 'ippi',
   emscripten_stack_unwind_buffer: function (addr, buffer, count) {
     var stack;
     if (UNWIND_CACHE.last_addr == addr) {
@@ -2829,10 +2801,9 @@ mergeInto(LibraryManager.library, {
 
   // Look up the function name from our stack frame cache with our PC representation.
 #if USE_OFFSET_CONVERTER
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'free', '$allocateUTF8'],
+  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'free', '$stringToNewUTF8'],
   // Don't treat allocation of _emscripten_pc_get_function.ret as a leak
   emscripten_pc_get_function__noleakcheck: true,
-  emscripten_pc_get_function__sig: 'pp',
 #endif
   emscripten_pc_get_function: function (pc) {
 #if !USE_OFFSET_CONVERTER
@@ -2856,7 +2827,7 @@ mergeInto(LibraryManager.library, {
       name = wasmOffsetConverter.getName(pc);
     }
     if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
-    _emscripten_pc_get_function.ret = allocateUTF8(name);
+    _emscripten_pc_get_function.ret = stringToNewUTF8(name);
     return _emscripten_pc_get_function.ret;
 #endif
   },
@@ -2890,22 +2861,20 @@ mergeInto(LibraryManager.library, {
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['$convertPCtoSourceLocation', 'free', '$allocateUTF8'],
+  emscripten_pc_get_file__deps: ['$convertPCtoSourceLocation', 'free', '$stringToNewUTF8'],
   // Don't treat allocation of _emscripten_pc_get_file.ret as a leak
   emscripten_pc_get_file__noleakcheck: true,
-  emscripten_pc_get_file__sig: 'pp',
   emscripten_pc_get_file: function (pc) {
     var result = convertPCtoSourceLocation(pc);
     if (!result) return 0;
 
     if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
-    _emscripten_pc_get_file.ret = allocateUTF8(result.file);
+    _emscripten_pc_get_file.ret = stringToNewUTF8(result.file);
     return _emscripten_pc_get_file.ret;
   },
 
   // Look up the line number from our stack frame cache with our PC representation.
   emscripten_pc_get_line__deps: ['$convertPCtoSourceLocation'],
-  emscripten_pc_get_line__sig: 'ip',
   emscripten_pc_get_line: function (pc) {
     var result = convertPCtoSourceLocation(pc);
     return result ? result.line : 0;
@@ -2913,13 +2882,11 @@ mergeInto(LibraryManager.library, {
 
   // Look up the column number from our stack frame cache with our PC representation.
   emscripten_pc_get_column__deps: ['$convertPCtoSourceLocation'],
-  emscripten_pc_get_column__sig: 'ip',
   emscripten_pc_get_column: function (pc) {
     var result = convertPCtoSourceLocation(pc);
     return result ? result.column || 0 : 0;
   },
 
-  emscripten_get_module_name__sig: 'ppp',
   emscripten_get_module_name: function(buf, length) {
 #if MINIMAL_RUNTIME
     return stringToUTF8('{{{ TARGET_BASENAME }}}.wasm', buf, length);
@@ -3008,7 +2975,6 @@ mergeInto(LibraryManager.library, {
   },
 
 #if HAVE_EM_ASM
-  $runEmAsmFunction__sig: 'ippp',
   $runEmAsmFunction__deps: ['$readEmAsmArgs'],
   $runEmAsmFunction: function(code, sigPtr, argbuf) {
     var args = readEmAsmArgs(sigPtr, argbuf);
@@ -3018,30 +2984,21 @@ mergeInto(LibraryManager.library, {
     return ASM_CONSTS[code].apply(null, args);
   },
 
-  emscripten_asm_const_int__sig: 'ippp',
   emscripten_asm_const_int__deps: ['$runEmAsmFunction'],
   emscripten_asm_const_int: function(code, sigPtr, argbuf) {
     return runEmAsmFunction(code, sigPtr, argbuf);
   },
-  emscripten_asm_const_double__sig: 'dppp',
   emscripten_asm_const_double__deps: ['$runEmAsmFunction'],
   emscripten_asm_const_double: function(code, sigPtr, argbuf) {
     return runEmAsmFunction(code, sigPtr, argbuf);
   },
 
-#if MEMORY64
-  // We can't use the alias in wasm64 mode becuase the function signature differs
-  emscripten_asm_const_ptr__sig: 'pppp',
   emscripten_asm_const_ptr__deps: ['$runEmAsmFunction'],
   emscripten_asm_const_ptr: function(code, sigPtr, argbuf) {
     return runEmAsmFunction(code, sigPtr, argbuf);
   },
-#else
-  emscripten_asm_const_ptr: 'emscripten_asm_const_int',
-#endif
 
   $runMainThreadEmAsm__deps: ['$readEmAsmArgs'],
-  $runMainThreadEmAsm__sig: 'iippi',
   $runMainThreadEmAsm: function(code, sigPtr, argbuf, sync) {
     var args = readEmAsmArgs(sigPtr, argbuf);
 #if PTHREADS
@@ -3066,7 +3023,6 @@ mergeInto(LibraryManager.library, {
     return ASM_CONSTS[code].apply(null, args);
   },
   emscripten_asm_const_int_sync_on_main_thread__deps: ['$runMainThreadEmAsm'],
-  emscripten_asm_const_int_sync_on_main_thread__sig: 'iiii',
   emscripten_asm_const_int_sync_on_main_thread: function(code, sigPtr, argbuf) {
     return runMainThreadEmAsm(code, sigPtr, argbuf, 1);
   },
@@ -3121,9 +3077,9 @@ mergeInto(LibraryManager.library, {
 #if LINK_AS_CXX
   // libunwind
 
-  _Unwind_Backtrace__deps: ['emscripten_get_callstack_js'],
+  _Unwind_Backtrace__deps: ['$getCallstack'],
   _Unwind_Backtrace: function(func, arg) {
-    var trace = _emscripten_get_callstack_js();
+    var trace = getCallstack();
     var parts = trace.split('\n');
     for (var i = 0; i < parts.length; i++) {
       var ret = {{{ makeDynCall('iii', 'func') }}}(0, arg);
@@ -3150,32 +3106,10 @@ mergeInto(LibraryManager.library, {
   },
 #endif
 
-  // autodebugging
-
-  emscripten_autodebug_i64: function(line, valuel, valueh) {
-    out('AD:' + [line, valuel, valueh]);
-  },
-  emscripten_autodebug_i32: function(line, value) {
-    out('AD:' + [line, value]);
-  },
-  emscripten_autodebug_i16: function(line, value) {
-    out('AD:' + [line, value]);
-  },
-  emscripten_autodebug_i8: function(line, value) {
-    out('AD:' + [line, value]);
-  },
-  emscripten_autodebug_float: function(line, value) {
-    out('AD:' + [line, value]);
-  },
-  emscripten_autodebug_double: function(line, value) {
-    out('AD:' + [line, value]);
-  },
-
   // special runtime support
 
 #if STACK_OVERFLOW_CHECK
   // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
-  __handle_stack_overflow__sig: 'vp',
   __handle_stack_overflow__deps: ['emscripten_stack_get_base', 'emscripten_stack_get_end', '$ptrToString'],
   __handle_stack_overflow: function(requested) {
     requested = requested >>> 0;
@@ -3388,7 +3322,6 @@ mergeInto(LibraryManager.library, {
 #endif // SHRINK_LEVEL == 0
 
   // Callable in pthread without __proxy needed.
-  emscripten_exit_with_live_runtime__sig: 'v',
   emscripten_exit_with_live_runtime: function() {
     {{{ runtimeKeepalivePush() }}}
     throw 'unwind';
@@ -3400,7 +3333,6 @@ mergeInto(LibraryManager.library, {
 #endif
   ],
   emscripten_force_exit__proxy: 'sync',
-  emscripten_force_exit__sig: 'vi',
   emscripten_force_exit: function(status) {
 #if RUNTIME_DEBUG
     dbg('emscripten_force_exit');
@@ -3415,18 +3347,15 @@ mergeInto(LibraryManager.library, {
     _exit(status);
   },
 
-  _emscripten_out__sig: 'vp',
   _emscripten_out: function(str) {
     out(UTF8ToString(str));
   },
 
-  _emscripten_err__sig: 'vp',
   _emscripten_err: function(str) {
     err(UTF8ToString(str));
   },
 
 #if ASSERTIONS || RUNTIME_DEBUG
-  _emscripten_dbg__sig: 'vp',
   _emscripten_dbg: function(str) {
     dbg(UTF8ToString(str));
   },
@@ -3434,7 +3363,6 @@ mergeInto(LibraryManager.library, {
 
   // Use program_invocation_short_name and program_invocation_name in compiled
   // programs. This function is for implementing them.
-  _emscripten_get_progname__sig: 'vpp',
   _emscripten_get_progname: function(str, len) {
 #if !MINIMAL_RUNTIME
 #if ASSERTIONS
@@ -3445,7 +3373,6 @@ mergeInto(LibraryManager.library, {
 #endif
   },
 
-  emscripten_console_log__sig: 'vp',
   emscripten_console_log: function(str) {
 #if ASSERTIONS
     assert(typeof str == 'number');
@@ -3453,7 +3380,6 @@ mergeInto(LibraryManager.library, {
     console.log(UTF8ToString(str));
   },
 
-  emscripten_console_warn__sig: 'vp',
   emscripten_console_warn: function(str) {
 #if ASSERTIONS
     assert(typeof str == 'number');
@@ -3461,7 +3387,6 @@ mergeInto(LibraryManager.library, {
     console.warn(UTF8ToString(str));
   },
 
-  emscripten_console_error__sig: 'vp',
   emscripten_console_error: function(str) {
 #if ASSERTIONS
     assert(typeof str == 'number');
@@ -3695,7 +3620,6 @@ mergeInto(LibraryManager.library, {
 #endif
 
   _emscripten_fs_load_embedded_files__deps: ['$FS', '$PATH'],
-  _emscripten_fs_load_embedded_files__sig: 'vp',
   _emscripten_fs_load_embedded_files: function(ptr) {
 #if RUNTIME_DEBUG
     dbg('preloading data files');
@@ -3722,30 +3646,27 @@ mergeInto(LibraryManager.library, {
 
   $HandleAllocator__docs: '/** @constructor */',
   $HandleAllocator: function() {
-    this.allocated = [];
+    // Reserve slot 0 so that 0 is always an invalid handle
+    this.allocated = [undefined];
     this.freelist = [];
     this.get = function(id) {
 #if ASSERTIONS
-      assert(this.allocated[id] !== undefined);
+      assert(this.allocated[id] !== undefined, 'invalid handle: ' + id);
 #endif
       return this.allocated[id];
     };
     this.allocate = function(handle) {
-      let id;
-      if (this.freelist.length > 0) {
-        id = this.freelist.pop();
-        this.allocated[id] = handle;
-      } else {
-        id = this.allocated.length;
-        this.allocated.push(handle);
-      }
+      let id = this.freelist.pop() || this.allocated.length;
+      this.allocated[id] = handle;
       return id;
     };
     this.free = function(id) {
 #if ASSERTIONS
       assert(this.allocated[id] !== undefined);
 #endif
-      delete this.allocated[id];
+      // Set the slot to `undefined` rather than using `delete` here since
+      // apparently arrays with holes in them can be less efficient.
+      this.allocated[id] = undefined;
       this.freelist.push(id);
     };
   },
@@ -3791,7 +3712,7 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
   '$UTF32ToString',
   '$stringToUTF32',
   '$lengthBytesUTF32',
-  '$allocateUTF8',
+  '$stringToNewUTF8',
   '$allocateUTF8OnStack',
   '$writeStringToMemory',
   '$writeArrayToMemory',

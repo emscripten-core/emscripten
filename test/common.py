@@ -221,6 +221,11 @@ def node_pthreads(f):
   return decorated
 
 
+def crossplatform(f):
+  f.is_crossplatform_test = True
+  return f
+
+
 @contextlib.contextmanager
 def env_modify(updates):
   """A context manager that updates os.environ."""
@@ -286,6 +291,30 @@ def also_with_wasm_bigint(f):
 
   metafunc._parameterize = {'': (False,),
                             'bigint': (True,)}
+  return metafunc
+
+
+# This works just like `with_both_eh_sjlj` above but doesn't enable exceptions.
+# Use this for tests that use setjmp/longjmp but not exceptions handling.
+def with_both_sjlj(f):
+  assert callable(f)
+
+  def metafunc(self, is_native):
+    if is_native:
+      if not self.is_wasm():
+        self.skipTest('wasm2js does not support wasm SjLj')
+      self.require_wasm_eh()
+      # FIXME Temporarily disabled. Enable this later when the bug is fixed.
+      if '-fsanitize=address' in self.emcc_args:
+        self.skipTest('Wasm EH does not work with asan yet')
+      self.set_setting('SUPPORT_LONGJMP', 'wasm')
+      f(self)
+    else:
+      self.set_setting('SUPPORT_LONGJMP', 'emscripten')
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'wasm_sjlj': (True,)}
   return metafunc
 
 

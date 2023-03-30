@@ -8,7 +8,7 @@
 #include <stdbool.h>
 #include <pthread.h>
 
-void _tzset_js(long* timezone, int* daylight, char** tzname);
+#include "emscripten_internal.h"
 
 weak void tzset() {
   static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;

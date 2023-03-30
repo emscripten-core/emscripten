@@ -514,7 +514,6 @@ def generate_js_symbols():
   # TODO(sbc): Find a way to optimize this.  Potentially we could add a super-set
   # mode of the js compiler that would generate a list of all possible symbols
   # that could be checked in.
-  emscripten.generate_struct_info()
   _, forwarded_data = emscripten.compile_javascript(symbols_only=True)
   # When running in symbols_only mode compiler.js outputs a flat list of C symbols.
   return json.loads(forwarded_data)
@@ -1994,6 +1993,7 @@ def phase_linker_setup(options, state, newargs):
     default_setting('AUTO_JS_LIBRARIES', 0)
     # When using MINIMAL_RUNTIME, symbols should only be exported if requested.
     default_setting('EXPORT_KEEPALIVE', 0)
+    default_setting('USE_GLFW', 0)
 
   if settings.STRICT_JS and (settings.MODULARIZE or settings.EXPORT_ES6):
     exit_with_error("STRICT_JS doesn't work with MODULARIZE or EXPORT_ES6")
@@ -2329,6 +2329,7 @@ def phase_linker_setup(options, state, newargs):
       # JS API directly.
       settings.REQUIRED_EXPORTS += [
         '_wasmfs_write_file',
+        '_wasmfs_open',
         '_wasmfs_mkdir',
         '_wasmfs_unlink',
         '_wasmfs_chdir',

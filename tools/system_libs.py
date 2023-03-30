@@ -72,6 +72,7 @@ def clean_env():
   safe_env = os.environ.copy()
   for opt in ['CFLAGS', 'CXXFLAGS', 'LDFLAGS',
               'EMCC_CFLAGS',
+              'EMCC_AUTODEBUG',
               'EMCC_FORCE_STDLIBS',
               'EMCC_ONLY_FORCED_STDLIBS',
               'EMMAKEN_JUST_CONFIGURE']:
@@ -807,6 +808,7 @@ class MuslInternalLibrary(Library):
   includes = [
     'system/lib/libc/musl/src/internal',
     'system/lib/libc/musl/src/include',
+    'system/lib/libc',
     'system/lib/pthread',
   ]
 
@@ -852,6 +854,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
 
   cflags = ['-fno-builtin']
   src_dir = 'system/lib/compiler-rt/lib/builtins'
+  includes = ['system/lib/libc']
   # gcc_personality_v0.c depends on libunwind, which don't include by default.
   src_files = glob_in_path(src_dir, '*.c', excludes=['gcc_personality_v0.c', 'truncdfbf2.c', 'truncsfbf2.c'])
   src_files += files_in_path(
@@ -1740,6 +1743,7 @@ class libembind(Library):
 class libfetch(MTLibrary):
   name = 'libfetch'
   never_force = True
+  includes = ['system/lib/libc']
 
   def get_files(self):
     return [utils.path_from_root('system/lib/fetch/emscripten_fetch.c')]
@@ -1837,7 +1841,8 @@ class libsanitizer_common_rt(CompilerRTLibrary, MTLibrary):
   name = 'libsanitizer_common_rt'
   # TODO(sbc): We should not need musl-internal headers here.
   includes = ['system/lib/libc/musl/src/internal',
-              'system/lib/compiler-rt/lib']
+              'system/lib/compiler-rt/lib',
+              'system/lib/libc']
   never_force = True
 
   src_dir = 'system/lib/compiler-rt/lib/sanitizer_common'

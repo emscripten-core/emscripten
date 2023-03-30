@@ -27,7 +27,8 @@ import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, node_pthreads, also_with_wasm_bigint
-from common import read_file, read_binary, requires_v8, requires_node, compiler_for
+from common import read_file, read_binary, requires_v8, requires_node, compiler_for, crossplatform
+from common import with_both_sjlj
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
 
@@ -117,31 +118,6 @@ def with_both_eh_sjlj(f):
       # error out because libc++abi is not included. See
       # https://github.com/emscripten-core/emscripten/pull/14192 for details.
       self.set_setting('DEFAULT_TO_CXX')
-      f(self)
-
-  metafunc._parameterize = {'': (False,),
-                            'wasm': (True,)}
-  return metafunc
-
-
-# This works just like `with_both_eh_sjlj` above but doesn't enable exceptions.
-# Use this for tests that use setjmp/longjmp but not exceptions handling.
-def with_both_sjlj(f):
-  assert callable(f)
-
-  def metafunc(self, is_native):
-    if is_native:
-      # Wasm SjLj is currently supported only in wasm backend and V8
-      if not self.is_wasm():
-        self.skipTest('wasm2js does not support wasm SjLj')
-      self.require_wasm_eh()
-      # FIXME Temporarily disabled. Enable this later when the bug is fixed.
-      if '-fsanitize=address' in self.emcc_args:
-        self.skipTest('Wasm EH does not work with asan yet')
-      self.set_setting('SUPPORT_LONGJMP', 'wasm')
-      f(self)
-    else:
-      self.set_setting('SUPPORT_LONGJMP', 'emscripten')
       f(self)
 
   metafunc._parameterize = {'': (False,),
@@ -1108,6 +1084,7 @@ base align: 0, 0, 0, 0'''])
   def test_regex(self):
     self.do_core_test('test_regex.c')
 
+  @crossplatform
   @also_with_standalone_wasm(wasm2c=True, impure=True)
   def test_longjmp_standalone(self):
     self.do_core_test('test_longjmp.c')
@@ -2294,6 +2271,7 @@ int main(int argc, char **argv) {
   def test_main_thread_em_asm_signatures(self):
     self.do_core_test('test_em_asm_signatures.cpp', assert_returncode=NON_ZERO)
 
+  @crossplatform
   def test_em_asm_unicode(self):
     self.do_core_test('test_em_asm_unicode.cpp')
     self.do_core_test('test_em_asm_unicode.cpp', force_c=True)
@@ -2334,6 +2312,7 @@ int main(int argc, char **argv) {
     'dylink': (['-sMAIN_MODULE=2'], False),
     'dylink_c': (['-sMAIN_MODULE=2'], True),
   })
+  @crossplatform
   def test_em_js(self, args, force_c):
     if '-sMAIN_MODULE=2' in args:
       self.check_dylink()
@@ -4273,6 +4252,7 @@ ok
     ''', 'other says 11.', 'int sidey();', force_c=True, **kwargs)
 
   @needs_dylink
+  @crossplatform
   def test_dylink_basics(self):
     self.do_basic_dylink_test(need_reverse=False)
     self.verify_in_strict_mode('main.js')
@@ -5905,6 +5885,7 @@ Module = {
     self.do_runf(test_file('utf32.cpp'), 'OK.')
     self.do_runf(test_file('utf32.cpp'), 'OK.', args=['-fshort-wchar'])
 
+  @crossplatform
   def test_utf16(self):
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['writeAsciiToMemory', 'UTF16ToString', 'stringToUTF16'])
     self.do_runf(test_file('core/test_utf16.cpp'), 'OK.')
@@ -6038,13 +6019,14 @@ Module = {
     self.do_run_in_out_file_test('fs/test_trackingdelegate.c')
 
   @also_with_noderawfs
+  @also_with_wasmfs_js
   def test_fs_writeFile(self):
     self.do_run_in_out_file_test('fs/test_writeFile.cpp')
 
-  def test_fs_writeFile_wasmfs(self):
+  def test_fs_open_wasmfs(self):
     self.emcc_args += ['-sWASMFS']
     self.emcc_args += ['-sFORCE_FILESYSTEM']
-    self.do_run_in_out_file_test('fs/test_writeFile.cpp')
+    self.do_runf(test_file('fs/test_open_wasmfs.c'), 'success')
 
   def test_fs_write(self):
     self.do_run_in_out_file_test('fs/test_write.cpp')
@@ -6463,6 +6445,7 @@ PORT: 3979
     self.do_runf('main.cpp', 'hello from lib!\n*32*\n')
 
   @with_env_modify({'LC_ALL': 'latin-1', 'PYTHONUTF8': '0', 'PYTHONCOERCECLOCALE': '0'})
+  @crossplatform
   def test_unicode_js_library(self):
     create_file('main.c', '''
       #include <stdio.h>
@@ -6742,6 +6725,7 @@ void* operator new(size_t size) {
 
   # Tests invoking the SIMD API via x86 SSE1 xmmintrin.h header (_mm_x() functions)
   @wasm_simd
+  @crossplatform
   @requires_native_clang
   @no_safe_heap('has unaligned 64-bit operations in wasm')
   @no_ubsan('test contains UB')
@@ -6867,6 +6851,7 @@ void* operator new(size_t size) {
     self.do_runf(test_file('third_party/libiberty/cp-demangle.c'), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
 
   @needs_make('make')
+  @crossplatform
   def test_lua(self):
     self.emcc_args.remove('-Werror')
     env_init = {
@@ -7175,6 +7160,7 @@ void* operator new(size_t size) {
 
   ### Integration tests
 
+  @crossplatform
   def test_ccall(self):
     self.emcc_args.append('-Wno-return-stack-address')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap', 'STACK_SIZE'])

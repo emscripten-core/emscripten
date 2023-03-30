@@ -149,6 +149,10 @@ def no_firefox(note='firefox is not supported'):
   return lambda f: f
 
 
+def is_jspi(args):
+  return '-sASYNCIFY=2' in args
+
+
 def no_swiftshader(f):
   assert callable(f)
 
@@ -1340,17 +1344,6 @@ keydown(100);keyup(100); // trigger the end
 
   def test_fflush(self):
     self.btest('test_fflush.cpp', '0', args=['-sEXIT_RUNTIME', '--shell-file', test_file('test_fflush.html')], reporting=Reporting.NONE)
-
-  def test_file_db(self):
-    secret = str(time.time())
-    create_file('moar.txt', secret)
-    self.btest('file_db.cpp', '1', args=['--preload-file', 'moar.txt', '-DFIRST'])
-    shutil.copyfile('test.html', 'first.html')
-    self.btest('file_db.cpp', secret, args=['-sFORCE_FILESYSTEM'])
-    shutil.copyfile('test.html', 'second.html')
-    create_file('moar.txt', 'aliantha')
-    self.btest('file_db.cpp', secret, args=['--preload-file', 'moar.txt']) # even with a file there, we load over it
-    shutil.move('test.html', 'third.html')
 
   def test_fs_idbfs_sync(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
@@ -3316,14 +3309,22 @@ Module["preRun"].push(function () {
     self.btest('cocos2d_hello.cpp', reference='cocos2d_hello.png', reference_slack=1,
                args=['-sUSE_COCOS2D=3', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
                      '-Wno-js-compiler',
+                     '-Wno-experimental',
                      '--preload-file', preload_file, '--use-preload-plugins',
                      '-Wno-inconsistent-missing-override',
                      '-Wno-deprecated-declarations'])
 
-  def test_async(self):
+  @parameterized({
+    'asyncify': (['-sASYNCIFY=1'],),
+    'jspi': (['-sASYNCIFY=2', '-Wno-experimental'],),
+  })
+  def test_async(self, args):
+    if is_jspi(args) and not is_chrome():
+      self.skipTest('only chrome supports jspi')
+
     for opts in [0, 1, 2, 3]:
       print(opts)
-      self.btest_exit('browser/async.cpp', args=['-O' + str(opts), '-g2', '-sASYNCIFY'])
+      self.btest_exit('browser/async.cpp', args=['-O' + str(opts), '-g2'] + args)
 
   def test_asyncify_tricky_function_sig(self):
     self.btest('browser/test_asyncify_tricky_function_sig.cpp', '85', args=['-sASYNCIFY_ONLY=[foo(char.const*?.int#),foo2(),main,__original_main]', '-sASYNCIFY'])
@@ -5615,6 +5616,7 @@ class emrun(RunnerCore):
 
     for args in [
         args_base,
+        args_base + ['--port', '0'],
         args_base + ['--private_browsing', '--port', '6941'],
         args_base + ['--dump_out_directory', 'other dir/multiple', '--port', '6942']
     ]:
