@@ -553,7 +553,7 @@ def get_js_sym_info():
   # it's normally for these file to get pruned as part of normal operation.  This means that it
   # can be deleted between the `cache.get()` then the `read_file`.
   with filelock.FileLock(cache.get_path(cache.get_path('symbol_lists.lock'))):
-    filename = cache.get(f'symbol_lists/{content_hash}.txt', build_symbol_list)
+    filename = cache.get(f'symbol_lists/{content_hash}.json', build_symbol_list)
     library_syms = json.loads(read_file(filename))
 
     # Limit of the overall size of the cache to 100 files.
