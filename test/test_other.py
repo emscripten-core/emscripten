@@ -8693,6 +8693,7 @@ end
     # binaryen tools get run, which can affect how debug info is kept around
     'bigint': [['-sWASM_BIGINT']],
     'pthread': [['-pthread', '-Wno-experimental']],
+    'pthread_offscreen': [['-pthread', '-Wno-experimental', '-sOFFSCREEN_FRAMEBUFFER']],
   })
   def test_closure_full_js_library(self, args):
     # Test for closure errors and warnings in the entire JS library.
@@ -8706,6 +8707,7 @@ end
       '-sFETCH',
       '-sFETCH_SUPPORT_INDEXEDDB',
       '-sLEGACY_GL_EMULATION',
+      '-sMAX_WEBGL_VERSION=2',
     ] + args)
 
   def test_closure_webgpu(self):

@@ -838,7 +838,7 @@ function hasExportedSymbol(sym) {
 // it is a BigInt. Otherwise, we legalize into pairs of i32s.
 function defineI64Param(name) {
   if (WASM_BIGINT) {
-    return `/** @type {!BigInt} */ ${name}`;
+    return name;
   }
   return `${name}_low, ${name}_high`;
 }

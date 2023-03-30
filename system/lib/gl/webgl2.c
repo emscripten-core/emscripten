@@ -131,9 +131,10 @@ ASYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIIIII, void, glTexStorage2D, GLenum, GLsizei, G
 ASYNC_GL_FUNCTION_6(EM_FUNC_SIG_VIIIIII, void, glTexStorage3D, GLenum, GLsizei, GLenum, GLsizei, GLsizei, GLsizei);
 VOID_SYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIIIII, void, glGetInternalformativ, GLenum, GLenum, GLenum, GLsizei, GLint *);
 
-#endif // ~__EMSCRIPTEN_PTHREADS__
-
-// Extensions:
+// Extensions that are aliases for the proxying functions defined above.
+// Normally these aliases get defined in library_webgl.js but when building with
+// __EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__ we want to intercept them in native
+// code and redirect them to thier proxying couterparts.
 GL_APICALL void GL_APIENTRY glVertexAttribDivisorNV(GLuint index, GLuint divisor) { glVertexAttribDivisor(index, divisor); }
 GL_APICALL void GL_APIENTRY glVertexAttribDivisorEXT(GLuint index, GLuint divisor) { glVertexAttribDivisor(index, divisor); }
 GL_APICALL void GL_APIENTRY glVertexAttribDivisorARB(GLuint index, GLuint divisor) { glVertexAttribDivisor(index, divisor); }
@@ -152,6 +153,8 @@ GL_APICALL void GL_APIENTRY glGenVertexArraysOES(GLsizei n, GLuint *arrays) { gl
 GL_APICALL GLboolean GL_APIENTRY glIsVertexArrayOES(GLuint array) { return glIsVertexArray(array); }
 GL_APICALL void GL_APIENTRY glDrawBuffersEXT(GLsizei n, const GLenum *bufs) { glDrawBuffers(n, bufs); }
 GL_APICALL void GL_APIENTRY glDrawBuffersWEBGL(GLsizei n, const GLenum *bufs) { glDrawBuffers(n, bufs); }
+
+#endif // ~__EMSCRIPTEN_PTHREADS__) && __EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__
 
 // Returns a function pointer to the given WebGL 2 extension function, when queried without
 // a GL extension suffix such as "EXT", "OES", or "ANGLE". This function is used by

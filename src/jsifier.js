@@ -229,16 +229,11 @@ function ${name}(${args}) {
       // what we just added to the library.
     }
 
-    function addFromLibrary(symbol, dependent) {
+    function addFromLibrary(symbol, dependent, force = false) {
       // dependencies can be JS functions, which we just run
       if (typeof symbol == 'function') {
         return symbol();
       }
-
-      if (symbol in addedLibraryItems) {
-        return;
-      }
-      addedLibraryItems[symbol] = true;
 
       // don't process any special identifiers. These are looked up when
       // processing the base name of the identifier.
@@ -270,9 +265,14 @@ function ${name}(${args}) {
 
       // if the function was implemented in compiled code, there is no need to
       // include the js version
-      if (WASM_EXPORTS.has(symbol)) {
+      if (WASM_EXPORTS.has(symbol) && !force) {
         return;
       }
+
+      if (symbol in addedLibraryItems) {
+        return;
+      }
+      addedLibraryItems[symbol] = true;
 
       // This gets set to true in the case of dynamic linking for symbols that
       // are undefined in the main module.  In this case we create a stub that
@@ -347,17 +347,19 @@ function ${name}(${args}) {
           warn(`user library symbol '${symbol}' depends on internal symbol '${dep}'`);
         }
       });
+
       let isFunction = false;
+      let aliasTarget;
 
       if (typeof snippet == 'string') {
         if (snippet[0] != '=') {
-          const target = LibraryManager.library[snippet];
-          if (target) {
-            // Redirection for aliases. We include the parent, and at runtime make ourselves equal to it.
-            // This avoid having duplicate functions with identical content.
-            const redirectedTarget = snippet;
-            deps.push(redirectedTarget);
-            snippet = mangleCSymbolName(redirectedTarget);
+          if (LibraryManager.library[snippet]) {
+            // Redirection for aliases. We include the parent, and at runtime
+            // make ourselves equal to it.  This avoid having duplicate
+            // functions with identical content.
+            aliasTarget = snippet;
+            snippet = mangleCSymbolName(aliasTarget);
+            deps.push(aliasTarget);
           }
         }
       } else if (typeof snippet == 'object') {
@@ -389,7 +391,7 @@ function ${name}(${args}) {
       const deps_list = deps.join("','");
       const identDependents = symbol + `__deps: ['${deps_list}']`;
       function addDependency(dep) {
-        return addFromLibrary(dep, `${identDependents}, referenced by ${dependent}`);
+        return addFromLibrary(dep, `${identDependents}, referenced by ${dependent}`, dep === aliasTarget);
       }
       let contentText;
       if (isFunction) {
@@ -447,8 +449,11 @@ function ${name}(${args}) {
       }
 
       let commentText = '';
+      if (force) {
+        commentText += '/** @suppress {duplicate } */\n'
+      }
       if (LibraryManager.library[symbol + '__docs']) {
-        commentText = LibraryManager.library[symbol + '__docs'] + '\n';
+        commentText += LibraryManager.library[symbol + '__docs'] + '\n';
       }
 
       const depsText = (deps ? deps.map(addDependency).filter((x) => x != '').join('\n') + '\n' : '');
