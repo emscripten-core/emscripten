@@ -2916,6 +2916,7 @@ var LibraryGL = {
     return GLctx.getAttribLocation(GL.programs[program], UTF8ToString(name));
   },
 
+  $__glGetActiveAttribOrUniform__deps: ['$stringToUTF8'],
   $__glGetActiveAttribOrUniform: function(funcName, program, index, bufSize, length, size, type, name) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, funcName, 'program');
@@ -3167,6 +3168,7 @@ var LibraryGL = {
 #endif
   },
 
+  glGetShaderInfoLog__deps: ['$stringToUTF8'],
   glGetShaderInfoLog: function(shader, maxLength, length, infoLog) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.shaders, shader, 'glGetShaderInfoLog', 'shader');

@@ -656,7 +656,8 @@ var LibraryEmbind = {
   _embind_register_std_string__sig: 'vpp',
   _embind_register_std_string__deps: [
     '$readLatin1String', '$registerType',
-    '$simpleReadValueFromPointer', '$throwBindingError'],
+    '$simpleReadValueFromPointer', '$throwBindingError',
+    '$stringToUTF8', '$lengthBytesUTF8'],
   _embind_register_std_string: function(rawType, name) {
     name = readLatin1String(name);
     var stdStringIsUTF8

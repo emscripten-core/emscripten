@@ -276,6 +276,7 @@ mergeInto(LibraryManager.library, {
     stringToUTF8(s, childNameBuffer, len);
   },
   _wasmfs_get_preloaded_path_name__sig: 'vip',
+  _wasmfs_get_preloaded_path_name__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   _wasmfs_get_preloaded_path_name: function(index, fileNameBuffer) {
     var s = wasmFSPreloadedFiles[index].pathName;
     var len = lengthBytesUTF8(s) + 1;

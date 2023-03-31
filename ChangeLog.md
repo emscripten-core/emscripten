@@ -20,6 +20,19 @@ See docs/process.md for more on how version tagging works.
 
 3.1.35 (in development)
 -----------------------
+- The following JavaScript runtime functions were converted to JavaScript
+  library functions:
+   - UTF8ArrayToString
+   - UTF8ToString
+   - stringToUTF8Array
+   - stringToUTF8
+   - lengthBytesUTF8
+  If you use any of these functions in your JS code you will now need to include
+  them explictly in one of the following ways:
+   - Add them to a `__deps` entry in your JS library file (with leading $)
+   - Add them to `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` (with leading $)
+   - Add them to `EXPORTED_FUNCTIONS` (without leading $)
+   - Set `-sLEGACY_RUNTIME` to include all of them at once.
 - `FS.loadFilesFromDB` and `FS.saveFilesToDB` were removed.  We think it's
   unlikly there were any users of these functions since there is now a separate
   IDBFS filesystem for folks that want persistence. (#19049)

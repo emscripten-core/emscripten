@@ -102,8 +102,6 @@ function _free() {
 #endif // free
 #endif // ASSERTIONS
 
-#include "runtime_strings.js"
-
 // Memory management
 
 var HEAP,

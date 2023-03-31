@@ -13,7 +13,9 @@ var LibraryFetch = {
   $Fetch__postset: 'Fetch.staticInit();',
 #endif
   $Fetch: Fetch,
+  _emscripten_fetch_get_response_headers_length__deps: ['$lengthBytesUTF8'],
   _emscripten_fetch_get_response_headers_length: fetchGetResponseHeadersLength,
+  _emscripten_fetch_get_response_headers__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   _emscripten_fetch_get_response_headers: fetchGetResponseHeaders,
   _emscripten_fetch_free: fetchFree,
 
@@ -30,6 +32,7 @@ var LibraryFetch = {
     '$fetchXHR',
     '$callUserCallback',
     '$writeI53ToI64',
+    '$stringToUTF8',
 #if FETCH_SUPPORT_INDEXEDDB
     '$fetchCacheData',
     '$fetchLoadCachedData',
