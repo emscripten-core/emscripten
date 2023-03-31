@@ -13,5 +13,4 @@ Please provide the following information in your report:
 - How to reproduce the issue
 - Make it clear that it's an Emscripten bug.
 
-This project is maintained by a team of volunteers on a reasonable-effort basis. As
-such, please give us 90 days to work on a fix before public exposure.
+We ask that you give us 90 days to work on a fix before public exposure.
