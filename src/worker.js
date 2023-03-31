@@ -283,3 +283,21 @@ function handleMessage(e) {
 };
 
 self.onmessage = handleMessage;
+
+self.addEventListener('error', (event) => {
+  const error = event.error;
+  if (error) {
+    self.postMessage({
+      type: 'error',
+      message: error.message,
+      stack: error.stack
+    });
+  } else {
+    self.postMessage({
+      type: 'error',
+      message: event.message
+    });
+  }
+  // Prevent the default error handling
+  event.preventDefault();
+});

@@ -1266,4 +1266,12 @@ function runMemoryInitializer() {
 var asyncifyStubs = {};
 #endif
 
+#if PTHREADS
+// Listen to errors from all threads and report it
+self.addEventListener("error", (e) => {
+  console.error(e);
+});
+#endif
+
+
 // === Body ===
