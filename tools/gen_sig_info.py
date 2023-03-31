@@ -227,6 +227,7 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None):
   settings = {
     'USE_PTHREADS': 1,
     'STACK_OVERFLOW_CHECK': 1,
+    'MAX_WEBGL_VERSION': 2,
     'FULL_ES3': 1,
     'USE_SDL': 1,
     'FETCH': 1,

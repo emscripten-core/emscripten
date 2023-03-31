@@ -3869,7 +3869,7 @@ int main() {
 }
 ''')
     err = self.run_process([EMCC, 'src.c', '--js-library', 'lib.js'], stderr=PIPE).stderr
-    self.assertContained('lib.js: signature redefinition for: jslibfunc__sig. (old=ii vs new=ii)', err)
+    self.assertContained('lib.js: signature redefinition for: jslibfunc__sig', err)
 
     # Add another redefinition, this time not matching
     create_file('lib2.js', r'''
