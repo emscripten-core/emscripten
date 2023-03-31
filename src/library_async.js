@@ -40,7 +40,8 @@ mergeInto(LibraryManager.library, {
           var original = imports[x];
           var sig = original.sig;
           if (typeof original == 'function') {
-            var isAsyncifyImport = ASYNCIFY_IMPORTS.indexOf(x) >= 0 ||
+            var isAsyncifyImport = original.isAsync ||
+                                   ASYNCIFY_IMPORTS.indexOf(x) >= 0 ||
                                    x.startsWith('__asyncjs__');
 #if ASYNCIFY == 2
             // Wrap async imports with a suspending WebAssembly function.
@@ -451,6 +452,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_sleep__deps: ['$safeSetTimeout'],
+  emscripten_sleep__async: true,
   emscripten_sleep: function(ms) {
     // emscripten_sleep() does not return a value, but we still need a |return|
     // here for stack switching support (ASYNCIFY=2). In that mode this function

@@ -248,7 +248,7 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None):
     output = shared.run_js_tool(utils.path_from_root('src/compiler.js'),
                                 ['--symbols-only', settings_json],
                                 stdout=subprocess.PIPE, cwd=utils.path_from_root())
-  symbols = json.loads(output).keys()
+  symbols = json.loads(output)['deps'].keys()
   symbols = [s for s in symbols if not ignore_symbol(s)]
   with tempfiles.get_file('.c') as c_file:
     create_c_file(c_file, symbols)

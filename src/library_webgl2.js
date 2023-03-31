@@ -6,7 +6,7 @@
 
 var LibraryWebGL2 = {
   glGetStringi__deps: ['$stringToNewUTF8'],
-  glGetStringi__sig: 'iii',
+  glGetStringi__sig: 'pii',
   glGetStringi: function(name, index) {
     if (GL.currentContext.version < 2) {
       GL.recordError(0x502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
@@ -49,13 +49,13 @@ var LibraryWebGL2 = {
     }
   },
 
-  glGetInteger64v__sig: 'vii',
+  glGetInteger64v__sig: 'vip',
   glGetInteger64v__deps: ['$emscriptenWebGLGet'],
   glGetInteger64v: function(name_, p) {
     emscriptenWebGLGet(name_, p, {{{ cDefs.EM_FUNC_SIG_PARAM_I64 }}});
   },
 
-  glGetInternalformativ__sig: 'viiiii',
+  glGetInternalformativ__sig: 'viiiip',
   glGetInternalformativ: function(target, internalformat, pname, bufSize, params) {
 #if GL_TRACK_ERRORS
     if (bufSize < 0) {
@@ -82,7 +82,7 @@ var LibraryWebGL2 = {
     }
   },
 
-  glCompressedTexImage3D__sig: 'viiiiiiiii',
+  glCompressedTexImage3D__sig: 'viiiiiiiip',
   glCompressedTexImage3D: function(target, level, internalFormat, width, height, depth, border, imageSize, data) {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, imageSize, data);
@@ -91,7 +91,7 @@ var LibraryWebGL2 = {
     }
   },
 
-  glCompressedTexSubImage3D__sig: 'viiiiiiiiiii',
+  glCompressedTexSubImage3D__sig: 'viiiiiiiiiip',
   glCompressedTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, imageSize, data) {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx['compressedTexSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, imageSize, data);
@@ -100,7 +100,7 @@ var LibraryWebGL2 = {
     }
   },
 
-  glGetBufferParameteri64v__sig: 'viii',
+  glGetBufferParameteri64v__sig: 'viip',
   glGetBufferParameteri64v__deps: ['$writeI53ToI64'],
   glGetBufferParameteri64v: function(target, value, data) {
 #if GL_TRACK_ERRORS
@@ -133,7 +133,7 @@ var LibraryWebGL2 = {
   },
 
   glInvalidateFramebuffer__deps: ['$tempFixedLengthArray'],
-  glInvalidateFramebuffer__sig: 'viii',
+  glInvalidateFramebuffer__sig: 'viip',
   glInvalidateFramebuffer: function(target, numAttachments, attachments) {
 #if GL_ASSERTIONS
     assert(numAttachments < tempFixedLengthArray.length, 'Invalid count of numAttachments=' + numAttachments + ' passed to glInvalidateFramebuffer (that many attachment points do not exist in GL)');
@@ -147,7 +147,7 @@ var LibraryWebGL2 = {
   },
 
   glInvalidateSubFramebuffer__deps: ['$tempFixedLengthArray'],
-  glInvalidateSubFramebuffer__sig: 'viiiiiii',
+  glInvalidateSubFramebuffer__sig: 'viipiiii',
   glInvalidateSubFramebuffer: function(target, numAttachments, attachments, x, y, width, height) {
 #if GL_ASSERTIONS
     assert(numAttachments < tempFixedLengthArray.length, 'Invalid count of numAttachments=' + numAttachments + ' passed to glInvalidateSubFramebuffer (that many attachment points do not exist in GL)');
@@ -160,7 +160,7 @@ var LibraryWebGL2 = {
     GLctx['invalidateSubFramebuffer'](target, list, x, y, width, height);
   },
 
-  glTexImage3D__sig: 'viiiiiiiiii',
+  glTexImage3D__sig: 'viiiiiiiiip',
   glTexImage3D__deps: ['$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'],
   glTexImage3D: function(target, level, internalFormat, width, height, depth, border, format, type, pixels) {
     if (GLctx.currentPixelUnpackBufferBinding) {
@@ -173,7 +173,7 @@ var LibraryWebGL2 = {
     }
   },
 
-  glTexSubImage3D__sig: 'viiiiiiiiiii',
+  glTexSubImage3D__sig: 'viiiiiiiiiip',
   glTexSubImage3D__deps: ['$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'],
   glTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels) {
     if (GLctx.currentPixelUnpackBufferBinding) {
@@ -187,7 +187,7 @@ var LibraryWebGL2 = {
   },
 
   // Queries
-  glGenQueries__sig: 'vii',
+  glGenQueries__sig: 'vip',
   glGenQueries__deps: ['$__glGenObject'],
   glGenQueries: function(n, ids) {
     __glGenObject(n, ids, 'createQuery', GL.queries
@@ -197,7 +197,7 @@ var LibraryWebGL2 = {
       );
   },
 
-  glDeleteQueries__sig: 'vii',
+  glDeleteQueries__sig: 'vip',
   glDeleteQueries: function(n, ids) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
@@ -223,7 +223,7 @@ var LibraryWebGL2 = {
     GLctx['beginQuery'](target, GL.queries[id]);
   },
 
-  glGetQueryiv__sig: 'viii',
+  glGetQueryiv__sig: 'viip',
   glGetQueryiv: function(target, pname, params) {
 #if GL_TRACK_ERRORS
     if (!params) {
@@ -239,7 +239,7 @@ var LibraryWebGL2 = {
     {{{ makeSetValue('params', '0', 'GLctx[\'getQuery\'](target, pname)', 'i32') }}};
   },
 
-  glGetQueryObjectuiv__sig: 'viii',
+  glGetQueryObjectuiv__sig: 'viip',
   glGetQueryObjectuiv: function(id, pname, params) {
 #if GL_TRACK_ERRORS
     if (!params) {
@@ -267,7 +267,7 @@ var LibraryWebGL2 = {
   },
 
   // Sampler objects
-  glGenSamplers__sig: 'vii',
+  glGenSamplers__sig: 'vip',
   glGenSamplers__deps: ['$__glGenObject'],
   glGenSamplers: function(n, samplers) {
     __glGenObject(n, samplers, 'createSampler', GL.samplers
@@ -277,7 +277,7 @@ var LibraryWebGL2 = {
       );
   },
 
-  glDeleteSamplers__sig: 'vii',
+  glDeleteSamplers__sig: 'vip',
   glDeleteSamplers: function(n, samplers) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('samplers', 'i*4', 'i32') }}};
@@ -320,7 +320,7 @@ var LibraryWebGL2 = {
     GLctx['samplerParameteri'](GL.samplers[sampler], pname, param);
   },
 
-  glSamplerParameterfv__sig: 'viii',
+  glSamplerParameterfv__sig: 'viip',
   glSamplerParameterfv: function(sampler, pname, params) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
@@ -329,7 +329,7 @@ var LibraryWebGL2 = {
     GLctx['samplerParameterf'](GL.samplers[sampler], pname, param);
   },
 
-  glSamplerParameteriv__sig: 'viii',
+  glSamplerParameteriv__sig: 'viip',
   glSamplerParameteriv: function(sampler, pname, params) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
@@ -338,7 +338,7 @@ var LibraryWebGL2 = {
     GLctx['samplerParameteri'](GL.samplers[sampler], pname, param);
   },
 
-  glGetSamplerParameterfv__sig: 'viii',
+  glGetSamplerParameterfv__sig: 'viip',
   glGetSamplerParameterfv: function(sampler, pname, params) {
 #if GL_TRACK_ERRORS
     if (!params) {
@@ -354,7 +354,7 @@ var LibraryWebGL2 = {
     {{{ makeSetValue('params', '0', 'GLctx[\'getSamplerParameter\'](GL.samplers[sampler], pname)', 'float') }}};
   },
 
-  glGetSamplerParameteriv__sig: 'viii',
+  glGetSamplerParameteriv__sig: 'viip',
   glGetSamplerParameteriv: function(sampler, pname, params) {
 #if GL_TRACK_ERRORS
     if (!params) {
@@ -371,7 +371,7 @@ var LibraryWebGL2 = {
   },
 
   // Transform Feedback
-  glGenTransformFeedbacks__sig: 'vii',
+  glGenTransformFeedbacks__sig: 'vip',
   glGenTransformFeedbacks__deps: ['$__glGenObject'],
   glGenTransformFeedbacks: function(n, ids) {
     __glGenObject(n, ids, 'createTransformFeedback', GL.transformFeedbacks
@@ -381,7 +381,7 @@ var LibraryWebGL2 = {
       );
   },
 
-  glDeleteTransformFeedbacks__sig: 'vii',
+  glDeleteTransformFeedbacks__sig: 'vip',
   glDeleteTransformFeedbacks: function(n, ids) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
@@ -406,7 +406,7 @@ var LibraryWebGL2 = {
     GLctx['bindTransformFeedback'](target, GL.transformFeedbacks[id]);
   },
 
-  glTransformFeedbackVaryings__sig: 'viiii',
+  glTransformFeedbackVaryings__sig: 'viipi',
   glTransformFeedbackVaryings: function(program, count, varyings, bufferMode) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glTransformFeedbackVaryings', 'program');
@@ -419,7 +419,7 @@ var LibraryWebGL2 = {
     GLctx['transformFeedbackVaryings'](program, vars, bufferMode);
   },
 
-  glGetTransformFeedbackVarying__sig: 'viiiiiii',
+  glGetTransformFeedbackVarying__sig: 'viiipppp',
   glGetTransformFeedbackVarying: function(program, index, bufSize, length, size, type, name) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetTransformFeedbackVarying', 'program');
@@ -503,13 +503,13 @@ var LibraryWebGL2 = {
     }
   },
 
-  glGetIntegeri_v__sig: 'viii',
+  glGetIntegeri_v__sig: 'viip',
   glGetIntegeri_v__deps: ['$emscriptenWebGLGetIndexed'],
   glGetIntegeri_v: function(target, index, data) {
     emscriptenWebGLGetIndexed(target, index, data, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}});
   },
 
-  glGetInteger64i_v__sig: 'viii',
+  glGetInteger64i_v__sig: 'viip',
   glGetInteger64i_v__deps: ['$emscriptenWebGLGetIndexed'],
   glGetInteger64i_v: function(target, index, data) {
     emscriptenWebGLGetIndexed(target, index, data, {{{ cDefs.EM_FUNC_SIG_PARAM_I64 }}});
@@ -524,7 +524,7 @@ var LibraryWebGL2 = {
     GLctx['bindBufferBase'](target, index, GL.buffers[buffer]);
   },
 
-  glBindBufferRange__sig: 'viiiii',
+  glBindBufferRange__sig: 'viiipp',
   glBindBufferRange: function(target, index, buffer, offset, ptrsize) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.buffers, buffer, 'glBindBufferRange', 'buffer');
@@ -532,7 +532,7 @@ var LibraryWebGL2 = {
     GLctx['bindBufferRange'](target, index, GL.buffers[buffer], offset, ptrsize);
   },
 
-  glGetUniformIndices__sig: 'viiii',
+  glGetUniformIndices__sig: 'viipp',
   glGetUniformIndices: function(program, uniformCount, uniformNames, uniformIndices) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetUniformIndices', 'program');
@@ -566,7 +566,7 @@ var LibraryWebGL2 = {
     }
   },
 
-  glGetActiveUniformsiv__sig: 'viiiii',
+  glGetActiveUniformsiv__sig: 'viipip',
   glGetActiveUniformsiv: function(program, uniformCount, uniformIndices, pname, params) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetActiveUniformsiv', 'program');
@@ -601,7 +601,7 @@ var LibraryWebGL2 = {
     }
   },
 
-  glGetUniformBlockIndex__sig: 'iii',
+  glGetUniformBlockIndex__sig: 'iip',
   glGetUniformBlockIndex: function(program, uniformBlockName) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetUniformBlockIndex', 'program');
@@ -609,7 +609,7 @@ var LibraryWebGL2 = {
     return GLctx['getUniformBlockIndex'](GL.programs[program], UTF8ToString(uniformBlockName));
   },
 
-  glGetActiveUniformBlockiv__sig: 'viiii',
+  glGetActiveUniformBlockiv__sig: 'viiip',
   glGetActiveUniformBlockiv: function(program, uniformBlockIndex, pname, params) {
 #if GL_TRACK_ERRORS
     if (!params) {
@@ -644,7 +644,7 @@ var LibraryWebGL2 = {
     }
   },
 
-  glGetActiveUniformBlockName__sig: 'viiiii',
+  glGetActiveUniformBlockName__sig: 'viiipp',
   glGetActiveUniformBlockName: function(program, uniformBlockIndex, bufSize, length, uniformBlockName) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetActiveUniformBlockName', 'program');
@@ -671,7 +671,7 @@ var LibraryWebGL2 = {
     GLctx['uniformBlockBinding'](program, uniformBlockIndex, uniformBlockBinding);
   },
 
-  glClearBufferiv__sig: 'viii',
+  glClearBufferiv__sig: 'viip',
   glClearBufferiv: function(buffer, drawbuffer, value) {
 #if GL_ASSERTIONS
     assert((value & 3) == 0, 'Pointer to integer data passed to glClearBufferiv must be aligned to four bytes!');
@@ -680,7 +680,7 @@ var LibraryWebGL2 = {
     GLctx['clearBufferiv'](buffer, drawbuffer, HEAP32, value>>2);
   },
 
-  glClearBufferuiv__sig: 'viii',
+  glClearBufferuiv__sig: 'viip',
   glClearBufferuiv: function(buffer, drawbuffer, value) {
 #if GL_ASSERTIONS
     assert((value & 3) == 0, 'Pointer to integer data passed to glClearBufferuiv must be aligned to four bytes!');
@@ -689,7 +689,7 @@ var LibraryWebGL2 = {
     GLctx['clearBufferuiv'](buffer, drawbuffer, HEAPU32, value>>2);
   },
 
-  glClearBufferfv__sig: 'viii',
+  glClearBufferfv__sig: 'viip',
   glClearBufferfv: function(buffer, drawbuffer, value) {
 #if GL_ASSERTIONS
     assert((value & 3) == 0, 'Pointer to float data passed to glClearBufferfv must be aligned to four bytes!');
@@ -698,7 +698,7 @@ var LibraryWebGL2 = {
     GLctx['clearBufferfv'](buffer, drawbuffer, HEAPF32, value>>2);
   },
 
-  glFenceSync__sig: 'iii',
+  glFenceSync__sig: 'pii',
   glFenceSync: function(condition, flags) {
     var sync = GLctx.fenceSync(condition, flags);
     if (sync) {
@@ -710,7 +710,7 @@ var LibraryWebGL2 = {
     return 0; // Failed to create a sync object
   },
 
-  glDeleteSync__sig: 'vi',
+  glDeleteSync__sig: 'vp',
   glDeleteSync: function(id) {
     if (!id) return;
     var sync = GL.syncs[id];
@@ -723,7 +723,7 @@ var LibraryWebGL2 = {
     GL.syncs[id] = null;
   },
 
-  glClientWaitSync__sig: 'iiij',
+  glClientWaitSync__sig: 'ipij',
 #if !WASM_BIGINT
   glClientWaitSync__deps: ['$convertI32PairToI53'],
 #endif
@@ -736,7 +736,7 @@ var LibraryWebGL2 = {
     return GLctx.clientWaitSync(GL.syncs[sync], flags, timeout);
   },
 
-  glWaitSync__sig: 'viij',
+  glWaitSync__sig: 'vpij',
 #if !WASM_BIGINT
   glWaitSync__deps: ['$convertI32PairToI53'],
 #endif
@@ -746,7 +746,7 @@ var LibraryWebGL2 = {
     GLctx.waitSync(GL.syncs[sync], flags, timeout);
   },
 
-  glGetSynciv__sig: 'viiiii',
+  glGetSynciv__sig: 'vpiipp',
   glGetSynciv: function(sync, pname, bufSize, length, values) {
 #if GL_TRACK_ERRORS
     if (bufSize < 0) {
@@ -775,18 +775,18 @@ var LibraryWebGL2 = {
     }
   },
 
-  glIsSync__sig: 'ii',
+  glIsSync__sig: 'ip',
   glIsSync: function(sync) {
     return GLctx.isSync(GL.syncs[sync]);
   },
 
-  glGetUniformuiv__sig: 'viii',
+  glGetUniformuiv__sig: 'viip',
   glGetUniformuiv__deps: ['$emscriptenWebGLGetUniform'],
   glGetUniformuiv: function(program, location, params) {
     emscriptenWebGLGetUniform(program, location, params, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}});
   },
 
-  glGetFragDataLocation__sig: 'iii',
+  glGetFragDataLocation__sig: 'iip',
   glGetFragDataLocation: function(program, name) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetFragDataLocation', 'program');
@@ -794,7 +794,7 @@ var LibraryWebGL2 = {
     return GLctx['getFragDataLocation'](GL.programs[program], UTF8ToString(name));
   },
 
-  glGetVertexAttribIiv__sig: 'viii',
+  glGetVertexAttribIiv__sig: 'viip',
   glGetVertexAttribIiv__deps: ['$emscriptenWebGLGetVertexAttrib'],
   glGetVertexAttribIiv: function(index, pname, params) {
     // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttribI4iv(),
@@ -804,7 +804,7 @@ var LibraryWebGL2 = {
 
   // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttribI4uiv(),
   // otherwise the results are undefined. (GLES3 spec 6.1.12)
-  glGetVertexAttribIuiv__sig: 'viii',
+  glGetVertexAttribIuiv__sig: 'viip',
   glGetVertexAttribIuiv__deps: ['$emscriptenWebGLGetVertexAttrib'],
   glGetVertexAttribIuiv: 'glGetVertexAttribIiv',
 
@@ -844,7 +844,7 @@ var LibraryWebGL2 = {
     GLctx.uniform4ui(webglGetUniformLocation(location), v0, v1, v2, v3);
   },
 
-  glUniform1uiv__sig: 'viii',
+  glUniform1uiv__sig: 'viip',
   glUniform1uiv__deps: ['$webglGetUniformLocation'],
   glUniform1uiv: function(location, count, value) {
 #if GL_ASSERTIONS
@@ -854,7 +854,7 @@ var LibraryWebGL2 = {
     count && GLctx.uniform1uiv(webglGetUniformLocation(location), HEAPU32, value>>2, count);
   },
 
-  glUniform2uiv__sig: 'viii',
+  glUniform2uiv__sig: 'viip',
   glUniform2uiv__deps: ['$webglGetUniformLocation'],
   glUniform2uiv: function(location, count, value) {
 #if GL_ASSERTIONS
@@ -864,7 +864,7 @@ var LibraryWebGL2 = {
     count && GLctx.uniform2uiv(webglGetUniformLocation(location), HEAPU32, value>>2, count*2);
   },
 
-  glUniform3uiv__sig: 'viii',
+  glUniform3uiv__sig: 'viip',
   glUniform3uiv__deps: ['$webglGetUniformLocation'],
   glUniform3uiv: function(location, count, value) {
 #if GL_ASSERTIONS
@@ -874,7 +874,7 @@ var LibraryWebGL2 = {
     count && GLctx.uniform3uiv(webglGetUniformLocation(location), HEAPU32, value>>2, count*3);
   },
 
-  glUniform4uiv__sig: 'viii',
+  glUniform4uiv__sig: 'viip',
   glUniform4uiv__deps: ['$webglGetUniformLocation'],
   glUniform4uiv: function(location, count, value) {
 #if GL_ASSERTIONS
@@ -884,7 +884,7 @@ var LibraryWebGL2 = {
     count && GLctx.uniform4uiv(webglGetUniformLocation(location), HEAPU32, value>>2, count*4);
   },
 
-  glUniformMatrix2x3fv__sig: 'viiii',
+  glUniformMatrix2x3fv__sig: 'viiip',
   glUniformMatrix2x3fv__deps: ['$webglGetUniformLocation'],
   glUniformMatrix2x3fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
@@ -894,7 +894,7 @@ var LibraryWebGL2 = {
     count && GLctx.uniformMatrix2x3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*6);
   },
 
-  glUniformMatrix3x2fv__sig: 'viiii',
+  glUniformMatrix3x2fv__sig: 'viiip',
   glUniformMatrix3x2fv__deps: ['$webglGetUniformLocation'],
   glUniformMatrix3x2fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
@@ -904,7 +904,7 @@ var LibraryWebGL2 = {
     count && GLctx.uniformMatrix3x2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*6);
   },
 
-  glUniformMatrix2x4fv__sig: 'viiii',
+  glUniformMatrix2x4fv__sig: 'viiip',
   glUniformMatrix2x4fv__deps: ['$webglGetUniformLocation'],
   glUniformMatrix2x4fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
@@ -914,7 +914,7 @@ var LibraryWebGL2 = {
     count && GLctx.uniformMatrix2x4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*8);
   },
 
-  glUniformMatrix4x2fv__sig: 'viiii',
+  glUniformMatrix4x2fv__sig: 'viiip',
   glUniformMatrix4x2fv__deps: ['$webglGetUniformLocation'],
   glUniformMatrix4x2fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
@@ -924,7 +924,7 @@ var LibraryWebGL2 = {
     count && GLctx.uniformMatrix4x2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*8);
   },
 
-  glUniformMatrix3x4fv__sig: 'viiii',
+  glUniformMatrix3x4fv__sig: 'viiip',
   glUniformMatrix3x4fv__deps: ['$webglGetUniformLocation'],
   glUniformMatrix3x4fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
@@ -934,7 +934,7 @@ var LibraryWebGL2 = {
     count && GLctx.uniformMatrix3x4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*12);
   },
 
-  glUniformMatrix4x3fv__sig: 'viiii',
+  glUniformMatrix4x3fv__sig: 'viiip',
   glUniformMatrix4x3fv__deps: ['$webglGetUniformLocation'],
   glUniformMatrix4x3fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
@@ -944,7 +944,7 @@ var LibraryWebGL2 = {
     count && GLctx.uniformMatrix4x3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*12);
   },
 
-  glVertexAttribI4iv__sig: 'vii',
+  glVertexAttribI4iv__sig: 'vip',
   glVertexAttribI4iv: function(index, v) {
 #if GL_ASSERTIONS
     assert((v & 3) == 0, 'Pointer to integer data passed to glVertexAttribI4iv must be aligned to four bytes!');
@@ -953,7 +953,7 @@ var LibraryWebGL2 = {
     GLctx.vertexAttribI4i(index, HEAP32[v>>2], HEAP32[v+4>>2], HEAP32[v+8>>2], HEAP32[v+12>>2]);
   },
 
-  glVertexAttribI4uiv__sig: 'vii',
+  glVertexAttribI4uiv__sig: 'vip',
   glVertexAttribI4uiv: function(index, v) {
 #if GL_ASSERTIONS
     assert((v & 3) == 0, 'Pointer to integer data passed to glVertexAttribI4uiv must be aligned to four bytes!');
@@ -970,7 +970,7 @@ var LibraryWebGL2 = {
 #endif
   },
 
-  glGetProgramBinary__sig: 'viiiii',
+  glGetProgramBinary__sig: 'viippp',
   glGetProgramBinary: function(program, bufSize, length, binaryFormat, binary) {
     GL.recordError(0x502/*GL_INVALID_OPERATION*/);
 #if GL_ASSERTIONS
@@ -978,7 +978,7 @@ var LibraryWebGL2 = {
 #endif
   },
 
-  glProgramBinary__sig: 'viiii',
+  glProgramBinary__sig: 'viipi',
   glProgramBinary: function(program, binaryFormat, binary, length) {
     GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
@@ -994,7 +994,7 @@ var LibraryWebGL2 = {
     GLctx.framebufferTextureLayer(target, attachment, GL.textures[texture], level, layer);
   },
 
-  glVertexAttribIPointer__sig: 'viiiii',
+  glVertexAttribIPointer__sig: 'viiiip',
   glVertexAttribIPointer: function(index, size, type, stride, ptr) {
 #if FULL_ES3
     var cb = GL.currentContext.clientBuffers[index];
@@ -1021,7 +1021,9 @@ var LibraryWebGL2 = {
     GLctx['vertexAttribIPointer'](index, size, type, stride, ptr);
   },
 
-  glDrawRangeElements__sig: 'viiiiii',
+#if !LEGACY_GL_EMULATION
+  // Defined in library_glemu.js when LEGACY_GL_EMULATION is set
+  glDrawRangeElements__sig: 'viiiiip',
   glDrawRangeElements__deps: ['glDrawElements'],
   glDrawRangeElements: function(mode, start, end, count, type, indices) {
     // TODO: This should be a trivial pass-though function registered at the bottom of this page as
@@ -1030,6 +1032,7 @@ var LibraryWebGL2 = {
     // we work around by ignoring the range.
     _glDrawElements(mode, count, type, indices);
   },
+#endif
 
   glDrawArraysInstancedBaseInstanceWEBGL__sig: 'viiiii',
   glDrawArraysInstancedBaseInstanceWEBGL: function(mode, first, count, instanceCount, baseInstance) {
@@ -1101,7 +1104,7 @@ var LibraryWebGL2 = {
 
   glVertexAttribI4i__sig: 'viiiii',
   glVertexAttribI4ui__sig: 'viiiii',
-  glCopyBufferSubData__sig: 'viiiii',
+  glCopyBufferSubData__sig: 'viippp',
   glTexStorage2D__sig: 'viiiii',
   glTexStorage3D__sig: 'viiiiii',
   glBeginTransformFeedback__sig: 'vi',

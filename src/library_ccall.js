@@ -15,7 +15,7 @@ mergeInto(LibraryManager.library, {
   },
 
   // C calling interface.
-  $ccall__deps: ['$getCFunc', '$writeArrayToMemory', '$allocateUTF8OnStack'],
+  $ccall__deps: ['$getCFunc', '$writeArrayToMemory', '$stringToUTF8OnStack'],
   $ccall__docs: `
   /**
    * @param {string|null=} returnType
@@ -33,7 +33,7 @@ mergeInto(LibraryManager.library, {
         var ret = 0;
         if (str !== null && str !== undefined && str !== 0) { // null string
           // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
-          ret = allocateUTF8OnStack(str);
+          ret = stringToUTF8OnStack(str);
         }
         return {{{ to64('ret') }}};
       },

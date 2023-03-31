@@ -2459,7 +2459,7 @@ var LibraryHTML5 = {
   },
 #endif
 
-  $setCanvasElementSize__deps: ['emscripten_set_canvas_element_size', '$withStackSave', '$allocateUTF8OnStack'],
+  $setCanvasElementSize__deps: ['emscripten_set_canvas_element_size', '$withStackSave', '$stringToUTF8OnStack'],
   $setCanvasElementSize: function(target, width, height) {
 #if GL_DEBUG
     dbg('setCanvasElementSize(target='+target+',width='+width+',height='+height);
@@ -2471,7 +2471,7 @@ var LibraryHTML5 = {
       // This function is being called from high-level JavaScript code instead of asm.js/Wasm,
       // and it needs to synchronously proxy over to another thread, so marshal the string onto the heap to do the call.
       withStackSave(function() {
-        var targetInt = allocateUTF8OnStack(target.id);
+        var targetInt = stringToUTF8OnStack(target.id);
         _emscripten_set_canvas_element_size(targetInt, width, height);
       });
     }
@@ -2533,13 +2533,13 @@ var LibraryHTML5 = {
 #endif
 
   // JavaScript-friendly API, returns pair [width, height]
-  $getCanvasElementSize__deps: ['emscripten_get_canvas_element_size', '$withStackSave', '$allocateUTF8OnStack'],
+  $getCanvasElementSize__deps: ['emscripten_get_canvas_element_size', '$withStackSave', '$stringToUTF8OnStack'],
   $getCanvasElementSize: function(target) {
     return withStackSave(function() {
       var w = stackAlloc(8);
       var h = w + 4;
 
-      var targetInt = allocateUTF8OnStack(target.id);
+      var targetInt = stringToUTF8OnStack(target.id);
       var ret = _emscripten_get_canvas_element_size(targetInt, w, h);
       var size = [{{{ makeGetValue('w', 0, 'i32')}}}, {{{ makeGetValue('h', 0, 'i32')}}}];
       return size;

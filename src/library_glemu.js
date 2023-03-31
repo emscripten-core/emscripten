@@ -3434,7 +3434,7 @@ var LibraryGLEmulation = {
   // Additional non-GLES rendering calls
 
   glDrawRangeElements__deps: ['glDrawElements'],
-  glDrawRangeElements__sig: 'viiiiii',
+  glDrawRangeElements__sig: 'viiiiip',
   glDrawRangeElements: function(mode, start, end, count, type, indices) {
     _glDrawElements(mode, count, type, indices, start, end);
   },

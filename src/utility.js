@@ -182,6 +182,7 @@ function isJsLibraryConfigIdentifier(ident) {
     '__noleakcheck',
     '__internal',
     '__user',
+    '__async',
   ];
   return suffixes.some((suffix) => ident.endsWith(suffix));
 }
