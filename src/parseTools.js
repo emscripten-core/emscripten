@@ -495,10 +495,12 @@ function makeThrow(excPtr) {
     }
     return `assert(false, '${assertInfo}');`;
   }
-  if (EXCEPTION_STACK_TRACES) {
-    return `throw new CppException(${excPtr});`;
-  }
   return `throw ${excPtr};`;
+}
+
+function storeException(varName, excPtr) {
+  var exceptionToStore = EXCEPTION_STACK_TRACES ? `new CppException(${excPtr})` : `${excPtr}`;
+  return `${varName} = ${exceptionToStore};`;
 }
 
 function charCode(char) {

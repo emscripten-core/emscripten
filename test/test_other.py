@@ -8296,7 +8296,9 @@ int main() {
         throw std::runtime_error("my message");
       }
       void foo() {
-        bar();
+        try {
+          bar();
+        } catch (const std::invalid_argument &err) {}
       }
       int main() {
         foo();
