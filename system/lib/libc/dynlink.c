@@ -179,21 +179,6 @@ static struct dso* load_library_start(const char* name, int flags) {
 // the module.
 #define ABORT_ON_SYNC_FAILURE 1
 
-// These functions are defined in JS.
-
-// Synchronous version of "dlsync_threads".  Called only on the main thread.
-// Runs _emscripten_dlsync_self on each of the threads that are running at
-// the time of the call.
-void _emscripten_dlsync_threads();
-
-// Asynchronous version of "dlsync_threads".  Called only on the main thread.
-// Runs _emscripten_dlsync_self on each of the threads that are running at
-// the time of the call.  Once this is done the callback is called with the
-// given em_proxying_ctx.
-void _emscripten_dlsync_threads_async(pthread_t calling_thread,
-                                      void (*callback)(em_proxying_ctx*),
-                                      em_proxying_ctx* ctx);
-
 static void dlsync_next(struct dlevent* dlevent, em_promise_t promise);
 
 static void sync_one_onsuccess(struct dso* dso, void* user_data) {

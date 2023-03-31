@@ -562,7 +562,6 @@ var LibraryPThread = {
     worker.pthread_ptr = 0;
   },
 
-  __emscripten_thread_cleanup__sig: 'vp',
   __emscripten_thread_cleanup: function(thread) {
     // Called when a thread needs to be cleaned up so it can be reused.
     // A thread is considered reusable when it either returns from its
@@ -735,7 +734,6 @@ var LibraryPThread = {
   // allocations from __pthread_create_js we could also remove this.
   __pthread_create_js__noleakcheck: true,
 #endif
-  __pthread_create_js__sig: 'ipppp',
   __pthread_create_js__deps: ['$spawnThread', 'pthread_self', '$pthreadCreateProxied',
 #if OFFSCREENCANVAS_SUPPORT
     'malloc',
@@ -947,9 +945,9 @@ var LibraryPThread = {
     _exit(returnCode);
   },
 
-  emscripten_proxy_to_main_thread_js__deps: ['$withStackSave', '_emscripten_run_in_main_runtime_thread_js'],
-  emscripten_proxy_to_main_thread_js__docs: '/** @type{function(number, (number|boolean), ...(number|boolean))} */',
-  emscripten_proxy_to_main_thread_js: function(index, sync) {
+  $proxyToMainThread__deps: ['$withStackSave', '_emscripten_run_in_main_runtime_thread_js'],
+  $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...(number|boolean))} */',
+  $proxyToMainThread: function(index, sync) {
     // Additional arguments are passed after those two, which are the actual
     // function arguments.
     // The serialization buffer contains the number of call params, and then
@@ -960,7 +958,7 @@ var LibraryPThread = {
 #if ASSERTIONS
     var maxArgs = {{{ cDefs.EM_QUEUED_JS_CALL_MAX_ARGS - 1 }}};
     if (numCallArgs > maxArgs) {
-      throw 'emscripten_proxy_to_main_thread_js: Too many arguments ' + numCallArgs + ' to proxied function idx=' + index + ', maximum supported is ' + maxArgs;
+      throw 'proxyToMainThread: Too many arguments ' + numCallArgs + ' to proxied function idx=' + index + ', maximum supported is ' + maxArgs;
     }
 #endif
     // Allocate a buffer, which will be copied by the C code.
@@ -994,29 +992,28 @@ var LibraryPThread = {
     });
   },
 
-  emscripten_receive_on_main_thread_js_callArgs: '=[]',
+  $emscripten_receive_on_main_thread_js_callArgs: '=[]',
 
-  emscripten_receive_on_main_thread_js__sig: 'diip',
   emscripten_receive_on_main_thread_js__deps: [
-    'emscripten_proxy_to_main_thread_js',
-    'emscripten_receive_on_main_thread_js_callArgs'],
+    '$proxyToMainThread',
+    '$emscripten_receive_on_main_thread_js_callArgs'],
   emscripten_receive_on_main_thread_js: function(index, numCallArgs, args) {
 #if WASM_BIGINT
     numCallArgs /= 2;
 #endif
-    _emscripten_receive_on_main_thread_js_callArgs.length = numCallArgs;
+    emscripten_receive_on_main_thread_js_callArgs.length = numCallArgs;
     var b = args >> 3;
     for (var i = 0; i < numCallArgs; i++) {
 #if WASM_BIGINT
       if (HEAP64[b + 2*i]) {
         // It's a BigInt.
-        _emscripten_receive_on_main_thread_js_callArgs[i] = HEAP64[b + 2*i + 1];
+        emscripten_receive_on_main_thread_js_callArgs[i] = HEAP64[b + 2*i + 1];
       } else {
         // It's a Number.
-        _emscripten_receive_on_main_thread_js_callArgs[i] = HEAPF64[b + 2*i + 1];
+        emscripten_receive_on_main_thread_js_callArgs[i] = HEAPF64[b + 2*i + 1];
       }
 #else
-      _emscripten_receive_on_main_thread_js_callArgs[i] = HEAPF64[b + i];
+      emscripten_receive_on_main_thread_js_callArgs[i] = HEAPF64[b + i];
 #endif
     }
     // Proxied JS library funcs are encoded as positive values, and
@@ -1030,7 +1027,7 @@ var LibraryPThread = {
 #if ASSERTIONS
     assert(func.length == numCallArgs, 'Call args mismatch in emscripten_receive_on_main_thread_js');
 #endif
-    return func.apply(null, _emscripten_receive_on_main_thread_js_callArgs);
+    return func.apply(null, emscripten_receive_on_main_thread_js_callArgs);
   },
 
   // TODO(sbc): Do we really need this to be dynamically settable from JS like this?
@@ -1126,7 +1123,6 @@ var LibraryPThread = {
   },
 
 #if MAIN_MODULE
-  _emscripten_thread_exit_joinable__sig: 'vp',
   _emscripten_thread_exit_joinable: function(thread) {
     // Called when a thread exits and is joinable.  We mark these threads
     // as finished, which means that are in state where are no longer actually
@@ -1152,7 +1148,6 @@ var LibraryPThread = {
   // TODO(sbc): Should we make a new form of __proxy attribute for JS library
   // function that run asynchronously like but blocks the caller until they are
   // done.  Perhaps "sync_with_ctx"?
-  _emscripten_dlsync_threads_async__sig: 'vppp',
   _emscripten_dlsync_threads_async__deps: ['_emscripten_proxy_dlsync_async', 'emscripten_promise_create', '$getPromise'],
   _emscripten_dlsync_threads_async: function(caller, callback, ctx) {
 #if PTHREADS_DEBUG
@@ -1234,7 +1229,6 @@ var LibraryPThread = {
   },
 
   _emscripten_thread_mailbox_await__deps: ['$checkMailbox'],
-  _emscripten_thread_mailbox_await__sig: 'vp',
   _emscripten_thread_mailbox_await: function(pthread_ptr) {
     if (typeof Atomics.waitAsync === 'function') {
       // TODO: How to make this work with wasm64?
@@ -1249,7 +1243,6 @@ var LibraryPThread = {
   },
 
   _emscripten_notify_mailbox_postmessage__deps: ['$checkMailbox'],
-  _emscripten_notify_mailbox_postmessage__sig: 'vppp',
   _emscripten_notify_mailbox_postmessage: function(targetThreadId,
                                                    currThreadId,
                                                    mainThreadId) {
