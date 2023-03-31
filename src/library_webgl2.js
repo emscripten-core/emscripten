@@ -1021,6 +1021,8 @@ var LibraryWebGL2 = {
     GLctx['vertexAttribIPointer'](index, size, type, stride, ptr);
   },
 
+#if !LEGACY_GL_EMULATION
+  // Defined in library_glemu.js when LEGACY_GL_EMULATION is set
   glDrawRangeElements__sig: 'viiiiii',
   glDrawRangeElements__deps: ['glDrawElements'],
   glDrawRangeElements: function(mode, start, end, count, type, indices) {
@@ -1030,6 +1032,7 @@ var LibraryWebGL2 = {
     // we work around by ignoring the range.
     _glDrawElements(mode, count, type, indices);
   },
+#endif
 
   glDrawArraysInstancedBaseInstanceWEBGL__sig: 'viiiii',
   glDrawArraysInstancedBaseInstanceWEBGL: function(mode, first, count, instanceCount, baseInstance) {
