@@ -251,7 +251,7 @@ extern hidden unsigned __default_guardsize;
 
 #ifdef __EMSCRIPTEN__
 // Keep in sync with DEFAULT_PTHREAD_STACK_SIZE in settings.js
-#define DEFAULT_STACK_SIZE (2*1024*1024)
+#define DEFAULT_STACK_SIZE (64*1024)
 #else
 #define DEFAULT_STACK_SIZE 131072
 #endif
