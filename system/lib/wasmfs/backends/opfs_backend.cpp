@@ -456,7 +456,7 @@ public:
 
   std::shared_ptr<Directory> createDirectory(mode_t mode) override {
     proxy([](auto ctx) { _wasmfs_opfs_init_root_directory(ctx.ctx); });
-    return std::make_shared<OPFSDirectory>(mode, this, 0, proxy);
+    return std::make_shared<OPFSDirectory>(mode, this, 1, proxy);
   }
 
   std::shared_ptr<Symlink> createSymlink(std::string target) override {

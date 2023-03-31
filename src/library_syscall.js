@@ -124,7 +124,6 @@ var SyscallsLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
-  _mmap_js__sig: 'ipiiippp',
   _mmap_js__deps: ['$SYSCALLS',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
@@ -151,7 +150,6 @@ var SyscallsLibrary = {
     '$FS',
 #endif
   ],
-  _munmap_js__sig: 'ippiiip',
   _munmap_js: function(addr, len, prot, flags, fd, offset) {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
@@ -163,31 +161,26 @@ var SyscallsLibrary = {
 #endif
   },
 
-  __syscall_chdir__sig: 'ip',
   __syscall_chdir: function(path) {
     path = SYSCALLS.getStr(path);
     FS.chdir(path);
     return 0;
   },
-  __syscall_chmod__sig: 'ipi',
   __syscall_chmod: function(path, mode) {
     path = SYSCALLS.getStr(path);
     FS.chmod(path, mode);
     return 0;
   },
-  __syscall_rmdir__sig: 'ip',
   __syscall_rmdir: function(path) {
     path = SYSCALLS.getStr(path);
     FS.rmdir(path);
     return 0;
   },
-  __syscall_dup__sig: 'ii',
   __syscall_dup: function(fd) {
     var old = SYSCALLS.getStreamFromFD(fd);
     return FS.createStream(old, 0).fd;
   },
   __syscall_pipe__deps: ['$PIPEFS'],
-  __syscall_pipe__sig: 'ip',
   __syscall_pipe: function(fdPtr) {
     if (fdPtr == 0) {
       throw new FS.ErrnoError({{{ cDefs.EFAULT }}});
@@ -200,7 +193,6 @@ var SyscallsLibrary = {
 
     return 0;
   },
-  __syscall_ioctl__sig: 'iiip',
   __syscall_ioctl: function(fd, op, varargs) {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
 #if SYSCALL_DEBUG
@@ -258,7 +250,6 @@ var SyscallsLibrary = {
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
-  __syscall_symlink__sig: 'ipp',
   __syscall_symlink: function(target, linkpath) {
     target = SYSCALLS.getStr(target);
     linkpath = SYSCALLS.getStr(linkpath);
@@ -305,7 +296,7 @@ var SyscallsLibrary = {
     return sock.stream.fd;
   },
   __syscall_getsockname__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
-  __syscall_getsockname: function(fd, addr, addrlen) {
+  __syscall_getsockname: function(fd, addr, addrlen, d1, d2, d3) {
     err("__syscall_getsockname " + fd);
     var sock = getSocketFromFD(fd);
     // TODO: sock.saddr should never be undefined, see TODO in websocket_sock_ops.getname
@@ -316,7 +307,7 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_getpeername__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
-  __syscall_getpeername: function(fd, addr, addrlen) {
+  __syscall_getpeername: function(fd, addr, addrlen, d1, d2, d3) {
     var sock = getSocketFromFD(fd);
     if (!sock.daddr) {
       return -{{{ cDefs.ENOTCONN }}}; // The socket is not connected.
@@ -328,7 +319,6 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_connect__deps: ['$getSocketFromFD', '$getSocketAddress'],
-  __syscall_connect__sig: 'iippiii',
   __syscall_connect: function(fd, addr, addrlen, d1, d2, d3) {
     var sock = getSocketFromFD(fd);
     var info = getSocketAddress(addr, addrlen);
@@ -341,7 +331,7 @@ var SyscallsLibrary = {
     return -{{{ cDefs.ENOSYS }}}; // unsupported feature
   },
   __syscall_accept4__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
-  __syscall_accept4: function(fd, addr, addrlen, flags) {
+  __syscall_accept4: function(fd, addr, addrlen, flags, d1, d2) {
     var sock = getSocketFromFD(fd);
     var newsock = sock.sock_ops.accept(sock);
     if (addr) {
@@ -353,7 +343,6 @@ var SyscallsLibrary = {
     return newsock.stream.fd;
   },
   __syscall_bind__deps: ['$getSocketFromFD', '$getSocketAddress'],
-  __syscall_bind__sig: 'iippiii',
   __syscall_bind: function(fd, addr, addrlen, d1, d2, d3) {
     var sock = getSocketFromFD(fd);
     var info = getSocketAddress(addr, addrlen);
@@ -381,7 +370,6 @@ var SyscallsLibrary = {
     return msg.buffer.byteLength;
   },
   __syscall_sendto__deps: ['$getSocketFromFD', '$getSocketAddress'],
-  __syscall_sendto__sig: 'iippipp',
   __syscall_sendto: function(fd, message, length, flags, addr, addr_len) {
     var sock = getSocketFromFD(fd);
     var dest = getSocketAddress(addr, addr_len, true);
@@ -393,7 +381,7 @@ var SyscallsLibrary = {
     return sock.sock_ops.sendmsg(sock, {{{ heapAndOffset('HEAP8', 'message') }}}, length, dest.addr, dest.port);
   },
   __syscall_getsockopt__deps: ['$getSocketFromFD'],
-  __syscall_getsockopt: function(fd, level, optname, optval, optlen) {
+  __syscall_getsockopt: function(fd, level, optname, optval, optlen, d1) {
     var sock = getSocketFromFD(fd);
     // Minimal getsockopt aimed at resolving https://github.com/emscripten-core/emscripten/issues/2211
     // so only supports SOL_SOCKET with SO_ERROR.
@@ -408,7 +396,7 @@ var SyscallsLibrary = {
     return -{{{ cDefs.ENOPROTOOPT }}}; // The option is unknown at the level indicated.
   },
   __syscall_sendmsg__deps: ['$getSocketFromFD', '$readSockaddr', '$DNS'],
-  __syscall_sendmsg: function(fd, message, flags) {
+  __syscall_sendmsg: function(fd, message, flags, d1, d2, d3) {
     var sock = getSocketFromFD(fd);
     var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
     var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};
@@ -440,7 +428,7 @@ var SyscallsLibrary = {
     return sock.sock_ops.sendmsg(sock, view, 0, total, addr, port);
   },
   __syscall_recvmsg__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
-  __syscall_recvmsg: function(fd, message, flags) {
+  __syscall_recvmsg: function(fd, message, flags, d1, d2, d3) {
     var sock = getSocketFromFD(fd);
     var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, POINTER_TYPE) }}};
     var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};
@@ -582,7 +570,6 @@ var SyscallsLibrary = {
 
     return total;
   },
-  _msync_js__sig: 'ippiiip',
   _msync_js: function(addr, len, prot, flags, fd, offset) {
     SYSCALLS.doMsync(addr, SYSCALLS.getStreamFromFD(fd), len, flags, 0);
     return 0;
@@ -591,7 +578,6 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
   },
-  __syscall_poll__sig: 'ipii',
   __syscall_poll: function(fds, nfds, timeout) {
     var nonzero = 0;
     for (var i = 0; i < nfds; i++) {
@@ -612,7 +598,6 @@ var SyscallsLibrary = {
     }
     return nonzero;
   },
-  __syscall_getcwd__sig: 'ipp',
   __syscall_getcwd: function(buf, size) {
     if (size === 0) return -{{{ cDefs.EINVAL }}};
     var cwd = FS.cwd();
@@ -621,7 +606,6 @@ var SyscallsLibrary = {
     stringToUTF8(cwd, buf, size);
     return cwdLengthInBytes;
   },
-  __syscall_truncate64__sig: 'ipj',
   __syscall_truncate64__deps: i53ConversionDeps,
   __syscall_truncate64: function(path, {{{ defineI64Param('length') }}}) {
     {{{ receiveI64ParamAsI53('length', -cDefs.EOVERFLOW) }}}
@@ -629,24 +613,20 @@ var SyscallsLibrary = {
     FS.truncate(path, length);
     return 0;
   },
-  __syscall_ftruncate64__sig: 'iij',
   __syscall_ftruncate64__deps: i53ConversionDeps,
   __syscall_ftruncate64: function(fd, {{{ defineI64Param('length') }}}) {
     {{{ receiveI64ParamAsI53('length', -cDefs.EOVERFLOW) }}}
     FS.ftruncate(fd, length);
     return 0;
   },
-  __syscall_stat64__sig: 'ipp',
   __syscall_stat64: function(path, buf) {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doStat(FS.stat, path, buf);
   },
-  __syscall_lstat64__sig: 'ipp',
   __syscall_lstat64: function(path, buf) {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doStat(FS.lstat, path, buf);
   },
-  __syscall_fstat64__sig: 'iip',
   __syscall_fstat64: function(fd, buf) {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return SYSCALLS.doStat(FS.stat, stream.path, buf);
@@ -655,7 +635,6 @@ var SyscallsLibrary = {
     FS.fchown(fd, owner, group);
     return 0;
   },
-  __syscall_getdents64__sig: 'iipp',
   __syscall_getdents64: function(fd, dirp, count) {
     var stream = SYSCALLS.getStreamFromFD(fd)
     if (!stream.getdents) {
@@ -704,7 +683,6 @@ var SyscallsLibrary = {
     return pos;
   },
   __syscall_fcntl64__deps: ['$setErrNo'],
-  __syscall_fcntl64__sig: 'iiip',
   __syscall_fcntl64: function(fd, cmd, varargs) {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
 #if SYSCALL_DEBUG
@@ -766,7 +744,6 @@ var SyscallsLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
-  __syscall_statfs64__sig: 'ippp',
   __syscall_statfs64: function(path, size, buf) {
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
@@ -796,14 +773,12 @@ var SyscallsLibrary = {
   __syscall_fadvise64: function(fd, offset, len, advice) {
     return 0; // your advice is important to us (but we can't use it)
   },
-  __syscall_openat__sig: 'iipip',
   __syscall_openat: function(dirfd, path, flags, varargs) {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
     var mode = varargs ? SYSCALLS.get() : 0;
     return FS.open(path, flags, mode).fd;
   },
-  __syscall_mkdirat__sig: 'iipi',
   __syscall_mkdirat: function(dirfd, path, mode) {
 #if SYSCALL_DEBUG
     dbg('warning: untested syscall');
@@ -817,7 +792,6 @@ var SyscallsLibrary = {
     FS.mkdir(path, mode, 0);
     return 0;
   },
-  __syscall_mknodat__sig: 'iipii',
   __syscall_mknodat: function(dirfd, path, mode, dev) {
 #if SYSCALL_DEBUG
     dbg('warning: untested syscall');
@@ -837,7 +811,6 @@ var SyscallsLibrary = {
     FS.mknod(path, mode, dev);
     return 0;
   },
-  __syscall_fchownat__sig: 'iipiii',
   __syscall_fchownat: function(dirfd, path, owner, group, flags) {
 #if SYSCALL_DEBUG
     dbg('warning: untested syscall');
@@ -852,7 +825,6 @@ var SyscallsLibrary = {
     (nofollow ? FS.lchown : FS.chown)(path, owner, group);
     return 0;
   },
-  __syscall_newfstatat__sig: 'iippi',
   __syscall_newfstatat: function(dirfd, path, buf, flags) {
     path = SYSCALLS.getStr(path);
     var nofollow = flags & {{{ cDefs.AT_SYMLINK_NOFOLLOW }}};
@@ -864,7 +836,6 @@ var SyscallsLibrary = {
     path = SYSCALLS.calculateAt(dirfd, path, allowEmpty);
     return SYSCALLS.doStat(nofollow ? FS.lstat : FS.stat, path, buf);
   },
-  __syscall_unlinkat__sig: 'iipi',
   __syscall_unlinkat: function(dirfd, path, flags) {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
@@ -877,7 +848,6 @@ var SyscallsLibrary = {
     }
     return 0;
   },
-  __syscall_renameat__sig: 'iipip',
   __syscall_renameat: function(olddirfd, oldpath, newdirfd, newpath) {
     oldpath = SYSCALLS.getStr(oldpath);
     newpath = SYSCALLS.getStr(newpath);
@@ -899,7 +869,6 @@ var SyscallsLibrary = {
     FS.symlink(target, linkpath);
     return 0;
   },
-  __syscall_readlinkat__sig: 'iippp',
   __syscall_readlinkat: function(dirfd, path, buf, bufsize) {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
@@ -914,7 +883,6 @@ var SyscallsLibrary = {
     HEAP8[buf+len] = endChar;
     return len;
   },
-  __syscall_fchmodat__sig: 'iipip',
   __syscall_fchmodat: function(dirfd, path, mode, varargs) {
 #if SYSCALL_DEBUG
     dbg('warning: untested syscall');
@@ -924,7 +892,6 @@ var SyscallsLibrary = {
     FS.chmod(path, mode);
     return 0;
   },
-  __syscall_faccessat__sig: 'iipii',
   __syscall_faccessat: function(dirfd, path, amode, flags) {
 #if SYSCALL_DEBUG
     dbg('warning: untested syscall');
@@ -952,7 +919,6 @@ var SyscallsLibrary = {
     }
     return 0;
   },
-  __syscall_utimensat__sig: 'iippi',
   __syscall_utimensat__deps: ['$readI53FromI64'],
   __syscall_utimensat: function(dirfd, path, times, flags) {
     path = SYSCALLS.getStr(path);

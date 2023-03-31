@@ -16,8 +16,8 @@ mergeInto(LibraryManager.library, {
 
   _wasmfs_opfs_init_root_directory__deps: ['$wasmfsOPFSDirectoryHandles'],
   _wasmfs_opfs_init_root_directory: async function(ctx) {
-    if (wasmfsOPFSDirectoryHandles.allocated.length == 0) {
-      // Directory 0 is reserved as the root
+    // allocated.length starts off as 1 since 0 is a reserved handle
+    if (wasmfsOPFSDirectoryHandles.allocated.length == 1) {
       let root = await navigator.storage.getDirectory();
       wasmfsOPFSDirectoryHandles.allocated.push(root);
     }
@@ -100,7 +100,7 @@ mergeInto(LibraryManager.library, {
       for (let entry; entry = await iter.next(), !entry.done;) {
         let [name, child] = entry.value;
         withStackSave(() => {
-          let namePtr = allocateUTF8OnStack(name);
+          let namePtr = stringToUTF8OnStack(name);
           let type = child.kind == "file" ?
               {{{ cDefine('File::DataFileKind') }}} :
           {{{ cDefine('File::DirectoryKind') }}};

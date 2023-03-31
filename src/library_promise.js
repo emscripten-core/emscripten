@@ -28,13 +28,11 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_promise_create__deps: ['$makePromise'],
-  emscripten_promise_create__sig: 'p',
   emscripten_promise_create: function() {
     return makePromise().id;
   },
 
   emscripten_promise_destroy__deps: ['$promiseMap'],
-  emscripten_promise_destroy__sig: 'vp',
   emscripten_promise_destroy: function(id) {
 #if RUNTIME_DEBUG
     dbg('emscripten_promise_destroy: ' + id);
@@ -45,7 +43,6 @@ mergeInto(LibraryManager.library, {
   emscripten_promise_resolve__deps: ['$promiseMap',
                                      '$getPromise',
                                      'emscripten_promise_destroy'],
-  emscripten_promise_resolve__sig: 'vpip',
   emscripten_promise_resolve: function(id, result, value) {
 #if RUNTIME_DEBUG
     dbg('emscripten_promise_resolve: ' + id);
@@ -130,7 +127,6 @@ mergeInto(LibraryManager.library, {
   emscripten_promise_then__deps: ['$promiseMap',
                                   '$getPromise',
                                   '$makePromiseCallback'],
-  emscripten_promise_then__sig: 'ppppp',
   emscripten_promise_then: function(id,
                                     onFulfilled,
                                     onRejected,
@@ -151,7 +147,6 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_promise_all__deps: ['$promiseMap', '$getPromise'],
-  emscripten_promise_all__sig: 'pppp',
   emscripten_promise_all: function(idBuf, resultBuf, size) {
     var promises = [];
     for (var i = 0; i < size; i++) {

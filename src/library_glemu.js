@@ -3434,7 +3434,6 @@ var LibraryGLEmulation = {
   // Additional non-GLES rendering calls
 
   glDrawRangeElements__deps: ['glDrawElements'],
-  glDrawRangeElements__sig: 'viiiiii',
   glDrawRangeElements: function(mode, start, end, count, type, indices) {
     _glDrawElements(mode, count, type, indices, start, end);
   },
@@ -3881,16 +3880,16 @@ var LibraryGLEmulation = {
 
   // Open GLES1.1 compatibility
 
-  glGenFramebuffersOES : 'glGenFramebuffers',
-  glGenRenderbuffersOES : 'glGenRenderbuffers',
-  glBindFramebufferOES : 'glBindFramebuffer',
-  glBindRenderbufferOES : 'glBindRenderbuffer',
-  glGetRenderbufferParameterivOES : 'glGetRenderbufferParameteriv',
-  glFramebufferRenderbufferOES : 'glFramebufferRenderbuffer',
-  glRenderbufferStorageOES : 'glRenderbufferStorage',
-  glCheckFramebufferStatusOES : 'glCheckFramebufferStatus',
-  glDeleteFramebuffersOES : 'glDeleteFramebuffers',
-  glDeleteRenderbuffersOES : 'glDeleteRenderbuffers',
+  glGenFramebuffersOES: 'glGenFramebuffers',
+  glGenRenderbuffersOES: 'glGenRenderbuffers',
+  glBindFramebufferOES: 'glBindFramebuffer',
+  glBindRenderbufferOES: 'glBindRenderbuffer',
+  glGetRenderbufferParameterivOES: 'glGetRenderbufferParameteriv',
+  glFramebufferRenderbufferOES: 'glFramebufferRenderbuffer',
+  glRenderbufferStorageOES: 'glRenderbufferStorage',
+  glCheckFramebufferStatusOES: 'glCheckFramebufferStatus',
+  glDeleteFramebuffersOES: 'glDeleteFramebuffers',
+  glDeleteRenderbuffersOES: 'glDeleteRenderbuffers',
   glFramebufferTexture2DOES: 'glFramebufferTexture2D',
 
   // GLU

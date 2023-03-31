@@ -3740,7 +3740,7 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
 
     self.emcc_args += ['--js-library', 'duplicated_func_1.js', '--js-library', 'duplicated_func_2.js']
     err = self.expect_fail([EMCC, 'duplicated_func.c'] + self.get_emcc_args())
-    self.assertContained('error: Symbol re-definition in JavaScript library: duplicatedFunc. Do not use noOverride if this is intended', err)
+    self.assertContained('duplicated_func_2.js: Symbol re-definition in JavaScript library: duplicatedFunc. Do not use noOverride if this is intended', err)
 
   def test_override_stub(self):
     self.do_run_from_file(test_file('other/test_override_stub.c'), test_file('other/test_override_stub.out'))
@@ -3767,7 +3767,7 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
 
     self.emcc_args += ['--js-library', 'some_func.js']
     err = self.expect_fail([EMCC, 'some_func.c'] + self.get_emcc_args())
-    self.assertContained('error: __sig is missing for function: someFunc. Do not use checkSig if this is intended', err)
+    self.assertContained('some_func.js: __sig is missing for function: someFunc. Do not use checkSig if this is intended', err)
 
   def test_js_lib_quoted_key(self):
     create_file('lib.js', r'''
@@ -3839,15 +3839,64 @@ mergeInto(LibraryManager.library, {
   },
 });
 ''')
-    create_file('src.cpp', r'''
+    create_file('src.c', r'''
 #include <stdio.h>
-extern "C" int jslibfunc();
+int jslibfunc();
 int main() {
   printf("c calling: %d\n", jslibfunc());
 }
 ''')
-    err = self.run_process([EMXX, 'src.cpp', '--js-library', 'lib.js'], stderr=PIPE).stderr
+    err = self.run_process([EMCC, 'src.c', '--js-library', 'lib.js'], stderr=PIPE).stderr
     self.assertContained("warning: user library symbol 'jslibfunc' depends on internal symbol '$callRuntimeCallbacks'", err)
+
+  def test_js_lib_sig_redefinition(self):
+    create_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  jslibfunc__sig: 'ii',
+  jslibfunc: function(x) {},
+});
+
+mergeInto(LibraryManager.library, {
+  jslibfunc__sig: 'ii',
+  jslibfunc: function(x) {},
+});
+''')
+    create_file('src.c', r'''
+#include <stdio.h>
+int jslibfunc();
+int main() {
+  printf("c calling: %d\n", jslibfunc());
+}
+''')
+    err = self.run_process([EMCC, 'src.c', '--js-library', 'lib.js'], stderr=PIPE).stderr
+    self.assertContained('lib.js: signature redefinition for: jslibfunc__sig', err)
+
+    # Add another redefinition, this time not matching
+    create_file('lib2.js', r'''
+mergeInto(LibraryManager.library, {
+  jslibfunc__sig: 'pp',
+  jslibfunc: function(x) {},
+});
+''')
+    err = self.expect_fail([EMCC, 'src.c', '--js-library', 'lib.js', '--js-library', 'lib2.js'])
+    self.assertContained('lib2.js: signature redefinition for: jslibfunc__sig. (old=ii vs new=pp)', err)
+
+  def test_js_lib_invalid_deps(self):
+    create_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  jslibfunc__deps: 'hello',
+  jslibfunc: function(x) {},
+});
+''')
+    create_file('src.c', r'''
+#include <stdio.h>
+int jslibfunc();
+int main() {
+  printf("c calling: %d\n", jslibfunc());
+}
+''')
+    err = self.expect_fail([EMCC, 'src.c', '--js-library', 'lib.js'])
+    self.assertContained('lib.js: JS library directive jslibfunc__deps=hello is of type string, but it should be an array', err)
 
   def test_EMCC_BUILD_DIR(self):
     # EMCC_BUILD_DIR env var contains the dir we were building in, when running the js compiler (e.g. when
@@ -6714,7 +6763,7 @@ int main(int argc, char** argv) {
 
     build_main([])
     out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('Exception catching is disabled, this exception cannot be caught.', out)
+    self.assertContained('Exception thrown, but exception catching is not enabled.', out)
     self.assertContained('note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support', out)
 
     build_main(['-fexceptions'])
@@ -7448,7 +7497,6 @@ int main() {}
     test("FS.createPreloadedFile('waka waka, just warning check')")
     test("FS.createDataFile('waka waka, just warning check')")
     test("FS.analyzePath('waka waka, just warning check')")
-    test("FS.loadFilesFromDB('waka waka, just warning check')")
     # might appear in filesystem code from a separate script tag
     test("Module['FS_createDataFile']('waka waka, just warning check')")
     test("Module['FS_createPreloadedFile']('waka waka, just warning check')")
@@ -8248,7 +8296,9 @@ int main() {
         throw std::runtime_error("my message");
       }
       void foo() {
-        bar();
+        try {
+          bar();
+        } catch (const std::invalid_argument &err) {}
       }
       int main() {
         foo();
@@ -8638,11 +8688,14 @@ end
   def test_full_js_library_minimal_runtime(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY', '-sMINIMAL_RUNTIME'])
 
+  @crossplatform
   @parameterized({
     '': [[]],
     # bigint support is interesting to test here because it changes which
     # binaryen tools get run, which can affect how debug info is kept around
     'bigint': [['-sWASM_BIGINT']],
+    'pthread': [['-pthread', '-Wno-experimental']],
+    'pthread_offscreen': [['-pthread', '-Wno-experimental', '-sOFFSCREEN_FRAMEBUFFER']],
   })
   def test_closure_full_js_library(self, args):
     # Test for closure errors and warnings in the entire JS library.
@@ -8656,6 +8709,7 @@ end
       '-sFETCH',
       '-sFETCH_SUPPORT_INDEXEDDB',
       '-sLEGACY_GL_EMULATION',
+      '-sMAX_WEBGL_VERSION=2',
     ] + args)
 
   def test_closure_webgpu(self):
@@ -11377,13 +11431,13 @@ int main(int argc, char **argv) {
 int main () {
   timespec now;
   clock_gettime(CLOCK_REALTIME, &now);
-  printf("C now: %ld %ld\n", now.tv_sec, now.tv_nsec);
+  printf("C now: %lld %ld\n", now.tv_sec, now.tv_nsec);
   printf("js now: %f\n", emscripten_get_now());
   printf("C randoms: %d %d %d\n", rand(), rand(), rand());
   printf("JS random: %d\n", EM_ASM_INT({ return Math.random() }));
 }
 ''')
-    self.run_process([EMXX, 'src.cpp', '-sDETERMINISTIC'])
+    self.run_process([EMXX, 'src.cpp', '-sDETERMINISTIC'] + self.get_emcc_args())
     one = self.run_js('a.out.js')
     # ensure even if the time resolution is 1 second, that if we see the real
     # time we'll see a difference
@@ -11471,18 +11525,18 @@ int main () {
     # requires malloc
     create_file('unincluded_malloc.c', r'''
       #include <emscripten.h>
-      EM_JS_DEPS(main, "$allocateUTF8");
+      EM_JS_DEPS(main, "$stringToNewUTF8");
       int main() {
         EM_ASM({
           try {
-            allocateUTF8("foo");
+            stringToNewUTF8("foo");
           } catch(e) {
             console.log('exception:', e);
           }
         });
       }
     ''')
-    self.do_runf('unincluded_malloc.c', 'malloc was not included, but is needed in allocateUTF8. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.')
+    self.do_runf('unincluded_malloc.c', 'malloc was not included, but is needed in stringToNewUTF8. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.')
 
   def test_getrusage(self):
     self.do_runf(test_file('other/test_getrusage.c'))
@@ -11583,7 +11637,7 @@ exec "$@"
       });
       ''')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js'])
-    self.assertContained("error: Missing library element 'foo' for library config 'foo__sig'", err)
+    self.assertContained("lib.js: Missing library element 'foo' for library config 'foo__sig'", err)
 
   def test_jslib_ifdef(self):
     create_file('lib.js', '''
@@ -11592,7 +11646,7 @@ exec "$@"
       #endif
       ''')
     proc = self.run_process([EMCC, test_file('hello_world.c'), '--js-library=lib.js'], stderr=PIPE)
-    self.assertContained('warning: use of #ifdef in js library.  Use #if instead.', proc.stderr)
+    self.assertContained('lib.js: use of #ifdef in js library.  Use #if instead.', proc.stderr)
 
   def test_jslib_mangling(self):
     create_file('lib.js', '''
@@ -11803,6 +11857,7 @@ exec "$@"
     self.assertIn('Hello from main!', result)
     self.assertIn('Hello from lib!', result)
 
+  @crossplatform
   def test_gen_struct_info(self):
     # This test will start failing whenever the struct info changes (e.g. offset or defines
     # change).  However it's easy to rebaseline with --rebaseline.
@@ -11814,6 +11869,14 @@ exec "$@"
     if node_version and node_version >= (14, 0, 0):
       self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '--wasm64', '-o', 'out.json'])
       self.assertFileContents(path_from_root('src/generated_struct_info64.json'), read_file('out.json'))
+
+  @crossplatform
+  def test_gen_sig_info(self):
+    # This tests is fragile and will need updating any time a JS library
+    # function is added or its signature changed.  However it's easy to
+    # rebaseline with --rebaseline.
+    self.run_process([PYTHON, path_from_root('tools/gen_sig_info.py'), '-o', 'out.js'])
+    self.assertFileContents(path_from_root('src/library_sigs.js'), read_file('out.js'))
 
   def test_gen_struct_info_env(self):
     # gen_struct_info.py builds C code in a very specific and low level way.  We don't want
@@ -13058,7 +13121,7 @@ j1: 8589934599, j2: 30064771074, j3: 12884901891
     create_file('f1.c', '''
     #include <emscripten.h>
 
-    EM_JS_DEPS(other, "$allocateUTF8OnStack");
+    EM_JS_DEPS(other, "$stringToUTF8OnStack");
     ''')
     create_file('f2.c', '''
     #include <emscripten.h>
@@ -13069,7 +13132,7 @@ j1: 8589934599, j2: 30064771074, j3: 12884901891
       EM_ASM({
         err(getHeapMax());
         var x = stackSave();
-        allocateUTF8OnStack("hello");
+        stringToUTF8OnStack("hello");
         stackRestore(x);
       });
       return 0;
@@ -13219,7 +13282,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     node_version = shared.check_node_version()
     node_version = '.'.join(str(x) for x in node_version)
     self.set_setting('MIN_NODE_VERSION', 210000)
-    expected = 'This emscripten-generated code requires node v21.0.0 (detected v%s)' % node_version
+    expected = 'This emscripten-generated code requires node v21.0.0 (detected v%s' % node_version
     self.do_runf(test_file('hello_world.c'), expected, assert_returncode=NON_ZERO)
 
   def test_deprecated_macros(self):

@@ -11,8 +11,6 @@
 global.FOUR_GB = 4 * 1024 * 1024 * 1024;
 const FLOAT_TYPES = new Set(['float', 'double']);
 
-let currentlyParsedFilename = '';
-
 // Does simple 'macro' substitution, using Django-like syntax,
 // {{{ code }}} will be replaced with |eval(code)|.
 // NOTE: Be careful with that ret check. If ret is |0|, |ret ? ret.toString() : ''| would result in ''!
@@ -57,7 +55,8 @@ function preprocess(filename) {
   const showStack = [];
   const showCurrentLine = () => showStack.every((x) => x == SHOW);
 
-  currentlyParsedFilename = filename;
+  const oldFilename = currentFile;
+  currentFile = filename;
   const fileExt = filename.split('.').pop().toLowerCase();
   const isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
   let inStyle = false;
@@ -155,7 +154,7 @@ function preprocess(filename) {
 no matching #endif found (${showStack.length$}' unmatched preprocessing directives on stack)`);
     return ret;
   } finally {
-    currentlyParsedFilename = null;
+    currentFile = oldFilename;
   }
 }
 
@@ -490,16 +489,18 @@ function makeReturn64(value) {
 
 function makeThrow(excPtr) {
   if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING) {
-    excPtr += ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch."';
+    var assertInfo = 'Exception thrown, but exception catching is not enabled. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.';
     if (MAIN_MODULE) {
-      excPtr += ' + " (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)"';
+      assertInfo += ' (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)';
     }
-    return `throw ${excPtr};`;
-  }
-  if (EXCEPTION_STACK_TRACES) {
-    return `throw new CppException(${excPtr});`;
+    return `assert(false, '${assertInfo}');`;
   }
   return `throw ${excPtr};`;
+}
+
+function storeException(varName, excPtr) {
+  var exceptionToStore = EXCEPTION_STACK_TRACES ? `new CppException(${excPtr})` : `${excPtr}`;
+  return `${varName} = ${exceptionToStore};`;
 }
 
 function charCode(char) {
@@ -565,7 +566,7 @@ function makeDynCall(sig, funcPtr) {
 
 
   if (funcPtr === undefined) {
-    warn(`${currentlyParsedFilename}: \
+    warn(`
 Legacy use of {{{ makeDynCall("${sig}") }}}(funcPtr, arg1, arg2, ...). \
 Starting from Emscripten 2.0.2 (Aug 31st 2020), syntax for makeDynCall has changed. \
 New syntax is {{{ makeDynCall("${sig}", "funcPtr") }}}(arg1, arg2, ...). \
@@ -839,7 +840,7 @@ function hasExportedSymbol(sym) {
 // it is a BigInt. Otherwise, we legalize into pairs of i32s.
 function defineI64Param(name) {
   if (WASM_BIGINT) {
-    return `/** @type {!BigInt} */ ${name}`;
+    return name;
   }
   return `${name}_low, ${name}_high`;
 }

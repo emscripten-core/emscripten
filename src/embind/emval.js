@@ -5,54 +5,46 @@
 
 /*global Module:true, Runtime*/
 /*global HEAP32*/
-/*global new_*/
+/*global newFunc*/
 /*global createNamedFunction*/
 /*global readLatin1String, stringToUTF8*/
 /*global requireRegisteredType, throwBindingError, runDestructors*/
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 // -- jshint doesn't understand library syntax, so we need to mark the symbols exposed here
-/*global getStringOrSymbol, emval_handle_array, Emval, __emval_unregister, count_emval_handles, emval_symbols, emval_free_list, get_first_emval, __emval_decref, emval_newers*/
+/*global getStringOrSymbol, emval_handles, Emval, __emval_unregister, count_emval_handles, emval_symbols, __emval_decref, emval_newers*/
 /*global craftEmvalAllocator, emval_addMethodCaller, emval_methodCallers, LibraryManager, mergeInto, emval_allocateDestructors, global, emval_lookupTypes, makeLegalFunctionName*/
 /*global emval_get_global*/
 
 var LibraryEmVal = {
-  $emval_handle_array: [
-    {},
-    {value: undefined},
-    {value: null},
-    {value: true},
-    {value: false}
-  ], // reserve zero and special values
-  $emval_free_list: [],
+  $emval_handles__deps: ['$HandleAllocator'],
+  $emval_handles: "new HandleAllocator();",
   $emval_symbols: {}, // address -> string
 
-  $init_emval__deps: ['$count_emval_handles', '$get_first_emval'],
+  $init_emval__deps: ['$count_emval_handles', '$emval_handles'],
   $init_emval__postset: 'init_emval();',
   $init_emval: function() {
+    // reserve some special values. These never get de-allocated.
+    // The HandleAllocator takes care of reserving zero.
+    emval_handles.allocated.push(
+      {value: undefined},
+      {value: null},
+      {value: true},
+      {value: false},
+    );
+    emval_handles.reserved = emval_handles.allocated.length
     Module['count_emval_handles'] = count_emval_handles;
-    Module['get_first_emval'] = get_first_emval;
   },
 
-  $count_emval_handles__deps: ['$emval_handle_array'],
+  $count_emval_handles__deps: ['$emval_handles'],
   $count_emval_handles: function() {
     var count = 0;
-    for (var i = 5; i < emval_handle_array.length; ++i) {
-      if (emval_handle_array[i] !== undefined) {
+    for (var i = emval_handles.reserved; i < emval_handles.allocated.length; ++i) {
+      if (emval_handles.allocated[i] !== undefined) {
         ++count;
       }
     }
     return count;
-  },
-
-  $get_first_emval__deps: ['$emval_handle_array'],
-  $get_first_emval: function() {
-    for (var i = 5; i < emval_handle_array.length; ++i) {
-      if (emval_handle_array[i] !== undefined) {
-        return emval_handle_array[i];
-      }
-    }
-    return null;
   },
 
   _emval_register_symbol__deps: ['$emval_symbols', '$readLatin1String'],
@@ -69,13 +61,13 @@ var LibraryEmVal = {
     return symbol;
   },
 
-  $Emval__deps: ['$emval_handle_array', '$emval_free_list', '$throwBindingError', '$init_emval'],
+  $Emval__deps: ['$emval_handles', '$throwBindingError', '$init_emval'],
   $Emval: {
     toValue: (handle) => {
       if (!handle) {
           throwBindingError('Cannot use deleted val. handle = ' + handle);
       }
-      return emval_handle_array[handle].value;
+      return emval_handles.get(handle).value;
     },
 
     toHandle: (value) => {
@@ -85,31 +77,25 @@ var LibraryEmVal = {
         case true: return 3;
         case false: return 4;
         default:{
-          var handle = emval_free_list.length ?
-              emval_free_list.pop() :
-              emval_handle_array.length;
-
-          emval_handle_array[handle] = {refcount: 1, value: value};
-          return handle;
+          return emval_handles.allocate({refcount: 1, value: value});
         }
       }
     }
   },
 
   _emval_incref__sig: 'vp',
-  _emval_incref__deps: ['$emval_handle_array'],
+  _emval_incref__deps: ['$emval_handles'],
   _emval_incref: function(handle) {
     if (handle > 4) {
-      emval_handle_array[handle].refcount += 1;
+      emval_handles.get(handle).refcount += 1;
     }
   },
 
   _emval_decref__sig: 'vp',
-  _emval_decref__deps: ['$emval_free_list', '$emval_handle_array'],
+  _emval_decref__deps: ['$emval_handles'],
   _emval_decref: function(handle) {
-    if (handle > 4 && 0 === --emval_handle_array[handle].refcount) {
-      emval_handle_array[handle] = undefined;
-      emval_free_list.push(handle);
+    if (handle >= emval_handles.reserved && 0 === --emval_handles.get(handle).refcount) {
+      emval_handles.free(handle);
     }
   },
 
@@ -428,7 +414,13 @@ var LibraryEmVal = {
 
   $emval_registeredMethods: [],
   _emval_get_method_caller__sig: 'pip',
-  _emval_get_method_caller__deps: ['$emval_addMethodCaller', '$emval_lookupTypes', '$new_', '$makeLegalFunctionName', '$emval_registeredMethods'],
+  _emval_get_method_caller__deps: [
+    '$emval_addMethodCaller', '$emval_lookupTypes',,
+    '$makeLegalFunctionName', '$emval_registeredMethods',
+#if DYNAMIC_EXECUTION
+    '$newFunc',
+#endif
+  ],
   _emval_get_method_caller: function(argCount, argTypes) {
     var types = emval_lookupTypes(argCount, argTypes);
     var retType = types[0];
@@ -493,7 +485,7 @@ var LibraryEmVal = {
         "};\n";
 
     params.push(functionBody);
-    var invokerFunction = new_(Function, params).apply(null, args);
+    var invokerFunction = newFunc(Function, params).apply(null, args);
 #endif
     returnId = emval_addMethodCaller(invokerFunction);
     emval_registeredMethods[signatureName] = returnId;

@@ -66,9 +66,10 @@ function isDefined(symName) {
   return false;
 }
 
-function runJSify(symbolsOnly = false) {
+function runJSify() {
   const libraryItems = [];
   const symbolDeps = {};
+  const asyncFuncs = [];
   let postSets = [];
 
   LibraryManager.load();
@@ -87,7 +88,7 @@ function runJSify(symbolsOnly = false) {
     }
   }
 
-  function convertPointerParams(snippet, sig) {
+  function convertPointerParams(symbol, snippet, sig) {
     // Automatically convert any incoming pointer arguments from BigInt
     // to double (this limits the range to int53).
     // And convert the return value if the function returns a pointer.
@@ -99,6 +100,10 @@ function runJSify(symbolsOnly = false) {
       let argConvertions = '';
       for (let i = 1; i < sig.length; i++) {
         const name = argNames[i - 1];
+        if (!name) {
+          error(`convertPointerParams: missing name for argument ${i} in ${symbol}`);
+          return snippet;
+        }
         if (sig[i] == 'p') {
           argConvertions += `  ${name} = Number(${name});\n`;
           newArgs.push(`Number(${name})`);
@@ -182,7 +187,7 @@ function ${name}(${args}) {
     if (MEMORY64) {
       const sig = LibraryManager.library[symbol + '__sig'];
       if (sig && sig.includes('p')) {
-        snippet = convertPointerParams(snippet, sig);
+        snippet = convertPointerParams(symbol, snippet, sig);
       }
     }
 
@@ -207,38 +212,28 @@ function ${name}(${args}) {
     }
   }
 
-  function itemHandler(item) {
+  function symbolHandler(symbol) {
     // In LLVM, exceptions generate a set of functions of form
     // __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.  where
     // the number specifies the number of arguments. In Emscripten, route all
     // these to a single function '__cxa_find_matching_catch' that variadically
     // processes all of these functions using JS 'arguments' object.
-    if (item.mangled.startsWith('___cxa_find_matching_catch_')) {
+    if (symbol.startsWith('__cxa_find_matching_catch_')) {
       if (DISABLE_EXCEPTION_THROWING) {
         error('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-except (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.');
         return;
       }
-      const num = +item.mangled.split('_').slice(-1)[0];
+      const num = +symbol.split('_').slice(-1)[0];
       addCxaCatch(num);
       // Continue, with the code below emitting the proper JavaScript based on
       // what we just added to the library.
     }
 
-    const TOP_LEVEL = 'top-level compiled C/C++ code';
-
-    function addFromLibrary(item, dependent) {
+    function addFromLibrary(symbol, dependent, force = false) {
       // dependencies can be JS functions, which we just run
-      if (typeof item == 'function') {
-        return item();
+      if (typeof symbol == 'function') {
+        return symbol();
       }
-
-      const symbol = item.symbol;
-      const mangled = item.mangled;
-
-      if (symbol in addedLibraryItems) {
-        return;
-      }
-      addedLibraryItems[symbol] = true;
 
       // don't process any special identifiers. These are looked up when
       // processing the base name of the identifier.
@@ -247,9 +242,17 @@ function ${name}(${args}) {
       }
 
       const deps = LibraryManager.library[symbol + '__deps'] || [];
-      if (!Array.isArray(deps)) {
-        error(`JS library directive ${symbol}__deps=${deps.toString()} is of type ${typeof deps}, but it should be an array!`);
-        return;
+
+      let isAsyncFunction = false;
+      if (ASYNCIFY) {
+        const original = LibraryManager.library[symbol];
+        if (typeof original == 'function' ) {
+          isAsyncFunction = LibraryManager.library[symbol + '__async'] ||
+                            original.constructor.name == 'AsyncFunction'
+        }
+        if (isAsyncFunction) {
+          asyncFuncs.push(symbol);
+        }
       }
 
       if (symbolsOnly) {
@@ -262,14 +265,21 @@ function ${name}(${args}) {
 
       // if the function was implemented in compiled code, there is no need to
       // include the js version
-      if (WASM_EXPORTS.has(symbol)) {
+      if (WASM_EXPORTS.has(symbol) && !force) {
         return;
       }
+
+      if (symbol in addedLibraryItems) {
+        return;
+      }
+      addedLibraryItems[symbol] = true;
 
       // This gets set to true in the case of dynamic linking for symbols that
       // are undefined in the main module.  In this case we create a stub that
       // will resolve the correct symbol at runtime, or assert if its missing.
       let isStub = false;
+
+      const mangled = mangleCSymbolName(symbol);
 
       if (!LibraryManager.library.hasOwnProperty(symbol)) {
         const isWeakImport = WEAK_IMPORTS.has(symbol);
@@ -337,17 +347,19 @@ function ${name}(${args}) {
           warn(`user library symbol '${symbol}' depends on internal symbol '${dep}'`);
         }
       });
+
       let isFunction = false;
+      let aliasTarget;
 
       if (typeof snippet == 'string') {
         if (snippet[0] != '=') {
-          const target = LibraryManager.library[snippet];
-          if (target) {
-            // Redirection for aliases. We include the parent, and at runtime make ourselves equal to it.
-            // This avoid having duplicate functions with identical content.
-            const redirectedTarget = snippet;
-            deps.push(redirectedTarget);
-            snippet = mangleCSymbolName(redirectedTarget);
+          if (LibraryManager.library[snippet]) {
+            // Redirection for aliases. We include the parent, and at runtime
+            // make ourselves equal to it.  This avoid having duplicate
+            // functions with identical content.
+            aliasTarget = snippet;
+            snippet = mangleCSymbolName(aliasTarget);
+            deps.push(aliasTarget);
           }
         }
       } else if (typeof snippet == 'object') {
@@ -369,9 +381,7 @@ function ${name}(${args}) {
         }
         if (postset && !addedLibraryItems[postsetId]) {
           addedLibraryItems[postsetId] = true;
-          postSets.push({
-            JS: postset + ';',
-          });
+          postSets.push(postset + ';');
         }
       }
 
@@ -381,10 +391,7 @@ function ${name}(${args}) {
       const deps_list = deps.join("','");
       const identDependents = symbol + `__deps: ['${deps_list}']`;
       function addDependency(dep) {
-        if (typeof dep != 'function') {
-          dep = {symbol: dep, mangled: mangleCSymbolName(dep)};
-        }
-        return addFromLibrary(dep, `${identDependents}, referenced by ${dependent}`);
+        return addFromLibrary(dep, `${identDependents}, referenced by ${dependent}`, dep === aliasTarget);
       }
       let contentText;
       if (isFunction) {
@@ -431,6 +438,9 @@ function ${name}(${args}) {
       if (sig && (RELOCATABLE || ASYNCIFY == 2)) {
         contentText += `\n${mangled}.sig = '${sig}';`;
       }
+      if (ASYNCIFY && isAsyncFunction) {
+        contentText += `\n${mangled}.isAsync = true;`;
+      }
       if (isStub) {
         contentText += `\n${mangled}.stub = true;`;
         if (ASYNCIFY) {
@@ -439,16 +449,19 @@ function ${name}(${args}) {
       }
 
       let commentText = '';
+      if (force) {
+        commentText += '/** @suppress {duplicate } */\n'
+      }
       if (LibraryManager.library[symbol + '__docs']) {
-        commentText = LibraryManager.library[symbol + '__docs'] + '\n';
+        commentText += LibraryManager.library[symbol + '__docs'] + '\n';
       }
 
       const depsText = (deps ? deps.map(addDependency).filter((x) => x != '').join('\n') + '\n' : '');
       return depsText + commentText + contentText;
     }
 
-    libraryItems.push(item);
-    item.JS = addFromLibrary(item, TOP_LEVEL);
+    const JS = addFromLibrary(symbol, 'top-level compiled C/C++ code');
+    libraryItems.push(JS);
   }
 
   function includeFile(fileName) {
@@ -492,7 +505,7 @@ function ${name}(${args}) {
     includeFile(preFile);
 
     for (const item of libraryItems.concat(postSets)) {
-      print(indentify(item.JS || '', 2));
+      print(indentify(item || '', 2));
     }
 
     if (PTHREADS) {
@@ -537,6 +550,7 @@ function ${name}(${args}) {
     print('//FORWARDED_DATA:' + JSON.stringify({
       librarySymbols: librarySymbols,
       warnings: warnings,
+      asyncFuncs,
       ATINITS: ATINITS.join('\n'),
       ATMAINS: ATMAINS.join('\n'),
       ATEXITS: ATEXITS.join('\n'),
@@ -544,14 +558,14 @@ function ${name}(${args}) {
   }
 
   for (const sym of symbolsNeeded) {
-    itemHandler({
-      symbol: sym,
-      mangled: mangleCSymbolName(sym),
-    });
+    symbolHandler(sym);
   }
 
   if (symbolsOnly) {
-    print(JSON.stringify(symbolDeps));
+    print(JSON.stringify({
+      deps: symbolDeps,
+      asyncFuncs
+    }));
     return;
   }
 

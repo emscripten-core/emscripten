@@ -1292,6 +1292,7 @@ var EMSCRIPTEN_TRACING = false;
 // Specify the GLFW version that is being linked against.  Only relevant, if you
 // are linking against the GLFW library.  Valid options are 2 for GLFW2 and 3
 // for GLFW3.
+// In MINIMAL_RUNTIME builds, this option defaults to 0.
 // [link]
 var USE_GLFW = 2;
 

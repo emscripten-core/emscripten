@@ -10,12 +10,12 @@
 #include <stddef.h>
 #include <signal.h>
 
+#include "emscripten_internal.h"
+
 extern struct sigaction __sig_actions[_NSIG];
 extern sigset_t __sig_pending;
 
 bool __sig_is_blocked(int sig);
-
-extern void __call_sighandler(sighandler_t handler, int sig);
 
 int raise(int sig) {
   if (__sig_is_blocked(sig)) {

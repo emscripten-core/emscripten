@@ -62,7 +62,7 @@ mergeInto(LibraryManager.library, {
     }
     entries.forEach((entry) => {
       withStackSave(() => {
-        let name = allocateUTF8OnStack(entry.name);
+        let name = stringToUTF8OnStack(entry.name);
         let type;
         // TODO: Figure out how to use `cDefine` here.
         if (entry.isFile()) {

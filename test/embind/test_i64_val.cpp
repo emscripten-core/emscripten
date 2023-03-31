@@ -59,6 +59,8 @@ int main()
   const int64_t max_int64_t = numeric_limits<int64_t>::max();
   const int64_t min_int64_t = numeric_limits<int64_t>::min();
   const uint64_t max_uint64_t = numeric_limits<uint64_t>::max();
+  std::array<std::uint64_t, 5> uint64Array = {0, 1, 2, 3, 4};
+  std::array<std::int64_t, 5> int64Array = {-2, -1, 0, 1, 2};
 
   printf("start\n");
 
@@ -89,6 +91,20 @@ int main()
   val::global().set("a", val(min_int64_t));
   ensure_js(compare_a_64_js(min_int64_t));
   ensure(val::global()["a"].as<int64_t>() == min_int64_t);
+
+  test("val(typed_memory_view<uint64_t>)");
+  val::global().set("a", val(typed_memory_view(uint64Array.size(), uint64Array.data())));
+  ensure_js("a instanceof BigUint64Array");
+  ensure_js("a.length === 5");
+  ensure_js("a[0] === 0n");
+  ensure_js("a[4] === 4n");
+
+  test("val(typed_memory_view<int64_t>)");
+  val::global().set("a", val(typed_memory_view(int64Array.size(), int64Array.data())));
+  ensure_js("a instanceof BigInt64Array");
+  ensure_js("a.length === 5");
+  ensure_js("a[0] === -2n");
+  ensure_js("a[4] === 2n");
 
   printf("end\n");
   return 0;

@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-import logging
 
 TAG = '11022021'
 HASH = 'f770031ad6c2152cbed8c8eab8edf2be1d27f9e74bc255a9930c17019944ee5fdda5308ea992c66a78af9fe1d8dca090f6c956910ce323f8728247c10e44036b'
@@ -18,8 +17,6 @@ def get(ports, settings, shared):
   ports.fetch_project('libmodplug', f'https://github.com/jancc/libmodplug/archive/v{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    logging.info('building port: libmodplug')
-
     source_path = os.path.join(ports.get_dir(), 'libmodplug', 'libmodplug-' + TAG)
     src_dir = os.path.join(source_path, 'src')
     libmodplug_path = os.path.join(src_dir, 'libmodplug')

@@ -40,7 +40,8 @@ mergeInto(LibraryManager.library, {
           var original = imports[x];
           var sig = original.sig;
           if (typeof original == 'function') {
-            var isAsyncifyImport = ASYNCIFY_IMPORTS.indexOf(x) >= 0 ||
+            var isAsyncifyImport = original.isAsync ||
+                                   ASYNCIFY_IMPORTS.indexOf(x) >= 0 ||
                                    x.startsWith('__asyncjs__');
 #if ASYNCIFY == 2
             // Wrap async imports with a suspending WebAssembly function.
@@ -450,8 +451,8 @@ mergeInto(LibraryManager.library, {
 #endif
   },
 
-  emscripten_sleep__sig: 'vi',
   emscripten_sleep__deps: ['$safeSetTimeout'],
+  emscripten_sleep__async: true,
   emscripten_sleep: function(ms) {
     // emscripten_sleep() does not return a value, but we still need a |return|
     // here for stack switching support (ASYNCIFY=2). In that mode this function
@@ -460,7 +461,6 @@ mergeInto(LibraryManager.library, {
     return Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms));
   },
 
-  emscripten_wget__sig: 'vpp',
   emscripten_wget__deps: ['$Browser', '$PATH_FS', '$FS'],
   emscripten_wget: function(url, file) {
     return Asyncify.handleSleep((wakeUp) => {
@@ -488,7 +488,6 @@ mergeInto(LibraryManager.library, {
     });
   },
 
-  emscripten_wget_data__sig: 'vpppp',
   emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
   emscripten_wget_data: function(url, pbuffer, pnum, perror) {
     return Asyncify.handleSleep((wakeUp) => {
@@ -507,7 +506,6 @@ mergeInto(LibraryManager.library, {
     });
   },
 
-  emscripten_scan_registers__sig: 'vp',
   emscripten_scan_registers__deps: ['$safeSetTimeout'],
   emscripten_scan_registers: function(func) {
     return Asyncify.handleSleep((wakeUp) => {
@@ -608,7 +606,6 @@ mergeInto(LibraryManager.library, {
     },
   },
 
-  emscripten_fiber_swap__sig: 'vpp',
   emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
   emscripten_fiber_swap: function(oldFiber, newFiber) {
     if (ABORT) return;
@@ -647,13 +644,13 @@ mergeInto(LibraryManager.library, {
   emscripten_sleep: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
   },
-  emscripten_wget: function() {
+  emscripten_wget: function(url, file) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget';
   },
-  emscripten_wget_data: function() {
+  emscripten_wget_data: function(url, pbuffer, pnum, perror) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget_data';
   },
-  emscripten_scan_registers: function() {
+  emscripten_scan_registers: function(func) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers';
   },
   emscripten_fiber_init: function() {
@@ -662,7 +659,7 @@ mergeInto(LibraryManager.library, {
   emscripten_fiber_init_from_current_context: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_init_from_current_context';
   },
-  emscripten_fiber_swap: function() {
+  emscripten_fiber_swap: function(oldFiber, newFiber) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_swap';
   },
 #endif // ASYNCIFY

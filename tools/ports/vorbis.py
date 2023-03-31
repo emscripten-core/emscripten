@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
 import os
 
 TAG = 'version_1'
@@ -20,7 +19,6 @@ def get(ports, settings, shared):
   ports.fetch_project('vorbis', f'https://github.com/emscripten-ports/vorbis/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    logging.info('building port: vorbis')
     source_path = os.path.join(ports.get_dir(), 'vorbis', 'Vorbis-' + TAG)
     ports.install_header_dir(os.path.join(source_path, 'include', 'vorbis'))
     ports.build_port(os.path.join(source_path, 'lib'), final, 'vorbis',
