@@ -994,7 +994,18 @@ function wrapSyscallFunction(x, library, isWasi) {
   var canThrow = library[x + '__nothrow'] !== true;
 #endif
 
-  var pre = '', post = '';
+  if (!library[x + '__deps']) library[x + '__deps'] = [];
+
+#if PURE_WASI
+  // In PURE_WASI mode we can't assume the wasm binary was built by emscripten
+  // and politely notify us on memory growth.  Instead we have to check for
+  // possible memory growth on each syscall.
+  var pre = '\nif (!HEAPU8.byteLength) _emscripten_notify_memory_growth(0);\n'
+  library[x + '__deps'].push('emscripten_notify_memory_growth');
+#else
+  var pre = '';
+#endif
+  var post = '';
   if (isVariadic) {
     pre += 'SYSCALLS.varargs = varargs;\n';
   }
@@ -1047,7 +1058,6 @@ function wrapSyscallFunction(x, library, isWasi) {
   }
 
   library[x] = eval('(' + t + ')');
-  if (!library[x + '__deps']) library[x + '__deps'] = [];
   library[x + '__deps'].push('$SYSCALLS');
 #if PTHREADS
   // Most syscalls need to happen on the main JS thread (e.g. because the
