@@ -13343,7 +13343,8 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       config = json.load(f)
     exit_code = config.get('exitCode', 0)
     args = config.get('args', [])
-    env = config.get('env', [])
+    env = config.get('env')
+    stdin = config.get('stdin')
     if env:
       env = [f'ENV["{key}"] = "{value}";' for key, value in env.items()]
       env = '\n'.join(env)
@@ -13353,7 +13354,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
                       '-sPURE_WASI', '-lnodefs.js', '-lnoderawfs.js',
                       wasm, '-o', name + '.js'] + self.get_emcc_args(main_file=True))
 
-    output = self.run_js(name + '.js', args=args, assert_returncode=exit_code)
+    output = self.run_js(name + '.js', args=args, assert_returncode=exit_code, input=stdin)
     if 'stdout' in config:
       self.assertContained(config['stdout'], output)
 
@@ -13368,12 +13369,24 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.run_wasi_test_suite_test('std_env_vars')
 
   @requires_node
-  def test_wasi_std_io_stdout(self):
-    self.run_wasi_test_suite_test('std_io_stdout')
+  def test_wasi_std_fs_write(self):
+    self.run_wasi_test_suite_test('std_fs_write')
 
   @requires_node
   def test_wasi_std_io_stderr(self):
     self.run_wasi_test_suite_test('std_io_stderr')
+
+  @requires_node
+  def test_wasi_std_io_stdin(self):
+    self.run_wasi_test_suite_test('std_io_stdin')
+
+  @requires_node
+  def test_wasi_std_io_stdout(self):
+    self.run_wasi_test_suite_test('std_io_stdout')
+
+  @requires_node
+  def test_wasi_std_process_exit(self):
+    self.run_wasi_test_suite_test('std_process_exit')
 
   @requires_node
   def test_wasi_clock_res_get(self):
@@ -13386,6 +13399,14 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   @requires_node
   def test_wasi_fd_fdstat_get(self):
     self.run_wasi_test_suite_test('wasi_fd_fdstat_get')
+
+  @requires_node
+  def test_wasi_wasi_fd_renumber(self):
+    self.run_wasi_test_suite_test('wasi_fd_renumber')
+
+  @requires_node
+  def test_wasi_wasi_fd_tell_file(self):
+    self.run_wasi_test_suite_test('wasi_fd_tell_file')
 
   @requires_node
   def test_wasi_wasi_fd_write_file(self):
