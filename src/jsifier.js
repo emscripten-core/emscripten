@@ -168,7 +168,7 @@ function ${name}(${args}) {
           snippet = modifyFunction(snippet, (name, args, body) => `
 function ${name}(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
-  return _emscripten_proxy_to_main_thread_js(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
+  return proxyToMainThread(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
 ${body}
 }\n`);
         } else if (WASM_WORKERS && ASSERTIONS) {

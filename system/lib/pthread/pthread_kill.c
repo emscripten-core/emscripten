@@ -10,8 +10,6 @@
 #include "pthread_impl.h"
 #include "lock.h"
 
-int __pthread_kill_js(pthread_t t, int sig);
-
 int pthread_kill(pthread_t t, int sig) {
   if (sig < 0 || sig >= _NSIG) {
     return EINVAL;

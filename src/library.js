@@ -3001,7 +3001,11 @@ mergeInto(LibraryManager.library, {
     return runEmAsmFunction(code, sigPtr, argbuf);
   },
 
-  $runMainThreadEmAsm__deps: ['$readEmAsmArgs'],
+  $runMainThreadEmAsm__deps: ['$readEmAsmArgs',
+#if PTHREADS
+    '$proxyToMainThread'
+#endif
+  ],
   $runMainThreadEmAsm: function(code, sigPtr, argbuf, sync) {
     var args = readEmAsmArgs(sigPtr, argbuf);
 #if PTHREADS
@@ -3017,7 +3021,7 @@ mergeInto(LibraryManager.library, {
       // code paths as similar as possible on both sides.)
       // -1 - code is the encoding of a proxied EM_ASM, as a negative number
       // (positive numbers are non-EM_ASM calls).
-      return _emscripten_proxy_to_main_thread_js.apply(null, [-1 - code, sync].concat(args));
+      return proxyToMainThread.apply(null, [-1 - code, sync].concat(args));
     }
 #endif
 #if ASSERTIONS

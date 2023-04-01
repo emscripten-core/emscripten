@@ -12,6 +12,8 @@
  */
 
 #include <emscripten/em_macros.h>
+#include <emscripten/proxying.h>
+#include <emscripten/html5.h>
 
 #include <signal.h>    // for `sighandler_t`
 #include <stdbool.h>   // for `bool`
@@ -93,6 +95,19 @@ void* _dlsym_catchup_js(struct dso* handle, int sym_index);
 
 int _setitimer_js(int which, double timeout);
 
+// Synchronous version of "dlsync_threads".  Called only on the main thread.
+// Runs _emscripten_dlsync_self on each of the threads that are running at
+// the time of the call.
+void _emscripten_dlsync_threads();
+
+// Asynchronous version of "dlsync_threads".  Called only on the main thread.
+// Runs _emscripten_dlsync_self on each of the threads that are running at
+// the time of the call.  Once this is done the callback is called with the
+// given em_proxying_ctx.
+void _emscripten_dlsync_threads_async(pthread_t calling_thread,
+                                      void (*callback)(em_proxying_ctx*),
+                                      em_proxying_ctx* ctx);
+
 #ifdef _GNU_SOURCE
 void __call_sighandler(sighandler_t handler, int sig);
 #endif
@@ -113,6 +128,8 @@ void emscripten_start_fetch(struct emscripten_fetch_t* fetch);
 size_t _emscripten_fetch_get_response_headers_length(int32_t fetchID);
 size_t _emscripten_fetch_get_response_headers(int32_t fetchID, char *dst, size_t dstSizeBytes);
 void _emscripten_fetch_free(unsigned int);
+
+EMSCRIPTEN_RESULT _emscripten_set_offscreencanvas_size(const char *target, int width, int height);
 
 #ifdef __cplusplus
 }

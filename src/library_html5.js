@@ -2393,7 +2393,6 @@ var LibraryHTML5 = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  _emscripten_set_offscreencanvas_size__sig: 'iiii',
 #if OFFSCREENCANVAS_SUPPORT
   _emscripten_set_offscreencanvas_size: 'emscripten_set_canvas_element_size',
 
@@ -2479,8 +2478,8 @@ var LibraryHTML5 = {
   },
 
 #if PTHREADS
-  emscripten_get_canvas_element_size_calling_thread__deps: ['$JSEvents', '$findCanvasEventTarget'],
-  emscripten_get_canvas_element_size_calling_thread: function(target, width, height) {
+  $getCanvasSizeCallingThread__deps: ['$JSEvents', '$findCanvasEventTarget'],
+  $getCanvasSizeCallingThread: function(target, width, height) {
     var canvas = findCanvasEventTarget(target);
     if (!canvas) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
 
@@ -2510,18 +2509,19 @@ var LibraryHTML5 = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_get_canvas_element_size_main_thread__proxy: 'sync',
-  emscripten_get_canvas_element_size_main_thread__sig: 'iiii',
-  emscripten_get_canvas_element_size_main_thread__deps: ['emscripten_get_canvas_element_size_calling_thread'],
-  emscripten_get_canvas_element_size_main_thread: function(target, width, height) { return _emscripten_get_canvas_element_size_calling_thread(target, width, height); },
+  $getCanvasSizeMainThread__proxy: 'sync',
+  $getCanvasSizeMainThread__deps: ['$getCanvasSizeCallingThread'],
+  $getCanvasSizeMainThread: function(target, width, height) {
+    return getCanvasSizeCallingThread(target, width, height);
+  },
 
-  emscripten_get_canvas_element_size__deps: ['$JSEvents', 'emscripten_get_canvas_element_size_calling_thread', 'emscripten_get_canvas_element_size_main_thread', '$findCanvasEventTarget'],
+  emscripten_get_canvas_element_size__deps: ['$JSEvents', '$getCanvasSizeCallingThread', '$getCanvasSizeMainThread', '$findCanvasEventTarget'],
   emscripten_get_canvas_element_size: function(target, width, height) {
     var canvas = findCanvasEventTarget(target);
     if (canvas) {
-      return _emscripten_get_canvas_element_size_calling_thread(target, width, height);
+      return getCanvasSizeCallingThread(target, width, height);
     }
-    return _emscripten_get_canvas_element_size_main_thread(target, width, height);
+    return getCanvasSizeMainThread(target, width, height);
   },
 #else
   emscripten_get_canvas_element_size__deps: ['$JSEvents', '$findCanvasEventTarget'],
