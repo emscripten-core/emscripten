@@ -376,7 +376,7 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
           dbg('ASYNCIFY: start unwind ' + Asyncify.currData);
 #endif
-          if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
+          if (typeof Browser != 'undefined' && typeof Browser.mainLoop != 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.pause();
           }
           runAndAbortIfError(() => _asyncify_start_unwind(Asyncify.currData));
