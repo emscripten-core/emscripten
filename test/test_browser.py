@@ -5049,29 +5049,6 @@ Module["preRun"].push(function () {
   def test_emscripten_console_log(self):
     self.btest_exit(test_file('emscripten_console_log.c'), args=['--pre-js', test_file('emscripten_console_log_pre.js')])
 
-  def test_worker_error_postmessage(self):
-    create_file('src.cpp', r'''
-      #include <thread>
-
-      void crash() {
-        int (*fun)(void) = nullptr;
-        (fun)();
-      }
-
-      int main() {
-        std::thread worker(crash);
-        worker.join();
-        return 0;
-      }
-      ''')
-    create_file('pre.js', r'''
-      console.log = function(message) {
-        reportResultToServer(message);
-      };
-      ''')
-    self.compile_btest(['src.cpp', '-g', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', 'pre.js', '-o', 'src.html'])
-    self.run_browser('src.html', '/report_result?at crash()')
-
   def test_emscripten_throw_number(self):
     self.btest(test_file('emscripten_throw_number.c'), '0', args=['--pre-js', test_file('emscripten_throw_number_pre.js')])
 
@@ -5660,3 +5637,26 @@ class emrun(RunnerCore):
       self.assertContained('Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', stdout)
       self.assertContained('Testing char sequences: %20%21 &auml;', stdout)
       self.assertContained('hello, error stream!', stderr)
+
+  def test_worker_error_postmessage(self):
+    create_file('src.cpp', r'''
+      #include <thread>
+
+      void crash() {
+        int (*fun)(void) = nullptr;
+        (fun)();
+      }
+
+      int main() {
+        std::thread worker(crash);
+        worker.join();
+        return 0;
+      }
+      ''')
+    create_file('pre.js', r'''
+      console.log = function(message) {
+        reportResultToServer(message);
+      };
+      ''')
+    self.compile_btest(['src.cpp', '-g', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', 'pre.js', '-o', 'src.html'])
+    self.run_browser('src.html', '/report_result?at crash()')
