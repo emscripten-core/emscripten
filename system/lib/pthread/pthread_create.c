@@ -30,10 +30,6 @@
 
 // See musl's pthread_create.c
 
-int __pthread_create_js(struct pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
-int _emscripten_default_pthread_stack_size();
-void __set_thread_state(pthread_t ptr, int is_main, int is_runtime, int can_block);
-
 static void dummy_0() {}
 weak_alias(dummy_0, __pthread_tsd_run_dtors);
 

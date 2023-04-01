@@ -188,9 +188,9 @@ var LibraryExceptions = {
     var info = new ExceptionInfo(ptr);
     // Initialize ExceptionInfo content after it was allocated in __cxa_allocate_exception.
     info.init(type, destructor);
-    exceptionLast = ptr;
+    {{{ storeException('exceptionLast', 'ptr') }}}
     uncaughtExceptionCount++;
-    {{{ makeThrow('ptr') }}}
+    {{{ makeThrow('exceptionLast') }}}
   },
 
   // This exception will be caught twice, but while begin_catch runs twice,
@@ -215,8 +215,8 @@ var LibraryExceptions = {
     dbg('__cxa_rethrow, popped ' +
       [ptrToString(ptr), exceptionLast, 'stack', exceptionCaught]);
 #endif
-    exceptionLast = ptr;
-    {{{ makeThrow('ptr') }}}
+    {{{ storeException('exceptionLast', 'ptr') }}}
+    {{{ makeThrow('exceptionLast') }}}
   },
 
   llvm_eh_typeid_for__sig: 'ip',
@@ -316,7 +316,12 @@ var LibraryExceptions = {
   __cxa_find_matching_catch__deps: ['$exceptionLast', '$ExceptionInfo', '__resumeException', '__cxa_can_catch', 'setTempRet0'],
   //__cxa_find_matching_catch__sig: 'p',
   __cxa_find_matching_catch: function() {
-    var thrown = exceptionLast;
+    var thrown = 
+#if EXCEPTION_STACK_TRACES
+      exceptionLast && exceptionLast.excPtr;
+#else
+      exceptionLast;
+#endif
     if (!thrown) {
       // just pass through the null ptr
       setTempRet0(0);
@@ -364,8 +369,10 @@ var LibraryExceptions = {
 #if EXCEPTION_DEBUG
     dbg("__resumeException " + [ptrToString(ptr), exceptionLast]);
 #endif
-    if (!exceptionLast) { exceptionLast = ptr; }
-    {{{ makeThrow('ptr') }}}
+    if (!exceptionLast) { 
+      {{{ storeException('exceptionLast', 'ptr') }}}
+    }
+    {{{ makeThrow('exceptionLast') }}}
   },
 
 #endif

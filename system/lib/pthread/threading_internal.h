@@ -124,10 +124,8 @@ hidden void _emscripten_tls_free(void);
 // we can pass more of the posixtest suite that vanilla musl.
 int _emscripten_thread_is_valid(pthread_t thread);
 
-#ifdef __PIC__
 void _emscripten_thread_exit_joinable(pthread_t thread);
 void _emscripten_process_dlopen_queue(void);
-#endif
 
 #ifdef NDEBUG
 #define emscripten_set_current_thread_status(newStatus)
@@ -150,3 +148,10 @@ void emscripten_set_current_thread_status(EM_THREAD_STATUS newStatus);
 // this is a no-op.
 void emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS expectedStatus, EM_THREAD_STATUS newStatus);
 #endif
+
+int __pthread_kill_js(pthread_t t, int sig);
+int __pthread_create_js(struct __pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
+int _emscripten_default_pthread_stack_size();
+void __set_thread_state(pthread_t ptr, int is_main, int is_runtime, int can_block);
+
+double emscripten_receive_on_main_thread_js(int functionIndex, int numCallArgs, double* args);

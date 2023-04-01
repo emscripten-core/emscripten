@@ -296,13 +296,13 @@ var LibraryDylink = {
   },
 
   $dlSetError__internal: true,
-  $dlSetError__deps: ['__dl_seterr', '$allocateUTF8OnStack', '$withStackSave'],
+  $dlSetError__deps: ['__dl_seterr', '$stringToUTF8OnStack', '$withStackSave'],
   $dlSetError: function(msg) {
 #if DYLINK_DEBUG
     dbg('dlSetError: ' + msg);
 #endif
     withStackSave(function() {
-      var cmsg = allocateUTF8OnStack(msg);
+      var cmsg = stringToUTF8OnStack(msg);
       ___dl_seterr(cmsg, 0);
     });
   },
@@ -370,6 +370,7 @@ var LibraryDylink = {
 
   // returns the side module metadata as an object
   // { memorySize, memoryAlign, tableSize, tableAlign, neededDynlibs}
+  $getDylinkMetadata__deps: ['$UTF8ArrayToString'],
   $getDylinkMetadata__internal: true,
   $getDylinkMetadata: function(binary) {
     var offset = 0;

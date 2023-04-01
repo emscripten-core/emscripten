@@ -8,8 +8,6 @@
 #include "emscripten/threading.h"
 #include "threading_internal.h"
 
-void __set_thread_state(pthread_t ptr, int is_main, int is_runtime, int can_block);
-
 void _emscripten_thread_init(pthread_t ptr,
                              int is_main,
                              int is_runtime,

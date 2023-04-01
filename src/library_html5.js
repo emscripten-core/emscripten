@@ -235,7 +235,7 @@ var LibraryHTML5 = {
     },
   },
 
-  $registerKeyEventCallback__deps: ['$JSEvents', '$findEventTarget'],
+  $registerKeyEventCallback__deps: ['$JSEvents', '$findEventTarget', '$stringToUTF8'],
   $registerKeyEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
@@ -768,7 +768,7 @@ var LibraryHTML5 = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  $registerFocusEventCallback__deps: ['$JSEvents', '$findEventTarget'],
+  $registerFocusEventCallback__deps: ['$JSEvents', '$findEventTarget', '$stringToUTF8'],
   $registerFocusEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
@@ -1073,7 +1073,7 @@ var LibraryHTML5 = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  $fillFullscreenChangeEventData__deps: ['$JSEvents'],
+  $fillFullscreenChangeEventData__deps: ['$JSEvents', '$stringToUTF8'],
   $fillFullscreenChangeEventData: function(eventStruct) {
     var fullscreenElement = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
     var isFullscreen = !!fullscreenElement;
@@ -1662,7 +1662,7 @@ var LibraryHTML5 = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  $fillPointerlockChangeEventData__deps: ['$JSEvents'],
+  $fillPointerlockChangeEventData__deps: ['$JSEvents', '$stringToUTF8'],
   $fillPointerlockChangeEventData: function(eventStruct) {
     var pointerLockElement = document.pointerLockElement || document.mozPointerLockElement || document.webkitPointerLockElement || document.msPointerLockElement;
     var isPointerlocked = !!pointerLockElement;
@@ -2105,6 +2105,7 @@ var LibraryHTML5 = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
+  $fillGamepadEventData__deps: ['$stringToUTF8'],
   $fillGamepadEventData: function(eventStruct, e) {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.timestamp, 'e.timestamp', 'double') }}};
     for (var i = 0; i < e.axes.length; ++i) {
@@ -2392,7 +2393,6 @@ var LibraryHTML5 = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  _emscripten_set_offscreencanvas_size__sig: 'iiii',
 #if OFFSCREENCANVAS_SUPPORT
   _emscripten_set_offscreencanvas_size: 'emscripten_set_canvas_element_size',
 
@@ -2459,7 +2459,7 @@ var LibraryHTML5 = {
   },
 #endif
 
-  $setCanvasElementSize__deps: ['emscripten_set_canvas_element_size', '$withStackSave', '$allocateUTF8OnStack'],
+  $setCanvasElementSize__deps: ['emscripten_set_canvas_element_size', '$withStackSave', '$stringToUTF8OnStack'],
   $setCanvasElementSize: function(target, width, height) {
 #if GL_DEBUG
     dbg('setCanvasElementSize(target='+target+',width='+width+',height='+height);
@@ -2471,15 +2471,15 @@ var LibraryHTML5 = {
       // This function is being called from high-level JavaScript code instead of asm.js/Wasm,
       // and it needs to synchronously proxy over to another thread, so marshal the string onto the heap to do the call.
       withStackSave(function() {
-        var targetInt = allocateUTF8OnStack(target.id);
+        var targetInt = stringToUTF8OnStack(target.id);
         _emscripten_set_canvas_element_size(targetInt, width, height);
       });
     }
   },
 
 #if PTHREADS
-  emscripten_get_canvas_element_size_calling_thread__deps: ['$JSEvents', '$findCanvasEventTarget'],
-  emscripten_get_canvas_element_size_calling_thread: function(target, width, height) {
+  $getCanvasSizeCallingThread__deps: ['$JSEvents', '$findCanvasEventTarget'],
+  $getCanvasSizeCallingThread: function(target, width, height) {
     var canvas = findCanvasEventTarget(target);
     if (!canvas) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
 
@@ -2509,18 +2509,19 @@ var LibraryHTML5 = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_get_canvas_element_size_main_thread__proxy: 'sync',
-  emscripten_get_canvas_element_size_main_thread__sig: 'iiii',
-  emscripten_get_canvas_element_size_main_thread__deps: ['emscripten_get_canvas_element_size_calling_thread'],
-  emscripten_get_canvas_element_size_main_thread: function(target, width, height) { return _emscripten_get_canvas_element_size_calling_thread(target, width, height); },
+  $getCanvasSizeMainThread__proxy: 'sync',
+  $getCanvasSizeMainThread__deps: ['$getCanvasSizeCallingThread'],
+  $getCanvasSizeMainThread: function(target, width, height) {
+    return getCanvasSizeCallingThread(target, width, height);
+  },
 
-  emscripten_get_canvas_element_size__deps: ['$JSEvents', 'emscripten_get_canvas_element_size_calling_thread', 'emscripten_get_canvas_element_size_main_thread', '$findCanvasEventTarget'],
+  emscripten_get_canvas_element_size__deps: ['$JSEvents', '$getCanvasSizeCallingThread', '$getCanvasSizeMainThread', '$findCanvasEventTarget'],
   emscripten_get_canvas_element_size: function(target, width, height) {
     var canvas = findCanvasEventTarget(target);
     if (canvas) {
-      return _emscripten_get_canvas_element_size_calling_thread(target, width, height);
+      return getCanvasSizeCallingThread(target, width, height);
     }
-    return _emscripten_get_canvas_element_size_main_thread(target, width, height);
+    return getCanvasSizeMainThread(target, width, height);
   },
 #else
   emscripten_get_canvas_element_size__deps: ['$JSEvents', '$findCanvasEventTarget'],
@@ -2533,13 +2534,13 @@ var LibraryHTML5 = {
 #endif
 
   // JavaScript-friendly API, returns pair [width, height]
-  $getCanvasElementSize__deps: ['emscripten_get_canvas_element_size', '$withStackSave', '$allocateUTF8OnStack'],
+  $getCanvasElementSize__deps: ['emscripten_get_canvas_element_size', '$withStackSave', '$stringToUTF8OnStack'],
   $getCanvasElementSize: function(target) {
     return withStackSave(function() {
       var w = stackAlloc(8);
       var h = w + 4;
 
-      var targetInt = allocateUTF8OnStack(target.id);
+      var targetInt = stringToUTF8OnStack(target.id);
       var ret = _emscripten_get_canvas_element_size(targetInt, w, h);
       var size = [{{{ makeGetValue('w', 0, 'i32')}}}, {{{ makeGetValue('h', 0, 'i32')}}}];
       return size;

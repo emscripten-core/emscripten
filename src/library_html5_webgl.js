@@ -321,8 +321,8 @@ var LibraryHtml5WebGL = {
 #if PTHREADS
   // Special function that will be invoked on the thread calling emscripten_webgl_destroy_context(), before routing
   // the call over to the target thread.
-  emscripten_webgl_destroy_context_before_on_calling_thread__deps: ['emscripten_webgl_get_current_context', 'emscripten_webgl_make_context_current'],
-  emscripten_webgl_destroy_context_before_on_calling_thread: function(contextHandle) {
+  $emscripten_webgl_destroy_context_before_on_calling_thread__deps: ['emscripten_webgl_get_current_context', 'emscripten_webgl_make_context_current'],
+  $emscripten_webgl_destroy_context_before_on_calling_thread: function(contextHandle) {
     if (_emscripten_webgl_get_current_context() == contextHandle) _emscripten_webgl_make_context_current(0);
   },
 #endif
@@ -592,8 +592,8 @@ function handleWebGLProxying(funcs) {
       var contextCheck = proxyContextHandle ? 'GL.contexts[p0]' : 'GLctx';
       var funcBody = `${retStatement} ${contextCheck} ? _${i}_calling_thread(${funcArgsString}) : _${i}_main_thread(${funcArgsString});`;
       if (funcs[i + '_before_on_calling_thread']) {
-        funcs[i + '__deps'].push(i + '_before_on_calling_thread');
-        funcBody = `_${i}_before_on_calling_thread(${funcArgsString}); ` + funcBody;
+        funcs[i + '__deps'].push('$' + i + '_before_on_calling_thread');
+        funcBody = `${i}_before_on_calling_thread(${funcArgsString}); ` + funcBody;
       }
       funcArgs.push(funcBody);
       funcs[i] = new (Function.prototype.bind.apply(Function, [Function].concat(funcArgs)));

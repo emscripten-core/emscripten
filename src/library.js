@@ -2027,7 +2027,7 @@ mergeInto(LibraryManager.library, {
     return 0;
   },
 
-  getnameinfo__deps: ['$Sockets', '$DNS', '$readSockaddr'],
+  getnameinfo__deps: ['$Sockets', '$DNS', '$readSockaddr', '$stringToUTF8'],
   getnameinfo: function (sa, salen, node, nodelen, serv, servlen, flags) {
     var info = readSockaddr(sa, salen);
     if (info.errno) {
@@ -2078,7 +2078,7 @@ mergeInto(LibraryManager.library, {
     list: [],
     map: {}
   },
-  setprotoent__deps: ['$Protocols', '$writeAsciiToMemory', 'malloc'],
+  setprotoent__deps: ['$Protocols', '$stringToAscii', 'malloc'],
   setprotoent: function(stayopen) {
     // void setprotoent(int stayopen);
 
@@ -2086,7 +2086,7 @@ mergeInto(LibraryManager.library, {
     function allocprotoent(name, proto, aliases) {
       // write name into buffer
       var nameBuf = _malloc(name.length + 1);
-      writeAsciiToMemory(name, nameBuf);
+      stringToAscii(name, nameBuf);
 
       // write aliases into buffer
       var j = 0;
@@ -2096,7 +2096,7 @@ mergeInto(LibraryManager.library, {
       for (var i = 0; i < length; i++, j += 4) {
         var alias = aliases[i];
         var aliasBuf = _malloc(alias.length + 1);
-        writeAsciiToMemory(alias, aliasBuf);
+        stringToAscii(alias, aliasBuf);
         {{{ makeSetValue('aliasListBuf', 'j', 'aliasBuf', POINTER_TYPE) }}};
       }
       {{{ makeSetValue('aliasListBuf', 'j', '0', POINTER_TYPE) }}}; // Terminating NULL pointer.
@@ -2305,6 +2305,7 @@ mergeInto(LibraryManager.library, {
   // Mark as `noleakcheck` otherwise lsan will report the last returned string
   // as a leak.
   emscripten_run_script_string__noleakcheck: true,
+  emscripten_run_script_string__deps: ['$lengthBytesUTF8', '$stringToUTF8', 'malloc'],
   emscripten_run_script_string: function(ptr) {
     {{{ makeEval("var s = eval(UTF8ToString(ptr));") }}}
     if (s == null) {
@@ -2565,7 +2566,7 @@ mergeInto(LibraryManager.library, {
     return callstack;
   },
 
-  emscripten_get_callstack__deps: ['$getCallstack'],
+  emscripten_get_callstack__deps: ['$getCallstack', '$lengthBytesUTF8', '$stringToUTF8'],
   emscripten_get_callstack: function(flags, str, maxbytes) {
     // Use explicit calls to from64 rather then using the __sig
     // magic here.  This is because the __sig wrapper uses arrow function
@@ -2647,6 +2648,7 @@ mergeInto(LibraryManager.library, {
     debugger;
   },
 
+  emscripten_print_double__deps: ['$stringToUTF8', '$lengthBytesUTF8'],
   emscripten_print_double: function(x, to, max) {
     var str = x + '';
     if (to) return stringToUTF8(str, to, max);
@@ -2887,6 +2889,7 @@ mergeInto(LibraryManager.library, {
     return result ? result.column || 0 : 0;
   },
 
+  emscripten_get_module_name__deps: ['$stringToUTF8'],
   emscripten_get_module_name: function(buf, length) {
 #if MINIMAL_RUNTIME
     return stringToUTF8('{{{ TARGET_BASENAME }}}.wasm', buf, length);
@@ -2998,7 +3001,11 @@ mergeInto(LibraryManager.library, {
     return runEmAsmFunction(code, sigPtr, argbuf);
   },
 
-  $runMainThreadEmAsm__deps: ['$readEmAsmArgs'],
+  $runMainThreadEmAsm__deps: ['$readEmAsmArgs',
+#if PTHREADS
+    '$proxyToMainThread'
+#endif
+  ],
   $runMainThreadEmAsm: function(code, sigPtr, argbuf, sync) {
     var args = readEmAsmArgs(sigPtr, argbuf);
 #if PTHREADS
@@ -3014,7 +3021,7 @@ mergeInto(LibraryManager.library, {
       // code paths as similar as possible on both sides.)
       // -1 - code is the encoding of a proxied EM_ASM, as a negative number
       // (positive numbers are non-EM_ASM calls).
-      return _emscripten_proxy_to_main_thread_js.apply(null, [-1 - code, sync].concat(args));
+      return proxyToMainThread.apply(null, [-1 - code, sync].concat(args));
     }
 #endif
 #if ASSERTIONS
@@ -3363,6 +3370,9 @@ mergeInto(LibraryManager.library, {
 
   // Use program_invocation_short_name and program_invocation_name in compiled
   // programs. This function is for implementing them.
+#if !MINIMAL_RUNTIME
+  _emscripten_get_progname__deps: ['$stringToUTF8'],
+#endif
   _emscripten_get_progname: function(str, len) {
 #if !MINIMAL_RUNTIME
 #if ASSERTIONS
@@ -3713,7 +3723,7 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
   '$stringToUTF32',
   '$lengthBytesUTF32',
   '$stringToNewUTF8',
-  '$allocateUTF8OnStack',
+  '$stringToUTF8OnStack',
   '$writeStringToMemory',
   '$writeArrayToMemory',
   '$writeAsciiToMemory',
@@ -3723,5 +3733,10 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
   '$ccall',
   '$cwrap',
   '$ExitStatus',
+  '$UTF8ArrayToString',
+  '$UTF8ToString',
+  '$stringToUTF8Array',
+  '$stringToUTF8',
+  '$lengthBytesUTF8',
 );
 #endif

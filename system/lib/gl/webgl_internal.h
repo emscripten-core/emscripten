@@ -7,6 +7,8 @@ EMSCRIPTEN_RESULT emscripten_webgl_do_commit_frame(void);
 EM_BOOL emscripten_supports_offscreencanvas(void);
 void _emscripten_proxied_gl_context_activated_from_main_browser_thread(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
+#if defined(__EMSCRIPTEN_PTHREADS__) && defined(__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__)
+
 #ifdef EMSCRIPTEN_WEBGL_TRACE
 #define GL_FUNCTION_TRACE(func) printf(#func "\n")
 #else
@@ -51,8 +53,6 @@ void _emscripten_proxied_gl_context_activated_from_main_browser_thread(EMSCRIPTE
 #define VOID_SYNC_GL_FUNCTION_9(sig, ret, functionName, t0, t1, t2, t3, t4, t5, t6, t7, t8) ret functionName(t0 p0, t1 p1, t2 p2, t3 p3, t4 p4, t5 p5, t6 p6, t7 p7, t8 p8) { GL_FUNCTION_TRACE(functionName); if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) emscripten_##functionName(p0, p1, p2, p3, p4, p5, p6, p7, p8); else emscripten_sync_run_in_main_runtime_thread(sig, &emscripten_##functionName, p0, p1, p2, p3, p4, p5, p6, p7, p8); }
 #define VOID_SYNC_GL_FUNCTION_10(sig, ret, functionName, t0, t1, t2, t3, t4, t5, t6, t7, t8, t9) ret functionName(t0 p0, t1 p1, t2 p2, t3 p3, t4 p4, t5 p5, t6 p6, t7 p7, t8 p8, t9 p9) { GL_FUNCTION_TRACE(functionName); if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) emscripten_##functionName(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9); else emscripten_sync_run_in_main_runtime_thread(sig, &emscripten_##functionName, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9); }
 #define VOID_SYNC_GL_FUNCTION_11(sig, ret, functionName, t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10) ret functionName(t0 p0, t1 p1, t2 p2, t3 p3, t4 p4, t5 p5, t6 p6, t7 p7, t8 p8, t9 p9, t10 p10) { GL_FUNCTION_TRACE(functionName); if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) emscripten_##functionName(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10); else emscripten_sync_run_in_main_runtime_thread(sig, &emscripten_##functionName, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10); }
-
-#if defined(__EMSCRIPTEN_PTHREADS__) && defined(__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__)
 
 #include <pthread.h>
 

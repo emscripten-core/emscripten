@@ -36,6 +36,7 @@
 #include <emscripten/threading.h>
 
 #include "threading_internal.h"
+#include "emscripten_internal.h"
 
 int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t* a, const char** str) {
   *str = a->_a_transferredcanvases;
@@ -175,9 +176,6 @@ void emscripten_async_waitable_close(em_queued_call* call) {
   assert(call->operationDone);
   em_queued_call_free(call);
 }
-
-extern EMSCRIPTEN_RESULT _emscripten_set_offscreencanvas_size(const char *target, int width, int height);
-extern double emscripten_receive_on_main_thread_js(int functionIndex, int numCallArgs, double* args);
 
 static void _do_call(void* arg) {
   em_queued_call* q = (em_queued_call*)arg;

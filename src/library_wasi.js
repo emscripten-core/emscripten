@@ -87,14 +87,14 @@ var WasiLibrary = {
     return 0;
   },
 
-  environ_get__deps: ['$getEnvStrings', '$writeAsciiToMemory'],
+  environ_get__deps: ['$getEnvStrings', '$stringToAscii'],
   environ_get__nothrow: true,
   environ_get: function(__environ, environ_buf) {
     var bufSize = 0;
     getEnvStrings().forEach(function(string, i) {
       var ptr = environ_buf + bufSize;
       {{{ makeSetValue('__environ', `i*${POINTER_SIZE}`, 'ptr', POINTER_TYPE) }}};
-      writeAsciiToMemory(string, ptr);
+      stringToAscii(string, ptr);
       bufSize += string.length + 1;
     });
     return 0;
@@ -119,14 +119,14 @@ var WasiLibrary = {
   },
 
   args_get__nothrow: true,
-  args_get__deps: ['$writeAsciiToMemory'],
+  args_get__deps: ['$stringToAscii'],
   args_get: function(argv, argv_buf) {
 #if MAIN_READS_PARAMS
     var bufSize = 0;
     mainArgs.forEach(function(arg, i) {
       var ptr = argv_buf + bufSize;
       {{{ makeSetValue('argv', `i*${POINTER_SIZE}`, 'ptr', POINTER_TYPE) }}};
-      writeAsciiToMemory(arg, ptr);
+      stringToAscii(arg, ptr);
       bufSize += arg.length + 1;
     });
 #endif
@@ -226,7 +226,7 @@ var WasiLibrary = {
   $printCharBuffers: [null, [], []], // 1 => stdout, 2 => stderr
   $printCharBuffers__internal: true,
   $printChar__internal: true,
-  $printChar__deps: ['$printCharBuffers'],
+  $printChar__deps: ['$printCharBuffers', '$UTF8ArrayToString'],
   $printChar: function(stream, curr) {
     var buffer = printCharBuffers[stream];
 #if ASSERTIONS

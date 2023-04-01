@@ -9,7 +9,7 @@
 #include <emscripten/em_asm.h>
 #include <emscripten/em_macros.h>
 
-EM_JS_DEPS(main, "$allocateUTF8OnStack");
+EM_JS_DEPS(main, "$stringToUTF8OnStack");
 
 void __attribute__((noinline)) InteropString(char *staticBuffer) {
   char *string = (char*)EM_ASM_PTR({
@@ -19,11 +19,11 @@ void __attribute__((noinline)) InteropString(char *staticBuffer) {
     for (var i = 0; i < 15; ++i) {
       str = str + str;
     }
-    allocateUTF8OnStack(str);
+    stringToUTF8OnStack(str);
 #else
     // allocate as many times as we need to overflow
     for (var i = 0; i < 1024 * 1024; i++) {
-      allocateUTF8OnStack(str);
+      stringToUTF8OnStack(str);
     }
     abort("we should never get here!");
 #endif
