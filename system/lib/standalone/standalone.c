@@ -129,6 +129,11 @@ void emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t
   __builtin_unreachable();
 }
 
+// Should never be called in standalone mode
+void emscripten_memset_big(void *s, int c, size_t n) {
+  __builtin_unreachable();
+}
+
 size_t emscripten_get_heap_max() {
   // In standalone mode we don't have any wasm instructions to access the max
   // memory size so the best we can do (without calling an import) is return

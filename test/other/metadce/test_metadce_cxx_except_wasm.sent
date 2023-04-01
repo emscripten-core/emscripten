@@ -1,5 +1,6 @@
 abort
 emscripten_memcpy_big
+emscripten_memset_big
 emscripten_resize_heap
 environ_get
 environ_sizes_get

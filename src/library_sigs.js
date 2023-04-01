@@ -524,6 +524,7 @@ sigs = {
   emscripten_math_tan__sig: 'dd',
   emscripten_math_tanh__sig: 'dd',
   emscripten_memcpy_big__sig: 'vppp',
+  emscripten_memset_big__sig: 'vpip',
   emscripten_notify_memory_growth__sig: 'vp',
   emscripten_num_logical_cores__sig: 'i',
   emscripten_pause_main_loop__sig: 'v',

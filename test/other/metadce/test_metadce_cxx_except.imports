@@ -8,6 +8,7 @@ env.__cxa_uncaught_exceptions
 env.__resumeException
 env.abort
 env.emscripten_memcpy_big
+env.emscripten_memset_big
 env.emscripten_resize_heap
 env.invoke_diii
 env.invoke_fiii

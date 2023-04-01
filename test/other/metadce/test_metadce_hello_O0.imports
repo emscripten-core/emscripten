@@ -1,2 +1,3 @@
 env.emscripten_memcpy_big
+env.emscripten_memset_big
 wasi_snapshot_preview1.fd_write

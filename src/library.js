@@ -415,6 +415,9 @@ mergeInto(LibraryManager.library, {
   },
 #endif
 
+  emscripten_memset_big: function(ptr, chr, size) {
+    HEAPU8.fill(chr, ptr, ptr + size);
+  },
 #endif
 
   // ==========================================================================
