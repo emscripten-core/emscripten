@@ -389,9 +389,11 @@ mergeInto(LibraryManager.library, {
   // variant, so we should never emit emscripten_memcpy_big() in the build.
   // In STANDALONE_WASM we avoid the emscripten_memcpy_big dependency so keep
   // the wasm file standalone.
+  // In BULK_MEMORY mode we include native versions of these functions based
+  // on memory.fill and memory.copy.
   // In MAIN_MODULE=1 or EMCC_FORCE_STDLIBS mode all of libc is force included
   // so we cannot override parts of it, and therefore cannot use libc_optz.
-#if (SHRINK_LEVEL < 2 || LINKABLE || process.env.EMCC_FORCE_STDLIBS) && !STANDALONE_WASM
+#if (SHRINK_LEVEL < 2 || LINKABLE || process.env.EMCC_FORCE_STDLIBS) && !STANDALONE_WASM && !BULK_MEMORY
 
 #if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/copyWithin lists browsers that support TypedArray.prototype.copyWithin, but it

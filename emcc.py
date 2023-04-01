@@ -1599,6 +1599,9 @@ def phase_setup(options, state, newargs):
     if '-mbulk-memory' not in newargs:
       newargs += ['-mbulk-memory']
 
+  if settings.SHARED_MEMORY:
+    settings.BULK_MEMORY = 1
+
   if 'DISABLE_EXCEPTION_CATCHING' in user_settings and 'EXCEPTION_CATCHING_ALLOWED' in user_settings:
     # If we get here then the user specified both DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED
     # on the command line.  This is no longer valid so report either an error or a warning (for
@@ -2434,6 +2437,8 @@ def phase_linker_setup(options, state, newargs):
     settings.JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_wasm_worker.js')))
 
   settings.SUPPORTS_GLOBALTHIS = feature_matrix.caniuse(feature_matrix.Feature.GLOBALTHIS)
+  if not settings.BULK_MEMORY:
+    settings.BULK_MEMORY = feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY)
 
   if settings.AUDIO_WORKLET:
     if not settings.SUPPORTS_GLOBALTHIS:
@@ -3565,6 +3570,10 @@ def parse_args(newargs):
       settings.DISABLE_EXCEPTION_CATCHING = 1
       settings.DISABLE_EXCEPTION_THROWING = 1
       settings.WASM_EXCEPTIONS = 0
+    elif arg == '-mbulk-memory':
+      settings.BULK_MEMORY = 1
+    elif arg == '-mno-bulk-memory':
+      settings.BULK_MEMORY = 0
     elif arg == '-fexceptions':
       # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
       # exception handling by default when -fexceptions is given when wasm

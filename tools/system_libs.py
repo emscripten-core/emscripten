@@ -1274,6 +1274,17 @@ class libc_optz(libc):
         not settings.LINKABLE and not os.environ.get('EMCC_FORCE_STDLIBS')
 
 
+class libbulkmemory(MuslInternalLibrary, AsanInstrumentedLibrary):
+  name = 'libbulkmemory'
+  src_dir = 'system/lib/libc'
+  src_files = ['emscripten_memcpy.c', 'emscripten_memset.c',
+               'emscripten_memcpy_big.S', 'emscripten_memset_big.S']
+  cflags = ['-mbulk-memory']
+
+  def can_use(self):
+    return super(libbulkmemory, self).can_use() and settings.BULK_MEMORY
+
+
 class libprintf_long_double(libc):
   name = 'libprintf_long_double'
   cflags = ['-DEMSCRIPTEN_PRINTF_LONG_DOUBLE']
@@ -1945,7 +1956,7 @@ class libstandalonewasm(MuslInternalLibrary):
                    '__main_void.c'])
     files += files_in_path(
         path='system/lib/libc',
-        filenames=['emscripten_memcpy.c'])
+        filenames=['emscripten_memcpy.c', 'emscripten_memset.c'])
     # It is more efficient to use JS methods for time, normally.
     files += files_in_path(
         path='system/lib/libc/musl/src/time',
@@ -2154,7 +2165,8 @@ def get_libs_to_link(args, forced, only_forced):
   if settings.SHRINK_LEVEL >= 2 and not settings.LINKABLE and \
      not os.environ.get('EMCC_FORCE_STDLIBS'):
     add_library('libc_optz')
-
+  if settings.BULK_MEMORY:
+    add_library('libbulkmemory')
   if settings.STANDALONE_WASM:
     add_library('libstandalonewasm')
   if settings.ALLOW_UNIMPLEMENTED_SYSCALLS:

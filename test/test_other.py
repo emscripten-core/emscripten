@@ -12219,7 +12219,7 @@ kill -9 $$
     # Test the `-l` flags on the command line get mapped the correct libraries variant
     self.run_process([EMBUILDER, 'build', 'libc-mt-debug', 'libcompiler_rt-mt', 'libdlmalloc-mt'])
 
-    libs = ['-lc', '-lcompiler_rt', '-lmalloc']
+    libs = ['-lc', '-lbulkmemory', '-lcompiler_rt', '-lmalloc']
     err = self.run_process([EMCC, test_file('hello_world.c'), '-pthread', '-nodefaultlibs', '-v'] + libs, stderr=PIPE).stderr
 
     # Check that the linker was run with `-mt` variants because `-pthread` was passed.
@@ -13412,3 +13412,30 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   @requires_node
   def test_wasi_sched_yield(self):
     self.run_wasi_test_suite_test('wasi_sched_yield')
+
+  def test_memops_bulk_memory(self):
+    self.emcc_args += ['--profiling-funcs', '-fno-builtin']
+
+    def run(args, expect_bulk_mem):
+      self.do_runf(test_file('other/test_memops_bulk_memory.c'), emcc_args=args)
+      funcs = self.parse_wasm('test_memops_bulk_memory.wasm')[2]
+      js = read_file('test_memops_bulk_memory.js')
+      if expect_bulk_mem:
+        self.assertNotContained('_emscripten_memcpy_big', js)
+        self.assertIn('$emscripten_memcpy_big', funcs)
+      else:
+        self.assertContained('_emscripten_memcpy_big', js)
+        self.assertNotIn('$emscripten_memcpy_big', funcs)
+
+    # By default we expect to find _emscripten_memcpy_big in the generaed JS and not in the
+    # native code.
+    run([], expect_bulk_mem=False)
+
+    # With bulk memory enabled we expect *not* to find it.
+    run(['-mbulk-memory'], expect_bulk_mem=True)
+
+    run(['-mbulk-memory', '-mno-bulk-memory'], expect_bulk_mem=False)
+
+    # -pthread implicitly enables bulk memory too.
+    self.setup_node_pthreads()
+    run(['-pthread'], expect_bulk_mem=True)

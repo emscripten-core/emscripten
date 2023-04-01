@@ -30,6 +30,7 @@ extern "C" {
 void emscripten_memcpy_big(void* __restrict__ dest,
                            const void* __restrict__ src,
                            size_t n) EM_IMPORT(emscripten_memcpy_big);
+void emscripten_memset_big(void* ptr, char value, size_t n);
 
 void emscripten_notify_memory_growth(size_t memory_index);
 

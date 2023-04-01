@@ -256,3 +256,5 @@ var POST_JS_FILES = [];
 
 // Set when -pthread / -sPTHREADS is passed
 var PTHREADS = false;
+
+var BULK_MEMORY = false;
