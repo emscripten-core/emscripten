@@ -110,6 +110,7 @@ wasi_symbols = {
   'fd_fdstat_get',
   'args_get',
   'args_sizes_get',
+  'random_get',
 }
 
 

@@ -954,6 +954,23 @@
                 "fs_flags",
                 "fs_rights_base",
                 "fs_rights_inheriting"
+            ],
+            "__wasi_prestat_t": [
+               "pr_type",
+               "u"
+            ],
+            "__wasi_prestat_dir_t": [
+               "pr_name_len"
+            ],
+            "__wasi_filestat_t": [
+               "dev",
+               "ino",
+               "filetype",
+               "nlink",
+               "size",
+               "atim",
+               "mtim",
+               "ctim"
             ]
         },
         "defines": [
@@ -964,7 +981,46 @@
             "__WASI_CLOCKID_REALTIME",
             "__WASI_CLOCKID_MONOTONIC",
             "__WASI_CLOCKID_PROCESS_CPUTIME_ID",
-            "__WASI_CLOCKID_THREAD_CPUTIME_ID"
+            "__WASI_CLOCKID_THREAD_CPUTIME_ID",
+            "__WASI_FDFLAGS_APPEND",
+            "__WASI_FDFLAGS_DSYNC",
+            "__WASI_FDFLAGS_NONBLOCK",
+            "__WASI_FDFLAGS_RSYNC",
+            "__WASI_FDFLAGS_SYNC",
+            "__WASI_OFLAGS_CREAT",
+            "__WASI_OFLAGS_DIRECTORY",
+            "__WASI_OFLAGS_EXCL",
+            "__WASI_OFLAGS_TRUNC",
+            "__WASI_RIGHTS_FD_DATASYNC",
+            "__WASI_RIGHTS_FD_READ",
+            "__WASI_RIGHTS_FD_SEEK",
+            "__WASI_RIGHTS_FD_FDSTAT_SET_FLAGS",
+            "__WASI_RIGHTS_FD_SYNC",
+            "__WASI_RIGHTS_FD_TELL",
+            "__WASI_RIGHTS_FD_WRITE",
+            "__WASI_RIGHTS_FD_ADVISE",
+            "__WASI_RIGHTS_FD_ALLOCATE",
+            "__WASI_RIGHTS_PATH_CREATE_DIRECTORY",
+            "__WASI_RIGHTS_PATH_CREATE_FILE",
+            "__WASI_RIGHTS_PATH_LINK_SOURCE",
+            "__WASI_RIGHTS_PATH_LINK_TARGET",
+            "__WASI_RIGHTS_PATH_OPEN",
+            "__WASI_RIGHTS_FD_READDIR",
+            "__WASI_RIGHTS_PATH_READLINK",
+            "__WASI_RIGHTS_PATH_RENAME_SOURCE",
+            "__WASI_RIGHTS_PATH_RENAME_TARGET",
+            "__WASI_RIGHTS_PATH_FILESTAT_GET",
+            "__WASI_RIGHTS_PATH_FILESTAT_SET_SIZE",
+            "__WASI_RIGHTS_PATH_FILESTAT_SET_TIMES",
+            "__WASI_RIGHTS_FD_FILESTAT_GET",
+            "__WASI_RIGHTS_FD_FILESTAT_SET_SIZE",
+            "__WASI_RIGHTS_FD_FILESTAT_SET_TIMES",
+            "__WASI_RIGHTS_PATH_SYMLINK",
+            "__WASI_RIGHTS_PATH_REMOVE_DIRECTORY",
+            "__WASI_RIGHTS_PATH_UNLINK_FILE",
+            "__WASI_RIGHTS_POLL_FD_READWRITE",
+            "__WASI_RIGHTS_SOCK_SHUTDOWN",
+            "__WASI_PREOPENTYPE_DIR"
         ]
     },
     {
