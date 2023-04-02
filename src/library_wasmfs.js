@@ -142,7 +142,7 @@ mergeInto(LibraryManager.library, {
     // TDOO: rmdir
     rmdir: (path) => {
       return withStackSave(() => {
-        var buffer = allocateUTF8OnStack(path);
+        var buffer = stringToUTF8OnStack(path);
         return __wasmfs_rmdir(buffer);
       })
     },
