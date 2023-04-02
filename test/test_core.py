@@ -193,6 +193,14 @@ def also_with_wasmfs_js(func):
     func(self)
   return decorated
 
+def can_do_wasm2c(self):
+  return not self.get_setting('MEMORY64')
+
+
+def can_do_standalone(self, impure=True):
+  if self.get_setting('MEMORY64') and not impure:
+    return False
+
 
 # Impure means a test that cannot run in a wasm VM yet, as it is not 100%
 # standalone. We can still run them with the JS code though.
