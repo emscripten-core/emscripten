@@ -2645,8 +2645,10 @@ def phase_linker_setup(options, state, newargs):
     if settings.PTHREADS:
       settings.INITIAL_MEMORY += 50 * 1024 * 1024
 
-  if settings.USE_OFFSET_CONVERTER and settings.WASM2JS:
-    exit_with_error('wasm2js is not compatible with USE_OFFSET_CONVERTER (see #14630)')
+  if settings.USE_OFFSET_CONVERTER:
+    if settings.WASM2JS:
+      exit_with_error('wasm2js is not compatible with USE_OFFSET_CONVERTER (see #14630)')
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$UTF8ArrayToString')
 
   if sanitize & UBSAN_SANITIZERS:
     if '-fsanitize-minimal-runtime' in newargs:
