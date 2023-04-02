@@ -31,6 +31,9 @@ mergeInto(LibraryManager.library, {
 #endif
       'string': (str) => {
         var ret = 0;
+         if (typeof str !== 'string') {
+    throw new TypeError('Argument must be a string');
+  }
         if (str !== null && str !== undefined && str !== 0) { // null string
           // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
           ret = stringToUTF8OnStack(str);
