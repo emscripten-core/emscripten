@@ -383,7 +383,7 @@ var WasiLibrary = {
 
   $wasiRightsToMuslOFlags: function(rights) {
 #if SYSCALL_DEBUG
-    err('wasiRightsToMuslOFlags: ' + rights);
+    dbg('wasiRightsToMuslOFlags: ' + rights);
 #endif
     if ((rights & {{{ cDefs.__WASI_RIGHTS_FD_READ }}}) && (rights & {{{ cDefs.__WASI_RIGHTS_FD_WRITE }}})) {
       return {{{ cDefs.O_RDWR }}};
@@ -431,11 +431,11 @@ var WasiLibrary = {
     var pathname = UTF8ToString(path, path_len);
     var musl_oflags = wasiRightsToMuslOFlags(Number(fs_rights_base));
 #if SYSCALL_DEBUG
-    err("oflags1: 0x" + musl_oflags.toString(16));
+    dbg("oflags1: 0x" + musl_oflags.toString(16));
 #endif
     musl_oflags |= wasiOFlagsToMuslOFlags(Number(oflags));
 #if SYSCALL_DEBUG
-    err("oflags2: 0x" + musl_oflags.toString(16));
+    dbg("oflags2: 0x" + musl_oflags.toString(16));
 #endif
     var stream = FS.open(pathname, musl_oflags);
     {{{ makeSetValue('opened_fd', '0', 'stream.fd', 'i32') }}};
