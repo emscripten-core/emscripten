@@ -459,6 +459,13 @@
             "S_IRUGO",
             "S_IRWXUGO",
             "S_IXUGO"
+
+        ]
+    },
+    {
+        "file": "limits.h",
+        "defines": [
+            "PATH_MAX"
         ]
     },
     {

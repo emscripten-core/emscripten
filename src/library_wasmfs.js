@@ -123,10 +123,15 @@ mergeInto(LibraryManager.library, {
       return ret;
     },
     cwd: () => {
+      // test commit 
       // TODO: Remove dependency on FS.cwd().
       // User code should not be using FS.cwd().
       // For file preloading, cwd should be '/' to begin with.
-      return '/';
+      return withStackSave(() => {
+        var buffer = stackAlloc({{{cDefine('PATH_MAX')}}});
+        var result = __wasmfs_getcwd(buffer, buffer.length);
+        return UTF8ToString(buffer);
+      });
     },
 
 #if FORCE_FILESYSTEM
@@ -139,7 +144,7 @@ mergeInto(LibraryManager.library, {
       });
     },
     // TODO: mkdirTree
-    // TDOO: rmdir
+    // TODO: rmdir
     // TODO: open
     open: (path, flags, mode) => {
       flags = typeof flags == 'string' ? FS.modeStringToFlags(flags) : flags;
