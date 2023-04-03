@@ -84,7 +84,7 @@ static void InitializeFlags() {
 #if SANITIZER_EMSCRIPTEN
   char *options = (char*) EM_ASM_PTR({
     return withBuiltinMalloc(function () {
-      return stringToNewUTF8(Module['LSAN_OPTIONS'] || 0);
+      return stringToNewUTF8(Module['LSAN_OPTIONS'] || "");
     });
   });
   parser.ParseString(options);
