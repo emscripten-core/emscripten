@@ -417,8 +417,7 @@ var LibraryGLEmulation = {
                    (GL.currentContext.compressionExt ? ' GL_ARB_texture_compression GL_EXT_texture_compression_s3tc' : '') +
                    (GL.currentContext.anisotropicExt ? ' GL_EXT_texture_filter_anisotropic' : '')
             );
-            GL.stringCache[name_] = ret;
-            return ret;
+            return GL.stringCache[name_] = {{{ to64('ret') }}};
         }
         return glGetString(name_);
       };
@@ -3672,6 +3671,7 @@ var LibraryGLEmulation = {
     GLImmediate.matrixLib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}}, GLImmediate.matrix[GLImmediate.currentMatrix]);
   },
 
+  glLoadMatrixf__sig: 'vp',
   glLoadMatrixf: function(matrix) {
 #if GL_DEBUG
     if (GL.debug) dbg('glLoadMatrixf receiving: ' + Array.prototype.slice.call(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16)));
