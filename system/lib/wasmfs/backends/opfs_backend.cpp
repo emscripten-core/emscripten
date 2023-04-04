@@ -132,13 +132,15 @@ public:
 #else
   // When used with JSPI on the main thread the various wasmfs_opfs_* functions
   // can be directly executed since they are all async.
-  void operator()(const std::function<void()>& func) {
-    func();
-  }
-  void operator()(const std::function<void(ProxyingQueue::ProxyingCtx)>& func) {
-    // TODO: Find a way to remove this, since it's unused.
-    ProxyingQueue::ProxyingCtx p;
-    func(p);
+  template <typename T>
+  void operator()(T func) {
+    if constexpr (std::is_invocable<T&, ProxyingQueue::ProxyingCtx>::value) {
+      // TODO: Find a way to remove this, since it's unused.
+      ProxyingQueue::ProxyingCtx p;
+      func(p);
+    } else {
+      func();
+    }
   }
 #endif
 };
