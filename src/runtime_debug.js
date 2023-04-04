@@ -128,7 +128,7 @@ function prettyPrint(arg) {
 
 #if ASSERTIONS || RUNTIME_DEBUG
 // Used by XXXXX_DEBUG settings to output debug messages.
-function dbg() {
+function dbg(text) {
 #if ENVIRONMENT_MAY_BE_NODE && PTHREADS
   // Avoid using the console for debugging in multi-threaded node applications
   // See https://github.com/emscripten-core/emscripten/issues/14804
