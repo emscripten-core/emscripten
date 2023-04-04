@@ -449,8 +449,11 @@ var WasiLibrary = {
     if (!(fd in preopens)) {
       return {{{ cDefs.EBADF }}};
     }
-    var preopen = preopens[fd];
-    stringToUTF8Array(preopens, HEAP8, path, path_len)
+    var preopen_path = preopens[fd];
+    stringToUTF8Array(preopen_path, HEAP8, path, path_len)
+#if SYSCALL_DEBUG
+    dbg('fd_prestat_dir_name -> "' + preopen_path + '"');
+#endif
     return 0;
   },
 

@@ -157,6 +157,9 @@ mergeInto(LibraryManager.library, {
 #if CAN_ADDRESS_2GB
     outIdx >>>= 0;
 #endif
+#if ASSERTIONS
+    assert(typeof str === 'string');
+#endif
     // Parameter maxBytesToWrite is not optional. Negative values, 0, null,
     // undefined and false each don't write out any bytes.
     if (!(maxBytesToWrite > 0))
