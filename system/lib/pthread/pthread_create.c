@@ -148,20 +148,22 @@ int __pthread_create(pthread_t* restrict res,
   //
   // 1. pthread struct (sizeof struct pthread)
   // 2. tls data       (__builtin_wasm_tls_size())
-  // 3. stack          (_emscripten_default_pthread_stack_size())
-  // 4. tsd pointers   (__pthread_tsd_size)
+  // 3. tsd pointers   (__pthread_tsd_size)
+  // 4. stack          (_emscripten_default_pthread_stack_size())
   size_t size = sizeof(struct pthread);
   if (__builtin_wasm_tls_size()) {
     size += __builtin_wasm_tls_size() + __builtin_wasm_tls_align() - 1;
   }
+  size += __pthread_tsd_size + TSD_ALIGN - 1;
+  size_t zero_size = size;
   if (!attr._a_stackaddr) {
     size += attr._a_stacksize + STACK_ALIGN - 1;
   }
-  size += __pthread_tsd_size + TSD_ALIGN - 1;
 
-  // Allocate all the data for the new thread and zero-initialize.
+  // Allocate all the data for the new thread and zero-initialize all parts
+  // except for the stack.
   unsigned char* block = emscripten_builtin_malloc(size);
-  memset(block, 0, size);
+  memset(block, 0, zero_size);
 
   uintptr_t offset = (uintptr_t)block;
 
@@ -195,7 +197,14 @@ int __pthread_create(pthread_t* restrict res,
     offset += __builtin_wasm_tls_size();
   }
 
-  // 3. stack data
+  // 3. tsd slots
+  if (__pthread_tsd_size) {
+    offset = ROUND_UP(offset, TSD_ALIGN);
+    new->tsd = (void*)offset;
+    offset += __pthread_tsd_size;
+  }
+
+  // 4. stack data
   // musl stores top of the stack in pthread_t->stack (i.e. the high
   // end from which it grows down).
   if (attr._a_stackaddr) {
@@ -203,13 +212,6 @@ int __pthread_create(pthread_t* restrict res,
   } else {
     offset = ROUND_UP(offset + new->stack_size, STACK_ALIGN);
     new->stack = (void*)offset;
-  }
-
-  // 4. tsd slots
-  if (__pthread_tsd_size) {
-    offset = ROUND_UP(offset, TSD_ALIGN);
-    new->tsd = (void*)offset;
-    offset += __pthread_tsd_size;
   }
 
   // Check that we didn't use more data than we allocated.
