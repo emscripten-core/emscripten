@@ -125,10 +125,8 @@ public:
 #ifdef __EMSCRIPTEN_PTHREADS__
   ProxyWorker proxy;
 
-  void operator()(const std::function<void()>& func) {
-    proxy(func);
-  }
-  void operator()(const std::function<void(ProxyingQueue::ProxyingCtx)>& func) {
+  template<typename T>
+  void operator()(T func) {
     proxy(func);
   }
 #else
