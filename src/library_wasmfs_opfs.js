@@ -15,6 +15,7 @@ mergeInto(LibraryManager.library, {
   $wasmfsOPFSBlobs: "new HandleAllocator()",
 
 #if !USE_PTHREADS
+  // OPFS will only be used on modern browsers that supports JS classes.
   $FileSystemAsyncAccessHandle: class FileSystemAsyncAccessHandle {
     // This class implements the same interface as the sync version, but has
     // async reads and writes. Hopefully this will one day be implemented by the
