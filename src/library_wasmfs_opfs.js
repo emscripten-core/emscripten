@@ -15,7 +15,7 @@ mergeInto(LibraryManager.library, {
   $wasmfsOPFSBlobs: "new HandleAllocator()",
 
 #if !USE_PTHREADS
-  $wasmfsFileSystemAsyncAccessHandle: class FileSystemAsyncAccessHandle {
+  $FileSystemAsyncAccessHandle: class FileSystemAsyncAccessHandle {
     // This class implements the same interface as the sync version, but has
     // async reads and writes. Hopefully this will one day be implemented by the
     // platform so we can remove it.
@@ -51,7 +51,7 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  $wasmfsOPFSCreateASyncAccessHandle__deps: ['$wasmfsFileSystemAsyncAccessHandle'],
+  $wasmfsOPFSCreateASyncAccessHandle__deps: ['$FileSystemAsyncAccessHandle'],
   $wasmfsOPFSCreateASyncAccessHandle: function(fileHandle) {
     return new FileSystemAsyncAccessHandle(fileHandle);
   },
