@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.35 (in development)
+3.1.36 (in development)
 -----------------------
+
+3.1.35 - 04/03/23
+-----------------
 - The following JavaScript runtime functions were converted to JavaScript
   library functions:
    - UTF8ArrayToString
