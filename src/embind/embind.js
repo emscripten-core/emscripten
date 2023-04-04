@@ -2131,7 +2131,7 @@ var LibraryEmbind = {
       whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
         // Insert empty slot for context type (argTypes[1]).
         argTypes.splice(1, 0, null);
-        classType.registeredClass.constructor_body[argCount - 1] = craftInvokerFunction(humanName, argTypes, null, invoker, rawConstructor);
+        classType.registeredClass.constructor_body[argCount - 1] = craftInvokerFunction(humanName, argTypes, null, invoker, rawConstructor, false);
         return [];
       });
       return [];
