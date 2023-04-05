@@ -1730,6 +1730,7 @@ var LibrarySDL = {
   },
 #else
   SDL_Delay__deps: ['emscripten_sleep'],
+  SDL_Delay__async: true,
   SDL_Delay: function(delay) {
     _emscripten_sleep(delay);
   },

@@ -1088,6 +1088,9 @@ var LibraryDylink = {
   },
 
   _dlopen_js__deps: ['$dlopenInternal'],
+#if ASYNCIFY
+  _dlopen_js__async: true,
+#endif
   _dlopen_js: function(handle) {
 #if ASYNCIFY
     return Asyncify.handleSleep(function(wakeUp) {
