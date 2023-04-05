@@ -944,7 +944,7 @@ var LibraryEmbind = {
     '$Asyncify',
 #endif
   ],
-  $craftInvokerFunction: function(humanName, argTypes, classType, cppInvokerFunc, cppTargetFunc, isAsync) {
+  $craftInvokerFunction: function(humanName, argTypes, classType, cppInvokerFunc, cppTargetFunc, /** boolean= */ isAsync) {
     // humanName: a human-readable string name for the function to be generated.
     // argTypes: An array that contains the embind type objects for all types in the function signature.
     //    argTypes[0] is the type object for the function return value.
@@ -953,6 +953,7 @@ var LibraryEmbind = {
     // classType: The embind type object for the class to be bound, or null if this is not a method of a class.
     // cppInvokerFunc: JS Function object to the C++-side function that interops into C++ code.
     // cppTargetFunc: Function pointer (an integer to FUNCTION_TABLE) to the target C++ function the cppInvokerFunc will end up calling.
+    // isAsync: Optional. If true, returns an async function. Async bindings are only supported with JSPI.
     var argCount = argTypes.length;
 
     if (argCount < 2) {
