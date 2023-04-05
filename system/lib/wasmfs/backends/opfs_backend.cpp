@@ -134,7 +134,7 @@ public:
   // can be directly executed since they are all async.
   template <typename T>
   void operator()(T func) {
-    if constexpr (std::is_invocable<T&, ProxyingQueue::ProxyingCtx>::value) {
+    if constexpr (std::is_invocable_v<T&, ProxyingQueue::ProxyingCtx>) {
       // TODO: Find a way to remove this, since it's unused.
       ProxyingQueue::ProxyingCtx p;
       func(p);

@@ -52,8 +52,8 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  $wasmfsOPFSCreateASyncAccessHandle__deps: ['$FileSystemAsyncAccessHandle'],
-  $wasmfsOPFSCreateASyncAccessHandle: function(fileHandle) {
+  $wasmfsOPFSCreateAsyncAccessHandle__deps: ['$FileSystemAsyncAccessHandle'],
+  $wasmfsOPFSCreateAsyncAccessHandle: function(fileHandle) {
     return new FileSystemAsyncAccessHandle(fileHandle);
   },
 #endif
@@ -235,7 +235,7 @@ mergeInto(LibraryManager.library, {
   _wasmfs_opfs_open_access__deps: ['$wasmfsOPFSFileHandles',
                                    '$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish',
 #if !USE_PTHREADS
-                                   '$wasmfsOPFSCreateASyncAccessHandle'
+                                   '$wasmfsOPFSCreateAsyncAccessHandle'
 #endif
                                   ],
   _wasmfs_opfs_open_access: async function(ctx, fileID, accessIDPtr) {
@@ -252,7 +252,7 @@ mergeInto(LibraryManager.library, {
             {mode: "in-place"});
       }
 #else
-      accessHandle = await wasmfsOPFSCreateASyncAccessHandle(fileHandle);
+      accessHandle = await wasmfsOPFSCreateAsyncAccessHandle(fileHandle);
 #endif
       accessID = wasmfsOPFSAccessHandles.allocate(accessHandle);
     } catch (e) {
