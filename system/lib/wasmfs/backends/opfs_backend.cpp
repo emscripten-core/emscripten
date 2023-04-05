@@ -118,6 +118,32 @@ void _wasmfs_opfs_flush_access(em_proxying_ctx* ctx, int access_id, int* err);
 namespace {
 
 using ProxyWorker = emscripten::ProxyWorker;
+using ProxyingQueue = emscripten::ProxyingQueue;
+
+class Worker {
+public:
+#ifdef __EMSCRIPTEN_PTHREADS__
+  ProxyWorker proxy;
+
+  template<typename T>
+  void operator()(T func) {
+    proxy(func);
+  }
+#else
+  // When used with JSPI on the main thread the various wasmfs_opfs_* functions
+  // can be directly executed since they are all async.
+  template <typename T>
+  void operator()(T func) {
+    if constexpr (std::is_invocable_v<T&, ProxyingQueue::ProxyingCtx>) {
+      // TODO: Find a way to remove this, since it's unused.
+      ProxyingQueue::ProxyingCtx p;
+      func(p);
+    } else {
+      func();
+    }
+  }
+#endif
+};
 
 class OpenState {
 public:
@@ -131,7 +157,7 @@ private:
 public:
   Kind getKind() { return kind; }
 
-  int open(ProxyWorker& proxy, int fileID, oflags_t flags) {
+  int open(Worker& proxy, int fileID, oflags_t flags) {
     if (kind == None) {
       assert(openCount == 0);
       switch (flags) {
@@ -175,7 +201,7 @@ public:
     return 0;
   }
 
-  int close(ProxyWorker& proxy) {
+  int close(Worker& proxy) {
     // TODO: Downgrade to Blob access once the last writable file descriptor has
     // been closed.
     int err = 0;
@@ -214,11 +240,11 @@ public:
 
 class OPFSFile : public DataFile {
 public:
-  ProxyWorker& proxy;
+  Worker& proxy;
   int fileID;
   OpenState state;
 
-  OPFSFile(mode_t mode, backend_t backend, int fileID, ProxyWorker& proxy)
+  OPFSFile(mode_t mode, backend_t backend, int fileID, Worker& proxy)
     : DataFile(mode, backend), proxy(proxy), fileID(fileID) {}
 
   ~OPFSFile() override {
@@ -335,12 +361,12 @@ private:
 
 class OPFSDirectory : public Directory {
 public:
-  ProxyWorker& proxy;
+  Worker& proxy;
 
   // The ID of this directory in the JS library.
   int dirID = 0;
 
-  OPFSDirectory(mode_t mode, backend_t backend, int dirID, ProxyWorker& proxy)
+  OPFSDirectory(mode_t mode, backend_t backend, int dirID, Worker& proxy)
     : Directory(mode, backend), proxy(proxy), dirID(dirID) {}
 
   ~OPFSDirectory() override {
@@ -445,7 +471,7 @@ private:
 
 class OPFSBackend : public Backend {
 public:
-  ProxyWorker proxy;
+  Worker proxy;
 
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     // No way to support a raw file without a parent directory.
@@ -472,8 +498,9 @@ extern "C" {
 backend_t wasmfs_create_opfs_backend() {
   // ProxyWorker cannot safely be synchronously spawned from the main browser
   // thread. See comment in thread_utils.h for more details.
-  assert(!emscripten_is_main_browser_thread() &&
-         "Cannot safely create OPFS backend on main browser thread");
+  assert(!emscripten_is_main_browser_thread() || emscripten_has_asyncify() == 2 &&
+         "Cannot safely create OPFS backend on main browser thread without JSPI");
+
   return wasmFS.addBackend(std::make_unique<OPFSBackend>());
 }
 

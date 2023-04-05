@@ -5397,11 +5397,15 @@ Module["preRun"].push(function () {
                     args=['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD', '-sINITIAL_MEMORY=32MB',
                           '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
 
-  @requires_threads
   @no_firefox('no OPFS support yet')
-  def test_wasmfs_opfs(self):
+  @parameterized({
+    '': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+    'jspi': (['-Wno-experimental', '-sASYNCIFY=2'],),
+  })
+  @requires_threads
+  def test_wasmfs_opfs(self, args):
     test = test_file('wasmfs/wasmfs_opfs.c')
-    args = ['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD', '-O3']
+    args = ['-sWASMFS', '-O3'] + args
     self.btest_exit(test, args=args + ['-DWASMFS_SETUP'])
     self.btest_exit(test, args=args + ['-DWASMFS_RESUME'])
 
