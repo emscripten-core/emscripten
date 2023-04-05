@@ -314,7 +314,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
   if settings.RELOCATABLE and settings.MEMORY64 == 2:
     metadata.imports += ['__memory_base32']
 
-  if settings.ASYNCIFY:
+  if settings.ASYNCIFY == 1:
     metadata.exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
 
   update_settings_glue(out_wasm, metadata)
@@ -365,7 +365,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     if settings.INITIAL_TABLE == -1:
       settings.INITIAL_TABLE = dylink_sec.table_size + 1
 
-    if settings.ASYNCIFY:
+    if settings.ASYNCIFY == 1:
       metadata.imports += ['__asyncify_state', '__asyncify_data']
 
   if metadata.invokeFuncs:
