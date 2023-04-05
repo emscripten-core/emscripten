@@ -101,13 +101,7 @@ UNSUPPORTED_LLD_FLAGS = {
 }
 
 DEFAULT_ASYNCIFY_IMPORTS = [
-  'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load',
-  'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
-  'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay',
-  'emscripten_scan_registers', 'emscripten_lazy_load_code',
-  'emscripten_fiber_swap', '__load_secondary_module',
-  'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync', '_emval_await',
-  '_dlopen_js', '__asyncjs__*'
+  'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync', '__asyncjs__*'
 ]
 
 DEFAULT_ASYNCIFY_EXPORTS = [

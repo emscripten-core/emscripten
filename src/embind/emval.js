@@ -564,6 +564,7 @@ var LibraryEmVal = {
 
 #if ASYNCIFY
   _emval_await__deps: ['$Emval', '$Asyncify'],
+  _emval_await__async: true,
   _emval_await: function(promise) {
     return Asyncify.handleAsync(() => {
       promise = Emval.toValue(promise);
