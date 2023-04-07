@@ -2110,7 +2110,7 @@ def phase_linker_setup(options, state, newargs):
       '__stack_pointer',
     ]
 
-    if settings.ASYNCIFY:
+    if settings.ASYNCIFY == 1:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
         '__asyncify_state',
         '__asyncify_data'

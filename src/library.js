@@ -3623,7 +3623,7 @@ mergeInto(LibraryManager.library, {
 #if SUPPORT_LONGJMP == 'wasm'
   __c_longjmp: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_WASM_TYPE }}}']})",
 #endif
-#if ASYNCIFY
+#if ASYNCIFY == 1
   __asyncify_state: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, 0)",
   __asyncify_data: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, 0)",
 #endif
