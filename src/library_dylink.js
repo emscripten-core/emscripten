@@ -6,7 +6,7 @@
  * Dynamic library loading
  */
 
-var dlopenMissingError = "'To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking'"
+var dlopenMissingError = "'To use dlopen, you need enable dynamic linking, see https://emscripten.org/docs/compiling/Dynamic-Linking.html'"
 
 var LibraryDylink = {
 #if RELOCATABLE
