@@ -608,7 +608,7 @@ var LibraryGLFW = {
     onFramebufferSizeChanged: function() {
       if (!GLFW.active) return;
 
-      if (!GLFW.active.framebufferSizeFunc) {
+      if (GLFW.active.framebufferSizeFunc) {
 #if USE_GLFW == 3
         {{{ makeDynCall('viii', 'GLFW.active.framebufferSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
 #endif
