@@ -617,11 +617,13 @@ var LibraryGLFW = {
 
     onWindowContentScaleChanged: function(scale) {
       GLFW.scale = scale;
-      if (!GLFW.active || !GLFW.active.windowContentScaleFunc) return;
+      if (!GLFW.active) return;
 
+      if (GLFW.active.windowContentScaleFunc) {
 #if USE_GLFW == 3
-      {{{ makeDynCall('viff', 'GLFW.active.windowContentScaleFunc') }}}(GLFW.active.id, GLFW.scale, GLFW.scale);
+        {{{ makeDynCall('viff', 'GLFW.active.windowContentScaleFunc') }}}(GLFW.active.id, GLFW.scale, GLFW.scale);
 #endif
+      }
     },
 
     getTime: function() {
