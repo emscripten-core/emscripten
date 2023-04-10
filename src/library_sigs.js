@@ -540,6 +540,7 @@ sigs = {
   emscripten_promise_any__sig: 'pppp',
   emscripten_promise_create__sig: 'p',
   emscripten_promise_destroy__sig: 'vp',
+  emscripten_promise_race__sig: 'ppp',
   emscripten_promise_resolve__sig: 'vpip',
   emscripten_promise_then__sig: 'ppppp',
   emscripten_random__sig: 'f',
