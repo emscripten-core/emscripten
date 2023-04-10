@@ -3639,8 +3639,6 @@ def parse_args(newargs):
 def phase_binaryen(target, options, wasm_target):
   global final_js
   logger.debug('using binaryen')
-  if settings.GENERATE_SOURCE_MAP and not settings.SOURCE_MAP_BASE:
-    logger.warning("Wasm source map won't be usable in a browser without --source-map-base")
   # whether we need to emit -g (function name debug info) in the final wasm
   debug_info = settings.DEBUG_LEVEL >= 2 or settings.EMIT_NAME_SECTION
   # whether we need to emit -g in the intermediate binaryen invocations (but not
