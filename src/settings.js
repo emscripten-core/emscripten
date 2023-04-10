@@ -1382,7 +1382,7 @@ var DYNCALLS = false;
 // i64 is used. If WASM_BIGINT is present, the default minimum supported browser
 // versions will be increased to the min version that supports BigInt.
 // [link]
-var WASM_BIGINT = false;
+var WASM_BIGINT = true;
 
 // WebAssembly defines a "producers section" which compilers and tools can
 // annotate themselves in, and LLVM emits this by default.
@@ -1745,10 +1745,10 @@ var AUTO_NATIVE_LIBRARIES = true;
 // versions >= MIN_FIREFOX_VERSION
 // are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
 // for Firefox versions older than < majorVersion.
-// Firefox ESR 60.5 (Firefox 65) was released on 2019-01-29.
+// Firefox ESR 68 was released on July 9, 2019.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
-var MIN_FIREFOX_VERSION = 65;
+var MIN_FIREFOX_VERSION = 68;
 
 // Specifies the oldest version of desktop Safari to target. Version is encoded
 // in MMmmVV, e.g. 70101 denotes Safari 7.1.1.
