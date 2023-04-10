@@ -189,17 +189,17 @@ mergeInto(LibraryManager.library, {
       promise: Promise.allSettled(promises).then((results) => {
         if (resultBuf) {
           for (var i = 0; i < size; i++) {
-            let baseOffset = i * {{{ C_STRUCTS.em_settled_result_t.__size__ }}};
-            let resultOffset =
+            var baseOffset = i * {{{ C_STRUCTS.em_settled_result_t.__size__ }}};
+            var resultOffset =
                 baseOffset + {{{ C_STRUCTS.em_settled_result_t.result }}};
-            let valueOffset =
+            var valueOffset =
                 baseOffset + {{{ C_STRUCTS.em_settled_result_t.value }}};
             if (results[i].status === 'fulfilled') {
-              let fulfill = {{{ cDefs.EM_PROMISE_FULFILL }}};
+              var fulfill = {{{ cDefs.EM_PROMISE_FULFILL }}};
               {{{ makeSetValue('resultBuf', 'resultOffset', 'fulfill', 'i32') }}};
               {{{ makeSetValue('resultBuf', 'valueOffset', 'results[i].value', '*') }}};
             } else {
-              let reject = {{{ cDefs.EM_PROMISE_REJECT }}};
+              var reject = {{{ cDefs.EM_PROMISE_REJECT }}};
               {{{ makeSetValue('resultBuf', 'resultOffset', 'reject', 'i32') }}};
               {{{ makeSetValue('resultBuf', 'valueOffset', 'results[i].reason', '*') }}};
             }
