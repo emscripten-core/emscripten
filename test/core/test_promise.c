@@ -248,6 +248,102 @@ static em_promise_result_t test_all(void** result, void* data, void* value) {
   return EM_PROMISE_MATCH_RELEASE;
 }
 
+typedef struct promise_all_settled_state {
+  size_t size;
+  em_promise_t in[3];
+  em_settled_result_t out[3];
+  em_settled_result_t expected[3];
+} promise_all_settled_state;
+
+static em_promise_result_t
+check_promise_all_settled_results(void** result, void* data, void* value) {
+  promise_all_settled_state* state = (promise_all_settled_state*)data;
+  assert(value == state->out);
+  emscripten_console_log("promise_all_settled results:");
+  for (size_t i = 0; i < state->size; ++i) {
+    emscripten_console_logf(
+      "%s %ld",
+      state->out[i].result == EM_PROMISE_FULFILL ? "fulfill" : "reject",
+      (uintptr_t)state->out[i].value);
+    assert(state->out[i].result == state->expected[i].result);
+    assert(state->out[i].value == state->expected[i].value);
+  }
+  free(state);
+  return EM_PROMISE_FULFILL;
+}
+
+static em_promise_result_t check_null(void** result, void* data, void* value) {
+  assert(value == NULL);
+  return EM_PROMISE_FULFILL;
+}
+
+static em_promise_result_t
+test_all_settled(void** result, void* data, void* value) {
+  emscripten_console_log("test_all_settled");
+  assert(data == (void*)5);
+
+  // No input should be handled ok.
+  promise_all_settled_state* state = malloc(sizeof(promise_all_settled_state));
+  *state =
+    (promise_all_settled_state){.size = 0, .in = {}, .out = {}, .expected = {}};
+  em_promise_t empty =
+    emscripten_promise_all_settled(state->in, state->out, state->size);
+  em_promise_t empty_checked = emscripten_promise_then(
+    empty, check_promise_all_settled_results, fail, state);
+  emscripten_promise_destroy(empty);
+
+  // Fulfilled and rejected inputs should be reported.
+  state = malloc(sizeof(promise_all_settled_state));
+  *state = (promise_all_settled_state){.size = 3,
+                                       .in = {emscripten_promise_create(),
+                                              emscripten_promise_create(),
+                                              emscripten_promise_create()},
+                                       .out = {},
+                                       .expected = {
+                                         {EM_PROMISE_FULFILL, (void*)42},
+                                         {EM_PROMISE_REJECT, (void*)43},
+                                         {EM_PROMISE_FULFILL, (void*)44},
+                                       }};
+  em_promise_t full =
+    emscripten_promise_all_settled(state->in, state->out, state->size);
+  em_promise_t full_checked = emscripten_promise_then(
+    full, check_promise_all_settled_results, fail, state);
+  emscripten_promise_destroy(full);
+  emscripten_promise_resolve(state->in[0], EM_PROMISE_FULFILL, (void*)42);
+  emscripten_promise_resolve(state->in[1], EM_PROMISE_REJECT, (void*)43);
+  emscripten_promise_resolve(state->in[2], EM_PROMISE_FULFILL, (void*)44);
+  emscripten_promise_destroy(state->in[0]);
+  emscripten_promise_destroy(state->in[1]);
+  emscripten_promise_destroy(state->in[2]);
+
+  // Null buffer should be ok.
+  em_promise_t null_in[3] = {
+    emscripten_promise_create(),
+    emscripten_promise_create(),
+    emscripten_promise_create(),
+  };
+  em_promise_t null = emscripten_promise_all_settled(null_in, NULL, 3);
+  em_promise_t null_checked =
+    emscripten_promise_then(null, check_null, fail, NULL);
+  emscripten_promise_destroy(null);
+  emscripten_promise_resolve(null_in[0], EM_PROMISE_REJECT, (void*)42);
+  emscripten_promise_resolve(null_in[1], EM_PROMISE_FULFILL, (void*)43);
+  emscripten_promise_resolve(null_in[2], EM_PROMISE_REJECT, (void*)44);
+  emscripten_promise_destroy(null_in[0]);
+  emscripten_promise_destroy(null_in[1]);
+  emscripten_promise_destroy(null_in[2]);
+
+  em_promise_t to_finish[3] = {empty_checked, full_checked, null_checked};
+  em_promise_t finish_test_all = emscripten_promise_all(to_finish, NULL, 3);
+
+  emscripten_promise_destroy(empty_checked);
+  emscripten_promise_destroy(full_checked);
+  emscripten_promise_destroy(null_checked);
+
+  *result = finish_test_all;
+  return EM_PROMISE_MATCH_RELEASE;
+}
+
 static em_promise_result_t finish(void** result, void* data, void* value) {
   emscripten_console_logf("finish");
 
@@ -292,8 +388,10 @@ int main() {
   em_promise_t test3 =
     emscripten_promise_then(test2, test_rejection, fail, (void*)3);
   em_promise_t test4 = emscripten_promise_then(test3, test_all, fail, (void*)4);
+  em_promise_t test5 =
+    emscripten_promise_then(test4, test_all_settled, fail, (void*)5);
   em_promise_t assert_stack =
-    emscripten_promise_then(test4, check_stack, fail, NULL);
+    emscripten_promise_then(test5, check_stack, fail, NULL);
   em_promise_t end = emscripten_promise_then(assert_stack, finish, fail, NULL);
 
   emscripten_promise_resolve(start, EM_PROMISE_FULFILL, NULL);
@@ -304,6 +402,7 @@ int main() {
   emscripten_promise_destroy(test2);
   emscripten_promise_destroy(test3);
   emscripten_promise_destroy(test4);
+  emscripten_promise_destroy(test5);
   emscripten_promise_destroy(assert_stack);
   emscripten_promise_destroy(end);
 
