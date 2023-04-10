@@ -28,4 +28,7 @@ promise_any reasons:
 42
 43
 44
+test_race
+expected success: 42
+expected error: 42
 finish

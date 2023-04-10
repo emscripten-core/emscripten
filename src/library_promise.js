@@ -239,5 +239,20 @@ mergeInto(LibraryManager.library, {
     dbg('create: ' + id);
 #endif
     return id;
+  },
+
+  emscripten_promise_race__deps: ['$promiseMap', '$idsToPromises'],
+  emscripten_promise_race: function(idBuf, size) {
+    var promises = idsToPromises(idBuf, size);
+#if RUNTIME_DEBUG
+    dbg('emscripten_promise_race: ' + promises);
+#endif
+    var id = promiseMap.allocate({
+      promise: Promise.race(promises)
+    });
+#if RUNTIME_DEBUG
+    dbg('create: ' + id);
+#endif
+    return id;
   }
 });

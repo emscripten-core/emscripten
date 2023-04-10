@@ -462,6 +462,42 @@ static em_promise_result_t test_any(void** result, void* data, void* value) {
   return EM_PROMISE_MATCH_RELEASE;
 }
 
+static em_promise_result_t test_race(void** result, void* data, void* value) {
+  emscripten_console_log("test_race");
+  assert(data == (void*)7);
+
+  em_promise_t in[2] = {emscripten_promise_create(),
+                        emscripten_promise_create()};
+  em_promise_t fulfill = emscripten_promise_race(in, 2);
+  em_promise_t fulfill_checked =
+    emscripten_promise_then(fulfill, expect_success, fail, NULL);
+  emscripten_promise_destroy(fulfill);
+  emscripten_promise_resolve(in[1], EM_PROMISE_FULFILL, (void*)42);
+  emscripten_promise_resolve(in[0], EM_PROMISE_REJECT, NULL);
+  emscripten_promise_destroy(in[0]);
+  emscripten_promise_destroy(in[1]);
+
+  in[0] = emscripten_promise_create();
+  in[1] = emscripten_promise_create();
+  em_promise_t reject = emscripten_promise_race(in, 2);
+  em_promise_t reject_checked =
+    emscripten_promise_then(reject, fail, expect_error, NULL);
+  emscripten_promise_destroy(reject);
+  emscripten_promise_resolve(in[0], EM_PROMISE_REJECT, (void*)42);
+  emscripten_promise_resolve(in[1], EM_PROMISE_FULFILL, NULL);
+  emscripten_promise_destroy(in[0]);
+  emscripten_promise_destroy(in[1]);
+
+  em_promise_t to_finish[2] = {fulfill_checked, reject_checked};
+  em_promise_t finish_test_race = emscripten_promise_all(to_finish, NULL, 0);
+
+  emscripten_promise_destroy(fulfill_checked);
+  emscripten_promise_destroy(reject_checked);
+
+  *result = finish_test_race;
+  return EM_PROMISE_MATCH_RELEASE;
+}
+
 static em_promise_result_t finish(void** result, void* data, void* value) {
   emscripten_console_logf("finish");
 
@@ -509,8 +545,10 @@ int main() {
   em_promise_t test5 =
     emscripten_promise_then(test4, test_all_settled, fail, (void*)5);
   em_promise_t test6 = emscripten_promise_then(test5, test_any, fail, (void*)6);
+  em_promise_t test7 =
+    emscripten_promise_then(test6, test_race, fail, (void*)7);
   em_promise_t assert_stack =
-    emscripten_promise_then(test6, check_stack, fail, NULL);
+    emscripten_promise_then(test7, check_stack, fail, NULL);
   em_promise_t end = emscripten_promise_then(assert_stack, finish, fail, NULL);
 
   emscripten_promise_resolve(start, EM_PROMISE_FULFILL, NULL);
@@ -523,6 +561,7 @@ int main() {
   emscripten_promise_destroy(test4);
   emscripten_promise_destroy(test5);
   emscripten_promise_destroy(test6);
+  emscripten_promise_destroy(test7);
   emscripten_promise_destroy(assert_stack);
   emscripten_promise_destroy(end);
 

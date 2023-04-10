@@ -127,6 +127,14 @@ __attribute__((warn_unused_result)) em_promise_t emscripten_promise_all_settled(
 __attribute__((warn_unused_result)) em_promise_t emscripten_promise_any(
   em_promise_t* promises, void** errors, size_t num_promises);
 
+// Call Promise.race to create and return a new promise that settles once any of
+// the `num_promises` input promises passed in `promises` has been settled. If
+// the first input promise to settle is fulfilled, the resulting promise is
+// fulfilled with the same value. Otherwise, if the first input promise to
+// settle is rejected, the resulting promise is rejected with the same reason.
+__attribute__((warn_unused_result)) em_promise_t
+emscripten_promise_race(em_promise_t* promises, size_t num_promises);
+
 #ifdef __cplusplus
 }
 #endif
