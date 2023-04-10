@@ -465,7 +465,7 @@ var LibraryGLFW = {
     onMouseenter: function(event) {
       if (!GLFW.active) return;
 
-      if (event.target != Module["canvas"] || !GLFW.active.cursorEnterFunc) return;
+      if (event.target != Module["canvas"]) return;
 
       if (GLFW.active.cursorEnterFunc) {
 #if USE_GLFW == 3
@@ -477,7 +477,7 @@ var LibraryGLFW = {
     onMouseleave: function(event) {
       if (!GLFW.active) return;
 
-      if (event.target != Module["canvas"] || !GLFW.active.cursorEnterFunc) return;
+      if (event.target != Module["canvas"]) return;
 
       if (GLFW.active.cursorEnterFunc) {
 #if USE_GLFW == 3
