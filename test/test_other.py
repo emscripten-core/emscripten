@@ -11091,19 +11091,18 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
       args += ['-sERROR_ON_WASM_CHANGES_AFTER_LINK']
       self.do_runf(test_file(filename), expected, emcc_args=args)
 
-    # -O0 with BigInt support (to avoid the need for legalization)
-    required_flags = ['-sWASM_BIGINT']
-    ok(required_flags)
+    # -O0 just works
+    ok([])
     # Same with DWARF
-    ok(required_flags + ['-g'])
+    ok(['-g'])
     # Function pointer calls from JS work too
-    ok(required_flags, filename='hello_world_main_loop.cpp')
+    ok([], filename='hello_world_main_loop.cpp')
     # -O1 is ok as we don't run wasm-opt there (but no higher, see below)
-    ok(required_flags + ['-O1'])
+    ok(['-O1'])
     # Exception support shouldn't require changes after linking
-    ok(required_flags + ['-fexceptions'])
+    ok(['-fexceptions'])
     # Standalone mode should not do anything special to the wasm.
-    ok(required_flags + ['-sSTANDALONE_WASM'])
+    ok(['-sSTANDALONE_WASM'])
 
     # other builds fail with a standard message + extra details
     def fail(args, details):
@@ -11113,13 +11112,10 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
       self.assertContained('changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK', err)
       self.assertContained(details, err)
 
-    # plain -O0
-    legalization_message = 'to disable int64 legalization (which requires changes after link) use -sWASM_BIGINT'
-    fail([], legalization_message)
     # optimized builds even without legalization
     optimization_message = '-O2+ optimizations always require changes, build with -O0 or -O1 instead'
-    fail(required_flags + ['-O2'], optimization_message)
-    fail(required_flags + ['-O3'], optimization_message)
+    fail(['-O2'], optimization_message)
+    fail(['-O3'], optimization_message)
 
   @crossplatform
   def test_output_to_nowhere(self):
