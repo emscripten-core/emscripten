@@ -467,11 +467,11 @@ var LibraryGLFW = {
 
       if (event.target != Module["canvas"]) return;
 
-      if (GLFW.active.cursorEnterFunc) {
 #if USE_GLFW == 3
+      if (GLFW.active.cursorEnterFunc) {
         {{{ makeDynCall('vii', 'GLFW.active.cursorEnterFunc') }}}(GLFW.active.id, 1);
-#endif
       }
+#endif
     },
 
     onMouseleave: function(event) {
@@ -479,11 +479,11 @@ var LibraryGLFW = {
 
       if (event.target != Module["canvas"]) return;
 
-      if (GLFW.active.cursorEnterFunc) {
 #if USE_GLFW == 3
+      if (GLFW.active.cursorEnterFunc) {
         {{{ makeDynCall('vii', 'GLFW.active.cursorEnterFunc') }}}(GLFW.active.id, 0);
-#endif
       }
+#endif
     },
 
     onMouseButtonChanged: function(event, status) {
@@ -608,22 +608,22 @@ var LibraryGLFW = {
     onFramebufferSizeChanged: function() {
       if (!GLFW.active) return;
 
-      if (GLFW.active.framebufferSizeFunc) {
 #if USE_GLFW == 3
+      if (GLFW.active.framebufferSizeFunc) {
         {{{ makeDynCall('viii', 'GLFW.active.framebufferSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
-#endif
       }
+#endif
     },
 
     onWindowContentScaleChanged: function(scale) {
       GLFW.scale = scale;
       if (!GLFW.active) return;
 
-      if (GLFW.active.windowContentScaleFunc) {
 #if USE_GLFW == 3
+      if (GLFW.active.windowContentScaleFunc) {
         {{{ makeDynCall('viff', 'GLFW.active.windowContentScaleFunc') }}}(GLFW.active.id, GLFW.scale, GLFW.scale);
-#endif
       }
+#endif
     },
 
     getTime: function() {
