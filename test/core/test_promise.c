@@ -356,7 +356,7 @@ typedef struct promise_any_state {
 static em_promise_result_t
 check_promise_any_result(void** result, void* data, void* value) {
   promise_any_state* state = (promise_any_state*)data;
-  emscripten_console_logf("promise_all result: %ld", (uintptr_t)value);
+  emscripten_console_logf("promise_any result: %ld", (uintptr_t)value);
   assert(value == state->expected);
   free(state);
   return EM_PROMISE_FULFILL;
@@ -366,7 +366,7 @@ static em_promise_result_t
 check_promise_any_err(void** result, void* data, void* value) {
   promise_any_state* state = (promise_any_state*)data;
   assert(value == state->err);
-  emscripten_console_log("promise_all reasons:");
+  emscripten_console_log("promise_any reasons:");
   for (size_t i = 0; i < state->size; ++i) {
     emscripten_console_logf("%ld", (uintptr_t)state->err[i]);
     assert(state->err[i] == state->expected_err[i]);

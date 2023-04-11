@@ -222,6 +222,9 @@ mergeInto(LibraryManager.library, {
 #if RUNTIME_DEBUG
     dbg('emscripten_promise_any: ' + promises);
 #endif
+#if ASSERTIONS
+    assert(typeof Promise.any !== 'undefined', "Promise.any does not exist");
+#endif
     var id = promiseMap.allocate({
       promise: Promise.any(promises).catch((err) => {
         if (errorBuf) {
