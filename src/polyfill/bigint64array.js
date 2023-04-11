@@ -23,6 +23,12 @@ if (typeof globalThis.BigInt64Array === "undefined") {
   }
 
   function createBigIntArrayShim(partsToBigInt) {
+    /**
+     * Closure thinks .set is not defined on Proxy objects for some reason. The
+     * error is on the line with  proxy.set  but we can only apply the
+     * suppression at the function level here.
+     * @suppress {missingProperties}
+     */
     function createBigInt64Array(array) {
       if (typeof array === "number") {
         array = new Uint32Array(2 * array);
