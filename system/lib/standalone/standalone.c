@@ -152,7 +152,7 @@ int emscripten_resize_heap(size_t size) {
 }
 
 double emscripten_get_now(void) {
-  return (1000 * clock()) / (double)CLOCKS_PER_SEC;
+  return (1000ll * clock()) / (double)CLOCKS_PER_SEC;
 }
 
 // C++ ABI
