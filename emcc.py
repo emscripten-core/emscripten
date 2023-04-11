@@ -2785,6 +2785,13 @@ def phase_linker_setup(options, state, newargs):
       '__cxa_is_pointer_type',
       '__cxa_can_catch',
 
+      # __cxa_begin_catch depends on this but we can't use deps info in this
+      # case because that only works for user-level code, and __cxa_begin_catch
+      # can be used by the standard library.
+      '__cxa_increment_exception_refcount',
+      # Same for __cxa_end_catch
+      '__cxa_decrement_exception_refcount',
+
       # Emscripten exception handling can generate invoke calls, and they call
       # setThrew(). We cannot handle this using deps_info as the invokes are not
       # emitted because of library function usage, but by codegen itself.

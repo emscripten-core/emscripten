@@ -1476,16 +1476,20 @@ class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
       'stdlib_stdexcept.cpp',
       'stdlib_typeinfo.cpp',
       'private_typeinfo.cpp',
-      'cxa_exception_emscripten.cpp',
+      'cxa_exception_js_utils.cpp',
     ]
     if self.eh_mode == Exceptions.NONE:
       filenames += ['cxa_noexception.cpp']
+    elif self.eh_mode == Exceptions.EMSCRIPTEN:
+      filenames += ['cxa_exception_emscripten.cpp']
     elif self.eh_mode == Exceptions.WASM:
       filenames += [
         'cxa_exception_storage.cpp',
         'cxa_exception.cpp',
         'cxa_personality.cpp'
       ]
+    else:
+      assert False
 
     return files_in_path(
         path='system/lib/libcxxabi/src',

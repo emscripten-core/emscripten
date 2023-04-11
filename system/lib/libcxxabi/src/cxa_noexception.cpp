@@ -49,6 +49,17 @@ __cxa_uncaught_exception() throw() { return false; }
 unsigned int
 __cxa_uncaught_exceptions() throw() { return 0; }
 
+#if __EMSCRIPTEN__
+// Under emscripten this code is also linked when building when
+// DISABLE_EXCEPTION_CATCHING is set but DISABLE_EXCEPTION_THROWING is not.
+// TODO(sbc): Perhaps just call std::terminate here. It could
+// just be some test code that needs updating.
+void *__cxa_allocate_exception(size_t thrown_size) _NOEXCEPT {
+  char* allocation = (char*)malloc(thrown_size + sizeof(__cxa_exception));
+  return allocation + sizeof(__cxa_exception);
+}
+#endif
+
 }  // extern "C"
 
 // provide dummy implementations for the 'no exceptions' case.
