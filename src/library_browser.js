@@ -1212,6 +1212,7 @@ var LibraryBrowser = {
 
   // To avoid creating worker parent->child chains, always proxies to execute on the main thread.
   emscripten_create_worker__proxy: 'sync',
+  emscripten_create_worker__deps: ['$UTF8ToString', 'malloc', 'free'],
   emscripten_create_worker: function(url) {
     url = UTF8ToString(url);
     var id = Browser.workers.length;
@@ -1253,6 +1254,7 @@ var LibraryBrowser = {
     return id;
   },
 
+  emscripten_destroy_worker__deps: ['free'],
   emscripten_destroy_worker__proxy: 'sync',
   emscripten_destroy_worker: function(id) {
     var info = Browser.workers[id];

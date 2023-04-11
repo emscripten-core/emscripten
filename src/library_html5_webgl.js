@@ -76,6 +76,9 @@ var LibraryHtml5WebGL = {
 #if LibraryManager.has('library_webgl.js')
   '$GL',
 #endif
+#if OFFSCREENCANVAS_SUPPORT
+  'malloc',
+#endif
 #if PTHREADS && OFFSCREEN_FRAMEBUFFER
   'emscripten_webgl_create_context_proxied',
 #endif
@@ -313,6 +316,7 @@ var LibraryHtml5WebGL = {
   },
 
   emscripten_webgl_destroy_context__proxy: 'sync_on_webgl_context_handle_thread',
+  emscripten_webgl_destroy_context__deps: ['free'],
   emscripten_webgl_destroy_context: function(contextHandle) {
     if (GL.currentContext == contextHandle) GL.currentContext = 0;
     GL.deleteContext(contextHandle);

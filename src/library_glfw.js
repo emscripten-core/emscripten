@@ -1123,7 +1123,7 @@ var LibraryGLFW = {
 /*******************************************************************************
  * GLFW FUNCTIONS
  ******************************************************************************/
-  glfwInit__deps: ['emscripten_get_device_pixel_ratio'],
+  glfwInit__deps: ['emscripten_get_device_pixel_ratio', 'malloc', 'free'],
   glfwInit__sig: 'i',
   glfwInit: function() {
     if (GLFW.windows) return 1; // GL_TRUE
