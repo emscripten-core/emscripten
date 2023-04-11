@@ -169,7 +169,7 @@ Options that are modified or new in *emcc* are listed below:
   ``sourceMappingURL`` section. The resulting URL will have format:
   ``<base-url>`` + ``<wasm-file-name>`` + ``.map``. ``<base-url>`` defaults
   to being empty (which means the source map is served from the same directory
-  as the wasm file). It can be changed using :ref:`--source-map-base <emcc-source-map-base>`
+  as the wasm file). It can be changed using :ref:`--source-map-base <emcc-source-map-base>`.
 
 .. _emcc-gN:
 

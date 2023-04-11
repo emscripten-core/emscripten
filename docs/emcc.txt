@@ -174,14 +174,14 @@ Options that are modified or new in *emcc* are listed below:
    different server, for example).
 
 "-gsource-map"
- [link]
-  Generate a source map using LLVM debug information (which must
-  be present in object files, i.e., they should have been compiled with ``-g``).
-  When this option is provided, the **.wasm** file is updated to have a
-  ``sourceMappingURL`` section. The resulting URL will have format:
-  ``<base-url>`` + ``<wasm-file-name>`` + ``.map``. ``<base-url>`` defaults
-  to being empty (which means the source map is served from the same directory
-  as the wasm file). It can be changed using --source-map-base
+  [link] Generate a source map using LLVM debug information (which
+  must be present in object files, i.e., they should have been 
+  compiled with "-g"). When this option is provided, the **.wasm**
+  file is updated to have a ""sourceMappingURL" section. The resulting
+  URL will have format: "<base-url>"" + "<wasm-file-name>" + ".map".
+  "<base-url>" defaults to being empty (which means the source map is
+  served from the same directory as the wasm file). It can be changed
+  using --source-map-base.
 
 "-g<level>"
    [compile+link] Controls the level of debuggability. Each level
@@ -380,9 +380,8 @@ Options that are modified or new in *emcc* are listed below:
        specified using the "-o" option.
 
 "--source-map-base <base-url>"
-  [link]
-  The base URL for the location where WebAssembly source maps will be published. Must be used
-  with `-gsource-map.
+  [link] The base URL for the location where WebAssembly source maps
+  will be published. Must be used with -gsource-map.
 
 "--minify 0"
    [same as -g1 if passed at compile time, otherwise applies at link]
