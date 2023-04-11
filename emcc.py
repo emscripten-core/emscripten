@@ -1896,8 +1896,10 @@ def phase_linker_setup(options, state, newargs):
   if settings.LZ4:
     settings.EXPORTED_RUNTIME_METHODS += ['LZ4']
 
+  # WASM_BIGINT defaults to 1 when VMs support it, and when not using wasm2js
   default_setting('WASM_BIGINT',
-                  feature_matrix.caniuse(feature_matrix.Feature.JS_BIGINT_INTEGRATION))
+                  feature_matrix.caniuse(feature_matrix.Feature.JS_BIGINT_INTEGRATION) and \
+                  not settings.WASM2JS)
 
   if settings.PURE_WASI:
     settings.STANDALONE_WASM = 1
