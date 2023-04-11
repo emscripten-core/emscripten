@@ -91,7 +91,6 @@ misc_test_modes = [
   'wasmfs',
   'wasm64',
   'wasm64l',
-  'bigint',
 ]
 
 
