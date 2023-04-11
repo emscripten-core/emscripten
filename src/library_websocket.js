@@ -215,7 +215,7 @@ var LibraryWebSocket = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_websocket_set_onmessage_callback_on_thread__deps: ['$WS', '$stringToNewUTF8'],
+  emscripten_websocket_set_onmessage_callback_on_thread__deps: ['$WS', '$stringToNewUTF8', 'malloc', 'free'],
   emscripten_websocket_set_onmessage_callback_on_thread__proxy: 'sync',
   emscripten_websocket_set_onmessage_callback_on_thread: function(socketId, userData, callbackFunc, thread) {
     if (!WS.socketEvent) WS.socketEvent = _malloc(1024); // TODO: sizeof(EmscriptenWebSocketCloseEvent), which is the largest event struct

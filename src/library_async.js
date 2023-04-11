@@ -22,7 +22,11 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY
   $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback', '$sigToWasmTypes',
 #if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop'
+    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
+#endif
+#if ASYNCIFY == 1
+    // Needed by allocateData and handleSleep respectively
+    'malloc', 'free',
 #endif
   ],
 

@@ -23,9 +23,12 @@ var LibraryExceptions = {
   //
   // excPtr - Thrown object pointer to wrap. Metadata pointer is calculated from it.
   $ExceptionInfo__docs: '/** @constructor */',
+  $ExceptionInfo__deps: [
+    '__cxa_is_pointer_type',
 #if EXCEPTION_DEBUG
-  $ExceptionInfo__deps: ['$ptrToString'],
+    '$ptrToString'
 #endif
+  ],
   $ExceptionInfo: function(excPtr) {
     this.excPtr = excPtr;
     this.ptr = excPtr - {{{ C_STRUCTS.__cxa_exception.__size__ }}};
@@ -147,7 +150,7 @@ var LibraryExceptions = {
   },
 
   __cxa_begin_catch__deps: ['$exceptionCaught', '__cxa_increment_exception_refcount',
-                            '$uncaughtExceptionCount'],
+                            '$uncaughtExceptionCount', '__cxa_can_catch', 'setTempRet0'],
   __cxa_begin_catch__sig: 'pp',
   __cxa_begin_catch: function(ptr) {
     var info = new ExceptionInfo(ptr);

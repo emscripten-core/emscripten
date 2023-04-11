@@ -126,7 +126,7 @@ var SyscallsLibrary = {
 
   _mmap_js__deps: ['$SYSCALLS',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-    '$FS',
+    '$FS', 'emscripten_builtin_memalign',
 #endif
   ],
   _mmap_js: function(len, prot, flags, fd, off, allocated, addr) {

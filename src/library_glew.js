@@ -112,6 +112,7 @@ var LibraryGLEW = {
     },
   },
 
+  glewInit__deps: ['malloc'],
   glewInit: function() { return 0; },
 
   glewIsSupported: function(name) {
