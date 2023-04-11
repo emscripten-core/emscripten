@@ -1986,14 +1986,12 @@ int f() {
   @node_pthreads
   def test_dylink_pthread_bigint_em_asm(self):
     self.set_setting('MAIN_MODULE', 2)
-    self.set_setting('WASM_BIGINT')
     self.emcc_args += ['-Wno-experimental', '-pthread']
     self.do_runf(test_file('hello_world_em_asm.c'), 'hello, world')
 
   @node_pthreads
   def test_dylink_pthread_bigint_em_js(self):
     self.set_setting('MAIN_MODULE', 2)
-    self.set_setting('WASM_BIGINT')
     self.emcc_args += ['-Wno-experimental', '-pthread']
     self.do_runf(test_file('core/test_em_js.cpp'))
 
@@ -4477,12 +4475,6 @@ EM_ASM({ _middle() });
         self.assertContained(UNMINIFIED_HEAP8, js)
         self.assertContained(UNMINIFIED_MIDDLE, js)
 
-  @parameterized({
-    '': [[]],
-    # bigint support is interesting to test here because it changes which
-    # binaryen tools get run, which can affect how debug info is kept around
-    'bigint': [['-sWASM_BIGINT']],
-  })
   def test_symbol_map_output_size(self, args):
     # build with and without a symbol map and verify that the sizes are the
     # same. using a symbol map should add the map on the side, but not increase
@@ -7337,7 +7329,6 @@ int main() {
                  expected_output=expected,
                  assert_returncode=NON_ZERO)
 
-    self.set_setting('WASM_BIGINT')
     self.do_other_test('test_em_asm_i64.cpp')
     self.do_other_test('test_em_asm_i64.cpp', force_c=True)
 
@@ -11485,7 +11476,6 @@ int main () {
   @requires_wasm_eh
   def test_standalone_wasm_exceptions(self):
     self.set_setting('STANDALONE_WASM')
-    self.set_setting('WASM_BIGINT')
     self.wasm_engines = []
     self.emcc_args += ['-fwasm-exceptions']
     self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
@@ -11701,7 +11691,6 @@ exec "$@"
   @parameterized({
     'plain': [[]],
     'asyncify': [['-sASYNCIFY']],
-    'asyncify_bigint': [['-sASYNCIFY', '-sWASM_BIGINT']]})
   def test_closure_safe(self, args):
     self.run_process([EMCC, test_file('hello_world.c'), '--closure=1'] + args)
 
@@ -12613,8 +12602,6 @@ Module['postRun'] = function() {{
   @wasmfs_all_backends
   def test_wasmfs_readfile_bigint(self):
     self.set_setting('FORCE_FILESYSTEM')
-    self.set_setting('WASM_BIGINT')
-    self.node_args += shared.node_bigint_flags()
     self.do_run_in_out_file_test(test_file('wasmfs/wasmfs_readfile.c'))
 
   def test_wasmfs_jsfile(self):
@@ -13176,7 +13163,7 @@ foo/version.txt
 
   def test_min_browser_version(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=120000'])
-    self.assertContained('emcc: error: MIN_SAFARI_VERSION=120000 is not compatible with WASM_BIGINT (150000 or above required)', err)
+    self.assertContained('emcc: error: MIN_SAFARI_VERSION=120000 is not compatible with WASM_BIGINT (140100 or above required)', err)
 
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Werror', '-pthread', '-sMIN_CHROME_VERSION=73'])
     self.assertContained('emcc: error: MIN_CHROME_VERSION=73 is not compatible with pthreads (74 or above required)', err)
@@ -13333,7 +13320,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def run_wasi_test_suite_test(self, name):
     if not os.path.exists(path_from_root('test/third_party/wasi-test-suite')):
       self.fail('wasi-testsuite not found; run `git submodule update --init`')
-    self.node_args += shared.node_bigint_flags()
     wasm = path_from_root('test', 'third_party', 'wasi-test-suite', name + '.wasm')
     with open(path_from_root('test', 'third_party', 'wasi-test-suite', name + '.json')) as f:
       config = json.load(f)

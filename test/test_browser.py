@@ -4017,7 +4017,7 @@ Module["preRun"].push(function () {
 
   @requires_threads
   def test_pthread_unistd_io_bigint(self):
-    self.btest_exit(test_file('unistd/io.c'), args=['-pthread', '-sPROXY_TO_PTHREAD', '-sWASM_BIGINT'])
+    self.btest_exit(test_file('unistd/io.c'), args=['-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Test that the main thread is able to use pthread_set/getspecific.
   @also_with_wasm2js
@@ -5380,9 +5380,6 @@ Module["preRun"].push(function () {
     'main_thread': (['-sPTHREAD_POOL_SIZE=5'],),
     # using proxy_to_pthread also works, of course
     'proxy_to_pthread': (['-sPROXY_TO_PTHREAD', '-sINITIAL_MEMORY=32MB', '-DPROXYING'],),
-    # using BigInt support affects the ABI, and should not break things. (this
-    # could be tested on either thread; do the main thread for simplicity)
-    'bigint': (['-sPTHREAD_POOL_SIZE=5', '-sWASM_BIGINT'],),
   })
   @requires_threads
   def test_wasmfs_fetch_backend(self, args):
