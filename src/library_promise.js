@@ -201,9 +201,9 @@ mergeInto(LibraryManager.library, {
             } else {
               var reject = {{{ cDefs.EM_PROMISE_REJECT }}};
               {{{ makeSetValue('resultBuf', 'resultOffset', 'reject', 'i32') }}};
-              // Closure can't type `reason` in some contexts
-              /** @suppress {checkTypes} */
-              {{{ makeSetValue('resultBuf', 'valueOffset', 'results[i].reason', '*') }}};
+              // Closure can't type `reason` in some contexts.
+              var reason = /** @type {number} */ (results[i].reason);
+              {{{ makeSetValue('resultBuf', 'valueOffset', 'reason', '*') }}};
             }
           }
         }
