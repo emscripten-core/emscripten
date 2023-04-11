@@ -534,6 +534,7 @@ sigs = {
   emscripten_performance_now__sig: 'd',
   emscripten_print_double__sig: 'idpi',
   emscripten_promise_all__sig: 'pppp',
+  emscripten_promise_all_settled__sig: 'pppp',
   emscripten_promise_create__sig: 'p',
   emscripten_promise_destroy__sig: 'vp',
   emscripten_promise_resolve__sig: 'vpip',

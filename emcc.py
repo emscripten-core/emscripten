@@ -1599,6 +1599,9 @@ def phase_setup(options, state, newargs):
     if '-mbulk-memory' not in newargs:
       newargs += ['-mbulk-memory']
 
+  if settings.SHARED_MEMORY:
+    settings.BULK_MEMORY = 1
+
   if 'DISABLE_EXCEPTION_CATCHING' in user_settings and 'EXCEPTION_CATCHING_ALLOWED' in user_settings:
     # If we get here then the user specified both DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED
     # on the command line.  This is no longer valid so report either an error or a warning (for
@@ -2437,6 +2440,8 @@ def phase_linker_setup(options, state, newargs):
     settings.JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_wasm_worker.js')))
 
   settings.SUPPORTS_GLOBALTHIS = feature_matrix.caniuse(feature_matrix.Feature.GLOBALTHIS)
+  if not settings.BULK_MEMORY:
+    settings.BULK_MEMORY = feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY)
 
   if settings.AUDIO_WORKLET:
     if not settings.SUPPORTS_GLOBALTHIS:
@@ -2782,6 +2787,13 @@ def phase_linker_setup(options, state, newargs):
       # so we include then unconditionally when exceptions are enabled.
       '__cxa_is_pointer_type',
       '__cxa_can_catch',
+
+      # __cxa_begin_catch depends on this but we can't use deps info in this
+      # case because that only works for user-level code, and __cxa_begin_catch
+      # can be used by the standard library.
+      '__cxa_increment_exception_refcount',
+      # Same for __cxa_end_catch
+      '__cxa_decrement_exception_refcount',
 
       # Emscripten exception handling can generate invoke calls, and they call
       # setThrew(). We cannot handle this using deps_info as the invokes are not
@@ -3568,6 +3580,10 @@ def parse_args(newargs):
       settings.DISABLE_EXCEPTION_CATCHING = 1
       settings.DISABLE_EXCEPTION_THROWING = 1
       settings.WASM_EXCEPTIONS = 0
+    elif arg == '-mbulk-memory':
+      settings.BULK_MEMORY = 1
+    elif arg == '-mno-bulk-memory':
+      settings.BULK_MEMORY = 0
     elif arg == '-fexceptions':
       # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
       # exception handling by default when -fexceptions is given when wasm
@@ -3642,8 +3658,6 @@ def parse_args(newargs):
 def phase_binaryen(target, options, wasm_target):
   global final_js
   logger.debug('using binaryen')
-  if settings.GENERATE_SOURCE_MAP and not settings.SOURCE_MAP_BASE:
-    logger.warning("Wasm source map won't be usable in a browser without --source-map-base")
   # whether we need to emit -g (function name debug info) in the final wasm
   debug_info = settings.DEBUG_LEVEL >= 2 or settings.EMIT_NAME_SECTION
   # whether we need to emit -g in the intermediate binaryen invocations (but not

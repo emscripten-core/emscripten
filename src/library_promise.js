@@ -27,6 +27,16 @@ mergeInto(LibraryManager.library, {
     return promiseInfo;
   },
 
+  $idsToPromises__deps: ['$promiseMap', '$getPromise'],
+  $idsToPromises: function(idBuf, size) {
+    var promises = [];
+    for (var i = 0; i < size; i++) {
+      var id = {{{ makeGetValue('idBuf', `i*${POINTER_SIZE}`, 'i32') }}};
+      promises[i] = getPromise(id);
+    }
+    return promises;
+  },
+
   emscripten_promise_create__deps: ['$makePromise'],
   emscripten_promise_create: function() {
     return makePromise().id;
@@ -146,13 +156,9 @@ mergeInto(LibraryManager.library, {
     return newId;
   },
 
-  emscripten_promise_all__deps: ['$promiseMap', '$getPromise'],
+  emscripten_promise_all__deps: ['$promiseMap', '$idsToPromises'],
   emscripten_promise_all: function(idBuf, resultBuf, size) {
-    var promises = [];
-    for (var i = 0; i < size; i++) {
-      var id = {{{ makeGetValue('idBuf', `i*${POINTER_SIZE}`, 'i32') }}};
-      promises[i] = getPromise(id);
-    }
+    var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
     dbg('emscripten_promise_all: ' + promises);
 #endif
@@ -162,6 +168,43 @@ mergeInto(LibraryManager.library, {
           for (var i = 0; i < size; i++) {
             var result = results[i];
             {{{ makeSetValue('resultBuf', `i*${POINTER_SIZE}`, 'result', '*') }}};
+          }
+        }
+        return resultBuf;
+      })
+    });
+#if RUNTIME_DEBUG
+    dbg('create: ' + id);
+#endif
+    return id;
+  },
+
+  emscripten_promise_all_settled__deps: ['$promiseMap', '$idsToPromises'],
+  emscripten_promise_all_settled: function(idBuf, resultBuf, size) {
+    var promises = idsToPromises(idBuf, size);
+#if RUNTIME_DEBUG
+    dbg('emscripten_promise_all_settled: ' + promises);
+#endif
+    var id = promiseMap.allocate({
+      promise: Promise.allSettled(promises).then((results) => {
+        if (resultBuf) {
+          for (var i = 0; i < size; i++) {
+            var baseOffset = i * {{{ C_STRUCTS.em_settled_result_t.__size__ }}};
+            var resultOffset =
+                baseOffset + {{{ C_STRUCTS.em_settled_result_t.result }}};
+            var valueOffset =
+                baseOffset + {{{ C_STRUCTS.em_settled_result_t.value }}};
+            if (results[i].status === 'fulfilled') {
+              var fulfill = {{{ cDefs.EM_PROMISE_FULFILL }}};
+              {{{ makeSetValue('resultBuf', 'resultOffset', 'fulfill', 'i32') }}};
+              {{{ makeSetValue('resultBuf', 'valueOffset', 'results[i].value', '*') }}};
+            } else {
+              var reject = {{{ cDefs.EM_PROMISE_REJECT }}};
+              {{{ makeSetValue('resultBuf', 'resultOffset', 'reject', 'i32') }}};
+              // Closure can't type `reason` in some contexts.
+              var reason = /** @type {number} */ (results[i].reason);
+              {{{ makeSetValue('resultBuf', 'valueOffset', 'reason', '*') }}};
+            }
           }
         }
         return resultBuf;

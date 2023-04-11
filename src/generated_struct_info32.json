@@ -1330,6 +1330,11 @@
             "table_addr": 20,
             "table_size": 24
         },
+        "em_settled_result_t": {
+            "__size__": 8,
+            "result": 0,
+            "value": 4
+        },
         "emscripten_fetch_attr_t": {
             "__size__": 92,
             "attributes": 52,

@@ -262,7 +262,7 @@
             "O_PATH",
             "O_NONBLOCK",
             "O_CLOEXEC",
-            "F_GETOWN", 
+            "F_GETOWN",
             "F_GETOWN_EX",
             "F_SETFD",
             "O_EXCL",
@@ -1095,7 +1095,13 @@
             "EM_PROMISE_MATCH",
             "EM_PROMISE_MATCH_RELEASE",
             "EM_PROMISE_REJECT"
-        ]
+        ],
+        "structs": {
+            "em_settled_result_t": [
+                "result",
+                "value"
+            ]
+        }
     },
     {
         "file": "AL/al.h",
