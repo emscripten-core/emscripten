@@ -11691,6 +11691,7 @@ exec "$@"
   @parameterized({
     'plain': [[]],
     'asyncify': [['-sASYNCIFY']],
+  })
   def test_closure_safe(self, args):
     self.run_process([EMCC, test_file('hello_world.c'), '--closure=1'] + args)
 
