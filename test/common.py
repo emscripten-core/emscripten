@@ -283,14 +283,13 @@ def also_with_wasm_bigint(f):
         self.skipTest('wasm2js does not support WASM_BIGINT')
       if self.get_setting('WASM_BIGINT') is not None:
         self.skipTest('redundant in bigint test config')
-      self.set_setting('WASM_BIGINT')
-      self.node_args += shared.node_bigint_flags()
       f(self)
     else:
+      self.set_setting('WASM_BIGINT', '0')
       f(self)
 
-  metafunc._parameterize = {'': (False,),
-                            'bigint': (True,)}
+  metafunc._parameterize = {'no_bigint': (False,),
+                            '': (True,)}
   return metafunc
 
 
