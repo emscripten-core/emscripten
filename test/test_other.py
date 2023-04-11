@@ -13269,6 +13269,12 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     expected = 'This emscripten-generated code requires node v21.0.0 (detected v%s' % node_version
     self.do_runf(test_file('hello_world.c'), expected, assert_returncode=NON_ZERO)
 
+  def test_min_node_version_bigint(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Werror', '-sWASM_BIGINT', '-sMIN_NODE_VERSION=149999'])
+    self.assertContained('emcc: error: MIN_NODE_VERSION=149999 is not compatible with WASM_BIGINT (150000 or above required)', err)
+
+    self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-sWASM_BIGINT', '-sMIN_NODE_VERSION=150000'])
+
   def test_deprecated_macros(self):
     create_file('main.c', '''
     #include <assert.h>

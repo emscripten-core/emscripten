@@ -52,6 +52,7 @@ min_browser_versions = {
     'firefox': 68,
     # Note: Safari 14.1 shipped only in iOS 14.5, which can be confusing.
     'safari': 140100,
+    'node': 150000,
   },
   Feature.THREADS: {
     'chrome': 74,
@@ -82,6 +83,8 @@ def caniuse(feature):
     return False
   # IE don't support any non-MVP features
   if settings.MIN_IE_VERSION != 0x7FFFFFFF:
+    return False
+  if 'node' in min_versions and settings.MIN_NODE_VERSION < min_versions['node']:
     return False
   return True
 
