@@ -85,6 +85,10 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep = ';') {
   return ret.join(sep);
 }
 
+function makeMalloc(source, param) {
+  return `_malloc(${param})`;
+}
+
 global.Runtime = {
   getNativeTypeSize: getNativeTypeSize,
   getNativeFieldSize: getNativeFieldSize,
