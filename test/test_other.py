@@ -9993,14 +9993,14 @@ int main () {
 
     math_sources = [test_file('code_size/math.c')]
     hello_world_sources = [test_file('small_hello_world.c'),
-                           '-sUSES_DYNAMIC_ALLOC=0']
+                           '-sMALLOC=none']
     random_printf_sources = [test_file('hello_random_printf.c'),
-                             '-sUSES_DYNAMIC_ALLOC=0',
+                             '-sMALLOC=none',
                              '-sSINGLE_FILE']
     hello_webgl_sources = [test_file('minimal_webgl/main.cpp'),
                            test_file('minimal_webgl/webgl.c'),
                            '--js-library', test_file('minimal_webgl/library_js.js'),
-                           '-sUSES_DYNAMIC_ALLOC', '-lwebgl.js',
+                           '-lwebgl.js',
                            '-sMODULARIZE']
     hello_webgl2_sources = hello_webgl_sources + ['-sMAX_WEBGL_VERSION=2']
     hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web,worker']

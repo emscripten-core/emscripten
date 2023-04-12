@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.36 (in development)
 -----------------------
+- The `USES_DYNAMIC_ALLOC` setting has been deprecated.  You can get the same
+  effect from `-sMALLOC=none`. (#19164)
 
 3.1.35 - 04/03/23
 -----------------
