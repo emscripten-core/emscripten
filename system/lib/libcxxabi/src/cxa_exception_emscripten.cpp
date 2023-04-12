@@ -20,7 +20,8 @@
 
 // Define to enable extra debugging on stderr.
 #if EXCEPTIONS_DEBUG
-#define DEBUG printf
+#include "emscripten/console.h"
+#define DEBUG _emscripten_errf
 #else
 #define DEBUG(...)
 #endif
@@ -48,7 +49,7 @@ inline
 __cxa_exception*
 cxa_exception_from_thrown_object(void* thrown_object)
 {
-    DEBUG("cxa_exception_from_thrown_object %p -> %p\n",
+    DEBUG("cxa_exception_from_thrown_object %p -> %p",
           thrown_object, static_cast<__cxa_exception*>(thrown_object) - 1);
     return static_cast<__cxa_exception*>(thrown_object) - 1;
 }
@@ -60,7 +61,7 @@ inline
 void*
 thrown_object_from_cxa_exception(__cxa_exception* exception_header)
 {
-    DEBUG("thrown_object_from_cxa_exception %p -> %p\n",
+    DEBUG("thrown_object_from_cxa_exception %p -> %p",
           exception_header, static_cast<void*>(exception_header + 1));
     return static_cast<void*>(exception_header + 1);
 }
@@ -118,7 +119,7 @@ __cxa_increment_exception_refcount(void *thrown_object) _NOEXCEPT {
     if (thrown_object != NULL )
     {
         __cxa_exception* exception_header = cxa_exception_from_thrown_object(thrown_object);
-        DEBUG("INC: %p refcnt=%zu\n", thrown_object, exception_header->referenceCount);
+        DEBUG("INC: %p refcnt=%zu", thrown_object, exception_header->referenceCount);
         std::__libcpp_atomic_add(&exception_header->referenceCount, size_t(1));
     }
 }
@@ -136,12 +137,12 @@ void __cxa_decrement_exception_refcount(void *thrown_object) _NOEXCEPT {
     if (thrown_object != NULL )
     {
         __cxa_exception* exception_header = cxa_exception_from_thrown_object(thrown_object);
-        DEBUG("DEC: %p refcnt=%zu rethrown=%d\n", thrown_object,
+        DEBUG("DEC: %p refcnt=%zu rethrown=%d", thrown_object,
               exception_header->referenceCount, exception_header->rethrown);
         assert(exception_header->referenceCount > 0);
         if (std::__libcpp_atomic_add(&exception_header->referenceCount, size_t(-1)) == 0 && !exception_header->rethrown)
         {
-            DEBUG("DEL: %p\n", thrown_object);
+            DEBUG("DEL: %p (dtor=%p)", thrown_object, exception_header->exceptionDestructor);
             if (NULL != exception_header->exceptionDestructor)
                 exception_header->exceptionDestructor(thrown_object);
             __cxa_free_exception(thrown_object);
