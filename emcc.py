@@ -2331,10 +2331,6 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_readdir_finish',
       ]
 
-  # Explicitly drop linking in a malloc implementation if program is not using any dynamic allocation calls.
-  if not settings.USES_DYNAMIC_ALLOC:
-    settings.MALLOC = 'none'
-
   if settings.FETCH and final_suffix in EXECUTABLE_ENDINGS:
     state.forced_stdlibs.append('libfetch')
     settings.JS_LIBRARIES.append((0, 'library_fetch.js'))
