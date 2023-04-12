@@ -2319,7 +2319,7 @@ int main(int argc, char **argv) {
 
   @no_wasm2js('WASM_BIGINT is not compatible with wasm2js')
   def test_em_js_i64(self):
-    err = self.expect_fail([EMCC, '-sWASM=0', '-Werror', test_file('core/test_em_js_i64.c')])
+    err = self.expect_fail([EMCC, '-sWASM_BIGINT=0', '-Werror', test_file('core/test_em_js_i64.c')])
     self.assertContained('emcc: error: using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `foo`', err)
 
     self.do_core_test('test_em_js_i64.c')

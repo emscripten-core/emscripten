@@ -7183,7 +7183,6 @@ Resolved: "/" => "/"
     ''')
 
     # Run the test and confirm the output is as expected.
-    self.node_args += shared.node_bigint_flags()
     out = self.run_js('testrun.js')
     self.assertContained('''\
 input = 0xaabbccdd11223344

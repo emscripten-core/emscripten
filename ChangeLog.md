@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.36 (in development)
 -----------------------
+- Enable WASM_BIGINT support by default. (#19156)
+- Bump the default minimum Firefox version from 65 to 68.
+- Bump the default minimum Node version from 10.19 to 15.0.
 
 3.1.35 - 04/03/23
 -----------------
