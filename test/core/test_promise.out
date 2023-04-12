@@ -21,4 +21,11 @@ promise_all_settled results:
 fulfill 42
 reject 43
 fulfill 44
+test_any
+promise_any reasons:
+promise_any result: 42
+promise_any reasons:
+42
+43
+44
 finish

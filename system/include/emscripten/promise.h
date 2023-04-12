@@ -116,6 +116,17 @@ typedef struct em_settled_result_t {
 __attribute__((warn_unused_result)) em_promise_t emscripten_promise_all_settled(
   em_promise_t* promises, em_settled_result_t* results, size_t num_promises);
 
+// Call Promise.any to create and return a new promise that is fulfilled once
+// any of the `num_promises` input promises passed in `promises` has been
+// fulfilled or is rejected once all of the input promises have been rejected.
+// If the returned promise is fulfilled, it will be fulfilled with the same
+// value as the first fulfilled input promise. Otherwise, if the returned
+// promise is rejected, the rejection reasons for each input promise will be
+// written to the `errors` buffer if it is non-null. The rejection reason for
+// the returned promise will also be the address of the `errors` buffer.
+__attribute__((warn_unused_result)) em_promise_t emscripten_promise_any(
+  em_promise_t* promises, void** errors, size_t num_promises);
+
 #ifdef __cplusplus
 }
 #endif
