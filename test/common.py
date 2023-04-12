@@ -604,8 +604,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         # Opt in to node v15 default behaviour:
         # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
         self.node_args.append('--unhandled-rejections=throw')
-      else:
-        # WASM_BIGINT is on by default, which requires node 15+
+        # WASM_BIGINT requires node 15+
         self.emcc_args.append('-sWASM_BIGINT=0')
 
     self.v8_args = ['--wasm-staging']
