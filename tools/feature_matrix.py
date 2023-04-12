@@ -70,22 +70,26 @@ min_browser_versions = {
 
 
 def caniuse(feature):
-  min_versions = min_browser_versions[feature]
-  if settings.MIN_CHROME_VERSION < min_versions['chrome']:
-    return False
-  # For edge we just use the same version requirements as chrome since,
-  # at least for modern versions of edge, they share version numbers.
-  if settings.MIN_EDGE_VERSION < min_versions['chrome']:
-    return False
-  if settings.MIN_FIREFOX_VERSION < min_versions['firefox']:
-    return False
-  if settings.MIN_SAFARI_VERSION < min_versions['safari']:
-    return False
-  # IE don't support any non-MVP features
-  if settings.MIN_IE_VERSION != 0x7FFFFFFF:
-    return False
-  if 'node' in min_versions and settings.MIN_NODE_VERSION < min_versions['node']:
-    return False
+  if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
+    min_versions = min_browser_versions[feature]
+    if settings.MIN_CHROME_VERSION < min_versions['chrome']:
+      return False
+    # For edge we just use the same version requirements as chrome since,
+    # at least for modern versions of edge, they share version numbers.
+    if settings.MIN_EDGE_VERSION < min_versions['chrome']:
+      return False
+    if settings.MIN_FIREFOX_VERSION < min_versions['firefox']:
+      return False
+    if settings.MIN_SAFARI_VERSION < min_versions['safari']:
+      return False
+    # IE don't support any non-MVP features
+    if settings.MIN_IE_VERSION != 0x7FFFFFFF:
+      return False
+
+  if settings.ENVIRONMENT_MAY_BE_NODE:
+    if 'node' in min_versions and settings.MIN_NODE_VERSION < min_versions['node']:
+      return False
+
   return True
 
 
