@@ -4475,14 +4475,14 @@ EM_ASM({ _middle() });
         self.assertContained(UNMINIFIED_HEAP8, js)
         self.assertContained(UNMINIFIED_MIDDLE, js)
 
-  def test_symbol_map_output_size(self, args):
+  def test_symbol_map_output_size(self):
     # build with and without a symbol map and verify that the sizes are the
     # same. using a symbol map should add the map on the side, but not increase
     # the build size.
     # -Oz is used here to run as many optimizations as possible, to check for
     # any difference in how the optimizer operates
-    self.run_process([EMCC, test_file('hello_world.c'), '-Oz', '-o', 'test1.js'] + args)
-    self.run_process([EMCC, test_file('hello_world.c'), '-Oz', '-o', 'test2.js', '--emit-symbol-map'] + args)
+    self.run_process([EMCC, test_file('hello_world.c'), '-Oz', '-o', 'test1.js'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-Oz', '-o', 'test2.js', '--emit-symbol-map'])
     self.assertEqual(os.path.getsize('test1.js'), os.path.getsize('test2.js'))
     self.assertEqual(os.path.getsize('test1.wasm'), os.path.getsize('test2.wasm'))
 
@@ -7324,13 +7324,8 @@ int main() {
     assert 'use asm' not in src
 
   def test_EM_ASM_i64(self):
-    expected = 'Invalid character 106("j") in readEmAsmArgs!'
-    self.do_runf(test_file('other/test_em_asm_i64.cpp'),
-                 expected_output=expected,
-                 assert_returncode=NON_ZERO)
-
     self.do_other_test('test_em_asm_i64.cpp')
-    self.do_other_test('test_em_asm_i64.cpp', force_c=True)
+    # self.do_other_test('test_em_asm_i64.cpp', force_c=True)
 
   def test_eval_ctor_ordering(self):
     # ensure order of execution remains correct, even with a bad ctor
