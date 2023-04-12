@@ -17,7 +17,7 @@ mergeInto(LibraryManager.library, {
    * @param {(Uint8Array|Array<number>)} slab: An array of data.
    * @param {number=} allocator : How to allocate memory, see ALLOC_*
    */
-  $allocate__deps: ['$ALLOC_NORMAL', '$ALLOC_STACK'],
+  $allocate__deps: ['$ALLOC_NORMAL', '$ALLOC_STACK', 'malloc'],
   $allocate: function(slab, allocator) {
     var ret;
   #if ASSERTIONS
@@ -28,7 +28,7 @@ mergeInto(LibraryManager.library, {
     if (allocator == ALLOC_STACK) {
       ret = stackAlloc(slab.length);
     } else {
-      ret = {{{ makeMalloc('allocate', 'slab.length') }}};
+      ret = _malloc(slab.length);
     }
 
     if (!slab.subarray && !slab.slice) {

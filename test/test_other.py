@@ -11519,25 +11519,6 @@ int main () {
       "malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS",
       "free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS"))
 
-  def test_missing_malloc_export_indirect(self):
-    # we used to include malloc by default. show a clear error in builds with
-    # ASSERTIONS to help with any confusion when the user calls a JS API that
-    # requires malloc
-    create_file('unincluded_malloc.c', r'''
-      #include <emscripten.h>
-      EM_JS_DEPS(main, "$stringToNewUTF8");
-      int main() {
-        EM_ASM({
-          try {
-            stringToNewUTF8("foo");
-          } catch(e) {
-            console.log('exception:', e);
-          }
-        });
-      }
-    ''')
-    self.do_runf('unincluded_malloc.c', 'malloc was not included, but is needed in stringToNewUTF8. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.')
-
   def test_getrusage(self):
     self.do_runf(test_file('other/test_getrusage.c'))
 
