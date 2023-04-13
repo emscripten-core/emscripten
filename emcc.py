@@ -2851,6 +2851,9 @@ def phase_linker_setup(options, state, newargs):
        settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024)):
     settings.CAN_ADDRESS_2GB = 1
 
+  settings.EMSCRIPTEN_VERSION_MAJOR = shared.EMSCRIPTEN_VERSION_MAJOR
+  settings.EMSCRIPTEN_VERSION_MINOR = shared.EMSCRIPTEN_VERSION_MINOR
+  settings.EMSCRIPTEN_VERSION_TINY = shared.EMSCRIPTEN_VERSION_TINY
   settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
   settings.SOURCE_MAP_BASE = options.source_map_base or ''
 

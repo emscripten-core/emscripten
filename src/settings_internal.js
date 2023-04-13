@@ -106,6 +106,9 @@ var JS_LIBRARIES = [];
 // This will contain the emscripten version. This can be useful in combination
 // with RETAIN_COMPILER_SETTINGS
 var EMSCRIPTEN_VERSION = '';
+var EMSCRIPTEN_VERSION_MAJOR = 0;
+var EMSCRIPTEN_VERSION_MINOR = 0;
+var EMSCRIPTEN_VERSION_TINY = 0;
 
 // Will be set to 0 if -fno-rtti is used on the command line.
 var USE_RTTI = true;
