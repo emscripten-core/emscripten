@@ -6,6 +6,12 @@
  *
 */
 
+// libc files are compiled as -std=c99 which doesn't normally declare
+// max_align_t.
+#if __STDC_VERSION__ < 201112L
+#define __NEED_max_align_t
+#endif
+
 #ifndef EMSCRIPTEN_NO_ERRNO
 #include <errno.h>
 #endif

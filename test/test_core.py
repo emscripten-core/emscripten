@@ -1017,7 +1017,7 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('MALLOC', 'none')
     self.emcc_args += [
       '-fno-builtin',
-      path_from_root('system/lib/sbrk.c'),
+      path_from_root('system/lib/libc/sbrk.c'),
       path_from_root('system/lib/emmalloc.c')
     ]
     self.emcc_args += args
