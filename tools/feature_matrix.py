@@ -70,8 +70,8 @@ min_browser_versions = {
 
 
 def caniuse(feature):
+  min_versions = min_browser_versions[feature]
   if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
-    min_versions = min_browser_versions[feature]
     if settings.MIN_CHROME_VERSION < min_versions['chrome']:
       return False
     # For edge we just use the same version requirements as chrome since,
