@@ -7216,8 +7216,9 @@ void* operator new(size_t size) {
   def test_dyncall_specific(self, *args):
     if self.get_setting('MEMORY64'):
       self.skipTest('not compatible with MEMORY64')
+    args = list(args) + ['-sDYNCALLS=1'] # why was this not needed before wasm_bigint?
     cases = [
-        ('DIRECT', []),
+        ('DIRECT', ['-sDYNCALLS=1']),
         ('DYNAMIC_SIG', ['-sDYNCALLS=1']),
       ]
     if '-sMINIMAL_RUNTIME=1' in args:

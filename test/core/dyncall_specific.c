@@ -11,11 +11,9 @@
 
 int waka(int w, long long xy, int z) {
   // xy should be 0xffff_ffff_0000_0004
-  int x = (int) xy;  // should be 4
-  int y = xy >> 32;  // should be -1
   EM_ASM({
-    out('received ' + [$0, $1, $2, $3] + '.');
-  }, w, x, y, z);
+    out('received ' + [$0, $1, $2] + '.');
+  }, w, xy, z);
   return 42;
 }
 
@@ -26,23 +24,23 @@ int main() {
     // Note that these would need to use BigInts if the file were built with
     // -sWASM_BIGINT
 #if DIRECT
-    console.log('Received ' + dynCall_iiji($0, 1, 4, 0xffffffff, 9));
+    console.log('Received ' + dynCall_iiji($0, 1, BigInt(4), 9));
     return;
 #endif
 #if DYNAMIC_SIG
-    console.log('Received ' + dynCall('iiji', $0, [1, 4, 0xffffffff, 9]));
+    console.log('Received ' + dynCall('iiji', $0, [1, BigInt(4), 9]));
     return;
 #endif
 #if EXPORTED
-    console.log('Received ' + Module['dynCall_iiji']($0, 1, 4, 0xffffffff, 9));
+    console.log('Received ' + Module['dynCall_iiji']($0, 1, BigInt(4), 9));
     return;
 #endif
 #if EXPORTED_DYNAMIC_SIG
-    console.log('Received ' + Module['dynCall']('iiji', $0, [1, 4, 0xffffffff, 9]));
+    console.log('Received ' + Module['dynCall']('iiji', $0, [1, BigInt(4), 9]));
     return;
 #endif
 #if FROM_OUTSIDE
-    eval("console.log('Received ' + Module['dynCall_iiji'](" + $0 + ", 1, 4, 0xffffffff, 9))");
+    eval("console.log('Received ' + Module['dynCall_iiji'](" + $0 + ", 1, BigInt(4), 9))");
     return;
 #endif
     throw "no test mode";
