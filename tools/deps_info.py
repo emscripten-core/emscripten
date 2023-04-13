@@ -186,12 +186,9 @@ def append_deps_info(js_symbol_deps):
 def get_deps_info():
   if not settings.WASM_EXCEPTIONS and settings.LINK_AS_CXX:
     _deps_info['__cxa_end_catch'] = ['setThrew', '__cxa_decrement_exception_refcount']
-    base_js_exception_deps = [
-      '__cxa_is_pointer_type',
-      '__cxa_increment_exception_refcount',
-    ]
+    base_js_exception_deps = ['__cxa_is_pointer_type']
     _deps_info['__cxa_throw'] = base_js_exception_deps
-    _deps_info['__cxa_begin_catch'] = base_js_exception_deps
+    _deps_info['__cxa_begin_catch'] = base_js_exception_deps + ['__cxa_increment_exception_refcount']
     _deps_info['__cxa_find_matching_catch'] = base_js_exception_deps + ['__cxa_can_catch', 'setTempRet0']
     for i in range(1, 10):
       _deps_info['__cxa_find_matching_catch_%d' % i] = _deps_info['__cxa_find_matching_catch']
