@@ -150,7 +150,7 @@ _deps_info = {
   'glewInit': ['malloc'],
   'glfwGetProcAddress': ['malloc'],
   'glfwInit': ['malloc', 'free'],
-  'glfwSleep': ['sleep'],
+  'glfwSleep': ['sleep', 'malloc'],
   'glfwGetMonitors': ['malloc'],
   'localtime': ['malloc'],
   'localtime_r': ['malloc'],

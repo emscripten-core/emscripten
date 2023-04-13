@@ -24,7 +24,8 @@ namespace __cxxabiv1 {
 struct _LIBCXXABI_HIDDEN __cxa_exception {
   size_t referenceCount;
   std::type_info *exceptionType;
-  void (*exceptionDestructor)(void *);
+  // In wasm, destructors return 'this' as in ARM
+  void* (*exceptionDestructor)(void *);
   uint8_t caught;
   uint8_t rethrown;
   void *adjustedPtr;

@@ -492,6 +492,7 @@ jobs:
           title: "core3+extras"
           test_targets: "
             lto2.test_dylink_syslibs_all
+            lto0.test_exceptions_allowed_uncaught
             core3
             core2g.test_externref
             corez.test_dylink_iostream

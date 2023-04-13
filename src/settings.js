@@ -1850,13 +1850,6 @@ var MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION = false;
 // [link]
 var MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION = false;
 
-// If building with MINIMAL_RUNTIME=1 and application uses sbrk()/malloc(),
-// enable this. If you are not using dynamic allocations, can set this to 0 to
-// save code size. This setting is ignored when building with -s
-// MINIMAL_RUNTIME=0.
-// [link]
-var USES_DYNAMIC_ALLOC = true;
-
 // If set to 'emscripten' or 'wasm', compiler supports setjmp() and longjmp().
 // If set to 0, these APIs are not available.  If you are using C++ exceptions,
 // but do not need setjmp()+longjmp() API, then you can set this to 0 to save a
@@ -2174,4 +2167,5 @@ var LEGACY_SETTINGS = [
   ['LLD_REPORT_UNDEFINED', [1], 'Disabling is no longer supported'],
   ['MEM_INIT_METHOD', [0], 'No longer supported'],
   ['USE_PTHREADS', [0, 1], 'No longer needed. Use -pthread instead'],
+  ['USES_DYNAMIC_ALLOC', [1], 'No longer supported. Use -sMALLOC=none'],
 ];

@@ -9978,14 +9978,14 @@ int main () {
 
     math_sources = [test_file('code_size/math.c')]
     hello_world_sources = [test_file('small_hello_world.c'),
-                           '-sUSES_DYNAMIC_ALLOC=0']
+                           '-sMALLOC=none']
     random_printf_sources = [test_file('hello_random_printf.c'),
-                             '-sUSES_DYNAMIC_ALLOC=0',
+                             '-sMALLOC=none',
                              '-sSINGLE_FILE']
     hello_webgl_sources = [test_file('minimal_webgl/main.cpp'),
                            test_file('minimal_webgl/webgl.c'),
                            '--js-library', test_file('minimal_webgl/library_js.js'),
-                           '-sUSES_DYNAMIC_ALLOC', '-lwebgl.js',
+                           '-lwebgl.js',
                            '-sMODULARIZE']
     hello_webgl2_sources = hello_webgl_sources + ['-sMAX_WEBGL_VERSION=2']
     hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web,worker']
@@ -11498,25 +11498,6 @@ int main () {
     self.do_runf('unincluded_malloc.c', (
       "malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS",
       "free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS"))
-
-  def test_missing_malloc_export_indirect(self):
-    # we used to include malloc by default. show a clear error in builds with
-    # ASSERTIONS to help with any confusion when the user calls a JS API that
-    # requires malloc
-    create_file('unincluded_malloc.c', r'''
-      #include <emscripten.h>
-      EM_JS_DEPS(main, "$stringToNewUTF8");
-      int main() {
-        EM_ASM({
-          try {
-            stringToNewUTF8("foo");
-          } catch(e) {
-            console.log('exception:', e);
-          }
-        });
-      }
-    ''')
-    self.do_runf('unincluded_malloc.c', 'malloc was not included, but is needed in stringToNewUTF8. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.')
 
   def test_getrusage(self):
     self.do_runf(test_file('other/test_getrusage.c'))

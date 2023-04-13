@@ -215,4 +215,44 @@ mergeInto(LibraryManager.library, {
 #endif
     return id;
   },
+
+  emscripten_promise_any__deps: ['$promiseMap', '$idsToPromises'],
+  emscripten_promise_any: function(idBuf, errorBuf, size) {
+    var promises = idsToPromises(idBuf, size);
+#if RUNTIME_DEBUG
+    dbg('emscripten_promise_any: ' + promises);
+#endif
+#if ASSERTIONS
+    assert(typeof Promise.any !== 'undefined', "Promise.any does not exist");
+#endif
+    var id = promiseMap.allocate({
+      promise: Promise.any(promises).catch((err) => {
+        if (errorBuf) {
+          for (var i = 0; i < size; i++) {
+            {{{ makeSetValue('errorBuf', `i*${POINTER_SIZE}`, 'err.errors[i]', '*') }}};
+          }
+        }
+        throw errorBuf;
+      })
+    });
+#if RUNTIME_DEBUG
+    dbg('create: ' + id);
+#endif
+    return id;
+  },
+
+  emscripten_promise_race__deps: ['$promiseMap', '$idsToPromises'],
+  emscripten_promise_race: function(idBuf, size) {
+    var promises = idsToPromises(idBuf, size);
+#if RUNTIME_DEBUG
+    dbg('emscripten_promise_race: ' + promises);
+#endif
+    var id = promiseMap.allocate({
+      promise: Promise.race(promises)
+    });
+#if RUNTIME_DEBUG
+    dbg('create: ' + id);
+#endif
+    return id;
+  }
 });

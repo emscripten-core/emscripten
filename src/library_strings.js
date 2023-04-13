@@ -479,10 +479,10 @@ mergeInto(LibraryManager.library, {
 
   // Allocate heap space for a JS string, and write it there.
   // It is the responsibility of the caller to free() that memory.
-  $stringToNewUTF8__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
+  $stringToNewUTF8__deps: ['$lengthBytesUTF8', '$stringToUTF8', 'malloc'],
   $stringToNewUTF8: function(str) {
     var size = lengthBytesUTF8(str) + 1;
-    var ret = {{{ makeMalloc('stringToNewUTF8', 'size') }}};
+    var ret = _malloc(size);
     if (ret) stringToUTF8(str, ret, size);
     return ret;
   },

@@ -925,21 +925,6 @@ function awaitIf(condition) {
   return condition ? 'await' : '';
 }
 
-function makeMalloc(source, param) {
-  if (hasExportedSymbol('malloc')) {
-    return `_malloc(${param})`;
-  }
-  // It should be impossible to call some functions without malloc being
-  // included, unless we have a deps_info.json bug. To let closure not error
-  // on `_malloc` not being present, they don't call malloc and instead abort
-  // with an error at runtime.
-  // TODO: A more comprehensive deps system could catch this at compile time.
-  if (!ASSERTIONS) {
-    return 'abort();';
-  }
-  return `abort('malloc was not included, but is needed in ${source}. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.');`;
-}
-
 // Adds a call to runtimeKeepalivePush, if needed by the current build
 // configuration.
 // We skip this completely in MINIMAL_RUNTIME and also in builds that
