@@ -600,10 +600,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       else:
         # Include backtrace for all uncuaght exceptions (not just Error).
         self.node_args.append('--trace-uncaught')
+        if node_version < (15, 0, 0):
+          # Opt in to node v15 default behaviour:
+          # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
+          self.node_args.append('--unhandled-rejections=throw')
       if node_version < (15, 0, 0):
-        # Opt in to node v15 default behaviour:
-        # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
-        self.node_args.append('--unhandled-rejections=throw')
         # WASM_BIGINT requires node 15+
         self.emcc_args.append('-sWASM_BIGINT=0')
 
