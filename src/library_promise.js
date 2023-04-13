@@ -216,7 +216,13 @@ mergeInto(LibraryManager.library, {
     return id;
   },
 
-  emscripten_promise_any__deps: ['$promiseMap', '$idsToPromises'],
+
+  emscripten_promise_any__deps: [
+    '$promiseMap', '$idsToPromises',
+#if !SUPPORTS_PROMISE_ANY && !INCLUDE_FULL_LIBRARY
+    () => error("emscripten_promise_any used, but Promise.any is not supported by the current runtime configuration (run with EMCC_DEBUG=1 in the env for more details)"),
+#endif
+  ],
   emscripten_promise_any: function(idBuf, errorBuf, size) {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
