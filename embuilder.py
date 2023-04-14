@@ -208,31 +208,24 @@ def main():
   if args.force:
     do_clear = True
 
+  system_libraries, system_tasks = get_system_tasks()
+
   # process tasks
   auto_tasks = False
   tasks = set(args.targets)
-  system_libraries, system_tasks = get_system_tasks()
-  if 'SYSTEM' in tasks:
-    tasks.update(system_tasks)
-    tasks.discard('SYSTEM')
-    auto_tasks = True
-  elif 'USER' in tasks:
-    tasks.update(PORTS)
-    tasks.discard('USER')
-    auto_tasks = True
-  elif 'MINIMAL' in tasks:
-    tasks.update(MINIMAL_TASKS)
-    tasks.discard('MINIMAL')
-    auto_tasks = True
-  elif 'MINIMAL_PIC' in tasks:
-    tasks.update(MINIMAL_PIC_TASKS)
-    tasks.discard('MINIMAL_PIC')
-    auto_tasks = True
-  elif 'ALL' in tasks:
-    tasks.update(system_tasks)
-    tasks.update(PORTS)
-    tasks.discard('ALL')
-    auto_tasks = True
+  predefined_tasks = {
+    'SYSTEM': system_tasks,
+    'USER': PORTS,
+    'MINIMAL': MINIMAL_TASKS,
+    'MINIMAL_PIC': MINIMAL_PIC_TASKS,
+    'ALL': system_tasks + PORTS,
+  }
+  for alias, predefined in predefined_tasks.items():
+    if alias in tasks:
+      tasks.update(predefined)
+      tasks.discard(alias)
+      auto_tasks = True
+
   if auto_tasks:
     # There are some ports that we don't want to build as part
     # of ALL since the are not well tested or widely used:
