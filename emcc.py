@@ -2425,6 +2425,14 @@ def phase_linker_setup(options, state, newargs):
   if settings.INCLUDE_FULL_LIBRARY and not settings.DISABLE_EXCEPTION_CATCHING:
     settings.EXPORTED_FUNCTIONS += ['___get_exception_message', '_free']
 
+  if settings.MEMORY64:
+    if settings.ASYNCIFY and settings.MEMORY64 == 1:
+      exit_with_error('MEMORY64=1 is not compatible with ASYNCIFY')
+    if not settings.DISABLE_EXCEPTION_CATCHING:
+      exit_with_error('MEMORY64 is not compatible with DISABLE_EXCEPTION_CATCHING=0')
+    # Any "pointers" passed to JS will now be i64's, in both modes.
+    settings.WASM_BIGINT = 1
+
   if settings.WASM_WORKERS:
     # TODO: After #15982 is resolved, these dependencies can be declared in library_wasm_worker.js
     #       instead of having to record them here.
@@ -2437,13 +2445,19 @@ def phase_linker_setup(options, state, newargs):
       settings.WASM_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.ww.js'
     settings.JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_wasm_worker.js')))
 
+  # Set min browser versions based on certain settings such as WASM_BIGINT,
+  # PTHREADS, AUDIO_WORKLET
+  # Such setting must be set before this point
+  feature_matrix.apply_min_browser_versions()
+
+  # TODO(sbc): Find make a generic way to expose the feature matrix to JS
+  # compiler rather then adding them all ad-hoc as internal settings
   settings.SUPPORTS_GLOBALTHIS = feature_matrix.caniuse(feature_matrix.Feature.GLOBALTHIS)
+  settings.SUPPORTS_PROMISE_ANY = feature_matrix.caniuse(feature_matrix.Feature.PROMISE_ANY)
   if not settings.BULK_MEMORY:
     settings.BULK_MEMORY = feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY)
 
   if settings.AUDIO_WORKLET:
-    if not settings.SUPPORTS_GLOBALTHIS:
-      exit_with_error('Must target recent enough browser versions that will support globalThis in order to target Wasm Audio Worklets!')
     if settings.AUDIO_WORKLET == 1:
       settings.AUDIO_WORKLET_FILE = unsuffixed(os.path.basename(target)) + '.aw.js'
     settings.JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_webaudio.js')))
@@ -2556,14 +2570,6 @@ def phase_linker_setup(options, state, newargs):
   # TODO(sbc): Remove WASM2JS here once the size regression it would introduce has been fixed.
   if settings.SHARED_MEMORY or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE or settings.WASM2JS:
     settings.IMPORTED_MEMORY = 1
-
-  if settings.MEMORY64:
-    if settings.ASYNCIFY and settings.MEMORY64 == 1:
-      exit_with_error('MEMORY64=1 is not compatible with ASYNCIFY')
-    if not settings.DISABLE_EXCEPTION_CATCHING:
-      exit_with_error('MEMORY64 is not compatible with DISABLE_EXCEPTION_CATCHING=0')
-    # Any "pointers" passed to JS will now be i64's, in both modes.
-    settings.WASM_BIGINT = 1
 
   if settings.WASM_BIGINT:
     settings.LEGALIZE_JS_FFI = 0
@@ -2904,8 +2910,6 @@ def phase_linker_setup(options, state, newargs):
     settings.EXPORTED_FUNCTIONS += ['getExceptionMessage', '___get_exception_message', '_free']
     if settings.WASM_EXCEPTIONS:
       settings.EXPORTED_FUNCTIONS += ['___cpp_exception', '___cxa_increment_exception_refcount', '___cxa_decrement_exception_refcount', '___thrown_object_from_unwind_exception']
-
-  feature_matrix.apply_min_browser_versions()
 
   if settings.SIDE_MODULE:
     # For side modules, we ignore all REQUIRED_EXPORTS that might have been added above.

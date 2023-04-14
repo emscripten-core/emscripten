@@ -955,6 +955,8 @@ class libc(MuslInternalLibrary,
       path='system/lib/libc',
       filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
                  'emscripten_scan_stack.c',
+                 'emscripten_get_heap_size.c',  # needed by malloc
+                 'sbrk.c',  # needed by malloc
                  'emscripten_memmove.c'])
     # Calls to iprintf can be generated during codegen. Ideally we wouldn't
     # compile these with -O2 like we do the rest of compiler-rt since its
@@ -973,7 +975,12 @@ class libc(MuslInternalLibrary,
     iprintf_files += files_in_path(
       path='system/lib/libc/musl/src/string',
       filenames=['strlen.c'])
-    return math_files + exit_files + other_files + iprintf_files
+
+    errno_files = files_in_path(
+      path='system/lib/libc/musl/src/errno',
+      filenames=['__errno_location.c'])
+
+    return math_files + exit_files + other_files + iprintf_files + errno_files
 
   def get_files(self):
     libc_files = []
@@ -1185,6 +1192,7 @@ class libc(MuslInternalLibrary,
           'sigaction.c',
           'sigtimedwait.c',
           'wasi-helpers.c',
+          'sbrk.c',
         ])
 
     if settings.RELOCATABLE:
@@ -1587,8 +1595,7 @@ class libmalloc(MTLibrary):
     malloc = utils.path_from_root('system/lib', {
       'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.c',
     }[malloc_base])
-    sbrk = utils.path_from_root('system/lib/sbrk.c')
-    return [malloc, sbrk]
+    return [malloc]
 
   def get_cflags(self):
     cflags = super().get_cflags()
