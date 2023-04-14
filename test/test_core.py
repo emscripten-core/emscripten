@@ -9761,6 +9761,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @requires_node
   def test_promise(self):
+    # This test depends on Promise.any, which in turn requires a modern target.  Check that it
+    # fails to even build without bumping the min versions:
+    err = self.expect_fail([EMCC, test_file('core/test_promise.c')])
+    self.assertContained('error: emscripten_promise_any used, but Promise.any is not supported by the current runtime configuration', err)
+    self.set_setting('MIN_NODE_VERSION', '150000')
+    self.set_setting('MIN_SAFARI_VERSION', '150000')
+    self.set_setting('MIN_FIREFOX_VERSION', '79')
+    self.set_setting('MIN_CHROME_VERSION', '85')
     self.do_core_test('test_promise.c')
 
 
