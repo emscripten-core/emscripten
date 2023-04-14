@@ -210,28 +210,33 @@ def main():
 
   # process tasks
   auto_tasks = False
-  tasks = args.targets
+  tasks = set(args.targets)
   system_libraries, system_tasks = get_system_tasks()
   if 'SYSTEM' in tasks:
-    tasks = system_tasks
+    tasks.update(system_tasks)
+    tasks.discard('SYSTEM')
     auto_tasks = True
   elif 'USER' in tasks:
-    tasks = PORTS
+    tasks.update(PORTS)
+    tasks.discard('USER')
     auto_tasks = True
   elif 'MINIMAL' in tasks:
-    tasks = MINIMAL_TASKS
+    tasks.update(MINIMAL_TASKS)
+    tasks.discard('MINIMAL')
     auto_tasks = True
   elif 'MINIMAL_PIC' in tasks:
-    tasks = MINIMAL_PIC_TASKS
+    tasks.update(MINIMAL_PIC_TASKS)
+    tasks.discard('MINIMAL_PIC')
     auto_tasks = True
   elif 'ALL' in tasks:
-    tasks = system_tasks + PORTS
+    tasks.update(system_tasks)
+    tasks.update(PORTS)
+    tasks.discard('ALL')
     auto_tasks = True
   if auto_tasks:
     # There are some ports that we don't want to build as part
     # of ALL since the are not well tested or widely used:
-    skip_tasks = ['cocos2d']
-    tasks = [x for x in tasks if x not in skip_tasks]
+    tasks.discard('cocos2d')
     print('Building targets: %s' % ' '.join(tasks))
   for what in tasks:
     for old, new in legacy_prefixes.items():
