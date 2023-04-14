@@ -7209,6 +7209,7 @@ void* operator new(size_t size) {
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['dynCall', 'addFunction', 'lengthBytesUTF8', 'getTempRet0', 'setTempRet0'])
     self.do_core_test('EXPORTED_RUNTIME_METHODS.c')
 
+  @no_wasm2js('depends on bigint support directly, which wasm2js disallows')
   @parameterized({
     '': [],
     'minimal_runtime': ['-sMINIMAL_RUNTIME=1']
@@ -7234,6 +7235,7 @@ void* operator new(size_t size) {
       print(str(args) + ' ' + which)
       self.do_core_test('dyncall_specific.c', emcc_args=['-D' + which] + list(args) + extra_args)
 
+  @no_wasm2js('depends on bigint support directly, which wasm2js disallows')
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
     def test(out_suffix='', args=None, assert_returncode=0):
