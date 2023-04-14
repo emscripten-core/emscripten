@@ -604,14 +604,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           # Opt in to node v15 default behaviour:
           # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
           self.node_args.append('--unhandled-rejections=throw')
-      if node_version < (15, 0, 0):
-        # WASM_BIGINT requires node 15+
-        self.emcc_args.append('-sWASM_BIGINT=0')
-        # Adjust the minimum node version for what we will run in. To do so,
-        # convert to the format we use in our settings, XXYYZZ, for example,
-        # 10.1.7 will turn into "100107".
-        str_node_version = ''.join([str(part).rjust(2, '0') for part in node_version])
-        self.emcc_args.append(f'-sMIN_NODE_VERSION={str_node_version}')
+      self.emcc_args += building.get_emcc_node_flags(node_version)
 
     self.v8_args = ['--wasm-staging']
     self.env = {}

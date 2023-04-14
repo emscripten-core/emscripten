@@ -70,6 +70,7 @@ def ensure():
 
 
 def erase():
+  return
   with lock('erase'):
     # Delete everything except the lockfile itself
     utils.delete_contents(cachedir, exclude=[os.path.basename(cachelock_name)])
