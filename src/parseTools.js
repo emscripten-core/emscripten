@@ -133,7 +133,7 @@ function preprocess(filename) {
             error(`${filename}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
           }
         } else {
-          throw new Error(`${filename}:${i + 1}: Unknown preprocessor directive ${first}`);
+          error(`${filename}:${i + 1}: Unknown preprocessor directive ${first}`);
         }
       } else {
         if (showCurrentLine()) {
