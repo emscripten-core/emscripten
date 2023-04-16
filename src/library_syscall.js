@@ -297,7 +297,6 @@ var SyscallsLibrary = {
   },
   __syscall_getsockname__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
   __syscall_getsockname: function(fd, addr, addrlen, d1, d2, d3) {
-    err("__syscall_getsockname " + fd);
     var sock = getSocketFromFD(fd);
     // TODO: sock.saddr should never be undefined, see TODO in websocket_sock_ops.getname
     var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(sock.saddr || '0.0.0.0'), sock.sport, addrlen);
@@ -598,6 +597,7 @@ var SyscallsLibrary = {
     }
     return nonzero;
   },
+  __syscall_getcwd__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_getcwd: function(buf, size) {
     if (size === 0) return -{{{ cDefs.EINVAL }}};
     var cwd = FS.cwd();
@@ -635,6 +635,7 @@ var SyscallsLibrary = {
     FS.fchown(fd, owner, group);
     return 0;
   },
+  __syscall_getdents64__deps: ['$stringToUTF8'],
   __syscall_getdents64: function(fd, dirp, count) {
     var stream = SYSCALLS.getStreamFromFD(fd)
     if (!stream.getdents) {
@@ -869,6 +870,7 @@ var SyscallsLibrary = {
     FS.symlink(target, linkpath);
     return 0;
   },
+  __syscall_readlinkat__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_readlinkat: function(dirfd, path, buf, bufsize) {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
@@ -991,7 +993,18 @@ function wrapSyscallFunction(x, library, isWasi) {
   var canThrow = library[x + '__nothrow'] !== true;
 #endif
 
-  var pre = '', post = '';
+  if (!library[x + '__deps']) library[x + '__deps'] = [];
+
+#if PURE_WASI
+  // In PURE_WASI mode we can't assume the wasm binary was built by emscripten
+  // and politely notify us on memory growth.  Instead we have to check for
+  // possible memory growth on each syscall.
+  var pre = '\nif (!HEAPU8.byteLength) _emscripten_notify_memory_growth(0);\n'
+  library[x + '__deps'].push('emscripten_notify_memory_growth');
+#else
+  var pre = '';
+#endif
+  var post = '';
   if (isVariadic) {
     pre += 'SYSCALLS.varargs = varargs;\n';
   }
@@ -1044,7 +1057,6 @@ function wrapSyscallFunction(x, library, isWasi) {
   }
 
   library[x] = eval('(' + t + ')');
-  if (!library[x + '__deps']) library[x + '__deps'] = [];
   library[x + '__deps'].push('$SYSCALLS');
 #if PTHREADS
   // Most syscalls need to happen on the main JS thread (e.g. because the

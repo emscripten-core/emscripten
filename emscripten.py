@@ -77,8 +77,9 @@ def optimize_syscalls(declares):
     # without filesystem support, it doesn't matter what syscalls need
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
   else:
+    # TODO(sbc): Find a better way to identify wasi syscalls
     syscall_prefixes = ('__syscall_', 'fd_')
-    syscalls = {d for d in declares if d.startswith(syscall_prefixes)}
+    syscalls = {d for d in declares if d.startswith(syscall_prefixes) or d in ['path_open']}
     # check if the only filesystem syscalls are in: close, ioctl, llseek, write
     # (without open, etc.. nothing substantial can be done, so we can disable
     # extra filesystem support in that case)
@@ -313,7 +314,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
   if settings.RELOCATABLE and settings.MEMORY64 == 2:
     metadata.imports += ['__memory_base32']
 
-  if settings.ASYNCIFY:
+  if settings.ASYNCIFY == 1:
     metadata.exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
 
   update_settings_glue(out_wasm, metadata)
@@ -364,7 +365,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     if settings.INITIAL_TABLE == -1:
       settings.INITIAL_TABLE = dylink_sec.table_size + 1
 
-    if settings.ASYNCIFY:
+    if settings.ASYNCIFY == 1:
       metadata.imports += ['__asyncify_state', '__asyncify_data']
 
   if metadata.invokeFuncs:
@@ -884,6 +885,9 @@ def create_wasm64_wrappers(metadata):
     '_emscripten_thread_free_data': '_p',
     '_emscripten_dlsync_self_async': '_p',
     '_emscripten_proxy_dlsync_async': '_pp',
+    '_wasmfs_rmdir': '_p',
+    '_wasmfs_unlink': '_p',
+    'emscripten_wasm_worker_initialize': '_p_',
   }
 
   wasm64_wrappers = '''

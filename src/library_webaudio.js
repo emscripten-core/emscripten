@@ -126,9 +126,6 @@ let LibraryWebAudio = {
     'wasm_workers_id',
     '$_EmAudioDispatchProcessorCallback'],
   emscripten_start_wasm_audio_worklet_thread_async: function(contextHandle, stackLowestAddress, stackSize, callback, userData) {
-#if !AUDIO_WORKLET
-    abort('emscripten_create_wasm_audio_worklet() requires building with -s AUDIO_WORKLET=1 enabled!');
-#endif
 
 #if ASSERTIONS
     assert(contextHandle, `Called emscripten_start_wasm_audio_worklet_thread_async() with a null Web Audio Context handle!`);
@@ -156,7 +153,7 @@ let LibraryWebAudio = {
 #if WEBAUDIO_DEBUG
       console.error(`emscripten_start_wasm_audio_worklet_thread_async() addModule() failed!`);
 #endif
-      {{{ makeDynCall('viii', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, userData);
+      {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, userData);
     };
 
     // Does browser not support AudioWorklets?

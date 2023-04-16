@@ -55,6 +55,7 @@ var LibraryIDBStore = {
   },
 
 #if ASYNCIFY
+  emscripten_idb_load__async: true,
   emscripten_idb_load: function(db, id, pbuffer, pnum, perror) {
     Asyncify.handleSleep(function(wakeUp) {
       IDBStore.getFile(UTF8ToString(db), UTF8ToString(id), function(error, byteArray) {
@@ -72,6 +73,7 @@ var LibraryIDBStore = {
       });
     });
   },
+  emscripten_idb_store__async: true,
   emscripten_idb_store: function(db, id, ptr, num, perror) {
     Asyncify.handleSleep(function(wakeUp) {
       IDBStore.setFile(UTF8ToString(db), UTF8ToString(id), new Uint8Array(HEAPU8.subarray(ptr, ptr+num)), function(error) {
@@ -80,6 +82,7 @@ var LibraryIDBStore = {
       });
     });
   },
+  emscripten_idb_delete__async: true,
   emscripten_idb_delete: function(db, id, perror) {
     Asyncify.handleSleep(function(wakeUp) {
       IDBStore.deleteFile(UTF8ToString(db), UTF8ToString(id), function(error) {
@@ -88,6 +91,7 @@ var LibraryIDBStore = {
       });
     });
   },
+  emscripten_idb_exists__async: true,
   emscripten_idb_exists: function(db, id, pexists, perror) {
     Asyncify.handleSleep(function(wakeUp) {
       IDBStore.existsFile(UTF8ToString(db), UTF8ToString(id), function(error, exists) {
@@ -98,6 +102,7 @@ var LibraryIDBStore = {
     });
   },
   // extra worker methods - proxied
+  emscripten_idb_load_blob__async: true,
   emscripten_idb_load_blob: function(db, id, pblob, perror) {
     Asyncify.handleSleep(function(wakeUp) {
       assert(!IDBStore.pending);
@@ -123,6 +128,7 @@ var LibraryIDBStore = {
       });
     });
   },
+  emscripten_idb_store_blob__async: true,
   emscripten_idb_store_blob: function(db, id, ptr, num, perror) {
     Asyncify.handleSleep(function(wakeUp) {
       assert(!IDBStore.pending);

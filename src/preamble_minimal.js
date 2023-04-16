@@ -60,8 +60,6 @@ if (Module['doWasm2JS']) {
 Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
 #endif
 
-#include "runtime_strings.js"
-
 var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
 #if WASM_BIGINT
   HEAP64, HEAPU64,

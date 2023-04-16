@@ -418,7 +418,7 @@ If manually bisecting:
 
   # Tests that user .html shell files can manually download .data files created with --preload-file cmdline.
   @parameterized({
-    'default': ([],),
+    '': ([],),
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   @requires_threads
@@ -2249,9 +2249,10 @@ void *getBindBuffer() {
     self.btest('s3tc.c', reference='s3tc.png', args=['--preload-file', 'screenshot.dds', '-sLEGACY_GL_EMULATION', '-sGL_FFP_ONLY', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
-  def test_aniso(self):
-    shutil.copyfile(test_file('water.dds'), 'water.dds')
-    self.btest('aniso.c', reference='aniso.png', reference_slack=2, args=['--preload-file', 'water.dds', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-Wno-incompatible-pointer-types'])
+  @also_with_wasm64
+  def test_anisotropic(self):
+    shutil.copyfile(test_file('browser/water.dds'), 'water.dds')
+    self.btest('browser/test_anisotropic.c', reference='browser/test_anisotropic.png', reference_slack=2, args=['--preload-file', 'water.dds', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-Wno-incompatible-pointer-types'])
 
   @requires_graphics_hardware
   def test_tex_nonbyte(self):
@@ -5396,11 +5397,15 @@ Module["preRun"].push(function () {
                     args=['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD', '-sINITIAL_MEMORY=32MB',
                           '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
 
-  @requires_threads
   @no_firefox('no OPFS support yet')
-  def test_wasmfs_opfs(self):
+  @parameterized({
+    '': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+    'jspi': (['-Wno-experimental', '-sASYNCIFY=2'],),
+  })
+  @requires_threads
+  def test_wasmfs_opfs(self, args):
     test = test_file('wasmfs/wasmfs_opfs.c')
-    args = ['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD', '-O3']
+    args = ['-sWASMFS', '-O3'] + args
     self.btest_exit(test, args=args + ['-DWASMFS_SETUP'])
     self.btest_exit(test, args=args + ['-DWASMFS_RESUME'])
 
@@ -5497,7 +5502,8 @@ Module["preRun"].push(function () {
 
   # Tests the AudioWorklet demo
   @parameterized({
-    'default': ([],),
+    '': ([],),
+    'memory64': (['-sMEMORY64', '-Wno-experimental'],),
     'with_fs': (['--preload-file', test_file('hello_world.c') + '@/'],),
     'closure': (['--closure', '1', '-Oz'],),
     'asyncify': (['-sASYNCIFY'],),
@@ -5507,11 +5513,13 @@ Module["preRun"].push(function () {
     'minimal_runtime_pthreads_and_closure': (['-sMINIMAL_RUNTIME', '-pthread', '--closure', '1', '-Oz'],),
   })
   def test_audio_worklet(self, args):
+    if '-sMEMORY64' in args and is_firefox():
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/19161')
     self.btest_exit(test_file('webaudio/audioworklet.c'), args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args)
 
   # Tests that posting functions between the main thread and the audioworklet thread works
   @parameterized({
-    'default': ([],),
+    '': ([],),
     'closure': (['--closure', '1', '-Oz'],),
   })
   def test_audio_worklet_post_function(self, args):

@@ -6,7 +6,7 @@
  * Dynamic library loading
  */
 
-var dlopenMissingError = "'To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking'"
+var dlopenMissingError = "'To use dlopen, you need enable dynamic linking, see https://emscripten.org/docs/compiling/Dynamic-Linking.html'"
 
 var LibraryDylink = {
 #if RELOCATABLE
@@ -370,6 +370,7 @@ var LibraryDylink = {
 
   // returns the side module metadata as an object
   // { memorySize, memoryAlign, tableSize, tableAlign, neededDynlibs}
+  $getDylinkMetadata__deps: ['$UTF8ArrayToString'],
   $getDylinkMetadata__internal: true,
   $getDylinkMetadata: function(binary) {
     var offset = 0;
@@ -1087,6 +1088,9 @@ var LibraryDylink = {
   },
 
   _dlopen_js__deps: ['$dlopenInternal'],
+#if ASYNCIFY
+  _dlopen_js__async: true,
+#endif
   _dlopen_js: function(handle) {
 #if ASYNCIFY
     return Asyncify.handleSleep(function(wakeUp) {

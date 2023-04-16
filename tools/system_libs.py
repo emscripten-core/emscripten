@@ -955,6 +955,8 @@ class libc(MuslInternalLibrary,
       path='system/lib/libc',
       filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
                  'emscripten_scan_stack.c',
+                 'emscripten_get_heap_size.c',  # needed by malloc
+                 'sbrk.c',  # needed by malloc
                  'emscripten_memmove.c'])
     # Calls to iprintf can be generated during codegen. Ideally we wouldn't
     # compile these with -O2 like we do the rest of compiler-rt since its
@@ -973,7 +975,12 @@ class libc(MuslInternalLibrary,
     iprintf_files += files_in_path(
       path='system/lib/libc/musl/src/string',
       filenames=['strlen.c'])
-    return math_files + exit_files + other_files + iprintf_files
+
+    errno_files = files_in_path(
+      path='system/lib/libc/musl/src/errno',
+      filenames=['__errno_location.c'])
+
+    return math_files + exit_files + other_files + iprintf_files + errno_files
 
   def get_files(self):
     libc_files = []
@@ -1185,6 +1192,7 @@ class libc(MuslInternalLibrary,
           'sigaction.c',
           'sigtimedwait.c',
           'wasi-helpers.c',
+          'sbrk.c',
         ])
 
     if settings.RELOCATABLE:
@@ -1272,6 +1280,17 @@ class libc_optz(libc):
     # and so optz is not that important.
     return super(libc_optz, self).can_use() and settings.SHRINK_LEVEL >= 2 and \
         not settings.LINKABLE and not os.environ.get('EMCC_FORCE_STDLIBS')
+
+
+class libbulkmemory(MuslInternalLibrary, AsanInstrumentedLibrary):
+  name = 'libbulkmemory'
+  src_dir = 'system/lib/libc'
+  src_files = ['emscripten_memcpy.c', 'emscripten_memset.c',
+               'emscripten_memcpy_big.S', 'emscripten_memset_big.S']
+  cflags = ['-mbulk-memory']
+
+  def can_use(self):
+    return super(libbulkmemory, self).can_use() and settings.BULK_MEMORY
 
 
 class libprintf_long_double(libc):
@@ -1465,16 +1484,20 @@ class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
       'stdlib_stdexcept.cpp',
       'stdlib_typeinfo.cpp',
       'private_typeinfo.cpp',
-      'cxa_exception_emscripten.cpp',
+      'cxa_exception_js_utils.cpp',
     ]
     if self.eh_mode == Exceptions.NONE:
       filenames += ['cxa_noexception.cpp']
+    elif self.eh_mode == Exceptions.EMSCRIPTEN:
+      filenames += ['cxa_exception_emscripten.cpp']
     elif self.eh_mode == Exceptions.WASM:
       filenames += [
         'cxa_exception_storage.cpp',
         'cxa_exception.cpp',
         'cxa_personality.cpp'
       ]
+    else:
+      assert False
 
     return files_in_path(
         path='system/lib/libcxxabi/src',
@@ -1572,8 +1595,7 @@ class libmalloc(MTLibrary):
     malloc = utils.path_from_root('system/lib', {
       'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.c',
     }[malloc_base])
-    sbrk = utils.path_from_root('system/lib/sbrk.c')
-    return [malloc, sbrk]
+    return [malloc]
 
   def get_cflags(self):
     cflags = super().get_cflags()
@@ -1945,7 +1967,7 @@ class libstandalonewasm(MuslInternalLibrary):
                    '__main_void.c'])
     files += files_in_path(
         path='system/lib/libc',
-        filenames=['emscripten_memcpy.c'])
+        filenames=['emscripten_memcpy.c', 'emscripten_memset.c'])
     # It is more efficient to use JS methods for time, normally.
     files += files_in_path(
         path='system/lib/libc/musl/src/time',
@@ -2154,7 +2176,8 @@ def get_libs_to_link(args, forced, only_forced):
   if settings.SHRINK_LEVEL >= 2 and not settings.LINKABLE and \
      not os.environ.get('EMCC_FORCE_STDLIBS'):
     add_library('libc_optz')
-
+  if settings.BULK_MEMORY:
+    add_library('libbulkmemory')
   if settings.STANDALONE_WASM:
     add_library('libstandalonewasm')
   if settings.ALLOW_UNIMPLEMENTED_SYSCALLS:

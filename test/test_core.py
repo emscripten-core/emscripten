@@ -1017,7 +1017,7 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('MALLOC', 'none')
     self.emcc_args += [
       '-fno-builtin',
-      path_from_root('system/lib/sbrk.c'),
+      path_from_root('system/lib/libc/sbrk.c'),
       path_from_root('system/lib/emmalloc.c')
     ]
     self.emcc_args += args
@@ -1262,7 +1262,6 @@ int main()
   @no_asan('TODO: ASan support in minimal runtime')
   @no_wasm64('MEMORY64 does not yet support exceptions')
   def test_exceptions_minimal_runtime(self):
-    self.set_setting('EXCEPTION_DEBUG')
     self.set_setting('EXIT_RUNTIME')
     self.maybe_closure()
     self.set_setting('MINIMAL_RUNTIME')
@@ -1273,6 +1272,7 @@ int main()
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
 
+      self.set_setting('EXCEPTION_DEBUG')
       self.set_setting('DISABLE_EXCEPTION_CATCHING')
       self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_uncaught.out'), assert_returncode=NON_ZERO)
 
@@ -5953,6 +5953,11 @@ Module = {
       self.set_setting('LINKABLE', linkable)
       self.do_core_test('test_istream.cpp')
 
+  def test_fs_dir_wasmfs(self):
+    self.emcc_args += ['-sWASMFS']
+    self.emcc_args += ['-sFORCE_FILESYSTEM']
+    self.do_runf(test_file('fs/test_dir.c'), 'success')
+
   def test_fs_base(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
     self.uses_es6 = True
@@ -9756,6 +9761,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @requires_node
   def test_promise(self):
+    # This test depends on Promise.any, which in turn requires a modern target.  Check that it
+    # fails to even build without bumping the min versions:
+    err = self.expect_fail([EMCC, test_file('core/test_promise.c')])
+    self.assertContained('error: emscripten_promise_any used, but Promise.any is not supported by the current runtime configuration', err)
+    self.set_setting('MIN_NODE_VERSION', '150000')
+    self.set_setting('MIN_SAFARI_VERSION', '150000')
+    self.set_setting('MIN_FIREFOX_VERSION', '79')
+    self.set_setting('MIN_CHROME_VERSION', '85')
     self.do_core_test('test_promise.c')
 
 

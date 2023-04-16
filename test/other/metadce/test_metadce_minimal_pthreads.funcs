@@ -1,6 +1,7 @@
 $__emscripten_stdout_seek
 $__errno_location
 $__memcpy
+$__memset
 $__pthread_mutex_lock
 $__pthread_mutex_trylock
 $__pthread_mutex_unlock
@@ -63,7 +64,6 @@ $get_tasks_for_thread
 $init_file_lock
 $init_mparams
 $main
-$memset
 $nodtor
 $pthread_attr_destroy
 $receive_notification

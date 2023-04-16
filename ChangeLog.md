@@ -18,8 +18,26 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.35 (in development)
+3.1.36 (in development)
 -----------------------
+- The `USES_DYNAMIC_ALLOC` setting has been deprecated.  You can get the same
+  effect from `-sMALLOC=none`. (#19164)
+
+3.1.35 - 04/03/23
+-----------------
+- The following JavaScript runtime functions were converted to JavaScript
+  library functions:
+   - UTF8ArrayToString
+   - UTF8ToString
+   - stringToUTF8Array
+   - stringToUTF8
+   - lengthBytesUTF8
+  If you use any of these functions in your JS code you will now need to include
+  them explictly in one of the following ways:
+   - Add them to a `__deps` entry in your JS library file (with leading $)
+   - Add them to `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` (with leading $)
+   - Add them to `EXPORTED_FUNCTIONS` (without leading $)
+   - Set `-sLEGACY_RUNTIME` to include all of them at once.
 - `FS.loadFilesFromDB` and `FS.saveFilesToDB` were removed.  We think it's
   unlikly there were any users of these functions since there is now a separate
   IDBFS filesystem for folks that want persistence. (#19049)
@@ -67,6 +85,9 @@ See docs/process.md for more on how version tagging works.
 - The WasmFS OPFS backend is now faster in browsers that implement
   [`Atomics.waitAsync`](https://caniuse.com/mdn-javascript_builtins_atomics_waitasync).
   (#18861)
+- The `emscripten_proxy_async_with_callback` API was replaced with a simpler
+  `emscripten_proxy_callback` API that takes a second callback to be called if
+  the worker thread dies before completing the proxied work.  
 
 3.1.32 - 02/17/23
 -----------------
@@ -85,9 +106,6 @@ See docs/process.md for more on how version tagging works.
 - Synchronous proxying functions in emscripten/proxying.h now return errors
   instead of hanging forever when the worker thread dies before the proxied work
   is finished.
-- The `emscripten_proxy_async_with_callback` API was replaced with a simpler
-  `emscripten_proxy_callback` API that takes a second callback to be called if
-  the worker thread dies before completing the proxied work.
 
 3.1.31 - 01/26/23
 -----------------

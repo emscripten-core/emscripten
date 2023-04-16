@@ -812,6 +812,7 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     'proc_exit',
     'clock_res_get',
     'clock_time_get',
+    'path_open',
   }
   for item in graph:
     if 'import' in item and item['import'][1][1:] in WASI_IMPORTS:

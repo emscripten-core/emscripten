@@ -37,6 +37,17 @@ var WasiLibrary = {
 #endif // MINIMAL_RUNTIME
   },
 
+  sched_yield__nothrow: true,
+  sched_yield: function() {
+    return 0;
+  },
+
+  random_get__deps: ['getentropy'],
+  random_get: function(buf, buf_len) {
+    _getentropy(buf, buf_len);
+    return 0;
+  },
+
   $getEnvStrings__deps: ['$ENV', '$getExecutableName'],
   $getEnvStrings: function() {
     if (!getEnvStrings.strings) {
@@ -49,6 +60,7 @@ var WasiLibrary = {
       var lang = 'C.UTF-8';
 #endif
       var env = {
+#if !PURE_WASI
         'USER': 'web_user',
         'LOGNAME': 'web_user',
         'PATH': '/',
@@ -56,6 +68,7 @@ var WasiLibrary = {
         'HOME': '/home/web_user',
         'LANG': lang,
         '_': getExecutableName()
+#endif
       };
       // Apply the user-provided values, if any.
       for (var x in ENV) {
@@ -226,7 +239,7 @@ var WasiLibrary = {
   $printCharBuffers: [null, [], []], // 1 => stdout, 2 => stderr
   $printCharBuffers__internal: true,
   $printChar__internal: true,
-  $printChar__deps: ['$printCharBuffers'],
+  $printChar__deps: ['$printCharBuffers', '$UTF8ArrayToString'],
   $printChar: function(stream, curr) {
     var buffer = printCharBuffers[stream];
 #if ASSERTIONS
@@ -368,23 +381,158 @@ var WasiLibrary = {
 #endif
   },
 
-  fd_fdstat_get: function(fd, pbuf) {
-#if SYSCALLS_REQUIRE_FILESYSTEM
-    var stream = SYSCALLS.getStreamFromFD(fd);
-    // All character devices are terminals (other things a Linux system would
-    // assume is a character device, like the mouse, we have special APIs for).
-    var type = stream.tty ? {{{ cDefs.__WASI_FILETYPE_CHARACTER_DEVICE }}} :
-               FS.isDir(stream.mode) ? {{{ cDefs.__WASI_FILETYPE_DIRECTORY }}} :
-               FS.isLink(stream.mode) ? {{{ cDefs.__WASI_FILETYPE_SYMBOLIC_LINK }}} :
-               {{{ cDefs.__WASI_FILETYPE_REGULAR_FILE }}};
-#else
-    // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
-    var type = fd == 1 || fd == 2 ? {{{ cDefs.__WASI_FILETYPE_CHARACTER_DEVICE }}} : abort();
+  $wasiRightsToMuslOFlags: function(rights) {
+#if SYSCALL_DEBUG
+    dbg('wasiRightsToMuslOFlags: ' + rights);
 #endif
+    if ((rights & {{{ cDefs.__WASI_RIGHTS_FD_READ }}}) && (rights & {{{ cDefs.__WASI_RIGHTS_FD_WRITE }}})) {
+      return {{{ cDefs.O_RDWR }}};
+    }
+    if (rights & {{{ cDefs.__WASI_RIGHTS_FD_READ }}}) {
+      return {{{ cDefs.O_RDONLY }}};
+    }
+    if (rights & {{{ cDefs.__WASI_RIGHTS_FD_WRITE }}}) {
+      return {{{ cDefs.O_WRONLY }}};
+    }
+    throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+  },
+
+  $wasiOFlagsToMuslOFlags: function(oflags) {
+    var musl_oflags = 0;
+    if (oflags & {{{ cDefs.__WASI_OFLAGS_CREAT }}}) {
+      musl_oflags |= {{{ cDefs.O_CREAT }}};
+    }
+    if (oflags & {{{ cDefs.__WASI_OFLAGS_TRUNC }}}) {
+      musl_oflags |= {{{ cDefs.O_TRUNC }}};
+    }
+    if (oflags & {{{ cDefs.__WASI_OFLAGS_DIRECTORY }}}) {
+      musl_oflags |= {{{ cDefs.O_DIRECTORY }}};
+    }
+    if (oflags & {{{ cDefs.__WASI_OFLAGS_EXCL }}}) {
+      musl_oflags |= {{{ cDefs.O_EXCL }}};
+    }
+    return musl_oflags;
+  },
+
+#if PURE_WASI
+  // preopen maps open file descriptors to pathname.
+  // In emscripten we already have a VFS layer so (for now) we expose the entire
+  // VFS to the wasi API.
+  $preopens: "{3: '/'}",
+
+  path_open__sig: 'iiiiiiiiii',
+  path_open__deps: ['$wasiRightsToMuslOFlags', '$wasiOFlagsToMuslOFlags', '$preopens'],
+  path_open: function(fd, dirflags, path, path_len, oflags,
+                      fs_rights_base, fs_rights_inherting,
+                      fdflags, opened_fd) {
+    if (!(fd in preopens)) {
+      return {{{ cDefs.EBADF }}};
+    }
+    var pathname = UTF8ToString(path, path_len);
+    var musl_oflags = wasiRightsToMuslOFlags(Number(fs_rights_base));
+#if SYSCALL_DEBUG
+    dbg("oflags1: 0x" + musl_oflags.toString(16));
+#endif
+    musl_oflags |= wasiOFlagsToMuslOFlags(Number(oflags));
+#if SYSCALL_DEBUG
+    dbg("oflags2: 0x" + musl_oflags.toString(16));
+#endif
+    var stream = FS.open(pathname, musl_oflags);
+    {{{ makeSetValue('opened_fd', '0', 'stream.fd', 'i32') }}};
+    return 0;
+  },
+
+  fd_prestat_dir_name__deps: ['$preopens'],
+  fd_prestat_dir_name__sig: 'iiii',
+  fd_prestat_dir_name__nothrow: true,
+  fd_prestat_dir_name: function(fd, path, path_len) {
+    if (!(fd in preopens)) {
+      return {{{ cDefs.EBADF }}};
+    }
+    var preopen_path = preopens[fd];
+    stringToUTF8Array(preopen_path, HEAP8, path, path_len)
+#if SYSCALL_DEBUG
+    dbg('fd_prestat_dir_name -> "' + preopen_path + '"');
+#endif
+    return 0;
+  },
+
+  fd_prestat_get__deps: ['$preopens'],
+  fd_prestat_get__sig: 'iii',
+  fd_prestat_get__nothrow: true,
+  fd_prestat_get: function(fd, stat_buf) {
+    if (!(fd in preopens)) {
+      return {{{ cDefs.EBADF }}};
+    }
+    var preopen = preopens[fd];
+    {{{ makeSetValue('stat_buf', C_STRUCTS.__wasi_prestat_t.pr_type, cDefs.__WASI_PREOPENTYPE_DIR, 'i8') }}};
+    {{{ makeSetValue('stat_buf', C_STRUCTS.__wasi_prestat_t.u + C_STRUCTS.__wasi_prestat_dir_t.pr_name_len, 'preopen.length', 'i64') }}};
+    return 0;
+  },
+
+  fd_fdstat_set_flags__sig: 'iii',
+  fd_fdstat_set_flags: function(fd, flags) {
+    // TODO(sbc): implement
+    var stream = SYSCALLS.getStreamFromFD(fd);
+    return 0;
+  },
+
+  fd_filestat_get__sig: 'iii',
+  fd_filestat_get: function(fd, stat_buf) {
+    // TODO(sbc): implement
+    var stream = SYSCALLS.getStreamFromFD(fd);
+    {{{ makeSetValue('stat_buf', C_STRUCTS.__wasi_filestat_t.dev, '0', 'i64') }}};
+    {{{ makeSetValue('stat_buf', C_STRUCTS.__wasi_filestat_t.ino, '0', 'i64') }}};
+    {{{ makeSetValue('stat_buf', C_STRUCTS.__wasi_filestat_t.filetype, '0', 'i8') }}};
+    {{{ makeSetValue('stat_buf', C_STRUCTS.__wasi_filestat_t.nlink, '0', 'i64') }}};
+    {{{ makeSetValue('stat_buf', C_STRUCTS.__wasi_filestat_t.size, '0', 'i64') }}};
+    {{{ makeSetValue('stat_buf', C_STRUCTS.__wasi_filestat_t.atim, '0', 'i64') }}};
+    {{{ makeSetValue('stat_buf', C_STRUCTS.__wasi_filestat_t.mtim, '0', 'i64') }}};
+    {{{ makeSetValue('stat_buf', C_STRUCTS.__wasi_filestat_t.ctim, '0', 'i64') }}};
+    return 0;
+  },
+#endif
+
+#if PURE_WASI
+  fd_fdstat_get__deps: ['$preopens'],
+#endif
+  fd_fdstat_get: function(fd, pbuf) {
+    var rightsBase = 0;
+    var rightsInheriting = 0;
+    var flags = 0;
+#if PURE_WASI
+    if (fd in preopens) {
+      var type = {{{ cDefs.__WASI_FILETYPE_DIRECTORY }}};
+      rightsBase =  {{{ cDefs.__WASI_RIGHTS_PATH_CREATE_FILE |
+                             cDefs.__WASI_RIGHTS_PATH_OPEN }}};
+      rightsInheriting =  {{{ cDefs.__WASI_RIGHTS_FD_READ |
+                                   cDefs.__WASI_RIGHTS_FD_WRITE }}}
+    } else
+#endif
+    {
+#if SYSCALLS_REQUIRE_FILESYSTEM
+      var stream = SYSCALLS.getStreamFromFD(fd);
+      // All character devices are terminals (other things a Linux system would
+      // assume is a character device, like the mouse, we have special APIs for).
+      var type = stream.tty ? {{{ cDefs.__WASI_FILETYPE_CHARACTER_DEVICE }}} :
+                 FS.isDir(stream.mode) ? {{{ cDefs.__WASI_FILETYPE_DIRECTORY }}} :
+                 FS.isLink(stream.mode) ? {{{ cDefs.__WASI_FILETYPE_SYMBOLIC_LINK }}} :
+                 {{{ cDefs.__WASI_FILETYPE_REGULAR_FILE }}};
+#else
+      // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
+      var type = fd == 0 || fd == 1 || fd == 2 ? {{{ cDefs.__WASI_FILETYPE_CHARACTER_DEVICE }}} : abort();
+      if (fd == 0) {
+        rightsBase = {{{ cDefs.__WASI_RIGHTS_FD_READ }}};
+      } else if (fd == 1 || fd == 2) {
+        rightsBase = {{{ cDefs.__WASI_RIGHTS_FD_WRITE }}};
+      }
+      flags = {{{ cDefs.__WASI_FDFLAGS_APPEND }}};
+#endif
+    }
     {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_filetype, 'type', 'i8') }}};
-    // TODO {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_flags, '?', 'i16') }}};
-    // TODO {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_rights_base, '?', 'i64') }}};
-    // TODO {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_rights_inheriting, '?', 'i64') }}};
+    {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_flags, 'flags', 'i16') }}};
+    {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_rights_base, 'rightsBase', 'i64') }}};
+    {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_rights_inheriting, 'rightsInheriting', 'i64') }}};
     return 0;
   },
 

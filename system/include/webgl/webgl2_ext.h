@@ -9,7 +9,7 @@
 #define GL_TIME_ELAPSED_EXT 0x88BF
 #define GL_TIMESTAMP_EXT 0x8E28
 #define GL_GPU_DISJOINT_EXT 0x8FBB
-WEBGL_APICALL void GL_APIENTRY emscripten_webgl2_queryCounterEXT(GLuint query, GLenum target);
+WEBGL_APICALL void GL_APIENTRY glQueryCounterEXT(GLuint query, GLenum target);
 #endif /* EMSCRIPTEN_GL_EXT_disjoint_timer_query_webgl2 */
 
 // 46. https://www.khronos.org/registry/webgl/extensions/WEBGL_draw_instanced_base_vertex_base_instance/

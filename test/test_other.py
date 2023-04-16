@@ -3869,7 +3869,7 @@ int main() {
 }
 ''')
     err = self.run_process([EMCC, 'src.c', '--js-library', 'lib.js'], stderr=PIPE).stderr
-    self.assertContained('lib.js: signature redefinition for: jslibfunc__sig. (old=ii vs new=ii)', err)
+    self.assertContained('lib.js: signature redefinition for: jslibfunc__sig', err)
 
     # Add another redefinition, this time not matching
     create_file('lib2.js', r'''
@@ -8296,7 +8296,9 @@ int main() {
         throw std::runtime_error("my message");
       }
       void foo() {
-        bar();
+        try {
+          bar();
+        } catch (const std::invalid_argument &err) {}
       }
       int main() {
         foo();
@@ -9991,14 +9993,14 @@ int main () {
 
     math_sources = [test_file('code_size/math.c')]
     hello_world_sources = [test_file('small_hello_world.c'),
-                           '-sUSES_DYNAMIC_ALLOC=0']
+                           '-sMALLOC=none']
     random_printf_sources = [test_file('hello_random_printf.c'),
-                             '-sUSES_DYNAMIC_ALLOC=0',
+                             '-sMALLOC=none',
                              '-sSINGLE_FILE']
     hello_webgl_sources = [test_file('minimal_webgl/main.cpp'),
                            test_file('minimal_webgl/webgl.c'),
                            '--js-library', test_file('minimal_webgl/library_js.js'),
-                           '-sUSES_DYNAMIC_ALLOC', '-lwebgl.js',
+                           '-lwebgl.js',
                            '-sMODULARIZE']
     hello_webgl2_sources = hello_webgl_sources + ['-sMAX_WEBGL_VERSION=2']
     hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web,worker']
@@ -11517,25 +11519,6 @@ int main () {
       "malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS",
       "free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS"))
 
-  def test_missing_malloc_export_indirect(self):
-    # we used to include malloc by default. show a clear error in builds with
-    # ASSERTIONS to help with any confusion when the user calls a JS API that
-    # requires malloc
-    create_file('unincluded_malloc.c', r'''
-      #include <emscripten.h>
-      EM_JS_DEPS(main, "$stringToNewUTF8");
-      int main() {
-        EM_ASM({
-          try {
-            stringToNewUTF8("foo");
-          } catch(e) {
-            console.log('exception:', e);
-          }
-        });
-      }
-    ''')
-    self.do_runf('unincluded_malloc.c', 'malloc was not included, but is needed in stringToNewUTF8. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.')
-
   def test_getrusage(self):
     self.do_runf(test_file('other/test_getrusage.c'))
 
@@ -11784,7 +11767,7 @@ exec "$@"
     if jspi:
       self.require_v8()
       self.v8_args.append('--experimental-wasm-stack-switching')
-      self.emcc_args += ['-g', '-sASYNCIFY_DEBUG', '-sASYNCIFY=2', '-sASYNCIFY_EXPORTS=[\'say_hello\']']
+      self.emcc_args += ['-g', '-sASYNCIFY=2', '-sASYNCIFY_EXPORTS=[\'say_hello\']']
     self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free']
     output = self.do_other_test('test_split_module.c')
     if jspi:
@@ -12217,7 +12200,7 @@ kill -9 $$
     # Test the `-l` flags on the command line get mapped the correct libraries variant
     self.run_process([EMBUILDER, 'build', 'libc-mt-debug', 'libcompiler_rt-mt', 'libdlmalloc-mt'])
 
-    libs = ['-lc', '-lcompiler_rt', '-lmalloc']
+    libs = ['-lc', '-lbulkmemory', '-lcompiler_rt', '-lmalloc']
     err = self.run_process([EMCC, test_file('hello_world.c'), '-pthread', '-nodefaultlibs', '-v'] + libs, stderr=PIPE).stderr
 
     # Check that the linker was run with `-mt` variants because `-pthread` was passed.
@@ -12295,13 +12278,13 @@ void foo() {}
     cmd = [EMCC, test_file('other/test_dlopen_blocking.c')]
     self.run_process(cmd)
     err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('Aborted(To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking)', err)
+    self.assertContained('Aborted(To use dlopen, you need enable dynamic linking, see https://emscripten.org/docs/compiling/Dynamic-Linking.html)', err)
 
     # If we build the same thing with ALLOW_UNIMPLEMENTED_SYSCALLS=0 we
     # expect a link-time failure rather than a runtime one.
     cmd += ['-sALLOW_UNIMPLEMENTED_SYSCALLS=0']
     err = self.expect_fail(cmd)
-    self.assertContained('To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking', err)
+    self.assertContained('To use dlopen, you need enable dynamic linking, see https://emscripten.org/docs/compiling/Dynamic-Linking.html', err)
 
   def test_unimplemented_syscalls_dladdr(self):
     create_file('main.c', '''
@@ -12315,7 +12298,7 @@ void foo() {}
 
     self.run_process([EMCC, 'main.c'])
     err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('Aborted(To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking)', err)
+    self.assertContained('Aborted(To use dlopen, you need enable dynamic linking, see https://emscripten.org/docs/compiling/Dynamic-Linking.html)', err)
 
   @requires_v8
   def test_missing_shell_support(self):
@@ -12892,7 +12875,7 @@ int main() {
     self.do_runf(test_file('hello_world.c'), emcc_args=['-sEXPORTED_FUNCTIONS=_main,___stdout_used', '-mextended-const', '-sMAIN_MODULE=2'])
     wat = self.get_wasm_text('hello_world.wasm')
     # Test that extended-const expressions are used in the data segments.
-    self.assertTrue(re.search(r'\(data \(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat))
+    self.assertTrue(re.search(r'\(data (\$\S+ )?\(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat))
     # Test that extended-const expressions are used in at least one global initializer.
     self.assertTrue(re.search(r'\(global \$\S+ i32 \(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat))
 
@@ -13009,7 +12992,7 @@ int main() {
           return 0;
         }
       }
-    ''', assert_returncode=NON_ZERO)
+    ''', assert_returncode=NON_ZERO, emcc_args=['-fexceptions'])
 
   def test_bigint64array_polyfill(self):
     bigint64array = read_file(path_from_root('src/polyfill/bigint64array.js'))
@@ -13331,3 +13314,109 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     ''')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js'])
     self.assertContained('Error: Missing C define Foo! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py', err)
+
+  def run_wasi_test_suite_test(self, name):
+    if not os.path.exists(path_from_root('test/third_party/wasi-test-suite')):
+      self.fail('wasi-testsuite not found; run `git submodule update --init`')
+    self.node_args += shared.node_bigint_flags()
+    wasm = path_from_root('test', 'third_party', 'wasi-test-suite', name + '.wasm')
+    with open(path_from_root('test', 'third_party', 'wasi-test-suite', name + '.json')) as f:
+      config = json.load(f)
+    exit_code = config.get('exitCode', 0)
+    args = config.get('args', [])
+    env = config.get('env', [])
+    if env:
+      env = [f'ENV["{key}"] = "{value}";' for key, value in env.items()]
+      env = '\n'.join(env)
+      create_file('env.js', 'Module.preRun = () => { %s };' % env)
+      self.emcc_args.append('--pre-js=env.js')
+    self.run_process([EMCC, '-Wno-experimental', '--post-link', '-g',
+                      '-sPURE_WASI', '-lnodefs.js', '-lnoderawfs.js',
+                      wasm, '-o', name + '.js'] + self.get_emcc_args(main_file=True))
+
+    output = self.run_js(name + '.js', args=args, assert_returncode=exit_code)
+    if 'stdout' in config:
+      self.assertContained(config['stdout'], output)
+
+  @requires_node
+  def test_wasi_std_env_args(self):
+    create_file('pre.js', 'Module["thisProgram"] = "std_env_args.wasm"')
+    self.emcc_args += ['--pre-js', 'pre.js']
+    self.run_wasi_test_suite_test('std_env_args')
+
+  @requires_node
+  def test_wasi_std_env_vars(self):
+    self.run_wasi_test_suite_test('std_env_vars')
+
+  @requires_node
+  def test_wasi_std_io_stdout(self):
+    self.run_wasi_test_suite_test('std_io_stdout')
+
+  @requires_node
+  def test_wasi_std_io_stderr(self):
+    self.run_wasi_test_suite_test('std_io_stderr')
+
+  @requires_node
+  def test_wasi_clock_res_get(self):
+    self.run_wasi_test_suite_test('wasi_clock_res_get')
+
+  @requires_node
+  def test_wasi_clock_time_get(self):
+    self.run_wasi_test_suite_test('wasi_clock_time_get')
+
+  @requires_node
+  def test_wasi_fd_fdstat_get(self):
+    self.run_wasi_test_suite_test('wasi_fd_fdstat_get')
+
+  @requires_node
+  def test_wasi_wasi_fd_write_file(self):
+    self.run_wasi_test_suite_test('wasi_fd_write_file')
+    with open('new_file') as f:
+      self.assertEqual(f.read(), 'new_file')
+
+  @requires_node
+  def test_wasi_wasi_fd_write_stdout(self):
+    self.run_wasi_test_suite_test('wasi_fd_write_stdout')
+
+  @requires_node
+  def test_wasi_wasi_fd_write_stderr(self):
+    self.run_wasi_test_suite_test('wasi_fd_write_stderr')
+
+  @requires_node
+  def test_wasi_proc_exit(self):
+    self.run_wasi_test_suite_test('wasi_proc_exit')
+
+  @requires_node
+  def test_wasi_random_get(self):
+    self.run_wasi_test_suite_test('wasi_random_get')
+
+  @requires_node
+  def test_wasi_sched_yield(self):
+    self.run_wasi_test_suite_test('wasi_sched_yield')
+
+  def test_memops_bulk_memory(self):
+    self.emcc_args += ['--profiling-funcs', '-fno-builtin']
+
+    def run(args, expect_bulk_mem):
+      self.do_runf(test_file('other/test_memops_bulk_memory.c'), emcc_args=args)
+      funcs = self.parse_wasm('test_memops_bulk_memory.wasm')[2]
+      js = read_file('test_memops_bulk_memory.js')
+      if expect_bulk_mem:
+        self.assertNotContained('_emscripten_memcpy_big', js)
+        self.assertIn('$emscripten_memcpy_big', funcs)
+      else:
+        self.assertContained('_emscripten_memcpy_big', js)
+        self.assertNotIn('$emscripten_memcpy_big', funcs)
+
+    # By default we expect to find _emscripten_memcpy_big in the generaed JS and not in the
+    # native code.
+    run([], expect_bulk_mem=False)
+
+    # With bulk memory enabled we expect *not* to find it.
+    run(['-mbulk-memory'], expect_bulk_mem=True)
+
+    run(['-mbulk-memory', '-mno-bulk-memory'], expect_bulk_mem=False)
+
+    # -pthread implicitly enables bulk memory too.
+    self.setup_node_pthreads()
+    run(['-pthread'], expect_bulk_mem=True)

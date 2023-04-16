@@ -17,7 +17,7 @@ mergeInto(LibraryManager.library, {
    * @param {(Uint8Array|Array<number>)} slab: An array of data.
    * @param {number=} allocator : How to allocate memory, see ALLOC_*
    */
-  $allocate__deps: ['$ALLOC_NORMAL', '$ALLOC_STACK'],
+  $allocate__deps: ['$ALLOC_NORMAL', '$ALLOC_STACK', 'malloc'],
   $allocate: function(slab, allocator) {
     var ret;
   #if ASSERTIONS
@@ -28,7 +28,7 @@ mergeInto(LibraryManager.library, {
     if (allocator == ALLOC_STACK) {
       ret = stackAlloc(slab.length);
     } else {
-      ret = {{{ makeMalloc('allocate', 'slab.length') }}};
+      ret = _malloc(slab.length);
     }
 
     if (!slab.subarray && !slab.slice) {
@@ -44,12 +44,13 @@ mergeInto(LibraryManager.library, {
   // in a maximum length that can be used to be secure from out of bounds
   // writes.
   $writeStringToMemory__docs: '/** @deprecated @param {boolean=} dontAddNull */',
+  $writeStringToMemory__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   $writeStringToMemory: function(string, buffer, dontAddNull) {
     warnOnce('writeStringToMemory is deprecated and should not be called! Use stringToUTF8() instead!');
 
     var /** @type {number} */ lastChar, /** @type {number} */ end;
     if (dontAddNull) {
-      // stringToUTF8Array always appends null. If we don't want to do that, remember the
+      // stringToUTF8 always appends null. If we don't want to do that, remember the
       // character that existed at the location where the null will be placed, and restore
       // that after the write (below).
       end = buffer + lengthBytesUTF8(string);

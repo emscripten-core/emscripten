@@ -7,10 +7,6 @@
 var LibraryExceptions = {};
 
 [
-  '__cxa_allocate_exception',
-  '__cxa_free_exception',
-  '__cxa_increment_exception_refcount',
-  '__cxa_decrement_exception_refcount',
   '__cxa_throw',
   '__cxa_rethrow',
   'llvm_eh_typeid_for',

@@ -28,6 +28,7 @@ from tools.system_libs import USE_NINJA
 
 # Minimal subset of targets used by CI systems to build enough to useful
 MINIMAL_TASKS = [
+    'libbulkmemory',
     'libcompiler_rt',
     'libcompiler_rt-wasm-sjlj',
     'libc',
@@ -267,7 +268,7 @@ def main():
     time_taken = time.time() - start_time
     logger.info('...success. Took %s(%.2fs)' % (('%02d:%02d mins ' % (time_taken // 60, time_taken % 60) if time_taken >= 60 else ''), time_taken))
 
-  if USE_NINJA and not do_clear:
+  if USE_NINJA and args.operation != 'clear':
     system_libs.build_deferred()
 
   if len(tasks) > 1 or USE_NINJA:

@@ -1224,7 +1224,7 @@ def find_browser(name):
                          ('chrome', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'),
                          ('chrome_canary', '/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary')]
   elif WINDOWS:
-    pf_locations = ['ProgramFiles(x86)', 'ProgramFiles', 'ProgramW6432']
+    pf_locations = ['ProgramFiles(x86)', 'ProgramFiles', 'ProgramW6432', 'LOCALAPPDATA']
 
     for pf_env in pf_locations:
       if pf_env not in os.environ:

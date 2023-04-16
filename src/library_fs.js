@@ -5,7 +5,10 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $FS__deps: ['$randomFill', '$PATH', '$PATH_FS', '$TTY', '$MEMFS', '$asyncLoad', '$intArrayFromString',
+  $FS__deps: ['$randomFill', '$PATH', '$PATH_FS', '$TTY', '$MEMFS', '$asyncLoad',
+    '$intArrayFromString',
+    '$stringToUTF8Array',
+    '$lengthBytesUTF8',
 #if LibraryManager.has('library_idbfs.js')
     '$IDBFS',
 #endif

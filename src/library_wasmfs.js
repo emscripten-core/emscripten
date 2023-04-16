@@ -140,6 +140,12 @@ mergeInto(LibraryManager.library, {
     },
     // TODO: mkdirTree
     // TDOO: rmdir
+    rmdir: (path) => {
+      return withStackSave(() => {
+        var buffer = stringToUTF8OnStack(path);
+        return __wasmfs_rmdir(buffer);
+      })
+    },
     // TODO: open
     open: (path, flags, mode) => {
       flags = typeof flags == 'string' ? FS.modeStringToFlags(flags) : flags;
@@ -276,6 +282,7 @@ mergeInto(LibraryManager.library, {
     stringToUTF8(s, childNameBuffer, len);
   },
   _wasmfs_get_preloaded_path_name__sig: 'vip',
+  _wasmfs_get_preloaded_path_name__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   _wasmfs_get_preloaded_path_name: function(index, fileNameBuffer) {
     var s = wasmFSPreloadedFiles[index].pathName;
     var len = lengthBytesUTF8(s) + 1;

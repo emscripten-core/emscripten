@@ -152,7 +152,7 @@ int emscripten_resize_heap(size_t size) {
 }
 
 double emscripten_get_now(void) {
-  return (1000 * clock()) / (double)CLOCKS_PER_SEC;
+  return (1000ll * clock()) / (double)CLOCKS_PER_SEC;
 }
 
 // C++ ABI
@@ -168,11 +168,6 @@ double emscripten_get_now(void) {
 
 __attribute__((__weak__))
 void __cxa_throw(void* ptr, void* type, void* destructor) {
-  abort();
-}
-
-__attribute__((__weak__))
-void* __cxa_allocate_exception(size_t thrown_size) {
   abort();
 }
 

@@ -5,7 +5,7 @@
 
 /*global Module:true, Runtime*/
 /*global HEAP32*/
-/*global new_*/
+/*global newFunc*/
 /*global createNamedFunction*/
 /*global readLatin1String, stringToUTF8*/
 /*global requireRegisteredType, throwBindingError, runDestructors*/
@@ -414,7 +414,13 @@ var LibraryEmVal = {
 
   $emval_registeredMethods: [],
   _emval_get_method_caller__sig: 'pip',
-  _emval_get_method_caller__deps: ['$emval_addMethodCaller', '$emval_lookupTypes', '$new_', '$makeLegalFunctionName', '$emval_registeredMethods'],
+  _emval_get_method_caller__deps: [
+    '$emval_addMethodCaller', '$emval_lookupTypes',,
+    '$makeLegalFunctionName', '$emval_registeredMethods',
+#if DYNAMIC_EXECUTION
+    '$newFunc',
+#endif
+  ],
   _emval_get_method_caller: function(argCount, argTypes) {
     var types = emval_lookupTypes(argCount, argTypes);
     var retType = types[0];
@@ -479,7 +485,7 @@ var LibraryEmVal = {
         "};\n";
 
     params.push(functionBody);
-    var invokerFunction = new_(Function, params).apply(null, args);
+    var invokerFunction = newFunc(Function, params).apply(null, args);
 #endif
     returnId = emval_addMethodCaller(invokerFunction);
     emval_registeredMethods[signatureName] = returnId;
@@ -558,6 +564,7 @@ var LibraryEmVal = {
 
 #if ASYNCIFY
   _emval_await__deps: ['$Emval', '$Asyncify'],
+  _emval_await__async: true,
   _emval_await: function(promise) {
     return Asyncify.handleAsync(() => {
       promise = Emval.toValue(promise);

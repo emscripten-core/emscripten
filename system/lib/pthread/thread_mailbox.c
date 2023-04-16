@@ -90,13 +90,6 @@ void _emscripten_check_mailbox() {
     &mailbox->notification, &expected, NOTIFICATION_NONE);
 }
 
-// Send a postMessage notification telling the target thread to check its
-// mailbox when it returns to its event loop. Pass in the current thread and
-// main thread ids to minimize calls back into Wasm.
-void _emscripten_notify_mailbox_postmessage(pthread_t target_thread,
-                                            pthread_t curr_thread,
-                                            pthread_t main_thread);
-
 void emscripten_thread_mailbox_send(pthread_t thread, task t) {
   assert(thread->mailbox_refcount > 0);
 

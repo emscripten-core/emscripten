@@ -29,7 +29,7 @@ static void *__memcpy(void *restrict dest, const void *restrict src, size_t n) {
   unsigned char *block_aligned_d_end;
   unsigned char *d_end;
 
-#ifndef EMSCRIPTEN_STANDALONE_WASM
+#if !defined(EMSCRIPTEN_STANDALONE_WASM) || defined(__wasm_bulk_memory__)
   if (n >= 512) {
     emscripten_memcpy_big(dest, src, n);
     return dest;

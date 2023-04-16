@@ -462,6 +462,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_wget__deps: ['$Browser', '$PATH_FS', '$FS'],
+  emscripten_wget__async: true,
   emscripten_wget: function(url, file) {
     return Asyncify.handleSleep((wakeUp) => {
       var _url = UTF8ToString(url);
@@ -489,6 +490,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
+  emscripten_wget_data__async: true,
   emscripten_wget_data: function(url, pbuffer, pnum, perror) {
     return Asyncify.handleSleep((wakeUp) => {
       asyncLoad(UTF8ToString(url), (byteArray) => {
@@ -507,6 +509,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_scan_registers__deps: ['$safeSetTimeout'],
+  emscripten_scan_registers__async: true,
   emscripten_scan_registers: function(func) {
     return Asyncify.handleSleep((wakeUp) => {
       // We must first unwind, so things are spilled to the stack. Then while
@@ -523,6 +526,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_lazy_load_code__sig: 'v',
+  emscripten_lazy_load_code__async: true,
   emscripten_lazy_load_code: function() {
     return Asyncify.handleSleep((wakeUp) => {
       // Update the expected wasm binary file to be the lazy one.
@@ -607,6 +611,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
+  emscripten_fiber_swap__async: true,
   emscripten_fiber_swap: function(oldFiber, newFiber) {
     if (ABORT) return;
 #if ASYNCIFY_DEBUG

@@ -1,23 +1,44 @@
-// XXX EMSCRIPTEN ASAN: build an uninstrumented version of memset
-#if defined(__EMSCRIPTEN__) && defined(__has_feature)
-#if __has_feature(address_sanitizer)
-#define memset __attribute__((no_sanitize("address"))) emscripten_builtin_memset
+#include "emscripten_internal.h" // for emscripten_memset_big
+
+#if defined(__has_feature) && __has_feature(address_sanitizer)
+// build an uninstrumented version of memset
+__attribute__((no_sanitize("address"))) void *__musl_memset(void *str, int c, size_t n);
+__attribute__((no_sanitize("address"))) void *__memset(void *str, int c, size_t n);
 #endif
-#endif
+
+__attribute__((__weak__)) void *__musl_memset(void *str, int c, size_t n);
+__attribute__((__weak__)) void *__memset(void *str, int c, size_t n);
 
 #ifdef EMSCRIPTEN_OPTIMIZE_FOR_OZ
 
-#include <stddef.h>
-
-void *memset(void *str, int c, size_t n) {
+void *__memset(void *str, int c, size_t n) {
   unsigned char *s = (unsigned char *)str;
 #pragma clang loop unroll(disable)
   while(n--) *s++ = c;
   return str;
 }
 
+#elif defined(__wasm_bulk_memory__)
+
+#define memset __musl_memset
+#include "musl/src/string/memset.c"
+#undef memset
+
+void *__memset(void *str, int c, size_t n) {
+  if (n >= 512) {
+    emscripten_memset_big(str, c, n);
+    return str;
+  }
+  return __musl_memset(str, c, n);
+}
+
 #else
 
+#define memset __memset
 #include "musl/src/string/memset.c"
+#undef memset
 
 #endif
+
+weak_alias(__memset, emscripten_builtin_memset);
+weak_alias(__memset, memset);

@@ -150,7 +150,7 @@ _deps_info = {
   'glewInit': ['malloc'],
   'glfwGetProcAddress': ['malloc'],
   'glfwInit': ['malloc', 'free'],
-  'glfwSleep': ['sleep'],
+  'glfwSleep': ['sleep', 'malloc'],
   'glfwGetMonitors': ['malloc'],
   'localtime': ['malloc'],
   'localtime_r': ['malloc'],
@@ -185,18 +185,13 @@ def append_deps_info(js_symbol_deps):
 
 def get_deps_info():
   if not settings.WASM_EXCEPTIONS and settings.LINK_AS_CXX:
-    _deps_info['__cxa_begin_catch'] = ['__cxa_is_pointer_type', '__cxa_free_exception']
-    _deps_info['__cxa_throw'] = ['__cxa_is_pointer_type']
-    _deps_info['__cxa_find_matching_catch'] = ['__cxa_can_catch', 'setTempRet0']
-    _deps_info['__cxa_find_matching_catch_1'] = ['__cxa_can_catch', 'setTempRet0']
-    _deps_info['__cxa_find_matching_catch_2'] = ['__cxa_can_catch', 'setTempRet0']
-    _deps_info['__cxa_find_matching_catch_3'] = ['__cxa_can_catch', 'setTempRet0']
-    _deps_info['__cxa_find_matching_catch_4'] = ['__cxa_can_catch', 'setTempRet0']
-    _deps_info['__cxa_find_matching_catch_5'] = ['__cxa_can_catch', 'setTempRet0']
-    _deps_info['__cxa_find_matching_catch_6'] = ['__cxa_can_catch', 'setTempRet0']
-    _deps_info['__cxa_find_matching_catch_7'] = ['__cxa_can_catch', 'setTempRet0']
-    _deps_info['__cxa_find_matching_catch_8'] = ['__cxa_can_catch', 'setTempRet0']
-    _deps_info['__cxa_find_matching_catch_9'] = ['__cxa_can_catch', 'setTempRet0']
+    _deps_info['__cxa_end_catch'] = ['setThrew', '__cxa_decrement_exception_refcount']
+    base_js_exception_deps = ['__cxa_is_pointer_type']
+    _deps_info['__cxa_throw'] = base_js_exception_deps
+    _deps_info['__cxa_begin_catch'] = base_js_exception_deps + ['__cxa_increment_exception_refcount']
+    _deps_info['__cxa_find_matching_catch'] = base_js_exception_deps + ['__cxa_can_catch', 'setTempRet0']
+    for i in range(1, 10):
+      _deps_info['__cxa_find_matching_catch_%d' % i] = _deps_info['__cxa_find_matching_catch']
   if settings.PTHREADS and settings.OFFSCREENCANVAS_SUPPORT:
     _deps_info['pthread_create'] = ['malloc']
   if settings.FILESYSTEM and settings.SYSCALLS_REQUIRE_FILESYSTEM:
