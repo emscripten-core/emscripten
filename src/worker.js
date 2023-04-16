@@ -286,18 +286,11 @@ self.onmessage = handleMessage;
 
 self.addEventListener('error', (event) => {
   const error = event.error;
-  if (error) {
-    self.postMessage({
-      type: 'error',
-      message: error.message,
-      stack: error.stack
-    });
-  } else {
-    self.postMessage({
-      type: 'error',
-      message: event.message
-    });
-  }
+  self.postMessage({
+    type: 'error',
+    message: error ? error.message : event.message,
+    stack: error ? error.stack : undefined
+  });
   // Prevent the default error handling
   event.preventDefault();
 });
