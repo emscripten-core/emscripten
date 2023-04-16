@@ -5542,6 +5542,25 @@ Module["preRun"].push(function () {
     shutil.copyfile('webpack/src/hello.wasm', 'webpack/dist/hello.wasm')
     self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
 
+  def test_worker_error_postmessage(self):
+    create_file('main.c', r'''
+      void crash() {
+        int (*fun)(void) = 0;
+        (fun)();
+      }
+
+      int main() {
+        crash();
+        return 0;
+      }
+      ''')
+    create_file('pre.js', r'''
+      console.log = function(message) {
+        reportResultToServer(message);
+      };
+      ''')
+    self.btest('src.cpp', args=['-g', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', 'pre.js'], expected='/report_result?at crash()')
+
 
 class emrun(RunnerCore):
   def test_emrun_info(self):
@@ -5645,26 +5664,3 @@ class emrun(RunnerCore):
       self.assertContained('Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', stdout)
       self.assertContained('Testing char sequences: %20%21 &auml;', stdout)
       self.assertContained('hello, error stream!', stderr)
-
-  def test_worker_error_postmessage(self):
-    create_file('src.cpp', r'''
-      #include <thread>
-
-      void crash() {
-        int (*fun)(void) = nullptr;
-        (fun)();
-      }
-
-      int main() {
-        std::thread worker(crash);
-        worker.join();
-        return 0;
-      }
-      ''')
-    create_file('pre.js', r'''
-      console.log = function(message) {
-        reportResultToServer(message);
-      };
-      ''')
-    self.compile_btest(['src.cpp', '-g', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', 'pre.js', '-o', 'src.html'])
-    self.run_browser('src.html', '/report_result?at crash()')
