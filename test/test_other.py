@@ -13166,6 +13166,12 @@ foo/version.txt
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Werror', '-pthread', '-sMIN_CHROME_VERSION=73'])
     self.assertContained('emcc: error: MIN_CHROME_VERSION=73 is not compatible with pthreads (74 or above required)', err)
 
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Werror', '-pthread', '-sMIN_NODE_VERSION=160399'])
+    self.assertContained('emcc: error: MIN_NODE_VERSION=160399 is not compatible with pthreads (160400 or above required)', err)
+
+    # If we are not building for node, then the node version is not a problem.
+    self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-pthread', '-sMIN_NODE_VERSION=160399', '-sENVIRONMENT=web,worker'])
+
   def test_signext_lowering(self):
     # Use `-v` to show the sub-commands being run by emcc.
     cmd = [EMCC, test_file('other/test_signext_lowering.c'), '-v']
