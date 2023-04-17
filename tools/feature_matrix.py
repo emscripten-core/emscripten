@@ -51,8 +51,11 @@ min_browser_versions = {
   Feature.JS_BIGINT_INTEGRATION: {
     'chrome': 67,
     'firefox': 68,
-    # Note: Safari 14.1 shipped only in iOS 14.5, which can be confusing.
-    'safari': 140100,
+    # Note: Safari 14.1 is enough for wasm-bigint by itself (not that that
+    # shipped only in iOS 14.5, not 14.1, which can be confusing) - but it is
+    # not enough for us as we use BigInt64Array in that mode, and that only
+    # shipped in 15.0, so mark this feature as depending on that version.
+    'safari': 150000,
     'node': 150000,
   },
   Feature.THREADS: {
