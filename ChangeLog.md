@@ -23,7 +23,11 @@ Future
 - Bump the default minimum Firefox version from 65 to 68.
 
 3.1.36 (in development)
+3.1.37 (in development)
 -----------------------
+
+3.1.36 - 04/16/23
+-----------------
 - The `USES_DYNAMIC_ALLOC` setting has been deprecated.  You can get the same
   effect from `-sMALLOC=none`. (#19164)
 
