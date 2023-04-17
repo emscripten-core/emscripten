@@ -18,6 +18,10 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
+Future
+-----
+- Bump the default minimum Firefox version from 65 to 68.
+
 3.1.36 (in development)
 -----------------------
 - The `USES_DYNAMIC_ALLOC` setting has been deprecated.  You can get the same
