@@ -223,3 +223,10 @@ void _emscripten_err(const char* text) { wasi_writeln(2, text); }
 void __call_sighandler(sighandler_t handler, int sig) {
   handler(sig);
 }
+
+int _setitimer_js(int which, double timeout) {
+  // There is no API to let us set timers in standalone mode atm. Return an
+  // error.
+  errno = ENOTSUP;
+  return -1;
+}
