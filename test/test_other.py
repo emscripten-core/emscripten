@@ -13191,7 +13191,7 @@ foo/version.txt
 
   def test_itimer_standlone(self):
     self.emcc_args += ['-sSTANDALONE_WASM']
-    self.do_other_test('test_itimer.c')
+    self.do_other_test('test_itimer_standalone.c')
 
   @node_pthreads
   @no_mac("Our Mac CI currently has too much contention to run this reliably")
