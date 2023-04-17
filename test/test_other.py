@@ -13159,7 +13159,7 @@ foo/version.txt
     response = response.replace(root, '<root>')
     self.assertTextDataIdentical(expected, response)
 
-  def test_min_browser_version(self):
+  def test_min_runtime_version(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=120000'])
     self.assertContained('emcc: error: MIN_SAFARI_VERSION=120000 is not compatible with WASM_BIGINT (150000 or above required)', err)
 
@@ -13171,6 +13171,18 @@ foo/version.txt
 
     # If we are not building for node, then the node version is not a problem.
     self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-pthread', '-sMIN_NODE_VERSION=160399', '-sENVIRONMENT=web,worker'])
+
+  @uses_canonical_tmp
+  @with_env_modify({'EMCC_DEBUG': '1'})
+  def test_min_runtime_version_debug(self):
+    MESSAGE = 'cannot use PROMISE_ANY'
+    # Just specifying a new-enough node is not enough for Promise.any to be
+    # supported, as default browser versions prevent it.
+    err = self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-sMIN_NODE_VERSION=150000'], stderr=PIPE).stderr
+    self.assertContained(MESSAGE, err)
+    # Building only for node fixes things, as we then ignore browser versions.
+    err = self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-sMIN_NODE_VERSION=150000', '-sENVIRONMENT=node'], stderr=PIPE).stderr
+    self.assertNotContained(MESSAGE, err)
 
   def test_signext_lowering(self):
     # Use `-v` to show the sub-commands being run by emcc.
