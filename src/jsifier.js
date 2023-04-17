@@ -520,7 +520,9 @@ function ${name}(${args}) {
       includeFile('base64Utils.js');
     }
 
-    if (abortExecution) throw Error('Aborting compilation due to previous errors');
+    if (abortExecution) {
+      throw Error('Aborting compilation due to previous errors');
+    }
 
     // This is the main 'post' pass. Print out the generated code that we have here, together with the
     // rest of the output that we started to print out earlier (see comment on the
@@ -569,8 +571,11 @@ function ${name}(${args}) {
       deps: symbolDeps,
       asyncFuncs
     }));
-    return;
+  } else {
+    finalCombiner();
   }
 
-  finalCombiner();
+  if (abortExecution) {
+    throw Error('Aborting compilation due to previous errors');
+  }
 }
