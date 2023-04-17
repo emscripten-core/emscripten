@@ -13159,18 +13159,16 @@ foo/version.txt
     response = response.replace(root, '<root>')
     self.assertTextDataIdentical(expected, response)
 
-  def test_min_runtime_version(self):
+  def test_min_runtime_version_bigint(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=120000'])
     self.assertContained('emcc: error: MIN_SAFARI_VERSION=120000 is not compatible with WASM_BIGINT (150000 or above required)', err)
 
+    # If we are not building for browsers, then the safari node version is not a problem.
+    self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=120000', '-sENVIRONMENT=node'])
+
+  def test_min_runtime_version_pthread(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Werror', '-pthread', '-sMIN_CHROME_VERSION=73'])
     self.assertContained('emcc: error: MIN_CHROME_VERSION=73 is not compatible with pthreads (74 or above required)', err)
-
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Werror', '-pthread', '-sMIN_NODE_VERSION=160399'])
-    self.assertContained('emcc: error: MIN_NODE_VERSION=160399 is not compatible with pthreads (160400 or above required)', err)
-
-    # If we are not building for node, then the node version is not a problem.
-    self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-pthread', '-sMIN_NODE_VERSION=160399', '-sENVIRONMENT=web,worker'])
 
   @uses_canonical_tmp
   @with_env_modify({'EMCC_DEBUG': '1'})

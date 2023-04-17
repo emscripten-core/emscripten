@@ -57,7 +57,6 @@ min_browser_versions = {
     'chrome': 74,
     'firefox': 79,
     'safari': 140100,
-    'node': 160400
   },
   Feature.GLOBALTHIS: {
     'chrome': 71,
