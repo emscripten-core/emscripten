@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.36 (in development)
+3.1.37 (in development)
 -----------------------
+
+3.1.36 - 04/16/23
+-----------------
 - The `USES_DYNAMIC_ALLOC` setting has been deprecated.  You can get the same
   effect from `-sMALLOC=none`. (#19164)
 
