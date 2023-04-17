@@ -13189,6 +13189,10 @@ foo/version.txt
   def test_itimer_pthread(self):
     self.do_other_test('test_itimer.c')
 
+  def test_itimer_standlone(self):
+    self.emcc_args += ['-sSTANDALONE_WASM']
+    self.do_other_test('test_itimer.c')
+
   @node_pthreads
   @no_mac("Our Mac CI currently has too much contention to run this reliably")
   def test_itimer_proxy_to_pthread(self):
