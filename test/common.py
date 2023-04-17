@@ -605,6 +605,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           # Opt in to node v15 default behaviour:
           # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
           self.node_args.append('--unhandled-rejections=throw')
+      self.emcc_args += building.get_emcc_node_flags(node_version)
 
     self.v8_args = ['--wasm-staging']
     self.env = {}
