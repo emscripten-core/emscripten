@@ -13174,10 +13174,10 @@ foo/version.txt
 
   @uses_canonical_tmp
   @with_env_modify({'EMCC_DEBUG': '1'})
-  def test_min_runtime_version_debug(self):
+  def test_feature_detection_uses_ENVIRONMENT(self):
     MESSAGE = 'cannot use PROMISE_ANY'
     # Just specifying a new-enough node is not enough for Promise.any to be
-    # supported, as default browser versions prevent it.
+    # detected as supported, as default browser versions prevent it.
     err = self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-sMIN_NODE_VERSION=150000'], stderr=PIPE).stderr
     self.assertContained(MESSAGE, err)
     # Building only for node fixes things, as we then ignore browser versions.
