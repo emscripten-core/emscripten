@@ -18,14 +18,10 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-Future
------
-- Bump the default minimum Node version from 10.19 to 15.0. To target the
-  previous minimum version (10.19.0), use `-sMIN_NODE_VERSION=101900`.
-
-3.1.36 (in development)
 3.1.37 (in development)
 -----------------------
+- Bump the default minimum Node version from 10.19 to 15.0. To target the
+  previous minimum version (10.19.0), use `-sMIN_NODE_VERSION=101900` (#19192).
 
 3.1.36 - 04/16/23
 -----------------
