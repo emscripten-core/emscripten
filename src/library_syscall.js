@@ -864,11 +864,6 @@ var SyscallsLibrary = {
     FS.rename(oldpath, newpath);
     return 0;
   },
-  __syscall_linkat__nothrow: true,
-  __syscall_linkat__proxy: false,
-  __syscall_linkat: function(olddirfd, oldpath, newdirfd, newpath, flags) {
-    return -{{{ cDefs.EMLINK }}}; // no hardlinks for us
-  },
   __syscall_symlinkat: function(target, newdirfd, linkpath) {
 #if SYSCALL_DEBUG
     dbg('warning: untested syscall');

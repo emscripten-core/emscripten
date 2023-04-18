@@ -108,7 +108,7 @@ weak int __syscall_getppid() {
   return g_ppid;
 }
 
-weak int __syscall_link(intptr_t oldpath, intptr_t newpath) {
+weak int __syscall_linkat(int olddirfd, intptr_t oldpath, int newdirfd, intptr_t newpath, int flags) {
   return -EMLINK; // no hardlinks for us
 }
 
