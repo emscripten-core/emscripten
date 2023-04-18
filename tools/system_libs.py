@@ -15,10 +15,8 @@ from glob import iglob
 from typing import List, Optional
 
 from . import shared, building, utils
-from . import deps_info
 from . import diagnostics
 from . import cache
-from tools.shared import demangle_c_symbol_name
 from tools.settings import settings
 from tools.utils import read_file
 
@@ -90,10 +88,38 @@ def run_build_commands(commands):
   logger.info('compiled %d inputs' % len(commands))
 
 
+def objectfile_sort_key(filename):
+  """Sort object files that we pass to llvm-ar."""
+  # In general, we simply use alphabetical order, but we special case certain
+  # object files such they come first.  For example, `vmlock.o` contains the
+  # definition of `__vm_wait`, but `mmap.o` also contains a dummy/weak definition
+  # for use by `mmap.o` when `vmlock.o` is not otherwise included.
+  #
+  # When another object looks for `__vm_wait` we prefer that it always find the
+  # real definition first and not refer to the dummy one (which is really
+  # intended to be local to `mmap.o` but due to the fact the weak aliases can't
+  # have internal linkage).
+  #
+  # The reason we care is that once an object file is pulled into certain aspects
+  # of it cannot be undone/removed by the linker.  For example, static
+  # constructors or stub library dependencies.
+  #
+  # In the case of `mmap.o`, once it get included by the linker, it pulls in the
+  # the reverse dependencies of the mmap syscall (memalign).  If we don't do this
+  # sorting we see a slight regression in test_metadce_minimal_pthreads due to
+  # memalign being included.
+  basename = os.path.basename(filename)
+  if basename in {'vmlock.o'}:
+    return 'AAA_' + basename
+  else:
+    return basename
+
+
 def create_lib(libname, inputs):
   """Create a library from a set of input objects."""
   suffix = shared.suffix(libname)
-  inputs = sorted(inputs, key=lambda x: os.path.basename(x))
+
+  inputs = sorted(inputs, key=objectfile_sort_key)
   if suffix in ('.bc', '.o'):
     if len(inputs) == 1:
       if inputs[0] != libname:
@@ -219,7 +245,7 @@ rule archive
           out += f'  CFLAGS = {join(custom_flags)}'
       out += '\n'
 
-    objects = sorted(objects, key=lambda x: os.path.basename(x))
+    objects = sorted(objects, key=objectfile_sort_key)
     objects = ' '.join(objects)
     out += f'build {libname}: archive {objects}\n'
 
@@ -2012,67 +2038,6 @@ class libstubs(DebugLibrary):
   src_files = ['emscripten_syscall_stubs.c', 'emscripten_libc_stubs.c']
 
 
-# If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
-# confusing, so issue a warning.
-def warn_on_unexported_main(symbolses):
-  # In STANDALONE_WASM we don't expect main to be explicitly exported.
-  # In PROXY_TO_PTHREAD we export emscripten_proxy_main instead of main.
-  if settings.STANDALONE_WASM or settings.PROXY_TO_PTHREAD:
-    return
-  if '_main' not in settings.EXPORTED_FUNCTIONS:
-    for symbols in symbolses:
-      if 'main' in symbols['defs']:
-        logger.warning('main() is in the input files, but "_main" is not in EXPORTED_FUNCTIONS, which means it may be eliminated as dead code. Export it if you want main() to run.')
-        return
-
-
-def handle_reverse_deps(input_files):
-  if settings.REVERSE_DEPS == 'none' or settings.SIDE_MODULE:
-    return
-  elif settings.REVERSE_DEPS == 'all':
-    # When not optimizing we add all possible reverse dependencies rather
-    # than scanning the input files
-    for symbols in deps_info.get_deps_info().values():
-      for symbol in symbols:
-        settings.REQUIRED_EXPORTS.append(symbol)
-    return
-
-  if settings.REVERSE_DEPS != 'auto':
-    shared.exit_with_error(f'invalid values for REVERSE_DEPS: {settings.REVERSE_DEPS}')
-
-  added = set()
-
-  def add_reverse_deps(need):
-    more = False
-    for ident, deps in deps_info.get_deps_info().items():
-      if ident in need['undefs'] and ident not in added:
-        added.add(ident)
-        more = True
-        for dep in deps:
-          need['undefs'].add(dep)
-          logger.debug('adding dependency on %s due to deps-info on %s' % (dep, ident))
-          settings.REQUIRED_EXPORTS.append(dep)
-    if more:
-      add_reverse_deps(need) # recurse to get deps of deps
-
-  # Scan symbols
-  symbolses = building.llvm_nm_multiple([os.path.abspath(t) for t in input_files])
-
-  warn_on_unexported_main(symbolses)
-
-  if len(symbolses) == 0:
-    symbolses.append({'defs': set(), 'undefs': set()})
-
-  # depend on exported functions
-  for export in settings.EXPORTED_FUNCTIONS + settings.SIDE_MODULE_IMPORTS:
-    if settings.VERBOSE:
-      logger.debug('adding dependency on export %s' % export)
-    symbolses[0]['undefs'].add(demangle_c_symbol_name(export))
-
-  for symbols in symbolses:
-    add_reverse_deps(symbols)
-
-
 def get_libs_to_link(args, forced, only_forced):
   libs_to_link = []
 
@@ -2211,19 +2176,15 @@ def get_libs_to_link(args, forced, only_forced):
   return libs_to_link
 
 
-def calculate(input_files, args, forced):
+def calculate(args, forced):
   # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
   # for unresolved symbols in your project files, which can speed up linking, but if you do not have
-  # the proper list of actually needed libraries, errors can occur. See below for how we must
-  # export all the symbols in deps_info when using this option.
+  # the proper list of actually needed libraries, errors can occur.
   only_forced = os.environ.get('EMCC_ONLY_FORCED_STDLIBS')
   if only_forced:
     # One of the purposes EMCC_ONLY_FORCED_STDLIBS was to skip the scanning
     # of the input files for reverse dependencies.
-    diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` and/or `-sREVERSE_DEPS=none` depending on the desired result')
-    settings.REVERSE_DEPS = 'all'
-
-  handle_reverse_deps(input_files)
+    diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` to avoid linking standard libraries')
 
   libs_to_link = get_libs_to_link(args, forced, only_forced)
 

@@ -596,9 +596,6 @@ See the `library_*.js`_ files for other examples.
      This is useful when all the implemented methods use a JavaScript
      singleton containing helper methods. See ``library_webgl.js`` for
      an example.
-   - If a JavaScript library depends on a compiled C library (like most
-     of *libc*), you must edit `src/deps_info.json`_. Search for
-     "deps_info" in `tools/system_libs.py`_.
    - The keys passed into `mergeInto` generate functions that are prefixed
      by ``_``. In other words ``my_func: function() {},`` becomes
      ``function _my_func() {}``, as all C methods in emscripten have a ``_`` prefix. Keys starting with ``$`` have the ``$``
@@ -810,7 +807,6 @@ you can give it a try. See `Emnapi documentation`_ for more details.
 
 .. _library.js: https://github.com/emscripten-core/emscripten/blob/main/src/library.js
 .. _test_js_libraries: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L5043
-.. _src/deps_info.json: https://github.com/emscripten-core/emscripten/blob/main/src/deps_info.json
 .. _tools/system_libs.py: https://github.com/emscripten-core/emscripten/blob/main/tools/system_libs.py
 .. _library_\*.js: https://github.com/emscripten-core/emscripten/tree/main/src
 .. _test_add_function in test/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L6237

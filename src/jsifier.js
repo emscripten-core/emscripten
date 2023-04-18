@@ -66,6 +66,26 @@ function isDefined(symName) {
   return false;
 }
 
+function getTransitiveDeps(symbol) {
+  // TODO(sbc): Use some kind of cache to avoid quadratic behaviour here.
+  const transitiveDeps = new Set();
+  const seen = new Set();
+  const toVisit = [symbol];
+  while (toVisit.length) {
+    const sym = toVisit.pop();
+    if (!seen.has(sym)) {
+      let directDeps = LibraryManager.library[sym + '__deps'] || [];
+      directDeps = directDeps.filter((d) => typeof d === 'string');
+      if (directDeps.length) {
+        directDeps.forEach(transitiveDeps.add, transitiveDeps);
+        toVisit.push(...directDeps);
+      }
+      seen.add(sym);
+    }
+  }
+  return Array.from(transitiveDeps);
+}
+
 function runJSify() {
   const libraryItems = [];
   const symbolDeps = {};
@@ -260,8 +280,14 @@ function ${name}(${args}) {
 
       if (symbolsOnly) {
         if (!isJsOnlySymbol(symbol) && LibraryManager.library.hasOwnProperty(symbol)) {
-          externalDeps = deps.filter((d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library) && typeof d === 'string');
-          symbolDeps[symbol] = externalDeps;
+          var value = LibraryManager.library[symbol];
+          var resolvedSymbol = symbol;
+          // Resolve aliases before looking up deps
+          if (typeof value == 'string' && value[0] != '=' && LibraryManager.library.hasOwnProperty(value)) {
+            resolvedSymbol = value;
+          }
+          var transtiveDeps = getTransitiveDeps(resolvedSymbol);
+          symbolDeps[symbol] = transtiveDeps.filter((d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library));
         }
         return;
       }
