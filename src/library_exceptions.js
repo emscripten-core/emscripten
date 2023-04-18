@@ -238,7 +238,6 @@ var LibraryExceptions = {
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
   __cxa_find_matching_catch__deps: ['$exceptionLast', '$ExceptionInfo', '__resumeException', '__cxa_can_catch', 'setTempRet0'],
-  //__cxa_find_matching_catch__sig: 'p',
   __cxa_find_matching_catch: function() {
     var thrown = 
 #if EXCEPTION_STACK_TRACES
@@ -408,6 +407,7 @@ var LibraryExceptions = {
 #endif
 };
 
+#if !WASM_EXCEPTIONS
 // In LLVM, exceptions generate a set of functions of form
 // __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.  where the
 // number specifies the number of arguments.  In Emscripten, route all these to
@@ -416,5 +416,6 @@ var LibraryExceptions = {
 addCxaCatch = function(n) {
   LibraryManager.library['__cxa_find_matching_catch_' + n] = '__cxa_find_matching_catch';
 };
+#endif
 
 mergeInto(LibraryManager.library, LibraryExceptions);
