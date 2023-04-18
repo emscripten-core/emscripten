@@ -614,6 +614,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
           self.node_args.append('--unhandled-rejections=throw')
 
+      # If the version we are running tests in is lower than the version that
+      # emcc targets then we need to tell emcc to target that older version.
+      emcc_min_node_version_str = str(shared.settings.MIN_NODE_VERSION)
+      emcc_min_node_version = (
+        int(emcc_min_node_version_str[0:2]),
+        int(emcc_min_node_version_str[2:4]),
+        int(emcc_min_node_version_str[4:6])
+      )
+      if node_version < emcc_min_node_version:
+        self.emcc_args += building.get_emcc_node_flags(node_version)
+
     self.v8_args = ['--wasm-staging']
     self.env = {}
     self.temp_files_before_run = []

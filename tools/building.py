@@ -1292,3 +1292,14 @@ def js_legalization_pass_flags():
     # assumes they are imports.
     flags += ['--pass-arg=legalize-js-interface-exported-helpers']
   return flags
+
+
+# Returns a list of flags to pass to emcc that make the output run properly in
+# the given node version.
+def get_emcc_node_flags(node_version):
+  if not node_version:
+    return []
+  # Convert to the format we use in our settings, XXYYZZ, for example,
+  # 10.1.7 will turn into "100107".
+  str_node_version = "%02d%02d%02d" % node_version
+  return [f'-sMIN_NODE_VERSION={str_node_version}']
