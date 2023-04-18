@@ -12,7 +12,6 @@
 extern "C" {
 #endif
 
-int __syscall_link(intptr_t oldpath, intptr_t newpath);
 int __syscall_chdir(intptr_t path);
 int __syscall_mknod(intptr_t path, int mode, int dev);
 int __syscall_chmod(intptr_t path, int mode);
