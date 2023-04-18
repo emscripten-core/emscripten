@@ -685,7 +685,9 @@ var LibraryPThread = {
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
       // Mark worker as weakly referenced once we start executing a pthread,
-      // so that its existence does not prevent Node.js from exiting.
+      // so that its existence does not prevent Node.js from exiting.  This
+      // has no effect if the worker is already weakly referenced (e.g. if
+      // this worker was previously idle/unused).
       worker.unref();
     }
 #endif
