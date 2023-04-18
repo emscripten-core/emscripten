@@ -66,6 +66,26 @@ function isDefined(symName) {
   return false;
 }
 
+function getTransitiveDeps(symbol) {
+  // TODO(sbc): Use some kind of cache to avoid quadratic behaviour here.
+  const transitiveDeps = new Set();
+  const seen = new Set();
+  const toVisit = [symbol];
+  while (toVisit.length) {
+    const sym = toVisit.pop();
+    if (!seen.has(sym)) {
+      let directDeps = LibraryManager.library[sym + '__deps'] || [];
+      directDeps = directDeps.filter((d) => typeof d === 'string');
+      if (directDeps.length) {
+        directDeps.forEach(transitiveDeps.add, transitiveDeps);
+        toVisit.push(...directDeps);
+      }
+      seen.add(sym);
+    }
+  }
+  return Array.from(transitiveDeps);
+}
+
 function runJSify() {
   const libraryItems = [];
   const symbolDeps = {};
@@ -221,7 +241,7 @@ function ${name}(${args}) {
     // the number specifies the number of arguments. In Emscripten, route all
     // these to a single function '__cxa_find_matching_catch' that variadically
     // processes all of these functions using JS 'arguments' object.
-    if (symbol.startsWith('__cxa_find_matching_catch_')) {
+    if (!WASM_EXCEPTIONS && symbol.startsWith('__cxa_find_matching_catch_')) {
       if (DISABLE_EXCEPTION_THROWING) {
         error('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-except (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.');
         return;
@@ -260,8 +280,14 @@ function ${name}(${args}) {
 
       if (symbolsOnly) {
         if (!isJsOnlySymbol(symbol) && LibraryManager.library.hasOwnProperty(symbol)) {
-          externalDeps = deps.filter((d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library) && typeof d === 'string');
-          symbolDeps[symbol] = externalDeps;
+          var value = LibraryManager.library[symbol];
+          var resolvedSymbol = symbol;
+          // Resolve aliases before looking up deps
+          if (typeof value == 'string' && value[0] != '=' && LibraryManager.library.hasOwnProperty(value)) {
+            resolvedSymbol = value;
+          }
+          var transtiveDeps = getTransitiveDeps(resolvedSymbol);
+          symbolDeps[symbol] = transtiveDeps.filter((d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library));
         }
         return;
       }

@@ -296,7 +296,7 @@ def create_named_globals(metadata):
   return '\n'.join(named_globals)
 
 
-def emscript(in_wasm, out_wasm, outfile_js, memfile):
+def emscript(in_wasm, out_wasm, outfile_js, memfile, js_syms):
   # Overview:
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
   #     to use emscripten's wasm<->JS ABI
@@ -309,7 +309,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
     # set file locations, so that JS glue can find what it needs
     settings.WASM_BINARY_FILE = js_manipulation.escape_for_js_string(os.path.basename(out_wasm))
 
-  metadata = finalize_wasm(in_wasm, out_wasm, memfile)
+  metadata = finalize_wasm(in_wasm, out_wasm, memfile, js_syms)
 
   if settings.RELOCATABLE and settings.MEMORY64 == 2:
     metadata.imports += ['__memory_base32']
@@ -461,7 +461,7 @@ def get_metadata(infile, outfile, modify_wasm, args):
   return metadata
 
 
-def finalize_wasm(infile, outfile, memfile):
+def finalize_wasm(infile, outfile, memfile, js_syms):
   building.save_intermediate(infile, 'base.wasm')
   args = []
 
@@ -536,13 +536,23 @@ def finalize_wasm(infile, outfile, memfile):
 
   expected_exports = set(settings.EXPORTED_FUNCTIONS)
   expected_exports.update(asmjs_mangle(s) for s in settings.REQUIRED_EXPORTS)
+  # Assume that when JS symbol dependencies are exported it is because they
+  # are needed by by a JS symbol and are not being explicitly exported due
+  # to EMSCRIPTEN_KEEPALIVE (llvm.used).
+  for deps in js_syms.values():
+    expected_exports.update(asmjs_mangle(s) for s in deps)
 
-  # Calculate the subset of exports that were explicitly marked with llvm.used.
+  # Calculate the subset of exports that were explicitly marked as
+  # EMSCRIPTEN_KEEPALIVE (llvm.used).
   # These are any exports that were not requested on the command line and are
   # not known auto-generated system functions.
   unexpected_exports = [e for e in metadata.exports if treat_as_user_function(e)]
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
+  if '_main' in unexpected_exports:
+    logger.warning('main() is in the input files, but "_main" is not in EXPORTED_FUNCTIONS, which means it may be eliminated as dead code. Export it if you want main() to run.')
+    unexpected_exports.remove('_main')
+
   building.user_requested_exports.update(unexpected_exports)
   settings.EXPORTED_FUNCTIONS.extend(unexpected_exports)
 
@@ -922,5 +932,5 @@ def normalize_line_endings(text):
   return text
 
 
-def run(in_wasm, out_wasm, outfile_js, memfile):
-  emscript(in_wasm, out_wasm, outfile_js, memfile)
+def run(in_wasm, out_wasm, outfile_js, memfile, js_syms):
+  emscript(in_wasm, out_wasm, outfile_js, memfile, js_syms)

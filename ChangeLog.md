@@ -20,6 +20,13 @@ See docs/process.md for more on how version tagging works.
 
 3.1.37 (in development)
 -----------------------
+- The old reverse dependency system based on `tools/deps_info.py` has been
+  removed and the existing `__deps` entries in JS library files can now be used
+  to express JS-to-native dependencies.  As well being more precise, and
+  extensible via user-supplied JS libraries, this also speeds up link times
+  since we no longer need scan linker inputs using `llvm-nm`.  It also
+  completely removes the need for the `REVERSE_DEPS` settings which has now
+  been deprecated. (#18905)
 - Bump the default minimum Firefox version from 65 to 68 (#19191).
 
 3.1.36 - 04/16/23

@@ -35,7 +35,7 @@ from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROO
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64
 from common import requires_wasm_eh, crossplatform, with_both_sjlj
 from common import also_with_minimal_runtime, also_with_wasm_bigint, EMTEST_BUILD_VERBOSE, PYTHON
-from tools import shared, building, utils, deps_info, response_file, cache
+from tools import shared, building, utils, response_file, cache
 from tools.utils import read_file, write_file, delete_file, read_binary
 import common
 import jsrun
@@ -6944,7 +6944,7 @@ mergeInto(LibraryManager.library, {
 });
 ''')
     err = self.expect_fail([EMCC, 'test.c', '--js-library', 'library_foo_missing.js'])
-    self.assertContained('wasm-ld: error: symbol exported via --export not found: nonexistingvariable', err)
+    self.assertContained('undefined symbol: nonexistingvariable. Required by my_js', err)
 
     # and also for missing C code, of course (without the --js-library, it's just a missing C method)
     err = self.expect_fail([EMCC, 'test.c'])
@@ -10967,7 +10967,7 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.assertContained('hello, world!', self.run_js('hello'))
 
   def test_backwards_deps_in_archive(self):
-    # Test that JS dependencies from deps_info.json work for code linked via
+    # Test that JS dependencies on native code work for code linked via
     # static archives using -l<name>
     self.run_process([EMCC, '-c', test_file('sockets/test_gethostbyname.c'), '-o', 'a.o'])
     self.run_process([LLVM_AR, 'cr', 'liba.a', 'a.o'])
@@ -11369,7 +11369,7 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
   # depended on the missing function.
   def test_chained_js_error_diagnostics(self):
     err = self.expect_fail([EMCC, test_file('test_chained_js_error_diagnostics.c'), '--js-library', test_file('test_chained_js_error_diagnostics.js')])
-    self.assertContained("error: undefined symbol: nonexistent_function (referenced by bar__deps: ['nonexistent_function'], referenced by foo__deps: ['bar'], referenced by top-level compiled C/C++ code)", err)
+    self.assertContained('emscripten_js_symbols.so: undefined symbol: nonexistent_function. Required by foo', err)
 
     # Test without chaining.  In this case we don't include the JS library at
     # all resulting in `foo` being undefined in the native code.
@@ -11881,97 +11881,6 @@ exec "$@"
     self.assertGreater(len(exports_linkable), 1000)
     self.assertIn('sendmsg', exports_linkable)
     self.assertNotIn('sendmsg', exports)
-
-  @is_slow_test
-  def test_deps_info(self):
-    # Verify that for each symbol listed in deps_info all the reverse
-    # dependencies are indeed valid.
-    # To do this we compile a tiny test program that depends on the address
-    # of each function.  Once compiled the resulting JavaScript code should
-    # contain a reference to each of the dependencies.
-
-    # When debugging set this value to the function that you want to start
-    # with.  All symbols prior will be skipped over.
-    start_at = None
-    assert not start_at or start_at in deps_info.get_deps_info()
-    for function, deps in deps_info.get_deps_info().items():
-      if start_at:
-        if function == start_at:
-          start_at = None
-        else:
-          print(f'skipping {function}')
-          continue
-      create_file(function + '.c', '''
-      void %s();
-      int main() {
-        return (int)(long)&%s;
-      }
-      ''' % (function, function))
-      # Compile with -O2 so we get JSDCE run to remove any false positives.  This
-      # also makes the string quotes consistent which makes the test below simpler.
-      # Including -sREVERSE_DEPS=auto explicitly (even though its the default) to
-      # be clear this is what we are testing (and in case the default ever changes).
-      cmd = [EMCC, function + '.c', '-O2', '--minify=0', '--profiling-funcs', '-Wno-incompatible-library-redeclaration', '-sREVERSE_DEPS=auto']
-      print(f'compiling test program for: {function}')
-      if 'emscripten_get_compiler_setting' in function:
-        cmd.append('-sRETAIN_COMPILER_SETTINGS')
-      if 'emscripten_pc_get_function' in function:
-        cmd.append('-sUSE_OFFSET_CONVERTER')
-      if 'embind' in function:
-        cmd.append('-lembind')
-      if 'websocket' in function:
-        cmd += ['-sPROXY_POSIX_SOCKETS', '-lwebsocket.js']
-      if function == 'Mix_LoadWAV_RW':
-        cmd += ['-sUSE_SDL=2']
-      if 'thread' in function:
-        cmd.append('-pthread')
-      if 'glGetStringi' in function:
-        cmd.append('-sUSE_WEBGL2')
-      if 'glMapBufferRange' in function:
-        cmd.append('-sFULL_ES3')
-      if function == 'wgpuDeviceCreateBuffer':
-        cmd.append('-sUSE_WEBGPU')
-      # dladdr dlsym etc..
-      if function.startswith('dl'):
-        cmd.append('-sMAIN_MODULE=2')
-      if function.startswith('emscripten_idb') or function.startswith('emscripten_wget_'):
-        cmd.append('-sASYNCIFY')
-      if function.startswith('emscripten_webgl_') or 'offscreencanvas' in function:
-        cmd.append('-sOFFSCREENCANVAS_SUPPORT')
-        cmd.append('-pthread')
-      if function.startswith('wgpu'):
-        cmd.append('-sUSE_WEBGPU')
-      if function.startswith('__cxa_'):
-        cmd.append('-fexceptions')
-      if function.startswith('glfwGetMonitors'):
-        cmd.append('-sUSE_GLFW=3')
-      if 'mmap' in function:
-        cmd.append('-sFORCE_FILESYSTEM')
-      # In WebAssemblyLowerEmscriptenEHSjLj pass in the LLVM backend, function
-      # calls that exist in the same function with setjmp are converted to some
-      # code sequence that includes emscripten_longjmp. emscripten_longjmp is
-      # included in deps_info.py because in non-LTO builds setjmp does not exist
-      # anymore in the object files. So the mere indirect reference of setjmp or
-      # emscripten_longjmp does not generate calls to its dependencies specified
-      # in deps_info.py. Also Emscripten EH has a known restriction that setjmp
-      # cannot be called or referenced indirectly anyway.
-      if function in ['emscripten_longjmp', 'setjmp']:
-        continue
-      print(shared.shlex_join(cmd))
-      self.run_process(cmd)
-      js = read_file('a.out.js')
-      for dep in deps:
-        direct = '_' + dep + '('
-        via_module = '"_%s"](' % dep
-        assignment = ' = _' + dep
-        print(f'  checking for: {dep}')
-        if direct not in js and via_module not in js and assignment not in js:
-          self.fail(f'use of declared dependency {dep} not found in JS output for {function}')
-
-        # Check that the dependency not a JS library function.  Dependencies on JS functions
-        # do not need entries in deps_info.py.
-        if f'function _{dep}(' in js:
-          self.fail(f'dependency {dep} in deps_info.py looks like a JS function (but should be native)')
 
   @requires_v8
   def test_shell_Oz(self):

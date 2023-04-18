@@ -13,6 +13,7 @@ var LibraryIDBStore = {
   $IDBStore:
 #include IDBStore.js
   ,
+  emscripten_idb_async_load__deps: ['$UTF8ToString', 'malloc', 'free'],
   emscripten_idb_async_load: function(db, id, arg, onload, onerror) {
     IDBStore.getFile(UTF8ToString(db), UTF8ToString(id), function(error, byteArray) {
       if (error) {
@@ -56,6 +57,7 @@ var LibraryIDBStore = {
 
 #if ASYNCIFY
   emscripten_idb_load__async: true,
+  emscripten_idb_load__deps: ['malloc'],
   emscripten_idb_load: function(db, id, pbuffer, pnum, perror) {
     Asyncify.handleSleep(function(wakeUp) {
       IDBStore.getFile(UTF8ToString(db), UTF8ToString(id), function(error, byteArray) {

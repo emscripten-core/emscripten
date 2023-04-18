@@ -20,7 +20,7 @@
  */
 
 var LibraryGLEW = {
-  $GLEW__deps: ['glGetString', '$stringToNewUTF8'],
+  $GLEW__deps: ['glGetString', '$stringToNewUTF8', '$UTF8ToString'],
   $GLEW: {
     isLinaroFork: 1,
     extensions: null,

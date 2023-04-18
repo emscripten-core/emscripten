@@ -2021,22 +2021,6 @@ var IMPORTED_MEMORY = false;
 // [link]
 var SPLIT_MODULE = false;
 
-// How to calculate reverse dependencies (dependencies from JS functions to
-// native functions) prior to linking native code with wasm-ld.  This option
-// has three possible values:
-// 'auto': (default) Inspect the object code passed to the linker (by running
-//         llvm-nm on all input) and use the map in deps_info.py to determine
-//         the set of additional dependencies.
-// 'all' : Include the full set of possible reverse dependencies.
-// 'none': No reverse dependences will be added by emscriopten. Any reverse
-//         dependencies will be assumed to be explicitly added to
-//         EXPORTED_FUNCTIONS and deps_info.py will be completely ignored.
-// While 'auto' will produce a minimal set (so is good for code size), 'all'
-// and 'none' will give faster link times, especially for very large projects
-// (since they both avoid the running of llvm-nm on all linker inputs).
-// [link]
-var REVERSE_DEPS = 'auto';
-
 // For MAIN_MODULE builds, automatically load any dynamic library dependencies
 // on startup, before loading the main module.
 var AUTOLOAD_DYLIBS = true;
@@ -2169,4 +2153,5 @@ var LEGACY_SETTINGS = [
   ['MEM_INIT_METHOD', [0], 'No longer supported'],
   ['USE_PTHREADS', [0, 1], 'No longer needed. Use -pthread instead'],
   ['USES_DYNAMIC_ALLOC', [1], 'No longer supported. Use -sMALLOC=none'],
+  ['REVERSE_DEPS', ['auto', 'all', 'none'], 'No longer needed'],
 ];

@@ -40,8 +40,6 @@ logger = logging.getLogger('building')
 binaryen_checked = False
 EXPECTED_BINARYEN_VERSION = 112
 
-# cache results of nm - it can be slow to run
-nm_cache = {}
 _is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
 user_requested_exports: Set[str] = set()
@@ -84,34 +82,6 @@ def get_building_env():
   return env
 
 
-@ToolchainProfiler.profile()
-def llvm_nm_multiple(files):
-  """Runs llvm-nm for the given list of files.
-
-  The results are populated in nm_cache, and also returned as an array with
-  order corresponding with the input files.
-  If a given file cannot be processed, None will be present in its place.
-  """
-  if len(files) == 0:
-    return []
-  # Run llvm-nm on files that we haven't cached yet
-  cmd = [LLVM_NM, '--print-file-name'] + [f for f in files if f not in nm_cache]
-  cmd = get_command_with_possible_response_file(cmd)
-  results = run_process(cmd, stdout=PIPE, stderr=PIPE, check=False)
-
-  # If one or more of the input files cannot be processed, llvm-nm will return
-  # a non-zero error code, but it will still process and print out all the
-  # other files in order. So even if process return code is non zero, we should
-  # always look at what we got to stdout.
-  if results.returncode != 0:
-    logger.debug(f'Subcommand {" ".join(cmd)} failed with return code {results.returncode}! (An input file was corrupt?)')
-
-  for key, value in parse_llvm_nm_symbols(results.stdout).items():
-    nm_cache[key] = value
-
-  return [nm_cache[f] if f in nm_cache else {'defs': set(), 'undefs': set(), 'parse_error': True} for f in files]
-
-
 def llvm_backend_args():
   # disable slow and relatively unimportant optimization passes
   args = ['-combiner-global-alias-analysis=false']
@@ -146,13 +116,47 @@ def link_to_object(args, target):
   link_lld(args + ['--relocatable'], target)
 
 
+def side_module_external_deps(external_symbols):
+  """Find the list of the external symbols that are needed by the
+  linked side modules.
+  """
+  deps = set()
+  for sym in settings.SIDE_MODULE_IMPORTS:
+    sym = demangle_c_symbol_name(sym)
+    if sym in external_symbols:
+      deps = deps.union(external_symbols[sym])
+  return sorted(list(deps))
+
+
+def create_stub_object(external_symbols):
+  """Create a stub object, based on the JS libary symbols and their
+  dependencies, that we can pass to wasm-ld.
+  """
+  stubfile = shared.get_temp_files().get('libemscripten_js_symbols.so').name
+  stubs = ['#STUB']
+  for name, deps in external_symbols.items():
+    if settings.ERROR_ON_UNDEFINED_SYMBOLS:
+      stubs.append('%s: %s' % (name, ','.join(deps)))
+    else:
+      stubs.append(name)
+  utils.write_file(stubfile, '\n'.join(stubs))
+  return stubfile
+
+
 def lld_flags_for_executable(external_symbols):
   cmd = []
-  if settings.ERROR_ON_UNDEFINED_SYMBOLS:
-    undefs = shared.get_temp_files().get('.undefined').name
-    utils.write_file(undefs, '\n'.join(external_symbols))
-    cmd.append('--allow-undefined-file=%s' % undefs)
-  else:
+  if external_symbols:
+    if settings.INCLUDE_FULL_LIBRARY:
+      all_deps = set()
+      for deps in external_symbols.values():
+        for dep in deps:
+          if dep not in all_deps:
+            cmd.append('--export-if-defined=' + dep)
+          all_deps.add(dep)
+    stub = create_stub_object(external_symbols)
+    cmd.append(stub)
+
+  if not settings.ERROR_ON_UNDEFINED_SYMBOLS:
     cmd.append('--import-undefined')
 
   if settings.IMPORTED_MEMORY:
@@ -178,6 +182,8 @@ def lld_flags_for_executable(external_symbols):
   c_exports += settings.EXPORT_IF_DEFINED
   # Filter out symbols external/JS symbols
   c_exports = [e for e in c_exports if e not in external_symbols]
+  if settings.MAIN_MODULE:
+    c_exports += side_module_external_deps(external_symbols)
   for export in c_exports:
     cmd.append('--export-if-defined=' + export)
 
@@ -286,58 +292,6 @@ def get_command_with_possible_response_file(cmd):
   filename = response_file.create_response_file(cmd[1:], shared.TEMP_DIR)
   new_cmd = [cmd[0], "@" + filename]
   return new_cmd
-
-
-# Parses the output of llvm-nm and returns a dictionary of symbols for each file in the output.
-# This function can be called either for a single file output listing ("llvm-nm a.o", or for
-# multiple files listing ("llvm-nm a.o b.o").
-def parse_llvm_nm_symbols(output):
-  # If response files are used in a call to llvm-nm, the output printed by llvm-nm has a
-  # quirk that it will contain double backslashes as directory separators on Windows. (it will
-  # not remove the escape characters when printing)
-  # Therefore canonicalize the output to single backslashes.
-  output = output.replace('\\\\', '\\')
-
-  # a dictionary from 'filename' -> { 'defs': set(), 'undefs': set(), 'commons': set() }
-  symbols = {}
-
-  for line in output.split('\n'):
-    # Line format: "[archive filename:]object filename: address status name"
-    entry_pos = line.rfind(': ')
-    if entry_pos < 0:
-      continue
-
-    filename_end = line.rfind(':', 0, entry_pos)
-    # Disambiguate between
-    #   C:\bar.o: T main
-    # and
-    #   /foo.a:bar.o: T main
-    # (both of these have same number of ':'s, but in the first, the file name on disk is "C:\bar.o", in second, it is "/foo.a")
-    if filename_end < 0 or line[filename_end + 1] in '/\\':
-      filename_end = entry_pos
-
-    filename = line[:filename_end]
-    if entry_pos + 13 >= len(line):
-      exit_with_error('error parsing output of llvm-nm: `%s`\nIf the symbol name here contains a colon, and starts with __invoke_, then the object file was likely built with an old version of llvm (please rebuild it).' % line)
-
-    # Skip address, which is always fixed-length 8 chars (plus 2 leading chars `: ` and one trailing space)
-    status = line[entry_pos + 11]
-    symbol = line[entry_pos + 13:]
-
-    if filename not in symbols:
-      record = symbols.setdefault(filename, {
-        'defs': set(),
-        'undefs': set(),
-        'commons': set(),
-        'parse_error': False
-      })
-    if status == 'U':
-      record['undefs'] |= {symbol}
-    elif status == 'C':
-      record['commons'] |= {symbol}
-    elif status == status.upper():
-      record['defs'] |= {symbol}
-  return symbols
 
 
 def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
