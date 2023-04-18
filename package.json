@@ -18,7 +18,7 @@
   },
   "scripts": {
     "lint": "eslint .",
-    "fmt": "prettier --write tools/acorn-optimizer.js",
-    "check": "prettier --check tools/acorn-optimizer.js"
+    "fmt": "prettier --write tools/*.js",
+    "check": "prettier --check tools/*.js"
   }
 }
