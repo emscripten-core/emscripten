@@ -575,9 +575,7 @@ var LibraryPThread = {
   _emscripten_thread_set_strongref: function(thread) {
 #if ENVIRONMENT_MAY_BE_NODE
     if (!ENVIRONMENT_IS_NODE) return;
-    var worker = PThread.pthreads[thread];
-    assert(worker);
-    worker.ref();
+    PThread.pthreads[thread].ref();
 #endif
   },
 
