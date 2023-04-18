@@ -27,6 +27,7 @@ See docs/process.md for more on how version tagging works.
   since we no longer need scan linker inputs using `llvm-nm`.  It also
   completely removes the need for the `REVERSE_DEPS` settings which has now
   been deprecated. (#18905)
+- Bump the default minimum Firefox version from 65 to 68 (#19191).
 
 3.1.36 - 04/16/23
 -----------------
