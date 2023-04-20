@@ -165,23 +165,41 @@ class BufferedTestSkip(BufferedTestBase):
     result.addSkip(self.test, self.reason)
 
 
+def fixup_fake_exception(fake_exc):
+  def wrap_inside_function(data):
+    def fn():
+      return data
+    return fn
+  ex = fake_exc[2]
+  while ex is not None:
+    # .co_positions is supposed to be a function that returns an enumerable
+    # to the list of code positions. Create a function object wrapper around
+    # the data
+    ex.tb_frame.f_code.co_positions = wrap_inside_function(ex.tb_frame.f_code.positions)
+    ex = ex.tb_next
+
+
 class BufferedTestFailure(BufferedTestBase):
   def updateResult(self, result):
+    fixup_fake_exception(self.error)
     result.addFailure(self.test, self.error)
 
 
 class BufferedTestExpectedFailure(BufferedTestBase):
   def updateResult(self, result):
+    fixup_fake_exception(self.error)
     result.addExpectedFailure(self.test, self.error)
 
 
 class BufferedTestError(BufferedTestBase):
   def updateResult(self, result):
+    fixup_fake_exception(self.error)
     result.addError(self.test, self.error)
 
 
 class BufferedTestUnexpectedSuccess(BufferedTestBase):
   def updateResult(self, result):
+    fixup_fake_exception(self.error)
     result.addUnexpectedSuccess(self.test)
 
 
@@ -201,6 +219,7 @@ class FakeTraceback():
     self.tb_frame = FakeFrame(tb.tb_frame)
     self.tb_lineno = tb.tb_lineno
     self.tb_next = FakeTraceback(tb.tb_next) if tb.tb_next is not None else None
+    self.tb_lasti = tb.tb_lasti
 
 
 class FakeFrame():
@@ -214,6 +233,9 @@ class FakeCode():
   def __init__(self, co):
     self.co_filename = co.co_filename
     self.co_name = co.co_name
+    # co.co_positions() returns an iterator. Flatten it to a list so that it can
+    # be pickled to the parent process
+    self.positions = list(co.co_positions())
 
 
 def num_cores():
