@@ -4138,7 +4138,7 @@ Module["preRun"].push(function () {
   # Tests that spawning a new thread does not cause a reinitialization of the global data section of the application memory area.
   @requires_threads
   def test_pthread_global_data_initialization(self):
-    # --memory-init-file mode disabled because WASM=0 does seem to work with EXPORT_NAME
+    # --memory-init-file mode disabled because WASM=0 does not seem to work with EXPORT_NAME
     mem_init_modes = [[]]  # ['-sWASM=0', '--memory-init-file', '0'], ['-sWASM=0', '--memory-init-file', '1']]
     for mem_init_mode in mem_init_modes:
       print(mem_init_mode)
