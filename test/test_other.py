@@ -141,7 +141,7 @@ def requires_scons(func):
       if 'EMTEST_SKIP_SCONS' in os.environ:
         self.skipTest('test requires scons and EMTEST_SKIP_SCONS is set')
       else:
-        self.fail('scons required to run this test.  Use EMTEST_SKIP_SKIP to skip')
+        self.fail('scons required to run this test.  Use EMTEST_SKIP_SCONS to skip')
     return func(self, *args, **kwargs)
 
   return decorated
