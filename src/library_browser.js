@@ -236,7 +236,7 @@ var LibraryBrowser = {
           };
           audio.src = url;
           // workaround for chrome bug 124926 - we do not always get oncanplaythrough or onerror
-          safeSetTimeout(function() {
+          safeSetTimeout(() => {
             finish(audio); // try to use it even though it is not necessarily ready to play
           }, 10000);
         } else {
@@ -320,7 +320,7 @@ var LibraryBrowser = {
       Browser.init();
 
       var handled = false;
-      Module['preloadPlugins'].forEach(function(plugin) {
+      Module['preloadPlugins'].forEach((plugin) => {
         if (handled) return;
         if (plugin['canHandle'](fullname)) {
           plugin['handle'](byteArray, fullname, finish, onerror);
@@ -376,7 +376,7 @@ var LibraryBrowser = {
         Module.ctx = ctx;
         if (useWebGL) GL.makeContextCurrent(contextHandle);
         Module.useWebGL = useWebGL;
-        Browser.moduleContextCreatedCallbacks.forEach(function(callback) { callback() });
+        Browser.moduleContextCreatedCallbacks.forEach((callback) => callback());
         Browser.init();
       }
       return ctx;
@@ -465,7 +465,7 @@ var LibraryBrowser = {
                 document['mozCancelFullScreen'] ||
                 document['msExitFullscreen'] ||
                 document['webkitCancelFullScreen'] ||
-          (function() {});
+          (() => {});
       CFS.apply(document, []);
       return true;
     },
@@ -515,7 +515,7 @@ var LibraryBrowser = {
     },
     safeRequestAnimationFrame: function(func) {
       {{{ runtimeKeepalivePush() }}}
-      return Browser.requestAnimationFrame(function() {
+      return Browser.requestAnimationFrame(() => {
         {{{ runtimeKeepalivePop() }}}
         callUserCallback(func);
       });
@@ -695,9 +695,7 @@ var LibraryBrowser = {
 
     updateResizeListeners: function() {
       var canvas = Module['canvas'];
-      Browser.resizeListeners.forEach(function(listener) {
-        listener(canvas.width, canvas.height);
-      });
+      Browser.resizeListeners.forEach((listener) => listener(canvas.width, canvas.height));
     },
 
     setCanvasSize: function(width, height, noUpdates) {

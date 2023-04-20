@@ -57,9 +57,7 @@ mergeInto(LibraryManager.library, {
             if (plugin['canHandle'](fullname)) {
               var dep = getUniqueRunDependency('fp ' + fullname);
               addRunDependency(dep);
-              var finish = function() {
-                removeRunDependency(dep);
-              }
+              var finish = () => removeRunDependency(dep);
               var byteArray = FS.readFile(fullname);
               plugin['handle'](byteArray, fullname, finish, finish);
               handled = true;
