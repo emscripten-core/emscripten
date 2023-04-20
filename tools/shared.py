@@ -142,6 +142,13 @@ def returncode_to_str(code):
   return f'returned {code}'
 
 
+def cap_max_workers_in_pool(max_workers):
+  # Python has an issue that it can only use max 61 cores on Windows: https://github.com/python/cpython/issues/89240
+  if WINDOWS:
+    return min(max_workers, 61)
+  return max_workers
+
+
 def run_multiple_processes(commands,
                            env=None,
                            route_stdout_to_temp_files_suffix=None):
@@ -161,13 +168,9 @@ def run_multiple_processes(commands,
   # faster, but may not work on Windows.
   if int(os.getenv('EM_PYTHON_MULTIPROCESSING', '0')):
     import multiprocessing
-    max_workers = get_num_cores()
     global multiprocessing_pool
     if not multiprocessing_pool:
-      if WINDOWS:
-        # Fix for python < 3.8 on windows. See: https://github.com/python/cpython/pull/13132
-        max_workers = min(max_workers, 61)
-      multiprocessing_pool = multiprocessing.Pool(processes=max_workers)
+      multiprocessing_pool = multiprocessing.Pool(processes=cap_max_workers_in_pool(get_num_cores()))
     return multiprocessing_pool.map(mp_run_process, [(cmd, env, route_stdout_to_temp_files_suffix) for cmd in commands], chunksize=1)
 
   std_outs = []
