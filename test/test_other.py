@@ -13374,3 +13374,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     # -pthread implicitly enables bulk memory too.
     self.setup_node_pthreads()
     run(['-pthread'], expect_bulk_mem=True)
+
+  def test_memory_init_file_unsupported(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Werror', '--memory-init-file=1'])
+    self.assertContained('error: --memory-init-file is only supported with -sWASM=0 [-Wunsupported] [-Werror]', err)
