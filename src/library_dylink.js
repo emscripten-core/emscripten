@@ -888,7 +888,7 @@ var LibraryDylink = {
   // If a library was already loaded, it is not loaded a second time. However
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
-  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$isInternalSym', '$mergeLibSymbols', '$newDSO'],
+  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$isInternalSym', '$mergeLibSymbols', '$newDSO', '$asyncLoad'],
   $loadDynamicLibrary__docs: `
     /**
      * @param {number=} handle
@@ -945,7 +945,7 @@ var LibraryDylink = {
       var libFile = locateFile(libName);
       if (flags.loadAsync) {
         return new Promise(function(resolve, reject) {
-          readAsync(libFile, (data) => resolve(new Uint8Array(data)), reject);
+          asyncLoad(libFile, (data) => resolve(data), reject);
         });
       }
 
