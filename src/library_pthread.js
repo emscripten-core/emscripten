@@ -573,9 +573,15 @@ var LibraryPThread = {
   },
 
   _emscripten_thread_set_strongref: function(thread) {
+    // Called when a thread needs to be strongly referenced.
+    // Currently only used for:
+    // - keeping the "main" thread alive in PROXY_TO_PTHREAD mode;
+    // - crashed threads that needs to propagate the uncaught exception 
+    //   back to the main thread.
 #if ENVIRONMENT_MAY_BE_NODE
-    if (!ENVIRONMENT_IS_NODE) return;
-    PThread.pthreads[thread].ref();
+    if (ENVIRONMENT_IS_NODE) {
+      PThread.pthreads[thread].ref();
+    }
 #endif
   },
 
