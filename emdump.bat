@@ -15,6 +15,30 @@
   set EM_PY=python
 )
 
+:: Work around Windows bug https://github.com/microsoft/terminal/issues/15212 : If this
+:: script is invoked via enclosing the invocation in quotes, then %~f0 and %~dp0 expansions
+:: will not work.
+:: So first try if they might work, and if not, find this script via EMSCRIPTEN env. variable,
+:: and then as last resort from PATH
+@if exist %~f0 (
+  set MYDIR=%~dp0
+  goto FOUND_MYDIR
+)
+@if exist %EMSCRIPTEN%\tools\emdump.bat (
+  set MYDIR=%EMSCRIPTEN%\
+  goto FOUND_MYDIR
+)
+for %%I in (tools\emdump.bat) do (
+  @if exist %%~$PATH:I (
+    set MYDIR=%%~dp$PATH:I
+  ) else (
+    echo Fatal Error: Due to a Windows bug, we are unable to locate the path to tools\emdump.bat.
+    echo See https://github.com/microsoft/terminal/issues/15212 and
+    echo https://github.com/emscripten-core/emscripten/issues/19207 for more details.
+  )
+)
+:FOUND_MYDIR
+
 :: Python Windows bug https://bugs.python.org/issue34780: If this script was invoked via a
 :: shared stdin handle from the parent process, and that parent process stdin handle is in
 :: a certain state, running python.exe might hang here. To work around this, if
@@ -47,16 +71,16 @@
 )
 
 :NORMAL_EXIT
-@"%EM_PY%" -E "%~dp0\tools\emdump.py" %*
+@"%EM_PY%" -E "%MYDIR%tools\emdump.py" %*
 @exit %ERRORLEVEL%
 
 :MUTE_STDIN
-@"%EM_PY%" -E "%~dp0\tools\emdump.py" %* < NUL
+@"%EM_PY%" -E "%MYDIR%tools\emdump.py" %* < NUL
 @exit /b %ERRORLEVEL%
 
 :MUTE_STDIN_EXIT
-@"%EM_PY%" -E "%~dp0\tools\emdump.py" %* < NUL
+@"%EM_PY%" -E "%MYDIR%tools\emdump.py" %* < NUL
 @exit %ERRORLEVEL%
 
 :NORMAL
-@"%EM_PY%" -E "%~dp0\tools\emdump.py" %*
+@"%EM_PY%" -E "%MYDIR%tools\emdump.py" %*

@@ -161,6 +161,13 @@ def no_windows(note=''):
   return lambda f: f
 
 
+def only_windows(note=''):
+  assert not callable(note)
+  if not WINDOWS:
+    return unittest.skip(note)
+  return lambda f: f
+
+
 def requires_native_clang(func):
   assert callable(func)
 

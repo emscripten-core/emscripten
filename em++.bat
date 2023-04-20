@@ -15,13 +15,37 @@
   set EM_PY=python
 )
 
+:: Work around Windows bug https://github.com/microsoft/terminal/issues/15212 : If this
+:: script is invoked via enclosing the invocation in quotes, then %~f0 and %~dp0 expansions
+:: will not work.
+:: So first try if they might work, and if not, find this script via EMSCRIPTEN env. variable,
+:: and then as last resort from PATH
+@if exist %~f0 (
+  set MYDIR=%~dp0
+  goto FOUND_MYDIR
+)
+@if exist %EMSCRIPTEN%\%~n0.bat (
+  set MYDIR=%EMSCRIPTEN%\
+  goto FOUND_MYDIR
+)
+for %%I in (%~n0.bat) do (
+  @if exist %%~$PATH:I (
+    set MYDIR=%%~dp$PATH:I
+  ) else (
+    echo Fatal Error: Due to a Windows bug, we are unable to locate the path to %~n0.bat.
+    echo See https://github.com/microsoft/terminal/issues/15212 and
+    echo https://github.com/emscripten-core/emscripten/issues/19207 for more details.
+  )
+)
+:FOUND_MYDIR
+
 :: If _EMCC_CCACHE is not set, do a regular invocation of the python compiler driver.
 :: Otherwise remove the ccache env. var, and then reinvoke this script with ccache enabled.
 @if "%_EMCC_CCACHE%"=="" (
-  set CMD="%EM_PY%" -E "%~dp0\%~n0.py"
+  set CMD="%EM_PY%" -E "%MYDIR%%~n0.py"
 ) else (
   set _EMCC_CCACHE=
-  set CMD=ccache "%~dp0\%~n0.bat"
+  set CMD=ccache "%MYDIR%%~n0.bat"
 )
 
 :: Python Windows bug https://bugs.python.org/issue34780: If this script was invoked via a
