@@ -5,6 +5,9 @@
 :: To make modifications to this file, edit `tools/run_python.bat` and then run
 :: `tools/create_entry_points.py`
 
+:: N.b. In Windows .bat scripts, the ':' character cannot appear inside any if () blocks,
+:: or there will be a parsing error.
+
 :: All env. vars specified in this file are to be local only to this script.
 @setlocal
 :: -E will not ignore _PYTHON_SYSCONFIGDATA_NAME an internal
@@ -19,7 +22,7 @@
 :: script is invoked via enclosing the invocation in quotes, then %~f0 and %~dp0 expansions
 :: will not work.
 :: So first try if they might work, and if not, find this script via EMSCRIPTEN env. variable,
-:: and then as last resort from PATH
+:: and then as last resort from PATH.
 @if exist %~f0 (
   set MYDIR=%~dp0
   goto FOUND_MYDIR
@@ -32,9 +35,12 @@ for %%I in (tools\emprofile.bat) do (
   @if exist %%~$PATH:I (
     set MYDIR=%%~dp$PATH:I
   ) else (
-    echo Fatal Error: Due to a Windows bug, we are unable to locate the path to tools\emprofile.bat.
-    echo See https://github.com/microsoft/terminal/issues/15212 and
-    echo https://github.com/emscripten-core/emscripten/issues/19207 for more details.
+    echo Fatal Error! Due to a Windows bug, we are unable to locate the path to tools\emprofile.bat.
+    echo To help this issue, try removing unnecessary quotes in the invocation of emcc,
+    echo set the EMSCRIPTEN environment variable to point to the directory where Emscripten
+    echo resides, or add Emscripten directory to PATH.
+    echo See github.com/microsoft/terminal/issues/15212 and
+    echo github.com/emscripten-core/emscripten/issues/19207 for more details.
   )
 )
 :FOUND_MYDIR
