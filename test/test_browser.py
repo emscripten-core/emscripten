@@ -4363,7 +4363,7 @@ Module["preRun"].push(function () {
 
   @also_with_threads
   def test_utf8_textdecoder(self):
-    self.btest_exit(test_file('benchmark/benchmark_utf8.cpp'), 0, args=['--embed-file', test_file('utf8_corpus.txt') + '@/utf8_corpus.txt', '-sEXPORTED_RUNTIME_METHODS=[UTF8ToString]'])
+    self.btest_exit(test_file('benchmark/benchmark_utf8.c'), 0, args=['--embed-file', test_file('utf8_corpus.txt') + '@/utf8_corpus.txt'])
 
   @also_with_threads
   def test_utf16_textdecoder(self):
