@@ -19,16 +19,11 @@
 )
 
 :: Work around Windows bug https://github.com/microsoft/terminal/issues/15212 : If this
-:: script is invoked via enclosing the invocation in quotes, then %~f0 and %~dp0 expansions
-:: will not work.
-:: So first try if they might work, and if not, find this script via EMSCRIPTEN env. variable,
-:: and then as last resort from PATH.
+:: script is invoked via enclosing the invocation in quotes via PATH lookup, then %~f0 and
+:: %~dp0 expansions will not work.
+:: So first try if %~dp0 might work, and if not, manually look up this script from PATH.
 @if exist %~f0 (
   set MYDIR=%~dp0
-  goto FOUND_MYDIR
-)
-@if exist %EMSCRIPTEN%\%~n0.bat (
-  set MYDIR=%EMSCRIPTEN%\
   goto FOUND_MYDIR
 )
 for %%I in (%~n0.bat) do (
@@ -37,8 +32,7 @@ for %%I in (%~n0.bat) do (
   ) else (
     echo Fatal Error! Due to a Windows bug, we are unable to locate the path to %~n0.bat.
     echo To help this issue, try removing unnecessary quotes in the invocation of emcc,
-    echo set the EMSCRIPTEN environment variable to point to the directory where Emscripten
-    echo resides, or add Emscripten directory to PATH.
+    echo or add Emscripten directory to PATH.
     echo See github.com/microsoft/terminal/issues/15212 and
     echo github.com/emscripten-core/emscripten/issues/19207 for more details.
   )
