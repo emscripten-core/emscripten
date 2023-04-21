@@ -3038,9 +3038,19 @@ var LibraryGL = {
 #if GL_DEBUG
     dbg('Input shader source: ' + source);
 #endif
+
+#if ASSERTIONS
+    // These are not expected to be meaningful in WebGL, but issue a warning if they are present, to give some diagnostics about if they are present.
+    if (source.includes('__FILE__')) warnOnce(`When compiling shader: ${source}: Preprocessor variable __FILE__ is not handled by -sGL_EXPLICIT_UNIFORM_LOCATION/-sGL_EXPLICIT_UNIFORM_BINDING options!`);
+    if (source.includes('__LINE__')) warnOnce(`When compiling shader: ${source}: Preprocessor variable __LINE__ is not handled by -sGL_EXPLICIT_UNIFORM_LOCATION/-sGL_EXPLICIT_UNIFORM_BINDING options!`);
+#endif
     // Remove comments and C-preprocess the input shader first, so that we can appropriately
     // parse the layout location directives.
-    source = preprocess_c_code(remove_cpp_comments_in_shaders(source), { 'GL_FRAGMENT_PRECISION_HIGH': function() { return 1; }});
+    source = preprocess_c_code(remove_cpp_comments_in_shaders(source), {
+      'GL_FRAGMENT_PRECISION_HIGH': function() { return 1; },
+      'GL_ES': function() { return 1; },
+      '__VERSION__': function() { return source.includes('#version 300') ? 300 : 100; }
+    });
 #if GL_DEBUG
     dbg('Shader source after preprocessing: ' + source);
 #endif
