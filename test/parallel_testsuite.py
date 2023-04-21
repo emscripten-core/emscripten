@@ -166,16 +166,12 @@ class BufferedTestSkip(BufferedTestBase):
 
 
 def fixup_fake_exception(fake_exc):
-  def wrap_inside_function(data):
-    def fn():
-      return data
-    return fn
   ex = fake_exc[2]
   while ex is not None:
     # .co_positions is supposed to be a function that returns an enumerable
     # to the list of code positions. Create a function object wrapper around
     # the data
-    ex.tb_frame.f_code.co_positions = wrap_inside_function(ex.tb_frame.f_code.positions)
+    ex.tb_frame.f_code.co_positions = lambda: ex.tb_frame.f_code.positions
     ex = ex.tb_next
 
 
