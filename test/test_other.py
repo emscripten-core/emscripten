@@ -13381,5 +13381,5 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
   @only_windows('This test verifies Windows batch script behavior against bug https://github.com/microsoft/terminal/issues/15212')
   def test_windows_batch_file_dp0_expansion_bug(self):
-    open('build_with_quotes.bat', 'w').write(f'@"emcc" {test_file("hello_world.c")}')
+    create_file('build_with_quotes.bat',  f'@"emcc" {test_file("hello_world.c")}')
     self.run_process(['build_with_quotes.bat'])
