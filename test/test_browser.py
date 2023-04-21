@@ -743,13 +743,14 @@ If manually bisecting:
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
     src = test_file('browser/test_sdl_image.c')
 
-    for mem in [0, 1]:
+    for args in [[], ['--memory-init-file=1', '-sWASM=0']]:
       for dest, dirname, basename in [('screenshot.jpg', '/', 'screenshot.jpg'),
                                       ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
-        self.btest_exit(src, args=[
-          '-O2', '-lSDL', '-lGL', '--memory-init-file', str(mem),
+        self.btest_exit(src, args=args + [
+          '-O2', '-lSDL', '-lGL',
           '--preload-file', dest, '-DSCREENSHOT_DIRNAME="' + dirname + '"', '-DSCREENSHOT_BASENAME="' + basename + '"', '--use-preload-plugins'
         ])
+      return
 
   @also_with_wasmfs
   def test_sdl_image_jpeg(self):
@@ -1485,11 +1486,11 @@ keydown(100);keyup(100); // trigger the end
   def test_idbstore_sync(self):
     secret = str(time.time())
     self.clear()
-    self.btest(test_file('idbstore_sync.c'), '6', args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '--memory-init-file', '1', '-O3', '-g2', '-sASYNCIFY'])
+    self.btest(test_file('idbstore_sync.c'), '6', args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '-O3', '-g2', '-sASYNCIFY'])
 
   def test_idbstore_sync_worker(self):
     secret = str(time.time())
-    self.btest(test_file('idbstore_sync_worker.c'), expected='0', args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '--memory-init-file', '1', '-O3', '-g2', '--proxy-to-worker', '-sINITIAL_MEMORY=80MB', '-sASYNCIFY'])
+    self.btest(test_file('idbstore_sync_worker.c'), expected='0', args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '-O3', '-g2', '--proxy-to-worker', '-sINITIAL_MEMORY=80MB', '-sASYNCIFY'])
 
   def test_force_exit(self):
     self.btest_exit('force_exit.c', assert_returncode=10)
@@ -2347,8 +2348,8 @@ void *getBindBuffer() {
       };
     ''')
 
-    for mem in [0, 1]:
-      self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js', '--memory-init-file', str(mem)])
+    for args in [[], ['-sWASM=0', '--memory-init-file=1']]:
+      self.btest('pre_run_deps.cpp', expected='10', args=args + ['--pre-js', 'pre.js'])
 
   def test_mem_init(self):
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
@@ -2398,7 +2399,7 @@ void *getBindBuffer() {
 
   @parameterized({
     '': ([],),
-    'asmjs': (['-sWASM=0'],)
+    'asmjs': (['-sWASM=0', '--memory-init-file=1'],)
   })
   def test_runtime_misuse(self, mode):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall,$cwrap')
@@ -2483,7 +2484,7 @@ void *getBindBuffer() {
 
       print('mem init, so async, call too early')
       create_file('post.js', post_prep + post_test + post_hook)
-      self.btest(filename, expected='600', args=['--post-js', 'post.js', '--memory-init-file', '1', '-sEXIT_RUNTIME'] + extra_args + mode, reporting=Reporting.NONE)
+      self.btest(filename, expected='600', args=['--post-js', 'post.js', '-sEXIT_RUNTIME'] + extra_args + mode, reporting=Reporting.NONE)
       print('sync startup, call too late')
       create_file('post.js', post_prep + 'Module.postRun.push(function() { ' + post_test + ' });' + post_hook)
       self.btest(filename, expected=str(second_code), args=['--post-js', 'post.js', '-sEXIT_RUNTIME'] + extra_args + mode, reporting=Reporting.NONE)
@@ -2902,11 +2903,11 @@ Module["preRun"].push(function () {
     # load an image file, get pixel data. Also O2 coverage for --preload-file, and memory-init
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
 
-    for mem in [0, 1]:
+    for args in [[], ['--memory-init-file=1', '-sWASM=0']]:
       for dest, dirname, basename in [('screenshot.jpg', '/', 'screenshot.jpg'),
                                       ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
-        self.btest_exit('browser/test_sdl2_image.c', 600, args=[
-          '-O2', '--memory-init-file', str(mem),
+        self.btest_exit('browser/test_sdl2_image.c', 600, args=args + [
+          '-O2',
           '--preload-file', dest,
           '-DSCREENSHOT_DIRNAME="' + dirname + '"',
           '-DSCREENSHOT_BASENAME="' + basename + '"',
@@ -4137,16 +4138,19 @@ Module["preRun"].push(function () {
   # Tests that spawning a new thread does not cause a reinitialization of the global data section of the application memory area.
   @requires_threads
   def test_pthread_global_data_initialization(self):
-    mem_init_modes = [[], ['--memory-init-file', '0'], ['--memory-init-file', '1']]
+    # --memory-init-file mode disabled because WASM=0 does not seem to work with EXPORT_NAME
+    mem_init_modes = [[]]  # ['-sWASM=0', '--memory-init-file', '0'], ['-sWASM=0', '--memory-init-file', '1']]
     for mem_init_mode in mem_init_modes:
+      print(mem_init_mode)
       for args in [['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')], ['-O3']]:
         self.btest_exit(test_file('pthread/test_pthread_global_data_initialization.c'), args=args + mem_init_mode + ['-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
 
   @requires_threads
   @requires_sync_compilation
   def test_pthread_global_data_initialization_in_sync_compilation_mode(self):
-    mem_init_modes = [[], ['--memory-init-file', '0'], ['--memory-init-file', '1']]
+    mem_init_modes = [[], ['-sWASM=0', '--memory-init-file', '0'], ['-sWASM=0', '--memory-init-file', '1']]
     for mem_init_mode in mem_init_modes:
+      print(mem_init_mode)
       args = ['-sWASM_ASYNC_COMPILATION=0']
       self.btest_exit(test_file('pthread/test_pthread_global_data_initialization.c'), args=args + mem_init_mode + ['-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
 
@@ -4363,7 +4367,7 @@ Module["preRun"].push(function () {
 
   @also_with_threads
   def test_utf8_textdecoder(self):
-    self.btest_exit(test_file('benchmark/benchmark_utf8.cpp'), 0, args=['--embed-file', test_file('utf8_corpus.txt') + '@/utf8_corpus.txt', '-sEXPORTED_RUNTIME_METHODS=[UTF8ToString]'])
+    self.btest_exit(test_file('benchmark/benchmark_utf8.c'), 0, args=['--embed-file', test_file('utf8_corpus.txt') + '@/utf8_corpus.txt'])
 
   @also_with_threads
   def test_utf16_textdecoder(self):

@@ -141,7 +141,7 @@ def requires_scons(func):
       if 'EMTEST_SKIP_SCONS' in os.environ:
         self.skipTest('test requires scons and EMTEST_SKIP_SCONS is set')
       else:
-        self.fail('scons required to run this test.  Use EMTEST_SKIP_SKIP to skip')
+        self.fail('scons required to run this test.  Use EMTEST_SKIP_SCONS to skip')
     return func(self, *args, **kwargs)
 
   return decorated
@@ -13374,6 +13374,10 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     # -pthread implicitly enables bulk memory too.
     self.setup_node_pthreads()
     run(['-pthread'], expect_bulk_mem=True)
+
+  def test_memory_init_file_unsupported(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Werror', '--memory-init-file=1'])
+    self.assertContained('error: --memory-init-file is only supported with -sWASM=0 [-Wunsupported] [-Werror]', err)
 
   @only_windows('This test verifies Windows batch script behavior against bug https://github.com/microsoft/terminal/issues/15212')
   def test_windows_batch_file_dp0_expansion_bug(self):
