@@ -791,7 +791,6 @@ If manually bisecting:
 
   def test_sdl_stb_image_bpp(self):
     # load grayscale image without alpha
-    self.clear()
     shutil.copyfile(test_file('browser/test_sdl-stb-bpp1.png'), 'screenshot.not')
     self.btest('browser/test_sdl_stb_image.c', reference='browser/test_sdl-stb-bpp1.png', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
@@ -820,7 +819,6 @@ If manually bisecting:
     self.btest_exit('browser/test_sdl_stb_image_cleanup.c', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL', '--memoryprofiler'])
 
   def test_sdl_canvas(self):
-    self.clear()
     self.btest_exit('browser/test_sdl_canvas.c', args=['-sLEGACY_GL_EMULATION', '-lSDL', '-lGL'])
     # some extra coverage
     self.clear()
@@ -1350,14 +1348,14 @@ keydown(100);keyup(100); // trigger the end
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
     for extra in [[], ['-DEXTRA_WORK']]:
       secret = str(time.time())
-      self.btest(test_file('fs/test_idbfs_sync.c'), '1', args=['-lidbfs.js', '-DFIRST', '-DSECRET=\"' + secret + '\"', '-sEXPORTED_FUNCTIONS=_main,_test,_success', '-lidbfs.js'])
-      self.btest(test_file('fs/test_idbfs_sync.c'), '1', args=['-lidbfs.js', '-DSECRET=\"' + secret + '\"', '-sEXPORTED_FUNCTIONS=_main,_test,_success', '-lidbfs.js'] + extra)
+      self.btest(test_file('fs/test_idbfs_sync.c'), '1', args=['-lidbfs.js', '-DFIRST', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_success', '-lidbfs.js'])
+      self.btest(test_file('fs/test_idbfs_sync.c'), '1', args=['-lidbfs.js', f'-DSECRET="{secret }"', '-sEXPORTED_FUNCTIONS=_main,_test,_success', '-lidbfs.js'] + extra)
 
   def test_fs_idbfs_sync_force_exit(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
     secret = str(time.time())
-    self.btest(test_file('fs/test_idbfs_sync.c'), '1', args=['-lidbfs.js', '-DFIRST', '-DSECRET=\"' + secret + '\"', '-sEXPORTED_FUNCTIONS=_main,_test,_success', '-sEXIT_RUNTIME', '-DFORCE_EXIT', '-lidbfs.js'])
-    self.btest(test_file('fs/test_idbfs_sync.c'), '1', args=['-lidbfs.js', '-DSECRET=\"' + secret + '\"', '-sEXPORTED_FUNCTIONS=_main,_test,_success', '-sEXIT_RUNTIME', '-DFORCE_EXIT', '-lidbfs.js'])
+    self.btest(test_file('fs/test_idbfs_sync.c'), '1', args=['-lidbfs.js', '-DFIRST', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_success', '-sEXIT_RUNTIME', '-DFORCE_EXIT', '-lidbfs.js'])
+    self.btest(test_file('fs/test_idbfs_sync.c'), '1', args=['-lidbfs.js', f'-DSECRET="{secret }"', '-sEXPORTED_FUNCTIONS=_main,_test,_success', '-sEXIT_RUNTIME', '-DFORCE_EXIT', '-lidbfs.js'])
 
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
@@ -1377,13 +1375,13 @@ keydown(100);keyup(100); // trigger the end
 
     args = ['--pre-js', 'pre.js', '-lidbfs.js', '-sEXIT_RUNTIME', '-sASYNCIFY']
     secret = str(time.time())
-    self.btest(test_file('fs/test_idbfs_fsync.c'), '1', args=args + ['-DFIRST', '-DSECRET=\"' + secret + '\"', '-sEXPORTED_FUNCTIONS=_main,_success', '-lidbfs.js'])
-    self.btest(test_file('fs/test_idbfs_fsync.c'), '1', args=args + ['-DSECRET=\"' + secret + '\"', '-sEXPORTED_FUNCTIONS=_main,_success', '-lidbfs.js'])
+    self.btest(test_file('fs/test_idbfs_fsync.c'), '1', args=args + ['-DFIRST', f'-DSECRET="{secret }"', '-sEXPORTED_FUNCTIONS=_main,_success', '-lidbfs.js'])
+    self.btest(test_file('fs/test_idbfs_fsync.c'), '1', args=args + [f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_success', '-lidbfs.js'])
 
   def test_fs_memfs_fsync(self):
     args = ['-sASYNCIFY', '-sEXIT_RUNTIME']
     secret = str(time.time())
-    self.btest_exit(test_file('fs/test_memfs_fsync.c'), args=args + ['-DSECRET=\"' + secret + '\"'])
+    self.btest_exit(test_file('fs/test_memfs_fsync.c'), args=args + [f'-DSECRET="{secret}"'])
 
   def test_fs_workerfs_read(self):
     secret = 'a' * 10
@@ -1400,7 +1398,7 @@ keydown(100);keyup(100); // trigger the end
         }, '/work');
       };
     ''' % (secret, secret2))
-    self.btest_exit(test_file('fs/test_workerfs_read.c'), args=['-lworkerfs.js', '--pre-js', 'pre.js', '-DSECRET=\"' + secret + '\"', '-DSECRET2=\"' + secret2 + '\"', '--proxy-to-worker', '-lworkerfs.js'])
+    self.btest_exit(test_file('fs/test_workerfs_read.c'), args=['-lworkerfs.js', '--pre-js', 'pre.js', f'-DSECRET="{secret }"', f'-DSECRET2="{secret2}"', '--proxy-to-worker', '-lworkerfs.js'])
 
   def test_fs_workerfs_package(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
@@ -1479,18 +1477,18 @@ keydown(100);keyup(100); // trigger the end
   def test_idbstore(self):
     secret = str(time.time())
     for stage in [0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5]:
-      self.clear()
       print(stage)
-      self.btest_exit(test_file('idbstore.c'), args=['-lidbstore.js', '-DSTAGE=' + str(stage), '-DSECRET=\"' + secret + '\"'])
+      self.btest_exit(test_file('browser/test_idbstore.c'),
+                      args=['-lidbstore.js', f'-DSTAGE={stage}', f'-DSECRET="{secret}"'],
+                      output_basename=f'idbstore_{stage}')
 
   def test_idbstore_sync(self):
     secret = str(time.time())
-    self.clear()
-    self.btest(test_file('idbstore_sync.c'), '6', args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '-O3', '-g2', '-sASYNCIFY'])
+    self.btest(test_file('browser/test_idbstore_sync.c'), '6', args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '-sASYNCIFY'])
 
   def test_idbstore_sync_worker(self):
     secret = str(time.time())
-    self.btest(test_file('idbstore_sync_worker.c'), expected='0', args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '-O3', '-g2', '--proxy-to-worker', '-sINITIAL_MEMORY=80MB', '-sASYNCIFY'])
+    self.btest(test_file('browser/test_idbstore_sync_worker.c'), expected='0', args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '--proxy-to-worker', '-sINITIAL_MEMORY=80MB', '-sASYNCIFY'])
 
   def test_force_exit(self):
     self.btest_exit('force_exit.c', assert_returncode=10)
