@@ -101,7 +101,7 @@ mergeInto(LibraryManager.library, {
    * @param {number} ptr
    * @param {number=} maxBytesToRead - An optional length that specifies the
    *   maximum number of bytes to read. You can omit this parameter to scan the
-   *   string until the first \\0 byte. If maxBytesToRead is passed, and the string
+   *   string until the first 0 byte. If maxBytesToRead is passed, and the string
    *   at [ptr, ptr+maxBytesToReadr[ contains a null byte in the middle, then the
    *   string will cut short at that byte index (i.e. maxBytesToRead will not
    *   produce a string of exact length [ptr, ptr+maxBytesToRead[) N.B. mixing
