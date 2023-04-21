@@ -1854,7 +1854,7 @@ keydown(100);keyup(100); // trigger the end
   def test_emscripten_api(self):
     self.btest_exit('emscripten_api_browser.c', args=['-sEXPORTED_FUNCTIONS=_main,_third', '-lSDL'])
 
-  def test_emscripten_api2(self):
+  def test_emscripten_async_load_script(self):
     def setup():
       create_file('script1.js', '''
         Module._set(456);
@@ -1864,7 +1864,7 @@ keydown(100);keyup(100); // trigger the end
 
     setup()
     self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w'))
-    self.btest_exit('emscripten_api_browser2.c', args=['-sEXPORTED_FUNCTIONS=_main,_set', '-sFORCE_FILESYSTEM'])
+    self.btest_exit('test_emscripten_async_load_script.c', args=['-sFORCE_FILESYSTEM'])
 
     # check using file packager to another dir
     self.clear()
@@ -1872,7 +1872,7 @@ keydown(100);keyup(100); // trigger the end
     ensure_dir('sub')
     self.run_process([FILE_PACKAGER, 'sub/test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w'))
     shutil.copyfile(Path('sub/test.data'), 'test.data')
-    self.btest_exit('emscripten_api_browser2.c', args=['-sEXPORTED_FUNCTIONS=_main,_set', '-sFORCE_FILESYSTEM'])
+    self.btest_exit('test_emscripten_async_load_script.c', args=['-sFORCE_FILESYSTEM'])
 
   def test_emscripten_api_infloop(self):
     self.btest_exit('emscripten_api_browser_infloop.cpp', assert_returncode=7)
@@ -4739,8 +4739,9 @@ Module["preRun"].push(function () {
   # Tests that emscripten_run_script() variants of functions work in pthreads.
   @requires_threads
   def test_pthread_run_script(self):
+    shutil.copyfile(test_file('pthread/foo.js'), 'foo.js')
     for args in [[], ['-pthread', '-sPROXY_TO_PTHREAD']]:
-      self.btest_exit(test_file('pthread/test_pthread_run_script.cpp'), args=['-O3'] + args)
+      self.btest_exit(test_file('pthread/test_pthread_run_script.c'), args=['-O3'] + args)
 
   # Tests emscripten_set_canvas_element_size() and OffscreenCanvas functionality in different build configurations.
   @requires_threads
