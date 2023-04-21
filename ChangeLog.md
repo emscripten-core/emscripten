@@ -28,6 +28,7 @@ See docs/process.md for more on how version tagging works.
   completely removes the need for the `REVERSE_DEPS` settings which has now
   been deprecated. (#18905)
 - Bump the default minimum Firefox version from 65 to 68 (#19191).
+- Background pthreads no longer prevent a Node.js app from exiting. (#19073)
 
 3.1.36 - 04/16/23
 -----------------
