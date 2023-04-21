@@ -12032,12 +12032,6 @@ exec "$@"
     self.assertExists('hello_.wasm')
     self.assertContained('hello, world!', self.run_js('hello.wasm'))
 
-  def test_EM_PYTHON_MULTIPROCESSING(self):
-    with env_modify({'EM_PYTHON_MULTIPROCESSING': '1'}):
-      # wasm2js optimizations use multiprocessing to run multiple node
-      # invocations
-      self.run_process([EMCC, test_file('hello_world.c'), '-sWASM=0', '-O2'])
-
   def test_main_module_no_undefined(self):
     # Test that ERROR_ON_UNDEFINED_SYMBOLS works with MAIN_MODULE.
     self.do_runf(test_file('hello_world.c'), emcc_args=['-sMAIN_MODULE', '-sERROR_ON_UNDEFINED_SYMBOLS'])
