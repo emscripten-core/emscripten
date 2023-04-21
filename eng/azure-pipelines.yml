@@ -1,0 +1,18 @@
+trigger:
+￼  batch: true
+￼  branches:
+￼    include:
+￼    - dotnet/main
+￼
+￼pr:
+￼  branches:
+￼    include:
+￼    - dotnet/main
+￼
+￼pool:
+￼  name: NetCore-Public
+￼  demands: ImageOverride -equals build.ubuntu.2204.amd64.open
+￼
+￼steps:
+￼- script: echo Hello World
+￼  displayName: 'Basic empty step which we can PR against'
