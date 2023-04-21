@@ -68,14 +68,7 @@ var LibraryHtml5WebGL = {
   emscripten_webgl_commit_frame: 'emscripten_webgl_do_commit_frame',
 #endif
 
-  // This code is called from emscripten_webgl_create_context() and proxied
-  // to the main thread when in offscreen framebuffer mode. This won't be
-  // called if GL is not linked in, but also make sure to not add a dep on
-  // GL unnecessarily from here, as that would cause a linker error.
   emscripten_webgl_do_create_context__deps: [
-#if LibraryManager.has('library_webgl.js')
-  '$GL',
-#endif
 #if OFFSCREENCANVAS_SUPPORT
   'malloc',
 #endif
@@ -616,6 +609,10 @@ function handleWebGLProxying(funcs) {
 }
 
 handleWebGLProxying(LibraryHtml5WebGL);
+#endif // USE_PTHREADS
+
+#if LibraryManager.has('library_webgl.js')
+autoAddDeps(LibraryHtml5WebGL, '$GL');
 #endif
 
 mergeInto(LibraryManager.library, LibraryHtml5WebGL);

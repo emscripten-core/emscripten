@@ -244,7 +244,6 @@ sigs = {
   __syscall_getsockname__sig: 'iippiii',
   __syscall_getsockopt__sig: 'iiiippi',
   __syscall_ioctl__sig: 'iiip',
-  __syscall_linkat__sig: 'iipipi',
   __syscall_listen__sig: 'iiiiiii',
   __syscall_lstat64__sig: 'ipp',
   __syscall_mkdirat__sig: 'iipi',

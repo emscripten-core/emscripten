@@ -323,13 +323,21 @@ def ensure_dir(dirname):
   dirname.mkdir(parents=True, exist_ok=True)
 
 
-def limit_size(string, maxbytes=800000 * 20, maxlines=100000, max_line=5000):
+def limit_size(string):
+  maxbytes = 800000 * 20
+  if sys.stdout.isatty():
+    maxlines = 500
+    max_line = 500
+  else:
+    max_line = 5000
+    maxlines = 100000
   lines = string.splitlines()
   for i, line in enumerate(lines):
     if len(line) > max_line:
       lines[i] = line[:max_line] + '[..]'
   if len(lines) > maxlines:
     lines = lines[0:maxlines // 2] + ['[..]'] + lines[-maxlines // 2:]
+    lines.append('(not all output shown. See `limit_size`)')
   string = '\n'.join(lines) + '\n'
   if len(string) > maxbytes:
     string = string[0:maxbytes // 2] + '\n[..]\n' + string[-maxbytes // 2:]
@@ -605,6 +613,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           # Opt in to node v15 default behaviour:
           # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
           self.node_args.append('--unhandled-rejections=throw')
+
+      # If the version we are running tests in is lower than the version that
+      # emcc targets then we need to tell emcc to target that older version.
+      emcc_min_node_version_str = str(shared.settings.MIN_NODE_VERSION)
+      emcc_min_node_version = (
+        int(emcc_min_node_version_str[0:2]),
+        int(emcc_min_node_version_str[2:4]),
+        int(emcc_min_node_version_str[4:6])
+      )
+      if node_version < emcc_min_node_version:
+        self.emcc_args += building.get_emcc_node_flags(node_version)
 
     self.v8_args = ['--wasm-staging']
     self.env = {}

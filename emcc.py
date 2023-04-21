@@ -2597,6 +2597,8 @@ def phase_linker_setup(options, state, newargs):
     # shared memory builds we must keep the memory segments in the wasm as
     # they will be passive segments which the .mem format cannot handle.
     settings.MEM_INIT_IN_WASM = not options.memory_init_file or settings.SINGLE_FILE or settings.SHARED_MEMORY
+  elif options.memory_init_file:
+    diagnostics.warning('unsupported', '--memory-init-file is only supported with -sWASM=0')
 
   if (
       settings.MAYBE_WASM2JS or
@@ -3544,8 +3546,6 @@ def parse_args(newargs):
       ports.show_ports()
       should_exit = True
     elif check_arg('--memory-init-file'):
-      # This flag is ignored unless targetting wasm2js.
-      # TODO(sbc): Error out if used without wasm2js.
       options.memory_init_file = int(consume_arg())
     elif check_flag('--proxy-to-worker'):
       settings_changes.append('PROXY_TO_WORKER=1')
