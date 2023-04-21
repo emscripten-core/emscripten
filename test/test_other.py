@@ -13378,3 +13378,8 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_memory_init_file_unsupported(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Werror', '--memory-init-file=1'])
     self.assertContained('error: --memory-init-file is only supported with -sWASM=0 [-Wunsupported] [-Werror]', err)
+
+  @node_pthreads
+  def test_node_pthreads_err_out(self):
+    create_file('post.js', 'err(1, 2, "hello"); out("foo", 42);')
+    self.do_runf(test_file('hello_world.c'), '1 2 hello\nfoo 42\n', emcc_args=['--post-js=post.js'])
