@@ -30,7 +30,7 @@ from tools.shared import config
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, FILE_PACKAGER, WINDOWS, LLVM_NM
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, EMCMAKE, EMCONFIGURE
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
-from common import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
+from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64
 from common import requires_wasm_eh, crossplatform, with_both_sjlj
@@ -13377,3 +13377,9 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_node_pthreads_err_out(self):
     create_file('post.js', 'err(1, 2, "hello"); out("foo", 42);')
     self.do_runf(test_file('hello_world.c'), '1 2 hello\nfoo 42\n', emcc_args=['--post-js=post.js'])
+
+  @only_windows('This test verifies Windows batch script behavior against bug https://github.com/microsoft/terminal/issues/15212')
+  @with_env_modify({'PATH': path_from_root() + os.pathsep + os.getenv('PATH')})
+  def test_windows_batch_file_dp0_expansion_bug(self):
+    create_file('build_with_quotes.bat',  f'@"emcc" {test_file("hello_world.c")}')
+    self.run_process(['build_with_quotes.bat'])
