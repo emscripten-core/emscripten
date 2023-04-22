@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
@@ -6,15 +7,13 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/threading.h>
 
-extern "C" void EMSCRIPTEN_KEEPALIVE FinishTest(int result)
-{
+EMSCRIPTEN_KEEPALIVE void FinishTest(int result) {
   printf("Test finished, result: %d\n", result);
   assert(result == 1);
   exit(0);
 }
 
-void TestAsyncRunScript()
-{
+void TestAsyncRunScript() {
   // 5. Test emscripten_async_run_script() runs in a pthread.
 #if __EMSCRIPTEN_PTHREADS__
   emscripten_async_run_script("Module['_FinishTest'](ENVIRONMENT_IS_PTHREAD && (typeof ENVIRONMENT_IS_WORKER !== 'undefined' && ENVIRONMENT_IS_WORKER));", 1);
@@ -23,20 +22,17 @@ void TestAsyncRunScript()
 #endif
 }
 
-void AsyncScriptLoaded()
-{
+void AsyncScriptLoaded() {
   printf("async script load succeeded!\n");
   TestAsyncRunScript();
 }
 
-void AsyncScriptFailed()
-{
+void AsyncScriptFailed() {
   printf("async script load failed!\n");
   TestAsyncRunScript();
 }
 
 int main() {
-
   // 1. Test that emscripten_run_script() works in a pthread, and it gets
   // executed in the web worker and not on the main thread.
 #if __EMSCRIPTEN_PTHREADS__
@@ -52,7 +48,7 @@ int main() {
 #else
   int result = emscripten_run_script_int("Module['ranScript'];");
 #endif
-  printf("Module['ranScript']=%d\n", result);
+  printf("Module['ranScript'] = %d\n", result);
   assert(result);
 
   // 3. Test emscripten_run_script_string() runs in a pthread.
@@ -69,6 +65,7 @@ int main() {
   // 4. Test emscripten_async_load_script() runs in a pthread.
   emscripten_async_load_script("foo.js", AsyncScriptLoaded, AsyncScriptFailed);
 
-  // Should never get here
+  // This return code should be ignored since emscripten_async_load_script
+  // keeps the runtime alive until FinishTest is called.
   return 99;
 }

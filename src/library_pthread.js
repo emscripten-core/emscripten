@@ -211,11 +211,12 @@ var LibraryPThread = {
       // worker pool as an unused worker.
       worker.pthread_ptr = 0;
 
-#if ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_NODE && PROXY_TO_PTHREAD
       if (ENVIRONMENT_IS_NODE) {
-        // Once a pthread has finished and the worker becomes idle, mark it
-        // as weakly referenced so that its existence does not prevent Node.js
-        // from exiting.
+        // Once the proxied main thread has finished, mark it as weakly
+        // referenced so that its existence does not prevent Node.js from
+        // exiting.  This has no effect if the worker is already weakly
+        // referenced.
         worker.unref();
       }
 #endif
@@ -286,7 +287,7 @@ var LibraryPThread = {
           cancelThread(d['thread']);
         } else if (cmd === 'loaded') {
           worker.loaded = true;
-#if ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_NODE && PTHREAD_POOL_SIZE
           // Check that this worker doesn't have an associated pthread.
           if (ENVIRONMENT_IS_NODE && !worker.pthread_ptr) {
             // Once worker is loaded & idle, mark it as weakly referenced,
@@ -571,6 +572,19 @@ var LibraryPThread = {
     else postMessage({ 'cmd': 'cleanupThread', 'thread': thread });
   },
 
+  _emscripten_thread_set_strongref: function(thread) {
+    // Called when a thread needs to be strongly referenced.
+    // Currently only used for:
+    // - keeping the "main" thread alive in PROXY_TO_PTHREAD mode;
+    // - crashed threads that needs to propagate the uncaught exception 
+    //   back to the main thread.
+#if ENVIRONMENT_MAY_BE_NODE
+    if (ENVIRONMENT_IS_NODE) {
+      PThread.pthreads[thread].ref();
+    }
+#endif
+  },
+
   $cleanupThread: function(pthread_ptr) {
 #if PTHREADS_DEBUG
     dbg('cleanupThread: ' + ptrToString(pthread_ptr))
@@ -674,14 +688,16 @@ var LibraryPThread = {
     msg.moduleCanvasId = threadParams.moduleCanvasId;
     msg.offscreenCanvases = threadParams.offscreenCanvases;
 #endif
-    // Ask the worker to start executing its pthread entry point function.
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
-      // Mark worker as strongly referenced once we start executing a pthread,
-      // so that Node.js doesn't exit while the pthread is running.
-      worker.ref();
+      // Mark worker as weakly referenced once we start executing a pthread,
+      // so that its existence does not prevent Node.js from exiting.  This
+      // has no effect if the worker is already weakly referenced (e.g. if
+      // this worker was previously idle/unused).
+      worker.unref();
     }
 #endif
+    // Ask the worker to start executing its pthread entry point function.
     worker.postMessage(msg, threadParams.transferList);
     return 0;
   },

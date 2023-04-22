@@ -12,7 +12,7 @@
 
 int value = 0;
 
-void set(int x) {
+EMSCRIPTEN_KEEPALIVE void set(int x) {
   printf("set! %d\n", x);
   value = x;
 }
@@ -23,12 +23,14 @@ void load2() {
   char buffer[10];
   memset(buffer, 0, 10);
   FILE *f = fopen("file1.txt", "r");
+  assert(f);
   fread(buffer, 1, 5, f);
   fclose(f);
   assert(strcmp(buffer, "first") == 0);
 
   memset(buffer, 0, 10);
   f = fopen("file2.txt", "r");
+  assert(f);
   fread(buffer, 1, 6, f);
   fclose(f);
   assert(strcmp(buffer, "second") == 0);

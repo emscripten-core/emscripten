@@ -1913,7 +1913,8 @@ class BrowserCore(RunnerCore):
             args=None, also_proxied=False,
             url_suffix='', timeout=None, also_wasm2js=False,
             manually_trigger_reftest=False, extra_tries=1,
-            reporting=Reporting.FULL):
+            reporting=Reporting.FULL,
+            output_basename='test'):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
     if args is None:
       args = []
@@ -1930,7 +1931,7 @@ class BrowserCore(RunnerCore):
     else:
       # manual_reference only makes sense for reference tests
       assert manual_reference is None
-    outfile = 'test.html'
+    outfile = output_basename + '.html'
     args += [filename, '-o', outfile]
     # print('all args:', args)
     utils.delete_file(outfile)
