@@ -2191,17 +2191,17 @@ var LibrarySDL = {
   IMG_Load_RW: function(rwopsID, freeSrc) {
     try {
       // stb_image integration support
-      var cleanup = function() {
+      var cleanup = () => {
         if (rwops && freeSrc) _SDL_FreeRW(rwopsID);
       }
-      var addCleanup = function(func) {
+      var addCleanup = (func) => {
         var old = cleanup;
-        cleanup = function added_cleanup() {
+        cleanup = () => {
           old();
           func();
         }
       }
-      var callStbImage = function(func, params) {
+      var callStbImage = (func, params) => {
         var x = _malloc({{{ getNativeTypeSize('i32') }}});
         var y = _malloc({{{ getNativeTypeSize('i32') }}});
         var comp = _malloc({{{ getNativeTypeSize('i32') }}});
@@ -2426,7 +2426,7 @@ var LibrarySDL = {
       // setTimeouts to ensure that we get the finest granularity possible and as many chances from the browser to fill
       // new audio data. This is because setTimeouts alone have very poor granularity for audio streaming purposes, but also
       // the application might not be using emscripten_set_main_loop to drive the main loop, so we cannot rely on that alone.
-      SDL.audio.queueNewAudioData = function SDL_queueNewAudioData() {
+      SDL.audio.queueNewAudioData = () => {
         if (!SDL.audio) return;
 
         for (var i = 0; i < SDL.audio.numSimultaneouslyQueuedBuffers; ++i) {
@@ -2443,11 +2443,11 @@ var LibrarySDL = {
       }
 
 #if ASYNCIFY
-      var sleepCallback = function() {
+      var sleepCallback = () => {
         if (SDL.audio && SDL.audio.queueNewAudioData) SDL.audio.queueNewAudioData();
       };
       Asyncify.sleepCallbacks.push(sleepCallback);
-      SDL.audio.callbackRemover = function() {
+      SDL.audio.callbackRemover = () => {
         Asyncify.sleepCallbacks = Asyncify.sleepCallbacks.filter(function(callback) {
           return callback !== sleepCallback;
         });
@@ -2455,7 +2455,7 @@ var LibrarySDL = {
 #endif
 
       // Create a callback function that will be routinely called to ask more audio data from the user application.
-      SDL.audio.caller = function SDL_audioCaller() {
+      SDL.audio.caller = () => {
         if (!SDL.audio) return;
 
         --SDL.audio.numAudioTimersPending;
@@ -2768,7 +2768,7 @@ var LibrarySDL = {
       // after loading. Therefore prepare an array of callback handlers to run when this audio decoding is complete, which
       // will then start the playback (with some delay).
       webAudio.onDecodeComplete = []; // While this member array exists, decoding hasn't finished yet.
-      var onDecodeComplete = function(data) {
+      var onDecodeComplete = (data) => {
         webAudio.decodedBuffer = data;
         // Call all handlers that were waiting for this decode to finish, and clear the handler list.
         webAudio.onDecodeComplete.forEach(function(e) { e(); });

@@ -3174,8 +3174,8 @@ mergeInto(LibraryManager.library, {
     if (!elements) {
       elements = [document, document.getElementById('canvas')];
     }
-    ['keydown', 'mousedown', 'touchstart'].forEach(function(event) {
-      elements.forEach(function(element) {
+    ['keydown', 'mousedown', 'touchstart'].forEach((event) => {
+      elements.forEach((element) => {
         if (element) {
           listenOnce(element, event, () => {
             if (ctx.state === 'suspended') ctx.resume();
@@ -3548,7 +3548,7 @@ mergeInto(LibraryManager.library, {
   $safeSetTimeout__docs: '/** @param {number=} timeout */',
   $safeSetTimeout: function(func, timeout) {
     {{{ runtimeKeepalivePush() }}}
-    return setTimeout(function() {
+    return setTimeout(() => {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(func);
     }, timeout);
