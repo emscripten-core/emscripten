@@ -290,6 +290,7 @@ sigs = {
   _emscripten_set_offscreencanvas_size__sig: 'ipii',
   _emscripten_thread_exit_joinable__sig: 'vp',
   _emscripten_thread_mailbox_await__sig: 'vp',
+  _emscripten_thread_set_strongref__sig: 'vp',
   _emscripten_throw_longjmp__sig: 'v',
   _gmtime_js__sig: 'vpp',
   _localtime_js__sig: 'vpp',

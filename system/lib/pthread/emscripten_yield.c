@@ -7,10 +7,10 @@
 #include "syscall.h"
 #include "threading_internal.h"
 
-static _Atomic bool thread_crashed = false;
+static _Atomic pthread_t crashed_thread_id = NULL;
 
 void _emscripten_thread_crashed() {
-  thread_crashed = true;
+  crashed_thread_id = pthread_self();
 }
 
 static void dummy(double now)
@@ -28,7 +28,11 @@ void _emscripten_yield(double now) {
   // allocate (or otherwise itself crash) so use a low level atomic primitive
   // for this signal.
   if (is_runtime_thread) {
-    if (thread_crashed) {
+    if (crashed_thread_id) {
+      // Mark the crashed thread as strongly referenced so that Node.js doesn't
+      // exit while the pthread is propagating the uncaught exception back to
+      // the main thread.
+      _emscripten_thread_set_strongref(crashed_thread_id);
       // Return the event loop so we can handle the message from the crashed
       // thread.
       emscripten_exit_with_live_runtime();
