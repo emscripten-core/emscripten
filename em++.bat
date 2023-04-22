@@ -26,7 +26,7 @@
   set MYDIR=%~dp0
   goto FOUND_MYDIR
 )
-for %%I in (%~n0.bat) do (
+@for %%I in (%~n0.bat) do (
   @if exist %%~$PATH:I (
     set MYDIR=%%~dp$PATH:I
   ) else (

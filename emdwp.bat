@@ -26,7 +26,7 @@
   set MYDIR=%~dp0
   goto FOUND_MYDIR
 )
-for %%I in (tools\emdwp.bat) do (
+@for %%I in (tools\emdwp.bat) do (
   @if exist %%~$PATH:I (
     set MYDIR=%%~dp$PATH:I
   ) else (

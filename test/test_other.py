@@ -13379,9 +13379,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.do_runf(test_file('hello_world.c'), '1 2 hello\nfoo 42\n', emcc_args=['--post-js=post.js'])
 
   @only_windows('This test verifies Windows batch script behavior against bug https://github.com/microsoft/terminal/issues/15212')
+  @with_env_modify({'PATH': path_from_root() + os.pathsep + os.getenv('PATH')})
   def test_windows_batch_file_dp0_expansion_bug(self):
     create_file('build_with_quotes.bat',  f'@"emcc" {test_file("hello_world.c")}')
-    # Emscripten must be available in PATH for this test
-    path = path_from_root() + os.pathsep + os.getenv('PATH')
-    with env_modify({'PATH': path}):
-      self.run_process(['build_with_quotes.bat'])
+    self.run_process(['build_with_quotes.bat'])
