@@ -2724,6 +2724,16 @@ Module["preRun"].push(function () {
         continue
       self.btest_exit(test_file('html5_webgl.c'), args=['-sMAX_WEBGL_VERSION=2', '-lGL'] + mode)
 
+  @parameterized({
+    'webgl1': (['-DWEBGL_VERSION=1'],),
+    'webgl2': (['-sMAX_WEBGL_VERSION=2', '-DWEBGL_VERSION=2'],),
+    'webgl1_extensions': (['-DWEBGL_VERSION=1', '-sGL_EXPLICIT_UNIFORM_LOCATION'],),
+    'webgl2_extensions': (['-sMAX_WEBGL_VERSION=2', '-DWEBGL_VERSION=2', '-sGL_EXPLICIT_UNIFORM_LOCATION', '-sGL_EXPLICIT_UNIFORM_BINDING'],),
+  })
+  @requires_graphics_hardware
+  def test_webgl_preprocessor_variables(self, opts):
+    self.btest_exit(test_file('webgl_preprocessor_variables.c'), args=['-lGL'] + opts)
+
   @requires_graphics_hardware
   def test_webgl2_ubos(self):
     self.btest_exit(test_file('webgl2_ubos.cpp'), args=['-sMAX_WEBGL_VERSION=2', '-lGL'])
