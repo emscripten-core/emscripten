@@ -1950,11 +1950,13 @@ def phase_linker_setup(options, state, newargs):
 
   if '_main' in settings.EXPORTED_FUNCTIONS:
     settings.EXPORT_IF_DEFINED.append('__main_argc_argv')
-  elif settings.ASSERTIONS:
-    # In debug builds when `main` is not explictly requested as an
+  elif settings.ASSERTIONS and not settings.STANDALONE_WASM:
+    # In debug builds when `main` is not explicitly requested as an
     # export we still add it to EXPORT_IF_DEFINED so that we can warn
     # users who forget to explicitly export `main`.
     # See other.test_warn_unexported_main.
+    # This is not needed in STANDALONE_WASM mode since we export _start
+    # (unconditionally) rather than main.
     settings.EXPORT_IF_DEFINED.append('main')
 
   if settings.ASSERTIONS:

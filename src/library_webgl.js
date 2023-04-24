@@ -3555,12 +3555,12 @@ var LibraryGL = {
 
   glGenVertexArrays__deps: ['$__glGenObject'
 #if LEGACY_GL_EMULATION
-  , 'emulGlGenVertexArrays'
+  , '$emulGlGenVertexArrays'
 #endif
   ],
   glGenVertexArrays: function (n, arrays) {
 #if LEGACY_GL_EMULATION
-    _emulGlGenVertexArrays(n, arrays);
+    emulGlGenVertexArrays(n, arrays);
 #else
 #if GL_ASSERTIONS
     assert(GLctx.createVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
@@ -3574,11 +3574,11 @@ var LibraryGL = {
   },
 
 #if LEGACY_GL_EMULATION
-  glDeleteVertexArrays__deps: ['emulGlDeleteVertexArrays'],
+  glDeleteVertexArrays__deps: ['$emulGlDeleteVertexArrays'],
 #endif
   glDeleteVertexArrays: function(n, vaos) {
 #if LEGACY_GL_EMULATION
-    _emulGlDeleteVertexArrays(n, vaos);
+    emulGlDeleteVertexArrays(n, vaos);
 #else
 #if GL_ASSERTIONS
     assert(GLctx.deleteVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
@@ -3592,11 +3592,11 @@ var LibraryGL = {
   },
 
 #if LEGACY_GL_EMULATION
-  glBindVertexArray__deps: ['emulGlBindVertexArray'],
+  glBindVertexArray__deps: ['$emulGlBindVertexArray'],
 #endif
   glBindVertexArray: function(vao) {
 #if LEGACY_GL_EMULATION
-    _emulGlBindVertexArray(vao);
+    emulGlBindVertexArray(vao);
 #else
 #if GL_ASSERTIONS
     assert(GLctx.bindVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
@@ -3610,11 +3610,11 @@ var LibraryGL = {
   },
 
 #if LEGACY_GL_EMULATION
-  glIsVertexArray__deps: ['emulGlIsVertexArray'],
+  glIsVertexArray__deps: ['$emulGlIsVertexArray'],
 #endif
   glIsVertexArray: function(array) {
 #if LEGACY_GL_EMULATION
-    return _emulGlIsVertexArray(array);
+    return emulGlIsVertexArray(array);
 #else
 #if GL_ASSERTIONS
     assert(GLctx.isVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
