@@ -1959,10 +1959,13 @@ class libstandalonewasm(MuslInternalLibrary):
 
   def __init__(self, **kwargs):
     self.is_mem_grow = kwargs.pop('is_mem_grow')
+    self.nocatch = kwargs.pop('nocatch')
     super().__init__(**kwargs)
 
   def get_base_name(self):
     name = super().get_base_name()
+    if self.nocatch:
+      name += '-nocatch'
     if self.is_mem_grow:
       name += '-memgrow'
     return name
@@ -1972,16 +1975,19 @@ class libstandalonewasm(MuslInternalLibrary):
     cflags += ['-DNDEBUG', '-DEMSCRIPTEN_STANDALONE_WASM']
     if self.is_mem_grow:
       cflags += ['-DEMSCRIPTEN_MEMORY_GROWTH']
+    if self.nocatch:
+      cflags.append('-DEMSCRIPTEN_NOCATCH')
     return cflags
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_mem_grow']
+    return super().vary_on() + ['is_mem_grow', 'nocatch']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
       is_mem_grow=settings.ALLOW_MEMORY_GROWTH,
+      nocatch=settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS,
       **kwargs
     )
 

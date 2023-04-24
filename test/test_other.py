@@ -10693,6 +10693,7 @@ int main(void) {
     'compile_only': (['-fexceptions'], [], False),
     # just link isn't enough as codegen didn't emit exceptions support
     'link_only': ([], ['-fexceptions'], False),
+    'standalone': (['-fexceptions'], ['-fexceptions', '-sSTANDALONE_WASM', '-sWASM_BIGINT'], True),
   })
   def test_f_exception(self, compile_flags, link_flags, expect_caught):
     create_file('src.cpp', r'''

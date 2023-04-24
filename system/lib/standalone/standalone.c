@@ -157,19 +157,13 @@ double emscripten_get_now(void) {
 
 // C++ ABI
 
-// Emscripten disables exception catching by default, but not throwing. That
-// allows users to see a clear error if a throw happens, and 99% of the
-// overhead is in the catching, so this is a reasonable tradeoff.
-// For now, in a standalone build just terminate. TODO nice error message
-//
-// Define these symbols as weak so that when we build with exceptions
-// enabled (using wasm-eh) we get the real versions of these functions
-// as defined in libc++abi.
-
-__attribute__((__weak__))
+#if EMSCRIPTEN_NOCATCH
+// When exception catching is disabled, we stub out calls to `__cxa_throw`.
+// Otherwise, `__cxa_throw` will be imported from the host.
 void __cxa_throw(void* ptr, void* type, void* destructor) {
   abort();
 }
+#endif
 
 // WasmFS integration. We stub out file preloading and such, that are not
 // expected to work anyhow.
