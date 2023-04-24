@@ -39,7 +39,7 @@ function abort(what) {
   throw {{{ ASSERTIONS ? 'new Error(what)' : 'what' }}};
 }
 
-#if SAFE_HEAP
+#if SAFE_HEAP && !WASM_BIGINT
 // Globals used by JS i64 conversions (see makeSetValue)
 var tempDouble;
 var tempI64;

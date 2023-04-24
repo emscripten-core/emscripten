@@ -19,7 +19,8 @@ ptr: edcba988
 
 test_makeSetValue:
 printI64: 0x12345678ab
-printI64: 0xffffffff66780000
+printI64: 0x2233445566780000
+printI64: 0xddccbbaa99880000
 printI64: 0x12345678ab
 printI64: 0xffffffffffffffff
 printI64: 0xff
@@ -60,9 +61,5 @@ test_receiveI64ParamAsDouble:
 arg1: -9007199254740992
 arg2: 0
 rtn = 0
-
-test_makeSetValue_unaligned
-i64 = 0x12345678ab
-i64 = 0x12345678ab
 
 done

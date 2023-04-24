@@ -1156,9 +1156,11 @@ function createWasm() {
 #endif
 }
 
+#if !WASM_BIGINT
 // Globals used by JS i64 conversions (see makeSetValue)
 var tempDouble;
 var tempI64;
+#endif
 
 #include "runtime_debug.js"
 
