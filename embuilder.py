@@ -61,7 +61,7 @@ MINIMAL_TASKS = [
     'libsockets',
     'libstubs',
     'libstubs-debug',
-    'libstandalonewasm',
+    'libstandalonewasm-nocatch',
     'crt1',
     'crt1_proxy_main',
     'libunwind-except',
