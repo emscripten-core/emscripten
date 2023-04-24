@@ -7,7 +7,7 @@
 #include "syscall.h"
 #include "threading_internal.h"
 
-static _Atomic pthread_t crashed_thread_id = NULL;
+static _Atomic pthread_t crashed_thread_id;
 
 void _emscripten_thread_crashed() {
   crashed_thread_id = pthread_self();
