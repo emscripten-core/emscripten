@@ -205,13 +205,13 @@ function makeInlineCalculation(expression, value, tempVar) {
 
 // Splits a number (an integer in a double, possibly > 32 bits) into an i64
 // value, represented by a low and high i32 pair.
-// Will suffer from rounding.
+// Will suffer from rounding and truncation.
 function splitI64(value) {
   // general idea:
   //
   //  $1$0 = ~~$d >>> 0;
   //  $1$1 = Math.abs($d) >= 1 ? (
-  //     $d > 0 ? Math.floor(($d)/ 4294967296.0) >>> 0,
+  //     $d > 0 ? Math.floor(($d)/ 4294967296.0) >>> 0
   //            : Math.ceil(Math.min(-4294967296.0, $d - $1$0)/ 4294967296.0)
   //  ) : 0;
   //
@@ -357,12 +357,22 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
  * @return {string} JS code for performing the memory set operation
  */
 function makeSetValue(ptr, pos, value, type) {
+  var rtn = makeSetValueImpl(ptr, pos, value, type);
+  if (ASSERTIONS == 2 && (type.startsWith('i') || type.startsWith('u'))) {
+    const width = getBitWidth(type);
+    const assertion = `checkInt${width}(${value})`;
+    rtn += ';' + assertion
+  }
+  return rtn;
+}
+
+function makeSetValueImpl(ptr, pos, value, type) {
   if (type == 'i64' && !WASM_BIGINT) {
     // If we lack BigInt support we must fall back to an reading a pair of I32
     // values.
     return '(tempI64 = [' + splitI64(value) + '], ' +
-            makeSetValue(ptr, pos, 'tempI64[0]', 'i32') + ',' +
-            makeSetValue(ptr, getFastValue(pos, '+', getNativeTypeSize('i32')), 'tempI64[1]', 'i32') + ')';
+            makeSetValueImpl(ptr, pos, 'tempI64[0]', 'i32') + ',' +
+            makeSetValueImpl(ptr, getFastValue(pos, '+', getNativeTypeSize('i32')), 'tempI64[1]', 'i32') + ')';
   }
 
   const offset = calcFastOffset(ptr, pos);
@@ -440,6 +450,12 @@ function getFastValue(a, op, b) {
 
 function calcFastOffset(ptr, pos) {
   return getFastValue(ptr, '+', pos);
+}
+
+function getBitWidth(type) {
+  if (type == 'i53' || type == 'u53')
+    return 53;
+  return getNativeTypeSize(type) * 8;
 }
 
 function getHeapForType(type) {
