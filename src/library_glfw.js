@@ -1733,15 +1733,6 @@ var LibraryGLFW = {
   glfwGetRequiredInstanceExtensions__sig: 'ii',
   glfwGetRequiredInstanceExtensions: function(count) { throw "glfwGetRequiredInstanceExtensions is not implemented."; },
 
-  glfwGetInstanceProcAddress__sig: 'iii',
-  glfwGetInstanceProcAddress: function(instance, procname) { throw "glfwGetInstanceProcAddress is not implemented."; },
-
-  glfwGetPhysicalDevicePresentationSupport__sig: 'iiii',
-  glfwGetPhysicalDevicePresentationSupport: function(instance, device, queuefamily) { throw "glfwGetPhysicalDevicePresentationSupport is not implemented"; },
-
-  glfwCreateWindowSurface__sig: 'iiiii',
-  glfwCreateWindowSurface: function(instance, winid, allocator, surface) { throw "glfwCreateWindowSurface is not implemented."; },
-
   glfwJoystickPresent__sig: 'ii',
   glfwJoystickPresent: function(joy) {
     GLFW.refreshJoysticks();
