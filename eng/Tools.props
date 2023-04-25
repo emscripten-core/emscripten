@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <MSBuildTreatWarningsAsErrors>false</MSBuildTreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- arcade -->
+    <PackageReference Include="Microsoft.DotNet.Build.Tasks.Packaging" Version="$(MicrosoftDotNetBuildTasksPackagingVersion)" />
+  </ItemGroup>
+</Project>
+

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.Build.Traversal">
+  <Import Project="$([MSBuild]::GetPathOfFileAbove(builds.targets))" />
+</Project>

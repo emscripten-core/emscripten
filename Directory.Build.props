@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <Import Project="Sdk.props" Sdk="Microsoft.DotNet.Arcade.Sdk" />
+
+  <PropertyGroup Label="CalculateArch">
+    <_hostArch>$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant)</_hostArch>
+    <BuildArchitecture Condition="'$(BuildArchitecture)' == ''">$(_hostArch)</BuildArchitecture>
+    <TargetArchitecture Condition="'$(TargetArchitecture)' == '' and '$(_hostArch)' == 'arm'">arm</TargetArchitecture>
+    <TargetArchitecture Condition="'$(TargetArchitecture)' == '' and '$(_hostArch)' == 'armv6'">armv6</TargetArchitecture>
+    <TargetArchitecture Condition="'$(TargetArchitecture)' == '' and '$(_hostArch)' == 'armel'">armel</TargetArchitecture>
+    <TargetArchitecture Condition="'$(TargetArchitecture)' == '' and '$(_hostArch)' == 'arm64'">arm64</TargetArchitecture>
+    <TargetArchitecture Condition="'$(TargetArchitecture)' == '' and '$(_hostArch)' == 'loongarch64'">loongarch64</TargetArchitecture>
+    <TargetArchitecture Condition="'$(TargetArchitecture)' == '' and '$(_hostArch)' == 's390x'">s390x</TargetArchitecture>
+    <TargetArchitecture Condition="'$(TargetArchitecture)' == '' and '$(_hostArch)' == 'ppc64le'">ppc64le</TargetArchitecture>
+    <TargetArchitecture Condition="'$(TargetArchitecture)' == '' and '$(TargetsMobile)' == 'true'">x64</TargetArchitecture>
+    <TargetArchitecture Condition="'$(TargetArchitecture)' == ''">x64</TargetArchitecture>
+    <Platform Condition="'$(InferPlatformFromTargetArchitecture)' == 'true'">$(TargetArchitecture)</Platform>
+    <Platform Condition="'$(InferPlatformFromTargetArchitecture)' != 'true'">$(BuildArchitecture)</Platform>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <BuildArch>$(__BuildArch)</BuildArch>
+    <BuildArch Condition="'$(__BuildArch)'==''">x64</BuildArch>
+    <BuildArch Condition="'$(__BuildArch)' == 'amd64'">x64</BuildArch>
+
+    <BuildType>$(__BuildType)</BuildType>
+    <BuildType Condition="'$(__BuildType)'==''">Debug</BuildType>
+    <BuildType Condition="'$(__BuildType)' == 'debug'">Debug</BuildType>
+    <BuildType Condition="'$(__BuildType)' == 'release'">Release</BuildType>
+
+    <BuildOS>$(__BuildOS)</BuildOS>
+    <BuildOS Condition="'$(__BuildOS)' == '' And '$([MSBuild]::IsOSPlatform(Windows))' == 'true'">Windows_NT</BuildOS>
+    <BuildOS Condition="'$(__BuildOS)' == '' And '$([MSBuild]::IsOSPlatform(Linux))' == 'true'">Linux</BuildOS>
+    <BuildOS Condition="'$(__BuildOS)' == '' And '$([MSBuild]::IsOSPlatform(OSX))' == 'true'">OSX</BuildOS>
+
+    <!-- TODO: converge on one property for BuildOS and __BuildOS (and similar), and remove these extra lines. -->
+    <__BuildOS>$(BuildOS)</__BuildOS>
+    <__BuildArch>$(BuildArch)</__BuildArch>
+
+    <Configuration Condition="'$(Configuration)' == ''">$(BuildType)</Configuration>
+    <Platform Condition="'$(Platform)' == ''">$(BuildArch)</Platform>
+
+    <PlatformConfigPathPart>$(BuildOS).$(TargetArchitecture).$(Configuration)</PlatformConfigPathPart>
+  </PropertyGroup>
+
+    <!-- Common properties -->
+  <PropertyGroup>
+
+    <__ProjectDir Condition="'$(__ProjectDir)'==''">$(MSBuildThisFileDirectory)</__ProjectDir>
+    <ProjectDir>$(__ProjectDir)</ProjectDir>
+    <RootRepoDir>$(ProjectDir)</RootRepoDir>
+    <ProjectDir Condition="'$(__ProjectDir)'==''">$(MSBuildThisFileDirectory)</ProjectDir>
+
+    <BaseIntermediateOutputPath>$(RootRepoDir)artifacts\obj\$(PlatformConfigPathPart)\</BaseIntermediateOutputPath>
+
+    <SourceDir>$(__SourceDir)\</SourceDir>
+    <SourceDir Condition="'$(__SourceDir)'==''">$(ProjectDir)src\</SourceDir>
+
+    <RootBinDir>$(__RootBinDir)\</RootBinDir>
+    <RootBinDir Condition="'$(__RootBinDir)'==''">$(RootRepoDir)artifacts\</RootBinDir>
+
+    <BinDir>$(__BinDir)\</BinDir>
+    <BinDir Condition="'$(__BinDir)'==''">$(RootBinDir)bin\$(PlatformConfigPathPart)\</BinDir>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <EmscriptenInstallDir>$(BinDir)emscripten\</EmscriptenInstallDir>
+  </PropertyGroup>
+</Project>

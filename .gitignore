@@ -29,3 +29,8 @@ coverage.xml
 
 # Test output
 /out/
+
+# MSFT ignores
+/.dotnet
+/.packages
+/artifacts

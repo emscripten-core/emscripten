@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup Condition="'$(BuildIdentityPackage)' == ''">
+    <BuildIdentityPackage>true</BuildIdentityPackage>
+
+    <!-- Used to determine if we should build some packages only once across multiple official build legs.
+         For offline builds we still set OfficialBuildId but we need to build all the packages for a single
+         leg only, so we also take DotNetBuildFromSource into account. -->
+    <BuildingAnOfficialBuildLeg Condition="'$(OfficialBuildId)' != '' AND '$(DotNetBuildFromSource)' != 'true'">true</BuildingAnOfficialBuildLeg>
+
+    <!-- During an official build, only build identity packages on windows x64 legs -->
+    <BuildIdentityPackage Condition="'$(BuildingAnOfficialBuildLeg)' == 'true' AND ('$(OS)' != 'Windows_NT' OR '$(BuildArch)' != 'x64')">false</BuildIdentityPackage>
+  </PropertyGroup>
+
+  <Target Name="FilterProjects" BeforeTargets="Build">
+    <Error Condition="'$(PackageRID)' == ''" Text="'PackageRID' property must be specified."/>
+
+    <!-- Only build packages for current RID or non-RID-specific -->
+    <ItemGroup>
+      <_projectsToBuild Include="@(Project)" Condition="'%(Project.PackageTargetRuntime)' == '$(PackageRID)'" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(BuildIdentityPackage)' == 'true'">
+      <_projectsToBuild Include="@(Project)" Condition="'%(Project.PackageTargetRuntime)' == ''" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="@(_projectsToBuild)" />
+    </ItemGroup>
+  </Target>
+</Project>

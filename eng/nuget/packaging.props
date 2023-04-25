@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+
+  <PropertyGroup>
+    <PackageDescriptionFile>$(MSBuildThisFileDirectory)/descriptions.json</PackageDescriptionFile>
+    <PackageLicenseFile>$(RootRepoDir)/LICENSE</PackageLicenseFile>
+    <PackageThirdPartyNoticesFile>$(RootRepoDir)/THIRD-PARTY-NOTICES.TXT</PackageThirdPartyNoticesFile>
+
+    <ReleaseNotes>https://go.microsoft.com/fwlink/?LinkID=799421</ReleaseNotes>
+
+    <ProjectUrl>https://dot.net</ProjectUrl>
+    <LicenseUrl>https://github.com/dotnet/emscripten/blob/dotnet/main/LICENSE</LicenseUrl>
+
+    <PackageIndexFile>$(MSBuildThisFileDirectory)/packageIndex.json</PackageIndexFile>
+
+    <!-- mono doesn't currently use the index so don't force it to be in sync -->
+    <SkipIndexCheck>true</SkipIndexCheck>
+
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.pkgproj'">
+    <!-- Add required legal files to packages -->
+    <File Condition="Exists('$(PackageLicenseFile)')"
+          Include="$(PackageLicenseFile)" >
+      <SkipPackageFileCheck>true</SkipPackageFileCheck>
+    </File>
+    <File Condition="Exists('$(PackageThirdPartyNoticesFile)')"
+          Include="$(PackageThirdPartyNoticesFile)" >
+      <SkipPackageFileCheck>true</SkipPackageFileCheck>
+    </File>
+    <PackageIndex Include="$(PackageIndexFile)" />
+
+    <!-- Add version file to packages -->
+    <File Include="$(VersionTxtFile)"
+          Condition="Exists('$(VersionTxtFile)')">
+          <SkipPackageFileCheck>true</SkipPackageFileCheck>
+    </File>
+  </ItemGroup>
+</Project>

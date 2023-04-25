@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <Import Project="../../Directory.Build.targets" />
+
+  <Import Project="$(NuGetPackageRoot)\microsoft.dotnet.build.tasks.packaging\$(MicrosoftDotNetBuildTasksPackagingVersion)\build\Microsoft.DotNet.Build.Tasks.Packaging.targets" />
+
+  <Target Name="GenerateUnixPermissionsFile" Condition="'$(TargetOS)' != 'win'">
+    <PropertyGroup>
+      <UnixFilePermissionsOutFile>$(ArtifactsObjDir)\$(MSBuildProjectName).UnixFilePermissions.xml</UnixFilePermissionsOutFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_BinFile Include="$(BinDir)bin\*" />
+      <Lines Include="&lt;FileList&gt;" />
+      <Lines Include="  &lt;File Path=&quot;tools\bin\%(_BinFile.FileName)%(_BinFile.Extension)&quot; Permission=&quot;755&quot; /&gt;" />
+      <Lines Include="&lt;/FileList&gt;" />
+    </ItemGroup>
+    <WriteLinesToFile Lines="@(Lines)" File="$(UnixFilePermissionsOutFile)" Overwrite="true" />
+
+    <ItemGroup>
+      <File Condition="'$(TargetOS)' != 'win'" Include="$(UnixFilePermissionsOutFile)" TargetPath="data\UnixFilePermissions.xml" SkipPackageFileCheck="true" />
+    </ItemGroup>
+  </Target>
+
+  <!--
+    Finds symbol files and injects them into the package build.
+  -->
+  <Target Name="GetSymbolPackageFiles" BeforeTargets="GetPackageFiles">
+    <ItemGroup Condition="'$(SymbolFileExtension)' != ''">
+      <AdditionalLibPackageExcludes Include="%2A%2A\%2A$(SymbolFileExtension)"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <NativeWithSymbolFile Include="@(NativeBinary)">
+        <TargetPath>runtimes/$(PackageTargetRuntime)/native</TargetPath>
+      </NativeWithSymbolFile>
+      <!-- Using lib/netstandard1.0 here.  There is no TFM for this since it is a runtime itself. -->
+      <NativeWithSymbolFile Include="@(ArchitectureSpecificLibFile)">
+        <TargetPath>runtimes/$(PackageTargetRuntime)/lib/netstandard1.0</TargetPath>
+      </NativeWithSymbolFile>
+      <NativeWithSymbolFile Include="@(ArchitectureSpecificToolFile)">
+        <TargetPath>tools</TargetPath>
+      </NativeWithSymbolFile>
+    </ItemGroup>
+
+    <ItemGroup>
+      <File Include="@(NativeWithSymbolFile)" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <!-- On Windows, trim ".dll" before adding ".pdb". -->
+      <WindowsNativeFile Include="@(NativeWithSymbolFile)"
+                         Condition="'%(NativeWithSymbolFile.Extension)'=='.dll' OR '%(NativeWithSymbolFile.Extension)'=='.exe'" />
+      <WindowsSymbolFile Include="@(WindowsNativeFile -> '%(RootDir)%(Directory)PDB\%(Filename).pdb')" />
+
+      <!--
+        Search for all xplat symbol file extensions on every xplat native binary. Some binaries have
+        no ".so" or ".dylib" extension, so we can't tell which convention its symbol files would
+        use. On xplat, the symbol extension is simply appended.
+      -->
+      <NonWindowsNativeFile Include="@(NativeWithSymbolFile)"
+                            Exclude="@(WindowsNativeFile)" />
+
+      <NonWindowsSymbolFile Include="@(NonWindowsNativeFile -> '%(Identity)$(SymbolFileExtension)')" />
+
+      <ExistingWindowsSymbolFile Include="@(WindowsSymbolFile)" Condition="Exists('%(Identity)')" />
+      <ExistingNonWindowsSymbolFile Include="@(NonWindowsSymbolFile)" Condition="Exists('%(Identity)') AND '$(SkipPackagingXplatSymbols)'!='true'" />
+
+      <!-- Include all found symbols. -->
+      <File Include="@(ExistingWindowsSymbolFile);@(ExistingNonWindowsSymbolFile)">
+        <IsSymbolFile>true</IsSymbolFile>
+      </File>
+    </ItemGroup>
+
+    <PropertyGroup>
+      <NeedsPlaceholderPdb Condition="'@(ExistingNonWindowsSymbolFile)'!='' AND '@(ExistingWindowsSymbolFile)'==''">true</NeedsPlaceholderPdb>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <File Include="$(MSBuildThisFileDirectory)\_.pdb"
+            Condition="'$(NeedsPlaceholderPdb)'=='true' AND '$(PackageTargetRuntime)'!=''">
+        <TargetPath>runtimes/$(PackageTargetRuntime)/native</TargetPath>
+        <IsSymbolFile>true</IsSymbolFile>
+      </File>
+    </ItemGroup>
+  </Target>
+
+</Project>

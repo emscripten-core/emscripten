@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.Build.Traversal">
+  <Target Name="LayoutEmscripten" BeforeTargets="Build">
+    <ItemGroup>
+      <EmscriptenFiles Include="$(ProjectDir)**" />
+      <EmscriptenFiles Remove="$(ProjectDir)\artifacts\**" />
+      <EmscriptenFiles Remove="$(ProjectDir)\eng\**" />
+      <EmscriptenFiles Remove="$(ProjectDir)\.gitignore" />
+      <EmscriptenFiles Remove="$(ProjectDir)\.gitmodules" />
+      <EmscriptenFiles Remove="$(ProjectDir)\build.*" />
+      <EmscriptenFiles Remove="$(ProjectDir)\emscripten.proj" />
+      <EmscriptenFiles Remove="$(ProjectDir)\global.json" />
+      <EmscriptenFiles Remove="$(ProjectDir)\Directory.Build.*" />
+      <EmscriptenFiles Remove="$(ProjectDir)\NuGet.config" />
+      <EmscriptenFiles Remove="$(ProjectDir)\.circleci\**" />
+      <EmscriptenFiles Remove="$(ProjectDir)\.dotnet\**" />
+      <EmscriptenFiles Remove="$(ProjectDir)\.git\**" />
+      <EmscriptenFiles Remove="$(ProjectDir)\.github\**" />
+      <EmscriptenFiles Remove="$(ProjectDir)\.packages\**" />
+    </ItemGroup>
+   <Copy SourceFiles="@(EmscriptenFiles)"
+      DestinationFiles="@(EmscriptenFiles->'$(EmscriptenInstallDir)\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
+  <Target Name="WriteVersionFile" AfterTargets="LayoutEmscripten">
+    <PropertyGroup>
+      <EmscriptenEmsdkVersion>emscripten-$(VersionPrefix)-dotnet</EmscriptenEmsdkVersion>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(EmscriptenInstallDir)\.emsdk_version"
+      Overwrite="true"
+      Lines="$(EmscriptenEmsdkVersion)" />
+  </Target>
+
+  <Target Name="Build" DependsOnTargets="LayoutEmscripten" />
+  <Target Name="ReallyPack" BeforeTargets="Pack">
+    <MSBuild Projects="eng/nuget/packages.builds" Targets="Build" />
+  </Target>
+</Project>

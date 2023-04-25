@@ -1,0 +1,17 @@
+[
+    {
+        "Name": "RuntimePackage",
+        "Description": "Internal implementation package not meant for direct consumption.  Please do not reference directly.",
+        "CommonTypes": [ ]
+    },
+    {
+        "Name": "NuGet3MinVersion",
+        "Description": "When using NuGet 3.x this package requires at least version {0}.",
+        "CommonTypes": [ ]
+    },
+    {
+        "Name": "Microsoft.NETCore.Runtime.Wasm.Emscripten.Transport",
+        "Description": "Emscripten tools, as used by EMSDK to compile WASM applications",
+        "CommonTypes": [ ]
+    }
+]
