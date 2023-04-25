@@ -2619,9 +2619,7 @@ var LibraryWebGPU = {
   // WGPUSurface
 
   wgpuSurfaceGetPreferredFormat: function(surfaceId, adapterId) {
-    var context = WebGPU.mgrSurface.get(surfaceId);
-    var adapter = WebGPU.mgrAdapter.get(adapterId);
-    var format = context["getPreferredFormat"](adapter);
+    var format = navigator["gpu"]["getPreferredCanvasFormat"]();
     return WebGPU.PreferredFormat[format];
   },
 
