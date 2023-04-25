@@ -1297,11 +1297,11 @@ var LibraryGLFW = {
   glfwGetMonitorWorkarea: function(monitor, x, y, w, h) {
     {{{ makeSetValue('x', '0', '0', 'i32') }}};
     {{{ makeSetValue('y', '0', '0', 'i32') }}};
-    
+
     {{{ makeSetValue('w', '0', 'screen.availWidth', 'i32') }}};
     {{{ makeSetValue('h', '0', 'screen.availHeight', 'i32') }}};
   },
-  
+
   glfwGetMonitorPhysicalSize__sig: 'viii',
   glfwGetMonitorPhysicalSize: function(monitor, width, height) {
     // AFAIK there is no way to do this in javascript
@@ -1374,7 +1374,7 @@ var LibraryGLFW = {
     // Some hints are platform specific.  These may be set on any platform but they
     // will only affect their specific platform.  Other platforms will ignore them.
   },
-  
+
   glfwCreateWindow__sig: 'iiiiii',
   glfwCreateWindow: function(width, height, title, monitor, share) {
     return GLFW.createWindow(width, height, title, monitor, share);
@@ -1447,7 +1447,7 @@ var LibraryGLFW = {
   glfwGetWindowContentScale__sig: 'viii',
   glfwGetWindowContentScale: function(winid, x, y) {
     // winid doesn't matter. all windows will use same scale anyway.
-    // hope i used this makeSetValue correctly 
+    // hope i used this makeSetValue correctly
     {{{ makeSetValue('x', '0', 'GLFW.scale', 'float') }}};
     {{{ makeSetValue('y', '0', 'GLFW.scale', 'float') }}};
   },
@@ -1502,7 +1502,7 @@ var LibraryGLFW = {
     if (!win) return;
     win.attributes[attrib] = value;
   },
-  
+
   glfwSetWindowUserPointer__sig: 'vii',
   glfwSetWindowUserPointer: function(winid, ptr) {
     var win = GLFW.WindowFromId(winid);
@@ -1660,7 +1660,7 @@ var LibraryGLFW = {
 
   glfwGetKeyScancode__sig: 'ii',
   glfwGetKeyScancode: function(key) { throw "glfwGetKeyScancode not implemented."; },
-  
+
   glfwGetMouseButton__sig: 'iii',
   glfwGetMouseButton: function(winid, button) {
     return GLFW.getMouseButton(winid, button);
@@ -1799,12 +1799,12 @@ var LibraryGLFW = {
   glfwSetJoystickUserPointer: function(jid, ptr) {
     throw "glfwSetJoystickUserPointer not implemented";
   },
-  
+
   glfwGetJoystickUserPointer__sig: 'ii',
   glfwGetJoystickUserPointer: function(jid) {
     throw "glfwSetJoystickUserPointer not implemented";
   },
-    
+
   glfwJoystickIsGamepad__sig: 'ii',
   glfwJoystickIsGamepad: function(jid) {
     throw "glfwSetJoystickUserPointer not implemented";
