@@ -5,8 +5,8 @@
 
 import os
 
-TAG = '1.6.37'
-HASH = '2ce2b855af307ca92a6e053f521f5d262c36eb836b4810cb53c809aa3ea2dcc08f834aee0ffd66137768a54397e28e92804534a74abb6fc9f6f3127f14c9c338'
+TAG = '1.6.39'
+HASH = '19851afffbe2ffde62d918f7e9017dec778a7ce9c60c75cdc65072f086e6cdc9d9895eb7b207535a84cb5f4ead77ebc2aa9d80025f153662903023e1f7ab9bae'
 
 deps = ['zlib']
 variants = {
@@ -31,7 +31,7 @@ def get_lib_name(settings):
 
 def get(ports, settings, shared):
   # This is an emscripten-hosted mirror of the libpng repo from Sourceforge.
-  ports.fetch_project('libpng', f'https://storage.googleapis.com/webassembly/emscripten-ports/libpng-{TAG}.tar.gz', sha512hash=HASH)
+  ports.fetch_project('libpng', f'https://download.sourceforge.net/libpng/libpng-{TAG}.tar.gz', sha512hash=HASH)
 
   def create(final):
     source_path = os.path.join(ports.get_dir(), 'libpng', 'libpng-' + TAG)
@@ -67,9 +67,9 @@ def show():
 
 pnglibconf_h = r'''/* pnglibconf.h - library build configuration */
 
-/* libpng version 1.6.37 */
+/* libpng version 1.6.39 */
 
-/* Copyright (c) 2018-2019 Cosmin Truta */
+/* Copyright (c) 2018-2022 Cosmin Truta */
 /* Copyright (c) 1998-2002,2004,2006-2018 Glenn Randers-Pehrson */
 
 /* This code is released under the libpng license. */
@@ -341,7 +341,7 @@ be appreciated.
 #define PNG_USER_MEM_SUPPORTED
 #define PNG_USER_TRANSFORM_INFO_SUPPORTED
 #define PNG_USER_TRANSFORM_PTR_SUPPORTED
-/*#undef PNG_WARNINGS_SUPPORTED*/
+#define PNG_WARNINGS_SUPPORTED
 #define PNG_WRITE_16BIT_SUPPORTED
 #define PNG_WRITE_ANCILLARY_CHUNKS_SUPPORTED
 #define PNG_WRITE_BGR_SUPPORTED
@@ -427,7 +427,7 @@ be appreciated.
 #define PNG_USER_HEIGHT_MAX 1000000
 #define PNG_USER_WIDTH_MAX 1000000
 #define PNG_ZBUF_SIZE 8192
-#define PNG_ZLIB_VERNUM 0 /* unknown */
+#define PNG_ZLIB_VERNUM 0x12d0
 #define PNG_Z_DEFAULT_COMPRESSION (-1)
 #define PNG_Z_DEFAULT_NOFILTER_STRATEGY 0
 #define PNG_Z_DEFAULT_STRATEGY 1
