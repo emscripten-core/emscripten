@@ -515,6 +515,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest(f'Skipping test that requires `{engine}` when `{self.required_engine}` was previously required')
     self.required_engine = engine
     self.js_engines = [engine]
+    self.wasm_engines = []
 
   def require_wasm64(self):
     if config.NODE_JS and config.NODE_JS in self.js_engines:

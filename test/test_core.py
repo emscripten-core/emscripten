@@ -156,12 +156,20 @@ def also_with_noderawfs(func):
   return metafunc
 
 
-def can_do_standalone(self):
+def can_do_wasm2c(self):
+  # the npm version of wasm2c does not support MEMORY64
+  return not self.get_setting('MEMORY64')
+
+
+def can_do_standalone(self, impure=False):
+  # Pure standalone engines don't support MEMORY64 yet.  Even with MEMORY64=2 (lowered)
+  # the WASI APIs that take pointer values don't have 64-bit variants yet.
+  if self.get_setting('MEMORY64') and not impure:
+    return False
   return self.is_wasm() and \
       self.get_setting('STACK_OVERFLOW_CHECK', 0) < 2 and \
       not self.get_setting('MINIMAL_RUNTIME') and \
       not self.get_setting('SAFE_HEAP') and \
-      not self.get_setting('MEMORY64') and \
       not any(a.startswith('-fsanitize=') for a in self.emcc_args)
 
 
@@ -202,7 +210,7 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
       if not standalone:
         func(self)
       else:
-        if not can_do_standalone(self):
+        if not can_do_standalone(self, impure):
           self.skipTest('Test configuration is not compatible with STANDALONE_WASM')
         self.set_setting('STANDALONE_WASM')
         # we will not legalize the JS ffi interface, so we must use BigInt
@@ -213,10 +221,9 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
         # if we are impure, disallow all wasm engines
         if impure:
           self.wasm_engines = []
-        self.js_engines = [config.NODE_JS]
         self.node_args += shared.node_bigint_flags()
         func(self)
-        if wasm2c:
+        if wasm2c and can_do_wasm2c(self):
           print('wasm2c')
           self.set_setting('WASM2C')
           self.wasm_engines = []
@@ -7160,6 +7167,8 @@ void* operator new(size_t size) {
       self.node_args += shared.node_bigint_flags()
     if not can_do_standalone(self):
       return self.skipTest('standalone mode not supported')
+    if not can_do_wasm2c(self):
+      return self.skipTest('wasm2c not supported')
     self.set_setting('STANDALONE_WASM')
     self.set_setting('WASM2C')
     self.set_setting('WASM2C_SANDBOXING', mode)
