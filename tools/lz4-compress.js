@@ -39,7 +39,7 @@ function load(f) {
   globalEval(read(f));
 }
 
-global.assert = function(x, message) {
+global.assert = (x, message) => {
   if (!x) throw new Error(message);
 };
 
