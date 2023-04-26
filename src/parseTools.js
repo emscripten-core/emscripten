@@ -505,17 +505,6 @@ function charCode(char) {
   return char.charCodeAt(0);
 }
 
-function getTypeFromHeap(suffix) {
-  switch (suffix) {
-    case '8': return 'i8';
-    case '16': return 'i16';
-    case '32': return 'i32';
-    case 'F32': return 'float';
-    case 'F64': return 'double';
-  }
-  assert(false, 'bad type suffix: ' + suffix);
-}
-
 function ensureValidFFIType(type) {
   return type === 'float' ? 'double' : type; // ffi does not tolerate float XXX
 }
