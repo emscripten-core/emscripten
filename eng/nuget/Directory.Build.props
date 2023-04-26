@@ -176,6 +176,8 @@
     </OfficialBuildRID>
   </ItemGroup>
   <ItemGroup>
+    <!-- Ensure we have a RID-specific package for the current build, even if it isn't in our official set, but
+         don't build the RID-specific package if we're in an unsupported os family -->
     <BuildRID Include="@(OfficialBuildRID)" Exclude="$(PackageRID)"/>
     <BuildRID Include="$(PackageRID)"
               Condition="'$(_isSupportedOSGroup)' == 'true'">
@@ -185,13 +187,18 @@
   </ItemGroup>
 
   <ItemGroup>
-    <_project Include="@(BuildRID)" />
+    <_project Include="@(BuildRID)">
+      <Platform Condition="'%(Platform)' == ''">x64</Platform>
+      <PackageTargetRuntime>%(Identity)</PackageTargetRuntime>
+    </_project>
 
     <_buildRidProjects Include="@(_project->'$(MSBuildProjectName).pkgproj')" />
+    <!-- Only include rid projects for a builds file, not for a lineup package -->
     <Project Condition="'$(IsLineupPackage)' != 'true'" Include="@(_buildRidProjects)" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(IsLineupPackage)' == 'true'">
+    <!-- Include project references for a lineup package to generate the runtime.json file -->
     <ProjectReference Include="@(_buildRidProjects)" />
   </ItemGroup>
 </Project>
