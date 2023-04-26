@@ -31,7 +31,7 @@ def get_lib_name(settings):
 
 def get(ports, settings, shared):
   # This is an emscripten-hosted mirror of the libpng repo from Sourceforge.
-  ports.fetch_project('libpng', f'https://download.sourceforge.net/libpng/libpng-{TAG}.tar.gz', sha512hash=HASH)
+  ports.fetch_project('libpng', f'https://storage.googleapis.com/webassembly/emscripten-ports/libpng-{TAG}.tar.gz', sha512hash=HASH)
 
   def create(final):
     source_path = os.path.join(ports.get_dir(), 'libpng', 'libpng-' + TAG)
@@ -427,7 +427,7 @@ be appreciated.
 #define PNG_USER_HEIGHT_MAX 1000000
 #define PNG_USER_WIDTH_MAX 1000000
 #define PNG_ZBUF_SIZE 8192
-#define PNG_ZLIB_VERNUM 0x12d0
+#define PNG_ZLIB_VERNUM 0 /* unknown */
 #define PNG_Z_DEFAULT_COMPRESSION (-1)
 #define PNG_Z_DEFAULT_NOFILTER_STRATEGY 0
 #define PNG_Z_DEFAULT_STRATEGY 1
