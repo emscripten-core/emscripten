@@ -21,10 +21,10 @@ global.vm = require('vm');
 const arguments_ = process.argv.slice(2);
 const debug = false;
 
-global.print = function(x) {
+global.print = (x) => {
   process.stdout.write(x + '\n');
 };
-global.printErr = function(x) {
+global.printErr = (x) => {
   process.stderr.write(x + '\n');
 };
 
@@ -41,12 +41,12 @@ function find(filename) {
   return filename;
 }
 
-global.read = function(filename) {
+global.read = (filename) => {
   const absolute = find(filename);
   return fs.readFileSync(absolute).toString();
 };
 
-global.load = function(f) {
+global.load = (f) => {
   (0, eval)(read(f) + '//# sourceURL=' + find(f));
 };
 
