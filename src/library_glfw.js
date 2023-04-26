@@ -1802,12 +1802,12 @@ var LibraryGLFW = {
 
   glfwGetJoystickUserPointer__sig: 'ii',
   glfwGetJoystickUserPointer: function(jid) {
-    throw "glfwSetJoystickUserPointer not implemented";
+    throw "glfwGetJoystickUserPointer not implemented";
   },
 
   glfwJoystickIsGamepad__sig: 'ii',
   glfwJoystickIsGamepad: function(jid) {
-    throw "glfwSetJoystickUserPointer not implemented";
+    throw "glfwJoystickIsGamepad not implemented";
   },
 
   glfwSetJoystickCallback__sig: 'ii',
@@ -1834,9 +1834,7 @@ var LibraryGLFW = {
     GLFW.swapBuffers(winid);
   },
 
-#endif // GLFW 3
-
-#if USE_GLFW == 2
+#elif USE_GLFW == 2
   glfwOpenWindow: function(width, height, redbits, greenbits, bluebits, alphabits, depthbits, stencilbits, mode) {
     GLFW.hints[0x00021001] = redbits;     // GLFW_RED_BITS
     GLFW.hints[0x00021002] = greenbits;   // GLFW_GREEN_BITS
