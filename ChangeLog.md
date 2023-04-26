@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.37 (in development)
+3.1.38 (in development)
 -----------------------
+
+3.1.37 - 04/26/23
+-----------------
 - The `EM_PYTHON_MULTIPROCESSING` environment variable no longer has any effect.
   This was added a temporary fallback but should no longer be needed. (#19224)
 - The old reverse dependency system based on `tools/deps_info.py` has been
