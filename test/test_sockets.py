@@ -329,6 +329,14 @@ class sockets(BrowserCore):
     with NodeJsWebSocketEchoServerProcess():
       self.btest_exit(test_file('websocket/test_websocket_send.c'), args=['-lwebsocket', '-sNO_EXIT_RUNTIME', '-sWEBSOCKET_DEBUG'])
 
+  # Test Emscripten WebSockets API to send and receive text and binary messages against an echo server.
+  # N.B. running this test requires 'npm install ws' in Emscripten root directory
+  # test in shared memory environment
+  # websocket sending only allowd non shared buffer
+  def test_websocket_send_shared_memory(self):
+    with NodeJsWebSocketEchoServerProcess():
+      self.btest_exit(test_file('websocket/test_websocket_send.c'), args=['-lwebsocket', '-sSHARED_MEMORY', '-sNO_EXIT_RUNTIME', '-sWEBSOCKET_DEBUG'])
+
   # Test that native POSIX sockets API can be used by proxying calls to an intermediate WebSockets
   # -> POSIX sockets bridge server
   def test_posix_proxy_sockets(self):
