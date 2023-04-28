@@ -258,8 +258,9 @@ function indentify(text, indent) {
 // Correction tools
 
 function getHeapOffset(offset, type) {
-  if (!WASM_BIGINT && getNativeFieldSize(type) > 4 && type == 'i64') {
-    // we emulate 64-bit integer values as 32 in asmjs-unknown-emscripten, but not double
+  if (type == 'i64' && !WASM_BIGINT) {
+    // We are foreced to use the 32-bit heap for 64-bit values when we don't
+    // have WASM_BIGINT.
     type = 'i32';
   }
 
