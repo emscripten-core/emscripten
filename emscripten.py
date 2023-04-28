@@ -886,6 +886,8 @@ def create_wasm64_wrappers(metadata):
     'emscripten_stack_set_limits': '_pp',
     '__set_stack_limits': '_pp',
     '__cxa_can_catch': '_ppp',
+    '__cxa_increment_exception_refcount': '_p',
+    '__cxa_decrement_exception_refcount': '_p',
     '_wasmfs_write_file': '_ppp',
     '__dl_seterr': '_pp',
     '_emscripten_run_in_main_runtime_thread_js': '___p_',
