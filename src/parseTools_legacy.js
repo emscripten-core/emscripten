@@ -89,6 +89,10 @@ function makeMalloc(source, param) {
   return `_malloc(${param})`;
 }
 
+function getNativeFieldSize(type) {
+  return Math.max(getNativeTypeSize(type), POINTER_SIZE);
+}
+
 global.Runtime = {
   getNativeTypeSize: getNativeTypeSize,
   getNativeFieldSize: getNativeFieldSize,
