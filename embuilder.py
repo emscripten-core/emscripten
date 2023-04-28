@@ -212,7 +212,9 @@ def main():
 
   # process tasks
   auto_tasks = False
-  tasks = set(args.targets)
+  task_targets = dict.fromkeys(args.targets) # use dict to keep targets order
+
+  # subsitute
   predefined_tasks = {
     'SYSTEM': system_tasks,
     'USER': PORTS,
@@ -220,17 +222,28 @@ def main():
     'MINIMAL_PIC': MINIMAL_PIC_TASKS,
     'ALL': system_tasks + PORTS,
   }
-  for alias, predefined in predefined_tasks.items():
-    if alias in tasks:
-      tasks.update(predefined)
-      tasks.discard(alias)
+  for name, tasks in predefined_tasks.items():
+    if name in task_targets:
+      task_targets[name] = tasks
       auto_tasks = True
 
+  # flatten tasks
+  tasks = []
+  for name, targets in task_targets.items():
+    if targets is None:
+      # Use target name as task
+      tasks.append(name)
+    else:
+      # There are some ports that we don't want to build as part
+      # of ALL since the are not well tested or widely used:
+      if 'cocos2d' in targets: targets.remove('cocos2d')
+
+      # Use targets from predefined_tasks
+      tasks.extend(targets)
+
   if auto_tasks:
-    # There are some ports that we don't want to build as part
-    # of ALL since the are not well tested or widely used:
-    tasks.discard('cocos2d')
     print('Building targets: %s' % ' '.join(tasks))
+
   for what in tasks:
     for old, new in legacy_prefixes.items():
       if what.startswith(old):
