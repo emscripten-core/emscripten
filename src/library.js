@@ -281,7 +281,7 @@ mergeInto(LibraryManager.library, {
 #endif
 
 #if EMSCRIPTEN_TRACING
-        _emscripten_trace_js_log_message("Emscripten", "Enlarging memory arrays from " + oldSize + " to " + newSize);
+        traceLogMessage("Emscripten", "Enlarging memory arrays from " + oldSize + " to " + newSize);
         // And now report the new layout
         _emscripten_trace_report_memory_layout();
 #endif
