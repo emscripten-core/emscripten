@@ -1212,6 +1212,13 @@ mergeInto(LibraryManager.library, {
   // ==========================================================================
 
 #if SUPPORT_LONGJMP == 'emscripten'
+  // In WebAssemblyLowerEmscriptenEHSjLj pass in the LLVM backend, function
+  // calls that exist in the same function with setjmp are converted to a code
+  // sequence that includes invokes, malloc, free, saveSetjmp, and
+  // emscripten_longjmp.  setThrew is called from invokes, but we don't have
+  // any way to express that dependency so we use emscripten_throw_longjmp as
+  // a proxy and declare the dependency here.
+  _emscripten_throw_longjmp__deps: ['setThrew'],
   _emscripten_throw_longjmp: function() {
 #if EXCEPTION_STACK_TRACES
     throw new EmscriptenSjLj;
@@ -1721,7 +1728,7 @@ mergeInto(LibraryManager.library, {
     return { family: family, addr: addr, port: port };
   },
   $writeSockaddr__docs: '/** @param {number=} addrlen */',
-  $writeSockaddr__deps: ['$Sockets', '$inetPton4', '$inetPton6', '$zeroMemory'],
+  $writeSockaddr__deps: ['$Sockets', '$inetPton4', '$inetPton6', '$zeroMemory', 'htons'],
   $writeSockaddr: function (sa, family, addr, port, addrlen) {
     switch (family) {
       case {{{ cDefs.AF_INET }}}:
@@ -1858,7 +1865,7 @@ mergeInto(LibraryManager.library, {
     return 0;
   },
 
-  getaddrinfo__deps: ['$Sockets', '$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr'],
+  getaddrinfo__deps: ['$Sockets', '$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr', 'malloc', 'htonl'],
   getaddrinfo__proxy: 'sync',
   getaddrinfo: function(node, service, hint, out) {
     // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
@@ -3167,8 +3174,8 @@ mergeInto(LibraryManager.library, {
     if (!elements) {
       elements = [document, document.getElementById('canvas')];
     }
-    ['keydown', 'mousedown', 'touchstart'].forEach(function(event) {
-      elements.forEach(function(element) {
+    ['keydown', 'mousedown', 'touchstart'].forEach((event) => {
+      elements.forEach((element) => {
         if (element) {
           listenOnce(element, event, () => {
             if (ctx.state === 'suspended') ctx.resume();
@@ -3541,7 +3548,7 @@ mergeInto(LibraryManager.library, {
   $safeSetTimeout__docs: '/** @param {number=} timeout */',
   $safeSetTimeout: function(func, timeout) {
     {{{ runtimeKeepalivePush() }}}
-    return setTimeout(function() {
+    return setTimeout(() => {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(func);
     }, timeout);

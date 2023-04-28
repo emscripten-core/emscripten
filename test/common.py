@@ -161,6 +161,13 @@ def no_windows(note=''):
   return lambda f: f
 
 
+def only_windows(note=''):
+  assert not callable(note)
+  if not WINDOWS:
+    return unittest.skip(note)
+  return lambda f: f
+
+
 def requires_native_clang(func):
   assert callable(func)
 
@@ -323,13 +330,21 @@ def ensure_dir(dirname):
   dirname.mkdir(parents=True, exist_ok=True)
 
 
-def limit_size(string, maxbytes=800000 * 20, maxlines=100000, max_line=5000):
+def limit_size(string):
+  maxbytes = 800000 * 20
+  if sys.stdout.isatty():
+    maxlines = 500
+    max_line = 500
+  else:
+    max_line = 5000
+    maxlines = 100000
   lines = string.splitlines()
   for i, line in enumerate(lines):
     if len(line) > max_line:
       lines[i] = line[:max_line] + '[..]'
   if len(lines) > maxlines:
     lines = lines[0:maxlines // 2] + ['[..]'] + lines[-maxlines // 2:]
+    lines.append('(not all output shown. See `limit_size`)')
   string = '\n'.join(lines) + '\n'
   if len(string) > maxbytes:
     string = string[0:maxbytes // 2] + '\n[..]\n' + string[-maxbytes // 2:]
@@ -500,6 +515,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest(f'Skipping test that requires `{engine}` when `{self.required_engine}` was previously required')
     self.required_engine = engine
     self.js_engines = [engine]
+    self.wasm_engines = []
 
   def require_wasm64(self):
     if config.NODE_JS and config.NODE_JS in self.js_engines:
@@ -605,6 +621,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           # Opt in to node v15 default behaviour:
           # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
           self.node_args.append('--unhandled-rejections=throw')
+
+      # If the version we are running tests in is lower than the version that
+      # emcc targets then we need to tell emcc to target that older version.
+      emcc_min_node_version_str = str(shared.settings.MIN_NODE_VERSION)
+      emcc_min_node_version = (
+        int(emcc_min_node_version_str[0:2]),
+        int(emcc_min_node_version_str[2:4]),
+        int(emcc_min_node_version_str[4:6])
+      )
+      if node_version < emcc_min_node_version:
+        self.emcc_args += building.get_emcc_node_flags(node_version)
 
     self.v8_args = ['--wasm-staging']
     self.env = {}
@@ -1887,7 +1914,8 @@ class BrowserCore(RunnerCore):
             args=None, also_proxied=False,
             url_suffix='', timeout=None, also_wasm2js=False,
             manually_trigger_reftest=False, extra_tries=1,
-            reporting=Reporting.FULL):
+            reporting=Reporting.FULL,
+            output_basename='test'):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
     if args is None:
       args = []
@@ -1904,7 +1932,7 @@ class BrowserCore(RunnerCore):
     else:
       # manual_reference only makes sense for reference tests
       assert manual_reference is None
-    outfile = 'test.html'
+    outfile = output_basename + '.html'
     args += [filename, '-o', outfile]
     # print('all args:', args)
     utils.delete_file(outfile)

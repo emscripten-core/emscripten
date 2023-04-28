@@ -23,9 +23,12 @@ var LibraryExceptions = {
   //
   // excPtr - Thrown object pointer to wrap. Metadata pointer is calculated from it.
   $ExceptionInfo__docs: '/** @constructor */',
+  $ExceptionInfo__deps: [
+    '__cxa_is_pointer_type',
 #if EXCEPTION_DEBUG
-  $ExceptionInfo__deps: ['$ptrToString'],
+    '$ptrToString'
 #endif
+  ],
   $ExceptionInfo: function(excPtr) {
     this.excPtr = excPtr;
     this.ptr = excPtr - {{{ C_STRUCTS.__cxa_exception.__size__ }}};
@@ -238,7 +241,6 @@ var LibraryExceptions = {
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
   __cxa_find_matching_catch__deps: ['$exceptionLast', '$ExceptionInfo', '__resumeException', '__cxa_can_catch', 'setTempRet0'],
-  //__cxa_find_matching_catch__sig: 'p',
   __cxa_find_matching_catch: function() {
     var thrown = 
 #if EXCEPTION_STACK_TRACES
@@ -408,6 +410,7 @@ var LibraryExceptions = {
 #endif
 };
 
+#if !WASM_EXCEPTIONS
 // In LLVM, exceptions generate a set of functions of form
 // __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.  where the
 // number specifies the number of arguments.  In Emscripten, route all these to
@@ -416,5 +419,13 @@ var LibraryExceptions = {
 addCxaCatch = function(n) {
   LibraryManager.library['__cxa_find_matching_catch_' + n] = '__cxa_find_matching_catch';
 };
+
+// Add the first 10 catch handlers premptively.  Others get added on demand in
+// jsifier.  This is done here primarily so that these symbols end up with the
+// correct deps in the stub library that we pass to wasm-ld.
+for (let i = 1; i < 10; i++) {
+  addCxaCatch(i)
+}
+#endif
 
 mergeInto(LibraryManager.library, LibraryExceptions);

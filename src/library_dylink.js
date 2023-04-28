@@ -301,7 +301,7 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     dbg('dlSetError: ' + msg);
 #endif
-    withStackSave(function() {
+    withStackSave(() => {
       var cmsg = stringToUTF8OnStack(msg);
       ___dl_seterr(cmsg, 0);
     });
@@ -807,9 +807,9 @@ var LibraryDylink = {
           var instance = new WebAssembly.Instance(binary, info);
           return Promise.resolve(postInstantiation(instance));
         }
-        return WebAssembly.instantiate(binary, info).then(function(result) {
-          return postInstantiation(result.instance);
-        });
+        return WebAssembly.instantiate(binary, info).then(
+          (result) => postInstantiation(result.instance)
+        );
       }
 
       var module = binary instanceof WebAssembly.Module ? binary : new WebAssembly.Module(binary);
@@ -819,18 +819,14 @@ var LibraryDylink = {
 
     // now load needed libraries and the module itself.
     if (flags.loadAsync) {
-      return metadata.neededDynlibs.reduce(function(chain, dynNeeded) {
-        return chain.then(function() {
+      return metadata.neededDynlibs.reduce((chain, dynNeeded) => {
+        return chain.then(() => {
           return loadDynamicLibrary(dynNeeded, flags);
         });
-      }, Promise.resolve()).then(function() {
-        return loadModule();
-      });
+      }, Promise.resolve()).then(loadModule);
     }
 
-    metadata.neededDynlibs.forEach(function(dynNeeded) {
-      loadDynamicLibrary(dynNeeded, flags, localScope);
-    });
+    metadata.neededDynlibs.forEach((needed) => loadDynamicLibrary(needed, flags, localScope));
     return loadModule();
   },
 
@@ -888,7 +884,7 @@ var LibraryDylink = {
   // If a library was already loaded, it is not loaded a second time. However
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
-  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$isInternalSym', '$mergeLibSymbols', '$newDSO'],
+  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$isInternalSym', '$mergeLibSymbols', '$newDSO', '$asyncLoad'],
   $loadDynamicLibrary__docs: `
     /**
      * @param {number=} handle
@@ -945,7 +941,7 @@ var LibraryDylink = {
       var libFile = locateFile(libName);
       if (flags.loadAsync) {
         return new Promise(function(resolve, reject) {
-          readAsync(libFile, (data) => resolve(new Uint8Array(data)), reject);
+          asyncLoad(libFile, (data) => resolve(data), reject);
         });
       }
 
@@ -1015,11 +1011,11 @@ var LibraryDylink = {
 
     // Load binaries asynchronously
     addRunDependency('loadDylibs');
-    dynamicLibraries.reduce(function(chain, lib) {
-      return chain.then(function() {
+    dynamicLibraries.reduce((chain, lib) => {
+      return chain.then(() => {
         return loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true, allowUndefined: true});
       });
-    }, Promise.resolve()).then(function() {
+    }, Promise.resolve()).then(() => {
       // we got them all, wonderful
       reportUndefinedSymbols();
       removeRunDependency('loadDylibs');
@@ -1093,13 +1089,13 @@ var LibraryDylink = {
 #endif
   _dlopen_js: function(handle) {
 #if ASYNCIFY
-    return Asyncify.handleSleep(function(wakeUp) {
+    return Asyncify.handleSleep((wakeUp) => {
       var jsflags = {
         loadAsync: true,
         fs: FS, // load libraries from provided filesystem
       }
       var promise = dlopenInternal(handle, jsflags);
-      promise.then(wakeUp).catch(function() { wakeUp(0) });
+      promise.then(wakeUp).catch(() => wakeUp(0));
     });
 #else
     var jsflags = {
@@ -1118,11 +1114,11 @@ var LibraryDylink = {
       var filename = UTF8ToString({{{ makeGetValue('handle', C_STRUCTS.dso.name, '*') }}});
       dlSetError('Could not load dynamic lib: ' + filename + '\n' + e);
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function () { {{{ makeDynCall('vpp', 'onerror') }}}(handle, user_data); });
+      callUserCallback(() => {{{ makeDynCall('vpp', 'onerror') }}}(handle, user_data));
     }
     function successCallback() {
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function () { {{{ makeDynCall('vpp', 'onsuccess') }}}(handle, user_data); });
+      callUserCallback(() => {{{ makeDynCall('vpp', 'onsuccess') }}}(handle, user_data));
     }
 
     {{{ runtimeKeepalivePush() }}}

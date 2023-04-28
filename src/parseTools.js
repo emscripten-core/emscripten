@@ -133,7 +133,7 @@ function preprocess(filename) {
             error(`${filename}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
           }
         } else {
-          throw new Error(`${filename}:${i + 1}: Unknown preprocessor directive ${first}`);
+          error(`${filename}:${i + 1}: Unknown preprocessor directive ${first}`);
         }
       } else {
         if (showCurrentLine()) {
@@ -211,7 +211,7 @@ function splitI64(value) {
   //
   //  $1$0 = ~~$d >>> 0;
   //  $1$1 = Math.abs($d) >= 1 ? (
-  //     $d > 0 ? Math.min(Math.floor(($d)/ 4294967296.0), 4294967295.0)
+  //     $d > 0 ? Math.floor(($d)/ 4294967296.0) >>> 0,
   //            : Math.ceil(Math.min(-4294967296.0, $d - $1$0)/ 4294967296.0)
   //  ) : 0;
   //
@@ -227,9 +227,8 @@ function splitI64(value) {
   const high = makeInlineCalculation(
       asmCoercion('Math.abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
         '(VALUE > ' + asmEnsureFloat('0', 'double') + ' ? ' +
-        asmCoercion('Math.min(' + asmCoercion('Math.floor((VALUE)/' +
-        asmEnsureFloat(4294967296, 'double') + ')', 'double') + ', ' +
-        asmEnsureFloat(4294967295, 'double') + ')', 'i32') + '>>>0' +
+        asmCoercion('Math.floor((VALUE)/' +
+        asmEnsureFloat(4294967296, 'double') + ')', 'double') + '>>>0' +
         ' : ' +
         asmFloatToInt(asmCoercion('Math.ceil((VALUE - +((' + asmFloatToInt('VALUE') + ')>>>0))/' +
         asmEnsureFloat(4294967296, 'double') + ')', 'double')) + '>>>0' +
@@ -259,8 +258,9 @@ function indentify(text, indent) {
 // Correction tools
 
 function getHeapOffset(offset, type) {
-  if (!WASM_BIGINT && getNativeFieldSize(type) > 4 && type == 'i64') {
-    // we emulate 64-bit integer values as 32 in asmjs-unknown-emscripten, but not double
+  if (type == 'i64' && !WASM_BIGINT) {
+    // We are foreced to use the 32-bit heap for 64-bit values when we don't
+    // have WASM_BIGINT.
     type = 'i32';
   }
 
@@ -357,20 +357,19 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
  * @param {bool} noNeedFirst Whether to ignore the offset in the pointer itself.
  * @param {bool} ignore: legacy, ignored.
  * @param {number} align: legacy, ignored.
- * @param {string} sep: TODO
+ * @param {string} sep: legacy, ignored.
  * @return {TODO}
  */
-function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = ';') {
+function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep) {
   assert(typeof align === 'undefined', 'makeSetValue no longer supports align parameter');
   assert(typeof noNeedFirst === 'undefined', 'makeSetValue no longer supports noNeedFirst parameter');
-  if (type == 'i64' && (!WASM_BIGINT || !MEMORY64)) {
-    // If we lack either BigInt support or Memory64 then we must fall back to an
-    // unaligned read of a 64-bit value: without BigInt we do not have HEAP64,
-    // and without Memory64 i64 fields are not guaranteed to be aligned to 64
-    // bits, so HEAP64[ptr>>3] might be broken.
-    return '(tempI64 = [' + splitI64(value) + '],' +
-            makeSetValue(ptr, pos, 'tempI64[0]', 'i32', noNeedFirst, ignore, align, ',') + ',' +
-            makeSetValue(ptr, getFastValue(pos, '+', getNativeTypeSize('i32')), 'tempI64[1]', 'i32', noNeedFirst, ignore, align, ',') + ')';
+  assert(typeof sep === 'undefined', 'makeSetValue no longer supports sep parameter');
+  if (type == 'i64' && !WASM_BIGINT) {
+    // If we lack either BigInt we must fall back to an reading a pair of I32
+    // values.
+    return '(tempI64 = [' + splitI64(value) + '], ' +
+            makeSetValue(ptr, pos, 'tempI64[0]', 'i32') + ',' +
+            makeSetValue(ptr, getFastValue(pos, '+', getNativeTypeSize('i32')), 'tempI64[1]', 'i32') + ')';
   }
 
   const offset = calcFastOffset(ptr, pos);
@@ -505,17 +504,6 @@ function storeException(varName, excPtr) {
 
 function charCode(char) {
   return char.charCodeAt(0);
-}
-
-function getTypeFromHeap(suffix) {
-  switch (suffix) {
-    case '8': return 'i8';
-    case '16': return 'i16';
-    case '32': return 'i32';
-    case 'F32': return 'float';
-    case 'F64': return 'double';
-  }
-  assert(false, 'bad type suffix: ' + suffix);
 }
 
 function ensureValidFFIType(type) {

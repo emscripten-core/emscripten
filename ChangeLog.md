@@ -18,8 +18,25 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.36 (in development)
+3.1.38 (in development)
 -----------------------
+
+3.1.37 - 04/26/23
+-----------------
+- The `EM_PYTHON_MULTIPROCESSING` environment variable no longer has any effect.
+  This was added a temporary fallback but should no longer be needed. (#19224)
+- The old reverse dependency system based on `tools/deps_info.py` has been
+  removed and the existing `__deps` entries in JS library files can now be used
+  to express JS-to-native dependencies.  As well being more precise, and
+  extensible via user-supplied JS libraries, this also speeds up link times
+  since we no longer need scan linker inputs using `llvm-nm`.  It also
+  completely removes the need for the `REVERSE_DEPS` settings which has now
+  been deprecated. (#18905)
+- Bump the default minimum Firefox version from 65 to 68 (#19191).
+- Background pthreads no longer prevent a Node.js app from exiting. (#19073)
+
+3.1.36 - 04/16/23
+-----------------
 - The `USES_DYNAMIC_ALLOC` setting has been deprecated.  You can get the same
   effect from `-sMALLOC=none`. (#19164)
 

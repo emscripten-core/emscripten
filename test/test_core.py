@@ -20,7 +20,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner')
 
 from tools.shared import PIPE
-from tools.shared import EMCC, EMAR
+from tools.shared import EMCC, EMAR, FILE_PACKAGER
 from tools.utils import WINDOWS, MACOS, write_file, delete_file
 from tools import shared, building, config, webassembly
 import common
@@ -156,12 +156,20 @@ def also_with_noderawfs(func):
   return metafunc
 
 
-def can_do_standalone(self):
+def can_do_wasm2c(self):
+  # the npm version of wasm2c does not support MEMORY64
+  return not self.get_setting('MEMORY64')
+
+
+def can_do_standalone(self, impure=False):
+  # Pure standalone engines don't support MEMORY64 yet.  Even with MEMORY64=2 (lowered)
+  # the WASI APIs that take pointer values don't have 64-bit variants yet.
+  if self.get_setting('MEMORY64') and not impure:
+    return False
   return self.is_wasm() and \
       self.get_setting('STACK_OVERFLOW_CHECK', 0) < 2 and \
       not self.get_setting('MINIMAL_RUNTIME') and \
       not self.get_setting('SAFE_HEAP') and \
-      not self.get_setting('MEMORY64') and \
       not any(a.startswith('-fsanitize=') for a in self.emcc_args)
 
 
@@ -202,7 +210,7 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
       if not standalone:
         func(self)
       else:
-        if not can_do_standalone(self):
+        if not can_do_standalone(self, impure):
           self.skipTest('Test configuration is not compatible with STANDALONE_WASM')
         self.set_setting('STANDALONE_WASM')
         # we will not legalize the JS ffi interface, so we must use BigInt
@@ -213,10 +221,9 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
         # if we are impure, disallow all wasm engines
         if impure:
           self.wasm_engines = []
-        self.js_engines = [config.NODE_JS]
         self.node_args += shared.node_bigint_flags()
         func(self)
-        if wasm2c:
+        if wasm2c and can_do_wasm2c(self):
           print('wasm2c')
           self.set_setting('WASM2C')
           self.wasm_engines = []
@@ -2918,6 +2925,16 @@ The current type of b is: 9
     self.set_setting('MAIN_MODULE', 2)
     self.emcc_args.append('-Wno-experimental')
     self.do_run_in_out_file_test('pthread/test_pthread_tls_dylink.c')
+
+  def test_pthread_run_script(self):
+    shutil.copyfile(test_file('pthread/foo.js'), 'foo.js')
+    self.do_runf(test_file('pthread/test_pthread_run_script.c'))
+
+    # Run the test again with PROXY_TO_PTHREAD
+    self.setup_node_pthreads()
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_runf(test_file('pthread/test_pthread_run_script.c'))
 
   def test_tcgetattr(self):
     self.do_runf(test_file('termios/test_tcgetattr.c'), 'success')
@@ -5896,9 +5913,8 @@ Module = {
 
   @also_with_wasm_bigint
   def test_utf8_textdecoder(self):
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
     self.emcc_args += ['--embed-file', test_file('utf8_corpus.txt') + '@/utf8_corpus.txt']
-    self.do_runf(test_file('benchmark/benchmark_utf8.cpp'), 'OK.')
+    self.do_runf(test_file('benchmark/benchmark_utf8.c'), 'OK.')
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
   def test_utf8_invalid(self):
@@ -7151,6 +7167,8 @@ void* operator new(size_t size) {
       self.node_args += shared.node_bigint_flags()
     if not can_do_standalone(self):
       return self.skipTest('standalone mode not supported')
+    if not can_do_wasm2c(self):
+      return self.skipTest('wasm2c not supported')
     self.set_setting('STANDALONE_WASM')
     self.set_setting('WASM2C')
     self.set_setting('WASM2C_SANDBOXING', mode)
@@ -9351,6 +9369,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('core/pthread/test_pthread_keepalive.c')
 
   @node_pthreads
+  def test_pthread_weak_ref(self):
+    self.do_run_in_out_file_test('core/pthread/test_pthread_weak_ref.c')
+
+  @node_pthreads
   def test_pthread_exit_main(self):
     self.do_run_in_out_file_test('core/pthread/test_pthread_exit_main.c')
 
@@ -9687,22 +9709,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['--js-library', test_file('core/test_main_module_js_symbol.js')]
     self.do_runf(test_file('core/test_main_module_js_symbol.c'))
 
-  def test_REVERSE_DEPS(self):
-    create_file('connect.c', '#include <sys/socket.h>\nint main() { return (int)(long)&connect; }')
-    self.run_process([EMCC, 'connect.c'])
-    base_size = os.path.getsize('a.out.wasm')
-
-    # 'auto' should work (its the default)
-    self.run_process([EMCC, 'connect.c', '-sREVERSE_DEPS=auto'])
-
-    # 'all' should work too although it should produce a larger binary
-    self.run_process([EMCC, 'connect.c', '-sREVERSE_DEPS=all'])
-    self.assertGreater(os.path.getsize('a.out.wasm'), base_size)
-
-    # 'none' should fail to link because the dependency on ntohs was not added.
-    err = self.expect_fail([EMCC, 'connect.c', '-sREVERSE_DEPS=none'])
-    self.assertContained('undefined symbol: ntohs', err)
-
   def test_emscripten_async_call(self):
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test(test_file('core/test_emscripten_async_call.c'))
@@ -9770,6 +9776,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('MIN_FIREFOX_VERSION', '79')
     self.set_setting('MIN_CHROME_VERSION', '85')
     self.do_core_test('test_promise.c')
+
+  def test_emscripten_async_load_script(self):
+    create_file('script1.js', 'Module._set(456);''')
+    create_file('file1.txt', 'first')
+    create_file('file2.txt', 'second')
+    # `--from-emcc` needed here otherwise the output defines `var Module =` which will shadow the
+    # global `Module`.
+    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt', '--from-emcc', '--js-output=script2.js'])
+    self.do_runf(test_file('test_emscripten_async_load_script.c'), emcc_args=['-sFORCE_FILESYSTEM'])
 
 
 # Generate tests for everything

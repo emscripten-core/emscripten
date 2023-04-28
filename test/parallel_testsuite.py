@@ -12,6 +12,8 @@ import unittest
 
 import common
 
+from tools.shared import cap_max_workers_in_pool
+
 
 NUM_CORES = None
 
@@ -52,7 +54,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # issues.
     # multiprocessing.set_start_method('spawn')
     tests = list(self.reversed_tests())
-    use_cores = min(self.max_cores, len(tests), num_cores())
+    use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()))
     print('Using %s parallel test processes' % use_cores)
     pool = multiprocessing.Pool(use_cores)
     results = [pool.apply_async(run_test, (t,)) for t in tests]

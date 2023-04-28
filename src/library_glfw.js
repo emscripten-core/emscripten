@@ -1123,7 +1123,7 @@ var LibraryGLFW = {
 /*******************************************************************************
  * GLFW FUNCTIONS
  ******************************************************************************/
-  glfwInit__deps: ['emscripten_get_device_pixel_ratio'],
+  glfwInit__deps: ['emscripten_get_device_pixel_ratio', 'malloc', 'free'],
   glfwInit__sig: 'i',
   glfwInit: function() {
     if (GLFW.windows) return 1; // GL_TRUE
@@ -1297,11 +1297,11 @@ var LibraryGLFW = {
   glfwGetMonitorWorkarea: function(monitor, x, y, w, h) {
     {{{ makeSetValue('x', '0', '0', 'i32') }}};
     {{{ makeSetValue('y', '0', '0', 'i32') }}};
-    
+
     {{{ makeSetValue('w', '0', 'screen.availWidth', 'i32') }}};
     {{{ makeSetValue('h', '0', 'screen.availHeight', 'i32') }}};
   },
-  
+
   glfwGetMonitorPhysicalSize__sig: 'viii',
   glfwGetMonitorPhysicalSize: function(monitor, width, height) {
     // AFAIK there is no way to do this in javascript
@@ -1374,7 +1374,7 @@ var LibraryGLFW = {
     // Some hints are platform specific.  These may be set on any platform but they
     // will only affect their specific platform.  Other platforms will ignore them.
   },
-  
+
   glfwCreateWindow__sig: 'iiiiii',
   glfwCreateWindow: function(width, height, title, monitor, share) {
     return GLFW.createWindow(width, height, title, monitor, share);
@@ -1447,7 +1447,7 @@ var LibraryGLFW = {
   glfwGetWindowContentScale__sig: 'viii',
   glfwGetWindowContentScale: function(winid, x, y) {
     // winid doesn't matter. all windows will use same scale anyway.
-    // hope i used this makeSetValue correctly 
+    // hope i used this makeSetValue correctly
     {{{ makeSetValue('x', '0', 'GLFW.scale', 'float') }}};
     {{{ makeSetValue('y', '0', 'GLFW.scale', 'float') }}};
   },
@@ -1502,7 +1502,7 @@ var LibraryGLFW = {
     if (!win) return;
     win.attributes[attrib] = value;
   },
-  
+
   glfwSetWindowUserPointer__sig: 'vii',
   glfwSetWindowUserPointer: function(winid, ptr) {
     var win = GLFW.WindowFromId(winid);
@@ -1660,7 +1660,7 @@ var LibraryGLFW = {
 
   glfwGetKeyScancode__sig: 'ii',
   glfwGetKeyScancode: function(key) { throw "glfwGetKeyScancode not implemented."; },
-  
+
   glfwGetMouseButton__sig: 'iii',
   glfwGetMouseButton: function(winid, button) {
     return GLFW.getMouseButton(winid, button);
@@ -1733,15 +1733,6 @@ var LibraryGLFW = {
   glfwGetRequiredInstanceExtensions__sig: 'ii',
   glfwGetRequiredInstanceExtensions: function(count) { throw "glfwGetRequiredInstanceExtensions is not implemented."; },
 
-  glfwGetInstanceProcAddress__sig: 'iii',
-  glfwGetInstanceProcAddress: function(instance, procname) { throw "glfwGetInstanceProcAddress is not implemented."; },
-
-  glfwGetPhysicalDevicePresentationSupport__sig: 'iiii',
-  glfwGetPhysicalDevicePresentationSupport: function(instance, device, queuefamily) { throw "glfwGetPhysicalDevicePresentationSupport is not implemented"; },
-
-  glfwCreateWindowSurface__sig: 'iiiii',
-  glfwCreateWindowSurface: function(instance, winid, allocator, surface) { throw "glfwCreateWindowSurface is not implemented."; },
-
   glfwJoystickPresent__sig: 'ii',
   glfwJoystickPresent: function(joy) {
     GLFW.refreshJoysticks();
@@ -1799,15 +1790,15 @@ var LibraryGLFW = {
   glfwSetJoystickUserPointer: function(jid, ptr) {
     throw "glfwSetJoystickUserPointer not implemented";
   },
-  
+
   glfwGetJoystickUserPointer__sig: 'ii',
   glfwGetJoystickUserPointer: function(jid) {
-    throw "glfwSetJoystickUserPointer not implemented";
+    throw "glfwGetJoystickUserPointer not implemented";
   },
-    
+
   glfwJoystickIsGamepad__sig: 'ii',
   glfwJoystickIsGamepad: function(jid) {
-    throw "glfwSetJoystickUserPointer not implemented";
+    throw "glfwJoystickIsGamepad not implemented";
   },
 
   glfwSetJoystickCallback__sig: 'ii',
@@ -1834,9 +1825,7 @@ var LibraryGLFW = {
     GLFW.swapBuffers(winid);
   },
 
-#endif // GLFW 3
-
-#if USE_GLFW == 2
+#elif USE_GLFW == 2
   glfwOpenWindow: function(width, height, redbits, greenbits, bluebits, alphabits, depthbits, stencilbits, mode) {
     GLFW.hints[0x00021001] = redbits;     // GLFW_RED_BITS
     GLFW.hints[0x00021002] = greenbits;   // GLFW_GREEN_BITS

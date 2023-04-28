@@ -236,7 +236,7 @@ var LibraryBrowser = {
           };
           audio.src = url;
           // workaround for chrome bug 124926 - we do not always get oncanplaythrough or onerror
-          safeSetTimeout(function() {
+          safeSetTimeout(() => {
             finish(audio); // try to use it even though it is not necessarily ready to play
           }, 10000);
         } else {
@@ -320,7 +320,7 @@ var LibraryBrowser = {
       Browser.init();
 
       var handled = false;
-      Module['preloadPlugins'].forEach(function(plugin) {
+      Module['preloadPlugins'].forEach((plugin) => {
         if (handled) return;
         if (plugin['canHandle'](fullname)) {
           plugin['handle'](byteArray, fullname, finish, onerror);
@@ -376,7 +376,7 @@ var LibraryBrowser = {
         Module.ctx = ctx;
         if (useWebGL) GL.makeContextCurrent(contextHandle);
         Module.useWebGL = useWebGL;
-        Browser.moduleContextCreatedCallbacks.forEach(function(callback) { callback() });
+        Browser.moduleContextCreatedCallbacks.forEach((callback) => callback());
         Browser.init();
       }
       return ctx;
@@ -465,7 +465,7 @@ var LibraryBrowser = {
                 document['mozCancelFullScreen'] ||
                 document['msExitFullscreen'] ||
                 document['webkitCancelFullScreen'] ||
-          (function() {});
+          (() => {});
       CFS.apply(document, []);
       return true;
     },
@@ -515,7 +515,7 @@ var LibraryBrowser = {
     },
     safeRequestAnimationFrame: function(func) {
       {{{ runtimeKeepalivePush() }}}
-      return Browser.requestAnimationFrame(function() {
+      return Browser.requestAnimationFrame(() => {
         {{{ runtimeKeepalivePop() }}}
         callUserCallback(func);
       });
@@ -695,9 +695,7 @@ var LibraryBrowser = {
 
     updateResizeListeners: function() {
       var canvas = Module['canvas'];
-      Browser.resizeListeners.forEach(function(listener) {
-        listener(canvas.width, canvas.height);
-      });
+      Browser.resizeListeners.forEach((listener) => listener(canvas.width, canvas.height));
     },
 
     setCanvasSize: function(width, height, noUpdates) {
@@ -832,27 +830,27 @@ var LibraryBrowser = {
   emscripten_async_run_script__deps: ['emscripten_run_script', '$safeSetTimeout'],
   emscripten_async_run_script: function(script, millis) {
     // TODO: cache these to avoid generating garbage
-    safeSetTimeout(function() {
-      _emscripten_run_script(script);
-    }, millis);
+    safeSetTimeout(() => _emscripten_run_script(script), millis);
   },
 
   // TODO: currently not callable from a pthread, but immediately calls onerror() if not on main thread.
+  emscripten_async_load_script__deps: ['$UTF8ToString'],
   emscripten_async_load_script: function(url, onload, onerror) {
+    url = UTF8ToString(url);
     onload = {{{ makeDynCall('v', 'onload') }}};
     onerror = {{{ makeDynCall('v', 'onerror') }}};
 
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
-      err('emscripten_async_load_script("' + UTF8ToString(url) + '") failed, emscripten_async_load_script is currently not available in pthreads!');
+      err('emscripten_async_load_script("' + url + '") failed, emscripten_async_load_script is currently not available in pthreads!');
       return onerror ? onerror() : undefined;
     }
 #endif
+    assert(runDependencies === 0, 'async_load_script must be run when no other dependencies are active');
+
     {{{ runtimeKeepalivePush() }}}
 
-    assert(runDependencies === 0, 'async_load_script must be run when no other dependencies are active');
-    var script = document.createElement('script');
-    script.onload = function script_onload() {
+    var loadDone = () => {
       {{{ runtimeKeepalivePop() }}}
       if (onload) {
         if (runDependencies > 0) {
@@ -861,12 +859,27 @@ var LibraryBrowser = {
           onload();
         }
       }
-    };
-    script.onerror = () => {
+    }
+
+    var loadError = () => {
       {{{ runtimeKeepalivePop() }}}
       if (onerror) onerror();
     };
-    script.src = UTF8ToString(url);
+
+#if ENVIRONMENT_MAY_BE_NODE && DYNAMIC_EXECUTION
+    if (ENVIRONMENT_IS_NODE) {
+      readAsync(url, (data) => {
+        eval(data);
+        loadDone();
+      }, loadError, false);
+      return;
+    }
+#endif
+
+    var script = document.createElement('script');
+    script.onload = loadDone;
+    script.onerror = loadError;
+    script.src = url;
     document.body.appendChild(script);
   },
 
@@ -1212,6 +1225,7 @@ var LibraryBrowser = {
 
   // To avoid creating worker parent->child chains, always proxies to execute on the main thread.
   emscripten_create_worker__proxy: 'sync',
+  emscripten_create_worker__deps: ['$UTF8ToString', 'malloc', 'free'],
   emscripten_create_worker: function(url) {
     url = UTF8ToString(url);
     var id = Browser.workers.length;
@@ -1253,6 +1267,7 @@ var LibraryBrowser = {
     return id;
   },
 
+  emscripten_destroy_worker__deps: ['free'],
   emscripten_destroy_worker__proxy: 'sync',
   emscripten_destroy_worker: function(id) {
     var info = Browser.workers[id];

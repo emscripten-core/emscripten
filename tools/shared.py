@@ -51,8 +51,6 @@ DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 MINIMUM_NODE_VERSION = (10, 19, 0)
 EXPECTED_LLVM_VERSION = 17
 
-# Used only when EM_PYTHON_MULTIPROCESSING=1 env. var is set.
-multiprocessing_pool = None
 logger = logging.getLogger('shared')
 
 # warning about absolute-paths is disabled by default, and not enabled by -Wall
@@ -78,6 +76,7 @@ diagnostics.add_warning('limited-postlink-optimizations')
 diagnostics.add_warning('em-js-i64')
 diagnostics.add_warning('js-compiler')
 diagnostics.add_warning('compatibility')
+diagnostics.add_warning('unsupported')
 # Closure warning are not (yet) enabled by default
 diagnostics.add_warning('closure', enabled=False)
 
@@ -142,6 +141,13 @@ def returncode_to_str(code):
   return f'returned {code}'
 
 
+def cap_max_workers_in_pool(max_workers):
+  # Python has an issue that it can only use max 61 cores on Windows: https://github.com/python/cpython/issues/89240
+  if WINDOWS:
+    return min(max_workers, 61)
+  return max_workers
+
+
 def run_multiple_processes(commands,
                            env=None,
                            route_stdout_to_temp_files_suffix=None):
@@ -154,21 +160,6 @@ def run_multiple_processes(commands,
 
   if env is None:
     env = os.environ.copy()
-
-  # By default, avoid using Python multiprocessing library due to a large amount
-  # of bugs it has on Windows (#8013, #718, etc.)
-  # Use EM_PYTHON_MULTIPROCESSING=1 environment variable to enable it. It can be
-  # faster, but may not work on Windows.
-  if int(os.getenv('EM_PYTHON_MULTIPROCESSING', '0')):
-    import multiprocessing
-    max_workers = get_num_cores()
-    global multiprocessing_pool
-    if not multiprocessing_pool:
-      if WINDOWS:
-        # Fix for python < 3.8 on windows. See: https://github.com/python/cpython/pull/13132
-        max_workers = min(max_workers, 61)
-      multiprocessing_pool = multiprocessing.Pool(processes=max_workers)
-    return multiprocessing_pool.map(mp_run_process, [(cmd, env, route_stdout_to_temp_files_suffix) for cmd in commands], chunksize=1)
 
   std_outs = []
 
@@ -418,7 +409,7 @@ def perform_sanity_checks():
   check_node()
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
-    for cmd in [CLANG_CC, LLVM_AR, LLVM_NM]:
+    for cmd in [CLANG_CC, LLVM_AR]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
         exit_with_error('Cannot find %s, check the paths in %s', cmd, config.EM_CONFIG)
 

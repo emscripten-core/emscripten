@@ -127,6 +127,13 @@ var SyscallsLibrary = {
   _mmap_js__deps: ['$SYSCALLS',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
+    // The dependency of FS on `mmapAlloc` and `mmapAlloc` on
+    // `emscripten_builtin_memalign` are not encoding as hard dependencies,
+    // so we need to explictly depend on them here to ensure a working
+    // `FS.mmap`.
+    // `emscripten_builtin_memalign`).
+    '$mmapAlloc',
+    'emscripten_builtin_memalign',
 #endif
   ],
   _mmap_js: function(len, prot, flags, fd, off, allocated, addr) {
@@ -856,11 +863,6 @@ var SyscallsLibrary = {
     newpath = SYSCALLS.calculateAt(newdirfd, newpath);
     FS.rename(oldpath, newpath);
     return 0;
-  },
-  __syscall_linkat__nothrow: true,
-  __syscall_linkat__proxy: false,
-  __syscall_linkat: function(olddirfd, oldpath, newdirfd, newpath, flags) {
-    return -{{{ cDefs.EMLINK }}}; // no hardlinks for us
   },
   __syscall_symlinkat: function(target, newdirfd, linkpath) {
 #if SYSCALL_DEBUG

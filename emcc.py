@@ -50,7 +50,6 @@ from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
 from tools import feature_matrix
-from tools import deps_info
 from tools import js_manipulation
 from tools import wasm2c
 from tools import webassembly
@@ -1275,7 +1274,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     process_libraries(state, [])
     if len(input_files) != 1:
       exit_with_error('--post-link requires a single input file')
-    phase_post_link(options, state, input_files[0][1], wasm_target, target)
+    phase_post_link(options, state, input_files[0][1], wasm_target, target, {})
     return 0
 
   ## Compile source code to object files
@@ -1316,11 +1315,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     js_info = get_js_sym_info()
     if not settings.SIDE_MODULE:
       js_syms = js_info['deps']
-      deps_info.append_deps_info(js_syms)
     if settings.ASYNCIFY:
       settings.ASYNCIFY_IMPORTS += ['env.' + x for x in js_info['asyncFuncs']]
 
-  phase_calculate_system_libraries(state, linker_arguments, linker_inputs, newargs)
+  phase_calculate_system_libraries(state, linker_arguments, newargs)
 
   phase_link(linker_arguments, wasm_target, js_syms)
 
@@ -1336,7 +1334,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # Perform post-link steps (unless we are running bare mode)
   if options.oformat != OFormat.BARE:
-    phase_post_link(options, state, wasm_target, wasm_target, target)
+    phase_post_link(options, state, wasm_target, wasm_target, target, js_syms)
 
   return 0
 
@@ -1952,6 +1950,14 @@ def phase_linker_setup(options, state, newargs):
 
   if '_main' in settings.EXPORTED_FUNCTIONS:
     settings.EXPORT_IF_DEFINED.append('__main_argc_argv')
+  elif settings.ASSERTIONS and not settings.STANDALONE_WASM:
+    # In debug builds when `main` is not explicitly requested as an
+    # export we still add it to EXPORT_IF_DEFINED so that we can warn
+    # users who forget to explicitly export `main`.
+    # See other.test_warn_unexported_main.
+    # This is not needed in STANDALONE_WASM mode since we export _start
+    # (unconditionally) rather than main.
+    settings.EXPORT_IF_DEFINED.append('main')
 
   if settings.ASSERTIONS:
     # Exceptions are thrown with a stack trace by default when ASSERTIONS is
@@ -2081,11 +2087,6 @@ def phase_linker_setup(options, state, newargs):
     if settings.MAIN_MODULE == 1:
       settings.INCLUDE_FULL_LIBRARY = 1
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDylibs']
-
-  # If we are including the entire JS library then we know for sure we will, by definition,
-  # require all the reverse dependencies.
-  if settings.INCLUDE_FULL_LIBRARY:
-    default_setting('REVERSE_DEPS', 'all')
 
   if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
     settings.LINKABLE = 1
@@ -2598,6 +2599,8 @@ def phase_linker_setup(options, state, newargs):
     # shared memory builds we must keep the memory segments in the wasm as
     # they will be passive segments which the .mem format cannot handle.
     settings.MEM_INIT_IN_WASM = not options.memory_init_file or settings.SINGLE_FILE or settings.SHARED_MEMORY
+  elif options.memory_init_file:
+    diagnostics.warning('unsupported', '--memory-init-file is only supported with -sWASM=0')
 
   if (
       settings.MAYBE_WASM2JS or
@@ -3086,14 +3089,13 @@ def phase_compile_inputs(options, state, newargs, input_files):
 
 
 @ToolchainProfiler.profile_block('calculate system libraries')
-def phase_calculate_system_libraries(state, linker_arguments, linker_inputs, newargs):
+def phase_calculate_system_libraries(state, linker_arguments, newargs):
   extra_files_to_link = []
   # Link in ports and system libraries, if necessary
   if not settings.SIDE_MODULE:
     # Ports are always linked into the main module, never the side module.
     extra_files_to_link += ports.get_libs(settings)
-  all_linker_inputs = [f for _, f in sorted(linker_inputs)] + extra_files_to_link
-  extra_files_to_link += system_libs.calculate(all_linker_inputs, newargs, forced=state.forced_stdlibs)
+  extra_files_to_link += system_libs.calculate(newargs, forced=state.forced_stdlibs)
   linker_arguments.extend(extra_files_to_link)
 
 
@@ -3112,7 +3114,7 @@ def phase_link(linker_arguments, wasm_target, js_syms):
 
 
 @ToolchainProfiler.profile_block('post_link')
-def phase_post_link(options, state, in_wasm, wasm_target, target):
+def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms):
   global final_js
 
   target_basename = unsuffixed_basename(target)
@@ -3134,7 +3136,7 @@ def phase_post_link(options, state, in_wasm, wasm_target, target):
   else:
     memfile = shared.replace_or_append_suffix(target, '.mem')
 
-  phase_emscript(options, in_wasm, wasm_target, memfile)
+  phase_emscript(options, in_wasm, wasm_target, memfile, js_syms)
 
   if options.js_transform:
     phase_source_transforms(options)
@@ -3152,7 +3154,7 @@ def phase_post_link(options, state, in_wasm, wasm_target, target):
 
 
 @ToolchainProfiler.profile_block('emscript')
-def phase_emscript(options, in_wasm, wasm_target, memfile):
+def phase_emscript(options, in_wasm, wasm_target, memfile, js_syms):
   # Emscripten
   logger.debug('emscript')
 
@@ -3161,7 +3163,7 @@ def phase_emscript(options, in_wasm, wasm_target, memfile):
     # _read in shell.js depends on intArrayToString when SUPPORT_BASE64_EMBEDDING is set
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$intArrayToString')
 
-  emscripten.run(in_wasm, wasm_target, final_js, memfile)
+  emscripten.run(in_wasm, wasm_target, final_js, memfile, js_syms)
   save_intermediate('original')
 
 
@@ -3546,8 +3548,6 @@ def parse_args(newargs):
       ports.show_ports()
       should_exit = True
     elif check_arg('--memory-init-file'):
-      # This flag is ignored unless targetting wasm2js.
-      # TODO(sbc): Error out if used without wasm2js.
       options.memory_init_file = int(consume_arg())
     elif check_flag('--proxy-to-worker'):
       settings_changes.append('PROXY_TO_WORKER=1')

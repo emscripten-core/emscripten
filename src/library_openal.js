@@ -545,7 +545,7 @@ var LibraryOpenAL = {
         var lUpY = listener.up[1];
         var lUpZ = listener.up[2];
 
-        var inverseMagnitude = function(x, y, z) {
+        var inverseMagnitude = (x, y, z) => {
           var length = Math.sqrt(x * x + y * y + z * z);
 
           if (length < Number.EPSILON) {
@@ -1765,13 +1765,13 @@ var LibraryOpenAL = {
 
     // Preparing for getUserMedia()
 
-    var onError = function(mediaStreamError) {
+    var onError = (mediaStreamError) => {
       newCapture.mediaStreamError = mediaStreamError;
 #if OPENAL_DEBUG
       dbg('navigator.getUserMedia() errored with: ' + mediaStreamError);
 #endif
     };
-    var onSuccess = function(mediaStream) {
+    var onSuccess = (mediaStream) => {
       newCapture.mediaStreamSourceNode = newCapture.audioCtx.createMediaStreamSource(mediaStream);
       newCapture.mediaStream = mediaStream;
 
@@ -1819,8 +1819,7 @@ var LibraryOpenAL = {
 
       newCapture.scriptProcessorNode.connect(newCapture.audioCtx.destination);
 
-      newCapture.scriptProcessorNode.onaudioprocess = function(audioProcessingEvent) {
-
+      newCapture.scriptProcessorNode.onaudioprocess = (audioProcessingEvent) => {
         if (!newCapture.isCapturing) {
           return;
         }

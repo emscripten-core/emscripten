@@ -45,11 +45,18 @@ function optPassSimplifyModularizeFunction(ast) {
     if (node.params.length == 1 && node.params[0].name == 'Module') {
       const body = node.body.body;
       // Nuke 'Module = Module || {};'
-      if (body[0].type == 'ExpressionStatement' && body[0].expression.type == 'AssignmentExpression' && body[0].expression.left.name == 'Module') {
+      if (
+        body[0].type == 'ExpressionStatement' &&
+        body[0].expression.type == 'AssignmentExpression' &&
+        body[0].expression.left.name == 'Module'
+      ) {
         body.splice(0, 1);
       }
       // Replace 'function(Module) {var f = Module;' -> 'function(f) {'
-      if (body[0].type == 'VariableDeclaration' && body[0].declarations[0]?.init?.name == 'Module') {
+      if (
+        body[0].type == 'VariableDeclaration' &&
+        body[0].declarations[0]?.init?.name == 'Module'
+      ) {
         node.params[0].name = body[0].declarations[0].id.name;
         body[0].declarations.splice(0, 1);
         if (body[0].declarations.length == 0) {
@@ -66,8 +73,13 @@ function optPassSimplifyModularizeFunction(ast) {
 function optPassSimplifyModuleInitialization(ast) {
   visitNodes(ast, ['BlockStatement', 'Program'], (node) => {
     for (const n of node.body) {
-      if (n.type == 'ExpressionStatement' && n.expression.type == 'LogicalExpression' && n.expression.operator == '||' &&
-        n.expression.left.name === n.expression.right.left?.name && n.expression.right.right.name == 'Module') {
+      if (
+        n.type == 'ExpressionStatement' &&
+        n.expression.type == 'LogicalExpression' &&
+        n.expression.operator == '||' &&
+        n.expression.left.name === n.expression.right.left?.name &&
+        n.expression.right.right.name == 'Module'
+      ) {
         // Clear out the logical operator.
         n.expression = n.expression.right;
         // There is only one Module assignment, so can finish the pass here.
@@ -169,7 +181,11 @@ function optPassMergeVarInitializationAssignments(ast) {
     const name = nodeArray[i].expression.left.name;
     for (let j = i - 1; j >= 0; --j) {
       const n = nodeArray[j];
-      if (n.type == 'ExpressionStatement' && n.expression.type == 'AssignmentExpression' && n.expression.left.name == name) {
+      if (
+        n.type == 'ExpressionStatement' &&
+        n.expression.type == 'AssignmentExpression' &&
+        n.expression.left.name == name
+      ) {
         return [null, null];
       }
       if (n.type == 'VariableDeclaration') {
@@ -248,7 +264,10 @@ function test(input, expected) {
 
 function runTests() {
   // optPassSimplifyModularizeFunction:
-  test('var Module = function(Module) {Module = Module || {};var f = Module;}', 'var Module=function(f){};');
+  test(
+    'var Module = function(Module) {Module = Module || {};var f = Module;}',
+    'var Module=function(f){};'
+  );
 
   // optPassSimplifyModuleInitialization:
   test('b || (b = Module);', 'b=Module;');
@@ -258,7 +277,10 @@ function runTests() {
   test('new Uint16Array(a);', '');
   test('new Uint16Array(a),new Uint16Array(a);', ';');
   test("new function(a) {new TextDecoder(a);}('utf8');", '');
-  test('WebAssembly.instantiate(c.wasm,{}).then(function(a){new Int8Array(b);});', 'WebAssembly.instantiate(c.wasm,{}).then(function(a){});');
+  test(
+    'WebAssembly.instantiate(c.wasm,{}).then(function(a){new Int8Array(b);});',
+    'WebAssembly.instantiate(c.wasm,{}).then(function(a){});'
+  );
   test('let x=new Uint16Array(a);', 'let x=new Uint16Array(a);');
 
   // optPassMergeVarDeclarations:
@@ -271,7 +293,10 @@ function runTests() {
   test('var a = 1, b; ++a; var c;', 'var a=1,b,c;++a;');
 
   // Interaction between multiple passes:
-  test('var d, f; f = new Uint8Array(16); var h = f.buffer; d = new Uint8Array(h);', 'var f=new Uint8Array(16),h=f.buffer,d=new Uint8Array(h);');
+  test(
+    'var d, f; f = new Uint8Array(16); var h = f.buffer; d = new Uint8Array(h);',
+    'var f=new Uint8Array(16),h=f.buffer,d=new Uint8Array(h);'
+  );
 
   // Older versions of terser would produce sub-optimal output for this.
   // We keep this test around to prevent regression.
