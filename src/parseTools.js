@@ -354,18 +354,11 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
  * @param {number} value The value to set.
  * @param {string} type A string defining the type. Used to find the slab (HEAPU8, HEAP16, HEAPU32, etc.).
  *             which means we should write to all slabs, ignore type differences if any on reads, etc.
- * @param {bool} noNeedFirst Whether to ignore the offset in the pointer itself.
- * @param {bool} ignore: legacy, ignored.
- * @param {number} align: legacy, ignored.
- * @param {string} sep: legacy, ignored.
- * @return {TODO}
+ * @return {string} JS code for performing the memory set operation
  */
-function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep) {
-  assert(typeof align === 'undefined', 'makeSetValue no longer supports align parameter');
-  assert(typeof noNeedFirst === 'undefined', 'makeSetValue no longer supports noNeedFirst parameter');
-  assert(typeof sep === 'undefined', 'makeSetValue no longer supports sep parameter');
+function makeSetValue(ptr, pos, value, type) {
   if (type == 'i64' && !WASM_BIGINT) {
-    // If we lack either BigInt we must fall back to an reading a pair of I32
+    // If we lack BigInt support we must fall back to an reading a pair of I32
     // values.
     return '(tempI64 = [' + splitI64(value) + '], ' +
             makeSetValue(ptr, pos, 'tempI64[0]', 'i32') + ',' +
