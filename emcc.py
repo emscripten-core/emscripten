@@ -2426,7 +2426,7 @@ def phase_linker_setup(options, state, newargs):
     wasm_worker_imports = ['_emscripten_wasm_worker_initialize', '___set_thread_state']
     settings.EXPORTED_FUNCTIONS += wasm_worker_imports
     building.user_requested_exports.update(wasm_worker_imports)
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_wasm_worker_initializeRuntime']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$_wasmWorkerInitializeRuntime']
     # set location of Wasm Worker bootstrap JS file
     if settings.WASM_WORKERS == 1:
       settings.WASM_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.ww.js'

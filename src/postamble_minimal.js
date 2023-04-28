@@ -65,7 +65,7 @@ function initRuntime(asm) {
 #endif
 
 #if WASM_WORKERS
-  if (ENVIRONMENT_IS_WASM_WORKER) return __wasm_worker_initializeRuntime();
+  if (ENVIRONMENT_IS_WASM_WORKER) return _wasmWorkerInitializeRuntime();
 #endif
 
 #if STACK_OVERFLOW_CHECK

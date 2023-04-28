@@ -14,6 +14,7 @@
 #include <emscripten/em_macros.h>
 #include <emscripten/proxying.h>
 #include <emscripten/html5.h>
+#include <emscripten/wasm_worker.h>
 
 #include <signal.h>    // for `sighandler_t`
 #include <stdbool.h>   // for `bool`
@@ -131,6 +132,10 @@ size_t _emscripten_fetch_get_response_headers(int32_t fetchID, char *dst, size_t
 void _emscripten_fetch_free(unsigned int);
 
 EMSCRIPTEN_RESULT _emscripten_set_offscreencanvas_size(const char *target, int width, int height);
+
+// Internal implementation function in JavaScript side that emscripten_create_wasm_worker() calls to
+// to perform the wasm worker creation.
+emscripten_wasm_worker_t _emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize);
 
 #ifdef __cplusplus
 }

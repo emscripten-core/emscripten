@@ -123,7 +123,7 @@ let LibraryWebAudio = {
 
 #if AUDIO_WORKLET
   emscripten_start_wasm_audio_worklet_thread_async__deps: [
-    'wasm_workers_id',
+    '$_wasmWorkersID',
     '$_EmAudioDispatchProcessorCallback'],
   emscripten_start_wasm_audio_worklet_thread_async: function(contextHandle, stackLowestAddress, stackSize, callback, userData) {
 
@@ -175,7 +175,7 @@ let LibraryWebAudio = {
 #endif
       audioWorklet.bootstrapMessage = new AudioWorkletNode(audioContext, 'message', {
         processorOptions: {
-          '$ww': _wasm_workers_id++, // Assign the loaded AudioWorkletGlobalScope a Wasm Worker ID so that it can utilized its own TLS slots, and it is recognized to not be the main browser thread.
+          '$ww': _wasmWorkersID++, // Assign the loaded AudioWorkletGlobalScope a Wasm Worker ID so that it can utilized its own TLS slots, and it is recognized to not be the main browser thread.
 #if MINIMAL_RUNTIME
           'wasm': Module['wasm'],
           'mem': wasmMemory,
