@@ -12892,7 +12892,13 @@ int main() {
 
   @also_with_wasm_bigint
   def test_parseTools(self):
-    self.do_other_test('test_parseTools.c', emcc_args=['--js-library', test_file('other/test_parseTools.js')])
+    self.emcc_args += ['--js-library', test_file('other/test_parseTools.js')]
+    self.do_other_test('test_parseTools.c')
+
+    # If we run ths same test with -sASSERTIONS=2 we expect it to fail because it
+    # involves writing numbers that are exceed the side of the type.
+    expected = 'Aborted(Assertion failed: value (316059037807746200000) too large to write as 64-bit value)'
+    self.do_runf(test_file('other/test_parseTools.c'), expected, emcc_args=['-sASSERTIONS=2'], assert_returncode=NON_ZERO)
 
   def test_lto_atexit(self):
     self.emcc_args.append('-flto')
@@ -13200,8 +13206,8 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     create_file('lib.js', '''
       mergeInto(LibraryManager.library, {
         foo: function() {
-            return {{{ Runtime.POINTER_SIZE }}};
-          }
+          return {{{ Runtime.POINTER_SIZE }}};
+        }
       });
     ''')
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', 'foo')
