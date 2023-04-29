@@ -325,17 +325,14 @@ class sockets(BrowserCore):
 
   # Test Emscripten WebSockets API to send and receive text and binary messages against an echo server.
   # N.B. running this test requires 'npm install ws' in Emscripten root directory
-  def test_websocket_send(self):
+  # NOTE: Shared buffer is not allowed for websocket sending.
+  @parameterized({
+    'non_shared': [['-lwebsocket', '-sNO_EXIT_RUNTIME', '-sWEBSOCKET_DEBUG']],
+    'shared': [['-lwebsocket', '-sSHARED_MEMORY', '-sNO_EXIT_RUNTIME', '-sWEBSOCKET_DEBUG']],
+  })
+  def test_websocket_send(self, args):
     with NodeJsWebSocketEchoServerProcess():
-      self.btest_exit(test_file('websocket/test_websocket_send.c'), args=['-lwebsocket', '-sNO_EXIT_RUNTIME', '-sWEBSOCKET_DEBUG'])
-
-  # Test Emscripten WebSockets API to send and receive text and binary messages against an echo server.
-  # N.B. running this test requires 'npm install ws' in Emscripten root directory
-  # test in shared memory environment
-  # websocket sending only allowd non shared buffer
-  def test_websocket_send_shared_memory(self):
-    with NodeJsWebSocketEchoServerProcess():
-      self.btest_exit(test_file('websocket/test_websocket_send.c'), args=['-lwebsocket', '-sSHARED_MEMORY', '-sNO_EXIT_RUNTIME', '-sWEBSOCKET_DEBUG'])
+      self.btest_exit(test_file('websocket/test_websocket_send.c'), args=args)
 
   # Test that native POSIX sockets API can be used by proxying calls to an intermediate WebSockets
   # -> POSIX sockets bridge server
