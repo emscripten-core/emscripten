@@ -149,7 +149,7 @@ mergeInto(LibraryManager.library, {
 #endif
     if (_wasm_workers[id]) {
       _wasm_workers[id].terminate();
-      delete _wasm_workers[id];
+      _wasm_workers[id] = undefined;
     }
   },
 
