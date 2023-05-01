@@ -23,6 +23,10 @@ There should be no other changes required. In C/C++ code, the preprocessor check
     best you can do is two separate builds, one with and one
     without threads, and pick between them at runtime.
 
+.. note:: Linking together objects compiled with and without ``-pthread`` may
+    produce linker errors. To avoid errors, make sure that all source files are
+    compiled with ``-pthread``.
+
 Additional flags
 ================
 
@@ -135,8 +139,6 @@ The Emscripten implementation for the pthreads API should follow the POSIX stand
 - The Emscripten implementation does not support `POSIX signals <http://man7.org/linux/man-pages/man7/signal.7.html>`_, which are sometimes used in conjunction with pthreads. This is because it is not possible to send signals to web workers and pre-empt their execution. The only exception to this is pthread_kill() which can be used as normal to forcibly terminate a running thread.
 
 - The Emscripten implementation does also not support multiprocessing via ``fork()`` and ``join()``.
-
-- For web security purposes, there exists a fixed limit (by default 20) of threads that can be spawned when running in Firefox Nightly. `#1052398 <https://bugzilla.mozilla.org/show_bug.cgi?id=1052398>`_. To adjust the limit, navigate to about:config and change the value of the pref "dom.workers.maxPerDomain".
 
 - Some of the features in the pthreads specification are unsupported since the upstream musl library that Emscripten utilizes does not support them, or they are marked optional and a conformant implementation need not support them. Such unsupported features in Emscripten include prioritization of threads, and pthread_rwlock_unlock() is not performed in thread priority order. The functions pthread_mutexattr_set/getprotocol(), pthread_mutexattr_set/getprioceiling() and pthread_attr_set/getscope() are no-ops.
 
