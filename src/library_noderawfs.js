@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS', '$mmapAlloc'],
+  $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS', '$mmapAlloc', '$FS_modeStringToFlags'],
   $NODERAWFS__postset: `
     if (ENVIRONMENT_IS_NODE) {
       var _wrapNodeError = function(func) {
@@ -83,7 +83,7 @@ mergeInto(LibraryManager.library, {
     utime: function(path, atime, mtime) { fs.utimesSync(path, atime/1000, mtime/1000); },
     open: function(path, flags, mode, suggestFD) {
       if (typeof flags == "string") {
-        flags = VFS.modeStringToFlags(flags)
+        flags = FS_modeStringToFlags(flags)
       }
       var pathTruncated = path.split('/').map(function(s) { return s.substr(0, 255); }).join('/');
       var nfd = fs.openSync(pathTruncated, NODEFS.flagsForNode(flags), mode);
