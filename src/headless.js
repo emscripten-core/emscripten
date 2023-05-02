@@ -295,19 +295,6 @@ if (typeof console == "undefined") {
     }
   };
 }
-var MozBlobBuilder = () => {
-  this.data = new Uint8Array(0);
-  this.append = function(buffer) {
-    var data = new Uint8Array(buffer);
-    var combined = new Uint8Array(this.data.length + data.length);
-    combined.set(this.data);
-    combined.set(data, this.data.length);
-    this.data = combined;
-  };
-  this.getBlob = function() {
-    return this.data.buffer; // return the buffer as a "blob". XXX We might need to change this if it is not opaque
-  };
-};
 
 // additional setup
 if (!Module['canvas']) {
