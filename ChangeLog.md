@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.38 (in development)
 -----------------------
+- Remove extra code for falling back to long-deprecated BlobBuilder browser API
+  when Blob constructor is missing.  This was a fix for an issue that has long
+  been fixed. (#19277)
 
 3.1.37 - 04/26/23
 -----------------
