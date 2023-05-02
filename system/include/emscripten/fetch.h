@@ -85,7 +85,7 @@ typedef struct emscripten_fetch_attr_t {
 
   // Specifies the amount of time the request can take before failing due to a
   // timeout.
-  unsigned long timeoutMSecs;
+  uint32_t timeoutMSecs;
 
   // Indicates whether cross-site access control requests should be made using
   // credentials.
