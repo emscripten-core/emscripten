@@ -283,10 +283,6 @@ function cDefine(key) {
   return cDefs[key];
 }
 
-function isFSPrefixed(name) {
-  return name.length > 3 && name[0] === 'F' && name[1] === 'S' && name[2] === '_';
-}
-
 function isInternalSymbol(ident) {
   return ident + '__internal' in LibraryManager.library;
 }
@@ -342,7 +338,7 @@ function exportRuntime() {
     if (EXPORTED_RUNTIME_METHODS_SET.has(name)) {
       let exported = name;
       // the exported name may differ from the internal name
-      if (isFSPrefixed(exported)) {
+      if (exported.startsWith('FS_')) {
         // this is a filesystem value, FS.x exported as FS_x
         exported = 'FS.' + exported.substr(3);
       } else if (legacyRuntimeElements.has(exported)) {
