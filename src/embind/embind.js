@@ -18,7 +18,7 @@
 /*global simpleReadValueFromPointer, floatReadValueFromPointer, integerReadValueFromPointer, enumReadValueFromPointer, replacePublicSymbol, craftInvokerFunction, tupleRegistrations*/
 /*global finalizationRegistry, attachFinalizer, detachFinalizer, releaseClassHandle, runDestructor*/
 /*global ClassHandle, makeClassHandle, structRegistrations, whenDependentTypesAreResolved, BindingError, deletionQueue, delayFunction:true, upcastPointer*/
-/*global exposePublicSymbol, heap32VectorToArray, new_, RegisteredPointer_getPointee, RegisteredPointer_destructor, RegisteredPointer_deleteObject, char_0, char_9*/
+/*global exposePublicSymbol, heap32VectorToArray, newFunc, RegisteredPointer_getPointee, RegisteredPointer_destructor, RegisteredPointer_deleteObject, char_0, char_9*/
 /*global getInheritedInstanceCount, getLiveInheritedInstances, setDelayFunction, InternalError, runDestructors*/
 /*global requireRegisteredType, unregisterInheritedInstance, registerInheritedInstance, PureVirtualError, throwUnboundTypeError*/
 /*global assert, validateThis, downcastPointer, registeredPointers, RegisteredClass, getInheritedInstance, ClassHandle_isAliasOf, ClassHandle_clone, ClassHandle_isDeleted, ClassHandle_deleteLater*/
@@ -48,19 +48,6 @@ var LibraryEmbind = {
     Module['getLiveInheritedInstances'] = getLiveInheritedInstances;
     Module['flushPendingDeletes'] = flushPendingDeletes;
     Module['setDelayFunction'] = setDelayFunction;
-#if IN_TEST_HARNESS
-#if ASSERTIONS
-    Module['ASSERTIONS'] = true;
-#endif
-#if DYNAMIC_EXECUTION
-    // Without dynamic execution, dynamically created functions will have no
-    // names. This lets the test suite know that.
-    Module['DYNAMIC_EXECUTION'] = true;
-#endif
-#if EMBIND_STD_STRING_IS_UTF8
-    Module['EMBIND_STD_STRING_IS_UTF8'] = true;
-#endif
-#endif
   },
 
   $throwInternalError__deps: ['$InternalError'],
@@ -194,25 +181,16 @@ var LibraryEmbind = {
   },
 
 
-  // from https://github.com/imvu/imvujs/blob/master/src/function.js
   $createNamedFunction__deps: ['$makeLegalFunctionName'],
   $createNamedFunction: function(name, body) {
     name = makeLegalFunctionName(name);
-#if DYNAMIC_EXECUTION == 0
-    return function() {
-      "use strict";
-      return body.apply(this, arguments);
-    };
-#else
-    /*jshint evil:true*/
-    return new Function(
-        "body",
-        "return function " + name + "() {\n" +
-        "    \"use strict\";" +
-        "    return body.apply(this, arguments);\n" +
-        "};\n"
-    )(body);
-#endif
+    // Use an abject with a computed property name to create a new function with
+    // a name specified at runtime, but without using `new Function` or `eval`.
+    return {
+      [name]: function() {
+        return body.apply(this, arguments);
+      }
+    }[name];
   },
 
   $embindRepr: function(v) {
@@ -421,7 +399,6 @@ var LibraryEmbind = {
     return impl;
   },
 
-  _embind_register_void__sig: 'vpp',
   _embind_register_void__deps: ['$readLatin1String', '$registerType'],
   _embind_register_void: function(rawType, name) {
     name = readLatin1String(name);
@@ -439,7 +416,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_bool__sig: 'vpppii',
   _embind_register_bool__deps: [
     '$getShiftFromSize', '$readLatin1String', '$registerType'],
   _embind_register_bool: function(rawType, name, size, trueValue, falseValue) {
@@ -546,7 +522,6 @@ var LibraryEmbind = {
 
   // When converting a number from JS to C++ side, the valid range of the number is
   // [minRange, maxRange], inclusive.
-  _embind_register_integer__sig: 'vpppii',
   _embind_register_integer__deps: [
     '$embindRepr', '$getShiftFromSize', '$integerReadValueFromPointer',
     '$readLatin1String', '$registerType'],
@@ -603,7 +578,6 @@ var LibraryEmbind = {
   },
 
 #if WASM_BIGINT
-  _embind_register_bigint__sig: 'vpppjj',
   _embind_register_bigint__deps: [
     '$embindRepr', '$readLatin1String', '$registerType', '$integerReadValueFromPointer'],
   _embind_register_bigint: function(primitiveType, name, size, minRange, maxRange) {
@@ -642,7 +616,6 @@ var LibraryEmbind = {
   _embind_register_bigint: function(primitiveType, name, size, minRange, maxRange) {},
 #endif
 
-  _embind_register_float__sig: 'vppp',
   _embind_register_float__deps: [
     '$embindRepr', '$floatReadValueFromPointer', '$getShiftFromSize',
     '$readLatin1String', '$registerType'],
@@ -675,10 +648,10 @@ var LibraryEmbind = {
     return this['fromWireType']({{{ makeGetValue('pointer', '0', 'i32') }}});
   },
 
-  _embind_register_std_string__sig: 'vpp',
   _embind_register_std_string__deps: [
     '$readLatin1String', '$registerType',
-    '$simpleReadValueFromPointer', '$throwBindingError'],
+    '$simpleReadValueFromPointer', '$throwBindingError',
+    '$stringToUTF8', '$lengthBytesUTF8'],
   _embind_register_std_string: function(rawType, name) {
     name = readLatin1String(name);
     var stdStringIsUTF8
@@ -779,7 +752,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_std_wstring__sig: 'vppp',
   _embind_register_std_wstring__deps: [
     '$readLatin1String', '$registerType', '$simpleReadValueFromPointer',
     '$UTF16ToString', '$stringToUTF16', '$lengthBytesUTF16',
@@ -856,7 +828,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_emval__sig: 'vpp',
   _embind_register_emval__deps: [
     '_emval_decref', '$Emval',
     '$readLatin1String', '$registerType', '$simpleReadValueFromPointer'],
@@ -881,7 +852,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_memory_view__sig: 'vpip',
   _embind_register_memory_view__deps: ['$readLatin1String', '$registerType'],
   _embind_register_memory_view: function(rawType, dataTypeIndex, name) {
     var typeMapping = [
@@ -928,20 +898,12 @@ var LibraryEmbind = {
     }
   },
 
-  // Function implementation of operator new, per
-  // http://www.ecma-international.org/publications/files/ECMA-ST/Ecma-262.pdf
-  // 13.2.2
-  // ES3
-  $new___deps: ['$createNamedFunction'],
-  $new_: function(constructor, argumentList) {
+#if DYNAMIC_EXECUTION
+  $newFunc__deps: ['$createNamedFunction'],
+  $newFunc: function(constructor, argumentList) {
     if (!(constructor instanceof Function)) {
       throw new TypeError('new_ called with constructor type ' + typeof(constructor) + " which is not a function");
     }
-#if DYNAMIC_EXECUTION == 0
-    if (constructor === Function) {
-      throw new Error('new_ cannot create a new Function with DYNAMIC_EXECUTION == 0.');
-    }
-#endif
     /*
      * Previously, the following line was just:
      *   function dummy() {};
@@ -959,17 +921,21 @@ var LibraryEmbind = {
     var r = constructor.apply(obj, argumentList);
     return (r instanceof Object) ? r : obj;
   },
+#endif
 
   // The path to interop from JS code to C++ code:
   // (hand-written JS code) -> (autogenerated JS invoker) -> (template-generated C++ invoker) -> (target C++ function)
   // craftInvokerFunction generates the JS invoker function for each function exposed to JS through embind.
   $craftInvokerFunction__deps: [
-    '$makeLegalFunctionName', '$new_', '$runDestructors', '$throwBindingError',
-  #if ASYNCIFY
+    '$makeLegalFunctionName', '$runDestructors', '$throwBindingError',
+#if DYNAMIC_EXECUTION
+    '$newFunc',
+#endif
+#if ASYNCIFY
     '$Asyncify',
-  #endif
+#endif
   ],
-  $craftInvokerFunction: function(humanName, argTypes, classType, cppInvokerFunc, cppTargetFunc) {
+  $craftInvokerFunction: function(humanName, argTypes, classType, cppInvokerFunc, cppTargetFunc, /** boolean= */ isAsync) {
     // humanName: a human-readable string name for the function to be generated.
     // argTypes: An array that contains the embind type objects for all types in the function signature.
     //    argTypes[0] is the type object for the function return value.
@@ -978,11 +944,16 @@ var LibraryEmbind = {
     // classType: The embind type object for the class to be bound, or null if this is not a method of a class.
     // cppInvokerFunc: JS Function object to the C++-side function that interops into C++ code.
     // cppTargetFunc: Function pointer (an integer to FUNCTION_TABLE) to the target C++ function the cppInvokerFunc will end up calling.
+    // isAsync: Optional. If true, returns an async function. Async bindings are only supported with JSPI.
     var argCount = argTypes.length;
 
     if (argCount < 2) {
       throwBindingError("argTypes array size mismatch! Must at least get return value and 'this' types!");
     }
+
+#if ASSERTIONS && ASYNCIFY != 2
+    assert(!isAsync, 'Async bindings are only supported with JSPI.');
+#endif
 
     var isClassMethodFunc = (argTypes[1] !== null && classType !== null);
 
@@ -1005,6 +976,12 @@ var LibraryEmbind = {
     }
 
     var returns = (argTypes[0].name !== "void");
+
+#if ASYNCIFY
+    if (isAsync) {
+      cppInvokerFunc = Asyncify.makeAsyncFunction(cppInvokerFunc);
+    }
+#endif
 
 #if DYNAMIC_EXECUTION == 0
     var expectedArgCount = argCount - 2;
@@ -1056,9 +1033,13 @@ var LibraryEmbind = {
         }
       }
 
-#if ASYNCIFY
+#if ASYNCIFY == 1
       if (Asyncify.currData) {
         return Asyncify.whenDone().then(onDone);
+      }
+#elif ASYNCIFY == 2
+      if (isAsync) {
+        return rv.then(onDone);
       }
 #endif
 
@@ -1110,11 +1091,13 @@ var LibraryEmbind = {
     }
 
     invokerFnBody +=
-        (returns?"var rv = ":"") + "invoker(fn"+(argsListWired.length>0?", ":"")+argsListWired+");\n";
+        (returns || isAsync ? "var rv = ":"") + "invoker(fn"+(argsListWired.length>0?", ":"")+argsListWired+");\n";
 
-#if ASYNCIFY
+#if ASYNCIFY == 1
     args1.push("Asyncify");
     args2.push(Asyncify);
+#endif
+#if ASYNCIFY
     invokerFnBody += "function onDone(" + (returns ? "rv" : "") + ") {\n";
 #endif
 
@@ -1143,17 +1126,19 @@ var LibraryEmbind = {
 #endif
     }
 
-#if ASYNCIFY
+#if ASYNCIFY == 1
     invokerFnBody += "}\n";
     invokerFnBody += "return Asyncify.currData ? Asyncify.whenDone().then(onDone) : onDone(" + (returns ? "rv" : "") +");\n"
+#elif ASYNCIFY == 2
+    invokerFnBody += "}\n";
+    invokerFnBody += "return " + (isAsync ? "rv.then(onDone)" : "onDone(rv)") + ";";
 #endif
 
     invokerFnBody += "}\n";
 
     args1.push(invokerFnBody);
 
-    var invokerFunction = new_(Function, args1).apply(null, args2);
-    return invokerFunction;
+    return newFunc(Function, args1).apply(null, args2);
 #endif
   },
 
@@ -1189,12 +1174,11 @@ var LibraryEmbind = {
     return fp;
   },
 
-  _embind_register_function__sig: 'vpipppp',
   _embind_register_function__deps: [
     '$craftInvokerFunction', '$exposePublicSymbol', '$heap32VectorToArray',
     '$readLatin1String', '$replacePublicSymbol', '$embind__requireFunction',
     '$throwUnboundTypeError', '$whenDependentTypesAreResolved'],
-  _embind_register_function: function(name, argCount, rawArgTypesAddr, signature, rawInvoker, fn) {
+  _embind_register_function: function(name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync) {
     var argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = readLatin1String(name);
 
@@ -1206,14 +1190,13 @@ var LibraryEmbind = {
 
     whenDependentTypesAreResolved([], argTypes, function(argTypes) {
       var invokerArgsArray = [argTypes[0] /* return value */, null /* no class 'this'*/].concat(argTypes.slice(1) /* actual params */);
-      replacePublicSymbol(name, craftInvokerFunction(name, invokerArgsArray, null /* no class 'this'*/, rawInvoker, fn), argCount - 1);
+      replacePublicSymbol(name, craftInvokerFunction(name, invokerArgsArray, null /* no class 'this'*/, rawInvoker, fn, isAsync), argCount - 1);
       return [];
     });
   },
 
   $tupleRegistrations: {},
 
-  _embind_register_value_array__sig: 'vpppppp',
   _embind_register_value_array__deps: [
     '$tupleRegistrations', '$readLatin1String', '$embind__requireFunction'],
   _embind_register_value_array: function(
@@ -1232,7 +1215,6 @@ var LibraryEmbind = {
     };
   },
 
-  _embind_register_value_array_element__sig: 'vppppppppp',
   _embind_register_value_array_element__deps: [
     '$tupleRegistrations', '$embind__requireFunction'],
   _embind_register_value_array_element: function(
@@ -1256,7 +1238,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_finalize_value_array__sig: 'vp',
   _embind_finalize_value_array__deps: [
     '$tupleRegistrations', '$runDestructors',
     '$simpleReadValueFromPointer', '$whenDependentTypesAreResolved'],
@@ -1321,7 +1302,6 @@ var LibraryEmbind = {
 
   $structRegistrations: {},
 
-  _embind_register_value_object__sig: 'viiiiii',
   _embind_register_value_object__deps: [
     '$structRegistrations', '$readLatin1String', '$embind__requireFunction'],
   _embind_register_value_object: function(
@@ -1340,7 +1320,6 @@ var LibraryEmbind = {
     };
   },
 
-  _embind_register_value_object_field__sig: 'viiiiiiiiii',
   _embind_register_value_object_field__deps: [
     '$structRegistrations', '$readLatin1String', '$embind__requireFunction'],
   _embind_register_value_object_field: function(
@@ -1366,7 +1345,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_finalize_value_object__sig: 'ii',
   _embind_finalize_value_object__deps: [
     '$structRegistrations', '$runDestructors',
     '$simpleReadValueFromPointer', '$whenDependentTypesAreResolved'],
@@ -1991,7 +1969,6 @@ var LibraryEmbind = {
     };
   },
 
-  _embind_register_class__sig: 'vppppppppppppp',
   _embind_register_class__deps: [
     '$BindingError', '$ClassHandle', '$createNamedFunction',
     '$registeredPointers', '$exposePublicSymbol',
@@ -2102,7 +2079,6 @@ var LibraryEmbind = {
     );
   },
 
-  _embind_register_class_constructor__sig: 'vpipppp',
   _embind_register_class_constructor__deps: [
     '$heap32VectorToArray', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$whenDependentTypesAreResolved', '$registeredTypes',
@@ -2190,7 +2166,6 @@ var LibraryEmbind = {
                          classType.registeredClass);
   },
 
-  _embind_register_class_function__sig: 'vppippppi',
   _embind_register_class_function__deps: [
     '$craftInvokerFunction', '$heap32VectorToArray', '$readLatin1String',
     '$embind__requireFunction', '$throwUnboundTypeError',
@@ -2202,7 +2177,8 @@ var LibraryEmbind = {
                                             invokerSignature,
                                             rawInvoker,
                                             context,
-                                            isPureVirtual) {
+                                            isPureVirtual,
+                                            isAsync) {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
     rawInvoker = embind__requireFunction(invokerSignature, rawInvoker);
@@ -2239,7 +2215,7 @@ var LibraryEmbind = {
       }
 
       whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
-        var memberFunction = craftInvokerFunction(humanName, argTypes, classType, rawInvoker, context);
+        var memberFunction = craftInvokerFunction(humanName, argTypes, classType, rawInvoker, context, isAsync);
 
         // Replace the initial unbound-handler-stub function with the appropriate member function, now that all types
         // are resolved. If multiple overloads are registered for this function, the function goes into an overload table.
@@ -2257,7 +2233,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_class_property__sig: 'vpppppppppp',
   _embind_register_class_property__deps: [
     '$readLatin1String', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$throwUnboundTypeError',
@@ -2329,7 +2304,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_class_class_function__sig: 'vppipppp',
   _embind_register_class_class_function__deps: [
     '$craftInvokerFunction', '$ensureOverloadTable', '$heap32VectorToArray',
     '$readLatin1String', '$embind__requireFunction', '$throwUnboundTypeError',
@@ -2340,7 +2314,8 @@ var LibraryEmbind = {
                                                   rawArgTypesAddr,
                                                   invokerSignature,
                                                   rawInvoker,
-                                                  fn) {
+                                                  fn,
+                                                  isAsync) {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
     rawInvoker = embind__requireFunction(invokerSignature, rawInvoker);
@@ -2373,7 +2348,7 @@ var LibraryEmbind = {
         // function. If multiple overloads are registered, the function handlers
         // go into an overload table.
         var invokerArgsArray = [argTypes[0] /* return value */, null /* no class 'this'*/].concat(argTypes.slice(1) /* actual params */);
-        var func = craftInvokerFunction(humanName, invokerArgsArray, null /* no class 'this'*/, rawInvoker, fn);
+        var func = craftInvokerFunction(humanName, invokerArgsArray, null /* no class 'this'*/, rawInvoker, fn, isAsync);
         if (undefined === proto[methodName].overloadTable) {
           func.argCount = argCount-1;
           proto[methodName] = func;
@@ -2386,7 +2361,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_class_class_property__sig: 'vpppppppp',
   _embind_register_class_class_property__deps: [
     '$readLatin1String', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$throwUnboundTypeError',
@@ -2450,7 +2424,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_create_inheriting_constructor__sig: 'pppp',
   _embind_create_inheriting_constructor__deps: [
     '$createNamedFunction', '$Emval',
     '$PureVirtualError', '$readLatin1String',
@@ -2534,7 +2507,6 @@ var LibraryEmbind = {
     return name;
   },
 
-  _embind_register_smart_ptr__sig: 'vpppipppppppp',
   _embind_register_smart_ptr__deps: ['$RegisteredPointer', '$embind__requireFunction', '$whenDependentTypesAreResolved'],
   _embind_register_smart_ptr: function(rawType,
                                        rawPointeeType,
@@ -2573,7 +2545,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_enum__sig: 'vpppi',
   _embind_register_enum__deps: ['$exposePublicSymbol', '$getShiftFromSize', '$enumReadValueFromPointer',
     '$readLatin1String', '$registerType'],
   _embind_register_enum: function(rawType, name, size, isSigned) {
@@ -2599,7 +2570,6 @@ var LibraryEmbind = {
     exposePublicSymbol(name, ctor);
   },
 
-  _embind_register_enum_value__sig: 'vppi',
   _embind_register_enum_value__deps: ['$createNamedFunction', '$readLatin1String', '$requireRegisteredType'],
   _embind_register_enum_value: function(rawEnumType, name, enumValue) {
     var enumType = requireRegisteredType(rawEnumType, 'enum');
@@ -2615,7 +2585,6 @@ var LibraryEmbind = {
     Enum[name] = Value;
   },
 
-  _embind_register_constant__sig: 'vppd',
   _embind_register_constant__deps: ['$readLatin1String', '$whenDependentTypesAreResolved'],
   _embind_register_constant: function(name, type, value) {
     name = readLatin1String(name);

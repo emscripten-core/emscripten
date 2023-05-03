@@ -44,7 +44,7 @@ def add_files_pre_js(pre_js_list, files_pre_js):
   utils.write_file(pre, '''
     // All the pre-js content up to here must remain later on, we need to run
     // it.
-    if (Module['ENVIRONMENT_IS_PTHREAD']) Module['preRun'] = [];
+    if (Module['ENVIRONMENT_IS_PTHREAD'] || Module['$ww']) Module['preRun'] = [];
     var necessaryPreJSTasks = Module['preRun'].slice();
   ''')
   utils.write_file(post, '''
@@ -133,11 +133,17 @@ def make_invoke(sig):
   # wasm won't implicitly convert undefined to 0 in this case.
   exceptional_ret = '\n    return 0n;' if legal_sig[0] == 'j' else ''
   body = '%s%s;' % (ret, make_dynCall(sig, args))
-  # Exceptions thrown from C++ exception will be integer numbers.
-  # longjmp will throw the number Infinity.
-  # Create a try-catch guard that rethrows the exception if anything else
-  # than a Number was thrown. To do that quickly and in a code size conserving
-  # manner, use the compact test "e !== e+0" to check if e was not a Number.
+  # Create a try-catch guard that rethrows the Emscripten EH exception.
+  if settings.EXCEPTION_STACK_TRACES:
+    # Exceptions thrown from C++ and longjmps will be an instance of
+    # EmscriptenEH.
+    maybe_rethrow = 'if (!(e instanceof EmscriptenEH)) throw e;'
+  else:
+    # Exceptions thrown from C++ will be a pointer (number) and longjmp will
+    # throw the number Infinity. Use the compact and fast "e !== e+0" test to
+    # check if e was not a Number.
+    maybe_rethrow = 'if (e !== e+0) throw e;'
+
   ret = '''\
 function invoke_%s(%s) {
   var sp = stackSave();
@@ -145,10 +151,10 @@ function invoke_%s(%s) {
     %s
   } catch(e) {
     stackRestore(sp);
-    if (e !== e+0) throw e;
+    %s
     _setThrew(1, 0);%s
   }
-}''' % (sig, ','.join(args), body, exceptional_ret)
+}''' % (sig, ','.join(args), body, maybe_rethrow, exceptional_ret)
 
   return ret
 

@@ -235,7 +235,7 @@ The parameters you pass to and receive from functions need to be primitive value
 
   - Integer and floating point numbers can be passed as-is.
   - Pointers can be passed as-is also, as they are simply integers in the generated code.
-  - JavaScript string ``someString`` can be converted to a ``char *`` using ``ptr = allocateUTF8(someString)``.
+  - JavaScript string ``someString`` can be converted to a ``char *`` using ``ptr = stringToNewUTF8(someString)``.
 
     .. note:: The conversion to a pointer allocates memory, which needs to be
       freed up via a call to ``free(ptr)`` afterwards (``_free`` in JavaScript side) -
@@ -596,9 +596,6 @@ See the `library_*.js`_ files for other examples.
      This is useful when all the implemented methods use a JavaScript
      singleton containing helper methods. See ``library_webgl.js`` for
      an example.
-   - If a JavaScript library depends on a compiled C library (like most
-     of *libc*), you must edit `src/deps_info.json`_. Search for
-     "deps_info" in `tools/system_libs.py`_.
    - The keys passed into `mergeInto` generate functions that are prefixed
      by ``_``. In other words ``my_func: function() {},`` becomes
      ``function _my_func() {}``, as all C methods in emscripten have a ``_`` prefix. Keys starting with ``$`` have the ``$``
@@ -798,9 +795,18 @@ for defining the binding:
    of one tool over the other will usually be based on which is the most
    natural fit for the project and its build system.
 
+.. _interacting-with-code-emnapi:
+
+Binding C/C++ and JavaScript - Node-API
+===============================================================
+
+`Emnapi`_ is an unofficial `Node-API`_ implementation which can be used
+on Emscripten. If you would like to port existing Node-API addon to WebAssembly
+or compile the same binding code to both Node.js native addon and WebAssembly,
+you can give it a try. See `Emnapi documentation`_ for more details.
+
 .. _library.js: https://github.com/emscripten-core/emscripten/blob/main/src/library.js
 .. _test_js_libraries: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L5043
-.. _src/deps_info.json: https://github.com/emscripten-core/emscripten/blob/main/src/deps_info.json
 .. _tools/system_libs.py: https://github.com/emscripten-core/emscripten/blob/main/tools/system_libs.py
 .. _library_\*.js: https://github.com/emscripten-core/emscripten/tree/main/src
 .. _test_add_function in test/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L6237
@@ -808,3 +814,6 @@ for defining the binding:
 .. _test/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L4597
 .. _Box2D: https://github.com/kripken/box2d.js/#box2djs
 .. _Bullet: https://github.com/kripken/ammo.js/#ammojs
+.. _Emnapi: https://github.com/toyobayashi/emnapi
+.. _Node-API: https://nodejs.org/dist/latest/docs/api/n-api.html
+.. _Emnapi documentation: https://emnapi-docs.vercel.app/guide/getting-started.html

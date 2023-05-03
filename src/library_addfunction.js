@@ -175,27 +175,33 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  $getFunctionAddress__deps: ['$updateTableMap', '$functionsInTableMap'],
+  $getFunctionAddress: function(func) {
+    // First, create the map if this is the first use.
+    if (!functionsInTableMap) {
+      functionsInTableMap = new WeakMap();
+      updateTableMap(0, wasmTable.length);
+    }
+    return functionsInTableMap.get(func) || 0;
+  },
+
   /**
    * Add a function to the table.
    * 'sig' parameter is required if the function being added is a JS function.
    */
   $addFunction__docs: '/** @param {string=} sig */',
-  $addFunction__deps: ['$convertJsFunctionToWasm', '$updateTableMap',
+  $addFunction__deps: ['$convertJsFunctionToWasm', '$getFunctionAddress',
                        '$functionsInTableMap', '$getEmptyTableSlot',
                        '$getWasmTableEntry', '$setWasmTableEntry'],
   $addFunction: function(func, sig) {
   #if ASSERTIONS
     assert(typeof func != 'undefined');
   #endif // ASSERTIONS
-
     // Check if the function is already in the table, to ensure each function
-    // gets a unique index. First, create the map if this is the first use.
-    if (!functionsInTableMap) {
-      functionsInTableMap = new WeakMap();
-      updateTableMap(0, wasmTable.length);
-    }
-    if (functionsInTableMap.has(func)) {
-      return functionsInTableMap.get(func);
+    // gets a unique index.
+    var rtn = getFunctionAddress(func);
+    if (rtn) {
+      return rtn;
     }
 
     // It's not in the table, add it now.

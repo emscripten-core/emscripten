@@ -186,7 +186,7 @@
         "EMSGSIZE": 35,
         "EMULTIHOP": 36,
         "EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD": 2,
-        "EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD": 1,
+        "EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD": 1,
         "EM_FUNC_SIG_I": 536870912,
         "EM_FUNC_SIG_II": 570425344,
         "EM_FUNC_SIG_III": 603979776,
@@ -214,6 +214,10 @@
         "EM_LOG_JS_STACK": 16,
         "EM_LOG_NO_PATHS": 64,
         "EM_LOG_WARN": 2,
+        "EM_PROMISE_FULFILL": 0,
+        "EM_PROMISE_MATCH": 1,
+        "EM_PROMISE_MATCH_RELEASE": 2,
+        "EM_PROMISE_REJECT": 3,
         "EM_PROXIED_RESIZE_OFFSCREENCANVAS": 654311424,
         "EM_QUEUED_JS_CALL_MAX_ARGS": 20,
         "ENAMETOOLONG": 37,
@@ -390,10 +394,49 @@
         "__WASI_CLOCKID_PROCESS_CPUTIME_ID": 2,
         "__WASI_CLOCKID_REALTIME": 0,
         "__WASI_CLOCKID_THREAD_CPUTIME_ID": 3,
+        "__WASI_FDFLAGS_APPEND": 1,
+        "__WASI_FDFLAGS_DSYNC": 2,
+        "__WASI_FDFLAGS_NONBLOCK": 4,
+        "__WASI_FDFLAGS_RSYNC": 8,
+        "__WASI_FDFLAGS_SYNC": 16,
         "__WASI_FILETYPE_CHARACTER_DEVICE": 2,
         "__WASI_FILETYPE_DIRECTORY": 3,
         "__WASI_FILETYPE_REGULAR_FILE": 4,
-        "__WASI_FILETYPE_SYMBOLIC_LINK": 7
+        "__WASI_FILETYPE_SYMBOLIC_LINK": 7,
+        "__WASI_OFLAGS_CREAT": 1,
+        "__WASI_OFLAGS_DIRECTORY": 2,
+        "__WASI_OFLAGS_EXCL": 4,
+        "__WASI_OFLAGS_TRUNC": 8,
+        "__WASI_PREOPENTYPE_DIR": 0,
+        "__WASI_RIGHTS_FD_ADVISE": 128,
+        "__WASI_RIGHTS_FD_ALLOCATE": 256,
+        "__WASI_RIGHTS_FD_DATASYNC": 1,
+        "__WASI_RIGHTS_FD_FDSTAT_SET_FLAGS": 8,
+        "__WASI_RIGHTS_FD_FILESTAT_GET": 2097152,
+        "__WASI_RIGHTS_FD_FILESTAT_SET_SIZE": 4194304,
+        "__WASI_RIGHTS_FD_FILESTAT_SET_TIMES": 8388608,
+        "__WASI_RIGHTS_FD_READ": 2,
+        "__WASI_RIGHTS_FD_READDIR": 16384,
+        "__WASI_RIGHTS_FD_SEEK": 4,
+        "__WASI_RIGHTS_FD_SYNC": 16,
+        "__WASI_RIGHTS_FD_TELL": 32,
+        "__WASI_RIGHTS_FD_WRITE": 64,
+        "__WASI_RIGHTS_PATH_CREATE_DIRECTORY": 512,
+        "__WASI_RIGHTS_PATH_CREATE_FILE": 1024,
+        "__WASI_RIGHTS_PATH_FILESTAT_GET": 262144,
+        "__WASI_RIGHTS_PATH_FILESTAT_SET_SIZE": 524288,
+        "__WASI_RIGHTS_PATH_FILESTAT_SET_TIMES": 1048576,
+        "__WASI_RIGHTS_PATH_LINK_SOURCE": 2048,
+        "__WASI_RIGHTS_PATH_LINK_TARGET": 4096,
+        "__WASI_RIGHTS_PATH_OPEN": 8192,
+        "__WASI_RIGHTS_PATH_READLINK": 32768,
+        "__WASI_RIGHTS_PATH_REMOVE_DIRECTORY": 33554432,
+        "__WASI_RIGHTS_PATH_RENAME_SOURCE": 65536,
+        "__WASI_RIGHTS_PATH_RENAME_TARGET": 131072,
+        "__WASI_RIGHTS_PATH_SYMLINK": 16777216,
+        "__WASI_RIGHTS_PATH_UNLINK_FILE": 67108864,
+        "__WASI_RIGHTS_POLL_FD_READWRITE": 134217728,
+        "__WASI_RIGHTS_SOCK_SHUTDOWN": 268435456
     },
     "structs": {
         "EmscriptenBatteryEvent": {
@@ -1232,6 +1275,26 @@
             "fs_rights_base": 8,
             "fs_rights_inheriting": 16
         },
+        "__wasi_filestat_t": {
+            "__size__": 64,
+            "atim": 40,
+            "ctim": 56,
+            "dev": 0,
+            "filetype": 16,
+            "ino": 8,
+            "mtim": 48,
+            "nlink": 24,
+            "size": 32
+        },
+        "__wasi_prestat_dir_t": {
+            "__size__": 4,
+            "pr_name_len": 0
+        },
+        "__wasi_prestat_t": {
+            "__size__": 8,
+            "pr_type": 0,
+            "u": 4
+        },
         "addrinfo": {
             "__size__": 32,
             "ai_addr": 20,
@@ -1258,14 +1321,19 @@
             "d_type": 18
         },
         "dso": {
-            "__size__": 32,
-            "flags": 8,
-            "mem_addr": 16,
-            "mem_allocated": 12,
-            "mem_size": 20,
-            "name": 32,
-            "table_addr": 24,
-            "table_size": 28
+            "__size__": 28,
+            "flags": 4,
+            "mem_addr": 12,
+            "mem_allocated": 8,
+            "mem_size": 16,
+            "name": 28,
+            "table_addr": 20,
+            "table_size": 24
+        },
+        "em_settled_result_t": {
+            "__size__": 8,
+            "result": 0,
+            "value": 4
         },
         "emscripten_fetch_attr_t": {
             "__size__": 92,
@@ -1347,10 +1415,11 @@
             "p_proto": 8
         },
         "pthread": {
-            "__size__": 120,
+            "__size__": 132,
             "profilerBlock": 112,
             "stack": 52,
-            "stack_size": 56
+            "stack_size": 56,
+            "waiting_async": 128
         },
         "pthread_attr_t": {
             "__size__": 44,

@@ -98,9 +98,7 @@ function EventListener() {
     event.preventDefault = function(){};
 
     if (event.type in this.listeners) {
-      this.listeners[event.type].forEach(function(listener) {
-        listener(event);
-      });
+      this.listeners[event.type].forEach((listener) => listener(event));
     }
   };
 }
@@ -382,12 +380,12 @@ Module['postMainLoop'] = function() {
 
 // Wait to start running until we receive some info from the client
 
-#if USE_PTHREADS
+#if PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
   addRunDependency('gl-prefetch');
   addRunDependency('worker-init');
-#if USE_PTHREADS
+#if PTHREADS
 }
 #endif
 
@@ -406,9 +404,7 @@ function messageResender() {
   if (calledMain) {
     assert(messageBuffer && messageBuffer.length > 0);
     messageResenderTimeout = null;
-    messageBuffer.forEach(function(message) {
-      onmessage(message);
-    });
+    messageBuffer.forEach((message) => onmessage(message));
     messageBuffer = null;
   } else {
     messageResenderTimeout = setTimeout(messageResender, 100);
@@ -484,7 +480,7 @@ function onMessageFromMainEmscriptenThread(message) {
       screen.height = Module.canvas.height_ = message.data.height;
       Module.canvas.boundingClientRect = message.data.boundingClientRect;
       document.URL = message.data.URL;
-#if USE_PTHREADS
+#if PTHREADS
       currentScriptUrl = message.data.currentScriptUrl;
 #endif
       window.fireEvent({ type: 'load' });
@@ -507,11 +503,11 @@ function onMessageFromMainEmscriptenThread(message) {
   }
 };
 
-#if USE_PTHREADS
+#if PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
   onmessage = onMessageFromMainEmscriptenThread;
-#if USE_PTHREADS
+#if PTHREADS
 }
 #endif
 

@@ -37,6 +37,7 @@ global.LibraryManager = {
     // Core system libraries (always linked against)
     let libraries = [
       'library.js',
+      'library_sigs.js',
       'library_int53.js',
       'library_ccall.js',
       'library_addfunction.js',
@@ -52,6 +53,7 @@ global.LibraryManager = {
       'library_dylink.js',
       'library_makeDynCall.js',
       'library_eventloop.js',
+      'library_promise.js',
     ];
 
     if (LINK_AS_CXX) {
@@ -78,6 +80,7 @@ global.LibraryManager = {
     if (FILESYSTEM) {
       // Core filesystem libraries (always linked against, unless -sFILESYSTEM=0 is specified)
       libraries = libraries.concat([
+        'library_fs_shared.js',
         'library_fs.js',
         'library_memfs.js',
         'library_tty.js',
@@ -95,12 +98,15 @@ global.LibraryManager = {
         libraries.push('library_nodepath.js');
       }
     } else if (WASMFS) {
-      libraries.push('library_wasmfs.js');
-      libraries.push('library_wasmfs_js_file.js');
-      libraries.push('library_wasmfs_jsimpl.js');
-      libraries.push('library_wasmfs_fetch.js');
-      libraries.push('library_wasmfs_node.js');
-      libraries.push('library_wasmfs_opfs.js');
+      libraries = libraries.concat([
+        'library_fs_shared.js',
+        'library_wasmfs.js',
+        'library_wasmfs_js_file.js',
+        'library_wasmfs_jsimpl.js',
+        'library_wasmfs_fetch.js',
+        'library_wasmfs_node.js',
+        'library_wasmfs_opfs.js',
+      ]);
     }
 
     // Additional JS libraries (without AUTO_JS_LIBRARIES, link to these explicitly via -lxxx.js)
@@ -109,16 +115,17 @@ global.LibraryManager = {
         'library_webgl.js',
         'library_html5_webgl.js',
         'library_openal.js',
-        'library_sdl.js',
         'library_glut.js',
         'library_xlib.js',
         'library_egl.js',
-        'library_glfw.js',
         'library_uuid.js',
         'library_glew.js',
         'library_idbstore.js',
         'library_async.js',
       ]);
+      if (USE_SDL != 2) {
+        libraries.push('library_sdl.js');
+      }
     } else {
       if (ASYNCIFY) {
         libraries.push('library_async.js');
@@ -129,6 +136,10 @@ global.LibraryManager = {
       if (USE_SDL == 2) {
         libraries.push('library_egl.js', 'library_webgl.js', 'library_html5_webgl.js');
       }
+    }
+
+    if (USE_GLFW) {
+      libraries.push('library_glfw.js');
     }
 
     if (LZ4) {
@@ -209,6 +220,7 @@ global.LibraryManager = {
           },
         });
       }
+      currentFile = filename;
       try {
         processed = processMacros(preprocess(filename));
         vm.runInThisContext(processed, { filename: filename.replace(/\.\w+$/, '.preprocessed$&') });
@@ -226,18 +238,9 @@ global.LibraryManager = {
         }
         throw e;
       } finally {
+        currentFile = null;
         if (origLibrary) {
           this.library = origLibrary;
-        }
-      }
-    }
-
-    for (const ident of Object.keys(this.library)) {
-      if (isJsLibraryConfigIdentifier(ident)) {
-        const index = ident.lastIndexOf('__');
-        const basename = ident.slice(0, index);
-        if (!(basename in this.library)) {
-          error(`Missing library element '${basename}' for library config '${ident}'`);
         }
       }
     }
@@ -245,8 +248,12 @@ global.LibraryManager = {
 };
 
 if (!BOOTSTRAPPING_STRUCT_INFO) {
+  let structInfoFile = 'generated_struct_info32.json';
+  if (MEMORY64) {
+    structInfoFile = 'generated_struct_info64.json'
+  }
   // Load struct and define information.
-  const temp = JSON.parse(read(STRUCT_INFO));
+  const temp = JSON.parse(read(structInfoFile));
   C_STRUCTS = temp.structs;
   C_DEFINES = temp.defines;
 } else {
@@ -254,14 +261,30 @@ if (!BOOTSTRAPPING_STRUCT_INFO) {
   C_DEFINES = {};
 }
 
-// Safe way to access a C define. We check that we don't add library functions with missing defines.
-function cDefine(key) {
-  if (key in C_DEFINES) return C_DEFINES[key];
-  throw new Error(`Missing C define ${key}! If you just added it to struct_info.json, you need to ./emcc --clear-cache`);
-}
+// Use proxy objects for C_DEFINES and C_STRUCTS so that we can give useful
+// error messages.
+C_STRUCTS = new Proxy(C_STRUCTS, {
+  get(target, prop, receiver) {
+    if (!(prop in target)) {
+      throw new Error(`Missing C struct ${prop}! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py`);
+    }
+    return target[prop]
+  }
+});
 
-function isFSPrefixed(name) {
-  return name.length > 3 && name[0] === 'F' && name[1] === 'S' && name[2] === '_';
+cDefs = C_DEFINES = new Proxy(C_DEFINES, {
+  get(target, prop, receiver) {
+    if (!(prop in target)) {
+      throw new Error(`Missing C define ${prop}! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py`);
+    }
+    return target[prop]
+  }
+});
+
+// Legacy function that existed solely to give error message.  These are now
+// provided by the cDefs proxy object above.
+function cDefine(key) {
+  return cDefs[key];
 }
 
 function isInternalSymbol(ident) {
@@ -319,7 +342,7 @@ function exportRuntime() {
     if (EXPORTED_RUNTIME_METHODS_SET.has(name)) {
       let exported = name;
       // the exported name may differ from the internal name
-      if (isFSPrefixed(exported)) {
+      if (exported.startsWith('FS_')) {
         // this is a filesystem value, FS.x exported as FS_x
         exported = 'FS.' + exported.substr(3);
       } else if (legacyRuntimeElements.has(exported)) {
@@ -332,11 +355,6 @@ function exportRuntime() {
   // All possible runtime elements that can be exported
   let runtimeElements = [
     'run',
-    'UTF8ArrayToString',
-    'UTF8ToString',
-    'stringToUTF8Array',
-    'stringToUTF8',
-    'lengthBytesUTF8',
     'addOnPreRun',
     'addOnInit',
     'addOnPreMain',
@@ -347,7 +365,6 @@ function exportRuntime() {
     'FS_createFolder',
     'FS_createPath',
     'FS_createDataFile',
-    'FS_createPreloadedFile',
     'FS_createLazyFile',
     'FS_createLink',
     'FS_createDevice',
@@ -364,7 +381,7 @@ function exportRuntime() {
   // them via EXPORTED_RUNTIME_METHODS for backwards compat.
   runtimeElements = runtimeElements.concat(WASM_SYSTEM_EXPORTS);
 
-  if (USE_PTHREADS && ALLOW_MEMORY_GROWTH) {
+  if (PTHREADS && ALLOW_MEMORY_GROWTH) {
     runtimeElements = runtimeElements.concat([
       'GROWABLE_HEAP_I8',
       'GROWABLE_HEAP_U8',

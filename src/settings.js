@@ -91,14 +91,6 @@ var INVOKE_RUN = true;
 // [link]
 var EXIT_RUNTIME = false;
 
-// How to represent the initial memory content.
-// 0: embed a base64 string literal representing the initial memory data
-// 1: create a *.mem file containing the binary data of the initial memory;
-
-//    use the --memory-init-file command line switch to select this method
-// [link]
-var MEM_INIT_METHOD = false;
-
 // The total stack size. There is no way to enlarge the stack, so this
 // value must be large enough for the program's requirements. If
 // assertions are on, we will assert on not exceeding this, otherwise,
@@ -333,9 +325,9 @@ var EXCEPTION_DEBUG = false;
 var DEMANGLE_SUPPORT = false;
 
 // Print out when we enter a library call (library*.js). You can also unset
-// Runtime.debug at runtime for logging to cease, and can set it when you want
+// runtimeDebug at runtime for logging to cease, and can set it when you want
 // it back. A simple way to set it in C++ is
-//   emscripten_run_script("Runtime.debug = ...;");
+//   emscripten_run_script("runtimeDebug = ...;");
 // [link]
 var LIBRARY_DEBUG = false;
 
@@ -708,6 +700,14 @@ var EXCEPTION_CATCHING_ALLOWED = [];
 // example usage.
 var EXPORT_EXCEPTION_HANDLING_HELPERS = false;
 
+// When this is enabled, exceptions will contain stack traces and uncaught
+// exceptions will display stack traces upon exiting. This defaults to true when
+// ASSERTIONS is enabled. This option is for users who want exceptions' stack
+// traces but do not want other overheads ASSERTIONS can incur.
+// This option implies EXPORT_EXCEPTION_HANDLING_HELPERS.
+// [link]
+var EXCEPTION_STACK_TRACES = false;
+
 // Internal: Tracks whether Emscripten should link in exception throwing (C++
 // 'throw') support library. This does not need to be set directly, but pass
 // -fno-exceptions to the build disable exceptions support. (This is basically
@@ -986,8 +986,13 @@ var EXPORTED_FUNCTIONS = [];
 // [link]
 var EXPORT_ALL = false;
 
+// If true, we export the symbols that are present in JS onto the Module
+// object.
+// It only does Module['X'] = X;
+var EXPORT_KEEPALIVE = true;
+
 // Remembers the values of these settings, and makes them accessible
-// through Runtime.getCompilerSetting and emscripten_get_compiler_setting.
+// through getCompilerSetting and emscripten_get_compiler_setting.
 // To see what is retained, look for compilerSettings in the generated code.
 // [link]
 var RETAIN_COMPILER_SETTINGS = false;
@@ -1257,7 +1262,7 @@ var EXPORT_NAME = 'Module';
 // in particular the 'unsafe-eval' and 'wasm-unsafe-eval' policies.
 //
 // When this flag is set, the following features (linker flags) are unavailable:
-//  -sRELOCATABLE: the function Runtime.loadDynamicLibrary would need to eval().
+//  -sRELOCATABLE: the function loadDynamicLibrary would need to eval().
 // and some features may fall back to slower code paths when they need to:
 // Embind: uses eval() to jit functions for speed.
 //
@@ -1287,6 +1292,7 @@ var EMSCRIPTEN_TRACING = false;
 // Specify the GLFW version that is being linked against.  Only relevant, if you
 // are linking against the GLFW library.  Valid options are 2 for GLFW2 and 3
 // for GLFW3.
+// In MINIMAL_RUNTIME builds, this option defaults to 0.
 // [link]
 var USE_GLFW = 2;
 
@@ -1507,24 +1513,24 @@ var SDL2_MIXER_FORMATS = ["ogg"];
 // [compile+link]
 var USE_SQLITE3 = false;
 
-// If true, the current build is performed for the Emscripten test harness.
-// [other]
-var IN_TEST_HARNESS = false;
-
 // If 1, target compiling a shared Wasm Memory.
 // [compile+link] - affects user code at compile and system libraries at link.
 var SHARED_MEMORY = false;
-
-// If true, enables support for pthreads. This implies SHARED_MEMORY.
-// This setting is equivalent to `-pthread`, which should be preferred.
-// [compile+link] - affects user code at compile and system libraries at link.
-var USE_PTHREADS = false;
 
 // If true, enables support for Wasm Workers. Wasm Workers enable applications
 // to create threads using a lightweight web-specific API that builds on top
 // of Wasm SharedArrayBuffer + Atomics API.
 // [compile+link] - affects user code at compile and system libraries at link.
 var WASM_WORKERS = 0;
+
+// If true, enables targeting Wasm Web Audio AudioWorklets. Check out the
+// full documentation in site/source/docs/api_reference/wasm_audio_worklets.rst
+// [link]
+var AUDIO_WORKLET = 0;
+
+// If true, enables deep debugging of Web Audio backend.
+// [link]
+var WEBAUDIO_DEBUG = 0;
 
 // In web browsers, Workers cannot be created while the main browser thread
 // is executing JS/Wasm code, but the main thread must regularly yield back
@@ -1739,10 +1745,10 @@ var AUTO_NATIVE_LIBRARIES = true;
 // versions >= MIN_FIREFOX_VERSION
 // are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
 // for Firefox versions older than < majorVersion.
-// Firefox ESR 60.5 (Firefox 65) was released on 2019-01-29.
+// Firefox ESR 68 was released on July 9, 2019.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
-var MIN_FIREFOX_VERSION = 65;
+var MIN_FIREFOX_VERSION = 68;
 
 // Specifies the oldest version of desktop Safari to target. Version is encoded
 // in MMmmVV, e.g. 70101 denotes Safari 7.1.1.
@@ -1807,7 +1813,10 @@ var SUPPORT_ERRNO = true;
 // MINIMAL_RUNTIME=2 to further enable even more code size optimizations. These
 // opts are quite hacky, and work around limitations in Closure and other parts
 // of the build system, so they may not work in all generated programs (But can
-// be useful for really small programs)
+// be useful for really small programs).
+//
+// By default, no symbols will be exported on the `Module` object. In order
+// to export kept alive symbols, please use `-sEXPORT_KEEPALIVE=1`.
 // [link]
 var MINIMAL_RUNTIME = 0;
 
@@ -1842,13 +1851,6 @@ var MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION = false;
 // [link]
 var MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION = false;
 
-// If building with MINIMAL_RUNTIME=1 and application uses sbrk()/malloc(),
-// enable this. If you are not using dynamic allocations, can set this to 0 to
-// save code size. This setting is ignored when building with -s
-// MINIMAL_RUNTIME=0.
-// [link]
-var USES_DYNAMIC_ALLOC = true;
-
 // If set to 'emscripten' or 'wasm', compiler supports setjmp() and longjmp().
 // If set to 0, these APIs are not available.  If you are using C++ exceptions,
 // but do not need setjmp()+longjmp() API, then you can set this to 0 to save a
@@ -1857,7 +1859,8 @@ var USES_DYNAMIC_ALLOC = true;
 // 'emscripten': (default) Emscripten setjmp/longjmp handling using JavaScript
 // 'wasm': setjmp/longjmp handling using Wasm EH instructions (experimental)
 // 0: No setjmp/longjmp handling
-// 1: Default setjmp/longjmp/handling. Currently 'emscripten'.
+// 1: Default setjmp/longjmp/handling, depending on the mode of exceptions.
+//    'wasm' if '-fwasm-exception' is used, 'emscripten' otherwise.
 //
 // [compile+link] - at compile time this enables the transformations needed for
 // longjmp support at codegen time, while at link it allows linking in the
@@ -1914,16 +1917,8 @@ var ASAN_SHADOW_SIZE = -1
 var USE_OFFSET_CONVERTER = false;
 
 // Whether we should load the WASM source map at runtime.
-// This is enabled automatically when using -g4 with sanitizers.
+// This is enabled automatically when using -gsource-map with sanitizers.
 var LOAD_SOURCE_MAP = false;
-
-// If set to 0, delay undefined symbol report until after wasm-ld runs.  This
-// avoids running the the JS compiler prior to wasm-ld, but reduces the amount
-// of information in the undefined symbol message (Since JS compiler cannot
-// report the name of the object file that contains the reference to the
-// undefined symbol).
-// [link]
-var LLD_REPORT_UNDEFINED = true;
 
 // Default to c++ mode even when run as `emcc` rather then `emc++`.
 // When this is disabled `em++` is required when compiling and linking C++
@@ -2009,7 +2004,7 @@ var PURE_WASI = false;
 // it to JavaScript.
 // Use of the following settings will enable this settings since they
 // depend on being able to define the memory in JavaScript:
-// - USE_PTHREADS
+// - -pthread
 // - RELOCATABLE
 // - ASYNCIFY_LAZY_LOAD_CODE
 // - WASM2JS (WASM=0)
@@ -2025,22 +2020,6 @@ var IMPORTED_MEMORY = false;
 // to loading split modules.
 // [link]
 var SPLIT_MODULE = false;
-
-// How to calculate reverse dependencies (dependencies from JS functions to
-// native functions) prior to linking native code with wasm-ld.  This option
-// has three possible values:
-// 'auto': (default) Inspect the object code passed to the linker (by running
-//         llvm-nm on all input) and use the map in deps_info.py to determine
-//         the set of additional dependencies.
-// 'all' : Include the full set of possible reverse dependencies.
-// 'none': No reverse dependences will be added by emscriopten. Any reverse
-//         dependencies will be assumed to be explicitly added to
-//         EXPORTED_FUNCTIONS and deps_info.py will be completely ignored.
-// While 'auto' will produce a minimal set (so is good for code size), 'all'
-// and 'none' will give faster link times, especially for very large projects
-// (since they both avoid the running of llvm-nm on all linker inputs).
-// [link]
-var REVERSE_DEPS = 'auto';
 
 // For MAIN_MODULE builds, automatically load any dynamic library dependencies
 // on startup, before loading the main module.
@@ -2170,4 +2149,9 @@ var LEGACY_SETTINGS = [
   ['LIBRARY_DEPS_TO_AUTOEXPORT', [[]], 'No longer needed'],
   ['EMIT_EMSCRIPTEN_METADATA', [0], 'No longer supported'],
   ['SHELL_FILE', [''], 'No longer supported'],
+  ['LLD_REPORT_UNDEFINED', [1], 'Disabling is no longer supported'],
+  ['MEM_INIT_METHOD', [0], 'No longer supported'],
+  ['USE_PTHREADS', [0, 1], 'No longer needed. Use -pthread instead'],
+  ['USES_DYNAMIC_ALLOC', [1], 'No longer supported. Use -sMALLOC=none'],
+  ['REVERSE_DEPS', ['auto', 'all', 'none'], 'No longer needed'],
 ];

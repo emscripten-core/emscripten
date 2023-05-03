@@ -132,7 +132,7 @@ void InitializeFlags() {
 #define MAKE_OPTION_LOAD(parser, name) \
     options = (char*)(long)EM_ASM_DOUBLE({ \
       return withBuiltinMalloc(function () { \
-        return allocateUTF8(Module[name] || 0); \
+        return stringToNewUTF8(Module[name] || ""); \
       }); \
     }); \
     parser.ParseString(options); \

@@ -8,8 +8,8 @@
 mergeInto(LibraryManager.library, {
   $LZ4__deps: ['$FS'],
   $LZ4: {
-    DIR_MODE: {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */,
-    FILE_MODE: {{{ cDefine('S_IFREG') }}} | 511 /* 0777 */,
+    DIR_MODE: {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */,
+    FILE_MODE: {{{ cDefs.S_IFREG }}} | 511 /* 0777 */,
     CHUNK_SIZE: -1,
     codec: null,
     init: function() {
@@ -57,9 +57,7 @@ mergeInto(LibraryManager.library, {
             if (plugin['canHandle'](fullname)) {
               var dep = getUniqueRunDependency('fp ' + fullname);
               addRunDependency(dep);
-              var finish = function() {
-                removeRunDependency(dep);
-              }
+              var finish = () => removeRunDependency(dep);
               var byteArray = FS.readFile(fullname);
               plugin['handle'](byteArray, fullname, finish, finish);
               handled = true;
@@ -114,28 +112,25 @@ mergeInto(LibraryManager.library, {
         }
       },
       lookup: function(parent, name) {
-        throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
+        throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       },
       mknod: function (parent, name, mode, dev) {
-        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
+        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       },
       rename: function (oldNode, newDir, newName) {
-        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
+        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       },
       unlink: function(parent, name) {
-        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
+        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       },
       rmdir: function(parent, name) {
-        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
+        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       },
       readdir: function(node) {
-        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
+        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       },
       symlink: function(parent, newName, oldPath) {
-        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
-      },
-      readlink: function(node) {
-        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
+        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       },
     },
     stream_ops: {
@@ -187,19 +182,19 @@ mergeInto(LibraryManager.library, {
         return written;
       },
       write: function (stream, buffer, offset, length, position) {
-        throw new FS.ErrnoError({{{ cDefine('EIO') }}});
+        throw new FS.ErrnoError({{{ cDefs.EIO }}});
       },
       llseek: function (stream, offset, whence) {
         var position = offset;
-        if (whence === {{{ cDefine('SEEK_CUR') }}}) {
+        if (whence === {{{ cDefs.SEEK_CUR }}}) {
           position += stream.position;
-        } else if (whence === {{{ cDefine('SEEK_END') }}}) {
+        } else if (whence === {{{ cDefs.SEEK_END }}}) {
           if (FS.isFile(stream.node.mode)) {
             position += stream.node.size;
           }
         }
         if (position < 0) {
-          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
+          throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
         }
         return position;
       },

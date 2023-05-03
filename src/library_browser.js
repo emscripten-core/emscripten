@@ -105,15 +105,6 @@ var LibraryBrowser = {
 
       if (Browser.initted) return;
       Browser.initted = true;
-
-      try {
-        new Blob();
-        Browser.hasBlobConstructor = true;
-      } catch(e) {
-        Browser.hasBlobConstructor = false;
-        err("warning: no blob constructor, cannot create blobs with mimetypes");
-      }
-      Browser.BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : (!Browser.hasBlobConstructor ? err("warning: no BlobBuilder") : null));
       Browser.URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : undefined;
       if (!Module.noImageDecoding && typeof Browser.URLObject == 'undefined') {
         err("warning: Browser does not support creating object URLs. Built-in browser image decoding will not be available.");
@@ -133,22 +124,10 @@ var LibraryBrowser = {
         return !Module.noImageDecoding && /\.(jpg|jpeg|png|bmp)$/i.test(name);
       };
       imagePlugin['handle'] = function imagePlugin_handle(byteArray, name, onload, onerror) {
-        var b = null;
-        if (Browser.hasBlobConstructor) {
-          try {
-            b = new Blob([byteArray], { type: Browser.getMimetype(name) });
-            if (b.size !== byteArray.length) { // Safari bug #118630
-              // Safari's Blob can only take an ArrayBuffer
-              b = new Blob([(new Uint8Array(byteArray)).buffer], { type: Browser.getMimetype(name) });
-            }
-          } catch(e) {
-            warnOnce('Blob constructor present but fails: ' + e + '; falling back to blob builder');
-          }
-        }
-        if (!b) {
-          var bb = new Browser.BlobBuilder();
-          bb.append((new Uint8Array(byteArray)).buffer); // we need to pass a buffer, and must copy the array to get the right data range
-          b = bb.getBlob();
+        var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
+        if (b.size !== byteArray.length) { // Safari bug #118630
+          // Safari's Blob can only take an ArrayBuffer
+          b = new Blob([(new Uint8Array(byteArray)).buffer], { type: Browser.getMimetype(name) });
         }
         var url = Browser.URLObject.createObjectURL(b);
 #if ASSERTIONS
@@ -192,56 +171,48 @@ var LibraryBrowser = {
           preloadedAudios[name] = new Audio(); // empty shim
           if (onerror) onerror();
         }
-        if (Browser.hasBlobConstructor) {
-          try {
-            var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
-          } catch(e) {
-            return fail();
-          }
-          var url = Browser.URLObject.createObjectURL(b); // XXX we never revoke this!
+        var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
+        var url = Browser.URLObject.createObjectURL(b); // XXX we never revoke this!
 #if ASSERTIONS
-          assert(typeof url == 'string', 'createObjectURL must return a url as a string');
+        assert(typeof url == 'string', 'createObjectURL must return a url as a string');
 #endif
-          var audio = new Audio();
-          audio.addEventListener('canplaythrough', () => finish(audio), false); // use addEventListener due to chromium bug 124926
-          audio.onerror = function audio_onerror(event) {
-            if (done) return;
-            err('warning: browser could not fully decode audio ' + name + ', trying slower base64 approach');
-            function encode64(data) {
-              var BASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-              var PAD = '=';
-              var ret = '';
-              var leftchar = 0;
-              var leftbits = 0;
-              for (var i = 0; i < data.length; i++) {
-                leftchar = (leftchar << 8) | data[i];
-                leftbits += 8;
-                while (leftbits >= 6) {
-                  var curr = (leftchar >> (leftbits-6)) & 0x3f;
-                  leftbits -= 6;
-                  ret += BASE[curr];
-                }
+        var audio = new Audio();
+        audio.addEventListener('canplaythrough', () => finish(audio), false); // use addEventListener due to chromium bug 124926
+        audio.onerror = function audio_onerror(event) {
+          if (done) return;
+          err('warning: browser could not fully decode audio ' + name + ', trying slower base64 approach');
+          function encode64(data) {
+            var BASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+            var PAD = '=';
+            var ret = '';
+            var leftchar = 0;
+            var leftbits = 0;
+            for (var i = 0; i < data.length; i++) {
+              leftchar = (leftchar << 8) | data[i];
+              leftbits += 8;
+              while (leftbits >= 6) {
+                var curr = (leftchar >> (leftbits-6)) & 0x3f;
+                leftbits -= 6;
+                ret += BASE[curr];
               }
-              if (leftbits == 2) {
-                ret += BASE[(leftchar&3) << 4];
-                ret += PAD + PAD;
-              } else if (leftbits == 4) {
-                ret += BASE[(leftchar&0xf) << 2];
-                ret += PAD;
-              }
-              return ret;
             }
-            audio.src = 'data:audio/x-' + name.substr(-3) + ';base64,' + encode64(byteArray);
-            finish(audio); // we don't wait for confirmation this worked - but it's worth trying
-          };
-          audio.src = url;
-          // workaround for chrome bug 124926 - we do not always get oncanplaythrough or onerror
-          safeSetTimeout(function() {
-            finish(audio); // try to use it even though it is not necessarily ready to play
-          }, 10000);
-        } else {
-          return fail();
-        }
+            if (leftbits == 2) {
+              ret += BASE[(leftchar&3) << 4];
+              ret += PAD + PAD;
+            } else if (leftbits == 4) {
+              ret += BASE[(leftchar&0xf) << 2];
+              ret += PAD;
+            }
+            return ret;
+          }
+          audio.src = 'data:audio/x-' + name.substr(-3) + ';base64,' + encode64(byteArray);
+          finish(audio); // we don't wait for confirmation this worked - but it's worth trying
+        };
+        audio.src = url;
+        // workaround for chrome bug 124926 - we do not always get oncanplaythrough or onerror
+        safeSetTimeout(() => {
+          finish(audio); // try to use it even though it is not necessarily ready to play
+        }, 10000);
       };
       Module['preloadPlugins'].push(audioPlugin);
 
@@ -249,7 +220,7 @@ var LibraryBrowser = {
       // Use string keys here to avoid minification since the plugin consumer
       // also uses string keys.
       var wasmPlugin = {
-        'asyncWasmLoadPromise': new Promise(function(resolve, reject) { return resolve(); }),
+        'promiseChainEnd': Promise.resolve(),
         'canHandle': function(name) {
           return !Module.noWasmDecoding && name.endsWith('.so')
         },
@@ -257,7 +228,7 @@ var LibraryBrowser = {
           // loadWebAssemblyModule can not load modules out-of-order, so rather
           // than just running the promises in parallel, this makes a chain of
           // promises to run in series.
-          wasmPlugin['asyncWasmLoadPromise'] = wasmPlugin['asyncWasmLoadPromise'].then(
+          wasmPlugin['promiseChainEnd'] = wasmPlugin['promiseChainEnd'].then(
             () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true})).then(
               (module) => {
                 preloadedWasm[name] = module;
@@ -320,7 +291,7 @@ var LibraryBrowser = {
       Browser.init();
 
       var handled = false;
-      Module['preloadPlugins'].forEach(function(plugin) {
+      Module['preloadPlugins'].forEach((plugin) => {
         if (handled) return;
         if (plugin['canHandle'](fullname)) {
           plugin['handle'](byteArray, fullname, finish, onerror);
@@ -376,7 +347,7 @@ var LibraryBrowser = {
         Module.ctx = ctx;
         if (useWebGL) GL.makeContextCurrent(contextHandle);
         Module.useWebGL = useWebGL;
-        Browser.moduleContextCreatedCallbacks.forEach(function(callback) { callback() });
+        Browser.moduleContextCreatedCallbacks.forEach((callback) => callback());
         Browser.init();
       }
       return ctx;
@@ -465,7 +436,7 @@ var LibraryBrowser = {
                 document['mozCancelFullScreen'] ||
                 document['msExitFullscreen'] ||
                 document['webkitCancelFullScreen'] ||
-          (function() {});
+          (() => {});
       CFS.apply(document, []);
       return true;
     },
@@ -515,7 +486,7 @@ var LibraryBrowser = {
     },
     safeRequestAnimationFrame: function(func) {
       {{{ runtimeKeepalivePush() }}}
-      return Browser.requestAnimationFrame(function() {
+      return Browser.requestAnimationFrame(() => {
         {{{ runtimeKeepalivePop() }}}
         callUserCallback(func);
       });
@@ -695,9 +666,7 @@ var LibraryBrowser = {
 
     updateResizeListeners: function() {
       var canvas = Module['canvas'];
-      Browser.resizeListeners.forEach(function(listener) {
-        listener(canvas.width, canvas.height);
-      });
+      Browser.resizeListeners.forEach((listener) => listener(canvas.width, canvas.height));
     },
 
     setCanvasSize: function(width, height, noUpdates) {
@@ -779,7 +748,6 @@ var LibraryBrowser = {
 
   emscripten_run_preload_plugins__deps: ['$PATH'],
   emscripten_run_preload_plugins__proxy: 'sync',
-  emscripten_run_preload_plugins__sig: 'iiii',
   emscripten_run_preload_plugins: function(file, onload, onerror) {
     {{{ runtimeKeepalivePush() }}}
 
@@ -804,16 +772,14 @@ var LibraryBrowser = {
   },
 
   emscripten_run_preload_plugins_data__proxy: 'sync',
-  emscripten_run_preload_plugins_data__sig: 'viiiiii',
+  emscripten_run_preload_plugins_data__deps: ['$stringToNewUTF8'],
   emscripten_run_preload_plugins_data: function(data, size, suffix, arg, onload, onerror) {
     {{{ runtimeKeepalivePush() }}}
 
     var _suffix = UTF8ToString(suffix);
     if (!Browser.asyncPrepareDataCounter) Browser.asyncPrepareDataCounter = 0;
     var name = 'prepare_data_' + (Browser.asyncPrepareDataCounter++) + '.' + _suffix;
-    var lengthAsUTF8 = lengthBytesUTF8(name);
-    var cname = _malloc(lengthAsUTF8+1);
-    stringToUTF8(name, cname, lengthAsUTF8+1);
+    var cname = stringToNewUTF8(name);
     FS.createPreloadedFile(
       '/',
       name,
@@ -835,27 +801,27 @@ var LibraryBrowser = {
   emscripten_async_run_script__deps: ['emscripten_run_script', '$safeSetTimeout'],
   emscripten_async_run_script: function(script, millis) {
     // TODO: cache these to avoid generating garbage
-    safeSetTimeout(function() {
-      _emscripten_run_script(script);
-    }, millis);
+    safeSetTimeout(() => _emscripten_run_script(script), millis);
   },
 
   // TODO: currently not callable from a pthread, but immediately calls onerror() if not on main thread.
+  emscripten_async_load_script__deps: ['$UTF8ToString'],
   emscripten_async_load_script: function(url, onload, onerror) {
+    url = UTF8ToString(url);
     onload = {{{ makeDynCall('v', 'onload') }}};
     onerror = {{{ makeDynCall('v', 'onerror') }}};
 
-#if USE_PTHREADS
+#if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
-      err('emscripten_async_load_script("' + UTF8ToString(url) + '") failed, emscripten_async_load_script is currently not available in pthreads!');
+      err('emscripten_async_load_script("' + url + '") failed, emscripten_async_load_script is currently not available in pthreads!');
       return onerror ? onerror() : undefined;
     }
 #endif
+    assert(runDependencies === 0, 'async_load_script must be run when no other dependencies are active');
+
     {{{ runtimeKeepalivePush() }}}
 
-    assert(runDependencies === 0, 'async_load_script must be run when no other dependencies are active');
-    var script = document.createElement('script');
-    script.onload = function script_onload() {
+    var loadDone = () => {
       {{{ runtimeKeepalivePop() }}}
       if (onload) {
         if (runDependencies > 0) {
@@ -864,24 +830,37 @@ var LibraryBrowser = {
           onload();
         }
       }
-    };
-    script.onerror = () => {
+    }
+
+    var loadError = () => {
       {{{ runtimeKeepalivePop() }}}
       if (onerror) onerror();
     };
-    script.src = UTF8ToString(url);
+
+#if ENVIRONMENT_MAY_BE_NODE && DYNAMIC_EXECUTION
+    if (ENVIRONMENT_IS_NODE) {
+      readAsync(url, (data) => {
+        eval(data);
+        loadDone();
+      }, loadError, false);
+      return;
+    }
+#endif
+
+    var script = document.createElement('script');
+    script.onload = loadDone;
+    script.onerror = loadError;
+    script.src = url;
     document.body.appendChild(script);
   },
 
   // Runs natively in pthread, no __proxy needed.
-  emscripten_get_main_loop_timing__sig: 'vii',
   emscripten_get_main_loop_timing: function(mode, value) {
     if (mode) {{{ makeSetValue('mode', 0, 'Browser.mainLoop.timingMode', 'i32') }}};
     if (value) {{{ makeSetValue('value', 0, 'Browser.mainLoop.timingValue', 'i32') }}};
   },
 
   // Runs natively in pthread, no __proxy needed.
-  emscripten_set_main_loop_timing__sig: 'iii',
   emscripten_set_main_loop_timing: function(mode, value) {
     Browser.mainLoop.timingMode = mode;
     Browser.mainLoop.timingValue = value;
@@ -941,7 +920,6 @@ var LibraryBrowser = {
   },
 
   emscripten_set_main_loop__deps: ['$setMainLoop'],
-  emscripten_set_main_loop__sig: 'viii',
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop) {
     var browserIterationFunc = {{{ makeDynCall('v', 'func') }}};
     setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop);
@@ -1048,7 +1026,7 @@ var LibraryBrowser = {
       GL.newRenderingFrameStarted();
 #endif
 
-#if USE_PTHREADS && OFFSCREEN_FRAMEBUFFER && GL_SUPPORT_EXPLICIT_SWAP_CONTROL
+#if PTHREADS && OFFSCREEN_FRAMEBUFFER && GL_SUPPORT_EXPLICIT_SWAP_CONTROL
       // If the current GL context is a proxied regular WebGL context, and was initialized with implicit swap mode on the main thread, and we are on the parent thread,
       // perform the swap on behalf of the user.
       if (typeof GL != 'undefined' && GL.currentContext && GL.currentContextIsProxied) {
@@ -1103,27 +1081,23 @@ var LibraryBrowser = {
 
   // Runs natively in pthread, no __proxy needed.
   emscripten_set_main_loop_arg__deps: ['$setMainLoop'],
-  emscripten_set_main_loop_arg__sig: 'viiii',
   emscripten_set_main_loop_arg: function(func, arg, fps, simulateInfiniteLoop) {
     var browserIterationFunc = () => {{{ makeDynCall('vi', 'func') }}}(arg);
     setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop, arg);
   },
 
   // Runs natively in pthread, no __proxy needed.
-  emscripten_cancel_main_loop__sig: 'v',
   emscripten_cancel_main_loop: function() {
     Browser.mainLoop.pause();
     Browser.mainLoop.func = null;
   },
 
   // Runs natively in pthread, no __proxy needed.
-  emscripten_pause_main_loop__sig: 'v',
   emscripten_pause_main_loop: function() {
     Browser.mainLoop.pause();
   },
 
   // Runs natively in pthread, no __proxy needed.
-  emscripten_resume_main_loop__sig: 'v',
   emscripten_resume_main_loop: function() {
     Browser.mainLoop.resume();
   },
@@ -1145,7 +1119,6 @@ var LibraryBrowser = {
   },
 
   // Runs natively in pthread, no __proxy needed.
-  emscripten_set_main_loop_expected_blockers__sig: 'vi',
   emscripten_set_main_loop_expected_blockers: function(num) {
     Browser.mainLoop.expectedBlockers = num;
     Browser.mainLoop.remainingBlockers = num;
@@ -1153,7 +1126,6 @@ var LibraryBrowser = {
   },
 
   // Runs natively in pthread, no __proxy needed.
-  emscripten_async_call__sig: 'vppi',
   emscripten_async_call__deps: ['$safeSetTimeout'],
   emscripten_async_call: function(func, arg, millis) {
     function wrapper() {
@@ -1173,7 +1145,6 @@ var LibraryBrowser = {
   },
 
   emscripten_get_window_title__proxy: 'sync',
-  emscripten_get_window_title__sig: 'iv',
   emscripten_get_window_title: function() {
     var buflen = 256;
 
@@ -1187,20 +1158,17 @@ var LibraryBrowser = {
   },
 
   emscripten_set_window_title__proxy: 'sync',
-  emscripten_set_window_title__sig: 'vi',
   emscripten_set_window_title: function(title) {
     setWindowTitle(UTF8ToString(title));
   },
 
   emscripten_get_screen_size__proxy: 'sync',
-  emscripten_get_screen_size__sig: 'vii',
   emscripten_get_screen_size: function(width, height) {
     {{{ makeSetValue('width', '0', 'screen.width', 'i32') }}};
     {{{ makeSetValue('height', '0', 'screen.height', 'i32') }}};
   },
 
   emscripten_hide_mouse__proxy: 'sync',
-  emscripten_hide_mouse__sig: 'v',
   emscripten_hide_mouse: function() {
     var styleSheet = document.styleSheets[0];
     var rules = styleSheet.cssRules;
@@ -1214,13 +1182,11 @@ var LibraryBrowser = {
   },
 
   emscripten_set_canvas_size__proxy: 'sync',
-  emscripten_set_canvas_size__sig: 'vii',
   emscripten_set_canvas_size: function(width, height) {
     Browser.setCanvasSize(width, height);
   },
 
   emscripten_get_canvas_size__proxy: 'sync',
-  emscripten_get_canvas_size__sig: 'viii',
   emscripten_get_canvas_size: function(width, height, isFullscreen) {
     var canvas = Module['canvas'];
     {{{ makeSetValue('width', '0', 'canvas.width', 'i32') }}};
@@ -1230,7 +1196,7 @@ var LibraryBrowser = {
 
   // To avoid creating worker parent->child chains, always proxies to execute on the main thread.
   emscripten_create_worker__proxy: 'sync',
-  emscripten_create_worker__sig: 'ii',
+  emscripten_create_worker__deps: ['$UTF8ToString', 'malloc', 'free'],
   emscripten_create_worker: function(url) {
     url = UTF8ToString(url);
     var id = Browser.workers.length;
@@ -1272,8 +1238,8 @@ var LibraryBrowser = {
     return id;
   },
 
+  emscripten_destroy_worker__deps: ['free'],
   emscripten_destroy_worker__proxy: 'sync',
-  emscripten_destroy_worker__sig: 'vi',
   emscripten_destroy_worker: function(id) {
     var info = Browser.workers[id];
     info.worker.terminate();
@@ -1282,7 +1248,6 @@ var LibraryBrowser = {
   },
 
   emscripten_call_worker__proxy: 'sync',
-  emscripten_call_worker__sig: 'viiiiii',
   emscripten_call_worker: function(id, funcName, data, size, callback, arg) {
     funcName = UTF8ToString(funcName);
     var info = Browser.workers[id];
@@ -1348,16 +1313,14 @@ var LibraryBrowser = {
 #endif
 
   emscripten_get_worker_queue_size__proxy: 'sync',
-  emscripten_get_worker_queue_size__sig: 'i',
   emscripten_get_worker_queue_size: function(id) {
     var info = Browser.workers[id];
     if (!info) return -1;
     return info.awaited;
   },
 
-  emscripten_get_preloaded_image_data__deps: ['$PATH_FS'],
+  emscripten_get_preloaded_image_data__deps: ['$PATH_FS', 'malloc'],
   emscripten_get_preloaded_image_data__proxy: 'sync',
-  emscripten_get_preloaded_image_data__sig: 'iiii',
   emscripten_get_preloaded_image_data: function(path, w, h) {
     if ((path | 0) === path) path = UTF8ToString(path);
 
@@ -1381,7 +1344,6 @@ var LibraryBrowser = {
 
   emscripten_get_preloaded_image_data_from_FILE__deps: ['emscripten_get_preloaded_image_data', 'fileno'],
   emscripten_get_preloaded_image_data_from_FILE__proxy: 'sync',
-  emscripten_get_preloaded_image_data_from_FILE__sig: 'iiii',
   emscripten_get_preloaded_image_data_from_FILE: function(file, w, h) {
     var fd = _fileno(file);
     var stream = FS.getStream(fd);

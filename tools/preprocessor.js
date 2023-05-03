@@ -18,14 +18,14 @@ const fs = require('fs');
 const path = require('path');
 global.vm = require('vm');
 
-const arguments_ = process['argv'].slice(2);
+const arguments_ = process.argv.slice(2);
 const debug = false;
 
-global.print = function(x) {
-  process['stdout'].write(x + '\n');
+global.print = (x) => {
+  process.stdout.write(x + '\n');
 };
-global.printErr = function(x) {
-  process['stderr'].write(x + '\n');
+global.printErr = (x) => {
+  process.stderr.write(x + '\n');
 };
 
 global.assert = require('assert');
@@ -41,12 +41,12 @@ function find(filename) {
   return filename;
 }
 
-global.read = function(filename) {
+global.read = (filename) => {
   const absolute = find(filename);
   return fs.readFileSync(absolute).toString();
 };
 
-global.load = function(f) {
+global.load = (f) => {
   (0, eval)(read(f) + '//# sourceURL=' + find(f));
 };
 

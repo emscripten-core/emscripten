@@ -417,8 +417,7 @@ var LibraryGLEmulation = {
                    (GL.currentContext.compressionExt ? ' GL_ARB_texture_compression GL_EXT_texture_compression_s3tc' : '') +
                    (GL.currentContext.anisotropicExt ? ' GL_EXT_texture_filter_anisotropic' : '')
             );
-            GL.stringCache[name_] = ret;
-            return ret;
+            return GL.stringCache[name_] = {{{ to64('ret') }}};
         }
         return glGetString(name_);
       };
@@ -755,7 +754,6 @@ var LibraryGLEmulation = {
   },
 
   glDeleteObject__deps: ['glDeleteProgram', 'glDeleteShader'],
-  glDeleteObject__sig: 'vi',
   glDeleteObject: function(id) {
     if (GL.programs[id]) {
       _glDeleteProgram(id);
@@ -767,7 +765,6 @@ var LibraryGLEmulation = {
   },
   glDeleteObjectARB: 'glDeleteObject',
 
-  glGetObjectParameteriv__sig: 'viii',
   glGetObjectParameteriv__deps: ['glGetProgramiv', 'glGetShaderiv'],
   glGetObjectParameteriv: function(id, type, result) {
     if (GL.programs[id]) {
@@ -798,7 +795,6 @@ var LibraryGLEmulation = {
   glGetObjectParameterivARB: 'glGetObjectParameteriv',
 
   glGetInfoLog__deps: ['glGetProgramInfoLog', 'glGetShaderInfoLog'],
-  glGetInfoLog__sig: 'viiii',
   glGetInfoLog: function(id, maxLength, length, infoLog) {
     if (GL.programs[id]) {
       _glGetProgramInfoLog(id, maxLength, length, infoLog);
@@ -810,7 +806,6 @@ var LibraryGLEmulation = {
   },
   glGetInfoLogARB: 'glGetInfoLog',
 
-  glBindProgram__sig: 'vii',
   glBindProgram: function(type, id) {
 #if ASSERTIONS
     assert(id == 0);
@@ -3434,7 +3429,6 @@ var LibraryGLEmulation = {
   // Additional non-GLES rendering calls
 
   glDrawRangeElements__deps: ['glDrawElements'],
-  glDrawRangeElements__sig: 'viiiiii',
   glDrawRangeElements: function(mode, start, end, count, type, indices) {
     _glDrawElements(mode, count, type, indices, start, end);
   },
@@ -3517,7 +3511,6 @@ var LibraryGLEmulation = {
 #endif
   },
 
-  glClientActiveTexture__sig: 'vi',
   glClientActiveTexture: function(texture) {
     GLImmediate.clientActiveTexture = texture - 0x84C0; // GL_TEXTURE0
   },
@@ -3564,9 +3557,8 @@ var LibraryGLEmulation = {
   },
 
   // Vertex array object (VAO) support. TODO: when the WebGL extension is popular, use that and remove this code and GL.vaos
-  emulGlGenVertexArrays__deps: ['$GLEmulation'],
-  emulGlGenVertexArrays__sig: 'vii',
-  emulGlGenVertexArrays: function(n, vaos) {
+  $emulGlGenVertexArrays__deps: ['$GLEmulation'],
+  $emulGlGenVertexArrays: function(n, vaos) {
     for (var i = 0; i < n; i++) {
       var id = GL.getNewId(GLEmulation.vaos);
       GLEmulation.vaos[id] = {
@@ -3580,23 +3572,20 @@ var LibraryGLEmulation = {
       {{{ makeSetValue('vaos', 'i*4', 'id', 'i32') }}};
     }
   },
-  emulGlDeleteVertexArrays__sig: 'vii',
-  emulGlDeleteVertexArrays: function(n, vaos) {
+  $emulGlDeleteVertexArrays: function(n, vaos) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
       GLEmulation.vaos[id] = null;
       if (GLEmulation.currentVao && GLEmulation.currentVao.id == id) GLEmulation.currentVao = null;
     }
   },
-  emulGlIsVertexArray__sig: 'vi',
-  emulGlIsVertexArray: function(array) {
+  $emulGlIsVertexArray: function(array) {
     var vao = GLEmulation.vaos[array];
     if (!vao) return 0;
     return 1;
   },
-  emulGlBindVertexArray__deps: ['glBindBuffer', 'glEnableVertexAttribArray', 'glVertexAttribPointer', 'glEnableClientState'],
-  emulGlBindVertexArray__sig: 'vi',
-  emulGlBindVertexArray: function(vao) {
+  $emulGlBindVertexArray__deps: ['glBindBuffer', 'glEnableVertexAttribArray', 'glVertexAttribPointer', 'glEnableClientState'],
+  $emulGlBindVertexArray: function(vao) {
     // undo vao-related things, wipe the slate clean, both for vao of 0 or an actual vao
     GLEmulation.currentVao = null; // make sure the commands we run here are not recorded
     if (GLImmediate.lastRenderer) GLImmediate.lastRenderer.cleanup();
@@ -3881,16 +3870,16 @@ var LibraryGLEmulation = {
 
   // Open GLES1.1 compatibility
 
-  glGenFramebuffersOES : 'glGenFramebuffers',
-  glGenRenderbuffersOES : 'glGenRenderbuffers',
-  glBindFramebufferOES : 'glBindFramebuffer',
-  glBindRenderbufferOES : 'glBindRenderbuffer',
-  glGetRenderbufferParameterivOES : 'glGetRenderbufferParameteriv',
-  glFramebufferRenderbufferOES : 'glFramebufferRenderbuffer',
-  glRenderbufferStorageOES : 'glRenderbufferStorage',
-  glCheckFramebufferStatusOES : 'glCheckFramebufferStatus',
-  glDeleteFramebuffersOES : 'glDeleteFramebuffers',
-  glDeleteRenderbuffersOES : 'glDeleteRenderbuffers',
+  glGenFramebuffersOES: 'glGenFramebuffers',
+  glGenRenderbuffersOES: 'glGenRenderbuffers',
+  glBindFramebufferOES: 'glBindFramebuffer',
+  glBindRenderbufferOES: 'glBindRenderbuffer',
+  glGetRenderbufferParameterivOES: 'glGetRenderbufferParameteriv',
+  glFramebufferRenderbufferOES: 'glFramebufferRenderbuffer',
+  glRenderbufferStorageOES: 'glRenderbufferStorage',
+  glCheckFramebufferStatusOES: 'glCheckFramebufferStatus',
+  glDeleteFramebuffersOES: 'glDeleteFramebuffers',
+  glDeleteRenderbuffersOES: 'glDeleteRenderbuffers',
   glFramebufferTexture2DOES: 'glFramebufferTexture2D',
 
   // GLU

@@ -98,8 +98,6 @@ example, writing a new local file system) or legacy file system compatibility.
 .. js:function:: FS.quit()
 .. js:function:: FS.indexedDB()
 .. js:function:: FS.DB_NAME()
-.. js:function:: FS.saveFilesToDB(paths, onload, onerror)
-.. js:function:: FS.loadFilesFromDB(paths, onload, onerror)
 
   For advanced users only.
 

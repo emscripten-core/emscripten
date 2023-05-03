@@ -102,8 +102,6 @@ function _free() {
 #endif // free
 #endif // ASSERTIONS
 
-#include "runtime_strings.js"
-
 // Memory management
 
 var HEAP,
@@ -193,19 +191,16 @@ var runtimeInitialized = false;
 
 #if EXIT_RUNTIME
 var runtimeExited = false;
+#endif
+
 var runtimeKeepaliveCounter = 0;
 
 function keepRuntimeAlive() {
   return noExitRuntime || runtimeKeepaliveCounter > 0;
 }
-#else
-function keepRuntimeAlive() {
-  return noExitRuntime;
-}
-#endif
 
 function preRun() {
-#if ASSERTIONS && USE_PTHREADS
+#if ASSERTIONS && PTHREADS
   assert(!ENVIRONMENT_IS_PTHREAD); // PThreads reuse the runtime from the main thread.
 #endif
 #if expectToReceiveOnModule('preRun')
@@ -229,7 +224,7 @@ function initRuntime() {
   if (ENVIRONMENT_IS_WASM_WORKER) return __wasm_worker_initializeRuntime();
 #endif
 
-#if USE_PTHREADS
+#if PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return;
 #endif
 
@@ -255,7 +250,7 @@ function preMain() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-#if USE_PTHREADS
+#if PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
   <<< ATMAINS >>>
@@ -268,6 +263,9 @@ function exitRuntime() {
 #if RUNTIME_DEBUG
   dbg('exitRuntime');
 #endif
+#if ASSERTIONS
+  assert(!runtimeExited);
+#endif
 #if ASYNCIFY == 1 && ASSERTIONS
   // ASYNCIFY cannot be used once the runtime starts shutting down.
   Asyncify.state = Asyncify.State.Disabled;
@@ -275,7 +273,7 @@ function exitRuntime() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-#if USE_PTHREADS
+#if PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
 #if !STANDALONE_WASM
@@ -283,7 +281,7 @@ function exitRuntime() {
 #endif
   callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
-#if USE_PTHREADS
+#if PTHREADS
   PThread.terminateAllThreads();
 #endif
   runtimeExited = true;
@@ -294,7 +292,7 @@ function postRun() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-#if USE_PTHREADS
+#if PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
 
@@ -377,7 +375,7 @@ function addRunDependency(id) {
     runDependencyTracking[id] = 1;
     if (runDependencyWatcher === null && typeof setInterval != 'undefined') {
       // Check for missing dependencies every few seconds
-      runDependencyWatcher = setInterval(function() {
+      runDependencyWatcher = setInterval(() => {
         if (ABORT) {
           clearInterval(runDependencyWatcher);
           runDependencyWatcher = null;
@@ -471,8 +469,19 @@ function abort(what) {
   // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
 #if WASM_EXCEPTIONS == 1
   // See above, in the meantime, we resort to wasm code for trapping.
-  ___trap();
-#else
+  //
+  // In case abort() is called before the module is initialized, Module['asm']
+  // and its exported '__trap' function is not available, in which case we throw
+  // a RuntimeError.
+  //
+  // We trap instead of throwing RuntimeError to prevent infinite-looping in
+  // Wasm EH code (because RuntimeError is considered as a foreign exception and
+  // caught by 'catch_all'), but in case throwing RuntimeError is fine because
+  // the module has not even been instantiated, even less running.
+  if (runtimeInitialized) {
+    ___trap();
+  }
+#endif
   /** @suppress {checkTypes} */
   var e = new WebAssembly.RuntimeError(what);
 
@@ -483,7 +492,6 @@ function abort(what) {
   // in code paths apart from instantiation where an exception is expected
   // to be thrown when abort is called.
   throw e;
-#endif
 }
 
 #include "memoryprofiler.js"
@@ -502,7 +510,6 @@ var FS = {
   mkdev: function() { FS.error() },
   registerDevice: function() { FS.error() },
   analyzePath: function() { FS.error() },
-  loadFilesFromDB: function() { FS.error() },
 
   ErrnoError: function ErrnoError() { FS.error() },
 };
@@ -533,6 +540,8 @@ function createExportWrapper(name, fixedasm) {
 }
 #endif
 
+#include "runtime_exceptions.js"
+
 #if ABORT_ON_WASM_EXCEPTIONS
 // `abortWrapperDepth` counts the recursion level of the wrapper function so
 // that we only handle exceptions at the top level letting the exception
@@ -556,9 +565,14 @@ function makeAbortWrapper(original) {
       if (
         ABORT // rethrow exception if abort() was called in the original function call above
         || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
-#if SUPPORT_LONGJMP == 'emscripten'
-        || e === Infinity // rethrow longjmp if enabled (In Emscripten EH format longjmp will throw Infinity)
+#if SUPPORT_LONGJMP == 'emscripten' // Rethrow longjmp if enabled
+#if EXCEPTION_STACK_TRACES
+        || e instanceof EmscriptenSjLj // EXCEPTION_STACK_TRACES=1 will throw an instance of EmscriptenSjLj
+#else
+        || e === Infinity // EXCEPTION_STACK_TRACES=0 will throw Infinity
+#endif // EXCEPTION_STACK_TRACES
 #endif
+        || e === 'unwind'
       ) {
         throw e;
       }
@@ -648,8 +662,8 @@ function getBinary(file) {
   }
 }
 
-function getBinaryPromise() {
-  // If we don't have the binary yet, try to to load it asynchronously.
+function getBinaryPromise(binaryFile) {
+  // If we don't have the binary yet, try to load it asynchronously.
   // Fetch has some additional restrictions over XHR, like it can't be used on a file:// url.
   // See https://github.com/github/fetch/pull/92#issuecomment-140665932
   // Cordova or Electron apps are typically loaded from a file:// url.
@@ -657,24 +671,22 @@ function getBinaryPromise() {
   if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER)) {
     if (typeof fetch == 'function'
 #if ENVIRONMENT_MAY_BE_WEBVIEW
-      && !isFileURI(wasmBinaryFile)
+      && !isFileURI(binaryFile)
 #endif
     ) {
-      return fetch(wasmBinaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}}).then(function(response) {
+      return fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}}).then((response) => {
         if (!response['ok']) {
-          throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
+          throw "failed to load wasm binary file at '" + binaryFile + "'";
         }
         return response['arrayBuffer']();
-      }).catch(function () {
-          return getBinary(wasmBinaryFile);
-      });
+      }).catch(() => getBinary(binaryFile));
     }
 #if ENVIRONMENT_MAY_BE_WEBVIEW
     else {
       if (readAsync) {
         // fetch is not available or url is file => try XHR (readAsync uses XHR internally)
-        return new Promise(function(resolve, reject) {
-          readAsync(wasmBinaryFile, function(response) { resolve(new Uint8Array(/** @type{!ArrayBuffer} */(response))) }, reject)
+        return new Promise((resolve, reject) => {
+          readAsync(binaryFile, (response) => resolve(new Uint8Array(/** @type{!ArrayBuffer} */(response))), reject)
         });
       }
     }
@@ -682,7 +694,7 @@ function getBinaryPromise() {
   }
 
   // Otherwise, getBinary should be able to get it synchronously
-  return Promise.resolve().then(function() { return getBinary(wasmBinaryFile); });
+  return Promise.resolve().then(() => getBinary(binaryFile));
 }
 
 #if LOAD_SOURCE_MAP
@@ -700,6 +712,9 @@ var wasmOffsetConverter;
 var splitModuleProxyHandler = {
   'get': function(target, prop, receiver) {
     return function() {
+#if ASYNCIFY == 2
+      throw new Error('Placeholder function "' + prop + '" should not be called when using JSPI.');
+#else
       err('placeholder function called: ' + prop);
       var imports = {'primary': Module['asm']};
       // Replace '.wasm' suffix with '.deferred.wasm'.
@@ -713,6 +728,7 @@ var splitModuleProxyHandler = {
       return wasmTable.get(1 + parseInt(prop)).apply(null, arguments);
 #else
       return wasmTable.get(prop).apply(null, arguments);
+#endif
 #endif
     }
   }
@@ -787,15 +803,136 @@ function instantiateSync(file, info) {
 }
 #endif
 
-#if LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER
-// When using postMessage to send an object, it is processed by the structured clone algorithm.
-// The prototype, and hence methods, on that object is then lost. This function adds back the lost prototype.
-// This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
+#if PTHREADS && (LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER)
+// When using postMessage to send an object, it is processed by the structured
+// clone algorithm.  The prototype, and hence methods, on that object is then
+// lost. This function adds back the lost prototype.  This does not work with
+// nested objects that has prototypes, but it suffices for WasmSourceMap and
+// WasmOffsetConverter.
 function resetPrototype(constructor, attrs) {
   var object = Object.create(constructor.prototype);
   return Object.assign(object, attrs);
 }
 #endif
+
+#if WASM_ASYNC_COMPILATION
+function instantiateArrayBuffer(binaryFile, imports, receiver) {
+#if USE_OFFSET_CONVERTER
+  var savedBinary;
+#endif
+  return getBinaryPromise(binaryFile).then((binary) => {
+#if USE_OFFSET_CONVERTER
+    savedBinary = binary;
+#endif
+    return WebAssembly.instantiate(binary, imports);
+  }).then((instance) => {
+#if USE_OFFSET_CONVERTER
+    // wasmOffsetConverter needs to be assigned before calling the receiver
+    // (receiveInstantiationResult).  See comments below in instantiateAsync.
+    wasmOffsetConverter = new WasmOffsetConverter(savedBinary, instance.module);
+#endif
+    return instance;
+  }).then(receiver, (reason) => {
+    err('failed to asynchronously prepare wasm: ' + reason);
+
+#if WASM == 2
+#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+    if (typeof location != 'undefined') {
+#endif
+      // WebAssembly compilation failed, try running the JS fallback instead.
+      var search = location.search;
+      if (search.indexOf('_rwasm=0') < 0) {
+        location.href += (search ? search + '&' : '?') + '_rwasm=0';
+        // Return here to avoid calling abort() below.  The application
+        // still has a chance to start sucessfully do we don't want to
+        // trigger onAbort or onExit handlers.
+        return;
+      }
+#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+    }
+#endif
+#endif // WASM == 2
+
+#if ASSERTIONS
+    // Warn on some common problems.
+    if (isFileURI(wasmBinaryFile)) {
+      err('warning: Loading from a file URI (' + wasmBinaryFile + ') is not supported in most browsers. See https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-run-a-local-webserver-for-testing-why-does-my-program-stall-in-downloading-or-preparing');
+    }
+#endif
+    abort(reason);
+  });
+}
+
+function instantiateAsync(binary, binaryFile, imports, callback) {
+  if (!binary &&
+      typeof WebAssembly.instantiateStreaming == 'function' &&
+      !isDataURI(binaryFile) &&
+#if ENVIRONMENT_MAY_BE_WEBVIEW
+      // Don't use streaming for file:// delivered objects in a webview, fetch them synchronously.
+      !isFileURI(binaryFile) &&
+#endif
+#if ENVIRONMENT_MAY_BE_NODE
+      // Avoid instantiateStreaming() on Node.js environment for now, as while
+      // Node.js v18.1.0 implements it, it does not have a full fetch()
+      // implementation yet.
+      //
+      // Reference:
+      //   https://github.com/emscripten-core/emscripten/pull/16917
+      !ENVIRONMENT_IS_NODE &&
+#endif
+      typeof fetch == 'function') {
+    return fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}}).then((response) => {
+      // Suppress closure warning here since the upstream definition for
+      // instantiateStreaming only allows Promise<Repsponse> rather than
+      // an actual Response.
+      // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure is fixed.
+      /** @suppress {checkTypes} */
+      var result = WebAssembly.instantiateStreaming(response, imports);
+
+#if USE_OFFSET_CONVERTER
+      // We need the wasm binary for the offset converter. Clone the response
+      // in order to get its arrayBuffer (cloning should be more efficient
+      // than doing another entire request).
+      // (We must clone the response now in order to use it later, as if we
+      // try to clone it asynchronously lower down then we will get a
+      // "response was already consumed" error.)
+      var clonedResponsePromise = response.clone().arrayBuffer();
+#endif
+
+      return result.then(
+#if !USE_OFFSET_CONVERTER
+        callback,
+#else
+        function(instantiationResult) {
+          // When using the offset converter, we must interpose here. First,
+          // the instantiation result must arrive (if it fails, the error
+          // handling later down will handle it). Once it arrives, we can
+          // initialize the offset converter. And only then is it valid to
+          // call receiveInstantiationResult, as that function will use the
+          // offset converter (in the case of pthreads, it will create the
+          // pthreads and send them the offsets along with the wasm instance).
+
+          clonedResponsePromise.then((arrayBufferResult) => {
+              wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(arrayBufferResult), instantiationResult.module);
+              callback(instantiationResult);
+            },
+            (reason) => err('failed to initialize offset-converter: ' + reason)
+          );
+        },
+#endif
+        function(reason) {
+          // We expect the most common failure cause to be a bad MIME type for the binary,
+          // in which case falling back to ArrayBuffer instantiation should work.
+          err('wasm streaming compile failed: ' + reason);
+          err('falling back to ArrayBuffer instantiation');
+          return instantiateArrayBuffer(binaryFile, imports, callback);
+        });
+    });
+  } else {
+    return instantiateArrayBuffer(binaryFile, imports, callback);
+  }
+}
+#endif // WASM_ASYNC_COMPILATION
 
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
@@ -851,7 +988,7 @@ function createWasm() {
 
     Module['asm'] = exports;
 
-#if USE_PTHREADS
+#if PTHREADS
 #if MAIN_MODULE
     registerTLSInit(Module['asm']['_emscripten_tls_init'], instance.exports, metadata);
 #else
@@ -881,6 +1018,13 @@ function createWasm() {
 #endif
 #endif
 
+#if AUDIO_WORKLET
+    // If we are in the audio worklet environment, we can only access the Module object
+    // and not the global scope of the main JS script. Therefore we need to export
+    // all functions that the audio worklet scope needs onto the Module object.
+    Module['wasmTable'] = wasmTable;
+#endif
+
 #if hasExportedSymbol('__wasm_call_ctors')
     addOnInit(Module['asm']['__wasm_call_ctors']);
 #endif
@@ -899,17 +1043,18 @@ function createWasm() {
     exportAsmFunctions(exports);
 #endif
 
-#if USE_PTHREADS || WASM_WORKERS
+#if PTHREADS || WASM_WORKERS
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
 #endif
 
-#if USE_PTHREADS
+#if PTHREADS
     PThread.loadWasmModuleToAllWorkers(() => removeRunDependency('wasm-instantiate'));
 #else // singlethreaded build:
     removeRunDependency('wasm-instantiate');
-#endif // ~USE_PTHREADS
+#endif // ~PTHREADS
 
+    return exports;
   }
   // wait for the pthread pool (if any)
   addRunDependency('wasm-instantiate');
@@ -937,156 +1082,41 @@ function createWasm() {
     receiveInstance(result['instance'], result['module']);
 #else
     // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
-    // When the regression is fixed, can restore the above USE_PTHREADS-enabled path.
+    // When the regression is fixed, can restore the above PTHREADS-enabled path.
     receiveInstance(result['instance']);
 #endif
   }
+#endif // WASM_ASYNC_COMPILATION
 
-  function instantiateArrayBuffer(receiver) {
-#if USE_OFFSET_CONVERTER
-    var savedBinary;
-#endif
-    return getBinaryPromise().then(function(binary) {
-#if USE_OFFSET_CONVERTER
-      savedBinary = binary;
-#endif
-      return WebAssembly.instantiate(binary, info);
-    }).then(function (instance) {
-#if USE_OFFSET_CONVERTER
-      // wasmOffsetConverter needs to be assigned before calling the receiver
-      // (receiveInstantiationResult).  See comments below in instantiateAsync.
-      wasmOffsetConverter = new WasmOffsetConverter(savedBinary, instance.module);
-#endif
-      return instance;
-    }).then(receiver, function(reason) {
-      err('failed to asynchronously prepare wasm: ' + reason);
-
-#if WASM == 2
-#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-      if (typeof location != 'undefined') {
-#endif
-        // WebAssembly compilation failed, try running the JS fallback instead.
-        var search = location.search;
-        if (search.indexOf('_rwasm=0') < 0) {
-          location.href += (search ? search + '&' : '?') + '_rwasm=0';
-          // Return here to avoid calling abort() below.  The application
-          // still has a chance to start sucessfully do we don't want to
-          // trigger onAbort or onExit handlers.
-          return;
-        }
-#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-      }
-#endif
-#endif // WASM == 2
-
-#if ASSERTIONS
-      // Warn on some common problems.
-      if (isFileURI(wasmBinaryFile)) {
-        err('warning: Loading from a file URI (' + wasmBinaryFile + ') is not supported in most browsers. See https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-run-a-local-webserver-for-testing-why-does-my-program-stall-in-downloading-or-preparing');
-      }
-#endif
-      abort(reason);
-    });
-  }
-
-  function instantiateAsync() {
-    if (!wasmBinary &&
-        typeof WebAssembly.instantiateStreaming == 'function' &&
-        !isDataURI(wasmBinaryFile) &&
-#if ENVIRONMENT_MAY_BE_WEBVIEW
-        // Don't use streaming for file:// delivered objects in a webview, fetch them synchronously.
-        !isFileURI(wasmBinaryFile) &&
-#endif
-#if ENVIRONMENT_MAY_BE_NODE
-        // Avoid instantiateStreaming() on Node.js environment for now, as while
-        // Node.js v18.1.0 implements it, it does not have a full fetch()
-        // implementation yet.
-        //
-        // Reference:
-        //   https://github.com/emscripten-core/emscripten/pull/16917
-        !ENVIRONMENT_IS_NODE &&
-#endif
-        typeof fetch == 'function') {
-      return fetch(wasmBinaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}}).then(function(response) {
-        // Suppress closure warning here since the upstream definition for
-        // instantiateStreaming only allows Promise<Repsponse> rather than
-        // an actual Response.
-        // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure is fixed.
-        /** @suppress {checkTypes} */
-        var result = WebAssembly.instantiateStreaming(response, info);
-
-#if USE_OFFSET_CONVERTER
-        // We need the wasm binary for the offset converter. Clone the response
-        // in order to get its arrayBuffer (cloning should be more efficient
-        // than doing another entire request).
-        // (We must clone the response now in order to use it later, as if we
-        // try to clone it asynchronously lower down then we will get a
-        // "response was already consumed" error.)
-        var clonedResponsePromise = response.clone().arrayBuffer();
-#endif
-
-        return result.then(
-#if !USE_OFFSET_CONVERTER
-          receiveInstantiationResult,
-#else
-          function(instantiationResult) {
-            // When using the offset converter, we must interpose here. First,
-            // the instantiation result must arrive (if it fails, the error
-            // handling later down will handle it). Once it arrives, we can
-            // initialize the offset converter. And only then is it valid to
-            // call receiveInstantiationResult, as that function will use the
-            // offset converter (in the case of pthreads, it will create the
-            // pthreads and send them the offsets along with the wasm instance).
-
-            clonedResponsePromise.then(function(arrayBufferResult) {
-              wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(arrayBufferResult), instantiationResult.module);
-              receiveInstantiationResult(instantiationResult);
-            }, function(reason) {
-              err('failed to initialize offset-converter: ' + reason);
-            });
-          },
-#endif
-          function(reason) {
-            // We expect the most common failure cause to be a bad MIME type for the binary,
-            // in which case falling back to ArrayBuffer instantiation should work.
-            err('wasm streaming compile failed: ' + reason);
-            err('falling back to ArrayBuffer instantiation');
-            return instantiateArrayBuffer(receiveInstantiationResult);
-          });
-      });
-    } else {
-      return instantiateArrayBuffer(receiveInstantiationResult);
-    }
-  }
-#endif
-
+#if expectToReceiveOnModule('instantiateWasm')
   // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
-  // to manually instantiate the Wasm module themselves. This allows pages to run the instantiation parallel
-  // to any other async startup actions they are performing.
-  // Also pthreads and wasm workers initialize the wasm instance through this path.
+  // to manually instantiate the Wasm module themselves. This allows pages to
+  // run the instantiation parallel to any other async startup actions they are
+  // performing.
+  // Also pthreads and wasm workers initialize the wasm instance through this
+  // path.
   if (Module['instantiateWasm']) {
-#if USE_OFFSET_CONVERTER
-#if ASSERTIONS && USE_PTHREADS
+
+#if USE_OFFSET_CONVERTER && PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
+#if ASSERTIONS
       assert(Module['wasmOffsetData'], 'wasmOffsetData not found on Module object');
+#endif
+      wasmOffsetConverter = resetPrototype(WasmOffsetConverter, Module['wasmOffsetData']);
     }
 #endif
-    wasmOffsetConverter = resetPrototype(WasmOffsetConverter, Module['wasmOffsetData']);
-#endif
-#if LOAD_SOURCE_MAP
-#if ASSERTIONS && USE_PTHREADS
+
+#if LOAD_SOURCE_MAP && PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
+#if ASSERTIONS
       assert(Module['wasmSourceMapData'], 'wasmSourceMapData not found on Module object');
+#endif
+      wasmSourceMap = resetPrototype(WasmSourceMap, Module['wasmSourceMapData']);
     }
 #endif
-    wasmSourceMap = resetPrototype(WasmSourceMap, Module['wasmSourceMapData']);
-#endif
+
     try {
-      var exports = Module['instantiateWasm'](info, receiveInstance);
-#if ASYNCIFY
-      exports = Asyncify.instrumentWasmExports(exports);
-#endif
-      return exports;
+      return Module['instantiateWasm'](info, receiveInstance);
     } catch(e) {
       err('Module.instantiateWasm callback failed with error: ' + e);
       #if MODULARIZE
@@ -1097,6 +1127,7 @@ function createWasm() {
       #endif
     }
   }
+#endif
 
 #if WASM_ASYNC_COMPILATION
 #if RUNTIME_LOGGING
@@ -1104,9 +1135,9 @@ function createWasm() {
 #endif
 #if MODULARIZE
   // If instantiation fails, reject the module ready promise.
-  instantiateAsync().catch(readyPromiseReject);
+  instantiateAsync(wasmBinary, wasmBinaryFile, info, receiveInstantiationResult).catch(readyPromiseReject);
 #else
-  instantiateAsync();
+  instantiateAsync(wasmBinary, wasmBinaryFile, info, receiveInstantiationResult);
 #endif
 #if LOAD_SOURCE_MAP
   getSourceMapPromise().then(receiveSourceMapJSON);
@@ -1114,21 +1145,22 @@ function createWasm() {
   return {}; // no exports yet; we'll fill them in later
 #else
   var result = instantiateSync(wasmBinaryFile, info);
-#if USE_PTHREADS || MAIN_MODULE
-  receiveInstance(result[0], result[1]);
+#if PTHREADS || MAIN_MODULE
+  return receiveInstance(result[0], result[1]);
 #else
   // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193,
   // the above line no longer optimizes out down to the following line.
   // When the regression is fixed, we can remove this if/else.
-  receiveInstance(result[0]);
+  return receiveInstance(result[0]);
 #endif
-  return Module['asm']; // exports were assigned here
 #endif
 }
 
+#if !WASM_BIGINT
 // Globals used by JS i64 conversions (see makeSetValue)
 var tempDouble;
 var tempI64;
+#endif
 
 #include "runtime_debug.js"
 
@@ -1145,7 +1177,7 @@ function getCompilerSetting(name) {
 var memoryInitializer = <<< MEM_INITIALIZER >>>;
 
 function runMemoryInitializer() {
-#if USE_PTHREADS
+#if PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return;
 #endif
   if (!isDataURI(memoryInitializer)) {
@@ -1171,7 +1203,7 @@ function runMemoryInitializer() {
       removeRunDependency('memory initializer');
     };
     var doBrowserLoad = () => {
-      readAsync(memoryInitializer, applyMemoryInitializer, function() {
+      readAsync(memoryInitializer, applyMemoryInitializer, () => {
         var e = new Error('could not load memory initializer ' + memoryInitializer);
 #if MODULARIZE
           readyPromiseReject(e);

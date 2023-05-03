@@ -10,25 +10,22 @@
 #include <assert.h>
 #include <unistd.h>
 #include <errno.h>
-#include <emscripten/em_asm.h>
 
 // Stores/encodes the results of calling to cleanup handlers.
-long cleanupState = 1;
+int32_t cleanup_state = 1;
 
 static void cleanup_handler1(void *arg) {
-  cleanupState <<= 2;
+  cleanup_state <<= 2;
   // Perform non-commutative arithmetic to a global var that encodes the cleanup stack order ops.
-  cleanupState *= (long)arg;
-  EM_ASM(console.log('Called clean-up handler 1 with arg ' + $0), arg);
-  //printf("Called clean-up handler 1 with arg %d\n", (long)arg);
+  cleanup_state *= (intptr_t)arg;
+  printf("Called clean-up handler 1 with arg %p (state=%d)\n", arg, cleanup_state);
 }
 
 static void cleanup_handler2(void *arg) {
-  cleanupState <<= 3;
+  cleanup_state <<= 3;
   // Perform non-commutative arithmetic to a global var that encodes the cleanup stack order ops.
-  cleanupState *= (long)arg;
-  EM_ASM(console.log('Called clean-up handler 2 with arg ' + $0), arg);
-  //printf("Called clean-up handler 2 with arg %d\n", (long)arg);
+  cleanup_state *= (intptr_t)arg;
+  printf("Called clean-up handler 2 with arg %p (state=%d)\n", arg, cleanup_state);
 }
 
 static void *thread_start1(void *arg) {
@@ -83,8 +80,8 @@ int main() {
 //   s = pthread_cancel(thr[3]);
 //   assert(s == 0);
   pthread_cleanup_pop(1);
-  printf("Cleanup state variable: %ld\n", cleanupState);
-  assert(cleanupState == 907640832);
+  printf("Cleanup state variable: %d\n", cleanup_state);
+  assert(cleanup_state == 907640832);
 
   pthread_cleanup_pop(1);
   exit(EXIT_SUCCESS);

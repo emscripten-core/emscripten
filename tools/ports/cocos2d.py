@@ -4,8 +4,8 @@
 # found in the LICENSE file.
 
 import os
-import logging
 import re
+from tools import diagnostics
 
 TAG = 'version_3_3'
 HASH = 'd7b22660036c684f09754fcbbc7562984f02aa955eef2b76555270c63a717e6672c4fe695afb16280822e8b7c75d4b99ae21975a01a4ed51cad957f7783722cd'
@@ -21,7 +21,7 @@ def get(ports, settings, shared):
   ports.fetch_project('cocos2d', f'https://github.com/emscripten-ports/Cocos2d/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    logging.warn('cocos2d: library is experimental, do not expect that it will work out of the box')
+    diagnostics.warning('experimental', 'cocos2d: library is experimental, do not expect that it will work out of the box')
 
     cocos2d_src = os.path.join(ports.get_dir(), 'cocos2d')
     cocos2d_root = os.path.join(cocos2d_src, 'Cocos2d-' + TAG)

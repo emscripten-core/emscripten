@@ -10,8 +10,10 @@
 #include <emscripten/threading.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/param.h>
 #include "atomic.h"
 #include "threading_internal.h"
+#include "pthread_impl.h"
 
 extern void* _emscripten_main_thread_futex;
 
@@ -124,18 +126,12 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   int ret;
   emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_WAITFUTEX);
 
-  // For the main browser thread we can't use
+  // For the main browser thread and audio worklets we can't use
   // __builtin_wasm_memory_atomic_wait32 so we have busy wait instead.
   if (!_emscripten_thread_supports_atomics_wait()) {
-    if (emscripten_is_main_browser_thread()) {
-      ret = futex_wait_main_browser_thread(addr, val, max_wait_ms);
-      emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITFUTEX, EM_THREAD_STATUS_RUNNING);
-      return ret;
-    } else {
-      // TODO: handle non-main threads that also don't support `atomic.wait`.
-      // For example AudioWorklet.
-      assert(0);
-    }
+    ret = futex_wait_main_browser_thread(addr, val, max_wait_ms);
+    emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITFUTEX, EM_THREAD_STATUS_RUNNING);
+    return ret;
   }
 
   // -1 (or any negative number) means wait indefinitely.
@@ -143,7 +139,30 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   if (max_wait_ms != INFINITY) {
     max_wait_ns = (int64_t)(max_wait_ms*1000*1000);
   }
+#ifdef __PIC__
+  // After the main thread queues dlopen events, it checks if the target threads
+  // are sleeping.
+  // If `sleeping` is set then the main thread knows that event will be
+  // processed after the sleep (before any other user code).  In this case the
+  // main thread does not wait for any kind of response form the thread.
+  // If `sleeping` is not set then we know we should wait for the thread process
+  // the queue, either from the call here directly after setting `sleeping` to
+  // 1, or from another callsite (e.g. the one in `emscripten_yield`).
+  int is_runtime_thread = emscripten_is_main_runtime_thread();
+  if (!is_runtime_thread) {
+    __pthread_self()->sleeping = 1;
+    _emscripten_process_dlopen_queue();
+  }
+#endif
   ret = __builtin_wasm_memory_atomic_wait32((int*)addr, val, max_wait_ns);
+#ifdef __PIC__
+  if (!is_runtime_thread) {
+    __pthread_self()->sleeping = 0;
+    _emscripten_process_dlopen_queue();
+  }
+#endif
+
+done:
   emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITFUTEX, EM_THREAD_STATUS_RUNNING);
 
   // memory.atomic.wait32 returns:

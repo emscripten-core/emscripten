@@ -1,0 +1,34 @@
+test_create
+expected success: 1
+expected error: 2
+expected success: 1
+expected error: 2
+test_promisify
+Hello from a callback
+test_rejection
+expected error: 0
+expected error: 1234
+test_all
+promise_all results:
+promise_all results:
+42
+1337
+0
+promise_all error: 1337
+test_all_settled
+promise_all_settled results:
+promise_all_settled results:
+fulfill 42
+reject 43
+fulfill 44
+test_any
+promise_any reasons:
+promise_any result: 42
+promise_any reasons:
+42
+43
+44
+test_race
+expected success: 42
+expected error: 42
+finish

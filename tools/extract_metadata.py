@@ -90,7 +90,7 @@ def parse_function_for_memory_inits(module, func_index, offset_map):
   call_targets = []
   while module.tell() != end:
     opcode = OpCode(module.read_byte())
-    if opcode in (OpCode.END, OpCode.NOP, OpCode.DROP, OpCode.I32_ADD):
+    if opcode in (OpCode.END, OpCode.NOP, OpCode.DROP, OpCode.I32_ADD, OpCode.I64_ADD):
       pass
     elif opcode in (OpCode.BLOCK,):
       module.read_type()

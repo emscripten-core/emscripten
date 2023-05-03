@@ -7,63 +7,31 @@
 mergeInto(LibraryManager.library, {
   $wasmFSPreloadedFiles: [],
   $wasmFSPreloadedDirs: [],
-#if USE_CLOSURE_COMPILER
   // Declare variable for Closure, FS.createPreloadedFile() below calls Browser.handledByPreloadPlugin()
-  $FS__postset: '/**@suppress {duplicate, undefinedVars}*/var Browser;',
+  $FS__postset: `
+#if USE_CLOSURE_COMPILER
+/**@suppress {duplicate, undefinedVars}*/var Browser;
 #endif
+FS.createPreloadedFile = FS_createPreloadedFile;
+`,
   $FS__deps: [
     '$wasmFSPreloadedFiles',
     '$wasmFSPreloadedDirs',
-    '$asyncLoad',
     '$PATH',
-    '$allocateUTF8',
-    '$allocateUTF8OnStack',
+    '$stringToNewUTF8',
+    '$stringToUTF8OnStack',
     '$withStackSave',
     '$readI53FromI64',
+    '$FS_createPreloadedFile',
+    '$FS_getMode',
+#if FORCE_FILESYSTEM
+    '$FS_modeStringToFlags',
+#endif
   ],
   $FS : {
-    // TODO: Clean up the following functions - currently copied from library_fs.js directly.
-    createPreloadedFile: (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
-      // TODO: use WasmFS code to resolve and join the path here?
-      var fullname = name ? parent + '/' + name : parent;
-      var dep = getUniqueRunDependency('cp ' + fullname); // might have several active requests for the same fullname
-      function processData(byteArray) {
-        function finish(byteArray) {
-          if (preFinish) preFinish();
-          if (!dontCreateFile) {
-            FS.createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
-          }
-          if (onload) onload();
-          removeRunDependency(dep);
-        }
-#if !MINIMAL_RUNTIME
-        if (Browser.handledByPreloadPlugin(byteArray, fullname, finish, () => {
-          if (onerror) onerror();
-          removeRunDependency(dep);
-        })) {
-          return;
-        }
-#endif
-        finish(byteArray);
-      }
-      addRunDependency(dep);
-      if (typeof url == 'string') {
-        asyncLoad(url, (byteArray) => {
-          processData(byteArray);
-        }, onerror);
-      } else {
-        processData(url);
-      }
-    },
-    getMode: (canRead, canWrite) => {
-      var mode = 0;
-      if (canRead) mode |= {{{ cDefine('S_IRUGO') }}} | {{{ cDefine('S_IXUGO') }}};
-      if (canWrite) mode |= {{{ cDefine('S_IWUGO') }}};
-      return mode;
-    },
     createDataFile: (parent, name, data, canRead, canWrite, canOwn) => {
       // Data files must be cached until the file system itself has been initialized.
-      var mode = FS.getMode(canRead, canWrite);
+      var mode = FS_getMode(canRead, canWrite);
       var pathName = name ? parent + '/' + name : parent;
       wasmFSPreloadedFiles.push({pathName: pathName, fileData: data, mode: mode});
     },
@@ -85,7 +53,7 @@ mergeInto(LibraryManager.library, {
         throw new Error('Invalid encoding type "' + opts.encoding + '"');
       }
 
-      var pathName = allocateUTF8(path);
+      var pathName = stringToNewUTF8(path);
 
       // Copy the file into a JS buffer on the heap.
       var buf = __wasmfs_read_file(pathName);
@@ -115,24 +83,38 @@ mergeInto(LibraryManager.library, {
     mkdir: (path, mode) => {
       return withStackSave(() => {
         mode = mode !== undefined ? mode : 511 /* 0777 */;
-        var buffer = allocateUTF8OnStack(path);
+        var buffer = stringToUTF8OnStack(path);
         return __wasmfs_mkdir({{{ to64('buffer') }}}, mode);
       });
     },
     // TODO: mkdirTree
     // TDOO: rmdir
+    rmdir: (path) => {
+      return withStackSave(() => {
+        var buffer = stringToUTF8OnStack(path);
+        return __wasmfs_rmdir(buffer);
+      })
+    },
     // TODO: open
+    open: (path, flags, mode) => {
+      flags = typeof flags == 'string' ? FS_modeStringToFlags(flags) : flags;
+      mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
+      return withStackSave(() => {
+        var buffer = stringToUTF8OnStack(path);
+        return __wasmfs_open({{{ to64('buffer') }}}, flags, mode);
+      })
+    },
     // TODO: create
     // TODO: close
     unlink: (path) => {
       return withStackSave(() => {
-        var buffer = allocateUTF8OnStack(path);
+        var buffer = stringToUTF8OnStack(path);
         return __wasmfs_unlink(buffer);
       });
     },
     chdir: (path) => {
       return withStackSave(() => {
-        var buffer = allocateUTF8OnStack(path);
+        var buffer = stringToUTF8OnStack(path);
         return __wasmfs_chdir(buffer);
       });
     },
@@ -144,7 +126,7 @@ mergeInto(LibraryManager.library, {
     // TODO: munmap
     writeFile: (path, data) => {
       return withStackSave(() => {
-        var pathBuffer = allocateUTF8OnStack(path);
+        var pathBuffer = stringToUTF8OnStack(path);
         if (typeof data == 'string') {
           var buf = new Uint8Array(lengthBytesUTF8(data) + 1);
           var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
@@ -164,8 +146,8 @@ mergeInto(LibraryManager.library, {
     },
     symlink: (target, linkpath) => {
       return withStackSave(() => {
-        var targetBuffer = allocateUTF8OnStack(target);
-        var linkpathBuffer = allocateUTF8OnStack(linkpath);
+        var targetBuffer = stringToUTF8OnStack(target);
+        var linkpathBuffer = stringToUTF8OnStack(linkpath);
         return __wasmfs_symlink(targetBuffer, linkpathBuffer);
       });
     },
@@ -174,7 +156,7 @@ mergeInto(LibraryManager.library, {
     // TODO: lstat
     chmod: (path, mode) => {
       return withStackSave(() => {
-        var buffer = allocateUTF8OnStack(path);
+        var buffer = stringToUTF8OnStack(path);
         return __wasmfs_chmod(buffer, mode);
       });
     },
@@ -188,17 +170,17 @@ mergeInto(LibraryManager.library, {
     // TODO: utime
     findObject: (path) => {
       var result = __wasmfs_identify(path);
-      if (result == {{{ cDefine('ENOENT') }}}) {
+      if (result == {{{ cDefs.ENOENT }}}) {
         return null;
       }
       return {
-        isFolder: result == {{{ cDefine('EISDIR') }}},
+        isFolder: result == {{{ cDefs.EISDIR }}},
         isDevice: false, // TODO: wasmfs support for devices
       };
     },
     readdir: (path) => {
       return withStackSave(() => {
-        var pathBuffer = allocateUTF8OnStack(path);
+        var pathBuffer = stringToUTF8OnStack(path);
         var entries = [];
         var state = __wasmfs_readdir_start(pathBuffer);
         if (!state) {
@@ -249,6 +231,7 @@ mergeInto(LibraryManager.library, {
     stringToUTF8(s, childNameBuffer, len);
   },
   _wasmfs_get_preloaded_path_name__sig: 'vip',
+  _wasmfs_get_preloaded_path_name__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   _wasmfs_get_preloaded_path_name: function(index, fileNameBuffer) {
     var s = wasmFSPreloadedFiles[index].pathName;
     var len = lengthBytesUTF8(s) + 1;

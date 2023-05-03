@@ -107,6 +107,8 @@ mergeInto(LibraryManager.library, {
         var newPath = PATH.join2(PROXYFS.realPath(newDir), newName);
         try {
           oldNode.mount.opts.fs.rename(oldPath, newPath);
+          oldNode.name = newName;
+          oldNode.parent = newDir;
         } catch(e) {
           if (!e.code) throw e;
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
@@ -194,9 +196,9 @@ mergeInto(LibraryManager.library, {
       },
       llseek: function (stream, offset, whence) {
         var position = offset;
-        if (whence === {{{ cDefine('SEEK_CUR') }}}) {
+        if (whence === {{{ cDefs.SEEK_CUR }}}) {
           position += stream.position;
-        } else if (whence === {{{ cDefine('SEEK_END') }}}) {
+        } else if (whence === {{{ cDefs.SEEK_END }}}) {
           if (FS.isFile(stream.node.mode)) {
             try {
               var stat = stream.node.node_ops.getattr(stream.node);

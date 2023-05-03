@@ -16,4 +16,16 @@ pass
 pass
 pass
 pass
+test:
+val(typed_memory_view<uint64_t>)
+pass
+pass
+pass
+pass
+test:
+val(typed_memory_view<int64_t>)
+pass
+pass
+pass
+pass
 end

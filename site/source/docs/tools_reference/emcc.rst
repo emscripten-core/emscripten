@@ -162,8 +162,14 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-gsource-map:
 
 ``-gsource-map``
-  When linking, generate a source map using LLVM debug information (which must
+  [link]
+  Generate a source map using LLVM debug information (which must
   be present in object files, i.e., they should have been compiled with ``-g``).
+  When this option is provided, the **.wasm** file is updated to have a
+  ``sourceMappingURL`` section. The resulting URL will have format:
+  ``<base-url>`` + ``<wasm-file-name>`` + ``.map``. ``<base-url>`` defaults
+  to being empty (which means the source map is served from the same directory
+  as the wasm file). It can be changed using :ref:`--source-map-base <emcc-source-map-base>`.
 
 .. _emcc-gN:
 
@@ -352,7 +358,8 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--source-map-base <base-url>``
   [link]
-  The URL for the location where WebAssembly source maps will be published. When this option is provided, the **.wasm** file is updated to have a ``sourceMappingURL`` section. The resulting URL will have format: ``<base-url>`` + ``<wasm-file-name>`` + ``.map``.
+  The base URL for the location where WebAssembly source maps will be published. Must be used
+  with :ref:`-gsource-map <emcc-gsource-map>`.
 
 .. _emcc-minify:
 
@@ -494,7 +501,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--threadprofiler``
   [link]
-  Embeds a thread activity profiler onto the generated page. Use this to profile the application usage of pthreads when targeting multithreaded builds (-sUSE_PTHREADS=1/2).
+  Embeds a thread activity profiler onto the generated page. Use this to profile the application usage of pthreads when targeting multithreaded builds (-pthread).
 
 .. _emcc-config:
 

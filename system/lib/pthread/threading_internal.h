@@ -7,8 +7,9 @@
 
 #pragma once
 
-typedef union em_variant_val
-{
+#include <pthread.h>
+
+typedef union em_variant_val {
   int i;
   int64_t i64;
   float f;
@@ -25,8 +26,7 @@ typedef union em_variant_val
 // static/strongly typed by signature.
 #define EM_QUEUED_CALL_MAX_ARGS 11
 
-typedef struct em_queued_call
-{
+typedef struct em_queued_call {
   int functionEnum;
   void *functionPtr;
   _Atomic uint32_t operationDone;
@@ -118,11 +118,23 @@ void __emscripten_thread_cleanup(pthread_t thread);
 hidden void* _emscripten_tls_init(void);
 hidden void _emscripten_tls_free(void);
 
+// Marks the given thread as strongly referenced. This is used to prevent the
+// Node.js application from exiting as long as there are strongly referenced
+// threads still running. Normally you don't need to call this function, and
+// the pthread behaviour will match native in that background threads won't
+// keep runtime alive, but waiting for them via e.g. pthread_join will. 
+// However, this is useful for features like PROXY_TO_PTHREAD where we want to
+// keep running as long as the detached pthread is.
+void _emscripten_thread_set_strongref(pthread_t thread);
+
 // Checks certain structural invariants.  This allows us to detect when
 // already-freed threads are used in some APIs.  Technically this is undefined
 // behaviour, but we have a couple of places where we add these checks so that
 // we can pass more of the posixtest suite that vanilla musl.
 int _emscripten_thread_is_valid(pthread_t thread);
+
+void _emscripten_thread_exit_joinable(pthread_t thread);
+void _emscripten_process_dlopen_queue(void);
 
 #ifdef NDEBUG
 #define emscripten_set_current_thread_status(newStatus)
@@ -145,3 +157,10 @@ void emscripten_set_current_thread_status(EM_THREAD_STATUS newStatus);
 // this is a no-op.
 void emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS expectedStatus, EM_THREAD_STATUS newStatus);
 #endif
+
+int __pthread_kill_js(pthread_t t, int sig);
+int __pthread_create_js(struct __pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
+int _emscripten_default_pthread_stack_size();
+void __set_thread_state(pthread_t ptr, int is_main, int is_runtime, int can_block);
+
+double emscripten_receive_on_main_thread_js(int functionIndex, int numCallArgs, double* args);

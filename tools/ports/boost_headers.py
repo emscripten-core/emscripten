@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
 import os
 
 TAG = '1.75.0'
@@ -20,8 +19,6 @@ def get(ports, settings, shared):
                       sha512hash=HASH)
 
   def create(final):
-    logging.info('building port: boost_headers')
-
     # includes
     source_path = os.path.join(ports.get_dir(), 'boost_headers')
     source_path_include = os.path.join(source_path, 'boost')

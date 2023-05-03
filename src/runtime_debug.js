@@ -76,7 +76,7 @@ function missingLibrarySymbol(sym) {
       }
     });
   }
-  // Any symbol that is not included from the JS libary is also (by definttion)
+  // Any symbol that is not included from the JS libary is also (by definition)
   // not exported on the Module object.
   unexportedRuntimeSymbol(sym);
 }
@@ -95,7 +95,37 @@ function unexportedRuntimeSymbol(sym) {
     });
   }
 }
-#endif
+
+#if ASSERTIONS == 2
+
+var MAX_UINT8  = (2 **  8) - 1;
+var MAX_UINT16 = (2 ** 16) - 1;
+var MAX_UINT32 = (2 ** 32) - 1;
+var MAX_UINT53 = (2 ** 53) - 1;
+var MAX_UINT64 = (2 ** 64) - 1;
+
+var MIN_INT8  = - (2 ** ( 8 - 1)) + 1;
+var MIN_INT16 = - (2 ** (16 - 1)) + 1;
+var MIN_INT32 = - (2 ** (32 - 1)) + 1;
+var MIN_INT53 = - (2 ** (53 - 1)) + 1;
+var MIN_INT64 = - (2 ** (64 - 1)) + 1;
+
+function checkInt(value, bits, min, max) {
+  assert(Number.isInteger(Number(value)), "attempt to write non-integer (" + value + ") into integer heap");
+  assert(value <= max, "value (" + value + ") too large to write as " + bits +"-bit value");
+  assert(value >= min, "value (" + value + ") too small to write as " + bits +"-bit value");
+}
+
+var checkInt1 = (value) => checkInt(value, 1, 1);
+var checkInt8 = (value) => checkInt(value, 8, MIN_INT8, MAX_UINT8);
+var checkInt16 = (value) => checkInt(value, 16, MIN_INT16, MAX_UINT16);
+var checkInt32 = (value) => checkInt(value, 32, MIN_INT32, MAX_UINT32);
+var checkInt53 = (value) => checkInt(value, 53, MIN_INT53, MAX_UINT53);
+var checkInt64 = (value) => checkInt(value, 64, MIN_INT64, MAX_UINT64);
+
+#endif // ASSERTIONS == 2
+
+#endif // ASSERTIONS
 
 #if RUNTIME_DEBUG
 var runtimeDebug = true; // Switch to false at runtime to disable logging at the right times
@@ -124,11 +154,20 @@ function prettyPrint(arg) {
   }
   return arg;
 }
+#endif
 
+#if ASSERTIONS || RUNTIME_DEBUG
 // Used by XXXXX_DEBUG settings to output debug messages.
 function dbg(text) {
-  // TODO(sbc): Make this configurable somehow.  Its not always convient for
+#if ENVIRONMENT_MAY_BE_NODE && PTHREADS
+  // Avoid using the console for debugging in multi-threaded node applications
+  // See https://github.com/emscripten-core/emscripten/issues/14804
+  if (ENVIRONMENT_IS_NODE) {
+    fs.writeSync(2, Array.from(arguments).join(' ') + '\n');
+  } else
+#endif
+  // TODO(sbc): Make this configurable somehow.  Its not always convenient for
   // logging to show up as errors.
-  console.error(text);
+  console.error.apply(console, arguments);
 }
 #endif

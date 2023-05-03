@@ -49,10 +49,8 @@ DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 # exact requirement, but is the oldest version of node that we do any testing with.
 # This version aligns with the current Ubuuntu TLS 20.04 (Focal).
 MINIMUM_NODE_VERSION = (10, 19, 0)
-EXPECTED_LLVM_VERSION = 16
+EXPECTED_LLVM_VERSION = 17
 
-# Used only when EM_PYTHON_MULTIPROCESSING=1 env. var is set.
-multiprocessing_pool = None
 logger = logging.getLogger('shared')
 
 # warning about absolute-paths is disabled by default, and not enabled by -Wall
@@ -78,6 +76,7 @@ diagnostics.add_warning('limited-postlink-optimizations')
 diagnostics.add_warning('em-js-i64')
 diagnostics.add_warning('js-compiler')
 diagnostics.add_warning('compatibility')
+diagnostics.add_warning('unsupported')
 # Closure warning are not (yet) enabled by default
 diagnostics.add_warning('closure', enabled=False)
 
@@ -94,6 +93,8 @@ def shlex_quote(arg):
 # Switch to shlex.join once we can depend on python 3.8:
 # https://docs.python.org/3/library/shlex.html#shlex.join
 def shlex_join(cmd):
+  if type(cmd) is str:
+    return cmd
   return ' '.join(shlex_quote(x) for x in cmd)
 
 
@@ -140,6 +141,13 @@ def returncode_to_str(code):
   return f'returned {code}'
 
 
+def cap_max_workers_in_pool(max_workers):
+  # Python has an issue that it can only use max 61 cores on Windows: https://github.com/python/cpython/issues/89240
+  if WINDOWS:
+    return min(max_workers, 61)
+  return max_workers
+
+
 def run_multiple_processes(commands,
                            env=None,
                            route_stdout_to_temp_files_suffix=None):
@@ -152,21 +160,6 @@ def run_multiple_processes(commands,
 
   if env is None:
     env = os.environ.copy()
-
-  # By default, avoid using Python multiprocessing library due to a large amount
-  # of bugs it has on Windows (#8013, #718, etc.)
-  # Use EM_PYTHON_MULTIPROCESSING=1 environment variable to enable it. It can be
-  # faster, but may not work on Windows.
-  if int(os.getenv('EM_PYTHON_MULTIPROCESSING', '0')):
-    import multiprocessing
-    max_workers = get_num_cores()
-    global multiprocessing_pool
-    if not multiprocessing_pool:
-      if WINDOWS:
-        # Fix for python < 3.8 on windows. See: https://github.com/python/cpython/pull/13132
-        max_workers = min(max_workers, 61)
-      multiprocessing_pool = multiprocessing.Pool(processes=max_workers)
-    return multiprocessing_pool.map(mp_run_process, [(cmd, env, route_stdout_to_temp_files_suffix) for cmd in commands], chunksize=1)
 
   std_outs = []
 
@@ -246,7 +239,6 @@ def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: mutable defau
   This is used by emcc to run parts of the build process that are written
   implemented in javascript.
   """
-  check_node()
   command = config.NODE_JS + node_args + [filename] + jsargs
   return check_call(command, **kw).stdout
 
@@ -364,6 +356,10 @@ def node_bigint_flags():
     return []
 
 
+def node_memory64_flags():
+  return ['--experimental-wasm-memory64']
+
+
 def node_pthread_flags():
   node_version = check_node_version()
   # bulk memory and wasm threads were enabled by default in node v16.
@@ -376,7 +372,6 @@ def node_pthread_flags():
 @memoize
 @ToolchainProfiler.profile()
 def check_node():
-  check_node_version()
   try:
     run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
   except Exception as e:
@@ -397,6 +392,7 @@ def generate_sanity():
 
 def perform_sanity_checks():
   # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
+  check_node_version()
   check_llvm_version()
 
   llvm_ok = check_llvm()
@@ -410,8 +406,10 @@ def perform_sanity_checks():
   if not llvm_ok:
     exit_with_error('failing sanity checks due to previous llvm failure')
 
+  check_node()
+
   with ToolchainProfiler.profile_block('sanity LLVM'):
-    for cmd in [CLANG_CC, LLVM_AR, LLVM_NM]:
+    for cmd in [CLANG_CC, LLVM_AR]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
         exit_with_error('Cannot find %s, check the paths in %s', cmd, config.EM_CONFIG)
 

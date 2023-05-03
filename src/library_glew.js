@@ -20,7 +20,7 @@
  */
 
 var LibraryGLEW = {
-  $GLEW__deps: ['glGetString', '$allocateUTF8'],
+  $GLEW__deps: ['glGetString', '$stringToNewUTF8', '$UTF8ToString'],
   $GLEW: {
     isLinaroFork: 1,
     extensions: null,
@@ -73,7 +73,7 @@ var LibraryGLEW = {
           string = "Unknown error";
           error = 8; // prevent array from growing more than this
         }
-        GLEW.error[error] = allocateUTF8(string);
+        GLEW.error[error] = stringToNewUTF8(string);
       }
       return GLEW.error[error];
     },
@@ -93,7 +93,7 @@ var LibraryGLEW = {
         var string = GLEW.versionStringConstantFromCode(name);
         if (!string)
           return 0;
-        GLEW.version[name] = allocateUTF8(string);
+        GLEW.version[name] = stringToNewUTF8(string);
       }
       return GLEW.version[name];
     },
@@ -127,7 +127,6 @@ var LibraryGLEW = {
     return GLEW.extensionIsSupported(UTF8ToString(name));
   },
 
-  glewGetErrorString__sig: 'ii',
   glewGetErrorString: function(error) {
     return GLEW.errorString(error);
   },

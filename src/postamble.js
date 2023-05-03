@@ -33,6 +33,12 @@ function callMain() {
 
   var entryFunction = {{{ getEntryFunction() }}};
 
+#if PROXY_TO_PTHREAD
+  // With PROXY_TO_PTHREAD make sure we keep the runtime alive until the
+  // proxied main calls exit (see exitOnMainThread() for where Pop is called).
+  {{{ runtimeKeepalivePush() }}}
+#endif
+
 #if MAIN_MODULE
   // Main modules can't tell if they have main() at compile time, since it may
   // arrive from a dynamic library.
@@ -45,10 +51,10 @@ function callMain() {
   args.unshift(thisProgram);
 
   var argc = args.length;
-  var argv = stackAlloc((argc + 1) * {{{ Runtime.POINTER_SIZE }}});
+  var argv = stackAlloc((argc + 1) * {{{ POINTER_SIZE }}});
   var argv_ptr = argv >> {{{ POINTER_SHIFT }}};
   args.forEach((arg) => {
-    {{{ POINTER_HEAP }}}[argv_ptr++] = {{{ to64('allocateUTF8OnStack(arg)') }}};
+    {{{ POINTER_HEAP }}}[argv_ptr++] = {{{ to64('stringToUTF8OnStack(arg)') }}};
   });
   {{{ POINTER_HEAP }}}[argv_ptr] = {{{ to64('0') }}};
 #else
@@ -56,9 +62,7 @@ function callMain() {
   var argv = 0;
 #endif // MAIN_READS_PARAMS
 
-#if ABORT_ON_WASM_EXCEPTIONS || !PROXY_TO_PTHREAD
   try {
-#endif
 #if BENCHMARK
     var start = Date.now();
 #endif
@@ -81,16 +85,6 @@ function callMain() {
     Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
 #endif
 
-    // In PROXY_TO_PTHREAD builds, we should never exit the runtime below, as
-    // execution is asynchronously handed off to a pthread.
-#if PROXY_TO_PTHREAD
-#if ASSERTIONS
-    assert(ret == 0, '_emscripten_proxy_main failed to start proxy thread: ' + ret);
-#endif
-#if ABORT_ON_WASM_EXCEPTIONS
-  }
-#endif
-#else
 #if ASYNCIFY == 2
     // The current spec of JSPI returns a promise only if the function suspends
     // and a plain value otherwise. This will likely change:
@@ -109,7 +103,6 @@ function callMain() {
   catch (e) {
     return handleException(e);
   }
-#endif // !PROXY_TO_PTHREAD
 #if ABORT_ON_WASM_EXCEPTIONS
   finally {
     // See abortWrapperDepth in preamble.js!
@@ -124,7 +117,7 @@ function stackCheckInit() {
   // This is normally called automatically during __wasm_call_ctors but need to
   // get these values before even running any of the ctors so we call it redundantly
   // here.
-#if ASSERTIONS && USE_PTHREADS
+#if ASSERTIONS && PTHREADS
   // See $establishStackSpace for the equivelent code that runs on a thread
   assert(!ENVIRONMENT_IS_PTHREAD);
 #endif
@@ -140,9 +133,11 @@ function stackCheckInit() {
 
 #if RELOCATABLE
 var dylibsLoaded = false;
+#if '$LDSO' in addedLibraryItems
+LDSO.init();
+#endif
 #endif
 
-/** @type {function(Array=)} */
 #if MAIN_READS_PARAMS
 function run(args = arguments_) {
 #else
@@ -157,7 +152,7 @@ function run() {
   }
 
 #if STACK_OVERFLOW_CHECK
-#if USE_PTHREADS
+#if PTHREADS
   if (!ENVIRONMENT_IS_PTHREAD)
 #endif
     stackCheckInit();
@@ -168,7 +163,7 @@ function run() {
   // Loading of dynamic libraries needs to happen on each thread, so we can't
   // use the normal __ATPRERUN__ mechanism.
 #if MAIN_MODULE
-    preloadDylibs();
+    loadDylibs();
 #else
     reportUndefinedSymbols();
 #endif
@@ -177,7 +172,7 @@ function run() {
     // Loading dylibs can add run dependencies.
     if (runDependencies > 0) {
 #if RUNTIME_LOGGING
-      err('preloadDylibs added run() dependencies, not running yet');
+      err('loadDylibs added run() dependencies, not running yet');
 #endif
       return;
     }
@@ -193,7 +188,7 @@ function run() {
   }
 #endif
 
-#if USE_PTHREADS
+#if PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) {
 #if MODULARIZE
     // The promise resolve function typically gets called as part of the execution
