@@ -3412,6 +3412,7 @@ Module["preRun"].push(function () {
   # To make the test more precise we also use ASYNCIFY_IGNORE_INDIRECT here.
   @parameterized({
     'normal': (['-sASYNCIFY_IMPORTS=[sync_tunnel, sync_tunnel_bool]'],), # noqa
+    'pattern_imports': (['-sASYNCIFY_IMPORTS=[sync_tun*]'],), # noqa
     'response': (['-sASYNCIFY_IMPORTS=@filey.txt'],), # noqa
     'nothing': (['-DBAD'],), # noqa
     'empty_list': (['-DBAD', '-sASYNCIFY_IMPORTS=[]'],), # noqa
