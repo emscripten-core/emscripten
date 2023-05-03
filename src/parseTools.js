@@ -732,7 +732,7 @@ function makeRemovedModuleAPIAssert(moduleName, localName) {
 function checkReceiving(name) {
   // ALL_INCOMING_MODULE_JS_API contains all valid incoming module API symbols
   // so calling makeModuleReceive* with a symbol not in this list is an error
-  assert(ALL_INCOMING_MODULE_JS_API.includes(name));
+  assert(ALL_INCOMING_MODULE_JS_API.has(name));
 }
 
 // Make code to receive a value on the incoming Module object.
