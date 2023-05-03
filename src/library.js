@@ -3252,27 +3252,20 @@ mergeInto(LibraryManager.library, {
     assert(getWasmTableEntry(ptr), 'missing table entry in dynCall: ' + ptr);
 #endif
 #if MEMORY64
-    // With MEMORY64 we have an additional step to covert `p` arguments to
+    // With MEMORY64 we have an additional step to convert `p` arguments to
     // bigint. This is the runtime equivalent of the wrappers we create for wasm
     // exports in `emscripten.py:create_wasm64_wrappers`.
-    if (sig.includes('p')) {
-      var new_args = [];
-      args.forEach((arg, index) => {
-        if (sig[index + 1] == 'p') {
-          arg = BigInt(arg);
-        }
-        new_args.push(arg);
-      });
-      args = new_args;
+    for(let i = 0; i < sig.length; ++i) {
+      if (sig[i] == 'p') args[i] = BigInt(args[i]);
     }
 #endif
-    var rtn = getWasmTableEntry(ptr).apply(null, args);
+    let rtn = getWasmTableEntry(ptr)(...args);
 #if MEMORY64
-    if (sig[0] == 'p') {
-      rtn = Number(rtn);
-    }
-#endif
+    return sig[0] == 'p' ? Number(rtn) : rtn;
+#else
     return rtn;
+#endif
+
 #endif
   },
 
