@@ -7,82 +7,31 @@
 mergeInto(LibraryManager.library, {
   $wasmFSPreloadedFiles: [],
   $wasmFSPreloadedDirs: [],
-#if USE_CLOSURE_COMPILER
   // Declare variable for Closure, FS.createPreloadedFile() below calls Browser.handledByPreloadPlugin()
-  $FS__postset: '/**@suppress {duplicate, undefinedVars}*/var Browser;',
+  $FS__postset: `
+#if USE_CLOSURE_COMPILER
+/**@suppress {duplicate, undefinedVars}*/var Browser;
 #endif
+FS.createPreloadedFile = FS_createPreloadedFile;
+`,
   $FS__deps: [
     '$wasmFSPreloadedFiles',
     '$wasmFSPreloadedDirs',
-    '$asyncLoad',
     '$PATH',
     '$stringToNewUTF8',
     '$stringToUTF8OnStack',
     '$withStackSave',
     '$readI53FromI64',
+    '$FS_createPreloadedFile',
+    '$FS_getMode',
+#if FORCE_FILESYSTEM
+    '$FS_modeStringToFlags',
+#endif
   ],
   $FS : {
-    // TODO: Clean up the following functions - currently copied from library_fs.js directly.
-    createPreloadedFile: (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
-      // TODO: use WasmFS code to resolve and join the path here?
-      var fullname = name ? parent + '/' + name : parent;
-      var dep = getUniqueRunDependency('cp ' + fullname); // might have several active requests for the same fullname
-      function processData(byteArray) {
-        function finish(byteArray) {
-          if (preFinish) preFinish();
-          if (!dontCreateFile) {
-            FS.createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
-          }
-          if (onload) onload();
-          removeRunDependency(dep);
-        }
-#if !MINIMAL_RUNTIME
-        if (Browser.handledByPreloadPlugin(byteArray, fullname, finish, () => {
-          if (onerror) onerror();
-          removeRunDependency(dep);
-        })) {
-          return;
-        }
-#endif
-        finish(byteArray);
-      }
-      addRunDependency(dep);
-      if (typeof url == 'string') {
-        asyncLoad(url, (byteArray) => {
-          processData(byteArray);
-        }, onerror);
-      } else {
-        processData(url);
-      }
-    },
-    getMode: (canRead, canWrite) => {
-      var mode = 0;
-      if (canRead) mode |= {{{ cDefs.S_IRUGO }}} | {{{ cDefs.S_IXUGO }}};
-      if (canWrite) mode |= {{{ cDefs.S_IWUGO }}};
-      return mode;
-    },
-    modeStringToFlags: (str) => {
-      var flags = FS.flagModes[str];
-      if (typeof flags == 'undefined') {
-        throw new Error('Unknown file open mode: ' + str);
-      }
-      return flags;
-    },
-    flagModes: {
-      // copied directly from library_fs.js
-      // Extra quotes used here on the keys to this object otherwise jsifier will
-      // erase them in the process of reading and then writing the JS library
-      // code.
-      '"r"': {{{ cDefs.O_RDONLY }}},
-      '"r+"': {{{ cDefs.O_RDWR }}},
-      '"w"': {{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_WRONLY }}},
-      '"w+"': {{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_RDWR }}},
-      '"a"': {{{ cDefs.O_APPEND }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_WRONLY }}},
-      '"a+"': {{{ cDefs.O_APPEND }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_RDWR }}},
-    },
     createDataFile: (parent, name, data, canRead, canWrite, canOwn) => {
       // Data files must be cached until the file system itself has been initialized.
-      var mode = FS.getMode(canRead, canWrite);
+      var mode = FS_getMode(canRead, canWrite);
       var pathName = name ? parent + '/' + name : parent;
       wasmFSPreloadedFiles.push({pathName: pathName, fileData: data, mode: mode});
     },
@@ -148,7 +97,7 @@ mergeInto(LibraryManager.library, {
     },
     // TODO: open
     open: (path, flags, mode) => {
-      flags = typeof flags == 'string' ? FS.modeStringToFlags(flags) : flags;
+      flags = typeof flags == 'string' ? FS_modeStringToFlags(flags) : flags;
       mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
       return withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
