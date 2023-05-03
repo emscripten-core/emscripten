@@ -1159,12 +1159,6 @@ void _emscripten_throw_longjmp() {
   abort();
 }
 
-__attribute__((__weak__))
-int _setitimer_js(int which, double timeout) {
-  REPORT_UNSUPPORTED(set itimer);
-  abort();
-}
-
 // C++ ABI
 
 #if EMSCRIPTEN_NOCATCH
