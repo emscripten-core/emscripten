@@ -4585,10 +4585,8 @@ int main() {
     self.assertNotContained('new Function', src)
     delete_file('a.out.js')
 
-    # Test that -sDYNAMIC_EXECUTION and -sRELOCATABLE are not allowed together.
-    self.expect_fail([EMCC, test_file('hello_world.c'), '-O1',
-                      '-sDYNAMIC_EXECUTION=0', '-sRELOCATABLE'])
-    delete_file('a.out.js')
+    # Test that -sDYNAMIC_EXECUTION=0 and -sRELOCATABLE are allowed together.
+    self.do_runf(test_file('hello_world.c'), emcc_args=['-O1', '-sDYNAMIC_EXECUTION=0', '-sRELOCATABLE'])
 
     create_file('test.c', r'''
       #include <emscripten/emscripten.h>
