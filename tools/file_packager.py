@@ -410,8 +410,7 @@ def main():
       options.from_emcc = True
       leading = ''
     elif arg.startswith('--plugin'):
-      with open(arg.split('=', 1)[1]) as f:
-        plugin = f.read()
+      plugin = utils.read_file(arg.split('=', 1)[1])
       eval(plugin) # should append itself to plugins
       leading = ''
     elif leading == 'preload' or leading == 'embed':
@@ -556,17 +555,13 @@ def main():
       # differs from the current generated one, otherwise leave the file
       # untouched preserving its old timestamp
       if os.path.isfile(options.jsoutput):
-        with open(options.jsoutput) as f:
-          old = f.read()
+        old = utils.read_file(options.jsoutput)
         if old != ret:
-          with open(options.jsoutput, 'w') as f:
-            f.write(ret)
+          utils.write_file(options.jsoutput, ret)
       else:
-        with open(options.jsoutput, 'w') as f:
-          f.write(ret)
+        utils.write_file(options.jsoutput, ret)
       if options.separate_metadata:
-        with open(options.jsoutput + '.metadata', 'w') as f:
-          json.dump(metadata, f, separators=(',', ':'))
+        utils.write_file(options.jsoutput + '.metadata', json.dumps(metadata, separators=(',', ':')))
 
   return 0
 
@@ -617,8 +612,7 @@ def generate_js(data_target, data_files, metadata):
     with open(data_target, 'wb') as data:
       for file_ in data_files:
         file_.data_start = start
-        with open(file_.srcpath, 'rb') as f:
-          curr = f.read()
+        curr = utils.read_binary(file_.srcpath)
         file_.data_end = start + len(curr)
         if AV_WORKAROUND:
             curr += '\x00'
