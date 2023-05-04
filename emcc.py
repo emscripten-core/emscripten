@@ -2359,9 +2359,6 @@ def phase_linker_setup(options, state, newargs):
     # llvm change lands
     settings.EXPORT_IF_DEFINED.append('__wasm_apply_data_relocs')
 
-  if settings.RELOCATABLE and not settings.DYNAMIC_EXECUTION:
-    exit_with_error('cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()')
-
   if settings.SIDE_MODULE and 'GLOBAL_BASE' in user_settings:
     exit_with_error('GLOBAL_BASE is not compatible with SIDE_MODULE')
 
