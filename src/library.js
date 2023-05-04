@@ -248,7 +248,7 @@ mergeInto(LibraryManager.library, {
 #endif
     }
 
-    let alignUp = (x, multiple) => x + (multiple - x % multiple) % multiple;
+    var alignUp = (x, multiple) => x + (multiple - x % multiple) % multiple;
 
     // Loop through potential heap size increases. If we attempt a too eager
     // reservation that fails, cut down on the attempted size and reserve a
@@ -3255,11 +3255,11 @@ mergeInto(LibraryManager.library, {
     // With MEMORY64 we have an additional step to convert `p` arguments to
     // bigint. This is the runtime equivalent of the wrappers we create for wasm
     // exports in `emscripten.py:create_wasm64_wrappers`.
-    for(let i = 0; i < sig.length; ++i) {
+    for(var i = 0; i < sig.length; ++i) {
       if (sig[i] == 'p') args[i] = BigInt(args[i]);
     }
 #endif
-    let rtn = getWasmTableEntry(ptr)(...args);
+    var rtn = getWasmTableEntry(ptr).apply(null, args);
 #if MEMORY64
     return sig[0] == 'p' ? Number(rtn) : rtn;
 #else
@@ -3668,7 +3668,7 @@ mergeInto(LibraryManager.library, {
       return this.allocated[id];
     };
     this.allocate = function(handle) {
-      let id = this.freelist.pop() || this.allocated.length;
+      var id = this.freelist.pop() || this.allocated.length;
       this.allocated[id] = handle;
       return id;
     };
