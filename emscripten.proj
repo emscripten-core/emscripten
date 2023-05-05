@@ -4,18 +4,19 @@
       <EmscriptenFiles Include="$(ProjectDir)**" />
       <EmscriptenFiles Remove="$(ProjectDir)\artifacts\**" />
       <EmscriptenFiles Remove="$(ProjectDir)\eng\**" />
-      <EmscriptenFiles Remove="$(ProjectDir)\.gitignore" />
-      <EmscriptenFiles Remove="$(ProjectDir)\.gitmodules" />
+      <EmscriptenFiles Remove="$(ProjectDir)\.*" />
       <EmscriptenFiles Remove="$(ProjectDir)\build.*" />
       <EmscriptenFiles Remove="$(ProjectDir)\emscripten.proj" />
       <EmscriptenFiles Remove="$(ProjectDir)\global.json" />
       <EmscriptenFiles Remove="$(ProjectDir)\Directory.Build.*" />
+      <EmscriptenFiles Remove="$(ProjectDir)\Makefile" />
       <EmscriptenFiles Remove="$(ProjectDir)\NuGet.config" />
       <EmscriptenFiles Remove="$(ProjectDir)\.circleci\**" />
       <EmscriptenFiles Remove="$(ProjectDir)\.dotnet\**" />
       <EmscriptenFiles Remove="$(ProjectDir)\.git\**" />
-      <EmscriptenFiles Remove="$(ProjectDir)\.github\**" />
       <EmscriptenFiles Remove="$(ProjectDir)\.packages\**" />
+      <EmscriptenFiles Remove="$(ProjectDir)\site\**" />
+      <EmscriptenFiles Remove="$(ProjectDir)\**\*.pyc" />
     </ItemGroup>
    <Copy SourceFiles="@(EmscriptenFiles)"
       DestinationFiles="@(EmscriptenFiles->'$(EmscriptenInstallDir)\%(RecursiveDir)%(Filename)%(Extension)')" />
