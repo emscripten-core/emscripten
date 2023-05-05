@@ -171,10 +171,6 @@ var wakaUnknownAfter;
  * @suppress {undefinedVars}
  */
 var wakaUnknownBefore;
-/**
- * @suppress {undefinedVars}
- */
-var MozBlobBuilder;
 
 // Module loaders externs, for AMD etc.
 

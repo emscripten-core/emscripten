@@ -20,6 +20,13 @@ See docs/process.md for more on how version tagging works.
 
 3.1.38 (in development)
 -----------------------
+- The restriction preventing the use of dynamic linking in combination with
+  `-sDYNAMIC_EXECUTION=0` was removed.  This restriction was being enforced
+  unnecessarily since dynamic linking has not depended on `eval()` for a while
+  now.
+- Remove extra code for falling back to long-deprecated BlobBuilder browser API
+  when Blob constructor is missing.  This was a fix for an issue that has long
+  been fixed. (#19277)
 
 3.1.37 - 04/26/23
 -----------------

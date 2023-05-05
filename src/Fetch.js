@@ -241,17 +241,17 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   var fetch_attr = fetch + {{{ C_STRUCTS.emscripten_fetch_t.__attributes }}};
   var requestMethod = UTF8ToString(fetch_attr);
   if (!requestMethod) requestMethod = 'GET';
-  var userData = HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.userData }}} >> 2];
-  var fetchAttributes = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.attributes }}} >> 2];
-  var timeoutMsecs = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.timeoutMSecs }}} >> 2];
-  var withCredentials = !!HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.withCredentials }}} >> 2];
-  var destinationPath = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.destinationPath }}} >> 2];
-  var userName = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.userName }}} >> 2];
-  var password = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.password }}} >> 2];
-  var requestHeaders = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.requestHeaders }}} >> 2];
-  var overriddenMimeType = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.overriddenMimeType }}} >> 2];
-  var dataPtr = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.requestData }}} >> 2];
-  var dataLength = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.requestDataSize }}} >> 2];
+  var userData = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_t.userData, '*') }}};
+  var fetchAttributes = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.attributes, 'u32') }}};
+  var timeoutMsecs = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.timeoutMSecs, 'u32') }}};
+  var withCredentials = !!{{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.withCredentials, 'u8') }}};
+  var destinationPath = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.destinationPath, '*') }}};
+  var userName = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.userName, '*') }}};
+  var password = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.password, '*') }}};
+  var requestHeaders = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.requestHeaders, '*') }}};
+  var overriddenMimeType = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.overriddenMimeType, '*') }}};
+  var dataPtr = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.requestData, '*') }}};
+  var dataLength = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.requestDataSize, '*') }}};
 
   var fetchAttrLoadToMemory = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_LOAD_TO_MEMORY }}});
   var fetchAttrStreamData = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_STREAM_DATA }}});
@@ -289,11 +289,11 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   }
   if (requestHeaders) {
     for (;;) {
-      var key = HEAPU32[requestHeaders >> 2];
+      var key = {{{ makeGetValue('requestHeaders', 0, '*') }}};
       if (!key) break;
-      var value = HEAPU32[requestHeaders + 4 >> 2];
+      var value = {{{ makeGetValue('requestHeaders', POINTER_SIZE, '*') }}};
       if (!value) break;
-      requestHeaders += 8;
+      requestHeaders += {{{ 2 * POINTER_SIZE }}};
       var keyStr = UTF8ToString(key);
       var valueStr = UTF8ToString(value);
 #if FETCH_DEBUG
@@ -302,7 +302,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
       xhr.setRequestHeader(keyStr, valueStr);
     }
   }
-  var id = HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.id }}} >> 2];
+  var id = {{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.id, 'u32') }}};
   Fetch.xhrs[id] = xhr;
   var data = (dataPtr && dataLength) ? HEAPU8.slice(dataPtr, dataPtr + dataLength) : null;
   // TODO: Support specifying custom headers to the request.
