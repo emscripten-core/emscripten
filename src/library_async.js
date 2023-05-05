@@ -110,7 +110,7 @@ mergeInto(LibraryManager.library, {
       dbg('asyncify instrumenting exports');
 #endif
 #if ASYNCIFY == 2
-      var ASYNCIFY_EXPORTS = {{{ JSON.stringify(ASYNCIFY_EXPORTS) }}};
+      var exportPatterns = [{{{ ASYNCIFY_EXPORTS.map(x => new RegExp('^' + x.replace(/\*/g, '.*') + '$')) }}}];
 #endif
       var ret = {};
       for (var x in exports) {
@@ -119,7 +119,7 @@ mergeInto(LibraryManager.library, {
           if (typeof original == 'function') {
 #if ASYNCIFY == 2
             // Wrap all exports with a promising WebAssembly function.
-            var isAsyncifyExport = ASYNCIFY_EXPORTS.indexOf(x) >= 0;
+            var isAsyncifyExport = exportPatterns.some(pattern => !!x.match(pattern));
             if (isAsyncifyExport) {
               original = Asyncify.makeAsyncFunction(original);
             }
