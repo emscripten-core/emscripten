@@ -27,6 +27,9 @@ variables so that emcc etc. are used. Typical usage:
 
   args = sys.argv[1:]
 
+  # Restore removed SYSCONFIG settings so they will be present in the CMake environment
+  os.environ["_PYTHON_SYSCONFIGDATA_NAME"] = os.environ["_EMCMAKE_PYTHON_SYSCONFIGDATA_NAME"]
+
   def has_substr(args, substr):
     return any(substr in s for s in args)
 

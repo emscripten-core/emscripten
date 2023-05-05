@@ -11,7 +11,9 @@
 :: All env. vars specified in this file are to be local only to this script.
 @setlocal
 :: -E will not ignore _PYTHON_SYSCONFIGDATA_NAME an internal
-:: of cpython used in cross compilation via setup.py.
+:: of cpython used in cross compilation via setup.py. Pass it through our
+:: own internal variable.
+@set _EMCMAKE_PYTHON_SYSCONFIGDATA_NAMES="%_PYTHON_SYSCONFIGDATA_NAMES%"
 @set _PYTHON_SYSCONFIGDATA_NAME=
 @set EM_PY=%EMSDK_PYTHON%
 @if "%EM_PY%"=="" (

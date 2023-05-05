@@ -12,8 +12,12 @@
 # `tools/create_entry_points.py`
 
 # $PYTHON -E will not ignore _PYTHON_SYSCONFIGDATA_NAME an internal
-# of cpython used in cross compilation via setup.py.
+# of cpython used in cross compilation via setup.py. Pass it through our
+# own internal variable.
+set _EMCMAKE_PYTHON_SYSCONFIGDATA_NAMES "$_PYTHON_SYSCONFIGDATA_NAMES"
 unset _PYTHON_SYSCONFIGDATA_NAME
+
+
 
 if [ -z "$PYTHON" ]; then
   PYTHON=$EMSDK_PYTHON
