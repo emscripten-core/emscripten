@@ -13389,3 +13389,44 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_windows_batch_file_dp0_expansion_bug(self):
     create_file('build_with_quotes.bat',  f'@"emcc" {test_file("hello_world.c")}')
     self.run_process(['build_with_quotes.bat'])
+
+  @parameterized({
+    'memory64_bigint': (True, True),
+    'bigint': (False,True),
+    'memory64': (True,False),
+    '' : (False, False)
+  })
+  def test_add_js_function_64_bit(self, memory64, with_bigint):
+    if with_bigint:
+      self.set_setting('WASM_BIGINT')
+      self.node_args += shared.node_bigint_flags()
+
+    if memory64:
+      self.require_v8()
+      self.v8_args += ['--experimental-wasm-memory64']
+    else:
+      self.use_all_engines = True
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$addFunction'])
+    self.set_setting('RESERVED_FUNCTION_POINTERS')
+    self.set_setting('ENVIRONMENT', 'shell,node')
+    create_file('main.c', r'''
+      #include <emscripten.h>
+
+      typedef long long (functype)(long long);
+
+      int main() {
+        functype* f = (functype *)EM_ASM_INT({
+          return addFunction(function(num) {
+              out('Hello ' + num + ' from JS!');
+              return 5n;
+          }, 'jj');
+        });
+        if(f(26) == 5) {
+          return 0;
+        } else {
+          return 1;
+        }
+      }
+    ''')
+
+    self.do_runf('main.c', 'Hello 26 from JS!')
