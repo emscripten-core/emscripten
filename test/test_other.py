@@ -13392,9 +13392,9 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
   @parameterized({
     'memory64_bigint': (True, True),
-    'bigint': (False,True),
-    'memory64': (True,False),
-    '' : (False, False)
+    'bigint': (False, True),
+    'memory64': (True, False),
+    '': (False, False)
   })
   def test_add_js_function_64_bit(self, memory64, with_bigint):
     if with_bigint:
