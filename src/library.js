@@ -3255,7 +3255,7 @@ mergeInto(LibraryManager.library, {
     // With MEMORY64 we have an additional step to convert `p` arguments to
     // bigint. This is the runtime equivalent of the wrappers we create for wasm
     // exports in `emscripten.py:create_wasm64_wrappers`.
-    for(var i = 1; i < sig.length; ++i) {
+    for (var i = 1; i < sig.length; ++i) {
       if (sig[i] == 'p') args[i-1] = BigInt(args[i-1]);
     }
 #endif
