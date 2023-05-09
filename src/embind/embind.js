@@ -371,7 +371,7 @@ var LibraryEmbind = {
     return ret;
   },
 
-  $getTypeName__deps: ['$readLatin1String', '__getTypeName'],
+  $getTypeName__deps: ['$readLatin1String', '__getTypeName', 'free'],
   $getTypeName: function(type) {
     var ptr = ___getTypeName(type);
     var rv = readLatin1String(ptr);
@@ -651,7 +651,7 @@ var LibraryEmbind = {
   _embind_register_std_string__deps: [
     '$readLatin1String', '$registerType',
     '$simpleReadValueFromPointer', '$throwBindingError',
-    '$stringToUTF8', '$lengthBytesUTF8'],
+    '$stringToUTF8', '$lengthBytesUTF8', 'malloc', 'free'],
   _embind_register_std_string: function(rawType, name) {
     name = readLatin1String(name);
     var stdStringIsUTF8

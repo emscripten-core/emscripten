@@ -2087,6 +2087,7 @@ def phase_linker_setup(options, state, newargs):
     if settings.MAIN_MODULE == 1:
       settings.INCLUDE_FULL_LIBRARY = 1
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDylibs']
+    settings.REQUIRED_EXPORTS += ['malloc']
 
   if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
     settings.LINKABLE = 1
@@ -2339,7 +2340,7 @@ def phase_linker_setup(options, state, newargs):
       settings.FETCH_WORKER_FILE = unsuffixed_basename(target) + '.fetch.js'
 
   if settings.DEMANGLE_SUPPORT:
-    settings.REQUIRED_EXPORTS += ['__cxa_demangle']
+    settings.REQUIRED_EXPORTS += ['__cxa_demangle', 'free']
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$demangle', '$stackTrace']
 
   if settings.FULL_ES3:
@@ -2412,11 +2413,6 @@ def phase_linker_setup(options, state, newargs):
     if settings.PROXY_TO_PTHREAD:
       exit_with_error('-sPROXY_TO_PTHREAD requires -pthread to work!')
     settings.JS_LIBRARIES.append((0, 'library_pthread_stub.js'))
-
-  # TODO: Move this into the library JS file once it becomes possible.
-  # See https://github.com/emscripten-core/emscripten/pull/15982
-  if settings.INCLUDE_FULL_LIBRARY and not settings.DISABLE_EXCEPTION_CATCHING:
-    settings.EXPORTED_FUNCTIONS += ['___get_exception_message', '_free']
 
   if settings.MEMORY64:
     if settings.ASYNCIFY and settings.MEMORY64 == 1:
@@ -2760,20 +2756,16 @@ def phase_linker_setup(options, state, newargs):
     # need to be able to call these explicitly.
     settings.REQUIRED_EXPORTS += ['__funcs_on_exit']
 
-  # various settings require malloc/free support from JS
-  if settings.RELOCATABLE or \
-     settings.BUILD_AS_WORKER or \
-     settings.USE_WEBGPU or \
-     settings.OFFSCREENCANVAS_SUPPORT or \
-     settings.LEGACY_GL_EMULATION or \
+  # Some settings require malloc/free to be exported explictly.
+  # In most cases, the inclustion of native symbols like malloc and free
+  # is taken care of by wasm-ld use its normal symbol resolution process.
+  # However, when JS symbols are exported explictly via
+  # DEFAULT_LIBRARY_FUNCS_TO_INCLUDE and they depend on native symbols
+  # we need to explictly require those exports.
+  if settings.BUILD_AS_WORKER or \
      settings.ASYNCIFY or \
      settings.WASMFS or \
-     settings.DEMANGLE_SUPPORT or \
      settings.FORCE_FILESYSTEM or \
-     settings.STB_IMAGE or \
-     settings.EMBIND or \
-     settings.FETCH or \
-     settings.PROXY_POSIX_SOCKETS or \
      options.memory_profiler or \
      sanitize:
     settings.REQUIRED_EXPORTS += ['malloc', 'free']
