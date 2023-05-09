@@ -13400,7 +13400,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
       if memory64:
         self.require_wasm64()
-      
+
       MAYBE_DELETE_WASM_FUNCTION = ""
       if not wasm_function:
         MAYBE_DELETE_WASM_FUNCTION = "delete WebAssembly.Function;"
@@ -13430,7 +13430,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       ''' % MAYBE_DELETE_WASM_FUNCTION)
 
       self.do_runf('main.c', 'Hello 26 from JS!')
-
 
   def test_preload_module(self):
     # TODO(sbc): This test is copyied from test_browser.py.  Perhaps find a better way to
