@@ -810,7 +810,7 @@ var LibraryWebGPU = {
     device.label = UTF8ToString(labelPtr);
   },
 
-  wgpuDeviceSetDeviceLostCallback__deps: ['$callUserCallback', '$stringToNewUTF8'],
+  wgpuDeviceSetDeviceLostCallback__deps: ['$callUserCallback', '$stringToNewUTF8', 'free'],
   wgpuDeviceSetDeviceLostCallback: function(deviceId, callback, userdata) {
     var deviceWrapper = WebGPU.mgrDevice.objects[deviceId];
     {{{ gpu.makeCheckDefined('deviceWrapper') }}}
@@ -2432,7 +2432,7 @@ var LibraryWebGPU = {
 #endif
   },
 
-  wgpuInstanceRequestAdapter__deps: ['$callUserCallback', '$stringToNewUTF8'],
+  wgpuInstanceRequestAdapter__deps: ['$callUserCallback', '$stringToNewUTF8', 'free'],
   wgpuInstanceRequestAdapter: function(instanceId, options, callback, userdata) {
     {{{ gpu.makeCheck('instanceId === 0, "WGPUInstance is ignored"') }}}
 
@@ -2513,7 +2513,7 @@ var LibraryWebGPU = {
     return adapter.features.has(WebGPU.FeatureName[featureEnumValue]);
   },
 
-  wgpuAdapterRequestDevice__deps: ['$callUserCallback', '$stringToNewUTF8'],
+  wgpuAdapterRequestDevice__deps: ['$callUserCallback', '$stringToNewUTF8', 'free'],
   wgpuAdapterRequestDevice: function(adapterId, descriptor, callback, userdata) {
     var adapter = WebGPU.mgrAdapter.get(adapterId);
 
