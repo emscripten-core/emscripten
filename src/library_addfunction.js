@@ -85,6 +85,10 @@ mergeInto(LibraryManager.library, {
     // return func;
 #else // WASM2JS
 
+#if !WASM_BIGINT
+  assert(!sig.includes('j'), "i64 not permitted in function signatures when WASM_BIGINT is disabled);
+#endif
+
     // If the type reflection proposal is available, use the new
     // "WebAssembly.Function" constructor.
     // Otherwise, construct a minimal wasm module importing the JS function and
