@@ -32,7 +32,7 @@ In general a complete Emscripten environment requires the following tools. First
 
 .. note: 64-bit versions of all needed dependencies are preferred, and may be required if you are building large projects.
 
-.. note:: The `Spidermonkey shell <https://developer.mozilla.org/en-US/docs/Mozilla/Projects/SpiderMonkey/Introduction_to_the_JavaScript_shell>`_ is also required if you want to run **100%** of the tests in the test suite. Most developers will not need this, and should instead use *node.js*.
+.. note:: The `d8 shell <https://v8.dev/docs/d8>`_ is also required if you want to run **100%** of the tests in the test suite (in particular, tests for extremely new features that are only present in d8 so far). Most developers will not need this, and should instead use *node.js*.
 
 .. _compiler-toolchain:
 
