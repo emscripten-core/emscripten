@@ -28,7 +28,7 @@ WebAssembly.instantiate(b.wasm, {
                 sb: a,
                 sz: d
             });
-            r.addEventListener("message", n);
+            r.onmessage = n;
             return k++;
         },
         c: function() {
