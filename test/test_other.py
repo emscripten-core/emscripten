@@ -6407,10 +6407,11 @@ double hello4(double x) {
 ''')
     create_file('pre.js', r'''
 Module['preRun'] = function () {
-  ENV['LD_LIBRARY_PATH']='/lib:/usr/lib';
+  ENV['LD_LIBRARY_PATH']='/lib:/usr/lib:/usr/local/lib';
 };
 ''')
     create_file('main.c', r'''
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6422,22 +6423,30 @@ int main() {
   double (*f2)(double);
 
   h = dlopen("libhello1.wasm", RTLD_NOW);
+  assert(h);
   f = dlsym(h, "hello1");
+  assert(f);
   f();
   dlclose(h);
 
   h = dlopen("libhello2.wasm", RTLD_NOW);
+  assert(h);
   f = dlsym(h, "hello2");
+  assert(f);
   f();
   dlclose(h);
 
   h = dlopen("libhello3.wasm", RTLD_NOW);
+  assert(h);
   f = dlsym(h, "hello3");
+  assert(f);
   f();
   dlclose(h);
 
   h = dlopen("/usr/local/lib/libhello4.wasm", RTLD_NOW);
+  assert(h);
   f2 = dlsym(h, "hello4");
+  assert(f2);
   double result = f2(5.5);
   dlclose(h);
 
@@ -6447,16 +6456,16 @@ int main() {
   return 0;
 }
 ''')
-    self.run_process([EMCC, '-o', 'libhello1.wasm', 'hello1.c', '-sSIDE_MODULE'])
-    self.run_process([EMCC, '-o', 'libhello2.wasm', 'hello2.c', '-sSIDE_MODULE'])
-    self.run_process([EMCC, '-o', 'libhello3.wasm', 'hello3.c', '-sSIDE_MODULE'])
-    self.run_process([EMCC, '-o', 'libhello4.wasm', 'hello4.c', '-sSIDE_MODULE'])
+    self.run_process([EMCC, '-o', 'hello1.wasm', 'hello1.c', '-sSIDE_MODULE'])
+    self.run_process([EMCC, '-o', 'hello2.wasm', 'hello2.c', '-sSIDE_MODULE'])
+    self.run_process([EMCC, '-o', 'hello3.wasm', 'hello3.c', '-sSIDE_MODULE'])
+    self.run_process([EMCC, '-o', 'hello4.wasm', 'hello4.c', '-sSIDE_MODULE'])
     self.run_process([EMCC, '--profiling-funcs', '-o', 'main.js', 'main.c', '-sMAIN_MODULE=2', '-sINITIAL_MEMORY=32Mb',
-                      '--embed-file', 'libhello1.wasm@/lib/libhello1.wasm',
-                      '--embed-file', 'libhello2.wasm@/usr/lib/libhello2.wasm',
-                      '--embed-file', 'libhello3.wasm@/libhello3.wasm',
-                      '--embed-file', 'libhello4.wasm@/usr/local/lib/libhello4.wasm',
-                      'libhello1.wasm', 'libhello2.wasm', 'libhello3.wasm', 'libhello4.wasm', '-sNO_AUTOLOAD_DYLIBS',
+                      '--embed-file', 'hello1.wasm@/lib/libhello1.wasm',
+                      '--embed-file', 'hello2.wasm@/usr/lib/libhello2.wasm',
+                      '--embed-file', 'hello3.wasm@/libhello3.wasm',
+                      '--embed-file', 'hello4.wasm@/usr/local/lib/libhello4.wasm',
+                      'hello1.wasm', 'hello2.wasm', 'hello3.wasm', 'hello4.wasm', '-sNO_AUTOLOAD_DYLIBS',
                       '--pre-js', 'pre.js'])
     out = self.run_js('main.js')
     self.assertContained('Hello1', out)

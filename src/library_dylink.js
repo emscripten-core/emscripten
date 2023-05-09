@@ -1076,25 +1076,6 @@ var LibraryDylink = {
     filename = PATH.normalize(filename);
     var searchpaths = [];
 
-    var isValidFile = (filename) => {
-      var target = FS.findObject(filename);
-      return target && !target.isFolder && !target.isDevice;
-    };
-
-    if (!isValidFile(filename)) {
-      if (ENV['LD_LIBRARY_PATH']) {
-        searchpaths = ENV['LD_LIBRARY_PATH'].split(':');
-      }
-
-      for (var ident in searchpaths) {
-        var searchfile = PATH.join2(searchpaths[ident], filename);
-        if (isValidFile(searchfile)) {
-          filename = searchfile;
-          break;
-        }
-      }
-    }
-
     var global = Boolean(flags & {{{ cDefs.RTLD_GLOBAL }}});
     var localScope = global ? null : {};
 
