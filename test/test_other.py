@@ -13390,46 +13390,48 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     create_file('build_with_quotes.bat',  f'@"emcc" {test_file("hello_world.c")}')
     self.run_process(['build_with_quotes.bat'])
 
-  def test_add_js_function_64_bit(self):
-    from itertools import product
-    for (memory64, bigint, wasm_function) in product([True, False], repeat=3):
-      self.require_v8()
-      if bigint:
-        self.set_setting('WASM_BIGINT')
-        self.node_args += shared.node_bigint_flags()
+  @parameterized({
+    'memory64_wasm_function': (True, True),
+    'wasm_function': (False, True),
+    'memory64': (True, False),
+    '': (False, False)
+  })
+  def test_add_js_function_64_bit(self, memory64, wasm_function):
+    self.require_v8()
+    self.set_setting('WASM_BIGINT')
 
-      if memory64:
-        self.require_wasm64()
+    if memory64:
+      self.require_wasm64()
 
-      MAYBE_DELETE_WASM_FUNCTION = ""
-      if not wasm_function:
-        MAYBE_DELETE_WASM_FUNCTION = "delete WebAssembly.Function;"
+    MAYBE_DELETE_WASM_FUNCTION = ""
+    if not wasm_function:
+      MAYBE_DELETE_WASM_FUNCTION = "delete WebAssembly.Function;"
 
-      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$addFunction'])
-      self.set_setting('ALLOW_TABLE_GROWTH')
-      self.set_setting('ENVIRONMENT', 'shell,node')
-      create_file('main.c', r'''
-        #include <emscripten.h>
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$addFunction'])
+    self.set_setting('ALLOW_TABLE_GROWTH')
+    self.set_setting('ENVIRONMENT', 'shell,node')
+    create_file('main.c', r'''
+      #include <emscripten.h>
 
-        typedef long long (functype)(long long);
+      typedef long long (functype)(long long);
 
-        int main() {
-          functype* f = (functype *)EM_ASM_INT({
-            %s
-            return addFunction(function(num) {
-                out('Hello ' + num + ' from JS!');
-                return 5n;
-            }, 'jj');
-          });
-          if(f(26) == 5) {
-            return 0;
-          } else {
-            return 1;
-          }
+      int main() {
+        functype* f = (functype *)EM_ASM_INT({
+          %s
+          return addFunction(function(num) {
+              out('Hello ' + num + ' from JS!');
+              return 5n;
+          }, 'jj');
+        });
+        if(f(26) == 5) {
+          return 0;
+        } else {
+          return 1;
         }
-      ''' % MAYBE_DELETE_WASM_FUNCTION)
+      }
+    ''' % MAYBE_DELETE_WASM_FUNCTION)
 
-      self.do_runf('main.c', 'Hello 26 from JS!')
+    self.do_runf('main.c', 'Hello 26 from JS!')
 
   def test_preload_module(self):
     # TODO(sbc): This test is copyied from test_browser.py.  Perhaps find a better way to
