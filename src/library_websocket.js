@@ -347,7 +347,7 @@ var LibraryWebSocket = {
 
     dbg('emscripten_websocket_send_binary(socketId='+socketId+',binaryData='+binaryData+ ',dataLength='+dataLength+'), ' + s);
 #endif
-#if PTHREADS
+#if SHARED_MEMORY
     // TODO: This is temporary to cast a shared Uint8Array to a non-shared Uint8Array. This could be removed if WebSocket API is improved
     // to allow passing in views to SharedArrayBuffers
     socket.send(new Uint8Array({{{ makeHEAPView('U8', 'binaryData', 'binaryData+dataLength') }}}));
