@@ -490,6 +490,9 @@ public:
     int getBaseMember() {
         return baseMember;
     }
+    static std::string classFunction() {
+        return "Base";
+    };
     std::string name;
     int member;
     int baseMember;
@@ -545,6 +548,9 @@ public:
     }
     int getMember() {
         return member;
+    }
+    static std::string classFunction() {
+        return "Derived";
     }
     int member;
 private:
@@ -2019,6 +2025,7 @@ EMSCRIPTEN_BINDINGS(tests) {
         .function("getMember", &Derived::getMember)
         .function("setMember", &Derived::setMember)
         .property("member", &Derived::member)
+        .class_function("classFunction", &Derived::classFunction)
         ;
 
     class_<Base>("Base")
@@ -2033,6 +2040,7 @@ EMSCRIPTEN_BINDINGS(tests) {
         .function("setBaseMember", &Base::setBaseMember)
         .property("member", &Base::member)
         .property("baseMember", &Base::baseMember)
+        .class_function("classFunction", &Base::classFunction)
         ;
 
     class_<SecondBase>("SecondBase")

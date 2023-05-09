@@ -111,6 +111,12 @@ module({
             derived.delete();
         });
 
+        test("class functions are inherited in subclasses", function() {
+            assert.equal("Base", cm.Base.classFunction());
+            assert.equal("Derived", cm.Derived.classFunction());
+            assert.equal("Derived", cm.DerivedTwice.classFunction());
+        });
+
         test("calling method on unrelated class throws error", function() {
             var a = new cm.HasTwoBases;
             var e = assert.throws(cm.BindingError, function() {
