@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.38 (in development)
 -----------------------
+- The `dladdr` function will now always return an error rather than filling in
+  dummy values. (#19319)
 - The restriction preventing the use of dynamic linking in combination with
   `-sDYNAMIC_EXECUTION=0` was removed.  This restriction was being enforced
   unnecessarily since dynamic linking has not depended on `eval()` for a while

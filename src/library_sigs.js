@@ -461,7 +461,6 @@ sigs = {
   boxRGBA__sig: 'ipiiiiiiii',
   clock_res_get__sig: 'iip',
   clock_time_get__sig: 'iijp',
-  dladdr__sig: 'ipp',
   dlopen__sig: 'ppi',
   eglBindAPI__sig: 'ii',
   eglChooseConfig__sig: 'ipppip',

@@ -12227,17 +12227,19 @@ void foo() {}
 
   def test_unimplemented_syscalls_dladdr(self):
     create_file('main.c', '''
+    #include <assert.h>
     #include <dlfcn.h>
 
     int main() {
-      dladdr(0, 0);
+      Dl_info info;
+      int rtn = dladdr(&main, &info);
+      assert(rtn == 0);
       return 0;
     }
     ''')
 
-    self.run_process([EMCC, 'main.c'])
-    err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('Aborted(To use dlopen, you need enable dynamic linking, see https://emscripten.org/docs/compiling/Dynamic-Linking.html)', err)
+    self.do_runf('main.c')
+    self.do_runf('main.c', emcc_args=['-sMAIN_MODULE=2'])
 
   @requires_v8
   def test_missing_shell_support(self):
