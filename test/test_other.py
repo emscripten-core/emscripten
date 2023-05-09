@@ -13397,17 +13397,15 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     '': (False, False)
   })
   def test_add_js_function_64_bit(self, memory64, with_bigint):
+    self.use_all_engines = True
     if with_bigint:
       self.set_setting('WASM_BIGINT')
       self.node_args += shared.node_bigint_flags()
 
     if memory64:
-      self.require_v8()
-      self.v8_args += ['--experimental-wasm-memory64']
-    else:
-      self.use_all_engines = True
+      self.require_wasm64()
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$addFunction'])
-    self.set_setting('RESERVED_FUNCTION_POINTERS')
+    self.set_setting('ALLOW_TABLE_GROWTH')
     self.set_setting('ENVIRONMENT', 'shell,node')
     create_file('main.c', r'''
       #include <emscripten.h>
