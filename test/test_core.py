@@ -7410,17 +7410,15 @@ void* operator new(size_t size) {
   def test_add_function(self):
     self.set_setting('INVOKE_RUN', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
-    self.set_setting('RESERVED_FUNCTION_POINTERS')
+    self.set_setting('ALLOW_TABLE_GROWTH')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['callMain'])
-    src = test_file('interop/test_add_function.cpp')
-    post_js = test_file('interop/test_add_function_post.js')
-    self.emcc_args += ['--post-js', post_js]
+    self.emcc_args += ['--post-js', test_file('interop/test_add_function_post.js')]
 
     print('basics')
     self.do_run_in_out_file_test('interop/test_add_function.cpp')
 
-    print('with RESERVED_FUNCTION_POINTERS=0')
-    self.set_setting('RESERVED_FUNCTION_POINTERS', 0)
+    print('with ALLOW_TABLE_GROWTH=0')
+    self.set_setting('ALLOW_TABLE_GROWTH', 0)
     expected = 'Unable to grow wasm table'
     if self.is_wasm2js():
       # in wasm2js the error message doesn't come from the VM, but from our
@@ -7429,7 +7427,7 @@ void* operator new(size_t size) {
       # shows a generic error.
       expected = 'wasmTable.grow is not a function'
 
-    self.do_runf(src, expected, assert_returncode=NON_ZERO)
+    self.do_runf(test_file('interop/test_add_function.cpp'), expected, assert_returncode=NON_ZERO)
 
     print('- with table growth')
     self.set_setting('ALLOW_TABLE_GROWTH')
@@ -9573,16 +9571,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests the emscripten_get_exported_function() API.
   def test_emscripten_get_exported_function(self):
-    # Could also test with -sALLOW_TABLE_GROWTH
-    self.set_setting('RESERVED_FUNCTION_POINTERS', 2)
+    self.set_setting('ALLOW_TABLE_GROWTH')
     self.emcc_args += ['-lexports.js']
     self.do_core_test('test_get_exported_function.cpp')
 
   # Tests the emscripten_get_exported_function() API.
   @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_emscripten_get_exported_function(self):
-    # Could also test with -sALLOW_TABLE_GROWTH
-    self.set_setting('RESERVED_FUNCTION_POINTERS', 2)
+    self.set_setting('ALLOW_TABLE_GROWTH')
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
     self.emcc_args += ['-lexports.js']
