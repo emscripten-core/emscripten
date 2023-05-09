@@ -1321,12 +1321,14 @@
             "d_type": 18
         },
         "dso": {
-            "__size__": 48,
+            "__size__": 64,
+            "file_data": 48,
+            "file_data_size": 56,
             "flags": 8,
             "mem_addr": 16,
             "mem_allocated": 12,
             "mem_size": 24,
-            "name": 48,
+            "name": 64,
             "table_addr": 32,
             "table_size": 40
         },
