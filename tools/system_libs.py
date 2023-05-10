@@ -1333,22 +1333,25 @@ class libprintf_long_double(libc):
 
 
 class libwasm_workers(MTLibrary):
+  name = 'libwasm_workers'
+
   def __init__(self, **kwargs):
     self.debug = kwargs.pop('debug')
     super().__init__(**kwargs)
 
-  name = 'libwasm_workers'
-
   def get_cflags(self):
-    cflags = get_base_cflags() + ['-D_DEBUG' if self.debug else '-Oz']
+    cflags = super().get_cflags()
     if self.debug:
+      cflags += ['-D_DEBUG']
       # library_wasm_worker.c contains an assert that a nonnull paramater
       # is no NULL, which llvm now warns is redundant/tautological.
       cflags += ['-Wno-tautological-pointer-compare']
+      # Override the `-O2` default.  Building library_wasm_worker.c with
+      # `-O1` or `-O2` currently causes tests to fail.
+      # https://github.com/emscripten-core/emscripten/issues/19331
+      cflags += ['-O0']
     else:
-      cflags += ['-DNDEBUG']
-    if self.is_ww or self.is_mt:
-      cflags += ['-pthread', '-sWASM_WORKERS']
+      cflags += ['-DNDEBUG', '-Oz']
     if settings.MAIN_MODULE:
       cflags += ['-fPIC']
     return cflags

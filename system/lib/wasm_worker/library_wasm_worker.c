@@ -43,8 +43,10 @@ emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress,
     // We expect TLS area to need to be at most 16 bytes aligned
 	assert(__builtin_wasm_tls_align() == 0 || 16 % __builtin_wasm_tls_align() == 0);
 
+#ifndef NDEBUG
 	uint32_t tlsSize = (__builtin_wasm_tls_size() + 15) & -16;
 	assert(stackSize > tlsSize);
+#endif
 
 	return _emscripten_create_wasm_worker(stackLowestAddress, stackSize);
 }
