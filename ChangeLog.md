@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.38 (in development)
+3.1.39 (in development)
 -----------------------
+
+3.1.38 - 05/10/23
+-----------------
 - The `dladdr` function will now always return an error rather than filling in
   dummy values. (#19319)
 - The restriction preventing the use of dynamic linking in combination with
