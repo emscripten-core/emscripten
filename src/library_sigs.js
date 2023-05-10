@@ -299,7 +299,6 @@ sigs = {
   _embind_register_value_object_field__sig: 'vpppppppppp',
   _embind_register_void__sig: 'vpp',
   _emscripten_dbg__sig: 'vp',
-  _emscripten_default_pthread_stack_size__sig: 'i',
   _emscripten_dlopen_js__sig: 'vpppp',
   _emscripten_dlsync_threads__sig: 'v',
   _emscripten_dlsync_threads_async__sig: 'vppp',

@@ -140,7 +140,7 @@ int __pthread_create(pthread_t* restrict res,
   pthread_attr_t attr = { 0 };
   if (attrp && attrp != __ATTRP_C11_THREAD) attr = *attrp;
   if (!attr._a_stacksize) {
-    attr._a_stacksize = _emscripten_default_pthread_stack_size();
+    attr._a_stacksize = __default_stacksize;
   }
 
   // Allocate memory for new thread.  The layout of the thread block is
@@ -149,7 +149,7 @@ int __pthread_create(pthread_t* restrict res,
   // 1. pthread struct (sizeof struct pthread)
   // 2. tls data       (__builtin_wasm_tls_size())
   // 3. tsd pointers   (__pthread_tsd_size)
-  // 4. stack          (_emscripten_default_pthread_stack_size())
+  // 4. stack          (__default_stacksize AKA -sDEFAULT_PTHREAD_STACK_SIZE)
   size_t size = sizeof(struct pthread);
   if (__builtin_wasm_tls_size()) {
     size += __builtin_wasm_tls_size() + __builtin_wasm_tls_align() - 1;
