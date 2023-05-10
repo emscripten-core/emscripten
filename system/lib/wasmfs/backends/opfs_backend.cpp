@@ -41,11 +41,11 @@ void _wasmfs_opfs_insert_directory(em_proxying_ctx* ctx,
                                    const char* name,
                                    int* child_id);
 
-void _wasmfs_opfs_move(em_proxying_ctx* ctx,
-                       int file_id,
-                       int new_dir_id,
-                       const char* name,
-                       int* err);
+void _wasmfs_opfs_move_file(em_proxying_ctx* ctx,
+                            int file_id,
+                            int new_parent_id,
+                            const char* name,
+                            int* err);
 
 void _wasmfs_opfs_remove_child(em_proxying_ctx* ctx,
                                int dir_id,
@@ -431,11 +431,19 @@ private:
   }
 
   int insertMove(const std::string& name, std::shared_ptr<File> file) override {
-    auto old_file = std::static_pointer_cast<OPFSFile>(file);
     int err = 0;
-    proxy([&](auto ctx) {
-      _wasmfs_opfs_move(ctx.ctx, old_file->fileID, dirID, name.c_str(), &err);
-    });
+    if (file->is<DataFile>()) {
+      auto opfsFile = std::static_pointer_cast<OPFSFile>(file);
+      proxy([&](auto ctx) {
+        _wasmfs_opfs_move_file(
+          ctx.ctx, opfsFile->fileID, dirID, name.c_str(), &err);
+      });
+    } else {
+      // TODO: Support moving directories once OPFS supports that.
+      // EBUSY can be returned when the directory is "in use by the system,"
+      // which can mean whatever we want.
+      err = -EBUSY;
+    }
     return err;
   }
 
