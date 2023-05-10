@@ -6,10 +6,6 @@
 
 // Tests emscripten_lock_async_acquire() function.
 
-EM_JS(void, console_log, (char* str), {
-  console.log(UTF8ToString(str));
-});
-
 emscripten_lock_t lock = EMSCRIPTEN_LOCK_T_STATIC_INITIALIZER;
 
 // Two shared variables, always a delta distance of one from each other.
@@ -23,7 +19,7 @@ int numTimesWasmWorkerAcquiredLock = 0;
 
 void work()
 {
-//  console_log("work");
+//  emscripten_console_log("work");
   volatile int x = sharedState0;
   volatile int y = sharedState1;
   assert(x == y+1 || y == x+1);
@@ -51,7 +47,7 @@ void work()
     {
       if (!testFinished)
       {
-        console_log("test finished");
+        emscripten_console_log("test finished");
 #ifdef REPORT_RESULT
         REPORT_RESULT(0);
 #endif
@@ -65,7 +61,7 @@ void schedule_work(void *userData);
 
 void lock_async_acquired(volatile void *addr, uint32_t val, ATOMICS_WAIT_RESULT_T waitResult, void *userData)
 {
-//  console_log("async lock acquired");
+//  emscripten_console_log("async lock acquired");
   assert(addr == &lock);
   assert(val == 0 || val == 1);
   assert(waitResult == ATOMICS_WAIT_OK);
@@ -82,7 +78,7 @@ void schedule_work(void *userData)
   if (emscripten_current_thread_is_wasm_worker() && emscripten_random() > 0.5)
   {
     emscripten_lock_waitinf_acquire(&lock);
-//    console_log("sync lock acquired");
+//    emscripten_console_log("sync lock acquired");
     work();
     emscripten_lock_release(&lock);
     if (!testFinished)
