@@ -3671,16 +3671,11 @@ Var: 42
         /* Verify that we don't corrupt func_ptr when calling dladdr.  */
         Dl_info info;
         memset(&info, 0, sizeof(info));
-        dladdr(func_ptr, &info);
+        int rtn = dladdr(func_ptr, &info);
+        assert(rtn == 0);
 
         assert(func_ptr != NULL);
         assert(func_ptr(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) == 13);
-
-        /* Verify something useful lives in info.  */
-        assert(info.dli_fname != NULL);
-        assert(info.dli_fbase == NULL);
-        assert(info.dli_sname == NULL);
-        assert(info.dli_saddr == NULL);
 
         puts("success");
 

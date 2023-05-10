@@ -584,13 +584,3 @@ void* __dlsym(void* restrict p, const char* restrict s, void* restrict ra) {
   do_write_unlock();
   return res;
 }
-
-int dladdr(const void* addr, Dl_info* info) {
-  // report all function pointers as coming from this program itself XXX not
-  // really correct in any way
-  info->dli_fname = "unknown";
-  info->dli_fbase = NULL;
-  info->dli_sname = NULL;
-  info->dli_saddr = NULL;
-  return 1;
-}
