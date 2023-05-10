@@ -263,7 +263,7 @@ if (ENVIRONMENT_IS_NODE) {
 
   Module['inspect'] = () => '[Emscripten Module object]';
 
-#if PTHREADS
+#if PTHREADS || WASM_WORKERS
   let nodeWorkerThreads;
   try {
     nodeWorkerThreads = require('worker_threads');

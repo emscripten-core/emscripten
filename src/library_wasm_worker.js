@@ -139,7 +139,7 @@ mergeInto(LibraryManager.library, {
       'sb': stackLowestAddress, // sb = stack bottom (lowest stack address, SP points at this when stack is full)
       'sz': stackSize,          // sz = stack size
     });
-    worker.addEventListener('message', __wasm_worker_runPostMessage);
+    worker.onmessage = __wasm_worker_runPostMessage;
     return _wasm_workers_id++;
   },
 
