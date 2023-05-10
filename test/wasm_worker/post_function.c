@@ -4,28 +4,24 @@
 
 // Test emscripten_wasm_worker_post_function_*() API
 
-EM_JS(void, console_log, (char* str), {
-  console.log(UTF8ToString(str));
-});
-
 volatile int success = 0;
 
 void v()
 {
-  console_log("v");
+  emscripten_console_log("v");
   ++success;
 }
 
 void vi(int i)
 {
-  console_log("vi");
+  emscripten_console_log("vi");
   assert(i == 1);
   ++success;
 }
 
 void vii(int i, int j)
 {
-  console_log("vii");
+  emscripten_console_log("vii");
   assert(i == 2);
   assert(j == 3);
   ++success;
@@ -33,7 +29,7 @@ void vii(int i, int j)
 
 void viii(int i, int j, int k)
 {
-  console_log("viii");
+  emscripten_console_log("viii");
   assert(i == 4);
   assert(j == 5);
   assert(k == 6);
@@ -42,14 +38,14 @@ void viii(int i, int j, int k)
 
 void vd(double i)
 {
-  console_log("vd");
+  emscripten_console_log("vd");
   assert(i == 1.5);
   ++success;
 }
 
 void vdd(double i, double j)
 {
-  console_log("vdd");
+  emscripten_console_log("vdd");
   assert(i == 2.5);
   assert(j == 3.5);
   ++success;
@@ -57,7 +53,7 @@ void vdd(double i, double j)
 
 void vddd(double i, double j, double k)
 {
-  console_log("vddd");
+  emscripten_console_log("vddd");
   assert(i == 4.5);
   assert(j == 5.5);
   assert(k == 6.5);
@@ -66,7 +62,7 @@ void vddd(double i, double j, double k)
 
 void viiiiiidddddd(int a, int b, int c, int d, int e, int f, double g, double h, double i, double j, double k, double l)
 {
-  console_log("viiiiiidddddd");
+  emscripten_console_log("viiiiiidddddd");
   assert(a == 10);
   assert(b == 11);
   assert(c == 12);
