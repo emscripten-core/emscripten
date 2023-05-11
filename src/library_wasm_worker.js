@@ -30,8 +30,8 @@
 
 
 mergeInto(LibraryManager.library, {
-  $_wasmWorkers: {},
-  $_wasmWorkersID: 1,
+  $_wasmWorkers__deps: ['$HandleAllocator'],
+  $_wasmWorkers: "new HandleAllocator();",
 
   // Starting up a Wasm Worker is an asynchronous operation, hence if the parent thread performs any
   // postMessage()-based wasm function calls s to the Worker, they must be delayed until the async
@@ -105,17 +105,19 @@ mergeInto(LibraryManager.library, {
   $_wasmWorkerBlobUrl: "URL.createObjectURL(new Blob(['onmessage=function(d){onmessage=null;d=d.data;{{{ captureModuleArg() }}}{{{ instantiateWasm() }}}importScripts(d.js);{{{ instantiateModule() }}}d.wasm=d.mem=d.js=0;}'],{type:'application/javascript'}))",
 #endif
 
-  _emscripten_create_wasm_worker__deps: ['$_wasmWorkers', '$_wasmWorkersID', '$_wasmWorkerAppendToQueue', '$_wasmWorkerRunPostMessage'
+  _emscripten_create_wasm_worker__deps: ['$_wasmWorkers', '$_wasmWorkerAppendToQueue',
+    '$_wasmWorkerRunPostMessage',
 #if WASM_WORKERS == 2
-    , '$_wasmWorkerBlobUrl'
+    '$_wasmWorkerBlobUrl',
 #endif
   ],
-  _emscripten_create_wasm_worker__postset: 'if (ENVIRONMENT_IS_WASM_WORKER) {\n'
-    + '_wasmWorkers[0] = this;\n'
-    + 'addEventListener("message", _wasmWorkerAppendToQueue);\n'
-    + '}\n',
+  _emscripten_create_wasm_worker__postset: `
+  if (ENVIRONMENT_IS_WASM_WORKER) {
+    _wasmWorkers.allocated[0] = this;
+    addEventListener('message', _wasmWorkerAppendToQueue);
+  }`,
   _emscripten_create_wasm_worker: function(stackLowestAddress, stackSize) {
-    let worker = _wasmWorkers[_wasmWorkersID] = new Worker(
+    let worker = new Worker(
 #if WASM_WORKERS == 2 // WASM_WORKERS=2 mode embeds .ww.js file contents into the main .js file as a Blob URL. (convenient, but not CSP security safe, since this is eval-like)
       _wasmWorkerBlobUrl
 #elif MINIMAL_RUNTIME // MINIMAL_RUNTIME has a structure where the .ww.js file is loaded from the main HTML file in parallel to all other files for best performance
@@ -124,9 +126,13 @@ mergeInto(LibraryManager.library, {
       locateFile('{{{ WASM_WORKER_FILE }}}')
 #endif
     );
+    var id = _wasmWorkers.allocate(worker);
+#if RUNTIME_DEBUG
+    dbg('new wasm worker -> ' + id);
+#endif
     // Craft the Module object for the Wasm Worker scope:
     worker.postMessage({
-      '$ww': _wasmWorkersID, // Signal with a non-zero value that this Worker will be a Wasm Worker, and not the main browser thread.
+      '$ww': id, // Signal with a non-zero value that this Worker will be a Wasm Worker, and not the main browser thread.
 #if MINIMAL_RUNTIME
       'wasm': Module['wasm'],
       'js': Module['js'],
@@ -140,16 +146,19 @@ mergeInto(LibraryManager.library, {
       'sz': stackSize,          // sz = stack size
     });
     worker.onmessage = _wasmWorkerRunPostMessage;
-    return _wasmWorkersID++;
+    return id;
   },
 
   emscripten_terminate_wasm_worker: function(id) {
 #if ASSERTIONS
     assert(id != 0, 'emscripten_terminate_wasm_worker() cannot be called with id=0!');
 #endif
-    if (_wasmWorkers[id]) {
-      _wasmWorkers[id].terminate();
-      delete _wasmWorkers[id];
+    if (_wasmWorkers.has(id)) {
+#if RUNTIME_DEBUG
+      dbg('terminating wasm worker -> ' + id);
+#endif
+      _wasmWorkers.get(id).terminate();
+      _wasmWorkers.free(id);
     }
   },
 
@@ -157,10 +166,15 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_WASM_WORKER, 'emscripten_terminate_all_wasm_workers() cannot be called from a Wasm Worker: only the main browser thread has visibility to terminate all Workers!');
 #endif
-    Object.values(_wasmWorkers).forEach((worker) => {
-      worker.terminate();
+#if RUNTIME_DEBUG
+    dbg('emscripten_terminate_all_wasm_workers');
+#endif
+    Object.values(_wasmWorkers.allocated).forEach((worker) => {
+      if (typeof worker !== 'undefined') {
+        worker.terminate();
+      }
     });
-    _wasmWorkers = {};
+    _wasmWorkers = new HandleAllocator();
   },
 
   emscripten_current_thread_is_wasm_worker: function() {
@@ -176,12 +190,12 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_wasm_worker_post_function_v: function(id, funcPtr) {
-    _wasmWorkers[id].postMessage({'_wsc': funcPtr, 'x': [] }); // "WaSm Call"
+    _wasmWorkers.get(id).postMessage({'_wsc': funcPtr, 'x': [] }); // "WaSm Call"
   },
 
   $_wasmWorkerPostFunction1__sig: 'vipd',
   $_wasmWorkerPostFunction1: function(id, funcPtr, arg0) {
-    _wasmWorkers[id].postMessage({'_wsc': funcPtr, 'x': [arg0] }); // "WaSm Call"
+    _wasmWorkers.get(id).postMessage({'_wsc': funcPtr, 'x': [arg0] }); // "WaSm Call"
   },
 
   emscripten_wasm_worker_post_function_vi: '$_wasmWorkerPostFunction1',
@@ -189,14 +203,14 @@ mergeInto(LibraryManager.library, {
 
   $_wasmWorkerPostFunction2__sig: 'vipdd',
   $_wasmWorkerPostFunction2: function(id, funcPtr, arg0, arg1) {
-    _wasmWorkers[id].postMessage({'_wsc': funcPtr, 'x': [arg0, arg1] }); // "WaSm Call"
+    _wasmWorkers.get(id).postMessage({'_wsc': funcPtr, 'x': [arg0, arg1] }); // "WaSm Call"
   },
   emscripten_wasm_worker_post_function_vii: '$_wasmWorkerPostFunction2',
   emscripten_wasm_worker_post_function_vdd: '$_wasmWorkerPostFunction2',
 
   $_wasmWorkerPostFunction3__sig: 'vipddd',
   $_wasmWorkerPostFunction3: function(id, funcPtr, arg0, arg1, arg2) {
-    _wasmWorkers[id].postMessage({'_wsc': funcPtr, 'x': [arg0, arg1, arg2] }); // "WaSm Call"
+    _wasmWorkers.get(id).postMessage({'_wsc': funcPtr, 'x': [arg0, arg1, arg2] }); // "WaSm Call"
   },
   emscripten_wasm_worker_post_function_viii: '$_wasmWorkerPostFunction3',
   emscripten_wasm_worker_post_function_vddd: '$_wasmWorkerPostFunction3',
@@ -210,7 +224,7 @@ mergeInto(LibraryManager.library, {
     assert(UTF8ToString(sigPtr)[0] != 'v', 'Do NOT specify the return argument in the signature string for a call to emscripten_wasm_worker_post_function_sig(), just pass the function arguments.');
     assert(varargs);
 #endif
-    _wasmWorkers[id].postMessage({'_wsc': funcPtr, 'x': readEmAsmArgs(sigPtr, varargs) });
+    _wasmWorkers.get(id).postMessage({'_wsc': funcPtr, 'x': readEmAsmArgs(sigPtr, varargs) });
   },
 
   $atomicWaitStates: "['ok', 'not-equal', 'timed-out']",
