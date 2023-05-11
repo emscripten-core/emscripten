@@ -157,7 +157,7 @@ var LibraryHTML5 = {
         err('registerOrRemoveHandler: the target element for event handler registration does not exist, when processing the following event handler registration:');
         console.dir(eventHandler);
 #endif
-        return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
+        return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
       }
       var jsEventHandler = function jsEventHandler(event) {
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
@@ -192,7 +192,7 @@ var LibraryHTML5 = {
            }
         }
       }
-      return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+      return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
     },
 
 #if PTHREADS
@@ -675,7 +675,7 @@ var LibraryHTML5 = {
   emscripten_set_wheel_callback_on_thread__deps: ['$JSEvents', '$registerWheelEventCallback', '$findEventTarget'],
   emscripten_set_wheel_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     target = findEventTarget(target);
-    if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
+    if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
     if (typeof target.onwheel != 'undefined') {
       return registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_WHEEL }}}, "wheel", targetThread);
 #if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
