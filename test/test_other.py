@@ -12367,10 +12367,15 @@ void foo() {}
     self.assertContained('ReferenceError: missing is not defined', output)
     self.assertContained('at foo (', output)
 
-  @node_pthreads
   def test_default_pthread_stack_size(self):
     self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
-    self.emcc_args.append('-pthread')
+
+    # Same again with pthreads enabled
+    self.setup_node_pthreads()
+    self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
+
+    # Same again but with a custom stack size
+    self.emcc_args += ['-DEXPECTED_STACK_SIZE=1024', '-sDEFAULT_PTHREAD_STACK_SIZE=1024']
     self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
 
   def test_emscripten_set_immediate(self):
