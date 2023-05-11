@@ -227,41 +227,41 @@ mergeInto(LibraryManager.library, {
   // see https://bugs.chromium.org/p/chromium/issues/detail?id=1167541
   // https://github.com/tc39/proposal-atomics-wait-async/blob/master/PROPOSAL.md
   // This polyfill performs polling with setTimeout() to observe a change in the target memory location.
-  emscripten_atomic_wait_async__postset: "if (!Atomics['waitAsync'] || jstoi_q((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91) { \n"+
-"let __Atomics_waitAsyncAddresses = [/*[i32a, index, value, maxWaitMilliseconds, promiseResolve]*/];\n"+
-"function __Atomics_pollWaitAsyncAddresses() {\n"+
-"  let now = performance.now();\n"+
-"  let l = __Atomics_waitAsyncAddresses.length;\n"+
-"  for(let i = 0; i < l; ++i) {\n"+
-"    let a = __Atomics_waitAsyncAddresses[i];\n"+
-"    let expired = (now > a[3]);\n"+
-"    let awoken = (Atomics.load(a[0], a[1]) != a[2]);\n"+
-"    if (expired || awoken) {\n"+
-"      __Atomics_waitAsyncAddresses[i--] = __Atomics_waitAsyncAddresses[--l];\n"+
-"      __Atomics_waitAsyncAddresses.length = l;\n"+
-"      a[4](awoken ? 'ok': 'timed-out');\n"+
-"    }\n"+
-"  }\n"+
-"  if (l) {\n"+
-"    // If we still have addresses to wait, loop the timeout handler to continue polling.\n"+
-"    setTimeout(__Atomics_pollWaitAsyncAddresses, 10);\n"+
-"  }\n"+
-"}\n"+
+  emscripten_atomic_wait_async__postset: `if (!Atomics['waitAsync'] || jstoi_q((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91) {
+let __Atomics_waitAsyncAddresses = [/*[i32a, index, value, maxWaitMilliseconds, promiseResolve]*/];
+function __Atomics_pollWaitAsyncAddresses() {
+  let now = performance.now();
+  let l = __Atomics_waitAsyncAddresses.length;
+  for(let i = 0; i < l; ++i) {
+    let a = __Atomics_waitAsyncAddresses[i];
+    let expired = (now > a[3]);
+    let awoken = (Atomics.load(a[0], a[1]) != a[2]);
+    if (expired || awoken) {
+      __Atomics_waitAsyncAddresses[i--] = __Atomics_waitAsyncAddresses[--l];
+      __Atomics_waitAsyncAddresses.length = l;
+      a[4](awoken ? 'ok': 'timed-out');
+    }
+  }
+  if (l) {
+    // If we still have addresses to wait, loop the timeout handler to continue polling.
+    setTimeout(__Atomics_pollWaitAsyncAddresses, 10);
+  }
+}
 #if ASSERTIONS
-"  if (!ENVIRONMENT_IS_WASM_WORKER) console.error('Current environment does not support Atomics.waitAsync(): polyfilling it, but this is going to be suboptimal.');\n"+
+  if (!ENVIRONMENT_IS_WASM_WORKER) err('Current environment does not support Atomics.waitAsync(): polyfilling it, but this is going to be suboptimal.');
 #endif
-"Atomics['waitAsync'] = function(i32a, index, value, maxWaitMilliseconds) {\n"+
-"  let val = Atomics.load(i32a, index);\n"+
-"  if (val != value) return { async: false, value: 'not-equal' };\n"+
-"  if (maxWaitMilliseconds <= 0) return { async: false, value: 'timed-out' };\n"+
-"  maxWaitMilliseconds = performance.now() + (maxWaitMilliseconds || Infinity);\n"+
-"  let promiseResolve;\n"+
-"  let promise = new Promise((resolve) => { promiseResolve = resolve; });\n"+
-"  if (!__Atomics_waitAsyncAddresses[0]) setTimeout(__Atomics_pollWaitAsyncAddresses, 10);\n"+
-"  __Atomics_waitAsyncAddresses.push([i32a, index, value, maxWaitMilliseconds, promiseResolve]);\n"+
-"  return { async: true, value: promise };\n"+
-"};\n"+
-"}",
+Atomics['waitAsync'] = function(i32a, index, value, maxWaitMilliseconds) {
+  let val = Atomics.load(i32a, index);
+  if (val != value) return { async: false, value: 'not-equal' };
+  if (maxWaitMilliseconds <= 0) return { async: false, value: 'timed-out' };
+  maxWaitMilliseconds = performance.now() + (maxWaitMilliseconds || Infinity);
+  let promiseResolve;
+  let promise = new Promise((resolve) => { promiseResolve = resolve; });
+  if (!__Atomics_waitAsyncAddresses[0]) setTimeout(__Atomics_pollWaitAsyncAddresses, 10);
+  __Atomics_waitAsyncAddresses.push([i32a, index, value, maxWaitMilliseconds, promiseResolve]);
+  return { async: true, value: promise };
+};
+}`,
 
   // These dependencies are artificial, issued so that we still get the waitAsync polyfill emitted
   // if code only calls emscripten_lock/semaphore_async_acquire()
