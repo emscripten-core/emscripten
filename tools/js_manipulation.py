@@ -144,6 +144,10 @@ def make_invoke(sig):
     # check if e was not a Number.
     maybe_rethrow = 'if (e !== e+0) throw e;'
 
+  # We may need to factor in the suspender passed as the first argument with ASYNCIFY == 2
+  signature_with_potential_suspender = '%si%s' % (sig[0], sig[1:]) if settings.ASYNCIFY == 2 else sig
+  signature_assignment = '''invoke_%s.sig = '%s';''' % (sig, signature_with_potential_suspender)
+
   ret = '''\
 function invoke_%s(%s) {
   var sp = stackSave();
@@ -154,7 +158,9 @@ function invoke_%s(%s) {
     %s
     _setThrew(1, 0);%s
   }
-}''' % (sig, ','.join(args), body, maybe_rethrow, exceptional_ret)
+}
+
+%s''' % (sig, ','.join(args), body, maybe_rethrow, exceptional_ret, signature_assignment)
 
   return ret
 
