@@ -1334,6 +1334,7 @@ class libprintf_long_double(libc):
 
 class libwasm_workers(MTLibrary):
   name = 'libwasm_workers'
+  includes = ['system/lib/libc']
 
   def __init__(self, **kwargs):
     self.debug = kwargs.pop('debug')
