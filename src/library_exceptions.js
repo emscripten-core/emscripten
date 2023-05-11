@@ -213,6 +213,7 @@ var LibraryExceptions = {
   },
 
   __cxa_current_primary_exception__deps: ['$exceptionCaught', '__cxa_increment_exception_refcount'],
+  __cxa_current_primary_exception__sig: 'p',
   __cxa_current_primary_exception: function() {
     if (!exceptionCaught.length) {
       return 0;
@@ -223,6 +224,7 @@ var LibraryExceptions = {
   },
 
   __cxa_rethrow_primary_exception__deps: ['$ExceptionInfo', '$exceptionCaught', '__cxa_rethrow'],
+  __cxa_rethrow_primary_exception__sig: 'vp',
   __cxa_rethrow_primary_exception: function(ptr) {
     if (!ptr) return;
     var info = new ExceptionInfo(ptr);
@@ -242,7 +244,11 @@ var LibraryExceptions = {
   // We'll do that here, instead, to keep things simpler.
   __cxa_find_matching_catch__deps: ['$exceptionLast', '$ExceptionInfo', '__resumeException', '__cxa_can_catch', 'setTempRet0'],
   __cxa_find_matching_catch: function() {
-    var thrown = 
+    // Here we use explicit calls to `from64`/`to64` rather then using the
+    // `__sig` attribute to perform these automatically.  This is because the
+    // `__sig` wrapper uses arrow function notation, which is not compatible
+    // with the use of `arguments` in this function.
+    var thrown =
 #if EXCEPTION_STACK_TRACES
       exceptionLast && exceptionLast.excPtr;
 #else
@@ -251,7 +257,7 @@ var LibraryExceptions = {
     if (!thrown) {
       // just pass through the null ptr
       setTempRet0(0);
-      return 0;
+      return {{{ to64(0) }}};
     }
     var info = new ExceptionInfo(thrown);
     info.set_adjusted_ptr(thrown);
@@ -259,7 +265,7 @@ var LibraryExceptions = {
     if (!thrownType) {
       // just pass through the thrown ptr
       setTempRet0(0);
-      return thrown;
+      return {{{ to64('thrown') }}};
     }
 
     // can_catch receives a **, add indirection
@@ -272,6 +278,8 @@ var LibraryExceptions = {
     // return the type of the catch block which should be called.
     for (var i = 0; i < arguments.length; i++) {
       var caughtType = arguments[i];
+      {{{ from64('caughtType') }}};
+
       if (caughtType === 0 || caughtType === thrownType) {
         // Catch all clause matched or exactly the same type is caught
         break;
@@ -282,11 +290,11 @@ var LibraryExceptions = {
         dbg("  __cxa_find_matching_catch found " + [ptrToString(info.get_adjusted_ptr()), caughtType]);
 #endif
         setTempRet0(caughtType);
-        return thrown;
+        return {{{ to64('thrown') }}};
       }
     }
     setTempRet0(thrownType);
-    return thrown;
+    return {{{ to64('thrown') }}};
   },
 
   __resumeException__deps: ['$exceptionLast'],

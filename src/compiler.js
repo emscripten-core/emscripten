@@ -64,10 +64,17 @@ Object.assign(global, settings);
 
 global.symbolsOnly = symbolsOnlyArg != -1;
 
+// In case compiler.js is run directly (as in gen_sig_info)
+// ALL_INCOMING_MODULE_JS_API might not be populated yet.
+if (!ALL_INCOMING_MODULE_JS_API.length) {
+  ALL_INCOMING_MODULE_JS_API = INCOMING_MODULE_JS_API
+}
+
 EXPORTED_FUNCTIONS = new Set(EXPORTED_FUNCTIONS);
 WASM_EXPORTS = new Set(WASM_EXPORTS);
 SIDE_MODULE_EXPORTS = new Set(SIDE_MODULE_EXPORTS);
 INCOMING_MODULE_JS_API = new Set(INCOMING_MODULE_JS_API);
+ALL_INCOMING_MODULE_JS_API = new Set(ALL_INCOMING_MODULE_JS_API);
 WEAK_IMPORTS = new Set(WEAK_IMPORTS);
 if (symbolsOnly) {
   INCLUDE_FULL_LIBRARY = 1;

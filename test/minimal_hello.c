@@ -1,11 +1,7 @@
-#include <emscripten.h>
-
-EM_JS(void, console_log, (char* str), {
-  console.log(UTF8ToString(str));
-});
+#include <emscripten/console.h>
 
 int main()
 {
-  console_log("minimal hello!");
+  emscripten_console_log("minimal hello!");
   return 0;
 }

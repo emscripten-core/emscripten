@@ -93,7 +93,7 @@ var LibraryEmbind = {
       proto[methodName] = function() {
         // TODO This check can be removed in -O3 level "unsafe" optimizations.
         if (!proto[methodName].overloadTable.hasOwnProperty(arguments.length)) {
-            throwBindingError("Function '" + humanName + "' called with an invalid number of arguments (" + arguments.length + ") - expects one of (" + proto[methodName].overloadTable + ")!");
+            throwBindingError(`Function '${humanName}' called with an invalid number of arguments (${arguments.length}) - expects one of (${proto[methodName].overloadTable})!`);
         }
         return proto[methodName].overloadTable[arguments.length].apply(this, arguments);
       };
@@ -118,14 +118,14 @@ var LibraryEmbind = {
   $exposePublicSymbol: function(name, value, numArguments) {
     if (Module.hasOwnProperty(name)) {
       if (undefined === numArguments || (undefined !== Module[name].overloadTable && undefined !== Module[name].overloadTable[numArguments])) {
-        throwBindingError("Cannot register public name '" + name + "' twice");
+        throwBindingError(`Cannot register public name '${name}' twice`);
       }
 
       // We are exposing a function with the same name as an existing function. Create an overload table and a function selector
       // that routes between the two.
       ensureOverloadTable(Module, name, name);
       if (Module.hasOwnProperty(numArguments)) {
-          throwBindingError("Cannot register multiple overloads of a function with the same number of arguments (" + numArguments + ")!");
+        throwBindingError(`Cannot register multiple overloads of a function with the same number of arguments (${numArguments})!`);
       }
       // Add the new function into the overload table.
       Module[name].overloadTable[numArguments] = value;
@@ -282,19 +282,19 @@ var LibraryEmbind = {
   $registerType__docs: '/** @param {Object=} options */',
   $registerType: function(rawType, registeredInstance, options = {}) {
     if (!('argPackAdvance' in registeredInstance)) {
-        throw new TypeError('registerType registeredInstance requires argPackAdvance');
+      throw new TypeError('registerType registeredInstance requires argPackAdvance');
     }
 
     var name = registeredInstance.name;
     if (!rawType) {
-        throwBindingError('type "' + name + '" must have a positive integer typeid pointer');
+      throwBindingError(`type "${name}" must have a positive integer typeid pointer`);
     }
     if (registeredTypes.hasOwnProperty(rawType)) {
-        if (options.ignoreDuplicateRegistrations) {
-            return;
-        } else {
-            throwBindingError("Cannot register type '" + name + "' twice");
-        }
+      if (options.ignoreDuplicateRegistrations) {
+        return;
+      } else {
+        throwBindingError(`Cannot register type '${name}' twice`);
+      }
     }
 
     registeredTypes[rawType] = registeredInstance;
@@ -371,7 +371,7 @@ var LibraryEmbind = {
     return ret;
   },
 
-  $getTypeName__deps: ['$readLatin1String', '__getTypeName'],
+  $getTypeName__deps: ['$readLatin1String', '__getTypeName', 'free'],
   $getTypeName: function(type) {
     var ptr = ___getTypeName(type);
     var rv = readLatin1String(ptr);
@@ -399,7 +399,6 @@ var LibraryEmbind = {
     return impl;
   },
 
-  _embind_register_void__sig: 'vpp',
   _embind_register_void__deps: ['$readLatin1String', '$registerType'],
   _embind_register_void: function(rawType, name) {
     name = readLatin1String(name);
@@ -417,7 +416,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_bool__sig: 'vpppii',
   _embind_register_bool__deps: [
     '$getShiftFromSize', '$readLatin1String', '$registerType'],
   _embind_register_bool: function(rawType, name, size, trueValue, falseValue) {
@@ -524,7 +522,6 @@ var LibraryEmbind = {
 
   // When converting a number from JS to C++ side, the valid range of the number is
   // [minRange, maxRange], inclusive.
-  _embind_register_integer__sig: 'vpppii',
   _embind_register_integer__deps: [
     '$embindRepr', '$getShiftFromSize', '$integerReadValueFromPointer',
     '$readLatin1String', '$registerType'],
@@ -549,10 +546,10 @@ var LibraryEmbind = {
     var checkAssertions = (value, toTypeName) => {
 #if ASSERTIONS
       if (typeof value != "number" && typeof value != "boolean") {
-        throw new TypeError('Cannot convert "' + embindRepr(value) + '" to ' + toTypeName);
+        throw new TypeError(`Cannot convert "${embindRepr(value)}" to ${toTypeName}`);
       }
       if (value < minRange || value > maxRange) {
-        throw new TypeError('Passing a number "' + embindRepr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
+        throw new TypeError(`Passing a number "${embindRepr(value)}" from JS side to C/C++ side to an argument of type "${name}", which is outside the valid range [${minRange}, ${maxRange}]!`);
       }
 #endif
     }
@@ -581,7 +578,6 @@ var LibraryEmbind = {
   },
 
 #if WASM_BIGINT
-  _embind_register_bigint__sig: 'vpppjj',
   _embind_register_bigint__deps: [
     '$embindRepr', '$readLatin1String', '$registerType', '$integerReadValueFromPointer'],
   _embind_register_bigint: function(primitiveType, name, size, minRange, maxRange) {
@@ -603,10 +599,10 @@ var LibraryEmbind = {
       },
       'toWireType': function (destructors, value) {
         if (typeof value != "bigint" && typeof value != "number") {
-          throw new TypeError('Cannot convert "' + embindRepr(value) + '" to ' + this.name);
+          throw new TypeError(`Cannot convert "${embindRepr(value)}" to ${this.name}`);
         }
         if (value < minRange || value > maxRange) {
-          throw new TypeError('Passing a number "' + embindRepr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
+          throw new TypeError(`Passing a number "${embindRepr(value)}" from JS side to C/C++ side to an argument of type "${name}", which is outside the valid range [${minRange}, ${maxRange}]!`);
         }
         return value;
       },
@@ -620,7 +616,6 @@ var LibraryEmbind = {
   _embind_register_bigint: function(primitiveType, name, size, minRange, maxRange) {},
 #endif
 
-  _embind_register_float__sig: 'vppp',
   _embind_register_float__deps: [
     '$embindRepr', '$floatReadValueFromPointer', '$getShiftFromSize',
     '$readLatin1String', '$registerType'],
@@ -635,7 +630,7 @@ var LibraryEmbind = {
       'toWireType': function(destructors, value) {
 #if ASSERTIONS
         if (typeof value != "number" && typeof value != "boolean") {
-          throw new TypeError('Cannot convert "' + embindRepr(value) + '" to ' + this.name);
+          throw new TypeError(`Cannot convert ${embindRepr(value)} to ${this.name}`);
         }
 #endif
         // The VM will perform JS to Wasm value conversion, according to the spec:
@@ -653,11 +648,10 @@ var LibraryEmbind = {
     return this['fromWireType']({{{ makeGetValue('pointer', '0', 'i32') }}});
   },
 
-  _embind_register_std_string__sig: 'vpp',
   _embind_register_std_string__deps: [
     '$readLatin1String', '$registerType',
     '$simpleReadValueFromPointer', '$throwBindingError',
-    '$stringToUTF8', '$lengthBytesUTF8'],
+    '$stringToUTF8', '$lengthBytesUTF8', 'malloc', 'free'],
   _embind_register_std_string: function(rawType, name) {
     name = readLatin1String(name);
     var stdStringIsUTF8
@@ -758,7 +752,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_std_wstring__sig: 'vppp',
   _embind_register_std_wstring__deps: [
     '$readLatin1String', '$registerType', '$simpleReadValueFromPointer',
     '$UTF16ToString', '$stringToUTF16', '$lengthBytesUTF16',
@@ -835,7 +828,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_emval__sig: 'vpp',
   _embind_register_emval__deps: [
     '_emval_decref', '$Emval',
     '$readLatin1String', '$registerType', '$simpleReadValueFromPointer'],
@@ -860,7 +852,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_memory_view__sig: 'vpip',
   _embind_register_memory_view__deps: ['$readLatin1String', '$registerType'],
   _embind_register_memory_view: function(rawType, dataTypeIndex, name) {
     var typeMapping = [
@@ -911,7 +902,7 @@ var LibraryEmbind = {
   $newFunc__deps: ['$createNamedFunction'],
   $newFunc: function(constructor, argumentList) {
     if (!(constructor instanceof Function)) {
-      throw new TypeError('new_ called with constructor type ' + typeof(constructor) + " which is not a function");
+      throw new TypeError(`new_ called with constructor type ${typeof(constructor)} which is not a function`);
     }
     /*
      * Previously, the following line was just:
@@ -999,9 +990,7 @@ var LibraryEmbind = {
     var destructors = [];
     return function() {
       if (arguments.length !== expectedArgCount) {
-        throwBindingError('function ' + humanName + ' called with ' +
-          arguments.length + ' arguments, expected ' + expectedArgCount +
-          ' args!');
+        throwBindingError(`function ${humanName} called with ${arguments.length} arguments, expected ${expectedArgCount} args!`);
       }
 #if EMSCRIPTEN_TRACING
       Module.emscripten_trace_enter_context('embind::' + humanName);
@@ -1069,7 +1058,7 @@ var LibraryEmbind = {
         "}\n";
 
 #if EMSCRIPTEN_TRACING
-    invokerFnBody += "Module.emscripten_trace_enter_context('embind::" + humanName + "');\n";
+    invokerFnBody += `Module.emscripten_trace_enter_context('embind::${humanName}');\n`;
 #endif
 
     if (needsDestructorStack) {
@@ -1178,12 +1167,11 @@ var LibraryEmbind = {
 
     var fp = makeDynCaller();
     if (typeof fp != "function") {
-        throwBindingError("unknown function pointer with signature " + signature + ": " + rawFunction);
+        throwBindingError(`unknown function pointer with signature ${signature}: ${rawFunction}`);
     }
     return fp;
   },
 
-  _embind_register_function__sig: 'vpippppi',
   _embind_register_function__deps: [
     '$craftInvokerFunction', '$exposePublicSymbol', '$heap32VectorToArray',
     '$readLatin1String', '$replacePublicSymbol', '$embind__requireFunction',
@@ -1195,7 +1183,7 @@ var LibraryEmbind = {
     rawInvoker = embind__requireFunction(signature, rawInvoker);
 
     exposePublicSymbol(name, function() {
-      throwUnboundTypeError('Cannot call ' + name + ' due to unbound types', argTypes);
+      throwUnboundTypeError(`Cannot call ${name} due to unbound types`, argTypes);
     }, argCount - 1);
 
     whenDependentTypesAreResolved([], argTypes, function(argTypes) {
@@ -1207,7 +1195,6 @@ var LibraryEmbind = {
 
   $tupleRegistrations: {},
 
-  _embind_register_value_array__sig: 'vpppppp',
   _embind_register_value_array__deps: [
     '$tupleRegistrations', '$readLatin1String', '$embind__requireFunction'],
   _embind_register_value_array: function(
@@ -1226,7 +1213,6 @@ var LibraryEmbind = {
     };
   },
 
-  _embind_register_value_array_element__sig: 'vppppppppp',
   _embind_register_value_array_element__deps: [
     '$tupleRegistrations', '$embind__requireFunction'],
   _embind_register_value_array_element: function(
@@ -1250,7 +1236,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_finalize_value_array__sig: 'vp',
   _embind_finalize_value_array__deps: [
     '$tupleRegistrations', '$runDestructors',
     '$simpleReadValueFromPointer', '$whenDependentTypesAreResolved'],
@@ -1295,7 +1280,7 @@ var LibraryEmbind = {
         },
         'toWireType': function(destructors, o) {
           if (elementsLength !== o.length) {
-            throw new TypeError("Incorrect number of tuple elements for " + reg.name + ": expected=" + elementsLength + ", actual=" + o.length);
+            throw new TypeError(`Incorrect number of tuple elements for ${reg.name}: expected=${elementsLength}, actual=${o.length}`);
           }
           var ptr = rawConstructor();
           for (var i = 0; i < elementsLength; ++i) {
@@ -1315,7 +1300,6 @@ var LibraryEmbind = {
 
   $structRegistrations: {},
 
-  _embind_register_value_object__sig: 'vpppppp',
   _embind_register_value_object__deps: [
     '$structRegistrations', '$readLatin1String', '$embind__requireFunction'],
   _embind_register_value_object: function(
@@ -1334,7 +1318,6 @@ var LibraryEmbind = {
     };
   },
 
-  _embind_register_value_object_field__sig: 'vpppppppppp',
   _embind_register_value_object_field__deps: [
     '$structRegistrations', '$readLatin1String', '$embind__requireFunction'],
   _embind_register_value_object_field: function(
@@ -1360,7 +1343,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_finalize_value_object__sig: 'vp',
   _embind_finalize_value_object__deps: [
     '$structRegistrations', '$runDestructors',
     '$simpleReadValueFromPointer', '$whenDependentTypesAreResolved'],
@@ -1411,7 +1393,7 @@ var LibraryEmbind = {
           // assume all fields are present without checking.
           for (var fieldName in fields) {
             if (!(fieldName in o)) {
-              throw new TypeError('Missing field:  "' + fieldName + '"');
+              throw new TypeError(`Missing field: "${fieldName}"`);
             }
           }
           var ptr = rawConstructor();
@@ -1450,13 +1432,13 @@ var LibraryEmbind = {
     }
 
     if (!handle.$$) {
-      throwBindingError('Cannot pass "' + embindRepr(handle) + '" as a ' + this.name);
+      throwBindingError(`Cannot pass "${embindRepr(handle)}" as a ${this.name}`);
     }
     if (!handle.$$.ptr) {
-      throwBindingError('Cannot pass deleted object as a pointer of type ' + this.name);
+      throwBindingError(`Cannot pass deleted object as a pointer of type ${this.name}`);
     }
     if (!this.isConst && handle.$$.ptrType.isConst) {
-      throwBindingError('Cannot convert argument of type ' + (handle.$$.smartPtrType ? handle.$$.smartPtrType.name : handle.$$.ptrType.name) + ' to parameter type ' + this.name);
+      throwBindingError(`Cannot convert argument of type ${(handle.$$.smartPtrType ? handle.$$.smartPtrType.name : handle.$$.ptrType.name)} to parameter type ${this.name}`);
     }
     var handleClass = handle.$$.ptrType.registeredClass;
     ptr = upcastPointer(handle.$$.ptr, handleClass, this.registeredClass);
@@ -1475,7 +1457,7 @@ var LibraryEmbind = {
           if (handle.$$.smartPtrType === this) {
             ptr = handle.$$.smartPtr;
           } else {
-            throwBindingError('Cannot convert argument of type ' + (handle.$$.smartPtrType ? handle.$$.smartPtrType.name : handle.$$.ptrType.name) + ' to parameter type ' + this.name);
+            throwBindingError(`Cannot convert argument of type ${(handle.$$.smartPtrType ? handle.$$.smartPtrType.name : handle.$$.ptrType.name)} to parameter type ${this.name}`);
           }
           break;
 
@@ -1519,7 +1501,7 @@ var LibraryEmbind = {
     }
 
     if (!handle.$$) {
-      throwBindingError('Cannot pass "' + embindRepr(handle) + '" as a ' + this.name);
+      throwBindingError(`Cannot pass "${embindRepr(handle)}" as a ${this.name}`);
     }
     if (!handle.$$.ptr) {
       throwBindingError('Cannot pass deleted object as a pointer of type ' + this.name);
@@ -1541,13 +1523,13 @@ var LibraryEmbind = {
     }
 
     if (!handle.$$) {
-      throwBindingError('Cannot pass "' + embindRepr(handle) + '" as a ' + this.name);
+      throwBindingError(`Cannot pass "${embindRepr(handle)}" as a ${this.name}`);
     }
     if (!handle.$$.ptr) {
-      throwBindingError('Cannot pass deleted object as a pointer of type ' + this.name);
+      throwBindingError(`Cannot pass deleted object as a pointer of type ${this.name}`);
     }
     if (handle.$$.ptrType.isConst) {
-        throwBindingError('Cannot convert argument of type ' + handle.$$.ptrType.name + ' to parameter type ' + this.name);
+        throwBindingError(`Cannot convert argument of type ${handle.$$.ptrType.name} to parameter type ${this.name}`);
     }
     var handleClass = handle.$$.ptrType.registeredClass;
     var ptr = upcastPointer(handle.$$.ptr, handleClass, this.registeredClass);
@@ -1784,7 +1766,7 @@ var LibraryEmbind = {
         // This is more useful than the empty stacktrace of `FinalizationRegistry`
         // callback.
         var cls = $$.ptrType.registeredClass;
-        info.leakWarning = new Error("Embind found a leaked C++ instance " + cls.name + " <" + ptrToString($$.ptr) + ">.\n" +
+        info.leakWarning = new Error(`Embind found a leaked C++ instance ${cls.name} <${ptrToString($$.ptr)}>.\n` +
         "We'll free it automatically in this case, but this functionality is not reliable across various environments.\n" +
         "Make sure to invoke .delete() manually once you're done with the instance instead.\n" +
         "Originally allocated"); // `.stack` will add "at ..." after this sentence
@@ -1985,7 +1967,6 @@ var LibraryEmbind = {
     };
   },
 
-  _embind_register_class__sig: 'vppppppppppppp',
   _embind_register_class__deps: [
     '$BindingError', '$ClassHandle', '$createNamedFunction',
     '$registeredPointers', '$exposePublicSymbol',
@@ -2019,7 +2000,7 @@ var LibraryEmbind = {
 
     exposePublicSymbol(legalFunctionName, function() {
       // this code cannot run if baseClassRawType is zero
-      throwUnboundTypeError('Cannot construct ' + name + ' due to unbound types', [baseClassRawType]);
+      throwUnboundTypeError(`Cannot construct ${name} due to unbound types`, [baseClassRawType]);
     });
 
     whenDependentTypesAreResolved(
@@ -2046,7 +2027,7 @@ var LibraryEmbind = {
           }
           var body = registeredClass.constructor_body[arguments.length];
           if (undefined === body) {
-            throw new BindingError("Tried to invoke ctor of " + name + " with invalid number of parameters (" + arguments.length + ") - expected (" + Object.keys(registeredClass.constructor_body).toString() + ") parameters instead!");
+            throw new BindingError(`Tried to invoke ctor of ${name} with invalid number of parameters (${arguments.length}) - expected (${Object.keys(registeredClass.constructor_body).toString()}) parameters instead!`);
           }
           return body.apply(this, arguments);
         });
@@ -2065,6 +2046,15 @@ var LibraryEmbind = {
                                                   getActualType,
                                                   upcast,
                                                   downcast);
+
+        if (registeredClass.baseClass) {
+          // Keep track of class hierarchy. Used to allow sub-classes to inherit class functions.
+          if (registeredClass.baseClass.__derivedClasses === undefined) {
+            registeredClass.baseClass.__derivedClasses = [];
+          }
+
+          registeredClass.baseClass.__derivedClasses.push(registeredClass);
+        }
 
         var referenceConverter = new RegisteredPointer(name,
                                                        registeredClass,
@@ -2096,7 +2086,6 @@ var LibraryEmbind = {
     );
   },
 
-  _embind_register_class_constructor__sig: 'vpipppp',
   _embind_register_class_constructor__deps: [
     '$heap32VectorToArray', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$whenDependentTypesAreResolved', '$registeredTypes',
@@ -2123,10 +2112,10 @@ var LibraryEmbind = {
         classType.registeredClass.constructor_body = [];
       }
       if (undefined !== classType.registeredClass.constructor_body[argCount - 1]) {
-        throw new BindingError("Cannot register multiple constructors with identical number of parameters (" + (argCount-1) + ") for class '" + classType.name + "'! Overload resolution is currently only performed using the parameter count, not actual type info!");
+        throw new BindingError(`Cannot register multiple constructors with identical number of parameters (${argCount-1}) for class '${classType.name}'! Overload resolution is currently only performed using the parameter count, not actual type info!`);
       }
       classType.registeredClass.constructor_body[argCount - 1] = () => {
-        throwUnboundTypeError('Cannot construct ' + classType.name + ' due to unbound types', rawArgTypes);
+        throwUnboundTypeError(`Cannot construct ${classType.name} due to unbound types`, rawArgTypes);
       };
 
       whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
@@ -2158,7 +2147,7 @@ var LibraryEmbind = {
   $upcastPointer: function(ptr, ptrClass, desiredClass) {
     while (ptrClass !== desiredClass) {
       if (!ptrClass.upcast) {
-        throwBindingError("Expected null or instance of " + desiredClass.name + ", got an instance of " + ptrClass.name);
+        throwBindingError(`Expected null or instance of ${desiredClass.name}, got an instance of ${ptrClass.name}`);
       }
       ptr = ptrClass.upcast(ptr);
       ptrClass = ptrClass.baseClass;
@@ -2175,7 +2164,7 @@ var LibraryEmbind = {
       throwBindingError(humanName + ' incompatible with "this" of type ' + this_.constructor.name);
     }
     if (!this_.$$.ptr) {
-      throwBindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
+      throwBindingError(`cannot call emscripten binding method ${humanName} on deleted object`);
     }
 
     // todo: kill this
@@ -2184,7 +2173,6 @@ var LibraryEmbind = {
                          classType.registeredClass);
   },
 
-  _embind_register_class_function__sig: 'vppippppii',
   _embind_register_class_function__deps: [
     '$craftInvokerFunction', '$heap32VectorToArray', '$readLatin1String',
     '$embind__requireFunction', '$throwUnboundTypeError',
@@ -2215,7 +2203,7 @@ var LibraryEmbind = {
       }
 
       function unboundTypesHandler() {
-        throwUnboundTypeError('Cannot call ' + humanName + ' due to unbound types', rawArgTypes);
+        throwUnboundTypeError(`Cannot call ${humanName} due to unbound types`, rawArgTypes);
       }
 
       var proto = classType.registeredClass.instancePrototype;
@@ -2252,7 +2240,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_class_property__sig: 'vpppppppppp',
   _embind_register_class_property__deps: [
     '$readLatin1String', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$throwUnboundTypeError',
@@ -2275,14 +2262,14 @@ var LibraryEmbind = {
       var humanName = classType.name + '.' + fieldName;
       var desc = {
         get: function() {
-          throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [getterReturnType, setterArgumentType]);
+          throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [getterReturnType, setterArgumentType]);
         },
         enumerable: true,
         configurable: true
       };
       if (setter) {
         desc.set = () => {
-          throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [getterReturnType, setterArgumentType]);
+          throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [getterReturnType, setterArgumentType]);
         };
       } else {
         desc.set = (v) => {
@@ -2324,7 +2311,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_class_class_function__sig: 'vppippppi',
   _embind_register_class_class_function__deps: [
     '$craftInvokerFunction', '$ensureOverloadTable', '$heap32VectorToArray',
     '$readLatin1String', '$embind__requireFunction', '$throwUnboundTypeError',
@@ -2345,7 +2331,7 @@ var LibraryEmbind = {
       var humanName = classType.name + '.' + methodName;
 
       function unboundTypesHandler() {
-        throwUnboundTypeError('Cannot call ' + humanName + ' due to unbound types', rawArgTypes);
+        throwUnboundTypeError(`Cannot call ${humanName} due to unbound types`, rawArgTypes);
       }
 
       if (methodName.startsWith("@@")) {
@@ -2376,13 +2362,22 @@ var LibraryEmbind = {
         } else {
           proto[methodName].overloadTable[argCount-1] = func;
         }
+
+        if (classType.registeredClass.__derivedClasses) {
+          for (const derivedClass of classType.registeredClass.__derivedClasses) {
+            if (!derivedClass.constructor.hasOwnProperty(methodName)) {
+              // TODO: Add support for overloads
+              derivedClass.constructor[methodName] = func;
+            }
+          }
+        }
+
         return [];
       });
       return [];
     });
   },
 
-  _embind_register_class_class_property__sig: 'vpppppppp',
   _embind_register_class_class_property__deps: [
     '$readLatin1String', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$throwUnboundTypeError',
@@ -2403,18 +2398,18 @@ var LibraryEmbind = {
       var humanName = classType.name + '.' + fieldName;
       var desc = {
         get: function() {
-          throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [rawFieldType]);
+          throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [rawFieldType]);
         },
         enumerable: true,
         configurable: true
       };
       if (setter) {
         desc.set = () => {
-          throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [rawFieldType]);
+          throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [rawFieldType]);
         };
       } else {
         desc.set = (v) => {
-          throwBindingError(humanName + ' is a read-only property');
+          throwBindingError(`${humanName} is a read-only property`);
         };
       }
 
@@ -2446,7 +2441,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_create_inheriting_constructor__sig: 'pppp',
   _embind_create_inheriting_constructor__deps: [
     '$createNamedFunction', '$Emval',
     '$PureVirtualError', '$readLatin1String',
@@ -2468,7 +2462,7 @@ var LibraryEmbind = {
     var ctor = createNamedFunction(constructorName, function() {
       registeredClass.baseClass.pureVirtualFunctions.forEach(function(name) {
           if (this[name] === baseClassPrototype[name]) {
-              throw new PureVirtualError('Pure virtual function ' + name + ' must be implemented in JavaScript');
+              throw new PureVirtualError(`Pure virtual function ${name} must be implemented in JavaScript`);
           }
       }.bind(this));
 
@@ -2530,7 +2524,6 @@ var LibraryEmbind = {
     return name;
   },
 
-  _embind_register_smart_ptr__sig: 'vpppipppppppp',
   _embind_register_smart_ptr__deps: ['$RegisteredPointer', '$embind__requireFunction', '$whenDependentTypesAreResolved'],
   _embind_register_smart_ptr: function(rawType,
                                        rawPointeeType,
@@ -2569,7 +2562,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_enum__sig: 'vpppi',
   _embind_register_enum__deps: ['$exposePublicSymbol', '$getShiftFromSize', '$enumReadValueFromPointer',
     '$readLatin1String', '$registerType'],
   _embind_register_enum: function(rawType, name, size, isSigned) {
@@ -2595,7 +2587,6 @@ var LibraryEmbind = {
     exposePublicSymbol(name, ctor);
   },
 
-  _embind_register_enum_value__sig: 'vppp',
   _embind_register_enum_value__deps: ['$createNamedFunction', '$readLatin1String', '$requireRegisteredType'],
   _embind_register_enum_value: function(rawEnumType, name, enumValue) {
     var enumType = requireRegisteredType(rawEnumType, 'enum');
@@ -2611,7 +2602,6 @@ var LibraryEmbind = {
     Enum[name] = Value;
   },
 
-  _embind_register_constant__sig: 'vppd',
   _embind_register_constant__deps: ['$readLatin1String', '$whenDependentTypesAreResolved'],
   _embind_register_constant: function(name, type, value) {
     name = readLatin1String(name);

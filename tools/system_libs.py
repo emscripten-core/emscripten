@@ -1173,7 +1173,7 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/ldso',
-        filenames=['dlerror.c', 'dlsym.c', 'dlclose.c'])
+        filenames=['dladdr.c', 'dlerror.c', 'dlsym.c', 'dlclose.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/signal',
@@ -1333,22 +1333,26 @@ class libprintf_long_double(libc):
 
 
 class libwasm_workers(MTLibrary):
+  name = 'libwasm_workers'
+  includes = ['system/lib/libc']
+
   def __init__(self, **kwargs):
     self.debug = kwargs.pop('debug')
     super().__init__(**kwargs)
 
-  name = 'libwasm_workers'
-
   def get_cflags(self):
-    cflags = get_base_cflags() + ['-D_DEBUG' if self.debug else '-Oz']
+    cflags = super().get_cflags()
     if self.debug:
+      cflags += ['-D_DEBUG']
       # library_wasm_worker.c contains an assert that a nonnull paramater
       # is no NULL, which llvm now warns is redundant/tautological.
       cflags += ['-Wno-tautological-pointer-compare']
+      # Override the `-O2` default.  Building library_wasm_worker.c with
+      # `-O1` or `-O2` currently causes tests to fail.
+      # https://github.com/emscripten-core/emscripten/issues/19331
+      cflags += ['-O0']
     else:
-      cflags += ['-DNDEBUG']
-    if self.is_ww or self.is_mt:
-      cflags += ['-pthread', '-sWASM_WORKERS']
+      cflags += ['-DNDEBUG', '-Oz']
     if settings.MAIN_MODULE:
       cflags += ['-fPIC']
     return cflags
@@ -1959,10 +1963,13 @@ class libstandalonewasm(MuslInternalLibrary):
 
   def __init__(self, **kwargs):
     self.is_mem_grow = kwargs.pop('is_mem_grow')
+    self.nocatch = kwargs.pop('nocatch')
     super().__init__(**kwargs)
 
   def get_base_name(self):
     name = super().get_base_name()
+    if self.nocatch:
+      name += '-nocatch'
     if self.is_mem_grow:
       name += '-memgrow'
     return name
@@ -1972,16 +1979,19 @@ class libstandalonewasm(MuslInternalLibrary):
     cflags += ['-DNDEBUG', '-DEMSCRIPTEN_STANDALONE_WASM']
     if self.is_mem_grow:
       cflags += ['-DEMSCRIPTEN_MEMORY_GROWTH']
+    if self.nocatch:
+      cflags.append('-DEMSCRIPTEN_NOCATCH')
     return cflags
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_mem_grow']
+    return super().vary_on() + ['is_mem_grow', 'nocatch']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
       is_mem_grow=settings.ALLOW_MEMORY_GROWTH,
+      nocatch=settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS,
       **kwargs
     )
 

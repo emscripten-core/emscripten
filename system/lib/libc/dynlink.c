@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include <emscripten/console.h>
 #include <emscripten/threading.h>
@@ -441,6 +442,37 @@ static void dlopen_onerror(struct dso* dso, void* user_data) {
   free(data);
 }
 
+// Modified version of path_open from musl/ldso/dynlink.c
+static int path_find(const char *name, const char *s, char *buf, size_t buf_size) {
+  size_t l;
+  int fd;
+  for (;;) {
+    s += strspn(s, ":\n");
+    l = strcspn(s, ":\n");
+    if (l-1 >= INT_MAX) return -1;
+    if (snprintf(buf, buf_size, "%.*s/%s", (int)l, s, name) < buf_size) {
+      dbg("dlopen: path_find: %s", buf);
+      struct stat statbuf;
+      if (stat(buf, &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
+        return 0;
+      }
+      switch (errno) {
+      case ENOENT:
+      case ENOTDIR:
+      case EACCES:
+      case ENAMETOOLONG:
+        break;
+      default:
+        dbg("dlopen: path_find failed: %s", strerror(errno));
+        /* Any negative value but -1 will inhibit
+         * futher path search. */
+        return -2;
+      }
+    }
+    s += l;
+  }
+}
+
 // Internal version of dlopen with typed return value.
 // Without this, the compiler won't tell us if we have the wrong return type.
 static struct dso* _dlopen(const char* file, int flags) {
@@ -461,6 +493,16 @@ static struct dso* _dlopen(const char* file, int flags) {
 #endif
 
   struct dso* p;
+
+  /* Resolve filename using LD_LIBRARY_PATH */
+  char buf[2*NAME_MAX+2];
+  if (!strchr(file, '/')) {
+    const char* env_path = getenv("LD_LIBRARY_PATH");
+    if (env_path && path_find(file, env_path, buf, sizeof buf) == 0) {
+      dbg("dlopen: found in LD_LIBRARY_PATH: %s", buf);
+      file = buf;
+    }
+  }
 
   /* Search for the name to see if it's already loaded */
   for (struct dlevent* e = head; e; e = e->next) {
@@ -583,14 +625,4 @@ void* __dlsym(void* restrict p, const char* restrict s, void* restrict ra) {
   dbg("__dlsym done dso:%p res:%p", p, res);
   do_write_unlock();
   return res;
-}
-
-int dladdr(const void* addr, Dl_info* info) {
-  // report all function pointers as coming from this program itself XXX not
-  // really correct in any way
-  info->dli_fname = "unknown";
-  info->dli_fbase = NULL;
-  info->dli_sname = NULL;
-  info->dli_saddr = NULL;
-  return 1;
 }

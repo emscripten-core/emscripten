@@ -75,19 +75,6 @@ upgrade from fastcomp to upstream:
   `strip` on an archive file that contains WebAssembly object files it will
   remove the index which makes the archive unusable at link time.
 
-* Fastcomp emits asm.js and so has some limitations on function pointers. For
-  example, the ``RESERVED_FUNCTION_POINTERS`` setting exists there to work
-  around the fact that we can't grow the table. In the upstream backend table
-  growth is easy, and you can just enable ``ALLOW_TABLE_GROWTH``.
-
-* Fastcomp and upstream use very different LLVM and clang versions (fastcomp
-  has been stuck on LLVM 6, upstream is many releases after). This affects
-  optimizations, usually by making the upstream version faster and smaller.
-  However, in rare cases you may see a regression (for example, in some cases
-  *UN*-optimized code may be
-  `less optimal in upstream <https://github.com/emscripten-core/emscripten/issues/10753#issuecomment-603486677>`_,
-  so make sure to optimize both when compiling and when linking).
-
 * Also see the `blocker bugs on the wasm backend <https://github.com/emscripten-core/emscripten/projects/1>`_, and the `wasm backend tagged issues <https://github.com/emscripten-core/emscripten/issues?utf8=✓&q=is%3Aissue+is%3Aopen+label%3A"LLVM+wasm+backend">`_.
 
 Trapping

@@ -43,7 +43,7 @@ var window = {
       func: func,
       when: window.fakeNow + (ms || 0)
     });
-    window.timeouts.sort(function(x, y) { return y.when - x.when });
+    window.timeouts.sort((x, y) => { return y.when - x.when });
   },
   runEventLoop: function() {
     // run forever until an exception stops this replay
@@ -101,7 +101,7 @@ var window = {
   callEventListeners: function(id) {
     var listeners = this.eventListeners[id];
     if (listeners) {
-      listeners.forEach(function(listener) { listener() });
+      listeners.forEach((listener) => listener());
     }
   },
   URL: {
@@ -136,12 +136,12 @@ var document = {
       case 'canvas': return document.getElementById(what);
       case 'script': {
         var ret = {};
-        window.setTimeout(function() {
+        window.setTimeout(() => {
           headlessPrint('loading script: ' + ret.src);
           load(ret.src);
           headlessPrint('   script loaded.');
           if (ret.onload) {
-            window.setTimeout(function() {
+            window.setTimeout(() => {
               ret.onload(); // yeah yeah this might vanish
             });
           }
@@ -265,7 +265,7 @@ var Worker = (workerPath) => {
   this.postMessage = (msg) => {
     msg.messageId = Worker.messageId++;
     headlessPrint('main thread sending message ' + msg.messageId + ' to worker ' + workerPath);
-    window.setTimeout(function() {
+    window.setTimeout(() => {
       headlessPrint('worker ' + workerPath + ' receiving message ' + msg.messageId);
       onmessage({ data: duplicateJSON(msg) });
     });
@@ -274,7 +274,7 @@ var Worker = (workerPath) => {
   var postMessage = (msg) => {
     msg.messageId = Worker.messageId++;
     headlessPrint('worker ' + workerPath + ' sending message ' + msg.messageId);
-    window.setTimeout(function() {
+    window.setTimeout(() => {
       headlessPrint('main thread receiving message ' + msg.messageId + ' from ' + workerPath);
       thisWorker.onmessage({ data: duplicateJSON(msg) });
     });
@@ -295,19 +295,6 @@ if (typeof console == "undefined") {
     }
   };
 }
-var MozBlobBuilder = () => {
-  this.data = new Uint8Array(0);
-  this.append = function(buffer) {
-    var data = new Uint8Array(buffer);
-    var combined = new Uint8Array(this.data.length + data.length);
-    combined.set(this.data);
-    combined.set(data, this.data.length);
-    this.data = combined;
-  };
-  this.getBlob = function() {
-    return this.data.buffer; // return the buffer as a "blob". XXX We might need to change this if it is not opaque
-  };
-};
 
 // additional setup
 if (!Module['canvas']) {

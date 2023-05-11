@@ -161,6 +161,13 @@ def no_windows(note=''):
   return lambda f: f
 
 
+def only_windows(note=''):
+  assert not callable(note)
+  if not WINDOWS:
+    return unittest.skip(note)
+  return lambda f: f
+
+
 def requires_native_clang(func):
   assert callable(func)
 
@@ -508,6 +515,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest(f'Skipping test that requires `{engine}` when `{self.required_engine}` was previously required')
     self.required_engine = engine
     self.js_engines = [engine]
+    self.wasm_engines = []
 
   def require_wasm64(self):
     if config.NODE_JS and config.NODE_JS in self.js_engines:
@@ -1906,7 +1914,8 @@ class BrowserCore(RunnerCore):
             args=None, also_proxied=False,
             url_suffix='', timeout=None, also_wasm2js=False,
             manually_trigger_reftest=False, extra_tries=1,
-            reporting=Reporting.FULL):
+            reporting=Reporting.FULL,
+            output_basename='test'):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
     if args is None:
       args = []
@@ -1923,7 +1932,7 @@ class BrowserCore(RunnerCore):
     else:
       # manual_reference only makes sense for reference tests
       assert manual_reference is None
-    outfile = 'test.html'
+    outfile = output_basename + '.html'
     args += [filename, '-o', outfile]
     # print('all args:', args)
     utils.delete_file(outfile)

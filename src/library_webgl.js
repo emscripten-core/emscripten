@@ -152,6 +152,7 @@ var LibraryGL = {
   $GL__deps: [
 #if PTHREADS
     'malloc', // Needed by registerContext
+    'free', // Needed by deleteContext
 #endif
 #if MIN_WEBGL_VERSION == 1
     '$webgl_enable_ANGLE_instanced_arrays',
@@ -3038,9 +3039,19 @@ var LibraryGL = {
 #if GL_DEBUG
     dbg('Input shader source: ' + source);
 #endif
+
+#if ASSERTIONS
+    // These are not expected to be meaningful in WebGL, but issue a warning if they are present, to give some diagnostics about if they are present.
+    if (source.includes('__FILE__')) warnOnce(`When compiling shader: ${source}: Preprocessor variable __FILE__ is not handled by -sGL_EXPLICIT_UNIFORM_LOCATION/-sGL_EXPLICIT_UNIFORM_BINDING options!`);
+    if (source.includes('__LINE__')) warnOnce(`When compiling shader: ${source}: Preprocessor variable __LINE__ is not handled by -sGL_EXPLICIT_UNIFORM_LOCATION/-sGL_EXPLICIT_UNIFORM_BINDING options!`);
+#endif
     // Remove comments and C-preprocess the input shader first, so that we can appropriately
     // parse the layout location directives.
-    source = preprocess_c_code(remove_cpp_comments_in_shaders(source), { 'GL_FRAGMENT_PRECISION_HIGH': function() { return 1; }});
+    source = preprocess_c_code(remove_cpp_comments_in_shaders(source), {
+      'GL_FRAGMENT_PRECISION_HIGH': () => 1,
+      'GL_ES': () => 1,
+      '__VERSION__': () => source.includes('#version 300') ? 300 : 100
+    });
 #if GL_DEBUG
     dbg('Shader source after preprocessing: ' + source);
 #endif
@@ -3545,12 +3556,12 @@ var LibraryGL = {
 
   glGenVertexArrays__deps: ['$__glGenObject'
 #if LEGACY_GL_EMULATION
-  , 'emulGlGenVertexArrays'
+  , '$emulGlGenVertexArrays'
 #endif
   ],
   glGenVertexArrays: function (n, arrays) {
 #if LEGACY_GL_EMULATION
-    _emulGlGenVertexArrays(n, arrays);
+    emulGlGenVertexArrays(n, arrays);
 #else
 #if GL_ASSERTIONS
     assert(GLctx.createVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
@@ -3564,11 +3575,11 @@ var LibraryGL = {
   },
 
 #if LEGACY_GL_EMULATION
-  glDeleteVertexArrays__deps: ['emulGlDeleteVertexArrays'],
+  glDeleteVertexArrays__deps: ['$emulGlDeleteVertexArrays'],
 #endif
   glDeleteVertexArrays: function(n, vaos) {
 #if LEGACY_GL_EMULATION
-    _emulGlDeleteVertexArrays(n, vaos);
+    emulGlDeleteVertexArrays(n, vaos);
 #else
 #if GL_ASSERTIONS
     assert(GLctx.deleteVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
@@ -3582,11 +3593,11 @@ var LibraryGL = {
   },
 
 #if LEGACY_GL_EMULATION
-  glBindVertexArray__deps: ['emulGlBindVertexArray'],
+  glBindVertexArray__deps: ['$emulGlBindVertexArray'],
 #endif
   glBindVertexArray: function(vao) {
 #if LEGACY_GL_EMULATION
-    _emulGlBindVertexArray(vao);
+    emulGlBindVertexArray(vao);
 #else
 #if GL_ASSERTIONS
     assert(GLctx.bindVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
@@ -3600,11 +3611,11 @@ var LibraryGL = {
   },
 
 #if LEGACY_GL_EMULATION
-  glIsVertexArray__deps: ['emulGlIsVertexArray'],
+  glIsVertexArray__deps: ['$emulGlIsVertexArray'],
 #endif
   glIsVertexArray: function(array) {
 #if LEGACY_GL_EMULATION
-    return _emulGlIsVertexArray(array);
+    return emulGlIsVertexArray(array);
 #else
 #if GL_ASSERTIONS
     assert(GLctx.isVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
@@ -3923,7 +3934,7 @@ var LibraryGL = {
     }
   },
 
-  glMapBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget'],
+  glMapBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget', 'malloc'],
   glMapBufferRange: function(target, offset, length, access) {
     if ((access & (0x1/*GL_MAP_READ_BIT*/ | 0x20/*GL_MAP_UNSYNCHRONIZED_BIT*/)) != 0) {
       err("glMapBufferRange access does not support MAP_READ or MAP_UNSYNCHRONIZED");
@@ -4005,7 +4016,7 @@ var LibraryGL = {
       HEAPU8.subarray(mapping.mem + offset, mapping.mem + offset + length));
   },
 
-  glUnmapBuffer__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget'],
+  glUnmapBuffer__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget', 'free'],
   glUnmapBuffer: function(target) {
     if (!emscriptenWebGLValidateMapBufferTarget(target)) {
       GL.recordError(0x500/*GL_INVALID_ENUM*/);

@@ -66,5 +66,9 @@ async function run_test() {
           "nothing prevents it)";
   }
 
+  if (Module._try_rename_dir() != 0) {
+    throw "Did not get expected EBUSY while renaming directory";
+  }
+
   Module._report_result(0);
 }

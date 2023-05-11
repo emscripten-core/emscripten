@@ -33,7 +33,3 @@ function getNativeTypeSize(type) {
     }
   }
 }
-
-function getNativeFieldSize(type) {
-  return Math.max(getNativeTypeSize(type), POINTER_SIZE);
-}

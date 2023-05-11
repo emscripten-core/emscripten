@@ -1950,11 +1950,13 @@ def phase_linker_setup(options, state, newargs):
 
   if '_main' in settings.EXPORTED_FUNCTIONS:
     settings.EXPORT_IF_DEFINED.append('__main_argc_argv')
-  elif settings.ASSERTIONS:
-    # In debug builds when `main` is not explictly requested as an
+  elif settings.ASSERTIONS and not settings.STANDALONE_WASM:
+    # In debug builds when `main` is not explicitly requested as an
     # export we still add it to EXPORT_IF_DEFINED so that we can warn
     # users who forget to explicitly export `main`.
     # See other.test_warn_unexported_main.
+    # This is not needed in STANDALONE_WASM mode since we export _start
+    # (unconditionally) rather than main.
     settings.EXPORT_IF_DEFINED.append('main')
 
   if settings.ASSERTIONS:
@@ -2085,6 +2087,7 @@ def phase_linker_setup(options, state, newargs):
     if settings.MAIN_MODULE == 1:
       settings.INCLUDE_FULL_LIBRARY = 1
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDylibs']
+    settings.REQUIRED_EXPORTS += ['malloc']
 
   if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
     settings.LINKABLE = 1
@@ -2337,7 +2340,7 @@ def phase_linker_setup(options, state, newargs):
       settings.FETCH_WORKER_FILE = unsuffixed_basename(target) + '.fetch.js'
 
   if settings.DEMANGLE_SUPPORT:
-    settings.REQUIRED_EXPORTS += ['__cxa_demangle']
+    settings.REQUIRED_EXPORTS += ['__cxa_demangle', 'free']
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$demangle', '$stackTrace']
 
   if settings.FULL_ES3:
@@ -2356,9 +2359,6 @@ def phase_linker_setup(options, state, newargs):
     # TODO(https://reviews.llvm.org/D128515): Make this mandatory once
     # llvm change lands
     settings.EXPORT_IF_DEFINED.append('__wasm_apply_data_relocs')
-
-  if settings.RELOCATABLE and not settings.DYNAMIC_EXECUTION:
-    exit_with_error('cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()')
 
   if settings.SIDE_MODULE and 'GLOBAL_BASE' in user_settings:
     exit_with_error('GLOBAL_BASE is not compatible with SIDE_MODULE')
@@ -2414,16 +2414,9 @@ def phase_linker_setup(options, state, newargs):
       exit_with_error('-sPROXY_TO_PTHREAD requires -pthread to work!')
     settings.JS_LIBRARIES.append((0, 'library_pthread_stub.js'))
 
-  # TODO: Move this into the library JS file once it becomes possible.
-  # See https://github.com/emscripten-core/emscripten/pull/15982
-  if settings.INCLUDE_FULL_LIBRARY and not settings.DISABLE_EXCEPTION_CATCHING:
-    settings.EXPORTED_FUNCTIONS += ['___get_exception_message', '_free']
-
   if settings.MEMORY64:
     if settings.ASYNCIFY and settings.MEMORY64 == 1:
       exit_with_error('MEMORY64=1 is not compatible with ASYNCIFY')
-    if not settings.DISABLE_EXCEPTION_CATCHING:
-      exit_with_error('MEMORY64 is not compatible with DISABLE_EXCEPTION_CATCHING=0')
     # Any "pointers" passed to JS will now be i64's, in both modes.
     settings.WASM_BIGINT = 1
 
@@ -2433,7 +2426,7 @@ def phase_linker_setup(options, state, newargs):
     wasm_worker_imports = ['_emscripten_wasm_worker_initialize', '___set_thread_state']
     settings.EXPORTED_FUNCTIONS += wasm_worker_imports
     building.user_requested_exports.update(wasm_worker_imports)
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_wasm_worker_initializeRuntime']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$_wasmWorkerInitializeRuntime']
     # set location of Wasm Worker bootstrap JS file
     if settings.WASM_WORKERS == 1:
       settings.WASM_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.ww.js'
@@ -2486,6 +2479,8 @@ def phase_linker_setup(options, state, newargs):
   def check_memory_setting(setting):
     if settings[setting] % webassembly.WASM_PAGE_SIZE != 0:
       exit_with_error(f'{setting} must be a multiple of WebAssembly page size (64KiB), was {settings[setting]}')
+    if settings[setting] >= 2**53:
+      exit_with_error(f'{setting} must be smaller than 2^53 bytes due to JS Numbers (doubles) being used to hold pointer addresses in JS side')
 
   check_memory_setting('INITIAL_MEMORY')
   check_memory_setting('MAXIMUM_MEMORY')
@@ -2597,6 +2592,8 @@ def phase_linker_setup(options, state, newargs):
     # shared memory builds we must keep the memory segments in the wasm as
     # they will be passive segments which the .mem format cannot handle.
     settings.MEM_INIT_IN_WASM = not options.memory_init_file or settings.SINGLE_FILE or settings.SHARED_MEMORY
+  elif options.memory_init_file:
+    diagnostics.warning('unsupported', '--memory-init-file is only supported with -sWASM=0')
 
   if (
       settings.MAYBE_WASM2JS or
@@ -2759,20 +2756,16 @@ def phase_linker_setup(options, state, newargs):
     # need to be able to call these explicitly.
     settings.REQUIRED_EXPORTS += ['__funcs_on_exit']
 
-  # various settings require malloc/free support from JS
-  if settings.RELOCATABLE or \
-     settings.BUILD_AS_WORKER or \
-     settings.USE_WEBGPU or \
-     settings.OFFSCREENCANVAS_SUPPORT or \
-     settings.LEGACY_GL_EMULATION or \
+  # Some settings require malloc/free to be exported explictly.
+  # In most cases, the inclustion of native symbols like malloc and free
+  # is taken care of by wasm-ld use its normal symbol resolution process.
+  # However, when JS symbols are exported explictly via
+  # DEFAULT_LIBRARY_FUNCS_TO_INCLUDE and they depend on native symbols
+  # we need to explictly require those exports.
+  if settings.BUILD_AS_WORKER or \
      settings.ASYNCIFY or \
      settings.WASMFS or \
-     settings.DEMANGLE_SUPPORT or \
      settings.FORCE_FILESYSTEM or \
-     settings.STB_IMAGE or \
-     settings.EMBIND or \
-     settings.FETCH or \
-     settings.PROXY_POSIX_SOCKETS or \
      options.memory_profiler or \
      sanitize:
     settings.REQUIRED_EXPORTS += ['malloc', 'free']
@@ -3544,8 +3537,6 @@ def parse_args(newargs):
       ports.show_ports()
       should_exit = True
     elif check_arg('--memory-init-file'):
-      # This flag is ignored unless targetting wasm2js.
-      # TODO(sbc): Error out if used without wasm2js.
       options.memory_init_file = int(consume_arg())
     elif check_flag('--proxy-to-worker'):
       settings_changes.append('PROXY_TO_WORKER=1')

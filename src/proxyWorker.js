@@ -98,9 +98,7 @@ function EventListener() {
     event.preventDefault = function(){};
 
     if (event.type in this.listeners) {
-      this.listeners[event.type].forEach(function(listener) {
-        listener(event);
-      });
+      this.listeners[event.type].forEach((listener) => listener(event));
     }
   };
 }
@@ -406,9 +404,7 @@ function messageResender() {
   if (calledMain) {
     assert(messageBuffer && messageBuffer.length > 0);
     messageResenderTimeout = null;
-    messageBuffer.forEach(function(message) {
-      onmessage(message);
-    });
+    messageBuffer.forEach((message) => onmessage(message));
     messageBuffer = null;
   } else {
     messageResenderTimeout = setTimeout(messageResender, 100);

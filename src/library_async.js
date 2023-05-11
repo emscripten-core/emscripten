@@ -38,15 +38,15 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
       dbg('asyncify instrumenting imports');
 #endif
-      var ASYNCIFY_IMPORTS = {{{ JSON.stringify(ASYNCIFY_IMPORTS.map((x) => x.split('.')[1])) }}};
+      var importPatterns = [{{{ ASYNCIFY_IMPORTS.map(x => '/^' + x.split('.')[1].replace(new RegExp('\\*', 'g'), '.*') + '$/') }}}];
+
       for (var x in imports) {
         (function(x) {
           var original = imports[x];
           var sig = original.sig;
           if (typeof original == 'function') {
             var isAsyncifyImport = original.isAsync ||
-                                   ASYNCIFY_IMPORTS.indexOf(x) >= 0 ||
-                                   x.startsWith('__asyncjs__');
+                                   importPatterns.some(pattern => !!x.match(pattern));
 #if ASYNCIFY == 2
             // Wrap async imports with a suspending WebAssembly function.
             if (isAsyncifyImport) {

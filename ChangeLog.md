@@ -18,8 +18,25 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.37 (in development)
+3.1.39 (in development)
 -----------------------
+
+3.1.38 - 05/10/23
+-----------------
+- The `dladdr` function will now always return an error rather than filling in
+  dummy values. (#19319)
+- The restriction preventing the use of dynamic linking in combination with
+  `-sDYNAMIC_EXECUTION=0` was removed.  This restriction was being enforced
+  unnecessarily since dynamic linking has not depended on `eval()` for a while
+  now.
+- Remove extra code for falling back to long-deprecated BlobBuilder browser API
+  when Blob constructor is missing.  This was a fix for an issue that has long
+  been fixed. (#19277)
+
+3.1.37 - 04/26/23
+-----------------
+- The `EM_PYTHON_MULTIPROCESSING` environment variable no longer has any effect.
+  This was added a temporary fallback but should no longer be needed. (#19224)
 - The old reverse dependency system based on `tools/deps_info.py` has been
   removed and the existing `__deps` entries in JS library files can now be used
   to express JS-to-native dependencies.  As well being more precise, and
@@ -28,6 +45,7 @@ See docs/process.md for more on how version tagging works.
   completely removes the need for the `REVERSE_DEPS` settings which has now
   been deprecated. (#18905)
 - Bump the default minimum Firefox version from 65 to 68 (#19191).
+- Background pthreads no longer prevent a Node.js app from exiting. (#19073)
 
 3.1.36 - 04/16/23
 -----------------

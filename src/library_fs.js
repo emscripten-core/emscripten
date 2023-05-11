@@ -5,7 +5,10 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $FS__deps: ['$randomFill', '$PATH', '$PATH_FS', '$TTY', '$MEMFS', '$asyncLoad',
+  $FS__deps: ['$randomFill', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
+    '$FS_createPreloadedFile',
+    '$FS_modeStringToFlags',
+    '$FS_getMode',
     '$intArrayFromString',
     '$stringToUTF8Array',
     '$lengthBytesUTF8',
@@ -88,11 +91,8 @@ Object.defineProperties(FSNode.prototype, {
  }
 });
 FS.FSNode = FSNode;
+FS.createPreloadedFile = FS_createPreloadedFile;
 FS.staticInit();` +
-#if USE_CLOSURE_COMPILER
-           // Declare variable for Closure, FS.createPreloadedFile() below calls Browser.handledByPreloadPlugin()
-           '/**@suppress {duplicate, undefinedVars}*/var Browser;' +
-#endif
            // Get module methods from settings
            '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}';
   },
@@ -293,25 +293,6 @@ FS.staticInit();` +
     //
     // permissions
     //
-    flagModes: {
-      // Extra quotes used here on the keys to this object otherwise jsifier will
-      // erase them in the process of reading and then writing the JS library
-      // code.
-      '"r"': {{{ cDefs.O_RDONLY }}},
-      '"r+"': {{{ cDefs.O_RDWR }}},
-      '"w"': {{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_WRONLY }}},
-      '"w+"': {{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_RDWR }}},
-      '"a"': {{{ cDefs.O_APPEND }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_WRONLY }}},
-      '"a+"': {{{ cDefs.O_APPEND }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_RDWR }}},
-    },
-    // convert the 'r', 'r+', etc. to it's corresponding set of O_* flags
-    modeStringToFlags: (str) => {
-      var flags = FS.flagModes[str];
-      if (typeof flags == 'undefined') {
-        throw new Error('Unknown file open mode: ' + str);
-      }
-      return flags;
-    },
     // convert O_* bitmask to a string for nodePermissions
     flagsToPermissionString: (flag) => {
       var perms = ['r', 'w', 'rw'][flag & 3];
@@ -1010,7 +991,7 @@ FS.staticInit();` +
       if (path === "") {
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       }
-      flags = typeof flags == 'string' ? FS.modeStringToFlags(flags) : flags;
+      flags = typeof flags == 'string' ? FS_modeStringToFlags(flags) : flags;
       mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
       if ((flags & {{{ cDefs.O_CREAT }}})) {
         mode = (mode & {{{ cDefs.S_IALLUGO }}}) | {{{ cDefs.S_IFREG }}};
@@ -1536,12 +1517,6 @@ FS.staticInit();` +
     //
     // old v1 compatibility functions
     //
-    getMode: (canRead, canWrite) => {
-      var mode = 0;
-      if (canRead) mode |= {{{ cDefs.S_IRUGO }}} | {{{ cDefs.S_IXUGO }}};
-      if (canWrite) mode |= {{{ cDefs.S_IWUGO }}};
-      return mode;
-    },
     findObject: (path, dontResolveLastLink) => {
       var ret = FS.analyzePath(path, dontResolveLastLink);
       if (!ret.exists) {
@@ -1595,7 +1570,7 @@ FS.staticInit();` +
     },
     createFile: (parent, name, properties, canRead, canWrite) => {
       var path = PATH.join2(typeof parent == 'string' ? parent : FS.getPath(parent), name);
-      var mode = FS.getMode(canRead, canWrite);
+      var mode = FS_getMode(canRead, canWrite);
       return FS.create(path, mode);
     },
     createDataFile: (parent, name, data, canRead, canWrite, canOwn) => {
@@ -1604,7 +1579,7 @@ FS.staticInit();` +
         parent = typeof parent == 'string' ? parent : FS.getPath(parent);
         path = name ? PATH.join2(parent, name) : parent;
       }
-      var mode = FS.getMode(canRead, canWrite);
+      var mode = FS_getMode(canRead, canWrite);
       var node = FS.create(path, mode);
       if (data) {
         if (typeof data == 'string') {
@@ -1623,7 +1598,7 @@ FS.staticInit();` +
     },
     createDevice: (parent, name, input, output) => {
       var path = PATH.join2(typeof parent == 'string' ? parent : FS.getPath(parent), name);
-      var mode = FS.getMode(!!input, !!output);
+      var mode = FS_getMode(!!input, !!output);
       if (!FS.createDevice.major) FS.createDevice.major = 64;
       var dev = FS.makedev(FS.createDevice.major++, 0);
       // Create a fake device that a set of stream ops to emulate
@@ -1871,47 +1846,6 @@ FS.staticInit();` +
       };
       node.stream_ops = stream_ops;
       return node;
-    },
-    // Preloads a file asynchronously. You can call this before run, for example in
-    // preRun. run will be delayed until this file arrives and is set up.
-    // If you call it after run(), you may want to pause the main loop until it
-    // completes, if so, you can use the onload parameter to be notified when
-    // that happens.
-    // In addition to normally creating the file, we also asynchronously preload
-    // the browser-friendly versions of it: For an image, we preload an Image
-    // element and for an audio, and Audio. These are necessary for SDL_Image
-    // and _Mixer to find the files in preloadedImages/Audios.
-    // You can also call this with a typed array instead of a url. It will then
-    // do preloading for the Image/Audio part, as if the typed array were the
-    // result of an XHR that you did manually.
-    createPreloadedFile: (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
-      // TODO we should allow people to just pass in a complete filename instead
-      // of parent and name being that we just join them anyways
-      var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
-      var dep = getUniqueRunDependency('cp ' + fullname); // might have several active requests for the same fullname
-      function processData(byteArray) {
-        function finish(byteArray) {
-          if (preFinish) preFinish();
-          if (!dontCreateFile) {
-            FS.createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
-          }
-          if (onload) onload();
-          removeRunDependency(dep);
-        }
-        if (Browser.handledByPreloadPlugin(byteArray, fullname, finish, () => {
-          if (onerror) onerror();
-          removeRunDependency(dep);
-        })) {
-          return;
-        }
-        finish(byteArray);
-      }
-      addRunDependency(dep);
-      if (typeof url == 'string') {
-        asyncLoad(url, (byteArray) => processData(byteArray), onerror);
-      } else {
-        processData(url);
-      }
     },
 
     // Removed v1 functions
