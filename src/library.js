@@ -3667,6 +3667,9 @@ mergeInto(LibraryManager.library, {
 #endif
       return this.allocated[id];
     };
+    this.has = function(id) {
+      return this.allocated[id] !== undefined;
+    };
     this.allocate = function(handle) {
       var id = this.freelist.pop() || this.allocated.length;
       this.allocated[id] = handle;

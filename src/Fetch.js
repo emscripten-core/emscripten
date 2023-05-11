@@ -5,14 +5,16 @@
  */
 
 var Fetch = {
-  // Map of integer fetch id to XHR request object
-  xhrs: {},
+  // HandleAllocator for XHR request object
+  // xhrs: undefined,
 
-  // The web worker that runs proxied file I/O requests. (this field is populated on demand, start as undefined to save code size)
+  // The web worker that runs proxied file I/O requests. (this field is
+  // populated on demand, start as undefined to save code size)
   // worker: undefined,
 
   // Specifies an instance to the IndexedDB database. The database is opened
-  // as a preload step before the Emscripten application starts. (this field is populated on demand, start as undefined to save code size)
+  // as a preload step before the Emscripten application starts. (this field is
+  // populated on demand, start as undefined to save code size)
   // dbInstance: undefined,
 
 #if FETCH_SUPPORT_INDEXEDDB
@@ -40,8 +42,12 @@ var Fetch = {
   },
 #endif
 
-  staticInit: function() {
+  init: function() {
+    Fetch.xhrs = new HandleAllocator();
 #if FETCH_SUPPORT_INDEXEDDB
+#if PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return;
+#endif
     var onsuccess = (db) => {
 #if FETCH_DEBUG
       dbg('fetch: IndexedDB successfully opened.');
@@ -293,8 +299,12 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
       xhr.setRequestHeader(keyStr, valueStr);
     }
   }
-  var id = {{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.id, 'u32') }}};
-  Fetch.xhrs[id] = xhr;
+
+  var id = Fetch.xhrs.allocate(xhr);
+#if FETCH_DEBUG
+  dbg('fetch: id=' + id);
+#endif
+  {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.id, 'id', 'u32') }}};
   var data = (dataPtr && dataLength) ? HEAPU8.slice(dataPtr, dataPtr + dataLength) : null;
   // TODO: Support specifying custom headers to the request.
 
@@ -334,7 +344,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
 
   xhr.onload = (e) => {
     // check if xhr was aborted by user and don't try to call back
-    if (!(id in Fetch.xhrs)) { 
+    if (!Fetch.xhrs.has(id)) {
       return;
     }
     saveResponseAndStatus();
@@ -352,7 +362,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   };
   xhr.onerror = (e) => {
     // check if xhr was aborted by user and don't try to call back
-    if (!(id in Fetch.xhrs)) { 
+    if (!Fetch.xhrs.has(id)) {
       return;
     }
 #if FETCH_DEBUG
@@ -363,7 +373,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   };
   xhr.ontimeout = (e) => {
     // check if xhr was aborted by user and don't try to call back
-    if (!(id in Fetch.xhrs)) { 
+    if (!Fetch.xhrs.has(id)) {
       return;
     }
 #if FETCH_DEBUG
@@ -373,7 +383,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   };
   xhr.onprogress = (e) => {
     // check if xhr was aborted by user and don't try to call back
-    if (!(id in Fetch.xhrs)) { 
+    if (!Fetch.xhrs.has(id)) {
       return;
     }
     var ptrLen = (fetchAttrLoadToMemory && fetchAttrStreamData && xhr.response) ? xhr.response.byteLength : 0;
@@ -405,7 +415,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   };
   xhr.onreadystatechange = (e) => {
     // check if xhr was aborted by user and don't try to call back
-    if (!(id in Fetch.xhrs)) {
+    if (!Fetch.xhrs.has(id)) {
       {{{ runtimeKeepalivePop() }}}
       return;
     }
@@ -560,27 +570,27 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
 }
 
 function fetchGetResponseHeadersLength(id) {
-    return lengthBytesUTF8(Fetch.xhrs[id].getAllResponseHeaders()) + 1;
+  return lengthBytesUTF8(Fetch.xhrs.get(id).getAllResponseHeaders()) + 1;
 }
 
 function fetchGetResponseHeaders(id, dst, dstSizeBytes) {
-    var responseHeaders = Fetch.xhrs[id].getAllResponseHeaders();
-    var lengthBytes = lengthBytesUTF8(responseHeaders) + 1;
-    stringToUTF8(responseHeaders, dst, dstSizeBytes);
-    return Math.min(lengthBytes, dstSizeBytes);
+  var responseHeaders = Fetch.xhrs.get(id).getAllResponseHeaders();
+  var lengthBytes = lengthBytesUTF8(responseHeaders) + 1;
+  stringToUTF8(responseHeaders, dst, dstSizeBytes);
+  return Math.min(lengthBytes, dstSizeBytes);
 }
 
 //Delete the xhr JS object, allowing it to be garbage collected.
 function fetchFree(id) {
 #if FETCH_DEBUG
-    dbg("fetch: Deleting id:" + id + " of " + Fetch.xhrs);
+  dbg("fetch: fetchFree id:" + id);
 #endif
-    var xhr = Fetch.xhrs[id];
-    if (xhr) {
-        delete Fetch.xhrs[id];
-        // check if fetch is still in progress and should be aborted
-        if (xhr.readyState > 0 && xhr.readyState < 4) {
-            xhr.abort();
-        }
+  if (Fetch.xhrs.has(id)) {
+    var xhr = Fetch.xhrs.get(id);
+    Fetch.xhrs.free(id);
+    // check if fetch is still in progress and should be aborted
+    if (xhr.readyState > 0 && xhr.readyState < 4) {
+      xhr.abort();
     }
+  }
 }
