@@ -1125,13 +1125,13 @@ var LibrarySDL = {
         audio.paused = false;
         if (!webAudio.decodedBuffer) {
           if (webAudio.onDecodeComplete === undefined) abort("Cannot play back audio object that was not loaded");
-          webAudio.onDecodeComplete.push(function() { if (!audio.paused) SDL.playWebAudio(audio); });
+          webAudio.onDecodeComplete.push(() => { if (!audio.paused) SDL.playWebAudio(audio); });
           return;
         }
         audio.webAudioNode = SDL.audioContext['createBufferSource']();
         audio.webAudioNode['buffer'] = webAudio.decodedBuffer;
         audio.webAudioNode['loop'] = audio.loop;
-        audio.webAudioNode['onended'] = function() { audio['onended'](); } // For <media> element compatibility, route the onended signal to the instance.
+        audio.webAudioNode['onended'] = audio['onended']; // For <media> element compatibility, route the onended signal to the instance.
 
         audio.webAudioPannerNode = SDL.audioContext['createPanner']();
         // avoid Chrome bug
@@ -1457,9 +1457,11 @@ var LibrarySDL = {
   SDL_SetVideoMode__deps: ['$GL'],
   SDL_SetVideoMode__proxy: 'sync',
   SDL_SetVideoMode: function(width, height, depth, flags) {
-    ['touchstart', 'touchend', 'touchmove', 'mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'wheel', 'mouseout'].forEach(function(event) {
-      Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
-    });
+    ['touchstart', 'touchend', 'touchmove',
+     'mousedown', 'mouseup', 'mousemove',
+     'mousewheel', 'wheel', 'mouseout',
+     'DOMMouseScroll',
+    ].forEach((e) => Module['canvas'].addEventListener(e, SDL.receiveEvent, true));
 
     var canvas = Module['canvas'];
 
@@ -1471,7 +1473,7 @@ var LibrarySDL = {
 
     if (!SDL.addedResizeListener) {
       SDL.addedResizeListener = true;
-      Browser.resizeListeners.push(function(w, h) {
+      Browser.resizeListeners.push((w, h) => {
         if (!SDL.settingVideoMode) {
           SDL.receiveEvent({
             type: 'resize',
@@ -2056,10 +2058,8 @@ var LibrarySDL = {
   },
 
   SDL_PumpEvents__proxy: 'sync',
-  SDL_PumpEvents: function(){
-    SDL.events.forEach(function(event) {
-      SDL.handleEvent(event);
-    });
+  SDL_PumpEvents: function() {
+    SDL.events.forEach(SDL.handleEvent);
   },
 
   // An Emscripten-specific extension to SDL: Some browser APIs require that they are called from within an event handler function.
@@ -2205,7 +2205,7 @@ var LibrarySDL = {
         var x = _malloc({{{ getNativeTypeSize('i32') }}});
         var y = _malloc({{{ getNativeTypeSize('i32') }}});
         var comp = _malloc({{{ getNativeTypeSize('i32') }}});
-        addCleanup(function() {
+        addCleanup(() => {
           _free(x);
           _free(y);
           _free(comp);
@@ -2247,7 +2247,7 @@ var LibrarySDL = {
           if (raw === null) err('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');
 #if STB_IMAGE
           var name = stringToNewUTF8(filename);
-          addCleanup(function() {
+          addCleanup(() => {
             _free(name);
           });
           raw = callStbImage('stbi_load', [name]);
@@ -2448,9 +2448,7 @@ var LibrarySDL = {
       };
       Asyncify.sleepCallbacks.push(sleepCallback);
       SDL.audio.callbackRemover = () => {
-        Asyncify.sleepCallbacks = Asyncify.sleepCallbacks.filter(function(callback) {
-          return callback !== sleepCallback;
-        });
+        Asyncify.sleepCallbacks = Asyncify.sleepCallbacks.filter((callback) => callback !== sleepCallback);
       }
 #endif
 
@@ -2771,7 +2769,7 @@ var LibrarySDL = {
       var onDecodeComplete = (data) => {
         webAudio.decodedBuffer = data;
         // Call all handlers that were waiting for this decode to finish, and clear the handler list.
-        webAudio.onDecodeComplete.forEach(function(e) { e(); });
+        webAudio.onDecodeComplete.forEach((e) => e());
         webAudio.onDecodeComplete = undefined; // Don't allow more callback handlers since audio has finished decoding.
       };
       SDL.audioContext['decodeAudioData'](arrayBuffer, onDecodeComplete);
@@ -2887,7 +2885,7 @@ var LibrarySDL = {
       audio.numChannels = info.audio.numChannels;
       audio.frequency = info.audio.frequency;
     }
-    audio['onended'] = function SDL_audio_onended() { // TODO: cache these
+    audio['onended'] = function() { // TODO: cache these
       if (channelInfo.audio == this) { channelInfo.audio.paused = true; channelInfo.audio = null; }
       if (SDL.channelFinished)  {{{ makeDynCall('vi', 'SDL.channelFinished') }}}(channel);
     }
