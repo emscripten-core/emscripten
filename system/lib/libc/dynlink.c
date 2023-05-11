@@ -11,6 +11,7 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <dlfcn.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <threads.h>
 #include <stdarg.h>
@@ -19,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include <emscripten/console.h>
 #include <emscripten/threading.h>
@@ -80,6 +82,8 @@ static struct dlevent* _Atomic tail = &main_event;
 static thread_local struct dlevent* thread_local_tail = &main_event;
 static pthread_mutex_t write_lock = PTHREAD_MUTEX_INITIALIZER;
 static thread_local bool skip_dlsync = false;
+
+static void dlsync();
 
 static void do_write_lock() {
   // Once we have the lock we want to avoid automatic code sync as that would
@@ -155,6 +159,14 @@ static void load_library_done(struct dso* p) {
       p->table_addr,
       p->table_size);
   new_dlevent(p, -1);
+#ifdef _REENTRANT
+  // Block until all other threads have loaded this module.
+  dlsync();
+#endif
+  if (p->file_data) {
+    free(p->file_data);
+    p->file_data_size = 0;
+  }
 }
 
 static struct dso* load_library_start(const char* name, int flags) {
@@ -168,6 +180,29 @@ static struct dso* load_library_start(const char* name, int flags) {
   p = calloc(1, alloc_size);
   p->flags = flags;
   strcpy(p->name, name);
+
+  // If the file exists in the filesystem, load it here into linear memory which
+  // makes the data available to JS, and to other threads.  This data gets
+  // free'd later once all threads have loaded the DSO.
+  struct stat statbuf;
+  if (stat(name, &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
+    int fd = open(name, O_RDONLY);
+    if (fd >= 0) {
+      off_t size = lseek(fd, 0, SEEK_END);
+      if (size != (off_t)-1) {
+        lseek(fd, 0, SEEK_SET);
+        p->file_data = malloc(size);
+        if (p->file_data) {
+          if (read(fd, p->file_data, size) == size) {
+            p->file_data_size = size;
+          } else {
+            free(p->file_data);
+          }
+        }
+      }
+      close(fd);
+    }
+  }
 
   return p;
 }
@@ -424,10 +459,6 @@ static void dlopen_onsuccess(struct dso* dso, void* user_data) {
       dso->mem_addr,
       dso->mem_size);
   load_library_done(dso);
-#ifdef _REENTRANT
-  // Block until all other threads have loaded this module.
-  dlsync();
-#endif
   do_write_unlock();
   data->onsuccess(data->user_data, dso);
   free(data);
@@ -526,10 +557,6 @@ static struct dso* _dlopen(const char* file, int flags) {
   }
   dbg("dlopen_js: success: %p", p);
   load_library_done(p);
-#ifdef _REENTRANT
-  // Block until all other threads have loaded this module.
-  dlsync();
-#endif
 end:
   dbg("dlopen(%s): done: %p", file, p);
   do_write_unlock();
