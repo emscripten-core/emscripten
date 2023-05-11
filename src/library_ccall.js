@@ -27,7 +27,7 @@ addToLibrary({
     // For fast lookup of conversion functions
     var toC = {
 #if MEMORY64
-      'pointer': (p) => {{{ to64('p') }}},
+      'pointer': (p) => {{{ idxToPtr('p') }}},
 #endif
       'string': (str) => {
         var ret = 0;
@@ -35,22 +35,21 @@ addToLibrary({
           // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
           ret = stringToUTF8OnStack(str);
         }
-        return {{{ to64('ret') }}};
+        return {{{ idxToPtr('ret') }}};
       },
       'array': (arr) => {
         var ret = stackAlloc(arr.length);
         writeArrayToMemory(arr, ret);
-        return {{{ to64('ret') }}};
+        return {{{ idxToPtr('ret') }}};
       }
     };
 
     function convertReturnValue(ret) {
       if (returnType === 'string') {
-        {{{ from64('ret') }}}
-        return UTF8ToString(ret);
+        return UTF8ToString({{{ ptrToIdx('ret') }}});
       }
 #if MEMORY64
-      if (returnType === 'pointer') return Number(ret);
+      if (returnType === 'pointer') return {{{ ptrToIdx('ret') }}};
 #endif
       if (returnType === 'boolean') return Boolean(ret);
       return ret;

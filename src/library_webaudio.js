@@ -221,7 +221,7 @@ let LibraryWebAudio = {
     options >>= 2;
     let audioParams = [],
       numAudioParams = HEAPU32[options+1],
-      audioParamDescriptors = HEAPU32[options+2] >> 2,
+      audioParamDescriptors = {{{ ptrToIdx('HEAPU32[options+2]', 2) }}},
       i = 0;
 
     while (numAudioParams--) {

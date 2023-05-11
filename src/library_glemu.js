@@ -399,7 +399,7 @@ var LibraryGLEmulation = {
                    (GL.currentContext.compressionExt ? ' GL_ARB_texture_compression GL_EXT_texture_compression_s3tc' : '') +
                    (GL.currentContext.anisotropicExt ? ' GL_EXT_texture_filter_anisotropic' : '')
             );
-            return GL.stringCache[name_] = {{{ to64('ret') }}};
+            return GL.stringCache[name_] = {{{ idxToPtr('ret') }}};
         }
         return glGetString(name_);
       };

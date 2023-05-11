@@ -226,7 +226,7 @@ var LibraryDylink = {
         dbg(`updateGOT: before: ${symName} : ${GOT[symName].value}`);
 #endif
         if (typeof value == 'function') {
-          GOT[symName].value = {{{ to64('addFunction(value)') }}};
+          GOT[symName].value = {{{ idxToPtr('addFunction(value)') }}};
 #if DYLINK_DEBUG == 2
           dbg(`updateGOT: FUNC: ${symName} : ${GOT[symName].value}`);
 #endif
@@ -272,7 +272,7 @@ var LibraryDylink = {
         value = value.value;
       }
       if (typeof value == {{{ POINTER_JS_TYPE }}}) {
-        value += {{{ to64('memoryBase') }}};
+        value += {{{ idxToPtr('memoryBase') }}};
       }
       relocated[e] = value;
     }
@@ -304,12 +304,12 @@ var LibraryDylink = {
 #endif
         if (typeof value == 'function') {
           /** @suppress {checkTypes} */
-          GOT[symName].value = {{{ to64('addFunction(value, value.sig)') }}};
+          GOT[symName].value = {{{ idxToPtr('addFunction(value, value.sig)') }}};
 #if DYLINK_DEBUG == 2
           dbg(`assigning table entry for : ${symName} -> ${GOT[symName].value}`);
 #endif
         } else if (typeof value == 'number') {
-          GOT[symName].value = {{{ to64('value') }}};
+          GOT[symName].value = {{{ idxToPtr('value') }}};
 #if MEMORY64
         } else if (typeof value == 'bigint') {
           GOT[symName].value = value;
@@ -381,7 +381,7 @@ var LibraryDylink = {
     assert(end <= HEAP8.length, 'failure to getMemory - memory growth etc. is not supported there, call malloc/sbrk directly or increase INITIAL_MEMORY');
 #endif
     ___heap_base = end;
-    GOT['__heap_base'].value = {{{ to64('end') }}};
+    GOT['__heap_base'].value = {{{ idxToPtr('end') }}};
     return ret;
   },
 
@@ -690,9 +690,9 @@ var LibraryDylink = {
           // symbols that should be local to this module
           switch (prop) {
             case '__memory_base':
-              return {{{ to64('memoryBase') }}};
+              return {{{ idxToPtr('memoryBase') }}};
             case '__table_base':
-              return {{{ to64('tableBase') }}};
+              return {{{ idxToPtr('tableBase') }}};
 #if MEMORY64
 #if MEMORY64 == 2
             case '__memory_base32':
@@ -755,7 +755,7 @@ var LibraryDylink = {
         // now.  Otherwise this is delayed until `setDylinkStackLimits` is
         // called after initialization.
         if (moduleExports['__set_stack_limits'] && runtimeInitialized) {
-          moduleExports['__set_stack_limits']({{{ to64('_emscripten_stack_get_base()') }}}, {{{ to64('_emscripten_stack_get_end()') }}});
+          moduleExports['__set_stack_limits']({{{ idxToPtr('_emscripten_stack_get_base()') }}}, {{{ idxToPtr('_emscripten_stack_get_end()') }}});
         }
 #endif
 
@@ -780,10 +780,8 @@ var LibraryDylink = {
 
         // Add any EM_ASM function that exist in the side module
         if ('__start_em_asm' in moduleExports) {
-          var start = moduleExports['__start_em_asm'];
-          var stop = moduleExports['__stop_em_asm'];
-          {{{ from64('start') }}}
-          {{{ from64('stop') }}}
+          var start = {{{ ptrToIdx('moduleExports["__start_em_asm"]') }}};
+          var stop = {{{ ptrToIdx('moduleExports["__stop_em_asm"]') }}};
           while (start < stop) {
             var jsString = UTF8ToString(start);
             addEmAsm(start, jsString);

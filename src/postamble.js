@@ -101,7 +101,7 @@ function callMain() {
     // that if we get here main returned zero.
     var ret = 0;
 #else
-    var ret = entryFunction(argc, {{{ to64('argv') }}});
+    var ret = entryFunction(argc, {{{ idxToPtr('argv') }}});
 #endif // STANDALONE_WASM
 
 #if BENCHMARK
