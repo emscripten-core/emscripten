@@ -2662,6 +2662,9 @@ Module["preRun"].push(function () {
       print(opts)
       self.btest_exit(test_file('test_gamepad.c'), args=[] + opts)
 
+  def test_html5_unknown_event_target(self):
+    self.btest_exit(test_file('test_html5_unknown_event_target.cpp'))
+
   @requires_graphics_hardware
   def test_html5_webgl_create_context_no_antialias(self):
     for opts in [[], ['-O2', '-g1', '--closure=1'], ['-sFULL_ES2']]:
