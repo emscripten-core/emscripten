@@ -199,7 +199,7 @@ var LibraryOpenAL = {
             warnOnce('Unable to start AudioBufferSourceNode playback! Not supported by the browser?');
           }
 
-          dbg('scheduleSourceAudio() queuing buffer ' + buf.id + ' for source ' + src.id + ' at ' + startTime + ' (offset by ' + startOffset + ')');
+          dbg(`scheduleSourceAudio() queuing buffer ${buf.id} for source ${src.id} at ${startTime} (offset by ${startOffset})`);
 #endif
           audioSrc._startTime = startTime;
           src.audioQueue.push(audioSrc);
@@ -344,11 +344,11 @@ var LibraryOpenAL = {
           src.bufsProcessed = 0;
           src.bufOffset = 0.0;
 #if OPENAL_DEBUG
-          dbg('setSourceState() resetting and playing source ' + src.id);
+          dbg(`setSourceState() resetting and playing source ${src.id}`);
 #endif
         } else {
 #if OPENAL_DEBUG
-          dbg('setSourceState() playing source ' + src.id + ' at ' + src.bufOffset);
+          dbg(`setSourceState() playing source ${src.id} at ${src.bufOffset}`);
 #endif
         }
 
@@ -365,7 +365,7 @@ var LibraryOpenAL = {
 
           src.state = 0x1013 /* AL_PAUSED */;
 #if OPENAL_DEBUG
-          dbg('setSourceState() pausing source ' + src.id + ' at ' + src.bufOffset);
+          dbg(`setSourceState() pausing source ${src.id} at ${src.bufOffset}`);
 #endif
         }
       } else if (state === 0x1014 /* AL_STOPPED */) {
@@ -376,7 +376,7 @@ var LibraryOpenAL = {
           src.bufOffset = 0.0;
           AL.stopSourceAudio(src);
 #if OPENAL_DEBUG
-          dbg('setSourceState() stopping source ' + src.id);
+          dbg(`setSourceState() stopping source ${src.id}`);
 #endif
         }
       } else if (state === 0x1011 /* AL_INITIAL */) {
@@ -387,7 +387,7 @@ var LibraryOpenAL = {
           src.bufOffset = 0.0;
           AL.stopSourceAudio(src);
 #if OPENAL_DEBUG
-          dbg('setSourceState() initializing source ' + src.id);
+          dbg(`setSourceState() initializing source ${src.id}`);
 #endif
         }
       }
@@ -761,7 +761,7 @@ var LibraryOpenAL = {
         return AL.currentCtx.distanceModel;
       default:
 #if OPENAL_DEBUG
-        dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
+        dbg(`${funcname}() param ${ptrToString(param}`) + ' is unknown or not implemented');
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return null;
@@ -780,7 +780,7 @@ var LibraryOpenAL = {
       case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
         if (!Number.isFinite(value) || value < 0.0) { // Strictly negative values are disallowed
 #if OPENAL_DEBUG
-          dbg(funcname + '() value ' + value + ' is out of range');
+          dbg(`${funcname}() value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -792,7 +792,7 @@ var LibraryOpenAL = {
       case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
         if (!Number.isFinite(value) || value <= 0.0) { // Negative or zero values are disallowed
 #if OPENAL_DEBUG
-          dbg(funcname + '() value ' + value + ' is out of range');
+          dbg(`${funcname}() value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -815,7 +815,7 @@ var LibraryOpenAL = {
           break;
         default:
 #if OPENAL_DEBUG
-          dbg(funcname + '() value ' + value + ' is out of range');
+          dbg(`${funcname}() value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -823,7 +823,7 @@ var LibraryOpenAL = {
         break;
       default:
 #if OPENAL_DEBUG
-        dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
+        dbg(`${funcname}() param ${ptrToString(param)} is unknown or not implemented`);
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
@@ -849,7 +849,7 @@ var LibraryOpenAL = {
         return AL.currentCtx.gain.gain.value;
       default:
 #if OPENAL_DEBUG
-        dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
+        dbg(`${funcname}() param ${ptrToString(param)} is unknown or not implemented`);
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return null;
@@ -865,7 +865,7 @@ var LibraryOpenAL = {
       }
       if (value === null) {
 #if OPENAL_DEBUG
-        dbg(funcname + '(): param ' + ptrToString(param) + ' has wrong signature');
+        dbg(`${funcname}(): param ${ptrToString(param)} has wrong signature`);
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
@@ -876,7 +876,7 @@ var LibraryOpenAL = {
       case {{{ cDefs.AL_POSITION }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_POSITION value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_POSITION value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -890,7 +890,7 @@ var LibraryOpenAL = {
       case {{{ cDefs.AL_VELOCITY }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_VELOCITY value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_VELOCITY value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -904,7 +904,7 @@ var LibraryOpenAL = {
       case {{{ cDefs.AL_GAIN }}}:
         if (!Number.isFinite(value) || value < 0.0) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_GAIN value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_GAIN value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -917,7 +917,7 @@ var LibraryOpenAL = {
           || !Number.isFinite(value[3]) || !Number.isFinite(value[4]) || !Number.isFinite(value[5])
         ) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_ORIENTATION value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_ORIENTATION value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -933,7 +933,7 @@ var LibraryOpenAL = {
         break;
       default:
 #if OPENAL_DEBUG
-        dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
+        dbg(`${funcname}() param ${ptrToString(param)} is unknown or not implemented`);
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
@@ -975,7 +975,7 @@ var LibraryOpenAL = {
         ];
       default:
 #if OPENAL_DEBUG
-        dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
+        dbg(`${funcname}() param ${ptrToString(param)} is unknown or not implemented`);
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return null;
@@ -999,7 +999,7 @@ var LibraryOpenAL = {
       }
       if (value === null) {
 #if OPENAL_DEBUG
-        dbg(funcname + '(): param ' + ptrToString(param) + ' has wrong signature');
+        dbg(`${funcname}(): param ${ptrToString(param)} has wrong signature`);
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
@@ -1009,7 +1009,7 @@ var LibraryOpenAL = {
       case 0x2004 /* AL_SIZE */:
         if (value !== 0) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_SIZE value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_SIZE value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1020,7 +1020,7 @@ var LibraryOpenAL = {
       case 0x2015 /* AL_LOOP_POINTS_SOFT */:
         if (value[0] < 0 || value[0] > buf.length || value[1] < 0 || value[1] > buf.Length || value[0] >= value[1]) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_LOOP_POINTS_SOFT value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_LOOP_POINTS_SOFT value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1040,7 +1040,7 @@ var LibraryOpenAL = {
         break;
       default:
 #if OPENAL_DEBUG
-        dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
+        dbg(`${funcname}() param ${ptrToString(param)}' is unknown or not implemented`);
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
@@ -1151,7 +1151,7 @@ var LibraryOpenAL = {
         return src.distanceModel;
       default:
 #if OPENAL_DEBUG
-        dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
+        dbg(`${funcname}() param ${ptrToString(param)}' is unknown or not implemented`);
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return null;
@@ -1175,7 +1175,7 @@ var LibraryOpenAL = {
       }
       if (value === null) {
 #if OPENAL_DEBUG
-        dbg(funcname + '(): param ' + ptrToString(param) + ' has wrong signature');
+        dbg(`${funcname}(): param ${ptrToString(param)}' has wrong signature`);
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
@@ -1191,7 +1191,7 @@ var LibraryOpenAL = {
           AL.updateSourceSpace(src);
         } else {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_SOURCE_RELATIVE value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_SOURCE_RELATIVE value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1200,7 +1200,7 @@ var LibraryOpenAL = {
       case 0x1001 /* AL_CONE_INNER_ANGLE */:
         if (!Number.isFinite(value)) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_CONE_INNER_ANGLE value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_CONE_INNER_ANGLE value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1214,7 +1214,7 @@ var LibraryOpenAL = {
       case 0x1002 /* AL_CONE_OUTER_ANGLE */:
         if (!Number.isFinite(value)) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_CONE_OUTER_ANGLE value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_CONE_OUTER_ANGLE value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1228,7 +1228,7 @@ var LibraryOpenAL = {
       case 0x1003 /* AL_PITCH */:
         if (!Number.isFinite(value) || value <= 0.0) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_PITCH value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_PITCH value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1244,7 +1244,7 @@ var LibraryOpenAL = {
       case {{{ cDefs.AL_POSITION }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_POSITION value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_POSITION value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1258,7 +1258,7 @@ var LibraryOpenAL = {
       case {{{ cDefs.AL_DIRECTION }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_DIRECTION value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_DIRECTION value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1272,7 +1272,7 @@ var LibraryOpenAL = {
       case {{{ cDefs.AL_VELOCITY }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_VELOCITY value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_VELOCITY value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1303,7 +1303,7 @@ var LibraryOpenAL = {
           }
         } else {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_LOOPING value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_LOOPING value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1354,7 +1354,7 @@ var LibraryOpenAL = {
       case {{{ cDefs.AL_GAIN }}}:
         if (!Number.isFinite(value) || value < 0.0) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_GAIN value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_GAIN value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1364,7 +1364,7 @@ var LibraryOpenAL = {
       case 0x100D /* AL_MIN_GAIN */:
         if (!Number.isFinite(value) || value < 0.0 || value > Math.min(src.maxGain, 1.0)) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_MIN_GAIN value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_MIN_GAIN value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1377,7 +1377,7 @@ var LibraryOpenAL = {
       case 0x100E /* AL_MAX_GAIN */:
         if (!Number.isFinite(value) || value < Math.max(0.0, src.minGain) || value > 1.0) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_MAX_GAIN value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_MAX_GAIN value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1390,7 +1390,7 @@ var LibraryOpenAL = {
       case 0x1020 /* AL_REFERENCE_DISTANCE */:
         if (!Number.isFinite(value) || value < 0.0) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_REFERENCE_DISTANCE value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_REFERENCE_DISTANCE value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1403,7 +1403,7 @@ var LibraryOpenAL = {
       case 0x1021 /* AL_ROLLOFF_FACTOR */:
         if (!Number.isFinite(value) || value < 0.0) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_ROLLOFF_FACTOR value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_ROLLOFF_FACTOR value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1416,7 +1416,7 @@ var LibraryOpenAL = {
       case 0x1022 /* AL_CONE_OUTER_GAIN */:
         if (!Number.isFinite(value) || value < 0.0 || value > 1.0) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_CORE_OUTER_GAIN value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_CORE_OUTER_GAIN value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1429,7 +1429,7 @@ var LibraryOpenAL = {
       case 0x1023 /* AL_MAX_DISTANCE */:
         if (!Number.isFinite(value) || value < 0.0) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_MAX_DISTANCE value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_MAX_DISTANCE value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1442,7 +1442,7 @@ var LibraryOpenAL = {
       case 0x1024 /* AL_SEC_OFFSET */:
         if (value < 0.0 || value > AL.sourceDuration(src)) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_SEC_OFFSET value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_SEC_OFFSET value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1464,7 +1464,7 @@ var LibraryOpenAL = {
         }
         if (value < 0.0 || value > srcLen) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_SAMPLE_OFFSET value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_SAMPLE_OFFSET value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1487,7 +1487,7 @@ var LibraryOpenAL = {
         }
         if (value < 0.0 || value > srcLen) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_BYTE_OFFSET value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_BYTE_OFFSET value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1498,7 +1498,7 @@ var LibraryOpenAL = {
       case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
         if (value !== {{{ cDefs.AL_FALSE }}} && value !== {{{ cDefs.AL_TRUE }}} && value !== 2 /* AL_AUTO_SOFT */) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_SOURCE_SPATIALIZE_SOFT value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_SOURCE_SPATIALIZE_SOFT value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1531,7 +1531,7 @@ var LibraryOpenAL = {
           break;
         default:
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_DISTANCE_MODEL value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_DISTANCE_MODEL value ${value} is out of range`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
@@ -1539,7 +1539,7 @@ var LibraryOpenAL = {
         break;
       default:
 #if OPENAL_DEBUG
-        dbg(funcname + '() param ' + ptrToString(param) + ' is unknown or not implemented');
+        dbg(`${funcname}() param ${ptrToString(param)}' is unknown or not implemented`);
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
@@ -1565,7 +1565,7 @@ var LibraryOpenAL = {
     requireValidCaptureDevice: function(deviceId, funcname) {
       if (deviceId === 0) {
 #if OPENAL_DEBUG
-        dbg(funcname+'() on a NULL device is an error');
+        dbg(`${funcname}() on a NULL device is an error`);
 #endif
         AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return null;
@@ -1573,7 +1573,7 @@ var LibraryOpenAL = {
       var c = AL.captures[deviceId];
       if (!c) {
 #if OPENAL_DEBUG
-        dbg(funcname+'() on an invalid device');
+        dbg(`${funcname}() on an invalid device`);
 #endif
         AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return null;
@@ -1583,13 +1583,13 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         switch (err.name) {
         case 'PermissionDeniedError':
-          dbg(funcname+'() but the user denied access to the device');
+          dbg(`${funcname}() but the user denied access to the device`);
           break;
         case 'NotFoundError':
-          dbg(funcname+'() but no capture device was found');
+          dbg(`${funcname}() but no capture device was found`);
           break;
         default:
-          dbg(funcname+'() but a MediaStreamError was encountered: ' + err);
+          dbg(`${funcname}() but a MediaStreamError was encountered: ${err}`);
           break;
         }
 #endif
@@ -1667,7 +1667,7 @@ var LibraryOpenAL = {
         AL.sharedCaptureAudioCtx = new AudioContext();
       } catch(e) {
 #if OPENAL_DEBUG
-        dbg('alcCaptureOpenDevice() could not create the shared capture AudioContext: ' + e);
+        dbg(`alcCaptureOpenDevice() could not create the shared capture AudioContext: ${e}`);
 #endif
         // See previously mentioned rationale for ALC_OUT_OF_MEMORY
         AL.alcErr = 0xA005 /* ALC_OUT_OF_MEMORY */;
@@ -1692,7 +1692,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alcCaptureOpenDevice() with unsupported format ' + format);
+      dbg(`alcCaptureOpenDevice() with unsupported format ${format}`);
 #endif
       AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
       return 0;
@@ -1730,7 +1730,7 @@ var LibraryOpenAL = {
       }
     } catch(e) {
 #if OPENAL_DEBUG
-      dbg('alcCaptureOpenDevice() failed to allocate internal buffers (is bufferSize low enough?): ' + e);
+      dbg(`alcCaptureOpenDevice() failed to allocate internal buffers (is bufferSize low enough?): ${e}`);
 #endif
       AL.alcErr = 0xA005 /* ALC_OUT_OF_MEMORY */;
       return 0;
@@ -1768,7 +1768,7 @@ var LibraryOpenAL = {
     var onError = (mediaStreamError) => {
       newCapture.mediaStreamError = mediaStreamError;
 #if OPENAL_DEBUG
-      dbg('navigator.getUserMedia() errored with: ' + mediaStreamError);
+      dbg(`navigator.getUserMedia() errored with: ${mediaStreamError}`);
 #endif
     };
     var onSuccess = (mediaStream) => {
@@ -2138,7 +2138,7 @@ var LibraryOpenAL = {
               break;
             default:
 #if OPENAL_DEBUG
-              dbg('Unsupported ALC_HRTF_SOFT mode ' + val);
+              dbg(`Unsupported ALC_HRTF_SOFT mode ${val}`);
 #endif
               AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
               return 0;
@@ -2147,7 +2147,7 @@ var LibraryOpenAL = {
         case 0x1996 /* ALC_HRTF_ID_SOFT */:
           if (val !== 0) {
 #if OPENAL_DEBUG
-            dbg('Invalid ALC_HRTF_ID_SOFT index ' + val);
+            dbg(`Invalid ALC_HRTF_ID_SOFT index ${val}`);
 #endif
             AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
             return 0;
@@ -2155,7 +2155,7 @@ var LibraryOpenAL = {
           break;
         default:
 #if OPENAL_DEBUG
-          dbg('Unsupported context attribute ' + ptrToString(attr));
+          dbg(`Unsupported context attribute ${ptrToString(attr)}`);
 #endif
           AL.alcErr = 0xA004; /* ALC_INVALID_VALUE */
           return 0;
@@ -2367,7 +2367,7 @@ var LibraryOpenAL = {
 
     default:
 #if OPENAL_DEBUG
-      dbg('No value for `' + pEnumName + '` is known by alcGetEnumValue()');
+      dbg(`No value for `${pEnumName}` is known by alcGetEnumValue()`);
 #endif
       AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
       return {{{ cDefs.AL_NONE }}};
@@ -2566,7 +2566,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alcGetIntegerv() with param ' + ptrToString(param) + ' not implemented yet');
+      dbg(`alcGetIntegerv() with param ${ptrToString(param)} not implemented yet`);
 #endif
       AL.alcErr = {{{ cDefs.ALC_INVALID_ENUM }}};
       return;
@@ -2651,7 +2651,7 @@ var LibraryOpenAL = {
         ret = 'Web Audio HRTF';
       } else {
 #if OPENAL_DEBUG
-        dbg('alcGetStringiSOFT() with param ALC_HRTF_SPECIFIER_SOFT index ' + index + ' is out of range');
+        dbg(`alcGetStringiSOFT() with param ALC_HRTF_SPECIFIER_SOFT index ${index} is out of range`);
 #endif
         AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
         return 0;
@@ -2660,7 +2660,7 @@ var LibraryOpenAL = {
     default:
       if (index !== 0) {
 #if OPENAL_DEBUG
-        dbg('alcGetStringiSOFT() with param ' + ptrToString(param) + ' not implemented yet');
+        dbg(`alcGetStringiSOFT() with param ${ptrToString(param)} not implemented yet`);
 #endif
         AL.alcErr = {{{ cDefs.ALC_INVALID_ENUM }}};
         return 0;
@@ -3009,7 +3009,7 @@ var LibraryOpenAL = {
 
     default:
 #if OPENAL_DEBUG
-      dbg('No value for `' + name + '` is known by alGetEnumValue()');
+      dbg(`No value for `${name}` is known by alGetEnumValue()`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return 0;
@@ -3091,7 +3091,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alEnable() with param ' + ptrToString(param) + ' not implemented yet');
+      dbg(`alEnable() with param ${ptrToString(param)} not implemented yet`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
@@ -3113,7 +3113,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alDisable() with param ' + ptrToString(param) + ' not implemented yet');
+      dbg(`alDisable() with param ${ptrToString(param)} not implemented yet`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
@@ -3133,7 +3133,7 @@ var LibraryOpenAL = {
       return AL.currentCtx.sourceDistanceModel ? {{{ cDefs.AL_FALSE }}} : {{{ cDefs.AL_TRUE }}};
     default:
 #if OPENAL_DEBUG
-      dbg('alIsEnabled() with param ' + ptrToString(param) + ' not implemented yet');
+      dbg(`alIsEnabled() with param ${ptrToString(param)} not implemented yet`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return 0;
@@ -3154,7 +3154,7 @@ var LibraryOpenAL = {
       return val;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetDouble(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetDouble(): param ${ptrToString(param)} has wrong signature`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return 0.0;
@@ -3177,7 +3177,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetDoublev(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetDoublev(): param ${ptrToString(param)} has wrong signature`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
@@ -3198,7 +3198,7 @@ var LibraryOpenAL = {
       return val;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetFloat(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetFloat(): param ${ptrToString(param)} has wrong signature`);
 #endif
       return 0.0;
     }
@@ -3220,7 +3220,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetFloatv(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetFloatv(): param ${ptrToString(param)} has wrong signature`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
@@ -3241,7 +3241,7 @@ var LibraryOpenAL = {
       return val;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetInteger(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetInteger(): param ${ptrToString(param)} has wrong signature`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return 0;
@@ -3264,7 +3264,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetIntegerv(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetIntegerv(): param ${ptrToString(param)} has wrong signature`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
@@ -3285,7 +3285,7 @@ var LibraryOpenAL = {
       return val !== 0 ? {{{ cDefs.AL_TRUE }}} : {{{ cDefs.AL_FALSE }}};
     default:
 #if OPENAL_DEBUG
-      dbg('alGetBoolean(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetBoolean(): param ${ptrToString(param)} has wrong signature`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return {{{ cDefs.AL_FALSE }}};
@@ -3308,7 +3308,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetBooleanv(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetBooleanv(): param ${ptrToString(param)} has wrong signature`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
@@ -3373,7 +3373,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetListenerf(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetListenerf(): param ${ptrToString(param)} has wrong signature`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
@@ -3403,7 +3403,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetListener3f(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetListener3f(): param ${ptrToString(param)} has wrong signature`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
@@ -3441,7 +3441,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetListenerfv(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetListenerfv(): param ${ptrToString(param)} has wrong signature`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
@@ -3463,7 +3463,7 @@ var LibraryOpenAL = {
     }
 
 #if OPENAL_DEBUG
-    dbg('alGetListeneri(): param ' + ptrToString(param) + ' has wrong signature');
+    dbg(`alGetListeneri(): param ${ptrToString(param)} has wrong signature`);
 #endif
     AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
   },
@@ -3491,7 +3491,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetListener3i(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetListener3i(): param ${ptrToString(param)} has wrong signature`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
@@ -3529,7 +3529,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetListeneriv(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetListeneriv(): param ${ptrToString(param)} has wrong signature`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
@@ -3793,7 +3793,7 @@ var LibraryOpenAL = {
         break;
       default:
 #if OPENAL_DEBUG
-        dbg('alBufferData() called with invalid format ' + format);
+        dbg(`alBufferData() called with invalid format ${format}`;
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
         return;
@@ -3802,7 +3802,7 @@ var LibraryOpenAL = {
       buf.audioBuf = audioBuf;
     } catch (e) {
 #if OPENAL_DEBUG
-      dbg('alBufferData() upload failed with an exception ' + e);
+      dbg(`alBufferData() upload failed with an exception ${e}`;
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
@@ -3824,7 +3824,7 @@ var LibraryOpenAL = {
     }
 
 #if OPENAL_DEBUG
-    dbg('alGetBufferf(): param ' + ptrToString(param) + ' has wrong signature');
+    dbg(`alGetBufferf(): param ${ptrToString(param)} has wrong signature`);
 #endif
     AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
   },
@@ -3844,7 +3844,7 @@ var LibraryOpenAL = {
     }
 
 #if OPENAL_DEBUG
-    dbg('alGetBuffer3f(): param ' + ptrToString(param) + ' has wrong signature');
+    dbg(`alGetBuffer3f(): param ${ptrToString(param)} has wrong signature`);
 #endif
     AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
   },
@@ -3864,7 +3864,7 @@ var LibraryOpenAL = {
     }
 
 #if OPENAL_DEBUG
-    dbg('alGetBufferfv(): param ' + ptrToString(param) + ' has wrong signature');
+    dbg(`alGetBufferfv(): param ${ptrToString(param)} has wrong signature`);
 #endif
     AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
   },
@@ -3892,7 +3892,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetBufferi(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetBufferi(): param ${ptrToString(param)} has wrong signature`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
@@ -3914,7 +3914,7 @@ var LibraryOpenAL = {
     }
 
 #if OPENAL_DEBUG
-    dbg('alGetBuffer3i(): param ' + ptrToString(param) + ' has wrong signature');
+    dbg(`alGetBuffer3i(): param ${ptrToString(param)} has wrong signature`);
 #endif
     AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
   },
@@ -3946,7 +3946,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetBufferiv(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetBufferiv(): param ${ptrToString(param)} has wrong signature`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
@@ -4397,7 +4397,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetSourcef(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetSourcef(): param ${ptrToString(param)} has wrong signature`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
@@ -4428,7 +4428,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetSource3f(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetSource3f(): param ${ptrToString(param)} has wrong signature`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
@@ -4475,7 +4475,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetSourcefv(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetSourcefv(): param ${ptrToString(param)} has wrong signature`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
@@ -4520,7 +4520,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetSourcei(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetSourcei(): param ${ptrToString(param)} has wrong signature`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
@@ -4551,7 +4551,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetSource3i(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetSource3i(): param ${ptrToString(param)} has wrong signature`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
@@ -4603,7 +4603,7 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      dbg('alGetSourceiv(): param ' + ptrToString(param) + ' has wrong signature');
+      dbg(`alGetSourceiv(): param ${ptrToString(param)} has wrong signature`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;

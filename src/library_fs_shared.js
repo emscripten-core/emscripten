@@ -56,7 +56,7 @@ mergeInto(LibraryManager.library, {
     // of parent and name being that we just join them anyways
     var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
 #endif
-    var dep = getUniqueRunDependency('cp ' + fullname); // might have several active requests for the same fullname
+    var dep = getUniqueRunDependency(`cp ${fullname}`); // might have several active requests for the same fullname
     function processData(byteArray) {
       function finish(byteArray) {
         if (preFinish) preFinish();
@@ -95,7 +95,7 @@ mergeInto(LibraryManager.library, {
     };
     var flags = flagModes[str];
     if (typeof flags == 'undefined') {
-      throw new Error('Unknown file open mode: ' + str);
+      throw new Error(`Unknown file open mode: ${str}`);
     }
     return flags;
   },
