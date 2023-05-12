@@ -13425,14 +13425,21 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
         return 42;
       }
     ''')
-    self.run_process([EMCC, 'library.c', '-sSIDE_MODULE', '-o', 'library.so'] + args)
+    self.run_process([EMCC, 'library.c', '-sSIDE_MODULE', '-o', 'tmp.so'] + args)
     create_file('main.c', r'''
       #include <assert.h>
       #include <dlfcn.h>
       #include <stdio.h>
+      #include <sys/stat.h>
       #include <emscripten.h>
       #include <emscripten/threading.h>
+
       int main() {
+        // Check the file exists in the VFS
+        struct stat statbuf;
+        assert(stat("/library.so", &statbuf) == 0);
+
+        // Check that it was preloaded
         if (emscripten_is_main_runtime_thread()) {
           int found = EM_ASM_INT(
             return preloadedWasm['/library.so'] !== undefined;
@@ -13449,4 +13456,4 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
         return 0;
       }
     ''')
-    self.do_runf('main.c', 'done\n', emcc_args=['-sMAIN_MODULE=2', '--preload-file', '.@/', '--use-preload-plugins'] + args)
+    self.do_runf('main.c', 'done\n', emcc_args=['-sMAIN_MODULE=2', '--preload-file', 'tmp.so@library.so', '--use-preload-plugins'] + args)

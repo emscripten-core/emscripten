@@ -27,7 +27,7 @@ var LibraryDylink = {
           () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true})).then(
             (module) => {
               preloadedWasm[name] = module;
-              onload();
+              onload(byteArray);
             },
             (error) => {
               err('failed to instantiate wasm: ' + name + ': ' + error);
