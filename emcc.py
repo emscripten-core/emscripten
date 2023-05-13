@@ -540,7 +540,7 @@ def get_js_sym_info():
     """
     library_syms = generate_js_sym_info()
 
-    write_file(filename, json.dumps(library_syms, separators=(',', ':')))
+    write_file(filename, json.dumps(library_syms, separators=(',', ':'), indent=2))
 
   # We need to use a separate lock here for symbol lists because, unlike with system libraries,
   # it's normally for these file to get pruned as part of normal operation.  This means that it

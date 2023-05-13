@@ -135,10 +135,7 @@ def create_stub_object(external_symbols):
   stubfile = shared.get_temp_files().get('libemscripten_js_symbols.so').name
   stubs = ['#STUB']
   for name, deps in external_symbols.items():
-    if settings.ERROR_ON_UNDEFINED_SYMBOLS:
-      stubs.append('%s: %s' % (name, ','.join(deps)))
-    else:
-      stubs.append(name)
+    stubs.append('%s: %s' % (name, ','.join(deps)))
   utils.write_file(stubfile, '\n'.join(stubs))
   return stubfile
 
