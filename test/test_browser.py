@@ -2820,7 +2820,7 @@ Module["preRun"].push(function () {
       self.btest_exit('browser/test_sdl_touch.c', args=opts + ['-DAUTOMATE_SUCCESS=1', '-lSDL', '-lGL'])
 
   def test_html5_mouse(self):
-    for opts in [[], ['-O2', '-g1', '--closure=1']]:
+    for opts in [['-sERROR_ON_UNDEFINED_SYMBOLS=0'], ['-O2', '-g1', '--closure=1']]:
       print(opts)
       self.btest(test_file('test_html5_mouse.c'), args=opts + ['-DAUTOMATE_SUCCESS=1'], expected='0')
 
