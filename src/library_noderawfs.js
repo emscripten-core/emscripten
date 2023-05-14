@@ -7,7 +7,19 @@
 mergeInto(LibraryManager.library, {
   $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS', '$mmapAlloc', '$FS_modeStringToFlags'],
   $NODERAWFS__postset: `
-    if (ENVIRONMENT_IS_NODE) {
+    if (!ENVIRONMENT_IS_NODE) {
+      throw new Error("NODERAWFS is currently only supported on Node.js environment.")
+    }
+    // Use this to reference our in-memory filesystem
+    var VFS = Object.assign({}, FS);
+    // Override the init function with our own
+    FS.init = NODERAWFS.init;`,
+  $NODERAWFS: {
+    init: (input, output, error) => {
+      // Call the original FS.init, this will setup the
+      // stdin, stdout and stderr devices
+      VFS.init(input, output, error);
+
       var _wrapNodeError = function(func) {
         return function() {
           try {
@@ -20,14 +32,13 @@ mergeInto(LibraryManager.library, {
           }
         }
       };
-      var VFS = Object.assign({}, FS);
+
+      // Wrap the whole in-memory filesystem API with
+      // our Node.js based functions
       for (var _key in NODERAWFS) {
         FS[_key] = _wrapNodeError(NODERAWFS[_key]);
       }
-    } else {
-      throw new Error("NODERAWFS is currently only supported on Node.js environment.")
-    }`,
-  $NODERAWFS: {
+    },
     lookup: function(parent, name) {
 #if ASSERTIONS
       assert(parent)
@@ -42,12 +53,6 @@ mergeInto(LibraryManager.library, {
       var st = fs.lstatSync(path);
       var mode = NODEFS.getMode(path);
       return { path: path, node: { id: st.ino, mode: mode, node_ops: NODERAWFS, path: path }};
-    },
-    createStandardStreams: function() {
-      FS.streams[0] = FS.createStream({ nfd: 0, position: 0, path: '', flags: 0, tty: true, seekable: false }, 0, 0);
-      for (var i = 1; i < 3; i++) {
-        FS.streams[i] = FS.createStream({ nfd: i, position: 0, path: '', flags: 577, tty: true, seekable: false }, i, i);
-      }
     },
     // generic function for all node creation
     cwd: function() { return process.cwd(); },
