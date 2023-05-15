@@ -1308,17 +1308,3 @@ var LibraryBrowser = {
 autoAddDeps(LibraryBrowser, '$Browser');
 
 mergeInto(LibraryManager.library, LibraryBrowser);
-
-/* Useful stuff for browser debugging
-
-function slowLog(label, text) {
-  if (!slowLog.labels) slowLog.labels = {};
-  if (!slowLog.labels[label]) slowLog.labels[label] = 0;
-  var now = Date.now();
-  if (now - slowLog.labels[label] > 1000) {
-    out(label + ': ' + text);
-    slowLog.labels[label] = now;
-  }
-}
-
-*/
