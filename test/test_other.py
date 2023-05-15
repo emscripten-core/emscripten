@@ -13409,7 +13409,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$addFunction'])
     self.set_setting('ALLOW_TABLE_GROWTH')
-    self.set_setting('ENVIRONMENT', 'shell,node')
     create_file('main.c', r'''
       #include <emscripten.h>
 
