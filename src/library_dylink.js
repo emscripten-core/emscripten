@@ -10,6 +10,7 @@ var dlopenMissingError = "'To use dlopen, you need enable dynamic linking, see h
 
 var LibraryDylink = {
 #if RELOCATABLE
+#if FILESYSTEM || WASMFS
   $registerWasmPlugin__deps: ['$preloadPlugins'],
   $registerWasmPlugin: function() {
     // Use string keys here to avoid minification since the plugin consumer
@@ -43,6 +44,7 @@ var LibraryDylink = {
     registerWasmPlugin();
     `,
   $preloadedWasm: {},
+#endif // FILESYSTEM
 
   $isSymbolDefined: function(symName) {
     // Ignore 'stub' symbols that are auto-generated as part of the original
@@ -910,7 +912,11 @@ var LibraryDylink = {
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
   $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule',
                               '$isInternalSym', '$mergeLibSymbols', '$newDSO',
-                              '$asyncLoad', '$preloadedWasm'],
+                              '$asyncLoad',
+#if FILESYSTEM || WASMFS
+                              '$preloadedWasm',
+#endif
+  ],
   $loadDynamicLibrary__docs: `
     /**
      * @param {number=} handle
@@ -981,6 +987,7 @@ var LibraryDylink = {
 
     // libName -> exports
     function getExports() {
+#if FILESYSTEM || WASMFS
       // lookup preloaded cache first
       if (preloadedWasm[libName]) {
 #if DYLINK_DEBUG
@@ -989,6 +996,7 @@ var LibraryDylink = {
         var libModule = preloadedWasm[libName];
         return flags.loadAsync ? Promise.resolve(libModule) : libModule;
       }
+#endif
 
       // module not preloaded - load lib data and create new module from it
       if (flags.loadAsync) {

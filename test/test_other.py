@@ -4994,7 +4994,7 @@ int main() {
 }''')
     self.run_process([EMXX, 'src.cpp'])
 
-  def test_syscall_without_filesystem(self):
+  def test_syscall_no_filesystem(self):
     # a program which includes a non-trivial syscall, but disables the filesystem.
     create_file('src.c', r'''
 #include <sys/time.h>
@@ -5003,6 +5003,9 @@ int main() {
   return openat(0, "foo", 0);
 }''')
     self.run_process([EMCC, 'src.c', '-sNO_FILESYSTEM'])
+
+  def test_dylink_no_filesystem(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-sMAIN_MODULE=2', '-sNO_FILESYSTEM'])
 
   def test_dashS(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-S'])

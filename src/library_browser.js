@@ -12,9 +12,11 @@ var LibraryBrowser = {
     '$safeSetTimeout',
     '$warnOnce',
     'emscripten_set_main_loop_timing',
+#if FILESYSTEM || WASMFS
     '$preloadPlugins',
 #if MAIN_MODULE
     '$preloadedWasm',
+#endif
 #endif
   ],
   $Browser__postset: `
@@ -105,6 +107,7 @@ var LibraryBrowser = {
       if (Browser.initted) return;
       Browser.initted = true;
 
+#if FILESYSTEM || WASMFS
       // Support for plugins that can process preloaded files. You can add more of these to
       // your app by creating and appending to preloadPlugins.
       //
@@ -209,6 +212,7 @@ var LibraryBrowser = {
         }, 10000);
       };
       preloadPlugins.push(audioPlugin);
+#endif
 
       // Canvas event setup
 
