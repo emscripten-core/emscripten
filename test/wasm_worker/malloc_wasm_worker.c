@@ -17,5 +17,6 @@ int main()
 {
 	assert(!emscripten_current_thread_is_wasm_worker());
 	emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(/*stack size: */1024);
+	assert(worker);
 	emscripten_wasm_worker_post_function_v(worker, worker_main);
 }
