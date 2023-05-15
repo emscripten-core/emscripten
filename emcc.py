@@ -2087,6 +2087,7 @@ def phase_linker_setup(options, state, newargs):
     if settings.MAIN_MODULE == 1:
       settings.INCLUDE_FULL_LIBRARY = 1
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDylibs']
+    settings.REQUIRED_EXPORTS += ['malloc']
 
   if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
     settings.LINKABLE = 1
@@ -2306,12 +2307,6 @@ def phase_linker_setup(options, state, newargs):
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
     settings.JS_LIBRARIES.append((0, 'library_wasmfs.js'))
     settings.REQUIRED_EXPORTS += ['_wasmfs_read_file']
-    if settings.MAIN_MODULE:
-      # Dynamic library support uses JS API internals, so include it all
-      # TODO: rewriting more of the dynamic linking support code into wasm could
-      #       avoid this. also, after we remove the old FS, we could write a
-      #       more specific API for wasmfs/dynamic linking integration perhaps
-      settings.FORCE_FILESYSTEM = 1
     if settings.FORCE_FILESYSTEM:
       # Add exports for the JS API. Like the old JS FS, WasmFS by default
       # includes just what JS parts it actually needs, and FORCE_FILESYSTEM is
@@ -2339,7 +2334,7 @@ def phase_linker_setup(options, state, newargs):
       settings.FETCH_WORKER_FILE = unsuffixed_basename(target) + '.fetch.js'
 
   if settings.DEMANGLE_SUPPORT:
-    settings.REQUIRED_EXPORTS += ['__cxa_demangle']
+    settings.REQUIRED_EXPORTS += ['__cxa_demangle', 'free']
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$demangle', '$stackTrace']
 
   if settings.FULL_ES3:
@@ -2413,11 +2408,6 @@ def phase_linker_setup(options, state, newargs):
       exit_with_error('-sPROXY_TO_PTHREAD requires -pthread to work!')
     settings.JS_LIBRARIES.append((0, 'library_pthread_stub.js'))
 
-  # TODO: Move this into the library JS file once it becomes possible.
-  # See https://github.com/emscripten-core/emscripten/pull/15982
-  if settings.INCLUDE_FULL_LIBRARY and not settings.DISABLE_EXCEPTION_CATCHING:
-    settings.EXPORTED_FUNCTIONS += ['___get_exception_message', '_free']
-
   if settings.MEMORY64:
     if settings.ASYNCIFY and settings.MEMORY64 == 1:
       exit_with_error('MEMORY64=1 is not compatible with ASYNCIFY')
@@ -2430,7 +2420,7 @@ def phase_linker_setup(options, state, newargs):
     wasm_worker_imports = ['_emscripten_wasm_worker_initialize', '___set_thread_state']
     settings.EXPORTED_FUNCTIONS += wasm_worker_imports
     building.user_requested_exports.update(wasm_worker_imports)
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_wasm_worker_initializeRuntime']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$_wasmWorkerInitializeRuntime']
     # set location of Wasm Worker bootstrap JS file
     if settings.WASM_WORKERS == 1:
       settings.WASM_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.ww.js'
@@ -2760,20 +2750,16 @@ def phase_linker_setup(options, state, newargs):
     # need to be able to call these explicitly.
     settings.REQUIRED_EXPORTS += ['__funcs_on_exit']
 
-  # various settings require malloc/free support from JS
-  if settings.RELOCATABLE or \
-     settings.BUILD_AS_WORKER or \
-     settings.USE_WEBGPU or \
-     settings.OFFSCREENCANVAS_SUPPORT or \
-     settings.LEGACY_GL_EMULATION or \
+  # Some settings require malloc/free to be exported explictly.
+  # In most cases, the inclustion of native symbols like malloc and free
+  # is taken care of by wasm-ld use its normal symbol resolution process.
+  # However, when JS symbols are exported explictly via
+  # DEFAULT_LIBRARY_FUNCS_TO_INCLUDE and they depend on native symbols
+  # we need to explictly require those exports.
+  if settings.BUILD_AS_WORKER or \
      settings.ASYNCIFY or \
      settings.WASMFS or \
-     settings.DEMANGLE_SUPPORT or \
      settings.FORCE_FILESYSTEM or \
-     settings.STB_IMAGE or \
-     settings.EMBIND or \
-     settings.FETCH or \
-     settings.PROXY_POSIX_SOCKETS or \
      options.memory_profiler or \
      sanitize:
     settings.REQUIRED_EXPORTS += ['malloc', 'free']

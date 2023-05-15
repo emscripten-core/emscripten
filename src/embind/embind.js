@@ -371,7 +371,7 @@ var LibraryEmbind = {
     return ret;
   },
 
-  $getTypeName__deps: ['$readLatin1String', '__getTypeName'],
+  $getTypeName__deps: ['$readLatin1String', '__getTypeName', 'free'],
   $getTypeName: function(type) {
     var ptr = ___getTypeName(type);
     var rv = readLatin1String(ptr);
@@ -651,7 +651,7 @@ var LibraryEmbind = {
   _embind_register_std_string__deps: [
     '$readLatin1String', '$registerType',
     '$simpleReadValueFromPointer', '$throwBindingError',
-    '$stringToUTF8', '$lengthBytesUTF8'],
+    '$stringToUTF8', '$lengthBytesUTF8', 'malloc', 'free'],
   _embind_register_std_string: function(rawType, name) {
     name = readLatin1String(name);
     var stdStringIsUTF8
@@ -2047,6 +2047,15 @@ var LibraryEmbind = {
                                                   upcast,
                                                   downcast);
 
+        if (registeredClass.baseClass) {
+          // Keep track of class hierarchy. Used to allow sub-classes to inherit class functions.
+          if (registeredClass.baseClass.__derivedClasses === undefined) {
+            registeredClass.baseClass.__derivedClasses = [];
+          }
+
+          registeredClass.baseClass.__derivedClasses.push(registeredClass);
+        }
+
         var referenceConverter = new RegisteredPointer(name,
                                                        registeredClass,
                                                        true,
@@ -2353,6 +2362,16 @@ var LibraryEmbind = {
         } else {
           proto[methodName].overloadTable[argCount-1] = func;
         }
+
+        if (classType.registeredClass.__derivedClasses) {
+          for (const derivedClass of classType.registeredClass.__derivedClasses) {
+            if (!derivedClass.constructor.hasOwnProperty(methodName)) {
+              // TODO: Add support for overloads
+              derivedClass.constructor[methodName] = func;
+            }
+          }
+        }
+
         return [];
       });
       return [];

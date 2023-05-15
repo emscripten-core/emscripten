@@ -7,13 +7,18 @@
 #include <pthread.h>
 #include "emscripten/threading.h"
 #include "threading_internal.h"
+#include "pthread_impl.h"
 
 void _emscripten_thread_init(pthread_t ptr,
                              int is_main,
                              int is_runtime,
                              int can_block,
+                             int default_stacksize,
                              int start_profiling) {
   __set_thread_state(ptr, is_main, is_runtime, can_block);
+  if (is_main && default_stacksize) {
+    __default_stacksize = default_stacksize;
+  }
 #ifndef NDEBUG
   if (start_profiling) {
     _emscripten_thread_profiler_enable();

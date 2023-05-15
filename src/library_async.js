@@ -38,7 +38,7 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
       dbg('asyncify instrumenting imports');
 #endif
-      var importPatterns = [{{{ ASYNCIFY_IMPORTS.map(x => new RegExp('^' + x.split('.')[1].replaceAll('*', '.*') + '$')) }}}];
+      var importPatterns = [{{{ ASYNCIFY_IMPORTS.map(x => '/^' + x.split('.')[1].replace(new RegExp('\\*', 'g'), '.*') + '$/') }}}];
 
       for (var x in imports) {
         (function(x) {

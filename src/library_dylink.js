@@ -27,7 +27,7 @@ var LibraryDylink = {
           () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true})).then(
             (module) => {
               preloadedWasm[name] = module;
-              onload();
+              onload(byteArray);
             },
             (error) => {
               err('failed to instantiate wasm: ' + name + ': ' + error);
@@ -281,7 +281,6 @@ var LibraryDylink = {
   dlopen__deps: [function() { error(dlopenMissingError); }],
   emscripten_dlopen__deps: [function() { error(dlopenMissingError); }],
   __dlsym__deps: [function() { error(dlopenMissingError); }],
-  dladdr__deps: [function() { error(dlopenMissingError); }],
 #else
   $dlopenMissingError: `= ${dlopenMissingError}`,
   _dlopen_js__deps: ['$dlopenMissingError'],
@@ -291,7 +290,6 @@ var LibraryDylink = {
   dlopen__deps: ['$dlopenMissingError'],
   emscripten_dlopen__deps: ['$dlopenMissingError'],
   __dlsym__deps: ['$dlopenMissingError'],
-  dladdr__deps: ['$dlopenMissingError'],
 #endif
   _dlopen_js: function(handle) {
     abort(dlopenMissingError);
@@ -312,9 +310,6 @@ var LibraryDylink = {
     abort(dlopenMissingError);
   },
   __dlsym: function(handle, symbol) {
-    abort(dlopenMissingError);
-  },
-  dladdr: function() {
     abort(dlopenMissingError);
   },
 #else // MAIN_MODULE != 0
@@ -379,7 +374,7 @@ var LibraryDylink = {
   // Allocate memory even if malloc isn't ready yet.  The allocated memory here
   // must be zero initialized since its used for all static data, including bss.
   $getMemory__noleakcheck: true,
-  $getMemory__deps: ['$GOT', '__heap_base', '$zeroMemory'],
+  $getMemory__deps: ['$GOT', '__heap_base', '$zeroMemory', 'malloc'],
   $getMemory: function(size) {
     // After the runtime is initialized, we must only use sbrk() normally.
 #if DYLINK_DEBUG
@@ -910,10 +905,6 @@ var LibraryDylink = {
   // - if flags.loadAsync=true, the loading is performed asynchronously and
   //   loadDynamicLibrary returns corresponding promise.
   //
-  // - if flags.fs is provided, it is used as FS-like interface to load library data.
-  //   By default, when flags.fs=undefined, native loading capabilities of the
-  //   environment are used.
-  //
   // If a library was already loaded, it is not loaded a second time. However
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
@@ -965,12 +956,13 @@ var LibraryDylink = {
     // libName -> libData
     function loadLibData() {
       // for wasm, we can use fetch for async, but for fs mode we can only imitate it
-      if (flags.fs && flags.fs.findObject(libName)) {
-        var libData = flags.fs.readFile(libName, {encoding: 'binary'});
-        if (!(libData instanceof Uint8Array)) {
-          libData = new Uint8Array(libData);
+      if (handle) {
+        var data = {{{ makeGetValue('handle', C_STRUCTS.dso.file_data, '*') }}};
+        var dataSize = {{{ makeGetValue('handle', C_STRUCTS.dso.file_data_size, '*') }}};
+        if (data && dataSize) {
+          var libData = HEAP8.slice(data, data + dataSize);
+          return flags.loadAsync ? Promise.resolve(libData) : libData;
         }
-        return flags.loadAsync ? Promise.resolve(libData) : libData;
       }
 
       var libFile = locateFile(libName);
@@ -992,7 +984,7 @@ var LibraryDylink = {
       // lookup preloaded cache first
       if (preloadedWasm[libName]) {
 #if DYLINK_DEBUG
-        err('using preloaded module for: ' + libName);
+        dbg('using preloaded module for: ' + libName);
 #endif
         var libModule = preloadedWasm[libName];
         return flags.loadAsync ? Promise.resolve(libModule) : libModule;
@@ -1064,7 +1056,7 @@ var LibraryDylink = {
   },
 
   // void* dlopen(const char* filename, int flags);
-  $dlopenInternal__deps: ['$FS', '$ENV', '$dlSetError', '$PATH'],
+  $dlopenInternal__deps: ['$ENV', '$dlSetError', '$PATH'],
   $dlopenInternal: function(handle, jsflags) {
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
@@ -1076,25 +1068,6 @@ var LibraryDylink = {
     filename = PATH.normalize(filename);
     var searchpaths = [];
 
-    var isValidFile = (filename) => {
-      var target = FS.findObject(filename);
-      return target && !target.isFolder && !target.isDevice;
-    };
-
-    if (!isValidFile(filename)) {
-      if (ENV['LD_LIBRARY_PATH']) {
-        searchpaths = ENV['LD_LIBRARY_PATH'].split(':');
-      }
-
-      for (var ident in searchpaths) {
-        var searchfile = PATH.join2(searchpaths[ident], filename);
-        if (isValidFile(searchfile)) {
-          filename = searchfile;
-          break;
-        }
-      }
-    }
-
     var global = Boolean(flags & {{{ cDefs.RTLD_GLOBAL }}});
     var localScope = global ? null : {};
 
@@ -1103,7 +1076,6 @@ var LibraryDylink = {
       global,
       nodelete:  Boolean(flags & {{{ cDefs.RTLD_NODELETE }}}),
       loadAsync: jsflags.loadAsync,
-      fs:        jsflags.fs,
     }
 
     if (jsflags.loadAsync) {
@@ -1128,18 +1100,12 @@ var LibraryDylink = {
   _dlopen_js: function(handle) {
 #if ASYNCIFY
     return Asyncify.handleSleep((wakeUp) => {
-      var jsflags = {
-        loadAsync: true,
-        fs: FS, // load libraries from provided filesystem
-      }
+      var jsflags = { loadAsync: true }
       var promise = dlopenInternal(handle, jsflags);
       promise.then(wakeUp).catch(() => wakeUp(0));
     });
 #else
-    var jsflags = {
-      loadAsync: false,
-      fs: FS, // load libraries from provided filesystem
-    }
+    var jsflags = { loadAsync: false }
     return dlopenInternal(handle, jsflags);
 #endif
   },
@@ -1149,8 +1115,8 @@ var LibraryDylink = {
   _emscripten_dlopen_js: function(handle, onsuccess, onerror, user_data) {
     /** @param {Object=} e */
     function errorCallback(e) {
-      var filename = UTF8ToString({{{ makeGetValue('handle', C_STRUCTS.dso.name, '*') }}});
-      dlSetError('Could not load dynamic lib: ' + filename + '\n' + e);
+      var filename = UTF8ToString(handle + {{{ C_STRUCTS.dso.name }}});
+      dlSetError('Could not load dynamic libX: ' + filename + '\n' + e);
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {{{ makeDynCall('vpp', 'onerror') }}}(handle, user_data));
     }
@@ -1160,7 +1126,8 @@ var LibraryDylink = {
     }
 
     {{{ runtimeKeepalivePush() }}}
-    var promise = dlopenInternal(handle, { loadAsync: true });
+    var jsflags = { loadAsync: true }
+    var promise = dlopenInternal(handle, jsflags);
     if (promise) {
       promise.then(successCallback, errorCallback);
     } else {

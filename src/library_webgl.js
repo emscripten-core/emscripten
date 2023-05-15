@@ -152,6 +152,7 @@ var LibraryGL = {
   $GL__deps: [
 #if PTHREADS
     'malloc', // Needed by registerContext
+    'free', // Needed by deleteContext
 #endif
 #if MIN_WEBGL_VERSION == 1
     '$webgl_enable_ANGLE_instanced_arrays',
@@ -3933,7 +3934,7 @@ var LibraryGL = {
     }
   },
 
-  glMapBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget'],
+  glMapBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget', 'malloc'],
   glMapBufferRange: function(target, offset, length, access) {
     if ((access & (0x1/*GL_MAP_READ_BIT*/ | 0x20/*GL_MAP_UNSYNCHRONIZED_BIT*/)) != 0) {
       err("glMapBufferRange access does not support MAP_READ or MAP_UNSYNCHRONIZED");
@@ -4015,7 +4016,7 @@ var LibraryGL = {
       HEAPU8.subarray(mapping.mem + offset, mapping.mem + offset + length));
   },
 
-  glUnmapBuffer__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget'],
+  glUnmapBuffer__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget', 'free'],
   glUnmapBuffer: function(target) {
     if (!emscriptenWebGLValidateMapBufferTarget(target)) {
       GL.recordError(0x500/*GL_INVALID_ENUM*/);

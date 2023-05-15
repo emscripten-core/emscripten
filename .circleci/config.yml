@@ -577,6 +577,7 @@ jobs:
             other.test_gen_struct_info
             other.test_native_call_before_init
             other.test_node_unhandled_rejection
+            other.test_full_js_library*
             core2.test_hello_world"
       # Run a few test with the most recent version of node
       # In particular we have some tests that require node flags on older

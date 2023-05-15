@@ -221,7 +221,7 @@ function initRuntime() {
   runtimeInitialized = true;
 
 #if WASM_WORKERS
-  if (ENVIRONMENT_IS_WASM_WORKER) return __wasm_worker_initializeRuntime();
+  if (ENVIRONMENT_IS_WASM_WORKER) return _wasmWorkerInitializeRuntime();
 #endif
 
 #if PTHREADS

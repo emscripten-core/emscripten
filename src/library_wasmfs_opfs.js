@@ -189,13 +189,14 @@ mergeInto(LibraryManager.library, {
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_move__sig: 'vpiipp',
-  _wasmfs_opfs_move__deps: ['$wasmfsOPFSFileHandles',
-                            '$wasmfsOPFSDirectoryHandles', '$wasmfsOPFSProxyFinish'],
-  _wasmfs_opfs_move: async function(ctx, fileID, newDirID, namePtr, errPtr) {
+  _wasmfs_opfs_move_file__sig: 'vpiipp',
+  _wasmfs_opfs_move_file__deps: ['$wasmfsOPFSFileHandles',
+                                 '$wasmfsOPFSDirectoryHandles',
+                                 '$wasmfsOPFSProxyFinish'],
+  _wasmfs_opfs_move_file: async function(ctx, fileID, newParentID, namePtr, errPtr) {
     let name = UTF8ToString(namePtr);
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
-    let newDirHandle = wasmfsOPFSDirectoryHandles.get(newDirID);
+    let newDirHandle = wasmfsOPFSDirectoryHandles.get(newParentID);
     try {
       await fileHandle.move(newDirHandle, name);
     } catch {

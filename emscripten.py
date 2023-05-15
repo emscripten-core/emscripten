@@ -893,7 +893,7 @@ def create_wasm64_wrappers(metadata):
     '_emscripten_run_in_main_runtime_thread_js': '___p_',
     '_emscripten_proxy_execute_task_queue': '_p',
     '_emscripten_thread_exit': '_p',
-    '_emscripten_thread_init': '_p____',
+    '_emscripten_thread_init': '_p_____',
     '_emscripten_thread_free_data': '_p',
     '_emscripten_dlsync_self_async': '_p',
     '_emscripten_proxy_dlsync_async': '_pp',

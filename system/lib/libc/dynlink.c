@@ -11,6 +11,7 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <dlfcn.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <threads.h>
 #include <stdarg.h>
@@ -18,6 +19,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <emscripten/console.h>
 #include <emscripten/threading.h>
@@ -79,6 +82,8 @@ static struct dlevent* _Atomic tail = &main_event;
 static thread_local struct dlevent* thread_local_tail = &main_event;
 static pthread_mutex_t write_lock = PTHREAD_MUTEX_INITIALIZER;
 static thread_local bool skip_dlsync = false;
+
+static void dlsync();
 
 static void do_write_lock() {
   // Once we have the lock we want to avoid automatic code sync as that would
@@ -154,6 +159,14 @@ static void load_library_done(struct dso* p) {
       p->table_addr,
       p->table_size);
   new_dlevent(p, -1);
+#ifdef _REENTRANT
+  // Block until all other threads have loaded this module.
+  dlsync();
+#endif
+  if (p->file_data) {
+    free(p->file_data);
+    p->file_data_size = 0;
+  }
 }
 
 static struct dso* load_library_start(const char* name, int flags) {
@@ -167,6 +180,29 @@ static struct dso* load_library_start(const char* name, int flags) {
   p = calloc(1, alloc_size);
   p->flags = flags;
   strcpy(p->name, name);
+
+  // If the file exists in the filesystem, load it here into linear memory which
+  // makes the data available to JS, and to other threads.  This data gets
+  // free'd later once all threads have loaded the DSO.
+  struct stat statbuf;
+  if (stat(name, &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
+    int fd = open(name, O_RDONLY);
+    if (fd >= 0) {
+      off_t size = lseek(fd, 0, SEEK_END);
+      if (size != (off_t)-1) {
+        lseek(fd, 0, SEEK_SET);
+        p->file_data = malloc(size);
+        if (p->file_data) {
+          if (read(fd, p->file_data, size) == size) {
+            p->file_data_size = size;
+          } else {
+            free(p->file_data);
+          }
+        }
+      }
+      close(fd);
+    }
+  }
 
   return p;
 }
@@ -423,10 +459,6 @@ static void dlopen_onsuccess(struct dso* dso, void* user_data) {
       dso->mem_addr,
       dso->mem_size);
   load_library_done(dso);
-#ifdef _REENTRANT
-  // Block until all other threads have loaded this module.
-  dlsync();
-#endif
   do_write_unlock();
   data->onsuccess(data->user_data, dso);
   free(data);
@@ -439,6 +471,37 @@ static void dlopen_onerror(struct dso* dso, void* user_data) {
   data->onerror(data->user_data);
   free(dso);
   free(data);
+}
+
+// Modified version of path_open from musl/ldso/dynlink.c
+static int path_find(const char *name, const char *s, char *buf, size_t buf_size) {
+  size_t l;
+  int fd;
+  for (;;) {
+    s += strspn(s, ":\n");
+    l = strcspn(s, ":\n");
+    if (l-1 >= INT_MAX) return -1;
+    if (snprintf(buf, buf_size, "%.*s/%s", (int)l, s, name) < buf_size) {
+      dbg("dlopen: path_find: %s", buf);
+      struct stat statbuf;
+      if (stat(buf, &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
+        return 0;
+      }
+      switch (errno) {
+      case ENOENT:
+      case ENOTDIR:
+      case EACCES:
+      case ENAMETOOLONG:
+        break;
+      default:
+        dbg("dlopen: path_find failed: %s", strerror(errno));
+        /* Any negative value but -1 will inhibit
+         * futher path search. */
+        return -2;
+      }
+    }
+    s += l;
+  }
 }
 
 // Internal version of dlopen with typed return value.
@@ -462,6 +525,16 @@ static struct dso* _dlopen(const char* file, int flags) {
 
   struct dso* p;
 
+  /* Resolve filename using LD_LIBRARY_PATH */
+  char buf[2*NAME_MAX+2];
+  if (!strchr(file, '/')) {
+    const char* env_path = getenv("LD_LIBRARY_PATH");
+    if (env_path && path_find(file, env_path, buf, sizeof buf) == 0) {
+      dbg("dlopen: found in LD_LIBRARY_PATH: %s", buf);
+      file = buf;
+    }
+  }
+
   /* Search for the name to see if it's already loaded */
   for (struct dlevent* e = head; e; e = e->next) {
     if (e->sym_index == -1 && !strcmp(e->dso->name, file)) {
@@ -484,10 +557,6 @@ static struct dso* _dlopen(const char* file, int flags) {
   }
   dbg("dlopen_js: success: %p", p);
   load_library_done(p);
-#ifdef _REENTRANT
-  // Block until all other threads have loaded this module.
-  dlsync();
-#endif
 end:
   dbg("dlopen(%s): done: %p", file, p);
   do_write_unlock();
@@ -583,14 +652,4 @@ void* __dlsym(void* restrict p, const char* restrict s, void* restrict ra) {
   dbg("__dlsym done dso:%p res:%p", p, res);
   do_write_unlock();
   return res;
-}
-
-int dladdr(const void* addr, Dl_info* info) {
-  // report all function pointers as coming from this program itself XXX not
-  // really correct in any way
-  info->dli_fname = "unknown";
-  info->dli_fbase = NULL;
-  info->dli_sname = NULL;
-  info->dli_saddr = NULL;
-  return 1;
 }

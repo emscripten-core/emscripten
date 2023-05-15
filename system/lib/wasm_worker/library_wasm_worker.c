@@ -5,16 +5,14 @@
 #include <emscripten/stack.h>
 #include <malloc.h>
 
+#include "emscripten_internal.h"
+
 #ifndef __EMSCRIPTEN_WASM_WORKERS__
 #error __EMSCRIPTEN_WASM_WORKERS__ should be defined when building this file!
 #endif
 
 // Options:
 // #define STACK_OVERFLOW_CHECK 0/1/2 : set to the current stack overflow check mode
-
-// Internal implementation function in JavaScript side that emscripten_create_wasm_worker() calls to
-// to perform the wasm worker creation.
-emscripten_wasm_worker_t _emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize);
 
 void __wasm_init_tls(void *memory);
 
@@ -43,8 +41,10 @@ emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress,
     // We expect TLS area to need to be at most 16 bytes aligned
 	assert(__builtin_wasm_tls_align() == 0 || 16 % __builtin_wasm_tls_align() == 0);
 
+#ifndef NDEBUG
 	uint32_t tlsSize = (__builtin_wasm_tls_size() + 15) & -16;
 	assert(stackSize > tlsSize);
+#endif
 
 	return _emscripten_create_wasm_worker(stackLowestAddress, stackSize);
 }

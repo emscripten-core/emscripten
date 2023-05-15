@@ -167,7 +167,7 @@ function dbg(text) {
   } else
 #endif
   // TODO(sbc): Make this configurable somehow.  Its not always convenient for
-  // logging to show up as errors.
-  console.error.apply(console, arguments);
+  // logging to show up as warnings.
+  console.warn.apply(console, arguments);
 }
 #endif

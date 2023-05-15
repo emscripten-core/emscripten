@@ -6371,7 +6371,13 @@ int main(int argc, char** argv) {
 
     self.assertBinaryEqual('main.wasm', 'main2.wasm')
 
-  def test_ld_library_path(self):
+  @parameterized({
+    '': ([],),
+    'pthread': (['-g', '-pthread', '-Wno-experimental', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+  })
+  def test_ld_library_path(self, args):
+    if args:
+      self.setup_node_pthreads()
     create_file('hello1.c', r'''
 #include <stdio.h>
 
@@ -6407,10 +6413,11 @@ double hello4(double x) {
 ''')
     create_file('pre.js', r'''
 Module['preRun'] = function () {
-  ENV['LD_LIBRARY_PATH']='/lib:/usr/lib';
+  ENV['LD_LIBRARY_PATH']='/lib:/usr/lib:/usr/local/lib';
 };
 ''')
     create_file('main.c', r'''
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6422,22 +6429,30 @@ int main() {
   double (*f2)(double);
 
   h = dlopen("libhello1.wasm", RTLD_NOW);
+  assert(h);
   f = dlsym(h, "hello1");
+  assert(f);
   f();
   dlclose(h);
 
   h = dlopen("libhello2.wasm", RTLD_NOW);
+  assert(h);
   f = dlsym(h, "hello2");
+  assert(f);
   f();
   dlclose(h);
 
   h = dlopen("libhello3.wasm", RTLD_NOW);
+  assert(h);
   f = dlsym(h, "hello3");
+  assert(f);
   f();
   dlclose(h);
 
   h = dlopen("/usr/local/lib/libhello4.wasm", RTLD_NOW);
+  assert(h);
   f2 = dlsym(h, "hello4");
+  assert(f2);
   double result = f2(5.5);
   dlclose(h);
 
@@ -6447,17 +6462,17 @@ int main() {
   return 0;
 }
 ''')
-    self.run_process([EMCC, '-o', 'libhello1.wasm', 'hello1.c', '-sSIDE_MODULE'])
-    self.run_process([EMCC, '-o', 'libhello2.wasm', 'hello2.c', '-sSIDE_MODULE'])
-    self.run_process([EMCC, '-o', 'libhello3.wasm', 'hello3.c', '-sSIDE_MODULE'])
-    self.run_process([EMCC, '-o', 'libhello4.wasm', 'hello4.c', '-sSIDE_MODULE'])
+    self.run_process([EMCC, '-o', 'hello1.wasm', 'hello1.c', '-sSIDE_MODULE'] + args)
+    self.run_process([EMCC, '-o', 'hello2.wasm', 'hello2.c', '-sSIDE_MODULE'] + args)
+    self.run_process([EMCC, '-o', 'hello3.wasm', 'hello3.c', '-sSIDE_MODULE'] + args)
+    self.run_process([EMCC, '-o', 'hello4.wasm', 'hello4.c', '-sSIDE_MODULE'] + args)
     self.run_process([EMCC, '--profiling-funcs', '-o', 'main.js', 'main.c', '-sMAIN_MODULE=2', '-sINITIAL_MEMORY=32Mb',
-                      '--embed-file', 'libhello1.wasm@/lib/libhello1.wasm',
-                      '--embed-file', 'libhello2.wasm@/usr/lib/libhello2.wasm',
-                      '--embed-file', 'libhello3.wasm@/libhello3.wasm',
-                      '--embed-file', 'libhello4.wasm@/usr/local/lib/libhello4.wasm',
-                      'libhello1.wasm', 'libhello2.wasm', 'libhello3.wasm', 'libhello4.wasm', '-sNO_AUTOLOAD_DYLIBS',
-                      '--pre-js', 'pre.js'])
+                      '--embed-file', 'hello1.wasm@/lib/libhello1.wasm',
+                      '--embed-file', 'hello2.wasm@/usr/lib/libhello2.wasm',
+                      '--embed-file', 'hello3.wasm@/libhello3.wasm',
+                      '--embed-file', 'hello4.wasm@/usr/local/lib/libhello4.wasm',
+                      'hello1.wasm', 'hello2.wasm', 'hello3.wasm', 'hello4.wasm', '-sNO_AUTOLOAD_DYLIBS',
+                      '--pre-js', 'pre.js'] + args)
     out = self.run_js('main.js')
     self.assertContained('Hello1', out)
     self.assertContained('Hello2', out)
@@ -7797,6 +7812,7 @@ int main() {
     print('  seen %s size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (desc, size, expected_size, delta, ratio))
     self.assertLess(ratio, size_slack)
 
+  @crossplatform
   def test_unoptimized_code_size(self):
     # We don't care too about unoptimized code size but we would like to keep it
     # under control to a certain extent.  This test allows us to track major
@@ -8665,8 +8681,15 @@ end
     proc = test(check=True, extra=['-sIGNORE_CLOSURE_COMPILER_ERRORS'])
     self.assertNotContained(WARNING, proc.stderr)
 
-  def test_full_js_library(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY'])
+  @parameterized({
+    '': ([],),
+    'asyncify': (['-sASYNCIFY'],),
+    'gl_emu': (['-sLEGACY_GL_EMULATION'],),
+    'no_exception_throwing': (['-sDISABLE_EXCEPTION_THROWING'],),
+    'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
+  })
+  def test_full_js_library(self, args):
+    self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY'] + args)
 
   def test_full_js_library_undefined(self):
     create_file('main.c', 'void foo(); int main() { foo(); return 0; }')
@@ -8677,15 +8700,6 @@ end
     self.set_setting('INCLUDE_FULL_LIBRARY', 1)
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_other_test('test_full_js_library_except.cpp')
-
-  def test_full_js_library_gl_emu(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY', '-sLEGACY_GL_EMULATION'])
-
-  def test_full_js_library_no_exception_throwing(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY', '-sDISABLE_EXCEPTION_THROWING'])
-
-  def test_full_js_library_minimal_runtime(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY', '-sMINIMAL_RUNTIME'])
 
   @crossplatform
   @parameterized({
@@ -10001,6 +10015,7 @@ int main () {
     'math': ('math', False),
     'hello_wasm_worker': ('hello_wasm_worker', False, True),
   })
+  @crossplatform
   def test_minimal_runtime_code_size(self, test_name, js, compare_js_output=False):
     smallest_code_size_args = ['-sMINIMAL_RUNTIME=2',
                                '-sENVIRONMENT=web',
@@ -10130,28 +10145,6 @@ int main () {
 
       print('size of ' + f + ' == ' + str(size) + ', expected ' + str(expected_size) + ', delta=' + str(size - expected_size) + print_percent(size, expected_size))
       print('size of ' + f_gz + ' == ' + str(size_gz) + ', expected ' + str(expected_size_gz) + ', delta=' + str(size_gz - expected_size_gz) + print_percent(size_gz, expected_size_gz))
-
-      # Hack: Generated .mem initializer files have different sizes on different
-      # platforms (Windows gives x, CircleCI Linux gives x-17 bytes, my home
-      # Linux gives x+2 bytes..). Likewise asm.js files seem to be affected by
-      # the LLVM IR text names, which lead to asm.js names, which leads to
-      # difference code size, which leads to different relooper choices,
-      # as a result leading to slightly different total code sizes.
-      # Also as of July 16, 2020, wasm2js files have different sizes on
-      # different platforms (Windows and MacOS improved to give a slightly
-      # better thing than Linux does, which didn't change; this just
-      # started to happen on CI, not in response to a code update, so it
-      # may have been present all along but just noticed now; it only
-      # happens in wasm2js, so it may be platform-nondeterminism in closure
-      # compiler).
-      # TODO: identify what is causing this. meanwhile allow some amount of slop
-      if not common.EMTEST_REBASELINE:
-        if js:
-          slop = 30
-        else:
-          slop = 20
-        if size <= expected_size + slop and size >= expected_size - slop:
-          size = expected_size
 
       # N.B. even though the test code above prints out gzip compressed sizes, regression testing is done against uncompressed sizes
       # this is because optimizing for compressed sizes can be unpredictable and sometimes counterproductive
@@ -12229,17 +12222,19 @@ void foo() {}
 
   def test_unimplemented_syscalls_dladdr(self):
     create_file('main.c', '''
+    #include <assert.h>
     #include <dlfcn.h>
 
     int main() {
-      dladdr(0, 0);
+      Dl_info info;
+      int rtn = dladdr(&main, &info);
+      assert(rtn == 0);
       return 0;
     }
     ''')
 
-    self.run_process([EMCC, 'main.c'])
-    err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('Aborted(To use dlopen, you need enable dynamic linking, see https://emscripten.org/docs/compiling/Dynamic-Linking.html)', err)
+    self.do_runf('main.c')
+    self.do_runf('main.c', emcc_args=['-sMAIN_MODULE=2'])
 
   @requires_v8
   def test_missing_shell_support(self):
@@ -12358,10 +12353,15 @@ void foo() {}
     self.assertContained('ReferenceError: missing is not defined', output)
     self.assertContained('at foo (', output)
 
-  @node_pthreads
   def test_default_pthread_stack_size(self):
     self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
-    self.emcc_args.append('-pthread')
+
+    # Same again with pthreads enabled
+    self.setup_node_pthreads()
+    self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
+
+    # Same again but with a custom stack size
+    self.emcc_args += ['-DEXPECTED_STACK_SIZE=1024', '-sDEFAULT_PTHREAD_STACK_SIZE=1024']
     self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
 
   def test_emscripten_set_immediate(self):
@@ -13469,7 +13469,13 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
     self.do_runf('main.c', 'Hello 26 from JS!')
 
-  def test_preload_module(self):
+  @parameterized({
+    '': ([],),
+    'pthread': (['-g', '-pthread', '-Wno-experimental', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+  })
+  def test_preload_module(self, args):
+    if args:
+      self.setup_node_pthreads()
     # TODO(sbc): This test is copyied from test_browser.py.  Perhaps find a better way to
     # share code between them.
     create_file('library.c', r'''
@@ -13478,17 +13484,27 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
         return 42;
       }
     ''')
-    self.run_process([EMCC, 'library.c', '-sSIDE_MODULE', '-o', 'library.so'])
+    self.run_process([EMCC, 'library.c', '-sSIDE_MODULE', '-o', 'tmp.so'] + args)
     create_file('main.c', r'''
       #include <assert.h>
       #include <dlfcn.h>
       #include <stdio.h>
+      #include <sys/stat.h>
       #include <emscripten.h>
+      #include <emscripten/threading.h>
+
       int main() {
-        int found = EM_ASM_INT(
-          return preloadedWasm['/library.so'] !== undefined;
-        );
-        assert(found);
+        // Check the file exists in the VFS
+        struct stat statbuf;
+        assert(stat("/library.so", &statbuf) == 0);
+
+        // Check that it was preloaded
+        if (emscripten_is_main_runtime_thread()) {
+          int found = EM_ASM_INT(
+            return preloadedWasm['/library.so'] !== undefined;
+          );
+          assert(found);
+        }
         void *lib_handle = dlopen("/library.so", RTLD_NOW);
         assert(lib_handle);
         typedef int (*voidfunc)();
@@ -13499,4 +13515,4 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
         return 0;
       }
     ''')
-    self.do_runf('main.c', 'done\n', emcc_args=['-sMAIN_MODULE=2', '--preload-file', '.@/', '--use-preload-plugins'])
+    self.do_runf('main.c', 'done\n', emcc_args=['-sMAIN_MODULE=2', '--preload-file', 'tmp.so@library.so', '--use-preload-plugins'] + args)

@@ -1,9 +1,5 @@
-#include <emscripten.h>
+#include <emscripten/html5.h>
 #include <emscripten/wasm_worker.h>
-
-EM_JS(void, console_log, (char* str), {
-  console.log(UTF8ToString(str));
-});
 
 void worker_main()
 {

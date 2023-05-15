@@ -149,8 +149,11 @@ def shell_with_script(shell_file, output_file, replacement):
   create_file(output_file, shell.replace('{{{ SCRIPT }}}', replacement))
 
 
+CHROMIUM_BASED_BROWSERS = ['chrom', 'edge', 'opera']
+
+
 def is_chrome():
-  return EMTEST_BROWSER and 'chrom' in EMTEST_BROWSER.lower()
+  return EMTEST_BROWSER and any(pattern in EMTEST_BROWSER.lower() for pattern in CHROMIUM_BASED_BROWSERS)
 
 
 def no_chrome(note='chrome is not supported'):
@@ -2659,6 +2662,9 @@ Module["preRun"].push(function () {
       print(opts)
       self.btest_exit(test_file('test_gamepad.c'), args=[] + opts)
 
+  def test_html5_unknown_event_target(self):
+    self.btest_exit(test_file('test_html5_unknown_event_target.cpp'))
+
   @requires_graphics_hardware
   def test_html5_webgl_create_context_no_antialias(self):
     for opts in [[], ['-O2', '-g1', '--closure=1'], ['-sFULL_ES2']]:
@@ -3350,7 +3356,7 @@ Module["preRun"].push(function () {
   })
   def test_async(self, args):
     if is_jspi(args) and not is_chrome():
-      self.skipTest('only chrome supports jspi')
+      self.skipTest(f'Current browser ({EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
 
     for opts in [0, 1, 2, 3]:
       print(opts)

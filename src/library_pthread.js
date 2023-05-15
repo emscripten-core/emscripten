@@ -722,6 +722,7 @@ var LibraryPThread = {
       /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER,
       /*isMainRuntimeThread=*/1,
       /*canBlock=*/!ENVIRONMENT_IS_WEB,
+      {{{ DEFAULT_PTHREAD_STACK_SIZE }}},
 #if PTHREADS_PROFILING
       /*start_profiling=*/true
 #endif
@@ -1040,12 +1041,6 @@ var LibraryPThread = {
     assert(func.length == numCallArgs, 'Call args mismatch in emscripten_receive_on_main_thread_js');
 #endif
     return func.apply(null, emscripten_receive_on_main_thread_js_callArgs);
-  },
-
-  // TODO(sbc): Do we really need this to be dynamically settable from JS like this?
-  // See https://github.com/emscripten-core/emscripten/issues/15101.
-  _emscripten_default_pthread_stack_size: function() {
-    return {{{ DEFAULT_PTHREAD_STACK_SIZE }}};
   },
 
 #if STACK_OVERFLOW_CHECK >= 2 && MAIN_MODULE

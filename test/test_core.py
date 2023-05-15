@@ -3671,16 +3671,11 @@ Var: 42
         /* Verify that we don't corrupt func_ptr when calling dladdr.  */
         Dl_info info;
         memset(&info, 0, sizeof(info));
-        dladdr(func_ptr, &info);
+        int rtn = dladdr(func_ptr, &info);
+        assert(rtn == 0);
 
         assert(func_ptr != NULL);
         assert(func_ptr(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) == 13);
-
-        /* Verify something useful lives in info.  */
-        assert(info.dli_fname != NULL);
-        assert(info.dli_fbase == NULL);
-        assert(info.dli_sname == NULL);
-        assert(info.dli_saddr == NULL);
 
         puts("success");
 
@@ -7331,7 +7326,7 @@ void* operator new(size_t size) {
     test('|1|', args=['-DDIRECT'])
 
   def test_response_file(self):
-    response_data = '-o %s/response_file.js %s' % (self.get_dir(), test_file('hello_world.cpp'))
+    response_data = '-o "%s/response_file.js" "%s"' % (self.get_dir(), test_file('hello_world.cpp'))
     create_file('rsp_file', response_data.replace('\\', '\\\\'))
     self.run_process([EMCC, "@rsp_file"] + self.get_emcc_args())
     self.do_run('response_file.js', 'hello, world', no_build=True)
@@ -9542,16 +9537,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests the emscripten_get_exported_function() API.
   def test_emscripten_get_exported_function(self):
-    # Could also test with -sALLOW_TABLE_GROWTH
-    self.set_setting('RESERVED_FUNCTION_POINTERS', 2)
+    self.set_setting('ALLOW_TABLE_GROWTH')
     self.emcc_args += ['-lexports.js']
     self.do_core_test('test_get_exported_function.cpp')
 
   # Tests the emscripten_get_exported_function() API.
   @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_emscripten_get_exported_function(self):
-    # Could also test with -sALLOW_TABLE_GROWTH
-    self.set_setting('RESERVED_FUNCTION_POINTERS', 2)
+    self.set_setting('ALLOW_TABLE_GROWTH')
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
     self.emcc_args += ['-lexports.js']
@@ -9738,6 +9731,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # global `Module`.
     self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt', '--from-emcc', '--js-output=script2.js'])
     self.do_runf(test_file('test_emscripten_async_load_script.c'), emcc_args=['-sFORCE_FILESYSTEM'])
+
+  @node_pthreads
+  def test_wasm_worker_hello(self):
+    self.do_runf(test_file('wasm_worker/hello_wasm_worker.c'), emcc_args=['-sWASM_WORKERS'])
+
+  @node_pthreads
+  def test_wasm_worker_malloc(self):
+    self.do_runf(test_file('wasm_worker/malloc_wasm_worker.c'), emcc_args=['-sWASM_WORKERS'])
 
 
 # Generate tests for everything
