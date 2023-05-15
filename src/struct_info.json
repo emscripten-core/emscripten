@@ -943,7 +943,10 @@
             "EM_LOG_NO_PATHS",
             "EM_LOG_FUNC_PARAMS",
             "EM_LOG_DEBUG",
-            "EM_LOG_INFO"
+            "EM_LOG_INFO",
+            "EM_TIMING_SETTIMEOUT",
+            "EM_TIMING_RAF",
+            "EM_TIMING_SETIMMEDIATE"
         ]
     },
     {

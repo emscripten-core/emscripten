@@ -826,18 +826,18 @@ var LibraryBrowser = {
       {{{ runtimeKeepalivePush() }}}
       Browser.mainLoop.running = true;
     }
-    if (mode == 0 /*EM_TIMING_SETTIMEOUT*/) {
+    if (mode == {{{ cDefs.EM_TIMING_SETTIMEOUT }}}) {
       Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler_setTimeout() {
         var timeUntilNextTick = Math.max(0, Browser.mainLoop.tickStartTime + value - _emscripten_get_now())|0;
         setTimeout(Browser.mainLoop.runner, timeUntilNextTick); // doing this each time means that on exception, we stop
       };
       Browser.mainLoop.method = 'timeout';
-    } else if (mode == 1 /*EM_TIMING_RAF*/) {
+    } else if (mode == {{{ cDefs.EM_TIMING_RAF }}}) {
       Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler_rAF() {
         Browser.requestAnimationFrame(Browser.mainLoop.runner);
       };
       Browser.mainLoop.method = 'rAF';
-    } else if (mode == 2 /*EM_TIMING_SETIMMEDIATE*/) {
+    } else if (mode == {{{ cDefs.EM_TIMING_SETIMMEDIATE}}}) {
       if (typeof setImmediate == 'undefined') {
         // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
         var setImmediates = [];
@@ -962,11 +962,11 @@ var LibraryBrowser = {
 
       // Implement very basic swap interval control
       Browser.mainLoop.currentFrameNumber = Browser.mainLoop.currentFrameNumber + 1 | 0;
-      if (Browser.mainLoop.timingMode == 1/*EM_TIMING_RAF*/ && Browser.mainLoop.timingValue > 1 && Browser.mainLoop.currentFrameNumber % Browser.mainLoop.timingValue != 0) {
+      if (Browser.mainLoop.timingMode == {{{ cDefs.EM_TIMING_RAF }}} && Browser.mainLoop.timingValue > 1 && Browser.mainLoop.currentFrameNumber % Browser.mainLoop.timingValue != 0) {
         // Not the scheduled time to render this frame - skip.
         Browser.mainLoop.scheduler();
         return;
-      } else if (Browser.mainLoop.timingMode == 0/*EM_TIMING_SETTIMEOUT*/) {
+      } else if (Browser.mainLoop.timingMode == {{{ cDefs.EM_TIMING_SETTIMEOUT }}}) {
         Browser.mainLoop.tickStartTime = _emscripten_get_now();
       }
 
@@ -1018,8 +1018,12 @@ var LibraryBrowser = {
     }
 
     if (!noSetTiming) {
-      if (fps && fps > 0) _emscripten_set_main_loop_timing(0/*EM_TIMING_SETTIMEOUT*/, 1000.0 / fps);
-      else _emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, 1); // Do rAF by rendering each frame (no decimating)
+      if (fps && fps > 0) {
+        _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_SETTIMEOUT }}}, 1000.0 / fps);
+      } else {
+        // Do rAF by rendering each frame (no decimating)
+        _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_RAF }}}, 1);
+      }
 
       Browser.mainLoop.scheduler();
     }
@@ -1308,17 +1312,3 @@ var LibraryBrowser = {
 autoAddDeps(LibraryBrowser, '$Browser');
 
 mergeInto(LibraryManager.library, LibraryBrowser);
-
-/* Useful stuff for browser debugging
-
-function slowLog(label, text) {
-  if (!slowLog.labels) slowLog.labels = {};
-  if (!slowLog.labels[label]) slowLog.labels[label] = 0;
-  var now = Date.now();
-  if (now - slowLog.labels[label] > 1000) {
-    out(label + ': ' + text);
-    slowLog.labels[label] = now;
-  }
-}
-
-*/
