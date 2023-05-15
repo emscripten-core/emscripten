@@ -13396,8 +13396,8 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     'memory64': (True, False),
     '': (False, False)
   })
+  @requires_v8
   def test_add_js_function_64_bit(self, memory64, wasm_function):
-    self.require_v8()
     self.set_setting('WASM_BIGINT')
 
     if memory64:
