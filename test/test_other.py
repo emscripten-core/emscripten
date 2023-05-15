@@ -13391,13 +13391,50 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.run_process(['build_with_quotes.bat'])
 
   @parameterized({
+    'wasm2js': (True,),
+    '': (False,)
+  })
+  def test_add_js_function(self, wasm2js):
+    self.set_setting('INVOKE_RUN', 0)
+    self.set_setting('WASM_ASYNC_COMPILATION', 0)
+    self.set_setting('RESERVED_FUNCTION_POINTERS')
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['callMain'])
+    if wasm2js:
+      self.set_setting("WASM", 0)
+    src = test_file('interop/test_add_function.cpp')
+    post_js = test_file('interop/test_add_function_post.js')
+    self.emcc_args += ['--post-js', post_js]
+
+    print('basics')
+    self.do_run_in_out_file_test('interop/test_add_function.cpp')
+
+    print('with RESERVED_FUNCTION_POINTERS=0')
+    self.set_setting('RESERVED_FUNCTION_POINTERS', 0)
+    expected = 'Unable to grow wasm table'
+    if wasm2js:
+      # in wasm2js the error message doesn't come from the VM, but from our
+      # emulation code. when ASSERTIONS are enabled we show a clear message, but
+      # in optimized builds we don't waste code size on that, and the JS engine
+      # shows a generic error.
+      expected = 'wasmTable.grow is not a function'
+
+    self.do_runf(src, expected, assert_returncode=NON_ZERO)
+
+    print('- with table growth')
+    self.set_setting('ALLOW_TABLE_GROWTH')
+    self.emcc_args += ['-DGROWTH']
+    # enable costly assertions to verify correct table behavior
+    self.set_setting('ASSERTIONS', 2)
+    self.do_run_in_out_file_test('interop/test_add_function.cpp', interleaved_output=False)
+
+  @parameterized({
     'memory64_wasm_function': (True, True),
     'wasm_function': (False, True),
     'memory64': (True, False),
     '': (False, False)
   })
   @requires_v8
-  def test_add_js_function_64_bit(self, memory64, wasm_function):
+  def test_add_js_function_bigint(self, memory64, wasm_function):
     self.set_setting('WASM_BIGINT')
 
     if memory64:
