@@ -10,6 +10,7 @@ var dlopenMissingError = "'To use dlopen, you need enable dynamic linking, see h
 
 var LibraryDylink = {
 #if RELOCATABLE
+  $preloadPlugins: "{{{ makeModuleReceiveExpr('preloadPlugins', '[]') }}}",
   $registerWasmPlugin__deps: ['$preloadPlugins'],
   $registerWasmPlugin: function() {
     // Use string keys here to avoid minification since the plugin consumer
