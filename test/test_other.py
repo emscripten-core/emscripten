@@ -13445,6 +13445,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.set_setting('ALLOW_TABLE_GROWTH')
     create_file('main.c', r'''
       #include <emscripten.h>
+      #include <assert.h>
 
       EM_JS_DEPS(deps, "$addFunction");
 
@@ -13452,20 +13453,16 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
       int main() {
         functype* f = (functype *)EM_ASM_INT({
-          return addFunction(function(num) {
-              out('Hello ' + num + ' from JS!');
-              return 5n;
+          return addFunction((num) => {
+              return num + 4294967296n;
           }, 'jj');
         });
-        if(f(26) == 5) {
-          return 0;
-        } else {
-          return 1;
-        }
+        assert(f(26) == 26 + 4294967296);
+        assert(f(493921253191) == 493921253191 + 4294967296);
       }
     ''')
 
-    self.do_runf('main.c', 'Hello 26 from JS!')
+    self.do_runf('main.c', '')
 
   @parameterized({
     '': ([],),
