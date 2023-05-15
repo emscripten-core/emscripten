@@ -236,7 +236,7 @@ if (ENVIRONMENT_IS_NODE) {
   process.on('uncaughtException', (ex) => {
     // suppress ExitStatus exceptions from showing an error
 #if RUNTIME_DEBUG
-    dbg('node: uncaughtException: ' + ex)
+    dbg(`node: uncaughtException: ${ex}`)
 #endif
     if (ex !== 'unwind' && !(ex instanceof ExitStatus) && !(ex.context instanceof ExitStatus)) {
       throw ex;
@@ -349,7 +349,7 @@ if (ENVIRONMENT_IS_SHELL) {
           if (toThrow && typeof toThrow == 'object' && toThrow.stack) {
             toLog = [toThrow, toThrow.stack];
           }
-          err('exiting due to exception: ' + toLog);
+          err(`exiting due to exception: ${toLog}`);
         }
         quit(status);
       });

@@ -33,7 +33,7 @@ mergeInto(LibraryManager.library, {
       assert(parent)
       assert(parent.path)
 #endif
-      return FS.lookupPath(parent.path + '/' + name).node;
+      return FS.lookupPath(`${parent.path}/${name}`).node;
     },
     lookupPath: function(path, opts = {}) {
       if (opts.parent) {

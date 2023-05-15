@@ -80,7 +80,7 @@ var LibraryEmbind = {
     }
     types.forEach(visit);
 
-    throw new UnboundTypeError(message + ': ' + unboundTypes.map(getTypeName).join([', ']));
+    throw new UnboundTypeError(`${message}: ` + unboundTypes.map(getTypeName).join([', ']));
   },
 
   // Creates a function overload resolution table to the given method 'methodName' in the given prototype,
@@ -173,7 +173,7 @@ var LibraryEmbind = {
       if (this.message === undefined) {
         return this.name;
       } else {
-        return this.name + ': ' + this.message;
+        return `${this.name}: ${this.message}`;
       }
     };
 
@@ -225,7 +225,7 @@ var LibraryEmbind = {
   $registerInheritedInstance: function(class_, ptr, instance) {
     ptr = getBasestPointer(class_, ptr);
     if (registeredInstances.hasOwnProperty(ptr)) {
-        throwBindingError('Tried to register registered instance: ' + ptr);
+        throwBindingError(`Tried to register registered instance: ${ptr}`);
     } else {
         registeredInstances[ptr] = instance;
     }
@@ -237,7 +237,7 @@ var LibraryEmbind = {
     if (registeredInstances.hasOwnProperty(ptr)) {
         delete registeredInstances[ptr];
     } else {
-        throwBindingError('Tried to unregister unregistered instance: ' + ptr);
+        throwBindingError(`Tried to unregister unregistered instance: ${ptr}`);
     }
   },
 
@@ -384,7 +384,7 @@ var LibraryEmbind = {
     for (var i = 0; i < count; i++) {
         // TODO(https://github.com/emscripten-core/emscripten/issues/17310):
         // Find a way to hoist the `>> 2` or `>> 3` out of this loop.
-        array.push({{{ makeGetValue('firstElement', 'i * ' + POINTER_SIZE, '*') }}});
+        array.push({{{ makeGetValue('firstElement', `i * ${POINTER_SIZE}`, '*') }}});
     }
     return array;
   },
@@ -459,7 +459,7 @@ var LibraryEmbind = {
         case 4: return 2;
         case 8: return 3;
         default:
-            throw new TypeError('Unknown type size: ' + size);
+            throw new TypeError(`Unknown type size: ${size}`);
     }
   },
 
@@ -804,7 +804,7 @@ var LibraryEmbind = {
       },
       'toWireType': function(destructors, value) {
         if (!(typeof value == 'string')) {
-          throwBindingError('Cannot pass non-string to C++ string type ' + name);
+          throwBindingError(`Cannot pass non-string to C++ string type ${name}`);
         }
 
         // assumes 4-byte alignment
@@ -993,7 +993,7 @@ var LibraryEmbind = {
         throwBindingError(`function ${humanName} called with ${arguments.length} arguments, expected ${expectedArgCount} args!`);
       }
 #if EMSCRIPTEN_TRACING
-      Module.emscripten_trace_enter_context('embind::' + humanName);
+      Module.emscripten_trace_enter_context(`embind::${humanName}`);
 #endif
       destructors.length = 0;
       var thisWired;
@@ -1051,11 +1051,11 @@ var LibraryEmbind = {
       argsListWired += (i!==0?", ":"")+"arg"+i+"Wired";
     }
 
-    var invokerFnBody =
-        "return function "+makeLegalFunctionName(humanName)+"("+argsList+") {\n" +
-        "if (arguments.length !== "+(argCount - 2)+") {\n" +
-            "throwBindingError('function "+humanName+" called with ' + arguments.length + ' arguments, expected "+(argCount - 2)+" args!');\n" +
-        "}\n";
+    var invokerFnBody = `
+      return function ${makeLegalFunctionName(humanName)}(${argsList}) {
+      if (arguments.length !== ${argCount - 2}) {
+        throwBindingError('function ${humanName} called with ${arguments.length} arguments, expected ${argCount - 2} args!');
+      }`;
 
 #if EMSCRIPTEN_TRACING
     invokerFnBody += `Module.emscripten_trace_enter_context('embind::${humanName}');\n`;
@@ -1417,7 +1417,7 @@ var LibraryEmbind = {
     var ptr;
     if (handle === null) {
       if (this.isReference) {
-        throwBindingError('null is not a valid ' + this.name);
+        throwBindingError(`null is not a valid ${this.name}`);
       }
 
       if (this.isSmartPointer) {
@@ -1495,7 +1495,7 @@ var LibraryEmbind = {
   $constNoSmartPtrRawPointerToWireType: function(destructors, handle) {
     if (handle === null) {
       if (this.isReference) {
-        throwBindingError('null is not a valid ' + this.name);
+        throwBindingError(`null is not a valid ${this.name}`);
       }
       return 0;
     }
@@ -1504,7 +1504,7 @@ var LibraryEmbind = {
       throwBindingError(`Cannot pass "${embindRepr(handle)}" as a ${this.name}`);
     }
     if (!handle.$$.ptr) {
-      throwBindingError('Cannot pass deleted object as a pointer of type ' + this.name);
+      throwBindingError(`Cannot pass deleted object as a pointer of type ${this.name}`);
     }
     var handleClass = handle.$$.ptrType.registeredClass;
     var ptr = upcastPointer(handle.$$.ptr, handleClass, this.registeredClass);
@@ -1517,7 +1517,7 @@ var LibraryEmbind = {
   $nonConstNoSmartPtrRawPointerToWireType: function(destructors, handle) {
     if (handle === null) {
       if (this.isReference) {
-        throwBindingError('null is not a valid ' + this.name);
+        throwBindingError(`null is not a valid ${this.name}`);
       }
       return 0;
     }
@@ -2106,7 +2106,7 @@ var LibraryEmbind = {
 
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
       classType = classType[0];
-      var humanName = 'constructor ' + classType.name;
+      var humanName = `constructor ${classType.name}`;
 
       if (undefined === classType.registeredClass.constructor_body) {
         classType.registeredClass.constructor_body = [];
@@ -2158,10 +2158,10 @@ var LibraryEmbind = {
   $validateThis__deps: ['$throwBindingError', '$upcastPointer'],
   $validateThis: function(this_, classType, humanName) {
     if (!(this_ instanceof Object)) {
-      throwBindingError(humanName + ' with invalid "this": ' + this_);
+      throwBindingError(`${humanName} with invalid "this": ${this_}`);
     }
     if (!(this_ instanceof classType.registeredClass.constructor)) {
-      throwBindingError(humanName + ' incompatible with "this" of type ' + this_.constructor.name);
+      throwBindingError(`${humanName} incompatible with "this" of type ${this_.constructor.name}`);
     }
     if (!this_.$$.ptr) {
       throwBindingError(`cannot call emscripten binding method ${humanName} on deleted object`);
@@ -2192,7 +2192,7 @@ var LibraryEmbind = {
 
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
       classType = classType[0];
-      var humanName = classType.name + '.' + methodName;
+      var humanName = `${classType.name}.${methodName}`;
 
       if (methodName.startsWith("@@")) {
         methodName = Symbol[methodName.substring(2)];
@@ -2259,7 +2259,7 @@ var LibraryEmbind = {
 
     whenDependentTypesAreResolved([], [classType], function(classType) {
       classType = classType[0];
-      var humanName = classType.name + '.' + fieldName;
+      var humanName = `${classType.name}.${fieldName}`;
       var desc = {
         get: function() {
           throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [getterReturnType, setterArgumentType]);
@@ -2328,7 +2328,7 @@ var LibraryEmbind = {
     rawInvoker = embind__requireFunction(invokerSignature, rawInvoker);
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
       classType = classType[0];
-      var humanName = classType.name + '.' + methodName;
+      var humanName = `${classType.name}.${methodName}`;
 
       function unboundTypesHandler() {
         throwUnboundTypeError(`Cannot call ${humanName} due to unbound types`, rawArgTypes);
@@ -2395,7 +2395,7 @@ var LibraryEmbind = {
 
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
       classType = classType[0];
-      var humanName = classType.name + '.' + fieldName;
+      var humanName = `${classType.name}.${fieldName}`;
       var desc = {
         get: function() {
           throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [rawFieldType]);
@@ -2519,7 +2519,7 @@ var LibraryEmbind = {
     name = name.replace(/[^a-zA-Z0-9_]/g, '$');
     var f = name.charCodeAt(0);
     if (f >= char_0 && f <= char_9) {
-      return '_' + name;
+      return `_${name}`;
     }
     return name;
   },
@@ -2596,7 +2596,7 @@ var LibraryEmbind = {
 
     var Value = Object.create(enumType.constructor.prototype, {
       value: {value: enumValue},
-      constructor: {value: createNamedFunction(enumType.name + '_' + name, function() {})},
+      constructor: {value: createNamedFunction(`${enumType.name}_${name}`, function() {})},
     });
     Enum.values[enumValue] = Value;
     Enum[name] = Value;

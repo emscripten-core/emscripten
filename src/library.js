@@ -408,9 +408,9 @@ mergeInto(LibraryManager.library, {
   //   AppleWebKit/605.1.15 Safari/604.1 Version/13.0.4 iPhone OS 13_3 on iPhone 6s with iOS 13.3
   //   AppleWebKit/605.1.15 Version/13.0.3 Intel Mac OS X 10_15_1 on Safari 13.0.3 (15608.3.10.1.4) on macOS Catalina 10.15.1
   // Hence the support status of .copyWithin() for Safari version range [10.0.0, 10.1.0] is unknown.
-  emscripten_memcpy_big: '= Uint8Array.prototype.copyWithin\n' +
-    '  ? (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num)\n' +
-    '  : (dest, src, num) => HEAPU8.set(HEAPU8.subarray(src, src+num), dest)\n',
+  emscripten_memcpy_big: `= Uint8Array.prototype.copyWithin
+    ? (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num)
+    : (dest, src, num) => HEAPU8.set(HEAPU8.subarray(src, src+num), dest)`,
 #else
   emscripten_memcpy_big: function(dest, src, num) {
     HEAPU8.copyWithin(dest, src, src + num);
@@ -2284,7 +2284,7 @@ mergeInto(LibraryManager.library, {
 #endif
       delete timers[which];
 #if RUNTIME_DEBUG
-      dbg('itimer fired: ' + which);
+      dbg(`itimer fired: ${which}`);
 #endif
       callUserCallback(() => __emscripten_timeout(which, _emscripten_get_now()));
     }, timeout_ms);
@@ -2451,7 +2451,7 @@ mergeInto(LibraryManager.library, {
       if (typeof a == 'number' || typeof a == 'string') {
         str += a;
       } else {
-        str += '(' + typeof a + ')';
+        str += `(${typeof a}})`;
       }
     }
     str += ')';
@@ -2991,7 +2991,7 @@ mergeInto(LibraryManager.library, {
   $runEmAsmFunction: function(code, sigPtr, argbuf) {
     var args = readEmAsmArgs(sigPtr, argbuf);
 #if ASSERTIONS
-    if (!ASM_CONSTS.hasOwnProperty(code)) abort('No EM_ASM constant found at address ' + code);
+    if (!ASM_CONSTS.hasOwnProperty(code)) abort(`No EM_ASM constant found at address ${code}`);
 #endif
     return ASM_CONSTS[code].apply(null, args);
   },
@@ -3034,7 +3034,7 @@ mergeInto(LibraryManager.library, {
     }
 #endif
 #if ASSERTIONS
-    if (!ASM_CONSTS.hasOwnProperty(code)) abort('No EM_ASM constant found at address ' + code);
+    if (!ASM_CONSTS.hasOwnProperty(code)) abort(`No EM_ASM constant found at address ${code}`);
 #endif
     return ASM_CONSTS[code].apply(null, args);
   },
@@ -3249,7 +3249,7 @@ mergeInto(LibraryManager.library, {
     }
 #endif
 #if ASSERTIONS
-    assert(getWasmTableEntry(ptr), 'missing table entry in dynCall: ' + ptr);
+    assert(getWasmTableEntry(ptr), `missing table entry in dynCall: ${ptr}`);
 #endif
 #if MEMORY64
     // With MEMORY64 we have an additional step to convert `p` arguments to
@@ -3426,7 +3426,7 @@ mergeInto(LibraryManager.library, {
     //    that wish to return to JS event loop.
     if (e instanceof ExitStatus || e == 'unwind') {
 #if RUNTIME_DEBUG
-      dbg('handleException: unwinding: EXITSTATUS=' + EXITSTATUS);
+      dbg(`handleException: unwinding: EXITSTATUS=${EXITSTATUS}`);
 #endif
       return EXITSTATUS;
     }
@@ -3434,7 +3434,7 @@ mergeInto(LibraryManager.library, {
     checkStackCookie();
     if (e instanceof WebAssembly.RuntimeError) {
       if (_emscripten_stack_get_current() <= 0) {
-        err('Stack overflow detected.  You can try increasing -sSTACK_SIZE (currently set to ' + {{{ STACK_SIZE }}} + ')');
+        err('Stack overflow detected.  You can try increasing -sSTACK_SIZE (currently set to {{{ STACK_SIZE }}})');
       }
     }
 #endif
@@ -3450,7 +3450,7 @@ mergeInto(LibraryManager.library, {
   $runtimeKeepalivePush: function() {
     runtimeKeepaliveCounter += 1;
 #if RUNTIME_DEBUG
-    dbg('runtimeKeepalivePush -> counter=' + runtimeKeepaliveCounter);
+    dbg(`runtimeKeepalivePush -> counter=${runtimeKeepaliveCounter}`);
 #endif
   },
 
@@ -3461,7 +3461,7 @@ mergeInto(LibraryManager.library, {
 #endif
     runtimeKeepaliveCounter -= 1;
 #if RUNTIME_DEBUG
-    dbg('runtimeKeepalivePop -> counter=' + runtimeKeepaliveCounter);
+    dbg(`runtimeKeepalivePop -> counter=${runtimeKeepaliveCounter}`);
 #endif
   },
 
@@ -3512,11 +3512,11 @@ mergeInto(LibraryManager.library, {
     }
 #endif
 #if RUNTIME_DEBUG
-    dbg('maybeExit: user callback done: runtimeKeepaliveCounter=' + runtimeKeepaliveCounter);
+    dbg(`maybeExit: user callback done: runtimeKeepaliveCounter=${runtimeKeepaliveCounter}`);
 #endif
     if (!keepRuntimeAlive()) {
 #if RUNTIME_DEBUG
-      dbg('maybeExit: calling exit() implicitly after user callback completed: ' + EXITSTATUS);
+      dbg(`maybeExit: calling exit() implicitly after user callback completed: ${EXITSTATUS}`);
 #endif
       try {
 #if PTHREADS
@@ -3557,7 +3557,7 @@ mergeInto(LibraryManager.library, {
 
   $asyncLoad__docs: '/** @param {boolean=} noRunDep */',
   $asyncLoad: function(url, onload, onerror, noRunDep) {
-    var dep = !noRunDep ? getUniqueRunDependency('al ' + url) : '';
+    var dep = !noRunDep ? getUniqueRunDependency(`al ${url}`) : '';
     readAsync(url, (arrayBuffer) => {
       assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
       onload(new Uint8Array(arrayBuffer));
@@ -3645,7 +3645,7 @@ mergeInto(LibraryManager.library, {
       ptr += {{{ POINTER_SIZE }}};
       var name = UTF8ToString(name_addr)
 #if RUNTIME_DEBUG
-      dbg('preloading files: ' + name);
+      dbg(`preloading files: ${name}`);
 #endif
       FS.createPath('/', PATH.dirname(name), true, true);
       // canOwn this data in the filesystem, it is a slice of wasm memory that will never change
@@ -3663,7 +3663,7 @@ mergeInto(LibraryManager.library, {
     this.freelist = [];
     this.get = function(id) {
 #if ASSERTIONS
-      assert(this.allocated[id] !== undefined, 'invalid handle: ' + id);
+      assert(this.allocated[id] !== undefined, `invalid handle: ${id}`);
 #endif
       return this.allocated[id];
     };
@@ -3700,12 +3700,11 @@ mergeInto(LibraryManager.library, {
 
 function autoAddDeps(object, name) {
   for (var item in object) {
-    if (item.substr(-6) != '__deps') {
+    if (!item.endsWith('__deps')) {
       if (!object[item + '__deps']) {
-        object[item + '__deps'] = [name];
-      } else {
-        object[item + '__deps'].push(name); // add to existing list
+        object[item + '__deps'] = [];
       }
+      object[item + '__deps'].push(name);
     }
   }
 }

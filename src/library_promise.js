@@ -22,7 +22,7 @@ mergeInto(LibraryManager.library, {
     });
     promiseInfo.id = promiseMap.allocate(promiseInfo);
 #if RUNTIME_DEBUG
-    dbg('makePromise: ' + promiseInfo.id);
+    dbg(`makePromise: ${promiseInfo.id}`);
 #endif
     return promiseInfo;
   },
@@ -45,7 +45,7 @@ mergeInto(LibraryManager.library, {
   emscripten_promise_destroy__deps: ['$promiseMap'],
   emscripten_promise_destroy: function(id) {
 #if RUNTIME_DEBUG
-    dbg('emscripten_promise_destroy: ' + id);
+    dbg(`emscripten_promise_destroy: ${id}`);
 #endif
     promiseMap.free(id);
   },
@@ -55,7 +55,7 @@ mergeInto(LibraryManager.library, {
                                      'emscripten_promise_destroy'],
   emscripten_promise_resolve: function(id, result, value) {
 #if RUNTIME_DEBUG
-    dbg('emscripten_promise_resolve: ' + id);
+    dbg(`emscripten_promise_resolve: ${id}`);
 #endif
     var info = promiseMap.get(id);
     switch (result) {
@@ -84,7 +84,7 @@ mergeInto(LibraryManager.library, {
   $makePromiseCallback: function(callback, userData) {
     return (value) => {
 #if RUNTIME_DEBUG
-      dbg('emscripten promise callback: ' + value);
+      dbg(`emscripten promise callback: ${value}`);
 #endif
       {{{ runtimeKeepalivePop() }}};
       var stack = stackSave();
@@ -142,7 +142,7 @@ mergeInto(LibraryManager.library, {
                                     onRejected,
                                     userData) {
 #if RUNTIME_DEBUG
-    dbg('emscripten_promise_then: ' + id);
+    dbg(`emscripten_promise_then: ${id}`);
 #endif
     {{{ runtimeKeepalivePush() }}};
     var promise = getPromise(id);
@@ -151,7 +151,7 @@ mergeInto(LibraryManager.library, {
                             makePromiseCallback(onRejected, userData))
     });
 #if RUNTIME_DEBUG
-    dbg('emscripten_promise_then: -> ' + newId);
+    dbg(`emscripten_promise_then: -> ${newId}`);
 #endif
     return newId;
   },
@@ -160,7 +160,7 @@ mergeInto(LibraryManager.library, {
   emscripten_promise_all: function(idBuf, resultBuf, size) {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
-    dbg('emscripten_promise_all: ' + promises);
+    dbg(`emscripten_promise_all: ${promises}`);
 #endif
     var id = promiseMap.allocate({
       promise: Promise.all(promises).then((results) => {
@@ -174,7 +174,7 @@ mergeInto(LibraryManager.library, {
       })
     });
 #if RUNTIME_DEBUG
-    dbg('create: ' + id);
+    dbg(`create: ${id}`);
 #endif
     return id;
   },
@@ -183,7 +183,7 @@ mergeInto(LibraryManager.library, {
   emscripten_promise_all_settled: function(idBuf, resultBuf, size) {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
-    dbg('emscripten_promise_all_settled: ' + promises);
+    dbg(`emscripten_promise_all_settled: ${promises}`);
 #endif
     var id = promiseMap.allocate({
       promise: Promise.allSettled(promises).then((results) => {
@@ -211,7 +211,7 @@ mergeInto(LibraryManager.library, {
       })
     });
 #if RUNTIME_DEBUG
-    dbg('create: ' + id);
+    dbg(`create: ${id}`);
 #endif
     return id;
   },
@@ -226,7 +226,7 @@ mergeInto(LibraryManager.library, {
   emscripten_promise_any: function(idBuf, errorBuf, size) {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
-    dbg('emscripten_promise_any: ' + promises);
+    dbg(`emscripten_promise_any: ${promises}`);
 #endif
 #if ASSERTIONS
     assert(typeof Promise.any !== 'undefined', "Promise.any does not exist");
@@ -242,7 +242,7 @@ mergeInto(LibraryManager.library, {
       })
     });
 #if RUNTIME_DEBUG
-    dbg('create: ' + id);
+    dbg(`create: ${id}`);
 #endif
     return id;
   },
@@ -251,13 +251,13 @@ mergeInto(LibraryManager.library, {
   emscripten_promise_race: function(idBuf, size) {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
-    dbg('emscripten_promise_race: ' + promises);
+    dbg(`emscripten_promise_race: ${promises}`);
 #endif
     var id = promiseMap.allocate({
       promise: Promise.race(promises)
     });
 #if RUNTIME_DEBUG
-    dbg('create: ' + id);
+    dbg(`create: ${id}`);
 #endif
     return id;
   }

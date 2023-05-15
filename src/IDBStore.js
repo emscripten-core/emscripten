@@ -69,7 +69,7 @@
       req.onsuccess = (event) => {
         var result = event.target.result;
         if (!result) {
-          return callback('file ' + id + ' not found');
+          return callback(`file ${id} not found`);
         }
         return callback(null, result);
       };
