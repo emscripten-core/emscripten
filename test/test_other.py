@@ -13397,19 +13397,17 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_add_js_function(self, wasm2js):
     self.set_setting('INVOKE_RUN', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
-    self.set_setting('RESERVED_FUNCTION_POINTERS')
+    self.set_setting('ALLOW_TABLE_GROWTH')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['callMain'])
     if wasm2js:
-      self.set_setting("WASM", 0)
-    src = test_file('interop/test_add_function.cpp')
-    post_js = test_file('interop/test_add_function_post.js')
-    self.emcc_args += ['--post-js', post_js]
+      self.set_setting('WASM', 0)
+    self.emcc_args += ['--post-js', test_file('interop/test_add_function_post.js')]
 
     print('basics')
     self.do_run_in_out_file_test('interop/test_add_function.cpp')
 
-    print('with RESERVED_FUNCTION_POINTERS=0')
-    self.set_setting('RESERVED_FUNCTION_POINTERS', 0)
+    print('with ALLOW_TABLE_GROWTH=0')
+    self.set_setting('ALLOW_TABLE_GROWTH', 0)
     expected = 'Unable to grow wasm table'
     if wasm2js:
       # in wasm2js the error message doesn't come from the VM, but from our
@@ -13418,7 +13416,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       # shows a generic error.
       expected = 'wasmTable.grow is not a function'
 
-    self.do_runf(src, expected, assert_returncode=NON_ZERO)
+    self.do_runf(test_file('interop/test_add_function.cpp'), expected, assert_returncode=NON_ZERO)
 
     print('- with table growth')
     self.set_setting('ALLOW_TABLE_GROWTH')
