@@ -21,6 +21,9 @@ dependenciesFulfilled = function runCaller() {
 };
 
 #if HAS_MAIN
+#if ASSERTIONS
+var alreadyCalledMain = false;
+#endif
 #if MAIN_READS_PARAMS
 function callMain(args = []) {
 #else
@@ -29,6 +32,8 @@ function callMain() {
 #if ASSERTIONS
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on Module["onRuntimeInitialized"])');
   assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
+  assert(!alreadyCalledMain, 'cannot call main more than once (consider using a library, or MODULARIZE)');
+  alreadyCalledMain = true;
 #endif
 
   var entryFunction = {{{ getEntryFunction() }}};
