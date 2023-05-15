@@ -13438,20 +13438,20 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     if memory64:
       self.require_wasm64()
 
-    MAYBE_DELETE_WASM_FUNCTION = ""
     if not wasm_function:
-      MAYBE_DELETE_WASM_FUNCTION = "delete WebAssembly.Function;"
+      create_file('pre.js', 'delete WebAssembly.Function;')
+      self.emcc_args.append('--pre-js=pre.js')
 
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$addFunction'])
     self.set_setting('ALLOW_TABLE_GROWTH')
     create_file('main.c', r'''
       #include <emscripten.h>
+
+      EM_JS_DEPS(deps, "$addFunction");
 
       typedef long long (functype)(long long);
 
       int main() {
         functype* f = (functype *)EM_ASM_INT({
-          %s
           return addFunction(function(num) {
               out('Hello ' + num + ' from JS!');
               return 5n;
@@ -13463,7 +13463,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
           return 1;
         }
       }
-    ''' % MAYBE_DELETE_WASM_FUNCTION)
+    ''')
 
     self.do_runf('main.c', 'Hello 26 from JS!')
 
