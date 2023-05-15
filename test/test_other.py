@@ -14020,6 +14020,19 @@ int main() {
     ''')
     self.do_runf('hello_world.c', '↓', emcc_args=['--pre-js=script.js'])
 
+  # This test verifies that concatenating input --pre-js style files will not trip up even
+  # if one of the submitted files does not have a newline at the end of the file.
+  @parameterized({
+    'prejs': ('--pre-js',),
+    'postjs': ('--post-js',),
+    'extern_prejs': ('--extern-pre-js',),
+    'extern_postjs': ('--extern-post-js',),
+  })
+  def test_file_concatenation_trailing_newline_gotcha(self, arg):
+    create_file('a.js', '// a not so innocent comment')
+    create_file('b.js', 'console.log("I am logging"); // maybe also not so innocent comment')
+    self.do_runf(test_file('hello_world.c'), 'I am logging', emcc_args=[f'{arg}=a.js', f'{arg}=b.js'])
+
   def test_xlocale(self):
     # Test for xlocale.h compatibility header
     self.do_other_test('test_xlocale.c')
