@@ -34,14 +34,14 @@ import time
 from operator import itemgetter
 
 if sys.version_info.major == 2:
-  import SocketServer as socketserver
-  from BaseHTTPServer import HTTPServer
-  from SimpleHTTPServer import SimpleHTTPRequestHandler
-  from urllib import unquote
-  from urlparse import urlsplit
+  import socketserver as socketserver
+  from http.server import HTTPServer
+  from http.server import SimpleHTTPRequestHandler
+  from urllib.parse import unquote
+  from urllib.parse import urlsplit
 
   def print_to_handle(handle, line):
-    print >> handle, line # noqa: F633
+    print(line, file=handle) # noqa: F633
 else:
   import socketserver
   from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -1038,7 +1038,7 @@ def win_get_file_properties(fname):
 
   strInfo = {}
   for propName in propNames:
-    strInfoPath = u'\\StringFileInfo\\%04X%04X\\%s' % (lang, codepage, propName)
+    strInfoPath = '\\StringFileInfo\\%04X%04X\\%s' % (lang, codepage, propName)
     ## print str_info
     strInfo[propName] = win32api.GetFileVersionInfo(fname, strInfoPath)
 

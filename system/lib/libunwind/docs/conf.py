@@ -40,8 +40,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'libunwind'
-copyright = u'2011-%d, LLVM Project' % date.today().year
+project = 'libunwind'
+copyright = '2011-%d, LLVM Project' % date.today().year
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -183,8 +183,8 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('contents', 'libunwind.tex', u'libunwind Documentation',
-   u'LLVM project', 'manual'),
+  ('contents', 'libunwind.tex', 'libunwind Documentation',
+   'LLVM project', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -213,8 +213,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('contents', 'libunwind', u'libunwind Documentation',
-     [u'LLVM project'], 1)
+    ('contents', 'libunwind', 'libunwind Documentation',
+     ['LLVM project'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -227,8 +227,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('contents', 'libunwind', u'libunwind Documentation',
-   u'LLVM project', 'libunwind', 'LLVM Unwinder',
+  ('contents', 'libunwind', 'libunwind Documentation',
+   'LLVM project', 'libunwind', 'LLVM Unwinder',
    'Miscellaneous'),
 ]
 

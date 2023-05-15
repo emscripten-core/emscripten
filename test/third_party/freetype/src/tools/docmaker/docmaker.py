@@ -25,17 +25,17 @@ import sys, os, time, string, glob, getopt
 
 
 def  usage():
-    print "\nDocMaker Usage information\n"
-    print "  docmaker [options] file1 [file2 ...]\n"
-    print "using the following options:\n"
-    print "  -h : print this page"
-    print "  -t : set project title, as in '-t \"My Project\"'"
-    print "  -o : set output directory, as in '-o mydir'"
-    print "  -p : set documentation prefix, as in '-p ft2'"
-    print ""
-    print "  --title  : same as -t, as in '--title=\"My Project\"'"
-    print "  --output : same as -o, as in '--output=mydir'"
-    print "  --prefix : same as -p, as in '--prefix=ft2'"
+    print("\nDocMaker Usage information\n")
+    print("  docmaker [options] file1 [file2 ...]\n")
+    print("using the following options:\n")
+    print("  -h : print this page")
+    print("  -t : set project title, as in '-t \"My Project\"'")
+    print("  -o : set output directory, as in '-o mydir'")
+    print("  -p : set documentation prefix, as in '-p ft2'")
+    print("")
+    print("  --title  : same as -t, as in '--title=\"My Project\"'")
+    print("  --output : same as -o, as in '--output=mydir'")
+    print("  --prefix : same as -p, as in '--prefix=ft2'")
 
 
 def  main( argv ):

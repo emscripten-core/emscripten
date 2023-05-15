@@ -188,10 +188,10 @@ def  dump_html_code( lines, prefix = "" ):
 
     # The code footer should be directly appended to the last code
     # line to avoid an additional blank line.
-    print prefix + code_header,
+    print(prefix + code_header, end=' ')
     for line in self.lines[0 : l + 1]:
-        print '\n' + prefix + html_quote( line ),
-    print prefix + code_footer,
+        print('\n' + prefix + html_quote( line ), end=' ')
+    print(prefix + code_footer, end=' ')
 
 
 
@@ -320,16 +320,16 @@ class  HtmlFormatter( Formatter ):
         return string.join( lines, '\n' )
 
     def  print_html_items( self, items ):
-        print self.make_html_items( items )
+        print(self.make_html_items( items ))
 
     def  print_html_field( self, field ):
         if field.name:
-            print "<table><tr valign=top><td><b>" + field.name + "</b></td><td>"
+            print("<table><tr valign=top><td><b>" + field.name + "</b></td><td>")
 
-        print self.make_html_items( field.items )
+        print(self.make_html_items( field.items ))
 
         if field.name:
-            print "</td></tr></table>"
+            print("</td></tr></table>")
 
     def  html_source_quote( self, line, block_name = None ):
         result = ""
@@ -346,7 +346,7 @@ class  HtmlFormatter( Formatter ):
                 elif re_source_keywords.match( name ):
                     # this is a C keyword
                     result = result + prefix + keyword_prefix + name + keyword_suffix
-                elif self.identifiers.has_key( name ):
+                elif name in self.identifiers:
                     # this is a known identifier
                     block = self.identifiers[name]
                     result = result + prefix + '<a href="' + \
@@ -362,18 +362,18 @@ class  HtmlFormatter( Formatter ):
         return result
 
     def  print_html_field_list( self, fields ):
-        print "<p></p>"
-        print "<table cellpadding=3 border=0>"
+        print("<p></p>")
+        print("<table cellpadding=3 border=0>")
         for field in fields:
             if len( field.name ) > 22:
-              print "<tr valign=top><td colspan=0><b>" + field.name + "</b></td></tr>"
-              print "<tr valign=top><td></td><td>"
+              print("<tr valign=top><td colspan=0><b>" + field.name + "</b></td></tr>")
+              print("<tr valign=top><td></td><td>")
             else:
-              print "<tr valign=top><td><b>" + field.name + "</b></td><td>"
+              print("<tr valign=top><td><b>" + field.name + "</b></td><td>")
 
             self.print_html_items( field.items )
-            print "</td></tr>"
-        print "</table>"
+            print("</td></tr>")
+        print("</table>")
 
     def  print_html_markup( self, markup ):
         table_fields = []
@@ -398,7 +398,7 @@ class  HtmlFormatter( Formatter ):
     #  Formatting the index
     #
     def  index_enter( self ):
-        print self.html_index_header
+        print(self.html_index_header)
         self.index_items = {}
 
     def  index_name_enter( self, name ):
@@ -411,7 +411,7 @@ class  HtmlFormatter( Formatter ):
         count = len( self.block_index )
         rows  = ( count + self.columns - 1 ) / self.columns
 
-        print "<table align=center border=0 cellpadding=0 cellspacing=0>"
+        print("<table align=center border=0 cellpadding=0 cellspacing=0>")
         for r in range( rows ):
             line = "<tr>"
             for c in range( self.columns ):
@@ -423,15 +423,15 @@ class  HtmlFormatter( Formatter ):
                 else:
                     line = line + '<td></td>'
             line = line + "</tr>"
-            print line
+            print(line)
 
-        print "</table>"
+        print("</table>")
 
-        print index_footer_start +            \
+        print(index_footer_start +            \
               self.file_prefix + "toc.html" + \
-              index_footer_end
+              index_footer_end)
 
-        print self.html_footer
+        print(self.html_footer)
 
         self.index_items = {}
 
@@ -445,38 +445,38 @@ class  HtmlFormatter( Formatter ):
     #  Formatting the table of content
     #
     def  toc_enter( self ):
-        print self.html_toc_header
-        print "<center><h1>Table of Contents</h1></center>"
+        print(self.html_toc_header)
+        print("<center><h1>Table of Contents</h1></center>")
 
     def  toc_chapter_enter( self, chapter ):
-        print  chapter_header + string.join( chapter.title ) + chapter_inter
-        print "<table cellpadding=5>"
+        print(chapter_header + string.join( chapter.title ) + chapter_inter)
+        print("<table cellpadding=5>")
 
     def  toc_section_enter( self, section ):
-        print '<tr valign=top><td class="left">'
-        print '<a href="' + self.make_section_url( section ) + '">' + \
-               section.title + '</a></td><td>'
+        print('<tr valign=top><td class="left">')
+        print('<a href="' + self.make_section_url( section ) + '">' + \
+               section.title + '</a></td><td>')
 
-        print self.make_html_para( section.abstract )
+        print(self.make_html_para( section.abstract ))
 
     def  toc_section_exit( self, section ):
-        print "</td></tr>"
+        print("</td></tr>")
 
     def  toc_chapter_exit( self, chapter ):
-        print "</table>"
-        print chapter_footer
+        print("</table>")
+        print(chapter_footer)
 
     def  toc_index( self, index_filename ):
-        print chapter_header +                                      \
+        print(chapter_header +                                      \
               '<a href="' + index_filename + '">Global Index</a>' + \
-              chapter_inter + chapter_footer
+              chapter_inter + chapter_footer)
 
     def  toc_exit( self ):
-        print toc_footer_start +                \
+        print(toc_footer_start +                \
               self.file_prefix + "index.html" + \
-              toc_footer_end
+              toc_footer_end)
 
-        print self.html_footer
+        print(self.html_footer)
 
     def  toc_dump( self, toc_filename = None, index_filename = None ):
         if toc_filename == None:
@@ -491,22 +491,22 @@ class  HtmlFormatter( Formatter ):
     #  Formatting sections
     #
     def  section_enter( self, section ):
-        print self.html_header
+        print(self.html_header)
 
-        print section_title_header
-        print section.title
-        print section_title_footer
+        print(section_title_header)
+        print(section.title)
+        print(section_title_footer)
 
         maxwidth = 0
-        for b in section.blocks.values():
+        for b in list(section.blocks.values()):
             if len( b.name ) > maxwidth:
                 maxwidth = len( b.name )
 
         width = 70  # XXX magic number
-        if maxwidth <> 0:
+        if maxwidth != 0:
             # print section synopsis
-            print section_synopsis_header
-            print "<table align=center cellspacing=5 cellpadding=0 border=0>"
+            print(section_synopsis_header)
+            print("<table align=center cellspacing=5 cellpadding=0 border=0>")
 
             columns = width / maxwidth
             if columns < 1:
@@ -526,26 +526,26 @@ class  HtmlFormatter( Formatter ):
 
                     line = line + '</td>'
                 line = line + "</tr>"
-                print line
+                print(line)
 
-            print "</table><br><br>"
-            print section_synopsis_footer
+            print("</table><br><br>")
+            print(section_synopsis_footer)
 
-        print description_header
-        print self.make_html_items( section.description )
-        print description_footer
+        print(description_header)
+        print(self.make_html_items( section.description ))
+        print(description_footer)
 
     def  block_enter( self, block ):
-        print block_header
+        print(block_header)
 
         # place html anchor if needed
         if block.name:
-            print '<h4><a name="' + block.name + '">' + block.name + '</a></h4>'
+            print('<h4><a name="' + block.name + '">' + block.name + '</a></h4>')
 
         # dump the block C source lines now
         if block.code:
             header = ''
-            for f in self.headers.keys():
+            for f in list(self.headers.keys()):
                 if block.source.filename.find( f ) >= 0:
                     header = self.headers[f] + ' (' + f + ')'
                     break;
@@ -555,36 +555,36 @@ class  HtmlFormatter( Formatter ):
 #                 'WARNING: No header macro for ' + block.source.filename + '.\n' )
 
             if header:
-                print header_location_header
-                print 'Defined in ' + header + '.'
-                print header_location_footer
+                print(header_location_header)
+                print('Defined in ' + header + '.')
+                print(header_location_footer)
 
-            print source_header
+            print(source_header)
             for l in block.code:
-                print self.html_source_quote( l, block.name )
-            print source_footer
+                print(self.html_source_quote( l, block.name ))
+            print(source_footer)
 
     def  markup_enter( self, markup, block ):
         if markup.tag == "description":
-            print description_header
+            print(description_header)
         else:
-            print marker_header + markup.tag + marker_inter
+            print(marker_header + markup.tag + marker_inter)
 
         self.print_html_markup( markup )
 
     def  markup_exit( self, markup, block ):
         if markup.tag == "description":
-            print description_footer
+            print(description_footer)
         else:
-            print marker_footer
+            print(marker_footer)
 
     def  block_exit( self, block ):
-        print block_footer_start + self.file_prefix + "index.html" + \
+        print(block_footer_start + self.file_prefix + "index.html" + \
               block_footer_middle + self.file_prefix + "toc.html" +  \
-              block_footer_end
+              block_footer_end)
 
     def  section_exit( self, section ):
-        print html_footer
+        print(html_footer)
 
     def  section_dump_all( self ):
         for section in self.sections:

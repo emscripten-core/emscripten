@@ -4850,7 +4850,7 @@ class StringNode:
     letter = word[0]
     word   = word[1:]
 
-    if self.children.has_key( letter ):
+    if letter in self.children:
       child = self.children[letter]
     else:
       child = StringNode( letter, 0 )
@@ -4860,7 +4860,7 @@ class StringNode:
 
   def optimize( self ):
     # optimize all children first
-    children      = self.children.values()
+    children      = list(self.children.values())
     self.children = {}
 
     for child in children:
@@ -4895,7 +4895,7 @@ class StringNode:
 
     if self.children:
       margin += "| "
-      for child in self.children.values():
+      for child in list(self.children.values()):
         child.dump_debug( write, margin )
 
   def locate( self, index ):
@@ -4908,7 +4908,7 @@ class StringNode:
     if self.value != 0:
       index += 2
 
-    children = self.children.values()
+    children = list(self.children.values())
     children.sort()
 
     index += 2 * len( children )
@@ -4930,7 +4930,7 @@ class StringNode:
         storage += struct.pack( "B", val )
 
     # write the count
-    children = self.children.values()
+    children = list(self.children.values())
     children.sort()
 
     count = len( children )
@@ -5039,7 +5039,7 @@ def main():
   """main program body"""
 
   if len( sys.argv ) != 2:
-    print __doc__ % sys.argv[0]
+    print(__doc__ % sys.argv[0])
     sys.exit( 1 )
 
   file  = open( sys.argv[1], "w\n" )

@@ -67,7 +67,7 @@ class  DocCode:
     def  dump( self, prefix = "", width = 60 ):
         lines = self.dump_lines( 0, width )
         for l in lines:
-            print prefix + l
+            print(prefix + l)
 
     def  dump_lines( self, margin = 0, width = 60 ):
         result = []
@@ -95,7 +95,7 @@ class  DocPara:
     def  dump( self, prefix = "", width = 60 ):
         lines = self.dump_lines( 0, width )
         for l in lines:
-            print prefix + l
+            print(prefix + l)
 
     def  dump_lines( self, margin = 0, width = 60 ):
         cur    = ""  # current line
@@ -198,13 +198,13 @@ class  DocField:
 
     def  dump( self, prefix = "" ):
         if self.field:
-            print prefix + self.field + " ::"
+            print(prefix + self.field + " ::")
             prefix = prefix + "----"
 
         first = 1
         for p in self.items:
             if not first:
-                print ""
+                print("")
             p.dump( prefix )
             first = 0
 
@@ -278,10 +278,10 @@ class  DocMarkup:
             return "ERROR"
 
     def  dump( self, margin ):
-        print " " * margin + "<" + self.tag + ">"
+        print(" " * margin + "<" + self.tag + ">")
         for f in self.fields:
             f.dump( "  " )
-        print " " * margin + "</" + self.tag + ">"
+        print(" " * margin + "</" + self.tag + ">")
 
 
 
@@ -352,7 +352,7 @@ class  ContentProcessor:
 
     def  set_section( self, section_name ):
         """set current section during parsing"""
-        if not self.sections.has_key( section_name ):
+        if section_name not in self.sections:
             section = DocSection( section_name )
             self.sections[section_name] = section
             self.section                = section
@@ -439,14 +439,14 @@ class  ContentProcessor:
         # process all sections to extract their abstract, description
         # and ordered list of items
         #
-        for sec in self.sections.values():
+        for sec in list(self.sections.values()):
             sec.process()
 
         # process chapters to check that all sections are correctly
         # listed there
         for chap in self.chapters:
             for sec in chap.order:
-                if self.sections.has_key( sec ):
+                if sec in self.sections:
                     section = self.sections[sec]
                     section.chapter = chap
                     section.reorder()
@@ -459,7 +459,7 @@ class  ContentProcessor:
         # check that all sections are in a chapter
         #
         others = []
-        for sec in self.sections.values():
+        for sec in list(self.sections.values()):
             if not sec.chapter:
                 others.append( sec )
 
