@@ -1020,8 +1020,7 @@ var LibraryBrowser = {
     if (!noSetTiming) {
       if (fps && fps > 0) {
         _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_SETTIMEOUT }}}, 1000.0 / fps);
-      }
-      else {
+      } else {
         // Do rAF by rendering each frame (no decimating)
         _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_RAF }}}, 1);
       }
