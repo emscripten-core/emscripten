@@ -51,7 +51,7 @@ mergeInto(LibraryManager.library, {
             // Wrap async imports with a suspending WebAssembly function.
             if (isAsyncifyImport) {
 #if ASSERTIONS
-              assert(sig, 'Missing __sig for ' + x);
+              assert(sig, `Missing __sig for ${x}`);
 #endif
               var type = sigToWasmTypes(sig);
 #if ASYNCIFY_DEBUG
@@ -89,7 +89,7 @@ mergeInto(LibraryManager.library, {
                     !isAsyncifyImport &&
                     !changedToDisabled &&
                     !ignoredInvoke) {
-                  throw new Error('import ' + x + ' was not in ASYNCIFY_IMPORTS, but changed the state');
+                  throw new Error(`import ${x} was not in ASYNCIFY_IMPORTS, but changed the state`);
                 }
               }
             };
@@ -126,7 +126,7 @@ mergeInto(LibraryManager.library, {
 #endif
             ret[x] = function() {
 #if ASYNCIFY_DEBUG >= 2
-              dbg('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try ' + x);
+              dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length} try ${x}`);
 #endif
 #if ASYNCIFY == 1
               Asyncify.exportCallStack.push(x);
@@ -139,7 +139,7 @@ mergeInto(LibraryManager.library, {
                   var y = Asyncify.exportCallStack.pop();
                   assert(y === x);
 #if ASYNCIFY_DEBUG >= 2
-                  dbg('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' finally ' + x);
+                  dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length)} finally ${x}`);
 #endif
                   Asyncify.maybeStopUnwind();
                 }
@@ -299,7 +299,7 @@ mergeInto(LibraryManager.library, {
 #endif
       if (ABORT) return;
 #if ASYNCIFY_DEBUG
-      dbg('ASYNCIFY: handleSleep ' + Asyncify.state);
+      dbg(`ASYNCIFY: handleSleep ${Asyncify.state}`);
 #endif
       if (Asyncify.state === Asyncify.State.Normal) {
         // Prepare to sleep. Call startAsync, and see what happens:
@@ -328,7 +328,7 @@ mergeInto(LibraryManager.library, {
           assert(!Asyncify.exportCallStack.length, 'Waking up (starting to rewind) must be done from JS, without compiled code on the stack.');
 #endif
 #if ASYNCIFY_DEBUG
-          dbg('ASYNCIFY: start rewind ' + Asyncify.currData);
+          dbg(`ASYNCIFY: start rewind ${Asyncify.currData}`);
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
           runAndAbortIfError(() => _asyncify_start_rewind(Asyncify.currData));
@@ -378,7 +378,7 @@ mergeInto(LibraryManager.library, {
           // TODO: reuse, don't alloc/free every sleep
           Asyncify.currData = Asyncify.allocateData();
 #if ASYNCIFY_DEBUG
-          dbg('ASYNCIFY: start unwind ' + Asyncify.currData);
+          dbg(`ASYNCIFY: start unwind ${Asyncify.currData}`);
 #endif
           if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.pause();
@@ -397,7 +397,7 @@ mergeInto(LibraryManager.library, {
         // Call all sleep callbacks now that the sleep-resume is all done.
         Asyncify.sleepCallbacks.forEach((func) => callUserCallback(func));
       } else {
-        abort('invalid state: ' + Asyncify.state);
+        abort(`invalid state: ${Asyncify.state}`);
       }
       return Asyncify.handleSleepReturnValue;
     },
