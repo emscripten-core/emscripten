@@ -1897,15 +1897,6 @@ def phase_linker_setup(options, state, newargs):
     settings.STANDALONE_WASM = 1
     settings.WASM_BIGINT = 1
 
-  if settings.WASM2C:
-    # wasm2c only makes sense with standalone wasm - there will be no JS,
-    # just wasm and then C
-    settings.STANDALONE_WASM = 1
-    # wasm2c doesn't need any special handling of i64, we have proper i64
-    # handling on the FFI boundary, which is exactly like the case of JS with
-    # BigInt support
-    settings.WASM_BIGINT = 1
-
   if options.no_entry:
     settings.EXPECT_MAIN = 0
   elif settings.STANDALONE_WASM:
