@@ -43,7 +43,7 @@ def getheadingname(m):
 ###############################################################################
 
 if len(sys.argv) != 2:
-    print("usage: makedoc.py filename")
+    print "usage: makedoc.py filename"
     sys.exit(1)
 
 filename = sys.argv[1]

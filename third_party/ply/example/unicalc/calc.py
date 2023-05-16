@@ -18,32 +18,32 @@ tokens = (
 
 # Tokens
 
-t_PLUS    = r'\+'
-t_MINUS   = r'-'
-t_TIMES   = r'\*'
-t_DIVIDE  = r'/'
-t_EQUALS  = r'='
-t_LPAREN  = r'\('
-t_RPAREN  = r'\)'
-t_NAME    = r'[a-zA-Z_][a-zA-Z0-9_]*'
+t_PLUS    = ur'\+'
+t_MINUS   = ur'-'
+t_TIMES   = ur'\*'
+t_DIVIDE  = ur'/'
+t_EQUALS  = ur'='
+t_LPAREN  = ur'\('
+t_RPAREN  = ur'\)'
+t_NAME    = ur'[a-zA-Z_][a-zA-Z0-9_]*'
 
 def t_NUMBER(t):
-    r'\d+'
+    ur'\d+'
     try:
         t.value = int(t.value)
     except ValueError:
-        print("Integer value too large", t.value)
+        print "Integer value too large", t.value
         t.value = 0
     return t
 
-t_ignore = " \t"
+t_ignore = u" \t"
 
 def t_newline(t):
-    r'\n+'
+    ur'\n+'
     t.lexer.lineno += t.value.count("\n")
     
 def t_error(t):
-    print("Illegal character '%s'" % t.value[0])
+    print "Illegal character '%s'" % t.value[0]
     t.lexer.skip(1)
     
 # Build the lexer
@@ -67,17 +67,17 @@ def p_statement_assign(p):
 
 def p_statement_expr(p):
     'statement : expression'
-    print(p[1])
+    print p[1]
 
 def p_expression_binop(p):
     '''expression : expression PLUS expression
                   | expression MINUS expression
                   | expression TIMES expression
                   | expression DIVIDE expression'''
-    if p[2] == '+'  : p[0] = p[1] + p[3]
-    elif p[2] == '-': p[0] = p[1] - p[3]
-    elif p[2] == '*': p[0] = p[1] * p[3]
-    elif p[2] == '/': p[0] = p[1] / p[3]
+    if p[2] == u'+'  : p[0] = p[1] + p[3]
+    elif p[2] == u'-': p[0] = p[1] - p[3]
+    elif p[2] == u'*': p[0] = p[1] * p[3]
+    elif p[2] == u'/': p[0] = p[1] / p[3]
 
 def p_expression_uminus(p):
     'expression : MINUS expression %prec UMINUS'
@@ -96,22 +96,22 @@ def p_expression_name(p):
     try:
         p[0] = names[p[1]]
     except LookupError:
-        print("Undefined name '%s'" % p[1])
+        print "Undefined name '%s'" % p[1]
         p[0] = 0
 
 def p_error(p):
     if p:
-        print("Syntax error at '%s'" % p.value)
+        print "Syntax error at '%s'" % p.value
     else:
-        print("Syntax error at EOF")
+        print "Syntax error at EOF"
 
 import ply.yacc as yacc
 yacc.yacc()
 
 while 1:
     try:
-        s = input('calc > ')
+        s = raw_input('calc > ')
     except EOFError:
         break
     if not s: continue
-    yacc.parse(str(s))
+    yacc.parse(unicode(s))
