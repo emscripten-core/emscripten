@@ -453,7 +453,7 @@ function ${name}(${args}) {
         }
         contentText = `var ${mangled} = ${snippet};`;
       }
-      const sig = LibraryManager.library[symbol + '__sig'];
+      let sig = LibraryManager.library[symbol + '__sig'];
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
       if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
@@ -465,6 +465,9 @@ function ${name}(${args}) {
       // TODO: For asyncify we could only add the signatures we actually need,
       //       of async imports/exports.
       if (sig && (RELOCATABLE || ASYNCIFY == 2)) {
+        if (!WASM_BIGINT) {
+          sig = sig[0].replace("j", "i") + sig.slice(1).replace(/j/g, "ii");
+        }
         contentText += `\n${mangled}.sig = '${sig}';`;
       }
       if (ASYNCIFY && isAsyncFunction) {
