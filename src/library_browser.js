@@ -12,7 +12,7 @@ var LibraryBrowser = {
     '$safeSetTimeout',
     '$warnOnce',
     'emscripten_set_main_loop_timing',
-#if FILESYSTEM || WASMFS
+#if FILESYSTEM
     '$preloadPlugins',
 #if MAIN_MODULE
     '$preloadedWasm',
@@ -107,7 +107,7 @@ var LibraryBrowser = {
       if (Browser.initted) return;
       Browser.initted = true;
 
-#if FILESYSTEM || WASMFS
+#if FILESYSTEM
       // Support for plugins that can process preloaded files. You can add more of these to
       // your app by creating and appending to preloadPlugins.
       //

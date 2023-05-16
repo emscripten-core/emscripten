@@ -10,7 +10,7 @@ var dlopenMissingError = "'To use dlopen, you need enable dynamic linking, see h
 
 var LibraryDylink = {
 #if RELOCATABLE
-#if FILESYSTEM || WASMFS
+#if FILESYSTEM
   $registerWasmPlugin__deps: ['$preloadPlugins'],
   $registerWasmPlugin: function() {
     // Use string keys here to avoid minification since the plugin consumer
@@ -913,7 +913,7 @@ var LibraryDylink = {
   $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule',
                               '$isInternalSym', '$mergeLibSymbols', '$newDSO',
                               '$asyncLoad',
-#if FILESYSTEM || WASMFS
+#if FILESYSTEM
                               '$preloadedWasm',
 #endif
   ],
@@ -987,7 +987,7 @@ var LibraryDylink = {
 
     // libName -> exports
     function getExports() {
-#if FILESYSTEM || WASMFS
+#if FILESYSTEM
       // lookup preloaded cache first
       if (preloadedWasm[libName]) {
 #if DYLINK_DEBUG
