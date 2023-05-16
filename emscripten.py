@@ -60,17 +60,18 @@ def write_output_file(outfile, module):
     outfile.write(module[i])
 
 
-def optimize_syscalls(declares):
+def maybe_disable_filesystem(imports):
   """Disables filesystem if only a limited subset of syscalls is used.
 
   Our syscalls are static, and so if we see a very limited set of them - in particular,
   no open() syscall and just simple writing - then we don't need full filesystem support.
   If FORCE_FILESYSTEM is set, we can't do this. We also don't do it if INCLUDE_FULL_LIBRARY, since
   not including the filesystem would mean not including the full JS libraries, and the same for
-  MAIN_MODULE since a side module might need the filesystem.
+  MAIN_MODULE=1 since a side module might need the filesystem.
   """
-  relevant_settings = ['FORCE_FILESYSTEM', 'INCLUDE_FULL_LIBRARY', 'MAIN_MODULE']
-  if any(settings[s] for s in relevant_settings):
+  if any(settings[s] for s in ['FORCE_FILESYSTEM', 'INCLUDE_FULL_LIBRARY']):
+    return
+  if settings.MAIN_MODULE == 1:
     return
 
   if settings.FILESYSTEM == 0:
@@ -79,7 +80,9 @@ def optimize_syscalls(declares):
   else:
     # TODO(sbc): Find a better way to identify wasi syscalls
     syscall_prefixes = ('__syscall_', 'fd_')
-    syscalls = {d for d in declares if d.startswith(syscall_prefixes) or d in ['path_open']}
+    side_module_imports = [shared.demangle_c_symbol_name(s) for s in settings.SIDE_MODULE_IMPORTS]
+    all_imports = set(imports).union(side_module_imports)
+    syscalls = {d for d in all_imports if d.startswith(syscall_prefixes) or d in ['path_open']}
     # check if the only filesystem syscalls are in: close, ioctl, llseek, write
     # (without open, etc.. nothing substantial can be done, so we can disable
     # extra filesystem support in that case)
@@ -116,7 +119,7 @@ def get_weak_imports(main_wasm):
 
 
 def update_settings_glue(wasm_file, metadata):
-  optimize_syscalls(metadata.imports)
+  maybe_disable_filesystem(metadata.imports)
 
   # Integrate info from backend
   if settings.SIDE_MODULE:
