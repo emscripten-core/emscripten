@@ -2,8 +2,8 @@
 
 'use strict';
 
-const terser = require('../third_party/terser/terser');
 const acorn = require('../node_modules/acorn/dist/acorn');
+const terser = require('../third_party/terser/terser');
 const fs = require('fs');
 
 // Utilities

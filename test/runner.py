@@ -392,6 +392,11 @@ def configure():
 def main(args):
   options = parse_args(args)
 
+  if os.path.isfile(utils.path_from_root('package.json')):
+    os.remove(utils.path_from_root('package.json'))
+  if os.path.isfile(utils.path_from_root('package-lock.json')):
+    os.remove(utils.path_from_root('package-lock.json'))
+
   # Some options make sense being set in the environment, others not-so-much.
   # TODO(sbc): eventually just make these command-line only.
   if os.getenv('EMTEST_SAVE_DIR'):
