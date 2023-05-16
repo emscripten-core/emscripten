@@ -9128,6 +9128,35 @@ int main() {
     else:
       self.assertNotContained('--initial-heap=', out.stderr)
 
+  # When user asks max 2GB heap size, they intend to run in a Wasm VM
+  # that supports max 2GB ArrayBuffers. Verify that this works for -sINITIAL_MEMORY.
+  def test_2gb_initial_memory(self):
+    create_file('test.cpp', r'''
+#include <emscripten/heap.h>
+#include <stdio.h>
+int main() { printf("Heap size: 0x%lx\n", (unsigned long)emscripten_get_heap_size()); }''')
+    self.run_process([EMXX, 'test.cpp', '-sINITIAL_MEMORY=2GB'])
+    self.assertContained('Heap size: 0x7fff0000', self.run_js('a.out.js'))
+
+  # When user asks max 2GB heap size, they intend to run in a Wasm VM
+  # that supports max 2GB ArrayBuffers. Verify that this works for -sMAXIMUM_MEMORY.
+  @parameterized({
+    'implicit': ([],),
+    'explicit': (['-sMAXIMUM_MEMORY=2GB'],),
+  })
+  def test_2gb_maximum_memory(self, args):
+    create_file('test.cpp', r'''
+#include <emscripten/heap.h>
+#include <stdio.h>
+int main()
+{
+  for(uintptr_t allocSize = 256*1024*1024; allocSize > 1;)
+    if (!malloc(allocSize)) allocSize /= 2;
+  printf("Heap size: 0x%lx\n", (unsigned long)emscripten_get_heap_size());
+}''')
+    self.run_process([EMXX, 'test.cpp', '-sALLOW_MEMORY_GROWTH', '-sABORTING_MALLOC=0'] + args)
+    self.assertContained('Heap size: 0x7fff0000', self.run_js('a.out.js'))
+
   def test_memory_size(self):
     for args, expect_initial, expect_max in [
         ([], 320, 320),

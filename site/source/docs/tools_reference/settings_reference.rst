@@ -228,7 +228,7 @@ To use more than 2GB, set this to something higher, like 4GB.
 
 (This option was formerly called WASM_MEM_MAX and BINARYEN_MEM_MAX.)
 
-Default value: 2147483648
+Default value: 2*1024*1024*1024 - 65536
 
 .. _allow_memory_growth:
 

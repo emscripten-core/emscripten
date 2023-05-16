@@ -199,7 +199,7 @@ var INITIAL_MEMORY = -1;
 //
 // (This option was formerly called WASM_MEM_MAX and BINARYEN_MEM_MAX.)
 // [link]
-var MAXIMUM_MEMORY = 2147483648;
+var MAXIMUM_MEMORY = 2*1024*1024*1024 - 65536;
 
 // If false, we abort with an error if we try to allocate more memory than
 // we can (INITIAL_MEMORY). If true, we will grow the memory arrays at
