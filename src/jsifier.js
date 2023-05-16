@@ -466,7 +466,7 @@ function ${name}(${args}) {
       //       of async imports/exports.
       if (sig && (RELOCATABLE || ASYNCIFY == 2)) {
         if (!WASM_BIGINT) {
-          sig = sig[0].replace("j", "i") + sig.slice(1).replace(/j/g, "ii");
+          sig = sig[0].replace('j', 'i') + sig.slice(1).replace(/j/g, 'ii');
         }
         contentText += `\n${mangled}.sig = '${sig}';`;
       }
