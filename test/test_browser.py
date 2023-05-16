@@ -3353,6 +3353,7 @@ Module["preRun"].push(function () {
   @parameterized({
     'asyncify': (['-sASYNCIFY=1'],),
     'jspi': (['-sASYNCIFY=2', '-Wno-experimental'],),
+    'jspi_wasm_bigint': (['-sASYNCIFY=2', '-sWASM_BIGINT', '-Wno-experimental'],),
   })
   def test_async(self, args):
     if is_jspi(args) and not is_chrome():
@@ -5443,6 +5444,7 @@ Module["preRun"].push(function () {
   @parameterized({
     '': (['-pthread', '-sPROXY_TO_PTHREAD'],),
     'jspi': (['-Wno-experimental', '-sASYNCIFY=2'],),
+    'jspi_wasm_bigint': (['-Wno-experimental', '-sASYNCIFY=2', '-sWASM_BIGINT'],),
   })
   @requires_threads
   def test_wasmfs_opfs(self, args):

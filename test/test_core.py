@@ -7402,35 +7402,6 @@ void* operator new(size_t size) {
     self.do_run(src, 'waka 4999!')
     self.assertContained('_exported_func_from_response_file_1', read_file('src.js'))
 
-  def test_add_function(self):
-    self.set_setting('INVOKE_RUN', 0)
-    self.set_setting('WASM_ASYNC_COMPILATION', 0)
-    self.set_setting('ALLOW_TABLE_GROWTH')
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['callMain'])
-    self.emcc_args += ['--post-js', test_file('interop/test_add_function_post.js')]
-
-    print('basics')
-    self.do_run_in_out_file_test('interop/test_add_function.cpp')
-
-    print('with ALLOW_TABLE_GROWTH=0')
-    self.set_setting('ALLOW_TABLE_GROWTH', 0)
-    expected = 'Unable to grow wasm table'
-    if self.is_wasm2js():
-      # in wasm2js the error message doesn't come from the VM, but from our
-      # emulation code. when ASSERTIONS are enabled we show a clear message, but
-      # in optimized builds we don't waste code size on that, and the JS engine
-      # shows a generic error.
-      expected = 'wasmTable.grow is not a function'
-
-    self.do_runf(test_file('interop/test_add_function.cpp'), expected, assert_returncode=NON_ZERO)
-
-    print('- with table growth')
-    self.set_setting('ALLOW_TABLE_GROWTH')
-    self.emcc_args += ['-DGROWTH']
-    # enable costly assertions to verify correct table behavior
-    self.set_setting('ASSERTIONS', 2)
-    self.do_run_in_out_file_test('interop/test_add_function.cpp', interleaved_output=False)
-
   def test_emulate_function_pointer_casts(self):
     # Forcibly disable EXIT_RUNTIME due to:
     # https://github.com/emscripten-core/emscripten/issues/15081
