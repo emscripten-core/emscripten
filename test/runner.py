@@ -393,8 +393,11 @@ def main(args):
   options = parse_args(args)
 
   # XXX Test: remove access to package.json from Emscripten
-  os.rename(utils.path_from_root('package.json'), utils.path_from_root('packageunusedjson.bak'))
-  os.rename(utils.path_from_root('package-lock.json'), utils.path_from_root('packageunusedjson-lock.bak'))
+  package_renamed = False
+  if os.path.isfile(utils.path_from_root('package.json')):
+    os.rename(utils.path_from_root('package.json'), utils.path_from_root('packageunusedjson.bak'))
+    os.rename(utils.path_from_root('package-lock.json'), utils.path_from_root('packageunusedjson-lock.bak'))
+    package_renamed = True
 
   # Some options make sense being set in the environment, others not-so-much.
   # TODO(sbc): eventually just make these command-line only.
@@ -460,8 +463,9 @@ def main(args):
   num_failures = run_tests(options, suites)
 
   # XXX Test: remove access to package.json from Emscripten
-  os.rename(utils.path_from_root('packageunusedjson.bak'), utils.path_from_root('package.json'))
-  os.rename(utils.path_from_root('packageunusedjson-lock.bak'), utils.path_from_root('package-lock.json'))
+  if package_renamed:
+    os.rename(utils.path_from_root('packageunusedjson.bak'), utils.path_from_root('package.json'))
+    os.rename(utils.path_from_root('packageunusedjson-lock.bak'), utils.path_from_root('package-lock.json'))
 
   # Return the number of failures as the process exit code
   # for automating success/failure reporting.  Return codes
