@@ -135,7 +135,8 @@ def create_stub_object(external_symbols):
   stubfile = shared.get_temp_files().get('libemscripten_js_symbols.so').name
   stubs = ['#STUB']
   for name, deps in external_symbols.items():
-    stubs.append('%s: %s' % (name, ','.join(deps)))
+    if not name.startswith('$'):
+      stubs.append('%s: %s' % (name, ','.join(deps)))
   utils.write_file(stubfile, '\n'.join(stubs))
   return stubfile
 
@@ -144,6 +145,8 @@ def lld_flags_for_executable(external_symbols):
   cmd = []
   if external_symbols:
     if settings.INCLUDE_FULL_LIBRARY:
+      # When INCLUDE_FULL_LIBRARY is set try to export every possible
+      # native dependency of a JS function.
       all_deps = set()
       for deps in external_symbols.values():
         for dep in deps:
