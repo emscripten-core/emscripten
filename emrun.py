@@ -34,14 +34,14 @@ import time
 from operator import itemgetter
 
 if sys.version_info.major == 2:
-  import socketserver as socketserver
-  from http.server import HTTPServer
-  from http.server import SimpleHTTPRequestHandler
-  from urllib.parse import unquote
-  from urllib.parse import urlsplit
+  import SocketServer as socketserver
+  from BaseHTTPServer import HTTPServer
+  from SimpleHTTPServer import SimpleHTTPRequestHandler
+  from urllib import unquote
+  from urlparse import urlsplit
 
   def print_to_handle(handle, line):
-    print(line, file=handle) # noqa: F633
+    print >> handle, line # noqa: F633
 else:
   import socketserver
   from http.server import HTTPServer, SimpleHTTPRequestHandler
