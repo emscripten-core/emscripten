@@ -51,7 +51,6 @@ from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
 from tools import feature_matrix
 from tools import js_manipulation
-from tools import wasm2c
 from tools import webassembly
 from tools import config
 from tools import cache
@@ -3809,9 +3808,6 @@ def phase_binaryen(target, options, wasm_target):
 
   if settings.DEBUG_LEVEL >= 3 and settings.SEPARATE_DWARF and os.path.exists(wasm_target):
     building.emit_debug_on_side(wasm_target)
-
-  if settings.WASM2C:
-    wasm2c.do_wasm2c(wasm_target)
 
   # we have finished emitting the wasm, and so intermediate debug info will
   # definitely no longer be used tracking it.
