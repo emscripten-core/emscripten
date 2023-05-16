@@ -21,6 +21,9 @@ mergeInto(LibraryManager.library, {
   // Converts a signature like 'vii' into a description of the wasm types, like
   // { parameters: ['i32', 'i32'], results: [] }.
   $sigToWasmTypes: function(sig) {
+#if ASSERTIONS && !WASM_BIGINT
+    assert(!sig.includes('j'), 'i64 not permitted in function signatures when WASM_BIGINT is disabled');
+#endif
     var typeNames = {
       'i': 'i32',
       'j': 'i64',
@@ -85,8 +88,8 @@ mergeInto(LibraryManager.library, {
     // return func;
 #else // WASM2JS
 
-#if !WASM_BIGINT
-  assert(!sig.includes('j'), "i64 not permitted in function signatures when WASM_BIGINT is disabled");
+#if ASSERTIONS && !WASM_BIGINT
+  assert(!sig.includes('j'), 'i64 not permitted in function signatures when WASM_BIGINT is disabled');
 #endif
 
     // If the type reflection proposal is available, use the new
