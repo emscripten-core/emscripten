@@ -154,8 +154,7 @@ def has_hidden_attribute(filepath):
     return False
 
   try:
-    attrs = ctypes.windll.kernel32.GetFileAttributesW(
-        '%s' % filepath)
+    attrs = ctypes.windll.kernel32.GetFileAttributesW(filepath)
     assert attrs != -1
     result = bool(attrs & 2)
   except Exception:
