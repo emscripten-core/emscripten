@@ -99,3 +99,10 @@ global.Runtime = {
   POINTER_SIZE: POINTER_SIZE,
   QUANTUM_SIZE: POINTER_SIZE,
 };
+
+global.ATMAINS = [];
+
+function addAtMain(code) {
+  assert(HAS_MAIN, 'addAtMain called but program has no main function');
+  ATMAINS.push(code);
+}

@@ -583,7 +583,7 @@ function ${name}(${args}) {
       warnings: warnings,
       asyncFuncs,
       ATINITS: ATINITS.join('\n'),
-      ATMAINS: ATMAINS.join('\n'),
+      ATMAINS: STRICT ? '' : ATMAINS.join('\n'),
       ATEXITS: ATEXITS.join('\n'),
     }));
   }
