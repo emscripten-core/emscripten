@@ -392,10 +392,9 @@ def configure():
 def main(args):
   options = parse_args(args)
 
-  if os.path.isfile(utils.path_from_root('package.json')):
-    os.remove(utils.path_from_root('package.json'))
-  if os.path.isfile(utils.path_from_root('package-lock.json')):
-    os.remove(utils.path_from_root('package-lock.json'))
+  # XXX Test: remove access to package.json from Emscripten
+  os.rename(utils.path_from_root('package.json'), utils.path_from_root('packageunusedjson.bak'))
+  os.rename(utils.path_from_root('package-lock.json'), utils.path_from_root('packageunusedjson-lock.bak'))
 
   # Some options make sense being set in the environment, others not-so-much.
   # TODO(sbc): eventually just make these command-line only.
@@ -459,6 +458,11 @@ def main(args):
     return 1
 
   num_failures = run_tests(options, suites)
+
+  # XXX Test: remove access to package.json from Emscripten
+  os.rename(utils.path_from_root('packageunusedjson.bak'), utils.path_from_root('package.json'))
+  os.rename(utils.path_from_root('packageunusedjson-lock.bak'), utils.path_from_root('package-lock.json'))
+
   # Return the number of failures as the process exit code
   # for automating success/failure reporting.  Return codes
   # over 125 are not well supported on UNIX.
