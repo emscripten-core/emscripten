@@ -89,7 +89,7 @@ mergeInto(LibraryManager.library, {
 #else // WASM2JS
 
 #if ASSERTIONS && !WASM_BIGINT
-  assert(!sig.includes('j'), 'i64 not permitted in function signatures when WASM_BIGINT is disabled');
+    assert(!sig.includes('j'), 'i64 not permitted in function signatures when WASM_BIGINT is disabled');
 #endif
 
     // If the type reflection proposal is available, use the new
