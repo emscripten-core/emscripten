@@ -109,6 +109,8 @@ var HEAP,
   HEAP8,
 /** @type {!Uint8Array} */
   HEAPU8,
+/** @type {!Uint8ClampedArray} */
+  HEAPU8C,
 /** @type {!Int16Array} */
   HEAP16,
 /** @type {!Uint16Array} */
@@ -143,6 +145,7 @@ function updateMemoryViews() {
   Module['HEAP16'] = HEAP16 = new Int16Array(b);
   Module['HEAP32'] = HEAP32 = new Int32Array(b);
   Module['HEAPU8'] = HEAPU8 = new Uint8Array(b);
+  Module['HEAPU8C'] = HEAPU8C = new Uint8ClampedArray(b);
   Module['HEAPU16'] = HEAPU16 = new Uint16Array(b);
   Module['HEAPU32'] = HEAPU32 = new Uint32Array(b);
   Module['HEAPF32'] = HEAPF32 = new Float32Array(b);

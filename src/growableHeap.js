@@ -18,6 +18,12 @@ function GROWABLE_HEAP_U8() {
   }
   return HEAPU8;
 }
+function GROWABLE_HEAP_U8C() {
+  if (wasmMemory.buffer != HEAP8.buffer) {
+    updateMemoryViews();
+  }
+  return HEAPU8C;
+}
 function GROWABLE_HEAP_I16() {
   if (wasmMemory.buffer != HEAP8.buffer) {
     updateMemoryViews();
