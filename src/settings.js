@@ -1851,6 +1851,10 @@ var MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION = false;
 // [link]
 var MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION = false;
 
+// Specifies what URL to fetch when running any MINIMAL_RUNTIME_STREAMING_*
+// [link]
+var MINIMAL_RUNTIME_WASM_URL = '{{{ TARGET_BASENAME }}}.wasm'
+
 // If set to 'emscripten' or 'wasm', compiler supports setjmp() and longjmp().
 // If set to 0, these APIs are not available.  If you are using C++ exceptions,
 // but do not need setjmp()+longjmp() API, then you can set this to 0 to save a
