@@ -152,6 +152,8 @@ wasi_symbols = {
 
 
 def ignore_symbol(s, cxx):
+  if s.startswith('$'):
+    return True
   if s in {'SDL_GetKeyState'}:
     return True
   if s.startswith('emscripten_gl') or s.startswith('emscripten_alc'):

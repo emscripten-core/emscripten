@@ -265,6 +265,13 @@ function ${name}(${args}) {
       }
 
       const deps = LibraryManager.library[symbol + '__deps'] || [];
+      let sig = LibraryManager.library[symbol + '__sig'];
+      if (!WASM_BIGINT && sig && sig[0] == 'j') {
+        // Without WASM_BIGINT functions that return i64 depend on setTempRet0
+        // to return the upper 32-bits of the result.
+        // See makeReturn64 in parseTools.py.
+        deps.push('setTempRet0');
+      }
 
       let isAsyncFunction = false;
       if (ASYNCIFY) {
@@ -279,7 +286,7 @@ function ${name}(${args}) {
       }
 
       if (symbolsOnly) {
-        if (!isJsOnlySymbol(symbol) && LibraryManager.library.hasOwnProperty(symbol)) {
+        if (LibraryManager.library.hasOwnProperty(symbol)) {
           var value = LibraryManager.library[symbol];
           var resolvedSymbol = symbol;
           // Resolve aliases before looking up deps
@@ -453,7 +460,6 @@ function ${name}(${args}) {
         }
         contentText = `var ${mangled} = ${snippet};`;
       }
-      let sig = LibraryManager.library[symbol + '__sig'];
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
       if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
