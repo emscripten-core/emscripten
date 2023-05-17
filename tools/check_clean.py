@@ -8,8 +8,6 @@
 we are not polluting the source checkout.
 """
 
-import os
-import subprocess
 import sys
 
 
