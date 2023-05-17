@@ -70,17 +70,17 @@ int clock_getres(clockid_t clk_id, struct timespec *tp) {
 
 // Mark these as weak so that wasmfs does not collide with it. That is, if
 // wasmfs is in use, we want to use that and not this.
-__attribute__((__weak__)) int _mmap_js(size_t length,
-                                       int prot,
-                                       int flags,
-                                       int fd,
-                                       size_t offset,
-                                       int* allocated,
-                                       void** addr) {
+weak int _mmap_js(size_t length,
+                  int prot,
+                  int flags,
+                  int fd,
+                  size_t offset,
+                  int* allocated,
+                  void** addr) {
   return -ENOSYS;
 }
 
-__attribute__((__weak__)) int _munmap_js(
+weak int _munmap_js(
   intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
   return -ENOSYS;
 }
@@ -89,8 +89,7 @@ __attribute__((__weak__)) int _munmap_js(
 // corner case error checking; everything else is not permitted.
 // TODO: full file support for WASI, or an option for it
 // open()
-__attribute__((__weak__))
-int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
+weak int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
   if (!strcmp((const char*)path, "/dev/stdin")) {
     return STDIN_FILENO;
   }
@@ -103,22 +102,21 @@ int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
   return -EPERM;
 }
 
-__attribute__((__weak__)) int __syscall_ioctl(int fd, int op, ...) {
+weak int __syscall_ioctl(int fd, int op, ...) {
   return -ENOSYS;
 }
 
-__attribute__((__weak__)) int __syscall_fcntl64(int fd, int cmd, ...) {
+weak int __syscall_fcntl64(int fd, int cmd, ...) {
   return -ENOSYS;
 }
 
-__attribute__((__weak__)) int __syscall_fstat64(int fd, intptr_t buf) {
+weak int __syscall_fstat64(int fd, intptr_t buf) {
   return -ENOSYS;
 }
 
 // There is no good source of entropy without an import. Make this weak so that
 // it can be replaced with a pRNG or a proper import.
-__attribute__((__weak__))
-int getentropy(void* buffer, size_t length) {
+weak int getentropy(void* buffer, size_t length) {
   abort();
 }
 
