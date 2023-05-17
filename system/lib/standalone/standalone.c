@@ -125,7 +125,7 @@ int getentropy(void* buffer, size_t length) {
 // Emscripten additions
 
 // Should never be called in standalone mode
-void emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) {
+weak void emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) {
   __builtin_unreachable();
 }
 
