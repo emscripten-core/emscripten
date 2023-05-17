@@ -163,10 +163,10 @@ static void load_library_done(struct dso* p) {
   // Block until all other threads have loaded this module.
   dlsync();
 #endif
-  if (p->file_data) {
-    free(p->file_data);
-    p->file_data_size = 0;
-  }
+  // TODO: figure out some way to tell when its safe to free p->file_data.  Its
+  // not safe to do here because some threads could have been alseep then when
+  // the "dlsync" occurred and those threads will synchronize when they wake,
+  // which could be an arbitrarily long time in the future.
 }
 
 static struct dso* load_library_start(const char* name, int flags) {

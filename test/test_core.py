@@ -9429,6 +9429,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-Wno-experimental', '-pthread']
     self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_side.c'))
 
+    self.emcc_args += ['--embed-file', 'liblib.so@libside.so']
     self.prep_dlfcn_main()
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PROXY_TO_PTHREAD')
