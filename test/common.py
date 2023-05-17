@@ -1383,15 +1383,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       if not self.wasm_engines:
         logger.warning('no wasm engine was found to run the standalone part of this test')
       engines += self.wasm_engines
-      if self.get_setting('WASM2C') and not EMTEST_LACKS_NATIVE_CLANG:
-        # compile the c file to a native executable.
-        c = shared.replace_suffix(js_file, '.wasm.c')
-        executable = shared.replace_suffix(js_file, '.exe')
-        cmd = [shared.CLANG_CC, c, '-o', executable] + clang_native.get_clang_native_args()
-        self.run_process(cmd, env=clang_native.get_clang_native_env())
-        # we can now run the executable directly, without an engine, which
-        # we indicate with None as the engine
-        engines += [[None]]
     if len(engines) == 0:
       self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
     for engine in engines:

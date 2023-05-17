@@ -154,11 +154,6 @@ def also_with_noderawfs(func):
   return metafunc
 
 
-def can_do_wasm2c(self):
-  # the npm version of wasm2c does not support MEMORY64
-  return not self.get_setting('MEMORY64')
-
-
 def can_do_standalone(self, impure=False):
   # Pure standalone engines don't support MEMORY64 yet.  Even with MEMORY64=2 (lowered)
   # the WASI APIs that take pointer values don't have 64-bit variants yet.
@@ -202,7 +197,7 @@ def also_with_wasmfs_js(func):
 
 # Impure means a test that cannot run in a wasm VM yet, as it is not 100%
 # standalone. We can still run them with the JS code though.
-def also_with_standalone_wasm(wasm2c=False, impure=False):
+def also_with_standalone_wasm(impure=False):
   def decorated(func):
     def metafunc(self, standalone):
       if not standalone:
@@ -221,11 +216,6 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
           self.wasm_engines = []
         self.node_args += shared.node_bigint_flags()
         func(self)
-        if wasm2c and can_do_wasm2c(self):
-          print('wasm2c')
-          self.set_setting('WASM2C')
-          self.wasm_engines = []
-          func(self)
 
     metafunc._parameterize = {'': (False,),
                               'standalone': (True,)}
@@ -610,7 +600,7 @@ class TestCoreBase(RunnerCore):
     shutil.copyfile(test_file('cube2md5.txt'), 'cube2md5.txt')
     self.do_run_from_file(test_file('cube2md5.cpp'), test_file('cube2md5.ok'), assert_returncode=NON_ZERO)
 
-  @also_with_standalone_wasm(wasm2c=True)
+  @also_with_standalone_wasm()
   @needs_make('make')
   def test_cube2hash(self):
     # A good test of i64 math
@@ -1089,7 +1079,7 @@ base align: 0, 0, 0, 0'''])
     self.do_core_test('test_regex.c')
 
   @crossplatform
-  @also_with_standalone_wasm(wasm2c=True, impure=True)
+  @also_with_standalone_wasm(impure=True)
   def test_longjmp_standalone(self):
     self.do_core_test('test_longjmp.c')
 
@@ -6304,7 +6294,7 @@ Module['onRuntimeInitialized'] = function() {
       self.emcc_args += ['-lnodefs.js']
     self.do_run_in_out_file_test('unistd/misc.c', interleaved_output=False)
 
-  @also_with_standalone_wasm(wasm2c=True)
+  @also_with_standalone_wasm()
   def test_posixtime(self):
     self.do_core_test('test_posixtime.c')
 
@@ -7122,7 +7112,7 @@ void* operator new(size_t size) {
     else:
       do_test_openjpeg()
 
-  @also_with_standalone_wasm(wasm2c=True, impure=True)
+  @also_with_standalone_wasm(impure=True)
   @no_asan('autodebug logging interferes with asan')
   @with_env_modify({'EMCC_AUTODEBUG': '1'})
   def test_autodebug_wasm(self):
@@ -7133,28 +7123,6 @@ void* operator new(size_t size) {
     # llvm etc.)
     for msg in ['log_execution', 'get_i32', 'set_i32', 'load_ptr', 'load_val', 'store_ptr', 'store_val']:
       self.assertIn(msg, output)
-
-  @parameterized({
-    'full': ('full',),
-    'mask': ('mask',),
-    'none': ('none',),
-  })
-  def test_wasm2c_sandboxing(self, mode):
-    if self.get_setting('WASMFS'):
-      # wasm2c disables JS legalization since we are building in standalone
-      # mode. this happens to work without wasmfs, but with wasmfs we get the
-      # time when we create/update a file, which uses clock_time_get that has an
-      # i64 param. For such an import to work we need wasm-bigint support.
-      self.node_args += shared.node_bigint_flags()
-    if not can_do_standalone(self):
-      return self.skipTest('standalone mode not supported')
-    if not can_do_wasm2c(self):
-      return self.skipTest('wasm2c not supported')
-    self.set_setting('STANDALONE_WASM')
-    self.set_setting('WASM2C')
-    self.set_setting('WASM2C_SANDBOXING', mode)
-    self.wasm_engines = []
-    self.do_core_test('test_hello_world.c')
 
   ### Integration tests
 
