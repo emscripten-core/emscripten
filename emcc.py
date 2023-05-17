@@ -97,7 +97,6 @@ UNSUPPORTED_LLD_FLAGS = {
     '-rpath': True,
     '-rpath-link': True,
     '-version-script': True,
-    '-arch': True,
     '-install_name': True,
 }
 
@@ -346,7 +345,7 @@ def create_reproduce_file(name, args):
                      '-Xpreprocessor', '-include', '-imacros', '-idirafter',
                      '-iprefix', '-iwithprefix', '-iwithprefixbefore',
                      '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
-                     '-install_name', '-compatibility_version', '-arch',
+                     '-install_name', '-compatibility_version',
                      '-current_version', '-I', '-L', '-include-pch',
                      '-Xlinker', '-Xclang'):
             ignore_next = True
@@ -1463,7 +1462,7 @@ def phase_setup(options, state, newargs):
                '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
                '-install_name', '-compatibility_version',
                '-current_version', '-I', '-L', '-include-pch',
-               '-arch', '-undefined',
+               '-undefined',
                '-Xlinker', '-Xclang', '-z'):
       skip = True
 
