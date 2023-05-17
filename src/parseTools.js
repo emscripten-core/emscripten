@@ -654,15 +654,6 @@ function addAtInit(code) {
   ATINITS.push(code);
 }
 
-// TODO(sbc): There are no more uses to ATMAINS or addAtMain in emscripten.
-// We should look into removing these.
-global.ATMAINS = [];
-
-function addAtMain(code) {
-  assert(HAS_MAIN, 'addAtMain called but program has no main function');
-  ATMAINS.push(code);
-}
-
 global.ATEXITS = [];
 
 function addAtExit(code) {
