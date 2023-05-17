@@ -9474,34 +9474,40 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf(test_file('hello_world.c'))
 
   @needs_dylink
-  @node_pthreads
-  def test_Module_dynamicLibraries_pthreads(self):
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '-pthread', '-Wno-experimental'],)
+  })
+  def test_Module_dynamicLibraries(self, args):
     # test that Module.dynamicLibraries works with pthreads
-    self.emcc_args += ['-pthread', '-Wno-experimental']
+    self.emcc_args += args
     self.emcc_args += ['--pre-js', 'pre.js']
-    self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     # This test is for setting dynamicLibraries at runtime so we don't
     # want emscripten loading `liblib.so` automatically (which it would
     # do without this setting.
     self.set_setting('NO_AUTOLOAD_DYLIBS')
 
     create_file('pre.js', '''
-      if (typeof importScripts == 'undefined') { // !ENVIRONMENT_IS_WORKER
-        // Load liblib.so by default on non-workers
-        Module['dynamicLibraries'] = ['liblib.so'];
-      } else {
-        // Verify whether the main thread passes Module.dynamicLibraries to the worker
-        assert(Module['dynamicLibraries'].includes('liblib.so'));
-      }
+      Module['dynamicLibraries'] = ['liblib.so'];
     ''')
+
+    if args:
+      self.setup_node_pthreads()
+      create_file('post.js', '''
+        if (ENVIRONMENT_IS_PTHREAD) {
+          err('sharedModules: ' + Object.keys(sharedModules));
+          assert('liblib.so' in sharedModules);
+          assert(sharedModules['liblib.so'] instanceof WebAssembly.Module);
+        }
+      ''')
+      self.emcc_args += ['--post-js', 'post.js']
 
     self.dylink_test(
       r'''
         #include <stdio.h>
         int side();
         int main() {
-          printf("result is %d", side());
+          printf("result is %d\n", side());
           return 0;
         }
       ''',
