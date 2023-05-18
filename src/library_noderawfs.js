@@ -107,8 +107,8 @@ mergeInto(LibraryManager.library, {
       return rtn;
     },
     closeStream: function(fd) {
-      if (FS.streams[fd]) {
-        FS.streams[fd].shared.refcnt--;
+      if (FS.streams.has(fd)) {
+        FS.streams.get(fd).shared.refcnt--;
       }
       VFS.closeStream(fd);
     },

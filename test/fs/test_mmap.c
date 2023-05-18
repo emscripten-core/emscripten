@@ -236,7 +236,7 @@ void test_mmap_overallocate() {
   }
 
   EM_ASM({
-    const stream = FS.streams.find(stream => stream.path.indexOf('yolo/overallocatedfile.txt') >= 0);
+    const stream = FS.streams.allocated.find(stream => stream.path.indexOf('yolo/overallocatedfile.txt') >= 0);
     assert(stream.node.usedBytes === Number($0),
       'Used bytes on the over-allocated file (' + stream.node.usedBytes + ') ' +
       'should be ' + $0
