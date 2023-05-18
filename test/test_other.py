@@ -13488,3 +13488,8 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       }
     ''')
     self.do_runf('main.c', 'done\n', emcc_args=['-sMAIN_MODULE=2', '--preload-file', 'tmp.so@library.so', '--use-preload-plugins'] + args)
+
+  @node_pthreads
+  def test_standalone_whole_archive(self):
+    self.emcc_args += ['-sSTANDALONE_WASM', '-pthread', '-Wl,--whole-archive', '-lbulkmemory', '-lstandalonewasm', '-Wl,--no-whole-archive']
+    self.do_runf(test_file('hello_world.c'))
