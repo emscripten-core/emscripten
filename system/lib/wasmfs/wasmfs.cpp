@@ -70,14 +70,24 @@ WasmFS::~WasmFS() {
   rootDirectory->locked().setParent(nullptr);
 }
 
-std::shared_ptr<Directory> WasmFS::initRootDirectory() {
+// Special backends that want to install themselves as the root use this hook.
+__attribute__((weak)) extern std::shared_ptr<Directory> wasmfs_create_root_dir(void) {
+  // If nothing is returned, the default root will be created.
+  return {};
+}
 
+std::shared_ptr<Directory> WasmFS::initRootDirectory() {
+  auto rootBackend = wasmfs_init_root_dir();
+
+  if (!rootBackend) {
 #ifdef WASMFS_CASE_INSENSITIVE
-  auto rootBackend =
-    createIgnoreCaseBackend([]() { return createMemoryBackend(); });
+    rootBackend =
+      createIgnoreCaseBackend([]() { return createMemoryBackend(); });
 #else
-  auto rootBackend = createMemoryBackend();
+    rootBackend = createMemoryBackend();
 #endif
+  }
+
   auto rootDirectory =
     rootBackend->createDirectory(S_IRUGO | S_IXUGO | S_IWUGO);
   auto lockedRoot = rootDirectory->locked();

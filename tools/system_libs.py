@@ -1867,6 +1867,22 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
     return settings.WASMFS
 
 
+class libwasmfs_noderawfs(Library):
+  name = 'libwasmfs_noderawfs'
+
+  cflags = ['-fno-exceptions', '-std=c++17']
+
+  includes = ['system/lib/wasmfs']
+
+  def get_files(self):
+    return backends = files_in_path(
+        path='system/lib/wasmfs/backends',
+        filenames=['noderawfs_backend.cpp'])
+
+  def can_use(self):
+    return settings.WASMFS and settings.NODERAWFS
+
+
 class libhtml5(Library):
   name = 'libhtml5'
 

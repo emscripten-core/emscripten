@@ -2293,6 +2293,8 @@ def phase_linker_setup(options, state, newargs):
 
   if settings.WASMFS:
     state.forced_stdlibs.append('libwasmfs')
+    if settings.NODERAWFS:
+      state.forced_stdlibs.append('libwasmfs_noderawfs')
     settings.FILESYSTEM = 1
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
     settings.JS_LIBRARIES.append((0, 'library_wasmfs.js'))
