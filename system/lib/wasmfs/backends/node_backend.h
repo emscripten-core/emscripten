@@ -9,8 +9,8 @@
 
 #include "backend.h"
 #include "file.h"
-#include "support.h" // ?
-#include "wasmfs.h" // ?
+#include "support.h"
+#include "wasmfs.h"
 
 namespace wasmfs {
 

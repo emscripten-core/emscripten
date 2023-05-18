@@ -8,8 +8,6 @@
 #include "backend.h"
 #include "backends/node_backend.h"
 #include "file.h"
-#include "support.h"
-#include "wasmfs.h"
 
 namespace wasmfs {
 
