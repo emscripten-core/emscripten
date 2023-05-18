@@ -14,9 +14,8 @@ namespace wasmfs {
 
 class NodeBackend;
 
-std::shared_ptr<Directory> wasmfs_create_root_dir(void) {
-  // If nothing is returned, the default root will be created.
-  return {};
+backend_t wasmfs_create_root_dir(void) {
+  return wasmfs_create_node_backend();
 }
 
 } // namespace wasmfs
