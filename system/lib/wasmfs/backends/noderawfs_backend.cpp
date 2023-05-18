@@ -5,17 +5,12 @@
 
 #include <memory>
 
-#include "backend.h"
-#include "file.h"
-#include "support.h" // ?
-#include "wasmfs.h" // ?
+#include "emscripten/wasmfs.h"
 
 namespace wasmfs {
 
-class NodeBackend;
-
 backend_t wasmfs_create_root_dir(void) {
-  return wasmfs_create_node_backend();
+  return wasmfs_create_node_backend(".");
 }
 
 } // namespace wasmfs
