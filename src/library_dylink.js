@@ -727,6 +727,9 @@ var LibraryDylink = {
             var resolved;
             stubs[prop] = function() {
               if (!resolved) resolved = resolveSymbol(prop);
+              if (!resolved) {
+                throw new Error(`Dynamic linking error: cannot resolve symbol ${prop}`);
+              }
               return resolved.apply(null, arguments);
             };
           }
