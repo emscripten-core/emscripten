@@ -207,14 +207,12 @@ def get_random_test_parameters(arg):
   relevant_modes = passing_core_test_modes
   if len(arg):
     num_str = arg
-    if arg.startswith('other'):
-      base_module = 'other'
-      relevant_modes = ['other']
-      num_str = arg.replace('other', '')
-    elif arg.startswith('browser'):
-      base_module = 'browser'
-      relevant_modes = ['browser']
-      num_str = arg.replace('browser', '')
+    for mode in passing_core_test_modes + misc_test_modes:
+      if arg.startswith(mode):
+        base_module = mode
+        relevant_modes = [mode]
+        num_str = arg.replace(mode, '')
+        break
     num_tests = int(num_str)
   return num_tests, base_module, relevant_modes
 
