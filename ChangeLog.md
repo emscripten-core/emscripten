@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.39 (in development)
+3.1.40 (in development)
 -----------------------
+
+3.1.39 - 05/18/23
+-----------------
 - The JS `err()` function will now bind to `console.error` by default rather
   than `console.warning`.  For debugging/tracing/logging we recommend the
   `dbg()` function instead. (#19326)
