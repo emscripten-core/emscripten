@@ -2336,42 +2336,47 @@ mergeInto(LibraryManager.library, {
     return Math.random();
   },
 
-  emscripten_get_now: ';' +
+  emscripten_get_now: `;
 #if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 160000
-// The performance global was added to node in v16.0.0:
-// https://nodejs.org/api/globals.html#performance
-                              "if (ENVIRONMENT_IS_NODE) {\n" +
-                              "  global.performance = require('perf_hooks').performance;\n" +
-                              "}" +
+    // The performance global was added to node in v16.0.0:
+    // https://nodejs.org/api/globals.html#performance
+    if (ENVIRONMENT_IS_NODE) {
+      global.performance = require('perf_hooks').performance;
+    }
 #endif
 #if PTHREADS && !AUDIO_WORKLET
-// Pthreads need their clocks synchronized to the execution of the main thread, so, when using them,
-// make sure to adjust all timings to the respective time origins.
-                               "_emscripten_get_now = () => performance.timeOrigin + performance.now();\n",
+    // Pthreads need their clocks synchronized to the execution of the main
+    // thread, so, when using them, make sure to adjust all timings to the
+    // respective time origins.
+    _emscripten_get_now = () => performance.timeOrigin + performance.now();
 #else
 #if ENVIRONMENT_MAY_BE_SHELL
-                               "if (typeof dateNow != 'undefined') {\n" +
-                               "  _emscripten_get_now = dateNow;\n" +
-                               "} else " +
+    if (typeof dateNow != 'undefined') {
+      _emscripten_get_now = dateNow;
+    } else
 #endif
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 || AUDIO_WORKLET // https://caniuse.com/#feat=high-resolution-time
-// AudioWorkletGlobalScope does not have performance.now() (https://github.com/WebAudio/web-audio-api/issues/2527), so if building with
-// Audio Worklets enabled, do a dynamic check for its presence.
-                               "if (typeof performance != 'undefined' && performance.now) {\n" +
+    // AudioWorkletGlobalScope does not have performance.now()
+    // (https://github.com/WebAudio/web-audio-api/issues/2527), so if building
+    // with
+    // Audio Worklets enabled, do a dynamic check for its presence.
+    if (typeof performance != 'undefined' && performance.now) {
 #if PTHREADS
-                               "  _emscripten_get_now = () => performance.timeOrigin + performance.now();\n" +
+      _emscripten_get_now = () => performance.timeOrigin + performance.now();
 #else
-                               "  _emscripten_get_now = () => performance.now();\n" +
+      _emscripten_get_now = () => performance.now();
 #endif
-                               "} else {\n" +
-                               "  _emscripten_get_now = Date.now;\n" +
-                               "}",
+    } else {
+      _emscripten_get_now = Date.now;
+    }
 #else
-                               // Modern environment where performance.now() is supported:
-                               // N.B. a shorter form "_emscripten_get_now = performance.now;" is unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
-                               "_emscripten_get_now = () => performance.now();\n",
+    // Modern environment where performance.now() is supported:
+    // N.B. a shorter form "_emscripten_get_now = performance.now;" is
+    // unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
+    _emscripten_get_now = () => performance.now();
 #endif
 #endif
+`,
 
   emscripten_get_now_res: function() { // return resolution of get_now, in nanoseconds
 #if ENVIRONMENT_MAY_BE_NODE
