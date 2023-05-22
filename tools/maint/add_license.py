@@ -11,7 +11,7 @@ import os
 import subprocess
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-__rootpath__ = os.path.dirname(script_dir)
+__rootpath__ = os.path.dirname(os.path.dirname(script_dir))
 
 cpp_license = '''\
 // Copyright %s The Emscripten Authors.  All rights reserved.
