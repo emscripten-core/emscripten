@@ -88,11 +88,24 @@ int _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
   }
 
   auto lockedFile = dataFile->locked();
+  int err = lockedFile.open(O_WRONLY);
+  if (err < 0) {
+    emscripten_console_error("Fatal error in FS.writeFile");
+    abort();
+  }
+
   auto offset = lockedFile.getSize();
   auto result = lockedFile.write((uint8_t*)data, data_size, offset);
   if (result != __WASI_ERRNO_SUCCESS) {
     return 0;
   }
+
+  err = lockedFile.close();
+  if (err < 0) {
+    emscripten_console_error("Fatal error in FS.writeFile");
+    abort();
+  }
+
   return data_size;
 }
 

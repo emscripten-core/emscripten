@@ -85,9 +85,10 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   // The root directory is its own parent.
   lockedRoot.setParent(rootDirectory);
 
+  // If the /dev/ directory does not already exist, create it. (It may already
+  // exist in NODERAWFS mode, or if those files have been preloaded.)
   auto devDir = lockedRoot.insertDirectory("dev", S_IRUGO | S_IXUGO);
-  assert(devDir);
-  {
+  if (devDir) {
     auto lockedDev = devDir->locked();
     lockedDev.mountChild("null", SpecialFiles::getNull());
     lockedDev.mountChild("stdin", SpecialFiles::getStdin());
@@ -97,8 +98,9 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
     lockedDev.mountChild("urandom", SpecialFiles::getURandom());
   }
 
-  [[maybe_unused]] auto tmpDir = lockedRoot.insertDirectory("tmp", S_IRWXUGO);
-  assert(tmpDir);
+  // As with the /dev/ directory, it is not an error for /tmp/ to already
+  // exist.
+  lockedRoot.insertDirectory("tmp", S_IRWXUGO);
 
   return rootDirectory;
 }
