@@ -1877,7 +1877,7 @@ class libwasmfs_noderawfs(Library):
   def get_files(self):
     return files_in_path(
         path='system/lib/wasmfs/backends',
-        filenames=['noderawfs_backend.cpp'])
+        filenames=['noderawfs_root.cpp'])
 
   def can_use(self):
     return settings.WASMFS and settings.NODERAWFS
