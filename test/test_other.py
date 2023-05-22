@@ -6635,6 +6635,11 @@ int main(int argc,char** argv) {
     self.set_setting('ASYNCIFY')
     self.do_other_test('test_dlopen_blocking.c')
 
+  # This test verifies that users can override dlopen symbols in their own code to
+  # replace the default aborting dlopen() implementation with a gracefully failing one.
+  def test_dlopen_graceful_fail(self):
+    self.do_other_test('test_dlopen_graceful_fail.c', emcc_args=['--js-library', test_file('other/test_dlopen_graceful_fail.js')])
+
   def test_dlsym_rtld_default(self):
     create_file('side.c', r'''
     int baz() {

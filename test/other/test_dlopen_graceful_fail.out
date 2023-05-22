@@ -1,0 +1,5 @@
+Attempting to dlopen
+warning: dlopen: Unable to open DLL! Dynamic linking is not supported in WebAssembly builds due to limitations to performance and code size. Please statically link in the needed libraries.
+dlopen completed: ptr 0. error: (null)
+dlclose(0) completed.
+dlopen failed gracefully!

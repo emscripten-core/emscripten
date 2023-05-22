@@ -299,7 +299,7 @@ var LibraryDylink = {
   _emscripten_dlopen_js: function(handle, onsuccess, onerror, user_data) {
     abort(dlopenMissingError);
   },
-  _dlsym_js: function(handle, symbol) {
+  _dlsym_js: function(handle, symbol, symbolIndex) {
     abort(dlopenMissingError);
   },
   _dlsym_catchup_js: function(handle, symbolIndex) {
