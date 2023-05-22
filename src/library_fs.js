@@ -186,9 +186,9 @@ FS.staticInit();` +
         if (FS.isRoot(node)) {
           var mount = node.mount.mountpoint;
           if (!path) return mount;
-          return mount[mount.length-1] !== '/' ? mount + '/' + path : mount + path;
+          return mount[mount.length-1] !== '/' ? `${mount}/${path}` : mount + path;
         }
-        path = path ? node.name + '/' + path : node.name;
+        path = path ? `${node.name}/${path}` : node.name;
         node = node.parent;
       }
     },
@@ -492,7 +492,7 @@ FS.staticInit();` +
       FS.syncFSRequests++;
 
       if (FS.syncFSRequests > 1) {
-        err('warning: ' + FS.syncFSRequests + ' FS.syncfs operations in flight at once, probably just doing extra work');
+        err(`warning: ${FS.syncFSRequests} FS.syncfs operations in flight at once, probably just doing extra work`);
       }
 
       var mounts = FS.getMounts(FS.root.mount);
@@ -1261,7 +1261,7 @@ FS.staticInit();` +
       opts.flags = opts.flags || {{{ cDefs.O_RDONLY }}};
       opts.encoding = opts.encoding || 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
-        throw new Error('Invalid encoding type "' + opts.encoding + '"');
+        throw new Error(`Invalid encoding type "${opts.encoding}"`);
       }
       var ret;
       var stream = FS.open(path, opts.flags);
@@ -1404,9 +1404,9 @@ FS.staticInit();` +
       var stdout = FS.open('/dev/stdout', {{{ cDefs.O_WRONLY }}});
       var stderr = FS.open('/dev/stderr', {{{ cDefs.O_WRONLY }}});
 #if ASSERTIONS
-      assert(stdin.fd === 0, 'invalid handle for stdin (' + stdin.fd + ')');
-      assert(stdout.fd === 1, 'invalid handle for stdout (' + stdout.fd + ')');
-      assert(stderr.fd === 2, 'invalid handle for stderr (' + stderr.fd + ')');
+      assert(stdin.fd === 0, `invalid handle for stdin (${stdin.fd})`);
+      assert(stdout.fd === 1, `invalid handle for stdout (${stdout.fd})`);
+      assert(stderr.fd === 2, `invalid handle for stderr (${stderr.fd})`);
 #endif
     },
     ensureErrnoError: () => {

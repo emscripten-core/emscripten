@@ -19,7 +19,7 @@ function intArrayToString(array) {
     var chr = array[i];
     if (chr > 0xFF) {
 #if ASSERTIONS
-      assert(false, 'Character code ' + chr + ' (' + String.fromCharCode(chr) + ')  at offset ' + i + ' not in 0x00-0xFF.');
+      assert(false, `Character code ${chr} (${String.fromCharCode(chr)}) at offset ${i} not in 0x00-0xFF.`);
 #endif
       chr &= 0xFF;
     }

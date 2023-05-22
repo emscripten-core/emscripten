@@ -17,7 +17,7 @@ function setValueImpl(ptr, value, type = 'i8') {
     case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float') }}}; break;
     case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double') }}}; break;
     case '*': {{{ makeSetValue('ptr', '0', 'value', '*') }}}; break;
-    default: abort('invalid type for setValue: ' + type);
+    default: abort(`invalid type for setValue: ${type}`);
   }
 }
 
@@ -32,7 +32,7 @@ function getValueImpl(ptr, type = 'i8') {
     case 'float': return {{{ makeGetValue('ptr', '0', 'float') }}};
     case 'double': return {{{ makeGetValue('ptr', '0', 'double') }}};
     case '*': return {{{ makeGetValue('ptr', '0', '*') }}};
-    default: abort('invalid type for getValue: ' + type);
+    default: abort(`invalid type for getValue: ${type}`);
   }
 }
 

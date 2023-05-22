@@ -17,16 +17,20 @@ extern "C" {
                                   behaves, the dynamically allocated memory can never be freed, so use this function
                                   only in scenarios where the page does not need to deinitialize/tear itself down.
 
-   emscripten_create_wasm_worker: Creates a Wasm Worker on given placed stack address.
+   emscripten_create_wasm_worker: Creates a Wasm Worker given a preallocated region for stack and TLS data.
                                   Use this function to manually manage the memory that a Worker should use.
                                   This function does not use any dynamic memory allocation.
+                                  Unlike with the above function, this variant requires that size of the
+                                  region provided is large enough to hold both stack and TLS area.
+                                  The size of the TLS area can be determined at runtime by calling
+                                  __builtin_wasm_tls_size().
 
    Returns an ID that represents the given Worker. If not building with Wasm workers enabled (-sWASM_WORKERS=0),
    these functions will return 0 to denote failure.
    Note that the Worker will be loaded up asynchronously, and initially will not be executing any code. Use
    emscripten_wasm_worker_post_function_*() set of functions to start executing code on the Worker. */
-emscripten_wasm_worker_t emscripten_malloc_wasm_worker(uint32_t stackSize);
-emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress __attribute__((nonnull)), uint32_t stackSize);
+emscripten_wasm_worker_t emscripten_malloc_wasm_worker(size_t stackSize);
+emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackPlusTLSAddress __attribute__((nonnull)), size_t stackPlusTLSSize);
 
 // Terminates the given Wasm Worker some time after it has finished executing its current, or possibly some subsequent
 // posted functions. Note that this function is not C++ RAII safe, but you must manually coordinate to release any

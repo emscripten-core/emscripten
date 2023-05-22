@@ -37,7 +37,7 @@ mergeInto(LibraryManager.library, {
     convertNodeCode: (e) => {
       var code = e.code;
 #if ASSERTIONS
-      assert(code in ERRNO_CODES, 'unexpected node error code: ' + code + ' (' + e + ')');
+      assert(code in ERRNO_CODES, `unexpected node error code: ${code} (${e})`);
 #endif
       return ERRNO_CODES[code];
     },

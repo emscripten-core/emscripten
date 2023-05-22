@@ -2047,6 +2047,7 @@ class libjsmath(Library):
 class libstubs(DebugLibrary):
   name = 'libstubs'
   src_dir = 'system/lib/libc'
+  includes = ['system/lib/libc/musl/src/include']
   src_files = ['emscripten_syscall_stubs.c', 'emscripten_libc_stubs.c']
 
 

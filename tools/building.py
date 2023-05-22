@@ -38,7 +38,7 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 112
+EXPECTED_BINARYEN_VERSION = 113
 
 _is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
@@ -135,10 +135,8 @@ def create_stub_object(external_symbols):
   stubfile = shared.get_temp_files().get('libemscripten_js_symbols.so').name
   stubs = ['#STUB']
   for name, deps in external_symbols.items():
-    if settings.ERROR_ON_UNDEFINED_SYMBOLS:
+    if not name.startswith('$'):
       stubs.append('%s: %s' % (name, ','.join(deps)))
-    else:
-      stubs.append(name)
   utils.write_file(stubfile, '\n'.join(stubs))
   return stubfile
 
@@ -147,6 +145,8 @@ def lld_flags_for_executable(external_symbols):
   cmd = []
   if external_symbols:
     if settings.INCLUDE_FULL_LIBRARY:
+      # When INCLUDE_FULL_LIBRARY is set try to export every possible
+      # native dependency of a JS function.
       all_deps = set()
       for deps in external_symbols.values():
         for dep in deps:

@@ -265,6 +265,13 @@ function ${name}(${args}) {
       }
 
       const deps = LibraryManager.library[symbol + '__deps'] || [];
+      let sig = LibraryManager.library[symbol + '__sig'];
+      if (!WASM_BIGINT && sig && sig[0] == 'j') {
+        // Without WASM_BIGINT functions that return i64 depend on setTempRet0
+        // to return the upper 32-bits of the result.
+        // See makeReturn64 in parseTools.py.
+        deps.push('setTempRet0');
+      }
 
       let isAsyncFunction = false;
       if (ASYNCIFY) {
@@ -279,7 +286,7 @@ function ${name}(${args}) {
       }
 
       if (symbolsOnly) {
-        if (!isJsOnlySymbol(symbol) && LibraryManager.library.hasOwnProperty(symbol)) {
+        if (LibraryManager.library.hasOwnProperty(symbol)) {
           var value = LibraryManager.library[symbol];
           var resolvedSymbol = symbol;
           // Resolve aliases before looking up deps
@@ -453,7 +460,6 @@ function ${name}(${args}) {
         }
         contentText = `var ${mangled} = ${snippet};`;
       }
-      const sig = LibraryManager.library[symbol + '__sig'];
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
       if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
@@ -465,6 +471,9 @@ function ${name}(${args}) {
       // TODO: For asyncify we could only add the signatures we actually need,
       //       of async imports/exports.
       if (sig && (RELOCATABLE || ASYNCIFY == 2)) {
+        if (!WASM_BIGINT) {
+          sig = sig[0].replace('j', 'i') + sig.slice(1).replace(/j/g, 'ii');
+        }
         contentText += `\n${mangled}.sig = '${sig}';`;
       }
       if (ASYNCIFY && isAsyncFunction) {
@@ -583,7 +592,7 @@ function ${name}(${args}) {
       warnings: warnings,
       asyncFuncs,
       ATINITS: ATINITS.join('\n'),
-      ATMAINS: ATMAINS.join('\n'),
+      ATMAINS: STRICT ? '' : ATMAINS.join('\n'),
       ATEXITS: ATEXITS.join('\n'),
     }));
   }

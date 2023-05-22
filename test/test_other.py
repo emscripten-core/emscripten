@@ -4994,7 +4994,7 @@ int main() {
 }''')
     self.run_process([EMXX, 'src.cpp'])
 
-  def test_syscall_without_filesystem(self):
+  def test_syscall_no_filesystem(self):
     # a program which includes a non-trivial syscall, but disables the filesystem.
     create_file('src.c', r'''
 #include <sys/time.h>
@@ -5003,6 +5003,9 @@ int main() {
   return openat(0, "foo", 0);
 }''')
     self.run_process([EMCC, 'src.c', '-sNO_FILESYSTEM'])
+
+  def test_dylink_no_filesystem(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-sMAIN_MODULE=2', '-sNO_FILESYSTEM'])
 
   def test_dashS(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-S'])
@@ -5198,15 +5201,17 @@ int main() {
     'full_only': [{'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, False],
   })
   def test_only_force_stdlibs(self, env, fail):
+    cmd = [EMXX, test_file('hello_libcxx.cpp')]
     with env_modify(env):
-      err = self.run_process([EMXX, test_file('hello_libcxx.cpp'), '-sWARN_ON_UNDEFINED_SYMBOLS=0'], stderr=PIPE).stderr
-      if 'EMCC_ONLY_FORCED_STDLIBS' in env:
-        self.assertContained('EMCC_ONLY_FORCED_STDLIBS is deprecated', err)
       if fail:
-        output = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-        self.assertContained('missing function', output)
+        err = self.expect_fail(cmd)
+        self.assertContained('undefined symbol: malloc', err)
       else:
-        self.assertContained('hello, world!', self.run_js('a.out.js'))
+        err = self.run_process(cmd, stderr=PIPE).stderr
+        if 'EMCC_ONLY_FORCED_STDLIBS' in env:
+          self.assertContained('EMCC_ONLY_FORCED_STDLIBS is deprecated', err)
+        else:
+          self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   def test_only_force_stdlibs_2(self):
     create_file('src.cpp', r'''
@@ -11184,50 +11189,6 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     for engine in config.WASM_ENGINES:
       self.assertContained(expected, self.run_js('test.wasm', engine))
 
-  @requires_native_clang
-  def test_wasm2c_reactor(self):
-    # test compiling an unsafe library using wasm2c, then using it from a
-    # main program. this shows it is easy to use wasm2c as a sandboxing
-    # mechanism.
-
-    # first compile the library with emcc, getting a .c and .h
-    self.run_process([EMCC,
-                      test_file('other/wasm2c/unsafe-library.c'),
-                      '-O3', '-o', 'lib.wasm', '-sWASM2C', '--no-entry'])
-    # compile the main program natively normally, together with the unsafe
-    # library
-    self.run_process([CLANG_CC,
-                      test_file('other/wasm2c/my-code.c'),
-                      'lib.wasm.c', '-O3', '-o', 'program.exe'] +
-                     clang_native.get_clang_native_args(),
-                     env=clang_native.get_clang_native_env())
-    output = self.run_process([os.path.abspath('program.exe')], stdout=PIPE).stdout
-    self.assertEqual(output, read_file(test_file('other/wasm2c/output.txt')))
-
-  @requires_native_clang
-  def test_wasm2c_multi_lib(self):
-    # compile two libraries to object files
-    for lib in ['a', 'b']:
-      self.run_process([EMCC,
-                        test_file('other/wasm2c', f'unsafe-library-{lib}.c'),
-                        '-O3', '-o', f'lib{lib}.wasm', '-sWASM2C', '--no-entry'])
-      # build with a different WASM_RT_MODULE_PREFIX for each library, so that
-      # they do not have colliding symbols
-      self.run_process([CLANG_CC, f'lib{lib}.wasm.c', '-O3', '-c',
-                        f'-DWASM_RT_MODULE_PREFIX={lib}_'] +
-                       clang_native.get_clang_native_args(),
-                       env=clang_native.get_clang_native_env())
-
-    # compile the main program with the wasmboxed libraries
-    self.run_process([CLANG_CC,
-                      test_file('other/wasm2c/my-code-multi.c'),
-                      'liba.wasm.o', 'libb.wasm.o',
-                      '-O3', '-o', 'program.exe'] +
-                     clang_native.get_clang_native_args(),
-                     env=clang_native.get_clang_native_env())
-    output = self.run_process([os.path.abspath('program.exe')], stdout=PIPE).stdout
-    self.assertEqual(output, read_file(test_file('other/wasm2c/output-multi.txt')))
-
   @parameterized({
     'wasm2js': (['-sWASM=0'], ''),
     'modularize': (['-sMODULARIZE'], 'Module()'),
@@ -12028,6 +11989,22 @@ exec "$@"
   def test_main_module_no_undefined(self):
     # Test that ERROR_ON_UNDEFINED_SYMBOLS works with MAIN_MODULE.
     self.do_runf(test_file('hello_world.c'), emcc_args=['-sMAIN_MODULE', '-sERROR_ON_UNDEFINED_SYMBOLS'])
+
+  def test_reverse_deps_allow_undefined(self):
+    # Check that reverse deps are still included even when -sERROR_ON_UNDEFINED_SYMBOLS=0.
+    create_file('test.c', '''
+    #include <assert.h>
+    #include <stdio.h>
+    #include <netdb.h>
+
+    int main() {
+      // Reference in getaddrinfo which has reverse deps on malloc and htons
+      // We expect these to be exported even when -sERROR_ON_UNDEFINED_SYMBOLS=0.
+      printf("%p\\n", &getaddrinfo);
+      return 0;
+    }
+    ''')
+    self.do_runf('test.c', emcc_args=['-sERROR_ON_UNDEFINED_SYMBOLS=0'])
 
   @parameterized({
     'relocatable': ('-sRELOCATABLE',),
@@ -13391,6 +13368,80 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.run_process(['build_with_quotes.bat'])
 
   @parameterized({
+    'wasm2js': (True,),
+    '': (False,)
+  })
+  def test_add_js_function(self, wasm2js):
+    self.set_setting('INVOKE_RUN', 0)
+    self.set_setting('WASM_ASYNC_COMPILATION', 0)
+    self.set_setting('ALLOW_TABLE_GROWTH')
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['callMain'])
+    if wasm2js:
+      self.set_setting('WASM', 0)
+    self.emcc_args += ['--post-js', test_file('interop/test_add_function_post.js')]
+
+    print('basics')
+    self.do_run_in_out_file_test('interop/test_add_function.cpp')
+
+    print('with ALLOW_TABLE_GROWTH=0')
+    self.set_setting('ALLOW_TABLE_GROWTH', 0)
+    expected = 'Unable to grow wasm table'
+    if wasm2js:
+      # in wasm2js the error message doesn't come from the VM, but from our
+      # emulation code. when ASSERTIONS are enabled we show a clear message, but
+      # in optimized builds we don't waste code size on that, and the JS engine
+      # shows a generic error.
+      expected = 'wasmTable.grow is not a function'
+
+    self.do_runf(test_file('interop/test_add_function.cpp'), expected, assert_returncode=NON_ZERO)
+
+    print('- with table growth')
+    self.set_setting('ALLOW_TABLE_GROWTH')
+    self.emcc_args += ['-DGROWTH']
+    # enable costly assertions to verify correct table behavior
+    self.set_setting('ASSERTIONS', 2)
+    self.do_run_in_out_file_test('interop/test_add_function.cpp', interleaved_output=False)
+
+  @parameterized({
+    'memory64_wasm_function': (True, True),
+    'wasm_function': (False, True),
+    'memory64': (True, False),
+    '': (False, False)
+  })
+  @requires_v8
+  def test_add_js_function_bigint(self, memory64, wasm_function):
+    self.set_setting('WASM_BIGINT')
+
+    if memory64:
+      self.require_wasm64()
+
+    if not wasm_function:
+      create_file('pre.js', 'delete WebAssembly.Function;')
+      self.emcc_args.append('--pre-js=pre.js')
+
+    self.set_setting('ALLOW_TABLE_GROWTH')
+    create_file('main.c', r'''
+      #include <emscripten.h>
+      #include <assert.h>
+
+      EM_JS_DEPS(deps, "$addFunction");
+
+      typedef long long (functype)(long long);
+
+      int main() {
+        functype* f = (functype *)EM_ASM_INT({
+          return addFunction((num) => {
+              return num + 4294967296n;
+          }, 'jj');
+        });
+        assert(f(26) == 26 + 4294967296);
+        assert(f(493921253191) == 493921253191 + 4294967296);
+      }
+    ''')
+
+    self.do_runf('main.c', '')
+
+  @parameterized({
     '': ([],),
     'pthread': (['-g', '-pthread', '-Wno-experimental', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
@@ -13437,3 +13488,8 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       }
     ''')
     self.do_runf('main.c', 'done\n', emcc_args=['-sMAIN_MODULE=2', '--preload-file', 'tmp.so@library.so', '--use-preload-plugins'] + args)
+
+  @node_pthreads
+  def test_standalone_whole_archive(self):
+    self.emcc_args += ['-sSTANDALONE_WASM', '-pthread', '-Wl,--whole-archive', '-lbulkmemory', '-lstandalonewasm', '-Wl,--no-whole-archive']
+    self.do_runf(test_file('hello_world.c'))

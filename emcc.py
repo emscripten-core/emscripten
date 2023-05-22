@@ -51,7 +51,6 @@ from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
 from tools import feature_matrix
 from tools import js_manipulation
-from tools import wasm2c
 from tools import webassembly
 from tools import config
 from tools import cache
@@ -540,7 +539,7 @@ def get_js_sym_info():
     """
     library_syms = generate_js_sym_info()
 
-    write_file(filename, json.dumps(library_syms, separators=(',', ':')))
+    write_file(filename, json.dumps(library_syms, separators=(',', ':'), indent=2))
 
   # We need to use a separate lock here for symbol lists because, unlike with system libraries,
   # it's normally for these file to get pruned as part of normal operation.  This means that it
@@ -1898,15 +1897,6 @@ def phase_linker_setup(options, state, newargs):
     settings.STANDALONE_WASM = 1
     settings.WASM_BIGINT = 1
 
-  if settings.WASM2C:
-    # wasm2c only makes sense with standalone wasm - there will be no JS,
-    # just wasm and then C
-    settings.STANDALONE_WASM = 1
-    # wasm2c doesn't need any special handling of i64, we have proper i64
-    # handling on the FFI boundary, which is exactly like the case of JS with
-    # BigInt support
-    settings.WASM_BIGINT = 1
-
   if options.no_entry:
     settings.EXPECT_MAIN = 0
   elif settings.STANDALONE_WASM:
@@ -2303,7 +2293,7 @@ def phase_linker_setup(options, state, newargs):
 
   if settings.WASMFS:
     state.forced_stdlibs.append('libwasmfs')
-    settings.FILESYSTEM = 0
+    settings.FILESYSTEM = 1
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
     settings.JS_LIBRARIES.append((0, 'library_wasmfs.js'))
     settings.REQUIRED_EXPORTS += ['_wasmfs_read_file']
@@ -2589,15 +2579,8 @@ def phase_linker_setup(options, state, newargs):
   elif options.memory_init_file:
     diagnostics.warning('unsupported', '--memory-init-file is only supported with -sWASM=0')
 
-  if (
-      settings.MAYBE_WASM2JS or
-      settings.AUTODEBUG or
-      settings.LINKABLE or
-      settings.INCLUDE_FULL_LIBRARY or
-      not settings.DISABLE_EXCEPTION_CATCHING or
-      (settings.MAIN_MODULE == 1 and (settings.DYNCALLS or not settings.WASM_BIGINT))
-  ):
-      settings.REQUIRED_EXPORTS += ["getTempRet0", "setTempRet0"]
+  if settings.AUTODEBUG:
+    settings.REQUIRED_EXPORTS += ['setTempRet0']
 
   if settings.LEGALIZE_JS_FFI:
     settings.REQUIRED_EXPORTS += ['__get_temp_ret', '__set_temp_ret']
@@ -3809,9 +3792,6 @@ def phase_binaryen(target, options, wasm_target):
 
   if settings.DEBUG_LEVEL >= 3 and settings.SEPARATE_DWARF and os.path.exists(wasm_target):
     building.emit_debug_on_side(wasm_target)
-
-  if settings.WASM2C:
-    wasm2c.do_wasm2c(wasm_target)
 
   # we have finished emitting the wasm, and so intermediate debug info will
   # definitely no longer be used tracking it.
