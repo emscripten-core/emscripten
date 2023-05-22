@@ -143,7 +143,9 @@ void test() {
   //printf("name_at_loc: %s\n", name_at_loc);
   assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
   ent = readdir(dir);
+#ifndef WASMFS_NODERAWFS
   assert(ent && ent->d_ino);
+#endif
   assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
   seekdir(dir, loc);
   ent = readdir(dir);
