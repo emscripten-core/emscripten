@@ -738,7 +738,7 @@ var LibraryDylink = {
         'GOT.mem': new Proxy({}, GOTHandler),
         'GOT.func': new Proxy({}, GOTHandler),
         'env': proxy,
-        {{{ WASI_MODULE_NAME }}}: proxy,
+        '{{{ WASI_MODULE_NAME }}}': proxy,
       };
 
       function postInstantiation(instance) {
