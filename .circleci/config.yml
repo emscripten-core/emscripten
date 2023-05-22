@@ -230,7 +230,7 @@ commands:
           name: run tests (<< parameters.title >>)
           command: |
             ./test/runner << parameters.test_targets >>
-            $EMSDK_PYTHON ./tools/check_clean.py
+            $EMSDK_PYTHON ./test/check_clean.py
   freeze-cache:
     description: "Freeze emscripten cache"
     steps:
