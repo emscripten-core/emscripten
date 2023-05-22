@@ -506,6 +506,7 @@ jobs:
             wasmfs.test_atexit_standalone
             wasmfs.test_emscripten_get_now
             wasmfs.test_dyncall_specific_minimal_runtime
+            wasmfs.test_fcntl_misc
             wasmfs.test_utime
             wasmfs.test_unistd_unlink
             wasmfs.test_unistd_access
