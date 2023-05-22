@@ -4167,6 +4167,8 @@ def process_libraries(state, linker_inputs):
       new_flags.append((i, flag))
       continue
     lib = strip_prefix(flag, '-l')
+    if lib == "c":
+      continue
 
     logger.debug('looking for library "%s"', lib)
     js_libs, native_lib = building.map_to_js_libs(lib)

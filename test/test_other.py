@@ -13493,3 +13493,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_standalone_whole_archive(self):
     self.emcc_args += ['-sSTANDALONE_WASM', '-pthread', '-Wl,--whole-archive', '-lbulkmemory', '-lstandalonewasm', '-Wl,--no-whole-archive']
     self.do_runf(test_file('hello_world.c'))
+
+  def test_lc_side_module(self):
+    create_file('side.c', 'int sidey() { return 42; }')
+    self.run_process([EMCC, '-sSIDE_MODULE', 'side.c', '-o', 'libside.so', '-lc'])
