@@ -157,7 +157,18 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       });
     },
     // TODO: lchmod
+    lchmod: (path, mode) => {
+      return withStackSave(() => {
+        var buffer = stringToUTF8OnStack(path);
+        return __wasmfs_lchmod(buffer, mode);
+      })
+    },
     // TODO: fchmod
+    fchmod: (fd, mode) => {
+      return withStackSave(() => {
+        return __wasmfs_fchmod(fd, mode);
+      })
+    },
     // TDOO: chown
     // TODO: lchown
     // TODO: fchown
