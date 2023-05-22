@@ -50,6 +50,7 @@ mergeInto(LibraryManager.library, {
     return wasmfsNodeFixStat(stat);
   },
 
+  _wasmfs_node_readdir__sig: 'ipp',
   _wasmfs_node_readdir__deps: ['$wasmfsNodeConvertNodeCode'],
   _wasmfs_node_readdir: function(path_p, vec) {
     let path = UTF8ToString(path_p);
@@ -80,6 +81,7 @@ mergeInto(LibraryManager.library, {
     // implicitly return 0
   },
 
+  _wasmfs_node_get_mode__sig: 'ipp',
   _wasmfs_node_get_mode__deps: ['$wasmfsNodeLstat'],
   _wasmfs_node_get_mode: function(path_p, mode_p) {
     let stat = wasmfsNodeLstat(UTF8ToString(path_p));
@@ -90,6 +92,7 @@ mergeInto(LibraryManager.library, {
     // implicitly return 0
   },
 
+  _wasmfs_node_stat_size__sig: 'ipp',
   _wasmfs_node_stat_size__deps: ['$wasmfsNodeLstat'],
   _wasmfs_node_stat_size: function(path_p, size_p) {
     let stat = wasmfsNodeLstat(UTF8ToString(path_p));
@@ -100,6 +103,7 @@ mergeInto(LibraryManager.library, {
     // implicitly return 0
   },
 
+  _wasmfs_node_fstat_size__sig: 'iip',
   _wasmfs_node_fstat_size__deps: ['$wasmfsNodeFstat'],
   _wasmfs_node_fstat_size: function(fd, size_p) {
     let stat = wasmfsNodeFstat(fd);
@@ -110,6 +114,7 @@ mergeInto(LibraryManager.library, {
     // implicitly return 0
   },
 
+  _wasmfs_node_insert_file__sig: 'ipi',
   _wasmfs_node_insert_file__deps: ['$wasmfsNodeConvertNodeCode'],
   _wasmfs_node_insert_file: function(path_p, mode) {
     try {
@@ -121,6 +126,7 @@ mergeInto(LibraryManager.library, {
     // implicitly return 0
   },
 
+  _wasmfs_node_insert_directory__sig: 'ipi',
   _wasmfs_node_insert_directory__deps: ['$wasmfsNodeConvertNodeCode'],
   _wasmfs_node_insert_directory: function(path_p, mode) {
     try {
@@ -132,6 +138,7 @@ mergeInto(LibraryManager.library, {
     // implicitly return 0
   },
 
+  _wasmfs_node_unlink__sig: 'ip',
   _wasmfs_node_unlink__deps: ['$wasmfsNodeConvertNodeCode'],
   _wasmfs_node_unlink: function(path_p) {
     try {
@@ -143,6 +150,7 @@ mergeInto(LibraryManager.library, {
     // implicitly return 0
   },
 
+  _wasmfs_node_rmdir__sig: 'ip',
   _wasmfs_node_rmdir__deps: ['$wasmfsNodeConvertNodeCode'],
   _wasmfs_node_rmdir: function(path_p) {
     try {
@@ -154,6 +162,7 @@ mergeInto(LibraryManager.library, {
     // implicitly return 0
   },
 
+  _wasmfs_node_open__sig: 'ipp',
   _wasmfs_node_open__deps: ['$wasmfsNodeConvertNodeCode'],
   _wasmfs_node_open: function(path_p, mode_p) {
     try {
@@ -174,6 +183,7 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  _wasmfs_node_read__sig: 'iipiip',
   _wasmfs_node_read__deps: ['$wasmfsNodeConvertNodeCode'],
   _wasmfs_node_read: function(fd, buf_p, len, pos, nread_p) {
     try {
@@ -188,6 +198,7 @@ mergeInto(LibraryManager.library, {
     // implicitly return 0
   },
 
+  _wasmfs_node_write__sig: 'iipiip',
   _wasmfs_node_write__deps : ['$wasmfsNodeConvertNodeCode'],
   _wasmfs_node_write : function(fd, buf_p, len, pos, nwritten_p) {
     try {
