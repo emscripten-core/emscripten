@@ -133,6 +133,10 @@ int _wasmfs_chmod(char* path, mode_t mode) {
   return __syscall_chmod((intptr_t)path, mode);
 }
 
+int _wasmfs_close(int fd) {
+  return __wasi_fd_close(fd);
+}
+
 // Helper method that identifies what a path is:
 //   ENOENT - if nothing exists there
 //   EISDIR - if it is a directory

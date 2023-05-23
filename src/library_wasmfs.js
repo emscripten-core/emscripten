@@ -102,6 +102,11 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     },
     // TODO: create
     // TODO: close
+    close: (fd) => {
+      return withStackSave(() => {
+        return __wasmfs_close(fd);
+      });
+    },
     unlink: (path) => {
       return withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
