@@ -3387,13 +3387,13 @@ var LibrarySDL = {
 
   SDL_GL_GetSwapInterval__proxy: 'sync',
   SDL_GL_GetSwapInterval: function() {
-    if (Browser.mainLoop.timingMode == 1/*EM_TIMING_RAF*/) return Browser.mainLoop.timingValue;
+    if (Browser.mainLoop.timingMode == {{{ cDefs.EM_TIMING_RAF }}}) return Browser.mainLoop.timingValue;
     else return 0;
   },
 
   SDL_GL_SetSwapInterval__deps: ['emscripten_set_main_loop_timing'],
   SDL_GL_SetSwapInterval: function(state) {
-    _emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, state);
+    _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_RAF }}}, state);
   },
 
   SDL_SetWindowTitle__proxy: 'sync',
