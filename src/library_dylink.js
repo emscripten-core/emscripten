@@ -26,8 +26,11 @@ var LibraryDylink = {
         // promises to run in series.
         wasmPlugin['promiseChainEnd'] = wasmPlugin['promiseChainEnd'].then(
           () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true})).then(
-            (module) => {
-              preloadedWasm[name] = module;
+            (exports) => {
+#if DYLINK_DEBUG
+              dbg(`registering preloadedWasm: ${name}`);
+#endif
+              preloadedWasm[name] = exports;
               onload(byteArray);
             },
             (error) => {
@@ -110,7 +113,7 @@ var LibraryDylink = {
       var rtn = GOT[symName];
       if (!rtn) {
         rtn = GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true});
-#if DYLINK_DEBUG
+#if DYLINK_DEBUG == 2
         dbg("new GOT entry: " + symName);
 #endif
       }
@@ -171,12 +174,12 @@ var LibraryDylink = {
         GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true});
       }
       if (replace || GOT[symName].value == 0) {
-#if DYLINK_DEBUG
+#if DYLINK_DEBUG == 2
         dbg(`updateGOT: before: ${symName} : ${GOT[symName].value}`);
 #endif
         if (typeof value == 'function') {
           GOT[symName].value = {{{ to64('addFunction(value)') }}};
-#if DYLINK_DEBUG
+#if DYLINK_DEBUG == 2
           dbg(`updateGOT: FUNC: ${symName} : ${GOT[symName].value}`);
 #endif
         } else if (typeof value == {{{ POINTER_JS_TYPE }}}) {
@@ -184,7 +187,7 @@ var LibraryDylink = {
         } else {
           err(`unhandled export type for '${symName}': ${typeof value}`);
         }
-#if DYLINK_DEBUG
+#if DYLINK_DEBUG == 2
         dbg(`updateGOT:  after: ${symName} : ${GOT[symName].value} (${value})`);
 #endif
       }
@@ -248,13 +251,13 @@ var LibraryDylink = {
 #if ASSERTIONS
         assert(value, `undefined symbol '${symName}'. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment`);
 #endif
-#if DYLINK_DEBUG
+#if DYLINK_DEBUG == 2
         dbg(`assigning dynamic symbol from main module: ${symName} -> ${prettyPrint(value)}`);
 #endif
         if (typeof value == 'function') {
           /** @suppress {checkTypes} */
           GOT[symName].value = {{{ to64('addFunction(value, value.sig)') }}};
-#if DYLINK_DEBUG
+#if DYLINK_DEBUG == 2
           dbg(`assigning table entry for : ${symName} -> ${GOT[symName].value}`);
 #endif
         } else if (typeof value == 'number') {
@@ -989,12 +992,12 @@ var LibraryDylink = {
     function getExports() {
 #if FILESYSTEM
       // lookup preloaded cache first
-      if (preloadedWasm[libName]) {
+      var preloaded = preloadedWasm[libName];
 #if DYLINK_DEBUG
-        dbg(`using preloaded module for: ${libName}`);
+      dbg(`checking preloadedWasm: ${libName}: ${preloaded ? 'found' : 'not found'}`);
 #endif
-        var libModule = preloadedWasm[libName];
-        return flags.loadAsync ? Promise.resolve(libModule) : libModule;
+      if (preloaded) {
+        return flags.loadAsync ? Promise.resolve(preloaded) : preloaded;
       }
 #endif
 
@@ -1037,7 +1040,7 @@ var LibraryDylink = {
   $loadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols'],
   $loadDylibs: function() {
 #if DYLINK_DEBUG
-    dbg('loadDylibs');
+    dbg(`loadDylibs: ${dynamicLibraries}`);
 #endif
     if (!dynamicLibraries.length) {
 #if DYLINK_DEBUG
@@ -1058,7 +1061,7 @@ var LibraryDylink = {
       reportUndefinedSymbols();
       removeRunDependency('loadDylibs');
 #if DYLINK_DEBUG
-    dbg('loadDylibs done!');
+      dbg('loadDylibs done!');
 #endif
     });
   },
