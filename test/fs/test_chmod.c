@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <emscripten/emscripten.h>
 
 int main() {
@@ -71,6 +72,31 @@ int main() {
     stat("testfile", &fileStat);
     assert(fileStat.st_mode & (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH));
     assert(!(fileStat.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)));;
+    printf("File Permissions: \t");
+    printf( (S_ISDIR(fileStat.st_mode)) ? "d" : "-");
+    printf( (fileStat.st_mode & S_IRUSR) ? "r" : "-");
+    printf( (fileStat.st_mode & S_IWUSR) ? "w" : "-");
+    printf( (fileStat.st_mode & S_IXUSR) ? "x" : "-");
+    printf( (fileStat.st_mode & S_IRGRP) ? "r" : "-");
+    printf( (fileStat.st_mode & S_IWGRP) ? "w" : "-");
+    printf( (fileStat.st_mode & S_IXGRP) ? "x" : "-");
+    printf( (fileStat.st_mode & S_IROTH) ? "r" : "-");
+    printf( (fileStat.st_mode & S_IWOTH) ? "w" : "-");
+    printf( (fileStat.st_mode & S_IXOTH) ? "x" : "-");
+    printf("\n\n");
+
+    EM_ASM(
+        FS.symlink("testfile", "symlinkFile");
+        FS.lchmod("symlinkFile", 0000);
+    );
+
+    lstat("symlinkFile", &symlinkStat);
+    assert(S_ISLNK(symlinkStat.st_mode));
+    assert(!(symlinkStat.st_mode & (S_IRWXU | S_IRWXG | S_IRWXU)));
+    
+    stat("testfile", &fileStat);
+    assert(fileStat.st_mode & (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH));
+    assert(!(fileStat.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)));;
 
     EM_ASM(
         FS.chmod("/folder", 0700);
@@ -80,6 +106,35 @@ int main() {
     assert(S_ISDIR(folderStat.st_mode));
     assert(folderStat.st_mode & S_IRWXU);
     assert(!(folderStat.st_mode & (S_IRWXG | S_IRWXO)));
+
+#if WASMFS
+    EM_ASM(
+        var fd = FS.open("/folder");
+        FS.fchmod(fd, 0000);
+    );
+#else
+    EM_ASM(
+        var stream = FS.open("/folder");
+        FS.fchmod(stream.fd, 0000);
+    );
+#endif
+    stat("/folder", &folderStat);
+    assert(S_ISDIR(folderStat.st_mode));
+    assert(!(folderStat.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)));
+
+    EM_ASM(
+        FS.symlink("/folder", "/symlinkFolder");
+        FS.lchmod("/symlinkFolder", 0444);
+    );
+
+    lstat("/symlinkFolder", &folderStat);
+    assert(S_ISLNK(folderStat.st_mode));
+    assert(folderStat.st_mode & (S_IRUSR | S_IRGRP | S_IROTH));
+    assert(!(folderStat.st_mode & (S_IWUSR | S_IXUSR | S_IWGRP | S_IXGRP | S_IWOTH | S_IXOTH)));
+
+    stat("/folder", &folderStat);
+    assert(S_ISDIR(folderStat.st_mode));
+    assert(!(folderStat.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)));
 
     
     puts("success");
