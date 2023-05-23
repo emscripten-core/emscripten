@@ -5805,6 +5805,11 @@ Module = {
 
   @also_with_noderawfs
   def test_readdir(self):
+    if self.get_setting('WASMFS') and self.get_setting('NODERAWFS'):
+      # WasmFS + NODERAWFS lacks ino numbers in directory listings, see
+      # https://github.com/emscripten-core/emscripten/issues/19418
+      # We need to tell the test we are in this mode so it can ignore them.
+      self.emcc_args += ['-DWASMFS_NODERAWFS']
     self.do_run_in_out_file_test('dirent/test_readdir.c')
 
   @also_with_wasm_bigint
@@ -6043,12 +6048,13 @@ Module = {
       self.emcc_args += ['-sWASMFS', '-sFORCE_FILESYSTEM']
     self.do_run_in_out_file_test('fs/test_mmap.c', emcc_args=['-D' + fs])
 
+  @no_wasmfs('wasmfs will (?) need a non-JS mechanism to ignore permissions during startup')
   @parameterized({
     '': [],
     'minimal_runtime': ['-sMINIMAL_RUNTIME=1']
   })
   def test_fs_no_main(self, *args):
-    # library_fs.js uses hooks to enable ignoreing of permisions up until ATMAINs are run.  This
+    # library_fs.js uses hooks to enable ignoring of permisions up until ATMAINs are run.  This
     # test verified that they work correctly, even in programs without a main function.
     create_file('pre.js', '''
 Module['preRun'] = function() {
