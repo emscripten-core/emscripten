@@ -60,7 +60,6 @@ void test() {
   origTimes[1].tv_sec = (time_t)s.st_mtime;
   origTimes[1].tv_nsec = origTimes[1].tv_sec * 1000;
   err = futimens(fd, origTimes);
-  printf("err: %d %d %s\n", err, errno, strerror(errno));
   assert(!err);
 
   close(fd);
