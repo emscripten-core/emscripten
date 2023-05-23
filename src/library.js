@@ -567,8 +567,6 @@ mergeInto(LibraryManager.library, {
     return ret;
   },
 
-  // TODO: Initialize these to defaults on startup from system settings.
-  // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
   _tzset_js__deps: ['$stringToNewUTF8'],
   _tzset_js__internal: true,
   _tzset_js: function(timezone, daylight, tzname) {
