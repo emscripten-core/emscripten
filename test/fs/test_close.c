@@ -16,7 +16,6 @@ int main() {
 
 #if WASMFS
         error = FS.close(file);
-        console.log("Error: ", error);
         assert(error === 8 /* EBADF */);
 #else
         var ex;
