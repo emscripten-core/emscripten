@@ -14,7 +14,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     '$wasmFSPreloadedFiles',
     '$wasmFSPreloadedDirs',
     '$PATH',
-    '$stringToNewUTF8',
     '$stringToUTF8OnStack',
     '$withStackSave',
     '$readI53FromI64',
@@ -22,6 +21,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     '$FS_getMode',
 #if FORCE_FILESYSTEM
     '$FS_modeStringToFlags',
+    'malloc',
 #endif
   ],
   $FS : {
@@ -49,23 +49,24 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         throw new Error('Invalid encoding type "' + opts.encoding + '"');
       }
 
-      var pathName = stringToNewUTF8(path);
+      return withStackSave(() => {
+        var pathName = stringToUTF8OnStack(path);
 
-      // Copy the file into a JS buffer on the heap.
-      var buf = __wasmfs_read_file(pathName);
-      // The signed integer length resides in the first 8 bytes of the buffer.
-      var length = {{{ makeGetValue('buf', '0', 'i53') }}};
+        // Copy the file into a JS buffer on the heap.
+        var buf = __wasmfs_read_file(pathName);
+        // The signed integer length resides in the first 8 bytes of the buffer.
+        var length = {{{ makeGetValue('buf', '0', 'i53') }}};
 
-      // Default return type is binary.
-      // The buffer contents exist 8 bytes after the returned pointer.
-      var ret = new Uint8Array(HEAPU8.subarray(buf + 8, buf + 8 + length));
-      if (opts.encoding === 'utf8') {
-        ret = UTF8ArrayToString(ret, 0);
-      }
+        // Default return type is binary.
+        // The buffer contents exist 8 bytes after the returned pointer.
+        var ret = new Uint8Array(HEAPU8.subarray(buf + 8, buf + 8 + length));
+        if (opts.encoding === 'utf8') {
+          ret = UTF8ArrayToString(ret, 0);
+        }
 
-      _free(pathName);
-      _free(buf);
-      return ret;
+        _free(buf);
+        return ret;
+      });
     },
     cwd: () => {
       // TODO: Remove dependency on FS.cwd().
