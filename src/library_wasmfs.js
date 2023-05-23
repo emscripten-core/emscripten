@@ -165,9 +165,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     },
     // TODO: fchmod
     fchmod: (fd, mode) => {
-      return withStackSave(() => {
-        return __wasmfs_fchmod(fd, mode);
-      })
+      return __wasmfs_fchmod(fd, mode);
     },
     // TDOO: chown
     // TODO: lchown

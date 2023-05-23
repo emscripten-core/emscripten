@@ -1127,7 +1127,8 @@ int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
     return -EINVAL;
   }
   // TODO: Handle AT_SYMLINK_NOFOLLOW once we traverse symlinks correctly.
-  auto parsed = path::parseFile((char*)path, dirfd);
+  // auto parsed = path::parseFile((char*)path, dirfd);
+  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
   if (auto err = parsed.getError()) {
     return err;
   }
