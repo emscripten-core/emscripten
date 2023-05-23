@@ -6013,7 +6013,7 @@ Module = {
     self.emcc_args += ['-sWASMFS']
     self.emcc_args += ['-sFORCE_FILESYSTEM']
     self.do_runf(test_file('fs/test_open_wasmfs.c'), 'success')
-  
+
   def test_fs_chmod(self):
     self.set_setting("FORCE_FILESYSTEM")
     self.do_runf(test_file('fs/test_chmod.c'), 'success')
