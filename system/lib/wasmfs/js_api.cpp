@@ -190,8 +190,10 @@ void _wasmfs_readdir_finish(struct wasmfs_readdir_state* state) {
   free(state);
 }
 
+// Given a path, parse in into a full absolute path relative to the current
+// directory. Returns an allocated buffer that the caller must free, or 0 on
+// error.
 char* _wasmfs_parse_path(char* path) {
-printf("parsey: |%s|\n", path);
   auto parsed = path::parseFile((char*)path);
   if (auto err = parsed.getError()) {
     return 0;
@@ -225,7 +227,6 @@ printf("parsey: |%s|\n", path);
   }
   std::copy(ret.begin(), ret.end(), buffer);
   buffer[ret.size()] = 0;
-printf("waka result |%s|\n", buffer);
   return buffer;
 }
 

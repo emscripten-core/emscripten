@@ -2301,7 +2301,7 @@ def phase_linker_setup(options, state, newargs):
     # Add exports that are needed for general WasmFS usage, even without the
     # user using the JS API (see below for that).
     settings.REQUIRED_EXPORTS += [
-      '_wasmfs_read_file'
+      '_wasmfs_read_file',
       '_wasmfs_parse_path',
     ]
     if settings.FORCE_FILESYSTEM:

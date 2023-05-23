@@ -771,10 +771,9 @@ If manually bisecting:
       for dest, dirname, basename in [('screenshot.jpg', '/', 'screenshot.jpg'),
                                       ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
         self.btest_exit(src, args=args + [
-          '-O2', '-lSDL', '-lGL', '--profiling', '-sFORCE_FILESYSTEM',
+          '-O2', '-lSDL', '-lGL',
           '--preload-file', dest, '-DSCREENSHOT_DIRNAME="' + dirname + '"', '-DSCREENSHOT_BASENAME="' + basename + '"', '--use-preload-plugins'
         ])
-      return # XXX
 
   @also_with_wasmfs
   def test_sdl_image_jpeg(self):
