@@ -185,7 +185,7 @@ var SyscallsLibrary = {
   },
   __syscall_dup: function(fd) {
     var old = SYSCALLS.getStreamFromFD(fd);
-    return FS.createStream(old, 0).fd;
+    return FS.createStream(old).fd;
   },
   __syscall_pipe__deps: ['$PIPEFS'],
   __syscall_pipe: function(fdPtr) {
@@ -956,15 +956,15 @@ var SyscallsLibrary = {
     FS.allocate(stream, offset, len);
     return 0;
   },
-  __syscall_dup3: function(fd, suggestFD, flags) {
+  __syscall_dup3: function(fd, newfd, flags) {
     var old = SYSCALLS.getStreamFromFD(fd);
 #if ASSERTIONS
     assert(!flags);
 #endif
-    if (old.fd === suggestFD) return -{{{ cDefs.EINVAL }}};
-    var suggest = FS.getStream(suggestFD);
-    if (suggest) FS.close(suggest);
-    return FS.createStream(old, suggestFD, suggestFD + 1).fd;
+    if (old.fd === newfd) return -{{{ cDefs.EINVAL }}};
+    var existing = FS.getStream(newfd);
+    if (existing) FS.close(existing);
+    return FS.createStream(old, newfd).fd;
   },
 };
 
