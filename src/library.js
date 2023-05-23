@@ -2337,13 +2337,12 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_get_now: ';' +
-#if ENVIRONMENT_MAY_BE_NODE
-                               "if (ENVIRONMENT_IS_NODE) {\n" +
-                               "  _emscripten_get_now = () => {\n" +
-                               "    var t = process.hrtime();\n" +
-                               "    return t[0] * 1e3 + t[1] / 1e6;\n" +
-                               "  };\n" +
-                               "} else " +
+#if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 160000
+// The performance global was added to node in v16.0.0:
+// https://nodejs.org/api/globals.html#performance
+                              "if (ENVIRONMENT_IS_NODE) {\n" +
+                              "  global.performance = require('perf_hooks').performance;\n" +
+                              "}" +
 #endif
 #if PTHREADS && !AUDIO_WORKLET
 // Pthreads need their clocks synchronized to the execution of the main thread, so, when using them,
@@ -2369,7 +2368,7 @@ mergeInto(LibraryManager.library, {
                                "}",
 #else
                                // Modern environment where performance.now() is supported:
-                               // N.B. a shorter form "_emscripten_get_now = return performance.now;" is unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
+                               // N.B. a shorter form "_emscripten_get_now = performance.now;" is unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
                                "_emscripten_get_now = () => performance.now();\n",
 #endif
 #endif
@@ -2378,19 +2377,18 @@ mergeInto(LibraryManager.library, {
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
       return 1; // nanoseconds
-    } else
+    }
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
     if (typeof dateNow != 'undefined') {
       return 1000; // microseconds (1/1000 of a millisecond)
-    } else
+    }
 #endif
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
     if (typeof performance == 'object' && performance && typeof performance['now'] == 'function') {
       return 1000; // microseconds (1/1000 of a millisecond)
-    } else {
-      return 1000*1000; // milliseconds
     }
+    return 1000*1000; // milliseconds
 #else
     // Modern environment where performance.now() is supported:
     return 1000; // microseconds (1/1000 of a millisecond)
