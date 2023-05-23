@@ -16,13 +16,13 @@ import sys
 from os import path
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
-__rootdir__ = os.path.dirname(__scriptdir__)
+__rootdir__ = os.path.dirname(os.path.dirname(__scriptdir__))
 sys.path.append(__rootdir__)
 
 from tools.shared import get_emscripten_temp_dir
 
 tmpdir = get_emscripten_temp_dir()
-emdir = path.join(path.dirname(path.realpath(__file__)), "..")
+emdir = __rootdir__
 
 
 def main():

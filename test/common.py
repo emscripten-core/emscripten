@@ -8,7 +8,7 @@ from functools import wraps
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 from typing import Dict, Tuple
-from urllib.parse import unquote, unquote_plus
+from urllib.parse import unquote, unquote_plus, urlparse, parse_qs
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 import contextlib
 import difflib
@@ -1521,6 +1521,19 @@ def harness_server_func(in_queue, out_queue, port):
       self.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
       self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
       return SimpleHTTPRequestHandler.end_headers(self)
+
+    def do_POST(self):
+      urlinfo = urlparse(self.path)
+      query = parse_qs(urlinfo.query)
+      # Mirror behaviour of emrun which is to write POST'd files to dump_out/ by default
+      if query['file']:
+        print('do_POST: got file: %s' % query['file'])
+        ensure_dir('dump_out')
+        filename = os.path.join('dump_out', query['file'][0])
+        contentLength = int(self.headers['Content-Length'])
+        write_binary(filename, self.rfile.read(contentLength))
+        self.send_response(200)
+        self.end_headers()
 
     def do_GET(self):
       if self.path == '/run_harness':

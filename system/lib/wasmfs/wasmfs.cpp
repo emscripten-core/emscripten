@@ -12,6 +12,7 @@
 #include "paths.h"
 #include "special_files.h"
 #include "wasmfs.h"
+#include "wasmfs_internal.h"
 
 namespace wasmfs {
 
@@ -32,16 +33,6 @@ backend_t createIgnoreCaseBackend(std::function<backend_t()> createBacken);
 # 29 "wasmfs.cpp" 3
 __attribute__((init_priority(100))) WasmFS wasmFS;
 # 31 "wasmfs.cpp"
-
-// These helper functions will be linked in from library_wasmfs.js.
-extern "C" {
-int _wasmfs_get_num_preloaded_files();
-int _wasmfs_get_num_preloaded_dirs();
-int _wasmfs_get_preloaded_file_mode(int index);
-void _wasmfs_get_preloaded_parent_path(int index, char* parentPath);
-void _wasmfs_get_preloaded_path_name(int index, char* fileName);
-void _wasmfs_get_preloaded_child_path(int index, char* childName);
-}
 
 // If the user does not implement this hook, do nothing.
 __attribute__((weak)) extern "C" void wasmfs_before_preload(void) {}
@@ -70,14 +61,18 @@ WasmFS::~WasmFS() {
   rootDirectory->locked().setParent(nullptr);
 }
 
-std::shared_ptr<Directory> WasmFS::initRootDirectory() {
-
+// Special backends that want to install themselves as the root use this hook.
+// Otherwise, we use the default backends.
+__attribute__((weak)) extern backend_t wasmfs_create_root_dir(void) {
 #ifdef WASMFS_CASE_INSENSITIVE
-  auto rootBackend =
-    createIgnoreCaseBackend([]() { return createMemoryBackend(); });
+  return createIgnoreCaseBackend([]() { return createMemoryBackend(); });
 #else
-  auto rootBackend = createMemoryBackend();
+  return createMemoryBackend();
 #endif
+}
+
+std::shared_ptr<Directory> WasmFS::initRootDirectory() {
+  auto rootBackend = wasmfs_create_root_dir();
   auto rootDirectory =
     rootBackend->createDirectory(S_IRUGO | S_IXUGO | S_IWUGO);
   auto lockedRoot = rootDirectory->locked();

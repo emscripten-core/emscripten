@@ -245,7 +245,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   var url_ = UTF8ToString(url);
 
   var fetch_attr = fetch + {{{ C_STRUCTS.emscripten_fetch_t.__attributes }}};
-  var requestMethod = UTF8ToString({{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.requestMethod, '*') }}});
+  var requestMethod = UTF8ToString(fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.requestMethod }}});
   if (!requestMethod) requestMethod = 'GET';
   var timeoutMsecs = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.timeoutMSecs, 'u32') }}};
   var userName = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.userName, '*') }}};
@@ -444,17 +444,11 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
   {{{ runtimeKeepalivePush() }}}
 
   var fetch_attr = fetch + {{{ C_STRUCTS.emscripten_fetch_t.__attributes }}};
-  var requestMethod = UTF8ToString(fetch_attr);
   var onsuccess = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.onsuccess }}} >> 2];
   var onerror = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.onerror }}} >> 2];
   var onprogress = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.onprogress }}} >> 2];
   var onreadystatechange = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.onreadystatechange }}} >> 2];
   var fetchAttributes = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.attributes }}} >> 2];
-#if FETCH_SUPPORT_INDEXEDDB
-  var fetchAttrPersistFile = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_PERSIST_FILE }}});
-  var fetchAttrNoDownload = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_NO_DOWNLOAD }}});
-#endif
-  var fetchAttrReplace = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_REPLACE }}});
   var fetchAttrSynchronous = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_SYNCHRONOUS }}});
 
   function doCallback(f) {
@@ -546,10 +540,15 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     fetchXHR(fetch, cacheResultAndReportSuccess, reportError, reportProgress, reportReadyStateChange);
   };
 
+  var requestMethod = UTF8ToString(fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.requestMethod }}});
+  var fetchAttrReplace = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_REPLACE }}});
+  var fetchAttrPersistFile = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_PERSIST_FILE }}});
+  var fetchAttrNoDownload = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_NO_DOWNLOAD }}});
   if (requestMethod === 'EM_IDB_STORE') {
     // TODO(?): Here we perform a clone of the data, because storing shared typed arrays to IndexedDB does not seem to be allowed.
-    var ptr = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.requestData }}} >> 2];
-    fetchCacheData(Fetch.dbInstance, fetch, HEAPU8.slice(ptr, ptr + HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.requestDataSize }}} >> 2]), reportSuccess, reportError);
+    var ptr = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.requestData, '*') }}};
+    var size = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.requestDataSize, '*') }}};
+    fetchCacheData(Fetch.dbInstance, fetch, HEAPU8.slice(ptr, ptr + size), reportSuccess, reportError);
   } else if (requestMethod === 'EM_IDB_DELETE') {
     fetchDeleteCachedData(Fetch.dbInstance, fetch, reportSuccess, reportError);
   } else if (!fetchAttrReplace) {
