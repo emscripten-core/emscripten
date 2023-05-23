@@ -14,11 +14,18 @@ int main() {
         error = FS.close(file);
         assert(!error);
 
+#if WASMFS
+        error = FS.close(file);
+        assert(error);
+#else
+        var ex;
         try {
             FS.close(file);
         } catch(err) {
-            assert(err)
+            ex = err;
         }
+        assert(ex instanceof FS.ErrnoError && ex.errno === 8 /* EBADF */)
+#endif
     );
 
     puts("success");
