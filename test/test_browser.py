@@ -4751,6 +4751,9 @@ Module["preRun"].push(function () {
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/idb_delete.cpp', args=['-pthread', '-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])
 
+  def test_fetch_post(self):
+    self.btest_exit('fetch/test_fetch_post.c', args=['-sFETCH'])
+
   @requires_threads
   def test_pthread_locale(self):
     self.emcc_args.append('-I' + path_from_root('system/lib/libc/musl/src/internal'))
