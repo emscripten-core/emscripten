@@ -5812,6 +5812,7 @@ Module = {
     self.do_run_in_out_file_test('dirent/test_readdir_empty.c')
 
   def test_stat(self):
+    self.set_setting("FORCE_FILESYSTEM")
     self.do_runf(test_file('stat/test_stat.c'), 'success')
     self.verify_in_strict_mode('test_stat.js')
 

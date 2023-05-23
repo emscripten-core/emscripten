@@ -133,15 +133,17 @@ int _wasmfs_chmod(char* path, mode_t mode) {
   return __syscall_chmod((intptr_t)path, mode);
 }
 
-int _wasmfs_stat(char* buffer) {
+struct stat _wasmfs_stat(char* path) {
   struct stat stats;
-  __syscall_stat64(buffer, &stats);
+  int err = __syscall_stat64((intptr_t)path, (intptr_t)&stats);
+  printf("Error: %d\n", err);
   return stats;
 }
 
-int _wasmfs_lstat(char* buffer) {
+struct stat _wasmfs_lstat(char* path) {
   struct stat stats;
-  __syscall_lstat64(buffer, &stats);
+  int err = __syscall_lstat64((intptr_t)path, (intptr_t)&stats);
+  printf("Error: %d\n", err);
   return stats;
 }
 

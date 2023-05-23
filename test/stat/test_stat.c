@@ -19,6 +19,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/sysmacros.h>
+#include <emscripten/emscripten.h>
 
 void create_file(const char *path, const char *buffer, int mode) {
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
@@ -59,6 +60,19 @@ void test() {
   assert(err == -1);
   assert(errno == ENOENT);
 
+  EM_ASM(
+    var ex;
+    try {
+      console.log("TRY");
+      var stats = FS.stat("does_not_exist");
+      console.log(stats);
+    } catch(err) {
+      console.log("CATCH");
+      ex = err;
+    }
+    // assert(ex);
+  );
+
   // stat a folder
   memset(&s, 0, sizeof(s));
   err = stat("folder", &s);
@@ -86,6 +100,20 @@ void test() {
 #endif
 #endif
 
+#if WASMFS
+  EM_ASM(
+    var stats = FS.stat("folder");
+    console.log("Folder: " + stats);
+  );
+#else
+  EM_ASM(
+    var stats = FS.stat("folder");
+    console.log(stats);
+    assert(stats.dev);
+    assert(stats.ino);
+  );
+#endif
+  
   // stat a file
   memset(&s, 0, sizeof(s));
   err = stat("folder/file", &s);
@@ -102,6 +130,14 @@ void test() {
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);
+#endif
+
+#if WASMFS
+  EM_ASM(
+    var stats = FS.stat("folder/file");
+    console.log("File: " + stats);
+  );
+#else
 #endif
 
   // fstat a file (should match file stat from above)
