@@ -203,6 +203,27 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
 #endif
   },
+
+  // A minimal version of PATH_FS for lookups. This overrides the version in
+  // library_path.js.
+  $PATH_FS: {
+    resolve: function(path) {
+#if ASSERTIONS
+      // The old FS allowed multiple arguments, but we do not.
+      assert(arguments[1] === undefined);
+#endif
+
+      return withStackSave(() => {
+        var pathBuffer = stringToUTF8OnStack(path);
+        var buf = __wasmfs_parse_path(pathBuffer);
+        assert(buf); // TODO: error handling
+        var ret = UTF8ToString(buf);
+        _free(buf);
+        return ret;
+      });
+    }
+  },
+
   _wasmfs_get_num_preloaded_files__deps: ['$wasmFSPreloadedFiles'],
   _wasmfs_get_num_preloaded_files: function() {
     return wasmFSPreloadedFiles.length;

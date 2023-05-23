@@ -3,6 +3,8 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <algorithm>
+
 #include <dirent.h>
 #include <syscall_arch.h>
 #include <unistd.h>
@@ -186,6 +188,45 @@ void _wasmfs_readdir_finish(struct wasmfs_readdir_state* state) {
   }
   free(state->entries);
   free(state);
+}
+
+char* _wasmfs_parse_path(char* path) {
+printf("parsey: |%s|\n", path);
+  auto parsed = path::parseFile((char*)path);
+  if (auto err = parsed.getError()) {
+    return 0;
+  }
+  auto& file = parsed.getFile();
+
+  // Traverse up and build the full path.
+  std::vector<std::string> chunks;
+  while (1) {
+    auto parent = file->locked().getParent();
+    if (parent == file) {
+      break;
+    }
+    chunks.push_back(parent->locked().getName(file));
+    file = parent;
+  }
+
+  std::string ret;
+  for (auto it = chunks.rbegin(); it != chunks.rend(); ++it) {
+    auto& chunk = *it;
+    if (chunk.empty()) {
+      continue;
+    }
+    ret += '/';
+    ret += *it;
+  }
+  // The caller must free this buffer.
+  char* buffer = (char*)malloc(ret.size() + 1);
+  if (!buffer) {
+    return 0;
+  }
+  std::copy(ret.begin(), ret.end(), buffer);
+  buffer[ret.size()] = 0;
+printf("waka result |%s|\n", buffer);
+  return buffer;
 }
 
 } // extern "C"
