@@ -133,6 +133,18 @@ int _wasmfs_chmod(char* path, mode_t mode) {
   return __syscall_chmod((intptr_t)path, mode);
 }
 
+int _wasmfs_stat(char* buffer) {
+  struct stat stats;
+  __syscall_stat64(buffer, &stats);
+  return stats;
+}
+
+int _wasmfs_lstat(char* buffer) {
+  struct stat stats;
+  __syscall_lstat64(buffer, &stats);
+  return stats;
+}
+
 // Helper method that identifies what a path is:
 //   ENOENT - if nothing exists there
 //   EISDIR - if it is a directory

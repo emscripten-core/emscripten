@@ -149,7 +149,19 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     },
     // TODO: readlink
     // TODO: stat
+    stat: (path) => {
+      return withStackSave(() => {
+        var buffer = stringToUTF8OnStack(path);
+        return __wasmfs_stat(buffer);
+      });
+    },
     // TODO: lstat
+    lstat: (path) => {
+      return withStackSave(() => {
+        var buffer = stringToUTF8OnStack(path);
+        return __wasmfs_lstat(buffer);
+      })
+    },
     chmod: (path, mode) => {
       return withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
