@@ -523,6 +523,7 @@ jobs:
             wasmfs.test_getcwd_with_non_ascii_name
             wasmfs.test_stat
             wasmfs.test_fstatat
+            wasmfs.test_futimens
             wasmfs.test_unistd_links_memfs
             wasmfs.test_fcntl_open
             wasmfs.test_freetype"
