@@ -14,16 +14,16 @@ int main() {
         error = FS.close(file);
         assert(!error);
 
-#if WASMFS
-        error = FS.close(file);
-        assert(error === 8 /* EBADF */);
-#else
         var ex;
         try {
             FS.close(file);
         } catch(err) {
             ex = err;
         }
+
+#if WASMFS
+        assert(ex.message === "EBADF");
+#else
         assert(ex instanceof FS.ErrnoError && ex.errno === 8 /* EBADF */)
 #endif
     );

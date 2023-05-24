@@ -103,7 +103,12 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: create
     // TODO: close
     close: (fd) => {
-      return __wasmfs_close(fd);
+      var err = __wasmfs_close(fd);
+      if(err == {{{ cDefs.EBADF}}}) {
+        // throw new FS.ErrnoError({{{ cDefs.EBADF }}});
+        throw new Error("EBADF");
+      }
+      return err;
     },
     unlink: (path) => {
       return withStackSave(() => {
