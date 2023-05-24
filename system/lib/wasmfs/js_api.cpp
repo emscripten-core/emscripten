@@ -133,10 +133,22 @@ int _wasmfs_chmod(char* path, mode_t mode) {
   return __syscall_chmod((intptr_t)path, mode);
 }
 
-struct stat _wasmfs_stat(char* path) {
+int _wasmfs_stat(char* path, struct stat* statBuf) {
+  int err = __syscall_stat64((intptr_t)path, (intptr_t)statBuf);
+  printf("JSAPI Error: %d\n", err);
+  printf("Stat Mode: %d\n", statBuf->st_mode);
+  return err;
+}
+
+int _wasmfs_stat_error(char* path) {
   struct stat stats;
-  int err = __syscall_stat64((intptr_t)path, (intptr_t)&stats);
-  printf("Error: %d\n", err);
+  return __syscall_stat64((intptr_t)path, (intptr_t)&stats);
+}
+
+struct stat _wasmfs_stat_object(char* path) {
+  struct stat stats;
+  __syscall_stat64((intptr_t)path, (intptr_t)&stats);
+  printf("Stats Mode: %d\n", stats.st_mode);
   return stats;
 }
 

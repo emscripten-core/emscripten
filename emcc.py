@@ -2310,6 +2310,8 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_chdir',
         '_wasmfs_rmdir',
         '_wasmfs_symlink',
+        '_wasmfs_stat_error',
+        '_wasmfs_stat_object',
         '_wasmfs_stat',
         '_wasmfs_lstat',
         '_wasmfs_chmod',

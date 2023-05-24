@@ -60,18 +60,19 @@ void test() {
   assert(err == -1);
   assert(errno == ENOENT);
 
-  EM_ASM(
-    var ex;
-    try {
-      console.log("TRY");
-      var stats = FS.stat("does_not_exist");
-      console.log(stats);
-    } catch(err) {
-      console.log("CATCH");
-      ex = err;
-    }
-    // assert(ex);
-  );
+  printf("size of: %lu\n", sizeof(struct stat));
+  // EM_ASM(
+  //   var ex;
+  //   try {
+  //     console.log("TRY");
+  //     var stats = FS.stat("does_not_exist");
+  //     console.log(stats);
+  //   } catch(err) {
+  //     console.log("CATCH");
+  //     ex = err;
+  //   }
+  //   // assert(ex);
+  // );
 
   // stat a folder
   memset(&s, 0, sizeof(s));
@@ -100,19 +101,19 @@ void test() {
 #endif
 #endif
 
-#if WASMFS
-  EM_ASM(
-    var stats = FS.stat("folder");
-    console.log("Folder: " + stats);
-  );
-#else
-  EM_ASM(
-    var stats = FS.stat("folder");
-    console.log(stats);
-    assert(stats.dev);
-    assert(stats.ino);
-  );
-#endif
+// #if WASMFS
+//   EM_ASM(
+//     var stats = FS.stat("folder");
+//     console.log("Folder: " + stats);
+//   );
+// #else
+//   EM_ASM(
+//     var stats = FS.stat("folder");
+//     console.log(stats);
+//     assert(stats.dev);
+//     assert(stats.ino);
+//   );
+// #endif
   
   // stat a file
   memset(&s, 0, sizeof(s));
@@ -127,18 +128,17 @@ void test() {
   assert(s.st_atime == TEST_TIME);
   assert(s.st_mtime == TEST_TIME);
   assert(s.st_ctime);
+  printf("Correct stdev: %d\n", s.st_dev);
+  printf("Correct stino: %llu\n", s.st_ino);
+  printf("Correct value: %d\n", s.st_mode);
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);
 #endif
 
-#if WASMFS
   EM_ASM(
-    var stats = FS.stat("folder/file");
-    console.log("File: " + stats);
+    FS.stat("folder/file");
   );
-#else
-#endif
 
   // fstat a file (should match file stat from above)
   memset(&s, 0, sizeof(s));

@@ -150,10 +150,38 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: readlink
     // TODO: stat
     stat: (path) => {
+      // return withStackSave(() => {
+      //   var pathBuffer = stringToUTF8OnStack(path);
+      //   var statBuf = _malloc(112);
+      //   var err = __wasmfs_stat(pathBuffer, statBuf);
+      //   const resultView = new Uint8Array(Module.HEAP8.buffer, statBuf, 112);
+      //   const finalResult = new Uint8Array(resultView);
+      //   _free(statBuf);
+      //   console.log(finalResult);
+        
+      //   return err;
+      // });
+
       return withStackSave(() => {
-        var buffer = stringToUTF8OnStack(path);
-        return __wasmfs_stat(buffer);
-      });
+
+        var pathBuffer = stringToUTF8OnStack(path);
+
+        var statBuf = _malloc(112);
+        var err = __wasmfs_stat(pathBuffer, statBuf);
+        const resultView = new Uint32Array(Module.HEAP32.buffer, statBuf, 112);
+        const finalResult = new Uint32Array(resultView);
+        _free(statBuf);
+        console.log("ChatGPT Stuff: ", finalResult.subarray(0, 4));
+        console.log("Extra: ", finalResult);
+
+
+        var err = __wasmfs_stat_error(pathBuffer);
+        console.log("Error: ", err);
+        var statObj = __wasmfs_stat_object(pathBuffer);
+        console.log("Stat: ", statObj);
+
+        return err;
+      })
     },
     // TODO: lstat
     lstat: (path) => {
