@@ -12,6 +12,7 @@ mergeInto(LibraryManager.library, {
     '$intArrayFromString',
     '$stringToUTF8Array',
     '$lengthBytesUTF8',
+    '$HandleAllocator',
 #if LibraryManager.has('library_idbfs.js')
     '$IDBFS',
 #endif
@@ -100,7 +101,6 @@ FS.staticInit();` +
     root: null,
     mounts: [],
     devices: {},
-    streams: [],
     nextInode: 1,
     nameTable: null,
     currentPath: '/',
@@ -381,7 +381,7 @@ FS.staticInit();` +
       }
       throw new FS.ErrnoError({{{ cDefs.EMFILE }}});
     },
-    getStream: (fd) => FS.streams[fd],
+    getStream: (fd) => FS.streams.allocated[fd],
     // TODO parameterize this function such that a stream
     // object isn't directly passed in. not possible until
     // SOCKFS is completed.
@@ -427,14 +427,18 @@ FS.staticInit();` +
       // clone it, so we can return an instance of FSStream
       stream = Object.assign(new FS.FSStream(), stream);
       if (fd == -1) {
-        fd = FS.nextfd();
+        fd = FS.streams.allocate(stream);
+      } else {
+        while (FS.streams.allocated.length <= fd) {
+          FS.streams.allocated.push();
+        }
+        FS.streams.allocated[fd] = stream;
       }
       stream.fd = fd;
-      FS.streams[fd] = stream;
       return stream;
     },
     closeStream: (fd) => {
-      FS.streams[fd] = null;
+      FS.streams.free(fd);
     },
 
     //
@@ -1490,6 +1494,11 @@ FS.staticInit();` +
       assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
 #endif
       FS.init.initialized = true;
+      FS.streams = new HandleAllocator();
+      // Clear the default allocated list since the default HandleAllocator
+      // starts with `undefined` to avoid handing out hangle zero, but in the
+      // case of file handles zero is a valid handle (stdin).
+      FS.streams.allocated = []
 
       FS.ensureErrnoError();
 
@@ -1507,13 +1516,7 @@ FS.staticInit();` +
       _fflush(0);
 #endif
       // close all of our streams
-      for (var i = 0; i < FS.streams.length; i++) {
-        var stream = FS.streams[i];
-        if (!stream) {
-          continue;
-        }
-        FS.close(stream);
-      }
+      FS.streams.allocated.forEach((stream) => stream && FS.close(stream));
     },
 
     //
