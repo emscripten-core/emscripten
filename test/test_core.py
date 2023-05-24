@@ -7557,7 +7557,7 @@ void* operator new(size_t size) {
         return (100 - t) * a + t * b;
       }
       EMSCRIPTEN_BINDINGS(my_module) {
-        _emscripten_err("test bindings");
+        emscripten_err("test bindings");
         function("lerp", &lerp);
       }
       int main(int argc, char **argv) {

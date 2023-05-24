@@ -2028,7 +2028,7 @@ int f() {
       Foo g_foo;
 
       int main() {
-        _emscripten_outf("main: Foo typeid: %s", typeid(Foo).name());
+        emscripten_outf("main: Foo typeid: %s", typeid(Foo).name());
 
         Foo().method();
         return 0;
@@ -2040,7 +2040,7 @@ int f() {
       #include <emscripten/console.h>
 
       void Foo::method() const {
-        _emscripten_outf("side: Foo typeid: %s", typeid(Foo).name());
+        emscripten_outf("side: Foo typeid: %s", typeid(Foo).name());
       }
       ''')
     if flipped:
@@ -5931,7 +5931,7 @@ int main(void) {
       #include <emscripten/console.h>
 
       int main() {
-        _emscripten_out("hello, world!");
+        emscripten_out("hello, world!");
         return 0;
       }
     ''')

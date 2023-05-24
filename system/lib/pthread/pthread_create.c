@@ -23,7 +23,7 @@
 // Comment this line to enable tracing of thread creation and destruction:
 // #define PTHREAD_DEBUG
 #ifdef PTHREAD_DEBUG
-#define dbg(fmt, ...) _emscripten_dbgf(fmt, ##__VA_ARGS__)
+#define dbg(fmt, ...) emscripten_dbgf(fmt, ##__VA_ARGS__)
 #else
 #define dbg(fmt, ...)
 #endif

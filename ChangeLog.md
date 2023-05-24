@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.40 (in development)
 -----------------------
+- The `_emscripten_out()`, `_emscripten_err()` and `_emscripten_dbg()` functions
+  declared in `emscripten/console.h` no longer have the underscore prefix and
+  are now documented. (#19445)
 
 3.1.39 - 05/18/23
 -----------------
