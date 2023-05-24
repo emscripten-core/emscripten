@@ -225,8 +225,7 @@ char* _wasmfs_parse_path(char* path) {
   if (!buffer) {
     return 0;
   }
-  std::copy(ret.begin(), ret.end(), buffer);
-  buffer[ret.size()] = 0;
+  strcpy(buffer, ret.c_str());
   return buffer;
 }
 
