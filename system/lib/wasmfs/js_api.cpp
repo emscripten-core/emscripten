@@ -210,6 +210,9 @@ char* _wasmfs_parse_path(char* path) {
   }
 
   std::string ret;
+  // Iterate in reverse since we went up to parents in the loop before.
+  // TODO: use c++20's nice notation:
+  //       for (x : std::views::reverse(y))
   for (auto it = chunks.rbegin(); it != chunks.rend(); ++it) {
     auto& chunk = *it;
     if (chunk.empty()) {
