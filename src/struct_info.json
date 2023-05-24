@@ -1124,7 +1124,12 @@
           "AL_INVALID_ENUM",
           "AL_INVALID_NAME",
           "AL_INVALID_OPERATION",
-          "AL_INVALID_VALUE"
+          "AL_INVALID_VALUE",
+          "AL_PLAYING",
+          "AL_PAUSED",
+          "AL_STOPPED",
+          "AL_INITIAL",
+          "AL_STATIC"
         ]
     },
     {

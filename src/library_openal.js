@@ -90,7 +90,7 @@ var LibraryOpenAL = {
       // If we are animating using the requestAnimationFrame method, then the main loop does not run when in the background.
       // To give a perfect glitch-free audio stop when switching from foreground to background, we need to avoid updating
       // audio altogether when in the background, so detect that case and kill audio buffer streaming if so.
-      if (Browser.mainLoop.timingMode === 1 /* EM_TIMING_RAF */ && document['visibilityState'] != 'visible') {
+      if (Browser.mainLoop.timingMode === {{{ cDefs.EM_TIMING_RAF }}} && document['visibilityState'] != 'visible') {
         return;
       }
 
@@ -107,10 +107,10 @@ var LibraryOpenAL = {
     // to OpenAL parameters, such as pitch, may require the web audio queue to be flushed and rescheduled.
     scheduleSourceAudio: function(src, lookahead) {
       // See comment on scheduleContextAudio above.
-      if (Browser.mainLoop.timingMode === 1 /*EM_TIMING_RAF*/ && document['visibilityState'] != 'visible') {
+      if (Browser.mainLoop.timingMode === {{{ cDefs.EM_TIMING_RAF }}} && document['visibilityState'] != 'visible') {
         return;
       }
-      if (src.state !== 0x1012 /* AL_PLAYING */) {
+      if (src.state !== {{{ cDefs.AL_PLAYING }}}) {
         return;
       }
 
@@ -161,7 +161,7 @@ var LibraryOpenAL = {
 
           var duration = 0.0;
           // If the source is a looping static buffer, use native looping for gapless playback
-          if (src.type === 0x1028 /* AL_STATIC */ && src.looping) {
+          if (src.type === {{{ cDefs.AL_STATIC }}} && src.looping) {
             duration = Number.POSITIVE_INFINITY;
             audioSrc.loop = true;
             if (buf.audioBuf._loopStart) {
@@ -215,7 +215,7 @@ var LibraryOpenAL = {
     // Advance the state of a source forward to the current time
     updateSourceTime: function(src) {
       var currentTime = src.context.audioCtx.currentTime;
-      if (src.state !== 0x1012 /* AL_PLAYING */) {
+      if (src.state !== {{{ cDefs.AL_PLAYING }}}) {
         return currentTime;
       }
 
@@ -246,8 +246,8 @@ var LibraryOpenAL = {
 
       if (src.bufsProcessed >= src.bufQueue.length && !src.looping) {
         // The source has played its entire queue and is non-looping, so just mark it as stopped.
-        AL.setSourceState(src, 0x1014 /* AL_STOPPED */);
-      } else if (src.type === 0x1028 /* AL_STATIC */ && src.looping) {
+        AL.setSourceState(src, {{{ cDefs.AL_STOPPED }}});
+      } else if (src.type === {{{ cDefs.AL_STATIC }}} && src.looping) {
         // If the source is a looping static buffer, determine the buffer offset based on the loop points
         var buf = src.bufQueue[0];
         if (buf.length === 0) {
@@ -276,7 +276,7 @@ var LibraryOpenAL = {
         // We need to determine what state we would be in by this point in time so that when we next schedule
         // audio playback, it will be just as if no underrun occurred.
 
-        if (src.type !== 0x1028 /* AL_STATIC */ && src.looping) {
+        if (src.type !== {{{ cDefs.AL_STATIC }}} && src.looping) {
           // if the source is a looping buffer queue, let's first calculate the queue duration, so we can
           // quickly fast forward past any full loops of the queue and only worry about the remainder.
           var srcDuration = AL.sourceDuration(src) / src.playbackRate;
@@ -293,7 +293,7 @@ var LibraryOpenAL = {
             if (src.looping) {
               src.bufsProcessed %= src.bufQueue.length;
             } else {
-              AL.setSourceState(src, 0x1014 /* AL_STOPPED */);
+              AL.setSourceState(src, {{{ cDefs.AL_STOPPED }}});
               break;
             }
           }
@@ -339,8 +339,8 @@ var LibraryOpenAL = {
     },
 
     setSourceState: function(src, state) {
-      if (state === 0x1012 /* AL_PLAYING */) {
-        if (src.state === 0x1012 /* AL_PLAYING */ || src.state == 0x1014 /* AL_STOPPED */) {
+      if (state === {{{ cDefs.AL_PLAYING }}}) {
+        if (src.state === {{{ cDefs.AL_PLAYING }}} || src.state == {{{ cDefs.AL_STOPPED }}}) {
           src.bufsProcessed = 0;
           src.bufOffset = 0.0;
 #if OPENAL_DEBUG
@@ -354,23 +354,23 @@ var LibraryOpenAL = {
 
         AL.stopSourceAudio(src);
 
-        src.state = 0x1012 /* AL_PLAYING */;
+        src.state = {{{ cDefs.AL_PLAYING }}};
         src.bufStartTime = Number.NEGATIVE_INFINITY;
         AL.scheduleSourceAudio(src);
-      } else if (state === 0x1013 /* AL_PAUSED */) {
-        if (src.state === 0x1012 /* AL_PLAYING */) {
+      } else if (state === {{{ cDefs.AL_PAUSED }}}) {
+        if (src.state === {{{ cDefs.AL_PLAYING }}}) {
           // Store off the current offset to restore with on resume.
           AL.updateSourceTime(src);
           AL.stopSourceAudio(src);
 
-          src.state = 0x1013 /* AL_PAUSED */;
+          src.state = {{{ cDefs.AL_PAUSED }}};
 #if OPENAL_DEBUG
           dbg(`setSourceState() pausing source ${src.id} at ${src.bufOffset}`);
 #endif
         }
-      } else if (state === 0x1014 /* AL_STOPPED */) {
-        if (src.state !== 0x1011 /* AL_INITIAL */) {
-          src.state = 0x1014 /* AL_STOPPED */;
+      } else if (state === {{{ cDefs.AL_STOPPED }}}) {
+        if (src.state !== {{{ cDefs.AL_INITIAL }}}) {
+          src.state = {{{ cDefs.AL_STOPPED }}};
           src.bufsProcessed = src.bufQueue.length;
           src.bufStartTime = Number.NEGATIVE_INFINITY;
           src.bufOffset = 0.0;
@@ -379,9 +379,9 @@ var LibraryOpenAL = {
           dbg(`setSourceState() stopping source ${src.id}`);
 #endif
         }
-      } else if (state === 0x1011 /* AL_INITIAL */) {
-        if (src.state !== 0x1011 /* AL_INITIAL */) {
-          src.state = 0x1011 /* AL_INITIAL */;
+      } else if (state === {{{ cDefs.AL_INITIAL }}}) {
+        if (src.state !== {{{ cDefs.AL_INITIAL }}}) {
+          src.state = {{{ cDefs.AL_INITIAL }}};
           src.bufsProcessed = 0;
           src.bufStartTime = Number.NEGATIVE_INFINITY;
           src.bufOffset = 0.0;
@@ -670,7 +670,7 @@ var LibraryOpenAL = {
     },
 
     updateSourceRate: function(src) {
-      if (src.state === 0x1012 /* AL_PLAYING */) {
+      if (src.state === {{{ cDefs.AL_PLAYING }}}) {
         // clear scheduled buffers
         AL.cancelPendingSourceAudio(src);
 
@@ -680,7 +680,7 @@ var LibraryOpenAL = {
         }
 
         var duration;
-        if (src.type === 0x1028 /* AL_STATIC */ && src.looping) {
+        if (src.type === {{{ cDefs.AL_STATIC }}} && src.looping) {
           duration = Number.POSITIVE_INFINITY;
         } else {
           // audioSrc._duration is expressed after factoring in playbackRate, so when changing playback rate, need
@@ -720,9 +720,9 @@ var LibraryOpenAL = {
     },
 
     sourceSeek: function(src, offset) {
-      var playing = src.state == 0x1012 /* AL_PLAYING */;
+      var playing = src.state == {{{ cDefs.AL_PLAYING }}};
       if (playing) {
-        AL.setSourceState(src, 0x1011 /* AL_INITIAL */);
+        AL.setSourceState(src, {{{ cDefs.AL_INITIAL }}});
       }
 
       if (src.bufQueue[src.bufsProcessed].audioBuf !== null) {
@@ -736,7 +736,7 @@ var LibraryOpenAL = {
       }
 
       if (playing) {
-        AL.setSourceState(src, 0x1012 /* AL_PLAYING */);
+        AL.setSourceState(src, {{{ cDefs.AL_PLAYING }}});
       }
     },
 
@@ -1081,7 +1081,7 @@ var LibraryOpenAL = {
       case 0x1007 /* AL_LOOPING */:
         return src.looping;
       case 0x1009 /* AL_BUFFER */:
-        if (src.type === 0x1028 /* AL_STATIC */) {
+        if (src.type === {{{ cDefs.AL_STATIC }}}) {
           return src.bufQueue[0].id;
         }
         return 0;
@@ -1287,7 +1287,7 @@ var LibraryOpenAL = {
         if (value === {{{ cDefs.AL_TRUE }}}) {
           src.looping = true;
           AL.updateSourceTime(src);
-          if (src.type === 0x1028 /* AL_STATIC */ && src.audioQueue.length > 0) {
+          if (src.type === {{{ cDefs.AL_STATIC }}} && src.audioQueue.length > 0) {
             var audioSrc  = src.audioQueue[0];
             audioSrc.loop = true;
             audioSrc._duration = Number.POSITIVE_INFINITY;
@@ -1295,7 +1295,7 @@ var LibraryOpenAL = {
         } else if (value === {{{ cDefs.AL_FALSE }}}) {
           src.looping = false;
           var currentTime = AL.updateSourceTime(src);
-          if (src.type === 0x1028 /* AL_STATIC */ && src.audioQueue.length > 0) {
+          if (src.type === {{{ cDefs.AL_STATIC }}} && src.audioQueue.length > 0) {
             var audioSrc  = src.audioQueue[0];
             audioSrc.loop = false;
             audioSrc._duration = src.bufQueue[0].audioBuf.duration / src.playbackRate;
@@ -1310,7 +1310,7 @@ var LibraryOpenAL = {
         }
         break;
       case 0x1009 /* AL_BUFFER */:
-        if (src.state === 0x1012 /* AL_PLAYING */ || src.state === 0x1013 /* AL_PAUSED */) {
+        if (src.state === {{{ cDefs.AL_PLAYING }}} || src.state === {{{ cDefs.AL_PAUSED }}}) {
 #if OPENAL_DEBUG
           dbg(funcname + '(AL_BUFFER) called while source is playing or paused');
 #endif
@@ -1345,7 +1345,7 @@ var LibraryOpenAL = {
           buf.refCount++;
           src.bufQueue = [buf];
           src.bufsProcessed = 0;
-          src.type = 0x1028 /* AL_STATIC */;
+          src.type = {{{ cDefs.AL_STATIC }}};
         }
 
         AL.initSourcePanner(src);
@@ -2818,7 +2818,7 @@ var LibraryOpenAL = {
         context: AL.currentCtx,
         id: AL.newId(),
         type: 0x1030 /* AL_UNDETERMINED */,
-        state: 0x1011 /* AL_INITIAL */,
+        state: {{{ cDefs.AL_INITIAL }}},
         bufQueue: [AL.buffers[0]],
         audioQueue: [],
         looping: false,
@@ -2876,7 +2876,7 @@ var LibraryOpenAL = {
 
     for (var i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      AL.setSourceState(AL.currentCtx.sources[srcId], 0x1014 /* AL_STOPPED */);
+      AL.setSourceState(AL.currentCtx.sources[srcId], {{{ cDefs.AL_STOPPED }}});
       _alSourcei(srcId, 0x1009 /* AL_BUFFER */, 0);
       delete AL.currentCtx.sources[srcId];
       AL.freeIds.push(srcId);
@@ -4056,7 +4056,7 @@ var LibraryOpenAL = {
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
       return;
     }
-    if (src.type === 0x1028 /* AL_STATIC */) {
+    if (src.type === {{{ cDefs.AL_STATIC }}}) {
 #if OPENAL_DEBUG
       dbg('alSourceQueueBuffers() called while a static buffer is bound');
 #endif
@@ -4181,7 +4181,7 @@ var LibraryOpenAL = {
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
       return;
     }
-    AL.setSourceState(src, 0x1012 /* AL_PLAYING */);
+    AL.setSourceState(src, {{{ cDefs.AL_PLAYING }}});
   },
 
   alSourcePlayv__proxy: 'sync',
@@ -4210,7 +4210,7 @@ var LibraryOpenAL = {
 
     for (var i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      AL.setSourceState(AL.currentCtx.sources[srcId], 0x1012 /* AL_PLAYING */);
+      AL.setSourceState(AL.currentCtx.sources[srcId], {{{ cDefs.AL_PLAYING }}});
     }
   },
 
@@ -4230,7 +4230,7 @@ var LibraryOpenAL = {
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
       return;
     }
-    AL.setSourceState(src, 0x1014 /* AL_STOPPED */);
+    AL.setSourceState(src, {{{ cDefs.AL_STOPPED }}});
   },
 
   alSourceStopv__proxy: 'sync',
@@ -4259,7 +4259,7 @@ var LibraryOpenAL = {
 
     for (var i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      AL.setSourceState(AL.currentCtx.sources[srcId], 0x1014 /* AL_STOPPED */);
+      AL.setSourceState(AL.currentCtx.sources[srcId], {{{ cDefs.AL_STOPPED }}});
     }
   },
 
@@ -4280,9 +4280,9 @@ var LibraryOpenAL = {
       return;
     }
     // Stop the source first to clear the source queue
-    AL.setSourceState(src, 0x1014 /* AL_STOPPED */);
+    AL.setSourceState(src, {{{ cDefs.AL_STOPPED }}});
     // Now set the state of AL_INITIAL according to the specification
-    AL.setSourceState(src, 0x1011 /* AL_INITIAL */);
+    AL.setSourceState(src, {{{ cDefs.AL_INITIAL }}});
   },
 
   alSourceRewindv__proxy: 'sync',
@@ -4311,7 +4311,7 @@ var LibraryOpenAL = {
 
     for (var i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      AL.setSourceState(AL.currentCtx.sources[srcId], 0x1011 /* AL_INITIAL */);
+      AL.setSourceState(AL.currentCtx.sources[srcId], {{{ cDefs.AL_INITIAL }}});
     }
   },
 
@@ -4331,7 +4331,7 @@ var LibraryOpenAL = {
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
       return;
     }
-    AL.setSourceState(src, 0x1013 /* AL_PAUSED */);
+    AL.setSourceState(src, {{{ cDefs.AL_PAUSED }}});
   },
 
   alSourcePausev__proxy: 'sync',
@@ -4360,7 +4360,7 @@ var LibraryOpenAL = {
 
     for (var i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      AL.setSourceState(AL.currentCtx.sources[srcId], 0x1013 /* AL_PAUSED */);
+      AL.setSourceState(AL.currentCtx.sources[srcId], {{{ cDefs.AL_PAUSED }}});
     }
   },
 
