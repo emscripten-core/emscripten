@@ -219,12 +219,7 @@ char* _wasmfs_parse_path(char* path) {
     ret += *it;
   }
   // The caller must free this buffer.
-  char* buffer = (char*)malloc(ret.size() + 1);
-  if (!buffer) {
-    return 0;
-  }
-  strcpy(buffer, ret.c_str());
-  return buffer;
+  return strdup(ret.c_str());
 }
 
 } // extern "C"
