@@ -52,7 +52,7 @@ WasmFS::WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {
 // its findings, if it has any. To avoid that, define the LSan entry point as a
 // weak symbol, and call it; if LSan is not enabled this can be optimized out,
 // and if LSan is enabled then we'll check for leaks right at the start of the
-// WasmFS destructor, which is the last time during which it is valid to print
+// WasmFS destructor, which is the last time during which it is valid to print.
 // (Note that this means we can't find leaks inside WasmFS code itself, but that
 // seems fundamentally impossible for the above reasons, unless we made LSan log
 // its findings in a way that does not depend on normal file I/O.)
@@ -61,6 +61,12 @@ __attribute__((weak)) extern "C" void __lsan_do_leak_check(void) {
 
 WasmFS::~WasmFS() {
   // See comment above on this function.
+  //
+  // Note that it is ok for us to call it here, as LSan internally makes all
+  // calls after the first into no-ops. That is, calling it here makes the one
+  // time that leak checks are run be done here, or potentially earlier, but not
+  // later; and as mentioned in the comment above, this is the latest possible
+  // time for the checks to run (since right after this nothing can be printed).
   __lsan_do_leak_check();
 
   // Flush musl libc streams.
