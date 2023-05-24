@@ -3,8 +3,6 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-#include <algorithm>
-
 #include <dirent.h>
 #include <syscall_arch.h>
 #include <unistd.h>
