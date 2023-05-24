@@ -178,4 +178,5 @@ EMSCRIPTEN_BINDINGS(builtin) {
 
   register_memory_view<float>("emscripten::memory_view<float>");
   register_memory_view<double>("emscripten::memory_view<double>");
+  _embind_initialize_done();
 }

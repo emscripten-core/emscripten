@@ -26,12 +26,8 @@
 /*global RegisteredPointer_fromWireType, constNoSmartPtrRawPointerToWireType, nonConstNoSmartPtrRawPointerToWireType, genericPointerToWireType*/
 
 var LibraryEmbind = {
-  $InternalError__postset: "InternalError = Module['InternalError'] = extendError(Error, 'InternalError');",
-  $InternalError__deps: ['$extendError'],
-  $InternalError:  undefined,
-  $BindingError__postset: "BindingError = Module['BindingError'] = extendError(Error, 'BindingError');",
-  $BindingError__deps: ['$extendError'],
-  $BindingError: undefined,
+#include embind/embind_shared.js
+  ,
   $UnboundTypeError__postset: "UnboundTypeError = Module['UnboundTypeError'] = extendError(Error, 'UnboundTypeError');",
   $UnboundTypeError__deps: ['$extendError'],
   $UnboundTypeError: undefined,
@@ -48,16 +44,6 @@ var LibraryEmbind = {
     Module['getLiveInheritedInstances'] = getLiveInheritedInstances;
     Module['flushPendingDeletes'] = flushPendingDeletes;
     Module['setDelayFunction'] = setDelayFunction;
-  },
-
-  $throwInternalError__deps: ['$InternalError'],
-  $throwInternalError: function(message) {
-    throw new InternalError(message);
-  },
-
-  $throwBindingError__deps: ['$BindingError'],
-  $throwBindingError: function(message) {
-    throw new BindingError(message);
   },
 
   $throwUnboundTypeError__deps: ['$registeredTypes', '$typeDependencies', '$UnboundTypeError', '$getTypeName'],
@@ -263,140 +249,16 @@ var LibraryEmbind = {
     return rv;
   },
 
-  // typeID -> { toWireType: ..., fromWireType: ... }
-  $registeredTypes:  {},
-
-  // typeID -> [callback]
-  $awaitingDependencies: {},
-
-  // typeID -> [dependentTypes]
-  $typeDependencies: {},
-
   // class typeID -> {pointerType: ..., constPointerType: ...}
   $registeredPointers: {},
 
-  $registerType__deps: [
-    '$awaitingDependencies', '$registeredTypes',
-    '$typeDependencies', '$throwBindingError',
-    '$whenDependentTypesAreResolved'],
+  $registerType__deps: ['$sharedRegisterType'],
   $registerType__docs: '/** @param {Object=} options */',
   $registerType: function(rawType, registeredInstance, options = {}) {
     if (!('argPackAdvance' in registeredInstance)) {
       throw new TypeError('registerType registeredInstance requires argPackAdvance');
     }
-
-    var name = registeredInstance.name;
-    if (!rawType) {
-      throwBindingError(`type "${name}" must have a positive integer typeid pointer`);
-    }
-    if (registeredTypes.hasOwnProperty(rawType)) {
-      if (options.ignoreDuplicateRegistrations) {
-        return;
-      } else {
-        throwBindingError(`Cannot register type '${name}' twice`);
-      }
-    }
-
-    registeredTypes[rawType] = registeredInstance;
-    delete typeDependencies[rawType];
-
-    if (awaitingDependencies.hasOwnProperty(rawType)) {
-      var callbacks = awaitingDependencies[rawType];
-      delete awaitingDependencies[rawType];
-      callbacks.forEach((cb) => cb());
-    }
-  },
-
-  $whenDependentTypesAreResolved__deps: [
-    '$awaitingDependencies', '$registeredTypes',
-    '$typeDependencies', '$throwInternalError'],
-  $whenDependentTypesAreResolved: function(myTypes, dependentTypes, getTypeConverters) {
-    myTypes.forEach(function(type) {
-        typeDependencies[type] = dependentTypes;
-    });
-
-    function onComplete(typeConverters) {
-        var myTypeConverters = getTypeConverters(typeConverters);
-        if (myTypeConverters.length !== myTypes.length) {
-            throwInternalError('Mismatched type converter count');
-        }
-        for (var i = 0; i < myTypes.length; ++i) {
-            registerType(myTypes[i], myTypeConverters[i]);
-        }
-    }
-
-    var typeConverters = new Array(dependentTypes.length);
-    var unregisteredTypes = [];
-    var registered = 0;
-    dependentTypes.forEach((dt, i) => {
-      if (registeredTypes.hasOwnProperty(dt)) {
-        typeConverters[i] = registeredTypes[dt];
-      } else {
-        unregisteredTypes.push(dt);
-        if (!awaitingDependencies.hasOwnProperty(dt)) {
-          awaitingDependencies[dt] = [];
-        }
-        awaitingDependencies[dt].push(() => {
-          typeConverters[i] = registeredTypes[dt];
-          ++registered;
-          if (registered === unregisteredTypes.length) {
-            onComplete(typeConverters);
-          }
-        });
-      }
-    });
-    if (0 === unregisteredTypes.length) {
-      onComplete(typeConverters);
-    }
-  },
-
-  $embind_charCodes__deps: ['$embind_init_charCodes'],
-  $embind_charCodes__postset: "embind_init_charCodes()",
-  $embind_charCodes: undefined,
-  $embind_init_charCodes: function() {
-    var codes = new Array(256);
-    for (var i = 0; i < 256; ++i) {
-        codes[i] = String.fromCharCode(i);
-    }
-    embind_charCodes = codes;
-  },
-
-  $readLatin1String__deps: ['$embind_charCodes'],
-  $readLatin1String: function(ptr) {
-    var ret = "";
-    var c = ptr;
-    while (HEAPU8[c]) {
-        ret += embind_charCodes[HEAPU8[c++]];
-    }
-    return ret;
-  },
-
-  $getTypeName__deps: ['$readLatin1String', '__getTypeName', 'free'],
-  $getTypeName: function(type) {
-    var ptr = ___getTypeName(type);
-    var rv = readLatin1String(ptr);
-    _free(ptr);
-    return rv;
-  },
-
-  $heap32VectorToArray: function(count, firstElement) {
-    var array = [];
-    for (var i = 0; i < count; i++) {
-        // TODO(https://github.com/emscripten-core/emscripten/issues/17310):
-        // Find a way to hoist the `>> 2` or `>> 3` out of this loop.
-        array.push({{{ makeGetValue('firstElement', `i * ${POINTER_SIZE}`, '*') }}});
-    }
-    return array;
-  },
-
-  $requireRegisteredType__deps: [
-    '$registeredTypes', '$getTypeName', '$throwBindingError'],
-  $requireRegisteredType: function(rawType, humanName) {
-    var impl = registeredTypes[rawType];
-    if (undefined === impl) {
-        throwBindingError(humanName + " has unknown type " + getTypeName(rawType));
-    }
-    return impl;
+    return sharedRegisterType(rawType, registeredInstance, options);
   },
 
   _embind_register_void__deps: ['$readLatin1String', '$registerType'],
@@ -1193,8 +1055,6 @@ var LibraryEmbind = {
     });
   },
 
-  $tupleRegistrations: {},
-
   _embind_register_value_array__deps: [
     '$tupleRegistrations', '$readLatin1String', '$embind__requireFunction'],
   _embind_register_value_array: function(
@@ -1297,8 +1157,6 @@ var LibraryEmbind = {
       }];
     });
   },
-
-  $structRegistrations: {},
 
   _embind_register_value_object__deps: [
     '$structRegistrations', '$readLatin1String', '$embind__requireFunction'],
@@ -2611,6 +2469,8 @@ var LibraryEmbind = {
       return [];
     });
   },
+
+  _embind_initialize_done: function() {},
 };
 
 mergeInto(LibraryManager.library, LibraryEmbind);

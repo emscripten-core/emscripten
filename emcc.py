@@ -268,6 +268,7 @@ class EmccOptions:
     self.ignore_dynamic_linking = False
     self.shell_path = utils.path_from_root('src/shell.html')
     self.source_map_base = ''
+    self.embind_emit_tsd = ''
     self.emrun = False
     self.cpu_profiler = False
     self.memory_profiler = False
@@ -1271,7 +1272,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if state.mode == Mode.POST_LINK_ONLY:
     settings.limit_settings(None)
     target, wasm_target = phase_linker_setup(options, state, newargs)
-    process_libraries(state, [])
+    process_libraries(state, [], options)
     if len(input_files) != 1:
       exit_with_error('--post-link requires a single input file')
     phase_post_link(options, state, input_files[0][1], wasm_target, target, {})
@@ -1345,7 +1346,7 @@ def phase_calculate_linker_inputs(options, state, linker_inputs):
   state.link_flags = filter_link_flags(state.link_flags, using_lld)
 
   # Decide what we will link
-  process_libraries(state, linker_inputs)
+  process_libraries(state, linker_inputs, options)
 
   linker_args = [val for _, val in sorted(linker_inputs + state.link_flags)]
 
@@ -3295,6 +3296,12 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   if options.executable:
     make_js_executable(js_target)
 
+  if options.embind_emit_tsd:
+    out = shared.run_js_tool(js_target,
+                             [], stdout=PIPE,
+                             env=os.environ.copy(), encoding='utf-8')
+    write_file(options.embind_emit_tsd, out)
+
 
 def version_string():
   # if the emscripten folder is not a git repo, don't run git show - that can
@@ -3502,6 +3509,9 @@ def parse_args(newargs):
       options.shell_path = consume_arg_file()
     elif check_arg('--source-map-base'):
       options.source_map_base = consume_arg()
+    elif check_arg('--embind-emit-tsd'):
+      options.embind_emit_tsd = consume_arg()
+      settings.INVOKE_RUN = False
     elif check_flag('--no-entry'):
       options.no_entry = True
     elif check_arg('--js-library'):
@@ -4174,7 +4184,7 @@ def find_library(lib, lib_dirs):
   return None
 
 
-def process_libraries(state, linker_inputs):
+def process_libraries(state, linker_inputs, options):
   new_flags = []
   libraries = []
   suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
@@ -4188,7 +4198,8 @@ def process_libraries(state, linker_inputs):
     lib = strip_prefix(flag, '-l')
 
     logger.debug('looking for library "%s"', lib)
-    js_libs, native_lib = building.map_to_js_libs(lib)
+
+    js_libs, native_lib = building.map_to_js_libs(lib, options)
     if js_libs is not None:
       libraries += [(i, js_lib) for js_lib in js_libs]
       # If native_lib is returned then include it in the link

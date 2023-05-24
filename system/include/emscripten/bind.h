@@ -250,6 +250,8 @@ void _embind_register_constant(
     TYPEID constantType,
     double value);
 
+void _embind_initialize_done();
+
 // Register an InitFunc in the global linked list of init functions.
 void _embind_register_bindings(struct InitFunc* f);
 

@@ -273,6 +273,7 @@ sigs = {
   _embind_create_inheriting_constructor__sig: 'pppp',
   _embind_finalize_value_array__sig: 'vp',
   _embind_finalize_value_object__sig: 'vp',
+  _embind_initialize_done__sig: 'v',
   _embind_register_bigint__sig: 'vpppjj',
   _embind_register_bool__sig: 'vpppii',
   _embind_register_class__sig: 'vppppppppppppp',
