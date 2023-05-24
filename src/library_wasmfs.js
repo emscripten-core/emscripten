@@ -49,10 +49,9 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         throw new Error('Invalid encoding type "' + opts.encoding + '"');
       }
 
-      var buf = withStackSave(() => {
-        // Copy the file into a JS buffer on the heap.
-        return __wasmfs_read_file(stringToUTF8OnStack(path));
-      });
+      // Copy the file into a JS buffer on the heap.
+      var buf = withStackSave(() => __wasmfs_read_file(stringToUTF8OnStack(path)));
+
       // The signed integer length resides in the first 8 bytes of the buffer.
       var length = {{{ makeGetValue('buf', '0', 'i53') }}};
 
