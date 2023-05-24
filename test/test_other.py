@@ -13286,6 +13286,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_wasi_std_io_stderr(self):
     self.run_wasi_test_suite_test('std_io_stderr')
 
+  @also_with_wasmfs
   @requires_node
   def test_wasi_clock_res_get(self):
     self.run_wasi_test_suite_test('wasi_clock_res_get')
