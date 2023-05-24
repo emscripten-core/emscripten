@@ -66,13 +66,47 @@ var LibraryDylink = {
     return true;
   },
 
+  // Dynamic version of shared.py:make_invoke.  This is needed for invokes
+  // that originate from side modules since these are not known at JS
+  // generation time.
+#if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
+  $createInvokeFunction__internal: true,
+  $createInvokeFunction__deps: ['$dynCall', 'setThrew'],
+  $createInvokeFunction: function(sig) {
+    return function() {
+      var sp = stackSave();
+      try {
+        return dynCall(sig, arguments[0], Array.prototype.slice.call(arguments, 1));
+      } catch(e) {
+        stackRestore(sp);
+        // Create a try-catch guard that rethrows the Emscripten EH exception.
+#if EXCEPTION_STACK_TRACES
+        // Exceptions thrown from C++ and longjmps will be an instance of
+        // EmscriptenEH.
+        if (!(e instanceof EmscriptenEH)) throw e;
+#else
+        // Exceptions thrown from C++ will be a pointer (number) and longjmp
+        // will throw the number Infinity. Use the compact and fast "e !== e+0"
+        // test to check if e was not a Number.
+        if (e !== e+0) throw e;
+#endif
+        _setThrew(1, 0);
+      }
+    }
+  },
+#endif
+
   // Resolve a global symbol by name.  This is used during module loading to
   // resolve imports, and by `dlsym` when used with `RTLD_DEFAULT`.
   // Returns both the resolved symbol (i.e. a function or a global) along with
   // the canonical name of the symbol (in some cases is modify the symbol as
   // part of the loop process, so that actual symbol looked up has a different
   // name).
-  $resolveGlobalSymbol__deps: ['$isSymbolDefined'],
+  $resolveGlobalSymbol__deps: ['$isSymbolDefined',
+#if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
+    '$createInvokeFunction',
+#endif
+  ],
   $resolveGlobalSymbol__internal: true,
   $resolveGlobalSymbol: function(symName, direct = false) {
     var sym;
@@ -340,36 +374,6 @@ var LibraryDylink = {
     });
   },
 
-  // Dynamic version of shared.py:make_invoke.  This is needed for invokes
-  // that originate from side modules since these are not known at JS
-  // generation time.
-#if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
-  $createInvokeFunction__internal: true,
-  $createInvokeFunction__deps: ['$dynCall', 'setThrew'],
-  $createInvokeFunction: function(sig) {
-    return function() {
-      var sp = stackSave();
-      try {
-        return dynCall(sig, arguments[0], Array.prototype.slice.call(arguments, 1));
-      } catch(e) {
-        stackRestore(sp);
-        // Create a try-catch guard that rethrows the Emscripten EH exception.
-#if EXCEPTION_STACK_TRACES
-        // Exceptions thrown from C++ and longjmps will be an instance of
-        // EmscriptenEH.
-        if (!(e instanceof EmscriptenEH)) throw e;
-#else
-        // Exceptions thrown from C++ will be a pointer (number) and longjmp
-        // will throw the number Infinity. Use the compact and fast "e !== e+0"
-        // test to check if e was not a Number.
-        if (e !== e+0) throw e;
-#endif
-        _setThrew(1, 0);
-      }
-    }
-  },
-#endif
-
   // We support some amount of allocation during startup in the case of
   // dynamic linking, which needs to allocate memory for dynamic libraries that
   // are loaded. That has to happen before the main program can start to run,
@@ -617,9 +621,6 @@ var LibraryDylink = {
     '$alignMemory', '$zeroMemory',
     '$currentModuleWeakSymbols', '$alignMemory', '$zeroMemory',
     '$updateTableMap',
-#if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
-    '$createInvokeFunction',
-#endif
   ],
   $loadWebAssemblyModule: function(binary, flags, localScope, handle) {
     var metadata = getDylinkMetadata(binary);
