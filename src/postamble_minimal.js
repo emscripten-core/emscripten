@@ -72,7 +72,7 @@ function initRuntime(asm) {
   _emscripten_stack_init();
   writeStackCookie();
 #if STACK_OVERFLOW_CHECK >= 2
-  ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
+  setStackLimits();
 #endif
 #endif
 
