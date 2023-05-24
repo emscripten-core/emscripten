@@ -145,8 +145,8 @@ function run() {
 #endif
 
   if (runDependencies > 0) {
-#if RUNTIME_LOGGING
-    err('run() called, but dependencies remain, so not running');
+#if RUNTIME_DEBUG
+    dbg('run() called, but dependencies remain, so not running');
 #endif
     return;
   }
@@ -171,8 +171,8 @@ function run() {
 
     // Loading dylibs can add run dependencies.
     if (runDependencies > 0) {
-#if RUNTIME_LOGGING
-      err('loadDylibs added run() dependencies, not running yet');
+#if RUNTIME_DEBUG
+      dbg('loadDylibs added run() dependencies, not running yet');
 #endif
       return;
     }
@@ -206,8 +206,8 @@ function run() {
 
   // a preRun added a dependency, run will be called later
   if (runDependencies > 0) {
-#if RUNTIME_LOGGING
-    err('run() called, but dependencies remain, so not running');
+#if RUNTIME_DEBUG
+    dbg('run() called, but dependencies remain, so not running');
 #endif
     return;
   }
