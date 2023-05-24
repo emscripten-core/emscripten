@@ -101,7 +101,7 @@ commands:
     description: "install canary version of node"
     steps:
       - install-node-version:
-         node_version: "20.0.0-v8-canary202302081604228b65"
+         node_version: "20.0.0-v8-canary2023041819be670741"
          canary: true
   install-v8:
     description: "install v8 using jsvu"
@@ -230,7 +230,7 @@ commands:
           name: run tests (<< parameters.title >>)
           command: |
             ./test/runner << parameters.test_targets >>
-            $EMSDK_PYTHON ./tools/check_clean.py
+            $EMSDK_PYTHON ./test/check_clean.py
   freeze-cache:
     description: "Freeze emscripten cache"
     steps:
@@ -500,13 +500,14 @@ jobs:
             core2ss.test_pthread_thread_local_storage
             core2s.test_dylink_syslibs_missing_assertions
             wasm2js3.test_memorygrowth_2
-            other.test_unistd_fstatfs_wasmfs
             wasmfs.test_hello_world
             wasmfs.test_hello_world_standalone
             wasmfs.test_unistd_links*
             wasmfs.test_atexit_standalone
             wasmfs.test_emscripten_get_now
             wasmfs.test_dyncall_specific_minimal_runtime
+            wasmfs.test_fcntl_misc
+            wasmfs.test_readdir_rawfs
             wasmfs.test_utime
             wasmfs.test_unistd_unlink
             wasmfs.test_unistd_access
@@ -523,8 +524,10 @@ jobs:
             wasmfs.test_getcwd_with_non_ascii_name
             wasmfs.test_stat
             wasmfs.test_fstatat
+            wasmfs.test_futimens
             wasmfs.test_unistd_links_memfs
-            wasmfs.test_fcntl_open"
+            wasmfs.test_fcntl_open
+            wasmfs.test_freetype"
   test-wasm2js1:
     executor: bionic
     steps:

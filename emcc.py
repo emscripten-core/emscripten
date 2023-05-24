@@ -2293,6 +2293,8 @@ def phase_linker_setup(options, state, newargs):
 
   if settings.WASMFS:
     state.forced_stdlibs.append('libwasmfs')
+    if settings.NODERAWFS:
+      state.forced_stdlibs.append('libwasmfs_noderawfs')
     settings.FILESYSTEM = 1
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
     settings.JS_LIBRARIES.append((0, 'library_wasmfs.js'))
@@ -4183,8 +4185,8 @@ def process_libraries(state, linker_inputs):
     # let wasm-ld handle that.  However, we do want to map to the correct variant.
     # For example we map `-lc` to `-lc-mt` if we are building with threading support.
     if 'lib' + lib in system_libs_map:
-      lib = system_libs_map['lib' + lib]
-      new_flags.append((i, '-l' + strip_prefix(lib.get_base_name(), 'lib')))
+      lib = system_libs_map['lib' + lib].get_link_flag()
+      new_flags.append((i, lib))
       continue
 
     if building.map_and_apply_to_settings(lib):

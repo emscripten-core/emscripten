@@ -8,13 +8,8 @@
 
 #include "file.h"
 #include "wasmfs.h"
+#include "wasmfs_internal.h"
 #include <emscripten/threading.h>
-
-extern "C" {
-size_t _wasmfs_get_preloaded_file_size(uint32_t index);
-
-void _wasmfs_copy_preloaded_file_data(uint32_t index, uint8_t* data);
-}
 
 namespace wasmfs {
 
