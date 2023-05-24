@@ -1733,93 +1733,11 @@ int __syscall_fadvise64(int fd, uint64_t offset, uint64_t length, int advice) {
 }
 
 int __syscall__newselect(int nfds, intptr_t readfds_, intptr_t writefds_, intptr_t exceptfds_, intptr_t timeout_) {
-  int* readfds = (int*)readfds_;
-  int* writefds = (int*)writefds_;
-  int* exceptfds = (int*)exceptfds_;
-  int* timeout = (int*)timeout_;
-
-  // This is a translation of the original JS newselect() implementation, and
-  // shares the same limitations:
-  //   - readfds are supported,
-  //   - writefds checks socket open status
-  //   - exceptfds not supported
-  assert(!exceptfds);
-  //   - timeout is always 0 - fully async
-  assert(timeout == 0);
-  //   - nfds must be less than or equal to 64
-  //     TODO: this could be 1024 based on current musl headers
-  assert(nfds <= 64);
-
-  int total = 0;
-
-  int srcReadLow = (readfds ? readfds[0] : 0),
-      srcReadHigh = (readfds ? readfds[1] : 0);
-  int srcWriteLow = (writefds ? writefds[0] : 0),
-      srcWriteHigh = (writefds ? writefds[1] : 0);
-  int srcExceptLow = (exceptfds ? exceptfds[0] : 0),
-      srcExceptHigh = (exceptfds ? exceptfds[1] : 0);
-
-  int dstReadLow = 0,
-      dstReadHigh = 0;
-  int dstWriteLow = 0,
-      dstWriteHigh = 0;
-  int dstExceptLow = 0,
-      dstExceptHigh = 0;
-
-  int allLow = (readfds ? readfds[0] : 0) |
-               (writefds ? writefds[0] : 0) |
-               (exceptfds ? exceptfds[0] : 0);
-  int allHigh = (readfds ? readfds[1] : 0) |
-                (writefds ? writefds[1] : 0) |
-                (exceptfds ? exceptfds[1] : 0);
-
-  auto check = [](int fd, int low, int high, int val) {
-    return (fd < 32 ? (low & val) : (high & val));
-  };
-
-  auto fileTable = wasmFS.getFileTable().locked();
-
-  for (int fd = 0; fd < nfds; fd++) {
-    int mask = 1 << (fd % 32);
-    if (!(check(fd, allLow, allHigh, mask))) {
-      continue;  // index isn't in the set
-    }
-  
-    auto openFile = fileTable.getEntry(fd); // stream
-    if (!openFile) {
-      continue;
-    }
-
-    auto flags = openFile->locked().getFlags();
-
-    if ((flags & POLLIN) && check(fd, srcReadLow, srcReadHigh, mask)) {
-      fd < 32 ? (dstReadLow = dstReadLow | mask) : (dstReadHigh = dstReadHigh | mask);
-      total++;
-    }
-    if ((flags & POLLOUT) && check(fd, srcWriteLow, srcWriteHigh, mask)) {
-      fd < 32 ? (dstWriteLow = dstWriteLow | mask) : (dstWriteHigh = dstWriteHigh | mask);
-      total++;
-    }
-    if ((flags & POLLPRI) && check(fd, srcExceptLow, srcExceptHigh, mask)) {
-      fd < 32 ? (dstExceptLow = dstExceptLow | mask) : (dstExceptHigh = dstExceptHigh | mask);
-      total++;
-    }
-  }
-
-  if (readfds) {
-    readfds[0] = dstReadLow;
-    readfds[1] = dstReadHigh;
-  }
-  if (writefds) {
-    writefds[0] = dstWriteLow;
-    writefds[1] = dstWriteHigh;
-  }
-  if (exceptfds) {
-    exceptfds[0] = dstExceptLow;
-    exceptfds[1] = dstExceptHigh;
-  }
-
-  return total;
+  // TODO: Implement this syscall. For now, we return an error code,
+  //       specifically ENOMEM which is valid per the docs:
+  //          ENOMEM Unable to allocate memory for internal tables
+  //          https://man7.org/linux/man-pages/man2/select.2.html
+  return -ENOMEM;
 }
 
 } // extern "C"
