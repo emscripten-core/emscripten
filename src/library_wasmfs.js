@@ -68,9 +68,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       return ret;
     },
     cwd: () => {
-      // TODO: Remove dependency on FS.cwd().
-      // User code should not be using FS.cwd().
-      // For file preloading, cwd should be '/' to begin with.
+      // TODO: call into WasmFS code
       return '/';
     },
 
