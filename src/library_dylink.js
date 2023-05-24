@@ -768,7 +768,7 @@ var LibraryDylink = {
         }
 #if STACK_OVERFLOW_CHECK >= 2
         // If the runtime has already been initialized we set the stack limits
-        // now.  Othwerwise this is delayed until `setDylinkStackLimits` is
+        // now.  Otherwise this is delayed until `setDylinkStackLimits` is
         // called after initialization.
         if (moduleExports['__set_stack_limits'] && runtimeInitialized) {
           moduleExports['__set_stack_limits']({{{ to64('_emscripten_stack_get_base()') }}}, {{{ to64('_emscripten_stack_get_end()') }}});

@@ -21,7 +21,6 @@
 // new function with an '_', it will not be found.
 
 mergeInto(LibraryManager.library, {
-
   $ptrToString: function(ptr) {
 #if ASSERTIONS
     assert(typeof ptr === 'number');
