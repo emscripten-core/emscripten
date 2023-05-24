@@ -213,7 +213,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       assert(arguments[1] === undefined);
 #endif
 
-      var buf = withStackSave(() => __wasmfs_parse_path(stringToUTF8OnStack(path));
+      var buf = withStackSave(() => __wasmfs_parse_path(stringToUTF8OnStack(path)));
       assert(buf); // TODO: error handling
       var ret = UTF8ToString(buf);
       _free(buf);
