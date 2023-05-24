@@ -80,6 +80,8 @@ mergeInto(LibraryManager.library, {
       return PATH.normalize(l + '/' + r);
     },
   },
+
+#if !WASMFS // WasmFS has its own PATH_FS which integrates with WasmFS properly
   // The FS-using parts are split out into a separate object, so simple path
   // usage does not require the FS.
   $PATH_FS__deps: ['$PATH', '$FS'],
@@ -136,4 +138,5 @@ mergeInto(LibraryManager.library, {
       return outputParts.join('/');
     }
   }
+#endif // !WASMFS
 });
