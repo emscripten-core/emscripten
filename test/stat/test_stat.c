@@ -128,9 +128,21 @@ void test() {
   assert(s.st_atime == TEST_TIME);
   assert(s.st_mtime == TEST_TIME);
   assert(s.st_ctime);
-  printf("Correct stdev: %d\n", s.st_dev);
+  printf("Correct stdev: %u\n", s.st_dev);
+  printf("Correct stmode: %u\n", s.st_mode);
+  printf("Correct stnlink: %lu\n", s.st_nlink);
   printf("Correct stino: %llu\n", s.st_ino);
-  printf("Correct value: %d\n", s.st_mode);
+  printf("Correct uid: %u\n", s.st_uid);
+
+  // printf("sizes: %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %lu, %lu, %lu, %lu, %d\n",
+  // sizeof(s.st_dev), sizeof(s.st_mode), sizeof(s.st_nlink),
+  // sizeof(s.st_uid), sizeof(s.st_gid), sizeof(s.st_rdev), sizeof(s.st_size),
+  // sizeof(s.st_blksize), sizeof(s.st_blocks), sizeof(s.st_atime), sizeof(s.st_atimensec),
+  // sizeof(s.st_mtime), sizeof(s.st_mtimensec), 
+  // sizeof(s.st_ctime), sizeof(s.st_ctimensec), (s.st_ino));
+
+  printf("sizes: %lu, %lu, %lu, %lu\n", sizeof(s.st_dev), sizeof(s.st_ino), sizeof(s.st_nlink), sizeof(s.st_mode));
+  
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);

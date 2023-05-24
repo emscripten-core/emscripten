@@ -168,10 +168,14 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
         var statBuf = _malloc(112);
         var err = __wasmfs_stat(pathBuffer, statBuf);
-        const resultView = new Uint32Array(Module.HEAP32.buffer, statBuf, 112);
-        const finalResult = new Uint32Array(resultView);
+        const resultView = new Uint8Array(Module.HEAP8.buffer, statBuf, 112);
+        const finalResult = new Uint8Array(resultView);
+        const view = new DataView(finalResult.buffer, 0);
+        
         _free(statBuf);
-        console.log("ChatGPT Stuff: ", finalResult.subarray(0, 4));
+        console.log("ChatGPT Stuff: ", finalResult.subarray(12, 16));
+        console.log("SO Stuff: ", view.getUint32(12, true));
+        console.log("SO Stuff: ", view.getUint32(60, true));
         console.log("Extra: ", finalResult);
 
 
