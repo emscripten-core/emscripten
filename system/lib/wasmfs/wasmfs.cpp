@@ -43,7 +43,26 @@ WasmFS::WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {
   preloadFiles();
 }
 
+// Manual integration with LSan. LSan installs itself during startup at the
+// first allocation, which happens inside WasmFS code (since the WasmFS global
+// object creates some data structures). As a result LSan's atexit() destructor
+// will be called last, after WasmFS is cleaned up, since atexit() calls work
+// are FIFO (like a stack). But that is a problem, since if WasmFS has shut
+// down and deallocated itself then the leak code cannot actually print any of
+// its findings, if it has any. To avoid that, define the LSan entry point as a
+// weak symbol, and call it; if LSan is not enabled this can be optimized out,
+// and if LSan is enabled then we'll check for leaks right at the start of the
+// WasmFS destructor, when it is still valid to print. (Note that this means we
+// can find leaks inside WasmFS code itself, but that seems fundamentally
+// impossible for the above reasons, unless we let LSan log its findings in a
+// way that does not depend on normal file I/O.)
+__attribute__((weak)) extern "C" void __lsan_do_leak_check(void) {
+}
+
 WasmFS::~WasmFS() {
+  // See comment above on this function.
+  __lsan_do_leak_check();
+
   // Flush musl libc streams.
   // TODO: Integrate musl exit() which would call this for us. That might also
   //       help with destructor priority - we need to happen last.
