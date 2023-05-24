@@ -1732,13 +1732,18 @@ int __syscall_fadvise64(int fd, uint64_t offset, uint64_t length, int advice) {
   return 0;
 }
 
-int __syscall__newselect(int nfds, intptr_t readfds, intptr_t writefds, intptr_t exceptfds, intptr_t timeout) {
+int __syscall__newselect(int nfds, intptr_t readfds_, intptr_t writefds_, intptr_t exceptfds_, intptr_t timeout_) {
+  int* readfds = (int*)readfds_;
+  int* writefds = (int*)writefds_;
+  int* exceptfds = (int*)exceptfds_;
+  int* timeout = (int*)timeout_;
+
   // This is a translation of the original JS newselect() implementation, and
   // shares the same limitations:
   //   - readfds are supported,
   //   - writefds checks socket open status
   //   - exceptfds not supported
-  assert(!exceptfds)
+  assert(!exceptfds);
   //   - timeout is always 0 - fully async
   assert(timeout == 0);
   //   - nfds must be less than or equal to 64
@@ -1768,23 +1773,24 @@ int __syscall__newselect(int nfds, intptr_t readfds, intptr_t writefds, intptr_t
                 (writefds ? writefds[1] : 0) |
                 (exceptfds ? exceptfds[1] : 0);
 
-  int check = [&](int fd, int low, int high, int val) {
+  auto check = [](int fd, int low, int high, int val) {
     return (fd < 32 ? (low & val) : (high & val));
   };
+
+  auto fileTable = wasmFS.getFileTable().locked();
 
   for (int fd = 0; fd < nfds; fd++) {
     int mask = 1 << (fd % 32);
     if (!(check(fd, allLow, allHigh, mask))) {
       continue;  // index isn't in the set
     }
-
-    int stream = SYSCALLS.getStreamFromFD(fd);
-
-    int flags = SYSCALLS.DEFAULT_POLLMASK;
-
-    if (stream.stream_ops.poll) {
-      flags = stream.stream_ops.poll(stream);
+  
+    auto openFile = fileTable.getEntry(fd); // stream
+    if (!openFile) {
+      continue;
     }
+
+    auto flags = openFile->locked().getFlags();
 
     if ((flags & POLLIN) && check(fd, srcReadLow, srcReadHigh, mask)) {
       fd < 32 ? (dstReadLow = dstReadLow | mask) : (dstReadHigh = dstReadHigh | mask);
