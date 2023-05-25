@@ -41,10 +41,12 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     handleError: (returnValue) => {
       // Assume errors correspond to negative returnValues
       // since some functions like _wasmfs_open() return positive
-      // numbers on success
+      // numbers on success (some callers of this function may need to negate the parameter).
       if (returnValue < 0) {
         FS.throwError(-returnValue);
       }
+
+      return returnValue;
     },
     createDataFile: (parent, name, data, canRead, canWrite, canOwn) => {
       // Data files must be cached until the file system itself has been initialized.
@@ -116,17 +118,13 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
       return withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
-        var fd = __wasmfs_open({{{ to64('buffer') }}}, flags, mode);
-        FS.handleError(fd);
-        return fd;
+        return FS.handleError(__wasmfs_open({{{ to64('buffer') }}}, flags, mode));
       })
     },
     // TODO: create
     // TODO: close
     close: (fd) => {
-      var err = __wasmfs_close(fd);
-      FS.handleError(-err);
-      return err;
+      return FS.handleError(-__wasmfs_close(fd));
     },
     unlink: (path) => {
       return withStackSave(() => {
