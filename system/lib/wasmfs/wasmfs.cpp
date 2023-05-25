@@ -43,6 +43,7 @@ WasmFS::WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {
   preloadFiles();
 }
 
+<<<<<<< Updated upstream
 // Manual integration with LSan. LSan installs itself during startup at the
 // first allocation, which happens inside WasmFS code (since the WasmFS global
 // object creates some data structures). As a result LSan's atexit() destructor
@@ -69,17 +70,23 @@ WasmFS::~WasmFS() {
   // time for the checks to run (since right after this nothing can be printed).
   __lsan_do_leak_check();
 
+=======
+extern "C" void wasmfs_flush(void) {
+>>>>>>> Stashed changes
   // Flush musl libc streams.
-  // TODO: Integrate musl exit() which would call this for us. That might also
-  //       help with destructor priority - we need to happen last.
   fflush(0);
 
   // Flush our own streams. TODO: flush all possible streams.
-  // Note that we lock here, although strictly speaking it is unnecessary given
-  // that we are in the destructor of WasmFS: nothing can possibly be running
-  // on files at this time.
   (void)SpecialFiles::getStdout()->locked().flush();
   (void)SpecialFiles::getStderr()->locked().flush();
+}
+
+WasmFS::~WasmFS() {
+  // TODO: Integrate musl exit() which would flush the libc part for us. That
+  //       might also help with destructor priority - we need to happen last.
+  //       (But we would still need to flush the internal WasmFS buffers, see
+  //       wasmfs_flush() and the comment on it in the header.)
+  wasmfs_flush();
 
   // Break the reference cycle caused by the root directory being its own
   // parent.

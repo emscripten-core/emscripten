@@ -291,6 +291,10 @@ function checkUnflushedContent() {
   try { // it doesn't matter if it fails
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0 && '$flush_NO_FILESYSTEM' in addedLibraryItems
     flush_NO_FILESYSTEM();
+#elif WASMFS && hasExportedSymbol('wasmfs_flush')
+    // In WasmFS we must also flush the WasmFS internal buffers, for this check
+    // to work.
+    _wasmfs_flush();
 #elif hasExportedSymbol('fflush')
     _fflush(0);
 #endif
