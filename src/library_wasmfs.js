@@ -174,8 +174,22 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         
         _free(statBuf);
         console.log("ChatGPT Stuff: ", finalResult.subarray(12, 16));
-        console.log("SO Stuff: ", view.getUint32(12, true));
-        console.log("SO Stuff: ", view.getUint32(60, true));
+        console.log("SO Stuff: dev: ", view.getUint32(0, true));
+        console.log("SO Stuff: stmode: ", view.getUint32(12, true));
+        console.log("SO Stuff: nlink: ", view.getUint32(16, true));
+        console.log("SO Stuff: uid: ", view.getUint32(20, true));
+        console.log("SO Stuff: gid: ", view.getUint32(24, true));
+        console.log("SO Stuff: rdev: ", view.getUint32(28, true));
+        console.log("SO Stuff: size: ", view.getUint32(40, true));
+        console.log("SO Stuff: blksize: ", view.getUint32(48, true));
+        console.log("SO Stuff: blocks: ", view.getUint32(52, true));
+        console.log("SO Stuff: atime: ", view.getUint32(56, true));
+        console.log("SO Stuff: mtime: ", view.getUint32(72, true));
+        console.log("SO Stuff: ctime: ", view.getUint32(88, true));
+        console.log("SO Stuff: ino: ", view.getUint32(104, true));
+        
+
+
         console.log("Extra: ", finalResult);
 
 

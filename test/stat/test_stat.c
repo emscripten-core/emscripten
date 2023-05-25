@@ -129,9 +129,45 @@ void test() {
   assert(s.st_mtime == TEST_TIME);
   assert(s.st_ctime);
   printf("Correct stdev: %u\n", s.st_dev);
-  printf("Correct stmode: %u\n", s.st_mode);
   printf("Correct stnlink: %lu\n", s.st_nlink);
   printf("Correct stino: %llu\n", s.st_ino);
+  printf("Correct stmode: %u\n", s.st_mode);
+
+  printf("p stdev: %lu\n", (unsigned long)&s.st_dev);
+  printf("p stnlink: %lu\n", (unsigned long)&s.st_nlink);
+  printf("p stino: %lu\n", (unsigned long)&s.st_ino);
+  printf("p stmode: %lu\n", (unsigned long) &s.st_mode);
+  printf("p st_atime: %lu\n", (unsigned long) &s.st_atime);
+  // printf("p st_atimensec: %lu\n", (unsigned long) &s.st_atimensec);
+  printf("p st_mtime: %lu\n", (unsigned long) &s.st_mtime);
+  // printf("p st_mtimensec: %lu\n", (unsigned long) &s.st_mtimensec);
+  printf("p st_ctime: %lu\n", (unsigned long) &s.st_ctime);
+  // printf("p st_ctimensec: %lu\n", (unsigned long) &s.st_ctimensec);
+  printf("p st_blksize: %lu\n", (unsigned long) &s.st_blksize);
+  printf("p st_blocks: %lu\n", (unsigned long) &s.st_blocks);
+  printf("p st_gid: %lu\n", (unsigned long) &s.st_gid);
+  printf("p st_rdev: %lu\n", (unsigned long) &s.st_rdev);
+  printf("p st_size: %lu\n", (unsigned long) &s.st_size);
+  printf("p st_uid: %lu\n", (unsigned long) &s.st_uid);
+
+  printf("- stdev: %lu\n", (unsigned long)s.st_dev);
+  printf("- stnlink: %lu\n", (unsigned long)s.st_nlink);
+  printf("- stino: %lu\n", (unsigned long)s.st_ino);
+  printf("- stmode: %lu\n", (unsigned long) s.st_mode);
+  printf("- st_atime: %lu\n", (unsigned long) s.st_atime);
+  // printf("p st_atimensec: %lu\n", (unsigned long) &s.st_atimensec);
+  printf("- st_mtime: %lu\n", (unsigned long) s.st_mtime);
+  // printf("p st_mtimensec: %lu\n", (unsigned long) &s.st_mtimensec);
+  printf("- st_ctime: %lu\n", (unsigned long) s.st_ctime);
+  // printf("p st_ctimensec: %lu\n", (unsigned long) &s.st_ctimensec);
+  printf("- st_blksize: %lu\n", (unsigned long) s.st_blksize);
+  printf("- st_blocks: %lu\n", (unsigned long) s.st_blocks);
+  printf("- st_gid: %lu\n", (unsigned long) s.st_gid);
+  printf("- st_rdev: %lu\n", (unsigned long) s.st_rdev);
+  printf("- st_size: %lu\n", (unsigned long) s.st_size);
+  printf("- st_uid: %lu\n", (unsigned long) s.st_uid);
+
+  
   printf("Correct uid: %u\n", s.st_uid);
 
   // printf("sizes: %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %lu, %lu, %lu, %lu, %d\n",
