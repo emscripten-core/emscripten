@@ -25,6 +25,19 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 #endif
   ],
   $FS : {
+    WasmFSError: null,
+    DoWasmFSError: (code) => {
+      if(!FS.WasmFSError) {
+        FS.WasmFSError = /** @this{Object} */ function ErrnoError(code) {
+          this.code = code;
+          this.message = 'FS error';
+        }
+        FS.WasmFSError.prototype = new Error();
+        FS.WasmFSError.prototype.constructor = FS.WasmFSError;
+      }
+
+      throw new FS.WasmFSError(code);
+    },
     createDataFile: (parent, name, data, canRead, canWrite, canOwn) => {
       // Data files must be cached until the file system itself has been initialized.
       var mode = FS_getMode(canRead, canWrite);
@@ -105,8 +118,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     close: (fd) => {
       var err = __wasmfs_close(fd);
       if(err == {{{ cDefs.EBADF}}}) {
-        // throw new FS.ErrnoError({{{ cDefs.EBADF }}});
-        throw new Error("EBADF");
+        FS.DoWasmFSError({{{ cDefs.EBADF }}});
       }
       return err;
     },

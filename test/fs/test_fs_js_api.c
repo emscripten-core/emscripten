@@ -22,7 +22,7 @@ int main() {
         }
 
 #if WASMFS
-        assert(ex.message === "EBADF");
+        assert(ex instanceof FS.WasmFSError && ex.code === 8);
 #else
         assert(ex instanceof FS.ErrnoError && ex.errno === 8 /* EBADF */)
 #endif
