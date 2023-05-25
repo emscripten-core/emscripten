@@ -81,7 +81,7 @@ var out = () => { throw 'out() is not defined in worker.js.'; }
 #endif
 var err = threadPrintErr;
 self.alert = threadAlert;
-#if RUNTIME_DEBUG
+#if ASSERTIONS || RUNTIME_DEBUG
 var dbg = threadPrintErr;
 #endif
 
