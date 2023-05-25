@@ -117,7 +117,7 @@ int _wasmfs_rmdir(char* path){ return __syscall_unlinkat(AT_FDCWD, (intptr_t)pat
 
 int _wasmfs_open(char* path, int flags, mode_t mode) {
   int err = __syscall_openat(AT_FDCWD, (intptr_t)path, flags, mode);
-  if(err == -1) {
+  if (err == -1) {
     return -errno;
   }
   return err;

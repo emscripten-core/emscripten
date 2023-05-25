@@ -27,7 +27,7 @@ int main() {
         } catch(err) {
             ex = err;
         }
-        assert(ex.errno === 44 /* ENOENT */);
+        assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
 
         var createFileNotHere = FS.open('filenothere', 'w+');
 #if WASMFS
@@ -56,7 +56,7 @@ int main() {
             ex = err;
         }
 
-        assert(ex.errno === 8 /* EBADF */)
+        assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */)
     );
 
     puts("success");

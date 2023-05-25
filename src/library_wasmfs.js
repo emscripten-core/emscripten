@@ -26,16 +26,25 @@ FS.createPreloadedFile = FS_createPreloadedFile;
   ],
   $FS : {
     ErrnoError: null,
-    DoWasmFSError: (errno) => {
-      if(!FS.ErrnoError) {
+    throwError: (errno) => {
+      if (!FS.ErrnoError) {
         FS.ErrnoError = /** @this{Object} */ function ErrnoError(code) {
           this.errno = code;
           this.message = 'FS error';
+          this.name = "ErrnoError";
         }
         FS.ErrnoError.prototype = new Error();
         FS.ErrnoError.prototype.constructor = FS.ErrnoError;
       }
       throw new FS.ErrnoError(errno);
+    },
+    handleError: (returnValue) => {
+      // Assume errors correspond to negative returnValues
+      // since some functions like _wasmfs_open() return positive
+      // numbers on success
+      if (returnValue < 0) {
+        FS.throwError(-returnValue);
+      }
     },
     createDataFile: (parent, name, data, canRead, canWrite, canOwn) => {
       // Data files must be cached until the file system itself has been initialized.
@@ -110,9 +119,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       return withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
         var fd = __wasmfs_open({{{ to64('buffer') }}}, flags, mode);
-        if(fd < 0) {
-          FS.DoWasmFSError(-fd);
-        }
+        FS.handleError(fd);
         return fd;
       })
     },
@@ -120,9 +127,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: close
     close: (fd) => {
       var err = __wasmfs_close(fd);
-      if(err == {{{ cDefs.EBADF}}}) {
-        FS.DoWasmFSError({{{ cDefs.EBADF }}});
-      }
+      FS.handleError(-err);
       return err;
     },
     unlink: (path) => {
