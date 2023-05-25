@@ -52,32 +52,40 @@ mergeInto(LibraryManager.library, {
 
   _wasmfs_node_readdir__deps: ['$wasmfsNodeConvertNodeCode'],
   _wasmfs_node_readdir: function(path_p, vec) {
-    let path = UTF8ToString(path_p);
-    let entries;
-    try {
-      entries = fs.readdirSync(path, { withFileTypes: true });
-    } catch (e) {
-      if (!e.code) throw e;
-      return wasmfsNodeConvertNodeCode(e);
-    }
-    entries.forEach((entry) => {
-      withStackSave(() => {
-        let name = stringToUTF8OnStack(entry.name);
-        let type;
-        // TODO: Figure out how to use `cDefine` here.
-        if (entry.isFile()) {
-          type = 1;
-        } else if (entry.isDirectory()) {
-          type = 2;
-        } else if (entry.isSymbolicLink()) {
-          type = 3;
-        } else {
-          type = 0;
-        }
-        __wasmfs_node_record_dirent(vec, name, type);
+    // Define a function here so that we can tell closure to ignore type
+    // errors, which we need due to outdated type annotations for readdirSync
+    // on both the inputs and outputs, see
+    // See https://github.com/google/closure-compiler/pull/4093
+    /** @suppress {checkTypes} */
+    function inner() {
+      let path = UTF8ToString(path_p);
+      let entries;
+      try {
+        entries = fs.readdirSync(path, { withFileTypes: true });
+      } catch (e) {
+        if (!e.code) throw e;
+        return wasmfsNodeConvertNodeCode(e);
+      }
+      entries.forEach((entry) => {
+        withStackSave(() => {
+          let name = stringToUTF8OnStack(entry.name);
+          let type;
+          // TODO: Figure out how to use `cDefine` here.
+          if (entry.isFile()) {
+            type = 1;
+          } else if (entry.isDirectory()) {
+            type = 2;
+          } else if (entry.isSymbolicLink()) {
+            type = 3;
+          } else {
+            type = 0;
+          }
+          __wasmfs_node_record_dirent(vec, name, type);
+        });
       });
-    });
-    // implicitly return 0
+      // implicitly return 0
+    }
+    return inner();
   },
 
   _wasmfs_node_get_mode__deps: ['$wasmfsNodeLstat'],
