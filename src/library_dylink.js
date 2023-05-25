@@ -26,8 +26,11 @@ var LibraryDylink = {
         // promises to run in series.
         wasmPlugin['promiseChainEnd'] = wasmPlugin['promiseChainEnd'].then(
           () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true})).then(
-            (module) => {
-              preloadedWasm[name] = module;
+            (exports) => {
+#if DYLINK_DEBUG
+              dbg(`registering preloadedWasm: ${name}`);
+#endif
+              preloadedWasm[name] = exports;
               onload(byteArray);
             },
             (error) => {
@@ -63,13 +66,47 @@ var LibraryDylink = {
     return true;
   },
 
+  // Dynamic version of shared.py:make_invoke.  This is needed for invokes
+  // that originate from side modules since these are not known at JS
+  // generation time.
+#if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
+  $createInvokeFunction__internal: true,
+  $createInvokeFunction__deps: ['$dynCall', 'setThrew'],
+  $createInvokeFunction: function(sig) {
+    return function() {
+      var sp = stackSave();
+      try {
+        return dynCall(sig, arguments[0], Array.prototype.slice.call(arguments, 1));
+      } catch(e) {
+        stackRestore(sp);
+        // Create a try-catch guard that rethrows the Emscripten EH exception.
+#if EXCEPTION_STACK_TRACES
+        // Exceptions thrown from C++ and longjmps will be an instance of
+        // EmscriptenEH.
+        if (!(e instanceof EmscriptenEH)) throw e;
+#else
+        // Exceptions thrown from C++ will be a pointer (number) and longjmp
+        // will throw the number Infinity. Use the compact and fast "e !== e+0"
+        // test to check if e was not a Number.
+        if (e !== e+0) throw e;
+#endif
+        _setThrew(1, 0);
+      }
+    }
+  },
+#endif
+
   // Resolve a global symbol by name.  This is used during module loading to
   // resolve imports, and by `dlsym` when used with `RTLD_DEFAULT`.
   // Returns both the resolved symbol (i.e. a function or a global) along with
   // the canonical name of the symbol (in some cases is modify the symbol as
   // part of the loop process, so that actual symbol looked up has a different
   // name).
-  $resolveGlobalSymbol__deps: ['$isSymbolDefined'],
+  $resolveGlobalSymbol__deps: ['$isSymbolDefined',
+#if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
+    '$createInvokeFunction',
+#endif
+  ],
   $resolveGlobalSymbol__internal: true,
   $resolveGlobalSymbol: function(symName, direct = false) {
     var sym;
@@ -110,7 +147,7 @@ var LibraryDylink = {
       var rtn = GOT[symName];
       if (!rtn) {
         rtn = GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true});
-#if DYLINK_DEBUG
+#if DYLINK_DEBUG == 2
         dbg("new GOT entry: " + symName);
 #endif
       }
@@ -171,12 +208,12 @@ var LibraryDylink = {
         GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true});
       }
       if (replace || GOT[symName].value == 0) {
-#if DYLINK_DEBUG
+#if DYLINK_DEBUG == 2
         dbg(`updateGOT: before: ${symName} : ${GOT[symName].value}`);
 #endif
         if (typeof value == 'function') {
           GOT[symName].value = {{{ to64('addFunction(value)') }}};
-#if DYLINK_DEBUG
+#if DYLINK_DEBUG == 2
           dbg(`updateGOT: FUNC: ${symName} : ${GOT[symName].value}`);
 #endif
         } else if (typeof value == {{{ POINTER_JS_TYPE }}}) {
@@ -184,7 +221,7 @@ var LibraryDylink = {
         } else {
           err(`unhandled export type for '${symName}': ${typeof value}`);
         }
-#if DYLINK_DEBUG
+#if DYLINK_DEBUG == 2
         dbg(`updateGOT:  after: ${symName} : ${GOT[symName].value} (${value})`);
 #endif
       }
@@ -248,13 +285,13 @@ var LibraryDylink = {
 #if ASSERTIONS
         assert(value, `undefined symbol '${symName}'. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment`);
 #endif
-#if DYLINK_DEBUG
+#if DYLINK_DEBUG == 2
         dbg(`assigning dynamic symbol from main module: ${symName} -> ${prettyPrint(value)}`);
 #endif
         if (typeof value == 'function') {
           /** @suppress {checkTypes} */
           GOT[symName].value = {{{ to64('addFunction(value, value.sig)') }}};
-#if DYLINK_DEBUG
+#if DYLINK_DEBUG == 2
           dbg(`assigning table entry for : ${symName} -> ${GOT[symName].value}`);
 #endif
         } else if (typeof value == 'number') {
@@ -336,36 +373,6 @@ var LibraryDylink = {
       ___dl_seterr(cmsg, 0);
     });
   },
-
-  // Dynamic version of shared.py:make_invoke.  This is needed for invokes
-  // that originate from side modules since these are not known at JS
-  // generation time.
-#if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
-  $createInvokeFunction__internal: true,
-  $createInvokeFunction__deps: ['$dynCall', 'setThrew'],
-  $createInvokeFunction: function(sig) {
-    return function() {
-      var sp = stackSave();
-      try {
-        return dynCall(sig, arguments[0], Array.prototype.slice.call(arguments, 1));
-      } catch(e) {
-        stackRestore(sp);
-        // Create a try-catch guard that rethrows the Emscripten EH exception.
-#if EXCEPTION_STACK_TRACES
-        // Exceptions thrown from C++ and longjmps will be an instance of
-        // EmscriptenEH.
-        if (!(e instanceof EmscriptenEH)) throw e;
-#else
-        // Exceptions thrown from C++ will be a pointer (number) and longjmp
-        // will throw the number Infinity. Use the compact and fast "e !== e+0"
-        // test to check if e was not a Number.
-        if (e !== e+0) throw e;
-#endif
-        _setThrew(1, 0);
-      }
-    }
-  },
-#endif
 
   // We support some amount of allocation during startup in the case of
   // dynamic linking, which needs to allocate memory for dynamic libraries that
@@ -614,9 +621,6 @@ var LibraryDylink = {
     '$alignMemory', '$zeroMemory',
     '$currentModuleWeakSymbols', '$alignMemory', '$zeroMemory',
     '$updateTableMap',
-#if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
-    '$createInvokeFunction',
-#endif
   ],
   $loadWebAssemblyModule: function(binary, flags, localScope, handle) {
     var metadata = getDylinkMetadata(binary);
@@ -989,12 +993,12 @@ var LibraryDylink = {
     function getExports() {
 #if FILESYSTEM
       // lookup preloaded cache first
-      if (preloadedWasm[libName]) {
+      var preloaded = preloadedWasm[libName];
 #if DYLINK_DEBUG
-        dbg(`using preloaded module for: ${libName}`);
+      dbg(`checking preloadedWasm: ${libName}: ${preloaded ? 'found' : 'not found'}`);
 #endif
-        var libModule = preloadedWasm[libName];
-        return flags.loadAsync ? Promise.resolve(libModule) : libModule;
+      if (preloaded) {
+        return flags.loadAsync ? Promise.resolve(preloaded) : preloaded;
       }
 #endif
 
@@ -1037,7 +1041,7 @@ var LibraryDylink = {
   $loadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols'],
   $loadDylibs: function() {
 #if DYLINK_DEBUG
-    dbg('loadDylibs');
+    dbg(`loadDylibs: ${dynamicLibraries}`);
 #endif
     if (!dynamicLibraries.length) {
 #if DYLINK_DEBUG
@@ -1058,7 +1062,7 @@ var LibraryDylink = {
       reportUndefinedSymbols();
       removeRunDependency('loadDylibs');
 #if DYLINK_DEBUG
-    dbg('loadDylibs done!');
+      dbg('loadDylibs done!');
 #endif
     });
   },
