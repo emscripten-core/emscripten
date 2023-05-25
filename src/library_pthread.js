@@ -1188,7 +1188,7 @@ var LibraryPThread = {
     }
 
 #if PTHREADS_DEBUG
-    dbg('_emscripten_dlsync_threads_async: waiting on ' + promises.length + ' promises');
+    dbg(`_emscripten_dlsync_threads_async: waiting on ${promises.length} promises`);
 #endif
     // Once all promises are resolved then we know all threads are in sync and
     // we can call the callback.
