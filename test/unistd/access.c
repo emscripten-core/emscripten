@@ -24,6 +24,7 @@ int main() {
     FS.writeFile('readable',  ""); FS.chmod('readable',  0o444);
     FS.writeFile('writeable', ""); FS.chmod('writeable', 0o222);
     FS.writeFile('allaccess', ""); FS.chmod('allaccess', 0o777);
+    FS.writeFile('fchmodtest', "");
   );
 
   // Empty path checks #9136 fix
@@ -65,6 +66,30 @@ int main() {
   printf("F_OK(%s): %d\n", "renamedfile", faccessat(AT_FDCWD, "renamedfile", F_OK, 0));
   printf("errno: %d\n", errno);
 
+
+  EM_ASM(
+    var fchmodstream = FS.open("fchmodtest", "r");
+#if WASMFS
+    FS.fchmod(fchmodstream, 0o0000);
+#else
+    FS.fchmod(fchmodstream.fd, 0o000);
+#endif
+  );
+  struct stat fileStat;
+  stat("fchmodtest", &fileStat);
+  assert(!(fileStat.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)));
+
+  EM_ASM(
+    FS.symlink("forbidden", "symlinkFile");
+    FS.lchmod("symlinkFile", 0o777);
+  );
+  struct stat symlinkStat;
+  stat("forbidden", &fileStat);
+  lstat("symlinkFile", &symlinkStat);
+  assert((symlinkStat.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)));
+  assert(!(fileStat.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)));
+  
+
   // Restore full permissions on all created files so that python test runner rmtree
   // won't have problems on deleting the files. On Windows, calling shutil.rmtree()
   // will fail if any of the files are read-only.
@@ -73,6 +98,7 @@ int main() {
     FS.chmod('readable',  0o777);
     FS.chmod('writeable', 0o777);
     FS.chmod('allaccess', 0o777);
+    FS.chmod('fchmodtest', 0o777);
   );
 
   return 0;
