@@ -188,9 +188,6 @@ void _wasmfs_readdir_finish(struct wasmfs_readdir_state* state) {
   free(state);
 }
 
-// Given a path, parse in into a full absolute path relative to the current
-// directory. Returns an allocated buffer that the caller must free, or 0 on
-// error.
 char* _wasmfs_get_cwd(void) {
   const int BUFFER_SIZE = 1024;
   return getcwd((char*)malloc(BUFFER_SIZE), BUFFER_SIZE);
