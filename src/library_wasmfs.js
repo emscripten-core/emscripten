@@ -66,7 +66,8 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       return ret;
     },
     cwd: () => {
-      var ret = UTF8ToString(__wasmfs_get_cwd());
+      var buf = __wasmfs_get_cwd();
+      var ret = UTF8ToString(buf);
       _free(buf);
       return ret;
     },
