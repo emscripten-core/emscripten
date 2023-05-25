@@ -1089,8 +1089,14 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
     return -EINVAL;
   }
 
+  // Add AT_EMPTY_PATH as Linux (and so, musl, and us) has a nonstandard
+  // behavior in which an empty path means to operate on whatever is in dirFD
+  // (directory or not), which is exactly the behavior of AT_EMPTY_PATH (but
+  // without passing that in). See "C library/kernel ABI differences" in
+  // https://man7.org/linux/man-pages/man2/utimensat.2.html
+  //
   // TODO: Handle AT_SYMLINK_NOFOLLOW once we traverse symlinks correctly.
-  auto parsed = path::parseFile(path, dirFD);
+  auto parsed = path::getFileAt(dirFD, path, flags | AT_EMPTY_PATH);
   if (auto err = parsed.getError()) {
     return err;
   }

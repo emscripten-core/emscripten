@@ -1236,8 +1236,8 @@ var LibraryGLFW = {
   glfwSwapInterval__deps: ['emscripten_set_main_loop_timing'],
   glfwSwapInterval: function(interval) {
     interval = Math.abs(interval); // GLFW uses negative values to enable GLX_EXT_swap_control_tear, which we don't have, so just treat negative and positive the same.
-    if (interval == 0) _emscripten_set_main_loop_timing(0/*EM_TIMING_SETTIMEOUT*/, 0);
-    else _emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, interval);
+    if (interval == 0) _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_SETTIMEOUT }}}, 0);
+    else _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_RAF }}}, interval);
   },
 
 #if USE_GLFW == 3

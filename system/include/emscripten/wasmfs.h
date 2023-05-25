@@ -71,6 +71,11 @@ backend_t wasmfs_create_icase_backend(backend_constructor_t create_backend,
 
 // Hooks
 
+// A hook users can do to create the root directory. Overriding this allows the
+// user to set a particular backend as the root. If this is not set then the
+// default backend is used.
+backend_t wasmfs_create_root_dir(void);
+
 // A hook users can do to run code during WasmFS startup. This hook happens
 // before file preloading, so user code could create backends and mount them,
 // which would then affect in which backend the preloaded files are loaded (the

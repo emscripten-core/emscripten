@@ -609,7 +609,7 @@ function handleWebGLProxying(funcs) {
 }
 
 handleWebGLProxying(LibraryHtml5WebGL);
-#endif // USE_PTHREADS
+#endif // PTHREADS
 
 #if LibraryManager.has('library_webgl.js')
 autoAddDeps(LibraryHtml5WebGL, '$GL');

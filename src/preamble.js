@@ -233,8 +233,8 @@ function initRuntime() {
 #endif
 
 #if STACK_OVERFLOW_CHECK >= 2
-#if RUNTIME_LOGGING
-  err('__set_stack_limits: ' + _emscripten_stack_get_base() + ', ' + _emscripten_stack_get_end());
+#if RUNTIME_DEBUG
+  dbg('__set_stack_limits: ' + _emscripten_stack_get_base() + ', ' + _emscripten_stack_get_end());
 #endif
   ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
 #endif
@@ -759,8 +759,8 @@ function instantiateSync(file, info) {
       cachedCodeFile = locateFile(cachedCodeFile);
       var hasCached = fs.existsSync(cachedCodeFile);
       if (hasCached) {
-#if RUNTIME_LOGGING
-        err('NODE_CODE_CACHING: loading module');
+#if RUNTIME_DEBUG
+        dbg('NODE_CODE_CACHING: loading module');
 #endif
         try {
           module = v8.deserialize(fs.readFileSync(cachedCodeFile));
@@ -775,8 +775,8 @@ function instantiateSync(file, info) {
       module = new WebAssembly.Module(binary);
     }
     if (ENVIRONMENT_IS_NODE && !hasCached) {
-#if RUNTIME_LOGGING
-      err('NODE_CODE_CACHING: saving module');
+#if RUNTIME_DEBUG
+      dbg('NODE_CODE_CACHING: saving module');
 #endif
       fs.writeFileSync(cachedCodeFile, v8.serialize(module));
     }
@@ -1130,8 +1130,8 @@ function createWasm() {
 #endif
 
 #if WASM_ASYNC_COMPILATION
-#if RUNTIME_LOGGING
-  err('asynchronously preparing wasm');
+#if RUNTIME_DEBUG
+  dbg('asynchronously preparing wasm');
 #endif
 #if MODULARIZE
   // If instantiation fails, reject the module ready promise.
