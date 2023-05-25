@@ -131,13 +131,6 @@ function stackCheckInit() {
 }
 #endif
 
-#if RELOCATABLE
-var dylibsLoaded = false;
-#if '$LDSO' in addedLibraryItems
-LDSO.init();
-#endif
-#endif
-
 #if MAIN_READS_PARAMS
 function run(args = arguments_) {
 #else
@@ -156,27 +149,6 @@ function run() {
   if (!ENVIRONMENT_IS_PTHREAD)
 #endif
     stackCheckInit();
-#endif
-
-#if RELOCATABLE
-  if (!dylibsLoaded) {
-  // Loading of dynamic libraries needs to happen on each thread, so we can't
-  // use the normal __ATPRERUN__ mechanism.
-#if MAIN_MODULE
-    loadDylibs();
-#else
-    reportUndefinedSymbols();
-#endif
-    dylibsLoaded = true;
-
-    // Loading dylibs can add run dependencies.
-    if (runDependencies > 0) {
-#if RUNTIME_DEBUG
-      dbg('loadDylibs added run() dependencies, not running yet');
-#endif
-      return;
-    }
-  }
 #endif
 
 #if WASM_WORKERS

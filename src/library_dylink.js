@@ -767,12 +767,10 @@ var LibraryDylink = {
           reportUndefinedSymbols();
         }
 #if STACK_OVERFLOW_CHECK >= 2
-        if (moduleExports['__set_stack_limits']) {
-#if PTHREADS
-          // When we are on an uninitialized pthread we delay calling
-          // __set_stack_limits until $setDylinkStackLimits.
-          if (!ENVIRONMENT_IS_PTHREAD || runtimeInitialized)
-#endif
+        // If the runtime has already been initialized we set the stack limits
+        // now.  Othwerwise this is delayed until `setDylinkStackLimits` is
+        // called after initialization.
+        if (moduleExports['__set_stack_limits'] && runtimeInitialized) {
           moduleExports['__set_stack_limits']({{{ to64('_emscripten_stack_get_base()') }}}, {{{ to64('_emscripten_stack_get_end()') }}});
         }
 #endif
@@ -871,20 +869,18 @@ var LibraryDylink = {
     return loadModule();
   },
 
-#if STACK_OVERFLOW_CHECK >= 2 && PTHREADS
-  // With PTHREADS we load libraries before we are running a pthread and
-  // therefore before we have a stack.  Instead we delay calling
-  // `__set_stack_limits` until we start running a thread.  We also need to call
-  // this again for each new thread that the runs on a worker (since each thread
-  // has its own separate stack region).
+#if STACK_OVERFLOW_CHECK >= 2
+  // Sometimes we load libraries before runtime initialization.  In this case
+  // we delay calling __set_stack_limits (which must be called for each
+  // module).
   $setDylinkStackLimits: function(stackTop, stackMax) {
     for (var name in LDSO.loadedLibsByName) {
 #if DYLINK_DEBUG
-      dbg(`setDylinkStackLimits[${name}]`);
+      dbg(`setDylinkStackLimits for '${name}'`);
 #endif
       var lib = LDSO.loadedLibsByName[name];
       if (lib.exports['__set_stack_limits']) {
-        lib.exports['__set_stack_limits'](stackTop, stackMax);
+        lib.exports['__set_stack_limits']({{{ to64("stackTop") }}}, {{{ to64("stackMax") }}});
       }
     }
   },

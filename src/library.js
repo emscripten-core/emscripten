@@ -21,6 +21,7 @@
 // new function with an '_', it will not be found.
 
 mergeInto(LibraryManager.library, {
+
   $ptrToString: function(ptr) {
 #if ASSERTIONS
     assert(typeof ptr === 'number');
@@ -558,6 +559,27 @@ mergeInto(LibraryManager.library, {
     stringToUTF8(s, buf, 26);
     return buf;
   },
+
+#if STACK_OVERFLOW_CHECK >= 2
+  // Set stack limits used by binaryen's `StackCheck` pass.
+#if MAIN_MODULE
+  $setStackLimits__deps: ['$setDylinkStackLimits'],
+#endif
+  $setStackLimits: function() {
+    var stackLow = _emscripten_stack_get_base();
+    var stackHigh = _emscripten_stack_get_end();
+#if RUNTIME_DEBUG
+    dbg(`setStackLimits: ${ptrToString(stackLow)}, ${ptrToString(stackHigh)}`);
+#endif
+#if MAIN_MODULE
+    // With dynamic linking we could have any number of pre-loaded libraries
+    // that each need to have their stack limits set.
+    setDylinkStackLimits(stackLow, stackHigh);
+#else
+    ___set_stack_limits(stackLow, stackHigh);
+#endif
+  },
+#endif
 
   $withStackSave__internal: true,
   $withStackSave: function(f) {
