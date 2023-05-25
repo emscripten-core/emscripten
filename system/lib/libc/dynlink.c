@@ -34,7 +34,7 @@
 //#define DYLINK_DEBUG
 
 #ifdef DYLINK_DEBUG
-#define dbg(fmt, ...) _emscripten_dbgf(fmt, ##__VA_ARGS__)
+#define dbg(fmt, ...) emscripten_dbgf(fmt, ##__VA_ARGS__)
 #else
 #define dbg(fmt, ...)
 #endif
@@ -244,7 +244,7 @@ static void dlsync_next(struct dlevent* dlevent, em_promise_t promise) {
     dbg("calling _dlsym_catchup_js ....");
     void* success = _dlsym_catchup_js(dlevent->dso, dlevent->sym_index);
     if (!success) {
-      _emscripten_errf("_dlsym_catchup_js failed: %s", dlerror());
+      emscripten_errf("_dlsym_catchup_js failed: %s", dlerror());
       sync_one_onerror(dlevent->dso, promise);
       return;
     }
@@ -288,7 +288,7 @@ bool _emscripten_dlsync_self() {
           p->sym_index);
       void* success = _dlsym_catchup_js(p->dso, p->sym_index);
       if (!success) {
-        _emscripten_errf("_dlsym_catchup_js failed: %s", dlerror());
+        emscripten_errf("_dlsym_catchup_js failed: %s", dlerror());
         return false;
       }
     } else {
@@ -306,7 +306,7 @@ bool _emscripten_dlsync_self() {
         // TODO(sbc): Ideally this would never happen and we could/should
         // abort, but on the main thread (where we don't have sync xhr) its
         // often not possible to syncronously load side module.
-        _emscripten_errf("_dlopen_js failed: %s", dlerror());
+        emscripten_errf("_dlopen_js failed: %s", dlerror());
         return false;
       }
     }

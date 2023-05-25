@@ -17,7 +17,7 @@ void Sleep(double msecs)
 
 void *thread_main(void *arg)
 {
-	_emscripten_out("hello from thread!");
+	emscripten_out("hello from thread!");
 
 	Sleep(1);
 	Sleep(10);

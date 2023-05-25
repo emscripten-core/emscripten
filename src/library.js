@@ -3357,16 +3357,16 @@ mergeInto(LibraryManager.library, {
     _exit(status);
   },
 
-  _emscripten_out: function(str) {
+  emscripten_out: function(str) {
     out(UTF8ToString(str));
   },
 
-  _emscripten_err: function(str) {
+  emscripten_err: function(str) {
     err(UTF8ToString(str));
   },
 
 #if ASSERTIONS || RUNTIME_DEBUG
-  _emscripten_dbg: function(str) {
+  emscripten_dbg: function(str) {
     dbg(UTF8ToString(str));
   },
 #endif
