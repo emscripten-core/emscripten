@@ -14,7 +14,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     '$wasmFSPreloadedFiles',
     '$wasmFSPreloadedDirs',
     '$PATH',
-    '$stringToNewUTF8',
     '$stringToUTF8OnStack',
     '$withStackSave',
     '$readI53FromI64',
@@ -22,6 +21,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     '$FS_getMode',
 #if FORCE_FILESYSTEM
     '$FS_modeStringToFlags',
+    'malloc',
 #endif
   ],
   $FS : {
@@ -49,10 +49,9 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         throw new Error('Invalid encoding type "' + opts.encoding + '"');
       }
 
-      var pathName = stringToNewUTF8(path);
-
       // Copy the file into a JS buffer on the heap.
-      var buf = __wasmfs_read_file(pathName);
+      var buf = withStackSave(() => __wasmfs_read_file(stringToUTF8OnStack(path)));
+
       // The signed integer length resides in the first 8 bytes of the buffer.
       var length = {{{ makeGetValue('buf', '0', 'i53') }}};
 
@@ -63,7 +62,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         ret = UTF8ArrayToString(ret, 0);
       }
 
-      _free(pathName);
       _free(buf);
       return ret;
     },
@@ -214,30 +212,25 @@ FS.createPreloadedFile = FS_createPreloadedFile;
   _wasmfs_get_preloaded_file_mode: function(index) {
     return wasmFSPreloadedFiles[index].mode;
   },
-  _wasmfs_get_preloaded_parent_path__sig: 'vip',
   _wasmfs_get_preloaded_parent_path: function(index, parentPathBuffer) {
     var s = wasmFSPreloadedDirs[index].parentPath;
     var len = lengthBytesUTF8(s) + 1;
     stringToUTF8(s, parentPathBuffer, len);
   },
-  _wasmfs_get_preloaded_child_path__sig: 'vip',
   _wasmfs_get_preloaded_child_path: function(index, childNameBuffer) {
     var s = wasmFSPreloadedDirs[index].childName;
     var len = lengthBytesUTF8(s) + 1;
     stringToUTF8(s, childNameBuffer, len);
   },
-  _wasmfs_get_preloaded_path_name__sig: 'vip',
   _wasmfs_get_preloaded_path_name__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   _wasmfs_get_preloaded_path_name: function(index, fileNameBuffer) {
     var s = wasmFSPreloadedFiles[index].pathName;
     var len = lengthBytesUTF8(s) + 1;
     stringToUTF8(s, fileNameBuffer, len);
   },
-  _wasmfs_get_preloaded_file_size__sig: 'pi',
   _wasmfs_get_preloaded_file_size: function(index) {
     return wasmFSPreloadedFiles[index].fileData.length;
   },
-  _wasmfs_copy_preloaded_file_data__sig: 'vip',
   _wasmfs_copy_preloaded_file_data: function(index, buffer) {
     HEAPU8.set(wasmFSPreloadedFiles[index].fileData, buffer);
   }

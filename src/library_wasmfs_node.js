@@ -124,7 +124,7 @@ mergeInto(LibraryManager.library, {
   _wasmfs_node_insert_directory__deps: ['$wasmfsNodeConvertNodeCode'],
   _wasmfs_node_insert_directory: function(path_p, mode) {
     try {
-      fs.mkdirSync(UTF8ToString(path_p), { mode: mode });
+      fs.mkdirSync(UTF8ToString(path_p), mode);
     } catch (e) {
       if (!e.code) throw e;
       return wasmfsNodeConvertNodeCode(e);

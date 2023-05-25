@@ -56,7 +56,7 @@ entry_remap = {
   'emnm': 'tools/emnm',
 }
 
-tools_dir = os.path.dirname(os.path.abspath(__file__))
+tools_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def main():

@@ -426,7 +426,7 @@ class Library:
     This will trigger a build if this library is not in the cache.
     """
     fullpath = self.build()
-    # For non-libaries (e.g. crt1.o) we pass the entire path to the linker
+    # For non-libraries (e.g. crt1.o) we pass the entire path to the linker
     if self.get_ext() != '.a':
       return fullpath
     # For libraries (.a) files, we pass the abbreviated `-l` form.
@@ -1865,6 +1865,22 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
 
   def can_use(self):
     return settings.WASMFS
+
+
+class libwasmfs_noderawfs(Library):
+  name = 'libwasmfs_noderawfs'
+
+  cflags = ['-fno-exceptions', '-std=c++17']
+
+  includes = ['system/lib/wasmfs']
+
+  def get_files(self):
+    return files_in_path(
+        path='system/lib/wasmfs/backends',
+        filenames=['noderawfs_root.cpp'])
+
+  def can_use(self):
+    return settings.WASMFS and settings.NODERAWFS
 
 
 class libhtml5(Library):

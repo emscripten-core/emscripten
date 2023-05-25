@@ -8881,8 +8881,9 @@ end
     self.assertContained('start block "main"', stderr)
     self.assertContained('block "main" took', stderr)
 
+  @also_with_wasmfs
   def test_noderawfs(self):
-    self.run_process([EMXX, test_file('fs/test_fopen_write.cpp'), '-sNODERAWFS'])
+    self.run_process([EMXX, test_file('fs/test_fopen_write.cpp'), '-sNODERAWFS'] + self.get_emcc_args())
     self.assertContained("read 11 bytes. Result: Hello data!", self.run_js('a.out.js'))
 
     # NODERAWFS should directly write on OS file system
@@ -10397,6 +10398,7 @@ int main(void) {
     'c': ['c', []],
     'cpp': ['cpp', []],
     'growth': ['cpp', ['-sALLOW_MEMORY_GROWTH']],
+    'wasmfs': ['c', ['-sWASMFS']],
   })
   def test_lsan_leaks(self, ext, args):
     self.do_runf(test_file('other/test_lsan_leaks.' + ext),
@@ -12109,8 +12111,6 @@ kill -9 $$
 
   def test_standard_library_mapping(self):
     # Test the `-l` flags on the command line get mapped the correct libraries variant
-    self.run_process([EMBUILDER, 'build', 'libc-mt-debug', 'libcompiler_rt-mt', 'libdlmalloc-mt'])
-
     libs = ['-lc', '-lbulkmemory', '-lcompiler_rt', '-lmalloc']
     err = self.run_process([EMCC, test_file('hello_world.c'), '-pthread', '-nodefaultlibs', '-v'] + libs, stderr=PIPE).stderr
 
@@ -13287,6 +13287,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_wasi_std_io_stderr(self):
     self.run_wasi_test_suite_test('std_io_stderr')
 
+  @also_with_wasmfs
   @requires_node
   def test_wasi_clock_res_get(self):
     self.run_wasi_test_suite_test('wasi_clock_res_get')
