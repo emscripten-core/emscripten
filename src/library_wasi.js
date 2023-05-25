@@ -521,7 +521,9 @@ var WasiLibrary = {
 #else
       // Hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0. We support at
       // least stdin, stdout, stderr in a simple way.
+#if ASSERTIONS
       assert(fd == 0 || fd == 1 || fd == 2);
+#endif
       var type = {{{ cDefs.__WASI_FILETYPE_CHARACTER_DEVICE }}};
       if (fd == 0) {
         rightsBase = {{{ cDefs.__WASI_RIGHTS_FD_READ }}};
