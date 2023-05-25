@@ -19,6 +19,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     '$readI53FromI64',
     '$FS_createPreloadedFile',
     '$FS_getMode',
+    'free',
 #if FORCE_FILESYSTEM
     '$FS_modeStringToFlags',
     'malloc',
