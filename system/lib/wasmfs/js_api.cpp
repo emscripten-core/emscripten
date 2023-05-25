@@ -189,8 +189,9 @@ void _wasmfs_readdir_finish(struct wasmfs_readdir_state* state) {
 }
 
 char* _wasmfs_get_cwd(void) {
-  const int BUFFER_SIZE = 1024;
-  return getcwd((char*)malloc(BUFFER_SIZE), BUFFER_SIZE);
+  // TODO: MAXPATHLEN is 4K atm, so it's probably not too bad to always allocate
+  //       that much, but consider optimizing this.
+  return getcwd((char*)malloc(MAXPATHLEN), MAXPATHLEN);
 }
 
 } // extern "C"
