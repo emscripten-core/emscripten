@@ -1727,4 +1727,17 @@ int __syscall_recvmsg(
   return -ENOSYS;
 }
 
+int __syscall_fadvise64(int fd, uint64_t offset, uint64_t length, int advice) {
+  // Advice is currently ignored. TODO some backends might use it
+  return 0;
+}
+
+int __syscall__newselect(int nfds, intptr_t readfds_, intptr_t writefds_, intptr_t exceptfds_, intptr_t timeout_) {
+  // TODO: Implement this syscall. For now, we return an error code,
+  //       specifically ENOMEM which is valid per the docs:
+  //          ENOMEM Unable to allocate memory for internal tables
+  //          https://man7.org/linux/man-pages/man2/select.2.html
+  return -ENOMEM;
+}
+
 } // extern "C"
