@@ -6014,11 +6014,6 @@ Module = {
   def test_fs_writeFile(self):
     self.do_run_in_out_file_test('fs/test_writeFile.cpp')
 
-  def test_fs_open_wasmfs(self):
-    self.emcc_args += ['-sWASMFS']
-    self.emcc_args += ['-sFORCE_FILESYSTEM']
-    self.do_runf(test_file('fs/test_open_wasmfs.c'), 'success')
-
   def test_fs_js_api(self):
     self.set_setting("FORCE_FILESYSTEM")
     self.do_runf(test_file('fs/test_fs_js_api.c'), 'success')

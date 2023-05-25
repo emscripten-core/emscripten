@@ -25,18 +25,17 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 #endif
   ],
   $FS : {
-    WasmFSError: null,
-    DoWasmFSError: (code) => {
-      if(!FS.WasmFSError) {
-        FS.WasmFSError = /** @this{Object} */ function ErrnoError(code) {
-          this.code = code;
+    ErrnoError: null,
+    DoWasmFSError: (errno) => {
+      if(!FS.ErrnoError) {
+        FS.ErrnoError = /** @this{Object} */ function ErrnoError(code) {
+          this.errno = code;
           this.message = 'FS error';
         }
-        FS.WasmFSError.prototype = new Error();
-        FS.WasmFSError.prototype.constructor = FS.WasmFSError;
+        FS.ErrnoError.prototype = new Error();
+        FS.ErrnoError.prototype.constructor = FS.ErrnoError;
       }
-
-      throw new FS.WasmFSError(code);
+      throw new FS.ErrnoError(errno);
     },
     createDataFile: (parent, name, data, canRead, canWrite, canOwn) => {
       // Data files must be cached until the file system itself has been initialized.
@@ -110,7 +109,11 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
       return withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
-        return __wasmfs_open({{{ to64('buffer') }}}, flags, mode);
+        var fd = __wasmfs_open({{{ to64('buffer') }}}, flags, mode);
+        if(fd < 0) {
+          FS.DoWasmFSError(-fd);
+        }
+        return fd;
       })
     },
     // TODO: create
