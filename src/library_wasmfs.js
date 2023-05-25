@@ -14,7 +14,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     '$wasmFSPreloadedFiles',
     '$wasmFSPreloadedDirs',
     '$PATH',
-    '$stringToNewUTF8',
     '$stringToUTF8OnStack',
     '$withStackSave',
     '$readI53FromI64',
@@ -22,6 +21,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     '$FS_getMode',
 #if FORCE_FILESYSTEM
     '$FS_modeStringToFlags',
+    'malloc',
 #endif
   ],
   $FS : {
@@ -61,10 +61,9 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         throw new Error('Invalid encoding type "' + opts.encoding + '"');
       }
 
-      var pathName = stringToNewUTF8(path);
-
       // Copy the file into a JS buffer on the heap.
-      var buf = __wasmfs_read_file(pathName);
+      var buf = withStackSave(() => __wasmfs_read_file(stringToUTF8OnStack(path)));
+
       // The signed integer length resides in the first 8 bytes of the buffer.
       var length = {{{ makeGetValue('buf', '0', 'i53') }}};
 
@@ -75,7 +74,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         ret = UTF8ArrayToString(ret, 0);
       }
 
-      _free(pathName);
       _free(buf);
       return ret;
     },
