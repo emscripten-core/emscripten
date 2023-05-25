@@ -359,7 +359,14 @@ var LibraryDylink = {
     loadedLibsByName: {},
     // handle  -> dso; Used by dlsym
     loadedLibsByHandle: {},
-    init: () => newDSO('__main__', {{{ cDefs.RTLD_DEFAULT }}}, wasmImports),
+    init: () => {
+#if ASSERTIONS
+      // This function needs to run after the initial wasmImports object
+      // as been created.
+      assert(wasmImports);
+#endif
+      newDSO('__main__', {{{ cDefs.RTLD_DEFAULT }}}, wasmImports);
+    },
   },
 
   $dlSetError__internal: true,
@@ -1040,9 +1047,6 @@ var LibraryDylink = {
   $loadDylibs__internal: true,
   $loadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols'],
   $loadDylibs: function() {
-#if DYLINK_DEBUG
-    dbg(`loadDylibs: ${dynamicLibraries}`);
-#endif
     if (!dynamicLibraries.length) {
 #if DYLINK_DEBUG
       dbg('loadDylibs: no libraries to preload');
@@ -1050,6 +1054,10 @@ var LibraryDylink = {
       reportUndefinedSymbols();
       return;
     }
+
+#if DYLINK_DEBUG
+    dbg(`loadDylibs: ${dynamicLibraries}`);
+#endif
 
     // Load binaries asynchronously
     addRunDependency('loadDylibs');
