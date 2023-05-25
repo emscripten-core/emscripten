@@ -168,44 +168,79 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
         var statBuf = _malloc(112);
         var err = __wasmfs_stat(pathBuffer, statBuf);
+        // FS.handleError(-__wasmfs_stat(pathBuffer, statBuf));
         const resultView = new Uint8Array(Module.HEAP8.buffer, statBuf, 112);
-        const finalResult = new Uint8Array(resultView);
-        const view = new DataView(finalResult.buffer, 0);
+        const resultCopy = new Uint8Array(resultView);
+        const view = new DataView(resultCopy.buffer, 0);
         
         _free(statBuf);
-        console.log("ChatGPT Stuff: ", finalResult.subarray(12, 16));
-        console.log("SO Stuff: dev: ", view.getUint32(0, true));
-        console.log("SO Stuff: stmode: ", view.getUint32(12, true));
-        console.log("SO Stuff: nlink: ", view.getUint32(16, true));
-        console.log("SO Stuff: uid: ", view.getUint32(20, true));
-        console.log("SO Stuff: gid: ", view.getUint32(24, true));
-        console.log("SO Stuff: rdev: ", view.getUint32(28, true));
-        console.log("SO Stuff: size: ", view.getUint32(40, true));
-        console.log("SO Stuff: blksize: ", view.getUint32(48, true));
-        console.log("SO Stuff: blocks: ", view.getUint32(52, true));
-        console.log("SO Stuff: atime: ", view.getUint32(56, true));
-        console.log("SO Stuff: mtime: ", view.getUint32(72, true));
-        console.log("SO Stuff: ctime: ", view.getUint32(88, true));
-        console.log("SO Stuff: ino: ", view.getUint32(104, true));
-        
+        // console.log("ChatGPT Stuff: ", finalResult.subarray(12, 16));
+        // console.log("SO Stuff: dev: ", view.getUint32(0, true));
+        // console.log("SO Stuff: stmode: ", view.getUint32(12, true));
+        // console.log("SO Stuff: nlink: ", view.getUint32(16, true));
+        // console.log("SO Stuff: uid: ", view.getUint32(20, true));
+        // console.log("SO Stuff: gid: ", view.getUint32(24, true));
+        // console.log("SO Stuff: rdev: ", view.getUint32(28, true));
+        // console.log("SO Stuff: size: ", view.getBigUint64(40, true));
+        // console.log("SO Stuff: blksize: ", view.getUint32(48, true));
+        // console.log("SO Stuff: blocks: ", view.getUint32(52, true));
+        // console.log("SO Stuff: atime: ", view.getBigInt64(56, true));
+        // console.log("SO Stuff: mtime: ", view.getBigInt64(72, true));
+        // console.log("SO Stuff: ctime: ", view.getBigInt64(88, true));
+        // console.log("SO Stuff: ino: ", view.getBigUint64(104, true));
 
+        var statsObj = {
+          dev: view.getUint32(0, true),
+          mode: view.getUint32(12, true),
+          nlink: view.getUint32(16, true),
+          uid: view.getUint32(20, true),
+          gid: view.getUint32(24, true),
+          rdev: view.getUint32(28, true),
+          size: view.getBigUint64(40, true),
+          blksize: view.getUint32(48, true),
+          blocks: view.getUint32(52, true),
+          atime: view.getBigInt64(56, true),
+          mtime: view.getBigInt64(72, true),
+          ctime: view.getBigInt64(88, true),
+          ino: view.getBigUint64(104, true)
+        }
+        // console.log("statsObj: ", statsObj);
 
-        console.log("Extra: ", finalResult);
-
-
-        var err = __wasmfs_stat_error(pathBuffer);
-        console.log("Error: ", err);
-        var statObj = __wasmfs_stat_object(pathBuffer);
-        console.log("Stat: ", statObj);
-
-        return err;
+        return statsObj;
       })
     },
     // TODO: lstat
     lstat: (path) => {
       return withStackSave(() => {
-        var buffer = stringToUTF8OnStack(path);
-        return __wasmfs_lstat(buffer);
+        var pathBuffer = stringToUTF8OnStack(path);
+        
+        var statBuf = _malloc(112);
+        var err = __wasmfs_lstat(pathBuffer, statBuf);
+        // FS.handleError(-__wasmfs_lstat(pathBuffer, statBuf));
+        const resultView = new Uint8Array(Module.HEAP8.buffer, statBuf, 112);
+        const resultCopy = new Uint8Array(resultView);
+        const view = new DataView(resultCopy.buffer, 0);
+
+        _free(statBuf);
+
+        var statsObj = {
+          dev: view.getUint32(0, true),
+          mode: view.getUint32(12, true),
+          nlink: view.getUint32(16, true),
+          uid: view.getUint32(20, true),
+          gid: view.getUint32(24, true),
+          rdev: view.getUint32(28, true),
+          size: view.getBigUint64(40, true),
+          blksize: view.getUint32(48, true),
+          blocks: view.getUint32(52, true),
+          atime: view.getBigInt64(56, true),
+          mtime: view.getBigInt64(72, true),
+          ctime: view.getBigInt64(88, true),
+          ino: view.getBigUint64(104, true)
+        }
+        // console.log("l-statsObj: ", statsObj);
+
+        return statsObj;
       })
     },
     chmod: (path, mode) => {

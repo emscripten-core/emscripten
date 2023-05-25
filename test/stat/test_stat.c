@@ -60,20 +60,7 @@ void test() {
   assert(err == -1);
   assert(errno == ENOENT);
 
-  printf("size of: %lu\n", sizeof(struct stat));
-  // EM_ASM(
-  //   var ex;
-  //   try {
-  //     console.log("TRY");
-  //     var stats = FS.stat("does_not_exist");
-  //     console.log(stats);
-  //   } catch(err) {
-  //     console.log("CATCH");
-  //     ex = err;
-  //   }
-  //   // assert(ex);
-  // );
-
+  // printf("size of: %lu\n", sizeof(struct stat));
   // stat a folder
   memset(&s, 0, sizeof(s));
   err = stat("folder", &s);
@@ -128,47 +115,20 @@ void test() {
   assert(s.st_atime == TEST_TIME);
   assert(s.st_mtime == TEST_TIME);
   assert(s.st_ctime);
-  printf("Correct stdev: %u\n", s.st_dev);
-  printf("Correct stnlink: %lu\n", s.st_nlink);
-  printf("Correct stino: %llu\n", s.st_ino);
-  printf("Correct stmode: %u\n", s.st_mode);
 
-  printf("p stdev: %lu\n", (unsigned long)&s.st_dev);
-  printf("p stnlink: %lu\n", (unsigned long)&s.st_nlink);
-  printf("p stino: %lu\n", (unsigned long)&s.st_ino);
-  printf("p stmode: %lu\n", (unsigned long) &s.st_mode);
-  printf("p st_atime: %lu\n", (unsigned long) &s.st_atime);
-  // printf("p st_atimensec: %lu\n", (unsigned long) &s.st_atimensec);
-  printf("p st_mtime: %lu\n", (unsigned long) &s.st_mtime);
-  // printf("p st_mtimensec: %lu\n", (unsigned long) &s.st_mtimensec);
-  printf("p st_ctime: %lu\n", (unsigned long) &s.st_ctime);
-  // printf("p st_ctimensec: %lu\n", (unsigned long) &s.st_ctimensec);
-  printf("p st_blksize: %lu\n", (unsigned long) &s.st_blksize);
-  printf("p st_blocks: %lu\n", (unsigned long) &s.st_blocks);
-  printf("p st_gid: %lu\n", (unsigned long) &s.st_gid);
-  printf("p st_rdev: %lu\n", (unsigned long) &s.st_rdev);
-  printf("p st_size: %lu\n", (unsigned long) &s.st_size);
-  printf("p st_uid: %lu\n", (unsigned long) &s.st_uid);
-
-  printf("- stdev: %lu\n", (unsigned long)s.st_dev);
-  printf("- stnlink: %lu\n", (unsigned long)s.st_nlink);
-  printf("- stino: %lu\n", (unsigned long)s.st_ino);
-  printf("- stmode: %lu\n", (unsigned long) s.st_mode);
-  printf("- st_atime: %lu\n", (unsigned long) s.st_atime);
-  // printf("p st_atimensec: %lu\n", (unsigned long) &s.st_atimensec);
-  printf("- st_mtime: %lu\n", (unsigned long) s.st_mtime);
-  // printf("p st_mtimensec: %lu\n", (unsigned long) &s.st_mtimensec);
-  printf("- st_ctime: %lu\n", (unsigned long) s.st_ctime);
-  // printf("p st_ctimensec: %lu\n", (unsigned long) &s.st_ctimensec);
-  printf("- st_blksize: %lu\n", (unsigned long) s.st_blksize);
-  printf("- st_blocks: %lu\n", (unsigned long) s.st_blocks);
-  printf("- st_gid: %lu\n", (unsigned long) s.st_gid);
-  printf("- st_rdev: %lu\n", (unsigned long) s.st_rdev);
-  printf("- st_size: %lu\n", (unsigned long) s.st_size);
-  printf("- st_uid: %lu\n", (unsigned long) s.st_uid);
-
-  
-  printf("Correct uid: %u\n", s.st_uid);
+  // printf("p stdev: %lu\n", (unsigned long)&s.st_dev);
+  // printf("p stnlink: %lu\n", (unsigned long)&s.st_nlink);
+  // printf("p stino: %lu\n", (unsigned long)&s.st_ino);
+  // printf("p stmode: %lu\n", (unsigned long) &s.st_mode);
+  // printf("p st_atime: %lu\n", (unsigned long) &s.st_atime);
+  // printf("p st_mtime: %lu\n", (unsigned long) &s.st_mtime);
+  // printf("p st_ctime: %lu\n", (unsigned long) &s.st_ctime);
+  // printf("p st_blksize: %lu\n", (unsigned long) &s.st_blksize);
+  // printf("p st_blocks: %lu\n", (unsigned long) &s.st_blocks);
+  // printf("p st_gid: %lu\n", (unsigned long) &s.st_gid);
+  // printf("p st_rdev: %lu\n", (unsigned long) &s.st_rdev);
+  // printf("p st_size: %lu\n", (unsigned long) &s.st_size);
+  // printf("p st_uid: %lu\n", (unsigned long) &s.st_uid);
 
   // printf("sizes: %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %lu, %lu, %lu, %lu, %d\n",
   // sizeof(s.st_dev), sizeof(s.st_mode), sizeof(s.st_nlink),
@@ -176,17 +136,11 @@ void test() {
   // sizeof(s.st_blksize), sizeof(s.st_blocks), sizeof(s.st_atime), sizeof(s.st_atimensec),
   // sizeof(s.st_mtime), sizeof(s.st_mtimensec), 
   // sizeof(s.st_ctime), sizeof(s.st_ctimensec), (s.st_ino));
-
-  printf("sizes: %lu, %lu, %lu, %lu\n", sizeof(s.st_dev), sizeof(s.st_ino), sizeof(s.st_nlink), sizeof(s.st_mode));
   
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);
 #endif
-
-  EM_ASM(
-    FS.stat("folder/file");
-  );
 
   // fstat a file (should match file stat from above)
   memset(&s, 0, sizeof(s));
@@ -266,6 +220,7 @@ void test() {
   assert(s.st_blocks == 1);
 #endif
 
+
   // create and unlink files inside a directory and check that mtime updates
   mkdir("folder/subdir", 0777);
   utime("folder/subdir", &t);
@@ -276,6 +231,52 @@ void test() {
   unlink("folder/subdir/file");
   err = stat("folder/subdir", &s);
   assert(s.st_mtime != TEST_TIME);
+
+  EM_ASM(
+    var stats = FS.stat("folder/file");
+    // console.log("recv stats: %o", stats);
+    assert(stats.dev == 1);
+    assert(stats.ino);
+    assert(stats.mode);
+    assert(stats.nlink);
+    assert(stats.rdev == 0);
+    assert(stats.size == 6);
+    assert(stats.atime);
+    assert(stats.mtime);
+    assert(stats.ctime);
+
+    var original_mode = stats.mode;
+    
+    FS.symlink("file", "folder/symlinkfile");
+    FS.chmod("folder/file", 0o666);
+    var linkStats = FS.lstat("folder/symlinkfile");
+    // console.log("Link: ", linkStats);
+    assert(linkStats.dev == 1);
+    assert(linkStats.ino);
+    assert(linkStats.mode != original_mode);
+    assert(linkStats.nlink);
+    assert(linkStats.rdev == 0);
+    assert(linkStats.size == 4);
+    assert(linkStats.atime);
+    assert(linkStats.mtime);
+    assert(linkStats.ctime);
+
+    FS.chmod("folder/file", 0o777);
+  );
+
+  // printf("- stdev: %u\n", s.st_dev);
+  // printf("- stnlink: %lu\n", s.st_nlink);
+  // printf("- stino: %llu\n", s.st_ino);
+  // printf("- stmode: %u\n", s.st_mode);
+  // printf("- st_atime: %llu\n", s.st_atime);
+  // printf("- st_mtime: %llu\n", s.st_mtime);
+  // printf("- st_ctime: %llu\n", s.st_ctime);
+  // printf("- st_blksize: %d\n", s.st_blksize);
+  // printf("- st_blocks: %d\n", s.st_blocks);
+  // printf("- st_gid: %u\n", s.st_gid);
+  // printf("- st_rdev: %u\n", s.st_rdev);
+  // printf("- st_size: %llu\n", s.st_size);
+  // printf("- st_uid: %u\n", s.st_uid);
 
   puts("success");
 }
