@@ -75,6 +75,21 @@ int main() {
     FS.fchmod(fchmodstream.fd, 0o000);
 #endif
   );
+
+#if !NODE*FS
+  EM_ASM(
+    FS.symlink('forbidden', 'symlinkfile');
+    FS.lchmod('symlinkfile', 0o777);
+  );
+  struct stat fileStats;
+  struct stat symlinkStats;
+
+  lstat("symlinkfile", &symlinkStats);
+  assert(symlinkStats.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO));
+
+  stat("forbidden", &fileStats);
+  assert(!(fileStats.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)));
+#endif
   
 
   // Restore full permissions on all created files so that python test runner rmtree
