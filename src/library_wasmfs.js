@@ -63,7 +63,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         ret = UTF8ArrayToString(ret, 0);
       }
 
-      _free(buf);
       return ret;
     },
     cwd: () => {
