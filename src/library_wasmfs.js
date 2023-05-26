@@ -25,6 +25,16 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 #endif
   ],
   $FS : {
+    analyzePath: (path) => {
+      var exists = !!FS.findObject(path);
+      // TODO: Consider simplifying this API, which for now matches the JS FS.
+      return {
+        exists: exists,
+        object: {
+          contents: exists ? FS.readFile(path) : null
+        }
+      };
+    },
     createDataFile: (parent, name, data, canRead, canWrite, canOwn) => {
       // Data files must be cached until the file system itself has been initialized.
       var mode = FS_getMode(canRead, canWrite);
