@@ -129,17 +129,7 @@ int _wasmfs_symlink(char* old_path, char* new_path) {
   return __syscall_symlink((intptr_t)old_path, (intptr_t)new_path);
 }
 
-int _wasmfs_chmod(char* path, mode_t mode) {
-  return __syscall_chmod((intptr_t)path, mode);
-}
 
-int _wasmfs_fchmod(int fd, mode_t mode) {
-  return __syscall_fchmod(fd, mode);
-}
-
-int _wasmfs_lchmod(char* path, mode_t mode) {
-  return __syscall_fchmodat(AT_FDCWD, (intptr_t)path, mode, AT_SYMLINK_NOFOLLOW);
-}
 
 // Helper method that identifies what a path is:
 //   ENOENT - if nothing exists there

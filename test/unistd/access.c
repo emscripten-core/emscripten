@@ -70,25 +70,28 @@ int main() {
   EM_ASM(
     var fchmodstream = FS.open("fchmodtest", "r");
 #if WASMFS
-    FS.fchmod(fchmodstream, 0o0000);
+    FS.fchmod(fchmodstream, 0o000);
 #else
     FS.fchmod(fchmodstream.fd, 0o000);
 #endif
   );
+  struct stat fileStats;
+  stat("fchmodtest", &fileStats);
+  assert(fileStats.st_mode & (0777));
 
 #if !NODE*FS
   EM_ASM(
     FS.symlink('forbidden', 'symlinkfile');
     FS.lchmod('symlinkfile', 0o777);
   );
-  struct stat fileStats;
+  
   struct stat symlinkStats;
 
   lstat("symlinkfile", &symlinkStats);
-  assert(symlinkStats.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO));
+  assert(symlinkStats.st_mode & 0777);
 
   stat("forbidden", &fileStats);
-  assert(!(fileStats.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)));
+  assert(!(fileStats.st_mode & 0777));
 #endif
   
 
