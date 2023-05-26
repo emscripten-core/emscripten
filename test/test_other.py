@@ -13473,10 +13473,18 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
         struct stat statbuf;
         assert(stat("/library.so", &statbuf) == 0);
 
-        // Check that it was preloaded
+        // Check that it was preloaded.
+        // The preloading actually only happens on the main thread where the filesystem
+        // lives.  On worker threads the module object is shared via preloadedModules.
         if (emscripten_is_main_runtime_thread()) {
           int found = EM_ASM_INT(
             return preloadedWasm['/library.so'] !== undefined;
+          );
+          assert(found);
+        } else {
+          int found = EM_ASM_INT(
+            err(sharedModules);
+            return sharedModules['/library.so'] !== undefined;
           );
           assert(found);
         }

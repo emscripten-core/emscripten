@@ -25,7 +25,7 @@ var LibraryDylink = {
         // than just running the promises in parallel, this makes a chain of
         // promises to run in series.
         wasmPlugin['promiseChainEnd'] = wasmPlugin['promiseChainEnd'].then(
-          () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true})).then(
+          () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true}, name)).then(
             (exports) => {
 #if DYLINK_DEBUG
               dbg(`registering preloadedWasm: ${name}`);
@@ -618,6 +618,7 @@ var LibraryDylink = {
   // promise that resolves to its exports if the loadAsync flag is set.
   $loadWebAssemblyModule__docs: `
    /**
+    * @param {string=} libName
     * @param {Object=} localScope
     * @param {number=} handle
     */`,
@@ -629,7 +630,10 @@ var LibraryDylink = {
     '$currentModuleWeakSymbols', '$alignMemory', '$zeroMemory',
     '$updateTableMap',
   ],
-  $loadWebAssemblyModule: function(binary, flags, localScope, handle) {
+  $loadWebAssemblyModule: function(binary, flags, libName, localScope, handle) {
+#if DYLINK_DEBUG
+    dbg(`loadWebAssemblyModule: ${libName}`);
+#endif
     var metadata = getDylinkMetadata(binary);
     currentModuleWeakSymbols = metadata.weakImports;
 #if ASSERTIONS
@@ -752,10 +756,20 @@ var LibraryDylink = {
         '{{{ WASI_MODULE_NAME }}}': proxy,
       };
 
-      function postInstantiation(instance) {
+      function postInstantiation(module, instance) {
 #if ASSERTIONS
         // the table should be unchanged
         assert(wasmTable === originalTable);
+#endif
+#if PTHREADS
+        if (!ENVIRONMENT_IS_PTHREAD && libName) {
+#if DYLINK_DEBUG
+          dbg(`registering sharedModules: ${libName}`)
+#endif
+          // cache all loaded modules in `sharedModules`, which gets passed
+          // to new workers when they are created.
+          sharedModules[libName] = module;
+        }
 #endif
         // add new entries to functionsInTableMap
         updateTableMap(tableBase, metadata.tableSize);
@@ -844,16 +858,16 @@ var LibraryDylink = {
       if (flags.loadAsync) {
         if (binary instanceof WebAssembly.Module) {
           var instance = new WebAssembly.Instance(binary, info);
-          return Promise.resolve(postInstantiation(instance));
+          return Promise.resolve(postInstantiation(binary, instance));
         }
         return WebAssembly.instantiate(binary, info).then(
-          (result) => postInstantiation(result.instance)
+          (result) => postInstantiation(result.module, result.instance)
         );
       }
 
       var module = binary instanceof WebAssembly.Module ? binary : new WebAssembly.Module(binary);
       var instance = new WebAssembly.Instance(module, info);
-      return postInstantiation(instance);
+      return postInstantiation(module, instance);
     }
 
     // now load needed libraries and the module itself.
@@ -968,6 +982,16 @@ var LibraryDylink = {
 
     // libName -> libData
     function loadLibData() {
+#if PTHREADS
+      var sharedMod = sharedModules[libName];
+#if DYLINK_DEBUG
+      dbg(`checking sharedModules: ${libName}: ${sharedMod ? 'found' : 'not found'}`);
+#endif
+      if (sharedMod) {
+        return flags.loadAsync ? Promise.resolve(sharedMod) : sharedMod;
+      }
+#endif
+
       // for wasm, we can use fetch for async, but for fs mode we can only imitate it
       if (handle) {
         var data = {{{ makeGetValue('handle', C_STRUCTS.dso.file_data, '*') }}};
@@ -1007,10 +1031,10 @@ var LibraryDylink = {
 
       // module not preloaded - load lib data and create new module from it
       if (flags.loadAsync) {
-        return loadLibData().then((libData) => loadWebAssemblyModule(libData, flags, localScope, handle));
+        return loadLibData().then((libData) => loadWebAssemblyModule(libData, flags, libName, localScope, handle));
       }
 
-      return loadWebAssemblyModule(loadLibData(), flags, localScope, handle);
+      return loadWebAssemblyModule(loadLibData(), flags, libName, localScope, handle);
     }
 
     // module for lib is loaded - update the dso & global namespace

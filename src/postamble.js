@@ -131,6 +131,12 @@ function stackCheckInit() {
 }
 #endif
 
+#if MAIN_MODULE && PTHREADS
+// Map of modules to be shared with new threads.  This gets populated by the
+// main thread and shared with all new workers.
+var sharedModules = Module['sharedModules'] || [];
+#endif
+
 #if MAIN_READS_PARAMS
 function run(args = arguments_) {
 #else

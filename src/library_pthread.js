@@ -410,7 +410,9 @@ var LibraryPThread = {
         'wasmOffsetConverter': wasmOffsetConverter,
 #endif
 #if MAIN_MODULE
-        'dynamicLibraries': Module['dynamicLibraries'],
+        // Share all modules that have been loaded so far.  New workers
+        // won't start running threads until these are all loaded.
+        'sharedModules': sharedModules,
 #endif
 #if ASSERTIONS
         'workerID': worker.workerID,
@@ -431,6 +433,7 @@ var LibraryPThread = {
       ) {
         return onMaybeReady();
       }
+
       let pthreadPoolReady = Promise.all(PThread.unusedWorkers.map(PThread.loadWasmModuleToWorker));
 #if PTHREAD_POOL_DELAY_LOAD
       // PTHREAD_POOL_DELAY_LOAD means we want to proceed synchronously without
