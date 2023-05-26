@@ -1782,17 +1782,17 @@ def phase_linker_setup(options, state, newargs):
     options.post_js.append(utils.path_from_root('src/cpuprofiler.js'))
 
   if not settings.RUNTIME_DEBUG:
-    settings.RUNTIME_DEBUG = (settings.LIBRARY_DEBUG or
-                              settings.GL_DEBUG or
-                              settings.DYLINK_DEBUG or
-                              settings.OPENAL_DEBUG or
-                              settings.SYSCALL_DEBUG or
-                              settings.WEBSOCKET_DEBUG or
-                              settings.SOCKET_DEBUG or
-                              settings.FETCH_DEBUG or
-                              settings.EXCEPTION_DEBUG or
-                              settings.PTHREADS_DEBUG or
-                              settings.ASYNCIFY_DEBUG)
+    settings.RUNTIME_DEBUG = bool(settings.LIBRARY_DEBUG or
+                                  settings.GL_DEBUG or
+                                  settings.DYLINK_DEBUG or
+                                  settings.OPENAL_DEBUG or
+                                  settings.SYSCALL_DEBUG or
+                                  settings.WEBSOCKET_DEBUG or
+                                  settings.SOCKET_DEBUG or
+                                  settings.FETCH_DEBUG or
+                                  settings.EXCEPTION_DEBUG or
+                                  settings.PTHREADS_DEBUG or
+                                  settings.ASYNCIFY_DEBUG)
 
   if options.memory_profiler:
     settings.MEMORYPROFILER = 1
@@ -2076,6 +2076,7 @@ def phase_linker_setup(options, state, newargs):
     assert not settings.SIDE_MODULE
     if settings.MAIN_MODULE == 1:
       settings.INCLUDE_FULL_LIBRARY = 1
+    # Called from preamble.js once the main module is instantiated.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDylibs']
     settings.REQUIRED_EXPORTS += ['malloc']
 
@@ -2194,6 +2195,9 @@ def phase_linker_setup(options, state, newargs):
       settings.REQUIRED_EXPORTS += ['emscripten_stack_set_limits']
     else:
       settings.REQUIRED_EXPORTS += ['emscripten_stack_init']
+
+  if settings.STACK_OVERFLOW_CHECK >= 2:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$setStackLimits']
 
   if settings.MODULARIZE:
     if settings.PROXY_TO_WORKER:

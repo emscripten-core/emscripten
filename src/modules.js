@@ -46,7 +46,6 @@ global.LibraryManager = {
       'library_math.js',
       'library_path.js',
       'library_strings.js',
-      'library_syscall.js',
       'library_html5.js',
       'library_stack_trace.js',
       'library_wasi.js',
@@ -75,6 +74,10 @@ global.LibraryManager = {
 
     if (AUTODEBUG) {
       libraries.push('library_autodebug.js');
+    }
+
+    if (!WASMFS) {
+      libraries.push('library_syscall.js');
     }
 
     if (FILESYSTEM) {

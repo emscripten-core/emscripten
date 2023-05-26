@@ -2028,7 +2028,7 @@ int f() {
       Foo g_foo;
 
       int main() {
-        _emscripten_outf("main: Foo typeid: %s", typeid(Foo).name());
+        emscripten_outf("main: Foo typeid: %s", typeid(Foo).name());
 
         Foo().method();
         return 0;
@@ -2040,7 +2040,7 @@ int f() {
       #include <emscripten/console.h>
 
       void Foo::method() const {
-        _emscripten_outf("side: Foo typeid: %s", typeid(Foo).name());
+        emscripten_outf("side: Foo typeid: %s", typeid(Foo).name());
       }
       ''')
     if flipped:
@@ -2331,7 +2331,8 @@ int f() {
         print('checking "%s" %s' % (args, value))
         extra = ['-s', action + '_ON_UNDEFINED_SYMBOLS=%d' % value] if action else []
         proc = self.run_process([EMXX, '-sUSE_SDL', 'main.cpp'] + extra + args, stderr=PIPE, check=False)
-        print(proc.stderr)
+        if common.EMTEST_VERBOSE:
+          print(proc.stderr)
         if value or action is None:
           # The default is that we error in undefined symbols
           self.assertContained('undefined symbol: something', proc.stderr)
@@ -5931,7 +5932,7 @@ int main(void) {
       #include <emscripten/console.h>
 
       int main() {
-        _emscripten_out("hello, world!");
+        emscripten_out("hello, world!");
         return 0;
       }
     ''')
@@ -10398,6 +10399,7 @@ int main(void) {
     'c': ['c', []],
     'cpp': ['cpp', []],
     'growth': ['cpp', ['-sALLOW_MEMORY_GROWTH']],
+    'wasmfs': ['c', ['-sWASMFS']],
   })
   def test_lsan_leaks(self, ext, args):
     self.do_runf(test_file('other/test_lsan_leaks.' + ext),
@@ -12806,6 +12808,7 @@ int main() {
   # Verfy that MAIN_MODULE=1 (which includes all symbols from all libraries)
   # works with -sPROXY_POSIX_SOCKETS and -Oz, both of which affect linking of
   # system libraries in different ways.
+  @also_with_wasmfs
   def test_dylink_proxy_posix_sockets_oz(self):
     self.do_runf(test_file('hello_world.cpp'), emcc_args=['-lwebsocket.js', '-sMAIN_MODULE=1', '-sPROXY_POSIX_SOCKETS', '-Oz'])
 
@@ -13286,6 +13289,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_wasi_std_io_stderr(self):
     self.run_wasi_test_suite_test('std_io_stderr')
 
+  @also_with_wasmfs
   @requires_node
   def test_wasi_clock_res_get(self):
     self.run_wasi_test_suite_test('wasi_clock_res_get')
@@ -13469,10 +13473,18 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
         struct stat statbuf;
         assert(stat("/library.so", &statbuf) == 0);
 
-        // Check that it was preloaded
+        // Check that it was preloaded.
+        // The preloading actually only happens on the main thread where the filesystem
+        // lives.  On worker threads the module object is shared via preloadedModules.
         if (emscripten_is_main_runtime_thread()) {
           int found = EM_ASM_INT(
             return preloadedWasm['/library.so'] !== undefined;
+          );
+          assert(found);
+        } else {
+          int found = EM_ASM_INT(
+            err(sharedModules);
+            return sharedModules['/library.so'] !== undefined;
           );
           assert(found);
         }

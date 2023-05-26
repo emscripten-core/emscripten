@@ -81,7 +81,7 @@ var out = () => { throw 'out() is not defined in worker.js.'; }
 #endif
 var err = threadPrintErr;
 self.alert = threadAlert;
-#if RUNTIME_DEBUG
+#if ASSERTIONS || RUNTIME_DEBUG
 var dbg = threadPrintErr;
 #endif
 
@@ -151,7 +151,10 @@ function handleMessage(e) {
 #endif // MINIMAL_RUNTIME
 
 #if MAIN_MODULE
-      Module['dynamicLibraries'] = e.data.dynamicLibraries;
+      Module['sharedModules'] = e.data.sharedModules;
+#if RUNTIME_DEBUG
+      dbg(`received ${Object.keys(e.data.sharedModules).length} shared modules: ${Object.keys(e.data.sharedModules)}`);
+#endif
 #endif
 
       // Use `const` here to ensure that the variable is scoped only to
@@ -231,7 +234,7 @@ function handleMessage(e) {
       if (!initializedJS) {
 #if EMBIND
 #if PTHREADS_DEBUG
-        dbg('Pthread 0x' + Module['_pthread_self']().toString(16) + ' initializing embind.');
+        dbg(`Pthread 0x${Module['_pthread_self']().toString(16)} initializing embind.`);
 #endif
         // Embind must initialize itself on all threads, as it generates support JS.
         // We only do this once per worker since they get reused
@@ -250,7 +253,7 @@ function handleMessage(e) {
           throw ex;
         }
 #if RUNTIME_DEBUG
-        dbg('Pthread 0x' + Module['_pthread_self']().toString(16) + ' completed its main entry point with an `unwind`, keeping the worker alive for asynchronous operation.');
+        dbg(`Pthread 0x${Module['_pthread_self']().toString(16)} completed its main entry point with an 'unwind', keeping the worker alive for asynchronous operation.`);
 #endif
       }
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
