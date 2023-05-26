@@ -19,10 +19,10 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     '$readI53FromI64',
     '$FS_createPreloadedFile',
     '$FS_getMode',
-    'free',
 #if FORCE_FILESYSTEM
     '$FS_modeStringToFlags',
     'malloc',
+    'free',
 #endif
   ],
   $FS : {
@@ -67,10 +67,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       return ret;
     },
     cwd: () => {
-      var buf = __wasmfs_get_cwd();
-      var ret = UTF8ToString(buf);
-      _free(buf);
-      return ret;
+      return UTF8ToString(__wasmfs_get_cwd());
     },
 
 #if FORCE_FILESYSTEM

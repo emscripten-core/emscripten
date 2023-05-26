@@ -189,9 +189,9 @@ void _wasmfs_readdir_finish(struct wasmfs_readdir_state* state) {
 }
 
 char* _wasmfs_get_cwd(void) {
-  // TODO: PATH_MAX is 4K atm, so it's probably not too bad to always allocate
-  //       that much, but consider optimizing this.
-  return getcwd((char*)malloc(PATH_MAX), PATH_MAX);
+  // TODO: PATH_MAX is 4K atm, so it might be good to reduce this somehow.
+  static thread_local char path[PATH_MAX];
+  return getcwd(path, PATH_MAX);
 }
 
 } // extern "C"
