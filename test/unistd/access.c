@@ -20,10 +20,10 @@ int main() {
     FS.mount(NODEFS, { root: '.' }, 'working');
 #endif
     FS.chdir('working');
-    FS.writeFile('forbidden', ""); FS.chmod('forbidden', 0o000);
-    FS.writeFile('readable',  ""); FS.chmod('readable',  0o444);
-    FS.writeFile('writeable', ""); FS.chmod('writeable', 0o222);
-    FS.writeFile('allaccess', ""); FS.chmod('allaccess', 0o777);
+    FS.writeFile('forbidden', ""); FS.chmod('forbidden', 0000);
+    FS.writeFile('readable',  ""); FS.chmod('readable',  0444);
+    FS.writeFile('writeable', ""); FS.chmod('writeable', 0222);
+    FS.writeFile('allaccess', ""); FS.chmod('allaccess', 0777);
     FS.writeFile('fchmodtest', "");
   );
 
@@ -66,22 +66,29 @@ int main() {
   printf("F_OK(%s): %d\n", "renamedfile", faccessat(AT_FDCWD, "renamedfile", F_OK, 0));
   printf("errno: %d\n", errno);
 
+  struct stat fileStats;
+  stat("fchmodtest", &fileStats);
+#if !NODE*FS
+  assert(fileStats.st_mode & 0666);
+#else
+  assert(fileStats.st_mode & 0644);
+#endif
+  
   EM_ASM(
     var fchmodstream = FS.open("fchmodtest", "r");
 #if WASMFS
-    FS.fchmod(fchmodstream, 0o000);
+    FS.fchmod(fchmodstream, 0000);
 #else
-    FS.fchmod(fchmodstream.fd, 0o000);
+    FS.fchmod(fchmodstream.fd, 0000);
 #endif
   );
-  struct stat fileStats;
   stat("fchmodtest", &fileStats);
   assert(!(fileStats.st_mode & 0777));
 
 #if !NODE*FS
   EM_ASM(
     FS.symlink('forbidden', 'symlinkfile');
-    FS.lchmod('symlinkfile', 0o777);
+    FS.lchmod('symlinkfile', 0777);
   );
   
   struct stat symlinkStats;
@@ -96,20 +103,20 @@ int main() {
   EM_ASM(
     var ex;
     try {
-      FS.chmod("nonexistent", 0o777);
+      FS.chmod("nonexistent", 0777);
     } catch (err) {
       ex = err;
     }
     assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
     try {
-      FS.fchmod(99, 0o777);
+      FS.fchmod(99, 0777);
     } catch (err) {
       ex = err;
     }
     assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */);
 
     try {
-      FS.lchmod("nonexistent", 0o777);
+      FS.lchmod("nonexistent", 0777);
     } catch (err) {
       ex = err;
     }
@@ -121,11 +128,11 @@ int main() {
   // won't have problems on deleting the files. On Windows, calling shutil.rmtree()
   // will fail if any of the files are read-only.
   EM_ASM(
-    FS.chmod('forbidden', 0o777);
-    FS.chmod('readable',  0o777);
-    FS.chmod('writeable', 0o777);
-    FS.chmod('allaccess', 0o777);
-    FS.chmod('fchmodtest', 0o777);
+    FS.chmod('forbidden', 0777);
+    FS.chmod('readable',  0777);
+    FS.chmod('writeable', 0777);
+    FS.chmod('allaccess', 0777);
+    FS.chmod('fchmodtest', 0777);
   );
 
   return 0;
