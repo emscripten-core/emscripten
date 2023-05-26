@@ -8,6 +8,7 @@ mergeInto(LibraryManager.library, {
   $wasmFSPreloadedFiles: [],
   $wasmFSPreloadedDirs: [],
   $FS__postset: `
+FS.init();
 FS.createPreloadedFile = FS_createPreloadedFile;
 `,
   $FS__deps: [
@@ -25,28 +26,29 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 #endif
   ],
   $FS : {
-    ErrnoError: null,
-    throwError: (errno) => {
-      if (!FS.ErrnoError) {
-        FS.ErrnoError = /** @this{Object} */ function ErrnoError(code) {
-          this.errno = code;
-          this.message = 'FS error';
-          this.name = "ErrnoError";
-        }
-        FS.ErrnoError.prototype = new Error();
-        FS.ErrnoError.prototype.constructor = FS.ErrnoError;
-      }
-      throw new FS.ErrnoError(errno);
+    init: () => {
+      FS.ensureErrnoError();
     },
+    ErrnoError: null,
     handleError: (returnValue) => {
       // Assume errors correspond to negative returnValues
       // since some functions like _wasmfs_open() return positive
       // numbers on success (some callers of this function may need to negate the parameter).
       if (returnValue < 0) {
-        FS.throwError(-returnValue);
+        throw new FS.ErrnoError(-returnValue);
       }
 
       return returnValue;
+    },
+    ensureErrnoError: () => {
+      if (FS.ErrnoError) return;
+      FS.ErrnoError = /** @this{Object} */ function ErrnoError(code) {
+        this.errno = code;
+        this.message = 'FS error';
+        this.name = "ErrnoError";
+      }
+      FS.ErrnoError.prototype = new Error();
+      FS.ErrnoError.prototype.constructor = FS.ErrnoError;
     },
     createDataFile: (parent, name, data, canRead, canWrite, canOwn) => {
       // Data files must be cached until the file system itself has been initialized.
