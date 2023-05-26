@@ -168,6 +168,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
         var statBuf = _malloc(112);
         var err = __wasmfs_stat(pathBuffer, statBuf);
+        console.log("stat error: ", err);
         // FS.handleError(-__wasmfs_stat(pathBuffer, statBuf));
         const resultView = new Uint8Array(Module.HEAP8.buffer, statBuf, 112);
         const resultCopy = new Uint8Array(resultView);
@@ -217,6 +218,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         var statBuf = _malloc(112);
         var err = __wasmfs_lstat(pathBuffer, statBuf);
         // FS.handleError(-__wasmfs_lstat(pathBuffer, statBuf));
+        console.log("lstat error: ", err);
         const resultView = new Uint8Array(Module.HEAP8.buffer, statBuf, 112);
         const resultCopy = new Uint8Array(resultView);
         const view = new DataView(resultCopy.buffer, 0);

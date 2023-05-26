@@ -116,6 +116,20 @@ void test() {
   assert(s.st_mtime == TEST_TIME);
   assert(s.st_ctime);
 
+  printf("- stdev: %u\n", s.st_dev);
+  printf("- stnlink: %lu\n", s.st_nlink);
+  printf("- stino: %llu\n", s.st_ino);
+  printf("- stmode: %u\n", s.st_mode);
+  printf("- st_atime: %llu\n", s.st_atime);
+  printf("- st_mtime: %llu\n", s.st_mtime);
+  printf("- st_ctime: %llu\n", s.st_ctime);
+  printf("- st_blksize: %d\n", s.st_blksize);
+  printf("- st_blocks: %d\n", s.st_blocks);
+  printf("- st_gid: %u\n", s.st_gid);
+  printf("- st_rdev: %u\n", s.st_rdev);
+  printf("- st_size: %llu\n", s.st_size);
+  printf("- st_uid: %u\n", s.st_uid);
+
   // printf("p stdev: %lu\n", (unsigned long)&s.st_dev);
   // printf("p stnlink: %lu\n", (unsigned long)&s.st_nlink);
   // printf("p stino: %lu\n", (unsigned long)&s.st_ino);
@@ -234,6 +248,21 @@ void test() {
 
   EM_ASM(
     var stats = FS.stat("folder/file");
+    console.log("before chmod stats: %o", stats);
+    assert(stats.dev == 1);
+    assert(stats.ino);
+    assert(stats.mode == 33279);
+    assert(stats.nlink == 1);
+    assert(stats.rdev == 0);
+    assert(stats.size == 6);
+    assert(stats.atime);
+    assert(stats.mtime);
+    assert(stats.ctime);
+
+    FS.symlink("file", "folder/symlinkfile");
+    FS.chmod("folder/file", 0o000);
+
+    var stats = FS.stat("folder/file");
     // console.log("recv stats: %o", stats);
     assert(stats.dev == 1);
     assert(stats.ino);
@@ -246,11 +275,9 @@ void test() {
     assert(stats.ctime);
 
     var original_mode = stats.mode;
-    
-    FS.symlink("file", "folder/symlinkfile");
-    FS.chmod("folder/file", 0o666);
+
     var linkStats = FS.lstat("folder/symlinkfile");
-    // console.log("Link: ", linkStats);
+    console.log("Link: ", linkStats);
     assert(linkStats.dev == 1);
     assert(linkStats.ino);
     assert(linkStats.mode != original_mode);
@@ -264,19 +291,26 @@ void test() {
     FS.chmod("folder/file", 0o777);
   );
 
-  // printf("- stdev: %u\n", s.st_dev);
-  // printf("- stnlink: %lu\n", s.st_nlink);
-  // printf("- stino: %llu\n", s.st_ino);
-  // printf("- stmode: %u\n", s.st_mode);
-  // printf("- st_atime: %llu\n", s.st_atime);
-  // printf("- st_mtime: %llu\n", s.st_mtime);
-  // printf("- st_ctime: %llu\n", s.st_ctime);
-  // printf("- st_blksize: %d\n", s.st_blksize);
-  // printf("- st_blocks: %d\n", s.st_blocks);
-  // printf("- st_gid: %u\n", s.st_gid);
-  // printf("- st_rdev: %u\n", s.st_rdev);
-  // printf("- st_size: %llu\n", s.st_size);
-  // printf("- st_uid: %u\n", s.st_uid);
+  lstat("folder/symlinkfile", &s);
+  printf("Link- stdev: %u\n", s.st_dev);
+  printf("Link- stnlink: %lu\n", s.st_nlink);
+  printf("Link- stino: %llu\n", s.st_ino);
+  printf("Link- stmode: %u\n", s.st_mode);
+  printf("Link- st_atime: %llu\n", s.st_atime);
+  printf("Link- st_mtime: %llu\n", s.st_mtime);
+  printf("Link- st_ctime: %llu\n", s.st_ctime);
+  printf("Link- st_blksize: %d\n", s.st_blksize);
+  printf("Link- st_blocks: %d\n", s.st_blocks);
+  printf("Link- st_gid: %u\n", s.st_gid);
+  printf("Link- st_rdev: %u\n", s.st_rdev);
+  printf("Link- st_size: %llu\n", s.st_size);
+  printf("Link- st_uid: %u\n", s.st_uid);
+
+  EM_ASM(
+    FS.stat("nonexistent");
+
+    FS.lstat("nonexistent");
+  );
 
   puts("success");
 }
