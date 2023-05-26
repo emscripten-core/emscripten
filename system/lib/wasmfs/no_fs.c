@@ -21,7 +21,7 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
                                const __wasi_ciovec_t* iovs,
                                size_t iovs_len,
                                __wasi_size_t* nwritten) {
-  EM_ASM(console.log("write"));
+  *nwritten = 1;
   return __WASI_ERRNO_SUCCESS;
 }
 
@@ -60,6 +60,10 @@ int __syscall_fstat64(int fd, intptr_t buf) {
   return __WASI_ERRNO_SUCCESS;
 }
 
+// The following are really just needed due to the current architecture of
+// WasmFS and how it calls back from JS into wasm. When we remove those calls
+// (when we do more in wasm) they should not be needed.
+
 WEAK
 int __syscall_getcwd(intptr_t buf, size_t size) {
   return -1;
@@ -74,4 +78,3 @@ WEAK
 char* _wasmfs_get_cwd(void) {
   return NULL;
 }
-
