@@ -559,6 +559,27 @@ mergeInto(LibraryManager.library, {
     return buf;
   },
 
+#if STACK_OVERFLOW_CHECK >= 2
+  // Set stack limits used by binaryen's `StackCheck` pass.
+#if MAIN_MODULE
+  $setStackLimits__deps: ['$setDylinkStackLimits'],
+#endif
+  $setStackLimits: function() {
+    var stackLow = _emscripten_stack_get_base();
+    var stackHigh = _emscripten_stack_get_end();
+#if RUNTIME_DEBUG
+    dbg(`setStackLimits: ${ptrToString(stackLow)}, ${ptrToString(stackHigh)}`);
+#endif
+#if MAIN_MODULE
+    // With dynamic linking we could have any number of pre-loaded libraries
+    // that each need to have their stack limits set.
+    setDylinkStackLimits(stackLow, stackHigh);
+#else
+    ___set_stack_limits(stackLow, stackHigh);
+#endif
+  },
+#endif
+
   $withStackSave__internal: true,
   $withStackSave: function(f) {
     var stack = stackSave();
@@ -3797,14 +3818,14 @@ function wrapSyscallFunction(x, library, isWasi) {
       post += 'SYSCALLS.varargs = undefined;\n';
     }
   }
-  pre += "dbg('syscall! " + x + ": [' + Array.prototype.slice.call(arguments) + ']');\n";
+  pre += `dbg('syscall! ${x}: [' + Array.prototype.slice.call(arguments) + ']');\n`;
   pre += "var canWarn = true;\n";
   pre += "var ret = (function() {\n";
   post += "})();\n";
   post += "if (ret && ret < 0 && canWarn) {\n";
-  post += "  dbg('error: syscall may have failed with ' + (-ret) + ' (' + ERRNO_MESSAGES[-ret] + ')');\n";
+  post += "  dbg(`error: syscall may have failed with ${-ret} (${ERRNO_MESSAGES[-ret]})`);\n";
   post += "}\n";
-  post += "dbg('syscall return: ' + ret);\n";
+  post += "dbg(`syscall return: ${ret}`);\n";
   post += "return ret;\n";
 #endif
   delete library[x + '__nothrow'];
@@ -3816,7 +3837,7 @@ function wrapSyscallFunction(x, library, isWasi) {
     "  if (typeof FS == 'undefined' || !(e.name === 'ErrnoError')) throw e;\n";
 #if SYSCALL_DEBUG
     handler +=
-    "  dbg('error: syscall failed with ' + e.errno + ' (' + ERRNO_MESSAGES[e.errno] + ')');\n" +
+    "  dbg(`error: syscall failed with ${e.errno} (${ERRNO_MESSAGES[e.errno]})`);\n" +
     "  canWarn = false;\n";
 #endif
     // Musl syscalls are negated.
