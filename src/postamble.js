@@ -131,11 +131,10 @@ function stackCheckInit() {
 }
 #endif
 
-#if RELOCATABLE
-var dylibsLoaded = false;
-#if '$LDSO' in addedLibraryItems
-LDSO.init();
-#endif
+#if MAIN_MODULE && PTHREADS
+// Map of modules to be shared with new threads.  This gets populated by the
+// main thread and shared with all new workers.
+var sharedModules = Module['sharedModules'] || [];
 #endif
 
 #if MAIN_READS_PARAMS
@@ -145,8 +144,8 @@ function run() {
 #endif
 
   if (runDependencies > 0) {
-#if RUNTIME_LOGGING
-    err('run() called, but dependencies remain, so not running');
+#if RUNTIME_DEBUG
+    dbg('run() called, but dependencies remain, so not running');
 #endif
     return;
   }
@@ -156,27 +155,6 @@ function run() {
   if (!ENVIRONMENT_IS_PTHREAD)
 #endif
     stackCheckInit();
-#endif
-
-#if RELOCATABLE
-  if (!dylibsLoaded) {
-  // Loading of dynamic libraries needs to happen on each thread, so we can't
-  // use the normal __ATPRERUN__ mechanism.
-#if MAIN_MODULE
-    loadDylibs();
-#else
-    reportUndefinedSymbols();
-#endif
-    dylibsLoaded = true;
-
-    // Loading dylibs can add run dependencies.
-    if (runDependencies > 0) {
-#if RUNTIME_LOGGING
-      err('loadDylibs added run() dependencies, not running yet');
-#endif
-      return;
-    }
-  }
 #endif
 
 #if WASM_WORKERS
@@ -206,8 +184,8 @@ function run() {
 
   // a preRun added a dependency, run will be called later
   if (runDependencies > 0) {
-#if RUNTIME_LOGGING
-    err('run() called, but dependencies remain, so not running');
+#if RUNTIME_DEBUG
+    dbg('run() called, but dependencies remain, so not running');
 #endif
     return;
   }
