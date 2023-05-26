@@ -66,7 +66,6 @@ int main() {
   printf("F_OK(%s): %d\n", "renamedfile", faccessat(AT_FDCWD, "renamedfile", F_OK, 0));
   printf("errno: %d\n", errno);
 
-
   EM_ASM(
     var fchmodstream = FS.open("fchmodtest", "r");
 #if WASMFS
@@ -77,7 +76,7 @@ int main() {
   );
   struct stat fileStats;
   stat("fchmodtest", &fileStats);
-  assert(fileStats.st_mode & (0777));
+  assert(!(fileStats.st_mode & 0777));
 
 #if !NODE*FS
   EM_ASM(
@@ -93,6 +92,29 @@ int main() {
   stat("forbidden", &fileStats);
   assert(!(fileStats.st_mode & 0777));
 #endif
+
+  EM_ASM(
+    var ex;
+    try {
+      FS.chmod("nonexistent", 0o777);
+    } catch (err) {
+      ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+    try {
+      FS.fchmod(99, 0o777);
+    } catch (err) {
+      ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */);
+
+    try {
+      FS.lchmod("nonexistent", 0o777);
+    } catch (err) {
+      ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+  );
   
 
   // Restore full permissions on all created files so that python test runner rmtree
