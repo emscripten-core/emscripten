@@ -68,7 +68,7 @@ int main() {
 
   struct stat fileStats;
   stat("fchmodtest", &fileStats);
-#if !NODE*FS
+#if !defined(NODEFS) && !defined(NODERAWFS)
   assert(fileStats.st_mode & 0666);
 #else
   assert(fileStats.st_mode & 0644);
@@ -85,7 +85,7 @@ int main() {
   stat("fchmodtest", &fileStats);
   assert(!(fileStats.st_mode & 0777));
 
-#if !NODE*FS
+#if !defined(NODEFS) && !defined(NODERAWFS)
   EM_ASM(
     FS.symlink('forbidden', 'symlinkfile');
     FS.lchmod('symlinkfile', 0777);
