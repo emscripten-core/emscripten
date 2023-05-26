@@ -155,9 +155,9 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         var buffer = stringToUTF8OnStack(path);
         return __wasmfs_chmod(buffer, mode);
       });
-      if(-err == {{{ cDefs.ENOENT }}}) {
+      if (-err == {{{ cDefs.ENOENT }}}) {
         throw new Error("ENOENT");
-      } else if(-err == {{{ cDefs.EPERM }}}) {
+      } else if (-err == {{{ cDefs.EPERM }}}) {
         throw new Error("EPERM");
       }
       return err;
@@ -168,9 +168,9 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         var buffer = stringToUTF8OnStack(path);
         return __wasmfs_lchmod(buffer, mode);
       });
-      if(-err == {{{ cDefs.ENOENT }}}) {
+      if (-err == {{{ cDefs.ENOENT }}}) {
         throw new Error("ENOENT");
-      } else if(-err == {{{ cDefs.EPERM }}}) {
+      } else if (-err == {{{ cDefs.EPERM }}}) {
         throw new Error("EPERM");
       }
       return err;
@@ -178,11 +178,11 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: fchmod
     fchmod: (fd, mode) => {
       var err = __wasmfs_fchmod(fd, mode);
-      if(-err == {{{ cDefs.ENOENT }}}) {
+      if (-err == {{{ cDefs.ENOENT }}}) {
         throw new Error("ENOENT");
-      } else if(-err == {{{ cDefs.EBADF}}}) {
+      } else if (-err == {{{ cDefs.EBADF}}}) {
         throw new Error("EBADF")
-      } else if(-err == {{{ cDefs.EPERM }}}) {
+      } else if (-err == {{{ cDefs.EPERM }}}) {
         throw new Error("EPERM");
       }
       return err;
