@@ -1867,6 +1867,16 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
     return settings.WASMFS
 
 
+class libwasmfs_no_fs(Library):
+  name = 'libwasmfs_no_fs'
+
+  def get_files(self):
+    return [utils.path_from_root('system/lib/wasmfs/no_fs.c')]
+
+  def can_use(self):
+    return settings.WASMFS
+
+
 class libwasmfs_noderawfs(Library):
   name = 'libwasmfs_noderawfs'
 
