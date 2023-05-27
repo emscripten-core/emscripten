@@ -4,7 +4,12 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if STACK_OVERFLOW_CHECK
+#if STACK_OVERFLOW_CHECK == 1
+
+#if STACK_FIRST && !PTHREADS
+#error "stack check cookies are not needed when STACK_FIRST is set"
+#endif
+
 // Initializes the stack cookie. Called at the startup of main and at the startup of each thread in pthreads mode.
 function writeStackCookie() {
   var max = _emscripten_stack_get_end();

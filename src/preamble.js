@@ -228,7 +228,7 @@ function initRuntime() {
   if (ENVIRONMENT_IS_PTHREAD) return;
 #endif
 
-#if STACK_OVERFLOW_CHECK
+#if STACK_OVERFLOW_CHECK == 1
   checkStackCookie();
 #endif
 
@@ -245,7 +245,7 @@ function initRuntime() {
 
 #if HAS_MAIN
 function preMain() {
-#if STACK_OVERFLOW_CHECK
+#if STACK_OVERFLOW_CHECK == 1
   checkStackCookie();
 #endif
 #if PTHREADS
@@ -268,7 +268,7 @@ function exitRuntime() {
   // ASYNCIFY cannot be used once the runtime starts shutting down.
   Asyncify.state = Asyncify.State.Disabled;
 #endif
-#if STACK_OVERFLOW_CHECK
+#if STACK_OVERFLOW_CHECK == 1
   checkStackCookie();
 #endif
 #if PTHREADS
@@ -287,7 +287,7 @@ function exitRuntime() {
 #endif
 
 function postRun() {
-#if STACK_OVERFLOW_CHECK
+#if STACK_OVERFLOW_CHECK == 1
   checkStackCookie();
 #endif
 #if PTHREADS

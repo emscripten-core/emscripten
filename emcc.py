@@ -2733,6 +2733,11 @@ def phase_linker_setup(options, state, newargs):
     # always does.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']
 
+  # When the stack comes first it ends at address zero so that runtime
+  # will trap on overflow, so there no need to for the stack check cookie.
+  if settings.STACK_FIRST and settings.STACK_OVERFLOW_CHECK == 1 and not settings.PTHREADS:
+    settings.STACK_OVERFLOW_CHECK = 0
+
   if settings.EXIT_RUNTIME and not settings.STANDALONE_WASM:
     # Internal function implemented in musl that calls any functions registered
     # via `atexit` et al.  With STANDALONE_WASM this is all taken care of via

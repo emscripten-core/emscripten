@@ -42,7 +42,7 @@ function run() {
 #endif
 #endif // PROXY_TO_PTHREAD
 
-#if STACK_OVERFLOW_CHECK
+#if STACK_OVERFLOW_CHECK == 1
   checkStackCookie();
 #endif
 }

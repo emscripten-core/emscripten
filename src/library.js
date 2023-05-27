@@ -3452,8 +3452,10 @@ mergeInto(LibraryManager.library, {
 #endif
       return EXITSTATUS;
     }
-#if STACK_OVERFLOW_CHECK
+#if STACK_OVERFLOW_CHECK == 1
     checkStackCookie();
+#endif
+#if ASSERTIONS
     if (e instanceof WebAssembly.RuntimeError) {
       if (_emscripten_stack_get_current() <= 0) {
         err('Stack overflow detected.  You can try increasing -sSTACK_SIZE (currently set to {{{ STACK_SIZE }}})');

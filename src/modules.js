@@ -405,7 +405,7 @@ function exportRuntime() {
     runtimeElements.push('WasmSourceMap');
   }
 
-  if (STACK_OVERFLOW_CHECK) {
+  if (STACK_OVERFLOW_CHECK == 1) {
     runtimeElements.push('writeStackCookie');
     runtimeElements.push('checkStackCookie');
   }

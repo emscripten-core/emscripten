@@ -1079,7 +1079,7 @@ var LibraryPThread = {
     // Call inside wasm module to set up the stack frame for this pthread in wasm module scope
     stackRestore(stackHigh);
 
-#if STACK_OVERFLOW_CHECK
+#if STACK_OVERFLOW_CHECK == 1
     // Write the stack cookie last, after we have set up the proper bounds and
     // current position of the stack.
     writeStackCookie();
@@ -1114,7 +1114,7 @@ var LibraryPThread = {
     // flag -sEMULATE_FUNCTION_POINTER_CASTS to add in emulation for this x86
     // ABI extension.
     var result = {{{ makeDynCall('pp', 'ptr') }}}(arg);
-#if STACK_OVERFLOW_CHECK
+#if STACK_OVERFLOW_CHECK == 1
     checkStackCookie();
 #endif
 #if MINIMAL_RUNTIME
