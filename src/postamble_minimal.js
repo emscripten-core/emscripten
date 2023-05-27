@@ -124,10 +124,10 @@ var wasmModule;
 if (!WebAssembly.instantiateStreaming && !Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
 #endif
 (WebAssembly.instantiateStreaming
-  ? WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
+  ? WebAssembly.instantiateStreaming(fetch({{{ MINIMAL_RUNTIME_WASM_URL }}}), imports)
   : WebAssembly.instantiate(Module['wasm'], imports)).then(function(output) {
 #else
-WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports).then(function(output) {
+WebAssembly.instantiateStreaming(fetch({{{ MINIMAL_RUNTIME_WASM_URL }}}), imports).then(function(output) {
 #endif
 
 #else // Non-streaming instantiation
