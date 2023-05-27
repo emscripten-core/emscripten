@@ -2296,9 +2296,6 @@ def phase_linker_setup(options, state, newargs):
     exit_with_error('-sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0 only makes sense with -sGL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0!')
 
   if settings.WASMFS:
-    state.forced_stdlibs.append('libwasmfs')
-    if settings.NODERAWFS:
-      state.forced_stdlibs.append('libwasmfs_noderawfs')
     settings.FILESYSTEM = 1
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
     settings.JS_LIBRARIES.append((0, 'library_wasmfs.js'))
