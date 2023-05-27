@@ -1,42 +1,52 @@
-var b = Module, c = b.$ww, f, e = b.mem || new WebAssembly.Memory({
+var b = Module, d = b.$ww, f, e = b.mem || new WebAssembly.Memory({
     initial: 256,
     maximum: 256,
     shared: !0
-}), g = e.buffer, h = [], m = {}, n = 1, p, q;
+}), g = e.buffer, h = [], n = new function() {
+    this.j = [ void 0 ];
+    this.m = [];
+    this.get = a => this.j[a];
+    this.has = a => void 0 !== this.j[a];
+    this.l = a => {
+        var c = this.m.pop() || this.j.length;
+        this.j[c] = a;
+        return c;
+    };
+}, p, q;
 
 function k(a) {
     a = a.data;
-    let d = a._wsc;
-    d && f.get(d)(...a.x);
+    let c = a._wsc;
+    c && f.get(c)(...a.x);
 }
 
-function l(a) {
+function m(a) {
     h.push(a);
 }
 
-c && (m[0] = this, addEventListener("message", l));
+d && (n.j[0] = this, addEventListener("message", m));
 
 WebAssembly.instantiate(b.wasm, {
     a: {
-        b: function(a, d) {
-            let r = m[n] = new Worker(b.$wb);
-            r.postMessage({
-                $ww: n,
+        b: function(a, c) {
+            let l = new Worker(b.$wb), r = n.l(l);
+            l.postMessage({
+                $ww: r,
                 wasm: b.wasm,
                 js: b.js,
                 mem: e,
                 sb: a,
-                sz: d
+                sz: c
             });
-            r.onmessage = k;
-            return n++;
+            l.onmessage = k;
+            return r;
         },
         c: function() {
             return !1;
         },
-        d: function(a, d) {
-            m[a].postMessage({
-                _wsc: d,
+        d: function(a, c) {
+            n.get(a).postMessage({
+                _wsc: c,
                 x: []
             });
         },
@@ -50,7 +60,7 @@ WebAssembly.instantiate(b.wasm, {
     p = a.g;
     q = a.i;
     f = a.h;
-    c ? (a = b, q(a.sb, a.sz), removeEventListener("message", l), h = h.forEach(k), 
+    d ? (a = b, q(a.sb, a.sz), removeEventListener("message", m), h = h.forEach(k), 
     addEventListener("message", k)) : a.f();
-    c || p();
+    d || p();
 }));

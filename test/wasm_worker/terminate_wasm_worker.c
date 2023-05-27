@@ -41,11 +41,15 @@ char stack[1024];
 int should_throw(void(*func)())
 {
   int threw = EM_ASM_INT({
+    var oldAbort = abort;
+    abort = () => { throw 'abort' };
     try {
       dynCall('v', $0);
     } catch(e) {
       console.error('Threw an exception like expected: ' + e);
       return 1;
+    } finally {
+      abort = oldAbort;
     }
     console.error('Function was expected to throw, but did not!');
     return 0;

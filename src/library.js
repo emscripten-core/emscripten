@@ -3683,21 +3683,21 @@ mergeInto(LibraryManager.library, {
     // Reserve slot 0 so that 0 is always an invalid handle
     this.allocated = [undefined];
     this.freelist = [];
-    this.get = function(id) {
+    // Hack to save on codesize: use arrow functions here even though it
+    // means that `this` gets statically bound to the constrcuted object.
+    this.get = (id) => {
 #if ASSERTIONS
       assert(this.allocated[id] !== undefined, `invalid handle: ${id}`);
 #endif
       return this.allocated[id];
     };
-    this.has = function(id) {
-      return this.allocated[id] !== undefined;
-    };
-    this.allocate = function(handle) {
+    this.has = (id) => this.allocated[id] !== undefined;
+    this.allocate = (handle) => {
       var id = this.freelist.pop() || this.allocated.length;
       this.allocated[id] = handle;
       return id;
     };
-    this.free = function(id) {
+    this.free = (id) => {
 #if ASSERTIONS
       assert(this.allocated[id] !== undefined);
 #endif
