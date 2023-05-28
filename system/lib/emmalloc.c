@@ -115,6 +115,12 @@ static volatile uint8_t multithreadingLock = 0;
 #define MALLOC_RELEASE() __sync_lock_release(&multithreadingLock)
 // Test code to ensure we have tight malloc acquire/release guards in place.
 #define ASSERT_MALLOC_IS_ACQUIRED() assert(multithreadingLock == 1)
+#elif !defined(NDEBUG)
+// In singlethreaded mode with assertions, still check that the locking behavior is consistent.
+static volatile uint8_t assertedMultithreadingLock = 0;
+#define MALLOC_ACQUIRE() do { assert(assertedMultithreadingLock == 0); assertedMultithreadingLock = 1; } while(0)
+#define MALLOC_RELEASE() do { assert(assertedMultithreadingLock == 1); assertedMultithreadingLock = 0; } while(0)
+#define ASSERT_MALLOC_IS_ACQUIRED() assert(assertedMultithreadingLock == 1)
 #else
 // In singlethreaded builds, no need for locking.
 #define MALLOC_ACQUIRE() ((void)0)
@@ -469,6 +475,7 @@ static bool claim_more_memory(size_t numBytes)
 #ifdef EMMALLOC_VERBOSE
   MAIN_THREAD_ASYNC_EM_ASM(console.log('claim_more_memory(numBytes='+($0>>>0)+ ')'), numBytes);
 #endif
+  ASSERT_MALLOC_IS_ACQUIRED();
 
 #ifdef EMMALLOC_MEMVALIDATE
   validate_memory_regions();
@@ -555,8 +562,19 @@ static void initialize_emmalloc_heap()
   MAIN_THREAD_ASYNC_EM_ASM(console.log('initialize_emmalloc_heap()'));
 #endif
 
+#ifndef NDEBUG
+  // Even though this is a singlethreaded portion and we don't need critical section locks
+  // here, assertion checks in claim_more_memory()->validate_memory_regions() call verify
+  // that we do have it, so in MEMVALIDATE enabled build modes, make sure we have the lock.
+  MALLOC_ACQUIRE();
+#endif
+
   // Start with a tiny dynamic region.
   claim_more_memory(3*sizeof(Region));
+
+#ifndef NDEBUG
+  MALLOC_RELEASE();
+#endif
 }
 
 void emmalloc_blank_slate_from_orbit()
@@ -564,8 +582,9 @@ void emmalloc_blank_slate_from_orbit()
   MALLOC_ACQUIRE();
   listOfAllRegions = NULL;
   freeRegionBucketsUsed = 0;
-  initialize_emmalloc_heap();
   MALLOC_RELEASE();
+
+  initialize_emmalloc_heap();
 }
 
 static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
@@ -663,11 +682,10 @@ static size_t validate_alloc_size(size_t size)
 
 static void *allocate_memory(size_t alignment, size_t size)
 {
-  ASSERT_MALLOC_IS_ACQUIRED();
-
 #ifdef EMMALLOC_VERBOSE
   MAIN_THREAD_ASYNC_EM_ASM(console.log('allocate_memory(align=' + $0 + ', size=' + ($1>>>0) + ' bytes)'), alignment, size);
 #endif
+  ASSERT_MALLOC_IS_ACQUIRED();
 
 #ifdef EMMALLOC_MEMVALIDATE
   validate_memory_regions();

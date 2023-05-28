@@ -997,10 +997,12 @@ base align: 0, 0, 0, 0'''])
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
+  @node_pthreads
   @parameterized({
     'normal': [],
     'memvalidate': ['-DEMMALLOC_MEMVALIDATE'],
     'memvalidate_verbose': ['-DEMMALLOC_MEMVALIDATE', '-DEMMALLOC_VERBOSE', '-DRANDOM_ITERS=130'],
+    'memvalidate_verbose_ww': ['-DEMMALLOC_MEMVALIDATE', '-DEMMALLOC_VERBOSE', '-DRANDOM_ITERS=130', '-sWASM_WORKERS'],
   })
   def test_emmalloc(self, *args):
     if '-DEMMALLOC_VERBOSE' in args and self.is_wasm64():
