@@ -1782,17 +1782,17 @@ def phase_linker_setup(options, state, newargs):
     options.post_js.append(utils.path_from_root('src/cpuprofiler.js'))
 
   if not settings.RUNTIME_DEBUG:
-    settings.RUNTIME_DEBUG = (settings.LIBRARY_DEBUG or
-                              settings.GL_DEBUG or
-                              settings.DYLINK_DEBUG or
-                              settings.OPENAL_DEBUG or
-                              settings.SYSCALL_DEBUG or
-                              settings.WEBSOCKET_DEBUG or
-                              settings.SOCKET_DEBUG or
-                              settings.FETCH_DEBUG or
-                              settings.EXCEPTION_DEBUG or
-                              settings.PTHREADS_DEBUG or
-                              settings.ASYNCIFY_DEBUG)
+    settings.RUNTIME_DEBUG = bool(settings.LIBRARY_DEBUG or
+                                  settings.GL_DEBUG or
+                                  settings.DYLINK_DEBUG or
+                                  settings.OPENAL_DEBUG or
+                                  settings.SYSCALL_DEBUG or
+                                  settings.WEBSOCKET_DEBUG or
+                                  settings.SOCKET_DEBUG or
+                                  settings.FETCH_DEBUG or
+                                  settings.EXCEPTION_DEBUG or
+                                  settings.PTHREADS_DEBUG or
+                                  settings.ASYNCIFY_DEBUG)
 
   if options.memory_profiler:
     settings.MEMORYPROFILER = 1
@@ -2076,6 +2076,7 @@ def phase_linker_setup(options, state, newargs):
     assert not settings.SIDE_MODULE
     if settings.MAIN_MODULE == 1:
       settings.INCLUDE_FULL_LIBRARY = 1
+    # Called from preamble.js once the main module is instantiated.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDylibs']
     settings.REQUIRED_EXPORTS += ['malloc']
 
@@ -2195,6 +2196,9 @@ def phase_linker_setup(options, state, newargs):
     else:
       settings.REQUIRED_EXPORTS += ['emscripten_stack_init']
 
+  if settings.STACK_OVERFLOW_CHECK >= 2:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$setStackLimits']
+
   if settings.MODULARIZE:
     if settings.PROXY_TO_WORKER:
       exit_with_error('-sMODULARIZE is not compatible with --proxy-to-worker (if you want to run in a worker with -sMODULARIZE, you likely want to do the worker side setup manually)')
@@ -2293,6 +2297,8 @@ def phase_linker_setup(options, state, newargs):
 
   if settings.WASMFS:
     state.forced_stdlibs.append('libwasmfs')
+    if settings.NODERAWFS:
+      state.forced_stdlibs.append('libwasmfs_noderawfs')
     settings.FILESYSTEM = 1
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
     settings.JS_LIBRARIES.append((0, 'library_wasmfs.js'))
@@ -2305,6 +2311,7 @@ def phase_linker_setup(options, state, newargs):
       settings.REQUIRED_EXPORTS += [
         '_wasmfs_write_file',
         '_wasmfs_open',
+        '_wasmfs_close',
         '_wasmfs_mkdir',
         '_wasmfs_unlink',
         '_wasmfs_chdir',
@@ -4184,8 +4191,8 @@ def process_libraries(state, linker_inputs):
     # let wasm-ld handle that.  However, we do want to map to the correct variant.
     # For example we map `-lc` to `-lc-mt` if we are building with threading support.
     if 'lib' + lib in system_libs_map:
-      lib = system_libs_map['lib' + lib]
-      new_flags.append((i, '-l' + strip_prefix(lib.get_base_name(), 'lib')))
+      lib = system_libs_map['lib' + lib].get_link_flag()
+      new_flags.append((i, lib))
       continue
 
     if building.map_and_apply_to_settings(lib):

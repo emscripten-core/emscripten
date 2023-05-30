@@ -13,6 +13,9 @@ high level it consists of:
 - :ref:`html5-h`:
   Low level glue bindings for interfacing with HTML5 APIs from native code.
 
+- :ref:`console-h`:
+  Functions to writing to the console and stdout/stderr.
+
 - :ref:`preamble-js`:
   APIs for working with compiled code from JavaScript.
 
@@ -60,6 +63,7 @@ high level it consists of:
 
    emscripten.h
    html5.h
+   console.h
    preamble.js
    Filesystem-API
    fetch

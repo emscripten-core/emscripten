@@ -153,7 +153,11 @@ int emscripten_resize_heap(size_t size) {
 }
 
 double emscripten_get_now(void) {
-  return (1000ll * clock()) / (double)CLOCKS_PER_SEC;
+  struct timespec ts;
+  if (clock_gettime(CLOCK_MONOTONIC, &ts)) {
+    return 0;
+  }
+  return (double)ts.tv_sec + (double)ts.tv_nsec / 1000000000;
 }
 
 // C++ ABI
@@ -208,9 +212,9 @@ static void wasi_writeln(__wasi_fd_t fd, const char* buffer) {
   imported__wasi_fd_write(fd, iovs, 2, &nwritten);
 }
 
-void _emscripten_out(const char* text) { wasi_writeln(1, text); }
+void emscripten_out(const char* text) { wasi_writeln(1, text); }
 
-void _emscripten_err(const char* text) { wasi_writeln(2, text); }
+void emscripten_err(const char* text) { wasi_writeln(2, text); }
 
 // In the non-standalone build we define this helper function in JS to avoid
 // signture mismatch issues.

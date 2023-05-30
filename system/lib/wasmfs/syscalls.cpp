@@ -1089,8 +1089,14 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
     return -EINVAL;
   }
 
+  // Add AT_EMPTY_PATH as Linux (and so, musl, and us) has a nonstandard
+  // behavior in which an empty path means to operate on whatever is in dirFD
+  // (directory or not), which is exactly the behavior of AT_EMPTY_PATH (but
+  // without passing that in). See "C library/kernel ABI differences" in
+  // https://man7.org/linux/man-pages/man2/utimensat.2.html
+  //
   // TODO: Handle AT_SYMLINK_NOFOLLOW once we traverse symlinks correctly.
-  auto parsed = path::parseFile(path, dirFD);
+  auto parsed = path::getFileAt(dirFD, path, flags | AT_EMPTY_PATH);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -1719,6 +1725,19 @@ int __syscall_recvfrom(int sockfd,
 int __syscall_recvmsg(
   int sockfd, intptr_t msg, int flags, int dummy, int dummy2, int dummy3) {
   return -ENOSYS;
+}
+
+int __syscall_fadvise64(int fd, uint64_t offset, uint64_t length, int advice) {
+  // Advice is currently ignored. TODO some backends might use it
+  return 0;
+}
+
+int __syscall__newselect(int nfds, intptr_t readfds_, intptr_t writefds_, intptr_t exceptfds_, intptr_t timeout_) {
+  // TODO: Implement this syscall. For now, we return an error code,
+  //       specifically ENOMEM which is valid per the docs:
+  //          ENOMEM Unable to allocate memory for internal tables
+  //          https://man7.org/linux/man-pages/man2/select.2.html
+  return -ENOMEM;
 }
 
 } // extern "C"
