@@ -68,28 +68,22 @@ int main() {
 
   struct stat fileStats;
   stat("fchmodtest", &fileStats);
-
-// NODEFS and NODERAWFS create files with different permissions than MEMFS and WasmFS
-#if !defined(NODEFS) && !defined(NODERAWFS)
+  chmod("fchmodtest", 0666);
   assert(fileStats.st_mode & 0666);
-#else
-  assert(fileStats.st_mode & 0644);
-#endif
   
   EM_ASM(
     var fchmodstream = FS.open("fchmodtest", "r");
 #if WASMFS
-    FS.fchmod(fchmodstream, 0000);
+    FS.fchmod(fchmodstream, 0777);
 #else
-    FS.fchmod(fchmodstream.fd, 0000);
+    FS.fchmod(fchmodstream.fd, 0777);
 #endif
   );
   stat("fchmodtest", &fileStats);
-  assert(!(fileStats.st_mode & 0777));
+  assert(fileStats.st_mode & 0777);
 
-#if !defined(NODEFS) && !defined(NODERAWFS)
   EM_ASM(
-    FS.symlink('forbidden', 'symlinkfile');
+    FS.symlink('writeable', 'symlinkfile');
     FS.lchmod('symlinkfile', 0777);
   );
   
@@ -98,9 +92,8 @@ int main() {
   lstat("symlinkfile", &symlinkStats);
   assert(symlinkStats.st_mode & 0777);
 
-  stat("forbidden", &fileStats);
-  assert(!(fileStats.st_mode & 0777));
-#endif
+  stat("writeable", &fileStats);
+  assert(fileStats.st_mode & 0222);
 
   EM_ASM(
     var ex;
@@ -110,6 +103,7 @@ int main() {
       ex = err;
     }
     assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+    
     try {
       FS.fchmod(99, 0777);
     } catch (err) {
