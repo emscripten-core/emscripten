@@ -60,7 +60,6 @@ void test() {
   assert(err == -1);
   assert(errno == ENOENT);
 
-  // printf("size of: %lu\n", sizeof(struct stat));
   // stat a folder
   memset(&s, 0, sizeof(s));
   err = stat("folder", &s);
@@ -87,7 +86,6 @@ void test() {
   assert(s.st_blocks == 1);
 #endif
 #endif
-  
   // stat a file
   memset(&s, 0, sizeof(s));
   err = stat("folder/file", &s);
@@ -100,8 +98,7 @@ void test() {
   assert(s.st_size == 6);
   assert(s.st_atime == TEST_TIME);
   assert(s.st_mtime == TEST_TIME);
-  assert(s.st_ctime);
-  
+  assert(s.st_ctime);  
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);
@@ -184,7 +181,6 @@ void test() {
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);
 #endif
-
 
   // create and unlink files inside a directory and check that mtime updates
   mkdir("folder/subdir", 0777);
