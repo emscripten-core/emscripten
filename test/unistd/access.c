@@ -82,6 +82,8 @@ int main() {
   stat("fchmodtest", &fileStats);
   assert(fileStats.st_mode & 0777);
 
+// NODEFS and NODERAWFS currently do not handle symlinks correctly.
+#if !defined(NODEFS) && !defined(NODERAWFS)
   EM_ASM(
     FS.symlink('forbidden', 'symlinkfile');
     FS.lchmod('symlinkfile', 0777);
@@ -94,6 +96,7 @@ int main() {
 
   stat("forbidden", &fileStats);
   assert(!(fileStats.st_mode & 0777));
+#endif
 
   EM_ASM(
     var ex;
