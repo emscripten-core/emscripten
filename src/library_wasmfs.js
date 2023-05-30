@@ -183,6 +183,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         FS.handleError(__wasmfs_stat(pathBuffer, statBuf));
         _free(statBuf);
 
+        // i53/u53 are enough for times and ino in practice.
         var stats = {
           dev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_dev, "u32") }}},
           mode: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mode, "u32") }}},
@@ -212,6 +213,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         FS.handleError(__wasmfs_lstat(pathBuffer, statBuf));
         _free(statBuf);
 
+        // i53/u53 are enough for times and ino in practice.
         var stats = {
           dev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_dev, "u32") }}},
           mode: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mode, "u32") }}},
