@@ -176,76 +176,31 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: readlink
     // TODO: stat
     stat: (path) => {
-      // return withStackSave(() => {
-      //   var pathBuffer = stringToUTF8OnStack(path);
-      //   var statBuf = _malloc(112);
-      //   var err = __wasmfs_stat(pathBuffer, statBuf);
-      //   const resultView = new Uint8Array(Module.HEAP8.buffer, statBuf, 112);
-      //   const finalResult = new Uint8Array(resultView);
-      //   _free(statBuf);
-      //   console.log(finalResult);
-        
-      //   return err;
-      // });
-
       return withStackSave(() => {
-
         var pathBuffer = stringToUTF8OnStack(path);
 
-        var statBuf = _malloc({{{C_STRUCTS.stat.__size__}}});
+        var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
         FS.handleError(__wasmfs_stat(pathBuffer, statBuf));
-        const resultView = new Uint8Array(Module.HEAP8.buffer, statBuf, {{{C_STRUCTS.stat.__size__}}});
-        const view = new DataView(new Uint8Array(resultView).buffer, 0);
-        
         _free(statBuf);
-        // console.log("ChatGPT Stuff: ", finalResult.subarray(12, 16));
-        // console.log("SO Stuff: dev: ", view.getUint32(0, true));
-        // console.log("SO Stuff: stmode: ", view.getUint32(12, true));
-        // console.log("SO Stuff: nlink: ", view.getUint32(16, true));
-        // console.log("SO Stuff: uid: ", view.getUint32(20, true));
-        // console.log("SO Stuff: gid: ", view.getUint32(24, true));
-        // console.log("SO Stuff: rdev: ", view.getUint32(28, true));
-        // console.log("SO Stuff: size: ", view.getBigUint64(40, true));
-        // console.log("SO Stuff: blksize: ", view.getUint32(48, true));
-        // console.log("SO Stuff: blocks: ", view.getUint32(52, true));
-        // console.log("SO Stuff: atime: ", view.getBigInt64(56, true));
-        // console.log("SO Stuff: mtime: ", view.getBigInt64(72, true));
-        // console.log("SO Stuff: ctime: ", view.getBigInt64(88, true));
-        // console.log("SO Stuff: ino: ", view.getBigUint64(104, true));
 
-        console.log("makeGetValue dev: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_dev, "u32")}}});
-        console.log("makeGetValue mode: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mode, "u32")}}})
-        console.log("makeGetValue nlink: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_nlink, "u32")}}})
-        console.log("makeGetValue uid: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_uid, "u32")}}})
-        console.log("makeGetValue gid: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_gid, "u32")}}})
-        console.log("makeGetValue rdev: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_rdev, "u32")}}})
-        console.log("makeGetValue size: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_size, "i53")}}})
-        console.log("makeGetValue blksize: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blksize, "u32")}}})
-        console.log("makeGetValue blocks: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blocks, "u32")}}})
-        console.log("makeGetValue atime: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_atime, "i53")}}})
-        console.log("makeGetValue mtime: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mtime, "i53")}}})
-        console.log("makeGetValue ctime: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ctime, "i53")}}})
-        console.log("makeGetValue ino: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, "i53")}}})
-
-        var statsObj = {
-          dev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_dev, "u32")}}},
-          mode: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mode, "u32")}}},
-          nlink: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_nlink, "u32")}}},
-          uid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_uid, "u32")}}},
-          gid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_gid, "u32")}}},
-          rdev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_rdev, "u32")}}},
-          size: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_size, "i53")}}},
-          blksize: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blksize, "u32")}}},
-          blocks: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blocks, "u32")}}},
-          atime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_atime, "i53")}}},
-          mtime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mtime, "i53")}}},
-          ctime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ctime, "i53")}}},
+        var stats = {
+          dev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_dev, "u32") }}},
+          mode: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mode, "u32") }}},
+          nlink: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_nlink, "u32") }}},
+          uid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_uid, "u32") }}},
+          gid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_gid, "u32") }}},
+          rdev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_rdev, "u32") }}},
+          size: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_size, "i53") }}},
+          blksize: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blksize, "u32") }}},
+          blocks: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blocks, "u32") }}},
+          atime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_atim.tv_sec, "i53") }}},
+          mtime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mtim.tv_sec, "i53") }}},
+          ctime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ctim.tv_sec, "i53") }}},
           // TODO: st_ino should be unsigned, but there is an error using u53
-          ino: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, "i53")}}}
+          ino: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, "i53") }}}
         }
-        console.log("statsObj: ", statsObj);
 
-        return statsObj;
+        return stats;
       })
     },
     // TODO: lstat
@@ -253,33 +208,28 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       return withStackSave(() => {
         var pathBuffer = stringToUTF8OnStack(path);
         
-        var statBuf = _malloc(112);
+        var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
         FS.handleError(__wasmfs_lstat(pathBuffer, statBuf));
-        // FS.handleError(-__wasmfs_lstat(pathBuffer, statBuf));
-        const resultView = new Uint8Array(Module.HEAP8.buffer, statBuf, 112);
-        const resultCopy = new Uint8Array(resultView);
-        const view = new DataView(resultCopy.buffer, 0);
-
         _free(statBuf);
 
-        var statsObj = {
-          dev: view.getUint32(0, true),
-          mode: view.getUint32(12, true),
-          nlink: view.getUint32(16, true),
-          uid: view.getUint32(20, true),
-          gid: view.getUint32(24, true),
-          rdev: view.getUint32(28, true),
-          size: view.getBigUint64(40, true),
-          blksize: view.getUint32(48, true),
-          blocks: view.getUint32(52, true),
-          atime: view.getBigInt64(56, true),
-          mtime: view.getBigInt64(72, true),
-          ctime: view.getBigInt64(88, true),
-          ino: view.getBigUint64(104, true)
+        var stats = {
+          dev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_dev, "u32") }}},
+          mode: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mode, "u32") }}},
+          nlink: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_nlink, "u32") }}},
+          uid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_uid, "u32") }}},
+          gid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_gid, "u32") }}},
+          rdev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_rdev, "u32") }}},
+          size: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_size, "i53") }}},
+          blksize: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blksize, "u32") }}},
+          blocks: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blocks, "u32") }}},
+          atime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_atim.tv_sec, "i53") }}},
+          mtime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mtim.tv_sec, "i53") }}},
+          ctime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ctim.tv_sec, "i53") }}},
+          // TODO: st_ino should be unsigned, but there is an error using u53
+          ino: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, "i53") }}}
         }
-        // console.log("l-statsObj: ", statsObj);
 
-        return statsObj;
+        return stats;
       })
     },
     chmod: (path, mode) => {

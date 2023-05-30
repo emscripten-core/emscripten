@@ -203,21 +203,6 @@
                 "p_aliases",
                 "p_proto"
             ],
-            "stat" : [
-                "st_dev",
-                "st_ino",
-                "st_mode",
-                "st_nlink",
-                "st_uid",
-                "st_gid",
-                "st_rdev",
-                "st_size",
-                "st_blksize",
-                "st_blocks",
-                "st_atime",
-                "st_mtime",
-                "st_ctime"
-            ],
             "sockaddr_in": [
                 "sin_family",
                 "sin_port",
