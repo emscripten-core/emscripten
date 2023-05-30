@@ -2301,6 +2301,7 @@ def phase_linker_setup(options, state, newargs):
       # noderawfs in a forced manner so that it is always linked in (the hook it
       # implements can remain unimplemented, so it won't be linked in
       # automatically)
+      # TODO: find a better way to do this
       state.forced_stdlibs.append('libwasmfs_noderawfs')
     settings.FILESYSTEM = 1
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
