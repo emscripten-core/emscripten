@@ -144,7 +144,9 @@ void test() {
   printf("p st_size: %lu\n", (unsigned long) &s.st_size);
   printf("p st_uid: %lu\n", (unsigned long) &s.st_uid);
 
-  printf("size: %lu\n", sizeof(s.st_atime));
+  printf("size atime: %lu\n", sizeof(s.st_atime));
+  printf("size mtime: %lu\n", sizeof(s.st_mtime));
+  printf("size ctime: %lu\n", sizeof(s.st_ctime));
 
   // printf("sizes: %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %lu, %lu, %lu, %lu, %d\n",
   // sizeof(s.st_dev), sizeof(s.st_mode), sizeof(s.st_nlink),
@@ -295,35 +297,40 @@ void test() {
 
   lstat("folder/symlinkfile", &s);
   printf("Link- stdev: %u\n", s.st_dev);
-  printf("Link- stnlink: %lu\n", s.st_nlink);
-  printf("Link- stino: %llu\n", s.st_ino);
   printf("Link- stmode: %u\n", s.st_mode);
+  printf("Link- stnlink: %lu\n", s.st_nlink);
+  printf("Link- st_uid: %u\n", s.st_uid);
+  printf("Link- st_gid: %u\n", s.st_gid);
+  
+  printf("Link- st_rdev: %u\n", s.st_rdev);
+  printf("Link- st_size: %llu\n", s.st_size);
+  printf("Link- st_blksize: %d\n", s.st_blksize);
+  printf("Link- st_blocks: %d\n", s.st_blocks);
+  
   printf("Link- st_atime: %llu\n", s.st_atime);
   printf("Link- st_mtime: %llu\n", s.st_mtime);
   printf("Link- st_ctime: %llu\n", s.st_ctime);
-  printf("Link- st_blksize: %d\n", s.st_blksize);
-  printf("Link- st_blocks: %d\n", s.st_blocks);
-  printf("Link- st_gid: %u\n", s.st_gid);
-  printf("Link- st_rdev: %u\n", s.st_rdev);
-  printf("Link- st_size: %llu\n", s.st_size);
-  printf("Link- st_uid: %u\n", s.st_uid);
+  printf("Link- stino: %llu\n", s.st_ino);
+  
+  
+  
 
-  // EM_ASM(
-  //   var ex;
-  //   try {
-  //     FS.stat("nonexistent");
-  //   } catch (err) {
-  //     ex = err;
-  //   }
-  //   assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+  EM_ASM(
+    var ex;
+    try {
+      FS.stat("nonexistent");
+    } catch (err) {
+      ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
 
-  //   try {
-  //     FS.lstat("nonexistent");
-  //   } catch (err) {
-  //     ex = err;
-  //   }
-  //   assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
-  // );
+    try {
+      FS.lstat("nonexistent");
+    } catch (err) {
+      ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+  );
 
   puts("success");
 }

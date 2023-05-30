@@ -151,6 +151,8 @@ int _wasmfs_lstat(char* path, struct stat* statBuf) {
     return errno;
   }
   return err;
+}
+
 int _wasmfs_close(int fd) {
   return __wasi_fd_close(fd);
 }

@@ -193,12 +193,9 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         var pathBuffer = stringToUTF8OnStack(path);
 
         var statBuf = _malloc({{{C_STRUCTS.stat.__size__}}});
-        var err = __wasmfs_stat(pathBuffer, statBuf);
-        console.log("stat error: ", err);
-        // FS.handleError(-__wasmfs_stat(pathBuffer, statBuf));
+        FS.handleError(__wasmfs_stat(pathBuffer, statBuf));
         const resultView = new Uint8Array(Module.HEAP8.buffer, statBuf, {{{C_STRUCTS.stat.__size__}}});
-        const resultCopy = new Uint8Array(resultView);
-        const view = new DataView(resultCopy.buffer, 0);
+        const view = new DataView(new Uint8Array(resultView).buffer, 0);
         
         _free(statBuf);
         // console.log("ChatGPT Stuff: ", finalResult.subarray(12, 16));
@@ -216,53 +213,54 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         // console.log("SO Stuff: ctime: ", view.getBigInt64(88, true));
         // console.log("SO Stuff: ino: ", view.getBigUint64(104, true));
 
-        console.log("Super magic: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_dev, "u32")}}});
-        console.log("Super magic 2: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mode, "u32")}}})
-        console.log("Super magic 3: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_nlink, "u32")}}})
-        console.log("Super magic 4: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_uid, "u32")}}})
-        console.log("Super magic 5: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_gid, "u32")}}})
-        console.log("Super magic 6: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_rdev, "u32")}}})
-        console.log("Super magic 7: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_size, "i64")}}})
-        console.log("Super magic 8: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blksize, "u32")}}})
-        console.log("Super magic 9: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blocks, "u32")}}})
-        console.log("Super magic 10: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_atime, "i64")}}})
-        console.log("Super magic 11: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mtime, "i64")}}})
-        console.log("Super magic 12: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ctime, "i64")}}})
-        console.log("Super magic 13: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, "u64")}}})
+        console.log("makeGetValue dev: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_dev, "u32")}}});
+        console.log("makeGetValue mode: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mode, "u32")}}})
+        console.log("makeGetValue nlink: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_nlink, "u32")}}})
+        console.log("makeGetValue uid: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_uid, "u32")}}})
+        console.log("makeGetValue gid: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_gid, "u32")}}})
+        console.log("makeGetValue rdev: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_rdev, "u32")}}})
+        console.log("makeGetValue size: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_size, "i64")}}})
+        console.log("makeGetValue blksize: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blksize, "u32")}}})
+        console.log("makeGetValue blocks: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blocks, "u32")}}})
+        console.log("makeGetValue atime: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_atime, "i64")}}})
+        console.log("makeGetValue mtime: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mtime, "i64")}}})
+        console.log("makeGetValue ctime: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ctime, "i64")}}})
+        console.log("makeGetValue ino: " + {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, "u64")}}})
+        console.log("Test pointer ", {{{C_STRUCTS.stat.st_atime}}});
 
 
-        var statsObj = {
-          dev: view.getUint32(0, true),
-          mode: view.getUint32(12, true),
-          nlink: view.getUint32(16, true),
-          uid: view.getUint32(20, true),
-          gid: view.getUint32(24, true),
-          rdev: view.getUint32(28, true),
-          size: view.getBigInt64(40, true),
-          blksize: view.getUint32(48, true),
-          blocks: view.getUint32(52, true),
-          atime: view.getBigInt64(56, true),
-          mtime: view.getBigInt64(72, true),
-          ctime: view.getBigInt64(88, true),
-          ino: view.getBigUint64(104, true)
-        }
+        // var statsObj = {
+        //   dev: view.getUint32(0, true),
+        //   mode: view.getUint32(12, true),
+        //   nlink: view.getUint32(16, true),
+        //   uid: view.getUint32(20, true),
+        //   gid: view.getUint32(24, true),
+        //   rdev: view.getUint32(28, true),
+        //   size: view.getBigInt64(40, true),
+        //   blksize: view.getUint32(48, true),
+        //   blocks: view.getUint32(52, true),
+        //   atime: view.getBigInt64(56, true),
+        //   mtime: view.getBigInt64(72, true),
+        //   ctime: view.getBigInt64(88, true),
+        //   ino: view.getBigInt64(104, true)
+        // }
 
         var statsObj = {
           dev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_dev, "u32")}}},
           mode: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mode, "u32")}}},
           nlink: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_nlink, "u32")}}},
-          uid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_uid, "u32")}}},
+          uid: {{{ makeGetValuex('statBuf', C_STRUCTS.stat.st_uid, "u32")}}},
           gid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_gid, "u32")}}},
           rdev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_rdev, "u32")}}},
-          size: view.getBigInt64(40, true),
+          size: view.getBigInt64({{{C_STRUCTS.stat.st_size}}}, true),
           blksize: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blksize, "u32")}}},
           blocks: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blocks, "u32")}}},
-          atime: view.getBigInt64(56, true),
-          mtime: view.getBigInt64(72, true),
-          ctime: view.getBigInt64(88, true),
-          ino: view.getBigUint64(104, true)
+          atime: view.getBigInt64({{{C_STRUCTS.stat.st_atime}}}, true),
+          mtime: view.getBigInt64({{{C_STRUCTS.stat.st_mtime}}}, true),
+          ctime: view.getBigInt64({{{C_STRUCTS.stat.st_ctime}}}, true),
+          ino: view.getBigUint64({{{C_STRUCTS.stat.st_ino}}}, true)
         }
-        // console.log("statsObj: ", statsObj);
+        console.log("statsObj: ", statsObj);
 
         return statsObj;
       })
@@ -273,9 +271,8 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         var pathBuffer = stringToUTF8OnStack(path);
         
         var statBuf = _malloc(112);
-        var err = __wasmfs_lstat(pathBuffer, statBuf);
+        FS.handleError(__wasmfs_lstat(pathBuffer, statBuf));
         // FS.handleError(-__wasmfs_lstat(pathBuffer, statBuf));
-        console.log("lstat error: ", err);
         const resultView = new Uint8Array(Module.HEAP8.buffer, statBuf, 112);
         const resultCopy = new Uint8Array(resultView);
         const view = new DataView(resultCopy.buffer, 0);
