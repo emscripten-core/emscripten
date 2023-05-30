@@ -1859,7 +1859,7 @@ var LibraryWebGPU = {
 
   // In webgpu.h offset and size are passed in as size_t.
   // And library_webgpu assumes that size_t is always 32bit in emscripten.
-  wgpuBufferGetConstMappedRange__deps: ['$warnOnce', 'malloc', 'free'],
+  wgpuBufferGetConstMappedRange__deps: ['$warnOnce', 'memalign', 'free'],
   wgpuBufferGetConstMappedRange: function(bufferId, offset, size) {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
     {{{ gpu.makeCheckDefined('bufferWrapper') }}}
@@ -1880,7 +1880,7 @@ var LibraryWebGPU = {
       return 0;
     }
 
-    var data = _malloc(mapped.byteLength);
+    var data = _memalign(16, mapped.byteLength);
     HEAPU8.set(new Uint8Array(mapped), data);
     bufferWrapper.onUnmap.push(() => _free(data));
     return data;
@@ -1888,7 +1888,7 @@ var LibraryWebGPU = {
 
   // In webgpu.h offset and size are passed in as size_t.
   // And library_webgpu assumes that size_t is always 32bit in emscripten.
-  wgpuBufferGetMappedRange__deps: ['$warnOnce', 'malloc', 'free'],
+  wgpuBufferGetMappedRange__deps: ['$warnOnce', 'memalign', 'free'],
   wgpuBufferGetMappedRange: function(bufferId, offset, size) {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
     {{{ gpu.makeCheckDefined('bufferWrapper') }}}
@@ -1917,7 +1917,7 @@ var LibraryWebGPU = {
       return 0;
     }
 
-    var data = _malloc(mapped.byteLength);
+    var data = _memalign(16, mapped.byteLength);
     HEAPU8.fill(0, data, mapped.byteLength);
     bufferWrapper.onUnmap.push(() => {
       new Uint8Array(mapped).set(HEAPU8.subarray(data, data + mapped.byteLength));
