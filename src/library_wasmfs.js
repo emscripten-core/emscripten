@@ -177,17 +177,17 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: stat
     // TODO: lstat
     chmod: (path, mode) => {
-      return withStackSave(() => {
+      return FS.handleError(withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
-        return FS.handleError(__wasmfs_chmod(buffer, mode));
-      });
+        return __wasmfs_chmod(buffer, mode);
+      }));
     },
     // TODO: lchmod
     lchmod: (path, mode) => {
-      return withStackSave(() => {
+      return FS.handleError(withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
-        return FS.handleError(__wasmfs_lchmod(buffer, mode));
-      });
+        return __wasmfs_lchmod(buffer, mode);
+      }));
     },
     // TODO: fchmod
     fchmod: (fd, mode) => {

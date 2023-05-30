@@ -68,6 +68,8 @@ int main() {
 
   struct stat fileStats;
   stat("fchmodtest", &fileStats);
+
+// NODEFS and NODERAWFS create files with different permissions than MEMFS and WasmFS
 #if !defined(NODEFS) && !defined(NODERAWFS)
   assert(fileStats.st_mode & 0666);
 #else
