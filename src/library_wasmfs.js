@@ -270,4 +270,4 @@ FS.createPreloadedFile = FS_createPreloadedFile;
   _wasmfs_minimal_fd_write: 'fd_write',
 });
 
-DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$FS');
+//DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$FS');
