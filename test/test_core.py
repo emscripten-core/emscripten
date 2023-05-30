@@ -7222,12 +7222,19 @@ void* operator new(size_t size) {
       print(str(args) + ' ' + which)
       self.do_core_test('dyncall_specific.c', emcc_args=['-D' + which] + list(args) + extra_args)
 
+  @also_with_wasm_bigint
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
     def test(out_suffix='', args=None, assert_returncode=0):
-      if not out_suffix and self.is_wasm64():
-        out_suffix = '64'
+      if not out_suffix:
+        if self.is_wasm64():
+          out_suffix = '64'
+        if self.get_setting('WASM_BIGINT'):
+          out_suffix += '_bigint'
       self.do_run_in_out_file_test('core/test_getValue_setValue.cpp', out_suffix=out_suffix, assert_returncode=assert_returncode, emcc_args=args)
+
+    if self.get_setting('WASM_BIGINT'):
+      self.emcc_args += ['-DWASM_BIGINT']
 
     # see that direct usage (not on module) works. we don't export, but the use
     # keeps it alive through JSDCE
