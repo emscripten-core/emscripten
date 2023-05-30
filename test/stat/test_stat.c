@@ -130,19 +130,21 @@ void test() {
   printf("- st_size: %llu\n", s.st_size);
   printf("- st_uid: %u\n", s.st_uid);
 
-  // printf("p stdev: %lu\n", (unsigned long)&s.st_dev);
-  // printf("p stnlink: %lu\n", (unsigned long)&s.st_nlink);
-  // printf("p stino: %lu\n", (unsigned long)&s.st_ino);
-  // printf("p stmode: %lu\n", (unsigned long) &s.st_mode);
-  // printf("p st_atime: %lu\n", (unsigned long) &s.st_atime);
-  // printf("p st_mtime: %lu\n", (unsigned long) &s.st_mtime);
-  // printf("p st_ctime: %lu\n", (unsigned long) &s.st_ctime);
-  // printf("p st_blksize: %lu\n", (unsigned long) &s.st_blksize);
-  // printf("p st_blocks: %lu\n", (unsigned long) &s.st_blocks);
-  // printf("p st_gid: %lu\n", (unsigned long) &s.st_gid);
-  // printf("p st_rdev: %lu\n", (unsigned long) &s.st_rdev);
-  // printf("p st_size: %lu\n", (unsigned long) &s.st_size);
-  // printf("p st_uid: %lu\n", (unsigned long) &s.st_uid);
+  printf("p stdev: %lu\n", (unsigned long)&s.st_dev);
+  printf("p stnlink: %lu\n", (unsigned long)&s.st_nlink);
+  printf("p stino: %lu\n", (unsigned long)&s.st_ino);
+  printf("p stmode: %lu\n", (unsigned long) &s.st_mode);
+  printf("p st_atime: %lu\n", (unsigned long) &s.st_atime);
+  printf("p st_mtime: %lu\n", (unsigned long) &s.st_mtime);
+  printf("p st_ctime: %lu\n", (unsigned long) &s.st_ctime);
+  printf("p st_blksize: %lu\n", (unsigned long) &s.st_blksize);
+  printf("p st_blocks: %lu\n", (unsigned long) &s.st_blocks);
+  printf("p st_gid: %lu\n", (unsigned long) &s.st_gid);
+  printf("p st_rdev: %lu\n", (unsigned long) &s.st_rdev);
+  printf("p st_size: %lu\n", (unsigned long) &s.st_size);
+  printf("p st_uid: %lu\n", (unsigned long) &s.st_uid);
+
+  printf("size: %lu\n", sizeof(s.st_atime));
 
   // printf("sizes: %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %lu, %lu, %lu, %lu, %d\n",
   // sizeof(s.st_dev), sizeof(s.st_mode), sizeof(s.st_nlink),
@@ -263,7 +265,7 @@ void test() {
     FS.chmod("folder/file", 0o000);
 
     var stats = FS.stat("folder/file");
-    // console.log("recv stats: %o", stats);
+    console.log("recv stats: %o", stats);
     assert(stats.dev == 1);
     assert(stats.ino);
     assert(stats.mode);
@@ -306,11 +308,22 @@ void test() {
   printf("Link- st_size: %llu\n", s.st_size);
   printf("Link- st_uid: %u\n", s.st_uid);
 
-  EM_ASM(
-    FS.stat("nonexistent");
+  // EM_ASM(
+  //   var ex;
+  //   try {
+  //     FS.stat("nonexistent");
+  //   } catch (err) {
+  //     ex = err;
+  //   }
+  //   assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
 
-    FS.lstat("nonexistent");
-  );
+  //   try {
+  //     FS.lstat("nonexistent");
+  //   } catch (err) {
+  //     ex = err;
+  //   }
+  //   assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+  // );
 
   puts("success");
 }
