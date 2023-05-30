@@ -1,0 +1,7 @@
+$__wasm_call_ctors
+$_wasmfs_read_file
+$add
+$dlfree
+$stackAlloc
+$stackRestore
+$stackSave
