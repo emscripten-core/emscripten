@@ -83,7 +83,7 @@ int main() {
   assert(fileStats.st_mode & 0777);
 
   EM_ASM(
-    FS.symlink('writeable', 'symlinkfile');
+    FS.symlink('forbidden', 'symlinkfile');
     FS.lchmod('symlinkfile', 0777);
   );
   
@@ -92,8 +92,8 @@ int main() {
   lstat("symlinkfile", &symlinkStats);
   assert(symlinkStats.st_mode & 0777);
 
-  stat("writeable", &fileStats);
-  assert(fileStats.st_mode & 0222);
+  stat("forbidden", &fileStats);
+  assert(!(fileStats.st_mode & 0777));
 
   EM_ASM(
     var ex;
