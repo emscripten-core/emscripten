@@ -98,7 +98,7 @@ void test() {
   assert(s.st_size == 6);
   assert(s.st_atime == TEST_TIME);
   assert(s.st_mtime == TEST_TIME);
-  assert(s.st_ctime);  
+  assert(s.st_ctime);
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);
