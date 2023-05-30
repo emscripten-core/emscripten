@@ -2203,8 +2203,6 @@ def get_libs_to_link(args, forced, only_forced):
 
   if settings.WASMFS:
     add_library('libwasmfs')
-    if settings.NODERAWFS:
-      add_library('libwasmfs_noderawfs')
 
   add_sanitizer_libs()
   return libs_to_link
