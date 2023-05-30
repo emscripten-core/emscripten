@@ -333,11 +333,21 @@ static void do_thread_sync_out(void* arg) {
   *result = _emscripten_dlsync_self();
 }
 
-// Called once _emscripten_proxy_dlsync completes
-static void done_thread_sync(void* arg) {
+// Called when a thread exists prior to being able to completely sync operation.
+// We can just ignore this case and report success.
+static void thread_sync_cancelled(void* arg) {
+  struct promise_result* info = arg;
+  dbg("thread_sync_cancelled: promise=%p result=%i", info->promise, info->result);
+  emscripten_promise_resolve(info->promise, EM_PROMISE_FULFILL, NULL);
+  emscripten_promise_destroy(info->promise);
+  free(info);
+}
+
+// Called once do_thread_sync completes
+static void thread_sync_done(void* arg) {
   struct promise_result* info = arg;
   em_promise_t promise = info->promise;
-  dbg("done_thread_sync: promise=%p result=%i", promise, info->result);
+  dbg("thread_sync_done: promise=%p result=%i", promise, info->result);
   if (info->result) {
     emscripten_promise_resolve(promise, EM_PROMISE_FULFILL, NULL);
   } else {
@@ -389,8 +399,8 @@ int _emscripten_proxy_dlsync_async(pthread_t target_thread, em_promise_t promise
   int rtn = emscripten_proxy_callback(dlopen_proxying_queue,
                                       target_thread,
                                       do_thread_sync,
-                                      done_thread_sync,
-                                      done_thread_sync,
+                                      thread_sync_done,
+                                      thread_sync_cancelled,
                                       info);
   if (!rtn) {
     // If we failed to proxy, then the target thread is no longer alive and no

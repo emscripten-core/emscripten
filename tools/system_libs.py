@@ -2212,10 +2212,11 @@ def get_libs_to_link(args, forced, only_forced):
     add_library('libwasm_workers')
 
   if settings.WASMFS:
+    # Link in the no-fs version first, so that if it provides all the needed
+    # system libraries then WasmFS is not linked in at all. This saves a lot of
+    # code size for simple programs that don't need a full FS implementation.
     add_library('libwasmfs_no_fs')
     add_library('libwasmfs')
-    if settings.NODERAWFS:
-      add_library('libwasmfs_noderawfs')
 
   add_sanitizer_libs()
   return libs_to_link
