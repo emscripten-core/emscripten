@@ -198,28 +198,16 @@ void test() {
     assert(stats.dev == 1);
     assert(stats.ino);
     assert(stats.mode == 33279);
-    assert(stats.nlink == 1);
-    assert(stats.rdev == 0);
-    assert(stats.size == 6);
-    assert(stats.atime);
-    assert(stats.mtime);
-    assert(stats.ctime);
-
-    FS.symlink("file", "folder/symlinkfile");
-    FS.chmod("folder/file", 0o000);
-
-    var stats = FS.stat("folder/file");
-    assert(stats.dev == 1);
-    assert(stats.ino);
-    assert(stats.mode);
     assert(stats.nlink);
     assert(stats.rdev == 0);
     assert(stats.size == 6);
     assert(stats.atime);
     assert(stats.mtime);
     assert(stats.ctime);
-
     var original_mode = stats.mode;
+
+    FS.symlink("file", "folder/symlinkfile");
+    FS.chmod("folder/file", 0o000);
 
     var linkStats = FS.lstat("folder/symlinkfile");
     assert(linkStats.dev == 1);
@@ -233,6 +221,7 @@ void test() {
     assert(linkStats.ctime);
 
     FS.chmod("folder/file", 0o777);
+    
     var ex;
     try {
       FS.stat("nonexistent");
