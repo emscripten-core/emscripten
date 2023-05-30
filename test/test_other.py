@@ -10042,6 +10042,7 @@ int main () {
                                '-sMIN_CHROME_VERSION=58',
                                '-sGL_WORKAROUND_SAFARI_GETCONTEXT_BUG=0',
                                '-sNO_FILESYSTEM',
+                               '-sSTRICT',
                                '--output_eol', 'linux',
                                '-Oz',
                                '--closure=1',
