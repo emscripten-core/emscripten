@@ -7225,13 +7225,17 @@ void* operator new(size_t size) {
   @also_with_wasm_bigint
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
-    def test(out_suffix='', args=None, assert_returncode=0):
-      if not out_suffix:
-        if self.is_wasm64():
-          out_suffix = '64'
-        if self.get_setting('WASM_BIGINT'):
-          out_suffix += '_bigint'
-      self.do_run_in_out_file_test('core/test_getValue_setValue.cpp', out_suffix=out_suffix, assert_returncode=assert_returncode, emcc_args=args)
+    def test(args=None, asserts=False):
+      out_suffix = '' if not asserts else '_assert'
+      if self.is_wasm64():
+        out_suffix = '64'
+      if self.get_setting('WASM_BIGINT'):
+        out_suffix += '_bigint'
+      assert_returncode = 0 if not asserts else NON_ZERO
+      self.do_run_in_out_file_test('core/test_getValue_setValue.cpp',
+                                   out_suffix=out_suffix,
+                                   assert_returncode=assert_returncode,
+                                   emcc_args=args)
 
     if self.get_setting('WASM_BIGINT'):
       self.emcc_args += ['-DWASM_BIGINT']
@@ -7242,7 +7246,7 @@ void* operator new(size_t size) {
     # see that with assertions, we get a nice error message
     self.set_setting('EXPORTED_RUNTIME_METHODS', [])
     self.set_setting('ASSERTIONS')
-    test('_assert', assert_returncode=NON_ZERO)
+    test(asserts=True)
     self.set_setting('ASSERTIONS', 0)
     # see that when we export them, things work on the module
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue'])
