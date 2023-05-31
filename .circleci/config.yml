@@ -545,11 +545,13 @@ jobs:
       - install-v8
       - run-tests:
           title: "wasm64l"
-          test_targets: "wasm64l"
+          # On older versions of node wasm64l.test_bigswitch uses a lot (~3.5Gb)
+          # of memory, so skip it here, but run it below under node-canary.
+          test_targets: "wasm64l skip:wasm64l.test_bigswitch"
       - install-node-canary
       - run-tests:
           title: "wasm64"
-          test_targets: "wasm64"
+          test_targets: "wasm64 wasm64l.test_bigswitch"
       - upload-test-results
   test-node-compat:
     # We don't use `bionic` here since its tool old to run recent node versions:
