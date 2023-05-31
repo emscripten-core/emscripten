@@ -21,7 +21,7 @@
 // Define to enable extra debugging on stderr.
 #if EXCEPTIONS_DEBUG
 #include "emscripten/console.h"
-#define DEBUG _emscripten_errf
+#define DEBUG emscripten_errf
 #else
 #define DEBUG(...)
 #endif

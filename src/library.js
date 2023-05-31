@@ -559,6 +559,27 @@ mergeInto(LibraryManager.library, {
     return buf;
   },
 
+#if STACK_OVERFLOW_CHECK >= 2
+  // Set stack limits used by binaryen's `StackCheck` pass.
+#if MAIN_MODULE
+  $setStackLimits__deps: ['$setDylinkStackLimits'],
+#endif
+  $setStackLimits: function() {
+    var stackLow = _emscripten_stack_get_base();
+    var stackHigh = _emscripten_stack_get_end();
+#if RUNTIME_DEBUG
+    dbg(`setStackLimits: ${ptrToString(stackLow)}, ${ptrToString(stackHigh)}`);
+#endif
+#if MAIN_MODULE
+    // With dynamic linking we could have any number of pre-loaded libraries
+    // that each need to have their stack limits set.
+    setDylinkStackLimits(stackLow, stackHigh);
+#else
+    ___set_stack_limits(stackLow, stackHigh);
+#endif
+  },
+#endif
+
   $withStackSave__internal: true,
   $withStackSave: function(f) {
     var stack = stackSave();
@@ -3357,16 +3378,16 @@ mergeInto(LibraryManager.library, {
     _exit(status);
   },
 
-  _emscripten_out: function(str) {
+  emscripten_out: function(str) {
     out(UTF8ToString(str));
   },
 
-  _emscripten_err: function(str) {
+  emscripten_err: function(str) {
     err(UTF8ToString(str));
   },
 
 #if ASSERTIONS || RUNTIME_DEBUG
-  _emscripten_dbg: function(str) {
+  emscripten_dbg: function(str) {
     dbg(UTF8ToString(str));
   },
 #endif
@@ -3745,3 +3766,113 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
   '$lengthBytesUTF8',
 );
 #endif
+
+function wrapSyscallFunction(x, library, isWasi) {
+  if (x[0] === '$' || isJsLibraryConfigIdentifier(x)) {
+    return;
+  }
+
+  var t = library[x];
+  if (typeof t == 'string') return;
+  t = t.toString();
+
+  // If a syscall uses FS, but !SYSCALLS_REQUIRE_FILESYSTEM, then the user
+  // has disabled the filesystem or we have proven some other way that this will
+  // not be called in practice, and do not need that code.
+  if (!SYSCALLS_REQUIRE_FILESYSTEM && t.includes('FS.')) {
+    t = modifyFunction(t, function(name, args, body) {
+      return 'function ' + name + '(' + args + ') {\n' +
+             (ASSERTIONS ? "abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');\n" : '') +
+             '}';
+    });
+  }
+
+  var isVariadic = !isWasi && t.includes(', varargs');
+#if SYSCALLS_REQUIRE_FILESYSTEM == 0
+  var canThrow = false;
+#else
+  var canThrow = library[x + '__nothrow'] !== true;
+#endif
+
+  if (!library[x + '__deps']) library[x + '__deps'] = [];
+
+#if PURE_WASI
+  // In PURE_WASI mode we can't assume the wasm binary was built by emscripten
+  // and politely notify us on memory growth.  Instead we have to check for
+  // possible memory growth on each syscall.
+  var pre = '\nif (!HEAPU8.byteLength) _emscripten_notify_memory_growth(0);\n'
+  library[x + '__deps'].push('emscripten_notify_memory_growth');
+#else
+  var pre = '';
+#endif
+  var post = '';
+  if (isVariadic) {
+    pre += 'SYSCALLS.varargs = varargs;\n';
+  }
+
+#if SYSCALL_DEBUG
+  if (isVariadic) {
+    if (canThrow) {
+      post += 'finally { SYSCALLS.varargs = undefined; }\n';
+    } else {
+      post += 'SYSCALLS.varargs = undefined;\n';
+    }
+  }
+  pre += `dbg('syscall! ${x}: [' + Array.prototype.slice.call(arguments) + ']');\n`;
+  pre += "var canWarn = true;\n";
+  pre += "var ret = (function() {\n";
+  post += "})();\n";
+  post += "if (ret && ret < 0 && canWarn) {\n";
+  post += "  dbg(`error: syscall may have failed with ${-ret} (${ERRNO_MESSAGES[-ret]})`);\n";
+  post += "}\n";
+  post += "dbg(`syscall return: ${ret}`);\n";
+  post += "return ret;\n";
+#endif
+  delete library[x + '__nothrow'];
+  var handler = '';
+  if (canThrow) {
+    pre += 'try {\n';
+    handler +=
+    "} catch (e) {\n" +
+    "  if (typeof FS == 'undefined' || !(e.name === 'ErrnoError')) throw e;\n";
+#if SYSCALL_DEBUG
+    handler +=
+    "  dbg(`error: syscall failed with ${e.errno} (${ERRNO_MESSAGES[e.errno]})`);\n" +
+    "  canWarn = false;\n";
+#endif
+    // Musl syscalls are negated.
+    if (isWasi) {
+      handler += "  return e.errno;\n";
+    } else {
+      // Musl syscalls are negated.
+      handler += "  return -e.errno;\n";
+    }
+    handler += "}\n";
+  }
+  post = handler + post;
+
+  if (pre || post) {
+    t = modifyFunction(t, function(name, args, body) {
+      return `function ${name}(${args}) {\n${pre}${body}${post}}\n`;
+    });
+  }
+
+  library[x] = eval('(' + t + ')');
+  if (!WASMFS) {
+    library[x + '__deps'].push('$SYSCALLS');
+  }
+#if PTHREADS
+  // Most syscalls need to happen on the main JS thread (e.g. because the
+  // filesystem is in JS and on that thread). Proxy synchronously to there.
+  // There are some exceptions, syscalls that we know are ok to just run in
+  // any thread; those are marked as not being proxied with
+  //  __proxy: false
+  // A syscall without a return value could perhaps be proxied asynchronously
+  // instead of synchronously, and marked with
+  //  __proxy: 'async'
+  // (but essentially all syscalls do have return values).
+  if (library[x + '__proxy'] === undefined) {
+    library[x + '__proxy'] = 'sync';
+  }
+#endif
+}
