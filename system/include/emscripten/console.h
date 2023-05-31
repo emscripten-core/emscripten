@@ -5,6 +5,8 @@
  * found in the LICENSE file.
  */
 
+#include <stddef.h>  // for size_t
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -25,6 +27,12 @@ void emscripten_console_error(const char *utf8String __attribute__((nonnull)));
 void emscripten_out(const char *utf8String __attribute__((nonnull)));
 void emscripten_err(const char *utf8String __attribute__((nonnull)));
 void emscripten_dbg(const char *utf8String __attribute__((nonnull)));
+
+// Same as above but only with the legnth of string specified by the second
+// argument.  This allows for non-NULL-termianted strings to be passed.
+void emscripten_outn(const char *utf8String __attribute__((nonnull)), size_t len);
+void emscripten_errn(const char *utf8String __attribute__((nonnull)), size_t len);
+void emscripten_dbgn(const char *utf8String __attribute__((nonnull)), size_t len);
 
 // Legacy/internal names for the above
 #define _emscripten_out(x) emscripten_out(x)
