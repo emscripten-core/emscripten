@@ -7226,11 +7226,14 @@ void* operator new(size_t size) {
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
     def test(args=None, asserts=False):
-      out_suffix = '' if not asserts else '_assert'
-      if self.is_wasm64():
-        out_suffix = '64'
-      if self.get_setting('WASM_BIGINT'):
-        out_suffix += '_bigint'
+      if asserts:
+        out_suffix = '_assert'
+      else:
+        out_suffix = ''
+        if self.is_wasm64():
+          out_suffix += '64'
+        if self.get_setting('WASM_BIGINT'):
+          out_suffix += '_bigint'
       assert_returncode = 0 if not asserts else NON_ZERO
       self.do_run_in_out_file_test('core/test_getValue_setValue.cpp',
                                    out_suffix=out_suffix,
