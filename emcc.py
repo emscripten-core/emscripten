@@ -2296,8 +2296,12 @@ def phase_linker_setup(options, state, newargs):
     exit_with_error('-sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0 only makes sense with -sGL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0!')
 
   if settings.WASMFS:
-    state.forced_stdlibs.append('libwasmfs')
     if settings.NODERAWFS:
+      # wasmfs will be included normally in system_libs.py, but we must include
+      # noderawfs in a forced manner so that it is always linked in (the hook it
+      # implements can remain unimplemented, so it won't be linked in
+      # automatically)
+      # TODO: find a better way to do this
       state.forced_stdlibs.append('libwasmfs_noderawfs')
     settings.FILESYSTEM = 1
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
@@ -2318,6 +2322,8 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_rmdir',
         '_wasmfs_symlink',
         '_wasmfs_chmod',
+        '_wasmfs_fchmod',
+        '_wasmfs_lchmod',
         '_wasmfs_identify',
         '_wasmfs_readdir_start',
         '_wasmfs_readdir_get',
