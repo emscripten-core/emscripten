@@ -2733,6 +2733,10 @@ def phase_linker_setup(options, state, newargs):
       # by SAFE_HEAP as a null pointer dereference.
       exit_with_error('ASan does not work with SAFE_HEAP')
 
+  if settings.USE_ASAN or settings.SAFE_HEAP:
+    # ASan and SAFE_HEAP check address 0 themselves
+    settings.CHECK_NULL_WRITES = 0
+
   if sanitize and settings.GENERATE_SOURCE_MAP:
     settings.LOAD_SOURCE_MAP = 1
 

@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.41 (in development)
 -----------------------
+- A new setting (`CHECK_NULL_WRITES`) was added to disabled the checking of
+  address zero that is normally done when `STACK_OVERFLOW_CHECK` is enabled.
+  (#19487)
 
 3.1.40 - 05/30/23
 -----------------
