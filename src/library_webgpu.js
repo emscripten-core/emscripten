@@ -25,19 +25,14 @@
   // Helper functions for code generation
   global.gpu = {
     makeInitManager: function(type) {
-      var mgr = 'WebGPU.mgr' + type
-      return mgr + ' = ' + mgr + ' || new Manager();';
+      var mgr = `WebGPU.mgr${type}`;
+      return `${mgr} = ${mgr} || new Manager();`;
     },
 
     makeReferenceRelease: function(type) {
-      var s = '';
-      s += 'wgpu' + type + 'Reference: function(id) {\n';
-      s += '  WebGPU.mgr' + type + '.reference(id);\n'
-      s += '},\n';
-      s += 'wgpu' + type + 'Release: function(id) {\n';
-      s += '  WebGPU.mgr' + type + '.release(id);\n'
-      s += '},';
-      return s;
+      return `
+wgpu${type}Reference: function(id) { WebGPU.mgr${type}.reference(id) },
+wgpu${type}Release: function(id) { WebGPU.mgr${type}.release(id) },`;
     },
 
     makeI32I32ToU53: function(lowName, highName) {
@@ -58,22 +53,22 @@
     makeGetBool: function(struct, offset) {
       // In an actual build, bool seems to be i8. But on the off-chance it's i32, on little-endian
       // this will still work as long as the value of 'true' isn't zero in the lowest byte.
-      return '(' + makeGetValue(struct, offset, 'i8') + ' !== 0)';
+      return `(${makeGetValue(struct, offset, 'i8')} !== 0)`;
     },
     makeGetU32: function(struct, offset) {
       return makeGetValue(struct, offset, 'u32');
     },
     makeGetU64: function(struct, offset) {
       var l = makeGetValue(struct, offset, 'u32');
-      var h = makeGetValue('(' + struct + ' + 4)', offset, 'u32')
-      return h + ' * 0x100000000 + ' + l
+      var h = makeGetValue(`(${struct} + 4)`, offset, 'u32')
+      return `${h} * 0x100000000 + ${l}`
     },
     makeCheck: function(str) {
       if (!ASSERTIONS) return '';
-      return 'assert(' + str + ');';
+      return `assert(${str});`;
     },
     makeCheckDefined: function(name) {
-      return this.makeCheck('typeof ' + name + ' != "undefined"');
+      return this.makeCheck(`typeof ${name} != "undefined"`);
     },
     makeCheckDescriptor: function(descriptor) {
       // Assert descriptor is non-null, then that its nextInChain is null.
