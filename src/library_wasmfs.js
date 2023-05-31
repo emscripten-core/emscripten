@@ -276,7 +276,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
   // No-FS support: When the linker ends up linking in only libwasmfs_no_fs,
   // that is, when we don't need a full filesystem because we only have a few
   // printfs or such, then we route printf to the JS impl of fd_write.
-  _wasmfs_minimal_fd_write: 'fd_write',
+  _wasmfs_no_fs_fd_write: 'fd_write',
 });
 
 if (FORCE_FILESYSTEM) {

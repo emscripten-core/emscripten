@@ -23,7 +23,7 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
                                const __wasi_ciovec_t* iovs,
                                size_t iovs_len,
                                __wasi_size_t* nwritten) {
-  return _wasmfs_minimal_fd_write(fd, iovs, iovs_len, nwritten);
+  return _wasmfs_no_fs_fd_write(fd, iovs, iovs_len, nwritten);
 }
 
 WEAK
