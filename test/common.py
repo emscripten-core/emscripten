@@ -661,6 +661,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           # expect this.  --no-clean can be used to keep the old contents for the new test
           # run. This can be useful when iterating on a given test with extra files you want to keep
           # around in the output directory.
+          make_dir_writeable(self.working_dir)
           utils.delete_contents(self.working_dir)
       else:
         print('Creating new test output directory')
