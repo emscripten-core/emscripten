@@ -282,12 +282,6 @@ function getNativeTypeSize(type) {
 }
 
 function getHeapOffset(offset, type) {
-  if (type == 'i64' && !WASM_BIGINT) {
-    // We are foreced to use the 32-bit heap for 64-bit values when we don't
-    // have WASM_BIGINT.
-    type = 'i32';
-  }
-
   const sz = getNativeTypeSize(type);
   const shifts = Math.log(sz) / Math.LN2;
   if (MEMORY64 == 1) {
@@ -503,12 +497,12 @@ function getHeapForType(type) {
     case 'u8':     return 'HEAPU8';
     case 'i16':    return 'HEAP16';
     case 'u16':    return 'HEAPU16';
-    case 'i64':    // fallthrough
     case 'i32':    return 'HEAP32';
-    case 'u64':    // fallthrough
     case 'u32':    return 'HEAPU32';
     case 'double': return 'HEAPF64';
     case 'float':  return 'HEAPF32';
+    case 'i64':    // fallthrough
+    case 'u64':    error('use i53/u53, or avoid i64/u64 without WASM_BIGINT');
   }
   assert(false, 'bad heap type: ' + type);
 }
