@@ -290,7 +290,11 @@ function getHeapOffset(offset, type) {
 
   const sz = getNativeTypeSize(type);
   const shifts = Math.log(sz) / Math.LN2;
-  return `((${offset})>>${shifts})`;
+  if (MEMORY64 == 1) {
+    return `((${offset})/2**${shifts})`;
+  } else {
+    return `((${offset})>>${shifts})`;
+  }
 }
 
 function ensureDot(value) {
