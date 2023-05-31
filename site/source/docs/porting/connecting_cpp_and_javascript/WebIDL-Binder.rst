@@ -107,6 +107,8 @@ The final *emcc* command includes both the C++ and JavaScript glue code, which a
 
 The output now contains everything needed to use the C++ classes through JavaScript.
 
+.. note:: If your code uses strings then you may need to build with ``-sEXPORTED_RUNTIME_METHODS=UTF8ToString`` to include the necessary runtime support.
+
 
 Modular output
 ==============

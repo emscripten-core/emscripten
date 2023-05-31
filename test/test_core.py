@@ -7755,6 +7755,9 @@ void* operator new(size_t size) {
     else:
       self.set_setting('WASM_ASYNC_COMPILATION', 0)
 
+    # We test string converstions, so we need runtime support.
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF8ToString'])
+
     # Force IDL checks mode
     with env_modify({'IDL_CHECKS': mode}):
       self.run_process([WEBIDL_BINDER, test_file('webidl/test.idl'), 'glue'])
