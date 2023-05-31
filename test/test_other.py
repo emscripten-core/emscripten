@@ -6239,6 +6239,37 @@ int main() {
     self.run_process([EMCC, '-O1', 'test.c', '-sALLOW_MEMORY_GROWTH'])
     self.assertContained('done', self.run_js('a.out.js'))
 
+  def test_failing_growth_wasm64(self):
+    # For now we don't assert that we can actually grow a memory to over 4Gb because currently
+    # this fails under node/d8/chrome with: `WebAssembly.Memory.grow(): Unable to grow instance
+    # memory`.
+    # See: https://bugs.chromium.org/p/v8/issues/detail?id=4153
+    self.require_wasm64()
+    create_file('test.c', r'''
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <emscripten/heap.h>
+
+void* out;
+
+int main() {
+  printf("&out = %p\n", &out);
+  assert((uintptr_t)&out > (2 * 1024 * 1024 * 1024ll));
+  while (1) {
+    out = malloc(10 * 1024 * 1024);
+    printf("alloc: %p\n", out);
+    if (!out) {
+      printf("malloc fail with emscripten_get_heap_size: %zu\n", emscripten_get_heap_size());
+      printf("done\n");
+      return 0;
+    }
+  }
+}
+''')
+    self.do_runf('test.c', 'done\n', emcc_args=['-sGLOBAL_BASE=2Gb', '-sTOTAL_MEMORY=4Gb', '-sMAXIMUM_MEMORY=5Gb', '-sALLOW_MEMORY_GROWTH', '-sMEMORY64', '-Wno-experimental'])
+
   def test_libcxx_minimal(self):
     create_file('vector.cpp', r'''
 #include <vector>
@@ -7606,7 +7637,7 @@ int main() {
           for f in files:
             delete_file(f)
 
-  def test_binaryen_names(self):
+  def test_debug_names(self):
     sizes = {}
     for args, expect_names in [
         ([], False),
@@ -12517,7 +12548,7 @@ Module['postRun'] = function() {{
   # Requires v8 for now since the version of node we use in CI doesn't support >2GB heaps
   @requires_v8
   def test_hello_world_above_2gb(self):
-    self.do_runf(test_file('hello_world.c'), 'hello, world!', emcc_args=['-sGLOBAL_BASE=2147483648', '-sINITIAL_MEMORY=3GB'])
+    self.do_runf(test_file('hello_world.c'), 'hello, world!', emcc_args=['-sGLOBAL_BASE=2GB', '-sINITIAL_MEMORY=3GB'])
 
   def test_hello_function(self):
     # hello_function.cpp is referenced/used in the docs.  This test ensures that it

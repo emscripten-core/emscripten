@@ -122,11 +122,15 @@ mergeInto(LibraryManager.library, {
 
   $getHeapMax: function() {
 #if ALLOW_MEMORY_GROWTH
+#if MEMORY64 == 1
+    return {{{ MAXIMUM_MEMORY }}}
+#else
     // Stay one Wasm page short of 4GB: while e.g. Chrome is able to allocate
     // full 4GB Wasm memories, the size will wrap back to 0 bytes in Wasm side
     // for any code that deals with heap sizes, which would require special
     // casing all heap size related code to treat 0 specially.
     return {{{ Math.min(MAXIMUM_MEMORY, FOUR_GB - WASM_PAGE_SIZE) }}};
+#endif
 #else // no growth
     return HEAPU8.length;
 #endif
@@ -156,12 +160,16 @@ mergeInto(LibraryManager.library, {
   // it. Returns 1 on success, 0 on error.
   $emscripten_realloc_buffer: function(size) {
     var b = wasmMemory.buffer;
+    var pages = (size - b.byteLength + 65535) >>> 16;
+#if RUNTIME_DEBUG
+    dbg(`emscripten_resize_heap: ${size} (+${size - b.byteLength} bytes / ${pages} pages)`);
+#endif
 #if MEMORYPROFILER
     var oldHeapSize = b.byteLength;
 #endif
     try {
       // round size grow request up to wasm page size (fixed 64KB per spec)
-      wasmMemory.grow((size - b.byteLength + 65535) >>> 16); // .grow() takes a delta compared to the previous size
+      wasmMemory.grow(pages); // .grow() takes a delta compared to the previous size
       updateMemoryViews();
 #if MEMORYPROFILER
       if (typeof emscriptenMemoryProfiler != 'undefined') {
@@ -194,7 +202,9 @@ mergeInto(LibraryManager.library, {
   emscripten_resize_heap: 'ip',
   emscripten_resize_heap: function(requestedSize) {
     var oldSize = HEAPU8.length;
+#if MEMORY64 != 1
     requestedSize = requestedSize >>> 0;
+#endif
 #if ALLOW_MEMORY_GROWTH == 0
 #if ABORTING_MALLOC
     abortOnCannotGrowMemory(requestedSize);
