@@ -571,6 +571,28 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     else:
       self.fail('either d8 or node >= 16 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
+  def require_jspi(self):
+    exp_args = ['--experimental-wasm-stack-switching', '--experimental-wasm-type-reflection']
+    if config.NODE_JS and config.NODE_JS in self.js_engines:
+      version = shared.check_node_version()
+      # Support for JSPI came earlier than 19, but 19 is what currently works
+      # with emscripten's implementation.
+      if version >= (19, 0, 0):
+        self.js_engines = [config.NODE_JS]
+        self.node_args += exp_args
+        return
+
+    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+      self.emcc_args.append('-sENVIRONMENT=shell')
+      self.js_engines = [config.V8_ENGINE]
+      self.v8_args += exp_args
+      return
+
+    if 'EMTEST_SKIP_JSPI' in os.environ:
+      self.skipTest('test requires node >= 19 or d8 (and EMTEST_SKIP_JSPI is set)')
+    else:
+      self.fail('either d8 or node >= 19 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
+
   def setup_node_pthreads(self):
     self.require_node()
     self.emcc_args += ['-Wno-pthreads-mem-growth', '-pthread']
