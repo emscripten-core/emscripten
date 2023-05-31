@@ -75,7 +75,7 @@ def generate_minimal_runtime_load_statement(target_basename):
     if download_wasm and settings.WASM_WORKERS == 1:
       files_to_load += ["binary('%s')" % (target_basename + '.ww.js')]
 
-  if settings.MODULARIZE and settings.USE_PTHREADS:
+  if settings.MODULARIZE and settings.PTHREADS:
     modularize_imports += ["worker: '{{{ PTHREAD_WORKER_FILE }}}'"]
 
   # Download Wasm2JS code if target browser does not support WebAssembly
@@ -153,7 +153,7 @@ def generate_minimal_runtime_load_statement(target_basename):
     # script load from direct script() load to a binary() load so we can still
     # immediately start the download, but can control when we add the script to the
     # DOM.
-    if settings.USE_PTHREADS or settings.WASM_WORKERS:
+    if settings.PTHREADS or settings.WASM_WORKERS:
       script_load = "script(url)"
     else:
       script_load = "script(url).then(() => { URL.revokeObjectURL(url) });"
