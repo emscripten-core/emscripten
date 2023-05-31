@@ -96,6 +96,7 @@ UNSUPPORTED_LLD_FLAGS = {
     '-rpath': True,
     '-rpath-link': True,
     '-version-script': True,
+    '-install_name': True,
 }
 
 DEFAULT_ASYNCIFY_IMPORTS = [
@@ -1460,6 +1461,7 @@ def phase_setup(options, state, newargs):
                '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
                '-install_name', '-compatibility_version',
                '-current_version', '-I', '-L', '-include-pch',
+               '-undefined',
                '-Xlinker', '-Xclang', '-z'):
       skip = True
 
