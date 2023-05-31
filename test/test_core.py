@@ -5833,6 +5833,8 @@ Module = {
 
   @also_with_wasmfs
   def test_fcntl(self):
+    if self.get_setting('WASMFS'):
+      self.emcc_args += ['-sFORCE_FILESYSTEM']
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl/test_fcntl.c')
 
