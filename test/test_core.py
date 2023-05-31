@@ -940,7 +940,7 @@ base align: 0, 0, 0, 0'''])
   def test_stack_placement(self):
     self.set_setting('STACK_SIZE', 1024)
     self.do_core_test('test_stack_placement.c')
-    self.set_setting('GLOBAL_BASE', 102400)
+    self.set_setting('GLOBAL_BASE', '100kb')
     self.do_core_test('test_stack_placement.c')
 
   @no_sanitize('sanitizers do not yet support dynamic linking')
@@ -949,7 +949,7 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('STACK_SIZE', 1024)
     self.set_setting('MAIN_MODULE')
     self.do_core_test('test_stack_placement.c')
-    self.set_setting('GLOBAL_BASE', 102400)
+    self.set_setting('GLOBAL_BASE', '100kb')
     self.do_core_test('test_stack_placement.c')
 
   def test_strings(self):
