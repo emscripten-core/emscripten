@@ -96,6 +96,7 @@ UNSUPPORTED_LLD_FLAGS = {
     '-rpath': True,
     '-rpath-link': True,
     '-version-script': True,
+    '-install_name': True,
 }
 
 DEFAULT_ASYNCIFY_IMPORTS = [
@@ -1460,6 +1461,7 @@ def phase_setup(options, state, newargs):
                '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
                '-install_name', '-compatibility_version',
                '-current_version', '-I', '-L', '-include-pch',
+               '-undefined',
                '-Xlinker', '-Xclang', '-z'):
       skip = True
 
@@ -2076,6 +2078,7 @@ def phase_linker_setup(options, state, newargs):
     assert not settings.SIDE_MODULE
     if settings.MAIN_MODULE == 1:
       settings.INCLUDE_FULL_LIBRARY = 1
+    # Called from preamble.js once the main module is instantiated.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDylibs']
     settings.REQUIRED_EXPORTS += ['malloc']
 
@@ -2195,6 +2198,9 @@ def phase_linker_setup(options, state, newargs):
     else:
       settings.REQUIRED_EXPORTS += ['emscripten_stack_init']
 
+  if settings.STACK_OVERFLOW_CHECK >= 2:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$setStackLimits']
+
   if settings.MODULARIZE:
     if settings.PROXY_TO_WORKER:
       exit_with_error('-sMODULARIZE is not compatible with --proxy-to-worker (if you want to run in a worker with -sMODULARIZE, you likely want to do the worker side setup manually)')
@@ -2292,8 +2298,12 @@ def phase_linker_setup(options, state, newargs):
     exit_with_error('-sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0 only makes sense with -sGL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0!')
 
   if settings.WASMFS:
-    state.forced_stdlibs.append('libwasmfs')
     if settings.NODERAWFS:
+      # wasmfs will be included normally in system_libs.py, but we must include
+      # noderawfs in a forced manner so that it is always linked in (the hook it
+      # implements can remain unimplemented, so it won't be linked in
+      # automatically)
+      # TODO: find a better way to do this
       state.forced_stdlibs.append('libwasmfs_noderawfs')
     settings.FILESYSTEM = 1
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
@@ -2307,12 +2317,15 @@ def phase_linker_setup(options, state, newargs):
       settings.REQUIRED_EXPORTS += [
         '_wasmfs_write_file',
         '_wasmfs_open',
+        '_wasmfs_close',
         '_wasmfs_mkdir',
         '_wasmfs_unlink',
         '_wasmfs_chdir',
         '_wasmfs_rmdir',
         '_wasmfs_symlink',
         '_wasmfs_chmod',
+        '_wasmfs_fchmod',
+        '_wasmfs_lchmod',
         '_wasmfs_identify',
         '_wasmfs_readdir_start',
         '_wasmfs_readdir_get',
@@ -2474,6 +2487,9 @@ def phase_linker_setup(options, state, newargs):
     exit_with_error(f'INITIAL_MEMORY must be larger than STACK_SIZE, was {settings.INITIAL_MEMORY} (STACK_SIZE={settings.STACK_SIZE})')
   if settings.MEMORY_GROWTH_LINEAR_STEP != -1:
     check_memory_setting('MEMORY_GROWTH_LINEAR_STEP')
+
+  if settings.ALLOW_MEMORY_GROWTH and settings.MAXIMUM_MEMORY < settings.INITIAL_MEMORY:
+    exit_with_error('MAXIMUM_MEMORY must be larger then INITIAL_MEMORY')
 
   if 'MAXIMUM_MEMORY' in user_settings and not settings.ALLOW_MEMORY_GROWTH:
     diagnostics.warning('unused-command-line-argument', 'MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH')

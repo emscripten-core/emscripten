@@ -8,6 +8,7 @@ mergeInto(LibraryManager.library, {
   $wasmFSPreloadedFiles: [],
   $wasmFSPreloadedDirs: [],
   $FS__postset: `
+FS.init();
 FS.createPreloadedFile = FS_createPreloadedFile;
 `,
   $FS__deps: [
@@ -25,6 +26,30 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 #endif
   ],
   $FS : {
+    init: () => {
+      FS.ensureErrnoError();
+    },
+    ErrnoError: null,
+    handleError: (returnValue) => {
+      // Assume errors correspond to negative returnValues
+      // since some functions like _wasmfs_open() return positive
+      // numbers on success (some callers of this function may need to negate the parameter).
+      if (returnValue < 0) {
+        throw new FS.ErrnoError(-returnValue);
+      }
+
+      return returnValue;
+    },
+    ensureErrnoError: () => {
+      if (FS.ErrnoError) return;
+      FS.ErrnoError = /** @this{Object} */ function ErrnoError(code) {
+        this.errno = code;
+        this.message = 'FS error';
+        this.name = "ErrnoError";
+      }
+      FS.ErrnoError.prototype = new Error();
+      FS.ErrnoError.prototype.constructor = FS.ErrnoError;
+    },
     createDataFile: (parent, name, data, canRead, canWrite, canOwn) => {
       // Data files must be cached until the file system itself has been initialized.
       var mode = FS_getMode(canRead, canWrite);
@@ -95,11 +120,14 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
       return withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
-        return __wasmfs_open({{{ to64('buffer') }}}, flags, mode);
+        return FS.handleError(__wasmfs_open({{{ to64('buffer') }}}, flags, mode));
       })
     },
     // TODO: create
     // TODO: close
+    close: (fd) => {
+      return FS.handleError(-__wasmfs_close(fd));
+    },
     unlink: (path) => {
       return withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
@@ -149,13 +177,22 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: stat
     // TODO: lstat
     chmod: (path, mode) => {
-      return withStackSave(() => {
+      return FS.handleError(withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
         return __wasmfs_chmod(buffer, mode);
-      });
+      }));
     },
     // TODO: lchmod
+    lchmod: (path, mode) => {
+      return FS.handleError(withStackSave(() => {
+        var buffer = stringToUTF8OnStack(path);
+        return __wasmfs_lchmod(buffer, mode);
+      }));
+    },
     // TODO: fchmod
+    fchmod: (fd, mode) => {
+      return FS.handleError(__wasmfs_fchmod(fd, mode));
+    },
     // TDOO: chown
     // TODO: lchown
     // TODO: fchown

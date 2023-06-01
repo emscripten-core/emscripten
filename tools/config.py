@@ -36,6 +36,9 @@ CACHE = None
 PORTS = None
 COMPILER_WRAPPER = None
 
+# Set by init()
+EM_CONFIG = None
+
 
 def listify(x):
   if x is None or type(x) is list:
@@ -156,7 +159,7 @@ def parse_config_file():
       globals()[key] = config[key]
 
 
-def init():
+def read_config():
   if os.path.exists(EM_CONFIG):
     parse_config_file()
 
@@ -218,75 +221,88 @@ Please edit the file if any of those are incorrect.\
 ''' % (path, llvm_root, binaryen_root, node), file=sys.stderr)
 
 
-# Emscripten configuration is done through the --em-config command line option
-# or the EM_CONFIG environment variable. If the specified string value contains
-# newline or semicolon-separated definitions, then these definitions will be
-# used to configure Emscripten.  Otherwise, the string is understood to be a
-# path to a settings file that contains the required definitions.
-# The search order from the config file is as follows:
-# 1. Specified on the command line (--em-config)
-# 2. Specified via EM_CONFIG environment variable
-# 3. Local .emscripten file, if found
-# 4. Local .emscripten file, as used by `emsdk --embedded` (two levels above,
-#    see below)
-# 5. User home directory config (~/.emscripten), if found.
+def find_config_file():
+  # Emscripten configuration is done through the --em-config command line option
+  # or the EM_CONFIG environment variable. If the specified string value contains
+  # newline or semicolon-separated definitions, then these definitions will be
+  # used to configure Emscripten.  Otherwise, the string is understood to be a
+  # path to a settings file that contains the required definitions.
+  # The search order from the config file is as follows:
+  # 1. Specified on the command line (--em-config)
+  # 2. Specified via EM_CONFIG environment variable
+  # 3. Local .emscripten file, if found
+  # 4. Local .emscripten file, as used by `emsdk --embedded` (two levels above,
+  #    see below)
+  # 5. User home directory config (~/.emscripten), if found.
 
-embedded_config = path_from_root('.emscripten')
-# For compatibility with `emsdk --embedded` mode also look two levels up.  The
-# layout of the emsdk puts emcc two levels below emsdk.  For example:
-#  - emsdk/upstream/emscripten/emcc
-#  - emsdk/emscripten/1.38.31/emcc
-# However `emsdk --embedded` stores the config file in the emsdk root.
-# Without this check, when emcc is run from within the emsdk in embedded mode
-# and the user forgets to first run `emsdk_env.sh` (which sets EM_CONFIG) emcc
-# will not see any config file at all and fall back to creating a new/empty
-# one.
-# We could remove this special case if emsdk were to write its embedded config
-# file into the emscripten directory itself.
-# See: https://github.com/emscripten-core/emsdk/pull/367
-emsdk_root = os.path.dirname(os.path.dirname(path_from_root()))
-emsdk_embedded_config = os.path.join(emsdk_root, '.emscripten')
-user_home_config = os.path.expanduser('~/.emscripten')
+  embedded_config = path_from_root('.emscripten')
+  # For compatibility with `emsdk --embedded` mode also look two levels up.  The
+  # layout of the emsdk puts emcc two levels below emsdk.  For example:
+  #  - emsdk/upstream/emscripten/emcc
+  #  - emsdk/emscripten/1.38.31/emcc
+  # However `emsdk --embedded` stores the config file in the emsdk root.
+  # Without this check, when emcc is run from within the emsdk in embedded mode
+  # and the user forgets to first run `emsdk_env.sh` (which sets EM_CONFIG) emcc
+  # will not see any config file at all and fall back to creating a new/empty
+  # one.
+  # We could remove this special case if emsdk were to write its embedded config
+  # file into the emscripten directory itself.
+  # See: https://github.com/emscripten-core/emsdk/pull/367
+  emsdk_root = os.path.dirname(os.path.dirname(path_from_root()))
+  emsdk_embedded_config = os.path.join(emsdk_root, '.emscripten')
+  user_home_config = os.path.expanduser('~/.emscripten')
 
-if '--em-config' in sys.argv:
-  i = sys.argv.index('--em-config')
-  if len(sys.argv) <= i + 1:
-    exit_with_error('--em-config must be followed by a filename')
-  EM_CONFIG = sys.argv.pop(i + 1)
-  del sys.argv[i]
-elif 'EM_CONFIG' in os.environ:
-  EM_CONFIG = os.environ['EM_CONFIG']
-elif os.path.exists(embedded_config):
-  EM_CONFIG = embedded_config
-elif os.path.exists(emsdk_embedded_config):
-  EM_CONFIG = emsdk_embedded_config
-elif os.path.exists(user_home_config):
-  EM_CONFIG = user_home_config
-else:
-  # No config file found.  Set EM_CONFIG to a default value
-  # that will get reported in the error below.
-  if root_is_writable():
-    EM_CONFIG = embedded_config
-  else:
-    EM_CONFIG = user_home_config
+  if '--em-config' in sys.argv:
+    i = sys.argv.index('--em-config')
+    if len(sys.argv) <= i + 1:
+      exit_with_error('--em-config must be followed by a filename')
+    del sys.argv[i]
+    # Now the i'th argument is the emconfig filename
+    return sys.argv.pop(i)
 
-# We used to support inline EM_CONFIG.
-if '\n' in EM_CONFIG:
-  exit_with_error('Inline EM_CONFIG data no longer supported.  Please use a config file.')
+  if 'EM_CONFIG' in os.environ:
+    return os.environ['EM_CONFIG']
 
-EM_CONFIG = os.path.expanduser(EM_CONFIG)
+  if os.path.exists(embedded_config):
+    return embedded_config
 
-# This command line flag needs to work even in the absence of a config file, so we must process it
-# here at script import time (otherwise the error below will trigger).
-if '--generate-config' in sys.argv:
-  generate_config(EM_CONFIG)
-  sys.exit(0)
+  if os.path.exists(emsdk_embedded_config):
+    return emsdk_embedded_config
 
-logger.debug('emscripten config is located in ' + EM_CONFIG)
+  if os.path.exists(user_home_config):
+    return user_home_config
 
-# Emscripten compiler spawns other processes, which can reimport shared.py, so
-# make sure that those child processes get the same configuration file by
-# setting it to the currently active environment.
-os.environ['EM_CONFIG'] = EM_CONFIG
+  # No config file found.  Return the default location.
+  if not root_is_writable():
+    return user_home_config
+
+  return embedded_config
+
+
+def init():
+  global EM_CONFIG
+  EM_CONFIG = find_config_file()
+
+  # We used to support inline EM_CONFIG.
+  if '\n' in EM_CONFIG:
+    exit_with_error('Inline EM_CONFIG data no longer supported.  Please use a config file.')
+
+  EM_CONFIG = os.path.expanduser(EM_CONFIG)
+
+  # This command line flag needs to work even in the absence of a config file, so we must process it
+  # here at script import time (otherwise the error below will trigger).
+  if '--generate-config' in sys.argv:
+    generate_config(EM_CONFIG)
+    sys.exit(0)
+
+  logger.debug('emscripten config is located in ' + EM_CONFIG)
+
+  # Emscripten compiler spawns other processes, which can reimport shared.py, so
+  # make sure that those child processes get the same configuration file by
+  # setting it to the currently active environment.
+  os.environ['EM_CONFIG'] = EM_CONFIG
+
+  read_config()
+
 
 init()

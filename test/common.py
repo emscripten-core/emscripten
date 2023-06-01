@@ -351,9 +351,9 @@ def limit_size(string):
   return string
 
 
-def create_file(name, contents, binary=False):
+def create_file(name, contents, binary=False, absolute=False):
   name = Path(name)
-  assert not name.is_absolute()
+  assert absolute or not name.is_absolute(), name
   if binary:
     name.write_bytes(contents)
   else:

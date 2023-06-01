@@ -940,7 +940,7 @@ base align: 0, 0, 0, 0'''])
   def test_stack_placement(self):
     self.set_setting('STACK_SIZE', 1024)
     self.do_core_test('test_stack_placement.c')
-    self.set_setting('GLOBAL_BASE', 102400)
+    self.set_setting('GLOBAL_BASE', '100kb')
     self.do_core_test('test_stack_placement.c')
 
   @no_sanitize('sanitizers do not yet support dynamic linking')
@@ -949,7 +949,7 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('STACK_SIZE', 1024)
     self.set_setting('MAIN_MODULE')
     self.do_core_test('test_stack_placement.c')
-    self.set_setting('GLOBAL_BASE', 102400)
+    self.set_setting('GLOBAL_BASE', '100kb')
     self.do_core_test('test_stack_placement.c')
 
   def test_strings(self):
@@ -5732,7 +5732,7 @@ Module = {
         return 0;
       }
     '''
-    open('eol.txt', 'wb').write(b'\n')
+    create_file('eol.txt', b'\n', binary=True)
     self.emcc_args += ['--embed-file', 'eol.txt']
     self.do_run(src, 'SUCCESS\n')
 
@@ -6014,10 +6014,9 @@ Module = {
   def test_fs_writeFile(self):
     self.do_run_in_out_file_test('fs/test_writeFile.cpp')
 
-  def test_fs_open_wasmfs(self):
-    self.emcc_args += ['-sWASMFS']
-    self.emcc_args += ['-sFORCE_FILESYSTEM']
-    self.do_runf(test_file('fs/test_open_wasmfs.c'), 'success')
+  def test_fs_js_api(self):
+    self.set_setting("FORCE_FILESYSTEM")
+    self.do_runf(test_file('fs/test_fs_js_api.c'), 'success')
 
   def test_fs_write(self):
     self.do_run_in_out_file_test('fs/test_write.cpp')
@@ -6140,7 +6139,7 @@ Module['onRuntimeInitialized'] = function() {
     # Node.js fs.chmod is nearly no-op on Windows
     # TODO: NODERAWFS in WasmFS
     if not WINDOWS and not self.get_setting('WASMFS'):
-      self.emcc_args = orig_compiler_opts
+      self.emcc_args = orig_compiler_opts + ['-DNODERAWFS']
       self.set_setting('NODERAWFS')
       self.do_run_in_out_file_test('unistd/access.c')
 
@@ -6530,8 +6529,7 @@ int main(void) {
       for t in ['float', 'double']:
         print(t)
         src = orig_src.replace('double', t)
-        with open('fasta.cpp', 'w') as f:
-          f.write(src)
+        create_file('fasta.cpp', src)
         self.build('fasta.cpp', emcc_args=extra_args)
         for arg, output in results:
           self.do_run('fasta.js', output, args=[str(arg)],
@@ -7223,12 +7221,26 @@ void* operator new(size_t size) {
       print(str(args) + ' ' + which)
       self.do_core_test('dyncall_specific.c', emcc_args=['-D' + which] + list(args) + extra_args)
 
+  @also_with_wasm_bigint
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
-    def test(out_suffix='', args=None, assert_returncode=0):
-      if not out_suffix and self.is_wasm64():
-        out_suffix = '64'
-      self.do_run_in_out_file_test('core/test_getValue_setValue.cpp', out_suffix=out_suffix, assert_returncode=assert_returncode, emcc_args=args)
+    def test(args=None, asserts=False):
+      if asserts:
+        out_suffix = '_assert'
+      else:
+        out_suffix = ''
+        if self.is_wasm64():
+          out_suffix += '64'
+        if self.get_setting('WASM_BIGINT'):
+          out_suffix += '_bigint'
+      assert_returncode = 0 if not asserts else NON_ZERO
+      self.do_run_in_out_file_test('core/test_getValue_setValue.cpp',
+                                   out_suffix=out_suffix,
+                                   assert_returncode=assert_returncode,
+                                   emcc_args=args)
+
+    if self.get_setting('WASM_BIGINT'):
+      self.emcc_args += ['-DWASM_BIGINT']
 
     # see that direct usage (not on module) works. we don't export, but the use
     # keeps it alive through JSDCE
@@ -7236,7 +7248,7 @@ void* operator new(size_t size) {
     # see that with assertions, we get a nice error message
     self.set_setting('EXPORTED_RUNTIME_METHODS', [])
     self.set_setting('ASSERTIONS')
-    test('_assert', assert_returncode=NON_ZERO)
+    test(asserts=True)
     self.set_setting('ASSERTIONS', 0)
     # see that when we export them, things work on the module
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue'])
@@ -8483,8 +8495,7 @@ Module['onRuntimeInitialized'] = function() {
         # $foo_end is not present in the wasm, nothing to break
         shutil.copyfile(name, name + '.orig')
         return False
-      with open('wat.wat', 'w') as f:
-        f.write(wat)
+      create_file('wat.wat', wat)
       shutil.move(name, name + '.orig')
       self.run_process([Path(building.get_binaryen_bin(), 'wasm-as'), 'wat.wat', '-o', name, '-g'])
       return True
@@ -8575,7 +8586,7 @@ Module['onRuntimeInitialized'] = function() {
     os.rename('a.out.wasm.js.unused', 'a.out.wasm.js')
 
     # Then disable WebAssembly support in VM, and try again.. Should still work with Wasm2JS fallback.
-    open('b.out.js', 'w').write('WebAssembly = undefined;\n' + read_file('a.out.js'))
+    create_file('b.out.js', 'WebAssembly = undefined;\n' + read_file('a.out.js'))
     os.remove('a.out.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
     self.assertContained('hello!', self.run_js('b.out.js'))
 
@@ -9413,8 +9424,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dylink
   @node_pthreads
-  @disabled('https://github.com/emscripten-core/emscripten/issues/18887')
   def test_pthread_dlopen_many(self):
+    if self.is_wasm64():
+     self.skipTest('https://github.com/emscripten-core/emscripten/issues/18887')
+
     nthreads = 10
     self.emcc_args += ['-Wno-experimental', '-pthread']
     self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_side.c'))
@@ -9474,34 +9487,40 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf(test_file('hello_world.c'))
 
   @needs_dylink
-  @node_pthreads
-  def test_Module_dynamicLibraries_pthreads(self):
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '-pthread', '-Wno-experimental'],)
+  })
+  def test_Module_dynamicLibraries(self, args):
     # test that Module.dynamicLibraries works with pthreads
-    self.emcc_args += ['-pthread', '-Wno-experimental']
+    self.emcc_args += args
     self.emcc_args += ['--pre-js', 'pre.js']
-    self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     # This test is for setting dynamicLibraries at runtime so we don't
     # want emscripten loading `liblib.so` automatically (which it would
     # do without this setting.
     self.set_setting('NO_AUTOLOAD_DYLIBS')
 
     create_file('pre.js', '''
-      if (typeof importScripts == 'undefined') { // !ENVIRONMENT_IS_WORKER
-        // Load liblib.so by default on non-workers
-        Module['dynamicLibraries'] = ['liblib.so'];
-      } else {
-        // Verify whether the main thread passes Module.dynamicLibraries to the worker
-        assert(Module['dynamicLibraries'].includes('liblib.so'));
-      }
+      Module['dynamicLibraries'] = ['liblib.so'];
     ''')
+
+    if args:
+      self.setup_node_pthreads()
+      create_file('post.js', '''
+        if (ENVIRONMENT_IS_PTHREAD) {
+          err('sharedModules: ' + Object.keys(sharedModules));
+          assert('liblib.so' in sharedModules);
+          assert(sharedModules['liblib.so'] instanceof WebAssembly.Module);
+        }
+      ''')
+      self.emcc_args += ['--post-js', 'post.js']
 
     self.dylink_test(
       r'''
         #include <stdio.h>
         int side();
         int main() {
-          printf("result is %d", side());
+          printf("result is %d\n", side());
           return 0;
         }
       ''',
