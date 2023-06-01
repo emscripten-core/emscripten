@@ -6,6 +6,6 @@ int main() {
   int fd = open("some.file", O_RDWR);
   char buffer[100];
   read(fd, buffer, 1);
-  dprintf(fd, "some data");
+  write(fd, "some data", 9);
   close(fd);
 }
