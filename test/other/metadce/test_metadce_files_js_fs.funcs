@@ -1,0 +1,15 @@
+$__memset
+$__stdio_write
+$__towrite
+$__wasm_call_ctors
+$fmt_fp
+$fmt_u
+$frexp
+$getint
+$main
+$out
+$pad
+$pop_arg
+$pop_arg_long_double
+$printf_core
+$wctomb
