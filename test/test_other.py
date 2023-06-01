@@ -7823,7 +7823,7 @@ int main() {
 
   def check_expected_size_in_file(self, desc, filename, size):
     if common.EMTEST_REBASELINE:
-      create_file(filename, f'{size}\n')
+      create_file(filename, f'{size}\n', absolute=True)
     size_slack = 0.05
     expected_size = int(read_file(filename).strip())
     delta = size - expected_size
@@ -10184,7 +10184,7 @@ int main () {
     print('Total output size gzipped=' + str(total_output_size_gz) + ' bytes, expected total size gzipped=' + str(total_expected_size_gz) + ', delta=' + str(total_output_size_gz - total_expected_size_gz) + print_percent(total_output_size_gz, total_expected_size_gz))
 
     if common.EMTEST_REBASELINE:
-      open(results_file, 'w').write(json.dumps(obtained_results, indent=2) + '\n')
+      create_file(results_file, json.dumps(obtained_results, indent=2) + '\n', absolute=True)
     else:
       if total_output_size > total_expected_size:
         print(f'Oops, overall generated code size regressed by {total_output_size - total_expected_size} bytes!')
