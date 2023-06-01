@@ -293,6 +293,10 @@ var SyscallsLibrary = {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
         return 0;
       }
+      case {{{ cDefs.TCFLSH }}}: {
+        if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
+        return 0;
+      }
       default: return -{{{ cDefs.EINVAL }}}; // not supported
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM

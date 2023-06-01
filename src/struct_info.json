@@ -306,7 +306,8 @@
             "TIOCGPGRP",
             "TIOCSPGRP",
             "TIOCGWINSZ",
-            "TIOCSWINSZ"
+            "TIOCSWINSZ",
+            "TCFLSH"
         ]
     },
     {
