@@ -31,7 +31,6 @@ $__stdio_seek
 $__stdio_write
 $__syscall_newfstatat
 $__time
-$__towrite
 $__unlockfile
 $__wasi_fd_close
 $__wasi_fd_write
@@ -43,22 +42,12 @@ $dlfree
 $dlmalloc
 $dummy
 $fflush
-$fmt_fp
-$fmt_u
-$frexp
-$getint
 $is_equal\28std::type_info\20const*\2c\20std::type_info\20const*\2c\20bool\29
 $main
-$memchr
 $memcmp
 $memmove
 $open
 $operator\20new\28unsigned\20long\29
-$out
-$pad
-$pop_arg
-$pop_arg_long_double
-$printf_core
 $pthread_mutex_init
 $readAtOffset\28OffsetHandling\2c\20unsigned\20int\2c\20__wasi_iovec_t\20const*\2c\20unsigned\20long\2c\20unsigned\20long*\2c\20unsigned\20long\20long\29
 $sbrk
@@ -162,4 +151,3 @@ $wasmfs::path::\28anonymous\20namespace\29::getBaseDir\28unsigned\20int\29
 $wasmfs::path::\28anonymous\20namespace\29::getChild\28std::__2::shared_ptr<wasmfs::Directory>\2c\20std::__2::basic_string_view<char\2c\20std::__2::char_traits<char>>\2c\20wasmfs::path::LinkBehavior\2c\20unsigned\20long&\29
 $wasmfs::path::parseFile\28std::__2::basic_string_view<char\2c\20std::__2::char_traits<char>>\2c\20unsigned\20int\2c\20wasmfs::path::LinkBehavior\29
 $wasmfs::path::parseParent\28std::__2::basic_string_view<char\2c\20std::__2::char_traits<char>>\2c\20unsigned\20int\29
-$wctomb
