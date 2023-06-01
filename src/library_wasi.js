@@ -519,8 +519,12 @@ var WasiLibrary = {
                  FS.isLink(stream.mode) ? {{{ cDefs.__WASI_FILETYPE_SYMBOLIC_LINK }}} :
                  {{{ cDefs.__WASI_FILETYPE_REGULAR_FILE }}};
 #else
-      // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
-      var type = fd == 0 || fd == 1 || fd == 2 ? {{{ cDefs.__WASI_FILETYPE_CHARACTER_DEVICE }}} : abort();
+      // Hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0. We support at
+      // least stdin, stdout, stderr in a simple way.
+#if ASSERTIONS
+      assert(fd == 0 || fd == 1 || fd == 2);
+#endif
+      var type = {{{ cDefs.__WASI_FILETYPE_CHARACTER_DEVICE }}};
       if (fd == 0) {
         rightsBase = {{{ cDefs.__WASI_RIGHTS_FD_READ }}};
       } else if (fd == 1 || fd == 2) {
