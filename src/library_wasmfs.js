@@ -151,11 +151,9 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
       var bytesRead;
       if (seeking) {
-        var err = __wasmfs_pread(fd, dataBuffer, length, position);
-        bytesRead = FS.handleError(err);
+        bytesRead = FS.handleError(__wasmfs_pread(fd, dataBuffer, length, position));
       } else {
-        var err = __wasmfs_read(fd, dataBuffer, length);
-        bytesRead = FS.handleError(err);
+        bytesRead = FS.handleError(__wasmfs_read(fd, dataBuffer, length));
       }
 
       for (var i = 0; i < length; i++) {
