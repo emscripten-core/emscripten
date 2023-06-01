@@ -246,7 +246,6 @@ var SyscallsLibrary = {
       case {{{ cDefs.TCSETSF }}}: {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
         if (stream.tty.ops.ioctl_tcsets) {
-          var optional_actions = op == {{{ cDefs.TCSETS }}} ? "" : op == {{{ cDefs.TCSETSW }}} ? "W" : "F";
           var argp = SYSCALLS.get();
           var c_iflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_iflag, 'i32') }}};
           var c_oflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_oflag, 'i32') }}};
@@ -256,7 +255,7 @@ var SyscallsLibrary = {
           for (var i = 0; i < {{{ cDefs.NCCS }}}; i++) {
             c_cc.push({{{ makeGetValue('argp + i', C_STRUCTS.termios.c_cc, 'i8') }}});
           }
-          return stream.tty.ops.ioctl_tcsets(stream.tty, optional_actions, { c_iflag, c_oflag, c_cflag, c_lflag, c_cc });
+          return stream.tty.ops.ioctl_tcsets(stream.tty, op, { c_iflag, c_oflag, c_cflag, c_lflag, c_cc });
         }
         return 0; // no-op, not actually adjusting terminal settings
       }
