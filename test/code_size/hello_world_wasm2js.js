@@ -50,7 +50,7 @@ function c(a) {
         },
         memory: g
     }
-}).then((function(a) {
+}).then((a => {
     a = a.instance.exports;
     m = a.c;
     d.set(new Uint8Array(b.mem), 1024);
