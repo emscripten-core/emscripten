@@ -125,9 +125,9 @@ if (!WebAssembly.instantiateStreaming && !Module['wasm']) throw 'Must load WebAs
 #endif
 (WebAssembly.instantiateStreaming
   ? WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
-  : WebAssembly.instantiate(Module['wasm'], imports)).then(function(output) {
+  : WebAssembly.instantiate(Module['wasm'], imports)).then((output) => {
 #else
-WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports).then(function(output) {
+WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports).then((output) => {
 #endif
 
 #else // Non-streaming instantiation
@@ -137,7 +137,7 @@ WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
 if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
 #endif
 
-WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
+WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #endif
 
 #if !LibraryManager.has('library_exports.js') && !EMBIND
@@ -237,7 +237,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 }
 
 #if ASSERTIONS || WASM == 2
-, function(error) {
+, (error) => {
 #if ASSERTIONS
   console.error(error);
 #endif

@@ -796,9 +796,9 @@ def create_receiving(exports):
       # In Wasm exports are assigned inside a function to variables
       # existing in top level JS scope, i.e.
       # var _main;
-      # WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
-      # var asm = output.instance.exports;
-      # _main = asm["_main"];
+      # WebAssembly.instantiate(Module["wasm"], imports).then((output) => {
+      #   var asm = output.instance.exports;
+      #   _main = asm["_main"];
       generate_dyncall_assignment = settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
       exports_that_are_not_initializers = [x for x in exports if x != building.WASM_CALL_CTORS]
 
