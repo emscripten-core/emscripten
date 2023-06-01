@@ -484,7 +484,24 @@
     {
         "file": "termios.h",
         "defines": [
-            "NCCS"
+            "NCCS",
+            "ICRNL",
+            "IXON",
+            "IMAXBEL",
+            "IUTF8",
+            "OPOST",
+            "ONLCR",
+            "B38400",
+            "CSIZE",
+            "CREAD",
+            "ISIG",
+            "ICANON",
+            "ECHO",
+            "ECHOE",
+            "ECHOK",
+            "ECHOCTL",
+            "ECHOKE",
+            "IEXTEN"
         ],
         "structs": {
             "termios": [

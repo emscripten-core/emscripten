@@ -165,10 +165,10 @@ mergeInto(LibraryManager.library, {
       ioctl_tcgets: function(tty) {
         // typical setting
         return {
-          c_iflag: 0x6500, // ICRNL | IXON | IMAXBEL | IUTF8
-          c_oflag: 0x0005, // OPOST | ONLCR
-          c_cflag: 0x00bf,
-          c_lflag: 0x8a3b, // ISIG | ICANON | ECHO | ECHOE | ECHOK | ECHOCTL | ECHOKE | IEXTEN
+          c_iflag: {{{ cDefs.ICRNL | cDefs.IXON | cDefs.IMAXBEL | cDefs.IUTF8 }}},
+          c_oflag: {{{ cDefs.OPOST | cDefs.ONLCR }}},
+          c_cflag: {{{ cDefs.B38400 | cDefs.CSIZE | cDefs.CREAD }}},
+          c_lflag: {{{ cDefs.ISIG | cDefs.ICANON | cDefs.ECHO | cDefs.ECHOE | cDefs.ECHOK | cDefs.ECHOCTL | cDefs.ECHOKE | cDefs.IEXTEN }}},
           c_cc: [
             0x03, 0x1c, 0x7f, 0x15, 0x04, 0x00, 0x01, 0x00, 0x11, 0x13, 0x1a, 0x00,
             0x12, 0x0f, 0x17, 0x16, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
