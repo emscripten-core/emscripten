@@ -480,6 +480,24 @@
             "RTLD_NODELETE"
         ]
     },
+    {
+        "file": "termios.h",
+        "defines": [
+            "NCCS"
+        ],
+        "structs": {
+            "termios": [
+                "c_iflag",
+                "c_oflag",
+                "c_cflag",
+                "c_lflag",
+                "c_line",
+                "c_cc",
+                "__c_ispeed",
+                "__c_ospeed"
+            ]
+        }
+    },
     // ===========================================
     // SDL
     // ===========================================

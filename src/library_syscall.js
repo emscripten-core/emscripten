@@ -209,9 +209,27 @@ var SyscallsLibrary = {
 #else
     var stream = SYSCALLS.getStreamFromFD(fd);
     switch (op) {
-      case {{{ cDefs.TCGETA }}}:
+      case {{{ cDefs.TCGETA }}}: {
+        if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
+#if SYSCALL_DEBUG
+        dbg('warning: not filling tio struct');
+#endif
+        return 0;
+      }
       case {{{ cDefs.TCGETS }}}: {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
+        if (stream.tty.ops.ioctl_tcgets) {
+          var termios = stream.tty.ops.ioctl_tcgets(stream);
+          var argp = SYSCALLS.get();
+          {{{ makeSetValue('argp', C_STRUCTS.termios.c_iflag, 'termios.c_iflag || 0', 'i32') }}};
+          {{{ makeSetValue('argp', C_STRUCTS.termios.c_oflag, 'termios.c_oflag || 0', 'i32') }}};
+          {{{ makeSetValue('argp', C_STRUCTS.termios.c_cflag, 'termios.c_cflag || 0', 'i32') }}};
+          {{{ makeSetValue('argp', C_STRUCTS.termios.c_lflag, 'termios.c_lflag || 0', 'i32') }}};
+          for (var i = 0; i < {{{ cDefs.NCCS }}}; i++) {
+            {{{ makeSetValue('argp + i', C_STRUCTS.termios.c_cc, 'termios.c_cc[i] || 0', 'i8') }}};
+          }
+          return 0;
+        }
 #if SYSCALL_DEBUG
         dbg('warning: not filling tio struct');
 #endif
