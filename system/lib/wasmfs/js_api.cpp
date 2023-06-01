@@ -137,6 +137,18 @@ int _wasmfs_chmod(char* path, mode_t mode) {
   return __syscall_chmod((intptr_t)path, mode);
 }
 
+int _wasmfs_fchmod(int fd, mode_t mode) {
+  return __syscall_fchmod(fd, mode);
+}
+
+int _wasmfs_lchmod(char* path, mode_t mode) {
+  return __syscall_fchmodat(AT_FDCWD, (intptr_t)path, mode, AT_SYMLINK_NOFOLLOW);
+}
+
+int _wasmfs_close(int fd) {
+  return __wasi_fd_close(fd);
+}
+
 int _wasmfs_stat(char* path, struct stat* statBuf) {
   int err = __syscall_stat64((intptr_t)path, (intptr_t)statBuf);
   if (err == -1) {
@@ -151,18 +163,6 @@ int _wasmfs_lstat(char* path, struct stat* statBuf) {
     return errno;
   }
   return err;
-}
-
-int _wasmfs_fchmod(int fd, mode_t mode) {
-  return __syscall_fchmod(fd, mode);
-}
-
-int _wasmfs_lchmod(char* path, mode_t mode) {
-  return __syscall_fchmodat(AT_FDCWD, (intptr_t)path, mode, AT_SYMLINK_NOFOLLOW);
-}
-
-int _wasmfs_close(int fd) {
-  return __wasi_fd_close(fd);
 }
 
 // Helper method that identifies what a path is:
