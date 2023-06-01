@@ -9493,19 +9493,20 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_Module_dynamicLibraries(self, args):
     # test that Module.dynamicLibraries works with pthreads
     self.emcc_args += args
-    self.emcc_args += ['--pre-js', 'pre.js']
+    self.emcc_args += ['--extern-post-js=extern-post.js']
+    self.set_setting('MODULARIZE')
+    self.set_setting('EXPORT_NAME=ModuleFactory')
     # This test is for setting dynamicLibraries at runtime so we don't
     # want emscripten loading `liblib.so` automatically (which it would
     # do without this setting.
     self.set_setting('NO_AUTOLOAD_DYLIBS')
 
-    create_file('pre.js', '''
-      if (typeof importScripts == 'undefined') { // !ENVIRONMENT_IS_WORKER
-        // Load liblib.so by default on non-workers
-        Module['dynamicLibraries'] = ['liblib.so'];
-      } else {
-        // Verify whether the main thread passes Module.dynamicLibraries to the worker
-        assert(Module['dynamicLibraries'].includes('liblib.so'));
+    # Only instantiate the module on the main thread.
+    create_file('extern-post.js', '''
+      if (typeof importScripts == 'undefined') {
+        ModuleFactory({
+          dynamicLibraries: ['liblib.so']
+        });
       }
     ''')
 
@@ -9516,6 +9517,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
           err('sharedModules: ' + Object.keys(sharedModules));
           assert('liblib.so' in sharedModules);
           assert(sharedModules['liblib.so'] instanceof WebAssembly.Module);
+
+          // Verify whether the main thread passes Module.dynamicLibraries to the worker
+          assert(Module['dynamicLibraries'].includes('liblib.so'));
         }
       ''')
       self.emcc_args += ['--post-js', 'post.js']
