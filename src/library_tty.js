@@ -179,6 +179,9 @@ mergeInto(LibraryManager.library, {
       ioctl_tcsets: function(tty, optional_actions, data) {
         // currently just ignore
         return 0;
+      },
+      ioctl_tiocgwinsz: function(tty) {
+        return [24, 80];
       }
     },
     default_tty1_ops: {
