@@ -5,8 +5,4 @@ $__stdio_write
 $__towrite
 $__wasi_fd_write
 $__wasm_call_ctors
-$dlfree
 $main
-$stackAlloc
-$stackRestore
-$stackSave
