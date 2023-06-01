@@ -278,8 +278,8 @@ function runTests() {
   test('new Uint16Array(a),new Uint16Array(a);', ';');
   test("new function(a) {new TextDecoder(a);}('utf8');", '');
   test(
-    'WebAssembly.instantiate(c.wasm,{}).then(function(a){new Int8Array(b);});',
-    'WebAssembly.instantiate(c.wasm,{}).then(function(a){});'
+    'WebAssembly.instantiate(c.wasm,{}).then((a) => {new Int8Array(b);});',
+    'WebAssembly.instantiate(c.wasm,{}).then(a=>{});'
   );
   test('let x=new Uint16Array(a);', 'let x=new Uint16Array(a);');
 
