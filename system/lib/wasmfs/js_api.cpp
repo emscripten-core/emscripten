@@ -133,6 +133,32 @@ int _wasmfs_symlink(char* old_path, char* new_path) {
   return __syscall_symlink((intptr_t)old_path, (intptr_t)new_path);
 }
 
+int _wasmfs_write(int fd, void *buf, size_t count) {
+  __wasi_ciovec_t iovs[1];
+  iovs[0].buf = (uint8_t*)buf;
+  iovs[0].buf_len = count;
+
+  __wasi_size_t numBytes;
+  __wasi_errno_t err = __wasi_fd_write(fd, iovs, 1, &numBytes);
+  if (err) {
+    return -err;
+  }
+  return numBytes;
+}
+
+int _wasmfs_pwrite(int fd, void *buf, size_t count, off_t offset) {
+  __wasi_ciovec_t iovs[1];
+  iovs[0].buf = (uint8_t*)buf;
+  iovs[0].buf_len = count;
+
+  __wasi_size_t numBytes;
+  __wasi_errno_t err = __wasi_fd_pwrite(fd, iovs, 1, offset, &numBytes);
+  if (err) {
+    return -err;
+  }
+  return numBytes;
+}
+
 int _wasmfs_chmod(char* path, mode_t mode) {
   return __syscall_chmod((intptr_t)path, mode);
 }

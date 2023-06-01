@@ -6019,6 +6019,7 @@ Module = {
     self.do_runf(test_file('fs/test_fs_js_api.c'), 'success')
 
   def test_fs_write(self):
+    self.set_setting("FORCE_FILESYSTEM")
     self.do_run_in_out_file_test('fs/test_write.cpp')
 
   @also_with_noderawfs
