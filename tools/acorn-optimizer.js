@@ -1945,24 +1945,16 @@ function reattachComments(ast, comments) {
       symbols[j].start.comments_before = [];
     }
     symbols[j].start.comments_before.push(
-      new terser.AST_Token({
-        end: undefined,
-        quote: undefined,
-        raw: undefined,
-        file: '0',
-        comments_after: undefined,
-        comments_before: undefined,
-        nlb: false,
-        endpos: undefined,
-        endcol: undefined,
-        endline: undefined,
-        pos: undefined,
-        col: undefined,
-        line: undefined,
-        value: comments[i].value,
-        type: comments[i].type == 'Line' ? 'comment' : 'comment2',
-        flags: 0,
-      })
+      new terser.AST_Token(
+        comments[i].type == 'Line' ? 'comment' : 'comment2',
+        comments[i].value,
+        undefined,
+        undefined,
+        false,
+        undefined,
+        undefined,
+        '0'
+      )
     );
   }
 }
