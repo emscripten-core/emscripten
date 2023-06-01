@@ -150,7 +150,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       }
 
       var bytesRead;
-      if(seeking) {
+      if (seeking) {
         var err = __wasmfs_pread(fd, dataBuffer, length, position);
         bytesRead = FS.handleError(err);
       } else {

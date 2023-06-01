@@ -152,7 +152,7 @@ int _wasmfs_read(int fd, void *buf, size_t count) {
 
   __wasi_size_t numBytes;
   __wasi_errno_t err = __wasi_fd_read(fd, iovs, 1, &numBytes);
-  if (err != 0) {
+  if (err) {
     return -err;
   }
   return numBytes;
@@ -165,7 +165,7 @@ int _wasmfs_pread(int fd, void *buf, size_t count, off_t offset) {
 
   __wasi_size_t numBytes;
   __wasi_errno_t err = __wasi_fd_pread(fd, iovs, 1, offset, &numBytes);
-  if (err != 0) {
+  if (err) {
     return -err;
   }
   return numBytes;
