@@ -77,7 +77,7 @@ from typing import List
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
-sys.path.insert(1, __rootdir__)
+sys.path.insert(0, __rootdir__)
 
 from tools import shared, utils, js_manipulation
 
