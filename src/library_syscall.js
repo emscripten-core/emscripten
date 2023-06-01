@@ -237,11 +237,27 @@ var SyscallsLibrary = {
       }
       case {{{ cDefs.TCSETA }}}:
       case {{{ cDefs.TCSETAW }}}:
-      case {{{ cDefs.TCSETAF }}}:
+      case {{{ cDefs.TCSETAF }}}: {
+        if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
+        return 0; // no-op, not actually adjusting terminal settings
+      }
       case {{{ cDefs.TCSETS }}}:
       case {{{ cDefs.TCSETSW }}}:
       case {{{ cDefs.TCSETSF }}}: {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
+        if (stream.tty.ops.ioctl_tcsets) {
+          var optional_actions = op == {{{ cDefs.TCSETS }}} ? "" : op == {{{ cDefs.TCSETSW }}} ? "W" : "F";
+          var argp = SYSCALLS.get();
+          var c_iflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_iflag, 'i32') }}};
+          var c_oflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_oflag, 'i32') }}};
+          var c_cflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_cflag, 'i32') }}};
+          var c_lflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_lflag, 'i32') }}};
+          var c_cc = []
+          for (var i = 0; i < {{{ cDefs.NCCS }}}; i++) {
+            c_cc.push({{{ makeGetValue('argp + i', C_STRUCTS.termios.c_cc, 'i8') }}});
+          }
+          return stream.tty.ops.ioctl_tcsets(stream.tty, optional_actions, { c_iflag, c_oflag, c_cflag, c_lflag, c_cc });
+        }
         return 0; // no-op, not actually adjusting terminal settings
       }
       case {{{ cDefs.TIOCGPGRP }}}: {

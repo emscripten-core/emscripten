@@ -175,6 +175,10 @@ mergeInto(LibraryManager.library, {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
           ]
         };
+      },
+      ioctl_tcsets: function(tty, optional_actions, data) {
+        // currently just ignore
+        return 0;
       }
     },
     default_tty1_ops: {
