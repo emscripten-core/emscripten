@@ -11,7 +11,7 @@ WebAssembly.instantiate(d.wasm, {
             k.call(c, a);
         }
     }
-}).then((function(a) {
+}).then((a => {
     a = a.instance.exports;
     h = a.d;
     f = a.b;
