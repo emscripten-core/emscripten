@@ -153,6 +153,14 @@ int _wasmfs_lstat(char* path, struct stat* statBuf) {
   return err;
 }
 
+int _wasmfs_fchmod(int fd, mode_t mode) {
+  return __syscall_fchmod(fd, mode);
+}
+
+int _wasmfs_lchmod(char* path, mode_t mode) {
+  return __syscall_fchmodat(AT_FDCWD, (intptr_t)path, mode, AT_SYMLINK_NOFOLLOW);
+}
+
 int _wasmfs_close(int fd) {
   return __wasi_fd_close(fd);
 }
