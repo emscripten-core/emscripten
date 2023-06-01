@@ -9493,20 +9493,17 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_Module_dynamicLibraries(self, args):
     # test that Module.dynamicLibraries works with pthreads
     self.emcc_args += args
-    self.emcc_args += ['--extern-post-js=extern-post.js']
-    self.set_setting('MODULARIZE')
-    self.set_setting('EXPORT_NAME=ModuleFactory')
+    self.emcc_args += ['--pre-js', 'pre.js']
     # This test is for setting dynamicLibraries at runtime so we don't
     # want emscripten loading `liblib.so` automatically (which it would
     # do without this setting.
     self.set_setting('NO_AUTOLOAD_DYLIBS')
 
-    # Only instantiate the module on the main thread.
-    create_file('extern-post.js', '''
-      if (typeof importScripts == 'undefined') {
-        ModuleFactory({
-          dynamicLibraries: ['liblib.so']
-        });
+    create_file('pre.js', '''
+      if (typeof importScripts == 'undefined') { // !ENVIRONMENT_IS_WORKER
+        // Load liblib.so on the main thread, this would be equivalent to
+        // defining it outside the module (e.g. in MODULARIZE mode).
+        Module['dynamicLibraries'] = ['liblib.so'];
       }
     ''')
 
