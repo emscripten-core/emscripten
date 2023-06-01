@@ -588,7 +588,13 @@ var SyscallsLibrary = {
       var flags = SYSCALLS.DEFAULT_POLLMASK;
 
       if (stream.stream_ops.poll) {
-        flags = stream.stream_ops.poll(stream);
+        var timeoutInMillis = -1;
+        if (timeout) {
+          var timeoutLow = (readfds ? {{{ makeGetValue('timeout', 0, 'i32') }}} : 0),
+              timeoutHigh = (readfds ? {{{ makeGetValue('timeout', 4, 'i32') }}} : 0);
+          timeoutInMillis = (timeoutLow + timeoutHigh / 1000000) * 1000;
+        }
+        flags = stream.stream_ops.poll(stream, timeoutInMillis);
       }
 
       if ((flags & {{{ cDefs.POLLIN }}}) && check(fd, srcReadLow, srcReadHigh, mask)) {
@@ -639,7 +645,7 @@ var SyscallsLibrary = {
       if (stream) {
         mask = SYSCALLS.DEFAULT_POLLMASK;
         if (stream.stream_ops.poll) {
-          mask = stream.stream_ops.poll(stream);
+          mask = stream.stream_ops.poll(stream, -1);
         }
       }
       mask &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
