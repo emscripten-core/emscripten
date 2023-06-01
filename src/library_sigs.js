@@ -380,7 +380,6 @@ sigs = {
   _wasmfs_jsimpl_get_size__sig: 'ipp',
   _wasmfs_jsimpl_read__sig: 'ippppj',
   _wasmfs_jsimpl_write__sig: 'ippppj',
-  _wasmfs_no_fs_fd_write__sig: 'iippp',
   _wasmfs_node_close__sig: 'ii',
   _wasmfs_node_fstat_size__sig: 'iip',
   _wasmfs_node_get_mode__sig: 'ipp',

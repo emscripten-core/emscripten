@@ -19,10 +19,6 @@ void _wasmfs_get_preloaded_path_name(int index, char* fileName);
 void _wasmfs_get_preloaded_child_path(int index, char* childName);
 size_t _wasmfs_get_preloaded_file_size(uint32_t index);
 void _wasmfs_copy_preloaded_file_data(uint32_t index, uint8_t* data);
-__wasi_errno_t _wasmfs_no_fs_fd_write(__wasi_fd_t fd,
-                                      const __wasi_ciovec_t* iovs,
-                                      size_t iovs_len,
-                                      __wasi_size_t* nwritten);
 
 #ifdef __cplusplus
 }

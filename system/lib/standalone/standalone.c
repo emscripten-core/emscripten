@@ -216,13 +216,6 @@ void emscripten_out(const char* text) { wasi_writeln(1, text); }
 
 void emscripten_err(const char* text) { wasi_writeln(2, text); }
 
-__wasi_errno_t _wasmfs_no_fs_fd_write(__wasi_fd_t fd,
-                                      const __wasi_ciovec_t* iovs,
-                                      size_t iovs_len,
-                                      __wasi_size_t* nwritten) {
-  return imported__wasi_fd_write(fd, iovs, iovs_len, nwritten);
-}
-
 // In the non-standalone build we define this helper function in JS to avoid
 // signture mismatch issues.
 // See: https://github.com/emscripten-core/posixtestsuite/issues/6
