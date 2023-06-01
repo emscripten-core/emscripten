@@ -5,7 +5,7 @@
 int main() {
   int fd = open("some.file", O_RDWR);
   char buffer[100];
-  fread(fd, buffer, 1);
+  read(fd, buffer, 1);
   dprintf(fd, "some data");
   close(fd);
 }
