@@ -305,6 +305,10 @@ function runTests() {
   // Test that arrays containing nulls don't cause issues
   test('[,];', '[,];');
 
+  // Test optional chaining operator
+  // TODO(https://github.com/emscripten-core/emscripten/issues/15827)
+  //test('console?.log("");', 'console?.log("");');
+
   process.exit(numTestFailures);
 }
 
