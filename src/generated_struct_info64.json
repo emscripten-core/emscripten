@@ -317,6 +317,7 @@
         "MAP_ANONYMOUS": 32,
         "MAP_FIXED": 16,
         "MAP_PRIVATE": 2,
+        "NCCS": 32,
         "NI_NAMEREQD": 8,
         "NI_NUMERICHOST": 1,
         "NOTIFICATION_NONE": 0,
@@ -382,6 +383,7 @@
         "S_ISVTX": 512,
         "S_IWUGO": 146,
         "S_IXUGO": 73,
+        "TCFLSH": 21515,
         "TCGETA": 21509,
         "TCGETS": 21505,
         "TCSETA": 21510,
@@ -1499,6 +1501,17 @@
             "f_frsize": 56,
             "f_fsid": 36,
             "f_namelen": 48
+        },
+        "termios": {
+            "__c_ispeed": 52,
+            "__c_ospeed": 56,
+            "__size__": 60,
+            "c_cc": 17,
+            "c_cflag": 8,
+            "c_iflag": 0,
+            "c_lflag": 12,
+            "c_line": 16,
+            "c_oflag": 4
         },
         "thread_profiler_block": {
             "__size__": 104,
