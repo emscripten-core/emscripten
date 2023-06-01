@@ -9500,7 +9500,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('NO_AUTOLOAD_DYLIBS')
 
     create_file('pre.js', '''
-      Module['dynamicLibraries'] = ['liblib.so'];
+      if (typeof importScripts == 'undefined') { // !ENVIRONMENT_IS_WORKER
+        // Load liblib.so by default on non-workers
+        Module['dynamicLibraries'] = ['liblib.so'];
+      } else {
+        // Verify whether the main thread passes Module.dynamicLibraries to the worker
+        assert(Module['dynamicLibraries'].includes('liblib.so'));
+      }
     ''')
 
     if args:
