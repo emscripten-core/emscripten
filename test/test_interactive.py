@@ -11,7 +11,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner.py interactive')
 
 from common import parameterized
-from common import BrowserCore, test_file, also_with_minimal_runtime
+from common import BrowserCore, test_file, create_file, also_with_minimal_runtime
 from tools.shared import WINDOWS
 from tools.utils import which
 
@@ -60,7 +60,7 @@ class interactive(BrowserCore):
     shutil.copyfile(test_file('sounds', 'alarmcreatemiltaryfoot_1.wav'), self.in_dir('sound2.wav'))
     shutil.copyfile(test_file('sounds', 'noise.ogg'), self.in_dir('noise.ogg'))
     shutil.copyfile(test_file('sounds', 'the_entertainer.ogg'), self.in_dir('the_entertainer.ogg'))
-    open(self.in_dir('bad.ogg'), 'w').write('I claim to be audio, but am lying')
+    create_file('bad.ogg', 'I claim to be audio, but am lying')
 
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
     self.btest_exit(test_file('sdl_audio.c'), args=['--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg'])
