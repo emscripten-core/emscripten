@@ -29,7 +29,7 @@ void emscripten_err(const char *utf8String __attribute__((nonnull)));
 void emscripten_dbg(const char *utf8String __attribute__((nonnull)));
 
 // Same as above but only with the legnth of string specified by the second
-// argument.  This allows for non-NULL-termianted strings to be passed.
+// argument.  This allows for non-NULL-terminated strings to be passed.
 void emscripten_outn(const char *utf8String __attribute__((nonnull)), size_t len);
 void emscripten_errn(const char *utf8String __attribute__((nonnull)), size_t len);
 void emscripten_dbgn(const char *utf8String __attribute__((nonnull)), size_t len);
