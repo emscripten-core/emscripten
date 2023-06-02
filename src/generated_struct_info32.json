@@ -1541,6 +1541,11 @@
             "tv_nsec": 8,
             "tv_sec": 0
         },
+        "timeval": {
+            "__size__": 16,
+            "tv_sec": 0,
+            "tv_usec": 8
+        },
         "tm": {
             "__size__": 44,
             "tm_gmtoff": 36,

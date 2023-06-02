@@ -151,6 +151,10 @@
                 "tm_gmtoff",
                 "tm_zone"
             ],
+            "timeval": [
+                "tv_sec",
+                "tv_usec"
+            ],
             "timespec": [
                 "tv_sec",
                 "tv_nsec"

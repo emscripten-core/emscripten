@@ -589,9 +589,9 @@ var SyscallsLibrary = {
       if (stream.stream_ops.poll) {
         var timeoutInMillis = -1;
         if (timeout) {
-          var timeoutSeconds = (readfds ? {{{ makeGetValue('timeout', 0, 'i32') }}} : 0),
-              timeoutMicroseconds = (readfds ? {{{ makeGetValue('timeout', 4, 'i32') }}} : 0);
-          timeoutInMillis = (timeoutSeconds + timeoutMicroseconds / 1000000) * 1000;
+          var tv_sec = (readfds ? {{{ makeGetValue('timeout', C_STRUCTS.timeval.tv_sec, 'i32') }}} : 0),
+              tv_usec = (readfds ? {{{ makeGetValue('timeout', C_STRUCTS.timeval.tv_usec, 'i32') }}} : 0);
+          timeoutInMillis = (tv_sec + tv_usec / 1000000) * 1000;
         }
         flags = stream.stream_ops.poll(stream, timeoutInMillis);
       }
