@@ -150,13 +150,14 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
       var bytesRead;
       if (seeking) {
-        bytesRead = FS.handleError(__wasmfs_pread(fd, dataBuffer, length, position));
+        bytesRead = __wasmfs_pread(fd, dataBuffer, length, position);
       } else {
-        bytesRead = FS.handleError(__wasmfs_read(fd, dataBuffer, length));
+        bytesRead = __wasmfs_read(fd, dataBuffer, length);
       }
+      bytesRead = FS.handleError(bytesRead);
 
       for (var i = 0; i < length; i++) {
-        buffer[i + offset] = {{{ makeGetValue('dataBuffer', 'i', 'i8')}}}
+        buffer[offset + i] = {{{ makeGetValue('dataBuffer', 'i', 'i8')}}}
       }
 
       _free(dataBuffer);
