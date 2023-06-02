@@ -49,11 +49,6 @@ __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
   return __WASI_ERRNO_SUCCESS;
 }
 
-WEAK
-__wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
-  return __WASI_ERRNO_SUCCESS;
-}
-
 // The following is really just needed due to the current architecture of
 // WasmFS and how it calls back from JS into wasm. When we remove those calls
 // (when we move that code to wasm) it should not be needed.
