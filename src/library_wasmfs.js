@@ -145,9 +145,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       var seeking = typeof position != 'undefined';
 
       var dataBuffer = _malloc(length);
-      for (var i = 0; i < length; i++) {
-        {{{ makeSetValue('dataBuffer', 'i', 'buffer[i]', 'i8')}}}
-      }
 
       var bytesRead;
       if (seeking) {
