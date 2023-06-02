@@ -960,6 +960,7 @@ f.close()
       end = stderr.index('End of search list.')
       includes = stderr[start:end]
       includes = [i.strip() for i in includes.splitlines()[1:]]
+      cache.ensure_setup()
       cachedir = os.path.normpath(cache.cachedir)
       llvmroot = os.path.normpath(os.path.dirname(config.LLVM_ROOT))
       for i in includes:
