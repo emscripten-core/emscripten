@@ -74,14 +74,9 @@ int __syscall_fstat64(int fd, intptr_t buf) {
   return __WASI_ERRNO_SUCCESS;
 }
 
-// The following are really just needed due to the current architecture of
+// The following is really just needed due to the current architecture of
 // WasmFS and how it calls back from JS into wasm. When we remove those calls
-// (when we move that code to wasm) they should not be needed.
-
-WEAK
-int __syscall_getcwd(intptr_t buf, size_t size) {
-  return -1;
-}
+// (when we move that code to wasm) it should not be needed.
 
 WEAK
 void* _wasmfs_read_file(char* path) {
