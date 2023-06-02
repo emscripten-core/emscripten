@@ -34,7 +34,7 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
 
 WEAK
 __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
-  return __WASI_ERRNO_SUCCESS;
+  return __WASI_ERRNO_NOSYS;
 }
 
 // The following is really just needed due to the current architecture of
