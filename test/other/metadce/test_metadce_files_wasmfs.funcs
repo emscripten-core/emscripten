@@ -25,6 +25,7 @@ $__cxxabiv1::__vmi_class_type_info::search_below_dst\28__cxxabiv1::__dynamic_cas
 $__lockfile
 $__memcpy
 $__memset
+$__pthread_mutex_lock
 $__stdio_close
 $__stdio_seek
 $__stdio_write
@@ -33,7 +34,6 @@ $__unlockfile
 $__wasi_fd_close
 $__wasi_fd_write
 $__wasm_call_ctors
-$_wasmfs_read_file
 $decltype\28auto\29\20std::__2::__variant_detail::__visitation::__base::__dispatcher<1ul>::__dispatch\5babi:v15007\5d<std::__2::__variant_detail::__dtor<std::__2::__variant_detail::__traits<long\2c\20std::__2::shared_ptr<wasmfs::File>>\2c\20\28std::__2::__variant_detail::_Trait\291>::__destroy\5babi:v15007\5d\28\29::'lambda'\28auto&\29&&\2c\20std::__2::__variant_detail::__base<\28std::__2::__variant_detail::_Trait\291\2c\20long\2c\20std::__2::shared_ptr<wasmfs::File>>&>\28auto\2c\20std::__2::__variant_detail::__base<\28std::__2::__variant_detail::_Trait\291\2c\20long\2c\20std::__2::shared_ptr<wasmfs::File>>&\29
 $dlfree
 $dlmalloc

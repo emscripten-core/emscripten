@@ -36,12 +36,3 @@ WEAK
 __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
   return __WASI_ERRNO_NOSYS;
 }
-
-// The following is really just needed due to the current architecture of
-// WasmFS and how it calls back from JS into wasm. When we remove those calls
-// (when we move that code to wasm) it should not be needed.
-
-WEAK
-void* _wasmfs_read_file(char* path) {
-  return NULL;
-}
