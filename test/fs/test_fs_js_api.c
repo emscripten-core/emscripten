@@ -67,10 +67,6 @@ int main() {
         FS.mknod("mknodtest", 0100000 | 0777); /* S_IFREG | S_RWXU | S_RWXG | S_RWXO */
 
         FS.create("createtest", 0400); /* S_IRUSR */
-
-        // var deviceId = FS.makedev(64, 0);
-        // FS.registerDevice(deviceId, {});
-        // FS.mkdev("/dummy", deviceId);
     );
     struct stat stats;
     stat("mknodtest", &stats);
@@ -81,11 +77,6 @@ int main() {
     stat("createtest", &stats);
     assert(S_ISREG(stats.st_mode));
     assert(stats.st_mode & 0400);
-
-
-    // stat("dummy", &stats);
-    // assert(S_ISCHR(stats.st_mode));
-
 
     puts("success");
 }
