@@ -218,7 +218,7 @@ class browser(BrowserCore):
     ]
 
   def require_wasm64(self):
-    # All the browser we run on support wasm64
+    # All the browsers we run on support wasm64 (Chrome and Firefox).
     return True
 
   def test_sdl1_in_emscripten_nonstrict_mode(self):
