@@ -225,11 +225,17 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         __wasmfs_readdir_finish(state);
         return entries;
       });
-    }
+    },
     // TODO: mount
     // TODO: unmount
     // TODO: lookup
     // TODO: mknod
+    mknod: (path, mode, dev) => {
+      return FS.handleError(withStackSave(() => {
+        var pathBuffer = stringToUTF8OnStack(path);
+        return __wasmfs_mknod(pathBuffer, mode, dev);
+      }));
+    },
     // TODO: mkdev
     // TODO: rename
     // TODO: syncfs
