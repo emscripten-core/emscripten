@@ -5,19 +5,6 @@
 
 #define WEAK __attribute__((weak))
 
-WEAK
-int __syscall_ioctl(int fd, int request, ...) {
-  return 0;
-}
-
-WEAK
-__wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
-                              __wasi_filedelta_t offset,
-                              __wasi_whence_t whence,
-                              __wasi_filesize_t* newoffset) {
-  return __WASI_ERRNO_SUCCESS;
-}
-
 // Import the outside (JS or VM) fd_write under a different name. We must
 // implement __wasi_fd_write in this file so that all the normal WasmFS code is
 // not included - that is the point of no-fs mode - since if we don't implement
@@ -39,6 +26,7 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
   return imported__wasi_fd_write(fd, iovs, iovs_len, nwritten);
 }
 
+// TODO: is this needed in EXIT_RUNTIME?
 WEAK
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
   return __WASI_ERRNO_SUCCESS;
