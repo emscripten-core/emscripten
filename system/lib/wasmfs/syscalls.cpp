@@ -1285,7 +1285,7 @@ int __syscall_ioctl(int fd, int request, ...) {
     case TIOCGWINSZ:
     case TIOCSWINSZ: {
       // TTY operations that we do nothing for anyhow can just be ignored.
-      return -0;
+      return 0;
     }
     default: {
       return -EINVAL; // not supported
