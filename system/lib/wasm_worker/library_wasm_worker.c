@@ -17,6 +17,8 @@
 // Options:
 // #define STACK_OVERFLOW_CHECK 0/1/2 : set to the current stack overflow check mode
 
+// When pthread enabled initializing main thread tls has been done in emscripten_init_main_thread
+#ifndef __EMSCRIPTEN_PTHREADS__
 void __wasm_init_tls(void *memory);
 
 __attribute__((constructor(48)))
@@ -27,6 +29,7 @@ static void emscripten_wasm_worker_main_thread_initialize() {
 	__wasm_init_tls((void*)*sbrk_ptr);
 	*sbrk_ptr += ROUND_UP(__builtin_wasm_tls_size(), 16);
 }
+#endif
 
 emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackPlusTLSAddress, size_t stackPlusTLSSize)
 {
