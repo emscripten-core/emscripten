@@ -60,6 +60,7 @@ def remove_quotes(arg):
 
 
 def get_building_env():
+  cache.ensure()
   env = os.environ.copy()
   # point CC etc. to the em* tools.
   env['CC'] = EMCC
