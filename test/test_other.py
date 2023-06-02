@@ -8964,6 +8964,11 @@ end
     # ioctl requires filesystem
     self.do_other_test('test_ioctl.c', emcc_args=['-sFORCE_FILESYSTEM'])
 
+  @also_with_wasmfs
+  def test_ioctl_termios(self):
+    # ioctl requires filesystem
+    self.do_other_test('test_ioctl_termios.c', emcc_args=['-sFORCE_FILESYSTEM'])
+
   def test_fd_closed(self):
     self.do_other_test('test_fd_closed.cpp')
 
