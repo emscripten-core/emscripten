@@ -393,6 +393,11 @@ def force_delete_dir(dirname):
   utils.delete_dir(dirname)
 
 
+def force_delete_contents(dirname):
+  make_dir_writeable(dirname)
+  utils.delete_contents(dirname)
+
+
 def parameterized(parameters):
   """
   Mark a test as parameterized.
@@ -683,11 +688,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           # expect this.  --no-clean can be used to keep the old contents for the new test
           # run. This can be useful when iterating on a given test with extra files you want to keep
           # around in the output directory.
-          #
-          # Note that we must make the directory writable, as some tests might
-          # change permissions.
-          make_dir_writeable(self.working_dir)
-          utils.delete_contents(self.working_dir)
+          force_delete_contents(self.working_dir)
       else:
         print('Creating new test output directory')
         ensure_dir(self.working_dir)
@@ -1169,7 +1170,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                          cache_name, env_init=env_init, native=native)
 
   def clear(self):
-    utils.delete_contents(self.get_dir())
+    force_delete_contents(self.get_dir())
     if shared.EMSCRIPTEN_TEMP_DIR:
       utils.delete_contents(shared.EMSCRIPTEN_TEMP_DIR)
 
