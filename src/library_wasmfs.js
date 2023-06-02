@@ -195,29 +195,25 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     },
     // TODO: stat
     stat: (path) => {
-      return withStackSave(() => {
-        var pathBuffer = stringToUTF8OnStack(path);
+      var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
+      FS.handleError(withStackSave(() => {
+        return __wasmfs_stat(stringToUTF8OnStack(path), statBuf);
+      }));
+      var stats = FS.statBufToObject(statBuf);
+      _free(statBuf);
 
-        var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
-        FS.handleError(__wasmfs_stat(pathBuffer, statBuf));
-        var stats = FS.statBufToObject(statBuf);
-        _free(statBuf);
-
-        return stats;
-      });
+      return stats;
     },
     // TODO: lstat
     lstat: (path) => {
-      return withStackSave(() => {
-        var pathBuffer = stringToUTF8OnStack(path);
-        
-        var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
-        FS.handleError(__wasmfs_lstat(pathBuffer, statBuf));
-        var stats = FS.statBufToObject(statBuf);
-        _free(statBuf);
+      var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
+      FS.handleError(withStackSave(() => {
+        return __wasmfs_lstat(stringToUTF8OnStack(path), statBuf);
+      }));
+      var stats = FS.statBufToObject(statBuf);
+      _free(statBuf);
 
-        return stats;
-      });
+      return stats;
     },
     chmod: (path, mode) => {
       return FS.handleError(withStackSave(() => {

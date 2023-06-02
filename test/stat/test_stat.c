@@ -193,34 +193,37 @@ void test() {
   err = stat("folder/subdir", &s);
   assert(s.st_mtime != TEST_TIME);
 
+  chmod("folder/file", 0666);
   EM_ASM(
     var stats = FS.stat("folder/file");
     assert(stats.dev == 1);
     assert(stats.ino);
-    assert(stats.mode == 33279);
+    assert(stats.mode == 0o100666);
     assert(stats.nlink);
     assert(stats.rdev == 0);
     assert(stats.size == 6);
     assert(stats.atime);
     assert(stats.mtime);
     assert(stats.ctime);
-    var original_mode = stats.mode;
+  );
 
-    FS.symlink("file", "folder/symlinkfile");
-    FS.chmod("folder/file", 0o000);
-
+  symlink("folder/file", "folder/symlinkfile");
+  
+  EM_ASM(
     var linkStats = FS.lstat("folder/symlinkfile");
     assert(linkStats.dev == 1);
     assert(linkStats.ino);
-    assert(linkStats.mode != original_mode);
+#if WASMFS
+    assert(linkStats.mode == 0o120000);
+#else
+    assert(linkStats.mode == 0o120777);
+#endif
     assert(linkStats.nlink);
     assert(linkStats.rdev == 0);
-    assert(linkStats.size == 4);
+    assert(linkStats.size == 11);
     assert(linkStats.atime);
     assert(linkStats.mtime);
     assert(linkStats.ctime);
-
-    FS.chmod("folder/file", 0o777);
     
     var ex;
     try {
@@ -237,6 +240,7 @@ void test() {
     }
     assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
   );
+  chmod("folder/file", 0777);
 
   puts("success");
 }
