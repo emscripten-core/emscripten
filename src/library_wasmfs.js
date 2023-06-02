@@ -124,6 +124,12 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       })
     },
     // TODO: create
+    create: (path, mode) => {
+      mode = mode !== undefined ? mode : 511 /* 0777 */;
+      mode &= {{{ cDefs.S_IALLUGO }}}
+      mode |= {{{ cDefs.S_IFREG }}}
+      return FS.mknod(path, mode, 0);
+    },
     // TODO: close
     close: (fd) => {
       return FS.handleError(-__wasmfs_close(fd));
