@@ -275,6 +275,9 @@ FS.createPreloadedFile = FS_createPreloadedFile;
   },
 });
 
+// As mentioned in emcc.py, like the old JS FS, WasmFS by default includes just
+// what JS parts it actually needs, and FORCE_FILESYSTEM is required to force
+// all of it to be included if the user wants to use the JS API directly.
 if (FORCE_FILESYSTEM) {
   DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$FS');
 }
