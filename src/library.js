@@ -3391,14 +3391,23 @@ mergeInto(LibraryManager.library, {
   emscripten_out: function(str) {
     out(UTF8ToString(str));
   },
+  emscripten_outn: function(str, len) {
+    out(UTF8ToString(str, len));
+  },
 
   emscripten_err: function(str) {
     err(UTF8ToString(str));
+  },
+  emscripten_errn: function(str, len) {
+    err(UTF8ToString(str, len));
   },
 
 #if ASSERTIONS || RUNTIME_DEBUG
   emscripten_dbg: function(str) {
     dbg(UTF8ToString(str));
+  },
+  emscripten_dbgn: function(str, len) {
+    dbg(UTF8ToString(str, len));
   },
 #endif
 
