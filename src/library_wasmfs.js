@@ -199,7 +199,16 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: lchown
     // TODO: fchown
     // TODO: truncate
+    truncate: (path, len) => {
+      return FS.handleError(withStackSave(() => {
+        var pathBuffer = stringToUTF8OnStack(path);
+        return __wasmfs_truncate(pathBuffer, len);
+      }));
+    },
     // TODO: ftruncate
+    ftruncate: (fd, len) => {
+      return FS.handleError(__wasmfs_ftruncate(fd, len));
+    },
     // TODO: utime
     findObject: (path) => {
       var result = __wasmfs_identify(path);

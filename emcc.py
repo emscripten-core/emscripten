@@ -2319,6 +2319,8 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_open',
         '_wasmfs_close',
         '_wasmfs_mkdir',
+        '_wasmfs_truncate',
+        '_wasmfs_ftruncate',
         '_wasmfs_unlink',
         '_wasmfs_chdir',
         '_wasmfs_rmdir',

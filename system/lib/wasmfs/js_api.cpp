@@ -127,6 +127,22 @@ int _wasmfs_unlink(char* path) {
   return __syscall_unlinkat(AT_FDCWD, (intptr_t)path, 0);
 }
 
+int _wasmfs_truncate(char *path, off_t size) {
+  int err = __syscall_truncate64((intptr_t)path, size);
+  if (err == -1) {
+    return errno;
+  }
+  return err;
+}
+
+int _wasmfs_ftruncate(int fd, off_t size) {
+  int err = __syscall_ftruncate64(fd, size);
+  if (err == -1) {
+    return errno;
+  }
+  return err;
+}
+
 int _wasmfs_chdir(char* path) { return __syscall_chdir((intptr_t)path); }
 
 int _wasmfs_symlink(char* old_path, char* new_path) {

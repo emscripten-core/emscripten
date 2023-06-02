@@ -1,5 +1,7 @@
 #include <emscripten/emscripten.h>
 #include <stdio.h>
+#include <sys/stat.h>
+#include <assert.h>
 
 int main() {
     /********** test FS.open() **********/
@@ -37,6 +39,85 @@ int main() {
 #endif
     );
 
+    /********** test FS.truncate() **********/
+    EM_ASM(
+        FS.writeFile('truncatetest', 'a=1\nb=2\n');
+    );
+
+    struct stat s;
+    stat("truncatetest", &s);
+    assert(s.st_size == 8);
+
+    EM_ASM(
+        FS.truncate('truncatetest', 2);
+    );
+    stat("truncatetest", &s);
+    assert(s.st_size == 2);
+
+    EM_ASM(
+        FS.truncate('truncatetest', 10);
+    );
+    stat("truncatetest", &s);
+    assert(s.st_size == 10);
+
+    EM_ASM(
+        var truncateStream = FS.open('truncatetest', 'w');
+#if WASMFS
+        FS.ftruncate(truncateStream, 4);
+#else
+        FS.ftruncate(truncateStream.fd, 4);
+#endif
+    );
+    stat("truncatetest", &s);
+    assert(s.st_size == 4);
+
+    // EM_ASM(
+    //     var ex;
+    //     try {
+    //         FS.truncate('truncatetest', -10);
+    //     } catch(err) {
+    //         ex = err;
+    //     }
+    //     console.log(ex);
+
+    //     // assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+    // );
+
+//     EM_ASM(
+//         var ex;
+//         try {
+//             var truncateStream = FS.open('truncatetest', 'w');
+// #if WASMFS
+//             FS.ftruncate(truncateStream, -10);
+// #else
+//             FS.ftruncate(truncateStream.fd, -10);
+// #endif
+//         } catch(err) {
+//             ex = err;
+//         }
+
+//         assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+//     );
+
+    EM_ASM(
+        var ex;
+        try {
+            FS.truncate('nonexistent', 10);
+        } catch(err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+
+        var ex;
+        try {
+            FS.ftruncate(99, 10);
+        } catch(err) {
+            ex = err;
+        }
+
+        assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */);
+    );
+
     /********** test FS.close() **********/
     EM_ASM(
         FS.writeFile("closetestfile", 'a=1\nb=2\n');
@@ -58,6 +139,8 @@ int main() {
 
         assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */)
     );
+
+    remove("truncatetest");
 
     puts("success");
 }
