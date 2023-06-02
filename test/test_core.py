@@ -8881,7 +8881,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
       # Need to use `-g` to get proper line numbers in asm.js
       self.emcc_args += ['-g']
     self.do_runf(test_file('core/test_ubsan_minimal_too_many_errors.c'),
-                 expected_output='ubsan: add-overflow\n' * 20 + 'ubsan: too many errors\n')
+                 expected_output='ubsan: add-overflow by 0x[0-9a-f]*\n' * 20 + 'ubsan: too many errors\n',
+                 regex=True)
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
   @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
@@ -8894,7 +8895,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
       # Need to use `-g` to get proper line numbers in asm.js
       self.emcc_args += ['-g']
     self.do_runf(test_file('core/test_ubsan_minimal_errors_same_place.c'),
-                 expected_output='ubsan: add-overflow\n' * 5)
+                 expected_output='ubsan: add-overflow by 0x[0-9a-z]*\n' * 5,
+                 regex=True)
 
   @parameterized({
     'fsanitize_undefined': (['-fsanitize=undefined'],),
