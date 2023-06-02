@@ -149,6 +149,23 @@ int _wasmfs_close(int fd) {
   return __wasi_fd_close(fd);
 }
 
+int _wasmfs_utime(char *path, long atime_ms, long mtime_ms, int flags) {
+  printf("Times: %ld, %ld\n", atime_ms, mtime_ms);
+  struct timespec times[2];
+  times[0].tv_sec = atime_ms / 1000;
+  times[0].tv_nsec = (atime_ms % 1000) * 1000000;
+  printf("Times[0]: %lld, %ld\n", times[0].tv_sec, times[0].tv_nsec);
+  times[1].tv_sec = mtime_ms / 1000;
+  times[1].tv_nsec = (mtime_ms % 1000) * 1000000;
+  printf("Times[1]: %lld, %ld\n", times[1].tv_sec, times[1].tv_nsec);
+
+  int err = __syscall_utimensat(AT_FDCWD, (intptr_t)path, (intptr_t)times, flags);
+  if (err == -1) {
+    return errno;
+  }
+  return err;
+}
+
 // Helper method that identifies what a path is:
 //   ENOENT - if nothing exists there
 //   EISDIR - if it is a directory
