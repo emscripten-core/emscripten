@@ -993,13 +993,22 @@ var LibraryDylink = {
 #endif
 
       // for wasm, we can use fetch for async, but for fs mode we can only imitate it
+      var libData;
       if (handle) {
         var data = {{{ makeGetValue('handle', C_STRUCTS.dso.file_data, '*') }}};
         var dataSize = {{{ makeGetValue('handle', C_STRUCTS.dso.file_data_size, '*') }}};
         if (data && dataSize) {
-          var libData = HEAP8.slice(data, data + dataSize);
-          return flags.loadAsync ? Promise.resolve(libData) : libData;
+          libData = HEAP8.slice(data, data + dataSize);
         }
+      }
+      if (!libData && flags.fs && flags.fs.findObject(libName)) {
+        libData = flags.fs.readFile(libName, {encoding: 'binary'});
+        if (!(libData instanceof Uint8Array)) {
+          libData = new Uint8Array(libData);
+        }
+      }
+      if (libData) {
+        return flags.loadAsync ? Promise.resolve(libData) : libData;
       }
 
       var libFile = locateFile(libName);
