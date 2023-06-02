@@ -515,6 +515,7 @@ jobs:
             wasmfs.test_unistd_truncate
             wasmfs.test_readdir
             wasmfs.test_unistd_pipe
+            wasmfs.test_fs_write
             wasmfs.test_webidl
             wasmfs.test_dlfcn_self
             wasmfs.test_dlfcn_unique_sig

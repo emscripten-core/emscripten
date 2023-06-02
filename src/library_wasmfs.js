@@ -144,20 +144,22 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     },
     // TODO: read
     // TODO: write
+    // Note that canOwn is an optimization that we ignore for now in WasmFS.
     write: (fd, buffer, offset, length, position, canOwn) => {
       var seeking = typeof position != 'undefined';
 
       var dataBuffer = _malloc(length);
       for (var i = 0; i < length; i++) {
-        {{{ makeSetValue('dataBuffer', 'i', 'buffer[i + offset]', 'i8') }}};
+        {{{ makeSetValue('dataBuffer', 'i', 'buffer[offset + i]', 'i8') }}};
       }
 
       var bytesRead;
       if (seeking) {
-        bytesRead = FS.handleError(__wasmfs_pwrite(fd, dataBuffer, length, position));
+        bytesRead = __wasmfs_pwrite(fd, dataBuffer, length, position);
       } else {
-        bytesRead = FS.handleError(__wasmfs_write(fd, dataBuffer, length));
+        bytesRead = __wasmfs_write(fd, dataBuffer, length);
       }
+      bytesRead = FS.handleError(bytesRead);
       _free(dataBuffer);
 
       return bytesRead;
