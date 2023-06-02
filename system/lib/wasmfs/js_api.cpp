@@ -145,6 +145,14 @@ int _wasmfs_lchmod(char* path, mode_t mode) {
   return __syscall_fchmodat(AT_FDCWD, (intptr_t)path, mode, AT_SYMLINK_NOFOLLOW);
 }
 
+int _wasmfs_rename(char* oldpath, char* newpath) {
+  int err = __syscall_renameat(AT_FDCWD, (intptr_t)oldpath, AT_FDCWD, (intptr_t)newpath);
+  if (err == -1) {
+    return errno;
+  }
+  return err;
+}
+
 int _wasmfs_close(int fd) {
   return __wasi_fd_close(fd);
 }

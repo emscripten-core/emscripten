@@ -37,6 +37,39 @@ int main() {
 #endif
     );
 
+    /********** test FS.rename() **********/
+    EM_ASM(
+        FS.mkdir('renamedir');
+        FS.writeFile('renamedir/renametestfile', "");
+        FS.writeFile('toplevelfile', "");
+        FS.rename('renamedir/renametestfile', 'renamedir/newname');
+        var newnameStream = FS.open('renamedir/newname', 'r');
+        assert(newnameStream);
+
+        var ex;
+        try {
+            FS.open('renamedir/renametestfile', 'r');
+        } catch (err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+
+        
+        try {
+            FS.rename('renamedir', 'renamedir/newname');
+        } catch (err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+
+        try {
+            FS.rename('renamedir', 'toplevelfile');
+        } catch (err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 54 /* ENOTDIR */);
+    );
+
     /********** test FS.close() **********/
     EM_ASM(
         FS.writeFile("closetestfile", 'a=1\nb=2\n');
@@ -58,6 +91,8 @@ int main() {
 
         assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */)
     );
+
+    remove("renametestfile");
 
     puts("success");
 }
