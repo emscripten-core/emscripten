@@ -71,33 +71,32 @@ int main() {
     stat("truncatetest", &s);
     assert(s.st_size == 4);
 
-    // EM_ASM(
-    //     var ex;
-    //     try {
-    //         FS.truncate('truncatetest', -10);
-    //     } catch(err) {
-    //         ex = err;
-    //     }
-    //     console.log(ex);
+    EM_ASM(
+        var ex;
+        try {
+            FS.truncate('truncatetest', -10);
+        } catch(err) {
+            ex = err;
+        }
 
-    //     // assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
-    // );
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+    );
 
-//     EM_ASM(
-//         var ex;
-//         try {
-//             var truncateStream = FS.open('truncatetest', 'w');
-// #if WASMFS
-//             FS.ftruncate(truncateStream, -10);
-// #else
-//             FS.ftruncate(truncateStream.fd, -10);
-// #endif
-//         } catch(err) {
-//             ex = err;
-//         }
+    EM_ASM(
+        var ex;
+        try {
+            var truncateStream = FS.open('truncatetest', 'w');
+#if WASMFS
+            FS.ftruncate(truncateStream, -10);
+#else
+            FS.ftruncate(truncateStream.fd, -10);
+#endif
+        } catch(err) {
+            ex = err;
+        }
 
-//         assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
-//     );
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+    );
 
     EM_ASM(
         var ex;
