@@ -133,6 +133,10 @@ int _wasmfs_symlink(char* old_path, char* new_path) {
   return __syscall_symlink((intptr_t)old_path, (intptr_t)new_path);
 }
 
+int _wasmfs_readlink(char* path, char* buf, size_t bufsiz) {
+
+}
+
 int _wasmfs_chmod(char* path, mode_t mode) {
   return __syscall_chmod((intptr_t)path, mode);
 }

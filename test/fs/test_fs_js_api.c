@@ -24,7 +24,7 @@ int main() {
         var ex;
         try {
             FS.open('filenothere', 'r');
-        } catch(err) {
+        } catch (err) {
             ex = err;
         }
         assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
@@ -35,6 +35,30 @@ int main() {
 #else
         assert(createFileNotHere && createFileNotHere.fd >= 0);
 #endif
+    );
+
+    /********** test FS.readlink() **********/
+    EM_ASM(
+        FS.writeFile('readlinktestfile', "");
+        FS.symlink('readlinktestfile', 'readlinksymlink');
+
+        var symlinkString = FS.readlink('readlinksymlink');
+        assert(symlinkString === '/readlinktestfile');
+
+        var ex;
+        try {
+            FS.readlink('nonexistent');
+        } catch (err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+
+        try {
+            FS.readlink('readlinktestfile');
+        } catch (err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */)
     );
 
     /********** test FS.close() **********/
@@ -52,12 +76,16 @@ int main() {
         var ex;
         try {
             FS.close(file);
-        } catch(err) {
+        } catch (err) {
             ex = err;
         }
 
-        assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */)
+        assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */);
     );
+
+    remove("testfile");
+    remove("closetestfile");
+    remove("/testdir");
 
     puts("success");
 }

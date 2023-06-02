@@ -176,6 +176,12 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       });
     },
     // TODO: readlink
+    readlink: (path) => {
+      return FS.handleError(withStackSave(() => {
+        var pathBuffer = stringToUTF8OnStack(path);
+        return __wasmfs_readlink(pathBuffer);
+      }));
+    },
     // TODO: stat
     // TODO: lstat
     chmod: (path, mode) => {
