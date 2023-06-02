@@ -54,26 +54,6 @@ __wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
   return __WASI_ERRNO_SUCCESS;
 }
 
-WEAK
-int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
-  return __WASI_ERRNO_SUCCESS;
-}
-
-WEAK
-int __syscall_stat64(intptr_t path, intptr_t buf) {
-  return __WASI_ERRNO_SUCCESS;
-}
-
-WEAK
-int __syscall_lstat64(intptr_t path, intptr_t buf) {
-  return __WASI_ERRNO_SUCCESS;
-}
-
-WEAK
-int __syscall_fstat64(int fd, intptr_t buf) {
-  return __WASI_ERRNO_SUCCESS;
-}
-
 // The following is really just needed due to the current architecture of
 // WasmFS and how it calls back from JS into wasm. When we remove those calls
 // (when we move that code to wasm) it should not be needed.
