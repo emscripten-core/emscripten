@@ -26,13 +26,17 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
   return imported__wasi_fd_write(fd, iovs, iovs_len, nwritten);
 }
 
-// TODO: is this needed in EXIT_RUNTIME?
 WEAK
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
+  // The only possible file descriptors are the standard streams, and there is
+  // nothing special to do to close them.
   return __WASI_ERRNO_SUCCESS;
 }
 
 WEAK
 __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
+  // This operation is not supported (but it does appear in system libraries
+  // even in hello world, even if it isn't actually called, so we do need to
+  // implement this stub here).
   return __WASI_ERRNO_NOSYS;
 }
