@@ -94,7 +94,7 @@ mergeInto(LibraryManager.library, {
       }
       var newMode = NODEFS.getMode(pathTruncated);
       var node = { id: st.ino, mode: newMode, node_ops: NODERAWFS, path: path }
-      return FS.createStream({ nfd: nfd, position: 0, path: path, flags: flags, node: node, seekable: true }, nfd);
+      return FS.createStream({ nfd: nfd, position: 0, path: path, flags: flags, node: node, seekable: true });
     },
     createStream: function(stream, fd) {
       // Call the original FS.createStream
