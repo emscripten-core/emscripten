@@ -87,8 +87,3 @@ WEAK
 void* _wasmfs_read_file(char* path) {
   return NULL;
 }
-
-WEAK
-char* _wasmfs_get_cwd(void) {
-  return NULL;
-}
