@@ -521,7 +521,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       generated = read_file('something.js')
       main = self.get_func(generated, '_main') if 'function _main' in generated else generated
       assert 'new Uint16Array' in generated and 'new Uint32Array' in generated, 'typed arrays 2 should be used by default'
-      assert 'SAFE_HEAP' not in generated, 'safe heap should not be used by default'
+      assert 'SAFE_HEAP_LOAD' not in generated, 'safe heap should not be used by default'
+      assert 'SAFE_HEAP_STORE' not in generated, 'safe heap should not be used by default'
       assert ': while(' not in main, 'when relooping we also js-optimize, so there should be no labelled whiles'
       if closure:
         if opt_level == 0:
@@ -959,6 +960,7 @@ f.close()
       end = stderr.index('End of search list.')
       includes = stderr[start:end]
       includes = [i.strip() for i in includes.splitlines()[1:]]
+      cache.ensure_setup()
       cachedir = os.path.normpath(cache.cachedir)
       llvmroot = os.path.normpath(os.path.dirname(config.LLVM_ROOT))
       for i in includes:

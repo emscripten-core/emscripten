@@ -189,6 +189,7 @@ def main():
   # Check sanity so that if settings file has changed, the cache is cleared here.
   # Otherwise, the cache will clear in an emcc process, which is invoked while building
   # a system library into the cache, causing trouble.
+  cache.setup()
   shared.check_sanity()
 
   if args.lto:
