@@ -230,10 +230,7 @@ def with_asyncify_and_stack_switching(f):
   def metafunc(self, stack_switching):
     if stack_switching:
       self.set_setting('ASYNCIFY', 2)
-      self.require_v8()
-      # enable stack switching and other relevant features (like reference types
-      # for the return value of externref)
-      self.v8_args.append('--experimental-wasm-stack-switching')
+      self.require_jspi()
       if not self.is_wasm():
         self.skipTest('wasm2js does not support WebAssembly.Suspender yet')
       # emcc warns about stack switching being experimental, and we build with
@@ -9426,6 +9423,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @needs_dylink
   @node_pthreads
   def test_pthread_dlopen_many(self):
+    if self.is_wasm64():
+     self.skipTest('https://github.com/emscripten-core/emscripten/issues/18887')
+
     nthreads = 10
     self.emcc_args += ['-Wno-experimental', '-pthread']
     self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_side.c'))
