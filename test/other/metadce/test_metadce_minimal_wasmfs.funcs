@@ -30,15 +30,12 @@ $__pthread_mutex_lock
 $__stdio_close
 $__stdio_seek
 $__stdio_write
-$__syscall_newfstatat
-$__syscall_ret
 $__time
 $__unlockfile
 $__wasi_fd_close
 $__wasi_fd_write
 $__wasi_syscall_ret
 $__wasm_call_ctors
-$_wasmfs_read_file
 $add
 $byn$mgfn-shared$__cxx_global_array_dtor
 $byn$mgfn-shared$wasmfs::SpecialFiles::\28anonymous\20namespace\29::StdoutFile::~StdoutFile\28\29
@@ -56,9 +53,6 @@ $memmove
 $operator\20new\28unsigned\20long\29
 $pthread_mutex_init
 $sbrk
-$stackAlloc
-$stackRestore
-$stackSave
 $std::__2::__shared_ptr_emplace<wasmfs::MemoryDataFile\2c\20std::__2::allocator<wasmfs::MemoryDataFile>>::~__shared_ptr_emplace\28\29
 $std::__2::__shared_ptr_emplace<wasmfs::MemoryDataFile\2c\20std::__2::allocator<wasmfs::MemoryDataFile>>::~__shared_ptr_emplace\28\29.1
 $std::__2::__shared_ptr_emplace<wasmfs::MemoryDirectory\2c\20std::__2::allocator<wasmfs::MemoryDirectory>>::__on_zero_shared\28\29
