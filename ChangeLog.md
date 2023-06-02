@@ -18,8 +18,15 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.40 (in development)
+3.1.41 (in development)
 -----------------------
+- A new setting (`CHECK_NULL_WRITES`) was added to disabled the checking of
+  address zero that is normally done when `STACK_OVERFLOW_CHECK` is enabled.
+  (#19487)
+- compiler-rt updated to LLVM 16. (#19506)
+
+3.1.40 - 05/30/23
+-----------------
 - The `_emscripten_out()`, `_emscripten_err()` and `_emscripten_dbg()` functions
   declared in `emscripten/console.h` no longer have the underscore prefix and
   are now documented. (#19445)

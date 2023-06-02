@@ -122,11 +122,15 @@ mergeInto(LibraryManager.library, {
 
   $getHeapMax: function() {
 #if ALLOW_MEMORY_GROWTH
+#if MEMORY64 == 1
+    return {{{ MAXIMUM_MEMORY }}}
+#else
     // Stay one Wasm page short of 4GB: while e.g. Chrome is able to allocate
     // full 4GB Wasm memories, the size will wrap back to 0 bytes in Wasm side
     // for any code that deals with heap sizes, which would require special
     // casing all heap size related code to treat 0 specially.
     return {{{ Math.min(MAXIMUM_MEMORY, FOUR_GB - WASM_PAGE_SIZE) }}};
+#endif
 #else // no growth
     return HEAPU8.length;
 #endif
@@ -156,12 +160,16 @@ mergeInto(LibraryManager.library, {
   // it. Returns 1 on success, 0 on error.
   $emscripten_realloc_buffer: function(size) {
     var b = wasmMemory.buffer;
+    var pages = (size - b.byteLength + 65535) >>> 16;
+#if RUNTIME_DEBUG
+    dbg(`emscripten_resize_heap: ${size} (+${size - b.byteLength} bytes / ${pages} pages)`);
+#endif
 #if MEMORYPROFILER
     var oldHeapSize = b.byteLength;
 #endif
     try {
       // round size grow request up to wasm page size (fixed 64KB per spec)
-      wasmMemory.grow((size - b.byteLength + 65535) >>> 16); // .grow() takes a delta compared to the previous size
+      wasmMemory.grow(pages); // .grow() takes a delta compared to the previous size
       updateMemoryViews();
 #if MEMORYPROFILER
       if (typeof emscriptenMemoryProfiler != 'undefined') {
@@ -194,7 +202,9 @@ mergeInto(LibraryManager.library, {
   emscripten_resize_heap: 'ip',
   emscripten_resize_heap: function(requestedSize) {
     var oldSize = HEAPU8.length;
+#if MEMORY64 != 1
     requestedSize = requestedSize >>> 0;
+#endif
 #if ALLOW_MEMORY_GROWTH == 0
 #if ABORTING_MALLOC
     abortOnCannotGrowMemory(requestedSize);
@@ -558,6 +568,27 @@ mergeInto(LibraryManager.library, {
     stringToUTF8(s, buf, 26);
     return buf;
   },
+
+#if STACK_OVERFLOW_CHECK >= 2
+  // Set stack limits used by binaryen's `StackCheck` pass.
+#if MAIN_MODULE
+  $setStackLimits__deps: ['$setDylinkStackLimits'],
+#endif
+  $setStackLimits: function() {
+    var stackLow = _emscripten_stack_get_base();
+    var stackHigh = _emscripten_stack_get_end();
+#if RUNTIME_DEBUG
+    dbg(`setStackLimits: ${ptrToString(stackLow)}, ${ptrToString(stackHigh)}`);
+#endif
+#if MAIN_MODULE
+    // With dynamic linking we could have any number of pre-loaded libraries
+    // that each need to have their stack limits set.
+    setDylinkStackLimits(stackLow, stackHigh);
+#else
+    ___set_stack_limits(stackLow, stackHigh);
+#endif
+  },
+#endif
 
   $withStackSave__internal: true,
   $withStackSave: function(f) {
@@ -3360,14 +3391,23 @@ mergeInto(LibraryManager.library, {
   emscripten_out: function(str) {
     out(UTF8ToString(str));
   },
+  emscripten_outn: function(str, len) {
+    out(UTF8ToString(str, len));
+  },
 
   emscripten_err: function(str) {
     err(UTF8ToString(str));
+  },
+  emscripten_errn: function(str, len) {
+    err(UTF8ToString(str, len));
   },
 
 #if ASSERTIONS || RUNTIME_DEBUG
   emscripten_dbg: function(str) {
     dbg(UTF8ToString(str));
+  },
+  emscripten_dbgn: function(str, len) {
+    dbg(UTF8ToString(str, len));
   },
 #endif
 
@@ -3797,14 +3837,14 @@ function wrapSyscallFunction(x, library, isWasi) {
       post += 'SYSCALLS.varargs = undefined;\n';
     }
   }
-  pre += "dbg('syscall! " + x + ": [' + Array.prototype.slice.call(arguments) + ']');\n";
+  pre += `dbg('syscall! ${x}: [' + Array.prototype.slice.call(arguments) + ']');\n`;
   pre += "var canWarn = true;\n";
   pre += "var ret = (function() {\n";
   post += "})();\n";
   post += "if (ret && ret < 0 && canWarn) {\n";
-  post += "  dbg('error: syscall may have failed with ' + (-ret) + ' (' + ERRNO_MESSAGES[-ret] + ')');\n";
+  post += "  dbg(`error: syscall may have failed with ${-ret} (${ERRNO_MESSAGES[-ret]})`);\n";
   post += "}\n";
-  post += "dbg('syscall return: ' + ret);\n";
+  post += "dbg(`syscall return: ${ret}`);\n";
   post += "return ret;\n";
 #endif
   delete library[x + '__nothrow'];
@@ -3816,7 +3856,7 @@ function wrapSyscallFunction(x, library, isWasi) {
     "  if (typeof FS == 'undefined' || !(e.name === 'ErrnoError')) throw e;\n";
 #if SYSCALL_DEBUG
     handler +=
-    "  dbg('error: syscall failed with ' + e.errno + ' (' + ERRNO_MESSAGES[e.errno] + ')');\n" +
+    "  dbg(`error: syscall failed with ${e.errno} (${ERRNO_MESSAGES[e.errno]})`);\n" +
     "  canWarn = false;\n";
 #endif
     // Musl syscalls are negated.

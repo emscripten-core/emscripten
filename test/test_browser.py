@@ -23,7 +23,7 @@ from urllib.request import urlopen
 
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
-from common import read_file, requires_v8, also_with_minimal_runtime, EMRUN
+from common import read_file, requires_v8, also_with_minimal_runtime, also_with_wasm64, EMRUN
 from tools import shared
 from tools import ports
 from tools import utils
@@ -105,22 +105,6 @@ def also_with_wasm2js(f):
 
   metafunc._parameterize = {'': (False,),
                             'wasm2js': (True,)}
-  return metafunc
-
-
-def also_with_wasm64(f):
-  assert callable(f)
-
-  def metafunc(self, with_wasm64):
-    if with_wasm64:
-      self.set_setting('MEMORY64')
-      self.emcc_args.append('-Wno-experimental')
-      f(self)
-    else:
-      f(self)
-
-  metafunc._parameterize = {'': (False,),
-                            'wasm64': (True,)}
   return metafunc
 
 
@@ -232,6 +216,10 @@ class browser(BrowserCore):
       '-Wno-pointer-sign',
       '-Wno-int-conversion',
     ]
+
+  def require_wasm64(self):
+    # All the browser we run on support wasm64
+    return True
 
   def test_sdl1_in_emscripten_nonstrict_mode(self):
     if 'EMCC_STRICT' in os.environ and int(os.environ['EMCC_STRICT']):
@@ -4349,12 +4337,12 @@ Module["preRun"].push(function () {
       var real_wasm_instantiate = WebAssembly.instantiate;
       var real_wasm_instantiateStreaming = WebAssembly.instantiateStreaming;
       if (typeof real_wasm_instantiateStreaming === 'function') {
-        WebAssembly.instantiateStreaming = function(a, b) {
+        WebAssembly.instantiateStreaming = (a, b) => {
           Module.sawAsyncCompilation = true;
           return real_wasm_instantiateStreaming(a, b);
         };
       } else {
-        WebAssembly.instantiate = function(a, b) {
+        WebAssembly.instantiate = (a, b) => {
           Module.sawAsyncCompilation = true;
           return real_wasm_instantiate(a, b);
         };
@@ -5484,6 +5472,7 @@ Module["preRun"].push(function () {
     self.do_run_in_out_file_test('browser', 'test_2GB_fail.cpp')
 
   @no_firefox('no 4GB support yet')
+  @also_with_wasm64
   @requires_v8
   def test_zzz_zzz_4gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
@@ -5494,7 +5483,11 @@ Module["preRun"].push(function () {
 
     # test that we properly report an allocation error that would overflow over
     # 4GB.
-    self.emcc_args += ['-O2', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB', '-sABORTING_MALLOC=0']
+    if self.get_setting('MEMORY64'):
+      self.set_setting('MAXIMUM_MEMORY', '6GB')
+    else:
+      self.set_setting('MAXIMUM_MEMORY', '4GB')
+    self.emcc_args += ['-O2', '-sALLOW_MEMORY_GROWTH', '-sABORTING_MALLOC=0', '-sASSERTIONS']
     self.do_run_in_out_file_test('browser', 'test_4GB_fail.cpp')
 
   # Tests that Emscripten-compiled applications can be run when a slash in the URL query or fragment of the js file

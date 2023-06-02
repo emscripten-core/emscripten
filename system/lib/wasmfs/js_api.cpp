@@ -128,7 +128,11 @@ int _wasmfs_mkdir(char* path, int mode) {
 int _wasmfs_rmdir(char* path){ return __syscall_unlinkat(AT_FDCWD, (intptr_t)path, AT_REMOVEDIR); }
 
 int _wasmfs_open(char* path, int flags, mode_t mode) {
-  return __syscall_openat(AT_FDCWD, (intptr_t)path, flags, mode);
+  int err = __syscall_openat(AT_FDCWD, (intptr_t)path, flags, mode);
+  if (err == -1) {
+    return -errno;
+  }
+  return err;
 }
 
 int _wasmfs_unlink(char* path) {
@@ -143,6 +147,18 @@ int _wasmfs_symlink(char* old_path, char* new_path) {
 
 int _wasmfs_chmod(char* path, mode_t mode) {
   return __syscall_chmod((intptr_t)path, mode);
+}
+
+int _wasmfs_fchmod(int fd, mode_t mode) {
+  return __syscall_fchmod(fd, mode);
+}
+
+int _wasmfs_lchmod(char* path, mode_t mode) {
+  return __syscall_fchmodat(AT_FDCWD, (intptr_t)path, mode, AT_SYMLINK_NOFOLLOW);
+}
+
+int _wasmfs_close(int fd) {
+  return __wasi_fd_close(fd);
 }
 
 // Helper method that identifies what a path is:

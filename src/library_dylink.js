@@ -25,7 +25,7 @@ var LibraryDylink = {
         // than just running the promises in parallel, this makes a chain of
         // promises to run in series.
         wasmPlugin['promiseChainEnd'] = wasmPlugin['promiseChainEnd'].then(
-          () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true})).then(
+          () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true}, name)).then(
             (exports) => {
 #if DYLINK_DEBUG
               dbg(`registering preloadedWasm: ${name}`);
@@ -342,13 +342,13 @@ var LibraryDylink = {
   _dlsym_catchup_js: function(handle, symbolIndex) {
     abort(dlopenMissingError);
   },
-  dlopen: function(handle) {
+  dlopen: function(filename, flags) {
     abort(dlopenMissingError);
   },
   emscripten_dlopen: function(handle, onsuccess, onerror, user_data) {
     abort(dlopenMissingError);
   },
-  __dlsym: function(handle, symbol) {
+  __dlsym: function(handle, symbol, ra) {
     abort(dlopenMissingError);
   },
 #else // MAIN_MODULE != 0
@@ -618,6 +618,7 @@ var LibraryDylink = {
   // promise that resolves to its exports if the loadAsync flag is set.
   $loadWebAssemblyModule__docs: `
    /**
+    * @param {string=} libName
     * @param {Object=} localScope
     * @param {number=} handle
     */`,
@@ -629,7 +630,10 @@ var LibraryDylink = {
     '$currentModuleWeakSymbols', '$alignMemory', '$zeroMemory',
     '$updateTableMap',
   ],
-  $loadWebAssemblyModule: function(binary, flags, localScope, handle) {
+  $loadWebAssemblyModule: function(binary, flags, libName, localScope, handle) {
+#if DYLINK_DEBUG
+    dbg(`loadWebAssemblyModule: ${libName}`);
+#endif
     var metadata = getDylinkMetadata(binary);
     currentModuleWeakSymbols = metadata.weakImports;
 #if ASSERTIONS
@@ -752,10 +756,20 @@ var LibraryDylink = {
         '{{{ WASI_MODULE_NAME }}}': proxy,
       };
 
-      function postInstantiation(instance) {
+      function postInstantiation(module, instance) {
 #if ASSERTIONS
         // the table should be unchanged
         assert(wasmTable === originalTable);
+#endif
+#if PTHREADS
+        if (!ENVIRONMENT_IS_PTHREAD && libName) {
+#if DYLINK_DEBUG
+          dbg(`registering sharedModules: ${libName}`)
+#endif
+          // cache all loaded modules in `sharedModules`, which gets passed
+          // to new workers when they are created.
+          sharedModules[libName] = module;
+        }
 #endif
         // add new entries to functionsInTableMap
         updateTableMap(tableBase, metadata.tableSize);
@@ -767,12 +781,10 @@ var LibraryDylink = {
           reportUndefinedSymbols();
         }
 #if STACK_OVERFLOW_CHECK >= 2
-        if (moduleExports['__set_stack_limits']) {
-#if PTHREADS
-          // When we are on an uninitialized pthread we delay calling
-          // __set_stack_limits until $setDylinkStackLimits.
-          if (!ENVIRONMENT_IS_PTHREAD || runtimeInitialized)
-#endif
+        // If the runtime has already been initialized we set the stack limits
+        // now.  Otherwise this is delayed until `setDylinkStackLimits` is
+        // called after initialization.
+        if (moduleExports['__set_stack_limits'] && runtimeInitialized) {
           moduleExports['__set_stack_limits']({{{ to64('_emscripten_stack_get_base()') }}}, {{{ to64('_emscripten_stack_get_end()') }}});
         }
 #endif
@@ -846,16 +858,16 @@ var LibraryDylink = {
       if (flags.loadAsync) {
         if (binary instanceof WebAssembly.Module) {
           var instance = new WebAssembly.Instance(binary, info);
-          return Promise.resolve(postInstantiation(instance));
+          return Promise.resolve(postInstantiation(binary, instance));
         }
         return WebAssembly.instantiate(binary, info).then(
-          (result) => postInstantiation(result.instance)
+          (result) => postInstantiation(result.module, result.instance)
         );
       }
 
       var module = binary instanceof WebAssembly.Module ? binary : new WebAssembly.Module(binary);
       var instance = new WebAssembly.Instance(module, info);
-      return postInstantiation(instance);
+      return postInstantiation(module, instance);
     }
 
     // now load needed libraries and the module itself.
@@ -871,20 +883,18 @@ var LibraryDylink = {
     return loadModule();
   },
 
-#if STACK_OVERFLOW_CHECK >= 2 && PTHREADS
-  // With PTHREADS we load libraries before we are running a pthread and
-  // therefore before we have a stack.  Instead we delay calling
-  // `__set_stack_limits` until we start running a thread.  We also need to call
-  // this again for each new thread that the runs on a worker (since each thread
-  // has its own separate stack region).
+#if STACK_OVERFLOW_CHECK >= 2
+  // Sometimes we load libraries before runtime initialization.  In this case
+  // we delay calling __set_stack_limits (which must be called for each
+  // module).
   $setDylinkStackLimits: function(stackTop, stackMax) {
     for (var name in LDSO.loadedLibsByName) {
 #if DYLINK_DEBUG
-      dbg(`setDylinkStackLimits[${name}]`);
+      dbg(`setDylinkStackLimits for '${name}'`);
 #endif
       var lib = LDSO.loadedLibsByName[name];
       if (lib.exports['__set_stack_limits']) {
-        lib.exports['__set_stack_limits'](stackTop, stackMax);
+        lib.exports['__set_stack_limits']({{{ to64("stackTop") }}}, {{{ to64("stackMax") }}});
       }
     }
   },
@@ -972,6 +982,16 @@ var LibraryDylink = {
 
     // libName -> libData
     function loadLibData() {
+#if PTHREADS
+      var sharedMod = sharedModules[libName];
+#if DYLINK_DEBUG
+      dbg(`checking sharedModules: ${libName}: ${sharedMod ? 'found' : 'not found'}`);
+#endif
+      if (sharedMod) {
+        return flags.loadAsync ? Promise.resolve(sharedMod) : sharedMod;
+      }
+#endif
+
       // for wasm, we can use fetch for async, but for fs mode we can only imitate it
       if (handle) {
         var data = {{{ makeGetValue('handle', C_STRUCTS.dso.file_data, '*') }}};
@@ -1011,10 +1031,10 @@ var LibraryDylink = {
 
       // module not preloaded - load lib data and create new module from it
       if (flags.loadAsync) {
-        return loadLibData().then((libData) => loadWebAssemblyModule(libData, flags, localScope, handle));
+        return loadLibData().then((libData) => loadWebAssemblyModule(libData, flags, libName, localScope, handle));
       }
 
-      return loadWebAssemblyModule(loadLibData(), flags, localScope, handle);
+      return loadWebAssemblyModule(loadLibData(), flags, libName, localScope, handle);
     }
 
     // module for lib is loaded - update the dso & global namespace
