@@ -238,7 +238,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: llseek
     llseek: (fd, offset, whence) => {
       console.log("Here: " + fd + " " + offset + " " + whence);
-      var err = withStackSave(() => __wasmfs_llseek(fd, offset, whence));
+      var err = () => __wasmfs_llseek(fd, offset, whence);
       console.log("JS Err: ", err);
       return FS.handleError(err);
     }
