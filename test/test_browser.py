@@ -3332,6 +3332,10 @@ Module["preRun"].push(function () {
     preload_file = os.path.join(cocos2d_root, 'samples', 'Cpp', 'HelloCpp', 'Resources') + '@'
     self.btest('cocos2d_hello.cpp', reference='cocos2d_hello.png', reference_slack=1,
                args=['-sUSE_COCOS2D=3', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
+                     # This line should really just be `-std=c++14` like we use to compile
+                     # the cocos library itself, but that doesn't work in this case because
+                     # btest adds browser_reporting.c to the command.
+                     '-D_LIBCPP_ENABLE_CXX17_REMOVED_UNARY_BINARY_FUNCTION',
                      '-Wno-js-compiler',
                      '-Wno-experimental',
                      '--preload-file', preload_file, '--use-preload-plugins',
