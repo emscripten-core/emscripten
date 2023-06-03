@@ -469,6 +469,7 @@ jobs:
             asan.test_dlfcn_basic
             asan.test_async_hello_stack_switching
             asan.test_cubescript
+            asan.test_wasm_worker_hello
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
             lsan.test_pthread_create"

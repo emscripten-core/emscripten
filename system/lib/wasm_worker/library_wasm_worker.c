@@ -57,7 +57,7 @@ emscripten_wasm_worker_t emscripten_malloc_wasm_worker(size_t stackSize)
 	// Add the TLS size to the provided stackSize so that the allocation
 	// will always be large enough to hold the worker TLS data.
 	stackSize += ROUND_UP(__builtin_wasm_tls_size(), 16);
-	return emscripten_create_wasm_worker(memalign(16, stackSize), stackSize);
+	return emscripten_create_wasm_worker(emscripten_builtin_memalign(16, stackSize), stackSize);
 }
 
 void emscripten_wasm_worker_sleep(int64_t nsecs)
