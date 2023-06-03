@@ -8971,7 +8971,7 @@ end
       self.do_other_test('test_ioctl_window_size.cpp')
 
   @also_with_wasmfs
-  def test_sys_ioctl(self):
+  def test_ioctl(self):
     # ioctl requires filesystem
     self.do_other_test('test_ioctl.c', emcc_args=['-sFORCE_FILESYSTEM'])
 
