@@ -227,7 +227,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         __wasmfs_readdir_finish(state);
         return entries;
       });
-    }
+    },
     // TODO: mount
     // TODO: unmount
     // TODO: lookup
@@ -236,6 +236,12 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: rename
     // TODO: syncfs
     // TODO: llseek
+    llseek: (fd, offset, whence) => {
+      console.log("Here: " + fd + " " + offset + " " + whence);
+      var err = withStackSave(() => __wasmfs_llseek(fd, offset, whence));
+      console.log("JS Err: ", err);
+      return FS.handleError(err);
+    }
     // TODO: ioctl
 
 #endif
