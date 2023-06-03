@@ -8,40 +8,59 @@
 #include <assert.h>
 #include <emscripten/emscripten.h>
 #include <stdio.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 int main() {
   EM_ASM(
     // Create multiple directories
-    var err = FS.mkdir('/dir1');
-    assert(!err);
-    err = FS.mkdir('/dir2');
-    assert(!err);
+    FS.mkdir('/dir1');
+    FS.mkdir('/dir2');
+  );
 
+  struct stat s;
+  stat("/dir1", &s);
+  assert(S_ISDIR(s.st_mode));
+  stat("/dir2", &s);
+  assert(S_ISDIR(s.st_mode));
+
+
+  EM_ASM(
     // Remove the multiple directories
-    err = FS.rmdir('/dir1');
-    assert(!err);
-    err = FS.rmdir('/dir2');
-    assert(!err);
-        
+    FS.rmdir('/dir1');
+    FS.rmdir('/dir2');
+  );
+
+  int err = open("/dir1", O_RDWR);
+  assert(err);
+  err = open("/dir2", O_RDWR);
+  assert(err);
+
+  EM_ASM(    
     // Create a directory with a file inside it
-    var err = FS.mkdir('/test_dir');
-    assert(!err);
-    err = FS.writeFile('/test_dir/file.txt', 'Hello World!');
-    assert(!err);
+    FS.mkdir('/test_dir');
+    FS.writeFile('/test_dir/file.txt', 'Hello World!');
 
     // Attempt to remove the directory (should fail)
-    err = FS.rmdir('/test_dir');
-    assert(err);
+    var ex;
+    try {
+      FS.rmdir('/test_dir');
+    } catch (err) {
+      ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 55 /* ENOTEMPTY */);
 
     // Remove the file and then the directory
-    err = FS.unlink('/test_dir/file.txt');
-    assert(!err);
-    err = FS.rmdir('/test_dir');
-    assert(!err);
+    FS.unlink('/test_dir/file.txt');
+    FS.rmdir('/test_dir');
 
     // Attempt to remove a non-existent directory (should fail)
-    var err = FS.rmdir('/non_existent_dir');
-    assert(err);
+    try {
+      FS.rmdir('/non_existent_dir');
+    } catch (err) {
+      ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOEN */);
   );
   puts("success");
 

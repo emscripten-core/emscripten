@@ -5942,9 +5942,8 @@ Module = {
       self.set_setting('LINKABLE', linkable)
       self.do_core_test('test_istream.cpp')
 
-  def test_fs_dir_wasmfs(self):
-    self.emcc_args += ['-sWASMFS']
-    self.emcc_args += ['-sFORCE_FILESYSTEM']
+  def test_fs_dir(self):
+    self.set_setting("FORCE_FILESYSTEM")
     self.do_runf(test_file('fs/test_dir.c'), 'success')
 
   def test_fs_base(self):
