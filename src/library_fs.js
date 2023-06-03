@@ -1357,24 +1357,35 @@ FS.staticInit();` +
       FS.mkdir('/proc/self/fd');
       FS.mount({
         mount: () => {
-          var node = FS.createNode(proc_self, 'fd', {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */, {{{ cDefs.S_IXUGO }}});
+          var node = MEMFS.createNode(proc_self, 'fd', {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */, {{{ cDefs.S_IXUGO }}});
           node.node_ops = {
+            getattr: MEMFS.node_ops.getattr,
             lookup: (parent, name) => {
               var fd = +name;
               var stream = FS.getStream(fd);
               if (!stream) throw new FS.ErrnoError({{{ cDefs.EBADF }}});
-              var ret = {
-                parent: null,
-                mount: { mountpoint: 'fake' },
-                node_ops: { readlink: () => stream.path },
-              };
-              ret.parent = ret; // make it look like a simple root node
+              var ret = MEMFS.createNode(parent, name, {{{ cDefs.S_IFLNK }}} | 448 /* 0700 */, 0);
+              ret.link = stream.path;
+              ret.node_ops = {
+                getattr: MEMFS.node_ops.getattr,
+                readlink: MEMFS.node_ops.readlink,
+              }
               return ret;
+            },
+            readdir: (node) => {
+              var entries = ['.', '..'];
+              for (const fd in FS.streams) {
+                if (FS.getStream(fd)) {
+                  entries.push("" + fd);
+                }
+              }
+              return entries;
             }
           };
           return node;
         }
       }, {}, '/proc/self/fd');
+
     },
     createStandardStreams: () => {
       // TODO deprecate the old functionality of a single
