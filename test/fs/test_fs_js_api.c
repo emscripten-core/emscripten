@@ -1,5 +1,6 @@
 #include <emscripten/emscripten.h>
 #include <stdio.h>
+#include <unistd.h>
 
 int main() {
     /********** test FS.open() **********/
@@ -39,8 +40,8 @@ int main() {
 
     /********** test FS.readlink() **********/
     EM_ASM(
-        FS.writeFile('readlinktestfile', "");
-        FS.symlink('readlinktestfile', 'readlinksymlink');
+        FS.writeFile('/readlinktestfile', "");
+        FS.symlink('/readlinktestfile', 'readlinksymlink');
 
         var symlinkString = FS.readlink('readlinksymlink');
         assert(symlinkString === '/readlinktestfile');
@@ -60,6 +61,10 @@ int main() {
         }
         assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */)
     );
+
+    // char* buf = malloc(4096);
+    // int nBytes = readlink("readlinksymlink", buf, 4096);
+    // printf("'%s' points to '%.*s'\n", "hi", (int) nBytes, buf);
 
     /********** test FS.close() **********/
     EM_ASM(

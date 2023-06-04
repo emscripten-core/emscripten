@@ -177,10 +177,16 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     },
     // TODO: readlink
     readlink: (path) => {
-      return FS.handleError(withStackSave(() => {
+      var buf = _malloc(4096);
+      var bytesRead = FS.handleError(withStackSave(() => {
         var pathBuffer = stringToUTF8OnStack(path);
-        return __wasmfs_readlink(pathBuffer);
+        return __wasmfs_readlink(pathBuffer, buf, 4096);
       }));
+      var ret = UTF8ArrayToString(new Uint8Array(HEAPU8.subarray(buf, buf + bytesRead)), 0);
+      console.log("Ret: ", ret);
+
+      _free(buf);
+      return ret;
     },
     // TODO: stat
     // TODO: lstat
