@@ -2317,6 +2317,7 @@ def phase_linker_setup(options, state, newargs):
       settings.REQUIRED_EXPORTS += [
         '_wasmfs_write_file',
         '_wasmfs_open',
+        '_wasmfs_allocate',
         '_wasmfs_close',
         '_wasmfs_mkdir',
         '_wasmfs_unlink',

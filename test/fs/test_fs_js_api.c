@@ -1,5 +1,7 @@
 #include <emscripten/emscripten.h>
 #include <stdio.h>
+#include <sys/stat.h>
+#include <assert.h>
 
 int main() {
     /********** test FS.open() **********/
@@ -37,6 +39,40 @@ int main() {
 #endif
     );
 
+    /********** test FS.allocate() **********/
+    EM_ASM(
+        FS.writeFile("allocatetestfile", 'a=1\nb=2\n');
+    );
+    struct stat s;
+    stat("allocatetestfile", &s);
+    assert(s.st_size == 8);
+
+    EM_ASM(
+        var stream = FS.open("allocatetestfile", "w");
+        FS.allocate(stream, 8, 10);
+    );
+    stat("allocatetestfile", &s);
+    assert(s.st_size == 18);
+
+    EM_ASM(
+        var stream = FS.open("allocatetestfile", "w");
+        FS.allocate(stream, 0, 4);
+    );
+    stat("allocatetestfile", &s);
+    assert(s.st_size == 4);
+
+    EM_ASM(
+        var stream = FS.open("allocatetestfile", "w");
+        
+        var ex;
+        try {
+            FS.allocate(stream, 0, -1);
+        } catch (err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+    );
+
     /********** test FS.close() **********/
     EM_ASM(
         FS.writeFile("closetestfile", 'a=1\nb=2\n');
@@ -58,6 +94,8 @@ int main() {
 
         assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */)
     );
+
+    remove("allocatetestfile");
 
     puts("success");
 }

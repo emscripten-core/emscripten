@@ -123,6 +123,15 @@ int _wasmfs_open(char* path, int flags, mode_t mode) {
   return err;
 }
 
+int _wasmfs_allocate(int fd, long off, long len) {
+  printf("Vals: fd: %d, off: %ld, len: %ld\n", fd, off, len);
+  int err = __syscall_fallocate(fd, 0, off, len);
+  if (err == -1) {
+    return errno;
+  }
+  return err;
+}
+
 int _wasmfs_unlink(char* path) {
   return __syscall_unlinkat(AT_FDCWD, (intptr_t)path, 0);
 }

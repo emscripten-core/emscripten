@@ -145,6 +145,12 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: read
     // TODO: write
     // TODO: allocate
+    allocate: (fd, offset, length) => {
+      if (length < 0) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
+      return FS.handleError(__wasmfs_allocate(fd, offset, length));
+    },
     // TODO: mmap
     // TODO: msync
     // TODO: munmap
