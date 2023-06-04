@@ -108,7 +108,21 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         return __wasmfs_mkdir({{{ to64('buffer') }}}, mode);
       });
     },
+      // testing data
     // TODO: mkdirTree
+    // Creates a whole directory tree chain if it doesn't yet exist
+    mkdirTree: (path, mode) => {
+        var dirs = path.split('/');
+        var d = '';
+        for (var i = 0; i < dirs.length; ++i) {
+          if (!dirs[i]) continue;
+          d += '/' + dirs[i];
+          return withStackSave(() => {
+            var buffer = allocateUTF8OnStack(d);
+            __wasmfs_mkdir({{{ to64('buffer') }}}, mode);
+          });
+        }
+    },
     // TDOO: rmdir
     rmdir: (path) => {
       return withStackSave(() => {

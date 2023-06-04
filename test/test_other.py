@@ -12515,6 +12515,10 @@ Module['postRun'] = function() {{
     self.do_run_in_out_file_test('wasmfs/wasmfs_mkdir.c')
 
   @also_with_wasmfs
+  def test_unistd_mkdir_tree(self):
+    self.do_run_in_out_file_test('wasmfs/wasmfs_mkdir_tree.c')
+
+  @also_with_wasmfs
   def test_unistd_cwd(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_chdir.c')
 
