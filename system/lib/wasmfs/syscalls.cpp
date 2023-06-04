@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
+#include <stdio.h>
 
 #include "backend.h"
 #include "file.h"
@@ -1056,6 +1057,7 @@ int __syscall_symlinkat(intptr_t target, int newdirfd, intptr_t linkpath) {
   if (!lockedParent.insertSymlink(childName, (char*)target)) {
     return -EPERM;
   }
+  printf("Target: '%.*s'\n", 4096, (char*)target);
   return 0;
 }
 

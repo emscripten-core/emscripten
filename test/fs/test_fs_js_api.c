@@ -41,9 +41,10 @@ int main() {
     /********** test FS.readlink() **********/
     EM_ASM(
         FS.writeFile('/readlinktestfile', "");
-        FS.symlink('/readlinktestfile', 'readlinksymlink');
+        FS.symlink('readlinktestfile', 'readlinksymlink');
 
         var symlinkString = FS.readlink('readlinksymlink');
+        console.log("sym: ", symlinkString);
         assert(symlinkString === '/readlinktestfile');
 
         var ex;
@@ -62,9 +63,9 @@ int main() {
         assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */)
     );
 
-    // char* buf = malloc(4096);
-    // int nBytes = readlink("readlinksymlink", buf, 4096);
-    // printf("'%s' points to '%.*s'\n", "hi", (int) nBytes, buf);
+    char* buf = malloc(4096);
+    int nBytes = readlink("readlinksymlink", buf, 4096);
+    printf("'%s' points to '%.*s'\n", "link", (int) nBytes, buf);
 
     /********** test FS.close() **********/
     EM_ASM(

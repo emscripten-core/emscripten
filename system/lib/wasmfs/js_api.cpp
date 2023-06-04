@@ -135,6 +135,7 @@ int _wasmfs_symlink(char* old_path, char* new_path) {
 
 int _wasmfs_readlink(char* path, char* buf, size_t bufsiz) {
   int err = __syscall_readlinkat(AT_FDCWD, (intptr_t)path, (intptr_t)buf, bufsiz);
+  printf("'%s' points to '%.*s'\n", "Hi", (int) err, buf);
   if (err == -1) {
     return errno;
   }
