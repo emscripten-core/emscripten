@@ -237,10 +237,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: syncfs
     // TODO: llseek
     llseek: (fd, offset, whence) => {
-      console.log("Here: " + fd + " " + offset + " " + whence);
-      var err = () => __wasmfs_llseek(fd, offset, whence);
-      console.log("JS Err: ", err);
-      return FS.handleError(err);
+      return FS.handleError(__wasmfs_llseek(fd, offset, whence));
     }
     // TODO: ioctl
 

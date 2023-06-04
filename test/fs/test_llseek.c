@@ -23,7 +23,7 @@ int main()
     }
     assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
 
-    if (FS.llseek(stream, 0, 1 /* SEEK_CUR */) === 0) {
+    if (FS.llseek(stream, 1, 1 /* SEEK_CUR */) === 1) {
       console.log("success");
     }
     FS.close(stream);
