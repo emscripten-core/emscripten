@@ -92,12 +92,13 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
       return ret;
     },
-    cwd: () => {
-      return UTF8ToString(__wasmfs_get_cwd());
-    },
 
 #if FORCE_FILESYSTEM
     // Full JS API support
+
+    cwd: () => {
+      return UTF8ToString(__wasmfs_get_cwd());
+    },
     mkdir: (path, mode) => {
       return withStackSave(() => {
         mode = mode !== undefined ? mode : 511 /* 0777 */;
