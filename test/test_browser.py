@@ -5222,6 +5222,17 @@ Module["preRun"].push(function () {
   def test_wasm_worker_malloc(self):
     self.btest(test_file('wasm_worker/malloc_wasm_worker.c'), expected='0', args=['-sWASM_WORKERS'])
 
+  # Stress tests emmalloc's realloc() in multiple Wasm Workers
+  @also_with_minimal_runtime
+  def test_wasm_worker_realloc(self):
+    self.btest(test_file('wasm_worker/realloc_wasm_worker.c'), expected='0',
+      args=['-sWASM_WORKERS',
+            '-sMALLOC=emmalloc-memvalidate', # Run internal validations for emmalloc
+            '-sALLOW_MEMORY_GROWTH', # Allow growing past initial size
+            '-sABORTING_MALLOC=0', # Do not abort when heap capacity is met
+            '-sMEMORY_GROWTH_LINEAR_STEP=0', # Make grow logic not reserve capacity early so that heap growth is triggered in worst case possible
+            '-sINITIAL_MEMORY=128KB']) # And likewise start with a tiny heap to get as many heap grows as possible
+
   # Tests Wasm Worker+pthreads simultaneously
   @also_with_minimal_runtime
   def test_wasm_worker_and_pthreads(self):
