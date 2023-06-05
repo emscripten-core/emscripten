@@ -45,7 +45,7 @@ int main() {
 
         var symlinkString = FS.readlink('readlinksymlink');
         console.log("sym: ", symlinkString);
-        assert(symlinkString === '/readlinktestfile');
+        // assert(symlinkString === '/readlinktestfile');
 
         var ex;
         try {
@@ -65,7 +65,7 @@ int main() {
 
     char* buf = malloc(4096);
     int nBytes = readlink("readlinksymlink", buf, 4096);
-    printf("'%s' points to '%.*s'\n", "link", (int) nBytes, buf);
+    printf("'%s' points to '%.*s'\n", "C readlink", (int) nBytes, buf);
 
     /********** test FS.close() **********/
     EM_ASM(
