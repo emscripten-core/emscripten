@@ -7118,6 +7118,7 @@ Resolve failed: ""
 Resolved: "/" => "/"
 ''', self.run_js('a.out.js'))
 
+  @with_env_modify({'EMCC_LOGGING': '0'})  # this test assumes no emcc output
   def test_no_warnings(self):
     # build once before to make sure system libs etc. exist
     self.run_process([EMXX, test_file('hello_libcxx.cpp')])
@@ -11281,10 +11282,8 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.run_process([EMCC, '-c', '-o', 'main.o', 'main.bc'])
     self.assertTrue(building.is_wasm('main.o'))
 
+  @with_env_modify({'EMCC_LOGGING': '0'})  # this test assumes no emcc output
   def test_nostdlib(self):
-    # First ensure all the system libs are built
-    self.run_process([EMCC, test_file('unistd/close.c')])
-
     err = 'symbol exported via --export not found: __errno_location'
     self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nostdlib']))
     self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nodefaultlibs']))
