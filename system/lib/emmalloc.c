@@ -1098,7 +1098,6 @@ void *emmalloc_aligned_realloc(void *ptr, size_t alignment, size_t size)
   void *newptr = emmalloc_memalign(alignment, size);
   if (newptr)
   {
-    assert(emmalloc_usable_size(ptr) == region->size - REGION_HEADER_SIZE);
     memcpy(newptr, ptr, MIN(size, region->size - REGION_HEADER_SIZE));
     free(ptr);
   }
