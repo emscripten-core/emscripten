@@ -449,9 +449,33 @@ static int validate_memory_regions()
     Region *fr = freeRegionBuckets[i].next;
     while(fr != &freeRegionBuckets[i])
     {
-      if (!debug_region_is_consistent(fr) || !region_is_free(fr) || fr->prev != prev || fr->next == fr || fr->prev == fr)
+      if (!debug_region_is_consistent(fr))
       {
-        MAIN_THREAD_ASYNC_EM_ASM(console.log('In bucket '+$0+', free region 0x'+($1>>>0).toString(16)+', size: ' + ($2>>>0) + ' (size at ceiling: '+($3>>>0)+'), prev: 0x' + ($4>>>0).toString(16) + ', next: 0x' + ($5>>>0).toString(16) + ' is corrupt!'),
+        MAIN_THREAD_ASYNC_EM_ASM(console.log('In bucket '+$0+', free region 0x'+($1>>>0).toString(16)+', size: ' + ($2>>>0) + ' (size at ceiling: '+($3>>>0)+'), prev: 0x' + ($4>>>0).toString(16) + ', next: 0x' + ($5>>>0).toString(16) + ' is corrupt! The region sizes are inconsistent'),
+          i, fr, fr->size, size_of_region_from_ceiling(fr), fr->prev, fr->next);
+        return 1;
+      }
+      if (!region_is_free(fr))
+      {
+        MAIN_THREAD_ASYNC_EM_ASM(console.log('In bucket '+$0+', free region 0x'+($1>>>0).toString(16)+', size: ' + ($2>>>0) + ' (size at ceiling: '+($3>>>0)+'), prev: 0x' + ($4>>>0).toString(16) + ', next: 0x' + ($5>>>0).toString(16) + ' is corrupt! It should represent a free region, but is not.'),
+          i, fr, fr->size, size_of_region_from_ceiling(fr), fr->prev, fr->next);
+        return 1;
+      }
+      if (fr->prev != prev)
+      {
+        MAIN_THREAD_ASYNC_EM_ASM(console.log('In bucket '+$0+', free region 0x'+($1>>>0).toString(16)+', size: ' + ($2>>>0) + ' (size at ceiling: '+($3>>>0)+'), prev: 0x' + ($4>>>0).toString(16) + ', next: 0x' + ($5>>>0).toString(16) + ' is corrupt! The prev pointer does not point to the previous block, which was 0x' + ($6>>>0).toString(16)),
+          i, fr, fr->size, size_of_region_from_ceiling(fr), fr->prev, fr->next, prev);
+        return 1;
+      }
+      if (fr->next == fr)
+      {
+        MAIN_THREAD_ASYNC_EM_ASM(console.log('In bucket '+$0+', free region 0x'+($1>>>0).toString(16)+', size: ' + ($2>>>0) + ' (size at ceiling: '+($3>>>0)+'), prev: 0x' + ($4>>>0).toString(16) + ', next: 0x' + ($5>>>0).toString(16) + ' is corrupt! The next pointer points to itself!'),
+          i, fr, fr->size, size_of_region_from_ceiling(fr), fr->prev, fr->next);
+        return 1;
+      }
+      if (fr->prev == fr)
+      {
+        MAIN_THREAD_ASYNC_EM_ASM(console.log('In bucket '+$0+', free region 0x'+($1>>>0).toString(16)+', size: ' + ($2>>>0) + ' (size at ceiling: '+($3>>>0)+'), prev: 0x' + ($4>>>0).toString(16) + ', next: 0x' + ($5>>>0).toString(16) + ' is corrupt! The prev pointer points to itself!'),
           i, fr, fr->size, size_of_region_from_ceiling(fr), fr->prev, fr->next);
         return 1;
       }
