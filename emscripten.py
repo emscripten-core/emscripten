@@ -27,7 +27,7 @@ from tools import utils
 from tools import webassembly
 from tools import extract_metadata
 from tools.utils import exit_with_error, path_from_root
-from tools.shared import DEBUG, WINDOWS, asmjs_mangle
+from tools.shared import DEBUG, asmjs_mangle
 from tools.shared import treat_as_user_function, strip_prefix
 from tools.settings import settings
 
@@ -55,9 +55,8 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
 
 
 def write_output_file(outfile, module):
-  for i in range(len(module)): # do this loop carefully to save memory
-    module[i] = normalize_line_endings(module[i])
-    outfile.write(module[i])
+  for chunk in module:
+    outfile.write(chunk)
 
 
 def maybe_disable_filesystem(imports):
@@ -422,7 +421,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, js_syms):
       '// === Body ===\n\n' + extra_code + '\n')
 
   with open(outfile_js, 'w', encoding='utf-8') as out:
-    out.write(normalize_line_endings(pre))
+    out.write(pre)
     pre = None
 
     receiving = create_receiving(exports)
@@ -436,7 +435,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, js_syms):
 
     write_output_file(out, module)
 
-    out.write(normalize_line_endings(post))
+    out.write(post)
     module = None
 
 
@@ -925,16 +924,6 @@ function instrumentWasmExportsForMemory64(exports) {
     wasm64_wrappers += f"\n  exports['{f}'] = wasm64Wrapper_{sig}(exports['{f}']);"
   wasm64_wrappers += '\n  return exports\n}'
   return wasm64_wrappers
-
-
-def normalize_line_endings(text):
-  """Normalize to UNIX line endings.
-
-  On Windows, writing to text file will duplicate \r\n to \r\r\n otherwise.
-  """
-  if WINDOWS:
-    return text.replace('\r\n', '\n')
-  return text
 
 
 def run(in_wasm, out_wasm, outfile_js, memfile, js_syms):
