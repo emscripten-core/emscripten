@@ -238,7 +238,7 @@ mergeInto(LibraryManager.library, {
     // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
     var maxHeapSize = getHeapMax();
     if (requestedSize > maxHeapSize) {
-#if ASSERTIONS
+#if ASSERTIONS && ABORTING_MALLOC
       err(`Cannot enlarge memory, asked to go up to ${requestedSize} bytes, but the limit is ${maxHeapSize} bytes!`);
 #endif
 #if ABORTING_MALLOC
