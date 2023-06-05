@@ -2308,8 +2308,6 @@ def phase_linker_setup(options, state, newargs):
     settings.FILESYSTEM = 1
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
     settings.JS_LIBRARIES.append((0, 'library_wasmfs.js'))
-    # Add exports that are needed for general WasmFS usage, even without the
-    # user using the JS API (see below for that).
     settings.REQUIRED_EXPORTS += ['_wasmfs_read_file']
     if settings.FORCE_FILESYSTEM:
       # Add exports for the JS API. Like the old JS FS, WasmFS by default
