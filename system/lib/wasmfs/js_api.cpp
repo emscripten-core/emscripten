@@ -11,7 +11,7 @@
 #include "file.h"
 #include "paths.h"
 
-// Some APIs use a thread-local allocation that is only freed during shutdown.
+// Some APIs use a thread-local allocation for returned data that is not freed.
 // This is simpler and more efficient as it avoids the JS caller needing to free
 // the allocation (which would have both the overhead of free, and also of a
 // call back into wasm), but on the other hand it does mean more memory may be
@@ -42,11 +42,8 @@ void* _wasmfs_read_file(char* path) {
   // first 8 bytes. The remaining bytes will contain the buffer contents. This
   // allows the caller to use HEAPU8.subarray(buf + 8, buf + 8 + length).
   off_t size = file.st_size;
-  static thread_local std::unique_ptr<std::vector<char>> allocation;
-  if (!allocation) {
-    allocation = std::make_unique<std::vector<char>>();
-  }
-  allocation->resize(size + sizeof(size));
+  static thread_local char* allocation = nullptr;
+  allocation = (char*)realloc(allocation, size + sizeof(size));
 
   auto* result = (uint8_t*)allocation->data();
   *(off_t*)result = size;
@@ -218,10 +215,8 @@ void _wasmfs_readdir_finish(struct wasmfs_readdir_state* state) {
 
 char* _wasmfs_get_cwd(void) {
   // TODO: PATH_MAX is 4K atm, so it might be good to reduce this somehow.
-  static thread_local std::unique_ptr<std::vector<char>> path;
-  if (!path) {
-    path = std::make_unique<std::vector<char>>(PATH_MAX);
-  }
+  static thread_local char* allocation = nullptr;
+  allocation = (char*)realloc(allocation, PATH_MAX);
   return getcwd(path->data(), PATH_MAX);
 }
 
