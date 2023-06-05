@@ -45,15 +45,15 @@ int main() {
     );
     struct stat utimeStats;
     stat("utimetest", &utimeStats);
-    // printf("Times: %lld, %lld, %lld\n", utimeStats.st_atim.tv_sec, utimeStats.st_mtim.tv_sec, utimeStats.st_ctim.tv_sec);
-    // printf("Ns Times: %ld, %ld, %ld\n", utimeStats.st_atim.tv_nsec, utimeStats.st_mtim.tv_nsec, utimeStats.st_ctim.tv_nsec);
+    printf("Times: %lld, %lld, %lld\n", utimeStats.st_atim.tv_sec, utimeStats.st_mtim.tv_sec, utimeStats.st_ctim.tv_sec);
+    printf("Ns Times: %ld, %ld, %ld\n", utimeStats.st_atim.tv_nsec, utimeStats.st_mtim.tv_nsec, utimeStats.st_ctim.tv_nsec);
 
     EM_ASM(
         FS.utime('utimetest', 10500, 8000);
     );
     stat("utimetest", &utimeStats);
-    // printf("Times: %lld, %lld, %lld\n", utimeStats.st_atim.tv_sec, utimeStats.st_mtim.tv_sec, utimeStats.st_ctim.tv_sec);
-    // printf("Ns Times: %ld, %ld, %ld\n", utimeStats.st_atim.tv_nsec, utimeStats.st_mtim.tv_nsec, utimeStats.st_ctim.tv_nsec);
+    printf("Times: %lld, %lld, %lld\n", utimeStats.st_atim.tv_sec, utimeStats.st_mtim.tv_sec, utimeStats.st_ctim.tv_sec);
+    printf("Ns Times: %ld, %ld, %ld\n", utimeStats.st_atim.tv_nsec, utimeStats.st_mtim.tv_nsec, utimeStats.st_ctim.tv_nsec);
 #if WASMFS
     assert(utimeStats.st_atime == 10);
     assert(utimeStats.st_mtime == 8);
