@@ -42,13 +42,10 @@ void* _wasmfs_read_file(char* path) {
   // first 8 bytes. The remaining bytes will contain the buffer contents. This
   // allows the caller to use HEAPU8.subarray(buf + 8, buf + 8 + length).
   off_t size = file.st_size;
-  static thread_local std::unique_ptr<std::vector<char>> allocation;
-  if (!allocation) {
-    allocation = std::make_unique<std::vector<char>>();
-  }
-  allocation->resize(size + sizeof(size));
+  static thread_local std::vector<char> allocation;
+  allocation.resize(size + sizeof(size));
 
-  auto* result = (uint8_t*)allocation->data();
+  auto* result = (uint8_t*)allocation.data();
   *(off_t*)result = size;
 
   int fd = open(path, O_RDONLY);
@@ -218,11 +215,9 @@ void _wasmfs_readdir_finish(struct wasmfs_readdir_state* state) {
 
 char* _wasmfs_get_cwd(void) {
   // TODO: PATH_MAX is 4K atm, so it might be good to reduce this somehow.
-  static thread_local std::unique_ptr<std::vector<char>> path;
-  if (!path) {
-    path = std::make_unique<std::vector<char>>(PATH_MAX);
-  }
-  return getcwd(path->data(), PATH_MAX);
+  static thread_local std::vector<char> path;
+  path.resize(PATH_MAX);
+  return getcwd(path.data(), PATH_MAX);
 }
 
 } // extern "C"
