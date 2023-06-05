@@ -247,59 +247,89 @@ static int compute_free_list_bucket(size_t allocSize)
 
 #define DECODE_CEILING_SIZE(size) ((size_t)((size) & ~FREE_REGION_FLAG))
 
-static Region *prev_region(Region *region) // Needs MT lock
+static Region *prev_region(Region *region)
 {
+#ifdef EMMALLOC_MEMVALIDATE
+  ASSERT_MALLOC_IS_ACQUIRED();
+#endif
   size_t prevRegionSize = ((size_t*)region)[-1];
   prevRegionSize = DECODE_CEILING_SIZE(prevRegionSize);
   return (Region*)((uint8_t*)region - prevRegionSize);
 }
 
-static Region *next_region(Region *region) // Needs MT lock
+static Region *next_region(Region *region)
 {
+#ifdef EMMALLOC_MEMVALIDATE
+  ASSERT_MALLOC_IS_ACQUIRED();
+#endif
   return (Region*)((uint8_t*)region + region->size);
 }
 
-static size_t region_ceiling_size(Region *region) // Needs MT lock
+static size_t region_ceiling_size(Region *region)
 {
+#ifdef EMMALLOC_MEMVALIDATE
+  ASSERT_MALLOC_IS_ACQUIRED();
+#endif
   return ((size_t*)((uint8_t*)region + region->size))[-1];
 }
 
-static bool region_is_free(Region *r) // Needs MT lock
+static bool region_is_free(Region *r)
 {
+#ifdef EMMALLOC_MEMVALIDATE
+  ASSERT_MALLOC_IS_ACQUIRED();
+#endif
   return region_ceiling_size(r) & FREE_REGION_FLAG;
 }
 
-static bool region_is_in_use(Region *r) // Needs MT lock
+static bool region_is_in_use(Region *r)
 {
+#ifdef EMMALLOC_MEMVALIDATE
+  ASSERT_MALLOC_IS_ACQUIRED();
+#endif
   return r->size == region_ceiling_size(r);
 }
 
-static size_t size_of_region_from_ceiling(Region *r) // Needs MT lock
+static size_t size_of_region_from_ceiling(Region *r)
 {
+#ifdef EMMALLOC_MEMVALIDATE
+  ASSERT_MALLOC_IS_ACQUIRED();
+#endif
   size_t size = region_ceiling_size(r);
   return DECODE_CEILING_SIZE(size);
 }
 
-static bool debug_region_is_consistent(Region *r) // Needs MT lock
+static bool debug_region_is_consistent(Region *r)
 {
+#ifdef EMMALLOC_MEMVALIDATE
+  ASSERT_MALLOC_IS_ACQUIRED();
+#endif
   assert(r);
   size_t sizeAtBottom = r->size;
   size_t sizeAtCeiling = size_of_region_from_ceiling(r);
   return sizeAtBottom == sizeAtCeiling;
 }
 
-static uint8_t *region_payload_start_ptr(Region *region) // Needs MT lock
+static uint8_t *region_payload_start_ptr(Region *region)
 {
+#ifdef EMMALLOC_MEMVALIDATE
+  ASSERT_MALLOC_IS_ACQUIRED();
+#endif
   return (uint8_t*)region + sizeof(size_t);
 }
 
-static uint8_t *region_payload_end_ptr(Region *region) // Needs MT lock
+static uint8_t *region_payload_end_ptr(Region *region)
 {
+#ifdef EMMALLOC_MEMVALIDATE
+  ASSERT_MALLOC_IS_ACQUIRED();
+#endif
   return (uint8_t*)region + region->size - sizeof(size_t);
 }
 
-static void create_used_region(void *ptr, size_t size) // Needs MT lock
+static void create_used_region(void *ptr, size_t size)
 {
+#ifdef EMMALLOC_MEMVALIDATE
+  ASSERT_MALLOC_IS_ACQUIRED();
+#endif
   assert(ptr);
   assert(HAS_ALIGNMENT(ptr, sizeof(size_t)));
   assert(HAS_ALIGNMENT(size, sizeof(size_t)));
@@ -308,8 +338,11 @@ static void create_used_region(void *ptr, size_t size) // Needs MT lock
   ((size_t*)ptr)[(size/sizeof(size_t))-1] = size;
 }
 
-static void create_free_region(void *ptr, size_t size) // Needs MT lock
+static void create_free_region(void *ptr, size_t size)
 {
+#ifdef EMMALLOC_MEMVALIDATE
+  ASSERT_MALLOC_IS_ACQUIRED();
+#endif
   assert(ptr);
   assert(HAS_ALIGNMENT(ptr, sizeof(size_t)));
   assert(HAS_ALIGNMENT(size, sizeof(size_t)));
@@ -319,8 +352,11 @@ static void create_free_region(void *ptr, size_t size) // Needs MT lock
   ((size_t*)ptr)[(size/sizeof(size_t))-1] = size | FREE_REGION_FLAG;
 }
 
-static void prepend_to_free_list(Region *region, Region *prependTo) // Needs MT lock
+static void prepend_to_free_list(Region *region, Region *prependTo)
 {
+#ifdef EMMALLOC_MEMVALIDATE
+  ASSERT_MALLOC_IS_ACQUIRED();
+#endif
   assert(region);
   assert(prependTo);
   // N.b. the region we are prepending to is always the sentinel node,
@@ -334,8 +370,11 @@ static void prepend_to_free_list(Region *region, Region *prependTo) // Needs MT 
   region->prev->next = region;
 }
 
-static void unlink_from_free_list(Region *region) // Needs MT lock
+static void unlink_from_free_list(Region *region)
 {
+#ifdef EMMALLOC_MEMVALIDATE
+  ASSERT_MALLOC_IS_ACQUIRED();
+#endif
   assert(region);
   assert(region_is_free((Region*)region));
   assert(region->prev);
@@ -344,8 +383,11 @@ static void unlink_from_free_list(Region *region) // Needs MT lock
   region->next->prev = region->prev;
 }
 
-static void link_to_free_list(Region *freeRegion) // Needs MT lock
+static void link_to_free_list(Region *freeRegion)
 {
+#ifdef EMMALLOC_MEMVALIDATE
+  ASSERT_MALLOC_IS_ACQUIRED();
+#endif
   assert(freeRegion);
   assert(freeRegion->size >= sizeof(Region));
   int bucketIndex = compute_free_list_bucket(freeRegion->size-REGION_HEADER_SIZE);
