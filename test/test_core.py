@@ -27,7 +27,7 @@ import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, node_pthreads, also_with_wasm_bigint
-from common import read_file, read_binary, requires_v8, requires_node, compiler_for, crossplatform
+from common import read_file, read_binary, requires_v8, requires_node, requires_node_canary, compiler_for, crossplatform
 from common import with_both_sjlj
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
@@ -8449,7 +8449,7 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test('test_hello_world.c')
 
   # Test that pthread_join works correctly with asyncify.
-  @requires_node
+  @requires_node_canary
   def test_pthread_join_and_asyncify(self):
     # TODO Test with ASYNCIFY=1 https://github.com/emscripten-core/emscripten/issues/17552
     self.require_jspi()

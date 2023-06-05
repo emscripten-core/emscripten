@@ -190,6 +190,16 @@ def requires_node(func):
   return decorated
 
 
+def requires_node_canary(func):
+  assert callable(func)
+
+  def decorated(self, *args, **kwargs):
+    self.require_node_canary()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 def requires_wasm64(func):
   assert callable(func)
 
@@ -530,6 +540,18 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       else:
         self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
     self.require_engine(config.NODE_JS)
+
+  def require_node_canary(self):
+    if config.NODE_JS or config.NODE_JS in config.JS_ENGINES:
+      version = shared.check_node_version()
+      if version >= (20, 0, 0):
+        self.require_engine(config.NODE_JS)
+        return
+
+    if 'EMTEST_SKIP_NODE_CANARY' in os.environ:
+      self.skipTest('test requires node canary and EMTEST_SKIP_NODE_CANARY is set')
+    else:
+      self.fail('node canary required to run this test.  Use EMTEST_SKIP_NODE_CANARY to skip')
 
   def require_engine(self, engine):
     logger.debug(f'require_engine: {engine}')

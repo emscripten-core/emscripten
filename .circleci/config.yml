@@ -465,6 +465,8 @@ jobs:
           test_targets: "posixtest"
   test-core0:
     executor: bionic
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run-tests-linux:
           test_targets: "core0"
@@ -472,6 +474,7 @@ jobs:
     executor: bionic
     environment:
       EMTEST_BROWSER: "node"
+      EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run-tests-linux:
           # also run a few asan tests.  Run these with frozen_cache disabled
@@ -506,6 +509,8 @@ jobs:
       - upload-test-results
   test-core3:
     executor: bionic
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run-tests-linux:
           frozen_cache: false
@@ -556,11 +561,15 @@ jobs:
             wasmfs.test_fs_llseek
             wasmfs.test_freetype"
   test-wasm2js1:
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
     executor: bionic
     steps:
       - run-tests-linux:
           test_targets: "wasm2js1"
   test-wasm64:
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
     # We don't use `bionic` here since its tool old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
     executor: linux-python
@@ -628,6 +637,8 @@ jobs:
     # We don't use `bionic` here since its tool old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
     executor: linux-python
+    environment:
+      EMTEST_SKIP_V8: "1"
     steps:
       - checkout
       - run:
@@ -715,6 +726,7 @@ jobs:
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SIMD: "1"
       EMTEST_SKIP_SCONS: "1"
+      EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - checkout
       - run:
@@ -752,6 +764,7 @@ jobs:
       # test_sse1 (the only @crossplatform native clang test) currently fails
       # on the macOS bots).
       EMTEST_LACKS_NATIVE_CLANG: "1"
+      EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - setup-macos
       - attach_workspace:
