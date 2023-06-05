@@ -1,5 +1,6 @@
 #include <emscripten/emscripten.h>
 #include <stdio.h>
+#include <string.h>
 
 int main() {
     /********** test FS.open() **********/
@@ -37,6 +38,40 @@ int main() {
 #endif
     );
 
+    /********** test FS.mmap() **********/
+    EM_ASM(
+        FS.writeFile('mmaptest', 'a=1_b=2_');
+
+        var stream = FS.open('mmaptest', 'r');
+        assert(stream);
+
+        var mapped = FS.mmap(stream, 12, 0, 1 /* PROT_READ */, 1 /* MAP_SHARED */);
+        console.log(mapped);
+        var ret = new Uint8Array(Module.HEAP8.subarray(mapped.ptr, mapped.ptr + 12));
+        console.log(ret);
+        for (var i = 0; i < 12; i++) {
+            console.log("Char: ", String.fromCharCode(ret[i]));
+        }
+
+        ret[8] = ':'.charCodeAt(0);
+        ret[9] = 'x'.charCodeAt(0);
+        ret[10] = 'y'.charCodeAt(0);
+        ret[11] = 'z'.charCodeAt(0);
+
+        FS.msync(stream, ret, 0, 12, 0);
+
+        var out = FS.readFile('mmaptest', { encoding: 'utf8'});
+        console.log("Written: " + out);
+
+        // FS.munmap(stream);
+    );
+
+    FILE *fptr = fopen("mmaptest", "r");
+    char res[13];
+    fgets(res, 13, fptr);
+
+    printf("Res: %s, %d\n", res, strcmp(res, "a=1_b=2_:xyz"));
+
     /********** test FS.close() **********/
     EM_ASM(
         FS.writeFile("closetestfile", 'a=1\nb=2\n');
@@ -56,7 +91,7 @@ int main() {
             ex = err;
         }
 
-        assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */)
+        assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */);
     );
 
     puts("success");

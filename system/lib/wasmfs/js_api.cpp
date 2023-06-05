@@ -149,6 +149,34 @@ int _wasmfs_close(int fd) {
   return __wasi_fd_close(fd);
 }
 
+int _wasmfs_mmap(size_t length, int prot, int flags, int fd, size_t offset, void* addr) {
+  printf("Length: %lu, prot: %d, flags: %d, fd: %d, offset: %lu, addr: %p\n", length, prot, flags, fd, offset, addr);
+  int allocated;
+  int err = _mmap_js(length, prot, flags, fd, offset, &allocated, &addr);
+  if (err == -1) {
+    return errno;
+  }
+  return allocated;
+}
+
+int _wasmfs_msync(void* addr, size_t length, int prot, int flags, int fd, size_t offset) {
+  printf("Addr: %p, length: %lu, prot: %d, flags: %d, fd: %d, offset: %lu\n", addr, length, prot, flags, fd, offset);
+  int err = _msync_js((intptr_t)addr, length, prot, flags, fd, offset);
+  if (err == -1) {
+    return errno;
+  }
+  return err;
+}
+
+int _wasmfs_unmap(void* addr, size_t length, int prot, int flags, int fd, size_t offset) {
+  printf("Addr: %p, length: %lu, prot: %d, flags: %d, fd: %d, offset: %lu\n", addr, length, prot, flags, fd, offset);
+  int err = _munmap_js((intptr_t)addr, length, prot, flags, fd, offset);
+  if (err == -1) {
+    return errno;
+  }
+  return err;
+}
+
 // Helper method that identifies what a path is:
 //   ENOENT - if nothing exists there
 //   EISDIR - if it is a directory
