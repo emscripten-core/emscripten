@@ -151,14 +151,14 @@ mergeInto(LibraryManager.library, {
 #endif // ABORTING_MALLOC
 
 #if TEST_MEMORY_GROWTH_FAILS
-  $emscripten_realloc_buffer: function(size) {
+  $growMemory: function(size) {
     return false;
   },
 #else
 
   // Grows the wasm memory to the given byte size, and updates the JS views to
   // it. Returns 1 on success, 0 on error.
-  $emscripten_realloc_buffer: function(size) {
+  $growMemory: function(size) {
     var b = wasmMemory.buffer;
     var pages = (size - b.byteLength + 65535) >>> 16;
 #if RUNTIME_DEBUG
@@ -179,7 +179,7 @@ mergeInto(LibraryManager.library, {
       return 1 /*success*/;
     } catch(e) {
 #if ASSERTIONS
-      err(`emscripten_realloc_buffer: Attempted to grow heap from ${b.byteLength} bytes to ${size} bytes, but got error: ${e}`);
+      err(`growMemory: Attempted to grow heap from ${b.byteLength} bytes to ${size} bytes, but got error: ${e}`);
 #endif
     }
     // implicit 0 return to save code size (caller will cast "undefined" into 0
@@ -196,7 +196,7 @@ mergeInto(LibraryManager.library, {
     '$abortOnCannotGrowMemory',
 #endif
 #if ALLOW_MEMORY_GROWTH
-    '$emscripten_realloc_buffer',
+    '$growMemory',
 #endif
   ],
   emscripten_resize_heap: 'ip',
@@ -280,7 +280,7 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS == 2
       var t0 = _emscripten_get_now();
 #endif
-      var replacement = emscripten_realloc_buffer(newSize);
+      var replacement = growMemory(newSize);
 #if ASSERTIONS == 2
       var t1 = _emscripten_get_now();
       out(`Heap resize call from ${oldSize} to ${newSize} took ${(t1 - t0)} msecs. Success: ${!!replacement}`);
