@@ -247,40 +247,40 @@ static int compute_free_list_bucket(size_t allocSize)
 
 #define DECODE_CEILING_SIZE(size) ((size_t)((size) & ~FREE_REGION_FLAG))
 
-static Region *prev_region(Region *region)
+static Region *prev_region(Region *region) // Needs MT lock
 {
   size_t prevRegionSize = ((size_t*)region)[-1];
   prevRegionSize = DECODE_CEILING_SIZE(prevRegionSize);
   return (Region*)((uint8_t*)region - prevRegionSize);
 }
 
-static Region *next_region(Region *region)
+static Region *next_region(Region *region) // Needs MT lock
 {
   return (Region*)((uint8_t*)region + region->size);
 }
 
-static size_t region_ceiling_size(Region *region)
+static size_t region_ceiling_size(Region *region) // Needs MT lock
 {
   return ((size_t*)((uint8_t*)region + region->size))[-1];
 }
 
-static bool region_is_free(Region *r)
+static bool region_is_free(Region *r) // Needs MT lock
 {
   return region_ceiling_size(r) & FREE_REGION_FLAG;
 }
 
-static bool region_is_in_use(Region *r)
+static bool region_is_in_use(Region *r) // Needs MT lock
 {
   return r->size == region_ceiling_size(r);
 }
 
-static size_t size_of_region_from_ceiling(Region *r)
+static size_t size_of_region_from_ceiling(Region *r) // Needs MT lock
 {
   size_t size = region_ceiling_size(r);
   return DECODE_CEILING_SIZE(size);
 }
 
-static bool debug_region_is_consistent(Region *r)
+static bool debug_region_is_consistent(Region *r) // Needs MT lock
 {
   assert(r);
   size_t sizeAtBottom = r->size;
@@ -288,17 +288,17 @@ static bool debug_region_is_consistent(Region *r)
   return sizeAtBottom == sizeAtCeiling;
 }
 
-static uint8_t *region_payload_start_ptr(Region *region)
+static uint8_t *region_payload_start_ptr(Region *region) // Needs MT lock
 {
   return (uint8_t*)region + sizeof(size_t);
 }
 
-static uint8_t *region_payload_end_ptr(Region *region)
+static uint8_t *region_payload_end_ptr(Region *region) // Needs MT lock
 {
   return (uint8_t*)region + region->size - sizeof(size_t);
 }
 
-static void create_used_region(void *ptr, size_t size)
+static void create_used_region(void *ptr, size_t size) // Needs MT lock
 {
   assert(ptr);
   assert(HAS_ALIGNMENT(ptr, sizeof(size_t)));
@@ -308,7 +308,7 @@ static void create_used_region(void *ptr, size_t size)
   ((size_t*)ptr)[(size/sizeof(size_t))-1] = size;
 }
 
-static void create_free_region(void *ptr, size_t size)
+static void create_free_region(void *ptr, size_t size) // Needs MT lock
 {
   assert(ptr);
   assert(HAS_ALIGNMENT(ptr, sizeof(size_t)));
@@ -319,7 +319,7 @@ static void create_free_region(void *ptr, size_t size)
   ((size_t*)ptr)[(size/sizeof(size_t))-1] = size | FREE_REGION_FLAG;
 }
 
-static void prepend_to_free_list(Region *region, Region *prependTo)
+static void prepend_to_free_list(Region *region, Region *prependTo) // Needs MT lock
 {
   assert(region);
   assert(prependTo);
@@ -334,7 +334,7 @@ static void prepend_to_free_list(Region *region, Region *prependTo)
   region->prev->next = region;
 }
 
-static void unlink_from_free_list(Region *region)
+static void unlink_from_free_list(Region *region) // Needs MT lock
 {
   assert(region);
   assert(region_is_free((Region*)region));
@@ -344,7 +344,7 @@ static void unlink_from_free_list(Region *region)
   region->next->prev = region->prev;
 }
 
-static void link_to_free_list(Region *freeRegion)
+static void link_to_free_list(Region *freeRegion) // Needs MT lock
 {
   assert(freeRegion);
   assert(freeRegion->size >= sizeof(Region));
@@ -861,13 +861,14 @@ size_t emmalloc_usable_size(void *ptr)
   Region *region = (Region*)(regionStartPtr);
   assert(HAS_ALIGNMENT(region, sizeof(size_t)));
 
-  MALLOC_ACQUIRE();
-
   size_t size = region->size;
   assert(size >= sizeof(Region));
-  assert(region_is_in_use(region));
 
+#ifndef NDEBUG
+  MALLOC_ACQUIRE(); // region_is_in_use() needs MT lock
+  assert(region_is_in_use(region));
   MALLOC_RELEASE();
+#endif
 
   return size - REGION_HEADER_SIZE;
 }
@@ -1073,6 +1074,7 @@ void *emmalloc_aligned_realloc(void *ptr, size_t alignment, size_t size)
   void *newptr = emmalloc_memalign(alignment, size);
   if (newptr)
   {
+    assert(emmalloc_usable_size(ptr) == region->size - REGION_HEADER_SIZE);
     memcpy(newptr, ptr, MIN(size, region->size - REGION_HEADER_SIZE));
     free(ptr);
   }
