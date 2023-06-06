@@ -230,10 +230,7 @@ def with_asyncify_and_stack_switching(f):
   def metafunc(self, stack_switching):
     if stack_switching:
       self.set_setting('ASYNCIFY', 2)
-      self.require_v8()
-      # enable stack switching and other relevant features (like reference types
-      # for the return value of externref)
-      self.v8_args.append('--experimental-wasm-stack-switching')
+      self.require_jspi()
       if not self.is_wasm():
         self.skipTest('wasm2js does not support WebAssembly.Suspender yet')
       # emcc warns about stack switching being experimental, and we build with
@@ -8882,7 +8879,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
       # Need to use `-g` to get proper line numbers in asm.js
       self.emcc_args += ['-g']
     self.do_runf(test_file('core/test_ubsan_minimal_too_many_errors.c'),
-                 expected_output='ubsan: add-overflow\n' * 20 + 'ubsan: too many errors\n')
+                 expected_output='ubsan: add-overflow by 0x[0-9a-f]*\n' * 20 + 'ubsan: too many errors\n',
+                 regex=True)
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
   @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
@@ -8895,7 +8893,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
       # Need to use `-g` to get proper line numbers in asm.js
       self.emcc_args += ['-g']
     self.do_runf(test_file('core/test_ubsan_minimal_errors_same_place.c'),
-                 expected_output='ubsan: add-overflow\n' * 5)
+                 expected_output='ubsan: add-overflow by 0x[0-9a-z]*\n' * 5,
+                 regex=True)
 
   @parameterized({
     'fsanitize_undefined': (['-fsanitize=undefined'],),
