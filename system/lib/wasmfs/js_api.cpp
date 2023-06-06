@@ -175,6 +175,22 @@ int _wasmfs_close(int fd) {
   return __wasi_fd_close(fd);
 }
 
+int _wasmfs_stat(char* path, struct stat* statBuf) {
+  int err = __syscall_stat64((intptr_t)path, (intptr_t)statBuf);
+  if (err == -1) {
+    return errno;
+  }
+  return err;
+}
+
+int _wasmfs_lstat(char* path, struct stat* statBuf) {
+  int err = __syscall_lstat64((intptr_t)path, (intptr_t)statBuf);
+  if (err == -1) {
+    return errno;
+  }
+  return err;
+}
+
 // Helper method that identifies what a path is:
 //   ENOENT - if nothing exists there
 //   EISDIR - if it is a directory
