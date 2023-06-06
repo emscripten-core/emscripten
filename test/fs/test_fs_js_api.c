@@ -123,5 +123,8 @@ int main() {
     assert(S_ISREG(stats.st_mode));
     assert(stats.st_mode & 0400);
 
+    remove("mknodtest");
+    remove("createtest");
+
     puts("success");
 }
