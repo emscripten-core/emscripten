@@ -11,7 +11,7 @@
 #include "file.h"
 #include "paths.h"
 
-// Some APIs use a thread-local allocation that is only freed during shutdown.
+// Some APIs return data using a thread-local allocation that is never freed.
 // This is simpler and more efficient as it avoids the JS caller needing to free
 // the allocation (which would have both the overhead of free, and also of a
 // call back into wasm), but on the other hand it does mean more memory may be
