@@ -1870,8 +1870,8 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
 class libwasmfs_no_fs(Library):
   name = 'libwasmfs_no_fs'
 
-  def get_files(self):
-    return [utils.path_from_root('system/lib/wasmfs/no_fs.c')]
+  src_dir = 'system/lib/wasmfs'
+  src_files = ['no_fs.c']
 
   def can_use(self):
     return settings.WASMFS
