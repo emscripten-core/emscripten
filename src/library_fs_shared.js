@@ -105,5 +105,11 @@ mergeInto(LibraryManager.library, {
     if (canWrite) mode |= {{{ cDefs.S_IWUGO }}};
     return mode;
   },
-
 });
+
+// Normally only the FS things that the compiler sees are needed are included.
+// FORCE_FILESYSTEM makes us always include the FS object, which lets the user
+// call APIs on it from JS freely.
+if (FORCE_FILESYSTEM) {
+  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$FS');
+}
