@@ -24,6 +24,7 @@ See docs/process.md for more on how version tagging works.
   address zero that is normally done when `STACK_OVERFLOW_CHECK` is enabled.
   (#19487)
 - compiler-rt updated to LLVM 16. (#19506)
+- libcxx and libcxxabi updated to LLVM 16. (#)
 
 3.1.40 - 05/30/23
 -----------------
