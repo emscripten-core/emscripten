@@ -284,13 +284,19 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         __wasmfs_readdir_finish(state);
         return entries;
       });
-    }
+    },
     // TODO: mount
     // TODO: unmount
     // TODO: lookup
     // TODO: mknod
     // TODO: mkdev
-    // TODO: rename
+    rename: (oldPath, newPath) => {
+      return FS.handleError(withStackSave(() => {
+        var oldPathBuffer = stringToUTF8OnStack(oldPath);
+        var newPathBuffer = stringToUTF8OnStack(newPath);
+        return __wasmfs_rename(oldPathBuffer, newPathBuffer);
+      }));
+    },
     // TODO: syncfs
     // TODO: llseek
     // TODO: ioctl
