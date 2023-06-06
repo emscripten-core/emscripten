@@ -2326,6 +2326,8 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_read',
         '_wasmfs_pread',
         '_wasmfs_symlink',
+        '_wasmfs_stat',
+        '_wasmfs_lstat',
         '_wasmfs_chmod',
         '_wasmfs_fchmod',
         '_wasmfs_lchmod',

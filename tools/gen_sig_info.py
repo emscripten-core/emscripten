@@ -169,7 +169,10 @@ def ignore_symbol(s, cxx):
     return True
   if s.startswith('gl') and any(s.endswith(x) for x in ('NV', 'EXT', 'WEBGL', 'ARB', 'ANGLE')):
     return True
-  if cxx and s in ('__dlsym', '__asctime_r'):
+  if s in ('__stack_base', '__memory_base', '__table_base', '__global_base', '__heap_base',
+           '__stack_pointer', '__stack_high', '__stack_low'):
+    return True
+  if cxx and s in ('__asctime_r',):
     return True
   return False
 
@@ -381,7 +384,7 @@ def main(args):
   extract_sig_info(sig_info, {'LEGACY_GL_EMULATION': 1}, ['-DGLES'])
   extract_sig_info(sig_info, {'USE_GLFW': 2, 'FULL_ES3': 1, 'MAX_WEBGL_VERSION': 2})
   extract_sig_info(sig_info, {'STANDALONE_WASM': 1})
-  extract_sig_info(sig_info, {'MAIN_MODULE': 2, 'USE_WEBGPU': 1})
+  extract_sig_info(sig_info, {'MAIN_MODULE': 2, 'RELOCATABLE': 1, 'USE_WEBGPU': 1})
 
   write_sig_library(args.output, sig_info)
   if args.update:
