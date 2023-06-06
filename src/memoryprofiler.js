@@ -424,7 +424,7 @@ var emscriptenMemoryProfiler = {
   filterCallstackForHeapResize: function(callstack) {
     // Do not show Memoryprofiler's own callstacks in the callstack prints.
     var i = callstack.indexOf('emscripten_asm_const_iii');
-    var j = callstack.indexOf('emscripten_realloc_buffer');
+    var j = callstack.indexOf('growMemory');
     i = (i == -1) ? j : (j == -1 ? i : Math.min(i, j));
     if (i != -1) {
       callstack = callstack.substr(callstack.indexOf('\n', i)+1);
