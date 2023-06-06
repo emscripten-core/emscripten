@@ -255,7 +255,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TDOO: chown
     // TODO: lchown
     // TODO: fchown
-    // TODO: truncate
     truncate: (path, len) => {
       if (len < 0) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
@@ -265,7 +264,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         return __wasmfs_truncate(pathBuffer, len);
       }));
     },
-    // TODO: ftruncate
     ftruncate: (fd, len) => {
       if (len < 0) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
