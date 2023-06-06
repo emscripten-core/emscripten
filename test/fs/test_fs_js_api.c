@@ -41,7 +41,7 @@ int main() {
     EM_ASM(
         FS.mkdir('renamedir');
         FS.writeFile('renamedir/renametestfile', "");
-        FS.writeFile('toplevelfile', "");
+
         FS.rename('renamedir/renametestfile', 'renamedir/newname');
         var newnameStream = FS.open('renamedir/newname', 'r');
         assert(newnameStream);
@@ -56,12 +56,14 @@ int main() {
 
         
         try {
-            FS.rename('renamedir', 'renamedir/newname');
+            FS.rename('renamedir', 'renamedir/newdirname');
         } catch (err) {
             ex = err;
         }
+        // The old path should not be an ancestor of the new path.
         assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
 
+        FS.writeFile('toplevelfile', "");
         try {
             FS.rename('renamedir', 'toplevelfile');
         } catch (err) {

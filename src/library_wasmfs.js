@@ -253,12 +253,11 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: lookup
     // TODO: mknod
     // TODO: mkdev
-    // TODO: rename
-    rename: (old_path, new_path) => {
+    rename: (oldPath, newPath) => {
       return FS.handleError(withStackSave(() => {
-        var old_path_buffer = stringToUTF8OnStack(old_path);
-        var new_path_buffer = stringToUTF8OnStack(new_path);
-        return __wasmfs_rename(old_path_buffer, new_path_buffer);
+        var oldPathBuffer = stringToUTF8OnStack(oldPath);
+        var newPathBuffer = stringToUTF8OnStack(newPath);
+        return __wasmfs_rename(oldPathBuffer, newPathBuffer);
       }));
     },
     // TODO: syncfs
