@@ -3,7 +3,6 @@
 #include <emscripten/wasm_worker.h>
 #include <emscripten/threading.h>
 #include <assert.h>
-#include <stdio.h>
 
 volatile int pthread_ran = 0;
 
