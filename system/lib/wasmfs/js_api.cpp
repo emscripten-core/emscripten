@@ -11,6 +11,13 @@
 #include "file.h"
 #include "paths.h"
 
+// Some APIs return data using a thread-local allocation that is never freed.
+// This is simpler and more efficient as it avoids the JS caller needing to free
+// the allocation (which would have both the overhead of free, and also of a
+// call back into wasm), but on the other hand it does mean more memory may be
+// used. This seems a reasonable tradeoff as heavy workloads should ideally
+// avoid the JS API anyhow.
+
 using namespace wasmfs;
 
 extern "C" {
@@ -20,7 +27,6 @@ __wasi_fd_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend);
 // Copy the file specified by the pathname into JS.
 // Return a pointer to the JS buffer in HEAPU8.
 // The buffer will also contain the file length.
-// Caller must free the returned pointer.
 void* _wasmfs_read_file(char* path) {
   static_assert(sizeof(off_t) == 8, "File offset type must be 64-bit");
 
@@ -36,7 +42,11 @@ void* _wasmfs_read_file(char* path) {
   // first 8 bytes. The remaining bytes will contain the buffer contents. This
   // allows the caller to use HEAPU8.subarray(buf + 8, buf + 8 + length).
   off_t size = file.st_size;
-  uint8_t* result = (uint8_t*)malloc(size + sizeof(size));
+
+  static thread_local void* buffer = nullptr;
+  buffer = realloc(buffer, size + sizeof(size));
+
+  auto* result = (uint8_t*)buffer;
   *(off_t*)result = size;
 
   int fd = open(path, O_RDONLY);
@@ -244,6 +254,13 @@ void _wasmfs_readdir_finish(struct wasmfs_readdir_state* state) {
   }
   free(state->entries);
   free(state);
+}
+
+char* _wasmfs_get_cwd(void) {
+  // TODO: PATH_MAX is 4K atm, so it might be good to reduce this somehow.
+  static thread_local void* path = nullptr;
+  path = realloc(path, PATH_MAX);
+  return getcwd((char*)path, PATH_MAX);
 }
 
 } // extern "C"

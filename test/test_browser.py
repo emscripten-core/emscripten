@@ -749,6 +749,7 @@ If manually bisecting:
     # Test Emscripten-specific extensions to optimize SDL_LockSurface and SDL_UnlockSurface.
     self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-DTEST_SDL_LOCK_OPTS', '-lSDL', '-lGL'])
 
+  @also_with_wasmfs
   def test_sdl_image(self):
     # load an image file, get pixel data. Also O2 coverage for --preload-file, and memory-init
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
@@ -761,7 +762,6 @@ If manually bisecting:
           '-O2', '-lSDL', '-lGL',
           '--preload-file', dest, '-DSCREENSHOT_DIRNAME="' + dirname + '"', '-DSCREENSHOT_BASENAME="' + basename + '"', '--use-preload-plugins'
         ])
-      return
 
   @also_with_wasmfs
   def test_sdl_image_jpeg(self):
@@ -3722,6 +3722,7 @@ Module["preRun"].push(function () {
     self.run_process([EMCC, 'side2.c', '-sSIDE_MODULE', '-o', 'side2.wasm'])
     self.btest_exit(self.in_dir('main.c'), args=['-sMAIN_MODULE=2', 'side1.wasm', 'side2.wasm'])
 
+  @requires_threads
   def test_dynamic_link_pthread_many(self):
     # Test asynchronously loading two side modules during startup
     # They should always load in the same order

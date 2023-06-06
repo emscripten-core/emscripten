@@ -26,6 +26,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 #if FORCE_FILESYSTEM
     '$FS_modeStringToFlags',
     'malloc',
+    'free',
 #endif
   ],
   $FS : {
@@ -90,18 +91,15 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         ret = UTF8ArrayToString(ret, 0);
       }
 
-      _free(buf);
       return ret;
-    },
-    cwd: () => {
-      // TODO: Remove dependency on FS.cwd().
-      // User code should not be using FS.cwd().
-      // For file preloading, cwd should be '/' to begin with.
-      return '/';
     },
 
 #if FORCE_FILESYSTEM
     // Full JS API support
+
+    cwd: () => {
+      return UTF8ToString(__wasmfs_get_cwd());
+    },
     mkdir: (path, mode) => {
       return withStackSave(() => {
         mode = mode !== undefined ? mode : 511 /* 0777 */;
