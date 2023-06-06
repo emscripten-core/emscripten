@@ -342,13 +342,13 @@ var LibraryDylink = {
   _dlsym_catchup_js: function(handle, symbolIndex) {
     abort(dlopenMissingError);
   },
-  dlopen: function(handle) {
+  dlopen: function(filename, flags) {
     abort(dlopenMissingError);
   },
   emscripten_dlopen: function(handle, onsuccess, onerror, user_data) {
     abort(dlopenMissingError);
   },
-  __dlsym: function(handle, symbol) {
+  __dlsym: function(handle, symbol, ra) {
     abort(dlopenMissingError);
   },
 #else // MAIN_MODULE != 0

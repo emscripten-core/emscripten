@@ -143,6 +143,26 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       });
     },
     // TODO: read
+    read: (fd, buffer, offset, length, position) => {
+      var seeking = typeof position != 'undefined';
+
+      var dataBuffer = _malloc(length);
+
+      var bytesRead;
+      if (seeking) {
+        bytesRead = __wasmfs_pread(fd, dataBuffer, length, position);
+      } else {
+        bytesRead = __wasmfs_read(fd, dataBuffer, length);
+      }
+      bytesRead = FS.handleError(bytesRead);
+
+      for (var i = 0; i < length; i++) {
+        buffer[offset + i] = {{{ makeGetValue('dataBuffer', 'i', 'i8')}}}
+      }
+
+      _free(dataBuffer);
+      return bytesRead;
+    },
     // TODO: write
     // TODO: allocate
     // TODO: mmap
