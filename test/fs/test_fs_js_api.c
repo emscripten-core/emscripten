@@ -28,6 +28,41 @@ int main() {
         assert(createFileNotHere && createFileNotHere.fd >= 0);
     );
 
+    /********** test FS.rename() **********/
+    EM_ASM(
+        FS.mkdir('renamedir');
+        FS.writeFile('renamedir/renametestfile', "");
+
+        FS.rename('renamedir/renametestfile', 'renamedir/newname');
+        var newnameStream = FS.open('renamedir/newname', 'r');
+        assert(newnameStream);
+
+        var ex;
+        try {
+            FS.open('renamedir/renametestfile', 'r');
+        } catch (err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+
+        
+        try {
+            FS.rename('renamedir', 'renamedir/newdirname');
+        } catch (err) {
+            ex = err;
+        }
+        // The old path should not be an ancestor of the new path.
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+
+        FS.writeFile('toplevelfile', "");
+        try {
+            FS.rename('renamedir', 'toplevelfile');
+        } catch (err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 54 /* ENOTDIR */);
+    );
+    
     /********** test FS.read() **********/
     EM_ASM(
         FS.writeFile("readtestfile", 'a=1_b=2_');
@@ -94,6 +129,11 @@ int main() {
 
         assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */)
     );
+
+    remove("testfile");
+    remove("renametestfile");
+    remove("readtestfile");
+    remove("closetestfile");
 
     puts("success");
 }
