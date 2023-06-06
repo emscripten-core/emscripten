@@ -109,7 +109,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       });
     },
     // TODO: mkdirTree
-    // TDOO: rmdir
     rmdir: (path) => {
       return FS.handleError(withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
