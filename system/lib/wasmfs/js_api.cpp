@@ -145,14 +145,14 @@ int _wasmfs_lchmod(char* path, mode_t mode) {
   return __syscall_fchmodat(AT_FDCWD, (intptr_t)path, mode, AT_SYMLINK_NOFOLLOW);
 }
 
-<<<<<<< HEAD
 int _wasmfs_rename(char* oldpath, char* newpath) {
   int err = __syscall_renameat(AT_FDCWD, (intptr_t)oldpath, AT_FDCWD, (intptr_t)newpath);
   if (err == -1) {
     return errno;
   }
   return err;
-=======
+};
+
 int _wasmfs_read(int fd, void *buf, size_t count) {
   __wasi_iovec_t iovs[1];
   iovs[0].buf = (uint8_t *)buf;
@@ -177,7 +177,6 @@ int _wasmfs_pread(int fd, void *buf, size_t count, off_t offset) {
     return -err;
   }
   return numBytes;
->>>>>>> accfb24329f87f0354e561510ce2c6f0f1b1e1af
 }
 
 int _wasmfs_close(int fd) {
