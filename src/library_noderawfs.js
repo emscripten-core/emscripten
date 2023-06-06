@@ -69,16 +69,23 @@ mergeInto(LibraryManager.library, {
     stat: function() { return fs.statSync.apply(void 0, arguments); },
     lstat: function() { return fs.lstatSync.apply(void 0, arguments); },
     chmod: function() { fs.chmodSync.apply(void 0, arguments); },
-    fchmod: function() { fs.fchmodSync.apply(void 0, arguments); },
+    fchmod: function(fd, mode) {
+      var stream = FS.getStreamChecked(fd);
+      fs.fchmodSync(stream.nfd, mode);
+    },
     chown: function() { fs.chownSync.apply(void 0, arguments); },
-    fchown: function() { fs.fchownSync.apply(void 0, arguments); },
+    fchown: function(fd, owner, group) {
+      var stream = FS.getStreamChecked(fd);
+      fs.fchownSync(stream.nfd, owner, group);
+    },
     truncate: function() { fs.truncateSync.apply(void 0, arguments); },
     ftruncate: function(fd, len) {
       // See https://github.com/nodejs/node/issues/35632
       if (len < 0) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
-      fs.ftruncateSync.apply(void 0, arguments);
+      var stream = FS.getStreamChecked(fd);
+      fs.ftruncateSync(stream.nfd, len);
     },
     utime: function(path, atime, mtime) { fs.utimesSync(path, atime/1000, mtime/1000); },
     open: function(path, flags, mode) {
@@ -94,7 +101,7 @@ mergeInto(LibraryManager.library, {
       }
       var newMode = NODEFS.getMode(pathTruncated);
       var node = { id: st.ino, mode: newMode, node_ops: NODERAWFS, path: path }
-      return FS.createStream({ nfd: nfd, position: 0, path: path, flags: flags, node: node, seekable: true }, nfd);
+      return FS.createStream({ nfd: nfd, position: 0, path: path, flags: flags, node: node, seekable: true });
     },
     createStream: function(stream, fd) {
       // Call the original FS.createStream
@@ -106,16 +113,11 @@ mergeInto(LibraryManager.library, {
       }
       return rtn;
     },
-    closeStream: function(fd) {
-      if (FS.streams[fd]) {
-        FS.streams[fd].shared.refcnt--;
-      }
-      VFS.closeStream(fd);
-    },
     close: function(stream) {
-      FS.closeStream(stream.fd);
-      if (!stream.stream_ops && stream.shared.refcnt === 0) {
-        // this stream is created by in-memory filesystem        
+      VFS.closeStream(stream.fd);
+      if (!stream.stream_ops && --stream.shared.refcnt === 0) {
+        // This stream is created by our Node.js filesystem, close the
+        // native file descriptor when its reference count drops to 0.
         fs.closeSync(stream.nfd);
       }
     },

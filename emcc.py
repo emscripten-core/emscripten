@@ -2322,7 +2322,11 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_unlink',
         '_wasmfs_chdir',
         '_wasmfs_rmdir',
+        '_wasmfs_read',
+        '_wasmfs_pread',
         '_wasmfs_symlink',
+        '_wasmfs_stat',
+        '_wasmfs_lstat',
         '_wasmfs_chmod',
         '_wasmfs_fchmod',
         '_wasmfs_lchmod',
@@ -3222,9 +3226,6 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
       minified_worker = building.acorn_optimizer(worklet_output, ['minifyWhitespace'], return_output=True)
       open(worklet_output, 'w').write(minified_worker)
 
-  # track files that will need native eols
-  generated_text_files_with_native_eols = []
-
   if settings.MODULARIZE:
     modularize()
 
@@ -3271,9 +3272,6 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   # The JS is now final. Move it to its final location
   move_file(final_js, js_target)
 
-  if not settings.SINGLE_FILE:
-    generated_text_files_with_native_eols += [js_target]
-
   target_basename = unsuffixed_basename(target)
 
   # If we were asked to also generate HTML, do that
@@ -3290,8 +3288,8 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     diagnostics.warning('experimental', 'The SPLIT_MODULE setting is experimental and subject to change')
     do_split_module(wasm_target, options)
 
-  for f in generated_text_files_with_native_eols:
-    tools.line_endings.convert_line_endings_in_file(f, os.linesep, options.output_eol)
+  if not settings.SINGLE_FILE:
+    tools.line_endings.convert_line_endings_in_file(js_target, os.linesep, options.output_eol)
 
   if options.executable:
     make_js_executable(js_target)
@@ -3513,7 +3511,7 @@ def parse_args(newargs):
       logger.error('jcache is no longer supported')
     elif check_arg('--cache'):
       config.CACHE = os.path.normpath(consume_arg())
-      cache.setup(config.CACHE)
+      cache.setup()
       # Ensure child processes share the same cache (e.g. when using emcc to compiler system
       # libraries)
       os.environ['EM_CACHE'] = config.CACHE

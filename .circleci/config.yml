@@ -469,6 +469,7 @@ jobs:
             asan.test_dlfcn_basic
             asan.test_async_hello_stack_switching
             asan.test_cubescript
+            asan.test_wasm_worker_hello
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
             lsan.test_pthread_create"
@@ -528,6 +529,7 @@ jobs:
             wasmfs.test_futimens
             wasmfs.test_unistd_links_memfs
             wasmfs.test_fcntl_open
+            wasmfs.test_fs_js_api
             wasmfs.test_freetype"
   test-wasm2js1:
     executor: bionic
