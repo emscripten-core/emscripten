@@ -18,6 +18,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     '$stringToUTF8OnStack',
     '$withStackSave',
     '$readI53FromI64',
+    '$readI53FromU64',
     '$FS_createPreloadedFile',
     '$FS_getMode',
     // For FS.readFile
@@ -196,8 +197,46 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       });
     },
     // TODO: readlink
+    statBufToObject : (statBuf) => {
+      // i53/u53 are enough for times and ino in practice.
+      return {
+          dev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_dev, "u32") }}},
+          mode: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mode, "u32") }}},
+          nlink: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_nlink, "u32") }}},
+          uid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_uid, "u32") }}},
+          gid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_gid, "u32") }}},
+          rdev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_rdev, "u32") }}},
+          size: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_size, "i53") }}},
+          blksize: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blksize, "u32") }}},
+          blocks: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blocks, "u32") }}},
+          atime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_atim.tv_sec, "i53") }}},
+          mtime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mtim.tv_sec, "i53") }}},
+          ctime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ctim.tv_sec, "i53") }}},
+          ino: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, "u53") }}}
+      }
+    },
     // TODO: stat
+    stat: (path) => {
+      var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
+      FS.handleError(withStackSave(() => {
+        return __wasmfs_stat(stringToUTF8OnStack(path), statBuf);
+      }));
+      var stats = FS.statBufToObject(statBuf);
+      _free(statBuf);
+
+      return stats;
+    },
     // TODO: lstat
+    lstat: (path) => {
+      var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
+      FS.handleError(withStackSave(() => {
+        return __wasmfs_lstat(stringToUTF8OnStack(path), statBuf);
+      }));
+      var stats = FS.statBufToObject(statBuf);
+      _free(statBuf);
+
+      return stats;
+    },
     chmod: (path, mode) => {
       return FS.handleError(withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
@@ -307,7 +346,5 @@ FS.createPreloadedFile = FS_createPreloadedFile;
   },
   _wasmfs_copy_preloaded_file_data: function(index, buffer) {
     HEAPU8.set(wasmFSPreloadedFiles[index].fileData, buffer);
-  }
+  },
 });
-
-DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$FS');

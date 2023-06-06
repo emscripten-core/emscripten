@@ -213,3 +213,17 @@ weak int sigaltstack(const stack_t *restrict ss, stack_t *restrict old_ss) {
   errno = ENOSYS;
   return -1;
 }
+
+#ifndef __PIC__
+void __dl_seterr(const char*, ...);
+
+weak void *__dlsym(void *restrict p, const char *restrict s, void *restrict ra) {
+  __dl_seterr("dynamic linking not enabled");
+  return NULL;
+}
+
+weak void* dlopen(const char* file, int flags) {
+  __dl_seterr("dynamic linking not enabled");
+  return NULL;
+}
+#endif
