@@ -18,11 +18,14 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.41 (in development)
+3.1.42 (in development)
 -----------------------
 - The log message that emcc will sometime print (for example when auto-building
   system libraries) can now be completely supressed by running with
   `EMCC_LOGGING=0`.
+
+3.1.41 - 06/06/23
+-----------------
 - A new setting (`CHECK_NULL_WRITES`) was added to disabled the checking of
   address zero that is normally done when `STACK_OVERFLOW_CHECK` is enabled.
   (#19487)
