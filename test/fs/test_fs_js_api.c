@@ -9,17 +9,11 @@ int main() {
         var writeStream = FS.open('testfile', 'w');
         var writePlusStream = FS.open('testfile', 'w+');
         var appendStream = FS.open('testfile', 'a');
-#if WASMFS
-        assert(readStream >= 0);
-        assert(writeStream >= 0);
-        assert(writePlusStream >= 0);
-        assert(appendStream >= 0);
-#else
+
         assert(readStream && readStream.fd >= 0);
         assert(writeStream && writeStream.fd >= 0);
         assert(writePlusStream && writePlusStream.fd >= 0);
         assert(appendStream && appendStream.fd >= 0);
-#endif
 
         var ex;
         try {
@@ -30,11 +24,8 @@ int main() {
         assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
 
         var createFileNotHere = FS.open('filenothere', 'w+');
-#if WASMFS
-        assert(createFileNotHere >= 0);
-#else
+
         assert(createFileNotHere && createFileNotHere.fd >= 0);
-#endif
     );
 
     /********** test FS.rename() **********/
