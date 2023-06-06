@@ -163,7 +163,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       _free(dataBuffer);
       return bytesRead;
     },
-    // TODO: write
     // Note that canOwn is an optimization that we ignore for now in WasmFS.
     write: (fd, buffer, offset, length, position, canOwn) => {
       var seeking = typeof position != 'undefined';
