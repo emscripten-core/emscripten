@@ -1,3 +1,17 @@
+//
+// "No-FS" implementation for WasmFS. This file implements just enough of the
+// syscall API to support printf, in particular, enough for a program that
+// only does some writes files, but no open() or such. Then those writes must be
+// to the standard streams, and we can implement very simple printing for them
+// as opposed to linking in all of WasmFS.
+//
+// This uses weak linking, and as such it depends on all the normal syscalls
+// being implemented in a single file, which is the case (syscalls.cpp). That
+// way, if that single other file is included then all these methods get
+// overridden. (Otherwise, if we had multiple files, we could end up with a mix
+// of this file's functions and others.)
+//
+
 #include <emscripten.h>
 #include <wasi/api.h>
 

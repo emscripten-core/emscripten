@@ -3,8 +3,6 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-#include <wasi/api.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
