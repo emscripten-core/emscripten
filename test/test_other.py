@@ -10042,10 +10042,10 @@ int main () {
     'hello_webgl2_wasm': ('hello_webgl2', False),
     'hello_webgl2_wasm2js': ('hello_webgl2', True),
     'math': ('math', False),
-    'hello_wasm_worker': ('hello_wasm_worker', False, True),
+    'hello_wasm_worker': ('hello_wasm_worker', False, True, True),
   })
   @crossplatform
-  def test_minimal_runtime_code_size(self, test_name, js, compare_js_output=False):
+  def test_minimal_runtime_code_size(self, test_name, js, compare_js_output=False, clear_cache=False):
     smallest_code_size_args = ['-sMINIMAL_RUNTIME=2',
                                '-sENVIRONMENT=web',
                                '-sTEXTDECODER=2',
@@ -10111,6 +10111,9 @@ int main () {
     else:
       outputs += ['a.wasm']
       test_name += '_wasm'
+
+    if clear_cache:
+      self.run_process([EMCC, '--clear-cache'])
 
     if '-sSINGLE_FILE' in sources:
       outputs = ['a.html']
