@@ -70,18 +70,12 @@ mergeInto(LibraryManager.library, {
     lstat: function() { return fs.lstatSync.apply(void 0, arguments); },
     chmod: function() { fs.chmodSync.apply(void 0, arguments); },
     fchmod: function(fd, mode) {
-      var stream = FS.getStream(fd);
-      if (!stream) {
-        throw new FS.ErrnoError({{{ cDefs.EBADF }}});
-      }
+      var stream = FS.getStreamChecked(fd);
       fs.fchmodSync(stream.nfd, mode);
     },
     chown: function() { fs.chownSync.apply(void 0, arguments); },
     fchown: function(fd, owner, group) {
-      var stream = FS.getStream(fd);
-      if (!stream) {
-        throw new FS.ErrnoError({{{ cDefs.EBADF }}});
-      }
+      var stream = FS.getStreamChecked(fd);
       fs.fchownSync(stream.nfd, owner, group);
     },
     truncate: function() { fs.truncateSync.apply(void 0, arguments); },
@@ -90,10 +84,7 @@ mergeInto(LibraryManager.library, {
       if (len < 0) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
-      var stream = FS.getStream(fd);
-      if (!stream) {
-        throw new FS.ErrnoError({{{ cDefs.EBADF }}});
-      }
+      var stream = FS.getStreamChecked(fd);
       fs.ftruncateSync(stream.nfd, len);
     },
     utime: function(path, atime, mtime) { fs.utimesSync(path, atime/1000, mtime/1000); },
