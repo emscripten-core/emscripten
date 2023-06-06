@@ -23,6 +23,11 @@ See docs/process.md for more on how version tagging works.
 - The log message that emcc will sometime print (for example when auto-building
   system libraries) can now be completely supressed by running with
   `EMCC_LOGGING=0`.
+- Runtime dynamic linking symbols such as dlopen and dlsym will no longer cause
+  a linker error when building without `-sMAIN_MODULE`.  Instead stub functions
+  will be included that fail at runtime.  This matches the behaviour of other
+  libc functions that we don't implement.  For those that prefer to get a linker
+  error we have the `-sALLOW_UNIMPLEMENTED_SYSCALLS` settings. (#19527)
 
 3.1.41 - 06/06/23
 -----------------
