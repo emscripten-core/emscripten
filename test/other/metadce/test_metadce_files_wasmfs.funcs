@@ -6,9 +6,6 @@ $__cxx_global_array_dtor.3
 $__cxx_global_array_dtor.4
 $__cxx_global_array_dtor.5
 $__cxx_global_array_dtor.6
-$__cxx_global_array_dtor.7
-$__cxx_global_array_dtor.8
-$__cxxabiv1::\28anonymous\20namespace\29::run_dtors\28void*\29
 $__cxxabiv1::__base_class_type_info::has_unambiguous_public_base\28__cxxabiv1::__dynamic_cast_info*\2c\20void*\2c\20int\29\20const
 $__cxxabiv1::__base_class_type_info::search_above_dst\28__cxxabiv1::__dynamic_cast_info*\2c\20void\20const*\2c\20void\20const*\2c\20int\2c\20bool\29\20const
 $__cxxabiv1::__base_class_type_info::search_below_dst\28__cxxabiv1::__dynamic_cast_info*\2c\20void\20const*\2c\20int\2c\20bool\29\20const
@@ -37,7 +34,6 @@ $__unlockfile
 $__wasi_fd_close
 $__wasi_fd_write
 $__wasm_call_ctors
-$abort_message
 $close
 $decltype\28auto\29\20std::__2::__variant_detail::__visitation::__base::__dispatcher<1ul>::__dispatch\5babi:v160004\5d<std::__2::__variant_detail::__dtor<std::__2::__variant_detail::__traits<long\2c\20std::__2::shared_ptr<wasmfs::File>>\2c\20\28std::__2::__variant_detail::_Trait\291>::__destroy\5babi:v160004\5d\28\29::'lambda'\28auto&\29&&\2c\20std::__2::__variant_detail::__base<\28std::__2::__variant_detail::_Trait\291\2c\20long\2c\20std::__2::shared_ptr<wasmfs::File>>&>\28auto\2c\20std::__2::__variant_detail::__base<\28std::__2::__variant_detail::_Trait\291\2c\20long\2c\20std::__2::shared_ptr<wasmfs::File>>&\29
 $dlfree
