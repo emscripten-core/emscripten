@@ -331,7 +331,5 @@ FS.createPreloadedFile = FS_createPreloadedFile;
   },
   _wasmfs_copy_preloaded_file_data: function(index, buffer) {
     HEAPU8.set(wasmFSPreloadedFiles[index].fileData, buffer);
-  }
+  },
 });
-
-DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$FS');
