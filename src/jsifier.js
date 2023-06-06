@@ -434,12 +434,7 @@ function(${args}) {
       if (isFunction) {
         // Emit the body of a JS library function.
         if ((USE_ASAN || USE_LSAN || UBSAN_RUNTIME) && LibraryManager.library[symbol + '__noleakcheck']) {
-          contentText = modifyJSFunction(snippet, (args, body) => `
-function(${args}) {
-  return withBuiltinMalloc(function() {
-    ${body}
-  });
-}\n`);
+          contentText = modifyJSFunction(snippet, (args, body) => `(${args}) => withBuiltinMalloc(() => {${body}})`);
           deps.push('$withBuiltinMalloc');
         } else {
           contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.
@@ -447,7 +442,13 @@ function(${args}) {
         // Give the function the correct (mangled) name. Overwrite it if it's
         // already named.  This must happen after the last call to
         // modifyJSFunction which could have changed or removed the name.
-        contentText = contentText.replace(/function(?:\s+([^(]+))?\s*\(/, `function ${mangled}(`);
+        if (contentText.match(/^\s*([^}]*)\s*=>/s)) {
+          // Handle arrow functions
+          contentText = `var ${mangled} = ` + contentText + ';';
+        } else {
+          // Handle regular (non-arrow) functions
+          contentText = contentText.replace(/function(?:\s+([^(]+))?\s*\(/, `function ${mangled}(`);
+        }
       } else if (typeof snippet == 'string' && snippet.startsWith(';')) {
         // In JS libraries
         //   foo: ';[code here verbatim]'
