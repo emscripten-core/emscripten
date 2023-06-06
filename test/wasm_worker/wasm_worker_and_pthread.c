@@ -3,8 +3,10 @@
 #include <emscripten/wasm_worker.h>
 #include <emscripten/threading.h>
 #include <assert.h>
+#include <stdio.h>
 
 volatile int pthread_ran = 0;
+__thread int tls_data = 10;
 
 EM_JS(int, am_i_pthread, (), {
   return ENVIRONMENT_IS_PTHREAD;
@@ -42,6 +44,9 @@ void worker_main()
 
 int main()
 {
+  
+  printf("tls_data address %p %p\n", __builtin_wasm_tls_base(), &tls_data);
+
   pthread_t thread;
   pthread_create(&thread, NULL, thread_main, NULL);
 
