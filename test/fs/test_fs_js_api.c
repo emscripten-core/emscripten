@@ -137,7 +137,10 @@ int main() {
         assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */)
     );
 
+    remove("testfile");
     remove("renametestfile");
+    remove("readtestfile");
+    remove("closetestfile");
 
     puts("success");
 }
