@@ -748,7 +748,6 @@ def get_llvm_target():
 def init():
   set_version_globals()
   setup_temp_dirs()
-  cache.setup(config.CACHE)
 
 
 # ============================================================================
