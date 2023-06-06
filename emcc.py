@@ -2318,6 +2318,7 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_write_file',
         '_wasmfs_open',
         '_wasmfs_close',
+        '_wasmfs_rename',
         '_wasmfs_mkdir',
         '_wasmfs_unlink',
         '_wasmfs_chdir',
@@ -2334,6 +2335,7 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_readdir_start',
         '_wasmfs_readdir_get',
         '_wasmfs_readdir_finish',
+        '_wasmfs_get_cwd',
       ]
 
   if settings.FETCH and final_suffix in EXECUTABLE_ENDINGS:
