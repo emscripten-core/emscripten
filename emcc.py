@@ -2318,6 +2318,8 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_write_file',
         '_wasmfs_open',
         '_wasmfs_close',
+        '_wasmfs_write',
+        '_wasmfs_pwrite',
         '_wasmfs_rename',
         '_wasmfs_mkdir',
         '_wasmfs_unlink',
