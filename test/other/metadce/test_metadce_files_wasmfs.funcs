@@ -29,13 +29,11 @@ $__pthread_mutex_lock
 $__stdio_close
 $__stdio_seek
 $__stdio_write
-$__syscall_newfstatat
 $__time
 $__unlockfile
 $__wasi_fd_close
 $__wasi_fd_write
 $__wasm_call_ctors
-$_wasmfs_read_file
 $close
 $decltype\28auto\29\20std::__2::__variant_detail::__visitation::__base::__dispatcher<1ul>::__dispatch\5babi:v160004\5d<std::__2::__variant_detail::__dtor<std::__2::__variant_detail::__traits<long\2c\20std::__2::shared_ptr<wasmfs::File>>\2c\20\28std::__2::__variant_detail::_Trait\291>::__destroy\5babi:v160004\5d\28\29::'lambda'\28auto&\29&&\2c\20std::__2::__variant_detail::__base<\28std::__2::__variant_detail::_Trait\291\2c\20long\2c\20std::__2::shared_ptr<wasmfs::File>>&>\28auto\2c\20std::__2::__variant_detail::__base<\28std::__2::__variant_detail::_Trait\291\2c\20long\2c\20std::__2::shared_ptr<wasmfs::File>>&\29
 $dlfree
@@ -51,9 +49,6 @@ $operator\20new\28unsigned\20long\29
 $pthread_mutex_init
 $readAtOffset\28OffsetHandling\2c\20unsigned\20int\2c\20__wasi_iovec_t\20const*\2c\20unsigned\20long\2c\20unsigned\20long*\2c\20unsigned\20long\20long\29
 $sbrk
-$stackAlloc
-$stackRestore
-$stackSave
 $std::__2::__shared_ptr_emplace<wasmfs::MemoryDataFile\2c\20std::__2::allocator<wasmfs::MemoryDataFile>>::~__shared_ptr_emplace\28\29
 $std::__2::__shared_ptr_emplace<wasmfs::MemoryDataFile\2c\20std::__2::allocator<wasmfs::MemoryDataFile>>::~__shared_ptr_emplace\28\29.1
 $std::__2::__shared_ptr_emplace<wasmfs::MemoryDirectory\2c\20std::__2::allocator<wasmfs::MemoryDirectory>>::__on_zero_shared\28\29
