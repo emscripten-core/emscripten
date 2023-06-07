@@ -123,7 +123,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         return { fd : fd };
       });
     },
-<<<<<<< HEAD
     create: (path, mode) => {
       // Default settings copied from the legacy JS FS API.
       mode = mode !== undefined ? mode : 438 /* 0666 */;
@@ -131,14 +130,8 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       mode |= {{{ cDefs.S_IFREG }}};
       return FS.mknod(path, mode, 0);
     },
-    close: (fd) => {
-      return FS.handleError(-__wasmfs_close(fd));
-=======
-    // TODO: create
-    // TODO: close
     close: (stream) => {
       return FS.handleError(-__wasmfs_close(stream.fd));
->>>>>>> main
     },
     unlink: (path) => {
       return withStackSave(() => {
@@ -152,12 +145,8 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         return __wasmfs_chdir(buffer);
       });
     },
-<<<<<<< HEAD
-    read: (fd, buffer, offset, length, position) => {
-=======
     // TODO: read
     read: (stream, buffer, offset, length, position) => {
->>>>>>> main
       var seeking = typeof position != 'undefined';
 
       var dataBuffer = _malloc(length);
