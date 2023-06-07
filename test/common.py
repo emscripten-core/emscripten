@@ -963,6 +963,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return '\n'.join(lines)
 
   def run_js(self, filename, engine=None, args=None,
+             input=None,
              output_nicerizer=None,
              assert_returncode=0,
              interleaved_output=True):
@@ -987,6 +988,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       jsrun.run_js(filename, engine, args,
                    stdout=stdout,
                    stderr=stderr,
+                   input=input,
                    assert_returncode=assert_returncode)
     except subprocess.TimeoutExpired as e:
       timeout_error = e

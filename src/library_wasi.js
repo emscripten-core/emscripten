@@ -381,6 +381,31 @@ var WasiLibrary = {
 #endif
   },
 
+  fd_tell: function(fd, offset_addr) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
+    var stream = SYSCALLS.getStreamFromFD(fd);
+    var offset = FS.llseek(stream, 0, {{{ cDefs.SEEK_CUR }}});
+    {{{ makeSetValue('offset_addr', '0', 'offset', 'i64') }}};
+    return 0;
+#else
+    return {{{ cDefs.ESPIPE }}};
+#endif
+  },
+
+  fd_renumber: function(fd, to) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
+    var oldStream = SYSCALLS.getStreamFromFD(fd);
+    var newStream = SYSCALLS.getStreamFromFD(fd);
+    if (!oldStream || !newStream) return -{{{ cDefs.EINVAL }}};
+    var newfd = newStream.fd;
+    FS.close(newStream);
+    oldStream.fd = newfd;
+    return 0;
+#else
+    return {{{ cDefs.ESPIPE }}};
+#endif
+  },
+
   $wasiRightsToMuslOFlags: function(rights) {
 #if SYSCALL_DEBUG
     dbg(`wasiRightsToMuslOFlags: ${rights}`);

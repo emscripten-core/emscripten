@@ -83,7 +83,7 @@ def require_engine(engine):
     sys.exit(1)
 
 
-def run_js(filename, engine, args=None,
+def run_js(filename, engine, args=None, input=None,
            stdin=None, stdout=PIPE, stderr=None, cwd=None,
            full_output=False, assert_returncode=0, skip_check=False,
            timeout=DEFAULT_TIMEOUT):
@@ -104,6 +104,7 @@ def run_js(filename, engine, args=None,
         stdin=stdin,
         stdout=stdout,
         stderr=stderr,
+        input=input,
         cwd=cwd,
         timeout=timeout,
         universal_newlines=True)
