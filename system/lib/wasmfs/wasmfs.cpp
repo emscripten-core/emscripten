@@ -47,7 +47,7 @@ WasmFS::WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {
 // first allocation, which happens inside WasmFS code (since the WasmFS global
 // object creates some data structures). As a result LSan's atexit() destructor
 // will be called last, after WasmFS is cleaned up, since atexit() calls work
-// are FIFO (like a stack). But that is a problem, since if WasmFS has shut
+// are LIFO (like a stack). But that is a problem, since if WasmFS has shut
 // down and deallocated itself then the leak code cannot actually print any of
 // its findings, if it has any. To avoid that, define the LSan entry point as a
 // weak symbol, and call it; if LSan is not enabled this can be optimized out,
