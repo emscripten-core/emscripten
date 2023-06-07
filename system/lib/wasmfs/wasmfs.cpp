@@ -63,7 +63,7 @@ extern "C" void wasmfs_flush(void) {
   // Flush musl libc streams.
   fflush(0);
 
-  // Flush our own streams. TODO: flush all possible streams.
+  // Flush our own streams. TODO: flush all backends.
   (void)SpecialFiles::getStdout()->locked().flush();
   (void)SpecialFiles::getStderr()->locked().flush();
 }
