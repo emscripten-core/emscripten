@@ -3799,8 +3799,8 @@ function wrapSyscallFunction(x, library, isWasi) {
   // has disabled the filesystem or we have proven some other way that this will
   // not be called in practice, and do not need that code.
   if (!SYSCALLS_REQUIRE_FILESYSTEM && t.includes('FS.')) {
-    t = modifyFunction(t, function(name, args, body) {
-      return 'function ' + name + '(' + args + ') {\n' +
+    t = modifyJSFunction(t, function(args, body) {
+      return `function(${args}) {\n` +
              (ASSERTIONS ? "abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');\n" : '') +
              '}';
     });
@@ -3871,8 +3871,8 @@ function wrapSyscallFunction(x, library, isWasi) {
   post = handler + post;
 
   if (pre || post) {
-    t = modifyFunction(t, function(name, args, body) {
-      return `function ${name}(${args}) {\n${pre}${body}${post}}\n`;
+    t = modifyJSFunction(t, function(args, body) {
+      return `function(${args}) {\n${pre}${body}${post}}\n`;
     });
   }
 
