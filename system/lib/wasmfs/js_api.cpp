@@ -138,6 +138,7 @@ int _wasmfs_unlink(char* path) {
 }
 
 int _wasmfs_truncate(char *path, off_t length) {
+  printf("js_api: path: %p, size: %lld\n", path, length);
   int err = __syscall_truncate64((intptr_t)path, length);
   if (err == -1) {
     return errno;

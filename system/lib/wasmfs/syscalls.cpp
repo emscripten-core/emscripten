@@ -25,6 +25,8 @@
 #include <vector>
 #include <wasi/api.h>
 
+#include <stdio.h>
+
 #include "backend.h"
 #include "file.h"
 #include "file_table.h"
@@ -1235,6 +1237,7 @@ static int doTruncate(std::shared_ptr<File>& file, off_t size) {
 }
 
 int __syscall_truncate64(intptr_t path, uint64_t size) {
+  printf("sys: path: %ld, size: %llu\n", path, size);
   auto parsed = path::parseFile((char*)path);
   if (auto err = parsed.getError()) {
     return err;

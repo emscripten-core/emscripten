@@ -276,18 +276,9 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: lchown
     // TODO: fchown
     truncate: (path, len) => {
-      if (len < 0) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
-      }
-      return FS.handleError(withStackSave(() => {
-        var pathBuffer = stringToUTF8OnStack(path);
-        return __wasmfs_truncate(pathBuffer, len);
-      }));
+      return FS.handleError(withStackSave(() => (__wasmfs_truncate(stringToUTF8OnStack(path), len))));
     },
     ftruncate: (fd, len) => {
-      if (len < 0) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
-      }
       return FS.handleError(__wasmfs_ftruncate(fd, len));
     },
     // TODO: utime
