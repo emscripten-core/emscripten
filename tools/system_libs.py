@@ -1867,6 +1867,9 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
     return settings.WASMFS
 
 
+# Minimal syscall implementation, enough for printf. If this can be linked in
+# instead of the full WasmFS then it saves a lot of code size for simple
+# programs that don't need a full FS implementation.
 class libwasmfs_no_fs(Library):
   name = 'libwasmfs_no_fs'
 
@@ -2213,8 +2216,7 @@ def get_libs_to_link(args, forced, only_forced):
 
   if settings.WASMFS:
     # Link in the no-fs version first, so that if it provides all the needed
-    # system libraries then WasmFS is not linked in at all. This saves a lot of
-    # code size for simple programs that don't need a full FS implementation.
+    # system libraries then WasmFS is not linked in at all.
     add_library('libwasmfs_no_fs')
     add_library('libwasmfs')
 
