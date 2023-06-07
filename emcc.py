@@ -2082,11 +2082,6 @@ def phase_linker_setup(options, state, newargs):
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDylibs']
     settings.REQUIRED_EXPORTS += ['malloc']
 
-  if settings.INCLUDE_FULL_LIBRARY:
-    # If we are including the full JS library then also make sure to include all
-    # FS support, which includes JS library code as well.
-    settings.FORCE_FILESYSTEM = 1
-
   if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
     settings.LINKABLE = 1
 
