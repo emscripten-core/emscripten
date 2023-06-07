@@ -5814,6 +5814,9 @@ Module = {
   def test_readdir_empty(self):
     self.do_run_in_out_file_test('dirent/test_readdir_empty.c')
 
+  def test_readdir_unlink(self):
+    self.do_run_in_out_file_test('dirent/test_readdir_unlink.c')
+
   def test_stat(self):
     self.set_setting("FORCE_FILESYSTEM")
     self.do_runf(test_file('stat/test_stat.c'), 'success')
