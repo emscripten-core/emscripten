@@ -18,6 +18,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     '$stringToUTF8OnStack',
     '$withStackSave',
     '$readI53FromI64',
+    '$readI53FromU64',
     '$FS_createPreloadedFile',
     '$FS_getMode',
     // For FS.readFile
@@ -25,6 +26,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 #if FORCE_FILESYSTEM
     '$FS_modeStringToFlags',
     'malloc',
+    'free',
 #endif
   ],
   $FS : {
@@ -89,18 +91,15 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         ret = UTF8ArrayToString(ret, 0);
       }
 
-      _free(buf);
       return ret;
-    },
-    cwd: () => {
-      // TODO: Remove dependency on FS.cwd().
-      // User code should not be using FS.cwd().
-      // For file preloading, cwd should be '/' to begin with.
-      return '/';
     },
 
 #if FORCE_FILESYSTEM
     // Full JS API support
+
+    cwd: () => {
+      return UTF8ToString(__wasmfs_get_cwd());
+    },
     mkdir: (path, mode) => {
       return withStackSave(() => {
         mode = mode !== undefined ? mode : 511 /* 0777 */;
@@ -122,13 +121,14 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
       return withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
-        return FS.handleError(__wasmfs_open({{{ to64('buffer') }}}, flags, mode));
-      })
+        var fd = FS.handleError(__wasmfs_open({{{ to64('buffer') }}}, flags, mode));
+        return { fd : fd };
+      });
     },
     // TODO: create
     // TODO: close
-    close: (fd) => {
-      return FS.handleError(-__wasmfs_close(fd));
+    close: (stream) => {
+      return FS.handleError(-__wasmfs_close(stream.fd));
     },
     unlink: (path) => {
       return withStackSave(() => {
@@ -143,7 +143,46 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       });
     },
     // TODO: read
-    // TODO: write
+    read: (stream, buffer, offset, length, position) => {
+      var seeking = typeof position != 'undefined';
+
+      var dataBuffer = _malloc(length);
+
+      var bytesRead;
+      if (seeking) {
+        bytesRead = __wasmfs_pread(stream.fd, dataBuffer, length, position);
+      } else {
+        bytesRead = __wasmfs_read(stream.fd, dataBuffer, length);
+      }
+      bytesRead = FS.handleError(bytesRead);
+
+      for (var i = 0; i < length; i++) {
+        buffer[offset + i] = {{{ makeGetValue('dataBuffer', 'i', 'i8')}}}
+      }
+
+      _free(dataBuffer);
+      return bytesRead;
+    },
+    // Note that canOwn is an optimization that we ignore for now in WasmFS.
+    write: (stream, buffer, offset, length, position, canOwn) => {
+      var seeking = typeof position != 'undefined';
+
+      var dataBuffer = _malloc(length);
+      for (var i = 0; i < length; i++) {
+        {{{ makeSetValue('dataBuffer', 'i', 'buffer[offset + i]', 'i8') }}};
+      }
+
+      var bytesRead;
+      if (seeking) {
+        bytesRead = __wasmfs_pwrite(stream.fd, dataBuffer, length, position);
+      } else {
+        bytesRead = __wasmfs_write(stream.fd, dataBuffer, length);
+      }
+      bytesRead = FS.handleError(bytesRead);
+      _free(dataBuffer);
+
+      return bytesRead;
+    },
     // TODO: allocate
     allocate: (fd, offset, length) => {
       if (length < 0) {
@@ -182,8 +221,46 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       });
     },
     // TODO: readlink
+    statBufToObject : (statBuf) => {
+      // i53/u53 are enough for times and ino in practice.
+      return {
+          dev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_dev, "u32") }}},
+          mode: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mode, "u32") }}},
+          nlink: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_nlink, "u32") }}},
+          uid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_uid, "u32") }}},
+          gid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_gid, "u32") }}},
+          rdev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_rdev, "u32") }}},
+          size: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_size, "i53") }}},
+          blksize: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blksize, "u32") }}},
+          blocks: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blocks, "u32") }}},
+          atime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_atim.tv_sec, "i53") }}},
+          mtime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mtim.tv_sec, "i53") }}},
+          ctime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ctim.tv_sec, "i53") }}},
+          ino: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, "u53") }}}
+      }
+    },
     // TODO: stat
+    stat: (path) => {
+      var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
+      FS.handleError(withStackSave(() => {
+        return __wasmfs_stat(stringToUTF8OnStack(path), statBuf);
+      }));
+      var stats = FS.statBufToObject(statBuf);
+      _free(statBuf);
+
+      return stats;
+    },
     // TODO: lstat
+    lstat: (path) => {
+      var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
+      FS.handleError(withStackSave(() => {
+        return __wasmfs_lstat(stringToUTF8OnStack(path), statBuf);
+      }));
+      var stats = FS.statBufToObject(statBuf);
+      _free(statBuf);
+
+      return stats;
+    },
     chmod: (path, mode) => {
       return FS.handleError(withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
@@ -233,13 +310,19 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         __wasmfs_readdir_finish(state);
         return entries;
       });
-    }
+    },
     // TODO: mount
     // TODO: unmount
     // TODO: lookup
     // TODO: mknod
     // TODO: mkdev
-    // TODO: rename
+    rename: (oldPath, newPath) => {
+      return FS.handleError(withStackSave(() => {
+        var oldPathBuffer = stringToUTF8OnStack(oldPath);
+        var newPathBuffer = stringToUTF8OnStack(newPath);
+        return __wasmfs_rename(oldPathBuffer, newPathBuffer);
+      }));
+    },
     // TODO: syncfs
     // TODO: llseek
     // TODO: ioctl
@@ -278,7 +361,5 @@ FS.createPreloadedFile = FS_createPreloadedFile;
   },
   _wasmfs_copy_preloaded_file_data: function(index, buffer) {
     HEAPU8.set(wasmFSPreloadedFiles[index].fileData, buffer);
-  }
+  },
 });
-
-DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$FS');

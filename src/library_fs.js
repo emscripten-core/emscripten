@@ -381,6 +381,13 @@ FS.staticInit();` +
       }
       throw new FS.ErrnoError({{{ cDefs.EMFILE }}});
     },
+    getStreamChecked: (fd) => {
+      var stream = FS.getStream(fd);
+      if (!stream) {
+        throw new FS.ErrnoError({{{ cDefs.EBADF }}});
+      }
+      return stream;
+    },
     getStream: (fd) => FS.streams[fd],
     // TODO parameterize this function such that a stream
     // object isn't directly passed in. not possible until
@@ -911,10 +918,7 @@ FS.staticInit();` +
       FS.chmod(path, mode, true);
     },
     fchmod: (fd, mode) => {
-      var stream = FS.getStream(fd);
-      if (!stream) {
-        throw new FS.ErrnoError({{{ cDefs.EBADF }}});
-      }
+      var stream = FS.getStreamChecked(fd);
       FS.chmod(stream.node, mode);
     },
     chown: (path, uid, gid, dontFollow) => {
@@ -937,10 +941,7 @@ FS.staticInit();` +
       FS.chown(path, uid, gid, true);
     },
     fchown: (fd, uid, gid) => {
-      var stream = FS.getStream(fd);
-      if (!stream) {
-        throw new FS.ErrnoError({{{ cDefs.EBADF }}});
-      }
+      var stream = FS.getStreamChecked(fd);
       FS.chown(stream.node, uid, gid);
     },
     truncate: (path, len) => {
@@ -973,10 +974,7 @@ FS.staticInit();` +
       });
     },
     ftruncate: (fd, len) => {
-      var stream = FS.getStream(fd);
-      if (!stream) {
-        throw new FS.ErrnoError({{{ cDefs.EBADF }}});
-      }
+      var stream = FS.getStreamChecked(fd);
       if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_RDONLY}}}) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
@@ -1361,8 +1359,7 @@ FS.staticInit();` +
           node.node_ops = {
             lookup: (parent, name) => {
               var fd = +name;
-              var stream = FS.getStream(fd);
-              if (!stream) throw new FS.ErrnoError({{{ cDefs.EBADF }}});
+              var stream = FS.getStreamChecked(fd);
               var ret = {
                 parent: null,
                 mount: { mountpoint: 'fake' },
@@ -1873,7 +1870,3 @@ FS.staticInit();` +
 #endif
   },
 });
-
-if (FORCE_FILESYSTEM) {
-  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$FS');
-}
