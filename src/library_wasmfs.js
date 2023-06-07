@@ -183,12 +183,11 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
       return bytesRead;
     },
-    // TODO: allocate
-    allocate: (fd, offset, length) => {
+    allocate: (stream, offset, length) => {
       if (length < 0) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
-      return FS.handleError(__wasmfs_allocate(fd, offset, length));
+      return FS.handleError(__wasmfs_allocate(stream.fd, offset, length));
     },
     // TODO: mmap
     // TODO: msync
