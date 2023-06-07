@@ -108,14 +108,12 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       });
     },
     // TODO: mkdirTree
-    // TDOO: rmdir
     rmdir: (path) => {
       return withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
         return __wasmfs_rmdir(buffer);
       })
     },
-    // TODO: open
     open: (path, flags, mode) => {
       flags = typeof flags == 'string' ? FS_modeStringToFlags(flags) : flags;
       mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
@@ -125,8 +123,13 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         return { fd : fd };
       });
     },
-    // TODO: create
-    // TODO: close
+    create: (path, mode) => {
+      // Default settings copied from the legacy JS FS API.
+      mode = mode !== undefined ? mode : 438 /* 0666 */;
+      mode &= {{{ cDefs.S_IALLUGO }}};
+      mode |= {{{ cDefs.S_IFREG }}};
+      return FS.mknod(path, mode, 0);
+    },
     close: (stream) => {
       return FS.handleError(-__wasmfs_close(stream.fd));
     },
@@ -261,14 +264,12 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         return __wasmfs_chmod(buffer, mode);
       }));
     },
-    // TODO: lchmod
     lchmod: (path, mode) => {
       return FS.handleError(withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
         return __wasmfs_lchmod(buffer, mode);
       }));
     },
-    // TODO: fchmod
     fchmod: (fd, mode) => {
       return FS.handleError(__wasmfs_fchmod(fd, mode));
     },
@@ -308,7 +309,12 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: mount
     // TODO: unmount
     // TODO: lookup
-    // TODO: mknod
+    mknod: (path, mode, dev) => {
+      return FS.handleError(withStackSave(() => {
+        var pathBuffer = stringToUTF8OnStack(path);
+        return __wasmfs_mknod(pathBuffer, mode, dev);
+      }));
+    },
     // TODO: mkdev
     rename: (oldPath, newPath) => {
       return FS.handleError(withStackSave(() => {
