@@ -112,7 +112,7 @@ function runJSify() {
     // Automatically convert any incoming pointer arguments from BigInt
     // to double (this limits the range to int53).
     // And convert the return value if the function returns a pointer.
-    return modifyFunction(snippet, (name, args, body) => {
+    return modifyJSFunction(snippet, (args, body) => {
       let argLines = args.split('\n');
       argLines = argLines.map((line) => line.split('//')[0]);
       const argNames = argLines.join(' ').split(',').map((name) => name.trim());
@@ -138,7 +138,7 @@ function runJSify() {
         // body in an inner function.
         newArgs = newArgs.join(',');
         return `\
-function ${name}(${args}) {
+function(${args}) {
   var ret = ((${args}) => { ${body} })(${newArgs});
   return BigInt(ret);
 }`;
@@ -147,7 +147,7 @@ function ${name}(${args}) {
       // Otherwise no inner function is needed and we covert the arguments
       // before executing the function body.
       return `\
-function ${name}(${args}) {
+function(${args}) {
 ${argConvertions}
   ${body};
 }`;
@@ -162,17 +162,14 @@ ${argConvertions}
     // uniform.
     snippet = snippet.toString().replace(/\r\n/gm, '\n');
 
-    // name the function; overwrite if it's already named
-    snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function ' + mangled + '(');
-
     if (isStub) {
       return snippet;
     }
 
     // apply LIBRARY_DEBUG if relevant
     if (LIBRARY_DEBUG && !isJsOnlySymbol(symbol)) {
-      snippet = modifyFunction(snippet, (name, args, body) => `\
-function ${name}(${args}) {
+      snippet = modifyJSFunction(snippet, (args, body) => `\
+function(${args}) {
   var ret = (function() { if (runtimeDebug) err("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
   ${body}
   }).apply(this, arguments);
@@ -189,8 +186,8 @@ function ${name}(${args}) {
         }
         const sync = proxyingMode === 'sync';
         if (PTHREADS) {
-          snippet = modifyFunction(snippet, (name, args, body) => `
-function ${name}(${args}) {
+          snippet = modifyJSFunction(snippet, (args, body) => `
+function(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
   return proxyToMainThread(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
 ${body}
@@ -198,9 +195,9 @@ ${body}
         } else if (WASM_WORKERS && ASSERTIONS) {
           // In ASSERTIONS builds add runtime checks that proxied functions are not attempted to be called in Wasm Workers
           // (since there is no automatic proxying architecture available)
-          snippet = modifyFunction(snippet, (name, args, body) => `
-function ${name}(${args}) {
-  assert(!ENVIRONMENT_IS_WASM_WORKER, "Attempted to call proxied function '${name}' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!");
+          snippet = modifyJSFunction(snippet, (args, body) => `
+function(${args}) {
+  assert(!ENVIRONMENT_IS_WASM_WORKER, "Attempted to call proxied function '${mangled}' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!");
   ${body}
 }\n`);
         }
@@ -437,8 +434,8 @@ function ${name}(${args}) {
       if (isFunction) {
         // Emit the body of a JS library function.
         if ((USE_ASAN || USE_LSAN || UBSAN_RUNTIME) && LibraryManager.library[symbol + '__noleakcheck']) {
-          contentText = modifyFunction(snippet, (name, args, body) => `
-function ${name}(${args}) {
+          contentText = modifyJSFunction(snippet, (args, body) => `
+function(${args}) {
   return withBuiltinMalloc(function() {
     ${body}
   });
@@ -447,6 +444,10 @@ function ${name}(${args}) {
         } else {
           contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.
         }
+        // Give the function the correct (mangled) name. Overwrite it if it's
+        // already named.  This must happen after the last call to
+        // modifyJSFunction which could have changed or removed the name.
+        contentText = contentText.replace(/function(?:\s+([^(]+))?\s*\(/, `function ${mangled}(`);
       } else if (typeof snippet == 'string' && snippet.startsWith(';')) {
         // In JS libraries
         //   foo: ';[code here verbatim]'

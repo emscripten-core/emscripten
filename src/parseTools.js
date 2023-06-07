@@ -684,18 +684,16 @@ function makeRetainedCompilerSettings() {
 const WASM_PAGE_SIZE = 65536;
 
 // Receives a function as text, and a function that constructs a modified
-// function, to which we pass the parsed-out name, arguments, body, and possible
+// function, to which we pass the parsed-out arguments, body, and possible
 // "async" prefix of the input function. Returns the output of that function.
-function modifyFunction(text, func) {
+function modifyJSFunction(text, func) {
   // Match a function with a name.
   let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   let async_;
-  let name;
   let args;
   let rest;
   if (match) {
     async_ = match[1] || '';
-    name = match[2];
     args = match[3];
     rest = text.substr(match[0].length);
   } else {
@@ -703,7 +701,6 @@ function modifyFunction(text, func) {
     // for both, but it would be more complex).
     match = text.match(/^\s*(async\s+)?function\(([^)]*)\)/);
     assert(match, 'could not match function ' + text + '.');
-    name = '';
     async_ = match[1] || '';
     args = match[2];
     rest = text.substr(match[0].length);
@@ -712,7 +709,7 @@ function modifyFunction(text, func) {
   assert(bodyStart >= 0);
   const bodyEnd = rest.lastIndexOf('}');
   assert(bodyEnd > 0);
-  return func(name, args, rest.substring(bodyStart + 1, bodyEnd), async_);
+  return func(args, rest.substring(bodyStart + 1, bodyEnd), async_);
 }
 
 function runIfMainThread(text) {

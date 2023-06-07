@@ -28,6 +28,10 @@ See docs/process.md for more on how version tagging works.
   will be included that fail at runtime.  This matches the behaviour of other
   libc functions that we don't implement.  For those that prefer to get a linker
   error we have the `-sALLOW_UNIMPLEMENTED_SYSCALLS` settings. (#19527)
+- The `modifyFunction` helper in `parseTools.js` was renamed to
+  `modifyJSFunction` and its callback function no longer takes the name of the
+  function being modified.  The name is not relevant for JS library functions
+  and can be safely ignored.
 
 3.1.41 - 06/06/23
 -----------------
