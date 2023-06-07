@@ -2335,15 +2335,14 @@ var LibraryHTML5 = {
         // TODO: Perhaps autoResizeViewport should only be true if FBO 0 is currently active?
         autoResizeViewport = (prevViewport[0] === 0 && prevViewport[1] === 0 && prevViewport[2] === canvas.width && prevViewport[3] === canvas.height);
 #if GL_DEBUG
-        dbg('Resizing canvas from ' + canvas.width + 'x' + canvas.height + ' to ' + width + 'x' + height + '. Previous GL viewport size was ' 
-          + prevViewport + ', so autoResizeViewport=' + autoResizeViewport);
+        dbg(`Resizing canvas from ${canvas.width}x${canvas.height} to ${width}x${height}. Previous GL viewport size was ${prevViewport}, so autoResizeViewport=${autoResizeViewport}`);
 #endif
       }
       canvas.width = width;
       canvas.height = height;
       if (autoResizeViewport) {
 #if GL_DEBUG
-        dbg('Automatically resizing GL viewport to cover whole render target ' + width + 'x' + height);
+        dbg(`Automatically resizing GL viewport to cover whole render target ${width}x${height}`);
 #endif
         // TODO: Add -sCANVAS_RESIZE_SETS_GL_VIEWPORT=0/1 option (default=1). This is commonly done and several graphics engines depend on this,
         // but this can be quite disruptive.
@@ -2408,7 +2407,7 @@ var LibraryHTML5 = {
   emscripten_set_canvas_element_size__deps: ['$JSEvents', '$setCanvasElementSizeCallingThread', '$setCanvasElementSizeMainThread', '$findCanvasEventTarget'],
   emscripten_set_canvas_element_size: function(target, width, height) {
 #if GL_DEBUG
-    dbg('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
+    dbg(`emscripten_set_canvas_element_size(target=${target},width=${width},height=${height}`);
 #endif
     var canvas = findCanvasEventTarget(target);
     if (canvas) {
@@ -2420,7 +2419,7 @@ var LibraryHTML5 = {
   emscripten_set_canvas_element_size__deps: ['$JSEvents', '$findCanvasEventTarget'],
   emscripten_set_canvas_element_size: function(target, width, height) {
 #if GL_DEBUG
-    dbg('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
+    dbg(`emscripten_set_canvas_element_size(target=${target},width=${width},height=${height}`);
 #endif
     var canvas = findCanvasEventTarget(target);
     if (!canvas) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
@@ -2436,7 +2435,7 @@ var LibraryHTML5 = {
   $setCanvasElementSize__deps: ['emscripten_set_canvas_element_size', '$withStackSave', '$stringToUTF8OnStack'],
   $setCanvasElementSize: function(target, width, height) {
 #if GL_DEBUG
-    dbg('setCanvasElementSize(target='+target+',width='+width+',height='+height);
+    dbg(`setCanvasElementSize(target=${target},width=${width},height=${height}`);
 #endif
     if (!target.controlTransferredOffscreen) {
       target.width = width;

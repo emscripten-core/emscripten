@@ -18,8 +18,30 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.40 (in development)
+3.1.42 (in development)
 -----------------------
+- The log message that emcc will sometime print (for example when auto-building
+  system libraries) can now be completely supressed by running with
+  `EMCC_LOGGING=0`.
+- Runtime dynamic linking symbols such as dlopen and dlsym will no longer cause
+  a linker error when building without `-sMAIN_MODULE`.  Instead stub functions
+  will be included that fail at runtime.  This matches the behaviour of other
+  libc functions that we don't implement.  For those that prefer to get a linker
+  error we have the `-sALLOW_UNIMPLEMENTED_SYSCALLS` settings. (#19527)
+
+3.1.41 - 06/06/23
+-----------------
+- A new setting (`CHECK_NULL_WRITES`) was added to disabled the checking of
+  address zero that is normally done when `STACK_OVERFLOW_CHECK` is enabled.
+  (#19487)
+- compiler-rt updated to LLVM 16. (#19506)
+- libcxx and libcxxabi updated to LLVM 16. (#)
+
+3.1.40 - 05/30/23
+-----------------
+- The `_emscripten_out()`, `_emscripten_err()` and `_emscripten_dbg()` functions
+  declared in `emscripten/console.h` no longer have the underscore prefix and
+  are now documented. (#19445)
 
 3.1.39 - 05/18/23
 -----------------

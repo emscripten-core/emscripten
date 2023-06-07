@@ -1132,8 +1132,7 @@ int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
     // TODO: Test this case.
     return -EINVAL;
   }
-  // TODO: Handle AT_SYMLINK_NOFOLLOW once we traverse symlinks correctly.
-  auto parsed = path::parseFile((char*)path, dirfd);
+  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -1286,7 +1285,7 @@ int __syscall_ioctl(int fd, int request, ...) {
     case TIOCGWINSZ:
     case TIOCSWINSZ: {
       // TTY operations that we do nothing for anyhow can just be ignored.
-      return -0;
+      return 0;
     }
     default: {
       return -EINVAL; // not supported

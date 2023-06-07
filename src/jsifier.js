@@ -154,7 +154,7 @@ ${argConvertions}
     });
   }
 
-  function processLibraryFunction(snippet, symbol, mangled, deps) {
+  function processLibraryFunction(snippet, symbol, mangled, deps, isStub) {
     // It is possible that when printing the function as a string on Windows,
     // the js interpreter we are in returns the string with Windows line endings
     // \r\n. This is undesirable, since line endings are managed in the form \n
@@ -164,6 +164,10 @@ ${argConvertions}
 
     // name the function; overwrite if it's already named
     snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function ' + mangled + '(');
+
+    if (isStub) {
+      return snippet;
+    }
 
     // apply LIBRARY_DEBUG if relevant
     if (LIBRARY_DEBUG && !isJsOnlySymbol(symbol)) {
@@ -403,7 +407,7 @@ function ${name}(${args}) {
         addImplicitDeps(snippet, deps);
       } else if (typeof snippet == 'function') {
         isFunction = true;
-        snippet = processLibraryFunction(snippet, symbol, mangled, deps);
+        snippet = processLibraryFunction(snippet, symbol, mangled, deps, isStub);
         addImplicitDeps(snippet, deps);
       }
 

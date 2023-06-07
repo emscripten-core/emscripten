@@ -9,7 +9,7 @@ var WasiLibrary = {
   $ExitStatus__docs: '/** @constructor */',
   $ExitStatus: function(status) {
     this.name = 'ExitStatus';
-    this.message = 'Program terminated with exit(' + status + ')';
+    this.message = `Program terminated with exit(${status})`;
     this.status = status;
   },
   proc_exit__deps: ['$ExitStatus'],
@@ -18,10 +18,10 @@ var WasiLibrary = {
   proc_exit__nothrow: true,
   proc_exit: function(code) {
 #if MINIMAL_RUNTIME
-    throw 'exit(' + code + ')';
+    throw `exit(${code})`;
 #else
 #if RUNTIME_DEBUG
-    dbg('proc_exit: ' + code);
+    dbg(`proc_exit: ${code}`);
 #endif
     EXITSTATUS = code;
     if (!keepRuntimeAlive()) {
@@ -80,7 +80,7 @@ var WasiLibrary = {
       }
       var strings = [];
       for (var x in env) {
-        strings.push(x + '=' + env[x]);
+        strings.push(`${x}=${env[x]}`);
       }
       getEnvStrings.strings = strings;
     }
@@ -383,7 +383,7 @@ var WasiLibrary = {
 
   $wasiRightsToMuslOFlags: function(rights) {
 #if SYSCALL_DEBUG
-    dbg('wasiRightsToMuslOFlags: ' + rights);
+    dbg(`wasiRightsToMuslOFlags: ${rights}`);
 #endif
     if ((rights & {{{ cDefs.__WASI_RIGHTS_FD_READ }}}) && (rights & {{{ cDefs.__WASI_RIGHTS_FD_WRITE }}})) {
       return {{{ cDefs.O_RDWR }}};
@@ -431,11 +431,11 @@ var WasiLibrary = {
     var pathname = UTF8ToString(path, path_len);
     var musl_oflags = wasiRightsToMuslOFlags(Number(fs_rights_base));
 #if SYSCALL_DEBUG
-    dbg("oflags1: 0x" + musl_oflags.toString(16));
+    dbg(`oflags1: ${ptrToString(musl_oflags)}`);
 #endif
     musl_oflags |= wasiOFlagsToMuslOFlags(Number(oflags));
 #if SYSCALL_DEBUG
-    dbg("oflags2: 0x" + musl_oflags.toString(16));
+    dbg(`oflags2: ${ptrToString(musl_oflags)}`);
 #endif
     var stream = FS.open(pathname, musl_oflags);
     {{{ makeSetValue('opened_fd', '0', 'stream.fd', 'i32') }}};
@@ -452,7 +452,7 @@ var WasiLibrary = {
     var preopen_path = preopens[fd];
     stringToUTF8Array(preopen_path, HEAP8, path, path_len)
 #if SYSCALL_DEBUG
-    dbg('fd_prestat_dir_name -> "' + preopen_path + '"');
+    dbg(`fd_prestat_dir_name -> "${preopen_path}"`);
 #endif
     return 0;
   },
@@ -519,8 +519,12 @@ var WasiLibrary = {
                  FS.isLink(stream.mode) ? {{{ cDefs.__WASI_FILETYPE_SYMBOLIC_LINK }}} :
                  {{{ cDefs.__WASI_FILETYPE_REGULAR_FILE }}};
 #else
-      // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
-      var type = fd == 0 || fd == 1 || fd == 2 ? {{{ cDefs.__WASI_FILETYPE_CHARACTER_DEVICE }}} : abort();
+      // Hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0. We support at
+      // least stdin, stdout, stderr in a simple way.
+#if ASSERTIONS
+      assert(fd == 0 || fd == 1 || fd == 2);
+#endif
+      var type = {{{ cDefs.__WASI_FILETYPE_CHARACTER_DEVICE }}};
       if (fd == 0) {
         rightsBase = {{{ cDefs.__WASI_RIGHTS_FD_READ }}};
       } else if (fd == 1 || fd == 2) {

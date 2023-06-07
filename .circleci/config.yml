@@ -469,6 +469,7 @@ jobs:
             asan.test_dlfcn_basic
             asan.test_async_hello_stack_switching
             asan.test_cubescript
+            asan.test_wasm_worker_hello
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
             lsan.test_pthread_create"
@@ -515,6 +516,8 @@ jobs:
             wasmfs.test_unistd_truncate
             wasmfs.test_readdir
             wasmfs.test_unistd_pipe
+            wasmfs.test_fs_write
+            wasmfs.test_webidl
             wasmfs.test_dlfcn_self
             wasmfs.test_dlfcn_unique_sig
             wasmfs.test_dylink_basics
@@ -527,6 +530,7 @@ jobs:
             wasmfs.test_futimens
             wasmfs.test_unistd_links_memfs
             wasmfs.test_fcntl_open
+            wasmfs.test_fs_js_api
             wasmfs.test_freetype"
   test-wasm2js1:
     executor: bionic
@@ -545,11 +549,13 @@ jobs:
       - install-v8
       - run-tests:
           title: "wasm64l"
-          test_targets: "wasm64l"
+          # On older versions of node wasm64l.test_bigswitch uses a lot (~3.5Gb)
+          # of memory, so skip it here, but run it below under node-canary.
+          test_targets: "wasm64l skip:wasm64l.test_bigswitch"
       - install-node-canary
       - run-tests:
           title: "wasm64"
-          test_targets: "wasm64"
+          test_targets: "wasm64 wasm64l.test_bigswitch"
       - upload-test-results
   test-node-compat:
     # We don't use `bionic` here since its tool old to run recent node versions:

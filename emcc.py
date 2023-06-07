@@ -96,6 +96,7 @@ UNSUPPORTED_LLD_FLAGS = {
     '-rpath': True,
     '-rpath-link': True,
     '-version-script': True,
+    '-install_name': True,
 }
 
 DEFAULT_ASYNCIFY_IMPORTS = [
@@ -1460,6 +1461,7 @@ def phase_setup(options, state, newargs):
                '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
                '-install_name', '-compatibility_version',
                '-current_version', '-I', '-L', '-include-pch',
+               '-undefined',
                '-Xlinker', '-Xclang', '-z'):
       skip = True
 
@@ -2076,6 +2078,7 @@ def phase_linker_setup(options, state, newargs):
     assert not settings.SIDE_MODULE
     if settings.MAIN_MODULE == 1:
       settings.INCLUDE_FULL_LIBRARY = 1
+    # Called from preamble.js once the main module is instantiated.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDylibs']
     settings.REQUIRED_EXPORTS += ['malloc']
 
@@ -2195,6 +2198,9 @@ def phase_linker_setup(options, state, newargs):
     else:
       settings.REQUIRED_EXPORTS += ['emscripten_stack_init']
 
+  if settings.STACK_OVERFLOW_CHECK >= 2:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$setStackLimits']
+
   if settings.MODULARIZE:
     if settings.PROXY_TO_WORKER:
       exit_with_error('-sMODULARIZE is not compatible with --proxy-to-worker (if you want to run in a worker with -sMODULARIZE, you likely want to do the worker side setup manually)')
@@ -2292,13 +2298,16 @@ def phase_linker_setup(options, state, newargs):
     exit_with_error('-sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0 only makes sense with -sGL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0!')
 
   if settings.WASMFS:
-    state.forced_stdlibs.append('libwasmfs')
     if settings.NODERAWFS:
+      # wasmfs will be included normally in system_libs.py, but we must include
+      # noderawfs in a forced manner so that it is always linked in (the hook it
+      # implements can remain unimplemented, so it won't be linked in
+      # automatically)
+      # TODO: find a better way to do this
       state.forced_stdlibs.append('libwasmfs_noderawfs')
     settings.FILESYSTEM = 1
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
     settings.JS_LIBRARIES.append((0, 'library_wasmfs.js'))
-    settings.REQUIRED_EXPORTS += ['_wasmfs_read_file']
     if settings.ASSERTIONS:
       # used in assertion checks for unflushed content
       settings.REQUIRED_EXPORTS += ['wasmfs_flush']
@@ -2308,18 +2317,30 @@ def phase_linker_setup(options, state, newargs):
       # required to force all of it to be included if the user wants to use the
       # JS API directly.
       settings.REQUIRED_EXPORTS += [
+        '_wasmfs_read_file',
         '_wasmfs_write_file',
         '_wasmfs_open',
+        '_wasmfs_close',
+        '_wasmfs_write',
+        '_wasmfs_pwrite',
+        '_wasmfs_rename',
         '_wasmfs_mkdir',
         '_wasmfs_unlink',
         '_wasmfs_chdir',
         '_wasmfs_rmdir',
+        '_wasmfs_read',
+        '_wasmfs_pread',
         '_wasmfs_symlink',
+        '_wasmfs_stat',
+        '_wasmfs_lstat',
         '_wasmfs_chmod',
+        '_wasmfs_fchmod',
+        '_wasmfs_lchmod',
         '_wasmfs_identify',
         '_wasmfs_readdir_start',
         '_wasmfs_readdir_get',
         '_wasmfs_readdir_finish',
+        '_wasmfs_get_cwd',
       ]
 
   if settings.FETCH and final_suffix in EXECUTABLE_ENDINGS:
@@ -2477,6 +2498,9 @@ def phase_linker_setup(options, state, newargs):
     exit_with_error(f'INITIAL_MEMORY must be larger than STACK_SIZE, was {settings.INITIAL_MEMORY} (STACK_SIZE={settings.STACK_SIZE})')
   if settings.MEMORY_GROWTH_LINEAR_STEP != -1:
     check_memory_setting('MEMORY_GROWTH_LINEAR_STEP')
+
+  if settings.ALLOW_MEMORY_GROWTH and settings.MAXIMUM_MEMORY < settings.INITIAL_MEMORY:
+    exit_with_error('MAXIMUM_MEMORY must be larger then INITIAL_MEMORY')
 
   if 'MAXIMUM_MEMORY' in user_settings and not settings.ALLOW_MEMORY_GROWTH:
     diagnostics.warning('unused-command-line-argument', 'MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH')
@@ -2719,6 +2743,10 @@ def phase_linker_setup(options, state, newargs):
       # Since the shadow memory starts at 0, the act of accessing the shadow memory is detected
       # by SAFE_HEAP as a null pointer dereference.
       exit_with_error('ASan does not work with SAFE_HEAP')
+
+  if settings.USE_ASAN or settings.SAFE_HEAP:
+    # ASan and SAFE_HEAP check address 0 themselves
+    settings.CHECK_NULL_WRITES = 0
 
   if sanitize and settings.GENERATE_SOURCE_MAP:
     settings.LOAD_SOURCE_MAP = 1
@@ -3205,9 +3233,6 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
       minified_worker = building.acorn_optimizer(worklet_output, ['minifyWhitespace'], return_output=True)
       open(worklet_output, 'w').write(minified_worker)
 
-  # track files that will need native eols
-  generated_text_files_with_native_eols = []
-
   if settings.MODULARIZE:
     modularize()
 
@@ -3254,9 +3279,6 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   # The JS is now final. Move it to its final location
   move_file(final_js, js_target)
 
-  if not settings.SINGLE_FILE:
-    generated_text_files_with_native_eols += [js_target]
-
   target_basename = unsuffixed_basename(target)
 
   # If we were asked to also generate HTML, do that
@@ -3273,8 +3295,8 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     diagnostics.warning('experimental', 'The SPLIT_MODULE setting is experimental and subject to change')
     do_split_module(wasm_target, options)
 
-  for f in generated_text_files_with_native_eols:
-    tools.line_endings.convert_line_endings_in_file(f, os.linesep, options.output_eol)
+  if not settings.SINGLE_FILE:
+    tools.line_endings.convert_line_endings_in_file(js_target, os.linesep, options.output_eol)
 
   if options.executable:
     make_js_executable(js_target)
@@ -3496,7 +3518,7 @@ def parse_args(newargs):
       logger.error('jcache is no longer supported')
     elif check_arg('--cache'):
       config.CACHE = os.path.normpath(consume_arg())
-      cache.setup(config.CACHE)
+      cache.setup()
       # Ensure child processes share the same cache (e.g. when using emcc to compiler system
       # libraries)
       os.environ['EM_CACHE'] = config.CACHE

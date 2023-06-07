@@ -100,24 +100,23 @@ var SyscallsLibrary = {
       SYSCALLS.varargs += 4;
       var ret = {{{ makeGetValue('SYSCALLS.varargs', '-4', 'i32') }}};
 #if SYSCALL_DEBUG
-      dbg('    (raw: "' + ret + '")');
+      dbg(`    (raw: "${ret}")`);
 #endif
       return ret;
     },
     getStr: function(ptr) {
       var ret = UTF8ToString(ptr);
 #if SYSCALL_DEBUG
-      dbg('    (str: "' + ret + '")');
+      dbg(`    (str: "${ret}")`);
 #endif
       return ret;
     },
 #if SYSCALLS_REQUIRE_FILESYSTEM
     // Just like `FS.getStream` but will throw EBADF if stream is undefined.
     getStreamFromFD: function(fd) {
-      var stream = FS.getStream(fd);
-      if (!stream) throw new FS.ErrnoError({{{ cDefs.EBADF }}});
+      var stream = FS.getStreamChecked(fd);
 #if SYSCALL_DEBUG
-      dbg('    (stream: "' + stream.path + '")');
+      dbg(`    (stream: "${stream.path}")`);
 #endif
       return stream;
     },
@@ -277,7 +276,7 @@ var SyscallsLibrary = {
     var socket = SOCKFS.getSocket(fd);
     if (!socket) throw new FS.ErrnoError({{{ cDefs.EBADF }}});
 #if SYSCALL_DEBUG
-    dbg('    (socket: "' + socket.path + '")');
+    dbg(`    (socket: "${socket.path}")`);
 #endif
     return socket;
   },
@@ -419,13 +418,13 @@ var SyscallsLibrary = {
     // concatenate scatter-gather arrays into one message buffer
     var total = 0;
     for (var i = 0; i < num; i++) {
-      total += {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
+      total += {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, 'i32') }}};
     }
     var view = new Uint8Array(total);
     var offset = 0;
     for (var i = 0; i < num; i++) {
-      var iovbase = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_base, POINTER_TYPE) }}};
-      var iovlen = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
+      var iovbase = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_base}`, POINTER_TYPE) }}};
+      var iovlen = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, 'i32') }}};
       for (var j = 0; j < iovlen; j++) {
         view[offset++] = {{{ makeGetValue('iovbase', 'j', 'i8') }}};
       }
@@ -441,7 +440,7 @@ var SyscallsLibrary = {
     // get the total amount of data we can read across all arrays
     var total = 0;
     for (var i = 0; i < num; i++) {
-      total += {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
+      total += {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, 'i32') }}};
     }
     // try to read total data
     var msg = sock.sock_ops.recvmsg(sock, total);
@@ -467,8 +466,8 @@ var SyscallsLibrary = {
     var bytesRead = 0;
     var bytesRemaining = msg.buffer.byteLength;
     for (var i = 0; bytesRemaining > 0 && i < num; i++) {
-      var iovbase = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_base, POINTER_TYPE) }}};
-      var iovlen = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
+      var iovbase = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_base}`, POINTER_TYPE) }}};
+      var iovlen = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, 'i32') }}};
       if (!iovlen) {
         continue;
       }
@@ -744,7 +743,7 @@ var SyscallsLibrary = {
         return -1;
       default: {
 #if SYSCALL_DEBUG
-        dbg('warning: fcntl unrecognized command ' + cmd);
+        dbg(`warning: fcntl unrecognized command ${cmd}`);
 #endif
         return -{{{ cDefs.EINVAL }}};
       }
@@ -839,7 +838,7 @@ var SyscallsLibrary = {
     var allowEmpty = flags & {{{ cDefs.AT_EMPTY_PATH }}};
     flags = flags & (~{{{ cDefs.AT_SYMLINK_NOFOLLOW | cDefs.AT_EMPTY_PATH | cDefs.AT_NO_AUTOMOUNT }}});
 #if ASSERTIONS
-    assert(!flags, 'unknown flags in __syscall_newfstatat: ' + flags);
+    assert(!flags, `unknown flags in __syscall_newfstatat: ${flags}`);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path, allowEmpty);
     return SYSCALLS.doStat(nofollow ? FS.lstat : FS.stat, path, buf);
