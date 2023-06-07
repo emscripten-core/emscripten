@@ -5948,10 +5948,6 @@ Module = {
       self.set_setting('LINKABLE', linkable)
       self.do_core_test('test_istream.cpp')
 
-  def test_fs_dir(self):
-    self.set_setting("FORCE_FILESYSTEM")
-    self.do_runf(test_file('fs/test_dir.c'), 'success')
-
   def test_fs_base(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
     self.uses_es6 = True
