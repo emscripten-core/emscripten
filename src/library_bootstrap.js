@@ -13,7 +13,7 @@ assert(false, "library_bootstrap.js only designed for use with BOOTSTRAPPING_STR
 
 assert(Object.keys(LibraryManager.library).length === 0);
 mergeInto(LibraryManager.library, {
-  $callRuntimeCallbacks: function() {},
+  $callRuntimeCallbacks: () => {},
 
   $ExitStatus__docs: '/** @constructor */',
   $ExitStatus: function(status) {
@@ -23,11 +23,9 @@ mergeInto(LibraryManager.library, {
   },
 
   $exitJS__deps: ['$ExitStatus'],
-  $exitJS: function(code) {
-    quit_(code, new ExitStatus(code));
-  },
+  $exitJS: (code) => quit_(code, new ExitStatus(code)),
 
-  $handleException: function(e) {
+  $handleException: (e) => {
     if (e instanceof ExitStatus || e == 'unwind') {
       return EXITSTATUS;
     }
@@ -38,7 +36,7 @@ mergeInto(LibraryManager.library, {
   // partial, but enough for bootstrapping structInfo
   printf__deps: ['$formatString', '$intArrayToString'],
   printf__sig: 'ipp',
-  printf: function(format, varargs) {
+  printf: (format, varargs) => {
     // int printf(const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
     // extra effort to support printf, even without a filesystem. very partial, very hackish
@@ -50,7 +48,7 @@ mergeInto(LibraryManager.library, {
   },
 
   puts__sig: 'ip',
-  puts: function(s) {
+  puts: (s) => {
     // extra effort to support puts, even without a filesystem. very partial, very hackish
     var result = UTF8ToString(s);
     var string = result.substr(0);
