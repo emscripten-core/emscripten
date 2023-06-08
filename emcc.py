@@ -2308,6 +2308,9 @@ def phase_linker_setup(options, state, newargs):
     settings.FILESYSTEM = 1
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
     settings.JS_LIBRARIES.append((0, 'library_wasmfs.js'))
+    if settings.ASSERTIONS:
+      # used in assertion checks for unflushed content
+      settings.REQUIRED_EXPORTS += ['wasmfs_flush']
     if settings.FORCE_FILESYSTEM:
       # Add exports for the JS API. Like the old JS FS, WasmFS by default
       # includes just what JS parts it actually needs, and FORCE_FILESYSTEM is
@@ -2324,6 +2327,7 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_mkdir',
         '_wasmfs_unlink',
         '_wasmfs_chdir',
+        '_wasmfs_mknod',
         '_wasmfs_rmdir',
         '_wasmfs_read',
         '_wasmfs_pread',
