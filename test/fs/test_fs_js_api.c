@@ -126,7 +126,7 @@ int main() {
     assert(utimeStats.st_atime == 10);
     assert(utimeStats.st_atim.tv_sec == 10);
 
-    // WasmFS correctly sets both times, the legacy API sets both times to the max of atime and mtime
+    // WasmFS correctly sets both times, but the legacy API sets both times to the max of atime and mtime
     // and does correctly handle nanseconds.
 #if WASMFS
     assert(utimeStats.st_atim.tv_nsec == 500000000);
