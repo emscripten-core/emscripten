@@ -1857,6 +1857,7 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
         filenames=['file.cpp',
                    'file_table.cpp',
                    'js_api.cpp',
+                   'emscripten.cpp',
                    'paths.cpp',
                    'special_files.cpp',
                    'support.cpp',
