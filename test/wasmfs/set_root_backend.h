@@ -13,7 +13,7 @@
 
 backend_t wasmfs_create_root_dir() {
 #ifdef WASMFS_NODE_BACKEND
-	return wasmfs_create_node_backend(".");
+  return wasmfs_create_node_backend(".");
 #elif defined(WASMFS_FETCH_BACKEND)
   return wasmfs_create_fetch_backend("http://localhost:8888/")
 #elif defined(WASMFS_OPFS_BACKEND)
