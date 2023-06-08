@@ -203,7 +203,6 @@ int main() {
         assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */)
     );
 
-    
     /********** test FS.mknod() **********/
     EM_ASM(
         FS.mknod("mknodtest", 0100000 | 0777); /* S_IFREG | S_RWXU | S_RWXG | S_RWXO */
