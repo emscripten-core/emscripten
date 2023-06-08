@@ -1,7 +1,15 @@
-// Copyright 2022 The Emscripten Authors.  All rights reserved.
+// Copyright 2023 The Emscripten Authors.  All rights reserved.
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
+
+//
+// This file contains implementations of emscripten APIs that are compatible
+// with WasmFS. These replace APIs in src/library*js, and basically do things
+// in a simpler manner for the situation where the FS is in wasm and not JS
+// (in particular, these implemenations avoid calling from JS to wasm, and
+// dependency issues that arise from that).
+//
 
 #include <emscripten.h>
 #include <string>
@@ -10,9 +18,12 @@
 #include "file_table.h"
 #include "wasmfs.h"
 
+namespace wasmfs {
+
 // Given an fd, returns the string path that the fd refers to.
 // TODO: full error handling
-static std::string getPath(int fd) {
+// TODO: maybe make this a public API, as it is useful for debugging
+std::string getPath(int fd) {
   auto fileTable = wasmfs::wasmFS.getFileTable().locked();
 
   auto openFile = fileTable.getEntry(fd);
@@ -37,6 +48,8 @@ static std::string getPath(int fd) {
   }
   return result;
 }
+
+} // namespace wasmfs
 
 extern "C"
 char *emscripten_get_preloaded_image_data_from_FILE(FILE *file,
