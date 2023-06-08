@@ -32,6 +32,8 @@ See docs/process.md for more on how version tagging works.
   `modifyJSFunction` and its callback function no longer takes the name of the
   function being modified.  The name is not relevant for JS library functions
   and can be safely ignored.
+- JS library functions can now be implemented using ES6 arrow notation, which
+  can save to a few bytes on JS code size. (#19539)
 
 3.1.41 - 06/06/23
 -----------------
