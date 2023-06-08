@@ -1878,7 +1878,8 @@ class libwasmfs_no_fs(Library):
   src_files = ['no_fs.c']
 
   def can_use(self):
-    return settings.WASMFS
+    # If the filesystem is forced then we definitely do not need this library.
+    return settings.WASMFS and not settings.FORCE_FILESYSTEM
 
 
 class libwasmfs_noderawfs(Library):
@@ -2217,8 +2218,12 @@ def get_libs_to_link(args, forced, only_forced):
 
   if settings.WASMFS:
     # Link in the no-fs version first, so that if it provides all the needed
-    # system libraries then WasmFS is not linked in at all.
-    add_library('libwasmfs_no_fs')
+    # system libraries then WasmFS is not linked in at all. (We only do this if
+    # the filesystem is not forced; if it is then we know we definitely need the
+    # whole thing, and it would be unnecessary work to try to link in the no-fs
+    # version).
+    if not settings.FORCE_FILESYSTEM:
+      add_library('libwasmfs_no_fs')
     add_library('libwasmfs')
 
   add_sanitizer_libs()
