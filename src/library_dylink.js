@@ -1099,13 +1099,12 @@ var LibraryDylink = {
   _dlopen_js: function(handle) {
 #if ASYNCIFY
     return Asyncify.handleSleep((wakeUp) => {
-      var jsflags = { loadAsync: true }
-      var promise = dlopenInternal(handle, jsflags);
-      promise.then(wakeUp).catch(() => wakeUp(0));
+      dlopenInternal(handle, { loadAsync: true })
+        .then(wakeUp)
+        .catch(() => wakeUp(0));
     });
 #else
-    var jsflags = { loadAsync: false }
-    return dlopenInternal(handle, jsflags);
+    return dlopenInternal(handle, { loadAsync: false });
 #endif
   },
 
@@ -1125,8 +1124,7 @@ var LibraryDylink = {
     }
 
     {{{ runtimeKeepalivePush() }}}
-    var jsflags = { loadAsync: true }
-    var promise = dlopenInternal(handle, jsflags);
+    var promise = dlopenInternal(handle, { loadAsync: true });
     if (promise) {
       promise.then(successCallback, errorCallback);
     } else {
