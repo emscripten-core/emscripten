@@ -5,7 +5,7 @@
  * found in the LICENSE file.
  */
 
-// This file allows users to easily set a particular backend as the root.
+// This file allows tests to run using a particular backend as the root.
 
 #pragma once
 
