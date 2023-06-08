@@ -2945,6 +2945,7 @@ Module["preRun"].push(function () {
       '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--use-preload-plugins'
     ])
 
+  @also_with_wasmfs
   @requires_graphics_hardware
   def test_sdl2_image_formats(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
