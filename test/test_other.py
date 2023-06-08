@@ -8843,7 +8843,7 @@ end
           console.error("my {attribute}");
         }};
       '''
-    create_file('pre.js', '''
+    create_file('post.js', '''
       /** @constructor */
       function Foo() {
         this.bar = function() {
@@ -8873,7 +8873,7 @@ end
       '-sFETCH',
       '-sFETCH_SUPPORT_INDEXEDDB',
       '-Werror=closure',
-      '--pre-js=pre.js'
+      '--post-js=post.js'
     ])
     code = read_file('hello_world.js')
     # `bar` method is used so should not be DCE'd
@@ -11694,9 +11694,8 @@ exec "$@"
   def test_this_in_dyncall(self, args):
     self.do_run_in_out_file_test(test_file('no_this_in_dyncall.c'), emcc_args=['--js-library', test_file('no_this_in_dyncall.js')] + args)
 
-  @requires_v8
+  @requires_wasm64
   def test_this_in_dyncall_memory64(self):
-    self.v8_args += ['--experimental-wasm-memory64']
     self.do_run_in_out_file_test(test_file('no_this_in_dyncall.c'), emcc_args=['--js-library', test_file('no_this_in_dyncall.js'), '-sMEMORY64', '-Wno-experimental'])
 
   # Tests that dynCalls are produced in Closure-safe way in DYNCALLS mode when no actual dynCalls are used

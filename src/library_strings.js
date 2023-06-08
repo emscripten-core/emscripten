@@ -26,7 +26,7 @@ mergeInto(LibraryManager.library, {
 #if TEXTDECODER
   $UTF8ArrayToString__deps: ['$UTF8Decoder'],
 #endif
-  $UTF8ArrayToString: function(heapOrArray, idx, maxBytesToRead) {
+  $UTF8ArrayToString: (heapOrArray, idx, maxBytesToRead) => {
 #if CAN_ADDRESS_2GB
     idx >>>= 0;
 #endif
@@ -114,7 +114,7 @@ mergeInto(LibraryManager.library, {
 #else
   $UTF8ToString__deps: ['$UTF8ArrayToString'],
 #endif
-  $UTF8ToString: function(ptr, maxBytesToRead) {
+  $UTF8ToString: (ptr, maxBytesToRead) => {
 #if ASSERTIONS
     assert(typeof ptr == 'number');
 #endif
@@ -153,7 +153,7 @@ mergeInto(LibraryManager.library, {
    *                                   terminator.
    * @return {number} The number of bytes written, EXCLUDING the null terminator.
    */
-  $stringToUTF8Array: function(str, heap, outIdx, maxBytesToWrite) {
+  $stringToUTF8Array: (str, heap, outIdx, maxBytesToWrite) => {
 #if CAN_ADDRESS_2GB
     outIdx >>>= 0;
 #endif
@@ -218,7 +218,7 @@ mergeInto(LibraryManager.library, {
    * @return {number} The number of bytes written, EXCLUDING the null terminator.
    */
   $stringToUTF8__deps: ['$stringToUTF8Array'],
-  $stringToUTF8: function(str, outPtr, maxBytesToWrite) {
+  $stringToUTF8: (str, outPtr, maxBytesToWrite) => {
 #if ASSERTIONS
     assert(typeof maxBytesToWrite == 'number', 'stringToUTF8(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
 #endif
@@ -232,7 +232,7 @@ mergeInto(LibraryManager.library, {
    * @param {string} str - JavaScript string to operator on
    * @return {number} Length, in bytes, of the UTF8 encoded string.
    */
-  $lengthBytesUTF8: function(str) {
+  $lengthBytesUTF8: (str) => {
     var len = 0;
     for (var i = 0; i < str.length; ++i) {
       // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code
@@ -261,7 +261,7 @@ mergeInto(LibraryManager.library, {
   // Given a pointer 'ptr' to a null-terminated ASCII-encoded string in the
   // emscripten HEAP, returns a copy of that string as a Javascript String
   // object.
-  $AsciiToString: function(ptr) {
+  $AsciiToString: (ptr) => {
 #if CAN_ADDRESS_2GB
     ptr >>>= 0;
 #endif
@@ -276,7 +276,7 @@ mergeInto(LibraryManager.library, {
   // Copies the given Javascript String object 'str' to the emscripten HEAP at
   // address 'outPtr', null-terminated and encoded in ASCII form. The copy will
   // require at most str.length+1 bytes of space in the HEAP.
-  $stringToAscii: function(str, buffer) {
+  $stringToAscii: (str, buffer) => {
     for (var i = 0; i < str.length; ++i) {
 #if ASSERTIONS
       assert(str.charCodeAt(i) === (str.charCodeAt(i) & 0xff));
@@ -299,7 +299,7 @@ mergeInto(LibraryManager.library, {
 #if TEXTDECODER
   $UTF16ToString__deps: ['$UTF16Decoder'],
 #endif
-  $UTF16ToString: function(ptr, maxBytesToRead) {
+  $UTF16ToString: (ptr, maxBytesToRead) => {
 #if ASSERTIONS
     assert(ptr % 2 == 0, 'Pointer passed to UTF16ToString must be aligned to two bytes!');
 #endif
@@ -356,7 +356,7 @@ mergeInto(LibraryManager.library, {
   //                    maxBytesToWrite<2 does not write any bytes to the
   //                    output, not even the null terminator.
   // Returns the number of bytes written, EXCLUDING the null terminator.
-  $stringToUTF16: function(str, outPtr, maxBytesToWrite) {
+  $stringToUTF16: (str, outPtr, maxBytesToWrite) => {
 #if ASSERTIONS
     assert(outPtr % 2 == 0, 'Pointer passed to stringToUTF16 must be aligned to two bytes!');
 #endif
@@ -384,11 +384,11 @@ mergeInto(LibraryManager.library, {
 
   // Returns the number of bytes the given Javascript string takes if encoded as
   // a UTF16 byte array, EXCLUDING the null terminator byte.
-  $lengthBytesUTF16: function(str) {
+  $lengthBytesUTF16: (str) => {
     return str.length*2;
   },
 
-  $UTF32ToString: function(ptr, maxBytesToRead) {
+  $UTF32ToString: (ptr, maxBytesToRead) => {
 #if ASSERTIONS
     assert(ptr % 4 == 0, 'Pointer passed to UTF32ToString must be aligned to four bytes!');
 #endif
@@ -428,7 +428,7 @@ mergeInto(LibraryManager.library, {
   //                    maxBytesToWrite<4 does not write any bytes to the
   //                    output, not even the null terminator.
   // Returns the number of bytes written, EXCLUDING the null terminator.
-  $stringToUTF32: function(str, outPtr, maxBytesToWrite) {
+  $stringToUTF32: (str, outPtr, maxBytesToWrite) => {
 #if CAN_ADDRESS_2GB
     outPtr >>>= 0;
 #endif
@@ -464,7 +464,7 @@ mergeInto(LibraryManager.library, {
 
   // Returns the number of bytes the given Javascript string takes if encoded as
   // a UTF16 byte array, EXCLUDING the null terminator byte.
-  $lengthBytesUTF32: function(str) {
+  $lengthBytesUTF32: (str) => {
     var len = 0;
     for (var i = 0; i < str.length; ++i) {
       // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! We must decode the string to UTF-32 to the heap.
@@ -480,7 +480,7 @@ mergeInto(LibraryManager.library, {
   // Allocate heap space for a JS string, and write it there.
   // It is the responsibility of the caller to free() that memory.
   $stringToNewUTF8__deps: ['$lengthBytesUTF8', '$stringToUTF8', 'malloc'],
-  $stringToNewUTF8: function(str) {
+  $stringToNewUTF8: (str) => {
     var size = lengthBytesUTF8(str) + 1;
     var ret = _malloc(size);
     if (ret) stringToUTF8(str, ret, size);
@@ -489,14 +489,14 @@ mergeInto(LibraryManager.library, {
 
   // Allocate stack space for a JS string, and write it there.
   $stringToUTF8OnStack__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
-  $stringToUTF8OnStack: function(str) {
+  $stringToUTF8OnStack: (str) => {
     var size = lengthBytesUTF8(str) + 1;
     var ret = stackAlloc(size);
     stringToUTF8(str, ret, size);
     return ret;
   },
 
-  $writeArrayToMemory: function(array, buffer) {
+  $writeArrayToMemory: (array, buffer) => {
 #if ASSERTIONS
     assert(array.length >= 0, 'writeArrayToMemory array must have a length (should be an array or typed array)')
 #endif
