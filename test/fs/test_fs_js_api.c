@@ -64,46 +64,41 @@ int main() {
             FS.truncate('truncatetest', -10);
         } catch(err) {
             ex = err;
-            console.log(ex);
         }
 
-        // assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
     );
 
-//     EM_ASM(
-//         var ex;
-//         try {
-//             var truncateStream = FS.open('truncatetest', 'w');
-// #if WASMFS
-//             FS.ftruncate(truncateStream, -10);
-// #else
-//             FS.ftruncate(truncateStream.fd, -10);
-// #endif
-//         } catch(err) {
-//             ex = err;
-//         }
+    EM_ASM(
+        var ex;
+        try {
+            var truncateStream = FS.open('truncatetest', 'w');
+            FS.ftruncate(truncateStream.fd, -10);
+        } catch(err) {
+            ex = err;
+        }
 
-//         assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
-//     );
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+    );
 
-    // EM_ASM(
-    //     var ex;
-    //     try {
-    //         FS.truncate('nonexistent', 10);
-    //     } catch(err) {
-    //         ex = err;
-    //     }
-    //     assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+    EM_ASM(
+        var ex;
+        try {
+            FS.truncate('nonexistent', 10);
+        } catch(err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
 
-    //     var ex;
-    //     try {
-    //         FS.ftruncate(99, 10);
-    //     } catch(err) {
-    //         ex = err;
-    //     }
+        var ex;
+        try {
+            FS.ftruncate(99, 10);
+        } catch(err) {
+            ex = err;
+        }
 
-    //     assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */);
-    // );
+        assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */);
+    );
     
     /********** test FS.rename() **********/
     EM_ASM(

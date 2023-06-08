@@ -137,16 +137,18 @@ int _wasmfs_unlink(char* path) {
   return __syscall_unlinkat(AT_FDCWD, (intptr_t)path, 0);
 }
 
-int _wasmfs_truncate(char *path, off_t length) {
-  printf("js_api: path: %p, size: %lld\n", path, length);
-  int err = __syscall_truncate64((intptr_t)path, length);
+int _wasmfs_truncate(char *path, long size) {
+  printf("js_api truncate: path: %p, size: %ld\n", path, size);
+  int err = __syscall_truncate64((intptr_t)path, size);
+  printf("js_api: err: %d\n", err);
   if (err == -1) {
     return errno;
   }
   return err;
 }
 
-int _wasmfs_ftruncate(int fd, off_t size) {
+int _wasmfs_ftruncate(int fd, long size) {
+  printf("js_api ftruncate: path: %d, size: %ld\n", fd, size);
   int err = __syscall_ftruncate64(fd, size);
   if (err == -1) {
     return errno;
