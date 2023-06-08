@@ -277,7 +277,9 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: lchown
     // TODO: fchown
     truncate: (path, len) => {
-      return FS.handleError(withStackSave(() => (__wasmfs_truncate(stringToUTF8OnStack(path), len))));
+      console.log("HI ", path, len);
+      console.log("Type: ", typeof len);
+      return FS.handleError(withStackSave(() => (___syscall_truncate64(stringToUTF8OnStack(path), len))));
     },
     ftruncate: (fd, len) => {
       return FS.handleError(__wasmfs_ftruncate(fd, len));

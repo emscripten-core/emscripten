@@ -6019,6 +6019,8 @@ Module = {
 
   def test_fs_js_api(self):
     self.set_setting("FORCE_FILESYSTEM")
+    self.emcc_args += ['--profiling-funcs']
+    self.emcc_args += ['--profiling']
     self.do_runf(test_file('fs/test_fs_js_api.c'), 'success')
 
   def test_fs_write(self):
