@@ -49,9 +49,30 @@ int main() {
       return 1;
     }
     printf("Unlinked '%s'\n", path);
+
+    // Add a new file in the middle. This will not be visited (although it would
+    // be valid to visit it).
+    if (strcmp(dirent->d_name, "5") == 0) {
+      int fd = open("test/X", O_CREAT, 0777);
+      if (fd < 0) {
+        printf("Unable to create file 'test/X'\n");
+        return 1;
+      }
+      close(fd);
+    }
   }
 
   closedir(dir);
+
+  // The new file should still exist.
+  if (access("test/X", F_OK) != 0) {
+    printf("Expected file 'test/X' to exist\n");
+    return 1;
+  }
+  if (unlink("test/X")) {
+    printf("Unable to unlink 'test/X'\n");
+    return 1;
+  }
 
   if (rmdir("test")) {
     printf("Unable to remove dir 'test'\n");
