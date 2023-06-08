@@ -12,6 +12,8 @@
 //
 
 #include <emscripten.h>
+#include <stdio.h>
+
 #include <string>
 
 #include "file.h"
@@ -60,6 +62,6 @@ char *emscripten_get_preloaded_image_data_from_FILE(FILE *file,
     return 0;
   }
 
-  auto path = getPath(fd);
+  auto path = wasmfs::getPath(fd);
   return emscripten_get_preloaded_image_data(path.c_str(), w, h);
 }
