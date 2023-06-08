@@ -23,7 +23,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     '$FS_getMode',
     // For FS.readFile
     '$UTF8ArrayToString',
-#if FORCE_FILESYSTEM
+#if FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY // see comment below on FORCE
     '$FS_modeStringToFlags',
     'malloc',
     'free',
@@ -94,7 +94,13 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       return ret;
     },
 
-#if FORCE_FILESYSTEM
+#if FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY // FORCE_FILESYSTEM makes us
+                                             // include all JS library code. We
+                                             // must also do so if
+                                             // INCLUDE_FULL_LIBRARY as other
+                                             // places will refer to FS.cwd()
+                                             // in that mode, and so we need
+                                             // to include that.
     // Full JS API support
 
     cwd: () => {
