@@ -3525,6 +3525,7 @@ Module["preRun"].push(function () {
 
   # test illustrating the regression on the modularize feature since commit c5af8f6
   # when compiling with the --preload-file option
+  @also_with_wasmfs
   def test_modularize_and_preload_files(self):
     self.set_setting('EXIT_RUNTIME')
     # TODO(sbc): Fix closure warnings with MODULARIZE + WASM=0
