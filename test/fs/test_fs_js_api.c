@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <assert.h>
+#include <fcntl.h>
 
 int main() {
     /********** test FS.open() **********/
@@ -202,6 +203,25 @@ int main() {
         assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */)
     );
 
+    
+    /********** test FS.mknod() **********/
+    EM_ASM(
+        FS.mknod("mknodtest", 0100000 | 0777); /* S_IFREG | S_RWXU | S_RWXG | S_RWXO */
+
+        FS.create("createtest", 0400); /* S_IRUSR */
+    );
+    struct stat stats;
+    stat("mknodtest", &stats);
+
+    assert(S_ISREG(stats.st_mode));
+    assert(stats.st_mode & 0777);
+
+    stat("createtest", &stats);
+    assert(S_ISREG(stats.st_mode));
+    assert(stats.st_mode & 0400);
+
+    remove("mknodtest");
+    remove("createtest");
     remove("truncatetest");
     remove("testfile");
     remove("renametestfile");

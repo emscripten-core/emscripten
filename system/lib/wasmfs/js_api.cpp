@@ -133,6 +133,14 @@ int _wasmfs_open(char* path, int flags, mode_t mode) {
   return err;
 }
 
+int _wasmfs_mknod(char* path, mode_t mode, dev_t dev) {
+  int err = __syscall_mknodat(AT_FDCWD, (intptr_t)path, mode, dev);
+  if (err == -1) {
+    return errno;
+  }
+  return err;
+}
+
 int _wasmfs_unlink(char* path) {
   return __syscall_unlinkat(AT_FDCWD, (intptr_t)path, 0);
 }
