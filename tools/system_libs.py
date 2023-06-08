@@ -1877,7 +1877,8 @@ class libwasmfs_no_fs(Library):
   src_files = ['no_fs.c']
 
   def can_use(self):
-    return settings.WASMFS
+    # If the filesystem is forced then we definitely do not need this library.
+    return settings.WASMFS and not settings.FORCE_FILESYSTEM
 
 
 class libwasmfs_noderawfs(Library):
