@@ -1,4 +1,4 @@
-------------- Reading from /root/working Directory -------------
+------------- Reading from /working Directory -------------
 d.d_name = .
 d.d_reclen = 280
 d.d_type = directory
@@ -58,13 +58,13 @@ stdin
 stdout
 urandom
 
-/root/working file position is: 1
-------------- Reading one from /root/working Directory -------------
+/working file position is: 1
+------------- Reading one from /working Directory -------------
 d.d_name = ..
 d.d_reclen = 280
 d.d_type = directory
 
-------------- Reading from /root/working Directory -------------
+------------- Reading from /working Directory -------------
 d.d_name = .
 d.d_reclen = 280
 d.d_type = directory
