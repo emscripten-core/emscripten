@@ -114,8 +114,7 @@ var SyscallsLibrary = {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     // Just like `FS.getStream` but will throw EBADF if stream is undefined.
     getStreamFromFD: function(fd) {
-      var stream = FS.getStream(fd);
-      if (!stream) throw new FS.ErrnoError({{{ cDefs.EBADF }}});
+      var stream = FS.getStreamChecked(fd);
 #if SYSCALL_DEBUG
       dbg(`    (stream: "${stream.path}")`);
 #endif

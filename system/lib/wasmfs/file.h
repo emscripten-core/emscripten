@@ -19,6 +19,7 @@
 #include <variant>
 #include <vector>
 #include <wasi/api.h>
+#include <time.h>
 
 namespace wasmfs {
 
@@ -97,6 +98,10 @@ protected:
   File(FileKind kind, mode_t mode, backend_t backend)
     : kind(kind), mode(mode), backend(backend) {
     atime = mtime = ctime = time(NULL);
+
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    atime_nsec = mtime_nsec = ctime_nsec = ts.tv_nsec;
   }
 
   // A mutex is needed for multiple accesses to the same file.
@@ -109,8 +114,11 @@ protected:
   mode_t mode = 0; // User and group mode bits for access permission.
 
   time_t atime = 0; // Time when the content was last accessed.
+  long atime_nsec = 0; // Nanoseconds after the last second of atime.
   time_t mtime = 0; // Time when the file content was last modified.
+  long mtime_nsec = 0; // Nanoseconds after the last second of mtime.
   time_t ctime = 0; // Time when the file node was last modified.
+  long ctime_nsec = 0; // Nanoseconds after the last second of ctime.
 
   // Reference to parent of current file node. This can be used to
   // traverse up the directory tree. A weak_ptr ensures that the ref
@@ -315,11 +323,17 @@ public:
     file->mode = (file->mode & S_IFMT) | (mode & ~S_IFMT);
   }
   time_t getCTime() { return file->ctime; }
+  long getCTimeNs() { return file->ctime_nsec; }
   void setCTime(time_t time) { file->ctime = time; }
+  void setCTimeNs(long time) { file->ctime_nsec = time; }
   time_t getMTime() { return file->mtime; }
+  long getMTimeNs() { return file->mtime_nsec; }
   void setMTime(time_t time) { file->mtime = time; }
+  void setMTimeNs(long time) { file->mtime_nsec = time; }
   time_t getATime() { return file->atime; }
+  long getATimeNs() { return file->atime_nsec; }
   void setATime(time_t time) { file->atime = time; }
+  void setATimeNs(long time) { file->atime_nsec = time; }
 
   // Note: parent.lock() creates a new shared_ptr to the same Directory
   // specified by the parent weak_ptr.

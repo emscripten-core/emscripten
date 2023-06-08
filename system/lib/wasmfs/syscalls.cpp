@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
+#include <time.h>
 
 #include "backend.h"
 #include "file.h"
@@ -384,8 +385,11 @@ int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
   // Specifies the preferred blocksize for efficient disk I/O.
   buffer->st_blksize = 4096;
   buffer->st_atim.tv_sec = lockedFile.getATime();
+  buffer->st_atim.tv_nsec = lockedFile.getATimeNs();
   buffer->st_mtim.tv_sec = lockedFile.getMTime();
+  buffer->st_mtim.tv_nsec = lockedFile.getMTimeNs();
   buffer->st_ctim.tv_sec = lockedFile.getCTime();
+  buffer->st_ctim.tv_nsec = lockedFile.getCTimeNs();
   return __WASI_ERRNO_SUCCESS;
 }
 
@@ -888,19 +892,11 @@ int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
     return 0;
   }
 
-  std::vector<Directory::Entry> entries = {
-    {".", File::DirectoryKind, dir->getIno()},
-    {"..", File::DirectoryKind, parent->getIno()}};
-  auto dirEntries = lockedDir.getEntries();
-  if (int err = dirEntries.getError()) {
-    return err;
-  }
-  entries.insert(entries.end(), dirEntries->begin(), dirEntries->end());
-
   off_t bytesRead = 0;
-  for (; index < entries.size() && bytesRead + sizeof(dirent) <= count;
+  const auto& dirents = openFile->dirents;
+  for (; index < dirents.size() && bytesRead + sizeof(dirent) <= count;
        index++) {
-    auto& entry = entries[index];
+    const auto& entry = dirents[index];
     result->d_ino = entry.ino;
     result->d_off = index + 1;
     result->d_reclen = sizeof(dirent);
@@ -1105,17 +1101,27 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
   // TODO: Handle tv_nsec being UTIME_NOW or UTIME_OMIT.
   // TODO: Check for write access to the file (see man page for specifics).
   time_t aSeconds, mSeconds;
+  long aNseconds, mNseconds;
   if (times == NULL) {
     aSeconds = time(NULL);
     mSeconds = aSeconds;
+
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    aNseconds = ts.tv_nsec;
+    mNseconds = aNseconds;
   } else {
     aSeconds = times[0].tv_sec;
+    aNseconds = times[0].tv_nsec;
     mSeconds = times[1].tv_sec;
+    mNseconds = times[1].tv_nsec;
   }
 
   auto locked = parsed.getFile()->locked();
   locked.setATime(aSeconds);
+  locked.setATimeNs(aNseconds);
   locked.setMTime(mSeconds);
+  locked.setMTimeNs(mNseconds);
 
   return 0;
 }

@@ -5680,6 +5680,7 @@ Module = {
   def test_getcwd_with_non_ascii_name(self):
     self.do_run_in_out_file_test('fs/test_getcwd_with_non_ascii_name.cpp')
 
+  @no_wasmfs('no support for /proc/self/fd/, see https://github.com/emscripten-core/emscripten/issues/19430')
   def test_proc_self_fd(self):
     self.do_run_in_out_file_test('fs/test_proc_self_fd.c')
 
@@ -5813,7 +5814,11 @@ Module = {
   def test_readdir_empty(self):
     self.do_run_in_out_file_test('dirent/test_readdir_empty.c')
 
+  def test_readdir_unlink(self):
+    self.do_run_in_out_file_test('dirent/test_readdir_unlink.c')
+
   def test_stat(self):
+    self.set_setting("FORCE_FILESYSTEM")
     self.do_runf(test_file('stat/test_stat.c'), 'success')
     self.verify_in_strict_mode('test_stat.js')
 
@@ -5830,6 +5835,8 @@ Module = {
 
   @also_with_wasmfs
   def test_fcntl(self):
+    if self.get_setting('WASMFS'):
+      self.emcc_args += ['-sFORCE_FILESYSTEM']
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl/test_fcntl.c')
 
@@ -5838,6 +5845,8 @@ Module = {
 
   @also_with_wasm_bigint
   def test_fcntl_misc(self):
+    if self.get_setting('WASMFS'):
+      self.emcc_args += ['-sFORCE_FILESYSTEM']
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl/test_fcntl_misc.c')
 
@@ -6016,6 +6025,8 @@ Module = {
     self.do_runf(test_file('fs/test_fs_js_api.c'), 'success')
 
   def test_fs_write(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting("FORCE_FILESYSTEM")
     self.do_run_in_out_file_test('fs/test_write.cpp')
 
   @also_with_noderawfs
@@ -6862,6 +6873,9 @@ void* operator new(size_t size) {
   @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test
   def test_freetype(self):
+    if self.get_setting('WASMFS'):
+      self.emcc_args += ['-sFORCE_FILESYSTEM']
+
     self.add_pre_run("FS.createDataFile('/', 'font.ttf', %s, true, false, false);" % str(
       list(bytearray(read_binary(test_file('freetype/LiberationSansBold.ttf'))))
     ))
@@ -7292,7 +7306,7 @@ void* operator new(size_t size) {
 
     # When assertions are enabled direct and indirect usage both abort with a useful error message.
     not_exported = "Aborted('ALLOC_STACK' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ))"
-    not_included = "`ALLOC_STACK` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line (e.g. -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$ALLOC_STACK)"
+    not_included = "`ALLOC_STACK` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line (e.g. -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='$ALLOC_STACK')"
     self.set_setting('ASSERTIONS')
     test(not_exported, assert_returncode=NON_ZERO)
     test(not_included, args=['-DDIRECT'])
@@ -8879,7 +8893,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
       # Need to use `-g` to get proper line numbers in asm.js
       self.emcc_args += ['-g']
     self.do_runf(test_file('core/test_ubsan_minimal_too_many_errors.c'),
-                 expected_output='ubsan: add-overflow\n' * 20 + 'ubsan: too many errors\n')
+                 expected_output='ubsan: add-overflow by 0x[0-9a-f]*\n' * 20 + 'ubsan: too many errors\n',
+                 regex=True)
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
   @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
@@ -8892,7 +8907,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
       # Need to use `-g` to get proper line numbers in asm.js
       self.emcc_args += ['-g']
     self.do_runf(test_file('core/test_ubsan_minimal_errors_same_place.c'),
-                 expected_output='ubsan: add-overflow\n' * 5)
+                 expected_output='ubsan: add-overflow by 0x[0-9a-z]*\n' * 5,
+                 regex=True)
 
   @parameterized({
     'fsanitize_undefined': (['-fsanitize=undefined'],),

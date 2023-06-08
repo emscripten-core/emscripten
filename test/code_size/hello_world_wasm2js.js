@@ -40,7 +40,7 @@ function c(a) {
     };
 })(b.wasm, {
     a: {
-        a: function(a) {
+        a: a => {
             var h = console, n = h.log;
             if (a) {
                 for (var f = a + void 0, e = a; !(e >= f) && d[e]; ) ++e;
