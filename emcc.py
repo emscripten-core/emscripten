@@ -2825,7 +2825,7 @@ def phase_linker_setup(options, state, newargs):
     settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in settings.ASYNCIFY_IMPORTS]
 
     if settings.ASYNCIFY == 2:
-      diagnostics.warning('experimental', 'ASYNCIFY with stack switching is experimental')
+      diagnostics.warning('experimental', '-sASYNCIFY=2 (JSPI) is still experimental')
 
   if settings.WASM2JS:
     if settings.GENERATE_SOURCE_MAP:

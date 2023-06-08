@@ -224,11 +224,11 @@ def also_with_standalone_wasm(impure=False):
   return decorated
 
 
-def with_asyncify_and_stack_switching(f):
+def with_asyncify_and_jspi(f):
   assert callable(f)
 
-  def metafunc(self, stack_switching):
-    if stack_switching:
+  def metafunc(self, jspi):
+    if jspi:
       self.set_setting('ASYNCIFY', 2)
       self.require_jspi()
       if not self.is_wasm():
@@ -242,7 +242,7 @@ def with_asyncify_and_stack_switching(f):
       f(self)
 
   metafunc._parameterize = {'': (False,),
-                            'stack_switching': (True,)}
+                            'jspi': (True,)}
   return metafunc
 
 
@@ -8150,7 +8150,7 @@ void* operator new(size_t size) {
 
   # Test that a main with arguments is automatically asyncified.
   @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
   def test_async_main(self):
     create_file('main.c',  r'''
 #include <stdio.h>
@@ -8164,7 +8164,7 @@ int main(int argc, char **argv) {
     self.do_runf('main.c', 'argc=2 argv=hello', args=['hello'])
 
   @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
   def test_async_hello(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
@@ -8189,7 +8189,7 @@ int main() {
     self.do_runf('main.c', 'HelloWorld!99')
 
   @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
   def test_async_loop(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
@@ -8245,7 +8245,7 @@ Module['onRuntimeInitialized'] = function() {
     self.do_runf('main.c', 'The call to main is running asynchronously.')
 
   @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
   def test_async_ccall_good(self):
     # check reasonable ccall use
     # needs to flush stdio streams
@@ -8322,7 +8322,7 @@ Module['onRuntimeInitialized'] = function() {
     self.do_runf(test_file('test_fibers.cpp'), '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
   @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
   def test_asyncify_unused(self):
     # test a program not using asyncify, but the pref is set
     self.do_core_test('test_hello_world.c')
@@ -8442,7 +8442,7 @@ Module['onRuntimeInitialized'] = function() {
   @no_lsan('undefined symbol __global_base')
   @no_wasm2js('dynamic linking support in wasm2js')
   @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
   def test_asyncify_main_module(self):
     self.set_setting('MAIN_MODULE', 2)
     self.do_core_test('test_hello_world.c')
@@ -9686,7 +9686,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
   def test_em_async_js(self):
     self.uses_es6 = True
     if not self.get_setting('ASYNCIFY'):
