@@ -176,7 +176,7 @@ def also_with_wasmfs(func):
     if self.get_setting('STANDALONE_WASM'):
       self.skipTest("test currently cannot run both with WASMFS and STANDALONE_WASM")
     self.set_setting('WASMFS')
-    self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
+    self.emcc_args.append('-DWASMFS')
     func(self)
   return decorated
 
@@ -190,7 +190,7 @@ def also_with_wasmfs_js(func):
       self.skipTest("test currently cannot run both with WASMFS and STANDALONE_WASM")
     self.set_setting('WASMFS')
     self.set_setting('FORCE_FILESYSTEM')
-    self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
+    self.emcc_args.append('-DWASMFS')
     func(self)
   return decorated
 
