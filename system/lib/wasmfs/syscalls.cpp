@@ -25,8 +25,6 @@
 #include <vector>
 #include <wasi/api.h>
 
-#include <stdio.h>
-
 #include "backend.h"
 #include "file.h"
 #include "file_table.h"
@@ -1237,8 +1235,6 @@ static int doTruncate(std::shared_ptr<File>& file, off_t size) {
 }
 
 int __syscall_truncate64(intptr_t path, uint64_t size) {
-  printf("sys truncate: path: %ld, size: %lld\n", path, size);
-  printf("sys truncate: path: %ld, size: %llu\n", path, size);
   auto parsed = path::parseFile((char*)path);
   if (auto err = parsed.getError()) {
     return err;
@@ -1247,8 +1243,6 @@ int __syscall_truncate64(intptr_t path, uint64_t size) {
 }
 
 int __syscall_ftruncate64(int fd, uint64_t size) {
-  printf("sys ftruncate: path: %d, size: %lld\n", fd, size);
-  printf("sys ftruncate: path: %d, size: %llu\n", fd, size);
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;
