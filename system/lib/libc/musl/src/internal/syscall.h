@@ -19,16 +19,9 @@
 #endif
 
 #ifndef __scc
-#ifdef __EMSCRIPTEN__
-// With emscripten we allow the passing of longer-than-word-sized
-// argument (such as off_t on wasm32) and let binaryen handle splitting
-// them into a pair of i32 arguments.
-#define __scc(X) ((long long) (X))
-#else
 #define __scc(X) ((long) (X))
 #endif
 typedef long syscall_arg_t;
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,12 +43,12 @@ hidden long __syscall_ret(unsigned long),
 #else // __EMSCRIPTEN__
 #define __syscall_emscripten(n, ...) n(__VA_ARGS__)
 #define __syscall_emscripten0(n) __syscall_emscripten(n)
-#define __syscall_emscripten1(n,a) __syscall_emscripten(n,__scc(a))
-#define __syscall_emscripten2(n,a,b) __syscall_emscripten(n,__scc(a),__scc(b))
-#define __syscall_emscripten3(n,a,b,c) __syscall_emscripten(n,__scc(a),__scc(b),__scc(c))
-#define __syscall_emscripten4(n,a,b,c,d) __syscall_emscripten(n,__scc(a),__scc(b),__scc(c),__scc(d))
-#define __syscall_emscripten5(n,a,b,c,d,e) __syscall_emscripten(n,__scc(a),__scc(b),__scc(c),__scc(d),__scc(e))
-#define __syscall_emscripten6(n,a,b,c,d,e,f) __syscall_emscripten(n,__scc(a),__scc(b),__scc(c),__scc(d),__scc(e),__scc(f))
+#define __syscall_emscripten1(n,a) __syscall_emscripten(n,a)
+#define __syscall_emscripten2(n,a,b) __syscall_emscripten(n,a,b)
+#define __syscall_emscripten3(n,a,b,c) __syscall_emscripten(n,a,b,c)
+#define __syscall_emscripten4(n,a,b,c,d) __syscall_emscripten(n,a,b,c,d)
+#define __syscall_emscripten5(n,a,b,c,d,e) __syscall_emscripten(n,a,b,c,d,e)
+#define __syscall_emscripten6(n,a,b,c,d,e,f) __syscall_emscripten(n,a,b,c,d,e,f)
 #endif // __EMSCRIPTEN__
 
 #define __SYSCALL_NARGS_X(a,b,c,d,e,f,g,h,n,...) n
@@ -421,10 +414,10 @@ hidden long __syscall_ret(unsigned long),
 #define __sys_open_cp3(x,pn,fl,mo) __syscall_cp4(SYS_openat, AT_FDCWD, pn, (fl)|O_LARGEFILE, mo)
 #endif
 #else // __EMSCRIPTEN__
-#define __sys_open2(x,pn,fl) __syscall_openat(__scc(AT_FDCWD), __scc(pn), __scc((fl)|O_LARGEFILE))
-#define __sys_open3(x,pn,fl,mo) __syscall_openat(__scc(AT_FDCWD), __scc(pn), __scc((fl)|O_LARGEFILE), __scc(mo))
-#define __sys_open_cp2(x,pn,fl) __syscall_openat(__scc(AT_FDCWD), __scc(pn), __scc((fl)|O_LARGEFILE))
-#define __sys_open_cp3(x,pn,fl,mo) __syscall_openat(__scc(AT_FDCWD), __scc(pn), __scc((fl)|O_LARGEFILE), __scc(mo))
+#define __sys_open2(x,pn,fl) __syscall_openat(AT_FDCWD, pn, (fl)|O_LARGEFILE)
+#define __sys_open3(x,pn,fl,mo) __syscall_openat(AT_FDCWD, pn, (fl)|O_LARGEFILE, mo)
+#define __sys_open_cp2(x,pn,fl) __syscall_openat(AT_FDCWD, pn, (fl)|O_LARGEFILE)
+#define __sys_open_cp3(x,pn,fl,mo) __syscall_openat(AT_FDCWD, pn, (fl)|O_LARGEFILE, mo)
 #endif
 
 #define __sys_open(...) __SYSCALL_DISP(__sys_open,,__VA_ARGS__)

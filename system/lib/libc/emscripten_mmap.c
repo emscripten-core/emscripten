@@ -35,10 +35,10 @@ struct map {
 static volatile int lock[1];
 static struct map* mappings;
 
-static struct map* find_mapping(intptr_t addr, struct map** prev) {
+static struct map* find_mapping(void *addr, struct map** prev) {
   struct map* map = mappings;
   while (map) {
-    if (map->addr == (void*)addr) {
+    if (map->addr == addr) {
       return map;
     }
     if (prev) {
@@ -49,7 +49,7 @@ static struct map* find_mapping(intptr_t addr, struct map** prev) {
   return map;
 }
 
-int __syscall_munmap(intptr_t addr, size_t length) {
+int __syscall_munmap(void *addr, size_t length) {
   LOCK(lock);
   struct map* prev = NULL;
   struct map* map = find_mapping(addr, &prev);
@@ -89,7 +89,7 @@ int __syscall_munmap(intptr_t addr, size_t length) {
   return 0;
 }
 
-int __syscall_msync(intptr_t addr, size_t len, int flags) {
+int __syscall_msync(void *addr, size_t len, int flags) {
   LOCK(lock);
   struct map* map = find_mapping(addr, NULL);
   UNLOCK(lock);
@@ -102,7 +102,7 @@ int __syscall_msync(intptr_t addr, size_t len, int flags) {
   return _msync_js(addr, len, map->prot, map->flags, map->fd, map->offset);
 }
 
-intptr_t __syscall_mmap2(intptr_t addr, size_t len, int prot, int flags, int fd, off_t offset) {
+intptr_t __syscall_mmap2(void *addr, size_t len, int prot, int flags, int fd, off_t offset) {
   if (addr != 0) {
     // We don't currently support location hints for the address of the mapping
     return -EINVAL;
