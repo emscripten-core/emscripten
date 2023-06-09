@@ -64,7 +64,7 @@ int _wasmfs_read_file(const char* path, uint8_t** out_buf, off_t* out_size) {
 
 // Writes to a file, possibly creating it, and returns the number of bytes
 // written successfully. If the file already exists, appends to it.
-int _wasmfs_write_file(const char* pathname, char* data, size_t data_size) {
+int _wasmfs_write_file(const char* pathname, const char* data, size_t data_size) {
   auto parsedParent = path::parseParent(pathname);
   if (parsedParent.getError()) {
     return 0;
