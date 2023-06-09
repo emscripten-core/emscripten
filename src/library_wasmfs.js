@@ -115,10 +115,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     },
     // TODO: mkdirTree
     rmdir: (path) => {
-      return withStackSave(() => {
-        var buffer = stringToUTF8OnStack(path);
-        return __wasmfs_rmdir(buffer);
-      })
+      return FS.handleError(withStackSave(() => __wasmfs_rmdir(stringToUTF8OnStack(path))));
     },
     open: (path, flags, mode) => {
       flags = typeof flags == 'string' ? FS_modeStringToFlags(flags) : flags;

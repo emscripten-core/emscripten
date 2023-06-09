@@ -179,7 +179,17 @@ mergeInto(LibraryManager.library, {
     return id;
   },
 
-  emscripten_promise_all_settled__deps: ['$promiseMap', '$idsToPromises'],
+  $setPromiseResult__internal: true,
+  $setPromiseResult: (ptr, fulfill, value) => {
+#if ASSERTIONS
+    assert(typeof value == 'undefined' || typeof value === 'number', `native promises can only handle numeric results (${value} ${typeof value})`);
+#endif
+    var result = fulfill ? {{{ cDefs.EM_PROMISE_FULFILL }}} : {{{ cDefs.EM_PROMISE_REJECT }}}
+    {{{ makeSetValue('ptr', C_STRUCTS.em_settled_result_t.result, 'result', 'i32') }}};
+    {{{ makeSetValue('ptr', C_STRUCTS.em_settled_result_t.value, 'value', '*') }}};
+  },
+
+  emscripten_promise_all_settled__deps: ['$promiseMap', '$idsToPromises', '$setPromiseResult'],
   emscripten_promise_all_settled: function(idBuf, resultBuf, size) {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
@@ -188,22 +198,12 @@ mergeInto(LibraryManager.library, {
     var id = promiseMap.allocate({
       promise: Promise.allSettled(promises).then((results) => {
         if (resultBuf) {
-          for (var i = 0; i < size; i++) {
-            var baseOffset = i * {{{ C_STRUCTS.em_settled_result_t.__size__ }}};
-            var resultOffset =
-                baseOffset + {{{ C_STRUCTS.em_settled_result_t.result }}};
-            var valueOffset =
-                baseOffset + {{{ C_STRUCTS.em_settled_result_t.value }}};
+          var offset = resultBuf;
+          for (var i = 0; i < size; i++, offset += {{{ C_STRUCTS.em_settled_result_t.__size__ }}}) {
             if (results[i].status === 'fulfilled') {
-              var fulfill = {{{ cDefs.EM_PROMISE_FULFILL }}};
-              {{{ makeSetValue('resultBuf', 'resultOffset', 'fulfill', 'i32') }}};
-              {{{ makeSetValue('resultBuf', 'valueOffset', 'results[i].value', '*') }}};
+              setPromiseResult(offset, true, results[i].value);
             } else {
-              var reject = {{{ cDefs.EM_PROMISE_REJECT }}};
-              {{{ makeSetValue('resultBuf', 'resultOffset', 'reject', 'i32') }}};
-              // Closure can't type `reason` in some contexts.
-              var reason = /** @type {number} */ (results[i].reason);
-              {{{ makeSetValue('resultBuf', 'valueOffset', 'reason', '*') }}};
+              setPromiseResult(offset, false, results[i].reason);
             }
           }
         }
@@ -215,7 +215,6 @@ mergeInto(LibraryManager.library, {
 #endif
     return id;
   },
-
 
   emscripten_promise_any__deps: [
     '$promiseMap', '$idsToPromises',
@@ -260,5 +259,5 @@ mergeInto(LibraryManager.library, {
     dbg(`create: ${id}`);
 #endif
     return id;
-  }
+  },
 });
