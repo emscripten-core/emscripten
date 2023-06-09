@@ -3226,13 +3226,13 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   # Deploy the Audio Worklet module bootstrap file (*.aw.js)
   if settings.AUDIO_WORKLET == 1:
     worklet_output = os.path.join(target_dir, settings.AUDIO_WORKLET_FILE)
-    with open(worklet_output, 'w') as f:
-      f.write(shared.read_and_preprocess(shared.path_from_root('src', 'audio_worklet.js'), expand_macros=True))
+    contents = shared.read_and_preprocess(shared.path_from_root('src', 'audio_worklet.js'), expand_macros=True)
+    utils.write_file(worklet_output, contents)
 
     # Minify the audio_worklet.js file in optimized builds
     if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
       minified_worker = building.acorn_optimizer(worklet_output, ['minifyWhitespace'], return_output=True)
-      open(worklet_output, 'w').write(minified_worker)
+      utils.write_file(worklet_output, minified_worker)
 
   if settings.MODULARIZE:
     modularize()
