@@ -97,10 +97,9 @@ public:
 protected:
   File(FileKind kind, mode_t mode, backend_t backend)
     : kind(kind), mode(mode), backend(backend) {
-    atime = mtime = ctime = time(NULL);
-
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
+    atime = mtime = ctime = ts.tv_sec;
     atime_nsec = mtime_nsec = ctime_nsec = ts.tv_nsec;
   }
 
@@ -322,18 +321,36 @@ public:
     // directory, for example).
     file->mode = (file->mode & S_IFMT) | (mode & ~S_IFMT);
   }
-  time_t getCTime() { return file->ctime; }
-  long getCTimeNs() { return file->ctime_nsec; }
-  void setCTime(time_t time) { file->ctime = time; }
-  void setCTimeNs(long time) { file->ctime_nsec = time; }
-  time_t getMTime() { return file->mtime; }
-  long getMTimeNs() { return file->mtime_nsec; }
-  void setMTime(time_t time) { file->mtime = time; }
-  void setMTimeNs(long time) { file->mtime_nsec = time; }
-  time_t getATime() { return file->atime; }
-  long getATimeNs() { return file->atime_nsec; }
-  void setATime(time_t time) { file->atime = time; }
-  void setATimeNs(long time) { file->atime_nsec = time; }
+  struct timespec getCTime() {
+    struct timespec ts;
+    ts.tv_sec = file->ctime;
+    ts.tv_nsec = file->ctime_nsec;
+    return ts;
+  }
+  void setCTime(struct timespec* time) {
+    file->ctime = time->tv_sec;
+    file->ctime_nsec = time->tv_nsec;
+  }
+  struct timespec getMTime() {
+    struct timespec ts;
+    ts.tv_sec = file->mtime;
+    ts.tv_nsec = file->mtime_nsec;
+    return ts;
+  }
+  void setMTime(struct timespec* time) {
+    file->mtime = time->tv_sec;
+    file->mtime_nsec = time->tv_nsec;
+  }
+  struct timespec getATime() {
+    struct timespec ts;
+    ts.tv_sec = file->atime;
+    ts.tv_nsec = file->atime_nsec;
+    return ts;
+  }
+  void setATime(struct timespec* time) {
+    file->atime = time->tv_sec;
+    file->atime_nsec = time->tv_nsec;
+  }
 
   // Note: parent.lock() creates a new shared_ptr to the same Directory
   // specified by the parent weak_ptr.

@@ -168,7 +168,9 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     lockedOpenFile.setPosition(offset + bytesWritten);
   }
   if (bytesWritten) {
-    lockedFile.setMTime(time(NULL));
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    lockedFile.setMTime(&ts);
   }
   return __WASI_ERRNO_SUCCESS;
 }
@@ -384,12 +386,15 @@ int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
   buffer->st_blocks = (buffer->st_size + 511) / 512;
   // Specifies the preferred blocksize for efficient disk I/O.
   buffer->st_blksize = 4096;
-  buffer->st_atim.tv_sec = lockedFile.getATime();
-  buffer->st_atim.tv_nsec = lockedFile.getATimeNs();
-  buffer->st_mtim.tv_sec = lockedFile.getMTime();
-  buffer->st_mtim.tv_nsec = lockedFile.getMTimeNs();
-  buffer->st_ctim.tv_sec = lockedFile.getCTime();
-  buffer->st_ctim.tv_nsec = lockedFile.getCTimeNs();
+  struct timespec aTime = lockedFile.getATime();
+  buffer->st_atim.tv_sec = aTime.tv_sec;
+  buffer->st_atim.tv_nsec = aTime.tv_nsec;
+  struct timespec mTime = lockedFile.getMTime();
+  buffer->st_mtim.tv_sec = mTime.tv_sec;
+  buffer->st_mtim.tv_nsec = mTime.tv_nsec;
+  struct timespec cTime = lockedFile.getCTime();
+  buffer->st_ctim.tv_sec = cTime.tv_sec;
+  buffer->st_ctim.tv_nsec = cTime.tv_nsec;
   return __WASI_ERRNO_SUCCESS;
 }
 
@@ -1100,28 +1105,21 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
   // TODO: Set tv_nsec (nanoseconds) as well.
   // TODO: Handle tv_nsec being UTIME_NOW or UTIME_OMIT.
   // TODO: Check for write access to the file (see man page for specifics).
-  time_t aSeconds, mSeconds;
-  long aNseconds, mNseconds;
+  struct timespec aTime, mTime;
+  
   if (times == NULL) {
-    aSeconds = time(NULL);
-    mSeconds = aSeconds;
-
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
-    aNseconds = ts.tv_nsec;
-    mNseconds = aNseconds;
+    aTime = ts;
+    mTime = ts;
   } else {
-    aSeconds = times[0].tv_sec;
-    aNseconds = times[0].tv_nsec;
-    mSeconds = times[1].tv_sec;
-    mNseconds = times[1].tv_nsec;
+    aTime = times[0];
+    mTime = times[1];
   }
 
   auto locked = parsed.getFile()->locked();
-  locked.setATime(aSeconds);
-  locked.setATimeNs(aNseconds);
-  locked.setMTime(mSeconds);
-  locked.setMTimeNs(mNseconds);
+  locked.setATime(&aTime);
+  locked.setMTime(&mTime);
 
   return 0;
 }
@@ -1145,7 +1143,9 @@ int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
   auto lockedFile = parsed.getFile()->locked();
   lockedFile.setMode(mode);
   // On POSIX, ctime is updated on metadata changes, like chmod.
-  lockedFile.setCTime(time(NULL));
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  lockedFile.setCTime(&ts);
   return 0;
 }
 
@@ -1160,7 +1160,9 @@ int __syscall_fchmod(int fd, int mode) {
   }
   auto lockedFile = openFile->locked().getFile()->locked();
   lockedFile.setMode(mode);
-  lockedFile.setCTime(time(NULL));
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  lockedFile.setCTime(&ts);
   return 0;
 }
 

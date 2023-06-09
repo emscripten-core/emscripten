@@ -111,19 +111,18 @@ void test_fs_utime() {
     EM_ASM(
         FS.writeFile('utimetest', 'a=1\nb=2\n');
     );
-    struct stat utimeStats;
-    stat("utimetest", &utimeStats);
 
     EM_ASM(
         FS.utime('utimetest', 10500, 8000);
     );
+    struct stat utimeStats;
     stat("utimetest", &utimeStats);
 
     assert(utimeStats.st_atime == 10);
     assert(utimeStats.st_atim.tv_sec == 10);
 
     // WasmFS correctly sets both times, but the legacy API sets both times to the max of atime and mtime
-    // and does correctly handle nanseconds.
+    // and does not correctly handle nanseconds.
 #if WASMFS
     assert(utimeStats.st_atim.tv_nsec == 500000000);
 
