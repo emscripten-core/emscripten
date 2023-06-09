@@ -474,7 +474,8 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
           //      report a generic error.
           return -EIO;
         }
-        [[maybe_unused]] bool mounted = lockedParent.mountChild(std::string(childName), created);
+        [[maybe_unused]] bool mounted =
+          lockedParent.mountChild(std::string(childName), created);
         assert(mounted);
       }
       // TODO: Check that the insert actually succeeds.
@@ -588,8 +589,9 @@ int __syscall_mknodat(int dirfd, const char* path, mode_t mode, dev_t dev) {
                 OpenReturnMode::Nothing);
 }
 
-static int
-doMkdir(path::ParsedParent parsed, mode_t mode, backend_t backend = NullBackend) {
+static int doMkdir(path::ParsedParent parsed,
+                   mode_t mode,
+                   backend_t backend = NullBackend) {
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -646,7 +648,7 @@ doMkdir(path::ParsedParent parsed, mode_t mode, backend_t backend = NullBackend)
 
 // This function is exposed to users and allows users to specify a particular
 // backend that a directory should be created within.
-int wasmfs_create_directory(char *path, mode_t mode, backend_t backend) {
+int wasmfs_create_directory(char* path, mode_t mode, backend_t backend) {
   static_assert(std::is_same_v<decltype(doMkdir(0, 0, 0)), int>,
                 "unexpected conversion from result of doMkdir to int");
   return doMkdir(path::parseParent(path), mode, backend);
@@ -1496,7 +1498,8 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
   }
 }
 
-static int doStatFS(std::shared_ptr<File>& file, size_t size, struct statfs* buf) {
+static int
+doStatFS(std::shared_ptr<File>& file, size_t size, struct statfs* buf) {
   if (size != sizeof(struct statfs)) {
     // We only know how to write to a standard statfs, not even a truncated one.
     return -EINVAL;
