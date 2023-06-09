@@ -1234,9 +1234,9 @@ static int doTruncate(std::shared_ptr<File>& file, off_t size) {
   return ret;
 }
 
-int __syscall_truncate64(intptr_t path, int32_t size) {
-  printf("sys: %ld, %d\n", path, size);
-  printf("sys: %ld, %u\n", path, size);
+int __syscall_truncate64(intptr_t path, uint64_t size) {
+  printf("sys unsigned: %ld, %llu\n", path, size);
+  printf("sys signed: %ld, %lld\n", path, size);
   auto parsed = path::parseFile((char*)path);
   if (auto err = parsed.getError()) {
     return err;

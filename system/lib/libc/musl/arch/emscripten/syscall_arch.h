@@ -56,7 +56,7 @@ int __syscall_poll(intptr_t fds, int nfds, int timeout);
 int __syscall_getcwd(intptr_t buf, size_t size);
 int __syscall_ugetrlimit(int resource, intptr_t rlim);
 intptr_t __syscall_mmap2(intptr_t addr, size_t len, int prot, int flags, int fd, size_t off);
-int __syscall_truncate64(intptr_t path, int32_t length);
+int __syscall_truncate64(intptr_t path, uint64_t length);
 int __syscall_ftruncate64(int fd, uint64_t length);
 int __syscall_stat64(intptr_t path, intptr_t buf);
 int __syscall_lstat64(intptr_t path, intptr_t buf);
