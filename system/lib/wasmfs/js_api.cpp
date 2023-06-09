@@ -115,35 +115,34 @@ int _wasmfs_write_file(const char* pathname, char* data, size_t data_size) {
 }
 
 int _wasmfs_mkdir(const char* path, mode_t mode) {
-  return __syscall_mkdirat(AT_FDCWD, (intptr_t)path, mode);
+  return __syscall_mkdirat(AT_FDCWD, path, mode);
 }
 
 int _wasmfs_rmdir(const char* path) {
-  return __syscall_unlinkat(AT_FDCWD, (intptr_t)path, AT_REMOVEDIR);
+  return __syscall_unlinkat(AT_FDCWD, path, AT_REMOVEDIR);
 }
 
 int _wasmfs_open(const char* path, int flags, mode_t mode) {
-  return __syscall_openat(AT_FDCWD, (intptr_t)path, flags, mode);
+  return __syscall_openat(AT_FDCWD, path, flags, mode);
 }
 
 int _wasmfs_mknod(const char* path, mode_t mode, dev_t dev) {
-  return __syscall_mknodat(AT_FDCWD, (intptr_t)path, mode, dev);
+  return __syscall_mknodat(AT_FDCWD, path, mode, dev);
 }
 
 int _wasmfs_unlink(const char* path) {
-  return __syscall_unlinkat(AT_FDCWD, (intptr_t)path, 0);
+  return __syscall_unlinkat(AT_FDCWD, path, 0);
 }
 
-int _wasmfs_chdir(const char* path) { return __syscall_chdir((intptr_t)path); }
+int _wasmfs_chdir(const char* path) { return __syscall_chdir(path); }
 
 int _wasmfs_symlink(const char* old_path, const char* new_path) {
-  return __syscall_symlinkat((intptr_t)old_path, AT_FDCWD, (intptr_t)new_path);
+  return __syscall_symlinkat(old_path, AT_FDCWD, new_path);
 }
 
 int _wasmfs_readlink(const char* path, char** out_ptr) {
   static thread_local char* readBuf = (char*)malloc(PATH_MAX);
-  int bytes =
-    __syscall_readlinkat(AT_FDCWD, (intptr_t)path, (intptr_t)readBuf, PATH_MAX);
+  int bytes = __syscall_readlinkat(AT_FDCWD, path, readBuf, PATH_MAX);
   if (bytes < 0) {
     return bytes;
   }
@@ -179,14 +178,13 @@ int _wasmfs_pwrite(int fd, void* buf, size_t count, off_t offset) {
 }
 
 int _wasmfs_chmod(const char* path, mode_t mode) {
-  return __syscall_chmod((intptr_t)path, mode);
+  return __syscall_chmod(path, mode);
 }
 
 int _wasmfs_fchmod(int fd, mode_t mode) { return __syscall_fchmod(fd, mode); }
 
 int _wasmfs_lchmod(const char* path, mode_t mode) {
-  return __syscall_fchmodat2(
-    AT_FDCWD, (intptr_t)path, mode, AT_SYMLINK_NOFOLLOW);
+  return __syscall_fchmodat2(AT_FDCWD, path, mode, AT_SYMLINK_NOFOLLOW);
 }
 
 int _wasmfs_llseek(int fd, off_t offset, int whence) {
@@ -199,8 +197,7 @@ int _wasmfs_llseek(int fd, off_t offset, int whence) {
 }
 
 int _wasmfs_rename(const char* oldpath, const char* newpath) {
-  return __syscall_renameat(
-    AT_FDCWD, (intptr_t)oldpath, AT_FDCWD, (intptr_t)newpath);
+  return __syscall_renameat(AT_FDCWD, oldpath, AT_FDCWD, newpath);
 }
 
 int _wasmfs_read(int fd, void* buf, size_t count) {
@@ -230,7 +227,7 @@ int _wasmfs_pread(int fd, void* buf, size_t count, off_t offset) {
 }
 
 int _wasmfs_truncate(const char* path, off_t length) {
-  return __syscall_truncate64((intptr_t)path, length);
+  return __syscall_truncate64(path, length);
 }
 
 int _wasmfs_ftruncate(int fd, off_t length) {
@@ -240,15 +237,15 @@ int _wasmfs_ftruncate(int fd, off_t length) {
 int _wasmfs_close(int fd) { return __wasi_fd_close(fd); }
 
 void* _wasmfs_mmap(size_t length, int prot, int flags, int fd, off_t offset) {
-  return (void*)__syscall_mmap2(0, length, prot, flags, fd, offset);
+  return __syscall_mmap2(0, length, prot, flags, fd, offset);
 }
 
 int _wasmfs_msync(void* addr, size_t length, int flags) {
-  return __syscall_msync((intptr_t)addr, length, flags);
+  return __syscall_msync(addr, length, flags);
 }
 
 int _wasmfs_munmap(void* addr, size_t length) {
-  return __syscall_munmap((intptr_t)addr, length);
+  return __syscall_munmap(addr, length);
 }
 
 int _wasmfs_utime(const char* path, double atime_ms, double mtime_ms) {
@@ -258,22 +255,22 @@ int _wasmfs_utime(const char* path, double atime_ms, double mtime_ms) {
   times[1].tv_sec = (long)mtime_ms / 1000;
   times[1].tv_nsec = ((long)mtime_ms % 1000) * 1000000;
 
-  return __syscall_utimensat(AT_FDCWD, (intptr_t)path, (intptr_t)times, 0);
+  return __syscall_utimensat(AT_FDCWD, path, times, 0);
 }
 
 int _wasmfs_stat(const char* path, struct stat* statBuf) {
-  return __syscall_stat64((intptr_t)path, (intptr_t)statBuf);
+  return __syscall_stat64(path, statBuf);
 }
 
 int _wasmfs_lstat(const char* path, struct stat* statBuf) {
-  return __syscall_lstat64((intptr_t)path, (intptr_t)statBuf);
+  return __syscall_lstat64(path, statBuf);
 }
 
 // The legacy JS API requires a mountpoint to already exist, so  WasmFS will
 // attempt to remove the target directory if it exists before replacing it with
 // a mounted directory.
 int _wasmfs_mount(const char* path, ::backend_t created_backend) {
-  int err = __syscall_rmdir((intptr_t)path);
+  int err = __syscall_rmdir(path);
 
   // The legacy JS API mount requires the directory to already exist, but we
   // will also allow it to be missing.

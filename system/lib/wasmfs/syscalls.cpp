@@ -347,18 +347,21 @@ backend_t wasmfs_get_backend_by_path(const char* path) {
 static timespec ms_to_timespec(double ms) {
   long long seconds = ms / 1000;
   timespec ts;
-  ts.tv_sec = seconds; // seconds
+  ts.tv_sec = seconds;                                // seconds
   ts.tv_nsec = (ms - (seconds * 1000)) * 1000 * 1000; // nanoseconds
   return ts;
 }
 
-int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
+int __syscall_newfstatat(int dirfd,
+                         const char* path,
+                         struct stat* buf,
+                         int flags) {
   // Only accept valid flags.
   if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
     // TODO: Test this case.
     return -EINVAL;
   }
-  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
+  auto parsed = path::getFileAt(dirfd, path, flags);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -366,48 +369,47 @@ int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
 
   // Extract the information from the file.
   auto lockedFile = file->locked();
-  auto buffer = (struct stat*)buf;
 
   off_t size = lockedFile.getSize();
   if (size < 0) {
     return size;
   }
-  buffer->st_size = size;
+  buf->st_size = size;
 
   // ATTN: hard-coded constant values are copied from the existing JS file
   // system. Specific values were chosen to match existing library_fs.js
   // values.
   // ID of device containing file: Hardcode 1 for now, no meaning at the
   // moment for Emscripten.
-  buffer->st_dev = 1;
-  buffer->st_mode = lockedFile.getMode();
-  buffer->st_ino = file->getIno();
+  buf->st_dev = 1;
+  buf->st_mode = lockedFile.getMode();
+  buf->st_ino = file->getIno();
   // The number of hard links is 1 since they are unsupported.
-  buffer->st_nlink = 1;
-  buffer->st_uid = 0;
-  buffer->st_gid = 0;
+  buf->st_nlink = 1;
+  buf->st_uid = 0;
+  buf->st_gid = 0;
   // Device ID (if special file) No meaning right now for Emscripten.
-  buffer->st_rdev = 0;
+  buf->st_rdev = 0;
   // The syscall docs state this is hardcoded to # of 512 byte blocks.
-  buffer->st_blocks = (buffer->st_size + 511) / 512;
+  buf->st_blocks = (buf->st_size + 511) / 512;
   // Specifies the preferred blocksize for efficient disk I/O.
-  buffer->st_blksize = 4096;
-  buffer->st_atim = ms_to_timespec(lockedFile.getATime());
-  buffer->st_mtim = ms_to_timespec(lockedFile.getMTime());
-  buffer->st_ctim = ms_to_timespec(lockedFile.getCTime());
+  buf->st_blksize = 4096;
+  buf->st_atim = ms_to_timespec(lockedFile.getATime());
+  buf->st_mtim = ms_to_timespec(lockedFile.getMTime());
+  buf->st_ctim = ms_to_timespec(lockedFile.getCTime());
   return __WASI_ERRNO_SUCCESS;
 }
 
-int __syscall_stat64(intptr_t path, intptr_t buf) {
+int __syscall_stat64(const char* path, struct stat* buf) {
   return __syscall_newfstatat(AT_FDCWD, path, buf, 0);
 }
 
-int __syscall_lstat64(intptr_t path, intptr_t buf) {
+int __syscall_lstat64(const char* path, struct stat* buf) {
   return __syscall_newfstatat(AT_FDCWD, path, buf, AT_SYMLINK_NOFOLLOW);
 }
 
-int __syscall_fstat64(int fd, intptr_t buf) {
-  return __syscall_newfstatat(fd, (intptr_t) "", buf, AT_EMPTY_PATH);
+int __syscall_fstat64(int fd, struct stat* buf) {
+  return __syscall_newfstatat(fd, "", buf, AT_EMPTY_PATH);
 }
 
 // When calling doOpen(), we may request an FD be returned, or we may not need
@@ -564,25 +566,24 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
 
 // This function is exposed to users and allows users to create a file in a
 // specific backend. An fd to an open file is returned.
-int wasmfs_create_file(char* pathname, mode_t mode, backend_t backend) {
+int wasmfs_create_file(const char* pathname, mode_t mode, backend_t backend) {
   static_assert(std::is_same_v<decltype(doOpen(0, 0, 0, 0)), unsigned int>,
                 "unexpected conversion from result of doOpen to int");
-  return doOpen(
-    path::parseParent((char*)pathname), O_CREAT | O_EXCL, mode, backend);
+  return doOpen(path::parseParent(pathname), O_CREAT | O_EXCL, mode, backend);
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
+int __syscall_openat(int dirfd, const char* path, int flags, ...) {
   mode_t mode = 0;
   va_list v1;
   va_start(v1, flags);
   mode = va_arg(v1, int);
   va_end(v1);
 
-  return doOpen(path::parseParent((char*)path, dirfd), flags, mode);
+  return doOpen(path::parseParent(path, dirfd), flags, mode);
 }
 
-int __syscall_mknodat(int dirfd, intptr_t path, mode_t mode, dev_t dev) {
+int __syscall_mknodat(int dirfd, const char* path, mode_t mode, dev_t dev) {
   assert(dev == 0); // TODO: support special devices
   if (mode & S_IFDIR) {
     return -EINVAL;
@@ -590,15 +591,16 @@ int __syscall_mknodat(int dirfd, intptr_t path, mode_t mode, dev_t dev) {
   if (mode & S_IFIFO) {
     return -EPERM;
   }
-  return doOpen(path::parseParent((char*)path, dirfd),
+  return doOpen(path::parseParent(path, dirfd),
                 O_CREAT | O_EXCL,
                 mode,
                 NullBackend,
                 OpenReturnMode::Nothing);
 }
 
-static int
-doMkdir(path::ParsedParent parsed, mode_t mode, backend_t backend = NullBackend) {
+static int doMkdir(path::ParsedParent parsed,
+                   mode_t mode,
+                   backend_t backend = NullBackend) {
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -662,8 +664,8 @@ int wasmfs_create_directory(char* path, mode_t mode, backend_t backend) {
 }
 
 // TODO: Test this.
-int __syscall_mkdirat(int dirfd, intptr_t path, mode_t mode) {
-  return doMkdir(path::parseParent((char*)path, dirfd), mode);
+int __syscall_mkdirat(int dirfd, const char* path, mode_t mode) {
+  return doMkdir(path::parseParent(path, dirfd), mode);
 }
 
 __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
@@ -720,8 +722,8 @@ static int doChdir(std::shared_ptr<File>& file) {
   return 0;
 }
 
-int __syscall_chdir(intptr_t path) {
-  auto parsed = path::parseFile((char*)path);
+int __syscall_chdir(const char* path) {
+  auto parsed = path::parseFile(path);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -736,7 +738,7 @@ int __syscall_fchdir(int fd) {
   return doChdir(openFile->locked().getFile());
 }
 
-int __syscall_getcwd(intptr_t buf, size_t size) {
+int __syscall_getcwd(char* buf, size_t size) {
   // Check if buf points to a bad address.
   if (!buf && size > 0) {
     return -EFAULT;
@@ -778,7 +780,7 @@ int __syscall_getcwd(intptr_t buf, size_t size) {
   }
 
   // Return value is a null-terminated c string.
-  strcpy((char*)buf, result.c_str());
+  strcpy(buf, result.c_str());
 
   return len;
 }
@@ -802,7 +804,7 @@ __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
+int __syscall_unlinkat(int dirfd, const char* path, int flags) {
   if (flags & ~AT_REMOVEDIR) {
     // TODO: Test this case.
     return -EINVAL;
@@ -811,7 +813,7 @@ int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
   // this case from the case of `parseParent` returning (root, '.') when parsing
   // "/", so we need to find the invalid "/." manually.
   if (flags == AT_REMOVEDIR) {
-    std::string_view p((char*)path);
+    std::string_view p(path);
     // Ignore trailing '/'.
     while (!p.empty() && p.back() == '/') {
       p.remove_suffix(1);
@@ -820,7 +822,7 @@ int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
       return -EINVAL;
     }
   }
-  auto parsed = path::parseParent((char*)path, dirfd);
+  auto parsed = path::parseParent(path, dirfd);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -861,7 +863,7 @@ int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
   return lockedParent.removeChild(childName);
 }
 
-int __syscall_rmdir(intptr_t path) {
+int __syscall_rmdir(const char* path) {
   return __syscall_unlinkat(AT_FDCWD, path, AT_REMOVEDIR);
 }
 
@@ -898,9 +900,7 @@ int wasmfs_unmount(const char* path) {
   return lockedParent.removeChild(childName);
 }
 
-int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
-  dirent* result = (dirent*)dirp;
-
+int __syscall_getdents64(int fd, struct dirent* dirp, size_t count) {
   // Check if the result buffer is too small.
   if (count / sizeof(dirent) == 0) {
     return -EINVAL;
@@ -933,29 +933,29 @@ int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
   for (; index < dirents.size() && bytesRead + sizeof(dirent) <= count;
        index++) {
     const auto& entry = dirents[index];
-    result->d_ino = entry.ino;
-    result->d_off = index + 1;
-    result->d_reclen = sizeof(dirent);
+    dirp->d_ino = entry.ino;
+    dirp->d_off = index + 1;
+    dirp->d_reclen = sizeof(dirent);
     switch (entry.kind) {
       case File::UnknownKind:
-        result->d_type = DT_UNKNOWN;
+        dirp->d_type = DT_UNKNOWN;
         break;
       case File::DataFileKind:
-        result->d_type = DT_REG;
+        dirp->d_type = DT_REG;
         break;
       case File::DirectoryKind:
-        result->d_type = DT_DIR;
+        dirp->d_type = DT_DIR;
         break;
       case File::SymlinkKind:
-        result->d_type = DT_LNK;
+        dirp->d_type = DT_LNK;
         break;
       default:
-        result->d_type = DT_UNKNOWN;
+        dirp->d_type = DT_UNKNOWN;
         break;
     }
-    assert(entry.name.size() + 1 <= sizeof(result->d_name));
-    strcpy(result->d_name, entry.name.c_str());
-    ++result;
+    assert(entry.name.size() + 1 <= sizeof(dirp->d_name));
+    strcpy(dirp->d_name, entry.name.c_str());
+    ++dirp;
     bytesRead += sizeof(dirent);
   }
 
@@ -967,9 +967,9 @@ int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
 
 // TODO: Test this with non-AT_FDCWD values.
 int __syscall_renameat(int olddirfd,
-                       intptr_t oldpath,
+                       const char* oldpath,
                        int newdirfd,
-                       intptr_t newpath) {
+                       const char* newpath) {
   // Rename is the only syscall that needs to (or is allowed to) acquire locks
   // on two directories at once. It requires locks on both the old and new
   // parent directories to ensure that the moved file can be atomically removed
@@ -982,7 +982,7 @@ int __syscall_renameat(int olddirfd,
   std::lock_guard<std::mutex> renameLock(renameMutex);
 
   // Get the old directory.
-  auto parsedOld = path::parseParent((char*)oldpath, olddirfd);
+  auto parsedOld = path::parseParent(oldpath, olddirfd);
   if (auto err = parsedOld.getError()) {
     return err;
   }
@@ -990,7 +990,7 @@ int __syscall_renameat(int olddirfd,
   std::string oldFileName(oldFileNameView);
 
   // Get the new directory.
-  auto parsedNew = path::parseParent((char*)newpath, newdirfd);
+  auto parsedNew = path::parseParent(newpath, newdirfd);
   if (auto err = parsedNew.getError()) {
     return err;
   }
@@ -1071,8 +1071,10 @@ int __syscall_renameat(int olddirfd,
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_symlinkat(intptr_t target, int newdirfd, intptr_t linkpath) {
-  auto parsed = path::parseParent((char*)linkpath, newdirfd);
+int __syscall_symlinkat(const char* target,
+                        int newdirfd,
+                        const char* linkpath) {
+  auto parsed = path::parseParent(linkpath, newdirfd);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -1085,7 +1087,7 @@ int __syscall_symlinkat(intptr_t target, int newdirfd, intptr_t linkpath) {
   if (lockedParent.getChild(childName)) {
     return -EEXIST;
   }
-  if (!lockedParent.insertSymlink(childName, (char*)target)) {
+  if (!lockedParent.insertSymlink(childName, target)) {
     return -EPERM;
   }
   return 0;
@@ -1093,11 +1095,11 @@ int __syscall_symlinkat(intptr_t target, int newdirfd, intptr_t linkpath) {
 
 // TODO: Test this with non-AT_FDCWD values.
 int __syscall_readlinkat(int dirfd,
-                         intptr_t path,
-                         intptr_t buf,
+                         const char* path,
+                         char* buf,
                          size_t bufsize) {
   // TODO: Handle empty paths.
-  auto parsed = path::parseFile((char*)path, dirfd, path::NoFollowLinks);
+  auto parsed = path::parseFile(path, dirfd, path::NoFollowLinks);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -1107,7 +1109,7 @@ int __syscall_readlinkat(int dirfd,
   }
   const auto& target = link->getTarget();
   auto bytes = std::min((size_t)bufsize, target.size());
-  memcpy((char*)buf, target.c_str(), bytes);
+  memcpy(buf, target.c_str(), bytes);
   return bytes;
 }
 
@@ -1122,9 +1124,10 @@ static double timespec_to_ms(timespec ts) {
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
-  const char* path = (const char*)path_;
-  const struct timespec* times = (const struct timespec*)times_;
+int __syscall_utimensat(int dirfd,
+                        const char* path,
+                        const struct timespec times[2],
+                        int flags) {
   if (flags & ~AT_SYMLINK_NOFOLLOW) {
     // TODO: Test this case.
     return -EINVAL;
@@ -1137,7 +1140,7 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
   // https://man7.org/linux/man-pages/man2/utimensat.2.html
   //
   // TODO: Handle AT_SYMLINK_NOFOLLOW once we traverse symlinks correctly.
-  auto parsed = path::getFileAt(dirFD, path, flags | AT_EMPTY_PATH);
+  auto parsed = path::getFileAt(dirfd, path, flags | AT_EMPTY_PATH);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -1165,12 +1168,12 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_fchmodat2(int dirfd, intptr_t path, mode_t mode, int flags) {
+int __syscall_fchmodat2(int dirfd, const char* path, mode_t mode, int flags) {
   if (flags & ~AT_SYMLINK_NOFOLLOW) {
     // TODO: Test this case.
     return -EINVAL;
   }
-  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
+  auto parsed = path::getFileAt(dirfd, path, flags);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -1181,7 +1184,7 @@ int __syscall_fchmodat2(int dirfd, intptr_t path, mode_t mode, int flags) {
   return 0;
 }
 
-int __syscall_chmod(intptr_t path, mode_t mode) {
+int __syscall_chmod(const char* path, mode_t mode) {
   return __syscall_fchmodat2(AT_FDCWD, path, mode, 0);
 }
 
@@ -1197,13 +1200,13 @@ int __syscall_fchmod(int fd, mode_t mode) {
 }
 
 int __syscall_fchownat(
-  int dirfd, intptr_t path, uid_t owner, gid_t group, int flags) {
+  int dirfd, const char* path, uid_t owner, gid_t group, int flags) {
   // Only accept valid flags.
   if (flags & ~(AT_EMPTY_PATH | AT_SYMLINK_NOFOLLOW)) {
     // TODO: Test this case.
     return -EINVAL;
   }
-  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
+  auto parsed = path::getFileAt(dirfd, path, flags);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -1214,11 +1217,11 @@ int __syscall_fchownat(
 }
 
 int __syscall_fchown32(int fd, uid_t owner, gid_t group) {
-  return __syscall_fchownat(fd, (intptr_t) "", owner, group, AT_EMPTY_PATH);
+  return __syscall_fchownat(fd, "", owner, group, AT_EMPTY_PATH);
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_faccessat(int dirfd, intptr_t path, int amode, int flags) {
+int __syscall_faccessat(int dirfd, const char* path, int amode, int flags) {
   // The input must be F_OK (check for existence) or a combination of [RWX]_OK
   // flags.
   if (amode != F_OK && (amode & ~(R_OK | W_OK | X_OK))) {
@@ -1230,7 +1233,7 @@ int __syscall_faccessat(int dirfd, intptr_t path, int amode, int flags) {
   }
 
   // TODO: Handle AT_SYMLINK_NOFOLLOW once we traverse symlinks correctly.
-  auto parsed = path::parseFile((char*)path, dirfd);
+  auto parsed = path::parseFile(path, dirfd);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -1272,12 +1275,12 @@ static int doTruncate(std::shared_ptr<File>& file, off_t size) {
   return ret;
 }
 
-int __syscall_truncate64(intptr_t path, off_t size) {
-  auto parsed = path::parseFile((char*)path);
+int __syscall_truncate64(const char* path, off_t length) {
+  auto parsed = path::parseFile(path);
   if (auto err = parsed.getError()) {
     return err;
   }
-  return doTruncate(parsed.getFile(), size);
+  return doTruncate(parsed.getFile(), length);
 }
 
 int __syscall_ftruncate64(int fd, off_t size) {
@@ -1331,7 +1334,7 @@ int __syscall_ioctl(int fd, int request, ...) {
   }
 }
 
-int __syscall_pipe(intptr_t fd) {
+int __syscall_pipe(int fd[2]) {
   auto* fds = (__wasi_fd_t*)fd;
 
   // Make a pipe: Two PipeFiles that share a single data source between them, so
@@ -1353,9 +1356,7 @@ int __syscall_pipe(intptr_t fd) {
   return 0;
 }
 
-// int poll(struct pollfd* fds, nfds_t nfds, int timeout);
-int __syscall_poll(intptr_t fds_, nfds_t nfds, int timeout) {
-  struct pollfd* fds = (struct pollfd*)fds_;
+int __syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
   auto fileTable = wasmFS.getFileTable().locked();
 
   // Process the list of FDs and compute their revents masks. Count the number
@@ -1555,20 +1556,20 @@ doStatFS(std::shared_ptr<File>& file, size_t size, struct statfs* buf) {
   return 0;
 }
 
-int __syscall_statfs64(intptr_t path, size_t size, intptr_t buf) {
-  auto parsed = path::parseFile((char*)path);
+int __syscall_statfs64(const char* path, size_t size, struct statfs* buf) {
+  auto parsed = path::parseFile(path);
   if (auto err = parsed.getError()) {
     return err;
   }
-  return doStatFS(parsed.getFile(), size, (struct statfs*)buf);
+  return doStatFS(parsed.getFile(), size, buf);
 }
 
-int __syscall_fstatfs64(int fd, size_t size, intptr_t buf) {
+int __syscall_fstatfs64(int fd, size_t size, struct statfs* buf) {
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;
   }
-  return doStatFS(openFile->locked().getFile(), size, (struct statfs*)buf);
+  return doStatFS(openFile->locked().getFile(), size, buf);
 }
 
 int _mmap_js(size_t length,
@@ -1666,7 +1667,7 @@ int _mmap_js(size_t length,
 }
 
 int _msync_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset) {
+  void* addr, size_t length, int prot, int flags, int fd, off_t offset) {
   // TODO: This is not correct! Mappings should be associated with files, not
   // fds. Only need to sync if shared and writes are allowed.
   int mapType = flags & MAP_TYPE;
@@ -1682,7 +1683,7 @@ int _msync_js(
 }
 
 int _munmap_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset) {
+  void* addr, size_t length, int prot, int flags, int fd, off_t offset) {
   // TODO: This is not correct! Mappings should be associated with files, not
   // fds.
   // TODO: Syncing should probably be handled in __syscall_munmap instead.
@@ -1691,87 +1692,87 @@ int _munmap_js(
 
 // Stubs (at least for now)
 
-int __syscall_accept4(int sockfd,
-                      intptr_t addr,
-                      intptr_t addrlen,
-                      int flags,
+int __syscall_accept4(
+  int sockfd, struct sockaddr* addr, socklen_t* len, int flags, ...) {
+  return -ENOSYS;
+}
+
+int __syscall_bind(int sockfd,
+                   const struct sockaddr* addr,
+                   socklen_t len,
+                   ...) {
+  return -ENOSYS;
+}
+
+int __syscall_connect(int sockfd,
+                      const struct sockaddr* addr,
+                      socklen_t len,
                       ...) {
   return -ENOSYS;
 }
 
-int __syscall_bind(
-  int sockfd, intptr_t addr, socklen_t alen, ...) {
+int __syscall_socket(int domain, int type, int protocol, ...) {
   return -ENOSYS;
 }
 
-int __syscall_connect(
-  int sockfd, intptr_t addr, socklen_t len, ...) {
+int __syscall_listen(int sockfd, int backlog, ...) { return -ENOSYS; }
+
+int __syscall_getsockopt(
+  int sockfd, int level, int optname, void* optval, socklen_t* optlen, ...) {
   return -ENOSYS;
 }
 
-int __syscall_socket(
-  int domain, int type, int protocol, ...) {
+int __syscall_getsockname(int sockfd,
+                          struct sockaddr* addr,
+                          socklen_t* len,
+                          ...) {
   return -ENOSYS;
 }
 
-int __syscall_listen(
-  int sockfd, int backlog, ...) {
-  return -ENOSYS;
-}
-
-int __syscall_getsockopt(int sockfd,
-                         int level,
-                         int optname,
-                         intptr_t optval,
-                         intptr_t optlen,
-                         ...) {
-  return -ENOSYS;
-}
-
-int __syscall_getsockname(int sockfd, intptr_t addr, intptr_t len, ...) {
-  return -ENOSYS;
-}
-
-int __syscall_getpeername(int sockfd, intptr_t addr, intptr_t len, ...) {
+int __syscall_getpeername(int sockfd,
+                          struct sockaddr* addr,
+                          socklen_t* len,
+                          ...) {
   return -ENOSYS;
 }
 
 ssize_t __syscall_sendto(int sockfd,
-                         intptr_t buf,
+                         const void* buf,
                          size_t len,
                          int flags,
-                         intptr_t addr,
+                         const struct sockaddr* addr,
                          socklen_t alen) {
   return -ENOSYS;
 }
 
-ssize_t __syscall_sendmsg(int sockfd, intptr_t msg, int flags, ...) {
+ssize_t
+__syscall_sendmsg(int sockfd, const struct msghdr* msg, int flags, ...) {
   return -ENOSYS;
 }
 
 ssize_t __syscall_recvfrom(int sockfd,
-                           intptr_t buf,
-                      	   size_t len,
+                           void* buf,
+                           size_t len,
                            int flags,
-                       	   intptr_t addr,
-                       	   intptr_t alen) {
+                           struct sockaddr* addr,
+                           socklen_t* alen) {
   return -ENOSYS;
 }
 
-ssize_t __syscall_recvmsg(int sockfd, intptr_t msg, int flags, ...) {
+ssize_t __syscall_recvmsg(int sockfd, struct msghdr* msg, int flags, ...) {
   return -ENOSYS;
 }
 
-int __syscall_fadvise64(int fd, off_t offset, off_t length, int advice) {
+int __syscall_fadvise64(int fd, off_t offset, off_t len, int advice) {
   // Advice is currently ignored. TODO some backends might use it
   return 0;
 }
 
 int __syscall__newselect(int nfds,
-                         intptr_t readfds_,
-                         intptr_t writefds_,
-                         intptr_t exceptfds_,
-                         intptr_t timeout_) {
+                         fd_set* readfds_,
+                         fd_set* writefds_,
+                         fd_set* exceptfds_,
+                         struct timeval* timeout_) {
   // TODO: Implement this syscall. For now, we return an error code,
   //       specifically ENOMEM which is valid per the docs:
   //          ENOMEM Unable to allocate memory for internal tables
