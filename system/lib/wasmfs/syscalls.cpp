@@ -347,12 +347,15 @@ backend_t wasmfs_get_backend_by_path(const char* path) {
 static timespec ms_to_timespec(double ms) {
   long long seconds = ms / 1000;
   timespec ts;
-  ts.tv_sec = seconds; // seconds
+  ts.tv_sec = seconds;                                // seconds
   ts.tv_nsec = (ms - (seconds * 1000)) * 1000 * 1000; // nanoseconds
   return ts;
 }
 
-int __syscall_newfstatat(int dirfd, const char* path, struct stat* buf, int flags) {
+int __syscall_newfstatat(int dirfd,
+                         const char* path,
+                         struct stat* buf,
+                         int flags) {
   // Only accept valid flags.
   if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
     // TODO: Test this case.
@@ -595,8 +598,9 @@ int __syscall_mknodat(int dirfd, const char* path, mode_t mode, dev_t dev) {
                 OpenReturnMode::Nothing);
 }
 
-static int
-doMkdir(path::ParsedParent parsed, mode_t mode, backend_t backend = NullBackend) {
+static int doMkdir(path::ParsedParent parsed,
+                   mode_t mode,
+                   backend_t backend = NullBackend) {
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -1069,7 +1073,9 @@ int __syscall_renameat(int olddirfd,
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_symlinkat(const char* target, int newdirfd, const char* linkpath) {
+int __syscall_symlinkat(const char* target,
+                        int newdirfd,
+                        const char* linkpath) {
   auto parsed = path::parseParent(linkpath, newdirfd);
   if (auto err = parsed.getError()) {
     return err;
@@ -1746,11 +1752,8 @@ int __syscall_fadvise64(int fd, off_t offset, off_t len, int advice) {
   return 0;
 }
 
-int __syscall__newselect(int nfds,
-                         void* readfds_,
-                         void* writefds_,
-                         void* exceptfds_,
-                         void* timeout_) {
+int __syscall__newselect(
+  int nfds, void* readfds_, void* writefds_, void* exceptfds_, void* timeout_) {
   // TODO: Implement this syscall. For now, we return an error code,
   //       specifically ENOMEM which is valid per the docs:
   //          ENOMEM Unable to allocate memory for internal tables
