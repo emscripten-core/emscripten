@@ -83,9 +83,7 @@ static void InitializeFlags() {
   parser.ParseString(lsan_default_options);
 #if SANITIZER_EMSCRIPTEN
   char *options = (char*) EM_ASM_PTR({
-    return withBuiltinMalloc(function () {
-      return stringToNewUTF8(Module['LSAN_OPTIONS'] || "");
-    });
+    return withBuiltinMalloc(() => stringToNewUTF8(Module['LSAN_OPTIONS'] || ""));
   });
   parser.ParseString(options);
   emscripten_builtin_free(options);

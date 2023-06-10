@@ -10,7 +10,7 @@
 // Parameters:
 //    setting file.  Can specify 'settings.js' here, alternatively create a temp
 //                   file with modified settings and supply the filename here.
-//    shell file     This is the file that will be processed by the preprocessor
+//    input file     This is the file that will be processed by the preprocessor
 
 'use strict';
 
@@ -51,7 +51,7 @@ global.load = (f) => {
 };
 
 const settingsFile = arguments_[0];
-const shellFile = arguments_[1];
+const inputFile = arguments_[1];
 const expandMacros = arguments_.includes('--expandMacros');
 
 load(settingsFile);
@@ -59,6 +59,5 @@ load('utility.js');
 load('modules.js');
 load('parseTools.js');
 
-const toHTML = expandMacros ? processMacros(preprocess(shellFile)) : preprocess(shellFile);
-
-print(toHTML);
+const output = expandMacros ? processMacros(preprocess(inputFile)) : preprocess(inputFile);
+process.stdout.write(output);

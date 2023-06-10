@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <assert.h>
+#include <fcntl.h>
 
 int main() {
     /********** test FS.open() **********/
@@ -114,23 +115,23 @@ int main() {
     EM_ASM(
         FS.writeFile("allocatetestfile", 'a=1\nb=2\n');
     );
-    struct stat s;
-    stat("allocatetestfile", &s);
-    assert(s.st_size == 8);
+    struct stat allocateStat;
+    stat("allocatetestfile", &allocateStat);
+    assert(allocateStat.st_size == 8);
 
     EM_ASM(
         var stream = FS.open("allocatetestfile", "w");
         FS.allocate(stream, 8, 10);
     );
-    stat("allocatetestfile", &s);
-    assert(s.st_size == 18);
+    stat("allocatetestfile", &allocateStat);
+    assert(allocateStat.st_size == 18);
 
     EM_ASM(
         var stream = FS.open("allocatetestfile", "w");
         FS.allocate(stream, 0, 4);
     );
-    stat("allocatetestfile", &s);
-    assert(s.st_size == 4);
+    stat("allocatetestfile", &allocateStat);
+    assert(allocateStat.st_size == 4);
 
     EM_ASM(
         var stream = FS.open("allocatetestfile", "w");
@@ -142,6 +143,58 @@ int main() {
             ex = err;
         }
         assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+    );
+    
+    /********** test FS.rmdir() **********/
+    EM_ASM(
+        // Create multiple directories
+        FS.mkdir('/dir1');
+        FS.mkdir('/dir2');
+    );
+
+    struct stat rmdirStat;
+    stat("/dir1", &rmdirStat);
+    assert(S_ISDIR(rmdirStat.st_mode));
+    stat("/dir2", &rmdirStat);
+    assert(S_ISDIR(rmdirStat.st_mode));
+
+
+    EM_ASM(
+        // Remove the multiple directories
+        FS.rmdir('/dir1');
+        FS.rmdir('/dir2');
+    );
+
+    int err = open("/dir1", O_RDWR);
+    assert(err);
+    err = open("/dir2", O_RDWR);
+    assert(err);
+
+    EM_ASM(    
+        // Create a directory with a file inside it
+        FS.mkdir('/test_dir');
+        FS.writeFile('/test_dir/file.txt', 'Hello World!');
+
+        // Attempt to remove the directory (should fail)
+        var ex;
+        try {
+        FS.rmdir('/test_dir');
+        } catch (err) {
+        ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 55 /* ENOTEMPTY */);
+
+        // Remove the file and then the directory
+        FS.unlink('/test_dir/file.txt');
+        FS.rmdir('/test_dir');
+
+        // Attempt to remove a non-existent directory (should fail)
+        try {
+        FS.rmdir('/non_existent_dir');
+        } catch (err) {
+        ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOEN */);
     );
 
     /********** test FS.close() **********/
@@ -166,11 +219,29 @@ int main() {
         assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */)
     );
 
-    remove("allocatetestfile");
+    /********** test FS.mknod() **********/
+    EM_ASM(
+        FS.mknod("mknodtest", 0100000 | 0777); /* S_IFREG | S_RWXU | S_RWXG | S_RWXO */
+
+        FS.create("createtest", 0400); /* S_IRUSR */
+    );
+    struct stat mknodStats;
+    stat("mknodtest", &mknodStats);
+
+    assert(S_ISREG(mknodStats.st_mode));
+    assert(mknodStats.st_mode & 0777);
+
+    stat("createtest", &mknodStats);
+    assert(S_ISREG(mknodStats.st_mode));
+    assert(mknodStats.st_mode & 0400);
+
+    remove("mknodtest");
+    remove("createtest");
     remove("testfile");
     remove("renametestfile");
     remove("readtestfile");
     remove("closetestfile");
+    remove("allocatetestfile");
 
     puts("success");
 }

@@ -6644,16 +6644,25 @@ int main(int argc,char** argv) {
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_dlopen_promise.c')
 
-  def test_dlopen_blocking(self):
+  @parameterized({
+    # Under node this should work even without ASYNCIFY because we can do
+    # synchronous loading via readBinary
+    '': (0,),
+    'asyncify': (1,),
+    'jspi': (2,),
+  })
+  def test_dlopen_blocking(self, asyncify):
     self.run_process([EMCC, test_file('other/test_dlopen_blocking_side.c'), '-o', 'libside.so', '-sSIDE_MODULE'])
     self.set_setting('MAIN_MODULE', 2)
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('NO_AUTOLOAD_DYLIBS')
+    if asyncify:
+      self.set_setting('ASYNCIFY', asyncify)
+      if asyncify == 2:
+        self.emcc_args.append('-Wno-experimental')
+        self.require_v8()
+        self.v8_args.append('--experimental-wasm-stack-switching')
     self.emcc_args.append('libside.so')
-    # Under node this should work both with and without ASYNCIFY
-    # because we can do synchronous readBinary
-    self.do_other_test('test_dlopen_blocking.c')
-    self.set_setting('ASYNCIFY')
     self.do_other_test('test_dlopen_blocking.c')
 
   def test_dlsym_rtld_default(self):
@@ -7962,6 +7971,7 @@ int main() {
     # EVAL_CTORS also removes the __wasm_call_ctors function
     'Oz-ctors': (['-Oz', '-sEVAL_CTORS'], [], []), # noqa
     '64': (['-Oz', '-sMEMORY64', '-Wno-experimental'], [], []), # noqa
+    # WasmFS should not be fully linked into a minimal program.
     'wasmfs': (['-Oz', '-sWASMFS'], [], []), # noqa
   })
   def test_metadce_minimal(self, *args):
@@ -8007,6 +8017,7 @@ int main() {
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
     'dylink': (['-O3', '-sMAIN_MODULE=2'], [], []), # noqa
+    # WasmFS should not be fully linked into a hello world program.
     'wasmfs': (['-O3', '-sWASMFS'],        [], []), # noqa
   })
   def test_metadce_hello(self, *args):
@@ -8841,7 +8852,7 @@ end
           console.error("my {attribute}");
         }};
       '''
-    create_file('pre.js', '''
+    create_file('post.js', '''
       /** @constructor */
       function Foo() {
         this.bar = function() {
@@ -8871,7 +8882,7 @@ end
       '-sFETCH',
       '-sFETCH_SUPPORT_INDEXEDDB',
       '-Werror=closure',
-      '--pre-js=pre.js'
+      '--post-js=post.js'
     ])
     code = read_file('hello_world.js')
     # `bar` method is used so should not be DCE'd
@@ -8983,6 +8994,7 @@ end
     # fflush without the full filesystem won't quite work
     self.do_other_test('test_fflush.cpp')
 
+  @also_with_wasmfs
   def test_fflush_fs(self):
     # fflush with the full filesystem will flush from libc, but not the JS logging, which awaits a newline
     self.do_other_test('test_fflush_fs.cpp', emcc_args=['-sFORCE_FILESYSTEM'])
@@ -11691,9 +11703,8 @@ exec "$@"
   def test_this_in_dyncall(self, args):
     self.do_run_in_out_file_test(test_file('no_this_in_dyncall.c'), emcc_args=['--js-library', test_file('no_this_in_dyncall.js')] + args)
 
-  @requires_v8
+  @requires_wasm64
   def test_this_in_dyncall_memory64(self):
-    self.v8_args += ['--experimental-wasm-memory64']
     self.do_run_in_out_file_test(test_file('no_this_in_dyncall.c'), emcc_args=['--js-library', test_file('no_this_in_dyncall.js'), '-sMEMORY64', '-Wno-experimental'])
 
   # Tests that dynCalls are produced in Closure-safe way in DYNCALLS mode when no actual dynCalls are used
@@ -12846,7 +12857,7 @@ int main() {
     self.assertNotIn(b'.debug', read_binary('hello_world.o'))
 
   @requires_v8
-  def test_stack_switching_size(self):
+  def test_jspi_code_size(self):
     # use iostream code here to purposefully get a fairly large wasm file, so
     # that our size comparisons later are meaningful
     create_file('main.cpp', r'''

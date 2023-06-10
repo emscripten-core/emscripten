@@ -467,7 +467,7 @@ jobs:
             asan.test_dyncall_specific_minimal_runtime
             asan.test_async_hello
             asan.test_dlfcn_basic
-            asan.test_async_hello_stack_switching
+            asan.test_async_hello_jspi
             asan.test_cubescript
             asan.test_wasm_worker_hello
             lsan.test_stdio_locking
@@ -515,6 +515,7 @@ jobs:
             wasmfs.test_unistd_close
             wasmfs.test_unistd_truncate
             wasmfs.test_readdir
+            wasmfs.test_readdir_unlink
             wasmfs.test_unistd_pipe
             wasmfs.test_fs_write
             wasmfs.test_webidl

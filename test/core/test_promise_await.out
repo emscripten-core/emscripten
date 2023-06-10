@@ -1,0 +1,8 @@
+main
+waiting on promise: 0x1
+.. done wait: 0 42
+waiting on promise: 0x1
+.. done wait: 0 43
+waiting on promise: 0x1
+.. done wait: 3 44
+main done

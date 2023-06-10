@@ -135,7 +135,11 @@ int _wasmfs_open(char* path, int flags, mode_t mode) {
 
 int _wasmfs_allocate(int fd, long off, long len) {
   printf("Vals: fd: %d, off: %ld, len: %ld\n", fd, off, len);
-  int err = __syscall_fallocate(fd, 0, off, len);
+  return __syscall_fallocate(fd, 0, off, len);
+}
+
+int _wasmfs_mknod(char* path, mode_t mode, dev_t dev) {
+  int err = __syscall_mknodat(AT_FDCWD, (intptr_t)path, mode, dev);
   if (err == -1) {
     return errno;
   }
