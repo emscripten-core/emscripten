@@ -2297,6 +2297,12 @@ def phase_linker_setup(options, state, newargs):
   if not settings.GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS and settings.GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS:
     exit_with_error('-sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0 only makes sense with -sGL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0!')
 
+  if options.use_preload_plugins or len(options.preload_files) or len(options.embed_files):
+    if settings.NODERAWFS:
+      exit_with_error('--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem')
+    # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
+    settings.FORCE_FILESYSTEM = 1
+
   if settings.WASMFS:
     if settings.NODERAWFS:
       # wasmfs will be included normally in system_libs.py, but we must include
@@ -2308,21 +2314,32 @@ def phase_linker_setup(options, state, newargs):
     settings.FILESYSTEM = 1
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
     settings.JS_LIBRARIES.append((0, 'library_wasmfs.js'))
-    settings.REQUIRED_EXPORTS += ['_wasmfs_read_file']
+    if settings.ASSERTIONS:
+      # used in assertion checks for unflushed content
+      settings.REQUIRED_EXPORTS += ['wasmfs_flush']
     if settings.FORCE_FILESYSTEM:
       # Add exports for the JS API. Like the old JS FS, WasmFS by default
       # includes just what JS parts it actually needs, and FORCE_FILESYSTEM is
       # required to force all of it to be included if the user wants to use the
       # JS API directly.
       settings.REQUIRED_EXPORTS += [
+        '_wasmfs_read_file',
         '_wasmfs_write_file',
         '_wasmfs_open',
         '_wasmfs_close',
+        '_wasmfs_write',
+        '_wasmfs_pwrite',
+        '_wasmfs_rename',
         '_wasmfs_mkdir',
         '_wasmfs_unlink',
         '_wasmfs_chdir',
+        '_wasmfs_mknod',
         '_wasmfs_rmdir',
+        '_wasmfs_read',
+        '_wasmfs_pread',
         '_wasmfs_symlink',
+        '_wasmfs_stat',
+        '_wasmfs_lstat',
         '_wasmfs_chmod',
         '_wasmfs_fchmod',
         '_wasmfs_lchmod',
@@ -2331,6 +2348,7 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_readdir_start',
         '_wasmfs_readdir_get',
         '_wasmfs_readdir_finish',
+        '_wasmfs_get_cwd',
       ]
 
   if settings.FETCH and final_suffix in EXECUTABLE_ENDINGS:
@@ -2362,12 +2380,6 @@ def phase_linker_setup(options, state, newargs):
 
   if settings.SIDE_MODULE and 'GLOBAL_BASE' in user_settings:
     exit_with_error('GLOBAL_BASE is not compatible with SIDE_MODULE')
-
-  if options.use_preload_plugins or len(options.preload_files) or len(options.embed_files):
-    if settings.NODERAWFS:
-      exit_with_error('--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem')
-    # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
-    settings.FORCE_FILESYSTEM = 1
 
   if settings.PROXY_TO_WORKER or options.use_preload_plugins:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
@@ -2814,7 +2826,7 @@ def phase_linker_setup(options, state, newargs):
     settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in settings.ASYNCIFY_IMPORTS]
 
     if settings.ASYNCIFY == 2:
-      diagnostics.warning('experimental', 'ASYNCIFY with stack switching is experimental')
+      diagnostics.warning('experimental', '-sASYNCIFY=2 (JSPI) is still experimental')
 
   if settings.WASM2JS:
     if settings.GENERATE_SOURCE_MAP:
@@ -3215,16 +3227,13 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   # Deploy the Audio Worklet module bootstrap file (*.aw.js)
   if settings.AUDIO_WORKLET == 1:
     worklet_output = os.path.join(target_dir, settings.AUDIO_WORKLET_FILE)
-    with open(worklet_output, 'w') as f:
-      f.write(shared.read_and_preprocess(shared.path_from_root('src', 'audio_worklet.js'), expand_macros=True))
+    contents = shared.read_and_preprocess(shared.path_from_root('src', 'audio_worklet.js'), expand_macros=True)
+    utils.write_file(worklet_output, contents)
 
     # Minify the audio_worklet.js file in optimized builds
     if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
       minified_worker = building.acorn_optimizer(worklet_output, ['minifyWhitespace'], return_output=True)
-      open(worklet_output, 'w').write(minified_worker)
-
-  # track files that will need native eols
-  generated_text_files_with_native_eols = []
+      utils.write_file(worklet_output, minified_worker)
 
   if settings.MODULARIZE:
     modularize()
@@ -3272,9 +3281,6 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   # The JS is now final. Move it to its final location
   move_file(final_js, js_target)
 
-  if not settings.SINGLE_FILE:
-    generated_text_files_with_native_eols += [js_target]
-
   target_basename = unsuffixed_basename(target)
 
   # If we were asked to also generate HTML, do that
@@ -3291,8 +3297,8 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     diagnostics.warning('experimental', 'The SPLIT_MODULE setting is experimental and subject to change')
     do_split_module(wasm_target, options)
 
-  for f in generated_text_files_with_native_eols:
-    tools.line_endings.convert_line_endings_in_file(f, os.linesep, options.output_eol)
+  if not settings.SINGLE_FILE:
+    tools.line_endings.convert_line_endings_in_file(js_target, os.linesep, options.output_eol)
 
   if options.executable:
     make_js_executable(js_target)
@@ -3514,7 +3520,7 @@ def parse_args(newargs):
       logger.error('jcache is no longer supported')
     elif check_arg('--cache'):
       config.CACHE = os.path.normpath(consume_arg())
-      cache.setup(config.CACHE)
+      cache.setup()
       # Ensure child processes share the same cache (e.g. when using emcc to compiler system
       # libraries)
       os.environ['EM_CACHE'] = config.CACHE

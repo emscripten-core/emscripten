@@ -135,6 +135,17 @@ __attribute__((warn_unused_result)) em_promise_t emscripten_promise_any(
 __attribute__((warn_unused_result)) em_promise_t
 emscripten_promise_race(em_promise_t* promises, size_t num_promises);
 
+// Suspend the current Wasm execution context until the given promise has been
+// settled.
+//
+// Since the stack is not unwound while Wasm execution is suspended, it is
+// safe to pass pointers to the stack to asynchronous work that is waited on
+// with this function.
+//
+// This function can only be used in programs that were built with `-sASYNCIFY`.
+__attribute__((warn_unused_result)) em_settled_result_t
+emscripten_promise_await(em_promise_t promise);
+
 #ifdef __cplusplus
 }
 #endif

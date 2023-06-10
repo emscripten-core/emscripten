@@ -301,6 +301,23 @@ def also_with_wasm_bigint(f):
   return metafunc
 
 
+def also_with_wasm64(f):
+  assert callable(f)
+
+  def metafunc(self, with_wasm64):
+    if with_wasm64:
+      self.require_wasm64()
+      self.set_setting('MEMORY64')
+      self.emcc_args.append('-Wno-experimental')
+      f(self)
+    else:
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'wasm64': (True,)}
+  return metafunc
+
+
 # This works just like `with_both_eh_sjlj` above but doesn't enable exceptions.
 # Use this for tests that use setjmp/longjmp but not exceptions handling.
 def with_both_sjlj(f):
@@ -391,6 +408,11 @@ def make_dir_writeable(dirname):
 def force_delete_dir(dirname):
   make_dir_writeable(dirname)
   utils.delete_dir(dirname)
+
+
+def force_delete_contents(dirname):
+  make_dir_writeable(dirname)
+  utils.delete_contents(dirname)
 
 
 def parameterized(parameters):
@@ -683,7 +705,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           # expect this.  --no-clean can be used to keep the old contents for the new test
           # run. This can be useful when iterating on a given test with extra files you want to keep
           # around in the output directory.
-          utils.delete_contents(self.working_dir)
+          force_delete_contents(self.working_dir)
       else:
         print('Creating new test output directory')
         ensure_dir(self.working_dir)
@@ -1165,7 +1187,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                          cache_name, env_init=env_init, native=native)
 
   def clear(self):
-    utils.delete_contents(self.get_dir())
+    force_delete_contents(self.get_dir())
     if shared.EMSCRIPTEN_TEMP_DIR:
       utils.delete_contents(shared.EMSCRIPTEN_TEMP_DIR)
 

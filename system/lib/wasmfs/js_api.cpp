@@ -11,6 +11,13 @@
 #include "file.h"
 #include "paths.h"
 
+// Some APIs return data using a thread-local allocation that is never freed.
+// This is simpler and more efficient as it avoids the JS caller needing to free
+// the allocation (which would have both the overhead of free, and also of a
+// call back into wasm), but on the other hand it does mean more memory may be
+// used. This seems a reasonable tradeoff as heavy workloads should ideally
+// avoid the JS API anyhow.
+
 using namespace wasmfs;
 
 extern "C" {
@@ -20,7 +27,6 @@ __wasi_fd_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend);
 // Copy the file specified by the pathname into JS.
 // Return a pointer to the JS buffer in HEAPU8.
 // The buffer will also contain the file length.
-// Caller must free the returned pointer.
 void* _wasmfs_read_file(char* path) {
   static_assert(sizeof(off_t) == 8, "File offset type must be 64-bit");
 
@@ -36,7 +42,11 @@ void* _wasmfs_read_file(char* path) {
   // first 8 bytes. The remaining bytes will contain the buffer contents. This
   // allows the caller to use HEAPU8.subarray(buf + 8, buf + 8 + length).
   off_t size = file.st_size;
-  uint8_t* result = (uint8_t*)malloc(size + sizeof(size));
+
+  static thread_local void* buffer = nullptr;
+  buffer = realloc(buffer, size + sizeof(size));
+
+  auto* result = (uint8_t*)buffer;
   *(off_t*)result = size;
 
   int fd = open(path, O_RDONLY);
@@ -123,6 +133,14 @@ int _wasmfs_open(char* path, int flags, mode_t mode) {
   return err;
 }
 
+int _wasmfs_mknod(char* path, mode_t mode, dev_t dev) {
+  int err = __syscall_mknodat(AT_FDCWD, (intptr_t)path, mode, dev);
+  if (err == -1) {
+    return errno;
+  }
+  return err;
+}
+
 int _wasmfs_unlink(char* path) {
   return __syscall_unlinkat(AT_FDCWD, (intptr_t)path, 0);
 }
@@ -142,6 +160,32 @@ int _wasmfs_readlink(char* path, char* buf, size_t bufsiz) {
   return err;
 }
 
+int _wasmfs_write(int fd, void *buf, size_t count) {
+  __wasi_ciovec_t iovs[1];
+  iovs[0].buf = (uint8_t*)buf;
+  iovs[0].buf_len = count;
+
+  __wasi_size_t numBytes;
+  __wasi_errno_t err = __wasi_fd_write(fd, iovs, 1, &numBytes);
+  if (err) {
+    return -err;
+  }
+  return numBytes;
+}
+
+int _wasmfs_pwrite(int fd, void *buf, size_t count, off_t offset) {
+  __wasi_ciovec_t iovs[1];
+  iovs[0].buf = (uint8_t*)buf;
+  iovs[0].buf_len = count;
+
+  __wasi_size_t numBytes;
+  __wasi_errno_t err = __wasi_fd_pwrite(fd, iovs, 1, offset, &numBytes);
+  if (err) {
+    return -err;
+  }
+  return numBytes;
+}
+
 int _wasmfs_chmod(char* path, mode_t mode) {
   return __syscall_chmod((intptr_t)path, mode);
 }
@@ -154,8 +198,58 @@ int _wasmfs_lchmod(char* path, mode_t mode) {
   return __syscall_fchmodat(AT_FDCWD, (intptr_t)path, mode, AT_SYMLINK_NOFOLLOW);
 }
 
+int _wasmfs_rename(char* oldpath, char* newpath) {
+  int err = __syscall_renameat(AT_FDCWD, (intptr_t)oldpath, AT_FDCWD, (intptr_t)newpath);
+  if (err == -1) {
+    return errno;
+  }
+  return err;
+};
+
+int _wasmfs_read(int fd, void *buf, size_t count) {
+  __wasi_iovec_t iovs[1];
+  iovs[0].buf = (uint8_t *)buf;
+  iovs[0].buf_len = count;
+
+  __wasi_size_t numBytes;
+  __wasi_errno_t err = __wasi_fd_read(fd, iovs, 1, &numBytes);
+  if (err) {
+    return -err;
+  }
+  return numBytes;
+}
+
+int _wasmfs_pread(int fd, void *buf, size_t count, off_t offset) {
+  __wasi_iovec_t iovs[1];
+  iovs[0].buf = (uint8_t *)buf;
+  iovs[0].buf_len = count;
+
+  __wasi_size_t numBytes;
+  __wasi_errno_t err = __wasi_fd_pread(fd, iovs, 1, offset, &numBytes);
+  if (err) {
+    return -err;
+  }
+  return numBytes;
+}
+
 int _wasmfs_close(int fd) {
   return __wasi_fd_close(fd);
+}
+
+int _wasmfs_stat(char* path, struct stat* statBuf) {
+  int err = __syscall_stat64((intptr_t)path, (intptr_t)statBuf);
+  if (err == -1) {
+    return errno;
+  }
+  return err;
+}
+
+int _wasmfs_lstat(char* path, struct stat* statBuf) {
+  int err = __syscall_lstat64((intptr_t)path, (intptr_t)statBuf);
+  if (err == -1) {
+    return errno;
+  }
+  return err;
 }
 
 // Helper method that identifies what a path is:
@@ -211,6 +305,13 @@ void _wasmfs_readdir_finish(struct wasmfs_readdir_state* state) {
   }
   free(state->entries);
   free(state);
+}
+
+char* _wasmfs_get_cwd(void) {
+  // TODO: PATH_MAX is 4K atm, so it might be good to reduce this somehow.
+  static thread_local void* path = nullptr;
+  path = realloc(path, PATH_MAX);
+  return getcwd((char*)path, PATH_MAX);
 }
 
 } // extern "C"

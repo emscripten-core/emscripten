@@ -64,13 +64,26 @@ int main() {
   assert(strcmp(buf, "abc") == 0);
   printf("\n");
 
-  printf("DUP2 shared seek position\n");
-  int fd1 = open("./blah.txt", O_RDWR | O_CREAT | O_EXCL, 0600);
-  int fd2 = dup(fd1);
-  int n = write(fd1, "abcabc\n", 7);
-  assert(n == 7);
-  assert(lseek(fd1, 0, SEEK_CUR) == 7);
-  assert(lseek(fd2, 0, SEEK_CUR) == 7);
+  printf("DUP shared seek position\n");
+  f = open("./blah.txt", O_RDWR | O_CREAT | O_EXCL, 0600);
+  f2 = dup(f);
+  rtn = write(f2, "abcabc\n", 7);
+  assert(rtn == 7);
+  assert(lseek(f, 0, SEEK_CUR) == 7);
+  assert(lseek(f2, 0, SEEK_CUR) == 7);
+  printf("close(f): %d\n", close(f));
+  printf("close(f2): %d\n", close(f2));
+  printf("\n");
+
+  printf("DUP truncate\n");
+  f = open("./blah.txt", O_RDWR, 0600);
+  f2 = dup(f);
+  rtn = ftruncate(f2, 0);
+  assert(rtn == 0);
+  assert(lseek(f, 0, SEEK_END) == 0);
+  assert(lseek(f2, 0, SEEK_END) == 0);
+  printf("close(f): %d\n", close(f));
+  printf("close(f2): %d\n", close(f2));
 
   return 0;
 }
