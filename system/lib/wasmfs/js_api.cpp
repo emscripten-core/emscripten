@@ -152,29 +152,27 @@ int _wasmfs_close(int fd) {
 int _wasmfs_mmap(size_t length, int prot, int flags, int fd, size_t offset, void* addr) {
   printf("Length: %lu, prot: %d, flags: %d, fd: %d, offset: %lu, addr: %p\n", length, prot, flags, fd, offset, addr);
   int allocated;
+
   int err = _mmap_js(length, prot, flags, fd, offset, &allocated, &addr);
-  if (err == -1) {
-    return errno;
+  printf("JS API Ptr: addr: %p\n", addr);
+  uint8_t* temp = (uint8_t*)addr;
+  printf("JS API Vals: %d, %d, %d, %d\n", temp[0], temp[1], temp[2], temp[3]);
+  printf("JS API Vals: %d, %d, %d, %d\n", ((int*) temp)[0], ((int*) temp)[1], ((int*) temp)[2], ((int*) temp)[3]);
+  printf("JS API Vals: %p, %p, %p, %p\n", &(temp[0]), &(temp[1]), &(temp[2]), &(temp[3]));
+  if (err < 0) {
+    return err;
   }
-  return allocated;
+  return (intptr_t)addr;
 }
 
 int _wasmfs_msync(void* addr, size_t length, int prot, int flags, int fd, size_t offset) {
   printf("Addr: %p, length: %lu, prot: %d, flags: %d, fd: %d, offset: %lu\n", addr, length, prot, flags, fd, offset);
-  int err = _msync_js((intptr_t)addr, length, prot, flags, fd, offset);
-  if (err == -1) {
-    return errno;
-  }
-  return err;
+  return _msync_js((intptr_t)addr, length, prot, flags, fd, offset);
 }
 
 int _wasmfs_unmap(void* addr, size_t length, int prot, int flags, int fd, size_t offset) {
   printf("Addr: %p, length: %lu, prot: %d, flags: %d, fd: %d, offset: %lu\n", addr, length, prot, flags, fd, offset);
-  int err = _munmap_js((intptr_t)addr, length, prot, flags, fd, offset);
-  if (err == -1) {
-    return errno;
-  }
-  return err;
+  return _munmap_js((intptr_t)addr, length, prot, flags, fd, offset);
 }
 
 // Helper method that identifies what a path is:

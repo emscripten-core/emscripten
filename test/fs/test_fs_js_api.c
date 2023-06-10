@@ -47,23 +47,28 @@ int main() {
 
         var mapped = FS.mmap(stream, 12, 0, 1 /* PROT_READ */, 1 /* MAP_SHARED */);
         console.log(mapped);
-        var ret = new Uint8Array(Module.HEAP8.subarray(mapped.ptr, mapped.ptr + 12));
+        var ret = new Uint8Array(Module.HEAPU8.subarray(mapped.ptr, mapped.ptr + 12));
         console.log(ret);
+        var fileContents = "";
         for (var i = 0; i < 12; i++) {
             console.log("Char: ", String.fromCharCode(ret[i]));
+            fileContents += String.fromCharCode(ret[i]);
         }
+        assert(fileContents === 'a=1_b=2_\0\0\0\0');
 
         ret[8] = ':'.charCodeAt(0);
         ret[9] = 'x'.charCodeAt(0);
         ret[10] = 'y'.charCodeAt(0);
         ret[11] = 'z'.charCodeAt(0);
 
-        FS.msync(stream, ret, 0, 12, 0);
+        // passing anything except MAP_SHARED writes garbage to the file, without throwing an error.
+        console.log("Sync err: ", FS.msync(stream, ret, 0, 12, 1 /* MAP_SHARED */));
 
         var out = FS.readFile('mmaptest', { encoding: 'utf8'});
         console.log("Written: " + out);
+        assert(out === 'a=1_b=2_:xyz');
 
-        // FS.munmap(stream);
+        FS.munmap(stream);
     );
 
     FILE *fptr = fopen("mmaptest", "r");
