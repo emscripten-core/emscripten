@@ -220,7 +220,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         return __wasmfs_symlink(targetBuffer, linkpathBuffer);
       });
     },
-    // TODO: readlink
     readlink: (path) => {
       var buf = _malloc(4096);
       var bytesRead = FS.handleError(withStackSave(() => {
@@ -228,7 +227,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         return __wasmfs_readlink(pathBuffer, buf, 4096);
       }));
       var ret = UTF8ArrayToString(new Uint8Array(HEAPU8.subarray(buf, buf + bytesRead)), 0);
-      console.log("Ret: ", ret);
 
       _free(buf);
       return ret;
