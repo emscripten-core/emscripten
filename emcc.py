@@ -4150,12 +4150,11 @@ def generate_html(target, options, js_target, target_basename,
 
 
 def generate_worker_js(target, js_target, target_basename):
-  # compiler output is embedded as base64
   if settings.SINGLE_FILE:
+    # compiler output is embedded as base64
     proxy_worker_filename = get_subresource_location(js_target)
-
-  # compiler output goes in .worker.js file
   else:
+    # compiler output goes in .worker.js file
     move_file(js_target, shared.replace_suffix(js_target, '.worker.js'))
     worker_target_basename = target_basename + '.worker'
     proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
@@ -4167,9 +4166,11 @@ def generate_worker_js(target, js_target, target_basename):
 def worker_js_script(proxy_worker_filename):
   web_gl_client_src = read_file(utils.path_from_root('src/webGLClient.js'))
   idb_store_src = read_file(utils.path_from_root('src/IDBStore.js'))
-  proxy_client_src = read_file(utils.path_from_root('src/proxyClient.js'))
-  proxy_client_src = do_replace(proxy_client_src, '{{{ filename }}}', proxy_worker_filename)
-  proxy_client_src = do_replace(proxy_client_src, '{{{ IDBStore.js }}}', idb_store_src)
+  proxy_client_src = shared.read_and_preprocess(utils.path_from_root('src/proxyClient.js'), expand_macros=True)
+  if not os.path.dirname(proxy_worker_filename):
+    proxy_worker_filename = './' + proxy_worker_filename
+  proxy_client_src = do_replace(proxy_client_src, '<<< filename >>>', proxy_worker_filename)
+  proxy_client_src = do_replace(proxy_client_src, '<<< IDBStore.js >>>', idb_store_src)
   return web_gl_client_src + '\n' + proxy_client_src
 
 

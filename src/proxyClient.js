@@ -6,26 +6,36 @@
 
 // proxy to/from worker
 
+#if ENVIRONMENT_MAY_BE_NODE
+var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string';
+if (ENVIRONMENT_IS_NODE) {
+  let nodeWorkerThreads;
+  try {
+    nodeWorkerThreads = require('worker_threads');
+  } catch (e) {
+    console.error('The "worker_threads" module is not supported in this node.js build - perhaps a newer version is needed?');
+    throw e;
+  }
+  global.Worker = nodeWorkerThreads.Worker;
+  var Module = Module || {}
+} else
+#endif
 if (typeof Module == 'undefined') {
   console.warn('no Module object defined - cannot proxy canvas rendering and input events, etc.');
   Module = {
     canvas: {
-      addEventListener: function() {},
-      getBoundingClientRect: function() { return { bottom: 0, height: 0, left: 0, right: 0, top: 0, width: 0 } },
+      addEventListener: () => {},
+      getBoundingClientRect: () => { return { bottom: 0, height: 0, left: 0, right: 0, top: 0, width: 0 }; },
     },
   };
 }
 
 if (!Module.hasOwnProperty('print')) {
-  Module['print'] = function(x) {
-    console.log(x);
-  };
+  Module['print'] = (x) => console.log(x);
 }
 
 if (!Module.hasOwnProperty('printErr')) {
-  Module['printErr'] = function(x) {
-    console.error(x);
-  };
+  Module['printErr'] = (x) => console.error(x);
 }
 
 // utils
@@ -34,7 +44,7 @@ function FPSTracker(text) {
   var last = 0;
   var mean = 0;
   var counter = 0;
-  this.tick = function() {
+  this.tick = () => {
     var now = Date.now();
     if (last > 0) {
       var diff = now - last;
@@ -52,7 +62,7 @@ function FPSTracker(text) {
 function GenericTracker(text) {
   var mean = 0;
   var counter = 0;
-  this.tick = function(value) {
+  this.tick = (value) => {
     mean = 0.99*mean + 0.01*value;
     if (counter++ === 60) {
       counter = 0;
@@ -79,16 +89,18 @@ function renderFrame() {
   renderFrameData = null;
 }
 
-window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
-                               window.webkitRequestAnimationFrame || window.msRequestAnimationFrame ||
-                               renderFrame;
+if (typeof window != 'undefined') {
+  window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
+                                 window.webkitRequestAnimationFrame || window.msRequestAnimationFrame ||
+                                 renderFrame;
+}
 
 /*
 (function() {
   var trueRAF = window.requestAnimationFrame;
   var tracker = new FPSTracker('client');
-  window.requestAnimationFrame = function(func) {
-    trueRAF(function() {
+  window.requestAnimationFrame = (func) => {
+    trueRAF(() => {
       tracker.tick();
       func();
     });
@@ -100,7 +112,7 @@ window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequest
 
 // IDBStore
 
-var IDBStore = {{{ IDBStore.js }}};
+var IDBStore = <<< IDBStore.js >>>;
 
 // Frame throttling
 
@@ -114,7 +126,7 @@ var SUPPORT_BASE64_EMBEDDING;
 
 var filename;
 if (!filename) {
-  filename = '{{{ filename }}}';
+  filename = '<<< filename >>>';
 }
 
 var workerURL = filename;
@@ -126,9 +138,14 @@ if (SUPPORT_BASE64_EMBEDDING) {
 }
 var worker = new Worker(workerURL);
 
+#if ENVIRONMENT_MAY_BE_NODE
+if (ENVIRONMENT_IS_NODE) {
+  worker.postMessage({target: 'worker-init'});
+} else {
+#endif
 WebGLClient.prefetch();
 
-setTimeout(function() {
+setTimeout(() => {
   worker.postMessage({
     target: 'worker-init',
     width: Module.canvas.width,
@@ -138,10 +155,13 @@ setTimeout(function() {
     currentScriptUrl: filename,
     preMain: true });
 }, 0); // delay til next frame, to make sure html is ready
+#if ENVIRONMENT_MAY_BE_NODE
+}
+#endif
 
 var workerResponded = false;
 
-worker.onmessage = function worker_onmessage(event) {
+worker.onmessage = (event) => {
   //dump('\nclient got ' + JSON.stringify(event.data).substr(0, 150) + '\n');
   if (!workerResponded) {
     workerResponded = true;
@@ -230,7 +250,7 @@ worker.onmessage = function worker_onmessage(event) {
     case 'IDBStore': {
       switch (data.method) {
         case 'loadBlob': {
-          IDBStore.getFile(data.db, data.id, function(error, blob) {
+          IDBStore.getFile(data.db, data.id, (error, blob) => {
             worker.postMessage({
               target: 'IDBStore',
               method: 'response',
@@ -240,7 +260,7 @@ worker.onmessage = function worker_onmessage(event) {
           break;
         }
         case 'storeBlob': {
-          IDBStore.setFile(data.db, data.id, data.blob, function(error) {
+          IDBStore.setFile(data.db, data.id, data.blob, (error) => {
             worker.postMessage({
               target: 'IDBStore',
               method: 'response',
@@ -282,6 +302,10 @@ function cloneObject(event) {
   return ret;
 };
 
+#if ENVIRONMENT_MAY_BE_NODE
+if (!ENVIRONMENT_IS_NODE) {
+#endif
+
 // Only prevent default on backspace/tab because we don't want unexpected navigation.
 // Do not prevent default on the rest as we need the keypress event.
 function shouldPreventDefault(event) {
@@ -292,26 +316,30 @@ function shouldPreventDefault(event) {
   }
 };
 
-['keydown', 'keyup', 'keypress', 'blur', 'visibilitychange'].forEach(function(event) {
-  document.addEventListener(event, function(event) {
+
+['keydown', 'keyup', 'keypress', 'blur', 'visibilitychange'].forEach((event) => {
+  document.addEventListener(event, (event) => {
     worker.postMessage({ target: 'document', event: cloneObject(event) });
-    
+
     if (shouldPreventDefault(event)) {
       event.preventDefault();
     }
   });
 });
 
-['unload'].forEach(function(event) {
-  window.addEventListener(event, function(event) {
+['unload'].forEach((event) => {
+  window.addEventListener(event, (event) => {
     worker.postMessage({ target: 'window', event: cloneObject(event) });
   });
 });
 
-['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach(function(event) {
-  Module.canvas.addEventListener(event, function(event) {
+['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach((event) => {
+  Module.canvas.addEventListener(event, (event) => {
     worker.postMessage({ target: 'canvas', event: cloneObject(event) });
     event.preventDefault();
   }, true);
 });
 
+#if ENVIRONMENT_MAY_BE_NODE
+}
+#endif
