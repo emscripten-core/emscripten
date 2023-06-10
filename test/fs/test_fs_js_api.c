@@ -65,7 +65,6 @@ int main() {
             FS.truncate('truncatetest', -10);
         } catch(err) {
             ex = err;
-            // console.log(ex);
         }
 
         assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
@@ -78,7 +77,6 @@ int main() {
             FS.ftruncate(truncateStream.fd, -10);
         } catch(err) {
             ex = err;
-            // console.log(ex);
         }
 
         assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
@@ -90,7 +88,6 @@ int main() {
             FS.truncate('nonexistent', 10);
         } catch(err) {
             ex = err;
-            // console.log(ex);
         }
         assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
 
@@ -99,7 +96,6 @@ int main() {
             FS.ftruncate(99, 10);
         } catch(err) {
             ex = err;
-            // console.log(ex);
         }
 
         assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */);

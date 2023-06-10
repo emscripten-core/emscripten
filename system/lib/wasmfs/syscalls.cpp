@@ -1236,8 +1236,6 @@ static int doTruncate(std::shared_ptr<File>& file, off_t size) {
 
 EMSCRIPTEN_KEEPALIVE
 int __syscall_truncate64(intptr_t path, uint64_t size) {
-  printf("sys unsigned: %ld, %llu\n", path, size);
-  printf("sys signed: %ld, %lld\n", path, size);
   auto parsed = path::parseFile((char*)path);
   if (auto err = parsed.getError()) {
     return err;
@@ -1246,8 +1244,6 @@ int __syscall_truncate64(intptr_t path, uint64_t size) {
 }
 
 int __syscall_ftruncate64(int fd, uint64_t size) {
-  printf("ftrunc sys u: %d, %llu\n", fd, size);
-  printf("ftrunc sys d: %d, %lld\n", fd, size);
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;

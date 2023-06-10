@@ -279,13 +279,10 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: lchown
     // TODO: fchown
     truncate: (path, len) => {
-      console.log("We send: ", path, len);
-      console.log("Type: ", typeof len);
-      console.log("After to 64: ", {{{ sendU53ToI64Param('len')}}});
       return FS.handleError(withStackSave(() => (___syscall_truncate64(stringToUTF8OnStack(path), {{{ sendU53ToI64Param('len')}}}))));
     },
     ftruncate: (fd, len) => {
-      return FS.handleError(__wasmfs_ftruncate(fd, len));
+      return FS.handleError(__wasmfs_ftruncate(fd, {{{ sendU53ToI64Param('len') }}}));
     },
     // TODO: utime
     findObject: (path) => {
