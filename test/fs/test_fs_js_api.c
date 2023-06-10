@@ -65,10 +65,10 @@ int main() {
             FS.truncate('truncatetest', -10);
         } catch(err) {
             ex = err;
-            console.log(ex);
+            // console.log(ex);
         }
 
-        // assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
     );
 
     EM_ASM(
@@ -78,10 +78,10 @@ int main() {
             FS.ftruncate(truncateStream.fd, -10);
         } catch(err) {
             ex = err;
-            console.log(ex);
+            // console.log(ex);
         }
 
-        // assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
     );
 
     EM_ASM(
@@ -90,6 +90,7 @@ int main() {
             FS.truncate('nonexistent', 10);
         } catch(err) {
             ex = err;
+            // console.log(ex);
         }
         assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
 
@@ -98,6 +99,7 @@ int main() {
             FS.ftruncate(99, 10);
         } catch(err) {
             ex = err;
+            // console.log(ex);
         }
 
         assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */);

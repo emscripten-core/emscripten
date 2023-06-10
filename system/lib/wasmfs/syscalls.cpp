@@ -1234,6 +1234,7 @@ static int doTruncate(std::shared_ptr<File>& file, off_t size) {
   return ret;
 }
 
+EMSCRIPTEN_KEEPALIVE
 int __syscall_truncate64(intptr_t path, uint64_t size) {
   printf("sys unsigned: %ld, %llu\n", path, size);
   printf("sys signed: %ld, %lld\n", path, size);
