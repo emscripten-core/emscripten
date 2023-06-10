@@ -193,3 +193,55 @@ typedef struct LongLongTypes {
   unsigned long long* lluArray;
   long long ll;
 } LongLongTypes;
+
+///
+
+struct ISmallObject {
+  virtual int getID(int number) = 0;
+};
+
+struct IObjectProvider {
+  virtual ISmallObject* getObject() = 0;
+};
+
+class SmallObject : public ISmallObject {
+public:
+  SmallObject( ISmallObject* smallObject)
+  : m_object(smallObject) {
+
+  }
+  int getID(int number) {
+    return number;
+  }
+private:
+  ISmallObject* m_object;
+};
+
+class ObjectProvider : public IObjectProvider {
+public:
+  ObjectProvider( IObjectProvider* provider)
+  : m_provider(provider) {
+
+  }
+
+  ISmallObject* getObject() {
+    auto * object = m_provider->getObject();
+    return new SmallObject(object);
+  }
+private: 
+  IObjectProvider* m_provider;
+};
+
+class ObjectFactory {
+public:
+  ObjectFactory() {
+
+  }
+
+  IObjectProvider* getProvider( IObjectProvider* objectProvider ) {
+    return new ObjectProvider(objectProvider);
+  }
+
+private:
+
+};
