@@ -154,17 +154,20 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     },
     // TODO: msync
     msync: (fd, buffer, offset, length, mmapFlags) => {
-      var dataBuf = _malloc(length);
-      for (var i = 0; i < length; i++) {
-        {{{ makeSetValue('dataBuf', 'i', 'buffer[i]', 'u8') }}};
-      }
-      var err = FS.handleError(__wasmfs_msync(dataBuf, length, 2 /* PROT_WRITE */, mmapFlags, fd, offset));
-      _free(dataBuf);
+      console.log("Wasmfs js: " + fd + " " + buffer);
+      // var dataBuf = _malloc(length);
+      // for (var i = 0; i < length; i++) {
+      //   {{{ makeSetValue('dataBuf', 'i', 'buffer[i]', 'u8') }}};
+      // }
+      // var err = FS.handleError(__wasmfs_msync(dataBuf, length, 2 /* PROT_WRITE */, mmapFlags, fd, offset));
+      // _free(dataBuf);
+      // return err;
+      var err = FS.handleError(__wasmfs_msync(buffer, length, 2 /* PROT_WRITE */, mmapFlags, fd, offset));
       return err;
     },
     // TODO: munmap
-    munmap: (fd) => {
-      return 0;
+    munmap: (addr, length) => {
+      return FS.handleError(__wasmfs_munmap(addr, length));
     },
     writeFile: (path, data) => {
       return withStackSave(() => {
