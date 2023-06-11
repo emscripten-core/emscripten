@@ -1610,11 +1610,6 @@ int _mmap_js(size_t length,
   // occurred (which means that the caller has the responsibility to free it).
   *allocated = true;
   *addr = (void*)ptr;
-  printf("Pointers: ptr: %p, *add: %p\n", ptr, *addr);
-  printf("Vals: %d, %d, %d, %d\n", (ptr)[0], (ptr)[1], (ptr)[2], (ptr)[3]);
-  printf("p Vals: %p, %p, %p, %p\n", &(ptr[0]), &(ptr[1]), &(ptr[2]), &(ptr[3]));
-  printf("*addr Vals: %d, %d, %d, %d\n", ((int*)(*addr))[0], ((int*)(*addr))[1], ((int*)(*addr))[2], ((int*)(*addr))[3]);
-  printf("*addr p Vals: %p, %p, %p, %p\n", &(((int*)(*addr))[0]), &(((int*)(*addr))[1]), &(((int*)(*addr))[2]), &(((int*)(*addr))[3]));
 
   // The read must be of a valid amount, or we have had an internal logic error.
   assert(nread <= length);
@@ -1627,14 +1622,10 @@ int _mmap_js(size_t length,
 
 int _msync_js(
   intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
-  printf("Sync args: %ld, %zu, %d, %d, %d, %zu\n", addr, length, prot, flags, fd, offset);
-  uint8_t* temp = (uint8_t*)addr;
-  printf("Msync sys Vals: %d, %d, %d, %d\n", temp[8], temp[9], temp[10], temp[11]);
   // TODO: This is not correct! Mappings should be associated with files, not
   // fds. Only need to sync if shared and writes are allowed.
   int mapType = flags & MAP_TYPE;
   if (mapType == MAP_SHARED && (prot & PROT_WRITE)) {
-    printf("Here\n");
     __wasi_ciovec_t iovec;
     iovec.buf = (uint8_t*)addr;
     iovec.buf_len = length;

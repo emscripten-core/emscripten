@@ -5,6 +5,46 @@
 #include <assert.h>
 #include <fcntl.h>
 
+void test_fs_mmap() {
+    EM_ASM(
+        FS.writeFile('mmaptest', 'a=1_b=2_');
+
+        var stream = FS.open('mmaptest', 'r+');
+        assert(stream);
+
+        var mapped = FS.mmap(stream, 12, 0, 1 | 2 /* PROT_READ | PROT_WRITE */, 1 /* MAP_SHARED */);
+        var ret = new Uint8Array(Module.HEAPU8.subarray(mapped.ptr, mapped.ptr + 12));
+        var fileContents = "";
+        for (var i = 0; i < 12; i++) {
+            fileContents += String.fromCharCode(ret[i]);
+        }
+        assert(fileContents === 'a=1_b=2_\0\0\0\0');
+
+        ret[8] = ':'.charCodeAt(0);
+        ret[9] = 'x'.charCodeAt(0);
+        ret[10] = 'y'.charCodeAt(0);
+        ret[11] = 'z'.charCodeAt(0);
+        Module.HEAPU8.set(ret, mapped.ptr); // We must update the array in Wasm memory before WasmFS msync.
+
+        // The WasmFS msync syscall requires a pointer to the mapped memory, while the legacy JS API takes in any buffer
+        // to write as a Uint8Array to write to a file.
+#if WASMFS
+        FS.msync(stream, mapped.ptr, 0, 12, 1 /* MAP_SHARED */);
+        FS.munmap(mapped.ptr, 12);
+#else
+        FS.msync(stream, new Uint8Array(ret), 0, 12, 1 /* MAP_SHARED */);
+        FS.munmap(stream);
+#endif
+    );
+
+    FILE *fptr = fopen("mmaptest", "r");
+    char res[13];
+    fgets(res, 13, fptr);
+    assert(strcmp(res, "a=1_b=2_:xyz") == 0);
+
+    remove("mmaptest");
+}
+
 int main() {
     /********** test FS.open() **********/
     EM_ASM(
@@ -163,60 +203,7 @@ int main() {
         }
         assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOEN */);
     );
-
-    /********** test FS.mmap() **********/
-    EM_ASM(
-        FS.writeFile('mmaptest', 'a=1_b=2_');
-
-        var stream = FS.open('mmaptest', 'r+');
-        assert(stream);
-
-        var mapped = FS.mmap(stream, 12, 0, 1 | 2 /* PROT_READ | PROT_WRITE */, 1 /* MAP_SHARED */);
-        console.log(mapped);
-        var ret = new Uint8Array(Module.HEAPU8.subarray(mapped.ptr, mapped.ptr + 12));
-        console.log(ret);
-        var fileContents = "";
-        for (var i = 0; i < 12; i++) {
-            console.log("Char: ", String.fromCharCode(ret[i]));
-            fileContents += String.fromCharCode(ret[i]);
-        }
-        assert(fileContents === 'a=1_b=2_\0\0\0\0');
-
-        ret[8] = ':'.charCodeAt(0);
-        ret[9] = 'x'.charCodeAt(0);
-        ret[10] = 'y'.charCodeAt(0);
-        ret[11] = 'z'.charCodeAt(0);
-        Module.HEAPU8.set(ret, mapped.ptr);
-
-        console.log("Mapped ptr: ", mapped.ptr);
-        for (var i = 0; i < 12; i++) {
-            console.log("New Char: ", String.fromCharCode(Module.HEAPU8.subarray(mapped.ptr + i, mapped.ptr + i + 1)));
-        }
-
-        // The WasmFS msync syscall requires a pointer to the mapped memory, while the legacy JS API takes in any buffer
-        // to write as a Uint8Array to write to a file.
-#if WASMFS
-        console.log("Sync err: ", FS.msync(stream, mapped.ptr, 0, 12, 1 /* MAP_SHARED */));
-#else
-        console.log("Sync err: ", FS.msync(stream, new Uint8Array(ret), 0, 12, 1 /* MAP_SHARED */));
-#endif
-
-        var out = FS.readFile('mmaptest', { encoding: 'utf8'});
-        console.log("Written: " + out);
-        assert(out === 'a=1_b=2_:xyz');
-
-#if WASMFS
-        FS.munmap(mapped.ptr, 12);
-#else
-        FS.munmap(stream);
-#endif
-    );
-
-    FILE *fptr = fopen("mmaptest", "r");
-    char res[13];
-    fgets(res, 13, fptr);
-
-    printf("Res: %s, %d\n", res, strcmp(res, "a=1_b=2_:xyz"));
+    
 
     /********** test FS.close() **********/
     EM_ASM(
@@ -255,6 +242,8 @@ int main() {
     stat("createtest", &stats);
     assert(S_ISREG(stats.st_mode));
     assert(stats.st_mode & 0400);
+
+    test_fs_mmap();
 
     remove("mknodtest");
     remove("createtest");
