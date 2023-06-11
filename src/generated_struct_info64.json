@@ -1459,33 +1459,32 @@
             "sin6_port": 2
         },
         "stat": {
-            "__size__": 120,
-            "__st_ino_truncated": 8,
+            "__size__": 104,
             "st_atim": {
                 "__size__": 16,
-                "tv_nsec": 72,
-                "tv_sec": 64
+                "tv_nsec": 56,
+                "tv_sec": 48
             },
-            "st_blksize": 56,
-            "st_blocks": 60,
+            "st_blksize": 40,
+            "st_blocks": 44,
             "st_ctim": {
-                "__size__": 16,
-                "tv_nsec": 104,
-                "tv_sec": 96
-            },
-            "st_dev": 0,
-            "st_gid": 36,
-            "st_ino": 112,
-            "st_mode": 16,
-            "st_mtim": {
                 "__size__": 16,
                 "tv_nsec": 88,
                 "tv_sec": 80
             },
-            "st_nlink": 24,
-            "st_rdev": 40,
-            "st_size": 48,
-            "st_uid": 32
+            "st_dev": 0,
+            "st_gid": 20,
+            "st_ino": 96,
+            "st_mode": 4,
+            "st_mtim": {
+                "__size__": 16,
+                "tv_nsec": 72,
+                "tv_sec": 64
+            },
+            "st_nlink": 8,
+            "st_rdev": 24,
+            "st_size": 32,
+            "st_uid": 16
         },
         "statfs": {
             "__size__": 104,
