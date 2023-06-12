@@ -357,6 +357,6 @@ WebGLClient.prefetch = function() {
     });
   });
 
-  worker.postMessage({ target: 'gl', op: 'setPrefetched', parameters: parameters, extensions: ctx.getSupportedExtensions(), precisions: precisions, preMain: true });
+  worker.postMessage({ target: 'gl', op: 'setPrefetched', parameters, extensions: ctx.getSupportedExtensions(), precisions, preMain: true });
 };
 

@@ -54,9 +54,9 @@ mergeInto(LibraryManager.library, {
 
       // create our internal socket structure
       var sock = {
-        family: family,
-        type: type,
-        protocol: protocol,
+        family,
+        type,
+        protocol,
         server: null,
         error: null, // Used in getsockopt for SOL_SOCKET/SO_ERROR test
         peers: {},
@@ -77,7 +77,7 @@ mergeInto(LibraryManager.library, {
       // as read and write to indirectly interact with the socket
       var stream = FS.createStream({
         path: name,
-        node: node,
+        node,
         flags: {{{ cDefs.O_RDWR }}},
         seekable: false,
         stream_ops: SOCKFS.stream_ops
@@ -238,8 +238,8 @@ mergeInto(LibraryManager.library, {
 #endif
 
         var peer = {
-          addr: addr,
-          port: port,
+          addr,
+          port,
           socket: ws,
           dgram_send_queue: []
         };
@@ -510,7 +510,7 @@ mergeInto(LibraryManager.library, {
         dbg('listen: ' + host + ':' + sock.sport);
 #endif
         sock.server = new WebSocketServer({
-          host: host,
+          host,
           port: sock.sport
           // TODO support backlog
         });
@@ -578,7 +578,7 @@ mergeInto(LibraryManager.library, {
           addr = sock.saddr || 0;
           port = sock.sport || 0;
         }
-        return { addr: addr, port: port };
+        return { addr, port };
       },
       sendmsg: function(sock, buffer, offset, length, addr, port) {
         if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {

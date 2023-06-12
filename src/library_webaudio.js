@@ -240,10 +240,10 @@ let LibraryWebAudio = {
 
     EmAudio[contextHandle].audioWorklet.bootstrapMessage.port.postMessage({
       _wpn: UTF8ToString(HEAPU32[options]), // '_wpn' == 'Worklet Processor Name', use a deliberately mangled name so that this field won't accidentally be mixed with user submitted messages.
-      audioParams: audioParams,
-      contextHandle: contextHandle,
-      callback: callback,
-      userData: userData
+      audioParams,
+      contextHandle,
+      callback,
+      userData
     });
   },
 

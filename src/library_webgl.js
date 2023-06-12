@@ -989,7 +989,7 @@ var LibraryGL = {
 #endif // PTHREADS
 
       var context = {
-        handle: handle,
+        handle,
         attributes: webGLContextAttributes,
         version: webGLContextAttributes.majorVersion,
         GLctx: ctx
