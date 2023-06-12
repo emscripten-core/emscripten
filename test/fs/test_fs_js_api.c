@@ -182,7 +182,6 @@ int main() {
     stat("/dir2", &s);
     assert(S_ISDIR(s.st_mode));
 
-
     EM_ASM(
         // Remove the multiple directories
         FS.rmdir('/dir1');
@@ -220,7 +219,6 @@ int main() {
         }
         assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOEN */);
     );
-    
 
     /********** test FS.close() **********/
     EM_ASM(
