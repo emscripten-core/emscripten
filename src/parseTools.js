@@ -61,6 +61,11 @@ function preprocess(filename) {
   const isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
   let inStyle = false;
   const lines = text.split('\n');
+  // text.split yields an extra empty element at the end if text itself ends with a newline.
+  if (!lines[lines.length - 1]) {
+    lines.pop();
+  }
+
   let ret = '';
   let emptyLine = false;
 
