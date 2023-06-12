@@ -213,6 +213,12 @@ function makeInlineCalculation(expression, value, tempVar) {
 // value, represented by a low and high i32 pair.
 // Will suffer from rounding and truncation.
 function splitI64(value) {
+  if (WASM_BIGINT) {
+    // Nothing to do: just make sure it is a BigInt (as it must be of that
+    // type, to be sent into wasm).
+    return `BigInt(${value})`;
+  }
+
   // general idea:
   //
   //  $1$0 = ~~$d >>> 0;
@@ -229,7 +235,6 @@ function splitI64(value) {
   // For negatives, we need to ensure a -1 if the value is overall negative,
   // even if not significant negative component
 
-  assert(!WASM_BIGINT, 'splitI64 should not be used when WASM_BIGINT is enabled');
   const low = value + '>>>0';
   const high = makeInlineCalculation(
       asmCoercion('Math.abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
