@@ -1,3 +1,21 @@
+checking: 0
+js:got:       0
+called_from_js with: 0
+js:returning: 0
+got:      0
+expected: 0
+checking: 1
+js:got:       1
+called_from_js with: 1
+js:returning: 0
+got:      0
+expected: 0
+checking: -1
+js:got:       -1
+called_from_js with: -1
+js:returning: 0
+got:      0
+expected: 0
 checking: 42
 js:got:       42
 called_from_js with: 42
