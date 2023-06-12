@@ -32,6 +32,7 @@ void check_invalid(int64_t val) {
 
 int main() {
   check_ok(42);
+  check_ok(-42);
   check_ok(MAX_SAFE_INTEGER/2);
   check_ok(MIN_SAFE_INTEGER/2);
   check_ok(MAX_SAFE_INTEGER);
