@@ -127,9 +127,11 @@ mergeInto(LibraryManager.library, {
   // calling into wasm when legalization is needed, and then instead of just
   // doing f(num) you would do f(sendI53BitsLow(num), sendI53BitsHigh(num)).
   $sendI53BitsLow: function(num) {
+    // TODO: assert on num being in the valid i53 range
     return num | 0;
   },
   $sendI53BitsHigh: function(num) {
+    // TODO: assert on num being in the valid i53 range
     num = Math.floor(num / 4294967296);
     return num | 0;
   },
