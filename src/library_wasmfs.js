@@ -285,7 +285,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     utime: (path, atime, mtime) => {
       return FS.handleError(withStackSave(() => {
         var pathBuffer = stringToUTF8OnStack(path);
-        return __wasmfs_utime(pathBuffer, atime, mtime, 0);
+        return __wasmfs_utime(pathBuffer, atime, mtime);
       }));
     },
     findObject: (path) => {

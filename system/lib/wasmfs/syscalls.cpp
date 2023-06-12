@@ -170,7 +170,7 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
   if (bytesWritten) {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
-    lockedFile.setMTime(&ts);
+    lockedFile.setMTime(ts);
   }
   return __WASI_ERRNO_SUCCESS;
 }
@@ -386,15 +386,9 @@ int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
   buffer->st_blocks = (buffer->st_size + 511) / 512;
   // Specifies the preferred blocksize for efficient disk I/O.
   buffer->st_blksize = 4096;
-  struct timespec aTime = lockedFile.getATime();
-  buffer->st_atim.tv_sec = aTime.tv_sec;
-  buffer->st_atim.tv_nsec = aTime.tv_nsec;
-  struct timespec mTime = lockedFile.getMTime();
-  buffer->st_mtim.tv_sec = mTime.tv_sec;
-  buffer->st_mtim.tv_nsec = mTime.tv_nsec;
-  struct timespec cTime = lockedFile.getCTime();
-  buffer->st_ctim.tv_sec = cTime.tv_sec;
-  buffer->st_ctim.tv_nsec = cTime.tv_nsec;
+  buffer->st_atim = lockedFile.getATime();
+  buffer->st_mtim = lockedFile.getMTime();
+  buffer->st_ctim = lockedFile.getCTime();
   return __WASI_ERRNO_SUCCESS;
 }
 
@@ -1118,8 +1112,8 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
   }
 
   auto locked = parsed.getFile()->locked();
-  locked.setATime(&aTime);
-  locked.setMTime(&mTime);
+  locked.setATime(aTime);
+  locked.setMTime(mTime);
 
   return 0;
 }
@@ -1145,7 +1139,7 @@ int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
   // On POSIX, ctime is updated on metadata changes, like chmod.
   struct timespec ts;
   clock_gettime(CLOCK_REALTIME, &ts);
-  lockedFile.setCTime(&ts);
+  lockedFile.setCTime(ts);
   return 0;
 }
 
@@ -1162,7 +1156,7 @@ int __syscall_fchmod(int fd, int mode) {
   lockedFile.setMode(mode);
   struct timespec ts;
   clock_gettime(CLOCK_REALTIME, &ts);
-  lockedFile.setCTime(&ts);
+  lockedFile.setCTime(ts);
   return 0;
 }
 

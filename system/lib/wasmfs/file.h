@@ -99,8 +99,7 @@ protected:
     : kind(kind), mode(mode), backend(backend) {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
-    atime = mtime = ctime = ts.tv_sec;
-    atime_nsec = mtime_nsec = ctime_nsec = ts.tv_nsec;
+    atime = mtime = ctime = ts;
   }
 
   // A mutex is needed for multiple accesses to the same file.
@@ -112,12 +111,9 @@ protected:
 
   mode_t mode = 0; // User and group mode bits for access permission.
 
-  time_t atime = 0; // Time when the content was last accessed.
-  long atime_nsec = 0; // Nanoseconds after the last second of atime.
-  time_t mtime = 0; // Time when the file content was last modified.
-  long mtime_nsec = 0; // Nanoseconds after the last second of mtime.
-  time_t ctime = 0; // Time when the file node was last modified.
-  long ctime_nsec = 0; // Nanoseconds after the last second of ctime.
+  struct timespec atime; // Time when the content was last accessed.
+  struct timespec mtime; // Time when the file content was last modified.
+  struct timespec ctime; // Time when the file node was last modified.
 
   // Reference to parent of current file node. This can be used to
   // traverse up the directory tree. A weak_ptr ensures that the ref
@@ -322,34 +318,22 @@ public:
     file->mode = (file->mode & S_IFMT) | (mode & ~S_IFMT);
   }
   struct timespec getCTime() {
-    struct timespec ts;
-    ts.tv_sec = file->ctime;
-    ts.tv_nsec = file->ctime_nsec;
-    return ts;
+    return file->ctime;
   }
-  void setCTime(struct timespec* time) {
-    file->ctime = time->tv_sec;
-    file->ctime_nsec = time->tv_nsec;
+  void setCTime(struct timespec time) {
+    file->ctime = time;
   }
   struct timespec getMTime() {
-    struct timespec ts;
-    ts.tv_sec = file->mtime;
-    ts.tv_nsec = file->mtime_nsec;
-    return ts;
+    return file->mtime;
   }
-  void setMTime(struct timespec* time) {
-    file->mtime = time->tv_sec;
-    file->mtime_nsec = time->tv_nsec;
+  void setMTime(struct timespec time) {
+    file->mtime = time;
   }
   struct timespec getATime() {
-    struct timespec ts;
-    ts.tv_sec = file->atime;
-    ts.tv_nsec = file->atime_nsec;
-    return ts;
+    return file->atime;
   }
-  void setATime(struct timespec* time) {
-    file->atime = time->tv_sec;
-    file->atime_nsec = time->tv_nsec;
+  void setATime(struct timespec time) {
+    file->atime = time;
   }
 
   // Note: parent.lock() creates a new shared_ptr to the same Directory

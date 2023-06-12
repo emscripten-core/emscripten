@@ -227,14 +227,14 @@ int _wasmfs_close(int fd) {
   return __wasi_fd_close(fd);
 }
 
-int _wasmfs_utime(char *path, long atime_ms, long mtime_ms, int flags) {
+int _wasmfs_utime(char *path, long atime_ms, long mtime_ms) {
   struct timespec times[2];
   times[0].tv_sec = atime_ms / 1000;
   times[0].tv_nsec = (atime_ms % 1000) * 1000000;
   times[1].tv_sec = mtime_ms / 1000;
   times[1].tv_nsec = (mtime_ms % 1000) * 1000000;
 
-  return __syscall_utimensat(AT_FDCWD, (intptr_t)path, (intptr_t)times, flags);
+  return __syscall_utimensat(AT_FDCWD, (intptr_t)path, (intptr_t)times, 0);
 };
 
 int _wasmfs_stat(char* path, struct stat* statBuf) {

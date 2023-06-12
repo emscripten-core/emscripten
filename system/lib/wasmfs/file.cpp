@@ -102,7 +102,7 @@ Directory::Handle::insertDataFile(const std::string& name, mode_t mode) {
   cacheChild(name, child, DCacheKind::Normal);
   struct timespec ts;
   clock_gettime(CLOCK_REALTIME, &ts);
-  setMTime(&ts);
+  setMTime(ts);
   return child;
 }
 
@@ -119,7 +119,7 @@ Directory::Handle::insertDirectory(const std::string& name, mode_t mode) {
   cacheChild(name, child, DCacheKind::Normal);
   struct timespec ts;
   clock_gettime(CLOCK_REALTIME, &ts);
-  setMTime(&ts);
+  setMTime(ts);
   return child;
 }
 
@@ -137,7 +137,7 @@ Directory::Handle::insertSymlink(const std::string& name,
   cacheChild(name, child, DCacheKind::Normal);
   struct timespec ts;
   clock_gettime(CLOCK_REALTIME, &ts);
-  setMTime(&ts);
+  setMTime(ts);
   return child;
 }
 
@@ -189,8 +189,8 @@ int Directory::Handle::insertMove(const std::string& name,
   // TODO: Moving mount points probably shouldn't update the mtime.
   struct timespec ts;
   clock_gettime(CLOCK_REALTIME, &ts);
-  oldParent->locked().setMTime(&ts);
-  setMTime(&ts);
+  oldParent->locked().setMTime(ts);
+  setMTime(ts);
 
   return 0;
 }
@@ -213,7 +213,7 @@ int Directory::Handle::removeChild(const std::string& name) {
   }
   struct timespec ts;
   clock_gettime(CLOCK_REALTIME, &ts);
-  setMTime(&ts);
+  setMTime(ts);
   return 0;
 }
 
