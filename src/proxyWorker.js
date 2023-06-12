@@ -4,27 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-if (typeof console == 'undefined') {
-  // we can't call Module.printErr because that might be circular
-  var console = {
-    log: function(x) {
-      if (typeof dump == 'function') dump(`log: ${x}\n`);
-    },
-    debug: function(x) {
-      if (typeof dump == 'function') dump(`debug: ${x}\n`);
-    },
-    info: function(x) {
-      if (typeof dump == 'function') dump(`info: ${x}\n`);
-    },
-    warn: function(x) {
-      if (typeof dump == 'function') dump(`warn: ${x}\n`);
-    },
-    error: function(x) {
-      if (typeof dump == 'function') dump(`error: ${x}\n`);
-    },
-  };
-}
-
 /*
 function proxify(object, nick) {
   return new Proxy(object, {
@@ -36,6 +15,10 @@ function proxify(object, nick) {
   });
 }
 */
+
+#if ENVIRONMENT_MAY_BE_NODE
+if (!ENVIRONMENT_IS_NODE) {
+#endif
 
 function FPSTracker(text) {
   var last = 0;
@@ -354,13 +337,13 @@ var screen = {
 
 Module.canvas = document.createElement('canvas');
 
-Module.setStatus = function(){};
+Module.setStatus = () => {};
 
-out = function Module_print(x) {
+out = function(x) {
   //dump('OUT: ' + x + '\n');
   postMessage({ target: 'stdout', content: x });
 };
-err = function Module_printErr(x) {
+err = function(x) {
   //dump('ERR: ' + x + '\n');
   postMessage({ target: 'stderr', content: x });
 };
@@ -386,6 +369,10 @@ if (!ENVIRONMENT_IS_PTHREAD) {
   addRunDependency('gl-prefetch');
   addRunDependency('worker-init');
 #if PTHREADS
+}
+#endif
+
+#if ENVIRONMENT_MAY_BE_NODE
 }
 #endif
 
@@ -479,6 +466,9 @@ function onMessageFromMainEmscriptenThread(message) {
       screen.width = Module.canvas.width_ = message.data.width;
       screen.height = Module.canvas.height_ = message.data.height;
       Module.canvas.boundingClientRect = message.data.boundingClientRect;
+#if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE)
+#endif
       document.URL = message.data.URL;
 #if PTHREADS
       currentScriptUrl = message.data.currentScriptUrl;
