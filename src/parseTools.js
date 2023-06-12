@@ -892,18 +892,6 @@ function receiveI64ParamAsI53Unchecked(name) {
   return `var ${name} = convertI32PairToI53(${name}_low, ${name}_high);`;
 }
 
-// Given the name of a variable containing a signed 53-bit integer in a JS
-// Number or BigInt, send it as a 64-bit argument in a call to wasm. This will
-// legalize the argument if necessary (i.e., split it into two i32 arguments,
-// if legalization is used).
-function sendI53ToI64Param(name) {
-  // TODO: In ASSERTIONS mode add range checks here.
-  if (WASM_BIGINT) {
-    return `BigInt(${name})`;
-  }
-  return `sendI53BitsLow(${name}), sendI53BitsHigh(${name})`;
-}
-
 // Any function called from wasm64 may have bigint args, this function takes
 // a list of variable names to convert to number.
 function from64(x) {
