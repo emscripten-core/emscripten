@@ -4,6 +4,12 @@ called_from_js with: 42
 js:returning: 21
 got:      21
 expected: 21
+checking: -42
+js:got:       -42
+called_from_js with: -42
+js:returning: -21
+got:      -21
+expected: -21
 checking: 4503599627370496
 js:got:       4503599627370496
 called_from_js with: 4503599627370496
