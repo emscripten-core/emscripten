@@ -221,15 +221,8 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       });
     },
     readlink: (path) => {
-      var buf = _malloc({{{ cDefs.PATH_MAX }}});
-      var bytesRead = FS.handleError(withStackSave(() => {
-        var pathBuffer = stringToUTF8OnStack(path);
-        return __wasmfs_readlink(pathBuffer, buf, 4096);
-      }));
-      var ret = UTF8ArrayToString(new Uint8Array(HEAPU8.subarray(buf, buf + bytesRead)), 0);
-
-      _free(buf);
-      return ret;
+      var readBuffer = FS.handleError(withStackSave(() => __wasmfs_readlink(stringToUTF8OnStack(path))));
+      return UTF8ToString(readBuffer);
     },
     statBufToObject : (statBuf) => {
       // i53/u53 are enough for times and ino in practice.
