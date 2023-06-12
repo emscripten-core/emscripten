@@ -22,4 +22,10 @@ close(f): -1
 DUP2 pipe
 buf: abc
 
-DUP2 shared seek position
+DUP shared seek position
+close(f): 0
+close(f2): 0
+
+DUP truncate
+close(f): 0
+close(f2): 0

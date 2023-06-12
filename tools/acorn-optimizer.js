@@ -679,7 +679,7 @@ function emitDCEGraph(ast) {
   //
   // or, in the minimal runtime, it looks like
   //
-  //  WebAssembly.instantiate(Module["wasm"], imports).then(function(output) {
+  //  WebAssembly.instantiate(Module["wasm"], imports).then((output) => {
   //   var asm = output.instance.exports; // may also not have "var", if
   //                                      // declared outside and used elsewhere
   //   ..
@@ -790,7 +790,7 @@ function emitDCEGraph(ast) {
       const name = node.id.name;
       nameToGraphName[name] = getGraphName(name, 'defun');
       emptyOut(node); // ignore this in the second pass; we scan defuns separately
-    } else if (node.type === 'FunctionExpression') {
+    } else if (node.type === 'ArrowFunctionExpression') {
       // Check if this is the minimal runtime exports function, which looks like
       //   (output) => { var asm = output.instance.exports;
       if (

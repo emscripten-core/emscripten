@@ -34,7 +34,8 @@ from common import env_modify, no_mac, no_windows, only_windows, requires_native
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64
 from common import requires_wasm_eh, crossplatform, with_both_sjlj
-from common import also_with_minimal_runtime, also_with_wasm_bigint, EMTEST_BUILD_VERBOSE, PYTHON
+from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64
+from common import EMTEST_BUILD_VERBOSE, PYTHON
 from tools import shared, building, utils, response_file, cache
 from tools.utils import read_file, write_file, delete_file, read_binary
 import common
@@ -521,7 +522,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       generated = read_file('something.js')
       main = self.get_func(generated, '_main') if 'function _main' in generated else generated
       assert 'new Uint16Array' in generated and 'new Uint32Array' in generated, 'typed arrays 2 should be used by default'
-      assert 'SAFE_HEAP' not in generated, 'safe heap should not be used by default'
+      assert 'SAFE_HEAP_LOAD' not in generated, 'safe heap should not be used by default'
+      assert 'SAFE_HEAP_STORE' not in generated, 'safe heap should not be used by default'
       assert ': while(' not in main, 'when relooping we also js-optimize, so there should be no labelled whiles'
       if closure:
         if opt_level == 0:
@@ -959,6 +961,7 @@ f.close()
       end = stderr.index('End of search list.')
       includes = stderr[start:end]
       includes = [i.strip() for i in includes.splitlines()[1:]]
+      cache.ensure_setup()
       cachedir = os.path.normpath(cache.cachedir)
       llvmroot = os.path.normpath(os.path.dirname(config.LLVM_ROOT))
       for i in includes:
@@ -6239,6 +6242,37 @@ int main() {
     self.run_process([EMCC, '-O1', 'test.c', '-sALLOW_MEMORY_GROWTH'])
     self.assertContained('done', self.run_js('a.out.js'))
 
+  def test_failing_growth_wasm64(self):
+    # For now we don't assert that we can actually grow a memory to over 4Gb because currently
+    # this fails under node/d8/chrome with: `WebAssembly.Memory.grow(): Unable to grow instance
+    # memory`.
+    # See: https://bugs.chromium.org/p/v8/issues/detail?id=4153
+    self.require_wasm64()
+    create_file('test.c', r'''
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <emscripten/heap.h>
+
+void* out;
+
+int main() {
+  printf("&out = %p\n", &out);
+  assert((uintptr_t)&out > (2 * 1024 * 1024 * 1024ll));
+  while (1) {
+    out = malloc(10 * 1024 * 1024);
+    printf("alloc: %p\n", out);
+    if (!out) {
+      printf("malloc fail with emscripten_get_heap_size: %zu\n", emscripten_get_heap_size());
+      printf("done\n");
+      return 0;
+    }
+  }
+}
+''')
+    self.do_runf('test.c', 'done\n', emcc_args=['-sGLOBAL_BASE=2Gb', '-sTOTAL_MEMORY=4Gb', '-sMAXIMUM_MEMORY=5Gb', '-sALLOW_MEMORY_GROWTH', '-sMEMORY64', '-Wno-experimental'])
+
   def test_libcxx_minimal(self):
     create_file('vector.cpp', r'''
 #include <vector>
@@ -6610,16 +6644,25 @@ int main(int argc,char** argv) {
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_dlopen_promise.c')
 
-  def test_dlopen_blocking(self):
+  @parameterized({
+    # Under node this should work even without ASYNCIFY because we can do
+    # synchronous loading via readBinary
+    '': (0,),
+    'asyncify': (1,),
+    'jspi': (2,),
+  })
+  def test_dlopen_blocking(self, asyncify):
     self.run_process([EMCC, test_file('other/test_dlopen_blocking_side.c'), '-o', 'libside.so', '-sSIDE_MODULE'])
     self.set_setting('MAIN_MODULE', 2)
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('NO_AUTOLOAD_DYLIBS')
+    if asyncify:
+      self.set_setting('ASYNCIFY', asyncify)
+      if asyncify == 2:
+        self.emcc_args.append('-Wno-experimental')
+        self.require_v8()
+        self.v8_args.append('--experimental-wasm-stack-switching')
     self.emcc_args.append('libside.so')
-    # Under node this should work both with and without ASYNCIFY
-    # because we can do synchronous readBinary
-    self.do_other_test('test_dlopen_blocking.c')
-    self.set_setting('ASYNCIFY')
     self.do_other_test('test_dlopen_blocking.c')
 
   def test_dlsym_rtld_default(self):
@@ -7084,6 +7127,7 @@ Resolve failed: ""
 Resolved: "/" => "/"
 ''', self.run_js('a.out.js'))
 
+  @with_env_modify({'EMCC_LOGGING': '0'})  # this test assumes no emcc output
   def test_no_warnings(self):
     # build once before to make sure system libs etc. exist
     self.run_process([EMXX, test_file('hello_libcxx.cpp')])
@@ -7606,7 +7650,7 @@ int main() {
           for f in files:
             delete_file(f)
 
-  def test_binaryen_names(self):
+  def test_debug_names(self):
     sizes = {}
     for args, expect_names in [
         ([], False),
@@ -7792,7 +7836,7 @@ int main() {
 
   def check_expected_size_in_file(self, desc, filename, size):
     if common.EMTEST_REBASELINE:
-      create_file(filename, f'{size}\n')
+      create_file(filename, f'{size}\n', absolute=True)
     size_slack = 0.05
     expected_size = int(read_file(filename).strip())
     delta = size - expected_size
@@ -7927,6 +7971,8 @@ int main() {
     # EVAL_CTORS also removes the __wasm_call_ctors function
     'Oz-ctors': (['-Oz', '-sEVAL_CTORS'], [], []), # noqa
     '64': (['-Oz', '-sMEMORY64', '-Wno-experimental'], [], []), # noqa
+    # WasmFS should not be fully linked into a minimal program.
+    'wasmfs': (['-Oz', '-sWASMFS'], [], []), # noqa
   })
   def test_metadce_minimal(self, *args):
     self.set_setting('INCOMING_MODULE_JS_API', [])
@@ -7949,6 +7995,7 @@ int main() {
     # code. mode 2 ignores those and fully optimizes out the ctors
     'ctors1':    (['-O2', '-sEVAL_CTORS'],   [], ['waka']), # noqa
     'ctors2':    (['-O2', '-sEVAL_CTORS=2'], [], ['waka']), # noqa
+    'wasmfs':    (['-O2', '-sWASMFS'],       [], ['waka']), # noqa
   })
   def test_metadce_cxx(self, *args):
     # do not check functions in this test as there are a lot of libc++ functions
@@ -7970,6 +8017,8 @@ int main() {
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
     'dylink': (['-O3', '-sMAIN_MODULE=2'], [], []), # noqa
+    # WasmFS should not be fully linked into a hello world program.
+    'wasmfs': (['-O3', '-sWASMFS'],        [], []), # noqa
   })
   def test_metadce_hello(self, *args):
     self.run_metadce_test('hello_world.cpp', *args)
@@ -8001,14 +8050,19 @@ int main() {
     self.run_metadce_test(filename, *args)
 
   @parameterized({
-    'O3':                 ('libcxxabi_message.cpp', ['-O3'],
-                           [], []), # noqa
+    'O3':            (['-O3'],                      [], []), # noqa
     # argc/argv support code etc. is in the wasm
-    'O3_standalone':      ('libcxxabi_message.cpp', ['-O3', '-sSTANDALONE_WASM'],
-                           [], []), # noqa
+    'O3_standalone': (['-O3', '-sSTANDALONE_WASM'], [], []), # noqa
   })
-  def test_metadce_libcxxabi_message(self, filename, *args):
-    self.run_metadce_test(filename, *args)
+  def test_metadce_libcxxabi_message(self, *args):
+    self.run_metadce_test('libcxxabi_message.cpp', *args)
+
+  @parameterized({
+    'js_fs':  (['-O3', '-sNO_WASMFS'], [], []), # noqa
+    'wasmfs': (['-O3', '-sWASMFS'],    [], []), # noqa
+  })
+  def test_metadce_files(self, *args):
+    self.run_metadce_test('files.cpp', *args)
 
   # ensures runtime exports work, even with metadce
   @parameterized({
@@ -8798,7 +8852,7 @@ end
           console.error("my {attribute}");
         }};
       '''
-    create_file('pre.js', '''
+    create_file('post.js', '''
       /** @constructor */
       function Foo() {
         this.bar = function() {
@@ -8828,7 +8882,7 @@ end
       '-sFETCH',
       '-sFETCH_SUPPORT_INDEXEDDB',
       '-Werror=closure',
-      '--pre-js=pre.js'
+      '--post-js=post.js'
     ])
     code = read_file('hello_world.js')
     # `bar` method is used so should not be DCE'd
@@ -8929,7 +8983,7 @@ end
       self.do_other_test('test_ioctl_window_size.cpp')
 
   @also_with_wasmfs
-  def test_sys_ioctl(self):
+  def test_ioctl(self):
     # ioctl requires filesystem
     self.do_other_test('test_ioctl.c', emcc_args=['-sFORCE_FILESYSTEM'])
 
@@ -8940,6 +8994,7 @@ end
     # fflush without the full filesystem won't quite work
     self.do_other_test('test_fflush.cpp')
 
+  @also_with_wasmfs
   def test_fflush_fs(self):
     # fflush with the full filesystem will flush from libc, but not the JS logging, which awaits a newline
     self.do_other_test('test_fflush_fs.cpp', emcc_args=['-sFORCE_FILESYSTEM'])
@@ -10148,7 +10203,7 @@ int main () {
     print('Total output size gzipped=' + str(total_output_size_gz) + ' bytes, expected total size gzipped=' + str(total_expected_size_gz) + ', delta=' + str(total_output_size_gz - total_expected_size_gz) + print_percent(total_output_size_gz, total_expected_size_gz))
 
     if common.EMTEST_REBASELINE:
-      open(results_file, 'w').write(json.dumps(obtained_results, indent=2) + '\n')
+      create_file(results_file, json.dumps(obtained_results, indent=2) + '\n', absolute=True)
     else:
       if total_output_size > total_expected_size:
         print(f'Oops, overall generated code size regressed by {total_output_size - total_expected_size} bytes!')
@@ -11239,10 +11294,8 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.run_process([EMCC, '-c', '-o', 'main.o', 'main.bc'])
     self.assertTrue(building.is_wasm('main.o'))
 
+  @with_env_modify({'EMCC_LOGGING': '0'})  # this test assumes no emcc output
   def test_nostdlib(self):
-    # First ensure all the system libs are built
-    self.run_process([EMCC, test_file('unistd/close.c')])
-
     err = 'symbol exported via --export not found: __errno_location'
     self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nostdlib']))
     self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nodefaultlibs']))
@@ -11650,9 +11703,8 @@ exec "$@"
   def test_this_in_dyncall(self, args):
     self.do_run_in_out_file_test(test_file('no_this_in_dyncall.c'), emcc_args=['--js-library', test_file('no_this_in_dyncall.js')] + args)
 
-  @requires_v8
+  @requires_wasm64
   def test_this_in_dyncall_memory64(self):
-    self.v8_args += ['--experimental-wasm-memory64']
     self.do_run_in_out_file_test(test_file('no_this_in_dyncall.c'), emcc_args=['--js-library', test_file('no_this_in_dyncall.js'), '-sMEMORY64', '-Wno-experimental'])
 
   # Tests that dynCalls are produced in Closure-safe way in DYNCALLS mode when no actual dynCalls are used
@@ -12163,17 +12215,18 @@ void foo() {}
       err = self.run_js('a.out.js')
       self.assertNotContained('warning: unsupported syscall', err)
 
+  @also_with_wasm64
   def test_unimplemented_syscalls_dlopen(self):
-    cmd = [EMCC, test_file('other/test_dlopen_blocking.c')]
+    cmd = [EMCC, test_file('other/test_dlopen_blocking.c')] + self.get_emcc_args()
     self.run_process(cmd)
     err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('Aborted(To use dlopen, you need enable dynamic linking, see https://emscripten.org/docs/compiling/Dynamic-Linking.html)', err)
+    self.assertContained('dlopen failed: dynamic linking not enabled', err)
 
     # If we build the same thing with ALLOW_UNIMPLEMENTED_SYSCALLS=0 we
     # expect a link-time failure rather than a runtime one.
     cmd += ['-sALLOW_UNIMPLEMENTED_SYSCALLS=0']
     err = self.expect_fail(cmd)
-    self.assertContained('To use dlopen, you need enable dynamic linking, see https://emscripten.org/docs/compiling/Dynamic-Linking.html', err)
+    self.assertContained('undefined symbol: dlopen', err)
 
   def test_unimplemented_syscalls_dladdr(self):
     create_file('main.c', '''
@@ -12512,7 +12565,7 @@ Module['postRun'] = function() {{
   # Requires v8 for now since the version of node we use in CI doesn't support >2GB heaps
   @requires_v8
   def test_hello_world_above_2gb(self):
-    self.do_runf(test_file('hello_world.c'), 'hello, world!', emcc_args=['-sGLOBAL_BASE=2147483648', '-sINITIAL_MEMORY=3GB'])
+    self.do_runf(test_file('hello_world.c'), 'hello, world!', emcc_args=['-sGLOBAL_BASE=2GB', '-sINITIAL_MEMORY=3GB'])
 
   def test_hello_function(self):
     # hello_function.cpp is referenced/used in the docs.  This test ensures that it
@@ -12804,7 +12857,7 @@ int main() {
     self.assertNotIn(b'.debug', read_binary('hello_world.o'))
 
   @requires_v8
-  def test_stack_switching_size(self):
+  def test_jspi_code_size(self):
     # use iostream code here to purposefully get a fairly large wasm file, so
     # that our size comparisons later are meaningful
     create_file('main.cpp', r'''
@@ -13117,6 +13170,7 @@ start
 w:0,t:0x[0-9a-fA-F]+: done init
 hello, world!
 w:0,t:0x[0-9a-fA-F]+: native dbg message
+w:0,t:0x[0-9a-fA-F]+: hello
 w:0,t:0x[0-9a-fA-F]+: formatted: 42
 '''
     self.emcc_args.append('--pre-js=pre.js')

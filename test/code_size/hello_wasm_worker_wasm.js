@@ -31,9 +31,7 @@ WebAssembly.instantiate(b.wasm, {
             r.onmessage = k;
             return n++;
         },
-        c: function() {
-            return !1;
-        },
+        c: () => !1,
         d: function(a, d) {
             m[a].postMessage({
                 _wsc: d,
@@ -45,7 +43,7 @@ WebAssembly.instantiate(b.wasm, {
         },
         a: e
     }
-}).then((function(a) {
+}).then((a => {
     a = a.instance.exports;
     p = a.g;
     q = a.i;

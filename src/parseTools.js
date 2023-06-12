@@ -61,6 +61,11 @@ function preprocess(filename) {
   const isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
   let inStyle = false;
   const lines = text.split('\n');
+  // text.split yields an extra empty element at the end if text itself ends with a newline.
+  if (!lines[lines.length - 1]) {
+    lines.pop();
+  }
+
   let ret = '';
   let emptyLine = false;
 
@@ -282,15 +287,13 @@ function getNativeTypeSize(type) {
 }
 
 function getHeapOffset(offset, type) {
-  if (type == 'i64' && !WASM_BIGINT) {
-    // We are foreced to use the 32-bit heap for 64-bit values when we don't
-    // have WASM_BIGINT.
-    type = 'i32';
-  }
-
   const sz = getNativeTypeSize(type);
   const shifts = Math.log(sz) / Math.LN2;
-  return `((${offset})>>${shifts})`;
+  if (MEMORY64 == 1) {
+    return `((${offset})/2**${shifts})`;
+  } else {
+    return `((${offset})>>${shifts})`;
+  }
 }
 
 function ensureDot(value) {
@@ -499,12 +502,12 @@ function getHeapForType(type) {
     case 'u8':     return 'HEAPU8';
     case 'i16':    return 'HEAP16';
     case 'u16':    return 'HEAPU16';
-    case 'i64':    // fallthrough
     case 'i32':    return 'HEAP32';
-    case 'u64':    // fallthrough
     case 'u32':    return 'HEAPU32';
     case 'double': return 'HEAPF64';
     case 'float':  return 'HEAPF32';
+    case 'i64':    // fallthrough
+    case 'u64':    error('use i53/u53, or avoid i64/u64 without WASM_BIGINT');
   }
   assert(false, 'bad heap type: ' + type);
 }
@@ -686,35 +689,43 @@ function makeRetainedCompilerSettings() {
 const WASM_PAGE_SIZE = 65536;
 
 // Receives a function as text, and a function that constructs a modified
-// function, to which we pass the parsed-out name, arguments, body, and possible
+// function, to which we pass the parsed-out arguments, body, and possible
 // "async" prefix of the input function. Returns the output of that function.
-function modifyFunction(text, func) {
+function modifyJSFunction(text, func) {
   // Match a function with a name.
-  let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   let async_;
-  let name;
   let args;
   let rest;
+  let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   if (match) {
     async_ = match[1] || '';
-    name = match[2];
     args = match[3];
     rest = text.substr(match[0].length);
   } else {
-    // Match a function without a name (we could probably use a single regex
-    // for both, but it would be more complex).
-    match = text.match(/^\s*(async\s+)?function\(([^)]*)\)/);
-    assert(match, 'could not match function ' + text + '.');
-    name = '';
-    async_ = match[1] || '';
-    args = match[2];
-    rest = text.substr(match[0].length);
+    // Match an arrow function
+    let match = text.match(/^\s*(var (\w+) = )?(async\s+)?\(([^)]*)\)\s+=>\s+/);
+    if (match) {
+      async_ = match[3] || '';
+      args = match[4];
+      rest = text.substr(match[0].length);
+    } else {
+      // Match a function without a name (we could probably use a single regex
+      // for both, but it would be more complex).
+      match = text.match(/^\s*(async\s+)?function\(([^)]*)\)/);
+      assert(match, `could not match function:\n${text}\n`);
+      async_ = match[1] || '';
+      args = match[2];
+      rest = text.substr(match[0].length);
+    }
   }
+  let body = rest;
   const bodyStart = rest.indexOf('{');
-  assert(bodyStart >= 0);
-  const bodyEnd = rest.lastIndexOf('}');
-  assert(bodyEnd > 0);
-  return func(name, args, rest.substring(bodyStart + 1, bodyEnd), async_);
+  if (bodyStart >= 0) {
+    const bodyEnd = rest.lastIndexOf('}');
+    assert(bodyEnd > 0);
+    body = rest.substring(bodyStart + 1, bodyEnd);
+  }
+  return func(args, body, async_);
 }
 
 function runIfMainThread(text) {
