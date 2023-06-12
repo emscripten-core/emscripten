@@ -3191,6 +3191,18 @@ def phase_memory_initializer(memfile):
   final_js += '.mem.js'
 
 
+def create_worker_file(input_file, target_dir, output_file):
+  output_file = os.path.join(target_dir, output_file)
+  input_file = utils.path_from_root(input_file)
+  contents = shared.read_and_preprocess(input_file, expand_macros=True)
+  write_file(output_file, contents)
+
+  # Minify the worker JS files file in optimized builds
+  if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
+    contents = building.acorn_optimizer(output_file, ['minifyWhitespace'], return_output=True)
+    write_file(output_file, contents)
+
+
 @ToolchainProfiler.profile_block('final emitting')
 def phase_final_emitting(options, state, target, wasm_target, memfile):
   global final_js
@@ -3203,36 +3215,15 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
 
   target_dir = os.path.dirname(os.path.abspath(target))
   if settings.PTHREADS:
-    worker_output = os.path.join(target_dir, settings.PTHREAD_WORKER_FILE)
-    contents = shared.read_and_preprocess(utils.path_from_root('src/worker.js'), expand_macros=True)
-    write_file(worker_output, contents)
-
-    # Minify the worker.js file in optimized builds
-    if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
-      minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
-      write_file(worker_output, minified_worker)
+    create_worker_file('src/worker.js', target_dir, settings.PTHREAD_WORKER_FILE)
 
   # Deploy the Wasm Worker bootstrap file as an output file (*.ww.js)
   if settings.WASM_WORKERS == 1:
-    worker_output = os.path.join(target_dir, settings.WASM_WORKER_FILE)
-    contents = shared.read_and_preprocess(shared.path_from_root('src/wasm_worker.js'), expand_macros=True)
-    write_file(worker_output, contents)
-
-    # Minify the wasm_worker.js file in optimized builds
-    if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
-      minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
-      write_file(worker_output, minified_worker)
+    create_worker_file('src/wasm_worker.js', target_dir, settings.WASM_WORKER_FILE)
 
   # Deploy the Audio Worklet module bootstrap file (*.aw.js)
   if settings.AUDIO_WORKLET == 1:
-    worklet_output = os.path.join(target_dir, settings.AUDIO_WORKLET_FILE)
-    contents = shared.read_and_preprocess(shared.path_from_root('src', 'audio_worklet.js'), expand_macros=True)
-    utils.write_file(worklet_output, contents)
-
-    # Minify the audio_worklet.js file in optimized builds
-    if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
-      minified_worker = building.acorn_optimizer(worklet_output, ['minifyWhitespace'], return_output=True)
-      utils.write_file(worklet_output, minified_worker)
+    create_worker_file('src/audio_worklet.js', target_dir, settings.AUDIO_WORKLET_FILE)
 
   if settings.MODULARIZE:
     modularize()
