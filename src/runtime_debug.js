@@ -28,13 +28,7 @@ function isExportedByForceFilesystem(name) {
   return name === 'FS_createPath' ||
          name === 'FS_createDataFile' ||
          name === 'FS_createPreloadedFile' ||
-         name === 'FS_unlink' ||
          name === 'addRunDependency' ||
-#if !WASMFS
-         // The old FS has some functionality that WasmFS lacks.
-         name === 'FS_createLazyFile' ||
-         name === 'FS_createDevice' ||
-#endif
          name === 'removeRunDependency';
 }
 

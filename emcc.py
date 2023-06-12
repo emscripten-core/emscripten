@@ -2465,24 +2465,14 @@ def phase_linker_setup(options, state, newargs):
       settings.EXPORTED_RUNTIME_METHODS += ['stackSave', 'stackAlloc', 'stackRestore']
 
   if settings.FORCE_FILESYSTEM and not settings.MINIMAL_RUNTIME:
-    # when the filesystem is forced, we export by default methods that filesystem usage
-    # may need, including filesystem usage from standalone file packager output (i.e.
-    # file packages not built together with emcc, but that are loaded at runtime
-    # separately, and they need emcc's output to contain the support they need)
+    # When the filesystem is forced, we export FS method needed for standalone file
+    # packager output (i.e.  file packages not built together with emcc, but that
+    # are loaded at runtime separately, and they need emcc's output to contain the
+    # support they need)
     settings.EXPORTED_RUNTIME_METHODS += [
       'FS_createPath',
       'FS_createDataFile',
       'FS_createPreloadedFile',
-      'FS_unlink'
-    ]
-    if not settings.WASMFS:
-      # The old FS has some functionality that WasmFS lacks.
-      settings.EXPORTED_RUNTIME_METHODS += [
-        'FS_createLazyFile',
-        'FS_createDevice'
-      ]
-
-    settings.EXPORTED_RUNTIME_METHODS += [
       'addRunDependency',
       'removeRunDependency',
     ]

@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.42 (in development)
 -----------------------
+- The `FORCE_FILESYSTEM` setting now only triggers the export of symbols needed
+  by the file packager output.  Specifically, `FS_unlink`, `FS_createLazyFile`,
+  and `FS_createDevice` are no longer automatically exported when
+  `FORCE_FILESYSTEM` is used. (#19590)
 - The log message that emcc will sometime print (for example when auto-building
   system libraries) can now be completely supressed by running with
   `EMCC_LOGGING=0`.
