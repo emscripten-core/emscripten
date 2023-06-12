@@ -4,34 +4,7 @@
 #include <assert.h>
 #include <fcntl.h>
 
-int main() {
-    /********** test FS.open() **********/
-    EM_ASM(
-        FS.writeFile('testfile', 'a=1\nb=2\n');
-        var readStream = FS.open('testfile', 'r');
-        var writeStream = FS.open('testfile', 'w');
-        var writePlusStream = FS.open('testfile', 'w+');
-        var appendStream = FS.open('testfile', 'a');
-
-        assert(readStream && readStream.fd >= 0);
-        assert(writeStream && writeStream.fd >= 0);
-        assert(writePlusStream && writePlusStream.fd >= 0);
-        assert(appendStream && appendStream.fd >= 0);
-
-        var ex;
-        try {
-            FS.open('filenothere', 'r');
-        } catch(err) {
-            ex = err;
-        }
-        assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
-
-        var createFileNotHere = FS.open('filenothere', 'w+');
-
-        assert(createFileNotHere && createFileNotHere.fd >= 0);
-    );
-
-    /********** test FS.truncate() **********/
+void test_fs_truncate() {
     EM_ASM(
         FS.writeFile('truncatetest', 'a=1\nb=2\n');
     );
@@ -66,24 +39,16 @@ int main() {
         } catch(err) {
             ex = err;
         }
-
         assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
-    );
 
-    EM_ASM(
-        var ex;
         try {
             var truncateStream = FS.open('truncatetest', 'w');
             FS.ftruncate(truncateStream.fd, -10);
         } catch(err) {
             ex = err;
         }
-
         assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
-    );
 
-    EM_ASM(
-        var ex;
         try {
             FS.truncate('nonexistent', 10);
         } catch(err) {
@@ -97,9 +62,39 @@ int main() {
         } catch(err) {
             ex = err;
         }
-
         assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */);
     );
+
+    remove("truncatetest");
+}
+
+int main() {
+    /********** test FS.open() **********/
+    EM_ASM(
+        FS.writeFile('testfile', 'a=1\nb=2\n');
+        var readStream = FS.open('testfile', 'r');
+        var writeStream = FS.open('testfile', 'w');
+        var writePlusStream = FS.open('testfile', 'w+');
+        var appendStream = FS.open('testfile', 'a');
+
+        assert(readStream && readStream.fd >= 0);
+        assert(writeStream && writeStream.fd >= 0);
+        assert(writePlusStream && writePlusStream.fd >= 0);
+        assert(appendStream && appendStream.fd >= 0);
+
+        var ex;
+        try {
+            FS.open('filenothere', 'r');
+        } catch(err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+
+        var createFileNotHere = FS.open('filenothere', 'w+');
+
+        assert(createFileNotHere && createFileNotHere.fd >= 0);
+    );
+    
     
     /********** test FS.rename() **********/
     EM_ASM(
@@ -218,6 +213,8 @@ int main() {
     stat("createtest", &stats);
     assert(S_ISREG(stats.st_mode));
     assert(stats.st_mode & 0400);
+
+    test_fs_truncate();
 
     remove("mknodtest");
     remove("createtest");
