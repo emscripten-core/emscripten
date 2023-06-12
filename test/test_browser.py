@@ -1759,14 +1759,12 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   @parameterized({
-    '': ([False],),
+    '': ([],),
     # Enabling FULL_ES3 also enables ES2 automatically
-    'proxy': ([True],)
+    'proxy': (['--proxy-to-worker'],)
   })
-  def test_glgears_long(self, proxy):
-    args = ['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST', '-lGL', '-lglut', '-DANIMATE']
-    if proxy:
-      args += ['--proxy-to-worker']
+  def test_glgears_long(self, args):
+    args += ['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST', '-lGL', '-lglut', '-DANIMATE']
     self.btest('hello_world_gles.c', expected='0', args=args)
 
   @requires_graphics_hardware
