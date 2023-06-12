@@ -12366,11 +12366,15 @@ void foo() {}
 
     # Same again with pthreads enabled
     self.setup_node_pthreads()
-    self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
+    self.do_other_test('test_default_pthread_stack_size.c')
 
     # Same again but with a custom stack size
     self.emcc_args += ['-DEXPECTED_STACK_SIZE=1024', '-sDEFAULT_PTHREAD_STACK_SIZE=1024']
-    self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
+    self.do_other_test('test_default_pthread_stack_size.c')
+
+    # Same again but with a --proxy-to-worker
+    self.emcc_args += ['--proxy-to-worker']
+    self.do_other_test('test_default_pthread_stack_size.c')
 
   def test_emscripten_set_immediate(self):
     self.do_runf(test_file('emscripten_set_immediate.c'))
