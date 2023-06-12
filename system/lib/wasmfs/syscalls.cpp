@@ -24,7 +24,6 @@
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
-#include <stdio.h>
 
 #include "backend.h"
 #include "file.h"
