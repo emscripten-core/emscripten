@@ -1759,14 +1759,12 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   @parameterized({
-    '': ([False],),
+    '': ([],),
     # Enabling FULL_ES3 also enables ES2 automatically
-    'proxy': ([True],)
+    'proxy': (['--proxy-to-worker'],)
   })
-  def test_glgears_long(self, proxy):
-    args = ['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST', '-lGL', '-lglut', '-DANIMATE']
-    if proxy:
-      args += ['--proxy-to-worker']
+  def test_glgears_long(self, args):
+    args += ['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST', '-lGL', '-lglut', '-DANIMATE']
     self.btest('hello_world_gles.c', expected='0', args=args)
 
   @requires_graphics_hardware
@@ -2945,6 +2943,7 @@ Module["preRun"].push(function () {
       '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--use-preload-plugins'
     ])
 
+  @also_with_wasmfs
   @requires_graphics_hardware
   def test_sdl2_image_formats(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
@@ -3524,6 +3523,7 @@ Module["preRun"].push(function () {
 
   # test illustrating the regression on the modularize feature since commit c5af8f6
   # when compiling with the --preload-file option
+  @also_with_wasmfs
   def test_modularize_and_preload_files(self):
     self.set_setting('EXIT_RUNTIME')
     # TODO(sbc): Fix closure warnings with MODULARIZE + WASM=0
