@@ -123,6 +123,17 @@ mergeInto(LibraryManager.library, {
     return (lo >>> 0) + (hi >>> 0) * 4294967296;
   },
 
+  // Given a signed i53 number, emit the low 32 bits. This is useful for
+  // calling into wasm when legalization is needed, and then instead of just
+  // doing f(num) you would do f(sendI53BitsLow(num), sendI53BitsHigh(num)).
+  $sendI53BitsLow: function(num) {
+    return num | 0;
+  },
+  $sendI53BitsHigh: function(num) {
+    num = Math.floor(num / 4294967296);
+    return num | 0;
+  },
+
 #if WASM_BIGINT
   $MAX_INT53: '{{{ Math.pow(2, 53) }}}',
   $MIN_INT53: '-{{{ Math.pow(2, 53) }}}',
@@ -140,5 +151,9 @@ mergeInto(LibraryManager.library, {
 #if WASM_BIGINT
 global.i53ConversionDeps = ['$bigintToI53Checked'];
 #else
-global.i53ConversionDeps = ['$convertI32PairToI53Checked'];
+global.i53ConversionDeps = [
+  '$convertI32PairToI53Checked',
+  '$sendI53BitsLow',
+  '$sendI53BitsHigh',
+];
 #endif
