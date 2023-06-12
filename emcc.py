@@ -1097,7 +1097,7 @@ def get_subresource_location(path, data_uri=None):
     return os.path.basename(path)
 
 
-@ToolchainProfiler.profile_block('package_files')
+@ToolchainProfiler.profile()
 def package_files(options, target):
   rtn = []
   logger.debug('setting up files')
@@ -3116,7 +3116,7 @@ def phase_link(linker_arguments, wasm_target, js_syms):
   building.link_lld(linker_arguments, wasm_target, external_symbols=js_syms)
 
 
-@ToolchainProfiler.profile_block('post_link')
+@ToolchainProfiler.profile_block('post link')
 def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms):
   global final_js
 
@@ -3194,6 +3194,18 @@ def phase_memory_initializer(memfile):
   final_js += '.mem.js'
 
 
+def create_worker_file(input_file, target_dir, output_file):
+  output_file = os.path.join(target_dir, output_file)
+  input_file = utils.path_from_root(input_file)
+  contents = shared.read_and_preprocess(input_file, expand_macros=True)
+  write_file(output_file, contents)
+
+  # Minify the worker JS files file in optimized builds
+  if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
+    contents = building.acorn_optimizer(output_file, ['minifyWhitespace'], return_output=True)
+    write_file(output_file, contents)
+
+
 @ToolchainProfiler.profile_block('final emitting')
 def phase_final_emitting(options, state, target, wasm_target, memfile):
   global final_js
@@ -3206,36 +3218,15 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
 
   target_dir = os.path.dirname(os.path.abspath(target))
   if settings.PTHREADS:
-    worker_output = os.path.join(target_dir, settings.PTHREAD_WORKER_FILE)
-    contents = shared.read_and_preprocess(utils.path_from_root('src/worker.js'), expand_macros=True)
-    write_file(worker_output, contents)
-
-    # Minify the worker.js file in optimized builds
-    if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
-      minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
-      write_file(worker_output, minified_worker)
+    create_worker_file('src/worker.js', target_dir, settings.PTHREAD_WORKER_FILE)
 
   # Deploy the Wasm Worker bootstrap file as an output file (*.ww.js)
   if settings.WASM_WORKERS == 1:
-    worker_output = os.path.join(target_dir, settings.WASM_WORKER_FILE)
-    contents = shared.read_and_preprocess(shared.path_from_root('src/wasm_worker.js'), expand_macros=True)
-    write_file(worker_output, contents)
-
-    # Minify the wasm_worker.js file in optimized builds
-    if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
-      minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
-      write_file(worker_output, minified_worker)
+    create_worker_file('src/wasm_worker.js', target_dir, settings.WASM_WORKER_FILE)
 
   # Deploy the Audio Worklet module bootstrap file (*.aw.js)
   if settings.AUDIO_WORKLET == 1:
-    worklet_output = os.path.join(target_dir, settings.AUDIO_WORKLET_FILE)
-    contents = shared.read_and_preprocess(shared.path_from_root('src', 'audio_worklet.js'), expand_macros=True)
-    utils.write_file(worklet_output, contents)
-
-    # Minify the audio_worklet.js file in optimized builds
-    if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
-      minified_worker = building.acorn_optimizer(worklet_output, ['minifyWhitespace'], return_output=True)
-      utils.write_file(worklet_output, minified_worker)
+    create_worker_file('src/audio_worklet.js', target_dir, settings.AUDIO_WORKLET_FILE)
 
   if settings.MODULARIZE:
     modularize()
@@ -3817,9 +3808,8 @@ def phase_binaryen(target, options, wasm_target):
   if options.emit_symbol_map:
     intermediate_debug_info -= 1
     if os.path.exists(wasm_target):
-      with ToolchainProfiler.profile_block('handle_final_symbols'):
-        building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
-        save_intermediate_with_wasm('symbolmap', wasm_target)
+      building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
+      save_intermediate_with_wasm('symbolmap', wasm_target)
 
   if settings.DEBUG_LEVEL >= 3 and settings.SEPARATE_DWARF and os.path.exists(wasm_target):
     building.emit_debug_on_side(wasm_target)
@@ -4154,12 +4144,11 @@ def generate_html(target, options, js_target, target_basename,
 
 
 def generate_worker_js(target, js_target, target_basename):
-  # compiler output is embedded as base64
   if settings.SINGLE_FILE:
+    # compiler output is embedded as base64
     proxy_worker_filename = get_subresource_location(js_target)
-
-  # compiler output goes in .worker.js file
   else:
+    # compiler output goes in .worker.js file
     move_file(js_target, shared.replace_suffix(js_target, '.worker.js'))
     worker_target_basename = target_basename + '.worker'
     proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
@@ -4170,10 +4159,10 @@ def generate_worker_js(target, js_target, target_basename):
 
 def worker_js_script(proxy_worker_filename):
   web_gl_client_src = read_file(utils.path_from_root('src/webGLClient.js'))
-  idb_store_src = read_file(utils.path_from_root('src/IDBStore.js'))
-  proxy_client_src = read_file(utils.path_from_root('src/proxyClient.js'))
-  proxy_client_src = do_replace(proxy_client_src, '{{{ filename }}}', proxy_worker_filename)
-  proxy_client_src = do_replace(proxy_client_src, '{{{ IDBStore.js }}}', idb_store_src)
+  proxy_client_src = shared.read_and_preprocess(utils.path_from_root('src/proxyClient.js'), expand_macros=True)
+  if not os.path.dirname(proxy_worker_filename):
+    proxy_worker_filename = './' + proxy_worker_filename
+  proxy_client_src = do_replace(proxy_client_src, '<<< filename >>>', proxy_worker_filename)
   return web_gl_client_src + '\n' + proxy_client_src
 
 
