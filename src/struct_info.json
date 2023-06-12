@@ -66,6 +66,12 @@
         }
     },
     {
+        "file": "limits.h",
+        "defines" : [
+            "PATH_MAX"
+        ]
+    },
+    {
         "file": "sys/statfs.h",
         "structs": {
             "statfs": [

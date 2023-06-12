@@ -221,7 +221,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       });
     },
     readlink: (path) => {
-      var buf = _malloc(4096);
+      var buf = _malloc({{{ cDefs.PATH_MAX }}});
       var bytesRead = FS.handleError(withStackSave(() => {
         var pathBuffer = stringToUTF8OnStack(path);
         return __wasmfs_readlink(pathBuffer, buf, 4096);
