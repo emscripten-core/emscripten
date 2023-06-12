@@ -190,16 +190,13 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       return bytesRead;
     },
     // TODO: allocate
-    // TODO: mmap
     mmap: (stream, length, position, prot, flags) => {
       var buf = FS.handleError(__wasmfs_mmap(length, prot, flags, stream.fd, position));
       return { ptr: buf, allocated: true };
     },
-    // TODO: msync
     msync: (stream, bufferPtr, offset, length, mmapFlags) => {
       return FS.handleError(__wasmfs_msync(bufferPtr, length, mmapFlags));
     },
-    // TODO: munmap
     munmap: (addr, length) => {
       return FS.handleError(__wasmfs_munmap(addr, length));
     },

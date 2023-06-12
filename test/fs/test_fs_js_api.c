@@ -24,13 +24,30 @@ void test_fs_mmap() {
         ret[9] = 'x'.charCodeAt(0);
         ret[10] = 'y'.charCodeAt(0);
         ret[11] = 'z'.charCodeAt(0);
-        Module.HEAPU8.set(ret, mapped.ptr); // We must update the array in Wasm memory before WasmFS msync.
+        Module.HEAPU8.set(ret, mapped.ptr);
 
-        // The WasmFS msync syscall requires a pointer to the mapped memory, while the legacy JS API takes in any buffer
-        // to write as a Uint8Array to write to a file.
+        // The WasmFS msync syscall requires a pointer to the mapped memory, while the legacy JS API takes in any Uint8Array 
+        // buffer to write to a file.
 #if WASMFS
         FS.msync(stream, mapped.ptr, 0, 12, 1 /* MAP_SHARED */);
+        
+        var ex;
+        try {
+            FS.munmap(mapped.ptr, 4);
+        } catch (err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+
         FS.munmap(mapped.ptr, 12);
+
+        // WasmFS correctly handles unmapping, while the legacy JS API does not.
+        try {
+            FS.msync(stream, mapped.ptr, 0, 12, 1 /* MAP_SHARED */);
+        } catch (err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
 #else
         FS.msync(stream, new Uint8Array(ret), 0, 12, 1 /* MAP_SHARED */);
         FS.munmap(stream);
