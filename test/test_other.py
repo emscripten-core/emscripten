@@ -2534,6 +2534,16 @@ int f() {
     else:
       self.assertFileContents(expected_file, js)
 
+  def test_js_optimizer_huge(self):
+    # Stress test the chunkifying code in js_optimizer.py
+    lines = ['// EMSCRIPTEN_START_FUNCS']
+    for i in range(1000_000):
+      lines.append('function v%d()\n {\n var someLongNameToMakeThisLineLong = %d\n }' % (i, i))
+    lines.append('// EMSCRIPTEN_END_FUNCS\n')
+    create_file('huge.js', '\n'.join(lines))
+    self.assertGreater(os.path.getsize('huge.js'), 50_000_000)
+    self.run_process([PYTHON, path_from_root('tools/js_optimizer.py'), 'huge.js', 'minifyWhitespace'])
+
   @parameterized({
     'wasm2js': ('wasm2js', ['minifyNames', 'last']),
     'constructor': ('constructor', ['minifyNames'])
