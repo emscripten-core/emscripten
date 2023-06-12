@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-{
+var IDBStore = {
   indexedDB: function() {
     if (typeof indexedDB != 'undefined') return indexedDB;
     var ret = null;
@@ -102,5 +102,4 @@
       req.onerror = (error) => callback(error);
     });
   },
-}
-
+};
