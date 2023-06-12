@@ -1016,6 +1016,7 @@ def instrument_js_for_safe_heap(js_file):
   return acorn_optimizer(js_file, ['safeHeap'])
 
 
+@ToolchainProfiler.profile()
 def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
   logger.debug('handle_final_wasm_symbols')
   args = []

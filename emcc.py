@@ -1097,7 +1097,7 @@ def get_subresource_location(path, data_uri=None):
     return os.path.basename(path)
 
 
-@ToolchainProfiler.profile_block('package_files')
+@ToolchainProfiler.profile()
 def package_files(options, target):
   rtn = []
   logger.debug('setting up files')
@@ -3114,7 +3114,7 @@ def phase_link(linker_arguments, wasm_target, js_syms):
   building.link_lld(linker_arguments, wasm_target, external_symbols=js_syms)
 
 
-@ToolchainProfiler.profile_block('post_link')
+@ToolchainProfiler.profile_block('post link')
 def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms):
   global final_js
 
@@ -3815,9 +3815,8 @@ def phase_binaryen(target, options, wasm_target):
   if options.emit_symbol_map:
     intermediate_debug_info -= 1
     if os.path.exists(wasm_target):
-      with ToolchainProfiler.profile_block('handle_final_symbols'):
-        building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
-        save_intermediate_with_wasm('symbolmap', wasm_target)
+      building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
+      save_intermediate_with_wasm('symbolmap', wasm_target)
 
   if settings.DEBUG_LEVEL >= 3 and settings.SEPARATE_DWARF and os.path.exists(wasm_target):
     building.emit_debug_on_side(wasm_target)
