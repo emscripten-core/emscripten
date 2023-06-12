@@ -260,4 +260,25 @@ mergeInto(LibraryManager.library, {
 #endif
     return id;
   },
+
+  emscripten_promise_await__async: true,
+  emscripten_promise_await__deps: ['$getPromise', '$setPromiseResult'],
+  emscripten_promise_await: (returnValuePtr, id) => {
+#if ASYNCIFY
+#if RUNTIME_DEBUG
+    dbg(`emscripten_promise_await: ${id}`);
+#endif
+    return Asyncify.handleSleep((wakeUp) => {
+      getPromise(id).then((value) => {
+        setPromiseResult(returnValuePtr, true, value);
+        wakeUp();
+      }, (value) => {
+        setPromiseResult(returnValuePtr, false, value);
+        wakeUp();
+      });
+    });
+#else
+    abort('emscripten_promise_await is only available with ASYNCIFY');
+#endif
+  },
 });
