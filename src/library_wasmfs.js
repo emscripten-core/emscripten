@@ -280,10 +280,10 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: lchown
     // TODO: fchown
     truncate: (path, len) => {
-      return FS.handleError(withStackSave(() => (___syscall_truncate64(stringToUTF8OnStack(path), {{{ splitI64('len') }}}))));
+      return FS.handleError(withStackSave(() => (__wasmfs_truncate(stringToUTF8OnStack(path), {{{ splitI64('len') }}}))));
     },
     ftruncate: (fd, len) => {
-      return FS.handleError(___syscall_ftruncate64(fd, {{{ splitI64('len') }}}));
+      return FS.handleError(__wasmfs_ftruncate(fd, {{{ splitI64('len') }}}));
     },
     // TODO: utime
     findObject: (path) => {
