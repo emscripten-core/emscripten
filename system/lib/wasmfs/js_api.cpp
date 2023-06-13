@@ -189,8 +189,8 @@ int _wasmfs_lchmod(char* path, mode_t mode) {
   return __syscall_fchmodat(AT_FDCWD, (intptr_t)path, mode, AT_SYMLINK_NOFOLLOW);
 }
 
-int _wasmfs_llseek(int fd, long offset, int whence) {
-  // printf("Fd: %d, offset: %ld, whence: %d\n", fd, offset, whence);
+int _wasmfs_llseek(int fd, off_t offset, int whence) {
+  printf("Fd: %d, offset: %lld, whence: %d\n", fd, offset, whence);
   __wasi_filesize_t newOffset;
   int err = __wasi_fd_seek(fd, offset, whence, &newOffset);
   if (err > 0) {
