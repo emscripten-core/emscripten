@@ -55,10 +55,19 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       FS.ErrnoError.prototype.constructor = FS.ErrnoError;
     },
     createDataFile: (parent, name, fileData, canRead, canWrite, canOwn) => {
-      // Data files must be cached until the file system itself has been initialized.
-      var mode = FS_getMode(canRead, canWrite);
       var pathName = name ? parent + '/' + name : parent;
-      wasmFSPreloadedFiles.push({pathName, fileData, mode});
+      var mode = FS_getMode(canRead, canWrite);
+
+      if (!runtimeInitialized) {
+        // WasmFS code in the wasm is not ready to be called yet. Cache the
+        // files we want to create here in JS, and WasmFS will read them
+        // later.
+        wasmFSPreloadedFiles.push({pathName, fileData, mode});
+      } else {
+        // WasmFS is already running, so create the file normally.
+        FS.create(pathName, mode);
+        FS.writeFile(pathName, fileData);
+      }
     },
     createPath: (parent, path, canRead, canWrite) => {
       // Cache file path directory names.
