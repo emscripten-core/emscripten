@@ -2869,6 +2869,13 @@ int f() {
     self.assertContained('Constructed from JS destructed', output)
     self.assertNotContained('Foo* destructed', output)
 
+  def test_jspi_wildcard(self):
+    self.require_v8()
+    self.v8_args.append('--experimental-wasm-stack-switching')
+    self.emcc_args += ['-sASYNCIFY=2', '-sASYNCIFY_EXPORTS=async*', '-Wno-experimental']
+
+    self.do_runf(test_file('other/test_jspi_wildcard.c'), 'done')
+
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, config.LLVM_ROOT)
