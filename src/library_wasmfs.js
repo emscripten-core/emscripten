@@ -94,6 +94,22 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       return ret;
     },
 
+    // FS.cwd is in the awkward position of being used from various JS
+    // libraries through PATH_FS. FORCE_FILESYSTEM may not have been set while
+    // using those libraries, which means we cannot put this method in the
+    // ifdef for that setting just below. Instead, what we can use to tell if we
+    // need this method is whether the compiled get_cwd() method is present, as
+    // we include that both when FORCE_FILESYSTEM *and* when PATH_FS is in use
+    // (see the special PATH_FS deps logic for WasmFS).
+    //
+    // While this may seem odd, it also makes sense: we include this JS method
+    // exactly when the wasm method it wants to call is present.
+#if hasExportedSymbol('_wasmfs_get_cwd')
+    cwd: () => {
+      return UTF8ToString(__wasmfs_get_cwd());
+    },
+#endif
+
 #if FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY // FORCE_FILESYSTEM makes us
                                              // include all JS library code. We
                                              // must also do so if
@@ -103,9 +119,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
                                              // to include that.
     // Full JS API support
 
-    cwd: () => {
-      return UTF8ToString(__wasmfs_get_cwd());
-    },
     mkdir: (path, mode) => {
       return withStackSave(() => {
         mode = mode !== undefined ? mode : 511 /* 0777 */;
