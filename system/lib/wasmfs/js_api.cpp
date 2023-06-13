@@ -220,6 +220,14 @@ int _wasmfs_pread(int fd, void *buf, size_t count, off_t offset) {
   return numBytes;
 }
 
+int _wasmfs_truncate(char* path, off_t length) {
+  return __syscall_truncate64((intptr_t)path, length);
+}
+
+int _wasmfs_ftruncate(int fd, off_t length) {
+  return __syscall_ftruncate64(fd, length);
+}
+
 int _wasmfs_close(int fd) {
   return __wasi_fd_close(fd);
 }
