@@ -94,7 +94,7 @@ function Image() {
     set: function(value) {
       src = value;
       assert(this.id);
-      postMessage({ target: 'Image', method: 'src', src: src, id: this.id });
+      postMessage({ target: 'Image', method: 'src', src, id: this.id });
     },
     get: function() {
       return src;
@@ -163,7 +163,7 @@ document.createElement = function document_createElement(what) {
       };
       canvas.getContext = function canvas_getContext(type, attributes) {
         if (canvas === Module['canvas']) {
-          postMessage({ target: 'canvas', op: 'getContext', type: type, attributes: attributes });
+          postMessage({ target: 'canvas', op: 'getContext', type, attributes });
         }
         if (type === '2d') {
           return {

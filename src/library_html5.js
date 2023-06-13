@@ -93,9 +93,9 @@ var LibraryHTML5 = {
         }
       }
       JSEvents.deferredCalls.push({
-        targetFunction: targetFunction,
-        precedence: precedence,
-        argsList: argsList
+        targetFunction,
+        precedence,
+        argsList
       });
 
       JSEvents.deferredCalls.sort(function(x,y) { return x.precedence < y.precedence; });
@@ -294,10 +294,10 @@ var LibraryHTML5 = {
       allowsDeferredCalls: true,
 #endif
 #endif
-      eventTypeString: eventTypeString,
-      callbackfunc: callbackfunc,
+      eventTypeString,
+      callbackfunc,
       handlerFunc: keyEventHandlerFunc,
-      useCapture: useCapture
+      useCapture
     };
     return JSEvents.registerOrRemoveHandler(eventHandler);
   },
@@ -531,14 +531,14 @@ var LibraryHTML5 = {
     };
 
     var eventHandler = {
-      target: target,
+      target,
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
       allowsDeferredCalls: eventTypeString != 'mousemove' && eventTypeString != 'mouseenter' && eventTypeString != 'mouseleave', // Mouse move events do not allow fullscreen/pointer lock requests to be handled in them!
 #endif
-      eventTypeString: eventTypeString,
-      callbackfunc: callbackfunc,
+      eventTypeString,
+      callbackfunc,
       handlerFunc: mouseEventHandlerFunc,
-      useCapture: useCapture
+      useCapture
     };
 #if MIN_IE_VERSION != TARGET_NOT_SUPPORTED && HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
     // In IE, mousedown events don't either allow deferred calls to be run!
@@ -655,18 +655,18 @@ var LibraryHTML5 = {
 #endif
 
     var eventHandler = {
-      target: target,
+      target,
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
       allowsDeferredCalls: true,
 #endif
-      eventTypeString: eventTypeString,
-      callbackfunc: callbackfunc,
+      eventTypeString,
+      callbackfunc,
 #if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
       handlerFunc: (eventTypeString == 'wheel') ? wheelHandlerFunc : mouseWheelHandlerFunc,
 #else
       handlerFunc: wheelHandlerFunc,
 #endif
-      useCapture: useCapture
+      useCapture
     };
     return JSEvents.registerOrRemoveHandler(eventHandler);
   },
@@ -740,11 +740,11 @@ var LibraryHTML5 = {
     };
 
     var eventHandler = {
-      target: target,
-      eventTypeString: eventTypeString,
-      callbackfunc: callbackfunc,
+      target,
+      eventTypeString,
+      callbackfunc,
       handlerFunc: uiEventHandlerFunc,
-      useCapture: useCapture
+      useCapture
     };
     return JSEvents.registerOrRemoveHandler(eventHandler);
   },
@@ -789,10 +789,10 @@ var LibraryHTML5 = {
 
     var eventHandler = {
       target: findEventTarget(target),
-      eventTypeString: eventTypeString,
-      callbackfunc: callbackfunc,
+      eventTypeString,
+      callbackfunc,
       handlerFunc: focusEventHandlerFunc,
-      useCapture: useCapture
+      useCapture
     };
     return JSEvents.registerOrRemoveHandler(eventHandler);
   },
@@ -851,10 +851,10 @@ var LibraryHTML5 = {
 
     var eventHandler = {
       target: findEventTarget(target),
-      eventTypeString: eventTypeString,
-      callbackfunc: callbackfunc,
+      eventTypeString,
+      callbackfunc,
       handlerFunc: deviceOrientationEventHandlerFunc,
-      useCapture: useCapture
+      useCapture
     };
     return JSEvents.registerOrRemoveHandler(eventHandler);
   },
@@ -921,10 +921,10 @@ var LibraryHTML5 = {
 
     var eventHandler = {
       target: findEventTarget(target),
-      eventTypeString: eventTypeString,
-      callbackfunc: callbackfunc,
+      eventTypeString,
+      callbackfunc,
       handlerFunc: deviceMotionEventHandlerFunc,
-      useCapture: useCapture
+      useCapture
     };
     return JSEvents.registerOrRemoveHandler(eventHandler);
   },
@@ -994,11 +994,11 @@ var LibraryHTML5 = {
     }
 
     var eventHandler = {
-      target: target,
-      eventTypeString: eventTypeString,
-      callbackfunc: callbackfunc,
+      target,
+      eventTypeString,
+      callbackfunc,
       handlerFunc: orientationChangeEventHandlerFunc,
-      useCapture: useCapture
+      useCapture
     };
     return JSEvents.registerOrRemoveHandler(eventHandler);
   },
@@ -1109,11 +1109,11 @@ var LibraryHTML5 = {
     };
 
     var eventHandler = {
-      target: target,
-      eventTypeString: eventTypeString,
-      callbackfunc: callbackfunc,
+      target,
+      eventTypeString,
+      callbackfunc,
       handlerFunc: fullscreenChangeEventhandlerFunc,
-      useCapture: useCapture
+      useCapture
     };
     return JSEvents.registerOrRemoveHandler(eventHandler);
   },
@@ -1522,7 +1522,7 @@ var LibraryHTML5 = {
       canvasResolutionScaleMode: {{{ cDefs.EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE }}},
       filteringMode: {{{ cDefs.EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT }}},
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
-      deferUntilInEventHandler: deferUntilInEventHandler,
+      deferUntilInEventHandler,
 #endif
       canvasResizedCallbackTargetThread: {{{ cDefs.EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD }}}
     };
@@ -1537,7 +1537,7 @@ var LibraryHTML5 = {
       canvasResolutionScaleMode: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResolutionScaleMode, 'i32') }}},
       filteringMode: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.filteringMode, 'i32') }}},
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
-      deferUntilInEventHandler: deferUntilInEventHandler,
+      deferUntilInEventHandler,
 #endif
 #if PTHREADS
       canvasResizedCallbackTargetThread: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackTargetThread, 'i32') }}},
@@ -1567,7 +1567,7 @@ var LibraryHTML5 = {
 #if PTHREADS
         canvasResizedCallbackTargetThread: JSEvents.getTargetThreadForEventCallback(),
 #endif
-        target: target,
+        target,
         softFullscreen: true
     };
 
@@ -1686,11 +1686,11 @@ var LibraryHTML5 = {
     };
 
     var eventHandler = {
-      target: target,
-      eventTypeString: eventTypeString,
-      callbackfunc: callbackfunc,
+      target,
+      eventTypeString,
+      callbackfunc,
       handlerFunc: pointerlockChangeEventHandlerFunc,
-      useCapture: useCapture
+      useCapture
     };
     return JSEvents.registerOrRemoveHandler(eventHandler);
   },
@@ -1731,11 +1731,11 @@ var LibraryHTML5 = {
     };
 
     var eventHandler = {
-      target: target,
-      eventTypeString: eventTypeString,
-      callbackfunc: callbackfunc,
+      target,
+      eventTypeString,
+      callbackfunc,
       handlerFunc: pointerlockErrorEventHandlerFunc,
-      useCapture: useCapture
+      useCapture
     };
     return JSEvents.registerOrRemoveHandler(eventHandler);
   },
@@ -1931,11 +1931,11 @@ var LibraryHTML5 = {
     };
 
     var eventHandler = {
-      target: target,
-      eventTypeString: eventTypeString,
-      callbackfunc: callbackfunc,
+      target,
+      eventTypeString,
+      callbackfunc,
       handlerFunc: visibilityChangeEventHandlerFunc,
-      useCapture: useCapture
+      useCapture
     };
     return JSEvents.registerOrRemoveHandler(eventHandler);
   },
@@ -2048,14 +2048,14 @@ var LibraryHTML5 = {
     };
 
     var eventHandler = {
-      target: target,
+      target,
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
       allowsDeferredCalls: eventTypeString == 'touchstart' || eventTypeString == 'touchend',
 #endif
-      eventTypeString: eventTypeString,
-      callbackfunc: callbackfunc,
+      eventTypeString,
+      callbackfunc,
       handlerFunc: touchEventHandlerFunc,
-      useCapture: useCapture
+      useCapture
     };
     return JSEvents.registerOrRemoveHandler(eventHandler);
   },
@@ -2143,10 +2143,10 @@ var LibraryHTML5 = {
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
       allowsDeferredCalls: true,
 #endif
-      eventTypeString: eventTypeString,
-      callbackfunc: callbackfunc,
+      eventTypeString,
+      callbackfunc,
       handlerFunc: gamepadEventHandlerFunc,
-      useCapture: useCapture
+      useCapture
     };
     return JSEvents.registerOrRemoveHandler(eventHandler);
   },
@@ -2221,10 +2221,10 @@ var LibraryHTML5 = {
 
     var eventHandler = {
       target: findEventTarget(target),
-      eventTypeString: eventTypeString,
-      callbackfunc: callbackfunc,
+      eventTypeString,
+      callbackfunc,
       handlerFunc: beforeUnloadEventHandlerFunc,
-      useCapture: useCapture
+      useCapture
     };
     return JSEvents.registerOrRemoveHandler(eventHandler);
   },
@@ -2272,10 +2272,10 @@ var LibraryHTML5 = {
 
     var eventHandler = {
       target: findEventTarget(target),
-      eventTypeString: eventTypeString,
-      callbackfunc: callbackfunc,
+      eventTypeString,
+      callbackfunc,
       handlerFunc: batteryEventHandlerFunc,
-      useCapture: useCapture
+      useCapture
     };
     return JSEvents.registerOrRemoveHandler(eventHandler);
   },

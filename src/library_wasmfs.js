@@ -54,11 +54,11 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       FS.ErrnoError.prototype = new Error();
       FS.ErrnoError.prototype.constructor = FS.ErrnoError;
     },
-    createDataFile: (parent, name, data, canRead, canWrite, canOwn) => {
+    createDataFile: (parent, name, fileData, canRead, canWrite, canOwn) => {
       // Data files must be cached until the file system itself has been initialized.
       var mode = FS_getMode(canRead, canWrite);
       var pathName = name ? parent + '/' + name : parent;
-      wasmFSPreloadedFiles.push({pathName: pathName, fileData: data, mode: mode});
+      wasmFSPreloadedFiles.push({pathName, fileData, mode});
     },
     createPath: (parent, path, canRead, canWrite) => {
       // Cache file path directory names.

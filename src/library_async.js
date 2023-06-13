@@ -226,10 +226,7 @@ mergeInto(LibraryManager.library, {
       assert(!Asyncify.asyncPromiseHandlers, 'Cannot have multiple async operations in flight at once');
 #endif
       return new Promise((resolve, reject) => {
-        Asyncify.asyncPromiseHandlers = {
-          resolve: resolve,
-          reject: reject
-        };
+        Asyncify.asyncPromiseHandlers = { resolve, reject };
       });
     },
 

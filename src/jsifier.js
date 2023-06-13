@@ -27,7 +27,7 @@ function mangleCSymbolName(f) {
 function splitter(array, filter) {
   const splitOut = array.filter(filter);
   const leftIn = array.filter((x) => !filter(x));
-  return {leftIn: leftIn, splitOut: splitOut};
+  return { leftIn, splitOut };
 }
 
 // Functions that start with '$' should not be exported to the wasm module.
@@ -594,8 +594,8 @@ function(${args}) {
     }
 
     print('//FORWARDED_DATA:' + JSON.stringify({
-      librarySymbols: librarySymbols,
-      warnings: warnings,
+      librarySymbols,
+      warnings,
       asyncFuncs,
       ATINITS: ATINITS.join('\n'),
       ATMAINS: STRICT ? '' : ATMAINS.join('\n'),
