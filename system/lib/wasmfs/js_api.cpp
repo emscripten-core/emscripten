@@ -152,13 +152,13 @@ int _wasmfs_symlink(char* old_path, char* new_path) {
 }
 
 intptr_t _wasmfs_readlink(char* path) {
-  static thread_local void* tempBuf = nullptr;
-  tempBuf = realloc(tempBuf, PATH_MAX);
-  int err = __syscall_readlinkat(AT_FDCWD, (intptr_t)path, (intptr_t)tempBuf, PATH_MAX);
+  static thread_local void* readBuf = nullptr;
+  readBuf = realloc(readBuf, PATH_MAX);
+  int err = __syscall_readlinkat(AT_FDCWD, (intptr_t)path, (intptr_t)readBuf, PATH_MAX);
   if (err < 0) {
     return err;
   }
-  return (intptr_t)tempBuf;
+  return (intptr_t)readBuf;
 }
 
 int _wasmfs_write(int fd, void *buf, size_t count) {

@@ -5,6 +5,29 @@
 #include <assert.h>
 #include <fcntl.h>
 
+EM_JS(void, test_fs_readlink,(), {
+    FS.writeFile('/readlinktestfile', "");
+    FS.symlink('/readlinktestfile', '/readlinksymlink');
+
+    var symlinkString = FS.readlink('readlinksymlink');
+    assert(symlinkString === '/readlinktestfile');
+
+    var ex;
+    try {
+        FS.readlink('nonexistent');
+    } catch (err) {
+        ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+
+    try {
+        FS.readlink('readlinktestfile');
+    } catch (err) {
+        ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+});
+
 int main() {
     /********** test FS.open() **********/
     EM_ASM(
@@ -164,30 +187,6 @@ int main() {
         assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOEN */);
     );
 
-    /********** test FS.readlink() **********/
-    EM_ASM(
-        FS.writeFile('/readlinktestfile', "");
-        FS.symlink('/readlinktestfile', '/readlinksymlink');
-
-        var symlinkString = FS.readlink('readlinksymlink');
-        assert(symlinkString === '/readlinktestfile');
-
-        var ex;
-        try {
-            FS.readlink('nonexistent');
-        } catch (err) {
-            ex = err;
-        }
-        assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
-
-        try {
-            FS.readlink('readlinktestfile');
-        } catch (err) {
-            ex = err;
-        }
-        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */)
-    );
-
     /********** test FS.close() **********/
     EM_ASM(
         FS.writeFile("closetestfile", 'a=1\nb=2\n');
@@ -225,6 +224,8 @@ int main() {
     stat("createtest", &stats);
     assert(S_ISREG(stats.st_mode));
     assert(stats.st_mode & 0400);
+
+    test_fs_readlink();
 
     remove("mknodtest");
     remove("createtest");
