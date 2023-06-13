@@ -37,6 +37,8 @@ void test_fs_allocate() {
         }
         assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
     );
+
+    remove("allocatetestfile");
 }
 
 int main() {
@@ -243,7 +245,6 @@ int main() {
     remove("renametestfile");
     remove("readtestfile");
     remove("closetestfile");
-    remove("allocatetestfile");
 
     puts("success");
 }
