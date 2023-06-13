@@ -13,6 +13,7 @@ void test_fs_allocate() {
     assert(allocateStat.st_size == 8);
 
     EM_ASM(
+        // Allocate more space at the very end.
         var stream = FS.open("allocatetestfile", "w");
         FS.allocate(stream, 8, 10);
     );
@@ -20,6 +21,7 @@ void test_fs_allocate() {
     assert(allocateStat.st_size == 18);
 
     EM_ASM(
+        // Reduce allocated space at the very start.
         var stream = FS.open("allocatetestfile", "w");
         FS.allocate(stream, 0, 4);
     );
@@ -31,6 +33,7 @@ void test_fs_allocate() {
         
         var ex;
         try {
+            // Attempt to allocate negative length.
             FS.allocate(stream, 0, -1);
         } catch (err) {
             ex = err;
