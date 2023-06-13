@@ -3208,12 +3208,6 @@ def create_worker_file(input_file, target_dir, output_file):
 def phase_final_emitting(options, state, target, wasm_target, memfile):
   global final_js
 
-  # Remove some trivial whitespace
-  # TODO: do not run when compress has already been done on all parts of the code
-  # src = read_file(final_js)
-  # src = re.sub(r'\n+[ \n]*\n+', '\n', src)
-  # write_file(final_js, src)
-
   target_dir = os.path.dirname(os.path.abspath(target))
   if settings.PTHREADS:
     create_worker_file('src/worker.js', target_dir, settings.PTHREAD_WORKER_FILE)
