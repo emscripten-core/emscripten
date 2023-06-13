@@ -4,7 +4,16 @@
  * SPDX-License-Identifier: MIT
  */
 
-// proxy to/from worker
+/*
+ * Proxy events/work to/from an emscripen worker built
+ * with PROXY_TO_WORKER.  This code runs on the main
+ * thread and is not part of the main emscripten output
+ * file.
+ */
+
+#if !PROXY_TO_WORKER
+#error "proxyClient.js should only be included in PROXY_TO_WORKER mode"
+#endif
 
 #if ENVIRONMENT_MAY_BE_NODE
 var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string';

@@ -94,9 +94,9 @@ function getNativeFieldSize(type) {
 }
 
 global.Runtime = {
-  getNativeTypeSize: getNativeTypeSize,
-  getNativeFieldSize: getNativeFieldSize,
-  POINTER_SIZE: POINTER_SIZE,
+  getNativeTypeSize,
+  getNativeFieldSize,
+  POINTER_SIZE,
   QUANTUM_SIZE: POINTER_SIZE,
 };
 

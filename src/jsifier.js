@@ -27,7 +27,7 @@ function mangleCSymbolName(f) {
 function splitter(array, filter) {
   const splitOut = array.filter(filter);
   const leftIn = array.filter((x) => !filter(x));
-  return {leftIn: leftIn, splitOut: splitOut};
+  return { leftIn, splitOut };
 }
 
 // Functions that start with '$' should not be exported to the wasm module.
@@ -423,12 +423,12 @@ function(${args}) {
       }
 
       if (VERBOSE) {
-        printErr(`adding ${mangled} and deps ${deps} : ` + (snippet + '').substr(0, 40));
+        printErr(`adding ${symbol} (referenced by ${dependent})`)
       }
       const deps_list = deps.join("','");
       const identDependents = symbol + `__deps: ['${deps_list}']`;
       function addDependency(dep) {
-        return addFromLibrary(dep, `${identDependents}, referenced by ${dependent}`, dep === aliasTarget);
+        return addFromLibrary(dep, `${symbol}, referenced by ${dependent}`, dep === aliasTarget);
       }
       let contentText;
       if (isFunction) {
@@ -504,7 +504,7 @@ function(${args}) {
       return depsText + commentText + contentText;
     }
 
-    const JS = addFromLibrary(symbol, 'top-level compiled C/C++ code');
+    const JS = addFromLibrary(symbol, 'root reference (e.g. compiled C/C++ code)');
     libraryItems.push(JS);
   }
 
@@ -594,8 +594,8 @@ function(${args}) {
     }
 
     print('//FORWARDED_DATA:' + JSON.stringify({
-      librarySymbols: librarySymbols,
-      warnings: warnings,
+      librarySymbols,
+      warnings,
       asyncFuncs,
       ATINITS: ATINITS.join('\n'),
       ATMAINS: STRICT ? '' : ATMAINS.join('\n'),

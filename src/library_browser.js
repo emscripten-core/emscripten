@@ -1219,7 +1219,7 @@ var LibraryBrowser = {
       callbackId = info.callbacks.length;
       info.callbacks.push({
         func: {{{ makeDynCall('viii', 'callback') }}},
-        arg: arg
+        arg
       });
       info.awaited++;
     }

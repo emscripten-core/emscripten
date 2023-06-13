@@ -532,6 +532,7 @@ jobs:
             wasmfs.test_unistd_links_memfs
             wasmfs.test_fcntl_open
             wasmfs.test_fs_js_api
+            wasmfs.test_fs_llseek
             wasmfs.test_freetype"
   test-wasm2js1:
     executor: bionic

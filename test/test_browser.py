@@ -92,6 +92,27 @@ def also_with_wasmfs(f):
   return metafunc
 
 
+# This is similar to @core.no_wasmfs, but it disable WasmFS and runs the test
+# normally. That is, in core we skip the test if we are in the wasmfs.* mode,
+# while in browser we don't have such modes, so we force the test to run without
+# WasmFS.
+#
+# When WasmFS is on by default, these annotations will still be needed. Only
+# when we remove the old JS FS entirely would we remove them.
+def no_wasmfs(note):
+  assert not callable(note)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      self.set_setting('WASMFS', 0)
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
 def also_with_wasm2js(f):
   assert callable(f)
 
@@ -1656,6 +1677,7 @@ keydown(100);keyup(100); // trigger the end
 
     self.assertContained('you should not see this text when in a worker!', self.run_js('worker.js')) # code should run standalone too
 
+  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/19608')
   def test_mmap_lazyfile(self):
     create_file('lazydata.dat', 'hello world')
     create_file('pre.js', '''
@@ -1666,6 +1688,7 @@ keydown(100);keyup(100); // trigger the end
     self.emcc_args += ['--pre-js=pre.js', '--proxy-to-worker']
     self.btest_exit(test_file('test_mmap_lazyfile.c'))
 
+  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/19608')
   @no_firefox('keeps sending OPTIONS requests, and eventually errors')
   def test_chunked_synchronous_xhr(self):
     main = 'chunked_sync_xhr.html'
@@ -2096,6 +2119,7 @@ void *getBindBuffer() {
 ''')
     self.btest('third_party/cubegeom/cubegeom_proc.c', reference='third_party/cubegeom/cubegeom.png', args=opts + ['side.c', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
+  @also_with_wasmfs
   @requires_graphics_hardware
   def test_cubegeom_glew(self):
     self.btest('third_party/cubegeom/cubegeom_glew.c', reference='third_party/cubegeom/cubegeom.png', args=['-O2', '--closure=1', '-sLEGACY_GL_EMULATION', '-lGL', '-lGLEW', '-lSDL'])
@@ -4366,8 +4390,11 @@ Module["preRun"].push(function () {
       (['-O1'], 1),
       (['-O2'], 1),
       (['-O3'], 1),
-      (['-sWASM_ASYNC_COMPILATION'], 1), # force it on
-      (['-O1', '-sWASM_ASYNC_COMPILATION=0'], 0), # force it off
+      # force it on
+      (['-sWASM_ASYNC_COMPILATION'], 1),
+      # force it off. note that we use -O3 here to make the binary small enough
+      # for chrome to allow compiling it synchronously
+      (['-O3', '-sWASM_ASYNC_COMPILATION=0'], 0),
     ]:
       print(opts, returncode)
       self.btest_exit('binaryen_async.c', assert_returncode=returncode, args=common_args + opts)
