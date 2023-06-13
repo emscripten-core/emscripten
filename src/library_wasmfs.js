@@ -25,7 +25,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     '$FS_getMode',
     // For FS.readFile
     '$UTF8ArrayToString',
-#if FORCE_FILESYSTEM
+#if FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY // see comment below on FORCE
     '$FS_modeStringToFlags',
     'malloc',
     'free',
@@ -96,7 +96,13 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       return ret;
     },
 
-#if FORCE_FILESYSTEM
+#if FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY // FORCE_FILESYSTEM makes us
+                                             // include all JS library code. We
+                                             // must also do so if
+                                             // INCLUDE_FULL_LIBRARY as other
+                                             // places will refer to FS.cwd()
+                                             // in that mode, and so we need
+                                             // to include that.
     // Full JS API support
 
     cwd: () => {
@@ -111,10 +117,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     },
     // TODO: mkdirTree
     rmdir: (path) => {
-      return withStackSave(() => {
-        var buffer = stringToUTF8OnStack(path);
-        return __wasmfs_rmdir(buffer);
-      })
+      return FS.handleError(withStackSave(() => __wasmfs_rmdir(stringToUTF8OnStack(path))));
     },
     open: (path, flags, mode) => {
       flags = typeof flags == 'string' ? FS_modeStringToFlags(flags) : flags;
@@ -279,10 +282,10 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: lchown
     // TODO: fchown
     truncate: (path, len) => {
-      return FS.handleError(withStackSave(() => (___syscall_truncate64(stringToUTF8OnStack(path), {{{ sendU53ToI64Param('len')}}}))));
+      return FS.handleError(withStackSave(() => (___syscall_truncate64(stringToUTF8OnStack(path), {{{ splitI64('len')}}}))));
     },
     ftruncate: (fd, len) => {
-      return FS.handleError(__wasmfs_ftruncate(fd, {{{ sendU53ToI64Param('len') }}}));
+      return FS.handleError(__wasmfs_ftruncate(fd, {{{ splitI64('len') }}}));
     },
     // TODO: utime
     findObject: (path) => {

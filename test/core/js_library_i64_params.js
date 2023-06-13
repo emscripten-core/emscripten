@@ -5,7 +5,7 @@ TestLibrary = {
     {{{ receiveI64ParamAsI53('foo', `(err('overflow'), ${makeReturn64('42')})`) }}}
     err('js:got:       ' + foo);
 
-    _called_from_js({{{ sendU53ToI64Param("foo") }}});
+    _called_from_js({{{ splitI64("foo") }}});
 
     if (foo < 0)
       var rtn = Math.ceil(foo / 2);

@@ -888,19 +888,11 @@ int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
     return 0;
   }
 
-  std::vector<Directory::Entry> entries = {
-    {".", File::DirectoryKind, dir->getIno()},
-    {"..", File::DirectoryKind, parent->getIno()}};
-  auto dirEntries = lockedDir.getEntries();
-  if (int err = dirEntries.getError()) {
-    return err;
-  }
-  entries.insert(entries.end(), dirEntries->begin(), dirEntries->end());
-
   off_t bytesRead = 0;
-  for (; index < entries.size() && bytesRead + sizeof(dirent) <= count;
+  const auto& dirents = openFile->dirents;
+  for (; index < dirents.size() && bytesRead + sizeof(dirent) <= count;
        index++) {
-    auto& entry = entries[index];
+    const auto& entry = dirents[index];
     result->d_ino = entry.ino;
     result->d_off = index + 1;
     result->d_reclen = sizeof(dirent);
@@ -1234,7 +1226,6 @@ static int doTruncate(std::shared_ptr<File>& file, off_t size) {
   return ret;
 }
 
-EMSCRIPTEN_KEEPALIVE
 int __syscall_truncate64(intptr_t path, uint64_t size) {
   auto parsed = path::parseFile((char*)path);
   if (auto err = parsed.getError()) {

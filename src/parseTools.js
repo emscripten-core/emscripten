@@ -61,6 +61,11 @@ function preprocess(filename) {
   const isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
   let inStyle = false;
   const lines = text.split('\n');
+  // text.split yields an extra empty element at the end if text itself ends with a newline.
+  if (!lines[lines.length - 1]) {
+    lines.pop();
+  }
+
   let ret = '';
   let emptyLine = false;
 
@@ -208,6 +213,12 @@ function makeInlineCalculation(expression, value, tempVar) {
 // value, represented by a low and high i32 pair.
 // Will suffer from rounding and truncation.
 function splitI64(value) {
+  if (WASM_BIGINT) {
+    // Nothing to do: just make sure it is a BigInt (as it must be of that
+    // type, to be sent into wasm).
+    return `BigInt(${value})`;
+  }
+
   // general idea:
   //
   //  $1$0 = ~~$d >>> 0;
@@ -224,7 +235,6 @@ function splitI64(value) {
   // For negatives, we need to ensure a -1 if the value is overall negative,
   // even if not significant negative component
 
-  assert(!WASM_BIGINT, 'splitI64 should not be used when WASM_BIGINT is enabled');
   const low = value + '>>>0';
   const high = makeInlineCalculation(
       asmCoercion('Math.abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
@@ -881,21 +891,10 @@ function receiveI64ParamAsI53(name, onError) {
 }
 
 function receiveI64ParamAsI53Unchecked(name) {
-  if (WASM_BIGINT) return `${name} = Number(${name});`;
-  return `var ${name} = convertI32PairToI53(${name}_low, ${name}_high);`;
-}
-
-// Given the name of a variable containing an unsigned 53-bit integer in a JS
-// Number or BigInt, send it as a 64-bit argument in a call to wasm. This will
-// legalize the argument if necessary (i.e., split it into two i32 arguments,
-// if legalization is used).
-function sendU53ToI64Param(name) {
-  // TODO: In ASSERTIONS mode add range checks here.
   if (WASM_BIGINT) {
-    return `BigInt(${name})`;
+    return `${name} = Number(${name});`;
   }
-
-  return `(${name} | 0), (Math.floor(${name} / (2**32)))`;
+  return `var ${name} = convertI32PairToI53(${name}_low, ${name}_high);`;
 }
 
 // Any function called from wasm64 may have bigint args, this function takes

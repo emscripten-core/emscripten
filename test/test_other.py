@@ -6644,16 +6644,25 @@ int main(int argc,char** argv) {
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_dlopen_promise.c')
 
-  def test_dlopen_blocking(self):
+  @parameterized({
+    # Under node this should work even without ASYNCIFY because we can do
+    # synchronous loading via readBinary
+    '': (0,),
+    'asyncify': (1,),
+    'jspi': (2,),
+  })
+  def test_dlopen_blocking(self, asyncify):
     self.run_process([EMCC, test_file('other/test_dlopen_blocking_side.c'), '-o', 'libside.so', '-sSIDE_MODULE'])
     self.set_setting('MAIN_MODULE', 2)
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('NO_AUTOLOAD_DYLIBS')
+    if asyncify:
+      self.set_setting('ASYNCIFY', asyncify)
+      if asyncify == 2:
+        self.emcc_args.append('-Wno-experimental')
+        self.require_v8()
+        self.v8_args.append('--experimental-wasm-stack-switching')
     self.emcc_args.append('libside.so')
-    # Under node this should work both with and without ASYNCIFY
-    # because we can do synchronous readBinary
-    self.do_other_test('test_dlopen_blocking.c')
-    self.set_setting('ASYNCIFY')
     self.do_other_test('test_dlopen_blocking.c')
 
   def test_dlsym_rtld_default(self):
@@ -12357,11 +12366,15 @@ void foo() {}
 
     # Same again with pthreads enabled
     self.setup_node_pthreads()
-    self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
+    self.do_other_test('test_default_pthread_stack_size.c')
 
     # Same again but with a custom stack size
     self.emcc_args += ['-DEXPECTED_STACK_SIZE=1024', '-sDEFAULT_PTHREAD_STACK_SIZE=1024']
-    self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
+    self.do_other_test('test_default_pthread_stack_size.c')
+
+    # Same again but with a --proxy-to-worker
+    self.emcc_args += ['--proxy-to-worker']
+    self.do_other_test('test_default_pthread_stack_size.c')
 
   def test_emscripten_set_immediate(self):
     self.do_runf(test_file('emscripten_set_immediate.c'))
@@ -12848,7 +12861,7 @@ int main() {
     self.assertNotIn(b'.debug', read_binary('hello_world.o'))
 
   @requires_v8
-  def test_stack_switching_size(self):
+  def test_jspi_code_size(self):
     # use iostream code here to purposefully get a fairly large wasm file, so
     # that our size comparisons later are meaningful
     create_file('main.cpp', r'''
@@ -13525,3 +13538,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_standalone_whole_archive(self):
     self.emcc_args += ['-sSTANDALONE_WASM', '-pthread', '-Wl,--whole-archive', '-lbulkmemory', '-lstandalonewasm', '-Wl,--no-whole-archive']
     self.do_runf(test_file('hello_world.c'))
+
+  def test_proxy_to_worker(self):
+    self.do_runf(test_file('hello_world.c'), emcc_args=['--proxy-to-worker'])
