@@ -53,7 +53,11 @@ mergeInto(LibraryManager.library, {
   // Ignore closure type errors due to outdated readdirSync annotations, see
   // https://github.com/google/closure-compiler/pull/4093
   _wasmfs_node_readdir__docs: '/** @suppress {checkTypes} */',
-  _wasmfs_node_readdir__deps: ['$wasmfsNodeConvertNodeCode'],
+  _wasmfs_node_readdir__deps: [
+    '$wasmfsNodeConvertNodeCode',
+    '$withStackSave',
+    '$stringToUTF8OnStack'
+  ],
   _wasmfs_node_readdir: function(path_p, vec) {
     let path = UTF8ToString(path_p);
     let entries;
