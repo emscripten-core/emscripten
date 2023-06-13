@@ -20,8 +20,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     '$readI53FromI64',
     '$readI53FromU64',
     '$FS_createPreloadedFile',
-    // '$convertI32PairToI53Checked',
-    // '$convertI32PairToI53',
     '$FS_getMode',
     // For FS.readFile
     '$UTF8ArrayToString',
@@ -31,7 +29,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     'free',
 #endif
   ],
-  // .concat(i53ConversionDeps),
   $FS : {
     init: () => {
       FS.ensureErrnoError();
