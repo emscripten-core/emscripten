@@ -61,6 +61,11 @@ function preprocess(filename) {
   const isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
   let inStyle = false;
   const lines = text.split('\n');
+  // text.split yields an extra empty element at the end if text itself ends with a newline.
+  if (!lines[lines.length - 1]) {
+    lines.pop();
+  }
+
   let ret = '';
   let emptyLine = false;
 
@@ -208,6 +213,12 @@ function makeInlineCalculation(expression, value, tempVar) {
 // value, represented by a low and high i32 pair.
 // Will suffer from rounding and truncation.
 function splitI64(value) {
+  if (WASM_BIGINT) {
+    // Nothing to do: just make sure it is a BigInt (as it must be of that
+    // type, to be sent into wasm).
+    return `BigInt(${value})`;
+  }
+
   // general idea:
   //
   //  $1$0 = ~~$d >>> 0;
@@ -224,7 +235,6 @@ function splitI64(value) {
   // For negatives, we need to ensure a -1 if the value is overall negative,
   // even if not significant negative component
 
-  assert(!WASM_BIGINT, 'splitI64 should not be used when WASM_BIGINT is enabled');
   const low = value + '>>>0';
   const high = makeInlineCalculation(
       asmCoercion('Math.abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
@@ -684,35 +694,43 @@ function makeRetainedCompilerSettings() {
 const WASM_PAGE_SIZE = 65536;
 
 // Receives a function as text, and a function that constructs a modified
-// function, to which we pass the parsed-out name, arguments, body, and possible
+// function, to which we pass the parsed-out arguments, body, and possible
 // "async" prefix of the input function. Returns the output of that function.
-function modifyFunction(text, func) {
+function modifyJSFunction(text, func) {
   // Match a function with a name.
-  let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   let async_;
-  let name;
   let args;
   let rest;
+  let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   if (match) {
     async_ = match[1] || '';
-    name = match[2];
     args = match[3];
     rest = text.substr(match[0].length);
   } else {
-    // Match a function without a name (we could probably use a single regex
-    // for both, but it would be more complex).
-    match = text.match(/^\s*(async\s+)?function\(([^)]*)\)/);
-    assert(match, 'could not match function ' + text + '.');
-    name = '';
-    async_ = match[1] || '';
-    args = match[2];
-    rest = text.substr(match[0].length);
+    // Match an arrow function
+    let match = text.match(/^\s*(var (\w+) = )?(async\s+)?\(([^)]*)\)\s+=>\s+/);
+    if (match) {
+      async_ = match[3] || '';
+      args = match[4];
+      rest = text.substr(match[0].length);
+    } else {
+      // Match a function without a name (we could probably use a single regex
+      // for both, but it would be more complex).
+      match = text.match(/^\s*(async\s+)?function\(([^)]*)\)/);
+      assert(match, `could not match function:\n${text}\n`);
+      async_ = match[1] || '';
+      args = match[2];
+      rest = text.substr(match[0].length);
+    }
   }
+  let body = rest;
   const bodyStart = rest.indexOf('{');
-  assert(bodyStart >= 0);
-  const bodyEnd = rest.lastIndexOf('}');
-  assert(bodyEnd > 0);
-  return func(name, args, rest.substring(bodyStart + 1, bodyEnd), async_);
+  if (bodyStart >= 0) {
+    const bodyEnd = rest.lastIndexOf('}');
+    assert(bodyEnd > 0);
+    body = rest.substring(bodyStart + 1, bodyEnd);
+  }
+  return func(args, body, async_);
 }
 
 function runIfMainThread(text) {
@@ -873,15 +891,10 @@ function receiveI64ParamAsI53(name, onError) {
 }
 
 function receiveI64ParamAsI53Unchecked(name) {
-  if (WASM_BIGINT) return `${name} = Number(${name});`;
-  return `var ${name} = convertI32PairToI53(${name}_low, ${name}_high);`;
-}
-
-function sendI64Argument(low, high) {
   if (WASM_BIGINT) {
-    return 'BigInt(low) | (BigInt(high) << 32n)';
+    return `${name} = Number(${name});`;
   }
-  return low + ', ' + high;
+  return `var ${name} = convertI32PairToI53(${name}_low, ${name}_high);`;
 }
 
 // Any function called from wasm64 may have bigint args, this function takes

@@ -19,9 +19,6 @@
 #if BUILD_AS_WORKER
 #error "pthreads + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854"
 #endif
-#if PROXY_TO_WORKER
-#error "--proxy-to-worker is not supported with -pthread! Use the option -sPROXY_TO_PTHREAD if you want to run the main thread of a multithreaded application in a web worker."
-#endif
 #if EVAL_CTORS
 #error "EVAL_CTORS is not compatible with pthreads yet (passive segments)"
 #endif

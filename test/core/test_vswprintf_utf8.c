@@ -12,8 +12,7 @@
 #include <errno.h>
 #include <assert.h>
 
-void test_vswprintf(const wchar_t *format, ...)
-{
+void test_vswprintf(const wchar_t *format, ...) {
   wchar_t buffer[256];
   va_list args;
   va_start(args, format);
@@ -25,9 +24,13 @@ void test_vswprintf(const wchar_t *format, ...)
   assert(errno == 0);
 }
 
-int main ()
-{
+int main() {
   setlocale(LC_ALL, "");
-  test_vswprintf(L"This is a character: %lc.\n", 0xF6 /* Unicode Character 'LATIN SMALL LETTER O WITH DIAERESIS' (U+00F6): http://www.fileformat.info/info/unicode/char/00f6/index.htm */);
+  /* Unicode Character 'LATIN SMALL LETTER O WITH DIAERESIS' (U+00F6):
+   * http://www.fileformat.info/info/unicode/char/00f6/index.htm */
+  wint_t wint = 0xF6;
+  wchar_t wchar = 0xF6;
+  printf("This is a wint: %lc.\n", wint);
+  test_vswprintf(L"This is a character: %lc.\n", wint, wchar);
   return 0;
 }

@@ -6,10 +6,11 @@
  * Dynamic library loading
  */
 
-var dlopenMissingError = "'To use dlopen, you need enable dynamic linking, see https://emscripten.org/docs/compiling/Dynamic-Linking.html'"
+#if !RELOCATABLE
+#error "library_dylink.js requires RELOCATABLE"
+#endif
 
 var LibraryDylink = {
-#if RELOCATABLE
 #if FILESYSTEM
   $registerWasmPlugin__deps: ['$preloadPlugins'],
   $registerWasmPlugin: function() {
@@ -309,49 +310,7 @@ var LibraryDylink = {
     dbg('done reportUndefinedSymbols');
 #endif
   },
-#endif
 
-#if !MAIN_MODULE
-#if !ALLOW_UNIMPLEMENTED_SYSCALLS
-  _dlopen_js__deps: [function() { error(dlopenMissingError); }],
-  _emscripten_dlopen_js__deps: [function() { error(dlopenMissingError); }],
-  _dlsym_js__deps: [function() { error(dlopenMissingError); }],
-  _dlsym_catchup_js__deps: [function() { error(dlopenMissingError); }],
-  dlopen__deps: [function() { error(dlopenMissingError); }],
-  emscripten_dlopen__deps: [function() { error(dlopenMissingError); }],
-  __dlsym__deps: [function() { error(dlopenMissingError); }],
-#else
-  $dlopenMissingError: `= ${dlopenMissingError}`,
-  _dlopen_js__deps: ['$dlopenMissingError'],
-  _emscripten_dlopen_js__deps: ['$dlopenMissingError'],
-  _dlsym_js__deps: ['$dlopenMissingError'],
-  _dlsym_catchup_js__deps: ['$dlopenMissingError'],
-  dlopen__deps: ['$dlopenMissingError'],
-  emscripten_dlopen__deps: ['$dlopenMissingError'],
-  __dlsym__deps: ['$dlopenMissingError'],
-#endif
-  _dlopen_js: function(handle) {
-    abort(dlopenMissingError);
-  },
-  _emscripten_dlopen_js: function(handle, onsuccess, onerror, user_data) {
-    abort(dlopenMissingError);
-  },
-  _dlsym_js: function(handle, symbol) {
-    abort(dlopenMissingError);
-  },
-  _dlsym_catchup_js: function(handle, symbolIndex) {
-    abort(dlopenMissingError);
-  },
-  dlopen: function(filename, flags) {
-    abort(dlopenMissingError);
-  },
-  emscripten_dlopen: function(handle, onsuccess, onerror, user_data) {
-    abort(dlopenMissingError);
-  },
-  __dlsym: function(handle, symbol, ra) {
-    abort(dlopenMissingError);
-  },
-#else // MAIN_MODULE != 0
   // dynamic linker/loader (a-la ld.so on ELF systems)
   $LDSO__deps: ['$newDSO'],
   $LDSO: {
@@ -1140,13 +1099,12 @@ var LibraryDylink = {
   _dlopen_js: function(handle) {
 #if ASYNCIFY
     return Asyncify.handleSleep((wakeUp) => {
-      var jsflags = { loadAsync: true }
-      var promise = dlopenInternal(handle, jsflags);
-      promise.then(wakeUp).catch(() => wakeUp(0));
+      dlopenInternal(handle, { loadAsync: true })
+        .then(wakeUp)
+        .catch(() => wakeUp(0));
     });
 #else
-    var jsflags = { loadAsync: false }
-    return dlopenInternal(handle, jsflags);
+    return dlopenInternal(handle, { loadAsync: false });
 #endif
   },
 
@@ -1166,8 +1124,7 @@ var LibraryDylink = {
     }
 
     {{{ runtimeKeepalivePush() }}}
-    var jsflags = { loadAsync: true }
-    var promise = dlopenInternal(handle, jsflags);
+    var promise = dlopenInternal(handle, { loadAsync: true });
     if (promise) {
       promise.then(successCallback, errorCallback);
     } else {
@@ -1255,7 +1212,6 @@ var LibraryDylink = {
 #endif
     return result;
   },
-#endif // MAIN_MODULE != 0
 };
 
 mergeInto(LibraryManager.library, LibraryDylink);
