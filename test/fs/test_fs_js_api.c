@@ -95,7 +95,6 @@ int main() {
         assert(createFileNotHere && createFileNotHere.fd >= 0);
     );
     
-    
     /********** test FS.rename() **********/
     EM_ASM(
         FS.mkdir('renamedir');
@@ -270,7 +269,6 @@ int main() {
 
     remove("mknodtest");
     remove("createtest");
-    remove("truncatetest");
     remove("testfile");
     remove("renametestfile");
     remove("readtestfile");

@@ -20,8 +20,8 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     '$readI53FromI64',
     '$readI53FromU64',
     '$FS_createPreloadedFile',
-    '$convertI32PairToI53Checked',
-    '$convertI32PairToI53',
+    // '$convertI32PairToI53Checked',
+    // '$convertI32PairToI53',
     '$FS_getMode',
     // For FS.readFile
     '$UTF8ArrayToString',
@@ -30,7 +30,8 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     'malloc',
     'free',
 #endif
-  ].concat(i53ConversionDeps),
+  ],
+  // .concat(i53ConversionDeps),
   $FS : {
     init: () => {
       FS.ensureErrnoError();
@@ -282,10 +283,10 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: lchown
     // TODO: fchown
     truncate: (path, len) => {
-      return FS.handleError(withStackSave(() => (___syscall_truncate64(stringToUTF8OnStack(path), {{{ splitI64('len')}}}))));
+      return FS.handleError(withStackSave(() => (___syscall_truncate64(stringToUTF8OnStack(path), {{{ splitI64('len') }}}))));
     },
     ftruncate: (fd, len) => {
-      return FS.handleError(__wasmfs_ftruncate(fd, {{{ splitI64('len') }}}));
+      return FS.handleError(___syscall_ftruncate64(fd, {{{ splitI64('len') }}}));
     },
     // TODO: utime
     findObject: (path) => {
