@@ -133,7 +133,7 @@ int _wasmfs_open(char* path, int flags, mode_t mode) {
   return err;
 }
 
-int _wasmfs_allocate(int fd, uint64_t off, uint64_t len) {
+int _wasmfs_allocate(int fd, int64_t off, int64_t len) {
   return __syscall_fallocate(fd, 0, off, len);
 }
 
