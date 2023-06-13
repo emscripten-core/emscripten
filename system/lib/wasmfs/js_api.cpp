@@ -181,6 +181,15 @@ int _wasmfs_lchmod(char* path, mode_t mode) {
   return __syscall_fchmodat(AT_FDCWD, (intptr_t)path, mode, AT_SYMLINK_NOFOLLOW);
 }
 
+int _wasmfs_llseek(int fd, off_t offset, int whence) {
+  __wasi_filesize_t newOffset;
+  int err = __wasi_fd_seek(fd, offset, whence, &newOffset);
+  if (err > 0) {
+    return -err;
+  }
+  return newOffset;
+}
+
 int _wasmfs_rename(char* oldpath, char* newpath) {
   return __syscall_renameat(AT_FDCWD, (intptr_t)oldpath, AT_FDCWD, (intptr_t)newpath);
 };

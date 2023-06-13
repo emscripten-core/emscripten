@@ -2343,6 +2343,7 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_chmod',
         '_wasmfs_fchmod',
         '_wasmfs_lchmod',
+        '_wasmfs_llseek',
         '_wasmfs_identify',
         '_wasmfs_readdir_start',
         '_wasmfs_readdir_get',
