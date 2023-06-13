@@ -26,11 +26,10 @@ var LibrarySDL = {
   $SDL_audio: function() { return SDL.audio; },
 
   $SDL__deps: [
-#if FILESYSTEM
-    '$FS',
-#endif
     '$PATH', '$Browser', 'SDL_GetTicks', 'SDL_LockSurface',
-    '$SDL_unicode', '$SDL_ttfContext', '$SDL_audio'
+    '$SDL_unicode', '$SDL_ttfContext', '$SDL_audio',
+    // For makeCEvent().
+    '$intArrayFromString',
   ],
   $SDL: {
     defaults: {
@@ -2687,7 +2686,11 @@ var LibrarySDL = {
     return 1;
   },
 
-  Mix_LoadWAV_RW__deps: ['$PATH_FS', 'fileno'],
+  Mix_LoadWAV_RW__deps: [
+    '$FS',
+    '$PATH_FS',
+    'fileno',
+  ],
   Mix_LoadWAV_RW__proxy: 'sync',
   Mix_LoadWAV_RW__docs: '/** @param {number} freesrc */',
   Mix_LoadWAV_RW: function(rwopsID, freesrc) {
