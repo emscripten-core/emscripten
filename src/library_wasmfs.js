@@ -190,10 +190,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       return bytesRead;
     },
     allocate: (stream, offset, length) => {
-      if (length < 0) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
-      }
-      return FS.handleError(__wasmfs_allocate(stream.fd, offset, length));
+      return FS.handleError(__wasmfs_allocate(stream.fd, {{{ splitI64('offset') }}}, {{{ splitI64('length') }}}));
     },
     // TODO: mmap
     // TODO: msync

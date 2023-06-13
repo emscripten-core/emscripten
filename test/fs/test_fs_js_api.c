@@ -4,6 +4,41 @@
 #include <assert.h>
 #include <fcntl.h>
 
+void test_fs_allocate() {
+    EM_ASM(
+        FS.writeFile("allocatetestfile", 'a=1\nb=2\n');
+    );
+    struct stat allocateStat;
+    stat("allocatetestfile", &allocateStat);
+    assert(allocateStat.st_size == 8);
+
+    EM_ASM(
+        var stream = FS.open("allocatetestfile", "w");
+        FS.allocate(stream, 8, 10);
+    );
+    stat("allocatetestfile", &allocateStat);
+    assert(allocateStat.st_size == 18);
+
+    EM_ASM(
+        var stream = FS.open("allocatetestfile", "w");
+        FS.allocate(stream, 0, 4);
+    );
+    stat("allocatetestfile", &allocateStat);
+    assert(allocateStat.st_size == 4);
+
+    EM_ASM(
+        var stream = FS.open("allocatetestfile", "w");
+        
+        var ex;
+        try {
+            FS.allocate(stream, 0, -1);
+        } catch (err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+    );
+}
+
 int main() {
     /********** test FS.open() **********/
     EM_ASM(
@@ -110,40 +145,6 @@ int main() {
         }
         assert(ex.name === 'ErrnoError' && ex.errno == 8 /* EBADF */);
     );
-
-    /********** test FS.allocate() **********/
-    EM_ASM(
-        FS.writeFile("allocatetestfile", 'a=1\nb=2\n');
-    );
-    struct stat allocateStat;
-    stat("allocatetestfile", &allocateStat);
-    assert(allocateStat.st_size == 8);
-
-    EM_ASM(
-        var stream = FS.open("allocatetestfile", "w");
-        FS.allocate(stream, 8, 10);
-    );
-    stat("allocatetestfile", &allocateStat);
-    assert(allocateStat.st_size == 18);
-
-    EM_ASM(
-        var stream = FS.open("allocatetestfile", "w");
-        FS.allocate(stream, 0, 4);
-    );
-    stat("allocatetestfile", &allocateStat);
-    assert(allocateStat.st_size == 4);
-
-    EM_ASM(
-        var stream = FS.open("allocatetestfile", "w");
-        
-        var ex;
-        try {
-            FS.allocate(stream, 0, -1);
-        } catch (err) {
-            ex = err;
-        }
-        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
-    );
     
     /********** test FS.rmdir() **********/
     EM_ASM(
@@ -234,6 +235,8 @@ int main() {
     stat("createtest", &mknodStats);
     assert(S_ISREG(mknodStats.st_mode));
     assert(mknodStats.st_mode & 0400);
+
+    test_fs_allocate();
 
     remove("mknodtest");
     remove("createtest");
