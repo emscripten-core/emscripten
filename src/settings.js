@@ -601,7 +601,7 @@ var POLYFILL_OLD_MATH_FUNCTIONS = false;
 var LEGACY_VM_SUPPORT = false;
 
 // Specify which runtime environments the JS output will be capable of running
-// in.  For maximum portability this can configured to support all environments
+// in.  For maximum portability this can configured to support all envionements
 // or it can be limited to reduce overall code size.  The supported environments
 // are:
 //    'web'     - the normal web environment.
@@ -1714,7 +1714,7 @@ var FETCH = false;
 // If set to 1, uses new filesystem implementation.
 // [link]
 // [experimental]
-var WASMFS = false;
+var WASMFS = true;
 
 // If set to 1, embeds all subresources in the emitted file as base64 string
 // literals. Embedded subresources may include (but aren't limited to) wasm,
