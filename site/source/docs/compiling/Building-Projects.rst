@@ -4,7 +4,7 @@
 Building Projects
 =================
 
-Emscripten provides two simple scripts that configure your makefiles to use :ref:`emcc <emccdoc>` as a drop-in replacement for *gcc* — in most cases the rest of your project’s current build system remains unchanged.
+Emscripten provides two scripts that configure your makefiles to use :ref:`emcc <emccdoc>` as a drop-in replacement for *gcc* — in most cases the rest of your project’s current build system remains unchanged.
 
 
 .. _building-projects-build-system:
