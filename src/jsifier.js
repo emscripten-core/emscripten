@@ -557,34 +557,15 @@ function(${args}) {
       print('\nvar proxiedFunctionTable = [' + proxiedFunctionTable.join() + '];\n');
     }
 
-    if ((SUPPORT_BASE64_EMBEDDING || FORCE_FILESYSTEM) && !MINIMAL_RUNTIME) {
-      includeFile('base64Utils.js');
-    }
-
     if (abortExecution) {
       throw Error('Aborting compilation due to previous errors');
     }
 
-    // This is the main 'post' pass. Print out the generated code that we have here, together with the
-    // rest of the output that we started to print out earlier (see comment on the
+    // This is the main 'post' pass. Print out the generated code
+    // that we have here, together with the rest of the output
+    // that we started to print out earlier (see comment on the
     // "Final shape that will be created").
     print('// EMSCRIPTEN_END_FUNCS\n');
-
-    if (HEADLESS) {
-      print('if (!ENVIRONMENT_IS_WEB) {');
-      includeFile('headlessCanvas.js');
-      includeFile('headless.js')
-      print('}');
-    }
-    if (PROXY_TO_WORKER) {
-      print('if (ENVIRONMENT_IS_WORKER) {\n');
-      includeFile('webGLWorker.js');
-      includeFile('proxyWorker.js');
-      print('}');
-    }
-    if (DETERMINISTIC) {
-      includeFile('deterministic.js');
-    }
 
     const postFile = MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js';
     includeFile(postFile);
