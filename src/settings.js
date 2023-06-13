@@ -1714,7 +1714,7 @@ var FETCH = false;
 // If set to 1, uses new filesystem implementation.
 // [link]
 // [experimental]
-var WASMFS = true;
+var WASMFS = false;
 
 // If set to 1, embeds all subresources in the emitted file as base64 string
 // literals. Embedded subresources may include (but aren't limited to) wasm,
