@@ -145,7 +145,7 @@ int main() {
         }
         assert(ex.name === 'ErrnoError' && ex.errno == 8 /* EBADF */);
     );
-    
+
     /********** test FS.rmdir() **********/
     EM_ASM(
         // Create multiple directories
@@ -158,7 +158,6 @@ int main() {
     assert(S_ISDIR(rmdirStat.st_mode));
     stat("/dir2", &rmdirStat);
     assert(S_ISDIR(rmdirStat.st_mode));
-
 
     EM_ASM(
         // Remove the multiple directories
