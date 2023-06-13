@@ -323,17 +323,35 @@ public:
   void setCTime(struct timespec time) {
     file->ctime = time;
   }
+  // updateCTime() updates the ctime to the current time.
+  void updateCTime() {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    file->ctime = ts;
+  }
   struct timespec getMTime() {
     return file->mtime;
   }
   void setMTime(struct timespec time) {
     file->mtime = time;
   }
+  // updateMTime() updates the mtime to the current time.
+  void updateMTime() {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    file->mtime = ts;
+  }
   struct timespec getATime() {
     return file->atime;
   }
   void setATime(struct timespec time) {
     file->atime = time;
+  }
+  // updateATime() updates the atime to the current time.
+  void updateATime() {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    file->atime = ts;
   }
 
   // Note: parent.lock() creates a new shared_ptr to the same Directory

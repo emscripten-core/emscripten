@@ -168,9 +168,7 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     lockedOpenFile.setPosition(offset + bytesWritten);
   }
   if (bytesWritten) {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    lockedFile.setMTime(ts);
+    lockedFile.updateMTime();
   }
   return __WASI_ERRNO_SUCCESS;
 }
@@ -1137,9 +1135,7 @@ int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
   auto lockedFile = parsed.getFile()->locked();
   lockedFile.setMode(mode);
   // On POSIX, ctime is updated on metadata changes, like chmod.
-  struct timespec ts;
-  clock_gettime(CLOCK_REALTIME, &ts);
-  lockedFile.setCTime(ts);
+  lockedFile.updateCTime();
   return 0;
 }
 
@@ -1154,9 +1150,7 @@ int __syscall_fchmod(int fd, int mode) {
   }
   auto lockedFile = openFile->locked().getFile()->locked();
   lockedFile.setMode(mode);
-  struct timespec ts;
-  clock_gettime(CLOCK_REALTIME, &ts);
-  lockedFile.setCTime(ts);
+  lockedFile.updateCTime();
   return 0;
 }
 
