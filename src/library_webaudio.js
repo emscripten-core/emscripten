@@ -146,13 +146,15 @@ let LibraryWebAudio = {
 #endif
 
 #if WEBAUDIO_DEBUG
-    console.log(`emscripten_start_wasm_audio_worklet_thread_async() adding audioworklet.js...`);
+    console.log(`emscripten_start_wasm_audio_worklet_thread_async() adding Audio Worklet bootstrap script {{{ TARGET_BASENAME }}}.aw.js...`);
 #endif
 
-    let audioWorkletCreationFailed = e => {
 #if WEBAUDIO_DEBUG
+    let audioWorkletCreationFailed = e => {
       console.error(`emscripten_start_wasm_audio_worklet_thread_async() addModule() failed!`);
       console.error(e);
+#else
+    let audioWorkletCreationFailed = () => {
 #endif
       {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, userData);
     };
@@ -165,15 +167,17 @@ let LibraryWebAudio = {
       } else {
         console.error(`AudioWorklets are not supported by current browser.`);
       }
-#endif
+      return audioWorkletCreationFailed('Not supported');
+#else
       return audioWorkletCreationFailed();
+#endif
     }
 
     // TODO: In MINIMAL_RUNTIME builds, read this file off of a preloaded Blob,
     // and/or embed from a string like with WASM_WORKERS==2 mode.
     audioWorklet.addModule('{{{ TARGET_BASENAME }}}.aw.js').then(() => {
 #if WEBAUDIO_DEBUG
-      console.log(`emscripten_start_wasm_audio_worklet_thread_async() addModule('audioworklet.js') completed`);
+      console.log(`emscripten_start_wasm_audio_worklet_thread_async() addModule('{{{ TARGET_BASENAME }}}.aw.js') completed`);
 #endif
       audioWorklet.bootstrapMessage = new AudioWorkletNode(audioContext, 'message', {
         processorOptions: {
