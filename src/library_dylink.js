@@ -133,7 +133,7 @@ var LibraryDylink = {
       sym = wasmImports[symName] = createInvokeFunction(symName.split('_')[1]);
     }
 #endif
-    return {sym: sym, name: symName};
+    return {sym, name: symName};
   },
 
   $GOT: {},
@@ -862,7 +862,7 @@ var LibraryDylink = {
   $newDSO: function(name, handle, syms) {
     var dso = {
       refcount: Infinity,
-      name: name,
+      name,
       exports: syms,
       global: true,
     };

@@ -54,11 +54,11 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       FS.ErrnoError.prototype = new Error();
       FS.ErrnoError.prototype.constructor = FS.ErrnoError;
     },
-    createDataFile: (parent, name, data, canRead, canWrite, canOwn) => {
+    createDataFile: (parent, name, fileData, canRead, canWrite, canOwn) => {
       // Data files must be cached until the file system itself has been initialized.
       var mode = FS_getMode(canRead, canWrite);
       var pathName = name ? parent + '/' + name : parent;
-      wasmFSPreloadedFiles.push({pathName: pathName, fileData: data, mode: mode});
+      wasmFSPreloadedFiles.push({pathName, fileData, mode});
     },
     createPath: (parent, path, canRead, canWrite) => {
       // Cache file path directory names.
@@ -279,8 +279,12 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TDOO: chown
     // TODO: lchown
     // TODO: fchown
-    // TODO: truncate
-    // TODO: ftruncate
+    truncate: (path, len) => {
+      return FS.handleError(withStackSave(() => (__wasmfs_truncate(stringToUTF8OnStack(path), {{{ splitI64('len') }}}))));
+    },
+    ftruncate: (fd, len) => {
+      return FS.handleError(__wasmfs_ftruncate(fd, {{{ splitI64('len') }}}));
+    },
     // TODO: utime
     findObject: (path) => {
       var result = __wasmfs_identify(path);
@@ -327,7 +331,9 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       }));
     },
     // TODO: syncfs
-    // TODO: llseek
+    llseek: (stream, offset, whence) => {
+      return FS.handleError(__wasmfs_llseek(stream.fd, {{{ splitI64('offset') }}}, whence));
+    }
     // TODO: ioctl
 
 #endif

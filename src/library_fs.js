@@ -566,9 +566,9 @@ FS.staticInit();` +
       }
 
       var mount = {
-        type: type,
-        opts: opts,
-        mountpoint: mountpoint,
+        type,
+        opts,
+        mountpoint,
         mounts: []
       };
 
@@ -1058,9 +1058,9 @@ FS.staticInit();` +
 
       // register the stream with the filesystem
       var stream = FS.createStream({
-        node: node,
+        node,
         path: FS.getPath(node),  // we want the absolute path to the node
-        flags: flags,
+        flags,
         seekable: true,
         position: 0,
         stream_ops: node.stream_ops,
@@ -1841,7 +1841,7 @@ FS.staticInit();` +
           throw new FS.ErrnoError({{{ cDefs.ENOMEM }}});
         }
         writeChunks(stream, HEAP8, ptr, length, position);
-        return { ptr: ptr, allocated: true };
+        return { ptr, allocated: true };
       };
       node.stream_ops = stream_ops;
       return node;
