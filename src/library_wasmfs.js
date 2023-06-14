@@ -177,7 +177,9 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
       return bytesRead;
     },
-    // TODO: allocate
+    allocate: (stream, offset, length) => {
+      return FS.handleError(__wasmfs_allocate(stream.fd, {{{ splitI64('offset') }}}, {{{ splitI64('length') }}}));
+    },
     // TODO: mmap
     // TODO: msync
     // TODO: munmap

@@ -4,6 +4,46 @@
 #include <assert.h>
 #include <fcntl.h>
 
+void test_fs_allocate() {
+    EM_ASM(
+        FS.writeFile("allocatetestfile", 'a=1\nb=2\n');
+    );
+    struct stat allocateStat;
+    stat("allocatetestfile", &allocateStat);
+    assert(allocateStat.st_size == 8);
+
+    EM_ASM(
+        // Allocate more space at the very end.
+        var stream = FS.open("allocatetestfile", "w");
+        FS.allocate(stream, 8, 10);
+    );
+    stat("allocatetestfile", &allocateStat);
+    assert(allocateStat.st_size == 18);
+
+    EM_ASM(
+        // Reduce allocated space at the very start.
+        var stream = FS.open("allocatetestfile", "w");
+        FS.allocate(stream, 0, 4);
+    );
+    stat("allocatetestfile", &allocateStat);
+    assert(allocateStat.st_size == 4);
+
+    EM_ASM(
+        var stream = FS.open("allocatetestfile", "w");
+        
+        var ex;
+        try {
+            // Attempt to allocate negative length.
+            FS.allocate(stream, 0, -1);
+        } catch (err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+    );
+
+    remove("allocatetestfile");
+}
+
 void test_fs_truncate() {
     EM_ASM(
         FS.writeFile('truncatetest', 'a=1\nb=2\n');
@@ -182,12 +222,11 @@ int main() {
         FS.mkdir('/dir2');
     );
 
-    struct stat s;
-    stat("/dir1", &s);
-    assert(S_ISDIR(s.st_mode));
-    stat("/dir2", &s);
-    assert(S_ISDIR(s.st_mode));
-
+    struct stat rmdirStat;
+    stat("/dir1", &rmdirStat);
+    assert(S_ISDIR(rmdirStat.st_mode));
+    stat("/dir2", &rmdirStat);
+    assert(S_ISDIR(rmdirStat.st_mode));
 
     EM_ASM(
         // Remove the multiple directories
@@ -255,15 +294,17 @@ int main() {
 
         FS.create("createtest", 0400); /* S_IRUSR */
     );
-    struct stat stats;
-    stat("mknodtest", &stats);
+    struct stat mknodStats;
+    stat("mknodtest", &mknodStats);
 
-    assert(S_ISREG(stats.st_mode));
-    assert(stats.st_mode & 0777);
+    assert(S_ISREG(mknodStats.st_mode));
+    assert(mknodStats.st_mode & 0777);
 
-    stat("createtest", &stats);
-    assert(S_ISREG(stats.st_mode));
-    assert(stats.st_mode & 0400);
+    stat("createtest", &mknodStats);
+    assert(S_ISREG(mknodStats.st_mode));
+    assert(mknodStats.st_mode & 0400);
+
+    test_fs_allocate();
 
     test_fs_truncate();
 
