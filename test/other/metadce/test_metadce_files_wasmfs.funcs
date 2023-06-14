@@ -1,4 +1,3 @@
-$__clock_gettime
 $__cxx_global_array_dtor
 $__cxx_global_array_dtor.1
 $__cxx_global_array_dtor.2
@@ -21,7 +20,6 @@ $__cxxabiv1::__si_class_type_info::search_below_dst\28__cxxabiv1::__dynamic_cast
 $__cxxabiv1::__vmi_class_type_info::has_unambiguous_public_base\28__cxxabiv1::__dynamic_cast_info*\2c\20void*\2c\20int\29\20const
 $__cxxabiv1::__vmi_class_type_info::search_above_dst\28__cxxabiv1::__dynamic_cast_info*\2c\20void\20const*\2c\20void\20const*\2c\20int\2c\20bool\29\20const
 $__cxxabiv1::__vmi_class_type_info::search_below_dst\28__cxxabiv1::__dynamic_cast_info*\2c\20void\20const*\2c\20int\2c\20bool\29\20const
-$__emscripten_stdout_seek
 $__lockfile
 $__memcpy
 $__memset
@@ -29,6 +27,7 @@ $__pthread_mutex_lock
 $__stdio_close
 $__stdio_seek
 $__stdio_write
+$__time
 $__unlockfile
 $__wasi_fd_close
 $__wasi_fd_write
