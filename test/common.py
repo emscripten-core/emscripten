@@ -685,6 +685,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.required_engine = None
     self.wasm_engines = config.WASM_ENGINES.copy()
     self.use_all_engines = EMTEST_ALL_ENGINES
+    if self.js_engines[0] != config.NODE_JS:
+      # If our primary JS engine is something other than node then enable
+      # shell support.
+      default_envs = 'web,webview,worker,node'
+      self.set_setting('ENVIRONMENT', default_envs + ',shell')
 
     if EMTEST_DETECT_TEMPFILE_LEAKS:
       for root, dirnames, filenames in os.walk(self.temp_dir):
@@ -1981,7 +1986,7 @@ class BrowserCore(RunnerCore):
     if not isinstance(expected, list):
       expected = [expected]
     if EMTEST_BROWSER == 'node':
-      self.js_engines = [config.NODE_JS]
+      self.require_node()
       self.node_args += shared.node_pthread_flags()
       output = self.run_js('test.js')
       self.assertContained('RESULT: ' + expected[0], output)
