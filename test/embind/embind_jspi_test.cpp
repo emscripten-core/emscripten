@@ -40,9 +40,9 @@ int stdFunction(const MyClass& target, int i) {
 }
 
 EM_ASYNC_JS(void, jsSuspend, (), {
-    await new Promise(resolve => {
-      Module.unsuspendResolve = resolve;
-    });
+  await new Promise(resolve => {
+    Module.unsuspendResolve = resolve;
+  });
 });
 
 void suspend() {
@@ -50,9 +50,9 @@ void suspend() {
 };
 
 void unsuspend() {
-    EM_ASM({
-        Module.unsuspendResolve();
-    });
+  EM_ASM({
+    Module.unsuspendResolve();
+  });
 }
 
 EMSCRIPTEN_BINDINGS(xxx) {
