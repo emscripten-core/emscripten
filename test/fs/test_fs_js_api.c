@@ -4,7 +4,6 @@
 #include <assert.h>
 #include <fcntl.h>
 
-<<<<<<< HEAD
 EM_JS(void, test_fs_open, (), {
     FS.writeFile('testfile', 'a=1\nb=2\n');
     var readStream = FS.open('testfile', 'r');
@@ -25,7 +24,7 @@ EM_JS(void, test_fs_open, (), {
     }
     assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
 });
-=======
+
 void test_fs_allocate() {
     EM_ASM(
         FS.writeFile("allocatetestfile", 'a=1\nb=2\n');
@@ -65,7 +64,6 @@ void test_fs_allocate() {
 
     remove("allocatetestfile");
 }
->>>>>>> main
 
 void test_fs_truncate() {
     EM_ASM(
