@@ -7,6 +7,12 @@
 mergeInto(LibraryManager.library, {
   $wasmFSPreloadedFiles: [],
   $wasmFSPreloadedDirs: [],
+  // We must note when preloading has been "flushed", that is, the time at which
+  // WasmFS has started up and read the preloaded data. After that time, no more
+  // data needs to be preloaded (and it would be invalid to do so, as any
+  // further additions to wasmFSPreloadedFiles|Dirs would be ignored).
+  $wasmFSPreloadingFlushed: false,
+
   $FS__postset: `
 FS.init();
 FS.createPreloadedFile = FS_createPreloadedFile;
@@ -14,6 +20,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
   $FS__deps: [
     '$wasmFSPreloadedFiles',
     '$wasmFSPreloadedDirs',
+    '$wasmFSPreloadingFlushed',
     '$PATH',
     '$stringToUTF8OnStack',
     '$withStackSave',
@@ -23,7 +30,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     '$FS_getMode',
     // For FS.readFile
     '$UTF8ArrayToString',
-#if FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY // see comment below on FORCE
+#if FORCE_FILESYSTEM
     '$FS_modeStringToFlags',
     'malloc',
     'free',
@@ -55,10 +62,19 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       FS.ErrnoError.prototype.constructor = FS.ErrnoError;
     },
     createDataFile: (parent, name, fileData, canRead, canWrite, canOwn) => {
-      // Data files must be cached until the file system itself has been initialized.
-      var mode = FS_getMode(canRead, canWrite);
       var pathName = name ? parent + '/' + name : parent;
-      wasmFSPreloadedFiles.push({pathName, fileData, mode});
+      var mode = FS_getMode(canRead, canWrite);
+
+      if (!wasmFSPreloadingFlushed) {
+        // WasmFS code in the wasm is not ready to be called yet. Cache the
+        // files we want to create here in JS, and WasmFS will read them
+        // later.
+        wasmFSPreloadedFiles.push({pathName, fileData, mode});
+      } else {
+        // WasmFS is already running, so create the file normally.
+        FS.create(pathName, mode);
+        FS.writeFile(pathName, fileData);
+      }
     },
     createPath: (parent, path, canRead, canWrite) => {
       // Cache file path directory names.
@@ -67,7 +83,11 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         var part = parts.pop();
         if (!part) continue;
         var current = PATH.join2(parent, part);
-        wasmFSPreloadedDirs.push({parentPath: parent, childName: part});
+        if (!wasmFSPreloadingFlushed) {
+          wasmFSPreloadedDirs.push({parentPath: parent, childName: part});
+        } else {
+          FS.mkdir(current);
+        }
         parent = current;
       }
       return current;
@@ -94,16 +114,23 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       return ret;
     },
 
-#if FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY // FORCE_FILESYSTEM makes us
-                                             // include all JS library code. We
-                                             // must also do so if
-                                             // INCLUDE_FULL_LIBRARY as other
-                                             // places will refer to FS.cwd()
-                                             // in that mode, and so we need
-                                             // to include that.
+    // FS.cwd is in the awkward position of being used from various JS
+    // libraries through PATH_FS. FORCE_FILESYSTEM may not have been set while
+    // using those libraries, which means we cannot put this method in the
+    // ifdef for that setting just below. Instead, what we can use to tell if we
+    // need this method is whether the compiled get_cwd() method is present, as
+    // we include that both when FORCE_FILESYSTEM *and* when PATH_FS is in use
+    // (see the special PATH_FS deps logic for WasmFS).
+    //
+    // While this may seem odd, it also makes sense: we include this JS method
+    // exactly when the wasm method it wants to call is present.
+#if hasExportedSymbol('_wasmfs_get_cwd')
+    cwd: () => UTF8ToString(__wasmfs_get_cwd()),
+#endif
+
+#if FORCE_FILESYSTEM
     // Full JS API support
 
-    cwd: () => UTF8ToString(__wasmfs_get_cwd()),
     mkdir: (path, mode) => withStackSave(() => {
       mode = mode !== undefined ? mode : 511 /* 0777 */;
       var buffer = stringToUTF8OnStack(path);
@@ -201,12 +228,13 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       _free(dataBuffer);
       return ret;
     }),
-    symlink: (target, linkpath) => withStackSave(() => {
-      var targetBuffer = stringToUTF8OnStack(target);
-      var linkpathBuffer = stringToUTF8OnStack(linkpath);
-      return __wasmfs_symlink(targetBuffer, linkpathBuffer);
-    }),
-    // TODO: readlink
+    symlink: (target, linkpath) => withStackSave(() => (
+      __wasmfs_symlink(stringToUTF8OnStack(target), stringToUTF8OnStack(linkpath))
+    )),
+    readlink: (path) => {
+      var readBuffer = FS.handleError(withStackSave(() => __wasmfs_readlink(stringToUTF8OnStack(path))));
+      return UTF8ToString(readBuffer);
+    },
     statBufToObject : (statBuf) => {
       // i53/u53 are enough for times and ino in practice.
       return {
@@ -322,8 +350,17 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
 #endif
   },
-  _wasmfs_get_num_preloaded_files__deps: ['$wasmFSPreloadedFiles'],
+
+  _wasmfs_get_num_preloaded_files__deps: [
+    '$wasmFSPreloadedFiles',
+    '$wasmFSPreloadingFlushed'],
   _wasmfs_get_num_preloaded_files: function() {
+    // When this method is called from WasmFS it means that we are about to
+    // flush all the preloaded data, so mark that. (There is no call that
+    // occurs at the end of that flushing, which would be more natural, but it
+    // is fine to mark the flushing here as during the flushing itself no user
+    // code can run, so nothing will check whether we have flushed or not.)
+    wasmFSPreloadingFlushed = true;
     return wasmFSPreloadedFiles.length;
   },
   _wasmfs_get_num_preloaded_dirs__deps: ['$wasmFSPreloadedDirs'],

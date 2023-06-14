@@ -5599,9 +5599,8 @@ Pass: 0.000012 0.000012''')
       # Sadly --closure=2 is not yet free of closure warnings
       # FIXME(https://github.com/emscripten-core/emscripten/issues/17080)
       self.ldflags.append('-Wno-error=closure')
-    elif self.maybe_closure():
-      # closure can generate variables called 'gc', which pick up js shell stuff
-      self.banned_js_engines = [config.SPIDERMONKEY_ENGINE]
+    else:
+      self.maybe_closure()
 
     self.emcc_args += ['--pre-js', 'pre.js']
     self.set_setting('FORCE_FILESYSTEM')
@@ -5873,8 +5872,8 @@ Module = {
     self.do_runf(test_file('utime', 'test_futimens.c'), 'success')
 
   @no_minimal_runtime('MINIMAL_RUNTIME does not have getValue() and setValue() (TODO add it to a JS library function to get it in)')
+  @requires_node  # only node handles utf well
   def test_utf(self):
-    self.banned_js_engines = [config.SPIDERMONKEY_ENGINE] # only node handles utf well
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc', '_free'])
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue', 'UTF8ToString', 'stringToUTF8'])
     self.do_core_test('test_utf.c')
@@ -8742,9 +8741,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
       assert ('require(' in js) == ('node' in self.get_setting('ENVIRONMENT')), 'we should have require() calls only if node js specified'
 
     for engine in config.JS_ENGINES:
-      print(engine)
+      print(f'engine: {engine}')
       # set us to test in just this engine
-      self.banned_js_engines = [e for e in config.JS_ENGINES if e != engine]
+      self.require_engine(engine)
       # tell the compiler to build with just that engine
       if engine == config.NODE_JS:
         right = 'node'
@@ -8824,9 +8823,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'streaming_inst': (['-sMINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION'],),
     'no_export': (['-sDECLARE_ASM_MODULE_EXPORTS=0'],)
   })
+  @requires_node  # TODO: Support for non-Node.js shells under MINIMAL_RUNTIME
   def test_minimal_runtime_hello_world(self, args):
-    # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
-    self.banned_js_engines = [config.V8_ENGINE, config.SPIDERMONKEY_ENGINE]
     self.emcc_args = args
     self.set_setting('MINIMAL_RUNTIME')
     self.maybe_closure()

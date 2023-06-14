@@ -1,5 +1,6 @@
 #include <emscripten/emscripten.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <sys/stat.h>
 #include <assert.h>
 #include <fcntl.h>
@@ -45,7 +46,6 @@ EM_JS(void, test_fs_rename, (), {
     }
     assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
 
-    
     try {
         FS.rename('renamedir', 'renamedir/newdirname');
     } catch (err) {
@@ -61,6 +61,29 @@ EM_JS(void, test_fs_rename, (), {
         ex = err;
     }
     assert(ex.name === "ErrnoError" && ex.errno === 54 /* ENOTDIR */);
+});
+
+EM_JS(void, test_fs_readlink,(), {
+    FS.writeFile('/readlinktestfile', "");
+    FS.symlink('/readlinktestfile', '/readlinksymlink');
+
+    var symlinkString = FS.readlink('readlinksymlink');
+    assert(symlinkString === '/readlinktestfile');
+
+    var ex;
+    try {
+        FS.readlink('nonexistent');
+    } catch (err) {
+        ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+
+    try {
+        FS.readlink('readlinktestfile');
+    } catch (err) {
+        ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
 });
 
 EM_JS(void, test_fs_read, (), {
