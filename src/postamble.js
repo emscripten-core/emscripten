@@ -6,6 +6,28 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+#if SUPPORT_BASE64_EMBEDDING || FORCE_FILESYSTEM
+#include "base64Utils.js"
+#endif
+
+#if HEADLESS
+if (!ENVIRONMENT_IS_WEB) {
+#include "headlessCanvas.js"
+#include "headless.js"
+}
+#endif
+
+#if PROXY_TO_WORKER
+if (ENVIRONMENT_IS_WORKER) {
+#include "webGLWorker.js'
+#include "proxyWorker.js"
+}
+#endif
+
+#if DETERMINISTIC
+#include "deterministic.js"
+#endif
+
 {{{ exportRuntime() }}}
 
 var calledRun;
