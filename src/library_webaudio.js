@@ -149,9 +149,10 @@ let LibraryWebAudio = {
     console.log(`emscripten_start_wasm_audio_worklet_thread_async() adding audioworklet.js...`);
 #endif
 
-    let audioWorkletCreationFailed = () => {
+    let audioWorkletCreationFailed = e => {
 #if WEBAUDIO_DEBUG
       console.error(`emscripten_start_wasm_audio_worklet_thread_async() addModule() failed!`);
+      console.error(e);
 #endif
       {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, userData);
     };
