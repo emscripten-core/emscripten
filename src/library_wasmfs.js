@@ -200,12 +200,10 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: fchown
     // TODO: truncate
     // TODO: ftruncate
-    // TODO: utime
     utime: (path, atime, mtime) => {
-      return FS.handleError(withStackSave(() => {
-        var pathBuffer = stringToUTF8OnStack(path);
-        return __wasmfs_utime(pathBuffer, atime, mtime, 0);
-      }));
+      return FS.handleError(withStackSave(() => (
+        __wasmfs_utime(stringToUTF8OnStack(path), atime, mtime, 0)
+      )));
     },
     findObject: (path) => {
       var result = __wasmfs_identify(path);
