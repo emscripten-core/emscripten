@@ -365,7 +365,7 @@ mergeInto(LibraryManager.library, {
 #endif
           HEAP8.set(contents, ptr);
         }
-        return { ptr: ptr, allocated: allocated };
+        return { ptr, allocated };
       },
       msync: function(stream, buffer, offset, length, mmapFlags) {
         MEMFS.stream_ops.write(stream, buffer, 0, length, offset, false);

@@ -63,7 +63,7 @@ function threadPrintErr() {
 }
 function threadAlert() {
   var text = Array.prototype.slice.call(arguments).join(' ');
-  postMessage({cmd: 'alert', text: text, threadId: Module['_pthread_self']()});
+  postMessage({cmd: 'alert', text, threadId: Module['_pthread_self']()});
 }
 #if ASSERTIONS
 // We don't need out() for now, but may need to add it if we want to use it

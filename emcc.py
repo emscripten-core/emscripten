@@ -2338,11 +2338,14 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_read',
         '_wasmfs_pread',
         '_wasmfs_symlink',
+        '_wasmfs_truncate',
+        '_wasmfs_ftruncate',
         '_wasmfs_stat',
         '_wasmfs_lstat',
         '_wasmfs_chmod',
         '_wasmfs_fchmod',
         '_wasmfs_lchmod',
+        '_wasmfs_llseek',
         '_wasmfs_identify',
         '_wasmfs_readlink',
         '_wasmfs_readdir_start',
@@ -3207,12 +3210,6 @@ def create_worker_file(input_file, target_dir, output_file):
 @ToolchainProfiler.profile_block('final emitting')
 def phase_final_emitting(options, state, target, wasm_target, memfile):
   global final_js
-
-  # Remove some trivial whitespace
-  # TODO: do not run when compress has already been done on all parts of the code
-  # src = read_file(final_js)
-  # src = re.sub(r'\n+[ \n]*\n+', '\n', src)
-  # write_file(final_js, src)
 
   target_dir = os.path.dirname(os.path.abspath(target))
   if settings.PTHREADS:
