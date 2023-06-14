@@ -148,7 +148,11 @@ mergeInto(LibraryManager.library, {
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_get_entries__deps: ['$wasmfsOPFSProxyFinish', '$withStackSave'],
+  _wasmfs_opfs_get_entries__deps: [
+    '$wasmfsOPFSProxyFinish',
+    '$withStackSave',
+    '_wasmfs_opfs_record_entry',
+  ],
   _wasmfs_opfs_get_entries: async function(ctx, dirID, entriesPtr, errPtr) {
     let dirHandle = wasmfsOPFSDirectoryHandles.get(dirID);
 
