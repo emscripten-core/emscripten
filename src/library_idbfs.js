@@ -140,7 +140,7 @@ mergeInto(LibraryManager.library, {
             var cursor = event.target.result;
 
             if (!cursor) {
-              return callback(null, { type: 'remote', db: db, entries: entries });
+              return callback(null, { type: 'remote', db, entries });
             }
 
             entries[cursor.primaryKey] = { 'timestamp': cursor.key };

@@ -60,6 +60,7 @@ def remove_quotes(arg):
 
 
 def get_building_env():
+  cache.ensure()
   env = os.environ.copy()
   # point CC etc. to the em* tools.
   env['CC'] = EMCC
@@ -1015,6 +1016,7 @@ def instrument_js_for_safe_heap(js_file):
   return acorn_optimizer(js_file, ['safeHeap'])
 
 
+@ToolchainProfiler.profile()
 def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
   logger.debug('handle_final_wasm_symbols')
   args = []

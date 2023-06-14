@@ -131,9 +131,7 @@ void InitializeFlags() {
   // TODO: add EM_ASM_I64 and avoid using a double for a 64-bit pointer.
 #define MAKE_OPTION_LOAD(parser, name) \
     options = (char*)(long)EM_ASM_DOUBLE({ \
-      return withBuiltinMalloc(function () { \
-        return stringToNewUTF8(Module[name] || ""); \
-      }); \
+      return withBuiltinMalloc(() => stringToNewUTF8(Module[name] || "")); \
     }); \
     parser.ParseString(options); \
     emscripten_builtin_free(options);

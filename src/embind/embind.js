@@ -404,7 +404,7 @@ var LibraryEmbind = {
     name = readLatin1String(name);
     registerType(rawType, {
         isVoid: true, // void return values can be optimized out sometimes
-        name: name,
+        name,
         'argPackAdvance': 0,
         'fromWireType': function() {
             return undefined;
@@ -423,7 +423,7 @@ var LibraryEmbind = {
 
     name = readLatin1String(name);
     registerType(rawType, {
-        name: name,
+        name,
         'fromWireType': function(wt) {
             // ambiguous emscripten ABI: sometimes return values are
             // true or false, and sometimes integers (0 or 1)
@@ -568,7 +568,7 @@ var LibraryEmbind = {
       }
     }
     registerType(primitiveType, {
-      name: name,
+      name,
       'fromWireType': fromWireType,
       'toWireType': toWireType,
       'argPackAdvance': 8,
@@ -593,7 +593,7 @@ var LibraryEmbind = {
     }
 
     registerType(primitiveType, {
-      name: name,
+      name,
       'fromWireType': function (value) {
         return value;
       },
@@ -623,7 +623,7 @@ var LibraryEmbind = {
     var shift = getShiftFromSize(size);
     name = readLatin1String(name);
     registerType(rawType, {
-      name: name,
+      name,
       'fromWireType': function(value) {
          return value;
       },
@@ -663,7 +663,7 @@ var LibraryEmbind = {
 #endif
 
     registerType(rawType, {
-      name: name,
+      name,
       'fromWireType': function(value) {
         var length = {{{ makeGetValue('value', '0', SIZE_TYPE) }}};
         var payload = value + {{{ POINTER_SIZE }}};
@@ -774,7 +774,7 @@ var LibraryEmbind = {
       shift = 2;
     }
     registerType(rawType, {
-      name: name,
+      name,
       'fromWireType': function(value) {
         // Code mostly taken from _embind_register_std_string fromWireType
         var length = HEAPU32[value >> 2];
@@ -834,7 +834,7 @@ var LibraryEmbind = {
   _embind_register_emval: function(rawType, name) {
     name = readLatin1String(name);
     registerType(rawType, {
-      name: name,
+      name,
       'fromWireType': function(handle) {
         var rv = Emval.toValue(handle);
         __emval_decref(handle);
@@ -881,7 +881,7 @@ var LibraryEmbind = {
 
     name = readLatin1String(name);
     registerType(rawType, {
-      name: name,
+      name,
       'fromWireType': decodeMemoryView,
       'argPackAdvance': 8,
       'readValueFromPointer': decodeMemoryView,
@@ -1227,12 +1227,12 @@ var LibraryEmbind = {
     setterContext
   ) {
     tupleRegistrations[rawTupleType].elements.push({
-      getterReturnType: getterReturnType,
+      getterReturnType,
       getter: embind__requireFunction(getterSignature, getter),
-      getterContext: getterContext,
-      setterArgumentType: setterArgumentType,
+      getterContext,
+      setterArgumentType,
       setter: embind__requireFunction(setterSignature, setter),
-      setterContext: setterContext,
+      setterContext,
     });
   },
 
@@ -1334,12 +1334,12 @@ var LibraryEmbind = {
   ) {
     structRegistrations[structType].fields.push({
       fieldName: readLatin1String(fieldName),
-      getterReturnType: getterReturnType,
+      getterReturnType,
       getter: embind__requireFunction(getterSignature, getter),
-      getterContext: getterContext,
-      setterArgumentType: setterArgumentType,
+      getterContext,
+      setterArgumentType,
       setter: embind__requireFunction(setterSignature, setter),
-      setterContext: setterContext,
+      setterContext,
     });
   },
 
@@ -1676,7 +1676,7 @@ var LibraryEmbind = {
       } else {
         return makeClassHandle(this.registeredClass.instancePrototype, {
           ptrType: this,
-          ptr: ptr,
+          ptr,
         });
       }
     }
@@ -2572,7 +2572,7 @@ var LibraryEmbind = {
     ctor.values = {};
 
     registerType(rawType, {
-      name: name,
+      name,
       constructor: ctor,
       'fromWireType': function(c) {
         return this.constructor.values[c];

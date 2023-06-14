@@ -35,7 +35,6 @@
         "structs": {
             "stat": [
                 "st_dev",
-                "__st_ino_truncated",
                 "st_mode",
                 "st_nlink",
                 "st_uid",

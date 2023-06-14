@@ -1742,9 +1742,9 @@ var LibraryOpenAL = {
     var newCapture = {
       audioCtx: AL.sharedCaptureAudioCtx,
       deviceName: resolvedDeviceName,
-      requestedSampleRate: requestedSampleRate,
-      requestedSampleType: requestedSampleType,
-      outputChannelCount: outputChannelCount,
+      requestedSampleRate,
+      requestedSampleType,
+      outputChannelCount,
       inputChannelCount: null, // Not known until the getUserMedia() promise resolves
       mediaStreamError: null, // Used by other functions to return early and report an error.
       mediaStreamSourceNode: null,
@@ -1754,7 +1754,7 @@ var LibraryOpenAL = {
       splitterNode: null,
       scriptProcessorNode: null,
       isCapturing: false,
-      buffers: buffers,
+      buffers,
       get bufferFrameCapacity() {
         return buffers[0].length;
       },
@@ -2195,9 +2195,9 @@ var LibraryOpenAL = {
     var gain = ac.createGain();
     gain.connect(ac.destination);
     var ctx = {
-      deviceId: deviceId,
+      deviceId,
       id: AL.newId(),
-      attrs: attrs,
+      attrs,
       audioCtx: ac,
       listener: {
     	  position: [0.0, 0.0, 0.0],
@@ -2207,7 +2207,7 @@ var LibraryOpenAL = {
       },
       sources: [],
       interval: setInterval(function() { AL.scheduleContextAudio(ctx); }, AL.QUEUE_INTERVAL),
-      gain: gain,
+      gain,
       distanceModel: 0xd002 /* AL_INVERSE_DISTANCE_CLAMPED */,
       speedOfSound: 343.3,
       dopplerFactor: 1.0,
@@ -2824,7 +2824,7 @@ var LibraryOpenAL = {
         looping: false,
         pitch: 1.0,
         dopplerShift: 1.0,
-        gain: gain,
+        gain,
         minGain: 0.0,
         maxGain: 1.0,
         panner: null,

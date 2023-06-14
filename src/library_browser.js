@@ -1219,7 +1219,7 @@ var LibraryBrowser = {
       callbackId = info.callbacks.length;
       info.callbacks.push({
         func: {{{ makeDynCall('viii', 'callback') }}},
-        arg: arg
+        arg
       });
       info.awaited++;
     }
@@ -1300,6 +1300,7 @@ var LibraryBrowser = {
     return 0;
   },
 
+#if !WASMFS // WasmFS implements this in wasm
   emscripten_get_preloaded_image_data_from_FILE__deps: ['emscripten_get_preloaded_image_data', 'fileno'],
   emscripten_get_preloaded_image_data_from_FILE__proxy: 'sync',
   emscripten_get_preloaded_image_data_from_FILE: function(file, w, h) {
@@ -1311,6 +1312,7 @@ var LibraryBrowser = {
 
     return 0;
   }
+#endif
 };
 
 autoAddDeps(LibraryBrowser, '$Browser');

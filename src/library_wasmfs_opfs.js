@@ -241,7 +241,11 @@ mergeInto(LibraryManager.library, {
       let accessHandle;
 #if PTHREADS
       // TODO: Remove this once the Access Handles API has settled.
-      if (FileSystemFileHandle.prototype.createSyncAccessHandle.length == 0) {
+      // TODO: Closure is confused by this code that supports two versions of
+      //       the same API, so suppress type checking on it.
+      /** @suppress {checkTypes} */
+      var len = FileSystemFileHandle.prototype.createSyncAccessHandle.length;
+      if (len == 0) {
         accessHandle = await fileHandle.createSyncAccessHandle();
       } else {
         accessHandle = await fileHandle.createSyncAccessHandle(
