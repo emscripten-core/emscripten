@@ -4,12 +4,13 @@
 # found in the LICENSE file.
 
 import os
+import shutil
 import sys
 import logging
 from typing import List, Optional
 
 from . import utils, diagnostics
-from .utils import path_from_root, exit_with_error, __rootpath__, which
+from .utils import path_from_root, exit_with_error, __rootpath__
 
 logger = logging.getLogger('config')
 
@@ -102,7 +103,7 @@ def normalize_config_settings():
 def set_config_from_tool_location(config_key, tool_binary, f):
   val = globals()[config_key]
   if val is None:
-    path = utils.which(tool_binary)
+    path = shutil.which(tool_binary)
     if not path:
       if not os.path.exists(EM_CONFIG):
         diagnostics.warn('config file not found: %s.  You can create one by hand or run `emcc --generate-config`', EM_CONFIG)
@@ -194,13 +195,13 @@ def generate_config(path):
   config_data = config_data.splitlines()[3:] # remove the initial comment
   config_data = '\n'.join(config_data)
   # autodetect some default paths
-  llvm_root = os.path.dirname(which('wasm-ld') or '/usr/bin/wasm-ld')
+  llvm_root = os.path.dirname(shutil.which('wasm-ld') or '/usr/bin/wasm-ld')
   config_data = config_data.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
 
-  binaryen_root = os.path.dirname(os.path.dirname(which('wasm-opt') or '/usr/local/bin/wasm-opt'))
+  binaryen_root = os.path.dirname(os.path.dirname(shutil.which('wasm-opt') or '/usr/local/bin/wasm-opt'))
   config_data = config_data.replace('\'{{{ BINARYEN_ROOT }}}\'', repr(binaryen_root))
 
-  node = which('node') or which('nodejs') or 'node'
+  node = shutil.which('node') or shutil.which('nodejs') or 'node'
   config_data = config_data.replace('\'{{{ NODE }}}\'', repr(node))
 
   # write

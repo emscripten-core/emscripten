@@ -4,28 +4,13 @@
 # found in the LICENSE file.
 
 import os
-
-
-def which(program):
-  def is_exe(fpath):
-    return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
-
-  fpath, fname = os.path.split(program)
-  if fpath:
-    if is_exe(program):
-      return program
-  else:
-    for path in os.getenv("PATH", "").split(os.pathsep):
-      exe_file = os.path.join(path, program)
-      if is_exe(exe_file):
-        return exe_file
-  raise Exception('that is very bad')
+import shutil
 
 
 def test(var):
   val = os.getenv(var)
   print('%s=%s' % (var, val))
-  print(which(val))
+  print(shutil.which(val))
 
 
 def check_ar():
