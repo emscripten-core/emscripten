@@ -228,12 +228,13 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       _free(dataBuffer);
       return ret;
     }),
-    symlink: (target, linkpath) => withStackSave(() => {
-      var targetBuffer = stringToUTF8OnStack(target);
-      var linkpathBuffer = stringToUTF8OnStack(linkpath);
-      return __wasmfs_symlink(targetBuffer, linkpathBuffer);
-    }),
-    // TODO: readlink
+    symlink: (target, linkpath) => withStackSave(() => (
+      __wasmfs_symlink(stringToUTF8OnStack(target), stringToUTF8OnStack(linkpath))
+    )),
+    readlink: (path) => {
+      var readBuffer = FS.handleError(withStackSave(() => __wasmfs_readlink(stringToUTF8OnStack(path))));
+      return UTF8ToString(readBuffer);
+    },
     statBufToObject : (statBuf) => {
       // i53/u53 are enough for times and ino in practice.
       return {

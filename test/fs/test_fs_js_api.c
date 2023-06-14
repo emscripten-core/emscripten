@@ -1,8 +1,32 @@
 #include <emscripten/emscripten.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <sys/stat.h>
 #include <assert.h>
 #include <fcntl.h>
+
+EM_JS(void, test_fs_readlink,(), {
+    FS.writeFile('/readlinktestfile', "");
+    FS.symlink('/readlinktestfile', '/readlinksymlink');
+
+    var symlinkString = FS.readlink('readlinksymlink');
+    assert(symlinkString === '/readlinktestfile');
+
+    var ex;
+    try {
+        FS.readlink('nonexistent');
+    } catch (err) {
+        ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+
+    try {
+        FS.readlink('readlinktestfile');
+    } catch (err) {
+        ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+});
 
 void test_fs_allocate() {
     EM_ASM(
@@ -125,7 +149,7 @@ int main() {
         var ex;
         try {
             FS.open('filenothere', 'r');
-        } catch(err) {
+        } catch (err) {
             ex = err;
         }
         assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
@@ -281,11 +305,11 @@ int main() {
         var ex;
         try {
             FS.close(file);
-        } catch(err) {
+        } catch (err) {
             ex = err;
         }
 
-        assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */)
+        assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */);
     );
 
     /********** test FS.mknod() **********/
@@ -305,7 +329,7 @@ int main() {
     assert(mknodStats.st_mode & 0400);
 
     test_fs_allocate();
-
+    test_fs_readlink();
     test_fs_truncate();
 
     remove("mknodtest");
@@ -314,6 +338,9 @@ int main() {
     remove("renametestfile");
     remove("readtestfile");
     remove("closetestfile");
+    remove("testfile");
+    remove("closetestfile");
+    remove("/testdir");
 
     puts("success");
 }
