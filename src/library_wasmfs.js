@@ -7,6 +7,12 @@
 mergeInto(LibraryManager.library, {
   $wasmFSPreloadedFiles: [],
   $wasmFSPreloadedDirs: [],
+  // We must note when preloading has been "flushed", that is, the time at which
+  // WasmFS has started up and read the preloaded data. After that time, no more
+  // data needs to be preloaded (and it would be invalid to do so, as any
+  // further additions to wasmFSPreloadedFiles|Dirs would be ignored).
+  $wasmFSPreloadingFlushed: false,
+
   $FS__postset: `
 FS.init();
 FS.createPreloadedFile = FS_createPreloadedFile;
@@ -14,6 +20,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
   $FS__deps: [
     '$wasmFSPreloadedFiles',
     '$wasmFSPreloadedDirs',
+    '$wasmFSPreloadingFlushed',
     '$PATH',
     '$stringToUTF8OnStack',
     '$withStackSave',
@@ -58,7 +65,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       var pathName = name ? parent + '/' + name : parent;
       var mode = FS_getMode(canRead, canWrite);
 
-      if (!runtimeInitialized) {
+      if (!wasmFSPreloadingFlushed) {
         // WasmFS code in the wasm is not ready to be called yet. Cache the
         // files we want to create here in JS, and WasmFS will read them
         // later.
@@ -76,7 +83,11 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         var part = parts.pop();
         if (!part) continue;
         var current = PATH.join2(parent, part);
-        wasmFSPreloadedDirs.push({parentPath: parent, childName: part});
+        if (!wasmFSPreloadingFlushed) {
+          wasmFSPreloadedDirs.push({parentPath: parent, childName: part});
+        } else {
+          FS.mkdir(current);
+        }
         parent = current;
       }
       return current;
@@ -329,8 +340,17 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
 #endif
   },
-  _wasmfs_get_num_preloaded_files__deps: ['$wasmFSPreloadedFiles'],
+
+  _wasmfs_get_num_preloaded_files__deps: [
+    '$wasmFSPreloadedFiles',
+    '$wasmFSPreloadingFlushed'],
   _wasmfs_get_num_preloaded_files: function() {
+    // When this method is called from WasmFS it means that we are about to
+    // flush all the preloaded data, so mark that. (There is no call that
+    // occurs at the end of that flushing, which would be more natural, but it
+    // is fine to mark the flushing here as during the flushing itself no user
+    // code can run, so nothing will check whether we have flushed or not.)
+    wasmFSPreloadingFlushed = true;
     return wasmFSPreloadedFiles.length;
   },
   _wasmfs_get_num_preloaded_dirs__deps: ['$wasmFSPreloadedDirs'],
