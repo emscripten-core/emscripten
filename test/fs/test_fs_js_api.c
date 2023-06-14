@@ -4,6 +4,70 @@
 #include <assert.h>
 #include <fcntl.h>
 
+void test_fs_truncate() {
+    EM_ASM(
+        FS.writeFile('truncatetest', 'a=1\nb=2\n');
+    );
+
+    struct stat s;
+    stat("truncatetest", &s);
+    assert(s.st_size == 8);
+
+    EM_ASM(
+        FS.truncate('truncatetest', 2);
+    );
+    stat("truncatetest", &s);
+    assert(s.st_size == 2);
+
+    EM_ASM(
+        FS.truncate('truncatetest', 10);
+    );
+    stat("truncatetest", &s);
+    assert(s.st_size == 10);
+
+    EM_ASM(
+        var truncateStream = FS.open('truncatetest', 'w');
+        FS.ftruncate(truncateStream.fd, 4);
+    );
+    stat("truncatetest", &s);
+    assert(s.st_size == 4);
+
+    EM_ASM(
+        var ex;
+        try {
+            FS.truncate('truncatetest', -10);
+        } catch(err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+
+        try {
+            var truncateStream = FS.open('truncatetest', 'w');
+            FS.ftruncate(truncateStream.fd, -10);
+        } catch(err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+
+        try {
+            FS.truncate('nonexistent', 10);
+        } catch(err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+
+        var ex;
+        try {
+            FS.ftruncate(99, 10);
+        } catch(err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */);
+    );
+
+    remove("truncatetest");
+}
+
 int main() {
     /********** test FS.open() **********/
     EM_ASM(
@@ -200,6 +264,8 @@ int main() {
     stat("createtest", &stats);
     assert(S_ISREG(stats.st_mode));
     assert(stats.st_mode & 0400);
+
+    test_fs_truncate();
 
     remove("mknodtest");
     remove("createtest");

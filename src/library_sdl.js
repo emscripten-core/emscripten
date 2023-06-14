@@ -26,11 +26,10 @@ var LibrarySDL = {
   $SDL_audio: function() { return SDL.audio; },
 
   $SDL__deps: [
-#if FILESYSTEM
-    '$FS',
-#endif
     '$PATH', '$Browser', 'SDL_GetTicks', 'SDL_LockSurface',
-    '$SDL_unicode', '$SDL_ttfContext', '$SDL_audio'
+    '$SDL_unicode', '$SDL_ttfContext', '$SDL_audio',
+    // For makeCEvent().
+    '$intArrayFromString',
   ],
   $SDL: {
     defaults: {
@@ -2186,7 +2185,7 @@ var LibrarySDL = {
     return flags; // We support JPG, PNG, TIF because browsers do
   },
 
-  IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS', 'malloc', '$stringToNewUTF8'],
+  IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS', '$withStackSave', '$stringToUTF8OnStack'],
   IMG_Load_RW__proxy: 'sync',
   IMG_Load_RW: function(rwopsID, freeSrc) {
     try {
@@ -2201,18 +2200,13 @@ var LibrarySDL = {
           func();
         }
       }
-      var callStbImage = (func, params) => {
-        var x = _malloc({{{ getNativeTypeSize('i32') }}});
-        var y = _malloc({{{ getNativeTypeSize('i32') }}});
-        var comp = _malloc({{{ getNativeTypeSize('i32') }}});
-        addCleanup(() => {
-          _free(x);
-          _free(y);
-          _free(comp);
-          if (data) Module['_stbi_image_free'](data);
-        });
+      var callStbImage = (func, params) => withStackSave(() => {
+        var x = stackAlloc({{{ getNativeTypeSize('i32') }}});
+        var y = stackAlloc({{{ getNativeTypeSize('i32') }}});
+        var comp = stackAlloc({{{ getNativeTypeSize('i32') }}});
         var data = Module['_' + func].apply(null, params.concat([x, y, comp, 0]));
         if (!data) return null;
+        addCleanup(() => Module['_stbi_image_free'](data));
         return {
           rawData: true,
           data,
@@ -2221,7 +2215,7 @@ var LibrarySDL = {
           size: {{{ makeGetValue('x', 0, 'i32') }}} * {{{ makeGetValue('y', 0, 'i32') }}} * {{{ makeGetValue('comp', 0, 'i32') }}},
           bpp: {{{ makeGetValue('comp', 0, 'i32') }}}
         };
-      }
+      });
 
       var rwops = SDL.rwops[rwopsID];
       if (rwops === undefined) {
@@ -2246,10 +2240,7 @@ var LibrarySDL = {
         if (!raw) {
           if (raw === null) err('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');
 #if STB_IMAGE
-          var name = stringToNewUTF8(filename);
-          addCleanup(() => {
-            _free(name);
-          });
+          var name = stringToUTF8OnStack(filename);
           raw = callStbImage('stbi_load', [name]);
           if (!raw) return 0;
 #else
@@ -2687,7 +2678,11 @@ var LibrarySDL = {
     return 1;
   },
 
-  Mix_LoadWAV_RW__deps: ['$PATH_FS', 'fileno'],
+  Mix_LoadWAV_RW__deps: [
+    '$FS',
+    '$PATH_FS',
+    'fileno',
+  ],
   Mix_LoadWAV_RW__proxy: 'sync',
   Mix_LoadWAV_RW__docs: '/** @param {number} freesrc */',
   Mix_LoadWAV_RW: function(rwopsID, freesrc) {
