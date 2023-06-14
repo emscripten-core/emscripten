@@ -2508,17 +2508,15 @@ var LibraryHTML5 = {
 
   // JavaScript-friendly API, returns pair [width, height]
   $getCanvasElementSize__deps: ['emscripten_get_canvas_element_size', '$withStackSave', '$stringToUTF8OnStack'],
-  $getCanvasElementSize: function(target) {
-    return withStackSave(function() {
-      var w = stackAlloc(8);
-      var h = w + 4;
+  $getCanvasElementSize: (target) => withStackSave(() => {
+    var w = stackAlloc(8);
+    var h = w + 4;
 
-      var targetInt = stringToUTF8OnStack(target.id);
-      var ret = _emscripten_get_canvas_element_size(targetInt, w, h);
-      var size = [{{{ makeGetValue('w', 0, 'i32')}}}, {{{ makeGetValue('h', 0, 'i32')}}}];
-      return size;
-    });
-  },
+    var targetInt = stringToUTF8OnStack(target.id);
+    var ret = _emscripten_get_canvas_element_size(targetInt, w, h);
+    var size = [{{{ makeGetValue('w', 0, 'i32')}}}, {{{ makeGetValue('h', 0, 'i32')}}}];
+    return size;
+  }),
 
   emscripten_set_element_css_size__proxy: 'sync',
   emscripten_set_element_css_size__deps: ['$JSEvents', '$findEventTarget'],
