@@ -1362,7 +1362,7 @@ int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
   return nonzero;
 }
 
-int __syscall_fallocate(int fd, int mode, uint64_t off, uint64_t len) {
+int __syscall_fallocate(int fd, int mode, int64_t off, int64_t len) {
   assert(mode == 0); // TODO, but other modes were never supported in the old FS
 
   auto fileTable = wasmFS.getFileTable().locked();

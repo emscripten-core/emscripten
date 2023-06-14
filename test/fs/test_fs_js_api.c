@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <fcntl.h>
 
+<<<<<<< HEAD
 EM_JS(void, test_fs_open, (), {
     FS.writeFile('testfile', 'a=1\nb=2\n');
     var readStream = FS.open('testfile', 'r');
@@ -24,6 +25,47 @@ EM_JS(void, test_fs_open, (), {
     }
     assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
 });
+=======
+void test_fs_allocate() {
+    EM_ASM(
+        FS.writeFile("allocatetestfile", 'a=1\nb=2\n');
+    );
+    struct stat allocateStat;
+    stat("allocatetestfile", &allocateStat);
+    assert(allocateStat.st_size == 8);
+
+    EM_ASM(
+        // Allocate more space at the very end.
+        var stream = FS.open("allocatetestfile", "w");
+        FS.allocate(stream, 8, 10);
+    );
+    stat("allocatetestfile", &allocateStat);
+    assert(allocateStat.st_size == 18);
+
+    EM_ASM(
+        // Reduce allocated space at the very start.
+        var stream = FS.open("allocatetestfile", "w");
+        FS.allocate(stream, 0, 4);
+    );
+    stat("allocatetestfile", &allocateStat);
+    assert(allocateStat.st_size == 4);
+
+    EM_ASM(
+        var stream = FS.open("allocatetestfile", "w");
+        
+        var ex;
+        try {
+            // Attempt to allocate negative length.
+            FS.allocate(stream, 0, -1);
+        } catch (err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+    );
+
+    remove("allocatetestfile");
+}
+>>>>>>> main
 
 void test_fs_truncate() {
     EM_ASM(
@@ -202,12 +244,11 @@ void test_fs_rmdir() {
         FS.mkdir('/dir2');
     );
 
-    struct stat s;
-    stat("/dir1", &s);
-    assert(S_ISDIR(s.st_mode));
-    stat("/dir2", &s);
-    assert(S_ISDIR(s.st_mode));
-
+    struct stat rmdirStat;
+    stat("/dir1", &rmdirStat);
+    assert(S_ISDIR(rmdirStat.st_mode));
+    stat("/dir2", &rmdirStat);
+    assert(S_ISDIR(rmdirStat.st_mode));
 
     EM_ASM(
         // Remove the multiple directories
@@ -275,11 +316,15 @@ void test_fs_mknod() {
 
         FS.create("createtest", 0400); /* S_IRUSR */
     );
-    struct stat stats;
-    stat("mknodtest", &stats);
+    struct stat mknodStats;
+    stat("mknodtest", &mknodStats);
 
-    assert(S_ISREG(stats.st_mode));
-    assert(stats.st_mode & 0777);
+    assert(S_ISREG(mknodStats.st_mode));
+    assert(mknodStats.st_mode & 0777);
+
+    stat("createtest", &mknodStats);
+    assert(S_ISREG(mknodStats.st_mode));
+    assert(mknodStats.st_mode & 0400);
 
     stat("createtest", &stats);
     assert(S_ISREG(stats.st_mode));
@@ -305,6 +350,7 @@ int main() {
     test_fs_close();
     test_fs_mknod();
     test_fs_truncate();
+    test_fs_allocate();
     
     cleanup();
 
