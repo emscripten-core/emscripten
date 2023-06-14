@@ -41,7 +41,7 @@ mergeInto(LibraryManager.library, {
       }
       var st = fs.lstatSync(path);
       var mode = NODEFS.getMode(path);
-      return { path: path, node: { id: st.ino, mode: mode, node_ops: NODERAWFS, path: path }};
+      return { path, node: { id: st.ino, mode, node_ops: NODERAWFS, path }};
     },
     createStandardStreams: function() {
       FS.createStream({ nfd: 0, position: 0, path: '', flags: 0, tty: true, seekable: false }, 0);
@@ -100,8 +100,8 @@ mergeInto(LibraryManager.library, {
         throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
       }
       var newMode = NODEFS.getMode(pathTruncated);
-      var node = { id: st.ino, mode: newMode, node_ops: NODERAWFS, path: path }
-      return FS.createStream({ nfd: nfd, position: 0, path: path, flags: flags, node: node, seekable: true });
+      var node = { id: st.ino, mode: newMode, node_ops: NODERAWFS, path }
+      return FS.createStream({ nfd, position: 0, path, flags, node, seekable: true });
     },
     createStream: function(stream, fd) {
       // Call the original FS.createStream
@@ -180,7 +180,7 @@ mergeInto(LibraryManager.library, {
 
       var ptr = mmapAlloc(length);
       FS.read(stream, HEAP8, ptr, length, position);
-      return { ptr: ptr, allocated: true };
+      return { ptr, allocated: true };
     },
     msync: function(stream, buffer, offset, length, mmapFlags) {
       if (stream.stream_ops) {

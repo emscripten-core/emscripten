@@ -653,7 +653,7 @@ function WebGLWorker() {
   this.createShader = function(type) {
     var id = nextId++;
     commandBuffer.push(6, type, id);
-    return { id: id, what: 'shader', type: type };
+    return { id, what: 'shader', type };
   };
   this.deleteShader = function(shader) {
     if (!shader) return;
@@ -683,7 +683,7 @@ function WebGLWorker() {
     commandBuffer.push(12, program.id, shader.id);
   };
   this.bindAttribLocation = function(program, index, name) {
-    program.nextAttributes[name] = { what: 'attribute', name: name, size: -1, location: index, type: '?' }; // fill in size, type later
+    program.nextAttributes[name] = { what: 'attribute', name, size: -1, location: index, type: '?' }; // fill in size, type later
     program.nextAttributeVec[index] = name;
     commandBuffer.push(13, program.id, index, name);
   };
@@ -737,7 +737,7 @@ function WebGLWorker() {
             fullname = name + '[0]';
           }
           if (!obj[name]) {
-            obj[name] = { what: type, name: fullname, size: size, location: -1, type: getTypeId(m[1]) };
+            obj[name] = { what: type, name: fullname, size, location: -1, type: getTypeId(m[1]) };
             if (vec) vec.push(name);
           }
         });
@@ -807,7 +807,7 @@ function WebGLWorker() {
     if (!(name in program.uniforms)) return null;
     var id = nextId++;
     commandBuffer.push(16, program.id, fullname, id);
-    return { what: 'location', uniform: program.uniforms[name], id: id, index: index };
+    return { what: 'location', uniform: program.uniforms[name], id, index };
   };
   this.getProgramInfoLog = function(shader) {
     return ''; // optimistic assumption of success; no proxying
