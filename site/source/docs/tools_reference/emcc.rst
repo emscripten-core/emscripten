@@ -137,6 +137,7 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note:: Options can be specified as a single argument with or without a space
             between the ``-s`` and option name.  e.g. ``-sFOO`` or ``-s FOO``.
+            It's `highly recommended <https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-specify-s-options-in-a-cmake-project>`_ you use the notation without space.
 
 .. _emcc-g:
 

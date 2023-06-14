@@ -404,8 +404,8 @@ what you want on the web: even though ``main()`` exited, you may have something
 asynchronous happening later that you want to execute.
 
 In some cases, though, you may want a more "commandline" experience, where we do
-shut down the runtime when ``main()`` exits. You can build with ``-s
-EXIT_RUNTIME``, and then we will call ``atexits`` and so forth. When you build
+shut down the runtime when ``main()`` exits. You can build with ``-sEXIT_RUNTIME``,
+and then we will call ``atexits`` and so forth. When you build
 with ``ASSERTIONS``, you should get a warning when you need this. For example,
 if your program prints something without a newline,
 
@@ -643,7 +643,7 @@ strings, so it accepts ``[a]`` or ``[a,b]`` etc.).
 
 
 Why do I get a Python ``SyntaxError: invalid syntax`` on ``file=..`` or on a string starting with ``f'..'``?
-============================================================================================================ 
+============================================================================================================
 
 Emscripten requires a recent-enough version of Python. An older Python version,
 like ``2.*``, will not support the print statement by default, so it will error on
