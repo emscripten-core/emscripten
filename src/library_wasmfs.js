@@ -92,6 +92,13 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       }
       return current;
     },
+
+#if hasExportedSymbol('_wasmfs_read_file') // Support the JS function exactly
+                                           // when the __wasmfs_* function is
+                                           // present to be called (otherwise,
+                                           // we'd error anyhow). This depends
+                                           // on other code including the
+                                           // __wasmfs_* method properly.
     readFile: (path, opts = {}) => {
       opts.encoding = opts.encoding || 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
@@ -113,18 +120,9 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
       return ret;
     },
+#endif
 
-    // FS.cwd is in the awkward position of being used from various JS
-    // libraries through PATH_FS. FORCE_FILESYSTEM may not have been set while
-    // using those libraries, which means we cannot put this method in the
-    // ifdef for that setting just below. Instead, what we can use to tell if we
-    // need this method is whether the compiled get_cwd() method is present, as
-    // we include that both when FORCE_FILESYSTEM *and* when PATH_FS is in use
-    // (see the special PATH_FS deps logic for WasmFS).
-    //
-    // While this may seem odd, it also makes sense: we include this JS method
-    // exactly when the wasm method it wants to call is present.
-#if hasExportedSymbol('_wasmfs_get_cwd')
+#if hasExportedSymbol('_wasmfs_get_cwd') // Similar to readFile, above.
     cwd: () => UTF8ToString(__wasmfs_get_cwd()),
 #endif
 
