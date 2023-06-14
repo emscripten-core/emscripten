@@ -1884,6 +1884,7 @@ keydown(100);keyup(100); // trigger the end
   def test_emscripten_api(self):
     self.btest_exit('emscripten_api_browser.c', args=['-sEXPORTED_FUNCTIONS=_main,_third', '-lSDL'])
 
+  @also_with_wasmfs
   def test_emscripten_async_load_script(self):
     def setup():
       create_file('script1.js', '''
