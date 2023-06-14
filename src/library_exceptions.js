@@ -312,23 +312,21 @@ var LibraryExceptions = {
 #endif
 #if WASM_EXCEPTIONS || !DISABLE_EXCEPTION_CATCHING
   $getExceptionMessageCommon__deps: ['__get_exception_message', 'free', '$withStackSave'],
-  $getExceptionMessageCommon: function(ptr) {
-    return withStackSave(function() {
-      var type_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
-      var message_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
-      ___get_exception_message({{{ to64('ptr') }}}, {{{ to64('type_addr_addr') }}}, {{{ to64('message_addr_addr') }}});
-      var type_addr = {{{ makeGetValue('type_addr_addr', 0, '*') }}};
-      var message_addr = {{{ makeGetValue('message_addr_addr', 0, '*') }}};
-      var type = UTF8ToString(type_addr);
-      _free(type_addr);
-      var message;
-      if (message_addr) {
-        message = UTF8ToString(message_addr);
-        _free(message_addr);
-      }
-      return [type, message];
-    });
-  },
+  $getExceptionMessageCommon: (ptr) => withStackSave(() => {
+    var type_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
+    var message_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
+    ___get_exception_message({{{ to64('ptr') }}}, {{{ to64('type_addr_addr') }}}, {{{ to64('message_addr_addr') }}});
+    var type_addr = {{{ makeGetValue('type_addr_addr', 0, '*') }}};
+    var message_addr = {{{ makeGetValue('message_addr_addr', 0, '*') }}};
+    var type = UTF8ToString(type_addr);
+    _free(type_addr);
+    var message;
+    if (message_addr) {
+      message = UTF8ToString(message_addr);
+      _free(message_addr);
+    }
+    return [type, message];
+  }),
 #endif
 #if WASM_EXCEPTIONS
   $getCppExceptionTag: function() {
