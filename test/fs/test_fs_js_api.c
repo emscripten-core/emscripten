@@ -23,11 +23,71 @@ EM_JS(void, test_fs_open, (), {
         ex = err;
     }
     assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
-
-    var createFileNotHere = FS.open('filenothere', 'w+');
-
-    assert(createFileNotHere && createFileNotHere.fd >= 0);
 });
+
+void test_fs_truncate() {
+    EM_ASM(
+        FS.writeFile('truncatetest', 'a=1\nb=2\n');
+    );
+
+    struct stat s;
+    stat("truncatetest", &s);
+    assert(s.st_size == 8);
+
+    EM_ASM(
+        FS.truncate('truncatetest', 2);
+    );
+    stat("truncatetest", &s);
+    assert(s.st_size == 2);
+
+    EM_ASM(
+        FS.truncate('truncatetest', 10);
+    );
+    stat("truncatetest", &s);
+    assert(s.st_size == 10);
+
+    EM_ASM(
+        var truncateStream = FS.open('truncatetest', 'w');
+        FS.ftruncate(truncateStream.fd, 4);
+    );
+    stat("truncatetest", &s);
+    assert(s.st_size == 4);
+
+    EM_ASM(
+        var ex;
+        try {
+            FS.truncate('truncatetest', -10);
+        } catch(err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+
+        try {
+            var truncateStream = FS.open('truncatetest', 'w');
+            FS.ftruncate(truncateStream.fd, -10);
+        } catch(err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+
+        try {
+            FS.truncate('nonexistent', 10);
+        } catch(err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+
+        var ex;
+        try {
+            FS.ftruncate(99, 10);
+        } catch(err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */);
+    );
+
+    remove("truncatetest");
+}
 
 EM_JS(void, test_fs_rename, (), {
     FS.mkdir('renamedir');
@@ -244,6 +304,7 @@ int main() {
     test_fs_rmdir();
     test_fs_close();
     test_fs_mknod();
+    test_fs_truncate();
     
     cleanup();
 

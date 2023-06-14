@@ -279,8 +279,12 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TDOO: chown
     // TODO: lchown
     // TODO: fchown
-    // TODO: truncate
-    // TODO: ftruncate
+    truncate: (path, len) => {
+      return FS.handleError(withStackSave(() => (__wasmfs_truncate(stringToUTF8OnStack(path), {{{ splitI64('len') }}}))));
+    },
+    ftruncate: (fd, len) => {
+      return FS.handleError(__wasmfs_ftruncate(fd, {{{ splitI64('len') }}}));
+    },
     // TODO: utime
     utime: (path, atime, mtime) => {
       return FS.handleError(withStackSave(() => {
