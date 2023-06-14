@@ -271,13 +271,11 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     ftruncate: (fd, len) => {
       return FS.handleError(__wasmfs_ftruncate(fd, {{{ splitI64('len') }}}));
     },
-    // TODO: utime
-    utime: (path, atime, mtime) => {
-      return FS.handleError(withStackSave(() => {
-        var pathBuffer = stringToUTF8OnStack(path);
-        return __wasmfs_utime(pathBuffer, atime, mtime);
-      }));
-    },
+    utime: (path, atime, mtime) => (
+      FS.handleError(withStackSave(() => (
+        __wasmfs_utime(stringToUTF8OnStack(path), atime, mtime)
+      )))
+    ),
     findObject: (path) => {
       var result = __wasmfs_identify(path);
       if (result == {{{ cDefs.ENOENT }}}) {
