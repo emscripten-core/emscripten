@@ -105,9 +105,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // While this may seem odd, it also makes sense: we include this JS method
     // exactly when the wasm method it wants to call is present.
 #if hasExportedSymbol('_wasmfs_get_cwd')
-    cwd: () => {
-      return UTF8ToString(__wasmfs_get_cwd());
-    },
+    cwd: () => UTF8ToString(__wasmfs_get_cwd()),
 #endif
 
 #if FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY // FORCE_FILESYSTEM makes us
