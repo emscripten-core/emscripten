@@ -1733,7 +1733,8 @@ def run():
         processname_killed_atexit = 'Safari'
       elif 'chrome' in browser_exe.lower():
         processname_killed_atexit = 'chrome'
-        browser_args += ['--enable-nacl', '--enable-pnacl', '--disable-restore-session-state', '--enable-webgl', '--no-default-browser-check', '--no-first-run', '--allow-file-access-from-files']
+        browser_args += ['--enable-nacl', '--enable-pnacl', '--disable-restore-session-state', '--enable-webgl',
+                         '--no-default-browser-check', '--no-first-run', '--allow-file-access-from-files', '--password-store=basic']
         if options.private_browsing:
           browser_args += ['--incognito']
     #    if not options.run_server:
