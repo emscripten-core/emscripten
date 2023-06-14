@@ -16,7 +16,10 @@ void _emscripten_thread_init(pthread_t ptr,
                              int default_stacksize,
                              int start_profiling) {
   __set_thread_state(ptr, is_main, is_runtime, can_block);
-  if (is_main && default_stacksize) {
+  // Set `__default_stacksize` just once when the main runtime thread is
+  // started.  The value of `DEFAULT_PTHREAD_STACK_SIZE` is passed in here as
+  // `default_stacksize`.
+  if (is_runtime && default_stacksize) {
     __default_stacksize = default_stacksize;
   }
 #ifndef NDEBUG

@@ -27,7 +27,7 @@ function mangleCSymbolName(f) {
 function splitter(array, filter) {
   const splitOut = array.filter(filter);
   const leftIn = array.filter((x) => !filter(x));
-  return {leftIn: leftIn, splitOut: splitOut};
+  return { leftIn, splitOut };
 }
 
 // Functions that start with '$' should not be exported to the wasm module.
@@ -423,12 +423,12 @@ function(${args}) {
       }
 
       if (VERBOSE) {
-        printErr(`adding ${mangled} and deps ${deps} : ` + (snippet + '').substr(0, 40));
+        printErr(`adding ${symbol} (referenced by ${dependent})`)
       }
       const deps_list = deps.join("','");
       const identDependents = symbol + `__deps: ['${deps_list}']`;
       function addDependency(dep) {
-        return addFromLibrary(dep, `${identDependents}, referenced by ${dependent}`, dep === aliasTarget);
+        return addFromLibrary(dep, `${symbol}, referenced by ${dependent}`, dep === aliasTarget);
       }
       let contentText;
       if (isFunction) {
@@ -504,7 +504,7 @@ function(${args}) {
       return depsText + commentText + contentText;
     }
 
-    const JS = addFromLibrary(symbol, 'top-level compiled C/C++ code');
+    const JS = addFromLibrary(symbol, 'root reference (e.g. compiled C/C++ code)');
     libraryItems.push(JS);
   }
 
@@ -557,34 +557,15 @@ function(${args}) {
       print('\nvar proxiedFunctionTable = [' + proxiedFunctionTable.join() + '];\n');
     }
 
-    if ((SUPPORT_BASE64_EMBEDDING || FORCE_FILESYSTEM) && !MINIMAL_RUNTIME) {
-      includeFile('base64Utils.js');
-    }
-
     if (abortExecution) {
       throw Error('Aborting compilation due to previous errors');
     }
 
-    // This is the main 'post' pass. Print out the generated code that we have here, together with the
-    // rest of the output that we started to print out earlier (see comment on the
+    // This is the main 'post' pass. Print out the generated code
+    // that we have here, together with the rest of the output
+    // that we started to print out earlier (see comment on the
     // "Final shape that will be created").
     print('// EMSCRIPTEN_END_FUNCS\n');
-
-    if (HEADLESS) {
-      print('if (!ENVIRONMENT_IS_WEB) {');
-      includeFile('headlessCanvas.js');
-      includeFile('headless.js')
-      print('}');
-    }
-    if (PROXY_TO_WORKER) {
-      print('if (ENVIRONMENT_IS_WORKER) {\n');
-      includeFile('webGLWorker.js');
-      includeFile('proxyWorker.js');
-      print('}');
-    }
-    if (DETERMINISTIC) {
-      includeFile('deterministic.js');
-    }
 
     const postFile = MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js';
     includeFile(postFile);
@@ -594,8 +575,8 @@ function(${args}) {
     }
 
     print('//FORWARDED_DATA:' + JSON.stringify({
-      librarySymbols: librarySymbols,
-      warnings: warnings,
+      librarySymbols,
+      warnings,
       asyncFuncs,
       ATINITS: ATINITS.join('\n'),
       ATMAINS: STRICT ? '' : ATMAINS.join('\n'),

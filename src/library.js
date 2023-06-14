@@ -2276,7 +2276,7 @@ mergeInto(LibraryManager.library, {
 #endif
       callUserCallback(() => __emscripten_timeout(which, _emscripten_get_now()));
     }, timeout_ms);
-    timers[which] = { id: id, timeout_ms: timeout_ms };
+    timers[which] = { id, timeout_ms };
     return 0;
   },
 
