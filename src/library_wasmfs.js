@@ -269,7 +269,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: ftruncate
     utime: (path, atime, mtime) => (
       FS.handleError(withStackSave(() => (
-        __wasmfs_utime(stringToUTF8OnStack(path), atime, mtime, 0)
+        __wasmfs_utime(stringToUTF8OnStack(path), atime, mtime)
       )))
     ),
     truncate: (path, len) => {
