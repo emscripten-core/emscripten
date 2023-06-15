@@ -42,7 +42,9 @@ mergeInto(LibraryManager.library, {
   // You can also call this with a typed array instead of a url. It will then
   // do preloading for the Image/Audio part, as if the typed array were the
   // result of an XHR that you did manually.
-  $FS_createPreloadedFile__deps: ['$asyncLoad',
+  $FS_createPreloadedFile__deps: [
+    '$asyncLoad',
+    '$PATH_FS',
 #if !MINIMAL_RUNTIME
     '$FS_handledByPreloadPlugin',
 #endif
