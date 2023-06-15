@@ -1534,7 +1534,7 @@ int _mmap_js(size_t length,
              int prot,
              int flags,
              int fd,
-             size_t offset,
+             off_t offset,
              int* allocated,
              void** addr) {
   // PROT_EXEC is not supported (although we pretend to support the absence of
