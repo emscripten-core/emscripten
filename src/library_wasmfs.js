@@ -161,7 +161,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       var buffer = stringToUTF8OnStack(path);
       return __wasmfs_chdir(buffer);
     }),
-    // TODO: read
     read: (stream, buffer, offset, length, position) => {
       var seeking = typeof position != 'undefined';
 
@@ -251,7 +250,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
           ino: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, "u53") }}}
       }
     },
-    // TODO: stat
     stat: (path) => {
       var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
       FS.handleError(withStackSave(() => {
@@ -262,7 +260,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
       return stats;
     },
-    // TODO: lstat
     lstat: (path) => {
       var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
       FS.handleError(withStackSave(() => {
