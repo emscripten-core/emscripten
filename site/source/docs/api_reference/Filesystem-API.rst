@@ -180,7 +180,7 @@ By default:
 File system API
 ===============
 
-.. note:: Functions derived from libc like :ref:`FS.readdir` use all-lowercase names, whereas added functions like :ref:`FS.readFile` use camelCase names.
+.. note:: Functions derived from libc like :ref:`FS.readdir <FS.readdir>` use all-lowercase names, whereas added functions like :ref:`FS.readFile <FS.readFile>` use camelCase names.
 
 .. js:function:: FS.mount(type, opts, mountpoint)
 
@@ -626,7 +626,6 @@ File system API
   :param int position: The offset within the stream to write. By default this is the stream's current offset.
 
 
-.. _FS.readFile:
 
 .. js:function:: FS.readFile(path, opts)
 
@@ -875,7 +874,6 @@ Paths
 
   :param string path: The path to set as current working directory.
 
-.. _FS.readdir:
 
 .. js:function:: FS.readdir(path)
 
