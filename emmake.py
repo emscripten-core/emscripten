@@ -21,6 +21,7 @@ that configure tests pass. emmake uses Emscripten to
 generate JavaScript.
 """
 
+import shutil
 import sys
 from tools import building
 from tools import shared
@@ -48,7 +49,7 @@ variables so that emcc etc. are used. Typical usage:
   # On Windows prefer building with mingw32-make instead of make, if it exists.
   if utils.WINDOWS:
     if args[0] == 'make':
-      mingw32_make = utils.which('mingw32-make')
+      mingw32_make = shutil.which('mingw32-make')
       if mingw32_make:
         args[0] = mingw32_make
 
