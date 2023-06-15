@@ -794,6 +794,7 @@ If manually bisecting:
       '-lSDL', '-lGL',
     ])
 
+  @also_with_wasmfs
   def test_sdl_image_prepare(self):
     # load an image file, get pixel data.
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
