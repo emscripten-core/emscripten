@@ -312,7 +312,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     },
     // TODO: utime
     findObject: (path) => {
-      var result = __wasmfs_identify(path);
+      var result = withStackSave(() => __wasmfs_identify(stringToUTF8OnStack(path)));
       if (result == {{{ cDefs.ENOENT }}}) {
         return null;
       }
