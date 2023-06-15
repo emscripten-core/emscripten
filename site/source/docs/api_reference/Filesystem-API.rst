@@ -180,7 +180,7 @@ By default:
 File system API
 ===============
 
-.. note:: Functions derived from libc like :ref:`FS.readdir <FS.readdir>` use all-lowercase names, whereas added functions like :ref:`FS.readFile <FS.readFile>` use camelCase names.
+.. note:: Functions derived from libc like ``FS.readdir`` use all-lowercase names, whereas added functions like ``FS.readFile`` use camelCase names.
 
 .. js:function:: FS.mount(type, opts, mountpoint)
 
@@ -624,6 +624,7 @@ File system API
   :param int offset: The offset within ``buffer`` to write.
   :param int length: The length of data to write.
   :param int position: The offset within the stream to write. By default this is the stream's current offset.
+
 
 
 
