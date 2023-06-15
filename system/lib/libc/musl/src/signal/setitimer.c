@@ -37,11 +37,15 @@ void _emscripten_timeout(int which, double now)
 		signum = SIGPROF;
 	else if (which == ITIMER_VIRTUAL)
 		signum = SIGVTALRM;
-	int next_timeout = current_intervals_ms[which];
-	if (next_timeout)
-		current_timeout_ms[which] = now + next_timeout;
-	else
+	double next_timeout = 0.0;
+	if (current_intervals_ms[which]) {
+		// The next alarm is due 'interval' ms after the previous one, which may
+		// be sooner than 'interval' ms from now (if this alarm was delayed)
+		current_timeout_ms[which] += current_intervals_ms[which];
+		next_timeout = current_timeout_ms[which] - now;
+	} else {
 		current_timeout_ms[which] = 0;
+	}
 	_setitimer_js(which, next_timeout);
 	raise(signum);
 }
