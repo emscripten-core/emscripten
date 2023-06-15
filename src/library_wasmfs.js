@@ -202,6 +202,9 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
       return bytesRead;
     },
+    allocate: (stream, offset, length) => {
+      return FS.handleError(__wasmfs_allocate(stream.fd, {{{ splitI64('offset') }}}, {{{ splitI64('length') }}}));
+    },
     mmap: (stream, length, offset, prot, flags) => {
       var buf = FS.handleError(__wasmfs_mmap(length, prot, flags, stream.fd, offset));
       return { ptr: buf, allocated: true };
@@ -215,12 +218,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     munmap: (addr, length) => (
       FS.handleError(__wasmfs_munmap(addr, length))
     ),
-    allocate: (stream, offset, length) => {
-      return FS.handleError(__wasmfs_allocate(stream.fd, {{{ splitI64('offset') }}}, {{{ splitI64('length') }}}));
-    },
-    // TODO: mmap
-    // TODO: msync
-    // TODO: munmap
     writeFile: (path, data) => withStackSave(() => {
       var pathBuffer = stringToUTF8OnStack(path);
       if (typeof data == 'string') {
