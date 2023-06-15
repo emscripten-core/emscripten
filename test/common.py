@@ -684,8 +684,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.js_engines = config.JS_ENGINES.copy()
     self.required_engine = None
     self.wasm_engines = config.WASM_ENGINES.copy()
-    self.banned_js_engines = []
     self.use_all_engines = EMTEST_ALL_ENGINES
+    if self.js_engines[0] != config.NODE_JS:
+      # If our primary JS engine is something other than node then enable
+      # shell support.
+      default_envs = 'web,webview,worker,node'
+      self.set_setting('ENVIRONMENT', default_envs + ',shell')
 
     if EMTEST_DETECT_TEMPFILE_LEAKS:
       for root, dirnames, filenames in os.walk(self.temp_dir):
@@ -1357,15 +1361,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     ''' % locals(),
            'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', emcc_args=extra_args)
 
-  def filtered_js_engines(self):
-    for engine in self.js_engines:
-      assert engine in config.JS_ENGINES, "js engine does not exist in config.JS_ENGINES"
-      assert type(engine) == list
-    for engine in self.banned_js_engines:
-      assert type(engine) in (list, type(None))
-    banned = [b[0] for b in self.banned_js_engines if b]
-    return [engine for engine in self.js_engines if engine and engine[0] not in banned]
-
   def do_run(self, src, expected_output=None, force_c=False, **kwargs):
     if 'no_build' in kwargs:
       filename = src
@@ -1417,7 +1412,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                            output_basename=output_basename)
     self.assertExists(js_file)
 
-    engines = self.filtered_js_engines()
+    engines = self.js_engines.copy()
     if len(engines) > 1 and not self.use_all_engines:
       engines = engines[:1]
     # In standalone mode, also add wasm vms as we should be able to run there too.
@@ -1428,7 +1423,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         logger.warning('no wasm engine was found to run the standalone part of this test')
       engines += self.wasm_engines
     if len(engines) == 0:
-      self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
+      self.fail('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
     for engine in engines:
       js_output = self.run_js(js_file, engine, args,
                               output_nicerizer=output_nicerizer,
@@ -1991,7 +1986,7 @@ class BrowserCore(RunnerCore):
     if not isinstance(expected, list):
       expected = [expected]
     if EMTEST_BROWSER == 'node':
-      self.js_engines = [config.NODE_JS]
+      self.require_node()
       self.node_args += shared.node_pthread_flags()
       output = self.run_js('test.js')
       self.assertContained('RESULT: ' + expected[0], output)
