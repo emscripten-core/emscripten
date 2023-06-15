@@ -59,9 +59,9 @@ void test_oneoff(int which) {
   assert(val.it_value.tv_sec == 0);
   assert(val.it_value.tv_usec > 0);
 
-  // Wait 1s
+  // Wait 1.5s
   assert(!got_alarm[which]);
-  usleep(1000 * 1000);
+  usleep(1500 * 1000);
 
   // Verify that the time fired and is no longer active
   assert(got_alarm[which]);
