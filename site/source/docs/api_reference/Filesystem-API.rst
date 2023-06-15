@@ -180,7 +180,7 @@ By default:
 File system API
 ===============
 
-.. note:: Functions derived from libc like ``FS.readdir`` use all-lowercase names, whereas added functions like ``FS.readFile`` use camelCase names.
+.. note:: Functions derived from libc like ``FS.readdir()`` use all-lowercase names, whereas added functions like ``FS.readFile()`` use camelCase names.
 
 .. js:function:: FS.mount(type, opts, mountpoint)
 
