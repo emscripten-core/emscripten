@@ -63,6 +63,13 @@ var ASSERTIONS = 1;
 // [link]
 var STACK_OVERFLOW_CHECK = 0;
 
+// When STACK_OVERFLOW_CHECK is enabled we also check writes to address zero.
+// This can help detect NULL pointer usage.  If you want to skip this extra
+// check (for example, if you want reads from the address zero to always return
+// zero) you can disabled this here.  This setting has no effect when
+// STACK_OVERFLOW_CHECK is disabled.
+var CHECK_NULL_WRITES = true;
+
 // When set to 1, will generate more verbose output during compilation.
 // [general]
 var VERBOSE = false;
@@ -594,7 +601,7 @@ var POLYFILL_OLD_MATH_FUNCTIONS = false;
 var LEGACY_VM_SUPPORT = false;
 
 // Specify which runtime environments the JS output will be capable of running
-// in.  For maximum portability this can configured to support all envionements
+// in.  For maximum portability this can configured to support all environments
 // or it can be limited to reduce overall code size.  The supported environments
 // are:
 //    'web'     - the normal web environment.

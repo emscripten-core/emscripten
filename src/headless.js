@@ -40,7 +40,7 @@ var window = {
     func.uid = window.uid++;
     headlessPrint(`adding timeout ${func.uid}`);
     window.timeouts.push({
-      func: func,
+      func,
       when: window.fakeNow + (ms || 0)
     });
     window.timeouts.sort((x, y) => { return y.when - x.when });

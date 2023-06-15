@@ -77,7 +77,7 @@ from typing import List
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
-sys.path.append(__rootdir__)
+sys.path.insert(0, __rootdir__)
 
 from tools import shared, utils, js_manipulation
 
@@ -682,7 +682,7 @@ def generate_js(data_target, data_files, metadata):
         data = base64_encode(utils.read_binary(file_.srcpath))
         code += "      var fileData%d = '%s';\n" % (counter, data)
         # canOwn this data in the filesystem (i.e. there is no need to create a copy in the FS layer).
-        code += ("      Module['FS_createDataFile']('%s', '%s', decodeBase64(fileData%d), true, true, true);\n"
+        code += ("      Module['FS_createDataFile']('%s', '%s', atob(fileData%d), true, true, true);\n"
                  % (dirname, basename, counter))
     elif file_.mode == 'preload':
       # Preload

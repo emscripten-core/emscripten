@@ -19,9 +19,6 @@
 #if BUILD_AS_WORKER
 #error "pthreads + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854"
 #endif
-#if PROXY_TO_WORKER
-#error "--proxy-to-worker is not supported with -pthread! Use the option -sPROXY_TO_PTHREAD if you want to run the main thread of a multithreaded application in a web worker."
-#endif
 #if EVAL_CTORS
 #error "EVAL_CTORS is not compatible with pthreads yet (passive segments)"
 #endif
@@ -410,7 +407,9 @@ var LibraryPThread = {
         'wasmOffsetConverter': wasmOffsetConverter,
 #endif
 #if MAIN_MODULE
-        'dynamicLibraries': Module['dynamicLibraries'],
+        // Share all modules that have been loaded so far.  New workers
+        // won't start running threads until these are all loaded.
+        'sharedModules': sharedModules,
 #endif
 #if ASSERTIONS
         'workerID': worker.workerID,
@@ -431,6 +430,7 @@ var LibraryPThread = {
       ) {
         return onMaybeReady();
       }
+
       let pthreadPoolReady = Promise.all(PThread.unusedWorkers.map(PThread.loadWasmModuleToWorker));
 #if PTHREAD_POOL_DELAY_LOAD
       // PTHREAD_POOL_DELAY_LOAD means we want to proceed synchronously without
@@ -1188,7 +1188,7 @@ var LibraryPThread = {
     }
 
 #if PTHREADS_DEBUG
-    dbg('_emscripten_dlsync_threads_async: waiting on ' + promises.length + ' promises');
+    dbg(`_emscripten_dlsync_threads_async: waiting on ${promises.length} promises`);
 #endif
     // Once all promises are resolved then we know all threads are in sync and
     // we can call the callback.

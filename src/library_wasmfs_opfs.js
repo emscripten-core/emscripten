@@ -71,6 +71,11 @@ mergeInto(LibraryManager.library, {
   _wasmfs_opfs_init_root_directory: async function(ctx) {
     // allocated.length starts off as 1 since 0 is a reserved handle
     if (wasmfsOPFSDirectoryHandles.allocated.length == 1) {
+      // Closure compiler errors on this as it does not recognize the OPFS
+      // API yet, it seems. Unfortunately an existing annotation for this is in
+      // the closure compiler codebase, and cannot be overridden in user code
+      // (it complains on a duplicate type annotation), so just suppress it.
+      /** @suppress {checkTypes} */
       let root = await navigator.storage.getDirectory();
       wasmfsOPFSDirectoryHandles.allocated.push(root);
     }
@@ -143,7 +148,11 @@ mergeInto(LibraryManager.library, {
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_get_entries__deps: ['$wasmfsOPFSProxyFinish'],
+  _wasmfs_opfs_get_entries__deps: [
+    '$wasmfsOPFSProxyFinish',
+    '$withStackSave',
+    '_wasmfs_opfs_record_entry',
+  ],
   _wasmfs_opfs_get_entries: async function(ctx, dirID, entriesPtr, errPtr) {
     let dirHandle = wasmfsOPFSDirectoryHandles.get(dirID);
 
@@ -236,7 +245,11 @@ mergeInto(LibraryManager.library, {
       let accessHandle;
 #if PTHREADS
       // TODO: Remove this once the Access Handles API has settled.
-      if (FileSystemFileHandle.prototype.createSyncAccessHandle.length == 0) {
+      // TODO: Closure is confused by this code that supports two versions of
+      //       the same API, so suppress type checking on it.
+      /** @suppress {checkTypes} */
+      var len = FileSystemFileHandle.prototype.createSyncAccessHandle.length;
+      if (len == 0) {
         accessHandle = await fileHandle.createSyncAccessHandle();
       } else {
         accessHandle = await fileHandle.createSyncAccessHandle(

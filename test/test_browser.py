@@ -23,7 +23,7 @@ from urllib.request import urlopen
 
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
-from common import read_file, requires_v8, also_with_minimal_runtime, EMRUN
+from common import read_file, requires_v8, also_with_minimal_runtime, also_with_wasm64, EMRUN
 from tools import shared
 from tools import ports
 from tools import utils
@@ -92,6 +92,27 @@ def also_with_wasmfs(f):
   return metafunc
 
 
+# This is similar to @core.no_wasmfs, but it disable WasmFS and runs the test
+# normally. That is, in core we skip the test if we are in the wasmfs.* mode,
+# while in browser we don't have such modes, so we force the test to run without
+# WasmFS.
+#
+# When WasmFS is on by default, these annotations will still be needed. Only
+# when we remove the old JS FS entirely would we remove them.
+def no_wasmfs(note):
+  assert not callable(note)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      self.set_setting('WASMFS', 0)
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
 def also_with_wasm2js(f):
   assert callable(f)
 
@@ -105,22 +126,6 @@ def also_with_wasm2js(f):
 
   metafunc._parameterize = {'': (False,),
                             'wasm2js': (True,)}
-  return metafunc
-
-
-def also_with_wasm64(f):
-  assert callable(f)
-
-  def metafunc(self, with_wasm64):
-    if with_wasm64:
-      self.set_setting('MEMORY64')
-      self.emcc_args.append('-Wno-experimental')
-      f(self)
-    else:
-      f(self)
-
-  metafunc._parameterize = {'': (False,),
-                            'wasm64': (True,)}
   return metafunc
 
 
@@ -232,6 +237,10 @@ class browser(BrowserCore):
       '-Wno-pointer-sign',
       '-Wno-int-conversion',
     ]
+
+  def require_wasm64(self):
+    # All the browsers we run on support wasm64 (Chrome and Firefox).
+    return True
 
   def test_sdl1_in_emscripten_nonstrict_mode(self):
     if 'EMCC_STRICT' in os.environ and int(os.environ['EMCC_STRICT']):
@@ -761,6 +770,7 @@ If manually bisecting:
     # Test Emscripten-specific extensions to optimize SDL_LockSurface and SDL_UnlockSurface.
     self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-DTEST_SDL_LOCK_OPTS', '-lSDL', '-lGL'])
 
+  @also_with_wasmfs
   def test_sdl_image(self):
     # load an image file, get pixel data. Also O2 coverage for --preload-file, and memory-init
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
@@ -773,7 +783,6 @@ If manually bisecting:
           '-O2', '-lSDL', '-lGL',
           '--preload-file', dest, '-DSCREENSHOT_DIRNAME="' + dirname + '"', '-DSCREENSHOT_BASENAME="' + basename + '"', '--use-preload-plugins'
         ])
-      return
 
   @also_with_wasmfs
   def test_sdl_image_jpeg(self):
@@ -1668,6 +1677,7 @@ keydown(100);keyup(100); // trigger the end
 
     self.assertContained('you should not see this text when in a worker!', self.run_js('worker.js')) # code should run standalone too
 
+  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/19608')
   def test_mmap_lazyfile(self):
     create_file('lazydata.dat', 'hello world')
     create_file('pre.js', '''
@@ -1678,6 +1688,7 @@ keydown(100);keyup(100); // trigger the end
     self.emcc_args += ['--pre-js=pre.js', '--proxy-to-worker']
     self.btest_exit(test_file('test_mmap_lazyfile.c'))
 
+  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/19608')
   @no_firefox('keeps sending OPTIONS requests, and eventually errors')
   def test_chunked_synchronous_xhr(self):
     main = 'chunked_sync_xhr.html'
@@ -1771,14 +1782,12 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   @parameterized({
-    '': ([False],),
+    '': ([],),
     # Enabling FULL_ES3 also enables ES2 automatically
-    'proxy': ([True],)
+    'proxy': (['--proxy-to-worker'],)
   })
-  def test_glgears_long(self, proxy):
-    args = ['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST', '-lGL', '-lglut', '-DANIMATE']
-    if proxy:
-      args += ['--proxy-to-worker']
+  def test_glgears_long(self, args):
+    args += ['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST', '-lGL', '-lglut', '-DANIMATE']
     self.btest('hello_world_gles.c', expected='0', args=args)
 
   @requires_graphics_hardware
@@ -1875,6 +1884,7 @@ keydown(100);keyup(100); // trigger the end
   def test_emscripten_api(self):
     self.btest_exit('emscripten_api_browser.c', args=['-sEXPORTED_FUNCTIONS=_main,_third', '-lSDL'])
 
+  @also_with_wasmfs
   def test_emscripten_async_load_script(self):
     def setup():
       create_file('script1.js', '''
@@ -2110,6 +2120,7 @@ void *getBindBuffer() {
 ''')
     self.btest('third_party/cubegeom/cubegeom_proc.c', reference='third_party/cubegeom/cubegeom.png', args=opts + ['side.c', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
+  @also_with_wasmfs
   @requires_graphics_hardware
   def test_cubegeom_glew(self):
     self.btest('third_party/cubegeom/cubegeom_glew.c', reference='third_party/cubegeom/cubegeom.png', args=['-O2', '--closure=1', '-sLEGACY_GL_EMULATION', '-lGL', '-lGLEW', '-lSDL'])
@@ -2538,6 +2549,7 @@ void *getBindBuffer() {
     stderr = self.expect_fail([EMCC, 'hello.o', '-o', 'a.js', '-g', '--closure=1', '-pthread', '-sBUILD_AS_WORKER'])
     self.assertContained("pthreads + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854", stderr)
 
+  @also_with_wasmfs
   def test_emscripten_async_wget2(self):
     self.btest_exit('test_emscripten_async_wget2.cpp')
 
@@ -2957,6 +2969,7 @@ Module["preRun"].push(function () {
       '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--use-preload-plugins'
     ])
 
+  @also_with_wasmfs
   @requires_graphics_hardware
   def test_sdl2_image_formats(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
@@ -3344,6 +3357,10 @@ Module["preRun"].push(function () {
     preload_file = os.path.join(cocos2d_root, 'samples', 'Cpp', 'HelloCpp', 'Resources') + '@'
     self.btest('cocos2d_hello.cpp', reference='cocos2d_hello.png', reference_slack=1,
                args=['-sUSE_COCOS2D=3', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
+                     # This line should really just be `-std=c++14` like we use to compile
+                     # the cocos library itself, but that doesn't work in this case because
+                     # btest adds browser_reporting.c to the command.
+                     '-D_LIBCPP_ENABLE_CXX17_REMOVED_UNARY_BINARY_FUNCTION',
                      '-Wno-js-compiler',
                      '-Wno-experimental',
                      '--preload-file', preload_file, '--use-preload-plugins',
@@ -3532,6 +3549,7 @@ Module["preRun"].push(function () {
 
   # test illustrating the regression on the modularize feature since commit c5af8f6
   # when compiling with the --preload-file option
+  @also_with_wasmfs
   def test_modularize_and_preload_files(self):
     self.set_setting('EXIT_RUNTIME')
     # TODO(sbc): Fix closure warnings with MODULARIZE + WASM=0
@@ -3730,6 +3748,7 @@ Module["preRun"].push(function () {
     self.run_process([EMCC, 'side2.c', '-sSIDE_MODULE', '-o', 'side2.wasm'])
     self.btest_exit(self.in_dir('main.c'), args=['-sMAIN_MODULE=2', 'side1.wasm', 'side2.wasm'])
 
+  @requires_threads
   def test_dynamic_link_pthread_many(self):
     # Test asynchronously loading two side modules during startup
     # They should always load in the same order
@@ -4348,12 +4367,12 @@ Module["preRun"].push(function () {
       var real_wasm_instantiate = WebAssembly.instantiate;
       var real_wasm_instantiateStreaming = WebAssembly.instantiateStreaming;
       if (typeof real_wasm_instantiateStreaming === 'function') {
-        WebAssembly.instantiateStreaming = function(a, b) {
+        WebAssembly.instantiateStreaming = (a, b) => {
           Module.sawAsyncCompilation = true;
           return real_wasm_instantiateStreaming(a, b);
         };
       } else {
-        WebAssembly.instantiate = function(a, b) {
+        WebAssembly.instantiate = (a, b) => {
           Module.sawAsyncCompilation = true;
           return real_wasm_instantiate(a, b);
         };
@@ -4373,8 +4392,11 @@ Module["preRun"].push(function () {
       (['-O1'], 1),
       (['-O2'], 1),
       (['-O3'], 1),
-      (['-sWASM_ASYNC_COMPILATION'], 1), # force it on
-      (['-O1', '-sWASM_ASYNC_COMPILATION=0'], 0), # force it off
+      # force it on
+      (['-sWASM_ASYNC_COMPILATION'], 1),
+      # force it off. note that we use -O3 here to make the binary small enough
+      # for chrome to allow compiling it synchronously
+      (['-O3', '-sWASM_ASYNC_COMPILATION=0'], 0),
     ]:
       print(opts, returncode)
       self.btest_exit('binaryen_async.c', assert_returncode=returncode, args=common_args + opts)
@@ -5483,6 +5505,7 @@ Module["preRun"].push(function () {
     self.do_run_in_out_file_test('browser', 'test_2GB_fail.cpp')
 
   @no_firefox('no 4GB support yet')
+  @also_with_wasm64
   @requires_v8
   def test_zzz_zzz_4gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
@@ -5493,7 +5516,11 @@ Module["preRun"].push(function () {
 
     # test that we properly report an allocation error that would overflow over
     # 4GB.
-    self.emcc_args += ['-O2', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB', '-sABORTING_MALLOC=0']
+    if self.get_setting('MEMORY64'):
+      self.set_setting('MAXIMUM_MEMORY', '6GB')
+    else:
+      self.set_setting('MAXIMUM_MEMORY', '4GB')
+    self.emcc_args += ['-O2', '-sALLOW_MEMORY_GROWTH', '-sABORTING_MALLOC=0', '-sASSERTIONS']
     self.do_run_in_out_file_test('browser', 'test_4GB_fail.cpp')
 
   # Tests that Emscripten-compiled applications can be run when a slash in the URL query or fragment of the js file

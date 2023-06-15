@@ -1857,6 +1857,7 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
         filenames=['file.cpp',
                    'file_table.cpp',
                    'js_api.cpp',
+                   'emscripten.cpp',
                    'paths.cpp',
                    'special_files.cpp',
                    'support.cpp',
@@ -1865,6 +1866,20 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
 
   def can_use(self):
     return settings.WASMFS
+
+
+# Minimal syscall implementation, enough for printf. If this can be linked in
+# instead of the full WasmFS then it saves a lot of code size for simple
+# programs that don't need a full FS implementation.
+class libwasmfs_no_fs(Library):
+  name = 'libwasmfs_no_fs'
+
+  src_dir = 'system/lib/wasmfs'
+  src_files = ['no_fs.c']
+
+  def can_use(self):
+    # If the filesystem is forced then we definitely do not need this library.
+    return settings.WASMFS and not settings.FORCE_FILESYSTEM
 
 
 class libwasmfs_noderawfs(Library):
@@ -2200,6 +2215,16 @@ def get_libs_to_link(args, forced, only_forced):
 
   if settings.WASM_WORKERS:
     add_library('libwasm_workers')
+
+  if settings.WASMFS:
+    # Link in the no-fs version first, so that if it provides all the needed
+    # system libraries then WasmFS is not linked in at all. (We only do this if
+    # the filesystem is not forced; if it is then we know we definitely need the
+    # whole thing, and it would be unnecessary work to try to link in the no-fs
+    # version).
+    if not settings.FORCE_FILESYSTEM:
+      add_library('libwasmfs_no_fs')
+    add_library('libwasmfs')
 
   add_sanitizer_libs()
   return libs_to_link

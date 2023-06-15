@@ -25,6 +25,7 @@ import logging
 import math
 import operator
 import os
+import platform
 import random
 import sys
 import unittest
@@ -314,7 +315,9 @@ def run_tests(options, suites):
   print([s[0] for s in suites])
   # Run the discovered tests
 
-  if os.getenv('CI'):
+  # We currently don't support xmlrunner on macOS M1 runner since
+  # `pip` doesn't seeem to yet have pre-built binaries for M1.
+  if os.getenv('CI') and not (utils.MACOS and platform.machine() == 'arm64'):
     os.makedirs('out', exist_ok=True)
     # output fd must remain open until after testRunner.run() below
     output = open('out/test-results.xml', 'wb')

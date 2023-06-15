@@ -6,10 +6,11 @@
  * Dynamic library loading
  */
 
-var dlopenMissingError = "'To use dlopen, you need enable dynamic linking, see https://emscripten.org/docs/compiling/Dynamic-Linking.html'"
+#if !RELOCATABLE
+#error "library_dylink.js requires RELOCATABLE"
+#endif
 
 var LibraryDylink = {
-#if RELOCATABLE
 #if FILESYSTEM
   $registerWasmPlugin__deps: ['$preloadPlugins'],
   $registerWasmPlugin: function() {
@@ -25,7 +26,7 @@ var LibraryDylink = {
         // than just running the promises in parallel, this makes a chain of
         // promises to run in series.
         wasmPlugin['promiseChainEnd'] = wasmPlugin['promiseChainEnd'].then(
-          () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true})).then(
+          () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true}, name)).then(
             (exports) => {
 #if DYLINK_DEBUG
               dbg(`registering preloadedWasm: ${name}`);
@@ -132,7 +133,7 @@ var LibraryDylink = {
       sym = wasmImports[symName] = createInvokeFunction(symName.split('_')[1]);
     }
 #endif
-    return {sym: sym, name: symName};
+    return {sym, name: symName};
   },
 
   $GOT: {},
@@ -309,49 +310,7 @@ var LibraryDylink = {
     dbg('done reportUndefinedSymbols');
 #endif
   },
-#endif
 
-#if !MAIN_MODULE
-#if !ALLOW_UNIMPLEMENTED_SYSCALLS
-  _dlopen_js__deps: [function() { error(dlopenMissingError); }],
-  _emscripten_dlopen_js__deps: [function() { error(dlopenMissingError); }],
-  _dlsym_js__deps: [function() { error(dlopenMissingError); }],
-  _dlsym_catchup_js__deps: [function() { error(dlopenMissingError); }],
-  dlopen__deps: [function() { error(dlopenMissingError); }],
-  emscripten_dlopen__deps: [function() { error(dlopenMissingError); }],
-  __dlsym__deps: [function() { error(dlopenMissingError); }],
-#else
-  $dlopenMissingError: `= ${dlopenMissingError}`,
-  _dlopen_js__deps: ['$dlopenMissingError'],
-  _emscripten_dlopen_js__deps: ['$dlopenMissingError'],
-  _dlsym_js__deps: ['$dlopenMissingError'],
-  _dlsym_catchup_js__deps: ['$dlopenMissingError'],
-  dlopen__deps: ['$dlopenMissingError'],
-  emscripten_dlopen__deps: ['$dlopenMissingError'],
-  __dlsym__deps: ['$dlopenMissingError'],
-#endif
-  _dlopen_js: function(handle) {
-    abort(dlopenMissingError);
-  },
-  _emscripten_dlopen_js: function(handle, onsuccess, onerror, user_data) {
-    abort(dlopenMissingError);
-  },
-  _dlsym_js: function(handle, symbol) {
-    abort(dlopenMissingError);
-  },
-  _dlsym_catchup_js: function(handle, symbolIndex) {
-    abort(dlopenMissingError);
-  },
-  dlopen: function(handle) {
-    abort(dlopenMissingError);
-  },
-  emscripten_dlopen: function(handle, onsuccess, onerror, user_data) {
-    abort(dlopenMissingError);
-  },
-  __dlsym: function(handle, symbol) {
-    abort(dlopenMissingError);
-  },
-#else // MAIN_MODULE != 0
   // dynamic linker/loader (a-la ld.so on ELF systems)
   $LDSO__deps: ['$newDSO'],
   $LDSO: {
@@ -618,6 +577,7 @@ var LibraryDylink = {
   // promise that resolves to its exports if the loadAsync flag is set.
   $loadWebAssemblyModule__docs: `
    /**
+    * @param {string=} libName
     * @param {Object=} localScope
     * @param {number=} handle
     */`,
@@ -629,7 +589,10 @@ var LibraryDylink = {
     '$currentModuleWeakSymbols', '$alignMemory', '$zeroMemory',
     '$updateTableMap',
   ],
-  $loadWebAssemblyModule: function(binary, flags, localScope, handle) {
+  $loadWebAssemblyModule: function(binary, flags, libName, localScope, handle) {
+#if DYLINK_DEBUG
+    dbg(`loadWebAssemblyModule: ${libName}`);
+#endif
     var metadata = getDylinkMetadata(binary);
     currentModuleWeakSymbols = metadata.weakImports;
 #if ASSERTIONS
@@ -752,10 +715,20 @@ var LibraryDylink = {
         '{{{ WASI_MODULE_NAME }}}': proxy,
       };
 
-      function postInstantiation(instance) {
+      function postInstantiation(module, instance) {
 #if ASSERTIONS
         // the table should be unchanged
         assert(wasmTable === originalTable);
+#endif
+#if PTHREADS
+        if (!ENVIRONMENT_IS_PTHREAD && libName) {
+#if DYLINK_DEBUG
+          dbg(`registering sharedModules: ${libName}`)
+#endif
+          // cache all loaded modules in `sharedModules`, which gets passed
+          // to new workers when they are created.
+          sharedModules[libName] = module;
+        }
 #endif
         // add new entries to functionsInTableMap
         updateTableMap(tableBase, metadata.tableSize);
@@ -844,16 +817,16 @@ var LibraryDylink = {
       if (flags.loadAsync) {
         if (binary instanceof WebAssembly.Module) {
           var instance = new WebAssembly.Instance(binary, info);
-          return Promise.resolve(postInstantiation(instance));
+          return Promise.resolve(postInstantiation(binary, instance));
         }
         return WebAssembly.instantiate(binary, info).then(
-          (result) => postInstantiation(result.instance)
+          (result) => postInstantiation(result.module, result.instance)
         );
       }
 
       var module = binary instanceof WebAssembly.Module ? binary : new WebAssembly.Module(binary);
       var instance = new WebAssembly.Instance(module, info);
-      return postInstantiation(instance);
+      return postInstantiation(module, instance);
     }
 
     // now load needed libraries and the module itself.
@@ -889,7 +862,7 @@ var LibraryDylink = {
   $newDSO: function(name, handle, syms) {
     var dso = {
       refcount: Infinity,
-      name: name,
+      name,
       exports: syms,
       global: true,
     };
@@ -968,6 +941,16 @@ var LibraryDylink = {
 
     // libName -> libData
     function loadLibData() {
+#if PTHREADS
+      var sharedMod = sharedModules[libName];
+#if DYLINK_DEBUG
+      dbg(`checking sharedModules: ${libName}: ${sharedMod ? 'found' : 'not found'}`);
+#endif
+      if (sharedMod) {
+        return flags.loadAsync ? Promise.resolve(sharedMod) : sharedMod;
+      }
+#endif
+
       // for wasm, we can use fetch for async, but for fs mode we can only imitate it
       if (handle) {
         var data = {{{ makeGetValue('handle', C_STRUCTS.dso.file_data, '*') }}};
@@ -1007,10 +990,10 @@ var LibraryDylink = {
 
       // module not preloaded - load lib data and create new module from it
       if (flags.loadAsync) {
-        return loadLibData().then((libData) => loadWebAssemblyModule(libData, flags, localScope, handle));
+        return loadLibData().then((libData) => loadWebAssemblyModule(libData, flags, libName, localScope, handle));
       }
 
-      return loadWebAssemblyModule(loadLibData(), flags, localScope, handle);
+      return loadWebAssemblyModule(loadLibData(), flags, libName, localScope, handle);
     }
 
     // module for lib is loaded - update the dso & global namespace
@@ -1116,13 +1099,12 @@ var LibraryDylink = {
   _dlopen_js: function(handle) {
 #if ASYNCIFY
     return Asyncify.handleSleep((wakeUp) => {
-      var jsflags = { loadAsync: true }
-      var promise = dlopenInternal(handle, jsflags);
-      promise.then(wakeUp).catch(() => wakeUp(0));
+      dlopenInternal(handle, { loadAsync: true })
+        .then(wakeUp)
+        .catch(() => wakeUp(0));
     });
 #else
-    var jsflags = { loadAsync: false }
-    return dlopenInternal(handle, jsflags);
+    return dlopenInternal(handle, { loadAsync: false });
 #endif
   },
 
@@ -1142,8 +1124,7 @@ var LibraryDylink = {
     }
 
     {{{ runtimeKeepalivePush() }}}
-    var jsflags = { loadAsync: true }
-    var promise = dlopenInternal(handle, jsflags);
+    var promise = dlopenInternal(handle, { loadAsync: true });
     if (promise) {
       promise.then(successCallback, errorCallback);
     } else {
@@ -1231,7 +1212,6 @@ var LibraryDylink = {
 #endif
     return result;
   },
-#endif // MAIN_MODULE != 0
 };
 
 mergeInto(LibraryManager.library, LibraryDylink);

@@ -747,7 +747,7 @@ var LibraryOpenAL = {
     getGlobalParam: function(funcname, param) {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-        dbg(funcname + '() called without a valid context');
+        dbg(`${funcname}() called without a valid context`);
 #endif
         return null;
       }
@@ -761,7 +761,7 @@ var LibraryOpenAL = {
         return AL.currentCtx.distanceModel;
       default:
 #if OPENAL_DEBUG
-        dbg(`${funcname}() param ${ptrToString(param}`) + ' is unknown or not implemented');
+        dbg(`${funcname}() param ${ptrToString(param} is unknown or not implemented`);
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return null;
@@ -771,7 +771,7 @@ var LibraryOpenAL = {
     setGlobalParam: function(funcname, param, value) {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-        dbg(funcname + '() called without a valid context');
+        dbg(`${funcname}() called without a valid context`);
 #endif
         return;
       }
@@ -833,7 +833,7 @@ var LibraryOpenAL = {
     getListenerParam: function(funcname, param) {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-        dbg(funcname + '() called without a valid context');
+        dbg(`${funcname}() called without a valid context`);
 #endif
         return null;
       }
@@ -859,7 +859,7 @@ var LibraryOpenAL = {
     setListenerParam: function(funcname, param, value) {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-        dbg(funcname + '() called without a valid context');
+        dbg(`${funcname}() called without a valid context`);
 #endif
         return;
       }
@@ -943,14 +943,14 @@ var LibraryOpenAL = {
     getBufferParam: function(funcname, bufferId, param) {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-        dbg(funcname + '() called without a valid context');
+        dbg(`${funcname}() called without a valid context`);
 #endif
         return;
       }
       var buf = AL.buffers[bufferId];
       if (!buf || bufferId === 0) {
 #if OPENAL_DEBUG
-        dbg(funcname + '() called with an invalid buffer');
+        dbg(`${funcname}() called with an invalid buffer`);
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
@@ -985,14 +985,14 @@ var LibraryOpenAL = {
     setBufferParam: function(funcname, bufferId, param, value) {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-        dbg(funcname + '() called without a valid context');
+        dbg(`${funcname}() called without a valid context`);
 #endif
         return;
       }
       var buf = AL.buffers[bufferId];
       if (!buf || bufferId === 0) {
 #if OPENAL_DEBUG
-        dbg(funcname + '() called with an invalid buffer');
+        dbg(`${funcname}() called with an invalid buffer`);
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
@@ -1027,7 +1027,7 @@ var LibraryOpenAL = {
         }
         if (buf.refCount > 0) {
 #if OPENAL_DEBUG
-          dbg(funcname + '() param AL_LOOP_POINTS_SOFT set on bound buffer');
+          dbg(`${funcname}() param AL_LOOP_POINTS_SOFT set on bound buffer`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_OPERATION }}};
           return;
@@ -1050,14 +1050,14 @@ var LibraryOpenAL = {
     getSourceParam: function(funcname, sourceId, param) {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-        dbg(funcname + '() called without a valid context');
+        dbg(`${funcname}() called without a valid context`);
 #endif
         return null;
       }
       var src = AL.currentCtx.sources[sourceId];
       if (!src) {
 #if OPENAL_DEBUG
-        dbg(funcname + '() called with an invalid source');
+        dbg(`${funcname}() called with an invalid source`);
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return null;
@@ -1161,7 +1161,7 @@ var LibraryOpenAL = {
     setSourceParam: function(funcname, sourceId, param, value) {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-        dbg(funcname + '() called without a valid context');
+        dbg(`${funcname}() called without a valid context`);
 #endif
         return;
       }
@@ -1312,7 +1312,7 @@ var LibraryOpenAL = {
       case 0x1009 /* AL_BUFFER */:
         if (src.state === {{{ cDefs.AL_PLAYING }}} || src.state === {{{ cDefs.AL_PAUSED }}}) {
 #if OPENAL_DEBUG
-          dbg(funcname + '(AL_BUFFER) called while source is playing or paused');
+          dbg(`${funcname}(AL_BUFFER) called while source is playing or paused`);
 #endif
           AL.currentCtx.err = {{{ cDefs.AL_INVALID_OPERATION }}};
           return;
@@ -1511,7 +1511,7 @@ var LibraryOpenAL = {
       case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
       case 0x200B /* AL_SEC_LENGTH_SOFT */:
 #if OPENAL_DEBUG
-        dbg(funcname + '() param AL_*_LENGTH_SOFT is read only');
+        dbg(`${funcname}() param AL_*_LENGTH_SOFT is read only`);
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_OPERATION }}};
         break;
@@ -1539,7 +1539,7 @@ var LibraryOpenAL = {
         break;
       default:
 #if OPENAL_DEBUG
-        dbg(`${funcname}() param ${ptrToString(param)}' is unknown or not implemented`);
+        dbg(`${funcname}() param ${ptrToString(param)} is unknown or not implemented`);
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
@@ -1622,7 +1622,7 @@ var LibraryOpenAL = {
       resolvedDeviceName = UTF8ToString(pDeviceName);
       if (resolvedDeviceName !== AL.CAPTURE_DEVICE_NAME) {
 #if OPENAL_DEBUG
-        dbg('alcCaptureOpenDevice() with invalid device name \''+resolvedDeviceName+'\'');
+        dbg(`alcCaptureOpenDevice() with invalid device name '${resolvedDeviceName}'`);
 #endif
         // ALC_OUT_OF_MEMORY
         // From the programmer's guide, ALC_OUT_OF_MEMORY's meaning is
@@ -1742,9 +1742,9 @@ var LibraryOpenAL = {
     var newCapture = {
       audioCtx: AL.sharedCaptureAudioCtx,
       deviceName: resolvedDeviceName,
-      requestedSampleRate: requestedSampleRate,
-      requestedSampleType: requestedSampleType,
-      outputChannelCount: outputChannelCount,
+      requestedSampleRate,
+      requestedSampleType,
+      outputChannelCount,
       inputChannelCount: null, // Not known until the getUserMedia() promise resolves
       mediaStreamError: null, // Used by other functions to return early and report an error.
       mediaStreamSourceNode: null,
@@ -1754,7 +1754,7 @@ var LibraryOpenAL = {
       splitterNode: null,
       scriptProcessorNode: null,
       isCapturing: false,
-      buffers: buffers,
+      buffers,
       get bufferFrameCapacity() {
         return buffers[0].length;
       },
@@ -2015,7 +2015,7 @@ var LibraryOpenAL = {
     case 'u8' : setSample = setU8Sample ; break;
     default:
 #if OPENAL_DEBUG
-      dbg('Internal error: Unknown sample type \''+c.requestedSampleType+'\'');
+      dbg(`Internal error: Unknown sample type '${c.requestedSampleType}'`);
 #endif
       return;
     }
@@ -2195,9 +2195,9 @@ var LibraryOpenAL = {
     var gain = ac.createGain();
     gain.connect(ac.destination);
     var ctx = {
-      deviceId: deviceId,
+      deviceId,
       id: AL.newId(),
-      attrs: attrs,
+      attrs,
       audioCtx: ac,
       listener: {
     	  position: [0.0, 0.0, 0.0],
@@ -2207,7 +2207,7 @@ var LibraryOpenAL = {
       },
       sources: [],
       interval: setInterval(function() { AL.scheduleContextAudio(ctx); }, AL.QUEUE_INTERVAL),
-      gain: gain,
+      gain,
       distanceModel: 0xd002 /* AL_INVERSE_DISTANCE_CLAMPED */,
       speedOfSound: 343.3,
       dopplerFactor: 1.0,
@@ -2824,7 +2824,7 @@ var LibraryOpenAL = {
         looping: false,
         pitch: 1.0,
         dopplerShift: 1.0,
-        gain: gain,
+        gain,
         minGain: 0.0,
         maxGain: 1.0,
         panner: null,

@@ -888,19 +888,11 @@ int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
     return 0;
   }
 
-  std::vector<Directory::Entry> entries = {
-    {".", File::DirectoryKind, dir->getIno()},
-    {"..", File::DirectoryKind, parent->getIno()}};
-  auto dirEntries = lockedDir.getEntries();
-  if (int err = dirEntries.getError()) {
-    return err;
-  }
-  entries.insert(entries.end(), dirEntries->begin(), dirEntries->end());
-
   off_t bytesRead = 0;
-  for (; index < entries.size() && bytesRead + sizeof(dirent) <= count;
+  const auto& dirents = openFile->dirents;
+  for (; index < dirents.size() && bytesRead + sizeof(dirent) <= count;
        index++) {
-    auto& entry = entries[index];
+    const auto& entry = dirents[index];
     result->d_ino = entry.ino;
     result->d_off = index + 1;
     result->d_reclen = sizeof(dirent);
@@ -1132,8 +1124,7 @@ int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
     // TODO: Test this case.
     return -EINVAL;
   }
-  // TODO: Handle AT_SYMLINK_NOFOLLOW once we traverse symlinks correctly.
-  auto parsed = path::parseFile((char*)path, dirfd);
+  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -1286,7 +1277,7 @@ int __syscall_ioctl(int fd, int request, ...) {
     case TIOCGWINSZ:
     case TIOCSWINSZ: {
       // TTY operations that we do nothing for anyhow can just be ignored.
-      return -0;
+      return 0;
     }
     default: {
       return -EINVAL; // not supported
@@ -1367,7 +1358,7 @@ int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
   return nonzero;
 }
 
-int __syscall_fallocate(int fd, int mode, uint64_t off, uint64_t len) {
+int __syscall_fallocate(int fd, int mode, int64_t off, int64_t len) {
   assert(mode == 0); // TODO, but other modes were never supported in the old FS
 
   auto fileTable = wasmFS.getFileTable().locked();

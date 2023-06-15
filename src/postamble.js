@@ -6,6 +6,28 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+#if SUPPORT_BASE64_EMBEDDING || FORCE_FILESYSTEM
+#include "base64Utils.js"
+#endif
+
+#if HEADLESS
+if (!ENVIRONMENT_IS_WEB) {
+#include "headlessCanvas.js"
+#include "headless.js"
+}
+#endif
+
+#if PROXY_TO_WORKER
+if (ENVIRONMENT_IS_WORKER) {
+#include "webGLWorker.js'
+#include "proxyWorker.js"
+}
+#endif
+
+#if DETERMINISTIC
+#include "deterministic.js"
+#endif
+
 {{{ exportRuntime() }}}
 
 var calledRun;
@@ -129,6 +151,12 @@ function stackCheckInit() {
   // TODO(sbc): Move writeStackCookie to native to to avoid this.
   writeStackCookie();
 }
+#endif
+
+#if MAIN_MODULE && PTHREADS
+// Map of modules to be shared with new threads.  This gets populated by the
+// main thread and shared with all new workers.
+var sharedModules = Module['sharedModules'] || [];
 #endif
 
 #if MAIN_READS_PARAMS
@@ -263,6 +291,10 @@ function checkUnflushedContent() {
   try { // it doesn't matter if it fails
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0 && '$flush_NO_FILESYSTEM' in addedLibraryItems
     flush_NO_FILESYSTEM();
+#elif WASMFS && hasExportedSymbol('wasmfs_flush')
+    // In WasmFS we must also flush the WasmFS internal buffers, for this check
+    // to work.
+    _wasmfs_flush();
 #elif hasExportedSymbol('fflush')
     _fflush(0);
 #endif

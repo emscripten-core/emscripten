@@ -381,6 +381,13 @@ FS.staticInit();` +
       }
       throw new FS.ErrnoError({{{ cDefs.EMFILE }}});
     },
+    getStreamChecked: (fd) => {
+      var stream = FS.getStream(fd);
+      if (!stream) {
+        throw new FS.ErrnoError({{{ cDefs.EBADF }}});
+      }
+      return stream;
+    },
     getStream: (fd) => FS.streams[fd],
     // TODO parameterize this function such that a stream
     // object isn't directly passed in. not possible until
@@ -559,9 +566,9 @@ FS.staticInit();` +
       }
 
       var mount = {
-        type: type,
-        opts: opts,
-        mountpoint: mountpoint,
+        type,
+        opts,
+        mountpoint,
         mounts: []
       };
 
@@ -911,10 +918,7 @@ FS.staticInit();` +
       FS.chmod(path, mode, true);
     },
     fchmod: (fd, mode) => {
-      var stream = FS.getStream(fd);
-      if (!stream) {
-        throw new FS.ErrnoError({{{ cDefs.EBADF }}});
-      }
+      var stream = FS.getStreamChecked(fd);
       FS.chmod(stream.node, mode);
     },
     chown: (path, uid, gid, dontFollow) => {
@@ -937,10 +941,7 @@ FS.staticInit();` +
       FS.chown(path, uid, gid, true);
     },
     fchown: (fd, uid, gid) => {
-      var stream = FS.getStream(fd);
-      if (!stream) {
-        throw new FS.ErrnoError({{{ cDefs.EBADF }}});
-      }
+      var stream = FS.getStreamChecked(fd);
       FS.chown(stream.node, uid, gid);
     },
     truncate: (path, len) => {
@@ -973,10 +974,7 @@ FS.staticInit();` +
       });
     },
     ftruncate: (fd, len) => {
-      var stream = FS.getStream(fd);
-      if (!stream) {
-        throw new FS.ErrnoError({{{ cDefs.EBADF }}});
-      }
+      var stream = FS.getStreamChecked(fd);
       if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_RDONLY}}}) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
@@ -1060,9 +1058,9 @@ FS.staticInit();` +
 
       // register the stream with the filesystem
       var stream = FS.createStream({
-        node: node,
+        node,
         path: FS.getPath(node),  // we want the absolute path to the node
-        flags: flags,
+        flags,
         seekable: true,
         position: 0,
         stream_ops: node.stream_ops,
@@ -1079,7 +1077,7 @@ FS.staticInit();` +
         if (!(path in FS.readFiles)) {
           FS.readFiles[path] = 1;
 #if FS_DEBUG
-          dbg("FS.trackingDelegate error on read file: " + path);
+          dbg(`FS.trackingDelegate error on read file: ${path}`);
 #endif
         }
       }
@@ -1361,8 +1359,7 @@ FS.staticInit();` +
           node.node_ops = {
             lookup: (parent, name) => {
               var fd = +name;
-              var stream = FS.getStream(fd);
-              if (!stream) throw new FS.ErrnoError({{{ cDefs.EBADF }}});
+              var stream = FS.getStreamChecked(fd);
               var ret = {
                 parent: null,
                 mount: { mountpoint: 'fake' },
@@ -1844,7 +1841,7 @@ FS.staticInit();` +
           throw new FS.ErrnoError({{{ cDefs.ENOMEM }}});
         }
         writeChunks(stream, HEAP8, ptr, length, position);
-        return { ptr: ptr, allocated: true };
+        return { ptr, allocated: true };
       };
       node.stream_ops = stream_ops;
       return node;
@@ -1873,7 +1870,3 @@ FS.staticInit();` +
 #endif
   },
 });
-
-if (FORCE_FILESYSTEM) {
-  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$FS');
-}

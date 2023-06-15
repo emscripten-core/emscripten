@@ -1,5 +1,5 @@
 #if !POLYFILL
-assert(false, "this file should never be included unless POLYFILL is set");
+#error "this file should never be included unless POLYFILL is set"
 #endif
 
 if (typeof globalThis.BigInt64Array === "undefined") {

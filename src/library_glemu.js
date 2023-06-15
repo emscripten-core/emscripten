@@ -2040,11 +2040,11 @@ var LibraryGLEmulation = {
         for (var i = 0; i <= name; i++) { // keep flat
           if (!GLImmediate.clientAttributes[i]) {
             GLImmediate.clientAttributes[i] = {
-              name: name,
-              size: size,
-              type: type,
-              stride: stride,
-              pointer: pointer,
+              name,
+              size,
+              type,
+              stride,
+              pointer,
               offset: 0
             };
           }
@@ -3562,7 +3562,7 @@ var LibraryGLEmulation = {
     for (var i = 0; i < n; i++) {
       var id = GL.getNewId(GLEmulation.vaos);
       GLEmulation.vaos[id] = {
-        id: id,
+        id,
         arrayBuffer: 0,
         elementArrayBuffer: 0,
         enabledVertexAttribArrays: {},

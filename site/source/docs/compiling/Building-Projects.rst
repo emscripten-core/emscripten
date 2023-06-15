@@ -4,7 +4,7 @@
 Building Projects
 =================
 
-Building large projects with Emscripten is very easy. Emscripten provides two simple scripts that configure your makefiles to use :ref:`emcc <emccdoc>` as a drop-in replacement for *gcc* — in most cases the rest of your project’s current build system remains unchanged.
+Emscripten provides two scripts that configure your makefiles to use :ref:`emcc <emccdoc>` as a drop-in replacement for *gcc* — in most cases the rest of your project’s current build system remains unchanged.
 
 
 .. _building-projects-build-system:
@@ -327,7 +327,7 @@ The :ref:`Tutorial` showed how :ref:`emcc <emccdoc>` can be used to compile sing
   emcc src1.o src2.o -r -o combined.o
 
   # Combine two object files into library file
-  emar rcs libfoo.a src1.o src2.o 
+  emar rcs libfoo.a src1.o src2.o
 
 
 In addition to the capabilities it shares with *gcc*, *emcc* supports options to optimize code, control what debug information is emitted, generate HTML and other output formats, etc. These options are documented in the :ref:`emcc tool reference <emccdoc>` (``emcc --help`` on the command line).
