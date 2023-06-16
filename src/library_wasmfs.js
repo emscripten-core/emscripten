@@ -142,12 +142,24 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
     // libc methods
 
-    mkdir: (path, mode) => withStackSave(() => {
+    mkdir: (path, mode) => FS.handleError(withStackSave(() => {
       mode = mode !== undefined ? mode : 511 /* 0777 */;
       var buffer = stringToUTF8OnStack(path);
       return __wasmfs_mkdir({{{ to64('buffer') }}}, mode);
-    }),
-    // TODO: mkdirTree
+    })),
+    mkdirTree: (path, mode) => {
+      var dirs = path.split('/');
+      var d = '';
+      for (var i = 0; i < dirs.length; ++i) {
+        if (!dirs[i]) continue;
+        d += '/' + dirs[i];
+        try {
+          FS.mkdir(d, mode);
+        } catch(e) {
+          if (e.errno != {{{ cDefs.EEXIST }}}) throw e;
+        }
+      }
+    },
     rmdir: (path) => FS.handleError(
       withStackSave(() => __wasmfs_rmdir(stringToUTF8OnStack(path)))
     ),
@@ -174,7 +186,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       var buffer = stringToUTF8OnStack(path);
       return __wasmfs_chdir(buffer);
     }),
-    // TODO: read
     read: (stream, buffer, offset, length, position) => {
       var seeking = typeof position != 'undefined';
 
@@ -264,7 +275,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
           ino: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, "u53") }}}
       }
     },
-    // TODO: stat
     stat: (path) => {
       var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
       FS.handleError(withStackSave(() => {
@@ -275,7 +285,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
       return stats;
     },
-    // TODO: lstat
     lstat: (path) => {
       var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
       FS.handleError(withStackSave(() => {
@@ -304,13 +313,17 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TDOO: chown
     // TODO: lchown
     // TODO: fchown
+    utime: (path, atime, mtime) => (
+      FS.handleError(withStackSave(() => (
+        __wasmfs_utime(stringToUTF8OnStack(path), atime, mtime)
+      )))
+    ),
     truncate: (path, len) => {
       return FS.handleError(withStackSave(() => (__wasmfs_truncate(stringToUTF8OnStack(path), {{{ splitI64('len') }}}))));
     },
     ftruncate: (fd, len) => {
       return FS.handleError(__wasmfs_ftruncate(fd, {{{ splitI64('len') }}}));
     },
-    // TODO: utime
     findObject: (path) => {
       var result = withStackSave(() => __wasmfs_identify(stringToUTF8OnStack(path)));
       if (result == {{{ cDefs.ENOENT }}}) {
