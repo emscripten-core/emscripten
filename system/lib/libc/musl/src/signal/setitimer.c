@@ -40,6 +40,8 @@ void _emscripten_timeout(int which, double now)
 		signum = SIGVTALRM;
 	double next_timeout = 0.0;
 	if (current_intervals_ms[which]) {
+		// If time went backwards, schedule the next timer as if it didn't.
+		now = __builtin_wasm_max_f64(now, current_timeout_ms[which]);
 		// The next alarm is due 'interval' ms after the previous one.
 		// If this alarm was delayed, that is sooner than 'interval' ms
 		// from now. The delay could even be so long that we missed the
