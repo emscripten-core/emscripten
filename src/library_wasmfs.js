@@ -300,13 +300,17 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TDOO: chown
     // TODO: lchown
     // TODO: fchown
+    utime: (path, atime, mtime) => (
+      FS.handleError(withStackSave(() => (
+        __wasmfs_utime(stringToUTF8OnStack(path), atime, mtime)
+      )))
+    ),
     truncate: (path, len) => {
       return FS.handleError(withStackSave(() => (__wasmfs_truncate(stringToUTF8OnStack(path), {{{ splitI64('len') }}}))));
     },
     ftruncate: (fd, len) => {
       return FS.handleError(__wasmfs_ftruncate(fd, {{{ splitI64('len') }}}));
     },
-    // TODO: utime
     findObject: (path) => {
       var result = __wasmfs_identify(path);
       if (result == {{{ cDefs.ENOENT }}}) {
