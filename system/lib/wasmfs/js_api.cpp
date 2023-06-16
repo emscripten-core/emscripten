@@ -126,19 +126,15 @@ int _wasmfs_mkdir(char* path, int mode) {
 int _wasmfs_rmdir(char* path){ return __syscall_unlinkat(AT_FDCWD, (intptr_t)path, AT_REMOVEDIR); }
 
 int _wasmfs_open(char* path, int flags, mode_t mode) {
-  int err = __syscall_openat(AT_FDCWD, (intptr_t)path, flags, mode);
-  if (err == -1) {
-    return -errno;
-  }
-  return err;
+  return __syscall_openat(AT_FDCWD, (intptr_t)path, flags, mode);
+}
+
+int _wasmfs_allocate(int fd, int64_t off, int64_t len) {
+  return __syscall_fallocate(fd, 0, off, len);
 }
 
 int _wasmfs_mknod(char* path, mode_t mode, dev_t dev) {
-  int err = __syscall_mknodat(AT_FDCWD, (intptr_t)path, mode, dev);
-  if (err == -1) {
-    return errno;
-  }
-  return err;
+  return __syscall_mknodat(AT_FDCWD, (intptr_t)path, mode, dev);
 }
 
 int _wasmfs_unlink(char* path) {
@@ -149,6 +145,16 @@ int _wasmfs_chdir(char* path) { return __syscall_chdir((intptr_t)path); }
 
 int _wasmfs_symlink(char* old_path, char* new_path) {
   return __syscall_symlink((intptr_t)old_path, (intptr_t)new_path);
+}
+
+intptr_t _wasmfs_readlink(char* path) {
+  static thread_local void* readBuf = nullptr;
+  readBuf = realloc(readBuf, PATH_MAX);
+  int err = __syscall_readlinkat(AT_FDCWD, (intptr_t)path, (intptr_t)readBuf, PATH_MAX);
+  if (err < 0) {
+    return err;
+  }
+  return (intptr_t)readBuf;
 }
 
 int _wasmfs_write(int fd, void *buf, size_t count) {
@@ -189,12 +195,17 @@ int _wasmfs_lchmod(char* path, mode_t mode) {
   return __syscall_fchmodat(AT_FDCWD, (intptr_t)path, mode, AT_SYMLINK_NOFOLLOW);
 }
 
-int _wasmfs_rename(char* oldpath, char* newpath) {
-  int err = __syscall_renameat(AT_FDCWD, (intptr_t)oldpath, AT_FDCWD, (intptr_t)newpath);
-  if (err == -1) {
-    return errno;
+int _wasmfs_llseek(int fd, off_t offset, int whence) {
+  __wasi_filesize_t newOffset;
+  int err = __wasi_fd_seek(fd, offset, whence, &newOffset);
+  if (err > 0) {
+    return -err;
   }
-  return err;
+  return newOffset;
+}
+
+int _wasmfs_rename(char* oldpath, char* newpath) {
+  return __syscall_renameat(AT_FDCWD, (intptr_t)oldpath, AT_FDCWD, (intptr_t)newpath);
 };
 
 int _wasmfs_read(int fd, void *buf, size_t count) {
@@ -223,24 +234,34 @@ int _wasmfs_pread(int fd, void *buf, size_t count, off_t offset) {
   return numBytes;
 }
 
+int _wasmfs_truncate(char* path, off_t length) {
+  return __syscall_truncate64((intptr_t)path, length);
+}
+
+int _wasmfs_ftruncate(int fd, off_t length) {
+  return __syscall_ftruncate64(fd, length);
+}
+
 int _wasmfs_close(int fd) {
   return __wasi_fd_close(fd);
 }
 
+int _wasmfs_utime(char *path, long atime_ms, long mtime_ms) {
+  struct timespec times[2];
+  times[0].tv_sec = atime_ms / 1000;
+  times[0].tv_nsec = (atime_ms % 1000) * 1000000;
+  times[1].tv_sec = mtime_ms / 1000;
+  times[1].tv_nsec = (mtime_ms % 1000) * 1000000;
+
+  return __syscall_utimensat(AT_FDCWD, (intptr_t)path, (intptr_t)times, 0);
+};
+
 int _wasmfs_stat(char* path, struct stat* statBuf) {
-  int err = __syscall_stat64((intptr_t)path, (intptr_t)statBuf);
-  if (err == -1) {
-    return errno;
-  }
-  return err;
+  return __syscall_stat64((intptr_t)path, (intptr_t)statBuf);
 }
 
 int _wasmfs_lstat(char* path, struct stat* statBuf) {
-  int err = __syscall_lstat64((intptr_t)path, (intptr_t)statBuf);
-  if (err == -1) {
-    return errno;
-  }
-  return err;
+  return __syscall_lstat64((intptr_t)path, (intptr_t)statBuf);
 }
 
 // Helper method that identifies what a path is:

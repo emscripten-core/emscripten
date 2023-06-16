@@ -44,7 +44,7 @@ import clang_native
 from tools import line_endings
 from tools import webassembly
 
-scons_path = utils.which('scons')
+scons_path = shutil.which('scons')
 emmake = shared.bat_suffix(path_from_root('emmake'))
 emconfig = shared.bat_suffix(path_from_root('em-config'))
 emsize = shared.bat_suffix(path_from_root('emsize'))
@@ -126,7 +126,7 @@ def requires_ninja(func):
 
   @wraps(func)
   def decorated(self, *args, **kwargs):
-    if not utils.which('ninja'):
+    if not shutil.which('ninja'):
       self.fail('test requires ninja to be installed (available in PATH)')
     return func(self, *args, **kwargs)
 
@@ -138,7 +138,7 @@ def requires_scons(func):
 
   @wraps(func)
   def decorated(self, *args, **kwargs):
-    if not utils.which('scons'):
+    if not shutil.which('scons'):
       if 'EMTEST_SKIP_SCONS' in os.environ:
         self.skipTest('test requires scons and EMTEST_SKIP_SCONS is set')
       else:
@@ -153,7 +153,7 @@ def requires_pkg_config(func):
 
   @wraps(func)
   def decorated(self, *args, **kwargs):
-    if not utils.which('pkg-config'):
+    if not shutil.which('pkg-config'):
       if 'EMTEST_SKIP_PKG_CONFIG' in os.environ:
         self.skipTest('test requires pkg-config and EMTEST_SKIP_PKG_CONFIG is set')
       else:
@@ -758,7 +758,7 @@ f.close()
     for generator in generators:
       conf = configurations[generator]
 
-      if not utils.which(conf['build'][0]):
+      if not shutil.which(conf['build'][0]):
         # Use simple test if applicable
         print('Skipping %s test for CMake support; build tool found found: %s.' % (generator, conf['build'][0]))
         continue
@@ -2534,6 +2534,16 @@ int f() {
     else:
       self.assertFileContents(expected_file, js)
 
+  def test_js_optimizer_huge(self):
+    # Stress test the chunkifying code in js_optimizer.py
+    lines = ['// EMSCRIPTEN_START_FUNCS']
+    for i in range(1000_000):
+      lines.append('function v%d()\n {\n var someLongNameToMakeThisLineLong = %d\n }' % (i, i))
+    lines.append('// EMSCRIPTEN_END_FUNCS\n')
+    create_file('huge.js', '\n'.join(lines))
+    self.assertGreater(os.path.getsize('huge.js'), 50_000_000)
+    self.run_process([PYTHON, path_from_root('tools/js_optimizer.py'), 'huge.js', 'minifyWhitespace'])
+
   @parameterized({
     'wasm2js': ('wasm2js', ['minifyNames', 'last']),
     'constructor': ('constructor', ['minifyNames'])
@@ -2868,6 +2878,13 @@ int f() {
     self.assertContained('Constructed from C++ destructed', output)
     self.assertContained('Constructed from JS destructed', output)
     self.assertNotContained('Foo* destructed', output)
+
+  def test_jspi_wildcard(self):
+    self.require_v8()
+    self.v8_args.append('--experimental-wasm-stack-switching')
+    self.emcc_args += ['-sASYNCIFY=2', '-sASYNCIFY_EXPORTS=async*', '-Wno-experimental']
+
+    self.do_runf(test_file('other/test_jspi_wildcard.c'), 'done')
 
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
@@ -12366,11 +12383,15 @@ void foo() {}
 
     # Same again with pthreads enabled
     self.setup_node_pthreads()
-    self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
+    self.do_other_test('test_default_pthread_stack_size.c')
 
     # Same again but with a custom stack size
     self.emcc_args += ['-DEXPECTED_STACK_SIZE=1024', '-sDEFAULT_PTHREAD_STACK_SIZE=1024']
-    self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
+    self.do_other_test('test_default_pthread_stack_size.c')
+
+    # Same again but with a --proxy-to-worker
+    self.emcc_args += ['--proxy-to-worker']
+    self.do_other_test('test_default_pthread_stack_size.c')
 
   def test_emscripten_set_immediate(self):
     self.do_runf(test_file('emscripten_set_immediate.c'))
@@ -13534,3 +13555,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_standalone_whole_archive(self):
     self.emcc_args += ['-sSTANDALONE_WASM', '-pthread', '-Wl,--whole-archive', '-lbulkmemory', '-lstandalonewasm', '-Wl,--no-whole-archive']
     self.do_runf(test_file('hello_world.c'))
+
+  def test_proxy_to_worker(self):
+    self.do_runf(test_file('hello_world.c'), emcc_args=['--proxy-to-worker'])
