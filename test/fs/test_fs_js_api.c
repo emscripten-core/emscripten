@@ -204,9 +204,9 @@ EM_JS(void, test_fs_close, (), {
 
 void test_fs_mknod() {
     EM_ASM(
-        FS.mknod("mknodtest", 0100000 | 0777); /* S_IFREG | S_RWXU | S_RWXG | S_RWXO */
+        FS.mknod("mknodtest", 0100000 | 0777 /* S_IFREG | S_RWXU | S_RWXG | S_RWXO */);
 
-        FS.create("createtest", 0400); /* S_IRUSR */
+        FS.create("createtest", 0400 /* S_IRUSR */);
     );
     struct stat s;
     stat("mknodtest", &s);
