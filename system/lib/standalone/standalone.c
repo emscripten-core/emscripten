@@ -74,14 +74,14 @@ weak int _mmap_js(size_t length,
                   int prot,
                   int flags,
                   int fd,
-                  size_t offset,
+                  off_t offset,
                   int* allocated,
                   void** addr) {
   return -ENOSYS;
 }
 
 weak int _munmap_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
+  void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
   return -ENOSYS;
 }
 
@@ -89,14 +89,14 @@ weak int _munmap_js(
 // corner case error checking; everything else is not permitted.
 // TODO: full file support for WASI, or an option for it
 // open()
-weak int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
-  if (!strcmp((const char*)path, "/dev/stdin")) {
+weak int __syscall_openat(int dirfd, const char *path, int flags, ...) {
+  if (!strcmp(path, "/dev/stdin")) {
     return STDIN_FILENO;
   }
-  if (!strcmp((const char*)path, "/dev/stdout")) {
+  if (!strcmp(path, "/dev/stdout")) {
     return STDOUT_FILENO;
   }
-  if (!strcmp((const char*)path, "/dev/stderr")) {
+  if (!strcmp(path, "/dev/stderr")) {
     return STDERR_FILENO;
   }
   return -EPERM;
@@ -110,7 +110,7 @@ weak int __syscall_fcntl64(int fd, int cmd, ...) {
   return -ENOSYS;
 }
 
-weak int __syscall_fstat64(int fd, intptr_t buf) {
+weak int __syscall_fstat64(int fd, struct stat *buf) {
   return -ENOSYS;
 }
 
