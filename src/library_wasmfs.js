@@ -30,7 +30,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     '$FS_getMode',
     // For FS.readFile
     '$UTF8ArrayToString',
-#if FORCE_FILESYSTEM
+#if FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY
     '$FS_modeStringToFlags',
     'malloc',
     'free',
@@ -126,7 +126,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     cwd: () => UTF8ToString(__wasmfs_get_cwd()),
 #endif
 
-#if FORCE_FILESYSTEM
+#if FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY
     // Full JS API support
 
     mkdir: (path, mode) => withStackSave(() => {
