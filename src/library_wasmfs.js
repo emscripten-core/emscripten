@@ -129,6 +129,19 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 #if FORCE_FILESYSTEM
     // Full JS API support
 
+    analyzePath: (path) => {
+      // TODO: Consider simplifying this API, which for now matches the JS FS.
+      var exists = !!FS.findObject(path);
+      return {
+        exists: exists,
+        object: {
+          contents: exists ? FS.readFile(path) : null
+        }
+      };
+    },
+
+    // libc methods
+
     mkdir: (path, mode) => FS.handleError(withStackSave(() => {
       mode = mode !== undefined ? mode : 511 /* 0777 */;
       var buffer = stringToUTF8OnStack(path);
@@ -312,7 +325,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       return FS.handleError(__wasmfs_ftruncate(fd, {{{ splitI64('len') }}}));
     },
     findObject: (path) => {
-      var result = __wasmfs_identify(path);
+      var result = withStackSave(() => __wasmfs_identify(stringToUTF8OnStack(path)));
       if (result == {{{ cDefs.ENOENT }}}) {
         return null;
       }
