@@ -161,7 +161,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       var buffer = stringToUTF8OnStack(path);
       return __wasmfs_chdir(buffer);
     }),
-    // TODO: read
     read: (stream, buffer, offset, length, position) => {
       var seeking = typeof position != 'undefined';
 
@@ -251,7 +250,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
           ino: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, "u53") }}}
       }
     },
-    // TODO: stat
     stat: (path) => {
       var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
       FS.handleError(withStackSave(() => {
@@ -262,7 +260,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
       return stats;
     },
-    // TODO: lstat
     lstat: (path) => {
       var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
       FS.handleError(withStackSave(() => {
@@ -291,13 +288,17 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TDOO: chown
     // TODO: lchown
     // TODO: fchown
+    utime: (path, atime, mtime) => (
+      FS.handleError(withStackSave(() => (
+        __wasmfs_utime(stringToUTF8OnStack(path), atime, mtime)
+      )))
+    ),
     truncate: (path, len) => {
       return FS.handleError(withStackSave(() => (__wasmfs_truncate(stringToUTF8OnStack(path), {{{ splitI64('len') }}}))));
     },
     ftruncate: (fd, len) => {
       return FS.handleError(__wasmfs_ftruncate(fd, {{{ splitI64('len') }}}));
     },
-    // TODO: utime
     findObject: (path) => {
       var result = __wasmfs_identify(path);
       if (result == {{{ cDefs.ENOENT }}}) {
