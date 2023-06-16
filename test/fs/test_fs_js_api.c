@@ -326,6 +326,30 @@ void test_fs_truncate() {
     remove("truncatetest");
 }
 
+void test_fs_mkdirTree() {
+    EM_ASM(
+        FS.mkdirTree("/test1/test2/test3");
+
+        FS.mkdirTree("/readable", 0200);
+    );
+
+    struct stat s;
+    stat("/test1", &s);
+    assert(S_ISDIR(s.st_mode));
+    stat("/test1/test2", &s);
+    assert(S_ISDIR(s.st_mode));
+    stat("/test1/test2/test3", &s);
+    assert(S_ISDIR(s.st_mode));
+
+    stat("/readable", &s);
+    assert(s.st_mode & 0200 /* I_RUSR */);
+    
+    remove("/test1/test2/test3");
+    remove("/test1/test2");
+    remove("/test1");
+    remove("/readable");
+}
+
 void cleanup() {
     remove("testfile");
     remove("renametestfile");
@@ -342,6 +366,7 @@ int main() {
     test_fs_mknod();
     test_fs_allocate();
     test_fs_truncate();
+    test_fs_mkdirTree();
 
     cleanup();
 
