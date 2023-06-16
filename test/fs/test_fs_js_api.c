@@ -342,7 +342,7 @@ void test_fs_mkdirTree() {
     assert(S_ISDIR(s.st_mode));
 
     stat("/readable", &s);
-    assert(s.st_mode & 0400 /* I_RUSR */);
+    assert(s.st_mode & 0400 /* S_IRUSR */);
 
     EM_ASM(
         var ex;
