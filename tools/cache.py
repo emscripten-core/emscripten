@@ -71,7 +71,6 @@ def ensure():
 
 
 def erase():
-  return
   ensure_setup()
   with lock('erase'):
     # Delete everything except the lockfile itself
