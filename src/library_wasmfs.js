@@ -129,12 +129,24 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 #if FORCE_FILESYSTEM
     // Full JS API support
 
-    mkdir: (path, mode) => withStackSave(() => {
+    mkdir: (path, mode) => FS.handleError(withStackSave(() => {
       mode = mode !== undefined ? mode : 511 /* 0777 */;
       var buffer = stringToUTF8OnStack(path);
       return __wasmfs_mkdir({{{ to64('buffer') }}}, mode);
-    }),
-    // TODO: mkdirTree
+    })),
+    mkdirTree: (path, mode) => {
+      var dirs = path.split('/');
+      var d = '';
+      for (var i = 0; i < dirs.length; ++i) {
+        if (!dirs[i]) continue;
+        d += '/' + dirs[i];
+        try {
+          FS.mkdir(d, mode);
+        } catch(e) {
+          if (e.errno != {{{ cDefs.EEXIST }}}) throw e;
+        }
+      }
+    },
     rmdir: (path) => FS.handleError(
       withStackSave(() => __wasmfs_rmdir(stringToUTF8OnStack(path)))
     ),
