@@ -330,7 +330,7 @@ void test_fs_mkdirTree() {
     EM_ASM(
         FS.mkdirTree("/test1/test2/test3");
 
-        FS.mkdirTree("/readable", 0200);
+        FS.mkdirTree("/readable", 0400);
     );
 
     struct stat s;
@@ -342,7 +342,17 @@ void test_fs_mkdirTree() {
     assert(S_ISDIR(s.st_mode));
 
     stat("/readable", &s);
-    assert(s.st_mode & 0200 /* I_RUSR */);
+    assert(s.st_mode & 0400 /* I_RUSR */);
+
+    EM_ASM(
+        var ex;
+        try {
+            FS.mkdirTree("/readable/forbidden");
+        } catch (err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 2 /* EACCES */);
+    );
     
     remove("/test1/test2/test3");
     remove("/test1/test2");
