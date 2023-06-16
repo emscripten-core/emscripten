@@ -42,20 +42,17 @@ mergeInto(LibraryManager.library, {
   // You can also call this with a typed array instead of a url. It will then
   // do preloading for the Image/Audio part, as if the typed array were the
   // result of an XHR that you did manually.
-  $FS_createPreloadedFile__deps: ['$asyncLoad',
+  $FS_createPreloadedFile__deps: [
+    '$asyncLoad',
+    '$PATH_FS',
 #if !MINIMAL_RUNTIME
     '$FS_handledByPreloadPlugin',
 #endif
   ],
   $FS_createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
-#if WASMFS
-    // TODO: use WasmFS code to resolve and join the path here?
-    var fullname = name ? parent + '/' + name : parent;
-#else
     // TODO we should allow people to just pass in a complete filename instead
     // of parent and name being that we just join them anyways
     var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
-#endif
     var dep = getUniqueRunDependency(`cp ${fullname}`); // might have several active requests for the same fullname
     function processData(byteArray) {
       function finish(byteArray) {
