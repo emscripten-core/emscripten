@@ -8767,7 +8767,7 @@ end
     'bigint': [['-sWASM_BIGINT']],
     'pthread': [['-pthread', '-Wno-experimental']],
     'pthread_offscreen': [['-pthread', '-Wno-experimental', '-sOFFSCREEN_FRAMEBUFFER']],
-    'wasmfs': [['-sWASMFS']],
+    'wasmfs': [['-sWASMFS']], # enable this one FS.mkdirTree is supported
   })
   def test_closure_full_js_library(self, args):
     # Test for closure errors and warnings in the entire JS library.
