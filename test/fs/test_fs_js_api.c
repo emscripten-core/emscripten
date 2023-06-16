@@ -204,9 +204,9 @@ EM_JS(void, test_fs_close, (), {
 
 void test_fs_mknod() {
     EM_ASM(
-        FS.mknod("mknodtest", 0100000 | 0777); /* S_IFREG | S_RWXU | S_RWXG | S_RWXO */
+        FS.mknod("mknodtest", 0100000 | 0777 /* S_IFREG | S_RWXU | S_RWXG | S_RWXO */);
 
-        FS.create("createtest", 0400); /* S_IRUSR */
+        FS.create("createtest", 0400 /* S_IRUSR */);
     );
     struct stat s;
     stat("mknodtest", &s);
@@ -326,6 +326,66 @@ void test_fs_truncate() {
     remove("truncatetest");
 }
 
+void test_fs_mkdirTree() {
+    EM_ASM(
+        FS.mkdirTree("/test1/test2/test3");
+
+        FS.mkdirTree("/readable", 0400 /* S_IRUSR */);
+    );
+
+    struct stat s;
+    stat("/test1", &s);
+    assert(S_ISDIR(s.st_mode));
+    stat("/test1/test2", &s);
+    assert(S_ISDIR(s.st_mode));
+    stat("/test1/test2/test3", &s);
+    assert(S_ISDIR(s.st_mode));
+
+    stat("/readable", &s);
+    assert(s.st_mode & 0400 /* S_IRUSR */);
+
+    EM_ASM(
+        var ex;
+        try {
+            FS.mkdirTree("/readable/forbidden");
+        } catch (err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 2 /* EACCES */);
+    );
+    
+    remove("/test1/test2/test3");
+    remove("/test1/test2");
+    remove("/test1");
+    remove("/readable");
+}
+
+void test_fs_utime() {
+    EM_ASM(
+        FS.writeFile('utimetest', 'a=1\nb=2\n');
+    );
+
+    EM_ASM(
+        FS.utime('utimetest', 10500, 8000);
+    );
+    struct stat utimeStats;
+    stat("utimetest", &utimeStats);
+
+    assert(utimeStats.st_atime == 10);
+    assert(utimeStats.st_atim.tv_sec == 10);
+
+    // WasmFS correctly sets both times, but the legacy API sets both times to the max of atime and mtime.
+#if WASMFS
+    assert(utimeStats.st_mtime == 8);
+    assert(utimeStats.st_mtim.tv_sec == 8);
+#else
+    assert(utimeStats.st_mtime == 10);
+    assert(utimeStats.st_mtim.tv_sec == 10);
+#endif
+
+    remove("utimetest");
+}
+
 void cleanup() {
     remove("testfile");
     remove("renametestfile");
@@ -336,12 +396,15 @@ void cleanup() {
 int main() {
     test_fs_open();
     test_fs_rename();
+    test_fs_readlink();
     test_fs_read();
     test_fs_rmdir();
     test_fs_close();
     test_fs_mknod();
     test_fs_allocate();
     test_fs_truncate();
+    test_fs_mkdirTree();
+    test_fs_utime();
 
     cleanup();
 
