@@ -330,7 +330,7 @@ void test_fs_mkdirTree() {
     EM_ASM(
         FS.mkdirTree("/test1/test2/test3");
 
-        FS.mkdirTree("/readable", 0400);
+        FS.mkdirTree("/readable", 0400 /* S_IRUSR */);
     );
 
     struct stat s;
