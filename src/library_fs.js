@@ -12,7 +12,7 @@ mergeInto(LibraryManager.library, {
     '$intArrayFromString',
     '$stringToUTF8Array',
     '$lengthBytesUTF8',
-    '$mmapAlloc',
+    // '$mmapAlloc',
     // 'emscripten_builtin_memalign',
 #if LibraryManager.has('library_idbfs.js')
     '$IDBFS',
