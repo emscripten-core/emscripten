@@ -13,7 +13,6 @@ if __name__ == '__main__':
 from common import parameterized
 from common import BrowserCore, test_file, create_file, also_with_minimal_runtime
 from tools.shared import WINDOWS
-from tools.utils import which
 
 
 class interactive(BrowserCore):
@@ -186,7 +185,7 @@ class interactive(BrowserCore):
 
   def get_freealut_library(self):
     self.emcc_args += ['-Wno-pointer-sign']
-    if WINDOWS and which('cmake'):
+    if WINDOWS and shutil.which('cmake'):
       return self.get_library(os.path.join('third_party', 'freealut'), 'libalut.a', configure=['cmake', '.'], configure_args=['-DBUILD_TESTS=ON'])
     else:
       return self.get_library(os.path.join('third_party', 'freealut'), os.path.join('src', '.libs', 'libalut.a'), configure_args=['--disable-shared'])
