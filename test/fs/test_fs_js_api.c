@@ -204,9 +204,9 @@ EM_JS(void, test_fs_close, (), {
 
 void test_fs_mknod() {
     EM_ASM(
-        FS.mknod("mknodtest", 0100000 | 0777); /* S_IFREG | S_RWXU | S_RWXG | S_RWXO */
+        FS.mknod("mknodtest", 0100000 | 0777 /* S_IFREG | S_RWXU | S_RWXG | S_RWXO */);
 
-        FS.create("createtest", 0400); /* S_IRUSR */
+        FS.create("createtest", 0400 /* S_IRUSR */);
     );
     struct stat s;
     stat("mknodtest", &s);
@@ -326,6 +326,40 @@ void test_fs_truncate() {
     remove("truncatetest");
 }
 
+void test_fs_mkdirTree() {
+    EM_ASM(
+        FS.mkdirTree("/test1/test2/test3");
+
+        FS.mkdirTree("/readable", 0400 /* S_IRUSR */);
+    );
+
+    struct stat s;
+    stat("/test1", &s);
+    assert(S_ISDIR(s.st_mode));
+    stat("/test1/test2", &s);
+    assert(S_ISDIR(s.st_mode));
+    stat("/test1/test2/test3", &s);
+    assert(S_ISDIR(s.st_mode));
+
+    stat("/readable", &s);
+    assert(s.st_mode & 0400 /* S_IRUSR */);
+
+    EM_ASM(
+        var ex;
+        try {
+            FS.mkdirTree("/readable/forbidden");
+        } catch (err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 2 /* EACCES */);
+    );
+    
+    remove("/test1/test2/test3");
+    remove("/test1/test2");
+    remove("/test1");
+    remove("/readable");
+}
+
 void test_fs_utime() {
     EM_ASM(
         FS.writeFile('utimetest', 'a=1\nb=2\n');
@@ -369,6 +403,7 @@ int main() {
     test_fs_mknod();
     test_fs_allocate();
     test_fs_truncate();
+    test_fs_mkdirTree();
     test_fs_utime();
 
     cleanup();
