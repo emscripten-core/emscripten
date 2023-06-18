@@ -27,6 +27,7 @@ from common import read_file, requires_v8, also_with_minimal_runtime, also_with_
 from tools import shared
 from tools import ports
 from tools import utils
+from tools import config
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE
 from tools.utils import delete_file, delete_dir
 
@@ -5616,6 +5617,30 @@ Module["preRun"].push(function () {
       self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
     shutil.copyfile('webpack/src/hello.wasm', 'webpack/dist/hello.wasm')
     self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
+
+  def test_webpack_es6(self):
+    shutil.copytree(test_file('webpack'), 'webpack')
+    with utils.chdir('webpack'):
+      self.compile_btest([test_file('hello_world.c'), '-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web',
+                          '-sEXPORT_ES6=1', '-o', 'src/hello.mjs'])
+      self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool', './src/index.mjs'])
+    self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
+
+  def test_esbuild(self):
+    shutil.copytree(test_file('esbuild'), 'esbuild')
+    with utils.chdir('esbuild'):
+      self.compile_btest([test_file('hello_world.c'), '-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web',
+                          '-sEXPORT_ES6=1', '-o', 'src/hello.mjs'])
+      self.run_process(config.NODE_JS + ['build.mjs'])
+    self.run_browser('esbuild/dist/index.html', '/report_result?exit:0')
+
+  def test_rollup(self):
+    shutil.copytree(test_file('rollup'), 'rollup')
+    with utils.chdir('rollup'):
+      self.compile_btest([test_file('hello_world.c'), '-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web',
+                          '-sEXPORT_ES6=1', '-o', 'src/hello.mjs'])
+      self.run_process(shared.get_npm_cmd('rollup') + ['-c', 'rollup.config.mjs'])
+    self.run_browser('rollup/dist/index.html', '/report_result?exit:0')
 
 
 class emrun(RunnerCore):
