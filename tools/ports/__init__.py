@@ -128,12 +128,27 @@ class Ports:
       logger.debug('installing: ' + os.path.join(dest, os.path.basename(f)))
       maybe_copy(f, os.path.join(dest, os.path.basename(f)))
 
-  @staticmethod
-  def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
+  def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):
+    """Builds a port.
+
+    Args:
+      src_dir: The directory containing the source files.
+      output_path: The path to the output file.
+      port_name: The name of the port.
+      includes: A list of directories to include.
+      flags: A list of compiler flags.
+      cxxflags: A list of C++ compiler flags.
+      exclude_files: A list of files to exclude.
+      exclude_dirs: A list of directories to exclude.
+      srcs: A list of source files.
+
+    Returns:
+      The path to the output file.
+    """
+
     build_dir = os.path.join(Ports.get_build_dir(), port_name)
-    if srcs:
-      srcs = [os.path.join(src_dir, s) for s in srcs]
-    else:
+
+    if srcs is None:
       srcs = []
       for root, _, files in os.walk(src_dir, topdown=False):
         if any((excluded in root) for excluded in exclude_dirs):
@@ -172,7 +187,6 @@ class Ports:
       system_libs.create_lib(output_path, objects)
 
     return output_path
-
   @staticmethod
   def get_dir():
     dirname = config.PORTS
