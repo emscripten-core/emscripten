@@ -1094,7 +1094,6 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
     return err;
   }
 
-  // TODO: Set tv_nsec (nanoseconds) as well.
   // TODO: Handle tv_nsec being UTIME_NOW or UTIME_OMIT.
   // TODO: Check for write access to the file (see man page for specifics).
   struct timespec aTime, mTime;
