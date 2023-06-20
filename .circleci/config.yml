@@ -723,7 +723,6 @@ jobs:
       EMTEST_SKIP_V8: "1"
       EMTEST_SKIP_EH: "1"
       EMTEST_SKIP_WASM64: "1"
-      EMTEST_SKIP_SIMD: "1"
       EMTEST_SKIP_SCONS: "1"
       EMCC_SKIP_SANITY_CHECK: "1"
     steps:
@@ -752,8 +751,9 @@ jobs:
       EMTEST_SKIP_V8: "1"
       EMTEST_SKIP_EH: "1"
       EMTEST_SKIP_WASM64: "1"
-      EMTEST_SKIP_SIMD: "1"
       EMTEST_SKIP_SCONS: "1"
+      # Some native clang tests assume x86 clang (e.g. -sse2)
+      EMTEST_LACKS_NATIVE_CLANG: "1"
       EMCC_SKIP_SANITY_CHECK: "1"
     steps:
       - setup-macos
