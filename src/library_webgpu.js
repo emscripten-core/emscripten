@@ -87,7 +87,14 @@ wgpu${type}Release: function(id) { WebGPU.mgr${type}.release(id) },`;
     },
     BufferMapAsyncStatus: {
       Success: 0,
-      Error: 1,
+      ValidationError: 1,
+      Unknown: 2,
+      DeviceLost: 3,
+      DestroyedBeforeCallback: 4,
+      UnmappedBeforeCallback: 5,
+      MappingAlreadyPending: 6,
+      OffsetOutOfRange: 7,
+      SizeOutOfRange: 8,
     },
     ErrorType: {
       NoError: 0,
@@ -353,6 +360,11 @@ var LibraryWebGPU = {
       'storage',
       'read-only-storage',
     ],
+    BufferMapState: [
+      'unmapped',
+      'pending',
+      'mapped',
+    ],
     CompareFunction: [
       undefined,
       'never',
@@ -382,6 +394,7 @@ var LibraryWebGPU = {
     ErrorFilter: [
       'validation',
       'out-of-memory',
+      'internal',
     ],
     FeatureName: [
       undefined,
@@ -393,6 +406,10 @@ var LibraryWebGPU = {
       'texture-compression-etc2',
       'texture-compression-astc',
       'indirect-first-instance',
+      'shader-f16',
+      'rg11b10ufloat-renderable',
+      'bgra8unorm-storage',
+      'float32filterable',
     ],
     FilterMode: [
       'nearest',
@@ -411,6 +428,10 @@ var LibraryWebGPU = {
       undefined,
       'clear',
       'load',
+    ],
+    MipmapFilterMode: [
+      'nearest',
+      'linear',
     ],
     PipelineStatisticName: [
       'vertex-shader-invocations',
@@ -469,12 +490,6 @@ var LibraryWebGPU = {
       'all',
       'stencil-only',
       'depth-only',
-    ],
-    TextureComponentType: [
-      'float',
-      'sint',
-      'uint',
-      'depth-comparison',
     ],
     TextureDimension: [
       '1d',
@@ -716,6 +731,7 @@ var LibraryWebGPU = {
     setLimitValueU32('maxTextureDimension3D', {{{ C_STRUCTS.WGPULimits.maxTextureDimension3D }}});
     setLimitValueU32('maxTextureArrayLayers', {{{ C_STRUCTS.WGPULimits.maxTextureArrayLayers }}});
     setLimitValueU32('maxBindGroups', {{{ C_STRUCTS.WGPULimits.maxBindGroups }}});
+    setLimitValueU32('maxBindingsPerBindGroup', {{{ C_STRUCTS.WGPULimits.maxBindingsPerBindGroup }}});
     setLimitValueU32('maxDynamicUniformBuffersPerPipelineLayout', {{{ C_STRUCTS.WGPULimits.maxDynamicUniformBuffersPerPipelineLayout }}});
     setLimitValueU32('maxDynamicStorageBuffersPerPipelineLayout', {{{ C_STRUCTS.WGPULimits.maxDynamicStorageBuffersPerPipelineLayout }}});
     setLimitValueU32('maxSampledTexturesPerShaderStage', {{{ C_STRUCTS.WGPULimits.maxSampledTexturesPerShaderStage }}});
@@ -730,11 +746,13 @@ var LibraryWebGPU = {
     setLimitValueU64('maxStorageBufferBindingSize', {{{ C_STRUCTS.WGPULimits.maxStorageBufferBindingSize }}});
 
     setLimitValueU32('maxVertexBuffers', {{{ C_STRUCTS.WGPULimits.maxVertexBuffers }}});
+    setLimitValueU32('maxBufferSize', {{{ C_STRUCTS.WGPULimits.maxBufferSize }}});
     setLimitValueU32('maxVertexAttributes', {{{ C_STRUCTS.WGPULimits.maxVertexAttributes }}});
     setLimitValueU32('maxVertexBufferArrayStride', {{{ C_STRUCTS.WGPULimits.maxVertexBufferArrayStride }}});
     setLimitValueU32('maxInterStageShaderComponents', {{{ C_STRUCTS.WGPULimits.maxInterStageShaderComponents }}});
     setLimitValueU32('maxInterStageShaderVariables', {{{ C_STRUCTS.WGPULimits.maxInterStageShaderVariables }}});
     setLimitValueU32('maxColorAttachments', {{{ C_STRUCTS.WGPULimits.maxColorAttachments }}});
+    setLimitValueU32('maxColorAttachmentBytesPerSample', {{{ C_STRUCTS.WGPULimits.maxColorAttachmentBytesPerSample }}});
     setLimitValueU32('maxComputeWorkgroupStorageSize', {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupStorageSize }}});
     setLimitValueU32('maxComputeInvocationsPerWorkgroup', {{{ C_STRUCTS.WGPULimits.maxComputeInvocationsPerWorkgroup }}});
     setLimitValueU32('maxComputeWorkgroupSizeX', {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupSizeX }}});
@@ -797,21 +815,6 @@ var LibraryWebGPU = {
   wgpuDeviceSetLabel: function(deviceId, labelPtr) {
     var device = WebGPU.mgrDevice.get(deviceId);
     device.label = UTF8ToString(labelPtr);
-  },
-
-  wgpuDeviceSetDeviceLostCallback__deps: ['$callUserCallback'],
-  wgpuDeviceSetDeviceLostCallback: function(deviceId, callback, userdata) {
-    var deviceWrapper = WebGPU.mgrDevice.objects[deviceId];
-    {{{ gpu.makeCheckDefined('deviceWrapper') }}}
-    if (!deviceWrapper.lostCallback) {
-      // device.lost hasn't been registered yet - register it.
-      deviceWrapper.object["lost"].then((info) => deviceWrapper.lostCallback(info));
-    }
-    deviceWrapper.lostCallback = (info) => {
-      // This will skip the callback if the runtime is no longer alive.
-      callUserCallback(() => WebGPU.errorCallback(callback, WebGPU.DeviceLostReason[info.reason],
-                                                  info.message, userdata));
-    };
   },
 
   wgpuDeviceSetUncapturedErrorCallback__deps: ['$callUserCallback'],
@@ -919,7 +922,7 @@ var LibraryWebGPU = {
           {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.magFilter) }}}],
       "minFilter": WebGPU.FilterMode[
           {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.minFilter) }}}],
-      "mipmapFilter": WebGPU.FilterMode[
+      "mipmapFilter": WebGPU.MipmapFilterMode[
           {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.mipmapFilter) }}}],
       "lodMinClamp": {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSamplerDescriptor.lodMinClamp, 'float') }}},
       "lodMaxClamp": {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSamplerDescriptor.lodMaxClamp, 'float') }}},
@@ -1930,7 +1933,7 @@ var LibraryWebGPU = {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
         // TODO(kainino0x): Figure out how to pick other error status values.
-        {{{ makeDynCall('vii', 'callback') }}}({{{ gpu.BufferMapAsyncStatus.Error }}}, userdata);
+        {{{ makeDynCall('vii', 'callback') }}}({{{ gpu.BufferMapAsyncStatus.ValidationError }}}, userdata);
       });
     });
   },
@@ -2470,6 +2473,7 @@ var LibraryWebGPU = {
     {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.driverDescription, '0', 'i32') }}};
     {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.adapterType, gpu.AdapterType.Unknown, 'i32') }}};
     {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.backendType, gpu.BackendType.WebGPU, 'i32') }}};
+    {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.compatibilityMode, '0', 'i32') }}};
   },
 
   wgpuAdapterGetLimits: function(adapterId, limitsOutPtr) {
@@ -2555,6 +2559,14 @@ var LibraryWebGPU = {
         desc["defaultQueue"] = defaultQueueDesc;
       }
 
+      var deviceLostCallbackPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.deviceLostCallback, '*') }}};
+      var deviceLostUserdataPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.deviceLostUserdata, '*') }}};
+      desc["deviceLostCallback"] = (info) => {
+        // This will skip the callback if the runtime is no longer alive.
+        callUserCallback(() => WebGPU.errorCallback(deviceLostCallbackPtr, WebGPU.DeviceLostReason[info.reason],
+                                                    info.message, deviceLostUserdataPtr));
+      };
+
       var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.label, '*') }}};
       if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
     }
@@ -2565,6 +2577,9 @@ var LibraryWebGPU = {
       callUserCallback(() => {
         var deviceWrapper = { queueId: WebGPU.mgrQueue.create(device["queue"]) };
         var deviceId = WebGPU.mgrDevice.create(device, deviceWrapper);
+        // Register device lost lisenter
+        deviceWrapper.lostCallback = desc["deviceLostCallback"];
+        deviceWrapper.object["lost"].then((info) => deviceWrapper.lostCallback(info));
         {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestDeviceStatus.Success }}}, deviceId, 0, userdata);
       });
     }, function(ex) {

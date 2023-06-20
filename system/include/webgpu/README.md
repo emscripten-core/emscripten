@@ -18,3 +18,23 @@ Dawn additionally autogenerates two "snippets" that are used in Emscripten:
 
 Once that's done, you need to run `./tools/gen_struct_info.py` to update
 the auto-generated files.
+
+## Testing
+
+There is a `browser.test_webgpu_basic_rendering` with minimal WebGPU API testing that can be handy to test manually before making a contribution.
+
+```
+test/runner browser.test_webgpu_basic_rendering
+```
+
+You may need to specify extra browser cmd args to assign the WebGPU supported browser, which is needed if you work on linux where WebGPU is not enabled by default in chrome at present.
+
+```
+test/runner browser.test_webgpu_basic_rendering --browser="google-chrome-unstable --enable-unsafe-webgpu --enable-features=Vulkan,UseSkiaRenderer"
+```
+
+Alternatively you can test your emscripten updates by building the source file, and then serve (e.g. use node http-server) and view in browser to make sure things work fine.
+
+```
+emcc test/webgpu_basic_rendering.cpp -sUSE_WEBGPU -o path/to/index.html
+```
