@@ -7,13 +7,13 @@
 {{{
   // Helper function to export a symbol on the module object
   // if requested.
-  global.maybeExport = function(x) {
+  global.maybeExport = (x) => {
     return MODULARIZE && EXPORT_ALL ? `Module['${x}'] = ` : '';
   };
   // Export to the AudioWorkletGlobalScope the needed variables to access
   // the heap. AudioWorkletGlobalScope is unable to access global JS vars
   // in the compiled main JS file.
-  global.maybeExportIfAudioWorklet = function(x) {
+  global.maybeExportIfAudioWorklet = (x) => {
     return (MODULARIZE && EXPORT_ALL) || AUDIO_WORKLET ? `Module['${x}'] = ` : '';
   };
   null;
@@ -39,7 +39,7 @@ function abort(what) {
   throw {{{ ASSERTIONS ? 'new Error(what)' : 'what' }}};
 }
 
-#if SAFE_HEAP
+#if SAFE_HEAP && !WASM_BIGINT
 // Globals used by JS i64 conversions (see makeSetValue)
 var tempDouble;
 var tempI64;

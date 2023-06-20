@@ -15,10 +15,8 @@ from glob import iglob
 from typing import List, Optional
 
 from . import shared, building, utils
-from . import deps_info
 from . import diagnostics
 from . import cache
-from tools.shared import demangle_c_symbol_name
 from tools.settings import settings
 from tools.utils import read_file
 
@@ -90,10 +88,38 @@ def run_build_commands(commands):
   logger.info('compiled %d inputs' % len(commands))
 
 
+def objectfile_sort_key(filename):
+  """Sort object files that we pass to llvm-ar."""
+  # In general, we simply use alphabetical order, but we special case certain
+  # object files such they come first.  For example, `vmlock.o` contains the
+  # definition of `__vm_wait`, but `mmap.o` also contains a dummy/weak definition
+  # for use by `mmap.o` when `vmlock.o` is not otherwise included.
+  #
+  # When another object looks for `__vm_wait` we prefer that it always find the
+  # real definition first and not refer to the dummy one (which is really
+  # intended to be local to `mmap.o` but due to the fact the weak aliases can't
+  # have internal linkage).
+  #
+  # The reason we care is that once an object file is pulled into certain aspects
+  # of it cannot be undone/removed by the linker.  For example, static
+  # constructors or stub library dependencies.
+  #
+  # In the case of `mmap.o`, once it get included by the linker, it pulls in the
+  # the reverse dependencies of the mmap syscall (memalign).  If we don't do this
+  # sorting we see a slight regression in test_metadce_minimal_pthreads due to
+  # memalign being included.
+  basename = os.path.basename(filename)
+  if basename in {'vmlock.o'}:
+    return 'AAA_' + basename
+  else:
+    return basename
+
+
 def create_lib(libname, inputs):
   """Create a library from a set of input objects."""
   suffix = shared.suffix(libname)
-  inputs = sorted(inputs, key=lambda x: os.path.basename(x))
+
+  inputs = sorted(inputs, key=objectfile_sort_key)
   if suffix in ('.bc', '.o'):
     if len(inputs) == 1:
       if inputs[0] != libname:
@@ -219,7 +245,7 @@ rule archive
           out += f'  CFLAGS = {join(custom_flags)}'
       out += '\n'
 
-    objects = sorted(objects, key=lambda x: os.path.basename(x))
+    objects = sorted(objects, key=objectfile_sort_key)
     objects = ' '.join(objects)
     out += f'build {libname}: archive {objects}\n'
 
@@ -400,7 +426,7 @@ class Library:
     This will trigger a build if this library is not in the cache.
     """
     fullpath = self.build()
-    # For non-libaries (e.g. crt1.o) we pass the entire path to the linker
+    # For non-libraries (e.g. crt1.o) we pass the entire path to the linker
     if self.get_ext() != '.a':
       return fullpath
     # For libraries (.a) files, we pass the abbreviated `-l` form.
@@ -1048,6 +1074,7 @@ class libc(MuslInternalLibrary,
         filenames=[
           'pthread_self.c',
           'pthread_cleanup_push.c',
+          'pthread_attr_init.c',
           'pthread_attr_destroy.c',
           'pthread_attr_get.c',
           'pthread_attr_setdetachstate.c',
@@ -1063,6 +1090,7 @@ class libc(MuslInternalLibrary,
           'pthread_getschedparam.c',
           'pthread_setschedprio.c',
           'pthread_setconcurrency.c',
+          'default_attr.c',
           # C11 thread library functions
           'call_once.c',
           'tss_create.c',
@@ -1147,7 +1175,7 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/ldso',
-        filenames=['dlerror.c', 'dlsym.c', 'dlclose.c'])
+        filenames=['dladdr.c', 'dlerror.c', 'dlsym.c', 'dlclose.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/signal',
@@ -1307,22 +1335,26 @@ class libprintf_long_double(libc):
 
 
 class libwasm_workers(MTLibrary):
+  name = 'libwasm_workers'
+  includes = ['system/lib/libc']
+
   def __init__(self, **kwargs):
     self.debug = kwargs.pop('debug')
     super().__init__(**kwargs)
 
-  name = 'libwasm_workers'
-
   def get_cflags(self):
-    cflags = get_base_cflags() + ['-D_DEBUG' if self.debug else '-Oz']
+    cflags = super().get_cflags()
     if self.debug:
+      cflags += ['-D_DEBUG']
       # library_wasm_worker.c contains an assert that a nonnull paramater
       # is no NULL, which llvm now warns is redundant/tautological.
       cflags += ['-Wno-tautological-pointer-compare']
+      # Override the `-O2` default.  Building library_wasm_worker.c with
+      # `-O1` or `-O2` currently causes tests to fail.
+      # https://github.com/emscripten-core/emscripten/issues/19331
+      cflags += ['-O0']
     else:
-      cflags += ['-DNDEBUG']
-    if self.is_ww or self.is_mt:
-      cflags += ['-pthread', '-sWASM_WORKERS']
+      cflags += ['-DNDEBUG', '-Oz']
     if settings.MAIN_MODULE:
       cflags += ['-fPIC']
     return cflags
@@ -1825,6 +1857,7 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
         filenames=['file.cpp',
                    'file_table.cpp',
                    'js_api.cpp',
+                   'emscripten.cpp',
                    'paths.cpp',
                    'special_files.cpp',
                    'support.cpp',
@@ -1833,6 +1866,36 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
 
   def can_use(self):
     return settings.WASMFS
+
+
+# Minimal syscall implementation, enough for printf. If this can be linked in
+# instead of the full WasmFS then it saves a lot of code size for simple
+# programs that don't need a full FS implementation.
+class libwasmfs_no_fs(Library):
+  name = 'libwasmfs_no_fs'
+
+  src_dir = 'system/lib/wasmfs'
+  src_files = ['no_fs.c']
+
+  def can_use(self):
+    # If the filesystem is forced then we definitely do not need this library.
+    return settings.WASMFS and not settings.FORCE_FILESYSTEM
+
+
+class libwasmfs_noderawfs(Library):
+  name = 'libwasmfs_noderawfs'
+
+  cflags = ['-fno-exceptions', '-std=c++17']
+
+  includes = ['system/lib/wasmfs']
+
+  def get_files(self):
+    return files_in_path(
+        path='system/lib/wasmfs/backends',
+        filenames=['noderawfs_root.cpp'])
+
+  def can_use(self):
+    return settings.WASMFS and settings.NODERAWFS
 
 
 class libhtml5(Library):
@@ -1933,10 +1996,13 @@ class libstandalonewasm(MuslInternalLibrary):
 
   def __init__(self, **kwargs):
     self.is_mem_grow = kwargs.pop('is_mem_grow')
+    self.nocatch = kwargs.pop('nocatch')
     super().__init__(**kwargs)
 
   def get_base_name(self):
     name = super().get_base_name()
+    if self.nocatch:
+      name += '-nocatch'
     if self.is_mem_grow:
       name += '-memgrow'
     return name
@@ -1946,16 +2012,19 @@ class libstandalonewasm(MuslInternalLibrary):
     cflags += ['-DNDEBUG', '-DEMSCRIPTEN_STANDALONE_WASM']
     if self.is_mem_grow:
       cflags += ['-DEMSCRIPTEN_MEMORY_GROWTH']
+    if self.nocatch:
+      cflags.append('-DEMSCRIPTEN_NOCATCH')
     return cflags
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_mem_grow']
+    return super().vary_on() + ['is_mem_grow', 'nocatch']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
       is_mem_grow=settings.ALLOW_MEMORY_GROWTH,
+      nocatch=settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS,
       **kwargs
     )
 
@@ -2009,68 +2078,8 @@ class libjsmath(Library):
 class libstubs(DebugLibrary):
   name = 'libstubs'
   src_dir = 'system/lib/libc'
+  includes = ['system/lib/libc/musl/src/include']
   src_files = ['emscripten_syscall_stubs.c', 'emscripten_libc_stubs.c']
-
-
-# If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
-# confusing, so issue a warning.
-def warn_on_unexported_main(symbolses):
-  # In STANDALONE_WASM we don't expect main to be explicitly exported.
-  # In PROXY_TO_PTHREAD we export emscripten_proxy_main instead of main.
-  if settings.STANDALONE_WASM or settings.PROXY_TO_PTHREAD:
-    return
-  if '_main' not in settings.EXPORTED_FUNCTIONS:
-    for symbols in symbolses:
-      if 'main' in symbols['defs']:
-        logger.warning('main() is in the input files, but "_main" is not in EXPORTED_FUNCTIONS, which means it may be eliminated as dead code. Export it if you want main() to run.')
-        return
-
-
-def handle_reverse_deps(input_files):
-  if settings.REVERSE_DEPS == 'none' or settings.SIDE_MODULE:
-    return
-  elif settings.REVERSE_DEPS == 'all':
-    # When not optimizing we add all possible reverse dependencies rather
-    # than scanning the input files
-    for symbols in deps_info.get_deps_info().values():
-      for symbol in symbols:
-        settings.REQUIRED_EXPORTS.append(symbol)
-    return
-
-  if settings.REVERSE_DEPS != 'auto':
-    shared.exit_with_error(f'invalid values for REVERSE_DEPS: {settings.REVERSE_DEPS}')
-
-  added = set()
-
-  def add_reverse_deps(need):
-    more = False
-    for ident, deps in deps_info.get_deps_info().items():
-      if ident in need['undefs'] and ident not in added:
-        added.add(ident)
-        more = True
-        for dep in deps:
-          need['undefs'].add(dep)
-          logger.debug('adding dependency on %s due to deps-info on %s' % (dep, ident))
-          settings.REQUIRED_EXPORTS.append(dep)
-    if more:
-      add_reverse_deps(need) # recurse to get deps of deps
-
-  # Scan symbols
-  symbolses = building.llvm_nm_multiple([os.path.abspath(t) for t in input_files])
-
-  warn_on_unexported_main(symbolses)
-
-  if len(symbolses) == 0:
-    symbolses.append({'defs': set(), 'undefs': set()})
-
-  # depend on exported functions
-  for export in settings.EXPORTED_FUNCTIONS + settings.SIDE_MODULE_IMPORTS:
-    if settings.VERBOSE:
-      logger.debug('adding dependency on export %s' % export)
-    symbolses[0]['undefs'].add(demangle_c_symbol_name(export))
-
-  for symbols in symbolses:
-    add_reverse_deps(symbols)
 
 
 def get_libs_to_link(args, forced, only_forced):
@@ -2207,23 +2216,29 @@ def get_libs_to_link(args, forced, only_forced):
   if settings.WASM_WORKERS:
     add_library('libwasm_workers')
 
+  if settings.WASMFS:
+    # Link in the no-fs version first, so that if it provides all the needed
+    # system libraries then WasmFS is not linked in at all. (We only do this if
+    # the filesystem is not forced; if it is then we know we definitely need the
+    # whole thing, and it would be unnecessary work to try to link in the no-fs
+    # version).
+    if not settings.FORCE_FILESYSTEM:
+      add_library('libwasmfs_no_fs')
+    add_library('libwasmfs')
+
   add_sanitizer_libs()
   return libs_to_link
 
 
-def calculate(input_files, args, forced):
+def calculate(args, forced):
   # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
   # for unresolved symbols in your project files, which can speed up linking, but if you do not have
-  # the proper list of actually needed libraries, errors can occur. See below for how we must
-  # export all the symbols in deps_info when using this option.
+  # the proper list of actually needed libraries, errors can occur.
   only_forced = os.environ.get('EMCC_ONLY_FORCED_STDLIBS')
   if only_forced:
     # One of the purposes EMCC_ONLY_FORCED_STDLIBS was to skip the scanning
     # of the input files for reverse dependencies.
-    diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` and/or `-sREVERSE_DEPS=none` depending on the desired result')
-    settings.REVERSE_DEPS = 'all'
-
-  handle_reverse_deps(input_files)
+    diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` to avoid linking standard libraries')
 
   libs_to_link = get_libs_to_link(args, forced, only_forced)
 

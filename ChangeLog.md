@@ -18,10 +18,72 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.37 (in development)
+3.1.42 (in development)
 -----------------------
 - Bump the default minimum Node version from 10.19 to 15.0. To target the
   previous minimum version (10.19.0), use `-sMIN_NODE_VERSION=101900` (#19192).
+- The log message that emcc will sometime print (for example when auto-building
+  system libraries) can now be completely supressed by running with
+  `EMCC_LOGGING=0`.
+- Runtime dynamic linking symbols such as dlopen and dlsym will no longer cause
+  a linker error when building without `-sMAIN_MODULE`.  Instead stub functions
+  will be included that fail at runtime.  This matches the behaviour of other
+  libc functions that we don't implement.  For those that prefer to get a linker
+  error we have the `-sALLOW_UNIMPLEMENTED_SYSCALLS` settings. (#19527)
+- The `modifyFunction` helper in `parseTools.js` was renamed to
+  `modifyJSFunction` and its callback function no longer takes the name of the
+  function being modified.  The name is not relevant for JS library functions
+  and can be safely ignored.
+- JS library functions can now be implemented using ES6 arrow notation, which
+  can save to a few bytes on JS code size. (#19539)
+
+3.1.41 - 06/06/23
+-----------------
+- A new setting (`CHECK_NULL_WRITES`) was added to disabled the checking of
+  address zero that is normally done when `STACK_OVERFLOW_CHECK` is enabled.
+  (#19487)
+- compiler-rt updated to LLVM 16. (#19506)
+- libcxx and libcxxabi updated to LLVM 16. (#)
+
+3.1.40 - 05/30/23
+-----------------
+- The `_emscripten_out()`, `_emscripten_err()` and `_emscripten_dbg()` functions
+  declared in `emscripten/console.h` no longer have the underscore prefix and
+  are now documented. (#19445)
+
+3.1.39 - 05/18/23
+-----------------
+- The JS `err()` function will now bind to `console.error` by default rather
+  than `console.warning`.  For debugging/tracing/logging we recommend the
+  `dbg()` function instead. (#19326)
+- The `WASM2C` options has been removed. All known users are using upstream wabt
+  these days anyhow.
+
+3.1.38 - 05/10/23
+-----------------
+- The `dladdr` function will now always return an error rather than filling in
+  dummy values. (#19319)
+- The restriction preventing the use of dynamic linking in combination with
+  `-sDYNAMIC_EXECUTION=0` was removed.  This restriction was being enforced
+  unnecessarily since dynamic linking has not depended on `eval()` for a while
+  now.
+- Remove extra code for falling back to long-deprecated BlobBuilder browser API
+  when Blob constructor is missing.  This was a fix for an issue that has long
+  been fixed. (#19277)
+
+3.1.37 - 04/26/23
+-----------------
+- The `EM_PYTHON_MULTIPROCESSING` environment variable no longer has any effect.
+  This was added a temporary fallback but should no longer be needed. (#19224)
+- The old reverse dependency system based on `tools/deps_info.py` has been
+  removed and the existing `__deps` entries in JS library files can now be used
+  to express JS-to-native dependencies.  As well being more precise, and
+  extensible via user-supplied JS libraries, this also speeds up link times
+  since we no longer need scan linker inputs using `llvm-nm`.  It also
+  completely removes the need for the `REVERSE_DEPS` settings which has now
+  been deprecated. (#18905)
+- Bump the default minimum Firefox version from 65 to 68 (#19191).
+- Background pthreads no longer prevent a Node.js app from exiting. (#19073)
 
 3.1.36 - 04/16/23
 -----------------

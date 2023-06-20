@@ -64,7 +64,7 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #if MODULARIZE
 // Set up the promise that indicates the Module is initialized
 var readyPromiseResolve, readyPromiseReject;
-Module['ready'] = new Promise(function(resolve, reject) {
+Module['ready'] = new Promise((resolve, reject) => {
   readyPromiseResolve = resolve;
   readyPromiseReject = reject;
 });
@@ -233,10 +233,10 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 
 #if NODEJS_CATCH_EXIT
-  process.on('uncaughtException', function(ex) {
+  process.on('uncaughtException', (ex) => {
     // suppress ExitStatus exceptions from showing an error
 #if RUNTIME_DEBUG
-    dbg('node: uncaughtException: ' + ex)
+    dbg(`node: uncaughtException: ${ex}`)
 #endif
     if (ex !== 'unwind' && !(ex instanceof ExitStatus) && !(ex.context instanceof ExitStatus)) {
       throw ex;
@@ -252,7 +252,7 @@ if (ENVIRONMENT_IS_NODE) {
   // See https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
   var nodeMajor = process.versions.node.split(".")[0];
   if (nodeMajor < 15) {
-    process.on('unhandledRejection', function(reason) { throw reason; });
+    process.on('unhandledRejection', (reason) => { throw reason; });
   }
 #endif
 
@@ -261,9 +261,9 @@ if (ENVIRONMENT_IS_NODE) {
     throw toThrow;
   };
 
-  Module['inspect'] = function () { return '[Emscripten Module object]'; };
+  Module['inspect'] = () => '[Emscripten Module object]';
 
-#if PTHREADS
+#if PTHREADS || WASM_WORKERS
   let nodeWorkerThreads;
   try {
     nodeWorkerThreads = require('worker_threads');
@@ -291,7 +291,7 @@ if (ENVIRONMENT_IS_SHELL) {
 #endif
 
   if (typeof read != 'undefined') {
-    read_ = function shell_read(f) {
+    read_ = (f) => {
 #if SUPPORT_BASE64_EMBEDDING
       const data = tryParseAsDataURI(f);
       if (data) {
@@ -302,7 +302,7 @@ if (ENVIRONMENT_IS_SHELL) {
     };
   }
 
-  readBinary = function readBinary(f) {
+  readBinary = (f) => {
     let data;
 #if SUPPORT_BASE64_EMBEDDING
     data = tryParseAsDataURI(f);
@@ -318,7 +318,7 @@ if (ENVIRONMENT_IS_SHELL) {
     return data;
   };
 
-  readAsync = function readAsync(f, onload, onerror) {
+  readAsync = (f, onload, onerror) => {
     setTimeout(() => onload(readBinary(f)), 0);
   };
 
@@ -349,7 +349,7 @@ if (ENVIRONMENT_IS_SHELL) {
           if (toThrow && typeof toThrow == 'object' && toThrow.stack) {
             toLog = [toThrow, toThrow.stack];
           }
-          err('exiting due to exception: ' + toLog);
+          err(`exiting due to exception: ${toLog}`);
         }
         quit(status);
       });
@@ -439,21 +439,21 @@ if (ENVIRONMENT_IS_NODE) {
 
 // Set up the out() and err() hooks, which are how we can print to stdout or
 // stderr, respectively.
-// Normally just binding console.log/console.warn here works fine, but
+// Normally just binding console.log/console.error here works fine, but
 // under node (with workers) we see missing/out-of-order messages so route
 // directly to stdout and stderr.
 // See https://github.com/emscripten-core/emscripten/issues/14804
 var defaultPrint = console.log.bind(console);
-var defaultPrintErr = console.warn.bind(console);
+var defaultPrintErr = console.error.bind(console);
 if (ENVIRONMENT_IS_NODE) {
-  defaultPrint = (str) => fs.writeSync(1, str + '\n');
-  defaultPrintErr = (str) => fs.writeSync(2, str + '\n');
+  defaultPrint = (...args) => fs.writeSync(1, args.join(' ') + '\n');
+  defaultPrintErr = (...args) => fs.writeSync(2, args.join(' ') + '\n');
 }
 {{{ makeModuleReceiveWithVar('out', 'print',    'defaultPrint',    true) }}}
 {{{ makeModuleReceiveWithVar('err', 'printErr', 'defaultPrintErr', true) }}}
 #else
 {{{ makeModuleReceiveWithVar('out', 'print',    'console.log.bind(console)',  true) }}}
-{{{ makeModuleReceiveWithVar('err', 'printErr', 'console.warn.bind(console)', true) }}}
+{{{ makeModuleReceiveWithVar('err', 'printErr', 'console.error.bind(console)', true) }}}
 #endif
 
 // Merge back in the overrides

@@ -118,6 +118,15 @@ void __emscripten_thread_cleanup(pthread_t thread);
 hidden void* _emscripten_tls_init(void);
 hidden void _emscripten_tls_free(void);
 
+// Marks the given thread as strongly referenced. This is used to prevent the
+// Node.js application from exiting as long as there are strongly referenced
+// threads still running. Normally you don't need to call this function, and
+// the pthread behaviour will match native in that background threads won't
+// keep runtime alive, but waiting for them via e.g. pthread_join will. 
+// However, this is useful for features like PROXY_TO_PTHREAD where we want to
+// keep running as long as the detached pthread is.
+void _emscripten_thread_set_strongref(pthread_t thread);
+
 // Checks certain structural invariants.  This allows us to detect when
 // already-freed threads are used in some APIs.  Technically this is undefined
 // behaviour, but we have a couple of places where we add these checks so that

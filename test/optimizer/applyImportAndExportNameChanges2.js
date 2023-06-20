@@ -249,7 +249,7 @@ var imports = {
     }
 };
 var ___errno_location, _llvm_bswap_i32, _main, _memcpy, _memset, dynCall_ii, dynCall_iiii;
-WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
+WebAssembly.instantiate(Module["wasm"], imports).then(((output) => {
     var asm = output.instance.exports;
     ___errno_location = asm["___errno_location"];
     _llvm_bswap_i32 = asm["_llvm_bswap_i32"];

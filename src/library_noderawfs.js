@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS', '$mmapAlloc'],
+  $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS', '$mmapAlloc', '$FS_modeStringToFlags'],
   $NODERAWFS__postset: `
     if (ENVIRONMENT_IS_NODE) {
       var _wrapNodeError = function(func) {
@@ -33,7 +33,7 @@ mergeInto(LibraryManager.library, {
       assert(parent)
       assert(parent.path)
 #endif
-      return FS.lookupPath(parent.path + '/' + name).node;
+      return FS.lookupPath(`${parent.path}/${name}`).node;
     },
     lookupPath: function(path, opts = {}) {
       if (opts.parent) {
@@ -41,12 +41,12 @@ mergeInto(LibraryManager.library, {
       }
       var st = fs.lstatSync(path);
       var mode = NODEFS.getMode(path);
-      return { path: path, node: { id: st.ino, mode: mode, node_ops: NODERAWFS, path: path }};
+      return { path, node: { id: st.ino, mode, node_ops: NODERAWFS, path }};
     },
     createStandardStreams: function() {
-      FS.streams[0] = FS.createStream({ nfd: 0, position: 0, path: '', flags: 0, tty: true, seekable: false }, 0, 0);
+      FS.createStream({ nfd: 0, position: 0, path: '', flags: 0, tty: true, seekable: false }, 0);
       for (var i = 1; i < 3; i++) {
-        FS.streams[i] = FS.createStream({ nfd: i, position: 0, path: '', flags: 577, tty: true, seekable: false }, i, i);
+        FS.createStream({ nfd: i, position: 0, path: '', flags: 577, tty: true, seekable: false }, i);
       }
     },
     // generic function for all node creation
@@ -69,21 +69,28 @@ mergeInto(LibraryManager.library, {
     stat: function() { return fs.statSync.apply(void 0, arguments); },
     lstat: function() { return fs.lstatSync.apply(void 0, arguments); },
     chmod: function() { fs.chmodSync.apply(void 0, arguments); },
-    fchmod: function() { fs.fchmodSync.apply(void 0, arguments); },
+    fchmod: function(fd, mode) {
+      var stream = FS.getStreamChecked(fd);
+      fs.fchmodSync(stream.nfd, mode);
+    },
     chown: function() { fs.chownSync.apply(void 0, arguments); },
-    fchown: function() { fs.fchownSync.apply(void 0, arguments); },
+    fchown: function(fd, owner, group) {
+      var stream = FS.getStreamChecked(fd);
+      fs.fchownSync(stream.nfd, owner, group);
+    },
     truncate: function() { fs.truncateSync.apply(void 0, arguments); },
     ftruncate: function(fd, len) {
       // See https://github.com/nodejs/node/issues/35632
       if (len < 0) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
-      fs.ftruncateSync.apply(void 0, arguments);
+      var stream = FS.getStreamChecked(fd);
+      fs.ftruncateSync(stream.nfd, len);
     },
     utime: function(path, atime, mtime) { fs.utimesSync(path, atime/1000, mtime/1000); },
-    open: function(path, flags, mode, suggestFD) {
+    open: function(path, flags, mode) {
       if (typeof flags == "string") {
-        flags = VFS.modeStringToFlags(flags)
+        flags = FS_modeStringToFlags(flags)
       }
       var pathTruncated = path.split('/').map(function(s) { return s.substr(0, 255); }).join('/');
       var nfd = fs.openSync(pathTruncated, NODEFS.flagsForNode(flags), mode);
@@ -93,15 +100,12 @@ mergeInto(LibraryManager.library, {
         throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
       }
       var newMode = NODEFS.getMode(pathTruncated);
-      var fd = suggestFD != null ? suggestFD : FS.nextfd(nfd);
-      var node = { id: st.ino, mode: newMode, node_ops: NODERAWFS, path: path }
-      var stream = FS.createStream({ nfd: nfd, position: 0, path: path, flags: flags, node: node, seekable: true }, fd, fd);
-      FS.streams[fd] = stream;
-      return stream;
+      var node = { id: st.ino, mode: newMode, node_ops: NODERAWFS, path }
+      return FS.createStream({ nfd, position: 0, path, flags, node, seekable: true });
     },
-    createStream: function(stream, fd_start, fd_end){
+    createStream: function(stream, fd) {
       // Call the original FS.createStream
-      var rtn = VFS.createStream(stream, fd_start, fd_end);
+      var rtn = VFS.createStream(stream, fd);
       if (typeof rtn.shared.refcnt == 'undefined') {
         rtn.shared.refcnt = 1;
       } else {
@@ -109,16 +113,11 @@ mergeInto(LibraryManager.library, {
       }
       return rtn;
     },
-    closeStream: function(fd) {
-      if (FS.streams[fd]) {
-        FS.streams[fd].shared.refcnt--;
-      }
-      VFS.closeStream(fd);
-    },
     close: function(stream) {
-      FS.closeStream(stream.fd);
-      if (!stream.stream_ops && stream.shared.refcnt === 0) {
-        // this stream is created by in-memory filesystem        
+      VFS.closeStream(stream.fd);
+      if (!stream.stream_ops && --stream.shared.refcnt === 0) {
+        // This stream is created by our Node.js filesystem, close the
+        // native file descriptor when its reference count drops to 0.
         fs.closeSync(stream.nfd);
       }
     },
@@ -181,7 +180,7 @@ mergeInto(LibraryManager.library, {
 
       var ptr = mmapAlloc(length);
       FS.read(stream, HEAP8, ptr, length, position);
-      return { ptr: ptr, allocated: true };
+      return { ptr, allocated: true };
     },
     msync: function(stream, buffer, offset, length, mmapFlags) {
       if (stream.stream_ops) {

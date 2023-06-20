@@ -2,40 +2,38 @@ var b = Module, c = b.$ww, f, e = b.mem || new WebAssembly.Memory({
     initial: 256,
     maximum: 256,
     shared: !0
-}), g = e.buffer, h = {}, k = 1, m = [], p, q;
+}), g = e.buffer, h = [], m = {}, n = 1, p, q;
 
-function l(a) {
-    m.push(a);
-}
-
-function n(a) {
+function k(a) {
     a = a.data;
     let d = a._wsc;
     d && f.get(d)(...a.x);
 }
 
-c && (h[0] = this, addEventListener("message", l));
+function l(a) {
+    h.push(a);
+}
+
+c && (m[0] = this, addEventListener("message", l));
 
 WebAssembly.instantiate(b.wasm, {
     a: {
         b: function(a, d) {
-            let r = h[k] = new Worker(b.$wb);
+            let r = m[n] = new Worker(b.$wb);
             r.postMessage({
-                $ww: k,
+                $ww: n,
                 wasm: b.wasm,
                 js: b.js,
                 mem: e,
                 sb: a,
                 sz: d
             });
-            r.addEventListener("message", n);
-            return k++;
+            r.onmessage = k;
+            return n++;
         },
-        c: function() {
-            return !1;
-        },
+        c: () => !1,
         d: function(a, d) {
-            h[a].postMessage({
+            m[a].postMessage({
                 _wsc: d,
                 x: []
             });
@@ -45,12 +43,12 @@ WebAssembly.instantiate(b.wasm, {
         },
         a: e
     }
-}).then((function(a) {
+}).then((a => {
     a = a.instance.exports;
     p = a.g;
     q = a.i;
     f = a.h;
-    c ? (a = b, q(a.sb, a.sz), removeEventListener("message", l), m = m.forEach(n), 
-    addEventListener("message", n)) : a.f();
+    c ? (a = b, q(a.sb, a.sz), removeEventListener("message", l), h = h.forEach(k), 
+    addEventListener("message", k)) : a.f();
     c || p();
 }));

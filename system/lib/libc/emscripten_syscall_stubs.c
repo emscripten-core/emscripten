@@ -46,10 +46,6 @@ static mode_t g_umask = S_IRWXU | S_IRWXG | S_IRWXO;
 #define STRINGIFY(s) #s
 #define STR(s) STRINGIFY(s)
 
-#ifndef weak
-#define weak __attribute__((__weak__))
-#endif
-
 weak int __syscall_uname(intptr_t buf) {
   if (!buf) {
     return -EFAULT;
@@ -108,7 +104,7 @@ weak int __syscall_getppid() {
   return g_ppid;
 }
 
-weak int __syscall_link(intptr_t oldpath, intptr_t newpath) {
+weak int __syscall_linkat(int olddirfd, intptr_t oldpath, int newdirfd, intptr_t newpath, int flags) {
   return -EMLINK; // no hardlinks for us
 }
 

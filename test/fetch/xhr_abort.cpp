@@ -18,7 +18,7 @@ void handleError(emscripten_fetch_t *fetch) {
   bool isAbortedStatus = fetch->status == (unsigned short) -1;
   assert(isAbortedStatus); // should have aborted status
   EM_ASM({
-    const xhr = Fetch.xhrs[$0];
+    const xhr = Fetch.xhrs.get($0);
     const oldReadyStateChangeHandler = xhr.onreadystatechange;
     // Overriding xhr handlers to check if xhr.abort() was called
     xhr.onreadystatechange = (e) => {

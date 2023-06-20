@@ -19,9 +19,6 @@
 #if BUILD_AS_WORKER
 #error "pthreads + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854"
 #endif
-#if PROXY_TO_WORKER
-#error "--proxy-to-worker is not supported with -pthread! Use the option -sPROXY_TO_PTHREAD if you want to run the main thread of a multithreaded application in a web worker."
-#endif
 #if EVAL_CTORS
 #error "EVAL_CTORS is not compatible with pthreads yet (passive segments)"
 #endif
@@ -104,6 +101,14 @@ var LibraryPThread = {
       while (pthreadPoolSize--) {
         PThread.allocateUnusedWorker();
       }
+#endif
+#if !MINIMAL_RUNTIME
+      // MINIMAL_RUNTIME takes care of calling loadWasmModuleToAllWorkers
+      // in postamble_minimal.js
+      addOnPreRun(() => {
+        addRunDependency('loading-workers')
+        PThread.loadWasmModuleToAllWorkers(() => removeRunDependency('loading-workers'));
+      });
 #endif
 #if MAIN_MODULE
       PThread.outstandingPromises = {};
@@ -211,11 +216,12 @@ var LibraryPThread = {
       // worker pool as an unused worker.
       worker.pthread_ptr = 0;
 
-#if ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_NODE && PROXY_TO_PTHREAD
       if (ENVIRONMENT_IS_NODE) {
-        // Once a pthread has finished and the worker becomes idle, mark it
-        // as weakly referenced so that its existence does not prevent Node.js
-        // from exiting.
+        // Once the proxied main thread has finished, mark it as weakly
+        // referenced so that its existence does not prevent Node.js from
+        // exiting.  This has no effect if the worker is already weakly
+        // referenced.
         worker.unref();
       }
 #endif
@@ -286,7 +292,7 @@ var LibraryPThread = {
           cancelThread(d['thread']);
         } else if (cmd === 'loaded') {
           worker.loaded = true;
-#if ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_NODE && PTHREAD_POOL_SIZE
           // Check that this worker doesn't have an associated pthread.
           if (ENVIRONMENT_IS_NODE && !worker.pthread_ptr) {
             // Once worker is loaded & idle, mark it as weakly referenced,
@@ -401,7 +407,9 @@ var LibraryPThread = {
         'wasmOffsetConverter': wasmOffsetConverter,
 #endif
 #if MAIN_MODULE
-        'dynamicLibraries': Module['dynamicLibraries'],
+        // Share all modules that have been loaded so far.  New workers
+        // won't start running threads until these are all loaded.
+        'sharedModules': sharedModules,
 #endif
 #if ASSERTIONS
         'workerID': worker.workerID,
@@ -422,6 +430,7 @@ var LibraryPThread = {
       ) {
         return onMaybeReady();
       }
+
       let pthreadPoolReady = Promise.all(PThread.unusedWorkers.map(PThread.loadWasmModuleToWorker));
 #if PTHREAD_POOL_DELAY_LOAD
       // PTHREAD_POOL_DELAY_LOAD means we want to proceed synchronously without
@@ -571,6 +580,19 @@ var LibraryPThread = {
     else postMessage({ 'cmd': 'cleanupThread', 'thread': thread });
   },
 
+  _emscripten_thread_set_strongref: function(thread) {
+    // Called when a thread needs to be strongly referenced.
+    // Currently only used for:
+    // - keeping the "main" thread alive in PROXY_TO_PTHREAD mode;
+    // - crashed threads that needs to propagate the uncaught exception 
+    //   back to the main thread.
+#if ENVIRONMENT_MAY_BE_NODE
+    if (ENVIRONMENT_IS_NODE) {
+      PThread.pthreads[thread].ref();
+    }
+#endif
+  },
+
   $cleanupThread: function(pthread_ptr) {
 #if PTHREADS_DEBUG
     dbg('cleanupThread: ' + ptrToString(pthread_ptr))
@@ -674,14 +696,16 @@ var LibraryPThread = {
     msg.moduleCanvasId = threadParams.moduleCanvasId;
     msg.offscreenCanvases = threadParams.offscreenCanvases;
 #endif
-    // Ask the worker to start executing its pthread entry point function.
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
-      // Mark worker as strongly referenced once we start executing a pthread,
-      // so that Node.js doesn't exit while the pthread is running.
-      worker.ref();
+      // Mark worker as weakly referenced once we start executing a pthread,
+      // so that its existence does not prevent Node.js from exiting.  This
+      // has no effect if the worker is already weakly referenced (e.g. if
+      // this worker was previously idle/unused).
+      worker.unref();
     }
 #endif
+    // Ask the worker to start executing its pthread entry point function.
     worker.postMessage(msg, threadParams.transferList);
     return 0;
   },
@@ -706,6 +730,7 @@ var LibraryPThread = {
       /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER,
       /*isMainRuntimeThread=*/1,
       /*canBlock=*/!ENVIRONMENT_IS_WEB,
+      {{{ DEFAULT_PTHREAD_STACK_SIZE }}},
 #if PTHREADS_PROFILING
       /*start_profiling=*/true
 #endif
@@ -1026,45 +1051,30 @@ var LibraryPThread = {
     return func.apply(null, emscripten_receive_on_main_thread_js_callArgs);
   },
 
-  // TODO(sbc): Do we really need this to be dynamically settable from JS like this?
-  // See https://github.com/emscripten-core/emscripten/issues/15101.
-  _emscripten_default_pthread_stack_size: function() {
-    return {{{ DEFAULT_PTHREAD_STACK_SIZE }}};
-  },
-
-#if STACK_OVERFLOW_CHECK >= 2 && MAIN_MODULE
-  $establishStackSpace__deps: ['$setDylinkStackLimits'],
-#endif
   $establishStackSpace__internal: true,
   $establishStackSpace: function() {
     var pthread_ptr = _pthread_self();
-    var stackTop = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack, 'i32') }}};
+    var stackHigh = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack, 'i32') }}};
     var stackSize = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack_size, 'i32') }}};
-    var stackMax = stackTop - stackSize;
+    var stackLow = stackHigh - stackSize;
 #if PTHREADS_DEBUG
-    dbg('establishStackSpace: ' + ptrToString(stackTop) + ' -> ' + ptrToString(stackMax));
+    dbg('establishStackSpace: ' + ptrToString(stackHigh) + ' -> ' + ptrToString(stackLow));
 #endif
 #if ASSERTIONS
-    assert(stackTop != 0);
-    assert(stackMax != 0);
-    assert(stackTop > stackMax, 'stackTop must be higher then stackMax');
+    assert(stackHigh != 0);
+    assert(stackLow != 0);
+    assert(stackHigh > stackLow, 'stackHigh must be higher then stackLow');
 #endif
     // Set stack limits used by `emscripten/stack.h` function.  These limits are
     // cached in wasm-side globals to make checks as fast as possible.
-    _emscripten_stack_set_limits(stackTop, stackMax);
+    _emscripten_stack_set_limits(stackHigh, stackLow);
+
 #if STACK_OVERFLOW_CHECK >= 2
-    // Set stack limits used by binaryen's `StackCheck` pass.
-    // TODO(sbc): Can this be combined with the above.
-    ___set_stack_limits(stackTop, stackMax);
-#if MAIN_MODULE
-    // With dynamic linking we could have any number of pre-loaded libraries
-    // that each need to have their stack limits set.
-    setDylinkStackLimits(stackTop, stackMax);
-#endif
-#endif
+    setStackLimits();
+#endif STACK_OVERFLOW_CHECK
 
     // Call inside wasm module to set up the stack frame for this pthread in wasm module scope
-    stackRestore(stackTop);
+    stackRestore(stackHigh);
 
 #if STACK_OVERFLOW_CHECK
     // Write the stack cookie last, after we have set up the proper bounds and
@@ -1178,7 +1188,7 @@ var LibraryPThread = {
     }
 
 #if PTHREADS_DEBUG
-    dbg('_emscripten_dlsync_threads_async: waiting on ' + promises.length + ' promises');
+    dbg(`_emscripten_dlsync_threads_async: waiting on ${promises.length} promises`);
 #endif
     // Once all promises are resolved then we know all threads are in sync and
     // we can call the callback.

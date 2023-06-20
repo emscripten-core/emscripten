@@ -221,7 +221,7 @@ function initRuntime() {
   runtimeInitialized = true;
 
 #if WASM_WORKERS
-  if (ENVIRONMENT_IS_WASM_WORKER) return __wasm_worker_initializeRuntime();
+  if (ENVIRONMENT_IS_WASM_WORKER) return _wasmWorkerInitializeRuntime();
 #endif
 
 #if PTHREADS
@@ -233,11 +233,9 @@ function initRuntime() {
 #endif
 
 #if STACK_OVERFLOW_CHECK >= 2
-#if RUNTIME_LOGGING
-  err('__set_stack_limits: ' + _emscripten_stack_get_base() + ', ' + _emscripten_stack_get_end());
+  setStackLimits();
 #endif
-  ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
-#endif
+
 #if RELOCATABLE
   callRuntimeCallbacks(__RELOC_FUNCS__);
 #endif
@@ -375,7 +373,7 @@ function addRunDependency(id) {
     runDependencyTracking[id] = 1;
     if (runDependencyWatcher === null && typeof setInterval != 'undefined') {
       // Check for missing dependencies every few seconds
-      runDependencyWatcher = setInterval(function() {
+      runDependencyWatcher = setInterval(() => {
         if (ABORT) {
           clearInterval(runDependencyWatcher);
           runDependencyWatcher = null;
@@ -613,7 +611,7 @@ function instrumentWasmTableWithAbort() {
     var cached = wrapperCache[i];
     if (!cached || cached.func !== func) {
       cached = wrapperCache[i] = {
-        func: func,
+        func,
         wrapper: makeAbortWrapper(func)
       }
     }
@@ -674,21 +672,19 @@ function getBinaryPromise(binaryFile) {
       && !isFileURI(binaryFile)
 #endif
     ) {
-      return fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}}).then(function(response) {
+      return fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}}).then((response) => {
         if (!response['ok']) {
           throw "failed to load wasm binary file at '" + binaryFile + "'";
         }
         return response['arrayBuffer']();
-      }).catch(function () {
-          return getBinary(binaryFile);
-      });
+      }).catch(() => getBinary(binaryFile));
     }
 #if ENVIRONMENT_MAY_BE_WEBVIEW
     else {
       if (readAsync) {
         // fetch is not available or url is file => try XHR (readAsync uses XHR internally)
-        return new Promise(function(resolve, reject) {
-          readAsync(binaryFile, function(response) { resolve(new Uint8Array(/** @type{!ArrayBuffer} */(response))) }, reject)
+        return new Promise((resolve, reject) => {
+          readAsync(binaryFile, (response) => resolve(new Uint8Array(/** @type{!ArrayBuffer} */(response))), reject)
         });
       }
     }
@@ -696,7 +692,7 @@ function getBinaryPromise(binaryFile) {
   }
 
   // Otherwise, getBinary should be able to get it synchronously
-  return Promise.resolve().then(function() { return getBinary(binaryFile); });
+  return Promise.resolve().then(() => getBinary(binaryFile));
 }
 
 #if LOAD_SOURCE_MAP
@@ -761,8 +757,8 @@ function instantiateSync(file, info) {
       cachedCodeFile = locateFile(cachedCodeFile);
       var hasCached = fs.existsSync(cachedCodeFile);
       if (hasCached) {
-#if RUNTIME_LOGGING
-        err('NODE_CODE_CACHING: loading module');
+#if RUNTIME_DEBUG
+        dbg('NODE_CODE_CACHING: loading module');
 #endif
         try {
           module = v8.deserialize(fs.readFileSync(cachedCodeFile));
@@ -777,8 +773,8 @@ function instantiateSync(file, info) {
       module = new WebAssembly.Module(binary);
     }
     if (ENVIRONMENT_IS_NODE && !hasCached) {
-#if RUNTIME_LOGGING
-      err('NODE_CODE_CACHING: saving module');
+#if RUNTIME_DEBUG
+      dbg('NODE_CODE_CACHING: saving module');
 #endif
       fs.writeFileSync(cachedCodeFile, v8.serialize(module));
     }
@@ -822,19 +818,19 @@ function instantiateArrayBuffer(binaryFile, imports, receiver) {
 #if USE_OFFSET_CONVERTER
   var savedBinary;
 #endif
-  return getBinaryPromise(binaryFile).then(function(binary) {
+  return getBinaryPromise(binaryFile).then((binary) => {
 #if USE_OFFSET_CONVERTER
     savedBinary = binary;
 #endif
     return WebAssembly.instantiate(binary, imports);
-  }).then(function (instance) {
+  }).then((instance) => {
 #if USE_OFFSET_CONVERTER
     // wasmOffsetConverter needs to be assigned before calling the receiver
     // (receiveInstantiationResult).  See comments below in instantiateAsync.
     wasmOffsetConverter = new WasmOffsetConverter(savedBinary, instance.module);
 #endif
     return instance;
-  }).then(receiver, function(reason) {
+  }).then(receiver, (reason) => {
     err('failed to asynchronously prepare wasm: ' + reason);
 
 #if WASM == 2
@@ -883,7 +879,7 @@ function instantiateAsync(binary, binaryFile, imports, callback) {
       !ENVIRONMENT_IS_NODE &&
 #endif
       typeof fetch == 'function') {
-    return fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}}).then(function(response) {
+    return fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}}).then((response) => {
       // Suppress closure warning here since the upstream definition for
       // instantiateStreaming only allows Promise<Repsponse> rather than
       // an actual Response.
@@ -914,12 +910,12 @@ function instantiateAsync(binary, binaryFile, imports, callback) {
           // offset converter (in the case of pthreads, it will create the
           // pthreads and send them the offsets along with the wasm instance).
 
-          clonedResponsePromise.then(function(arrayBufferResult) {
-            wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(arrayBufferResult), instantiationResult.module);
-            callback(instantiationResult);
-          }, function(reason) {
-            err('failed to initialize offset-converter: ' + reason);
-          });
+          clonedResponsePromise.then((arrayBufferResult) => {
+              wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(arrayBufferResult), instantiationResult.module);
+              callback(instantiationResult);
+            },
+            (reason) => err('failed to initialize offset-converter: ' + reason)
+          );
         },
 #endif
         function(reason) {
@@ -982,6 +978,12 @@ function createWasm() {
     }
 #endif
     mergeLibSymbols(exports, 'main')
+#if '$LDSO' in addedLibraryItems
+    LDSO.init();
+#endif
+    loadDylibs();
+#elif RELOCATABLE
+    reportUndefinedSymbols();
 #endif
 
 #if MEMORY64
@@ -1049,13 +1051,7 @@ function createWasm() {
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
 #endif
-
-#if PTHREADS
-    PThread.loadWasmModuleToAllWorkers(() => removeRunDependency('wasm-instantiate'));
-#else // singlethreaded build:
     removeRunDependency('wasm-instantiate');
-#endif // ~PTHREADS
-
     return exports;
   }
   // wait for the pthread pool (if any)
@@ -1132,8 +1128,8 @@ function createWasm() {
 #endif
 
 #if WASM_ASYNC_COMPILATION
-#if RUNTIME_LOGGING
-  err('asynchronously preparing wasm');
+#if RUNTIME_DEBUG
+  dbg('asynchronously preparing wasm');
 #endif
 #if MODULARIZE
   // If instantiation fails, reject the module ready promise.
@@ -1158,9 +1154,11 @@ function createWasm() {
 #endif
 }
 
+#if !WASM_BIGINT
 // Globals used by JS i64 conversions (see makeSetValue)
 var tempDouble;
 var tempI64;
+#endif
 
 #include "runtime_debug.js"
 
@@ -1203,7 +1201,7 @@ function runMemoryInitializer() {
       removeRunDependency('memory initializer');
     };
     var doBrowserLoad = () => {
-      readAsync(memoryInitializer, applyMemoryInitializer, function() {
+      readAsync(memoryInitializer, applyMemoryInitializer, () => {
         var e = new Error('could not load memory initializer ' + memoryInitializer);
 #if MODULARIZE
           readyPromiseReject(e);

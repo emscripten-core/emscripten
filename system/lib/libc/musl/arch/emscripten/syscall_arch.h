@@ -12,7 +12,6 @@
 extern "C" {
 #endif
 
-int __syscall_link(intptr_t oldpath, intptr_t newpath);
 int __syscall_chdir(intptr_t path);
 int __syscall_mknod(intptr_t path, int mode, int dev);
 int __syscall_chmod(intptr_t path, int mode);
@@ -97,7 +96,7 @@ int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...);
 int __syscall_faccessat(int dirfd, intptr_t path, int amode, int flags);
 int __syscall_pselect6(int nfds, intptr_t readfds, intptr_t writefds, intptr_t exceptfds, intptr_t timeout, intptr_t sigmaks);
 int __syscall_utimensat(int dirfd, intptr_t path, intptr_t times, int flags);
-int __syscall_fallocate(int fd, int mode, uint64_t off, uint64_t len);
+int __syscall_fallocate(int fd, int mode, int64_t off, int64_t len);
 int __syscall_dup3(int fd, int suggestfd, int flags);
 int __syscall_pipe2(intptr_t fds, int flags);
 int __syscall_recvmmsg(int sockfd, intptr_t msgvec, size_t vlen, int flags, ...);

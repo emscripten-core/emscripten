@@ -52,7 +52,6 @@ var SyscallsLibrary = {
         throw e;
       }
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.__st_ino_truncated, 'stat.ino', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_nlink, 'stat.nlink', SIZE_TYPE) }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_uid, 'stat.uid', 'i32') }}};
@@ -100,24 +99,23 @@ var SyscallsLibrary = {
       SYSCALLS.varargs += 4;
       var ret = {{{ makeGetValue('SYSCALLS.varargs', '-4', 'i32') }}};
 #if SYSCALL_DEBUG
-      dbg('    (raw: "' + ret + '")');
+      dbg(`    (raw: "${ret}")`);
 #endif
       return ret;
     },
     getStr: function(ptr) {
       var ret = UTF8ToString(ptr);
 #if SYSCALL_DEBUG
-      dbg('    (str: "' + ret + '")');
+      dbg(`    (str: "${ret}")`);
 #endif
       return ret;
     },
 #if SYSCALLS_REQUIRE_FILESYSTEM
     // Just like `FS.getStream` but will throw EBADF if stream is undefined.
     getStreamFromFD: function(fd) {
-      var stream = FS.getStream(fd);
-      if (!stream) throw new FS.ErrnoError({{{ cDefs.EBADF }}});
+      var stream = FS.getStreamChecked(fd);
 #if SYSCALL_DEBUG
-      dbg('    (stream: "' + stream.path + '")');
+      dbg(`    (stream: "${stream.path}")`);
 #endif
       return stream;
     },
@@ -127,6 +125,13 @@ var SyscallsLibrary = {
   _mmap_js__deps: ['$SYSCALLS',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
+    // The dependency of FS on `mmapAlloc` and `mmapAlloc` on
+    // `emscripten_builtin_memalign` are not encoding as hard dependencies,
+    // so we need to explictly depend on them here to ensure a working
+    // `FS.mmap`.
+    // `emscripten_builtin_memalign`).
+    '$mmapAlloc',
+    'emscripten_builtin_memalign',
 #endif
   ],
   _mmap_js: function(len, prot, flags, fd, off, allocated, addr) {
@@ -178,7 +183,7 @@ var SyscallsLibrary = {
   },
   __syscall_dup: function(fd) {
     var old = SYSCALLS.getStreamFromFD(fd);
-    return FS.createStream(old, 0).fd;
+    return FS.createStream(old).fd;
   },
   __syscall_pipe__deps: ['$PIPEFS'],
   __syscall_pipe: function(fdPtr) {
@@ -202,9 +207,27 @@ var SyscallsLibrary = {
 #else
     var stream = SYSCALLS.getStreamFromFD(fd);
     switch (op) {
-      case {{{ cDefs.TCGETA }}}:
+      case {{{ cDefs.TCGETA }}}: {
+        if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
+#if SYSCALL_DEBUG
+        dbg('warning: not filling tio struct');
+#endif
+        return 0;
+      }
       case {{{ cDefs.TCGETS }}}: {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
+        if (stream.tty.ops.ioctl_tcgets) {
+          var termios = stream.tty.ops.ioctl_tcgets(stream);
+          var argp = SYSCALLS.get();
+          {{{ makeSetValue('argp', C_STRUCTS.termios.c_iflag, 'termios.c_iflag || 0', 'i32') }}};
+          {{{ makeSetValue('argp', C_STRUCTS.termios.c_oflag, 'termios.c_oflag || 0', 'i32') }}};
+          {{{ makeSetValue('argp', C_STRUCTS.termios.c_cflag, 'termios.c_cflag || 0', 'i32') }}};
+          {{{ makeSetValue('argp', C_STRUCTS.termios.c_lflag, 'termios.c_lflag || 0', 'i32') }}};
+          for (var i = 0; i < {{{ cDefs.NCCS }}}; i++) {
+            {{{ makeSetValue('argp + i', C_STRUCTS.termios.c_cc, 'termios.c_cc[i] || 0', 'i8') }}};
+          }
+          return 0;
+        }
 #if SYSCALL_DEBUG
         dbg('warning: not filling tio struct');
 #endif
@@ -212,11 +235,26 @@ var SyscallsLibrary = {
       }
       case {{{ cDefs.TCSETA }}}:
       case {{{ cDefs.TCSETAW }}}:
-      case {{{ cDefs.TCSETAF }}}:
+      case {{{ cDefs.TCSETAF }}}: {
+        if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
+        return 0; // no-op, not actually adjusting terminal settings
+      }
       case {{{ cDefs.TCSETS }}}:
       case {{{ cDefs.TCSETSW }}}:
       case {{{ cDefs.TCSETSF }}}: {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
+        if (stream.tty.ops.ioctl_tcsets) {
+          var argp = SYSCALLS.get();
+          var c_iflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_iflag, 'i32') }}};
+          var c_oflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_oflag, 'i32') }}};
+          var c_cflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_cflag, 'i32') }}};
+          var c_lflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_lflag, 'i32') }}};
+          var c_cc = []
+          for (var i = 0; i < {{{ cDefs.NCCS }}}; i++) {
+            c_cc.push({{{ makeGetValue('argp + i', C_STRUCTS.termios.c_cc, 'i8') }}});
+          }
+          return stream.tty.ops.ioctl_tcsets(stream.tty, op, { c_iflag, c_oflag, c_cflag, c_lflag, c_cc });
+        }
         return 0; // no-op, not actually adjusting terminal settings
       }
       case {{{ cDefs.TIOCGPGRP }}}: {
@@ -237,12 +275,22 @@ var SyscallsLibrary = {
         // TODO: in theory we should write to the winsize struct that gets
         // passed in, but for now musl doesn't read anything on it
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
+        if (stream.tty.ops.ioctl_tiocgwinsz) {
+          var winsize = stream.tty.ops.ioctl_tiocgwinsz(stream.tty);
+          var argp = SYSCALLS.get();
+          {{{ makeSetValue('argp', 0, 'winsize[0]', 'i16') }}};
+          {{{ makeSetValue('argp', 2, 'winsize[1]', 'i16') }}};
+        }
         return 0;
       }
       case {{{ cDefs.TIOCSWINSZ }}}: {
         // TODO: technically, this ioctl call should change the window size.
         // but, since emscripten doesn't have any concept of a terminal window
         // yet, we'll just silently throw it away as we do TIOCGWINSZ
+        if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
+        return 0;
+      }
+      case {{{ cDefs.TCFLSH }}}: {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
         return 0;
       }
@@ -270,7 +318,7 @@ var SyscallsLibrary = {
     var socket = SOCKFS.getSocket(fd);
     if (!socket) throw new FS.ErrnoError({{{ cDefs.EBADF }}});
 #if SYSCALL_DEBUG
-    dbg('    (socket: "' + socket.path + '")');
+    dbg(`    (socket: "${socket.path}")`);
 #endif
     return socket;
   },
@@ -412,13 +460,13 @@ var SyscallsLibrary = {
     // concatenate scatter-gather arrays into one message buffer
     var total = 0;
     for (var i = 0; i < num; i++) {
-      total += {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
+      total += {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, 'i32') }}};
     }
     var view = new Uint8Array(total);
     var offset = 0;
     for (var i = 0; i < num; i++) {
-      var iovbase = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_base, POINTER_TYPE) }}};
-      var iovlen = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
+      var iovbase = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_base}`, POINTER_TYPE) }}};
+      var iovlen = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, 'i32') }}};
       for (var j = 0; j < iovlen; j++) {
         view[offset++] = {{{ makeGetValue('iovbase', 'j', 'i8') }}};
       }
@@ -434,7 +482,7 @@ var SyscallsLibrary = {
     // get the total amount of data we can read across all arrays
     var total = 0;
     for (var i = 0; i < num; i++) {
-      total += {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
+      total += {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, 'i32') }}};
     }
     // try to read total data
     var msg = sock.sock_ops.recvmsg(sock, total);
@@ -460,8 +508,8 @@ var SyscallsLibrary = {
     var bytesRead = 0;
     var bytesRemaining = msg.buffer.byteLength;
     for (var i = 0; bytesRemaining > 0 && i < num; i++) {
-      var iovbase = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_base, POINTER_TYPE) }}};
-      var iovlen = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
+      var iovbase = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_base}`, POINTER_TYPE) }}};
+      var iovlen = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, 'i32') }}};
       if (!iovlen) {
         continue;
       }
@@ -537,7 +585,13 @@ var SyscallsLibrary = {
       var flags = SYSCALLS.DEFAULT_POLLMASK;
 
       if (stream.stream_ops.poll) {
-        flags = stream.stream_ops.poll(stream);
+        var timeoutInMillis = -1;
+        if (timeout) {
+          var tv_sec = (readfds ? {{{ makeGetValue('timeout', C_STRUCTS.timeval.tv_sec, 'i32') }}} : 0),
+              tv_usec = (readfds ? {{{ makeGetValue('timeout', C_STRUCTS.timeval.tv_usec, 'i32') }}} : 0);
+          timeoutInMillis = (tv_sec + tv_usec / 1000000) * 1000;
+        }
+        flags = stream.stream_ops.poll(stream, timeoutInMillis);
       }
 
       if ((flags & {{{ cDefs.POLLIN }}}) && check(fd, srcReadLow, srcReadHigh, mask)) {
@@ -588,7 +642,7 @@ var SyscallsLibrary = {
       if (stream) {
         mask = SYSCALLS.DEFAULT_POLLMASK;
         if (stream.stream_ops.poll) {
-          mask = stream.stream_ops.poll(stream);
+          mask = stream.stream_ops.poll(stream, -1);
         }
       }
       mask &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
@@ -737,7 +791,7 @@ var SyscallsLibrary = {
         return -1;
       default: {
 #if SYSCALL_DEBUG
-        dbg('warning: fcntl unrecognized command ' + cmd);
+        dbg(`warning: fcntl unrecognized command ${cmd}`);
 #endif
         return -{{{ cDefs.EINVAL }}};
       }
@@ -832,7 +886,7 @@ var SyscallsLibrary = {
     var allowEmpty = flags & {{{ cDefs.AT_EMPTY_PATH }}};
     flags = flags & (~{{{ cDefs.AT_SYMLINK_NOFOLLOW | cDefs.AT_EMPTY_PATH | cDefs.AT_NO_AUTOMOUNT }}});
 #if ASSERTIONS
-    assert(!flags, 'unknown flags in __syscall_newfstatat: ' + flags);
+    assert(!flags, `unknown flags in __syscall_newfstatat: ${flags}`);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path, allowEmpty);
     return SYSCALLS.doStat(nofollow ? FS.lstat : FS.stat, path, buf);
@@ -856,11 +910,6 @@ var SyscallsLibrary = {
     newpath = SYSCALLS.calculateAt(newdirfd, newpath);
     FS.rename(oldpath, newpath);
     return 0;
-  },
-  __syscall_linkat__nothrow: true,
-  __syscall_linkat__proxy: false,
-  __syscall_linkat: function(olddirfd, oldpath, newdirfd, newpath, flags) {
-    return -{{{ cDefs.EMLINK }}}; // no hardlinks for us
   },
   __syscall_symlinkat: function(target, newdirfd, linkpath) {
 #if SYSCALL_DEBUG
@@ -954,125 +1003,17 @@ var SyscallsLibrary = {
     FS.allocate(stream, offset, len);
     return 0;
   },
-  __syscall_dup3: function(fd, suggestFD, flags) {
+  __syscall_dup3: function(fd, newfd, flags) {
     var old = SYSCALLS.getStreamFromFD(fd);
 #if ASSERTIONS
     assert(!flags);
 #endif
-    if (old.fd === suggestFD) return -{{{ cDefs.EINVAL }}};
-    var suggest = FS.getStream(suggestFD);
-    if (suggest) FS.close(suggest);
-    return FS.createStream(old, suggestFD, suggestFD + 1).fd;
+    if (old.fd === newfd) return -{{{ cDefs.EINVAL }}};
+    var existing = FS.getStream(newfd);
+    if (existing) FS.close(existing);
+    return FS.createStream(old, newfd).fd;
   },
 };
-
-function wrapSyscallFunction(x, library, isWasi) {
-  if (x[0] === '$' || isJsLibraryConfigIdentifier(x)) {
-    return;
-  }
-
-  var t = library[x];
-  if (typeof t == 'string') return;
-  t = t.toString();
-
-  // If a syscall uses FS, but !SYSCALLS_REQUIRE_FILESYSTEM, then the user
-  // has disabled the filesystem or we have proven some other way that this will
-  // not be called in practice, and do not need that code.
-  if (!SYSCALLS_REQUIRE_FILESYSTEM && t.includes('FS.')) {
-    t = modifyFunction(t, function(name, args, body) {
-      return 'function ' + name + '(' + args + ') {\n' +
-             (ASSERTIONS ? "abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');\n" : '') +
-             '}';
-    });
-  }
-
-  var isVariadic = !isWasi && t.includes(', varargs');
-#if SYSCALLS_REQUIRE_FILESYSTEM == 0
-  var canThrow = false;
-#else
-  var canThrow = library[x + '__nothrow'] !== true;
-#endif
-
-  if (!library[x + '__deps']) library[x + '__deps'] = [];
-
-#if PURE_WASI
-  // In PURE_WASI mode we can't assume the wasm binary was built by emscripten
-  // and politely notify us on memory growth.  Instead we have to check for
-  // possible memory growth on each syscall.
-  var pre = '\nif (!HEAPU8.byteLength) _emscripten_notify_memory_growth(0);\n'
-  library[x + '__deps'].push('emscripten_notify_memory_growth');
-#else
-  var pre = '';
-#endif
-  var post = '';
-  if (isVariadic) {
-    pre += 'SYSCALLS.varargs = varargs;\n';
-  }
-
-#if SYSCALL_DEBUG
-  if (isVariadic) {
-    if (canThrow) {
-      post += 'finally { SYSCALLS.varargs = undefined; }\n';
-    } else {
-      post += 'SYSCALLS.varargs = undefined;\n';
-    }
-  }
-  pre += "dbg('syscall! " + x + ": [' + Array.prototype.slice.call(arguments) + ']');\n";
-  pre += "var canWarn = true;\n";
-  pre += "var ret = (function() {\n";
-  post += "})();\n";
-  post += "if (ret && ret < 0 && canWarn) {\n";
-  post += "  dbg('error: syscall may have failed with ' + (-ret) + ' (' + ERRNO_MESSAGES[-ret] + ')');\n";
-  post += "}\n";
-  post += "dbg('syscall return: ' + ret);\n";
-  post += "return ret;\n";
-#endif
-  delete library[x + '__nothrow'];
-  var handler = '';
-  if (canThrow) {
-    pre += 'try {\n';
-    handler +=
-    "} catch (e) {\n" +
-    "  if (typeof FS == 'undefined' || !(e.name === 'ErrnoError')) throw e;\n";
-#if SYSCALL_DEBUG
-    handler +=
-    "  dbg('error: syscall failed with ' + e.errno + ' (' + ERRNO_MESSAGES[e.errno] + ')');\n" +
-    "  canWarn = false;\n";
-#endif
-    // Musl syscalls are negated.
-    if (isWasi) {
-      handler += "  return e.errno;\n";
-    } else {
-      // Musl syscalls are negated.
-      handler += "  return -e.errno;\n";
-    }
-    handler += "}\n";
-  }
-  post = handler + post;
-
-  if (pre || post) {
-    t = modifyFunction(t, function(name, args, body) {
-      return `function ${name}(${args}) {\n${pre}${body}${post}}\n`;
-    });
-  }
-
-  library[x] = eval('(' + t + ')');
-  library[x + '__deps'].push('$SYSCALLS');
-#if PTHREADS
-  // Most syscalls need to happen on the main JS thread (e.g. because the
-  // filesystem is in JS and on that thread). Proxy synchronously to there.
-  // There are some exceptions, syscalls that we know are ok to just run in
-  // any thread; those are marked as not being proxied with
-  //  __proxy: false
-  // A syscall without a return value could perhaps be proxied asynchronously
-  // instead of synchronously, and marked with
-  //  __proxy: 'async'
-  // (but essentially all syscalls do have return values).
-  if (library[x + '__proxy'] === undefined) {
-    library[x + '__proxy'] = 'sync';
-  }
-#endif
-}
 
 for (var x in SyscallsLibrary) {
   wrapSyscallFunction(x, SyscallsLibrary, false);

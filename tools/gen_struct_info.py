@@ -65,8 +65,9 @@ import subprocess
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
-sys.path.append(__rootdir__)
+sys.path.insert(0, __rootdir__)
 
+from tools import building
 from tools import shared
 from tools import system_libs
 from tools import utils
@@ -239,6 +240,8 @@ def inspect_headers(headers, cflags):
   else:
     compiler = shared.EMCC
 
+  node_flags = building.get_emcc_node_flags(shared.check_node_version())
+
   # -O1+ produces calls to iprintf, which libcompiler_rt doesn't support
   cmd = [compiler] + cflags + ['-o', js_file[1], src_file[1],
                                '-O0',
@@ -248,7 +251,7 @@ def inspect_headers(headers, cflags):
                                compiler_rt,
                                '-sBOOTSTRAPPING_STRUCT_INFO',
                                '-sSTRICT',
-                               '-sASSERTIONS=0']
+                               '-sASSERTIONS=0'] + node_flags
 
   # Default behavior for emcc is to warn for binaryen version check mismatches
   # so we should try to match that behavior.

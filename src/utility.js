@@ -27,9 +27,9 @@ function dump(item) {
       if (Object.prototype.hasOwnProperty.call(item, i)) {
         const j = item[i];
         if (typeof j == 'string' || typeof j == 'number') {
-          ret.push(i + ': ' + j);
+          ret.push(`${i}: ${j}`);
         } else {
-          ret.push(i + ': [?]');
+          ret.push(`${i}: [?]`);
         }
       }
     }

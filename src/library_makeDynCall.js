@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $createDyncallWrapper__deps: ['$generateFuncType', '$uleb128Encode'],
+  $createDyncallWrapper__deps: ['$generateFuncType', '$uleb128Encode', 'setTempRet0'],
   $createDyncallWrapper: function(sig) {
     var sections = [];
     var prelude = [

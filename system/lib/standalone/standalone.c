@@ -70,17 +70,17 @@ int clock_getres(clockid_t clk_id, struct timespec *tp) {
 
 // Mark these as weak so that wasmfs does not collide with it. That is, if
 // wasmfs is in use, we want to use that and not this.
-__attribute__((__weak__)) int _mmap_js(size_t length,
-                                       int prot,
-                                       int flags,
-                                       int fd,
-                                       size_t offset,
-                                       int* allocated,
-                                       void** addr) {
+weak int _mmap_js(size_t length,
+                  int prot,
+                  int flags,
+                  int fd,
+                  size_t offset,
+                  int* allocated,
+                  void** addr) {
   return -ENOSYS;
 }
 
-__attribute__((__weak__)) int _munmap_js(
+weak int _munmap_js(
   intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
   return -ENOSYS;
 }
@@ -89,8 +89,7 @@ __attribute__((__weak__)) int _munmap_js(
 // corner case error checking; everything else is not permitted.
 // TODO: full file support for WASI, or an option for it
 // open()
-__attribute__((__weak__))
-int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
+weak int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
   if (!strcmp((const char*)path, "/dev/stdin")) {
     return STDIN_FILENO;
   }
@@ -103,29 +102,28 @@ int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
   return -EPERM;
 }
 
-__attribute__((__weak__)) int __syscall_ioctl(int fd, int op, ...) {
+weak int __syscall_ioctl(int fd, int op, ...) {
   return -ENOSYS;
 }
 
-__attribute__((__weak__)) int __syscall_fcntl64(int fd, int cmd, ...) {
+weak int __syscall_fcntl64(int fd, int cmd, ...) {
   return -ENOSYS;
 }
 
-__attribute__((__weak__)) int __syscall_fstat64(int fd, intptr_t buf) {
+weak int __syscall_fstat64(int fd, intptr_t buf) {
   return -ENOSYS;
 }
 
 // There is no good source of entropy without an import. Make this weak so that
 // it can be replaced with a pRNG or a proper import.
-__attribute__((__weak__))
-int getentropy(void* buffer, size_t length) {
+weak int getentropy(void* buffer, size_t length) {
   abort();
 }
 
 // Emscripten additions
 
 // Should never be called in standalone mode
-void emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) {
+weak void emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) {
   __builtin_unreachable();
 }
 
@@ -142,7 +140,10 @@ int emscripten_resize_heap(size_t size) {
   assert(old_size < size);
   ssize_t diff = (size - old_size + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE;
   size_t result = __builtin_wasm_memory_grow(0, diff);
-  if (result != (size_t)-1) {
+  // Its seems v8 has a bug in memory.grow that causes it to return 
+  // (uint32_t)-1 even with memory64:
+  // https://bugs.chromium.org/p/v8/issues/detail?id=13948
+  if (result != (uint32_t)-1 && result != (size_t)-1) {
     // Success, update JS (see https://github.com/WebAssembly/WASI/issues/82)
     emscripten_notify_memory_growth(0);
     return 1;
@@ -152,24 +153,22 @@ int emscripten_resize_heap(size_t size) {
 }
 
 double emscripten_get_now(void) {
-  return (1000ll * clock()) / (double)CLOCKS_PER_SEC;
+  struct timespec ts;
+  if (clock_gettime(CLOCK_MONOTONIC, &ts)) {
+    return 0;
+  }
+  return (double)ts.tv_sec + (double)ts.tv_nsec / 1000000000;
 }
 
 // C++ ABI
 
-// Emscripten disables exception catching by default, but not throwing. That
-// allows users to see a clear error if a throw happens, and 99% of the
-// overhead is in the catching, so this is a reasonable tradeoff.
-// For now, in a standalone build just terminate. TODO nice error message
-//
-// Define these symbols as weak so that when we build with exceptions
-// enabled (using wasm-eh) we get the real versions of these functions
-// as defined in libc++abi.
-
-__attribute__((__weak__))
+#if EMSCRIPTEN_NOCATCH
+// When exception catching is disabled, we stub out calls to `__cxa_throw`.
+// Otherwise, `__cxa_throw` will be imported from the host.
 void __cxa_throw(void* ptr, void* type, void* destructor) {
   abort();
 }
+#endif
 
 // WasmFS integration. We stub out file preloading and such, that are not
 // expected to work anyhow.
@@ -213,9 +212,9 @@ static void wasi_writeln(__wasi_fd_t fd, const char* buffer) {
   imported__wasi_fd_write(fd, iovs, 2, &nwritten);
 }
 
-void _emscripten_out(const char* text) { wasi_writeln(1, text); }
+void emscripten_out(const char* text) { wasi_writeln(1, text); }
 
-void _emscripten_err(const char* text) { wasi_writeln(2, text); }
+void emscripten_err(const char* text) { wasi_writeln(2, text); }
 
 // In the non-standalone build we define this helper function in JS to avoid
 // signture mismatch issues.

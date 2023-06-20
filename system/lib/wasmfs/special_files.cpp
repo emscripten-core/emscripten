@@ -113,7 +113,7 @@ class StdoutFile : public WritingStdFile {
     // This is confirmed to occur when running with EXIT_RUNTIME and
     // PROXY_TO_PTHREAD. This results in only a single console.log statement
     // being outputted. The solution for now is to use out() and err() instead.
-    return writeToJS(buf, len, &_emscripten_out, writeBuffer);
+    return writeToJS(buf, len, &emscripten_out, writeBuffer);
   }
 
 public:
@@ -127,7 +127,7 @@ class StderrFile : public WritingStdFile {
     //       emscripten_err does.
     //       This will not show in HTML - a console.warn in a worker is
     //       sufficient. This would be a change from the current FS.
-    return writeToJS(buf, len, &_emscripten_err, writeBuffer);
+    return writeToJS(buf, len, &emscripten_err, writeBuffer);
   }
 
 public:

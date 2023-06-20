@@ -33,24 +33,24 @@ var window = {
   uid: 0,
   requestAnimationFrame: function(func) {
     func.uid = window.uid++;
-    headlessPrint('adding raf ' + func.uid);
+    headlessPrint(`adding raf ${func.uid}`);
     window.rafs.push(func);
   },
   setTimeout: function(func, ms) {
     func.uid = window.uid++;
-    headlessPrint('adding timeout ' + func.uid);
+    headlessPrint(`adding timeout ${func.uid}`);
     window.timeouts.push({
-      func: func,
+      func,
       when: window.fakeNow + (ms || 0)
     });
-    window.timeouts.sort(function(x, y) { return y.when - x.when });
+    window.timeouts.sort((x, y) => { return y.when - x.when });
   },
   runEventLoop: function() {
     // run forever until an exception stops this replay
     var iter = 0;
     while (!this.stopped) {
       var start = Date.realNow();
-      headlessPrint('event loop: ' + (iter++));
+      headlessPrint(`event loop: ${(iter++)}`);
       if (window.rafs.length == 0 && window.timeouts.length == 0) {
         if (window.onIdle) {
           window.onIdle();
@@ -63,7 +63,7 @@ var window = {
       window.rafs = [];
       for (var i = 0; i < currRafs.length; i++) {
         var raf = currRafs[i];
-        headlessPrint('calling raf: ' + raf.uid);// + ': ' + raf.toString().substring(0, 50));
+        headlessPrint(`calling raf: ${raf.uid}`);// + ': ' + raf.toString().substring(0, 50));
         raf();
       }
       // timeouts
@@ -72,12 +72,12 @@ var window = {
       window.timeouts = [];
       while (timeouts.length && timeouts[timeouts.length-1].when <= now) {
         var timeout = timeouts.pop();
-        headlessPrint('calling timeout: ' + timeout.func.uid);// + ': ' + timeout.func.toString().substring(0, 50));
+        headlessPrint(`calling timeout: ${timeout.func.uid}`);// + ': ' + timeout.func.toString().substring(0, 50));
         timeout.func();
       }
       // increment 'time'
       window.fakeNow += 16.666;
-      headlessPrint('main event loop iteration took ' + (Date.realNow() - start) + ' ms');
+      headlessPrint(`main event loop iteration took ${Date.realNow() - start} ms`);
     }
   },
   eventListeners: {},
@@ -101,7 +101,7 @@ var window = {
   callEventListeners: function(id) {
     var listeners = this.eventListeners[id];
     if (listeners) {
-      listeners.forEach(function(listener) { listener() });
+      listeners.forEach((listener) => listener());
     }
   },
   URL: {
@@ -136,12 +136,12 @@ var document = {
       case 'canvas': return document.getElementById(what);
       case 'script': {
         var ret = {};
-        window.setTimeout(function() {
-          headlessPrint('loading script: ' + ret.src);
+        window.setTimeout(() => {
+          headlessPrint(`loading script: ${ret.src}`);
           load(ret.src);
           headlessPrint('   script loaded.');
           if (ret.onload) {
-            window.setTimeout(function() {
+            window.setTimeout(() => {
               ret.onload(); // yeah yeah this might vanish
             });
           }
@@ -156,7 +156,7 @@ var document = {
           },
         };
       }
-      default: throw 'createElement ' + what + new Error().stack;
+      default: throw `createElement ${what}${new Error().stack}`;
     }
   },
   elements: {},
@@ -249,7 +249,7 @@ var Worker = (workerPath) => {
   var workerCode = read(workerPath);
   workerCode = workerCode.replace(/Module/g, 'zzModuleyy' + (Worker.id++)). // prevent collision with the global Module object. Note that this becomes global, so we need unique ids
                           replace(/\nonmessage = /, '\nvar onmessage = '); // workers commonly do "onmessage = ", we need to varify that to sandbox
-  headlessPrint('loading worker ' + workerPath + ' : ' + workerCode.substring(0, 50));
+  headlessPrint(`loading worker ${workerPath} : ${workerCode.substring(0, 50)}`);
   eval(workerCode); // will implement onmessage()
 
   function duplicateJSON(json) {
@@ -264,18 +264,18 @@ var Worker = (workerPath) => {
   this.terminate = () => {};
   this.postMessage = (msg) => {
     msg.messageId = Worker.messageId++;
-    headlessPrint('main thread sending message ' + msg.messageId + ' to worker ' + workerPath);
-    window.setTimeout(function() {
-      headlessPrint('worker ' + workerPath + ' receiving message ' + msg.messageId);
+    headlessPrint(`main thread sending message ${msg.messageId} to worker ${workerPath}`);
+    window.setTimeout(() => {
+      headlessPrint(`worker ${workerPath} receiving message ${msg.messageId}`);
       onmessage({ data: duplicateJSON(msg) });
     });
   };
   var thisWorker = this;
   var postMessage = (msg) => {
     msg.messageId = Worker.messageId++;
-    headlessPrint('worker ' + workerPath + ' sending message ' + msg.messageId);
-    window.setTimeout(function() {
-      headlessPrint('main thread receiving message ' + msg.messageId + ' from ' + workerPath);
+    headlessPrint(`worker ${workerPath} sending message ${msg.messageId}`);
+    window.setTimeout(() => {
+      headlessPrint(`main thread receiving message ${msg.messageId} from ${workerPath}`);
       thisWorker.onmessage({ data: duplicateJSON(msg) });
     });
   };
@@ -288,26 +288,13 @@ var screen = { // XXX these values may need to be adjusted
   availWidth: 2100,
   availHeight: 1283,
 };
-if (typeof console == "undefined") {
+if (typeof console == 'undefined') {
   console = {
     log: function(x) {
       print(x);
     }
   };
 }
-var MozBlobBuilder = () => {
-  this.data = new Uint8Array(0);
-  this.append = function(buffer) {
-    var data = new Uint8Array(buffer);
-    var combined = new Uint8Array(this.data.length + data.length);
-    combined.set(this.data);
-    combined.set(data, this.data.length);
-    this.data = combined;
-  };
-  this.getBlob = function() {
-    return this.data.buffer; // return the buffer as a "blob". XXX We might need to change this if it is not opaque
-  };
-};
 
 // additional setup
 if (!Module['canvas']) {

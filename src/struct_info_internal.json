@@ -40,6 +40,8 @@
               "mem_size",
               "table_addr",
               "table_size",
+              "file_data",
+              "file_data_size",
               "name"
             ]
         }

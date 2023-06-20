@@ -4,6 +4,7 @@
 #include <emscripten/wasmfs.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -118,6 +119,25 @@ int try_oob_write(void) {
   }
   emscripten_console_error(strerror(errno));
   close(fd);
+  return 2;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int try_rename_dir(void) {
+  int err = mkdir("/opfs/dir1", 0666);
+  if (err != 0) {
+    return 2;
+  }
+  err = rename("/opfs/dir1", "/opfs/dir2");
+  if (err == 0) {
+    return 1;
+  }
+  if (errno == EBUSY) {
+    rmdir("/opfs/dir1");
+    return 0;
+  }
+  emscripten_console_error(strerror(errno));
+  rmdir("/opfs/dir1");
   return 2;
 }
 
