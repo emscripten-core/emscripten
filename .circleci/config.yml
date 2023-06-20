@@ -739,8 +739,8 @@ jobs:
       - pip-install:
           python: "$EMSDK_PYTHON"
       - run-tests:
-          title: "other+extras"
-          test_targets: "other skip:other.test_native_link_error_message"
+          title: "crossplatform tests"
+          test_targets: "--crossplatform-only"
       - upload-test-results
 
   test-mac-arm64:
