@@ -261,3 +261,5 @@ var sampleRate;
  * Avoid closure minifying anything to "id". See #13965
  */
 var id;
+
+var moduleArg;

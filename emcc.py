@@ -3229,8 +3229,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
 
   if settings.MODULARIZE:
     modularize()
-
-  if settings.USE_CLOSURE_COMPILER:
+  elif settings.USE_CLOSURE_COMPILER:
     module_export_name_substitution()
 
   # Run a final optimization pass to clean up items that were not possible to
@@ -3863,7 +3862,10 @@ def modularize():
      shared.target_environment_may_be('web'):
     async_emit = 'async '
 
-  return_value = settings.EXPORT_NAME
+  # Return the incoming `moduleArg`.  This is is equeivielt to the `Module` var within the
+  # generated code but its not run through closure minifiection so we can reference it in
+  # the the return statement.
+  return_value = 'moduleArg'
   if settings.WASM_ASYNC_COMPILATION:
     return_value += '.ready'
   if not settings.EXPORT_READY_PROMISE:
@@ -3874,7 +3876,7 @@ def modularize():
     diagnostics.warning('emcc', 'EXPORT_NAME should not be named "config" when targeting Safari')
 
   src = '''
-%(maybe_async)sfunction(%(EXPORT_NAME)s = {})  {
+%(maybe_async)sfunction(moduleArg = {}) {
 
 %(src)s
 
@@ -3883,7 +3885,6 @@ def modularize():
 %(capture_module_function_for_audio_worklet)s
 ''' % {
     'maybe_async': async_emit,
-    'EXPORT_NAME': settings.EXPORT_NAME,
     'src': src,
     'return_value': return_value,
     # Given the async nature of how the Module function and Module object come into existence in AudioWorkletGlobalScope,
@@ -3945,6 +3946,7 @@ else if (typeof exports === 'object')
 
 
 def module_export_name_substitution():
+  assert not settings.MODULARIZE
   global final_js
   logger.debug(f'Private module export name substitution with {settings.EXPORT_NAME}')
   src = read_file(final_js)
