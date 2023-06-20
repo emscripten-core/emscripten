@@ -20,7 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 3.1.42 (in development)
 -----------------------
-- Bump the default minimum Node version from 10.19 to 16.0. To target the
+- The default minimum Node version was bumped from 10.19 to 16.0. To target the
   previous minimum version (10.19.0), use `-sMIN_NODE_VERSION=101900` (#19192).
 - The log message that emcc will sometime print (for example when auto-building
   system libraries) can now be completely supressed by running with
