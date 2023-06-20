@@ -441,9 +441,8 @@ If manually bisecting:
     # With FS.preloadFile
 
     create_file('pre.js', '''
-      Module.preRun = function() {
-        FS.createPreloadedFile('/', 'someotherfile.txt', 'somefile.txt', true, false); // we need --use-preload-plugins for this.
-      };
+      // we need --use-preload-plugins for this.
+      Module.preRun = () => FS.createPreloadedFile('/', 'someotherfile.txt', 'somefile.txt', true, false);
     ''')
     make_main('someotherfile.txt')
     self.btest_exit('main.cpp', args=['--pre-js', 'pre.js', '--use-preload-plugins'])
@@ -714,7 +713,7 @@ If manually bisecting:
           <center><canvas id='canvas' width='256' height='256'></canvas></center>
           <hr><div id='output'></div><hr>
           <script type='text/javascript'>
-            window.onerror = function(error) {
+            window.onerror = (error) => {
               window.disableErrorReporting = true;
               window.onerror = null;
               var result = error.indexOf("test.data") >= 0 ? 1 : 0;
@@ -868,7 +867,7 @@ function assert(x, y) { if (!x) throw 'assertion failed ' + y }
 %s
 
 var windowClose = window.close;
-window.close = function() {
+window.close = () => {
   // wait for rafs to arrive and the screen to update before reftesting
   setTimeout(function() {
     doReftest();
@@ -936,8 +935,7 @@ window.close = function() {
 
   def test_sdl_key_proxy(self):
     create_file('pre.js', '''
-      var Module = {};
-      Module.postRun = function() {
+      Module.postRun = () => {
         function doOne() {
           Module._one();
           setTimeout(doOne, 1000/60);
@@ -1026,7 +1024,7 @@ keydown(100);keyup(100); // trigger the end
 
   def test_sdl_text(self):
     create_file('pre.js', '''
-      Module.postRun = function() {
+      Module.postRun = () => {
         function doOne() {
           Module._one();
           setTimeout(doOne, 1000/60);
@@ -1173,10 +1171,8 @@ keydown(100);keyup(100); // trigger the end
     create_file('pre.js', '''
       var gamepads = [];
       // Spoof this function.
-      navigator['getGamepads'] = function() {
-        return gamepads;
-      };
-      window['addNewGamepad'] = function(id, numAxes, numButtons) {
+      navigator['getGamepads'] = () => gamepads;
+      window['addNewGamepad'] = (id, numAxes, numButtons) => {
         var index = gamepads.length;
         gamepads.push({
           axes: new Array(numAxes),
@@ -1188,13 +1184,13 @@ keydown(100);keyup(100); // trigger the end
         for (i = 0; i < numAxes; i++) gamepads[index].axes[i] = 0;
         for (i = 0; i < numButtons; i++) gamepads[index].buttons[i] = 0;
       };
-      window['simulateGamepadButtonDown'] = function (index, button) {
+      window['simulateGamepadButtonDown'] = (index, button) => {
         gamepads[index].buttons[button] = 1;
       };
-      window['simulateGamepadButtonUp'] = function (index, button) {
+      window['simulateGamepadButtonUp'] = (index, button) => {
         gamepads[index].buttons[button] = 0;
       };
-      window['simulateAxisMotion'] = function (index, axis, value) {
+      window['simulateAxisMotion'] = (index, axis, value) => {
         gamepads[index].axes[axis] = value;
       };
     ''')
@@ -1207,10 +1203,8 @@ keydown(100);keyup(100); // trigger the end
     create_file('pre.js', '''
       var gamepads = [];
       // Spoof this function.
-      navigator['getGamepads'] = function() {
-        return gamepads;
-      };
-      window['addNewGamepad'] = function(id, numAxes, numButtons) {
+      navigator['getGamepads'] = () => gamepads;
+      window['addNewGamepad'] = (id, numAxes, numButtons) => {
         var index = gamepads.length;
         gamepads.push({
           axes: new Array(numAxes),
@@ -1224,15 +1218,15 @@ keydown(100);keyup(100); // trigger the end
         for (i = 0; i < numButtons; i++) gamepads[index].buttons[i] = { pressed: false, value: 0 };
       };
       // FF mutates the original objects.
-      window['simulateGamepadButtonDown'] = function (index, button) {
+      window['simulateGamepadButtonDown'] = (index, button) => {
         gamepads[index].buttons[button].pressed = true;
         gamepads[index].buttons[button].value = 1;
       };
-      window['simulateGamepadButtonUp'] = function (index, button) {
+      window['simulateGamepadButtonUp'] = (index, button) => {
         gamepads[index].buttons[button].pressed = false;
         gamepads[index].buttons[button].value = 0;
       };
-      window['simulateAxisMotion'] = function (index, axis, value) {
+      window['simulateAxisMotion'] = (index, axis, value) => {
         gamepads[index].axes[axis] = value;
       };
     ''')
@@ -1246,10 +1240,8 @@ keydown(100);keyup(100); // trigger the end
     create_file('pre.js', '''
       var gamepads = [];
       // Spoof this function.
-      navigator['getGamepads'] = function() {
-        return gamepads;
-      };
-      window['addNewGamepad'] = function(id, numAxes, numButtons) {
+      navigator['getGamepads'] = () => gamepads;
+      window['addNewGamepad'] = (id, numAxes, numButtons) => {
         var index = gamepads.length;
         var gamepad = {
           axes: new Array(numAxes),
@@ -1269,15 +1261,15 @@ keydown(100);keyup(100); // trigger the end
         window.dispatchEvent(event);
       };
       // FF mutates the original objects.
-      window['simulateGamepadButtonDown'] = function (index, button) {
+      window['simulateGamepadButtonDown'] = (index, button) => {
         gamepads[index].buttons[button].pressed = true;
         gamepads[index].buttons[button].value = 1;
       };
-      window['simulateGamepadButtonUp'] = function (index, button) {
+      window['simulateGamepadButtonUp'] = (index, button) => {
         gamepads[index].buttons[button].pressed = false;
         gamepads[index].buttons[button].value = 0;
       };
-      window['simulateAxisMotion'] = function (index, axis, value) {
+      window['simulateAxisMotion'] = (index, axis, value) => {
         gamepads[index].axes[axis] = value;
       };
     ''')
@@ -1394,7 +1386,7 @@ keydown(100);keyup(100); // trigger the end
     # sync from persisted state into memory before main()
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
     create_file('pre.js', '''
-      Module.preRun = function() {
+      Module.preRun = () => {
         addRunDependency('syncfs');
 
         FS.mkdir('/working1');
@@ -1420,8 +1412,7 @@ keydown(100);keyup(100); // trigger the end
     secret = 'a' * 10
     secret2 = 'b' * 10
     create_file('pre.js', '''
-      var Module = {};
-      Module.preRun = function() {
+      Module.preRun = () => {
         var blob = new Blob(['%s']);
         var file = new File(['%s'], 'file.txt');
         FS.mkdir('/work');
@@ -1658,7 +1649,7 @@ keydown(100);keyup(100); // trigger the end
         Worker Test
         <script>
           var worker = new Worker('worker.js');
-          worker.onmessage = function(event) {
+          worker.onmessage = (event) => {
             var xhr = new XMLHttpRequest();
             xhr.open('GET', 'http://localhost:%s/report_result?' + event.data);
             xhr.send();
@@ -1704,7 +1695,7 @@ keydown(100);keyup(100); // trigger the end
         <script>
           var worker = new Worker(""" + json.dumps(worker_filename) + r""");
           var buffer = [];
-          worker.onmessage = function(event) {
+          worker.onmessage = (event) => {
             if (event.data.channel === "stdout") {
               var xhr = new XMLHttpRequest();
               xhr.open('GET', 'http://localhost:%s/report_result?' + event.data.line);
@@ -1731,14 +1722,13 @@ keydown(100);keyup(100); // trigger the end
     """ % self.port)
 
     create_file('worker_prejs.js', r"""
-      if (typeof(Module) === "undefined") Module = {};
-      Module["arguments"] = ["/bigfile"];
-      Module["preInit"] = function() {
-          FS.createLazyFile('/', "bigfile", "http://localhost:11111/bogus_file_path", true, false);
+      Module.arguments = ["/bigfile"];
+      Module.preInit = () => {
+        FS.createLazyFile('/', "bigfile", "http://localhost:11111/bogus_file_path", true, false);
       };
       var doTrace = true;
-      Module["print"] = function(s) { self.postMessage({channel: "stdout", line: s}); };
-      Module["printErr"] = function(s) { self.postMessage({channel: "stderr", char: s, trace: ((doTrace && s === 10) ? new Error().stack : null)}); doTrace = false; };
+      Module.print = (s) => self.postMessage({channel: "stdout", line: s});
+      Module.printErr = (s) => { self.postMessage({channel: "stderr", char: s, trace: ((doTrace && s === 10) ? new Error().stack : null)}); doTrace = false; };
     """)
     self.compile_btest([test_file('checksummer.c'), '-g', '-sSMALL_XHR_CHUNKS', '-o', worker_filename,
                         '--pre-js', 'worker_prejs.js'])
@@ -2371,7 +2361,7 @@ void *getBindBuffer() {
   def test_pre_run_deps(self):
     # Adding a dependency in preRun will delay run
     create_file('pre.js', '''
-      Module.preRun = function() {
+      Module.preRun = () => {
         addRunDependency();
         out('preRun called, added a dependency...');
         setTimeout(function() {
@@ -2390,10 +2380,8 @@ void *getBindBuffer() {
       function myJSCallback() { // called from main()
         Module._note(1);
       }
-      Module.preRun = function() {
-        addOnPreMain(function() {
-          Module._note(2);
-        });
+      Module.preRun = () => {
+        addOnPreMain(() => Module._note(2));
       };
     ''')
     create_file('post.js', '''
@@ -2417,7 +2405,7 @@ void *getBindBuffer() {
         xhr.responseType = 'arraybuffer';
         xhr.send(null);
 
-        console.warn = function(x) {
+        console.warn = (x) => {
           if (x.indexOf('a problem seems to have happened with Module.memoryInitializerRequest') >= 0) {
             maybeReportResultToServer('got_error');
           }
@@ -2504,9 +2492,7 @@ void *getBindBuffer() {
     ''' % self.port
 
     create_file('pre_runtime.js', r'''
-      Module.onRuntimeInitialized = function(){
-        myJSCallback();
-      };
+      Module.onRuntimeInitialized = () => myJSCallback();
     ''')
 
     for filename, extra_args, second_code in [
@@ -2876,7 +2862,7 @@ Module["preRun"].push(function () {
         }
       ''')
       create_file('data.txt', 'load me right before...')
-      create_file('pre.js', 'Module.locateFile = function(x) { return "sub/" + x };')
+      create_file('pre.js', 'Module.locateFile = (x) => "sub/" + x;')
       self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w'))
       # put pre.js first, then the file packager data, so locateFile is there for the file loading code
       self.compile_btest(['src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-sFORCE_FILESYSTEM', '-sWASM=' + str(wasm)] + args, reporting=Reporting.JS_ONLY)
@@ -2988,7 +2974,7 @@ Module["preRun"].push(function () {
 
   def test_sdl2_key(self):
     create_file('pre.js', '''
-      Module.postRun = function() {
+      Module.postRun = () => {
         function doOne() {
           Module._one();
           setTimeout(doOne, 1000/60);
@@ -3017,7 +3003,7 @@ Module["preRun"].push(function () {
 
   def test_sdl2_text(self):
     create_file('pre.js', '''
-      Module.postRun = function() {
+      Module.postRun = () => {
         function doOne() {
           Module._one();
           setTimeout(doOne, 1000/60);
@@ -3609,7 +3595,7 @@ Module["preRun"].push(function () {
         temp[1] = 'x';
         EM_ASM({
           Module.realPrint = out;
-          out = function(x) {
+          out = (x) => {
             if (!Module.printed) Module.printed = x;
             Module.realPrint(x);
           };
@@ -3677,7 +3663,7 @@ Module["preRun"].push(function () {
       # setup by the shell).
       create_file('post.js', r'''
           Module.realPrint = out;
-          out = function(x) {
+          out = (x) => {
             if (!Module.printed) Module.printed = "";
             Module.printed += x + '\n'; // out is passed str without last \n
             Module.realPrint(x);
@@ -4379,7 +4365,7 @@ Module["preRun"].push(function () {
         };
       }
       // show stderr for the viewer's fun
-      err = function(x) {
+      err = (x) => {
         out('<<< ' + x + ' >>>');
         console.log(x);
       };

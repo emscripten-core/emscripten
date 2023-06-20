@@ -2862,7 +2862,7 @@ The current type of b is: 9
     # Add the onAbort handler at runtime during preRun.  This means that onAbort
     # handler will only be present in the main thread (much like it would if it
     # was passed in by pre-populating the module object on prior to loading).
-    self.add_pre_run("Module.onAbort = function() { console.log('onAbort called'); }")
+    self.add_pre_run("Module.onAbort = () => console.log('onAbort called');")
     self.do_run_in_out_file_test('pthread/test_pthread_abort.c', assert_returncode=NON_ZERO)
 
   @node_pthreads
@@ -5611,13 +5611,13 @@ Pass: 0.000012 0.000012''')
 /** @suppress{checkTypes}*/
 Module = {
   'noFSInit': true,
-  'preRun': function() {
+  'preRun': () => {
     FS.createLazyFile('/', 'test.file', 'test.file', true, false);
     // Test FS_* exporting
     Module['FS_createDataFile']('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false, false);  // 200 becomes -56, since signed chars are used in memory
     var test_files_input = 'hi there!';
     var test_files_input_index = 0;
-    FS.init(function() {
+    FS.init(() => {
       return test_files_input.charCodeAt(test_files_input_index++) || null;
     });
   }
@@ -5643,8 +5643,8 @@ Module = {
     create_file('pre.js', '''
     Module = {
       data: [10, 20, 40, 30],
-      stdin: function() { return Module.data.pop() || null },
-      stdout: function(x) { out('got: ' + x) }
+      stdin: () => { return Module.data.pop() || null },
+      stdout: (x) => out('got: ' + x)
     };
     ''')
     self.emcc_args += ['--pre-js', 'pre.js']
@@ -6060,10 +6060,10 @@ Module = {
     # library_fs.js uses hooks to enable ignoring of permisions up until ATMAINs are run.  This
     # test verified that they work correctly, even in programs without a main function.
     create_file('pre.js', '''
-Module['preRun'] = function() {
+Module.preRun = () => {
   assert(FS.ignorePermissions, "ignorePermissions not set during preRun");
 }
-Module['onRuntimeInitialized'] = function() {
+Module.onRuntimeInitialized = () => {
   assert(!FS.ignorePermissions, "ignorePermissions not unset during onRuntimeInitialized");
   assert(_foo() == 42);
 }
@@ -6423,16 +6423,12 @@ PORT: 3979
     ''')
     create_file('mylib1.js', '''
       mergeInto(LibraryManager.library, {
-        printey: function() {
-          out('hello from lib!');
-        }
+        printey: () => out('hello from lib!')
       });
     ''')
     create_file('mylib2.js', '''
       mergeInto(LibraryManager.library, {
-        calcey: function(x, y) {
-          return x + y;
-        }
+        calcey: (x, y) => x + y
       });
     ''')
 
@@ -6992,10 +6988,10 @@ void* operator new(size_t size) {
     create_file('paper.pdf.js', str(list(bytearray(pdf_data))))
 
     create_file('pre.js', '''
-    Module.preRun = function() {
+    Module.preRun = () => {
       FS.createDataFile('/', 'paper.pdf', eval(read_('paper.pdf.js')), true, false, false);
     };
-    Module.postRun = function() {
+    Module.postRun = () => {
       var FileData = Array.from(MEMFS.getFileDataAsTypedArray(FS.root.contents['filename-1.ppm']));
       out("Data: " + JSON.stringify(FileData.map(function(x) { return unSign(x, 8) })));
     };
@@ -7032,8 +7028,8 @@ void* operator new(size_t size) {
       original_j2k = test_file('openjpeg/syntensity_lobby_s.j2k')
       image_bytes = list(bytearray(read_binary(original_j2k)))
       create_file('pre.js', """
-        Module.preRun = function() { FS.createDataFile('/', 'image.j2k', %s, true, false, false); };
-        Module.postRun = function() {
+        Module.preRun = () => FS.createDataFile('/', 'image.j2k', %s, true, false, false);
+        Module.postRun = () => {
           out('Data: ' + JSON.stringify(Array.from(FS.readFile('image.raw'))));
         };
         """ % line_splitter(str(image_bytes)))
@@ -8103,9 +8099,7 @@ void* operator new(size_t size) {
       }
     ''')
     create_file('pre.js', '''
-      Module.onExit = function() {
-        out('I see exit status: ' + EXITSTATUS);
-      }
+      Module.onExit = () => out('I see exit status: ' + EXITSTATUS);
     ''')
     self.emcc_args += ['--pre-js', 'pre.js']
     print('.. exit')
@@ -8233,7 +8227,7 @@ int main() {
 }
 ''')
     create_file('pre.js', '''
-Module['onRuntimeInitialized'] = function() {
+Module.onRuntimeInitialized = () => {
   try {
     ccall('main', 'number', ['number', 'string'], [2, 'waka']);
     var never = true;
@@ -8266,7 +8260,7 @@ int main() {
 }
 ''')
     create_file('pre.js', '''
-Module['onRuntimeInitialized'] = function() {
+Module.onRuntimeInitialized = () => {
   ccall('main', null, ['number', 'string'], [2, 'waka'], { async: true });
 };
 ''')
@@ -8301,7 +8295,7 @@ double floatf() {
 }
 ''')
     create_file('pre.js', r'''
-Module['onRuntimeInitialized'] = function() {
+Module.onRuntimeInitialized = () => {
   runtimeKeepalivePush();
   ccall('stringf', 'string', ['string'], ['first\n'], { async: true })
     .then(function(val) {
@@ -8633,7 +8627,7 @@ Module['onRuntimeInitialized'] = function() {
     ''')
     create_file('lib.js', '''
       mergeInto(LibraryManager.library, {
-        check_memprof_requirements: function() {
+        check_memprof_requirements: () => {
           if (typeof _emscripten_stack_get_base === 'function' &&
               typeof _emscripten_stack_get_end === 'function' &&
               typeof _emscripten_stack_get_current === 'function' &&
@@ -8655,8 +8649,7 @@ Module['onRuntimeInitialized'] = function() {
     self.emcc_args += ['-lidbfs.js']
     self.emcc_args += ['-lnodefs.js']
     create_file('pre.js', '''
-      Module = {};
-      Module['preRun'] = function() {
+      Module.preRun = () => {
         out(typeof FS.filesystems['MEMFS']);
         out(typeof FS.filesystems['IDBFS']);
         out(typeof FS.filesystems['NODEFS']);
@@ -8674,8 +8667,7 @@ Module['onRuntimeInitialized'] = function() {
     self.set_setting('FORCE_FILESYSTEM')
     self.set_setting('ASSERTIONS')
     create_file('pre.js', '''
-      Module = {};
-      Module['preRun'] = function() {
+      Module.preRun = () => {
         out(typeof FS.filesystems['MEMFS']);
         out(typeof FS.filesystems['IDBFS']);
         out(typeof FS.filesystems['NODEFS']);
@@ -8998,7 +8990,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       elif self.get_setting('EVAL_CTORS'):
         self.skipTest('EVAL_CTORS does not support source maps')
 
-    create_file('pre.js', 'Module = {UBSAN_OPTIONS: "print_stacktrace=1"};')
+    create_file('pre.js', 'Module.UBSAN_OPTIONS = "print_stacktrace=1";')
     self.emcc_args += ['-fsanitize=null', g_flag, '--pre-js=pre.js']
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.do_runf(test_file('core/test_ubsan_full_null_ref.cpp'),
@@ -9455,9 +9447,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     create_file('lib.js', r'''
       mergeInto(LibraryManager.library, {
         jslib_func__sig: 'v',
-        jslib_func: function() {
-          err('hello from js');
-        }
+        jslib_func: () => err('hello from js')
       });
     ''')
     self.emcc_args.append('--js-library=lib.js')
