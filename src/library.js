@@ -2334,11 +2334,6 @@ mergeInto(LibraryManager.library, {
     // respective time origins.
     _emscripten_get_now = () => performance.timeOrigin + {{{ getPerformanceNow() }}}();
 #else
-#if ENVIRONMENT_MAY_BE_SHELL
-    if (typeof dateNow != 'undefined') {
-      _emscripten_get_now = dateNow;
-    } else
-#endif
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 || AUDIO_WORKLET // https://caniuse.com/#feat=high-resolution-time
     // AudioWorkletGlobalScope does not have performance.now()
     // (https://github.com/WebAudio/web-audio-api/issues/2527), so if building
@@ -2368,11 +2363,6 @@ mergeInto(LibraryManager.library, {
       return 1; // nanoseconds
     }
 #endif
-#if ENVIRONMENT_MAY_BE_SHELL
-    if (typeof dateNow != 'undefined') {
-      return 1000; // microseconds (1/1000 of a millisecond)
-    }
-#endif
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
     if (typeof performance == 'object' && performance && typeof performance['now'] == 'function') {
       return 1000; // microseconds (1/1000 of a millisecond)
@@ -2392,9 +2382,6 @@ mergeInto(LibraryManager.library, {
      ((typeof performance == 'object' && performance && typeof performance['now'] == 'function')
 #if ENVIRONMENT_MAY_BE_NODE
       || ENVIRONMENT_IS_NODE
-#endif
-#if ENVIRONMENT_MAY_BE_SHELL
-      || (typeof dateNow != 'undefined')
 #endif
     );`,
 #else
