@@ -2,6 +2,7 @@
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
+var LibraryEmbindShared = {
   $InternalError__postset: "InternalError = Module['InternalError'] = class InternalError extends Error { constructor(message) { super(message); this.name = 'InternalError'; }}",
   $InternalError:  undefined,
   $BindingError__postset: "BindingError = Module['BindingError'] = class BindingError extends Error { constructor(message) { super(message); this.name = 'BindingError'; }}",
@@ -147,3 +148,6 @@
     }
     return impl;
   }
+};
+
+mergeInto(LibraryManager.library, LibraryEmbindShared);

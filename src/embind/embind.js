@@ -25,9 +25,9 @@
 /*global throwInstanceAlreadyDeleted, shallowCopyInternalPointer*/
 /*global RegisteredPointer_fromWireType, constNoSmartPtrRawPointerToWireType, nonConstNoSmartPtrRawPointerToWireType, genericPointerToWireType*/
 
-var LibraryEmbind = {
 #include embind/embind_shared.js
-  ,
+
+var LibraryEmbind = {
   $UnboundTypeError__postset: "UnboundTypeError = Module['UnboundTypeError'] = extendError(Error, 'UnboundTypeError');",
   $UnboundTypeError__deps: ['$extendError'],
   $UnboundTypeError: undefined,
@@ -2469,8 +2469,6 @@ var LibraryEmbind = {
       return [];
     });
   },
-
-  _embind_initialize_done: function() {},
 };
 
 mergeInto(LibraryManager.library, LibraryEmbind);

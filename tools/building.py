@@ -1084,7 +1084,7 @@ def is_wasm_dylib(filename):
   return False
 
 
-def map_to_js_libs(library_name, options):
+def map_to_js_libs(library_name, emit_tsd):
   """Given the name of a special Emscripten-implemented system library, returns an
   pair containing
   1. Array of absolute paths to JS library files, inside emscripten/src/ that corresponds to the
@@ -1094,7 +1094,7 @@ def map_to_js_libs(library_name, options):
   """
   # Some native libraries are implemented in Emscripten as system side JS libraries
   embind = 'embind/embind.js'
-  if options.embind_emit_tsd:
+  if emit_tsd:
     embind = 'embind/embind_ts.js'
   library_map = {
     'embind': [embind, 'embind/emval.js'],

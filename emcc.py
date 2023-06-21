@@ -2496,6 +2496,10 @@ def phase_linker_setup(options, state, newargs):
       'removeRunDependency',
     ]
 
+  if options.embind_emit_tsd:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$embindEmitTypes']
+    settings.REQUIRED_EXPORTS += ['free']
+
   def check_memory_setting(setting):
     if settings[setting] % webassembly.WASM_PAGE_SIZE != 0:
       exit_with_error(f'{setting} must be a multiple of WebAssembly page size (64KiB), was {settings[setting]}')
@@ -3297,9 +3301,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     make_js_executable(js_target)
 
   if options.embind_emit_tsd:
-    out = shared.run_js_tool(js_target,
-                             [], stdout=PIPE,
-                             env=os.environ.copy(), encoding='utf-8')
+    out = shared.run_js_tool(js_target, [], stdout=PIPE)
     write_file(options.embind_emit_tsd, out)
 
 
@@ -4199,7 +4201,7 @@ def process_libraries(state, linker_inputs, options):
 
     logger.debug('looking for library "%s"', lib)
 
-    js_libs, native_lib = building.map_to_js_libs(lib, options)
+    js_libs, native_lib = building.map_to_js_libs(lib, options.embind_emit_tsd)
     if js_libs is not None:
       libraries += [(i, js_lib) for js_lib in js_libs]
       # If native_lib is returned then include it in the link

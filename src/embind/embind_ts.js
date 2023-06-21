@@ -2,10 +2,9 @@
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
+#include embind/embind_shared.js
 
 var LibraryEmbind = {
-#include embind/embind_shared.js
-  ,
 
   $moduleDefinitions: [],
 
@@ -263,8 +262,9 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_initialize_done__deps: ['$awaitingDependencies', '$throwBindingError', '$getTypeName', '$moduleDefinitions', '$TsPrinter'],
-  _embind_initialize_done: function() {
+  $embindEmitTypes__deps: ['$awaitingDependencies', '$throwBindingError', '$getTypeName', '$moduleDefinitions', '$TsPrinter'],
+  $embindEmitTypes__postset: 'addOnInit(embindEmitTypes);',
+  $embindEmitTypes: function() {
     for (var typeId in awaitingDependencies) {
       throwBindingError(`Missing type definition for '${getTypeName(typeId)}'`);
     }

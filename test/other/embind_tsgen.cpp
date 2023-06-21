@@ -29,6 +29,6 @@ EMSCRIPTEN_BINDINGS(Test) {
 
 int main() {
   // Main should not be run during TypeScript generation.
-  printf("FAIL\n");
+  abort();
   return 0;
 }
