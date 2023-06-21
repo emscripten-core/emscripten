@@ -1019,3 +1019,11 @@ function formattedMinNodeVersion() {
   var rev = MIN_NODE_VERSION % 100
   return `v${major}.${minor}.${rev}`;
 }
+
+function getPerformanceNow() {
+  if (DETERMINISTIC) {
+    return 'deterministicNow';
+  } else {
+    return 'performance.now';
+  }
+}
