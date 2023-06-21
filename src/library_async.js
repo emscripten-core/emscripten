@@ -22,7 +22,11 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY
   $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback', '$sigToWasmTypes',
 #if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop'
+    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
+#endif
+#if ASYNCIFY == 1
+    // Needed by allocateData and handleSleep respectively
+    'malloc', 'free',
 #endif
   ],
 
@@ -34,20 +38,20 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
       dbg('asyncify instrumenting imports');
 #endif
-      var ASYNCIFY_IMPORTS = {{{ JSON.stringify(ASYNCIFY_IMPORTS.map((x) => x.split('.')[1])) }}};
+      var importPatterns = [{{{ ASYNCIFY_IMPORTS.map(x => '/^' + x.split('.')[1].replace(new RegExp('\\*', 'g'), '.*') + '$/') }}}];
+
       for (var x in imports) {
         (function(x) {
           var original = imports[x];
           var sig = original.sig;
           if (typeof original == 'function') {
             var isAsyncifyImport = original.isAsync ||
-                                   ASYNCIFY_IMPORTS.indexOf(x) >= 0 ||
-                                   x.startsWith('__asyncjs__');
+                                   importPatterns.some(pattern => !!x.match(pattern));
 #if ASYNCIFY == 2
             // Wrap async imports with a suspending WebAssembly function.
             if (isAsyncifyImport) {
 #if ASSERTIONS
-              assert(sig, 'Missing __sig for ' + x);
+              assert(sig, `Missing __sig for ${x}`);
 #endif
               var type = sigToWasmTypes(sig);
 #if ASYNCIFY_DEBUG
@@ -85,7 +89,7 @@ mergeInto(LibraryManager.library, {
                     !isAsyncifyImport &&
                     !changedToDisabled &&
                     !ignoredInvoke) {
-                  throw new Error('import ' + x + ' was not in ASYNCIFY_IMPORTS, but changed the state');
+                  throw new Error(`import ${x} was not in ASYNCIFY_IMPORTS, but changed the state`);
                 }
               }
             };
@@ -106,7 +110,7 @@ mergeInto(LibraryManager.library, {
       dbg('asyncify instrumenting exports');
 #endif
 #if ASYNCIFY == 2
-      var ASYNCIFY_EXPORTS = {{{ JSON.stringify(ASYNCIFY_EXPORTS) }}};
+      var exportPatterns = [{{{ ASYNCIFY_EXPORTS.map(x => new RegExp('^' + x.replace(/\*/g, '.*') + '$')) }}}];
 #endif
       var ret = {};
       for (var x in exports) {
@@ -115,14 +119,14 @@ mergeInto(LibraryManager.library, {
           if (typeof original == 'function') {
 #if ASYNCIFY == 2
             // Wrap all exports with a promising WebAssembly function.
-            var isAsyncifyExport = ASYNCIFY_EXPORTS.indexOf(x) >= 0;
+            var isAsyncifyExport = exportPatterns.some(pattern => !!x.match(pattern));
             if (isAsyncifyExport) {
               original = Asyncify.makeAsyncFunction(original);
             }
 #endif
             ret[x] = function() {
 #if ASYNCIFY_DEBUG >= 2
-              dbg('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try ' + x);
+              dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length} try ${x}`);
 #endif
 #if ASYNCIFY == 1
               Asyncify.exportCallStack.push(x);
@@ -135,7 +139,7 @@ mergeInto(LibraryManager.library, {
                   var y = Asyncify.exportCallStack.pop();
                   assert(y === x);
 #if ASYNCIFY_DEBUG >= 2
-                  dbg('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' finally ' + x);
+                  dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length)} finally ${x}`);
 #endif
                   Asyncify.maybeStopUnwind();
                 }
@@ -222,10 +226,7 @@ mergeInto(LibraryManager.library, {
       assert(!Asyncify.asyncPromiseHandlers, 'Cannot have multiple async operations in flight at once');
 #endif
       return new Promise((resolve, reject) => {
-        Asyncify.asyncPromiseHandlers = {
-          resolve: resolve,
-          reject: reject
-        };
+        Asyncify.asyncPromiseHandlers = { resolve, reject };
       });
     },
 
@@ -295,7 +296,7 @@ mergeInto(LibraryManager.library, {
 #endif
       if (ABORT) return;
 #if ASYNCIFY_DEBUG
-      dbg('ASYNCIFY: handleSleep ' + Asyncify.state);
+      dbg(`ASYNCIFY: handleSleep ${Asyncify.state}`);
 #endif
       if (Asyncify.state === Asyncify.State.Normal) {
         // Prepare to sleep. Call startAsync, and see what happens:
@@ -324,7 +325,7 @@ mergeInto(LibraryManager.library, {
           assert(!Asyncify.exportCallStack.length, 'Waking up (starting to rewind) must be done from JS, without compiled code on the stack.');
 #endif
 #if ASYNCIFY_DEBUG
-          dbg('ASYNCIFY: start rewind ' + Asyncify.currData);
+          dbg(`ASYNCIFY: start rewind ${Asyncify.currData}`);
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
           runAndAbortIfError(() => _asyncify_start_rewind(Asyncify.currData));
@@ -374,7 +375,7 @@ mergeInto(LibraryManager.library, {
           // TODO: reuse, don't alloc/free every sleep
           Asyncify.currData = Asyncify.allocateData();
 #if ASYNCIFY_DEBUG
-          dbg('ASYNCIFY: start unwind ' + Asyncify.currData);
+          dbg(`ASYNCIFY: start unwind ${Asyncify.currData}`);
 #endif
           if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.pause();
@@ -393,7 +394,7 @@ mergeInto(LibraryManager.library, {
         // Call all sleep callbacks now that the sleep-resume is all done.
         Asyncify.sleepCallbacks.forEach((func) => callUserCallback(func));
       } else {
-        abort('invalid state: ' + Asyncify.state);
+        abort(`invalid state: ${Asyncify.state}`);
       }
       return Asyncify.handleSleepReturnValue;
     },

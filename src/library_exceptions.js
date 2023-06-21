@@ -23,9 +23,12 @@ var LibraryExceptions = {
   //
   // excPtr - Thrown object pointer to wrap. Metadata pointer is calculated from it.
   $ExceptionInfo__docs: '/** @constructor */',
+  $ExceptionInfo__deps: [
+    '__cxa_is_pointer_type',
 #if EXCEPTION_DEBUG
-  $ExceptionInfo__deps: ['$ptrToString'],
+    '$ptrToString'
 #endif
+  ],
   $ExceptionInfo: function(excPtr) {
     this.excPtr = excPtr;
     this.ptr = excPtr - {{{ C_STRUCTS.__cxa_exception.__size__ }}};
@@ -210,6 +213,7 @@ var LibraryExceptions = {
   },
 
   __cxa_current_primary_exception__deps: ['$exceptionCaught', '__cxa_increment_exception_refcount'],
+  __cxa_current_primary_exception__sig: 'p',
   __cxa_current_primary_exception: function() {
     if (!exceptionCaught.length) {
       return 0;
@@ -220,6 +224,7 @@ var LibraryExceptions = {
   },
 
   __cxa_rethrow_primary_exception__deps: ['$ExceptionInfo', '$exceptionCaught', '__cxa_rethrow'],
+  __cxa_rethrow_primary_exception__sig: 'vp',
   __cxa_rethrow_primary_exception: function(ptr) {
     if (!ptr) return;
     var info = new ExceptionInfo(ptr);
@@ -238,9 +243,12 @@ var LibraryExceptions = {
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
   __cxa_find_matching_catch__deps: ['$exceptionLast', '$ExceptionInfo', '__resumeException', '__cxa_can_catch', 'setTempRet0'],
-  //__cxa_find_matching_catch__sig: 'p',
   __cxa_find_matching_catch: function() {
-    var thrown = 
+    // Here we use explicit calls to `from64`/`to64` rather then using the
+    // `__sig` attribute to perform these automatically.  This is because the
+    // `__sig` wrapper uses arrow function notation, which is not compatible
+    // with the use of `arguments` in this function.
+    var thrown =
 #if EXCEPTION_STACK_TRACES
       exceptionLast && exceptionLast.excPtr;
 #else
@@ -249,7 +257,7 @@ var LibraryExceptions = {
     if (!thrown) {
       // just pass through the null ptr
       setTempRet0(0);
-      return 0;
+      return {{{ to64(0) }}};
     }
     var info = new ExceptionInfo(thrown);
     info.set_adjusted_ptr(thrown);
@@ -257,7 +265,7 @@ var LibraryExceptions = {
     if (!thrownType) {
       // just pass through the thrown ptr
       setTempRet0(0);
-      return thrown;
+      return {{{ to64('thrown') }}};
     }
 
     // can_catch receives a **, add indirection
@@ -270,6 +278,8 @@ var LibraryExceptions = {
     // return the type of the catch block which should be called.
     for (var i = 0; i < arguments.length; i++) {
       var caughtType = arguments[i];
+      {{{ from64('caughtType') }}};
+
       if (caughtType === 0 || caughtType === thrownType) {
         // Catch all clause matched or exactly the same type is caught
         break;
@@ -280,11 +290,11 @@ var LibraryExceptions = {
         dbg("  __cxa_find_matching_catch found " + [ptrToString(info.get_adjusted_ptr()), caughtType]);
 #endif
         setTempRet0(caughtType);
-        return thrown;
+        return {{{ to64('thrown') }}};
       }
     }
     setTempRet0(thrownType);
-    return thrown;
+    return {{{ to64('thrown') }}};
   },
 
   __resumeException__deps: ['$exceptionLast'],
@@ -302,23 +312,21 @@ var LibraryExceptions = {
 #endif
 #if WASM_EXCEPTIONS || !DISABLE_EXCEPTION_CATCHING
   $getExceptionMessageCommon__deps: ['__get_exception_message', 'free', '$withStackSave'],
-  $getExceptionMessageCommon: function(ptr) {
-    return withStackSave(function() {
-      var type_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
-      var message_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
-      ___get_exception_message({{{ to64('ptr') }}}, {{{ to64('type_addr_addr') }}}, {{{ to64('message_addr_addr') }}});
-      var type_addr = {{{ makeGetValue('type_addr_addr', 0, '*') }}};
-      var message_addr = {{{ makeGetValue('message_addr_addr', 0, '*') }}};
-      var type = UTF8ToString(type_addr);
-      _free(type_addr);
-      var message;
-      if (message_addr) {
-        message = UTF8ToString(message_addr);
-        _free(message_addr);
-      }
-      return [type, message];
-    });
-  },
+  $getExceptionMessageCommon: (ptr) => withStackSave(() => {
+    var type_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
+    var message_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
+    ___get_exception_message({{{ to64('ptr') }}}, {{{ to64('type_addr_addr') }}}, {{{ to64('message_addr_addr') }}});
+    var type_addr = {{{ makeGetValue('type_addr_addr', 0, '*') }}};
+    var message_addr = {{{ makeGetValue('message_addr_addr', 0, '*') }}};
+    var type = UTF8ToString(type_addr);
+    _free(type_addr);
+    var message;
+    if (message_addr) {
+      message = UTF8ToString(message_addr);
+      _free(message_addr);
+    }
+    return [type, message];
+  }),
 #endif
 #if WASM_EXCEPTIONS
   $getCppExceptionTag: function() {
@@ -408,6 +416,7 @@ var LibraryExceptions = {
 #endif
 };
 
+#if !WASM_EXCEPTIONS
 // In LLVM, exceptions generate a set of functions of form
 // __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.  where the
 // number specifies the number of arguments.  In Emscripten, route all these to
@@ -416,5 +425,13 @@ var LibraryExceptions = {
 addCxaCatch = function(n) {
   LibraryManager.library['__cxa_find_matching_catch_' + n] = '__cxa_find_matching_catch';
 };
+
+// Add the first 10 catch handlers premptively.  Others get added on demand in
+// jsifier.  This is done here primarily so that these symbols end up with the
+// correct deps in the stub library that we pass to wasm-ld.
+for (let i = 1; i < 10; i++) {
+  addCxaCatch(i)
+}
+#endif
 
 mergeInto(LibraryManager.library, LibraryExceptions);

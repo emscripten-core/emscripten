@@ -12,6 +12,7 @@
 #include "paths.h"
 #include "special_files.h"
 #include "wasmfs.h"
+#include "wasmfs_internal.h"
 
 namespace wasmfs {
 
@@ -33,16 +34,6 @@ backend_t createIgnoreCaseBackend(std::function<backend_t()> createBacken);
 __attribute__((init_priority(100))) WasmFS wasmFS;
 # 31 "wasmfs.cpp"
 
-// These helper functions will be linked in from library_wasmfs.js.
-extern "C" {
-int _wasmfs_get_num_preloaded_files();
-int _wasmfs_get_num_preloaded_dirs();
-int _wasmfs_get_preloaded_file_mode(int index);
-void _wasmfs_get_preloaded_parent_path(int index, char* parentPath);
-void _wasmfs_get_preloaded_path_name(int index, char* fileName);
-void _wasmfs_get_preloaded_child_path(int index, char* childName);
-}
-
 // If the user does not implement this hook, do nothing.
 __attribute__((weak)) extern "C" void wasmfs_before_preload(void) {}
 
@@ -52,32 +43,64 @@ WasmFS::WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {
   preloadFiles();
 }
 
-WasmFS::~WasmFS() {
+// Manual integration with LSan. LSan installs itself during startup at the
+// first allocation, which happens inside WasmFS code (since the WasmFS global
+// object creates some data structures). As a result LSan's atexit() destructor
+// will be called last, after WasmFS is cleaned up, since atexit() calls work
+// are LIFO (like a stack). But that is a problem, since if WasmFS has shut
+// down and deallocated itself then the leak code cannot actually print any of
+// its findings, if it has any. To avoid that, define the LSan entry point as a
+// weak symbol, and call it; if LSan is not enabled this can be optimized out,
+// and if LSan is enabled then we'll check for leaks right at the start of the
+// WasmFS destructor, which is the last time during which it is valid to print.
+// (Note that this means we can't find leaks inside WasmFS code itself, but that
+// seems fundamentally impossible for the above reasons, unless we made LSan log
+// its findings in a way that does not depend on normal file I/O.)
+__attribute__((weak)) extern "C" void __lsan_do_leak_check(void) {
+}
+
+extern "C" void wasmfs_flush(void) {
   // Flush musl libc streams.
-  // TODO: Integrate musl exit() which would call this for us. That might also
-  //       help with destructor priority - we need to happen last.
   fflush(0);
 
-  // Flush our own streams. TODO: flush all possible streams.
-  // Note that we lock here, although strictly speaking it is unnecessary given
-  // that we are in the destructor of WasmFS: nothing can possibly be running
-  // on files at this time.
+  // Flush our own streams. TODO: flush all backends.
   (void)SpecialFiles::getStdout()->locked().flush();
   (void)SpecialFiles::getStderr()->locked().flush();
+}
+
+WasmFS::~WasmFS() {
+  // See comment above on this function.
+  //
+  // Note that it is ok for us to call it here, as LSan internally makes all
+  // calls after the first into no-ops. That is, calling it here makes the one
+  // time that leak checks are run be done here, or potentially earlier, but not
+  // later; and as mentioned in the comment above, this is the latest possible
+  // time for the checks to run (since right after this nothing can be printed).
+  __lsan_do_leak_check();
+
+  // TODO: Integrate musl exit() which would flush the libc part for us. That
+  //       might also help with destructor priority - we need to happen last.
+  //       (But we would still need to flush the internal WasmFS buffers, see
+  //       wasmfs_flush() and the comment on it in the header.)
+  wasmfs_flush();
 
   // Break the reference cycle caused by the root directory being its own
   // parent.
   rootDirectory->locked().setParent(nullptr);
 }
 
-std::shared_ptr<Directory> WasmFS::initRootDirectory() {
-
+// Special backends that want to install themselves as the root use this hook.
+// Otherwise, we use the default backends.
+__attribute__((weak)) extern backend_t wasmfs_create_root_dir(void) {
 #ifdef WASMFS_CASE_INSENSITIVE
-  auto rootBackend =
-    createIgnoreCaseBackend([]() { return createMemoryBackend(); });
+  return createIgnoreCaseBackend([]() { return createMemoryBackend(); });
 #else
-  auto rootBackend = createMemoryBackend();
+  return createMemoryBackend();
 #endif
+}
+
+std::shared_ptr<Directory> WasmFS::initRootDirectory() {
+  auto rootBackend = wasmfs_create_root_dir();
   auto rootDirectory =
     rootBackend->createDirectory(S_IRUGO | S_IXUGO | S_IWUGO);
   auto lockedRoot = rootDirectory->locked();
@@ -85,9 +108,10 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   // The root directory is its own parent.
   lockedRoot.setParent(rootDirectory);
 
+  // If the /dev/ directory does not already exist, create it. (It may already
+  // exist in NODERAWFS mode, or if those files have been preloaded.)
   auto devDir = lockedRoot.insertDirectory("dev", S_IRUGO | S_IXUGO);
-  assert(devDir);
-  {
+  if (devDir) {
     auto lockedDev = devDir->locked();
     lockedDev.mountChild("null", SpecialFiles::getNull());
     lockedDev.mountChild("stdin", SpecialFiles::getStdin());
@@ -97,8 +121,9 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
     lockedDev.mountChild("urandom", SpecialFiles::getURandom());
   }
 
-  [[maybe_unused]] auto tmpDir = lockedRoot.insertDirectory("tmp", S_IRWXUGO);
-  assert(tmpDir);
+  // As with the /dev/ directory, it is not an error for /tmp/ to already
+  // exist.
+  lockedRoot.insertDirectory("tmp", S_IRWXUGO);
 
   return rootDirectory;
 }

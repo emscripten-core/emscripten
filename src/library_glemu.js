@@ -181,10 +181,10 @@ var LibraryGLEmulation = {
 #if RELOCATABLE
 {{{
 (updateExport = (name) => {
-  var name = '_' + name;
-  var exported = 'Module["' + name + '"]';
+  var name = `_${name}`;
+  var exported = `Module["${name}"]`;
   // make sure we write to an existing export, and are not repeating ourselves
-  return 'assert(' + exported + ' !== ' + name + '); ' + exported + ' = ' + name + ';';
+  return `assert(${exported} !== ${name}); ${exported} = ${name};`;
 }, '')
 }}}
 #else
@@ -489,20 +489,20 @@ var LibraryGLEmulation = {
           for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
             // XXX To handle both regular texture mapping and cube mapping, we use vec4 for tex coordinates.
             old = source;
-            var need_vtc = source.search('v_texCoord' + i) == -1;
-            source = source.replace(new RegExp('gl_TexCoord\\[' + i + '\\]', 'g'), 'v_texCoord' + i)
-                           .replace(new RegExp('gl_MultiTexCoord' + i, 'g'), 'a_texCoord' + i);
+            var need_vtc = source.search(`v_texCoord${i}`) == -1;
+            source = source.replace(new RegExp(`gl_TexCoord\\[${i}\\]`, 'g'), `v_texCoord${i}`)
+                           .replace(new RegExp(`gl_MultiTexCoord${i}`, 'g'), `a_texCoord${i}`);
             if (source != old) {
-              source = 'attribute vec4 a_texCoord' + i + '; \n' + source;
+              source = `attribute vec4 a_texCoord${i}; \n${source}`;
               if (need_vtc) {
-                source = 'varying vec4 v_texCoord' + i + ';   \n' + source;
+                source = `varying vec4 v_texCoord${i};   \n${source}`;
               }
             }
 
             old = source;
-            source = source.replace(new RegExp('gl_TextureMatrix\\[' + i + '\\]', 'g'), 'u_textureMatrix' + i);
+            source = source.replace(new RegExp(`gl_TextureMatrix\\[${i}\\]`, 'g'), `u_textureMatrix${i}`);
             if (source != old) {
-              source = 'uniform mat4 u_textureMatrix' + i + '; \n' + source;
+              source = `uniform mat4 u_textureMatrix${i}; \n${source}`;
             }
           }
           if (source.includes('gl_FrontColor')) {
@@ -525,7 +525,7 @@ var LibraryGLEmulation = {
         } else { // Fragment shader
           for (i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
             old = source;
-            source = source.replace(new RegExp('gl_TexCoord\\[' + i + '\\]', 'g'), 'v_texCoord' + i);
+            source = source.replace(new RegExp(`gl_TexCoord\\[${i}\\]`, 'g'), `v_texCoord${i}`);
             if (source != old) {
               source = 'varying vec4 v_texCoord' + i + ';   \n' + source;
             }
@@ -568,10 +568,10 @@ var LibraryGLEmulation = {
         GLctx.compileShader(GL.shaders[shader]);
 #if GL_DEBUG
         if (!GLctx.getShaderParameter(GL.shaders[shader], GLctx.COMPILE_STATUS)) {
-          dbg('Failed to compile shader: ' + GLctx.getShaderInfoLog(GL.shaders[shader]));
-          dbg('Info: ' + JSON.stringify(GL.shaderInfos[shader]));
-          dbg('Original source: ' + GL.shaderOriginalSources[shader]);
-          dbg('Source: ' + GL.shaderSources[shader]);
+          dbg(`Failed to compile shader: ${GLctx.getShaderInfoLog(GL.shaders[shader])}`);
+          dbg(`Info: ${JSON.stringify(GL.shaderInfos[shader])}`);
+          dbg(`Original source: ${GL.shaderOriginalSources[shader]}`);
+          dbg(`Source: ${GL.shaderSources[shader]}`);
           throw 'Shader compilation halt';
         }
 #endif
@@ -591,7 +591,7 @@ var LibraryGLEmulation = {
       _glDetachShader = _emscripten_glDetachShader = (program, shader) => {
         var programShader = GL.programShaders[program];
         if (!programShader) {
-          err('WARNING: _glDetachShader received invalid program: ' + program);
+          err(`WARNING: _glDetachShader received invalid program: ${program}`);
           return;
         }
         var index = programShader.indexOf(shader);
@@ -607,8 +607,8 @@ var LibraryGLEmulation = {
           dbg('[using program with shaders]');
           if (program) {
             GL.programShaders[program].forEach(function(shader) {
-              dbg('  shader ' + shader + ', original source: ' + GL.shaderOriginalSources[shader]);
-              dbg('         Source: ' + GL.shaderSources[shader]);
+              dbg(`  shader ${shader}, original source: ${GL.shaderOriginalSources[shader]}`);
+              dbg(`         Source: ${GL.shaderSources[shader]}`);
             });
           }
         }
@@ -754,19 +754,17 @@ var LibraryGLEmulation = {
   },
 
   glDeleteObject__deps: ['glDeleteProgram', 'glDeleteShader'],
-  glDeleteObject__sig: 'vi',
   glDeleteObject: function(id) {
     if (GL.programs[id]) {
       _glDeleteProgram(id);
     } else if (GL.shaders[id]) {
       _glDeleteShader(id);
     } else {
-      err('WARNING: deleteObject received invalid id: ' + id);
+      err(`WARNING: deleteObject received invalid id: ${id}`);
     }
   },
   glDeleteObjectARB: 'glDeleteObject',
 
-  glGetObjectParameteriv__sig: 'viii',
   glGetObjectParameteriv__deps: ['glGetProgramiv', 'glGetShaderiv'],
   glGetObjectParameteriv: function(id, type, result) {
     if (GL.programs[id]) {
@@ -791,25 +789,23 @@ var LibraryGLEmulation = {
       }
       _glGetShaderiv(id, type, result);
     } else {
-      err('WARNING: getObjectParameteriv received invalid id: ' + id);
+      err(`WARNING: getObjectParameteriv received invalid id: ${id}`);
     }
   },
   glGetObjectParameterivARB: 'glGetObjectParameteriv',
 
   glGetInfoLog__deps: ['glGetProgramInfoLog', 'glGetShaderInfoLog'],
-  glGetInfoLog__sig: 'viiii',
   glGetInfoLog: function(id, maxLength, length, infoLog) {
     if (GL.programs[id]) {
       _glGetProgramInfoLog(id, maxLength, length, infoLog);
     } else if (GL.shaders[id]) {
       _glGetShaderInfoLog(id, maxLength, length, infoLog);
     } else {
-      err('WARNING: glGetInfoLog received invalid id: ' + id);
+      err(`WARNING: glGetInfoLog received invalid id: ${id}`);
     }
   },
   glGetInfoLogARB: 'glGetInfoLog',
 
-  glBindProgram__sig: 'vii',
   glBindProgram: function(type, id) {
 #if ASSERTIONS
     assert(id == 0);
@@ -2044,11 +2040,11 @@ var LibraryGLEmulation = {
         for (var i = 0; i <= name; i++) { // keep flat
           if (!GLImmediate.clientAttributes[i]) {
             GLImmediate.clientAttributes[i] = {
-              name: name,
-              size: size,
-              type: type,
-              stride: stride,
-              pointer: pointer,
+              name,
+              size,
+              type,
+              stride,
+              pointer,
               offset: 0
             };
           }
@@ -2165,7 +2161,7 @@ var LibraryGLEmulation = {
       var renderer = keyView.get();
       if (!renderer) {
 #if GL_DEBUG
-        dbg('generating renderer for ' + JSON.stringify(attributes));
+        dbg(`generating renderer for ${JSON.stringify(attributes)}`);
 #endif
         renderer = GLImmediate.createRenderer();
         GLImmediate.currentRenderer = renderer;
@@ -2464,7 +2460,7 @@ var LibraryGLEmulation = {
             }
 
             if (useCurrProgram) {
-              this.texCoordLocations[i] = GLctx.getAttribLocation(this.program, 'a_texCoord' + i);
+              this.texCoordLocations[i] = GLctx.getAttribLocation(this.program, `a_texCoord${i}`);
             } else {
               this.texCoordLocations[i] = GLctx.getAttribLocation(this.program, aTexCoordPrefix + i);
             }
@@ -2489,7 +2485,7 @@ var LibraryGLEmulation = {
 
           this.textureMatrixLocations = [];
           for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
-            this.textureMatrixLocations[i] = GLctx.getUniformLocation(this.program, 'u_textureMatrix' + i);
+            this.textureMatrixLocations[i] = GLctx.getUniformLocation(this.program, `u_textureMatrix${i}`);
           }
           this.normalLocation = GLctx.getAttribLocation(this.program, 'a_normal');
 
@@ -2517,7 +2513,7 @@ var LibraryGLEmulation = {
           this.hasClipPlane = false;
           this.clipPlaneEquationLocation = [];
           for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
-            this.clipPlaneEquationLocation[clipPlaneId] = GLctx.getUniformLocation(this.program, 'u_clipPlaneEquation' + clipPlaneId);
+            this.clipPlaneEquationLocation[clipPlaneId] = GLctx.getUniformLocation(this.program, `u_clipPlaneEquation${clipPlaneId}`);
             this.hasClipPlane = (this.hasClipPlane || this.clipPlaneEquationLocation[clipPlaneId]);
           }
 
@@ -2533,10 +2529,10 @@ var LibraryGLEmulation = {
           this.lightSpecularLocation = []
           this.lightPositionLocation = []
           for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
-            this.lightAmbientLocation[lightId] = GLctx.getUniformLocation(this.program, 'u_lightAmbient' + lightId);
-            this.lightDiffuseLocation[lightId] = GLctx.getUniformLocation(this.program, 'u_lightDiffuse' + lightId);
-            this.lightSpecularLocation[lightId] = GLctx.getUniformLocation(this.program, 'u_lightSpecular' + lightId);
-            this.lightPositionLocation[lightId] = GLctx.getUniformLocation(this.program, 'u_lightPosition' + lightId);
+            this.lightAmbientLocation[lightId] = GLctx.getUniformLocation(this.program, `u_lightAmbient${lightId}`);
+            this.lightDiffuseLocation[lightId] = GLctx.getUniformLocation(this.program, `u_lightDiffuse${lightId}`);
+            this.lightSpecularLocation[lightId] = GLctx.getUniformLocation(this.program, `u_lightSpecular${lightId}`);
+            this.lightPositionLocation[lightId] = GLctx.getUniformLocation(this.program, `u_lightPosition${lightId}`);
           }
 
           this.hasAlphaTest = GLEmulation.alphaTestEnabled;
@@ -3405,7 +3401,7 @@ var LibraryGLEmulation = {
         break;
       default: // invalid value provided
 #if GL_ASSERTIONS
-        err('glAlphaFunc: Invalid alpha comparison function 0x' + ptrToString(func) + ' !');
+        err(`glAlphaFunc: Invalid alpha comparison function ${ptrToString(func)}!`);
 #endif
         break;
     }
@@ -3443,7 +3439,7 @@ var LibraryGLEmulation = {
     var attrib = GLEmulation.getAttributeFromCapability(cap);
     if (attrib === null) {
 #if ASSERTIONS
-      err('WARNING: unhandled clientstate: ' + cap);
+      err(`WARNING: unhandled clientstate: ${cap}`);
 #endif
       return;
     }
@@ -3463,7 +3459,7 @@ var LibraryGLEmulation = {
     var attrib = GLEmulation.getAttributeFromCapability(cap);
     if (attrib === null) {
 #if ASSERTIONS
-      err('WARNING: unhandled clientstate: ' + cap);
+      err(`WARNING: unhandled clientstate: ${cap}`);
 #endif
       return;
     }
@@ -3515,7 +3511,6 @@ var LibraryGLEmulation = {
 #endif
   },
 
-  glClientActiveTexture__sig: 'vi',
   glClientActiveTexture: function(texture) {
     GLImmediate.clientActiveTexture = texture - 0x84C0; // GL_TEXTURE0
   },
@@ -3562,13 +3557,12 @@ var LibraryGLEmulation = {
   },
 
   // Vertex array object (VAO) support. TODO: when the WebGL extension is popular, use that and remove this code and GL.vaos
-  emulGlGenVertexArrays__deps: ['$GLEmulation'],
-  emulGlGenVertexArrays__sig: 'vii',
-  emulGlGenVertexArrays: function(n, vaos) {
+  $emulGlGenVertexArrays__deps: ['$GLEmulation'],
+  $emulGlGenVertexArrays: function(n, vaos) {
     for (var i = 0; i < n; i++) {
       var id = GL.getNewId(GLEmulation.vaos);
       GLEmulation.vaos[id] = {
-        id: id,
+        id,
         arrayBuffer: 0,
         elementArrayBuffer: 0,
         enabledVertexAttribArrays: {},
@@ -3578,23 +3572,20 @@ var LibraryGLEmulation = {
       {{{ makeSetValue('vaos', 'i*4', 'id', 'i32') }}};
     }
   },
-  emulGlDeleteVertexArrays__sig: 'vii',
-  emulGlDeleteVertexArrays: function(n, vaos) {
+  $emulGlDeleteVertexArrays: function(n, vaos) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
       GLEmulation.vaos[id] = null;
       if (GLEmulation.currentVao && GLEmulation.currentVao.id == id) GLEmulation.currentVao = null;
     }
   },
-  emulGlIsVertexArray__sig: 'vi',
-  emulGlIsVertexArray: function(array) {
+  $emulGlIsVertexArray: function(array) {
     var vao = GLEmulation.vaos[array];
     if (!vao) return 0;
     return 1;
   },
-  emulGlBindVertexArray__deps: ['glBindBuffer', 'glEnableVertexAttribArray', 'glVertexAttribPointer', 'glEnableClientState'],
-  emulGlBindVertexArray__sig: 'vi',
-  emulGlBindVertexArray: function(vao) {
+  $emulGlBindVertexArray__deps: ['glBindBuffer', 'glEnableVertexAttribArray', 'glVertexAttribPointer', 'glEnableClientState'],
+  $emulGlBindVertexArray: function(vao) {
     // undo vao-related things, wipe the slate clean, both for vao of 0 or an actual vao
     GLEmulation.currentVao = null; // make sure the commands we run here are not recorded
     if (GLImmediate.lastRenderer) GLImmediate.lastRenderer.cleanup();
@@ -3671,7 +3662,6 @@ var LibraryGLEmulation = {
     GLImmediate.matrixLib.mat4.set({{{ makeHEAPView('F64', 'matrix', 'matrix+' + (16*8)) }}}, GLImmediate.matrix[GLImmediate.currentMatrix]);
   },
 
-  glLoadMatrixf__sig: 'vp',
   glLoadMatrixf: function(matrix) {
 #if GL_DEBUG
     if (GL.debug) dbg('glLoadMatrixf receiving: ' + Array.prototype.slice.call(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16)));

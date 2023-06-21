@@ -50,12 +50,6 @@
 // [link]
 var ASSERTIONS = 1;
 
-// Whether extra logging should be enabled.
-// This logging isn't quite assertion-quality in that it isn't necessarily a
-// symptom that something is wrong.
-// [link]
-var RUNTIME_LOGGING = false;
-
 // Chooses what kind of stack smash checks to emit to generated code:
 // Building with ASSERTIONS=1 causes STACK_OVERFLOW_CHECK default to 1.
 // Since ASSERTIONS=1 is the default at -O0, which itself is the default
@@ -68,6 +62,13 @@ var RUNTIME_LOGGING = false;
 //    stack pointer assignments. Has a small performance cost.
 // [link]
 var STACK_OVERFLOW_CHECK = 0;
+
+// When STACK_OVERFLOW_CHECK is enabled we also check writes to address zero.
+// This can help detect NULL pointer usage.  If you want to skip this extra
+// check (for example, if you want reads from the address zero to always return
+// zero) you can disabled this here.  This setting has no effect when
+// STACK_OVERFLOW_CHECK is disabled.
+var CHECK_NULL_WRITES = true;
 
 // When set to 1, will generate more verbose output during compilation.
 // [general]
@@ -344,7 +345,7 @@ var SOCKET_DEBUG = false;
 
 // Log dynamic linker information
 // [link]
-var DYLINK_DEBUG = false;
+var DYLINK_DEBUG = 0;
 
 // Register file system callbacks using trackingDelegate in library_fs.js
 // [link]
@@ -600,7 +601,7 @@ var POLYFILL_OLD_MATH_FUNCTIONS = false;
 var LEGACY_VM_SUPPORT = false;
 
 // Specify which runtime environments the JS output will be capable of running
-// in.  For maximum portability this can configured to support all envionements
+// in.  For maximum portability this can configured to support all environments
 // or it can be limited to reduce overall code size.  The supported environments
 // are:
 //    'web'     - the normal web environment.
@@ -1932,25 +1933,6 @@ var DEFAULT_TO_CXX = true;
 // [link]
 var PRINTF_LONG_DOUBLE = false;
 
-// Run wabt's wasm2c tool on the final wasm, and combine that with a C runtime,
-// resulting in a .c file that you can compile with a C compiler to get a
-// native executable that works the same as the normal js+wasm. This will also
-// emit the wasm2c .h file. The output filenames will be X.wasm.c, X.wasm.h
-// if your output is X.js or X.wasm (note the added .wasm. we make sure to emit,
-// which avoids trampling a C file).
-// [link]
-// [experimental]
-var WASM2C = false;
-
-// Experimental sandboxing mode, see
-// https://kripken.github.io/blog/wasm/2020/07/27/wasmboxc.html
-//
-//  * full: Normal full wasm2c sandboxing. This uses a signal handler if it can.
-//  * mask: Masks loads and stores.
-//  * none: No sandboxing at all.
-// [experimental]
-var WASM2C_SANDBOXING = 'full';
-
 // Setting this affects the path emitted in the wasm that refers to the DWARF
 // file, in -gseparate-dwarf mode. This allows the debugging file to be hosted
 // in a custom location.
@@ -2019,22 +2001,6 @@ var IMPORTED_MEMORY = false;
 // to loading split modules.
 // [link]
 var SPLIT_MODULE = false;
-
-// How to calculate reverse dependencies (dependencies from JS functions to
-// native functions) prior to linking native code with wasm-ld.  This option
-// has three possible values:
-// 'auto': (default) Inspect the object code passed to the linker (by running
-//         llvm-nm on all input) and use the map in deps_info.py to determine
-//         the set of additional dependencies.
-// 'all' : Include the full set of possible reverse dependencies.
-// 'none': No reverse dependences will be added by emscriopten. Any reverse
-//         dependencies will be assumed to be explicitly added to
-//         EXPORTED_FUNCTIONS and deps_info.py will be completely ignored.
-// While 'auto' will produce a minimal set (so is good for code size), 'all'
-// and 'none' will give faster link times, especially for very large projects
-// (since they both avoid the running of llvm-nm on all linker inputs).
-// [link]
-var REVERSE_DEPS = 'auto';
 
 // For MAIN_MODULE builds, automatically load any dynamic library dependencies
 // on startup, before loading the main module.
@@ -2168,4 +2134,6 @@ var LEGACY_SETTINGS = [
   ['MEM_INIT_METHOD', [0], 'No longer supported'],
   ['USE_PTHREADS', [0, 1], 'No longer needed. Use -pthread instead'],
   ['USES_DYNAMIC_ALLOC', [1], 'No longer supported. Use -sMALLOC=none'],
+  ['REVERSE_DEPS', ['auto', 'all', 'none'], 'No longer needed'],
+  ['RUNTIME_LOGGING', 'RUNTIME_DEBUG'],
 ];

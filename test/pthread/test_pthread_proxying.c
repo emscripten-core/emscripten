@@ -27,17 +27,17 @@ em_proxying_queue* proxy_queue = NULL;
 _Atomic int should_quit = 0;
 
 void* looper_main(void* arg) {
-  _emscripten_errf("looper_main");
+  emscripten_err("looper_main");
   while (!should_quit) {
     emscripten_proxy_execute_queue(proxy_queue);
     sched_yield();
   }
-  _emscripten_errf("quitting looper");
+  emscripten_err("quitting looper");
   return NULL;
 }
 
 void* returner_main(void* queue) {
-  _emscripten_errf("returner_main");
+  emscripten_err("returner_main");
   emscripten_exit_with_live_runtime();
 }
 

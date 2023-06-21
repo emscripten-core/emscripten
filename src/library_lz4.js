@@ -6,7 +6,7 @@
 
 #if LZ4
 mergeInto(LibraryManager.library, {
-  $LZ4__deps: ['$FS'],
+  $LZ4__deps: ['$FS', '$preloadPlugins'],
   $LZ4: {
     DIR_MODE: {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */,
     FILE_MODE: {{{ cDefs.S_IFREG }}} | 511 /* 0777 */,
@@ -37,7 +37,7 @@ mergeInto(LibraryManager.library, {
         FS.createPath('', dir, true, true);
         var parent = FS.analyzePath(dir).object;
         LZ4.createNode(parent, name, LZ4.FILE_MODE, 0, {
-          compressedData: compressedData,
+          compressedData,
           start: file.start,
           end: file.end,
         });
@@ -52,14 +52,12 @@ mergeInto(LibraryManager.library, {
         pack['metadata'].files.forEach(function(file) {
           var handled = false;
           var fullname = file.filename;
-          Module['preloadPlugins'].forEach(function(plugin) {
+          preloadPlugins.forEach(function(plugin) {
             if (handled) return;
             if (plugin['canHandle'](fullname)) {
               var dep = getUniqueRunDependency('fp ' + fullname);
               addRunDependency(dep);
-              var finish = function() {
-                removeRunDependency(dep);
-              }
+              var finish = () => removeRunDependency(dep);
               var byteArray = FS.readFile(fullname);
               plugin['handle'](byteArray, fullname, finish, finish);
               handled = true;
@@ -96,7 +94,7 @@ mergeInto(LibraryManager.library, {
           nlink: 1,
           uid: 0,
           gid: 0,
-          rdev: undefined,
+          rdev: 0,
           size: node.size,
           atime: new Date(node.timestamp),
           mtime: new Date(node.timestamp),

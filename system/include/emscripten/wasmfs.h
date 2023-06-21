@@ -69,7 +69,21 @@ backend_t wasmfs_create_opfs_backend(void);
 backend_t wasmfs_create_icase_backend(backend_constructor_t create_backend,
                                       void* arg);
 
+// Similar to fflush(0), but also flushes all internal buffers inside WasmFS.
+// This is necessary because in a Web environment we must buffer at an
+// additional level after libc, since console.log() prints entire lines, that
+// is, we can't print individual characters as libc feeds them to us, so we
+// buffer them and call console.log() only after a newline. This function will
+// actually flush all buffers and add newlines as necessary to get everything
+// printed out.
+void wasmfs_flush(void);
+
 // Hooks
+
+// A hook users can do to create the root directory. Overriding this allows the
+// user to set a particular backend as the root. If this is not set then the
+// default backend is used.
+backend_t wasmfs_create_root_dir(void);
 
 // A hook users can do to run code during WasmFS startup. This hook happens
 // before file preloading, so user code could create backends and mount them,

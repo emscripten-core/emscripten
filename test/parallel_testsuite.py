@@ -12,6 +12,8 @@ import unittest
 
 import common
 
+from tools.shared import cap_max_workers_in_pool
+
 
 NUM_CORES = None
 
@@ -52,7 +54,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # issues.
     # multiprocessing.set_start_method('spawn')
     tests = list(self.reversed_tests())
-    use_cores = min(self.max_cores, len(tests), num_cores())
+    use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()))
     print('Using %s parallel test processes' % use_cores)
     pool = multiprocessing.Pool(use_cores)
     results = [pool.apply_async(run_test, (t,)) for t in tests]
@@ -165,23 +167,41 @@ class BufferedTestSkip(BufferedTestBase):
     result.addSkip(self.test, self.reason)
 
 
+def fixup_fake_exception(fake_exc):
+  ex = fake_exc[2]
+  if ex.tb_frame.f_code.positions is None:
+    return
+  while ex is not None:
+    # .co_positions is supposed to be a function that returns an enumerable
+    # to the list of code positions. Create a function object wrapper around
+    # the data
+    def make_wrapper(rtn):
+      return lambda: rtn
+    ex.tb_frame.f_code.co_positions = make_wrapper(ex.tb_frame.f_code.positions)
+    ex = ex.tb_next
+
+
 class BufferedTestFailure(BufferedTestBase):
   def updateResult(self, result):
+    fixup_fake_exception(self.error)
     result.addFailure(self.test, self.error)
 
 
 class BufferedTestExpectedFailure(BufferedTestBase):
   def updateResult(self, result):
+    fixup_fake_exception(self.error)
     result.addExpectedFailure(self.test, self.error)
 
 
 class BufferedTestError(BufferedTestBase):
   def updateResult(self, result):
+    fixup_fake_exception(self.error)
     result.addError(self.test, self.error)
 
 
 class BufferedTestUnexpectedSuccess(BufferedTestBase):
   def updateResult(self, result):
+    fixup_fake_exception(self.error)
     result.addUnexpectedSuccess(self.test)
 
 
@@ -201,6 +221,7 @@ class FakeTraceback():
     self.tb_frame = FakeFrame(tb.tb_frame)
     self.tb_lineno = tb.tb_lineno
     self.tb_next = FakeTraceback(tb.tb_next) if tb.tb_next is not None else None
+    self.tb_lasti = tb.tb_lasti
 
 
 class FakeFrame():
@@ -214,6 +235,12 @@ class FakeCode():
   def __init__(self, co):
     self.co_filename = co.co_filename
     self.co_name = co.co_name
+    # co.co_positions() returns an iterator. Flatten it to a list so that it can
+    # be pickled to the parent process
+    if hasattr(co, 'co_positions'):
+      self.positions = list(co.co_positions())
+    else:
+      self.positions = None
 
 
 def num_cores():

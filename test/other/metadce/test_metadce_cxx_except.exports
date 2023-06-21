@@ -12,7 +12,6 @@ dynCall_iiiiijj
 dynCall_jiiii
 dynCall_jiji
 dynCall_viijii
-getTempRet0
 main
 memory
 setTempRet0

@@ -21,14 +21,12 @@ mergeInto(LibraryManager.library, {
   // Converts a signature like 'vii' into a description of the wasm types, like
   // { parameters: ['i32', 'i32'], results: [] }.
   $sigToWasmTypes: function(sig) {
+#if ASSERTIONS && !WASM_BIGINT
+    assert(!sig.includes('j'), 'i64 not permitted in function signatures when WASM_BIGINT is disabled');
+#endif
     var typeNames = {
       'i': 'i32',
-#if MEMORY64
       'j': 'i64',
-#else
-      // i64 values will be split into two i32s.
-      'j': 'i32',
-#endif
       'f': 'f32',
       'd': 'f64',
 #if MEMORY64
@@ -46,11 +44,6 @@ mergeInto(LibraryManager.library, {
       assert(sig[i] in typeNames, 'invalid signature char: ' + sig[i]);
 #endif
       type.parameters.push(typeNames[sig[i]]);
-#if !MEMORY64
-      if (sig[i] === 'j') {
-        type.parameters.push('i32');
-      }
-#endif
     }
     return type;
   },
@@ -94,6 +87,10 @@ mergeInto(LibraryManager.library, {
 #if WASM2JS
     // return func;
 #else // WASM2JS
+
+#if ASSERTIONS && !WASM_BIGINT
+    assert(!sig.includes('j'), 'i64 not permitted in function signatures when WASM_BIGINT is disabled');
+#endif
 
     // If the type reflection proposal is available, use the new
     // "WebAssembly.Function" constructor.

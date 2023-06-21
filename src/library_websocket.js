@@ -16,7 +16,7 @@ var LibraryWebSocket = {
     var socket = WS.sockets[socketId];
     if (!socket) {
 #if WEBSOCKET_DEBUG
-      dbg('emscripten_websocket_get_ready_state(): Invalid socket ID ' + socketId + ' specified!');
+      dbg(`emscripten_websocket_get_ready_state(): Invalid socket ID ${socketId} specified!`);
 #endif
       return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     }
@@ -31,7 +31,7 @@ var LibraryWebSocket = {
     var socket = WS.sockets[socketId];
     if (!socket) {
 #if WEBSOCKET_DEBUG
-      dbg('emscripten_websocket_get_buffered_amount(): Invalid socket ID ' + socketId + ' specified!');
+      dbg(`emscripten_websocket_get_buffered_amount(): Invalid socket ID ${socketId} specified!`);
 #endif
       return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     }
@@ -46,7 +46,7 @@ var LibraryWebSocket = {
     var socket = WS.sockets[socketId];
     if (!socket) {
 #if WEBSOCKET_DEBUG
-      dbg('emscripten_websocket_get_extensions(): Invalid socket ID ' + socketId + ' specified!');
+      dbg(`emscripten_websocket_get_extensions(): Invalid socket ID ${socketId} specified!`);
 #endif
       return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     }
@@ -61,7 +61,7 @@ var LibraryWebSocket = {
     var socket = WS.sockets[socketId];
     if (!socket) {
 #if WEBSOCKET_DEBUG
-      dbg('emscripten_websocket_get_extensions_length(): Invalid socket ID ' + socketId + ' specified!');
+      dbg(`emscripten_websocket_get_extensions_length(): Invalid socket ID ${socketId} specified!`);
 #endif
       return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     }
@@ -76,7 +76,7 @@ var LibraryWebSocket = {
     var socket = WS.sockets[socketId];
     if (!socket) {
 #if WEBSOCKET_DEBUG
-      dbg('emscripten_websocket_get_protocol(): Invalid socket ID ' + socketId + ' specified!');
+      dbg(`emscripten_websocket_get_protocol(): Invalid socket ID ${socketId} specified!`);
 #endif
       return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     }
@@ -91,7 +91,7 @@ var LibraryWebSocket = {
     var socket = WS.sockets[socketId];
     if (!socket) {
 #if WEBSOCKET_DEBUG
-      dbg('emscripten_websocket_get_protocol_length(): Invalid socket ID ' + socketId + ' specified!');
+      dbg(`emscripten_websocket_get_protocol_length(): Invalid socket ID ${socketId} specified!`);
 #endif
       return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     }
@@ -106,7 +106,7 @@ var LibraryWebSocket = {
     var socket = WS.sockets[socketId];
     if (!socket) {
 #if WEBSOCKET_DEBUG
-      dbg('emscripten_websocket_get_url(): Invalid socket ID ' + socketId + ' specified!');
+      dbg(`emscripten_websocket_get_url(): Invalid socket ID ${socketId} specified!`);
 #endif
       return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     }
@@ -121,7 +121,7 @@ var LibraryWebSocket = {
     var socket = WS.sockets[socketId];
     if (!socket) {
 #if WEBSOCKET_DEBUG
-      dbg('emscripten_websocket_get_url_length(): Invalid socket ID ' + socketId + ' specified!');
+      dbg(`emscripten_websocket_get_url_length(): Invalid socket ID ${socketId} specified!`);
 #endif
       return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     }
@@ -142,17 +142,17 @@ var LibraryWebSocket = {
     var socket = WS.sockets[socketId];
     if (!socket) {
 #if WEBSOCKET_DEBUG
-      dbg('emscripten_websocket_set_onopen_callback(): Invalid socket ID ' + socketId + ' specified!');
+      dbg(`emscripten_websocket_set_onopen_callback(): Invalid socket ID ${socketId} specified!`);
 #endif
       return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     }
 
 #if WEBSOCKET_DEBUG
-    dbg('emscripten_websocket_set_onopen_callback(socketId='+socketId+',userData='+userData+',callbackFunc='+callbackFunc+')');
+    dbg(`emscripten_websocket_set_onopen_callback(socketId=${socketId},userData=${userData},callbackFunc='+callbackFunc})`);
 #endif
     socket.onopen = function(e) {
 #if WEBSOCKET_DEBUG
-      dbg('websocket event "open": socketId='+socketId+',userData='+userData+',callbackFunc='+callbackFunc+')');
+      dbg(`websocket event "open": socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
       HEAPU32[WS.socketEvent>>2] = socketId;
       {{{ makeDynCall('iiii', 'callbackFunc') }}}(0/*TODO*/, WS.socketEvent, userData);
@@ -168,17 +168,17 @@ var LibraryWebSocket = {
     var socket = WS.sockets[socketId];
     if (!socket) {
 #if WEBSOCKET_DEBUG
-      dbg('emscripten_websocket_set_onerror_callback(): Invalid socket ID ' + socketId + ' specified!');
+      dbg(`emscripten_websocket_set_onerror_callback(): Invalid socket ID ${socketId} specified!`);
 #endif
       return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     }
 
 #if WEBSOCKET_DEBUG
-    dbg('emscripten_websocket_set_onerror_callback(socketId='+socketId+',userData='+userData+',callbackFunc='+callbackFunc+')');
+    dbg(`emscripten_websocket_set_onerror_callback(socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
     socket.onerror = function(e) {
 #if WEBSOCKET_DEBUG
-      dbg('websocket event "error": socketId='+socketId+',userData='+userData+',callbackFunc='+callbackFunc+')');
+      dbg(`websocket event "error": socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
       HEAPU32[WS.socketEvent>>2] = socketId;
       {{{ makeDynCall('iiii', 'callbackFunc') }}}(0/*TODO*/, WS.socketEvent, userData);
@@ -194,17 +194,17 @@ var LibraryWebSocket = {
     var socket = WS.sockets[socketId];
     if (!socket) {
 #if WEBSOCKET_DEBUG
-      dbg('emscripten_websocket_set_onclose_callback(): Invalid socket ID ' + socketId + ' specified!');
+      dbg(`emscripten_websocket_set_onclose_callback(): Invalid socket ID ${socketId} specified!`);
 #endif
       return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     }
 
 #if WEBSOCKET_DEBUG
-    dbg('emscripten_websocket_set_onclose_callback(socketId='+socketId+',userData='+userData+',callbackFunc='+callbackFunc+')');
+    dbg(`emscripten_websocket_set_onclose_callback(socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
     socket.onclose = function(e) {
 #if WEBSOCKET_DEBUG
-      dbg('websocket event "close": socketId='+socketId+',userData='+userData+',callbackFunc='+callbackFunc+')');
+      dbg(`websocket event "close": socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
       HEAPU32[WS.socketEvent>>2] = socketId;
       HEAPU32[(WS.socketEvent+4)>>2] = e.wasClean;
@@ -215,7 +215,7 @@ var LibraryWebSocket = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_websocket_set_onmessage_callback_on_thread__deps: ['$WS', '$stringToNewUTF8'],
+  emscripten_websocket_set_onmessage_callback_on_thread__deps: ['$WS', '$stringToNewUTF8', 'malloc', 'free'],
   emscripten_websocket_set_onmessage_callback_on_thread__proxy: 'sync',
   emscripten_websocket_set_onmessage_callback_on_thread: function(socketId, userData, callbackFunc, thread) {
     if (!WS.socketEvent) WS.socketEvent = _malloc(1024); // TODO: sizeof(EmscriptenWebSocketCloseEvent), which is the largest event struct
@@ -223,25 +223,25 @@ var LibraryWebSocket = {
     var socket = WS.sockets[socketId];
     if (!socket) {
 #if WEBSOCKET_DEBUG
-      dbg('emscripten_websocket_set_onmessage_callback(): Invalid socket ID ' + socketId + ' specified!');
+      dbg(`emscripten_websocket_set_onmessage_callback(): Invalid socket ID ${socketId} specified!`);
 #endif
       return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     }
 
 #if WEBSOCKET_DEBUG
-    dbg('emscripten_websocket_set_onmessage_callback(socketId='+socketId+',userData='+userData+',callbackFunc='+callbackFunc+')');
+    dbg(`emscripten_websocket_set_onmessage_callback(socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
     socket.onmessage = function(e) {
 #if WEBSOCKET_DEBUG == 2
-      dbg('websocket event "message": socketId='+socketId+',userData='+userData+',callbackFunc='+callbackFunc+')');
+      dbg(`websocket event "message": socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
       HEAPU32[WS.socketEvent>>2] = socketId;
       if (typeof e.data == 'string') {
         var buf = stringToNewUTF8(e.data);
-#if WEBSOCKET_DEBUG
         var len = lengthBytesUTF8(e.data)+1;
-        var s = (e.data.length < 256) ? e.data : (e.data.substr(0, 256) + ' (' + (e.data.length-256) + ' more characters)');
-        dbg('WebSocket onmessage, received data: "' + e.data + '", ' + e.data.length + ' chars, ' + len + ' bytes encoded as UTF-8: "' + s + '"');
+#if WEBSOCKET_DEBUG
+        var s = (e.data.length < 256) ? e.data : (e.data.substr(0, 256) + ` (${e.data.length-256} more characters)`);
+        dbg(`WebSocket onmessage, received data: "${e.data}", ${e.data.length} chars, ${len} bytes encoded as UTF-8: "${s}"`);
 #endif
         HEAPU32[(WS.socketEvent+12)>>2] = 1; // text data
       } else {
@@ -249,12 +249,12 @@ var LibraryWebSocket = {
         var buf = _malloc(len);
         HEAP8.set(new Uint8Array(e.data), buf);
 #if WEBSOCKET_DEBUG
-        var s = 'WebSocket onmessage, received data: ' + len + ' bytes of binary:';
+        var s = `WebSocket onmessage, received data: ${len} bytes of binary:`;
         for (var i = 0; i < Math.min(len, 256); ++i) s += ' ' + HEAPU8[buf+i].toString(16);
         s += ', "';
         for (var i = 0; i < Math.min(len, 256); ++i) s += (HEAPU8[buf+i] >= 32 && HEAPU8[buf+i] <= 127) ? String.fromCharCode(HEAPU8[buf+i]) : '\uFFFD';
         s += '"';
-        if (len > 256) s + ' ... (' + (len - 256) + ' more bytes)';
+        if (len > 256) s + ` ... (${len - 256} more bytes)`;
 
         dbg(s);
 #endif
@@ -298,7 +298,7 @@ var LibraryWebSocket = {
     WS.sockets[socketId] = socket;
 
 #if WEBSOCKET_DEBUG
-    dbg('emscripten_websocket_new(url='+url+', protocols=' + (protocols?UTF8ToString(protocols).split(','):'null') + '): created socket ID ' + socketId + ')');
+    dbg(`emscripten_websocket_new(url=${url}, protocols=${protocols ? UTF8ToString(protocols).split(',') : 'null'}): created socket ID ${socketId})`);
 #endif
     return socketId;
   },
@@ -309,17 +309,17 @@ var LibraryWebSocket = {
     var socket = WS.sockets[socketId];
     if (!socket) {
 #if WEBSOCKET_DEBUG
-      dbg('emscripten_websocket_send_utf8_text(): Invalid socket ID ' + socketId + ' specified!');
+      dbg(`emscripten_websocket_send_utf8_text(): Invalid socket ID ${socketId} specified!`);
 #endif
       return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     }
 
     var str = UTF8ToString(textData);
 #if WEBSOCKET_DEBUG == 2
-    dbg('emscripten_websocket_send_utf8_text(socketId='+socketId+',textData='+ str.length + ' chars, "' + str +'")');
+    dbg(`emscripten_websocket_send_utf8_text(socketId=${socketId},textData=${str.length} chars, "${str}")`);
 #else
 #if WEBSOCKET_DEBUG
-    dbg('emscripten_websocket_send_utf8_text(socketId='+socketId+',textData='+ str.length + ' chars, "' + ((str.length > 8) ? (str.substring(0,8) + '...') : str) + '")');
+    dbg(`emscripten_websocket_send_utf8_text(socketId=${socketId},textData=${str.length} ' chars, "${(str.length > 8) ? (str.substring(0,8) + '...') : str}")`);
 #endif
 #endif
     socket.send(str);
@@ -332,22 +332,22 @@ var LibraryWebSocket = {
     var socket = WS.sockets[socketId];
     if (!socket) {
 #if WEBSOCKET_DEBUG
-      dbg('emscripten_websocket_send_binary(): Invalid socket ID ' + socketId + ' specified!');
+      dbg(`emscripten_websocket_send_binary(): Invalid socket ID ${socketId} specified!`);
 #endif
       return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     }
 
 #if WEBSOCKET_DEBUG
-    var s = 'data: ' + dataLength + ' bytes of binary:';
+    var s = `data: ${dataLength} bytes of binary:`;
     for (var i = 0; i < Math.min(dataLength, 256); ++i) s += ' '+ HEAPU8[binaryData+i].toString(16);
     s += ', "';
     for (var i = 0; i < Math.min(dataLength, 256); ++i) s += (HEAPU8[binaryData+i] >= 32 && HEAPU8[binaryData+i] <= 127) ? String.fromCharCode(HEAPU8[binaryData+i]) : '\uFFFD';
     s += '"';
-    if (dataLength > 256) s + ' ... (' + (dataLength - 256) + ' more bytes)';
+    if (dataLength > 256) s + ` ... (${dataLength - 256} more bytes)`;
 
-    dbg('emscripten_websocket_send_binary(socketId='+socketId+',binaryData='+binaryData+ ',dataLength='+dataLength+'), ' + s);
+    dbg(`emscripten_websocket_send_binary(socketId=${socketId},binaryData=${binaryData},dataLength=${dataLength}), ${s}`);
 #endif
-#if PTHREADS
+#if SHARED_MEMORY
     // TODO: This is temporary to cast a shared Uint8Array to a non-shared Uint8Array. This could be removed if WebSocket API is improved
     // to allow passing in views to SharedArrayBuffers
     socket.send(new Uint8Array({{{ makeHEAPView('U8', 'binaryData', 'binaryData+dataLength') }}}));
@@ -363,14 +363,14 @@ var LibraryWebSocket = {
     var socket = WS.sockets[socketId];
     if (!socket) {
 #if WEBSOCKET_DEBUG
-      dbg('emscripten_websocket_close(): Invalid socket ID ' + socketId + ' specified!');
+      dbg(`emscripten_websocket_close(): Invalid socket ID ${socketId} specified!`);
 #endif
       return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     }
 
     var reasonStr = reason ? UTF8ToString(reason) : undefined;
 #if WEBSOCKET_DEBUG
-    dbg('emscripten_websocket_close(socketId='+socketId+',code='+code+',reason='+reasonStr+')');
+    dbg(`emscripten_websocket_close(socketId=${socketId},code=${code},reason=${reasonStr})`);
 #endif
     // According to WebSocket specification, only close codes that are recognized have integer values
     // 1000-4999, with 3000-3999 and 4000-4999 denoting user-specified close codes:
@@ -389,13 +389,13 @@ var LibraryWebSocket = {
     var socket = WS.sockets[socketId];
     if (!socket) {
 #if WEBSOCKET_DEBUG
-      dbg('emscripten_websocket_delete(): Invalid socket ID ' + socketId + ' specified!');
+      dbg(`emscripten_websocket_delete(): Invalid socket ID ${socketId} specified!`);
 #endif
       return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     }
 
 #if WEBSOCKET_DEBUG
-    dbg('emscripten_websocket_delete(socketId='+socketId+')');
+    dbg(`emscripten_websocket_delete(socketId=${socketId})`);
 #endif
     socket.onopen = socket.onerror = socket.onclose = socket.onmessage = null;
     delete WS.sockets[socketId];
