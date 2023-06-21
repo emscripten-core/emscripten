@@ -20,8 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.42 (in development)
 -----------------------
-- The default minimum Node version was bumped from 10.19 to 16.0. To target the
-  previous minimum version (10.19.0), use `-sMIN_NODE_VERSION=101900` (#19192).
+- The default minimum Node version of Emscripten output was bumped from 10.19 to
+  16.0. To target the output JS in an older version of node, you can use e.g.
+  `-sMIN_NODE_VERSION=101900` which will apply the previous minimum version of
+  10.19.0. (#19192).
 - The log message that emcc will sometime print (for example when auto-building
   system libraries) can now be completely supressed by running with
   `EMCC_LOGGING=0`.
