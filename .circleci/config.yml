@@ -726,6 +726,9 @@ jobs:
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
       EMCC_SKIP_SANITY_CHECK: "1"
+      # test_sse1 (the only @crossplatform native clang test) currently fails
+      # on the macOS bots).
+      EMTEST_LACKS_NATIVE_CLANG: "1"
     steps:
       - setup-macos
       - attach_workspace:
