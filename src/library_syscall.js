@@ -125,13 +125,7 @@ var SyscallsLibrary = {
   _mmap_js__deps: ['$SYSCALLS',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
-    // The dependency of FS on `mmapAlloc` and `mmapAlloc` on
-    // `emscripten_builtin_memalign` are not encoding as hard dependencies,
-    // so we need to explictly depend on them here to ensure a working
-    // `FS.mmap`.
-    // `emscripten_builtin_memalign`).
     '$mmapAlloc',
-    'emscripten_builtin_memalign',
 #endif
   ].concat(i53ConversionDeps),
   _mmap_js: function(len, prot, flags, fd, {{{ defineI64Param('offset') }}}, allocated, addr) {
