@@ -1237,6 +1237,16 @@ namespace wgpu {
     Instance CreateInstance(InstanceDescriptor const * descriptor = nullptr);
     Proc GetProcAddress(Device device, char const * procName);
 
+    struct ChainedStruct {
+        ChainedStruct const * nextInChain = nullptr;
+        SType sType = SType::Invalid;
+    };
+
+    struct ChainedStructOut {
+        ChainedStruct * nextInChain = nullptr;
+        SType sType = SType::Invalid;
+    };
+
     struct AdapterProperties {
         ChainedStructOut  * nextInChain = nullptr;
         uint32_t vendorID;

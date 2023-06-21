@@ -1434,7 +1434,7 @@ var LibraryWebGPU = {
         break;
       }
       case {{{ gpu.SType.ShaderModuleWGSLDescriptor }}}: {
-        var sourcePtr = {{{ makeGetValue('nextInChainPtr', C_STRUCTS.WGPUShaderModuleWGSLDescriptor.source, '*') }}};
+        var sourcePtr = {{{ makeGetValue('nextInChainPtr', C_STRUCTS.WGPUShaderModuleWGSLDescriptor.code, '*') }}};
         if (sourcePtr) {
           desc["code"] = UTF8ToString(sourcePtr);
         }
