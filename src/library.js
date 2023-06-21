@@ -2332,7 +2332,7 @@ mergeInto(LibraryManager.library, {
     // Pthreads need their clocks synchronized to the execution of the main
     // thread, so, when using them, make sure to adjust all timings to the
     // respective time origins.
-    _emscripten_get_now = () => performance.timeOrigin + performance.now();
+    _emscripten_get_now = () => performance.timeOrigin + {{{ getPerformanceNow() }}}();
 #else
 #if ENVIRONMENT_MAY_BE_SHELL
     if (typeof dateNow != 'undefined') {
@@ -2344,11 +2344,11 @@ mergeInto(LibraryManager.library, {
     // (https://github.com/WebAudio/web-audio-api/issues/2527), so if building
     // with
     // Audio Worklets enabled, do a dynamic check for its presence.
-    if (typeof performance != 'undefined' && performance.now) {
+    if (typeof performance != 'undefined' && {{{ getPerformanceNow() }}}) {
 #if PTHREADS
-      _emscripten_get_now = () => performance.timeOrigin + performance.now();
+      _emscripten_get_now = () => performance.timeOrigin + {{{ getPerformanceNow() }}}();
 #else
-      _emscripten_get_now = () => performance.now();
+      _emscripten_get_now = () => {{{ getPerformanceNow() }}}();
 #endif
     } else {
       _emscripten_get_now = Date.now;
@@ -2357,7 +2357,7 @@ mergeInto(LibraryManager.library, {
     // Modern environment where performance.now() is supported:
     // N.B. a shorter form "_emscripten_get_now = performance.now;" is
     // unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
-    _emscripten_get_now = () => performance.now();
+    _emscripten_get_now = () => {{{ getPerformanceNow() }}}();
 #endif
 #endif
 `,
