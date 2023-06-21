@@ -161,6 +161,27 @@ mergeInto(LibraryManager.library, {
           out(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         }
+      },
+      ioctl_tcgets: function(tty) {
+        // typical setting
+        return {
+          c_iflag: {{{ cDefs.ICRNL | cDefs.IXON | cDefs.IMAXBEL | cDefs.IUTF8 }}},
+          c_oflag: {{{ cDefs.OPOST | cDefs.ONLCR }}},
+          c_cflag: {{{ cDefs.B38400 | cDefs.CSIZE | cDefs.CREAD }}},
+          c_lflag: {{{ cDefs.ISIG | cDefs.ICANON | cDefs.ECHO | cDefs.ECHOE | cDefs.ECHOK | cDefs.ECHOCTL | cDefs.ECHOKE | cDefs.IEXTEN }}},
+          c_cc: [
+            0x03, 0x1c, 0x7f, 0x15, 0x04, 0x00, 0x01, 0x00, 0x11, 0x13, 0x1a, 0x00,
+            0x12, 0x0f, 0x17, 0x16, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          ]
+        };
+      },
+      ioctl_tcsets: function(tty, optional_actions, data) {
+        // currently just ignore
+        return 0;
+      },
+      ioctl_tiocgwinsz: function(tty) {
+        return [24, 80];
       }
     },
     default_tty1_ops: {

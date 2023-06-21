@@ -6016,6 +6016,7 @@ Module = {
 
   def test_fs_js_api(self):
     self.set_setting("FORCE_FILESYSTEM")
+    # self.set_setting('EXPORTED_FUNCTIONS', '_emscripten_builtin_memalign')
     self.do_runf(test_file('fs/test_fs_js_api.c'), 'success')
 
   def test_fs_write(self):

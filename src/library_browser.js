@@ -711,6 +711,8 @@ var LibraryBrowser = {
     FS.createPreloadedFile(
       PATH.dirname(_file),
       PATH.basename(_file),
+      // TODO: This copy is not needed if the contents are already a Uint8Array,
+      //       which they often are (and always are in WasmFS).
       new Uint8Array(data.object.contents), true, true,
       () => {
         {{{ runtimeKeepalivePop() }}}
