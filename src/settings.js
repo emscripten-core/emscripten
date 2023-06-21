@@ -1797,7 +1797,7 @@ var MIN_CHROME_VERSION = 75;
 // distinct from the minimum version required run the emscripten compiler.
 // This version aligns with the current Ubuuntu TLS 20.04 (Focal).
 // Version is encoded in MMmmVV, e.g. 1814101 denotes Node 18.14.01.
-var MIN_NODE_VERSION = 101900;
+var MIN_NODE_VERSION = 160000;
 
 // Tracks whether we are building with errno support enabled. Set to 0
 // to disable compiling errno support in altogether. This saves a little
