@@ -526,7 +526,6 @@ mergeInto(LibraryManager.library, {
     });
   },
 
-  emscripten_lazy_load_code__sig: 'v',
   emscripten_lazy_load_code__async: true,
   emscripten_lazy_load_code: function() {
     return Asyncify.handleSleep((wakeUp) => {

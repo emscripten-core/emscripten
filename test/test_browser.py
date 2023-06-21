@@ -5112,8 +5112,15 @@ Module["preRun"].push(function () {
   def test_embind_with_pthreads(self):
     self.btest_exit(test_file('embind/test_pthreads.cpp'), args=['-lembind', '-pthread', '-sPTHREAD_POOL_SIZE=2'])
 
-  def test_embind_with_asyncify(self):
-    self.btest('embind_with_asyncify.cpp', '1', args=['-lembind', '-sASYNCIFY'])
+  @parameterized({
+    'asyncify': (['-sASYNCIFY=1'],),
+    'jspi': (['-sASYNCIFY=2', '-Wno-experimental'],),
+  })
+  def test_embind(self, args):
+    if is_jspi(args) and not is_chrome():
+      self.skipTest(f'Current browser ({EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
+
+    self.btest('embind_with_asyncify.cpp', '1', args=['-lembind'] + args)
 
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):
