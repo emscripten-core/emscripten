@@ -23,6 +23,10 @@ See docs/process.md for more on how version tagging works.
 - Enable WASM_BIGINT support by default. (#19156)
 - Bump the default minimum Firefox version from 65 to 68.
 - Bump the default minimum Node version from 10.19 to 15.0.
+- The default minimum Node version of Emscripten output was bumped from 10.19 to
+  16.0. To run the output JS in an older version of node, you can use e.g.
+  `-sMIN_NODE_VERSION=101900` which will apply the previous minimum version of
+  10.19.0. (#19192).
 - The log message that emcc will sometime print (for example when auto-building
   system libraries) can now be completely supressed by running with
   `EMCC_LOGGING=0`.
