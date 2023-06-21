@@ -74,14 +74,14 @@ weak int _mmap_js(size_t length,
                   int prot,
                   int flags,
                   int fd,
-                  size_t offset,
+                  off_t offset,
                   int* allocated,
                   void** addr) {
   return -ENOSYS;
 }
 
 weak int _munmap_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
+  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset) {
   return -ENOSYS;
 }
 
@@ -152,12 +152,13 @@ int emscripten_resize_heap(size_t size) {
   return 0;
 }
 
-double emscripten_get_now(void) {
+weak double emscripten_get_now(void) {
   struct timespec ts;
   if (clock_gettime(CLOCK_MONOTONIC, &ts)) {
     return 0;
   }
-  return (double)ts.tv_sec + (double)ts.tv_nsec / 1000000000;
+  // emscripten_get_now returns time in milliseconds (as a double)
+  return (double)ts.tv_sec * 1000 + (double)ts.tv_nsec / 1000000;
 }
 
 // C++ ABI

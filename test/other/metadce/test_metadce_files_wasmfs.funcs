@@ -1,3 +1,4 @@
+$__clock_gettime
 $__cxx_global_array_dtor
 $__cxx_global_array_dtor.1
 $__cxx_global_array_dtor.2
@@ -27,7 +28,6 @@ $__pthread_mutex_lock
 $__stdio_close
 $__stdio_seek
 $__stdio_write
-$__time
 $__unlockfile
 $__wasi_fd_close
 $__wasi_fd_write

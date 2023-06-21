@@ -133,11 +133,12 @@ var SyscallsLibrary = {
     '$mmapAlloc',
     'emscripten_builtin_memalign',
 #endif
-  ],
-  _mmap_js: function(len, prot, flags, fd, off, allocated, addr) {
+  ].concat(i53ConversionDeps),
+  _mmap_js: function(len, prot, flags, fd, {{{ defineI64Param('offset') }}}, allocated, addr) {
+    {{{ receiveI64ParamAsI53('offset', -cDefs.EOVERFLOW) }}}
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
-    var res = FS.mmap(stream, len, off, prot, flags);
+    var res = FS.mmap(stream, len, offset, prot, flags);
     var ptr = res.ptr;
     {{{ makeSetValue('allocated', 0, 'res.allocated', 'i32') }}};
 #if CAN_ADDRESS_2GB
@@ -154,8 +155,9 @@ var SyscallsLibrary = {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
 #endif
-  ],
-  _munmap_js: function(addr, len, prot, flags, fd, offset) {
+  ].concat(i53ConversionDeps),
+  _munmap_js: function(addr, len, prot, flags, fd, {{{ defineI64Param('offset') }}}) {
+    {{{ receiveI64ParamAsI53('offset', -cDefs.EOVERFLOW) }}}
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     if (prot & {{{ cDefs.PROT_WRITE }}}) {
@@ -623,8 +625,10 @@ var SyscallsLibrary = {
 
     return total;
   },
-  _msync_js: function(addr, len, prot, flags, fd, offset) {
-    SYSCALLS.doMsync(addr, SYSCALLS.getStreamFromFD(fd), len, flags, 0);
+  _msync_js__deps: i53ConversionDeps,
+  _msync_js: function(addr, len, prot, flags, fd, {{{ defineI64Param('offset') }}}) {
+    {{{ receiveI64ParamAsI53('offset', -cDefs.EOVERFLOW) }}}
+    SYSCALLS.doMsync(addr, SYSCALLS.getStreamFromFD(fd), len, flags, offset);
     return 0;
   },
   __syscall_fdatasync: function(fd) {
