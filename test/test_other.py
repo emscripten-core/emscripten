@@ -8766,6 +8766,7 @@ end
     'bigint': [['-sWASM_BIGINT']],
     'pthread': [['-pthread', '-Wno-experimental']],
     'pthread_offscreen': [['-pthread', '-Wno-experimental', '-sOFFSCREEN_FRAMEBUFFER']],
+    'wasmfs': [['-sWASMFS']],
   })
   def test_closure_full_js_library(self, args):
     # Test for closure errors and warnings in the entire JS library.
@@ -10646,7 +10647,9 @@ int main(void) {
     # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
     # Check an absolute code size as well, with some slack.
-    self.assertLess(abs(changed - 4491), 150)
+    self.check_expected_size_in_file('js',
+                                     test_file('other/test_INCOMING_MODULE_JS_API.js.size'),
+                                     changed)
 
   def test_INCOMING_MODULE_JS_API_missing(self):
     create_file('pre.js', '''
@@ -12362,22 +12365,22 @@ void foo() {}
 
     # With NODEJS_CATCH_REJECTION we expect the unhandled rejection to cause a non-zero
     # exit code and log the stack trace correctly.
-    self.run_process([EMCC, '--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION', 'main.c'])
-    output = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('unhandledRejection', read_file('a.out.js'))
+    self.build('main.c', emcc_args=['--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION'])
+    output = self.run_js('main.js', assert_returncode=NON_ZERO)
+    self.assertContained('unhandledRejection', read_file('main.js'))
     self.assertContained('ReferenceError: missing is not defined', output)
     self.assertContained('at foo (', output)
 
     # Without NODEJS_CATCH_REJECTION we expect node to log the unhandled rejection
     # but return 0.
     self.node_args = [a for a in self.node_args if '--unhandled-rejections' not in a]
-    self.run_process([EMCC, '--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION=0', 'main.c'])
-    self.assertNotContained('unhandledRejection', read_file('a.out.js'))
+    self.build('main.c', emcc_args=['--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION=0'])
+    self.assertNotContained('unhandledRejection', read_file('main.js'))
 
     if shared.check_node_version()[0] >= 15:
       self.skipTest('old behaviour of node JS cannot be tested on node v15 or above')
 
-    output = self.run_js('a.out.js')
+    output = self.run_js('main.js')
     self.assertContained('ReferenceError: missing is not defined', output)
     self.assertContained('at foo (', output)
 

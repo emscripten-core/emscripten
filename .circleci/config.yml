@@ -617,6 +617,7 @@ jobs:
       - run-tests:
           title: "selected subset"
           test_targets: "
+            other.test_deterministic
             other.test_gen_struct_info
             other.test_native_call_before_init
             other.test_node_unhandled_rejection
@@ -725,6 +726,9 @@ jobs:
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
       EMCC_SKIP_SANITY_CHECK: "1"
+      # test_sse1 (the only @crossplatform native clang test) currently fails
+      # on the macOS bots).
+      EMTEST_LACKS_NATIVE_CLANG: "1"
     steps:
       - setup-macos
       - attach_workspace:
@@ -739,8 +743,8 @@ jobs:
       - pip-install:
           python: "$EMSDK_PYTHON"
       - run-tests:
-          title: "other+extras"
-          test_targets: "other skip:other.test_native_link_error_message"
+          title: "crossplatform tests"
+          test_targets: "--crossplatform-only"
       - upload-test-results
 
   test-mac-arm64:

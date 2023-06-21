@@ -94,7 +94,7 @@ mergeInto(LibraryManager.library, {
           nlink: 1,
           uid: 0,
           gid: 0,
-          rdev: undefined,
+          rdev: 0,
           size: node.size,
           atime: new Date(node.timestamp),
           mtime: new Date(node.timestamp),

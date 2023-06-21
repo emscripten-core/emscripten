@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
+#include <time.h>
 
 #include "backend.h"
 #include "file.h"
@@ -167,7 +168,7 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     lockedOpenFile.setPosition(offset + bytesWritten);
   }
   if (bytesWritten) {
-    lockedFile.setMTime(time(NULL));
+    lockedFile.updateMTime();
   }
   return __WASI_ERRNO_SUCCESS;
 }
@@ -383,9 +384,9 @@ int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
   buffer->st_blocks = (buffer->st_size + 511) / 512;
   // Specifies the preferred blocksize for efficient disk I/O.
   buffer->st_blksize = 4096;
-  buffer->st_atim.tv_sec = lockedFile.getATime();
-  buffer->st_mtim.tv_sec = lockedFile.getMTime();
-  buffer->st_ctim.tv_sec = lockedFile.getCTime();
+  buffer->st_atim = lockedFile.getATime();
+  buffer->st_mtim = lockedFile.getMTime();
+  buffer->st_ctim = lockedFile.getCTime();
   return __WASI_ERRNO_SUCCESS;
 }
 
@@ -1093,21 +1094,23 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
     return err;
   }
 
-  // TODO: Set tv_nsec (nanoseconds) as well.
   // TODO: Handle tv_nsec being UTIME_NOW or UTIME_OMIT.
   // TODO: Check for write access to the file (see man page for specifics).
-  time_t aSeconds, mSeconds;
+  struct timespec aTime, mTime;
+  
   if (times == NULL) {
-    aSeconds = time(NULL);
-    mSeconds = aSeconds;
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    aTime = ts;
+    mTime = ts;
   } else {
-    aSeconds = times[0].tv_sec;
-    mSeconds = times[1].tv_sec;
+    aTime = times[0];
+    mTime = times[1];
   }
 
   auto locked = parsed.getFile()->locked();
-  locked.setATime(aSeconds);
-  locked.setMTime(mSeconds);
+  locked.setATime(aTime);
+  locked.setMTime(mTime);
 
   return 0;
 }
@@ -1131,7 +1134,7 @@ int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
   auto lockedFile = parsed.getFile()->locked();
   lockedFile.setMode(mode);
   // On POSIX, ctime is updated on metadata changes, like chmod.
-  lockedFile.setCTime(time(NULL));
+  lockedFile.updateCTime();
   return 0;
 }
 
@@ -1146,7 +1149,7 @@ int __syscall_fchmod(int fd, int mode) {
   }
   auto lockedFile = openFile->locked().getFile()->locked();
   lockedFile.setMode(mode);
-  lockedFile.setCTime(time(NULL));
+  lockedFile.updateCTime();
   return 0;
 }
 
@@ -1226,7 +1229,7 @@ static int doTruncate(std::shared_ptr<File>& file, off_t size) {
   return ret;
 }
 
-int __syscall_truncate64(intptr_t path, uint64_t size) {
+int __syscall_truncate64(intptr_t path, off_t size) {
   auto parsed = path::parseFile((char*)path);
   if (auto err = parsed.getError()) {
     return err;
@@ -1234,7 +1237,7 @@ int __syscall_truncate64(intptr_t path, uint64_t size) {
   return doTruncate(parsed.getFile(), size);
 }
 
-int __syscall_ftruncate64(int fd, uint64_t size) {
+int __syscall_ftruncate64(int fd, off_t size) {
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;
@@ -1358,7 +1361,7 @@ int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
   return nonzero;
 }
 
-int __syscall_fallocate(int fd, int mode, int64_t off, int64_t len) {
+int __syscall_fallocate(int fd, int mode, off_t offset, off_t len) {
   assert(mode == 0); // TODO, but other modes were never supported in the old FS
 
   auto fileTable = wasmFS.getFileTable().locked();
@@ -1378,14 +1381,14 @@ int __syscall_fallocate(int fd, int mode, int64_t off, int64_t len) {
     return -EBADF;
   }
 
-  if (off < 0 || len <= 0) {
+  if (offset < 0 || len <= 0) {
     return -EINVAL;
   }
 
   // TODO: We could only fill zeros for regions that were completely unused
   //       before, which for a backend with sparse data storage could make a
   //       difference. For that we'd need a new backend API.
-  auto newNeededSize = off + len;
+  auto newNeededSize = offset + len;
   off_t size = locked.getSize();
   if (size < 0) {
     return size;
@@ -1534,7 +1537,7 @@ int _mmap_js(size_t length,
              int prot,
              int flags,
              int fd,
-             size_t offset,
+             off_t offset,
              int* allocated,
              void** addr) {
   // PROT_EXEC is not supported (although we pretend to support the absence of
@@ -1621,7 +1624,7 @@ int _mmap_js(size_t length,
 }
 
 int _msync_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
+  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset) {
   // TODO: This is not correct! Mappings should be associated with files, not
   // fds. Only need to sync if shared and writes are allowed.
   int mapType = flags & MAP_TYPE;
@@ -1637,7 +1640,7 @@ int _msync_js(
 }
 
 int _munmap_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
+  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset) {
   // TODO: This is not correct! Mappings should be associated with files, not
   // fds.
   // TODO: Syncing should probably be handled in __syscall_munmap instead.
@@ -1718,7 +1721,7 @@ int __syscall_recvmsg(
   return -ENOSYS;
 }
 
-int __syscall_fadvise64(int fd, uint64_t offset, uint64_t length, int advice) {
+int __syscall_fadvise64(int fd, off_t offset, off_t length, int advice) {
   // Advice is currently ignored. TODO some backends might use it
   return 0;
 }
