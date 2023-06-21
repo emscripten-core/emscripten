@@ -2317,11 +2317,13 @@ def phase_linker_setup(options, state, newargs):
     if settings.ASSERTIONS:
       # used in assertion checks for unflushed content
       settings.REQUIRED_EXPORTS += ['wasmfs_flush']
-    if settings.FORCE_FILESYSTEM:
+    if settings.FORCE_FILESYSTEM or settings.INCLUDE_FULL_LIBRARY:
       # Add exports for the JS API. Like the old JS FS, WasmFS by default
       # includes just what JS parts it actually needs, and FORCE_FILESYSTEM is
       # required to force all of it to be included if the user wants to use the
-      # JS API directly.
+      # JS API directly. (INCLUDE_FULL_LIBRARY also causes this code to be
+      # included, as the entire JS library can refer to things that require
+      # these exports.)
       settings.REQUIRED_EXPORTS += [
         '_wasmfs_read_file',
         '_wasmfs_write_file',

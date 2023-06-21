@@ -30,7 +30,10 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     '$FS_getMode',
     // For FS.readFile
     '$UTF8ArrayToString',
-#if FORCE_FILESYSTEM
+#if FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY // FULL_LIBRARY will include JS
+                                             // code in other places that ends
+                                             // up requiring all of our code
+                                             // here.
     '$FS_modeStringToFlags',
     'malloc',
     'free',
@@ -126,7 +129,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     cwd: () => UTF8ToString(__wasmfs_get_cwd()),
 #endif
 
-#if FORCE_FILESYSTEM
+#if FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY // see comment above
     // Full JS API support
 
     analyzePath: (path) => {
