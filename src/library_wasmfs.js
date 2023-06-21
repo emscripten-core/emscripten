@@ -310,9 +310,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     fchmod: (fd, mode) => {
       return FS.handleError(__wasmfs_fchmod(fd, mode));
     },
-    // TDOO: chown
-    // TODO: lchown
-    // TODO: fchown
     utime: (path, atime, mtime) => (
       FS.handleError(withStackSave(() => (
         __wasmfs_utime(stringToUTF8OnStack(path), atime, mtime)
