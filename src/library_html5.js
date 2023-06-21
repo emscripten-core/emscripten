@@ -2587,7 +2587,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_performance_now: function() {
-    return performance.now();
+    return {{{ getPerformanceNow() }}}();
   },
 
   emscripten_get_device_pixel_ratio__proxy: 'sync',

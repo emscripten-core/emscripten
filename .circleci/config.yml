@@ -617,6 +617,7 @@ jobs:
       - run-tests:
           title: "selected subset"
           test_targets: "
+            other.test_deterministic
             other.test_gen_struct_info
             other.test_native_call_before_init
             other.test_node_unhandled_rejection
