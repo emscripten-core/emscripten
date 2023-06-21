@@ -724,14 +724,15 @@ var EXCEPTION_STACK_TRACES = false;
 // [link]
 var DISABLE_EXCEPTION_THROWING = false;
 
-// By default we handle exit() in node, by catching the Exit exception. However,
-// this means we catch all process exceptions. If you disable this, then we no
-// longer do that, and exceptions work normally, which can be useful for
-// libraries or programs that don't need exit() to work.
-//
-// Emscripten uses an ExitStatus exception to halt when exit() is called.
-// With this option, we prevent that from showing up as an unhandled
+// Emscripten throws an ExitStatus exception to unwind when exit() is called.
+// Without this setting enabled this can show up as a top level unhandled
 // exception.
+//
+// With this setting enabled a global uncaughtException handler is used to
+// catch and handle ExitStatus exceptions.  However, this means all other
+// uncaught exceptions are also caught and re-thrown, which is not always
+// desirable.
+//
 // [link]
 var NODEJS_CATCH_EXIT = true;
 
