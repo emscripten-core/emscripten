@@ -210,10 +210,6 @@ def also_with_standalone_wasm(impure=False):
         # if we are impure, disallow all wasm engines
         if impure:
           self.wasm_engines = []
-<<<<<<< HEAD
-=======
-        self.node_args += shared.node_bigint_flags()
->>>>>>> origin/main
         func(self)
 
     metafunc._parameterize = {'': (False,),
