@@ -2561,11 +2561,6 @@ var LibraryWebGPU = {
 
       var deviceLostCallbackPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.deviceLostCallback, '*') }}};
       var deviceLostUserdataPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.deviceLostUserdata, '*') }}};
-      desc["deviceLostCallback"] = (info) => {
-        // This will skip the callback if the runtime is no longer alive.
-        callUserCallback(() => WebGPU.errorCallback(deviceLostCallbackPtr, WebGPU.DeviceLostReason[info.reason],
-                                                    info.message, deviceLostUserdataPtr));
-      };
 
       var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.label, '*') }}};
       if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
@@ -2577,9 +2572,12 @@ var LibraryWebGPU = {
       callUserCallback(() => {
         var deviceWrapper = { queueId: WebGPU.mgrQueue.create(device["queue"]) };
         var deviceId = WebGPU.mgrDevice.create(device, deviceWrapper);
-        // Register device lost lisenter
-        deviceWrapper.lostCallback = desc["deviceLostCallback"];
-        deviceWrapper.object["lost"].then((info) => deviceWrapper.lostCallback(info));
+        if (deviceLostCallbackPtr) {
+          device["lost"].then((info) => {
+            callUserCallback(() => WebGPU.errorCallback(deviceLostCallbackPtr,
+              WebGPU.DeviceLostReason[info.reason], info.message, deviceLostUserdataPtr));
+          });
+        }
         {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestDeviceStatus.Success }}}, deviceId, 0, userdata);
       });
     }, function(ex) {
