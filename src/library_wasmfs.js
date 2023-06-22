@@ -423,7 +423,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         if (ABORT) {
           clearInterval(intervalID);
         } else {
-          _emscripten_proxy_execute_queue($0);
+          _emscripten_proxy_execute_queue(queue);
         }
       }, 50);
   },
