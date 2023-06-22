@@ -13231,7 +13231,11 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_min_node_version(self):
     node_version = shared.check_node_version()
     node_version = '.'.join(str(x) for x in node_version)
-    self.set_setting('MIN_NODE_VERSION', 210000)
+    # use self.emcc_args so that we append this to the very end (using
+    # self.set_setting would cause it to be at the start, and overridden by
+    # the test runner's own changes to self.emcc_args, if it sets a node version
+    # as well).
+    self.emcc_args += ['-sMIN_NODE_VERSION=210000']
     expected = 'This emscripten-generated code requires node v21.0.0 (detected v%s' % node_version
     self.do_runf(test_file('hello_world.c'), expected, assert_returncode=NON_ZERO)
 
