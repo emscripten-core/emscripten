@@ -11810,7 +11810,7 @@ exec "$@"
     wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
     wasm_split_run = [wasm_split, '-g', '--enable-mutable-globals', '--export-prefix=%', 'test_split_module.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data']
     if jspi:
-      wasm_split_run += ['--jspi', '--enable-reference-types']
+      wasm_split_run += ['--jspi', '--enable-reference-types', '--enable-bulk-memory']
     self.run_process(wasm_split_run)
 
     os.remove('test_split_module.wasm')
