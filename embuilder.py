@@ -101,6 +101,7 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libfetch',
     'libfetch-mt',
     'libwasmfs',
+    'libwasmfs-debug',
     'libwasmfs_no_fs',
     'giflib',
 ]

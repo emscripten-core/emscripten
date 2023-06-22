@@ -192,8 +192,6 @@ if (ENVIRONMENT_IS_NODE) {
         var t = process.hrtime();
         return t[0] * 1e3 + t[1] / 1e6
     }
-} else if (typeof dateNow !== "undefined") {
-    _emscripten_get_now = dateNow
 } else if (typeof self === "object" && self["performance"] && typeof self["performance"]["now"] === "function") {
     _emscripten_get_now = (function() {
         return self["performance"]["now"]()

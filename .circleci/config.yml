@@ -602,6 +602,28 @@ jobs:
             echo "JS_ENGINES = [JSC_ENGINE]" >> ~/emsdk/.emscripten
       - run-tests:
           test_targets: "core0.test_hello_world"
+  test-spidermonkey:
+    executor: linux-python
+    steps:
+      - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
+      - pip-install
+      - build
+      - run:
+          name: install spidermonkey
+          command: |
+            cd $HOME
+            wget https://nodejs.org/dist/v18.12.0/node-v18.12.0-linux-x64.tar.xz
+            tar -xf node-v18.12.0-linux-x64.tar.xz
+            export PATH="`pwd`/node-v18.12.0-linux-x64/bin:${PATH}"
+            npm install jsvu -g
+            jsvu --os=default --engines=spidermonkey
+            echo "JSC_ENGINE = [os.path.expanduser('~/.jsvu/bin/spidermonkey')]" >> ~/emsdk/.emscripten
+            echo "JS_ENGINES = [JSC_ENGINE]" >> ~/emsdk/.emscripten
+      - run-tests:
+          test_targets: "core0.test_hello_world"
   test-node-compat:
     # We don't use `bionic` here since its tool old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
@@ -815,6 +837,7 @@ workflows:
           requires:
             - build-linux
       - test-jsc
+      - test-spidermonkey
       - test-node-compat
       - test-windows
       - test-mac-arm64

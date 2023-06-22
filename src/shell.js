@@ -319,11 +319,16 @@ if (ENVIRONMENT_IS_SHELL) {
   };
 
   readAsync = (f, onload, onerror) => {
-    setTimeout(() => onload(readBinary(f)), 0);
+    setTimeout(() => onload(readBinary(f)));
   };
 
   if (typeof clearTimeout == 'undefined') {
     globalThis.clearTimeout = (id) => {};
+  }
+
+  if (typeof setTimeout == 'undefined') {
+    // spidermonkey lacks setTimeout but we use it above in readAsync.
+    globalThis.setTimeout = (f) => (typeof f == 'function') ? f() : abort();
   }
 
   if (typeof scriptArgs != 'undefined') {
