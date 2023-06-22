@@ -38,7 +38,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     'malloc',
     'free',
 #endif
-  ],
+  ].concat(i53ConversionDeps),
   $FS : {
     init: () => {
       FS.ensureErrnoError();
@@ -233,7 +233,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       return FS.handleError(__wasmfs_allocate(stream.fd, {{{ splitI64('offset') }}}, {{{ splitI64('length') }}}));
     },
     mmap: (stream, length, offset, prot, flags) => {
-      var buf = FS.handleError(__wasmfs_mmap(length, prot, flags, stream.fd, offset));
+      var buf = FS.handleError(__wasmfs_mmap(length, prot, flags, stream.fd, {{{ splitI64('offset') }}}));
       return { ptr: buf, allocated: true };
     },
     // offset is passed to msync to maintain backwards compatability with the legacy JS API but is not used by WasmFS.
