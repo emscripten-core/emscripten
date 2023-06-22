@@ -696,7 +696,7 @@ sigs = {
   emscripten_promise_resolve__sig: 'vpip',
   emscripten_promise_then__sig: 'ppppp',
   emscripten_random__sig: 'f',
-  emscripten_receive_on_main_thread_js__sig: 'diip',
+  emscripten_receive_on_main_thread_js__sig: 'dipip',
   emscripten_request_animation_frame__sig: 'ipp',
   emscripten_request_animation_frame_loop__sig: 'vpp',
   emscripten_request_fullscreen__sig: 'ipi',

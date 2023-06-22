@@ -210,9 +210,23 @@ var LibraryHTML5 = {
 #if PTHREADS
     getTargetThreadForEventCallback: function(targetThread) {
       switch (targetThread) {
-        case {{{ cDefs.EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD }}}: return 0; // The event callback for the current event should be called on the main browser thread. (0 == don't proxy)
-        case {{{ cDefs.EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD }}}: return PThread.currentProxiedOperationCallerThread; // The event callback for the current event should be backproxied to the thread that is registering the event.
-        default: return targetThread; // The event callback for the current event should be proxied to the given specific thread.
+        case {{{ cDefs.EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD }}}:
+          // The event callback for the current event should be called on the
+          // main browser thread. (0 == don't proxy)
+          return 0;
+        case {{{ cDefs.EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD }}}:
+          // The event callback for the current event should be backproxied to
+          // the thread that is registering the event.
+#if ASSERTIONS
+          // If we get here PThread.currentProxiedOperationCallerThread should
+          // be set to the calling thread.
+          assert(PThread.currentProxiedOperationCallerThread);
+#endif
+          return PThread.currentProxiedOperationCallerThread;
+        default:
+          // The event callback for the current event should be proxied to the
+          // given specific thread.
+          return targetThread;
       }
     },
 #endif

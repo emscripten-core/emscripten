@@ -33,6 +33,10 @@ typedef struct em_queued_call {
   em_variant_val args[EM_QUEUED_JS_CALL_MAX_ARGS];
   em_variant_val returnValue;
 
+  // Sets the PThread.currentProxiedOperationCallerThread global for the
+  // duration of the proxied call.
+  pthread_t callingThread;
+
   // An optional pointer to a secondary data block that should be free()d when
   // this queued call is freed.
   void *satelliteData;
@@ -163,4 +167,4 @@ int __pthread_create_js(struct __pthread *thread, const pthread_attr_t *attr, vo
 int _emscripten_default_pthread_stack_size();
 void __set_thread_state(pthread_t ptr, int is_main, int is_runtime, int can_block);
 
-double emscripten_receive_on_main_thread_js(int functionIndex, int numCallArgs, double* args);
+double emscripten_receive_on_main_thread_js(int functionIndex, pthread_t callingThread, int numCallArgs, double* args);

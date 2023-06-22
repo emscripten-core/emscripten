@@ -188,7 +188,7 @@ static void _do_call(void* arg) {
       break;
     case EM_PROXIED_JS_FUNCTION:
       q->returnValue.d =
-        emscripten_receive_on_main_thread_js((intptr_t)q->functionPtr, q->args[0].i, &q->args[1].d);
+        emscripten_receive_on_main_thread_js((intptr_t)q->functionPtr, q->callingThread, q->args[0].i, &q->args[1].d);
       break;
     case EM_FUNC_SIG_V:
       ((em_func_v)q->functionPtr)();
@@ -430,10 +430,11 @@ double _emscripten_run_in_main_runtime_thread_js(int index, int num_args, int64_
   } else {
     c = em_queued_call_malloc();
   }
-  c->calleeDelete = 1-sync;
+  c->calleeDelete = !sync;
   c->functionEnum = EM_PROXIED_JS_FUNCTION;
   // Index not needed to ever be more than 32-bit.
   c->functionPtr = (void*)(intptr_t)index;
+  c->callingThread = pthread_self();
   assert(num_args+1 <= EM_QUEUED_JS_CALL_MAX_ARGS);
   // The types are only known at runtime in these calls, so we store values that
   // must be able to contain any valid JS value, including a 64-bit BigInt if
