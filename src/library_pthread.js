@@ -302,10 +302,6 @@ var LibraryPThread = {
           }
 #endif
           onFinishedLoading(worker);
-        } else if (cmd === 'print') {
-          out('Thread ' + d['threadId'] + ': ' + d['text']);
-        } else if (cmd === 'printErr') {
-          err('Thread ' + d['threadId'] + ': ' + d['text']);
         } else if (cmd === 'alert') {
           alert('Thread ' + d['threadId'] + ': ' + d['text']);
         } else if (d.target === 'setimmediate') {
