@@ -7209,8 +7209,10 @@ void* operator new(size_t size) {
     'minimal_runtime': ['-sMINIMAL_RUNTIME=1']
   })
   def test_dyncall_specific(self, *args):
-    if self.get_setting('WASM_BIGINT') or self.get_setting('MEMORY64'):
+    if self.get_setting('MEMORY64'):
       self.skipTest('not compatible with WASM_BIGINT')
+    if self.get_setting('WASM_BIGINT'):
+      args = list(args) + ['-sDYNCALLS=1', '-DWASM_BIGINT']
     cases = [
         ('DIRECT', []),
         ('DYNAMIC_SIG', ['-sDYNCALLS=1']),
