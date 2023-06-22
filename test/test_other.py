@@ -5928,6 +5928,7 @@ int main(void) {
     output = self.run_js('run.js')
     self.assertEqual(output, 'hello, world!\n')
 
+  @crossplatform
   @node_pthreads
   def test_pthread_print_override_modularize(self):
     self.set_setting('EXPORT_NAME', 'Test')
