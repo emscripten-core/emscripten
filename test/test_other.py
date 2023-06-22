@@ -9079,8 +9079,11 @@ int main() {
   });
 }
 ''')
-    stderr = self.expect_fail([EMCC, 'src.c', '-O2'])
-    # wasm backend output doesn't have spaces in the EM_ASM function bodies
+    stderr = self.expect_fail([EMCC, 'src.c', '-O2'] + self.get_emcc_args())
+    # TODO: To make this test work in WasmFS, the constant below must be
+    #       modified. It is the address in memory of the string constant of the
+    #       EM_ASM, and WasmFS has its own string constants that cause a
+    #       difference.
     self.assertContained(('''
   1024: () => { var x = !<->5.; }
                          ^
