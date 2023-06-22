@@ -7212,6 +7212,9 @@ void* operator new(size_t size) {
     if self.get_setting('MEMORY64'):
       self.skipTest('not compatible with WASM_BIGINT')
     if self.get_setting('WASM_BIGINT'):
+      # define DYNCALLS because this test does test calling them directly, and
+      # in WASM_BIGINT mode we do not enable them by default (since we can do
+      # more without them - we don't need to legalize)
       args = list(args) + ['-sDYNCALLS=1', '-DWASM_BIGINT']
     cases = [
         ('DIRECT', []),
