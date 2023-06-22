@@ -5930,6 +5930,7 @@ int main(void) {
 
   @crossplatform
   @node_pthreads
+  @no_mac('https://github.com/emscripten-core/emscripten/issues/19683')
   def test_pthread_print_override_modularize(self):
     self.set_setting('EXPORT_NAME', 'Test')
     self.set_setting('PROXY_TO_PTHREAD')
