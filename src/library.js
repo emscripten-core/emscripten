@@ -3158,6 +3158,7 @@ mergeInto(LibraryManager.library, {
 #endif
     if (args && args.length) {
       // j (64-bit integer) must be passed in as two numbers [low 32, high 32].
+      throw 'waka waka';
       assert(args.length === sig.substring(1).replace(/j/g, '--').length);
     } else {
       assert(sig.length == 1);
