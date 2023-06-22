@@ -585,7 +585,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
       self.emcc_args.append('-sENVIRONMENT=shell')
       self.js_engines = [config.V8_ENGINE]
-      self.v8_args.append('--experimental-wasm-eh')
       return
 
     if 'EMTEST_SKIP_EH' in os.environ:
