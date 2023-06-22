@@ -354,7 +354,7 @@ def limit_size(string):
     max_line = 500
   else:
     max_line = 5000
-    maxlines = 100000
+    maxlines = 1000
   lines = string.splitlines()
   for i, line in enumerate(lines):
     if len(line) > max_line:
