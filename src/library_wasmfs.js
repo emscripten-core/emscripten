@@ -136,7 +136,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       // TODO: Consider simplifying this API, which for now matches the JS FS.
       var exists = !!FS.findObject(path);
       return {
-        exists: exists,
+        exists,
         object: {
           contents: exists ? FS.readFile(path) : null
         }
