@@ -20,7 +20,9 @@
 // after the generated code, you will need to define   var Module = {};
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
-#if USE_CLOSURE_COMPILER
+#if MODULARIZE
+var Module = moduleArg;
+#elif USE_CLOSURE_COMPILER
 // if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
 var /** @type {{
   noImageDecoding: boolean,

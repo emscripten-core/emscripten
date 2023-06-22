@@ -7770,6 +7770,7 @@ void* operator new(size_t size) {
     if self.maybe_closure():
       # avoid closure minified names competing with our test code in the global name space
       self.set_setting('MODULARIZE')
+      self.set_setting('EXPORT_NAME', 'createModule')
     else:
       self.set_setting('WASM_ASYNC_COMPILATION', 0)
 
@@ -7781,7 +7782,7 @@ void* operator new(size_t size) {
 
     post_js = '\n\n'
     if self.get_setting('MODULARIZE'):
-      post_js += 'var TheModule = Module();\n'
+      post_js += 'var TheModule = createModule();\n'
     else:
       post_js += 'var TheModule = Module;\n'
     post_js += '\n\n'
@@ -9129,7 +9130,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_asan_modularized_with_closure(self):
     # the bug is that createModule() returns undefined, instead of the
     # proper Promise object.
-    create_file('post.js', 'if (!(createModule() instanceof Promise)) throw "Promise was not returned :(";\n')
+    create_file('post.js', 'if (!(createModule() instanceof Promise)) throw `Promise was not returned (${typeof createModule()})`;\n')
     self.emcc_args += ['-fsanitize=address', '--extern-post-js=post.js']
     self.set_setting('MODULARIZE')
     self.set_setting('EXPORT_NAME', 'createModule')
