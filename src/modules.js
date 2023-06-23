@@ -36,9 +36,9 @@ global.LibraryManager = {
 
     // Core system libraries (always linked against)
     let libraries = [
+      'library_int53.js',
       'library.js',
       'library_sigs.js',
-      'library_int53.js',
       'library_ccall.js',
       'library_addfunction.js',
       'library_formatString.js',
