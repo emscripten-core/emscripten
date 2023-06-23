@@ -12,6 +12,7 @@
 #include <wasi/api.h>
 
 #include "special_files.h"
+#include "wasmfs_internal.h"
 
 namespace wasmfs::SpecialFiles {
 
