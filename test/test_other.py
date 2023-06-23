@@ -12947,7 +12947,8 @@ int main() {
 
   @also_with_wasm_bigint
   def test_parseTools(self):
-    self.emcc_args += ['--js-library', test_file('other/test_parseTools.js')]
+    # Suppress js compiler warnings because we deliberately use legacy parseTools functions
+    self.emcc_args += ['-Wno-js-compiler', '--js-library', test_file('other/test_parseTools.js')]
     self.do_other_test('test_parseTools.c')
 
     # If we run ths same test with -sASSERTIONS=2 we expect it to fail because it
