@@ -123,8 +123,17 @@ mergeInto(LibraryManager.library, {
         var buf = Buffer.alloc(BUFSIZE);
         var bytesRead = 0;
 
+        // For some reason we must suppress a closure warning here, even though
+        // fd definitely exists on process.stdin, and is even the proper way to
+        // get the fd of stdin,
+        // https://github.com/nodejs/help/issues/2136#issuecomment-523649904
+        // This started to happen after moving this logic out of library_tty.js,
+        // so it is related to the surrounding code in some unclear manner.
+        /** @suppress {missingProperties} */
+        var fd = process.stdin.fd;
+
         try {
-          bytesRead = fs.readSync(process.stdin.fd, buf, 0, BUFSIZE, -1);
+          bytesRead = fs.readSync(fd, buf, 0, BUFSIZE, -1);
         } catch(e) {
           // Cross-platform differences: on Windows, reading EOF throws an exception, but on other OSes,
           // reading EOF returns 0. Uniformize behavior by treating the EOF exception to return 0.
