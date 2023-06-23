@@ -217,6 +217,26 @@ void emscripten_out(const char* text) { wasi_writeln(1, text); }
 
 void emscripten_err(const char* text) { wasi_writeln(2, text); }
 
+__attribute__((import_module("wasi_snapshot_preview1"),
+               import_name("fd_read"))) __wasi_errno_t
+imported__wasi_fd_read(__wasi_fd_t fd,
+                        const __wasi_ciovec_t* iovs,
+                        size_t iovs_len,
+                        __wasi_size_t* nread);
+
+int _wasmfs_stdin_get_char(void) {
+  char c;
+  struct __wasi_ciovec_t iov;
+  iov.buf = (uint8_t*)&c;
+  iov.buf_len = 1;
+  __wasi_size_t nread;
+  imported__wasi_fd_read(0, &iov, 1, &nread);
+  if (nread == 0) {
+    return -1;
+  }
+  return c;
+}
+
 // In the non-standalone build we define this helper function in JS to avoid
 // signture mismatch issues.
 // See: https://github.com/emscripten-core/posixtestsuite/issues/6

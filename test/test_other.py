@@ -1480,6 +1480,7 @@ int f() {
     self.emcc('lib.c', ['-sEXPORTED_FUNCTIONS=_libfunc2', '-sEXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
     self.assertContained('libfunc\n', self.run_js('a.out.js'))
 
+  @also_with_wasmfs
   @crossplatform
   def test_stdin(self):
     def run_test():
