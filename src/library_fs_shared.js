@@ -113,7 +113,7 @@ mergeInto(LibraryManager.library, {
     '$FS_stdin_getChar_buffer',
     '$intArrayFromString',
   ],
-  $FS_stdin_getChar: function() {
+  $FS_stdin_getChar: () => {
     if (!FS_stdin_getChar_buffer.length) {
       var result = null;
 #if ENVIRONMENT_MAY_BE_NODE

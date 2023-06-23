@@ -418,7 +418,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
   },
 
   _wasmfs_stdin_get_char__deps: ['$FS_stdin_getChar'],
-  _wasmfs_stdin_get_char: function() {
+  _wasmfs_stdin_get_char: () => {
     // Return the read character, or -1 to indicate EOF.
     var c = FS_stdin_getChar();
     if (typeof c === 'number') {
