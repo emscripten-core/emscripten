@@ -41,8 +41,8 @@ void emscripten_notify_memory_growth(size_t memory_index);
 // TODO(sbc): Covert back to `time_t` before 2038 ...
 int _timegm_js(struct tm* tm);
 int _mktime_js(struct tm* tm);
-void _localtime_js(const time_t* __restrict__ t, struct tm* __restrict__ tm);
-void _gmtime_js(const time_t* __restrict__ t, struct tm* __restrict__ tm);
+void _localtime_js(time_t t, struct tm* __restrict__ tm);
+void _gmtime_js(time_t t, struct tm* __restrict__ tm);
 
 void _tzset_js(long* timezone, int* daylight, char** tzname);
 
