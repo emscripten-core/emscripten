@@ -17,8 +17,8 @@ from typing import List, Optional
 from . import shared, building, utils
 from . import diagnostics
 from . import cache
-from tools.settings import settings
-from tools.utils import read_file
+from .settings import settings
+from .utils import read_file
 
 logger = logging.getLogger('system_libs')
 
