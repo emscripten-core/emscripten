@@ -102,6 +102,61 @@ mergeInto(LibraryManager.library, {
     if (canWrite) mode |= {{{ cDefs.S_IWUGO }}};
     return mode;
   },
+
+  $FS_stdin_getChar_buffer: [],
+
+  // getChar has 3 particular return values:
+  // a.) the next character represented as an integer
+  // b.) undefined to signal that no data is currently available
+  // c.) null to signal an EOF
+  $FS_stdin_getChar__deps: ['$FS_stdin_getChar_buffer'],
+  $FS_stdin_getChar: function() {
+    if (!FS_stdin_getChar_buffer.length) {
+      var result = null;
+#if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE) {
+        // we will read data by chunks of BUFSIZE
+        var BUFSIZE = 256;
+        var buf = Buffer.alloc(BUFSIZE);
+        var bytesRead = 0;
+
+        try {
+          bytesRead = fs.readSync(process.stdin.fd, buf, 0, BUFSIZE, -1);
+        } catch(e) {
+          // Cross-platform differences: on Windows, reading EOF throws an exception, but on other OSes,
+          // reading EOF returns 0. Uniformize behavior by treating the EOF exception to return 0.
+          if (e.toString().includes('EOF')) bytesRead = 0;
+          else throw e;
+        }
+
+        if (bytesRead > 0) {
+          result = buf.slice(0, bytesRead).toString('utf-8');
+        } else {
+          result = null;
+        }
+      } else
+#endif
+      if (typeof window != 'undefined' &&
+        typeof window.prompt == 'function') {
+        // Browser.
+        result = window.prompt('Input: ');  // returns null on cancel
+        if (result !== null) {
+          result += '\n';
+        }
+      } else if (typeof readline == 'function') {
+        // Command line.
+        result = readline();
+        if (result !== null) {
+          result += '\n';
+        }
+      }
+      if (!result) {
+        return null;
+      }
+      FS_stdin_getChar_buffer = intArrayFromString(result, true);
+    }
+    return FS_stdin_getChar_buffer.shift();
+  },
 });
 
 // Normally only the FS things that the compiler sees are needed are included.

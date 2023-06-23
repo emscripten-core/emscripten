@@ -1480,6 +1480,7 @@ int f() {
     self.emcc('lib.c', ['-sEXPORTED_FUNCTIONS=_libfunc2', '-sEXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
     self.assertContained('libfunc\n', self.run_js('a.out.js'))
 
+  @also_with_wasmfs
   @crossplatform
   def test_stdin(self):
     def run_test():
@@ -1498,8 +1499,9 @@ int f() {
         else: # posix
           os.system(f'cat in.txt | {cmd} > out.txt')
         self.assertContained('abcdef\nghijkl\neof', read_file('out.txt'))
+        1/0
 
-    self.emcc(test_file('module/test_stdin.c'), output_filename='out.js')
+    self.emcc(test_file('module/test_stdin.c'), output_filename='out.js', args=['--profiling'])
     create_file('in.txt', 'abcdef\nghijkl')
     run_test()
     self.emcc(test_file('module/test_stdin.c'),
@@ -7110,7 +7112,7 @@ int main(int argc, char **argv) {
 }
 ''')
     create_file('TEST_NODEFS.txt', ' ')
-    self.run_process([EMCC, 'src.c', '-lnodefs.js'])
+    self.run_process([EMCC, 'src.c', '-lnodefs.js', '-sFORCE_FILESYSTEM'])
     self.assertContained('Resolved: /working/TEST_NODEFS.txt', self.run_js('a.out.js'))
 
   def test_realpath_2(self):
