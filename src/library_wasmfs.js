@@ -416,4 +416,15 @@ FS.createPreloadedFile = FS_createPreloadedFile;
   _wasmfs_copy_preloaded_file_data: function(index, buffer) {
     HEAPU8.set(wasmFSPreloadedFiles[index].fileData, buffer);
   },
+
+  _wasmfs_thread_utils_heartbeat: (queue) => {
+    var intervalID =
+      setInterval(() => {
+        if (ABORT) {
+          clearInterval(intervalID);
+        } else {
+          _emscripten_proxy_execute_queue(queue);
+        }
+      }, 50);
+  },
 });
