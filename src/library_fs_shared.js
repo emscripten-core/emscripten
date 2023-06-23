@@ -109,7 +109,10 @@ mergeInto(LibraryManager.library, {
   // a.) the next character represented as an integer
   // b.) undefined to signal that no data is currently available
   // c.) null to signal an EOF
-  $FS_stdin_getChar__deps: ['$FS_stdin_getChar_buffer'],
+  $FS_stdin_getChar__deps: [
+    '$FS_stdin_getChar_buffer',
+    '$intArrayFromString',
+  ],
   $FS_stdin_getChar: function() {
     if (!FS_stdin_getChar_buffer.length) {
       var result = null;

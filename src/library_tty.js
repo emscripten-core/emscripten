@@ -7,7 +7,6 @@
 mergeInto(LibraryManager.library, {
   $TTY__deps: [
     '$FS',
-    '$intArrayFromString',
     '$UTF8ArrayToString',
     '$FS_stdin_getChar'
   ],

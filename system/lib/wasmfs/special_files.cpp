@@ -53,9 +53,7 @@ class StdinFile : public DataFile {
     for (size_t i = 0; i < len; i++) {
       auto c = _wasmfs_stdin_get_char();
       if (c < 0) {
-        if (i == 0) {
-          return -__WASI_ERRNO_EOF;
-        }
+        // No more input can be read, return what we did read.
         return i;
       }
       buf[i] = c;

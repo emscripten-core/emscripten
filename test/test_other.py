@@ -1499,9 +1499,8 @@ int f() {
         else: # posix
           os.system(f'cat in.txt | {cmd} > out.txt')
         self.assertContained('abcdef\nghijkl\neof', read_file('out.txt'))
-        1/0
 
-    self.emcc(test_file('module/test_stdin.c'), output_filename='out.js', args=['--profiling'])
+    self.emcc(test_file('module/test_stdin.c'), output_filename='out.js')
     create_file('in.txt', 'abcdef\nghijkl')
     run_test()
     self.emcc(test_file('module/test_stdin.c'),
@@ -7112,7 +7111,7 @@ int main(int argc, char **argv) {
 }
 ''')
     create_file('TEST_NODEFS.txt', ' ')
-    self.run_process([EMCC, 'src.c', '-lnodefs.js', '-sFORCE_FILESYSTEM'])
+    self.run_process([EMCC, 'src.c', '-lnodefs.js'])
     self.assertContained('Resolved: /working/TEST_NODEFS.txt', self.run_js('a.out.js'))
 
   def test_realpath_2(self):
