@@ -7209,18 +7209,23 @@ void* operator new(size_t size) {
     'minimal_runtime': ['-sMINIMAL_RUNTIME=1']
   })
   def test_dyncall_specific(self, *args):
-    if self.get_setting('WASM_BIGINT') or self.get_setting('MEMORY64'):
-      self.skipTest('not compatible with WASM_BIGINT')
+    if self.get_setting('MEMORY64'):
+      self.skipTest('not compatible with MEMORY64')
+    if self.get_setting('WASM_BIGINT'):
+      # define DYNCALLS because this test does test calling them directly, and
+      # in WASM_BIGINT mode we do not enable them by default (since we can do
+      # more without them - we don't need to legalize)
+      args = list(args) + ['-sDYNCALLS', '-DWASM_BIGINT']
     cases = [
         ('DIRECT', []),
-        ('DYNAMIC_SIG', ['-sDYNCALLS=1']),
+        ('DYNAMIC_SIG', ['-sDYNCALLS']),
       ]
     if '-sMINIMAL_RUNTIME=1' in args:
       self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
     else:
       cases += [
         ('EXPORTED', []),
-        ('EXPORTED_DYNAMIC_SIG', ['-sDYNCALLS=1', '-sEXPORTED_RUNTIME_METHODS=dynCall']),
+        ('EXPORTED_DYNAMIC_SIG', ['-sDYNCALLS', '-sEXPORTED_RUNTIME_METHODS=dynCall']),
         ('FROM_OUTSIDE', ['-sEXPORTED_RUNTIME_METHODS=dynCall_iiji'])
       ]
 
