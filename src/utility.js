@@ -183,6 +183,7 @@ function isJsLibraryConfigIdentifier(ident) {
     '__internal',
     '__user',
     '__async',
+    '__i53abi',
   ];
   return suffixes.some((suffix) => ident.endsWith(suffix));
 }
