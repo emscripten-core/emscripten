@@ -9074,19 +9074,16 @@ EMSCRIPTEN_KEEPALIVE void foo() {
     # check we show a proper understandable error for JS parse problems
     create_file('src.c', r'''
 #include <emscripten.h>
+EM_JS(void, js, (void), {
+  var x = !<->5.; // wtf... this will error on the '<'
+});
 int main() {
-  EM_ASM({
-    var x = !<->5.; // wtf
-  });
+  js();
 }
 ''')
     stderr = self.expect_fail([EMCC, 'src.c', '-O2'] + self.get_emcc_args())
-    # TODO: To make this test work in WasmFS, the constant below must be
-    #       modified. It is the address in memory of the string constant of the
-    #       EM_ASM, and WasmFS has its own string constants that cause a
-    #       difference.
     self.assertContained(('''
-  1024: () => { var x = !<->5.; }
+function js() { var x = !<->5.; }
                          ^
 '''), stderr)
 
