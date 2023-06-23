@@ -13,6 +13,11 @@
 
 #include "special_files.h"
 
+extern "C" {
+// Returns the next character from stdin, or -1 on EOF.
+int _wasmfs_stdin_get_char(void);
+}
+
 namespace wasmfs::SpecialFiles {
 
 namespace {
@@ -45,8 +50,17 @@ class StdinFile : public DataFile {
   }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
-    // TODO: Implement reading from stdin.
-    abort();
+    for (size_t i = 0; i < len; i++) {
+      auto c = _wasmfs_stdin_get_char();
+      if (c < 0) {
+        if (i == 0) {
+          return -__WASI_ERRNO_EOF;
+        }
+        return i;
+      }
+      buf[i] = c;
+    }
+    return len;
   };
 
   int flush() override { return 0; }
