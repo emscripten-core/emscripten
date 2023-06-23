@@ -10,8 +10,7 @@
 #include <assert.h>
 #include <math.h>
 
-void
-check_gmtime_localtime(time_t time)
+void check_gmtime_localtime(time_t time)
 {
   char gmbuf[32], locbuf[32];
   const char fmt[] = "%Y-%m-%d %H:%M:%S";
@@ -46,7 +45,7 @@ int main() {
   tzset();
   printf("tzname[0] set: %d\n", strlen(tzname[0]) >= 3);
   printf("tzname[1] set: %d\n", strlen(tzname[1]) >= 3);
-  
+
   // Verify gmtime() creates correct struct.
   tm_ptr = gmtime(&xmas2002);
   printf("sec: %d\n", tm_ptr->tm_sec);
@@ -60,7 +59,7 @@ int main() {
   printf("dst: %d\n", tm_ptr->tm_isdst);
   printf("off: %ld\n", (long)tm_ptr->tm_gmtoff);
   printf("zone: %s\n", tm_ptr->tm_zone);
-  
+
   // Verify timegm() reverses gmtime; run through an entire year in half hours.
   int timegmOk = 1;
   for (int i = 0; i < 2*24*266; ++i) {
@@ -75,14 +74,14 @@ int main() {
       timegmOk = 0;
   }
   printf("timegm <-> gmtime: %d\n", timegmOk);
-  
+
   // Verify gmtime_r() doesn't clobber static data.
   time_t t1 = 0;
   struct tm tm1;
   gmtime_r(&t1, &tm1);
   printf("old year still: %d\n", tm_ptr->tm_year);
   printf("new year: %d\n", tm1.tm_year);
-  
+
   // Verify localtime() picks up timezone data.
   struct tm tm_winter, tm_summer;
   if (localtime_r(&xmas2002, &tm_winter) != &tm_winter) printf("localtime_r failed\n");
@@ -152,7 +151,7 @@ int main() {
     tm2.tm_hour != tm_local.tm_hour || tm2.tm_mday != tm_local.tm_mday ||
     tm2.tm_mon != tm_local.tm_mon ||  tm2.tm_year != tm_local.tm_year ||
     tm2.tm_wday != tm_local.tm_wday || tm2.tm_yday != tm_local.tm_yday);
-    
+
   printf("mktime parameter is equivalent to localtime return: %d\n", mktimeOk);
 
   // Verify that mktime is able to guess what the dst is. It might get it wrong
@@ -249,6 +248,7 @@ int main() {
   check_gmtime_localtime(-2147483649);
   check_gmtime_localtime(253402300799); // end of year 9999
   check_gmtime_localtime(-62135596800); // beginning of year 1
+  check_gmtime_localtime(0x83d4d9a5); // some time in 2040 (time_t > MAX_INT32)
 
   // check that localtime sets tm_yday correctly whenever the day rolls over (issue #17635)
   // prior to being fixed, tm_yday did not increment correctly at epoch time 1049061599 (2003-03-31 00:00:00) in CET time
