@@ -782,10 +782,11 @@
             "patch": 2
         },
         "WGPUAdapterProperties": {
-            "__size__": 64,
+            "__size__": 72,
             "adapterType": 56,
             "architecture": 24,
             "backendType": 60,
+            "compatibilityMode": 64,
             "deviceID": 32,
             "driverDescription": 48,
             "name": 40,
@@ -890,14 +891,17 @@
             "nextInChain": 0
         },
         "WGPUCompilationMessage": {
-            "__size__": 56,
+            "__size__": 80,
             "length": 48,
             "lineNum": 24,
             "linePos": 32,
             "message": 8,
             "nextInChain": 0,
             "offset": 40,
-            "type": 16
+            "type": 16,
+            "utf16Length": 72,
+            "utf16LinePos": 56,
+            "utf16Offset": 64
         },
         "WGPUComputePassDescriptor": {
             "__size__": 32,
@@ -940,8 +944,10 @@
             "stencilWriteMask": 56
         },
         "WGPUDeviceDescriptor": {
-            "__size__": 56,
+            "__size__": 72,
             "defaultQueue": 40,
+            "deviceLostCallback": 56,
+            "deviceLostUserdata": 64,
             "label": 8,
             "nextInChain": 0,
             "requiredFeatures": 24,
@@ -983,35 +989,38 @@
             "nextInChain": 0
         },
         "WGPULimits": {
-            "__size__": 120,
+            "__size__": 144,
             "maxBindGroups": 16,
-            "maxColorAttachments": 92,
-            "maxComputeInvocationsPerWorkgroup": 100,
-            "maxComputeWorkgroupSizeX": 104,
-            "maxComputeWorkgroupSizeY": 108,
-            "maxComputeWorkgroupSizeZ": 112,
-            "maxComputeWorkgroupStorageSize": 96,
-            "maxComputeWorkgroupsPerDimension": 116,
-            "maxDynamicStorageBuffersPerPipelineLayout": 24,
-            "maxDynamicUniformBuffersPerPipelineLayout": 20,
-            "maxInterStageShaderComponents": 84,
-            "maxInterStageShaderVariables": 88,
-            "maxSampledTexturesPerShaderStage": 28,
-            "maxSamplersPerShaderStage": 32,
-            "maxStorageBufferBindingSize": 56,
-            "maxStorageBuffersPerShaderStage": 36,
-            "maxStorageTexturesPerShaderStage": 40,
+            "maxBindingsPerBindGroup": 20,
+            "maxBufferSize": 88,
+            "maxColorAttachmentBytesPerSample": 116,
+            "maxColorAttachments": 112,
+            "maxComputeInvocationsPerWorkgroup": 124,
+            "maxComputeWorkgroupSizeX": 128,
+            "maxComputeWorkgroupSizeY": 132,
+            "maxComputeWorkgroupSizeZ": 136,
+            "maxComputeWorkgroupStorageSize": 120,
+            "maxComputeWorkgroupsPerDimension": 140,
+            "maxDynamicStorageBuffersPerPipelineLayout": 28,
+            "maxDynamicUniformBuffersPerPipelineLayout": 24,
+            "maxInterStageShaderComponents": 104,
+            "maxInterStageShaderVariables": 108,
+            "maxSampledTexturesPerShaderStage": 32,
+            "maxSamplersPerShaderStage": 36,
+            "maxStorageBufferBindingSize": 64,
+            "maxStorageBuffersPerShaderStage": 40,
+            "maxStorageTexturesPerShaderStage": 44,
             "maxTextureArrayLayers": 12,
             "maxTextureDimension1D": 0,
             "maxTextureDimension2D": 4,
             "maxTextureDimension3D": 8,
-            "maxUniformBufferBindingSize": 48,
-            "maxUniformBuffersPerShaderStage": 44,
-            "maxVertexAttributes": 76,
-            "maxVertexBufferArrayStride": 80,
-            "maxVertexBuffers": 72,
-            "minStorageBufferOffsetAlignment": 68,
-            "minUniformBufferOffsetAlignment": 64
+            "maxUniformBufferBindingSize": 56,
+            "maxUniformBuffersPerShaderStage": 48,
+            "maxVertexAttributes": 96,
+            "maxVertexBufferArrayStride": 100,
+            "maxVertexBuffers": 80,
+            "minStorageBufferOffsetAlignment": 76,
+            "minUniformBufferOffsetAlignment": 72
         },
         "WGPUMultisampleState": {
             "__size__": 24,
@@ -1139,13 +1148,14 @@
         },
         "WGPURequestAdapterOptions": {
             "__size__": 24,
+            "compatibilityMode": 21,
             "compatibleSurface": 8,
             "forceFallbackAdapter": 20,
             "nextInChain": 0,
             "powerPreference": 16
         },
         "WGPURequiredLimits": {
-            "__size__": 128,
+            "__size__": 152,
             "limits": 8,
             "nextInChain": 0
         },
@@ -1183,7 +1193,7 @@
         "WGPUShaderModuleWGSLDescriptor": {
             "__size__": 24,
             "chain": 0,
-            "source": 16
+            "code": 16
         },
         "WGPUStencilFaceState": {
             "__size__": 16,
@@ -1200,7 +1210,7 @@
             "viewDimension": 16
         },
         "WGPUSupportedLimits": {
-            "__size__": 128,
+            "__size__": 152,
             "limits": 8,
             "nextInChain": 0
         },
@@ -1270,10 +1280,10 @@
             "shaderLocation": 16
         },
         "WGPUVertexBufferLayout": {
-            "__size__": 24,
+            "__size__": 32,
             "arrayStride": 0,
-            "attributeCount": 12,
-            "attributes": 16,
+            "attributeCount": 16,
+            "attributes": 24,
             "stepMode": 8
         },
         "WGPUVertexState": {

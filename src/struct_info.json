@@ -1204,7 +1204,8 @@
                 "name",
                 "driverDescription",
                 "adapterType",
-                "backendType"
+                "backendType",
+                "compatibilityMode"
             ],
             "WGPUBindGroupEntry": [
                 "nextInChain",
@@ -1254,7 +1255,10 @@
                 "lineNum",
                 "linePos",
                 "offset",
-                "length"
+                "length",
+                "utf16LinePos",
+                "utf16Offset",
+                "utf16Length"
             ],
             "WGPUComputePassTimestampWrite": [
                 "querySet",
@@ -1280,6 +1284,7 @@
                 "maxTextureDimension3D",
                 "maxTextureArrayLayers",
                 "maxBindGroups",
+                "maxBindingsPerBindGroup",
                 "maxDynamicUniformBuffersPerPipelineLayout",
                 "maxDynamicStorageBuffersPerPipelineLayout",
                 "maxSampledTexturesPerShaderStage",
@@ -1292,11 +1297,13 @@
                 "minUniformBufferOffsetAlignment",
                 "minStorageBufferOffsetAlignment",
                 "maxVertexBuffers",
+                "maxBufferSize",
                 "maxVertexAttributes",
                 "maxVertexBufferArrayStride",
                 "maxInterStageShaderComponents",
                 "maxInterStageShaderVariables",
                 "maxColorAttachments",
+                "maxColorAttachmentBytesPerSample",
                 "maxComputeWorkgroupStorageSize",
                 "maxComputeInvocationsPerWorkgroup",
                 "maxComputeWorkgroupSizeX",
@@ -1382,7 +1389,8 @@
                 "nextInChain",
                 "compatibleSurface",
                 "powerPreference",
-                "forceFallbackAdapter"
+                "forceFallbackAdapter",
+                "compatibilityMode"
             ],
             "WGPUSamplerBindingLayout": [
                 "nextInChain",
@@ -1413,7 +1421,7 @@
             ],
             "WGPUShaderModuleWGSLDescriptor": [
                 "chain",
-                "source"
+                "code"
             ],
             "WGPUStencilFaceState": [
                 "compare",
@@ -1592,7 +1600,9 @@
                 "requiredFeaturesCount",
                 "requiredFeatures",
                 "requiredLimits",
-                "defaultQueue"
+                "defaultQueue",
+                "deviceLostCallback",
+                "deviceLostUserdata"
             ],
             "WGPURenderPassDescriptor": [
                 "nextInChain",
