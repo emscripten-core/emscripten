@@ -417,7 +417,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     HEAPU8.set(wasmFSPreloadedFiles[index].fileData, buffer);
   },
 
-  _wasmfs_thread_utils_heartbeat: function(queue) {
+  _wasmfs_thread_utils_heartbeat: (queue) => {
     var intervalID =
       setInterval(() => {
         if (ABORT) {
