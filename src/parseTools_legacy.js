@@ -24,6 +24,13 @@ function receiveI64ParamAsDouble(name) {
   return `var ${name} = ${name}_high * 0x100000000 + (${name}_low >>> 0);`;
 }
 
+function receiveI64ParamAsI32s(name) {
+  if (WASM_BIGINT) {
+    return `var ${name}_low = Number(${name} & 0xffffffffn) | 0, ${name}_high = Number(${name} >> 32n) | 0;`;
+  }
+  return '';
+}
+
 function stripCorrections(param) {
   let m;
   while (true) {

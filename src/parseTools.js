@@ -873,13 +873,6 @@ function defineI64Param(name) {
   return `${name}_low, ${name}_high`;
 }
 
-function receiveI64ParamAsI32s(name) {
-  if (WASM_BIGINT) {
-    return `var ${name}_low = Number(${name} & 0xffffffffn) | 0, ${name}_high = Number(${name} >> 32n) | 0;`;
-  }
-  return '';
-}
-
 function receiveI64ParamAsI53(name, onError) {
   if (WASM_BIGINT) {
     // Just convert the bigint into a double.
