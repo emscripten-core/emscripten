@@ -18,6 +18,9 @@ void _wasmfs_get_preloaded_child_path(int index, char* childName);
 size_t _wasmfs_get_preloaded_file_size(uint32_t index);
 void _wasmfs_copy_preloaded_file_data(uint32_t index, uint8_t* data);
 
+// Returns the next character from stdin, or -1 on EOF.
+int _wasmfs_stdin_get_char(void);
+
 #ifdef __cplusplus
 }
 #endif

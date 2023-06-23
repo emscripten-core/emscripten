@@ -13,11 +13,6 @@
 
 #include "special_files.h"
 
-extern "C" {
-// Returns the next character from stdin, or -1 on EOF.
-int _wasmfs_stdin_get_char(void);
-}
-
 namespace wasmfs::SpecialFiles {
 
 namespace {
