@@ -325,6 +325,11 @@ var LibraryWebGPU = {
       'rgba8unorm': 0x12,
       'bgra8unorm': 0x17,
     },
+    BufferMapState: {
+      'unmapped': 0,
+      'pending': 1,
+      'mapped': 2,
+    },
 
     // This section is auto-generated. See system/include/webgpu/README.md for details.
     AddressMode: [
@@ -1868,6 +1873,11 @@ var LibraryWebGPU = {
     return data;
   },
 
+  wgpuBufferGetMapState: function() {
+    var buffer = WebGPU.mgrBuffer.get(bufferId);
+    return WebGPU.BufferMapState[buffer.mapState];
+  },
+
   // In webgpu.h offset and size are passed in as size_t.
   // And library_webgpu assumes that size_t is always 32bit in emscripten.
   wgpuBufferGetMappedRange__deps: ['$warnOnce', 'memalign', 'free'],
@@ -2251,10 +2261,16 @@ var LibraryWebGPU = {
     var encoder = WebGPU.mgrRenderPassEncoder.get(encoderId);
     encoder["insertDebugMarker"](UTF8ToString(markerLabelPtr));
   },
+  wgpuRenderPassEncoderEnd: function(encoderId) {
+    var encoder = WebGPU.mgrRenderPassEncoder.get(encoderId);
+    encoder["end"]();
+  },
 
-  wgpuRenderPassEncoderEnd: function(passId) {
-    var pass = WebGPU.mgrRenderPassEncoder.get(passId);
-    pass["end"]();
+  // Render bundle
+
+  wgpuRenderBundleSetLabel: function(bundleId, labelPtr) {
+    var bundle = WebGPU.mgrRenderBundle.get(bundleId);
+    bundle.label = UTF8ToString(labelPtr);
   },
 
   // Render bundle encoder
