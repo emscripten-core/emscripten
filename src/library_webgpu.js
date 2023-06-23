@@ -1873,7 +1873,7 @@ var LibraryWebGPU = {
     return data;
   },
 
-  wgpuBufferGetMapState: function() {
+  wgpuBufferGetMapState: function(bufferId) {
     var buffer = WebGPU.mgrBuffer.get(bufferId);
     return WebGPU.BufferMapState[buffer.mapState];
   },
