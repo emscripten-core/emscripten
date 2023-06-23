@@ -178,7 +178,9 @@ var LibraryDylink = {
       '__wasm_call_ctors',
       '__start_em_asm',
       '__stop_em_asm',
-    ].includes(symName)
+      '__start_em_js',
+      '__stop_em_js',
+    ].includes(symName) || symName.startsWith('__em_js__')
 #if SPLIT_MODULE
         // Exports synthesized by wasm-split should be prefixed with '%'
         || symName[0] == '%'
@@ -777,6 +779,39 @@ var LibraryDylink = {
             var jsString = UTF8ToString(start);
             addEmAsm(start, jsString);
             start = HEAPU8.indexOf(0, start) + 1;
+          }
+        }
+
+        function addEmJs(name, cSig, body) {
+          // The signature here is a C signature (e.g. "(int foo, char* bar)").
+          // See `create_em_js` in emcc.py` for the build-time version of this
+          // code.
+          var jsArgs = [];
+          cSig = cSig.slice(1, -1)
+          if (cSig != 'void') {
+            cSig = cSig.split(',');
+            for (var i in cSig) {
+              var jsArg = cSig[i].split(' ').pop();
+              jsArgs.push(jsArg.replace('*', ''));
+            }
+          }
+          var func = `(${jsArgs}) => ${body};`;
+#if DYLINK_DEBUG
+          dbg(`adding new EM_JS function: ${jsArgs} = ${func}`);
+#endif
+          {{{ makeEval('moduleExports[name] = eval(func)') }}};
+        }
+
+        for (var name in moduleExports) {
+          if (name.startsWith('__em_js__')) {
+            var start = moduleExports[name]
+            {{{ from64('start') }}}
+            var jsString = UTF8ToString(start);
+            // EM_JS strings are stored in the data section in the form
+            // SIG<::>BODY.
+            var parts = jsString.split('<::>');
+            addEmJs(name.replace('__em_js__', ''), parts[0], parts[1]);
+            delete moduleExports[name];
           }
         }
 #endif

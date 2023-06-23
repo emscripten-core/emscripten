@@ -11964,8 +11964,8 @@ exec "$@"
 
   @crossplatform
   def test_em_js_side_module(self):
-    err = self.expect_fail([EMXX, '-sSIDE_MODULE', test_file('core/test_em_js.cpp')])
-    self.assertContained('EM_JS is not supported in side modules', err)
+    self.build(test_file('other/test_em_js_side.c'), js_outfile=False, emcc_args=['-sSIDE_MODULE'], output_basename='side')
+    self.do_other_test('test_em_js_main.c', emcc_args=['-sMAIN_MODULE=2', 'side.wasm'])
 
   def test_em_js_main_module(self):
     self.set_setting('MAIN_MODULE', 2)
