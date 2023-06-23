@@ -8,6 +8,7 @@ _wasmfs_get_preloaded_file_mode
 _wasmfs_get_preloaded_file_size
 _wasmfs_get_preloaded_parent_path
 _wasmfs_get_preloaded_path_name
+_wasmfs_stdin_get_char
 abort
 emscripten_console_error
 emscripten_date_now
