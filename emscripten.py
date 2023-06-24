@@ -824,6 +824,11 @@ def create_module(receiving, metadata, library_symbols):
   receiving += create_named_globals(metadata)
   module = []
 
+  if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
+    module.append(create_invoke_wrappers(metadata))
+  else:
+    assert not metadata.invokeFuncs, "invoke_ functions exported but exceptions and longjmp are both disabled"
+
   sending = create_sending(metadata, library_symbols)
   module.append('var wasmImports = %s;\n' % sending)
   if settings.ASYNCIFY and (settings.ASSERTIONS or settings.ASYNCIFY == 2):
@@ -836,10 +841,6 @@ def create_module(receiving, metadata, library_symbols):
     module.append("var asm = createWasm();\n")
 
   module.append(receiving)
-  if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
-    module.append(create_invoke_wrappers(metadata))
-  else:
-    assert not metadata.invokeFuncs, "invoke_ functions exported but exceptions and longjmp are both disabled"
   if settings.MEMORY64:
     module.append(create_wasm64_wrappers(metadata))
   return module
