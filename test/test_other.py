@@ -7596,7 +7596,7 @@ int main() {}
     self.assertNotContained(error, read_file('a.out.js'))
 
   def test_warn_module_out_err(self):
-    error = 'was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)'
+    error = 'was not exported. add it to EXPORTED_RUNTIME_METHODS (see the Emscripten FAQ)'
 
     def test(contents, expected, args=[], assert_returncode=0):  # noqa
       create_file('src.c', r'''
