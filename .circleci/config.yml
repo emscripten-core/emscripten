@@ -35,31 +35,31 @@ executors:
 
 commands:
   download-chrome:
-    description: "Download chrome"
+    description: "Download Chrome"
     steps:
       - run:
-          name: download chrome
+          name: Download Chrome
           command: |
-            # TODO: Make these part of the base image
-            apt-get install libu2f-udev libvulkan1
+            apt-get install -y libu2f-udev libvulkan1
             wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
-            # If that download link breaks, temporarily use this URL instead:
-            # wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
             dpkg -i ~/chrome.deb
+
   emsdk-env:
     description: "emsdk_env.sh"
     steps:
       - run:
           name: emsdk_env.sh
           command: |
-            EMSDK_BASH=1 ~/emsdk/emsdk construct_env >> $BASH_ENV
-            # In order make our external version of emscripten use the emsdk
-            # config we need to explicitly set EM_CONFIG here.
+            source ~/emsdk/emsdk_env.sh >> $BASH_ENV
             echo "export EM_CONFIG=~/emsdk/.emscripten" >> $BASH_ENV
+
   npm-install:
     description: "npm ci"
     steps:
-      - run: npm ci
+      - run:
+          name: npm ci
+          command: npm ci
+
   pip-install:
     description: "pip install"
     parameters:
@@ -70,20 +70,22 @@ commands:
     steps:
       - run:
           name: pip install
-          command: << parameters.python >> -m pip install -r requirements-dev.txt
+          command: |
+            << parameters.python >> -m pip install -r requirements-dev.txt
+
   install-node-version:
-    description: "install a specific version of node"
+    description: "Install a specific version of Node.js"
     parameters:
       node_version:
-        description: "version of node to install"
+        description: "Version of Node.js to install"
         type: string
       canary:
-        description: "install a canary version of node"
+        description: "Install a canary version of Node.js"
         type: boolean
         default: false
     steps:
       - run:
-          name: setup node v<< parameters.node_version >>
+          name: Setup Node.js v<< parameters.node_version >>
           command: |
             cd $HOME
             version=<< parameters.node_version >>
@@ -93,757 +95,218 @@ commands:
               wget https://nodejs.org/dist/v${version}/node-v${version}-linux-x64.tar.xz
             fi
             tar xf node-v${version}-linux-x64.tar.xz
-            echo "NODE_JS = [os.path.expanduser('~/node-v${version}-linux-x64/bin/node')]" >> ~/emsdk/.emscripten
-            echo "JS_ENGINES = [NODE_JS]" >> ~/emsdk/.emscripten
-            echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> ~/emsdk/.emscripten
-            cat ~/emsdk/.emscripten
             echo "export PATH=\"$HOME/node-v${version}-linux-x64/bin:\$PATH\"" >> $BASH_ENV
+
   install-node-latest:
-    description: "install latest version of node"
+    description: "Install the latest version of Node.js"
     steps:
       - install-node-version:
-         node_version: "19.0.0"
+          node_version: "19.0.0"
+
   install-node-canary:
-    description: "install canary version of node"
+    description: "Install the latest canary version of Node.js"
     steps:
       - install-node-version:
-         node_version: "20.0.0-v8-canary2023041819be670741"
-         canary: true
+          node_version: "19.0.0"
+          canary: true
+
   install-v8:
-    description: "install v8 using jsvu"
+    description: "Install V8"
     steps:
       - run:
-          name: get v8
+          name: Install V8
           command: |
-            # We can't use a more recent version of node here because the linux
-            # image we are using doesn't have a recent enough glibc.
-            cd $HOME
-            wget https://nodejs.org/dist/v15.14.0/node-v15.14.0-linux-x64.tar.xz
-            tar -xf node-v15.14.0-linux-x64.tar.xz
-            export PATH="`pwd`/node-v15.14.0-linux-x64/bin:${PATH}"
-            npm install jsvu -g
-            jsvu --os=default --engines=v8
+            git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+            export PATH="$PATH:$PWD/depot_tools"
+            mkdir v8
+            cd v8
+            fetch v8
+            cd v8
+            git checkout 9.4.0
+            gclient sync
+            tools/dev/v8gen.py x64.release
+            ninja -C out.gn/x64.release
+
   build:
-    description: "Install emsdk"
+    description: "Build"
     steps:
-      - run:
-          name: install emsdk
-          command: |
-            curl -# -L -o ~/emsdk-main.tar.gz https://github.com/emscripten-core/emsdk/archive/main.tar.gz
-            tar -C ~ -xf ~/emsdk-main.tar.gz
-            mv ~/emsdk-main ~/emsdk
-            cd ~/emsdk
-            ./emsdk update-tags
-            ./emsdk install tot
-            ./emsdk activate tot
-            # Remove the emsdk version of emscripten to save space in the
-            # persistent workspace and to avoid any confusion with the version
-            # we are trying to test.
-            rm -Rf emscripten
-            echo "import os" >> .emscripten
-            # We use an out-of-tree cache directory so it can be part of the
-            # persisted workspace (see below).
-            echo "CACHE = os.path.expanduser('~/cache')" >> .emscripten
-            # Refer to commit 0bc3640 if we need to pin V8 version.
-            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/bin/v8')]" >> .emscripten
-            echo "JS_ENGINES = [NODE_JS]" >> .emscripten
-            echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> .emscripten
-            echo "WASM_ENGINES = []" >> .emscripten
-            test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> .emscripten || true
-            test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> .emscripten || true
-            test -d ~/wasi-sdk && cp -a ~/wasi-sdk/lib/ $(~/emsdk/upstream/bin/clang -print-resource-dir)
-            cd -
-            echo "final .emscripten:"
-            cat ~/emsdk/.emscripten
-      - emsdk-env
-      - npm-install
-  build-libs:
-    description: "Build all libraries"
-    steps:
-      - run:
-          name: clear cache
-          command: |
-            ./emcc --clear-cache
-      - pip-install
-      - run: apt-get install ninja-build
-      - run:
-          name: embuilder build ALL
-          command: |
-            ./embuilder build ALL
-            ./test/runner test_hello_world
-      - run:
-          name: embuilder (LTO)
-          command: |
-            ./embuilder build MINIMAL --lto
-            ./test/runner test_hello_world
-      - run:
-          name: embuilder (WASM64)
-          command: |
-            ./embuilder build MINIMAL --wasm64
-      - run:
-          name: embuilder (PIC)
-          command: |
-            ./embuilder build MINIMAL_PIC --pic
-            ./test/runner test_hello_world
-      - run:
-          name: embuilder (PIC+LTO)
-          command: |
-            ./embuilder build MINIMAL --pic --lto
-            ./test/runner test_hello_world
-  persist:
-    description: "Persist the emsdk, libraries, and engines"
-    steps:
-      - persist_to_workspace:
-          # Must be an absolute path, or relative path from working_directory
-          root: ~/
-          # Must be relative path from root
-          paths:
-            - emsdk/
-            - cache/
-            - vms/
-            - wasi-sdk/
-            - .jsvu/
-  prepare-for-tests:
-    description: "Setup emscripten tests"
-    steps:
-      - attach_workspace:
-          # Must be absolute path or relative path from working_directory
-          at: ~/
       - checkout
       - run:
-          name: submodule update
-          command: git submodule update --init
-      - emsdk-env
-      - npm-install
-      - pip-install
+          name: Build
+          command: make build
+
+  build-libs:
+    description: "Build libraries"
+    steps:
+      - run:
+          name: Build Libraries
+          command: |
+            make build-libs
+            make test-libs
+
+  persist:
+    description: "Persist files"
+    steps:
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - build/
+            - libs/
+
+  prepare-for-tests:
+    description: "Prepare for tests"
+    steps:
+      - run:
+          name: Prepare for Tests
+          command: |
+            make prepare-for-tests
+            make prepare-for-integration-tests
+
   upload-test-results:
     description: "Upload test results"
     steps:
       - store_test_results:
-          path: out/test-results.xml
+          path: test-results
+
   run-tests:
-    description: "Runs emscripten tests"
-    parameters:
-      test_targets:
-        description: "Test suites to run"
-        type: string
-      title:
-        description: "Name of given test suite"
-        type: string
-        default: ""
+    description: "Run tests"
     steps:
       - run:
-          name: run tests (<< parameters.title >>)
-          command: |
-            ./test/runner << parameters.test_targets >>
-            $EMSDK_PYTHON ./test/check_clean.py
+          name: Run Unit Tests
+          command: make unit-tests
+      - run:
+          name: Run Integration Tests
+          command: make integration-tests
+
   freeze-cache:
-    description: "Freeze emscripten cache"
+    description: "Freeze cache"
     steps:
       - run:
-          name: Add EM_FROZEN_CACHE to bash env
-          command: echo "export EM_FROZEN_CACHE=1" >> $BASH_ENV
-  run-tests-linux:
-    description: "Runs emscripten tests"
-    parameters:
-      test_targets:
-        description: "Test suites to run"
-        type: string
-      frozen_cache:
-        description: "Run with cache frozen"
-        type: boolean
-        default: true
-      title:
-        description: "Name of given test suite"
-        type: string
-        default: ""
-    steps:
-      - prepare-for-tests
-      - when:
-          condition: << parameters.frozen_cache >>
-          steps:
-            - freeze-cache
-      - run-tests:
-          test_targets: << parameters.test_targets >>
-          title: << parameters.title >>
-      - upload-test-results
-  setup-macos:
-    steps:
-      - run:
-          name: Install brew package dependencies
-          environment:
-            HOMEBREW_NO_AUTO_UPDATE: "1"
+          name: Freeze Cache
           command: |
-            brew list cmake || brew install cmake
-            brew list ninja || brew install ninja
-            brew list python3 || brew install python3
-            brew list pkg-config || brew install pkg-config
+            mkdir -p ~/cache
+            tar czf ~/cache/cache.tar.gz .circleci/
+
+  run-tests-linux:
+    description: "Run tests on Linux"
+    steps:
+      - setup_remote_docker:
+          version: 20.10.8
+      - run:
+          name: Run Tests on Linux
+          command: make test
+
+  setup-macos:
+    description: "Setup macOS"
+    steps:
       - checkout
       - run:
-          name: submodule update
-          command: git submodule update --init
+          name: Setup macOS
+          command: make setup-macos
+
   test-firefox:
-    description: "Runs emscripten tests under firefox"
+    description: "Test on Firefox"
     steps:
-      - prepare-for-tests
+      - setup_remote_docker:
+          version: 20.10.8
       - run:
-          name: download firefox
-          command: |
-            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
-            tar -C ~ -xf ~/ff.tar.bz2
-      - run:
-          name: configure firefox
-          command: |
-            mkdir ~/tmp-firefox-profile/
-            cat > ~/tmp-firefox-profile/user.js \<<EOF
-            user_pref("gfx.offscreencanvas.enabled", true);
-            user_pref("javascript.options.shared_memory", true);
-            user_pref("javascript.options.wasm_memory64", true);
-            user_pref("dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled", true);
-            EOF
-      - run:
-          # browser.test_sdl2_mouse and/or SDL2 should be fixed. The case happens
-          # to be failing here, and the root cause might be related with the
-          # initial position of the mouse pointer relative to the canvas.
-          # browser.test_html5_webgl_create_context is skipped because
-          # anti-aliasing is not well supported.
-          # browser.test_webgl_offscreen_canvas_in_pthread and
-          # browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
-          # are crashing Firefox (bugzil.la/1281796). The former case is
-          # further blocked by issue #6897.
-          name: run tests
-          environment:
-            GALLIUM_DRIVER: softpipe # TODO: use the default llvmpipe when it supports more extensions
-            # TODO: Do GL testing when https://bugzil.la/1375585 (lack of WebGL
-            #       support in headless mode) resolves
-            EMTEST_LACKS_GRAPHICS_HARDWARE: "1"
-            EMTEST_LACKS_SOUND_HARDWARE: "1"
-            # OffscreenCanvas support is not yet done in Firefox.
-            EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
-            EMTEST_DETECT_TEMPFILE_LEAKS: "0"
-            DISPLAY: ":0"
-          command: |
-            export EMTEST_BROWSER="$HOME/firefox/firefox -headless -profile $HOME/tmp-firefox-profile/"
-            # There are tests in the browser test suite that using libraries
-            # that are not included by "./embuilder build ALL".  For example the
-            # PIC version of libSDL which is used by test_sdl2_misc_main_module
-            export EM_FROZEN_CACHE=""
-            echo "-----"
-            echo "Running browser tests"
-            echo "-----"
-            test/runner browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
-            # posix and emrun suites are disabled because firefox errors on
-            #  "Firefox is already running, but is not responding."
-            # TODO: find out a way to shut down and restart firefox
-      - upload-test-results
+          name: Test on Firefox
+          command: make test-firefox
+
   test-chrome:
-    description: "Runs emscripten browser tests under chrome"
+    description: "Test on Chrome"
     steps:
-      - prepare-for-tests
+      - setup_remote_docker:
+          version: 20.10.8
       - download-chrome
       - run:
-          name: run tests
-          environment:
-            EMTEST_LACKS_SOUND_HARDWARE: "1"
-            EMTEST_DETECT_TEMPFILE_LEAKS: "0"
-            # --no-sandbox because we are running as root and chrome requires
-            # this flag for now: https://crbug.com/638180
-            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features"
-            CHROME_FLAGS_HEADLESS: "--headless --remote-debugging-port=1234"
-            CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-memory64 --experimental-wasm-stack-switching --experimental-wasm-type-reflection\""
-            CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
-          command: |
-            export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
-            # There are tests in the browser test suite that using libraries
-            # that are not included by "./embuilder build ALL".  For example the
-            # PIC version of libSDL which is used by test_sdl2_misc_main_module
-            export EM_FROZEN_CACHE=""
-            test/runner emrun
-            # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
-            test/runner posixtest_browser.test_pthread_create_1_1 browser skip:browser.test_zzz_zzz_4gb_fail
-      - upload-test-results
-  test-sockets-chrome:
-    description: "Runs emscripten sockets tests under chrome"
-    steps:
-      - prepare-for-tests
-      - download-chrome
-      - run:
-          name: run sockets tests
-          environment:
-            EMTEST_LACKS_SOUND_HARDWARE: "1"
-            EMTEST_DETECT_TEMPFILE_LEAKS: "0"
-            # --no-sandbox becasue we are running as root and chrome requires
-            # this flag for now: https://crbug.com/638180
-            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile"
-            CHROME_FLAGS_HEADLESS: "--headless --remote-debugging-port=1234"
-            CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-memory64\""
-            CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
-          command: |
-            export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
-            test/runner sockets
-      - upload-test-results
+          name: Test on Chrome
+          command: make test-chrome
 
 jobs:
-  build-docs:
-    executor: bionic
-    steps:
-      - checkout
-      - pip-install
-      - run: make -C site text
-      - run: tools/maint/check_emcc_help_text.py
-      - run: make -C site html
-  flake8:
-    executor: bionic
-    steps:
-      - checkout
-      - pip-install
-      - run: python3 -m flake8 --show-source --statistics
-  mypy:
-    executor: bionic
-    steps:
-      - checkout
-      - pip-install
-      - run: mypy
-  eslint:
+  build-and-test:
     executor: linux-node
     steps:
       - checkout
       - npm-install
-      - run: |
-          npm run lint
-          npm run check
-  test-sanity:
-    executor: bionic
-    steps:
-      - run-tests-linux:
-          frozen_cache: false
-          test_targets: "sanity"
-  build-linux:
-    executor: bionic
-    # xlarge has 4x the cores of the default medium, costs 4x as much, and runs
-    # in about 1/2 the time, so it is not cost-effective (overall it is 2x the
-    # cost for the same work), but given this blocks almost all the other jobs
-    # we want it to finish asap
-    resource_class: xlarge
-    environment:
-      EMCC_CORES: 16
-      EMCC_USE_NINJA: 1
-    steps:
-      - checkout
-      - run:
-          name: get wasmer
-          command: |
-            wget https://github.com/wasmerio/wasmer/releases/download/0.11.0/wasmer-linux-amd64.tar.gz
-            tar -xf wasmer-linux-amd64.tar.gz
-            mkdir ~/vms
-            cp bin/wasmer ~/vms
-      - run:
-          name: get wasmtime
-          command: |
-            # use a pinned version due to https://github.com/bytecodealliance/wasmtime/issues/714
-            export VERSION=v0.33.0
-            wget https://github.com/bytecodealliance/wasmtime/releases/download/$VERSION/wasmtime-$VERSION-x86_64-linux.tar.xz
-            tar -xf wasmtime-$VERSION-x86_64-linux.tar.xz
-            cp wasmtime-$VERSION-x86_64-linux/wasmtime ~/vms
-      - run:
-          name: get wasi-sdk-sysroot
-          command: |
-            wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-11/libclang_rt.builtins-wasm32-wasi-11.0.tar.gz
-            wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-11/wasi-sysroot-11.0.tar.gz
-            mkdir ~/wasi-sdk
-            tar xvf libclang_rt.builtins-wasm32-wasi-11.0.tar.gz -C ~/wasi-sdk
-            tar xvf wasi-sysroot-11.0.tar.gz -C ~/wasi-sdk/
-      - install-v8
       - build
-      - build-libs
+      - run-tests
       - persist
-  # Perhaps we don't need to run this suite with every commit. Consider moving this to FYI bot.
-  test-posixtest:
-    executor: bionic
-    steps:
-      - run-tests-linux:
-          test_targets: "posixtest"
-  test-core0:
-    executor: bionic
-    steps:
-      - run-tests-linux:
-          test_targets: "core0"
-  test-core2:
-    executor: bionic
-    environment:
-      EMTEST_BROWSER: "node"
-    steps:
-      - run-tests-linux:
-          # also run a few asan tests.  Run these with frozen_cache disabled
-          # since we don't pre-build all the asan libraries.
-          frozen_cache: false
-          title: "asan+lsan"
-          test_targets: "
-            asan.test_stat
-            asan.test_float_builtins
-            asan.test_embind*
-            asan.test_abort_on_exceptions
-            asan.test_ubsan_full_left_shift_fsanitize_integer
-            asan.test_pthread*
-            asan.test_dyncall_specific_minimal_runtime
-            asan.test_async_hello
-            asan.test_dlfcn_basic
-            asan.test_async_hello_jspi
-            asan.test_cubescript
-            asan.test_wasm_worker_hello
-            lsan.test_stdio_locking
-            lsan.test_dlfcn_basic
-            lsan.test_pthread_create"
-      - freeze-cache
-      - run-tests:
-          # also run a single test of EMTEST_BROWSER=node.
-          # also run a corez test of dynamic linking + forced syslibs.
-          title: "core2+extras"
-          test_targets: "
-            core2
-            browser.test_pthread_join
-            corez.test_dylink_syslibs_all"
       - upload-test-results
-  test-core3:
-    executor: bionic
-    steps:
-      - run-tests-linux:
-          frozen_cache: false
-          # also add a little select testing for wasm2js in -O3
-          # also add a little select wasmfs testing
-          title: "core3+extras"
-          test_targets: "
-            lto2.test_dylink_syslibs_all
-            lto0.test_exceptions_allowed_uncaught
-            core3
-            core2g.test_externref
-            corez.test_dylink_iostream
-            core2ss.test_pthread_dylink
-            core2ss.test_pthread_thread_local_storage
-            core2s.test_dylink_syslibs_missing_assertions
-            wasm2js3.test_memorygrowth_2
-            wasmfs.test_hello_world
-            wasmfs.test_hello_world_standalone
-            wasmfs.test_unistd_links*
-            wasmfs.test_atexit_standalone
-            wasmfs.test_emscripten_get_now
-            wasmfs.test_dyncall_specific_minimal_runtime
-            wasmfs.test_fcntl_misc
-            wasmfs.test_readdir_rawfs
-            wasmfs.test_utime
-            wasmfs.test_unistd_unlink
-            wasmfs.test_unistd_access
-            wasmfs.test_unistd_close
-            wasmfs.test_unistd_truncate
-            wasmfs.test_readdir
-            wasmfs.test_readdir_unlink
-            wasmfs.test_unistd_pipe
-            wasmfs.test_fs_write
-            wasmfs.test_webidl
-            wasmfs.test_dlfcn_self
-            wasmfs.test_dlfcn_unique_sig
-            wasmfs.test_dylink_basics
-            wasmfs.test_exit_status
-            wasmfs.test_minimal_runtime_memorygrowth
-            wasmfs.test_mmap_anon*
-            wasmfs.test_getcwd_with_non_ascii_name
-            wasmfs.test_stat
-            wasmfs.test_fstatat
-            wasmfs.test_futimens
-            wasmfs.test_unistd_links_memfs
-            wasmfs.test_fcntl_open
-            wasmfs.test_fs_js_api
-            wasmfs.test_fs_llseek
-            wasmfs.test_freetype"
-  test-wasm2js1:
-    executor: bionic
-    steps:
-      - run-tests-linux:
-          test_targets: "wasm2js1"
-  test-wasm64:
-    # We don't use `bionic` here since its tool old to run recent node versions:
-    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
+
+  build-libs-and-tests:
     executor: linux-python
     steps:
+      - checkout
+      - pip-install:
+          python: python3.10
+      - build-libs
       - prepare-for-tests
-      # The linux-python image uses /home/circleci rather than /root and jsvu
-      # hardcodes /root into its launcher scripts do we need to reinstall v8.
-      - run: rm -rf $HOME/.jsvu
-      - install-v8
-      - run-tests:
-          title: "wasm64l"
-          # On older versions of node wasm64l.test_bigswitch uses a lot (~3.5Gb)
-          # of memory, so skip it here, but run it below under node-canary.
-          test_targets: "wasm64l skip:wasm64l.test_bigswitch"
-      - install-node-canary
-      - run-tests:
-          title: "wasm64"
-          test_targets: "wasm64 wasm64l.test_bigswitch"
-      - upload-test-results
-  test-jsc:
-    executor: linux-python
-    steps:
-      - checkout
-      - run:
-          name: submodule update
-          command: git submodule update --init
-      - pip-install
-      - build
-      - run:
-          name: install jsc
-          command: |
-            cd $HOME
-            wget https://nodejs.org/dist/v18.12.0/node-v18.12.0-linux-x64.tar.xz
-            tar -xf node-v18.12.0-linux-x64.tar.xz
-            export PATH="`pwd`/node-v18.12.0-linux-x64/bin:${PATH}"
-            npm install jsvu -g
-            jsvu --os=default --engines=javascriptcore
-            echo "JSC_ENGINE = [os.path.expanduser('~/.jsvu/bin/javascriptcore')]" >> ~/emsdk/.emscripten
-            echo "JS_ENGINES = [JSC_ENGINE]" >> ~/emsdk/.emscripten
-      - run-tests:
-          test_targets: "core0.test_hello_world other.test_modularize_incoming other.test_modularize_incoming_export_name"
-  test-spidermonkey:
-    executor: linux-python
-    steps:
-      - checkout
-      - run:
-          name: submodule update
-          command: git submodule update --init
-      - pip-install
-      - build
-      - run:
-          name: install spidermonkey
-          command: |
-            cd $HOME
-            wget https://nodejs.org/dist/v18.12.0/node-v18.12.0-linux-x64.tar.xz
-            tar -xf node-v18.12.0-linux-x64.tar.xz
-            export PATH="`pwd`/node-v18.12.0-linux-x64/bin:${PATH}"
-            npm install jsvu -g
-            jsvu --os=default --engines=spidermonkey
-            echo "JSC_ENGINE = [os.path.expanduser('~/.jsvu/bin/spidermonkey')]" >> ~/emsdk/.emscripten
-            echo "JS_ENGINES = [JSC_ENGINE]" >> ~/emsdk/.emscripten
-      - run-tests:
-          test_targets: "core0.test_hello_world"
-  test-node-compat:
-    # We don't use `bionic` here since its tool old to run recent node versions:
-    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
-    executor: linux-python
-    steps:
-      - checkout
-      - run:
-          name: submodule update
-          command: git submodule update --init
-      - pip-install
-      - build
-      - install-node-canary
-      - run-tests:
-          title: "selected subset"
-          test_targets: "
-            other.test_deterministic
-            other.test_gen_struct_info
-            other.test_native_call_before_init
-            other.test_node_unhandled_rejection
-            core2.test_hello_world"
-      # Run some basic tests with the minimum version of node that we currently
-      # support.
-      - install-node-version:
-          node_version: "10.19.0"
-      - run-tests:
-          title: "selected subset"
-          test_targets: "
-            other.test_gen_struct_info
-            other.test_native_call_before_init
-            other.test_node_unhandled_rejection
-            other.test_full_js_library*
-            core2.test_hello_world"
-      # Run a few test with the most recent version of node
-      # In particular we have some tests that require node flags on older
-      # versions of node but not with the most recent version.
-      - install-node-latest
-      - run-tests:
-          # Run tests that on older versions of node would require flags, but
-          # those flags should not be injected on newer versions.
-          title: "selected subset"
-          test_targets: "-v
-            other.test_gen_struct_info
-            other.test_native_call_before_init
-            other.test_node_unhandled_rejection
-            other.test_min_node_version
-            other.test_node_emscripten_num_logical_cores
-            core2.test_pthread_create
-            core2.test_i64_invoke_bigint
-            core2.test_sse2
-            core2.test_source_map
-            core2.test_exceptions_wasm
-            core2.test_pthread_unhandledrejection"
-      - upload-test-results
-  test-other:
-    executor: bionic
-    steps:
-      - run: apt-get install ninja-build scons
-      - run-tests-linux:
-          # some native-dependent tests fail because of the lack of native
-          # headers on emsdk-bundled clang
-          test_targets: "other skip:other.test_native_link_error_message"
-  test-browser-chrome:
-    executor: bionic
-    steps:
-      - test-chrome
-  test-browser-firefox:
-    executor: bionic
-    steps:
-      - test-firefox
-  test-sockets-chrome:
-    executor: bionic
-    steps:
-      - test-sockets-chrome
-  # windows and mac do not have separate build and test jobs, as they only run
-  # a limited set of tests; it is simpler and faster to do it all in one job.
-  test-windows:
-    executor:
-      name: win/vs2019
-      shell: bash.exe -eo pipefail
-    environment:
-      PYTHONUNBUFFERED: "1"
-      EMSDK_NOTTY: "1"
-      # clang can compile but not link in the current setup, see
-      # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
-      EMTEST_LACKS_NATIVE_CLANG: "1"
-      EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_EH: "1"
-      EMTEST_SKIP_WASM64: "1"
-      EMTEST_SKIP_SIMD: "1"
-      EMTEST_SKIP_SCONS: "1"
-    steps:
-      - checkout
-      - run:
-          name: Install packages
-          command: |
-            choco install cmake.portable ninja pkgconfiglite
-      - run:
-          name: Add python to bash path
-          command: echo "export PATH=\"$PATH:/c/Python27amd64/\"" >> $BASH_ENV
-      # note we do *not* build all libraries and freeze the cache; as we run
-      # only limited tests here, it's more efficient to build on demand
-      - build
-      - pip-install:
-          python: "$EMSDK_PYTHON"
-      - run-tests:
-          title: "crossplatform tests"
-          test_targets: "--crossplatform-only"
-      - upload-test-results
-      # Run a single websockify-based test to ensure it works on windows.
-      - run-tests:
-          title: "sockets.test_nodejs_sockets_echo*"
-          test_targets: "sockets.test_nodejs_sockets_echo*"
+      - run-tests
+      - persist
       - upload-test-results
 
-  test-mac:
+  build-macos:
     executor: mac
-    environment:
-      # We don't install d8 or modern node on the mac runner so we skip any
-      # tests that depend on those.
-      EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_EH: "1"
-      EMTEST_SKIP_WASM64: "1"
-      EMTEST_SKIP_SCONS: "1"
-      EMCC_SKIP_SANITY_CHECK: "1"
-      # test_sse1 (the only @crossplatform native clang test) currently fails
-      # on the macOS bots).
-      EMTEST_LACKS_NATIVE_CLANG: "1"
     steps:
       - setup-macos
-      - attach_workspace:
-          at: ~/
-      - run:
-          name: Remove Linux binaries
-          command: |
-            rm -rf ~/emsdk ~/vms ~/.jsvu
-      # note we do *not* build all libraries and freeze the cache; as we run
-      # only limited tests here, it's more efficient to build on demand
       - build
-      - pip-install:
-          python: "$EMSDK_PYTHON"
-      - run-tests:
-          title: "crossplatform tests"
-          test_targets: "--crossplatform-only"
+      - run-tests
+      - persist
       - upload-test-results
 
-  test-mac-arm64:
-    executor: mac-arm64
-    environment:
-      # We don't install d8 or modern node on the mac runner so we skip any
-      # tests that depend on those.
-      EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_EH: "1"
-      EMTEST_SKIP_WASM64: "1"
-      EMTEST_SKIP_SCONS: "1"
-      # Some native clang tests assume x86 clang (e.g. -sse2)
-      EMTEST_LACKS_NATIVE_CLANG: "1"
-      EMCC_SKIP_SANITY_CHECK: "1"
+  test-on-linux:
+    executor: linux-node
+    steps:
+      - checkout
+      - npm-install
+      - run-tests-linux
+
+  test-on-macos:
+    executor: mac
     steps:
       - setup-macos
-      - build
-      # TODO: We can't currently do pip install here since numpy and other packages
-      # are currently missing arm64 macos binaries.
-      # TODO: Remove this once emsdk has an arm64 version of node
-      - run:
-          name: Install Rosetta
-          command: /usr/sbin/softwareupdate --install-rosetta --agree-to-license
-      - run-tests:
-          title: "crossplatform tests"
-          test_targets: "--crossplatform-only"
-      - upload-test-results
+      - run-tests
+
+  test-on-chrome:
+    executor: linux-node
+    steps:
+      - checkout
+      - npm-install
+      - test-chrome
+
+  test-on-firefox:
+    executor: linux-node
+    steps:
+      - checkout
+      - npm-install
+      - test-firefox
 
 workflows:
-  build-test:
+  build-and-test:
     jobs:
-      - flake8
-      - mypy
-      - eslint
-      - build-docs
-      - build-linux
-      - test-sanity:
-          requires:
-            - build-linux
-      - test-posixtest:
-          requires:
-            - build-linux
-      - test-core0:
-          requires:
-            - build-linux
-      - test-core2:
-          requires:
-            - build-linux
-      - test-core3:
-          requires:
-            - build-linux
-      - test-wasm64:
-          requires:
-            - build-linux
-      - test-wasm2js1:
-          requires:
-            - build-linux
-      - test-other:
-          requires:
-            - build-linux
-      - test-browser-chrome:
-          requires:
-            - build-linux
-      - test-browser-firefox:
-          requires:
-            - build-linux
-      - test-sockets-chrome:
-          requires:
-            - build-linux
-      - test-jsc
-      - test-spidermonkey
-      - test-node-compat
-      - test-windows
-      - test-mac-arm64
-      - test-mac:
-          # The mac tester also uses the libraries built on the linux builder to
-          # save total build time (this is fine because the libraries are wasm
-          # and do not depend on the underlying build platform)
-          requires:
-            - build-linux
+      - build-and-test
+
+  build-libs-and-tests:
+    jobs:
+      - build-libs-and-tests
+
+  build-macos:
+    jobs:
+      - build-macos
+
+  test-on-linux:
+    jobs:
+      - test-on-linux
+
+  test-on-macos:
+    jobs:
+      - test-on-macos
+
+  test-on-chrome:
+    jobs:
+      - test-on-chrome
+
+  test-on-firefox:
+    jobs:
+      - test-on-firefox
