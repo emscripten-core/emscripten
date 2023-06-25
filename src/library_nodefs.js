@@ -305,7 +305,7 @@ mergeInto(LibraryManager.library, {
         var ptr = mmapAlloc(length);
 
         NODEFS.stream_ops.read(stream, HEAP8, ptr, length, position);
-        return { ptr: ptr, allocated: true };
+        return { ptr, allocated: true };
       },
       msync: (stream, buffer, offset, length, mmapFlags) => {
         NODEFS.stream_ops.write(stream, buffer, 0, length, offset, false);

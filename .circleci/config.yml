@@ -26,6 +26,12 @@ executors:
     macos:
       xcode: "13.4.1"
     resource_class: macos.x86.medium.gen2
+  mac-arm64:
+    environment:
+      EMSDK_NOTTY: "1"
+    macos:
+      xcode: "14.2.0"
+    resource_class: macos.m1.medium.gen1
 
 commands:
   download-chrome:
@@ -261,6 +267,21 @@ commands:
           test_targets: << parameters.test_targets >>
           title: << parameters.title >>
       - upload-test-results
+  setup-macos:
+    steps:
+      - run:
+          name: Install brew package dependencies
+          environment:
+            HOMEBREW_NO_AUTO_UPDATE: "1"
+          command: |
+            brew list cmake || brew install cmake
+            brew list ninja || brew install ninja
+            brew list python3 || brew install python3
+            brew list pkg-config || brew install pkg-config
+      - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
   test-firefox:
     description: "Runs emscripten tests under firefox"
     steps:
@@ -467,7 +488,7 @@ jobs:
             asan.test_dyncall_specific_minimal_runtime
             asan.test_async_hello
             asan.test_dlfcn_basic
-            asan.test_async_hello_stack_switching
+            asan.test_async_hello_jspi
             asan.test_cubescript
             asan.test_wasm_worker_hello
             lsan.test_stdio_locking
@@ -515,7 +536,9 @@ jobs:
             wasmfs.test_unistd_close
             wasmfs.test_unistd_truncate
             wasmfs.test_readdir
+            wasmfs.test_readdir_unlink
             wasmfs.test_unistd_pipe
+            wasmfs.test_fs_write
             wasmfs.test_webidl
             wasmfs.test_dlfcn_self
             wasmfs.test_dlfcn_unique_sig
@@ -530,6 +553,7 @@ jobs:
             wasmfs.test_unistd_links_memfs
             wasmfs.test_fcntl_open
             wasmfs.test_fs_js_api
+            wasmfs.test_fs_llseek
             wasmfs.test_freetype"
   test-wasm2js1:
     executor: bionic
@@ -556,6 +580,50 @@ jobs:
           title: "wasm64"
           test_targets: "wasm64 wasm64l.test_bigswitch"
       - upload-test-results
+  test-jsc:
+    executor: linux-python
+    steps:
+      - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
+      - pip-install
+      - build
+      - run:
+          name: install jsc
+          command: |
+            cd $HOME
+            wget https://nodejs.org/dist/v18.12.0/node-v18.12.0-linux-x64.tar.xz
+            tar -xf node-v18.12.0-linux-x64.tar.xz
+            export PATH="`pwd`/node-v18.12.0-linux-x64/bin:${PATH}"
+            npm install jsvu -g
+            jsvu --os=default --engines=javascriptcore
+            echo "JSC_ENGINE = [os.path.expanduser('~/.jsvu/bin/javascriptcore')]" >> ~/emsdk/.emscripten
+            echo "JS_ENGINES = [JSC_ENGINE]" >> ~/emsdk/.emscripten
+      - run-tests:
+          test_targets: "core0.test_hello_world other.test_modularize_incoming other.test_modularize_incoming_export_name"
+  test-spidermonkey:
+    executor: linux-python
+    steps:
+      - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
+      - pip-install
+      - build
+      - run:
+          name: install spidermonkey
+          command: |
+            cd $HOME
+            wget https://nodejs.org/dist/v18.12.0/node-v18.12.0-linux-x64.tar.xz
+            tar -xf node-v18.12.0-linux-x64.tar.xz
+            export PATH="`pwd`/node-v18.12.0-linux-x64/bin:${PATH}"
+            npm install jsvu -g
+            jsvu --os=default --engines=spidermonkey
+            echo "JSC_ENGINE = [os.path.expanduser('~/.jsvu/bin/spidermonkey')]" >> ~/emsdk/.emscripten
+            echo "JS_ENGINES = [JSC_ENGINE]" >> ~/emsdk/.emscripten
+      - run-tests:
+          test_targets: "core0.test_hello_world"
   test-node-compat:
     # We don't use `bionic` here since its tool old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
@@ -571,6 +639,7 @@ jobs:
       - run-tests:
           title: "selected subset"
           test_targets: "
+            other.test_deterministic
             other.test_gen_struct_info
             other.test_native_call_before_init
             other.test_node_unhandled_rejection
@@ -654,9 +723,9 @@ jobs:
       - run:
           name: Add python to bash path
           command: echo "export PATH=\"$PATH:/c/Python27amd64/\"" >> $BASH_ENV
-      - build
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
+      - build
       - pip-install:
           python: "$EMSDK_PYTHON"
       - run-tests:
@@ -677,34 +746,50 @@ jobs:
       EMTEST_SKIP_V8: "1"
       EMTEST_SKIP_EH: "1"
       EMTEST_SKIP_WASM64: "1"
-      EMTEST_SKIP_SIMD: "1"
       EMTEST_SKIP_SCONS: "1"
       EMCC_SKIP_SANITY_CHECK: "1"
+      # test_sse1 (the only @crossplatform native clang test) currently fails
+      # on the macOS bots).
+      EMTEST_LACKS_NATIVE_CLANG: "1"
     steps:
-      - run:
-          name: Install brew package dependencies
-          environment:
-            HOMEBREW_NO_AUTO_UPDATE: "1"
-          command: |
-            brew list cmake || brew install cmake
-            brew list ninja || brew install ninja
-            brew list python3 || brew install python3
-            brew list pkg-config || brew install pkg-config
+      - setup-macos
       - attach_workspace:
           at: ~/
-      - checkout
-      - run:
-          name: submodule update
-          command: git submodule update --init
       - run:
           name: Remove Linux binaries
           command: |
             rm -rf ~/emsdk ~/vms ~/.jsvu
-      - build
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
+      - build
       - pip-install:
           python: "$EMSDK_PYTHON"
+      - run-tests:
+          title: "crossplatform tests"
+          test_targets: "--crossplatform-only"
+      - upload-test-results
+
+  test-mac-arm64:
+    executor: mac-arm64
+    environment:
+      # We don't install d8 or modern node on the mac runner so we skip any
+      # tests that depend on those.
+      EMTEST_SKIP_V8: "1"
+      EMTEST_SKIP_EH: "1"
+      EMTEST_SKIP_WASM64: "1"
+      EMTEST_SKIP_SCONS: "1"
+      # Some native clang tests assume x86 clang (e.g. -sse2)
+      EMTEST_LACKS_NATIVE_CLANG: "1"
+      EMCC_SKIP_SANITY_CHECK: "1"
+    steps:
+      - setup-macos
+      - build
+      # TODO: We can't currently do pip install here since numpy and other packages
+      # are currently missing arm64 macos binaries.
+      # TODO: Remove this once emsdk has an arm64 version of node
+      - run:
+          name: Install Rosetta
+          command: /usr/sbin/softwareupdate --install-rosetta --agree-to-license
       - run-tests:
           title: "crossplatform tests"
           test_targets: "--crossplatform-only"
@@ -751,8 +836,11 @@ workflows:
       - test-sockets-chrome:
           requires:
             - build-linux
+      - test-jsc
+      - test-spidermonkey
       - test-node-compat
       - test-windows
+      - test-mac-arm64
       - test-mac:
           # The mac tester also uses the libraries built on the linux builder to
           # save total build time (this is fine because the libraries are wasm

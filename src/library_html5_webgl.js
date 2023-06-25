@@ -414,10 +414,10 @@ var LibraryHtml5WebGL = {
 
     var eventHandler = {
       target: findEventTarget(target),
-      eventTypeString: eventTypeString,
-      callbackfunc: callbackfunc,
+      eventTypeString,
+      callbackfunc,
       handlerFunc: webGlEventHandlerFunc,
-      useCapture: useCapture
+      useCapture
     };
     JSEvents.registerOrRemoveHandler(eventHandler);
   },

@@ -52,7 +52,6 @@ var SyscallsLibrary = {
         throw e;
       }
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.__st_ino_truncated, 'stat.ino', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_nlink, 'stat.nlink', SIZE_TYPE) }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_uid, 'stat.uid', 'i32') }}};
@@ -114,8 +113,7 @@ var SyscallsLibrary = {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     // Just like `FS.getStream` but will throw EBADF if stream is undefined.
     getStreamFromFD: function(fd) {
-      var stream = FS.getStream(fd);
-      if (!stream) throw new FS.ErrnoError({{{ cDefs.EBADF }}});
+      var stream = FS.getStreamChecked(fd);
 #if SYSCALL_DEBUG
       dbg(`    (stream: "${stream.path}")`);
 #endif
@@ -135,11 +133,12 @@ var SyscallsLibrary = {
     '$mmapAlloc',
     'emscripten_builtin_memalign',
 #endif
-  ],
-  _mmap_js: function(len, prot, flags, fd, off, allocated, addr) {
+  ].concat(i53ConversionDeps),
+  _mmap_js: function(len, prot, flags, fd, {{{ defineI64Param('offset') }}}, allocated, addr) {
+    {{{ receiveI64ParamAsI53('offset', -cDefs.EOVERFLOW) }}}
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
-    var res = FS.mmap(stream, len, off, prot, flags);
+    var res = FS.mmap(stream, len, offset, prot, flags);
     var ptr = res.ptr;
     {{{ makeSetValue('allocated', 0, 'res.allocated', 'i32') }}};
 #if CAN_ADDRESS_2GB
@@ -156,8 +155,9 @@ var SyscallsLibrary = {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
 #endif
-  ],
-  _munmap_js: function(addr, len, prot, flags, fd, offset) {
+  ].concat(i53ConversionDeps),
+  _munmap_js: function(addr, len, prot, flags, fd, {{{ defineI64Param('offset') }}}) {
+    {{{ receiveI64ParamAsI53('offset', -cDefs.EOVERFLOW) }}}
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     if (prot & {{{ cDefs.PROT_WRITE }}}) {
@@ -209,9 +209,27 @@ var SyscallsLibrary = {
 #else
     var stream = SYSCALLS.getStreamFromFD(fd);
     switch (op) {
-      case {{{ cDefs.TCGETA }}}:
+      case {{{ cDefs.TCGETA }}}: {
+        if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
+#if SYSCALL_DEBUG
+        dbg('warning: not filling tio struct');
+#endif
+        return 0;
+      }
       case {{{ cDefs.TCGETS }}}: {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
+        if (stream.tty.ops.ioctl_tcgets) {
+          var termios = stream.tty.ops.ioctl_tcgets(stream);
+          var argp = SYSCALLS.get();
+          {{{ makeSetValue('argp', C_STRUCTS.termios.c_iflag, 'termios.c_iflag || 0', 'i32') }}};
+          {{{ makeSetValue('argp', C_STRUCTS.termios.c_oflag, 'termios.c_oflag || 0', 'i32') }}};
+          {{{ makeSetValue('argp', C_STRUCTS.termios.c_cflag, 'termios.c_cflag || 0', 'i32') }}};
+          {{{ makeSetValue('argp', C_STRUCTS.termios.c_lflag, 'termios.c_lflag || 0', 'i32') }}};
+          for (var i = 0; i < {{{ cDefs.NCCS }}}; i++) {
+            {{{ makeSetValue('argp + i', C_STRUCTS.termios.c_cc, 'termios.c_cc[i] || 0', 'i8') }}};
+          }
+          return 0;
+        }
 #if SYSCALL_DEBUG
         dbg('warning: not filling tio struct');
 #endif
@@ -219,11 +237,26 @@ var SyscallsLibrary = {
       }
       case {{{ cDefs.TCSETA }}}:
       case {{{ cDefs.TCSETAW }}}:
-      case {{{ cDefs.TCSETAF }}}:
+      case {{{ cDefs.TCSETAF }}}: {
+        if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
+        return 0; // no-op, not actually adjusting terminal settings
+      }
       case {{{ cDefs.TCSETS }}}:
       case {{{ cDefs.TCSETSW }}}:
       case {{{ cDefs.TCSETSF }}}: {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
+        if (stream.tty.ops.ioctl_tcsets) {
+          var argp = SYSCALLS.get();
+          var c_iflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_iflag, 'i32') }}};
+          var c_oflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_oflag, 'i32') }}};
+          var c_cflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_cflag, 'i32') }}};
+          var c_lflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_lflag, 'i32') }}};
+          var c_cc = []
+          for (var i = 0; i < {{{ cDefs.NCCS }}}; i++) {
+            c_cc.push({{{ makeGetValue('argp + i', C_STRUCTS.termios.c_cc, 'i8') }}});
+          }
+          return stream.tty.ops.ioctl_tcsets(stream.tty, op, { c_iflag, c_oflag, c_cflag, c_lflag, c_cc });
+        }
         return 0; // no-op, not actually adjusting terminal settings
       }
       case {{{ cDefs.TIOCGPGRP }}}: {
@@ -244,12 +277,22 @@ var SyscallsLibrary = {
         // TODO: in theory we should write to the winsize struct that gets
         // passed in, but for now musl doesn't read anything on it
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
+        if (stream.tty.ops.ioctl_tiocgwinsz) {
+          var winsize = stream.tty.ops.ioctl_tiocgwinsz(stream.tty);
+          var argp = SYSCALLS.get();
+          {{{ makeSetValue('argp', 0, 'winsize[0]', 'i16') }}};
+          {{{ makeSetValue('argp', 2, 'winsize[1]', 'i16') }}};
+        }
         return 0;
       }
       case {{{ cDefs.TIOCSWINSZ }}}: {
         // TODO: technically, this ioctl call should change the window size.
         // but, since emscripten doesn't have any concept of a terminal window
         // yet, we'll just silently throw it away as we do TIOCGWINSZ
+        if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
+        return 0;
+      }
+      case {{{ cDefs.TCFLSH }}}: {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
         return 0;
       }
@@ -544,7 +587,13 @@ var SyscallsLibrary = {
       var flags = SYSCALLS.DEFAULT_POLLMASK;
 
       if (stream.stream_ops.poll) {
-        flags = stream.stream_ops.poll(stream);
+        var timeoutInMillis = -1;
+        if (timeout) {
+          var tv_sec = (readfds ? {{{ makeGetValue('timeout', C_STRUCTS.timeval.tv_sec, 'i32') }}} : 0),
+              tv_usec = (readfds ? {{{ makeGetValue('timeout', C_STRUCTS.timeval.tv_usec, 'i32') }}} : 0);
+          timeoutInMillis = (tv_sec + tv_usec / 1000000) * 1000;
+        }
+        flags = stream.stream_ops.poll(stream, timeoutInMillis);
       }
 
       if ((flags & {{{ cDefs.POLLIN }}}) && check(fd, srcReadLow, srcReadHigh, mask)) {
@@ -576,8 +625,10 @@ var SyscallsLibrary = {
 
     return total;
   },
-  _msync_js: function(addr, len, prot, flags, fd, offset) {
-    SYSCALLS.doMsync(addr, SYSCALLS.getStreamFromFD(fd), len, flags, 0);
+  _msync_js__deps: i53ConversionDeps,
+  _msync_js: function(addr, len, prot, flags, fd, {{{ defineI64Param('offset') }}}) {
+    {{{ receiveI64ParamAsI53('offset', -cDefs.EOVERFLOW) }}}
+    SYSCALLS.doMsync(addr, SYSCALLS.getStreamFromFD(fd), len, flags, offset);
     return 0;
   },
   __syscall_fdatasync: function(fd) {
@@ -595,7 +646,7 @@ var SyscallsLibrary = {
       if (stream) {
         mask = SYSCALLS.DEFAULT_POLLMASK;
         if (stream.stream_ops.poll) {
-          mask = stream.stream_ops.poll(stream);
+          mask = stream.stream_ops.poll(stream, -1);
         }
       }
       mask &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};

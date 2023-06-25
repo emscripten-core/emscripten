@@ -45,7 +45,10 @@
         "AUDIO_F32": 33056,
         "AUDIO_S16LSB": 32784,
         "AUDIO_U8": 8,
+        "B38400": 15,
         "CLOCK_REALTIME": 0,
+        "CREAD": 128,
+        "CSIZE": 48,
         "E2BIG": 1,
         "EACCES": 2,
         "EADDRINUSE": 3,
@@ -75,6 +78,11 @@
         "EBUSY": 10,
         "ECANCELED": 11,
         "ECHILD": 12,
+        "ECHO": 8,
+        "ECHOCTL": 512,
+        "ECHOE": 16,
+        "ECHOK": 32,
+        "ECHOKE": 2048,
         "ECHRNG": 106,
         "ECOMM": 124,
         "ECONNABORTED": 13,
@@ -311,17 +319,27 @@
         "File::DirectoryKind": 2,
         "File::SymlinkKind": 3,
         "File::UnknownKind": 0,
+        "ICANON": 2,
+        "ICRNL": 256,
+        "IEXTEN": 32768,
+        "IMAXBEL": 8192,
         "INADDR_LOOPBACK": 2130706433,
         "IPPROTO_TCP": 6,
         "IPPROTO_UDP": 17,
+        "ISIG": 1,
+        "IUTF8": 16384,
+        "IXON": 1024,
         "MAP_ANONYMOUS": 32,
         "MAP_FIXED": 16,
         "MAP_PRIVATE": 2,
+        "NCCS": 32,
         "NI_NAMEREQD": 8,
         "NI_NUMERICHOST": 1,
         "NOTIFICATION_NONE": 0,
         "NOTIFICATION_PENDING": 2,
         "NOTIFICATION_RECEIVED": 1,
+        "ONLCR": 4,
+        "OPOST": 1,
         "O_ACCMODE": 2097155,
         "O_APPEND": 1024,
         "O_CLOEXEC": 524288,
@@ -382,6 +400,7 @@
         "S_ISVTX": 512,
         "S_IWUGO": 146,
         "S_IXUGO": 73,
+        "TCFLSH": 21515,
         "TCGETA": 21509,
         "TCGETS": 21505,
         "TCSETA": 21510,
@@ -763,10 +782,11 @@
             "patch": 2
         },
         "WGPUAdapterProperties": {
-            "__size__": 36,
+            "__size__": 40,
             "adapterType": 28,
             "architecture": 12,
             "backendType": 32,
+            "compatibilityMode": 36,
             "deviceID": 16,
             "driverDescription": 24,
             "name": 20,
@@ -871,14 +891,17 @@
             "nextInChain": 0
         },
         "WGPUCompilationMessage": {
-            "__size__": 48,
+            "__size__": 72,
             "length": 40,
             "lineNum": 16,
             "linePos": 24,
             "message": 4,
             "nextInChain": 0,
             "offset": 32,
-            "type": 8
+            "type": 8,
+            "utf16Length": 64,
+            "utf16LinePos": 48,
+            "utf16Offset": 56
         },
         "WGPUComputePassDescriptor": {
             "__size__": 16,
@@ -921,8 +944,10 @@
             "stencilWriteMask": 52
         },
         "WGPUDeviceDescriptor": {
-            "__size__": 28,
+            "__size__": 36,
             "defaultQueue": 20,
+            "deviceLostCallback": 28,
+            "deviceLostUserdata": 32,
             "label": 4,
             "nextInChain": 0,
             "requiredFeatures": 12,
@@ -964,35 +989,38 @@
             "nextInChain": 0
         },
         "WGPULimits": {
-            "__size__": 120,
+            "__size__": 144,
             "maxBindGroups": 16,
-            "maxColorAttachments": 92,
-            "maxComputeInvocationsPerWorkgroup": 100,
-            "maxComputeWorkgroupSizeX": 104,
-            "maxComputeWorkgroupSizeY": 108,
-            "maxComputeWorkgroupSizeZ": 112,
-            "maxComputeWorkgroupStorageSize": 96,
-            "maxComputeWorkgroupsPerDimension": 116,
-            "maxDynamicStorageBuffersPerPipelineLayout": 24,
-            "maxDynamicUniformBuffersPerPipelineLayout": 20,
-            "maxInterStageShaderComponents": 84,
-            "maxInterStageShaderVariables": 88,
-            "maxSampledTexturesPerShaderStage": 28,
-            "maxSamplersPerShaderStage": 32,
-            "maxStorageBufferBindingSize": 56,
-            "maxStorageBuffersPerShaderStage": 36,
-            "maxStorageTexturesPerShaderStage": 40,
+            "maxBindingsPerBindGroup": 20,
+            "maxBufferSize": 88,
+            "maxColorAttachmentBytesPerSample": 116,
+            "maxColorAttachments": 112,
+            "maxComputeInvocationsPerWorkgroup": 124,
+            "maxComputeWorkgroupSizeX": 128,
+            "maxComputeWorkgroupSizeY": 132,
+            "maxComputeWorkgroupSizeZ": 136,
+            "maxComputeWorkgroupStorageSize": 120,
+            "maxComputeWorkgroupsPerDimension": 140,
+            "maxDynamicStorageBuffersPerPipelineLayout": 28,
+            "maxDynamicUniformBuffersPerPipelineLayout": 24,
+            "maxInterStageShaderComponents": 104,
+            "maxInterStageShaderVariables": 108,
+            "maxSampledTexturesPerShaderStage": 32,
+            "maxSamplersPerShaderStage": 36,
+            "maxStorageBufferBindingSize": 64,
+            "maxStorageBuffersPerShaderStage": 40,
+            "maxStorageTexturesPerShaderStage": 44,
             "maxTextureArrayLayers": 12,
             "maxTextureDimension1D": 0,
             "maxTextureDimension2D": 4,
             "maxTextureDimension3D": 8,
-            "maxUniformBufferBindingSize": 48,
-            "maxUniformBuffersPerShaderStage": 44,
-            "maxVertexAttributes": 76,
-            "maxVertexBufferArrayStride": 80,
-            "maxVertexBuffers": 72,
-            "minStorageBufferOffsetAlignment": 68,
-            "minUniformBufferOffsetAlignment": 64
+            "maxUniformBufferBindingSize": 56,
+            "maxUniformBuffersPerShaderStage": 48,
+            "maxVertexAttributes": 96,
+            "maxVertexBufferArrayStride": 100,
+            "maxVertexBuffers": 80,
+            "minStorageBufferOffsetAlignment": 76,
+            "minUniformBufferOffsetAlignment": 72
         },
         "WGPUMultisampleState": {
             "__size__": 16,
@@ -1120,13 +1148,14 @@
         },
         "WGPURequestAdapterOptions": {
             "__size__": 16,
+            "compatibilityMode": 13,
             "compatibleSurface": 4,
             "forceFallbackAdapter": 12,
             "nextInChain": 0,
             "powerPreference": 8
         },
         "WGPURequiredLimits": {
-            "__size__": 128,
+            "__size__": 152,
             "limits": 8,
             "nextInChain": 0
         },
@@ -1164,7 +1193,7 @@
         "WGPUShaderModuleWGSLDescriptor": {
             "__size__": 12,
             "chain": 0,
-            "source": 8
+            "code": 8
         },
         "WGPUStencilFaceState": {
             "__size__": 16,
@@ -1181,7 +1210,7 @@
             "viewDimension": 12
         },
         "WGPUSupportedLimits": {
-            "__size__": 128,
+            "__size__": 152,
             "limits": 8,
             "nextInChain": 0
         },
@@ -1459,33 +1488,32 @@
             "sin6_port": 2
         },
         "stat": {
-            "__size__": 112,
-            "__st_ino_truncated": 8,
+            "__size__": 96,
             "st_atim": {
                 "__size__": 16,
-                "tv_nsec": 64,
-                "tv_sec": 56
+                "tv_nsec": 48,
+                "tv_sec": 40
             },
-            "st_blksize": 48,
-            "st_blocks": 52,
+            "st_blksize": 32,
+            "st_blocks": 36,
             "st_ctim": {
-                "__size__": 16,
-                "tv_nsec": 96,
-                "tv_sec": 88
-            },
-            "st_dev": 0,
-            "st_gid": 24,
-            "st_ino": 104,
-            "st_mode": 12,
-            "st_mtim": {
                 "__size__": 16,
                 "tv_nsec": 80,
                 "tv_sec": 72
             },
-            "st_nlink": 16,
-            "st_rdev": 28,
-            "st_size": 40,
-            "st_uid": 20
+            "st_dev": 0,
+            "st_gid": 16,
+            "st_ino": 88,
+            "st_mode": 4,
+            "st_mtim": {
+                "__size__": 16,
+                "tv_nsec": 64,
+                "tv_sec": 56
+            },
+            "st_nlink": 8,
+            "st_rdev": 20,
+            "st_size": 24,
+            "st_uid": 12
         },
         "statfs": {
             "__size__": 64,
@@ -1500,6 +1528,17 @@
             "f_fsid": 28,
             "f_namelen": 36
         },
+        "termios": {
+            "__c_ispeed": 52,
+            "__c_ospeed": 56,
+            "__size__": 60,
+            "c_cc": 17,
+            "c_cflag": 8,
+            "c_iflag": 0,
+            "c_lflag": 12,
+            "c_line": 16,
+            "c_oflag": 4
+        },
         "thread_profiler_block": {
             "__size__": 104,
             "name": 72,
@@ -1510,6 +1549,11 @@
             "__size__": 16,
             "tv_nsec": 8,
             "tv_sec": 0
+        },
+        "timeval": {
+            "__size__": 16,
+            "tv_sec": 0,
+            "tv_usec": 8
         },
         "tm": {
             "__size__": 44,

@@ -74,14 +74,14 @@ weak int _mmap_js(size_t length,
                   int prot,
                   int flags,
                   int fd,
-                  size_t offset,
+                  off_t offset,
                   int* allocated,
                   void** addr) {
   return -ENOSYS;
 }
 
 weak int _munmap_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
+  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset) {
   return -ENOSYS;
 }
 
@@ -152,12 +152,13 @@ int emscripten_resize_heap(size_t size) {
   return 0;
 }
 
-double emscripten_get_now(void) {
+weak double emscripten_get_now(void) {
   struct timespec ts;
   if (clock_gettime(CLOCK_MONOTONIC, &ts)) {
     return 0;
   }
-  return (double)ts.tv_sec + (double)ts.tv_nsec / 1000000000;
+  // emscripten_get_now returns time in milliseconds (as a double)
+  return (double)ts.tv_sec * 1000 + (double)ts.tv_nsec / 1000000;
 }
 
 // C++ ABI
@@ -215,6 +216,26 @@ static void wasi_writeln(__wasi_fd_t fd, const char* buffer) {
 void emscripten_out(const char* text) { wasi_writeln(1, text); }
 
 void emscripten_err(const char* text) { wasi_writeln(2, text); }
+
+__attribute__((import_module("wasi_snapshot_preview1"),
+               import_name("fd_read"))) __wasi_errno_t
+imported__wasi_fd_read(__wasi_fd_t fd,
+                        const __wasi_ciovec_t* iovs,
+                        size_t iovs_len,
+                        __wasi_size_t* nread);
+
+int _wasmfs_stdin_get_char(void) {
+  char c;
+  struct __wasi_ciovec_t iov;
+  iov.buf = (uint8_t*)&c;
+  iov.buf_len = 1;
+  __wasi_size_t nread;
+  imported__wasi_fd_read(0, &iov, 1, &nread);
+  if (nread == 0) {
+    return -1;
+  }
+  return c;
+}
 
 // In the non-standalone build we define this helper function in JS to avoid
 // signture mismatch issues.

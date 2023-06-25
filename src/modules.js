@@ -36,9 +36,9 @@ global.LibraryManager = {
 
     // Core system libraries (always linked against)
     let libraries = [
+      'library_int53.js',
       'library.js',
       'library_sigs.js',
-      'library_int53.js',
       'library_ccall.js',
       'library_addfunction.js',
       'library_formatString.js',
@@ -49,7 +49,6 @@ global.LibraryManager = {
       'library_html5.js',
       'library_stack_trace.js',
       'library_wasi.js',
-      'library_dylink.js',
       'library_makeDynCall.js',
       'library_eventloop.js',
       'library_promise.js',
@@ -78,6 +77,10 @@ global.LibraryManager = {
 
     if (!WASMFS) {
       libraries.push('library_syscall.js');
+    }
+
+    if (RELOCATABLE) {
+      libraries.push('library_dylink.js');
     }
 
     if (FILESYSTEM) {

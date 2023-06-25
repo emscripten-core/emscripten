@@ -35,7 +35,6 @@
         "structs": {
             "stat": [
                 "st_dev",
-                "__st_ino_truncated",
                 "st_mode",
                 "st_nlink",
                 "st_uid",
@@ -150,6 +149,10 @@
                 "tm_isdst",
                 "tm_gmtoff",
                 "tm_zone"
+            ],
+            "timeval": [
+                "tv_sec",
+                "tv_usec"
             ],
             "timespec": [
                 "tv_sec",
@@ -306,7 +309,8 @@
             "TIOCGPGRP",
             "TIOCSPGRP",
             "TIOCGWINSZ",
-            "TIOCSWINSZ"
+            "TIOCSWINSZ",
+            "TCFLSH"
         ]
     },
     {
@@ -479,6 +483,41 @@
             "RTLD_GLOBAL",
             "RTLD_NODELETE"
         ]
+    },
+    {
+        "file": "termios.h",
+        "defines": [
+            "NCCS",
+            "ICRNL",
+            "IXON",
+            "IMAXBEL",
+            "IUTF8",
+            "OPOST",
+            "ONLCR",
+            "B38400",
+            "CSIZE",
+            "CREAD",
+            "ISIG",
+            "ICANON",
+            "ECHO",
+            "ECHOE",
+            "ECHOK",
+            "ECHOCTL",
+            "ECHOKE",
+            "IEXTEN"
+        ],
+        "structs": {
+            "termios": [
+                "c_iflag",
+                "c_oflag",
+                "c_cflag",
+                "c_lflag",
+                "c_line",
+                "c_cc",
+                "__c_ispeed",
+                "__c_ospeed"
+            ]
+        }
     },
     // ===========================================
     // SDL
@@ -1165,7 +1204,8 @@
                 "name",
                 "driverDescription",
                 "adapterType",
-                "backendType"
+                "backendType",
+                "compatibilityMode"
             ],
             "WGPUBindGroupEntry": [
                 "nextInChain",
@@ -1215,7 +1255,10 @@
                 "lineNum",
                 "linePos",
                 "offset",
-                "length"
+                "length",
+                "utf16LinePos",
+                "utf16Offset",
+                "utf16Length"
             ],
             "WGPUComputePassTimestampWrite": [
                 "querySet",
@@ -1241,6 +1284,7 @@
                 "maxTextureDimension3D",
                 "maxTextureArrayLayers",
                 "maxBindGroups",
+                "maxBindingsPerBindGroup",
                 "maxDynamicUniformBuffersPerPipelineLayout",
                 "maxDynamicStorageBuffersPerPipelineLayout",
                 "maxSampledTexturesPerShaderStage",
@@ -1253,11 +1297,13 @@
                 "minUniformBufferOffsetAlignment",
                 "minStorageBufferOffsetAlignment",
                 "maxVertexBuffers",
+                "maxBufferSize",
                 "maxVertexAttributes",
                 "maxVertexBufferArrayStride",
                 "maxInterStageShaderComponents",
                 "maxInterStageShaderVariables",
                 "maxColorAttachments",
+                "maxColorAttachmentBytesPerSample",
                 "maxComputeWorkgroupStorageSize",
                 "maxComputeInvocationsPerWorkgroup",
                 "maxComputeWorkgroupSizeX",
@@ -1343,7 +1389,8 @@
                 "nextInChain",
                 "compatibleSurface",
                 "powerPreference",
-                "forceFallbackAdapter"
+                "forceFallbackAdapter",
+                "compatibilityMode"
             ],
             "WGPUSamplerBindingLayout": [
                 "nextInChain",
@@ -1374,7 +1421,7 @@
             ],
             "WGPUShaderModuleWGSLDescriptor": [
                 "chain",
-                "source"
+                "code"
             ],
             "WGPUStencilFaceState": [
                 "compare",
@@ -1553,7 +1600,9 @@
                 "requiredFeaturesCount",
                 "requiredFeatures",
                 "requiredLimits",
-                "defaultQueue"
+                "defaultQueue",
+                "deviceLostCallback",
+                "deviceLostUserdata"
             ],
             "WGPURenderPassDescriptor": [
                 "nextInChain",

@@ -44,7 +44,7 @@ import clang_native
 from tools import line_endings
 from tools import webassembly
 
-scons_path = utils.which('scons')
+scons_path = shutil.which('scons')
 emmake = shared.bat_suffix(path_from_root('emmake'))
 emconfig = shared.bat_suffix(path_from_root('em-config'))
 emsize = shared.bat_suffix(path_from_root('emsize'))
@@ -126,7 +126,7 @@ def requires_ninja(func):
 
   @wraps(func)
   def decorated(self, *args, **kwargs):
-    if not utils.which('ninja'):
+    if not shutil.which('ninja'):
       self.fail('test requires ninja to be installed (available in PATH)')
     return func(self, *args, **kwargs)
 
@@ -138,7 +138,7 @@ def requires_scons(func):
 
   @wraps(func)
   def decorated(self, *args, **kwargs):
-    if not utils.which('scons'):
+    if not shutil.which('scons'):
       if 'EMTEST_SKIP_SCONS' in os.environ:
         self.skipTest('test requires scons and EMTEST_SKIP_SCONS is set')
       else:
@@ -153,7 +153,7 @@ def requires_pkg_config(func):
 
   @wraps(func)
   def decorated(self, *args, **kwargs):
-    if not utils.which('pkg-config'):
+    if not shutil.which('pkg-config'):
       if 'EMTEST_SKIP_PKG_CONFIG' in os.environ:
         self.skipTest('test requires pkg-config and EMTEST_SKIP_PKG_CONFIG is set')
       else:
@@ -758,7 +758,7 @@ f.close()
     for generator in generators:
       conf = configurations[generator]
 
-      if not utils.which(conf['build'][0]):
+      if not shutil.which(conf['build'][0]):
         # Use simple test if applicable
         print('Skipping %s test for CMake support; build tool found found: %s.' % (generator, conf['build'][0]))
         continue
@@ -1480,6 +1480,7 @@ int f() {
     self.emcc('lib.c', ['-sEXPORTED_FUNCTIONS=_libfunc2', '-sEXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
     self.assertContained('libfunc\n', self.run_js('a.out.js'))
 
+  @also_with_wasmfs
   @crossplatform
   def test_stdin(self):
     def run_test():
@@ -2534,6 +2535,16 @@ int f() {
     else:
       self.assertFileContents(expected_file, js)
 
+  def test_js_optimizer_huge(self):
+    # Stress test the chunkifying code in js_optimizer.py
+    lines = ['// EMSCRIPTEN_START_FUNCS']
+    for i in range(1000_000):
+      lines.append('function v%d()\n {\n var someLongNameToMakeThisLineLong = %d\n }' % (i, i))
+    lines.append('// EMSCRIPTEN_END_FUNCS\n')
+    create_file('huge.js', '\n'.join(lines))
+    self.assertGreater(os.path.getsize('huge.js'), 50_000_000)
+    self.run_process([PYTHON, path_from_root('tools/js_optimizer.py'), 'huge.js', 'minifyWhitespace'])
+
   @parameterized({
     'wasm2js': ('wasm2js', ['minifyNames', 'last']),
     'constructor': ('constructor', ['minifyNames'])
@@ -2868,6 +2879,13 @@ int f() {
     self.assertContained('Constructed from C++ destructed', output)
     self.assertContained('Constructed from JS destructed', output)
     self.assertNotContained('Foo* destructed', output)
+
+  def test_jspi_wildcard(self):
+    self.require_v8()
+    self.v8_args.append('--experimental-wasm-stack-switching')
+    self.emcc_args += ['-sASYNCIFY=2', '-sASYNCIFY_EXPORTS=async*', '-Wno-experimental']
+
+    self.do_runf(test_file('other/test_jspi_wildcard.c'), 'done')
 
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
@@ -5911,7 +5929,25 @@ int main(void) {
     output = self.run_js('run.js')
     self.assertEqual(output, 'hello, world!\n')
 
+  @parameterized({
+    '': ([],),
+    'export_name': (['-sEXPORT_NAME=Foo'],),
+    'closure': (['-sEXPORT_NAME=Foo', '--closure=1'],),
+  })
+  @crossplatform
+  def test_modularize_incoming(self, args):
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'out.mjs'] + self.get_emcc_args() + args)
+    create_file('run.mjs', '''
+    import Module from './out.mjs';
+    await Module({onRuntimeInitialized: () => console.log('done init')})
+      .then(() => console.log('got module'));
+    ''')
+    output = self.run_js('run.mjs')
+    self.assertContained('done init\nhello, world!\ngot module\n', output)
+
+  @crossplatform
   @node_pthreads
+  @no_mac('https://github.com/emscripten-core/emscripten/issues/19683')
   def test_pthread_print_override_modularize(self):
     self.set_setting('EXPORT_NAME', 'Test')
     self.set_setting('PROXY_TO_PTHREAD')
@@ -6243,10 +6279,9 @@ int main() {
     self.assertContained('done', self.run_js('a.out.js'))
 
   def test_failing_growth_wasm64(self):
-    # For now we don't assert that we can actually grow a memory to over 4Gb because currently
-    # this fails under node/d8/chrome with: `WebAssembly.Memory.grow(): Unable to grow instance
-    # memory`.
-    # See: https://bugs.chromium.org/p/v8/issues/detail?id=4153
+    # For now we skip this test because failure to create the TypedArray views
+    # causes weird unrecoverable failures.
+    self.skipTest('https://bugs.chromium.org/p/v8/issues/detail?id=4153')
     self.require_wasm64()
     create_file('test.c', r'''
 #include <assert.h>
@@ -6644,16 +6679,25 @@ int main(int argc,char** argv) {
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_dlopen_promise.c')
 
-  def test_dlopen_blocking(self):
+  @parameterized({
+    # Under node this should work even without ASYNCIFY because we can do
+    # synchronous loading via readBinary
+    '': (0,),
+    'asyncify': (1,),
+    'jspi': (2,),
+  })
+  def test_dlopen_blocking(self, asyncify):
     self.run_process([EMCC, test_file('other/test_dlopen_blocking_side.c'), '-o', 'libside.so', '-sSIDE_MODULE'])
     self.set_setting('MAIN_MODULE', 2)
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('NO_AUTOLOAD_DYLIBS')
+    if asyncify:
+      self.set_setting('ASYNCIFY', asyncify)
+      if asyncify == 2:
+        self.emcc_args.append('-Wno-experimental')
+        self.require_v8()
+        self.v8_args.append('--experimental-wasm-stack-switching')
     self.emcc_args.append('libside.so')
-    # Under node this should work both with and without ASYNCIFY
-    # because we can do synchronous readBinary
-    self.do_other_test('test_dlopen_blocking.c')
-    self.set_setting('ASYNCIFY')
     self.do_other_test('test_dlopen_blocking.c')
 
   def test_dlsym_rtld_default(self):
@@ -7118,6 +7162,7 @@ Resolve failed: ""
 Resolved: "/" => "/"
 ''', self.run_js('a.out.js'))
 
+  @with_env_modify({'EMCC_LOGGING': '0'})  # this test assumes no emcc output
   def test_no_warnings(self):
     # build once before to make sure system libs etc. exist
     self.run_process([EMXX, test_file('hello_libcxx.cpp')])
@@ -7511,10 +7556,11 @@ int main() {}
     output = self.run_js('run.js')
     self.assertContained('|world|', output)
 
+  @also_with_wasmfs
   def test_warn_no_filesystem(self):
     error = 'Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with -sFORCE_FILESYSTEM'
 
-    self.run_process([EMCC, test_file('hello_world.c')])
+    self.emcc(test_file('hello_world.c'))
     seen = self.run_js('a.out.js')
     self.assertNotContained(error, seen)
 
@@ -7961,6 +8007,7 @@ int main() {
     # EVAL_CTORS also removes the __wasm_call_ctors function
     'Oz-ctors': (['-Oz', '-sEVAL_CTORS'], [], []), # noqa
     '64': (['-Oz', '-sMEMORY64', '-Wno-experimental'], [], []), # noqa
+    # WasmFS should not be fully linked into a minimal program.
     'wasmfs': (['-Oz', '-sWASMFS'], [], []), # noqa
   })
   def test_metadce_minimal(self, *args):
@@ -8006,6 +8053,7 @@ int main() {
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
     'dylink': (['-O3', '-sMAIN_MODULE=2'], [], []), # noqa
+    # WasmFS should not be fully linked into a hello world program.
     'wasmfs': (['-O3', '-sWASMFS'],        [], []), # noqa
   })
   def test_metadce_hello(self, *args):
@@ -8738,6 +8786,7 @@ end
     'bigint': [['-sWASM_BIGINT']],
     'pthread': [['-pthread', '-Wno-experimental']],
     'pthread_offscreen': [['-pthread', '-Wno-experimental', '-sOFFSCREEN_FRAMEBUFFER']],
+    'wasmfs': [['-sWASMFS']],
   })
   def test_closure_full_js_library(self, args):
     # Test for closure errors and warnings in the entire JS library.
@@ -8840,7 +8889,7 @@ end
           console.error("my {attribute}");
         }};
       '''
-    create_file('pre.js', '''
+    create_file('post.js', '''
       /** @constructor */
       function Foo() {
         this.bar = function() {
@@ -8870,7 +8919,7 @@ end
       '-sFETCH',
       '-sFETCH_SUPPORT_INDEXEDDB',
       '-Werror=closure',
-      '--pre-js=pre.js'
+      '--post-js=post.js'
     ])
     code = read_file('hello_world.js')
     # `bar` method is used so should not be DCE'd
@@ -8975,6 +9024,10 @@ end
     # ioctl requires filesystem
     self.do_other_test('test_ioctl.c', emcc_args=['-sFORCE_FILESYSTEM'])
 
+  def test_ioctl_termios(self):
+    # ioctl requires filesystem
+    self.do_other_test('test_ioctl_termios.c', emcc_args=['-sFORCE_FILESYSTEM'])
+
   def test_fd_closed(self):
     self.do_other_test('test_fd_closed.cpp')
 
@@ -8982,6 +9035,7 @@ end
     # fflush without the full filesystem won't quite work
     self.do_other_test('test_fflush.cpp')
 
+  @also_with_wasmfs
   def test_fflush_fs(self):
     # fflush with the full filesystem will flush from libc, but not the JS logging, which awaits a newline
     self.do_other_test('test_fflush_fs.cpp', emcc_args=['-sFORCE_FILESYSTEM'])
@@ -9021,16 +9075,16 @@ EMSCRIPTEN_KEEPALIVE void foo() {
     # check we show a proper understandable error for JS parse problems
     create_file('src.c', r'''
 #include <emscripten.h>
+EM_JS(void, js, (void), {
+  var x = !<->5.; // wtf... this will error on the '<'
+});
 int main() {
-  EM_ASM({
-    var x = !<->5.; // wtf
-  });
+  js();
 }
 ''')
-    stderr = self.expect_fail([EMCC, 'src.c', '-O2'])
-    # wasm backend output doesn't have spaces in the EM_ASM function bodies
+    stderr = self.expect_fail([EMCC, 'src.c', '-O2'] + self.get_emcc_args())
     self.assertContained(('''
-  1024: () => { var x = !<->5.; }
+function js() { var x = !<->5.; }
                          ^
 '''), stderr)
 
@@ -10613,7 +10667,9 @@ int main(void) {
     # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
     # Check an absolute code size as well, with some slack.
-    self.assertLess(abs(changed - 4491), 150)
+    self.check_expected_size_in_file('js',
+                                     test_file('other/test_INCOMING_MODULE_JS_API.js.size'),
+                                     changed)
 
   def test_INCOMING_MODULE_JS_API_missing(self):
     create_file('pre.js', '''
@@ -11281,10 +11337,8 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.run_process([EMCC, '-c', '-o', 'main.o', 'main.bc'])
     self.assertTrue(building.is_wasm('main.o'))
 
+  @with_env_modify({'EMCC_LOGGING': '0'})  # this test assumes no emcc output
   def test_nostdlib(self):
-    # First ensure all the system libs are built
-    self.run_process([EMCC, test_file('unistd/close.c')])
-
     err = 'symbol exported via --export not found: __errno_location'
     self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nostdlib']))
     self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nodefaultlibs']))
@@ -11692,9 +11746,8 @@ exec "$@"
   def test_this_in_dyncall(self, args):
     self.do_run_in_out_file_test(test_file('no_this_in_dyncall.c'), emcc_args=['--js-library', test_file('no_this_in_dyncall.js')] + args)
 
-  @requires_v8
+  @requires_wasm64
   def test_this_in_dyncall_memory64(self):
-    self.v8_args += ['--experimental-wasm-memory64']
     self.do_run_in_out_file_test(test_file('no_this_in_dyncall.c'), emcc_args=['--js-library', test_file('no_this_in_dyncall.js'), '-sMEMORY64', '-Wno-experimental'])
 
   # Tests that dynCalls are produced in Closure-safe way in DYNCALLS mode when no actual dynCalls are used
@@ -12210,13 +12263,13 @@ void foo() {}
     cmd = [EMCC, test_file('other/test_dlopen_blocking.c')] + self.get_emcc_args()
     self.run_process(cmd)
     err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('Aborted(To use dlopen, you need enable dynamic linking, see https://emscripten.org/docs/compiling/Dynamic-Linking.html)', err)
+    self.assertContained('dlopen failed: dynamic linking not enabled', err)
 
     # If we build the same thing with ALLOW_UNIMPLEMENTED_SYSCALLS=0 we
     # expect a link-time failure rather than a runtime one.
     cmd += ['-sALLOW_UNIMPLEMENTED_SYSCALLS=0']
     err = self.expect_fail(cmd)
-    self.assertContained('To use dlopen, you need enable dynamic linking, see https://emscripten.org/docs/compiling/Dynamic-Linking.html', err)
+    self.assertContained('undefined symbol: dlopen', err)
 
   def test_unimplemented_syscalls_dladdr(self):
     create_file('main.c', '''
@@ -12332,22 +12385,22 @@ void foo() {}
 
     # With NODEJS_CATCH_REJECTION we expect the unhandled rejection to cause a non-zero
     # exit code and log the stack trace correctly.
-    self.run_process([EMCC, '--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION', 'main.c'])
-    output = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('unhandledRejection', read_file('a.out.js'))
+    self.build('main.c', emcc_args=['--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION'])
+    output = self.run_js('main.js', assert_returncode=NON_ZERO)
+    self.assertContained('unhandledRejection', read_file('main.js'))
     self.assertContained('ReferenceError: missing is not defined', output)
     self.assertContained('at foo (', output)
 
     # Without NODEJS_CATCH_REJECTION we expect node to log the unhandled rejection
     # but return 0.
     self.node_args = [a for a in self.node_args if '--unhandled-rejections' not in a]
-    self.run_process([EMCC, '--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION=0', 'main.c'])
-    self.assertNotContained('unhandledRejection', read_file('a.out.js'))
+    self.build('main.c', emcc_args=['--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION=0'])
+    self.assertNotContained('unhandledRejection', read_file('main.js'))
 
     if shared.check_node_version()[0] >= 15:
       self.skipTest('old behaviour of node JS cannot be tested on node v15 or above')
 
-    output = self.run_js('a.out.js')
+    output = self.run_js('main.js')
     self.assertContained('ReferenceError: missing is not defined', output)
     self.assertContained('at foo (', output)
 
@@ -12356,11 +12409,15 @@ void foo() {}
 
     # Same again with pthreads enabled
     self.setup_node_pthreads()
-    self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
+    self.do_other_test('test_default_pthread_stack_size.c')
 
     # Same again but with a custom stack size
     self.emcc_args += ['-DEXPECTED_STACK_SIZE=1024', '-sDEFAULT_PTHREAD_STACK_SIZE=1024']
-    self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
+    self.do_other_test('test_default_pthread_stack_size.c')
+
+    # Same again but with a --proxy-to-worker
+    self.emcc_args += ['--proxy-to-worker']
+    self.do_other_test('test_default_pthread_stack_size.c')
 
   def test_emscripten_set_immediate(self):
     self.do_runf(test_file('emscripten_set_immediate.c'))
@@ -12847,7 +12904,7 @@ int main() {
     self.assertNotIn(b'.debug', read_binary('hello_world.o'))
 
   @requires_v8
-  def test_stack_switching_size(self):
+  def test_jspi_code_size(self):
     # use iostream code here to purposefully get a fairly large wasm file, so
     # that our size comparisons later are meaningful
     create_file('main.cpp', r'''
@@ -13524,3 +13581,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_standalone_whole_archive(self):
     self.emcc_args += ['-sSTANDALONE_WASM', '-pthread', '-Wl,--whole-archive', '-lbulkmemory', '-lstandalonewasm', '-Wl,--no-whole-archive']
     self.do_runf(test_file('hello_world.c'))
+
+  def test_proxy_to_worker(self):
+    self.do_runf(test_file('hello_world.c'), emcc_args=['--proxy-to-worker'])

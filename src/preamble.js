@@ -494,7 +494,7 @@ function abort(what) {
 
 #include "memoryprofiler.js"
 
-#if ASSERTIONS && !('$FS' in addedLibraryItems) && !WASMFS
+#if ASSERTIONS && !('$FS' in addedLibraryItems)
 // show errors on likely calls to FS when it was not included
 var FS = {
   error: function() {
@@ -611,7 +611,7 @@ function instrumentWasmTableWithAbort() {
     var cached = wrapperCache[i];
     if (!cached || cached.func !== func) {
       cached = wrapperCache[i] = {
-        func: func,
+        func,
         wrapper: makeAbortWrapper(func)
       }
     }
@@ -630,6 +630,11 @@ if (Module['locateFile']) {
   }
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE // in single-file mode, repeating WASM_BINARY_FILE would emit the contents again
 } else {
+#if ENVIRONMENT_MAY_BE_SHELL
+  if (ENVIRONMENT_IS_SHELL)
+    wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
+  else
+#endif
   // Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
   wasmBinaryFile = new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).href;
 }

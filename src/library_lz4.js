@@ -37,7 +37,7 @@ mergeInto(LibraryManager.library, {
         FS.createPath('', dir, true, true);
         var parent = FS.analyzePath(dir).object;
         LZ4.createNode(parent, name, LZ4.FILE_MODE, 0, {
-          compressedData: compressedData,
+          compressedData,
           start: file.start,
           end: file.end,
         });
@@ -94,7 +94,7 @@ mergeInto(LibraryManager.library, {
           nlink: 1,
           uid: 0,
           gid: 0,
-          rdev: undefined,
+          rdev: 0,
           size: node.size,
           atime: new Date(node.timestamp),
           mtime: new Date(node.timestamp),

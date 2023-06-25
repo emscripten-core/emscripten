@@ -1097,7 +1097,7 @@ def get_subresource_location(path, data_uri=None):
     return os.path.basename(path)
 
 
-@ToolchainProfiler.profile_block('package_files')
+@ToolchainProfiler.profile()
 def package_files(options, target):
   rtn = []
   logger.debug('setting up files')
@@ -2297,6 +2297,12 @@ def phase_linker_setup(options, state, newargs):
   if not settings.GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS and settings.GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS:
     exit_with_error('-sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0 only makes sense with -sGL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0!')
 
+  if options.use_preload_plugins or len(options.preload_files) or len(options.embed_files):
+    if settings.NODERAWFS:
+      exit_with_error('--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem')
+    # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
+    settings.FORCE_FILESYSTEM = 1
+
   if settings.WASMFS:
     if settings.NODERAWFS:
       # wasmfs will be included normally in system_libs.py, but we must include
@@ -2308,30 +2314,48 @@ def phase_linker_setup(options, state, newargs):
     settings.FILESYSTEM = 1
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
     settings.JS_LIBRARIES.append((0, 'library_wasmfs.js'))
-    settings.REQUIRED_EXPORTS += ['_wasmfs_read_file']
-    if settings.FORCE_FILESYSTEM:
+    if settings.ASSERTIONS:
+      # used in assertion checks for unflushed content
+      settings.REQUIRED_EXPORTS += ['wasmfs_flush']
+    if settings.FORCE_FILESYSTEM or settings.INCLUDE_FULL_LIBRARY:
       # Add exports for the JS API. Like the old JS FS, WasmFS by default
       # includes just what JS parts it actually needs, and FORCE_FILESYSTEM is
       # required to force all of it to be included if the user wants to use the
-      # JS API directly.
+      # JS API directly. (INCLUDE_FULL_LIBRARY also causes this code to be
+      # included, as the entire JS library can refer to things that require
+      # these exports.)
       settings.REQUIRED_EXPORTS += [
+        '_wasmfs_read_file',
         '_wasmfs_write_file',
         '_wasmfs_open',
+        '_wasmfs_allocate',
         '_wasmfs_close',
+        '_wasmfs_write',
+        '_wasmfs_pwrite',
+        '_wasmfs_rename',
         '_wasmfs_mkdir',
         '_wasmfs_unlink',
         '_wasmfs_chdir',
+        '_wasmfs_mknod',
         '_wasmfs_rmdir',
         '_wasmfs_read',
         '_wasmfs_pread',
         '_wasmfs_symlink',
+        '_wasmfs_truncate',
+        '_wasmfs_ftruncate',
+        '_wasmfs_stat',
+        '_wasmfs_lstat',
         '_wasmfs_chmod',
         '_wasmfs_fchmod',
         '_wasmfs_lchmod',
+        '_wasmfs_utime',
+        '_wasmfs_llseek',
         '_wasmfs_identify',
+        '_wasmfs_readlink',
         '_wasmfs_readdir_start',
         '_wasmfs_readdir_get',
         '_wasmfs_readdir_finish',
+        '_wasmfs_get_cwd',
       ]
 
   if settings.FETCH and final_suffix in EXECUTABLE_ENDINGS:
@@ -2363,12 +2387,6 @@ def phase_linker_setup(options, state, newargs):
 
   if settings.SIDE_MODULE and 'GLOBAL_BASE' in user_settings:
     exit_with_error('GLOBAL_BASE is not compatible with SIDE_MODULE')
-
-  if options.use_preload_plugins or len(options.preload_files) or len(options.embed_files):
-    if settings.NODERAWFS:
-      exit_with_error('--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem')
-    # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
-    settings.FORCE_FILESYSTEM = 1
 
   if settings.PROXY_TO_WORKER or options.use_preload_plugins:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
@@ -2815,7 +2833,7 @@ def phase_linker_setup(options, state, newargs):
     settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in settings.ASYNCIFY_IMPORTS]
 
     if settings.ASYNCIFY == 2:
-      diagnostics.warning('experimental', 'ASYNCIFY with stack switching is experimental')
+      diagnostics.warning('experimental', '-sASYNCIFY=2 (JSPI) is still experimental')
 
   if settings.WASM2JS:
     if settings.GENERATE_SOURCE_MAP:
@@ -3103,7 +3121,7 @@ def phase_link(linker_arguments, wasm_target, js_syms):
   building.link_lld(linker_arguments, wasm_target, external_symbols=js_syms)
 
 
-@ToolchainProfiler.profile_block('post_link')
+@ToolchainProfiler.profile_block('post link')
 def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms):
   global final_js
 
@@ -3181,53 +3199,37 @@ def phase_memory_initializer(memfile):
   final_js += '.mem.js'
 
 
+def create_worker_file(input_file, target_dir, output_file):
+  output_file = os.path.join(target_dir, output_file)
+  input_file = utils.path_from_root(input_file)
+  contents = shared.read_and_preprocess(input_file, expand_macros=True)
+  write_file(output_file, contents)
+
+  # Minify the worker JS files file in optimized builds
+  if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
+    contents = building.acorn_optimizer(output_file, ['minifyWhitespace'], return_output=True)
+    write_file(output_file, contents)
+
+
 @ToolchainProfiler.profile_block('final emitting')
 def phase_final_emitting(options, state, target, wasm_target, memfile):
   global final_js
 
-  # Remove some trivial whitespace
-  # TODO: do not run when compress has already been done on all parts of the code
-  # src = read_file(final_js)
-  # src = re.sub(r'\n+[ \n]*\n+', '\n', src)
-  # write_file(final_js, src)
-
   target_dir = os.path.dirname(os.path.abspath(target))
   if settings.PTHREADS:
-    worker_output = os.path.join(target_dir, settings.PTHREAD_WORKER_FILE)
-    contents = shared.read_and_preprocess(utils.path_from_root('src/worker.js'), expand_macros=True)
-    write_file(worker_output, contents)
-
-    # Minify the worker.js file in optimized builds
-    if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
-      minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
-      write_file(worker_output, minified_worker)
+    create_worker_file('src/worker.js', target_dir, settings.PTHREAD_WORKER_FILE)
 
   # Deploy the Wasm Worker bootstrap file as an output file (*.ww.js)
   if settings.WASM_WORKERS == 1:
-    worker_output = os.path.join(target_dir, settings.WASM_WORKER_FILE)
-    contents = shared.read_and_preprocess(shared.path_from_root('src/wasm_worker.js'), expand_macros=True)
-    write_file(worker_output, contents)
-
-    # Minify the wasm_worker.js file in optimized builds
-    if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
-      minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
-      write_file(worker_output, minified_worker)
+    create_worker_file('src/wasm_worker.js', target_dir, settings.WASM_WORKER_FILE)
 
   # Deploy the Audio Worklet module bootstrap file (*.aw.js)
   if settings.AUDIO_WORKLET == 1:
-    worklet_output = os.path.join(target_dir, settings.AUDIO_WORKLET_FILE)
-    with open(worklet_output, 'w') as f:
-      f.write(shared.read_and_preprocess(shared.path_from_root('src', 'audio_worklet.js'), expand_macros=True))
-
-    # Minify the audio_worklet.js file in optimized builds
-    if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
-      minified_worker = building.acorn_optimizer(worklet_output, ['minifyWhitespace'], return_output=True)
-      open(worklet_output, 'w').write(minified_worker)
+    create_worker_file('src/audio_worklet.js', target_dir, settings.AUDIO_WORKLET_FILE)
 
   if settings.MODULARIZE:
     modularize()
-
-  if settings.USE_CLOSURE_COMPILER:
+  elif settings.USE_CLOSURE_COMPILER:
     module_export_name_substitution()
 
   # Run a final optimization pass to clean up items that were not possible to
@@ -3746,9 +3748,6 @@ def phase_binaryen(target, options, wasm_target):
     with ToolchainProfiler.profile_block('asyncify_lazy_load_code'):
       building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
 
-  def preprocess_wasm2js_script():
-    return read_and_preprocess(utils.path_from_root('src/wasm2js.js'), expand_macros=True)
-
   if final_js and (options.use_closure_compiler or settings.TRANSPILE_TO_ES5):
     if options.use_closure_compiler:
       with ToolchainProfiler.profile_block('closure_compile'):
@@ -3766,8 +3765,11 @@ def phase_binaryen(target, options, wasm_target):
   if settings.WASM2JS:
     symbols_file_js = None
     if settings.WASM == 2:
+      # With normal wasm2js mode this file gets included as part of the
+      # preamble, but with WASM=2 its a separate file.
+      wasm2js_polyfill = read_and_preprocess(utils.path_from_root('src/wasm2js.js'), expand_macros=True)
       wasm2js_template = wasm_target + '.js'
-      write_file(wasm2js_template, preprocess_wasm2js_script())
+      write_file(wasm2js_template, wasm2js_polyfill)
       # generate secondary file for JS symbols
       if options.emit_symbol_map:
         symbols_file_js = shared.replace_or_append_suffix(wasm2js_template, '.symbols')
@@ -3804,9 +3806,8 @@ def phase_binaryen(target, options, wasm_target):
   if options.emit_symbol_map:
     intermediate_debug_info -= 1
     if os.path.exists(wasm_target):
-      with ToolchainProfiler.profile_block('handle_final_symbols'):
-        building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
-        save_intermediate_with_wasm('symbolmap', wasm_target)
+      building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
+      save_intermediate_with_wasm('symbolmap', wasm_target)
 
   if settings.DEBUG_LEVEL >= 3 and settings.SEPARATE_DWARF and os.path.exists(wasm_target):
     building.emit_debug_on_side(wasm_target)
@@ -3861,7 +3862,10 @@ def modularize():
      shared.target_environment_may_be('web'):
     async_emit = 'async '
 
-  return_value = settings.EXPORT_NAME
+  # Return the incoming `moduleArg`.  This is is equeivielt to the `Module` var within the
+  # generated code but its not run through closure minifiection so we can reference it in
+  # the the return statement.
+  return_value = 'moduleArg'
   if settings.WASM_ASYNC_COMPILATION:
     return_value += '.ready'
   if not settings.EXPORT_READY_PROMISE:
@@ -3872,7 +3876,7 @@ def modularize():
     diagnostics.warning('emcc', 'EXPORT_NAME should not be named "config" when targeting Safari')
 
   src = '''
-%(maybe_async)sfunction(%(EXPORT_NAME)s = {})  {
+%(maybe_async)sfunction(moduleArg = {}) {
 
 %(src)s
 
@@ -3881,7 +3885,6 @@ def modularize():
 %(capture_module_function_for_audio_worklet)s
 ''' % {
     'maybe_async': async_emit,
-    'EXPORT_NAME': settings.EXPORT_NAME,
     'src': src,
     'return_value': return_value,
     # Given the async nature of how the Module function and Module object come into existence in AudioWorkletGlobalScope,
@@ -3943,6 +3946,7 @@ else if (typeof exports === 'object')
 
 
 def module_export_name_substitution():
+  assert not settings.MODULARIZE
   global final_js
   logger.debug(f'Private module export name substitution with {settings.EXPORT_NAME}')
   src = read_file(final_js)
@@ -4141,12 +4145,11 @@ def generate_html(target, options, js_target, target_basename,
 
 
 def generate_worker_js(target, js_target, target_basename):
-  # compiler output is embedded as base64
   if settings.SINGLE_FILE:
+    # compiler output is embedded as base64
     proxy_worker_filename = get_subresource_location(js_target)
-
-  # compiler output goes in .worker.js file
   else:
+    # compiler output goes in .worker.js file
     move_file(js_target, shared.replace_suffix(js_target, '.worker.js'))
     worker_target_basename = target_basename + '.worker'
     proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
@@ -4157,10 +4160,10 @@ def generate_worker_js(target, js_target, target_basename):
 
 def worker_js_script(proxy_worker_filename):
   web_gl_client_src = read_file(utils.path_from_root('src/webGLClient.js'))
-  idb_store_src = read_file(utils.path_from_root('src/IDBStore.js'))
-  proxy_client_src = read_file(utils.path_from_root('src/proxyClient.js'))
-  proxy_client_src = do_replace(proxy_client_src, '{{{ filename }}}', proxy_worker_filename)
-  proxy_client_src = do_replace(proxy_client_src, '{{{ IDBStore.js }}}', idb_store_src)
+  proxy_client_src = shared.read_and_preprocess(utils.path_from_root('src/proxyClient.js'), expand_macros=True)
+  if not os.path.dirname(proxy_worker_filename):
+    proxy_worker_filename = './' + proxy_worker_filename
+  proxy_client_src = do_replace(proxy_client_src, '<<< filename >>>', proxy_worker_filename)
   return web_gl_client_src + '\n' + proxy_client_src
 
 

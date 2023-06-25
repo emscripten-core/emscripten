@@ -19,9 +19,6 @@
 #if BUILD_AS_WORKER
 #error "pthreads + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854"
 #endif
-#if PROXY_TO_WORKER
-#error "--proxy-to-worker is not supported with -pthread! Use the option -sPROXY_TO_PTHREAD if you want to run the main thread of a multithreaded application in a web worker."
-#endif
 #if EVAL_CTORS
 #error "EVAL_CTORS is not compatible with pthreads yet (passive segments)"
 #endif
@@ -261,11 +258,6 @@ var LibraryPThread = {
       worker.onmessage = (e) => {
         var d = e['data'];
         var cmd = d['cmd'];
-        // Sometimes we need to backproxy events to the calling thread (e.g.
-        // HTML5 DOM events handlers such as
-        // emscripten_set_mousemove_callback()), so keep track in a globally
-        // accessible variable about the thread that initiated the proxying.
-        if (worker.pthread_ptr) PThread.currentProxiedOperationCallerThread = worker.pthread_ptr;
 
         // If this message is intended to a recipient that is not the main thread, forward it to the target thread.
         if (d['targetThread'] && d['targetThread'] != _pthread_self()) {
@@ -275,7 +267,6 @@ var LibraryPThread = {
           } else {
             err('Internal error! Worker sent a message "' + cmd + '" to target pthread ' + d['targetThread'] + ', but that thread no longer exists!');
           }
-          PThread.currentProxiedOperationCallerThread = undefined;
           return;
         }
 
@@ -305,10 +296,6 @@ var LibraryPThread = {
           }
 #endif
           onFinishedLoading(worker);
-        } else if (cmd === 'print') {
-          out('Thread ' + d['threadId'] + ': ' + d['text']);
-        } else if (cmd === 'printErr') {
-          err('Thread ' + d['threadId'] + ': ' + d['text']);
         } else if (cmd === 'alert') {
           alert('Thread ' + d['threadId'] + ': ' + d['text']);
         } else if (d.target === 'setimmediate') {
@@ -323,7 +310,6 @@ var LibraryPThread = {
           // recognized commands:
           err("worker sent an unknown command " + cmd);
         }
-        PThread.currentProxiedOperationCallerThread = undefined;
       };
 
       worker.onerror = (e) => {
@@ -1021,7 +1007,12 @@ var LibraryPThread = {
   emscripten_receive_on_main_thread_js__deps: [
     '$proxyToMainThread',
     '$emscripten_receive_on_main_thread_js_callArgs'],
-  emscripten_receive_on_main_thread_js: function(index, numCallArgs, args) {
+  emscripten_receive_on_main_thread_js: function(index, callingThread, numCallArgs, args) {
+    // Sometimes we need to backproxy events to the calling thread (e.g.
+    // HTML5 DOM events handlers such as
+    // emscripten_set_mousemove_callback()), so keep track in a globally
+    // accessible variable about the thread that initiated the proxying.
+    PThread.currentProxiedOperationCallerThread = callingThread;
 #if WASM_BIGINT
     numCallArgs /= 2;
 #endif

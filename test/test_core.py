@@ -224,11 +224,11 @@ def also_with_standalone_wasm(impure=False):
   return decorated
 
 
-def with_asyncify_and_stack_switching(f):
+def with_asyncify_and_jspi(f):
   assert callable(f)
 
-  def metafunc(self, stack_switching):
-    if stack_switching:
+  def metafunc(self, jspi):
+    if jspi:
       self.set_setting('ASYNCIFY', 2)
       self.require_jspi()
       if not self.is_wasm():
@@ -242,7 +242,7 @@ def with_asyncify_and_stack_switching(f):
       f(self)
 
   metafunc._parameterize = {'': (False,),
-                            'stack_switching': (True,)}
+                            'jspi': (True,)}
   return metafunc
 
 
@@ -2499,6 +2499,8 @@ int main(int argc, char **argv) {
 
   @no_wasm2js('massive switches can break js engines')
   def test_bigswitch(self):
+    if not self.is_optimizing():
+      self.skipTest('nodejs takes ~4GB to compile this if the wasm is not optimized, which OOMs')
     self.set_setting('USE_SDL')
     self.do_runf(test_file('bigswitch.cpp'), '''34962: GL_ARRAY_BUFFER (0x8892)
 26214: what?
@@ -5599,9 +5601,8 @@ Pass: 0.000012 0.000012''')
       # Sadly --closure=2 is not yet free of closure warnings
       # FIXME(https://github.com/emscripten-core/emscripten/issues/17080)
       self.ldflags.append('-Wno-error=closure')
-    elif self.maybe_closure():
-      # closure can generate variables called 'gc', which pick up js shell stuff
-      self.banned_js_engines = [config.SPIDERMONKEY_ENGINE]
+    else:
+      self.maybe_closure()
 
     self.emcc_args += ['--pre-js', 'pre.js']
     self.set_setting('FORCE_FILESYSTEM')
@@ -5680,6 +5681,7 @@ Module = {
   def test_getcwd_with_non_ascii_name(self):
     self.do_run_in_out_file_test('fs/test_getcwd_with_non_ascii_name.cpp')
 
+  @no_wasmfs('no support for /proc/self/fd/, see https://github.com/emscripten-core/emscripten/issues/19430')
   def test_proc_self_fd(self):
     self.do_run_in_out_file_test('fs/test_proc_self_fd.c')
 
@@ -5813,7 +5815,11 @@ Module = {
   def test_readdir_empty(self):
     self.do_run_in_out_file_test('dirent/test_readdir_empty.c')
 
+  def test_readdir_unlink(self):
+    self.do_run_in_out_file_test('dirent/test_readdir_unlink.c')
+
   def test_stat(self):
+    self.set_setting("FORCE_FILESYSTEM")
     self.do_runf(test_file('stat/test_stat.c'), 'success')
     self.verify_in_strict_mode('test_stat.js')
 
@@ -5830,6 +5836,8 @@ Module = {
 
   @also_with_wasmfs
   def test_fcntl(self):
+    if self.get_setting('WASMFS'):
+      self.emcc_args += ['-sFORCE_FILESYSTEM']
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl/test_fcntl.c')
 
@@ -5838,6 +5846,8 @@ Module = {
 
   @also_with_wasm_bigint
   def test_fcntl_misc(self):
+    if self.get_setting('WASMFS'):
+      self.emcc_args += ['-sFORCE_FILESYSTEM']
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl/test_fcntl_misc.c')
 
@@ -5864,8 +5874,8 @@ Module = {
     self.do_runf(test_file('utime', 'test_futimens.c'), 'success')
 
   @no_minimal_runtime('MINIMAL_RUNTIME does not have getValue() and setValue() (TODO add it to a JS library function to get it in)')
+  @requires_node  # only node handles utf well
   def test_utf(self):
-    self.banned_js_engines = [config.SPIDERMONKEY_ENGINE] # only node handles utf well
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc', '_free'])
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue', 'UTF8ToString', 'stringToUTF8'])
     self.do_core_test('test_utf.c')
@@ -5942,11 +5952,6 @@ Module = {
       self.set_setting('LINKABLE', linkable)
       self.do_core_test('test_istream.cpp')
 
-  def test_fs_dir_wasmfs(self):
-    self.emcc_args += ['-sWASMFS']
-    self.emcc_args += ['-sFORCE_FILESYSTEM']
-    self.do_runf(test_file('fs/test_dir.c'), 'success')
-
   def test_fs_base(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
     self.uses_es6 = True
@@ -6016,6 +6021,8 @@ Module = {
     self.do_runf(test_file('fs/test_fs_js_api.c'), 'success')
 
   def test_fs_write(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting("FORCE_FILESYSTEM")
     self.do_run_in_out_file_test('fs/test_write.cpp')
 
   @also_with_noderawfs
@@ -6862,6 +6869,9 @@ void* operator new(size_t size) {
   @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test
   def test_freetype(self):
+    if self.get_setting('WASMFS'):
+      self.emcc_args += ['-sFORCE_FILESYSTEM']
+
     self.add_pre_run("FS.createDataFile('/', 'font.ttf', %s, true, false, false);" % str(
       list(bytearray(read_binary(test_file('freetype/LiberationSansBold.ttf'))))
     ))
@@ -7199,18 +7209,23 @@ void* operator new(size_t size) {
     'minimal_runtime': ['-sMINIMAL_RUNTIME=1']
   })
   def test_dyncall_specific(self, *args):
-    if self.get_setting('WASM_BIGINT') or self.get_setting('MEMORY64'):
-      self.skipTest('not compatible with WASM_BIGINT')
+    if self.get_setting('MEMORY64'):
+      self.skipTest('not compatible with MEMORY64')
+    if self.get_setting('WASM_BIGINT'):
+      # define DYNCALLS because this test does test calling them directly, and
+      # in WASM_BIGINT mode we do not enable them by default (since we can do
+      # more without them - we don't need to legalize)
+      args = list(args) + ['-sDYNCALLS', '-DWASM_BIGINT']
     cases = [
         ('DIRECT', []),
-        ('DYNAMIC_SIG', ['-sDYNCALLS=1']),
+        ('DYNAMIC_SIG', ['-sDYNCALLS']),
       ]
     if '-sMINIMAL_RUNTIME=1' in args:
       self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
     else:
       cases += [
         ('EXPORTED', []),
-        ('EXPORTED_DYNAMIC_SIG', ['-sDYNCALLS=1', '-sEXPORTED_RUNTIME_METHODS=dynCall']),
+        ('EXPORTED_DYNAMIC_SIG', ['-sDYNCALLS', '-sEXPORTED_RUNTIME_METHODS=dynCall']),
         ('FROM_OUTSIDE', ['-sEXPORTED_RUNTIME_METHODS=dynCall_iiji'])
       ]
 
@@ -7292,7 +7307,7 @@ void* operator new(size_t size) {
 
     # When assertions are enabled direct and indirect usage both abort with a useful error message.
     not_exported = "Aborted('ALLOC_STACK' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ))"
-    not_included = "`ALLOC_STACK` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line (e.g. -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$ALLOC_STACK)"
+    not_included = "`ALLOC_STACK` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line (e.g. -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='$ALLOC_STACK')"
     self.set_setting('ASSERTIONS')
     test(not_exported, assert_returncode=NON_ZERO)
     test(not_included, args=['-DDIRECT'])
@@ -7760,6 +7775,7 @@ void* operator new(size_t size) {
     if self.maybe_closure():
       # avoid closure minified names competing with our test code in the global name space
       self.set_setting('MODULARIZE')
+      self.set_setting('EXPORT_NAME', 'createModule')
     else:
       self.set_setting('WASM_ASYNC_COMPILATION', 0)
 
@@ -7771,7 +7787,7 @@ void* operator new(size_t size) {
 
     post_js = '\n\n'
     if self.get_setting('MODULARIZE'):
-      post_js += 'var TheModule = Module();\n'
+      post_js += 'var TheModule = createModule();\n'
     else:
       post_js += 'var TheModule = Module;\n'
     post_js += '\n\n'
@@ -8132,11 +8148,11 @@ void* operator new(size_t size) {
     self.do_run_in_out_file_test('core/test_setlocale.c')
 
   def test_vswprintf_utf8(self):
-    self.do_run_in_out_file_test('vswprintf_utf8.c')
+    self.do_core_test('test_vswprintf_utf8.c')
 
   # Test that a main with arguments is automatically asyncified.
   @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
   def test_async_main(self):
     create_file('main.c',  r'''
 #include <stdio.h>
@@ -8150,7 +8166,7 @@ int main(int argc, char **argv) {
     self.do_runf('main.c', 'argc=2 argv=hello', args=['hello'])
 
   @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
   def test_async_hello(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
@@ -8175,7 +8191,7 @@ int main() {
     self.do_runf('main.c', 'HelloWorld!99')
 
   @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
   def test_async_loop(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
@@ -8231,7 +8247,7 @@ Module['onRuntimeInitialized'] = function() {
     self.do_runf('main.c', 'The call to main is running asynchronously.')
 
   @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
   def test_async_ccall_good(self):
     # check reasonable ccall use
     # needs to flush stdio streams
@@ -8308,7 +8324,7 @@ Module['onRuntimeInitialized'] = function() {
     self.do_runf(test_file('test_fibers.cpp'), '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
   @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
   def test_asyncify_unused(self):
     # test a program not using asyncify, but the pref is set
     self.do_core_test('test_hello_world.c')
@@ -8428,7 +8444,7 @@ Module['onRuntimeInitialized'] = function() {
   @no_lsan('undefined symbol __global_base')
   @no_wasm2js('dynamic linking support in wasm2js')
   @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
   def test_asyncify_main_module(self):
     self.set_setting('MAIN_MODULE', 2)
     self.do_core_test('test_hello_world.c')
@@ -8733,9 +8749,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
       assert ('require(' in js) == ('node' in self.get_setting('ENVIRONMENT')), 'we should have require() calls only if node js specified'
 
     for engine in config.JS_ENGINES:
-      print(engine)
+      print(f'engine: {engine}')
       # set us to test in just this engine
-      self.banned_js_engines = [e for e in config.JS_ENGINES if e != engine]
+      self.require_engine(engine)
       # tell the compiler to build with just that engine
       if engine == config.NODE_JS:
         right = 'node'
@@ -8815,9 +8831,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'streaming_inst': (['-sMINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION'],),
     'no_export': (['-sDECLARE_ASM_MODULE_EXPORTS=0'],)
   })
+  @requires_node  # TODO: Support for non-Node.js shells under MINIMAL_RUNTIME
   def test_minimal_runtime_hello_world(self, args):
-    # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
-    self.banned_js_engines = [config.V8_ENGINE, config.SPIDERMONKEY_ENGINE]
     self.emcc_args = args
     self.set_setting('MINIMAL_RUNTIME')
     self.maybe_closure()
@@ -9120,7 +9135,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_asan_modularized_with_closure(self):
     # the bug is that createModule() returns undefined, instead of the
     # proper Promise object.
-    create_file('post.js', 'if (!(createModule() instanceof Promise)) throw "Promise was not returned :(";\n')
+    create_file('post.js', 'if (!(createModule() instanceof Promise)) throw `Promise was not returned (${typeof createModule()})`;\n')
     self.emcc_args += ['-fsanitize=address', '--extern-post-js=post.js']
     self.set_setting('MODULARIZE')
     self.set_setting('EXPORT_NAME', 'createModule')
@@ -9672,7 +9687,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
   def test_em_async_js(self):
     self.uses_es6 = True
     if not self.get_setting('ASYNCIFY'):
@@ -9714,6 +9729,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('MIN_FIREFOX_VERSION', '79')
     self.set_setting('MIN_CHROME_VERSION', '85')
     self.do_core_test('test_promise.c')
+
+  @no_wasm64('TODO: asyncify for wasm64')
+  @with_asyncify_and_jspi
+  def test_promise_await(self):
+    self.do_core_test('test_promise_await.c')
+
+  def test_promise_await_error(self):
+    # Check that the API is not available when ASYNCIFY is not set
+    self.do_runf(test_file('core/test_promise_await.c'), 'Aborted(emscripten_promise_await is only available with ASYNCIFY)',
+                 assert_returncode=NON_ZERO)
 
   def test_emscripten_async_load_script(self):
     create_file('script1.js', 'Module._set(456);''')

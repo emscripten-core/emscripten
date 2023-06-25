@@ -18,8 +18,32 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.41 (in development)
+3.1.43 (in development)
 -----------------------
+
+3.1.42 - 06/22/23
+-----------------
+- The default minimum Node version of Emscripten output was bumped from 10.19 to
+  16.0. To run the output JS in an older version of node, you can use e.g.
+  `-sMIN_NODE_VERSION=101900` which will apply the previous minimum version of
+  10.19.0. (#19192).
+- The log message that emcc will sometime print (for example when auto-building
+  system libraries) can now be completely supressed by running with
+  `EMCC_LOGGING=0`.
+- Runtime dynamic linking symbols such as dlopen and dlsym will no longer cause
+  a linker error when building without `-sMAIN_MODULE`.  Instead stub functions
+  will be included that fail at runtime.  This matches the behaviour of other
+  libc functions that we don't implement.  For those that prefer to get a linker
+  error we have the `-sALLOW_UNIMPLEMENTED_SYSCALLS` settings. (#19527)
+- The `modifyFunction` helper in `parseTools.js` was renamed to
+  `modifyJSFunction` and its callback function no longer takes the name of the
+  function being modified.  The name is not relevant for JS library functions
+  and can be safely ignored.
+- JS library functions can now be implemented using ES6 arrow notation, which
+  can save to a few bytes on JS code size. (#19539)
+
+3.1.41 - 06/06/23
+-----------------
 - A new setting (`CHECK_NULL_WRITES`) was added to disabled the checking of
   address zero that is normally done when `STACK_OVERFLOW_CHECK` is enabled.
   (#19487)

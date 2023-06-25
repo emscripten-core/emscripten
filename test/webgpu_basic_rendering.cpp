@@ -75,7 +75,7 @@ void init() {
     wgpu::ShaderModule shaderModule{};
     {
         wgpu::ShaderModuleWGSLDescriptor wgslDesc{};
-        wgslDesc.source = shaderCode;
+        wgslDesc.code = shaderCode;
 
         wgpu::ShaderModuleDescriptor descriptor{};
         descriptor.nextInChain = &wgslDesc;

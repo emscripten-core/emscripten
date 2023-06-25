@@ -56,7 +56,8 @@ mergeInto(LibraryManager.library, {
   _wasmfs_node_readdir__deps: [
     '$wasmfsNodeConvertNodeCode',
     '$withStackSave',
-    '$stringToUTF8OnStack'
+    '$stringToUTF8OnStack',
+    '_wasmfs_node_record_dirent',
   ],
   _wasmfs_node_readdir: function(path_p, vec) {
     let path = UTF8ToString(path_p);

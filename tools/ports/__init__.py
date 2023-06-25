@@ -135,9 +135,10 @@ class Ports:
       srcs = [os.path.join(src_dir, s) for s in srcs]
     else:
       srcs = []
-      for root, _, files in os.walk(src_dir, topdown=False):
-        if any((excluded in root) for excluded in exclude_dirs):
-          continue
+      for root, dirs, files in os.walk(src_dir):
+        for ex in exclude_dirs:
+          if ex in dirs:
+            dirs.remove(ex)
         for f in files:
           ext = shared.suffix(f)
           if ext in ('.c', '.cpp') and not any((excluded in f) for excluded in exclude_files):
