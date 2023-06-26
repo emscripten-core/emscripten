@@ -2888,8 +2888,8 @@ int f() {
 
   def test_embind_tsgen(self):
     self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
-                      '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts.out'])
-    with open('embind_tsgen.d.ts.out') as actual:
+                      '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'])
+    with open('embind_tsgen.d.ts') as actual:
       self.assertFileContents(test_file('other/embind_tsgen.d.ts'), actual.read())
 
   def test_emconfig(self):
