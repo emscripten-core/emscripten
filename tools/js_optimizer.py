@@ -266,21 +266,9 @@ EMSCRIPTEN_FUNCS();
         return temp_file
       filenames = [write_chunk(chunk, i) for i, chunk in enumerate(chunks)]
 
-  if filenames:
-    with ToolchainProfiler.profile_block('run_optimizer'):
-      commands = [config.NODE_JS + [ACORN_OPTIMIZER, f] + passes for f in filenames]
-
-      if os.environ.get('EMCC_SAVE_OPT_TEMP') and os.environ.get('EMCC_SAVE_OPT_TEMP') != '0':
-        for filename in filenames:
-          saved = 'save_' + os.path.basename(filename)
-          while os.path.exists(saved):
-            saved = 'input' + str(int(saved.replace('input', '').replace('.txt', '')) + 1) + '.txt'
-          shutil.copyfile(filename, os.path.join(shared.get_emscripten_temp_dir(), saved))
-
-      filenames = shared.run_multiple_processes(commands, route_stdout_to_temp_files_suffix='js_opt.jo.js')
-
-    for filename in filenames:
-      temp_files.note(filename)
+  with ToolchainProfiler.profile_block('run_optimizer'):
+    commands = [config.NODE_JS + [ACORN_OPTIMIZER, f] + passes for f in filenames]
+    filenames = shared.run_multiple_processes(commands, route_stdout_to_temp_files_suffix='js_opt.jo.js')
 
   with ToolchainProfiler.profile_block('split_closure_cleanup'):
     if closure or cleanup:
