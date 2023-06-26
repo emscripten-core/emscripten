@@ -2098,7 +2098,9 @@ var LibraryEmbind = {
     invoker,
     rawConstructor
   ) {
+#if ASSERTIONS
     assert(argCount > 0);
+#endif
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     invoker = embind__requireFunction(invokerSignature, invoker);
     var args = [rawConstructor];
