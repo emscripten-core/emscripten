@@ -29,6 +29,13 @@ def safe_ensure_dirs(dirname):
   os.makedirs(dirname, exist_ok=True)
 
 
+# TODO(sbc): Replace with str.removeprefix once we update to python3.9
+def removeprefix(string, prefix):
+  if string.startswith(prefix):
+    return string[len(prefix):]
+  return string
+
+
 @contextlib.contextmanager
 def chdir(dir):
   """A context manager that performs actions in the given directory."""

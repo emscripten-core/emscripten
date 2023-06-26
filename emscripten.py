@@ -26,9 +26,9 @@ from tools import shared
 from tools import utils
 from tools import webassembly
 from tools import extract_metadata
-from tools.utils import exit_with_error, path_from_root
+from tools.utils import exit_with_error, path_from_root, removeprefix
 from tools.shared import DEBUG, asmjs_mangle
-from tools.shared import treat_as_user_function, strip_prefix
+from tools.shared import treat_as_user_function
 from tools.settings import settings
 
 logger = logging.getLogger('emscripten')
@@ -618,7 +618,7 @@ def create_em_js(metadata):
       args = []
     else:
       args = args.split(',')
-    arg_names = [arg.split()[-1].replace("*", "") for arg in args if arg]
+    arg_names = [arg.split()[-1].replace('*', '') for arg in args if arg]
     args = ','.join(arg_names)
     func = f'function {name}({args}) {body}'
     if (settings.MAIN_MODULE or settings.ASYNCIFY == 2) and name in metadata.emJsFuncTypes:
@@ -847,7 +847,7 @@ def create_invoke_wrappers(metadata):
   """Asm.js-style exception handling: invoke wrapper generation."""
   invoke_wrappers = ''
   for invoke in metadata.invokeFuncs:
-    sig = strip_prefix(invoke, 'invoke_')
+    sig = removeprefix(invoke, 'invoke_')
     invoke_wrappers += '\n' + js_manipulation.make_invoke(sig) + '\n'
   return invoke_wrappers
 
