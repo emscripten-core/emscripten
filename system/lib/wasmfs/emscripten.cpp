@@ -53,7 +53,8 @@ std::string getPath(int fd) {
 
 } // namespace wasmfs
 
-extern "C"
+extern "C" {
+
 char *emscripten_get_preloaded_image_data_from_FILE(FILE *file,
                                                     int *w,
                                                     int *h) {
@@ -65,3 +66,22 @@ char *emscripten_get_preloaded_image_data_from_FILE(FILE *file,
   auto path = wasmfs::getPath(fd);
   return emscripten_get_preloaded_image_data(path.c_str(), w, h);
 }
+
+void emscripten_wget(const char* url, const char* file) {
+  void* buffer;
+  int num;
+  int error;
+  emscripten_wget_data(url, &buffer, &num, &error);
+  if (error) {
+    return;
+  }
+  // TODO: the JS FS API also did FS.mkdirTree() for the parent dir
+  FILE* f = fopen(file, "w");
+  if (!f) {
+    return;
+  }
+  fwrite(buffer, num, 1, f);
+  fclose(f);
+}
+
+} // extern "C"

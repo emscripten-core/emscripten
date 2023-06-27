@@ -462,6 +462,7 @@ mergeInto(LibraryManager.library, {
     return Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms));
   },
 
+#if !WASMFS
   emscripten_wget__deps: ['$Browser', '$PATH_FS', '$FS'],
   emscripten_wget__async: true,
   emscripten_wget: function(url, file) {
@@ -489,6 +490,7 @@ mergeInto(LibraryManager.library, {
       );
     });
   },
+#endif
 
   emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
   emscripten_wget_data__async: true,
