@@ -2531,6 +2531,8 @@ Success!''')
   @no_ubsan('local count too large for VMs')
   @no_wasm2js('extremely deep nesting, hits stack limit on some VMs')
   def test_indirectbr_many(self):
+    if not self.is_optimizing():
+      self.skipTest('nodejs takes ~1.8GB to compile this if the wasm is not optimized, which can cause OOM on the test runners')
     self.do_core_test('test_indirectbr_many.c')
 
   def test_pack(self):
@@ -9823,12 +9825,12 @@ cores = make_run('cores', emcc_args=['-Os'])
 corez = make_run('corez', emcc_args=['-Oz'])
 
 # MEMORY64=1
-wasm64 = make_run('wasm64', emcc_args=['-Wno-experimental', '--profiling-funcs'],
+wasm64 = make_run('wasm64', emcc_args=['-O1', '-Wno-experimental', '--profiling-funcs'],
                   settings={'MEMORY64': 1}, require_wasm64=True, require_node=True)
 wasm64_v8 = make_run('wasm64_v8', emcc_args=['-Wno-experimental', '--profiling-funcs'],
                      settings={'MEMORY64': 1}, require_wasm64=True, require_v8=True)
 # MEMORY64=2, or "lowered"
-wasm64l = make_run('wasm64l', emcc_args=['-Wno-experimental', '--profiling-funcs'],
+wasm64l = make_run('wasm64l', emcc_args=['-O1', '-Wno-experimental', '--profiling-funcs'],
                    settings={'MEMORY64': 2},
                    node_args=shared.node_bigint_flags())
 
