@@ -37,9 +37,7 @@ func_sig_json = re.compile(r'\["defun", ?"([_\w$]+)",')
 import_sig = re.compile(r'(var|const) ([_\w$]+ *=[^;]+);')
 
 
-def split_funcs(js, just_split=False):
-  if just_split:
-    return [('(json)', line) for line in js.splitlines()]
+def split_funcs(js):
   # split properly even if there are no newlines,
   # which is important for deterministic builds (as which functions
   # are in each chunk may differ, so we need to split them up and combine
@@ -141,7 +139,7 @@ def chunkify(funcs, chunk_size):
   return [''.join(func[1] for func in chunk) for chunk in chunks] # remove function names
 
 
-def run_on_js(filename, passes, extra_info=None, just_split=False, just_concat=False):
+def run_on_js(filename, passes, extra_info=None):
   with ToolchainProfiler.profile_block('js_optimizer.split_markers'):
     if not isinstance(passes, list):
       passes = [passes]
@@ -230,20 +228,16 @@ EMSCRIPTEN_FUNCS();
 
   with ToolchainProfiler.profile_block('js_optimizer.split'):
     total_size = len(js)
-    funcs = split_funcs(js, just_split)
+    funcs = split_funcs(js)
     js = None
 
   with ToolchainProfiler.profile_block('js_optimizer.split_to_chunks'):
     # if we are making source maps, we want our debug numbering to start from the
     # top of the file, so avoid breaking the JS into chunks
 
-    if just_split:
-      # keep same chunks as before
-      chunks = [f[1] for f in funcs]
-    else:
-      intended_num_chunks = round(shared.get_num_cores() * NUM_CHUNKS_PER_CORE)
-      chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
-      chunks = chunkify(funcs, chunk_size)
+    intended_num_chunks = round(shared.get_num_cores() * NUM_CHUNKS_PER_CORE)
+    chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
+    chunks = chunkify(funcs, chunk_size)
 
     chunks = [chunk for chunk in chunks if chunk]
     if DEBUG:
@@ -326,28 +320,23 @@ EMSCRIPTEN_FUNCS();
       pre = None
 
     with ToolchainProfiler.profile_block('sort_or_concat'):
-      if not just_concat:
-        # sort functions by size, to make diffing easier and to improve aot times
-        funcses = []
-        for out_file in filenames:
-          funcses.append(split_funcs(utils.read_file(out_file), False))
-        funcs = [item for sublist in funcses for item in sublist]
-        funcses = None
-        if not os.environ.get('EMCC_NO_OPT_SORT'):
-          funcs.sort(key=lambda x: (len(x[1]), x[0]), reverse=True)
+      # sort functions by size, to make diffing easier and to improve aot times
+      funcses = []
+      for out_file in filenames:
+        funcses.append(split_funcs(utils.read_file(out_file)))
+      funcs = [item for sublist in funcses for item in sublist]
+      funcses = None
+      if not os.environ.get('EMCC_NO_OPT_SORT'):
+        funcs.sort(key=lambda x: (len(x[1]), x[0]), reverse=True)
 
-        if 'last' in passes and len(funcs):
-          count = funcs[0][1].count('\n')
-          if count > 3000:
-            print('warning: Output contains some very large functions (%s lines in %s), consider building source files with -Os or -Oz)' % (count, funcs[0][0]), file=sys.stderr)
+      if 'last' in passes and len(funcs):
+        count = funcs[0][1].count('\n')
+        if count > 3000:
+          print('warning: Output contains some very large functions (%s lines in %s), consider building source files with -Os or -Oz)' % (count, funcs[0][0]), file=sys.stderr)
 
-        for func in funcs:
-          f.write(func[1])
-        funcs = None
-      else:
-        # just concat the outputs
-        for out_file in filenames:
-          f.write(utils.read_file(out_file))
+      for func in funcs:
+        f.write(func[1])
+      funcs = None
 
     with ToolchainProfiler.profile_block('write_post'):
       f.write('\n')
@@ -359,9 +348,7 @@ EMSCRIPTEN_FUNCS();
 
 @ToolchainProfiler.profile_block('js_optimizer.run_on_js')
 def run(filename, passes, extra_info=None):
-  just_split = 'receiveJSON' in passes
-  just_concat = 'emitJSON' in passes
-  return run_on_js(filename, passes, extra_info=extra_info, just_split=just_split, just_concat=just_concat)
+  return run_on_js(filename, passes, extra_info=extra_info)
 
 
 def main():
