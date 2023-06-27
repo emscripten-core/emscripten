@@ -436,6 +436,7 @@ mergeInto(LibraryManager.library, {
   // time.h
   // ==========================================================================
 
+  _mktime_js__i53abi: true,
   _mktime_js__deps: ['$ydayFromDate'],
   _mktime_js: (tmPtr) => {
     var date = new Date({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
@@ -476,12 +477,11 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getMonth()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getYear()', 'i32') }}};
 
-    return {{{ makeReturn64('date.getTime() / 1000') }}};
+    return date.getTime() / 1000;
   },
 
-  _gmtime_js__deps: ['$readI53FromI64'].concat(i53ConversionDeps),
-  _gmtime_js: ({{{ defineI64Param('time') }}}, tmPtr) => {
-    {{{ receiveI64ParamAsI53('time') }}}
+  _gmtime_js__i53abi: true,
+  _gmtime_js: (time, tmPtr) => {
     var date = new Date(time * 1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getUTCMinutes()', 'i32') }}};
@@ -495,6 +495,7 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
   },
 
+  _timegm_js__i53abi: true,
   _timegm_js: (tmPtr) => {
     var time = Date.UTC({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
@@ -510,12 +511,12 @@ mergeInto(LibraryManager.library, {
     var yday = ((date.getTime() - start) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
 
-    return {{{ makeReturn64('date.getTime() / 1000') }}};
+    return date.getTime() / 1000;
   },
 
-  _localtime_js__deps: ['$readI53FromI64', '$ydayFromDate'].concat(i53ConversionDeps),
-  _localtime_js: ({{{ defineI64Param('time') }}}, tmPtr) => {
-    {{{ receiveI64ParamAsI53('time') }}}
+  _localtime_js__i53abi: true,
+  _localtime_js__deps: ['$ydayFromDate'],
+  _localtime_js: (time, tmPtr) => {
     var date = new Date(time*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getMinutes()', 'i32') }}};
