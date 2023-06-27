@@ -25,7 +25,7 @@
 /*global throwInstanceAlreadyDeleted, shallowCopyInternalPointer*/
 /*global RegisteredPointer_fromWireType, constNoSmartPtrRawPointerToWireType, nonConstNoSmartPtrRawPointerToWireType, genericPointerToWireType*/
 
-#include embind/embind_shared.js
+#include "embind/embind_shared.js"
 
 var LibraryEmbind = {
   $UnboundTypeError__postset: "UnboundTypeError = Module['UnboundTypeError'] = extendError(Error, 'UnboundTypeError');",

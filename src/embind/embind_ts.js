@@ -2,7 +2,7 @@
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
-#include embind/embind_shared.js
+#include "embind/embind_shared.js"
 
 var LibraryEmbind = {
 
@@ -46,7 +46,7 @@ var LibraryEmbind = {
     }
 
     printModuleEntry(nameMap, out) {
-      out.push("  ");
+      out.push('  ');
       this.printFunction(nameMap, out);
     }
   },
@@ -66,13 +66,13 @@ var LibraryEmbind = {
       if (this.base) {
         out.push(` extends ${this.base.name}`);
       }
-      out.push(" {\n");
+      out.push(' {\n');
       for (let method of this.methods) {
-        out.push("  ");
+        out.push('  ');
         method.printFunction(nameMap, out);
       }
-      out.push("  delete(): void;\n");
-      out.push("}\n\n");
+      out.push('  delete(): void;\n');
+      out.push('}\n\n');
     }
 
     printModuleEntry(nameMap, out) {
@@ -88,25 +88,25 @@ var LibraryEmbind = {
       this.definitions = definitions;
       const jsString = 'ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string';
       this.builtInToJsName = new Map([
-        ["bool", "boolean"],
-        ["char", "number"],
-        ["unsigned char", "number"],
-        ["int", "number"],
-        ["unsigned int", "number"],
-        ["unsigned long", "number"],
-        ["float", "number"],
-        ["double", "number"],
-        ["void", "void"],
-        ["std::string", jsString],
-        ["std::basic_string<unsigned char>", jsString],
-        ["emscripten::val", "any"],
+        ['bool', 'boolean'],
+        ['char', 'number'],
+        ['unsigned char', 'number'],
+        ['int', 'number'],
+        ['unsigned int', 'number'],
+        ['unsigned long', 'number'],
+        ['float', 'number'],
+        ['double', 'number'],
+        ['void', 'void'],
+        ['std::string', jsString],
+        ['std::basic_string<unsigned char>', jsString],
+        ['emscripten::val', 'any'],
       ]);
     }
 
     typeToJsName(type) {
       if (type instanceof PrimitiveType) {
         if (!this.builtInToJsName.has(type.name)) {
-          throw new Error(`Missing primitive type to TS type for "${type.name}"`);
+          throw new Error(`Missing primitive type to TS type for '${type.name}'`);
         }
         return this.builtInToJsName.get(type.name)
       }
@@ -114,22 +114,22 @@ var LibraryEmbind = {
     }
 
     print() {
-      var out = [];
-      for (let def of this.definitions) {
+      const out = [];
+      for (const def of this.definitions) {
         if (!def.print) {
           continue;
         }
         def.print(this.typeToJsName.bind(this), out);
       }
       // Print module definitions
-      out.push("export interface MainModule {\n");
-      for (let def of this.definitions) {
+      out.push('export interface MainModule {\n');
+      for (const def of this.definitions) {
         if (!def.printModuleEntry) {
           continue;
         }
         def.printModuleEntry(this.typeToJsName.bind(this), out);
       }
-      out.push("}");
+      out.push('}');
       console.log(out.join(''));
     }
   },
@@ -272,5 +272,7 @@ var LibraryEmbind = {
     printer.print();
   },
 };
+
+DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$embindEmitTypes');
 
 mergeInto(LibraryManager.library, LibraryEmbind);

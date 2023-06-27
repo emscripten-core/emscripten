@@ -1346,7 +1346,7 @@ def phase_calculate_linker_inputs(options, state, linker_inputs):
   state.link_flags = filter_link_flags(state.link_flags, using_lld)
 
   # Decide what we will link
-  process_libraries(state, linker_inputs, options)
+  process_libraries(state, linker_inputs, options.embind_emit_tsd)
 
   linker_args = [val for _, val in sorted(linker_inputs + state.link_flags)]
 
@@ -2497,7 +2497,7 @@ def phase_linker_setup(options, state, newargs):
     ]
 
   if options.embind_emit_tsd:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$embindEmitTypes']
+    # TODO: Remove after #19759 is resolved.
     settings.REQUIRED_EXPORTS += ['free']
 
   def check_memory_setting(setting):
@@ -4186,7 +4186,7 @@ def find_library(lib, lib_dirs):
   return None
 
 
-def process_libraries(state, linker_inputs, options):
+def process_libraries(state, linker_inputs, embind_emit_tsd):
   new_flags = []
   libraries = []
   suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
@@ -4201,7 +4201,7 @@ def process_libraries(state, linker_inputs, options):
 
     logger.debug('looking for library "%s"', lib)
 
-    js_libs, native_lib = building.map_to_js_libs(lib, options.embind_emit_tsd)
+    js_libs, native_lib = building.map_to_js_libs(lib, embind_emit_tsd)
     if js_libs is not None:
       libraries += [(i, js_lib) for js_lib in js_libs]
       # If native_lib is returned then include it in the link

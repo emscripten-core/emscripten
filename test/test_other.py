@@ -2889,8 +2889,8 @@ int f() {
   def test_embind_tsgen(self):
     self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'])
-    with open('embind_tsgen.d.ts') as actual:
-      self.assertFileContents(test_file('other/embind_tsgen.d.ts'), actual.read())
+    actual = read_file('embind_tsgen.d.ts')
+    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), actual)
 
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
