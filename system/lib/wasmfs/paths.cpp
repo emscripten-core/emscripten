@@ -170,4 +170,29 @@ ParsedFile getFileFrom(std::shared_ptr<Directory> base, std::string_view path) {
   return doParseFile(path, base, FollowLinks, recursions);
 }
 
+std::vector<std::string_view> splitPath(std::string_view path) {
+  std::vector<std::string_view> ret;
+  while (true) {
+    // Skip any leading '/' for each segment.
+    while (!path.empty() && path.front() == '/') {
+      path.remove_prefix(1);
+    }
+
+    // If this is the leaf segment, return.
+    size_t segment_end = path.find_first_of('/');
+    if (segment_end == std::string_view::npos) {
+      ret.push_back(path);
+      return ret;
+    }
+
+    // Continue to the child segment.
+    auto segment = path.substr(0, segment_end);
+    if (!segment.empty()) {
+      ret.push_back(segment);
+    }
+    path.remove_prefix(segment_end);
+  }
+  return ret;
+}
+
 } // namespace wasmfs::path

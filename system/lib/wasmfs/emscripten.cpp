@@ -13,11 +13,13 @@
 
 #include <emscripten.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include <string>
 
 #include "file.h"
 #include "file_table.h"
+#include "paths.h"
 #include "wasmfs.h"
 
 namespace wasmfs {
@@ -68,6 +70,24 @@ char *emscripten_get_preloaded_image_data_from_FILE(FILE *file,
 }
 
 void emscripten_wget(const char* url, const char* file) {
+  // Create the ancestor directories.
+  auto segments = wasmfs::path::splitPath(file);
+  if (segments.empty()) {
+    return;
+  }
+  std::string currParent;
+  for (size_t i = 0; i < segments.size() - 1; i++) {
+    currParent += segments[i];
+    currParent += '/';
+    int result = mkdir(currParent.c_str(), 0777);
+    // Continue while we succeed in creating directories or while we see that
+    // they already exist.
+    if (result < 0 && errno != EEXIST) {
+      return;
+    }
+  }
+
+  // Fetch the data.
   void* buffer;
   int num;
   int error;
@@ -75,13 +95,14 @@ void emscripten_wget(const char* url, const char* file) {
   if (error) {
     return;
   }
-  // TODO: the JS FS API also did FS.mkdirTree() for the parent dir
+
+  // Write the data.
   FILE* f = fopen(file, "w");
-  if (!f) {
-    return;
+  if (f) {
+    fwrite(buffer, num, 1, f);
+    fclose(f);
   }
-  fwrite(buffer, num, 1, f);
-  fclose(f);
+  free(buffer);
 }
 
 } // extern "C"
