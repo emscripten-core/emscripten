@@ -620,10 +620,10 @@ jobs:
             export PATH="`pwd`/node-v18.12.0-linux-x64/bin:${PATH}"
             npm install jsvu -g
             jsvu --os=default --engines=spidermonkey
-            echo "JSC_ENGINE = [os.path.expanduser('~/.jsvu/bin/spidermonkey')]" >> ~/emsdk/.emscripten
-            echo "JS_ENGINES = [JSC_ENGINE]" >> ~/emsdk/.emscripten
+            echo "SPIDERMONKEY_ENGINE = [os.path.expanduser('~/.jsvu/bin/spidermonkey')]" >> ~/emsdk/.emscripten
+            echo "JS_ENGINES = [SPIDERMONKEY_ENGINE]" >> ~/emsdk/.emscripten
       - run-tests:
-          test_targets: "core0.test_hello_world"
+          test_targets: "core0.test_hello_world core2.test_demangle_stacks_symbol_map"
   test-node-compat:
     # We don't use `bionic` here since its tool old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`

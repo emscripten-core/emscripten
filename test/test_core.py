@@ -7436,6 +7436,7 @@ void* operator new(size_t size) {
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$stackTrace')
 
     self.set_setting('DEMANGLE_SUPPORT')
+    self.set_setting('ENVIRONMENT', 'node,shell')
     if '-O' not in str(self.emcc_args) or '-O0' in self.emcc_args or '-O1' in self.emcc_args or '-g' in self.emcc_args:
       self.skipTest("without opts, we don't emit a symbol map")
     self.emcc_args += ['--emit-symbol-map']
@@ -7443,7 +7444,7 @@ void* operator new(size_t size) {
     # make sure the shortened name is the right one
     full_aborter = None
     short_aborter = None
-    for line in open('test_demangle_stacks.js.symbols').readlines():
+    for line in read_file('test_demangle_stacks.js.symbols').splitlines():
       if ':' not in line:
         continue
       # split by the first ':' (wasm backend demangling may include more :'s later on)
@@ -7454,7 +7455,7 @@ void* operator new(size_t size) {
     self.assertIsNotNone(full_aborter)
     self.assertIsNotNone(short_aborter)
     print('full:', full_aborter, 'short:', short_aborter)
-    if config.SPIDERMONKEY_ENGINE and os.path.exists(config.SPIDERMONKEY_ENGINE[0]):
+    if config.SPIDERMONKEY_ENGINE:
       output = self.run_js('test_demangle_stacks.js', engine=config.SPIDERMONKEY_ENGINE, assert_returncode=NON_ZERO)
       # we may see the full one, if -g, or the short one if not
       if ' ' + short_aborter + ' ' not in output and ' ' + full_aborter + ' ' not in output:
