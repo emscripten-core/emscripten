@@ -107,7 +107,7 @@ int main() {
   assert(alignof(long double) == 8);
   assert(alignof(max_align_t) == 8);
   // __BIGGEST_ALIGNMENT__ corresponds to the default stack alignment
-  // used by llvm.  Unlike `alignof(max_align_t)` it include SIMD types.
+  // used by llvm.  Unlike `alignof(max_align_t)` it includes SIMD types.
   // We use this in emscripten as our default stack alignment.
   assert(__BIGGEST_ALIGNMENT__ == 16);
   assert(__FLT_EVAL_METHOD__ == 0);
