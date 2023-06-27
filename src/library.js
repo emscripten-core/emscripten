@@ -3707,7 +3707,7 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
 #endif
 
 function wrapSyscallFunction(x, library, isWasi) {
-  if (x[0] === '$' || isJsLibraryConfigIdentifier(x)) {
+  if (isJsOnlySymbol(x) || isDecorator(x)) {
     return;
   }
 
