@@ -42,14 +42,14 @@ int main(int argc, char* argv[]) {
         if (fseek(fp, 0L, SEEK_END) == 0) {
             /* Get the size of the file. */
             bufsize = ftell(fp);
-            if (bufsize == -1) { fputs("Couldn't get size\n", stderr); return (EXIT_FAILURE); }
+            if (bufsize == -1) { fputs("Couldn't get size\n", stderr); fclose(fp); return (EXIT_FAILURE); }
     
             /* Allocate our buffer to that size. */
             source = malloc(sizeof(char) * (bufsize + 1));
-            if (source == NULL) { fputs("Couldn't allocate\n", stderr); return (EXIT_FAILURE); }
+            if (source == NULL) { fputs("Couldn't allocate\n", stderr); fclose(fp); return (EXIT_FAILURE); }
     
             /* Go back to the start of the file. */
-            if (fseek(fp, 0L, SEEK_SET) == -1) { fputs("Couldn't seek\n", stderr); return (EXIT_FAILURE); }
+            if (fseek(fp, 0L, SEEK_SET) == -1) { fputs("Couldn't seek\n", stderr);  fclose(fp); return (EXIT_FAILURE); }
     
             /* Read the entire file into memory. */
             size_t newLen = fread(source, sizeof(char), bufsize, fp);
