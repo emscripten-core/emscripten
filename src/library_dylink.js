@@ -351,7 +351,7 @@ var LibraryDylink = {
   // Allocate memory even if malloc isn't ready yet.  The allocated memory here
   // must be zero initialized since its used for all static data, including bss.
   $getMemory__noleakcheck: true,
-  $getMemory__deps: ['$GOT', '__heap_base', '$zeroMemory', 'malloc'],
+  $getMemory__deps: ['$GOT', '__heap_base', '$zeroMemory', '$alignMemory', 'malloc'],
   $getMemory: function(size) {
     // After the runtime is initialized, we must only use sbrk() normally.
 #if DYLINK_DEBUG
@@ -364,7 +364,8 @@ var LibraryDylink = {
       return zeroMemory(_malloc(size), size);
     }
     var ret = ___heap_base;
-    var end = (ret + size + 15) & -16;
+    // Keep __heap_base stack aligned.
+    var end = ret + alignMemory(size, {{{ STACK_ALIGN }}});
 #if ASSERTIONS
     assert(end <= HEAP8.length, 'failure to getMemory - memory growth etc. is not supported there, call malloc/sbrk directly or increase INITIAL_MEMORY');
 #endif
@@ -587,8 +588,7 @@ var LibraryDylink = {
     '$loadDynamicLibrary', '$getMemory',
     '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler',
     '$getDylinkMetadata', '$alignMemory', '$zeroMemory',
-    '$alignMemory', '$zeroMemory',
-    '$currentModuleWeakSymbols', '$alignMemory', '$zeroMemory',
+    '$currentModuleWeakSymbols',
     '$updateTableMap',
   ],
   $loadWebAssemblyModule: function(binary, flags, libName, localScope, handle) {
@@ -615,8 +615,6 @@ var LibraryDylink = {
       if (firstLoad) {
         // alignments are powers of 2
         var memAlign = Math.pow(2, metadata.memoryAlign);
-        // finalize alignments and verify them
-        memAlign = Math.max(memAlign, {{{ STACK_ALIGN }}}); // we at least need stack alignment
         // prepare memory
         var memoryBase = metadata.memorySize ? alignMemory(getMemory(metadata.memorySize + memAlign), memAlign) : 0; // TODO: add to cleanups
         var tableBase = metadata.tableSize ? wasmTable.length : 0;
