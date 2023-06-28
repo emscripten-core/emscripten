@@ -200,7 +200,7 @@ mergeInto(LibraryManager.library, {
   emscripten_resize_heap: (requestedSize) => {
     var oldSize = HEAPU8.length;
 #if MEMORY64 != 1
-    requestedSize = requestedSize >>> 0;
+    requestedSize >>>= 0;
 #endif
 #if ALLOW_MEMORY_GROWTH == 0
 #if ABORTING_MALLOC
@@ -3090,7 +3090,7 @@ mergeInto(LibraryManager.library, {
   // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
   __handle_stack_overflow__deps: ['emscripten_stack_get_base', 'emscripten_stack_get_end', '$ptrToString'],
   __handle_stack_overflow: (requested) => {
-    requested = requested >>> 0;
+    requested >>>= 0;
     var base = _emscripten_stack_get_base();
     var end = _emscripten_stack_get_end();
     abort(`stack overflow (Attempt to set SP to ${ptrToString(requested)}` +

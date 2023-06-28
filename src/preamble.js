@@ -991,8 +991,8 @@ function createWasm() {
     reportUndefinedSymbols();
 #endif
 
-#if MEMORY64
-    exports = instrumentWasmExportsForMemory64(exports);
+#if MEMORY64 || CAN_ADDRESS_2GB
+    exports = applySignatureConversions(exports);
 #endif
 
     Module['asm'] = exports;

@@ -838,8 +838,8 @@ def create_module(receiving, metadata, library_symbols):
     module.append(create_invoke_wrappers(metadata))
   else:
     assert not metadata.invokeFuncs, "invoke_ functions exported but exceptions and longjmp are both disabled"
-  if settings.MEMORY64:
-    module.append(create_wasm64_wrappers(metadata))
+  if settings.MEMORY64 or settings.CAN_ADDRESS_2GB:
+    module.append(create_pointer_conversion_wrappers(metadata))
   return module
 
 
@@ -852,7 +852,7 @@ def create_invoke_wrappers(metadata):
   return invoke_wrappers
 
 
-def create_wasm64_wrappers(metadata):
+def create_pointer_conversion_wrappers(metadata):
   # TODO(sbc): Move this into somewhere less static.  Maybe it can become
   # part of library.js file, even though this metadata relates specifically
   # to native (non-JS) functions.
@@ -902,26 +902,34 @@ def create_wasm64_wrappers(metadata):
     'emscripten_wasm_worker_initialize': '_p_',
   }
 
-  wasm64_wrappers = '''
-function instrumentWasmExportsForMemory64(exports) {
+  wrappers = '''
+function applySignatureConversions(exports) {
   // First, make a copy of the incoming exports object
-  exports = Object.assign({}, exports);'''
+  exports = Object.assign({}, exports);
+'''
 
   sigs_seen = set()
   wrap_functions = []
-  for exp in metadata.exports:
-    sig = mapping.get(exp)
+  for symbol in metadata.exports:
+    sig = mapping.get(symbol)
     if sig:
-      if sig not in sigs_seen:
-        sigs_seen.add(sig)
-        wasm64_wrappers += js_manipulation.make_wasm64_wrapper(sig)
-      wrap_functions.append(exp)
+      if settings.MEMORY64:
+        if sig not in sigs_seen:
+          wrappers += js_manipulation.make_wasm64_wrapper(sig)
+          sigs_seen.add(sig)
+        wrap_functions.append(symbol)
+      elif sig[0] == 'p':
+        if sig not in sigs_seen:
+          wrappers += js_manipulation.make_unsign_pointer_wrapper(sig)
+          sigs_seen.add(sig)
+        wrap_functions.append(symbol)
 
   for f in wrap_functions:
     sig = mapping[f]
-    wasm64_wrappers += f"\n  exports['{f}'] = wasm64Wrapper_{sig}(exports['{f}']);"
-  wasm64_wrappers += '\n  return exports\n}'
-  return wasm64_wrappers
+    wrappers += f"\n  exports['{f}'] = makeWrapper_{sig}(exports['{f}']);"
+  wrappers += '\n  return exports\n}'
+
+  return wrappers
 
 
 def run(in_wasm, out_wasm, outfile_js, memfile, js_syms):

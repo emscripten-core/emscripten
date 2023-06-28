@@ -718,9 +718,6 @@ var LibraryEmbind = {
         // assumes 4-byte alignment
         var base = _malloc({{{ POINTER_SIZE }}} + length + 1);
         var ptr = base + {{{ POINTER_SIZE }}};
-#if CAN_ADDRESS_2GB
-        ptr >>>= 0;
-#endif
         {{{ makeSetValue('base', '0', 'length', SIZE_TYPE) }}};
         if (stdStringIsUTF8 && valueIsOfTypeString) {
           stringToUTF8(value, ptr, length + 1);
@@ -810,9 +807,6 @@ var LibraryEmbind = {
         // assumes 4-byte alignment
         var length = lengthBytesUTF(value);
         var ptr = _malloc(4 + length + charSize);
-#if CAN_ADDRESS_2GB
-        ptr >>>= 0;
-#endif
         HEAPU32[ptr >> 2] = length >> shift;
 
         encodeString(value, ptr + 4, length + charSize);

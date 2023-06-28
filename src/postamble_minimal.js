@@ -171,8 +171,8 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
   asm = output.instance.exports;
 #endif
 
-#if MEMORY64
-  asm = instrumentWasmExportsForMemory64(asm);
+#if MEMORY64 || CAN_ADDRESS_2GB
+  asm = applySignatureConversions(asm);
 #endif
 
 #if USE_OFFSET_CONVERTER
