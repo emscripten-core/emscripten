@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.48 (in development)
 -----------------------
+- A new top-level `bootstrap` script was added.  This script is for emscripten
+  developers and helps take a care of post-checkout tasks such as `npm install`.
+  If this script needs to be run (e.g. becuase package.json was changed, emcc
+  will exit with an error. (#19736)
 
 3.1.47 - 10/09/23
 -----------------

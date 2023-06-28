@@ -23,6 +23,7 @@ em++
 '''.split()
 
 entry_points = '''
+bootstrap
 emar
 embuilder
 emcmake
