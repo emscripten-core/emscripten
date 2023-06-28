@@ -170,7 +170,7 @@ function isNumber(x) {
 }
 
 // Symbols that start with '$' are not exported to the wasm module.
-// They are intended to be called exclusive by JS code.
+// They are intended to be called exclusively by JS code.
 function isJsOnlySymbol(symbol) {
   return symbol[0] == '$';
 }
