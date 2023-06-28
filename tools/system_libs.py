@@ -1903,7 +1903,7 @@ class libhtml5(Library):
 
   cflags = ['-Oz', '-fno-inline-functions']
   src_dir = 'system/lib/html5'
-  src_glob = '*.c*'
+  src_glob = '*.c'
 
 
 class CompilerRTLibrary(Library):

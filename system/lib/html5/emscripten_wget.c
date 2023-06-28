@@ -5,12 +5,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-extern "C" {
-
-void emscripten_wget(const char* url, const char* file) {
-  // Create the ancestor directories.
+// Creates all ancestor directories of a given file, if they do not already
+// exist.
+static void mkdirs(const char* file) {
   char* copy = strdup(file);
-  auto* c = copy;
+  char* c = copy;
   while (*c) {
     // Create any non-trivial (not the root "/") directory.
     if (*c == '/' && c != copy) {
@@ -27,6 +26,11 @@ void emscripten_wget(const char* url, const char* file) {
     c++;
   }
   free(copy);
+}
+
+void emscripten_wget(const char* url, const char* file) {
+  // Create the ancestor directories.
+  mkdirs(file);
 
   // Fetch the data.
   void* buffer;
@@ -44,6 +48,4 @@ void emscripten_wget(const char* url, const char* file) {
     close(fd);
   }
   free(buffer);
-}
-
 }
