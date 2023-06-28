@@ -133,6 +133,9 @@ function runJSify() {
           if (sig[i] == 'j' && i53abi) {
             argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
             newArgs.push(defineI64Param(name));
+          } else if (sig[i] == 'p' && CAN_ADDRESS_2GB) {
+            argConvertions += `  ${name} >>>= 0;\n`;
+            newArgs.push(name);
           } else {
             newArgs.push(name);
           }
@@ -191,8 +194,8 @@ function(${args}) {
 
     const sig = LibraryManager.library[symbol + '__sig'];
     const i53abi = LibraryManager.library[symbol + '__i53abi'];
-    if (sig && ((i53abi && sig.includes('j')) ||
-                (MEMORY64 && sig.includes('p')))) {
+    if (sig &&
+        ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')))) {
       snippet = handleI64Signatures(symbol, snippet, sig, i53abi);
       i53ConversionDeps.forEach((d) => deps.push(d))
     }
