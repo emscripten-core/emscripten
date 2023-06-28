@@ -161,7 +161,7 @@ class sanity(RunnerCore):
 
   @with_env_modify({'EM_CONFIG': None})
   def test_firstrun(self):
-    default_config = config.embedded_config
+    default_config = path_from_root('.emscripten')
     output = self.do([EMCC, '-v'])
     self.assertContained('emcc: warning: config file not found: %s.  You can create one by hand or run `emcc --generate-config`' % default_config, output)
 
@@ -706,6 +706,15 @@ fi
     self.assertNotContained('generating port', self.do([EMBUILDER, 'build', 'zlib']))
     # Unless --force is specified
     self.assertContained('generating port', self.do([EMBUILDER, 'build', 'zlib', '--force']))
+
+  def test_embuilder_auto_tasks(self):
+    restore_and_set_up()
+    self.assertContained('Building targets: zlib', self.do([EMBUILDER, 'build', 'zlib', 'MINIMAL']))
+    # Second time it should not generate anything
+    self.assertNotContained('generating port', self.do([EMBUILDER, 'build', 'zlib']))
+    self.assertNotContained('generating system library', self.do([EMBUILDER, 'build', 'libemmalloc']))
+    # Unless --force is specified
+    self.assertContained('Building targets: zlib', self.do([EMBUILDER, 'build', 'zlib', 'MINIMAL', '--force']))
 
   def test_embuilder_wasm_backend(self):
     restore_and_set_up()

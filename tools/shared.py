@@ -29,9 +29,14 @@ from . import colored_logger
 # Configure logging before importing any other local modules so even
 # log message during import are shown as expected.
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
+EMCC_LOGGING = int(os.environ.get('EMCC_LOGGING', '1'))
+log_level = logging.ERROR
+if DEBUG:
+  log_level = logging.DEBUG
+elif EMCC_LOGGING:
+  log_level = logging.INFO
 # can add  %(asctime)s  to see timestamps
-logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
-                    level=logging.DEBUG if DEBUG else logging.INFO)
+logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s', level=log_level)
 colored_logger.enable()
 
 from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
@@ -44,12 +49,17 @@ from .settings import settings
 
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
+PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
 # Minimum node version required to run the emscripten compiler.  This is distinct
 # from the minimum version required to execute the generated code.  This is not an
 # exact requirement, but is the oldest version of node that we do any testing with.
 # This version aligns with the current Ubuuntu TLS 20.04 (Focal).
 MINIMUM_NODE_VERSION = (10, 19, 0)
 EXPECTED_LLVM_VERSION = 17
+
+# These get set by setup_temp_dirs
+TEMP_DIR = None
+EMSCRIPTEN_TEMP_DIR = None
 
 logger = logging.getLogger('shared')
 
@@ -740,6 +750,11 @@ def get_llvm_target():
     return 'wasm32-unknown-emscripten'
 
 
+def init():
+  set_version_globals()
+  setup_temp_dirs()
+
+
 # ============================================================================
 # End declarations.
 # ============================================================================
@@ -747,8 +762,6 @@ def get_llvm_target():
 # Everything below this point is top level code that get run when importing this
 # file.  TODO(sbc): We should try to reduce that amount we do here and instead
 # have consumers explicitly call initialization functions.
-
-set_version_globals()
 
 CLANG_CC = os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
 CLANG_CXX = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
@@ -771,12 +784,4 @@ EM_NM = bat_suffix(path_from_root('emnm'))
 FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
 WASM_SOURCEMAP = bat_suffix(path_from_root('tools/wasm-sourcemap'))
 
-# These get set by setup_temp_dirs
-TEMP_DIR = None
-EMSCRIPTEN_TEMP_DIR = None
-
-setup_temp_dirs()
-
-cache.setup(config.CACHE)
-
-PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
+init()

@@ -50,12 +50,6 @@
 // [link]
 var ASSERTIONS = 1;
 
-// Whether extra logging should be enabled.
-// This logging isn't quite assertion-quality in that it isn't necessarily a
-// symptom that something is wrong.
-// [link]
-var RUNTIME_LOGGING = false;
-
 // Chooses what kind of stack smash checks to emit to generated code:
 // Building with ASSERTIONS=1 causes STACK_OVERFLOW_CHECK default to 1.
 // Since ASSERTIONS=1 is the default at -O0, which itself is the default
@@ -68,6 +62,13 @@ var RUNTIME_LOGGING = false;
 //    stack pointer assignments. Has a small performance cost.
 // [link]
 var STACK_OVERFLOW_CHECK = 0;
+
+// When STACK_OVERFLOW_CHECK is enabled we also check writes to address zero.
+// This can help detect NULL pointer usage.  If you want to skip this extra
+// check (for example, if you want reads from the address zero to always return
+// zero) you can disabled this here.  This setting has no effect when
+// STACK_OVERFLOW_CHECK is disabled.
+var CHECK_NULL_WRITES = true;
 
 // When set to 1, will generate more verbose output during compilation.
 // [general]
@@ -344,7 +345,7 @@ var SOCKET_DEBUG = false;
 
 // Log dynamic linker information
 // [link]
-var DYLINK_DEBUG = false;
+var DYLINK_DEBUG = 0;
 
 // Register file system callbacks using trackingDelegate in library_fs.js
 // [link]
@@ -600,7 +601,7 @@ var POLYFILL_OLD_MATH_FUNCTIONS = false;
 var LEGACY_VM_SUPPORT = false;
 
 // Specify which runtime environments the JS output will be capable of running
-// in.  For maximum portability this can configured to support all envionements
+// in.  For maximum portability this can configured to support all environments
 // or it can be limited to reduce overall code size.  The supported environments
 // are:
 //    'web'     - the normal web environment.
@@ -723,14 +724,15 @@ var EXCEPTION_STACK_TRACES = false;
 // [link]
 var DISABLE_EXCEPTION_THROWING = false;
 
-// By default we handle exit() in node, by catching the Exit exception. However,
-// this means we catch all process exceptions. If you disable this, then we no
-// longer do that, and exceptions work normally, which can be useful for
-// libraries or programs that don't need exit() to work.
-//
-// Emscripten uses an ExitStatus exception to halt when exit() is called.
-// With this option, we prevent that from showing up as an unhandled
+// Emscripten throws an ExitStatus exception to unwind when exit() is called.
+// Without this setting enabled this can show up as a top level unhandled
 // exception.
+//
+// With this setting enabled a global uncaughtException handler is used to
+// catch and handle ExitStatus exceptions.  However, this means all other
+// uncaught exceptions are also caught and re-thrown, which is not always
+// desirable.
+//
 // [link]
 var NODEJS_CATCH_EXIT = true;
 
@@ -1796,7 +1798,7 @@ var MIN_CHROME_VERSION = 75;
 // distinct from the minimum version required run the emscripten compiler.
 // This version aligns with the current Ubuuntu TLS 20.04 (Focal).
 // Version is encoded in MMmmVV, e.g. 1814101 denotes Node 18.14.01.
-var MIN_NODE_VERSION = 101900;
+var MIN_NODE_VERSION = 160000;
 
 // Tracks whether we are building with errno support enabled. Set to 0
 // to disable compiling errno support in altogether. This saves a little
@@ -1932,25 +1934,6 @@ var DEFAULT_TO_CXX = true;
 // long double printing precision.
 // [link]
 var PRINTF_LONG_DOUBLE = false;
-
-// Run wabt's wasm2c tool on the final wasm, and combine that with a C runtime,
-// resulting in a .c file that you can compile with a C compiler to get a
-// native executable that works the same as the normal js+wasm. This will also
-// emit the wasm2c .h file. The output filenames will be X.wasm.c, X.wasm.h
-// if your output is X.js or X.wasm (note the added .wasm. we make sure to emit,
-// which avoids trampling a C file).
-// [link]
-// [experimental]
-var WASM2C = false;
-
-// Experimental sandboxing mode, see
-// https://kripken.github.io/blog/wasm/2020/07/27/wasmboxc.html
-//
-//  * full: Normal full wasm2c sandboxing. This uses a signal handler if it can.
-//  * mask: Masks loads and stores.
-//  * none: No sandboxing at all.
-// [experimental]
-var WASM2C_SANDBOXING = 'full';
 
 // Setting this affects the path emitted in the wasm that refers to the DWARF
 // file, in -gseparate-dwarf mode. This allows the debugging file to be hosted
@@ -2154,4 +2137,5 @@ var LEGACY_SETTINGS = [
   ['USE_PTHREADS', [0, 1], 'No longer needed. Use -pthread instead'],
   ['USES_DYNAMIC_ALLOC', [1], 'No longer supported. Use -sMALLOC=none'],
   ['REVERSE_DEPS', ['auto', 'all', 'none'], 'No longer needed'],
+  ['RUNTIME_LOGGING', 'RUNTIME_DEBUG'],
 ];

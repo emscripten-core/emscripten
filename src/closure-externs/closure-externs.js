@@ -171,10 +171,6 @@ var wakaUnknownAfter;
  * @suppress {undefinedVars}
  */
 var wakaUnknownBefore;
-/**
- * @suppress {undefinedVars}
- */
-var MozBlobBuilder;
 
 // Module loaders externs, for AMD etc.
 
@@ -265,3 +261,5 @@ var sampleRate;
  * Avoid closure minifying anything to "id". See #13965
  */
 var id;
+
+var moduleArg;

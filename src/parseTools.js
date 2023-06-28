@@ -61,6 +61,11 @@ function preprocess(filename) {
   const isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
   let inStyle = false;
   const lines = text.split('\n');
+  // text.split yields an extra empty element at the end if text itself ends with a newline.
+  if (!lines[lines.length - 1]) {
+    lines.pop();
+  }
+
   let ret = '';
   let emptyLine = false;
 
@@ -170,7 +175,8 @@ function needsQuoting(ident) {
   return true;
 }
 
-const POINTER_SIZE = MEMORY64 ? 8 : 4;
+global.POINTER_SIZE = MEMORY64 ? 8 : 4;
+global.STACK_ALIGN = 16;
 const POINTER_BITS = POINTER_SIZE * 8;
 const POINTER_TYPE = 'u' + POINTER_BITS;
 const POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
@@ -205,13 +211,19 @@ function makeInlineCalculation(expression, value, tempVar) {
 
 // Splits a number (an integer in a double, possibly > 32 bits) into an i64
 // value, represented by a low and high i32 pair.
-// Will suffer from rounding.
+// Will suffer from rounding and truncation.
 function splitI64(value) {
+  if (WASM_BIGINT) {
+    // Nothing to do: just make sure it is a BigInt (as it must be of that
+    // type, to be sent into wasm).
+    return `BigInt(${value})`;
+  }
+
   // general idea:
   //
   //  $1$0 = ~~$d >>> 0;
   //  $1$1 = Math.abs($d) >= 1 ? (
-  //     $d > 0 ? Math.floor(($d)/ 4294967296.0) >>> 0,
+  //     $d > 0 ? Math.floor(($d)/ 4294967296.0) >>> 0
   //            : Math.ceil(Math.min(-4294967296.0, $d - $1$0)/ 4294967296.0)
   //  ) : 0;
   //
@@ -257,15 +269,36 @@ function indentify(text, indent) {
 
 // Correction tools
 
-function getHeapOffset(offset, type) {
-  if (!WASM_BIGINT && getNativeFieldSize(type) > 4 && type == 'i64') {
-    // we emulate 64-bit integer values as 32 in asmjs-unknown-emscripten, but not double
-    type = 'i32';
+function getNativeTypeSize(type) {
+  switch (type) {
+    case 'i1': case 'i8': case 'u8': return 1;
+    case 'i16': case 'u16': return 2;
+    case 'i32': case 'u32': return 4;
+    case 'i64': case 'u64': return 8;
+    case 'float': return 4;
+    case 'double': return 8;
+    default: {
+      if (type[type.length - 1] === '*') {
+        return POINTER_SIZE;
+      }
+      if (type[0] === 'i') {
+        const bits = Number(type.substr(1));
+        assert(bits % 8 === 0, 'getNativeTypeSize invalid bits ' + bits + ', type ' + type);
+        return bits / 8;
+      }
+      return 0;
+    }
   }
+}
 
+function getHeapOffset(offset, type) {
   const sz = getNativeTypeSize(type);
   const shifts = Math.log(sz) / Math.LN2;
-  return `((${offset})>>${shifts})`;
+  if (MEMORY64 == 1) {
+    return `((${offset})/2**${shifts})`;
+  } else {
+    return `((${offset})>>${shifts})`;
+  }
 }
 
 function ensureDot(value) {
@@ -353,22 +386,25 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
  * @param {number} value The value to set.
  * @param {string} type A string defining the type. Used to find the slab (HEAPU8, HEAP16, HEAPU32, etc.).
  *             which means we should write to all slabs, ignore type differences if any on reads, etc.
- * @param {bool} noNeedFirst Whether to ignore the offset in the pointer itself.
- * @param {bool} ignore: legacy, ignored.
- * @param {number} align: legacy, ignored.
- * @param {string} sep: legacy, ignored.
- * @return {TODO}
+ * @return {string} JS code for performing the memory set operation
  */
-function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep) {
-  assert(typeof align === 'undefined', 'makeSetValue no longer supports align parameter');
-  assert(typeof noNeedFirst === 'undefined', 'makeSetValue no longer supports noNeedFirst parameter');
-  assert(typeof sep === 'undefined', 'makeSetValue no longer supports sep parameter');
+function makeSetValue(ptr, pos, value, type) {
+  var rtn = makeSetValueImpl(ptr, pos, value, type);
+  if (ASSERTIONS == 2 && (type.startsWith('i') || type.startsWith('u'))) {
+    const width = getBitWidth(type);
+    const assertion = `checkInt${width}(${value})`;
+    rtn += ';' + assertion
+  }
+  return rtn;
+}
+
+function makeSetValueImpl(ptr, pos, value, type) {
   if (type == 'i64' && !WASM_BIGINT) {
-    // If we lack either BigInt we must fall back to an reading a pair of I32
+    // If we lack BigInt support we must fall back to an reading a pair of I32
     // values.
     return '(tempI64 = [' + splitI64(value) + '], ' +
-            makeSetValue(ptr, pos, 'tempI64[0]', 'i32') + ',' +
-            makeSetValue(ptr, getFastValue(pos, '+', getNativeTypeSize('i32')), 'tempI64[1]', 'i32') + ')';
+            makeSetValueImpl(ptr, pos, 'tempI64[0]', 'i32') + ',' +
+            makeSetValueImpl(ptr, getFastValue(pos, '+', getNativeTypeSize('i32')), 'tempI64[1]', 'i32') + ')';
   }
 
   const offset = calcFastOffset(ptr, pos);
@@ -448,6 +484,12 @@ function calcFastOffset(ptr, pos) {
   return getFastValue(ptr, '+', pos);
 }
 
+function getBitWidth(type) {
+  if (type == 'i53' || type == 'u53')
+    return 53;
+  return getNativeTypeSize(type) * 8;
+}
+
 function getHeapForType(type) {
   assert(type);
   if (isPointerType(type)) {
@@ -465,12 +507,12 @@ function getHeapForType(type) {
     case 'u8':     return 'HEAPU8';
     case 'i16':    return 'HEAP16';
     case 'u16':    return 'HEAPU16';
-    case 'i64':    // fallthrough
     case 'i32':    return 'HEAP32';
-    case 'u64':    // fallthrough
     case 'u32':    return 'HEAPU32';
     case 'double': return 'HEAPF64';
     case 'float':  return 'HEAPF32';
+    case 'i64':    // fallthrough
+    case 'u64':    error('use i53/u53, or avoid i64/u64 without WASM_BIGINT');
   }
   assert(false, 'bad heap type: ' + type);
 }
@@ -503,17 +545,6 @@ function storeException(varName, excPtr) {
 
 function charCode(char) {
   return char.charCodeAt(0);
-}
-
-function getTypeFromHeap(suffix) {
-  switch (suffix) {
-    case '8': return 'i8';
-    case '16': return 'i16';
-    case '32': return 'i32';
-    case 'F32': return 'float';
-    case 'F64': return 'double';
-  }
-  assert(false, 'bad type suffix: ' + suffix);
 }
 
 function ensureValidFFIType(type) {
@@ -631,15 +662,6 @@ function addAtInit(code) {
   ATINITS.push(code);
 }
 
-// TODO(sbc): There are no more uses to ATMAINS or addAtMain in emscripten.
-// We should look into removing these.
-global.ATMAINS = [];
-
-function addAtMain(code) {
-  assert(HAS_MAIN, 'addAtMain called but program has no main function');
-  ATMAINS.push(code);
-}
-
 global.ATEXITS = [];
 
 function addAtExit(code) {
@@ -672,35 +694,43 @@ function makeRetainedCompilerSettings() {
 const WASM_PAGE_SIZE = 65536;
 
 // Receives a function as text, and a function that constructs a modified
-// function, to which we pass the parsed-out name, arguments, body, and possible
+// function, to which we pass the parsed-out arguments, body, and possible
 // "async" prefix of the input function. Returns the output of that function.
-function modifyFunction(text, func) {
+function modifyJSFunction(text, func) {
   // Match a function with a name.
-  let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   let async_;
-  let name;
   let args;
   let rest;
+  let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   if (match) {
     async_ = match[1] || '';
-    name = match[2];
     args = match[3];
     rest = text.substr(match[0].length);
   } else {
-    // Match a function without a name (we could probably use a single regex
-    // for both, but it would be more complex).
-    match = text.match(/^\s*(async\s+)?function\(([^)]*)\)/);
-    assert(match, 'could not match function ' + text + '.');
-    name = '';
-    async_ = match[1] || '';
-    args = match[2];
-    rest = text.substr(match[0].length);
+    // Match an arrow function
+    let match = text.match(/^\s*(var (\w+) = )?(async\s+)?\(([^)]*)\)\s+=>\s+/);
+    if (match) {
+      async_ = match[3] || '';
+      args = match[4];
+      rest = text.substr(match[0].length);
+    } else {
+      // Match a function without a name (we could probably use a single regex
+      // for both, but it would be more complex).
+      match = text.match(/^\s*(async\s+)?function\(([^)]*)\)/);
+      assert(match, `could not match function:\n${text}\n`);
+      async_ = match[1] || '';
+      args = match[2];
+      rest = text.substr(match[0].length);
+    }
   }
+  let body = rest;
   const bodyStart = rest.indexOf('{');
-  assert(bodyStart >= 0);
-  const bodyEnd = rest.lastIndexOf('}');
-  assert(bodyEnd > 0);
-  return func(name, args, rest.substring(bodyStart + 1, bodyEnd), async_);
+  if (bodyStart >= 0) {
+    const bodyEnd = rest.lastIndexOf('}');
+    assert(bodyEnd > 0);
+    body = rest.substring(bodyStart + 1, bodyEnd);
+  }
+  return func(args, body, async_);
 }
 
 function runIfMainThread(text) {
@@ -732,7 +762,7 @@ function makeRemovedModuleAPIAssert(moduleName, localName) {
 function checkReceiving(name) {
   // ALL_INCOMING_MODULE_JS_API contains all valid incoming module API symbols
   // so calling makeModuleReceive* with a symbol not in this list is an error
-  assert(ALL_INCOMING_MODULE_JS_API.includes(name));
+  assert(ALL_INCOMING_MODULE_JS_API.has(name), `${name} is not part of INCOMING_MODULE_JS_API`);
 }
 
 // Make code to receive a value on the incoming Module object.
@@ -861,15 +891,10 @@ function receiveI64ParamAsI53(name, onError) {
 }
 
 function receiveI64ParamAsI53Unchecked(name) {
-  if (WASM_BIGINT) return `${name} = Number(${name});`;
-  return `var ${name} = convertI32PairToI53(${name}_low, ${name}_high);`;
-}
-
-function sendI64Argument(low, high) {
   if (WASM_BIGINT) {
-    return 'BigInt(low) | (BigInt(high) << 32n)';
+    return `${name} = Number(${name});`;
   }
-  return low + ', ' + high;
+  return `var ${name} = convertI32PairToI53(${name}_low, ${name}_high);`;
 }
 
 // Any function called from wasm64 may have bigint args, this function takes
@@ -993,4 +1018,12 @@ function formattedMinNodeVersion() {
   var minor = (MIN_NODE_VERSION / 100) % 100
   var rev = MIN_NODE_VERSION % 100
   return `v${major}.${minor}.${rev}`;
+}
+
+function getPerformanceNow() {
+  if (DETERMINISTIC) {
+    return 'deterministicNow';
+  } else {
+    return 'performance.now';
+  }
 }

@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-{
+var IDBStore = {
   indexedDB: function() {
     if (typeof indexedDB != 'undefined') return indexedDB;
     var ret = null;
@@ -69,7 +69,7 @@
       req.onsuccess = (event) => {
         var result = event.target.result;
         if (!result) {
-          return callback('file ' + id + ' not found');
+          return callback(`file ${id} not found`);
         }
         return callback(null, result);
       };
@@ -102,5 +102,4 @@
       req.onerror = (error) => callback(error);
     });
   },
-}
-
+};

@@ -1296,9 +1296,11 @@ Sleeping
 
 .. c:function:: void emscripten_sleep(unsigned int ms)
 
-  Sleep for `ms` milliseconds. This is a normal "synchronous" sleep, which blocks all other operations while it runs. In other words, if
-  there are other async events waiting to happen, they will not happen during this sleep, which makes sense as conceptually this code is
-  on the stack (that's how it looks in the C source code).
+  Sleep for `ms` milliseconds. This appears to be a normal "synchronous" sleep
+  to the code, that is, execution does not continue to the next source line
+  until the sleep is done. Note, however, that this is implemented using a
+  return to the event loop (it is not possible to actually sleep in a blocking
+  manner on the Web), which means that other async events may happen.
 
 Network
 -------

@@ -12,6 +12,12 @@ var LibraryBrowser = {
     '$safeSetTimeout',
     '$warnOnce',
     'emscripten_set_main_loop_timing',
+#if FILESYSTEM
+    '$preloadPlugins',
+#if MAIN_MODULE
+    '$preloadedWasm',
+#endif
+#endif
   ],
   $Browser__postset: `
     // exports
@@ -25,9 +31,6 @@ var LibraryBrowser = {
     Module["resumeMainLoop"] = function Module_resumeMainLoop() { Browser.mainLoop.resume() };
     Module["getUserMedia"] = function Module_getUserMedia() { Browser.getUserMedia() };
     Module["createContext"] = function Module_createContext(canvas, useWebGL, setInModule, webGLContextAttributes) { return Browser.createContext(canvas, useWebGL, setInModule, webGLContextAttributes) };
-#if MAIN_MODULE
-    var preloadedWasm = {};
-#endif
     var preloadedImages = {};
     var preloadedAudios = {};`,
 
@@ -101,27 +104,12 @@ var LibraryBrowser = {
     workers: [],
 
     init: function() {
-      if (!Module["preloadPlugins"]) Module["preloadPlugins"] = []; // needs to exist even in workers
-
       if (Browser.initted) return;
       Browser.initted = true;
 
-      try {
-        new Blob();
-        Browser.hasBlobConstructor = true;
-      } catch(e) {
-        Browser.hasBlobConstructor = false;
-        err("warning: no blob constructor, cannot create blobs with mimetypes");
-      }
-      Browser.BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : (!Browser.hasBlobConstructor ? err("warning: no BlobBuilder") : null));
-      Browser.URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : undefined;
-      if (!Module.noImageDecoding && typeof Browser.URLObject == 'undefined') {
-        err("warning: Browser does not support creating object URLs. Built-in browser image decoding will not be available.");
-        Module.noImageDecoding = true;
-      }
-
+#if FILESYSTEM
       // Support for plugins that can process preloaded files. You can add more of these to
-      // your app by creating and appending to Module.preloadPlugins.
+      // your app by creating and appending to preloadPlugins.
       //
       // Each plugin is asked if it can handle a file based on the file's name. If it can,
       // it is given the file's raw data. When it is done, it calls a callback with the file's
@@ -133,24 +121,12 @@ var LibraryBrowser = {
         return !Module.noImageDecoding && /\.(jpg|jpeg|png|bmp)$/i.test(name);
       };
       imagePlugin['handle'] = function imagePlugin_handle(byteArray, name, onload, onerror) {
-        var b = null;
-        if (Browser.hasBlobConstructor) {
-          try {
-            b = new Blob([byteArray], { type: Browser.getMimetype(name) });
-            if (b.size !== byteArray.length) { // Safari bug #118630
-              // Safari's Blob can only take an ArrayBuffer
-              b = new Blob([(new Uint8Array(byteArray)).buffer], { type: Browser.getMimetype(name) });
-            }
-          } catch(e) {
-            warnOnce('Blob constructor present but fails: ' + e + '; falling back to blob builder');
-          }
+        var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
+        if (b.size !== byteArray.length) { // Safari bug #118630
+          // Safari's Blob can only take an ArrayBuffer
+          b = new Blob([(new Uint8Array(byteArray)).buffer], { type: Browser.getMimetype(name) });
         }
-        if (!b) {
-          var bb = new Browser.BlobBuilder();
-          bb.append((new Uint8Array(byteArray)).buffer); // we need to pass a buffer, and must copy the array to get the right data range
-          b = bb.getBlob();
-        }
-        var url = Browser.URLObject.createObjectURL(b);
+        var url = URL.createObjectURL(b);
 #if ASSERTIONS
         assert(typeof url == 'string', 'createObjectURL must return a url as a string');
 #endif
@@ -163,7 +139,7 @@ var LibraryBrowser = {
           var ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0);
           preloadedImages[name] = canvas;
-          Browser.URLObject.revokeObjectURL(url);
+          URL.revokeObjectURL(url);
           if (onload) onload(byteArray);
         };
         img.onerror = (event) => {
@@ -172,7 +148,7 @@ var LibraryBrowser = {
         };
         img.src = url;
       };
-      Module['preloadPlugins'].push(imagePlugin);
+      preloadPlugins.push(imagePlugin);
 
       var audioPlugin = {};
       audioPlugin['canHandle'] = function audioPlugin_canHandle(name) {
@@ -192,85 +168,51 @@ var LibraryBrowser = {
           preloadedAudios[name] = new Audio(); // empty shim
           if (onerror) onerror();
         }
-        if (Browser.hasBlobConstructor) {
-          try {
-            var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
-          } catch(e) {
-            return fail();
-          }
-          var url = Browser.URLObject.createObjectURL(b); // XXX we never revoke this!
+        var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
+        var url = URL.createObjectURL(b); // XXX we never revoke this!
 #if ASSERTIONS
-          assert(typeof url == 'string', 'createObjectURL must return a url as a string');
+        assert(typeof url == 'string', 'createObjectURL must return a url as a string');
 #endif
-          var audio = new Audio();
-          audio.addEventListener('canplaythrough', () => finish(audio), false); // use addEventListener due to chromium bug 124926
-          audio.onerror = function audio_onerror(event) {
-            if (done) return;
-            err('warning: browser could not fully decode audio ' + name + ', trying slower base64 approach');
-            function encode64(data) {
-              var BASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-              var PAD = '=';
-              var ret = '';
-              var leftchar = 0;
-              var leftbits = 0;
-              for (var i = 0; i < data.length; i++) {
-                leftchar = (leftchar << 8) | data[i];
-                leftbits += 8;
-                while (leftbits >= 6) {
-                  var curr = (leftchar >> (leftbits-6)) & 0x3f;
-                  leftbits -= 6;
-                  ret += BASE[curr];
-                }
+        var audio = new Audio();
+        audio.addEventListener('canplaythrough', () => finish(audio), false); // use addEventListener due to chromium bug 124926
+        audio.onerror = function audio_onerror(event) {
+          if (done) return;
+          err('warning: browser could not fully decode audio ' + name + ', trying slower base64 approach');
+          function encode64(data) {
+            var BASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+            var PAD = '=';
+            var ret = '';
+            var leftchar = 0;
+            var leftbits = 0;
+            for (var i = 0; i < data.length; i++) {
+              leftchar = (leftchar << 8) | data[i];
+              leftbits += 8;
+              while (leftbits >= 6) {
+                var curr = (leftchar >> (leftbits-6)) & 0x3f;
+                leftbits -= 6;
+                ret += BASE[curr];
               }
-              if (leftbits == 2) {
-                ret += BASE[(leftchar&3) << 4];
-                ret += PAD + PAD;
-              } else if (leftbits == 4) {
-                ret += BASE[(leftchar&0xf) << 2];
-                ret += PAD;
-              }
-              return ret;
             }
-            audio.src = 'data:audio/x-' + name.substr(-3) + ';base64,' + encode64(byteArray);
-            finish(audio); // we don't wait for confirmation this worked - but it's worth trying
-          };
-          audio.src = url;
-          // workaround for chrome bug 124926 - we do not always get oncanplaythrough or onerror
-          safeSetTimeout(() => {
-            finish(audio); // try to use it even though it is not necessarily ready to play
-          }, 10000);
-        } else {
-          return fail();
-        }
+            if (leftbits == 2) {
+              ret += BASE[(leftchar&3) << 4];
+              ret += PAD + PAD;
+            } else if (leftbits == 4) {
+              ret += BASE[(leftchar&0xf) << 2];
+              ret += PAD;
+            }
+            return ret;
+          }
+          audio.src = 'data:audio/x-' + name.substr(-3) + ';base64,' + encode64(byteArray);
+          finish(audio); // we don't wait for confirmation this worked - but it's worth trying
+        };
+        audio.src = url;
+        // workaround for chrome bug 124926 - we do not always get oncanplaythrough or onerror
+        safeSetTimeout(() => {
+          finish(audio); // try to use it even though it is not necessarily ready to play
+        }, 10000);
       };
-      Module['preloadPlugins'].push(audioPlugin);
-
-#if MAIN_MODULE
-      // Use string keys here to avoid minification since the plugin consumer
-      // also uses string keys.
-      var wasmPlugin = {
-        'promiseChainEnd': Promise.resolve(),
-        'canHandle': function(name) {
-          return !Module.noWasmDecoding && name.endsWith('.so')
-        },
-        'handle': function(byteArray, name, onload, onerror) {
-          // loadWebAssemblyModule can not load modules out-of-order, so rather
-          // than just running the promises in parallel, this makes a chain of
-          // promises to run in series.
-          wasmPlugin['promiseChainEnd'] = wasmPlugin['promiseChainEnd'].then(
-            () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true})).then(
-              (module) => {
-                preloadedWasm[name] = module;
-                onload();
-              },
-              (err) => {
-                console.warn("Couldn't instantiate wasm: " + name + " '" + err + "'");
-                onerror();
-              });
-        }
-      };
-      Module['preloadPlugins'].push(wasmPlugin);
-#endif // MAIN_MODULE
+      preloadPlugins.push(audioPlugin);
+#endif
 
       // Canvas event setup
 
@@ -311,23 +253,6 @@ var LibraryBrowser = {
           }, false);
         }
       }
-    },
-
-    // Tries to handle an input byteArray using preload plugins. Returns true if
-    // it was handled.
-    handledByPreloadPlugin: function(byteArray, fullname, finish, onerror) {
-      // Ensure plugins are ready.
-      Browser.init();
-
-      var handled = false;
-      Module['preloadPlugins'].forEach((plugin) => {
-        if (handled) return;
-        if (plugin['canHandle'](fullname)) {
-          plugin['handle'](byteArray, fullname, finish, onerror);
-          handled = true;
-        }
-      });
-      return handled;
     },
 
     createContext: function(/** @type {HTMLCanvasElement} */ canvas, useWebGL, setInModule, webGLContextAttributes) {
@@ -786,6 +711,8 @@ var LibraryBrowser = {
     FS.createPreloadedFile(
       PATH.dirname(_file),
       PATH.basename(_file),
+      // TODO: This copy is not needed if the contents are already a Uint8Array,
+      //       which they often are (and always are in WasmFS).
       new Uint8Array(data.object.contents), true, true,
       () => {
         {{{ runtimeKeepalivePop() }}}
@@ -905,18 +832,18 @@ var LibraryBrowser = {
       {{{ runtimeKeepalivePush() }}}
       Browser.mainLoop.running = true;
     }
-    if (mode == 0 /*EM_TIMING_SETTIMEOUT*/) {
+    if (mode == {{{ cDefs.EM_TIMING_SETTIMEOUT }}}) {
       Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler_setTimeout() {
         var timeUntilNextTick = Math.max(0, Browser.mainLoop.tickStartTime + value - _emscripten_get_now())|0;
         setTimeout(Browser.mainLoop.runner, timeUntilNextTick); // doing this each time means that on exception, we stop
       };
       Browser.mainLoop.method = 'timeout';
-    } else if (mode == 1 /*EM_TIMING_RAF*/) {
+    } else if (mode == {{{ cDefs.EM_TIMING_RAF }}}) {
       Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler_rAF() {
         Browser.requestAnimationFrame(Browser.mainLoop.runner);
       };
       Browser.mainLoop.method = 'rAF';
-    } else if (mode == 2 /*EM_TIMING_SETIMMEDIATE*/) {
+    } else if (mode == {{{ cDefs.EM_TIMING_SETIMMEDIATE}}}) {
       if (typeof setImmediate == 'undefined') {
         // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
         var setImmediates = [];
@@ -1041,11 +968,11 @@ var LibraryBrowser = {
 
       // Implement very basic swap interval control
       Browser.mainLoop.currentFrameNumber = Browser.mainLoop.currentFrameNumber + 1 | 0;
-      if (Browser.mainLoop.timingMode == 1/*EM_TIMING_RAF*/ && Browser.mainLoop.timingValue > 1 && Browser.mainLoop.currentFrameNumber % Browser.mainLoop.timingValue != 0) {
+      if (Browser.mainLoop.timingMode == {{{ cDefs.EM_TIMING_RAF }}} && Browser.mainLoop.timingValue > 1 && Browser.mainLoop.currentFrameNumber % Browser.mainLoop.timingValue != 0) {
         // Not the scheduled time to render this frame - skip.
         Browser.mainLoop.scheduler();
         return;
-      } else if (Browser.mainLoop.timingMode == 0/*EM_TIMING_SETTIMEOUT*/) {
+      } else if (Browser.mainLoop.timingMode == {{{ cDefs.EM_TIMING_SETTIMEOUT }}}) {
         Browser.mainLoop.tickStartTime = _emscripten_get_now();
       }
 
@@ -1097,8 +1024,12 @@ var LibraryBrowser = {
     }
 
     if (!noSetTiming) {
-      if (fps && fps > 0) _emscripten_set_main_loop_timing(0/*EM_TIMING_SETTIMEOUT*/, 1000.0 / fps);
-      else _emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, 1); // Do rAF by rendering each frame (no decimating)
+      if (fps && fps > 0) {
+        _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_SETTIMEOUT }}}, 1000.0 / fps);
+      } else {
+        // Do rAF by rendering each frame (no decimating)
+        _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_RAF }}}, 1);
+      }
 
       Browser.mainLoop.scheduler();
     }
@@ -1290,7 +1221,7 @@ var LibraryBrowser = {
       callbackId = info.callbacks.length;
       info.callbacks.push({
         func: {{{ makeDynCall('viii', 'callback') }}},
-        arg: arg
+        arg
       });
       info.awaited++;
     }
@@ -1371,6 +1302,7 @@ var LibraryBrowser = {
     return 0;
   },
 
+#if !WASMFS // WasmFS implements this in wasm
   emscripten_get_preloaded_image_data_from_FILE__deps: ['emscripten_get_preloaded_image_data', 'fileno'],
   emscripten_get_preloaded_image_data_from_FILE__proxy: 'sync',
   emscripten_get_preloaded_image_data_from_FILE: function(file, w, h) {
@@ -1382,22 +1314,9 @@ var LibraryBrowser = {
 
     return 0;
   }
+#endif
 };
 
 autoAddDeps(LibraryBrowser, '$Browser');
 
 mergeInto(LibraryManager.library, LibraryBrowser);
-
-/* Useful stuff for browser debugging
-
-function slowLog(label, text) {
-  if (!slowLog.labels) slowLog.labels = {};
-  if (!slowLog.labels[label]) slowLog.labels[label] = 0;
-  var now = Date.now();
-  if (now - slowLog.labels[label] > 1000) {
-    out(label + ': ' + text);
-    slowLog.labels[label] = now;
-  }
-}
-
-*/

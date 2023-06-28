@@ -4,15 +4,15 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "IDBStore.js"
+
 var LibraryIDBStore = {
   // A simple IDB-backed storage mechanism. Suitable for saving and loading large files asynchronously. This does
   // *NOT* use the emscripten filesystem, intentionally, to avoid overhead. It lets you application define whatever
   // filesystem-like layer you want, with the overhead 100% controlled by you. At the extremes, you could either
   // just store large files, with almost no extra code; or you could implement a file b-tree using posix-compliant
   // filesystem on top.
-  $IDBStore:
-#include IDBStore.js
-  ,
+  $IDBStore: IDBStore,
   emscripten_idb_async_load__deps: ['$UTF8ToString', 'malloc', 'free'],
   emscripten_idb_async_load: function(db, id, arg, onload, onerror) {
     IDBStore.getFile(UTF8ToString(db), UTF8ToString(id), function(error, byteArray) {

@@ -25,6 +25,7 @@ import logging
 import math
 import operator
 import os
+import platform
 import random
 import sys
 import unittest
@@ -207,14 +208,12 @@ def get_random_test_parameters(arg):
   relevant_modes = passing_core_test_modes
   if len(arg):
     num_str = arg
-    if arg.startswith('other'):
-      base_module = 'other'
-      relevant_modes = ['other']
-      num_str = arg.replace('other', '')
-    elif arg.startswith('browser'):
-      base_module = 'browser'
-      relevant_modes = ['browser']
-      num_str = arg.replace('browser', '')
+    for mode in passing_core_test_modes + misc_test_modes:
+      if arg.startswith(mode):
+        base_module = mode
+        relevant_modes = [mode]
+        num_str = arg.replace(mode, '')
+        break
     num_tests = int(num_str)
   return num_tests, base_module, relevant_modes
 
@@ -316,7 +315,9 @@ def run_tests(options, suites):
   print([s[0] for s in suites])
   # Run the discovered tests
 
-  if os.getenv('CI'):
+  # We currently don't support xmlrunner on macOS M1 runner since
+  # `pip` doesn't seeem to yet have pre-built binaries for M1.
+  if os.getenv('CI') and not (utils.MACOS and platform.machine() == 'arm64'):
     os.makedirs('out', exist_ok=True)
     # output fd must remain open until after testRunner.run() below
     output = open('out/test-results.xml', 'wb')

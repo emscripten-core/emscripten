@@ -77,7 +77,7 @@ from typing import List
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
-sys.path.append(__rootdir__)
+sys.path.insert(0, __rootdir__)
 
 from tools import shared, utils, js_manipulation
 
@@ -410,8 +410,7 @@ def main():
       options.from_emcc = True
       leading = ''
     elif arg.startswith('--plugin'):
-      with open(arg.split('=', 1)[1]) as f:
-        plugin = f.read()
+      plugin = utils.read_file(arg.split('=', 1)[1])
       eval(plugin) # should append itself to plugins
       leading = ''
     elif leading == 'preload' or leading == 'embed':
@@ -556,17 +555,13 @@ def main():
       # differs from the current generated one, otherwise leave the file
       # untouched preserving its old timestamp
       if os.path.isfile(options.jsoutput):
-        with open(options.jsoutput) as f:
-          old = f.read()
+        old = utils.read_file(options.jsoutput)
         if old != ret:
-          with open(options.jsoutput, 'w') as f:
-            f.write(ret)
+          utils.write_file(options.jsoutput, ret)
       else:
-        with open(options.jsoutput, 'w') as f:
-          f.write(ret)
+        utils.write_file(options.jsoutput, ret)
       if options.separate_metadata:
-        with open(options.jsoutput + '.metadata', 'w') as f:
-          json.dump(metadata, f, separators=(',', ':'))
+        utils.write_file(options.jsoutput + '.metadata', json.dumps(metadata, separators=(',', ':')))
 
   return 0
 
@@ -617,8 +612,7 @@ def generate_js(data_target, data_files, metadata):
     with open(data_target, 'wb') as data:
       for file_ in data_files:
         file_.data_start = start
-        with open(file_.srcpath, 'rb') as f:
-          curr = f.read()
+        curr = utils.read_binary(file_.srcpath)
         file_.data_end = start + len(curr)
         if AV_WORKAROUND:
             curr += '\x00'
@@ -633,17 +627,13 @@ def generate_js(data_target, data_files, metadata):
 
     create_preloaded = '''
           Module['FS_createPreloadedFile'](this.name, null, byteArray, true, true, function() {
-            Module['removeRunDependency']('fp ' + that.name);
+            Module['removeRunDependency'](`fp ${that.name}`);
           }, function() {
-            if (that.audio) {
-              Module['removeRunDependency']('fp ' + that.name); // workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
-            } else {
-              err('Preloading file ' + that.name + ' failed');
-            }
+            err(`Preloading file ${that.name} failed`);
           }, false, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change\n'''
     create_data = '''// canOwn this data in the filesystem, it is a slide into the heap that will never change
           Module['FS_createDataFile'](this.name, null, byteArray, true, true, true);
-          Module['removeRunDependency']('fp ' + that.name);'''
+          Module['removeRunDependency'](`fp ${that.name}`);'''
 
     if not options.lz4:
       # Data requests - for getting a block of data out of the big archive - have
@@ -660,7 +650,7 @@ def generate_js(data_target, data_files, metadata):
         open: function(mode, name) {
           this.name = name;
           this.requests[name] = this;
-          Module['addRunDependency']('fp ' + this.name);
+          Module['addRunDependency'](`fp ${this.name}`);
         },
         send: function() {},
         onload: function() {
@@ -692,7 +682,7 @@ def generate_js(data_target, data_files, metadata):
         data = base64_encode(utils.read_binary(file_.srcpath))
         code += "      var fileData%d = '%s';\n" % (counter, data)
         # canOwn this data in the filesystem (i.e. there is no need to create a copy in the FS layer).
-        code += ("      Module['FS_createDataFile']('%s', '%s', decodeBase64(fileData%d), true, true, true);\n"
+        code += ("      Module['FS_createDataFile']('%s', '%s', atob(fileData%d), true, true, true);\n"
                  % (dirname, basename, counter))
     elif file_.mode == 'preload':
       # Preload
@@ -831,7 +821,7 @@ def generate_js(data_target, data_files, metadata):
             nextChunkSliceStart += CHUNK_SIZE;
             var putPackageRequest = packages.put(
               packageData.slice(chunkSliceStart, nextChunkSliceStart),
-              'package/' + packageName + '/' + chunkId
+              `package/${packageName}/${chunkId}`
             );
             chunkSliceStart = nextChunkSliceStart;
             putPackageRequest.onsuccess = function(event) {
@@ -847,7 +837,7 @@ def generate_js(data_target, data_files, metadata):
                     'uuid': packageMeta.uuid,
                     'chunkCount': chunkCount
                   },
-                  'metadata/' + packageName
+                  `metadata/${packageName}`
                 );
                 putMetadataRequest.onsuccess = function(event) {
                   callback(packageData);
@@ -867,7 +857,7 @@ def generate_js(data_target, data_files, metadata):
         function checkCachedPackage(db, packageName, callback, errback) {
           var transaction = db.transaction([METADATA_STORE_NAME], IDB_RO);
           var metadata = transaction.objectStore(METADATA_STORE_NAME);
-          var getRequest = metadata.get('metadata/' + packageName);
+          var getRequest = metadata.get(`metadata/${packageName}`);
           getRequest.onsuccess = function(event) {
             var result = event.target.result;
             if (!result) {
@@ -891,7 +881,7 @@ def generate_js(data_target, data_files, metadata):
           var chunks = new Array(chunkCount);
 
           for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
-            var getRequest = packages.get('package/' + packageName + '/' + chunkId);
+            var getRequest = packages.get(`package/${packageName}/${chunkId}`);
             getRequest.onsuccess = function(event) {
               // If there's only 1 chunk, there's nothing to concatenate it with so we can just return it now
               if (chunkCount == 1) {
@@ -970,7 +960,7 @@ def generate_js(data_target, data_files, metadata):
               num++;
             }
             total = Math.ceil(total * Module.expectedDataFileDownloads/num);
-            if (Module['setStatus']) Module['setStatus']('Downloading data... (' + loaded + '/' + total + ')');
+            if (Module['setStatus']) Module['setStatus'](`Downloading data... (${loaded}/${total})`);
           } else if (!Module.dataFileDownloads) {
             if (Module['setStatus']) Module['setStatus']('Downloading data...');
           }

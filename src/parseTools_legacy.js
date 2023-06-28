@@ -89,9 +89,20 @@ function makeMalloc(source, param) {
   return `_malloc(${param})`;
 }
 
+function getNativeFieldSize(type) {
+  return Math.max(getNativeTypeSize(type), POINTER_SIZE);
+}
+
 global.Runtime = {
-  getNativeTypeSize: getNativeTypeSize,
-  getNativeFieldSize: getNativeFieldSize,
-  POINTER_SIZE: POINTER_SIZE,
+  getNativeTypeSize,
+  getNativeFieldSize,
+  POINTER_SIZE,
   QUANTUM_SIZE: POINTER_SIZE,
 };
+
+global.ATMAINS = [];
+
+function addAtMain(code) {
+  assert(HAS_MAIN, 'addAtMain called but program has no main function');
+  ATMAINS.push(code);
+}

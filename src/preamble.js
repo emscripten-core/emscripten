@@ -221,7 +221,7 @@ function initRuntime() {
   runtimeInitialized = true;
 
 #if WASM_WORKERS
-  if (ENVIRONMENT_IS_WASM_WORKER) return __wasm_worker_initializeRuntime();
+  if (ENVIRONMENT_IS_WASM_WORKER) return _wasmWorkerInitializeRuntime();
 #endif
 
 #if PTHREADS
@@ -233,11 +233,9 @@ function initRuntime() {
 #endif
 
 #if STACK_OVERFLOW_CHECK >= 2
-#if RUNTIME_LOGGING
-  err('__set_stack_limits: ' + _emscripten_stack_get_base() + ', ' + _emscripten_stack_get_end());
+  setStackLimits();
 #endif
-  ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
-#endif
+
 #if RELOCATABLE
   callRuntimeCallbacks(__RELOC_FUNCS__);
 #endif
@@ -613,7 +611,7 @@ function instrumentWasmTableWithAbort() {
     var cached = wrapperCache[i];
     if (!cached || cached.func !== func) {
       cached = wrapperCache[i] = {
-        func: func,
+        func,
         wrapper: makeAbortWrapper(func)
       }
     }
@@ -632,6 +630,11 @@ if (Module['locateFile']) {
   }
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE // in single-file mode, repeating WASM_BINARY_FILE would emit the contents again
 } else {
+#if ENVIRONMENT_MAY_BE_SHELL
+  if (ENVIRONMENT_IS_SHELL)
+    wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
+  else
+#endif
   // Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
   wasmBinaryFile = new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).href;
 }
@@ -759,8 +762,8 @@ function instantiateSync(file, info) {
       cachedCodeFile = locateFile(cachedCodeFile);
       var hasCached = fs.existsSync(cachedCodeFile);
       if (hasCached) {
-#if RUNTIME_LOGGING
-        err('NODE_CODE_CACHING: loading module');
+#if RUNTIME_DEBUG
+        dbg('NODE_CODE_CACHING: loading module');
 #endif
         try {
           module = v8.deserialize(fs.readFileSync(cachedCodeFile));
@@ -775,8 +778,8 @@ function instantiateSync(file, info) {
       module = new WebAssembly.Module(binary);
     }
     if (ENVIRONMENT_IS_NODE && !hasCached) {
-#if RUNTIME_LOGGING
-      err('NODE_CODE_CACHING: saving module');
+#if RUNTIME_DEBUG
+      dbg('NODE_CODE_CACHING: saving module');
 #endif
       fs.writeFileSync(cachedCodeFile, v8.serialize(module));
     }
@@ -980,6 +983,12 @@ function createWasm() {
     }
 #endif
     mergeLibSymbols(exports, 'main')
+#if '$LDSO' in addedLibraryItems
+    LDSO.init();
+#endif
+    loadDylibs();
+#elif RELOCATABLE
+    reportUndefinedSymbols();
 #endif
 
 #if MEMORY64
@@ -1047,13 +1056,7 @@ function createWasm() {
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
 #endif
-
-#if PTHREADS
-    PThread.loadWasmModuleToAllWorkers(() => removeRunDependency('wasm-instantiate'));
-#else // singlethreaded build:
     removeRunDependency('wasm-instantiate');
-#endif // ~PTHREADS
-
     return exports;
   }
   // wait for the pthread pool (if any)
@@ -1130,8 +1133,8 @@ function createWasm() {
 #endif
 
 #if WASM_ASYNC_COMPILATION
-#if RUNTIME_LOGGING
-  err('asynchronously preparing wasm');
+#if RUNTIME_DEBUG
+  dbg('asynchronously preparing wasm');
 #endif
 #if MODULARIZE
   // If instantiation fails, reject the module ready promise.

@@ -14,9 +14,7 @@ dynCall_jiiii
 dynCall_jiji
 dynCall_viijii
 free
-getTempRet0
 main
-malloc
 memory
 setTempRet0
 setThrew

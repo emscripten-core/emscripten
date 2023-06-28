@@ -85,18 +85,18 @@ int clock_getres(clockid_t clk_id, struct timespec *tp) {
 
 // Mark these as weak so that wasmfs does not collide with it. That is, if
 // wasmfs is in use, we want to use that and not this.
-__attribute__((__weak__)) int _mmap_js(size_t length,
-                                       int prot,
-                                       int flags,
-                                       int fd,
-                                       size_t offset,
-                                       int* allocated,
-                                       void** addr) {
+weak int _mmap_js(size_t length,
+                  int prot,
+                  int flags,
+                  int fd,
+                  off_t offset,
+                  int* allocated,
+                  void** addr) {
   return -ENOSYS;
 }
 
-__attribute__((__weak__)) int _munmap_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
+weak int _munmap_js(
+  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset) {
   return -ENOSYS;
 }
 
@@ -366,8 +366,7 @@ static void _standalone_populate_preopens(void) {
 // corner case error checking; everything else is not permitted.
 // TODO: full file support for WASI, or an option for it
 // open()
-__attribute__((__weak__))
-int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
+weak int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
   const char* resolved_path = (const char*)path;
   if (!strcmp(resolved_path, "/dev/stdin")) {
     return STDIN_FILENO;
@@ -483,7 +482,7 @@ int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
 
 #define __arraycount(x) (sizeof(x) / sizeof((x)[0]))
 
-__attribute__((__weak__)) int __syscall_ioctl(int fildes, int request, ...) {
+weak int __syscall_ioctl(int fildes, int request, ...) {
   switch (request) {
     case FIONREAD: {
       // Poll the file descriptor to determine how many bytes can be read.
@@ -562,7 +561,7 @@ __attribute__((__weak__)) int __syscall_ioctl(int fildes, int request, ...) {
   }
 }
 
-__attribute__((__weak__)) int __syscall_fcntl64(int fd, int cmd, ...) {
+weak int __syscall_fcntl64(int fd, int cmd, ...) {
   switch (cmd) {
     case F_GETFD:
       // Act as if the close-on-exec flag is always set.
@@ -616,7 +615,7 @@ __attribute__((__weak__)) int __syscall_fcntl64(int fd, int cmd, ...) {
   }
 }
 
-__attribute__((__weak__)) int __syscall_ftruncate64(int fd, uint64_t size) {
+weak int __syscall_ftruncate64(int fd, uint64_t size) {
   if (size < 0) {
     errno = EINVAL;
     return -1;
@@ -657,11 +656,11 @@ int rmdirat(int dirfd, intptr_t path) {
   return 0;
 }
 
-__attribute__((__weak__)) int __syscall_rmdir(intptr_t path) {
+weak int __syscall_rmdir(intptr_t path) {
   return rmdirat(AT_FDCWD, path);
 }
 
-__attribute__((__weak__)) int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
+weak int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
   // unlinkat with AT_REMOVEDIR flag is acutally rmdir.
   if ((flags & AT_REMOVEDIR) != 0) {
     return rmdirat(dirfd, path);
@@ -691,13 +690,13 @@ __attribute__((__weak__)) int __syscall_unlinkat(int dirfd, intptr_t path, int f
   return 0;
 }
 
-__attribute__((__weak__)) int __syscall_pipe(intptr_t fd) {
+weak int __syscall_pipe(intptr_t fd) {
   REPORT_UNSUPPORTED(__syscall_pipe);
   abort();
   return -ENOSYS;
 }
 
-__attribute__((__weak__)) int __syscall_renameat(int olddirfd, intptr_t oldpath, int newdirfd, intptr_t newpath) {
+weak int __syscall_renameat(int olddirfd, intptr_t oldpath, int newdirfd, intptr_t newpath) {
   const char* oldpathresolved_path = (const char*)oldpath;
 
   // Resolve path if fd is AT_FDCWD.
@@ -738,19 +737,19 @@ __attribute__((__weak__)) int __syscall_renameat(int olddirfd, intptr_t oldpath,
   return 0;
 }
 
-__attribute__((__weak__)) int __syscall_dup(int fd) {
+weak int __syscall_dup(int fd) {
   REPORT_UNSUPPORTED(__syscall_dup);
   abort();
   return -ENOSYS;
 }
 
-__attribute__((__weak__)) int __syscall_dup3(int fd, int suggestfd, int flags) {
+weak int __syscall_dup3(int fd, int suggestfd, int flags) {
   REPORT_UNSUPPORTED(__syscall_dup3);
-  abort();
-  return -ENOSYS;
+    abort();
+    return -ENOSYS;
 }
 
-__attribute__((__weak__)) int __syscall_faccessat(int dirfd, intptr_t path, int amode, int flags) {
+weak int __syscall_faccessat(int dirfd, intptr_t path, int amode, int flags) {
   const char* resolved_path = (const char*)path;
 
   // Resolve path if fd is AT_FDCWD.
@@ -846,8 +845,7 @@ static void __wasi_filestat_to_stat(const __wasi_filestat_t *in,
   }
 }
 
-__attribute__((__weak__))
-int __syscall_fstat64(int fd, intptr_t buf) {
+weak int __syscall_fstat64(int fd, intptr_t buf) {
   __wasi_filestat_t internal_stat;
   __wasi_errno_t error = __wasi_fd_filestat_get(fd, &internal_stat);
   if (error != __WASI_ERRNO_SUCCESS) {
@@ -857,8 +855,7 @@ int __syscall_fstat64(int fd, intptr_t buf) {
   return 0;
 }
 
-__attribute__((__weak__))
-int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
+weak int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
   intptr_t dirpointer = dirp;
   struct dirent *de;
   de = (void *)(dirpointer);
@@ -1048,23 +1045,19 @@ int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
   return 0;
 }
 
-__attribute__((__weak__))
-int __syscall_stat64(intptr_t path, intptr_t buf) {
+weak int __syscall_stat64(intptr_t path, intptr_t buf) {
   return __syscall_newfstatat(AT_FDCWD, path, buf, 0);
 }
 
-__attribute__((__weak__))
-int __syscall_lstat64(intptr_t path, intptr_t buf) {
+weak int __syscall_lstat64(intptr_t path, intptr_t buf) {
   return __syscall_newfstatat(AT_FDCWD, path, buf, AT_SYMLINK_NOFOLLOW);
 }
 
-__attribute__((__weak__))
-int getentropy(void *buffer, size_t length) {
+weak int getentropy(void *buffer, size_t length) {
   return __wasi_syscall_ret(__wasi_random_get(buffer, length));
 }
 
-__attribute__((__weak__))
-int __syscall_getcwd(intptr_t buf, size_t size) {
+weak int __syscall_getcwd(intptr_t buf, size_t size) {
   // Check if buf points to a bad address.
   if (!buf && size > 0) {
     return -EFAULT;
@@ -1091,8 +1084,7 @@ int __syscall_getcwd(intptr_t buf, size_t size) {
   return len;
 }
 
-__attribute__((__weak__))
-int __syscall_mkdirat(int dirfd, intptr_t path, int mode) {
+weak int __syscall_mkdirat(int dirfd, intptr_t path, int mode) {
   const char* resolved_path = (const char*)path;
 
   // Resolve path if fd is AT_FDCWD.
@@ -1120,7 +1112,7 @@ int __syscall_mkdirat(int dirfd, intptr_t path, int mode) {
 // Emscripten additions
 
 // Should never be called in standalone mode
-void emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) {
+weak void emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) {
   __builtin_unreachable();
 }
 
@@ -1149,12 +1141,16 @@ int emscripten_resize_heap(size_t size) {
   return 0;
 }
 
-double emscripten_get_now(void) {
-  return (1000ll * clock()) / (double)CLOCKS_PER_SEC;
+weak double emscripten_get_now(void) {
+  struct timespec ts;
+  if (clock_gettime(CLOCK_MONOTONIC, &ts)) {
+    return 0;
+  }
+  // emscripten_get_now returns time in milliseconds (as a double)
+  return (double)ts.tv_sec * 1000 + (double)ts.tv_nsec / 1000000;
 }
 
-__attribute__((__weak__))
-void _emscripten_throw_longjmp() {
+weak void _emscripten_throw_longjmp() {
   REPORT_UNSUPPORTED(call longjmp);
   abort();
 }
@@ -1212,9 +1208,9 @@ static void wasi_writeln(__wasi_fd_t fd, const char* buffer) {
   imported__wasi_fd_write(fd, iovs, 2, &nwritten);
 }
 
-void _emscripten_out(const char* text) { wasi_writeln(1, text); }
+void emscripten_out(const char* text) { wasi_writeln(1, text); }
 
-void _emscripten_err(const char* text) { wasi_writeln(2, text); }
+void emscripten_err(const char* text) { wasi_writeln(2, text); }
 
 // In the non-standalone build we define this helper function in JS to avoid
 // signture mismatch issues.
@@ -1229,20 +1225,18 @@ int _setitimer_js(int which, double timeout) {
   errno = ENOTSUP;
   return -1;
 }
-__attribute__((__weak__))
-void *dlopen(const char *file, int mode) {
+
+weak void *dlopen(const char *file, int mode) {
   REPORT_UNSUPPORTED(dlopen);
   abort();
 }
 
-__attribute__((__weak__))
-void* __dlsym(void* restrict p, const char* restrict s, void* restrict ra) {
+weak void* __dlsym(void* restrict p, const char* restrict s, void* restrict ra) {
   REPORT_UNSUPPORTED(dlsym);
   abort();
 }
 
-__attribute__((__weak__))
-int system(const char *cmd) {
+weak int system(const char *cmd) {
   REPORT_UNSUPPORTED(system);
   abort();
 }

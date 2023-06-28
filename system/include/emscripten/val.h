@@ -52,9 +52,9 @@ void _emval_decref(EM_VAL value);
 
 void _emval_run_destructors(EM_DESTRUCTORS handle);
 
-EM_VAL _emval_new_array();
+EM_VAL _emval_new_array(void);
 EM_VAL _emval_new_array_from_memory_view(EM_VAL mv);
-EM_VAL _emval_new_object();
+EM_VAL _emval_new_object(void);
 EM_VAL _emval_new_cstring(const char*);
 EM_VAL _emval_new_u8string(const char*);
 EM_VAL _emval_new_u16string(const char16_t*);

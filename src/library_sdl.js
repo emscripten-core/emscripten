@@ -26,11 +26,10 @@ var LibrarySDL = {
   $SDL_audio: function() { return SDL.audio; },
 
   $SDL__deps: [
-#if FILESYSTEM
-    '$FS',
-#endif
     '$PATH', '$Browser', 'SDL_GetTicks', 'SDL_LockSurface',
-    '$SDL_unicode', '$SDL_ttfContext', '$SDL_audio'
+    '$SDL_unicode', '$SDL_ttfContext', '$SDL_audio',
+    // For makeCEvent().
+    '$intArrayFromString',
   ],
   $SDL: {
     defaults: {
@@ -416,18 +415,18 @@ var LibrarySDL = {
       var ctx = Browser.createContext(canvas, is_SDL_OPENGL, usePageCanvas, webGLContextAttributes);
 
       SDL.surfaces[surf] = {
-        width: width,
-        height: height,
-        canvas: canvas,
-        ctx: ctx,
-        surf: surf,
-        buffer: buffer,
-        pixelFormat: pixelFormat,
+        width,
+        height,
+        canvas,
+        ctx,
+        surf,
+        buffer,
+        pixelFormat,
         alpha: 255,
-        flags: flags,
+        flags,
         locked: 0,
-        usePageCanvas: usePageCanvas,
-        source: source,
+        usePageCanvas,
+        source,
 
         isFlagSet: function(flag) {
           return flags & flag;
@@ -601,7 +600,7 @@ var LibrarySDL = {
             var touch = touches[i];
             SDL.events.push({
               type: event.type,
-              touch: touch
+              touch
             });
           };
           break;
@@ -631,7 +630,7 @@ var LibrarySDL = {
             var touch = event.changedTouches[i];
             SDL.events.push({
               type: 'touchend',
-              touch: touch
+              touch
             });
           };
           break;
@@ -642,8 +641,8 @@ var LibrarySDL = {
 
           // Simulate old-style SDL events representing mouse wheel input as buttons
           var button = delta > 0 ? 3 /*SDL_BUTTON_WHEELUP-1*/ : 4 /*SDL_BUTTON_WHEELDOWN-1*/; // Subtract one since JS->C marshalling is defined to add one back.
-          SDL.events.push({ type: 'mousedown', button: button, pageX: event.pageX, pageY: event.pageY });
-          SDL.events.push({ type: 'mouseup', button: button, pageX: event.pageX, pageY: event.pageY });
+          SDL.events.push({ type: 'mousedown', button, pageX: event.pageX, pageY: event.pageY });
+          SDL.events.push({ type: 'mouseup', button, pageX: event.pageX, pageY: event.pageY });
 
           // Pass a delta motion event.
           SDL.events.push({ type: 'wheel', deltaX: 0, deltaY: delta });
@@ -1125,13 +1124,13 @@ var LibrarySDL = {
         audio.paused = false;
         if (!webAudio.decodedBuffer) {
           if (webAudio.onDecodeComplete === undefined) abort("Cannot play back audio object that was not loaded");
-          webAudio.onDecodeComplete.push(function() { if (!audio.paused) SDL.playWebAudio(audio); });
+          webAudio.onDecodeComplete.push(() => { if (!audio.paused) SDL.playWebAudio(audio); });
           return;
         }
         audio.webAudioNode = SDL.audioContext['createBufferSource']();
         audio.webAudioNode['buffer'] = webAudio.decodedBuffer;
         audio.webAudioNode['loop'] = audio.loop;
-        audio.webAudioNode['onended'] = function() { audio['onended'](); } // For <media> element compatibility, route the onended signal to the instance.
+        audio.webAudioNode['onended'] = audio['onended']; // For <media> element compatibility, route the onended signal to the instance.
 
         audio.webAudioPannerNode = SDL.audioContext['createPanner']();
         // avoid Chrome bug
@@ -1243,7 +1242,7 @@ var LibrarySDL = {
       }
 
       SDL.lastJoystickState[joystick] = {
-        buttons: buttons,
+        buttons,
         axes: state.axes.slice(0),
         timestamp: state.timestamp,
         index: state.index,
@@ -1285,7 +1284,7 @@ var LibrarySDL = {
               // Insert button-press event.
               SDL.events.push({
                 type: buttonState ? 'joystick_button_down' : 'joystick_button_up',
-                joystick: joystick,
+                joystick,
                 index: joystick - 1,
                 button: i
               });
@@ -1296,7 +1295,7 @@ var LibrarySDL = {
               // Insert axes-change event.
               SDL.events.push({
                 type: 'joystick_axis_motion',
-                joystick: joystick,
+                joystick,
                 index: joystick - 1,
                 axis: i,
                 value: state.axes[i]
@@ -1457,9 +1456,11 @@ var LibrarySDL = {
   SDL_SetVideoMode__deps: ['$GL'],
   SDL_SetVideoMode__proxy: 'sync',
   SDL_SetVideoMode: function(width, height, depth, flags) {
-    ['touchstart', 'touchend', 'touchmove', 'mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'wheel', 'mouseout'].forEach(function(event) {
-      Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
-    });
+    ['touchstart', 'touchend', 'touchmove',
+     'mousedown', 'mouseup', 'mousemove',
+     'mousewheel', 'wheel', 'mouseout',
+     'DOMMouseScroll',
+    ].forEach((e) => Module['canvas'].addEventListener(e, SDL.receiveEvent, true));
 
     var canvas = Module['canvas'];
 
@@ -1471,12 +1472,12 @@ var LibrarySDL = {
 
     if (!SDL.addedResizeListener) {
       SDL.addedResizeListener = true;
-      Browser.resizeListeners.push(function(w, h) {
+      Browser.resizeListeners.push((w, h) => {
         if (!SDL.settingVideoMode) {
           SDL.receiveEvent({
             type: 'resize',
-            w: w,
-            h: h
+            w,
+            h
           });
         }
       });
@@ -2056,10 +2057,8 @@ var LibrarySDL = {
   },
 
   SDL_PumpEvents__proxy: 'sync',
-  SDL_PumpEvents: function(){
-    SDL.events.forEach(function(event) {
-      SDL.handleEvent(event);
-    });
+  SDL_PumpEvents: function() {
+    SDL.events.forEach(SDL.handleEvent);
   },
 
   // An Emscripten-specific extension to SDL: Some browser APIs require that they are called from within an event handler function.
@@ -2186,7 +2185,7 @@ var LibrarySDL = {
     return flags; // We support JPG, PNG, TIF because browsers do
   },
 
-  IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS', 'malloc', '$stringToNewUTF8'],
+  IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS', '$withStackSave', '$stringToUTF8OnStack'],
   IMG_Load_RW__proxy: 'sync',
   IMG_Load_RW: function(rwopsID, freeSrc) {
     try {
@@ -2201,27 +2200,22 @@ var LibrarySDL = {
           func();
         }
       }
-      var callStbImage = (func, params) => {
-        var x = _malloc({{{ getNativeTypeSize('i32') }}});
-        var y = _malloc({{{ getNativeTypeSize('i32') }}});
-        var comp = _malloc({{{ getNativeTypeSize('i32') }}});
-        addCleanup(function() {
-          _free(x);
-          _free(y);
-          _free(comp);
-          if (data) Module['_stbi_image_free'](data);
-        });
+      var callStbImage = (func, params) => withStackSave(() => {
+        var x = stackAlloc({{{ getNativeTypeSize('i32') }}});
+        var y = stackAlloc({{{ getNativeTypeSize('i32') }}});
+        var comp = stackAlloc({{{ getNativeTypeSize('i32') }}});
         var data = Module['_' + func].apply(null, params.concat([x, y, comp, 0]));
         if (!data) return null;
+        addCleanup(() => Module['_stbi_image_free'](data));
         return {
           rawData: true,
-          data: data,
+          data,
           width: {{{ makeGetValue('x', 0, 'i32') }}},
           height: {{{ makeGetValue('y', 0, 'i32') }}},
           size: {{{ makeGetValue('x', 0, 'i32') }}} * {{{ makeGetValue('y', 0, 'i32') }}} * {{{ makeGetValue('comp', 0, 'i32') }}},
           bpp: {{{ makeGetValue('comp', 0, 'i32') }}}
         };
-      }
+      });
 
       var rwops = SDL.rwops[rwopsID];
       if (rwops === undefined) {
@@ -2246,10 +2240,7 @@ var LibrarySDL = {
         if (!raw) {
           if (raw === null) err('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');
 #if STB_IMAGE
-          var name = stringToNewUTF8(filename);
-          addCleanup(function() {
-            _free(name);
-          });
+          var name = stringToUTF8OnStack(filename);
           raw = callStbImage('stbi_load', [name]);
           if (!raw) return 0;
 #else
@@ -2448,9 +2439,7 @@ var LibrarySDL = {
       };
       Asyncify.sleepCallbacks.push(sleepCallback);
       SDL.audio.callbackRemover = () => {
-        Asyncify.sleepCallbacks = Asyncify.sleepCallbacks.filter(function(callback) {
-          return callback !== sleepCallback;
-        });
+        Asyncify.sleepCallbacks = Asyncify.sleepCallbacks.filter((callback) => callback !== sleepCallback);
       }
 #endif
 
@@ -2689,7 +2678,11 @@ var LibrarySDL = {
     return 1;
   },
 
-  Mix_LoadWAV_RW__deps: ['$PATH_FS', 'fileno'],
+  Mix_LoadWAV_RW__deps: [
+    '$FS',
+    '$PATH_FS',
+    'fileno',
+  ],
   Mix_LoadWAV_RW__proxy: 'sync',
   Mix_LoadWAV_RW__docs: '/** @param {number} freesrc */',
   Mix_LoadWAV_RW: function(rwopsID, freesrc) {
@@ -2771,7 +2764,7 @@ var LibrarySDL = {
       var onDecodeComplete = (data) => {
         webAudio.decodedBuffer = data;
         // Call all handlers that were waiting for this decode to finish, and clear the handler list.
-        webAudio.onDecodeComplete.forEach(function(e) { e(); });
+        webAudio.onDecodeComplete.forEach((e) => e());
         webAudio.onDecodeComplete = undefined; // Don't allow more callback handlers since audio has finished decoding.
       };
       SDL.audioContext['decodeAudioData'](arrayBuffer, onDecodeComplete);
@@ -2789,8 +2782,8 @@ var LibrarySDL = {
     // Keep the loaded audio in the audio arrays, ready for playback
     SDL.audios.push({
       source: filename,
-      audio: audio, // Points to the <audio> element, if loaded
-      webAudio: webAudio // Points to a Web Audio -specific resource object, if loaded
+      audio, // Points to the <audio> element, if loaded
+      webAudio // Points to a Web Audio -specific resource object, if loaded
     });
     return id;
   },
@@ -2830,9 +2823,9 @@ var LibrarySDL = {
     var id = SDL.audios.length;
     SDL.audios.push({
       source: '',
-      audio: audio,
-      webAudio: webAudio,
-      buffer: buffer
+      audio,
+      webAudio,
+      buffer
     });
     return id;
   },
@@ -2887,7 +2880,7 @@ var LibrarySDL = {
       audio.numChannels = info.audio.numChannels;
       audio.frequency = info.audio.frequency;
     }
-    audio['onended'] = function SDL_audio_onended() { // TODO: cache these
+    audio['onended'] = function() { // TODO: cache these
       if (channelInfo.audio == this) { channelInfo.audio.paused = true; channelInfo.audio = null; }
       if (SDL.channelFinished)  {{{ makeDynCall('vi', 'SDL.channelFinished') }}}(channel);
     }
@@ -3116,12 +3109,12 @@ var LibrarySDL = {
   },
 
   TTF_OpenFont__proxy: 'sync',
-  TTF_OpenFont: function(filename, size) {
-    filename = PATH.normalize(UTF8ToString(filename));
+  TTF_OpenFont: function(name, size) {
+    name = PATH.normalize(UTF8ToString(name));
     var id = SDL.fonts.length;
     SDL.fonts.push({
-      name: filename, // but we don't actually do anything with it..
-      size: size
+      name, // but we don't actually do anything with it..
+      size
     });
     return id;
   },
@@ -3389,13 +3382,13 @@ var LibrarySDL = {
 
   SDL_GL_GetSwapInterval__proxy: 'sync',
   SDL_GL_GetSwapInterval: function() {
-    if (Browser.mainLoop.timingMode == 1/*EM_TIMING_RAF*/) return Browser.mainLoop.timingValue;
+    if (Browser.mainLoop.timingMode == {{{ cDefs.EM_TIMING_RAF }}}) return Browser.mainLoop.timingValue;
     else return 0;
   },
 
   SDL_GL_SetSwapInterval__deps: ['emscripten_set_main_loop_timing'],
   SDL_GL_SetSwapInterval: function(state) {
-    _emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, state);
+    _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_RAF }}}, state);
   },
 
   SDL_SetWindowTitle__proxy: 'sync',
@@ -3562,8 +3555,8 @@ var LibrarySDL = {
   SDL_RWFromFile__docs: '/** @param {number} mode */',
   SDL_RWFromFile: function(_name, mode) {
     var id = SDL.rwops.length; // TODO: recycle ids when they are null
-    var name = UTF8ToString(_name);
-    SDL.rwops.push({ filename: name, mimetype: Browser.getMimetype(name) });
+    var filename = UTF8ToString(_name);
+    SDL.rwops.push({ filename, mimetype: Browser.getMimetype(filename) });
     return id;
   },
 

@@ -426,7 +426,7 @@ class Library:
     This will trigger a build if this library is not in the cache.
     """
     fullpath = self.build()
-    # For non-libaries (e.g. crt1.o) we pass the entire path to the linker
+    # For non-libraries (e.g. crt1.o) we pass the entire path to the linker
     if self.get_ext() != '.a':
       return fullpath
     # For libraries (.a) files, we pass the abbreviated `-l` form.
@@ -1074,6 +1074,7 @@ class libc(MuslInternalLibrary,
         filenames=[
           'pthread_self.c',
           'pthread_cleanup_push.c',
+          'pthread_attr_init.c',
           'pthread_attr_destroy.c',
           'pthread_attr_get.c',
           'pthread_attr_setdetachstate.c',
@@ -1089,6 +1090,7 @@ class libc(MuslInternalLibrary,
           'pthread_getschedparam.c',
           'pthread_setschedprio.c',
           'pthread_setconcurrency.c',
+          'default_attr.c',
           # C11 thread library functions
           'call_once.c',
           'tss_create.c',
@@ -1173,7 +1175,7 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/ldso',
-        filenames=['dlerror.c', 'dlsym.c', 'dlclose.c'])
+        filenames=['dladdr.c', 'dlerror.c', 'dlsym.c', 'dlclose.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/signal',
@@ -1333,22 +1335,26 @@ class libprintf_long_double(libc):
 
 
 class libwasm_workers(MTLibrary):
+  name = 'libwasm_workers'
+  includes = ['system/lib/libc']
+
   def __init__(self, **kwargs):
     self.debug = kwargs.pop('debug')
     super().__init__(**kwargs)
 
-  name = 'libwasm_workers'
-
   def get_cflags(self):
-    cflags = get_base_cflags() + ['-D_DEBUG' if self.debug else '-Oz']
+    cflags = super().get_cflags()
     if self.debug:
+      cflags += ['-D_DEBUG']
       # library_wasm_worker.c contains an assert that a nonnull paramater
       # is no NULL, which llvm now warns is redundant/tautological.
       cflags += ['-Wno-tautological-pointer-compare']
+      # Override the `-O2` default.  Building library_wasm_worker.c with
+      # `-O1` or `-O2` currently causes tests to fail.
+      # https://github.com/emscripten-core/emscripten/issues/19331
+      cflags += ['-O0']
     else:
-      cflags += ['-DNDEBUG']
-    if self.is_ww or self.is_mt:
-      cflags += ['-pthread', '-sWASM_WORKERS']
+      cflags += ['-DNDEBUG', '-Oz']
     if settings.MAIN_MODULE:
       cflags += ['-fPIC']
     return cflags
@@ -1851,6 +1857,7 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
         filenames=['file.cpp',
                    'file_table.cpp',
                    'js_api.cpp',
+                   'emscripten.cpp',
                    'paths.cpp',
                    'special_files.cpp',
                    'support.cpp',
@@ -1859,6 +1866,36 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
 
   def can_use(self):
     return settings.WASMFS
+
+
+# Minimal syscall implementation, enough for printf. If this can be linked in
+# instead of the full WasmFS then it saves a lot of code size for simple
+# programs that don't need a full FS implementation.
+class libwasmfs_no_fs(Library):
+  name = 'libwasmfs_no_fs'
+
+  src_dir = 'system/lib/wasmfs'
+  src_files = ['no_fs.c']
+
+  def can_use(self):
+    # If the filesystem is forced then we definitely do not need this library.
+    return settings.WASMFS and not settings.FORCE_FILESYSTEM
+
+
+class libwasmfs_noderawfs(Library):
+  name = 'libwasmfs_noderawfs'
+
+  cflags = ['-fno-exceptions', '-std=c++17']
+
+  includes = ['system/lib/wasmfs']
+
+  def get_files(self):
+    return files_in_path(
+        path='system/lib/wasmfs/backends',
+        filenames=['noderawfs_root.cpp'])
+
+  def can_use(self):
+    return settings.WASMFS and settings.NODERAWFS
 
 
 class libhtml5(Library):
@@ -2041,6 +2078,7 @@ class libjsmath(Library):
 class libstubs(DebugLibrary):
   name = 'libstubs'
   src_dir = 'system/lib/libc'
+  includes = ['system/lib/libc/musl/src/include']
   src_files = ['emscripten_syscall_stubs.c', 'emscripten_libc_stubs.c']
 
 
@@ -2177,6 +2215,16 @@ def get_libs_to_link(args, forced, only_forced):
 
   if settings.WASM_WORKERS:
     add_library('libwasm_workers')
+
+  if settings.WASMFS:
+    # Link in the no-fs version first, so that if it provides all the needed
+    # system libraries then WasmFS is not linked in at all. (We only do this if
+    # the filesystem is not forced; if it is then we know we definitely need the
+    # whole thing, and it would be unnecessary work to try to link in the no-fs
+    # version).
+    if not settings.FORCE_FILESYSTEM:
+      add_library('libwasmfs_no_fs')
+    add_library('libwasmfs')
 
   add_sanitizer_libs()
   return libs_to_link

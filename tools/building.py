@@ -38,7 +38,7 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 112
+EXPECTED_BINARYEN_VERSION = 113
 
 _is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
@@ -60,6 +60,7 @@ def remove_quotes(arg):
 
 
 def get_building_env():
+  cache.ensure()
   env = os.environ.copy()
   # point CC etc. to the em* tools.
   env['CC'] = EMCC
@@ -135,10 +136,8 @@ def create_stub_object(external_symbols):
   stubfile = shared.get_temp_files().get('libemscripten_js_symbols.so').name
   stubs = ['#STUB']
   for name, deps in external_symbols.items():
-    if settings.ERROR_ON_UNDEFINED_SYMBOLS:
+    if not name.startswith('$'):
       stubs.append('%s: %s' % (name, ','.join(deps)))
-    else:
-      stubs.append(name)
   utils.write_file(stubfile, '\n'.join(stubs))
   return stubfile
 
@@ -147,6 +146,8 @@ def lld_flags_for_executable(external_symbols):
   cmd = []
   if external_symbols:
     if settings.INCLUDE_FULL_LIBRARY:
+      # When INCLUDE_FULL_LIBRARY is set try to export every possible
+      # native dependency of a JS function.
       all_deps = set()
       for deps in external_symbols.values():
         for dep in deps:
@@ -551,7 +552,7 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   if settings.DYNCALLS:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/dyncall-externs.js')]
 
-  if settings.MINIMAL_RUNTIME and settings.USE_PTHREADS:
+  if settings.MINIMAL_RUNTIME and settings.PTHREADS:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/minimal_runtime_worker_externs.js')]
 
   args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
@@ -888,7 +889,7 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
   # JS optimizations
   if opt_level >= 2:
     passes = []
-    if not debug_info and not settings.USE_PTHREADS:
+    if not debug_info and not settings.PTHREADS:
       passes += ['minifyNames']
       if symbols_file_js:
         passes += ['symbolMap=%s' % symbols_file_js]
@@ -1015,6 +1016,7 @@ def instrument_js_for_safe_heap(js_file):
   return acorn_optimizer(js_file, ['safeHeap'])
 
 
+@ToolchainProfiler.profile()
 def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
   logger.debug('handle_final_wasm_symbols')
   args = []

@@ -27,7 +27,7 @@ from tools import utils
 from tools import webassembly
 from tools import extract_metadata
 from tools.utils import exit_with_error, path_from_root
-from tools.shared import DEBUG, WINDOWS, asmjs_mangle
+from tools.shared import DEBUG, asmjs_mangle
 from tools.shared import treat_as_user_function, strip_prefix
 from tools.settings import settings
 
@@ -55,22 +55,22 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
 
 
 def write_output_file(outfile, module):
-  for i in range(len(module)): # do this loop carefully to save memory
-    module[i] = normalize_line_endings(module[i])
-    outfile.write(module[i])
+  for chunk in module:
+    outfile.write(chunk)
 
 
-def optimize_syscalls(declares):
+def maybe_disable_filesystem(imports):
   """Disables filesystem if only a limited subset of syscalls is used.
 
   Our syscalls are static, and so if we see a very limited set of them - in particular,
   no open() syscall and just simple writing - then we don't need full filesystem support.
   If FORCE_FILESYSTEM is set, we can't do this. We also don't do it if INCLUDE_FULL_LIBRARY, since
   not including the filesystem would mean not including the full JS libraries, and the same for
-  MAIN_MODULE since a side module might need the filesystem.
+  MAIN_MODULE=1 since a side module might need the filesystem.
   """
-  relevant_settings = ['FORCE_FILESYSTEM', 'INCLUDE_FULL_LIBRARY', 'MAIN_MODULE']
-  if any(settings[s] for s in relevant_settings):
+  if any(settings[s] for s in ['FORCE_FILESYSTEM', 'INCLUDE_FULL_LIBRARY']):
+    return
+  if settings.MAIN_MODULE == 1:
     return
 
   if settings.FILESYSTEM == 0:
@@ -79,7 +79,9 @@ def optimize_syscalls(declares):
   else:
     # TODO(sbc): Find a better way to identify wasi syscalls
     syscall_prefixes = ('__syscall_', 'fd_')
-    syscalls = {d for d in declares if d.startswith(syscall_prefixes) or d in ['path_open']}
+    side_module_imports = [shared.demangle_c_symbol_name(s) for s in settings.SIDE_MODULE_IMPORTS]
+    all_imports = set(imports).union(side_module_imports)
+    syscalls = {d for d in all_imports if d.startswith(syscall_prefixes) or d in ['path_open']}
     # check if the only filesystem syscalls are in: close, ioctl, llseek, write
     # (without open, etc.. nothing substantial can be done, so we can disable
     # extra filesystem support in that case)
@@ -116,7 +118,7 @@ def get_weak_imports(main_wasm):
 
 
 def update_settings_glue(wasm_file, metadata):
-  optimize_syscalls(metadata.imports)
+  maybe_disable_filesystem(metadata.imports)
 
   # Integrate info from backend
   if settings.SIDE_MODULE:
@@ -419,7 +421,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, js_syms):
       '// === Body ===\n\n' + extra_code + '\n')
 
   with open(outfile_js, 'w', encoding='utf-8') as out:
-    out.write(normalize_line_endings(pre))
+    out.write(pre)
     pre = None
 
     receiving = create_receiving(exports)
@@ -433,7 +435,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, js_syms):
 
     write_output_file(out, module)
 
-    out.write(normalize_line_endings(post))
+    out.write(post)
     module = None
 
 
@@ -793,9 +795,9 @@ def create_receiving(exports):
       # In Wasm exports are assigned inside a function to variables
       # existing in top level JS scope, i.e.
       # var _main;
-      # WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
-      # var asm = output.instance.exports;
-      # _main = asm["_main"];
+      # WebAssembly.instantiate(Module["wasm"], imports).then((output) => {
+      #   var asm = output.instance.exports;
+      #   _main = asm["_main"];
       generate_dyncall_assignment = settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
       exports_that_are_not_initializers = [x for x in exports if x != building.WASM_CALL_CTORS]
 
@@ -886,12 +888,14 @@ def create_wasm64_wrappers(metadata):
     'emscripten_stack_set_limits': '_pp',
     '__set_stack_limits': '_pp',
     '__cxa_can_catch': '_ppp',
+    '__cxa_increment_exception_refcount': '_p',
+    '__cxa_decrement_exception_refcount': '_p',
     '_wasmfs_write_file': '_ppp',
     '__dl_seterr': '_pp',
     '_emscripten_run_in_main_runtime_thread_js': '___p_',
     '_emscripten_proxy_execute_task_queue': '_p',
     '_emscripten_thread_exit': '_p',
-    '_emscripten_thread_init': '_p____',
+    '_emscripten_thread_init': '_p_____',
     '_emscripten_thread_free_data': '_p',
     '_emscripten_dlsync_self_async': '_p',
     '_emscripten_proxy_dlsync_async': '_pp',
@@ -920,16 +924,6 @@ function instrumentWasmExportsForMemory64(exports) {
     wasm64_wrappers += f"\n  exports['{f}'] = wasm64Wrapper_{sig}(exports['{f}']);"
   wasm64_wrappers += '\n  return exports\n}'
   return wasm64_wrappers
-
-
-def normalize_line_endings(text):
-  """Normalize to UNIX line endings.
-
-  On Windows, writing to text file will duplicate \r\n to \r\r\n otherwise.
-  """
-  if WINDOWS:
-    return text.replace('\r\n', '\n')
-  return text
 
 
 def run(in_wasm, out_wasm, outfile_js, memfile, js_syms):

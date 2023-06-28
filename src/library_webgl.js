@@ -152,6 +152,7 @@ var LibraryGL = {
   $GL__deps: [
 #if PTHREADS
     'malloc', // Needed by registerContext
+    'free', // Needed by deleteContext
 #endif
 #if MIN_WEBGL_VERSION == 1
     '$webgl_enable_ANGLE_instanced_arrays',
@@ -988,7 +989,7 @@ var LibraryGL = {
 #endif // PTHREADS
 
       var context = {
-        handle: handle,
+        handle,
         attributes: webGLContextAttributes,
         version: webGLContextAttributes.majorVersion,
         GLctx: ctx
@@ -3933,7 +3934,7 @@ var LibraryGL = {
     }
   },
 
-  glMapBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget'],
+  glMapBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget', 'malloc'],
   glMapBufferRange: function(target, offset, length, access) {
     if ((access & (0x1/*GL_MAP_READ_BIT*/ | 0x20/*GL_MAP_UNSYNCHRONIZED_BIT*/)) != 0) {
       err("glMapBufferRange access does not support MAP_READ or MAP_UNSYNCHRONIZED");
@@ -3956,15 +3957,15 @@ var LibraryGL = {
       return 0;
     }
 
-    var mem = _malloc(length);
+    var mem = _malloc(length), binding = emscriptenWebGLGetBufferBinding(target);
     if (!mem) return 0;
 
-    GL.mappedBuffers[emscriptenWebGLGetBufferBinding(target)] = {
-      offset: offset,
-      length: length,
-      mem: mem,
-      access: access,
-    };
+    if (!GL.mappedBuffers[binding]) GL.mappedBuffers[binding] = {};
+    binding = GL.mappedBuffers[binding];
+    binding.offset = offset;
+    binding.length = length;
+    binding.mem = mem;
+    binding.access = access;
     return mem;
   },
 
@@ -4015,7 +4016,7 @@ var LibraryGL = {
       HEAPU8.subarray(mapping.mem + offset, mapping.mem + offset + length));
   },
 
-  glUnmapBuffer__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget'],
+  glUnmapBuffer__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget', 'free'],
   glUnmapBuffer: function(target) {
     if (!emscriptenWebGLValidateMapBufferTarget(target)) {
       GL.recordError(0x500/*GL_INVALID_ENUM*/);
@@ -4025,12 +4026,11 @@ var LibraryGL = {
 
     var buffer = emscriptenWebGLGetBufferBinding(target);
     var mapping = GL.mappedBuffers[buffer];
-    if (!mapping) {
+    if (!mapping || !mapping.mem) {
       GL.recordError(0x502 /* GL_INVALID_OPERATION */);
       err('buffer was never mapped in glUnmapBuffer');
       return 0;
     }
-    GL.mappedBuffers[buffer] = null;
 
     if (!(mapping.access & 0x10)) /* GL_MAP_FLUSH_EXPLICIT_BIT */
       if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
@@ -4039,6 +4039,7 @@ var LibraryGL = {
         GLctx.bufferSubData(target, mapping.offset, HEAPU8.subarray(mapping.mem, mapping.mem+mapping.length));
       }
     _free(mapping.mem);
+    mapping.mem = 0;
     return 1;
   },
 #endif

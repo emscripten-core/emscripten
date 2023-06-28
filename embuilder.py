@@ -101,6 +101,8 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libfetch',
     'libfetch-mt',
     'libwasmfs',
+    'libwasmfs-debug',
+    'libwasmfs_no_fs',
     'giflib',
 ]
 
@@ -188,6 +190,7 @@ def main():
   # Check sanity so that if settings file has changed, the cache is cleared here.
   # Otherwise, the cache will clear in an emcc process, which is invoked while building
   # a system library into the cache, causing trouble.
+  cache.setup()
   shared.check_sanity()
 
   if args.lto:
@@ -208,31 +211,43 @@ def main():
   if args.force:
     do_clear = True
 
+  system_libraries, system_tasks = get_system_tasks()
+
   # process tasks
   auto_tasks = False
-  tasks = args.targets
-  system_libraries, system_tasks = get_system_tasks()
-  if 'SYSTEM' in tasks:
-    tasks = system_tasks
-    auto_tasks = True
-  elif 'USER' in tasks:
-    tasks = PORTS
-    auto_tasks = True
-  elif 'MINIMAL' in tasks:
-    tasks = MINIMAL_TASKS
-    auto_tasks = True
-  elif 'MINIMAL_PIC' in tasks:
-    tasks = MINIMAL_PIC_TASKS
-    auto_tasks = True
-  elif 'ALL' in tasks:
-    tasks = system_tasks + PORTS
-    auto_tasks = True
+  task_targets = dict.fromkeys(args.targets) # use dict to keep targets order
+
+  # subsitute
+  predefined_tasks = {
+    'SYSTEM': system_tasks,
+    'USER': PORTS,
+    'MINIMAL': MINIMAL_TASKS,
+    'MINIMAL_PIC': MINIMAL_PIC_TASKS,
+    'ALL': system_tasks + PORTS,
+  }
+  for name, tasks in predefined_tasks.items():
+    if name in task_targets:
+      task_targets[name] = tasks
+      auto_tasks = True
+
+  # flatten tasks
+  tasks = []
+  for name, targets in task_targets.items():
+    if targets is None:
+      # Use target name as task
+      tasks.append(name)
+    else:
+      # There are some ports that we don't want to build as part
+      # of ALL since the are not well tested or widely used:
+      if 'cocos2d' in targets:
+        targets.remove('cocos2d')
+
+      # Use targets from predefined_tasks
+      tasks.extend(targets)
+
   if auto_tasks:
-    # There are some ports that we don't want to build as part
-    # of ALL since the are not well tested or widely used:
-    skip_tasks = ['cocos2d']
-    tasks = [x for x in tasks if x not in skip_tasks]
     print('Building targets: %s' % ' '.join(tasks))
+
   for what in tasks:
     for old, new in legacy_prefixes.items():
       if what.startswith(old):

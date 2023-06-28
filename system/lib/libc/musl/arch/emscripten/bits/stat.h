@@ -4,14 +4,18 @@
 struct stat
 {
 	dev_t st_dev;
+#ifndef __EMSCRIPTEN__
 	int __st_dev_padding;
 	long __st_ino_truncated;
+#endif
 	mode_t st_mode;
 	nlink_t st_nlink;
 	uid_t st_uid;
 	gid_t st_gid;
 	dev_t st_rdev;
+#ifndef __EMSCRIPTEN__
 	int __st_rdev_padding;
+#endif
 	off_t st_size;
 	blksize_t st_blksize;
 	blkcnt_t st_blocks;

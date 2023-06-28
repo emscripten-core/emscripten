@@ -13,12 +13,11 @@
   "dependencies": {
     "acorn": "^8.7.1",
     "google-closure-compiler": "20220502.0.0",
-    "html-minifier-terser": "6.1.0",
-    "wasm2c": "1.0.0"
+    "html-minifier-terser": "7.2.0"
   },
   "scripts": {
     "lint": "eslint .",
-    "fmt": "prettier --write tools/acorn-optimizer.js",
-    "check": "prettier --check tools/acorn-optimizer.js"
+    "fmt": "prettier --write tools/*.js",
+    "check": "prettier --check tools/*.js"
   }
 }
