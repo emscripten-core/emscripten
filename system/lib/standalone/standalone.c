@@ -615,12 +615,12 @@ weak int __syscall_fcntl64(int fd, int cmd, ...) {
   }
 }
 
-weak int __syscall_ftruncate64(int fd, uint64_t size) {
-  if (size < 0) {
+weak int __syscall_ftruncate64(int fd, off_t length) {
+  if (length < 0) {
     errno = EINVAL;
     return -1;
   }
-  __wasi_filesize_t st_size = size;
+  __wasi_filesize_t st_size = length;
   __wasi_errno_t error =
     __wasi_fd_filestat_set_size(fd, st_size);
   if (error != 0) {
