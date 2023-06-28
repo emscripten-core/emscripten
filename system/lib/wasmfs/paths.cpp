@@ -178,6 +178,11 @@ std::vector<std::string_view> splitPath(std::string_view path) {
       path.remove_prefix(1);
     }
 
+    if (path.empty()) {
+      // The path ended in a '/' which we just removed.
+      return ret;
+    }
+
     // If this is the leaf segment, return.
     size_t segment_end = path.find_first_of('/');
     if (segment_end == std::string_view::npos) {
