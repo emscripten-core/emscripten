@@ -55,6 +55,7 @@ var LibraryPThread = {
     // the reverse mapping, each worker has a `pthread_ptr` when its running a
     // pthread.
     pthreads: {},
+    shuttingDown: false,
 #if ASSERTIONS
     nextWorkerID: 1,
     debugInit: function() {
@@ -176,12 +177,15 @@ var LibraryPThread = {
 
     terminateAllThreads__deps: ['$terminateWorker'],
     terminateAllThreads: function() {
+      if (PThread.shuttingDown) return Promise.resolve();
 #if ASSERTIONS
       assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! terminateAllThreads() can only ever be called from main application thread!');
 #endif
-#if PTHREADS_DEBUG
+#if RUNTIME_DEBUG
       dbg('terminateAllThreads');
 #endif
+      PThread.shuttingDown = true;
+      var promises = [];
       // Attempt to kill all workers.  Sadly (at least on the web) there is no
       // way to terminate a worker synchronously, or to be notified when a
       // worker in actually terminated.  This means there is some risk that
@@ -189,14 +193,19 @@ var LibraryPThread = {
       // returned.  For this reason, we don't call `returnWorkerToPool` here or
       // free the underlying pthread data structures.
       for (var worker of PThread.runningWorkers) {
-        terminateWorker(worker);
+        promises.push(terminateWorker(worker));
       }
       for (var worker of PThread.unusedWorkers) {
-        terminateWorker(worker);
+        promises.push(terminateWorker(worker));
       }
-      PThread.unusedWorkers = [];
-      PThread.runningWorkers = [];
-      PThread.pthreads = [];
+      return Promise.all(promises).then(() => {
+#if RUNTIME_DEBUG
+        dbg('terminateAllThreads done');
+#endif
+        PThread.unusedWorkers = [];
+        PThread.runningWorkers = [];
+        PThread.pthreads = [];
+      });
     },
     returnWorkerToPool: function(worker) {
       // We don't want to run main thread queued calls here, since we are doing
@@ -274,6 +283,12 @@ var LibraryPThread = {
           checkMailbox();
         } else if (cmd === 'spawnThread') {
           spawnThread(d);
+        } else if (cmd === 'doneShutdown') {
+#if RUNTIME_DEBUG
+          dbg('doneShutdown');
+#endif
+          clearTimeout(worker.shutdownTimer);
+          worker.shutdownComplete();
         } else if (cmd === 'cleanupThread') {
           cleanupThread(d['thread']);
 #if MAIN_MODULE
@@ -523,18 +538,29 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
     dbg('terminateWorker: ' + worker.workerID);
 #endif
-    worker.terminate();
-    // terminate() can be asynchronous, so in theory the worker can continue
-    // to run for some amount of time after termination.  However from our POV
-    // the worker now dead and we don't want to hear from it again, so we stub
-    // out its message handler here.  This avoids having to check in each of
-    // the onmessage handlers if the message was coming from valid worker.
-    worker.onmessage = (e) => {
-#if ASSERTIONS
-      var cmd = e['data']['cmd'];
-      err('received "' + cmd + '" command from terminated worker: ' + worker.workerID);
-#endif
-    };
+    // Returns a promise that resoves once the worker has been shut down.
+    return new Promise((resolve) => {
+      // Give the worker 200ms to voluntarily shutdown, and if it fails to
+      // response we `terminate()` it with prejudice.
+      worker.shutdownComplete = () => resolve();
+      worker.shutdownTimer = setTimeout(() => {
+        err('worker failed to respond for cooperative shutdown: ' + worker.workerID);
+        worker.terminate();
+        // terminate() can be asynchronous, so in theory the worker can continue
+        // to run for some amount of time after termination.  However from our POV
+        // the worker now dead and we don't want to hear from it again, so we stub
+        // out its message handler here.  This avoids having to check in each of
+        // the onmessage handlers if the message was coming from valid worker.
+        worker.onmessage = (e) => {
+  #if ASSERTIONS
+          var cmd = e['data']['cmd'];
+          err('received "' + cmd + '" command from terminated worker: ' + worker.workerID);
+  #endif
+        }
+        worker.shutdownComplete();
+      }, 200);
+      worker.postMessage({ 'cmd': 'shutdown' });
+    });
   },
 
   $killThread__deps: ['_emscripten_thread_free_data', '$terminateWorker'],
@@ -547,13 +573,15 @@ var LibraryPThread = {
     assert(pthread_ptr, 'Internal Error! Null pthread_ptr in killThread!');
 #endif
     var worker = PThread.pthreads[pthread_ptr];
-    delete PThread.pthreads[pthread_ptr];
-    terminateWorker(worker);
-    __emscripten_thread_free_data(pthread_ptr);
-    // The worker was completely nuked (not just the pthread execution it was hosting), so remove it from running workers
-    // but don't put it back to the pool.
-    PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1); // Not a running Worker anymore.
-    worker.pthread_ptr = 0;
+    terminateWorker(worker).then(() => {
+      delete PThread.pthreads[pthread_ptr];
+      __emscripten_thread_free_data(pthread_ptr);
+      // The worker was completely nuked (not just the pthread execution it was
+      // hosting), so remove it from running workers but don't put it back to the
+      // pool.
+      PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1); // Not a running Worker anymore.
+      worker.pthread_ptr = 0;
+    });
   },
 
   __emscripten_thread_cleanup: function(thread) {
