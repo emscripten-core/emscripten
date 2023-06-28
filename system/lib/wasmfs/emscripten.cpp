@@ -68,40 +68,4 @@ char *emscripten_get_preloaded_image_data_from_FILE(FILE *file,
   return emscripten_get_preloaded_image_data(path.c_str(), w, h);
 }
 
-void emscripten_wget(const char* url, const char* file) {
-  // Create the ancestor directories.
-  auto segments = wasmfs::path::splitPath(file);
-  if (segments.empty()) {
-    return;
-  }
-  std::string currParent;
-  for (size_t i = 0; i < segments.size() - 1; i++) {
-    currParent += segments[i];
-    currParent += '/';
-    int result = mkdir(currParent.c_str(), 0777);
-    // Continue while we succeed in creating directories or while we see that
-    // they already exist.
-    if (result < 0 && errno != EEXIST) {
-      return;
-    }
-  }
-
-  // Fetch the data.
-  void* buffer;
-  int num;
-  int error;
-  emscripten_wget_data(url, &buffer, &num, &error);
-  if (error) {
-    return;
-  }
-
-  // Write the data.
-  FILE* f = fopen(file, "w");
-  if (f) {
-    fwrite(buffer, num, 1, f);
-    fclose(f);
-  }
-  free(buffer);
-}
-
 } // extern "C"
