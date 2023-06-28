@@ -30,12 +30,6 @@ function splitter(array, filter) {
   return { leftIn, splitOut };
 }
 
-// Functions that start with '$' should not be exported to the wasm module.
-// They are intended to be exclusive to JS code only.
-function isJsOnlySymbol(symbol) {
-  return symbol[0] == '$';
-}
-
 function escapeJSONKey(x) {
   if (/^[\d\w_]+$/.exec(x) || x[0] === '"' || x[0] === "'") return x;
   assert(!x.includes("'"), 'cannot have internal single quotes in keys: ' + x);
@@ -102,7 +96,7 @@ function runJSify() {
   }
   if (INCLUDE_FULL_LIBRARY) {
     for (const key of Object.keys(LibraryManager.library)) {
-      if (!isJsLibraryConfigIdentifier(key)) {
+      if (!isDecorator(key)) {
         symbolsNeeded.push(key);
       }
     }
@@ -279,7 +273,7 @@ function(${args}) {
 
       // don't process any special identifiers. These are looked up when
       // processing the base name of the identifier.
-      if (isJsLibraryConfigIdentifier(symbol)) {
+      if (isDecorator(symbol)) {
         return;
       }
 
