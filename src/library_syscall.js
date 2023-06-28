@@ -81,7 +81,7 @@ var SyscallsLibrary = {
         return 0;
       }
 #if CAN_ADDRESS_2GB
-      addr >>>= 0;
+      addr = fixPointer(addr);
 #endif
       var buffer = HEAPU8.slice(addr, addr + len);
       FS.msync(stream, buffer, offset, len, flags);
@@ -143,7 +143,7 @@ var SyscallsLibrary = {
     var ptr = res.ptr;
     {{{ makeSetValue('allocated', 0, 'res.allocated', 'i32') }}};
 #if CAN_ADDRESS_2GB
-    ptr >>>= 0;
+    ptr = fixPointer(ptr);
 #endif
     {{{ makeSetValue('addr', 0, 'ptr', '*') }}};
     return 0;

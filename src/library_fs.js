@@ -1133,7 +1133,7 @@ FS.staticInit();` +
     },
     read: (stream, buffer, offset, length, position) => {
 #if CAN_ADDRESS_2GB
-      offset >>>= 0;
+      offset = fixPointer(offset);
 #endif
       if (length < 0 || position < 0) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
@@ -1167,7 +1167,7 @@ FS.staticInit();` +
     },
     write: (stream, buffer, offset, length, position, canOwn) => {
 #if CAN_ADDRESS_2GB
-      offset >>>= 0;
+      offset = fixPointer(offset);
 #endif
       if (length < 0 || position < 0) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
@@ -1243,7 +1243,7 @@ FS.staticInit();` +
     },
     msync: (stream, buffer, offset, length, mmapFlags) => {
 #if CAN_ADDRESS_2GB
-      offset >>>= 0;
+      offset = fixPointer(offset);
 #endif
       if (!stream.stream_ops.msync) {
         return 0;

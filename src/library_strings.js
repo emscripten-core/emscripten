@@ -28,7 +28,7 @@ mergeInto(LibraryManager.library, {
 #endif
   $UTF8ArrayToString: (heapOrArray, idx, maxBytesToRead) => {
 #if CAN_ADDRESS_2GB
-    idx >>>= 0;
+    idx = fixPointer(idx);
 #endif
     var endIdx = idx + maxBytesToRead;
 #if TEXTDECODER
@@ -119,7 +119,7 @@ mergeInto(LibraryManager.library, {
     assert(typeof ptr == 'number');
 #endif
 #if CAN_ADDRESS_2GB
-    ptr >>>= 0;
+    ptr = fixPointer(ptr);
 #endif
 #if TEXTDECODER == 2
     if (!ptr) return '';
@@ -155,7 +155,7 @@ mergeInto(LibraryManager.library, {
    */
   $stringToUTF8Array: (str, heap, outIdx, maxBytesToWrite) => {
 #if CAN_ADDRESS_2GB
-    outIdx >>>= 0;
+    outIdx = fixPointer(outIdx);
 #endif
 #if ASSERTIONS
     assert(typeof str === 'string');
@@ -263,7 +263,7 @@ mergeInto(LibraryManager.library, {
   // object.
   $AsciiToString: (ptr) => {
 #if CAN_ADDRESS_2GB
-    ptr >>>= 0;
+    ptr = fixPointer(ptr);
 #endif
     var str = '';
     while (1) {
@@ -277,6 +277,9 @@ mergeInto(LibraryManager.library, {
   // address 'outPtr', null-terminated and encoded in ASCII form. The copy will
   // require at most str.length+1 bytes of space in the HEAP.
   $stringToAscii: (str, buffer) => {
+#if CAN_ADDRESS_2GB
+    buffer = fixPointer(buffer);
+#endif
     for (var i = 0; i < str.length; ++i) {
 #if ASSERTIONS
       assert(str.charCodeAt(i) === (str.charCodeAt(i) & 0xff));
@@ -430,7 +433,7 @@ mergeInto(LibraryManager.library, {
   // Returns the number of bytes written, EXCLUDING the null terminator.
   $stringToUTF32: (str, outPtr, maxBytesToWrite) => {
 #if CAN_ADDRESS_2GB
-    outPtr >>>= 0;
+    outPtr = fixPointer(outPtr);
 #endif
 #if ASSERTIONS
     assert(outPtr % 4 == 0, 'Pointer passed to stringToUTF32 must be aligned to four bytes!');

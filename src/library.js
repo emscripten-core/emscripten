@@ -419,7 +419,7 @@ mergeInto(LibraryManager.library, {
     ? (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num)
     : (dest, src, num) => HEAPU8.set(HEAPU8.subarray(src, src+num), dest)`,
 #else
-  emscripten_memcpy_big: (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num),
+  emscripten_memcpy_big: (dest, src, num) => HEAPU8.copyWithin(fixPointer(dest), fixPointer(src), fixPointer(src) + fixPointer(num)),
 #endif
 
 #endif
@@ -3090,7 +3090,7 @@ mergeInto(LibraryManager.library, {
   // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
   __handle_stack_overflow__deps: ['emscripten_stack_get_base', 'emscripten_stack_get_end', '$ptrToString'],
   __handle_stack_overflow: (requested) => {
-    requested = requested >>> 0;
+    requested = fixPointer(requested);
     var base = _emscripten_stack_get_base();
     var end = _emscripten_stack_get_end();
     abort(`stack overflow (Attempt to set SP to ${ptrToString(requested)}` +
