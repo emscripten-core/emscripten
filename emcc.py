@@ -834,7 +834,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
     # EM_JS function are exports with a special prefix.  We need to strip
     # this prefix to get the actaul symbol name.  For the main module, this
     # is handled by extract_metadata.py.
-    exports = [utils.removeprefix(e, '__em_js__') for e in exports]
+    exports = [removeprefix(e, '__em_js__') for e in exports]
     settings.SIDE_MODULE_EXPORTS.extend(sorted(exports))
 
     imports = webassembly.get_imports(dylib)
