@@ -431,7 +431,7 @@ class Library:
       return fullpath
     # For libraries (.a) files, we pass the abbreviated `-l` form.
     base = shared.unsuffixed_basename(fullpath)
-    return '-l' + shared.strip_prefix(base, 'lib')
+    return '-l' + utils.removeprefix(base, 'lib')
 
   def get_files(self):
     """

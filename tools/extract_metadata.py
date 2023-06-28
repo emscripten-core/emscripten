@@ -6,7 +6,7 @@
 import logging
 from typing import List, Dict
 
-from . import webassembly
+from . import webassembly, utils
 from .webassembly import OpCode, AtomicOpCode, MemoryOpCode
 from .shared import exit_with_error
 from .settings import settings
@@ -306,7 +306,7 @@ def extract_metadata(filename):
     export_map = {e.name: e for e in exports}
     for e in exports:
       if e.kind == webassembly.ExternType.GLOBAL and e.name.startswith('__em_js__'):
-        name = e.name[len('__em_js__'):]
+        name = utils.removeprefix(e.name, '__em_js__')
         globl = module.get_global(e.index)
         string_address = get_global_value(globl)
         em_js_funcs[name] = get_string_at(module, string_address)
