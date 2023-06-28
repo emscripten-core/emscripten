@@ -86,8 +86,4 @@ ParsedFile getFileAt(__wasi_fd_t fd, std::string_view path, int flags);
 // Like `parseFile`, but parse the path relative to the given directory.
 ParsedFile getFileFrom(std::shared_ptr<Directory> base, std::string_view path);
 
-// Splits a path into nonempty path segments. For example, "/path/to/here" will
-// be turned into ["path", "to", "here"].
-std::vector<std::string_view> splitPath(std::string_view path);
-
 } // namespace wasmfs::path

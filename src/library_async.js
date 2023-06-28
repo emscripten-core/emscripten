@@ -462,36 +462,6 @@ mergeInto(LibraryManager.library, {
     return Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms));
   },
 
-#if !WASMFS
-  emscripten_wget__deps: ['$Browser', '$PATH_FS', '$FS'],
-  emscripten_wget__async: true,
-  emscripten_wget: function(url, file) {
-    return Asyncify.handleSleep((wakeUp) => {
-      var _url = UTF8ToString(url);
-      var _file = UTF8ToString(file);
-      _file = PATH_FS.resolve(_file);
-      var destinationDirectory = PATH.dirname(_file);
-      FS.createPreloadedFile(
-        destinationDirectory,
-        PATH.basename(_file),
-        _url, true, true,
-        wakeUp,
-        wakeUp,
-        false, // dontCreateFile
-        false, // canOwn
-        function() { // preFinish
-          // if a file exists there, we overwrite it
-          try {
-            FS.unlink(_file);
-          } catch (e) {}
-          // if the destination directory does not yet exist, create it
-          FS.mkdirTree(destinationDirectory);
-        }
-      );
-    });
-  },
-#endif
-
   emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
   emscripten_wget_data__async: true,
   emscripten_wget_data: function(url, pbuffer, pnum, perror) {
