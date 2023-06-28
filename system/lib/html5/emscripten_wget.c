@@ -6,8 +6,8 @@
 #include <unistd.h>
 
 // Creates all ancestor directories of a given file, if they do not already
-// exist.
-static void mkdirs(const char* file) {
+// exist. Returns 0 on success or 1 on error.
+static int mkdirs(const char* file) {
   char* copy = strdup(file);
   char* c = copy;
   while (*c) {
@@ -20,17 +20,20 @@ static void mkdirs(const char* file) {
       // they already exist.
       if (result < 0 && errno != EEXIST) {
         free(copy);
-        return;
+        return 1;
       }
     }
     c++;
   }
   free(copy);
+  return 0;
 }
 
 void emscripten_wget(const char* url, const char* file) {
   // Create the ancestor directories.
-  mkdirs(file);
+  if (mkdirs(file)) {
+    return;
+  }
 
   // Fetch the data.
   void* buffer;
