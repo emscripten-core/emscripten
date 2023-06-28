@@ -18,7 +18,6 @@
 
 #include "file.h"
 #include "file_table.h"
-#include "paths.h"
 #include "wasmfs.h"
 
 namespace wasmfs {
