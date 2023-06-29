@@ -69,6 +69,13 @@ var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
 #endif
   wasmMemory, wasmTable;
 
+function fixPointer (ptr) {
+  if (typeof ptr === 'number' && ptr < 0) {
+    return ptr >>> 0;
+  }
+  return ptr;
+}
+
 function updateMemoryViews() {
   var b = wasmMemory.buffer;
 #if ASSERTIONS && SHARED_MEMORY

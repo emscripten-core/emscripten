@@ -138,14 +138,20 @@ function fixPointer (ptr) {
   if (typeof ptr === 'number' && ptr < 0) {
     return ptr >>> 0;
   }
-  if (typeof ptr === 'bigint') {
-    return Number(ptr);
-  }
   return ptr;
 }
 
+#if MEMORY64
+/**
+ * @param {string} type - Heap type
+ * @param {number} [offset] - Heap offset
+ * @param {number} [length] - typed array length
+ */
 const getHeapBlock =  (type, offset, length) => {
   const maxSize = Math.min(wasmMemory.buffer.byteLength, 4 * 1024 * 1024 * 1024 - 8)
+  if (!offset) {
+    offset = 0
+  }
 
   const heap = wasmMemory.buffer
   switch (type) {
@@ -176,62 +182,75 @@ const getHeapBlock =  (type, offset, length) => {
       throw new Error('Invalid type');
   }
 }
+#endif
 
 function updateMemoryViews() {
   var b = wasmMemory.buffer;
 #if SUPPORT_BIG_ENDIAN
   Module['HEAP_DATA_VIEW'] = HEAP_DATA_VIEW = new DataView(b);
 #endif
-#if !WASM_BIGINT
-  Module['HEAP8'] = HEAP8 = new Int8Array(b);
-  Module['HEAP16'] = HEAP16 = new Int16Array(b);
-  Module['HEAP32'] = HEAP32 = new Int32Array(b);
-  Module['HEAPU8'] = HEAPU8 = new Uint8Array(b);
-  Module['HEAPU16'] = HEAPU16 = new Uint16Array(b);
-  Module['HEAPU32'] = HEAPU32 = new Uint32Array(b);
-  Module['HEAPF32'] = HEAPF32 = new Float32Array(b);
-  Module['HEAPF64'] = HEAPF64 = new Float64Array(b);
-#else
+#if MEMORY64
   var maxArraySize = Math.min(b.byteLength, 4 * 1024 * 1024 * 1024 - 8);
-  var proxyHandler = (type, hb) => ({
-    heapBlock: hb,
-    copyWithin: function (target, start, end) {
+  var proxyHandler = (type, heapBlock) => ({
+    heapBlock,
+    copyWithin (target, start, end) {
       target = fixPointer(target)
       start = fixPointer(start)
       end = fixPointer(end)
-      const bpe = hb.BYTES_PER_ELEMENT
+      const bpe = heapBlock.BYTES_PER_ELEMENT
       if (target * bpe >= maxArraySize || start * bpe >= maxArraySize || (end && end * bpe >= maxArraySize)) {
         var len = end - start
         var targetArray = getHeapBlock(type, target * bpe, len)
         var sourceArray = getHeapBlock(type, start * bpe, len)
         targetArray.set(sourceArray)
-        return hb
+        return heapBlock
       } else {
-        return hb.copyWithin(target, start, end)
+        return heapBlock.copyWithin(target, start, end)
       }
     },
-    setOverridden: function (array, offset) {
+    setOverridden (array, offset) {
       offset = fixPointer(offset)
-      var offsetReal = (offset || 0) * hb.BYTES_PER_ELEMENT
+      var offsetReal = (offset || 0) * heapBlock.BYTES_PER_ELEMENT
       if (offsetReal >= maxArraySize || array.byteLength + offsetReal >= maxArraySize) {
         var targetArray = getHeapBlock(type, offsetReal, array.length)
         targetArray.set(array)
       } else {
-        hb.set(array, offset)
+        heapBlock.set(array, offset)
       }
     },
-    subarray: function (start, end) {
+    subarray (start, end) {
       start = fixPointer(start)
       end = fixPointer(end)
-      var startReal = (start || 0) * hb.BYTES_PER_ELEMENT
-      var endReal = end ? end * hb.BYTES_PER_ELEMENT : wasmMemory.byteLength
+      var startReal = (start || 0) * heapBlock.BYTES_PER_ELEMENT
+      var endReal = end ? end * heapBlock.BYTES_PER_ELEMENT : wasmMemory.byteLength
       if (startReal >= maxArraySize || endReal >= maxArraySize) {
         return getHeapBlock(type, startReal, endReal - startReal)
       } else {
-        return hb.subarray(start, end)
+        return heapBlock.subarray(start, end)
       }
     },
-    get: function (target, property) {
+    fill (value, start, end) {
+      var startReal = (start || 0) * heapBlock.BYTES_PER_ELEMENT
+      var endReal = end ? end * heapBlock.BYTES_PER_ELEMENT : wasmMemory.byteLength
+      if (startReal >= maxArraySize || endReal >= maxArraySize) {
+        const hb = getHeapBlock(type, startReal, endReal - startReal)
+        hb.fill(0, 0)
+        return heapBlock
+      } else {
+        return heapBlock.fill(value, start, end)
+      }
+    },
+    slice (start, end) {
+      var startReal = (start || 0) * heapBlock.BYTES_PER_ELEMENT
+      var endReal = end ? end * heapBlock.BYTES_PER_ELEMENT : wasmMemory.byteLength
+      if (startReal >= maxArraySize || endReal >= maxArraySize) {
+        const hb = getHeapBlock(type, startReal, endReal - startReal)
+        return hb.slice(start, end)
+      } else {
+        return heapBlock.slice(start, end)
+      }
+    },
+    get (target, property) {
       if (typeof property === 'number' || typeof property === 'bigint') {
         var memoryOffset = fixPointer(property) * target.BYTES_PER_ELEMENT
         if (memoryOffset >= maxArraySize) {
@@ -254,9 +273,17 @@ function updateMemoryViews() {
         return this.subarray
       }
 
-      return this.heapBlock[property]
+      if (property === 'fill') {
+        return this.fill
+      }
+
+      if (property === 'slice') {
+        return this.slice
+      }
+
+      return heapBlock[property]
     },
-    set: function (target, property, value) {
+    set (target, property, value) {
       if (typeof property === 'number' || typeof property === 'bigint') {
         var memoryOffset = fixPointer(property) * target.BYTES_PER_ELEMENT
         if (memoryOffset >= maxArraySize) {
@@ -266,26 +293,41 @@ function updateMemoryViews() {
         }
       }
 
-      this.heapBlock[property] = value
+      heapBlock[property] = value
       return true;
     },
   })
-  function createMemoryProxy (type)
-  {
+  function createMemoryProxy (type) {
     const block = getHeapBlock(type, 0)
     return new Proxy(block, proxyHandler(type, block));
   }
-  Module["HEAP8"] = HEAP8 = createMemoryProxy('i8')
-  Module["HEAP16"] = HEAP16 = createMemoryProxy('i16')
-  Module["HEAP32"] = HEAP32 = createMemoryProxy('i32')
-  Module["HEAPU8"] = HEAPU8 =  createMemoryProxy('u8')
-  Module["HEAPU16"] = HEAPU16 = createMemoryProxy('u16')
-  Module["HEAPU32"] = HEAPU32 = createMemoryProxy('u32')
-  Module["HEAPF32"] = HEAPF32 = createMemoryProxy('f32')
-  Module["HEAPF64"] = HEAPF64 = createMemoryProxy('f64')
-  Module["HEAP64"] = HEAP64 = createMemoryProxy('i64')
-  Module["HEAPU64"] = HEAPU64 = createMemoryProxy('u64')
-  Module["MEMORY"] = b;
+  if (b.byteLength > maxArraySize) {
+    Module["HEAP8"] = HEAP8 = createMemoryProxy('i8')
+    Module["HEAPU8"] = HEAPU8 = createMemoryProxy('u8')
+  } else {
+    Module['HEAP8'] = HEAP8 = new Int8Array(b);
+    Module['HEAPU8'] = HEAPU8 = new Uint8Array(b);
+  }
+  if (b.byteLength > maxArraySize * 2) {
+    Module["HEAP16"] = HEAP16 = createMemoryProxy('i16')
+    Module["HEAPU16"] = HEAPU16 = createMemoryProxy('u16')
+  } else {
+    Module['HEAP16'] = HEAP16 = new Int16Array(b);
+    Module['HEAPU16'] = HEAPU16 = new Uint16Array(b);
+  }
+#else
+  Module['HEAP8'] = HEAP8 = new Int8Array(b);
+  Module['HEAP16'] = HEAP16 = new Int16Array(b);
+  Module['HEAPU8'] = HEAPU8 = new Uint8Array(b);
+  Module['HEAPU16'] = HEAPU16 = new Uint16Array(b);
+#endif
+  Module['HEAP32'] = HEAP32 = new Int32Array(b);
+  Module['HEAPU32'] = HEAPU32 = new Uint32Array(b);
+  Module['HEAPF32'] = HEAPF32 = new Float32Array(b);
+  Module['HEAPF64'] = HEAPF64 = new Float64Array(b);
+#if WASM_BIGINT
+  Module['HEAP64'] = HEAP64 = new BigInt64Array(b);
+  Module['HEAPU64'] = HEAPU64 = new BigUint64Array(b);
 #endif
 }
 
