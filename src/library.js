@@ -48,18 +48,107 @@ mergeInto(LibraryManager.library, {
   alignfault: () => alignfault(),
 #endif
 
-  // ==========================================================================
-  // JavaScript <-> C string interop
-  // ==========================================================================
-
 #if !MINIMAL_RUNTIME
+#if ASSERTIONS && !EXIT_RUNTIME
+  $checkUnflushedStdout: true,
+  $checkUnflushedStdout: () => {
+    // Compiler settings do not allow exiting the runtime, so flushing
+    // the streams is not possible. but in ASSERTIONS mode we check
+    // if there was something to flush, and if so tell the user they
+    // should request that the runtime be exitable.
+    // Normally we would not even include flush() at all, but in ASSERTIONS
+    // builds we do so just for this check, and here we see if there is any
+    // content to flush, that is, we check if there would have been
+    // something a non-ASSERTIONS build would have not seen.
+    // How we flush the streams depends on whether we are in SYSCALLS_REQUIRE_FILESYSTEM=0
+    // mode (which has its own special function for this; otherwise, all
+    // the code is inside libc)
+    var oldOut = out;
+    var oldErr = err;
+    var has = false;
+    out = err = (x) => {
+      has = true;
+    }
+    try { // it doesn't matter if it fails
+#if SYSCALLS_REQUIRE_FILESYSTEM == 0 && '$flush_NO_FILESYSTEM' in addedLibraryItems
+      flush_NO_FILESYSTEM();
+#elif WASMFS && hasExportedSymbol('wasmfs_flush')
+      // In WasmFS we must also flush the WasmFS internal buffers, for this check
+      // to work.
+      _wasmfs_flush();
+#elif hasExportedSymbol('fflush')
+      _fflush(0);
+#endif
+  #if '$FS' in addedLibraryItems && '$TTY' in addedLibraryItems
+      // also flush in the JS FS layer
+      ['stdout', 'stderr'].forEach(function(name) {
+        var info = FS.analyzePath('/dev/' + name);
+        if (!info) return;
+        var stream = info.object;
+        var rdev = stream.rdev;
+        var tty = TTY.ttys[rdev];
+        if (tty && tty.output && tty.output.length) {
+          has = true;
+        }
+      });
+#endif
+    } catch(e) {}
+    out = oldOut;
+    err = oldErr;
+    if (has) {
+      warnOnce('stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1 (see the Emscripten FAQ), or make sure to emit a newline when you printf etc.');
+#if FILESYSTEM == 0 || SYSCALLS_REQUIRE_FILESYSTEM == 0
+      warnOnce('(this may also be due to not including full filesystem support - try building with -sFORCE_FILESYSTEM)');
+#endif
+    }
+  },
+#endif // ASSERTIONS && !EXIT_RUNTIME
+
+#if EXIT_RUNTIME
+  $exitRuntime__internal: true,
+  $exitRuntime: () => {
+#if RUNTIME_DEBUG
+    dbg('exitRuntime');
+#endif
+#if ASSERTIONS
+    assert(!runtimeExited);
+#endif
+#if ASYNCIFY == 1 && ASSERTIONS
+    // ASYNCIFY cannot be used once the runtime starts shutting down.
+    Asyncify.state = Asyncify.State.Disabled;
+#endif
+#if STACK_OVERFLOW_CHECK
+    checkStackCookie();
+#endif
+#if PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+#endif
+#if !STANDALONE_WASM
+    ___funcs_on_exit(); // Native atexit() functions
+#endif
+    callRuntimeCallbacks(__ATEXIT__);
+    <<< ATEXITS >>>
+#if PTHREADS
+    PThread.terminateAllThreads();
+#endif
+    runtimeExited = true;
+  },
+#endif
+
   $exitJS__docs: '/** @param {boolean|number=} implicit */',
-  $exitJS__deps: ['proc_exit'],
+  $exitJS__deps: ['proc_exit',
+#if EXIT_RUNTIME
+    '$exitRuntime',
+#endif
+#if ASSERTIONS && !EXIT_RUNTIME
+    '$checkUnflushedStdout',
+#endif
+  ],
   $exitJS: (status, implicit) => {
     EXITSTATUS = status;
 
 #if ASSERTIONS && !EXIT_RUNTIME
-    checkUnflushedContent();
+    checkUnflushedStdout();
 #endif // ASSERTIONS && !EXIT_RUNTIME
 
 #if PTHREADS
