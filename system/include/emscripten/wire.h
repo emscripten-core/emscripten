@@ -39,6 +39,10 @@ constexpr bool has_unbound_type_names = false;
 
 namespace internal {
 
+// Note: Neither CanonicalizedID nor the typeid-based approach
+// is guaranteed to produce stable type ids across library
+// boundaries. See core.test_dylink_typeid for more info.
+
 typedef const void* TYPEID;
 
 // We don't need the full std::type_info implementation.  We
