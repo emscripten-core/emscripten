@@ -83,7 +83,7 @@ mergeInto(LibraryManager.library, {
         callback(null, db);
       };
       req.onerror = (e) => {
-        callback(e.target.error || 'unknown error');
+        callback(e.target.error);
         e.preventDefault();
       };
     },
@@ -129,7 +129,7 @@ mergeInto(LibraryManager.library, {
         try {
           var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readonly');
           transaction.onerror = (e) => {
-            callback(e.target.error || 'unknown error');
+            callback(e.target.error);
             e.preventDefault();
           };
 
@@ -211,7 +211,7 @@ mergeInto(LibraryManager.library, {
       var req = store.get(path);
       req.onsuccess = (event) => { callback(null, event.target.result); };
       req.onerror = (e) => {
-        callback(e.target.error || 'unknown error');
+        callback(e.target.error);
         e.preventDefault();
       };
     },
@@ -224,7 +224,7 @@ mergeInto(LibraryManager.library, {
       }
       req.onsuccess = () => { callback(null); };
       req.onerror = (e) => {
-        callback(e.target.error || 'unknown error');
+        callback(e.target.error);
         e.preventDefault();
       };
     },
@@ -232,7 +232,7 @@ mergeInto(LibraryManager.library, {
       var req = store.delete(path);
       req.onsuccess = () => { callback(null); };
       req.onerror = (e) => {
-        callback(e.target.error || 'unknown error');
+        callback(e.target.error);
         e.preventDefault();
       };
     },
