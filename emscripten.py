@@ -903,6 +903,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_wasmfs_mkdir': '_p_',
     '_wasmfs_open': '_p__',
     'emscripten_wasm_worker_initialize': '_p_',
+    '__get_exception_message': '_ppp',
   }
 
   wrappers = '''

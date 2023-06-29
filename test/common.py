@@ -651,9 +651,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return
 
     if 'EMTEST_SKIP_EH' in os.environ:
-      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_EH is set)')
+      self.skipTest('test requires node >= 17 or d8 (and EMTEST_SKIP_EH is set)')
     else:
-      self.fail('either d8 or node >= 16 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
+      self.fail('either d8 or node >= 17 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
   def require_jspi(self):
     if not self.is_wasm():
