@@ -462,9 +462,9 @@ mergeInto(LibraryManager.library, {
     return Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms));
   },
 
-  emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
-  emscripten_wget_data__async: true,
-  emscripten_wget_data: function(url, pbuffer, pnum, perror) {
+  _emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
+  _emscripten_wget_data__async: true,
+  _emscripten_wget_data: function(url, pbuffer, pnum) {
     return Asyncify.handleSleep((wakeUp) => {
       asyncLoad(UTF8ToString(url), (byteArray) => {
         // can only allocate the buffer after the wakeUp, not during an asyncing
@@ -472,11 +472,9 @@ mergeInto(LibraryManager.library, {
         HEAPU8.set(byteArray, buffer);
         {{{ makeSetValue('pbuffer', 0, 'buffer', 'i32') }}};
         {{{ makeSetValue('pnum',  0, 'byteArray.length', 'i32') }}};
-        {{{ makeSetValue('perror',  0, '0', 'i32') }}};
-        wakeUp();
+        wakeUp(0);
       }, () => {
-        {{{ makeSetValue('perror',  0, '1', 'i32') }}};
-        wakeUp();
+        wakeUp(1);
       }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
     });
   },
@@ -621,11 +619,8 @@ mergeInto(LibraryManager.library, {
   emscripten_sleep: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
   },
-  emscripten_wget: function(url, file) {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget';
-  },
-  emscripten_wget_data: function(url, pbuffer, pnum, perror) {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget_data';
+  _emscripten_wget_data: function(url, pbuffer, pnum) {
+    throw 'Please compile your program with async support in order to use asynchronous operations like _emscripten_wget_data';
   },
   emscripten_scan_registers: function(func) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers';

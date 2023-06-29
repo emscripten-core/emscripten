@@ -29,26 +29,33 @@ static int mkdirs(const char* file) {
   return 0;
 }
 
-void emscripten_wget(const char* url, const char* file) {
+void emscripten_wget_data(const char* url, void** pbuffer, int* pnum, int* perror) {
+  *perror = _emscripten_wget_data(url, &buffer, &num, &error);
+}
+
+int emscripten_wget(const char* url, const char* file) {
   // Create the ancestor directories.
   if (mkdirs(file)) {
-    return;
+    return 1;
   }
 
   // Fetch the data.
   void* buffer;
   int num;
-  int error;
-  emscripten_wget_data(url, &buffer, &num, &error);
+  int error = _emscripten_wget_data(url, &buffer, &num);
   if (error) {
-    return;
+    return 1;
   }
 
   // Write the data.
   int fd = open(file, O_WRONLY | O_CREAT);
-  if (fd >= 0) {
-    write(fd, buffer, num);
-    close(fd);
+  if (fd < 0) {
+    free(buffer);
+    return 1;
   }
+
+  write(fd, buffer, num);
+  close(fd);
   free(buffer);
+  return 0;
 }

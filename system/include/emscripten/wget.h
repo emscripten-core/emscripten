@@ -33,9 +33,13 @@ int emscripten_async_wget2_data(const char* url, const char* requesttype, const 
 
 void emscripten_async_wget2_abort(int handle);
 
-// wget "sync"
+// wget "sync".
 
-void emscripten_wget(const char* url, const char* file);
+// Returns 0 on success, non-zero on failure
+int emscripten_wget(const char* url, const char* file);
+// Returns 0 on success, non-zero on failure
+int _emscripten_wget_data(const char* url, void** pbuffer, int* pnum);
+// Same as above but writes error code to perror out param.
 void emscripten_wget_data(const char* url, void** pbuffer, int* pnum, int *perror);
 
 #ifdef __cplusplus
