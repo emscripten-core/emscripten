@@ -130,7 +130,7 @@ function mergeInto(obj, other, options = null) {
 
   if (!options || !options.allowMissing) {
     for (const ident of Object.keys(other)) {
-      if (isJsLibraryConfigIdentifier(ident)) {
+      if (isDecorator(ident)) {
         const index = ident.lastIndexOf('__');
         const basename = ident.slice(0, index);
         if (!(basename in obj) && !(basename in other)) {
@@ -169,7 +169,13 @@ function isNumber(x) {
   return x == parseFloat(x) || (typeof x == 'string' && x.match(/^-?\d+$/)) || x == 'NaN';
 }
 
-function isJsLibraryConfigIdentifier(ident) {
+// Symbols that start with '$' are not exported to the wasm module.
+// They are intended to be called exclusively by JS code.
+function isJsOnlySymbol(symbol) {
+  return symbol[0] == '$';
+}
+
+function isDecorator(ident) {
   suffixes = [
     '__sig',
     '__proxy',

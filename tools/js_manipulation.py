@@ -178,9 +178,8 @@ def make_wasm64_wrapper(sig):
   if sig[0] == 'p':
     result = f'Number({result})'
 
-  return f'''
-  function wasm64Wrapper_{sig}(f) {{
-    return function({args_in}) {{
-      return {result};
-    }};
-  }}'''
+  # We can't use an arrow function for the inner wrapper here since there
+  # are certain places we need to avoid strict mode still.
+  # e.g. emscripten_get_callstack (getCallstack) which uses the `arguments`
+  # global.
+  return f'  var wasm64Wrapper_{sig} = (f) => function ({args_in}) {{ return {result} }};\n'

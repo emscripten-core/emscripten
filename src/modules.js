@@ -220,7 +220,7 @@ global.LibraryManager = {
         this.library = new Proxy(this.library, {
           set: (target, prop, value) => {
             target[prop] = value;
-            if (!isJsLibraryConfigIdentifier(prop)) {
+            if (!isDecorator(prop)) {
               target[prop + '__user'] = true;
             }
             return true;
@@ -303,7 +303,7 @@ function getUnusedLibarySymbols() {
   const missingSyms = new Set();
   for (const [ident, value] of Object.entries(LibraryManager.library)) {
     if (typeof value === 'function' || typeof value === 'number') {
-      if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !isInternalSymbol(ident)) {
+      if (isJsOnlySymbol(ident) && !isDecorator(ident) && !isInternalSymbol(ident)) {
         const name = ident.substr(1);
         if (!librarySymbolSet.has(name)) {
           missingSyms.add(name);
@@ -450,7 +450,7 @@ function exportRuntime() {
   // '$ which indicates they are JS methods.
   let runtimeElementsSet = new Set(runtimeElements);
   for (const ident of Object.keys(LibraryManager.library)) {
-    if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !isInternalSymbol(ident)) {
+    if (isJsOnlySymbol(ident) && !isDecorator(ident) && !isInternalSymbol(ident)) {
       const jsname = ident.substr(1);
       assert(!runtimeElementsSet.has(jsname), 'runtimeElements contains library symbol: ' + ident);
       runtimeElements.push(jsname);

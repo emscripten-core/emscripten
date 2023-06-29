@@ -45,7 +45,7 @@ from tools import shared, system_libs, utils, ports, filelock
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy
 from tools.shared import run_process, read_and_preprocess, exit_with_error, DEBUG
-from tools.shared import do_replace, strip_prefix
+from tools.shared import do_replace
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
@@ -55,7 +55,7 @@ from tools import webassembly
 from tools import config
 from tools import cache
 from tools.settings import user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
-from tools.utils import read_file, write_file, read_binary, delete_file
+from tools.utils import read_file, write_file, read_binary, delete_file, removeprefix
 
 logger = logging.getLogger('emcc')
 
@@ -439,7 +439,7 @@ def apply_user_settings():
 
     filename = None
     if value and value[0] == '@':
-      filename = strip_prefix(value, '@')
+      filename = removeprefix(value, '@')
       if not os.path.exists(filename):
         exit_with_error('%s: file not found parsing argument: %s=%s' % (filename, key, value))
       value = read_file(filename).strip()
@@ -774,7 +774,7 @@ def is_dash_s_for_emcc(args, i):
       return False
     arg = args[i + 1]
   else:
-    arg = strip_prefix(args[i], '-s')
+    arg = removeprefix(args[i], '-s')
   arg = arg.split('=')[0]
   return arg.isidentifier() and arg.isupper()
 
@@ -834,7 +834,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
     # EM_JS function are exports with a special prefix.  We need to strip
     # this prefix to get the actaul symbol name.  For the main module, this
     # is handled by extract_metadata.py.
-    exports = [shared.maybe_strip_prefix(e, '__em_js__') for e in exports]
+    exports = [removeprefix(e, '__em_js__') for e in exports]
     settings.SIDE_MODULE_EXPORTS.extend(sorted(exports))
 
     imports = webassembly.get_imports(dylib)
@@ -874,7 +874,7 @@ def parse_s_args(args):
           key = args[i + 1]
           args[i + 1] = ''
         else:
-          key = strip_prefix(args[i], '-s')
+          key = removeprefix(args[i], '-s')
         args[i] = ''
 
         # If not = is specified default to 1
@@ -1374,7 +1374,7 @@ def normalize_boolean_setting(name, value):
   # and we can't just flip them, so leave them as-is to be
   # handled in a special way later)
   if name.startswith('NO_') and value in ('0', '1'):
-    name = strip_prefix(name, 'NO_')
+    name = removeprefix(name, 'NO_')
     value = str(1 - int(value))
   return name, value
 
@@ -1490,7 +1490,7 @@ def phase_setup(options, state, newargs):
         # For shared libraries that are neither bitcode nor wasm, assuming its local native
         # library and attempt to find a library by the same name in our own library path.
         # TODO(sbc): Do we really need this feature?  See test_other.py:test_local_link
-        libname = strip_prefix(get_library_basename(arg), 'lib')
+        libname = removeprefix(get_library_basename(arg), 'lib')
         flag = '-l' + libname
         diagnostics.warning('map-unrecognized-libraries', f'unrecognized file type: `{arg}`.  Mapping to `{flag}` and hoping for the best')
         add_link_flag(state, i, flag)
@@ -2963,7 +2963,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
         return_next = True
         continue
       if item.startswith('-x'):
-        return strip_prefix(item, '-x')
+        return removeprefix(item, '-x')
     return ''
 
   language_mode = get_language_mode(newargs)
@@ -3371,7 +3371,7 @@ def parse_args(newargs):
 
     if arg.startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
-      requested_level = strip_prefix(arg, '-O') or '2'
+      requested_level = removeprefix(arg, '-O') or '2'
       if requested_level == 's':
         requested_level = 2
         settings.SHRINK_LEVEL = 1
@@ -3432,7 +3432,7 @@ def parse_args(newargs):
       settings.DEBUG_LEVEL = max(1, settings.DEBUG_LEVEL)
     elif arg.startswith('-g'):
       options.requested_debug = arg
-      requested_level = strip_prefix(arg, '-g') or '3'
+      requested_level = removeprefix(arg, '-g') or '3'
       if is_int(requested_level):
         # the -gX value is the debug level (-g1, -g2, etc.)
         settings.DEBUG_LEVEL = validate_arg_level(requested_level, 4, 'invalid debug level: ' + arg)
@@ -3610,7 +3610,7 @@ def parse_args(newargs):
     elif arg == '-frtti':
       settings.USE_RTTI = 1
     elif arg.startswith('-jsD'):
-      key = strip_prefix(arg, '-jsD')
+      key = removeprefix(arg, '-jsD')
       if '=' in key:
         key, value = key.split('=')
       else:
@@ -3626,7 +3626,7 @@ def parse_args(newargs):
     elif check_arg('-o'):
       options.output_file = consume_arg()
     elif arg.startswith('-o'):
-      options.output_file = strip_prefix(arg, '-o')
+      options.output_file = removeprefix(arg, '-o')
       newargs[i] = ''
     elif arg == '-mllvm':
       # Ignore the next argument rather than trying to parse it.  This is needed
@@ -4192,7 +4192,7 @@ def process_libraries(state, linker_inputs):
     if not flag.startswith('-l'):
       new_flags.append((i, flag))
       continue
-    lib = strip_prefix(flag, '-l')
+    lib = removeprefix(flag, '-l')
 
     logger.debug('looking for library "%s"', lib)
     js_libs, native_lib = building.map_to_js_libs(lib)

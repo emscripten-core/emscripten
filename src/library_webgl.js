@@ -4098,7 +4098,7 @@ function recordGLProcAddressGet(lib) {
   // allow name collisions with user-implemented things having the same name
   // (see gl.c)
   Object.keys(lib).forEach((x) => {
-    if (x.startsWith('gl') && !isJsLibraryConfigIdentifier(x)) {
+    if (x.startsWith('gl') && !isDecorator(x)) {
       lib['emscripten_' + x] = x;
     }
   });

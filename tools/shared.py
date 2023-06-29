@@ -668,18 +668,6 @@ def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
 
 
-def strip_prefix(string, prefix):
-  assert string.startswith(prefix)
-  return string[len(prefix):]
-
-
-def maybe_strip_prefix(string, prefix):
-  if string.startswith(prefix):
-    return string[len(prefix):]
-  else:
-    return string
-
-
 def make_writable(filename):
   assert os.path.isfile(filename)
   old_mode = stat.S_IMODE(os.stat(filename).st_mode)
