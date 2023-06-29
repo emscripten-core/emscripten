@@ -2866,10 +2866,10 @@ def phase_linker_setup(options, state, newargs):
 
   # check if we can address the 2GB mark and higher: either if we start at
   # 2GB, or if we allow growth to either any amount or to 2GB or more.
-  if settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or \
+  if not settings.MEMORY64 and (settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or
      (settings.ALLOW_MEMORY_GROWTH and
       (settings.MAXIMUM_MEMORY < 0 or
-       settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024)):
+       settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024))):
     settings.CAN_ADDRESS_2GB = 1
 
   settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
