@@ -1514,6 +1514,11 @@ var LibraryHTML5 = {
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
     var canPerformRequests = JSEvents.canPerformEventHandlerRequests();
 
+    if (navigator.userActivation) {
+      // Use transient activation status instead for browsers that support it
+      canPerformRequests = navigator.userActivation.isActive;
+    }
+
     // Queue this function call if we're not currently in an event handler and the user saw it appropriate to do so.
     if (!canPerformRequests) {
       if (strategy.deferUntilInEventHandler) {
