@@ -280,9 +280,10 @@ function exitRuntime() {
   callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
 #if PTHREADS
-  PThread.terminateAllThreads();
-#endif
+  PThread.terminateAllThreads().then(() => { runtimeExited = true });
+#else
   runtimeExited = true;
+#endif
 }
 #endif
 

@@ -25,13 +25,17 @@ var WasiLibrary = {
 #endif
     EXITSTATUS = code;
     if (!keepRuntimeAlive()) {
-#if PTHREADS
-      PThread.terminateAllThreads();
-#endif
+      var doneExit = () => {
 #if expectToReceiveOnModule('onExit')
-      if (Module['onExit']) Module['onExit'](code);
+        if (Module['onExit']) Module['onExit'](code);
 #endif
-      ABORT = true;
+        ABORT = true;
+      }
+#if PTHREADS
+      PThread.terminateAllThreads().then(doneExit);
+#else
+      doneExit();
+#endif
     }
     quit_(code, new ExitStatus(code));
 #endif // MINIMAL_RUNTIME

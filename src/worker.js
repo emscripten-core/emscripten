@@ -36,6 +36,7 @@ if (ENVIRONMENT_IS_NODE) {
     Worker: nodeWorkerThreads.Worker,
     importScripts: (f) => (0, eval)(fs.readFileSync(f, 'utf8') + '//# sourceURL=' + f),
     postMessage: (msg) => parentPort.postMessage(msg),
+    close: () => parentPort.close(),
     performance: global.performance || { now: Date.now },
   });
 }
@@ -251,6 +252,9 @@ function handleMessage(e) {
         dbg(`Pthread 0x${Module['_pthread_self']().toString(16)} completed its main entry point with an 'unwind', keeping the worker alive for asynchronous operation.`);
 #endif
       }
+    } else if (e.data.cmd === 'shutdown') {
+      postMessage({ 'cmd': 'doneShutdown' });
+      close();
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
       if (Module['_pthread_self']()) {
         Module['__emscripten_thread_exit']({{{ cDefs.PTHREAD_CANCELED }}});

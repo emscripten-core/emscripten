@@ -30,10 +30,6 @@ function run() {
   PThread.terminateAllThreads();
 #endif
 
-#endif
-
-#if EXIT_RUNTIME
-
 #if ASSERTIONS
   runtimeExited = true;
 #endif
