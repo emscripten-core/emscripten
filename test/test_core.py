@@ -6774,6 +6774,7 @@ void* operator new(size_t size) {
 
   # Tests invoking the SIMD API via x86 SSE4.1 smmintrin.h header (_mm_x() functions)
   @no_wasm64('https://github.com/llvm/llvm-project/issues/57577')
+  @no_ubsan('https://github.com/emscripten-core/emscripten/issues/19749')
   @wasm_simd
   @requires_native_clang
   @is_slow_test
