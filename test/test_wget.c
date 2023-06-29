@@ -18,11 +18,13 @@ void test(const char* file) {
   const char *url = "/test.txt";
 
   printf("calling wget\n");
-  emscripten_wget(url , file);
+  int result = emscripten_wget(url , file);
+  assert(result == 0);
   printf("back from wget\n");
 
   printf("calling wget again to overwrite previous file\n");
-  emscripten_wget(file , file);
+  result = emscripten_wget(url , file);
+  assert(result == 0);
   printf("back from wget\n");
 
   FILE * f = fopen(file, "r");
