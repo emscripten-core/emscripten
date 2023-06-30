@@ -33,7 +33,7 @@ from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disable
 from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64
-from common import requires_wasm_eh, crossplatform, with_both_sjlj
+from common import requires_wasm_eh, crossplatform, with_both_sjlj, also_with_standalone_wasm
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64
 from common import EMTEST_BUILD_VERBOSE, PYTHON
 from tools import shared, building, utils, response_file, cache
@@ -13550,3 +13550,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
   def test_proxy_to_worker(self):
     self.do_runf(test_file('hello_world.c'), emcc_args=['--proxy-to-worker'])
+
+  @also_with_standalone_wasm()
+  def test_console_out(self):
+    self.do_other_test('test_console_out.c')
