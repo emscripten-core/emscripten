@@ -156,14 +156,15 @@ namespace wgpu {
     };
 
     enum class BackendType : uint32_t {
-        Null = 0x00000000,
-        WebGPU = 0x00000001,
-        D3D11 = 0x00000002,
-        D3D12 = 0x00000003,
-        Metal = 0x00000004,
-        Vulkan = 0x00000005,
-        OpenGL = 0x00000006,
-        OpenGLES = 0x00000007,
+        Undefined = 0x00000000,
+        Null = 0x00000001,
+        WebGPU = 0x00000002,
+        D3D11 = 0x00000003,
+        D3D12 = 0x00000004,
+        Metal = 0x00000005,
+        Vulkan = 0x00000006,
+        OpenGL = 0x00000007,
+        OpenGLES = 0x00000008,
     };
 
     enum class BlendFactor : uint32_t {
@@ -1349,6 +1350,7 @@ namespace wgpu {
         uint32_t maxTextureDimension3D = WGPU_LIMIT_U32_UNDEFINED;
         uint32_t maxTextureArrayLayers = WGPU_LIMIT_U32_UNDEFINED;
         uint32_t maxBindGroups = WGPU_LIMIT_U32_UNDEFINED;
+        uint32_t maxBindGroupsPlusVertexBuffers = WGPU_LIMIT_U32_UNDEFINED;
         uint32_t maxBindingsPerBindGroup = WGPU_LIMIT_U32_UNDEFINED;
         uint32_t maxDynamicUniformBuffersPerPipelineLayout = WGPU_LIMIT_U32_UNDEFINED;
         uint32_t maxDynamicStorageBuffersPerPipelineLayout = WGPU_LIMIT_U32_UNDEFINED;
@@ -1475,6 +1477,7 @@ namespace wgpu {
         ChainedStruct const * nextInChain = nullptr;
         Surface compatibleSurface = nullptr;
         PowerPreference powerPreference = PowerPreference::Undefined;
+        BackendType backendType = BackendType::Undefined;
         bool forceFallbackAdapter = false;
         bool compatibilityMode = false;
     };
@@ -1666,6 +1669,7 @@ namespace wgpu {
     };
 
     struct RenderPassColorAttachment {
+        ChainedStruct const * nextInChain = nullptr;
         TextureView view = nullptr;
         TextureView resolveTarget = nullptr;
         LoadOp loadOp;
