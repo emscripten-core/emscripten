@@ -14,7 +14,7 @@ static int mkdirs(const char* file) {
     // Create any non-trivial (not the root "/") directory.
     if (*c == '/' && c != copy) {
       *c = 0;
-      int result = mkdir(copy, 0777);
+      int result = mkdir(copy, S_IRWXU);
       *c = '/';
       // Continue while we succeed in creating directories or while we see that
       // they already exist.
@@ -29,10 +29,10 @@ static int mkdirs(const char* file) {
   return 0;
 }
 
-void emscripten_wget(const char* url, const char* file) {
+int emscripten_wget(const char* url, const char* file) {
   // Create the ancestor directories.
   if (mkdirs(file)) {
-    return;
+    return 1;
   }
 
   // Fetch the data.
@@ -41,14 +41,15 @@ void emscripten_wget(const char* url, const char* file) {
   int error;
   emscripten_wget_data(url, &buffer, &num, &error);
   if (error) {
-    return;
+    return 1;
   }
 
   // Write the data.
-  int fd = open(file, O_WRONLY | O_CREAT);
+  int fd = open(file, O_WRONLY | O_CREAT, S_IRWXU);
   if (fd >= 0) {
     write(fd, buffer, num);
     close(fd);
   }
   free(buffer);
+  return fd < 0;
 }

@@ -1108,17 +1108,24 @@ var LibraryPThread = {
 #if STACK_OVERFLOW_CHECK
     checkStackCookie();
 #endif
+    function finish(result) {
 #if MINIMAL_RUNTIME
-    // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to
-    // pthreads. To exit a pthread with live runtime, use the function
-    // emscripten_unwind_to_js_event_loop() in the pthread body.
-    __emscripten_thread_exit(result);
-#else
-    if (keepRuntimeAlive()) {
-      PThread.setExitStatus(result);
-    } else {
+      // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to
+      // pthreads. To exit a pthread with live runtime, use the function
+      // emscripten_unwind_to_js_event_loop() in the pthread body.
       __emscripten_thread_exit(result);
+#else
+      if (keepRuntimeAlive()) {
+        PThread.setExitStatus(result);
+      } else {
+        __emscripten_thread_exit(result);
+      }
+#endif
     }
+#if ASYNCIFY == 2
+    Promise.resolve(result).then(finish);
+#else
+    finish(result);
 #endif
   },
 
