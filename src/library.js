@@ -3246,9 +3246,10 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-#if SHRINK_LEVEL == 0
+#if SHRINK_LEVEL == 0 || ASYNCIFY == 2
   // A mirror copy of contents of wasmTable in JS side, to avoid relatively
-  // slow wasmTable.get() call. Only used when not compiling with -Os or -Oz.
+  // slow wasmTable.get() call. Only used when not compiling with -Os, -Oz, or
+  // JSPI which needs to instrument the functions.
   $wasmTableMirror__internal: true,
   $wasmTableMirror: [],
 
@@ -3274,8 +3275,13 @@ mergeInto(LibraryManager.library, {
     if (!func) {
       if (funcPtr >= wasmTableMirror.length) wasmTableMirror.length = funcPtr + 1;
       wasmTableMirror[funcPtr] = func = wasmTable.get(funcPtr);
+#if ASYNCIFY == 2
+      if (Asyncify.isAsyncExport(func)) {
+        wasmTableMirror[funcPtr] = func = Asyncify.makeAsyncFunction(func);
+      }
+#endif
     }
-#if ASSERTIONS
+#if ASSERTIONS && ASYNCIFY != 2 // With JSPI the function stored in the table will be a wrapper.
     assert(wasmTable.get(funcPtr) == func, "JavaScript-side Wasm function table mirror is out of date!");
 #endif
     return func;

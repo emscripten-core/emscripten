@@ -833,12 +833,6 @@ var LibraryEmbind = {
 
     var returns = (argTypes[0].name !== "void");
 
-#if ASYNCIFY
-    if (isAsync) {
-      cppInvokerFunc = Asyncify.makeAsyncFunction(cppInvokerFunc);
-    }
-#endif
-
 #if DYNAMIC_EXECUTION == 0
     var expectedArgCount = argCount - 2;
     var argsWired = new Array(expectedArgCount);
