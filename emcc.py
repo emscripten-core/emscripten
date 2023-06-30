@@ -2313,6 +2313,8 @@ def phase_linker_setup(options, state, newargs):
                                  settings.MIN_CHROME_VERSION < 49 or
                                  settings.MIN_SAFARI_VERSION < 110000 or
                                  settings.MIN_IE_VERSION != 0x7FFFFFFF)
+    if not feature_matrix.caniuse(feature_matrix.Feature.OPTIONAL_CHAINING):
+      settings.TRANSPILE_TO_ES5 = True
 
     if options.use_closure_compiler is None and settings.TRANSPILE_TO_ES5:
       diagnostics.warning('transpile', 'enabling transpilation via closure due to browser version settings.  This warning can be suppressed by passing `--closure=1` or `--closure=0` to opt into our explicitly.')

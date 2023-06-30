@@ -1764,10 +1764,10 @@ var AUTO_NATIVE_LIBRARIES = true;
 // versions >= MIN_FIREFOX_VERSION
 // are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
 // for Firefox versions older than < majorVersion.
-// Firefox ESR 68 was released on July 9, 2019.
+// Firefox ESR 74 was released on March 10, 2020
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
-var MIN_FIREFOX_VERSION = 68;
+var MIN_FIREFOX_VERSION = 74;
 
 // Specifies the oldest version of desktop Safari to target. Version is encoded
 // in MMmmVV, e.g. 70101 denotes Safari 7.1.1.
@@ -1806,10 +1806,10 @@ var MIN_EDGE_VERSION = 0x7FFFFFFF;
 
 // Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
 // drop support for Chrome 57 and older.
-// Chrome 75.0.3770 was released on 2019-06-04
+// Chrome 80 was released on February 4, 2020
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
-var MIN_CHROME_VERSION = 75;
+var MIN_CHROME_VERSION = 80;
 
 // Specifies minimum node version to target for the generated code.  This is
 // distinct from the minimum version required run the emscripten compiler.

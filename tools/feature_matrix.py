@@ -23,6 +23,7 @@ class Feature(IntEnum):
   THREADS = auto()
   GLOBALTHIS = auto()
   PROMISE_ANY = auto()
+  OPTIONAL_CHAINING = auto()
 
 
 default_features = {Feature.SIGN_EXT, Feature.MUTABLE_GLOBALS}
@@ -70,6 +71,12 @@ min_browser_versions = {
     'firefox': 79,
     'safari': 140000,
     'node': 150000,
+  },
+  Feature.OPTIONAL_CHAINING: {
+    'chrome': 80,
+    'firefox': 74,
+    'safari': 130400,
+    'node': 140000,
   },
 }
 
