@@ -10370,6 +10370,7 @@ int main () {
     self.run_process([EMCC, '-sSTRICT', '-sIGNORE_MISSING_MAIN', 'empty.c'])
 
   # Tests the difference between options -sSAFE_HEAP=1 and -sSAFE_HEAP=2.
+  @also_with_wasm64
   def test_safe_heap_2(self):
     self.do_runf(test_file('safe_heap_2.c'), 'alignment fault',
                  emcc_args=['-sSAFE_HEAP=1'], assert_returncode=NON_ZERO)
