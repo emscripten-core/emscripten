@@ -120,9 +120,7 @@ mergeInto(LibraryManager.library, {
   // We have a separate JS version `getHeapMax()` which can be called directly
   // avoiding any wrapper added for wasm64.
   emscripten_get_heap_max__deps: ['$getHeapMax'],
-  emscripten_get_heap_max: () => {
-    return getHeapMax();
-  },
+  emscripten_get_heap_max: () => getHeapMax(),
 
   $getHeapMax: () =>
 #if ALLOW_MEMORY_GROWTH
