@@ -31,7 +31,7 @@ mergeInto(LibraryManager.library, {
                                                                       compressedData['cachedOffset'] + (i+1)*LZ4.CHUNK_SIZE);
         assert(compressedData['cachedChunks'][i].length === LZ4.CHUNK_SIZE);
       }
-      pack['metadata'].files.forEach(function(file) {
+      pack['metadata'].files.forEach((file) => {
         var dir = PATH.dirname(file.filename);
         var name = PATH.basename(file.filename);
         FS.createPath('', dir, true, true);
@@ -49,10 +49,10 @@ mergeInto(LibraryManager.library, {
       // worth.
       if (preloadPlugin) {
         Browser.init();
-        pack['metadata'].files.forEach(function(file) {
+        pack['metadata'].files.forEach((file) => {
           var handled = false;
           var fullname = file.filename;
-          preloadPlugins.forEach(function(plugin) {
+          preloadPlugins.forEach((plugin) => {
             if (handled) return;
             if (plugin['canHandle'](fullname)) {
               var dep = getUniqueRunDependency('fp ' + fullname);

@@ -236,12 +236,12 @@ var LibraryEmbind = {
     return sharedRegisterType(rawType, registeredInstance, options);
   },
   $registerPrimitiveType__deps: ['$registerType', '$PrimitiveType'],
-  $registerPrimitiveType: function(id, name) {
+  $registerPrimitiveType: (id, name) => {
     name = readLatin1String(name);
     registerType(id, new PrimitiveType(id, name));
   },
   $createFunctionDefinition__deps: ['$FunctionDefinition', '$heap32VectorToArray', '$readLatin1String', '$Argument', '$whenDependentTypesAreResolved'],
-  $createFunctionDefinition: function(name, argCount, rawArgTypesAddr, hasThis, cb) {
+  $createFunctionDefinition: (name, argCount, rawArgTypesAddr, hasThis, cb) => {
     const argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = readLatin1String(name);
 
@@ -263,39 +263,39 @@ var LibraryEmbind = {
     });
   },
   _embind_register_void__deps: ['$registerPrimitiveType'],
-  _embind_register_void: function(rawType, name) {
+  _embind_register_void: (rawType, name) => {
     registerPrimitiveType(rawType, name);
   },
   _embind_register_bool__deps: ['$registerPrimitiveType'],
-  _embind_register_bool: function(rawType, name, size, trueValue, falseValue) {
+  _embind_register_bool: (rawType, name, size, trueValue, falseValue) => {
     registerPrimitiveType(rawType, name);
   },
   _embind_register_integer__deps: ['$registerPrimitiveType'],
-  _embind_register_integer: function(primitiveType, name, size, minRange, maxRange) {
+  _embind_register_integer: (primitiveType, name, size, minRange, maxRange) => {
     registerPrimitiveType(primitiveType, name);
   },
-  _embind_register_bigint: function(primitiveType, name, size, minRange, maxRange) {
+  _embind_register_bigint: (primitiveType, name, size, minRange, maxRange) => {
     registerPrimitiveType(primitiveType, name);
   },
   _embind_register_float__deps: ['$registerPrimitiveType'],
-  _embind_register_float: function(rawType, name, size) {
+  _embind_register_float: (rawType, name, size) => {
     registerPrimitiveType(rawType, name);
   },
   _embind_register_std_string__deps: ['$registerPrimitiveType'],
-  _embind_register_std_string: function(rawType, name) {
+  _embind_register_std_string: (rawType, name) => {
     registerPrimitiveType(rawType, name);
   },
-  _embind_register_std_wstring: function(rawType, charSize, name) {
+  _embind_register_std_wstring: (rawType, charSize, name) => {
     registerPrimitiveType(rawType, name);
   },
-  _embind_register_emval: function(rawType, name) {
+  _embind_register_emval: (rawType, name) => {
     registerPrimitiveType(rawType, name);
   },
-  _embind_register_memory_view: function(rawType, dataTypeIndex, name) {
+  _embind_register_memory_view: (rawType, dataTypeIndex, name) => {
     // TODO
   },
   _embind_register_function__deps: ['$moduleDefinitions', '$createFunctionDefinition'],
-  _embind_register_function: function(name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync) {
+  _embind_register_function: (name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync) => {
     createFunctionDefinition(name, argCount, rawArgTypesAddr, false, (funcDef) => {
       moduleDefinitions.push(funcDef);
     });
@@ -528,7 +528,7 @@ var LibraryEmbind = {
 
   $embindEmitTypes__deps: ['$awaitingDependencies', '$throwBindingError', '$getTypeName', '$moduleDefinitions', '$TsPrinter'],
   $embindEmitTypes__postset: 'addOnInit(embindEmitTypes);',
-  $embindEmitTypes: function() {
+  $embindEmitTypes: () => {
     for (const typeId in awaitingDependencies) {
       throwBindingError(`Missing type definition for '${getTypeName(typeId)}'`);
     }

@@ -80,7 +80,7 @@ var emscriptenMemoryProfiler = {
   drawContext: null,
 
   // Converts number f to string with at most two decimals, without redundant trailing zeros.
-  truncDec: function truncDec(f = 0) {
+  truncDec(f = 0) {
     var str = f.toFixed(2);
     if (str.includes('.00', str.length-3)) return str.substr(0, str.length-3);
     else if (str.includes('0', str.length-1)) return str.substr(0, str.length-1);
@@ -88,7 +88,7 @@ var emscriptenMemoryProfiler = {
   },
 
   // Converts a number of bytes pretty-formatted as a string.
-  formatBytes: function formatBytes(bytes) {
+  formatBytes(bytes) {
     if (bytes >= 1000*1024*1024) return emscriptenMemoryProfiler.truncDec(bytes/(1024*1024*1024)) + ' GB';
     else if (bytes >= 1000*1024) return emscriptenMemoryProfiler.truncDec(bytes/(1024*1024)) + ' MB';
     else if (bytes >= 1000) return emscriptenMemoryProfiler.truncDec(bytes/1024) + ' KB';
@@ -96,7 +96,7 @@ var emscriptenMemoryProfiler = {
   },
 
   // HSV values in [0..1[, returns a RGB string in format '#rrggbb'
-  hsvToRgb: function hsvToRgb(h, s, v) {
+  hsvToRgb(h, s, v) {
     var h_i = (h*6)|0;
     var f = h*6 - h_i;
     var p = v * (1 - s);
@@ -118,7 +118,7 @@ var emscriptenMemoryProfiler = {
     return '#' + toHex(r) + toHex(g) + toHex(b);
   },
 
-  onSbrkGrow: function onSbrkGrow(oldLimit, newLimit) {
+  onSbrkGrow(oldLimit, newLimit) {
     var self = emscriptenMemoryProfiler;
     // On first sbrk(), account for the initial size.
     if (self.sbrkSources.length == 0) {
@@ -138,7 +138,7 @@ var emscriptenMemoryProfiler = {
     });
   },
 
-  onMemoryResize: function onMemoryResize(oldSize, newSize) {
+  onMemoryResize(oldSize, newSize) {
     var self = emscriptenMemoryProfiler;
     // On first heap resize, account for the initial size.
     if (self.resizeMemorySources.length == 0) {
@@ -159,14 +159,14 @@ var emscriptenMemoryProfiler = {
     console.log('memory resize: ' + oldSize + ' ' + newSize);
   },
 
-  recordStackWatermark: function() {
+  recordStackWatermark() {
     if (typeof runtimeInitialized == 'undefined' || runtimeInitialized) {
       var self = emscriptenMemoryProfiler;
       self.stackTopWatermark = Math.min(self.stackTopWatermark, _emscripten_stack_get_current());
     }
   },
 
-  onMalloc: function onMalloc(ptr, size) {
+  onMalloc(ptr, size) {
     if (!ptr) return;
     if (emscriptenMemoryProfiler.sizeOfAllocatedPtr[ptr])
     {
@@ -196,7 +196,7 @@ var emscriptenMemoryProfiler = {
     self.allocationSitePtrs[ptr] = loc;
   },
 
-  onFree: function onFree(ptr) {
+  onFree(ptr) {
     if (!ptr) return;
 
     var self = emscriptenMemoryProfiler;
@@ -229,21 +229,21 @@ var emscriptenMemoryProfiler = {
     ++self.totalTimesFreeCalled;
   },
 
-  onRealloc: function onRealloc(oldAddress, newAddress, size) {
+  onRealloc(oldAddress, newAddress, size) {
     emscriptenMemoryProfiler.onFree(oldAddress);
     emscriptenMemoryProfiler.onMalloc(newAddress, size);
   },
 
-  onPreloadComplete: function onPreloadComplete() {
+  onPreloadComplete() {
     emscriptenMemoryProfiler.pagePreRunIsFinished = true;
   },
 
   // Installs startup hook and periodic UI update timer.
-  initialize: function initialize() {
+  initialize() {
     // Inject the memoryprofiler hooks.
-    Module['onMalloc'] = function onMalloc(ptr, size) { emscriptenMemoryProfiler.onMalloc(ptr, size); };
-    Module['onRealloc'] = function onRealloc(oldAddress, newAddress, size) { emscriptenMemoryProfiler.onRealloc(oldAddress, newAddress, size); };
-    Module['onFree'] = function onFree(ptr) { emscriptenMemoryProfiler.onFree(ptr); };
+    Module['onMalloc'] = (ptr, size) => emscriptenMemoryProfiler.onMalloc(ptr, size);
+    Module['onRealloc'] = (oldAddress, newAddress, size) => emscriptenMemoryProfiler.onRealloc(oldAddress, newAddress, size);;
+    Module['onFree'] = (ptr) => emscriptenMemoryProfiler.onFree(ptr);
     emscriptenMemoryProfiler.recordStackWatermark();
 
     // Add a tracking mechanism to detect when VFS loading is complete.
@@ -253,11 +253,11 @@ var emscriptenMemoryProfiler = {
     if (emscriptenMemoryProfiler.hookStackAlloc && typeof stackAlloc == 'function') {
       // Inject stack allocator.
       var prevStackAlloc = stackAlloc;
-      var hookedStackAlloc = function(size) {
+      var hookedStackAlloc = (size) => {
         var ptr = prevStackAlloc(size);
         emscriptenMemoryProfiler.recordStackWatermark();
         return ptr;
-      }
+      };
       stackAlloc = hookedStackAlloc;
     }
 
@@ -291,8 +291,8 @@ var emscriptenMemoryProfiler = {
       self.memoryprofiler_summary = document.getElementById('memoryprofiler_summary');
       self.memoryprofiler_ptrs = document.getElementById('memoryprofiler_ptrs');
 
-      document.getElementById('memoryprofiler_min_tracked_alloc_size').addEventListener("change", (e) => self.trackedCallstackMinSizeBytes=parseInt(this.value, undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */));
-      document.getElementById('memoryprofiler_min_tracked_alloc_count').addEventListener("change", (e) => self.trackedCallstackMinAllocCount=parseInt(this.value, undefined));
+      document.getElementById('memoryprofiler_min_tracked_alloc_size').addEventListener("change", function(e) { self.trackedCallstackMinSizeBytes=parseInt(this.value, undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */); });
+      document.getElementById('memoryprofiler_min_tracked_alloc_count').addEventListener("change", function(e) { self.trackedCallstackMinAllocCount=parseInt(this.value, undefined); });
       document.getElementById('memoryprofiler_clear_alloc_stats').addEventListener("click", (e) => {self.allocationsAtLoc = {}; self.allocationSitePtrs = {};});
       self.canvas = document.getElementById('memoryprofiler_canvas');
       self.canvas.width = document.documentElement.clientWidth - 32;
@@ -311,20 +311,20 @@ var emscriptenMemoryProfiler = {
 
   // Given a pointer 'bytes', compute the linear 1D position on the graph as
   // pixels, rounding down for start address of a block.
-  bytesToPixelsRoundedDown: function bytesToPixelsRoundedDown(bytes) {
+  bytesToPixelsRoundedDown(bytes) {
     return (bytes * emscriptenMemoryProfiler.canvas.width * emscriptenMemoryProfiler.canvas.height / HEAP8.length) | 0;
   },
 
   // Same as bytesToPixelsRoundedDown, but rounds up for the end address of a
   // block. The different rounding will guarantee that even 'thin' allocations
   // should get at least one pixel dot in the graph.
-  bytesToPixelsRoundedUp: function bytesToPixelsRoundedUp(bytes) {
+  bytesToPixelsRoundedUp(bytes) {
     return ((bytes * emscriptenMemoryProfiler.canvas.width * emscriptenMemoryProfiler.canvas.height + HEAP8.length - 1) / HEAP8.length) | 0;
   },
 
   // Graphs a range of allocated memory. The memory range will be drawn as a
   // top-to-bottom, left-to-right stripes or columns of pixels.
-  fillLine: function fillLine(startBytes, endBytes) {
+  fillLine(startBytes, endBytes) {
     var self = emscriptenMemoryProfiler;
     var startPixels = self.bytesToPixelsRoundedDown(startBytes);
     var endPixels = self.bytesToPixelsRoundedUp(endBytes);
@@ -356,7 +356,7 @@ var emscriptenMemoryProfiler = {
   },
 
   // Fills a rectangle of given height % that overlaps the byte range given.
-  fillRect: function fillRect(startBytes, endBytes, heightPercentage) {
+  fillRect(startBytes, endBytes, heightPercentage) {
     var self = emscriptenMemoryProfiler;
     var startPixels = self.bytesToPixelsRoundedDown(startBytes);
     var endPixels = self.bytesToPixelsRoundedUp(endBytes);
@@ -366,7 +366,7 @@ var emscriptenMemoryProfiler = {
     self.drawContext.fillRect(x0, self.canvas.height * (1.0 - heightPercentage), x1 - x0 + 1, self.canvas.height);
   },
 
-  countOpenALAudioDataSize: function countOpenALAudioDataSize() {
+  countOpenALAudioDataSize() {
     if (typeof AL == 'undefined' || !AL.currentContext) return 0;
 
     var totalMemory = 0;
@@ -381,7 +381,7 @@ var emscriptenMemoryProfiler = {
   // Print accurate map of individual allocations. This will show information about
   // memory fragmentation and allocation sizes.
   // Warning: This will walk through all allocations, so it is slow!
-  printAllocsWithCyclingColors: function printAllocsWithCyclingColors(colors, allocs) {
+  printAllocsWithCyclingColors(colors, allocs) {
     var colorIndex = 0;
     for (var i in allocs) {
       emscriptenMemoryProfiler.drawContext.fillStyle = colors[colorIndex];
@@ -392,7 +392,7 @@ var emscriptenMemoryProfiler = {
     }
   },
 
-  filterURLsFromCallstack: function(callstack) {
+  filterURLsFromCallstack(callstack) {
     // Hide paths from URLs to make the log more readable
     callstack = callstack.replace(/@((file)|(http))[\w:\/\.]*\/([\w\.]*)/g, '@$4');
     callstack = callstack.replace(/\n/g, '<br />');
@@ -401,7 +401,7 @@ var emscriptenMemoryProfiler = {
 
   // given callstack of func1\nfunc2\nfunc3... and function name, cuts the tail from the callstack
   // for anything after the function func.
-  filterCallstackAfterFunctionName: function(callstack, func) {
+  filterCallstackAfterFunctionName(callstack, func) {
     var i = callstack.indexOf(func);
     if (i != -1) {
       var end = callstack.indexOf('<br />', i);
@@ -412,7 +412,7 @@ var emscriptenMemoryProfiler = {
     return callstack;
   },
 
-  filterCallstackForMalloc: function(callstack) {
+  filterCallstackForMalloc(callstack) {
     // Do not show Memoryprofiler's own callstacks in the callstack prints.
     var i = callstack.indexOf('emscripten_trace_record_');
     if (i != -1) {
@@ -421,7 +421,7 @@ var emscriptenMemoryProfiler = {
     return emscriptenMemoryProfiler.filterURLsFromCallstack(callstack);
   },
 
-  filterCallstackForHeapResize: function(callstack) {
+  filterCallstackForHeapResize(callstack) {
     // Do not show Memoryprofiler's own callstacks in the callstack prints.
     var i = callstack.indexOf('emscripten_asm_const_iii');
     var j = callstack.indexOf('growMemory');
@@ -433,12 +433,12 @@ var emscriptenMemoryProfiler = {
     return emscriptenMemoryProfiler.filterURLsFromCallstack(callstack);
   },
 
-  printHeapResizeLog: function(heapResizes) {
-    var demangler = typeof demangleAll != 'undefined' ? demangleAll : function(x) { return x; };
+  printHeapResizeLog(heapResizes) {
+    var demangler = typeof demangleAll != 'undefined' ? demangleAll : (x) => x;
     var html = '';
     for (var i = 0; i < heapResizes.length; ++i) {
       var j = i+1;
-      while(j < heapResizes.length) {
+      while (j < heapResizes.length) {
         if ((heapResizes[j].filteredStack || heapResizes[j].stack) == (heapResizes[i].filteredStack || heapResizes[i].stack)) {
           ++j;
         } else {
@@ -455,7 +455,7 @@ var emscriptenMemoryProfiler = {
   },
 
   // Main UI update entry point.
-  updateUi: function updateUi() {
+  updateUi() {
     // It is common to set 'overflow: hidden;' on canvas pages that do WebGL. When MemoryProfiler is being used, there will be a long block of text on the page, so force-enable scrolling.
     if (document.body.style.overflow != '') document.body.style.overflow = '';
     function colorBar(color) {
@@ -601,7 +601,7 @@ var emscriptenMemoryProfiler = {
       html += self.printHeapResizeLog(self.sbrkSources);
       html += '</div>'
     } else {
-      var demangler = typeof demangleAll != 'undefined' ? demangleAll : function(x) { return x; };
+      var demangler = typeof demangleAll != 'undefined' ? demangleAll : (x) => x;
       // Print out statistics of individual allocations if they were tracked.
       if (Object.keys(self.allocationsAtLoc).length > 0) {
         var calls = [];
@@ -629,7 +629,9 @@ var emscriptenMemoryProfiler = {
 
 // Backwards compatibility with previously compiled code. Don't call this
 // anymore!
-function memoryprofiler_add_hooks() { emscriptenMemoryProfiler.initialize(); }
+function memoryprofiler_add_hooks() {
+  emscriptenMemoryProfiler.initialize();
+}
 
 if (typeof document != 'undefined' && typeof window != 'undefined' && typeof process == 'undefined') {
   emscriptenMemoryProfiler.initialize();

@@ -233,12 +233,17 @@ function(${args}) {
         }
         const sync = proxyingMode === 'sync';
         if (PTHREADS) {
-          snippet = modifyJSFunction(snippet, (args, body) => `
+          snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
+            if (oneliner) {
+              body = `return ${body}`;
+            }
+            return `
 function(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
   return proxyToMainThread(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
 ${body}
-}\n`);
+}\n`
+          });
         } else if (WASM_WORKERS && ASSERTIONS) {
           // In ASSERTIONS builds add runtime checks that proxied functions are not attempted to be called in Wasm Workers
           // (since there is no automatic proxying architecture available)

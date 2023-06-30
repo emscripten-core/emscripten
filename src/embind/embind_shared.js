@@ -9,14 +9,10 @@ var LibraryEmbindShared = {
   $BindingError: undefined,
 
   $throwInternalError__deps: ['$InternalError'],
-  $throwInternalError: function(message) {
-    throw new InternalError(message);
-  },
+  $throwInternalError: (message) => { throw new InternalError(message); },
 
   $throwBindingError__deps: ['$BindingError'],
-  $throwBindingError: function(message) {
-    throw new BindingError(message);
-  },
+  $throwBindingError: (message) => { throw new BindingError(message); },
 
   // typeID -> { toWireType: ..., fromWireType: ... }
   $registeredTypes:  {},
@@ -62,7 +58,7 @@ var LibraryEmbindShared = {
   $whenDependentTypesAreResolved__deps: [
     '$awaitingDependencies', '$registeredTypes',
     '$typeDependencies', '$throwInternalError'],
-  $whenDependentTypesAreResolved: function(myTypes, dependentTypes, getTypeConverters) {
+  $whenDependentTypesAreResolved: (myTypes, dependentTypes, getTypeConverters) => {
     myTypes.forEach(function(type) {
         typeDependencies[type] = dependentTypes;
     });
@@ -105,7 +101,7 @@ var LibraryEmbindShared = {
   $embind_charCodes__deps: ['$embind_init_charCodes'],
   $embind_charCodes__postset: "embind_init_charCodes()",
   $embind_charCodes: undefined,
-  $embind_init_charCodes: function() {
+  $embind_init_charCodes: () => {
     var codes = new Array(256);
     for (var i = 0; i < 256; ++i) {
         codes[i] = String.fromCharCode(i);
@@ -113,7 +109,7 @@ var LibraryEmbindShared = {
     embind_charCodes = codes;
   },
   $readLatin1String__deps: ['$embind_charCodes'],
-  $readLatin1String: function(ptr) {
+  $readLatin1String: (ptr) => {
     var ret = "";
     var c = ptr;
     while (HEAPU8[c]) {
@@ -122,14 +118,14 @@ var LibraryEmbindShared = {
     return ret;
   },
   $getTypeName__deps: ['$readLatin1String', '__getTypeName', 'free'],
-  $getTypeName: function(type) {
+  $getTypeName: (type) => {
     var ptr = ___getTypeName(type);
     var rv = readLatin1String(ptr);
     _free(ptr);
     return rv;
   },
 
-  $heap32VectorToArray: function(count, firstElement) {
+  $heap32VectorToArray: (count, firstElement) => {
     var array = [];
     for (var i = 0; i < count; i++) {
         // TODO(https://github.com/emscripten-core/emscripten/issues/17310):
@@ -141,7 +137,7 @@ var LibraryEmbindShared = {
 
   $requireRegisteredType__deps: [
     '$registeredTypes', '$getTypeName', '$throwBindingError'],
-  $requireRegisteredType: function(rawType, humanName) {
+  $requireRegisteredType: (rawType, humanName) => {
     var impl = registeredTypes[rawType];
     if (undefined === impl) {
         throwBindingError(humanName + " has unknown type " + getTypeName(rawType));
