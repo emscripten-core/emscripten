@@ -25,6 +25,10 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     assert(typeof ptr === 'number');
 #endif
+#if !CAN_ADDRESS_2GB && !MEMORY64
+    // With CAN_ADDRESS_2GB or MEMORY64, pointers are already unsigned.
+    ptr >>>= 0;
+#endif
     return '0x' + ptr.toString(16).padStart(8, '0');
   },
 
@@ -199,7 +203,8 @@ mergeInto(LibraryManager.library, {
   emscripten_resize_heap: 'ip',
   emscripten_resize_heap: (requestedSize) => {
     var oldSize = HEAPU8.length;
-#if MEMORY64 != 1
+#if !MEMORY64 && !CAN_ADDRESS_2GB
+    // With CAN_ADDRESS_2GB or MEMORY64, pointers are already unsigned.
     requestedSize >>>= 0;
 #endif
 #if ALLOW_MEMORY_GROWTH == 0
@@ -3090,7 +3095,6 @@ mergeInto(LibraryManager.library, {
   // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
   __handle_stack_overflow__deps: ['emscripten_stack_get_base', 'emscripten_stack_get_end', '$ptrToString'],
   __handle_stack_overflow: (requested) => {
-    requested >>>= 0;
     var base = _emscripten_stack_get_base();
     var end = _emscripten_stack_get_end();
     abort(`stack overflow (Attempt to set SP to ${ptrToString(requested)}` +
