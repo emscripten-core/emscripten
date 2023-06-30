@@ -5030,7 +5030,7 @@ res64 - external 64\n''', header='''\
     # Create a dependency on __cxa_find_matching_catch_6 (6 = num clauses + 2)
     # which is one higher than the default set of __cxa_find_matching_catch
     # functions created in library_exceptions.js.
-    # This means we end up depeneding on dynamic linking code to redirect
+    # This means we end up depending on dynamic linking code to redirect
     # __cxa_find_matching_catch_6 to __cxa_find_matching_catch.
     create_file('liblib.cpp', r'''
       #include <stdio.h>
