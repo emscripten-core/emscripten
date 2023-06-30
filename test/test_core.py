@@ -5016,8 +5016,8 @@ res64 - external 64\n''', header='''\
 
   @with_both_eh_sjlj
   @needs_dylink
-  def test_dylink_exceptions_try_catch_3(self):
-    main = r'''
+  def test_dylink_exceptions_try_catch_6(self):
+    create_file('main.cpp', r'''
       #include <dlfcn.h>
       int main() {
         void* handle = dlopen("liblib.so", RTLD_LAZY);
@@ -5025,8 +5025,14 @@ res64 - external 64\n''', header='''\
         (side)();
         return 0;
       }
-    '''
-    side = r'''
+    ''')
+
+    # Create a dependency on __cxa_find_matching_catch_6 (6 = num clauses + 2)
+    # which is one higher than the default set of __cxa_find_matching_catch
+    # functions created in library_exceptions.js.
+    # This means we end up depeneding on dynamic linking code to redirect
+    # __cxa_find_matching_catch_6 to __cxa_find_matching_catch.
+    create_file('liblib.cpp', r'''
       #include <stdio.h>
       extern "C" void side() {
         try {
@@ -5035,14 +5041,16 @@ res64 - external 64\n''', header='''\
           printf("side: caught int %d\n", x);
         } catch (float x){
           printf("side: caught float %f\n", x);
+        } catch (double x){
+          printf("side: caught double %f\n", x);
+        } catch (short x){
+          printf("side: caught short %hd\n", x);
         }
       }
-      '''
+    ''')
 
-    create_file('liblib.cpp', side)
-    create_file('main.cpp', main)
     self.maybe_closure()
-    # Same as dylink_test but takes source code as filenames on disc.
+
     # side settings
     self.clear_setting('MAIN_MODULE')
     self.set_setting('SIDE_MODULE')
@@ -5053,8 +5061,7 @@ res64 - external 64\n''', header='''\
     self.set_setting('MAIN_MODULE', 1)
     self.clear_setting('SIDE_MODULE')
 
-    expected = "side: caught int 3\n"
-    self.do_runf("main.cpp", expected)
+    self.do_runf("main.cpp", "side: caught int 3\n")
 
   @needs_dylink
   @disabled('https://github.com/emscripten-core/emscripten/issues/12815')
