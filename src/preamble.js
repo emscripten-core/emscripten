@@ -641,28 +641,23 @@ if (Module['locateFile']) {
 #endif
 
 function getBinary(file) {
-  try {
-    if (file == wasmBinaryFile && wasmBinary) {
-      return new Uint8Array(wasmBinary);
-    }
+  if (file == wasmBinaryFile && wasmBinary) {
+    return new Uint8Array(wasmBinary);
+  }
 #if SUPPORT_BASE64_EMBEDDING
-    var binary = tryParseAsDataURI(file);
-    if (binary) {
-      return binary;
-    }
+  var binary = tryParseAsDataURI(file);
+  if (binary) {
+    return binary;
+  }
 #endif
-    if (readBinary) {
-      return readBinary(file);
-    }
+  if (readBinary) {
+    return readBinary(file);
+  }
 #if WASM_ASYNC_COMPILATION
-    throw "both async and sync fetching of the wasm failed";
+  throw "both async and sync fetching of the wasm failed";
 #else
-    throw "sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)";
+  throw "sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)";
 #endif
-  }
-  catch (err) {
-    abort(err);
-  }
 }
 
 function getBinaryPromise(binaryFile) {
@@ -991,8 +986,8 @@ function createWasm() {
     reportUndefinedSymbols();
 #endif
 
-#if MEMORY64
-    exports = instrumentWasmExportsForMemory64(exports);
+#if MEMORY64 || CAN_ADDRESS_2GB
+    exports = applySignatureConversions(exports);
 #endif
 
     Module['asm'] = exports;

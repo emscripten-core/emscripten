@@ -122,7 +122,7 @@ function runJSify() {
       for (let i = 1; i < sig.length; i++) {
         const name = argNames[i - 1];
         if (!name) {
-          error(`convertPointerParams: missing name for argument ${i} in ${symbol}`);
+          error(`handleI64Signatures: missing name for argument ${i} in ${symbol}`);
           return snippet;
         }
         if (WASM_BIGINT) {

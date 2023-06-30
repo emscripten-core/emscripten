@@ -921,7 +921,7 @@ sigs = {
   emscripten_websocket_set_onerror_callback_on_thread__sig: 'iippp',
   emscripten_websocket_set_onmessage_callback_on_thread__sig: 'iippp',
   emscripten_websocket_set_onopen_callback_on_thread__sig: 'iippp',
-  emscripten_wget__sig: 'vpp',
+  emscripten_wget__sig: 'ipp',
   emscripten_wget_data__sig: 'vpppp',
   endprotoent__sig: 'v',
   environ_get__sig: 'ipp',

@@ -107,7 +107,7 @@ function callMain() {
     Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
 #endif
 
-#if ASYNCIFY == 2
+#if ASYNCIFY == 2 && !PROXY_TO_PTHREAD
     // The current spec of JSPI returns a promise only if the function suspends
     // and a plain value otherwise. This will likely change:
     // https://github.com/WebAssembly/js-promise-integration/issues/11

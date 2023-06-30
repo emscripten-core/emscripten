@@ -268,6 +268,7 @@ class EmccOptions:
     self.ignore_dynamic_linking = False
     self.shell_path = utils.path_from_root('src/shell.html')
     self.source_map_base = ''
+    self.embind_emit_tsd = ''
     self.emrun = False
     self.cpu_profiler = False
     self.memory_profiler = False
@@ -1275,7 +1276,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if state.mode == Mode.POST_LINK_ONLY:
     settings.limit_settings(None)
     target, wasm_target = phase_linker_setup(options, state, newargs)
-    process_libraries(state, [])
+    process_libraries(state, [], options)
     if len(input_files) != 1:
       exit_with_error('--post-link requires a single input file')
     phase_post_link(options, state, input_files[0][1], wasm_target, target, {})
@@ -1349,7 +1350,7 @@ def phase_calculate_linker_inputs(options, state, linker_inputs):
   state.link_flags = filter_link_flags(state.link_flags, using_lld)
 
   # Decide what we will link
-  process_libraries(state, linker_inputs)
+  process_libraries(state, linker_inputs, options.embind_emit_tsd)
 
   linker_args = [val for _, val in sorted(linker_inputs + state.link_flags)]
 
@@ -2438,7 +2439,7 @@ def phase_linker_setup(options, state, newargs):
     settings.JS_LIBRARIES.append((0, 'library_pthread_stub.js'))
 
   if settings.MEMORY64:
-    if settings.ASYNCIFY and settings.MEMORY64 == 1:
+    if settings.ASYNCIFY == 1 and settings.MEMORY64 == 1:
       exit_with_error('MEMORY64=1 is not compatible with ASYNCIFY')
     # Any "pointers" passed to JS will now be i64's, in both modes.
     settings.WASM_BIGINT = 1
@@ -2498,6 +2499,10 @@ def phase_linker_setup(options, state, newargs):
       'addRunDependency',
       'removeRunDependency',
     ]
+
+  if options.embind_emit_tsd:
+    # TODO: Remove after #19759 is resolved.
+    settings.REQUIRED_EXPORTS += ['free']
 
   def check_memory_setting(setting):
     if settings[setting] % webassembly.WASM_PAGE_SIZE != 0:
@@ -2866,10 +2871,10 @@ def phase_linker_setup(options, state, newargs):
 
   # check if we can address the 2GB mark and higher: either if we start at
   # 2GB, or if we allow growth to either any amount or to 2GB or more.
-  if settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or \
+  if not settings.MEMORY64 and (settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or
      (settings.ALLOW_MEMORY_GROWTH and
       (settings.MAXIMUM_MEMORY < 0 or
-       settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024)):
+       settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024))):
     settings.CAN_ADDRESS_2GB = 1
 
   settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
@@ -3298,6 +3303,10 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   if options.executable:
     make_js_executable(js_target)
 
+  if options.embind_emit_tsd:
+    out = shared.run_js_tool(js_target, [], stdout=PIPE)
+    write_file(options.embind_emit_tsd, out)
+
 
 def version_string():
   # if the emscripten folder is not a git repo, don't run git show - that can
@@ -3505,6 +3514,9 @@ def parse_args(newargs):
       options.shell_path = consume_arg_file()
     elif check_arg('--source-map-base'):
       options.source_map_base = consume_arg()
+    elif check_arg('--embind-emit-tsd'):
+      options.embind_emit_tsd = consume_arg()
+      settings.INVOKE_RUN = False
     elif check_flag('--no-entry'):
       options.no_entry = True
     elif check_arg('--js-library'):
@@ -3932,7 +3944,6 @@ var %(EXPORT_NAME)s = (() => {
     f.write(src)
 
     # Export using a UMD style export, or ES6 exports if selected
-
     if settings.EXPORT_ES6:
       f.write('export default %s;' % settings.EXPORT_NAME)
     elif not settings.MINIMAL_RUNTIME:
@@ -3941,8 +3952,6 @@ if (typeof exports === 'object' && typeof module === 'object')
   module.exports = %(EXPORT_NAME)s;
 else if (typeof define === 'function' && define['amd'])
   define([], () => %(EXPORT_NAME)s);
-else if (typeof exports === 'object')
-  exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
 ''' % {'EXPORT_NAME': settings.EXPORT_NAME})
 
   shared.get_temp_files().note(final_js)
@@ -4180,7 +4189,7 @@ def find_library(lib, lib_dirs):
   return None
 
 
-def process_libraries(state, linker_inputs):
+def process_libraries(state, linker_inputs, embind_emit_tsd):
   new_flags = []
   libraries = []
   suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
@@ -4194,7 +4203,8 @@ def process_libraries(state, linker_inputs):
     lib = removeprefix(flag, '-l')
 
     logger.debug('looking for library "%s"', lib)
-    js_libs, native_lib = building.map_to_js_libs(lib)
+
+    js_libs, native_lib = building.map_to_js_libs(lib, embind_emit_tsd)
     if js_libs is not None:
       libraries += [(i, js_lib) for js_lib in js_libs]
       # If native_lib is returned then include it in the link

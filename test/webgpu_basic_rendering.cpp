@@ -108,6 +108,7 @@ void init() {
 
         wgpu::DepthStencilState depthStencilState{};
         depthStencilState.format = wgpu::TextureFormat::Depth32Float;
+        depthStencilState.depthCompare = wgpu::CompareFunction::Always;
 
         wgpu::RenderPipelineDescriptor descriptor{};
         descriptor.layout = device.CreatePipelineLayout(&pl);

@@ -27,7 +27,7 @@ import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, node_pthreads, also_with_wasm_bigint
-from common import read_file, read_binary, requires_v8, requires_node, compiler_for, crossplatform
+from common import read_file, read_binary, requires_v8, requires_node, requires_node_canary, compiler_for, crossplatform
 from common import with_both_sjlj
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
@@ -6774,6 +6774,7 @@ void* operator new(size_t size) {
 
   # Tests invoking the SIMD API via x86 SSE4.1 smmintrin.h header (_mm_x() functions)
   @no_wasm64('https://github.com/llvm/llvm-project/issues/57577')
+  @no_ubsan('https://github.com/emscripten-core/emscripten/issues/19749')
   @wasm_simd
   @requires_native_clang
   @is_slow_test
@@ -8446,6 +8447,18 @@ Module.onRuntimeInitialized = () => {
   def test_asyncify_main_module(self):
     self.set_setting('MAIN_MODULE', 2)
     self.do_core_test('test_hello_world.c')
+
+  # Test that pthread_join works correctly with asyncify.
+  @requires_node_canary
+  def test_pthread_join_and_asyncify(self):
+    # TODO Test with ASYNCIFY=1 https://github.com/emscripten-core/emscripten/issues/17552
+    self.require_jspi()
+    self.do_runf(test_file('core/test_pthread_join_and_asyncify.c'), 'joining thread!\njoined thread!',
+                 emcc_args=['-sASYNCIFY=2',
+                            '-sASYNCIFY_EXPORTS=run_thread',
+                            '-sEXIT_RUNTIME=1',
+                            '-pthread', '-sPROXY_TO_PTHREAD',
+                            '-Wno-experimental'])
 
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm64('TODO: asyncify for wasm64')

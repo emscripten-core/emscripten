@@ -2875,6 +2875,12 @@ int f() {
 
     self.do_runf(test_file('other/test_jspi_wildcard.c'), 'done')
 
+  def test_embind_tsgen(self):
+    self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
+                      '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'])
+    actual = read_file('embind_tsgen.d.ts')
+    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), actual)
+
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, config.LLVM_ROOT)
@@ -10364,6 +10370,7 @@ int main () {
     self.run_process([EMCC, '-sSTRICT', '-sIGNORE_MISSING_MAIN', 'empty.c'])
 
   # Tests the difference between options -sSAFE_HEAP=1 and -sSAFE_HEAP=2.
+  @also_with_wasm64
   def test_safe_heap_2(self):
     self.do_runf(test_file('safe_heap_2.c'), 'alignment fault',
                  emcc_args=['-sSAFE_HEAP=1'], assert_returncode=NON_ZERO)
@@ -12572,8 +12579,6 @@ Module.postRun = () => {{
     self.emcc_args += ['--preload-file', 'js_backend_files/file.dat']
     self.do_run_in_out_file_test('wasmfs/wasmfs_before_preload.c')
 
-  # Requires v8 for now since the version of node we use in CI doesn't support >2GB heaps
-  @requires_v8
   def test_hello_world_above_2gb(self):
     self.do_runf(test_file('hello_world.c'), 'hello, world!', emcc_args=['-sGLOBAL_BASE=2GB', '-sINITIAL_MEMORY=3GB'])
 
