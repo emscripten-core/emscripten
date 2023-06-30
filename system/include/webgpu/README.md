@@ -16,8 +16,13 @@ Dawn additionally autogenerates two "snippets" that are used in Emscripten:
 - `library_webgpu_enum_tables.js`, which is pasted into [`library_webgpu.js`](../../../src/library_webgpu.js)
 - `webgpu_struct_info.json`, which is pasted into [`struct_info.json`](../../../src/struct_info.json).
 
-Once that's done, you need to run `./tools/gen_struct_info.py` and `./tools/gen_sig_info.py` to update
-the auto-generated files.
+Once that's done, you need to update the auto-generated files with the commands below:
+
+```
+./tools/gen_struct_info.py
+./tools/gen_struct_info.py --wasm64
+./tools/gen_sig_info.py
+```
 
 ## Testing
 
