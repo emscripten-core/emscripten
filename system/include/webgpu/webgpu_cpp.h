@@ -1,14 +1,138 @@
 #ifndef WEBGPU_CPP_H_
 #define WEBGPU_CPP_H_
 
-#include "dawn/webgpu.h"
-#include "dawn/webgpu_cpp_chained_struct.h"
-#include "dawn/EnumClassBitmasks.h"
+#include "webgpu/webgpu.h"
+
+#include <type_traits>
 #include <cmath>
-#include <cstddef>
-#include <cstdint>
 
 namespace wgpu {
+
+    template <typename T>
+    struct IsDawnBitmask {
+        static constexpr bool enable = false;
+    };
+
+    template <typename T, typename Enable = void>
+    struct LowerBitmask {
+        static constexpr bool enable = false;
+    };
+
+    template <typename T>
+    struct LowerBitmask<T, typename std::enable_if<IsDawnBitmask<T>::enable>::type> {
+        static constexpr bool enable = true;
+        using type = T;
+        constexpr static T Lower(T t) {
+            return t;
+        }
+    };
+
+    template <typename T>
+    struct BoolConvertible {
+        using Integral = typename std::underlying_type<T>::type;
+
+        constexpr BoolConvertible(Integral value) : value(value) {
+        }
+        constexpr operator bool() const {
+            return value != 0;
+        }
+        constexpr operator T() const {
+            return static_cast<T>(value);
+        }
+
+        Integral value;
+    };
+
+    template <typename T>
+    struct LowerBitmask<BoolConvertible<T>> {
+        static constexpr bool enable = true;
+        using type = T;
+        static constexpr type Lower(BoolConvertible<T> t) {
+            return t;
+        }
+    };
+
+    template <typename T1,
+              typename T2,
+              typename = typename std::enable_if<LowerBitmask<T1>::enable &&
+                                                 LowerBitmask<T2>::enable>::type>
+    constexpr BoolConvertible<typename LowerBitmask<T1>::type> operator|(T1 left, T2 right) {
+        using T = typename LowerBitmask<T1>::type;
+        using Integral = typename std::underlying_type<T>::type;
+        return static_cast<Integral>(LowerBitmask<T1>::Lower(left)) |
+               static_cast<Integral>(LowerBitmask<T2>::Lower(right));
+    }
+
+    template <typename T1,
+              typename T2,
+              typename = typename std::enable_if<LowerBitmask<T1>::enable &&
+                                                 LowerBitmask<T2>::enable>::type>
+    constexpr BoolConvertible<typename LowerBitmask<T1>::type> operator&(T1 left, T2 right) {
+        using T = typename LowerBitmask<T1>::type;
+        using Integral = typename std::underlying_type<T>::type;
+        return static_cast<Integral>(LowerBitmask<T1>::Lower(left)) &
+               static_cast<Integral>(LowerBitmask<T2>::Lower(right));
+    }
+
+    template <typename T1,
+              typename T2,
+              typename = typename std::enable_if<LowerBitmask<T1>::enable &&
+                                                 LowerBitmask<T2>::enable>::type>
+    constexpr BoolConvertible<typename LowerBitmask<T1>::type> operator^(T1 left, T2 right) {
+        using T = typename LowerBitmask<T1>::type;
+        using Integral = typename std::underlying_type<T>::type;
+        return static_cast<Integral>(LowerBitmask<T1>::Lower(left)) ^
+               static_cast<Integral>(LowerBitmask<T2>::Lower(right));
+    }
+
+    template <typename T1>
+    constexpr BoolConvertible<typename LowerBitmask<T1>::type> operator~(T1 t) {
+        using T = typename LowerBitmask<T1>::type;
+        using Integral = typename std::underlying_type<T>::type;
+        return ~static_cast<Integral>(LowerBitmask<T1>::Lower(t));
+    }
+
+    template <typename T,
+              typename T2,
+              typename = typename std::enable_if<IsDawnBitmask<T>::enable &&
+                                                 LowerBitmask<T2>::enable>::type>
+    constexpr T& operator&=(T& l, T2 right) {
+        T r = LowerBitmask<T2>::Lower(right);
+        l = l & r;
+        return l;
+    }
+
+    template <typename T,
+              typename T2,
+              typename = typename std::enable_if<IsDawnBitmask<T>::enable &&
+                                                 LowerBitmask<T2>::enable>::type>
+    constexpr T& operator|=(T& l, T2 right) {
+        T r = LowerBitmask<T2>::Lower(right);
+        l = l | r;
+        return l;
+    }
+
+    template <typename T,
+              typename T2,
+              typename = typename std::enable_if<IsDawnBitmask<T>::enable &&
+                                                 LowerBitmask<T2>::enable>::type>
+    constexpr T& operator^=(T& l, T2 right) {
+        T r = LowerBitmask<T2>::Lower(right);
+        l = l ^ r;
+        return l;
+    }
+
+    template <typename T>
+    constexpr bool HasZeroOrOneBits(T value) {
+        using Integral = typename std::underlying_type<T>::type;
+        return (static_cast<Integral>(value) & (static_cast<Integral>(value) - 1)) == 0;
+    }
+
+    namespace detail {
+        constexpr size_t ConstexprMax(size_t a, size_t b) {
+            return a > b ? a : b;
+        }
+    }  // namespace detail
 
     static constexpr uint32_t kArrayLayerCountUndefined = WGPU_ARRAY_LAYER_COUNT_UNDEFINED;
     static constexpr uint32_t kCopyStrideUndefined = WGPU_COPY_STRIDE_UNDEFINED;
@@ -1114,6 +1238,16 @@ namespace wgpu {
     Instance CreateInstance(InstanceDescriptor const * descriptor = nullptr);
     Proc GetProcAddress(Device device, char const * procName);
 
+    struct ChainedStruct {
+        ChainedStruct const * nextInChain = nullptr;
+        SType sType = SType::Invalid;
+    };
+
+    struct ChainedStructOut {
+        ChainedStruct * nextInChain = nullptr;
+        SType sType = SType::Invalid;
+    };
+
     struct AdapterProperties {
         ChainedStructOut  * nextInChain = nullptr;
         uint32_t vendorID;
@@ -1647,13 +1781,6 @@ namespace wgpu {
         FragmentState const * fragment = nullptr;
     };
 
-
-    // The operators of EnumClassBitmmasks in the dawn:: namespace need to be imported
-    // in the wgpu namespace for Argument Dependent Lookup.
-    DAWN_IMPORT_BITMASK_OPERATORS
-}  // namespace wgpu
-
-namespace dawn {
     template<>
     struct IsDawnBitmask<wgpu::BufferUsage> {
         static constexpr bool enable = true;
@@ -1679,6 +1806,6 @@ namespace dawn {
         static constexpr bool enable = true;
     };
 
-} // namespace dawn
+}  // namespace wgpu
 
 #endif // WEBGPU_CPP_H_
