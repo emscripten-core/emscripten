@@ -200,7 +200,7 @@ mergeInto(LibraryManager.library, {
   emscripten_resize_heap: (requestedSize) => {
     var oldSize = HEAPU8.length;
 #if MEMORY64 != 1
-    requestedSize = requestedSize >>> 0;
+    requestedSize >>>= 0;
 #endif
 #if ALLOW_MEMORY_GROWTH == 0
 #if ABORTING_MALLOC
@@ -3090,7 +3090,7 @@ mergeInto(LibraryManager.library, {
   // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
   __handle_stack_overflow__deps: ['emscripten_stack_get_base', 'emscripten_stack_get_end', '$ptrToString'],
   __handle_stack_overflow: (requested) => {
-    requested = requested >>> 0;
+    requested >>>= 0;
     var base = _emscripten_stack_get_base();
     var end = _emscripten_stack_get_end();
     abort(`stack overflow (Attempt to set SP to ${ptrToString(requested)}` +
@@ -3246,9 +3246,10 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-#if SHRINK_LEVEL == 0
+#if SHRINK_LEVEL == 0 || ASYNCIFY == 2
   // A mirror copy of contents of wasmTable in JS side, to avoid relatively
-  // slow wasmTable.get() call. Only used when not compiling with -Os or -Oz.
+  // slow wasmTable.get() call. Only used when not compiling with -Os, -Oz, or
+  // JSPI which needs to instrument the functions.
   $wasmTableMirror__internal: true,
   $wasmTableMirror: [],
 
@@ -3274,8 +3275,13 @@ mergeInto(LibraryManager.library, {
     if (!func) {
       if (funcPtr >= wasmTableMirror.length) wasmTableMirror.length = funcPtr + 1;
       wasmTableMirror[funcPtr] = func = wasmTable.get(funcPtr);
+#if ASYNCIFY == 2
+      if (Asyncify.isAsyncExport(func)) {
+        wasmTableMirror[funcPtr] = func = Asyncify.makeAsyncFunction(func);
+      }
+#endif
     }
-#if ASSERTIONS
+#if ASSERTIONS && ASYNCIFY != 2 // With JSPI the function stored in the table will be a wrapper.
     assert(wasmTable.get(funcPtr) == func, "JavaScript-side Wasm function table mirror is out of date!");
 #endif
     return func;
