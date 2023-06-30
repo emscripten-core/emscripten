@@ -28,7 +28,7 @@ from common import RunnerCore, path_from_root, requires_native_clang, test_file,
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, node_pthreads, also_with_wasm_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_node_canary, compiler_for, crossplatform
-from common import with_both_sjlj
+from common import with_both_sjlj, also_with_standalone_wasm, can_do_standalone
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
 
@@ -154,18 +154,6 @@ def also_with_noderawfs(func):
   return metafunc
 
 
-def can_do_standalone(self, impure=False):
-  # Pure standalone engines don't support MEMORY64 yet.  Even with MEMORY64=2 (lowered)
-  # the WASI APIs that take pointer values don't have 64-bit variants yet.
-  if self.get_setting('MEMORY64') and not impure:
-    return False
-  return self.is_wasm() and \
-      self.get_setting('STACK_OVERFLOW_CHECK', 0) < 2 and \
-      not self.get_setting('MINIMAL_RUNTIME') and \
-      not self.get_setting('SAFE_HEAP') and \
-      not any(a.startswith('-fsanitize=') for a in self.emcc_args)
-
-
 def also_with_wasmfs(func):
   def decorated(self):
     func(self)
@@ -192,35 +180,6 @@ def also_with_wasmfs_js(func):
     self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
     func(self)
-  return decorated
-
-
-# Impure means a test that cannot run in a wasm VM yet, as it is not 100%
-# standalone. We can still run them with the JS code though.
-def also_with_standalone_wasm(impure=False):
-  def decorated(func):
-    def metafunc(self, standalone):
-      if not standalone:
-        func(self)
-      else:
-        if not can_do_standalone(self, impure):
-          self.skipTest('Test configuration is not compatible with STANDALONE_WASM')
-        self.set_setting('STANDALONE_WASM')
-        # we will not legalize the JS ffi interface, so we must use BigInt
-        # support in order for JS to have a chance to run this without trapping
-        # when it sees an i64 on the ffi.
-        self.set_setting('WASM_BIGINT')
-        self.emcc_args.append('-Wno-unused-command-line-argument')
-        # if we are impure, disallow all wasm engines
-        if impure:
-          self.wasm_engines = []
-        self.node_args += shared.node_bigint_flags()
-        func(self)
-
-    metafunc._parameterize = {'': (False,),
-                              'standalone': (True,)}
-    return metafunc
-
   return decorated
 
 
