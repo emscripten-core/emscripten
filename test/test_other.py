@@ -10510,6 +10510,7 @@ int main(void) {
       'SUMMARY: LeakSanitizer: 3427 byte(s) leaked in 3 allocation(s).',
     ])
 
+  @also_with_standalone_wasm()
   def test_asan_null_deref(self):
     self.do_runf(test_file('other/test_asan_null_deref.c'),
                  emcc_args=['-fsanitize=address'],

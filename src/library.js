@@ -2904,6 +2904,20 @@ mergeInto(LibraryManager.library, {
       _free = prev_free;
     }
   },
+
+  _emscripten_sanitizer_use_colors: () => {
+    var setting = Module['printWithColors'];
+    if (setting !== undefined) {
+      return setting;
+    }
+    return ENVIRONMENT_IS_NODE && process.stderr.isTTY;
+  },
+
+  _emscripten_sanitizer_get_option__deps: ['$withBuiltinMalloc', '$stringToNewUTF8', '$UTF8ToString'],
+  _emscripten_sanitizer_get_option__sig: 'pp',
+  _emscripten_sanitizer_get_option: (name) => {
+    return withBuiltinMalloc(() => stringToNewUTF8(Module[UTF8ToString(name)] || ""));
+  },
 #endif
 
   $readEmAsmArgsArray: '=[]',

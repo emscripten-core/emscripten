@@ -21,8 +21,8 @@
 #include "sanitizer_common/sanitizer_interface_internal.h"
 
 #if SANITIZER_EMSCRIPTEN
-extern "C" void emscripten_builtin_free(void *);
-#include <emscripten/em_asm.h>
+#include "emscripten_internal.h"
+#include <emscripten/heap.h>
 #endif
 
 bool lsan_inited;
@@ -82,9 +82,7 @@ static void InitializeFlags() {
   const char *lsan_default_options = __lsan_default_options();
   parser.ParseString(lsan_default_options);
 #if SANITIZER_EMSCRIPTEN
-  char *options = (char*) EM_ASM_PTR({
-    return withBuiltinMalloc(() => stringToNewUTF8(Module['LSAN_OPTIONS'] || ""));
-  });
+  char *options = _emscripten_sanitizer_get_option("LSAN_OPTIONS");
   parser.ParseString(options);
   emscripten_builtin_free(options);
 #else

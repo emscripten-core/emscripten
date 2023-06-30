@@ -114,6 +114,18 @@ weak int __syscall_fstat64(int fd, intptr_t buf) {
   return -ENOSYS;
 }
 
+weak int __syscall_stat64(intptr_t path, intptr_t buf) {
+  return -ENOSYS;
+}
+
+weak int __syscall_dup(int fd) {
+  return -ENOSYS;
+}
+
+weak int __syscall_mkdirat(int dirfd, intptr_t path, int mode) {
+  return -ENOSYS;
+}
+
 // There is no good source of entropy without an import. Make this weak so that
 // it can be replaced with a pRNG or a proper import.
 weak int getentropy(void* buffer, size_t length) {
@@ -267,4 +279,46 @@ int _setitimer_js(int which, double timeout) {
   // error.
   errno = ENOTSUP;
   return -1;
+}
+
+weak uintptr_t emscripten_stack_snapshot(void) {
+  return 0;
+}
+
+weak uint32_t emscripten_stack_unwind_buffer(uintptr_t pc,
+                                             uintptr_t* buffer,
+                                             uint32_t depth) {
+  return 0;
+}
+
+weak const char* emscripten_pc_get_function(uintptr_t pc) {
+  return NULL;
+}
+
+weak const char* emscripten_pc_get_file(uintptr_t pc) {
+  return NULL;
+}
+
+weak int emscripten_pc_get_line(uintptr_t pc) {
+  return 0;
+}
+
+weak int emscripten_pc_get_column(uintptr_t pc) {
+  return 0;
+}
+
+weak void* emscripten_return_address(int level) {
+  return NULL;
+}
+
+weak int _emscripten_sanitizer_use_colors(void) {
+  return 1;
+}
+
+weak char* _emscripten_sanitizer_get_option(const char* name) {
+  return strdup("");
+}
+
+weak char* emscripten_get_module_name(char* buf, size_t length) {
+  return strncpy(buf, "<unknown>", length);
 }
