@@ -2348,7 +2348,7 @@ var LibraryWebGPU = {
   wgpuInstanceCreateSurface__deps: ['$findCanvasEventTarget'],
   wgpuInstanceCreateSurface: function(instanceId, descriptor) {
     {{{ gpu.makeCheck('descriptor') }}}
-    {{{ gpu.makeCheck('instanceId === 1, "WGPUInstance ID is 1"') }}}
+    {{{ gpu.makeCheck('instanceId === 1, "WGPUInstance must be created by wgpuCreateInstance"') }}}
     var nextInChainPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSurfaceDescriptor.nextInChain, '*') }}};
 #if ASSERTIONS
     assert(nextInChainPtr !== 0);
@@ -2382,7 +2382,7 @@ var LibraryWebGPU = {
 
   wgpuInstanceRequestAdapter__deps: ['$callUserCallback', '$stringToUTF8OnStack'],
   wgpuInstanceRequestAdapter: function(instanceId, options, callback, userdata) {
-    {{{ gpu.makeCheck('instanceId === 1, "WGPUInstance ID is 1"') }}}
+    {{{ gpu.makeCheck('instanceId === 1, "WGPUInstance must be created by wgpuCreateInstance"') }}}
 
     var opts;
     if (options) {
