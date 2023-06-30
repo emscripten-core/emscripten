@@ -1007,13 +1007,13 @@ ArrayInStruct emval_test_take_and_return_ArrayInStruct(ArrayInStruct cs) {
     return cs;
 }
 
-enum Enum { ONE, TWO };
+enum Enum { ONE, TWO, Ⅲ, 四 };
 
 Enum emval_test_take_and_return_Enum(Enum e) {
     return e;
 }
 
-enum class EnumClass : char { ONE, TWO };
+enum class EnumClass : char { ONE, TWO, Ⅲ, 四 };
 
 EnumClass emval_test_take_and_return_EnumClass(EnumClass e) {
     return e;
@@ -2242,12 +2242,16 @@ EMSCRIPTEN_BINDINGS(tests) {
     enum_<Enum>("Enum")
         .value("ONE", ONE)
         .value("TWO", TWO)
+        .value("Ⅲ", Ⅲ)
+        .value("四", 四)
         ;
     function("emval_test_take_and_return_Enum", &emval_test_take_and_return_Enum);
 
     enum_<EnumClass>("EnumClass")
         .value("ONE", EnumClass::ONE)
         .value("TWO", EnumClass::TWO)
+        .value("Ⅲ", EnumClass::Ⅲ)
+        .value("四", EnumClass::四)
         ;
     function("emval_test_take_and_return_EnumClass", &emval_test_take_and_return_EnumClass);
 

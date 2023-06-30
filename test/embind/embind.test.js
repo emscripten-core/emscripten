@@ -1866,6 +1866,11 @@ module({
             assert.instanceof(cm.Enum.ONE, cm.Enum);
         });
 
+        test("can instantiate non-ascii enum value", function() {
+            assert.instanceof(cm.Enum.Ⅲ, cm.Enum);
+            assert.instanceof(cm.Enum.四, cm.Enum);
+        });
+
         test("can pass and return enumeration values to functions", function() {
             assert.equal(cm.Enum.TWO, cm.emval_test_take_and_return_Enum(cm.Enum.TWO));
         });
@@ -1886,6 +1891,11 @@ module({
 
         test("instanceof", function() {
             assert.instanceof(cm.EnumClass.ONE, cm.EnumClass);
+        });
+
+        test("can instantiate non-ascii enum value", function() {
+            assert.instanceof(cm.EnumClass.Ⅲ, cm.EnumClass);
+            assert.instanceof(cm.EnumClass.四, cm.EnumClass);
         });
 
         test("can pass and return enumeration values to functions", function() {
