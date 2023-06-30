@@ -112,6 +112,10 @@ var LibraryHTML5 = {
     },
     
     canPerformEventHandlerRequests: function() {
+      if (navigator.userActivation) {
+        // Use transient activation status for browsers that support it
+        return navigator.userActivation.isActive;
+      }
       return JSEvents.inEventHandler && JSEvents.currentEventHandler.allowsDeferredCalls;
     },
     
@@ -1513,11 +1517,6 @@ var LibraryHTML5 = {
 
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
     var canPerformRequests = JSEvents.canPerformEventHandlerRequests();
-
-    if (navigator.userActivation) {
-      // Use transient activation status instead for browsers that support it
-      canPerformRequests = navigator.userActivation.isActive;
-    }
 
     // Queue this function call if we're not currently in an event handler and the user saw it appropriate to do so.
     if (!canPerformRequests) {
