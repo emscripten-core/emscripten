@@ -112,7 +112,7 @@ function runJSify() {
     // When WASM_BIGINT is not enabled we receive i64 values as a pair of i32
     // numbers which is coverted to single int53 number.  In necessary, we also
     // split the return value into a pair of i32 numbers.
-    return modifyJSFunction(snippet, (args, body, async_) => {
+    return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
       let argLines = args.split('\n');
       argLines = argLines.map((line) => line.split('//')[0]);
       const argNames = argLines.join(' ').split(',').map((name) => name.trim());
@@ -150,6 +150,9 @@ function runJSify() {
       if ((sig[0] == 'j' && i53abi) || (sig[0] == 'p' && WASM_BIGINT)) {
         // For functions that where we need to mutate the return value, we
         // also need to wrap the body in an inner function.
+        if (oneliner) {
+          return `${async_}(${args}) => ${makeReturn64(body)};`
+        }
         return `\
 ${async_}function(${args}) {
 ${argConvertions}
@@ -160,6 +163,9 @@ ${argConvertions}
 
       // Otherwise no inner function is needed and we covert the arguments
       // before executing the function body.
+      if (oneliner) {
+        body = `return ${body}`;
+      }
       return `\
 ${async_}function(${args}) {
 ${argConvertions}
