@@ -27,9 +27,6 @@ mergeInto(LibraryManager.library, {
   $UTF8ArrayToString__deps: ['$UTF8Decoder'],
 #endif
   $UTF8ArrayToString: (heapOrArray, idx, maxBytesToRead) => {
-#if CAN_ADDRESS_2GB
-    idx = fixPointer(idx);
-#endif
     var endIdx = idx + maxBytesToRead;
 #if TEXTDECODER
     var endPtr = idx;
@@ -118,9 +115,6 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     assert(typeof ptr == 'number');
 #endif
-#if CAN_ADDRESS_2GB
-    ptr = fixPointer(ptr);
-#endif
 #if TEXTDECODER == 2
     if (!ptr) return '';
     var maxPtr = ptr + maxBytesToRead;
@@ -154,9 +148,6 @@ mergeInto(LibraryManager.library, {
    * @return {number} The number of bytes written, EXCLUDING the null terminator.
    */
   $stringToUTF8Array: (str, heap, outIdx, maxBytesToWrite) => {
-#if CAN_ADDRESS_2GB
-    outIdx = fixPointer(outIdx);
-#endif
 #if ASSERTIONS
     assert(typeof str === 'string');
 #endif
@@ -262,9 +253,6 @@ mergeInto(LibraryManager.library, {
   // emscripten HEAP, returns a copy of that string as a Javascript String
   // object.
   $AsciiToString: (ptr) => {
-#if CAN_ADDRESS_2GB
-    ptr = fixPointer(ptr);
-#endif
     var str = '';
     while (1) {
       var ch = {{{ makeGetValue('ptr++', 0, 'u8') }}};
@@ -277,9 +265,6 @@ mergeInto(LibraryManager.library, {
   // address 'outPtr', null-terminated and encoded in ASCII form. The copy will
   // require at most str.length+1 bytes of space in the HEAP.
   $stringToAscii: (str, buffer) => {
-#if CAN_ADDRESS_2GB
-    buffer = fixPointer(buffer);
-#endif
     for (var i = 0; i < str.length; ++i) {
 #if ASSERTIONS
       assert(str.charCodeAt(i) === (str.charCodeAt(i) & 0xff));
@@ -432,9 +417,6 @@ mergeInto(LibraryManager.library, {
   //                    output, not even the null terminator.
   // Returns the number of bytes written, EXCLUDING the null terminator.
   $stringToUTF32: (str, outPtr, maxBytesToWrite) => {
-#if CAN_ADDRESS_2GB
-    outPtr = fixPointer(outPtr);
-#endif
 #if ASSERTIONS
     assert(outPtr % 4 == 0, 'Pointer passed to stringToUTF32 must be aligned to four bytes!');
 #endif

@@ -25,9 +25,6 @@ var SAFE_HEAP_COUNTER = 0;
 
 /** @param {number|boolean=} isFloat */
 function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
-#if CAN_ADDRESS_2GB
-  dest = fixPointer(ptr);
-#endif
 #if SAFE_HEAP_LOG
   out('SAFE_HEAP store: ' + [dest, value, bytes, isFloat, SAFE_HEAP_COUNTER++]);
 #endif
@@ -56,9 +53,6 @@ function SAFE_HEAP_STORE_D(dest, value, bytes) {
 
 /** @param {number|boolean=} isFloat */
 function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
-#if CAN_ADDRESS_2GB
-  dest = fixPointer(ptr);
-#endif
   if (dest <= 0) abort(`segmentation fault loading ${bytes} bytes from address ${dest}`);
 #if SAFE_HEAP == 1
   if (dest % bytes !== 0) abort(`alignment error loading from address ${dest}, which was expected to be aligned to a multiple of ${bytes}`);

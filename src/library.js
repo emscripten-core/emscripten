@@ -422,7 +422,7 @@ mergeInto(LibraryManager.library, {
     ? (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num)
     : (dest, src, num) => HEAPU8.set(HEAPU8.subarray(src, src+num), dest)`,
 #else
-  emscripten_memcpy_big: (dest, src, num) => HEAPU8.copyWithin(fixPointer(dest), fixPointer(src), fixPointer(src) + fixPointer(num)),
+  emscripten_memcpy_big: (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num),
 #endif
 
 #endif
