@@ -3472,6 +3472,16 @@ m2.ccall('myread0','number',[],[]);
 print("m0 read m0");
 m0.ccall('myread0','number',[],[]);
 
+section = "parent m0 mmaps children's files.";
+print("m0 write m1");console.log("");
+m0.ccall('mywrite1','number',[],[]);
+print("m0 write m2");console.log("");
+m0.ccall('mywrite2','number',[],[]);
+print("m0 mmap m1");console.log("");
+m0.ccall('mymmap1', 'number',[],[]);
+print("m0 mmap m2");console.log("");
+m0.ccall('mymmap2', 'number',[],[]);
+
 section = "parent m0 renames a file in child fs.";
 m0.FS.writeFile('/working/test', 'testme');
 m0.FS.rename('/working/test', '/working/test.bak');
@@ -3495,6 +3505,11 @@ Module["noExitRuntime"]=true;
 #include <unistd.h>
 #include <fcntl.h>
 #include <emscripten/emscripten.h>
+#include <assert.h>
+#include <fcntl.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
 EMSCRIPTEN_KEEPALIVE int mywrite1() {
   FILE* out = fopen("/working/hoge.txt","w");
@@ -3616,6 +3631,34 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
   fclose(in);
   return 0;
 }
+
+EMSCRIPTEN_KEEPALIVE int mymmap1() {
+  int fd = open("/working/hoge.txt",O_RDONLY);
+
+  char *content = mmap(NULL, 100, PROT_READ,MAP_PRIVATE, fd, 0);
+  assert(content != MAP_FAILED);
+
+  assert(0 == strcmp(content, "test1\n"));
+  printf("mmap1 success\n");
+
+  close(fd);
+
+  return 0;
+}
+
+EMSCRIPTEN_KEEPALIVE int mymmap2() {
+  int fd = open("/working2/hoge.txt",O_RDONLY);
+
+  char *content = mmap(NULL, 2, PROT_READ,MAP_PRIVATE, fd, 0);
+  assert(content != MAP_FAILED);
+
+  assert(0 == strcmp(content, "te"));
+  printf("mmap2 success\n");
+
+  close(fd);
+
+  return 0;
+}
 ''')
 
     self.run_process([EMCC,
@@ -3665,6 +3708,11 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
     self.assertContained(section + ":m1 read:test1", out)
     self.assertContained(section + ":m2 read:test2", out)
     self.assertContained(section + ":m0 read m0:test0_0", out)
+    section = "parent m0 mmaps children's files."
+    self.assertContained(section + ":m0 write m1:", out)
+    self.assertContained(section + ":m0 write m2:", out)
+    self.assertContained(section + ":m0 mmap m1:", out)
+    self.assertContained(section + ":m0 mmap m2:", out)
     section = "parent m0 renames a file in child fs."
     self.assertContained(section + ":renamed file accessible by the new name:true", out)
     self.assertContained(section + ":renamed file accessible by the old name:false", out)

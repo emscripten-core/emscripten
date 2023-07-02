@@ -194,6 +194,35 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
       },
+      // NB: can't delegate mmap call from PROXYFS to underlying FS,
+      // because it may originate from another module,
+      // and then it'll use mmapAlloc of that module
+      // so the memory will be filled with file in that module, not in our module
+      // Instead, we should allocate module here on our own and fill it with the content
+      mmap: function(stream, length, position, prot, flags) {
+        var path = PROXYFS.realPath(stream.node);
+        var contents = stream.node.mount.opts.fs.readFile(path);
+
+        if (!(flags & 2)) {
+          throw new Error("Not implemented MAP_SHARED (yet)");
+        } else {
+          // Try to avoid unnecessary slices.
+          if (position > 0 || position + length < contents.length) {
+            if (contents.subarray) {
+              contents = contents.subarray(position, position + length);
+            } else {
+              contents = Array.prototype.slice.call(contents, position, position + length);
+            }
+          }
+          allocated = true;
+          ptr = mmapAlloc(length);
+          if (!ptr) {
+            throw new FS.ErrnoError(48);
+          }
+          HEAP8.set(contents, ptr);
+        }
+        return { ptr: ptr, allocated: allocated };
+      },
       llseek: function (stream, offset, whence) {
         var position = offset;
         if (whence === {{{ cDefs.SEEK_CUR }}}) {
