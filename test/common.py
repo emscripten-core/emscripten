@@ -190,6 +190,16 @@ def requires_node(func):
   return decorated
 
 
+def requires_node_canary(func):
+  assert callable(func)
+
+  def decorated(self, *args, **kwargs):
+    self.require_node_canary()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 def requires_wasm64(func):
   assert callable(func)
 
@@ -316,6 +326,47 @@ def also_with_wasm64(f):
   metafunc._parameterize = {'': (False,),
                             'wasm64': (True,)}
   return metafunc
+
+
+def can_do_standalone(self, impure=False):
+  # Pure standalone engines don't support MEMORY64 yet.  Even with MEMORY64=2 (lowered)
+  # the WASI APIs that take pointer values don't have 64-bit variants yet.
+  if self.get_setting('MEMORY64') and not impure:
+    return False
+  return self.is_wasm() and \
+      self.get_setting('STACK_OVERFLOW_CHECK', 0) < 2 and \
+      not self.get_setting('MINIMAL_RUNTIME') and \
+      not self.get_setting('SAFE_HEAP') and \
+      not any(a.startswith('-fsanitize=') for a in self.emcc_args)
+
+
+# Impure means a test that cannot run in a wasm VM yet, as it is not 100%
+# standalone. We can still run them with the JS code though.
+def also_with_standalone_wasm(impure=False):
+  def decorated(func):
+    def metafunc(self, standalone):
+      if not standalone:
+        func(self)
+      else:
+        if not can_do_standalone(self, impure):
+          self.skipTest('Test configuration is not compatible with STANDALONE_WASM')
+        self.set_setting('STANDALONE_WASM')
+        # we will not legalize the JS ffi interface, so we must use BigInt
+        # support in order for JS to have a chance to run this without trapping
+        # when it sees an i64 on the ffi.
+        self.set_setting('WASM_BIGINT')
+        self.emcc_args.append('-Wno-unused-command-line-argument')
+        # if we are impure, disallow all wasm engines
+        if impure:
+          self.wasm_engines = []
+        self.node_args += shared.node_bigint_flags()
+        func(self)
+
+    metafunc._parameterize = {'': (False,),
+                              'standalone': (True,)}
+    return metafunc
+
+  return decorated
 
 
 # This works just like `with_both_eh_sjlj` above but doesn't enable exceptions.
@@ -530,6 +581,18 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       else:
         self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
     self.require_engine(config.NODE_JS)
+
+  def require_node_canary(self):
+    if config.NODE_JS or config.NODE_JS in config.JS_ENGINES:
+      version = shared.check_node_version()
+      if version >= (20, 0, 0):
+        self.require_engine(config.NODE_JS)
+        return
+
+    if 'EMTEST_SKIP_NODE_CANARY' in os.environ:
+      self.skipTest('test requires node canary and EMTEST_SKIP_NODE_CANARY is set')
+    else:
+      self.fail('node canary required to run this test.  Use EMTEST_SKIP_NODE_CANARY to skip')
 
   def require_engine(self, engine):
     logger.debug(f'require_engine: {engine}')

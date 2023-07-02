@@ -1841,7 +1841,6 @@ var LibraryWebGPU = {
 
     if (size === 0) warnOnce('getMappedRange size=0 no longer means WGPU_WHOLE_MAP_SIZE');
 
-    size = fixPointer(size);
     if (size === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
 
     var mapped;
@@ -1875,7 +1874,6 @@ var LibraryWebGPU = {
 
     if (size === 0) warnOnce('getMappedRange size=0 no longer means WGPU_WHOLE_MAP_SIZE');
 
-    size = fixPointer(size);
     if (size === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
 
     if (bufferWrapper.mapMode !== {{{ gpu.MapMode.Write }}}) {
@@ -1916,7 +1914,6 @@ var LibraryWebGPU = {
     bufferWrapper.onUnmap = [];
     var buffer = bufferWrapper.object;
 
-    size = fixPointer(size);
     if (size === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
 
     // `callback` takes (WGPUBufferMapAsyncStatus status, void * userdata)
@@ -2335,27 +2332,20 @@ var LibraryWebGPU = {
   // Instance
 
   wgpuCreateInstance: function() {
-#if ASSERTIONS
-    // Once implemented, Instance should create and own the object management tables.
-    abort('TODO: wgpuCreateInstance unimplemented');
-#endif
+    return 1;
   },
 
   wgpuInstanceReference: function() {
-#if ASSERTIONS
-    abort('TODO: no WGPUInstance object should exist');
-#endif
+    // no-op
   },
   wgpuInstanceRelease: function() {
-#if ASSERTIONS
-    abort('TODO: no WGPUInstance object should exist');
-#endif
+    // no-op
   },
 
   wgpuInstanceCreateSurface__deps: ['$findCanvasEventTarget'],
   wgpuInstanceCreateSurface: function(instanceId, descriptor) {
     {{{ gpu.makeCheck('descriptor') }}}
-    {{{ gpu.makeCheck('instanceId === 0, "WGPUInstance is ignored"') }}}
+    {{{ gpu.makeCheck('instanceId === 1, "WGPUInstance must be created by wgpuCreateInstance"') }}}
     var nextInChainPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSurfaceDescriptor.nextInChain, '*') }}};
 #if ASSERTIONS
     assert(nextInChainPtr !== 0);
@@ -2389,7 +2379,7 @@ var LibraryWebGPU = {
 
   wgpuInstanceRequestAdapter__deps: ['$callUserCallback', '$stringToUTF8OnStack'],
   wgpuInstanceRequestAdapter: function(instanceId, options, callback, userdata) {
-    {{{ gpu.makeCheck('instanceId === 0, "WGPUInstance is ignored"') }}}
+    {{{ gpu.makeCheck('instanceId === 1, "WGPUInstance must be created by wgpuCreateInstance"') }}}
 
     var opts;
     if (options) {

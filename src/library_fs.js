@@ -1132,8 +1132,8 @@ FS.staticInit();` +
       return stream.position;
     },
     read: (stream, buffer, offset, length, position) => {
-#if CAN_ADDRESS_2GB
-      offset = fixPointer(offset);
+#if ASSERTIONS
+      assert(offset >= 0);
 #endif
       if (length < 0 || position < 0) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
@@ -1166,8 +1166,8 @@ FS.staticInit();` +
       return bytesRead;
     },
     write: (stream, buffer, offset, length, position, canOwn) => {
-#if CAN_ADDRESS_2GB
-      offset = fixPointer(offset);
+#if ASSERTIONS
+      assert(offset >= 0);
 #endif
       if (length < 0 || position < 0) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
@@ -1242,8 +1242,8 @@ FS.staticInit();` +
       return stream.stream_ops.mmap(stream, length, position, prot, flags);
     },
     msync: (stream, buffer, offset, length, mmapFlags) => {
-#if CAN_ADDRESS_2GB
-      offset = fixPointer(offset);
+#if ASSERTIONS
+      assert(offset >= 0);
 #endif
       if (!stream.stream_ops.msync) {
         return 0;

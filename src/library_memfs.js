@@ -105,9 +105,6 @@ mergeInto(LibraryManager.library, {
     // May allocate more, to provide automatic geometric increase and amortized linear performance appending writes.
     // Never shrinks the storage.
     expandFileStorage: function(node, newCapacity) {
-#if CAN_ADDRESS_2GB
-      newCapacity = fixPointer(newCapacity);
-#endif
       var prevCapacity = node.contents ? node.contents.length : 0;
       if (prevCapacity >= newCapacity) return; // No need to expand, the storage was already large enough.
       // Don't expand strictly to the given requested limit if it's only a very small increase, but instead geometrically grow capacity.
@@ -123,9 +120,6 @@ mergeInto(LibraryManager.library, {
 
     // Performs an exact resize of the backing file storage to the given size, if the size is not exactly this, the storage is fully reallocated.
     resizeFileStorage: function(node, newSize) {
-#if CAN_ADDRESS_2GB
-      newSize = fixPointer(newSize);
-#endif
       if (node.usedBytes == newSize) return;
       if (newSize == 0) {
         node.contents = null; // Fully decommit when requesting a resize to zero.
@@ -360,9 +354,6 @@ mergeInto(LibraryManager.library, {
           if (!ptr) {
             throw new FS.ErrnoError({{{ cDefs.ENOMEM }}});
           }
-#if CAN_ADDRESS_2GB
-          ptr = fixPointer(ptr);
-#endif
           HEAP8.set(contents, ptr);
         }
         return { ptr, allocated };
