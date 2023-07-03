@@ -191,6 +191,18 @@ var LibraryEmbind = {
     }
   },
 
+#if ALLOW_UNICODE_IDENTIFIER
+  $identifierToString__deps: ['$UTF8ToString'],
+  $identifierToString: function(ptr) {
+    return UTF8ToString(ptr)
+  },
+#else
+  $identifierToString__deps: ['$readLatin1String'],
+  $identifierToString: function(ptr) {
+    return readLatin1String(ptr)
+  },
+#endif
+
   // raw pointer -> instance
   $registeredInstances__deps: ['$init_embind'],
   $registeredInstances: {},
