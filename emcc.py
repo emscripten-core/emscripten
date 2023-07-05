@@ -3728,8 +3728,7 @@ def phase_binaryen(target, options, wasm_target):
     # >=2GB heap support requires pointers in JS to be unsigned. rather than
     # require all pointers to be unsigned by default, which increases code size
     # a little, keep them signed, and just unsign them here if we need that.
-    # for MEMORY64 heap proxies are created that handle unsigning internally
-    if settings.CAN_ADDRESS_2GB and not settings.MEMORY64:
+    if settings.CAN_ADDRESS_2GB:
       with ToolchainProfiler.profile_block('use_unsigned_pointers_in_js'):
         final_js = building.use_unsigned_pointers_in_js(final_js)
 
