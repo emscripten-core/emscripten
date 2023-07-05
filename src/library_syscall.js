@@ -89,7 +89,7 @@ var SyscallsLibrary = {
 
     varargs: undefined,
 
-    get: function() {
+    get() {
 #if ASSERTIONS
       assert(SYSCALLS.varargs != undefined);
 #endif
@@ -100,7 +100,7 @@ var SyscallsLibrary = {
 #endif
       return ret;
     },
-    getStr: function(ptr) {
+    getStr(ptr) {
       var ret = UTF8ToString(ptr);
 #if SYSCALL_DEBUG
       dbg(`    (str: "${ret}")`);
