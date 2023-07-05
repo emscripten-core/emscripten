@@ -640,7 +640,7 @@ if (Module['locateFile']) {
 }
 #endif
 
-function getBinary(file) {
+function getBinarySync(file) {
   if (file == wasmBinaryFile && wasmBinary) {
     return new Uint8Array(wasmBinary);
   }
@@ -677,22 +677,20 @@ function getBinaryPromise(binaryFile) {
           throw "failed to load wasm binary file at '" + binaryFile + "'";
         }
         return response['arrayBuffer']();
-      }).catch(() => getBinary(binaryFile));
+      }).catch(() => getBinarySync(binaryFile));
     }
 #if ENVIRONMENT_MAY_BE_WEBVIEW
-    else {
-      if (readAsync) {
-        // fetch is not available or url is file => try XHR (readAsync uses XHR internally)
-        return new Promise((resolve, reject) => {
-          readAsync(binaryFile, (response) => resolve(new Uint8Array(/** @type{!ArrayBuffer} */(response))), reject)
-        });
-      }
+    else if (readAsync) {
+      // fetch is not available or url is file => try XHR (readAsync uses XHR internally)
+      return new Promise((resolve, reject) => {
+        readAsync(binaryFile, (response) => resolve(new Uint8Array(/** @type{!ArrayBuffer} */(response))), reject)
+      });
     }
 #endif
   }
 
-  // Otherwise, getBinary should be able to get it synchronously
-  return Promise.resolve().then(() => getBinary(binaryFile));
+  // Otherwise, getBinarySync should be able to get it synchronously
+  return Promise.resolve().then(() => getBinarySync(binaryFile));
 }
 
 #if LOAD_SOURCE_MAP
@@ -742,58 +740,46 @@ function receiveSourceMapJSON(sourceMap) {
 
 #if SPLIT_MODULE || !WASM_ASYNC_COMPILATION
 function instantiateSync(file, info) {
-  var instance;
   var module;
-  var binary;
-  try {
-    binary = getBinary(file);
+  var binary = getBinarySync(file);
 #if NODE_CODE_CACHING
-    if (ENVIRONMENT_IS_NODE) {
-      var v8 = require('v8');
-      // Include the V8 version in the cache name, so that we don't try to
-      // load cached code from another version, which fails silently (it seems
-      // to load ok, but we do actually recompile the binary every time).
-      var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
-      cachedCodeFile = locateFile(cachedCodeFile);
-      var hasCached = fs.existsSync(cachedCodeFile);
-      if (hasCached) {
+  if (ENVIRONMENT_IS_NODE) {
+    var v8 = require('v8');
+    // Include the V8 version in the cache name, so that we don't try to
+    // load cached code from another version, which fails silently (it seems
+    // to load ok, but we do actually recompile the binary every time).
+    var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
+    cachedCodeFile = locateFile(cachedCodeFile);
+    var hasCached = fs.existsSync(cachedCodeFile);
+    if (hasCached) {
 #if RUNTIME_DEBUG
-        dbg('NODE_CODE_CACHING: loading module');
+      dbg('NODE_CODE_CACHING: loading module');
 #endif
-        try {
-          module = v8.deserialize(fs.readFileSync(cachedCodeFile));
-        } catch (e) {
-          err('NODE_CODE_CACHING: failed to deserialize, bad cache file? (' + cachedCodeFile + ')');
-          // Save the new compiled code when we have it.
-          hasCached = false;
-        }
+      try {
+        module = v8.deserialize(fs.readFileSync(cachedCodeFile));
+      } catch (e) {
+        err('NODE_CODE_CACHING: failed to deserialize, bad cache file? (' + cachedCodeFile + ')');
+        // Save the new compiled code when we have it.
+        hasCached = false;
       }
     }
-    if (!module) {
-      module = new WebAssembly.Module(binary);
-    }
-    if (ENVIRONMENT_IS_NODE && !hasCached) {
-#if RUNTIME_DEBUG
-      dbg('NODE_CODE_CACHING: saving module');
-#endif
-      fs.writeFileSync(cachedCodeFile, v8.serialize(module));
-    }
-#else // NODE_CODE_CACHING
-    module = new WebAssembly.Module(binary);
-#endif // NODE_CODE_CACHING
-    instance = new WebAssembly.Instance(module, info);
-#if USE_OFFSET_CONVERTER
-    wasmOffsetConverter = new WasmOffsetConverter(binary, module);
-#endif
-  } catch (e) {
-    var str = e.toString();
-    err('failed to compile wasm module: ' + str);
-    if (str.includes('imported Memory') ||
-        str.includes('memory import')) {
-      err('Memory size incompatibility issues may be due to changing INITIAL_MEMORY at runtime to something too large. Use ALLOW_MEMORY_GROWTH to allow any size memory (and also make sure not to set INITIAL_MEMORY at runtime to something smaller than it was at compile time).');
-    }
-    throw e;
   }
+  if (!module) {
+    module = new WebAssembly.Module(binary);
+  }
+  if (ENVIRONMENT_IS_NODE && !hasCached) {
+#if RUNTIME_DEBUG
+    dbg('NODE_CODE_CACHING: saving module');
+#endif
+    fs.writeFileSync(cachedCodeFile, v8.serialize(module));
+  }
+#else // NODE_CODE_CACHING
+  module = new WebAssembly.Module(binary);
+#endif // NODE_CODE_CACHING
+  var instance = new WebAssembly.Instance(module, info);
+#if USE_OFFSET_CONVERTER
+  wasmOffsetConverter = new WasmOffsetConverter(binary, module);
+#endif
 #if LOAD_SOURCE_MAP
   receiveSourceMapJSON(getSourceMap());
 #endif
