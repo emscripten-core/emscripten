@@ -1363,8 +1363,6 @@ class libwasm_workers(MTLibrary):
     name = 'libwasm_workers'
     if not self.is_ww and not self.is_mt:
       name += '_stub'
-    elif self.is_mt:
-      name += '_mt'
     if self.debug:
       name += '-debug'
     return name
