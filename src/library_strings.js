@@ -27,6 +27,9 @@ mergeInto(LibraryManager.library, {
   $UTF8ArrayToString__deps: ['$UTF8Decoder'],
 #endif
   $UTF8ArrayToString: (heapOrArray, idx, maxBytesToRead) => {
+#if CAN_ADDRESS_2GB
+    idx >>>= 0;
+#endif
     var endIdx = idx + maxBytesToRead;
 #if TEXTDECODER
     var endPtr = idx;
@@ -115,6 +118,9 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     assert(typeof ptr == 'number');
 #endif
+#if CAN_ADDRESS_2GB
+    ptr >>>= 0;
+#endif
 #if TEXTDECODER == 2
     if (!ptr) return '';
     var maxPtr = ptr + maxBytesToRead;
@@ -148,6 +154,9 @@ mergeInto(LibraryManager.library, {
    * @return {number} The number of bytes written, EXCLUDING the null terminator.
    */
   $stringToUTF8Array: (str, heap, outIdx, maxBytesToWrite) => {
+#if CAN_ADDRESS_2GB
+    outIdx >>>= 0;
+#endif
 #if ASSERTIONS
     assert(typeof str === 'string');
 #endif
@@ -253,6 +262,9 @@ mergeInto(LibraryManager.library, {
   // emscripten HEAP, returns a copy of that string as a Javascript String
   // object.
   $AsciiToString: (ptr) => {
+#if CAN_ADDRESS_2GB
+    ptr >>>= 0;
+#endif
     var str = '';
     while (1) {
       var ch = {{{ makeGetValue('ptr++', 0, 'u8') }}};
@@ -417,6 +429,9 @@ mergeInto(LibraryManager.library, {
   //                    output, not even the null terminator.
   // Returns the number of bytes written, EXCLUDING the null terminator.
   $stringToUTF32: (str, outPtr, maxBytesToWrite) => {
+#if CAN_ADDRESS_2GB
+    outPtr >>>= 0;
+#endif
 #if ASSERTIONS
     assert(outPtr % 4 == 0, 'Pointer passed to stringToUTF32 must be aligned to four bytes!');
 #endif

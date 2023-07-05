@@ -134,69 +134,59 @@ var HEAP,
 var HEAP_DATA_VIEW;
 #endif
 
-function fixPointer (ptr) {
-  if (typeof ptr === 'number' && ptr < 0) {
-    return ptr >>> 0;
-  }
-  return ptr;
-}
-
-#if MEMORY64
-/**
- * @param {string} type - Heap type
- * @param {number} [offset] - Heap offset
- * @param {number} [length] - typed array length
- */
-const getHeapBlock =  (type, offset, length) => {
-  const maxSize = Math.min(wasmMemory.buffer.byteLength, 4 * 1024 * 1024 * 1024 - 8)
-  if (!offset) {
-    offset = 0
-  }
-
-  const heap = wasmMemory.buffer
-  switch (type) {
-    case 'i1':
-    case 'i8':
-      return new Int8Array(heap, offset, length || maxSize / Int8Array.BYTES_PER_ELEMENT);
-    case 'u1':
-    case 'u8':
-      return new Uint8Array(heap, offset, length || maxSize / Uint8Array.BYTES_PER_ELEMENT);
-    case 'i16':
-      return new Int16Array(heap, offset, length || maxSize / Int16Array.BYTES_PER_ELEMENT);
-    case 'u16':
-      return new Uint16Array(heap, offset, length || maxSize / Uint16Array.BYTES_PER_ELEMENT);
-    case 'i32':
-      return new Int32Array(heap, offset, length || maxSize / Int32Array.BYTES_PER_ELEMENT);
-    case 'u32':
-      return new Uint32Array(heap, offset, length || maxSize / Uint32Array.BYTES_PER_ELEMENT);
-    case 'f32':
-      return new Float32Array(heap, offset, length || maxSize / Float32Array.BYTES_PER_ELEMENT);
-    case 'f64':
-      return new Float64Array(heap, offset, length || maxSize / Float64Array.BYTES_PER_ELEMENT);
-    case 'i64':
-      return new BigInt64Array(heap, offset, length || maxSize / BigInt64Array.BYTES_PER_ELEMENT);
-    case '*':
-    case 'u64':
-      return new BigUint64Array(heap, offset, length || maxSize / BigUint64Array.BYTES_PER_ELEMENT);
-    default:
-      throw new Error('Invalid type');
-  }
-}
-#endif
-
 function updateMemoryViews() {
   var b = wasmMemory.buffer;
 #if SUPPORT_BIG_ENDIAN
   Module['HEAP_DATA_VIEW'] = HEAP_DATA_VIEW = new DataView(b);
 #endif
-#if MEMORY64
+#if MEMORY64 && MAXIMUM_MEMORY > FOUR_GB
+  // Chrome does not allow TypedArrays with more than 4294967296 elements
+  // We'll create proxy objects for HEAP(U)8 when memory is > 4gb and for HEAP(U)16 when > 8gb
+  // https://bugs.chromium.org/p/v8/issues/detail?id=4153
   var maxArraySize = Math.min(b.byteLength, 4 * 1024 * 1024 * 1024 - 8);
+  /**
+   * @param {string} type - Heap type
+   * @param {number} [offset] - Heap offset
+   * @param {number} [length] - typed array length
+   */
+  const getHeapBlock = (type, offset, length) => {
+    if (!offset) {
+      offset = 0
+    }
+
+    const heap = wasmMemory.buffer
+    switch (type) {
+      case 'i1':
+      case 'i8':
+        return new Int8Array(heap, offset, length || maxArraySize / Int8Array.BYTES_PER_ELEMENT);
+      case 'u1':
+      case 'u8':
+        return new Uint8Array(heap, offset, length || maxArraySize / Uint8Array.BYTES_PER_ELEMENT);
+      case 'i16':
+        return new Int16Array(heap, offset, length || maxArraySize / Int16Array.BYTES_PER_ELEMENT);
+      case 'u16':
+        return new Uint16Array(heap, offset, length || maxArraySize / Uint16Array.BYTES_PER_ELEMENT);
+      case 'i32':
+        return new Int32Array(heap, offset, length || maxArraySize / Int32Array.BYTES_PER_ELEMENT);
+      case 'u32':
+        return new Uint32Array(heap, offset, length || maxArraySize / Uint32Array.BYTES_PER_ELEMENT);
+      case 'f32':
+        return new Float32Array(heap, offset, length || maxArraySize / Float32Array.BYTES_PER_ELEMENT);
+      case 'f64':
+        return new Float64Array(heap, offset, length || maxArraySize / Float64Array.BYTES_PER_ELEMENT);
+      case 'i64':
+        return new BigInt64Array(heap, offset, length || maxArraySize / BigInt64Array.BYTES_PER_ELEMENT);
+      case '*':
+      case 'u64':
+        return new BigUint64Array(heap, offset, length || maxArraySize / BigUint64Array.BYTES_PER_ELEMENT);
+      default:
+        throw new Error('Invalid type');
+    }
+  }
+
   var proxyHandler = (type, heapBlock) => ({
     heapBlock,
     copyWithin (target, start, end) {
-      target = fixPointer(target)
-      start = fixPointer(start)
-      end = fixPointer(end)
       const bpe = heapBlock.BYTES_PER_ELEMENT
       if (target * bpe >= maxArraySize || start * bpe >= maxArraySize || (end && end * bpe >= maxArraySize)) {
         var len = end - start
@@ -208,8 +198,7 @@ function updateMemoryViews() {
         return heapBlock.copyWithin(target, start, end)
       }
     },
-    setOverridden (array, offset) {
-      offset = fixPointer(offset)
+    setOverridden(array, offset) {
       var offsetReal = (offset || 0) * heapBlock.BYTES_PER_ELEMENT
       if (offsetReal >= maxArraySize || array.byteLength + offsetReal >= maxArraySize) {
         var targetArray = getHeapBlock(type, offsetReal, array.length)
@@ -218,9 +207,7 @@ function updateMemoryViews() {
         heapBlock.set(array, offset)
       }
     },
-    subarray (start, end) {
-      start = fixPointer(start)
-      end = fixPointer(end)
+    subarray(start, end) {
       var startReal = (start || 0) * heapBlock.BYTES_PER_ELEMENT
       var endReal = end ? end * heapBlock.BYTES_PER_ELEMENT : wasmMemory.byteLength
       if (startReal >= maxArraySize || endReal >= maxArraySize) {
@@ -229,7 +216,7 @@ function updateMemoryViews() {
         return heapBlock.subarray(start, end)
       }
     },
-    fill (value, start, end) {
+    fill(value, start, end) {
       var startReal = (start || 0) * heapBlock.BYTES_PER_ELEMENT
       var endReal = end ? end * heapBlock.BYTES_PER_ELEMENT : wasmMemory.byteLength
       if (startReal >= maxArraySize || endReal >= maxArraySize) {
@@ -240,7 +227,7 @@ function updateMemoryViews() {
         return heapBlock.fill(value, start, end)
       }
     },
-    slice (start, end) {
+    slice(start, end) {
       var startReal = (start || 0) * heapBlock.BYTES_PER_ELEMENT
       var endReal = end ? end * heapBlock.BYTES_PER_ELEMENT : wasmMemory.byteLength
       if (startReal >= maxArraySize || endReal >= maxArraySize) {
@@ -250,9 +237,9 @@ function updateMemoryViews() {
         return heapBlock.slice(start, end)
       }
     },
-    get (target, property) {
+    get(target, property) {
       if (typeof property === 'number' || typeof property === 'bigint') {
-        var memoryOffset = fixPointer(property) * target.BYTES_PER_ELEMENT
+        var memoryOffset = property * target.BYTES_PER_ELEMENT
         if (memoryOffset >= maxArraySize) {
           var heap = getHeapBlock(type, memoryOffset, 1);
           return heap[0];
@@ -283,9 +270,9 @@ function updateMemoryViews() {
 
       return heapBlock[property]
     },
-    set (target, property, value) {
+    set(target, property, value) {
       if (typeof property === 'number' || typeof property === 'bigint') {
-        var memoryOffset = fixPointer(property) * target.BYTES_PER_ELEMENT
+        var memoryOffset = property * target.BYTES_PER_ELEMENT
         if (memoryOffset >= maxArraySize) {
           var heap = getHeapBlock(type, memoryOffset, 1);
           heap[0] = value;
@@ -297,10 +284,12 @@ function updateMemoryViews() {
       return true;
     },
   })
-  function createMemoryProxy (type) {
+
+  function createMemoryProxy(type) {
     const block = getHeapBlock(type, 0)
     return new Proxy(block, proxyHandler(type, block));
   }
+
   if (b.byteLength > maxArraySize) {
     Module["HEAP8"] = HEAP8 = createMemoryProxy('i8')
     Module["HEAPU8"] = HEAPU8 = createMemoryProxy('u8')
