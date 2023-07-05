@@ -83,6 +83,82 @@ var LibraryEmbind = {
       out.push('};\n');
     }
   },
+  $ConstantDefinition: class ConstantDefinition {
+    constructor(type, name) {
+      this.type = type;
+      this.name = name;
+    }
+
+    printModuleEntry(nameMap, out) {
+      out.push(`  ${this.name}: ${nameMap(this.type)};\n`);
+    }
+  },
+  $EnumDefinition: class EnumDefinition {
+    constructor(typeId, name) {
+      this.typeId = typeId;
+      this.name = name;
+      this.items = [];
+    }
+
+    print(nameMap, out) {
+      out.push(`export interface ${this.name}Value<T extends number> {\n`);
+      out.push('  value: T;\n}\n');
+      out.push(`export type ${this.name} = `);
+      var outItems = [];
+      for (const [name, value] of this.items) {
+        outItems.push(`${this.name}Value<${value}>`);
+      }
+      out.push(outItems.join('|'));
+      out.push(';\n\n');
+    }
+
+    printModuleEntry(nameMap, out) {
+      out.push(`  ${this.name}: {`);
+      var outItems = [];
+      for (const [name, value] of this.items) {
+        outItems.push(`${name}: ${this.name}Value<${value}>`);
+      }
+      out.push(outItems.join(', '));
+      out.push('};\n');
+    }
+  },
+  $ValueArrayDefinition: class ValueArrayDefinition {
+    constructor(typeId, name) {
+      this.typeId = typeId;
+      this.name = name;
+      this.elementTypeIds = [];
+      this.elements = [];
+    }
+
+    print(nameMap, out) {
+      out.push(`export type ${this.name} = [ `);
+      var outElements = [];
+      for (let type of this.elements) {
+        outElements.push(nameMap(type));
+      }
+      out.push(outElements.join(', '))
+      out.push(' ];\n\n');
+    }
+  },
+  $ValueObjectDefinition: class ValueObjectDefinition {
+    constructor(typeId, name) {
+      this.typeId = typeId;
+      this.name = name;
+      this.fieldTypeIds = [];
+      this.fieldNames = [];
+      this.fields = [];
+    }
+
+    print(nameMap, out) {
+      out.push(`export type ${this.name} = {\n`);
+      var outFields = [];
+      for (const {name, type} of this.fields) {
+        outFields.push(`  ${name}: ${nameMap(type)}`);
+      }
+      out.push(outFields.join(',\n'))
+      out.push('\n};\n\n');
+    }
+  },
   $TsPrinter: class TsPrinter {
     constructor(definitions) {
       this.definitions = definitions;
@@ -259,6 +335,132 @@ var LibraryEmbind = {
     createFunctionDefinition(methodName, argCount, rawArgTypesAddr, true, (funcDef) => {
       let classDef = funcDef.thisType;
       classDef.methods.push(funcDef);
+    });
+  },
+  _embind_register_enum__deps: ['$readLatin1String', '$EnumDefinition', '$moduleDefinitions'],
+  _embind_register_enum: function(rawType, name, size, isSigned) {
+    name = readLatin1String(name);
+    var enumDef = new EnumDefinition(rawType, name);
+    registerType(rawType, enumDef);
+    moduleDefinitions.push(enumDef);
+  },
+  _embind_register_enum_value__deps: ['$readLatin1String', '$requireRegisteredType'],
+  _embind_register_enum_value: function(rawEnumType, name, enumValue) {
+    name = readLatin1String(name);
+    var enumDef = requireRegisteredType(rawEnumType, name);
+    enumDef.items.push([name, enumValue]);
+  },
+  _embind_register_constant__deps: ['$readLatin1String', '$ConstantDefinition', '$whenDependentTypesAreResolved', '$moduleDefinitions'],
+  _embind_register_constant: function(name, typeId, value) {
+    name = readLatin1String(name);
+    whenDependentTypesAreResolved([], [typeId], function(types) {
+      var def = new ConstantDefinition(types[0], name);
+      moduleDefinitions.push(def);
+      return [];
+    });
+  },
+  _embind_register_value_array__deps: [
+    '$readLatin1String', '$ValueArrayDefinition', '$tupleRegistrations'],
+  _embind_register_value_array: function(
+    rawType,
+    name,
+    constructorSignature,
+    rawConstructor,
+    destructorSignature,
+    rawDestructor
+  ) {
+    name = readLatin1String(name);
+    var valueArray = new ValueArrayDefinition(rawType, name);
+    tupleRegistrations[rawType] = valueArray;
+  },
+  _embind_register_value_array_element__deps: ['$tupleRegistrations'],
+  _embind_register_value_array_element: function(
+    rawTupleType,
+    getterReturnType,
+    getterSignature,
+    getter,
+    getterContext,
+    setterArgumentType,
+    setterSignature,
+    setter,
+    setterContext
+  ) {
+    const valueArray = tupleRegistrations[rawTupleType];
+    assert(getterReturnType === setterArgumentType, 'Mismatched getter and setter types are not supported.');
+    valueArray.elementTypeIds.push(getterReturnType);
+  },
+  _embind_finalize_value_array__deps: ['$whenDependentTypesAreResolved', '$moduleDefinitions', '$tupleRegistrations'],
+  _embind_finalize_value_array: function(rawTupleType) {
+    var valueArray = tupleRegistrations[rawTupleType];
+    delete tupleRegistrations[rawTupleType];
+    whenDependentTypesAreResolved([rawTupleType], valueArray.elementTypeIds, function(types) {
+      moduleDefinitions.push(valueArray);
+      valueArray.elements = types;
+      return [valueArray];
+    });
+  },
+  _embind_register_value_object__deps: ['$readLatin1String', '$ValueObjectDefinition', '$structRegistrations'],
+  _embind_register_value_object: function(
+    rawType,
+    name,
+    constructorSignature,
+    rawConstructor,
+    destructorSignature,
+    rawDestructor
+  ) {
+    name = readLatin1String(name);
+    var valueObject = new ValueObjectDefinition(rawType, name);
+    structRegistrations[rawType] = valueObject;
+  },
+  _embind_register_value_object_field__deps: [
+    '$readLatin1String', '$structRegistrations'],
+  _embind_register_value_object_field: function(
+    structType,
+    fieldName,
+    getterReturnType,
+    getterSignature,
+    getter,
+    getterContext,
+    setterArgumentType,
+    setterSignature,
+    setter,
+    setterContext
+  ) {
+    const valueObject = structRegistrations[structType];
+    assert(getterReturnType === setterArgumentType, 'Mismatched getter and setter types are not supported.');
+    valueObject.fieldTypeIds.push(getterReturnType);
+    valueObject.fieldNames.push(readLatin1String(fieldName));
+  },
+  _embind_finalize_value_object__deps: ['$moduleDefinitions', '$whenDependentTypesAreResolved', '$structRegistrations'],
+  _embind_finalize_value_object: function(structType) {
+    var valueObject = structRegistrations[structType];
+    delete structRegistrations[structType];
+    whenDependentTypesAreResolved([structType], valueObject.fieldTypeIds, function(types) {
+      moduleDefinitions.push(valueObject);
+      for (var i = 0; i < types.length; i++) {
+        valueObject.fields.push({
+          name: valueObject.fieldNames[i],
+          type: types[i],
+        });
+      }
+      return [valueObject];
+    });
+  },
+  _embind_register_smart_ptr__deps: ['$whenDependentTypesAreResolved'],
+  _embind_register_smart_ptr: function(rawType,
+                                       rawPointeeType,
+                                       name,
+                                       sharingPolicy,
+                                       getPointeeSignature,
+                                       rawGetPointee,
+                                       constructorSignature,
+                                       rawConstructor,
+                                       shareSignature,
+                                       rawShare,
+                                       destructorSignature,
+                                       rawDestructor) {
+    whenDependentTypesAreResolved([rawType], [rawPointeeType], function(pointeeType) {
+      return [pointeeType[0]];
     });
   },
 
