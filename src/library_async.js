@@ -34,6 +34,9 @@ mergeInto(LibraryManager.library, {
     //
     // Asyncify code that is shared between mode 1 (original) and mode 2 (JSPI).
     //
+#if MEMORY64
+    rewindArguments: {},
+#endif
     instrumentWasmImports: function(imports) {
 #if ASYNCIFY_DEBUG
       dbg('asyncify instrumenting imports');
@@ -133,8 +136,23 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY == 1
               Asyncify.exportCallStack.push(x);
               try {
-#endif
+#if MEMORY64
+                let args = Array.from(arguments)
+                if (args.length > 0 && x.startsWith('dynCall_')) {
+                    args[0] = Number(args[0])
+                }
+                // when rewinding, function is called without any arguments
+                // and it will throw 'undefined cannot be converted to BigInt' so let's cache original arguments
+                if (args.length === 0) {
+                    args = Asyncify.rewindArguments[x] || []
+                } else {
+                    Asyncify.rewindArguments[x] = args
+                }
+                return original.apply(null, args);
+#else
                 return original.apply(null, arguments);
+#endif
+#endif
 #if ASYNCIFY == 1
               } finally {
                 if (!ABORT) {
@@ -248,8 +266,8 @@ mergeInto(LibraryManager.library, {
     },
 
     setDataHeader: function(ptr, stack, stackSize) {
-      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.stack_ptr, 'stack', 'i32') }}};
-      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.stack_limit, 'stack + stackSize', 'i32') }}};
+      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.stack_ptr, 'stack', '*') }}};
+      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.stack_limit, 'stack + stackSize', '*') }}};
     },
 
     setDataRewindFunc: function(ptr) {
@@ -258,14 +276,14 @@ mergeInto(LibraryManager.library, {
       dbg('ASYNCIFY: setDataRewindFunc('+ptr+'), bottomOfCallStack is', bottomOfCallStack, new Error().stack);
 #endif
       var rewindId = Asyncify.getCallStackId(bottomOfCallStack);
-      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'rewindId', 'i32') }}};
+      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'rewindId', '*') }}};
     },
 
 #if RELOCATABLE
     getDataRewindFunc__deps: [ '$resolveGlobalSymbol' ],
 #endif
     getDataRewindFunc: function(ptr) {
-      var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
+      var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, '*') }}};
       var name = Asyncify.callStackIdToName[id];
       var func = Module['asm'][name];
 #if RELOCATABLE
@@ -330,7 +348,7 @@ mergeInto(LibraryManager.library, {
           dbg(`ASYNCIFY: start rewind ${Asyncify.currData}`);
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
-          runAndAbortIfError(() => _asyncify_start_rewind(Asyncify.currData));
+          runAndAbortIfError(() => _asyncify_start_rewind({{{ to64('Asyncify.currData' )}}}));
           if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
@@ -382,7 +400,7 @@ mergeInto(LibraryManager.library, {
           if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.pause();
           }
-          runAndAbortIfError(() => _asyncify_start_unwind(Asyncify.currData));
+          runAndAbortIfError(() => _asyncify_start_unwind({{{ to64('Asyncify.currData' )}}}));
         }
       } else if (Asyncify.state === Asyncify.State.Rewinding) {
         // Stop a resume.
@@ -585,7 +603,7 @@ mergeInto(LibraryManager.library, {
         dbg('ASYNCIFY/FIBER: start rewind', asyncifyData, '(resuming fiber', newFiber, ')');
 #endif
         Asyncify.state = Asyncify.State.Rewinding;
-        _asyncify_start_rewind(asyncifyData);
+        _asyncify_start_rewind({{{ to64('asyncifyData') }}});
         Asyncify.doRewind(asyncifyData);
       }
     },
@@ -608,7 +626,7 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
       dbg('ASYNCIFY/FIBER: start unwind', asyncifyData);
 #endif
-      _asyncify_start_unwind(asyncifyData);
+      _asyncify_start_unwind({{{ to64('asyncifyData') }}});
 
       var stackTop = stackSave();
       {{{ makeSetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr, 'stackTop', 'i32') }}};
