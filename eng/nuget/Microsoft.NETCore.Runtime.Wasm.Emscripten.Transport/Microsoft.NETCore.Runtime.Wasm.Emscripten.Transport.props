@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project>
   <ItemGroup>
-    <File Include="$(EmscriptenInstallDir)**" TargetPath="tools\%(RecursiveDir)" />
+    <File Include="$(EmscriptenInstallDir)**" Exclude="$(EmscriptenInstallDir)\emscripten-version.txt" TargetPath="tools\%(RecursiveDir)" />
+    <File Include="$(RepoRoot)eng\emscripten-*.txt" TargetPath="tools" />
   </ItemGroup>
 </Project>
