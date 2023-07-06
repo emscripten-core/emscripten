@@ -10,7 +10,7 @@ mergeInto(LibraryManager.library, {
   },
   $SOCKFS__deps: ['$FS'],
   $SOCKFS: {
-    mount: function(mount) {
+    mount(mount) {
       // If Module['websocket'] has already been defined (e.g. for configuring
       // the subprotocol/url) use that, if not initialise it to a new object.
       Module['websocket'] = (Module['websocket'] &&
@@ -45,7 +45,7 @@ mergeInto(LibraryManager.library, {
 
       return FS.createNode(null, '/', {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */, 0);
     },
-    createSocket: function(family, type, protocol) {
+    createSocket(family, type, protocol) {
       type &= ~{{{ cDefs.SOCK_CLOEXEC | cDefs.SOCK_NONBLOCK }}}; // Some applications may pass it; it makes no sense for a single process.
       var streaming = type == {{{ cDefs.SOCK_STREAM }}};
       if (streaming && protocol && protocol != {{{ cDefs.IPPROTO_TCP }}}) {
@@ -89,7 +89,7 @@ mergeInto(LibraryManager.library, {
 
       return sock;
     },
-    getSocket: function(fd) {
+    getSocket(fd) {
       var stream = FS.getStream(fd);
       if (!stream || !FS.isSocket(stream.node.mode)) {
         return null;
@@ -98,15 +98,15 @@ mergeInto(LibraryManager.library, {
     },
     // node and stream ops are backend agnostic
     stream_ops: {
-      poll: function(stream) {
+      poll(stream) {
         var sock = stream.node.sock;
         return sock.sock_ops.poll(sock);
       },
-      ioctl: function(stream, request, varargs) {
+      ioctl(stream, request, varargs) {
         var sock = stream.node.sock;
         return sock.sock_ops.ioctl(sock, request, varargs);
       },
-      read: function(stream, buffer, offset, length, position /* ignored */) {
+      read(stream, buffer, offset, length, position /* ignored */) {
         var sock = stream.node.sock;
         var msg = sock.sock_ops.recvmsg(sock, length);
         if (!msg) {
@@ -116,16 +116,16 @@ mergeInto(LibraryManager.library, {
         buffer.set(msg.buffer, offset);
         return msg.buffer.length;
       },
-      write: function(stream, buffer, offset, length, position /* ignored */) {
+      write(stream, buffer, offset, length, position /* ignored */) {
         var sock = stream.node.sock;
         return sock.sock_ops.sendmsg(sock, buffer, offset, length);
       },
-      close: function(stream) {
+      close(stream) {
         var sock = stream.node.sock;
         sock.sock_ops.close(sock);
       }
     },
-    nextname: function() {
+    nextname() {
       if (!SOCKFS.nextname.current) {
         SOCKFS.nextname.current = 0;
       }
@@ -140,7 +140,7 @@ mergeInto(LibraryManager.library, {
       // these functions aren't actually sock_ops members, but we're
       // abusing the namespace to organize them
       //
-      createPeer: function(sock, addr, port) {
+      createPeer(sock, addr, port) {
         var ws;
 
         if (typeof addr == 'object') {
@@ -263,16 +263,16 @@ mergeInto(LibraryManager.library, {
 
         return peer;
       },
-      getPeer: function(sock, addr, port) {
+      getPeer(sock, addr, port) {
         return sock.peers[addr + ':' + port];
       },
-      addPeer: function(sock, peer) {
+      addPeer(sock, peer) {
         sock.peers[peer.addr + ':' + peer.port] = peer;
       },
-      removePeer: function(sock, peer) {
+      removePeer(sock, peer) {
         delete sock.peers[peer.addr + ':' + peer.port];
       },
-      handlePeerEvents: function(sock, peer) {
+      handlePeerEvents(sock, peer) {
         var first = true;
 
         var handleOpen = function () {
@@ -376,7 +376,7 @@ mergeInto(LibraryManager.library, {
       //
       // actual sock ops
       //
-      poll: function(sock) {
+      poll(sock) {
         if (sock.type === {{{ cDefs.SOCK_STREAM }}} && sock.server) {
           // listen sockets should only say they're available for reading
           // if there are pending clients.
@@ -407,7 +407,7 @@ mergeInto(LibraryManager.library, {
 
         return mask;
       },
-      ioctl: function(sock, request, arg) {
+      ioctl(sock, request, arg) {
         switch (request) {
           case {{{ cDefs.FIONREAD }}}:
             var bytes = 0;
@@ -420,7 +420,7 @@ mergeInto(LibraryManager.library, {
             return {{{ cDefs.EINVAL }}};
         }
       },
-      close: function(sock) {
+      close(sock) {
         // if we've spawned a listen server, close it
         if (sock.server) {
           try {
@@ -441,7 +441,7 @@ mergeInto(LibraryManager.library, {
         }
         return 0;
       },
-      bind: function(sock, addr, port) {
+      bind(sock, addr, port) {
         if (typeof sock.saddr != 'undefined' || typeof sock.sport != 'undefined') {
           throw new FS.ErrnoError({{{ cDefs.EINVAL }}});  // already bound
         }
@@ -466,7 +466,7 @@ mergeInto(LibraryManager.library, {
           }
         }
       },
-      connect: function(sock, addr, port) {
+      connect(sock, addr, port) {
         if (sock.server) {
           throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
         }
@@ -496,7 +496,7 @@ mergeInto(LibraryManager.library, {
         // always "fail" in non-blocking mode
         throw new FS.ErrnoError({{{ cDefs.EINPROGRESS }}});
       },
-      listen: function(sock, backlog) {
+      listen(sock, backlog) {
         if (!ENVIRONMENT_IS_NODE) {
           throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
         }
@@ -556,7 +556,7 @@ mergeInto(LibraryManager.library, {
         });
 #endif // ENVIRONMENT_MAY_BE_NODE
       },
-      accept: function(listensock) {
+      accept(listensock) {
         if (!listensock.server || !listensock.pending.length) {
           throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
         }
@@ -564,7 +564,7 @@ mergeInto(LibraryManager.library, {
         newsock.stream.flags = listensock.stream.flags;
         return newsock;
       },
-      getname: function(sock, peer) {
+      getname(sock, peer) {
         var addr, port;
         if (peer) {
           if (sock.daddr === undefined || sock.dport === undefined) {
@@ -580,7 +580,7 @@ mergeInto(LibraryManager.library, {
         }
         return { addr, port };
       },
-      sendmsg: function(sock, buffer, offset, length, addr, port) {
+      sendmsg(sock, buffer, offset, length, addr, port) {
         if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
           // connection-less sockets will honor the message address,
           // and otherwise fall back to the bound destination address
@@ -659,7 +659,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
         }
       },
-      recvmsg: function(sock, length) {
+      recvmsg(sock, length) {
         // http://pubs.opengroup.org/onlinepubs/7908799/xns/recvmsg.html
         if (sock.type === {{{ cDefs.SOCK_STREAM }}} && sock.server) {
           // tcp servers should not be recv()'ing on the listen socket

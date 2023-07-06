@@ -55,7 +55,7 @@ function PropertyBag() {
 var IndexedObjects = {
   nextId: 1,
   cache: {},
-  add: function(object) {
+  add(object) {
     object.id = this.nextId++;
     this.cache[object.id] = object;
   }
@@ -283,7 +283,7 @@ document.documentElement = {};
 
 document.styleSheets = [{
   cssRules: [], // TODO: forward to client
-  insertRule: function(rule, i) {
+  insertRule(rule, i) {
     this.cssRules.splice(i, 0, rule);
   }
 }];
@@ -295,7 +295,7 @@ function Audio() {
 }
 Audio.prototype = new EventListener();
 Object.defineProperty(Audio.prototype, 'src', {
-  set: function(value) {
+  set(value) {
     if (value[0] === 'd') return; // ignore data urls
     this.onerror();
   },

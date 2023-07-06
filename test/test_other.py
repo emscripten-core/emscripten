@@ -12620,6 +12620,13 @@ Module.postRun = () => {{
           [key]: 42,
         };
         err('value: ' + obj2[key]);
+
+        // Method syntax
+        var obj3 = {
+          myMethod() { return 43 },
+        };
+        global['foo'] = obj3;
+        err('value2: ' + obj3.myMethod());
       }
     });
     ''')

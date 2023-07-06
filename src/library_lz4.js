@@ -12,7 +12,7 @@ mergeInto(LibraryManager.library, {
     FILE_MODE: {{{ cDefs.S_IFREG }}} | 511 /* 0777 */,
     CHUNK_SIZE: -1,
     codec: null,
-    init: function() {
+    init() {
       if (LZ4.codec) return;
       LZ4.codec = (function() {
         {{{ read('../third_party/mini-lz4.js') }}};
@@ -20,7 +20,7 @@ mergeInto(LibraryManager.library, {
       })();
       LZ4.CHUNK_SIZE = LZ4.codec.CHUNK_SIZE;
     },
-    loadPackage: function (pack, preloadPlugin) {
+    loadPackage(pack, preloadPlugin) {
       LZ4.init();
       var compressedData = pack['compressedData'];
       if (!compressedData) compressedData = LZ4.codec.compressPackage(pack['data']);
@@ -66,7 +66,7 @@ mergeInto(LibraryManager.library, {
         });
       }
     },
-    createNode: function (parent, name, mode, dev, contents, mtime) {
+    createNode(parent, name, mode, dev, contents, mtime) {
       var node = FS.createNode(parent, name, mode);
       node.mode = mode;
       node.node_ops = LZ4.node_ops;
@@ -86,7 +86,7 @@ mergeInto(LibraryManager.library, {
       return node;
     },
     node_ops: {
-      getattr: function(node) {
+      getattr(node) {
         return {
           dev: 1,
           ino: node.id,
@@ -103,7 +103,7 @@ mergeInto(LibraryManager.library, {
           blocks: Math.ceil(node.size / 4096),
         };
       },
-      setattr: function(node, attr) {
+      setattr(node, attr) {
         if (attr.mode !== undefined) {
           node.mode = attr.mode;
         }
@@ -111,30 +111,30 @@ mergeInto(LibraryManager.library, {
           node.timestamp = attr.timestamp;
         }
       },
-      lookup: function(parent, name) {
+      lookup(parent, name) {
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       },
-      mknod: function (parent, name, mode, dev) {
+      mknod(parent, name, mode, dev) {
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       },
-      rename: function (oldNode, newDir, newName) {
+      rename(oldNode, newDir, newName) {
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       },
-      unlink: function(parent, name) {
+      unlink(parent, name) {
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       },
-      rmdir: function(parent, name) {
+      rmdir(parent, name) {
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       },
-      readdir: function(node) {
+      readdir(node) {
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       },
-      symlink: function(parent, newName, oldPath) {
+      symlink(parent, newName, oldPath) {
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       },
     },
     stream_ops: {
-      read: function (stream, buffer, offset, length, position) {
+      read(stream, buffer, offset, length, position) {
         //out('LZ4 read ' + [offset, length, position]);
         length = Math.min(length, stream.node.size - position);
         if (length <= 0) return 0;
@@ -181,10 +181,10 @@ mergeInto(LibraryManager.library, {
         }
         return written;
       },
-      write: function (stream, buffer, offset, length, position) {
+      write(stream, buffer, offset, length, position) {
         throw new FS.ErrnoError({{{ cDefs.EIO }}});
       },
-      llseek: function (stream, offset, whence) {
+      llseek(stream, offset, whence) {
         var position = offset;
         if (whence === {{{ cDefs.SEEK_CUR }}}) {
           position += stream.position;

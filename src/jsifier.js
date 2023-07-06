@@ -36,13 +36,26 @@ function escapeJSONKey(x) {
   return "'" + x + "'";
 }
 
+// JSON.stringify will completely omit function objects.  This function is
+// similar but preserves functions.
 function stringifyWithFunctions(obj) {
   if (typeof obj == 'function') return obj.toString();
   if (obj === null || typeof obj != 'object') return JSON.stringify(obj);
   if (Array.isArray(obj)) {
     return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
   }
-  return '{' + Object.keys(obj).map((key) => escapeJSONKey(key) + ':' + stringifyWithFunctions(obj[key])).join(',') + '}';
+  var rtn = '{\n';
+  for (const [key, value] of Object.entries(obj)) {
+    var str = stringifyWithFunctions(value);
+    // Handle JS method syntax where the function property starts with its own
+    // name. e.g.  foo(a) {},
+    if (typeof value === 'function' && str.startsWith(key)) {
+      rtn += str + ',\n'
+    } else {
+      rtn += escapeJSONKey(key) + ':' + str + ',\n';
+    }
+  }
+  return rtn + '}';
 }
 
 function isDefined(symName) {
