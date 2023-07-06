@@ -13,7 +13,7 @@ var maxArraySize = Math.min(b.byteLength, 4 * 1024 * 1024 * 1024 - 8);
  * @param {number} [offset] - Heap offset
  * @param {number} [length] - typed array length
  */
-const getHeapBlock = (type, offset, length) => {
+function getHeapBlock(type, offset, length) {
   if (!offset) {
     offset = 0
   }
