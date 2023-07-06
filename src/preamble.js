@@ -667,7 +667,11 @@ function getBinaryPromise(binaryFile) {
   // See https://github.com/github/fetch/pull/92#issuecomment-140665932
   // Cordova or Electron apps are typically loaded from a file:// url.
   // So use fetch if it is available and the url is not a file, otherwise fall back to XHR.
-  if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER)) {
+  if (!wasmBinary
+#if SUPPORT_BASE64_EMBEDDING
+      && !isDataURI(binaryFile)
+#endif
+      && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER)) {
     if (typeof fetch == 'function'
 #if ENVIRONMENT_MAY_BE_WEBVIEW
       && !isFileURI(binaryFile)
