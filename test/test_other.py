@@ -10090,7 +10090,6 @@ int main () {
                                '-sGL_TRACK_ERRORS=0',
                                '-sGL_SUPPORT_EXPLICIT_SWAP_CONTROL=0',
                                '-sGL_POOL_TEMP_BUFFERS=0',
-                               '-sMIN_CHROME_VERSION=58',
                                '-sGL_WORKAROUND_SAFARI_GETCONTEXT_BUG=0',
                                '-sNO_FILESYSTEM',
                                '-sSTRICT',
@@ -12621,6 +12620,13 @@ Module.postRun = () => {{
           [key]: 42,
         };
         err('value: ' + obj2[key]);
+
+        // Method syntax
+        var obj3 = {
+          myMethod() { return 43 },
+        };
+        global['foo'] = obj3;
+        err('value2: ' + obj3.myMethod());
       }
     });
     ''')

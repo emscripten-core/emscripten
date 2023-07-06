@@ -2109,7 +2109,7 @@ var LibraryEmbind = {
       classType = classType[0];
       var humanName = `${classType.name}.${fieldName}`;
       var desc = {
-        get: function() {
+        get() {
           throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [getterReturnType, setterArgumentType]);
         },
         enumerable: true,
@@ -2133,7 +2133,7 @@ var LibraryEmbind = {
     function(types) {
         var getterReturnType = types[0];
         var desc = {
-          get: function() {
+          get() {
             var ptr = validateThis(this, classType, humanName + ' getter');
             return getterReturnType['fromWireType'](getter(getterContext, ptr));
           },
@@ -2245,7 +2245,7 @@ var LibraryEmbind = {
       classType = classType[0];
       var humanName = `${classType.name}.${fieldName}`;
       var desc = {
-        get: function() {
+        get() {
           throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [rawFieldType]);
         },
         enumerable: true,
@@ -2266,8 +2266,8 @@ var LibraryEmbind = {
       whenDependentTypesAreResolved([], [rawFieldType], function(fieldType) {
         fieldType = fieldType[0];
         var desc = {
-          get: function() {
-              return fieldType['fromWireType'](getter(rawFieldPtr));
+          get() {
+            return fieldType['fromWireType'](getter(rawFieldPtr));
           },
           enumerable: true
         };
