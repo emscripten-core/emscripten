@@ -2447,10 +2447,10 @@ var LibraryEmbind = {
     exposePublicSymbol(name, ctor);
   },
 
-  _embind_register_enum_value__deps: ['$createNamedFunction', '$UTF8ToString', '$requireRegisteredType'],
+  _embind_register_enum_value__deps: ['$createNamedFunction', '$identifierToString', '$requireRegisteredType'],
   _embind_register_enum_value: function(rawEnumType, name, enumValue) {
     var enumType = requireRegisteredType(rawEnumType, 'enum');
-    name = UTF8ToString(name);
+    name = identifierToString(name);
 
     var Enum = enumType.constructor;
 
