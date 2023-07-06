@@ -9649,11 +9649,19 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm64('TODO: asyncify for wasm64')
   @parameterized({
-    '': ([],),
-    'no_dynamic_execution': (['-sDYNAMIC_EXECUTION=0'],)
+    'asyncify': (1, 1),
+    'asyncify_no_dynamic_execution': (1, 0),
+    'jspi': (2, 1),
+    'jspi_no_dynamic_execution': (2, 0),
   })
-  def test_embind_lib_with_asyncify(self, args):
+  def test_embind_lib(self, asyncify, dynamic_execution):
     self.uses_es6 = True
+    self.emcc_args.append('-Wno-version-check') # ZZZ REMOVE
+    if asyncify == 2:
+      self.require_jspi()
+      self.emcc_args += ['-Wno-experimental']
+    self.set_setting('ASYNCIFY', asyncify)
+    self.set_setting('DYNAMIC_EXECUTION', dynamic_execution)
     self.emcc_args += [
       '-lembind',
       '-sASYNCIFY',
@@ -9661,7 +9669,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
       '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$ASSERTIONS',
       '--post-js', test_file('core/embind_lib_with_asyncify.test.js'),
     ]
-    self.emcc_args += args
     self.do_core_test('embind_lib_with_asyncify.cpp')
 
   @no_asan('asyncify stack operations confuse asan')

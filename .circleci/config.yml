@@ -657,7 +657,9 @@ jobs:
             core2.test_hello_world
             core0.test_pthread_join_and_asyncify
             core0.test_async_ccall_promise_jspi
-            core0.test_async_ccall_promise_exit_runtime_jspi"
+            core0.test_async_ccall_promise_exit_runtime_jspi
+            core0.test_embind_lib_jspi
+            core0.test_embind_lib_jspi_no_dynamic_execution"
       # Run some basic tests with the minimum version of node that we currently
       # support.
       - install-node-version:
