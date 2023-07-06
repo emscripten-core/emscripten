@@ -4024,7 +4024,6 @@ ok
     self.do_run(src, 'float: 42.\n')
 
   @needs_dylink
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_dlfcn_asyncify(self):
     self.set_setting('ASYNCIFY')
 
@@ -8175,11 +8174,9 @@ int main() {
     self.do_runf('main.c', 'hello 0\nhello 1\nhello 2\nhello 3\nhello 4\n')
 
   @requires_v8
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_async_hello_v8(self):
     self.test_async_hello()
 
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_async_ccall_bad(self):
     # check bad ccall use
     # needs to flush stdio streams
@@ -8242,7 +8239,6 @@ Module.onRuntimeInitialized = () => {
     '': (False,),
     'exit_runtime': (True,),
   })
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_async_ccall_promise(self, exit_runtime):
     self.set_setting('ASYNCIFY')
     self.set_setting('EXIT_RUNTIME')
@@ -8282,7 +8278,6 @@ Module.onRuntimeInitialized = () => {
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('main.c', 'stringf: first\nsecond\n6.4')
 
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_fibers_asyncify(self):
     self.set_setting('ASYNCIFY')
     self.maybe_closure()
@@ -8306,7 +8301,6 @@ Module.onRuntimeInitialized = () => {
     'onlylist_b_response': ([], True,  '["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'),
     'onlylist_c_response': ([], False, '["main","__original_main","foo(int, double)","baz()","c_baz"]'),
   })
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_lists(self, args, should_pass, response=None):
     if response is not None:
       create_file('response.file', response)
@@ -8338,7 +8332,6 @@ Module.onRuntimeInitialized = () => {
     'ignoreindirect': (['-sASYNCIFY_IGNORE_INDIRECT'], False),
     'add': (['-sASYNCIFY_IGNORE_INDIRECT', '-sASYNCIFY_ADD=["__original_main","main","virt()"]'], True),
   })
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_indirect_lists(self, args, should_pass):
     self.set_setting('ASYNCIFY')
     self.emcc_args += args
@@ -8352,7 +8345,6 @@ Module.onRuntimeInitialized = () => {
         raise
 
   @needs_dylink
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_side_module(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASYNCIFY_IMPORTS', ['my_sleep'])
@@ -8382,12 +8374,10 @@ Module.onRuntimeInitialized = () => {
     ''', 'before sleep\n42\n42\nafter sleep\n', header='void my_sleep(int);', force_c=True)
 
   @no_asan('asyncify stack operations confuse asan')
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_emscripten_scan_registers(self):
     self.set_setting('ASYNCIFY')
     self.do_core_test('test_emscripten_scan_registers.cpp')
 
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_assertions(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASYNCIFY_IMPORTS', ['suspend'])
@@ -8396,7 +8386,6 @@ Module.onRuntimeInitialized = () => {
 
   @no_lsan('leaks asyncify stack during exit')
   @no_asan('leaks asyncify stack during exit')
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_during_exit(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASSERTIONS')
@@ -8427,7 +8416,6 @@ Module.onRuntimeInitialized = () => {
                             '-Wno-experimental'])
 
   @no_asan('asyncify stack operations confuse asan')
-  @no_wasm64('TODO: asyncify for wasm64')
   @no_wasm2js('TODO: lazy loading in wasm2js')
   @parameterized({
     'conditional': (True,),
@@ -9641,7 +9629,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test(test_file('core/test_emscripten_async_call.c'))
 
   @no_asan('asyncify stack operations confuse asan')
-  @no_wasm64('TODO: asyncify for wasm64')
   @parameterized({
     '': ([],),
     'no_dynamic_execution': (['-sDYNAMIC_EXECUTION=0'],)
