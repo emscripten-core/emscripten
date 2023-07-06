@@ -276,7 +276,7 @@ mergeInto(LibraryManager.library, {
       dbg('ASYNCIFY: setDataRewindFunc('+ptr+'), bottomOfCallStack is', bottomOfCallStack, new Error().stack);
 #endif
       var rewindId = Asyncify.getCallStackId(bottomOfCallStack);
-      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'rewindId', MEMORY64 ? 'i32' : 'i64') }}};
+      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'rewindId', MEMORY64 ? 'i64' : 'i32') }}};
     },
 
 #if RELOCATABLE
@@ -348,7 +348,7 @@ mergeInto(LibraryManager.library, {
           dbg(`ASYNCIFY: start rewind ${Asyncify.currData}`);
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
-          runAndAbortIfError(() => _asyncify_start_rewind(Asyncify.currData));
+          runAndAbortIfError(() => _asyncify_start_rewind({{{ to64('Asyncify.currData' )}}}));
           if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
@@ -400,7 +400,7 @@ mergeInto(LibraryManager.library, {
           if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.pause();
           }
-          runAndAbortIfError(() => _asyncify_start_unwind(Asyncify.currData));
+          runAndAbortIfError(() => _asyncify_start_unwind({{{ to64('Asyncify.currData' )}}}));
         }
       } else if (Asyncify.state === Asyncify.State.Rewinding) {
         // Stop a resume.
@@ -518,7 +518,7 @@ mergeInto(LibraryManager.library, {
       // could happen if we tried to scan the stack immediately after unwinding.
       safeSetTimeout(() => {
         var stackBegin = Asyncify.currData + {{{ C_STRUCTS.asyncify_data_s.__size__ }}};
-        var stackEnd = HEAP32[Asyncify.currData >> 2];
+        var stackEnd = {{{ makeGetValue('Asyncify.currData', 0, '*') }}};
         {{{ makeDynCall('vii', 'func') }}}(stackBegin, stackEnd);
         wakeUp();
       }, 0);
@@ -571,17 +571,17 @@ mergeInto(LibraryManager.library, {
      * NOTE: This function is the asynchronous part of emscripten_fiber_swap.
      */
     finishContextSwitch: function(newFiber) {
-      var stack_base = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_base,  'i32') }}};
-      var stack_max =  {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_limit, 'i32') }}};
+      var stack_base = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_base,  '*') }}};
+      var stack_max =  {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_limit, '*') }}};
       _emscripten_stack_set_limits(stack_base, stack_max);
 
 #if STACK_OVERFLOW_CHECK >= 2
       ___set_stack_limits(stack_base, stack_max);
 #endif
 
-      stackRestore({{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr,   'i32') }}});
+      stackRestore({{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr,   '*') }}});
 
-      var entryPoint = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 'i32') }}};
+      var entryPoint = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, '*') }}};
 
       if (entryPoint !== 0) {
 #if STACK_OVERFLOW_CHECK
@@ -591,9 +591,9 @@ mergeInto(LibraryManager.library, {
         dbg('ASYNCIFY/FIBER: entering fiber', newFiber, 'for the first time');
 #endif
         Asyncify.currData = null;
-        {{{ makeSetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 0, 'i32') }}};
+        {{{ makeSetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 0, '*') }}};
 
-        var userData = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.user_data, 'i32') }}};
+        var userData = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.user_data, '*') }}};
         {{{ makeDynCall('vi', 'entryPoint') }}}(userData);
       } else {
         var asyncifyData = newFiber + {{{ C_STRUCTS.emscripten_fiber_s.asyncify_data }}};
@@ -603,7 +603,7 @@ mergeInto(LibraryManager.library, {
         dbg('ASYNCIFY/FIBER: start rewind', asyncifyData, '(resuming fiber', newFiber, ')');
 #endif
         Asyncify.state = Asyncify.State.Rewinding;
-        _asyncify_start_rewind(asyncifyData);
+        _asyncify_start_rewind({{{ to64('asyncifyData') }}});
         Asyncify.doRewind(asyncifyData);
       }
     },
@@ -626,7 +626,7 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
       dbg('ASYNCIFY/FIBER: start unwind', asyncifyData);
 #endif
-      _asyncify_start_unwind(asyncifyData);
+      _asyncify_start_unwind({{{ to64('asyncifyData') }}});
 
       var stackTop = stackSave();
       {{{ makeSetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr, 'stackTop', 'i32') }}};

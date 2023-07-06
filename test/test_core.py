@@ -8115,7 +8115,6 @@ void* operator new(size_t size) {
     self.do_core_test('test_vswprintf_utf8.c')
 
   # Test that a main with arguments is automatically asyncified.
-  @no_wasm64('TODO: asyncify for wasm64')
   @with_asyncify_and_jspi
   def test_async_main(self):
     create_file('main.c',  r'''
@@ -8129,7 +8128,6 @@ int main(int argc, char **argv) {
 
     self.do_runf('main.c', 'argc=2 argv=hello', args=['hello'])
 
-  @no_wasm64('TODO: asyncify for wasm64')
   @with_asyncify_and_jspi
   def test_async_hello(self):
     # needs to flush stdio streams
@@ -8154,7 +8152,6 @@ int main() {
 
     self.do_runf('main.c', 'HelloWorld!99')
 
-  @no_wasm64('TODO: asyncify for wasm64')
   @with_asyncify_and_jspi
   def test_async_loop(self):
     # needs to flush stdio streams
@@ -8208,7 +8205,6 @@ Module.onRuntimeInitialized = () => {
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('main.c', 'The call to main is running asynchronously.')
 
-  @no_wasm64('TODO: asyncify for wasm64')
   @with_asyncify_and_jspi
   def test_async_ccall_good(self):
     # check reasonable ccall use
@@ -8278,12 +8274,12 @@ Module.onRuntimeInitialized = () => {
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('main.c', 'stringf: first\nsecond\n6.4')
 
+  @no_wasm64('TODO: asyncify for wasm64')
   def test_fibers_asyncify(self):
     self.set_setting('ASYNCIFY')
     self.maybe_closure()
     self.do_runf(test_file('test_fibers.cpp'), '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
-  @no_wasm64('TODO: asyncify for wasm64')
   @with_asyncify_and_jspi
   def test_asyncify_unused(self):
     # test a program not using asyncify, but the pref is set
@@ -8374,6 +8370,7 @@ Module.onRuntimeInitialized = () => {
     ''', 'before sleep\n42\n42\nafter sleep\n', header='void my_sleep(int);', force_c=True)
 
   @no_asan('asyncify stack operations confuse asan')
+  @no_wasm64('TODO: asyncify for wasm64')
   def test_emscripten_scan_registers(self):
     self.set_setting('ASYNCIFY')
     self.do_core_test('test_emscripten_scan_registers.cpp')
@@ -8397,7 +8394,6 @@ Module.onRuntimeInitialized = () => {
   @no_asan('asyncify stack operations confuse asan')
   @no_lsan('undefined symbol __global_base')
   @no_wasm2js('dynamic linking support in wasm2js')
-  @no_wasm64('TODO: asyncify for wasm64')
   @with_asyncify_and_jspi
   def test_asyncify_main_module(self):
     self.set_setting('MAIN_MODULE', 2)
@@ -9646,7 +9642,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('embind_lib_with_asyncify.cpp')
 
   @no_asan('asyncify stack operations confuse asan')
-  @no_wasm64('TODO: asyncify for wasm64')
   @with_asyncify_and_jspi
   def test_em_async_js(self):
     self.uses_es6 = True
@@ -9690,7 +9685,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('MIN_CHROME_VERSION', '85')
     self.do_core_test('test_promise.c')
 
-  @no_wasm64('TODO: asyncify for wasm64')
   @with_asyncify_and_jspi
   def test_promise_await(self):
     self.do_core_test('test_promise_await.c')
