@@ -31,8 +31,8 @@ var LibraryEmbind = {
     printSignature(nameMap, out) {
       out.push('(');
 
-      let argOut = [];
-      for (let arg of this.argumentTypes) {
+      const argOut = [];
+      for (const arg of this.argumentTypes) {
         argOut.push(`${arg.name}: ${nameMap(arg.type)}`);
       }
       out.push(argOut.join(', '));
@@ -67,7 +67,7 @@ var LibraryEmbind = {
         out.push(` extends ${this.base.name}`);
       }
       out.push(' {\n');
-      for (let method of this.methods) {
+      for (const method of this.methods) {
         out.push('  ');
         method.printFunction(nameMap, out);
       }
@@ -78,7 +78,7 @@ var LibraryEmbind = {
     printModuleEntry(nameMap, out) {
       out.push(`  ${this.name}: {new`);
       // TODO Handle constructor overloading
-      let constructor = this.constructors[this.constructors.length > 1 ? 1 : 0];
+      const constructor = this.constructors[this.constructors.length > 1 ? 1 : 0];
       constructor.printSignature(nameMap, out);
       out.push('};\n');
     }
@@ -104,7 +104,7 @@ var LibraryEmbind = {
       out.push(`export interface ${this.name}Value<T extends number> {\n`);
       out.push('  value: T;\n}\n');
       out.push(`export type ${this.name} = `);
-      var outItems = [];
+      const outItems = [];
       for (const [name, value] of this.items) {
         outItems.push(`${this.name}Value<${value}>`);
       }
@@ -114,7 +114,7 @@ var LibraryEmbind = {
 
     printModuleEntry(nameMap, out) {
       out.push(`  ${this.name}: {`);
-      var outItems = [];
+      const outItems = [];
       for (const [name, value] of this.items) {
         outItems.push(`${name}: ${this.name}Value<${value}>`);
       }
@@ -132,8 +132,8 @@ var LibraryEmbind = {
 
     print(nameMap, out) {
       out.push(`export type ${this.name} = [ `);
-      var outElements = [];
-      for (let type of this.elements) {
+      const outElements = [];
+      for (const type of this.elements) {
         outElements.push(nameMap(type));
       }
       out.push(outElements.join(', '))
@@ -151,7 +151,7 @@ var LibraryEmbind = {
 
     print(nameMap, out) {
       out.push(`export type ${this.name} = {\n`);
-      var outFields = [];
+      const outFields = [];
       for (const {name, type} of this.fields) {
         outFields.push(`  ${name}: ${nameMap(type)}`);
       }
@@ -221,22 +221,22 @@ var LibraryEmbind = {
   },
   $createFunctionDefinition__deps: ['$FunctionDefinition', '$heap32VectorToArray', '$readLatin1String', '$Argument', '$whenDependentTypesAreResolved'],
   $createFunctionDefinition: function(name, argCount, rawArgTypesAddr, hasThis, cb) {
-    var argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
+    const argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = readLatin1String(name);
 
     whenDependentTypesAreResolved([], argTypes, function(argTypes) {
-      var returnType = argTypes[0];
-      var thisType = null;
-      var argStart = 1;
+      const returnType = argTypes[0];
+      let thisType = null;
+      let argStart = 1;
       if (hasThis) {
         thisType = argTypes[1];
         argStart = 2;
       }
-      let args = [];
-      for (var i = argStart; i < argTypes.length; i++) {
+      const args = [];
+      for (let i = argStart; i < argTypes.length; i++) {
         args.push(new Argument(`_${i - argStart}`, argTypes[i]));
       }
-      var funcDef = new FunctionDefinition(name, returnType, args, thisType);
+      const funcDef = new FunctionDefinition(name, returnType, args, thisType);
       cb(funcDef);
       return [];
     });
@@ -298,7 +298,7 @@ var LibraryEmbind = {
       [rawType, rawPointerType, rawConstPointerType],
       baseClassRawType ? [baseClassRawType] : [],
       function(base) {
-        var classDef = new ClassDefinition(rawType, name, base.length ? base[0] : null);
+        const classDef = new ClassDefinition(rawType, name, base.length ? base[0] : null);
         moduleDefinitions.push(classDef);
         return [classDef, classDef, classDef];
       }
@@ -333,28 +333,28 @@ var LibraryEmbind = {
           isPureVirtual,
           isAsync) {
     createFunctionDefinition(methodName, argCount, rawArgTypesAddr, true, (funcDef) => {
-      let classDef = funcDef.thisType;
+      const classDef = funcDef.thisType;
       classDef.methods.push(funcDef);
     });
   },
   _embind_register_enum__deps: ['$readLatin1String', '$EnumDefinition', '$moduleDefinitions'],
   _embind_register_enum: function(rawType, name, size, isSigned) {
     name = readLatin1String(name);
-    var enumDef = new EnumDefinition(rawType, name);
+    const enumDef = new EnumDefinition(rawType, name);
     registerType(rawType, enumDef);
     moduleDefinitions.push(enumDef);
   },
   _embind_register_enum_value__deps: ['$readLatin1String', '$requireRegisteredType'],
   _embind_register_enum_value: function(rawEnumType, name, enumValue) {
     name = readLatin1String(name);
-    var enumDef = requireRegisteredType(rawEnumType, name);
+    const enumDef = requireRegisteredType(rawEnumType, name);
     enumDef.items.push([name, enumValue]);
   },
   _embind_register_constant__deps: ['$readLatin1String', '$ConstantDefinition', '$whenDependentTypesAreResolved', '$moduleDefinitions'],
   _embind_register_constant: function(name, typeId, value) {
     name = readLatin1String(name);
     whenDependentTypesAreResolved([], [typeId], function(types) {
-      var def = new ConstantDefinition(types[0], name);
+      const def = new ConstantDefinition(types[0], name);
       moduleDefinitions.push(def);
       return [];
     });
@@ -370,7 +370,7 @@ var LibraryEmbind = {
     rawDestructor
   ) {
     name = readLatin1String(name);
-    var valueArray = new ValueArrayDefinition(rawType, name);
+    const valueArray = new ValueArrayDefinition(rawType, name);
     tupleRegistrations[rawType] = valueArray;
   },
   _embind_register_value_array_element__deps: ['$tupleRegistrations'],
@@ -391,7 +391,7 @@ var LibraryEmbind = {
   },
   _embind_finalize_value_array__deps: ['$whenDependentTypesAreResolved', '$moduleDefinitions', '$tupleRegistrations'],
   _embind_finalize_value_array: function(rawTupleType) {
-    var valueArray = tupleRegistrations[rawTupleType];
+    const valueArray = tupleRegistrations[rawTupleType];
     delete tupleRegistrations[rawTupleType];
     whenDependentTypesAreResolved([rawTupleType], valueArray.elementTypeIds, function(types) {
       moduleDefinitions.push(valueArray);
@@ -409,7 +409,7 @@ var LibraryEmbind = {
     rawDestructor
   ) {
     name = readLatin1String(name);
-    var valueObject = new ValueObjectDefinition(rawType, name);
+    const valueObject = new ValueObjectDefinition(rawType, name);
     structRegistrations[rawType] = valueObject;
   },
   _embind_register_value_object_field__deps: [
@@ -433,11 +433,11 @@ var LibraryEmbind = {
   },
   _embind_finalize_value_object__deps: ['$moduleDefinitions', '$whenDependentTypesAreResolved', '$structRegistrations'],
   _embind_finalize_value_object: function(structType) {
-    var valueObject = structRegistrations[structType];
+    const valueObject = structRegistrations[structType];
     delete structRegistrations[structType];
     whenDependentTypesAreResolved([structType], valueObject.fieldTypeIds, function(types) {
       moduleDefinitions.push(valueObject);
-      for (var i = 0; i < types.length; i++) {
+      for (let i = 0; i < types.length; i++) {
         valueObject.fields.push({
           name: valueObject.fieldNames[i],
           type: types[i],
@@ -467,10 +467,10 @@ var LibraryEmbind = {
   $embindEmitTypes__deps: ['$awaitingDependencies', '$throwBindingError', '$getTypeName', '$moduleDefinitions', '$TsPrinter'],
   $embindEmitTypes__postset: 'addOnInit(embindEmitTypes);',
   $embindEmitTypes: function() {
-    for (var typeId in awaitingDependencies) {
+    for (const typeId in awaitingDependencies) {
       throwBindingError(`Missing type definition for '${getTypeName(typeId)}'`);
     }
-    var printer = new TsPrinter(moduleDefinitions);
+    const printer = new TsPrinter(moduleDefinitions);
     printer.print();
   },
 };
