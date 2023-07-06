@@ -276,7 +276,7 @@ mergeInto(LibraryManager.library, {
       dbg('ASYNCIFY: setDataRewindFunc('+ptr+'), bottomOfCallStack is', bottomOfCallStack, new Error().stack);
 #endif
       var rewindId = Asyncify.getCallStackId(bottomOfCallStack);
-      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'rewindId', MEMORY64 ? 'i64' : 'i32') }}};
+      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'rewindId', 'i32') }}};
     },
 
 #if RELOCATABLE
@@ -497,7 +497,7 @@ mergeInto(LibraryManager.library, {
         // can only allocate the buffer after the wakeUp, not during an asyncing
         var buffer = _malloc(byteArray.length); // must be freed by caller!
         HEAPU8.set(byteArray, buffer);
-        {{{ makeSetValue('pbuffer', 0, 'buffer', 'i32') }}};
+        {{{ makeSetValue('pbuffer', 0, 'buffer', '*') }}};
         {{{ makeSetValue('pnum',  0, 'byteArray.length', 'i32') }}};
         {{{ makeSetValue('perror',  0, '0', 'i32') }}};
         wakeUp();
@@ -519,7 +519,7 @@ mergeInto(LibraryManager.library, {
       safeSetTimeout(() => {
         var stackBegin = Asyncify.currData + {{{ C_STRUCTS.asyncify_data_s.__size__ }}};
         var stackEnd = {{{ makeGetValue('Asyncify.currData', 0, '*') }}};
-        {{{ makeDynCall('vii', 'func') }}}(stackBegin, stackEnd);
+        {{{ makeDynCall(MEMORY64 ? 'vpp' : 'vii', 'func') }}}(stackBegin, stackEnd);
         wakeUp();
       }, 0);
     });
@@ -594,7 +594,7 @@ mergeInto(LibraryManager.library, {
         {{{ makeSetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 0, '*') }}};
 
         var userData = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.user_data, '*') }}};
-        {{{ makeDynCall('vi', 'entryPoint') }}}(userData);
+        {{{ makeDynCall(MEMORY64 ? 'vp' : 'vi', 'entryPoint') }}}(userData);
       } else {
         var asyncifyData = newFiber + {{{ C_STRUCTS.emscripten_fiber_s.asyncify_data }}};
         Asyncify.currData = asyncifyData;
@@ -629,7 +629,7 @@ mergeInto(LibraryManager.library, {
       _asyncify_start_unwind({{{ to64('asyncifyData') }}});
 
       var stackTop = stackSave();
-      {{{ makeSetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr, 'stackTop', 'i32') }}};
+      {{{ makeSetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr, 'stackTop', '*') }}};
 
       Fibers.nextFiber = newFiber;
     } else {
