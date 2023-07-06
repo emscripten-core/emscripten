@@ -22,7 +22,7 @@ This article describes the main tools and settings provided by Emscripten for de
 Debug information
 =================
 
-:ref:`Emcc <emccdoc>` strips out most of the debug information from :ref:`optimized builds <Optimizing-Code>` by default. Higher the optimization level is, more degraded the quality of DWARF debug information, so we recommend using :ref:`-O0 <emcc-O0>` or :ref:`-O1 <emcc-O1>` for debugging purpose. :ref:`-O1 <emcc-O1>` and above also disable runtime :ref:`ASSERTIONS <debugging-ASSERTIONS>` checks. From optimization level :ref:`-O2 <emcc-O2>` the JavasScript code is minified by the :term:`Closure Compiler` and becomes virtually unreadable.
+:ref:`Emcc <emccdoc>` strips out most of the debug information from :ref:`optimized builds <Optimizing-Code>` by default. The higher the optimization level, the more degraded the quality of DWARF debug information is, so we recommend using :ref:`-O0 <emcc-O0>` or :ref:`-O1 <emcc-O1>` for debugging purposes. :ref:`-O1 <emcc-O1>` and above also disable runtime :ref:`ASSERTIONS <debugging-ASSERTIONS>` checks. From optimization level :ref:`-O2 <emcc-O2>` the JavasScript code is minified by the :term:`Closure Compiler` and becomes virtually unreadable.
 
 The *emcc* :ref:`-g flag <emcc-g>` can be used to preserve debug information in the compiled output. By default, this option includes Clang / LLVM debug information in a DWARF format in the generated WebAssembly code and preserves white-space, function names and variable names in the generated JavaScript code.
 
