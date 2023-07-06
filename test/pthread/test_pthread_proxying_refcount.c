@@ -37,7 +37,9 @@ void register_processed(void) {
   processed++;
 }
 
-void task(void* arg) { *(_Atomic int*)arg = 1; }
+void set_flag(void* arg) { *(_Atomic int*)arg = 1; }
+
+void task(void* arg) { emscripten_async_call(set_flag, arg, 0); }
 
 void* execute_and_free_queue(void* arg) {
   // Wait until we are signaled to execute the queue.
@@ -74,16 +76,10 @@ int main() {
   }
   should_execute = 1;
 
-  // Wait for the tasks to be executed.
+  // Wait for the tasks to be executed. The queues will have been destroyed
+  // after this.
   while (!executed[0] || !executed[1]) {
   }
-
-  // Wait a bit (20 ms) for the notification to be received.
-  struct timespec time = {
-    .tv_sec = 0,
-    .tv_nsec = 20 * 1000 * 1000,
-  };
-  nanosleep(&time, NULL);
 
 #ifndef SANITIZER
   // Our zombies should not have been freed yet.
