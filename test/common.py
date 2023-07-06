@@ -656,6 +656,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('either d8 or node >= 16 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
   def require_jspi(self):
+    if not self.is_wasm():
+      self.skipTest('JSPI is not currently supported for WASM2JS')
+
     exp_args = ['--experimental-wasm-stack-switching', '--experimental-wasm-type-reflection']
     if config.NODE_JS and config.NODE_JS in self.js_engines:
       version = shared.check_node_version()
