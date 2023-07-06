@@ -1,9 +1,10 @@
 #include <assert.h>
 #include <emscripten/console.h>
 #include <emscripten/emscripten.h>
-#include <emscripten/proxying.h>
 #include <emscripten/heap.h>
+#include <emscripten/proxying.h>
 #include <pthread.h>
+#include <sched.h>
 #include <stdbool.h>
 #include <unistd.h>
 
@@ -39,11 +40,14 @@ void register_processed(void) {
 
 void set_flag(void* arg) { *(_Atomic int*)arg = 1; }
 
+// Delay setting the flag until the next turn of the event loop so it can be set
+// after the proxying queue is destroyed.
 void task(void* arg) { emscripten_async_call(set_flag, arg, 0); }
 
 void* execute_and_free_queue(void* arg) {
   // Wait until we are signaled to execute the queue.
   while (!should_execute) {
+    sched_yield();
   }
 
   // Execute the proxied work then free the empty queues.
@@ -79,6 +83,7 @@ int main() {
   // Wait for the tasks to be executed. The queues will have been destroyed
   // after this.
   while (!executed[0] || !executed[1]) {
+    sched_yield();
   }
 
 #ifndef SANITIZER
