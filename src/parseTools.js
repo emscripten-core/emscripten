@@ -725,12 +725,13 @@ function modifyJSFunction(text, func) {
   }
   let body = rest;
   const bodyStart = rest.indexOf('{');
-  if (bodyStart >= 0) {
+  let oneliner = bodyStart < 0;
+  if (!oneliner) {
     const bodyEnd = rest.lastIndexOf('}');
     assert(bodyEnd > 0);
     body = rest.substring(bodyStart + 1, bodyEnd);
   }
-  return func(args, body, async_);
+  return func(args, body, async_, oneliner);
 }
 
 function runIfMainThread(text) {

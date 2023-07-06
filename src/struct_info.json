@@ -1284,6 +1284,7 @@
                 "maxTextureDimension3D",
                 "maxTextureArrayLayers",
                 "maxBindGroups",
+                "maxBindGroupsPlusVertexBuffers",
                 "maxBindingsPerBindGroup",
                 "maxDynamicUniformBuffersPerPipelineLayout",
                 "maxDynamicStorageBuffersPerPipelineLayout",
@@ -1389,6 +1390,7 @@
                 "nextInChain",
                 "compatibleSurface",
                 "powerPreference",
+                "backendType",
                 "forceFallbackAdapter",
                 "compatibilityMode"
             ],
@@ -1544,6 +1546,7 @@
                 "constants"
             ],
             "WGPURenderPassColorAttachment": [
+                "nextInChain",
                 "view",
                 "resolveTarget",
                 "loadOp",

@@ -183,14 +183,15 @@ typedef enum WGPUAddressMode {
 } WGPUAddressMode WGPU_ENUM_ATTRIBUTE;
 
 typedef enum WGPUBackendType {
-    WGPUBackendType_Null = 0x00000000,
-    WGPUBackendType_WebGPU = 0x00000001,
-    WGPUBackendType_D3D11 = 0x00000002,
-    WGPUBackendType_D3D12 = 0x00000003,
-    WGPUBackendType_Metal = 0x00000004,
-    WGPUBackendType_Vulkan = 0x00000005,
-    WGPUBackendType_OpenGL = 0x00000006,
-    WGPUBackendType_OpenGLES = 0x00000007,
+    WGPUBackendType_Undefined = 0x00000000,
+    WGPUBackendType_Null = 0x00000001,
+    WGPUBackendType_WebGPU = 0x00000002,
+    WGPUBackendType_D3D11 = 0x00000003,
+    WGPUBackendType_D3D12 = 0x00000004,
+    WGPUBackendType_Metal = 0x00000005,
+    WGPUBackendType_Vulkan = 0x00000006,
+    WGPUBackendType_OpenGL = 0x00000007,
+    WGPUBackendType_OpenGLES = 0x00000008,
     WGPUBackendType_Force32 = 0x7FFFFFFF
 } WGPUBackendType WGPU_ENUM_ATTRIBUTE;
 
@@ -836,6 +837,7 @@ typedef struct WGPULimits {
     uint32_t maxTextureDimension3D;
     uint32_t maxTextureArrayLayers;
     uint32_t maxBindGroups;
+    uint32_t maxBindGroupsPlusVertexBuffers;
     uint32_t maxBindingsPerBindGroup;
     uint32_t maxDynamicUniformBuffersPerPipelineLayout;
     uint32_t maxDynamicStorageBuffersPerPipelineLayout;
@@ -956,6 +958,7 @@ typedef struct WGPURequestAdapterOptions {
     WGPUChainedStruct const * nextInChain;
     WGPU_NULLABLE WGPUSurface compatibleSurface;
     WGPUPowerPreference powerPreference;
+    WGPUBackendType backendType;
     bool forceFallbackAdapter;
     bool compatibilityMode;
 } WGPURequestAdapterOptions WGPU_STRUCTURE_ATTRIBUTE;
@@ -1138,6 +1141,7 @@ typedef struct WGPUProgrammableStageDescriptor {
 } WGPUProgrammableStageDescriptor WGPU_STRUCTURE_ATTRIBUTE;
 
 typedef struct WGPURenderPassColorAttachment {
+    WGPUChainedStruct const * nextInChain;
     WGPU_NULLABLE WGPUTextureView view;
     WGPU_NULLABLE WGPUTextureView resolveTarget;
     WGPULoadOp loadOp;

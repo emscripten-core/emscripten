@@ -25,6 +25,10 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     assert(typeof ptr === 'number');
 #endif
+#if !CAN_ADDRESS_2GB && !MEMORY64
+    // With CAN_ADDRESS_2GB or MEMORY64, pointers are already unsigned.
+    ptr >>>= 0;
+#endif
     return '0x' + ptr.toString(16).padStart(8, '0');
   },
 
@@ -116,9 +120,7 @@ mergeInto(LibraryManager.library, {
   // We have a separate JS version `getHeapMax()` which can be called directly
   // avoiding any wrapper added for wasm64.
   emscripten_get_heap_max__deps: ['$getHeapMax'],
-  emscripten_get_heap_max: () => {
-    return getHeapMax();
-  },
+  emscripten_get_heap_max: () => getHeapMax(),
 
   $getHeapMax: () =>
 #if ALLOW_MEMORY_GROWTH
@@ -199,7 +201,8 @@ mergeInto(LibraryManager.library, {
   emscripten_resize_heap: 'ip',
   emscripten_resize_heap: (requestedSize) => {
     var oldSize = HEAPU8.length;
-#if MEMORY64 != 1
+#if !MEMORY64 && !CAN_ADDRESS_2GB
+    // With CAN_ADDRESS_2GB or MEMORY64, pointers are already unsigned.
     requestedSize >>>= 0;
 #endif
 #if ALLOW_MEMORY_GROWTH == 0
@@ -2899,6 +2902,20 @@ mergeInto(LibraryManager.library, {
       _free = prev_free;
     }
   },
+
+  _emscripten_sanitizer_use_colors: () => {
+    var setting = Module['printWithColors'];
+    if (setting !== undefined) {
+      return setting;
+    }
+    return ENVIRONMENT_IS_NODE && process.stderr.isTTY;
+  },
+
+  _emscripten_sanitizer_get_option__deps: ['$withBuiltinMalloc', '$stringToNewUTF8', '$UTF8ToString'],
+  _emscripten_sanitizer_get_option__sig: 'pp',
+  _emscripten_sanitizer_get_option: (name) => {
+    return withBuiltinMalloc(() => stringToNewUTF8(Module[UTF8ToString(name)] || ""));
+  },
 #endif
 
   $readEmAsmArgsArray: '=[]',
@@ -3090,7 +3107,6 @@ mergeInto(LibraryManager.library, {
   // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
   __handle_stack_overflow__deps: ['emscripten_stack_get_base', 'emscripten_stack_get_end', '$ptrToString'],
   __handle_stack_overflow: (requested) => {
-    requested >>>= 0;
     var base = _emscripten_stack_get_base();
     var end = _emscripten_stack_get_end();
     abort(`stack overflow (Attempt to set SP to ${ptrToString(requested)}` +

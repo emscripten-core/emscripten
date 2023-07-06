@@ -112,7 +112,7 @@ function runJSify() {
     // When WASM_BIGINT is not enabled we receive i64 values as a pair of i32
     // numbers which is coverted to single int53 number.  In necessary, we also
     // split the return value into a pair of i32 numbers.
-    return modifyJSFunction(snippet, (args, body, async_) => {
+    return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
       let argLines = args.split('\n');
       argLines = argLines.map((line) => line.split('//')[0]);
       const argNames = argLines.join(' ').split(',').map((name) => name.trim());
@@ -133,6 +133,9 @@ function runJSify() {
           if (sig[i] == 'j' && i53abi) {
             argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
             newArgs.push(defineI64Param(name));
+          } else if (sig[i] == 'p' && CAN_ADDRESS_2GB) {
+            argConvertions += `  ${name} >>>= 0;\n`;
+            newArgs.push(name);
           } else {
             newArgs.push(name);
           }
@@ -147,6 +150,9 @@ function runJSify() {
       if ((sig[0] == 'j' && i53abi) || (sig[0] == 'p' && WASM_BIGINT)) {
         // For functions that where we need to mutate the return value, we
         // also need to wrap the body in an inner function.
+        if (oneliner) {
+          return `${async_}(${args}) => ${makeReturn64(body)};`
+        }
         return `\
 ${async_}function(${args}) {
 ${argConvertions}
@@ -157,6 +163,9 @@ ${argConvertions}
 
       // Otherwise no inner function is needed and we covert the arguments
       // before executing the function body.
+      if (oneliner) {
+        body = `return ${body}`;
+      }
       return `\
 ${async_}function(${args}) {
 ${argConvertions}
@@ -191,8 +200,8 @@ function(${args}) {
 
     const sig = LibraryManager.library[symbol + '__sig'];
     const i53abi = LibraryManager.library[symbol + '__i53abi'];
-    if (sig && ((i53abi && sig.includes('j')) ||
-                (MEMORY64 && sig.includes('p')))) {
+    if (sig &&
+        ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')))) {
       snippet = handleI64Signatures(symbol, snippet, sig, i53abi);
       i53ConversionDeps.forEach((d) => deps.push(d))
     }
