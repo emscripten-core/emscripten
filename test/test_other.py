@@ -13554,3 +13554,75 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   @also_with_standalone_wasm()
   def test_console_out(self):
     self.do_other_test('test_console_out.c')
+
+  def test_define_modularize(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sASSERTIONS=0'])
+    src = 'var module = 0; ' + read_file('a.out.js')
+    create_file('a.out.js', src)
+    self.assertContained("define([], () => Module);", src)
+
+    create_file('run_module.js', 'var m; (global.define = (deps, factory) => { m = factory(); }).amd = true; require("./a.out.js"); m();')
+    output = self.run_js('run_module.js')
+    self.assertContained('hello, world!\n', output)
+
+    self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sEXPORT_NAME="NotModule"', '-sASSERTIONS=0'])
+    src = 'var module = 0; ' + read_file('a.out.js')
+    create_file('a.out.js', src)
+    self.assertContained("define([], () => NotModule);", src)
+
+    output = self.run_js('run_module.js')
+    self.assertContained('hello, world!\n', output)
+
+  @requires_wasm64
+  def test_memory64_proxies(self):
+    create_file('post.js', r'''
+  addOnPostRun(() => {
+    // check >4gb alloc
+    const bigChunk = _malloc(4 * 1024 * 1024 * 1024 + 100);
+    assert(bigChunk > 0);
+
+    const littleChunk = _malloc(100);
+    HEAP8[littleChunk] = 2;
+    assert(HEAP8[littleChunk] === 2);
+
+    // .subarray
+    const subarray = HEAP8.subarray(littleChunk, littleChunk + 100);
+    assert(subarray[0] === 2);
+
+    // check .fill
+    HEAP8.fill(3, littleChunk, littleChunk + 99);
+    assert(subarray[0] === 3);
+    assert(subarray[98] === 3);
+    assert(subarray[99] === 0);
+    assert(HEAP8[littleChunk] === 3);
+    assert(HEAP8[littleChunk + 98] === 3);
+    assert(HEAP8[littleChunk + 99] === 0);
+
+    // check .set
+    const filler = new Uint8Array(10);
+    filler[0] = 4;
+    filler[9] = 4;
+    HEAP8.set(filler, littleChunk, 10);
+    assert(subarray[0] === 4);
+    assert(subarray[9] === 4);
+    assert(HEAP8[littleChunk] === 4);
+
+    // .copyWithin
+    HEAP8.copyWithin(bigChunk, littleChunk, littleChunk + 100);
+    assert(HEAP8[bigChunk] === 4);
+
+    // .slice
+    const slice = HEAP8.slice(bigChunk, bigChunk + 100);
+    slice[0] = 5;
+    assert(HEAP8[bigChunk] === 4);
+  });
+  ''')
+    self.run_process([EMCC, test_file('hello_world.c'),
+                        '-sMEMORY64=1',
+                        '-sINITIAL_MEMORY=5gb',
+                        '-sMAXIMUM_MEMORY=5gb',
+                        '-sALLOW_MEMORY_GROWTH',
+                        '-sEXPORTED_FUNCTIONS=_malloc,_main',
+                        '-Wno-experimental',
+                        '--extern-post-js', 'post.js'])
+    self.run_js('a.out.js')

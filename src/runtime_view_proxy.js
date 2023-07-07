@@ -19,139 +19,156 @@ function getHeapBlock(type, offset, length) {
   }
 
   const heap = wasmMemory.buffer
+
+  // we should always limit the length to maxArraySize
+  function createTypedArray (arrayType, offset, length) {
+    const bpe = arrayType.BYTES_PER_ELEMENT;
+    return new arrayType(heap, offset, length || Math.min(heap.byteLength - offset * bpe, maxArraySize / bpe));
+  }
+
   switch (type) {
     case 'i1':
     case 'i8':
-      return new Int8Array(heap, offset, length || maxArraySize / Int8Array.BYTES_PER_ELEMENT);
+      return createTypedArray(Int8Array, offset, length);
     case 'u1':
     case 'u8':
-      return new Uint8Array(heap, offset, length || maxArraySize / Uint8Array.BYTES_PER_ELEMENT);
+      return createTypedArray(Uint8Array, offset, length);
     case 'i16':
-      return new Int16Array(heap, offset, length || maxArraySize / Int16Array.BYTES_PER_ELEMENT);
+      return createTypedArray(Int16Array, offset, length);
     case 'u16':
-      return new Uint16Array(heap, offset, length || maxArraySize / Uint16Array.BYTES_PER_ELEMENT);
+      return createTypedArray(Uint16Array, offset, length);
     case 'i32':
-      return new Int32Array(heap, offset, length || maxArraySize / Int32Array.BYTES_PER_ELEMENT);
+      return createTypedArray(Int32Array, offset, length);
     case 'u32':
-      return new Uint32Array(heap, offset, length || maxArraySize / Uint32Array.BYTES_PER_ELEMENT);
+      return createTypedArray(Uint32Array, offset, length);
     case 'f32':
-      return new Float32Array(heap, offset, length || maxArraySize / Float32Array.BYTES_PER_ELEMENT);
+      return createTypedArray(Float32Array, offset, length);
     case 'f64':
-      return new Float64Array(heap, offset, length || maxArraySize / Float64Array.BYTES_PER_ELEMENT);
+      return createTypedArray(Float64Array, offset, length);
     case 'i64':
-      return new BigInt64Array(heap, offset, length || maxArraySize / BigInt64Array.BYTES_PER_ELEMENT);
+      return createTypedArray(BigInt64Array, offset, length);
     case '*':
     case 'u64':
-      return new BigUint64Array(heap, offset, length || maxArraySize / BigUint64Array.BYTES_PER_ELEMENT);
+      return createTypedArray(BigUint64Array, offset, length);
     default:
       throw new Error('Invalid type');
   }
 }
 
-var proxyHandler = (type, heapBlock) => ({
-  heapBlock,
-  copyWithin (target, start, end) {
-    const bpe = heapBlock.BYTES_PER_ELEMENT
+function createProxyHandler (type, heapBlocks) {
+  const firstHeapBlock = heapBlocks[0]
+  const bpe = firstHeapBlock.BYTES_PER_ELEMENT
+
+  function getRealStartAndEnd(start, end) {
+    const startReal = (start || 0) * bpe
+    const endReal = end ? end * bpe : wasmMemory.byteLength
+    return [startReal, endReal]
+  }
+
+  function copyWithin (target, start, end) {
     if (target * bpe >= maxArraySize || start * bpe >= maxArraySize || (end && end * bpe >= maxArraySize)) {
-      var len = end - start
-      var targetArray = getHeapBlock(type, target * bpe, len)
-      var sourceArray = getHeapBlock(type, start * bpe, len)
+      const len = end - start
+      const targetArray = getHeapBlock(type, target * bpe, len)
+      const sourceArray = getHeapBlock(type, start * bpe, len)
       targetArray.set(sourceArray)
-      return heapBlock
+      return heapBlocks[0]
     } else {
-      return heapBlock.copyWithin(target, start, end)
+      return heapBlocks[0].copyWithin(target, start, end)
     }
-  },
-  setOverridden(array, offset) {
-    var offsetReal = (offset || 0) * heapBlock.BYTES_PER_ELEMENT
+  }
+
+  function setOverridden(array, offset) {
+    const offsetReal = (offset || 0) * bpe
     if (offsetReal >= maxArraySize || array.byteLength + offsetReal >= maxArraySize) {
-      var targetArray = getHeapBlock(type, offsetReal, array.length)
+      const targetArray = getHeapBlock(type, offsetReal, array.length)
       targetArray.set(array)
     } else {
-      heapBlock.set(array, offset)
+      firstHeapBlock.set(array, offset)
     }
-  },
-  subarray(start, end) {
-    var startReal = (start || 0) * heapBlock.BYTES_PER_ELEMENT
-    var endReal = end ? end * heapBlock.BYTES_PER_ELEMENT : wasmMemory.byteLength
+  }
+
+  function subarray(start, end) {
+    const [startReal, endReal] = getRealStartAndEnd(start, end)
     if (startReal >= maxArraySize || endReal >= maxArraySize) {
       return getHeapBlock(type, startReal, endReal - startReal)
     } else {
-      return heapBlock.subarray(start, end)
+      return firstHeapBlock.subarray(start, end)
     }
-  },
-  fill(value, start, end) {
-    var startReal = (start || 0) * heapBlock.BYTES_PER_ELEMENT
-    var endReal = end ? end * heapBlock.BYTES_PER_ELEMENT : wasmMemory.byteLength
+  }
+
+  function fill(value, start, end) {
+    const [startReal, endReal] = getRealStartAndEnd(start, end)
     if (startReal >= maxArraySize || endReal >= maxArraySize) {
       const hb = getHeapBlock(type, startReal, endReal - startReal)
-      hb.fill(0, 0)
-      return heapBlock
+      hb.fill(value, 0, end - start)
+      return firstHeapBlock
     } else {
-      return heapBlock.fill(value, start, end)
+      return firstHeapBlock.fill(value, start, end)
     }
-  },
-  slice(start, end) {
-    var startReal = (start || 0) * heapBlock.BYTES_PER_ELEMENT
-    var endReal = end ? end * heapBlock.BYTES_PER_ELEMENT : wasmMemory.byteLength
+  }
+  function slice(start, end) {
+    const [startReal, endReal] = getRealStartAndEnd(start, end)
     if (startReal >= maxArraySize || endReal >= maxArraySize) {
       const hb = getHeapBlock(type, startReal, endReal - startReal)
       return hb.slice(start, end)
     } else {
-      return heapBlock.slice(start, end)
+      return firstHeapBlock.slice(start, end)
     }
-  },
-  get(target, property) {
-    if (typeof property === 'number' || typeof property === 'bigint') {
-      var memoryOffset = property * target.BYTES_PER_ELEMENT
-      if (memoryOffset >= maxArraySize) {
-        var heap = getHeapBlock(type, memoryOffset, 1);
-        return heap[0];
-      } else {
-        return this.heapBlock[property]
+  }
+
+  return {
+    get(target, property) {
+      if (parseInt(property, 10) == property) {
+        const memoryOffset = property * bpe
+        const blockNumber = Math.floor(memoryOffset / maxArraySize)
+        return heapBlocks[blockNumber][property - blockNumber * maxArraySize]
       }
-    }
 
-    if (property === 'copyWithin') {
-      return this.copyWithin
-    }
-
-    if (property === 'set') {
-      return this.setOverridden
-    }
-
-    if (property === 'subarray') {
-      return this.subarray
-    }
-
-    if (property === 'fill') {
-      return this.fill
-    }
-
-    if (property === 'slice') {
-      return this.slice
-    }
-
-    return heapBlock[property]
-  },
-  set(target, property, value) {
-    if (typeof property === 'number' || typeof property === 'bigint') {
-      var memoryOffset = property * target.BYTES_PER_ELEMENT
-      if (memoryOffset >= maxArraySize) {
-        var heap = getHeapBlock(type, memoryOffset, 1);
-        heap[0] = value;
-        return true;
+      if (property === 'copyWithin') {
+        return copyWithin
       }
-    }
 
-    heapBlock[property] = value
-    return true;
-  },
-})
+      if (property === 'set') {
+        return setOverridden
+      }
+
+      if (property === 'subarray') {
+        return subarray
+      }
+
+      if (property === 'fill') {
+        return fill
+      }
+
+      if (property === 'slice') {
+        return slice
+      }
+
+      return firstHeapBlock[property]
+    },
+    set(target, property, value) {
+      if (parseInt(property, 10) == property) {
+        const memoryOffset = property * bpe
+        const blockNumber = Math.floor(memoryOffset / maxArraySize)
+        heapBlocks[blockNumber][property - blockNumber * maxArraySize] = value
+        return true
+      }
+
+      firstHeapBlock[property] = value
+      return true;
+    },
+  }
+}
 
 function createMemoryProxy(type) {
-  const block = getHeapBlock(type, 0)
-  return new Proxy(block, proxyHandler(type, block));
+  const heapBlocks = [
+    getHeapBlock(type, 0),
+  ];
+  const numberOfBlocks = Math.ceil(b.byteLength / maxArraySize)
+  for (let i = 1; i < numberOfBlocks; i++) {
+    heapBlocks.push(getHeapBlock(type, i * maxArraySize))
+  }
+  return new Proxy(heapBlocks[0], createProxyHandler(type, heapBlocks));
 }
 
 if (b.byteLength > maxArraySize) {
