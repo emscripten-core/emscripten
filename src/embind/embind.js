@@ -191,7 +191,7 @@ var LibraryEmbind = {
     }
   },
 
-#if ALLOW_UNICODE_IDENTIFIER
+#if EMBIND_ALLOW_UNICODE_IDENTIFIER
   $identifierToString__deps: ['$UTF8ToString'],
   $identifierToString: function(ptr) {
     return UTF8ToString(ptr)

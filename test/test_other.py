@@ -2809,7 +2809,7 @@ int f() {
     '': [[]],
     'no_utf8': [['-sEMBIND_STD_STRING_IS_UTF8=0']],
     'no_dynamic': [['-sDYNAMIC_EXECUTION=0']],
-    'unicode_identifier': [['-sALLOW_UNICODE_IDENTIFIER=1']],
+    'unicode_identifier': [['-sEMBIND_ALLOW_UNICODE_IDENTIFIER=1']],
   })
   @with_env_modify({'EMCC_CLOSURE_ARGS': '--externs ' + shlex.quote(test_file('embind/underscore-externs.js'))})
   def test_embind(self, extra_args):

@@ -2030,7 +2030,7 @@ var POLYFILL = true;
 // Embind specific: If enabled, identifiers are parsed using 'UTF8ToString',
 // allowing the use of Unicode characters. However, there is a slight overhead 
 // during module loading compared to using 'readLatin1String'.
-var ALLOW_UNICODE_IDENTIFIER = false;
+var EMBIND_ALLOW_UNICODE_IDENTIFIER = false;
 
 // If true, add tracing to core runtime functions.
 // This setting is enabled by default if any of the following debugging settings
