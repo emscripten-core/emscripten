@@ -7,7 +7,7 @@
 // Chrome does not allow TypedArrays with more than 4294967296 elements
 // We'll create proxy objects for HEAP(U)8 when memory is > 4gb and for HEAP(U)16 when > 8gb
 // https://bugs.chromium.org/p/v8/issues/detail?id=4153
-var maxArraySize = Math.min(b.byteLength, 4 * 1024 * 1024 * 1024 - 8);
+var maxArraySize = Math.min(b.byteLength, 4 * 1024 * 1024 * 1024 - 2);
 /**
  * @param {string} type - Heap type
  * @param {number} [offset] - Heap offset
@@ -18,12 +18,12 @@ function getHeapBlock(type, offset, length) {
     offset = 0
   }
 
-  const heap = wasmMemory.buffer
+  let heap = wasmMemory.buffer
 
   // we should always limit the length to maxArraySize
-  function createTypedArray (arrayType, offset, length) {
-    const bpe = arrayType.BYTES_PER_ELEMENT;
-    return new arrayType(heap, offset, length || Math.min(heap.byteLength - offset * bpe, maxArraySize / bpe));
+  function createTypedArray(arrayType, offset, length) {
+    let bpe = arrayType.BYTES_PER_ELEMENT;
+    return new arrayType(heap, offset, length || Math.min((heap.byteLength - offset) / bpe, maxArraySize));
   }
 
   switch (type) {
@@ -37,39 +37,26 @@ function getHeapBlock(type, offset, length) {
       return createTypedArray(Int16Array, offset, length);
     case 'u16':
       return createTypedArray(Uint16Array, offset, length);
-    case 'i32':
-      return createTypedArray(Int32Array, offset, length);
-    case 'u32':
-      return createTypedArray(Uint32Array, offset, length);
-    case 'f32':
-      return createTypedArray(Float32Array, offset, length);
-    case 'f64':
-      return createTypedArray(Float64Array, offset, length);
-    case 'i64':
-      return createTypedArray(BigInt64Array, offset, length);
-    case '*':
-    case 'u64':
-      return createTypedArray(BigUint64Array, offset, length);
     default:
       throw new Error('Invalid type');
   }
 }
 
-function createProxyHandler (type, heapBlocks) {
-  const firstHeapBlock = heapBlocks[0]
-  const bpe = firstHeapBlock.BYTES_PER_ELEMENT
+function createProxyHandler(type, heapBlocks) {
+  let firstHeapBlock = heapBlocks[0]
+  let bpe = firstHeapBlock.BYTES_PER_ELEMENT
 
   function getRealStartAndEnd(start, end) {
-    const startReal = (start || 0) * bpe
-    const endReal = end ? end * bpe : wasmMemory.byteLength
+    let startReal = (start || 0) * bpe
+    let endReal = end ? end * bpe : wasmMemory.byteLength
     return [startReal, endReal]
   }
 
-  function copyWithin (target, start, end) {
+  function copyWithin(target, start, end) {
     if (target * bpe >= maxArraySize || start * bpe >= maxArraySize || (end && end * bpe >= maxArraySize)) {
-      const len = end - start
-      const targetArray = getHeapBlock(type, target * bpe, len)
-      const sourceArray = getHeapBlock(type, start * bpe, len)
+      let len = end - start
+      let targetArray = getHeapBlock(type, target * bpe, len)
+      let sourceArray = getHeapBlock(type, start * bpe, len)
       targetArray.set(sourceArray)
       return heapBlocks[0]
     } else {
@@ -78,9 +65,9 @@ function createProxyHandler (type, heapBlocks) {
   }
 
   function setOverridden(array, offset) {
-    const offsetReal = (offset || 0) * bpe
+    let offsetReal = (offset || 0) * bpe
     if (offsetReal >= maxArraySize || array.byteLength + offsetReal >= maxArraySize) {
-      const targetArray = getHeapBlock(type, offsetReal, array.length)
+      let targetArray = getHeapBlock(type, offsetReal, array.length)
       targetArray.set(array)
     } else {
       firstHeapBlock.set(array, offset)
@@ -88,7 +75,7 @@ function createProxyHandler (type, heapBlocks) {
   }
 
   function subarray(start, end) {
-    const [startReal, endReal] = getRealStartAndEnd(start, end)
+    let [startReal, endReal] = getRealStartAndEnd(start, end)
     if (startReal >= maxArraySize || endReal >= maxArraySize) {
       return getHeapBlock(type, startReal, endReal - startReal)
     } else {
@@ -97,9 +84,9 @@ function createProxyHandler (type, heapBlocks) {
   }
 
   function fill(value, start, end) {
-    const [startReal, endReal] = getRealStartAndEnd(start, end)
+    let [startReal, endReal] = getRealStartAndEnd(start, end)
     if (startReal >= maxArraySize || endReal >= maxArraySize) {
-      const hb = getHeapBlock(type, startReal, endReal - startReal)
+      let hb = getHeapBlock(type, startReal, endReal - startReal)
       hb.fill(value, 0, end - start)
       return firstHeapBlock
     } else {
@@ -107,9 +94,9 @@ function createProxyHandler (type, heapBlocks) {
     }
   }
   function slice(start, end) {
-    const [startReal, endReal] = getRealStartAndEnd(start, end)
+    let [startReal, endReal] = getRealStartAndEnd(start, end)
     if (startReal >= maxArraySize || endReal >= maxArraySize) {
-      const hb = getHeapBlock(type, startReal, endReal - startReal)
+      let hb = getHeapBlock(type, startReal, endReal - startReal)
       return hb.slice(start, end)
     } else {
       return firstHeapBlock.slice(start, end)
@@ -119,8 +106,8 @@ function createProxyHandler (type, heapBlocks) {
   return {
     get(target, property) {
       if (parseInt(property, 10) == property) {
-        const memoryOffset = property * bpe
-        const blockNumber = Math.floor(memoryOffset / maxArraySize)
+        let memoryOffset = property * bpe
+        let blockNumber = Math.floor(memoryOffset / maxArraySize)
         return heapBlocks[blockNumber][property - blockNumber * maxArraySize]
       }
 
@@ -148,8 +135,8 @@ function createProxyHandler (type, heapBlocks) {
     },
     set(target, property, value) {
       if (parseInt(property, 10) == property) {
-        const memoryOffset = property * bpe
-        const blockNumber = Math.floor(memoryOffset / maxArraySize)
+        let memoryOffset = property * bpe
+        let blockNumber = Math.floor(memoryOffset / maxArraySize)
         heapBlocks[blockNumber][property - blockNumber * maxArraySize] = value
         return true
       }
@@ -161,26 +148,26 @@ function createProxyHandler (type, heapBlocks) {
 }
 
 function createMemoryProxy(type) {
-  const heapBlocks = [
-    getHeapBlock(type, 0),
-  ];
-  const numberOfBlocks = Math.ceil(b.byteLength / maxArraySize)
-  for (let i = 1; i < numberOfBlocks; i++) {
-    heapBlocks.push(getHeapBlock(type, i * maxArraySize))
+  let heapBlocks = [];
+  let bpe = type === 'i16' || type === 'u16' ? 2 : 1
+  let numberOfBlocks = Math.ceil(b.byteLength / maxArraySize / bpe)
+  for (let i = 0; i < numberOfBlocks; i++) {
+    heapBlocks.push(getHeapBlock(type, i * maxArraySize * bpe))
   }
+  console.log(heapBlocks, type)
   return new Proxy(heapBlocks[0], createProxyHandler(type, heapBlocks));
 }
 
 if (b.byteLength > maxArraySize) {
-  Module["HEAP8"] = HEAP8 = createMemoryProxy('i8')
-  Module["HEAPU8"] = HEAPU8 = createMemoryProxy('u8')
+  Module['HEAP8'] = HEAP8 = createMemoryProxy('i8')
+  Module['HEAPU8'] = HEAPU8 = createMemoryProxy('u8')
 } else {
   Module['HEAP8'] = HEAP8 = new Int8Array(b);
   Module['HEAPU8'] = HEAPU8 = new Uint8Array(b);
 }
 if (b.byteLength > maxArraySize * 2) {
-  Module["HEAP16"] = HEAP16 = createMemoryProxy('i16')
-  Module["HEAPU16"] = HEAPU16 = createMemoryProxy('u16')
+  Module['HEAP16'] = HEAP16 = createMemoryProxy('i16')
+  Module['HEAPU16'] = HEAPU16 = createMemoryProxy('u16')
 } else {
   Module['HEAP16'] = HEAP16 = new Int16Array(b);
   Module['HEAPU16'] = HEAPU16 = new Uint16Array(b);
