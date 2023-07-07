@@ -36,13 +36,26 @@ function escapeJSONKey(x) {
   return "'" + x + "'";
 }
 
+// JSON.stringify will completely omit function objects.  This function is
+// similar but preserves functions.
 function stringifyWithFunctions(obj) {
   if (typeof obj == 'function') return obj.toString();
   if (obj === null || typeof obj != 'object') return JSON.stringify(obj);
   if (Array.isArray(obj)) {
     return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
   }
-  return '{' + Object.keys(obj).map((key) => escapeJSONKey(key) + ':' + stringifyWithFunctions(obj[key])).join(',') + '}';
+  var rtn = '{\n';
+  for (const [key, value] of Object.entries(obj)) {
+    var str = stringifyWithFunctions(value);
+    // Handle JS method syntax where the function property starts with its own
+    // name. e.g.  foo(a) {},
+    if (typeof value === 'function' && str.startsWith(key)) {
+      rtn += str + ',\n'
+    } else {
+      rtn += escapeJSONKey(key) + ':' + str + ',\n';
+    }
+  }
+  return rtn + '}';
 }
 
 function isDefined(symName) {
@@ -112,7 +125,7 @@ function runJSify() {
     // When WASM_BIGINT is not enabled we receive i64 values as a pair of i32
     // numbers which is coverted to single int53 number.  In necessary, we also
     // split the return value into a pair of i32 numbers.
-    return modifyJSFunction(snippet, (args, body, async_) => {
+    return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
       let argLines = args.split('\n');
       argLines = argLines.map((line) => line.split('//')[0]);
       const argNames = argLines.join(' ').split(',').map((name) => name.trim());
@@ -133,6 +146,9 @@ function runJSify() {
           if (sig[i] == 'j' && i53abi) {
             argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
             newArgs.push(defineI64Param(name));
+          } else if (sig[i] == 'p' && CAN_ADDRESS_2GB) {
+            argConvertions += `  ${name} >>>= 0;\n`;
+            newArgs.push(name);
           } else {
             newArgs.push(name);
           }
@@ -147,6 +163,9 @@ function runJSify() {
       if ((sig[0] == 'j' && i53abi) || (sig[0] == 'p' && WASM_BIGINT)) {
         // For functions that where we need to mutate the return value, we
         // also need to wrap the body in an inner function.
+        if (oneliner) {
+          return `${async_}(${args}) => ${makeReturn64(body)};`
+        }
         return `\
 ${async_}function(${args}) {
 ${argConvertions}
@@ -157,6 +176,9 @@ ${argConvertions}
 
       // Otherwise no inner function is needed and we covert the arguments
       // before executing the function body.
+      if (oneliner) {
+        body = `return ${body}`;
+      }
       return `\
 ${async_}function(${args}) {
 ${argConvertions}
@@ -191,8 +213,8 @@ function(${args}) {
 
     const sig = LibraryManager.library[symbol + '__sig'];
     const i53abi = LibraryManager.library[symbol + '__i53abi'];
-    if (sig && ((i53abi && sig.includes('j')) ||
-                (MEMORY64 && sig.includes('p')))) {
+    if (sig &&
+        ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')))) {
       snippet = handleI64Signatures(symbol, snippet, sig, i53abi);
       i53ConversionDeps.forEach((d) => deps.push(d))
     }
@@ -485,7 +507,7 @@ function(${args}) {
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
       if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
-        contentText += `\nModule["${mangled}"] = ${mangled};`;
+        contentText += `\nModule['${mangled}'] = ${mangled};`;
       }
       // Relocatable code needs signatures to create proper wrappers. Stack
       // switching needs signatures so we can create a proper

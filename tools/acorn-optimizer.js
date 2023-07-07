@@ -513,8 +513,8 @@ function applyImportAndExportNameChanges(ast) {
     if (isWasmImportsAssign(node)) {
       const assignedObject = getWasmImportsValue(node);
       assignedObject.properties.forEach((item) => {
-        if (mapping[item.key.value]) {
-          setLiteralValue(item.key, mapping[item.key.value]);
+        if (mapping[item.key.name]) {
+          item.key.name = mapping[item.key.name];
         }
       });
     } else if (node.type === 'AssignmentExpression') {
@@ -665,16 +665,16 @@ function emitDCEGraph(ast) {
   // The exports are trickier, as they have a different form whether or not
   // async compilation is enabled. It can be either:
   //
-  //  var _malloc = Module["_malloc"] = asm["_malloc"];
+  //  var _malloc = Module['_malloc'] = asm['_malloc'];
   //
   // or
   //
-  //  var _malloc = asm["_malloc"];
+  //  var _malloc = asm['_malloc'];
   //
   // or
   //
-  //  var _malloc = Module["_malloc"] = (function() {
-  //   return Module["asm"]["_malloc"].apply(null, arguments);
+  //  var _malloc = Module['_malloc'] = (function() {
+  //   return Module['asm']['_malloc'].apply(null, arguments);
   //  });
   //
   // or, in the minimal runtime, it looks like
@@ -982,7 +982,7 @@ function applyDCEGraphRemovals(ast) {
     if (isWasmImportsAssign(node)) {
       const assignedObject = getWasmImportsValue(node);
       assignedObject.properties = assignedObject.properties.filter((item) => {
-        const name = item.key.value;
+        const name = item.key.name;
         const value = item.value;
         const full = 'emcc$import$' + name;
         return !(unused.has(full) && !hasSideEffects(value));
@@ -1945,24 +1945,16 @@ function reattachComments(ast, comments) {
       symbols[j].start.comments_before = [];
     }
     symbols[j].start.comments_before.push(
-      new terser.AST_Token({
-        end: undefined,
-        quote: undefined,
-        raw: undefined,
-        file: '0',
-        comments_after: undefined,
-        comments_before: undefined,
-        nlb: false,
-        endpos: undefined,
-        endcol: undefined,
-        endline: undefined,
-        pos: undefined,
-        col: undefined,
-        line: undefined,
-        value: comments[i].value,
-        type: comments[i].type == 'Line' ? 'comment' : 'comment2',
-        flags: 0,
-      })
+      new terser.AST_Token(
+        comments[i].type == 'Line' ? 'comment' : 'comment2',
+        comments[i].value,
+        undefined,
+        undefined,
+        false,
+        undefined,
+        undefined,
+        '0'
+      )
     );
   }
 }

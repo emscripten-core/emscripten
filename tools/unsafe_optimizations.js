@@ -223,7 +223,7 @@ function optPassMergeVarInitializationAssignments(ast) {
 }
 
 function runOnJsText(js, pretty = false) {
-  const ast = acorn.parse(js, {ecmaVersion: 6});
+  const ast = acorn.parse(js, {ecmaVersion: 2020});
 
   optPassSimplifyModuleInitialization(ast);
   optPassRemoveRedundantOperatorNews(ast);
@@ -255,7 +255,7 @@ let numTestFailures = 0;
 function test(input, expected) {
   const observed = runOnJsText(input);
   if (observed != expected) {
-    console.error(`Input: ${input}\nobserved: ${observed}\nexpected: ${expected}\n`);
+    console.error(`ERROR: Input: ${input}\nobserved: ${observed}\nexpected: ${expected}\n`);
     ++numTestFailures;
   } else {
     console.log(`OK: ${input} -> ${expected}`);
@@ -279,7 +279,7 @@ function runTests() {
   test("new function(a) {new TextDecoder(a);}('utf8');", '');
   test(
     'WebAssembly.instantiate(c.wasm,{}).then((a) => {new Int8Array(b);});',
-    'WebAssembly.instantiate(c.wasm,{}).then(a=>{});'
+    'WebAssembly.instantiate(c.wasm,{}).then((a=>{}));'
   );
   test('let x=new Uint16Array(a);', 'let x=new Uint16Array(a);');
 
@@ -304,6 +304,9 @@ function runTests() {
 
   // Test that arrays containing nulls don't cause issues
   test('[,];', '[,];');
+
+  // Test optional chaining operator
+  test('console?.log("");', 'console?.log("");');
 
   process.exit(numTestFailures);
 }

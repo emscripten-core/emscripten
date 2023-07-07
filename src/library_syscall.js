@@ -80,9 +80,6 @@ var SyscallsLibrary = {
         // MAP_PRIVATE calls need not to be synced back to underlying fs
         return 0;
       }
-#if CAN_ADDRESS_2GB
-      addr >>>= 0;
-#endif
       var buffer = HEAPU8.slice(addr, addr + len);
       FS.msync(stream, buffer, offset, len, flags);
     },
@@ -92,7 +89,7 @@ var SyscallsLibrary = {
 
     varargs: undefined,
 
-    get: function() {
+    get() {
 #if ASSERTIONS
       assert(SYSCALLS.varargs != undefined);
 #endif
@@ -103,7 +100,7 @@ var SyscallsLibrary = {
 #endif
       return ret;
     },
-    getStr: function(ptr) {
+    getStr(ptr) {
       var ret = UTF8ToString(ptr);
 #if SYSCALL_DEBUG
       dbg(`    (str: "${ret}")`);
@@ -142,9 +139,6 @@ var SyscallsLibrary = {
     var res = FS.mmap(stream, len, offset, prot, flags);
     var ptr = res.ptr;
     {{{ makeSetValue('allocated', 0, 'res.allocated', 'i32') }}};
-#if CAN_ADDRESS_2GB
-    ptr >>>= 0;
-#endif
     {{{ makeSetValue('addr', 0, 'ptr', '*') }}};
     return 0;
 #else // no filesystem support; report lack of support

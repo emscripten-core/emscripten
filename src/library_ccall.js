@@ -85,11 +85,14 @@ mergeInto(LibraryManager.library, {
       if (stack !== 0) stackRestore(stack);
       return convertReturnValue(ret);
     }
+#if ASYNCIFY
+  var asyncMode = opts && opts.async;
+#endif
+
 #if ASYNCIFY == 1
     // Keep the runtime alive through all calls. Note that this call might not be
     // async, but for simplicity we push and pop in all calls.
     runtimeKeepalivePush();
-    var asyncMode = opts && opts.async;
     if (Asyncify.currData != previousAsync) {
 #if ASSERTIONS
       // A change in async operation happened. If there was already an async
@@ -109,6 +112,10 @@ mergeInto(LibraryManager.library, {
 #endif
       return Asyncify.whenDone().then(onDone);
     }
+#endif
+
+#if ASYNCIFY == 2
+    if (asyncMode) return ret.then(onDone);
 #endif
 
     ret = onDone(ret);
