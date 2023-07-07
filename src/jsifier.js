@@ -507,7 +507,7 @@ function(${args}) {
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
       if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
-        contentText += `\nModule["${mangled}"] = ${mangled};`;
+        contentText += `\nModule['${mangled}'] = ${mangled};`;
       }
       // Relocatable code needs signatures to create proper wrappers. Stack
       // switching needs signatures so we can create a proper

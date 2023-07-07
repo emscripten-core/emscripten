@@ -355,7 +355,7 @@ function exportRuntime() {
       } else if (legacyRuntimeElements.has(exported)) {
         exported = legacyRuntimeElements.get(exported);
       }
-      return `Module["${name}"] = ${exported};`;
+      return `Module['${name}'] = ${exported};`;
     }
   }
 
