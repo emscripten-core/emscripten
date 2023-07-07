@@ -136,7 +136,8 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY == 1
               Asyncify.exportCallStack.push(x);
               try {
-#if MEMORY64
+#endif
+#if ASYNCIFY == 1 && MEMORY64
                 let args = Array.from(arguments)
                 if (args.length > 0 && x.startsWith('dynCall_')) {
                     args[0] = Number(args[0])
@@ -151,7 +152,6 @@ mergeInto(LibraryManager.library, {
                 return original.apply(null, args);
 #else
                 return original.apply(null, arguments);
-#endif
 #endif
 #if ASYNCIFY == 1
               } finally {
