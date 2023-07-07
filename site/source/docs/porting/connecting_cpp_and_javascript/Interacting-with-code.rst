@@ -347,10 +347,11 @@ See the :c:macro:`emscripten.h docs <EM_ASM_>` for more details.
      single quotes('). Double quotes(") will cause a syntax error that
      is not detected by the compiler and is only shown when looking at
      a JavaScript console while running the offending code.
-   - clang-format may clobber Javascript constructions, such as ``=>``,
-     turning to ``= >``. To avoid this, turn `clang-format off`_ by writing
-     ``// clang-format off`` before the ``EM_ASM`` section and
-     ``// clang-format on`` after it.
+   - clang-format may clobber Javascript constructions, such as ``=>``
+     turning to ``= >``. To avoid this, add to your ``.clang-format``:
+     ``WhitespaceSensitiveMacros: ['EM_ASM', 'EM_JS', 'EM_ASM_INT', 'EM_ASM_DOUBLE', 'EM_ASM_PTR', 'MAIN_THREAD_EM_ASM', 'MAIN_THREAD_EM_ASM_INT', 'MAIN_THREAD_EM_ASM_DOUBLE', 'MAIN_THREAD_EM_ASM_DOUBLE', 'MAIN_THREAD_ASYNC_EM_ASM']``.
+     Or, turn `clang-format off`_ by writing ``// clang-format off``
+     before the ``EM_ASM`` section and ``// clang-format on`` after it.
 
 
 .. _implement-c-in-javascript:
