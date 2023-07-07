@@ -933,6 +933,7 @@ f.close()
       ('glesv2', '10.2.2'),
       ('glfw3', '3.2.1'),
       ('sdl', '1.2.15'),
+      ('zlib', '1.2.13'),
     ]
     for package, version in packages:
         out = self.run_process([emmake, 'pkg-config', '--modversion', package], stdout=PIPE).stdout
