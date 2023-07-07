@@ -5,14 +5,14 @@ var wasmImports = {
  save2: 2
 };
 
-WebAssembly.instantiate(Module["wasm"], imports).then(output => {
+WebAssembly.instantiate(Module["wasm"], imports).then((output => {
  asm = output.instance.exports;
  expD1 = asm["expD1"];
  expD2 = asm["expD2"];
  expD3 = asm["expD3"];
  initRuntime(asm);
  ready();
-});
+}));
 
 expD1;
 
