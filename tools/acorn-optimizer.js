@@ -513,8 +513,8 @@ function applyImportAndExportNameChanges(ast) {
     if (isWasmImportsAssign(node)) {
       const assignedObject = getWasmImportsValue(node);
       assignedObject.properties.forEach((item) => {
-        if (mapping[item.key.value]) {
-          setLiteralValue(item.key, mapping[item.key.value]);
+        if (mapping[item.key.name]) {
+          item.key.name = mapping[item.key.name];
         }
       });
     } else if (node.type === 'AssignmentExpression') {
@@ -982,7 +982,7 @@ function applyDCEGraphRemovals(ast) {
     if (isWasmImportsAssign(node)) {
       const assignedObject = getWasmImportsValue(node);
       assignedObject.properties = assignedObject.properties.filter((item) => {
-        const name = item.key.value;
+        const name = item.key.name;
         const value = item.value;
         const full = 'emcc$import$' + name;
         return !(unused.has(full) && !hasSideEffects(value));

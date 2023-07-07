@@ -1,8 +1,8 @@
 var name;
 
 var wasmImports = {
- "save1": 1,
- "save2": 2
+ save1: 1,
+ save2: 2
 };
 
 WebAssembly.instantiate(Module["wasm"], imports).then(output => {
