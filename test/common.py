@@ -656,6 +656,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('either d8 or node >= 16 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
   def require_jspi(self):
+    # emcc warns about stack switching being experimental, and we build with
+    # warnings-as-errors, so disable that warning
+    self.emcc_args += ['-Wno-experimental']
+    self.emcc_args += ['-sASYNCIFY=2']
     if not self.is_wasm():
       self.skipTest('JSPI is not currently supported for WASM2JS')
 

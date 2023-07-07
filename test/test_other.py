@@ -2744,9 +2744,8 @@ int f() {
     'no_dynamic': ['-sDYNAMIC_EXECUTION=0'],
   })
   def test_embind_jspi(self, extra):
-    self.require_v8()
-    self.v8_args.append('--experimental-wasm-stack-switching')
-    self.emcc_args += ['-lembind', '-g', '-sASYNCIFY=2', '-Wno-experimental']
+    self.require_jspi()
+    self.emcc_args += ['-lembind', '-g']
     self.emcc_args += [extra]
 
     self.do_runf(test_file('embind/embind_jspi_test.cpp'), 'done')
@@ -2869,9 +2868,8 @@ int f() {
     self.assertNotContained('Foo* destructed', output)
 
   def test_jspi_wildcard(self):
-    self.require_v8()
-    self.v8_args.append('--experimental-wasm-stack-switching')
-    self.emcc_args += ['-sASYNCIFY=2', '-sASYNCIFY_EXPORTS=async*', '-Wno-experimental']
+    self.require_jspi()
+    self.emcc_args += ['-sASYNCIFY_EXPORTS=async*']
 
     self.do_runf(test_file('other/test_jspi_wildcard.c'), 'done')
 
@@ -6677,9 +6675,7 @@ int main(int argc,char** argv) {
     if asyncify:
       self.set_setting('ASYNCIFY', asyncify)
       if asyncify == 2:
-        self.emcc_args.append('-Wno-experimental')
-        self.require_v8()
-        self.v8_args.append('--experimental-wasm-stack-switching')
+        self.require_jspi()
     self.emcc_args.append('libside.so')
     self.do_other_test('test_dlopen_blocking.c')
 
@@ -11803,9 +11799,8 @@ exec "$@"
     if customLoader:
       self.emcc_args += ['--pre-js', test_file('other/test_load_split_module.pre.js')]
     if jspi:
-      self.require_v8()
-      self.v8_args.append('--experimental-wasm-stack-switching')
-      self.emcc_args += ['-g', '-sASYNCIFY=2', '-sASYNCIFY_EXPORTS=[\'say_hello\']']
+      self.require_jspi()
+      self.emcc_args += ['-g', '-sASYNCIFY_EXPORTS=[\'say_hello\']']
     self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free']
     output = self.do_other_test('test_split_module.c')
     if jspi:
