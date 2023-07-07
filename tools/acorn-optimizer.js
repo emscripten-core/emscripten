@@ -665,16 +665,16 @@ function emitDCEGraph(ast) {
   // The exports are trickier, as they have a different form whether or not
   // async compilation is enabled. It can be either:
   //
-  //  var _malloc = Module["_malloc"] = asm["_malloc"];
+  //  var _malloc = Module['_malloc'] = asm['_malloc'];
   //
   // or
   //
-  //  var _malloc = asm["_malloc"];
+  //  var _malloc = asm['_malloc'];
   //
   // or
   //
-  //  var _malloc = Module["_malloc"] = (function() {
-  //   return Module["asm"]["_malloc"].apply(null, arguments);
+  //  var _malloc = Module['_malloc'] = (function() {
+  //   return Module['asm']['_malloc'].apply(null, arguments);
   //  });
   //
   // or, in the minimal runtime, it looks like
