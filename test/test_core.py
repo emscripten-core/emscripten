@@ -6637,8 +6637,9 @@ void* operator new(size_t size) {
 
   @no_lsan('Test code contains memory leaks')
   @parameterized({
-      '': (False,),
-      '_asyncify': (True,)
+      '': (0,),
+      'asyncify': (1,),
+      'jspi': (2,),
   })
   def test_cubescript(self, asyncify):
     # uses register keyword
@@ -6652,7 +6653,10 @@ void* operator new(size_t size) {
     if asyncify:
       if self.is_wasm64():
         self.skipTest('TODO: asyncify for wasm64')
-      self.set_setting('ASYNCIFY')
+      self.set_setting('ASYNCIFY', asyncify)
+    if asyncify == 2:
+      self.require_jspi()
+      self.emcc_args += ['-Wno-experimental']
 
     src = test_file('third_party/cubescript/command.cpp')
     self.do_runf(src, '*\nTemp is 33\n9\n5\nhello, everyone\n*')
