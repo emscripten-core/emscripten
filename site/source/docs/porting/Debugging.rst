@@ -22,7 +22,7 @@ This article describes the main tools and settings provided by Emscripten for de
 Debug information
 =================
 
-:ref:`Emcc <emccdoc>` strips out most of the debug information from :ref:`optimized builds <Optimizing-Code>` by default. Optimisation levels :ref:`-O1 <emcc-O1>` and above remove LLVM debug information, and also disable runtime :ref:`ASSERTIONS <debugging-ASSERTIONS>` checks. From optimization level :ref:`-O2 <emcc-O2>` the code is minified by the :term:`Closure Compiler` and becomes virtually unreadable.
+:ref:`Emcc <emccdoc>` strips out most of the debug information from :ref:`optimized builds <Optimizing-Code>` by default. The higher the optimization level, the more degraded the quality of DWARF debug information is, so we recommend using :ref:`-O0 <emcc-O0>` or :ref:`-O1 <emcc-O1>` for debugging purposes. :ref:`-O1 <emcc-O1>` and above also disable runtime :ref:`ASSERTIONS <debugging-ASSERTIONS>` checks. From optimization level :ref:`-O2 <emcc-O2>` the JavaScript code is minified by the :term:`Closure Compiler` and becomes virtually unreadable.
 
 The *emcc* :ref:`-g flag <emcc-g>` can be used to preserve debug information in the compiled output. By default, this option includes Clang / LLVM debug information in a DWARF format in the generated WebAssembly code and preserves white-space, function names and variable names in the generated JavaScript code.
 
@@ -30,7 +30,9 @@ The flag can also be specified with an integer level: :ref:`-g0 <emcc-g0>`, :ref
 
 The :ref:`-gsource-map <emcc-gsource-map>` option is similar to ``-g2`` but also generates source maps that allow you to view and debug the *C/C++ source code* in your browser's debugger. Source maps are not as powerful as DWARF which was mentioned earlier (they contain only source location info), but they are currently more widely supported.
 
-.. note:: Some optimizations may be disabled when used in conjunction with the debug flags. For example, if you compile with ``-O3 -g`` some of the normal ``-O3`` optimizations will be disabled in order to provide the requested debugging information, such as name minification.
+.. note:: Because Binaryen optimization degrades the quality of DWARF info further, ``-O1 -g`` will skip running the Binaryen optimizer (``wasm-opt``) entirely unless required by other options. You can also throw in ``-sERROR_ON_WASM_CHANGES_AFTER_LINK`` option if you want to ensure the debug info is preserved. See `Skipping Binaryen <https://developer.chrome.com/blog/faster-wasm-debugging/#skipping-binaryen>`_ for more details.
+
+.. note:: Some optimizations may be disabled when used in conjunction with the debug flags both in the Binaryen optimizer (even if it runs) and JavaScript optimizer. For example, if you compile with ``-O3 -g``, the Binaryen optimizer will skip some of the optimization passes that do not produce valid DWARF information, and also some of the normal JavaScript optimization will be disabled in order to better provide the requested debugging information.
 
 .. _debugging-EMCC_DEBUG:
 
@@ -143,6 +145,16 @@ Debug printouts can even execute arbitrary JavaScript. For example::
     //---
     _printAnInteger($left + $right | 0);
   }
+
+
+Debugging with Chrome Devtools
+==============================
+
+Chrome devtools support source-level debugging on WebAssembly files with DWARF information. To use that, you need the Wasm debugging extension plugin here:
+https://goo.gle/wasm-debugging-extension
+
+See `Debugging WebAssembly with modern tools
+<https://developer.chrome.com/blog/wasm-debugging-2020/>`_ for the details.
 
 
 .. _handling-c-exceptions-from-javascript:
@@ -354,6 +366,8 @@ Useful Links
 
 - `Blogpost about reading compiler output <http://mozakai.blogspot.com/2014/06/looking-through-emscripten-output.html>`_.
 - `GDC 2014: Getting started with asm.js and Emscripten <https://web.archive.org/web/20140325222509/http://people.mozilla.org/~lwagner/gdc-pres/gdc-2014.html#/20>`_ (Debugging slides).
+- `Links to Wasm debugging-related documents <https://web.dev/webassembly/#webassembly-debugging>`_
+
 
 Need help?
 ==========
