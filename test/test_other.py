@@ -13600,11 +13600,11 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   });
   ''')
     self.run_process([EMCC, test_file('hello_world.c'),
-                        '-sMEMORY64=1',
-                        '-sINITIAL_MEMORY=5gb',
-                        '-sMAXIMUM_MEMORY=5gb',
-                        '-sALLOW_MEMORY_GROWTH',
-                        '-sEXPORTED_FUNCTIONS=_malloc,_main',
-                        '-Wno-experimental',
-                        '--extern-post-js', 'post.js'])
+                      '-sMEMORY64=1',
+                      '-sINITIAL_MEMORY=5gb',
+                      '-sMAXIMUM_MEMORY=5gb',
+                      '-sALLOW_MEMORY_GROWTH',
+                      '-sEXPORTED_FUNCTIONS=_malloc,_main',
+                      '-Wno-experimental',
+                      '--extern-post-js', 'post.js'])
     self.run_js('a.out.js')
