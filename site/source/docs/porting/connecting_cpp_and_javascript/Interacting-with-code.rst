@@ -347,6 +347,11 @@ See the :c:macro:`emscripten.h docs <EM_ASM_>` for more details.
      single quotes('). Double quotes(") will cause a syntax error that
      is not detected by the compiler and is only shown when looking at
      a JavaScript console while running the offending code.
+   - clang-format may clobber Javascript constructions, such as ``=>``
+     turning to ``= >``. To avoid this, add to your ``.clang-format``:
+     ``WhitespaceSensitiveMacros: ['EM_ASM', 'EM_JS', 'EM_ASM_INT', 'EM_ASM_DOUBLE', 'EM_ASM_PTR', 'MAIN_THREAD_EM_ASM', 'MAIN_THREAD_EM_ASM_INT', 'MAIN_THREAD_EM_ASM_DOUBLE', 'MAIN_THREAD_EM_ASM_DOUBLE', 'MAIN_THREAD_ASYNC_EM_ASM']``.
+     Or, turn `clang-format off`_ by writing ``// clang-format off``
+     before the ``EM_ASM`` section and ``// clang-format on`` after it.
 
 
 .. _implement-c-in-javascript:
@@ -814,6 +819,7 @@ you can give it a try. See `Emnapi documentation`_ for more details.
 .. _test/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L4597
 .. _Box2D: https://github.com/kripken/box2d.js/#box2djs
 .. _Bullet: https://github.com/kripken/ammo.js/#ammojs
+.. _clang-format off: https://clang.llvm.org/docs/ClangFormatStyleOptions.html#disabling-formatting-on-a-piece-of-code
 .. _Emnapi: https://github.com/toyobayashi/emnapi
 .. _Node-API: https://nodejs.org/dist/latest/docs/api/n-api.html
 .. _Emnapi documentation: https://emnapi-docs.vercel.app/guide/getting-started.html
