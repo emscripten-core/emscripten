@@ -719,8 +719,12 @@ def create_sending(metadata, library_symbols):
             continue
           send_items_map[demangled] = f
 
-  sorted_keys = sorted(send_items_map.keys())
-  return '{\n  ' + ',\n  '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + '\n}'
+  sorted_items = sorted(send_items_map.items())
+  prefix = ''
+  if settings.USE_CLOSURE_COMPILER:
+    # This prevents closure compiler from minifying the field names in this object.
+    prefix = '/** @export */\n  '
+  return '{\n  ' + ',\n  '.join(f'{prefix}{k}: {v}' for k, v in sorted_items) + '\n}'
 
 
 def make_export_wrappers(exports, delay_assignment):
