@@ -138,6 +138,7 @@ def no_wasm64(note=''):
     return skip_if(f, 'is_wasm64', note)
   return decorated
 
+
 def no_wasm64l(note=''):
   assert not callable(note)
 
