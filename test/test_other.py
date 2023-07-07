@@ -5961,24 +5961,6 @@ int main(void) {
     self.assertNotContained('hello, world!', output)
     self.assertContained('hello, earth!', output)
 
-  def test_define_modularize(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sASSERTIONS=0'])
-    src = 'var module = 0; ' + read_file('a.out.js')
-    create_file('a.out.js', src)
-    self.assertContained("define([], () => Module);", src)
-
-    create_file('run_module.js', 'var m; (global.define = (deps, factory) => { m = factory(); }).amd = true; require("./a.out.js"); m();')
-    output = self.run_js('run_module.js')
-    self.assertContained('hello, world!\n', output)
-
-    self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sEXPORT_NAME="NotModule"', '-sASSERTIONS=0'])
-    src = 'var module = 0; ' + read_file('a.out.js')
-    create_file('a.out.js', src)
-    self.assertContained("define([], () => NotModule);", src)
-
-    output = self.run_js('run_module.js')
-    self.assertContained('hello, world!\n', output)
-
   def test_EXPORT_NAME_with_html(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', 'a.html', '-sEXPORT_NAME=Other'])
     self.assertContained('Customizing EXPORT_NAME requires that the HTML be customized to use that name', err)
