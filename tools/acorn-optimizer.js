@@ -2067,6 +2067,7 @@ if (!noPrint) {
     beautify: !minifyWhitespace,
     indent_level: minifyWhitespace ? 0 : 1,
     keep_quoted_props: true, // for closure
+    wrap_func_args: false, // don't add extra braces
     comments: true, // for closure as well
   });
 
