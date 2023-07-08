@@ -17,15 +17,15 @@ var expD5 = asm["expD5"];
 
 var expD6;
 
-var expI1 = Module["expI1"] = () => (expI1 = Module["expI1"] = Module["asm"]["expI1"])();
+var expI1 = Module["expI1"] = () => (expI1 = Module["expI1"] = wasmExports["expI1"])();
 
-var expI2 = Module["expI2"] = () => (expI2 = Module["expI2"] = Module["asm"]["expI2"])();
+var expI2 = Module["expI2"] = () => (expI2 = Module["expI2"] = wasmExports["expI2"])();
 
-var expI3 = Module["expI3"] = () => (expI3 = Module["expI3"] = Module["asm"]["expI3"])();
+var expI3 = Module["expI3"] = () => (expI3 = Module["expI3"] = wasmExports["expI3"])();
 
 var expI4;
 
-var expI5 = () => (expI5 = Module["asm"]["expI5"])();
+var expI5 = () => (expI5 = wasmExports["expI5"])();
 
 var expI6;
 

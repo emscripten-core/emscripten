@@ -762,7 +762,7 @@ def make_export_wrappers(function_exports, delay_assignment):
       # first use.
       args = [f'a{i}' for i in range(nargs)]
       args = ', '.join(args)
-      wrapper += f"({args}) => ({mangled} = {exported}Module['asm']['{name}'])({args});"
+      wrapper += f"({args}) => ({mangled} = {exported}wasmExports['{name}'])({args});"
     else:
       wrapper += 'asm["%s"]' % name
 

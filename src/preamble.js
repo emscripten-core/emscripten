@@ -53,6 +53,7 @@ if (typeof WebAssembly != 'object') {
 // Wasm globals
 
 var wasmMemory;
+var wasmExports;
 
 #if SHARED_MEMORY
 // For sending to workers.
@@ -471,7 +472,7 @@ function abort(what) {
 #if WASM_EXCEPTIONS == 1
   // See above, in the meantime, we resort to wasm code for trapping.
   //
-  // In case abort() is called before the module is initialized, Module['asm']
+  // In case abort() is called before the module is initialized, wasmExports
   // and its exported '__trap' function is not available, in which case we throw
   // a RuntimeError.
   //
@@ -527,7 +528,7 @@ function createExportWrapper(name) {
 #if EXIT_RUNTIME
     assert(!runtimeExited, `native function \`${name}\` called after runtime exit (use NO_EXIT_RUNTIME to keep it alive after main() exits)`);
 #endif
-    var f = Module['asm'][name];
+    var f = wasmExports[name];
     assert(f, `exported native function \`${name}\` not found`);
     return f.apply(null, arguments);
   };
@@ -714,7 +715,7 @@ var splitModuleProxyHandler = {
       throw new Error('Placeholder function "' + prop + '" should not be called when using JSPI.');
 #else
       err('placeholder function called: ' + prop);
-      var imports = {'primary': Module['asm']};
+      var imports = {'primary': wasmExports};
       // Replace '.wasm' suffix with '.deferred.wasm'.
       var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm'
       loadSplitModule(deferred, imports, prop);
@@ -979,18 +980,20 @@ function createWasm() {
     exports = applySignatureConversions(exports);
 #endif
 
-    Module['asm'] = exports;
+    wasmExports = exports;
+    {{{ receivedSymbol('wasmExports') }}}
 
 #if PTHREADS
 #if MAIN_MODULE
-    registerTLSInit(Module['asm']['_emscripten_tls_init'], instance.exports, metadata);
+    registerTLSInit(wasmExports['_emscripten_tls_init'], instance.exports, metadata);
 #else
-    registerTLSInit(Module['asm']['_emscripten_tls_init']);
+    registerTLSInit(wasmExports['_emscripten_tls_init']);
 #endif
 #endif
 
 #if !IMPORTED_MEMORY
-    wasmMemory = Module['asm']['memory'];
+    wasmMemory = wasmExports['memory'];
+    {{{ receivedSymbol('wasmMemory') }}}
 #if ASSERTIONS
     assert(wasmMemory, "memory not found in wasm exports");
     // This assertion doesn't hold when emscripten is run in --post-link
@@ -1005,7 +1008,8 @@ function createWasm() {
 #endif
 
 #if !RELOCATABLE
-    wasmTable = Module['asm']['__indirect_function_table'];
+    wasmTable = wasmExports['__indirect_function_table'];
+    {{{ receivedSymbol('wasmTable') }}}
 #if ASSERTIONS && !PURE_WASI
     assert(wasmTable, "table not found in wasm exports");
 #endif
@@ -1019,11 +1023,11 @@ function createWasm() {
 #endif
 
 #if hasExportedSymbol('__wasm_call_ctors')
-    addOnInit(Module['asm']['__wasm_call_ctors']);
+    addOnInit(wasmExports['__wasm_call_ctors']);
 #endif
 
 #if hasExportedSymbol('__wasm_apply_data_relocs')
-    __RELOC_FUNCS__.push(Module['asm']['__wasm_apply_data_relocs']);
+    __RELOC_FUNCS__.push(wasmExports['__wasm_apply_data_relocs']);
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS

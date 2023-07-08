@@ -331,7 +331,7 @@ var LibraryExceptions = {
 #if RELOCATABLE
     return ___cpp_exception; // defined in library.js
 #else
-    return Module['asm']['__cpp_exception'];
+    return wasmExports['__cpp_exception'];
 #endif
   },
 
