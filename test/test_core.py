@@ -1598,6 +1598,7 @@ int main(int argc, char **argv) {
                   // Emscripten EH sets the refcount to 0 when throwing, and
                   // increase it in __cxa_begin_catch, and decrease it in
                   // __cxa_end_catch. Fix this inconsistency later.
+                  // https://github.com/emscripten-core/emscripten/issues/17115
                   incrementExceptionRefcount(p);
 #endif
                   console.log(getExceptionMessage(p).toString());
