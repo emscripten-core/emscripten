@@ -157,9 +157,7 @@ See `Debugging WebAssembly with modern tools
 <https://developer.chrome.com/blog/wasm-debugging-2020/>`_ for the details.
 
 
-.. _handling-c-exceptions-from-javascript:
-
-Handling C++ exceptions from JavaScript
+Handling C++ Exceptions from JavaScript
 =======================================
 
 See :ref:`handling-c-exceptions-from-javascript`.

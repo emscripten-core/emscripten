@@ -116,7 +116,7 @@ exceptions <javascript-based-exception-support>`.
 
 .. _handling-c-exceptions-from-javascript:
 
-Handling C++ exceptions from JavaScript
+Handling C++ Exceptions from JavaScript
 ---------------------------------------
 
 You can also catch and examine the type and the message of C++ exceptions from
