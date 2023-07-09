@@ -6261,9 +6261,8 @@ int main() {
     self.run_process([EMCC, '-O1', 'test.c', '-sALLOW_MEMORY_GROWTH'])
     self.assertContained('done', self.run_js('a.out.js'))
 
+  @requires_wasm64
   def test_failing_growth_wasm64(self):
-    # For now we skip this test because failure to create the TypedArray views
-    # causes weird unrecoverable failures.
     self.require_wasm64()
     create_file('test.c', r'''
 #include <assert.h>

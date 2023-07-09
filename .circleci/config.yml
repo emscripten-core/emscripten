@@ -587,7 +587,7 @@ jobs:
       - install-node-canary
       - run-tests:
           title: "wasm64"
-          test_targets: "wasm64 wasm64l.test_bigswitch other.test_memory64_proxies"
+          test_targets: "wasm64 wasm64l.test_bigswitch other.test_memory64_proxies other.test_failing_growth_wasm64"
       - upload-test-results
   test-jsc:
     executor: linux-python
@@ -691,6 +691,8 @@ jobs:
       - upload-test-results
   test-other:
     executor: bionic
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run: apt-get install ninja-build scons
       - run-tests-linux:
