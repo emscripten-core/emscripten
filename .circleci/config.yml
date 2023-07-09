@@ -587,7 +587,7 @@ jobs:
       - install-node-canary
       - run-tests:
           title: "wasm64"
-          test_targets: "wasm64 wasm64l.test_bigswitch"
+          test_targets: "wasm64 wasm64l.test_bigswitch other.test_memory64_proxies"
       - upload-test-results
   test-jsc:
     executor: linux-python

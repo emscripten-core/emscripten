@@ -32,7 +32,7 @@ from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP,
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
-from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64
+from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
 from common import requires_wasm_eh, crossplatform, with_both_sjlj, also_with_standalone_wasm
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64
 from common import EMTEST_BUILD_VERBOSE, PYTHON
@@ -13556,6 +13556,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.do_other_test('test_console_out.c')
 
   @requires_wasm64
+  @requires_node_canary
   def test_memory64_proxies(self):
     create_file('post.js', r'''
   addOnPostRun(() => {

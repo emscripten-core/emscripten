@@ -5501,6 +5501,7 @@ Module["preRun"].push(function () {
 
   @no_firefox('no 4GB support yet')
   @also_with_wasm64
+  @requires_v8
   def test_zzz_zzz_4gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
     #      For now, keep this in browser as this suite runs serially, which
