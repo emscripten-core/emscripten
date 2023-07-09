@@ -248,7 +248,11 @@ def get_named_globals(module, exports):
 
 
 def get_function_exports(module):
-  return [e.name for e in module.get_exports() if e.kind == webassembly.ExternType.FUNC]
+  rtn = {}
+  for e in module.get_exports():
+    if e.kind == webassembly.ExternType.FUNC:
+      rtn[e.name] = len(module.get_function_type(e.index).params)
+  return rtn
 
 
 def update_metadata(filename, metadata):

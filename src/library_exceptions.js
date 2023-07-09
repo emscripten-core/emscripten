@@ -175,7 +175,7 @@ var LibraryExceptions = {
   __cxa_end_catch__sig: 'v',
   __cxa_end_catch: function() {
     // Clear state flag.
-    _setThrew(0);
+    _setThrew(0, 0);
 #if ASSERTIONS
     assert(exceptionCaught.length > 0);
 #endif
