@@ -8260,7 +8260,6 @@ Module.onRuntimeInitialized = () => {
     'jspi': (False, 2),
     'exit_runtime_jspi': (True, 2),
   })
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_async_ccall_promise(self, exit_runtime, asyncify):
     if asyncify == 2:
       self.require_jspi()
