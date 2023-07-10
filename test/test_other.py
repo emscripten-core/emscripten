@@ -6262,6 +6262,7 @@ int main() {
     self.assertContained('done', self.run_js('a.out.js'))
 
   @requires_wasm64
+  @requires_node_canary
   def test_failing_growth_wasm64(self):
     self.require_wasm64()
     create_file('test.c', r'''
