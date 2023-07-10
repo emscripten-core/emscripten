@@ -178,19 +178,6 @@ var LibraryGLEmulation = {
         0x80A0: 1  // GL_SAMPLE_COVERAGE
       };
 
-#if RELOCATABLE
-{{{
-(updateExport = (name) => {
-  var name = `_${name}`;
-  var exported = `Module["${name}"]`;
-  // make sure we write to an existing export, and are not repeating ourselves
-  return `assert(${exported} !== ${name}); ${exported} = ${name};`;
-}, '')
-}}}
-#else
-{{{ (updateExport = () => '', '') }}}
-#endif
-
       var glEnable = _glEnable;
       _glEnable = _emscripten_glEnable = (cap) => {
         // Clean up the renderer on any change to the rendering state. The optimization of
@@ -241,7 +228,6 @@ var LibraryGLEmulation = {
         }
         glEnable(cap);
       };
-      {{{ updateExport('glEnable') }}}
 
       var glDisable = _glDisable;
       _glDisable = _emscripten_glDisable = (cap) => {
@@ -291,7 +277,6 @@ var LibraryGLEmulation = {
         }
         glDisable(cap);
       };
-      {{{ updateExport('glDisable') }}}
 
       _glIsEnabled = _emscripten_glIsEnabled = (cap) => {
         if (cap == 0xB60 /* GL_FOG */) {
@@ -311,7 +296,6 @@ var LibraryGLEmulation = {
         }
         return GLctx.isEnabled(cap);
       };
-      {{{ updateExport('glIsEnabled') }}}
 
       var glGetBooleanv = _glGetBooleanv;
       _glGetBooleanv = _emscripten_glGetBooleanv = (pname, p) => {
@@ -323,7 +307,6 @@ var LibraryGLEmulation = {
         }
         glGetBooleanv(pname, p);
       };
-      {{{ updateExport('glGetBooleanv') }}}
 
       var glGetIntegerv = _glGetIntegerv;
       _glGetIntegerv = _emscripten_glGetIntegerv = (pname, params) => {
@@ -405,7 +388,6 @@ var LibraryGLEmulation = {
         }
         glGetIntegerv(pname, params);
       };
-      {{{ updateExport('glGetIntegerv') }}}
 
       var glGetString = _glGetString;
       _glGetString = _emscripten_glGetString = (name_) => {
@@ -421,7 +403,6 @@ var LibraryGLEmulation = {
         }
         return glGetString(name_);
       };
-      {{{ updateExport('glGetString') }}}
 
       // Do some automatic rewriting to work around GLSL differences. Note that this must be done in
       // tandem with the rest of the program, by itself it cannot suffice.
@@ -440,7 +421,6 @@ var LibraryGLEmulation = {
         };
         return id;
       };
-      {{{ updateExport('glCreateShader') }}}
 
       function ensurePrecision(source) {
         if (!/precision +(low|medium|high)p +float *;/.test(source)) {
@@ -561,7 +541,6 @@ var LibraryGLEmulation = {
 #endif
         GLctx.shaderSource(GL.shaders[shader], source);
       };
-      {{{ updateExport('glShaderSource') }}}
 
       var glCompileShader = _glCompileShader;
       _glCompileShader = _emscripten_glCompileShader = (shader) => {
@@ -576,7 +555,6 @@ var LibraryGLEmulation = {
         }
 #endif
       };
-      {{{ updateExport('glCompileShader') }}}
 
       GL.programShaders = {};
       var glAttachShader = _glAttachShader;
@@ -585,7 +563,6 @@ var LibraryGLEmulation = {
         GL.programShaders[program].push(shader);
         glAttachShader(program, shader);
       };
-      {{{ updateExport('glAttachShader') }}}
 
       var glDetachShader = _glDetachShader;
       _glDetachShader = _emscripten_glDetachShader = (program, shader) => {
@@ -598,7 +575,6 @@ var LibraryGLEmulation = {
         programShader.splice(index, 1);
         glDetachShader(program, shader);
       };
-      {{{ updateExport('glDetachShader') }}}
 
       var glUseProgram = _glUseProgram;
       _glUseProgram = _emscripten_glUseProgram = (program) => {
@@ -620,7 +596,6 @@ var LibraryGLEmulation = {
           glUseProgram(program);
         }
       }
-      {{{ updateExport('glUseProgram') }}}
 
       var glDeleteProgram = _glDeleteProgram;
       _glDeleteProgram = _emscripten_glDeleteProgram = (program) => {
@@ -630,7 +605,6 @@ var LibraryGLEmulation = {
           GL.currProgram = 0;
         }
       };
-      {{{ updateExport('glDeleteProgram') }}}
 
       // If attribute 0 was not bound, bind it to 0 for WebGL performance reasons. Track if 0 is free for that.
       var zeroUsedPrograms = {};
@@ -639,7 +613,6 @@ var LibraryGLEmulation = {
         if (index == 0) zeroUsedPrograms[program] = true;
         glBindAttribLocation(program, index, name);
       };
-      {{{ updateExport('glBindAttribLocation') }}}
 
       var glLinkProgram = _glLinkProgram;
       _glLinkProgram = _emscripten_glLinkProgram = (program) => {
@@ -648,7 +621,6 @@ var LibraryGLEmulation = {
         }
         glLinkProgram(program);
       };
-      {{{ updateExport('glLinkProgram') }}}
 
       var glBindBuffer = _glBindBuffer;
       _glBindBuffer = _emscripten_glBindBuffer = (target, buffer) => {
@@ -664,7 +636,6 @@ var LibraryGLEmulation = {
           if (GLEmulation.currentVao) GLEmulation.currentVao.elementArrayBuffer = buffer;
         }
       };
-      {{{ updateExport('glBindBuffer') }}}
 
       var glGetFloatv = _glGetFloatv;
       _glGetFloatv = _emscripten_glGetFloatv = (pname, params) => {
@@ -695,7 +666,6 @@ var LibraryGLEmulation = {
           glGetFloatv(pname, params);
         }
       };
-      {{{ updateExport('glGetFloatv') }}}
 
       var glHint = _glHint;
       _glHint = _emscripten_glHint = (target, mode) => {
@@ -704,7 +674,6 @@ var LibraryGLEmulation = {
         }
         glHint(target, mode);
       };
-      {{{ updateExport('glHint') }}}
 
       var glEnableVertexAttribArray = _glEnableVertexAttribArray;
       _glEnableVertexAttribArray = _emscripten_glEnableVertexAttribArray = (index) => {
@@ -712,7 +681,6 @@ var LibraryGLEmulation = {
         GLEmulation.enabledVertexAttribArrays[index] = 1;
         if (GLEmulation.currentVao) GLEmulation.currentVao.enabledVertexAttribArrays[index] = 1;
       };
-      {{{ updateExport('glEnableVertexAttribArray') }}}
 
       var glDisableVertexAttribArray = _glDisableVertexAttribArray;
       _glDisableVertexAttribArray = _emscripten_glDisableVertexAttribArray = (index) => {
@@ -720,7 +688,6 @@ var LibraryGLEmulation = {
         delete GLEmulation.enabledVertexAttribArrays[index];
         if (GLEmulation.currentVao) delete GLEmulation.currentVao.enabledVertexAttribArrays[index];
       };
-      {{{ updateExport('glDisableVertexAttribArray') }}}
 
       var glVertexAttribPointer = _glVertexAttribPointer;
       _glVertexAttribPointer = _emscripten_glVertexAttribPointer = (index, size, type, normalized, stride, pointer) => {
@@ -729,7 +696,6 @@ var LibraryGLEmulation = {
           GLEmulation.currentVao.vertexAttribPointers[index] = [index, size, type, normalized, stride, pointer];
         }
       };
-      {{{ updateExport('glVertexAttribPointer') }}}
     },
 
     getAttributeFromCapability: function(cap) {
@@ -2793,21 +2759,18 @@ var LibraryGLEmulation = {
         GLImmediate.TexEnvJIT.hook_activeTexture(texture);
         glActiveTexture(texture);
       };
-      {{{ updateExport('glActiveTexture') }}}
 
       var glEnable = _glEnable;
       _glEnable = _emscripten_glEnable = (cap) => {
         GLImmediate.TexEnvJIT.hook_enable(cap);
         glEnable(cap);
       };
-      {{{ updateExport('glEnable') }}}
 
       var glDisable = _glDisable;
       _glDisable = _emscripten_glDisable = (cap) => {
         GLImmediate.TexEnvJIT.hook_disable(cap);
         glDisable(cap);
       };
-      {{{ updateExport('glDisable') }}}
 
       var glTexEnvf = (typeof _glTexEnvf != 'undefined') ? _glTexEnvf : () => {};
       /** @suppress {checkTypes} */
@@ -2816,7 +2779,6 @@ var LibraryGLEmulation = {
         // Don't call old func, since we are the implementor.
         //glTexEnvf(target, pname, param);
       };
-      {{{ updateExport('glTexEnvf') }}}
 
       var glTexEnvi = (typeof _glTexEnvi != 'undefined') ? _glTexEnvi : () => {};
       /** @suppress {checkTypes} */
@@ -2825,7 +2787,6 @@ var LibraryGLEmulation = {
         // Don't call old func, since we are the implementor.
         //glTexEnvi(target, pname, param);
       };
-      {{{ updateExport('glTexEnvi') }}}
 
       var glTexEnvfv = (typeof _glTexEnvfv != 'undefined') ? _glTexEnvfv : () => {};
       /** @suppress {checkTypes} */
@@ -2834,17 +2795,14 @@ var LibraryGLEmulation = {
         // Don't call old func, since we are the implementor.
         //glTexEnvfv(target, pname, param);
       };
-      {{{ updateExport('glTexEnvfv') }}}
 
       _glGetTexEnviv = (target, pname, param) => {
         GLImmediate.TexEnvJIT.hook_getTexEnviv(target, pname, param);
       };
-      {{{ updateExport('glGetTexEnviv') }}}
 
       _glGetTexEnvfv = (target, pname, param) => {
         GLImmediate.TexEnvJIT.hook_getTexEnvfv(target, pname, param);
       };
-      {{{ updateExport('glGetTexEnvfv') }}}
 
       var glGetIntegerv = _glGetIntegerv;
       _glGetIntegerv = _emscripten_glGetIntegerv = (pname, params) => {
@@ -2862,7 +2820,6 @@ var LibraryGLEmulation = {
         }
         glGetIntegerv(pname, params);
       };
-      {{{ updateExport('glGetIntegerv') }}}
     },
 
     // Main functions
