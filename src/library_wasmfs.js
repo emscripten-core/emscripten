@@ -6,10 +6,12 @@
 
 mergeInto(LibraryManager.library, {
   $MEMFS: {
-    createBackend: (opts) => (_wasmfs_create_memory_backend())
+    createBackend(opts) {
+      return _wasmfs_create_memory_backend();
+    }
   },
-  $ICASE: {
-    createBackend: (opts) => {
+  $ICASEFS: {
+    createBackend(opts) {
       if (!opts.backend) {
         throw new Error("Underlying backend is not valid.");
       }
@@ -31,13 +33,13 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 `,
   $FS__deps: [
     '$MEMFS',
-    '$ICASE',
+    '$ICASEFS',
 #if LibraryManager.has('library_nodefs.js')
     '$NODEFS',
 #endif
     '$OPFS',
-    '$JS_FILE',
-    '$FETCH',
+    '$JSFILEFS',
+    '$FETCHFS',
     '$wasmFSPreloadedFiles',
     '$wasmFSPreloadedDirs',
     '$wasmFSPreloadingFlushed',

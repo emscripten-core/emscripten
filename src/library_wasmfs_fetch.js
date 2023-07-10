@@ -5,9 +5,11 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $FETCH__deps: ['$stringToUTF8OnStack'],
-  $FETCH: {
-    createBackend: (opts) => (_wasmfs_create_fetch_backend(stringToUTF8OnStack(opts.base_url)))
+  $FETCHFS__deps: ['$stringToUTF8OnStack'],
+  $FETCHFS: {
+    createBackend(opts) {
+      return _wasmfs_create_fetch_backend(stringToUTF8OnStack(opts.base_url));
+    }
   },
   // Fetch backend: On first access of the file (either a read or a getSize), it
   // will fetch() the data from the network asynchronously. Otherwise, after

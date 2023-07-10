@@ -1,6 +1,8 @@
 mergeInto(LibraryManager.library, {
-  $JS_FILE: {
-    createBackend: (opts) => (_wasmfs_create_js_file_backend())
+  $JSFILEFS: {
+    createBackend(opts) {
+      return _wasmfs_create_js_file_backend();
+    }
   },
   // JSFile backend: Store a file's data in JS. We map File objects in C++ to
   // entries here that contain typed arrays.

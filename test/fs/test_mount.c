@@ -100,13 +100,13 @@ int main() {
 
 #if WASMFS
     // test JS_FILE backend
-    FS.mount(JS_FILE, {}, "/jsfile");
+    FS.mount(JSFILEFS, {}, "/jsfile");
     FS.writeFile("/jsfile/jsfile.txt", "a=1");
     assert(FS.readFile("/jsfile/jsfile.txt", { encoding: 'utf8' }) === 'a=1');
     FS.unmount("/jsfile");
 
     // test ICASE backend
-    FS.mount(ICASE, { backend: MEMFS }, "/icase");
+    FS.mount(ICASEFS, { backend: MEMFS }, "/icase");
     FS.writeFile("/icase/IGNORE.txt", "a=1");
     assert(FS.readFile("/icase/Ignore.txt", { encoding: 'utf8' }) === 'a=1');
     assert(FS.readFile("/icase/ignore.TXT", { encoding: 'utf8' }) === 'a=1');

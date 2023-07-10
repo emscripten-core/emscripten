@@ -6,7 +6,9 @@
 
 mergeInto(LibraryManager.library, {
   $OPFS: {
-    createBackend: (opts) => (_wasmfs_create_opfs_backend())
+    createBackend(opts) {
+      return _wasmfs_create_opfs_backend()
+    }
   },
   $wasmfsOPFSDirectoryHandles__deps: ['$HandleAllocator'],
   $wasmfsOPFSDirectoryHandles: "new HandleAllocator()",
