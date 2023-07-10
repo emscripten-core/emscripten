@@ -1042,10 +1042,6 @@ Defines
 
   If specified, the pathnames of the file information in the call stack will be omitted.
 
-.. c:macro:: EM_LOG_FUNC_PARAMS
-
-  If specified, prints out the actual values of the parameters the functions were invoked with.
-
 
 Functions
 ---------
