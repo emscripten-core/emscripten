@@ -143,12 +143,12 @@ mergeInto(LibraryManager.library, {
                 let args = Array.from(arguments)
                 // dynCall_ functions expect first argument to be a number, but BigInt is passed instead
                 if (args.length > 0 && x.startsWith('dynCall_')) {
-                    args[0] = Number(args[0])
+                  args[0] = Number(args[0])
                 }
                 if (args.length === 0) {
-                    args = Asyncify.rewindArguments[x] || []
+                  args = Asyncify.rewindArguments[x] || []
                 } else {
-                    Asyncify.rewindArguments[x] = args
+                  Asyncify.rewindArguments[x] = args
                 }
                 return original.apply(null, args);
 #else
@@ -349,7 +349,7 @@ mergeInto(LibraryManager.library, {
           dbg(`ASYNCIFY: start rewind ${Asyncify.currData}`);
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
-          runAndAbortIfError(() => _asyncify_start_rewind({{{ to64('Asyncify.currData' )}}}));
+          runAndAbortIfError(() => _asyncify_start_rewind(Asyncify.currData));
           if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
@@ -401,7 +401,7 @@ mergeInto(LibraryManager.library, {
           if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.pause();
           }
-          runAndAbortIfError(() => _asyncify_start_unwind({{{ to64('Asyncify.currData' )}}}));
+          runAndAbortIfError(() => _asyncify_start_unwind(Asyncify.currData);
         }
       } else if (Asyncify.state === Asyncify.State.Rewinding) {
         // Stop a resume.
@@ -604,7 +604,7 @@ mergeInto(LibraryManager.library, {
         dbg('ASYNCIFY/FIBER: start rewind', asyncifyData, '(resuming fiber', newFiber, ')');
 #endif
         Asyncify.state = Asyncify.State.Rewinding;
-        _asyncify_start_rewind({{{ to64('asyncifyData') }}});
+        _asyncify_start_rewind('asyncifyData');
         Asyncify.doRewind(asyncifyData);
       }
     },
@@ -627,7 +627,7 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
       dbg('ASYNCIFY/FIBER: start unwind', asyncifyData);
 #endif
-      _asyncify_start_unwind({{{ to64('asyncifyData') }}});
+      _asyncify_start_unwind(asyncifyData);
 
       var stackTop = stackSave();
       {{{ makeSetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr, 'stackTop', '*') }}};
