@@ -23,7 +23,7 @@ var LibraryHTML5WebGPU = {
     values: {},
     next_id: 1,
 
-    add: function (js_val) {
+    add(js_val) {
       var id;
       do {
         id = JsValStore.next_id++;
@@ -33,13 +33,13 @@ var LibraryHTML5WebGPU = {
       JsValStore.values[id] = js_val;
       return id;
     },
-    remove: function (id) {
+    remove(id) {
 #if ASSERTIONS
       assert(id in JsValStore.values);
 #endif
       delete JsValStore.values[id];
     },
-    get: function (id) {
+    get(id) {
 #if ASSERTIONS
       assert(id === 0 || id in JsValStore.values);
 #endif

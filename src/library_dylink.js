@@ -144,7 +144,7 @@ var LibraryDylink = {
   $GOTHandler__internal: true,
   $GOTHandler__deps: ['$GOT', '$currentModuleWeakSymbols'],
   $GOTHandler: {
-    'get': function(obj, symName) {
+    get(obj, symName) {
       var rtn = GOT[symName];
       if (!rtn) {
         rtn = GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true});
@@ -178,7 +178,9 @@ var LibraryDylink = {
       '__wasm_call_ctors',
       '__start_em_asm',
       '__stop_em_asm',
-    ].includes(symName)
+      '__start_em_js',
+      '__stop_em_js',
+    ].includes(symName) || symName.startsWith('__em_js__')
 #if SPLIT_MODULE
         // Exports synthesized by wasm-split should be prefixed with '%'
         || symName[0] == '%'
@@ -349,7 +351,7 @@ var LibraryDylink = {
   // Allocate memory even if malloc isn't ready yet.  The allocated memory here
   // must be zero initialized since its used for all static data, including bss.
   $getMemory__noleakcheck: true,
-  $getMemory__deps: ['$GOT', '__heap_base', '$zeroMemory', 'malloc'],
+  $getMemory__deps: ['$GOT', '__heap_base', '$zeroMemory', '$alignMemory', 'malloc'],
   $getMemory: function(size) {
     // After the runtime is initialized, we must only use sbrk() normally.
 #if DYLINK_DEBUG
@@ -362,7 +364,8 @@ var LibraryDylink = {
       return zeroMemory(_malloc(size), size);
     }
     var ret = ___heap_base;
-    var end = (ret + size + 15) & -16;
+    // Keep __heap_base stack aligned.
+    var end = ret + alignMemory(size, {{{ STACK_ALIGN }}});
 #if ASSERTIONS
     assert(end <= HEAP8.length, 'failure to getMemory - memory growth etc. is not supported there, call malloc/sbrk directly or increase INITIAL_MEMORY');
 #endif
@@ -585,8 +588,7 @@ var LibraryDylink = {
     '$loadDynamicLibrary', '$getMemory',
     '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler',
     '$getDylinkMetadata', '$alignMemory', '$zeroMemory',
-    '$alignMemory', '$zeroMemory',
-    '$currentModuleWeakSymbols', '$alignMemory', '$zeroMemory',
+    '$currentModuleWeakSymbols',
     '$updateTableMap',
   ],
   $loadWebAssemblyModule: function(binary, flags, libName, localScope, handle) {
@@ -613,8 +615,6 @@ var LibraryDylink = {
       if (firstLoad) {
         // alignments are powers of 2
         var memAlign = Math.pow(2, metadata.memoryAlign);
-        // finalize alignments and verify them
-        memAlign = Math.max(memAlign, {{{ STACK_ALIGN }}}); // we at least need stack alignment
         // prepare memory
         var memoryBase = metadata.memorySize ? alignMemory(getMemory(metadata.memorySize + memAlign), memAlign) : 0; // TODO: add to cleanups
         var tableBase = metadata.tableSize ? wasmTable.length : 0;
@@ -675,7 +675,7 @@ var LibraryDylink = {
       // are. To do that here, we use a JS proxy (another option would
       // be to inspect the binary directly).
       var proxyHandler = {
-        'get': function(stubs, prop) {
+        get(stubs, prop) {
           // symbols that should be local to this module
           switch (prop) {
             case '__memory_base':
@@ -777,6 +777,39 @@ var LibraryDylink = {
             var jsString = UTF8ToString(start);
             addEmAsm(start, jsString);
             start = HEAPU8.indexOf(0, start) + 1;
+          }
+        }
+
+        function addEmJs(name, cSig, body) {
+          // The signature here is a C signature (e.g. "(int foo, char* bar)").
+          // See `create_em_js` in emcc.py` for the build-time version of this
+          // code.
+          var jsArgs = [];
+          cSig = cSig.slice(1, -1)
+          if (cSig != 'void') {
+            cSig = cSig.split(',');
+            for (var i in cSig) {
+              var jsArg = cSig[i].split(' ').pop();
+              jsArgs.push(jsArg.replace('*', ''));
+            }
+          }
+          var func = `(${jsArgs}) => ${body};`;
+#if DYLINK_DEBUG
+          dbg(`adding new EM_JS function: ${jsArgs} = ${func}`);
+#endif
+          {{{ makeEval('moduleExports[name] = eval(func)') }}};
+        }
+
+        for (var name in moduleExports) {
+          if (name.startsWith('__em_js__')) {
+            var start = moduleExports[name]
+            {{{ from64('start') }}}
+            var jsString = UTF8ToString(start);
+            // EM_JS strings are stored in the data section in the form
+            // SIG<::>BODY.
+            var parts = jsString.split('<::>');
+            addEmJs(name.replace('__em_js__', ''), parts[0], parts[1]);
+            delete moduleExports[name];
           }
         }
 #endif

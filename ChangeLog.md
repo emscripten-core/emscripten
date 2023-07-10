@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.43 (in development)
 -----------------------
+- Handling i64 arguments and return values in JS functions is now much simpler
+  with the new `__i53abi` decorator.  When this is set to true, i64 values are
+  automatically converted to JS numbers (i53) at the JS boundary.  Parameters
+  outside of the i53 will show up as NaN in the JS code (#19711)
 
 3.1.42 - 06/22/23
 -----------------

@@ -725,12 +725,13 @@ function modifyJSFunction(text, func) {
   }
   let body = rest;
   const bodyStart = rest.indexOf('{');
-  if (bodyStart >= 0) {
+  let oneliner = bodyStart < 0;
+  if (!oneliner) {
     const bodyEnd = rest.lastIndexOf('}');
     assert(bodyEnd > 0);
     body = rest.substring(bodyStart + 1, bodyEnd);
   }
-  return func(args, body, async_);
+  return func(args, body, async_, oneliner);
 }
 
 function runIfMainThread(text) {
@@ -873,14 +874,16 @@ function defineI64Param(name) {
   return `${name}_low, ${name}_high`;
 }
 
-function receiveI64ParamAsI53(name, onError) {
+
+function receiveI64ParamAsI53(name, onError, handleErrors = true) {
+  var errorHandler = handleErrors ? `if (isNaN(${name})) return ${onError}` : '';
   if (WASM_BIGINT) {
     // Just convert the bigint into a double.
-    return `${name} = bigintToI53Checked(${name}); if (isNaN(${name})) return ${onError};`;
+    return `${name} = bigintToI53Checked(${name});${errorHandler};`;
   }
   // Convert the high/low pair to a Number, checking for
   // overflow of the I53 range and returning onError in that case.
-  return `var ${name} = convertI32PairToI53Checked(${name}_low, ${name}_high); if (isNaN(${name})) return ${onError};`;
+  return `var ${name} = convertI32PairToI53Checked(${name}_low, ${name}_high);${errorHandler};`;
 }
 
 function receiveI64ParamAsI53Unchecked(name) {

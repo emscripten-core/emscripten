@@ -497,19 +497,19 @@ function abort(what) {
 #if ASSERTIONS && !('$FS' in addedLibraryItems)
 // show errors on likely calls to FS when it was not included
 var FS = {
-  error: function() {
+  error() {
     abort('Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with -sFORCE_FILESYSTEM');
   },
-  init: function() { FS.error() },
-  createDataFile: function() { FS.error() },
-  createPreloadedFile: function() { FS.error() },
-  createLazyFile: function() { FS.error() },
-  open: function() { FS.error() },
-  mkdev: function() { FS.error() },
-  registerDevice: function() { FS.error() },
-  analyzePath: function() { FS.error() },
+  init() { FS.error() },
+  createDataFile() { FS.error() },
+  createPreloadedFile() { FS.error() },
+  createLazyFile() { FS.error() },
+  open() { FS.error() },
+  mkdev() { FS.error() },
+  registerDevice() { FS.error() },
+  analyzePath() { FS.error() },
 
-  ErrnoError: function ErrnoError() { FS.error() },
+  ErrnoError() { FS.error() },
 };
 Module['FS_createDataFile'] = FS.createDataFile;
 Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
@@ -640,32 +640,28 @@ if (Module['locateFile']) {
 }
 #endif
 
-function getBinary(file) {
-  try {
-    if (file == wasmBinaryFile && wasmBinary) {
-      return new Uint8Array(wasmBinary);
-    }
+function getBinarySync(file) {
+  if (file == wasmBinaryFile && wasmBinary) {
+    return new Uint8Array(wasmBinary);
+  }
 #if SUPPORT_BASE64_EMBEDDING
-    var binary = tryParseAsDataURI(file);
-    if (binary) {
-      return binary;
-    }
+  var binary = tryParseAsDataURI(file);
+  if (binary) {
+    return binary;
+  }
 #endif
-    if (readBinary) {
-      return readBinary(file);
-    }
+  if (readBinary) {
+    return readBinary(file);
+  }
 #if WASM_ASYNC_COMPILATION
-    throw "both async and sync fetching of the wasm failed";
+  throw "both async and sync fetching of the wasm failed";
 #else
-    throw "sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)";
+  throw "sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)";
 #endif
-  }
-  catch (err) {
-    abort(err);
-  }
 }
 
 function getBinaryPromise(binaryFile) {
+#if !SINGLE_FILE
   // If we don't have the binary yet, try to load it asynchronously.
   // Fetch has some additional restrictions over XHR, like it can't be used on a file:// url.
   // See https://github.com/github/fetch/pull/92#issuecomment-140665932
@@ -682,22 +678,21 @@ function getBinaryPromise(binaryFile) {
           throw "failed to load wasm binary file at '" + binaryFile + "'";
         }
         return response['arrayBuffer']();
-      }).catch(() => getBinary(binaryFile));
+      }).catch(() => getBinarySync(binaryFile));
     }
 #if ENVIRONMENT_MAY_BE_WEBVIEW
-    else {
-      if (readAsync) {
-        // fetch is not available or url is file => try XHR (readAsync uses XHR internally)
-        return new Promise((resolve, reject) => {
-          readAsync(binaryFile, (response) => resolve(new Uint8Array(/** @type{!ArrayBuffer} */(response))), reject)
-        });
-      }
+    else if (readAsync) {
+      // fetch is not available or url is file => try XHR (readAsync uses XHR internally)
+      return new Promise((resolve, reject) => {
+        readAsync(binaryFile, (response) => resolve(new Uint8Array(/** @type{!ArrayBuffer} */(response))), reject)
+      });
     }
 #endif
   }
+#endif
 
-  // Otherwise, getBinary should be able to get it synchronously
-  return Promise.resolve().then(() => getBinary(binaryFile));
+  // Otherwise, getBinarySync should be able to get it synchronously
+  return Promise.resolve().then(() => getBinarySync(binaryFile));
 }
 
 #if LOAD_SOURCE_MAP
@@ -713,7 +708,7 @@ var wasmOffsetConverter;
 #if SPLIT_MODULE
 {{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync',  true) }}}
 var splitModuleProxyHandler = {
-  'get': function(target, prop, receiver) {
+  get(target, prop, receiver) {
     return function() {
 #if ASYNCIFY == 2
       throw new Error('Placeholder function "' + prop + '" should not be called when using JSPI.');
@@ -747,58 +742,46 @@ function receiveSourceMapJSON(sourceMap) {
 
 #if SPLIT_MODULE || !WASM_ASYNC_COMPILATION
 function instantiateSync(file, info) {
-  var instance;
   var module;
-  var binary;
-  try {
-    binary = getBinary(file);
+  var binary = getBinarySync(file);
 #if NODE_CODE_CACHING
-    if (ENVIRONMENT_IS_NODE) {
-      var v8 = require('v8');
-      // Include the V8 version in the cache name, so that we don't try to
-      // load cached code from another version, which fails silently (it seems
-      // to load ok, but we do actually recompile the binary every time).
-      var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
-      cachedCodeFile = locateFile(cachedCodeFile);
-      var hasCached = fs.existsSync(cachedCodeFile);
-      if (hasCached) {
+  if (ENVIRONMENT_IS_NODE) {
+    var v8 = require('v8');
+    // Include the V8 version in the cache name, so that we don't try to
+    // load cached code from another version, which fails silently (it seems
+    // to load ok, but we do actually recompile the binary every time).
+    var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
+    cachedCodeFile = locateFile(cachedCodeFile);
+    var hasCached = fs.existsSync(cachedCodeFile);
+    if (hasCached) {
 #if RUNTIME_DEBUG
-        dbg('NODE_CODE_CACHING: loading module');
+      dbg('NODE_CODE_CACHING: loading module');
 #endif
-        try {
-          module = v8.deserialize(fs.readFileSync(cachedCodeFile));
-        } catch (e) {
-          err('NODE_CODE_CACHING: failed to deserialize, bad cache file? (' + cachedCodeFile + ')');
-          // Save the new compiled code when we have it.
-          hasCached = false;
-        }
+      try {
+        module = v8.deserialize(fs.readFileSync(cachedCodeFile));
+      } catch (e) {
+        err('NODE_CODE_CACHING: failed to deserialize, bad cache file? (' + cachedCodeFile + ')');
+        // Save the new compiled code when we have it.
+        hasCached = false;
       }
     }
-    if (!module) {
-      module = new WebAssembly.Module(binary);
-    }
-    if (ENVIRONMENT_IS_NODE && !hasCached) {
-#if RUNTIME_DEBUG
-      dbg('NODE_CODE_CACHING: saving module');
-#endif
-      fs.writeFileSync(cachedCodeFile, v8.serialize(module));
-    }
-#else // NODE_CODE_CACHING
-    module = new WebAssembly.Module(binary);
-#endif // NODE_CODE_CACHING
-    instance = new WebAssembly.Instance(module, info);
-#if USE_OFFSET_CONVERTER
-    wasmOffsetConverter = new WasmOffsetConverter(binary, module);
-#endif
-  } catch (e) {
-    var str = e.toString();
-    err('failed to compile wasm module: ' + str);
-    if (str.includes('imported Memory') ||
-        str.includes('memory import')) {
-      err('Memory size incompatibility issues may be due to changing INITIAL_MEMORY at runtime to something too large. Use ALLOW_MEMORY_GROWTH to allow any size memory (and also make sure not to set INITIAL_MEMORY at runtime to something smaller than it was at compile time).');
-    }
-    throw e;
   }
+  if (!module) {
+    module = new WebAssembly.Module(binary);
+  }
+  if (ENVIRONMENT_IS_NODE && !hasCached) {
+#if RUNTIME_DEBUG
+    dbg('NODE_CODE_CACHING: saving module');
+#endif
+    fs.writeFileSync(cachedCodeFile, v8.serialize(module));
+  }
+#else // NODE_CODE_CACHING
+  module = new WebAssembly.Module(binary);
+#endif // NODE_CODE_CACHING
+  var instance = new WebAssembly.Instance(module, info);
+#if USE_OFFSET_CONVERTER
+  wasmOffsetConverter = new WasmOffsetConverter(binary, module);
+#endif
 #if LOAD_SOURCE_MAP
   receiveSourceMapJSON(getSourceMap());
 #endif
@@ -867,6 +850,7 @@ function instantiateArrayBuffer(binaryFile, imports, receiver) {
 }
 
 function instantiateAsync(binary, binaryFile, imports, callback) {
+#if !SINGLE_FILE
   if (!binary &&
       typeof WebAssembly.instantiateStreaming == 'function' &&
       !isDataURI(binaryFile) &&
@@ -931,9 +915,9 @@ function instantiateAsync(binary, binaryFile, imports, callback) {
           return instantiateArrayBuffer(binaryFile, imports, callback);
         });
     });
-  } else {
-    return instantiateArrayBuffer(binaryFile, imports, callback);
   }
+#endif
+  return instantiateArrayBuffer(binaryFile, imports, callback);
 }
 #endif // WASM_ASYNC_COMPILATION
 
@@ -991,8 +975,8 @@ function createWasm() {
     reportUndefinedSymbols();
 #endif
 
-#if MEMORY64
-    exports = instrumentWasmExportsForMemory64(exports);
+#if MEMORY64 || CAN_ADDRESS_2GB
+    exports = applySignatureConversions(exports);
 #endif
 
     Module['asm'] = exports;

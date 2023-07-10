@@ -132,16 +132,6 @@ def get_num_cores():
   return int(os.environ.get('EMCC_CORES', os.cpu_count()))
 
 
-def mp_run_process(command_tuple):
-  cmd, env, route_stdout_to_temp_files_suffix = command_tuple
-  stdout = None
-  if route_stdout_to_temp_files_suffix:
-    stdout = get_temp_files().get(route_stdout_to_temp_files_suffix)
-  subprocess.run(cmd, stdout=stdout, stderr=None, env=env, check=True)
-  if route_stdout_to_temp_files_suffix:
-    return stdout.name
-
-
 def returncode_to_str(code):
   assert code != 0
   if code < 0:
@@ -676,11 +666,6 @@ def unsuffixed(name):
 
 def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
-
-
-def strip_prefix(string, prefix):
-  assert string.startswith(prefix)
-  return string[len(prefix):]
 
 
 def make_writable(filename):

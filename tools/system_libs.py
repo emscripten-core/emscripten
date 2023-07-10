@@ -431,7 +431,7 @@ class Library:
       return fullpath
     # For libraries (.a) files, we pass the abbreviated `-l` form.
     base = shared.unsuffixed_basename(fullpath)
-    return '-l' + shared.strip_prefix(base, 'lib')
+    return '-l' + utils.removeprefix(base, 'lib')
 
   def get_files(self):
     """
@@ -1950,6 +1950,7 @@ class SanitizerLibrary(CompilerRTLibrary, MTLibrary):
 class libubsan_rt(SanitizerLibrary):
   name = 'libubsan_rt'
 
+  includes = ['system/lib/libc']
   cflags = ['-DUBSAN_CAN_USE_CXXABI']
   src_dir = 'system/lib/compiler-rt/lib/ubsan'
   src_glob_exclude = ['ubsan_diag_standalone.cpp']
@@ -1965,6 +1966,7 @@ class liblsan_common_rt(SanitizerLibrary):
 class liblsan_rt(SanitizerLibrary):
   name = 'liblsan_rt'
 
+  includes = ['system/lib/libc']
   src_dir = 'system/lib/compiler-rt/lib/lsan'
   src_glob_exclude = ['lsan_common.cpp', 'lsan_common_mac.cpp', 'lsan_common_linux.cpp',
                       'lsan_common_emscripten.cpp']
@@ -1973,6 +1975,7 @@ class liblsan_rt(SanitizerLibrary):
 class libasan_rt(SanitizerLibrary):
   name = 'libasan_rt'
 
+  includes = ['system/lib/libc']
   src_dir = 'system/lib/compiler-rt/lib/asan'
 
 

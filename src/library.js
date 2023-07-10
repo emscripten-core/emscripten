@@ -25,6 +25,10 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     assert(typeof ptr === 'number');
 #endif
+#if !CAN_ADDRESS_2GB && !MEMORY64
+    // With CAN_ADDRESS_2GB or MEMORY64, pointers are already unsigned.
+    ptr >>>= 0;
+#endif
     return '0x' + ptr.toString(16).padStart(8, '0');
   },
 
@@ -116,9 +120,7 @@ mergeInto(LibraryManager.library, {
   // We have a separate JS version `getHeapMax()` which can be called directly
   // avoiding any wrapper added for wasm64.
   emscripten_get_heap_max__deps: ['$getHeapMax'],
-  emscripten_get_heap_max: () => {
-    return getHeapMax();
-  },
+  emscripten_get_heap_max: () => getHeapMax(),
 
   $getHeapMax: () =>
 #if ALLOW_MEMORY_GROWTH
@@ -199,8 +201,9 @@ mergeInto(LibraryManager.library, {
   emscripten_resize_heap: 'ip',
   emscripten_resize_heap: (requestedSize) => {
     var oldSize = HEAPU8.length;
-#if MEMORY64 != 1
-    requestedSize = requestedSize >>> 0;
+#if !MEMORY64 && !CAN_ADDRESS_2GB
+    // With CAN_ADDRESS_2GB or MEMORY64, pointers are already unsigned.
+    requestedSize >>>= 0;
 #endif
 #if ALLOW_MEMORY_GROWTH == 0
 #if ABORTING_MALLOC
@@ -436,6 +439,7 @@ mergeInto(LibraryManager.library, {
   // time.h
   // ==========================================================================
 
+  _mktime_js__i53abi: true,
   _mktime_js__deps: ['$ydayFromDate'],
   _mktime_js: (tmPtr) => {
     var date = new Date({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
@@ -476,12 +480,11 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getMonth()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getYear()', 'i32') }}};
 
-    return {{{ makeReturn64('date.getTime() / 1000') }}};
+    return date.getTime() / 1000;
   },
 
-  _gmtime_js__deps: ['$readI53FromI64'].concat(i53ConversionDeps),
-  _gmtime_js: ({{{ defineI64Param('time') }}}, tmPtr) => {
-    {{{ receiveI64ParamAsI53('time') }}}
+  _gmtime_js__i53abi: true,
+  _gmtime_js: (time, tmPtr) => {
     var date = new Date(time * 1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getUTCMinutes()', 'i32') }}};
@@ -495,6 +498,7 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
   },
 
+  _timegm_js__i53abi: true,
   _timegm_js: (tmPtr) => {
     var time = Date.UTC({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
@@ -510,12 +514,12 @@ mergeInto(LibraryManager.library, {
     var yday = ((date.getTime() - start) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
 
-    return {{{ makeReturn64('date.getTime() / 1000') }}};
+    return date.getTime() / 1000;
   },
 
-  _localtime_js__deps: ['$readI53FromI64', '$ydayFromDate'].concat(i53ConversionDeps),
-  _localtime_js: ({{{ defineI64Param('time') }}}, tmPtr) => {
-    {{{ receiveI64ParamAsI53('time') }}}
+  _localtime_js__i53abi: true,
+  _localtime_js__deps: ['$ydayFromDate'],
+  _localtime_js: (time, tmPtr) => {
     var date = new Date(time*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getMinutes()', 'i32') }}};
@@ -2898,6 +2902,20 @@ mergeInto(LibraryManager.library, {
       _free = prev_free;
     }
   },
+
+  _emscripten_sanitizer_use_colors: () => {
+    var setting = Module['printWithColors'];
+    if (setting !== undefined) {
+      return setting;
+    }
+    return ENVIRONMENT_IS_NODE && process.stderr.isTTY;
+  },
+
+  _emscripten_sanitizer_get_option__deps: ['$withBuiltinMalloc', '$stringToNewUTF8', '$UTF8ToString'],
+  _emscripten_sanitizer_get_option__sig: 'pp',
+  _emscripten_sanitizer_get_option: (name) => {
+    return withBuiltinMalloc(() => stringToNewUTF8(Module[UTF8ToString(name)] || ""));
+  },
 #endif
 
   $readEmAsmArgsArray: '=[]',
@@ -3089,7 +3107,6 @@ mergeInto(LibraryManager.library, {
   // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
   __handle_stack_overflow__deps: ['emscripten_stack_get_base', 'emscripten_stack_get_end', '$ptrToString'],
   __handle_stack_overflow: (requested) => {
-    requested = requested >>> 0;
     var base = _emscripten_stack_get_base();
     var end = _emscripten_stack_get_end();
     abort(`stack overflow (Attempt to set SP to ${ptrToString(requested)}` +
@@ -3245,9 +3262,10 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-#if SHRINK_LEVEL == 0
+#if SHRINK_LEVEL == 0 || ASYNCIFY == 2
   // A mirror copy of contents of wasmTable in JS side, to avoid relatively
-  // slow wasmTable.get() call. Only used when not compiling with -Os or -Oz.
+  // slow wasmTable.get() call. Only used when not compiling with -Os, -Oz, or
+  // JSPI which needs to instrument the functions.
   $wasmTableMirror__internal: true,
   $wasmTableMirror: [],
 
@@ -3273,8 +3291,13 @@ mergeInto(LibraryManager.library, {
     if (!func) {
       if (funcPtr >= wasmTableMirror.length) wasmTableMirror.length = funcPtr + 1;
       wasmTableMirror[funcPtr] = func = wasmTable.get(funcPtr);
+#if ASYNCIFY == 2
+      if (Asyncify.isAsyncExport(func)) {
+        wasmTableMirror[funcPtr] = func = Asyncify.makeAsyncFunction(func);
+      }
+#endif
     }
-#if ASSERTIONS
+#if ASSERTIONS && ASYNCIFY != 2 // With JSPI the function stored in the table will be a wrapper.
     assert(wasmTable.get(funcPtr) == func, "JavaScript-side Wasm function table mirror is out of date!");
 #endif
     return func;
@@ -3617,34 +3640,41 @@ mergeInto(LibraryManager.library, {
 #endif
   },
 
+  $handleAllocatorInit: function() {
+    Object.assign(HandleAllocator.prototype, /** @lends {HandleAllocator.prototype} */ {
+      get(id) {
+  #if ASSERTIONS
+        assert(this.allocated[id] !== undefined, `invalid handle: ${id}`);
+  #endif
+        return this.allocated[id];
+      },
+      has(id) {
+        return this.allocated[id] !== undefined;
+      },
+      allocate(handle) {
+        var id = this.freelist.pop() || this.allocated.length;
+        this.allocated[id] = handle;
+        return id;
+      },
+      free(id) {
+  #if ASSERTIONS
+        assert(this.allocated[id] !== undefined);
+  #endif
+        // Set the slot to `undefined` rather than using `delete` here since
+        // apparently arrays with holes in them can be less efficient.
+        this.allocated[id] = undefined;
+        this.freelist.push(id);
+      }
+    });
+  },
+
+  $HandleAllocator__postset: 'handleAllocatorInit()',
+  $HandleAllocator__deps: ['$handleAllocatorInit'],
   $HandleAllocator__docs: '/** @constructor */',
   $HandleAllocator: function() {
     // Reserve slot 0 so that 0 is always an invalid handle
     this.allocated = [undefined];
     this.freelist = [];
-    this.get = function(id) {
-#if ASSERTIONS
-      assert(this.allocated[id] !== undefined, `invalid handle: ${id}`);
-#endif
-      return this.allocated[id];
-    };
-    this.has = function(id) {
-      return this.allocated[id] !== undefined;
-    };
-    this.allocate = function(handle) {
-      var id = this.freelist.pop() || this.allocated.length;
-      this.allocated[id] = handle;
-      return id;
-    };
-    this.free = function(id) {
-#if ASSERTIONS
-      assert(this.allocated[id] !== undefined);
-#endif
-      // Set the slot to `undefined` rather than using `delete` here since
-      // apparently arrays with holes in them can be less efficient.
-      this.allocated[id] = undefined;
-      this.freelist.push(id);
-    };
   },
 
   $getNativeTypeSize__deps: ['$POINTER_SIZE'],
@@ -3707,7 +3737,7 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
 #endif
 
 function wrapSyscallFunction(x, library, isWasi) {
-  if (x[0] === '$' || isJsLibraryConfigIdentifier(x)) {
+  if (isJsOnlySymbol(x) || isDecorator(x)) {
     return;
   }
 

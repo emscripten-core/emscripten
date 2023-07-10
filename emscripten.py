@@ -26,9 +26,9 @@ from tools import shared
 from tools import utils
 from tools import webassembly
 from tools import extract_metadata
-from tools.utils import exit_with_error, path_from_root
+from tools.utils import exit_with_error, path_from_root, removeprefix
 from tools.shared import DEBUG, asmjs_mangle
-from tools.shared import treat_as_user_function, strip_prefix
+from tools.shared import treat_as_user_function
 from tools.settings import settings
 
 logger = logging.getLogger('emscripten')
@@ -344,8 +344,6 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, js_syms):
           diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, c_sig, signature.params)
 
   if settings.SIDE_MODULE:
-    if metadata.emJsFuncs:
-      exit_with_error('EM_JS is not supported in side modules')
     logger.debug('emscript: skipping remaining js glue generation')
     return
 
@@ -620,7 +618,7 @@ def create_em_js(metadata):
       args = []
     else:
       args = args.split(',')
-    arg_names = [arg.split()[-1].replace("*", "") for arg in args if arg]
+    arg_names = [arg.split()[-1].replace('*', '') for arg in args if arg]
     args = ','.join(arg_names)
     func = f'function {name}({args}) {body}'
     if (settings.MAIN_MODULE or settings.ASYNCIFY == 2) and name in metadata.emJsFuncTypes:
@@ -721,8 +719,12 @@ def create_sending(metadata, library_symbols):
             continue
           send_items_map[demangled] = f
 
-  sorted_keys = sorted(send_items_map.keys())
-  return '{\n  ' + ',\n  '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + '\n}'
+  sorted_items = sorted(send_items_map.items())
+  prefix = ''
+  if settings.USE_CLOSURE_COMPILER:
+    # This prevents closure compiler from minifying the field names in this object.
+    prefix = '/** @export */\n  '
+  return '{\n  ' + ',\n  '.join(f'{prefix}{k}: {v}' for k, v in sorted_items) + '\n}'
 
 
 def make_export_wrappers(exports, delay_assignment):
@@ -753,7 +755,7 @@ def make_export_wrappers(exports, delay_assignment):
     # TODO(sbc): Can we avoid exporting the dynCall_ functions on the module.
     should_export = settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS
     if name.startswith('dynCall_') or should_export:
-      exported = 'Module["%s"] = ' % mangled
+      exported = "Module['%s'] = " % mangled
     else:
       exported = ''
     wrapper += exported
@@ -769,7 +771,7 @@ def make_export_wrappers(exports, delay_assignment):
       # With assertions disabled the wrapper will replace the global var and Module var on
       # first use.
       wrapper += f'''function() {{
-  return ({mangled} = {exported}Module["asm"]["{name}"]).apply(null, arguments);
+  return ({mangled} = {exported}Module['asm']['{name}']).apply(null, arguments);
 }};
 '''
     else:
@@ -795,7 +797,7 @@ def create_receiving(exports):
       # In Wasm exports are assigned inside a function to variables
       # existing in top level JS scope, i.e.
       # var _main;
-      # WebAssembly.instantiate(Module["wasm"], imports).then((output) => {
+      # WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
       #   var asm = output.instance.exports;
       #   _main = asm["_main"];
       generate_dyncall_assignment = settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
@@ -807,7 +809,7 @@ def create_receiving(exports):
         should_export = settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS)
         export_assignment = ''
         if settings.MODULARIZE and should_export:
-          export_assignment = f'Module["{mangled}"] = '
+          export_assignment = f"Module['{mangled}'] = "
         receiving += [f'{export_assignment}{dynCallAssignment}{mangled} = asm["{s}"]']
     else:
       receiving += make_export_wrappers(exports, delay_assignment)
@@ -840,8 +842,8 @@ def create_module(receiving, metadata, library_symbols):
     module.append(create_invoke_wrappers(metadata))
   else:
     assert not metadata.invokeFuncs, "invoke_ functions exported but exceptions and longjmp are both disabled"
-  if settings.MEMORY64:
-    module.append(create_wasm64_wrappers(metadata))
+  if settings.MEMORY64 or settings.CAN_ADDRESS_2GB:
+    module.append(create_pointer_conversion_wrappers(metadata))
   return module
 
 
@@ -849,12 +851,12 @@ def create_invoke_wrappers(metadata):
   """Asm.js-style exception handling: invoke wrapper generation."""
   invoke_wrappers = ''
   for invoke in metadata.invokeFuncs:
-    sig = strip_prefix(invoke, 'invoke_')
+    sig = removeprefix(invoke, 'invoke_')
     invoke_wrappers += '\n' + js_manipulation.make_invoke(sig) + '\n'
   return invoke_wrappers
 
 
-def create_wasm64_wrappers(metadata):
+def create_pointer_conversion_wrappers(metadata):
   # TODO(sbc): Move this into somewhere less static.  Maybe it can become
   # part of library.js file, even though this metadata relates specifically
   # to native (non-JS) functions.
@@ -904,26 +906,34 @@ def create_wasm64_wrappers(metadata):
     'emscripten_wasm_worker_initialize': '_p_',
   }
 
-  wasm64_wrappers = '''
-function instrumentWasmExportsForMemory64(exports) {
+  wrappers = '''
+function applySignatureConversions(exports) {
   // First, make a copy of the incoming exports object
-  exports = Object.assign({}, exports);'''
+  exports = Object.assign({}, exports);
+'''
 
   sigs_seen = set()
   wrap_functions = []
-  for exp in metadata.exports:
-    sig = mapping.get(exp)
+  for symbol in metadata.exports:
+    sig = mapping.get(symbol)
     if sig:
-      if sig not in sigs_seen:
-        sigs_seen.add(sig)
-        wasm64_wrappers += js_manipulation.make_wasm64_wrapper(sig)
-      wrap_functions.append(exp)
+      if settings.MEMORY64:
+        if sig not in sigs_seen:
+          wrappers += js_manipulation.make_wasm64_wrapper(sig)
+          sigs_seen.add(sig)
+        wrap_functions.append(symbol)
+      elif sig[0] == 'p':
+        if sig not in sigs_seen:
+          wrappers += js_manipulation.make_unsign_pointer_wrapper(sig)
+          sigs_seen.add(sig)
+        wrap_functions.append(symbol)
 
   for f in wrap_functions:
     sig = mapping[f]
-    wasm64_wrappers += f"\n  exports['{f}'] = wasm64Wrapper_{sig}(exports['{f}']);"
-  wasm64_wrappers += '\n  return exports\n}'
-  return wasm64_wrappers
+    wrappers += f"\n  exports['{f}'] = makeWrapper_{sig}(exports['{f}']);"
+  wrappers += '\n  return exports\n}'
+
+  return wrappers
 
 
 def run(in_wasm, out_wasm, outfile_js, memfile, js_syms):

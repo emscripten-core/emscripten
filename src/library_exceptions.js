@@ -418,7 +418,7 @@ var LibraryExceptions = {
 
 #if !WASM_EXCEPTIONS
 // In LLVM, exceptions generate a set of functions of form
-// __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.  where the
+// __cxa_find_matching_catch_2(), __cxa_find_matching_catch_3(), etc.  where the
 // number specifies the number of arguments.  In Emscripten, route all these to
 // a single function '__cxa_find_matching_catch' that variadically processes all
 // of these functions using JS 'arguments' object.
@@ -426,10 +426,13 @@ addCxaCatch = function(n) {
   LibraryManager.library['__cxa_find_matching_catch_' + n] = '__cxa_find_matching_catch';
 };
 
-// Add the first 10 catch handlers premptively.  Others get added on demand in
+// Add the first 2-5 catch handlers premptively.  Others get added on demand in
 // jsifier.  This is done here primarily so that these symbols end up with the
 // correct deps in the stub library that we pass to wasm-ld.
-for (let i = 1; i < 10; i++) {
+// Note: __cxa_find_matching_catch_N function uses N = NumClauses + 2 so
+// __cxa_find_matching_catch_2 is the first such function with zero clauses.
+// See WebAssemblyLowerEmscriptenEHSjLj.cpp.
+for (let i = 2; i < 5; i++) {
   addCxaCatch(i)
 }
 #endif

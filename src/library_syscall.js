@@ -80,9 +80,6 @@ var SyscallsLibrary = {
         // MAP_PRIVATE calls need not to be synced back to underlying fs
         return 0;
       }
-#if CAN_ADDRESS_2GB
-      addr >>>= 0;
-#endif
       var buffer = HEAPU8.slice(addr, addr + len);
       FS.msync(stream, buffer, offset, len, flags);
     },
@@ -92,7 +89,7 @@ var SyscallsLibrary = {
 
     varargs: undefined,
 
-    get: function() {
+    get() {
 #if ASSERTIONS
       assert(SYSCALLS.varargs != undefined);
 #endif
@@ -103,7 +100,7 @@ var SyscallsLibrary = {
 #endif
       return ret;
     },
-    getStr: function(ptr) {
+    getStr(ptr) {
       var ret = UTF8ToString(ptr);
 #if SYSCALL_DEBUG
       dbg(`    (str: "${ret}")`);
@@ -122,6 +119,7 @@ var SyscallsLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
+  _mmap_js__i53abi: true,
   _mmap_js__deps: ['$SYSCALLS',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
@@ -133,17 +131,14 @@ var SyscallsLibrary = {
     '$mmapAlloc',
     'emscripten_builtin_memalign',
 #endif
-  ].concat(i53ConversionDeps),
-  _mmap_js: function(len, prot, flags, fd, {{{ defineI64Param('offset') }}}, allocated, addr) {
-    {{{ receiveI64ParamAsI53('offset', -cDefs.EOVERFLOW) }}}
+  ],
+  _mmap_js: function(len, prot, flags, fd, offset, allocated, addr) {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
+    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
     var stream = SYSCALLS.getStreamFromFD(fd);
     var res = FS.mmap(stream, len, offset, prot, flags);
     var ptr = res.ptr;
     {{{ makeSetValue('allocated', 0, 'res.allocated', 'i32') }}};
-#if CAN_ADDRESS_2GB
-    ptr >>>= 0;
-#endif
     {{{ makeSetValue('addr', 0, 'ptr', '*') }}};
     return 0;
 #else // no filesystem support; report lack of support
@@ -151,14 +146,15 @@ var SyscallsLibrary = {
 #endif
   },
 
+  _munmap_js__i53abi: true,
   _munmap_js__deps: ['$SYSCALLS',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
 #endif
-  ].concat(i53ConversionDeps),
-  _munmap_js: function(addr, len, prot, flags, fd, {{{ defineI64Param('offset') }}}) {
-    {{{ receiveI64ParamAsI53('offset', -cDefs.EOVERFLOW) }}}
+  ],
+  _munmap_js: function(addr, len, prot, flags, fd, offset) {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
+    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
     var stream = SYSCALLS.getStreamFromFD(fd);
     if (prot & {{{ cDefs.PROT_WRITE }}}) {
       SYSCALLS.doMsync(addr, stream, len, flags, offset);
@@ -625,9 +621,9 @@ var SyscallsLibrary = {
 
     return total;
   },
-  _msync_js__deps: i53ConversionDeps,
-  _msync_js: function(addr, len, prot, flags, fd, {{{ defineI64Param('offset') }}}) {
-    {{{ receiveI64ParamAsI53('offset', -cDefs.EOVERFLOW) }}}
+  _msync_js__i53abi: true,
+  _msync_js: function(addr, len, prot, flags, fd, offset) {
+    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
     SYSCALLS.doMsync(addr, SYSCALLS.getStreamFromFD(fd), len, flags, offset);
     return 0;
   },
@@ -664,16 +660,16 @@ var SyscallsLibrary = {
     stringToUTF8(cwd, buf, size);
     return cwdLengthInBytes;
   },
-  __syscall_truncate64__deps: i53ConversionDeps,
-  __syscall_truncate64: function(path, {{{ defineI64Param('length') }}}) {
-    {{{ receiveI64ParamAsI53('length', -cDefs.EOVERFLOW) }}}
+  __syscall_truncate64__i53abi: true,
+  __syscall_truncate64: function(path, length) {
+    if (isNaN(length)) return {{{ cDefs.EOVERFLOW }}};
     path = SYSCALLS.getStr(path);
     FS.truncate(path, length);
     return 0;
   },
-  __syscall_ftruncate64__deps: i53ConversionDeps,
-  __syscall_ftruncate64: function(fd, {{{ defineI64Param('length') }}}) {
-    {{{ receiveI64ParamAsI53('length', -cDefs.EOVERFLOW) }}}
+  __syscall_ftruncate64__i53abi: true,
+  __syscall_ftruncate64: function(fd, length) {
+    if (isNaN(length)) return {{{ cDefs.EOVERFLOW }}};
     FS.ftruncate(fd, length);
     return 0;
   },
@@ -996,10 +992,9 @@ var SyscallsLibrary = {
     FS.utime(path, atime, mtime);
     return 0;
   },
-  __syscall_fallocate__deps: i53ConversionDeps,
-  __syscall_fallocate: function(fd, mode, {{{ defineI64Param('offset') }}}, {{{ defineI64Param('len') }}}) {
-    {{{ receiveI64ParamAsI53('offset', -cDefs.EOVERFLOW) }}}
-    {{{ receiveI64ParamAsI53('len', -cDefs.EOVERFLOW) }}}
+  __syscall_fallocate__i53abi: true,
+  __syscall_fallocate: function(fd, mode, offset, len) {
+    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
     var stream = SYSCALLS.getStreamFromFD(fd)
 #if ASSERTIONS
     assert(mode === 0);

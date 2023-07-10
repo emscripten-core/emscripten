@@ -114,6 +114,9 @@ double emscripten_get_now_res(void);
 
 void* emscripten_return_address(int level);
 
+int _emscripten_sanitizer_use_colors(void);
+char* _emscripten_sanitizer_get_option(const char* name);
+
 void _emscripten_fs_load_embedded_files(void* ptr);
 
 void _emscripten_throw_longjmp(void);

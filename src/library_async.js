@@ -111,6 +111,7 @@ mergeInto(LibraryManager.library, {
 #endif
 #if ASYNCIFY == 2
       var exportPatterns = [{{{ ASYNCIFY_EXPORTS.map(x => new RegExp('^' + x.replace(/\*/g, '.*') + '$')) }}}];
+      Asyncify.asyncExports = new Set();
 #endif
       var ret = {};
       for (var x in exports) {
@@ -120,6 +121,7 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY == 2
             // Wrap all exports with a promising WebAssembly function.
             var isAsyncifyExport = exportPatterns.some(pattern => !!x.match(pattern));
+            Asyncify.asyncExports.add(original);
             if (isAsyncifyExport) {
               original = Asyncify.makeAsyncFunction(original);
             }
@@ -267,7 +269,7 @@ mergeInto(LibraryManager.library, {
       var name = Asyncify.callStackIdToName[id];
       var func = Module['asm'][name];
 #if RELOCATABLE
-      // Exported functions in side modules are not listed in `Module["asm"]`,
+      // Exported functions in side modules are not listed in `Module['asm']`,
       // So we should use `resolveGlobalSymbol` helper function, which is defined in `library_dylink.js`.
       if (!func) {
         func = resolveGlobalSymbol(name, false).sym;
@@ -415,6 +417,13 @@ mergeInto(LibraryManager.library, {
     //
     // JSPI implementation of Asyncify.
     //
+
+    // Stores all the exported raw Wasm functions that are wrapped with async
+    // WebAssembly.Functions.
+    asyncExports: null,
+    isAsyncExport: function(func) {
+      return Asyncify.asyncExports && Asyncify.asyncExports.has(func);
+    },
     handleSleep: function(startAsync) {
       {{{ runtimeKeepalivePush(); }}}
       var promise = new Promise((resolve) => {
@@ -460,34 +469,6 @@ mergeInto(LibraryManager.library, {
     // returns a Promise instead of nothing, and that Promise is what tells the
     // wasm VM to pause the stack.
     return Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms));
-  },
-
-  emscripten_wget__deps: ['$Browser', '$PATH_FS', '$FS'],
-  emscripten_wget__async: true,
-  emscripten_wget: function(url, file) {
-    return Asyncify.handleSleep((wakeUp) => {
-      var _url = UTF8ToString(url);
-      var _file = UTF8ToString(file);
-      _file = PATH_FS.resolve(_file);
-      var destinationDirectory = PATH.dirname(_file);
-      FS.createPreloadedFile(
-        destinationDirectory,
-        PATH.basename(_file),
-        _url, true, true,
-        wakeUp,
-        wakeUp,
-        false, // dontCreateFile
-        false, // canOwn
-        function() { // preFinish
-          // if a file exists there, we overwrite it
-          try {
-            FS.unlink(_file);
-          } catch (e) {}
-          // if the destination directory does not yet exist, create it
-          FS.mkdirTree(destinationDirectory);
-        }
-      );
-    });
   },
 
   emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
