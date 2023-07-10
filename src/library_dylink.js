@@ -144,7 +144,7 @@ var LibraryDylink = {
   $GOTHandler__internal: true,
   $GOTHandler__deps: ['$GOT', '$currentModuleWeakSymbols'],
   $GOTHandler: {
-    'get': function(obj, symName) {
+    get(obj, symName) {
       var rtn = GOT[symName];
       if (!rtn) {
         rtn = GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true});
@@ -675,7 +675,7 @@ var LibraryDylink = {
       // are. To do that here, we use a JS proxy (another option would
       // be to inspect the binary directly).
       var proxyHandler = {
-        'get': function(stubs, prop) {
+        get(stubs, prop) {
           // symbols that should be local to this module
           switch (prop) {
             case '__memory_base':

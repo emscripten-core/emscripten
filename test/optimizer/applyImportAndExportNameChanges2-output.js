@@ -213,14 +213,14 @@ if (ENVIRONMENT_IS_NODE) {
 }
 
 var wasmImports = {
- "b": abort,
- "h": ___syscall140,
- "a": ___syscall146,
- "g": ___syscall54,
- "f": ___syscall6,
- "e": _emscripten_get_now,
- "d": _emscripten_memcpy_big,
- "c": _emscripten_random
+ b: abort,
+ h: ___syscall140,
+ a: ___syscall146,
+ g: ___syscall54,
+ f: ___syscall6,
+ e: _emscripten_get_now,
+ d: _emscripten_memcpy_big,
+ c: _emscripten_random
 };
 
 function run() {

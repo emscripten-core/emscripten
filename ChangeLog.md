@@ -18,8 +18,17 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.43 (in development)
+3.1.44 (in development)
 -----------------------
+- The `EM_LOG_FUNC_PARAMS` flag to `emscripten_log`/`emscripten_get_callstack`
+  has been deprecated and no longer has any effect.  It was based on a
+  long-deprecated JS API. (#19820)
+- The internal `read_` and `readAsync` functions no longer handle date URIs.
+  This only effects builds that use `-sSINGLE_FILE` or `--memory-init-file`.
+  (#19792)
+
+3.1.43 - 07/10/23
+-----------------
 - Handling i64 arguments and return values in JS functions is now much simpler
   with the new `__i53abi` decorator.  When this is set to true, i64 values are
   automatically converted to JS numbers (i53) at the JS boundary.  Parameters
