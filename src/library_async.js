@@ -401,7 +401,7 @@ mergeInto(LibraryManager.library, {
           if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.pause();
           }
-          runAndAbortIfError(() => _asyncify_start_unwind(Asyncify.currData);
+          runAndAbortIfError(() => _asyncify_start_unwind(Asyncify.currData));
         }
       } else if (Asyncify.state === Asyncify.State.Rewinding) {
         // Stop a resume.
