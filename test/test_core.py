@@ -5989,6 +5989,8 @@ Module = {
   @also_with_noderawfs
   @also_with_wasmfs_js
   def test_fs_writeFile(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting("FORCE_FILESYSTEM")
     self.do_run_in_out_file_test('fs/test_writeFile.cpp')
 
   def test_fs_js_api(self):

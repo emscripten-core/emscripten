@@ -125,7 +125,7 @@ int _wasmfs_mkdir(char* path, int mode) {
   return __syscall_mkdirat(AT_FDCWD, (intptr_t)path, mode);
 }
 
-int _wasmfs_rmdir(char* path) { return __syscall_unlinkat(AT_FDCWD, (intptr_t)path, AT_REMOVEDIR); }
+int _wasmfs_rmdir(char* path){ return __syscall_unlinkat(AT_FDCWD, (intptr_t)path, AT_REMOVEDIR); }
 
 int _wasmfs_open(char* path, int flags, mode_t mode) {
   return __syscall_openat(AT_FDCWD, (intptr_t)path, flags, mode);
@@ -159,7 +159,7 @@ intptr_t _wasmfs_readlink(char* path) {
   return (intptr_t)readBuf;
 }
 
-int _wasmfs_write(int fd, void* buf, size_t count) {
+int _wasmfs_write(int fd, void *buf, size_t count) {
   __wasi_ciovec_t iovs[1];
   iovs[0].buf = (uint8_t*)buf;
   iovs[0].buf_len = count;
@@ -174,7 +174,7 @@ int _wasmfs_write(int fd, void* buf, size_t count) {
 
 int _wasmfs_pwrite(int fd, void *buf, size_t count, off_t offset) {
   __wasi_ciovec_t iovs[1];
-  iovs[0].buf = (uint8_t *)buf;
+  iovs[0].buf = (uint8_t*)buf;
   iovs[0].buf_len = count;
 
   __wasi_size_t numBytes;

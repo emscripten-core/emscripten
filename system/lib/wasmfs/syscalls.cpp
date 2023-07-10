@@ -859,7 +859,7 @@ int __syscall_rmdir(intptr_t path) {
   return __syscall_unlinkat(AT_FDCWD, path, AT_REMOVEDIR);
 }
 
-// wasmfs_unmount is similar to __syscall_unlinkat, but assumes AT_REMOVEDIR is true.
+// wasmfs_unmount is similar to __syscall_unlinkat, but assumes AT_REMOVEDIR is true and will unlink nonempty directories.
 int wasmfs_unmount(int dirfd, intptr_t path) {
   std::string_view p((char*)path);
   // Ignore trailing '/'.
