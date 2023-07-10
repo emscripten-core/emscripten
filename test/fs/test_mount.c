@@ -8,7 +8,6 @@
 #include <assert.h>
 #include <stdio.h>
 #include <emscripten.h>
-#include <fcntl.h>
 
 int main() {
   EM_ASM(
