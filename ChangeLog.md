@@ -20,7 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 3.1.44 (in development)
 -----------------------
-- The internal `read_` and `readAsync` functions no longer handle date URIs.
+- The internal `read_` and `readAsync` functions no longer handle data URIs.
   This only effects builds that use `-sSINGLE_FILE` or `--memory-init-file`.
   (#19792)
 
