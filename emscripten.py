@@ -903,6 +903,8 @@ def create_pointer_conversion_wrappers(metadata):
     '_emscripten_proxy_dlsync_async': '_pp',
     '_wasmfs_rmdir': '_p',
     '_wasmfs_unlink': '_p',
+    '_wasmfs_mkdir': '_p_',
+    '_wasmfs_open': '_p__',
     'emscripten_wasm_worker_initialize': '_p_',
   }
 
