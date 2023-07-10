@@ -111,6 +111,7 @@ int main() {
     FS.writeFile("/icase/IGNORE.txt", "a=1");
     assert(FS.readFile("/icase/Ignore.txt", { encoding: 'utf8' }) === 'a=1');
     assert(FS.readFile("/icase/ignore.TXT", { encoding: 'utf8' }) === 'a=1');
+    FS.unmount("/icase");
 #endif
   );
 
