@@ -204,14 +204,14 @@ if (ENVIRONMENT_IS_NODE) {
     _emscripten_get_now = Date.now
 }
 var wasmImports = {
-    "abort": abort,
-    "___syscall140": ___syscall140,
-    "___syscall146": ___syscall146,
-    "___syscall54": ___syscall54,
-    "___syscall6": ___syscall6,
-    "_emscripten_get_now": _emscripten_get_now,
-    "_emscripten_memcpy_big": _emscripten_memcpy_big,
-    "_emscripten_random": _emscripten_random
+    abort: abort,
+    ___syscall140: ___syscall140,
+    ___syscall146: ___syscall146,
+    ___syscall54: ___syscall54,
+    ___syscall6: ___syscall6,
+    _emscripten_get_now: _emscripten_get_now,
+    _emscripten_memcpy_big: _emscripten_memcpy_big,
+    _emscripten_random: _emscripten_random
 };
 
 function run() {

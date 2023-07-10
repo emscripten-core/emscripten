@@ -5756,10 +5756,10 @@ This locale is not the C locale.
       self.assertContained(has, src)
       self.assertNotContained(not_has, src)
 
-    test([], 'Module["', 'Module["waka')
-    test(['-sEXPORTED_RUNTIME_METHODS=[]'], '', 'Module["addRunDependency')
-    test(['-sEXPORTED_RUNTIME_METHODS=addRunDependency'], 'Module["addRunDependency', 'Module["waka')
-    test(['-sEXPORTED_RUNTIME_METHODS=[]', '-sEXPORTED_RUNTIME_METHODS=addRunDependency'], 'Module["addRunDependency', 'Module["waka')
+    test([], "Module['", "Module['waka")
+    test(['-sEXPORTED_RUNTIME_METHODS=[]'], '', "Module['addRunDependency")
+    test(['-sEXPORTED_RUNTIME_METHODS=addRunDependency'], "Module['addRunDependency", "Module['waka")
+    test(['-sEXPORTED_RUNTIME_METHODS=[]', '-sEXPORTED_RUNTIME_METHODS=addRunDependency'], "Module['addRunDependency", "Module['waka")
 
   def test_stat_fail_alongtheway(self):
     create_file('src.c', r'''
@@ -7708,7 +7708,7 @@ int main() {
     self.run_process([EMXX, test_file('hello_world.cpp'), '-sINITIAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-sWASM_ASYNC_COMPILATION=0', '-sIMPORTED_MEMORY'])
     out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained('LinkError', out)
-    self.assertContained('Memory size incompatibility issues may be due to changing INITIAL_MEMORY at runtime to something too large. Use ALLOW_MEMORY_GROWTH to allow any size memory (and also make sure not to set INITIAL_MEMORY at runtime to something smaller than it was at compile time).', out)
+    self.assertContained("memory import 2 has a larger maximum size 800 than the module's declared maximum", out)
     self.assertNotContained('hello, world!', out)
     # and with memory growth, all should be good
     self.run_process([EMXX, test_file('hello_world.cpp'), '-sINITIAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-sALLOW_MEMORY_GROWTH', '-sWASM_ASYNC_COMPILATION=0', '-sIMPORTED_MEMORY'])
@@ -10090,7 +10090,6 @@ int main () {
                                '-sGL_TRACK_ERRORS=0',
                                '-sGL_SUPPORT_EXPLICIT_SWAP_CONTROL=0',
                                '-sGL_POOL_TEMP_BUFFERS=0',
-                               '-sMIN_CHROME_VERSION=58',
                                '-sGL_WORKAROUND_SAFARI_GETCONTEXT_BUG=0',
                                '-sNO_FILESYSTEM',
                                '-sSTRICT',
@@ -12621,6 +12620,13 @@ Module.postRun = () => {{
           [key]: 42,
         };
         err('value: ' + obj2[key]);
+
+        // Method syntax
+        var obj3 = {
+          myMethod() { return 43 },
+        };
+        global['foo'] = obj3;
+        err('value2: ' + obj3.myMethod());
       }
     });
     ''')

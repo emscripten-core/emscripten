@@ -155,8 +155,10 @@ char *emscripten_get_preloaded_image_data_from_FILE(FILE *file, int *w, int *h);
 #define EM_LOG_C_STACK   8
 #define EM_LOG_JS_STACK 16
 #define EM_LOG_DEMANGLE 32  // deprecated
+#pragma clang deprecated(EM_LOG_DEMANGLE)
 #define EM_LOG_NO_PATHS 64
-#define EM_LOG_FUNC_PARAMS 128
+#define EM_LOG_FUNC_PARAMS 128  // deprecated
+#pragma clang deprecated(EM_LOG_FUNC_PARAMS)
 #define EM_LOG_DEBUG    256
 #define EM_LOG_INFO     512
 

@@ -719,8 +719,12 @@ def create_sending(metadata, library_symbols):
             continue
           send_items_map[demangled] = f
 
-  sorted_keys = sorted(send_items_map.keys())
-  return '{\n  ' + ',\n  '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + '\n}'
+  sorted_items = sorted(send_items_map.items())
+  prefix = ''
+  if settings.USE_CLOSURE_COMPILER:
+    # This prevents closure compiler from minifying the field names in this object.
+    prefix = '/** @export */\n  '
+  return '{\n  ' + ',\n  '.join(f'{prefix}{k}: {v}' for k, v in sorted_items) + '\n}'
 
 
 def make_export_wrappers(exports, delay_assignment):
@@ -751,7 +755,7 @@ def make_export_wrappers(exports, delay_assignment):
     # TODO(sbc): Can we avoid exporting the dynCall_ functions on the module.
     should_export = settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS
     if name.startswith('dynCall_') or should_export:
-      exported = 'Module["%s"] = ' % mangled
+      exported = "Module['%s'] = " % mangled
     else:
       exported = ''
     wrapper += exported
@@ -759,15 +763,12 @@ def make_export_wrappers(exports, delay_assignment):
     if settings.ASSERTIONS and install_wrapper(name):
       # With assertions enabled we create a wrapper that are calls get routed through, for
       # the lifetime of the program.
-      if delay_assignment:
-        wrapper += 'createExportWrapper("%s");' % name
-      else:
-        wrapper += 'createExportWrapper("%s", asm);' % name
+      wrapper += "createExportWrapper('%s');" % name
     elif delay_assignment:
       # With assertions disabled the wrapper will replace the global var and Module var on
       # first use.
       wrapper += f'''function() {{
-  return ({mangled} = {exported}Module["asm"]["{name}"]).apply(null, arguments);
+  return ({mangled} = {exported}Module['asm']['{name}']).apply(null, arguments);
 }};
 '''
     else:
@@ -793,7 +794,7 @@ def create_receiving(exports):
       # In Wasm exports are assigned inside a function to variables
       # existing in top level JS scope, i.e.
       # var _main;
-      # WebAssembly.instantiate(Module["wasm"], imports).then((output) => {
+      # WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
       #   var asm = output.instance.exports;
       #   _main = asm["_main"];
       generate_dyncall_assignment = settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
@@ -805,7 +806,7 @@ def create_receiving(exports):
         should_export = settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS)
         export_assignment = ''
         if settings.MODULARIZE and should_export:
-          export_assignment = f'Module["{mangled}"] = '
+          export_assignment = f"Module['{mangled}'] = "
         receiving += [f'{export_assignment}{dynCallAssignment}{mangled} = asm["{s}"]']
     else:
       receiving += make_export_wrappers(exports, delay_assignment)
@@ -899,6 +900,8 @@ def create_pointer_conversion_wrappers(metadata):
     '_emscripten_proxy_dlsync_async': '_pp',
     '_wasmfs_rmdir': '_p',
     '_wasmfs_unlink': '_p',
+    '_wasmfs_mkdir': '_p_',
+    '_wasmfs_open': '_p__',
     'emscripten_wasm_worker_initialize': '_p_',
   }
 

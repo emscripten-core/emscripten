@@ -223,7 +223,7 @@ function optPassMergeVarInitializationAssignments(ast) {
 }
 
 function runOnJsText(js, pretty = false) {
-  const ast = acorn.parse(js, {ecmaVersion: 6});
+  const ast = acorn.parse(js, {ecmaVersion: 2020});
 
   optPassSimplifyModuleInitialization(ast);
   optPassRemoveRedundantOperatorNews(ast);
@@ -238,7 +238,11 @@ function runOnJsText(js, pretty = false) {
   optPassSimplifyModularizeFunction(ast);
 
   const terserAst = terser.AST_Node.from_mozilla_ast(ast);
-  const output = terserAst.print_to_string({beautify: pretty, indent_level: pretty ? 1 : 0});
+  const output = terserAst.print_to_string({
+    wrap_func_args: false,
+    beautify: pretty,
+    indent_level: pretty ? 1 : 0,
+  });
 
   return output;
 }
@@ -255,7 +259,7 @@ let numTestFailures = 0;
 function test(input, expected) {
   const observed = runOnJsText(input);
   if (observed != expected) {
-    console.error(`Input: ${input}\nobserved: ${observed}\nexpected: ${expected}\n`);
+    console.error(`ERROR: Input: ${input}\nobserved: ${observed}\nexpected: ${expected}\n`);
     ++numTestFailures;
   } else {
     console.log(`OK: ${input} -> ${expected}`);
@@ -304,6 +308,9 @@ function runTests() {
 
   // Test that arrays containing nulls don't cause issues
   test('[,];', '[,];');
+
+  // Test optional chaining operator
+  test('console?.log("");', 'console?.log("");');
 
   process.exit(numTestFailures);
 }
