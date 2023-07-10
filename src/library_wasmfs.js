@@ -148,7 +148,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     mkdir: (path, mode) => FS.handleError(withStackSave(() => {
       mode = mode !== undefined ? mode : 511 /* 0777 */;
       var buffer = stringToUTF8OnStack(path);
-      return __wasmfs_mkdir({{{ to64('buffer') }}}, mode);
+      return __wasmfs_mkdir(buffer, mode);
     })),
     mkdirTree: (path, mode) => {
       var dirs = path.split('/');
@@ -170,7 +170,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       flags = typeof flags == 'string' ? FS_modeStringToFlags(flags) : flags;
       mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
       var buffer = stringToUTF8OnStack(path);
-      var fd = FS.handleError(__wasmfs_open({{{ to64('buffer') }}}, flags, mode));
+      var fd = FS.handleError(__wasmfs_open(buffer, flags, mode));
       return { fd : fd };
     }),
     create: (path, mode) => {
