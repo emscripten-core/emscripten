@@ -900,6 +900,8 @@ def create_pointer_conversion_wrappers(metadata):
     '_wasmfs_rmdir': '_p',
     '_wasmfs_unlink': '_p',
     'emscripten_wasm_worker_initialize': '_p_',
+    'asyncify_start_rewind': '_p',
+    'asyncify_start_unwind': '_p',
   }
 
   wrappers = '''

@@ -138,12 +138,13 @@ mergeInto(LibraryManager.library, {
               try {
 #endif
 #if ASYNCIFY == 1 && MEMORY64
+                // when rewinding, function is called without any arguments
+                // and it will throw 'undefined cannot be converted to BigInt' so let's cache original arguments
                 let args = Array.from(arguments)
+                // dynCall_ functions expect first argument to be a number, but BigInt is passed instead
                 if (args.length > 0 && x.startsWith('dynCall_')) {
                     args[0] = Number(args[0])
                 }
-                // when rewinding, function is called without any arguments
-                // and it will throw 'undefined cannot be converted to BigInt' so let's cache original arguments
                 if (args.length === 0) {
                     args = Asyncify.rewindArguments[x] || []
                 } else {
@@ -283,7 +284,7 @@ mergeInto(LibraryManager.library, {
     getDataRewindFunc__deps: [ '$resolveGlobalSymbol' ],
 #endif
     getDataRewindFunc: function(ptr) {
-      var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, '*') }}};
+      var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
       var name = Asyncify.callStackIdToName[id];
       var func = Module['asm'][name];
 #if RELOCATABLE
@@ -519,7 +520,7 @@ mergeInto(LibraryManager.library, {
       safeSetTimeout(() => {
         var stackBegin = Asyncify.currData + {{{ C_STRUCTS.asyncify_data_s.__size__ }}};
         var stackEnd = {{{ makeGetValue('Asyncify.currData', 0, '*') }}};
-        {{{ makeDynCall(MEMORY64 ? 'vpp' : 'vii', 'func') }}}(stackBegin, stackEnd);
+        {{{ makeDynCall('vpp', 'func') }}}(stackBegin, stackEnd);
         wakeUp();
       }, 0);
     });
@@ -594,7 +595,7 @@ mergeInto(LibraryManager.library, {
         {{{ makeSetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 0, '*') }}};
 
         var userData = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.user_data, '*') }}};
-        {{{ makeDynCall(MEMORY64 ? 'vp' : 'vi', 'entryPoint') }}}(userData);
+        {{{ makeDynCall('vp', 'entryPoint') }}}(userData);
       } else {
         var asyncifyData = newFiber + {{{ C_STRUCTS.emscripten_fiber_s.asyncify_data }}};
         Asyncify.currData = asyncifyData;
