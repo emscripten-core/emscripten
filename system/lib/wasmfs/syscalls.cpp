@@ -859,6 +859,58 @@ int __syscall_rmdir(intptr_t path) {
   return __syscall_unlinkat(AT_FDCWD, path, AT_REMOVEDIR);
 }
 
+// wasmfs_unmount is similar to __syscall_unlinkat, but assumes AT_REMOVEDIR is true.
+int wasmfs_unmount(int dirfd, intptr_t path) {
+  std::string_view p((char*)path);
+  // Ignore trailing '/'.
+  while (!p.empty() && p.back() == '/') {
+    p.remove_suffix(1);
+  }
+  if (p.size() >= 2 && p.substr(p.size() - 2) == std::string_view("/.")) {
+    return -EINVAL;
+  }
+
+  auto parsed = path::parseParent((char*)path, dirfd);
+  if (auto err = parsed.getError()) {
+    return err;
+  }
+  auto& [parent, childNameView] = parsed.getParentChild();
+  std::string childName(childNameView);
+  auto lockedParent = parent->locked();
+  auto file = lockedParent.getChild(childName);
+  if (!file) {
+    return -ENOENT;
+  }
+  // Disallow removing the root directory, even if it is empty.
+  if (file == wasmFS.getRootDirectory()) {
+    return -EBUSY;
+  }
+
+  auto lockedFile = file->locked();
+  if (auto dir = file->dynCast<Directory>()) {
+    if (parent->getBackend() == dir->getBackend()) {
+      // The child is not a valid mountpoint.
+      return -EINVAL;
+    }
+  } else {
+    // A normal file or symlink.
+    return -ENOTDIR;
+  }
+
+  // Cannot unlink/rmdir if the parent dir doesn't have write permissions.
+  if (!(lockedParent.getMode() & WASMFS_PERM_WRITE)) {
+    return -EACCES;
+  }
+
+  // Input is valid, perform the unlink.
+  if (auto err = lockedParent.removeChild(childName)) {
+    return err;
+  }
+
+  // Create a new directory to replace the old mount.
+  return wasmfs_create_directory((char*)path, 0777, parent->getBackend());
+}
+
 int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
   dirent* result = (dirent*)dirp;
 

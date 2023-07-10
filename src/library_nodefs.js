@@ -5,6 +5,12 @@
  */
 
 mergeInto(LibraryManager.library, {
+#if WASMFS
+  $NODEFS__deps: ['$stringToUTF8OnStack'],
+  $NODEFS: {
+    createBackend: (opts) => (_wasmfs_create_node_backend(stringToUTF8OnStack(opts.root)))
+  }
+#else
   $NODEFS__deps: ['$FS', '$PATH', '$ERRNO_CODES', '$mmapAlloc'],
   $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { NODEFS.staticInit(); }',
   $NODEFS: {
@@ -314,4 +320,5 @@ mergeInto(LibraryManager.library, {
       }
     }
   }
+#endif
 });

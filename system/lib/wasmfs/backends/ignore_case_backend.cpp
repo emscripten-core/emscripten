@@ -241,6 +241,13 @@ backend_t wasmfs_create_icase_backend(backend_constructor_t create_backend,
     [create_backend, arg]() { return create_backend(arg); });
 }
 
+// C API FOR creating an ignore case backend by supplying a pointer to another backend.
+backend_t wasmfs_create_icase_backend_from_pointer(backend_t backend) {
+  return createIgnoreCaseBackend(
+    [backend]() { return backend; }
+  );
+}
+
 } // extern "C"
 
 } // namespace wasmfs

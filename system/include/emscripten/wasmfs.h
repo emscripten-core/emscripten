@@ -68,6 +68,7 @@ backend_t wasmfs_create_opfs_backend(void);
 
 backend_t wasmfs_create_icase_backend(backend_constructor_t create_backend,
                                       void* arg);
+backend_t wasmfs_create_icase_backend_from_pointer(backend_t backend);
 
 // Similar to fflush(0), but also flushes all internal buffers inside WasmFS.
 // This is necessary because in a Web environment we must buffer at an

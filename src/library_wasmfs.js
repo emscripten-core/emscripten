@@ -5,6 +5,18 @@
  */
 
 mergeInto(LibraryManager.library, {
+  $MEMFS: {
+    createBackend: (opts) => (_wasmfs_create_memory_backend())
+  },
+  $ICASE: {
+    createBackend: (opts) => {
+      if (!opts.backend) {
+        throw new Error("Underlying backend is not valid.");
+      }
+      var underlyingBackend = opts.backend.createBackend(opts);
+      return _wasmfs_create_icase_backend_from_pointer(underlyingBackend);
+    }
+  },
   $wasmFSPreloadedFiles: [],
   $wasmFSPreloadedDirs: [],
   // We must note when preloading has been "flushed", that is, the time at which
@@ -18,6 +30,14 @@ FS.init();
 FS.createPreloadedFile = FS_createPreloadedFile;
 `,
   $FS__deps: [
+    '$MEMFS',
+    '$ICASE',
+#if LibraryManager.has('library_nodefs.js')
+    '$NODEFS',
+#endif
+    '$OPFS',
+    '$JS_FILE',
+    '$FETCH',
     '$wasmFSPreloadedFiles',
     '$wasmFSPreloadedDirs',
     '$wasmFSPreloadingFlushed',
@@ -349,8 +369,16 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       __wasmfs_readdir_finish(state);
       return entries;
     }),
-    // TODO: mount
-    // TODO: unmount
+    mount: (type, opts, mountpoint) => {
+      if (!type) {
+        throw new Error("FS is not valid.");
+      }
+      var backendPointer = type.createBackend(opts);
+      return FS.handleError(withStackSave(() => __wasmfs_mount(stringToUTF8OnStack(mountpoint), backendPointer)));
+    },
+    unmount: (mountpoint) => (
+      FS.handleError(withStackSave(() => __wasmfs_unmount(stringToUTF8OnStack(mountpoint))))
+    ),
     // TODO: lookup
     mknod: (path, mode, dev) => {
       return FS.handleError(withStackSave(() => {

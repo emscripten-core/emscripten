@@ -23,6 +23,8 @@ using namespace wasmfs;
 extern "C" {
 
 __wasi_fd_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend);
+int wasmfs_create_directory(char* path, int mode, backend_t backend);
+int wasmfs_unmount(int dirfd, intptr_t path);
 
 // Copy the file specified by the pathname into JS.
 // Return a pointer to the JS buffer in HEAPU8.
@@ -123,7 +125,9 @@ int _wasmfs_mkdir(char* path, int mode) {
   return __syscall_mkdirat(AT_FDCWD, (intptr_t)path, mode);
 }
 
-int _wasmfs_rmdir(char* path){ return __syscall_unlinkat(AT_FDCWD, (intptr_t)path, AT_REMOVEDIR); }
+int _wasmfs_rmdir(char* path) {
+  return __syscall_unlinkat(AT_FDCWD, (intptr_t)path, AT_REMOVEDIR);
+}
 
 int _wasmfs_open(char* path, int flags, mode_t mode) {
   return __syscall_openat(AT_FDCWD, (intptr_t)path, flags, mode);
@@ -150,14 +154,15 @@ int _wasmfs_symlink(char* old_path, char* new_path) {
 intptr_t _wasmfs_readlink(char* path) {
   static thread_local void* readBuf = nullptr;
   readBuf = realloc(readBuf, PATH_MAX);
-  int err = __syscall_readlinkat(AT_FDCWD, (intptr_t)path, (intptr_t)readBuf, PATH_MAX);
+  int err =
+    __syscall_readlinkat(AT_FDCWD, (intptr_t)path, (intptr_t)readBuf, PATH_MAX);
   if (err < 0) {
     return err;
   }
   return (intptr_t)readBuf;
 }
 
-int _wasmfs_write(int fd, void *buf, size_t count) {
+int _wasmfs_write(int fd, void* buf, size_t count) {
   __wasi_ciovec_t iovs[1];
   iovs[0].buf = (uint8_t*)buf;
   iovs[0].buf_len = count;
@@ -170,7 +175,7 @@ int _wasmfs_write(int fd, void *buf, size_t count) {
   return numBytes;
 }
 
-int _wasmfs_pwrite(int fd, void *buf, size_t count, off_t offset) {
+int _wasmfs_pwrite(int fd, void* buf, size_t count, off_t offset) {
   __wasi_ciovec_t iovs[1];
   iovs[0].buf = (uint8_t*)buf;
   iovs[0].buf_len = count;
@@ -187,12 +192,11 @@ int _wasmfs_chmod(char* path, mode_t mode) {
   return __syscall_chmod((intptr_t)path, mode);
 }
 
-int _wasmfs_fchmod(int fd, mode_t mode) {
-  return __syscall_fchmod(fd, mode);
-}
+int _wasmfs_fchmod(int fd, mode_t mode) { return __syscall_fchmod(fd, mode); }
 
 int _wasmfs_lchmod(char* path, mode_t mode) {
-  return __syscall_fchmodat(AT_FDCWD, (intptr_t)path, mode, AT_SYMLINK_NOFOLLOW);
+  return __syscall_fchmodat(
+    AT_FDCWD, (intptr_t)path, mode, AT_SYMLINK_NOFOLLOW);
 }
 
 int _wasmfs_llseek(int fd, off_t offset, int whence) {
@@ -205,12 +209,13 @@ int _wasmfs_llseek(int fd, off_t offset, int whence) {
 }
 
 int _wasmfs_rename(char* oldpath, char* newpath) {
-  return __syscall_renameat(AT_FDCWD, (intptr_t)oldpath, AT_FDCWD, (intptr_t)newpath);
+  return __syscall_renameat(
+    AT_FDCWD, (intptr_t)oldpath, AT_FDCWD, (intptr_t)newpath);
 };
 
-int _wasmfs_read(int fd, void *buf, size_t count) {
+int _wasmfs_read(int fd, void* buf, size_t count) {
   __wasi_iovec_t iovs[1];
-  iovs[0].buf = (uint8_t *)buf;
+  iovs[0].buf = (uint8_t*)buf;
   iovs[0].buf_len = count;
 
   __wasi_size_t numBytes;
@@ -221,9 +226,9 @@ int _wasmfs_read(int fd, void *buf, size_t count) {
   return numBytes;
 }
 
-int _wasmfs_pread(int fd, void *buf, size_t count, off_t offset) {
+int _wasmfs_pread(int fd, void* buf, size_t count, off_t offset) {
   __wasi_iovec_t iovs[1];
-  iovs[0].buf = (uint8_t *)buf;
+  iovs[0].buf = (uint8_t*)buf;
   iovs[0].buf_len = count;
 
   __wasi_size_t numBytes;
@@ -242,11 +247,9 @@ int _wasmfs_ftruncate(int fd, off_t length) {
   return __syscall_ftruncate64(fd, length);
 }
 
-int _wasmfs_close(int fd) {
-  return __wasi_fd_close(fd);
-}
+int _wasmfs_close(int fd) { return __wasi_fd_close(fd); }
 
-int _wasmfs_utime(char *path, long atime_ms, long mtime_ms) {
+int _wasmfs_utime(char* path, long atime_ms, long mtime_ms) {
   struct timespec times[2];
   times[0].tv_sec = atime_ms / 1000;
   times[0].tv_nsec = (atime_ms % 1000) * 1000000;
@@ -262,6 +265,39 @@ int _wasmfs_stat(char* path, struct stat* statBuf) {
 
 int _wasmfs_lstat(char* path, struct stat* statBuf) {
   return __syscall_lstat64((intptr_t)path, (intptr_t)statBuf);
+}
+
+int _wasmfs_mount(char* path, backend_t created_backend) {
+  int err = __syscall_rmdir((intptr_t)path);
+  assert(!err);
+
+  if (err == -ENOTEMPTY) {
+    // Check for an attempt to mount to an existing mountpoint.
+    auto parsedParent = path::parseParent(path);
+    if (auto err = parsedParent.getError()) {
+      return err;
+    }
+    auto& [parent, childNameView] = parsedParent.getParentChild();
+    std::string childName(childNameView);
+    auto lockedParent = parent->locked();
+    auto child = lockedParent.getChild(childName);
+    if (parent->getBackend() != child->getBackend()) {
+      return -EBUSY;
+    }
+
+    return -ENOTEMPTY;
+  }
+
+  // The legacy JS API mount requires the directory to already exist.
+  if (err && err != -ENOENT) {
+    return err;
+  }
+
+  return wasmfs_create_directory(path, 0777, created_backend);
+}
+
+int _wasmfs_unmount(char* path) {
+  return wasmfs_unmount(AT_FDCWD, (intptr_t)path);
 }
 
 // Helper method that identifies what a path is:
