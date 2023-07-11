@@ -628,7 +628,7 @@ def is_c_symbol(name):
   return name.startswith('_') or name in settings.WASM_SYSTEM_EXPORTS
 
 
-def treat_as_user_function(name):
+def treat_as_user_export(name):
   if name.startswith('dynCall_'):
     return False
   if name in settings.WASM_SYSTEM_EXPORTS:
@@ -646,7 +646,7 @@ def asmjs_mangle(name):
   # to simply `main` which is expected by the emscripten JS glue code.
   if name == '__main_argc_argv':
     name = 'main'
-  if treat_as_user_function(name):
+  if treat_as_user_export(name):
     return '_' + name
   return name
 

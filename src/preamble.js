@@ -215,6 +215,9 @@ function preRun() {
 }
 
 function initRuntime() {
+#if RUNTIME_DEBUG
+  dbg('initRuntime');
+#endif
 #if ASSERTIONS
   assert(!runtimeInitialized);
 #endif
@@ -518,22 +521,15 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 #include "URIUtils.js"
 
 #if ASSERTIONS
-/** @param {boolean=} fixedasm */
-function createExportWrapper(name, fixedasm) {
+function createExportWrapper(name) {
   return function() {
-    var displayName = name;
-    var asm = fixedasm;
-    if (!fixedasm) {
-      asm = Module['asm'];
-    }
-    assert(runtimeInitialized, 'native function `' + displayName + '` called before runtime initialization');
+    assert(runtimeInitialized, `native function \`${name}\` called before runtime initialization`);
 #if EXIT_RUNTIME
-    assert(!runtimeExited, 'native function `' + displayName + '` called after runtime exit (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    assert(!runtimeExited, `native function \`${name}\` called after runtime exit (use NO_EXIT_RUNTIME to keep it alive after main() exits)`);
 #endif
-    if (!asm[name]) {
-      assert(asm[name], 'exported native function `' + displayName + '` not found');
-    }
-    return asm[name].apply(null, arguments);
+    var f = Module['asm'][name];
+    assert(f, `exported native function \`${name}\` not found`);
+    return f.apply(null, arguments);
   };
 }
 #endif
