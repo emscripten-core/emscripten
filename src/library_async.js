@@ -604,7 +604,7 @@ mergeInto(LibraryManager.library, {
         dbg('ASYNCIFY/FIBER: start rewind', asyncifyData, '(resuming fiber', newFiber, ')');
 #endif
         Asyncify.state = Asyncify.State.Rewinding;
-        _asyncify_start_rewind('asyncifyData');
+        _asyncify_start_rewind(asyncifyData);
         Asyncify.doRewind(asyncifyData);
       }
     },
