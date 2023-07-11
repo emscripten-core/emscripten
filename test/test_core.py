@@ -2115,10 +2115,8 @@ int main() {
     self.set_setting('RETAIN_COMPILER_SETTINGS')
     self.do_runf(src, read_file(output).replace('waka', shared.EMSCRIPTEN_VERSION))
 
+  @no_wasm64l("wasm64l doesn't support asyncify")
   def test_emscripten_has_asyncify(self):
-    if self.get_setting('MEMORY64') == 1:
-      # This test passes under MEMORY64=2 but not MEMORY64=1 so we don't use is_wasm64 here.
-      self.skipTest('TODO: asyncify for wasm64')
     src = r'''
       #include <stdio.h>
       #include <emscripten.h>
@@ -8372,6 +8370,7 @@ Module.onRuntimeInitialized = () => {
       if should_pass:
         raise
 
+  @no_wasm64l("wasm64l doesn't support asyncify")
   @needs_dylink
   def test_asyncify_side_module(self):
     self.set_setting('ASYNCIFY')
