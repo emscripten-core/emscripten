@@ -1934,6 +1934,7 @@ class libsanitizer_common_rt(CompilerRTLibrary, MTLibrary):
               'system/lib/compiler-rt/lib',
               'system/lib/libc']
   never_force = True
+  cflags = ['-D_LARGEFILE64_SOURCE']
 
   src_dir = 'system/lib/compiler-rt/lib/sanitizer_common'
   src_glob = '*.cpp'

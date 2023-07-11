@@ -300,7 +300,7 @@ If manually bisecting:
 
   def test_emscripten_log(self):
     self.btest_exit(test_file('emscripten_log/emscripten_log.cpp'),
-                    args=['--pre-js', path_from_root('src/emscripten-source-map.min.js'), '-gsource-map'])
+                    args=['-Wno-deprecated-pragma', '--pre-js', path_from_root('src/emscripten-source-map.min.js'), '-gsource-map'])
 
   @also_with_wasmfs
   def test_preload_file(self):

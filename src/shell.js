@@ -293,29 +293,14 @@ if (ENVIRONMENT_IS_SHELL) {
 #endif
 
   if (typeof read != 'undefined') {
-    read_ = (f) => {
-#if SUPPORT_BASE64_EMBEDDING
-      const data = tryParseAsDataURI(f);
-      if (data) {
-        return intArrayToString(data);
-      }
-#endif
-      return read(f);
-    };
+    read_ = read;
   }
 
   readBinary = (f) => {
-    let data;
-#if SUPPORT_BASE64_EMBEDDING
-    data = tryParseAsDataURI(f);
-    if (data) {
-      return data;
-    }
-#endif
     if (typeof readbuffer == 'function') {
       return new Uint8Array(readbuffer(f));
     }
-    data = read(f, 'binary');
+    let data = read(f, 'binary');
     assert(typeof data == 'object');
     return data;
   };
