@@ -139,6 +139,7 @@ def chunkify(funcs, chunk_size):
   return [''.join(func[1] for func in chunk) for chunk in chunks] # remove function names
 
 
+@ToolchainProfiler.profile_block('js_optimizer.run_on_js')
 def run_on_js(filename, passes, extra_info=None):
   with ToolchainProfiler.profile_block('js_optimizer.split_markers'):
     if not isinstance(passes, list):
@@ -175,18 +176,17 @@ def run_on_js(filename, passes, extra_info=None):
       pre = js[:start_funcs + len(start_funcs_marker)]
       post = js[end_funcs + len(end_funcs_marker):]
       js = js[start_funcs + len(start_funcs_marker):end_funcs]
-      if 'asm' not in passes:
-        # can have Module[..] and inlining prevention code, push those to post
-        finals = []
+      # can have Module[..] and inlining prevention code, push those to post
+      finals = []
 
-        def process(line):
-          if line and (line.startswith(('Module[', 'if (globalScope)')) or line.endswith('["X"]=1;')):
-            finals.append(line)
-            return False
-          return True
+      def process(line):
+        if line and (line.startswith(('Module[', 'if (globalScope)')) or line.endswith('["X"]=1;')):
+          finals.append(line)
+          return False
+        return True
 
-        js = '\n'.join(line for line in js.split('\n') if process(line))
-        post = '\n'.join(finals) + '\n' + post
+      js = '\n'.join(line for line in js.split('\n') if process(line))
+      post = '\n'.join(finals) + '\n' + post
       post = end_funcs_marker + post
   else:
     with ToolchainProfiler.profile_block('js_optimizer.minify_globals'):
@@ -346,11 +346,6 @@ EMSCRIPTEN_FUNCS();
   return filename
 
 
-@ToolchainProfiler.profile_block('js_optimizer.run_on_js')
-def run(filename, passes, extra_info=None):
-  return run_on_js(filename, passes, extra_info=extra_info)
-
-
 def main():
   last = sys.argv[-1]
   if '{' in last:
@@ -358,7 +353,7 @@ def main():
     sys.argv = sys.argv[:-1]
   else:
     extra_info = None
-  out = run(sys.argv[1], sys.argv[2:], extra_info=extra_info)
+  out = run_on_js(sys.argv[1], sys.argv[2:], extra_info=extra_info)
   shutil.copyfile(out, sys.argv[1] + '.jsopt.js')
   return 0
 

@@ -763,10 +763,7 @@ def make_export_wrappers(exports, delay_assignment):
     if settings.ASSERTIONS and install_wrapper(name):
       # With assertions enabled we create a wrapper that are calls get routed through, for
       # the lifetime of the program.
-      if delay_assignment:
-        wrapper += 'createExportWrapper("%s");' % name
-      else:
-        wrapper += 'createExportWrapper("%s", asm);' % name
+      wrapper += "createExportWrapper('%s');" % name
     elif delay_assignment:
       # With assertions disabled the wrapper will replace the global var and Module var on
       # first use.

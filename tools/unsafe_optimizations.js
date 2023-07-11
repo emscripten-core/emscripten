@@ -238,7 +238,11 @@ function runOnJsText(js, pretty = false) {
   optPassSimplifyModularizeFunction(ast);
 
   const terserAst = terser.AST_Node.from_mozilla_ast(ast);
-  const output = terserAst.print_to_string({beautify: pretty, indent_level: pretty ? 1 : 0});
+  const output = terserAst.print_to_string({
+    wrap_func_args: false,
+    beautify: pretty,
+    indent_level: pretty ? 1 : 0,
+  });
 
   return output;
 }
@@ -279,7 +283,7 @@ function runTests() {
   test("new function(a) {new TextDecoder(a);}('utf8');", '');
   test(
     'WebAssembly.instantiate(c.wasm,{}).then((a) => {new Int8Array(b);});',
-    'WebAssembly.instantiate(c.wasm,{}).then((a=>{}));'
+    'WebAssembly.instantiate(c.wasm,{}).then(a=>{});'
   );
   test('let x=new Uint16Array(a);', 'let x=new Uint16Array(a);');
 

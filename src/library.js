@@ -2410,37 +2410,7 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  // Returns [parentFuncArguments, functionName, paramListName]
-  $traverseStack: (args) => {
-    if (!args || !args.callee || !args.callee.name) {
-      return [null, '', ''];
-    }
-
-    var funstr = args.callee.toString();
-    var funcname = args.callee.name;
-    var str = '(';
-    var first = true;
-    for (var i in args) {
-      var a = args[i];
-      if (!first) {
-        str += ", ";
-      }
-      first = false;
-      if (typeof a == 'number' || typeof a == 'string') {
-        str += a;
-      } else {
-        str += `(${typeof a}})`;
-      }
-    }
-    str += ')';
-    var caller = args.callee.caller;
-    args = caller ? caller.arguments : [];
-    if (first)
-      str = '';
-    return [args, funcname, str];
-  },
-
-  $getCallstack__deps: ['$traverseStack', '$jsStackTrace', '$warnOnce'],
+  $getCallstack__deps: ['$jsStackTrace', '$warnOnce'],
   $getCallstack__docs: '/** @param {number=} flags */',
   $getCallstack: function(flags) {
     var callstack = jsStackTrace();
@@ -2453,25 +2423,12 @@ mergeInto(LibraryManager.library, {
     var iNextLine = callstack.indexOf('\n', Math.max(iThisFunc, iThisFunc2))+1;
     callstack = callstack.slice(iNextLine);
 
-    if (flags & {{{ cDefs.EM_LOG_DEMANGLE }}}) {
-      warnOnce('EM_LOG_DEMANGLE is deprecated; ignoring');
-    }
-
     // If user requested to see the original source stack, but no source map
     // information is available, just fall back to showing the JS stack.
     if (flags & {{{ cDefs.EM_LOG_C_STACK }}} && typeof emscripten_source_map == 'undefined') {
       warnOnce('Source map information is not available, emscripten_log with EM_LOG_C_STACK will be ignored. Build with "--pre-js $EMSCRIPTEN/src/emscripten-source-map.min.js" linker flag to add source map loading to code.');
       flags ^= {{{ cDefs.EM_LOG_C_STACK }}};
       flags |= {{{ cDefs.EM_LOG_JS_STACK }}};
-    }
-
-    var stack_args = null;
-    if (flags & {{{ cDefs.EM_LOG_FUNC_PARAMS }}}) {
-      // To get the actual parameters to the functions, traverse the stack via
-      // the unfortunately deprecated 'arguments.callee' method, if it works:
-      stack_args = traverseStack(arguments);
-      while (stack_args[1].includes('_emscripten_'))
-        stack_args = traverseStack(stack_args[0]);
     }
 
     // Process all lines:
@@ -2537,16 +2494,6 @@ mergeInto(LibraryManager.library, {
         }
         callstack += (haveSourceMap ? (`     = ${symbolName}`) : (`    at ${symbolName}`)) + ` (${file}:${lineno}:${column})\n`;
       }
-
-      // If we are still keeping track with the callstack by traversing via
-      // 'arguments.callee', print the function parameters as well.
-      if (flags & {{{ cDefs.EM_LOG_FUNC_PARAMS }}} && stack_args[0]) {
-        if (stack_args[1] == symbolName && stack_args[2].length > 0) {
-          callstack = callstack.replace(/\s+$/, '');
-          callstack += ' with values: ' + stack_args[1] + stack_args[2] + '\n';
-        }
-        stack_args = traverseStack(stack_args[0]);
-      }
     }
     // Trim extra whitespace at the end of the output.
     callstack = callstack.replace(/\s+$/, '');
@@ -2555,10 +2502,6 @@ mergeInto(LibraryManager.library, {
 
   emscripten_get_callstack__deps: ['$getCallstack', '$lengthBytesUTF8', '$stringToUTF8'],
   emscripten_get_callstack: function(flags, str, maxbytes) {
-    // Use explicit calls to from64 rather then using the __sig
-    // magic here.  This is because the __sig wrapper uses arrow function
-    // notation which causes the inner call to traverseStack to fail.
-    {{{ from64('str') }}};
     var callstack = getCallstack(flags);
     // User can query the required amount of bytes to hold the callstack.
     if (!str || maxbytes <= 0) {

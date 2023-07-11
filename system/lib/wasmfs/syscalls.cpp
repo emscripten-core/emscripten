@@ -6,6 +6,8 @@
 // old JS version. Current Status: Work in Progress. See
 // https://github.com/emscripten-core/emscripten/issues/15041.
 
+#define _LARGEFILE64_SOURCE // For F_GETLK64 etc
+
 #include <dirent.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/heap.h>
