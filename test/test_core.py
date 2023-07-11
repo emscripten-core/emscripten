@@ -8507,7 +8507,10 @@ Module.onRuntimeInitialized = () => {
         return False
       create_file('wat.wat', wat)
       shutil.move(name, name + '.orig')
-      self.run_process([Path(building.get_binaryen_bin(), 'wasm-as'), 'wat.wat', '-o', name, '-g'])
+      self.run_process([
+        Path(building.get_binaryen_bin(), 'wasm-as'),
+        'wat.wat', '-o', name, '-g',
+        '--enable-memory64' if self.get_setting('MEMORY64') else '--disable-memory64'])
       return True
 
     def verify_working(args):
