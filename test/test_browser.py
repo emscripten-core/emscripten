@@ -23,7 +23,7 @@ from urllib.request import urlopen
 
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
-from common import read_file, requires_v8, also_with_minimal_runtime, also_with_wasm64, EMRUN
+from common import read_file, also_with_minimal_runtime, also_with_wasm64, EMRUN
 from tools import shared
 from tools import ports
 from tools import utils
@@ -5396,14 +5396,7 @@ Module["preRun"].push(function () {
     self.btest(test_file('wasm_worker/proxied_function.c'), expected='0', args=['--js-library', test_file('wasm_worker/proxied_function.js'), '-sWASM_WORKERS', '-sASSERTIONS=0'])
 
   @no_firefox('no 4GB support yet')
-  @requires_v8
   def test_zzz_zzz_4gb(self):
-    # TODO Convert to an actual browser test when it reaches stable.
-    #      For now, keep this in browser as this suite runs serially, which
-    #      means we don't compete for memory with anything else (and run it
-    #      at the very very end, to reduce the risk of it OOM-killing the
-    #      browser).
-
     # test that we can allocate in the 2-4GB range, if we enable growth and
     # set the max appropriately
     self.emcc_args += ['-O2', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB']
@@ -5486,14 +5479,7 @@ Module["preRun"].push(function () {
     self.btest(test_file('browser/emmalloc_memgrowth.cpp'), expected='0', args=['-sMALLOC=emmalloc', '-sALLOW_MEMORY_GROWTH=1', '-sABORTING_MALLOC=0', '-sASSERTIONS=2', '-sMINIMAL_RUNTIME=1', '-sMAXIMUM_MEMORY=4GB'])
 
   @no_firefox('no 4GB support yet')
-  @requires_v8
   def test_zzz_zzz_2gb_fail(self):
-    # TODO Convert to an actual browser test when it reaches stable.
-    #      For now, keep this in browser as this suite runs serially, which
-    #      means we don't compete for memory with anything else (and run it
-    #      at the very very end, to reduce the risk of it OOM-killing the
-    #      browser).
-
     # test that growth doesn't go beyond 2GB without the max being set for that,
     # and that we can catch an allocation failure exception for that
     self.emcc_args += ['-O2', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=2GB']
@@ -5501,14 +5487,7 @@ Module["preRun"].push(function () {
 
   @no_firefox('no 4GB support yet')
   @also_with_wasm64
-  @requires_v8
   def test_zzz_zzz_4gb_fail(self):
-    # TODO Convert to an actual browser test when it reaches stable.
-    #      For now, keep this in browser as this suite runs serially, which
-    #      means we don't compete for memory with anything else (and run it
-    #      at the very very end, to reduce the risk of it OOM-killing the
-    #      browser).
-
     # test that we properly report an allocation error that would overflow over
     # 4GB.
     if self.get_setting('MEMORY64'):
