@@ -360,7 +360,7 @@ commands:
             export EM_FROZEN_CACHE=""
             test/runner emrun
             # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
-            test/runner posixtest_browser.test_pthread_create_1_1 browser skip:browser.test_zzz_zzz_4gb_fail
+            test/runner posixtest_browser.test_pthread_create_1_1 browser skip:browser.test_zzz_zzz_4gb_fail skip:browser.test_zzz_zzz_4gb_fail_wasm64
       - upload-test-results
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
