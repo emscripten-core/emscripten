@@ -2060,6 +2060,11 @@ var RUNTIME_DEBUG = false;
 // library symbol.
 var LEGACY_RUNTIME = false;
 
+// User-defined functions to wrap with signature conversion
+// example use -sSIGNATURE_CONVERSIONS=['someFunction:_p']
+// [link]
+var SIGNATURE_CONVERSIONS = [];
+
 //===========================================
 // Internal, used for testing only, from here
 //===========================================
