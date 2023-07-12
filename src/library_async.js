@@ -531,7 +531,7 @@ mergeInto(LibraryManager.library, {
     });
   },
 
-  $Fibers__deps: ['$Asyncify'],
+  $Fibers__deps: ['$Asyncify', 'emscripten_stack_set_limits'],
   $Fibers: {
     nextFiber: 0,
     trampolineRunning: false,

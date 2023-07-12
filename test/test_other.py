@@ -11310,7 +11310,7 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
 
   @with_env_modify({'EMCC_LOGGING': '0'})  # this test assumes no emcc output
   def test_nostdlib(self):
-    err = 'symbol exported via --export not found: __errno_location'
+    err = 'undefined symbol'
     self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nostdlib']))
     self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nodefaultlibs']))
 
