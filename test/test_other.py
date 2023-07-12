@@ -2723,7 +2723,6 @@ int f() {
 
       self.clear()
 
-
   @requires_scons
   @with_env_modify({'EMSCRIPTEN_ROOT': path_from_root()})
   def test_scons(self):
@@ -7708,7 +7707,6 @@ int main() {
 
           for f in files:
             delete_file(f)
-
 
   def test_binaryen_warn_mem(self):
     # if user changes INITIAL_MEMORY at runtime, the wasm module may not accept the memory import if
