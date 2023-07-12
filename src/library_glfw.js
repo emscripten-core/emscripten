@@ -440,10 +440,10 @@ var LibraryGLFW = {
 
       if (GLFW.active.cursorPosFunc) {
 #if USE_GLFW == 2
-        {{{ makeDynCall('vii', 'GLFW.active.cursorPosFunc') }}}(Browser.mouseX, Browser.mouseY);
+        {{{ makeDynCall('vii', 'GLFW.active.cursorPosFunc') }}}(Browser.mouseX / GLFW.scale, Browser.mouseY / GLFW.scale);
 #endif
 #if USE_GLFW == 3
-        {{{ makeDynCall('vidd', 'GLFW.active.cursorPosFunc') }}}(GLFW.active.id, Browser.mouseX, Browser.mouseY);
+        {{{ makeDynCall('vidd', 'GLFW.active.cursorPosFunc') }}}(GLFW.active.id, Browser.mouseX / GLFW.scale, Browser.mouseY  / GLFW.scale);
 #endif
       }
     },
@@ -918,13 +918,20 @@ var LibraryGLFW = {
     },
 
     getCursorPos: function(winid, x, y) {
-      {{{ makeSetValue('x', '0', 'Browser.mouseX', 'double') }}};
-      {{{ makeSetValue('y', '0', 'Browser.mouseY', 'double') }}};
+      var cx = Browser.mouseX / GLFW.scale;
+      var cy = Browser.mouseY / GLFW.scale;
+
+      if (x) {
+        {{{ makeSetValue('x', '0', 'cx', 'double') }}};
+      }
+      
+      if (y) {
+        {{{ makeSetValue('y', '0', 'cy', 'double') }}};
+      }
     },
 
     getMousePos: function(winid, x, y) {
-      {{{ makeSetValue('x', '0', 'Browser.mouseX', 'i32') }}};
-      {{{ makeSetValue('y', '0', 'Browser.mouseY', 'i32') }}};
+      getCursorPos(winid, x, y);
     },
 
     setCursorPos: function(winid, x, y) {
@@ -957,14 +964,27 @@ var LibraryGLFW = {
     },
 
     getWindowSize: function(winid, width, height) {
-      var ww = 0;
-      var wh = 0;
-
       var win = GLFW.WindowFromId(winid);
-      if (win) {
-        ww = win.width;
-        wh = win.height;
+      if (!win) return;
+
+      var ww = Module['canvas'].widthNative;
+      var wh = Module['canvas'].heightNative;
+
+      if (width) {
+        {{{ makeSetValue('width', '0', 'ww', 'i32') }}};
       }
+
+      if (height) {
+        {{{ makeSetValue('height', '0', 'wh', 'i32') }}};
+      }
+    },
+
+    getFramebufferSize: function(winid, width, height) {
+      var win = GLFW.WindowFromId(winid);
+      if (!win) return;
+
+      var ww = Module['canvas'].width;
+      var wh = Module['canvas'].height;
 
       if (width) {
         {{{ makeSetValue('width', '0', 'ww', 'i32') }}};
@@ -1387,22 +1407,7 @@ var LibraryGLFW = {
   },
 
   glfwGetFramebufferSize: function(winid, width, height) {
-    var ww = 0;
-    var wh = 0;
-
-    var win = GLFW.WindowFromId(winid);
-    if (win) {
-      ww = win.width;
-      wh = win.height;
-    }
-
-    if (width) {
-      {{{ makeSetValue('width', '0', 'ww', 'i32') }}};
-    }
-
-    if (height) {
-      {{{ makeSetValue('height', '0', 'wh', 'i32') }}};
-    }
+    GLFW.getFramebufferSize(winid, width, height);
   },
 
   glfwGetWindowContentScale: function(winid, x, y) {
