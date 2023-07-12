@@ -382,6 +382,8 @@ function exportRuntime() {
     'abort',
     'keepRuntimeAlive',
     'wasmMemory',
+    'wasmTable',
+    'wasmExports',
   ];
 
   // These are actually native wasm functions these days but we allow exporting

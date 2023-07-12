@@ -371,7 +371,7 @@ def eval_ctors(js_file, wasm_file, debug_info):
   if settings.MINIMAL_RUNTIME:
     CTOR_ADD_PATTERN = f"asm['{WASM_CALL_CTORS}']();" # TODO test
   else:
-    CTOR_ADD_PATTERN = f"addOnInit(Module['asm']['{WASM_CALL_CTORS}']);"
+    CTOR_ADD_PATTERN = f"addOnInit(wasmExports['{WASM_CALL_CTORS}']);"
 
   js = utils.read_file(js_file)
 

@@ -24,9 +24,14 @@ See docs/process.md for more on how version tagging works.
 - The `EM_LOG_FUNC_PARAMS` flag to `emscripten_log`/`emscripten_get_callstack`
   has been deprecated and no longer has any effect.  It was based on a
   long-deprecated JS API. (#19820)
-- The internal `read_` and `readAsync` functions no longer handle date URIs.
+- The internal `read_` and `readAsync` functions no longer handle data URIs.
+  (Higher-level functions are expected to handle that themselves, before calling.)
   This only effects builds that use `-sSINGLE_FILE` or `--memory-init-file`.
   (#19792)
+- The `asm` property of the Module object (which held the raw exports of the
+  wasm module) has been removed.  Internally, this is now accessed via the
+  `wasmExports` global. If necessary, it is possible to export `wasmExports`
+  on the Module object using `-sEXPORTED_RUNTIME_METHODS=wasmExports`. (#19816)
 
 3.1.43 - 07/10/23
 -----------------

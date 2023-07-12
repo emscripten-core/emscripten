@@ -2745,9 +2745,8 @@ int f() {
     'no_dynamic': ['-sDYNAMIC_EXECUTION=0'],
   })
   def test_embind_jspi(self, extra):
-    self.require_v8()
-    self.v8_args.append('--experimental-wasm-stack-switching')
-    self.emcc_args += ['-lembind', '-g', '-sASYNCIFY=2', '-Wno-experimental']
+    self.require_jspi()
+    self.emcc_args += ['-lembind', '-g']
     self.emcc_args += [extra]
 
     self.do_runf(test_file('embind/embind_jspi_test.cpp'), 'done')
@@ -2870,9 +2869,8 @@ int f() {
     self.assertNotContained('Foo* destructed', output)
 
   def test_jspi_wildcard(self):
-    self.require_v8()
-    self.v8_args.append('--experimental-wasm-stack-switching')
-    self.emcc_args += ['-sASYNCIFY=2', '-sASYNCIFY_EXPORTS=async*', '-Wno-experimental']
+    self.require_jspi()
+    self.emcc_args += ['-sASYNCIFY_EXPORTS=async*']
 
     self.do_runf(test_file('other/test_jspi_wildcard.c'), 'done')
 
@@ -3281,29 +3279,36 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     create_file('count.c', '''
       #include <string.h>
       int count(const char *str) {
-          return (int)strlen(str);
+        return (int)strlen(str);
       }
     ''')
 
     create_file('index.js', '''
       const count = require('./count.js');
-
       console.log(count.FS_writeFile);
+      count.onRuntimeInitialized = () => {
+        if (count.wasmExports && 'count' in count.wasmExports) {
+          console.log('wasmExports found');
+        } else {
+          console.log('wasmExports NOT found');
+        }
+      };
     ''')
 
-    reference_error_text = 'undefined'
-
-    self.run_process([EMCC, 'count.c', '-sFORCE_FILESYSTEM',
-                      '-sEXPORTED_RUNTIME_METHODS=FS_writeFile', '-o', 'count.js'])
+    self.run_process([EMCC, 'count.c', '-sFORCE_FILESYSTEM', '-sEXPORTED_FUNCTIONS=_count',
+                      '-sEXPORTED_RUNTIME_METHODS=FS_writeFile,wasmExports', '-o', 'count.js'])
 
     # Check that the Module.FS_writeFile exists
-    self.assertNotContained(reference_error_text, self.run_js('index.js'))
+    out = self.run_js('index.js')
+    self.assertNotContained('undefined', out)
+    self.assertContained('wasmExports found', out)
 
     self.run_process([EMCC, 'count.c', '-sFORCE_FILESYSTEM', '-o', 'count.js'])
 
     # Check that the Module.FS_writeFile is not exported
-    out = self.run_js('index.js')
-    self.assertContained(reference_error_text, out)
+    out = self.run_js('index.js', assert_returncode=NON_ZERO)
+    self.assertContained('undefined', out),
+    self.assertContained("Aborted('wasmExports' was not exported. add it to EXPORTED_RUNTIME_METHODS", out)
 
   def test_exported_runtime_methods_from_js_library(self):
     create_file('pre.js', '''
@@ -6678,9 +6683,7 @@ int main(int argc,char** argv) {
     if asyncify:
       self.set_setting('ASYNCIFY', asyncify)
       if asyncify == 2:
-        self.emcc_args.append('-Wno-experimental')
-        self.require_v8()
-        self.v8_args.append('--experimental-wasm-stack-switching')
+        self.require_jspi()
     self.emcc_args.append('libside.so')
     self.do_other_test('test_dlopen_blocking.c')
 
@@ -10802,10 +10805,20 @@ int main(void) {
           } catch(e) {
             out('error: ' + e);
           }
+          try {
+            Module['asm'];
+            out('it should not be there');
+          } catch(e) {
+            out('error: ' + e);
+          }
         });
       }
     ''')
-    self.do_runf('src.c', 'Module.read has been replaced with plain read', emcc_args=['-sASSERTIONS'])
+    expected = [
+      '`Module.read` has been replaced by `read_`',
+      '`Module.asm` has been replaced by `wasmExports`',
+    ]
+    self.do_runf('src.c', expected, assert_all=True, emcc_args=['-sASSERTIONS'])
 
   def test_assertions_on_incoming_module_api_changes(self):
     create_file('pre.js', 'Module.read = () => {};')
@@ -10834,9 +10847,9 @@ int main(void) {
       }
     ''')
     expected = '''
-Aborted(Module.read has been replaced with plain read_ (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name))
-Aborted(Module.wasmBinary has been replaced with plain wasmBinary (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name))
-Aborted(Module.arguments has been replaced with plain arguments_ (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name))
+Aborted(`Module.read` has been replaced by `read_` (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name))
+Aborted(`Module.wasmBinary` has been replaced by `wasmBinary` (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name))
+Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name))
 '''
     self.do_runf('src.cpp', expected, emcc_args=['-sASSERTIONS'])
 
@@ -11310,7 +11323,7 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
 
   @with_env_modify({'EMCC_LOGGING': '0'})  # this test assumes no emcc output
   def test_nostdlib(self):
-    err = 'symbol exported via --export not found: __errno_location'
+    err = 'undefined symbol'
     self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nostdlib']))
     self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nodefaultlibs']))
 
@@ -11804,9 +11817,8 @@ exec "$@"
     if customLoader:
       self.emcc_args += ['--pre-js', test_file('other/test_load_split_module.pre.js')]
     if jspi:
-      self.require_v8()
-      self.v8_args.append('--experimental-wasm-stack-switching')
-      self.emcc_args += ['-g', '-sASYNCIFY=2', '-sASYNCIFY_EXPORTS=[\'say_hello\']']
+      self.require_jspi()
+      self.emcc_args += ['-g', '-sASYNCIFY_EXPORTS=[\'say_hello\']']
     self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free']
     output = self.do_other_test('test_split_module.c')
     if jspi:
@@ -13562,3 +13574,17 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   @also_with_standalone_wasm()
   def test_console_out(self):
     self.do_other_test('test_console_out.c')
+
+  @requires_wasm64
+  def test_explicit_target(self):
+    self.do_runf(test_file('hello_world.c'), emcc_args=['-target', 'wasm32'])
+    self.do_runf(test_file('hello_world.c'), emcc_args=['-target', 'wasm64-unknown-emscripten', '-Wno-experimental'])
+
+    self.do_runf(test_file('hello_world.c'), emcc_args=['--target=wasm32'])
+    self.do_runf(test_file('hello_world.c'), emcc_args=['--target=wasm64-unknown-emscripten', '-Wno-experimental'])
+
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-target', 'wasm32', '-sMEMORY64'])
+    self.assertContained('emcc: error: wasm32 target is not compatible with -sMEMORY64', err)
+
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--target=arm64'])
+    self.assertContained('emcc: error: unsupported target: arm64 (emcc only supports wasm64-unknown-emscripten and wasm32-unknown-emscripten', err)
