@@ -8629,6 +8629,10 @@ int main() {
         else:
           self.expect_fail(separate_dwarf_cmd)
 
+  @requires_v8
+  def test_single_file_shell(self):
+    self.do_runf(test_file('hello_world.c'), emcc_args=['-sSINGLE_FILE'])
+
   def test_emar_M(self):
     create_file('file1', ' ')
     create_file('file2', ' ')
