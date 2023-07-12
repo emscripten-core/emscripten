@@ -34,7 +34,7 @@ mergeInto(LibraryManager.library, {
     //
     // Asyncify code that is shared between mode 1 (original) and mode 2 (JSPI).
     //
-#if MEMORY64
+#if ASYNCIFY == 1 && MEMORY64
     rewindArguments: {},
 #endif
     instrumentWasmImports: function(imports) {
@@ -107,7 +107,17 @@ mergeInto(LibraryManager.library, {
         })(x);
       }
     },
-
+#if ASYNCIFY == 1 && MEMORY64
+    saveOrRestoreRewindArguments: function(funcName, passedArguments) {
+      let args = Array.from(passedArguments)
+      if (args.length === 0) {
+        args = Asyncify.rewindArguments[funcName] || []
+      } else {
+        Asyncify.rewindArguments[funcName] = args
+      }
+      return args
+    },
+#endif
     instrumentWasmExports: function(exports) {
 #if ASYNCIFY_DEBUG
       dbg('asyncify instrumenting exports');
@@ -138,19 +148,11 @@ mergeInto(LibraryManager.library, {
               try {
 #endif
 #if ASYNCIFY == 1 && MEMORY64
-                // when rewinding, function is called without any arguments
-                // and it will throw 'undefined cannot be converted to BigInt' so let's cache original arguments
-                let args = Array.from(arguments)
-                // dynCall_ functions expect first argument to be a number, but BigInt is passed instead
-                if (args.length > 0 && x.startsWith('dynCall_')) {
-                  args[0] = Number(args[0])
-                }
-                if (args.length === 0) {
-                  args = Asyncify.rewindArguments[x] || []
-                } else {
-                  Asyncify.rewindArguments[x] = args
-                }
-                return original.apply(null, args);
+                // When re-winding, the arguments to a function are ignored.  For i32 arguments we
+                // can just call the function with no args at all since and the engine will produce zeros
+                // for all arguments.  However, for i64 arguments we get `undefined cannot be converted to
+                // BigInt`.
+                return original.apply(null, Asyncify.saveOrRestoreRewindArguments(x, arguments));
 #else
                 return original.apply(null, arguments);
 #endif
