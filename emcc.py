@@ -3184,10 +3184,7 @@ def phase_emscript(options, in_wasm, wasm_target, memfile, js_syms):
   # Emscripten
   logger.debug('emscript')
 
-  if embed_memfile(options):
-    settings.SUPPORT_BASE64_EMBEDDING = 1
-    # _read in shell.js depends on intArrayToString when SUPPORT_BASE64_EMBEDDING is set
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$intArrayToString')
+  settings.SUPPORT_BASE64_EMBEDDING = embed_memfile(options)
 
   emscripten.run(in_wasm, wasm_target, final_js, memfile, js_syms)
   save_intermediate('original')
