@@ -11,16 +11,6 @@ mergeInto(LibraryManager.library, {
       return _wasmfs_create_memory_backend();
     }
   },
-  $ICASEFS__deps: ['wasmfs_create_icase_backend_from_pointer'],
-  $ICASEFS: {
-    createBackend(opts) {
-      if (!opts.backend) {
-        throw new Error("Underlying backend is not valid.");
-      }
-      var underlyingBackend = opts.backend.createBackend(opts);
-      return _wasmfs_create_icase_backend_from_pointer(underlyingBackend);
-    }
-  },
   $wasmFSPreloadedFiles: [],
   $wasmFSPreloadedDirs: [],
   // We must note when preloading has been "flushed", that is, the time at which
@@ -35,13 +25,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 `,
   $FS__deps: [
     '$MEMFS',
-    '$ICASEFS',
-#if LibraryManager.has('library_nodefs.js')
-    '$NODEFS',
-#endif
-    '$OPFS',
-    '$JSFILEFS',
-    '$FETCHFS',
     '$wasmFSPreloadedFiles',
     '$wasmFSPreloadedDirs',
     '$wasmFSPreloadingFlushed',
@@ -59,6 +42,21 @@ FS.createPreloadedFile = FS_createPreloadedFile;
                                              // up requiring all of our code
                                              // here.
     '$FS_modeStringToFlags',
+#if LibraryManager.has('library_icasefs.js')
+    '$ICASEFS',
+#endif
+#if LibraryManager.has('library_nodefs.js')
+    '$NODEFS',
+#endif
+#if LibraryManager.has('library_opfs.js')
+    '$OPFS',
+#endif
+#if LibraryManager.has('library_jsfilefs.js')
+    '$JSFILEFS',
+#endif
+#if LibraryManager.has('library_fetchfs.js')
+    '$FETCHFS',
+#endif
     'malloc',
     'free',
 #endif
@@ -374,9 +372,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       return entries;
     }),
     mount: (type, opts, mountpoint) => {
-      if (!type) {
-        throw new Error("FS is not valid.");
-      }
       var backendPointer = type.createBackend(opts);
       return FS.handleError(withStackSave(() => __wasmfs_mount(stringToUTF8OnStack(mountpoint), backendPointer)));
     },

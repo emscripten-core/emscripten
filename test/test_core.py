@@ -5639,6 +5639,9 @@ Module = {
 
   def test_mount(self):
     self.set_setting('FORCE_FILESYSTEM')
+    if self.get_setting('WASMFS'):
+      self.emcc_args += ['-licasefs.js']
+      self.emcc_args += ['-ljsfilefs.js']
     self.do_runf(test_file('fs/test_mount.c'), 'success')
 
   def test_getdents64(self):

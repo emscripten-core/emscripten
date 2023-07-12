@@ -54,7 +54,12 @@ int main() {
     } catch (e) {
       ex = e;
     }
+#if WASMFS
+    // WasmFS returns ENOTEMPTY instead of EBUSY in exchange for a simpler implementation.
+    assert(ex.name === 'ErrnoError' && ex.errno === 55); // ENOTEMPTY
+#else
     assert(ex.name === 'ErrnoError' && ex.errno === 10); // EBUSY
+#endif
 
     // attempt to unmount a non-mountpoint directory inside a mountpoint
     FS.mkdir('/working/unmountable');

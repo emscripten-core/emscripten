@@ -32,6 +32,10 @@ int wasmfs_create_file(const char* pathname __attribute__((nonnull)), mode_t mod
 // Returns 0 on success like `mkdir`, or a negative value on error.
 int wasmfs_create_directory(const char* path __attribute__((nonnull)), mode_t mode, backend_t backend);
 
+// Unmounts the directory at a specific path.
+// Returns 0 on success, or a negative value on error.
+int wasmfs_unmount(int dirfd, intptr_t path);
+
 // Backend creation
 
 // Creates a JSFile Backend in the new file system.
@@ -66,9 +70,7 @@ backend_t wasmfs_create_node_backend(const char* root __attribute__((nonnull)));
 // thread.
 backend_t wasmfs_create_opfs_backend(void);
 
-backend_t wasmfs_create_icase_backend(backend_constructor_t create_backend,
-                                      void* arg);
-backend_t wasmfs_create_icase_backend_from_pointer(backend_t backend);
+backend_t wasmfs_create_icase_backend(backend_t backend);
 
 // Similar to fflush(0), but also flushes all internal buffers inside WasmFS.
 // This is necessary because in a Web environment we must buffer at an

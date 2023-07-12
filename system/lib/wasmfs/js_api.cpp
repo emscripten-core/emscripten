@@ -29,6 +29,7 @@ int wasmfs_unmount(int dirfd, intptr_t path);
 // Copy the file specified by the pathname into JS.
 // Return a pointer to the JS buffer in HEAPU8.
 // The buffer will also contain the file length.
+// TODO: Use WasmFS ErrnoError handling instead of aborting on failure.
 void* _wasmfs_read_file(char* path) {
   static_assert(sizeof(off_t) == 8, "File offset type must be 64-bit");
 
@@ -266,26 +267,11 @@ int _wasmfs_lstat(char* path, struct stat* statBuf) {
   return __syscall_lstat64((intptr_t)path, (intptr_t)statBuf);
 }
 
+// The legacy JS API requires a mountpoint to already exist, so 
+// WasmFS will attempt to remove a mount directory before 
+// replacing it with a new directory using the correct backend.
 int _wasmfs_mount(char* path, backend_t created_backend) {
   int err = __syscall_rmdir((intptr_t)path);
-  assert(!err);
-
-  if (err == -ENOTEMPTY) {
-    // Check for an attempt to mount to an existing mountpoint.
-    auto parsedParent = path::parseParent(path);
-    if (auto err = parsedParent.getError()) {
-      return err;
-    }
-    auto& [parent, childNameView] = parsedParent.getParentChild();
-    std::string childName(childNameView);
-    auto lockedParent = parent->locked();
-    auto child = lockedParent.getChild(childName);
-    if (parent->getBackend() != child->getBackend()) {
-      return -EBUSY;
-    }
-
-    return -ENOTEMPTY;
-  }
 
   // The legacy JS API mount requires the directory to already exist.
   if (err && err != -ENOENT) {
@@ -296,7 +282,18 @@ int _wasmfs_mount(char* path, backend_t created_backend) {
 }
 
 int _wasmfs_unmount(char* path) {
-  return wasmfs_unmount(AT_FDCWD, (intptr_t)path);
+  int err = wasmfs_unmount(AT_FDCWD, (intptr_t)path);
+  if (err) {
+    return err;
+  }
+
+  // Create a new directory to replace the unmounted one.
+  auto parsedParent = path::parseParent(path);
+  if (auto err = parsedParent.getError()) {
+    return -err;
+  }
+  auto& [parent, childNameView] = parsedParent.getParentChild();
+  return wasmfs_create_directory((char*)path, 0777, parent->getBackend());
 }
 
 // Helper method that identifies what a path is:

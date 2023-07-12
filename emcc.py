@@ -2332,7 +2332,7 @@ def phase_linker_setup(options, state, newargs):
       settings.REQUIRED_EXPORTS += [
         'wasmfs_create_memory_backend',
         'wasmfs_create_opfs_backend',
-        'wasmfs_create_icase_backend_from_pointer',
+        'wasmfs_create_icase_backend',
         'wasmfs_create_js_file_backend',
         'wasmfs_create_fetch_backend',
         '_wasmfs_mount',
