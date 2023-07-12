@@ -2874,6 +2874,16 @@ int f() {
 
     self.do_runf(test_file('other/test_jspi_wildcard.c'), 'done')
 
+  def test_jspi_add_function(self):
+    # make sure synchronous functions in the wasmTable aren't processed with Asyncify.makeAsyncFunction
+    self.require_jspi()
+    self.emcc_args += [
+      '-sASYNCIFY=2',
+      '-sEXPORTED_RUNTIME_METHODS=addFunction,dynCall',
+      '-sALLOW_TABLE_GROWTH=1',
+      '-Wno-experimental']
+    self.do_runf(test_file('other/test_jspi_add_function.c'), 'done')
+
   def test_embind_tsgen(self):
     self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'])

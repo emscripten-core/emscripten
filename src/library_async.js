@@ -121,8 +121,8 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY == 2
             // Wrap all exports with a promising WebAssembly function.
             var isAsyncifyExport = exportPatterns.some(pattern => !!x.match(pattern));
-            Asyncify.asyncExports.add(original);
             if (isAsyncifyExport) {
+              Asyncify.asyncExports.add(original);
               original = Asyncify.makeAsyncFunction(original);
             }
 #endif
