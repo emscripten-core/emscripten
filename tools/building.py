@@ -320,7 +320,7 @@ def opt_level_to_str(opt_level, shrink_level=0):
 def js_optimizer(filename, passes):
   from . import js_optimizer
   try:
-    return js_optimizer.run(filename, passes)
+    return js_optimizer.run_on_js(filename, passes)
   except subprocess.CalledProcessError as e:
     exit_with_error("'%s' failed (%d)", ' '.join(e.cmd), e.returncode)
 
@@ -371,7 +371,7 @@ def eval_ctors(js_file, wasm_file, debug_info):
   if settings.MINIMAL_RUNTIME:
     CTOR_ADD_PATTERN = f"asm['{WASM_CALL_CTORS}']();" # TODO test
   else:
-    CTOR_ADD_PATTERN = f"addOnInit(Module['asm']['{WASM_CALL_CTORS}']);"
+    CTOR_ADD_PATTERN = f"addOnInit(wasmExports['{WASM_CALL_CTORS}']);"
 
   js = utils.read_file(js_file)
 
@@ -517,9 +517,9 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   # Closure compiler needs to know about all exports that come from the wasm module, because to optimize for small code size,
   # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
   # externs file for the exports, Closure is able to reason about the exports.
-  if settings.WASM_FUNCTION_EXPORTS and not settings.DECLARE_ASM_MODULE_EXPORTS:
+  if settings.WASM_EXPORTS and not settings.DECLARE_ASM_MODULE_EXPORTS:
     # Generate an exports file that records all the exported symbols from the wasm module.
-    module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % asmjs_mangle(i) for i in settings.WASM_FUNCTION_EXPORTS])
+    module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % asmjs_mangle(i) for i in settings.WASM_EXPORTS])
     exports_file = shared.get_temp_files().get('.js', prefix='emcc_module_exports_')
     exports_file.write(module_exports_suppressions.encode())
     exports_file.close()
@@ -722,7 +722,8 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     # will take precedence.
     exports = settings.WASM_EXPORTS
   else:
-    exports = settings.WASM_FUNCTION_EXPORTS
+    # Ignore exported wasm globals.  Those get inlined directly into the JS code.
+    exports = sorted(set(settings.WASM_EXPORTS) - set(settings.WASM_GLOBAL_EXPORTS))
 
   extra_info = '{ "exports": [' + ','.join(f'["{asmjs_mangle(x)}", "{x}"]' for x in exports) + ']}'
 
@@ -735,21 +736,6 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
       export = asmjs_mangle(item['export'])
       if settings.EXPORT_ALL or export in required_symbols:
         item['root'] = True
-  # in standalone wasm, always export the memory
-  if not settings.IMPORTED_MEMORY:
-    graph.append({
-      'export': 'memory',
-      'name': 'emcc$export$memory',
-      'reaches': [],
-      'root': True
-    })
-  if not settings.RELOCATABLE:
-    graph.append({
-      'export': '__indirect_function_table',
-      'name': 'emcc$export$__indirect_function_table',
-      'reaches': [],
-      'root': True
-    })
   # fix wasi imports TODO: support wasm stable with an option?
   WASI_IMPORTS = {
     'environ_get',

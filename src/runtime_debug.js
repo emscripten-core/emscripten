@@ -6,12 +6,14 @@
 
 #if ASSERTIONS
 
-function legacyModuleProp(prop, newName) {
+function legacyModuleProp(prop, newName, incomming=true) {
   if (!Object.getOwnPropertyDescriptor(Module, prop)) {
     Object.defineProperty(Module, prop, {
       configurable: true,
-      get: function() {
-        abort('Module.' + prop + ' has been replaced with plain ' + newName + ' (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name)');
+      get() {
+        let extra = incomming ? ' (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name)' : '';
+        abort(`\`Module.${prop}\` has been replaced by \`${newName}\`` + extra);
+
       }
     });
   }
@@ -19,7 +21,7 @@ function legacyModuleProp(prop, newName) {
 
 function ignoredModuleProp(prop) {
   if (Object.getOwnPropertyDescriptor(Module, prop)) {
-    abort('`Module.' + prop + '` was supplied but `' + prop + '` not included in INCOMING_MODULE_JS_API');
+    abort(`\`Module.${prop}\` was supplied but \`${prop}\` not included in INCOMING_MODULE_JS_API`);
   }
 }
 
@@ -42,7 +44,7 @@ function missingGlobal(sym, msg) {
   if (typeof globalThis !== 'undefined') {
     Object.defineProperty(globalThis, sym, {
       configurable: true,
-      get: function() {
+      get() {
         warnOnce('`' + sym + '` is not longer defined by emscripten. ' + msg);
         return undefined;
       }
@@ -56,7 +58,7 @@ function missingLibrarySymbol(sym) {
   if (typeof globalThis !== 'undefined' && !Object.getOwnPropertyDescriptor(globalThis, sym)) {
     Object.defineProperty(globalThis, sym, {
       configurable: true,
-      get: function() {
+      get() {
         // Can't `abort()` here because it would break code that does runtime
         // checks.  e.g. `if (typeof SDL === 'undefined')`.
         var msg = '`' + sym + '` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line';
@@ -85,7 +87,7 @@ function unexportedRuntimeSymbol(sym) {
   if (!Object.getOwnPropertyDescriptor(Module, sym)) {
     Object.defineProperty(Module, sym, {
       configurable: true,
-      get: function() {
+      get() {
         var msg = "'" + sym + "' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the Emscripten FAQ)";
         if (isExportedByForceFilesystem(sym)) {
           msg += '. Alternatively, forcing filesystem support (-sFORCE_FILESYSTEM) can export this for you';

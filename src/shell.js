@@ -293,29 +293,14 @@ if (ENVIRONMENT_IS_SHELL) {
 #endif
 
   if (typeof read != 'undefined') {
-    read_ = (f) => {
-#if SUPPORT_BASE64_EMBEDDING
-      const data = tryParseAsDataURI(f);
-      if (data) {
-        return intArrayToString(data);
-      }
-#endif
-      return read(f);
-    };
+    read_ = read;
   }
 
   readBinary = (f) => {
-    let data;
-#if SUPPORT_BASE64_EMBEDDING
-    data = tryParseAsDataURI(f);
-    if (data) {
-      return data;
-    }
-#endif
     if (typeof readbuffer == 'function') {
       return new Uint8Array(readbuffer(f));
     }
-    data = read(f, 'binary');
+    let data = read(f, 'binary');
     assert(typeof data == 'object');
     return data;
   };
@@ -492,6 +477,7 @@ assert(typeof Module['readAsync'] == 'undefined', 'Module.readAsync option was r
 assert(typeof Module['readBinary'] == 'undefined', 'Module.readBinary option was removed (modify readBinary in JS)');
 assert(typeof Module['setWindowTitle'] == 'undefined', 'Module.setWindowTitle option was removed (modify setWindowTitle in JS)');
 assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has been renamed Module.INITIAL_MEMORY');
+{{{ makeRemovedModuleAPIAssert('asm', 'wasmExports', false) }}}
 {{{ makeRemovedModuleAPIAssert('read', 'read_') }}}
 {{{ makeRemovedModuleAPIAssert('readAsync') }}}
 {{{ makeRemovedModuleAPIAssert('readBinary') }}}

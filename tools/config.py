@@ -92,13 +92,6 @@ def normalize_config_settings():
   if not PORTS:
     PORTS = os.path.join(CACHE, 'ports')
 
-  # Tools/paths
-  if LLVM_ADD_VERSION is None:
-    LLVM_ADD_VERSION = os.getenv('LLVM_ADD_VERSION')
-
-  if CLANG_ADD_VERSION is None:
-    CLANG_ADD_VERSION = os.getenv('CLANG_ADD_VERSION')
-
 
 def set_config_from_tool_location(config_key, tool_binary, f):
   val = globals()[config_key]
@@ -165,17 +158,25 @@ def read_config():
     parse_config_file()
 
   # In the past the default-generated .emscripten config file would read certain environment
-  # variables. We used generate a warning here but that could generates false positives
-  # See https://github.com/emscripten-core/emsdk/issues/862
+  # variables.
   LEGACY_ENV_VARS = {
     'LLVM': 'EM_LLVM_ROOT',
     'BINARYEN': 'EM_BINARYEN_ROOT',
     'NODE': 'EM_NODE_JS',
+    'LLVM_ADD_VERSION': 'EM_LLVM_ADD_VERSION',
+    'CLANG_ADD_VERSION': 'EM_CLANG_ADD_VERSION',
   }
+
   for key, new_key in LEGACY_ENV_VARS.items():
     env_value = os.environ.get(key)
     if env_value and new_key not in os.environ:
-      logger.debug(f'legacy environment variable found: `{key}`.  Please switch to using `{new_key}` instead`')
+      msg = f'legacy environment variable found: `{key}`.  Please switch to using `{new_key}` instead`'
+      # Use `debug` instead of `warning` for `NODE` specifically since there can be false positives:
+      # See https://github.com/emscripten-core/emsdk/issues/862
+      if key == 'NODE':
+        logger.debug(msg)
+      else:
+        logger.warning(msg)
 
   set_config_from_tool_location('LLVM_ROOT', 'clang', os.path.dirname)
   set_config_from_tool_location('NODE_JS', 'node', lambda x: x)
@@ -193,7 +194,7 @@ def generate_config(path):
 
   config_data = utils.read_file(path_from_root('tools/config_template.py'))
   config_data = config_data.splitlines()[3:] # remove the initial comment
-  config_data = '\n'.join(config_data)
+  config_data = '\n'.join(config_data) + '\n'
   # autodetect some default paths
   llvm_root = os.path.dirname(shutil.which('wasm-ld') or '/usr/bin/wasm-ld')
   config_data = config_data.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))

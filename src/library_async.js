@@ -121,8 +121,8 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY == 2
             // Wrap all exports with a promising WebAssembly function.
             var isAsyncifyExport = exportPatterns.some(pattern => !!x.match(pattern));
-            Asyncify.asyncExports.add(original);
             if (isAsyncifyExport) {
+              Asyncify.asyncExports.add(original);
               original = Asyncify.makeAsyncFunction(original);
             }
 #endif
@@ -267,9 +267,9 @@ mergeInto(LibraryManager.library, {
     getDataRewindFunc: function(ptr) {
       var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
       var name = Asyncify.callStackIdToName[id];
-      var func = Module['asm'][name];
+      var func = wasmExports[name];
 #if RELOCATABLE
-      // Exported functions in side modules are not listed in `Module["asm"]`,
+      // Exported functions in side modules are not listed in `wasmExports`,
       // So we should use `resolveGlobalSymbol` helper function, which is defined in `library_dylink.js`.
       if (!func) {
         func = resolveGlobalSymbol(name, false).sym;
@@ -522,8 +522,8 @@ mergeInto(LibraryManager.library, {
   _load_secondary_module__sig: 'v',
   _load_secondary_module: async function() {
     // Mark the module as loading for the wasm module (so it doesn't try to load it again).
-    Module['asm']['load_secondary_module_status'].value = 1;
-    var imports = {'primary': Module['asm']};
+    wasmExports['load_secondary_module_status'].value = 1;
+    var imports = {'primary': wasmExports};
     // Replace '.wasm' suffix with '.deferred.wasm'.
     var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm';
     await new Promise((resolve) => {
@@ -531,7 +531,7 @@ mergeInto(LibraryManager.library, {
     });
   },
 
-  $Fibers__deps: ['$Asyncify'],
+  $Fibers__deps: ['$Asyncify', 'emscripten_stack_set_limits'],
   $Fibers: {
     nextFiber: 0,
     trampolineRunning: false,

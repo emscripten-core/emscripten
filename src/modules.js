@@ -26,11 +26,11 @@ global.LibraryManager = {
   loaded: false,
   libraries: [],
 
-  has: function(name) {
+  has(name) {
     return this.libraries.includes(name);
   },
 
-  load: function() {
+  load() {
     assert(!this.loaded);
     this.loaded = true;
 
@@ -218,7 +218,7 @@ global.LibraryManager = {
       if (isUserLibrary) {
         origLibrary = this.library;
         this.library = new Proxy(this.library, {
-          set: (target, prop, value) => {
+          set(target, prop, value) {
             target[prop] = value;
             if (!isDecorator(prop)) {
               target[prop + '__user'] = true;
@@ -355,7 +355,7 @@ function exportRuntime() {
       } else if (legacyRuntimeElements.has(exported)) {
         exported = legacyRuntimeElements.get(exported);
       }
-      return `Module["${name}"] = ${exported};`;
+      return `Module['${name}'] = ${exported};`;
     }
   }
 
@@ -382,6 +382,8 @@ function exportRuntime() {
     'abort',
     'keepRuntimeAlive',
     'wasmMemory',
+    'wasmTable',
+    'wasmExports',
   ];
 
   // These are actually native wasm functions these days but we allow exporting

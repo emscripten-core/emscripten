@@ -89,7 +89,7 @@ var SyscallsLibrary = {
 
     varargs: undefined,
 
-    get: function() {
+    get() {
 #if ASSERTIONS
       assert(SYSCALLS.varargs != undefined);
 #endif
@@ -100,7 +100,7 @@ var SyscallsLibrary = {
 #endif
       return ret;
     },
-    getStr: function(ptr) {
+    getStr(ptr) {
       var ret = UTF8ToString(ptr);
 #if SYSCALL_DEBUG
       dbg(`    (str: "${ret}")`);
@@ -766,9 +766,7 @@ var SyscallsLibrary = {
         stream.flags |= arg;
         return 0;
       }
-      case {{{ cDefs.F_GETLK }}}:
-      /* case {{{ cDefs.F_GETLK64 }}}: Currently in musl F_GETLK64 has same value as F_GETLK, so omitted to avoid duplicate case blocks. If that changes, uncomment this */ {
-        {{{ assert(cDefs.F_GETLK === cDefs.F_GETLK64), '' }}}
+      case {{{ cDefs.F_GETLK }}}: {
         var arg = SYSCALLS.get();
         var offset = {{{ C_STRUCTS.flock.l_type }}};
         // We're always unlocked.
@@ -777,10 +775,6 @@ var SyscallsLibrary = {
       }
       case {{{ cDefs.F_SETLK }}}:
       case {{{ cDefs.F_SETLKW }}}:
-      /* case {{{ cDefs.F_SETLK64 }}}: Currently in musl F_SETLK64 has same value as F_SETLK, so omitted to avoid duplicate case blocks. If that changes, uncomment this */
-      /* case {{{ cDefs.F_SETLKW64 }}}: Currently in musl F_SETLKW64 has same value as F_SETLKW, so omitted to avoid duplicate case blocks. If that changes, uncomment this */
-        {{{ assert(cDefs.F_SETLK64 === cDefs.F_SETLK), '' }}}
-        {{{ assert(cDefs.F_SETLKW64 === cDefs.F_SETLKW), '' }}}
         return 0; // Pretend that the locking is successful.
       case {{{ cDefs.F_GETOWN_EX }}}:
       case {{{ cDefs.F_SETOWN }}}:

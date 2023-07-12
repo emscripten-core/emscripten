@@ -112,6 +112,14 @@ var LibraryHTML5 = {
     },
     
     canPerformEventHandlerRequests: function() {
+      if (navigator.userActivation) {
+        // Verify against transient activation status from UserActivation API
+        // whether it is possible to perform a request here without needing to defer. See
+        // https://developer.mozilla.org/en-US/docs/Web/Security/User_activation#transient_activation
+        // and https://caniuse.com/mdn-api_useractivation
+        // At the time of writing, Firefox does not support this API: https://bugzilla.mozilla.org/show_bug.cgi?id=1791079
+        return navigator.userActivation.isActive;
+      }
       return JSEvents.inEventHandler && JSEvents.currentEventHandler.allowsDeferredCalls;
     },
     

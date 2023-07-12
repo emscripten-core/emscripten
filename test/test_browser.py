@@ -300,7 +300,7 @@ If manually bisecting:
 
   def test_emscripten_log(self):
     self.btest_exit(test_file('emscripten_log/emscripten_log.cpp'),
-                    args=['--pre-js', path_from_root('src/emscripten-source-map.min.js'), '-gsource-map'])
+                    args=['-Wno-deprecated-pragma', '--pre-js', path_from_root('src/emscripten-source-map.min.js'), '-gsource-map'])
 
   @also_with_wasmfs
   def test_preload_file(self):
@@ -4452,7 +4452,7 @@ Module["preRun"].push(function () {
     size = os.path.getsize('test.js')
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
-    self.assertLess(abs(size - 4930), 100)
+    self.assertLess(abs(size - 4800), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
@@ -4868,31 +4868,6 @@ Module["preRun"].push(function () {
     self.compile_btest([test_file('pthread/hello_thread.c'), '-pthread', '-o', 'hello_thread_with_blob_url.js'], reporting=Reporting.JS_ONLY)
     shutil.copyfile(test_file('pthread/main_js_as_blob_loader.html'), 'hello_thread_with_blob_url.html')
     self.run_browser('hello_thread_with_blob_url.html', '/report_result?exit:0')
-
-  # Tests that base64 utils work in browser with no native atob function
-  def test_base64_atob_fallback(self):
-    create_file('test.c', r'''
-      #include <stdio.h>
-      #include <emscripten.h>
-      int main() {
-        return 0;
-      }
-    ''')
-    # generate a dummy file
-    create_file('dummy_file', 'dummy')
-    # compile the code with the modularize feature and the preload-file option enabled
-    self.compile_btest(['test.c', '-sEXIT_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME="Foo"', '--preload-file', 'dummy_file', '-sSINGLE_FILE'])
-    create_file('a.html', '''
-      <script>
-        atob = undefined;
-        fetch = undefined;
-      </script>
-      <script src="a.out.js"></script>
-      <script>
-        var foo = Foo();
-      </script>
-    ''')
-    self.run_browser('a.html', '/report_result?exit:0')
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
   def test_single_file_html(self):

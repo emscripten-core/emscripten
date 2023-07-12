@@ -36,13 +36,26 @@ function escapeJSONKey(x) {
   return "'" + x + "'";
 }
 
+// JSON.stringify will completely omit function objects.  This function is
+// similar but preserves functions.
 function stringifyWithFunctions(obj) {
   if (typeof obj == 'function') return obj.toString();
   if (obj === null || typeof obj != 'object') return JSON.stringify(obj);
   if (Array.isArray(obj)) {
     return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
   }
-  return '{' + Object.keys(obj).map((key) => escapeJSONKey(key) + ':' + stringifyWithFunctions(obj[key])).join(',') + '}';
+  var rtn = '{\n';
+  for (const [key, value] of Object.entries(obj)) {
+    var str = stringifyWithFunctions(value);
+    // Handle JS method syntax where the function property starts with its own
+    // name. e.g.  foo(a) {},
+    if (typeof value === 'function' && str.startsWith(key)) {
+      rtn += str + ',\n'
+    } else {
+      rtn += escapeJSONKey(key) + ':' + str + ',\n';
+    }
+  }
+  return rtn + '}';
 }
 
 function isDefined(symName) {
@@ -151,6 +164,12 @@ function runJSify() {
         // For functions that where we need to mutate the return value, we
         // also need to wrap the body in an inner function.
         if (oneliner) {
+          if (argConvertions) {
+            return `${async_}(${args}) => {
+${argConvertions}
+  return ${makeReturn64(body)};
+}`
+          }
           return `${async_}(${args}) => ${makeReturn64(body)};`
         }
         return `\
@@ -261,15 +280,18 @@ function(${args}) {
     // In LLVM, exceptions generate a set of functions of form
     // __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.  where
     // the number specifies the number of arguments. In Emscripten, route all
-    // these to a single function '__cxa_find_matching_catch' that variadically
-    // processes all of these functions using JS 'arguments' object.
+    // these to a single function 'findMatchingCatch' that takes an array
+    // of argument.
     if (!WASM_EXCEPTIONS && symbol.startsWith('__cxa_find_matching_catch_')) {
       if (DISABLE_EXCEPTION_THROWING) {
         error('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-except (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.');
         return;
       }
-      const num = +symbol.split('_').slice(-1)[0];
-      addCxaCatch(num);
+      if (!(symbol in LibraryManager.library)) {
+        // Create a new __cxa_find_matching_catch variant on demand.
+        const num = +symbol.split('_').slice(-1)[0];
+        addCxaCatch(num);
+      }
       // Continue, with the code below emitting the proper JavaScript based on
       // what we just added to the library.
     }
@@ -494,7 +516,7 @@ function(${args}) {
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
       if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
-        contentText += `\nModule["${mangled}"] = ${mangled};`;
+        contentText += `\nModule['${mangled}'] = ${mangled};`;
       }
       // Relocatable code needs signatures to create proper wrappers. Stack
       // switching needs signatures so we can create a proper
