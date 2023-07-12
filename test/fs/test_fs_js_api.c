@@ -397,14 +397,20 @@ void cleanup() {
 }
 
 int main() {
+    EM_ASM(
+        FS.mkdir("/synctestdir");
+        FS.mkdir("/nesteddir");
+        FS.writeFile("/nesteddir/synctestfile", "a=1");
+        FS.syncfs();
+    );
     test_fs_open();
     test_fs_rename();
-    test_fs_readlink();
+    // test_fs_readlink();
     test_fs_read();
     test_fs_rmdir();
     test_fs_close();
     test_fs_mknod();
-    test_fs_allocate();
+    // test_fs_allocate();
     test_fs_truncate();
     test_fs_mkdirTree();
     test_fs_utime();

@@ -7,6 +7,7 @@
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
 #include <emscripten/threading.h>
+#include <stack>
 
 #include "memory_backend.h"
 #include "paths.h"
@@ -66,6 +67,47 @@ extern "C" void wasmfs_flush(void) {
   // Flush our own streams. TODO: flush all backends.
   (void)SpecialFiles::getStdout()->locked().flush();
   (void)SpecialFiles::getStderr()->locked().flush();
+
+  std::stack<std::shared_ptr<Directory>> toFlush;
+  toFlush.push(wasmFS.getRootDirectory());
+
+  while(!toFlush.empty()) {
+    auto dir = toFlush.top();
+    toFlush.pop();
+    
+    auto lockedDir = dir->locked();
+    printf("Current: %llu\n", dir->getIno());
+    int nentries = lockedDir.getNumEntries();
+    Directory::MaybeEntries entries = lockedDir.getEntries();
+
+    printf("Num Entries: %d\n", nentries);
+    for (int i = 0; i < nentries; i++) {
+      auto entry = entries->at(i);
+      printf("Entry %llu: %s Kind: %d\n", entry.ino, entry.name.c_str(), entry.kind);
+      if (entry.kind == File::FileKind::DataFileKind) {
+        printf("Flush: %s\n", entry.name.c_str());
+        int err = lockedDir.getChild(entry.name)->dynCast<DataFile>()->locked().flush();
+        if (err) {
+          printf("Error in flushing: %s : err=%d\n", entry.name.c_str(), err);
+        }
+      }
+      if (entry.kind == File::FileKind::DirectoryKind) {
+        printf("Add to Stack: %s\n", entry.name.c_str());
+        toFlush.push(lockedDir.getChild(entry.name)->dynCast<Directory>());
+      }
+    }
+  }
+
+  // auto dir = wasmFS.getRootDirectory();
+  // auto lockedDir = dir->locked();
+  // int nentries = lockedDir.getNumEntries();
+  // Directory::MaybeEntries entries = lockedDir.getEntries();
+
+  // printf("Num Entries: %d\n", nentries);
+  // for (int i = 0; i < nentries; i++) {
+  //   auto entry = entries->at(i);
+  //   printf("Entry %llu: %s Kind: %d\n", entry.ino, entry.name.c_str(), entry.kind);
+  // }
 }
 
 WasmFS::~WasmFS() {

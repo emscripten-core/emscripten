@@ -367,6 +367,9 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       }));
     },
     // TODO: syncfs
+    syncfs: () => {
+      return FS.handleError(__wasmfs_syncfs());
+    },
     llseek: (stream, offset, whence) => {
       return FS.handleError(__wasmfs_llseek(stream.fd, {{{ splitI64('offset') }}}, whence));
     }
