@@ -239,15 +239,6 @@ def report_missing_symbols(js_symbols):
     exit_with_error('entry symbol not defined (pass --no-entry to suppress): main')
 
 
-def proxy_debug_print(sync):
-  if settings.PTHREADS_DEBUG:
-    if sync:
-      return 'warnOnce("sync proxying function " + code);'
-    else:
-      return 'warnOnce("async proxying function " + code);'
-  return ''
-
-
 # Test if the parentheses at body[openIdx] and body[closeIdx] are a match to
 # each other.
 def parentheses_match(body, openIdx, closeIdx):
@@ -762,7 +753,7 @@ def make_export_wrappers(function_exports, delay_assignment):
       # first use.
       args = [f'a{i}' for i in range(nargs)]
       args = ', '.join(args)
-      wrapper += f"({args}) => ({mangled} = {exported}Module['asm']['{name}'])({args});"
+      wrapper += f"({args}) => ({mangled} = {exported}wasmExports['{name}'])({args});"
     else:
       wrapper += 'asm["%s"]' % name
 

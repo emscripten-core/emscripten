@@ -865,6 +865,16 @@ function hasExportedSymbol(sym) {
   return WASM_EXPORTS.has(sym);
 }
 
+// Called when global runtime symbols such as wasmMemory, wasmExports and
+// wasmTable are set. In this case we maybe need to re-export them on the
+// Module object.
+function receivedSymbol(sym) {
+  if (EXPORTED_RUNTIME_METHODS.includes(sym)) {
+    return `Module['${sym}'] = ${sym};`
+  }
+  return '';
+}
+
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,
 // it is a BigInt. Otherwise, we legalize into pairs of i32s.
 function defineI64Param(name) {
