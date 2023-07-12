@@ -267,9 +267,8 @@ int _wasmfs_lstat(char* path, struct stat* statBuf) {
   return __syscall_lstat64((intptr_t)path, (intptr_t)statBuf);
 }
 
-// The legacy JS API requires a mountpoint to already exist, so 
-// WasmFS will attempt to remove a mount directory before 
-// replacing it with a new directory using the correct backend.
+// The legacy JS API requires a mountpoint to already exist, so  WasmFS will attempt to remove 
+// the target directory if it exists before replacing it with a mounted directory.
 int _wasmfs_mount(char* path, backend_t created_backend) {
   int err = __syscall_rmdir((intptr_t)path);
 

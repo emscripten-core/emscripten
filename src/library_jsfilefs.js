@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $JSFILEFS__DEPS: ['wasmfs_create_js_file_backend'],
+  $JSFILEFS__deps: ['wasmfs_create_js_file_backend'],
   $JSFILEFS: {
     createBackend(opts) {
       return _wasmfs_create_js_file_backend();
