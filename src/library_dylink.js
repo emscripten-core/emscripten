@@ -118,11 +118,6 @@ var LibraryDylink = {
       symName = 'orig$' + symName;
     }
 #endif
-#if !DISABLE_EXCEPTION_CATCHING
-    if (symName.startsWith('__cxa_find_matching_catch_')) {
-      symName = '__cxa_find_matching_catch';
-    }
-#endif
     if (isSymbolDefined(symName)) {
       sym = wasmImports[symName];
     }
@@ -131,6 +126,22 @@ var LibraryDylink = {
     else if (symName.startsWith('invoke_')) {
       // Create (and cache) new invoke_ functions on demand.
       sym = wasmImports[symName] = createInvokeFunction(symName.split('_')[1]);
+    }
+#endif
+#if !DISABLE_EXCEPTION_CATCHING
+    else if (symName.startsWith('__cxa_find_matching_catch_')) {
+      // When the main module is linked we create whichever variants of
+      // `__cxa_find_matching_catch_` (see jsifier.js) that we know are needed,
+      // but a side module loaded at runtime might need different/additional
+      // variants so we create those dynamically.
+      sym = wasmImports[symName] = function() {
+        var args = Array.from(arguments);
+#if MEMORY64
+        args = args.map(Number);
+#endif
+        var rtn = findMatchingCatch(args);
+        return {{{ to64('rtn') }}};
+      }
     }
 #endif
     return {sym, name: symName};

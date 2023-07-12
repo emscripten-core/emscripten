@@ -248,6 +248,7 @@ def add_link_flag(state, i, f):
 
 class EmccOptions:
   def __init__(self):
+    self.target = ''
     self.output_file = None
     self.post_link = False
     self.executable = False
@@ -1460,14 +1461,14 @@ def phase_setup(options, state, newargs):
       continue
 
     arg = newargs[i]
-    if arg in ('-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
+    if arg in {'-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
                '-Xpreprocessor', '-include', '-imacros', '-idirafter',
                '-iprefix', '-iwithprefix', '-iwithprefixbefore',
                '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
                '-install_name', '-compatibility_version',
                '-current_version', '-I', '-L', '-include-pch',
-               '-undefined',
-               '-Xlinker', '-Xclang', '-z'):
+               '-undefined', '-target',
+               '-Xlinker', '-Xclang', '-z'}:
       skip = True
 
     if not arg.startswith('-'):
@@ -1639,7 +1640,12 @@ def phase_setup(options, state, newargs):
   if settings.DISABLE_EXCEPTION_THROWING and not settings.DISABLE_EXCEPTION_CATCHING:
     exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
 
+  if options.target.startswith('wasm64'):
+    default_setting('MEMORY64', 1)
+
   if settings.MEMORY64:
+    if options.target.startswith('wasm32'):
+      exit_with_error('wasm32 target is not compatible with -sMEMORY64')
     diagnostics.warning('experimental', '-sMEMORY64 is still experimental. Many features may not work.')
 
   # Wasm SjLj cannot be used with Emscripten EH
@@ -3637,6 +3643,10 @@ def parse_args(newargs):
     elif arg.startswith('-o'):
       options.output_file = removeprefix(arg, '-o')
       newargs[i] = ''
+    elif check_arg('-target') or check_arg('--target'):
+      options.target = consume_arg()
+      if options.target not in ('wasm32', 'wasm64', 'wasm64-unknown-emscripten', 'wasm32-unknown-emscripten'):
+        exit_with_error(f'unsupported target: {options.target} (emcc only supports wasm64-unknown-emscripten and wasm32-unknown-emscripten)')
     elif arg == '-mllvm':
       # Ignore the next argument rather than trying to parse it.  This is needed
       # because llvm args could, for example, start with `-o` and we don't want

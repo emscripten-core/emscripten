@@ -239,15 +239,6 @@ def report_missing_symbols(js_symbols):
     exit_with_error('entry symbol not defined (pass --no-entry to suppress): main')
 
 
-def proxy_debug_print(sync):
-  if settings.PTHREADS_DEBUG:
-    if sync:
-      return 'warnOnce("sync proxying function " + code);'
-    else:
-      return 'warnOnce("async proxying function " + code);'
-  return ''
-
-
 # Test if the parentheses at body[openIdx] and body[closeIdx] are a match to
 # each other.
 def parentheses_match(body, openIdx, closeIdx):
@@ -312,7 +303,10 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, js_syms):
     metadata.imports += ['__memory_base32']
 
   if settings.ASYNCIFY == 1:
-    metadata.function_exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
+    metadata.function_exports['asyncify_start_unwind'] = 1
+    metadata.function_exports['asyncify_stop_unwind'] = 0
+    metadata.function_exports['asyncify_start_rewind'] = 1
+    metadata.function_exports['asyncify_stop_rewind'] = 0
 
   update_settings_glue(out_wasm, metadata)
 
@@ -720,7 +714,7 @@ def create_sending(metadata, library_symbols):
   return '{\n  ' + ',\n  '.join(f'{prefix}{k}: {v}' for k, v in sorted_items) + '\n}'
 
 
-def make_export_wrappers(exports, delay_assignment):
+def make_export_wrappers(function_exports, delay_assignment):
   wrappers = []
 
   # The emscripten stack functions are called very early (by writeStackCookie) before
@@ -738,9 +732,9 @@ def make_export_wrappers(exports, delay_assignment):
       return False
     return True
 
-  for name in exports:
+  for name, nargs in function_exports.items():
     mangled = asmjs_mangle(name)
-    wrapper = '/** @type {function(...*):?} */\nvar %s = ' % mangled
+    wrapper = 'var %s = ' % mangled
 
     # TODO(sbc): Can we avoid exporting the dynCall_ functions on the module.
     should_export = settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS
@@ -757,10 +751,9 @@ def make_export_wrappers(exports, delay_assignment):
     elif delay_assignment:
       # With assertions disabled the wrapper will replace the global var and Module var on
       # first use.
-      wrapper += f'''function() {{
-  return ({mangled} = {exported}Module['asm']['{name}']).apply(null, arguments);
-}};
-'''
+      args = [f'a{i}' for i in range(nargs)]
+      args = ', '.join(args)
+      wrapper += f"({args}) => ({mangled} = {exported}Module['asm']['{name}'])({args});"
     else:
       wrapper += 'asm["%s"]' % name
 
@@ -768,7 +761,7 @@ def make_export_wrappers(exports, delay_assignment):
   return wrappers
 
 
-def create_receiving(exports):
+def create_receiving(function_exports):
   # When not declaring asm exports this section is empty and we instead programatically export
   # symbols on the global object by calling exportAsmFunctions after initialization
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
@@ -788,7 +781,7 @@ def create_receiving(exports):
       #   var asm = output.instance.exports;
       #   _main = asm["_main"];
       generate_dyncall_assignment = settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
-      exports_that_are_not_initializers = [x for x in exports if x != building.WASM_CALL_CTORS]
+      exports_that_are_not_initializers = [x for x in function_exports if x != building.WASM_CALL_CTORS]
 
       for s in exports_that_are_not_initializers:
         mangled = asmjs_mangle(s)
@@ -799,9 +792,9 @@ def create_receiving(exports):
           export_assignment = f"Module['{mangled}'] = "
         receiving += [f'{export_assignment}{dynCallAssignment}{mangled} = asm["{s}"]']
     else:
-      receiving += make_export_wrappers(exports, delay_assignment)
+      receiving += make_export_wrappers(function_exports, delay_assignment)
   else:
-    receiving += make_export_wrappers(exports, delay_assignment)
+    receiving += make_export_wrappers(function_exports, delay_assignment)
 
   if settings.MINIMAL_RUNTIME:
     return '\n  '.join(receiving) + '\n'
@@ -893,6 +886,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_wasmfs_mkdir': '_p_',
     '_wasmfs_open': '_p__',
     'emscripten_wasm_worker_initialize': '_p_',
+    '__get_exception_message': '_ppp',
   }
 
   wrappers = '''
