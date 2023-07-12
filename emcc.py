@@ -3695,8 +3695,7 @@ def phase_binaryen(target, options, wasm_target):
       intermediate_debug_info -= 1
     # currently binaryen's DWARF support will limit some optimizations; warn on
     # that. see https://github.com/emscripten-core/emscripten/issues/15269
-    dwarf_info = settings.DEBUG_LEVEL >= 3
-    if dwarf_info:
+    if settings.GENERATE_DWARF:
       diagnostics.warning('limited-postlink-optimizations', 'running limited binaryen optimizations because DWARF info requested (or indirectly required)')
     with ToolchainProfiler.profile_block('wasm_opt'):
       building.run_wasm_opt(wasm_target,
