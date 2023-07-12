@@ -404,7 +404,7 @@ int main() {
     test_fs_rmdir();
     test_fs_close();
     test_fs_mknod();
-    // test_fs_allocate();
+    test_fs_allocate();
     test_fs_truncate();
     test_fs_mkdirTree();
     test_fs_utime();
