@@ -5,11 +5,13 @@
  */
 
 mergeInto(LibraryManager.library, {
+  $MEMFS__deps: ['wasmfs_create_memory_backend'],
   $MEMFS: {
     createBackend(opts) {
       return _wasmfs_create_memory_backend();
     }
   },
+  $ICASEFS__deps: ['wasmfs_create_icase_backend_from_pointer'],
   $ICASEFS: {
     createBackend(opts) {
       if (!opts.backend) {

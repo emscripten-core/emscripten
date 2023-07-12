@@ -2331,11 +2331,10 @@ def phase_linker_setup(options, state, newargs):
       # these exports.)
       settings.REQUIRED_EXPORTS += [
         'wasmfs_create_memory_backend',
-        'wasmfs_create_node_backend',
         'wasmfs_create_opfs_backend',
+        'wasmfs_create_icase_backend_from_pointer',
         'wasmfs_create_js_file_backend',
         'wasmfs_create_fetch_backend',
-        'wasmfs_create_icase_backend_from_pointer',
         '_wasmfs_mount',
         '_wasmfs_unmount',
         '_wasmfs_read_file',
@@ -2370,6 +2369,8 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_readdir_finish',
         '_wasmfs_get_cwd',
       ]
+      if '-lnodefs.js' in [x for _, x in state.link_flags]:
+        settings.REQUIRED_EXPORTS += ['wasmfs_create_node_backend']
 
   if settings.FETCH and final_suffix in EXECUTABLE_ENDINGS:
     state.forced_stdlibs.append('libfetch')
