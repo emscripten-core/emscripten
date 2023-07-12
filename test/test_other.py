@@ -2578,6 +2578,7 @@ int f() {
         (['-O0'], False),
         (['-O0', '-g'], True),
         (['-O0', '-gsource-map'], True),
+        (['-O0', '-gsource-map', '-sWASM_BIGINT', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], True),
         (['-O1'], False),
         (['-O1', '-g'], True),
         (['-O2'], False),

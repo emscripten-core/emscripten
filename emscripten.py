@@ -18,6 +18,7 @@ import time
 import logging
 import pprint
 import shutil
+import sys
 
 from tools import building
 from tools import diagnostics
@@ -30,6 +31,9 @@ from tools.utils import exit_with_error, path_from_root, removeprefix
 from tools.shared import DEBUG, asmjs_mangle
 from tools.shared import treat_as_user_export
 from tools.settings import settings
+
+sys.path.append(path_from_root('third_party'))
+import leb128
 
 logger = logging.getLogger('emscripten')
 
@@ -448,6 +452,15 @@ def get_metadata(infile, outfile, modify_wasm, args):
   return metadata
 
 
+def create_sourcemapping_url_file(infile, url):
+  'Create a file with the contents of the sourceMappingURL section'
+  filename = os.path.join(shared.get_emscripten_temp_dir(), infile + '.smu')
+  with open(filename, 'wb') as f:
+    f.write(leb128.u.encode(len(url)))
+    f.write(url.encode('utf-8'))
+  return filename
+
+
 def finalize_wasm(infile, outfile, memfile, js_syms):
   building.save_intermediate(infile, 'base.wasm')
   args = []
@@ -458,11 +471,6 @@ def finalize_wasm(infile, outfile, memfile, js_syms):
   if settings.WASM2JS:
     # wasm2js requires full legalization (and will do extra wasm binary
     # later processing later anyhow)
-    modify_wasm = True
-  if settings.GENERATE_SOURCE_MAP:
-    building.emit_wasm_source_map(infile, infile + '.map', outfile)
-    building.save_intermediate(infile + '.map', 'base_wasm.map')
-    args += ['--output-source-map-url=' + settings.SOURCE_MAP_BASE + os.path.basename(outfile) + '.map']
     modify_wasm = True
   if settings.DEBUG_LEVEL >= 2 or settings.ASYNCIFY_ADD or settings.ASYNCIFY_ADVISE or settings.ASYNCIFY_ONLY or settings.ASYNCIFY_REMOVE or settings.EMIT_SYMBOL_MAP or settings.EMIT_NAME_SECTION:
     args.append('-g')
@@ -505,6 +513,23 @@ def finalize_wasm(infile, outfile, memfile, js_syms):
 
   if settings.DEBUG_LEVEL >= 3:
     args.append('--dwarf')
+
+  if settings.GENERATE_SOURCE_MAP:
+    building.emit_wasm_source_map(infile, infile + '.map', outfile)
+    building.save_intermediate(infile + '.map', 'base_wasm.map')
+    base_url = settings.SOURCE_MAP_BASE + os.path.basename(outfile) + '.map'
+    if modify_wasm:
+      # If we are already modifying, just let Binaryen add the sourcemap URL
+      args += ['--output-source-map-url=' + base_url]
+    else:
+      # Otherwise use objcopy. This avoids re-encoding the file (thus 
+      # preserving DWARF) and is faster.
+      url_file = create_sourcemapping_url_file(infile, base_url)
+      cmd = [shared.LLVM_OBJCOPY,
+             '--add-section',
+             'sourceMappingURL=' + url_file,
+             infile]
+
 
   metadata = get_metadata(infile, outfile, modify_wasm, args)
   if modify_wasm:

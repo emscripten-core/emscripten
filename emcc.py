@@ -3676,12 +3676,13 @@ def phase_binaryen(target, options, wasm_target):
   # also strips the Names section. so to emit just the Names section we don't
   # tell wasm-ld to strip anything, and we do it here.
   strip_debug = settings.DEBUG_LEVEL < 3
+  print ('debug %s'% settings.DEBUG_LEVEL)
   strip_producers = not settings.EMIT_PRODUCERS_SECTION
   # run wasm-opt if we have work for it: either passes, or if we are using
   # source maps (which requires some extra processing to keep the source map
   # but remove DWARF)
   passes = get_binaryen_passes()
-  if passes or settings.GENERATE_SOURCE_MAP:
+  if passes:
     # if we need to strip certain sections, and we have wasm-opt passes
     # to run anyhow, do it with them.
     if strip_debug:
