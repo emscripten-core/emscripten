@@ -126,6 +126,14 @@ weak int __syscall_mkdirat(int dirfd, intptr_t path, int mode) {
   return -ENOSYS;
 }
 
+weak int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
+  return -ENOSYS;
+}
+
+weak int __syscall_lstat64(intptr_t path, intptr_t buf) {
+  return -ENOSYS;
+}
+
 // There is no good source of entropy without an import. Make this weak so that
 // it can be replaced with a pRNG or a proper import.
 weak int getentropy(void* buffer, size_t length) {
