@@ -3347,6 +3347,9 @@ mergeInto(LibraryManager.library, {
   },
 
 #if !MINIMAL_RUNTIME
+#if STACK_OVERFLOW_CHECK
+  $handleException__deps: ['emscripten_stack_get_current'],
+#endif
   $handleException: (e) => {
     // Certain exception types we do not treat as errors since they are used for
     // internal control flow.

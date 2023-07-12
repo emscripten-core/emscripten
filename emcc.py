@@ -1321,6 +1321,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     js_info = get_js_sym_info()
     if not settings.SIDE_MODULE:
       js_syms = js_info['deps']
+
+      def add_js_deps(sym):
+        if sym in js_syms:
+          native_deps = js_syms[sym]
+          if native_deps:
+            settings.REQUIRED_EXPORTS += native_deps
+
+      for sym in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE:
+        add_js_deps(sym)
+      for sym in settings.EXPORTED_RUNTIME_METHODS:
+        add_js_deps(shared.demangle_c_symbol_name(sym))
     if settings.ASYNCIFY:
       settings.ASYNCIFY_IMPORTS += ['env.' + x for x in js_info['asyncFuncs']]
 
@@ -1733,13 +1744,6 @@ def setup_pthreads(target):
   if settings.MINIMAL_RUNTIME:
     building.user_requested_exports.add('exit')
 
-  # All proxying async backends will need this.
-  if settings.WASMFS:
-    settings.REQUIRED_EXPORTS += ['emscripten_proxy_finish']
-    # TODO: Remove this once we no longer need the heartbeat hack in
-    # wasmfs/thread_utils.h
-    settings.REQUIRED_EXPORTS += ['emscripten_proxy_execute_queue']
-
   # pthread stack setup and other necessary utilities
   def include_and_export(name):
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$' + name]
@@ -2091,7 +2095,6 @@ def phase_linker_setup(options, state, newargs):
       settings.INCLUDE_FULL_LIBRARY = 1
     # Called from preamble.js once the main module is instantiated.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDylibs']
-    settings.REQUIRED_EXPORTS += ['malloc']
 
   if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
     settings.LINKABLE = 1
@@ -2125,10 +2128,6 @@ def phase_linker_setup(options, state, newargs):
         '__asyncify_data'
       ]
 
-    # Emscripten EH dependency in library_dylink.js
-    if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
-      settings.REQUIRED_EXPORTS += ['setThrew']
-
     if settings.MINIMAL_RUNTIME:
       exit_with_error('MINIMAL_RUNTIME is not compatible with relocatable output')
     if settings.WASM2JS:
@@ -2156,9 +2155,6 @@ def phase_linker_setup(options, state, newargs):
     # See: https://github.com/emscripten-core/emscripten/issues/12065
     # See: https://github.com/emscripten-core/emscripten/issues/12066
     settings.DYNCALLS = 1
-    settings.REQUIRED_EXPORTS += ['emscripten_stack_get_base',
-                                  'emscripten_stack_get_end',
-                                  'emscripten_stack_set_limits']
 
   settings.ASYNCIFY_ADD = unmangle_symbols_from_cmdline(settings.ASYNCIFY_ADD)
   settings.ASYNCIFY_REMOVE = unmangle_symbols_from_cmdline(settings.ASYNCIFY_REMOVE)
@@ -2505,10 +2501,6 @@ def phase_linker_setup(options, state, newargs):
       'addRunDependency',
       'removeRunDependency',
     ]
-
-  if options.embind_emit_tsd:
-    # TODO: Remove after #19759 is resolved.
-    settings.REQUIRED_EXPORTS += ['free']
 
   def check_memory_setting(setting):
     if settings[setting] % webassembly.WASM_PAGE_SIZE != 0:
