@@ -109,13 +109,10 @@ mergeInto(LibraryManager.library, {
     },
 #if ASYNCIFY == 1 && MEMORY64
     saveOrRestoreRewindArguments: function(funcName, passedArguments) {
-      let args = Array.from(passedArguments)
-      if (args.length === 0) {
-        args = Asyncify.rewindArguments[funcName] || []
-      } else {
-        Asyncify.rewindArguments[funcName] = args
+      if (passedArguments.length === 0) {
+        return Asyncify.rewindArguments[funcName] || []
       }
-      return args
+      return Asyncify.rewindArguments[funcName] = Array.from(passedArguments)
     },
 #endif
     instrumentWasmExports: function(exports) {
