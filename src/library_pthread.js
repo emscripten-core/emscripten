@@ -721,7 +721,9 @@ var LibraryPThread = {
       /*canBlock=*/!ENVIRONMENT_IS_WEB,
       {{{ DEFAULT_PTHREAD_STACK_SIZE }}},
 #if PTHREADS_PROFILING
-      /*start_profiling=*/true
+      /*start_profiling=*/true,
+#else
+      /*start_profiling=*/false,
 #endif
     );
     PThread.threadInitTLS();
