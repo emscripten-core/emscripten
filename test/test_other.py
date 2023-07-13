@@ -2672,21 +2672,27 @@ int f() {
       ([], False, False, False),
       (['-g0'], False, False, False),
       (['-g1'], False, False, False),
+      (['-g1', '-O2'], False, False, False),
+      (['--minify=0'], False, False, False),
       # last numeric g flag "wins", so g0 overrides -g
       (['-g', '-g0'], False, False, False),
       (['-g2'], False, False, True),
       (['-gline-tables-only'], True, False, True),
       (['--profiling'], False, False, True),
       (['--profiling-funcs'], False, False, True),
+      (['-O2', '--profiling-funcs'], False, False, True),
       (['-g'], True, False, True),
       (['-g3'], True, False, True),
       (['-O1', '-g'], True, False, True),
       (['-O3', '-g'], True, False, True),
       (['-gsplit-dwarf'], True, False, True),
       (['-gsource-map'], False, True, True),
-      (['-g0', '-gsource-map'], False, True, True),
+      #(['-g0', '-gsource-map'], False, True, True), maybe don't need, g0 is same as none
+      (['-g1', '-Oz', '-gsource-map'], False, True, True),
       # -g0 does not override -gsource-map but does remove name section. TODO: should it?
-      (['-gsource-map', '-g0'], False, True, False),
+      (['--emit-symbol-map', '-gsource-map'], False, True, False),
+      (['-sASYNCIFY=1', '-g0'], False, False, False),
+      (['-sASYNCIFY=1', '-gsource-map'], False, True, False),
       (['-g', '-gsource-map'], True, True, True),
       # (['-gsplit-dwarf', '-gsource-map'], True, True, True), TODO this currently fails!
       (['-gsource-map', '-sWASM_BIGINT', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False, True, True),
@@ -2698,7 +2704,8 @@ int f() {
       def notIn(member, container, msg=None):
         if member in container:
           print('%s unexpectedly found' % member)
-      assertion = self.assertIn if expect_dwarf else notIn
+          self.fail()
+      assertion = self.assertIn if expect_dwarf else self.assertNotIn
       self.verify_dwarf(wasm_file, assertion)
 
       self.verify_custom_sec_existence(wasm_file, 'sourceMappingURL', expect_sourcemap)
@@ -9413,13 +9420,12 @@ int main() {
   })
   def test_wasm_producers_section(self, args):
     self.run_process([EMCC, test_file('hello_world.c')] + args)
-    data = read_binary('a.out.wasm')
     # if there is no producers section expected by default, verify that, and
     # see that the flag works to add it.
-    self.assertNotIn('clang', str(data))
+    self.verify_custom_section_existence('a.out.wasm', 'producers', False)
     size = os.path.getsize('a.out.wasm')
     self.run_process([EMCC, test_file('hello_world.c'), '-sEMIT_PRODUCERS_SECTION'] + args)
-    self.assertIn(b'clang', read_binary('a.out.wasm'))
+    self.verify_custom_section_existence('a.out.wasm', 'producers', True)
     size_with_section = os.path.getsize('a.out.wasm')
     self.assertLess(size, size_with_section)
 

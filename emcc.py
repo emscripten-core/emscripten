@@ -3475,7 +3475,11 @@ def parse_args(newargs):
         # set the emscripten debug level to 3 so that we do not remove that
         # debug info during link (during compile, this does not make a
         # difference).
+        else:
+          # Assume unknown non-integer levels are clang flags that emit dwarf.
+          settings.GENERATE_DWARF = 1
         settings.DEBUG_LEVEL = 3
+        
     elif check_flag('-profiling') or check_flag('--profiling'):
       settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 2)
     elif check_flag('-profiling-funcs') or check_flag('--profiling-funcs'):
@@ -3685,11 +3689,13 @@ def phase_binaryen(target, options, wasm_target):
     # if we need to strip certain sections, and we have wasm-opt passes
     # to run anyhow, do it with them.
     if strip_debug:
-      passes += ['--strip-debug']
-    elif not settings.GENERATE_DWARF:
-      passes = ['--strip-dwarf'] + passes
-    if strip_producers:
-      passes += ['--strip-producers']
+      pass#es += ['--strip-debug']
+      #raise Exception('hi')
+    #elif not settings.GENERATE_DWARF:
+    #  pass #es = ['--strip-dwarf'] + passes
+    #  #raise Exception('used in '+ options)
+    #if strip_producers:
+    #  passes += ['--strip-producers']
     # if asyncify is used, we will use it in the next stage, and so if it is
     # the only reason we need intermediate debug info, we can stop keeping it
     if settings.ASYNCIFY == 1:
@@ -3704,14 +3710,14 @@ def phase_binaryen(target, options, wasm_target):
                             args=passes,
                             debug=intermediate_debug_info)
       building.save_intermediate(wasm_target, 'byn.wasm')
-  elif strip_debug or strip_producers:
+  """   elif strip_debug or strip_producers:
     # we are not running wasm-opt. if we need to strip certain sections
     # then do so using llvm-objcopy which is fast and does not rewrite the
     # code (which is better for debug info)
     sections = ['producers'] if strip_producers else []
     with ToolchainProfiler.profile_block('strip'):
       building.strip(wasm_target, wasm_target, debug=strip_debug, sections=sections)
-      building.save_intermediate(wasm_target, 'strip.wasm')
+      building.save_intermediate(wasm_target, 'strip.wasm') """
 
   if settings.EVAL_CTORS:
     with ToolchainProfiler.profile_block('eval_ctors'):
