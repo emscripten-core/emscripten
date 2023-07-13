@@ -398,6 +398,8 @@ function exportRuntime() {
       'GROWABLE_HEAP_U16',
       'GROWABLE_HEAP_I32',
       'GROWABLE_HEAP_U32',
+      'GROWABLE_HEAP_I64',
+      'GROWABLE_HEAP_U64',
       'GROWABLE_HEAP_F32',
       'GROWABLE_HEAP_F64',
     ]);
