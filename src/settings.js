@@ -2060,8 +2060,11 @@ var RUNTIME_DEBUG = false;
 // library symbol.
 var LEGACY_RUNTIME = false;
 
-// User-defined functions to wrap with signature conversion
-// example use -sSIGNATURE_CONVERSIONS=['someFunction:_p']
+// User-defined functions to wrap with signature conversion, which take or return
+// pointer argument. Only affects MEMORY64=1 builds, see create_pointer_conversion_wrappers
+// in emscripten.py for details.
+// Use _ for non-pointer arguments, p for pointer/i53 arguments, and P for optional pointer/i53 values.
+// Example use -sSIGNATURE_CONVERSIONS=someFunction:_p,anotherFunction:p
 // [link]
 var SIGNATURE_CONVERSIONS = [];
 

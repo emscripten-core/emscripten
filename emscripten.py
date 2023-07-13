@@ -905,10 +905,9 @@ def create_pointer_conversion_wrappers(metadata):
     'emscripten_wasm_worker_initialize': '_p_',
   }
 
-  if settings.SIGNATURE_CONVERSIONS:
-      for function in settings.SIGNATURE_CONVERSIONS:
-        sig = function.split(':')
-        mapping[sig[0]] = sig[1]
+  for function in settings.SIGNATURE_CONVERSIONS:
+    sig = function.split(':')
+    mapping[sig[0]] = sig[1]
 
   wrappers = '''
 function applySignatureConversions(exports) {
