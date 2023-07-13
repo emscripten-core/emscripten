@@ -124,7 +124,7 @@ included in the profile.
 Here’s the function to write the profile and our new main function::
 
   EM_JS(void, write_profile, (), {
-    var __write_profile = Module['asm']['__write_profile'];
+    var __write_profile = wasmExports['__write_profile'];
     if (__write_profile) {
 
       // Get the size of the profile and allocate a buffer for it.
@@ -338,7 +338,7 @@ be called either.
 
 When eagerly instantiating the secondary module, the imports object should be::
 
-  {'primary': Module['asm']}
+  {'primary': wasmExports}
 
 Debugging
 ---------
