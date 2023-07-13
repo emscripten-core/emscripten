@@ -3676,7 +3676,6 @@ def phase_binaryen(target, options, wasm_target):
   # also strips the Names section. so to emit just the Names section we don't
   # tell wasm-ld to strip anything, and we do it here.
   strip_debug = settings.DEBUG_LEVEL < 3
-  print ('debug %s'% settings.DEBUG_LEVEL)
   strip_producers = not settings.EMIT_PRODUCERS_SECTION
   # run wasm-opt if we have work for it: either passes, or if we are using
   # source maps (which requires some extra processing to keep the source map
@@ -3687,6 +3686,8 @@ def phase_binaryen(target, options, wasm_target):
     # to run anyhow, do it with them.
     if strip_debug:
       passes += ['--strip-debug']
+    elif not settings.GENERATE_DWARF:
+      passes = ['--strip-dwarf'] + passes
     if strip_producers:
       passes += ['--strip-producers']
     # if asyncify is used, we will use it in the next stage, and so if it is
@@ -3708,7 +3709,7 @@ def phase_binaryen(target, options, wasm_target):
     # then do so using llvm-objcopy which is fast and does not rewrite the
     # code (which is better for debug info)
     sections = ['producers'] if strip_producers else []
-    with ToolchainProfiler.profile_block('strip_producers'):
+    with ToolchainProfiler.profile_block('strip'):
       building.strip(wasm_target, wasm_target, debug=strip_debug, sections=sections)
       building.save_intermediate(wasm_target, 'strip.wasm')
 
@@ -3836,7 +3837,8 @@ def phase_binaryen(target, options, wasm_target):
   if not debug_info and building.binaryen_kept_debug_info and \
      building.os.path.exists(wasm_target):
     with ToolchainProfiler.profile_block('strip_with_wasm_opt'):
-      building.run_wasm_opt(wasm_target, wasm_target)
+      # building.run_wasm_opt(wasm_target, wasm_target)
+      building.strip(wasm_target, debug=True)
 
   # replace placeholder strings with correct subresource locations
   if final_js and settings.SINGLE_FILE and not settings.WASM2JS:

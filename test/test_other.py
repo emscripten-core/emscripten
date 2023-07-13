@@ -2573,26 +2573,6 @@ int f() {
           elif debug == '2':
             self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-3-original.js'))
 
-  def test_debuginfo(self):
-    for args, expect_debug in [
-        (['-O0'], False),
-        (['-O0', '-g'], True),
-        (['-O0', '-gsource-map'], True),
-        (['-O0', '-gsource-map', '-sWASM_BIGINT', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], True),
-        (['-O1'], False),
-        (['-O1', '-g'], True),
-        (['-O2'], False),
-        (['-O2', '-g'], True),
-      ]:
-      print(args, expect_debug)
-      err = self.run_process([EMCC, '-v', test_file('hello_world.c')] + args, stdout=PIPE, stderr=PIPE).stderr
-      lines = err.splitlines()
-      finalize = [l for l in lines if 'wasm-emscripten-finalize' in l][0]
-      if expect_debug:
-        self.assertIn(' -g ', finalize)
-      else:
-        self.assertNotIn(' -g ', finalize)
-
   def test_debuginfo_line_tables_only(self):
     def test(do_compile):
       do_compile([])
@@ -2665,13 +2645,13 @@ int f() {
     self.assertIn('sources', data)
     self.assertIn('mappings', data)
 
-  def verify_name_sec_existence(self, wasm_file, expect_names):
+  def verify_custom_sec_existence(self, wasm_file, section_name, expect_existence):
     with webassembly.Module(wasm_file) as module:
-      section = module.get_custom_section("name")
-      if expect_names:
-        self.assertIsNotNone(section, "Name section unexpectedly missing")
+      section = module.get_custom_section(section_name)
+      if expect_existence:
+        self.assertIsNotNone(section, f'section {section_name} unexpectedly missing')
       else:
-        self.assertIsNone(section, "Name section unexpectedly found")
+        self.assertIsNone(section, f'section {section_name} unexpectedly found')
 
   def test_dwarf(self):
     def compile_with_dwarf(args, output):
@@ -2700,7 +2680,8 @@ int f() {
       (['--profiling-funcs'], False, False, True),
       (['-g'], True, False, True),
       (['-g3'], True, False, True),
-      (['-O2', '-g'], True, False, True),
+      (['-O1', '-g'], True, False, True),
+      (['-O3', '-g'], True, False, True),
       (['-gsplit-dwarf'], True, False, True),
       (['-gsource-map'], False, True, True),
       (['-g0', '-gsource-map'], False, True, True),
@@ -2708,19 +2689,25 @@ int f() {
       (['-gsource-map', '-g0'], False, True, False),
       (['-g', '-gsource-map'], True, True, True),
       # (['-gsplit-dwarf', '-gsource-map'], True, True, True), TODO this currently fails!
+      (['-gsource-map', '-sWASM_BIGINT', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False, True, True),
     ]:
       print(flags, expect_dwarf, expect_sourcemap, expect_names)
       self.emcc(test_file(source_file), flags, js_file)
+      self.assertExists(js_file)
 
-      assertion = self.assertIn if expect_dwarf else self.assertNotIn
+      def notIn(member, container, msg=None):
+        if member in container:
+          print('%s unexpectedly found' % member)
+      assertion = self.assertIn if expect_dwarf else notIn
       self.verify_dwarf(wasm_file, assertion)
 
+      self.verify_custom_sec_existence(wasm_file, 'sourceMappingURL', expect_sourcemap)
       if expect_sourcemap:
         self.verify_source_map_exists(map_file)
       else:
-        self.assertFalse(os.path.isfile(map_file), "Sourcemap unexpectedly exists")
+        self.assertFalse(os.path.isfile(map_file), 'Sourcemap unexpectedly exists')
 
-      self.verify_name_sec_existence(wasm_file, expect_names)
+      self.verify_custom_sec_existence(wasm_file, 'name', expect_names)
 
       self.clear()
 

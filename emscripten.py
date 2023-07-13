@@ -522,13 +522,18 @@ def finalize_wasm(infile, outfile, memfile, js_syms):
       # If we are already modifying, just let Binaryen add the sourcemap URL
       args += ['--output-source-map-url=' + base_url]
     else:
-      # Otherwise use objcopy. This avoids re-encoding the file (thus 
+      # Otherwise use objcopy. This avoids re-encoding the file (thus
       # preserving DWARF) and is faster.
       url_file = create_sourcemapping_url_file(infile, base_url)
       cmd = [shared.LLVM_OBJCOPY,
              '--add-section',
              'sourceMappingURL=' + url_file,
              infile]
+      shared.check_call(cmd)
+    if not settings.GENERATE_DWARF:
+      # If we won't need DWARF, strip it now to make subsequent passes faster
+      building.save_intermediate(infile, 'strip_dwarf.wasm')
+      building.strip(infile, infile, debug=True)
 
 
   metadata = get_metadata(infile, outfile, modify_wasm, args)
