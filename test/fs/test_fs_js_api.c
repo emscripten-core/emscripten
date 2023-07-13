@@ -68,6 +68,7 @@ EM_JS(void, test_fs_readlink,(), {
     FS.symlink('/readlinktestfile', '/readlinksymlink');
 
     var symlinkString = FS.readlink('readlinksymlink');
+    console.log("Symlink:", symlinkString);
     assert(symlinkString === '/readlinktestfile');
 
     var ex;
@@ -405,7 +406,7 @@ int main() {
     );
     test_fs_open();
     test_fs_rename();
-    // test_fs_readlink();
+    test_fs_readlink();
     test_fs_read();
     test_fs_rmdir();
     test_fs_close();

@@ -258,6 +258,9 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     )),
     readlink: (path) => {
       var readBuffer = FS.handleError(withStackSave(() => __wasmfs_readlink(stringToUTF8OnStack(path))));
+      for(var i = 0; i < 20; i++) {
+        console.log("ReadBuf: " + i + " " + HEAPU8[readBuffer + i]);
+      }
       return UTF8ToString(readBuffer);
     },
     statBufToObject : (statBuf) => {
