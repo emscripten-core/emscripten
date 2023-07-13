@@ -1009,6 +1009,21 @@ The following JavaScript can be used to interact with the above C++.
     retMap.set(10, "OtherValue");
 
 
+TypeScript Definitions
+======================
+
+Embind supports generating TypeScript definition files from :cpp:func:`EMSCRIPTEN_BINDINGS`
+blocks. To generate **.d.ts** files invoke *emcc* with the
+:ref:`embind-emit-tsd <emcc-embind-emit-tsd>` option::
+
+   emcc -lembind quick_example.cpp --embind-emit-tsd interface.d.ts
+
+Running this command will build the program with an instrumented version of embind
+that is then run in *node* to generate the definition files.
+Not all of embind's features are currently supported, but many of the commonly used
+ones are.  Examples of input and output can be seen in `embind_tsgen.cpp`_ and
+`embind_tsgen.d.ts`_.
+
 Performance
 ===========
 
@@ -1030,3 +1045,5 @@ real-world applications has proved to be more than acceptable.
 .. _Backbone.js: http://backbonejs.org/#Model-extend
 .. _Web Audio API: https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API
 .. _Making sine, square, sawtooth and triangle waves: http://stuartmemo.com/making-sine-square-sawtooth-and-triangle-waves/
+.. _embind_tsgen.cpp: https://github.com/emscripten-core/emscripten/blob/main/test/other/embind_tsgen.cpp
+.. _embind_tsgen.d.ts: https://github.com/emscripten-core/emscripten/blob/main/test/other/embind_tsgen.d.ts
