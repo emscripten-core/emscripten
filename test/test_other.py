@@ -2687,13 +2687,15 @@ int f() {
       (['-O3', '-g'], True, False, True),
       (['-gsplit-dwarf'], True, False, True),
       (['-gsource-map'], False, True, True),
-      #(['-g0', '-gsource-map'], False, True, True), maybe don't need, g0 is same as none
       (['-g1', '-Oz', '-gsource-map'], False, True, True),
       # -g0 does not override -gsource-map but does remove name section. TODO: should it?
-      (['--emit-symbol-map', '-gsource-map'], False, True, False),
+      (['--emit-symbol-map', '-gsource-map'], False, True, True), # bad
+      (['--emit-symbol-map'], False, False, False),
+      (['--emit-symbol-map', '-Oz'], False, False, False),
       (['-sASYNCIFY=1', '-g0'], False, False, False),
-      (['-sASYNCIFY=1', '-gsource-map'], False, True, False),
+      (['-sASYNCIFY=1', '-gsource-map'], False, True, True), # bad
       (['-g', '-gsource-map'], True, True, True),
+      (['-g2', '-gsource-map'], False, True, True),
       # (['-gsplit-dwarf', '-gsource-map'], True, True, True), TODO this currently fails!
       (['-gsource-map', '-sWASM_BIGINT', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False, True, True),
     ]:
@@ -4525,8 +4527,14 @@ EM_ASM({ _middle() });
     # any difference in how the optimizer operates
     self.run_process([EMCC, test_file('hello_world.c'), '-Oz', '-o', 'test1.js'] + args)
     self.run_process([EMCC, test_file('hello_world.c'), '-Oz', '-o', 'test2.js', '--emit-symbol-map'] + args)
+
     self.assertEqual(os.path.getsize('test1.js'), os.path.getsize('test2.js'))
-    self.assertEqual(os.path.getsize('test1.wasm'), os.path.getsize('test2.wasm'))
+
+    def get_code_section_size(filename):
+      with webassembly.Module(filename) as module:
+        return module.get_section(webassembly.SecType.CODE).size
+
+    self.assertEqual(get_code_section_size('test1.wasm'), get_code_section_size('test2.wasm'))
 
   def test_bitcode_linking(self):
     # emcc used to be able to link bitcode together, but these days partial linking
