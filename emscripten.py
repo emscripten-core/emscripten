@@ -538,7 +538,6 @@ def finalize_wasm(infile, outfile, memfile, js_syms):
     building.strip(infile, infile, debug=not settings.GENERATE_DWARF,
                    sections=sections)
 
-
   metadata = get_metadata(infile, outfile, modify_wasm, args)
   if modify_wasm:
     building.save_intermediate(infile, 'post_finalize.wasm')

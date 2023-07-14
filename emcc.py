@@ -3675,11 +3675,7 @@ def phase_binaryen(target, options, wasm_target):
     intermediate_debug_info += 1
   if settings.ASYNCIFY == 1:
     intermediate_debug_info += 1
-  # note that wasm-ld can strip DWARF info for us too (--strip-debug), but it
-  # also strips the Names section. so to emit just the Names section we don't
-  # tell wasm-ld to strip anything, and we do it here.
-  strip_debug = settings.DEBUG_LEVEL < 3
-  strip_producers = not settings.EMIT_PRODUCERS_SECTION
+
   # run wasm-opt if we have work for it: either passes, or if we are using
   # source maps (which requires some extra processing to keep the source map
   # but remove DWARF)
