@@ -34,6 +34,9 @@ mergeInto(LibraryManager.library, {
     //
     // Asyncify code that is shared between mode 1 (original) and mode 2 (JSPI).
     //
+#if ASYNCIFY == 1 && MEMORY64
+    rewindArguments: {},
+#endif
     instrumentWasmImports: function(imports) {
 #if ASYNCIFY_DEBUG
       dbg('asyncify instrumenting imports');
@@ -104,7 +107,14 @@ mergeInto(LibraryManager.library, {
         })(x);
       }
     },
-
+#if ASYNCIFY == 1 && MEMORY64
+    saveOrRestoreRewindArguments: function(funcName, passedArguments) {
+      if (passedArguments.length === 0) {
+        return Asyncify.rewindArguments[funcName] || []
+      }
+      return Asyncify.rewindArguments[funcName] = Array.from(passedArguments)
+    },
+#endif
     instrumentWasmExports: function(exports) {
 #if ASYNCIFY_DEBUG
       dbg('asyncify instrumenting exports');
@@ -134,7 +144,15 @@ mergeInto(LibraryManager.library, {
               Asyncify.exportCallStack.push(x);
               try {
 #endif
+#if ASYNCIFY == 1 && MEMORY64
+                // When re-winding, the arguments to a function are ignored.  For i32 arguments we
+                // can just call the function with no args at all since and the engine will produce zeros
+                // for all arguments.  However, for i64 arguments we get `undefined cannot be converted to
+                // BigInt`.
+                return original.apply(null, Asyncify.saveOrRestoreRewindArguments(x, arguments));
+#else
                 return original.apply(null, arguments);
+#endif
 #if ASYNCIFY == 1
               } finally {
                 if (!ABORT) {
@@ -248,8 +266,8 @@ mergeInto(LibraryManager.library, {
     },
 
     setDataHeader: function(ptr, stack, stackSize) {
-      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.stack_ptr, 'stack', 'i32') }}};
-      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.stack_limit, 'stack + stackSize', 'i32') }}};
+      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.stack_ptr, 'stack', '*') }}};
+      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.stack_limit, 'stack + stackSize', '*') }}};
     },
 
     setDataRewindFunc: function(ptr) {
@@ -479,7 +497,7 @@ mergeInto(LibraryManager.library, {
         // can only allocate the buffer after the wakeUp, not during an asyncing
         var buffer = _malloc(byteArray.length); // must be freed by caller!
         HEAPU8.set(byteArray, buffer);
-        {{{ makeSetValue('pbuffer', 0, 'buffer', 'i32') }}};
+        {{{ makeSetValue('pbuffer', 0, 'buffer', '*') }}};
         {{{ makeSetValue('pnum',  0, 'byteArray.length', 'i32') }}};
         {{{ makeSetValue('perror',  0, '0', 'i32') }}};
         wakeUp();
@@ -500,8 +518,8 @@ mergeInto(LibraryManager.library, {
       // could happen if we tried to scan the stack immediately after unwinding.
       safeSetTimeout(() => {
         var stackBegin = Asyncify.currData + {{{ C_STRUCTS.asyncify_data_s.__size__ }}};
-        var stackEnd = HEAP32[Asyncify.currData >> 2];
-        {{{ makeDynCall('vii', 'func') }}}(stackBegin, stackEnd);
+        var stackEnd = {{{ makeGetValue('Asyncify.currData', 0, '*') }}};
+        {{{ makeDynCall('vpp', 'func') }}}(stackBegin, stackEnd);
         wakeUp();
       }, 0);
     });
@@ -553,17 +571,17 @@ mergeInto(LibraryManager.library, {
      * NOTE: This function is the asynchronous part of emscripten_fiber_swap.
      */
     finishContextSwitch: function(newFiber) {
-      var stack_base = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_base,  'i32') }}};
-      var stack_max =  {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_limit, 'i32') }}};
+      var stack_base = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_base,  '*') }}};
+      var stack_max =  {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_limit, '*') }}};
       _emscripten_stack_set_limits(stack_base, stack_max);
 
 #if STACK_OVERFLOW_CHECK >= 2
       ___set_stack_limits(stack_base, stack_max);
 #endif
 
-      stackRestore({{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr,   'i32') }}});
+      stackRestore({{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr,   '*') }}});
 
-      var entryPoint = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 'i32') }}};
+      var entryPoint = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, '*') }}};
 
       if (entryPoint !== 0) {
 #if STACK_OVERFLOW_CHECK
@@ -573,10 +591,10 @@ mergeInto(LibraryManager.library, {
         dbg('ASYNCIFY/FIBER: entering fiber', newFiber, 'for the first time');
 #endif
         Asyncify.currData = null;
-        {{{ makeSetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 0, 'i32') }}};
+        {{{ makeSetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 0, '*') }}};
 
-        var userData = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.user_data, 'i32') }}};
-        {{{ makeDynCall('vi', 'entryPoint') }}}(userData);
+        var userData = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.user_data, '*') }}};
+        {{{ makeDynCall('vp', 'entryPoint') }}}(userData);
       } else {
         var asyncifyData = newFiber + {{{ C_STRUCTS.emscripten_fiber_s.asyncify_data }}};
         Asyncify.currData = asyncifyData;
@@ -611,7 +629,7 @@ mergeInto(LibraryManager.library, {
       _asyncify_start_unwind(asyncifyData);
 
       var stackTop = stackSave();
-      {{{ makeSetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr, 'stackTop', 'i32') }}};
+      {{{ makeSetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr, 'stackTop', '*') }}};
 
       Fibers.nextFiber = newFiber;
     } else {

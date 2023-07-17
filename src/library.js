@@ -3557,7 +3557,7 @@ mergeInto(LibraryManager.library, {
 #endif
 #if ASYNCIFY == 1
   __asyncify_state: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, 0)",
-  __asyncify_data: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, 0)",
+  __asyncify_data: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ to64(0) }}})",
 #endif
 #endif
 
