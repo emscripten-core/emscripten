@@ -28,33 +28,21 @@ if (ENVIRONMENT_IS_NODE) {
 
   Object.assign(global, {
     self: global,
-    require: require,
-    Module: Module,
+    require,
+    Module,
     location: {
       href: __filename
     },
     Worker: nodeWorkerThreads.Worker,
-    importScripts: function(f) {
-      (0, eval)(fs.readFileSync(f, 'utf8') + '//# sourceURL=' + f);
-    },
-    postMessage: function(msg) {
-      parentPort.postMessage(msg);
-    },
-    performance: global.performance || {
-      now: function() {
-        return Date.now();
-      }
-    },
+    importScripts: (f) => (0, eval)(fs.readFileSync(f, 'utf8') + '//# sourceURL=' + f),
+    postMessage: (msg) => parentPort.postMessage(msg),
+    performance: global.performance || { now: Date.now },
   });
 }
 #endif // ENVIRONMENT_MAY_BE_NODE
 
 // Thread-local guard variable for one-time init of the JS state
 var initializedJS = false;
-
-// Proxying queues that were notified before the thread started and need to be
-// executed as part of startup.
-var pendingNotifiedProxyingQueues = [];
 
 #if ASSERTIONS
 function assert(condition, text) {
@@ -75,7 +63,7 @@ function threadPrintErr() {
 }
 function threadAlert() {
   var text = Array.prototype.slice.call(arguments).join(' ');
-  postMessage({cmd: 'alert', text: text, threadId: Module['_pthread_self']()});
+  postMessage({cmd: 'alert', text, threadId: Module['_pthread_self']()});
 }
 #if ASSERTIONS
 // We don't need out() for now, but may need to add it if we want to use it
@@ -85,7 +73,7 @@ var out = () => { throw 'out() is not defined in worker.js.'; }
 #endif
 var err = threadPrintErr;
 self.alert = threadAlert;
-#if RUNTIME_DEBUG
+#if ASSERTIONS || RUNTIME_DEBUG
 var dbg = threadPrintErr;
 #endif
 
@@ -155,14 +143,20 @@ function handleMessage(e) {
 #endif // MINIMAL_RUNTIME
 
 #if MAIN_MODULE
-      Module['dynamicLibraries'] = e.data.dynamicLibraries;
+      Module['sharedModules'] = e.data.sharedModules;
+#if RUNTIME_DEBUG
+      dbg(`received ${Object.keys(e.data.sharedModules).length} shared modules: ${Object.keys(e.data.sharedModules)}`);
+#endif
 #endif
 
       // Use `const` here to ensure that the variable is scoped only to
       // that iteration, allowing safe reference from a closure.
       for (const handler of e.data.handlers) {
-        Module[handler] = function() {
-          postMessage({ cmd: 'callHandler', handler, args: [...arguments] });
+        Module[handler] = (...args) => {
+#if RUNTIME_DEBUG
+          dbg(`calling handler on main thread: ${handler}`);
+#endif
+          postMessage({ cmd: 'callHandler', handler, args: args });
         }
       }
 
@@ -192,7 +186,7 @@ function handleMessage(e) {
       if (typeof e.data.urlOrBlob == 'string') {
 #if TRUSTED_TYPES
         if (typeof self.trustedTypes != 'undefined' && self.trustedTypes.createPolicy) {
-          var p = self.trustedTypes.createPolicy('emscripten#workerPolicy3', { createScriptURL: function(ignored) { return e.data.urlOrBlob } });
+          var p = self.trustedTypes.createPolicy('emscripten#workerPolicy3', { createScriptURL: (ignored) => e.data.urlOrBlob });
           importScripts(p.createScriptURL('ignored'));
         } else
 #endif
@@ -201,7 +195,7 @@ function handleMessage(e) {
         var objectUrl = URL.createObjectURL(e.data.urlOrBlob);
 #if TRUSTED_TYPES
         if (typeof self.trustedTypes != 'undefined' && self.trustedTypes.createPolicy) {
-          var p = self.trustedTypes.createPolicy('emscripten#workerPolicy3', { createScriptURL: function(ignored) { return objectUrl } });
+          var p = self.trustedTypes.createPolicy('emscripten#workerPolicy3', { createScriptURL: (ignored) => objectUrl });
           importScripts(p.createScriptURL('ignored'));
         } else
 #endif
@@ -220,6 +214,10 @@ function handleMessage(e) {
       // Pass the thread address to wasm to store it for fast access.
       Module['__emscripten_thread_init'](e.data.pthread_ptr, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0, /*canBlock=*/1);
 
+      // Await mailbox notifications with `Atomics.waitAsync` so we can start
+      // using the fast `Atomics.notify` notification path.
+      Module['__emscripten_thread_mailbox_await'](e.data.pthread_ptr);
+
 #if ASSERTIONS
       assert(e.data.pthread_ptr);
 #endif
@@ -231,21 +229,12 @@ function handleMessage(e) {
       if (!initializedJS) {
 #if EMBIND
 #if PTHREADS_DEBUG
-        dbg('Pthread 0x' + Module['_pthread_self']().toString(16) + ' initializing embind.');
+        dbg(`Pthread 0x${Module['_pthread_self']().toString(16)} initializing embind.`);
 #endif
         // Embind must initialize itself on all threads, as it generates support JS.
         // We only do this once per worker since they get reused
         Module['__embind_initialize_bindings']();
 #endif // EMBIND
-
-        // Execute any proxied work that came in before the thread was
-        // initialized. Only do this once because it is only possible for
-        // proxying notifications to arrive before thread initialization on
-        // fresh workers.
-        pendingNotifiedProxyingQueues.forEach(queue => {
-          Module['executeNotifiedProxyingQueue'](queue);
-        });
-        pendingNotifiedProxyingQueues = [];
         initializedJS = true;
       }
 
@@ -258,22 +247,19 @@ function handleMessage(e) {
           // and let the top level handler propagate it back to the main thread.
           throw ex;
         }
-#if ASSERTIONS
-        err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' completed its main entry point with an `unwind`, keeping the worker alive for asynchronous operation.');
+#if RUNTIME_DEBUG
+        dbg(`Pthread 0x${Module['_pthread_self']().toString(16)} completed its main entry point with an 'unwind', keeping the worker alive for asynchronous operation.`);
 #endif
       }
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
       if (Module['_pthread_self']()) {
-        Module['__emscripten_thread_exit']({{{ cDefine('PTHREAD_CANCELED') }}});
+        Module['__emscripten_thread_exit']({{{ cDefs.PTHREAD_CANCELED }}});
       }
     } else if (e.data.target === 'setimmediate') {
       // no-op
-    } else if (e.data.cmd === 'processProxyingQueue') {
+    } else if (e.data.cmd === 'checkMailbox') {
       if (initializedJS) {
-        Module['executeNotifiedProxyingQueue'](e.data.queue);
-      } else {
-        // Defer executing this queue until the runtime is initialized.
-        pendingNotifiedProxyingQueues.push(e.data.queue);
+        Module['checkMailbox']();
       }
     } else if (e.data.cmd) {
       // The received message looks like something that should be handled by this message

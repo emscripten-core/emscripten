@@ -252,32 +252,6 @@ Conversion functions — strings, pointers and arrays
   :returns: A ``String``, containing the content of ``array``.
 
 
-
-.. js:function:: writeStringToMemory(string, buffer, dontAddNull)
-
-  Writes a JavaScript string to a specified address in the heap.
-
-  .. warning:: This function is deprecated, you should call the function ``stringToUTF8`` instead, which provides a secure bounded version of the same functionality instead.
-
-  .. code-block:: javascript
-
-    // Allocate space for string and extra '0' at the end
-    var buffer = Module._malloc(myString.length+1);
-
-    // Write the string to memory
-    Module.writeStringToMemory(myString, buffer);
-
-    // We can now send buffer into a C function, it is just a normal char* pointer
-
-  :param string: The string to write into memory.
-  :type string: String
-  :param buffer: The address (number) where ``string`` is to be written.
-  :type buffer: Number
-  :param dontAddNull: If ``true``, the new array is not zero-terminated.
-  :type dontAddNull: bool
-
-
-
 .. js:function:: writeArrayToMemory(array, buffer)
 
   Writes an array to a specified address in the heap. Note that memory should to be allocated for the array before it is written.
@@ -288,29 +262,8 @@ Conversion functions — strings, pointers and arrays
 
 
 
-.. js:function:: writeAsciiToMemory(str, buffer, dontAddNull)
-
-  Writes an ASCII string to a specified address in the heap. Note that memory should to be allocated for the string before it is written.
-
-  The string is assumed to only have characters in the ASCII character set. If ASSERTIONS are enabled and this is not the case, it will fail.
-
-  .. code-block:: javascript
-
-    // Allocate space for string
-    var buffer = Module._malloc(myString.length);
-
-    // Write the string to memory
-    Module.writeStringToMemory(myString, buffer);
-
-  :param string: The string to write into memory.
-  :param buffer: The address where ``string`` is to be written.
-  :param dontAddNull: If ``true``, the new string is not zero-terminated.
-  :type dontAddNull: bool
-
-
-
 Run dependencies
-=====================================
+================
 
 Note that generally run dependencies are managed by the file packager and other parts of the system. It is rare for developers to use this API directly.
 
@@ -338,7 +291,7 @@ Note that generally run dependencies are managed by the file packager and other 
 
 
 Stack trace
-=====================
+===========
 
 .. js:function:: stackTrace()
 

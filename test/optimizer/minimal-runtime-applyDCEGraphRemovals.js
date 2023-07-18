@@ -1,8 +1,8 @@
 var name;
-var wasmImports = { 'save1': 1, 'number': 33, 'name': name, 'func': function() {}, 'save2': 2 };
+var wasmImports = { save1: 1, number: 33, name: name, func: function() {}, save2: 2 };
 
 // exports gotten directly in the minimal runtime style
-WebAssembly.instantiate(Module["wasm"], imports).then(function(output) {
+WebAssembly.instantiate(Module["wasm"], imports).then((output) => {
  asm = output.instance.exports;
  expD1 = asm['expD1'];
  expD2 = asm['expD2'];

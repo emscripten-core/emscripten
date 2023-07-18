@@ -14,7 +14,7 @@ from typing import List
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
-sys.path.append(__rootdir__)
+sys.path.insert(0, __rootdir__)
 
 from tools import utils
 
@@ -83,7 +83,7 @@ mid_js = []
 pre_c += [r'''
 #include <emscripten.h>
 
-EM_JS_DEPS(webidl_binder, "$intArrayFromString");
+EM_JS_DEPS(webidl_binder, "$intArrayFromString,$UTF8ToString");
 ''']
 
 mid_c += [r'''

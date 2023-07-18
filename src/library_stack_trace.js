@@ -6,7 +6,7 @@
 
 var LibraryStackTrace = {
 #if DEMANGLE_SUPPORT
-  $demangle__deps: ['$withStackSave', '__cxa_demangle', 'free'],
+  $demangle__deps: ['$withStackSave', '__cxa_demangle', 'free', '$stringToUTF8OnStack'],
 #endif
   $demangle: function(func) {
 #if DEMANGLE_SUPPORT
@@ -19,9 +19,7 @@ var LibraryStackTrace = {
         var s = func;
         if (s.startsWith('__Z'))
           s = s.substr(1);
-        var len = lengthBytesUTF8(s)+1;
-        var buf = stackAlloc(len);
-        stringToUTF8(s, buf, len);
+        var buf = stringToUTF8OnStack(s);
         var status = stackAlloc(4);
         var ret = ___cxa_demangle(buf, 0, 0, status);
         if ({{{ makeGetValue('status', '0', 'i32') }}} === 0 && ret) {

@@ -195,9 +195,9 @@ emscripten_fetch() returns.
   - **No flags**: Only asynchronous Fetch operations are available.
   - ``--proxy-to-worker``: Synchronous Fetch operations are allowed for fetches
     that only do an XHR but do not interact with IndexedDB.
-  - ``-sUSE_PTHREADS``: Synchronous Fetch operations are available on
+  - ``-pthread``: Synchronous Fetch operations are available on
     pthreads, but not on the main thread.
-  - ``--proxy-to-worker`` + ``-sUSE_PTHREADS``: Synchronous Fetch operations
+  - ``--proxy-to-worker`` + ``-pthread``: Synchronous Synchronous Fetch operations
     are available both on the main thread and pthreads.
 
 Waitable Fetches
@@ -242,9 +242,9 @@ issuing thread can perform some other work until the fetch completes.
   Waitable fetches are available only in certain build modes:
 
   - **No flags** or ``--proxy-to-worker``: Waitable fetches are not available.
-  - ``-sUSE_PTHREADS``: Waitable fetches are available on pthreads, but not
+  - ``-pthread``: Waitable fetches are available on pthreads, but not
     on the main thread.
-  - ``--proxy-to-worker`` + ``-sUSE_PTHREADS``: Waitable fetches are
+  - ``--proxy-to-worker`` + ``-pthread``: Waitable fetches are
     available on all threads.
 
 Tracking Progress

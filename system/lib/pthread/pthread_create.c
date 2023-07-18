@@ -17,22 +17,18 @@
 #include <emscripten/heap.h>
 #include <emscripten/threading.h>
 
-#define STACK_ALIGN 16
+#define STACK_ALIGN __BIGGEST_ALIGNMENT__
 #define TSD_ALIGN (sizeof(void*))
 
 // Comment this line to enable tracing of thread creation and destruction:
 // #define PTHREAD_DEBUG
 #ifdef PTHREAD_DEBUG
-#define dbg(fmt, ...) _emscripten_dbgf(fmt, ##__VA_ARGS__)
+#define dbg(fmt, ...) emscripten_dbgf(fmt, ##__VA_ARGS__)
 #else
 #define dbg(fmt, ...)
 #endif
 
 // See musl's pthread_create.c
-
-int __pthread_create_js(struct pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
-int _emscripten_default_pthread_stack_size();
-void __set_thread_state(pthread_t ptr, int is_main, int is_runtime, int can_block);
 
 static void dummy_0() {}
 weak_alias(dummy_0, __pthread_tsd_run_dtors);
@@ -144,7 +140,7 @@ int __pthread_create(pthread_t* restrict res,
   pthread_attr_t attr = { 0 };
   if (attrp && attrp != __ATTRP_C11_THREAD) attr = *attrp;
   if (!attr._a_stacksize) {
-    attr._a_stacksize = _emscripten_default_pthread_stack_size();
+    attr._a_stacksize = __default_stacksize;
   }
 
   // Allocate memory for new thread.  The layout of the thread block is
@@ -152,20 +148,22 @@ int __pthread_create(pthread_t* restrict res,
   //
   // 1. pthread struct (sizeof struct pthread)
   // 2. tls data       (__builtin_wasm_tls_size())
-  // 3. stack          (_emscripten_default_pthread_stack_size())
-  // 4. tsd pointers   (__pthread_tsd_size)
+  // 3. tsd pointers   (__pthread_tsd_size)
+  // 4. stack          (__default_stacksize AKA -sDEFAULT_PTHREAD_STACK_SIZE)
   size_t size = sizeof(struct pthread);
   if (__builtin_wasm_tls_size()) {
     size += __builtin_wasm_tls_size() + __builtin_wasm_tls_align() - 1;
   }
+  size += __pthread_tsd_size + TSD_ALIGN - 1;
+  size_t zero_size = size;
   if (!attr._a_stackaddr) {
     size += attr._a_stacksize + STACK_ALIGN - 1;
   }
-  size += __pthread_tsd_size + TSD_ALIGN - 1;
 
-  // Allocate all the data for the new thread and zero-initialize.
+  // Allocate all the data for the new thread and zero-initialize all parts
+  // except for the stack.
   unsigned char* block = emscripten_builtin_malloc(size);
-  memset(block, 0, size);
+  memset(block, 0, zero_size);
 
   uintptr_t offset = (uintptr_t)block;
 
@@ -199,7 +197,14 @@ int __pthread_create(pthread_t* restrict res,
     offset += __builtin_wasm_tls_size();
   }
 
-  // 3. stack data
+  // 3. tsd slots
+  if (__pthread_tsd_size) {
+    offset = ROUND_UP(offset, TSD_ALIGN);
+    new->tsd = (void*)offset;
+    offset += __pthread_tsd_size;
+  }
+
+  // 4. stack data
   // musl stores top of the stack in pthread_t->stack (i.e. the high
   // end from which it grows down).
   if (attr._a_stackaddr) {
@@ -209,19 +214,14 @@ int __pthread_create(pthread_t* restrict res,
     new->stack = (void*)offset;
   }
 
-  // 4. tsd slots
-  if (__pthread_tsd_size) {
-    offset = ROUND_UP(offset, TSD_ALIGN);
-    new->tsd = (void*)offset;
-    offset += __pthread_tsd_size;
-  }
-
   // Check that we didn't use more data than we allocated.
   assert(offset < (uintptr_t)block + size);
 
 #ifndef NDEBUG
   _emscripten_thread_profiler_init(new);
 #endif
+
+  _emscripten_thread_mailbox_init(new);
 
   struct pthread *self = __pthread_self();
   dbg("start __pthread_create: new=%p new_end=%p stack=%p->%p "
@@ -268,6 +268,7 @@ int __pthread_create(pthread_t* restrict res,
       self->next,
       self->prev,
       new);
+
   *res = new;
   return 0;
 }
@@ -303,6 +304,8 @@ void _emscripten_thread_exit(void* result) {
   self->cancelasync = PTHREAD_CANCEL_DEFERRED;
   self->result = result;
 
+  _emscripten_thread_mailbox_shutdown(self);
+
   // Run any handlers registered with pthread_cleanup_push
   __run_cleanup_handlers();
 
@@ -319,7 +322,7 @@ void _emscripten_thread_exit(void* result) {
 
   __tl_unlock();
 
-  if (self == emscripten_main_browser_thread_id()) {
+  if (emscripten_is_main_runtime_thread()) {
     exit(0);
     return;
   }

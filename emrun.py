@@ -637,9 +637,15 @@ class HTTPHandler(SimpleHTTPRequestHandler):
     # gzipped file, instead of having the browser decompress it immediately,
     # then it can't use the suffix .gz when using emrun.
     # To work around, one can use the suffix .gzip instead.
-    if 'Accept-Encoding' in self.headers and 'gzip' in self.headers['Accept-Encoding'] and path.lower().endswith('gz'):
+    if path.lower().endswith('gz'):
       self.send_header('Content-Encoding', 'gzip')
       logv('Serving ' + path + ' as gzip-compressed.')
+      guess_file_type = guess_file_type[:-2]
+      if guess_file_type.endswith('.'):
+        guess_file_type = guess_file_type[:-1]
+    elif path.lower().endswith('br'):
+      self.send_header('Content-Encoding', 'br')
+      logv('Serving ' + path + ' as brotli-compressed.')
       guess_file_type = guess_file_type[:-2]
       if guess_file_type.endswith('.'):
         guess_file_type = guess_file_type[:-1]
@@ -1218,7 +1224,7 @@ def find_browser(name):
                          ('chrome', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'),
                          ('chrome_canary', '/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary')]
   elif WINDOWS:
-    pf_locations = ['ProgramFiles(x86)', 'ProgramFiles', 'ProgramW6432']
+    pf_locations = ['ProgramFiles(x86)', 'ProgramFiles', 'ProgramW6432', 'LOCALAPPDATA']
 
     for pf_env in pf_locations:
       if pf_env not in os.environ:
@@ -1643,10 +1649,6 @@ def run():
     url = file_to_serve
   else:
     url = os.path.relpath(os.path.abspath(file_to_serve), serve_dir)
-    if len(options.cmdlineparams):
-      url += '?' + '&'.join(options.cmdlineparams)
-    hostname = socket.gethostbyname(socket.gethostname()) if options.android else options.hostname
-    url = 'http://' + hostname + ':' + str(options.port) + '/' + url
 
   os.chdir(serve_dir)
   if options.run_server:
@@ -1658,6 +1660,13 @@ def run():
     httpd = HTTPWebServer((options.hostname, options.port), HTTPHandler)
     # to support binding to port zero we must allow the server to open to socket then retrieve the final port number
     options.port = httpd.socket.getsockname()[1]
+
+  if not file_to_serve_is_url:
+    if len(options.cmdlineparams):
+      url += '?' + '&'.join(options.cmdlineparams)
+    hostname = socket.gethostbyname(socket.gethostname()) if options.android else options.hostname
+    # create url for browser after opening the server so we have the final port number in case we are binding to port 0
+    url = 'http://' + hostname + ':' + str(options.port) + '/' + url
 
   if options.android:
     if options.run_browser or options.browser_info:
@@ -1724,7 +1733,8 @@ def run():
         processname_killed_atexit = 'Safari'
       elif 'chrome' in browser_exe.lower():
         processname_killed_atexit = 'chrome'
-        browser_args += ['--enable-nacl', '--enable-pnacl', '--disable-restore-session-state', '--enable-webgl', '--no-default-browser-check', '--no-first-run', '--allow-file-access-from-files']
+        browser_args += ['--enable-nacl', '--enable-pnacl', '--disable-restore-session-state', '--enable-webgl',
+                         '--no-default-browser-check', '--no-first-run', '--allow-file-access-from-files', '--password-store=basic']
         if options.private_browsing:
           browser_args += ['--incognito']
     #    if not options.run_server:

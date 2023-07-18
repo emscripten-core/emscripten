@@ -279,15 +279,7 @@ int pthread_condattr_setpshared(pthread_condattr_t *attr, int shared) {
   return 0;
 }
 
-int pthread_attr_init(pthread_attr_t *attr) {
-  return 0;
-}
-
 int pthread_getattr_np(pthread_t thread, pthread_attr_t *attr) {
-  return 0;
-}
-
-int pthread_attr_destroy(pthread_attr_t *attr) {
   return 0;
 }
 
@@ -367,18 +359,6 @@ int pthread_spin_unlock(pthread_spinlock_t *lock) {
   return 0;
 }
 
-int pthread_attr_setdetachstate(pthread_attr_t* attr, int detachstate) {
-  return 0;
-}
-
-int pthread_attr_setschedparam(pthread_attr_t* attr, const struct sched_param* param) {
-  return 0;
-}
-
-int pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize) {
-  return 0;
-}
-
 int sem_init(sem_t *sem, int pshared, unsigned int value) {
   return 0;
 }
@@ -404,6 +384,10 @@ void __wait(volatile int *addr, volatile int *waiters, int val, int priv) {}
 void __lock(void* ptr) {}
 
 void __unlock(void* ptr) {}
+
+void __acquire_ptc() {}
+
+void __release_ptc() {}
 
 // When pthreads is not enabled, we can't use the Atomics futex api to do
 // proper sleeps, so simulate a busy spin wait loop instead.

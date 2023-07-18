@@ -16,7 +16,7 @@ mergeInto(LibraryManager.library, {
     var exportedFunc = asm[name];
 #else
     // In regular runtime, exports are available on the Module object.
-    var exportedFunc = Module["asm"][name];
+    var exportedFunc = wasmExports[name];
 #endif
     if (exportedFunc) {
       // Record the created function pointer to each function object,

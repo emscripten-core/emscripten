@@ -31,11 +31,11 @@ var LibraryGL = {
     + 'miniTempWebGLFloatBuffers[i] = miniTempWebGLFloatBuffersStorage.subarray(0, i+1);\n'
     + '}\n',
 
-  _miniTempWebGLIntBuffers: [],
-  _miniTempWebGLIntBuffers__postset:
-      'var __miniTempWebGLIntBuffersStorage = new Int32Array(' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + ');\n'
+  $miniTempWebGLIntBuffers: [],
+  $miniTempWebGLIntBuffers__postset:
+      'var miniTempWebGLIntBuffersStorage = new Int32Array(' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + ');\n'
     + 'for (/**@suppress{duplicate}*/var i = 0; i < ' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + '; ++i) {\n'
-    + '__miniTempWebGLIntBuffers[i] = __miniTempWebGLIntBuffersStorage.subarray(0, i+1);\n'
+    + 'miniTempWebGLIntBuffers[i] = miniTempWebGLIntBuffersStorage.subarray(0, i+1);\n'
     + '}\n',
 
   $heapObjectForWebGLType: function(type) {
@@ -88,7 +88,7 @@ var LibraryGL = {
   },
 
 #if MIN_WEBGL_VERSION == 1
-  _webgl_enable_ANGLE_instanced_arrays: function(ctx) {
+  $webgl_enable_ANGLE_instanced_arrays: function(ctx) {
     // Extension available in WebGL 1 from Firefox 26 and Google Chrome 30 onwards. Core feature in WebGL 2.
     var ext = ctx.getExtension('ANGLE_instanced_arrays');
     if (ext) {
@@ -99,12 +99,12 @@ var LibraryGL = {
     }
   },
 
-  emscripten_webgl_enable_ANGLE_instanced_arrays__deps: ['_webgl_enable_ANGLE_instanced_arrays'],
+  emscripten_webgl_enable_ANGLE_instanced_arrays__deps: ['$webgl_enable_ANGLE_instanced_arrays'],
   emscripten_webgl_enable_ANGLE_instanced_arrays: function(ctx) {
-    return __webgl_enable_ANGLE_instanced_arrays(GL.contexts[ctx].GLctx);
+    return webgl_enable_ANGLE_instanced_arrays(GL.contexts[ctx].GLctx);
   },
 
-  _webgl_enable_OES_vertex_array_object: function(ctx) {
+  $webgl_enable_OES_vertex_array_object: function(ctx) {
     // Extension available in WebGL 1 from Firefox 25 and WebKit 536.28/desktop Safari 6.0.3 onwards. Core feature in WebGL 2.
     var ext = ctx.getExtension('OES_vertex_array_object');
     if (ext) {
@@ -116,12 +116,12 @@ var LibraryGL = {
     }
   },
 
-  emscripten_webgl_enable_OES_vertex_array_object__deps: ['_webgl_enable_OES_vertex_array_object'],
+  emscripten_webgl_enable_OES_vertex_array_object__deps: ['$webgl_enable_OES_vertex_array_object'],
   emscripten_webgl_enable_OES_vertex_array_object: function(ctx) {
-    return __webgl_enable_OES_vertex_array_object(GL.contexts[ctx].GLctx);
+    return webgl_enable_OES_vertex_array_object(GL.contexts[ctx].GLctx);
   },
 
-  _webgl_enable_WEBGL_draw_buffers: function(ctx) {
+  $webgl_enable_WEBGL_draw_buffers: function(ctx) {
     // Extension available in WebGL 1 from Firefox 28 onwards. Core feature in WebGL 2.
     var ext = ctx.getExtension('WEBGL_draw_buffers');
     if (ext) {
@@ -130,40 +130,41 @@ var LibraryGL = {
     }
   },
 
-  emscripten_webgl_enable_WEBGL_draw_buffers__deps: ['_webgl_enable_WEBGL_draw_buffers'],
+  emscripten_webgl_enable_WEBGL_draw_buffers__deps: ['$webgl_enable_WEBGL_draw_buffers'],
   emscripten_webgl_enable_WEBGL_draw_buffers: function(ctx) {
-    return __webgl_enable_WEBGL_draw_buffers(GL.contexts[ctx].GLctx);
+    return webgl_enable_WEBGL_draw_buffers(GL.contexts[ctx].GLctx);
   },
 #endif
 
-  _webgl_enable_WEBGL_multi_draw: function(ctx) {
+  $webgl_enable_WEBGL_multi_draw: function(ctx) {
     // Closure is expected to be allowed to minify the '.multiDrawWebgl' property, so not accessing it quoted.
     return !!(ctx.multiDrawWebgl = ctx.getExtension('WEBGL_multi_draw'));
   },
 
-  emscripten_webgl_enable_WEBGL_multi_draw__deps: ['_webgl_enable_WEBGL_multi_draw'],
+  emscripten_webgl_enable_WEBGL_multi_draw__deps: ['$webgl_enable_WEBGL_multi_draw'],
   emscripten_webgl_enable_WEBGL_multi_draw: function(ctx) {
-    return __webgl_enable_WEBGL_multi_draw(GL.contexts[ctx].GLctx);
+    return webgl_enable_WEBGL_multi_draw(GL.contexts[ctx].GLctx);
   },
 
   $GL__postset: 'var GLctx;',
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
   // If GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS is enabled, GL.initExtensions() will call to initialize these.
   $GL__deps: [
-#if USE_PTHREADS
+#if PTHREADS
     'malloc', // Needed by registerContext
+    'free', // Needed by deleteContext
 #endif
 #if MIN_WEBGL_VERSION == 1
-    '_webgl_enable_ANGLE_instanced_arrays',
-    '_webgl_enable_OES_vertex_array_object',
-    '_webgl_enable_WEBGL_draw_buffers',
+    '$webgl_enable_ANGLE_instanced_arrays',
+    '$webgl_enable_OES_vertex_array_object',
+    '$webgl_enable_WEBGL_draw_buffers',
 #endif
 #if MAX_WEBGL_VERSION >= 2
-    '_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
-    '_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance',
+    '$webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
+    '$webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance',
 #endif
-    '_webgl_enable_WEBGL_multi_draw',
-    ],
+    '$webgl_enable_WEBGL_multi_draw',
+  ],
 #endif
   $GL: {
 #if GL_DEBUG
@@ -195,7 +196,7 @@ var LibraryGL = {
     textures: [],
     shaders: [],
     vaos: [],
-#if USE_PTHREADS // with pthreads a context is a location in memory with some synchronized data between threads
+#if PTHREADS // with pthreads a context is a location in memory with some synchronized data between threads
     contexts: {},
 #else            // without pthreads, it's just an integer ID
     contexts: [],
@@ -972,7 +973,7 @@ var LibraryGL = {
 #endif
 
     registerContext: function(ctx, webGLContextAttributes) {
-#if USE_PTHREADS
+#if PTHREADS
       // with pthreads a context is a location in memory with some synchronized data between threads
       var handle = _malloc(8);
 #if GL_ASSERTIONS
@@ -982,13 +983,13 @@ var LibraryGL = {
       {{{ makeSetValue('handle', 0, 'webGLContextAttributes.explicitSwapControl', 'i32')}}}; // explicitSwapControl
 #endif
       {{{ makeSetValue('handle', 4, '_pthread_self()', 'i32')}}}; // the thread pointer of the thread that owns the control of the context
-#else // USE_PTHREADS
+#else // PTHREADS
       // without pthreads a context is just an integer ID
       var handle = GL.getNewId(GL.contexts);
-#endif // USE_PTHREADS
+#endif // PTHREADS
 
       var context = {
-        handle: handle,
+        handle,
         attributes: webGLContextAttributes,
         version: webGLContextAttributes.majorVersion,
         GLctx: ctx
@@ -1051,7 +1052,7 @@ var LibraryGL = {
     makeContextCurrent: function(contextHandle) {
 #if GL_DEBUG
       if (contextHandle && !GL.contexts[contextHandle]) {
-#if USE_PTHREADS
+#if PTHREADS
         dbg('GL.makeContextCurrent() failed! WebGL context ' + contextHandle + ' does not exist, or was created on another thread!');
 #else
         dbg('GL.makeContextCurrent() failed! WebGL context ' + contextHandle + ' does not exist!');
@@ -1072,7 +1073,7 @@ var LibraryGL = {
       if (GL.currentContext === GL.contexts[contextHandle]) GL.currentContext = null;
       if (typeof JSEvents == 'object') JSEvents.removeAllHandlersOnTarget(GL.contexts[contextHandle].GLctx.canvas); // Release all JS event handlers on the DOM element that the GL context is associated with since the context is now deleted.
       if (GL.contexts[contextHandle] && GL.contexts[contextHandle].GLctx.canvas) GL.contexts[contextHandle].GLctx.canvas.GLctxObject = undefined; // Make sure the canvas object no longer refers to the context object so there are no GC surprises.
-#if USE_PTHREADS
+#if PTHREADS
       _free(GL.contexts[contextHandle].handle);
 #endif
       GL.contexts[contextHandle] = null;
@@ -1099,14 +1100,14 @@ var LibraryGL = {
 
 #if MIN_WEBGL_VERSION == 1
       // Extensions that are only available in WebGL 1 (the calls will be no-ops if called on a WebGL 2 context active)
-      __webgl_enable_ANGLE_instanced_arrays(GLctx);
-      __webgl_enable_OES_vertex_array_object(GLctx);
-      __webgl_enable_WEBGL_draw_buffers(GLctx);
+      webgl_enable_ANGLE_instanced_arrays(GLctx);
+      webgl_enable_OES_vertex_array_object(GLctx);
+      webgl_enable_WEBGL_draw_buffers(GLctx);
 #endif
 #if MAX_WEBGL_VERSION >= 2
       // Extensions that are available from WebGL >= 2 (no-op if called on a WebGL 1 context active)
-      __webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GLctx);
-      __webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GLctx);
+      webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GLctx);
+      webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GLctx);
 #endif
 
 #if MAX_WEBGL_VERSION >= 2
@@ -1126,7 +1127,7 @@ var LibraryGL = {
         GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
       }
 
-      __webgl_enable_WEBGL_multi_draw(GLctx);
+      webgl_enable_WEBGL_multi_draw(GLctx);
 
       // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
       var exts = GLctx.getSupportedExtensions() || [];
@@ -1141,7 +1142,6 @@ var LibraryGL = {
 #endif
   },
 
-  glPixelStorei__sig: 'vii',
   glPixelStorei: function(pname, param) {
     if (pname == 0xCF5 /* GL_UNPACK_ALIGNMENT */) {
       GL.unpackAlignment = param;
@@ -1149,7 +1149,6 @@ var LibraryGL = {
     GLctx.pixelStorei(pname, param);
   },
 
-  glGetString__sig: 'ii',
   glGetString__deps: ['$stringToNewUTF8'],
   glGetString: function(name_) {
     var ret = GL.stringCache[name_];
@@ -1241,7 +1240,7 @@ var LibraryGL = {
         break;
       case 0x8DF8: // GL_SHADER_BINARY_FORMATS
 #if GL_TRACK_ERRORS
-        if (type != {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}} && type != {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}}) {
+        if (type != {{{ cDefs.EM_FUNC_SIG_PARAM_I }}} && type != {{{ cDefs.EM_FUNC_SIG_PARAM_I64 }}}) {
           GL.recordError(0x500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
           err('GL_INVALID_ENUM in glGet' + type + 'v(GL_SHADER_BINARY_FORMATS): Invalid parameter type!');
@@ -1357,9 +1356,9 @@ var LibraryGL = {
                      result instanceof Array) {
             for (var i = 0; i < result.length; ++i) {
               switch (type) {
-                case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('p', 'i*4', 'result[i]', 'i32') }}}; break;
-                case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('p', 'i*4', 'result[i]', 'float') }}}; break;
-                case {{{ cDefine('EM_FUNC_SIG_PARAM_B') }}}: {{{ makeSetValue('p', 'i',   'result[i] ? 1 : 0', 'i8') }}}; break;
+                case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('p', 'i*4', 'result[i]', 'i32') }}}; break;
+                case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('p', 'i*4', 'result[i]', 'float') }}}; break;
+                case {{{ cDefs.EM_FUNC_SIG_PARAM_B }}}: {{{ makeSetValue('p', 'i',   'result[i] ? 1 : 0', 'i8') }}}; break;
 #if GL_ASSERTIONS
                 default: throw 'internal glGet error, bad type: ' + type;
 #endif
@@ -1390,35 +1389,31 @@ var LibraryGL = {
     }
 
     switch (type) {
-      case {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}}: writeI53ToI64(p, ret); break;
-      case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('p', '0', 'ret', 'i32') }}}; break;
-      case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}:   {{{ makeSetValue('p', '0', 'ret', 'float') }}}; break;
-      case {{{ cDefine('EM_FUNC_SIG_PARAM_B') }}}: {{{ makeSetValue('p', '0', 'ret ? 1 : 0', 'i8') }}}; break;
+      case {{{ cDefs.EM_FUNC_SIG_PARAM_I64 }}}: writeI53ToI64(p, ret); break;
+      case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('p', '0', 'ret', 'i32') }}}; break;
+      case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}:   {{{ makeSetValue('p', '0', 'ret', 'float') }}}; break;
+      case {{{ cDefs.EM_FUNC_SIG_PARAM_B }}}: {{{ makeSetValue('p', '0', 'ret ? 1 : 0', 'i8') }}}; break;
 #if GL_ASSERTIONS
       default: throw 'internal glGet error, bad type: ' + type;
 #endif
     }
   },
 
-  glGetIntegerv__sig: 'vii',
   glGetIntegerv__deps: ['$emscriptenWebGLGet'],
   glGetIntegerv: function(name_, p) {
-    emscriptenWebGLGet(name_, p, {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}});
+    emscriptenWebGLGet(name_, p, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}});
   },
 
-  glGetFloatv__sig: 'vii',
   glGetFloatv__deps: ['$emscriptenWebGLGet'],
   glGetFloatv: function(name_, p) {
-    emscriptenWebGLGet(name_, p, {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}});
+    emscriptenWebGLGet(name_, p, {{{ cDefs.EM_FUNC_SIG_PARAM_F }}});
   },
 
-  glGetBooleanv__sig: 'vii',
   glGetBooleanv__deps: ['$emscriptenWebGLGet'],
   glGetBooleanv: function(name_, p) {
-    emscriptenWebGLGet(name_, p, {{{ cDefine('EM_FUNC_SIG_PARAM_B') }}});
+    emscriptenWebGLGet(name_, p, {{{ cDefs.EM_FUNC_SIG_PARAM_B }}});
   },
 
-  glDeleteTextures__sig: 'vii',
   glDeleteTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('textures', 'i*4', 'i32') }}};
@@ -1430,35 +1425,33 @@ var LibraryGL = {
     }
   },
 
-  glCompressedTexImage2D__sig: 'viiiiiiii',
   glCompressedTexImage2D: function(target, level, internalFormat, width, height, border, imageSize, data) {
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding || !imageSize) {
-        GLctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, imageSize, data);
+        GLctx.compressedTexImage2D(target, level, internalFormat, width, height, border, imageSize, data);
       } else {
-        GLctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, HEAPU8, data, imageSize);
+        GLctx.compressedTexImage2D(target, level, internalFormat, width, height, border, HEAPU8, data, imageSize);
       }
       return;
     }
 #endif
-    GLctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
+    GLctx.compressedTexImage2D(target, level, internalFormat, width, height, border, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
   },
 
 
-  glCompressedTexSubImage2D__sig: 'viiiiiiiii',
   glCompressedTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, imageSize, data) {
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding || !imageSize) {
-        GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, format, imageSize, data);
+        GLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, imageSize, data);
       } else {
-        GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, format, HEAPU8, data, imageSize);
+        GLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, HEAPU8, data, imageSize);
       }
       return;
     }
 #endif
-    GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, format, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
+    GLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
   },
 
   $computeUnpackAlignedImageSize: function(width, height, sizePerPixel, alignment) {
@@ -1473,7 +1466,7 @@ var LibraryGL = {
     return height * alignedRowSize;
   },
 
-  _colorChannelsInGlTextureFormat: function(format) {
+  $colorChannelsInGlTextureFormat: function(format) {
     // Micro-optimizations for size: map format to size by subtracting smallest enum value (0x1902) from all values first.
     // Also omit the most common size value (1) from the list, which is assumed by formats not on the list.
     var colorChannels = {
@@ -1501,18 +1494,18 @@ var LibraryGL = {
       && format != 0x1909 /* GL_LUMINANCE */
       && format != 0x1903 /* GL_RED */
       && format != 0x8D94 /* GL_RED_INTEGER */) {
-      err('Invalid format=' + ptrToString(format) + ' passed to function _colorChannelsInGlTextureFormat()!');
+      err('Invalid format=' + ptrToString(format) + ' passed to function colorChannelsInGlTextureFormat()!');
     }
 #endif
     return colorChannels[format - 0x1902]||1;
   },
 
-  $emscriptenWebGLGetTexPixelData__deps: ['$computeUnpackAlignedImageSize', '_colorChannelsInGlTextureFormat', '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'],
+  $emscriptenWebGLGetTexPixelData__deps: ['$computeUnpackAlignedImageSize', '$colorChannelsInGlTextureFormat', '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'],
   $emscriptenWebGLGetTexPixelData: function(type, format, width, height, pixels, internalFormat) {
     var heap = heapObjectForWebGLType(type);
     var shift = heapAccessShiftForWebGLHeap(heap);
     var byteSize = 1<<shift;
-    var sizePerPixel = __colorChannelsInGlTextureFormat(format) * byteSize;
+    var sizePerPixel = colorChannelsInGlTextureFormat(format) * byteSize;
     var bytes = computeUnpackAlignedImageSize(width, height, sizePerPixel, GL.unpackAlignment);
 #if GL_ASSERTIONS
     assert((pixels >> shift) << shift == pixels, 'Pointer to texture data passed to texture get function must be aligned to the byte size of the pixel type!');
@@ -1520,7 +1513,6 @@ var LibraryGL = {
     return heap.subarray(pixels >> shift, pixels + bytes >> shift);
   },
 
-  glTexImage2D__sig: 'viiiiiiiii',
   glTexImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
 #if MAX_WEBGL_VERSION >= 2
                        , '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'
@@ -1562,7 +1554,6 @@ var LibraryGL = {
     GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels ? emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat) : null);
   },
 
-  glTexSubImage2D__sig: 'viiiiiiiii',
   glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
 #if MAX_WEBGL_VERSION >= 2
                           , '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'
@@ -1596,7 +1587,6 @@ var LibraryGL = {
     GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixelData);
   },
 
-  glReadPixels__sig: 'viiiiiii',
   glReadPixels__deps: ['$emscriptenWebGLGetTexPixelData'
 #if MAX_WEBGL_VERSION >= 2
                        , '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'
@@ -1625,7 +1615,6 @@ var LibraryGL = {
     GLctx.readPixels(x, y, width, height, format, type, pixelData);
   },
 
-  glBindTexture__sig: 'vii',
   glBindTexture: function(target, texture) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.textures, texture, 'glBindTexture', 'texture');
@@ -1633,7 +1622,6 @@ var LibraryGL = {
     GLctx.bindTexture(target, GL.textures[texture]);
   },
 
-  glGetTexParameterfv__sig: 'viii',
   glGetTexParameterfv: function(target, pname, params) {
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
@@ -1647,7 +1635,6 @@ var LibraryGL = {
     {{{ makeSetValue('params', '0', 'GLctx.getTexParameter(target, pname)', 'float') }}};
   },
 
-  glGetTexParameteriv__sig: 'viii',
   glGetTexParameteriv: function(target, pname, params) {
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
@@ -1661,19 +1648,16 @@ var LibraryGL = {
     {{{ makeSetValue('params', '0', 'GLctx.getTexParameter(target, pname)', 'i32') }}};
   },
 
-  glTexParameterfv__sig: 'viii',
   glTexParameterfv: function(target, pname, params) {
     var param = {{{ makeGetValue('params', '0', 'float') }}};
     GLctx.texParameterf(target, pname, param);
   },
 
-  glTexParameteriv__sig: 'viii',
   glTexParameteriv: function(target, pname, params) {
     var param = {{{ makeGetValue('params', '0', 'i32') }}};
     GLctx.texParameteri(target, pname, param);
   },
 
-  glIsTexture__sig: 'ii',
   glIsTexture: function(id) {
     var texture = GL.textures[id];
     if (!texture) return 0;
@@ -1684,8 +1668,7 @@ var LibraryGL = {
   // merge the functions together to only have one generated copy of this. 'createFunction' refers to the WebGL context function name to do
   // the actual creation, 'objectTable' points to the GL object table where to populate the created objects, and 'functionName' carries
   // the name of the caller for debug information.
-  _glGenObject__sig: 'vii',
-  _glGenObject: function(n, buffers, createFunction, objectTable
+  $__glGenObject: function(n, buffers, createFunction, objectTable
 #if GL_ASSERTIONS
     , functionName
 #endif
@@ -1706,8 +1689,7 @@ var LibraryGL = {
     }
   },
 
-  glGenBuffers__deps: ['_glGenObject'],
-  glGenBuffers__sig: 'vii',
+  glGenBuffers__deps: ['$__glGenObject'],
   glGenBuffers: function(n, buffers) {
     __glGenObject(n, buffers, 'createBuffer', GL.buffers
 #if GL_ASSERTIONS
@@ -1716,8 +1698,7 @@ var LibraryGL = {
       );
   },
 
-  glGenTextures__deps: ['_glGenObject'],
-  glGenTextures__sig: 'vii',
+  glGenTextures__deps: ['$__glGenObject'],
   glGenTextures: function(n, textures) {
     __glGenObject(n, textures, 'createTexture', GL.textures
 #if GL_ASSERTIONS
@@ -1726,7 +1707,6 @@ var LibraryGL = {
       );
   },
 
-  glDeleteBuffers__sig: 'vii',
   glDeleteBuffers: function(n, buffers) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('buffers', 'i*4', 'i32') }}};
@@ -1751,7 +1731,6 @@ var LibraryGL = {
     }
   },
 
-  glGetBufferParameteriv__sig: 'viii',
   glGetBufferParameteriv: function(target, value, data) {
     if (!data) {
       // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
@@ -1765,7 +1744,6 @@ var LibraryGL = {
     {{{ makeSetValue('data', '0', 'GLctx.getBufferParameter(target, value)', 'i32') }}};
   },
 
-  glBufferData__sig: 'viiii',
   glBufferData: function(target, size, data, usage) {
 #if LEGACY_GL_EMULATION
     switch (usage) { // fix usages, WebGL 1 only has *_DRAW
@@ -1804,7 +1782,6 @@ var LibraryGL = {
 #endif
   },
 
-  glBufferSubData__sig: 'viiii',
   glBufferSubData: function(target, offset, size, data) {
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
@@ -1942,7 +1919,7 @@ var LibraryGL = {
     }
 #if MAX_WEBGL_VERSION >= 2
     else {
-      param = GLctx['getQueryParameter'](query, pname);
+      param = GLctx.getQueryParameter(query, pname);
     }
 #endif
     var ret;
@@ -1955,15 +1932,13 @@ var LibraryGL = {
   },
   glGetQueryObjectui64vEXT: 'glGetQueryObjecti64vEXT',
 
-  glIsBuffer__sig: 'ii',
   glIsBuffer: function(buffer) {
     var b = GL.buffers[buffer];
     if (!b) return 0;
     return GLctx.isBuffer(b);
   },
 
-  glGenRenderbuffers__sig: 'vii',
-  glGenRenderbuffers__deps: ['_glGenObject'],
+  glGenRenderbuffers__deps: ['$__glGenObject'],
   glGenRenderbuffers: function(n, renderbuffers) {
     __glGenObject(n, renderbuffers, 'createRenderbuffer', GL.renderbuffers
 #if GL_ASSERTIONS
@@ -1972,7 +1947,6 @@ var LibraryGL = {
       );
   },
 
-  glDeleteRenderbuffers__sig: 'vii',
   glDeleteRenderbuffers: function(n, renderbuffers) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('renderbuffers', 'i*4', 'i32') }}};
@@ -1984,7 +1958,6 @@ var LibraryGL = {
     }
   },
 
-  glBindRenderbuffer__sig: 'vii',
   glBindRenderbuffer: function(target, renderbuffer) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.renderbuffers, renderbuffer, 'glBindRenderbuffer', 'renderbuffer');
@@ -1992,7 +1965,6 @@ var LibraryGL = {
     GLctx.bindRenderbuffer(target, GL.renderbuffers[renderbuffer]);
   },
 
-  glGetRenderbufferParameteriv__sig: 'viii',
   glGetRenderbufferParameteriv: function(target, pname, params) {
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
@@ -2006,7 +1978,6 @@ var LibraryGL = {
     {{{ makeSetValue('params', '0', 'GLctx.getRenderbufferParameter(target, pname)', 'i32') }}};
   },
 
-  glIsRenderbuffer__sig: 'ii',
   glIsRenderbuffer: function(renderbuffer) {
     var rb = GL.renderbuffers[renderbuffer];
     if (!rb) return 0;
@@ -2034,8 +2005,8 @@ var LibraryGL = {
     var data = GLctx.getUniform(program, webglGetUniformLocation(location));
     if (typeof data == 'number' || typeof data == 'boolean') {
       switch (type) {
-        case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
-        case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
+        case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
+        case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
 #if GL_ASSERTIONS
         default: throw 'internal emscriptenWebGLGetUniform() error, bad type: ' + type;
 #endif
@@ -2043,8 +2014,8 @@ var LibraryGL = {
     } else {
       for (var i = 0; i < data.length; i++) {
         switch (type) {
-          case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
-          case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
+          case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
+          case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
 #if GL_ASSERTIONS
           default: throw 'internal emscriptenWebGLGetUniform() error, bad type: ' + type;
 #endif
@@ -2053,16 +2024,14 @@ var LibraryGL = {
     }
   },
 
-  glGetUniformfv__sig: 'viii',
   glGetUniformfv__deps: ['$emscriptenWebGLGetUniform'],
   glGetUniformfv: function(program, location, params) {
-    emscriptenWebGLGetUniform(program, location, params, {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}});
+    emscriptenWebGLGetUniform(program, location, params, {{{ cDefs.EM_FUNC_SIG_PARAM_F }}});
   },
 
-  glGetUniformiv__sig: 'viii',
   glGetUniformiv__deps: ['$emscriptenWebGLGetUniform'],
   glGetUniformiv: function(program, location, params) {
-    emscriptenWebGLGetUniform(program, location, params, {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}});
+    emscriptenWebGLGetUniform(program, location, params, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}});
   },
 
   // Returns the WebGLUniformLocation object corresponding to the location index integer on
@@ -2151,7 +2120,6 @@ var LibraryGL = {
     return name.slice(-1) == ']' && name.lastIndexOf('[');
   },
 
-  glGetUniformLocation__sig: 'iii',
   glGetUniformLocation__deps: ['$jstoi_q', '$webglPrepareUniformLocationsBeforeFirstUse', '$webglGetLeftBracePos'],
   glGetUniformLocation: function(program, name) {
 
@@ -2229,9 +2197,9 @@ var LibraryGL = {
       {{{ makeSetValue('params', '0', 'data && data["name"]', 'i32') }}};
     } else if (typeof data == 'number' || typeof data == 'boolean') {
       switch (type) {
-        case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
-        case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
-        case {{{ cDefine('EM_FUNC_SIG_PARAM_F2I') }}}: {{{ makeSetValue('params', '0', 'Math.fround(data)', 'i32') }}}; break;
+        case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
+        case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
+        case {{{ cDefs.EM_FUNC_SIG_PARAM_F2I }}}: {{{ makeSetValue('params', '0', 'Math.fround(data)', 'i32') }}}; break;
 #if GL_ASSERTIONS
         default: throw 'internal emscriptenWebGLGetVertexAttrib() error, bad type: ' + type;
 #endif
@@ -2239,9 +2207,9 @@ var LibraryGL = {
     } else {
       for (var i = 0; i < data.length; i++) {
         switch (type) {
-          case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
-          case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
-          case {{{ cDefine('EM_FUNC_SIG_PARAM_F2I') }}}: {{{ makeSetValue('params', 'i*4', 'Math.fround(data[i])', 'i32') }}}; break;
+          case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
+          case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
+          case {{{ cDefs.EM_FUNC_SIG_PARAM_F2I }}}: {{{ makeSetValue('params', 'i*4', 'Math.fround(data[i])', 'i32') }}}; break;
 #if GL_ASSERTIONS
           default: throw 'internal emscriptenWebGLGetVertexAttrib() error, bad type: ' + type;
 #endif
@@ -2250,23 +2218,20 @@ var LibraryGL = {
     }
   },
 
-  glGetVertexAttribfv__sig: 'viii',
   glGetVertexAttribfv__deps: ['$emscriptenWebGLGetVertexAttrib'],
   glGetVertexAttribfv: function(index, pname, params) {
     // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttrib*f(),
     // otherwise the results are undefined. (GLES3 spec 6.1.12)
-    emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}});
+    emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefs.EM_FUNC_SIG_PARAM_F }}});
   },
 
-  glGetVertexAttribiv__sig: 'viii',
   glGetVertexAttribiv__deps: ['$emscriptenWebGLGetVertexAttrib'],
   glGetVertexAttribiv: function(index, pname, params) {
     // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttrib*f(),
     // otherwise the results are undefined. (GLES3 spec 6.1.12)
-    emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefine('EM_FUNC_SIG_PARAM_F2I') }}});
+    emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefs.EM_FUNC_SIG_PARAM_F2I }}});
   },
 
-  glGetVertexAttribPointerv__sig: 'viii',
   glGetVertexAttribPointerv: function(index, pname, pointer) {
     if (!pointer) {
       // GLES2 specification does not specify how to behave if pointer is a null pointer. Since calling this function does not make sense
@@ -2285,7 +2250,6 @@ var LibraryGL = {
     {{{ makeSetValue('pointer', '0', 'GLctx.getVertexAttribOffset(index, pname)', 'i32') }}};
   },
 
-  glUniform1f__sig: 'vif',
   glUniform1f__deps: ['$webglGetUniformLocation'],
   glUniform1f: function(location, v0) {
 #if GL_ASSERTIONS
@@ -2294,7 +2258,6 @@ var LibraryGL = {
     GLctx.uniform1f(webglGetUniformLocation(location), v0);
   },
 
-  glUniform2f__sig: 'viff',
   glUniform2f__deps: ['$webglGetUniformLocation'],
   glUniform2f: function(location, v0, v1) {
 #if GL_ASSERTIONS
@@ -2303,7 +2266,6 @@ var LibraryGL = {
     GLctx.uniform2f(webglGetUniformLocation(location), v0, v1);
   },
 
-  glUniform3f__sig: 'vifff',
   glUniform3f__deps: ['$webglGetUniformLocation'],
   glUniform3f: function(location, v0, v1, v2) {
 #if GL_ASSERTIONS
@@ -2312,7 +2274,6 @@ var LibraryGL = {
     GLctx.uniform3f(webglGetUniformLocation(location), v0, v1, v2);
   },
 
-  glUniform4f__sig: 'viffff',
   glUniform4f__deps: ['$webglGetUniformLocation'],
   glUniform4f: function(location, v0, v1, v2, v3) {
 #if GL_ASSERTIONS
@@ -2321,7 +2282,6 @@ var LibraryGL = {
     GLctx.uniform4f(webglGetUniformLocation(location), v0, v1, v2, v3);
   },
 
-  glUniform1i__sig: 'vii',
   glUniform1i__deps: ['$webglGetUniformLocation'],
   glUniform1i: function(location, v0) {
 #if GL_ASSERTIONS
@@ -2330,7 +2290,6 @@ var LibraryGL = {
     GLctx.uniform1i(webglGetUniformLocation(location), v0);
   },
 
-  glUniform2i__sig: 'viii',
   glUniform2i__deps: ['$webglGetUniformLocation'],
   glUniform2i: function(location, v0, v1) {
 #if GL_ASSERTIONS
@@ -2339,7 +2298,6 @@ var LibraryGL = {
     GLctx.uniform2i(webglGetUniformLocation(location), v0, v1);
   },
 
-  glUniform3i__sig: 'viiii',
   glUniform3i__deps: ['$webglGetUniformLocation'],
   glUniform3i: function(location, v0, v1, v2) {
 #if GL_ASSERTIONS
@@ -2348,7 +2306,6 @@ var LibraryGL = {
     GLctx.uniform3i(webglGetUniformLocation(location), v0, v1, v2);
   },
 
-  glUniform4i__sig: 'viiiii',
   glUniform4i__deps: ['$webglGetUniformLocation'],
   glUniform4i: function(location, v0, v1, v2, v3) {
 #if GL_ASSERTIONS
@@ -2357,10 +2314,9 @@ var LibraryGL = {
     GLctx.uniform4i(webglGetUniformLocation(location), v0, v1, v2, v3);
   },
 
-  glUniform1iv__sig: 'viii',
   glUniform1iv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-    , '_miniTempWebGLIntBuffers'
+    , '$miniTempWebGLIntBuffers'
 #endif
   ],
   glUniform1iv: function(location, count, value) {
@@ -2386,7 +2342,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempWebGLIntBuffers[count-1];
+      var view = miniTempWebGLIntBuffers[count-1];
       for (var i = 0; i < count; ++i) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
       }
@@ -2402,10 +2358,9 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glUniform2iv__sig: 'viii',
   glUniform2iv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-    , '_miniTempWebGLIntBuffers'
+    , '$miniTempWebGLIntBuffers'
 #endif
   ],
   glUniform2iv: function(location, count, value) {
@@ -2431,7 +2386,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 2 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempWebGLIntBuffers[2*count-1];
+      var view = miniTempWebGLIntBuffers[2*count-1];
       for (var i = 0; i < 2*count; i += 2) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
@@ -2448,10 +2403,9 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glUniform3iv__sig: 'viii',
   glUniform3iv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-    , '_miniTempWebGLIntBuffers'
+    , '$miniTempWebGLIntBuffers'
 #endif
   ],
   glUniform3iv: function(location, count, value) {
@@ -2477,7 +2431,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 3 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempWebGLIntBuffers[3*count-1];
+      var view = miniTempWebGLIntBuffers[3*count-1];
       for (var i = 0; i < 3*count; i += 3) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
@@ -2495,10 +2449,9 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glUniform4iv__sig: 'viii',
   glUniform4iv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
-    , '_miniTempWebGLIntBuffers'
+    , '$miniTempWebGLIntBuffers'
 #endif
   ],
   glUniform4iv: function(location, count, value) {
@@ -2524,7 +2477,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = __miniTempWebGLIntBuffers[4*count-1];
+      var view = miniTempWebGLIntBuffers[4*count-1];
       for (var i = 0; i < 4*count; i += 4) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
@@ -2543,7 +2496,6 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glUniform1fv__sig: 'viii',
   glUniform1fv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
     , '$miniTempWebGLFloatBuffers'
@@ -2588,7 +2540,6 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glUniform2fv__sig: 'viii',
   glUniform2fv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
     , '$miniTempWebGLFloatBuffers'
@@ -2634,7 +2585,6 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glUniform3fv__sig: 'viii',
   glUniform3fv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
     , '$miniTempWebGLFloatBuffers'
@@ -2681,7 +2631,6 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glUniform4fv__sig: 'viii',
   glUniform4fv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
     , '$miniTempWebGLFloatBuffers'
@@ -2733,7 +2682,6 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glUniformMatrix2fv__sig: 'viiii',
   glUniformMatrix2fv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
     , '$miniTempWebGLFloatBuffers'
@@ -2781,7 +2729,6 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glUniformMatrix3fv__sig: 'viiii',
   glUniformMatrix3fv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
     , '$miniTempWebGLFloatBuffers'
@@ -2834,7 +2781,6 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glUniformMatrix4fv__sig: 'viiii',
   glUniformMatrix4fv__deps: ['$webglGetUniformLocation'
 #if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
     , '$miniTempWebGLFloatBuffers'
@@ -2898,7 +2844,6 @@ var LibraryGL = {
 #endif // MIN_WEBGL_VERSION >= 2
   },
 
-  glBindBuffer__sig: 'vii',
   glBindBuffer: function(target, buffer) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.buffers, buffer, 'glBindBuffer', 'buffer');
@@ -2932,7 +2877,6 @@ var LibraryGL = {
     GLctx.bindBuffer(target, GL.buffers[buffer]);
   },
 
-  glVertexAttrib1fv__sig: 'vii',
   glVertexAttrib1fv: function(index, v) {
 #if GL_ASSERTIONS
     assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib1fv must be aligned to four bytes!');
@@ -2942,7 +2886,6 @@ var LibraryGL = {
     GLctx.vertexAttrib1f(index, HEAPF32[v>>2]);
   },
 
-  glVertexAttrib2fv__sig: 'vii',
   glVertexAttrib2fv: function(index, v) {
 #if GL_ASSERTIONS
     assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib2fv must be aligned to four bytes!');
@@ -2952,7 +2895,6 @@ var LibraryGL = {
     GLctx.vertexAttrib2f(index, HEAPF32[v>>2], HEAPF32[v+4>>2]);
   },
 
-  glVertexAttrib3fv__sig: 'vii',
   glVertexAttrib3fv: function(index, v) {
 #if GL_ASSERTIONS
     assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib3fv must be aligned to four bytes!');
@@ -2962,7 +2904,6 @@ var LibraryGL = {
     GLctx.vertexAttrib3f(index, HEAPF32[v>>2], HEAPF32[v+4>>2], HEAPF32[v+8>>2]);
   },
 
-  glVertexAttrib4fv__sig: 'vii',
   glVertexAttrib4fv: function(index, v) {
 #if GL_ASSERTIONS
     assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib4fv must be aligned to four bytes!');
@@ -2972,12 +2913,12 @@ var LibraryGL = {
     GLctx.vertexAttrib4f(index, HEAPF32[v>>2], HEAPF32[v+4>>2], HEAPF32[v+8>>2], HEAPF32[v+12>>2]);
   },
 
-  glGetAttribLocation__sig: 'iii',
   glGetAttribLocation: function(program, name) {
     return GLctx.getAttribLocation(GL.programs[program], UTF8ToString(name));
   },
 
-  _glGetActiveAttribOrUniform: function(funcName, program, index, bufSize, length, size, type, name) {
+  $__glGetActiveAttribOrUniform__deps: ['$stringToUTF8'],
+  $__glGetActiveAttribOrUniform: function(funcName, program, index, bufSize, length, size, type, name) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, funcName, 'program');
 #endif
@@ -2991,19 +2932,16 @@ var LibraryGL = {
     }
   },
 
-  glGetActiveAttrib__sig: 'viiiiiii',
-  glGetActiveAttrib__deps: ['_glGetActiveAttribOrUniform'],
+  glGetActiveAttrib__deps: ['$__glGetActiveAttribOrUniform'],
   glGetActiveAttrib: function(program, index, bufSize, length, size, type, name) {
     __glGetActiveAttribOrUniform('getActiveAttrib', program, index, bufSize, length, size, type, name);
   },
 
-  glGetActiveUniform__sig: 'viiiiiii',
-  glGetActiveUniform__deps: ['_glGetActiveAttribOrUniform'],
+  glGetActiveUniform__deps: ['$__glGetActiveAttribOrUniform'],
   glGetActiveUniform: function(program, index, bufSize, length, size, type, name) {
     __glGetActiveAttribOrUniform('getActiveUniform', program, index, bufSize, length, size, type, name);
   },
 
-  glCreateShader__sig: 'ii',
   glCreateShader: function(shaderType) {
     var id = GL.getNewId(GL.shaders);
     GL.shaders[id] = GLctx.createShader(shaderType);
@@ -3016,7 +2954,6 @@ var LibraryGL = {
     return id;
   },
 
-  glDeleteShader__sig: 'vi',
   glDeleteShader: function(id) {
     if (!id) return;
     var shader = GL.shaders[id];
@@ -3028,7 +2965,6 @@ var LibraryGL = {
     GL.shaders[id] = null;
   },
 
-  glGetAttachedShaders__sig: 'viiii',
   glGetAttachedShaders: function(program, maxCount, count, shaders) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetAttachedShaders', 'program');
@@ -3048,7 +2984,6 @@ var LibraryGL = {
     }
   },
 
-  glShaderSource__sig: 'viiii',
 #if GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING
   glShaderSource__deps: ['$preprocess_c_code', '$remove_cpp_comments_in_shaders', '$jstoi_q', '$find_closing_parens_index'],
 #endif
@@ -3104,9 +3039,19 @@ var LibraryGL = {
 #if GL_DEBUG
     dbg('Input shader source: ' + source);
 #endif
+
+#if ASSERTIONS
+    // These are not expected to be meaningful in WebGL, but issue a warning if they are present, to give some diagnostics about if they are present.
+    if (source.includes('__FILE__')) warnOnce(`When compiling shader: ${source}: Preprocessor variable __FILE__ is not handled by -sGL_EXPLICIT_UNIFORM_LOCATION/-sGL_EXPLICIT_UNIFORM_BINDING options!`);
+    if (source.includes('__LINE__')) warnOnce(`When compiling shader: ${source}: Preprocessor variable __LINE__ is not handled by -sGL_EXPLICIT_UNIFORM_LOCATION/-sGL_EXPLICIT_UNIFORM_BINDING options!`);
+#endif
     // Remove comments and C-preprocess the input shader first, so that we can appropriately
     // parse the layout location directives.
-    source = preprocess_c_code(remove_cpp_comments_in_shaders(source), { 'GL_FRAGMENT_PRECISION_HIGH': function() { return 1; }});
+    source = preprocess_c_code(remove_cpp_comments_in_shaders(source), {
+      'GL_FRAGMENT_PRECISION_HIGH': () => 1,
+      'GL_ES': () => 1,
+      '__VERSION__': () => source.includes('#version 300') ? 300 : 100
+    });
 #if GL_DEBUG
     dbg('Shader source after preprocessing: ' + source);
 #endif
@@ -3213,7 +3158,6 @@ var LibraryGL = {
     GLctx.shaderSource(GL.shaders[shader], source);
   },
 
-  glGetShaderSource__sig: 'viiii',
   glGetShaderSource: function(shader, bufSize, length, source) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.shaders, shader, 'glGetShaderSource', 'shader');
@@ -3224,7 +3168,6 @@ var LibraryGL = {
     if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
   },
 
-  glCompileShader__sig: 'vi',
   glCompileShader: function(shader) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.shaders, shader, 'glCompileShader', 'shader');
@@ -3236,7 +3179,7 @@ var LibraryGL = {
 #endif
   },
 
-  glGetShaderInfoLog__sig: 'viiii',
+  glGetShaderInfoLog__deps: ['$stringToUTF8'],
   glGetShaderInfoLog: function(shader, maxLength, length, infoLog) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.shaders, shader, 'glGetShaderInfoLog', 'shader');
@@ -3249,7 +3192,6 @@ var LibraryGL = {
     if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
   },
 
-  glGetShaderiv__sig: 'viii',
   glGetShaderiv : function(shader, pname, p) {
     if (!p) {
       // GLES2 specification does not specify how to behave if p is a null pointer. Since calling this function does not make sense
@@ -3285,7 +3227,6 @@ var LibraryGL = {
     }
   },
 
-  glGetProgramiv__sig: 'viii',
   glGetProgramiv : function(program, pname, p) {
     if (!p) {
       // GLES2 specification does not specify how to behave if p is a null pointer. Since calling this function does not make sense
@@ -3342,14 +3283,12 @@ var LibraryGL = {
     }
   },
 
-  glIsShader__sig: 'ii',
   glIsShader: function(shader) {
     var s = GL.shaders[shader];
     if (!s) return 0;
     return GLctx.isShader(s);
   },
 
-  glCreateProgram__sig: 'i',
   glCreateProgram: function() {
     var id = GL.getNewId(GL.programs);
     var program = GLctx.createProgram();
@@ -3362,7 +3301,6 @@ var LibraryGL = {
     return id;
   },
 
-  glDeleteProgram__sig: 'vi',
   glDeleteProgram: function(id) {
     if (!id) return;
     var program = GL.programs[id];
@@ -3375,7 +3313,6 @@ var LibraryGL = {
     GL.programs[id] = null;
   },
 
-  glAttachShader__sig: 'vii',
   glAttachShader: function(program, shader) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glAttachShader', 'program');
@@ -3391,7 +3328,6 @@ var LibraryGL = {
 #endif
   },
 
-  glDetachShader__sig: 'vii',
   glDetachShader: function(program, shader) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glDetachShader', 'program');
@@ -3400,7 +3336,6 @@ var LibraryGL = {
     GLctx.detachShader(GL.programs[program], GL.shaders[shader]);
   },
 
-  glGetShaderPrecisionFormat__sig: 'viiii',
   glGetShaderPrecisionFormat: function(shaderType, precisionType, range, precision) {
     var result = GLctx.getShaderPrecisionFormat(shaderType, precisionType);
     {{{ makeSetValue('range', '0', 'result.rangeMin', 'i32') }}};
@@ -3408,7 +3343,6 @@ var LibraryGL = {
     {{{ makeSetValue('precision', '0', 'result.precision', 'i32') }}};
   },
 
-  glLinkProgram__sig: 'vi',
   glLinkProgram: function(program) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glLinkProgram', 'program');
@@ -3463,7 +3397,6 @@ var LibraryGL = {
 #endif
   },
 
-  glGetProgramInfoLog__sig: 'viiii',
   glGetProgramInfoLog: function(program, maxLength, length, infoLog) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetProgramInfoLog', 'program');
@@ -3514,7 +3447,6 @@ var LibraryGL = {
   },
 #endif
 
-  glUseProgram__sig: 'vi',
 #if GL_EXPLICIT_UNIFORM_BINDING
   glUseProgram__deps: ['$webglApplyExplicitProgramBindings'],
 #endif
@@ -3535,7 +3467,6 @@ var LibraryGL = {
 #endif
   },
 
-  glValidateProgram__sig: 'vi',
   glValidateProgram: function(program) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glValidateProgram', 'program');
@@ -3543,14 +3474,12 @@ var LibraryGL = {
     GLctx.validateProgram(GL.programs[program]);
   },
 
-  glIsProgram__sig: 'ii',
   glIsProgram: function(program) {
     program = GL.programs[program];
     if (!program) return 0;
     return GLctx.isProgram(program);
   },
 
-  glBindAttribLocation__sig: 'viii',
   glBindAttribLocation: function(program, index, name) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glBindAttribLocation', 'program');
@@ -3558,7 +3487,6 @@ var LibraryGL = {
     GLctx.bindAttribLocation(GL.programs[program], index, UTF8ToString(name));
   },
 
-  glBindFramebuffer__sig: 'vii',
   glBindFramebuffer: function(target, framebuffer) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.framebuffers, framebuffer, 'glBindFramebuffer', 'framebuffer');
@@ -3575,8 +3503,7 @@ var LibraryGL = {
 
   },
 
-  glGenFramebuffers__sig: 'vii',
-  glGenFramebuffers__deps: ['_glGenObject'],
+  glGenFramebuffers__deps: ['$__glGenObject'],
   glGenFramebuffers: function(n, ids) {
     __glGenObject(n, ids, 'createFramebuffer', GL.framebuffers
 #if GL_ASSERTIONS
@@ -3585,7 +3512,6 @@ var LibraryGL = {
       );
   },
 
-  glDeleteFramebuffers__sig: 'vii',
   glDeleteFramebuffers: function(n, framebuffers) {
     for (var i = 0; i < n; ++i) {
       var id = {{{ makeGetValue('framebuffers', 'i*4', 'i32') }}};
@@ -3597,7 +3523,6 @@ var LibraryGL = {
     }
   },
 
-  glFramebufferRenderbuffer__sig: 'viiii',
   glFramebufferRenderbuffer: function(target, attachment, renderbuffertarget, renderbuffer) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.renderbuffers, renderbuffer, 'glFramebufferRenderbuffer', 'renderbuffer');
@@ -3606,7 +3531,6 @@ var LibraryGL = {
                                        GL.renderbuffers[renderbuffer]);
   },
 
-  glFramebufferTexture2D__sig: 'viiiii',
   glFramebufferTexture2D: function(target, attachment, textarget, texture, level) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.textures, texture, 'glFramebufferTexture2D', 'texture');
@@ -3615,7 +3539,6 @@ var LibraryGL = {
                                     GL.textures[texture], level);
   },
 
-  glGetFramebufferAttachmentParameteriv__sig: 'viiii',
   glGetFramebufferAttachmentParameteriv: function(target, attachment, pname, params) {
     var result = GLctx.getFramebufferAttachmentParameter(target, attachment, pname);
     if (result instanceof WebGLRenderbuffer ||
@@ -3625,25 +3548,23 @@ var LibraryGL = {
     {{{ makeSetValue('params', '0', 'result', 'i32') }}};
   },
 
-  glIsFramebuffer__sig: 'ii',
   glIsFramebuffer: function(framebuffer) {
     var fb = GL.framebuffers[framebuffer];
     if (!fb) return 0;
     return GLctx.isFramebuffer(fb);
   },
 
-  glGenVertexArrays__deps: ['_glGenObject'
+  glGenVertexArrays__deps: ['$__glGenObject'
 #if LEGACY_GL_EMULATION
-  , 'emulGlGenVertexArrays'
+  , '$emulGlGenVertexArrays'
 #endif
   ],
-  glGenVertexArrays__sig: 'vii',
   glGenVertexArrays: function (n, arrays) {
 #if LEGACY_GL_EMULATION
-    _emulGlGenVertexArrays(n, arrays);
+    emulGlGenVertexArrays(n, arrays);
 #else
 #if GL_ASSERTIONS
-    assert(GLctx['createVertexArray'], 'Must have WebGL2 or OES_vertex_array_object to use vao');
+    assert(GLctx.createVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
     __glGenObject(n, arrays, 'createVertexArray', GL.vaos
 #if GL_ASSERTIONS
@@ -3654,36 +3575,34 @@ var LibraryGL = {
   },
 
 #if LEGACY_GL_EMULATION
-  glDeleteVertexArrays__deps: ['emulGlDeleteVertexArrays'],
+  glDeleteVertexArrays__deps: ['$emulGlDeleteVertexArrays'],
 #endif
-  glDeleteVertexArrays__sig: 'vii',
   glDeleteVertexArrays: function(n, vaos) {
 #if LEGACY_GL_EMULATION
-    _emulGlDeleteVertexArrays(n, vaos);
+    emulGlDeleteVertexArrays(n, vaos);
 #else
 #if GL_ASSERTIONS
-    assert(GLctx['deleteVertexArray'], 'Must have WebGL2 or OES_vertex_array_object to use vao');
+    assert(GLctx.deleteVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
-      GLctx['deleteVertexArray'](GL.vaos[id]);
+      GLctx.deleteVertexArray(GL.vaos[id]);
       GL.vaos[id] = null;
     }
 #endif
   },
 
 #if LEGACY_GL_EMULATION
-  glBindVertexArray__deps: ['emulGlBindVertexArray'],
+  glBindVertexArray__deps: ['$emulGlBindVertexArray'],
 #endif
-  glBindVertexArray__sig: 'vi',
   glBindVertexArray: function(vao) {
 #if LEGACY_GL_EMULATION
-    _emulGlBindVertexArray(vao);
+    emulGlBindVertexArray(vao);
 #else
 #if GL_ASSERTIONS
-    assert(GLctx['bindVertexArray'], 'Must have WebGL2 or OES_vertex_array_object to use vao');
+    assert(GLctx.bindVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
-    GLctx['bindVertexArray'](GL.vaos[vao]);
+    GLctx.bindVertexArray(GL.vaos[vao]);
 #endif
 #if FULL_ES2 || LEGACY_GL_EMULATION
     var ibo = GLctx.getParameter(0x8895 /*ELEMENT_ARRAY_BUFFER_BINDING*/);
@@ -3692,29 +3611,36 @@ var LibraryGL = {
   },
 
 #if LEGACY_GL_EMULATION
-  glIsVertexArray__deps: ['emulGlIsVertexArray'],
+  glIsVertexArray__deps: ['$emulGlIsVertexArray'],
 #endif
-  glIsVertexArray__sig: 'ii',
   glIsVertexArray: function(array) {
 #if LEGACY_GL_EMULATION
-    return _emulGlIsVertexArray(array);
+    return emulGlIsVertexArray(array);
 #else
 #if GL_ASSERTIONS
-    assert(GLctx['isVertexArray'], 'Must have WebGL2 or OES_vertex_array_object to use vao');
+    assert(GLctx.isVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
 
     var vao = GL.vaos[array];
     if (!vao) return 0;
-    return GLctx['isVertexArray'](vao);
+    return GLctx.isVertexArray(vao);
 #endif
   },
 
 #if !LEGACY_GL_EMULATION
 
-  glVertexPointer: function(){ throw 'Legacy GL function (glVertexPointer) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.'; },
-  glMatrixMode: function(){ throw 'Legacy GL function (glMatrixMode) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.'; },
-  glBegin: function(){ throw 'Legacy GL function (glBegin) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.'; },
-  glLoadIdentity: function(){ throw 'Legacy GL function (glLoadIdentity) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.'; },
+  glVertexPointer: function(size, type, stride, ptr) {
+    throw 'Legacy GL function (glVertexPointer) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.';
+  },
+  glMatrixMode: function() {
+    throw 'Legacy GL function (glMatrixMode) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.';
+  },
+  glBegin: function() {
+    throw 'Legacy GL function (glBegin) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.';
+  },
+  glLoadIdentity: function() {
+    throw 'Legacy GL function (glLoadIdentity) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.';
+  },
 
 #endif // LEGACY_GL_EMULATION
 
@@ -3727,7 +3653,6 @@ var LibraryGL = {
 
   // GLES2 emulation
 
-  glVertexAttribPointer__sig: 'viiiiii',
   glVertexAttribPointer: function(index, size, type, normalized, stride, ptr) {
 #if FULL_ES2
     var cb = GL.currentContext.clientBuffers[index];
@@ -3754,7 +3679,6 @@ var LibraryGL = {
     GLctx.vertexAttribPointer(index, size, type, !!normalized, stride, ptr);
   },
 
-  glEnableVertexAttribArray__sig: 'vi',
   glEnableVertexAttribArray: function(index) {
 #if FULL_ES2
     var cb = GL.currentContext.clientBuffers[index];
@@ -3766,7 +3690,6 @@ var LibraryGL = {
     GLctx.enableVertexAttribArray(index);
   },
 
-  glDisableVertexAttribArray__sig: 'vi',
   glDisableVertexAttribArray: function(index) {
 #if FULL_ES2
     var cb = GL.currentContext.clientBuffers[index];
@@ -3779,7 +3702,6 @@ var LibraryGL = {
   },
 
 #if !LEGACY_GL_EMULATION
-  glDrawArrays__sig: 'viii',
   glDrawArrays: function(mode, first, count) {
 #if FULL_ES2
     // bind any client-side buffers
@@ -3793,7 +3715,6 @@ var LibraryGL = {
 #endif
   },
 
-  glDrawElements__sig: 'viiii',
   glDrawElements: function(mode, count, type, indices) {
 #if FULL_ES2
     var buf;
@@ -3824,20 +3745,17 @@ var LibraryGL = {
   },
 #endif // ~#if !LEGACY_GL_EMULATION
 
-  glShaderBinary__sig: 'v',
-  glShaderBinary: function() {
+  glShaderBinary: function(count, shaders, binaryformat, binary, length) {
     GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
     err("GL_INVALID_ENUM in glShaderBinary: WebGL does not support binary shader formats! Calls to glShaderBinary always fail.");
 #endif
   },
 
-  glReleaseShaderCompiler__sig: 'v',
   glReleaseShaderCompiler: function() {
     // NOP (as allowed by GLES 2.0 spec)
   },
 
-  glGetError__sig: 'i',
   glGetError: function() {
 #if GL_TRACK_ERRORS
     var error = GLctx.getError() || GL.lastError;
@@ -3850,28 +3768,25 @@ var LibraryGL = {
 
   // ANGLE_instanced_arrays WebGL extension related functions (in core in WebGL 2)
 
-  glVertexAttribDivisor__sig: 'vii',
   glVertexAttribDivisor: function(index, divisor) {
 #if GL_ASSERTIONS
-    assert(GLctx['vertexAttribDivisor'], 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
+    assert(GLctx.vertexAttribDivisor, 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
 #endif
-    GLctx['vertexAttribDivisor'](index, divisor);
+    GLctx.vertexAttribDivisor(index, divisor);
   },
 
-  glDrawArraysInstanced__sig: 'viiii',
   glDrawArraysInstanced: function(mode, first, count, primcount) {
 #if GL_ASSERTIONS
-    assert(GLctx['drawArraysInstanced'], 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
+    assert(GLctx.drawArraysInstanced, 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
 #endif
-    GLctx['drawArraysInstanced'](mode, first, count, primcount);
+    GLctx.drawArraysInstanced(mode, first, count, primcount);
   },
 
-  glDrawElementsInstanced__sig: 'viiiii',
   glDrawElementsInstanced: function(mode, count, type, indices, primcount) {
 #if GL_ASSERTIONS
-    assert(GLctx['drawElementsInstanced'], 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
+    assert(GLctx.drawElementsInstanced, 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
 #endif
-    GLctx['drawElementsInstanced'](mode, count, type, indices, primcount);
+    GLctx.drawElementsInstanced(mode, count, type, indices, primcount);
   },
 
   // OpenGL Desktop/ES 2.0 instancing extensions compatibility
@@ -3891,10 +3806,9 @@ var LibraryGL = {
 
 
   glDrawBuffers__deps: ['$tempFixedLengthArray'],
-  glDrawBuffers__sig: 'vii',
   glDrawBuffers: function(n, bufs) {
 #if GL_ASSERTIONS
-    assert(GLctx['drawBuffers'], 'Must have WebGL2 or WEBGL_draw_buffers extension to use drawBuffers');
+    assert(GLctx.drawBuffers, 'Must have WebGL2 or WEBGL_draw_buffers extension to use drawBuffers');
 #endif
 #if GL_ASSERTIONS
     assert(n < tempFixedLengthArray.length, 'Invalid count of numBuffers=' + n + ' passed to glDrawBuffers (that many draw buffer points do not exist in GL)');
@@ -3905,7 +3819,7 @@ var LibraryGL = {
       bufArray[i] = {{{ makeGetValue('bufs', 'i*4', 'i32') }}};
     }
 
-    GLctx['drawBuffers'](bufArray);
+    GLctx.drawBuffers(bufArray);
   },
 
   // OpenGL ES 2.0 draw buffer extensions compatibility
@@ -3915,22 +3829,19 @@ var LibraryGL = {
 
   // passthrough functions with GLboolean parameters
 
-  glColorMask__sig: 'viiii',
   glColorMask: function(red, green, blue, alpha) {
     GLctx.colorMask(!!red, !!green, !!blue, !!alpha);
   },
 
-  glDepthMask__sig: 'vi',
   glDepthMask: function(flag) {
     GLctx.depthMask(!!flag);
   },
 
-  glSampleCoverage__sig: 'vii',
   glSampleCoverage: function(value, invert) {
     GLctx.sampleCoverage(value, !!invert);
   },
 
-  glMultiDrawArraysWEBGL__sig: 'viiii',
+  glMultiDrawArraysWEBGL__sig: 'vippi',
   glMultiDrawArrays: 'glMultiDrawArraysWEBGL',
   glMultiDrawArraysANGLE: 'glMultiDrawArraysWEBGL',
   glMultiDrawArraysWEBGL: function(mode, firsts, counts, drawcount) {
@@ -3957,7 +3868,7 @@ var LibraryGL = {
       drawcount);
   },
 
-  glMultiDrawElementsWEBGL__sig: 'viiiii',
+  glMultiDrawElementsWEBGL__sig: 'vipipi',
   glMultiDrawElements: 'glMultiDrawElementsWEBGL',
   glMultiDrawElementsANGLE: 'glMultiDrawElementsWEBGL',
   glMultiDrawElementsWEBGL: function(mode, counts, type, offsets, drawcount) {
@@ -4023,8 +3934,7 @@ var LibraryGL = {
     }
   },
 
-  glMapBufferRange__sig: 'iiiii',
-  glMapBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget'],
+  glMapBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget', 'malloc'],
   glMapBufferRange: function(target, offset, length, access) {
     if ((access & (0x1/*GL_MAP_READ_BIT*/ | 0x20/*GL_MAP_UNSYNCHRONIZED_BIT*/)) != 0) {
       err("glMapBufferRange access does not support MAP_READ or MAP_UNSYNCHRONIZED");
@@ -4047,19 +3957,18 @@ var LibraryGL = {
       return 0;
     }
 
-    var mem = _malloc(length);
+    var mem = _malloc(length), binding = emscriptenWebGLGetBufferBinding(target);
     if (!mem) return 0;
 
-    GL.mappedBuffers[emscriptenWebGLGetBufferBinding(target)] = {
-      offset: offset,
-      length: length,
-      mem: mem,
-      access: access,
-    };
+    if (!GL.mappedBuffers[binding]) GL.mappedBuffers[binding] = {};
+    binding = GL.mappedBuffers[binding];
+    binding.offset = offset;
+    binding.length = length;
+    binding.mem = mem;
+    binding.access = access;
     return mem;
   },
 
-  glGetBufferPointerv__sig: 'viii',
   glGetBufferPointerv__deps: ['$emscriptenWebGLGetBufferBinding'],
   glGetBufferPointerv: function(target, pname, params) {
     if (pname == 0x88BD/*GL_BUFFER_MAP_POINTER*/) {
@@ -4075,7 +3984,6 @@ var LibraryGL = {
     }
   },
 
-  glFlushMappedBufferRange__sig: 'viii',
   glFlushMappedBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget'],
   glFlushMappedBufferRange: function(target, offset, length) {
     if (!emscriptenWebGLValidateMapBufferTarget(target)) {
@@ -4108,8 +4016,7 @@ var LibraryGL = {
       HEAPU8.subarray(mapping.mem + offset, mapping.mem + offset + length));
   },
 
-  glUnmapBuffer__sig: 'ii',
-  glUnmapBuffer__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget'],
+  glUnmapBuffer__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget', 'free'],
   glUnmapBuffer: function(target) {
     if (!emscriptenWebGLValidateMapBufferTarget(target)) {
       GL.recordError(0x500/*GL_INVALID_ENUM*/);
@@ -4119,12 +4026,11 @@ var LibraryGL = {
 
     var buffer = emscriptenWebGLGetBufferBinding(target);
     var mapping = GL.mappedBuffers[buffer];
-    if (!mapping) {
+    if (!mapping || !mapping.mem) {
       GL.recordError(0x502 /* GL_INVALID_OPERATION */);
       err('buffer was never mapped in glUnmapBuffer');
       return 0;
     }
-    GL.mappedBuffers[buffer] = null;
 
     if (!(mapping.access & 0x10)) /* GL_MAP_FLUSH_EXPLICIT_BIT */
       if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
@@ -4133,72 +4039,38 @@ var LibraryGL = {
         GLctx.bufferSubData(target, mapping.offset, HEAPU8.subarray(mapping.mem, mapping.mem+mapping.length));
       }
     _free(mapping.mem);
+    mapping.mem = 0;
     return 1;
   },
 #endif
-
-  // signatures of simple pass-through functions, see later
-
-  glActiveTexture__sig: 'vi',
-  glCheckFramebufferStatus__sig: 'ii',
-  glRenderbufferStorage__sig: 'viiii',
-  glClearStencil__sig: 'vi',
-  glStencilFunc__sig: 'viii',
-  glLineWidth__sig: 'vf',
-  glBlendEquation__sig: 'vi',
-  glBlendEquationSeparate__sig: 'vii',
-  glVertexAttrib1f__sig: 'vif',
-  glVertexAttrib2f__sig: 'viff',
-  glVertexAttrib3f__sig: 'vifff',
-  glVertexAttrib4f__sig: 'viffff',
-  glCullFace__sig: 'vi',
-  glBlendFunc__sig: 'vii',
-  glBlendFuncSeparate__sig: 'viiii',
-  glBlendColor__sig: 'vffff',
-  glPolygonOffset__sig: 'vff',
-  glStencilOp__sig: 'viii',
-  glStencilOpSeparate__sig: 'viiii',
-  glGenerateMipmap__sig: 'vi',
-  glHint__sig: 'vii',
-  glViewport__sig: 'viiii',
-  glDepthFunc__sig: 'vi',
-  glStencilMask__sig: 'vi',
-  glStencilMaskSeparate__sig: 'vii',
-  glClearDepthf__sig: 'vf',
-  glFinish__sig: 'v',
-  glFlush__sig: 'v',
-  glClearColor__sig: 'vffff',
-  glIsEnabled__sig: 'ii',
-  glFrontFace__sig: 'vi',
 };
 
-// Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
-var glFuncs = [[0, 'finish flush'],
- [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation isEnabled*'],
- [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset vertexAttrib1f'],
- [3, 'texParameteri texParameterf vertexAttrib2f stencilFunc stencilOp'],
- [4, 'viewport clearColor scissor vertexAttrib3f renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
- [5, 'vertexAttrib4f'],
- [6, ''],
- [7, ''],
- [8, 'copyTexImage2D copyTexSubImage2D'],
- [9, ''],
- [10, '']];
+// Simple pass-through functions.
+// - Starred ones have return values.
+// - [X] ones have X in the C name but not in the JS name
+var glPassthroughFuncs = [
+  [0, 'finish flush'],
+  [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation isEnabled*'],
+  [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset vertexAttrib1f'],
+  [3, 'texParameteri texParameterf vertexAttrib2f stencilFunc stencilOp'],
+  [4, 'viewport clearColor scissor vertexAttrib3f renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
+  [5, 'vertexAttrib4f'],
+  [8, 'copyTexImage2D copyTexSubImage2D'],
+];
 
 function createGLPassthroughFunctions(lib, funcs) {
   funcs.forEach((data) => {
     const num = data[0];
     const names = data[1];
     const args = range(num).map((i) => 'x' + i ).join(', ');
-    const plainStub = '(function(' + args + ') { GLctx[\'NAME\'](' + args + ') })';
-    const returnStub = '(function(' + args + ') { return GLctx[\'NAME\'](' + args + ') })';
+    const plainStub = '(function(' + args + ') { GLctx.NAME(' + args + ') })';
+    const returnStub = '(function(' + args + ') { return GLctx.NAME(' + args + ') })';
     const sigEnd = range(num).map(() => 'i').join('');
     names.split(' ').forEach((name) => {
-      if (name.length == 0) return;
       let stub = plainStub;
       let sig;
-      if (name[name.length-1] == '*') {
-        name = name.substr(0, name.length-1);
+      if (name.endsWith('*')) {
+        name = name.slice(0, -1);
         stub = returnStub;
         sig = 'i' + sigEnd;
       } else {
@@ -4207,54 +4079,28 @@ function createGLPassthroughFunctions(lib, funcs) {
       let cName = name;
       if (name.includes('[')) {
         cName = name.replace('[', '').replace(']', '');
-        name = cName.substr(0, cName.length-1);
+        name = cName.slice(0, -1);
       }
       cName = 'gl' + cName[0].toUpperCase() + cName.substr(1);
       assert(!(cName in lib), "Cannot reimplement the existing function " + cName);
       lib[cName] = eval(stub.replace('NAME', name));
-      if (!lib[cName + '__sig']) lib[cName + '__sig'] = sig;
+      assert(lib[cName + '__sig'] || LibraryManager.library[cName + '__sig'], 'missing sig for ' + cName);
     });
   });
 }
 
-createGLPassthroughFunctions(LibraryGL, glFuncs);
+createGLPassthroughFunctions(LibraryGL, glPassthroughFuncs);
 
 autoAddDeps(LibraryGL, '$GL');
 
-function copyLibEntry(lib, a, b) {
-  lib[a] = lib[b];
-  lib[a + '__postset'] = lib[b + '__postset'];
-  lib[a + '__proxy'] = lib[b + '__proxy'];
-  lib[a + '__sig'] = lib[b + '__sig'];
-  lib[a + '__deps'] = (lib[b + '__deps'] || []).slice(0);
-}
-
 function recordGLProcAddressGet(lib) {
-  // GL proc address retrieval - allow access through glX and emscripten_glX, to allow name collisions with user-implemented things having the same name (see gl.c)
+  // GL proc address retrieval - allow access through glX and emscripten_glX, to
+  // allow name collisions with user-implemented things having the same name
+  // (see gl.c)
   Object.keys(lib).forEach((x) => {
-    if (isJsLibraryConfigIdentifier(x)) return;
-    if (x.substr(0, 2) != 'gl') return;
-    while (typeof lib[x] == 'string') {
-      // resolve aliases right here, simpler for fastcomp
-      copyLibEntry(lib, x, lib[x]);
+    if (x.startsWith('gl') && !isDecorator(x)) {
+      lib['emscripten_' + x] = x;
     }
-    const y = 'emscripten_' + x;
-    lib[x + '__deps'] = (lib[x + '__deps'] || []).map((dep) => {
-      // prefix dependencies as well
-      if (typeof dep == 'string' && dep[0] == 'g' && dep[1] == 'l' && lib[dep]) {
-        const orig = dep;
-        dep = 'emscripten_' + dep;
-        let fixed = lib[x].toString().replace(new RegExp('_' + orig + '\\(', 'g'), '_' + dep + '(');
-        // `function` is 8 characters, add space and an explicit name after if there isn't one already
-        if (fixed.startsWith('function(') || fixed.startsWith('function (')) {
-          fixed = fixed.substr(0, 8) + ' _' + y + fixed.substr(8);
-        }
-        lib[x] = eval('(function() { return ' + fixed + ' })()');
-      }
-      return dep;
-    });
-    // copy it
-    copyLibEntry(lib, y, x);
   });
 }
 

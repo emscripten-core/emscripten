@@ -16,8 +16,8 @@
 // underscore.
 var WASM_EXPORTS = [];
 
-// Similar to above but only includes the functions symbols.
-var WASM_FUNCTION_EXPORTS = [];
+// Similar to above but only includes the global/data symbols.
+var WASM_GLOBAL_EXPORTS = [];
 
 // An array of all symbols exported from all the side modules specified on the
 // command line.
@@ -143,7 +143,10 @@ var AUDIO_WORKLET_FILE = '';
 // Base URL the source mapfile, if relevant
 var SOURCE_MAP_BASE = '';
 
-var MEM_INIT_IN_WASM = false;
+// When this is false we use an external memory init file
+// See --memory-init-file.  When not using wasm2js this flag is ignored, and
+// this setting will always be true.
+var MEM_INIT_IN_WASM = true;
 
 // If set to 1, src/base64Utils.js will be included in the bundle.
 // This is set internally when needed (SINGLE_FILE)
@@ -163,14 +166,17 @@ var MINIFY_WASM_IMPORTS_AND_EXPORTS = false;
 // Whether to minify imported module names.
 var MINIFY_WASM_IMPORTED_MODULES = false;
 
-// Whether to minify functions exported from Asm.js/Wasm module.
-var MINIFY_ASMJS_EXPORT_NAMES = true;
+// Whether to minify exports from the Wasm module.
+var MINIFY_WASM_EXPORT_NAMES = true;
 
 // Internal: represents a browser version that is not supported at all.
 var TARGET_NOT_SUPPORTED = 0x7FFFFFFF;
 
 // Used to track whether target environment supports the 'globalThis' attribute.
 var SUPPORTS_GLOBALTHIS = false;
+
+// Used to track whether target environment supports the 'Promise.any'.
+var SUPPORTS_PROMISE_ANY = false;
 
 // Wasm backend symbols that are considered system symbols and don't
 // have the normal C symbol name mangled applied (== prefix with an underscore)
@@ -180,8 +186,12 @@ var WASM_SYSTEM_EXPORTS = ['stackAlloc', 'stackSave', 'stackRestore', 'getTempRe
 // Internal: value of -flto argument (either full or thin)
 var LTO = 0;
 
-// Whether we may be accessing the address 2GB or higher. If so then we need
-// to be using unsigned pointers in JS.
+// Whether we may be accessing the address 2GB or higher. If so, then we need
+// to interpret incoming i32 pointers as unsigned.
+//
+// This setting does not apply (and is never set to true) under MEMORY64, since
+// in that case we get 64-bit pointers coming through to JS (converting them to
+// i53 in most cases).
 var CAN_ADDRESS_2GB = false;
 
 // Whether to emit DWARF in a separate wasm file on the side (this is not called
@@ -203,9 +213,6 @@ var EXPECT_MAIN = true;
 // Provide and export a .ready() Promise. This is currently used by default with
 // MODULARIZE, and returned from the factory function.
 var EXPORT_READY_PROMISE = true;
-
-// struct_info that is either generated or cached
-var STRUCT_INFO = '';
 
 // If true, building against Emscripten's wasm heap memory profiler.
 var MEMORYPROFILER = false;
@@ -253,3 +260,8 @@ var HAVE_EM_ASM = true;
 var PRE_JS_FILES = [];
 
 var POST_JS_FILES = [];
+
+// Set when -pthread / -sPTHREADS is passed
+var PTHREADS = false;
+
+var BULK_MEMORY = false;

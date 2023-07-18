@@ -106,10 +106,15 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('ptr', '0', 0x12345678AB, 'i64') }}};
     _printI64(ptr);
 
-    // This value doesn't fit into i64.  The current behaviour here is to
-    // truncate and round (see splitI16 in parseTools.js)
+    // This value doesn't fit into i64.  The current behaviour truncate (i.e.
+    // ignore the upper bits), in the same way that `BigInt64Array[X] = Y` does.
+    // (see splitI16 in parseTools.js)
     _clearI64(ptr);
     {{{ makeSetValue('ptr', '0', 0x1122334455667788AA, 'i64') }}};
+    _printI64(ptr);
+
+    _clearI64(ptr);
+    {{{ makeSetValue('ptr', '0', -0x1122334455667788AA, 'i64') }}};
     _printI64(ptr);
 
     _clearI64(ptr);
@@ -127,9 +132,5 @@ mergeInto(LibraryManager.library, {
     _clearI64(ptr);
     {{{ makeSetValue('ptr', '0', 0x12345678ab, 'i32') }}};
     _printI64(ptr);
-  },
-
-  test_makeSetValue_unaligned: function(ptr) {
-    {{{ makeSetValue('ptr', '0', 0x12345678AB, 'i64') }}};
   },
 });

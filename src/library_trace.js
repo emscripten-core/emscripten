@@ -6,9 +6,9 @@
 
 var LibraryTracing = {
   $EmscriptenTrace__deps: [
-    'emscripten_trace_js_configure', 'emscripten_trace_configure_for_google_wtf',
-    'emscripten_trace_js_enter_context', 'emscripten_trace_exit_context',
-    'emscripten_trace_js_log_message', 'emscripten_trace_js_mark',
+    '$traceConfigure', 'emscripten_trace_configure_for_google_wtf',
+    '$traceEnterContext', 'emscripten_trace_exit_context',
+    '$traceLogMessage', '$traceMark',
     'emscripten_get_now'
   ],
   $EmscriptenTrace__postset: 'EmscriptenTrace.init()',
@@ -49,12 +49,12 @@ var LibraryTracing = {
     EVENT_USER_NAME: 'user-name',
 
     init: function() {
-      Module['emscripten_trace_configure'] = _emscripten_trace_js_configure;
+      Module['emscripten_trace_configure'] = traceConfigure;
       Module['emscripten_trace_configure_for_google_wtf'] = _emscripten_trace_configure_for_google_wtf;
-      Module['emscripten_trace_enter_context'] = _emscripten_trace_js_enter_context;
+      Module['emscripten_trace_enter_context'] = traceEnterContext;
       Module['emscripten_trace_exit_context'] = _emscripten_trace_exit_context;
-      Module['emscripten_trace_log_message'] = _emscripten_trace_js_log_message;
-      Module['emscripten_trace_mark'] = _emscripten_trace_js_mark;
+      Module['emscripten_trace_log_message'] = traceLogMessage;
+      Module['emscripten_trace_mark'] = traceMark;
     },
 
     // Work around CORS issues ...
@@ -133,7 +133,7 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_js_configure: function(collector_url, application) {
+  $traceConfigure: function(collector_url, application) {
     EmscriptenTrace.configure(collector_url, application);
   },
 
@@ -172,7 +172,7 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_js_log_message: function(channel, message) {
+  $traceLogMessage: function(channel, message) {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_LOG_MESSAGE, now,
@@ -180,7 +180,6 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_log_message__sig: 'vpp',
   emscripten_trace_log_message: function(channel, message) {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
@@ -190,7 +189,7 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_js_mark: function(message) {
+  $traceMark: function(message) {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_LOG_MESSAGE, now,
@@ -201,7 +200,6 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_mark__sig: 'vp',
   emscripten_trace_mark: function(message) {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
@@ -268,7 +266,7 @@ var LibraryTracing = {
         'stack_base':   _emscripten_stack_get_base(),
         'stack_top':    _emscripten_stack_get_current(),
         'stack_max':    _emscripten_stack_get_end(),
-        'dynamic_top':  _sbrk(),
+        'dynamic_top':  _sbrk(0),
         'total_memory': HEAP8.length
       };
       var now = EmscriptenTrace.now();
@@ -300,7 +298,7 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_js_enter_context: function(name) {
+  $traceEnterContext: function(name) {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_ENTER_CONTEXT,
@@ -311,7 +309,6 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_enter_context__sig: 'vp',
   emscripten_trace_enter_context: function(name) {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
@@ -333,7 +330,6 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_task_start__sig: 'vip',
   emscripten_trace_task_start: function(task_id, name) {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();

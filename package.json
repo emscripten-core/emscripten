@@ -1,22 +1,23 @@
 {
   "private": true,
   "devDependencies": {
-    "es-check": "^6.2.1",
-    "eslint": "^8.16.0",
-    "eslint-config-prettier": "^8.5.0",
-    "prettier": "^2.7.1",
+    "es-check": "^7.1.1",
+    "eslint": "^8.43.0",
+    "eslint-config-prettier": "^8.8.0",
+    "prettier": "^2.8.8",
     "source-map": "0.7.4",
-    "ws": "^8.6.0"
+    "webpack": "^5.88.0",
+    "webpack-cli": "^5.1.4",
+    "ws": "^8.13.0"
   },
   "dependencies": {
-    "acorn": "^8.7.1",
-    "google-closure-compiler": "20220502.0.0",
-    "html-minifier-terser": "6.1.0",
-    "wasm2c": "1.0.0"
+    "acorn": "^8.9.0",
+    "google-closure-compiler": "20230502.0.0",
+    "html-minifier-terser": "7.2.0"
   },
   "scripts": {
     "lint": "eslint .",
-    "fmt": "prettier --write tools/acorn-optimizer.js",
-    "check": "prettier --check tools/acorn-optimizer.js"
+    "fmt": "prettier --write tools/*.js",
+    "check": "prettier --check tools/*.js"
   }
 }

@@ -11,6 +11,7 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <dlfcn.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <threads.h>
 #include <stdarg.h>
@@ -18,19 +19,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dynlink.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <emscripten/console.h>
 #include <emscripten/threading.h>
 #include <emscripten/promise.h>
 #include <emscripten/proxying.h>
 
+#include "dynlink.h"
 #include "pthread_impl.h"
+#include "emscripten_internal.h"
 
 //#define DYLINK_DEBUG
 
 #ifdef DYLINK_DEBUG
-#define dbg(fmt, ...) _emscripten_dbgf(fmt, ##__VA_ARGS__)
+#define dbg(fmt, ...) emscripten_dbgf(fmt, ##__VA_ARGS__)
 #else
 #define dbg(fmt, ...)
 #endif
@@ -40,14 +44,7 @@ struct async_data {
   em_arg_callback_func onerror;
   void* user_data;
 };
-typedef void (*dlopen_callback_func)(struct dso*, void* user_data);
 
-void* _dlopen_js(struct dso* handle);
-void* _dlsym_js(struct dso* handle, const char* symbol, int* sym_index);
-void _emscripten_dlopen_js(struct dso* handle,
-                           dlopen_callback_func onsuccess,
-                           dlopen_callback_func onerror,
-                           void* user_data);
 void __dl_vseterr(const char*, va_list);
 
 // We maintain a list of all dlopen and dlsym events linked list.
@@ -82,11 +79,11 @@ static struct dlevent* _Atomic head = &main_event;
 static struct dlevent* _Atomic tail = &main_event;
 
 #ifdef _REENTRANT
-void* _dlsym_catchup_js(struct dso* handle, int sym_index);
-
 static thread_local struct dlevent* thread_local_tail = &main_event;
 static pthread_mutex_t write_lock = PTHREAD_MUTEX_INITIALIZER;
 static thread_local bool skip_dlsync = false;
+
+static void dlsync();
 
 static void do_write_lock() {
   // Once we have the lock we want to avoid automatic code sync as that would
@@ -162,6 +159,14 @@ static void load_library_done(struct dso* p) {
       p->table_addr,
       p->table_size);
   new_dlevent(p, -1);
+#ifdef _REENTRANT
+  // Block until all other threads have loaded this module.
+  dlsync();
+#endif
+  // TODO: figure out some way to tell when its safe to free p->file_data.  Its
+  // not safe to do here because some threads could have been alseep then when
+  // the "dlsync" occurred and those threads will synchronize when they wake,
+  // which could be an arbitrarily long time in the future.
 }
 
 static struct dso* load_library_start(const char* name, int flags) {
@@ -176,6 +181,29 @@ static struct dso* load_library_start(const char* name, int flags) {
   p->flags = flags;
   strcpy(p->name, name);
 
+  // If the file exists in the filesystem, load it here into linear memory which
+  // makes the data available to JS, and to other threads.  This data gets
+  // free'd later once all threads have loaded the DSO.
+  struct stat statbuf;
+  if (stat(name, &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
+    int fd = open(name, O_RDONLY);
+    if (fd >= 0) {
+      off_t size = lseek(fd, 0, SEEK_END);
+      if (size != (off_t)-1) {
+        lseek(fd, 0, SEEK_SET);
+        p->file_data = malloc(size);
+        if (p->file_data) {
+          if (read(fd, p->file_data, size) == size) {
+            p->file_data_size = size;
+          } else {
+            free(p->file_data);
+          }
+        }
+      }
+      close(fd);
+    }
+  }
+
   return p;
 }
 
@@ -186,21 +214,6 @@ static struct dso* load_library_start(const char* name, int flags) {
 // would have to also unwind the state on all the threads that were able to load
 // the module.
 #define ABORT_ON_SYNC_FAILURE 1
-
-// These functions are defined in JS.
-
-// Synchronous version of "dlsync_threads".  Called only on the main thread.
-// Runs _emscripten_dlsync_self on each of the threads that are running at
-// the time of the call.
-void _emscripten_dlsync_threads();
-
-// Asynchronous version of "dlsync_threads".  Called only on the main thread.
-// Runs _emscripten_dlsync_self on each of the threads that are running at
-// the time of the call.  Once this is done the callback is called with the
-// given em_proxying_ctx.
-void _emscripten_dlsync_threads_async(pthread_t calling_thread,
-                                      void (*callback)(em_proxying_ctx*),
-                                      em_proxying_ctx* ctx);
 
 static void dlsync_next(struct dlevent* dlevent, em_promise_t promise);
 
@@ -231,7 +244,7 @@ static void dlsync_next(struct dlevent* dlevent, em_promise_t promise) {
     dbg("calling _dlsym_catchup_js ....");
     void* success = _dlsym_catchup_js(dlevent->dso, dlevent->sym_index);
     if (!success) {
-      _emscripten_errf("_dlsym_catchup_js failed: %s", dlerror());
+      emscripten_errf("_dlsym_catchup_js failed: %s", dlerror());
       sync_one_onerror(dlevent->dso, promise);
       return;
     }
@@ -275,7 +288,7 @@ bool _emscripten_dlsync_self() {
           p->sym_index);
       void* success = _dlsym_catchup_js(p->dso, p->sym_index);
       if (!success) {
-        _emscripten_errf("_dlsym_catchup_js failed: %s", dlerror());
+        emscripten_errf("_dlsym_catchup_js failed: %s", dlerror());
         return false;
       }
     } else {
@@ -293,7 +306,7 @@ bool _emscripten_dlsync_self() {
         // TODO(sbc): Ideally this would never happen and we could/should
         // abort, but on the main thread (where we don't have sync xhr) its
         // often not possible to syncronously load side module.
-        _emscripten_errf("_dlopen_js failed: %s", dlerror());
+        emscripten_errf("_dlopen_js failed: %s", dlerror());
         return false;
       }
     }
@@ -303,9 +316,15 @@ bool _emscripten_dlsync_self() {
   return true;
 }
 
-static void* do_thread_sync(void* arg) {
+struct promise_result {
+  em_promise_t promise;
+  bool result;
+};
+
+static void do_thread_sync(void* arg) {
   dbg("do_thread_sync");
-  return (void*)_emscripten_dlsync_self();
+  struct promise_result* info = arg;
+  info->result = _emscripten_dlsync_self();
 }
 
 static void do_thread_sync_out(void* arg) {
@@ -314,11 +333,22 @@ static void do_thread_sync_out(void* arg) {
   *result = _emscripten_dlsync_self();
 }
 
-// Called once _emscripten_proxy_dlsync completes
-static void done_thread_sync(void* arg, void* result) {
-  em_promise_t promise = (em_promise_t)arg;
-  dbg("done_thread_sync: promise=%p result=%p", promise, result);
-  if (result) {
+// Called when a thread exists prior to being able to completely sync operation.
+// We can just ignore this case and report success.
+static void thread_sync_cancelled(void* arg) {
+  struct promise_result* info = arg;
+  dbg("thread_sync_cancelled: promise=%p result=%i", info->promise, info->result);
+  emscripten_promise_resolve(info->promise, EM_PROMISE_FULFILL, NULL);
+  emscripten_promise_destroy(info->promise);
+  free(info);
+}
+
+// Called once do_thread_sync completes
+static void thread_sync_done(void* arg) {
+  struct promise_result* info = arg;
+  em_promise_t promise = info->promise;
+  dbg("thread_sync_done: promise=%p result=%i", promise, info->result);
+  if (info->result) {
     emscripten_promise_resolve(promise, EM_PROMISE_FULFILL, NULL);
   } else {
 #if ABORT_ON_SYNC_FAILURE
@@ -328,6 +358,7 @@ static void done_thread_sync(void* arg, void* result) {
 #endif
   }
   emscripten_promise_destroy(promise);
+  free(info);
 }
 
 // Proxying queue specically for handling code loading (dlopen) events.
@@ -356,13 +387,28 @@ int _emscripten_proxy_dlsync_async(pthread_t target_thread, em_promise_t promise
   if (!dlopen_proxying_queue) {
     dlopen_proxying_queue = em_proxying_queue_create();
   }
-  int rtn = emscripten_proxy_async_with_callback(dlopen_proxying_queue,
-                                                 target_thread,
-                                                 do_thread_sync,
-                                                 NULL,
-                                                 done_thread_sync,
-                                                 promise);
-  if (target_thread->sleeping) {
+
+  struct promise_result* info = malloc(sizeof(struct promise_result));
+  if (!info) {
+    return false;
+  }
+  *info = (struct promise_result){
+    .promise = promise,
+    .result = false,
+  };
+  int rtn = emscripten_proxy_callback(dlopen_proxying_queue,
+                                      target_thread,
+                                      do_thread_sync,
+                                      thread_sync_done,
+                                      thread_sync_cancelled,
+                                      info);
+  if (!rtn) {
+    // If we failed to proxy, then the target thread is no longer alive and no
+    // longer needs to be caught up, so we can resolve the promise early.
+    emscripten_promise_resolve(promise, EM_PROMISE_FULFILL, NULL);
+    emscripten_promise_destroy(promise);
+    free(info);
+  } else if (target_thread->sleeping) {
     // If the target thread is in the sleeping state (and this check is
     // performed after the enqueuing of the async work) then we know its safe to
     // resolve the promise early, since the thread will process our event as
@@ -400,9 +446,8 @@ static void run_dlsync_async(em_proxying_ctx* ctx, void* arg) {
 static void dlsync() {
   // Call dlsync process.  This call will block until all threads are in sync.
   // This gets called after a shared library is loaded by a worker.
-  pthread_t main_thread = emscripten_main_browser_thread_id();
-  dbg("dlsync main=%p", main_thread);
-  if (pthread_self() == main_thread) {
+  dbg("dlsync main=%p", emscripten_main_runtime_thread_id());
+  if (emscripten_is_main_runtime_thread()) {
     // dlsync was called on the main thread.  In this case we have no choice by
     // to run the blocking version of emscripten_dlsync_threads.
     _emscripten_dlsync_threads();
@@ -411,7 +456,7 @@ static void dlsync() {
     // thread.
     em_proxying_queue* q = emscripten_proxy_get_system_queue();
     int success = emscripten_proxy_sync_with_ctx(
-      q, main_thread, run_dlsync_async, pthread_self());
+      q, emscripten_main_runtime_thread_id(), run_dlsync_async, pthread_self());
     assert(success);
   }
 }
@@ -424,10 +469,6 @@ static void dlopen_onsuccess(struct dso* dso, void* user_data) {
       dso->mem_addr,
       dso->mem_size);
   load_library_done(dso);
-#ifdef _REENTRANT
-  // Block until all other threads have loaded this module.
-  dlsync();
-#endif
   do_write_unlock();
   data->onsuccess(data->user_data, dso);
   free(data);
@@ -440,6 +481,37 @@ static void dlopen_onerror(struct dso* dso, void* user_data) {
   data->onerror(data->user_data);
   free(dso);
   free(data);
+}
+
+// Modified version of path_open from musl/ldso/dynlink.c
+static int path_find(const char *name, const char *s, char *buf, size_t buf_size) {
+  size_t l;
+  int fd;
+  for (;;) {
+    s += strspn(s, ":\n");
+    l = strcspn(s, ":\n");
+    if (l-1 >= INT_MAX) return -1;
+    if (snprintf(buf, buf_size, "%.*s/%s", (int)l, s, name) < buf_size) {
+      dbg("dlopen: path_find: %s", buf);
+      struct stat statbuf;
+      if (stat(buf, &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
+        return 0;
+      }
+      switch (errno) {
+      case ENOENT:
+      case ENOTDIR:
+      case EACCES:
+      case ENAMETOOLONG:
+        break;
+      default:
+        dbg("dlopen: path_find failed: %s", strerror(errno));
+        /* Any negative value but -1 will inhibit
+         * futher path search. */
+        return -2;
+      }
+    }
+    s += l;
+  }
 }
 
 // Internal version of dlopen with typed return value.
@@ -463,6 +535,16 @@ static struct dso* _dlopen(const char* file, int flags) {
 
   struct dso* p;
 
+  /* Resolve filename using LD_LIBRARY_PATH */
+  char buf[2*NAME_MAX+2];
+  if (!strchr(file, '/')) {
+    const char* env_path = getenv("LD_LIBRARY_PATH");
+    if (env_path && path_find(file, env_path, buf, sizeof buf) == 0) {
+      dbg("dlopen: found in LD_LIBRARY_PATH: %s", buf);
+      file = buf;
+    }
+  }
+
   /* Search for the name to see if it's already loaded */
   for (struct dlevent* e = head; e; e = e->next) {
     if (e->sym_index == -1 && !strcmp(e->dso->name, file)) {
@@ -485,10 +567,6 @@ static struct dso* _dlopen(const char* file, int flags) {
   }
   dbg("dlopen_js: success: %p", p);
   load_library_done(p);
-#ifdef _REENTRANT
-  // Block until all other threads have loaded this module.
-  dlsync();
-#endif
 end:
   dbg("dlopen(%s): done: %p", file, p);
   do_write_unlock();
@@ -584,14 +662,4 @@ void* __dlsym(void* restrict p, const char* restrict s, void* restrict ra) {
   dbg("__dlsym done dso:%p res:%p", p, res);
   do_write_unlock();
   return res;
-}
-
-int dladdr(const void* addr, Dl_info* info) {
-  // report all function pointers as coming from this program itself XXX not
-  // really correct in any way
-  info->dli_fname = "unknown";
-  info->dli_fbase = NULL;
-  info->dli_sname = NULL;
-  info->dli_saddr = NULL;
-  return 1;
 }

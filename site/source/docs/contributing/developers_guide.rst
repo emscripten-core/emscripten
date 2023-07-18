@@ -151,10 +151,20 @@ one of them, with the others kept fixed). Doing this will require rebuilding
 locally, which was not needed in the main bisection described in this
 section.
 
+Working with C structs and defines
+==================================
+
+If you change the layout of C structs or modify C defines that are used in
+JavaScript library files you may need to modify ``tools/struct_info.json``.  Any
+time that file is modified or a struct layout is changed you will need to run
+``./tools/gen_struct_info.py`` to re-generate the information used by
+JavaScript. Note that you need to run both ``./tools/gen_struct_info.py`` and
+``./tools/gen_struct_info.py --wasm64``.
+
+The ``test_gen_struct_info`` test will fail if you forget to do this.
+
 See also
 ========
 
 - :ref:`Debugging`
 - :ref:`Building-Projects`
-
-

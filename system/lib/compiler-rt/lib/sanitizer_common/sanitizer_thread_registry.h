@@ -163,6 +163,8 @@ class SANITIZER_MUTEX ThreadRegistry {
 
 typedef GenericScopedLock<ThreadRegistry> ThreadRegistryLock;
 
+ThreadRegistry *GetThreadRegistryLocked();
+
 } // namespace __sanitizer
 
 #endif // SANITIZER_THREAD_REGISTRY_H

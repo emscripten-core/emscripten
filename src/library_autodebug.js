@@ -17,6 +17,7 @@ mergeInto(LibraryManager.library, {
     out('get_i32 ' + [loc, index, value]);
     return value;
   },
+  $get_i64__deps: ['setTempRet0'],
   $get_i64: function(loc, index, low, high) {
     out('get_i64 ' + [loc, index, low, high]);
     setTempRet0(high);
@@ -42,6 +43,7 @@ mergeInto(LibraryManager.library, {
     out('set_i32 ' + [loc, index, value]);
     return value;
   },
+  $set_i64__deps: ['setTempRet0'],
   $set_i64: function(loc, index, low, high) {
     out('set_i64 ' + [loc, index, low, high]);
     setTempRet0(high);
@@ -71,6 +73,7 @@ mergeInto(LibraryManager.library, {
     out('load_val_i32 ' + [loc, value]);
     return value;
   },
+  $load_val_i64__deps: ['setTempRet0'],
   $load_val_i64: function(loc, low, high) {
     out('load_val_i64 ' + [loc, low, high]);
     setTempRet0(high);
@@ -92,6 +95,7 @@ mergeInto(LibraryManager.library, {
     out('store_val_i32 ' + [loc, value]);
     return value;
   },
+  $store_val_i64__deps: ['setTempRet0'],
   $store_val_i64: function(loc, low, high) {
     out('store_val_i64 ' + [loc, low, high]);
     setTempRet0(high);

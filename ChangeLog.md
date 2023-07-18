@@ -18,8 +18,151 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.33 (in development)
+3.1.44 (in development)
 -----------------------
+- musl libc updated from v1.2.3 to v1.2.4. (#19812)
+- The `EM_LOG_FUNC_PARAMS` flag to `emscripten_log`/`emscripten_get_callstack`
+  has been deprecated and no longer has any effect.  It was based on a
+  long-deprecated JS API. (#19820)
+- The internal `read_` and `readAsync` functions no longer handle data URIs.
+  (Higher-level functions are expected to handle that themselves, before calling.)
+  This only effects builds that use `-sSINGLE_FILE` or `--memory-init-file`.
+  (#19792)
+- The `asm` property of the Module object (which held the raw exports of the
+  wasm module) has been removed.  Internally, this is now accessed via the
+  `wasmExports` global. If necessary, it is possible to export `wasmExports`
+  on the Module object using `-sEXPORTED_RUNTIME_METHODS=wasmExports`. (#19816)
+
+3.1.43 - 07/10/23
+-----------------
+- Handling i64 arguments and return values in JS functions is now much simpler
+  with the new `__i53abi` decorator.  When this is set to true, i64 values are
+  automatically converted to JS numbers (i53) at the JS boundary.  Parameters
+  outside of the i53 will show up as NaN in the JS code (#19711)
+
+3.1.42 - 06/22/23
+-----------------
+- The default minimum Node version of Emscripten output was bumped from 10.19 to
+  16.0. To run the output JS in an older version of node, you can use e.g.
+  `-sMIN_NODE_VERSION=101900` which will apply the previous minimum version of
+  10.19.0. (#19192).
+- The log message that emcc will sometime print (for example when auto-building
+  system libraries) can now be completely supressed by running with
+  `EMCC_LOGGING=0`.
+- Runtime dynamic linking symbols such as dlopen and dlsym will no longer cause
+  a linker error when building without `-sMAIN_MODULE`.  Instead stub functions
+  will be included that fail at runtime.  This matches the behaviour of other
+  libc functions that we don't implement.  For those that prefer to get a linker
+  error we have the `-sALLOW_UNIMPLEMENTED_SYSCALLS` settings. (#19527)
+- The `modifyFunction` helper in `parseTools.js` was renamed to
+  `modifyJSFunction` and its callback function no longer takes the name of the
+  function being modified.  The name is not relevant for JS library functions
+  and can be safely ignored.
+- JS library functions can now be implemented using ES6 arrow notation, which
+  can save to a few bytes on JS code size. (#19539)
+
+3.1.41 - 06/06/23
+-----------------
+- A new setting (`CHECK_NULL_WRITES`) was added to disabled the checking of
+  address zero that is normally done when `STACK_OVERFLOW_CHECK` is enabled.
+  (#19487)
+- compiler-rt updated to LLVM 16. (#19506)
+- libcxx and libcxxabi updated to LLVM 16. (#)
+
+3.1.40 - 05/30/23
+-----------------
+- The `_emscripten_out()`, `_emscripten_err()` and `_emscripten_dbg()` functions
+  declared in `emscripten/console.h` no longer have the underscore prefix and
+  are now documented. (#19445)
+
+3.1.39 - 05/18/23
+-----------------
+- The JS `err()` function will now bind to `console.error` by default rather
+  than `console.warning`.  For debugging/tracing/logging we recommend the
+  `dbg()` function instead. (#19326)
+- The `WASM2C` options has been removed. All known users are using upstream wabt
+  these days anyhow.
+
+3.1.38 - 05/10/23
+-----------------
+- The `dladdr` function will now always return an error rather than filling in
+  dummy values. (#19319)
+- The restriction preventing the use of dynamic linking in combination with
+  `-sDYNAMIC_EXECUTION=0` was removed.  This restriction was being enforced
+  unnecessarily since dynamic linking has not depended on `eval()` for a while
+  now.
+- Remove extra code for falling back to long-deprecated BlobBuilder browser API
+  when Blob constructor is missing.  This was a fix for an issue that has long
+  been fixed. (#19277)
+
+3.1.37 - 04/26/23
+-----------------
+- The `EM_PYTHON_MULTIPROCESSING` environment variable no longer has any effect.
+  This was added a temporary fallback but should no longer be needed. (#19224)
+- The old reverse dependency system based on `tools/deps_info.py` has been
+  removed and the existing `__deps` entries in JS library files can now be used
+  to express JS-to-native dependencies.  As well being more precise, and
+  extensible via user-supplied JS libraries, this also speeds up link times
+  since we no longer need scan linker inputs using `llvm-nm`.  It also
+  completely removes the need for the `REVERSE_DEPS` settings which has now
+  been deprecated. (#18905)
+- Bump the default minimum Firefox version from 65 to 68 (#19191).
+- Background pthreads no longer prevent a Node.js app from exiting. (#19073)
+
+3.1.36 - 04/16/23
+-----------------
+- The `USES_DYNAMIC_ALLOC` setting has been deprecated.  You can get the same
+  effect from `-sMALLOC=none`. (#19164)
+
+3.1.35 - 04/03/23
+-----------------
+- The following JavaScript runtime functions were converted to JavaScript
+  library functions:
+   - UTF8ArrayToString
+   - UTF8ToString
+   - stringToUTF8Array
+   - stringToUTF8
+   - lengthBytesUTF8
+  If you use any of these functions in your JS code you will now need to include
+  them explictly in one of the following ways:
+   - Add them to a `__deps` entry in your JS library file (with leading $)
+   - Add them to `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` (with leading $)
+   - Add them to `EXPORTED_FUNCTIONS` (without leading $)
+   - Set `-sLEGACY_RUNTIME` to include all of them at once.
+- `FS.loadFilesFromDB` and `FS.saveFilesToDB` were removed.  We think it's
+  unlikly there were any users of these functions since there is now a separate
+  IDBFS filesystem for folks that want persistence. (#19049)
+- `allocateUTF8` and `allocateUTF8OnStack` library function moved to
+  `library_legacy.js`.  Prefer the more accurately named `stringToNewUTF8` and
+  `stringToUTF8OnStack`. (#19089)
+- `SDL_image` port was updated to version 2.6.0.
+- `-z` arguments are now passed directly to wasm-ld without the need for the
+  `-Wl,` prefix.  This matches the behaviour of both clang and gcc. (#18956)
+- Reverted #18525 which runs the JS pre-processor over files passed via
+  --pre-js and --post-js.  It turned out this change caused issue for several
+  folks who had JS files with lines that start with `#` so can't be run through
+  the pre-processor.  If folks want to re-enable this we can looks into ways to
+  make it conditional/optional.
+- The `{{{ cDefine('name') }}}` helper macro can now be simplified to just `{{{
+  cDefs.name }}}`.
+
+3.1.34 - 03/14/23
+-----------------
+- Fix for using `EM_JS` functions defined in other object files.  This was a bug
+  that was introduced when `LLD_REPORT_UNDEFINED` was enabled by default back in
+  3.1.28. (#18928)
+- The prefered way to enable pthread is now to just the the standard `-pthread`
+  flag.  The `-sUSE_PTHREADS` setting still works but is marked as legacy and
+  will generate a warning in `-sSTRICT` mode.
+- When targeting node, and using `-sMODULARIZE`, we no longer internally catch
+  unhandled promise rejections or exit status code. That is to say the,
+  `NODEJS_CATCH_REJECTION` and `NODEJS_CATCH_EXIT` are no longer compatible
+  with `-sMODULARIZE`.   
+
+3.1.33 - 03/08/23
+-----------------
+- Initial support for C++20 modules.  We have added a very simple test in form
+  of `other.test_cpp_module`. (#18915)
 - Removed `sys/sysctl.h` compatibility header.  We don't implement the function
   it defines. (#18863)
 - Update SDL2_ttf port to 2.20.2 (#18804)
@@ -30,6 +173,12 @@ See docs/process.md for more on how version tagging works.
   `MINIMAL_RUNTIME`, the option will be **disabled** by default.
   This option simply exports the symbols on the module object, i.e.,
   `Module['X'] = X;`
+- The WasmFS OPFS backend is now faster in browsers that implement
+  [`Atomics.waitAsync`](https://caniuse.com/mdn-javascript_builtins_atomics_waitasync).
+  (#18861)
+- The `emscripten_proxy_async_with_callback` API was replaced with a simpler
+  `emscripten_proxy_callback` API that takes a second callback to be called if
+  the worker thread dies before completing the proxied work.  
 
 3.1.32 - 02/17/23
 -----------------
@@ -45,6 +194,9 @@ See docs/process.md for more on how version tagging works.
   SjLj, the combination we do not intend to support for the long term.
 - Added support for Wasm-based AudioWorklets for realtime audio processing
   (#16449)
+- Synchronous proxying functions in emscripten/proxying.h now return errors
+  instead of hanging forever when the worker thread dies before the proxied work
+  is finished.
 
 3.1.31 - 01/26/23
 -----------------

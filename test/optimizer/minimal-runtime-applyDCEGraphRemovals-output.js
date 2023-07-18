@@ -1,11 +1,11 @@
 var name;
 
 var wasmImports = {
- "save1": 1,
- "save2": 2
+ save1: 1,
+ save2: 2
 };
 
-WebAssembly.instantiate(Module["wasm"], imports).then(function(output) {
+WebAssembly.instantiate(Module["wasm"], imports).then(output => {
  asm = output.instance.exports;
  expD1 = asm["expD1"];
  expD2 = asm["expD2"];

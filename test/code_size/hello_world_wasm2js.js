@@ -1,9 +1,9 @@
-var b = Module, d = new TextDecoder("utf8"), k = new function(a) {
+var b = Module, g = new function(a) {
     this.buffer = new ArrayBuffer(65536 * a.initial);
 }({
     initial: 256,
     maximum: 256
-}), l = k.buffer, g = new Uint8Array(l), m;
+}), k = g.buffer, d = new Uint8Array(k), l = new TextDecoder("utf8"), m;
 
 function c(a) {
     this.exports = function(h) {
@@ -40,20 +40,20 @@ function c(a) {
     };
 })(b.wasm, {
     a: {
-        a: function(a) {
+        a: a => {
             var h = console, n = h.log;
             if (a) {
-                for (var f = a + void 0, e = a; !(e >= f) && g[e]; ) ++e;
-                a = d.decode(g.subarray(a, e));
+                for (var f = a + void 0, e = a; !(e >= f) && d[e]; ) ++e;
+                a = l.decode(d.subarray(a, e));
             } else a = "";
             n.call(h, a);
         },
-        memory: k
+        memory: g
     }
-}).then((function(a) {
+}).then((a => {
     a = a.instance.exports;
     m = a.c;
-    g.set(new Uint8Array(b.mem), 1024);
+    d.set(new Uint8Array(b.mem), 1024);
     a.b();
     m();
 }));

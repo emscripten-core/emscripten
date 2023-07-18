@@ -53,22 +53,13 @@ var expD4 = Module['expD4'] = asm['expD4'];
 var expD5 = asm['expD5'];
 
 // exports gotten indirectly (async compilation
-var expI1 = Module['expI1'] = function() {
- return (expI1 = Module['expI1'] = Module['asm']['expI1']).apply(null, arguments);
-};
-var expI2 = Module['expI2'] = function() {
- return (expI2 = Module['expI2'] = Module['asm']['expI2']).apply(null, arguments);
-};
-var expI3 = Module['expI3'] = function() {
- return (expI3 = Module['expI3'] = Module['asm']['expI3']).apply(null, arguments);
-};
-var expI4 = Module['expI4'] = function() {
- return (expI4 = Module['expI4'] = Module['asm']['expI4']).apply(null, arguments);
-};
+var expI1 = Module['expI1'] = () => (expI1 = Module['expI1'] = wasmExports['expI1'])();
+var expI2 = Module['expI2'] = () => (expI2 = Module['expI2'] = wasmExports['expI2'])();
+var expI3 = Module['expI3'] = () => (expI3 = Module['expI3'] = wasmExports['expI3'])();
+var expI4 = Module['expI4'] = () => (expI4 = Module['expI4'] = wasmExports['expI4'])();
+
 // Same as above but not export on the Module.
-var expI5 = function() {
- return (expI5 = Module['asm']['expI5']).apply(null, arguments);
-};
+var expI5 = () => (expI5 = wasmExports['expI5'])();
 
 // add uses for some of them
 expD1;
@@ -77,7 +68,7 @@ asm['expD3'];
 
 expI1;
 Module['expI2'];
-Module['asm']['expI3'];
+wasmExports['expI3'];
 
 // deep uses, that we can't scan
 function usedFromDeep() {
@@ -95,10 +86,10 @@ var func = function() {
 };
 
 // dyncalls
-var dynCall_v = Module["dynCall_v"] = function() {  return Module["asm"]["dynCall_v"].apply(null, arguments) };
-var dynCall_vi = Module["dynCall_vi"] = function() {  return Module["asm"]["dynCall_vi"].apply(null, arguments) };
-var dynCall_vii = Module["dynCall_vii"] = function() {  return Module["asm"]["dynCall_vii"].apply(null, arguments) };
-var dynCall_viii = Module["dynCall_viii"] = function() {  return Module["asm"]["dynCall_viii"].apply(null, arguments) };
+var dynCall_v = Module["dynCall_v"] = () => wasmExports["dynCall_v"]();
+var dynCall_vi = Module["dynCall_vi"] = () => wasmExports["dynCall_vi"]();
+var dynCall_vii = Module["dynCall_vii"] = () => wasmExports["dynCall_vii"]();
+var dynCall_viii = Module["dynCall_viii"] = () => wasmExports["dynCall_viii"]();
 
 dynCall_v(ptr); // use directly
 Module['dynCall_vi'](ptr, 1); // use on module
@@ -110,3 +101,7 @@ dynCall('vii', ptr, [2, 3]); // use indirectly, depending on analysis of dynCall
   x++;
 });
 
+// Don't crash on this code pattern, which we should ignore.
+var _bad = function() {
+  return something();
+};

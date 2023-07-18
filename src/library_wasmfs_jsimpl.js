@@ -24,16 +24,16 @@ mergeInto(LibraryManager.library, {
     return wasmFS$backends[backend].freeFile(file);
   },
 
-  _wasmfs_jsimpl_write: function(backend, file, buffer, length, {{{ defineI64Param('offset') }}}) {
-    {{{ receiveI64ParamAsDouble('offset') }}}
+  _wasmfs_jsimpl_write__i53abi: true,
+  _wasmfs_jsimpl_write: function(backend, file, buffer, length, offset) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
     return wasmFS$backends[backend].write(file, buffer, length, offset);
   },
 
-  _wasmfs_jsimpl_read: function(backend, file, buffer, length, {{{ defineI64Param('offset') }}}) {
-    {{{ receiveI64ParamAsDouble('offset') }}}
+  _wasmfs_jsimpl_read__i53abi: true,
+  _wasmfs_jsimpl_read: function(backend, file, buffer, length, offset) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
@@ -52,7 +52,7 @@ mergeInto(LibraryManager.library, {
   // implementors of backends: the hooks we call should return Promises, which
   // we then connect to the calling C++.
 
-  _wasmfs_jsimpl_async_alloc_file__sig: 'vppp',
+  _wasmfs_jsimpl_async_alloc_file__deps: ['emscripten_proxy_finish'],
   _wasmfs_jsimpl_async_alloc_file: async function(ctx, backend, file) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
@@ -61,6 +61,7 @@ mergeInto(LibraryManager.library, {
     _emscripten_proxy_finish(ctx);
   },
 
+  _wasmfs_jsimpl_async_free_file__deps: ['emscripten_proxy_finish'],
   _wasmfs_jsimpl_async_free_file: async function(ctx, backend, file) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
@@ -69,9 +70,9 @@ mergeInto(LibraryManager.library, {
     _emscripten_proxy_finish(ctx);
   },
 
-  _wasmfs_jsimpl_async_write__sig: 'vpppppjp',
-  _wasmfs_jsimpl_async_write: async function(ctx, backend, file, buffer, length, {{{ defineI64Param('offset') }}}, result_p) {
-    {{{ receiveI64ParamAsDouble('offset') }}}
+  _wasmfs_jsimpl_async_write__i53abi: true,
+  _wasmfs_jsimpl_async_write__deps: ['emscripten_proxy_finish'],
+  _wasmfs_jsimpl_async_write: async function(ctx, backend, file, buffer, length, offset, result_p) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
@@ -80,9 +81,9 @@ mergeInto(LibraryManager.library, {
     _emscripten_proxy_finish(ctx);
   },
 
-  _wasmfs_jsimpl_async_read__sig: 'vpppppjp',
-  _wasmfs_jsimpl_async_read: async function(ctx, backend, file, buffer, length, {{{ defineI64Param('offset') }}}, result_p) {
-    {{{ receiveI64ParamAsDouble('offset') }}}
+  _wasmfs_jsimpl_async_read__i53abi: true,
+  _wasmfs_jsimpl_async_read__deps: ['emscripten_proxy_finish'],
+  _wasmfs_jsimpl_async_read: async function(ctx, backend, file, buffer, length, offset, result_p) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
@@ -91,7 +92,7 @@ mergeInto(LibraryManager.library, {
     _emscripten_proxy_finish(ctx);
   },
 
-  _wasmfs_jsimpl_async_get_size__sig: 'vpppp',
+  _wasmfs_jsimpl_async_get_size__deps: ['emscripten_proxy_finish'],
   _wasmfs_jsimpl_async_get_size: async function(ctx, backend, file, size_p) {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);

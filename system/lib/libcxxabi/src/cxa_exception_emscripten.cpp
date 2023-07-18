@@ -1,21 +1,31 @@
-//===------------------- cxa_exception_emscripten.cpp ---------------------===//
+//===-------------------- cxa_exception_emscripten.cpp --------------------===//
 //
-// This code contains Emscripten specific code for exception handling.
-// Emscripten has two modes of exception handling: Emscripten EH, which uses JS
-// glue code, and Wasm EH, which uses the new Wasm exception handling proposal
-// and meant to be faster. Code for different modes is demarcated with
-// '__USING_EMSCRIPTEN_EXCEPTIONS__' and '__USING_WASM_EXCEPTIONS__'.
+//  Most code in the file is directly copied from cxa_exception.cpp.
+//  TODO(sbc): consider merging them
+//
+//  Notable changes:
+ //   __cxa_allocate_exception doesn't add get_cxa_exception_offset
+//    __cxa_decrement_exception_refcount dosn't call the destructor if rethrown
+//  Both of these changes are mirrored from the historical JS implemenation of
+//  thse functions.
 //
 //===----------------------------------------------------------------------===//
 
+#include "cxxabi.h"
 #include "cxa_exception.h"
-#include "private_typeinfo.h"
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
+#include "include/atomic_support.h"
+#include "fallback_malloc.h"
+#include "stdio.h"
+#include "assert.h"
 
-#if !defined(__USING_WASM_EXCEPTIONS__)
+// Define to enable extra debugging on stderr.
+#if EXCEPTIONS_DEBUG
+#include "emscripten/console.h"
+#define DEBUG emscripten_errf
+#else
+#define DEBUG(...)
+#endif
+
 // Until recently, Rust's `rust_eh_personality` for emscripten referred to this
 // symbol. If Emscripten doesn't provide it, there will be errors when linking
 // rust. The rust personality function is never called so we can just abort.
@@ -30,121 +40,116 @@ __gxx_personality_v0(int version,
                      _Unwind_Context* context) {
     abort();
 }
-#endif // !defined(__USING_WASM_EXCEPTIONS__)
 
-using namespace __cxxabiv1;
+namespace __cxxabiv1 {
 
-//  Some utility routines are copied from cxa_exception.cpp
-static inline __cxa_exception*
-cxa_exception_from_thrown_object(void* thrown_object) {
-  return static_cast<__cxa_exception*>(thrown_object) - 1;
+//  Utility routines
+static
+inline
+__cxa_exception*
+cxa_exception_from_thrown_object(void* thrown_object)
+{
+    DEBUG("cxa_exception_from_thrown_object %p -> %p",
+          thrown_object, static_cast<__cxa_exception*>(thrown_object) - 1);
+    return static_cast<__cxa_exception*>(thrown_object) - 1;
 }
 
 // Note:  This is never called when exception_header is masquerading as a
 //        __cxa_dependent_exception.
-static inline void*
-thrown_object_from_cxa_exception(__cxa_exception* exception_header) {
-  return static_cast<void*>(exception_header + 1);
+static
+inline
+void*
+thrown_object_from_cxa_exception(__cxa_exception* exception_header)
+{
+    DEBUG("thrown_object_from_cxa_exception %p -> %p",
+          exception_header, static_cast<void*>(exception_header + 1));
+    return static_cast<void*>(exception_header + 1);
 }
 
-#if defined(__USING_EMSCRIPTEN_EXCEPTIONS__) ||                                \
-  defined(__USING_WASM_EXCEPTIONS__)
-
-//  Get the exception object from the unwind pointer.
-//  Relies on the structure layout, where the unwind pointer is right in
-//  front of the user's exception object
-static inline __cxa_exception* cxa_exception_from_unwind_exception(
-  _Unwind_Exception* unwind_exception) {
-  return cxa_exception_from_thrown_object(unwind_exception + 1);
+// Round s up to next multiple of a.
+static inline
+size_t aligned_allocation_size(size_t s, size_t a) {
+    return (s + a - 1) & ~(a - 1);
 }
 
-static inline void* thrown_object_from_unwind_exception(
-  _Unwind_Exception* unwind_exception) {
-  __cxa_exception* exception_header =
-    cxa_exception_from_unwind_exception(unwind_exception);
-  return thrown_object_from_cxa_exception(exception_header);
+static inline
+size_t cxa_exception_size_from_exception_thrown_size(size_t size) {
+    return aligned_allocation_size(size + sizeof (__cxa_exception),
+                                   alignof(__cxa_exception));
 }
 
 extern "C" {
 
-void* __thrown_object_from_unwind_exception(
-  _Unwind_Exception* unwind_exception) {
-  return thrown_object_from_unwind_exception(unwind_exception);
+//  Allocate a __cxa_exception object, and zero-fill it.
+//  Reserve "thrown_size" bytes on the end for the user's exception
+//  object. Zero-fill the object. If memory can't be allocated, call
+//  std::terminate. Return a pointer to the memory to be used for the
+//  user's exception object.
+void *__cxa_allocate_exception(size_t thrown_size) _NOEXCEPT {
+    size_t actual_size = cxa_exception_size_from_exception_thrown_size(thrown_size);
+
+    char *raw_buffer =
+        (char *)__aligned_malloc_with_fallback(actual_size);
+    if (NULL == raw_buffer)
+        std::terminate();
+    __cxa_exception *exception_header =
+        static_cast<__cxa_exception *>((void *)(raw_buffer));
+    ::memset(exception_header, 0, actual_size);
+    return thrown_object_from_cxa_exception(exception_header);
 }
 
-// Given a thrown_object, puts the information about its type and message into
-// 'type' and 'message' output parameters. 'type' will contain the string
-// representation of the type of the exception, e.g., 'int'. 'message' will
-// contain the result of 'std::exception::what()' method if the type of the
-// exception is a subclass of std::exception; otherwise it will be NULL. The
-// caller is responsible for freeing 'type' buffer and also 'message' buffer, if
-// it is not NULL.
-void __get_exception_message(void* thrown_object, char** type, char** message) {
-  __cxa_exception* exception_header =
-    cxa_exception_from_thrown_object(thrown_object);
-  const __shim_type_info* thrown_type =
-    static_cast<const __shim_type_info*>(exception_header->exceptionType);
-  const char* type_name = thrown_type->name();
 
-  int status = 0;
-  char* demangled_buf = __cxa_demangle(type_name, 0, 0, &status);
-  if (status == 0 && demangled_buf) {
-    *type = demangled_buf;
-  } else {
-    if (demangled_buf) {
-      free(demangled_buf);
-    }
-    *type = (char*)malloc(strlen(type_name) + 1);
-    strcpy(*type, type_name);
-  }
-
-  *message = NULL;
-  const __shim_type_info* catch_type =
-    static_cast<const __shim_type_info*>(&typeid(std::exception));
-  int can_catch = catch_type->can_catch(thrown_type, thrown_object);
-  if (can_catch) {
-    const char* what =
-      static_cast<const std::exception*>(thrown_object)->what();
-    *message = (char*)malloc(strlen(what) + 1);
-    strcpy(*message, what);
-  }
-}
-
-// Returns a message saying that execution was terminated due to an exception.
-// This message is freshly malloc'd and should be freed.
-char* __get_exception_terminate_message(void* thrown_object) {
-  char* type;
-  char* message;
-  __get_exception_message(thrown_object, &type, &message);
-  char* result;
-  if (message != NULL) {
-    asprintf(
-      &result, "terminating with uncaught exception %s: %s", type, message);
-    free(message);
-  } else {
-    asprintf(&result, "terminating with uncaught exception of type %s", type);
-  }
-  free(type);
-  return result;
-}
-}
-
-#endif // __USING_EMSCRIPTEN_EXCEPTIONS__ || __USING_WASM_EXCEPTIONS__
-
-#ifndef __USING_WASM_EXCEPTIONS__
-
-namespace __cxxabiv1 {
-
-void* __cxa_allocate_exception(size_t size) _NOEXCEPT {
-  // Thrown object is prepended by exception metadata block
-  __cxa_exception* ex = (__cxa_exception*)malloc(size + sizeof(__cxa_exception));
-  return thrown_object_from_cxa_exception(ex);
-}
-
+//  Free a __cxa_exception object allocated with __cxa_allocate_exception.
 void __cxa_free_exception(void *thrown_object) _NOEXCEPT {
-  free(cxa_exception_from_thrown_object(thrown_object));
+    // Compute the size of the padding before the header.
+    char *raw_buffer =
+        ((char *)cxa_exception_from_thrown_object(thrown_object));
+    __aligned_free_with_fallback((void *)raw_buffer);
 }
 
+/*
+    If thrown_object is not null, atomically increment the referenceCount field
+    of the __cxa_exception header associated with the thrown object referred to
+    by thrown_object.
+
+    Requires:  If thrown_object is not NULL, it is a native exception.
+*/
+void
+__cxa_increment_exception_refcount(void *thrown_object) _NOEXCEPT {
+    if (thrown_object != NULL )
+    {
+        __cxa_exception* exception_header = cxa_exception_from_thrown_object(thrown_object);
+        DEBUG("INC: %p refcnt=%zu", thrown_object, exception_header->referenceCount);
+        std::__libcpp_atomic_add(&exception_header->referenceCount, size_t(1));
+    }
 }
 
-#endif // !__USING_WASM_EXCEPTIONS__
+/*
+    If thrown_object is not null, atomically decrement the referenceCount field
+    of the __cxa_exception header associated with the thrown object referred to
+    by thrown_object.  If the referenceCount drops to zero, destroy and
+    deallocate the exception.
+
+    Requires:  If thrown_object is not NULL, it is a native exception.
+*/
+_LIBCXXABI_NO_CFI
+void __cxa_decrement_exception_refcount(void *thrown_object) _NOEXCEPT {
+    if (thrown_object != NULL )
+    {
+        __cxa_exception* exception_header = cxa_exception_from_thrown_object(thrown_object);
+        DEBUG("DEC: %p refcnt=%zu rethrown=%d", thrown_object,
+              exception_header->referenceCount, exception_header->rethrown);
+        assert(exception_header->referenceCount > 0);
+        if (std::__libcpp_atomic_add(&exception_header->referenceCount, size_t(-1)) == 0 && !exception_header->rethrown)
+        {
+            DEBUG("DEL: %p (dtor=%p)", thrown_object, exception_header->exceptionDestructor);
+            if (NULL != exception_header->exceptionDestructor)
+                exception_header->exceptionDestructor(thrown_object);
+            __cxa_free_exception(thrown_object);
+        }
+    }
+}
+
+}  // extern "C"
+
+}  // abi

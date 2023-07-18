@@ -16,5 +16,30 @@ Dawn additionally autogenerates two "snippets" that are used in Emscripten:
 - `library_webgpu_enum_tables.js`, which is pasted into [`library_webgpu.js`](../../../src/library_webgpu.js)
 - `webgpu_struct_info.json`, which is pasted into [`struct_info.json`](../../../src/struct_info.json).
 
-Once that's done, the following file also needs to be rebaselined:
-- [`reference_struct_info.json`](../../../test/reference_struct_info.json): can be updated by running `test/runner other.test_gen_struct_info --rebaseline`
+Once that's done, you need to update the auto-generated files with the commands below:
+
+```
+./tools/gen_struct_info.py
+./tools/gen_struct_info.py --wasm64
+./tools/gen_sig_info.py
+```
+
+## Testing
+
+There is a `browser.test_webgpu_basic_rendering` with minimal WebGPU API testing that can be handy to test manually before making a contribution.
+
+```
+test/runner browser.test_webgpu_basic_rendering
+```
+
+You may need to specify extra browser cmd args to assign the WebGPU supported browser, which is needed if you work on linux where WebGPU is not enabled by default in chrome at present.
+
+```
+test/runner browser.test_webgpu_basic_rendering --browser="google-chrome-unstable --enable-unsafe-webgpu --enable-features=Vulkan,UseSkiaRenderer"
+```
+
+Alternatively you can test your emscripten updates by building the source file, and then serve (e.g. use node http-server) and view in browser to make sure things work fine.
+
+```
+emcc test/webgpu_basic_rendering.cpp -sUSE_WEBGPU -o path/to/index.html
+```

@@ -15,7 +15,7 @@ mergeInto(LibraryManager.library, {
   },
 
   // C calling interface.
-  $ccall__deps: ['$getCFunc', '$writeArrayToMemory'],
+  $ccall__deps: ['$getCFunc', '$writeArrayToMemory', '$stringToUTF8OnStack'],
   $ccall__docs: `
   /**
    * @param {string|null=} returnType
@@ -33,9 +33,7 @@ mergeInto(LibraryManager.library, {
         var ret = 0;
         if (str !== null && str !== undefined && str !== 0) { // null string
           // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
-          var len = (str.length << 2) + 1;
-          ret = stackAlloc(len);
-          stringToUTF8(str, ret, len);
+          ret = stringToUTF8OnStack(str);
         }
         return {{{ to64('ret') }}};
       },
@@ -87,11 +85,14 @@ mergeInto(LibraryManager.library, {
       if (stack !== 0) stackRestore(stack);
       return convertReturnValue(ret);
     }
+#if ASYNCIFY
+  var asyncMode = opts && opts.async;
+#endif
+
 #if ASYNCIFY == 1
     // Keep the runtime alive through all calls. Note that this call might not be
     // async, but for simplicity we push and pop in all calls.
     runtimeKeepalivePush();
-    var asyncMode = opts && opts.async;
     if (Asyncify.currData != previousAsync) {
 #if ASSERTIONS
       // A change in async operation happened. If there was already an async
@@ -111,6 +112,10 @@ mergeInto(LibraryManager.library, {
 #endif
       return Asyncify.whenDone().then(onDone);
     }
+#endif
+
+#if ASYNCIFY == 2
+    if (asyncMode) return ret.then(onDone);
 #endif
 
     ret = onDone(ret);

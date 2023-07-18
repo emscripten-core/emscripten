@@ -13,6 +13,7 @@ from . import diagnostics
 
 # Subset of settings that take a memory size (i.e. 1Gb, 64kb etc)
 MEM_SIZE_SETTINGS = {
+    'GLOBAL_BASE',
     'STACK_SIZE',
     'TOTAL_STACK',
     'INITIAL_MEMORY',
@@ -64,12 +65,14 @@ COMPILE_TIME_SETTINGS = {
     'RELOCATABLE',
     'STRICT',
     'EMSCRIPTEN_TRACING',
-    'USE_PTHREADS',
+    'PTHREADS',
+    'USE_PTHREADS', # legacy name of PTHREADS setting
     'SHARED_MEMORY',
     'SUPPORT_LONGJMP',
     'DEFAULT_TO_CXX',
     'WASM_OBJECT_FILES',
     'WASM_WORKERS',
+    'BULK_MEMORY',
 
     # Internal settings used during compilation
     'EXCEPTION_CATCHING_ALLOWED',

@@ -13,6 +13,10 @@
 #include <emscripten/proxying.h>
 #include <emscripten/threading.h>
 
+extern "C" {
+void _wasmfs_thread_utils_heartbeat(em_proxying_queue* ctx);
+}
+
 namespace emscripten {
 
 // Helper class for synchronously proxying work to a dedicated worker thread,
@@ -46,20 +50,12 @@ public:
         // progress even if the main thread is blocked.
         //
         // TODO: Remove this once we can postMessage directly between workers
-        // without involving the main thread.
+        // without involving the main thread or once all browsers ship
+        // Atomics.waitAsync.
         //
         // Note that this requires adding _emscripten_proxy_execute_queue to
         // EXPORTED_FUNCTIONS.
-        EM_ASM({
-          var intervalID =
-            setInterval(() => {
-              if (ABORT) {
-                clearInterval(intervalID);
-              } else {
-                _emscripten_proxy_execute_queue($0);
-              }
-            }, 50);
-          }, queue.queue);
+        _wasmfs_thread_utils_heartbeat(queue.queue);
 
         // Sit in the event loop performing work as it comes in.
         emscripten_exit_with_live_runtime();

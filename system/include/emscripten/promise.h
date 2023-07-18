@@ -92,17 +92,59 @@ emscripten_promise_then(em_promise_t promise,
                         void* data);
 
 // Call Promise.all to create and return a new promise that is either fulfilled
-// once the `num_promises` input promises in the `promises` have been fulfilled
-// or is rejected once any of the input promises has been rejected. When the
-// returned promise is fulfilled, the values each of the input promises were
-// resolved with will be written to the `results` array and the returned promise
-// will be fulfilled with the address of that array as well.
+// once the `num_promises` input promises passed in `promises` have been
+// fulfilled or is rejected once any of the input promises has been rejected.
+// When the returned promise is fulfilled, the values each of the input promises
+// were resolved with will be written to the `results` array if it is non-null
+// and the returned promise will be fulfilled with the address of that array as
+// well.
 __attribute__((warn_unused_result)) em_promise_t emscripten_promise_all(
   em_promise_t* promises, void** results, size_t num_promises);
 
-// TODO: emscripten_promise_all_settled
-// TODO: emscripten_promise_race
-// TODO: emscripten_promise_any
+typedef struct em_settled_result_t {
+  em_promise_result_t result;
+  void* value;
+} em_settled_result_t;
+
+// Call Promise.allSettled to create and return a new promise that is fulfilled
+// once the `num_promises` input promises passed in `promises` have been
+// settled. When the returned promise is fulfilled, the `results` buffer will be
+// filled with the result comprising of either EM_PROMISE_FULFILL and the
+// fulfilled value or EM_PROMISE_REJECT and the rejection reason for each of the
+// input promises if `results` is non-null. The returned promise will be
+// fulfilled with the value of `results` as well.
+__attribute__((warn_unused_result)) em_promise_t emscripten_promise_all_settled(
+  em_promise_t* promises, em_settled_result_t* results, size_t num_promises);
+
+// Call Promise.any to create and return a new promise that is fulfilled once
+// any of the `num_promises` input promises passed in `promises` has been
+// fulfilled or is rejected once all of the input promises have been rejected.
+// If the returned promise is fulfilled, it will be fulfilled with the same
+// value as the first fulfilled input promise. Otherwise, if the returned
+// promise is rejected, the rejection reasons for each input promise will be
+// written to the `errors` buffer if it is non-null. The rejection reason for
+// the returned promise will also be the address of the `errors` buffer.
+__attribute__((warn_unused_result)) em_promise_t emscripten_promise_any(
+  em_promise_t* promises, void** errors, size_t num_promises);
+
+// Call Promise.race to create and return a new promise that settles once any of
+// the `num_promises` input promises passed in `promises` has been settled. If
+// the first input promise to settle is fulfilled, the resulting promise is
+// fulfilled with the same value. Otherwise, if the first input promise to
+// settle is rejected, the resulting promise is rejected with the same reason.
+__attribute__((warn_unused_result)) em_promise_t
+emscripten_promise_race(em_promise_t* promises, size_t num_promises);
+
+// Suspend the current Wasm execution context until the given promise has been
+// settled.
+//
+// Since the stack is not unwound while Wasm execution is suspended, it is
+// safe to pass pointers to the stack to asynchronous work that is waited on
+// with this function.
+//
+// This function can only be used in programs that were built with `-sASYNCIFY`.
+__attribute__((warn_unused_result)) em_settled_result_t
+emscripten_promise_await(em_promise_t promise);
 
 #ifdef __cplusplus
 }

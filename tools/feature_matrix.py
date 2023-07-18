@@ -22,6 +22,7 @@ class Feature(IntEnum):
   JS_BIGINT_INTEGRATION = auto()
   THREADS = auto()
   GLOBALTHIS = auto()
+  PROMISE_ANY = auto()
 
 
 default_features = {Feature.SIGN_EXT, Feature.MUTABLE_GLOBALS}
@@ -62,25 +63,44 @@ min_browser_versions = {
     'edge': 79,
     'firefox': 65,
     'safari': 120100,
-    # 'node': 120000
+    'node': 120000,
+  },
+  Feature.PROMISE_ANY: {
+    'chrome': 85,
+    'firefox': 79,
+    'safari': 140000,
+    'node': 150000,
   },
 }
 
 
 def caniuse(feature):
   min_versions = min_browser_versions[feature]
+
+  def report_missing(setting_name):
+    setting_value = getattr(settings, setting_name)
+    logger.debug(f'cannot use {feature.name} because {setting_name} is too old: {setting_value}')
+
   if settings.MIN_CHROME_VERSION < min_versions['chrome']:
+    report_missing('MIN_CHROME_VERSION')
     return False
   # For edge we just use the same version requirements as chrome since,
   # at least for modern versions of edge, they share version numbers.
   if settings.MIN_EDGE_VERSION < min_versions['chrome']:
+    report_missing('MIN_EDGE_VERSION')
     return False
   if settings.MIN_FIREFOX_VERSION < min_versions['firefox']:
+    report_missing('MIN_FIREFOX_VERSION')
     return False
   if settings.MIN_SAFARI_VERSION < min_versions['safari']:
+    report_missing('MIN_SAFARI_VERSION')
     return False
   # IE don't support any non-MVP features
   if settings.MIN_IE_VERSION != 0x7FFFFFFF:
+    report_missing('MIN_IE_VERSION')
+    return False
+  if 'node' in min_versions and settings.MIN_NODE_VERSION < min_versions['node']:
+    report_missing('MIN_NODE_VERSION')
     return False
   return True
 
@@ -109,6 +129,8 @@ def enable_feature(feature, reason):
 def apply_min_browser_versions():
   if settings.WASM_BIGINT:
     enable_feature(Feature.JS_BIGINT_INTEGRATION, 'WASM_BIGINT')
-  if settings.USE_PTHREADS:
+  if settings.PTHREADS:
     enable_feature(Feature.THREADS, 'pthreads')
     enable_feature(Feature.BULK_MEMORY, 'pthreads')
+  if settings.AUDIO_WORKLET:
+    enable_feature(Feature.GLOBALTHIS, 'AUDIO_WORKLET')

@@ -1,6 +1,8 @@
 __cxa_can_catch
+__cxa_decrement_exception_refcount
 __cxa_demangle
 __cxa_free_exception
+__cxa_increment_exception_refcount
 __cxa_is_pointer_type
 __errno_location
 __indirect_function_table
@@ -12,9 +14,7 @@ dynCall_jiiii
 dynCall_jiji
 dynCall_viijii
 free
-getTempRet0
 main
-malloc
 memory
 setTempRet0
 setThrew

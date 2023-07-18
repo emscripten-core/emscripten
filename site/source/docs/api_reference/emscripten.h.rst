@@ -111,10 +111,7 @@ Defines
       var jsString = 'Hello with some exotic Unicode characters: Tässä on yksi lumiukko: ☃, ole hyvä.';
       // 'jsString.length' would return the length of the string as UTF-16
       // units, but Emscripten C strings operate as UTF-8.
-      var lengthBytes = lengthBytesUTF8(jsString)+1;
-      var stringOnWasmHeap = _malloc(lengthBytes);
-      stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
-      return stringOnWasmHeap;
+      return stringToNewUTF8(jsString);
     });
 
     int main() {
@@ -194,9 +191,7 @@ Defines
       var lengthBytes = lengthBytesUTF8(jsString)+1;
       // 'jsString.length' would return the length of the string as UTF-16
       // units, but Emscripten C strings operate as UTF-8.
-      var stringOnWasmHeap = _malloc(lengthBytes);
-      stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
-      return stringOnWasmHeap;
+      return stringToNewUTF8(jsString);
     });
     printf("UTF8 string says: %s\n", str);
     free(str); // Each call to _malloc() must be paired with free(), or heap memory will leak!
@@ -1047,10 +1042,6 @@ Defines
 
   If specified, the pathnames of the file information in the call stack will be omitted.
 
-.. c:macro:: EM_LOG_FUNC_PARAMS
-
-  If specified, prints out the actual values of the parameters the functions were invoked with.
-
 
 Functions
 ---------
@@ -1301,14 +1292,16 @@ Sleeping
 
 .. c:function:: void emscripten_sleep(unsigned int ms)
 
-  Sleep for `ms` milliseconds. This is a normal "synchronous" sleep, which blocks all other operations while it runs. In other words, if
-  there are other async events waiting to happen, they will not happen during this sleep, which makes sense as conceptually this code is
-  on the stack (that's how it looks in the C source code).
+  Sleep for `ms` milliseconds. This appears to be a normal "synchronous" sleep
+  to the code, that is, execution does not continue to the next source line
+  until the sleep is done. Note, however, that this is implemented using a
+  return to the event loop (it is not possible to actually sleep in a blocking
+  manner on the Web), which means that other async events may happen.
 
 Network
 -------
 
-.. c:function:: void emscripten_wget(const char* url, const char* file)
+.. c:function:: int emscripten_wget(const char* url, const char* file)
 
   Load file from url in *synchronously*. For the asynchronous version, see the :c:func:`emscripten_async_wget`.
 
@@ -1318,6 +1311,7 @@ Network
 
   :param const char* url: The URL to load.
   :param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten. If the destination directory for the file does not exist on the filesystem, it will be created. A relative pathname may be passed, which will be interpreted relative to the current working directory at the time of the call to this function.
+  :return: 0 on success or 1 on error.
 
 .. c:function:: void emscripten_wget_data(const char* url, void** pbuffer, int* pnum, int *perror);
 

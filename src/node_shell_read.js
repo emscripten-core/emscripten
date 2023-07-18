@@ -5,12 +5,6 @@
  */
 
 read_ = (filename, binary) => {
-#if SUPPORT_BASE64_EMBEDDING
-  var ret = tryParseAsDataURI(filename);
-  if (ret) {
-    return binary ? ret : ret.toString();
-  }
-#endif
   // We need to re-wrap `file://` strings to URLs. Normalizing isn't
   // necessary in that case, the path should already be absolute.
   filename = isFileURI(filename) ? new URL(filename) : nodePath.normalize(filename);
@@ -28,17 +22,11 @@ readBinary = (filename) => {
   return ret;
 };
 
-readAsync = (filename, onload, onerror) => {
-#if SUPPORT_BASE64_EMBEDDING
-  var ret = tryParseAsDataURI(filename);
-  if (ret) {
-    onload(ret);
-  }
-#endif
+readAsync = (filename, onload, onerror, binary = true) => {
   // See the comment in the `read_` function.
   filename = isFileURI(filename) ? new URL(filename) : nodePath.normalize(filename);
-  fs.readFile(filename, function(err, data) {
+  fs.readFile(filename, binary ? undefined : 'utf8', (err, data) => {
     if (err) onerror(err);
-    else onload(data.buffer);
+    else onload(binary ? data.buffer : data);
   });
 };

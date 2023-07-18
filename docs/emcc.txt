@@ -151,7 +151,7 @@ Options that are modified or new in *emcc* are listed below:
 
      Options can be specified as a single argument with or without a
      space between the "-s" and option name.  e.g. "-sFOO" or "-s
-     FOO".
+     FOO". It's highly recommended you use the notation without space.
 
 "-g"
    [compile+link] Preserve debug information.
@@ -174,9 +174,14 @@ Options that are modified or new in *emcc* are listed below:
    different server, for example).
 
 "-gsource-map"
-   When linking, generate a source map using LLVM debug information
-   (which must be present in object files, i.e., they should have been
-   compiled with "-g").
+   [link] Generate a source map using LLVM debug information (which
+   must be present in object files, i.e., they should have been
+   compiled with "-g"). When this option is provided, the **.wasm**
+   file is updated to have a "sourceMappingURL" section. The resulting
+   URL will have format: "<base-url>" + "<wasm-file-name>" + ".map".
+   "<base-url>" defaults to being empty (which means the source map is
+   served from the same directory as the wasm file). It can be changed
+   using --source-map-base.
 
 "-g<level>"
    [compile+link] Controls the level of debuggability. Each level
@@ -375,10 +380,8 @@ Options that are modified or new in *emcc* are listed below:
        specified using the "-o" option.
 
 "--source-map-base <base-url>"
-   [link] The URL for the location where WebAssembly source maps will
-   be published. When this option is provided, the **.wasm** file is
-   updated to have a "sourceMappingURL" section. The resulting URL
-   will have format: "<base-url>" + "<wasm-file-name>" + ".map".
+   [link] The base URL for the location where WebAssembly source maps
+   will be published. Must be used with -gsource-map.
 
 "--minify 0"
    [same as -g1 if passed at compile time, otherwise applies at link]
@@ -401,6 +404,12 @@ Options that are modified or new in *emcc* are listed below:
 "--bind"
    [link] Links against embind library.  Deprecated: Use "-lembind"
    instead.
+
+"--embind-emit-tsd <path>"
+   [link] Generate a TypeScript definition file from the exported
+   embind bindings. The program will be instrumented and run in node
+   in order to to generate the file. Note: the program will need to be
+   rebuilt without this flag to be executed normally.
 
 "--ignore-dynamic-linking"
    [link] Tells the compiler to ignore dynamic linking (the user will
@@ -547,7 +556,7 @@ Options that are modified or new in *emcc* are listed below:
 "--threadprofiler"
    [link] Embeds a thread activity profiler onto the generated page.
    Use this to profile the application usage of pthreads when
-   targeting multithreaded builds (-sUSE_PTHREADS=1/2).
+   targeting multithreaded builds (-pthread).
 
 "--em-config <path>"
    [general] Specifies the location of the **.emscripten**

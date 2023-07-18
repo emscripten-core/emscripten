@@ -8,6 +8,7 @@
 // Should probably be renamed to `makeReturn64` but keeping this old name in
 // case external JS library code uses this name.
 function makeStructuralReturn(values) {
+  warn('use of legacy parseTools function: makeStructuralReturn');
   assert(values.length == 2);
   return 'setTempRet0(' + values[1] + '); return ' + asmCoercion(values[0], 'i32');
 }
@@ -15,6 +16,7 @@ function makeStructuralReturn(values) {
 // Replaced (at least internally) with receiveI64ParamAsI53 that does
 // bounds checking.
 function receiveI64ParamAsDouble(name) {
+  warn('use of legacy parseTools function: receiveI64ParamAsDouble');
   if (WASM_BIGINT) {
     // Just convert the bigint into a double.
     return `${name} = Number(${name});`;
@@ -24,7 +26,16 @@ function receiveI64ParamAsDouble(name) {
   return `var ${name} = ${name}_high * 0x100000000 + (${name}_low >>> 0);`;
 }
 
+function receiveI64ParamAsI32s(name) {
+  warn('use of legacy parseTools function: receiveI64ParamAsI32s');
+  if (WASM_BIGINT) {
+    return `var ${name}_low = Number(${name} & 0xffffffffn) | 0, ${name}_high = Number(${name} >> 32n) | 0;`;
+  }
+  return '';
+}
+
 function stripCorrections(param) {
+  warn('use of legacy parseTools function: stripCorrections');
   let m;
   while (true) {
     if (m = /^\((.*)\)$/.exec(param)) {
@@ -55,6 +66,7 @@ function stripCorrections(param) {
 const UNROLL_LOOP_MAX = 8;
 
 function makeCopyValues(dest, src, num, type, modifier, align, sep = ';') {
+  warn('use of legacy parseTools function: makeCopyValues');
   assert(typeof align === 'undefined');
   function unroll(type, num, jump = 1) {
     const setValues = range(num).map((i) => makeSetValue(dest, i * jump, makeGetValue(src, i * jump, type), type));
@@ -85,9 +97,27 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep = ';') {
   return ret.join(sep);
 }
 
+function makeMalloc(source, param) {
+  warn('use of legacy parseTools function: makeMalloc');
+  return `_malloc(${param})`;
+}
+
+function getNativeFieldSize(type) {
+  warn('use of legacy parseTools function: getNativeFieldSize');
+  return Math.max(getNativeTypeSize(type), POINTER_SIZE);
+}
+
 global.Runtime = {
-  getNativeTypeSize: getNativeTypeSize,
-  getNativeFieldSize: getNativeFieldSize,
-  POINTER_SIZE: POINTER_SIZE,
+  getNativeTypeSize,
+  getNativeFieldSize,
+  POINTER_SIZE,
   QUANTUM_SIZE: POINTER_SIZE,
 };
+
+global.ATMAINS = [];
+
+function addAtMain(code) {
+  warn('use of legacy parseTools function: addAtMain');
+  assert(HAS_MAIN, 'addAtMain called but program has no main function');
+  ATMAINS.push(code);
+}

@@ -85,18 +85,6 @@ var WebAssembly = {};
  */
 WebAssembly.Global = function(globalDescriptor, value) {};
 /**
- * @constructor
- * @param {Object} type
- */
-WebAssembly.Tag = function(type) {};
-/**
- * @constructor
- * @param {!WebAssembly.Tag} tag
- * @param {Array<Object>} payload
- * @param {Object=} options
- */
-WebAssembly.Exception = function(tag, payload, options) {};
-/**
  * @param {!WebAssembly.Tag} tag
  * @param {number} index
  */
@@ -171,10 +159,6 @@ var wakaUnknownAfter;
  * @suppress {undefinedVars}
  */
 var wakaUnknownBefore;
-/**
- * @suppress {undefinedVars}
- */
-var MozBlobBuilder;
 
 // Module loaders externs, for AMD etc.
 
@@ -265,3 +249,5 @@ var sampleRate;
  * Avoid closure minifying anything to "id". See #13965
  */
 var id;
+
+var moduleArg;

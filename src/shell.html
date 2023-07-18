@@ -1241,17 +1241,17 @@
             }
           };
         })(),
-        canvas: (function() {
+        canvas: (() => {
           var canvas = document.getElementById('canvas');
 
           // As a default initial behavior, pop up an alert when webgl context is lost. To make your
           // application robust, you may want to override this behavior before shipping!
           // See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
-          canvas.addEventListener("webglcontextlost", function(e) { alert('WebGL context lost. You will need to reload the page.'); e.preventDefault(); }, false);
+          canvas.addEventListener("webglcontextlost", (e) => { alert('WebGL context lost. You will need to reload the page.'); e.preventDefault(); }, false);
 
           return canvas;
         })(),
-        setStatus: function(text) {
+        setStatus: (text) => {
           if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
           if (text === Module.setStatus.last.text) return;
           var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
@@ -1274,17 +1274,17 @@
           statusElement.innerHTML = text;
         },
         totalDependencies: 0,
-        monitorRunDependencies: function(left) {
+        monitorRunDependencies: (left) => {
           this.totalDependencies = Math.max(this.totalDependencies, left);
           Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
         }
       };
       Module.setStatus('Downloading...');
-      window.onerror = function(event) {
+      window.onerror = (event) => {
         // TODO: do not warn on ok events like simulating an infinite loop or exitStatus
         Module.setStatus('Exception thrown, see JavaScript console');
         spinnerElement.style.display = 'none';
-        Module.setStatus = function(text) {
+        Module.setStatus = (text) => {
           if (text) console.error('[post-exception status] ' + text);
         };
       };

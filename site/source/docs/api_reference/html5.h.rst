@@ -1662,13 +1662,13 @@ Struct
 
     An ID for the brand or style of the connected gamepad device. Typically, this will include the USB vendor and a product ID.
 
-    Maximum size 64 ``char`` (i.e. ``EM_UTF8 id[128]``).
+    Maximum size 64 ``char`` (i.e. ``EM_UTF8 id[64]``).
 
   .. c:member:: EM_UTF8 mapping
 
     A string that identifies the layout or control mapping of this device.
 
-    Maximum size 128 ``char`` (i.e. ``EM_UTF8 mapping[128]``).
+    Maximum size 64 ``char`` (i.e. ``EM_UTF8 mapping[64]``).
 
 
 
@@ -2373,33 +2373,6 @@ Functions
   counting time from 0 at the time when a pthread starts)
 
   :returns: A high precision wallclock time value in msecs.
-
-
-Console
-=======
-
-Functions
----------
-
-.. c:function:: void emscripten_console_log(const char *utf8String)
-
-  Prints a string using ``console.log()``.
-
-  :param utf8String: A string encoded as UTF-8.
-
-
-.. c:function:: void emscripten_console_warn(const char *utf8String)
-
-  Prints a string using ``console.warn()``.
-
-  :param utf8String: A string encoded as UTF-8.
-
-
-.. c:function:: void emscripten_console_error(const char *utf8String)
-
-  Prints a string using ``console.error()``.
-
-  :param utf8String: A string encoded as UTF-8.
 
 
 Throw

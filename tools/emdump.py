@@ -12,6 +12,7 @@
 import argparse
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -22,33 +23,6 @@ diffing_two_data_sets = False
 
 # Global command line options
 options = None
-
-
-# Finds the given executable 'program' in PATH. Operates like the Unix tool 'which'.
-def which(program):
-  def is_exe(fpath):
-    return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
-
-  fpath, fname = os.path.split(program)
-  if fpath:
-    if is_exe(program):
-      return program
-  else:
-    for path in os.environ["PATH"].split(os.pathsep):
-      path = path.strip('"')
-      exe_file = os.path.join(path, program)
-      if is_exe(exe_file):
-        return exe_file
-
-      if os.name == 'nt' and '.' not in fname:
-        if is_exe(exe_file + '.exe'):
-          return exe_file + '.exe'
-        if is_exe(exe_file + '.cmd'):
-          return exe_file + '.cmd'
-        if is_exe(exe_file + '.bat'):
-          return exe_file + '.bat'
-
-  return None
 
 
 # Given a string s and an index i, counts how many times character ch is repeated looking backwards at s[i], s[i-1], s[i-2], s[i-3], ...
@@ -152,10 +126,10 @@ def is_javascript_symbol_char(ch):
 
 
 def cxxfilt():
-  filt = which('llvm-cxxfilt')
+  filt = shutil.which('llvm-cxxfilt')
   if filt:
     return filt
-  return which('c++filt')
+  return shutil.which('c++filt')
 
 
 # Runs the given symbols list through c++filt to demangle.

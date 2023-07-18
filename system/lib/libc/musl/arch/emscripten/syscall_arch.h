@@ -1,6 +1,6 @@
+#include <sys/types.h>
 #include <wasi/api.h>
 #include <wasi/wasi-helpers.h>
-#include <emscripten/em_macros.h>
 
 // Compile as if we can pass uint64 values directly to the
 // host.  Binaryen will take care of splitting any i64 params
@@ -12,7 +12,6 @@
 extern "C" {
 #endif
 
-int __syscall_link(intptr_t oldpath, intptr_t newpath);
 int __syscall_chdir(intptr_t path);
 int __syscall_mknod(intptr_t path, int mode, int dev);
 int __syscall_chmod(intptr_t path, int mode);
@@ -56,9 +55,9 @@ int __syscall_mremap(intptr_t old_addr, size_t old_size, size_t new_size, int fl
 int __syscall_poll(intptr_t fds, int nfds, int timeout);
 int __syscall_getcwd(intptr_t buf, size_t size);
 int __syscall_ugetrlimit(int resource, intptr_t rlim);
-intptr_t __syscall_mmap2(intptr_t addr, size_t len, int prot, int flags, int fd, size_t off);
-int __syscall_truncate64(intptr_t path, uint64_t length);
-int __syscall_ftruncate64(int fd, uint64_t length);
+intptr_t __syscall_mmap2(intptr_t addr, size_t len, int prot, int flags, int fd, off_t offset);
+int __syscall_truncate64(intptr_t path, off_t length);
+int __syscall_ftruncate64(int fd, off_t length);
 int __syscall_stat64(intptr_t path, intptr_t buf);
 int __syscall_lstat64(intptr_t path, intptr_t buf);
 int __syscall_fstat64(int fd, intptr_t buf);
@@ -82,7 +81,7 @@ int __syscall_getdents64(int fd, intptr_t dirp, size_t count);
 int __syscall_fcntl64(int fd, int cmd, ...);
 int __syscall_statfs64(intptr_t path, size_t size, intptr_t buf);
 int __syscall_fstatfs64(int fd, size_t size, intptr_t buf);
-int __syscall_fadvise64(int fd, uint64_t offset, uint64_t length, int advice);
+int __syscall_fadvise64(int fd, off_t offset, off_t length, int advice);
 int __syscall_openat(int dirfd, intptr_t path, int flags, ...); // mode is optional
 int __syscall_mkdirat(int dirfd, intptr_t path, int mode);
 int __syscall_mknodat(int dirfd, intptr_t path, int mode, int dev);
@@ -97,7 +96,7 @@ int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...);
 int __syscall_faccessat(int dirfd, intptr_t path, int amode, int flags);
 int __syscall_pselect6(int nfds, intptr_t readfds, intptr_t writefds, intptr_t exceptfds, intptr_t timeout, intptr_t sigmaks);
 int __syscall_utimensat(int dirfd, intptr_t path, intptr_t times, int flags);
-int __syscall_fallocate(int fd, int mode, uint64_t off, uint64_t len);
+int __syscall_fallocate(int fd, int mode, off_t offset, off_t len);
 int __syscall_dup3(int fd, int suggestfd, int flags);
 int __syscall_pipe2(intptr_t fds, int flags);
 int __syscall_recvmmsg(int sockfd, intptr_t msgvec, size_t vlen, int flags, ...);
@@ -105,7 +104,7 @@ int __syscall_prlimit64(int pid, int resource, intptr_t new_limit, intptr_t old_
 int __syscall_sendmmsg(int sockfd, intptr_t msgvec, size_t vlen, int flags, ...);
 int __syscall_socket(int domain, int type, int protocol, int dummy1, int dummy2, int dummy3);
 int __syscall_socketpair(int domain, int type, int protocol, intptr_t fds, int dummy, int dummy2);
-int __syscall_bind(int sockfd, intptr_t addr, size_t alen, int dummy, int dymmy2, int dummy3);
+int __syscall_bind(int sockfd, intptr_t addr, size_t alen, int dummy, int dummy2, int dummy3);
 int __syscall_connect(int sockfd, intptr_t addr, size_t len, int dummy, int dummy2, int dummy3);
 int __syscall_listen(int sockfd, int backlock, int dummy1, int dummy2, int dummy3, int dummy4);
 int __syscall_accept4(int sockfd, intptr_t addr, intptr_t addrlen, int flags, int dummy1, int dummy2);

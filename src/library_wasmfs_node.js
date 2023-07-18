@@ -50,7 +50,15 @@ mergeInto(LibraryManager.library, {
     return wasmfsNodeFixStat(stat);
   },
 
-  _wasmfs_node_readdir__deps: ['$wasmfsNodeConvertNodeCode'],
+  // Ignore closure type errors due to outdated readdirSync annotations, see
+  // https://github.com/google/closure-compiler/pull/4093
+  _wasmfs_node_readdir__docs: '/** @suppress {checkTypes} */',
+  _wasmfs_node_readdir__deps: [
+    '$wasmfsNodeConvertNodeCode',
+    '$withStackSave',
+    '$stringToUTF8OnStack',
+    '_wasmfs_node_record_dirent',
+  ],
   _wasmfs_node_readdir: function(path_p, vec) {
     let path = UTF8ToString(path_p);
     let entries;
@@ -62,7 +70,7 @@ mergeInto(LibraryManager.library, {
     }
     entries.forEach((entry) => {
       withStackSave(() => {
-        let name = allocateUTF8OnStack(entry.name);
+        let name = stringToUTF8OnStack(entry.name);
         let type;
         // TODO: Figure out how to use `cDefine` here.
         if (entry.isFile()) {
@@ -124,7 +132,7 @@ mergeInto(LibraryManager.library, {
   _wasmfs_node_insert_directory__deps: ['$wasmfsNodeConvertNodeCode'],
   _wasmfs_node_insert_directory: function(path_p, mode) {
     try {
-      fs.mkdirSync(UTF8ToString(path_p), { mode: mode });
+      fs.mkdirSync(UTF8ToString(path_p), mode);
     } catch (e) {
       if (!e.code) throw e;
       return wasmfsNodeConvertNodeCode(e);

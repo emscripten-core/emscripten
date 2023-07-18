@@ -18,7 +18,7 @@ if __name__ == '__main__':
 import clang_native
 import common
 from common import BrowserCore, no_windows, create_file, test_file, read_file
-from common import parameterized, requires_native_clang, PYTHON
+from common import parameterized, requires_native_clang, crossplatform, PYTHON
 from tools import config, utils
 from tools.shared import EMCC, path_from_root, run_process, CLANG_CC
 
@@ -190,7 +190,7 @@ class sockets(BrowserCore):
 
   def test_sockets_echo_pthreads(self):
     with CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 49161) as harness:
-      self.btest_exit(test_file('sockets/test_sockets_echo_client.c'), args=['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-DSOCKK=%d' % harness.listen_port])
+      self.btest_exit(test_file('sockets/test_sockets_echo_client.c'), args=['-pthread', '-sPROXY_TO_PTHREAD', '-DSOCKK=%d' % harness.listen_port])
 
   def test_sdl2_sockets_echo(self):
     with CompiledServerHarness('sockets/sdl2_net_server.c', ['-sUSE_SDL=2', '-sUSE_SDL_NET=2'], 49164) as harness:
@@ -277,6 +277,7 @@ class sockets(BrowserCore):
     with CompiledServerHarness(test_file('sockets/test_enet_server.c'), enet, 49210) as harness:
       self.btest_exit(test_file('sockets/test_enet_client.c'), args=enet + ['-DSOCKK=%d' % harness.listen_port])
 
+  @crossplatform
   @parameterized({
     'native': [WebsockifyServerHarness, 59160, ['-DTEST_DGRAM=0']],
     'tcp': [CompiledServerHarness, 59162, ['-DTEST_DGRAM=0']],
@@ -324,9 +325,14 @@ class sockets(BrowserCore):
 
   # Test Emscripten WebSockets API to send and receive text and binary messages against an echo server.
   # N.B. running this test requires 'npm install ws' in Emscripten root directory
-  def test_websocket_send(self):
+  # NOTE: Shared buffer is not allowed for websocket sending.
+  @parameterized({
+    '': [[]],
+    'shared': [['-sSHARED_MEMORY']],
+  })
+  def test_websocket_send(self, args):
     with NodeJsWebSocketEchoServerProcess():
-      self.btest_exit(test_file('websocket/test_websocket_send.c'), args=['-lwebsocket', '-sNO_EXIT_RUNTIME', '-sWEBSOCKET_DEBUG'])
+      self.btest_exit(test_file('websocket/test_websocket_send.c'), args=['-lwebsocket', '-sNO_EXIT_RUNTIME', '-sWEBSOCKET_DEBUG'] + args)
 
   # Test that native POSIX sockets API can be used by proxying calls to an intermediate WebSockets
   # -> POSIX sockets bridge server
@@ -342,4 +348,4 @@ class sockets(BrowserCore):
     with BackgroundServerProcess([proxy_server, '8080']):
       with PythonTcpEchoServerProcess('7777'):
         # Build and run the TCP echo client program with Emscripten
-        self.btest_exit(test_file('websocket/tcp_echo_client.c'), args=['-lwebsocket', '-sPROXY_POSIX_SOCKETS', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'])
+        self.btest_exit(test_file('websocket/tcp_echo_client.c'), args=['-lwebsocket', '-sPROXY_POSIX_SOCKETS', '-pthread', '-sPROXY_TO_PTHREAD'])

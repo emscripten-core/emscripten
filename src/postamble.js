@@ -6,6 +6,28 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+#if SUPPORT_BASE64_EMBEDDING || FORCE_FILESYSTEM
+#include "base64Utils.js"
+#endif
+
+#if HEADLESS
+if (!ENVIRONMENT_IS_WEB) {
+#include "headlessCanvas.js"
+#include "headless.js"
+}
+#endif
+
+#if PROXY_TO_WORKER
+if (ENVIRONMENT_IS_WORKER) {
+#include "webGLWorker.js'
+#include "proxyWorker.js"
+}
+#endif
+
+#if DETERMINISTIC
+#include "deterministic.js"
+#endif
+
 {{{ exportRuntime() }}}
 
 var calledRun;
@@ -54,7 +76,7 @@ function callMain() {
   var argv = stackAlloc((argc + 1) * {{{ POINTER_SIZE }}});
   var argv_ptr = argv >> {{{ POINTER_SHIFT }}};
   args.forEach((arg) => {
-    {{{ POINTER_HEAP }}}[argv_ptr++] = {{{ to64('allocateUTF8OnStack(arg)') }}};
+    {{{ POINTER_HEAP }}}[argv_ptr++] = {{{ to64('stringToUTF8OnStack(arg)') }}};
   });
   {{{ POINTER_HEAP }}}[argv_ptr] = {{{ to64('0') }}};
 #else
@@ -85,7 +107,7 @@ function callMain() {
     Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
 #endif
 
-#if ASYNCIFY == 2
+#if ASYNCIFY == 2 && !PROXY_TO_PTHREAD
     // The current spec of JSPI returns a promise only if the function suspends
     // and a plain value otherwise. This will likely change:
     // https://github.com/WebAssembly/js-promise-integration/issues/11
@@ -117,7 +139,7 @@ function stackCheckInit() {
   // This is normally called automatically during __wasm_call_ctors but need to
   // get these values before even running any of the ctors so we call it redundantly
   // here.
-#if ASSERTIONS && USE_PTHREADS
+#if ASSERTIONS && PTHREADS
   // See $establishStackSpace for the equivelent code that runs on a thread
   assert(!ENVIRONMENT_IS_PTHREAD);
 #endif
@@ -131,11 +153,10 @@ function stackCheckInit() {
 }
 #endif
 
-#if RELOCATABLE
-var dylibsLoaded = false;
-#if '$LDSO' in addedLibraryItems
-LDSO.init();
-#endif
+#if MAIN_MODULE && PTHREADS
+// Map of modules to be shared with new threads.  This gets populated by the
+// main thread and shared with all new workers.
+var sharedModules = Module['sharedModules'] || [];
 #endif
 
 #if MAIN_READS_PARAMS
@@ -145,38 +166,17 @@ function run() {
 #endif
 
   if (runDependencies > 0) {
-#if RUNTIME_LOGGING
-    err('run() called, but dependencies remain, so not running');
+#if RUNTIME_DEBUG
+    dbg('run() called, but dependencies remain, so not running');
 #endif
     return;
   }
 
 #if STACK_OVERFLOW_CHECK
-#if USE_PTHREADS
+#if PTHREADS
   if (!ENVIRONMENT_IS_PTHREAD)
 #endif
     stackCheckInit();
-#endif
-
-#if RELOCATABLE
-  if (!dylibsLoaded) {
-  // Loading of dynamic libraries needs to happen on each thread, so we can't
-  // use the normal __ATPRERUN__ mechanism.
-#if MAIN_MODULE
-    preloadDylibs();
-#else
-    reportUndefinedSymbols();
-#endif
-    dylibsLoaded = true;
-
-    // Loading dylibs can add run dependencies.
-    if (runDependencies > 0) {
-#if RUNTIME_LOGGING
-      err('preloadDylibs added run() dependencies, not running yet');
-#endif
-      return;
-    }
-  }
 #endif
 
 #if WASM_WORKERS
@@ -188,7 +188,7 @@ function run() {
   }
 #endif
 
-#if USE_PTHREADS
+#if PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) {
 #if MODULARIZE
     // The promise resolve function typically gets called as part of the execution
@@ -206,8 +206,8 @@ function run() {
 
   // a preRun added a dependency, run will be called later
   if (runDependencies > 0) {
-#if RUNTIME_LOGGING
-    err('run() called, but dependencies remain, so not running');
+#if RUNTIME_DEBUG
+    dbg('run() called, but dependencies remain, so not running');
 #endif
     return;
   }
@@ -291,6 +291,10 @@ function checkUnflushedContent() {
   try { // it doesn't matter if it fails
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0 && '$flush_NO_FILESYSTEM' in addedLibraryItems
     flush_NO_FILESYSTEM();
+#elif WASMFS && hasExportedSymbol('wasmfs_flush')
+    // In WasmFS we must also flush the WasmFS internal buffers, for this check
+    // to work.
+    _wasmfs_flush();
 #elif hasExportedSymbol('fflush')
     _fflush(0);
 #endif
@@ -311,7 +315,7 @@ function checkUnflushedContent() {
   out = oldOut;
   err = oldErr;
   if (has) {
-    warnOnce('stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1 (see the FAQ), or make sure to emit a newline when you printf etc.');
+    warnOnce('stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1 (see the Emscripten FAQ), or make sure to emit a newline when you printf etc.');
 #if FILESYSTEM == 0 || SYSCALLS_REQUIRE_FILESYSTEM == 0
     warnOnce('(this may also be due to not including full filesystem support - try building with -sFORCE_FILESYSTEM)');
 #endif

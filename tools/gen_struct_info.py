@@ -65,8 +65,9 @@ import subprocess
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
-sys.path.append(__rootdir__)
+sys.path.insert(0, __rootdir__)
 
+from tools import building
 from tools import shared
 from tools import system_libs
 from tools import utils
@@ -239,6 +240,8 @@ def inspect_headers(headers, cflags):
   else:
     compiler = shared.EMCC
 
+  node_flags = building.get_emcc_node_flags(shared.check_node_version())
+
   # -O1+ produces calls to iprintf, which libcompiler_rt doesn't support
   cmd = [compiler] + cflags + ['-o', js_file[1], src_file[1],
                                '-O0',
@@ -248,10 +251,7 @@ def inspect_headers(headers, cflags):
                                compiler_rt,
                                '-sBOOTSTRAPPING_STRUCT_INFO',
                                '-sSTRICT',
-                               '-sASSERTIONS=0',
-                               # Use SINGLE_FILE so there is only a single
-                               # file to cleanup.
-                               '-sSINGLE_FILE']
+                               '-sASSERTIONS=0'] + node_flags
 
   # Default behavior for emcc is to warn for binaryen version check mismatches
   # so we should try to match that behavior.
@@ -288,6 +288,8 @@ def inspect_headers(headers, cflags):
 
     if os.path.exists(js_file[1]):
       os.unlink(js_file[1])
+      wasm_file = shared.replace_suffix(js_file[1], '.wasm')
+      os.unlink(wasm_file)
 
   # Parse the output of the program into a dict.
   return parse_c_output(info)
@@ -352,14 +354,8 @@ def parse_json(path):
   return header_files
 
 
-def output_json(obj, stream=None):
-  if stream is None:
-    stream = sys.stdout
-  elif isinstance(stream, str):
-    stream = open(stream, 'w')
-
+def output_json(obj, stream):
   json.dump(obj, stream, indent=4, sort_keys=True)
-
   stream.write('\n')
   stream.close()
 
@@ -379,7 +375,7 @@ def main(args):
   parser.add_argument('-q', dest='quiet', action='store_true', default=False,
                       help='Don\'t output anything besides error messages.')
   parser.add_argument('-o', dest='output', metavar='path', default=None,
-                      help='Path to the JSON file that will be written. If omitted, the generated data will be printed to stdout.')
+                      help='Path to the JSON file that will be written. If omitted, the default location under `src` will be used.')
   parser.add_argument('-I', dest='includes', metavar='dir', action='append', default=[],
                       help='Add directory to include search path')
   parser.add_argument('-D', dest='defines', metavar='define', action='append', default=[],
@@ -437,7 +433,16 @@ def main(args):
     info_fragment = inspect_code(header_files, use_cflags)
     merge_info(info, info_fragment)
 
-  output_json(info, args.output)
+  if args.output:
+    output_file = args.output
+  elif args.wasm64:
+    output_file = utils.path_from_root('src/generated_struct_info64.json')
+  else:
+    output_file = utils.path_from_root('src/generated_struct_info32.json')
+
+  with open(output_file, 'w') as f:
+    output_json(info, f)
+
   return 0
 
 

@@ -13,18 +13,22 @@ extern "C" {
 // *extremely slow*, use for debugging allocation test cases.
 void emmalloc_dump_memory_regions(void);
 
-// Allocates size bytes with the given pow-2 alignment.
+// Allocates size bytes with the given pow-2 alignment. If the WebAssembly memory runs out of
+// free bytes, this function will abort execution, or if building with -sABORTING_MALLOC=0,
+// return a null pointer.
 void *memalign(size_t alignment, size_t size);
 void *emmalloc_memalign(size_t alignment, size_t size);
 void *aligned_alloc(size_t alignment, size_t size);
 
-// Allocates size bytes with default alignment (8 bytes)
+// Allocates size bytes with default alignment (8 bytes). Like above, either aborts or returns
+// null on OOM.
 void *malloc(size_t size);
 void *emmalloc_malloc(size_t size);
 
 // Returns the number of bytes that are actually allocated to the given pointer ptr.
 // E.g. due to alignment or size requirements, the actual size of the allocation can be
-// larger than what was requested.
+// larger than what was requested. It is ok to pass a null pointer to these functions, in which
+// case 0 will be returned.
 size_t malloc_usable_size(void *ptr);
 size_t emmalloc_usable_size(void *ptr);
 
@@ -32,6 +36,7 @@ size_t emmalloc_usable_size(void *ptr);
 // in this file, e.g.
 // (emmalloc_)memalign, (emmalloc_)malloc, (emmalloc_)calloc, aligned_alloc,
 // (emmalloc_)realloc, emmalloc_realloc_try, emmalloc_realloc_uninitialized, (emmalloc_)aligned_realloc
+// It is ok to pass null in ptr, which will be a no-op.
 void free(void *ptr);
 void emmalloc_free(void *ptr);
 
@@ -39,8 +44,8 @@ void emmalloc_free(void *ptr);
 // pointed by ptr cannot be resized in place, a new memory region will be allocated, old
 // memory copied over, and the old memory area freed. The pointer ptr must have been
 // allocated with one of the emmalloc memory allocation functions (malloc, memalign, ...).
-// If called with size == 0, the pointer ptr is freed, and a null pointer is returned. If
-// called with null ptr, a new pointer is allocated.
+// If called with size == 0, the pointer ptr is freed, and a null pointer is returned.
+// If called with null ptr, a new pointer is allocated.
 // If there is not enough memory, the old memory block is not freed and null pointer is
 // returned.
 void *realloc(void *ptr, size_t size);
@@ -79,8 +84,8 @@ void *emmalloc_calloc(size_t num, size_t size);
 
 // mallinfo() returns information about current emmalloc allocation state. This function
 // is very slow, only good for debugging. Avoid calling it for "routine" diagnostics.
-struct mallinfo mallinfo();
-struct mallinfo emmalloc_mallinfo();
+struct mallinfo mallinfo(void);
+struct mallinfo emmalloc_mallinfo(void);
 
 // malloc_trim() returns unused dynamic memory back to the WebAssembly heap. Returns 1 if it
 // actually freed any memory, and 0 if not. Note: this function does not release memory back to
@@ -117,6 +122,10 @@ size_t emmalloc_unclaimed_heap_memory(void);
 // free memory regions (the sum of the array entries). This function runs very slowly, as it
 // iterates through all free memory blocks.
 size_t emmalloc_compute_free_dynamic_memory_fragmentation_map(size_t freeMemorySizeMap[32]);
+
+// Same as above, but instead of returning the information in an array, prints it directly
+// to stdout.
+void emmalloc_dump_free_dynamic_memory_fragmentation_map(void);
 
 #ifdef __cplusplus
 }

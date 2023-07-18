@@ -46,8 +46,8 @@ complete at the moment, it is likely that you will run into problems out of the
 box and need to adapt the code to work within the limitations that this
 emulation provides.
 
-This is the default build mode for Emscripten. Use the linker flag ``-s
-WEBSOCKET_URL`` or ``Module['websocket']['url']`` to specify the WebSocket URL
+This is the default build mode for Emscripten. Use the linker flag
+``-sWEBSOCKET_URL`` or ``Module['websocket']['url']`` to specify the WebSocket URL
 to connect to, and the linker flag ``-sWEBSOCKET_SUBPROTOCOL`` or
 ``Module['websocket']['subprotocol']`` to control the connection type
 (``'binary'`` or ``'text'``).
@@ -73,7 +73,7 @@ The following POSIX sockets functions are currently not proxied (and will not wo
  - ``poll()``, ``close()`` (use ``shutdown()`` instead), ``select()``
 
 To use POSIX sockets proxying, link the application with flags ``-lwebsocket.js
--sPROXY_POSIX_SOCKETS -sUSE_PTHREADS -sPROXY_TO_PTHREAD``. That is,
+-sPROXY_POSIX_SOCKETS -pthread -sPROXY_TO_PTHREAD``. That is,
 POSIX sockets proxying builds on top of the Emscripten WebSockets library, and
 requires multithreading and proxying the application ``main()`` to a pthread.
 

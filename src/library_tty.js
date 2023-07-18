@@ -5,7 +5,11 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $TTY__deps: ['$FS', '$intArrayFromString'],
+  $TTY__deps: [
+    '$FS',
+    '$UTF8ArrayToString',
+    '$FS_stdin_getChar'
+  ],
 #if !MINIMAL_RUNTIME
   $TTY__postset: function() {
     addAtInit('TTY.init();');
@@ -43,7 +47,7 @@ mergeInto(LibraryManager.library, {
       open: function(stream) {
         var tty = TTY.ttys[stream.node.rdev];
         if (!tty) {
-          throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
+          throw new FS.ErrnoError({{{ cDefs.ENODEV }}});
         }
         stream.tty = tty;
         stream.seekable = false;
@@ -57,7 +61,7 @@ mergeInto(LibraryManager.library, {
       },
       read: function(stream, buffer, offset, length, pos /* ignored */) {
         if (!stream.tty || !stream.tty.ops.get_char) {
-          throw new FS.ErrnoError({{{ cDefine('ENXIO') }}});
+          throw new FS.ErrnoError({{{ cDefs.ENXIO }}});
         }
         var bytesRead = 0;
         for (var i = 0; i < length; i++) {
@@ -65,10 +69,10 @@ mergeInto(LibraryManager.library, {
           try {
             result = stream.tty.ops.get_char(stream.tty);
           } catch (e) {
-            throw new FS.ErrnoError({{{ cDefine('EIO') }}});
+            throw new FS.ErrnoError({{{ cDefs.EIO }}});
           }
           if (result === undefined && bytesRead === 0) {
-            throw new FS.ErrnoError({{{ cDefine('EAGAIN') }}});
+            throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
           }
           if (result === null || result === undefined) break;
           bytesRead++;
@@ -81,14 +85,14 @@ mergeInto(LibraryManager.library, {
       },
       write: function(stream, buffer, offset, length, pos) {
         if (!stream.tty || !stream.tty.ops.put_char) {
-          throw new FS.ErrnoError({{{ cDefine('ENXIO') }}});
+          throw new FS.ErrnoError({{{ cDefs.ENXIO }}});
         }
         try {
           for (var i = 0; i < length; i++) {
             stream.tty.ops.put_char(stream.tty, buffer[offset+i]);
           }
         } catch (e) {
-          throw new FS.ErrnoError({{{ cDefine('EIO') }}});
+          throw new FS.ErrnoError({{{ cDefs.EIO }}});
         }
         if (length) {
           stream.node.timestamp = Date.now();
@@ -97,56 +101,8 @@ mergeInto(LibraryManager.library, {
       }
     },
     default_tty_ops: {
-      // get_char has 3 particular return values:
-      // a.) the next character represented as an integer
-      // b.) undefined to signal that no data is currently available
-      // c.) null to signal an EOF
       get_char: function(tty) {
-        if (!tty.input.length) {
-          var result = null;
-#if ENVIRONMENT_MAY_BE_NODE
-          if (ENVIRONMENT_IS_NODE) {
-            // we will read data by chunks of BUFSIZE
-            var BUFSIZE = 256;
-            var buf = Buffer.alloc(BUFSIZE);
-            var bytesRead = 0;
-
-            try {
-              bytesRead = fs.readSync(process.stdin.fd, buf, 0, BUFSIZE, -1);
-            } catch(e) {
-              // Cross-platform differences: on Windows, reading EOF throws an exception, but on other OSes,
-              // reading EOF returns 0. Uniformize behavior by treating the EOF exception to return 0.
-              if (e.toString().includes('EOF')) bytesRead = 0;
-              else throw e;
-            }
-
-            if (bytesRead > 0) {
-              result = buf.slice(0, bytesRead).toString('utf-8');
-            } else {
-              result = null;
-            }
-          } else
-#endif
-          if (typeof window != 'undefined' &&
-            typeof window.prompt == 'function') {
-            // Browser.
-            result = window.prompt('Input: ');  // returns null on cancel
-            if (result !== null) {
-              result += '\n';
-            }
-          } else if (typeof readline == 'function') {
-            // Command line.
-            result = readline();
-            if (result !== null) {
-              result += '\n';
-            }
-          }
-          if (!result) {
-            return null;
-          }
-          tty.input = intArrayFromString(result, true);
-        }
-        return tty.input.shift();
+        return FS_stdin_getChar();
       },
       put_char: function(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
@@ -161,6 +117,27 @@ mergeInto(LibraryManager.library, {
           out(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         }
+      },
+      ioctl_tcgets: function(tty) {
+        // typical setting
+        return {
+          c_iflag: {{{ cDefs.ICRNL | cDefs.IXON | cDefs.IMAXBEL | cDefs.IUTF8 }}},
+          c_oflag: {{{ cDefs.OPOST | cDefs.ONLCR }}},
+          c_cflag: {{{ cDefs.B38400 | cDefs.CSIZE | cDefs.CREAD }}},
+          c_lflag: {{{ cDefs.ISIG | cDefs.ICANON | cDefs.ECHO | cDefs.ECHOE | cDefs.ECHOK | cDefs.ECHOCTL | cDefs.ECHOKE | cDefs.IEXTEN }}},
+          c_cc: [
+            0x03, 0x1c, 0x7f, 0x15, 0x04, 0x00, 0x01, 0x00, 0x11, 0x13, 0x1a, 0x00,
+            0x12, 0x0f, 0x17, 0x16, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          ]
+        };
+      },
+      ioctl_tcsets: function(tty, optional_actions, data) {
+        // currently just ignore
+        return 0;
+      },
+      ioctl_tiocgwinsz: function(tty) {
+        return [24, 80];
       }
     },
     default_tty1_ops: {

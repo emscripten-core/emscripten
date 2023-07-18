@@ -4,7 +4,7 @@
 Building Projects
 =================
 
-Building large projects with Emscripten is very easy. Emscripten provides two simple scripts that configure your makefiles to use :ref:`emcc <emccdoc>` as a drop-in replacement for *gcc* — in most cases the rest of your project’s current build system remains unchanged.
+Emscripten provides two scripts that configure your makefiles to use :ref:`emcc <emccdoc>` as a drop-in replacement for *gcc* — in most cases the rest of your project’s current build system remains unchanged.
 
 
 .. _building-projects-build-system:
@@ -20,6 +20,8 @@ Consider the case where you normally build with the following commands:
 
   ./configure
   make
+
+.. tip:: If you're not familiar with these build commands, the article `The magic behind configure, make, make install <https://thoughtbot.com/blog/the-magic-behind-configure-make-make-install>`_ is a good primer.
 
 To build with Emscripten, you would instead use the following commands:
 
@@ -213,7 +215,7 @@ For example, consider the case where a project "project" uses a library "libstuf
 Emscripten Ports
 ================
 
-Emscripten Ports is a collection of useful libraries, ported to Emscripten. They reside `on github <https://github.com/emscripten-ports>`_, and have integration support in *emcc*. When you request that a port be used, emcc will fetch it from the remote server, set it up and build it locally, then link it with your project, add necessary include to your build commands, etc. For example, SDL2 is in ports, and you can request that it be used with ``-sUSE_SDL=2``. For example,
+Emscripten Ports is a collection of useful libraries, ported to Emscripten. They reside `on GitHub <https://github.com/emscripten-ports>`_, and have integration support in *emcc*. When you request that a port be used, emcc will fetch it from the remote server, set it up and build it locally, then link it with your project, add necessary include to your build commands, etc. For example, SDL2 is in ports, and you can request that it be used with ``-sUSE_SDL=2``. For example,
 
 .. code-block:: bash
 
@@ -327,7 +329,7 @@ The :ref:`Tutorial` showed how :ref:`emcc <emccdoc>` can be used to compile sing
   emcc src1.o src2.o -r -o combined.o
 
   # Combine two object files into library file
-  emar rcs libfoo.a src1.o src2.o 
+  emar rcs libfoo.a src1.o src2.o
 
 
 In addition to the capabilities it shares with *gcc*, *emcc* supports options to optimize code, control what debug information is emitted, generate HTML and other output formats, etc. These options are documented in the :ref:`emcc tool reference <emccdoc>` (``emcc --help`` on the command line).
@@ -349,7 +351,7 @@ Emscripten provides the following preprocessor macros that can be used to identi
  * Likewise, ``__clang_version__`` is present and indicates both Emscripten and LLVM version information.
  * Emscripten is a 32-bit platform, so ``size_t`` is a 32-bit unsigned integer, ``__POINTER_WIDTH__=32``, ``__SIZEOF_LONG__=4`` and ``__LONG_MAX__`` equals ``2147483647L``.
  * When targeting SSEx SIMD APIs using one of the command line compiler flags ``-msse``, ``-msse2``, ``-msse3``, ``-mssse3``, or ``-msse4.1``, one or more of the preprocessor flags ``__SSE__``, ``__SSE2__``, ``__SSE3__``, ``__SSSE3__``, ``__SSE4_1__`` will be present to indicate available support for these instruction sets.
- * If targeting the pthreads multithreading support with the compiler & linker flag ``-sUSE_PTHREADS``, the preprocessor define ``__EMSCRIPTEN_PTHREADS__`` will be present.
+ * If targeting the pthreads multithreading support with the compiler & linker flag ``-pthread``, the preprocessor define ``__EMSCRIPTEN_PTHREADS__`` will be present.
 
 
 Using a compiler wrapper

@@ -2,19 +2,16 @@
   // Helper functions for code generation
   global.html5_gpu = {
     makeImportExport: function(snake_case, CamelCase) {
-      var s = '';
-      s += 'LibraryHTML5WebGPU.emscripten_webgpu_import_' + snake_case + '__sig = "ii";';
-      s += 'LibraryHTML5WebGPU.emscripten_webgpu_import_' + snake_case + '__deps = ["$WebGPU", "$JsValStore"];';
-      s += 'LibraryHTML5WebGPU.emscripten_webgpu_import_' + snake_case + ' = function(handle) { '
-      s += 'return WebGPU.mgr' + CamelCase + '.create(JsValStore.get(handle));'
-      s += '};';
+      return `
+LibraryHTML5WebGPU.emscripten_webgpu_import_${snake_case}__deps = ['$WebGPU', '$JsValStore'];
+LibraryHTML5WebGPU.emscripten_webgpu_import_${snake_case} = function(handle) {
+  return WebGPU.mgr${CamelCase}.create(JsValStore.get(handle));
+};
 
-      s += 'LibraryHTML5WebGPU.emscripten_webgpu_export_' + snake_case + '__sig = "ii";';
-      s += 'LibraryHTML5WebGPU.emscripten_webgpu_export_' + snake_case + '__deps = ["$WebGPU", "$JsValStore"];';
-      s += 'LibraryHTML5WebGPU.emscripten_webgpu_export_' + snake_case + ' = function(handle) { '
-      s += 'return JsValStore.add(WebGPU.mgr' + CamelCase + '.get(handle));'
-      s += '};';
-      return s;
+LibraryHTML5WebGPU.emscripten_webgpu_export_${snake_case}__deps = ['$WebGPU', '$JsValStore'];
+LibraryHTML5WebGPU.emscripten_webgpu_export_${snake_case} = function(handle) {
+  return JsValStore.add(WebGPU.mgr${CamelCase}.get(handle));
+};`
     },
   };
   null;
@@ -26,7 +23,7 @@ var LibraryHTML5WebGPU = {
     values: {},
     next_id: 1,
 
-    add: function (js_val) {
+    add(js_val) {
       var id;
       do {
         id = JsValStore.next_id++;
@@ -36,13 +33,13 @@ var LibraryHTML5WebGPU = {
       JsValStore.values[id] = js_val;
       return id;
     },
-    remove: function (id) {
+    remove(id) {
 #if ASSERTIONS
       assert(id in JsValStore.values);
 #endif
       delete JsValStore.values[id];
     },
-    get: function (id) {
+    get(id) {
 #if ASSERTIONS
       assert(id === 0 || id in JsValStore.values);
 #endif

@@ -65,7 +65,7 @@ var imports = {
  }
 };
 var _main, _unused, asm;
-WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
+WebAssembly.instantiate(Module["wasm"], imports).then(((output) => {
  asm = output.instance.exports;
  _main = asm["b"];
  _unused = asm["c"];

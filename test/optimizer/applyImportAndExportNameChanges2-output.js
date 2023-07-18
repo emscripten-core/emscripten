@@ -200,8 +200,6 @@ if (ENVIRONMENT_IS_NODE) {
   var t = process.hrtime();
   return t[0] * 1e3 + t[1] / 1e6;
  };
-} else if (typeof dateNow !== "undefined") {
- _emscripten_get_now = dateNow;
 } else if (typeof self === "object" && self["performance"] && typeof self["performance"]["now"] === "function") {
  _emscripten_get_now = function() {
   return self["performance"]["now"]();
@@ -215,14 +213,14 @@ if (ENVIRONMENT_IS_NODE) {
 }
 
 var wasmImports = {
- "b": abort,
- "h": ___syscall140,
- "a": ___syscall146,
- "g": ___syscall54,
- "f": ___syscall6,
- "e": _emscripten_get_now,
- "d": _emscripten_memcpy_big,
- "c": _emscripten_random
+ b: abort,
+ h: ___syscall140,
+ a: ___syscall146,
+ g: ___syscall54,
+ f: ___syscall6,
+ e: _emscripten_get_now,
+ d: _emscripten_memcpy_big,
+ c: _emscripten_random
 };
 
 function run() {
@@ -266,7 +264,7 @@ var imports = {
 
 var ___errno_location, _llvm_bswap_i32, _main, _memcpy, _memset, dynCall_ii, dynCall_iiii;
 
-WebAssembly.instantiate(Module["wasm"], imports).then(function(output) {
+WebAssembly.instantiate(Module["wasm"], imports).then(output => {
  var asm = output.instance.exports;
  ___errno_location = asm["j"];
  _llvm_bswap_i32 = asm["k"];

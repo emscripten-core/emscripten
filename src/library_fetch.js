@@ -7,15 +7,12 @@
 #include Fetch.js
 
 var LibraryFetch = {
-#if USE_PTHREADS
-  $Fetch__postset: 'if (!ENVIRONMENT_IS_PTHREAD) Fetch.staticInit();',
-#else
-  $Fetch__postset: 'Fetch.staticInit();',
-#endif
+  $Fetch__postset: 'Fetch.init();',
+  $Fetch__deps: ['$HandleAllocator'],
   $Fetch: Fetch,
-  _emscripten_fetch_get_response_headers_length__sig: 'pi',
+  _emscripten_fetch_get_response_headers_length__deps: ['$lengthBytesUTF8'],
   _emscripten_fetch_get_response_headers_length: fetchGetResponseHeadersLength,
-  _emscripten_fetch_get_response_headers__sig: 'pipp',
+  _emscripten_fetch_get_response_headers__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   _emscripten_fetch_get_response_headers: fetchGetResponseHeaders,
   _emscripten_fetch_free: fetchFree,
 
@@ -26,12 +23,15 @@ var LibraryFetch = {
 #endif
   $fetchXHR: fetchXHR,
 
-  emscripten_start_fetch__sig: 'vp',
   emscripten_start_fetch: startFetch,
   emscripten_start_fetch__deps: [
+    'malloc',
+    'free',
     '$Fetch',
     '$fetchXHR',
     '$callUserCallback',
+    '$writeI53ToI64',
+    '$stringToUTF8',
 #if FETCH_SUPPORT_INDEXEDDB
     '$fetchCacheData',
     '$fetchLoadCachedData',

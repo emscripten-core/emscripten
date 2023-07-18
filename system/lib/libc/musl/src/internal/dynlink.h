@@ -29,6 +29,12 @@ struct dso {
   void* table_addr;
   size_t table_size;
 
+  // For DSO load events, where the DSO comes from a file on disc, this
+  // is a pointer the file data read in by the laoding thread and shared with
+  // others.
+  uint8_t* file_data;
+  size_t file_data_size;
+
   // Flexible array; must be final element of struct
   char name[];
 };
@@ -120,8 +126,12 @@ struct fdpic_dummy_loadmap {
 #define DT_DEBUG_INDIRECT 0
 #endif
 
+#ifndef DT_DEBUG_INDIRECT_REL
+#define DT_DEBUG_INDIRECT_REL 0
+#endif
+
 #define AUX_CNT 32
-#define DYN_CNT 32
+#define DYN_CNT 37
 
 typedef void (*stage2_func)(unsigned char *, size_t *);
 

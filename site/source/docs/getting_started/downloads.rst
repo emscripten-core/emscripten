@@ -260,7 +260,3 @@ The following is a partial list of such unofficial emscripten packages:
 **Arch Linux**
  - package info: https://github.com/archlinux/svntogit-community/tree/packages/emscripten/trunk
  - maintainer: Sven-Hendrik Haase <svenstaro@gmail.com>
-
-**Gentoo Linux** (custom overlay)
- - package info: `dev-util/emscripten` in `darthgandalf-overlay <https://github.com/DarthGandalf/gentoo-overlay>`_
- - maintainer: @DarthGandalf

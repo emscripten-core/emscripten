@@ -8,11 +8,11 @@
 #error __EMSCRIPTEN_WASM_WORKERS__ should not be defined when building this file!
 #endif
 
-emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize) {
+emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackPlusTLSAddress, size_t stackPlusTLSSize) {
   return 0;
 }
 
-emscripten_wasm_worker_t emscripten_malloc_wasm_worker(uint32_t stackSize) {
+emscripten_wasm_worker_t emscripten_malloc_wasm_worker(size_t stackSize) {
   return 0;
 }
 

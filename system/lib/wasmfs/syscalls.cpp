@@ -6,6 +6,8 @@
 // old JS version. Current Status: Work in Progress. See
 // https://github.com/emscripten-core/emscripten/issues/15041.
 
+#define _LARGEFILE64_SOURCE // For F_GETLK64 etc
+
 #include <dirent.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/heap.h>
@@ -24,6 +26,7 @@
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
+#include <time.h>
 
 #include "backend.h"
 #include "file.h"
@@ -167,7 +170,7 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     lockedOpenFile.setPosition(offset + bytesWritten);
   }
   if (bytesWritten) {
-    lockedFile.setMTime(time(NULL));
+    lockedFile.updateMTime();
   }
   return __WASI_ERRNO_SUCCESS;
 }
@@ -383,9 +386,9 @@ int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
   buffer->st_blocks = (buffer->st_size + 511) / 512;
   // Specifies the preferred blocksize for efficient disk I/O.
   buffer->st_blksize = 4096;
-  buffer->st_atim.tv_sec = lockedFile.getATime();
-  buffer->st_mtim.tv_sec = lockedFile.getMTime();
-  buffer->st_ctim.tv_sec = lockedFile.getCTime();
+  buffer->st_atim = lockedFile.getATime();
+  buffer->st_mtim = lockedFile.getMTime();
+  buffer->st_ctim = lockedFile.getCTime();
   return __WASI_ERRNO_SUCCESS;
 }
 
@@ -418,9 +421,9 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
   }
 
   // TODO: remove assert when all functionality is complete.
-  assert((flags &
-          ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND | O_RDWR |
-            O_WRONLY | O_RDONLY | O_LARGEFILE | O_NOFOLLOW | O_CLOEXEC)) == 0);
+  assert((flags & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND |
+                    O_RDWR | O_WRONLY | O_RDONLY | O_LARGEFILE | O_NOFOLLOW |
+                    O_CLOEXEC | O_NONBLOCK)) == 0);
 
   if (auto err = parsed.getError()) {
     return err;
@@ -888,19 +891,11 @@ int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
     return 0;
   }
 
-  std::vector<Directory::Entry> entries = {
-    {".", File::DirectoryKind, dir->getIno()},
-    {"..", File::DirectoryKind, parent->getIno()}};
-  auto dirEntries = lockedDir.getEntries();
-  if (int err = dirEntries.getError()) {
-    return err;
-  }
-  entries.insert(entries.end(), dirEntries->begin(), dirEntries->end());
-
   off_t bytesRead = 0;
-  for (; index < entries.size() && bytesRead + sizeof(dirent) <= count;
+  const auto& dirents = openFile->dirents;
+  for (; index < dirents.size() && bytesRead + sizeof(dirent) <= count;
        index++) {
-    auto& entry = entries[index];
+    const auto& entry = dirents[index];
     result->d_ino = entry.ino;
     result->d_off = index + 1;
     result->d_reclen = sizeof(dirent);
@@ -1038,10 +1033,6 @@ int __syscall_renameat(int olddirfd,
   return 0;
 }
 
-int __syscall_rename(intptr_t oldpath, intptr_t newpath) {
-  return __syscall_renameat(AT_FDCWD, oldpath, AT_FDCWD, newpath);
-}
-
 // TODO: Test this with non-AT_FDCWD values.
 int __syscall_symlinkat(intptr_t target, int newdirfd, intptr_t linkpath) {
   auto parsed = path::parseParent((char*)linkpath, newdirfd);
@@ -1093,27 +1084,35 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
     return -EINVAL;
   }
 
+  // Add AT_EMPTY_PATH as Linux (and so, musl, and us) has a nonstandard
+  // behavior in which an empty path means to operate on whatever is in dirFD
+  // (directory or not), which is exactly the behavior of AT_EMPTY_PATH (but
+  // without passing that in). See "C library/kernel ABI differences" in
+  // https://man7.org/linux/man-pages/man2/utimensat.2.html
+  //
   // TODO: Handle AT_SYMLINK_NOFOLLOW once we traverse symlinks correctly.
-  auto parsed = path::parseFile(path, dirFD);
+  auto parsed = path::getFileAt(dirFD, path, flags | AT_EMPTY_PATH);
   if (auto err = parsed.getError()) {
     return err;
   }
 
-  // TODO: Set tv_nsec (nanoseconds) as well.
   // TODO: Handle tv_nsec being UTIME_NOW or UTIME_OMIT.
   // TODO: Check for write access to the file (see man page for specifics).
-  time_t aSeconds, mSeconds;
+  struct timespec aTime, mTime;
+  
   if (times == NULL) {
-    aSeconds = time(NULL);
-    mSeconds = aSeconds;
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    aTime = ts;
+    mTime = ts;
   } else {
-    aSeconds = times[0].tv_sec;
-    mSeconds = times[1].tv_sec;
+    aTime = times[0];
+    mTime = times[1];
   }
 
   auto locked = parsed.getFile()->locked();
-  locked.setATime(aSeconds);
-  locked.setMTime(mSeconds);
+  locked.setATime(aTime);
+  locked.setMTime(mTime);
 
   return 0;
 }
@@ -1130,15 +1129,14 @@ int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
     // TODO: Test this case.
     return -EINVAL;
   }
-  // TODO: Handle AT_SYMLINK_NOFOLLOW once we traverse symlinks correctly.
-  auto parsed = path::parseFile((char*)path, dirfd);
+  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
   if (auto err = parsed.getError()) {
     return err;
   }
   auto lockedFile = parsed.getFile()->locked();
   lockedFile.setMode(mode);
   // On POSIX, ctime is updated on metadata changes, like chmod.
-  lockedFile.setCTime(time(NULL));
+  lockedFile.updateCTime();
   return 0;
 }
 
@@ -1153,7 +1151,7 @@ int __syscall_fchmod(int fd, int mode) {
   }
   auto lockedFile = openFile->locked().getFile()->locked();
   lockedFile.setMode(mode);
-  lockedFile.setCTime(time(NULL));
+  lockedFile.updateCTime();
   return 0;
 }
 
@@ -1233,7 +1231,7 @@ static int doTruncate(std::shared_ptr<File>& file, off_t size) {
   return ret;
 }
 
-int __syscall_truncate64(intptr_t path, uint64_t size) {
+int __syscall_truncate64(intptr_t path, off_t size) {
   auto parsed = path::parseFile((char*)path);
   if (auto err = parsed.getError()) {
     return err;
@@ -1241,7 +1239,7 @@ int __syscall_truncate64(intptr_t path, uint64_t size) {
   return doTruncate(parsed.getFile(), size);
 }
 
-int __syscall_ftruncate64(int fd, uint64_t size) {
+int __syscall_ftruncate64(int fd, off_t size) {
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;
@@ -1284,7 +1282,7 @@ int __syscall_ioctl(int fd, int request, ...) {
     case TIOCGWINSZ:
     case TIOCSWINSZ: {
       // TTY operations that we do nothing for anyhow can just be ignored.
-      return -0;
+      return 0;
     }
     default: {
       return -EINVAL; // not supported
@@ -1365,7 +1363,7 @@ int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
   return nonzero;
 }
 
-int __syscall_fallocate(int fd, int mode, uint64_t off, uint64_t len) {
+int __syscall_fallocate(int fd, int mode, off_t offset, off_t len) {
   assert(mode == 0); // TODO, but other modes were never supported in the old FS
 
   auto fileTable = wasmFS.getFileTable().locked();
@@ -1385,14 +1383,14 @@ int __syscall_fallocate(int fd, int mode, uint64_t off, uint64_t len) {
     return -EBADF;
   }
 
-  if (off < 0 || len <= 0) {
+  if (offset < 0 || len <= 0) {
     return -EINVAL;
   }
 
   // TODO: We could only fill zeros for regions that were completely unused
   //       before, which for a backend with sparse data storage could make a
   //       difference. For that we'd need a new backend API.
-  auto newNeededSize = off + len;
+  auto newNeededSize = offset + len;
   off_t size = locked.getSize();
   if (size < 0) {
     return size;
@@ -1541,7 +1539,7 @@ int _mmap_js(size_t length,
              int prot,
              int flags,
              int fd,
-             size_t offset,
+             off_t offset,
              int* allocated,
              void** addr) {
   // PROT_EXEC is not supported (although we pretend to support the absence of
@@ -1628,7 +1626,7 @@ int _mmap_js(size_t length,
 }
 
 int _msync_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
+  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset) {
   // TODO: This is not correct! Mappings should be associated with files, not
   // fds. Only need to sync if shared and writes are allowed.
   int mapType = flags & MAP_TYPE;
@@ -1644,7 +1642,7 @@ int _msync_js(
 }
 
 int _munmap_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset) {
+  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset) {
   // TODO: This is not correct! Mappings should be associated with files, not
   // fds.
   // TODO: Syncing should probably be handled in __syscall_munmap instead.
@@ -1663,7 +1661,7 @@ int __syscall_accept4(int sockfd,
 }
 
 int __syscall_bind(
-  int sockfd, intptr_t addr, size_t alen, int dummy, int dymmy2, int dummy3) {
+  int sockfd, intptr_t addr, size_t alen, int dummy, int dummy2, int dummy3) {
   return -ENOSYS;
 }
 
@@ -1723,6 +1721,19 @@ int __syscall_recvfrom(int sockfd,
 int __syscall_recvmsg(
   int sockfd, intptr_t msg, int flags, int dummy, int dummy2, int dummy3) {
   return -ENOSYS;
+}
+
+int __syscall_fadvise64(int fd, off_t offset, off_t length, int advice) {
+  // Advice is currently ignored. TODO some backends might use it
+  return 0;
+}
+
+int __syscall__newselect(int nfds, intptr_t readfds_, intptr_t writefds_, intptr_t exceptfds_, intptr_t timeout_) {
+  // TODO: Implement this syscall. For now, we return an error code,
+  //       specifically ENOMEM which is valid per the docs:
+  //          ENOMEM Unable to allocate memory for internal tables
+  //          https://man7.org/linux/man-pages/man2/select.2.html
+  return -ENOMEM;
 }
 
 } // extern "C"

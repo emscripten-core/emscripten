@@ -24,7 +24,7 @@
 //==============================================================================
 
 #if !POLYFILL
-assert(false, "this file should never be included unless POLYFILL is set");
+#error "this file should never be included unless POLYFILL is set"
 #endif
 
 /** @suppress{duplicate} This is already defined in from Closure's built-in

@@ -235,7 +235,7 @@ The parameters you pass to and receive from functions need to be primitive value
 
   - Integer and floating point numbers can be passed as-is.
   - Pointers can be passed as-is also, as they are simply integers in the generated code.
-  - JavaScript string ``someString`` can be converted to a ``char *`` using ``ptr = allocateUTF8(someString)``.
+  - JavaScript string ``someString`` can be converted to a ``char *`` using ``ptr = stringToNewUTF8(someString)``.
 
     .. note:: The conversion to a pointer allocates memory, which needs to be
       freed up via a call to ``free(ptr)`` afterwards (``_free`` in JavaScript side) -
@@ -347,6 +347,11 @@ See the :c:macro:`emscripten.h docs <EM_ASM_>` for more details.
      single quotes('). Double quotes(") will cause a syntax error that
      is not detected by the compiler and is only shown when looking at
      a JavaScript console while running the offending code.
+   - clang-format may clobber Javascript constructions, such as ``=>``
+     turning to ``= >``. To avoid this, add to your ``.clang-format``:
+     ``WhitespaceSensitiveMacros: ['EM_ASM', 'EM_JS', 'EM_ASM_INT', 'EM_ASM_DOUBLE', 'EM_ASM_PTR', 'MAIN_THREAD_EM_ASM', 'MAIN_THREAD_EM_ASM_INT', 'MAIN_THREAD_EM_ASM_DOUBLE', 'MAIN_THREAD_EM_ASM_DOUBLE', 'MAIN_THREAD_ASYNC_EM_ASM']``.
+     Or, turn `clang-format off`_ by writing ``// clang-format off``
+     before the ``EM_ASM`` section and ``// clang-format on`` after it.
 
 
 .. _implement-c-in-javascript:
@@ -596,9 +601,6 @@ See the `library_*.js`_ files for other examples.
      This is useful when all the implemented methods use a JavaScript
      singleton containing helper methods. See ``library_webgl.js`` for
      an example.
-   - If a JavaScript library depends on a compiled C library (like most
-     of *libc*), you must edit `src/deps_info.json`_. Search for
-     "deps_info" in `tools/system_libs.py`_.
    - The keys passed into `mergeInto` generate functions that are prefixed
      by ``_``. In other words ``my_func: function() {},`` becomes
      ``function _my_func() {}``, as all C methods in emscripten have a ``_`` prefix. Keys starting with ``$`` have the ``$``
@@ -810,7 +812,6 @@ you can give it a try. See `Emnapi documentation`_ for more details.
 
 .. _library.js: https://github.com/emscripten-core/emscripten/blob/main/src/library.js
 .. _test_js_libraries: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L5043
-.. _src/deps_info.json: https://github.com/emscripten-core/emscripten/blob/main/src/deps_info.json
 .. _tools/system_libs.py: https://github.com/emscripten-core/emscripten/blob/main/tools/system_libs.py
 .. _library_\*.js: https://github.com/emscripten-core/emscripten/tree/main/src
 .. _test_add_function in test/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L6237
@@ -818,6 +819,7 @@ you can give it a try. See `Emnapi documentation`_ for more details.
 .. _test/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L4597
 .. _Box2D: https://github.com/kripken/box2d.js/#box2djs
 .. _Bullet: https://github.com/kripken/ammo.js/#ammojs
+.. _clang-format off: https://clang.llvm.org/docs/ClangFormatStyleOptions.html#disabling-formatting-on-a-piece-of-code
 .. _Emnapi: https://github.com/toyobayashi/emnapi
 .. _Node-API: https://nodejs.org/dist/latest/docs/api/n-api.html
 .. _Emnapi documentation: https://emnapi-docs.vercel.app/guide/getting-started.html

@@ -22,7 +22,9 @@ import sys
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
-sys.path.append(__rootdir__)
+sys.path.insert(0, __rootdir__)
+
+from tools import utils
 
 logger = logging.getLogger('wasm-sourcemap')
 
@@ -62,9 +64,9 @@ class Prefixes:
     for p in self.prefixes:
       if name.startswith(p['prefix']):
         if p['replacement'] is None:
-          result = name[len(p['prefix'])::]
+          result = utils.removeprefix(name, p['prefix'])
         else:
-          result = p['replacement'] + name[len(p['prefix'])::]
+          result = p['replacement'] + utils.removeprefix(name, p['prefix'])
         break
     self.cache[name] = result
     return result

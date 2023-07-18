@@ -4,3 +4,6 @@
 [submodule "test/third_party/googletest"]
 	path = test/third_party/googletest
 	url = https://github.com/google/googletest
+[submodule "test/third_party/wasi-test-suite"]
+	path = test/third_party/wasi-test-suite
+	url = https://github.com/khronosproject/wasi-test-suite

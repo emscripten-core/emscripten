@@ -6,6 +6,7 @@
 #include <emscripten/threading.h>
 #include <stdlib.h>
 
+#include "opfs_backend.h"
 #include "backend.h"
 #include "file.h"
 #include "support.h"
@@ -14,110 +15,35 @@
 
 using namespace wasmfs;
 
-extern "C" {
-
-// Ensure that the root OPFS directory is initialized with ID 0.
-void _wasmfs_opfs_init_root_directory(em_proxying_ctx* ctx);
-
-// Look up the child under `parent` with `name`. Write 1 to `child_type` if it's
-// a regular file or 2 if it's a directory. Write the child's file or directory
-// ID to `child_id`, or -1 if the child does not exist, or -2 if the child
-// exists but cannot be opened.
-void _wasmfs_opfs_get_child(em_proxying_ctx* ctx,
-                            int parent,
-                            const char* name,
-                            int* child_type,
-                            int* child_id);
-
-// Create a file under `parent` with `name` and store its ID in `child_id`.
-void _wasmfs_opfs_insert_file(em_proxying_ctx* ctx,
-                              int parent,
-                              const char* name,
-                              int* child_id);
-
-// Create a directory under `parent` with `name` and store its ID in `child_id`.
-void _wasmfs_opfs_insert_directory(em_proxying_ctx* ctx,
-                                   int parent,
-                                   const char* name,
-                                   int* child_id);
-
-void _wasmfs_opfs_move(em_proxying_ctx* ctx,
-                       int file_id,
-                       int new_dir_id,
-                       const char* name,
-                       int* err);
-
-void _wasmfs_opfs_remove_child(em_proxying_ctx* ctx,
-                               int dir_id,
-                               const char* name,
-                               int* err);
-
-void _wasmfs_opfs_get_entries(em_proxying_ctx* ctx,
-                              int dirID,
-                              std::vector<Directory::Entry>* entries,
-                              int* err);
-
-void _wasmfs_opfs_open_access(em_proxying_ctx* ctx,
-                              int file_id,
-                              int* access_id);
-
-void _wasmfs_opfs_open_blob(em_proxying_ctx* ctx, int file_id, int* blob_id);
-
-void _wasmfs_opfs_close_access(em_proxying_ctx* ctx, int access_id, int* err);
-
-void _wasmfs_opfs_close_blob(int blob_id);
-
-void _wasmfs_opfs_free_file(int file_id);
-
-void _wasmfs_opfs_free_directory(int dir_id);
-
-// Synchronous read. Return the number of bytes read.
-int _wasmfs_opfs_read_access(int access_id,
-                             uint8_t* buf,
-                             uint32_t len,
-                             uint32_t pos);
-
-int _wasmfs_opfs_read_blob(em_proxying_ctx* ctx,
-                           int blob_id,
-                           uint8_t* buf,
-                           uint32_t len,
-                           uint32_t pos,
-                           int32_t* nread);
-
-// Synchronous write. Return the number of bytes written.
-int _wasmfs_opfs_write_access(int access_id,
-                              const uint8_t* buf,
-                              uint32_t len,
-                              uint32_t pos);
-
-// Get the size via an AccessHandle.
-void _wasmfs_opfs_get_size_access(em_proxying_ctx* ctx,
-                                  int access_id,
-                                  off_t* size);
-
-// TODO: return 64-byte off_t.
-uint32_t _wasmfs_opfs_get_size_blob(int blob_id);
-
-// Get the size of a file handle via a File Blob.
-void _wasmfs_opfs_get_size_file(em_proxying_ctx* ctx, int file_id, off_t* size);
-
-void _wasmfs_opfs_set_size_access(em_proxying_ctx* ctx,
-                                  int access_id,
-                                  off_t size,
-                                  int* err);
-
-void _wasmfs_opfs_set_size_file(em_proxying_ctx* ctx,
-                                int file_id,
-                                off_t size,
-                                int* err);
-
-void _wasmfs_opfs_flush_access(em_proxying_ctx* ctx, int access_id, int* err);
-
-} // extern "C"
-
 namespace {
 
 using ProxyWorker = emscripten::ProxyWorker;
+using ProxyingQueue = emscripten::ProxyingQueue;
+
+class Worker {
+public:
+#ifdef __EMSCRIPTEN_PTHREADS__
+  ProxyWorker proxy;
+
+  template<typename T>
+  void operator()(T func) {
+    proxy(func);
+  }
+#else
+  // When used with JSPI on the main thread the various wasmfs_opfs_* functions
+  // can be directly executed since they are all async.
+  template <typename T>
+  void operator()(T func) {
+    if constexpr (std::is_invocable_v<T&, ProxyingQueue::ProxyingCtx>) {
+      // TODO: Find a way to remove this, since it's unused.
+      ProxyingQueue::ProxyingCtx p;
+      func(p);
+    } else {
+      func();
+    }
+  }
+#endif
+};
 
 class OpenState {
 public:
@@ -131,7 +57,7 @@ private:
 public:
   Kind getKind() { return kind; }
 
-  int open(ProxyWorker& proxy, int fileID, oflags_t flags) {
+  int open(Worker& proxy, int fileID, oflags_t flags) {
     if (kind == None) {
       assert(openCount == 0);
       switch (flags) {
@@ -175,7 +101,7 @@ public:
     return 0;
   }
 
-  int close(ProxyWorker& proxy) {
+  int close(Worker& proxy) {
     // TODO: Downgrade to Blob access once the last writable file descriptor has
     // been closed.
     int err = 0;
@@ -214,11 +140,11 @@ public:
 
 class OPFSFile : public DataFile {
 public:
-  ProxyWorker& proxy;
+  Worker& proxy;
   int fileID;
   OpenState state;
 
-  OPFSFile(mode_t mode, backend_t backend, int fileID, ProxyWorker& proxy)
+  OPFSFile(mode_t mode, backend_t backend, int fileID, Worker& proxy)
     : DataFile(mode, backend), proxy(proxy), fileID(fileID) {}
 
   ~OPFSFile() override {
@@ -335,12 +261,12 @@ private:
 
 class OPFSDirectory : public Directory {
 public:
-  ProxyWorker& proxy;
+  Worker& proxy;
 
   // The ID of this directory in the JS library.
   int dirID = 0;
 
-  OPFSDirectory(mode_t mode, backend_t backend, int dirID, ProxyWorker& proxy)
+  OPFSDirectory(mode_t mode, backend_t backend, int dirID, Worker& proxy)
     : Directory(mode, backend), proxy(proxy), dirID(dirID) {}
 
   ~OPFSDirectory() override {
@@ -405,11 +331,19 @@ private:
   }
 
   int insertMove(const std::string& name, std::shared_ptr<File> file) override {
-    auto old_file = std::static_pointer_cast<OPFSFile>(file);
     int err = 0;
-    proxy([&](auto ctx) {
-      _wasmfs_opfs_move(ctx.ctx, old_file->fileID, dirID, name.c_str(), &err);
-    });
+    if (file->is<DataFile>()) {
+      auto opfsFile = std::static_pointer_cast<OPFSFile>(file);
+      proxy([&](auto ctx) {
+        _wasmfs_opfs_move_file(
+          ctx.ctx, opfsFile->fileID, dirID, name.c_str(), &err);
+      });
+    } else {
+      // TODO: Support moving directories once OPFS supports that.
+      // EBUSY can be returned when the directory is "in use by the system,"
+      // which can mean whatever we want.
+      err = -EBUSY;
+    }
     return err;
   }
 
@@ -445,7 +379,7 @@ private:
 
 class OPFSBackend : public Backend {
 public:
-  ProxyWorker proxy;
+  Worker proxy;
 
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     // No way to support a raw file without a parent directory.
@@ -456,7 +390,7 @@ public:
 
   std::shared_ptr<Directory> createDirectory(mode_t mode) override {
     proxy([](auto ctx) { _wasmfs_opfs_init_root_directory(ctx.ctx); });
-    return std::make_shared<OPFSDirectory>(mode, this, 0, proxy);
+    return std::make_shared<OPFSDirectory>(mode, this, 1, proxy);
   }
 
   std::shared_ptr<Symlink> createSymlink(std::string target) override {
@@ -472,8 +406,9 @@ extern "C" {
 backend_t wasmfs_create_opfs_backend() {
   // ProxyWorker cannot safely be synchronously spawned from the main browser
   // thread. See comment in thread_utils.h for more details.
-  assert(!emscripten_is_main_browser_thread() &&
-         "Cannot safely create OPFS backend on main browser thread");
+  assert(!emscripten_is_main_browser_thread() || emscripten_has_asyncify() == 2 &&
+         "Cannot safely create OPFS backend on main browser thread without JSPI");
+
   return wasmFS.addBackend(std::make_unique<OPFSBackend>());
 }
 

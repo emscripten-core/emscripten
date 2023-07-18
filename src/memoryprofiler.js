@@ -248,7 +248,7 @@ var emscriptenMemoryProfiler = {
 
     // Add a tracking mechanism to detect when VFS loading is complete.
     if (!Module['preRun']) Module['preRun'] = [];
-    Module['preRun'].push(function() { emscriptenMemoryProfiler.onPreloadComplete(); });
+    Module['preRun'].push(emscriptenMemoryProfiler.onPreloadComplete);
 
     if (emscriptenMemoryProfiler.hookStackAlloc && typeof stackAlloc == 'function') {
       // Inject stack allocator.
@@ -291,15 +291,15 @@ var emscriptenMemoryProfiler = {
       self.memoryprofiler_summary = document.getElementById('memoryprofiler_summary');
       self.memoryprofiler_ptrs = document.getElementById('memoryprofiler_ptrs');
 
-      document.getElementById('memoryprofiler_min_tracked_alloc_size').addEventListener("change", function(e){self.trackedCallstackMinSizeBytes=parseInt(this.value, undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */);});
-      document.getElementById('memoryprofiler_min_tracked_alloc_count').addEventListener("change", function(e){self.trackedCallstackMinAllocCount=parseInt(this.value, undefined);});
-      document.getElementById('memoryprofiler_clear_alloc_stats').addEventListener("click", function(e){self.allocationsAtLoc = {}; self.allocationSitePtrs = {};});
+      document.getElementById('memoryprofiler_min_tracked_alloc_size').addEventListener("change", (e) => self.trackedCallstackMinSizeBytes=parseInt(this.value, undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */));
+      document.getElementById('memoryprofiler_min_tracked_alloc_count').addEventListener("change", (e) => self.trackedCallstackMinAllocCount=parseInt(this.value, undefined));
+      document.getElementById('memoryprofiler_clear_alloc_stats').addEventListener("click", (e) => {self.allocationsAtLoc = {}; self.allocationSitePtrs = {};});
       self.canvas = document.getElementById('memoryprofiler_canvas');
       self.canvas.width = document.documentElement.clientWidth - 32;
       self.drawContext = self.canvas.getContext('2d');
 
       self.updateUi();
-      setInterval(function() { emscriptenMemoryProfiler.updateUi() }, self.uiUpdateIntervalMsecs);
+      setInterval(() => emscriptenMemoryProfiler.updateUi(), self.uiUpdateIntervalMsecs);
 
     };
     // User might initialize memoryprofiler in the <head> of a page, when
@@ -424,7 +424,7 @@ var emscriptenMemoryProfiler = {
   filterCallstackForHeapResize: function(callstack) {
     // Do not show Memoryprofiler's own callstacks in the callstack prints.
     var i = callstack.indexOf('emscripten_asm_const_iii');
-    var j = callstack.indexOf('emscripten_realloc_buffer');
+    var j = callstack.indexOf('growMemory');
     i = (i == -1) ? j : (j == -1 ? i : Math.min(i, j));
     if (i != -1) {
       callstack = callstack.substr(callstack.indexOf('\n', i)+1);
@@ -613,7 +613,7 @@ var emscriptenMemoryProfiler = {
         if (calls.length > 0) {
           if (sortOrder != 'fixed') {
             var sortIdx = (sortOrder == 'count') ? 0 : 1;
-            calls.sort(function(a,b) { return b[sortIdx] - a[sortIdx]; });
+            calls.sort((a,b) => { return b[sortIdx] - a[sortIdx]; });
           }
           html += '<h4>Allocation sites with more than ' + self.formatBytes(self.trackedCallstackMinSizeBytes) + ' of accumulated allocations, or more than ' + self.trackedCallstackMinAllocCount + ' simultaneously outstanding allocations:</h4>'
           for (var i in calls) {

@@ -20,13 +20,16 @@
 // after the generated code, you will need to define   var Module = {};
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
-#if USE_CLOSURE_COMPILER
+#if MODULARIZE
+var Module = moduleArg;
+#elif USE_CLOSURE_COMPILER
 // if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
 var /** @type {{
   noImageDecoding: boolean,
   noAudioDecoding: boolean,
   noWasmDecoding: boolean,
   canvas: HTMLCanvasElement,
+  ctx: Object,
   dataFileDownloads: Object,
   preloadResults: Object,
   useWebGL: boolean,
@@ -63,7 +66,7 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #if MODULARIZE
 // Set up the promise that indicates the Module is initialized
 var readyPromiseResolve, readyPromiseReject;
-Module['ready'] = new Promise(function(resolve, reject) {
+Module['ready'] = new Promise((resolve, reject) => {
   readyPromiseResolve = resolve;
   readyPromiseReject = reject;
 });
@@ -98,7 +101,7 @@ var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined
 
 #if ENVIRONMENT && !ENVIRONMENT.includes(',')
 var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT === 'web' }}};
-#if USE_PTHREADS && ENVIRONMENT_MAY_BE_NODE
+#if PTHREADS && ENVIRONMENT_MAY_BE_NODE
 // node+pthreads always supports workers; detect which we are at runtime
 var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function';
 #else
@@ -126,7 +129,7 @@ if (Module['ENVIRONMENT']) {
 }
 #endif
 
-#if USE_PTHREADS
+#if PTHREADS
 // Three configurations we can be running in:
 // 1) We could be the application main() thread running in the main JS UI thread. (ENVIRONMENT_IS_WORKER == false and ENVIRONMENT_IS_PTHREAD == false)
 // 2) We could be the application main() thread proxied to worker. (with Emscripten -sPROXY_TO_WORKER) (ENVIRONMENT_IS_WORKER == true, ENVIRONMENT_IS_PTHREAD == false)
@@ -181,7 +184,7 @@ if (ENVIRONMENT_IS_NODE) {
 #if ASSERTIONS
   var nodeVersion = process.versions.node;
   var numericVersion = nodeVersion.split('.').slice(0, 3);
-  numericVersion = (numericVersion[0] * 10000) + (numericVersion[1] * 100) + numericVersion[2] * 1;
+  numericVersion = (numericVersion[0] * 10000) + (numericVersion[1] * 100) + (numericVersion[2].split('-')[0] * 1);
   var minVersion = {{{ MIN_NODE_VERSION }}};
   if (numericVersion < {{{ MIN_NODE_VERSION }}}) {
     throw new Error('This emscripten-generated code requires node {{{ formattedMinNodeVersion() }}} (detected v' + nodeVersion + ')');
@@ -217,7 +220,7 @@ if (ENVIRONMENT_IS_NODE) {
 
 #include "node_shell_read.js"
 
-  if (process.argv.length > 1) {
+  if (!Module['thisProgram'] && process.argv.length > 1) {
     thisProgram = process.argv[1].replace(/\\/g, '/');
   }
 
@@ -232,10 +235,10 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 
 #if NODEJS_CATCH_EXIT
-  process.on('uncaughtException', function(ex) {
+  process.on('uncaughtException', (ex) => {
     // suppress ExitStatus exceptions from showing an error
 #if RUNTIME_DEBUG
-    dbg('node: uncaughtException: ' + ex)
+    dbg(`node: uncaughtException: ${ex}`)
 #endif
     if (ex !== 'unwind' && !(ex instanceof ExitStatus) && !(ex.context instanceof ExitStatus)) {
       throw ex;
@@ -251,7 +254,7 @@ if (ENVIRONMENT_IS_NODE) {
   // See https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
   var nodeMajor = process.versions.node.split(".")[0];
   if (nodeMajor < 15) {
-    process.on('unhandledRejection', function(reason) { throw reason; });
+    process.on('unhandledRejection', (reason) => { throw reason; });
   }
 #endif
 
@@ -260,9 +263,9 @@ if (ENVIRONMENT_IS_NODE) {
     throw toThrow;
   };
 
-  Module['inspect'] = function () { return '[Emscripten Module object]'; };
+  Module['inspect'] = () => '[Emscripten Module object]';
 
-#if USE_PTHREADS
+#if PTHREADS || WASM_WORKERS
   let nodeWorkerThreads;
   try {
     nodeWorkerThreads = require('worker_threads');
@@ -290,39 +293,29 @@ if (ENVIRONMENT_IS_SHELL) {
 #endif
 
   if (typeof read != 'undefined') {
-    read_ = function shell_read(f) {
-#if SUPPORT_BASE64_EMBEDDING
-      const data = tryParseAsDataURI(f);
-      if (data) {
-        return intArrayToString(data);
-      }
-#endif
-      return read(f);
-    };
+    read_ = read;
   }
 
-  readBinary = function readBinary(f) {
-    let data;
-#if SUPPORT_BASE64_EMBEDDING
-    data = tryParseAsDataURI(f);
-    if (data) {
-      return data;
-    }
-#endif
+  readBinary = (f) => {
     if (typeof readbuffer == 'function') {
       return new Uint8Array(readbuffer(f));
     }
-    data = read(f, 'binary');
+    let data = read(f, 'binary');
     assert(typeof data == 'object');
     return data;
   };
 
-  readAsync = function readAsync(f, onload, onerror) {
-    setTimeout(() => onload(readBinary(f)), 0);
+  readAsync = (f, onload, onerror) => {
+    setTimeout(() => onload(readBinary(f)));
   };
 
   if (typeof clearTimeout == 'undefined') {
     globalThis.clearTimeout = (id) => {};
+  }
+
+  if (typeof setTimeout == 'undefined') {
+    // spidermonkey lacks setTimeout but we use it above in readAsync.
+    globalThis.setTimeout = (f) => (typeof f == 'function') ? f() : abort();
   }
 
   if (typeof scriptArgs != 'undefined') {
@@ -348,7 +341,7 @@ if (ENVIRONMENT_IS_SHELL) {
           if (toThrow && typeof toThrow == 'object' && toThrow.stack) {
             toLog = [toThrow, toThrow.stack];
           }
-          err('exiting due to exception: ' + toLog);
+          err(`exiting due to exception: ${toLog}`);
         }
         quit(status);
       });
@@ -408,7 +401,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 
   // Differentiate the Web Worker from the Node Worker case, as reading must
   // be done differently.
-#if USE_PTHREADS && ENVIRONMENT_MAY_BE_NODE
+#if PTHREADS && ENVIRONMENT_MAY_BE_NODE
   if (!ENVIRONMENT_IS_NODE)
 #endif
   {
@@ -427,7 +420,7 @@ if (!ENVIRONMENT_IS_AUDIO_WORKLET)
 #endif // ASSERTIONS
 }
 
-#if ENVIRONMENT_MAY_BE_NODE && USE_PTHREADS
+#if ENVIRONMENT_MAY_BE_NODE && PTHREADS
 if (ENVIRONMENT_IS_NODE) {
   // Polyfill the performance object, which emscripten pthreads support
   // depends on for good timing.
@@ -438,21 +431,21 @@ if (ENVIRONMENT_IS_NODE) {
 
 // Set up the out() and err() hooks, which are how we can print to stdout or
 // stderr, respectively.
-// Normally just binding console.log/console.warn here works fine, but
+// Normally just binding console.log/console.error here works fine, but
 // under node (with workers) we see missing/out-of-order messages so route
 // directly to stdout and stderr.
 // See https://github.com/emscripten-core/emscripten/issues/14804
 var defaultPrint = console.log.bind(console);
-var defaultPrintErr = console.warn.bind(console);
+var defaultPrintErr = console.error.bind(console);
 if (ENVIRONMENT_IS_NODE) {
-  defaultPrint = (str) => fs.writeSync(1, str + '\n');
-  defaultPrintErr = (str) => fs.writeSync(2, str + '\n');
+  defaultPrint = (...args) => fs.writeSync(1, args.join(' ') + '\n');
+  defaultPrintErr = (...args) => fs.writeSync(2, args.join(' ') + '\n');
 }
 {{{ makeModuleReceiveWithVar('out', 'print',    'defaultPrint',    true) }}}
 {{{ makeModuleReceiveWithVar('err', 'printErr', 'defaultPrintErr', true) }}}
 #else
 {{{ makeModuleReceiveWithVar('out', 'print',    'console.log.bind(console)',  true) }}}
-{{{ makeModuleReceiveWithVar('err', 'printErr', 'console.warn.bind(console)', true) }}}
+{{{ makeModuleReceiveWithVar('err', 'printErr', 'console.error.bind(console)', true) }}}
 #endif
 
 // Merge back in the overrides
@@ -484,6 +477,7 @@ assert(typeof Module['readAsync'] == 'undefined', 'Module.readAsync option was r
 assert(typeof Module['readBinary'] == 'undefined', 'Module.readBinary option was removed (modify readBinary in JS)');
 assert(typeof Module['setWindowTitle'] == 'undefined', 'Module.setWindowTitle option was removed (modify setWindowTitle in JS)');
 assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has been renamed Module.INITIAL_MEMORY');
+{{{ makeRemovedModuleAPIAssert('asm', 'wasmExports', false) }}}
 {{{ makeRemovedModuleAPIAssert('read', 'read_') }}}
 {{{ makeRemovedModuleAPIAssert('readAsync') }}}
 {{{ makeRemovedModuleAPIAssert('readBinary') }}}
@@ -495,14 +489,14 @@ assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has be
 {{{ makeRemovedFSAssert('NODEFS') }}}
 #endif
 
-#if USE_PTHREADS
+#if PTHREADS
 assert(
 #if AUDIO_WORKLET
   ENVIRONMENT_IS_AUDIO_WORKLET ||
 #endif
   ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_NODE, 'Pthreads do not work in this environment yet (need Web Workers, or an alternative to them)');
 #else
-#endif // USE_PTHREADS
+#endif // PTHREADS
 
 #if !ENVIRONMENT_MAY_BE_WEB
 assert(!ENVIRONMENT_IS_WEB, "web environment detected but not enabled at build time.  Add 'web' to `-sENVIRONMENT` to enable.");

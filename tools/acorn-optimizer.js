@@ -63,9 +63,7 @@ function visitChildren(node, c) {
 // Simple post-order walk, calling properties on an object by node type,
 // if the type exists.
 function simpleWalk(node, cs) {
-  visitChildren(node, function (child) {
-    simpleWalk(child, cs);
-  });
+  visitChildren(node, (child) => simpleWalk(child, cs));
   if (node.type in cs) {
     cs[node.type](node);
   }
@@ -73,9 +71,7 @@ function simpleWalk(node, cs) {
 
 // Full post-order walk, calling a single function for all types.
 function fullWalk(node, c) {
-  visitChildren(node, function (child) {
-    fullWalk(child, c);
-  });
+  visitChildren(node, (child) => fullWalk(child, c));
   c(node);
 }
 
@@ -84,9 +80,7 @@ function fullWalk(node, c) {
 function recursiveWalk(node, cs) {
   (function c(node) {
     if (!(node.type in cs)) {
-      visitChildren(node, function (child) {
-        recursiveWalk(child, cs);
-      });
+      visitChildren(node, (child) => recursiveWalk(child, cs));
     } else {
       cs[node.type](node, c);
     }
@@ -178,7 +172,7 @@ function ignoreInnerScopes(node) {
 
 // Mark inner scopes temporarily as empty statements.
 function restoreInnerScopes(node, map) {
-  fullWalk(node, function (node) {
+  fullWalk(node, (node) => {
     if (map.has(node)) {
       node.type = map.get(node);
       map.delete(node);
@@ -209,6 +203,9 @@ function restoreForVars(node) {
     ForInStatement(node) {
       fix(node.left);
     },
+    ForOfStatement(node) {
+      fix(node.left);
+    },
   });
   return restored;
 }
@@ -217,7 +214,7 @@ function hasSideEffects(node) {
   // Conservative analysis.
   const map = ignoreInnerScopes(node);
   let has = false;
-  fullWalk(node, function (node) {
+  fullWalk(node, (node) => {
     switch (node.type) {
       // TODO: go through all the ESTree spec
       case 'Literal':
@@ -321,7 +318,7 @@ function runJSDCE(ast, aggressive) {
         VariableDeclaration(node, c) {
           const old = node.declarations;
           let removedHere = 0;
-          node.declarations = node.declarations.filter(function (node) {
+          node.declarations = node.declarations.filter((node) => {
             const curr = node.id.name;
             const value = node.init;
             const keep = !(curr in names) || (value && hasSideEffects(value));
@@ -364,7 +361,7 @@ function runJSDCE(ast, aggressive) {
         ensureData(scopes[scopes.length - 1], node.id.name).def = 1;
       }
       const scope = {};
-      node.params.forEach(function (param) {
+      node.params.forEach((param) => {
         const name = param.name;
         ensureData(scope, name).def = 1;
         scope[name].param = 1;
@@ -399,7 +396,7 @@ function runJSDCE(ast, aggressive) {
       },
       ObjectExpression(node, c) {
         // ignore the property identifiers
-        node.properties.forEach(function (node) {
+        node.properties.forEach((node) => {
           if (node.value) {
             c(node.value);
           } else if (node.argument) {
@@ -468,22 +465,23 @@ function getWasmImportsValue(node) {
   return node.declarations[0].init;
 }
 
-function isAsmUse(node) {
+function isExportUse(node) {
+  // MINIMAL_RUNTIME calls exports global variable `asm`, whereas regualar
+  // runtime calls it `wasmExports`.
+  //
+  // Here we match either:
+  //   wasmExports['X']
+  // or:
+  //   asm['X']
   return (
     node.type === 'MemberExpression' &&
-    ((node.object.type === 'Identifier' && // asm['X']
-      node.object.name === 'asm' &&
-      node.property.type === 'Literal') ||
-      (node.object.type === 'MemberExpression' && // Module['asm']['X']
-        node.object.object.type === 'Identifier' &&
-        node.object.object.name === 'Module' &&
-        node.object.property.type === 'Literal' &&
-        node.object.property.value === 'asm' &&
-        isLiteralString(node.property)))
+    node.object.type === 'Identifier' &&
+    isLiteralString(node.property) &&
+    (node.object.name === 'wasmExports' || node.object.name === 'asm')
   );
 }
 
-function getAsmOrModuleUseName(node) {
+function getExportOrModuleUseName(node) {
   return node.property.value;
 }
 
@@ -496,53 +494,34 @@ function isModuleUse(node) {
   );
 }
 
-function isModuleAsmUse(node) {
-  // Module['asm'][..string..]
-  return (
-    node.type === 'MemberExpression' &&
-    node.object.type === 'MemberExpression' &&
-    node.object.object.type === 'Identifier' &&
-    node.object.object.name === 'Module' &&
-    node.object.property.type === 'Literal' &&
-    node.object.property.value === 'asm' &&
-    isLiteralString(node.property)
-  );
-}
-
 // Apply import/export name changes (after minifying them)
 function applyImportAndExportNameChanges(ast) {
   const mapping = extraInfo.mapping;
-  fullWalk(ast, function (node) {
+  fullWalk(ast, (node) => {
     if (isWasmImportsAssign(node)) {
       const assignedObject = getWasmImportsValue(node);
-      assignedObject.properties.forEach(function (item) {
-        if (mapping[item.key.value]) {
-          setLiteralValue(item.key, mapping[item.key.value]);
+      assignedObject.properties.forEach((item) => {
+        if (mapping[item.key.name]) {
+          item.key.name = mapping[item.key.name];
         }
       });
     } else if (node.type === 'AssignmentExpression') {
       const target = node.left;
       const value = node.right;
-      if (isAsmUse(value)) {
+      if (isExportUse(value)) {
         const name = value.property.value;
         if (mapping[name]) {
           setLiteralValue(value.property, mapping[name]);
         }
       }
-    } else if (node.type === 'CallExpression' && isAsmUse(node.callee)) {
+    } else if (node.type === 'CallExpression' && isExportUse(node.callee)) {
       // asm["___wasm_call_ctors"](); -> asm["M"]();
       const callee = node.callee;
       const name = callee.property.value;
       if (mapping[name]) {
         setLiteralValue(callee.property, mapping[name]);
       }
-    } else if (isModuleAsmUse(node)) {
-      const prop = node.property;
-      const name = prop.value;
-      if (mapping[name]) {
-        setLiteralValue(prop, mapping[name]);
-      }
-    } else if (isAsmUse(node)) {
+    } else if (isExportUse(node)) {
       const prop = node.property;
       const name = prop.value;
       if (mapping[name]) {
@@ -588,30 +567,18 @@ function isDynamicDynCall(node) {
 // Matches the wasm export wrappers generated by emcc (see make_export_wrappers
 // in emscripten.py). For example:
 //
-//   var _foo = function() {
-//     return (_foo = Module['asm']['foo']).apply(null, argument)
-//   }
+//   var _foo = (a0, a1) => (_foo = wasmExports['foo'])(a0, a1):
 //
 function isExportWrapperFunction(f) {
-  if (f.body.type != 'BlockStatement') return null;
-  if (f.body.body.length != 1) return null;
-  const expr = f.body.body[0];
-  if (expr.type == 'ReturnStatement') {
-    const rtn = expr.argument;
-    if (rtn.type == 'CallExpression') {
-      let target = rtn.callee.object;
-      if (target.type == 'ParenthesizedExpression') {
-        target = target.expression;
-      }
-      if (target.type == 'AssignmentExpression') {
-        const rhs = target.right;
-        if (isAsmUse(rhs)) {
-          return getAsmOrModuleUseName(rhs);
-        }
-      }
-    }
+  if (f.body.type != 'CallExpression') return null;
+  let callee = f.body.callee;
+  if (callee.type == 'ParenthesizedExpression') {
+    callee = callee.expression;
   }
-  return null;
+  if (callee.type != 'AssignmentExpression' || callee.right.type != 'MemberExpression') return null;
+  var rhs = callee.right;
+  if (rhs.type != 'MemberExpression' || !isExportUse(rhs)) return null;
+  return getExportOrModuleUseName(rhs);
 }
 
 //
@@ -666,21 +633,19 @@ function emitDCEGraph(ast) {
   // The exports are trickier, as they have a different form whether or not
   // async compilation is enabled. It can be either:
   //
-  //  var _malloc = Module["_malloc"] = asm["_malloc"];
+  //  var _malloc = Module['_malloc'] = asm['_malloc'];
   //
   // or
   //
-  //  var _malloc = asm["_malloc"];
+  //  var _malloc = asm['_malloc'];
   //
   // or
   //
-  //  var _malloc = Module["_malloc"] = (function() {
-  //   return Module["asm"]["_malloc"].apply(null, arguments);
-  //  });
+  //  var _malloc = Module['_malloc'] = (x) => wasmExports['_malloc'](x);
   //
   // or, in the minimal runtime, it looks like
   //
-  //  WebAssembly.instantiate(Module["wasm"], imports).then(function(output) {
+  //  WebAssembly.instantiate(Module["wasm"], imports).then((output) => {
   //   var asm = output.instance.exports; // may also not have "var", if
   //                                      // declared outside and used elsewhere
   //   ..
@@ -709,10 +674,10 @@ function emitDCEGraph(ast) {
     }
   }
 
-  fullWalk(ast, function (node) {
+  fullWalk(ast, (node) => {
     if (isWasmImportsAssign(node)) {
       const assignedObject = getWasmImportsValue(node);
-      assignedObject.properties.forEach(function (item) {
+      assignedObject.properties.forEach((item) => {
         let value = item.value;
         if (value.type === 'Literal' || value.type === 'FunctionExpression') {
           return; // if it's a numeric or function literal, nothing to do here
@@ -732,15 +697,17 @@ function emitDCEGraph(ast) {
         const item = node.declarations[0];
         const name = item.id.name;
         const value = item.init;
-        if (value && isAsmUse(value)) {
-          const asmName = getAsmOrModuleUseName(value);
+        if (value && isExportUse(value)) {
+          const asmName = getExportOrModuleUseName(value);
           // this is
           //  var _x = asm['x'];
+          // or
+          //  var _x = wasmExports['x'];
           saveAsmExport(name, asmName);
           emptyOut(node);
-        } else if (value && value.type === 'FunctionExpression') {
+        } else if (value && value.type === 'ArrowFunctionExpression') {
           // this is
-          //  var x = function() { return (x = Module['asm']['x']).apply .. }
+          //  var x = () => (x = wasmExports['x'])(..)
           let asmName = isExportWrapperFunction(value);
           if (asmName) {
             saveAsmExport(name, asmName);
@@ -748,16 +715,16 @@ function emitDCEGraph(ast) {
           }
         } else if (value && value.type === 'AssignmentExpression') {
           const assigned = value.left;
-          if (isModuleUse(assigned) && getAsmOrModuleUseName(assigned) === name) {
+          if (isModuleUse(assigned) && getExportOrModuleUseName(assigned) === name) {
             // this is
             //  var x = Module['x'] = ?
             // which looks like a wasm export being received. confirm with the asm use
             let found = 0;
             let asmName;
-            fullWalk(value.right, function (node) {
-              if (isAsmUse(node)) {
+            fullWalk(value.right, (node) => {
+              if (isExportUse(node)) {
                 found++;
-                asmName = getAsmOrModuleUseName(node);
+                asmName = getExportOrModuleUseName(node);
               }
             });
             // in the wasm backend, the asm name may have one fewer "_" prefixed
@@ -791,7 +758,7 @@ function emitDCEGraph(ast) {
       const name = node.id.name;
       nameToGraphName[name] = getGraphName(name, 'defun');
       emptyOut(node); // ignore this in the second pass; we scan defuns separately
-    } else if (node.type === 'FunctionExpression') {
+    } else if (node.type === 'ArrowFunctionExpression') {
       // Check if this is the minimal runtime exports function, which looks like
       //   (output) => { var asm = output.instance.exports;
       if (
@@ -906,7 +873,7 @@ function emitDCEGraph(ast) {
         reached = nameToGraphName[name];
       }
     } else if (isModuleUse(node)) {
-      const name = getAsmOrModuleUseName(node);
+      const name = getExportOrModuleUseName(node);
       if (modulePropertyToGraphName.hasOwnProperty(name)) {
         reached = modulePropertyToGraphName[name];
       }
@@ -915,9 +882,9 @@ function emitDCEGraph(ast) {
     } else if (isDynamicDynCall(node)) {
       // this can reach *all* dynCall_* targets, we can't narrow it down
       reached = dynCallNames;
-    } else if (isAsmUse(node)) {
+    } else if (isExportUse(node)) {
       // any remaining asm uses are always rooted in any case
-      const name = getAsmOrModuleUseName(node);
+      const name = getExportOrModuleUseName(node);
       if (exportNameToGraphName.hasOwnProperty(name)) {
         infos[exportNameToGraphName[name]].root = true;
       }
@@ -948,15 +915,15 @@ function emitDCEGraph(ast) {
       }
     }
   }
-  defuns.forEach(defun => {
+  defuns.forEach((defun) => {
     const name = getGraphName(defun.id.name, 'defun');
     const info = (infos[name] = {
       name: name,
       reaches: {},
     });
-    fullWalk(defun.body, node => visitNode(node, info));
+    fullWalk(defun.body, (node) => visitNode(node, info));
   });
-  fullWalk(ast, node => visitNode(node, null));
+  fullWalk(ast, (node) => visitNode(node, null));
   // Final work: print out the graph
   // sort for determinism
   function sortedNamesFromMap(map) {
@@ -967,7 +934,7 @@ function emitDCEGraph(ast) {
     names.sort();
     return names;
   }
-  sortedNamesFromMap(infos).forEach(name => {
+  sortedNamesFromMap(infos).forEach((name) => {
     const info = infos[name];
     info.reaches = sortedNamesFromMap(info.reaches);
     graph.push(info);
@@ -979,11 +946,11 @@ function emitDCEGraph(ast) {
 function applyDCEGraphRemovals(ast) {
   const unused = new Set(extraInfo.unused);
 
-  fullWalk(ast, node => {
+  fullWalk(ast, (node) => {
     if (isWasmImportsAssign(node)) {
       const assignedObject = getWasmImportsValue(node);
-      assignedObject.properties = assignedObject.properties.filter(item => {
-        const name = item.key.value;
+      assignedObject.properties = assignedObject.properties.filter((item) => {
+        const name = item.key.name;
         const value = item.value;
         const full = 'emcc$import$' + name;
         return !(unused.has(full) && !hasSideEffects(value));
@@ -992,11 +959,11 @@ function applyDCEGraphRemovals(ast) {
       // when we assign to a thing we don't need, we can just remove the assign
       //   var x = Module['x'] = asm['x'];
       const target = node.left;
-      if (isAsmUse(target) || isModuleUse(target)) {
-        const name = getAsmOrModuleUseName(target);
+      if (isExportUse(target) || isModuleUse(target)) {
+        const name = getExportOrModuleUseName(target);
         const full = 'emcc$export$' + name;
         const value = node.right;
-        if (unused.has(full) && (isAsmUse(value) || !hasSideEffects(value))) {
+        if (unused.has(full) && (isExportUse(value) || !hasSideEffects(value))) {
           // This will be in a var init, and we just remove that value.
           convertToNothingInVarInit(node);
         }
@@ -1008,13 +975,13 @@ function applyDCEGraphRemovals(ast) {
       //   var x = function() { return (x = asm['x']).apply(...) };
       const init = node.declarations[0].init;
       if (init) {
-        if (isAsmUse(init)) {
-          const name = getAsmOrModuleUseName(init);
+        if (isExportUse(init)) {
+          const name = getExportOrModuleUseName(init);
           const full = 'emcc$export$' + name;
           if (unused.has(full)) {
             convertToNothingInVarInit(init);
           }
-        } else if (init.type == 'FunctionExpression') {
+        } else if (init.type == 'ArrowFunctionExpression') {
           const name = isExportWrapperFunction(init);
           const full = 'emcc$export$' + name;
           if (unused.has(full)) {
@@ -1027,9 +994,9 @@ function applyDCEGraphRemovals(ast) {
       // In the minimal runtime code pattern we have just
       //   x = asm['x']
       // and never in a var.
-      if (expr.operator === '=' && expr.left.type === 'Identifier' && isAsmUse(expr.right)) {
+      if (expr.operator === '=' && expr.left.type === 'Identifier' && isExportUse(expr.right)) {
         const name = expr.left.name;
-        if (name === getAsmOrModuleUseName(expr.right)) {
+        if (name === getExportOrModuleUseName(expr.right)) {
           const full = 'emcc$export$' + name;
           if (unused.has(full)) {
             emptyOut(node);
@@ -1202,7 +1169,7 @@ function littleEndianHeap(ast) {
 // in each access), see #8365.
 function growableHeap(ast) {
   recursiveWalk(ast, {
-    AssignmentExpression: node => {
+    AssignmentExpression: (node) => {
       if (node.left.type === 'Identifier' && isEmscriptenHEAP(node.left.name)) {
         // Don't transform initial setup of the arrays.
         return;
@@ -1210,9 +1177,9 @@ function growableHeap(ast) {
       growableHeap(node.left);
       growableHeap(node.right);
     },
-    VariableDeclaration: node => {
+    VariableDeclaration: (node) => {
       // Don't transform the var declarations for HEAP8 etc
-      node.declarations.forEach(function (decl) {
+      node.declarations.forEach((decl) => {
         // but do transform anything that sets a var to
         // something from HEAP8 etc
         if (decl.init) {
@@ -1220,7 +1187,7 @@ function growableHeap(ast) {
         }
       });
     },
-    Identifier: node => {
+    Identifier: (node) => {
       if (node.name.startsWith('HEAP')) {
         // Turn HEAP8 into GROWABLE_HEAP_I8() etc
         switch (node.name) {
@@ -1300,7 +1267,7 @@ function unsignPointers(ast) {
     };
   }
 
-  fullWalk(ast, function (node) {
+  fullWalk(ast, (node) => {
     if (node.type === 'MemberExpression') {
       // Check if this is HEAP*[?]
       if (node.object.type === 'Identifier' && isHeap(node.object.name) && node.computed) {
@@ -1918,7 +1885,7 @@ function reattachComments(ast, comments) {
 
   // Collect all code symbols
   ast.walk(
-    new terser.TreeWalker(function (node) {
+    new terser.TreeWalker((node) => {
       if (node.start && node.start.pos) {
         symbols.push(node);
       }
@@ -1946,24 +1913,16 @@ function reattachComments(ast, comments) {
       symbols[j].start.comments_before = [];
     }
     symbols[j].start.comments_before.push(
-      new terser.AST_Token({
-        end: undefined,
-        quote: undefined,
-        raw: undefined,
-        file: '0',
-        comments_after: undefined,
-        comments_before: undefined,
-        nlb: false,
-        endpos: undefined,
-        endcol: undefined,
-        endline: undefined,
-        pos: undefined,
-        col: undefined,
-        line: undefined,
-        value: comments[i].value,
-        type: comments[i].type == 'Line' ? 'comment' : 'comment2',
-        flags: 0,
-      })
+      new terser.AST_Token(
+        comments[i].type == 'Line' ? 'comment' : 'comment2',
+        comments[i].value,
+        undefined,
+        undefined,
+        false,
+        undefined,
+        undefined,
+        '0'
+      )
     );
   }
 }
@@ -2063,7 +2022,7 @@ const registry = {
   minifyGlobals: minifyGlobals,
 };
 
-passes.forEach(pass => registry[pass](ast));
+passes.forEach((pass) => registry[pass](ast));
 
 if (!noPrint) {
   const terserAst = terser.AST_Node.from_mozilla_ast(ast);
@@ -2076,6 +2035,7 @@ if (!noPrint) {
     beautify: !minifyWhitespace,
     indent_level: minifyWhitespace ? 0 : 1,
     keep_quoted_props: true, // for closure
+    wrap_func_args: false, // don't add extra braces
     comments: true, // for closure as well
   });
 

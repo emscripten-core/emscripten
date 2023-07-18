@@ -161,7 +161,7 @@ class sanity(RunnerCore):
 
   @with_env_modify({'EM_CONFIG': None})
   def test_firstrun(self):
-    default_config = config.embedded_config
+    default_config = path_from_root('.emscripten')
     output = self.do([EMCC, '-v'])
     self.assertContained('emcc: warning: config file not found: %s.  You can create one by hand or run `emcc --generate-config`' % default_config, output)
 
@@ -661,6 +661,24 @@ fi
     test_with_fake('got js backend! JavaScript (asm.js, emscripten) backend', 'LLVM has not been built with the WebAssembly backend')
     delete_dir(shared.CANONICAL_TEMP_DIR)
 
+  def test_llvm_add_version(self):
+    restore_and_set_up()
+
+    with open(EM_CONFIG, 'a') as f:
+      f.write('LLVM_ROOT = "' + self.in_dir('fake') + '"')
+
+    def make_fake(version):
+      print("fake LLVM version: %s" % (version))
+      make_fake_clang(self.in_dir('fake', f'clang-{version}'), expected_llvm_version)
+      make_fake_tool(self.in_dir('fake', f'llvm-ar-{version}'), expected_llvm_version)
+      make_fake_tool(self.in_dir('fake', f'llvm-nm-{version}'), expected_llvm_version)
+
+    make_fake('9.9')
+    out = self.expect_fail([EMCC, '-v'])
+    self.assertContained('No such file or directory', out)
+    with env_modify({'EM_LLVM_ADD_VERSION': '9.9', 'EM_CLANG_ADD_VERSION': '9.9'}):
+      self.check_working([EMCC])
+
   def test_required_config_settings(self):
     # with no binaryen root, an error is shown
     restore_and_set_up()
@@ -706,6 +724,15 @@ fi
     self.assertNotContained('generating port', self.do([EMBUILDER, 'build', 'zlib']))
     # Unless --force is specified
     self.assertContained('generating port', self.do([EMBUILDER, 'build', 'zlib', '--force']))
+
+  def test_embuilder_auto_tasks(self):
+    restore_and_set_up()
+    self.assertContained('Building targets: zlib', self.do([EMBUILDER, 'build', 'zlib', 'MINIMAL']))
+    # Second time it should not generate anything
+    self.assertNotContained('generating port', self.do([EMBUILDER, 'build', 'zlib']))
+    self.assertNotContained('generating system library', self.do([EMBUILDER, 'build', 'libemmalloc']))
+    # Unless --force is specified
+    self.assertContained('Building targets: zlib', self.do([EMBUILDER, 'build', 'zlib', 'MINIMAL', '--force']))
 
   def test_embuilder_wasm_backend(self):
     restore_and_set_up()

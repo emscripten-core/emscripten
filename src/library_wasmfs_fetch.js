@@ -13,6 +13,7 @@ mergeInto(LibraryManager.library, {
     '$wasmFS$backends',
     '$wasmFS$JSMemoryFiles',
     '_wasmfs_create_js_file_backend_js',
+    '_wasmfs_fetch_get_file_path',
   ],
   _wasmfs_create_fetch_backend_js: async function(backend) {
     // Get a promise that fetches the data and stores it in JS memory (if it has
@@ -74,7 +75,7 @@ mergeInto(LibraryManager.library, {
         try {
           await getFile(file);
         } catch (response) {
-          return response.status === 404 ? -{{{ cDefine('ENOENT') }}} : -{{{ cDefine('EBADF') }}};
+          return response.status === 404 ? -{{{ cDefs.ENOENT }}} : -{{{ cDefs.EBADF }}};
         }
         return jsFileOps.read(file, buffer, length, offset);
       },

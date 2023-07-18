@@ -26,7 +26,7 @@ function run() {
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
-#if USE_PTHREADS
+#if PTHREADS
   PThread.terminateAllThreads();
 #endif
 
@@ -53,7 +53,7 @@ function initRuntime(asm) {
   runtimeInitialized = true;
 #endif
 
-#if USE_PTHREADS
+#if PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) {
     // Export needed variables that worker.js needs to Module.
     Module['HEAPU32'] = HEAPU32;
@@ -65,18 +65,18 @@ function initRuntime(asm) {
 #endif
 
 #if WASM_WORKERS
-  if (ENVIRONMENT_IS_WASM_WORKER) return __wasm_worker_initializeRuntime();
+  if (ENVIRONMENT_IS_WASM_WORKER) return _wasmWorkerInitializeRuntime();
 #endif
 
 #if STACK_OVERFLOW_CHECK
   _emscripten_stack_init();
   writeStackCookie();
 #if STACK_OVERFLOW_CHECK >= 2
-  ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
+  setStackLimits();
 #endif
 #endif
 
-#if USE_PTHREADS
+#if PTHREADS
   PThread.tlsInitFunctions.push(asm['_emscripten_tls_init']);
 #endif
 
@@ -104,7 +104,7 @@ var imports = {
 var asm;
 #endif
 
-#if USE_PTHREADS
+#if PTHREADS
 var wasmModule;
 #endif
 
@@ -125,9 +125,9 @@ if (!WebAssembly.instantiateStreaming && !Module['wasm']) throw 'Must load WebAs
 #endif
 (WebAssembly.instantiateStreaming
   ? WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
-  : WebAssembly.instantiate(Module['wasm'], imports)).then(function(output) {
+  : WebAssembly.instantiate(Module['wasm'], imports)).then((output) => {
 #else
-WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports).then(function(output) {
+WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports).then((output) => {
 #endif
 
 #else // Non-streaming instantiation
@@ -137,12 +137,12 @@ WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
 if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
 #endif
 
-WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
+WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #endif
 
 #if !LibraryManager.has('library_exports.js') && !EMBIND
   // If not using the emscripten_get_exported_function() API or embind, keep the
-  // 'asm' exports variable in local scope to this instantiate function to save
+  // `asm` exports variable in local scope to this instantiate function to save
   // code size.  (otherwise access it without to export it to outer scope)
   var
 #endif
@@ -151,14 +151,14 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   // output.module objects. But if Module['wasm'] is an already compiled
   // WebAssembly module, then output is the WebAssembly instance itself.
   // Depending on the build mode, Module['wasm'] can mean a different thing.
-#if MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION || MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION || USE_PTHREADS
+#if MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION || MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION || PTHREADS
   // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
   // Firefox 52 added Wasm support, but only Firefox 58 added compileStreaming &
   // instantiateStreaming.
   // Chrome 57 added Wasm support, but only Chrome 61 added compileStreaming &
   // instantiateStreaming.
   // Node.js and Safari do not support compileStreaming or instantiateStreaming.
-#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || ENVIRONMENT_MAY_BE_NODE || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || USE_PTHREADS
+#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || ENVIRONMENT_MAY_BE_NODE || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || PTHREADS
   // In pthreads, Module['wasm'] is an already compiled WebAssembly.Module. In
   // that case, 'output' is a WebAssembly.Instance.
   // In main thread, Module['wasm'] is either a typed array or a fetch stream.
@@ -171,12 +171,12 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   asm = output.instance.exports;
 #endif
 
-#if MEMORY64
-  asm = instrumentWasmExportsForMemory64(asm);
+#if MEMORY64 || CAN_ADDRESS_2GB
+  asm = applySignatureConversions(asm);
 #endif
 
 #if USE_OFFSET_CONVERTER
-#if USE_PTHREADS
+#if PTHREADS
   if (!ENVIRONMENT_IS_PTHREAD)
 #endif
     wasmOffsetConverter = new WasmOffsetConverter(Module['wasm'], output.module);
@@ -219,7 +219,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   updateMemoryViews();
 #endif
 
-#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE
+#if !MEM_INIT_IN_WASM && !SINGLE_FILE
 #if ASSERTIONS
   if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
 #endif
@@ -227,7 +227,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 
   initRuntime(asm);
-#if USE_PTHREADS
+#if PTHREADS
   // Export Wasm module for pthread creation to access.
   wasmModule = output.module || Module['wasm'];
   PThread.loadWasmModuleToAllWorkers(ready);
@@ -237,7 +237,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 }
 
 #if ASSERTIONS || WASM == 2
-, function(error) {
+, (error) => {
 #if ASSERTIONS
   console.error(error);
 #endif
