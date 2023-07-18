@@ -2441,8 +2441,8 @@ def phase_linker_setup(options, state, newargs):
     settings.JS_LIBRARIES.append((0, 'library_pthread_stub.js'))
 
   if settings.MEMORY64:
-    if settings.ASYNCIFY == 1 and settings.MEMORY64 == 1:
-      exit_with_error('MEMORY64=1 is not compatible with ASYNCIFY')
+    if settings.ASYNCIFY and settings.MEMORY64 == 2:
+      exit_with_error('MEMORY64=2 is not compatible with ASYNCIFY')
     # Any "pointers" passed to JS will now be i64's, in both modes.
     settings.WASM_BIGINT = 1
 

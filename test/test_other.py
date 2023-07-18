@@ -2664,6 +2664,14 @@ int f() {
     self.assertIn('sources', data)
     self.assertIn('mappings', data)
 
+  def verify_name_sec_existence(self, wasm_file, expect_names):
+    with webassembly.Module(wasm_file) as module:
+      section = module.get_custom_section("name")
+      if expect_names:
+        self.assertIsNotNone(section, "Name section unexpectedly missing")
+      else:
+        self.assertIsNone(section, "Name section unexpectedly found")
+
   def test_dwarf(self):
     def compile_with_dwarf(args, output):
       # Test that -g enables dwarf info in object files and linked wasm
@@ -2673,28 +2681,47 @@ int f() {
     compile_with_dwarf([], 'a.js')
     self.verify_dwarf_exists('a.wasm')
 
-  def test_dwarf_with_source_map(self):
+  def test_dwarf_sourcemap_names(self):
     source_file = 'hello_world.c'
     js_file = 'a.out.js'
     wasm_file = 'a.out.wasm'
     map_file = 'a.out.wasm.map'
 
-    # Generate only DWARF
-    self.emcc(test_file(source_file), ['-g'], js_file)
-    self.verify_dwarf_exists(wasm_file)
-    self.assertFalse(os.path.isfile(map_file))
-    self.clear()
+    for (flags, expect_dwarf, expect_sourcemap, expect_names) in [
+      ([], False, False, False),
+      (['-g0'], False, False, False),
+      (['-g1'], False, False, False),
+      # last numeric g flag "wins", so g0 overrides -g
+      (['-g', '-g0'], False, False, False),
+      (['-g2'], False, False, True),
+      (['-gline-tables-only'], True, False, True),
+      (['--profiling'], False, False, True),
+      (['--profiling-funcs'], False, False, True),
+      (['-g'], True, False, True),
+      (['-g3'], True, False, True),
+      (['-O2', '-g'], True, False, True),
+      (['-gsplit-dwarf'], True, False, True),
+      (['-gsource-map'], False, True, True),
+      (['-g0', '-gsource-map'], False, True, True),
+      # -g0 does not override -gsource-map but does remove name section. TODO: should it?
+      (['-gsource-map', '-g0'], False, True, False),
+      (['-g', '-gsource-map'], True, True, True),
+      # (['-gsplit-dwarf', '-gsource-map'], True, True, True), TODO this currently fails!
+    ]:
+      print(flags, expect_dwarf, expect_sourcemap, expect_names)
+      self.emcc(test_file(source_file), flags, js_file)
 
-    # Generate only source map
-    self.emcc(test_file(source_file), ['-gsource-map'], js_file)
-    self.verify_dwarf_does_not_exist(wasm_file)
-    self.verify_source_map_exists(map_file)
-    self.clear()
+      assertion = self.assertIn if expect_dwarf else self.assertNotIn
+      self.verify_dwarf(wasm_file, assertion)
 
-    # Generate DWARF with source map
-    self.emcc(test_file(source_file), ['-g', '-gsource-map'], js_file)
-    self.verify_dwarf_exists(wasm_file)
-    self.verify_source_map_exists(map_file)
+      if expect_sourcemap:
+        self.verify_source_map_exists(map_file)
+      else:
+        self.assertFalse(os.path.isfile(map_file), "Sourcemap unexpectedly exists")
+
+      self.verify_name_sec_existence(wasm_file, expect_names)
+
+      self.clear()
 
   @requires_scons
   @with_env_modify({'EMSCRIPTEN_ROOT': path_from_root()})
@@ -7680,40 +7707,6 @@ int main() {
           for f in files:
             delete_file(f)
 
-  def test_debug_names(self):
-    sizes = {}
-    for args, expect_names in [
-        ([], False),
-        (['-g'], True),
-        (['-O1'], False),
-        (['-O2'], False),
-        (['-O2', '-g'], True),
-        (['-O2', '-g1'], False),
-        (['-O2', '-g2'], True),
-        (['-O2', '--profiling'], True),
-        (['-O2', '--profiling-funcs'], True),
-      ]:
-      print(args, expect_names)
-      delete_file('a.out.js')
-      # we use dlmalloc here, as emmalloc has a bunch of asserts that contain the text "malloc" in
-      # them, which makes counting harder
-      self.run_process([EMXX, test_file('hello_world.cpp')] + args + ['-sMALLOC="dlmalloc"', '-sEXPORTED_FUNCTIONS=_main,_malloc'])
-      code = read_binary('a.out.wasm')
-      if '-g' in args:
-        # With -g we get full dwarf info which means we there are many occurances of malloc
-        self.assertGreater(code.count(b'malloc'), 2)
-      else:
-        if expect_names:
-          # name section adds the name of malloc (there is also another one for the export)
-          self.assertEqual(code.count(b'malloc'), 2)
-        else:
-          # should be just malloc for the export
-          self.assertEqual(code.count(b'malloc'), 1)
-      sizes[str(args)] = os.path.getsize('a.out.wasm')
-    print(sizes)
-    # when -profiling-funcs, the size increases due to function names
-    self.assertLess(sizes["['-O2']"], sizes["['-O2', '--profiling-funcs']"])
-
   def test_binaryen_warn_mem(self):
     # if user changes INITIAL_MEMORY at runtime, the wasm module may not accept the memory import if
     # it is too big/small
@@ -7811,20 +7804,20 @@ int main() {
   # test debug info and debuggability of JS output
   @crossplatform
   def test_binaryen_debug(self):
-    for args, expect_dash_g, expect_emit_text, expect_clean_js, expect_whitespace_js, expect_closured in [
-        (['-O0'], False, False, False, True, False),
-        (['-O0', '-g1'], False, False, False, True, False),
-        (['-O0', '-g2'], True, False, False, True, False), # in -g2+, we emit -g to asm2wasm so function names are saved
-        (['-O0', '-g'], True, True, False, True, False),
-        (['-O0', '--profiling-funcs'], True, False, False, True, False),
-        (['-O1'],        False, False, False, True, False),
-        (['-O2'],        False, False, True,  False, False),
-        (['-O2', '-g1'], False, False, True,  True, False),
-        (['-O2', '-g'],  True,  True,  False, True, False),
-        (['-O2', '--closure=1'],         False, False, True, False, True),
-        (['-O2', '--closure=1', '-g1'],  False, False, True, True,  True),
+    for args, expect_emit_text, expect_clean_js, expect_whitespace_js, expect_closured in [
+        (['-O0'], False, False, True, False),
+        (['-O0', '-g1'], False, False, True, False),
+        (['-O0', '-g2'], False, False, True, False), # in -g2+, we emit -g to asm2wasm so function names are saved
+        (['-O0', '-g'], True, False, True, False),
+        (['-O0', '--profiling-funcs'], False, False, True, False),
+        (['-O1'],        False, False, True, False),
+        (['-O2'],        False, True,  False, False),
+        (['-O2', '-g1'], False, True,  True, False),
+        (['-O2', '-g'],  True,  False, True, False),
+        (['-O2', '--closure=1'],         False, True, False, True),
+        (['-O2', '--closure=1', '-g1'],  False, True, True,  True),
       ]:
-      print(args, expect_dash_g, expect_emit_text)
+      print(args, expect_emit_text)
       delete_file('a.out.wat')
       cmd = [EMXX, test_file('hello_world.cpp')] + args
       print(' '.join(cmd))
