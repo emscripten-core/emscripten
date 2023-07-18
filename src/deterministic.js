@@ -26,7 +26,7 @@ Module['thisProgram'] = 'thisProgram'; // for consistency between different buil
 
 function hashMemory(id) {
   var ret = 0;
-  var len = _sbrk();
+  var len = _sbrk(0);
   for (var i = 0; i < len; i++) {
     ret = (ret*17 + HEAPU8[i])|0;
   }

@@ -18,7 +18,7 @@ var expD1 = Module['expD1'] = asm['expD1'];
 
 // exports gotten indirectly (async compilation
 var expI1 = Module['expI1'] = (function() {
- return Module['asm']['expI1'].apply(null, arguments);
+ return wasmExports['expI1'].apply(null, arguments);
 });
 
 // EXTRA_INFO: { "mapping": {"save1" : "a", "number": "A", "expD1": "c", "expI1": "d", "__wasm_call_ctors": "e", "stackRestore": "h", "stackAlloc": "g", "__syscall140": "d", "main": "f", "__syscall146": "q", "__syscall54": "c", "__syscall6": "b" }}

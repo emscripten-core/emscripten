@@ -58,6 +58,9 @@ mergeInto(LibraryManager.library, {
   },
 #endif
 
+#if PTHREADS
+  $wasmfsOPFSProxyFinish__deps: ['emscripten_proxy_finish'],
+#endif
   $wasmfsOPFSProxyFinish: function(ctx) {
     // When using pthreads the proxy needs to know when the work is finished.
     // When used with JSPI the work will be executed in an async block so there

@@ -17,5 +17,5 @@ var wasmImports = {
 var expD1 = Module["expD1"] = asm["c"];
 
 var expI1 = Module["expI1"] = function() {
- return Module["asm"]["d"].apply(null, arguments);
+ return wasmExports["d"].apply(null, arguments);
 };
