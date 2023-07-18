@@ -32,6 +32,8 @@ See docs/process.md for more on how version tagging works.
   wasm module) has been removed.  Internally, this is now accessed via the
   `wasmExports` global. If necessary, it is possible to export `wasmExports`
   on the Module object using `-sEXPORTED_RUNTIME_METHODS=wasmExports`. (#19816)
+- Embind now supports generating TypeScript definition files using the
+  `--embind-emit-tsd <filename>` option.
 
 3.1.43 - 07/10/23
 -----------------
