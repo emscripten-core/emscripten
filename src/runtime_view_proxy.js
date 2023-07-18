@@ -154,7 +154,6 @@ function createMemoryProxy(type) {
   for (let i = 0; i < numberOfBlocks; i++) {
     heapBlocks.push(getHeapBlock(type, i * maxArraySize * bpe))
   }
-  console.log(heapBlocks, type)
   return new Proxy(heapBlocks[0], createProxyHandler(type, heapBlocks));
 }
 
