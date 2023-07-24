@@ -2686,14 +2686,16 @@ int f() {
       (['-O1', '-g'], True, False, True),
       (['-O3', '-g'], True, False, True),
       (['-gsplit-dwarf'], True, False, True),
+      # TODO: It seems odd that -gsource-map leaves behind a name section. Should it?
       (['-gsource-map'], False, True, True),
       (['-g1', '-Oz', '-gsource-map'], False, True, True),
       # -g0 does not override -gsource-map but does remove name section. TODO: should it?
-      (['--emit-symbol-map', '-gsource-map'], False, True, True), # bad
+      (['-gsource-map', '-g0'], False, True, False),
+      (['--emit-symbol-map', '-gsource-map'], False, True, True),
       (['--emit-symbol-map'], False, False, False),
       (['--emit-symbol-map', '-Oz'], False, False, False),
       (['-sASYNCIFY=1', '-g0'], False, False, False),
-      (['-sASYNCIFY=1', '-gsource-map'], False, True, True), # bad
+      (['-sASYNCIFY=1', '-gsource-map'], False, True, True),
       (['-g', '-gsource-map'], True, True, True),
       (['-g2', '-gsource-map'], False, True, True),
       # (['-gsplit-dwarf', '-gsource-map'], True, True, True), TODO this currently fails!
