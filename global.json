@@ -3,7 +3,7 @@
     "dotnet": "8.0.100-preview.6.23330.14"
   },
   "msbuild-sdks": {
-    "Microsoft.DotNet.Arcade.Sdk": "8.0.0-beta.23364.2",
+    "Microsoft.DotNet.Arcade.Sdk": "8.0.0-beta.23371.1",
     "Microsoft.Build.NoTargets": "3.5.0",
     "Microsoft.Build.Traversal": "2.0.34"
   }
