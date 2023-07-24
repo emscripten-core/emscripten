@@ -3115,7 +3115,7 @@ int f() {
     create_file('subdir/data2.txt', 'data2')
 
     self.run_process([FILE_PACKAGER, 'test.data', '--js-output=test.js', '--depfile=test.data.d', '--from-emcc', '--preload', '.'])
-    lines = read_file('test.data.d').split('\n')
+    lines = read_file('test.data.d').splitlines()
     split = lines.index(': \\')
     before, after = set(lines[:split]), set(lines[split + 1:])
     # Set comparison used because depfile is not order-sensitive.
