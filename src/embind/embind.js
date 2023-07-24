@@ -912,7 +912,7 @@ var LibraryEmbind = {
         console.log('${humanName}(' + Object.values(arguments).join(',') + ')');
     } else {
         console.log('${humanName}()');
-    }\n";
+    }\n`;
 #endif
       
 #if EMSCRIPTEN_TRACING
