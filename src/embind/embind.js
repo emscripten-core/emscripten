@@ -907,8 +907,15 @@ var LibraryEmbind = {
         throwBindingError('function ${humanName} called with ${arguments.length} arguments, expected ${argCount - 2} args!');
       }`;
 
+#if EMBIND_TRACING
+    invokerFnBody += `if (Object.values(arguments).length > 0){
+        console.log('${humanName}(' + Object.values(arguments).join(',') + ')');
+    } else {
+        console.log('${humanName}()');
+    }\n";
+#endif
+      
 #if EMSCRIPTEN_TRACING
-    invokerFnBody += "if(Object.values(arguments).length > 0){console.log('"+humanName+"(' + Object.values(arguments).join(',') + ')');}else{console.log('"+humanName+"()');}\n";
     invokerFnBody += `Module.emscripten_trace_enter_context('embind::${humanName}');\n`;
 #endif
 
