@@ -258,9 +258,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     )),
     readlink: (path) => {
       var readBuffer = FS.handleError(withStackSave(() => __wasmfs_readlink(stringToUTF8OnStack(path))));
-      for(var i = 0; i < 20; i++) {
-        console.log("ReadBuf: " + i + " " + HEAPU8[readBuffer + i]);
-      }
       return UTF8ToString(readBuffer);
     },
     statBufToObject : (statBuf) => {
@@ -370,8 +367,16 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       }));
     },
     // TODO: syncfs
-    syncfs: () => {
-      return FS.handleError(__wasmfs_syncfs());
+    syncfs: (populate, callback) => {
+      if (typeof populate == 'function') {
+        callback = populate;
+        populate = false;
+      }
+      var err = __wasmfs_syncfs();
+      if (err) {
+        return callback(err);
+      }
+      return callback(null);
     },
     llseek: (stream, offset, whence) => {
       return FS.handleError(__wasmfs_llseek(stream.fd, {{{ splitI64('offset') }}}, whence));

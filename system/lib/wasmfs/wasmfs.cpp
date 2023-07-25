@@ -76,11 +76,9 @@ extern "C" void wasmfs_flush(void) {
     toFlush.pop();
     
     auto lockedDir = dir->locked();
-    printf("Current: %llu\n", dir->getIno());
     int nentries = lockedDir.getNumEntries();
     Directory::MaybeEntries entries = lockedDir.getEntries();
-
-    printf("Num Entries: %d\n", nentries);
+    printf("Current: %llu\n", dir->getIno());
     for (int i = 0; i < nentries; i++) {
       auto entry = entries->at(i);
       printf("Entry %llu: %s Kind: %d\n", entry.ino, entry.name.c_str(), entry.kind);
@@ -88,26 +86,17 @@ extern "C" void wasmfs_flush(void) {
         printf("Flush: %s\n", entry.name.c_str());
         int err = lockedDir.getChild(entry.name)->dynCast<DataFile>()->locked().flush();
         if (err) {
-          printf("Error in flushing: %s : err=%d\n", entry.name.c_str(), err);
+          emscripten_console_error("Fatal error while flushing filesystem.");
+          abort();
         }
-      }
-      if (entry.kind == File::FileKind::DirectoryKind) {
+      } else if (entry.kind == File::FileKind::DirectoryKind) {
         printf("Add to Stack: %s\n", entry.name.c_str());
         toFlush.push(lockedDir.getChild(entry.name)->dynCast<Directory>());
       }
     }
+
+    printf("###\n");
   }
-
-  // auto dir = wasmFS.getRootDirectory();
-  // auto lockedDir = dir->locked();
-  // int nentries = lockedDir.getNumEntries();
-  // Directory::MaybeEntries entries = lockedDir.getEntries();
-
-  // printf("Num Entries: %d\n", nentries);
-  // for (int i = 0; i < nentries; i++) {
-  //   auto entry = entries->at(i);
-  //   printf("Entry %llu: %s Kind: %d\n", entry.ino, entry.name.c_str(), entry.kind);
-  // }
 }
 
 WasmFS::~WasmFS() {

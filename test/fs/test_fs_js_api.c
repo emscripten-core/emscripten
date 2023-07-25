@@ -68,7 +68,6 @@ EM_JS(void, test_fs_readlink,(), {
     FS.symlink('/readlinktestfile', '/readlinksymlink');
 
     var symlinkString = FS.readlink('readlinksymlink');
-    console.log("Symlink:", symlinkString);
     assert(symlinkString === '/readlinktestfile');
 
     var ex;
@@ -402,7 +401,7 @@ int main() {
         FS.mkdir("/synctestdir");
         FS.mkdir("/nesteddir");
         FS.writeFile("/nesteddir/synctestfile", "a=1");
-        FS.syncfs();
+        FS.syncfs(err => assert(!err));
     );
     test_fs_open();
     test_fs_rename();
