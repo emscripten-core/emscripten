@@ -372,6 +372,13 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       return entries;
     }),
     mount: (type, opts, mountpoint) => {
+#if ASSERTIONS
+      if (typeof type == 'string') {
+        // The filesystem was not included, and instead we have an error
+        // message stored in the variable.
+        throw type;
+      }
+#endif
       var backendPointer = type.createBackend(opts);
       return FS.handleError(withStackSave(() => __wasmfs_mount(stringToUTF8OnStack(mountpoint), backendPointer)));
     },
