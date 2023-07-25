@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.44 (in development)
+3.1.45 (in development)
 -----------------------
+
+3.1.44 - 07/25/23
+-----------------
 - musl libc updated from v1.2.3 to v1.2.4. (#19812)
 - The `EM_LOG_FUNC_PARAMS` flag to `emscripten_log`/`emscripten_get_callstack`
   has been deprecated and no longer has any effect.  It was based on a
