@@ -886,6 +886,8 @@ def create_pointer_conversion_wrappers(metadata):
     '_wasmfs_mkdir': '_p_',
     '_wasmfs_open': '_p__',
     'emscripten_wasm_worker_initialize': '_p_',
+    'asyncify_start_rewind': '_p',
+    'asyncify_start_unwind': '_p',
     '__get_exception_message': '_ppp',
   }
 
