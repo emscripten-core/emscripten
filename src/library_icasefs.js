@@ -16,3 +16,7 @@ mergeInto(LibraryManager.library, {
     }
   },
 });
+
+if (!WASMFS) {
+  error("using -licasefs.js requires using WasmFS (-sWASMFS)");
+}

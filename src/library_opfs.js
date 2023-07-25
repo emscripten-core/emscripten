@@ -12,3 +12,7 @@ mergeInto(LibraryManager.library, {
     }
   },
 });
+
+if (!WASMFS) {
+  error("using -lopfs.js requires using WasmFS (-sWASMFS)");
+}

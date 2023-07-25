@@ -12,3 +12,7 @@ mergeInto(LibraryManager.library, {
     }
   },
 });
+
+if (!WASMFS) {
+  error("using -lfetchfs.js requires using WasmFS (-sWASMFS)");
+}
