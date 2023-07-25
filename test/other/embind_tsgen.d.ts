@@ -1,4 +1,5 @@
 export interface Test {
+  x: number;
   functionOne(_0: number, _1: number): number;
   functionTwo(_0: number, _1: number): number;
   functionFour(_0: boolean): number;
