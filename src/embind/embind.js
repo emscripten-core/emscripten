@@ -907,7 +907,7 @@ var LibraryEmbind = {
         throwBindingError('function ${humanName} called with ${arguments.length} arguments, expected ${argCount - 2} args!');
       }`;
 
-#if EMBIND_TRACING
+#if EMBIND_DEBUG
     invokerFnBody += `if (Object.values(arguments).length > 0){
         console.log('${humanName}(' + Object.values(arguments).join(',') + ')');
     } else {
