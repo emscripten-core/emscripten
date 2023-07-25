@@ -389,20 +389,25 @@ void test_fs_utime() {
     remove("utimetest");
 }
 
+EM_JS(void, test_fs_syncfs, (), {
+    FS.mkdir("/synctestdir");
+    FS.mkdir("/nesteddir");
+    FS.writeFile("/nesteddir/synctestfile", "a=1");
+    FS.syncfs(err => assert(!err));
+});
+
+
 void cleanup() {
     remove("testfile");
     remove("renametestfile");
     remove("readtestfile");
     remove("closetestfile");
+    remove("/nesteddir/synctestfile");
+    remove("/nesteddir");
+    remove("/synctestdir");
 }
 
 int main() {
-    EM_ASM(
-        FS.mkdir("/synctestdir");
-        FS.mkdir("/nesteddir");
-        FS.writeFile("/nesteddir/synctestfile", "a=1");
-        FS.syncfs(err => assert(!err));
-    );
     test_fs_open();
     test_fs_rename();
     test_fs_readlink();
@@ -410,10 +415,11 @@ int main() {
     test_fs_rmdir();
     test_fs_close();
     test_fs_mknod();
-    // test_fs_allocate();
+    test_fs_allocate();
     test_fs_truncate();
     test_fs_mkdirTree();
     test_fs_utime();
+    test_fs_syncfs();
 
     cleanup();
 
