@@ -148,7 +148,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     mkdir: (path, mode) => FS.handleError(withStackSave(() => {
       mode = mode !== undefined ? mode : 511 /* 0777 */;
       var buffer = stringToUTF8OnStack(path);
-      return __wasmfs_mkdir({{{ to64('buffer') }}}, mode);
+      return __wasmfs_mkdir(buffer, mode);
     })),
     mkdirTree: (path, mode) => {
       var dirs = path.split('/');
@@ -170,7 +170,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       flags = typeof flags == 'string' ? FS_modeStringToFlags(flags) : flags;
       mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
       var buffer = stringToUTF8OnStack(path);
-      var fd = FS.handleError(__wasmfs_open({{{ to64('buffer') }}}, flags, mode));
+      var fd = FS.handleError(__wasmfs_open(buffer, flags, mode));
       return { fd : fd };
     }),
     create: (path, mode) => {
@@ -416,4 +416,26 @@ FS.createPreloadedFile = FS_createPreloadedFile;
   _wasmfs_copy_preloaded_file_data: function(index, buffer) {
     HEAPU8.set(wasmFSPreloadedFiles[index].fileData, buffer);
   },
+
+  _wasmfs_thread_utils_heartbeat__deps: ['emscripten_proxy_execute_queue'],
+  _wasmfs_thread_utils_heartbeat: (queue) => {
+    var intervalID =
+      setInterval(() => {
+        if (ABORT) {
+          clearInterval(intervalID);
+        } else {
+          _emscripten_proxy_execute_queue(queue);
+        }
+      }, 50);
+  },
+
+  _wasmfs_stdin_get_char__deps: ['$FS_stdin_getChar'],
+  _wasmfs_stdin_get_char: () => {
+    // Return the read character, or -1 to indicate EOF.
+    var c = FS_stdin_getChar();
+    if (typeof c === 'number') {
+      return c;
+    }
+    return -1;
+  }
 });

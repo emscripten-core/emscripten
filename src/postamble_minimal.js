@@ -142,7 +142,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 
 #if !LibraryManager.has('library_exports.js') && !EMBIND
   // If not using the emscripten_get_exported_function() API or embind, keep the
-  // 'asm' exports variable in local scope to this instantiate function to save
+  // `asm` exports variable in local scope to this instantiate function to save
   // code size.  (otherwise access it without to export it to outer scope)
   var
 #endif
@@ -171,8 +171,8 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
   asm = output.instance.exports;
 #endif
 
-#if MEMORY64
-  asm = instrumentWasmExportsForMemory64(asm);
+#if MEMORY64 || CAN_ADDRESS_2GB
+  asm = applySignatureConversions(asm);
 #endif
 
 #if USE_OFFSET_CONVERTER

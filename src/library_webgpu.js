@@ -35,9 +35,8 @@ wgpu${type}Reference: function(id) { WebGPU.mgr${type}.reference(id) },
 wgpu${type}Release: function(id) { WebGPU.mgr${type}.release(id) },`;
     },
 
-    convertI32PairToI53WithSentinelAsUndefined: function(lowName, highName) {
-      return `((${highName} === -1 && ${lowName} === -1) ? undefined : \
-          convertI32PairToI53(${lowName}, ${highName}))`;
+    convertSentinelToUndefined: function(name) {
+      return `if (${name} == -1) ${name} = undefined;`;
     },
 
     makeGetBool: function(struct, offset) {
@@ -87,7 +86,14 @@ wgpu${type}Release: function(id) { WebGPU.mgr${type}.release(id) },`;
     },
     BufferMapAsyncStatus: {
       Success: 0,
-      Error: 1,
+      ValidationError: 1,
+      Unknown: 2,
+      DeviceLost: 3,
+      DestroyedBeforeCallback: 4,
+      UnmappedBeforeCallback: 5,
+      MappingAlreadyPending: 6,
+      OffsetOutOfRange: 7,
+      SizeOutOfRange: 8,
     },
     ErrorType: {
       NoError: 0,
@@ -147,7 +153,7 @@ wgpu${type}Release: function(id) { WebGPU.mgr${type}.release(id) },`;
 
 var LibraryWebGPU = {
   $WebGPU__postset: 'WebGPU.initManagers();',
-  $WebGPU__deps: ['$withStackSave', '$stringToUTF8OnStack', '$convertI32PairToI53'],
+  $WebGPU__deps: ['$withStackSave', '$stringToUTF8OnStack'],
   $WebGPU: {
     errorCallback: function(callback, type, message, userdata) {
       withStackSave(() => {
@@ -318,6 +324,11 @@ var LibraryWebGPU = {
       'rgba8unorm': 0x12,
       'bgra8unorm': 0x17,
     },
+    BufferMapState: {
+      'unmapped': 0,
+      'pending': 1,
+      'mapped': 2,
+    },
 
     // This section is auto-generated. See system/include/webgpu/README.md for details.
     AddressMode: [
@@ -353,6 +364,11 @@ var LibraryWebGPU = {
       'storage',
       'read-only-storage',
     ],
+    BufferMapState: [
+      'unmapped',
+      'pending',
+      'mapped',
+    ],
     CompareFunction: [
       undefined,
       'never',
@@ -382,6 +398,7 @@ var LibraryWebGPU = {
     ErrorFilter: [
       'validation',
       'out-of-memory',
+      'internal',
     ],
     FeatureName: [
       undefined,
@@ -393,6 +410,10 @@ var LibraryWebGPU = {
       'texture-compression-etc2',
       'texture-compression-astc',
       'indirect-first-instance',
+      'shader-f16',
+      'rg11b10ufloat-renderable',
+      'bgra8unorm-storage',
+      'float32filterable',
     ],
     FilterMode: [
       'nearest',
@@ -411,6 +432,10 @@ var LibraryWebGPU = {
       undefined,
       'clear',
       'load',
+    ],
+    MipmapFilterMode: [
+      'nearest',
+      'linear',
     ],
     PipelineStatisticName: [
       'vertex-shader-invocations',
@@ -469,12 +494,6 @@ var LibraryWebGPU = {
       'all',
       'stencil-only',
       'depth-only',
-    ],
-    TextureComponentType: [
-      'float',
-      'sint',
-      'uint',
-      'depth-comparison',
     ],
     TextureDimension: [
       '1d',
@@ -716,6 +735,7 @@ var LibraryWebGPU = {
     setLimitValueU32('maxTextureDimension3D', {{{ C_STRUCTS.WGPULimits.maxTextureDimension3D }}});
     setLimitValueU32('maxTextureArrayLayers', {{{ C_STRUCTS.WGPULimits.maxTextureArrayLayers }}});
     setLimitValueU32('maxBindGroups', {{{ C_STRUCTS.WGPULimits.maxBindGroups }}});
+    setLimitValueU32('maxBindingsPerBindGroup', {{{ C_STRUCTS.WGPULimits.maxBindingsPerBindGroup }}});
     setLimitValueU32('maxDynamicUniformBuffersPerPipelineLayout', {{{ C_STRUCTS.WGPULimits.maxDynamicUniformBuffersPerPipelineLayout }}});
     setLimitValueU32('maxDynamicStorageBuffersPerPipelineLayout', {{{ C_STRUCTS.WGPULimits.maxDynamicStorageBuffersPerPipelineLayout }}});
     setLimitValueU32('maxSampledTexturesPerShaderStage', {{{ C_STRUCTS.WGPULimits.maxSampledTexturesPerShaderStage }}});
@@ -730,11 +750,13 @@ var LibraryWebGPU = {
     setLimitValueU64('maxStorageBufferBindingSize', {{{ C_STRUCTS.WGPULimits.maxStorageBufferBindingSize }}});
 
     setLimitValueU32('maxVertexBuffers', {{{ C_STRUCTS.WGPULimits.maxVertexBuffers }}});
+    setLimitValueU32('maxBufferSize', {{{ C_STRUCTS.WGPULimits.maxBufferSize }}});
     setLimitValueU32('maxVertexAttributes', {{{ C_STRUCTS.WGPULimits.maxVertexAttributes }}});
     setLimitValueU32('maxVertexBufferArrayStride', {{{ C_STRUCTS.WGPULimits.maxVertexBufferArrayStride }}});
     setLimitValueU32('maxInterStageShaderComponents', {{{ C_STRUCTS.WGPULimits.maxInterStageShaderComponents }}});
     setLimitValueU32('maxInterStageShaderVariables', {{{ C_STRUCTS.WGPULimits.maxInterStageShaderVariables }}});
     setLimitValueU32('maxColorAttachments', {{{ C_STRUCTS.WGPULimits.maxColorAttachments }}});
+    setLimitValueU32('maxColorAttachmentBytesPerSample', {{{ C_STRUCTS.WGPULimits.maxColorAttachmentBytesPerSample }}});
     setLimitValueU32('maxComputeWorkgroupStorageSize', {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupStorageSize }}});
     setLimitValueU32('maxComputeInvocationsPerWorkgroup', {{{ C_STRUCTS.WGPULimits.maxComputeInvocationsPerWorkgroup }}});
     setLimitValueU32('maxComputeWorkgroupSizeX', {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupSizeX }}});
@@ -797,21 +819,6 @@ var LibraryWebGPU = {
   wgpuDeviceSetLabel: function(deviceId, labelPtr) {
     var device = WebGPU.mgrDevice.get(deviceId);
     device.label = UTF8ToString(labelPtr);
-  },
-
-  wgpuDeviceSetDeviceLostCallback__deps: ['$callUserCallback'],
-  wgpuDeviceSetDeviceLostCallback: function(deviceId, callback, userdata) {
-    var deviceWrapper = WebGPU.mgrDevice.objects[deviceId];
-    {{{ gpu.makeCheckDefined('deviceWrapper') }}}
-    if (!deviceWrapper.lostCallback) {
-      // device.lost hasn't been registered yet - register it.
-      deviceWrapper.object["lost"].then((info) => deviceWrapper.lostCallback(info));
-    }
-    deviceWrapper.lostCallback = (info) => {
-      // This will skip the callback if the runtime is no longer alive.
-      callUserCallback(() => WebGPU.errorCallback(callback, WebGPU.DeviceLostReason[info.reason],
-                                                  info.message, userdata));
-    };
   },
 
   wgpuDeviceSetUncapturedErrorCallback__deps: ['$callUserCallback'],
@@ -919,7 +926,7 @@ var LibraryWebGPU = {
           {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.magFilter) }}}],
       "minFilter": WebGPU.FilterMode[
           {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.minFilter) }}}],
-      "mipmapFilter": WebGPU.FilterMode[
+      "mipmapFilter": WebGPU.MipmapFilterMode[
           {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.mipmapFilter) }}}],
       "lodMinClamp": {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSamplerDescriptor.lodMinClamp, 'float') }}},
       "lodMaxClamp": {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSamplerDescriptor.lodMaxClamp, 'float') }}},
@@ -1033,6 +1040,7 @@ var LibraryWebGPU = {
     return WebGPU.mgrBindGroupLayout.create(device["createBindGroupLayout"](desc));
   },
 
+  wgpuDeviceCreateBindGroup__deps: ['$readI53FromI64'],
   wgpuDeviceCreateBindGroup: function(deviceId, descriptor) {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
 
@@ -1049,16 +1057,15 @@ var LibraryWebGPU = {
       var binding = {{{ gpu.makeGetU32('entryPtr', C_STRUCTS.WGPUBindGroupEntry.binding) }}};
 
       if (bufferId) {
-        var size_low = {{{ makeGetValue('entryPtr', C_STRUCTS.WGPUBindGroupEntry.size, 'i32') }}};
-        var size_high = {{{ makeGetValue('entryPtr', C_STRUCTS.WGPUBindGroupEntry.size + 4, 'i32') }}};
-        var size = {{{ gpu.convertI32PairToI53WithSentinelAsUndefined('size_low', 'size_high') }}};
+        var size = {{{ makeGetValue('entryPtr', C_STRUCTS.WGPUBindGroupEntry.size, 'i53') }}};
+        {{{ gpu.convertSentinelToUndefined('size') }}}
 
         return {
           "binding": binding,
           "resource": {
             "buffer": WebGPU.mgrBuffer.get(bufferId),
             "offset": {{{ gpu.makeGetU64('entryPtr', C_STRUCTS.WGPUBindGroupEntry.offset) }}},
-            "size": size,
+            "size": size
           },
         };
       } else if (samplerId) {
@@ -1287,7 +1294,7 @@ var LibraryWebGPU = {
         "stencilBack": makeStencilStateFace(dssPtr + {{{ C_STRUCTS.WGPUDepthStencilState.stencilBack }}}),
         "stencilReadMask": {{{ gpu.makeGetU32('dssPtr', C_STRUCTS.WGPUDepthStencilState.stencilReadMask) }}},
         "stencilWriteMask": {{{ gpu.makeGetU32('dssPtr', C_STRUCTS.WGPUDepthStencilState.stencilWriteMask) }}},
-        "depthBias": {{{ makeGetValue('dssPtr', C_STRUCTS.WGPUDepthStencilState.depthBias, '*') }}},
+        "depthBias": {{{ makeGetValue('dssPtr', C_STRUCTS.WGPUDepthStencilState.depthBias, 'i32') }}},
         "depthBiasSlopeScale": {{{ makeGetValue('dssPtr', C_STRUCTS.WGPUDepthStencilState.depthBiasSlopeScale, 'float') }}},
         "depthBiasClamp": {{{ makeGetValue('dssPtr', C_STRUCTS.WGPUDepthStencilState.depthBiasClamp, 'float') }}},
       };
@@ -1431,7 +1438,7 @@ var LibraryWebGPU = {
         break;
       }
       case {{{ gpu.SType.ShaderModuleWGSLDescriptor }}}: {
-        var sourcePtr = {{{ makeGetValue('nextInChainPtr', C_STRUCTS.WGPUShaderModuleWGSLDescriptor.source, '*') }}};
+        var sourcePtr = {{{ makeGetValue('nextInChainPtr', C_STRUCTS.WGPUShaderModuleWGSLDescriptor.code, '*') }}};
         if (sourcePtr) {
           desc["code"] = UTF8ToString(sourcePtr);
         }
@@ -1481,7 +1488,7 @@ var LibraryWebGPU = {
   },
 
   wgpuQueueOnSubmittedWorkDone__deps: ['$callUserCallback'],
-  wgpuQueueOnSubmittedWorkDone: function(queueId, {{{ defineI64Param('signalValue') }}}, callback, userdata) {
+  wgpuQueueOnSubmittedWorkDone: function(queueId, signalValue, callback, userdata) {
     var queue = WebGPU.mgrQueue.get(queueId);
 #if ASSERTIONS
     assert(signalValue_low === 0 && signalValue_high === 0, 'signalValue not supported, must be 0');
@@ -1501,9 +1508,7 @@ var LibraryWebGPU = {
     });
   },
 
-  wgpuQueueWriteBuffer: function(queueId,
-      bufferId, {{{ defineI64Param('bufferOffset') }}}, data, size) {
-    {{{ receiveI64ParamAsI53('bufferOffset') }}}
+  wgpuQueueWriteBuffer: function(queueId, bufferId, bufferOffset, data, size) {
     var queue = WebGPU.mgrQueue.get(queueId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
     // There is a size limitation for ArrayBufferView. Work around by passing in a subarray
@@ -1690,23 +1695,15 @@ var LibraryWebGPU = {
     return WebGPU.mgrRenderPassEncoder.create(commandEncoder["beginRenderPass"](desc));
   },
 
-  wgpuCommandEncoderClearBuffer: function(encoderId, bufferId, {{{ defineI64Param('offset') }}}, {{{ defineI64Param('size') }}}) {
+  wgpuCommandEncoderClearBuffer: function(encoderId, bufferId, offset, size) {
     var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
-    {{{ receiveI64ParamAsI32s('offset') }}}
-    {{{ receiveI64ParamAsI32s('size') }}}
+    {{{ gpu.convertSentinelToUndefined('size') }}}
 
     var buffer = WebGPU.mgrBuffer.get(bufferId);
-    commandEncoder["clearBuffer"](
-      buffer,
-      convertI32PairToI53(offset_low, offset_high),
-      convertI32PairToI53(size_low, size_high)
-    );
+    commandEncoder["clearBuffer"](buffer, offset, size);
   },
 
-  wgpuCommandEncoderCopyBufferToBuffer: function(encoderId, srcId, {{{ defineI64Param('srcOffset') }}}, dstId, {{{ defineI64Param('dstOffset') }}}, {{{ defineI64Param('size') }}}) {
-    {{{ receiveI64ParamAsI53('srcOffset') }}}
-    {{{ receiveI64ParamAsI53('dstOffset') }}}
-    {{{ receiveI64ParamAsI53('size') }}}
+  wgpuCommandEncoderCopyBufferToBuffer: function(encoderId, srcId, srcOffset, dstId, dstOffset, size) {
     var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
     var src = WebGPU.mgrBuffer.get(srcId);
     var dst = WebGPU.mgrBuffer.get(dstId);
@@ -1735,8 +1732,7 @@ var LibraryWebGPU = {
   },
 
   wgpuCommandEncoderResolveQuerySet: function(encoderId, querySetId, firstQuery, queryCount,
-      destinationId, {{{ defineI64Param('destinationOffset') }}}) {
-    {{{ receiveI64ParamAsI53('destinationOffset') }}}
+      destinationId, destinationOffset) {
     var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
     var querySet = WebGPU.mgrQuerySet.get(querySetId);
     var destination = WebGPU.mgrBuffer.get(destinationId);
@@ -1845,7 +1841,6 @@ var LibraryWebGPU = {
 
     if (size === 0) warnOnce('getMappedRange size=0 no longer means WGPU_WHOLE_MAP_SIZE');
 
-    size = size >>> 0;
     if (size === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
 
     var mapped;
@@ -1865,6 +1860,11 @@ var LibraryWebGPU = {
     return data;
   },
 
+  wgpuBufferGetMapState: function(bufferId) {
+    var buffer = WebGPU.mgrBuffer.get(bufferId);
+    return WebGPU.BufferMapState[buffer.mapState];
+  },
+
   // In webgpu.h offset and size are passed in as size_t.
   // And library_webgpu assumes that size_t is always 32bit in emscripten.
   wgpuBufferGetMappedRange__deps: ['$warnOnce', 'memalign', 'free'],
@@ -1874,7 +1874,6 @@ var LibraryWebGPU = {
 
     if (size === 0) warnOnce('getMappedRange size=0 no longer means WGPU_WHOLE_MAP_SIZE');
 
-    size = size >>> 0;
     if (size === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
 
     if (bufferWrapper.mapMode !== {{{ gpu.MapMode.Write }}}) {
@@ -1915,7 +1914,6 @@ var LibraryWebGPU = {
     bufferWrapper.onUnmap = [];
     var buffer = bufferWrapper.object;
 
-    size = size >>> 0;
     if (size === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
 
     // `callback` takes (WGPUBufferMapAsyncStatus status, void * userdata)
@@ -1930,7 +1928,7 @@ var LibraryWebGPU = {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
         // TODO(kainino0x): Figure out how to pick other error status values.
-        {{{ makeDynCall('vii', 'callback') }}}({{{ gpu.BufferMapAsyncStatus.Error }}}, userdata);
+        {{{ makeDynCall('vii', 'callback') }}}({{{ gpu.BufferMapAsyncStatus.ValidationError }}}, userdata);
       });
     });
   },
@@ -2078,8 +2076,7 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
     pass["dispatchWorkgroups"](x, y, z);
   },
-  wgpuComputePassEncoderDispatchWorkgroupsIndirect: function(passId, indirectBufferId, {{{ defineI64Param('indirectOffset') }}}) {
-    {{{ receiveI64ParamAsI53('indirectOffset') }}}
+  wgpuComputePassEncoderDispatchWorkgroupsIndirect: function(passId, indirectBufferId, indirectOffset) {
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
     pass["dispatchWorkgroupsIndirect"](indirectBuffer, indirectOffset);
@@ -2144,12 +2141,9 @@ var LibraryWebGPU = {
     var color = WebGPU.makeColor(colorPtr);
     pass["setBlendConstant"](color);
   },
-  wgpuRenderPassEncoderSetIndexBuffer: function(passId, bufferId, format, {{{ defineI64Param('offset') }}}, {{{ defineI64Param('size') }}}) {
-    {{{ receiveI64ParamAsI53('offset') }}}
-    {{{ receiveI64ParamAsI32s('size') }}}
+  wgpuRenderPassEncoderSetIndexBuffer: function(passId, bufferId, format, offset, size) {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
-    var size = {{{ gpu.convertI32PairToI53WithSentinelAsUndefined('size_low', 'size_high') }}};
     pass["setIndexBuffer"](buffer, WebGPU.IndexFormat[format], offset, size);
   },
   wgpuRenderPassEncoderSetPipeline: function(passId, pipelineId) {
@@ -2169,12 +2163,9 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     pass["setStencilReference"](reference);
   },
-  wgpuRenderPassEncoderSetVertexBuffer: function(passId, slot, bufferId, {{{ defineI64Param('offset') }}}, {{{ defineI64Param('size') }}}) {
-    {{{ receiveI64ParamAsI53('offset') }}}
-    {{{ receiveI64ParamAsI32s('size') }}}
+  wgpuRenderPassEncoderSetVertexBuffer: function(passId, slot, bufferId, offset, size) {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
-    var size = {{{ gpu.convertI32PairToI53WithSentinelAsUndefined('size_low', 'size_high') }}};
     pass["setVertexBuffer"](slot, buffer, offset, size);
   },
 
@@ -2186,14 +2177,12 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     pass["drawIndexed"](indexCount, instanceCount, firstIndex, baseVertex, firstInstance);
   },
-  wgpuRenderPassEncoderDrawIndirect: function(passId, indirectBufferId, {{{ defineI64Param('indirectOffset') }}}) {
-    {{{ receiveI64ParamAsI53('indirectOffset') }}}
+  wgpuRenderPassEncoderDrawIndirect: function(passId, indirectBufferId, indirectOffset) {
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     pass["drawIndirect"](indirectBuffer, indirectOffset);
   },
-  wgpuRenderPassEncoderDrawIndexedIndirect: function(passId, indirectBufferId, {{{ defineI64Param('indirectOffset') }}}) {
-    {{{ receiveI64ParamAsI53('indirectOffset') }}}
+  wgpuRenderPassEncoderDrawIndexedIndirect: function(passId, indirectBufferId, indirectOffset) {
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     pass["drawIndexedIndirect"](indirectBuffer, indirectOffset);
@@ -2248,10 +2237,16 @@ var LibraryWebGPU = {
     var encoder = WebGPU.mgrRenderPassEncoder.get(encoderId);
     encoder["insertDebugMarker"](UTF8ToString(markerLabelPtr));
   },
+  wgpuRenderPassEncoderEnd: function(encoderId) {
+    var encoder = WebGPU.mgrRenderPassEncoder.get(encoderId);
+    encoder["end"]();
+  },
 
-  wgpuRenderPassEncoderEnd: function(passId) {
-    var pass = WebGPU.mgrRenderPassEncoder.get(passId);
-    pass["end"]();
+  // Render bundle
+
+  wgpuRenderBundleSetLabel: function(bundleId, labelPtr) {
+    var bundle = WebGPU.mgrRenderBundle.get(bundleId);
+    bundle.label = UTF8ToString(labelPtr);
   },
 
   // Render bundle encoder
@@ -2274,12 +2269,9 @@ var LibraryWebGPU = {
       pass["setBindGroup"](groupIndex, group, offsets);
     }
   },
-  wgpuRenderBundleEncoderSetIndexBuffer: function(bundleId, bufferId, format, {{{ defineI64Param('offset') }}}, {{{ defineI64Param('size') }}}) {
-    {{{ receiveI64ParamAsI53('offset') }}}
-    {{{ receiveI64ParamAsI32s('size') }}}
+  wgpuRenderBundleEncoderSetIndexBuffer: function(bundleId, bufferId, format, offset, size) {
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
-    var size = {{{ gpu.convertI32PairToI53WithSentinelAsUndefined('size_low', 'size_high') }}};
     pass["setIndexBuffer"](buffer, WebGPU.IndexFormat[format], offset, size);
   },
   wgpuRenderBundleEncoderSetPipeline: function(bundleId, pipelineId) {
@@ -2287,12 +2279,9 @@ var LibraryWebGPU = {
     var pipeline = WebGPU.mgrRenderPipeline.get(pipelineId);
     pass["setPipeline"](pipeline);
   },
-  wgpuRenderBundleEncoderSetVertexBuffer: function(bundleId, slot, bufferId, {{{ defineI64Param('offset') }}}, {{{ defineI64Param('size') }}}) {
-    {{{ receiveI64ParamAsI53('offset') }}}
-    {{{ receiveI64ParamAsI32s('size') }}}
+  wgpuRenderBundleEncoderSetVertexBuffer: function(bundleId, slot, bufferId, offset, size) {
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
-    var size = {{{ gpu.convertI32PairToI53WithSentinelAsUndefined('size_low', 'size_high') }}};
     pass["setVertexBuffer"](slot, buffer, offset, size);
   },
 
@@ -2304,14 +2293,12 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     pass["drawIndexed"](indexCount, instanceCount, firstIndex, baseVertex, firstInstance);
   },
-  wgpuRenderBundleEncoderDrawIndirect: function(bundleId, indirectBufferId, {{{ defineI64Param('indirectOffset') }}}) {
-    {{{ receiveI64ParamAsI53('indirectOffset') }}}
+  wgpuRenderBundleEncoderDrawIndirect: function(bundleId, indirectBufferId, indirectOffset) {
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     pass["drawIndirect"](indirectBuffer, indirectOffset);
   },
-  wgpuRenderBundleEncoderDrawIndexedIndirect: function(bundleId, indirectBufferId, {{{ defineI64Param('indirectOffset') }}}) {
-    {{{ receiveI64ParamAsI53('indirectOffset') }}}
+  wgpuRenderBundleEncoderDrawIndexedIndirect: function(bundleId, indirectBufferId, indirectOffset) {
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     pass["drawIndexedIndirect"](indirectBuffer, indirectOffset);
@@ -2345,27 +2332,20 @@ var LibraryWebGPU = {
   // Instance
 
   wgpuCreateInstance: function() {
-#if ASSERTIONS
-    // Once implemented, Instance should create and own the object management tables.
-    abort('TODO: wgpuCreateInstance unimplemented');
-#endif
+    return 1;
   },
 
   wgpuInstanceReference: function() {
-#if ASSERTIONS
-    abort('TODO: no WGPUInstance object should exist');
-#endif
+    // no-op
   },
   wgpuInstanceRelease: function() {
-#if ASSERTIONS
-    abort('TODO: no WGPUInstance object should exist');
-#endif
+    // no-op
   },
 
   wgpuInstanceCreateSurface__deps: ['$findCanvasEventTarget'],
   wgpuInstanceCreateSurface: function(instanceId, descriptor) {
     {{{ gpu.makeCheck('descriptor') }}}
-    {{{ gpu.makeCheck('instanceId === 0, "WGPUInstance is ignored"') }}}
+    {{{ gpu.makeCheck('instanceId === 1, "WGPUInstance must be created by wgpuCreateInstance"') }}}
     var nextInChainPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSurfaceDescriptor.nextInChain, '*') }}};
 #if ASSERTIONS
     assert(nextInChainPtr !== 0);
@@ -2399,7 +2379,7 @@ var LibraryWebGPU = {
 
   wgpuInstanceRequestAdapter__deps: ['$callUserCallback', '$stringToUTF8OnStack'],
   wgpuInstanceRequestAdapter: function(instanceId, options, callback, userdata) {
-    {{{ gpu.makeCheck('instanceId === 0, "WGPUInstance is ignored"') }}}
+    {{{ gpu.makeCheck('instanceId === 1, "WGPUInstance must be created by wgpuCreateInstance"') }}}
 
     var opts;
     if (options) {
@@ -2470,6 +2450,7 @@ var LibraryWebGPU = {
     {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.driverDescription, '0', 'i32') }}};
     {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.adapterType, gpu.AdapterType.Unknown, 'i32') }}};
     {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.backendType, gpu.BackendType.WebGPU, 'i32') }}};
+    {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.compatibilityMode, '0', 'i32') }}};
   },
 
   wgpuAdapterGetLimits: function(adapterId, limitsOutPtr) {
@@ -2555,6 +2536,9 @@ var LibraryWebGPU = {
         desc["defaultQueue"] = defaultQueueDesc;
       }
 
+      var deviceLostCallbackPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.deviceLostCallback, '*') }}};
+      var deviceLostUserdataPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.deviceLostUserdata, '*') }}};
+
       var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.label, '*') }}};
       if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
     }
@@ -2565,6 +2549,12 @@ var LibraryWebGPU = {
       callUserCallback(() => {
         var deviceWrapper = { queueId: WebGPU.mgrQueue.create(device["queue"]) };
         var deviceId = WebGPU.mgrDevice.create(device, deviceWrapper);
+        if (deviceLostCallbackPtr) {
+          device["lost"].then((info) => {
+            callUserCallback(() => WebGPU.errorCallback(deviceLostCallbackPtr,
+              WebGPU.DeviceLostReason[info.reason], info.message, deviceLostUserdataPtr));
+          });
+        }
         {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestDeviceStatus.Success }}}, deviceId, 0, userdata);
       });
     }, function(ex) {
@@ -2655,6 +2645,10 @@ var LibraryWebGPU = {
 LibraryWebGPU.$WebGPU.FeatureNameString2Enum = {};
 for (var value in LibraryWebGPU.$WebGPU.FeatureName) {
   LibraryWebGPU.$WebGPU.FeatureNameString2Enum[LibraryWebGPU.$WebGPU.FeatureName[value]] = value;
+}
+
+for (const key of Object.keys(LibraryWebGPU)) {
+  LibraryWebGPU[key + '__i53abi'] = true;
 }
 
 autoAddDeps(LibraryWebGPU, '$WebGPU');

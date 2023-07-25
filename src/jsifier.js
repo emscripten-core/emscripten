@@ -30,25 +30,32 @@ function splitter(array, filter) {
   return { leftIn, splitOut };
 }
 
-// Functions that start with '$' should not be exported to the wasm module.
-// They are intended to be exclusive to JS code only.
-function isJsOnlySymbol(symbol) {
-  return symbol[0] == '$';
-}
-
 function escapeJSONKey(x) {
   if (/^[\d\w_]+$/.exec(x) || x[0] === '"' || x[0] === "'") return x;
   assert(!x.includes("'"), 'cannot have internal single quotes in keys: ' + x);
   return "'" + x + "'";
 }
 
+// JSON.stringify will completely omit function objects.  This function is
+// similar but preserves functions.
 function stringifyWithFunctions(obj) {
   if (typeof obj == 'function') return obj.toString();
   if (obj === null || typeof obj != 'object') return JSON.stringify(obj);
   if (Array.isArray(obj)) {
     return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
   }
-  return '{' + Object.keys(obj).map((key) => escapeJSONKey(key) + ':' + stringifyWithFunctions(obj[key])).join(',') + '}';
+  var rtn = '{\n';
+  for (const [key, value] of Object.entries(obj)) {
+    var str = stringifyWithFunctions(value);
+    // Handle JS method syntax where the function property starts with its own
+    // name. e.g.  foo(a) {},
+    if (typeof value === 'function' && str.startsWith(key)) {
+      rtn += str + ',\n'
+    } else {
+      rtn += escapeJSONKey(key) + ':' + str + ',\n';
+    }
+  }
+  return rtn + '}';
 }
 
 function isDefined(symName) {
@@ -102,52 +109,84 @@ function runJSify() {
   }
   if (INCLUDE_FULL_LIBRARY) {
     for (const key of Object.keys(LibraryManager.library)) {
-      if (!isJsLibraryConfigIdentifier(key)) {
+      if (!isDecorator(key)) {
         symbolsNeeded.push(key);
       }
     }
   }
 
-  function convertPointerParams(symbol, snippet, sig) {
-    // Automatically convert any incoming pointer arguments from BigInt
-    // to double (this limits the range to int53).
-    // And convert the return value if the function returns a pointer.
-    return modifyJSFunction(snippet, (args, body) => {
+  function handleI64Signatures(symbol, snippet, sig, i53abi) {
+    // Handle i64 paramaters and return values.
+    //
+    // When WASM_BIGINT is enabled these arrive as BigInt values which we
+    // convert to int53 JS numbers.  If necessary, we also convert the return
+    // value back into a BigInt.
+    //
+    // When WASM_BIGINT is not enabled we receive i64 values as a pair of i32
+    // numbers which is coverted to single int53 number.  In necessary, we also
+    // split the return value into a pair of i32 numbers.
+    return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
       let argLines = args.split('\n');
       argLines = argLines.map((line) => line.split('//')[0]);
       const argNames = argLines.join(' ').split(',').map((name) => name.trim());
-      let newArgs = [];
+      const newArgs = [];
+      let innerArgs = [];
       let argConvertions = '';
       for (let i = 1; i < sig.length; i++) {
         const name = argNames[i - 1];
         if (!name) {
-          error(`convertPointerParams: missing name for argument ${i} in ${symbol}`);
+          error(`handleI64Signatures: missing name for argument ${i} in ${symbol}`);
           return snippet;
         }
-        if (sig[i] == 'p') {
-          argConvertions += `  ${name} = Number(${name});\n`;
-          newArgs.push(`Number(${name})`);
+        if (WASM_BIGINT) {
+          if (sig[i] == 'p' || (sig[i] == 'j' && i53abi)) {
+            argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
+          }
         } else {
-          newArgs.push(name);
+          if (sig[i] == 'j' && i53abi) {
+            argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
+            newArgs.push(defineI64Param(name));
+          } else if (sig[i] == 'p' && CAN_ADDRESS_2GB) {
+            argConvertions += `  ${name} >>>= 0;\n`;
+            newArgs.push(name);
+          } else {
+            newArgs.push(name);
+          }
         }
       }
 
-      if (sig[0] == 'p') {
-        // For functions that return a pointer we need to convert
-        // the return value too, which means we need to wrap the
-        // body in an inner function.
-        newArgs = newArgs.join(',');
+      var origArgs = args;
+      if (!WASM_BIGINT) {
+        args = newArgs.join(',');
+      }
+
+      if ((sig[0] == 'j' && i53abi) || (sig[0] == 'p' && WASM_BIGINT)) {
+        // For functions that where we need to mutate the return value, we
+        // also need to wrap the body in an inner function.
+        if (oneliner) {
+          if (argConvertions) {
+            return `${async_}(${args}) => {
+${argConvertions}
+  return ${makeReturn64(body)};
+}`
+          }
+          return `${async_}(${args}) => ${makeReturn64(body)};`
+        }
         return `\
-function(${args}) {
-  var ret = ((${args}) => { ${body} })(${newArgs});
-  return BigInt(ret);
+${async_}function(${args}) {
+${argConvertions}
+  var ret = (() => { ${body} })();
+  return ${makeReturn64('ret')};
 }`;
       }
 
       // Otherwise no inner function is needed and we covert the arguments
       // before executing the function body.
+      if (oneliner) {
+        body = `return ${body}`;
+      }
       return `\
-function(${args}) {
+${async_}function(${args}) {
 ${argConvertions}
   ${body};
 }`;
@@ -168,7 +207,7 @@ ${argConvertions}
 
     // apply LIBRARY_DEBUG if relevant
     if (LIBRARY_DEBUG && !isJsOnlySymbol(symbol)) {
-      snippet = modifyJSFunction(snippet, (args, body) => `\
+      snippet = modifyJSFunction(snippet, (args, body, async) => `\
 function(${args}) {
   var ret = (function() { if (runtimeDebug) err("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
   ${body}
@@ -176,6 +215,14 @@ function(${args}) {
   if (runtimeDebug && typeof ret != "undefined") err("  [     return:" + prettyPrint(ret));
   return ret;
 }`);
+    }
+
+    const sig = LibraryManager.library[symbol + '__sig'];
+    const i53abi = LibraryManager.library[symbol + '__i53abi'];
+    if (sig &&
+        ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')))) {
+      snippet = handleI64Signatures(symbol, snippet, sig, i53abi);
+      i53ConversionDeps.forEach((d) => deps.push(d))
     }
 
     if (SHARED_MEMORY) {
@@ -202,13 +249,6 @@ function(${args}) {
 }\n`);
         }
         proxiedFunctionTable.push(mangled);
-      }
-    }
-
-    if (MEMORY64) {
-      const sig = LibraryManager.library[symbol + '__sig'];
-      if (sig && sig.includes('p')) {
-        snippet = convertPointerParams(symbol, snippet, sig);
       }
     }
 
@@ -240,15 +280,18 @@ function(${args}) {
     // In LLVM, exceptions generate a set of functions of form
     // __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.  where
     // the number specifies the number of arguments. In Emscripten, route all
-    // these to a single function '__cxa_find_matching_catch' that variadically
-    // processes all of these functions using JS 'arguments' object.
+    // these to a single function 'findMatchingCatch' that takes an array
+    // of argument.
     if (!WASM_EXCEPTIONS && symbol.startsWith('__cxa_find_matching_catch_')) {
       if (DISABLE_EXCEPTION_THROWING) {
         error('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-except (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.');
         return;
       }
-      const num = +symbol.split('_').slice(-1)[0];
-      addCxaCatch(num);
+      if (!(symbol in LibraryManager.library)) {
+        // Create a new __cxa_find_matching_catch variant on demand.
+        const num = +symbol.split('_').slice(-1)[0];
+        addCxaCatch(num);
+      }
       // Continue, with the code below emitting the proper JavaScript based on
       // what we just added to the library.
     }
@@ -261,11 +304,15 @@ function(${args}) {
 
       // don't process any special identifiers. These are looked up when
       // processing the base name of the identifier.
-      if (isJsLibraryConfigIdentifier(symbol)) {
+      if (isDecorator(symbol)) {
         return;
       }
 
-      const deps = LibraryManager.library[symbol + '__deps'] || [];
+      if (!(symbol + '__deps' in LibraryManager.library)) {
+        LibraryManager.library[symbol + '__deps'] = [];
+      }
+
+      deps = LibraryManager.library[symbol + '__deps'];
       let sig = LibraryManager.library[symbol + '__sig'];
       if (!WASM_BIGINT && sig && sig[0] == 'j') {
         // Without WASM_BIGINT functions that return i64 depend on setTempRet0
@@ -469,7 +516,7 @@ function(${args}) {
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
       if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
-        contentText += `\nModule["${mangled}"] = ${mangled};`;
+        contentText += `\nModule['${mangled}'] = ${mangled};`;
       }
       // Relocatable code needs signatures to create proper wrappers. Stack
       // switching needs signatures so we can create a proper

@@ -112,6 +112,14 @@ var LibraryHTML5 = {
     },
     
     canPerformEventHandlerRequests: function() {
+      if (navigator.userActivation) {
+        // Verify against transient activation status from UserActivation API
+        // whether it is possible to perform a request here without needing to defer. See
+        // https://developer.mozilla.org/en-US/docs/Web/Security/User_activation#transient_activation
+        // and https://caniuse.com/mdn-api_useractivation
+        // At the time of writing, Firefox does not support this API: https://bugzilla.mozilla.org/show_bug.cgi?id=1791079
+        return navigator.userActivation.isActive;
+      }
       return JSEvents.inEventHandler && JSEvents.currentEventHandler.allowsDeferredCalls;
     },
     
@@ -210,9 +218,23 @@ var LibraryHTML5 = {
 #if PTHREADS
     getTargetThreadForEventCallback: function(targetThread) {
       switch (targetThread) {
-        case {{{ cDefs.EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD }}}: return 0; // The event callback for the current event should be called on the main browser thread. (0 == don't proxy)
-        case {{{ cDefs.EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD }}}: return PThread.currentProxiedOperationCallerThread; // The event callback for the current event should be backproxied to the thread that is registering the event.
-        default: return targetThread; // The event callback for the current event should be proxied to the given specific thread.
+        case {{{ cDefs.EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD }}}:
+          // The event callback for the current event should be called on the
+          // main browser thread. (0 == don't proxy)
+          return 0;
+        case {{{ cDefs.EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD }}}:
+          // The event callback for the current event should be backproxied to
+          // the thread that is registering the event.
+#if ASSERTIONS
+          // If we get here PThread.currentProxiedOperationCallerThread should
+          // be set to the calling thread.
+          assert(PThread.currentProxiedOperationCallerThread);
+#endif
+          return PThread.currentProxiedOperationCallerThread;
+        default:
+          // The event callback for the current event should be proxied to the
+          // given specific thread.
+          return targetThread;
       }
     },
 #endif

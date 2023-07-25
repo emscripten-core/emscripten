@@ -258,11 +258,6 @@ var LibraryPThread = {
       worker.onmessage = (e) => {
         var d = e['data'];
         var cmd = d['cmd'];
-        // Sometimes we need to backproxy events to the calling thread (e.g.
-        // HTML5 DOM events handlers such as
-        // emscripten_set_mousemove_callback()), so keep track in a globally
-        // accessible variable about the thread that initiated the proxying.
-        if (worker.pthread_ptr) PThread.currentProxiedOperationCallerThread = worker.pthread_ptr;
 
         // If this message is intended to a recipient that is not the main thread, forward it to the target thread.
         if (d['targetThread'] && d['targetThread'] != _pthread_self()) {
@@ -272,7 +267,6 @@ var LibraryPThread = {
           } else {
             err('Internal error! Worker sent a message "' + cmd + '" to target pthread ' + d['targetThread'] + ', but that thread no longer exists!');
           }
-          PThread.currentProxiedOperationCallerThread = undefined;
           return;
         }
 
@@ -316,7 +310,6 @@ var LibraryPThread = {
           // recognized commands:
           err("worker sent an unknown command " + cmd);
         }
-        PThread.currentProxiedOperationCallerThread = undefined;
       };
 
       worker.onerror = (e) => {
@@ -728,7 +721,9 @@ var LibraryPThread = {
       /*canBlock=*/!ENVIRONMENT_IS_WEB,
       {{{ DEFAULT_PTHREAD_STACK_SIZE }}},
 #if PTHREADS_PROFILING
-      /*start_profiling=*/true
+      /*start_profiling=*/true,
+#else
+      /*start_profiling=*/false,
 #endif
     );
     PThread.threadInitTLS();
@@ -1014,7 +1009,12 @@ var LibraryPThread = {
   emscripten_receive_on_main_thread_js__deps: [
     '$proxyToMainThread',
     '$emscripten_receive_on_main_thread_js_callArgs'],
-  emscripten_receive_on_main_thread_js: function(index, numCallArgs, args) {
+  emscripten_receive_on_main_thread_js: function(index, callingThread, numCallArgs, args) {
+    // Sometimes we need to backproxy events to the calling thread (e.g.
+    // HTML5 DOM events handlers such as
+    // emscripten_set_mousemove_callback()), so keep track in a globally
+    // accessible variable about the thread that initiated the proxying.
+    PThread.currentProxiedOperationCallerThread = callingThread;
 #if WASM_BIGINT
     numCallArgs /= 2;
 #endif
@@ -1110,17 +1110,24 @@ var LibraryPThread = {
 #if STACK_OVERFLOW_CHECK
     checkStackCookie();
 #endif
+    function finish(result) {
 #if MINIMAL_RUNTIME
-    // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to
-    // pthreads. To exit a pthread with live runtime, use the function
-    // emscripten_unwind_to_js_event_loop() in the pthread body.
-    __emscripten_thread_exit(result);
-#else
-    if (keepRuntimeAlive()) {
-      PThread.setExitStatus(result);
-    } else {
+      // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to
+      // pthreads. To exit a pthread with live runtime, use the function
+      // emscripten_unwind_to_js_event_loop() in the pthread body.
       __emscripten_thread_exit(result);
+#else
+      if (keepRuntimeAlive()) {
+        PThread.setExitStatus(result);
+      } else {
+        __emscripten_thread_exit(result);
+      }
+#endif
     }
+#if ASYNCIFY == 2
+    Promise.resolve(result).then(finish);
+#else
+    finish(result);
 #endif
   },
 

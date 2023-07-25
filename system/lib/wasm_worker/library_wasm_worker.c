@@ -15,7 +15,7 @@
 
 #define ROUND_UP(x, ALIGNMENT) (((x)+ALIGNMENT-1)&-ALIGNMENT)
 #define SBRK_ALIGN (__alignof__(max_align_t))
-#define STACK_ALIGN 16
+#define STACK_ALIGN __BIGGEST_ALIGNMENT__
 
 // Options:
 // #define STACK_OVERFLOW_CHECK 0/1/2 : set to the current stack overflow check mode

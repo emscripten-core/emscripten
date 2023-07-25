@@ -725,12 +725,13 @@ function modifyJSFunction(text, func) {
   }
   let body = rest;
   const bodyStart = rest.indexOf('{');
-  if (bodyStart >= 0) {
+  let oneliner = bodyStart < 0;
+  if (!oneliner) {
     const bodyEnd = rest.lastIndexOf('}');
     assert(bodyEnd > 0);
     body = rest.substring(bodyStart + 1, bodyEnd);
   }
-  return func(args, body, async_);
+  return func(args, body, async_, oneliner);
 }
 
 function runIfMainThread(text) {
@@ -864,6 +865,16 @@ function hasExportedSymbol(sym) {
   return WASM_EXPORTS.has(sym);
 }
 
+// Called when global runtime symbols such as wasmMemory, wasmExports and
+// wasmTable are set. In this case we maybe need to re-export them on the
+// Module object.
+function receivedSymbol(sym) {
+  if (EXPORTED_RUNTIME_METHODS.includes(sym)) {
+    return `Module['${sym}'] = ${sym};`
+  }
+  return '';
+}
+
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,
 // it is a BigInt. Otherwise, we legalize into pairs of i32s.
 function defineI64Param(name) {
@@ -873,21 +884,16 @@ function defineI64Param(name) {
   return `${name}_low, ${name}_high`;
 }
 
-function receiveI64ParamAsI32s(name) {
-  if (WASM_BIGINT) {
-    return `var ${name}_low = Number(${name} & 0xffffffffn) | 0, ${name}_high = Number(${name} >> 32n) | 0;`;
-  }
-  return '';
-}
 
-function receiveI64ParamAsI53(name, onError) {
+function receiveI64ParamAsI53(name, onError, handleErrors = true) {
+  var errorHandler = handleErrors ? `if (isNaN(${name})) return ${onError}` : '';
   if (WASM_BIGINT) {
     // Just convert the bigint into a double.
-    return `${name} = bigintToI53Checked(${name}); if (isNaN(${name})) return ${onError};`;
+    return `${name} = bigintToI53Checked(${name});${errorHandler};`;
   }
   // Convert the high/low pair to a Number, checking for
   // overflow of the I53 range and returning onError in that case.
-  return `var ${name} = convertI32PairToI53Checked(${name}_low, ${name}_high); if (isNaN(${name})) return ${onError};`;
+  return `var ${name} = convertI32PairToI53Checked(${name}_low, ${name}_high);${errorHandler};`;
 }
 
 function receiveI64ParamAsI53Unchecked(name) {

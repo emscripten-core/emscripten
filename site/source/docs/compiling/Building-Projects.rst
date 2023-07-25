@@ -21,6 +21,8 @@ Consider the case where you normally build with the following commands:
   ./configure
   make
 
+.. tip:: If you're not familiar with these build commands, the article `The magic behind configure, make, make install <https://thoughtbot.com/blog/the-magic-behind-configure-make-make-install>`_ is a good primer.
+
 To build with Emscripten, you would instead use the following commands:
 
 .. code-block:: bash
@@ -167,7 +169,7 @@ with :term:`clang` or *gcc* normally).
 
 .. note:: Each build-system defines its own mechanisms for setting debug flags. **To get Clang to emit LLVM debug information, you will need to work out the correct approach for your system**.
 
-  - Some build systems have a flag like ``./configure --enable-debug``.
+  - Some build systems have a flag like ``./configure --enable-debug``. In *CMake*-based build systems, set the ``CMAKE_BUILD_TYPE`` to ``"Debug"``.
 
 To get *emcc* to include the debug information present in object files when
 generating the final JavaScript and WebAssembly, your final ``emcc`` command
@@ -213,7 +215,7 @@ For example, consider the case where a project "project" uses a library "libstuf
 Emscripten Ports
 ================
 
-Emscripten Ports is a collection of useful libraries, ported to Emscripten. They reside `on github <https://github.com/emscripten-ports>`_, and have integration support in *emcc*. When you request that a port be used, emcc will fetch it from the remote server, set it up and build it locally, then link it with your project, add necessary include to your build commands, etc. For example, SDL2 is in ports, and you can request that it be used with ``-sUSE_SDL=2``. For example,
+Emscripten Ports is a collection of useful libraries, ported to Emscripten. They reside `on GitHub <https://github.com/emscripten-ports>`_, and have integration support in *emcc*. When you request that a port be used, emcc will fetch it from the remote server, set it up and build it locally, then link it with your project, add necessary include to your build commands, etc. For example, SDL2 is in ports, and you can request that it be used with ``-sUSE_SDL=2``. For example,
 
 .. code-block:: bash
 

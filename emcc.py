@@ -45,7 +45,7 @@ from tools import shared, system_libs, utils, ports, filelock
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy
 from tools.shared import run_process, read_and_preprocess, exit_with_error, DEBUG
-from tools.shared import do_replace, strip_prefix
+from tools.shared import do_replace
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
@@ -55,7 +55,7 @@ from tools import webassembly
 from tools import config
 from tools import cache
 from tools.settings import user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
-from tools.utils import read_file, write_file, read_binary, delete_file
+from tools.utils import read_file, write_file, read_binary, delete_file, removeprefix
 
 logger = logging.getLogger('emcc')
 
@@ -248,6 +248,7 @@ def add_link_flag(state, i, f):
 
 class EmccOptions:
   def __init__(self):
+    self.target = ''
     self.output_file = None
     self.post_link = False
     self.executable = False
@@ -268,6 +269,7 @@ class EmccOptions:
     self.ignore_dynamic_linking = False
     self.shell_path = utils.path_from_root('src/shell.html')
     self.source_map_base = ''
+    self.embind_emit_tsd = ''
     self.emrun = False
     self.cpu_profiler = False
     self.memory_profiler = False
@@ -439,7 +441,7 @@ def apply_user_settings():
 
     filename = None
     if value and value[0] == '@':
-      filename = strip_prefix(value, '@')
+      filename = removeprefix(value, '@')
       if not os.path.exists(filename):
         exit_with_error('%s: file not found parsing argument: %s=%s' % (filename, key, value))
       value = read_file(filename).strip()
@@ -774,7 +776,7 @@ def is_dash_s_for_emcc(args, i):
       return False
     arg = args[i + 1]
   else:
-    arg = strip_prefix(args[i], '-s')
+    arg = removeprefix(args[i], '-s')
   arg = arg.split('=')[0]
   return arg.isidentifier() and arg.isupper()
 
@@ -831,6 +833,10 @@ def process_dynamic_libs(dylibs, lib_dirs):
   for dylib in dylibs:
     exports = webassembly.get_exports(dylib)
     exports = set(e.name for e in exports)
+    # EM_JS function are exports with a special prefix.  We need to strip
+    # this prefix to get the actaul symbol name.  For the main module, this
+    # is handled by extract_metadata.py.
+    exports = [removeprefix(e, '__em_js__') for e in exports]
     settings.SIDE_MODULE_EXPORTS.extend(sorted(exports))
 
     imports = webassembly.get_imports(dylib)
@@ -870,7 +876,7 @@ def parse_s_args(args):
           key = args[i + 1]
           args[i + 1] = ''
         else:
-          key = strip_prefix(args[i], '-s')
+          key = removeprefix(args[i], '-s')
         args[i] = ''
 
         # If not = is specified default to 1
@@ -1271,7 +1277,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if state.mode == Mode.POST_LINK_ONLY:
     settings.limit_settings(None)
     target, wasm_target = phase_linker_setup(options, state, newargs)
-    process_libraries(state, [])
+    process_libraries(state, [], options)
     if len(input_files) != 1:
       exit_with_error('--post-link requires a single input file')
     phase_post_link(options, state, input_files[0][1], wasm_target, target, {})
@@ -1315,6 +1321,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     js_info = get_js_sym_info()
     if not settings.SIDE_MODULE:
       js_syms = js_info['deps']
+
+      def add_js_deps(sym):
+        if sym in js_syms:
+          native_deps = js_syms[sym]
+          if native_deps:
+            settings.REQUIRED_EXPORTS += native_deps
+
+      for sym in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE:
+        add_js_deps(sym)
+      for sym in settings.EXPORTED_RUNTIME_METHODS:
+        add_js_deps(shared.demangle_c_symbol_name(sym))
     if settings.ASYNCIFY:
       settings.ASYNCIFY_IMPORTS += ['env.' + x for x in js_info['asyncFuncs']]
 
@@ -1345,7 +1362,7 @@ def phase_calculate_linker_inputs(options, state, linker_inputs):
   state.link_flags = filter_link_flags(state.link_flags, using_lld)
 
   # Decide what we will link
-  process_libraries(state, linker_inputs)
+  process_libraries(state, linker_inputs, options.embind_emit_tsd)
 
   linker_args = [val for _, val in sorted(linker_inputs + state.link_flags)]
 
@@ -1370,7 +1387,7 @@ def normalize_boolean_setting(name, value):
   # and we can't just flip them, so leave them as-is to be
   # handled in a special way later)
   if name.startswith('NO_') and value in ('0', '1'):
-    name = strip_prefix(name, 'NO_')
+    name = removeprefix(name, 'NO_')
     value = str(1 - int(value))
   return name, value
 
@@ -1455,14 +1472,14 @@ def phase_setup(options, state, newargs):
       continue
 
     arg = newargs[i]
-    if arg in ('-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
+    if arg in {'-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
                '-Xpreprocessor', '-include', '-imacros', '-idirafter',
                '-iprefix', '-iwithprefix', '-iwithprefixbefore',
                '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
                '-install_name', '-compatibility_version',
                '-current_version', '-I', '-L', '-include-pch',
-               '-undefined',
-               '-Xlinker', '-Xclang', '-z'):
+               '-undefined', '-target',
+               '-Xlinker', '-Xclang', '-z'}:
       skip = True
 
     if not arg.startswith('-'):
@@ -1486,7 +1503,7 @@ def phase_setup(options, state, newargs):
         # For shared libraries that are neither bitcode nor wasm, assuming its local native
         # library and attempt to find a library by the same name in our own library path.
         # TODO(sbc): Do we really need this feature?  See test_other.py:test_local_link
-        libname = strip_prefix(get_library_basename(arg), 'lib')
+        libname = removeprefix(get_library_basename(arg), 'lib')
         flag = '-l' + libname
         diagnostics.warning('map-unrecognized-libraries', f'unrecognized file type: `{arg}`.  Mapping to `{flag}` and hoping for the best')
         add_link_flag(state, i, flag)
@@ -1634,7 +1651,12 @@ def phase_setup(options, state, newargs):
   if settings.DISABLE_EXCEPTION_THROWING and not settings.DISABLE_EXCEPTION_CATCHING:
     exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
 
+  if options.target.startswith('wasm64'):
+    default_setting('MEMORY64', 1)
+
   if settings.MEMORY64:
+    if options.target.startswith('wasm32'):
+      exit_with_error('wasm32 target is not compatible with -sMEMORY64')
     diagnostics.warning('experimental', '-sMEMORY64 is still experimental. Many features may not work.')
 
   # Wasm SjLj cannot be used with Emscripten EH
@@ -1721,13 +1743,6 @@ def setup_pthreads(target):
 
   if settings.MINIMAL_RUNTIME:
     building.user_requested_exports.add('exit')
-
-  # All proxying async backends will need this.
-  if settings.WASMFS:
-    settings.REQUIRED_EXPORTS += ['emscripten_proxy_finish']
-    # TODO: Remove this once we no longer need the heartbeat hack in
-    # wasmfs/thread_utils.h
-    settings.REQUIRED_EXPORTS += ['emscripten_proxy_execute_queue']
 
   # pthread stack setup and other necessary utilities
   def include_and_export(name):
@@ -2080,7 +2095,6 @@ def phase_linker_setup(options, state, newargs):
       settings.INCLUDE_FULL_LIBRARY = 1
     # Called from preamble.js once the main module is instantiated.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDylibs']
-    settings.REQUIRED_EXPORTS += ['malloc']
 
   if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
     settings.LINKABLE = 1
@@ -2114,10 +2128,6 @@ def phase_linker_setup(options, state, newargs):
         '__asyncify_data'
       ]
 
-    # Emscripten EH dependency in library_dylink.js
-    if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
-      settings.REQUIRED_EXPORTS += ['setThrew']
-
     if settings.MINIMAL_RUNTIME:
       exit_with_error('MINIMAL_RUNTIME is not compatible with relocatable output')
     if settings.WASM2JS:
@@ -2145,9 +2155,6 @@ def phase_linker_setup(options, state, newargs):
     # See: https://github.com/emscripten-core/emscripten/issues/12065
     # See: https://github.com/emscripten-core/emscripten/issues/12066
     settings.DYNCALLS = 1
-    settings.REQUIRED_EXPORTS += ['emscripten_stack_get_base',
-                                  'emscripten_stack_get_end',
-                                  'emscripten_stack_set_limits']
 
   settings.ASYNCIFY_ADD = unmangle_symbols_from_cmdline(settings.ASYNCIFY_ADD)
   settings.ASYNCIFY_REMOVE = unmangle_symbols_from_cmdline(settings.ASYNCIFY_REMOVE)
@@ -2434,8 +2441,8 @@ def phase_linker_setup(options, state, newargs):
     settings.JS_LIBRARIES.append((0, 'library_pthread_stub.js'))
 
   if settings.MEMORY64:
-    if settings.ASYNCIFY and settings.MEMORY64 == 1:
-      exit_with_error('MEMORY64=1 is not compatible with ASYNCIFY')
+    if settings.ASYNCIFY and settings.MEMORY64 == 2:
+      exit_with_error('MEMORY64=2 is not compatible with ASYNCIFY')
     # Any "pointers" passed to JS will now be i64's, in both modes.
     settings.WASM_BIGINT = 1
 
@@ -2862,10 +2869,10 @@ def phase_linker_setup(options, state, newargs):
 
   # check if we can address the 2GB mark and higher: either if we start at
   # 2GB, or if we allow growth to either any amount or to 2GB or more.
-  if settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or \
+  if not settings.MEMORY64 and (settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or
      (settings.ALLOW_MEMORY_GROWTH and
       (settings.MAXIMUM_MEMORY < 0 or
-       settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024)):
+       settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024))):
     settings.CAN_ADDRESS_2GB = 1
 
   settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
@@ -2959,7 +2966,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
         return_next = True
         continue
       if item.startswith('-x'):
-        return strip_prefix(item, '-x')
+        return removeprefix(item, '-x')
     return ''
 
   language_mode = get_language_mode(newargs)
@@ -3166,10 +3173,7 @@ def phase_emscript(options, in_wasm, wasm_target, memfile, js_syms):
   # Emscripten
   logger.debug('emscript')
 
-  if embed_memfile(options):
-    settings.SUPPORT_BASE64_EMBEDDING = 1
-    # _read in shell.js depends on intArrayToString when SUPPORT_BASE64_EMBEDDING is set
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$intArrayToString')
+  settings.SUPPORT_BASE64_EMBEDDING = embed_memfile(options)
 
   emscripten.run(in_wasm, wasm_target, final_js, memfile, js_syms)
   save_intermediate('original')
@@ -3294,6 +3298,10 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   if options.executable:
     make_js_executable(js_target)
 
+  if options.embind_emit_tsd:
+    out = shared.run_js_tool(js_target, [], stdout=PIPE)
+    write_file(options.embind_emit_tsd, out)
+
 
 def version_string():
   # if the emscripten folder is not a git repo, don't run git show - that can
@@ -3367,7 +3375,7 @@ def parse_args(newargs):
 
     if arg.startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
-      requested_level = strip_prefix(arg, '-O') or '2'
+      requested_level = removeprefix(arg, '-O') or '2'
       if requested_level == 's':
         requested_level = 2
         settings.SHRINK_LEVEL = 1
@@ -3428,7 +3436,7 @@ def parse_args(newargs):
       settings.DEBUG_LEVEL = max(1, settings.DEBUG_LEVEL)
     elif arg.startswith('-g'):
       options.requested_debug = arg
-      requested_level = strip_prefix(arg, '-g') or '3'
+      requested_level = removeprefix(arg, '-g') or '3'
       if is_int(requested_level):
         # the -gX value is the debug level (-g1, -g2, etc.)
         settings.DEBUG_LEVEL = validate_arg_level(requested_level, 4, 'invalid debug level: ' + arg)
@@ -3501,6 +3509,9 @@ def parse_args(newargs):
       options.shell_path = consume_arg_file()
     elif check_arg('--source-map-base'):
       options.source_map_base = consume_arg()
+    elif check_arg('--embind-emit-tsd'):
+      options.embind_emit_tsd = consume_arg()
+      settings.INVOKE_RUN = False
     elif check_flag('--no-entry'):
       options.no_entry = True
     elif check_arg('--js-library'):
@@ -3606,7 +3617,7 @@ def parse_args(newargs):
     elif arg == '-frtti':
       settings.USE_RTTI = 1
     elif arg.startswith('-jsD'):
-      key = strip_prefix(arg, '-jsD')
+      key = removeprefix(arg, '-jsD')
       if '=' in key:
         key, value = key.split('=')
       else:
@@ -3622,8 +3633,12 @@ def parse_args(newargs):
     elif check_arg('-o'):
       options.output_file = consume_arg()
     elif arg.startswith('-o'):
-      options.output_file = strip_prefix(arg, '-o')
+      options.output_file = removeprefix(arg, '-o')
       newargs[i] = ''
+    elif check_arg('-target') or check_arg('--target'):
+      options.target = consume_arg()
+      if options.target not in ('wasm32', 'wasm64', 'wasm64-unknown-emscripten', 'wasm32-unknown-emscripten'):
+        exit_with_error(f'unsupported target: {options.target} (emcc only supports wasm64-unknown-emscripten and wasm32-unknown-emscripten)')
     elif arg == '-mllvm':
       # Ignore the next argument rather than trying to parse it.  This is needed
       # because llvm args could, for example, start with `-o` and we don't want
@@ -3928,7 +3943,6 @@ var %(EXPORT_NAME)s = (() => {
     f.write(src)
 
     # Export using a UMD style export, or ES6 exports if selected
-
     if settings.EXPORT_ES6:
       f.write('export default %s;' % settings.EXPORT_NAME)
     elif not settings.MINIMAL_RUNTIME:
@@ -3936,9 +3950,7 @@ var %(EXPORT_NAME)s = (() => {
 if (typeof exports === 'object' && typeof module === 'object')
   module.exports = %(EXPORT_NAME)s;
 else if (typeof define === 'function' && define['amd'])
-  define([], function() { return %(EXPORT_NAME)s; });
-else if (typeof exports === 'object')
-  exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
+  define([], () => %(EXPORT_NAME)s);
 ''' % {'EXPORT_NAME': settings.EXPORT_NAME})
 
   shared.get_temp_files().note(final_js)
@@ -4176,7 +4188,7 @@ def find_library(lib, lib_dirs):
   return None
 
 
-def process_libraries(state, linker_inputs):
+def process_libraries(state, linker_inputs, embind_emit_tsd):
   new_flags = []
   libraries = []
   suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
@@ -4187,10 +4199,11 @@ def process_libraries(state, linker_inputs):
     if not flag.startswith('-l'):
       new_flags.append((i, flag))
       continue
-    lib = strip_prefix(flag, '-l')
+    lib = removeprefix(flag, '-l')
 
     logger.debug('looking for library "%s"', lib)
-    js_libs, native_lib = building.map_to_js_libs(lib)
+
+    js_libs, native_lib = building.map_to_js_libs(lib, embind_emit_tsd)
     if js_libs is not None:
       libraries += [(i, js_lib) for js_lib in js_libs]
       # If native_lib is returned then include it in the link

@@ -58,6 +58,9 @@ mergeInto(LibraryManager.library, {
   },
 #endif
 
+#if PTHREADS
+  $wasmfsOPFSProxyFinish__deps: ['emscripten_proxy_finish'],
+#endif
   $wasmfsOPFSProxyFinish: function(ctx) {
     // When using pthreads the proxy needs to know when the work is finished.
     // When used with JSPI the work will be executed in an async block so there
@@ -410,11 +413,9 @@ mergeInto(LibraryManager.library, {
     wasmfsOPFSProxyFinish(ctx);
   },
 
+  _wasmfs_opfs_set_size_access__i53abi: true,
   _wasmfs_opfs_set_size_access__deps: ['$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish'],
-  _wasmfs_opfs_set_size_access: async function(ctx, accessID,
-                                               {{{ defineI64Param('size') }}},
-                                               errPtr) {
-    {{{ receiveI64ParamAsDouble('size') }}};
+  _wasmfs_opfs_set_size_access: async function(ctx, accessID, size, errPtr) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     try {
       await accessHandle.truncate(size);
@@ -425,11 +426,9 @@ mergeInto(LibraryManager.library, {
     wasmfsOPFSProxyFinish(ctx);
   },
 
+  _wasmfs_opfs_set_size_file__i53abi: true,
   _wasmfs_opfs_set_size_file__deps: ['$wasmfsOPFSFileHandles', '$wasmfsOPFSProxyFinish'],
-  _wasmfs_opfs_set_size_file: async function(ctx, fileID,
-                                             {{{ defineI64Param('size') }}},
-                                             errPtr) {
-    {{{ receiveI64ParamAsDouble('size') }}};
+  _wasmfs_opfs_set_size_file: async function(ctx, fileID, size, errPtr) {
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
     try {
       let writable = await fileHandle.createWritable({keepExistingData: true});

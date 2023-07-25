@@ -382,6 +382,12 @@ Options that are modified or new in *emcc* are listed below:
   [link]
   Links against embind library.  Deprecated: Use ``-lembind`` instead.
 
+.. _emcc-embind-emit-tsd:
+
+``--embind-emit-tsd <path>``
+  [link]
+  Generate a TypeScript definition file from the exported embind bindings. The program will be instrumented and run in node in order to to generate the file. Note: the program will need to be rebuilt without this flag to be executed normally.
+
 ``--ignore-dynamic-linking``
   [link]
   Tells the compiler to ignore dynamic linking (the user will need to manually link to the shared libraries later on).

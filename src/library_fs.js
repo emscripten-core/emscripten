@@ -401,33 +401,33 @@ FS.staticInit();` +
         Object.defineProperties(FS.FSStream.prototype, {
           object: {
             /** @this {FS.FSStream} */
-            get: function() { return this.node; },
+            get() { return this.node; },
             /** @this {FS.FSStream} */
-            set: function(val) { this.node = val; }
+            set(val) { this.node = val; }
           },
           isRead: {
             /** @this {FS.FSStream} */
-            get: function() { return (this.flags & {{{ cDefs.O_ACCMODE }}}) !== {{{ cDefs.O_WRONLY }}}; }
+            get() { return (this.flags & {{{ cDefs.O_ACCMODE }}}) !== {{{ cDefs.O_WRONLY }}}; }
           },
           isWrite: {
             /** @this {FS.FSStream} */
-            get: function() { return (this.flags & {{{ cDefs.O_ACCMODE }}}) !== {{{ cDefs.O_RDONLY }}}; }
+            get() { return (this.flags & {{{ cDefs.O_ACCMODE }}}) !== {{{ cDefs.O_RDONLY }}}; }
           },
           isAppend: {
             /** @this {FS.FSStream} */
-            get: function() { return (this.flags & {{{ cDefs.O_APPEND }}}); }
+            get() { return (this.flags & {{{ cDefs.O_APPEND }}}); }
           },
           flags: {
             /** @this {FS.FSStream} */
-            get: function() { return this.shared.flags; },
+            get() { return this.shared.flags; },
             /** @this {FS.FSStream} */
-            set: function(val) { this.shared.flags = val; },
+            set(val) { this.shared.flags = val; },
           },
           position : {
             /** @this {FS.FSStream} */
-            get: function() { return this.shared.position; },
+            get() { return this.shared.position; },
             /** @this {FS.FSStream} */
-            set: function(val) { this.shared.position = val; },
+            set(val) { this.shared.position = val; },
           },
         });
       }
@@ -1132,8 +1132,8 @@ FS.staticInit();` +
       return stream.position;
     },
     read: (stream, buffer, offset, length, position) => {
-#if CAN_ADDRESS_2GB
-      offset >>>= 0;
+#if ASSERTIONS
+      assert(offset >= 0);
 #endif
       if (length < 0 || position < 0) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
@@ -1166,8 +1166,8 @@ FS.staticInit();` +
       return bytesRead;
     },
     write: (stream, buffer, offset, length, position, canOwn) => {
-#if CAN_ADDRESS_2GB
-      offset >>>= 0;
+#if ASSERTIONS
+      assert(offset >= 0);
 #endif
       if (length < 0 || position < 0) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
@@ -1242,8 +1242,8 @@ FS.staticInit();` +
       return stream.stream_ops.mmap(stream, length, position, prot, flags);
     },
     msync: (stream, buffer, offset, length, mmapFlags) => {
-#if CAN_ADDRESS_2GB
-      offset >>>= 0;
+#if ASSERTIONS
+      assert(offset >= 0);
 #endif
       if (!stream.stream_ops.msync) {
         return 0;

@@ -1042,10 +1042,6 @@ Defines
 
   If specified, the pathnames of the file information in the call stack will be omitted.
 
-.. c:macro:: EM_LOG_FUNC_PARAMS
-
-  If specified, prints out the actual values of the parameters the functions were invoked with.
-
 
 Functions
 ---------
@@ -1305,7 +1301,7 @@ Sleeping
 Network
 -------
 
-.. c:function:: void emscripten_wget(const char* url, const char* file)
+.. c:function:: int emscripten_wget(const char* url, const char* file)
 
   Load file from url in *synchronously*. For the asynchronous version, see the :c:func:`emscripten_async_wget`.
 
@@ -1315,6 +1311,7 @@ Network
 
   :param const char* url: The URL to load.
   :param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten. If the destination directory for the file does not exist on the filesystem, it will be created. A relative pathname may be passed, which will be interpreted relative to the current working directory at the time of the call to this function.
+  :return: 0 on success or 1 on error.
 
 .. c:function:: void emscripten_wget_data(const char* url, void** pbuffer, int* pnum, int *perror);
 

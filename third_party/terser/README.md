@@ -1,5 +1,5 @@
-Bundled version of terser 4.1.0 with emscripten patches
-=======================================================
+Bundled version of terser 5.18.2 with emscripten patches
+========================================================
 
 We maintain a few downstream patches to terser which means we can't use the
 version published in npm.
@@ -13,5 +13,5 @@ To make changes to this code please submit patches to
 https://github.com/emscripten-core/terser/ and then re-create this bundle
 using the following steps:
 
-  $ npx rollup -c
-  $ cp dist/bundle.js $EMSCRIPTEN_ROOT/third_party/terser/terser.js
+  $ CI=1 npx rollup -c
+  $ cp dist/bundle.min.js $EMSCRIPTEN_ROOT/third_party/terser/terser.js

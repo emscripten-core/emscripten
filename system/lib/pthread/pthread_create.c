@@ -17,7 +17,7 @@
 #include <emscripten/heap.h>
 #include <emscripten/threading.h>
 
-#define STACK_ALIGN 16
+#define STACK_ALIGN __BIGGEST_ALIGNMENT__
 #define TSD_ALIGN (sizeof(void*))
 
 // Comment this line to enable tracing of thread creation and destruction:

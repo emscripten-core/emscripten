@@ -5,7 +5,11 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $TTY__deps: ['$FS', '$intArrayFromString', '$UTF8ArrayToString'],
+  $TTY__deps: [
+    '$FS',
+    '$UTF8ArrayToString',
+    '$FS_stdin_getChar'
+  ],
 #if !MINIMAL_RUNTIME
   $TTY__postset: function() {
     addAtInit('TTY.init();');
@@ -97,56 +101,8 @@ mergeInto(LibraryManager.library, {
       }
     },
     default_tty_ops: {
-      // get_char has 3 particular return values:
-      // a.) the next character represented as an integer
-      // b.) undefined to signal that no data is currently available
-      // c.) null to signal an EOF
       get_char: function(tty) {
-        if (!tty.input.length) {
-          var result = null;
-#if ENVIRONMENT_MAY_BE_NODE
-          if (ENVIRONMENT_IS_NODE) {
-            // we will read data by chunks of BUFSIZE
-            var BUFSIZE = 256;
-            var buf = Buffer.alloc(BUFSIZE);
-            var bytesRead = 0;
-
-            try {
-              bytesRead = fs.readSync(process.stdin.fd, buf, 0, BUFSIZE, -1);
-            } catch(e) {
-              // Cross-platform differences: on Windows, reading EOF throws an exception, but on other OSes,
-              // reading EOF returns 0. Uniformize behavior by treating the EOF exception to return 0.
-              if (e.toString().includes('EOF')) bytesRead = 0;
-              else throw e;
-            }
-
-            if (bytesRead > 0) {
-              result = buf.slice(0, bytesRead).toString('utf-8');
-            } else {
-              result = null;
-            }
-          } else
-#endif
-          if (typeof window != 'undefined' &&
-            typeof window.prompt == 'function') {
-            // Browser.
-            result = window.prompt('Input: ');  // returns null on cancel
-            if (result !== null) {
-              result += '\n';
-            }
-          } else if (typeof readline == 'function') {
-            // Command line.
-            result = readline();
-            if (result !== null) {
-              result += '\n';
-            }
-          }
-          if (!result) {
-            return null;
-          }
-          tty.input = intArrayFromString(result, true);
-        }
-        return tty.input.shift();
+        return FS_stdin_getChar();
       },
       put_char: function(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
