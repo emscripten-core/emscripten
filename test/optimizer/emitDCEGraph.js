@@ -61,6 +61,11 @@ var expI4 = Module['expI4'] = () => (expI4 = Module['expI4'] = wasmExports['expI
 // Same as above but not export on the Module.
 var expI5 = () => (expI5 = wasmExports['expI5'])();
 
+function applySignatureConversions() {
+  // Wrapping functions should not constitute a usage
+  wasmExports['expI5'] = foo(wasmExports['expI5']);
+}
+
 // add uses for some of them
 expD1;
 Module['expD2'];
