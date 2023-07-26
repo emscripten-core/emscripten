@@ -13595,56 +13595,12 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--target=arm64'])
     self.assertContained('emcc: error: unsupported target: arm64 (emcc only supports wasm64-unknown-emscripten and wasm32-unknown-emscripten', err)
 
-
   def test_quick_exit(self):
     self.do_other_test('test_quick_exit.c')
-
 
   @requires_wasm64
   @requires_node_canary
   def test_memory64_proxies(self):
-    create_file('post.js', r'''
-  addOnPostRun(() => {
-    // check >4gb alloc
-    const bigChunk = _malloc(4 * 1024 * 1024 * 1024 + 100);
-    assert(bigChunk > 0);
-
-    const littleChunk = _malloc(100);
-    HEAP8[littleChunk] = 2;
-    assert(HEAP8[littleChunk] === 2);
-
-    // .subarray
-    const subarray = HEAP8.subarray(littleChunk, littleChunk + 100);
-    assert(subarray[0] === 2);
-
-    // check .fill
-    HEAP8.fill(3, littleChunk, littleChunk + 99);
-    assert(subarray[0] === 3);
-    assert(subarray[98] === 3);
-    assert(subarray[99] === 0);
-    assert(HEAP8[littleChunk] === 3);
-    assert(HEAP8[littleChunk + 98] === 3);
-    assert(HEAP8[littleChunk + 99] === 0);
-
-    // check .set
-    const filler = new Uint8Array(10);
-    filler[0] = 4;
-    filler[9] = 4;
-    HEAP8.set(filler, littleChunk, 10);
-    assert(subarray[0] === 4);
-    assert(subarray[9] === 4);
-    assert(HEAP8[littleChunk] === 4);
-
-    // .copyWithin
-    HEAP8.copyWithin(bigChunk, littleChunk, littleChunk + 100);
-    assert(HEAP8[bigChunk] === 4);
-
-    // .slice
-    const slice = HEAP8.slice(bigChunk, bigChunk + 100);
-    slice[0] = 5;
-    assert(HEAP8[bigChunk] === 4);
-  });
-  ''')
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sMEMORY64=1',
                       '-sINITIAL_MEMORY=5gb',
@@ -13652,6 +13608,5 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
                       '-sALLOW_MEMORY_GROWTH',
                       '-sEXPORTED_FUNCTIONS=_malloc,_main',
                       '-Wno-experimental',
-                      '--extern-post-js', 'post.js'])
+                      '--extern-post-js', test_file('other/test_memory64_proxies.js')])
     self.run_js('a.out.js')
-

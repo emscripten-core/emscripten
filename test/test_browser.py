@@ -5371,7 +5371,14 @@ Module["preRun"].push(function () {
     self.btest(test_file('wasm_worker/proxied_function.c'), expected='0', args=['--js-library', test_file('wasm_worker/proxied_function.js'), '-sWASM_WORKERS', '-sASSERTIONS=0'])
 
   @no_firefox('no 4GB support yet')
+  @requires_v8
   def test_zzz_zzz_4gb(self):
+    # TODO Convert to an actual browser test when it reaches stable.
+    #      For now, keep this in browser as this suite runs serially, which
+    #      means we don't compete for memory with anything else (and run it
+    #      at the very very end, to reduce the risk of it OOM-killing the
+    #      browser).
+
     # test that we can allocate in the 2-4GB range, if we enable growth and
     # set the max appropriately
     self.emcc_args += ['-O2', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB']
