@@ -79,7 +79,12 @@ int main() {
     } catch (e) {
       ex = e;
     }
+#if WASMFS
+    // WasmFS will remove a directory on unmount, regardless of if a directory existed before.
+    assert(ex.name === 'ErrnoError' && ex.errno === 44); // ENOENT
+#else
     assert(ex.name === 'ErrnoError' && ex.errno === 28); // EINVAL
+#endif
 
     // mount and unmount again
     FS.mount(MEMFS, {}, '/working');

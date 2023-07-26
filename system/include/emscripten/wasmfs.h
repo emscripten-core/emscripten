@@ -14,6 +14,9 @@
 extern "C" {
 #endif
 
+#ifdef __cplusplus
+namespace wasmfs {
+#endif
 typedef struct Backend* backend_t;
 
 // Obtains the backend_t of a specified path.
@@ -94,6 +97,10 @@ backend_t wasmfs_create_root_dir(void);
 // preloaded files have paths, and so they are added to that path and whichever
 // backend is present there).
 void wasmfs_before_preload(void);
+
+#ifdef __cplusplus
+} // namespace wasmfs
+#endif
 
 #ifdef __cplusplus
 }

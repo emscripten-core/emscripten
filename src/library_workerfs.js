@@ -156,3 +156,7 @@ mergeInto(LibraryManager.library, {
     },
   },
 });
+
+if (WASMFS) {
+  error("using -lworkerfs is not currently supported in WasmFS.");
+}
