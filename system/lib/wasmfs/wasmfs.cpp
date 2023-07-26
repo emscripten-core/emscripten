@@ -83,8 +83,8 @@ extern "C" void wasmfs_flush(void) {
       if (entry.kind == File::FileKind::DataFileKind) {
         int err = lockedDir.getChild(entry.name)->dynCast<DataFile>()->locked().flush();
         if (err) {
-          emscripten_console_error("Fatal error while flushing filesystem.");
-          abort();
+          std::string errorMessage = "Non-fatal error while flushing file: " + entry.name;
+          emscripten_console_error(errorMessage.c_str());
         }
       } else if (entry.kind == File::FileKind::DirectoryKind) {
         toFlush.push(lockedDir.getChild(entry.name)->dynCast<Directory>());

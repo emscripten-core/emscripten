@@ -366,7 +366,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         return __wasmfs_rename(oldPathBuffer, newPathBuffer);
       }));
     },
-    // TODO: syncfs
     syncfs: (populate, callback) => {
       if (typeof populate == 'function') {
         callback = populate;
