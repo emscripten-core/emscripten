@@ -1491,7 +1491,7 @@ var LibraryWebGPU = {
   wgpuQueueOnSubmittedWorkDone: function(queueId, signalValue, callback, userdata) {
     var queue = WebGPU.mgrQueue.get(queueId);
 #if ASSERTIONS
-    assert(signalValue_low === 0 && signalValue_high === 0, 'signalValue not supported, must be 0');
+    assert(signalValue == 0, 'signalValue not supported, must be 0');
 #endif
 
     {{{ runtimeKeepalivePush() }}}
@@ -1759,7 +1759,8 @@ var LibraryWebGPU = {
     encoder["insertDebugMarker"](UTF8ToString(markerLabelPtr));
   },
 
-  wgpuCommandEncoderFinish: function(encoderId) {
+  wgpuCommandEncoderFinish: function(encoderId, descriptor) {
+    // TODO: Use the descriptor.
     var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
     return WebGPU.mgrCommandBuffer.create(commandEncoder["finish"]());
   },
@@ -2331,14 +2332,14 @@ var LibraryWebGPU = {
 
   // Instance
 
-  wgpuCreateInstance: function() {
+  wgpuCreateInstance: function(descriptor) {
     return 1;
   },
 
-  wgpuInstanceReference: function() {
+  wgpuInstanceReference: function(instance) {
     // no-op
   },
-  wgpuInstanceRelease: function() {
+  wgpuInstanceRelease: function(instance) {
     // no-op
   },
 
@@ -2370,7 +2371,7 @@ var LibraryWebGPU = {
     return WebGPU.mgrSurface.create(context);
   },
 
-  wgpuInstanceProcessEvents: function() {
+  wgpuInstanceProcessEvents: function(instance) {
     // TODO: This could probably be emulated with ASYNCIFY.
 #if ASSERTIONS
     abort('wgpuInstanceProcessEvents is unsupported (use requestAnimationFrame via html5.h instead)');
@@ -2624,7 +2625,7 @@ var LibraryWebGPU = {
     var context = WebGPU.mgrSwapChain.get(swapChainId);
     return WebGPU.mgrTextureView.create(context["getCurrentTexture"]()["createView"]());
   },
-  wgpuSwapChainPresent: function() {
+  wgpuSwapChainPresent: function(swapChainId) {
     // TODO: This could probably be emulated with ASYNCIFY.
 #if ASSERTIONS
     abort('wgpuSwapChainPresent is unsupported (use requestAnimationFrame via html5.h instead)');
@@ -2633,7 +2634,7 @@ var LibraryWebGPU = {
 
   // wgpuGetProcAddress
 
-  wgpuGetProcAddress: function() {
+  wgpuGetProcAddress: function(device, procName) {
 #if ASSERTIONS
     abort('TODO(#11526): wgpuGetProcAddress unimplemented');
 #endif

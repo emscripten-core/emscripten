@@ -2736,6 +2736,7 @@ mergeInto(LibraryManager.library, {
   emscripten_pc_get_function: (pc) => {
 #if !USE_OFFSET_CONVERTER
     abort('Cannot use emscripten_pc_get_function without -sUSE_OFFSET_CONVERTER');
+    return 0;
 #else
     var name;
     if (pc & 0x80000000) {

@@ -657,12 +657,6 @@ mergeInto(LibraryManager.library, {
   emscripten_scan_registers: function(func) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers';
   },
-  emscripten_fiber_init: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_init';
-  },
-  emscripten_fiber_init_from_current_context: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_init_from_current_context';
-  },
   emscripten_fiber_swap: function(oldFiber, newFiber) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_swap';
   },
