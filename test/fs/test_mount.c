@@ -95,6 +95,7 @@ int main() {
     FS.mount(MEMFS, {}, '/working');
     FS.unmount('/working');
 
+    ex = null;
     // try to read the file from the old mount
     try {
       FS.readFile('/working/waka.txt', { encoding: 'utf8' });
