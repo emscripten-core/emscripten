@@ -371,10 +371,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         callback = populate;
         populate = false;
       }
-      var err = __wasmfs_syncfs();
-      if (err) {
-        return callback(err);
-      }
+      __wasmfs_syncfs();
       return callback(null);
     },
     llseek: (stream, offset, whence) => {
