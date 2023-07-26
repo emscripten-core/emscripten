@@ -32,7 +32,7 @@ import clang_native
 import jsrun
 from tools.shared import EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import get_canonical_temp_dir, path_from_root
-from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_file, write_binary, exit_with_error
+from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_binary, exit_with_error
 from tools import shared, line_endings, building, config, utils
 
 logger = logging.getLogger('common')
@@ -651,11 +651,15 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return
 
     if 'EMTEST_SKIP_EH' in os.environ:
-      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_EH is set)')
+      self.skipTest('test requires node >= 17 or d8 (and EMTEST_SKIP_EH is set)')
     else:
-      self.fail('either d8 or node >= 16 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
+      self.fail('either d8 or node >= 17 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
   def require_jspi(self):
+    # emcc warns about stack switching being experimental, and we build with
+    # warnings-as-errors, so disable that warning
+    self.emcc_args += ['-Wno-experimental']
+    self.emcc_args += ['-sASYNCIFY=2']
     if not self.is_wasm():
       self.skipTest('JSPI is not currently supported for WASM2JS')
 
@@ -1434,7 +1438,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         filename = 'src.c'
       else:
         filename = 'src.cpp'
-      write_file(filename, src)
+      create_file(filename, src)
     return self._build_and_run(filename, expected_output, **kwargs)
 
   def do_runf(self, filename, expected_output=None, **kwargs):
@@ -1454,7 +1458,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       expected = read_file(outfile)
     output = self._build_and_run(srcfile, expected, **kwargs)
     if EMTEST_REBASELINE:
-      write_file(outfile, output)
+      utils.write_file(outfile, output)
     return output
 
   ## Does a complete test - builds, runs, checks output, etc.
@@ -1635,7 +1639,7 @@ def harness_server_func(in_queue, out_queue, port):
         ensure_dir('dump_out')
         filename = os.path.join('dump_out', query['file'][0])
         contentLength = int(self.headers['Content-Length'])
-        write_binary(filename, self.rfile.read(contentLength))
+        create_file(filename, self.rfile.read(contentLength), binary=True)
         self.send_response(200)
         self.end_headers()
 
@@ -1880,7 +1884,7 @@ class BrowserCore(RunnerCore):
     basename = os.path.basename(expected)
     shutil.copyfile(expected, self.in_dir(basename))
     reporting = read_file(test_file('browser_reporting.js'))
-    write_file('reftest.js', '''
+    create_file('reftest.js', '''
       function doReftest() {
         if (doReftest.done) return;
         doReftest.done = true;

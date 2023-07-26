@@ -55,7 +55,7 @@ PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
 # exact requirement, but is the oldest version of node that we do any testing with.
 # This version aligns with the current Ubuuntu TLS 20.04 (Focal).
 MINIMUM_NODE_VERSION = (10, 19, 0)
-EXPECTED_LLVM_VERSION = 17
+EXPECTED_LLVM_VERSION = 18
 
 # These get set by setup_temp_dirs
 TEMP_DIR = None
@@ -628,7 +628,7 @@ def is_c_symbol(name):
   return name.startswith('_') or name in settings.WASM_SYSTEM_EXPORTS
 
 
-def treat_as_user_function(name):
+def treat_as_user_export(name):
   if name.startswith('dynCall_'):
     return False
   if name in settings.WASM_SYSTEM_EXPORTS:
@@ -646,7 +646,7 @@ def asmjs_mangle(name):
   # to simply `main` which is expected by the emscripten JS glue code.
   if name == '__main_argc_argv':
     name = 'main'
-  if treat_as_user_function(name):
+  if treat_as_user_export(name):
     return '_' + name
   return name
 

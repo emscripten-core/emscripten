@@ -3347,6 +3347,9 @@ mergeInto(LibraryManager.library, {
   },
 
 #if !MINIMAL_RUNTIME
+#if STACK_OVERFLOW_CHECK
+  $handleException__deps: ['emscripten_stack_get_current'],
+#endif
   $handleException: (e) => {
     // Certain exception types we do not treat as errors since they are used for
     // internal control flow.
@@ -3554,7 +3557,7 @@ mergeInto(LibraryManager.library, {
 #endif
 #if ASYNCIFY == 1
   __asyncify_state: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, 0)",
-  __asyncify_data: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, 0)",
+  __asyncify_data: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ to64(0) }}})",
 #endif
 #endif
 
