@@ -909,9 +909,9 @@ var LibraryEmbind = {
 
 #if EMBIND_DEBUG
     invokerFnBody += `if (Object.values(arguments).length > 0){
-        console.log('${humanName}(' + Object.values(arguments).join(',') + ')');
+        dbg('${humanName}(' + Object.values(arguments).join(',') + ')');
     } else {
-        console.log('${humanName}()');
+        dbg('${humanName}()');
     }\n`;
 #endif
       
