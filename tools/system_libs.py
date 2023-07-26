@@ -1171,7 +1171,7 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/exit',
-        filenames=['_Exit.c', 'atexit.c'])
+        filenames=['_Exit.c', 'atexit.c', 'at_quick_exit.c', 'quick_exit.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/ldso',
