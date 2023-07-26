@@ -1024,6 +1024,17 @@ Not all of embind's features are currently supported, but many of the commonly u
 ones are.  Examples of input and output can be seen in `embind_tsgen.cpp`_ and
 `embind_tsgen.d.ts`_.
 
+Embind Debugging
+======================
+
+Embind supports generating TypeScript definition files from :cpp:func:`EMSCRIPTEN_BINDINGS`
+blocks. To generate add a logging line to the output files. To use it, invoke *emcc* with the
+:ref:`embind-debug <emcc-embind-debug>` option::
+
+emcc -lembind quick_example.cpp --embind-debug example.js
+
+Running this command will build the program with an js call every time you call the wasm.
+
 Performance
 ===========
 
