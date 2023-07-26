@@ -8833,6 +8833,7 @@ end
     for sym in glsyms:
       self.assertContained('.' + sym, js)
 
+  @also_with_wasm64
   def test_closure_webgpu(self):
     # This test can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
     self.build(test_file('hello_world.c'), emcc_args=[
