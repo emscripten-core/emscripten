@@ -755,7 +755,7 @@ def make_export_wrappers(function_exports, delay_assignment):
       args = ', '.join(args)
       wrapper += f"({args}) => ({mangled} = {exported}wasmExports['{name}'])({args});"
     else:
-      wrapper += 'asm["%s"]' % name
+      wrapper += 'wasmExports["%s"]' % name
 
     wrappers.append(wrapper)
   return wrappers
@@ -815,7 +815,7 @@ def create_module(receiving, metadata, library_symbols):
     module.append('Asyncify.instrumentWasmImports(wasmImports);\n')
 
   if not settings.MINIMAL_RUNTIME:
-    module.append("var asm = createWasm();\n")
+    module.append("var wasmExports = createWasm();\n")
 
   module.append(receiving)
   if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:

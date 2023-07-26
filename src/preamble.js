@@ -53,7 +53,6 @@ if (typeof WebAssembly != 'object') {
 // Wasm globals
 
 var wasmMemory;
-var wasmExports;
 
 #if SHARED_MEMORY
 // For sending to workers.
