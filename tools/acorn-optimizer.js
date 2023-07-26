@@ -469,15 +469,13 @@ function isExportUse(node) {
   // MINIMAL_RUNTIME calls exports global variable `asm`, whereas regualar
   // runtime calls it `wasmExports`.
   //
-  // Here we match either:
+  // Here we match:
   //   wasmExports['X']
-  // or:
-  //   asm['X']
   return (
     node.type === 'MemberExpression' &&
     node.object.type === 'Identifier' &&
     isLiteralString(node.property) &&
-    (node.object.name === 'wasmExports' || node.object.name === 'asm')
+    node.object.name === 'wasmExports'
   );
 }
 
@@ -646,10 +644,10 @@ function emitDCEGraph(ast) {
   // or, in the minimal runtime, it looks like
   //
   //  WebAssembly.instantiate(Module["wasm"], imports).then((output) => {
-  //   var asm = output.instance.exports; // may also not have "var", if
-  //                                      // declared outside and used elsewhere
+  //   var wasmExports = output.instance.exports; // may also not have "var", if
+  //                                              // declared outside and used elsewhere
   //   ..
-  //   _malloc = asm["malloc"];
+  //   _malloc = wasmExports["malloc"];
   //   ..
   //  });
   const imports = [];
@@ -760,7 +758,7 @@ function emitDCEGraph(ast) {
       emptyOut(node); // ignore this in the second pass; we scan defuns separately
     } else if (node.type === 'ArrowFunctionExpression') {
       // Check if this is the minimal runtime exports function, which looks like
-      //   (output) => { var asm = output.instance.exports;
+      //   (output) => { var wasmExports = output.instance.exports;
       if (
         node.params.length === 1 &&
         node.params[0].type === 'Identifier' &&
@@ -772,7 +770,7 @@ function emitDCEGraph(ast) {
           const first = body[0];
           let target;
           let value; // "(var?) target = value"
-          // Look either for  var asm =  or just   asm =
+          // Look either for  var wasmExports =  or just   wasmExports =
           if (first.type === 'VariableDeclaration' && first.declarations.length === 1) {
             const decl = first.declarations[0];
             target = decl.id;
@@ -787,7 +785,7 @@ function emitDCEGraph(ast) {
               value = assign.right;
             }
           }
-          if (target && target.type === 'Identifier' && target.name === 'asm' && value) {
+          if (target && target.type === 'Identifier' && target.name === 'wasmExports' && value) {
             if (
               value.type === 'MemberExpression' &&
               value.object.type === 'MemberExpression' &&
@@ -809,7 +807,7 @@ function emitDCEGraph(ast) {
                   item.expression.left.type === 'Identifier' &&
                   item.expression.right.type === 'MemberExpression' &&
                   item.expression.right.object.type === 'Identifier' &&
-                  item.expression.right.object.name === 'asm' &&
+                  item.expression.right.object.name === 'wasmExports' &&
                   item.expression.right.property.type === 'Literal'
                 ) {
                   const name = item.expression.left.name;
