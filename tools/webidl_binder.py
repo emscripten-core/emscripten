@@ -33,7 +33,7 @@ CHECKS = os.environ.get('IDL_CHECKS', 'DEFAULT')
 DEBUG = os.environ.get('IDL_VERBOSE') == '1'
 
 if DEBUG:
-  print("Debug print ON, CHECKS=%s" % CHECKS)
+  print(f'Debug print ON, CHECKS=${CHECKS}')
 
 # We need to avoid some closure errors on the constructors we define here.
 CONSTRUCTOR_CLOSURE_SUPPRESSIONS = '/** @suppress {undefinedVars, duplicate} @this{Object} */'
@@ -50,12 +50,14 @@ class Dummy:
 
 input_file = sys.argv[1]
 output_base = sys.argv[2]
+cpp_output = output_base + '.cpp'
+js_output = output_base + '.js'
 
-utils.delete_file(output_base + '.cpp')
-utils.delete_file(output_base + '.js')
+utils.delete_file(cpp_output)
+utils.delete_file(js_output)
 
 p = WebIDL.Parser()
-p.parse(r'''
+p.parse('''
 interface VoidPtr {
 };
 ''' + utils.read_file(input_file))
@@ -76,17 +78,13 @@ for thing in data:
 # print interfaces
 # print implements
 
-pre_c = []
-mid_c = []
-mid_js = []
-
-pre_c += [r'''
+pre_c = ['''
 #include <emscripten.h>
 
 EM_JS_DEPS(webidl_binder, "$intArrayFromString,$UTF8ToString");
 ''']
 
-mid_c += [r'''
+mid_c = ['''
 extern "C" {
 ''']
 
@@ -101,7 +99,7 @@ Module['{name}'] = {name};
 '''.format(name=name, implementing=implementing_name)]
 
 
-mid_js += ['''
+mid_js = ['''
 // Bindings utilities
 
 /** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
@@ -176,7 +174,7 @@ var ensureCache = {
   temps: [], // extra allocations
   needed: 0, // the total size we need next time
 
-  prepare: function() {
+  prepare() {
     if (ensureCache.needed) {
       // clear the temps
       for (var i = 0; i < ensureCache.temps.length; i++) {
@@ -197,7 +195,7 @@ var ensureCache = {
     }
     ensureCache.pos = 0;
   },
-  alloc: function(array, view) {
+  alloc(array, view) {
     assert(ensureCache.buffer);
     var bytes = view.BYTES_PER_ELEMENT;
     var len = array.length * bytes;
@@ -216,7 +214,7 @@ var ensureCache = {
     }
     return ret;
   },
-  copy: function(array, view, offset) {
+  copy(array, view, offset) {
     offset >>>= 0;
     var bytes = view.BYTES_PER_ELEMENT;
     switch (bytes) {
@@ -289,13 +287,11 @@ function ensureFloat64(value) {
 ''']
 
 mid_c += ['''
-// Not using size_t for array indices as the values used by the javascript code are signed.
-
 EM_JS(void, array_bounds_check_error, (size_t idx, size_t size), {
   throw 'Array index ' + idx + ' out of bounds: [0,' + size + ')';
 });
 
-void array_bounds_check(const int array_size, const int array_idx) {
+static void array_bounds_check(size_t array_size, size_t array_idx) {
   if (array_idx < 0 || array_idx >= array_size) {
     array_bounds_check_error(array_idx, array_size);
   }
@@ -313,38 +309,37 @@ def type_to_c(t, non_pointing=False):
   # print 'to c ', t
   def base_type_to_c(t):
     if t == 'Long':
-      ret = 'int'
+      return 'int'
     elif t == 'UnsignedLong':
-      ret = 'unsigned int'
+      return 'unsigned int'
     elif t == 'LongLong':
-      ret = 'long long'
+      return 'long long'
     elif t == 'UnsignedLongLong':
-      ret = 'unsigned long long'
+      return 'unsigned long long'
     elif t == 'Short':
-      ret = 'short'
+      return 'short'
     elif t == 'UnsignedShort':
-      ret = 'unsigned short'
+      return 'unsigned short'
     elif t == 'Byte':
-      ret = 'char'
+      return 'char'
     elif t == 'Octet':
-      ret = 'unsigned char'
+      return 'unsigned char'
     elif t == 'Void':
-      ret = 'void'
+      return 'void'
     elif t == 'String':
-      ret = 'char*'
+      return 'char*'
     elif t == 'Float':
-      ret = 'float'
+      return 'float'
     elif t == 'Double':
-      ret = 'double'
+      return 'double'
     elif t == 'Boolean':
-      ret = 'bool'
-    elif t == 'Any' or t == 'VoidPtr':
-      ret = 'void*'
+      return 'bool'
+    elif t in ('Any', 'VoidPtr'):
+      return 'void*'
     elif t in interfaces:
-      ret = (interfaces[t].getExtendedAttribute('Prefix') or [''])[0] + t + ('' if non_pointing else '*')
+      return (interfaces[t].getExtendedAttribute('Prefix') or [''])[0] + t + ('' if non_pointing else '*')
     else:
-      ret = t
-    return ret
+      return t
 
   t = t.replace(' (Wrapper)', '')
 
@@ -770,7 +765,7 @@ for name in names:
   # Emit C++ class implementation that calls into JS implementation
 
   if js_impl:
-    pre_c += [r'''
+    pre_c += ['''
 class %s : public %s {
 public:
 %s
@@ -780,12 +775,12 @@ public:
 deferred_js = []
 
 for name, enum in enums.items():
-  mid_c += ['\n// ' + name + '\n']
-  deferred_js += ['\n', '// ' + name + '\n']
+  mid_c += [f'\n// ${name}\n']
+  deferred_js += [f'\n// ${name}\n']
   for value in enum.values():
-    function_id = "%s_%s" % (name, value.split('::')[-1])
+    function_id = '%s_%s' % (name, value.split('::')[-1])
     function_id = 'emscripten_enum_%s' % function_id
-    mid_c += [r'''%s EMSCRIPTEN_KEEPALIVE %s() {
+    mid_c += ['''%s EMSCRIPTEN_KEEPALIVE %s() {
   return %s;
 }
 ''' % (name, function_id, value)]
@@ -802,7 +797,7 @@ for name, enum in enums.items():
         # namespace is a namespace, so the enums get collapsed into the top level namespace.
         deferred_js += ["Module['%s'] = _%s();\n" % (identifier, function_id)]
     else:
-      raise Exception("Illegal enum value %s" % value)
+      raise Exception(f'Illegal enum value ${value}')
 
 mid_c += ['\n}\n\n']
 if len(deferred_js):
@@ -818,12 +813,12 @@ if len(deferred_js):
 
 # Write
 
-with open(output_base + '.cpp', 'w') as c:
+with open(cpp_output, 'w') as c:
   for x in pre_c:
     c.write(x)
   for x in mid_c:
     c.write(x)
 
-with open(output_base + '.js', 'w') as js:
+with open(js_output, 'w') as js:
   for x in mid_js:
     js.write(x)
