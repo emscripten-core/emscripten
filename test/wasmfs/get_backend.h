@@ -13,10 +13,6 @@
 
 #include <emscripten/wasmfs.h>
 
-#ifdef __cplusplus
-using namespace wasmfs;
-#endif
-
 static backend_t get_backend() {
 #ifdef WASMFS_MEMORY_BACKEND
   return wasmfs_create_memory_backend();

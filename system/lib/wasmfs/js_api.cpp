@@ -6,7 +6,6 @@
 #include <dirent.h>
 #include <syscall_arch.h>
 #include <unistd.h>
-#include <emscripten/wasmfs.h>
 
 #include "backend.h"
 #include "file.h"
@@ -23,9 +22,10 @@ using namespace wasmfs;
 
 extern "C" {
 
-// __wasi_fd_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend);
-// int wasmfs_create_directory(char* path, int mode, backend_t backend);
-// int wasmfs_unmount(int dirfd, intptr_t path);
+// TODO: Replace forward declarations with #include <emscripten/wasmfs.h> and resolve wasmfs::backend_t namespace conflicts.
+__wasi_fd_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend);
+int wasmfs_create_directory(char* path, int mode, backend_t backend);
+int wasmfs_unmountat(int dirfd, intptr_t path);
 
 // Copy the file specified by the pathname into JS.
 // Return a pointer to the JS buffer in HEAPU8.
@@ -273,7 +273,7 @@ int _wasmfs_lstat(char* path, struct stat* statBuf) {
 int _wasmfs_mount(char* path, wasmfs::backend_t created_backend) {
   int err = __syscall_rmdir((intptr_t)path);
 
-  // The legacy JS API mount requires the directory to already exist.
+  // The legacy JS API mount requires the directory to already exist, but we will also allow it to be missing.
   if (err && err != -ENOENT) {
     return err;
   }
@@ -283,7 +283,7 @@ int _wasmfs_mount(char* path, wasmfs::backend_t created_backend) {
 
 // WasmFS will always remove the mounted directory, regardless of if the directory existed before.
 int _wasmfs_unmount(char* path) {
-  return wasmfs_unmount(AT_FDCWD, (intptr_t)path);
+  return wasmfs_unmountat(AT_FDCWD, (intptr_t)path);
 }
 
 // Helper method that identifies what a path is:

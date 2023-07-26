@@ -34,6 +34,7 @@ int main() {
       ex = e;
     }
     assert(ex.name === 'ErrnoError' && ex.errno === 44); // ENOENT
+    ex = null;
 #endif
 
 #if WASMFS
@@ -46,6 +47,7 @@ int main() {
       ex = e;
     }
     assert(ex.name === 'ErrnoError' && ex.errno === 55); // ENOTEMPTY
+    ex = null;
 #endif
 
     // mount to an existing mountpoint
@@ -60,6 +62,7 @@ int main() {
 #else
     assert(ex.name === 'ErrnoError' && ex.errno === 10); // EBUSY
 #endif
+    ex = null;
 
     // attempt to unmount a non-mountpoint directory inside a mountpoint
     FS.mkdir('/working/unmountable');
@@ -69,6 +72,7 @@ int main() {
       ex = e;
     }
     assert(ex.name === 'ErrnoError' && ex.errno === 28); // EINVAL
+    ex = null;
 
     // unmount
     FS.unmount('/working');
@@ -85,12 +89,12 @@ int main() {
 #else
     assert(ex.name === 'ErrnoError' && ex.errno === 28); // EINVAL
 #endif
+    ex = null;
 
     // mount and unmount again
     FS.mount(MEMFS, {}, '/working');
     FS.unmount('/working');
 
-    ex = null;
     // try to read the file from the old mount
     try {
       FS.readFile('/working/waka.txt', { encoding: 'utf8' });
@@ -103,6 +107,7 @@ int main() {
 #else
       assert(ex);
 #endif
+    ex = null;
 
     // check the safe file
     contents = FS.readFile('/safe.txt', { encoding: 'utf8' });

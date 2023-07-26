@@ -8,7 +8,7 @@ mergeInto(LibraryManager.library, {
   $OPFS__deps: ['wasmfs_create_opfs_backend'],
   $OPFS: {
     createBackend(opts) {
-      return _wasmfs_create_opfs_backend()
+      return _wasmfs_create_opfs_backend();
     }
   },
 });
