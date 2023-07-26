@@ -1800,6 +1800,7 @@ def phase_linker_setup(options, state, newargs):
 
   if not settings.RUNTIME_DEBUG:
     settings.RUNTIME_DEBUG = bool(settings.LIBRARY_DEBUG or
+                                  settings.EMBIND_DEBUG or
                                   settings.GL_DEBUG or
                                   settings.DYLINK_DEBUG or
                                   settings.OPENAL_DEBUG or
