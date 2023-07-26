@@ -53,9 +53,7 @@ function missingGlobal(sym, msg) {
 }
 
 missingGlobal('buffer', 'Please use HEAP8.buffer or wasmMemory.buffer');
-#if !MINIMAL_RUNTIME
 missingGlobal('asm', 'Please use wasmExports instead');
-#endif
 
 function missingLibrarySymbol(sym) {
   if (typeof globalThis !== 'undefined' && !Object.getOwnPropertyDescriptor(globalThis, sym)) {

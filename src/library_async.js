@@ -533,7 +533,7 @@ mergeInto(LibraryManager.library, {
       // Add a callback for when all run dependencies are fulfilled, which happens when async wasm loading is done.
       dependenciesFulfilled = wakeUp;
       // Load the new wasm.
-      asm = createWasm();
+      createWasm();
     });
   },
 
