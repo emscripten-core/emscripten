@@ -13595,3 +13595,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--target=arm64'])
     self.assertContained('emcc: error: unsupported target: arm64 (emcc only supports wasm64-unknown-emscripten and wasm32-unknown-emscripten', err)
+
+  def test_quick_exit(self):
+    self.do_other_test('test_quick_exit.c')
