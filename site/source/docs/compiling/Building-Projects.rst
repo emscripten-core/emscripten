@@ -169,7 +169,7 @@ with :term:`clang` or *gcc* normally).
 
 .. note:: Each build-system defines its own mechanisms for setting debug flags. **To get Clang to emit LLVM debug information, you will need to work out the correct approach for your system**.
 
-  - Some build systems have a flag like ``./configure --enable-debug``.
+  - Some build systems have a flag like ``./configure --enable-debug``. In *CMake*-based build systems, set the ``CMAKE_BUILD_TYPE`` to ``"Debug"``.
 
 To get *emcc* to include the debug information present in object files when
 generating the final JavaScript and WebAssembly, your final ``emcc`` command

@@ -59,6 +59,7 @@ var LibraryEmbind = {
         new FunctionDefinition('default', this, [])
       ];
       this.base = base;
+      this.properties = [];
     }
 
     print(nameMap, out) {
@@ -67,6 +68,10 @@ var LibraryEmbind = {
         out.push(` extends ${this.base.name}`);
       }
       out.push(' {\n');
+      for (const property of this.properties) {
+        out.push('  ');
+        property.print(nameMap, out);
+      }
       for (const method of this.methods) {
         out.push('  ');
         method.printFunction(nameMap, out);
@@ -81,6 +86,16 @@ var LibraryEmbind = {
       const constructor = this.constructors[this.constructors.length > 1 ? 1 : 0];
       constructor.printSignature(nameMap, out);
       out.push('};\n');
+    }
+  },
+  $ClassProperty: class ClassProperty {
+    constructor(type, name) {
+      this.type = type;
+      this.name = name;
+    }
+
+    print(nameMap, out) {
+      out.push(`${this.name}: ${nameMap(this.type)};\n`);
     }
   },
   $ConstantDefinition: class ConstantDefinition {
@@ -335,6 +350,30 @@ var LibraryEmbind = {
     createFunctionDefinition(methodName, argCount, rawArgTypesAddr, true, (funcDef) => {
       const classDef = funcDef.thisType;
       classDef.methods.push(funcDef);
+    });
+  },
+  _embind_register_class_property__deps: [
+    '$readLatin1String', '$whenDependentTypesAreResolved', '$ClassProperty'],
+  _embind_register_class_property: function(classType,
+                                            fieldName,
+                                            getterReturnType,
+                                            getterSignature,
+                                            getter,
+                                            getterContext,
+                                            setterArgumentType,
+                                            setterSignature,
+                                            setter,
+                                            setterContext) {
+    fieldName = readLatin1String(fieldName);
+    assert(getterReturnType === setterArgumentType, 'Mismatched getter and setter types are not supported.');
+    whenDependentTypesAreResolved([], [classType], function(classType) {
+      classType = classType[0];
+      whenDependentTypesAreResolved([], [getterReturnType], function(types) {
+        const prop = new ClassProperty(types[0], fieldName);
+        classType.properties.push(prop);
+        return [];
+      });
+      return [];
     });
   },
   _embind_register_enum__deps: ['$readLatin1String', '$EnumDefinition', '$moduleDefinitions'],
