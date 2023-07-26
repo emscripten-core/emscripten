@@ -332,6 +332,10 @@ var DEMANGLE_SUPPORT = false;
 // [link]
 var LIBRARY_DEBUG = false;
 
+// If nonzero, prints out each call to WebAssembly with arguments
+// [compile+link]
+var EMBIND_DEBUG = false;
+
 // Print out all musl syscalls, including translating their numeric index
 // to the string name, which can be convenient for debugging. (Other system
 // calls are not numbered and already have clear names; use LIBRARY_DEBUG
