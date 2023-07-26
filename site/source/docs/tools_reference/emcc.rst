@@ -388,6 +388,12 @@ Options that are modified or new in *emcc* are listed below:
   [link]
   Generate a TypeScript definition file from the exported embind bindings. The program will be instrumented and run in node in order to to generate the file. Note: the program will need to be rebuilt without this flag to be executed normally.
 
+.. _emcc-embind-debug:
+
+``--embind-debug``
+  [compile+link]
+  Enable debugging informations each time we call the wasm
+
 ``--ignore-dynamic-linking``
   [link]
   Tells the compiler to ignore dynamic linking (the user will need to manually link to the shared libraries later on).
