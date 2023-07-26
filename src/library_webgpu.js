@@ -1760,6 +1760,7 @@ var LibraryWebGPU = {
   },
 
   wgpuCommandEncoderFinish: function(encoderId, descriptor) {
+    // TODO: Use the descriptor.
     var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
     return WebGPU.mgrCommandBuffer.create(commandEncoder["finish"]());
   },
