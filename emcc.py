@@ -3512,6 +3512,8 @@ def parse_args(newargs):
     elif check_arg('--embind-emit-tsd'):
       options.embind_emit_tsd = consume_arg()
       settings.INVOKE_RUN = False
+    elif check_arg('--embind-debug'):
+      settings.EMBIND_DEBUG = consume_arg()
     elif check_flag('--no-entry'):
       options.no_entry = True
     elif check_arg('--js-library'):
