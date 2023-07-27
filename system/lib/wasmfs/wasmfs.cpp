@@ -64,7 +64,7 @@ extern "C" void wasmfs_flush(void) {
   // Flush musl libc streams.
   fflush(0);
 
-  // Flush our own streams. TODO: flush all backends.
+  // Flush our own streams.
   (void)SpecialFiles::getStdout()->locked().flush();
   (void)SpecialFiles::getStderr()->locked().flush();
 
@@ -76,10 +76,13 @@ extern "C" void wasmfs_flush(void) {
     toFlush.pop();
     
     auto lockedDir = dir->locked();
-    int nentries = lockedDir.getNumEntries();
     Directory::MaybeEntries entries = lockedDir.getEntries();
-    for (int i = 0; i < nentries; i++) {
-      auto entry = entries->at(i);
+    if (int err = entries.getError()) {
+      std::string errorMessage = "Non-fatal error code " + std::to_string(err) + " while flushing directory: " + lockedDir.getName(dir);
+      emscripten_console_error(errorMessage.c_str());
+      continue;
+    }
+    for (auto entry : *lockedDir.getEntries()) {
       if (entry.kind == File::FileKind::DataFileKind) {
         int err = lockedDir.getChild(entry.name)->dynCast<DataFile>()->locked().flush();
         if (err) {
