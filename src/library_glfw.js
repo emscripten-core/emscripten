@@ -1124,6 +1124,7 @@ var LibraryGLFW = {
  * GLFW FUNCTIONS
  ******************************************************************************/
   glfwInit__deps: ['emscripten_get_device_pixel_ratio', 'malloc', 'free'],
+  glfwInit__proxy: 'sync',
   glfwInit: function() {
     if (GLFW.windows) return 1; // GL_TRUE
 
@@ -1166,7 +1167,7 @@ var LibraryGLFW = {
     });
     return 1; // GL_TRUE
   },
-
+  glfwTerminate__proxy: 'sync',
   glfwTerminate: function() {
     window.removeEventListener("gamepadconnected", GLFW.onGamepadConnected, true);
     window.removeEventListener("gamepaddisconnected", GLFW.onGamepadDisconnected, true);
@@ -1221,6 +1222,7 @@ var LibraryGLFW = {
   },
 
   glfwExtensionSupported__deps: ['glGetString'],
+  glfwExtensionSupported__proxy: 'sync',
   glfwExtensionSupported: function(extension) {
     if (!GLFW.extensions) {
       GLFW.extensions = UTF8ToString(_glGetString(0x1F03)).split(' ');
@@ -1345,11 +1347,11 @@ var LibraryGLFW = {
     // Some hints are platform specific.  These may be set on any platform but they
     // will only affect their specific platform.  Other platforms will ignore them.
   },
-
+  glfwCreateWindow__proxy: 'sync',
   glfwCreateWindow: function(width, height, title, monitor, share) {
     return GLFW.createWindow(width, height, title, monitor, share);
   },
-
+  glfwDestroyWindow__proxy: 'sync',
   glfwDestroyWindow: function(winid) {
     return GLFW.destroyWindow(winid);
   },
@@ -1365,7 +1367,7 @@ var LibraryGLFW = {
     if (!win) return;
     win.shouldClose = value;
   },
-
+  glfwSetWindowTitle__proxy: 'sync',
   glfwSetWindowTitle: function(winid, title) {
     GLFW.setWindowTitle(winid, title);
   },
@@ -1382,6 +1384,7 @@ var LibraryGLFW = {
     GLFW.getWindowSize(winid, width, height);
   },
 
+  glfwSetWindowSize__proxy: 'sync',
   glfwSetWindowSize: function(winid, width, height) {
     GLFW.setWindowSize(winid, width, height);
   },
@@ -1567,6 +1570,7 @@ var LibraryGLFW = {
     return win.inputModes[mode];
   },
 
+  glfwSetInputMode__proxy: 'sync',
   glfwSetInputMode: function(winid, mode, value) {
     GLFW.setInputMode(winid, mode, value);
   },
@@ -1587,6 +1591,7 @@ var LibraryGLFW = {
     return GLFW.getMouseButton(winid, button);
   },
 
+  glfwGetCursorPos__proxy: 'sync',
   glfwGetCursorPos: function(winid, x, y) {
     GLFW.getCursorPos(winid, x, y);
   },
@@ -1639,13 +1644,15 @@ var LibraryGLFW = {
   glfwGetTimerFrequency: function() { throw "glfwGetTimerFrequency is not implemented."; },
 
   glfwGetRequiredInstanceExtensions: function(count) { throw "glfwGetRequiredInstanceExtensions is not implemented."; },
-
+  
+  glfwJoystickPresent__proxy: 'sync',
   glfwJoystickPresent: function(joy) {
     GLFW.refreshJoysticks();
 
     return GLFW.joys[joy] !== undefined;
   },
 
+  glfwGetJoystickAxes__proxy: 'sync',
   glfwGetJoystickAxes: function(joy, count) {
     GLFW.refreshJoysticks();
 
@@ -1659,6 +1666,7 @@ var LibraryGLFW = {
     return state.axes;
   },
 
+  glfwGetJoystickButtons__proxy: 'sync',
   glfwGetJoystickButtons: function(joy, count) {
     GLFW.refreshJoysticks();
 
