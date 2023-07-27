@@ -1167,6 +1167,7 @@ var LibraryGLFW = {
     });
     return 1; // GL_TRUE
   },
+
   glfwTerminate__proxy: 'sync',
   glfwTerminate: function() {
     window.removeEventListener("gamepadconnected", GLFW.onGamepadConnected, true);
@@ -1347,10 +1348,12 @@ var LibraryGLFW = {
     // Some hints are platform specific.  These may be set on any platform but they
     // will only affect their specific platform.  Other platforms will ignore them.
   },
+
   glfwCreateWindow__proxy: 'sync',
   glfwCreateWindow: function(width, height, title, monitor, share) {
     return GLFW.createWindow(width, height, title, monitor, share);
   },
+
   glfwDestroyWindow__proxy: 'sync',
   glfwDestroyWindow: function(winid) {
     return GLFW.destroyWindow(winid);
@@ -1367,6 +1370,7 @@ var LibraryGLFW = {
     if (!win) return;
     win.shouldClose = value;
   },
+  
   glfwSetWindowTitle__proxy: 'sync',
   glfwSetWindowTitle: function(winid, title) {
     GLFW.setWindowTitle(winid, title);
