@@ -2110,7 +2110,6 @@ int main() {
     self.set_setting('RETAIN_COMPILER_SETTINGS')
     self.do_runf(src, read_file(output).replace('waka', shared.EMSCRIPTEN_VERSION))
 
-  @no_wasm64l("wasm64l doesn't support asyncify")
   def test_emscripten_has_asyncify(self):
     src = r'''
       #include <stdio.h>
@@ -4028,7 +4027,6 @@ ok
       '''
     self.do_run(src, 'float: 42.\n')
 
-  @no_wasm64l("wasm64l doesn't support asyncify")
   @needs_dylink
   def test_dlfcn_asyncify(self):
     self.set_setting('ASYNCIFY')
@@ -5313,6 +5311,10 @@ main main sees -524, -534, 72.
     # Verify that weakly defined symbols can be defined in both side module and main
     # module but that only one gets used at runtime.
     self.dylink_testf(test_file('core/test_dylink_weak.c'), need_reverse=False)
+
+  @needs_dylink
+  def test_dylink_weak_undef(self):
+    self.dylink_testf(test_file('core/test_dylink_weak_undef.c'), need_reverse=False)
 
   @node_pthreads
   @needs_dylink
@@ -7745,8 +7747,6 @@ void* operator new(size_t size) {
   })
   def test_webidl(self, mode, allow_memory_growth):
     self.uses_es6 = True
-    # TODO(): Remove once we make webidl output closure-warning free.
-    self.ldflags.append('-Wno-error=closure')
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     if self.maybe_closure():
       # avoid closure minified names competing with our test code in the global name space
@@ -7777,7 +7777,7 @@ void* operator new(size_t size) {
 
     # Export things on "TheModule". This matches the typical use pattern of the bound library
     # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
-    self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free', '--post-js=glue.js', '--extern-post-js=extern-post.js']
+    self.emcc_args += ['--post-js=glue.js', '--extern-post-js=extern-post.js']
     if mode == 'ALL':
       self.emcc_args += ['-sASSERTIONS']
     if allow_memory_growth:
@@ -8187,7 +8187,6 @@ int main() {
   def test_async_hello_v8(self):
     self.test_async_hello()
 
-  @no_wasm64l("wasm64l doesn't support asyncify")
   def test_async_ccall_bad(self):
     # check bad ccall use
     # needs to flush stdio streams
@@ -8246,7 +8245,6 @@ Module.onRuntimeInitialized = () => {
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('main.c', 'HelloWorld')
 
-  @no_wasm64l("wasm64l doesn't support asyncify")
   @parameterized({
     'asyncify': (False, 1),
     'exit_runtime_asyncify': (True, 1),
@@ -8295,7 +8293,6 @@ Module.onRuntimeInitialized = () => {
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('main.c', 'stringf: first\nsecond\n6.4')
 
-  @no_wasm64l("wasm64l doesn't support asyncify")
   def test_fibers_asyncify(self):
     self.set_setting('ASYNCIFY')
     self.maybe_closure()
@@ -8307,7 +8304,6 @@ Module.onRuntimeInitialized = () => {
     # test a program not using asyncify, but the pref is set
     self.do_core_test('test_hello_world.c')
 
-  @no_wasm64l("wasm64l doesn't support asyncify")
   @parameterized({
     'normal': ([], True),
     'removelist_a': (['-sASYNCIFY_REMOVE=["foo(int, double)"]'], False),
@@ -8346,7 +8342,6 @@ Module.onRuntimeInitialized = () => {
         binary = read_binary(filename)
         self.assertFalse(b'main' in binary)
 
-  @no_wasm64l("wasm64l doesn't support asyncify")
   @parameterized({
     'normal': ([], True),
     'ignoreindirect': (['-sASYNCIFY_IGNORE_INDIRECT'], False),
@@ -8364,7 +8359,6 @@ Module.onRuntimeInitialized = () => {
       if should_pass:
         raise
 
-  @no_wasm64l("wasm64l doesn't support asyncify")
   @needs_dylink
   def test_asyncify_side_module(self):
     self.set_setting('ASYNCIFY')
@@ -8394,13 +8388,11 @@ Module.onRuntimeInitialized = () => {
       }
     ''', 'before sleep\n42\n42\nafter sleep\n', header='void my_sleep(int);', force_c=True)
 
-  @no_wasm64l("wasm64l doesn't support asyncify")
   @no_asan('asyncify stack operations confuse asan')
   def test_emscripten_scan_registers(self):
     self.set_setting('ASYNCIFY')
     self.do_core_test('test_emscripten_scan_registers.cpp')
 
-  @no_wasm64l("wasm64l doesn't support asyncify")
   def test_asyncify_assertions(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASYNCIFY_IMPORTS', ['suspend'])
@@ -8409,7 +8401,6 @@ Module.onRuntimeInitialized = () => {
 
   @no_lsan('leaks asyncify stack during exit')
   @no_asan('leaks asyncify stack during exit')
-  @no_wasm64l("wasm64l doesn't support asyncify")
   def test_asyncify_during_exit(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASSERTIONS')
@@ -8428,7 +8419,6 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test('test_hello_world.c')
 
   # Test that pthread_join works correctly with asyncify.
-  @no_wasm64l("wasm64l doesn't support asyncify")
   @requires_node_canary
   def test_pthread_join_and_asyncify(self):
     # TODO Test with ASYNCIFY=1 https://github.com/emscripten-core/emscripten/issues/17552
@@ -8438,7 +8428,6 @@ Module.onRuntimeInitialized = () => {
                             '-sEXIT_RUNTIME=1',
                             '-pthread', '-sPROXY_TO_PTHREAD'])
 
-  @no_wasm64l("wasm64l doesn't support asyncify")
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm2js('TODO: lazy loading in wasm2js')
   @parameterized({
