@@ -3019,9 +3019,9 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  _Unwind_GetIPInfo: () => abort('Unwind_GetIPInfo'),
+  _Unwind_GetIPInfo: (context, ipBefore) => abort('Unwind_GetIPInfo'),
 
-  _Unwind_FindEnclosingFunction: () => 0, // we cannot succeed
+  _Unwind_FindEnclosingFunction: (ip) => 0, // we cannot succeed
 
   _Unwind_RaiseException__deps: ['__cxa_throw'],
   _Unwind_RaiseException: (ex) => {
