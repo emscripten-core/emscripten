@@ -818,6 +818,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
   while to_process:
     dylib = to_process.pop()
     dylink = webassembly.parse_dylink_section(dylib)
+    print(dylink)
     for needed in dylink.needed:
       if needed in seen:
         continue
@@ -847,11 +848,16 @@ def process_dynamic_libs(dylibs, lib_dirs):
     # main module to avoid creating new invoke functions at runtime.
     imports = set(imports)
     imports = set(i for i in imports if not i.startswith('invoke_'))
-    strong_imports = sorted(imports.difference(exports))
+    weak_imports = webassembly.get_weak_imports(dylib)
+    strong_imports = sorted(imports.difference(weak_imports))
     logger.debug('Adding symbols requirements from `%s`: %s', dylib, imports)
 
     mangled_imports = [shared.asmjs_mangle(e) for e in sorted(imports)]
     mangled_strong_imports = [shared.asmjs_mangle(e) for e in strong_imports]
+    for sym in weak_imports:
+      mangled = shared.asmjs_mangle(sym)
+      if mangled not in settings.SIDE_MODULE_IMPORTS and mangled not in building.user_requested_exports:
+        settings.WEAK_IMPORTS.append(sym)
     settings.SIDE_MODULE_IMPORTS.extend(mangled_imports)
     settings.EXPORT_IF_DEFINED.extend(sorted(imports))
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(sorted(imports))
