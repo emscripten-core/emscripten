@@ -139,6 +139,14 @@ def no_wasm64(note=''):
   return decorated
 
 
+def no_wasm64l(note=''):
+  assert not callable(note)
+
+  def decorated(f):
+    return skip_if(f, 'is_wasm64l', note)
+  return decorated
+
+
 def also_with_noderawfs(func):
   assert callable(func)
 
@@ -327,6 +335,9 @@ class TestCoreBase(RunnerCore):
 
   def is_wasm64(self):
     return self.get_setting('MEMORY64')
+
+  def is_wasm64l(self):
+    return self.get_setting('MEMORY64') == 2
 
   # A simple check whether the compiler arguments cause optimization.
   def is_optimizing(self):
@@ -2100,9 +2111,6 @@ int main() {
     self.do_runf(src, read_file(output).replace('waka', shared.EMSCRIPTEN_VERSION))
 
   def test_emscripten_has_asyncify(self):
-    if self.get_setting('MEMORY64') == 1:
-      # This test passes under MEMORY64=2 but not MEMORY64=1 so we don't use is_wasm64 here.
-      self.skipTest('TODO: asyncify for wasm64')
     src = r'''
       #include <stdio.h>
       #include <emscripten.h>
@@ -4020,7 +4028,6 @@ ok
     self.do_run(src, 'float: 42.\n')
 
   @needs_dylink
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_dlfcn_asyncify(self):
     self.set_setting('ASYNCIFY')
 
@@ -5304,6 +5311,10 @@ main main sees -524, -534, 72.
     # Verify that weakly defined symbols can be defined in both side module and main
     # module but that only one gets used at runtime.
     self.dylink_testf(test_file('core/test_dylink_weak.c'), need_reverse=False)
+
+  @needs_dylink
+  def test_dylink_weak_undef(self):
+    self.dylink_testf(test_file('core/test_dylink_weak_undef.c'), need_reverse=False)
 
   @node_pthreads
   @needs_dylink
@@ -7736,8 +7747,6 @@ void* operator new(size_t size) {
   })
   def test_webidl(self, mode, allow_memory_growth):
     self.uses_es6 = True
-    # TODO(): Remove once we make webidl output closure-warning free.
-    self.ldflags.append('-Wno-error=closure')
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     if self.maybe_closure():
       # avoid closure minified names competing with our test code in the global name space
@@ -7768,7 +7777,7 @@ void* operator new(size_t size) {
 
     # Export things on "TheModule". This matches the typical use pattern of the bound library
     # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
-    self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free', '--post-js=glue.js', '--extern-post-js=extern-post.js']
+    self.emcc_args += ['--post-js=glue.js', '--extern-post-js=extern-post.js']
     if mode == 'ALL':
       self.emcc_args += ['-sASSERTIONS']
     if allow_memory_growth:
@@ -8116,7 +8125,7 @@ void* operator new(size_t size) {
     self.do_core_test('test_vswprintf_utf8.c')
 
   # Test that a main with arguments is automatically asyncified.
-  @no_wasm64('TODO: asyncify for wasm64')
+  @no_wasm64l("wasm64l doesn't support jspi")
   @with_asyncify_and_jspi
   def test_async_main(self):
     create_file('main.c',  r'''
@@ -8130,7 +8139,7 @@ int main(int argc, char **argv) {
 
     self.do_runf('main.c', 'argc=2 argv=hello', args=['hello'])
 
-  @no_wasm64('TODO: asyncify for wasm64')
+  @no_wasm64l("wasm64l doesn't support jspi")
   @with_asyncify_and_jspi
   def test_async_hello(self):
     # needs to flush stdio streams
@@ -8155,7 +8164,7 @@ int main() {
 
     self.do_runf('main.c', 'HelloWorld!99')
 
-  @no_wasm64('TODO: asyncify for wasm64')
+  @no_wasm64l("wasm64l doesn't support jspi")
   @with_asyncify_and_jspi
   def test_async_loop(self):
     # needs to flush stdio streams
@@ -8175,11 +8184,9 @@ int main() {
     self.do_runf('main.c', 'hello 0\nhello 1\nhello 2\nhello 3\nhello 4\n')
 
   @requires_v8
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_async_hello_v8(self):
     self.test_async_hello()
 
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_async_ccall_bad(self):
     # check bad ccall use
     # needs to flush stdio streams
@@ -8211,7 +8218,7 @@ Module.onRuntimeInitialized = () => {
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('main.c', 'The call to main is running asynchronously.')
 
-  @no_wasm64('TODO: asyncify for wasm64')
+  @no_wasm64l("wasm64l doesn't support jspi")
   @with_asyncify_and_jspi
   def test_async_ccall_good(self):
     # check reasonable ccall use
@@ -8244,7 +8251,6 @@ Module.onRuntimeInitialized = () => {
     'jspi': (False, 2),
     'exit_runtime_jspi': (True, 2),
   })
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_async_ccall_promise(self, exit_runtime, asyncify):
     if asyncify == 2:
       self.require_jspi()
@@ -8287,13 +8293,12 @@ Module.onRuntimeInitialized = () => {
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('main.c', 'stringf: first\nsecond\n6.4')
 
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_fibers_asyncify(self):
     self.set_setting('ASYNCIFY')
     self.maybe_closure()
     self.do_runf(test_file('test_fibers.cpp'), '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
-  @no_wasm64('TODO: asyncify for wasm64')
+  @no_wasm64l("wasm64l doesn't support jspi")
   @with_asyncify_and_jspi
   def test_asyncify_unused(self):
     # test a program not using asyncify, but the pref is set
@@ -8311,7 +8316,6 @@ Module.onRuntimeInitialized = () => {
     'onlylist_b_response': ([], True,  '["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'),
     'onlylist_c_response': ([], False, '["main","__original_main","foo(int, double)","baz()","c_baz"]'),
   })
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_lists(self, args, should_pass, response=None):
     if response is not None:
       create_file('response.file', response)
@@ -8343,7 +8347,6 @@ Module.onRuntimeInitialized = () => {
     'ignoreindirect': (['-sASYNCIFY_IGNORE_INDIRECT'], False),
     'add': (['-sASYNCIFY_IGNORE_INDIRECT', '-sASYNCIFY_ADD=["__original_main","main","virt()"]'], True),
   })
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_indirect_lists(self, args, should_pass):
     self.set_setting('ASYNCIFY')
     self.emcc_args += args
@@ -8357,7 +8360,6 @@ Module.onRuntimeInitialized = () => {
         raise
 
   @needs_dylink
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_side_module(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASYNCIFY_IMPORTS', ['my_sleep'])
@@ -8387,12 +8389,10 @@ Module.onRuntimeInitialized = () => {
     ''', 'before sleep\n42\n42\nafter sleep\n', header='void my_sleep(int);', force_c=True)
 
   @no_asan('asyncify stack operations confuse asan')
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_emscripten_scan_registers(self):
     self.set_setting('ASYNCIFY')
     self.do_core_test('test_emscripten_scan_registers.cpp')
 
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_assertions(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASYNCIFY_IMPORTS', ['suspend'])
@@ -8401,7 +8401,6 @@ Module.onRuntimeInitialized = () => {
 
   @no_lsan('leaks asyncify stack during exit')
   @no_asan('leaks asyncify stack during exit')
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_during_exit(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASSERTIONS')
@@ -8413,7 +8412,7 @@ Module.onRuntimeInitialized = () => {
   @no_asan('asyncify stack operations confuse asan')
   @no_lsan('undefined symbol __global_base')
   @no_wasm2js('dynamic linking support in wasm2js')
-  @no_wasm64('TODO: asyncify for wasm64')
+  @no_wasm64l("wasm64l doesn't support jspi")
   @with_asyncify_and_jspi
   def test_asyncify_main_module(self):
     self.set_setting('MAIN_MODULE', 2)
@@ -8430,7 +8429,6 @@ Module.onRuntimeInitialized = () => {
                             '-pthread', '-sPROXY_TO_PTHREAD'])
 
   @no_asan('asyncify stack operations confuse asan')
-  @no_wasm64('TODO: asyncify for wasm64')
   @no_wasm2js('TODO: lazy loading in wasm2js')
   @parameterized({
     'conditional': (True,),
@@ -8490,7 +8488,7 @@ Module.onRuntimeInitialized = () => {
         return False
       create_file('wat.wat', wat)
       shutil.move(name, name + '.orig')
-      self.run_process([Path(building.get_binaryen_bin(), 'wasm-as'), 'wat.wat', '-o', name, '-g'])
+      self.run_process([Path(building.get_binaryen_bin(), 'wasm-as'), 'wat.wat', '-o', name, '-g', '--all-features'])
       return True
 
     def verify_working(args):
@@ -9662,7 +9660,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('embind_lib_with_asyncify.cpp')
 
   @no_asan('asyncify stack operations confuse asan')
-  @no_wasm64('TODO: asyncify for wasm64')
+  @no_wasm64l("wasm64l doesn't support jspi")
   @with_asyncify_and_jspi
   def test_em_async_js(self):
     self.uses_es6 = True
@@ -9706,7 +9704,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('MIN_CHROME_VERSION', '85')
     self.do_core_test('test_promise.c')
 
-  @no_wasm64('TODO: asyncify for wasm64')
+  @no_wasm64l("wasm64l doesn't support jspi")
   @with_asyncify_and_jspi
   def test_promise_await(self):
     self.do_core_test('test_promise_await.c')

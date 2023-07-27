@@ -14,7 +14,7 @@ var wasmImports = {
 };
 
 // exports
-var expD1 = Module['expD1'] = asm['expD1'];
+var expD1 = Module['expD1'] = wasmExports['expD1'];
 
 // exports gotten indirectly (async compilation
 var expI1 = Module['expI1'] = (function() {

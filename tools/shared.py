@@ -55,7 +55,7 @@ PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
 # exact requirement, but is the oldest version of node that we do any testing with.
 # This version aligns with the current Ubuuntu TLS 20.04 (Focal).
 MINIMUM_NODE_VERSION = (10, 19, 0)
-EXPECTED_LLVM_VERSION = 17
+EXPECTED_LLVM_VERSION = 18
 
 # These get set by setup_temp_dirs
 TEMP_DIR = None
