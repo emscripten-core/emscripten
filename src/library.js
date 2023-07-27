@@ -2736,6 +2736,7 @@ mergeInto(LibraryManager.library, {
   emscripten_pc_get_function: (pc) => {
 #if !USE_OFFSET_CONVERTER
     abort('Cannot use emscripten_pc_get_function without -sUSE_OFFSET_CONVERTER');
+    return 0;
 #else
     var name;
     if (pc & 0x80000000) {
@@ -2983,7 +2984,7 @@ mergeInto(LibraryManager.library, {
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
   $exportAsmFunctions__deps: ['$asmjsMangle'],
-  $exportAsmFunctions: (asm) => {
+  $exportAsmFunctions: (wasmExports) => {
 #if ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_WEB
     var global_object = (typeof process != "undefined" ? global : this);
 #elif ENVIRONMENT_MAY_BE_NODE
@@ -2992,12 +2993,12 @@ mergeInto(LibraryManager.library, {
     var global_object = this;
 #endif
 
-    for (var __exportedFunc in asm) {
+    for (var __exportedFunc in wasmExports) {
       var jsname = asmjsMangle(__exportedFunc);
 #if MINIMAL_RUNTIME
-      global_object[jsname] = asm[__exportedFunc];
+      global_object[jsname] = wasmExports[__exportedFunc];
 #else
-      global_object[jsname] = Module[jsname] = asm[__exportedFunc];
+      global_object[jsname] = Module[jsname] = wasmExports[__exportedFunc];
 #endif
     }
 

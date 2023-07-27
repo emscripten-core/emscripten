@@ -7756,8 +7756,6 @@ void* operator new(size_t size) {
   })
   def test_webidl(self, mode, allow_memory_growth):
     self.uses_es6 = True
-    # TODO(): Remove once we make webidl output closure-warning free.
-    self.ldflags.append('-Wno-error=closure')
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     if self.maybe_closure():
       # avoid closure minified names competing with our test code in the global name space
