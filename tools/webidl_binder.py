@@ -80,12 +80,20 @@ for thing in data:
 
 pre_c = ['''
 #include <emscripten.h>
+#include <stdlib.h>
 
 EM_JS_DEPS(webidl_binder, "$intArrayFromString,$UTF8ToString");
 ''']
 
 mid_c = ['''
 extern "C" {
+
+// Define custom allocator functions that we can force export using
+// EMSCRIPTEN_KEEPALIVE.  This avoids all webidl users having to add
+// malloc/free to -sEXPORTED_FUNCTIONS.
+EMSCRIPTEN_KEEPALIVE void webidl_free(void* p) { free(p); }
+EMSCRIPTEN_KEEPALIVE void* webidl_malloc(size_t len) { return malloc(len); }
+
 ''']
 
 
@@ -178,11 +186,11 @@ var ensureCache = {
     if (ensureCache.needed) {
       // clear the temps
       for (var i = 0; i < ensureCache.temps.length; i++) {
-        Module['_free'](ensureCache.temps[i]);
+        Module['_webidl_free'](ensureCache.temps[i]);
       }
       ensureCache.temps.length = 0;
       // prepare to allocate a bigger buffer
-      Module['_free'](ensureCache.buffer);
+      Module['_webidl_free'](ensureCache.buffer);
       ensureCache.buffer = 0;
       ensureCache.size += ensureCache.needed;
       // clean up
@@ -190,7 +198,7 @@ var ensureCache = {
     }
     if (!ensureCache.buffer) { // happens first time, or when we need to grow
       ensureCache.size += 128; // heuristic, avoid many small grow events
-      ensureCache.buffer = Module['_malloc'](ensureCache.size);
+      ensureCache.buffer = Module['_webidl_malloc'](ensureCache.size);
       assert(ensureCache.buffer);
     }
     ensureCache.pos = 0;
@@ -205,7 +213,7 @@ var ensureCache = {
       // we failed to allocate in the buffer, ensureCache time around :(
       assert(len > 0); // null terminator, at least
       ensureCache.needed += len;
-      ret = Module['_malloc'](len);
+      ret = Module['_webidl_malloc'](len);
       ensureCache.temps.push(ret);
     } else {
       // we can allocate in the buffer
