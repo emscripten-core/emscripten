@@ -68,32 +68,34 @@ extern "C" void wasmfs_flush(void) {
   (void)SpecialFiles::getStdout()->locked().flush();
   (void)SpecialFiles::getStderr()->locked().flush();
 
-  std::stack<std::shared_ptr<Directory>> toFlush;
-  toFlush.push(wasmFS.getRootDirectory());
+  printf("Inside flushing\n");
 
-  while(!toFlush.empty()) {
-    auto dir = toFlush.top();
-    toFlush.pop();
+  // std::stack<std::shared_ptr<Directory>> toFlush;
+  // toFlush.push(wasmFS.getRootDirectory());
+
+  // while(!toFlush.empty()) {
+  //   auto dir = toFlush.top();
+  //   toFlush.pop();
     
-    auto lockedDir = dir->locked();
-    Directory::MaybeEntries entries = lockedDir.getEntries();
-    if (int err = entries.getError()) {
-      std::string errorMessage = "Non-fatal error code " + std::to_string(err) + " while flushing directory: " + lockedDir.getName(dir);
-      emscripten_console_error(errorMessage.c_str());
-      continue;
-    }
-    for (auto entry : *lockedDir.getEntries()) {
-      if (entry.kind == File::FileKind::DataFileKind) {
-        int err = lockedDir.getChild(entry.name)->dynCast<DataFile>()->locked().flush();
-        if (err) {
-          std::string errorMessage = "Non-fatal error code " + std::to_string(err) + " while flushing file: " + entry.name;
-          emscripten_console_error(errorMessage.c_str());
-        }
-      } else if (entry.kind == File::FileKind::DirectoryKind) {
-        toFlush.push(lockedDir.getChild(entry.name)->dynCast<Directory>());
-      }
-    }
-  }
+  //   auto lockedDir = dir->locked();
+  //   Directory::MaybeEntries entries = lockedDir.getEntries();
+  //   if (int err = entries.getError()) {
+  //     std::string errorMessage = "Non-fatal error code " + std::to_string(err) + " while flushing directory: " + lockedDir.getName(dir);
+  //     emscripten_console_error(errorMessage.c_str());
+  //     continue;
+  //   }
+  //   for (auto entry : *lockedDir.getEntries()) {
+  //     if (entry.kind == File::FileKind::DataFileKind) {
+  //       int err = lockedDir.getChild(entry.name)->dynCast<DataFile>()->locked().flush();
+  //       if (err) {
+  //         std::string errorMessage = "Non-fatal error code " + std::to_string(err) + " while flushing file: " + entry.name;
+  //         emscripten_console_error(errorMessage.c_str());
+  //       }
+  //     } else if (entry.kind == File::FileKind::DirectoryKind) {
+  //       toFlush.push(lockedDir.getChild(entry.name)->dynCast<Directory>());
+  //     }
+  //   }
+  // }
 }
 
 WasmFS::~WasmFS() {
