@@ -5312,6 +5312,10 @@ main main sees -524, -534, 72.
     # module but that only one gets used at runtime.
     self.dylink_testf(test_file('core/test_dylink_weak.c'), need_reverse=False)
 
+  @needs_dylink
+  def test_dylink_weak_undef(self):
+    self.dylink_testf(test_file('core/test_dylink_weak_undef.c'), need_reverse=False)
+
   @node_pthreads
   @needs_dylink
   def test_dylink_tls(self):
