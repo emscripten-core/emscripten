@@ -863,8 +863,8 @@ int __syscall_rmdir(intptr_t path) {
 
 // wasmfs_unmount is similar to __syscall_unlinkat, but assumes AT_REMOVEDIR is true
 // and will only unlink mountpoints (Empty and nonempty).
-int wasmfs_unmountat(int dirfd, intptr_t path) {
-  auto parsed = path::parseParent((char*)path, dirfd);
+int wasmfs_unmount(intptr_t path) {
+  auto parsed = path::parseParent((char*)path, AT_FDCWD);
   if (auto err = parsed.getError()) {
     return err;
   }

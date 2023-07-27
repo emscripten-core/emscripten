@@ -26,15 +26,17 @@ backend_t wasmfs_get_backend_by_fd(int fd);
 // Returns the file descriptor for the new file like `open`. Returns a negative
 // value on error. TODO: It might be worth returning a more specialized type
 // like __wasi_fd_t here.
+// TODO: Remove this function so that only directories can be mounted.
 int wasmfs_create_file(const char* pathname __attribute__((nonnull)), mode_t mode, backend_t backend);
 
 // Creates a new directory in the new file system under a specific backend.
 // Returns 0 on success like `mkdir`, or a negative value on error.
+// TODO: Add an alias with wasmfs_mount.
 int wasmfs_create_directory(const char* path __attribute__((nonnull)), mode_t mode, backend_t backend);
 
 // Unmounts the directory (Which must be a valid mountpoint) at a specific path.
 // Returns 0 on success, or a negative value on error.
-int wasmfs_unmountat(int dirfd, intptr_t path);
+int wasmfs_unmount(intptr_t path);
 
 // Backend creation
 
