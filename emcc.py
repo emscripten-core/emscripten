@@ -819,7 +819,6 @@ def process_dynamic_libs(dylibs, lib_dirs):
   while to_process:
     dylib = to_process.pop()
     dylink = webassembly.parse_dylink_section(dylib)
-    print(dylink)
     for needed in dylink.needed:
       if needed in seen:
         continue
