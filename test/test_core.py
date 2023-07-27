@@ -139,14 +139,6 @@ def no_wasm64(note=''):
   return decorated
 
 
-def no_wasm64l(note=''):
-  assert not callable(note)
-
-  def decorated(f):
-    return skip_if(f, 'is_wasm64l', note)
-  return decorated
-
-
 def also_with_noderawfs(func):
   assert callable(func)
 
@@ -335,9 +327,6 @@ class TestCoreBase(RunnerCore):
 
   def is_wasm64(self):
     return self.get_setting('MEMORY64')
-
-  def is_wasm64l(self):
-    return self.get_setting('MEMORY64') == 2
 
   # A simple check whether the compiler arguments cause optimization.
   def is_optimizing(self):
@@ -6658,8 +6647,6 @@ void* operator new(size_t size) {
       self.emcc_args += ['--pre-js', test_file('asan-no-leak.js')]
 
     if asyncify:
-      if self.is_wasm64():
-        self.skipTest('TODO: asyncify for wasm64')
       self.set_setting('ASYNCIFY', asyncify)
     if asyncify == 2:
       self.require_jspi()
@@ -8125,7 +8112,6 @@ void* operator new(size_t size) {
     self.do_core_test('test_vswprintf_utf8.c')
 
   # Test that a main with arguments is automatically asyncified.
-  @no_wasm64l("wasm64l doesn't support jspi")
   @with_asyncify_and_jspi
   def test_async_main(self):
     create_file('main.c',  r'''
@@ -8139,7 +8125,6 @@ int main(int argc, char **argv) {
 
     self.do_runf('main.c', 'argc=2 argv=hello', args=['hello'])
 
-  @no_wasm64l("wasm64l doesn't support jspi")
   @with_asyncify_and_jspi
   def test_async_hello(self):
     # needs to flush stdio streams
@@ -8164,7 +8149,6 @@ int main() {
 
     self.do_runf('main.c', 'HelloWorld!99')
 
-  @no_wasm64l("wasm64l doesn't support jspi")
   @with_asyncify_and_jspi
   def test_async_loop(self):
     # needs to flush stdio streams
@@ -8218,7 +8202,6 @@ Module.onRuntimeInitialized = () => {
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('main.c', 'The call to main is running asynchronously.')
 
-  @no_wasm64l("wasm64l doesn't support jspi")
   @with_asyncify_and_jspi
   def test_async_ccall_good(self):
     # check reasonable ccall use
@@ -8298,7 +8281,6 @@ Module.onRuntimeInitialized = () => {
     self.maybe_closure()
     self.do_runf(test_file('test_fibers.cpp'), '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
-  @no_wasm64l("wasm64l doesn't support jspi")
   @with_asyncify_and_jspi
   def test_asyncify_unused(self):
     # test a program not using asyncify, but the pref is set
@@ -8412,7 +8394,6 @@ Module.onRuntimeInitialized = () => {
   @no_asan('asyncify stack operations confuse asan')
   @no_lsan('undefined symbol __global_base')
   @no_wasm2js('dynamic linking support in wasm2js')
-  @no_wasm64l("wasm64l doesn't support jspi")
   @with_asyncify_and_jspi
   def test_asyncify_main_module(self):
     self.set_setting('MAIN_MODULE', 2)
@@ -9642,7 +9623,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test(test_file('core/test_emscripten_async_call.c'))
 
   @no_asan('asyncify stack operations confuse asan')
-  @no_wasm64('TODO: asyncify for wasm64')
   @parameterized({
     '': ([],),
     'no_dynamic_execution': (['-sDYNAMIC_EXECUTION=0'],)
@@ -9660,7 +9640,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('embind_lib_with_asyncify.cpp')
 
   @no_asan('asyncify stack operations confuse asan')
-  @no_wasm64l("wasm64l doesn't support jspi")
   @with_asyncify_and_jspi
   def test_em_async_js(self):
     self.uses_es6 = True
@@ -9704,7 +9683,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('MIN_CHROME_VERSION', '85')
     self.do_core_test('test_promise.c')
 
-  @no_wasm64l("wasm64l doesn't support jspi")
   @with_asyncify_and_jspi
   def test_promise_await(self):
     self.do_core_test('test_promise_await.c')
