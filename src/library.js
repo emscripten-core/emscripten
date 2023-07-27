@@ -384,17 +384,6 @@ mergeInto(LibraryManager.library, {
   // the initial values of the environment accessible by getenv.
   $ENV: {},
 
-  getloadavg: (loadavg, nelem) => {
-    // int getloadavg(double loadavg[], int nelem);
-    // http://linux.die.net/man/3/getloadavg
-    var limit = Math.min(nelem, 3);
-    var doubleSize = {{{ getNativeTypeSize('double') }}};
-    for (var i = 0; i < limit; i++) {
-      {{{ makeSetValue('loadavg', 'i * doubleSize', '0.1', 'double') }}};
-    }
-    return limit;
-  },
-
   // In -Oz builds, we replace memcpy() altogether with a non-unrolled wasm
   // variant, so we should never emit emscripten_memcpy_big() in the build.
   // In STANDALONE_WASM we avoid the emscripten_memcpy_big dependency so keep
