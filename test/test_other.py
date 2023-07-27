@@ -10059,7 +10059,7 @@ int main () {
 
       output = read_file('a.js')
       delete_file('a.js')
-      self.assertNotContained('asm["_thisIsAFunctionExportedFromAsmJsOrWasmWithVeryLongFunction"]', output)
+      self.assertNotContained('_thisIsAFunctionExportedFromAsmJsOrWasmWithVeryLongFunction', output)
 
       # TODO: Add stricter testing when Wasm side is also optimized: (currently Wasm does still need
       # to reference exports multiple times)
