@@ -573,3 +573,13 @@ def get_exports(wasm_file):
 def get_imports(wasm_file):
   with Module(wasm_file) as module:
     return module.get_imports()
+
+
+def get_weak_imports(wasm_file):
+  weak_imports = []
+  dylink_sec = parse_dylink_section(wasm_file)
+  for symbols in dylink_sec.import_info.values():
+    for symbol, flags in symbols.items():
+      if flags & SYMBOL_BINDING_MASK == SYMBOL_BINDING_WEAK:
+        weak_imports.append(symbol)
+  return weak_imports
