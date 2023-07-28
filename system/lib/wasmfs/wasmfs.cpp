@@ -70,6 +70,7 @@ extern "C" void wasmfs_flush(void) {
 
   std::stack<std::shared_ptr<Directory>> toFlush;
   toFlush.push(wasmFS.getRootDirectory());
+  
   while(!toFlush.empty()) {
     auto dir = toFlush.top();
     toFlush.pop();
