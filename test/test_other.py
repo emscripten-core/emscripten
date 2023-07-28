@@ -9454,10 +9454,10 @@ int main() {
     self.run_process([EMCC, test_file('hello_world.c')] + args)
     # if there is no producers section expected by default, verify that, and
     # see that the flag works to add it.
-    self.verify_custom_section_existence('a.out.wasm', 'producers', False)
+    self.verify_custom_sec_existence('a.out.wasm', 'producers', False)
     size = os.path.getsize('a.out.wasm')
     self.run_process([EMCC, test_file('hello_world.c'), '-sEMIT_PRODUCERS_SECTION'] + args)
-    self.verify_custom_section_existence('a.out.wasm', 'producers', True)
+    self.verify_custom_sec_existence('a.out.wasm', 'producers', True)
     size_with_section = os.path.getsize('a.out.wasm')
     self.assertLess(size, size_with_section)
 
