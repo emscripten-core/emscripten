@@ -109,14 +109,6 @@ def align_memory(addr):
   return (addr + 15) & -16
 
 
-def get_weak_imports(main_wasm):
-  dylink_sec = webassembly.parse_dylink_section(main_wasm)
-  for symbols in dylink_sec.import_info.values():
-    for symbol, flags in symbols.items():
-      if flags & webassembly.SYMBOL_BINDING_MASK == webassembly.SYMBOL_BINDING_WEAK:
-        settings.WEAK_IMPORTS.append(symbol)
-
-
 def update_settings_glue(wasm_file, metadata):
   maybe_disable_filesystem(metadata.imports)
 
@@ -129,7 +121,7 @@ def update_settings_glue(wasm_file, metadata):
     syms = set(syms).difference(metadata.all_exports)
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(syms)
     if settings.MAIN_MODULE:
-      get_weak_imports(wasm_file)
+      settings.WEAK_IMPORTS += webassembly.get_weak_imports(wasm_file)
 
   settings.WASM_EXPORTS = metadata.all_exports
   settings.WASM_GLOBAL_EXPORTS = list(metadata.namedGlobals.keys())

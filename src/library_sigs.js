@@ -940,7 +940,6 @@ sigs = {
   gethostbyaddr__sig: 'ppii',
   gethostbyname__sig: 'pp',
   gethostbyname_r__sig: 'ipppppp',
-  getloadavg__sig: 'ipi',
   getnameinfo__sig: 'ipipipii',
   getprotobyname__sig: 'pp',
   getprotobynumber__sig: 'pi',
