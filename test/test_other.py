@@ -2691,6 +2691,7 @@ int f() {
       (['-g1', '-Oz', '-gsource-map'], False, True, True),
       # -g0 does not override -gsource-map but does remove name section. TODO: should it?
       (['-gsource-map', '-g0'], False, True, False),
+      # --emit-symbol-map should not affect the results
       (['--emit-symbol-map', '-gsource-map'], False, True, True),
       (['--emit-symbol-map'], False, False, False),
       (['--emit-symbol-map', '-Oz'], False, False, False),
@@ -2704,11 +2705,6 @@ int f() {
       print(flags, expect_dwarf, expect_sourcemap, expect_names)
       self.emcc(test_file(source_file), flags, js_file)
       self.assertExists(js_file)
-
-      def notIn(member, container, msg=None):
-        if member in container:
-          print('%s unexpectedly found' % member)
-          self.fail()
       assertion = self.assertIn if expect_dwarf else self.assertNotIn
       self.verify_dwarf(wasm_file, assertion)
 
