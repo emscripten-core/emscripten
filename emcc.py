@@ -54,7 +54,7 @@ from tools import js_manipulation
 from tools import webassembly
 from tools import config
 from tools import cache
-from tools.settings import user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
+from tools.settings import default_setting, user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
 from tools.utils import read_file, write_file, read_binary, delete_file, removeprefix
 
 logger = logging.getLogger('emcc')
@@ -408,11 +408,6 @@ def expand_byte_size_suffixes(value):
     size_suffixes = {suffix: 1024 ** i for i, suffix in enumerate(['b', 'kb', 'mb', 'gb', 'tb'])}
     value *= size_suffixes[suffix.lower()]
   return value
-
-
-def default_setting(name, new_default):
-  if name not in user_settings:
-    setattr(settings, name, new_default)
 
 
 def apply_user_settings():
@@ -2028,7 +2023,6 @@ def phase_linker_setup(options, state, newargs):
     default_setting('AUTO_JS_LIBRARIES', 0)
     # When using MINIMAL_RUNTIME, symbols should only be exported if requested.
     default_setting('EXPORT_KEEPALIVE', 0)
-    default_setting('USE_GLFW', 0)
 
   if settings.STRICT_JS and (settings.MODULARIZE or settings.EXPORT_ES6):
     exit_with_error("STRICT_JS doesn't work with MODULARIZE or EXPORT_ES6")
@@ -2036,7 +2030,6 @@ def phase_linker_setup(options, state, newargs):
   if settings.STRICT:
     if not settings.MODULARIZE and not settings.EXPORT_ES6:
       default_setting('STRICT_JS', 1)
-    default_setting('USE_GLFW', 0)
     default_setting('AUTO_JS_LIBRARIES', 0)
     default_setting('AUTO_NATIVE_LIBRARIES', 0)
     default_setting('AUTO_ARCHIVE_INDEXES', 0)

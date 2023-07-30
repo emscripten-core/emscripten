@@ -95,6 +95,11 @@ INTERNAL_SETTINGS = {
 user_settings: Dict[str, str] = {}
 
 
+def default_setting(name, new_default):
+  if name not in user_settings:
+    setattr(settings, name, new_default)
+
+
 class SettingsManager:
   attrs: Dict[str, Any] = {}
   types: Dict[str, Any] = {}
