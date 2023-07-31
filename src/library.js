@@ -2972,8 +2972,8 @@ mergeInto(LibraryManager.library, {
 #if !DECLARE_ASM_MODULE_EXPORTS
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
-  $exportAsmFunctions__deps: ['$asmjsMangle'],
-  $exportAsmFunctions: (wasmExports) => {
+  $exportWasmSymbols__deps: ['$asmjsMangle'],
+  $exportWasmSymbols: (wasmExports) => {
 #if ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_WEB
     var global_object = (typeof process != "undefined" ? global : this);
 #elif ENVIRONMENT_MAY_BE_NODE
@@ -3019,9 +3019,9 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  _Unwind_GetIPInfo: () => abort('Unwind_GetIPInfo'),
+  _Unwind_GetIPInfo: (context, ipBefore) => abort('Unwind_GetIPInfo'),
 
-  _Unwind_FindEnclosingFunction: () => 0, // we cannot succeed
+  _Unwind_FindEnclosingFunction: (ip) => 0, // we cannot succeed
 
   _Unwind_RaiseException__deps: ['__cxa_throw'],
   _Unwind_RaiseException: (ex) => {

@@ -687,6 +687,14 @@ function emitDCEGraph(ast) {
       });
       foundWasmImportsAssign = true;
       emptyOut(node); // ignore this in the second pass; this does not root
+    } else if (node.type === 'AssignmentExpression') {
+      const target = node.left;
+      const value = node.right;
+      // Ignore assignment to the wasmExports object (as happens in
+      // applySignatureConversions).
+      if (isExportUse(target)) {
+        emptyOut(node);
+      }
     } else if (node.type === 'VariableDeclaration') {
       if (node.declarations.length === 1) {
         const item = node.declarations[0];
