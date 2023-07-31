@@ -1014,7 +1014,7 @@ var LibraryGLFW = {
       var canvasID = 'canvas' + (id - 1);
       var ctxID = 'ctx' + (id - 1);
 
-      if(!document.getElementById('canvas')) {
+      if (!document.getElementById('canvas')) {
         mainCanvas = document.createElement('canvas');
         mainCanvas.id = 'canvas';
         mainCanvas.width = width;
@@ -1036,17 +1036,17 @@ var LibraryGLFW = {
         GL.enableOffscreenFramebufferAttributes(contextAttributes);
 #endif
 
-        if(Module['ctx'] === undefined)
+        if (Module['ctx'] === undefined)
           Module['ctx'] = _emscripten_webgl_do_create_context(stringToNewUTF8('#canvas'), contextAttributes);
 
 
-        if(id <= 1) {
+        if (id <= 1) {
           Module['canvas0'] = Module['canvas'];
           Module['ctx0'] = Module['ctx'];
           _emscripten_webgl_make_context_current(Module['ctx0']);
         } else {
           var canvasElement = document.getElementById(canvasID);
-          if(!canvasElement) {
+          if (!canvasElement) {
             canvasElement = document.createElement('canvas');
             canvasElement.id = canvasID;
             canvasElement.width = width;
@@ -1744,11 +1744,11 @@ var LibraryGLFW = {
   glfwMakeContextCurrent__deps: ['emscripten_webgl_make_context_current'],
 
   glfwMakeContextCurrent: function(winid) {
-    if(winid !== null && GLFW.windows !== null) {
+    if (winid !== null && GLFW.windows !== null) {
       for (i = 0; i < GLFW.windows.length && GLFW.windows[i].id != winid; i++) {
         // no-op
       }
-      if(i < GLFW.windows.length) {
+      if (i < GLFW.windows.length) {
         Module['ctx'] = Module['ctx' + (winid - 1)];
       }
     } else {
