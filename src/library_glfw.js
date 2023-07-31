@@ -1371,10 +1371,6 @@ var LibraryGLFW = {
   },
 
   glfwWindowHint: function(target, hint) {
-    if (GLFW.hints === null) {
-      GLFW.hints = GLFW.defaultHints;
-    }
-
     GLFW.hints[target] = hint;
   },
 
