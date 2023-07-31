@@ -77,17 +77,20 @@ extern "C" void wasmfs_flush(void) {
     
     auto lockedDir = dir->locked();
     Directory::MaybeEntries entries = lockedDir.getEntries();
+#ifndef NDEBUG
     if (int err = entries.getError()) {
       std::string errorMessage = "Non-fatal error code " + std::to_string(err) + " while flushing directory: " + lockedDir.getName(dir);
       emscripten_console_error(errorMessage.c_str());
       continue;
     }
+#endif
     for (auto entry : *lockedDir.getEntries()) {
       if (entry.kind == File::FileKind::DataFileKind) {
-        int err = lockedDir.getChild(entry.name)->dynCast<DataFile>()->locked().flush();
-        if (err) {
+        if (int err = lockedDir.getChild(entry.name)->dynCast<DataFile>()->locked().flush()) {
+#ifndef NDEBUG
           std::string errorMessage = "Non-fatal error code " + std::to_string(err) + " while flushing file: " + entry.name;
           emscripten_console_error(errorMessage.c_str());
+#endif
         }
       } else if (entry.kind == File::FileKind::DirectoryKind) {
         toFlush.push(lockedDir.getChild(entry.name)->dynCast<Directory>());
