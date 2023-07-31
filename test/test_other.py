@@ -10295,10 +10295,12 @@ int main () {
   def test_strict_mode_hello_world(self):
     # Verify that strict mode can be used for simple hello world program both
     # via the environment EMCC_STRICT=1 and from the command line `-sSTRICT`
-    cmd = [EMCC, test_file('hello_world.c'), '-sSTRICT']
-    self.run_process(cmd)
+    self.do_runf(test_file('hello_world.c'), emcc_args=['-sSTRICT'])
     with env_modify({'EMCC_STRICT': '1'}):
       self.do_runf(test_file('hello_world.c'), 'hello, world!')
+
+  def test_strict_mode_full_library(self):
+    self.do_runf(test_file('hello_world.c'), emcc_args=['-sSTRICT', '-sINCLUDE_FULL_LIBRARY'])
 
   def test_legacy_settings(self):
     cmd = [EMCC, test_file('hello_world.c'), '-sSPLIT_MEMORY=0']
