@@ -13635,3 +13635,24 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
                       '-Wno-experimental',
                       '--extern-post-js', test_file('other/test_memory64_proxies.js')])
     self.run_js('a.out.js')
+
+  def test_settings_append(self):
+    create_file('pre.js', '''
+    Module.onRuntimeInitialized = () => {
+      _foo();
+    }
+    ''')
+    create_file('test.c', r'''
+    #include <stdio.h>
+
+    void foo() {
+      printf("foo\n");
+    }
+
+    int main() {
+      printf("main\n");
+      return 0;
+    }
+    ''')
+    expected = 'foo\nmain\n'
+    self.do_runf('test.c', expected, emcc_args=['--pre-js=pre.js', '-sEXPORTED_FUNCTIONS=_foo', '-sEXPORTED_FUNCTIONS=_main'])

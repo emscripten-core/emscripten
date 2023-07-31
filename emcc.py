@@ -54,7 +54,7 @@ from tools import js_manipulation
 from tools import webassembly
 from tools import config
 from tools import cache
-from tools.settings import user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
+from tools.settings import user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS, APPENDING_SETTINGS
 from tools.utils import read_file, write_file, read_binary, delete_file, removeprefix
 
 logger = logging.getLogger('emcc')
@@ -417,7 +417,7 @@ def default_setting(name, new_default):
     setattr(settings, name, new_default)
 
 
-def apply_user_settings():
+def apply_setting(cmdline_settings):
   """Take a map of users settings {NAME: VALUE} and apply them to the global
   settings object.
   """
@@ -425,7 +425,7 @@ def apply_user_settings():
   # Stash a copy of all available incoming APIs before the user can potentially override it
   settings.ALL_INCOMING_MODULE_JS_API = settings.INCOMING_MODULE_JS_API + EXTRA_INCOMING_JS_API
 
-  for key, value in user_settings.items():
+  for key, value in cmdline_settings:
     if key in settings.internal_settings:
       exit_with_error('%s is an internal setting and cannot be set from command line', key)
 
@@ -459,6 +459,10 @@ def apply_user_settings():
       except Exception as e:
         exit_with_error('a problem occurred in evaluating the content after a "-s", specifically "%s=%s": %s', key, value, str(e))
 
+    if key in APPENDING_SETTINGS:
+      value += getattr(settings, key)
+
+    user_settings[user_key] = value
     setattr(settings, user_key, value)
 
     if key == 'EXPORTED_FUNCTIONS':
@@ -1426,23 +1430,22 @@ def phase_parse_arguments(state):
   explicit_settings_changes, newargs = parse_s_args(newargs)
   settings_changes += explicit_settings_changes
 
+  cmdline_settings = []
   for s in settings_changes:
     key, value = s.split('=', 1)
     key, value = normalize_boolean_setting(key, value)
-    user_settings[key] = value
-
-  # STRICT is used when applying settings so it needs to be applied first before
-  # calling `apply_user_settings`.
-  strict_cmdline = user_settings.get('STRICT')
-  if strict_cmdline:
-    settings.STRICT = int(strict_cmdline)
+    # STRICT is used when applying settings so it needs to be applied first before
+    # calling `apply_setting`.
+    if key == 'STRICT' and value:
+      settings.STRICT = int(value)
+    cmdline_settings.append((key, value))
 
   # Apply user -jsD settings
   for s in user_js_defines:
     settings[s[0]] = s[1]
 
   # Apply -s settings in newargs here (after optimization levels, so they can override them)
-  apply_user_settings()
+  apply_setting(cmdline_settings)
 
   return options, newargs
 
@@ -1629,7 +1632,7 @@ def phase_setup(options, state, newargs):
     # If we get here then the user specified both DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED
     # on the command line.  This is no longer valid so report either an error or a warning (for
     # backwards compat with the old `DISABLE_EXCEPTION_CATCHING=2`
-    if user_settings['DISABLE_EXCEPTION_CATCHING'] in ('0', '2'):
+    if user_settings['DISABLE_EXCEPTION_CATCHING'] in (0, 2):
       diagnostics.warning('deprecated', 'DISABLE_EXCEPTION_CATCHING=X is no longer needed when specifying EXCEPTION_CATCHING_ALLOWED')
     else:
       exit_with_error('DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED are mutually exclusive')
@@ -1638,9 +1641,9 @@ def phase_setup(options, state, newargs):
     settings.DISABLE_EXCEPTION_CATCHING = 0
 
   if settings.WASM_EXCEPTIONS:
-    if user_settings.get('DISABLE_EXCEPTION_CATCHING') == '0':
+    if user_settings.get('DISABLE_EXCEPTION_CATCHING') == 0:
       exit_with_error('DISABLE_EXCEPTION_CATCHING=0 is not compatible with -fwasm-exceptions')
-    if user_settings.get('DISABLE_EXCEPTION_THROWING') == '0':
+    if user_settings.get('DISABLE_EXCEPTION_THROWING') == 0:
       exit_with_error('DISABLE_EXCEPTION_THROWING=0 is not compatible with -fwasm-exceptions')
     # -fwasm-exceptions takes care of enabling them, so users aren't supposed to
     # pass them explicitly, regardless of their values
@@ -1649,7 +1652,7 @@ def phase_setup(options, state, newargs):
     settings.DISABLE_EXCEPTION_CATCHING = 1
     settings.DISABLE_EXCEPTION_THROWING = 1
 
-    if user_settings.get('ASYNCIFY') == '1':
+    if user_settings.get('ASYNCIFY') == 1:
       diagnostics.warning('emcc', 'ASYNCIFY=1 is not compatible with -fwasm-exceptions. Parts of the program that mix ASYNCIFY and exceptions will not compile.')
 
     if user_settings.get('SUPPORT_LONGJMP') == 'emscripten':
@@ -1672,11 +1675,11 @@ def phase_setup(options, state, newargs):
     # Wasm SjLj cannot be used with Emscripten EH. We error out if
     # DISABLE_EXCEPTION_THROWING=0 is explicitly requested by the user;
     # otherwise we disable it here.
-    if user_settings.get('DISABLE_EXCEPTION_THROWING') == '0':
+    if user_settings.get('DISABLE_EXCEPTION_THROWING') == 0:
       exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_THROWING=0')
     # We error out for DISABLE_EXCEPTION_CATCHING=0, because it is 1 by default
     # and this can be 0 only if the user specifies so.
-    if user_settings.get('DISABLE_EXCEPTION_CATCHING') == '0':
+    if user_settings.get('DISABLE_EXCEPTION_CATCHING') == 0:
       exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_CATCHING=0')
     default_setting('DISABLE_EXCEPTION_THROWING', 1)
 
@@ -1991,7 +1994,7 @@ def phase_linker_setup(options, state, newargs):
 
   # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
   # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
-  if user_settings.get('WARN_ON_UNDEFINED_SYMBOLS') == '0':
+  if user_settings.get('WARN_ON_UNDEFINED_SYMBOLS') == 0:
     default_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
 
   # It is unlikely that developers targeting "native web" APIs with MINIMAL_RUNTIME need

@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 3.1.45 (in development)
 -----------------------
+- Command line settings that accept lists are add to existing occurances
+  of the setting rather than replacing them.  For example, specifying
+  `-sEXPORTED_FUNCTIONS=foo -sEXPORTED_FUNCTIONS=bar` is now equivalent to
+  `-sEXPORTED_FUNCTIONS=foo,bar`.  This is useful in build systems where
+  separate components each want to contribute to this list.
 
 3.1.44 - 07/25/23
 -----------------
