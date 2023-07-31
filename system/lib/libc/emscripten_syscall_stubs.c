@@ -34,7 +34,7 @@ static mode_t g_umask = S_IRWXU | S_IRWXG | S_IRWXO;
 #define REPORT(name)
 #else
 #define REPORT(name) \
-  emscripten_console_error("warning: unsupported syscall: __syscall_" #name "\n");
+  emscripten_err("warning: unsupported syscall: __syscall_" #name "\n");
 #endif
 
 #define UNIMPLEMENTED(name, args) \
