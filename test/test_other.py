@@ -32,7 +32,7 @@ from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP,
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
-from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64
+from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
 from common import requires_wasm_eh, crossplatform, with_both_sjlj, also_with_standalone_wasm
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64
 from common import EMTEST_BUILD_VERBOSE, PYTHON
@@ -3108,6 +3108,24 @@ int f() {
     self.run_process([EMCC, 'test.c', 'data.o', '-sFORCE_FILESYSTEM'])
     output = self.run_js('a.out.js')
     self.assertContained('hello data', output)
+
+  def test_file_packager_depfile(self):
+    create_file('data1.txt', 'data1')
+    ensure_dir('subdir')
+    create_file('subdir/data2.txt', 'data2')
+
+    self.run_process([FILE_PACKAGER, 'test.data', '--js-output=test.js', '--depfile=test.data.d', '--from-emcc', '--preload', '.'])
+    lines = read_file('test.data.d').splitlines()
+    split = lines.index(': \\')
+    before, after = set(lines[:split]), set(lines[split + 1:])
+    # Set comparison used because depfile is not order-sensitive.
+    self.assertTrue('test.data \\' in before)
+    self.assertTrue('test.js \\' in before)
+    self.assertTrue(FILE_PACKAGER + '.py \\' in after)
+    self.assertTrue('. \\' in after)
+    self.assertTrue('./data1.txt \\' in after)
+    self.assertTrue('./subdir \\' in after)
+    self.assertTrue('./subdir/data2.txt \\' in after)
 
   def test_sdl_headless(self):
     shutil.copyfile(test_file('screenshot.png'), 'example.png')
@@ -6304,10 +6322,9 @@ int main() {
     self.run_process([EMCC, '-O1', 'test.c', '-sALLOW_MEMORY_GROWTH'])
     self.assertContained('done', self.run_js('a.out.js'))
 
+  @requires_wasm64
+  @requires_node_canary
   def test_failing_growth_wasm64(self):
-    # For now we skip this test because failure to create the TypedArray views
-    # causes weird unrecoverable failures.
-    self.skipTest('https://bugs.chromium.org/p/v8/issues/detail?id=4153')
     self.require_wasm64()
     create_file('test.c', r'''
 #include <assert.h>
@@ -8833,6 +8850,7 @@ end
     for sym in glsyms:
       self.assertContained('.' + sym, js)
 
+  @also_with_wasm64
   def test_closure_webgpu(self):
     # This test can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
     self.build(test_file('hello_world.c'), emcc_args=[
@@ -10059,7 +10077,7 @@ int main () {
 
       output = read_file('a.js')
       delete_file('a.js')
-      self.assertNotContained('asm["_thisIsAFunctionExportedFromAsmJsOrWasmWithVeryLongFunction"]', output)
+      self.assertNotContained('_thisIsAFunctionExportedFromAsmJsOrWasmWithVeryLongFunction', output)
 
       # TODO: Add stricter testing when Wasm side is also optimized: (currently Wasm does still need
       # to reference exports multiple times)
@@ -12871,10 +12889,16 @@ int main() {
 
   # Smoketest for MEMORY64 setting.  Most of the testing of MEMORY64 is by way of the wasm64
   # variant of the core test suite.
+  @parameterized({
+    'O0': (['-O0'],),
+    'O1': (['-O1'],),
+    'O2': (['-O2'],),
+    'O3': (['-O3'],),
+    'Oz': (['-Oz'],),
+  })
   @requires_wasm64
-  def test_memory64(self):
-    for opt in ['-O0', '-O1', '-O2', '-O3']:
-      self.do_runf(test_file('hello_world.c'), 'hello, world', emcc_args=['-sMEMORY64', '-Wno-experimental', opt])
+  def test_memory64(self, args):
+    self.do_run_in_out_file_test(test_file('core/test_hello_argc.c'), args=['hello', 'world'], emcc_args=['-sMEMORY64', '-Wno-experimental'] + args)
 
   # Verfy that MAIN_MODULE=1 (which includes all symbols from all libraries)
   # works with -sPROXY_POSIX_SOCKETS and -Oz, both of which affect linking of
@@ -13598,3 +13622,16 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
   def test_quick_exit(self):
     self.do_other_test('test_quick_exit.c')
+
+  @requires_wasm64
+  @requires_node_canary
+  def test_memory64_proxies(self):
+    self.run_process([EMCC, test_file('hello_world.c'),
+                      '-sMEMORY64=1',
+                      '-sINITIAL_MEMORY=5gb',
+                      '-sMAXIMUM_MEMORY=5gb',
+                      '-sALLOW_MEMORY_GROWTH',
+                      '-sEXPORTED_FUNCTIONS=_malloc,_main',
+                      '-Wno-experimental',
+                      '--extern-post-js', test_file('other/test_memory64_proxies.js')])
+    self.run_js('a.out.js')

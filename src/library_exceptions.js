@@ -104,7 +104,6 @@ var LibraryExceptions = {
 
   // Here, we throw an exception after recording a couple of values that we need to remember
   // We also remember that it was the last exception thrown as we need to know that later.
-  __cxa_throw__sig: 'vppp',
   __cxa_throw__deps: ['$ExceptionInfo', '$exceptionLast', '$uncaughtExceptionCount'],
   __cxa_throw: function(ptr, type, destructor) {
 #if EXCEPTION_DEBUG
@@ -122,7 +121,6 @@ var LibraryExceptions = {
   // we early-exit from end_catch when the exception has been rethrown, so
   // pop that here from the caught exceptions.
   __cxa_rethrow__deps: ['$exceptionCaught', '$exceptionLast', '$uncaughtExceptionCount'],
-  __cxa_rethrow__sig: 'v',
   __cxa_rethrow: function() {
     var info = exceptionCaught.pop();
     if (!info) {
@@ -144,14 +142,12 @@ var LibraryExceptions = {
     {{{ makeThrow('exceptionLast') }}}
   },
 
-  llvm_eh_typeid_for__sig: 'ip',
   llvm_eh_typeid_for: function(type) {
     return type;
   },
 
   __cxa_begin_catch__deps: ['$exceptionCaught', '__cxa_increment_exception_refcount',
                             '$uncaughtExceptionCount'],
-  __cxa_begin_catch__sig: 'pp',
   __cxa_begin_catch: function(ptr) {
     var info = new ExceptionInfo(ptr);
     if (!info.get_caught()) {
@@ -172,7 +168,6 @@ var LibraryExceptions = {
   // due to calling apply on undefined, that means that the destructor is
   // an invalid index into the FUNCTION_TABLE, so something has gone wrong.
   __cxa_end_catch__deps: ['$exceptionCaught', '$exceptionLast', '__cxa_decrement_exception_refcount', 'setThrew'],
-  __cxa_end_catch__sig: 'v',
   __cxa_end_catch: function() {
     // Clear state flag.
     _setThrew(0, 0);
@@ -190,7 +185,6 @@ var LibraryExceptions = {
   },
 
   __cxa_get_exception_ptr__deps: ['$ExceptionInfo'],
-  __cxa_get_exception_ptr__sig: 'pp',
   __cxa_get_exception_ptr: function(ptr) {
     var rtn = new ExceptionInfo(ptr).get_exception_ptr();
 #if EXCEPTION_DEBUG
@@ -205,15 +199,10 @@ var LibraryExceptions = {
   },
 
   __cxa_call_unexpected: function(exception) {
-    err('Unexpected exception thrown, this is not properly supported - aborting');
-#if !MINIMAL_RUNTIME
-    ABORT = true;
-#endif
-    throw exception;
+    abort('Unexpected exception thrown, this is not properly supported - aborting');
   },
 
   __cxa_current_primary_exception__deps: ['$exceptionCaught', '__cxa_increment_exception_refcount'],
-  __cxa_current_primary_exception__sig: 'p',
   __cxa_current_primary_exception: function() {
     if (!exceptionCaught.length) {
       return 0;
@@ -224,7 +213,6 @@ var LibraryExceptions = {
   },
 
   __cxa_rethrow_primary_exception__deps: ['$ExceptionInfo', '$exceptionCaught', '__cxa_rethrow'],
-  __cxa_rethrow_primary_exception__sig: 'vp',
   __cxa_rethrow_primary_exception: function(ptr) {
     if (!ptr) return;
     var info = new ExceptionInfo(ptr);
@@ -293,7 +281,6 @@ var LibraryExceptions = {
   },
 
   __resumeException__deps: ['$exceptionLast'],
-  __resumeException__sig: 'vp',
   __resumeException: function(ptr) {
 #if EXCEPTION_DEBUG
     dbg("__resumeException " + [ptrToString(ptr), exceptionLast]);

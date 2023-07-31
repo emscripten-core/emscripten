@@ -49,7 +49,7 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
   declares = 'var ' + ',\n '.join(exports_that_are_not_initializers) + ';'
   post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS_DECLARES >>>', declares)
 
-  # Generate assignments from all wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
+  # Generate assignments from all wasm exports out to the JS variables above: e.g. a = wasmExports['a']; b = wasmExports['b'];
   post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS >>>', receiving)
   return post
 
@@ -109,14 +109,6 @@ def align_memory(addr):
   return (addr + 15) & -16
 
 
-def get_weak_imports(main_wasm):
-  dylink_sec = webassembly.parse_dylink_section(main_wasm)
-  for symbols in dylink_sec.import_info.values():
-    for symbol, flags in symbols.items():
-      if flags & webassembly.SYMBOL_BINDING_MASK == webassembly.SYMBOL_BINDING_WEAK:
-        settings.WEAK_IMPORTS.append(symbol)
-
-
 def update_settings_glue(wasm_file, metadata):
   maybe_disable_filesystem(metadata.imports)
 
@@ -129,7 +121,7 @@ def update_settings_glue(wasm_file, metadata):
     syms = set(syms).difference(metadata.all_exports)
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(syms)
     if settings.MAIN_MODULE:
-      get_weak_imports(wasm_file)
+      settings.WEAK_IMPORTS += webassembly.get_weak_imports(wasm_file)
 
   settings.WASM_EXPORTS = metadata.all_exports
   settings.WASM_GLOBAL_EXPORTS = list(metadata.namedGlobals.keys())
@@ -755,7 +747,7 @@ def make_export_wrappers(function_exports, delay_assignment):
       args = ', '.join(args)
       wrapper += f"({args}) => ({mangled} = {exported}wasmExports['{name}'])({args});"
     else:
-      wrapper += 'asm["%s"]' % name
+      wrapper += 'wasmExports["%s"]' % name
 
     wrappers.append(wrapper)
   return wrappers
@@ -763,7 +755,7 @@ def make_export_wrappers(function_exports, delay_assignment):
 
 def create_receiving(function_exports):
   # When not declaring asm exports this section is empty and we instead programatically export
-  # symbols on the global object by calling exportAsmFunctions after initialization
+  # symbols on the global object by calling exportWasmSymbols after initialization
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
     return ''
 
@@ -778,8 +770,8 @@ def create_receiving(function_exports):
       # existing in top level JS scope, i.e.
       # var _main;
       # WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
-      #   var asm = output.instance.exports;
-      #   _main = asm["_main"];
+      #   var wasmExports = output.instance.exports;
+      #   _main = wasmExports["_main"];
       generate_dyncall_assignment = settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
       exports_that_are_not_initializers = [x for x in function_exports if x != building.WASM_CALL_CTORS]
 
@@ -790,7 +782,7 @@ def create_receiving(function_exports):
         export_assignment = ''
         if settings.MODULARIZE and should_export:
           export_assignment = f"Module['{mangled}'] = "
-        receiving += [f'{export_assignment}{dynCallAssignment}{mangled} = asm["{s}"]']
+        receiving += [f'{export_assignment}{dynCallAssignment}{mangled} = wasmExports["{s}"]']
     else:
       receiving += make_export_wrappers(function_exports, delay_assignment)
   else:
@@ -815,7 +807,7 @@ def create_module(receiving, metadata, library_symbols):
     module.append('Asyncify.instrumentWasmImports(wasmImports);\n')
 
   if not settings.MINIMAL_RUNTIME:
-    module.append("var asm = createWasm();\n")
+    module.append("var wasmExports = createWasm();\n")
 
   module.append(receiving)
   if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
@@ -896,9 +888,12 @@ def create_pointer_conversion_wrappers(metadata):
     mapping[sig[0]] = sig[1]
 
   wrappers = '''
-function applySignatureConversions(exports) {
+// Argument name here must shadow the `wasmExports` global so
+// that it is recognised by metadce and minify-import-export-names
+// passes.
+function applySignatureConversions(wasmExports) {
   // First, make a copy of the incoming exports object
-  exports = Object.assign({}, exports);
+  wasmExports = Object.assign({}, wasmExports);
 '''
 
   sigs_seen = set()
@@ -919,8 +914,8 @@ function applySignatureConversions(exports) {
 
   for f in wrap_functions:
     sig = mapping[f]
-    wrappers += f"\n  exports['{f}'] = makeWrapper_{sig}(exports['{f}']);"
-  wrappers += '\n  return exports\n}'
+    wrappers += f"\n  wasmExports['{f}'] = makeWrapper_{sig}(wasmExports['{f}']);"
+  wrappers += 'return wasmExports;\n}'
 
   return wrappers
 

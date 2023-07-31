@@ -375,6 +375,7 @@ function exportRuntime() {
     'FS_createLazyFile',
     'FS_createLink',
     'FS_createDevice',
+    'FS_readFile',
     'FS_unlink',
     'out',
     'err',

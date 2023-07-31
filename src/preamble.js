@@ -53,7 +53,6 @@ if (typeof WebAssembly != 'object') {
 // Wasm globals
 
 var wasmMemory;
-var wasmExports;
 
 #if SHARED_MEMORY
 // For sending to workers.
@@ -140,11 +139,15 @@ function updateMemoryViews() {
 #if SUPPORT_BIG_ENDIAN
   Module['HEAP_DATA_VIEW'] = HEAP_DATA_VIEW = new DataView(b);
 #endif
+#if MEMORY64 && MAXIMUM_MEMORY > FOUR_GB
+#include "runtime_view_proxy.js"
+#else
   Module['HEAP8'] = HEAP8 = new Int8Array(b);
   Module['HEAP16'] = HEAP16 = new Int16Array(b);
-  Module['HEAP32'] = HEAP32 = new Int32Array(b);
   Module['HEAPU8'] = HEAPU8 = new Uint8Array(b);
   Module['HEAPU16'] = HEAPU16 = new Uint16Array(b);
+#endif
+  Module['HEAP32'] = HEAP32 = new Int32Array(b);
   Module['HEAPU32'] = HEAPU32 = new Uint32Array(b);
   Module['HEAPF32'] = HEAPF32 = new Float32Array(b);
   Module['HEAPF64'] = HEAPF64 = new Float64Array(b);
@@ -1037,7 +1040,7 @@ function createWasm() {
 #if !DECLARE_ASM_MODULE_EXPORTS
     // If we didn't declare the asm exports as top level enties this function
     // is in charge of programatically exporting them on the global object.
-    exportAsmFunctions(exports);
+    exportWasmSymbols(exports);
 #endif
 
 #if PTHREADS || WASM_WORKERS

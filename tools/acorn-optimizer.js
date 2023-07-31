@@ -466,18 +466,13 @@ function getWasmImportsValue(node) {
 }
 
 function isExportUse(node) {
-  // MINIMAL_RUNTIME calls exports global variable `asm`, whereas regualar
-  // runtime calls it `wasmExports`.
-  //
-  // Here we match either:
+  // Match usages of symbols on the `wasmExports` object. e.g:
   //   wasmExports['X']
-  // or:
-  //   asm['X']
   return (
     node.type === 'MemberExpression' &&
     node.object.type === 'Identifier' &&
     isLiteralString(node.property) &&
-    (node.object.name === 'wasmExports' || node.object.name === 'asm')
+    node.object.name === 'wasmExports'
   );
 }
 
@@ -515,7 +510,7 @@ function applyImportAndExportNameChanges(ast) {
         }
       }
     } else if (node.type === 'CallExpression' && isExportUse(node.callee)) {
-      // asm["___wasm_call_ctors"](); -> asm["M"]();
+      // wasmExports["___wasm_call_ctors"](); -> wasmExports["M"]();
       const callee = node.callee;
       const name = callee.property.value;
       if (mapping[name]) {
@@ -633,11 +628,11 @@ function emitDCEGraph(ast) {
   // The exports are trickier, as they have a different form whether or not
   // async compilation is enabled. It can be either:
   //
-  //  var _malloc = Module['_malloc'] = asm['_malloc'];
+  //  var _malloc = Module['_malloc'] = wasmExports['_malloc'];
   //
   // or
   //
-  //  var _malloc = asm['_malloc'];
+  //  var _malloc = wasmExports['_malloc'];
   //
   // or
   //
@@ -646,10 +641,10 @@ function emitDCEGraph(ast) {
   // or, in the minimal runtime, it looks like
   //
   //  WebAssembly.instantiate(Module["wasm"], imports).then((output) => {
-  //   var asm = output.instance.exports; // may also not have "var", if
-  //                                      // declared outside and used elsewhere
+  //   var wasmExports = output.instance.exports; // may also not have "var", if
+  //                                              // declared outside and used elsewhere
   //   ..
-  //   _malloc = asm["malloc"];
+  //   _malloc = wasmExports["malloc"];
   //   ..
   //  });
   const imports = [];
@@ -657,7 +652,7 @@ function emitDCEGraph(ast) {
   const dynCallNames = [];
   const nameToGraphName = {};
   const modulePropertyToGraphName = {};
-  const exportNameToGraphName = {}; // identical to asm['..'] nameToGraphName
+  const exportNameToGraphName = {}; // identical to wasmExports['..'] nameToGraphName
   const graph = [];
   let foundWasmImportsAssign = false;
   let foundMinimalRuntimeExports = false;
@@ -692,6 +687,14 @@ function emitDCEGraph(ast) {
       });
       foundWasmImportsAssign = true;
       emptyOut(node); // ignore this in the second pass; this does not root
+    } else if (node.type === 'AssignmentExpression') {
+      const target = node.left;
+      const value = node.right;
+      // Ignore assignment to the wasmExports object (as happens in
+      // applySignatureConversions).
+      if (isExportUse(target)) {
+        emptyOut(node);
+      }
     } else if (node.type === 'VariableDeclaration') {
       if (node.declarations.length === 1) {
         const item = node.declarations[0];
@@ -699,9 +702,7 @@ function emitDCEGraph(ast) {
         const value = item.init;
         if (value && isExportUse(value)) {
           const asmName = getExportOrModuleUseName(value);
-          // this is
-          //  var _x = asm['x'];
-          // or
+          // this is:
           //  var _x = wasmExports['x'];
           saveAsmExport(name, asmName);
           emptyOut(node);
@@ -760,7 +761,7 @@ function emitDCEGraph(ast) {
       emptyOut(node); // ignore this in the second pass; we scan defuns separately
     } else if (node.type === 'ArrowFunctionExpression') {
       // Check if this is the minimal runtime exports function, which looks like
-      //   (output) => { var asm = output.instance.exports;
+      //   (output) => { var wasmExports = output.instance.exports;
       if (
         node.params.length === 1 &&
         node.params[0].type === 'Identifier' &&
@@ -772,7 +773,7 @@ function emitDCEGraph(ast) {
           const first = body[0];
           let target;
           let value; // "(var?) target = value"
-          // Look either for  var asm =  or just   asm =
+          // Look either for  var wasmExports =  or just   wasmExports =
           if (first.type === 'VariableDeclaration' && first.declarations.length === 1) {
             const decl = first.declarations[0];
             target = decl.id;
@@ -787,7 +788,7 @@ function emitDCEGraph(ast) {
               value = assign.right;
             }
           }
-          if (target && target.type === 'Identifier' && target.name === 'asm' && value) {
+          if (target && target.type === 'Identifier' && target.name === 'wasmExports' && value) {
             if (
               value.type === 'MemberExpression' &&
               value.object.type === 'MemberExpression' &&
@@ -809,7 +810,7 @@ function emitDCEGraph(ast) {
                   item.expression.left.type === 'Identifier' &&
                   item.expression.right.type === 'MemberExpression' &&
                   item.expression.right.object.type === 'Identifier' &&
-                  item.expression.right.object.name === 'asm' &&
+                  item.expression.right.object.name === 'wasmExports' &&
                   item.expression.right.property.type === 'Literal'
                 ) {
                   const name = item.expression.left.name;
@@ -957,7 +958,7 @@ function applyDCEGraphRemovals(ast) {
       });
     } else if (node.type === 'AssignmentExpression') {
       // when we assign to a thing we don't need, we can just remove the assign
-      //   var x = Module['x'] = asm['x'];
+      //   var x = Module['x'] = wasmExports['x'];
       const target = node.left;
       if (isExportUse(target) || isModuleUse(target)) {
         const name = getExportOrModuleUseName(target);
@@ -970,9 +971,9 @@ function applyDCEGraphRemovals(ast) {
       }
     } else if (node.type === 'VariableDeclaration') {
       // Handle the case we declare a variable but don't assign to the module:
-      //   var x = asm['x'];
+      //   var x = wasmExports['x'];
       // and
-      //   var x = function() { return (x = asm['x']).apply(...) };
+      //   var x = () => (x = wasmExports['x']).apply(...);
       const init = node.declarations[0].init;
       if (init) {
         if (isExportUse(init)) {
@@ -991,8 +992,8 @@ function applyDCEGraphRemovals(ast) {
       }
     } else if (node.type === 'ExpressionStatement') {
       const expr = node.expression;
-      // In the minimal runtime code pattern we have just
-      //   x = asm['x']
+      // In the MINIMAL_RUNTIME code pattern we have just
+      //   x = wasmExports['x']
       // and never in a var.
       if (expr.operator === '=' && expr.left.type === 'Identifier' && isExportUse(expr.right)) {
         const name = expr.left.name;

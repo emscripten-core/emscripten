@@ -1239,7 +1239,6 @@ var LibraryBrowser = {
 
 #if BUILD_AS_WORKER
   emscripten_worker_respond_provisionally__proxy: 'sync',
-  emscripten_worker_respond_provisionally__sig: 'vii',
   emscripten_worker_respond_provisionally: function(data, size) {
     if (workerResponded) throw 'already responded with final response!';
     var transferObject = {
@@ -1255,7 +1254,6 @@ var LibraryBrowser = {
   },
 
   emscripten_worker_respond__proxy: 'sync',
-  emscripten_worker_respond__sig: 'vii',
   emscripten_worker_respond: function(data, size) {
     if (workerResponded) throw 'already responded with final response!';
     workerResponded = true;

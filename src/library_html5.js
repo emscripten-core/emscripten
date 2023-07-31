@@ -2420,7 +2420,6 @@ var LibraryHTML5 = {
 #endif
 
   $setCanvasElementSizeMainThread__proxy: 'sync',
-  $setCanvasElementSizeMainThread__sig: 'iiii',
   $setCanvasElementSizeMainThread__deps: ['$setCanvasElementSizeCallingThread'],
   $setCanvasElementSizeMainThread: function(target, width, height) {
     return setCanvasElementSizeCallingThread(target, width, height);
