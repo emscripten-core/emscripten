@@ -109,14 +109,6 @@ def align_memory(addr):
   return (addr + 15) & -16
 
 
-def get_weak_imports(main_wasm):
-  dylink_sec = webassembly.parse_dylink_section(main_wasm)
-  for symbols in dylink_sec.import_info.values():
-    for symbol, flags in symbols.items():
-      if flags & webassembly.SYMBOL_BINDING_MASK == webassembly.SYMBOL_BINDING_WEAK:
-        settings.WEAK_IMPORTS.append(symbol)
-
-
 def update_settings_glue(wasm_file, metadata):
   maybe_disable_filesystem(metadata.imports)
 
@@ -129,7 +121,7 @@ def update_settings_glue(wasm_file, metadata):
     syms = set(syms).difference(metadata.all_exports)
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(syms)
     if settings.MAIN_MODULE:
-      get_weak_imports(wasm_file)
+      settings.WEAK_IMPORTS += webassembly.get_weak_imports(wasm_file)
 
   settings.WASM_EXPORTS = metadata.all_exports
   settings.WASM_GLOBAL_EXPORTS = list(metadata.namedGlobals.keys())
@@ -763,7 +755,7 @@ def make_export_wrappers(function_exports, delay_assignment):
 
 def create_receiving(function_exports):
   # When not declaring asm exports this section is empty and we instead programatically export
-  # symbols on the global object by calling exportAsmFunctions after initialization
+  # symbols on the global object by calling exportWasmSymbols after initialization
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
     return ''
 
@@ -892,9 +884,12 @@ def create_pointer_conversion_wrappers(metadata):
   }
 
   wrappers = '''
-function applySignatureConversions(exports) {
+// Argument name here must shadow the `wasmExports` global so
+// that it is recognised by metadce and minify-import-export-names
+// passes.
+function applySignatureConversions(wasmExports) {
   // First, make a copy of the incoming exports object
-  exports = Object.assign({}, exports);
+  wasmExports = Object.assign({}, wasmExports);
 '''
 
   sigs_seen = set()
@@ -915,8 +910,8 @@ function applySignatureConversions(exports) {
 
   for f in wrap_functions:
     sig = mapping[f]
-    wrappers += f"\n  exports['{f}'] = makeWrapper_{sig}(exports['{f}']);"
-  wrappers += '\n  return exports\n}'
+    wrappers += f"\n  wasmExports['{f}'] = makeWrapper_{sig}(wasmExports['{f}']);"
+  wrappers += 'return wasmExports;\n}'
 
   return wrappers
 

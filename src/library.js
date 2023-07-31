@@ -384,17 +384,6 @@ mergeInto(LibraryManager.library, {
   // the initial values of the environment accessible by getenv.
   $ENV: {},
 
-  getloadavg: (loadavg, nelem) => {
-    // int getloadavg(double loadavg[], int nelem);
-    // http://linux.die.net/man/3/getloadavg
-    var limit = Math.min(nelem, 3);
-    var doubleSize = {{{ getNativeTypeSize('double') }}};
-    for (var i = 0; i < limit; i++) {
-      {{{ makeSetValue('loadavg', 'i * doubleSize', '0.1', 'double') }}};
-    }
-    return limit;
-  },
-
   // In -Oz builds, we replace memcpy() altogether with a non-unrolled wasm
   // variant, so we should never emit emscripten_memcpy_big() in the build.
   // In STANDALONE_WASM we avoid the emscripten_memcpy_big dependency so keep
@@ -2983,8 +2972,8 @@ mergeInto(LibraryManager.library, {
 #if !DECLARE_ASM_MODULE_EXPORTS
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
-  $exportAsmFunctions__deps: ['$asmjsMangle'],
-  $exportAsmFunctions: (wasmExports) => {
+  $exportWasmSymbols__deps: ['$asmjsMangle'],
+  $exportWasmSymbols: (wasmExports) => {
 #if ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_WEB
     var global_object = (typeof process != "undefined" ? global : this);
 #elif ENVIRONMENT_MAY_BE_NODE
@@ -3030,9 +3019,9 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  _Unwind_GetIPInfo: () => abort('Unwind_GetIPInfo'),
+  _Unwind_GetIPInfo: (context, ipBefore) => abort('Unwind_GetIPInfo'),
 
-  _Unwind_FindEnclosingFunction: () => 0, // we cannot succeed
+  _Unwind_FindEnclosingFunction: (ip) => 0, // we cannot succeed
 
   _Unwind_RaiseException__deps: ['__cxa_throw'],
   _Unwind_RaiseException: (ex) => {
@@ -3112,6 +3101,9 @@ mergeInto(LibraryManager.library, {
   $dynCallLegacy__deps: ['$createDyncallWrapper'],
 #endif
   $dynCallLegacy: (sig, ptr, args) => {
+#if MEMORY64
+    sig = sig.replace(/p/g, 'j')
+#endif
 #if ASSERTIONS
 #if MINIMAL_RUNTIME
     assert(typeof dynCalls != 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall linker flag to include it!');
@@ -3166,8 +3158,16 @@ mergeInto(LibraryManager.library, {
 
   $dynCall__docs: '/** @param {Object=} args */',
   $dynCall: (sig, ptr, args) => {
+#if MEMORY64
+    // With MEMORY64 we have an additional step to convert `p` arguments to
+    // bigint. This is the runtime equivalent of the wrappers we create for wasm
+    // exports in `emscripten.py:create_wasm64_wrappers`.
+    for (var i = 1; i < sig.length; ++i) {
+      if (sig[i] == 'p') args[i-1] = BigInt(args[i-1]);
+    }
+#endif
 #if DYNCALLS
-    return dynCallLegacy(sig, ptr, args);
+    var rtn = dynCallLegacy(sig, ptr, args);
 #else
 #if !WASM_BIGINT
     // Without WASM_BIGINT support we cannot directly call function with i64 as
@@ -3180,21 +3180,12 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     assert(getWasmTableEntry(ptr), `missing table entry in dynCall: ${ptr}`);
 #endif
-#if MEMORY64
-    // With MEMORY64 we have an additional step to convert `p` arguments to
-    // bigint. This is the runtime equivalent of the wrappers we create for wasm
-    // exports in `emscripten.py:create_wasm64_wrappers`.
-    for (var i = 1; i < sig.length; ++i) {
-      if (sig[i] == 'p') args[i-1] = BigInt(args[i-1]);
-    }
-#endif
     var rtn = getWasmTableEntry(ptr).apply(null, args);
+#endif
 #if MEMORY64
     return sig[0] == 'p' ? Number(rtn) : rtn;
 #else
     return rtn;
-#endif
-
 #endif
   },
 
