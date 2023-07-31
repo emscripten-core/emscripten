@@ -884,8 +884,8 @@ def create_pointer_conversion_wrappers(metadata):
   }
 
   for function in settings.SIGNATURE_CONVERSIONS:
-    sig = function.split(':')
-    mapping[sig[0]] = sig[1]
+    sym, sig = function.split(':')
+    mapping[sym] = sig
 
   wrappers = '''
 // Argument name here must shadow the `wasmExports` global so
