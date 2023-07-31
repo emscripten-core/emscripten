@@ -883,6 +883,10 @@ def create_pointer_conversion_wrappers(metadata):
     '__get_exception_message': '_ppp',
   }
 
+  for function in settings.SIGNATURE_CONVERSIONS:
+    sym, sig = function.split(':')
+    mapping[sym] = sig
+
   wrappers = '''
 // Argument name here must shadow the `wasmExports` global so
 // that it is recognised by metadce and minify-import-export-names
