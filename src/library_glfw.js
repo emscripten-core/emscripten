@@ -1022,6 +1022,7 @@ var LibraryGLFW = {
         Module['canvas'] = mainCanvas;
       }
 
+
       var useWebGL = GLFW.hints[0x00022001] > 0; // Use WebGL when we are told to based on GLFW_CLIENT_API
       if (useWebGL) {
         var contextAttributes = {
@@ -1034,7 +1035,10 @@ var LibraryGLFW = {
         // TODO: Make GLFW explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
         GL.enableOffscreenFramebufferAttributes(contextAttributes);
 #endif
-        Module['ctx'] = GLFW.createWebGLContext(Module['canvas'], contextAttributes);
+
+        if(Module['ctx'] === undefined)
+          Module['ctx'] = _emscripten_webgl_do_create_context(stringToNewUTF8('#canvas'), contextAttributes);
+
 
         if(id <= 1) {
           Module['canvas0'] = Module['canvas'];
@@ -1054,7 +1058,7 @@ var LibraryGLFW = {
           }
 
           Module[canvasID] = canvasElement;
-          Module[ctxID] = _emscripten_webgl_do_create_context(canvasElement, contextAttributes);
+          Module[ctxID] = _emscripten_webgl_do_create_context(stringToNewUTF8('#' + canvasID), contextAttributes);
           _emscripten_webgl_make_context_current(Module[ctxID]);
         }
       } else {
@@ -1073,7 +1077,7 @@ var LibraryGLFW = {
       }
 
       // If context creation failed, do not return a valid window
-      if (!Module['ctx' + (id - 1)] && useWebGL) return 0;
+      if (!Module[ctxID] && useWebGL) return 0;
 
       // Get non alive id
       var win = new GLFW_Window(id, width, height, title, monitor, share);
