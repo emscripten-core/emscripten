@@ -1741,8 +1741,6 @@ var LibraryGLFW = {
 
   glfwGetClipboardString: function(win) {},
 
-  glfwMakeContextCurrent__deps: ['emscripten_webgl_make_context_current'],
-
   glfwMakeContextCurrent: function(winid) {
     if (winid !== null && GLFW.windows !== null) {
       for (i = 0; i < GLFW.windows.length && GLFW.windows[i].id != winid; i++) {
