@@ -1755,7 +1755,7 @@ mergeInto(LibraryManager.library, {
       names: {}
     },
 
-    lookup_name: (name) => {
+    lookup_name(name) {
       // If the name is already a valid ipv4 / ipv6 address, don't generate a fake one.
       var res = inetPton4(name);
       if (res !== null) {
@@ -1784,7 +1784,7 @@ mergeInto(LibraryManager.library, {
       return addr;
     },
 
-    lookup_addr: (addr) => {
+    lookup_addr(addr) {
       if (DNS.address_map.names[addr]) {
         return DNS.address_map.names[addr];
       }

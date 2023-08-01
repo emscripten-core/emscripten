@@ -34,11 +34,11 @@ var LibraryEGL = {
 
     stringCache: {},
 
-    setErrorCode: function(code) {
+    setErrorCode(code) {
       EGL.errorCode = code;
     },
 
-    chooseConfig: function(display, attribList, config, config_size, numConfigs) {
+    chooseConfig(display, attribList, config, config_size, numConfigs) {
       if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
         EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
         return 0;
