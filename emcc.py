@@ -2010,6 +2010,7 @@ def phase_linker_setup(options, state, newargs):
   if settings.STRICT:
     if not settings.MODULARIZE and not settings.EXPORT_ES6:
       default_setting('STRICT_JS', 1)
+    default_setting('USE_GLFW', 0)
     default_setting('AUTO_JS_LIBRARIES', 0)
     default_setting('AUTO_NATIVE_LIBRARIES', 0)
     default_setting('AUTO_ARCHIVE_INDEXES', 0)
@@ -4298,7 +4299,7 @@ class ScriptSource:
 
 def is_valid_abspath(options, path_name):
   # Any path that is underneath the emscripten repository root must be ok.
-  if utils.path_from_root().replace('\\', '/') in path_name.replace('\\', '/'):
+  if utils.normalize_path(path_name).startswith(utils.normalize_path(utils.path_from_root())):
     return True
 
   def in_directory(root, child):

@@ -9,7 +9,7 @@ var LibraryWget = {
     wgetRequests: {},
     nextWgetRequestHandle: 0,
 
-    getNextWgetRequestHandle: function() {
+    getNextWgetRequestHandle() {
       var handle = wget.nextWgetRequestHandle;
       wget.nextWgetRequestHandle++;
       return handle;

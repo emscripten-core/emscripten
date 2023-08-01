@@ -38,7 +38,7 @@ void* _wasmfs_read_file(char* path) {
   int err = 0;
   err = stat(path, &file);
   if (err < 0) {
-    emscripten_console_error("Fatal error in FS.readFile");
+    emscripten_err("Fatal error in FS.readFile");
     abort();
   }
 
@@ -55,7 +55,7 @@ void* _wasmfs_read_file(char* path) {
 
   int fd = open(path, O_RDONLY);
   if (fd < 0) {
-    emscripten_console_error("Fatal error in FS.readFile");
+    emscripten_err("Fatal error in FS.readFile");
     abort();
   }
   [[maybe_unused]] int numRead = pread(fd, result + sizeof(size), size, 0);
@@ -64,7 +64,7 @@ void* _wasmfs_read_file(char* path) {
   assert(numRead == size);
   err = close(fd);
   if (err < 0) {
-    emscripten_console_error("Fatal error in FS.readFile");
+    emscripten_err("Fatal error in FS.readFile");
     abort();
   }
 
@@ -104,7 +104,7 @@ int _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
   auto lockedFile = dataFile->locked();
   int err = lockedFile.open(O_WRONLY);
   if (err < 0) {
-    emscripten_console_error("Fatal error in FS.writeFile");
+    emscripten_err("Fatal error in FS.writeFile");
     abort();
   }
 
@@ -116,7 +116,7 @@ int _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
 
   err = lockedFile.close();
   if (err < 0) {
-    emscripten_console_error("Fatal error in FS.writeFile");
+    emscripten_err("Fatal error in FS.writeFile");
     abort();
   }
 

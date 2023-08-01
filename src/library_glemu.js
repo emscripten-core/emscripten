@@ -95,7 +95,7 @@ var LibraryGLEmulation = {
     hasRunInit: false,
 
     // Find a token in a shader source string
-    findToken: function(source, token) {
+    findToken(source, token) {
       function isIdentChar(ch) {
         if (ch >= 48 && ch <= 57) // 0-9
           return true;
@@ -123,7 +123,7 @@ var LibraryGLEmulation = {
       return false;
     },
 
-    init: function() {
+    init() {
       // Do not activate immediate/emulation code (e.g. replace glDrawElements) when in FULL_ES2 mode.
       // We do not need full emulation, we instead emulate client-side arrays etc. in FULL_ES2 code in
       // a straightforward manner, and avoid not having a bound buffer be ambiguous between es2 emulation
@@ -698,7 +698,7 @@ var LibraryGLEmulation = {
       };
     },
 
-    getAttributeFromCapability: function(cap) {
+    getAttributeFromCapability(cap) {
       var attrib = null;
       switch (cap) {
         case 0xDE1: // GL_TEXTURE_2D - XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support it

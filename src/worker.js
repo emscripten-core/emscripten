@@ -99,7 +99,7 @@ Module['instantiateWasm'] = (info, receiveInstance) => {
 // Turn unhandled rejected promises into errors so that the main thread will be
 // notified about them.
 self.onunhandledrejection = (e) => {
-  throw e.reason ?? e;
+  throw e.reason || e;
 };
 
 function handleMessage(e) {
