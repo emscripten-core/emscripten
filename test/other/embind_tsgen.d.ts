@@ -57,7 +57,7 @@ export interface DerivedClass extends BaseClass {
 export type ValArr = [ number, number, number ];
 
 export interface MainModule {
-  Test: {new(): Test};
+  Test: {new(): Test; staticFunction(_0: number): number};
   class_returning_fn(): Test;
   class_unique_ptr_returning_fn(): Test;
   a_class_instance: Test;

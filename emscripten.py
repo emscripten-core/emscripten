@@ -785,7 +785,7 @@ def make_export_wrappers(function_exports, delay_assignment):
 
 def create_receiving(function_exports):
   # When not declaring asm exports this section is empty and we instead programatically export
-  # symbols on the global object by calling exportAsmFunctions after initialization
+  # symbols on the global object by calling exportWasmSymbols after initialization
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
     return ''
 
@@ -896,7 +896,7 @@ def create_pointer_conversion_wrappers(metadata):
     '__cxa_decrement_exception_refcount': '_p',
     '_wasmfs_write_file': '_ppp',
     '__dl_seterr': '_pp',
-    '_emscripten_run_in_main_runtime_thread_js': '___p_',
+    '_emscripten_run_on_main_thread_js': '___p_',
     '_emscripten_proxy_execute_task_queue': '_p',
     '_emscripten_thread_exit': '_p',
     '_emscripten_thread_init': '_p_____',
@@ -913,10 +913,17 @@ def create_pointer_conversion_wrappers(metadata):
     '__get_exception_message': '_ppp',
   }
 
+  for function in settings.SIGNATURE_CONVERSIONS:
+    sym, sig = function.split(':')
+    mapping[sym] = sig
+
   wrappers = '''
-function applySignatureConversions(exports) {
+// Argument name here must shadow the `wasmExports` global so
+// that it is recognised by metadce and minify-import-export-names
+// passes.
+function applySignatureConversions(wasmExports) {
   // First, make a copy of the incoming exports object
-  exports = Object.assign({}, exports);
+  wasmExports = Object.assign({}, wasmExports);
 '''
 
   sigs_seen = set()
@@ -937,8 +944,8 @@ function applySignatureConversions(exports) {
 
   for f in wrap_functions:
     sig = mapping[f]
-    wrappers += f"\n  exports['{f}'] = makeWrapper_{sig}(exports['{f}']);"
-  wrappers += '\n  return exports\n}'
+    wrappers += f"\n  wasmExports['{f}'] = makeWrapper_{sig}(wasmExports['{f}']);"
+  wrappers += 'return wasmExports;\n}'
 
   return wrappers
 
