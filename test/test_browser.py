@@ -1498,6 +1498,7 @@ keydown(100);keyup(100); // trigger the end
     self.run_process([FILE_PACKAGER, 'more.data', '--preload', 'data.dat', '--separate-metadata', '--js-output=more.js'])
     self.btest(Path('browser/separate_metadata_later.cpp'), '1', args=['-sFORCE_FILESYSTEM'])
 
+  @also_with_wasm64
   def test_idbstore(self):
     secret = str(time.time())
     for stage in [0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5]:
@@ -1506,6 +1507,7 @@ keydown(100);keyup(100); // trigger the end
                       args=['-lidbstore.js', f'-DSTAGE={stage}', f'-DSECRET="{secret}"'],
                       output_basename=f'idbstore_{stage}')
 
+  @also_with_wasm64
   def test_idbstore_sync(self):
     secret = str(time.time())
     self.btest(test_file('browser/test_idbstore_sync.c'), '6', args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '-sASYNCIFY'])
