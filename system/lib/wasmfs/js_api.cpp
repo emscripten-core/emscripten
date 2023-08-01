@@ -23,6 +23,7 @@ using namespace wasmfs;
 extern "C" {
 
 __wasi_fd_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend);
+int wasmfs_create_directory(const char* path __attribute__((nonnull)), mode_t mode, backend_t backend);
 
 // Copy the file specified by the pathname into JS.
 // Return a pointer to the JS buffer in HEAPU8.
@@ -263,6 +264,10 @@ int _wasmfs_stat(char* path, struct stat* statBuf) {
 
 int _wasmfs_lstat(char* path, struct stat* statBuf) {
   return __syscall_lstat64((intptr_t)path, (intptr_t)statBuf);
+}
+
+int _wasmfs_mkdev(char* path, mode_t mode, backend_t backend) {
+  return wasmfs_create_file(path, mode, backend);
 }
 
 // Helper method that identifies what a path is:

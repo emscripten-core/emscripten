@@ -37,9 +37,12 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     '$FS_modeStringToFlags',
     'malloc',
     'free',
+    'wasmfs_create_jsimpl_backend',
+    '$wasmFS$backends'
 #endif
   ],
   $FS : {
+    devices: {},
     init: () => {
       FS.ensureErrnoError();
     },
@@ -359,6 +362,70 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       }));
     },
     // TODO: mkdev
+    major: (dev) => ((dev) >> 8),
+    minor: (dev) => ((dev) & 0xff),
+    makedev: (ma, mi) => ((ma) << 8 | (mi)),
+    registerDevice: (dev, ops) => {
+      var backendPointer = _wasmfs_create_jsimpl_backend();
+
+      var defaultOps = {
+        allocFile: (file) => {},
+        freeFile: (file) => {},
+        write: (file, buffer, length, offset) => {},
+        read: (file, buffer, length, offset) => {},
+        getSize: (file) => {}
+      }
+
+      console.log("Pre ops: ", ops);
+
+      if (typeof ops.allocFile === 'undefined') {
+        ops.allocFile = defaultOps.allocFile;
+      }
+
+      if (typeof ops.freeFile === 'undefined') {
+        ops.freeFile = defaultOps.freeFile;
+      }
+
+      if (typeof ops.write === 'undefined') {
+        ops.write = defaultOps.write;
+      }
+
+      if (typeof ops.read === 'undefined') {
+        ops.read = defaultOps.read;
+      }
+
+      if (typeof ops.getSize === 'undefined') {
+        ops.getSize = defaultOps.getSize;
+      }
+
+      console.log("Post ops: ", ops);
+
+      wasmFS$backends[backendPointer] = ops;
+
+      console.log("Backend: ", backendPointer);
+      FS.devices[dev] = backendPointer;
+    },
+    // mode is an optional argument, which will be set to 0666 if not passed in.
+    mkdev: (path, mode, dev) => {
+      if (typeof dev === 'undefined') {
+        dev = mode;
+        mode = 438 /* 0666 */;
+      }
+
+      var deviceBackend = FS.devices[dev];
+      if (!deviceBackend) {
+        throw new Error("Invalid device ID.");
+      }
+
+      console.log("JS API MODE: ", mode);
+      mode |= {{{ cDefs.S_IFCHR }}};
+      console.log("BIT OR: ", mode);
+      var err = withStackSave(() => (
+        __wasmfs_mkdev(stringToUTF8OnStack(path), mode, deviceBackend)
+      ));
+      console.log("JS ERR: ", err);
+      return FS.handleError(err);
+    },
     rename: (oldPath, newPath) => {
       return FS.handleError(withStackSave(() => {
         var oldPathBuffer = stringToUTF8OnStack(oldPath);

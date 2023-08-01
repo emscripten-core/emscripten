@@ -452,7 +452,9 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       }
 
       // Mask out everything except the permissions bits.
-      mode &= S_IALLUGO;
+      printf("C Before Mask: %d, %d\n", mode, S_ISCHR(mode));
+      // mode &= S_IALLUGO;
+      printf("C After Mask: %d, %d\n", mode, S_ISCHR(mode));
 
       // If there is no explicitly provided backend, use the parent's backend.
       if (!backend) {

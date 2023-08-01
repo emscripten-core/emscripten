@@ -409,6 +409,19 @@ int main() {
     test_fs_mkdirTree();
     test_fs_utime();
 
+    EM_ASM(
+        var id = FS.makedev(64, 0);
+        FS.registerDevice(id, {});
+        FS.mkdev("/dummydevice", id);
+        console.log("ID: ", id);
+    );
+    struct stat s;
+    stat("/dummydevice", &s);
+    printf("Mode: %d\n", s.st_mode);
+    printf("Check standard: %d\n", S_ISREG(s.st_mode));
+    printf("Check: %d\n", S_ISCHR(s.st_mode));
+    // assert(S_ISCHR(s.st_mode));
+
     cleanup();
 
     puts("success");
