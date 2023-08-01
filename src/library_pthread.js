@@ -955,7 +955,7 @@ var LibraryPThread = {
     _exit(returnCode);
   },
 
-  $proxyToMainThread__deps: ['$withStackSave', '_emscripten_run_in_main_runtime_thread_js'],
+  $proxyToMainThread__deps: ['$withStackSave', '_emscripten_run_on_main_thread_js'],
   $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...(number|boolean))} */',
   $proxyToMainThread: function(index, sync) {
     // Additional arguments are passed after those two, which are the actual
@@ -998,16 +998,17 @@ var LibraryPThread = {
         HEAPF64[b + i] = arg;
 #endif
       }
-      return __emscripten_run_in_main_runtime_thread_js(index, serializedNumCallArgs, args, sync);
+      return __emscripten_run_on_main_thread_js(index, serializedNumCallArgs, args, sync);
     });
   },
 
-  $emscripten_receive_on_main_thread_js_callArgs: '=[]',
+  // Reuse global JS array to avoid creating JS garbage for each proxied call
+  $proxiedJSCallArgs: '=[]',
 
-  emscripten_receive_on_main_thread_js__deps: [
+  _emscripten_receive_on_main_thread_js__deps: [
     '$proxyToMainThread',
-    '$emscripten_receive_on_main_thread_js_callArgs'],
-  emscripten_receive_on_main_thread_js: function(index, callingThread, numCallArgs, args) {
+    '$proxiedJSCallArgs'],
+  _emscripten_receive_on_main_thread_js: function(index, callingThread, numCallArgs, args) {
     // Sometimes we need to backproxy events to the calling thread (e.g.
     // HTML5 DOM events handlers such as
     // emscripten_set_mousemove_callback()), so keep track in a globally
@@ -1016,19 +1017,19 @@ var LibraryPThread = {
 #if WASM_BIGINT
     numCallArgs /= 2;
 #endif
-    emscripten_receive_on_main_thread_js_callArgs.length = numCallArgs;
+    proxiedJSCallArgs.length = numCallArgs;
     var b = args >> 3;
     for (var i = 0; i < numCallArgs; i++) {
 #if WASM_BIGINT
       if (HEAP64[b + 2*i]) {
         // It's a BigInt.
-        emscripten_receive_on_main_thread_js_callArgs[i] = HEAP64[b + 2*i + 1];
+        proxiedJSCallArgs[i] = HEAP64[b + 2*i + 1];
       } else {
         // It's a Number.
-        emscripten_receive_on_main_thread_js_callArgs[i] = HEAPF64[b + 2*i + 1];
+        proxiedJSCallArgs[i] = HEAPF64[b + 2*i + 1];
       }
 #else
-      emscripten_receive_on_main_thread_js_callArgs[i] = HEAPF64[b + i];
+      proxiedJSCallArgs[i] = HEAPF64[b + i];
 #endif
     }
     // Proxied JS library funcs are encoded as positive values, and
@@ -1040,9 +1041,9 @@ var LibraryPThread = {
     var func = proxiedFunctionTable[index];
 #endif
 #if ASSERTIONS
-    assert(func.length == numCallArgs, 'Call args mismatch in emscripten_receive_on_main_thread_js');
+    assert(func.length == numCallArgs, 'Call args mismatch in _emscripten_receive_on_main_thread_js');
 #endif
-    return func.apply(null, emscripten_receive_on_main_thread_js_callArgs);
+    return func.apply(null, proxiedJSCallArgs);
   },
 
   $establishStackSpace__internal: true,
