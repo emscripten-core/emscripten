@@ -62,11 +62,11 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 #endif
   ],
   $FS : {
-    init: () => {
+    init() {
       FS.ensureErrnoError();
     },
     ErrnoError: null,
-    handleError: (returnValue) => {
+    handleError(returnValue) {
       // Assume errors correspond to negative returnValues
       // since some functions like _wasmfs_open() return positive
       // numbers on success (some callers of this function may need to negate the parameter).
@@ -76,7 +76,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
       return returnValue;
     },
-    ensureErrnoError: () => {
+    ensureErrnoError() {
       if (FS.ErrnoError) return;
       FS.ErrnoError = /** @this{Object} */ function ErrnoError(code) {
         this.errno = code;
@@ -86,7 +86,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       FS.ErrnoError.prototype = new Error();
       FS.ErrnoError.prototype.constructor = FS.ErrnoError;
     },
-    createDataFile: (parent, name, fileData, canRead, canWrite, canOwn) => {
+    createDataFile(parent, name, fileData, canRead, canWrite, canOwn) {
       var pathName = name ? parent + '/' + name : parent;
       var mode = FS_getMode(canRead, canWrite);
 
@@ -101,7 +101,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         FS.writeFile(pathName, fileData);
       }
     },
-    createPath: (parent, path, canRead, canWrite) => {
+    createPath(parent, path, canRead, canWrite) {
       // Cache file path directory names.
       var parts = path.split('/').reverse();
       while (parts.length) {
@@ -124,7 +124,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
                                            // we'd error anyhow). This depends
                                            // on other code including the
                                            // __wasmfs_* method properly.
-    readFile: (path, opts = {}) => {
+    readFile(path, opts = {}) {
       opts.encoding = opts.encoding || 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
         throw new Error('Invalid encoding type "' + opts.encoding + '"');
@@ -154,7 +154,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 #if FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY // see comment above
     // Full JS API support
 
-    analyzePath: (path) => {
+    analyzePath(path) {
       // TODO: Consider simplifying this API, which for now matches the JS FS.
       var exists = !!FS.findObject(path);
       return {
@@ -172,7 +172,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       var buffer = stringToUTF8OnStack(path);
       return __wasmfs_mkdir(buffer, mode);
     })),
-    mkdirTree: (path, mode) => {
+    mkdirTree(path, mode) {
       var dirs = path.split('/');
       var d = '';
       for (var i = 0; i < dirs.length; ++i) {
@@ -195,7 +195,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       var fd = FS.handleError(__wasmfs_open(buffer, flags, mode));
       return { fd : fd };
     }),
-    create: (path, mode) => {
+    create(path, mode) {
       // Default settings copied from the legacy JS FS API.
       mode = mode !== undefined ? mode : 438 /* 0666 */;
       mode &= {{{ cDefs.S_IALLUGO }}};
@@ -211,7 +211,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       var buffer = stringToUTF8OnStack(path);
       return __wasmfs_chdir(buffer);
     }),
-    read: (stream, buffer, offset, length, position) => {
+    read(stream, buffer, offset, length, position) {
       var seeking = typeof position != 'undefined';
 
       var dataBuffer = _malloc(length);
@@ -232,7 +232,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       return bytesRead;
     },
     // Note that canOwn is an optimization that we ignore for now in WasmFS.
-    write: (stream, buffer, offset, length, position, canOwn) => {
+    write(stream, buffer, offset, length, position, canOwn) {
       var seeking = typeof position != 'undefined';
 
       var dataBuffer = _malloc(length);
@@ -251,7 +251,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
       return bytesRead;
     },
-    allocate: (stream, offset, length) => {
+    allocate(stream, offset, length) {
       return FS.handleError(__wasmfs_allocate(stream.fd, {{{ splitI64('offset') }}}, {{{ splitI64('length') }}}));
     },
     // TODO: mmap
@@ -278,11 +278,11 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     symlink: (target, linkpath) => withStackSave(() => (
       __wasmfs_symlink(stringToUTF8OnStack(target), stringToUTF8OnStack(linkpath))
     )),
-    readlink: (path) => {
+    readlink(path) {
       var readBuffer = FS.handleError(withStackSave(() => __wasmfs_readlink(stringToUTF8OnStack(path))));
       return UTF8ToString(readBuffer);
     },
-    statBufToObject : (statBuf) => {
+    statBufToObject(statBuf) {
       // i53/u53 are enough for times and ino in practice.
       return {
           dev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_dev, "u32") }}},
@@ -300,7 +300,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
           ino: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, "u53") }}}
       }
     },
-    stat: (path) => {
+    stat(path) {
       var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
       FS.handleError(withStackSave(() => {
         return __wasmfs_stat(stringToUTF8OnStack(path), statBuf);
@@ -310,7 +310,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
       return stats;
     },
-    lstat: (path) => {
+    lstat(path) {
       var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
       FS.handleError(withStackSave(() => {
         return __wasmfs_lstat(stringToUTF8OnStack(path), statBuf);
@@ -320,19 +320,19 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
       return stats;
     },
-    chmod: (path, mode) => {
+    chmod(path, mode) {
       return FS.handleError(withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
         return __wasmfs_chmod(buffer, mode);
       }));
     },
-    lchmod: (path, mode) => {
+    lchmod(path, mode) {
       return FS.handleError(withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
         return __wasmfs_lchmod(buffer, mode);
       }));
     },
-    fchmod: (fd, mode) => {
+    fchmod(fd, mode) {
       return FS.handleError(__wasmfs_fchmod(fd, mode));
     },
     utime: (path, atime, mtime) => (
@@ -340,13 +340,13 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         __wasmfs_utime(stringToUTF8OnStack(path), atime, mtime)
       )))
     ),
-    truncate: (path, len) => {
+    truncate(path, len) {
       return FS.handleError(withStackSave(() => (__wasmfs_truncate(stringToUTF8OnStack(path), {{{ splitI64('len') }}}))));
     },
-    ftruncate: (fd, len) => {
+    ftruncate(fd, len) {
       return FS.handleError(__wasmfs_ftruncate(fd, {{{ splitI64('len') }}}));
     },
-    findObject: (path) => {
+    findObject(path) {
       var result = withStackSave(() => __wasmfs_identify(stringToUTF8OnStack(path)));
       if (result == {{{ cDefs.ENOENT }}}) {
         return null;
@@ -386,14 +386,14 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       FS.handleError(withStackSave(() => __wasmfs_unmount(stringToUTF8OnStack(mountpoint))))
     ),
     // TODO: lookup
-    mknod: (path, mode, dev) => {
+    mknod(path, mode, dev) {
       return FS.handleError(withStackSave(() => {
         var pathBuffer = stringToUTF8OnStack(path);
         return __wasmfs_mknod(pathBuffer, mode, dev);
       }));
     },
     // TODO: mkdev
-    rename: (oldPath, newPath) => {
+    rename(oldPath, newPath) {
       return FS.handleError(withStackSave(() => {
         var oldPathBuffer = stringToUTF8OnStack(oldPath);
         var newPathBuffer = stringToUTF8OnStack(newPath);
@@ -401,7 +401,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       }));
     },
     // TODO: syncfs
-    llseek: (stream, offset, whence) => {
+    llseek(stream, offset, whence) {
       return FS.handleError(__wasmfs_llseek(stream.fd, {{{ splitI64('offset') }}}, whence));
     }
     // TODO: ioctl
