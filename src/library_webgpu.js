@@ -75,7 +75,6 @@ wgpu${type}Release: function(id) { WebGPU.mgr${type}.release(id) },`;
     // Must be in sync with webgpu.h.
     COPY_STRIDE_UNDEFINED: 0xFFFFFFFF,
     LIMIT_U32_UNDEFINED: 0xFFFFFFFF,
-    WHOLE_MAP_SIZE: 0xFFFFFFFF, // use 32-bit uint max
     MIP_LEVEL_COUNT_UNDEFINED: 0xFFFFFFFF,
     ARRAY_LAYER_COUNT_UNDEFINED: 0xFFFFFFFF,
     AdapterType: {
@@ -1842,7 +1841,7 @@ var LibraryWebGPU = {
 
     if (size === 0) warnOnce('getMappedRange size=0 no longer means WGPU_WHOLE_MAP_SIZE');
 
-    if (size === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
+    {{{ gpu.convertSentinelToUndefined('size') }}}
 
     var mapped;
     try {
@@ -1875,7 +1874,7 @@ var LibraryWebGPU = {
 
     if (size === 0) warnOnce('getMappedRange size=0 no longer means WGPU_WHOLE_MAP_SIZE');
 
-    if (size === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
+    {{{ gpu.convertSentinelToUndefined('size') }}}
 
     if (bufferWrapper.mapMode !== {{{ gpu.MapMode.Write }}}) {
 #if ASSERTIONS
@@ -1915,7 +1914,7 @@ var LibraryWebGPU = {
     bufferWrapper.onUnmap = [];
     var buffer = bufferWrapper.object;
 
-    if (size === {{{ gpu.WHOLE_MAP_SIZE }}}) size = undefined;
+    {{{ gpu.convertSentinelToUndefined('size') }}}
 
     // `callback` takes (WGPUBufferMapAsyncStatus status, void * userdata)
 
