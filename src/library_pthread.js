@@ -1013,7 +1013,6 @@ var LibraryPThread = {
     // HTML5 DOM events handlers such as
     // emscripten_set_mousemove_callback()), so keep track in a globally
     // accessible variable about the thread that initiated the proxying.
-    PThread.currentProxiedOperationCallerThread = callingThread;
 #if WASM_BIGINT
     numCallArgs /= 2;
 #endif
@@ -1043,7 +1042,10 @@ var LibraryPThread = {
 #if ASSERTIONS
     assert(func.length == numCallArgs, 'Call args mismatch in _emscripten_receive_on_main_thread_js');
 #endif
-    return func.apply(null, proxiedJSCallArgs);
+    PThread.currentProxiedOperationCallerThread = callingThread;
+    var rtn = func.apply(null, proxiedFunctionTable);
+    PThread.currentProxiedOperationCallerThread = 0;
+    return rtn;
   },
 
   $establishStackSpace__internal: true,

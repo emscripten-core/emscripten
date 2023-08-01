@@ -225,11 +225,9 @@ var LibraryHTML5 = {
         case {{{ cDefs.EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD }}}:
           // The event callback for the current event should be backproxied to
           // the thread that is registering the event.
-#if ASSERTIONS
-          // If we get here PThread.currentProxiedOperationCallerThread should
-          // be set to the calling thread.
-          assert(PThread.currentProxiedOperationCallerThread);
-#endif
+          // This can be 0 in the case that the caller uses
+          // EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD but on the main thread
+          // itself.
           return PThread.currentProxiedOperationCallerThread;
         default:
           // The event callback for the current event should be proxied to the

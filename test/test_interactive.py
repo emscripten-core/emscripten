@@ -237,13 +237,17 @@ class interactive(BrowserCore):
     for args in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
       self.btest('html5_callbacks_on_calling_thread.c', expected='1', args=args + ['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR', '-pthread', '-sPROXY_TO_PTHREAD'])
 
-  # Test that it is possible to register HTML5 event callbacks on either main browser thread, or application main thread,
-  # and that the application can manually proxy the event from main browser thread to the application main thread, to
-  # implement event suppression capabilities.
-  def test_html5_callback_on_two_threads(self):
+  # Test that it is possible to register HTML5 event callbacks on either main browser thread, or
+  # application main thread, and that the application can manually proxy the event from main browser
+  # thread to the application main thread, to implement event suppression capabilities.
+  @parameterized({
+    '': ([],),
+    'pthread': (['-pthread'],),
+    'proxy_to_pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
+  def test_html5_event_callback_in_two_threads(self, args):
     # TODO: Make this automatic by injecting enter key press in e.g. shell html file.
-    for args in [[], ['-pthread', '-sPROXY_TO_PTHREAD']]:
-      self.btest('html5_event_callback_in_two_threads.c', expected='1', args=args)
+    self.btest('html5_event_callback_in_two_threads.c', expected='1', args=args)
 
   # Test that emscripten_hide_mouse() is callable from pthreads (and proxies to main thread to obtain the proper window.devicePixelRatio value).
   def test_emscripten_hide_mouse(self):
