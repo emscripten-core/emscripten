@@ -331,7 +331,7 @@ var LibraryDylink = {
     loadedLibsByName: {},
     // handle  -> dso; Used by dlsym
     loadedLibsByHandle: {},
-    init: () => {
+    init() {
 #if ASSERTIONS
       // This function needs to run after the initial wasmImports object
       // as been created.

@@ -37,7 +37,7 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY == 1 && MEMORY64
     rewindArguments: {},
 #endif
-    instrumentWasmImports: function(imports) {
+    instrumentWasmImports(imports) {
 #if ASYNCIFY_DEBUG
       dbg('asyncify instrumenting imports');
 #endif
@@ -108,14 +108,14 @@ mergeInto(LibraryManager.library, {
       }
     },
 #if ASYNCIFY == 1 && MEMORY64
-    saveOrRestoreRewindArguments: function(funcName, passedArguments) {
+    saveOrRestoreRewindArguments(funcName, passedArguments) {
       if (passedArguments.length === 0) {
         return Asyncify.rewindArguments[funcName] || []
       }
       return Asyncify.rewindArguments[funcName] = Array.from(passedArguments)
     },
 #endif
-    instrumentWasmExports: function(exports) {
+    instrumentWasmExports(exports) {
 #if ASYNCIFY_DEBUG
       dbg('asyncify instrumenting exports');
 #endif
@@ -205,7 +205,7 @@ mergeInto(LibraryManager.library, {
     asyncPromiseHandlers: null, // { resolve, reject } pair for when *all* asynchronicity is done
     sleepCallbacks: [], // functions to call every time we sleep
 
-    getCallStackId: function(funcName) {
+    getCallStackId(funcName) {
       var id = Asyncify.callStackNameToId[funcName];
       if (id === undefined) {
         id = Asyncify.callStackId++;
@@ -215,7 +215,7 @@ mergeInto(LibraryManager.library, {
       return id;
     },
 
-    maybeStopUnwind: function() {
+    maybeStopUnwind() {
 #if ASYNCIFY_DEBUG
       dbg('ASYNCIFY: maybe stop unwind', Asyncify.exportCallStack);
 #endif
@@ -240,7 +240,7 @@ mergeInto(LibraryManager.library, {
       }
     },
 
-    whenDone: function() {
+    whenDone() {
 #if ASSERTIONS
       assert(Asyncify.currData, 'Tried to wait for an async operation when none is in progress.');
       assert(!Asyncify.asyncPromiseHandlers, 'Cannot have multiple async operations in flight at once');
@@ -250,7 +250,7 @@ mergeInto(LibraryManager.library, {
       });
     },
 
-    allocateData: function() {
+    allocateData() {
       // An asyncify data structure has three fields:
       //  0  current stack pos
       //  4  max stack pos
@@ -265,12 +265,12 @@ mergeInto(LibraryManager.library, {
       return ptr;
     },
 
-    setDataHeader: function(ptr, stack, stackSize) {
+    setDataHeader(ptr, stack, stackSize) {
       {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.stack_ptr, 'stack', '*') }}};
       {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.stack_limit, 'stack + stackSize', '*') }}};
     },
 
-    setDataRewindFunc: function(ptr) {
+    setDataRewindFunc(ptr) {
       var bottomOfCallStack = Asyncify.exportCallStack[0];
 #if ASYNCIFY_DEBUG >= 2
       dbg('ASYNCIFY: setDataRewindFunc('+ptr+'), bottomOfCallStack is', bottomOfCallStack, new Error().stack);
@@ -282,7 +282,7 @@ mergeInto(LibraryManager.library, {
 #if RELOCATABLE
     getDataRewindFunc__deps: [ '$resolveGlobalSymbol' ],
 #endif
-    getDataRewindFunc: function(ptr) {
+    getDataRewindFunc(ptr) {
       var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
       var name = Asyncify.callStackIdToName[id];
       var func = wasmExports[name];
@@ -296,7 +296,7 @@ mergeInto(LibraryManager.library, {
       return func;
     },
 
-    doRewind: function(ptr) {
+    doRewind(ptr) {
       var start = Asyncify.getDataRewindFunc(ptr);
 #if ASYNCIFY_DEBUG
       dbg('ASYNCIFY: start:', start);
@@ -310,7 +310,7 @@ mergeInto(LibraryManager.library, {
     // This receives a function to call to start the async operation, and
     // handles everything else for the user of this API. See emscripten_sleep()
     // and other async methods for simple examples of usage.
-    handleSleep: function(startAsync) {
+    handleSleep(startAsync) {
 #if ASSERTIONS
       assert(Asyncify.state !== Asyncify.State.Disabled, 'Asyncify cannot be done during or after the runtime exits');
 #endif
@@ -424,7 +424,7 @@ mergeInto(LibraryManager.library, {
     //
     // This is particularly useful for native JS `async` functions where the
     // returned value will "just work" and be passed back to C++.
-    handleAsync: function(startAsync) {
+    handleAsync(startAsync) {
       return Asyncify.handleSleep((wakeUp) => {
         // TODO: add error handling as a second param when handleSleep implements it.
         startAsync().then(wakeUp);
@@ -439,10 +439,10 @@ mergeInto(LibraryManager.library, {
     // Stores all the exported raw Wasm functions that are wrapped with async
     // WebAssembly.Functions.
     asyncExports: null,
-    isAsyncExport: function(func) {
+    isAsyncExport(func) {
       return Asyncify.asyncExports && Asyncify.asyncExports.has(func);
     },
-    handleSleep: function(startAsync) {
+    handleSleep(startAsync) {
       {{{ runtimeKeepalivePush(); }}}
       var promise = new Promise((resolve) => {
         startAsync(resolve);
@@ -452,13 +452,13 @@ mergeInto(LibraryManager.library, {
       });
       return promise;
     },
-    handleAsync: function(startAsync) {
+    handleAsync(startAsync) {
       return Asyncify.handleSleep((wakeUp) => {
         // TODO: add error handling as a second param when handleSleep implements it.
         startAsync().then(wakeUp);
       });
     },
-    makeAsyncFunction: function(original) {
+    makeAsyncFunction(original) {
 #if ASYNCIFY_DEBUG
       dbg('asyncify: returnPromiseOnSuspend for', original);
 #endif
@@ -553,7 +553,7 @@ mergeInto(LibraryManager.library, {
   $Fibers: {
     nextFiber: 0,
     trampolineRunning: false,
-    trampoline: function() {
+    trampoline() {
       if (!Fibers.trampolineRunning && Fibers.nextFiber) {
         Fibers.trampolineRunning = true;
         do {
@@ -570,7 +570,7 @@ mergeInto(LibraryManager.library, {
     /*
      * NOTE: This function is the asynchronous part of emscripten_fiber_swap.
      */
-    finishContextSwitch: function(newFiber) {
+    finishContextSwitch(newFiber) {
       var stack_base = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_base,  '*') }}};
       var stack_max =  {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_limit, '*') }}};
       _emscripten_stack_set_limits(stack_base, stack_max);

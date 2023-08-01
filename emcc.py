@@ -819,7 +819,6 @@ def process_dynamic_libs(dylibs, lib_dirs):
   while to_process:
     dylib = to_process.pop()
     dylink = webassembly.parse_dylink_section(dylib)
-    print(dylink)
     for needed in dylink.needed:
       if needed in seen:
         continue
@@ -2010,6 +2009,7 @@ def phase_linker_setup(options, state, newargs):
   if settings.STRICT:
     if not settings.MODULARIZE and not settings.EXPORT_ES6:
       default_setting('STRICT_JS', 1)
+    default_setting('USE_GLFW', 0)
     default_setting('AUTO_JS_LIBRARIES', 0)
     default_setting('AUTO_NATIVE_LIBRARIES', 0)
     default_setting('AUTO_ARCHIVE_INDEXES', 0)
@@ -2427,7 +2427,7 @@ def phase_linker_setup(options, state, newargs):
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$unSign']
 
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exportAsmFunctions']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exportWasmSymbols']
 
   if settings.ALLOW_MEMORY_GROWTH:
     # Setting ALLOW_MEMORY_GROWTH turns off ABORTING_MALLOC, as in that mode we default to
@@ -4296,7 +4296,7 @@ class ScriptSource:
 
 def is_valid_abspath(options, path_name):
   # Any path that is underneath the emscripten repository root must be ok.
-  if utils.path_from_root().replace('\\', '/') in path_name.replace('\\', '/'):
+  if utils.normalize_path(path_name).startswith(utils.normalize_path(utils.path_from_root())):
     return True
 
   def in_directory(root, child):

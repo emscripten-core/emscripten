@@ -54,12 +54,12 @@ var LibraryBrowser = {
       timingValue: 0,
       currentFrameNumber: 0,
       queue: [],
-      pause: function() {
+      pause() {
         Browser.mainLoop.scheduler = null;
         // Incrementing this signals the previous main loop that it's now become old, and it must return.
         Browser.mainLoop.currentlyRunningMainloop++;
       },
-      resume: function() {
+      resume() {
         Browser.mainLoop.currentlyRunningMainloop++;
         var timingMode = Browser.mainLoop.timingMode;
         var timingValue = Browser.mainLoop.timingValue;
@@ -70,7 +70,7 @@ var LibraryBrowser = {
         _emscripten_set_main_loop_timing(timingMode, timingValue);
         Browser.mainLoop.scheduler();
       },
-      updateStatus: function() {
+      updateStatus() {
         if (Module['setStatus']) {
           var message = Module['statusMessage'] || 'Please wait...';
           var remaining = Browser.mainLoop.remainingBlockers;
@@ -86,7 +86,7 @@ var LibraryBrowser = {
           }
         }
       },
-      runIter: function(func) {
+      runIter(func) {
         if (ABORT) return;
         if (Module['preMainLoop']) {
           var preRet = Module['preMainLoop']();
@@ -103,7 +103,7 @@ var LibraryBrowser = {
     moduleContextCreatedCallbacks: [],
     workers: [],
 
-    init: function() {
+    init() {
       if (Browser.initted) return;
       Browser.initted = true;
 
@@ -255,7 +255,7 @@ var LibraryBrowser = {
       }
     },
 
-    createContext: function(/** @type {HTMLCanvasElement} */ canvas, useWebGL, setInModule, webGLContextAttributes) {
+    createContext(/** @type {HTMLCanvasElement} */ canvas, useWebGL, setInModule, webGLContextAttributes) {
       if (useWebGL && Module.ctx && canvas == Module.canvas) return Module.ctx; // no need to recreate GL context if it's already been created for this canvas.
 
       var ctx;
@@ -307,12 +307,12 @@ var LibraryBrowser = {
       return ctx;
     },
 
-    destroyContext: function(canvas, useWebGL, setInModule) {},
+    destroyContext(canvas, useWebGL, setInModule) {},
 
     fullscreenHandlersInstalled: false,
     lockPointer: undefined,
     resizeCanvas: undefined,
-    requestFullscreen: function(lockPointer, resizeCanvas) {
+    requestFullscreen(lockPointer, resizeCanvas) {
       Browser.lockPointer = lockPointer;
       Browser.resizeCanvas = resizeCanvas;
       if (typeof Browser.lockPointer == 'undefined') Browser.lockPointer = true;
@@ -372,12 +372,12 @@ var LibraryBrowser = {
     },
 
 #if ASSERTIONS
-    requestFullScreen: function() {
+    requestFullScreen() {
       abort('Module.requestFullScreen has been replaced by Module.requestFullscreen (without a capital S)');
     },
 #endif
 
-    exitFullscreen: function() {
+    exitFullscreen() {
       // This is workaround for chrome. Trying to exit from fullscreen
       // not in fullscreen state will cause "TypeError: Document not active"
       // in chrome. See https://github.com/emscripten-core/emscripten/pull/8236
@@ -397,7 +397,7 @@ var LibraryBrowser = {
 
     nextRAF: 0,
 
-    fakeRequestAnimationFrame: function(func) {
+    fakeRequestAnimationFrame(func) {
       // try to keep 60fps between calls to here
       var now = Date.now();
       if (Browser.nextRAF === 0) {
@@ -411,7 +411,7 @@ var LibraryBrowser = {
       setTimeout(func, delay);
     },
 
-    requestAnimationFrame: function(func) {
+    requestAnimationFrame(func) {
       if (typeof requestAnimationFrame == 'function') {
         requestAnimationFrame(func);
         return;
@@ -432,13 +432,13 @@ var LibraryBrowser = {
 
     // abort and pause-aware versions TODO: build main loop on top of this?
 
-    safeSetTimeout: function(func, timeout) {
+    safeSetTimeout(func, timeout) {
       // Legacy function, this is used by the SDL2 port so we need to keep it
       // around at least until that is updated.
       // See https://github.com/libsdl-org/SDL/pull/6304
       return safeSetTimeout(func, timeout);
     },
-    safeRequestAnimationFrame: function(func) {
+    safeRequestAnimationFrame(func) {
       {{{ runtimeKeepalivePush() }}}
       return Browser.requestAnimationFrame(() => {
         {{{ runtimeKeepalivePop() }}}
@@ -446,7 +446,7 @@ var LibraryBrowser = {
       });
     },
 
-    getMimetype: function(name) {
+    getMimetype(name) {
       return {
         'jpg': 'image/jpeg',
         'jpeg': 'image/jpeg',
@@ -458,7 +458,7 @@ var LibraryBrowser = {
       }[name.substr(name.lastIndexOf('.')+1)];
     },
 
-    getUserMedia: function(func) {
+    getUserMedia(func) {
       if (!window.getUserMedia) {
         window.getUserMedia = navigator['getUserMedia'] ||
                               navigator['mozGetUserMedia'];
@@ -467,14 +467,14 @@ var LibraryBrowser = {
     },
 
 
-    getMovementX: function(event) {
+    getMovementX(event) {
       return event['movementX'] ||
              event['mozMovementX'] ||
              event['webkitMovementX'] ||
              0;
     },
 
-    getMovementY: function(event) {
+    getMovementY(event) {
       return event['movementY'] ||
              event['mozMovementY'] ||
              event['webkitMovementY'] ||
@@ -490,7 +490,7 @@ var LibraryBrowser = {
     //       this as an integer, don't simply cast to int, or you may receive scroll events for wheel delta == 0.
     // NOTE: We convert all units returned by events into steps, i.e. individual wheel notches.
     //       These conversions are only approximations. Changing browsers, operating systems, or even settings can change the values.
-    getMouseWheelDelta: function(event) {
+    getMouseWheelDelta(event) {
       var delta = 0;
       switch (event.type) {
         case 'DOMMouseScroll':
@@ -533,7 +533,7 @@ var LibraryBrowser = {
     touches: {},
     lastTouches: {},
 
-    calculateMouseEvent: function(event) { // event should be mousemove, mousedown or mouseup
+    calculateMouseEvent(event) { // event should be mousemove, mousedown or mouseup
       if (Browser.pointerLock) {
         // When the pointer is locked, calculate the coordinates
         // based on the movement of the mouse.
@@ -618,12 +618,12 @@ var LibraryBrowser = {
 
     resizeListeners: [],
 
-    updateResizeListeners: function() {
+    updateResizeListeners() {
       var canvas = Module['canvas'];
       Browser.resizeListeners.forEach((listener) => listener(canvas.width, canvas.height));
     },
 
-    setCanvasSize: function(width, height, noUpdates) {
+    setCanvasSize(width, height, noUpdates) {
       var canvas = Module['canvas'];
       Browser.updateCanvasDimensions(canvas, width, height);
       if (!noUpdates) Browser.updateResizeListeners();
@@ -631,7 +631,7 @@ var LibraryBrowser = {
 
     windowedWidth: 0,
     windowedHeight: 0,
-    setFullscreenCanvasSize: function() {
+    setFullscreenCanvasSize() {
       // check if SDL is available
       if (typeof SDL != "undefined") {
         var flags = {{{ makeGetValue('SDL.screen', '0', 'u32') }}};
@@ -642,7 +642,7 @@ var LibraryBrowser = {
       Browser.updateResizeListeners();
     },
 
-    setWindowedCanvasSize: function() {
+    setWindowedCanvasSize() {
       // check if SDL is available
       if (typeof SDL != "undefined") {
         var flags = {{{ makeGetValue('SDL.screen', '0', 'u32') }}};
@@ -653,7 +653,7 @@ var LibraryBrowser = {
       Browser.updateResizeListeners();
     },
 
-    updateCanvasDimensions : function(canvas, wNative, hNative) {
+    updateCanvasDimensions(canvas, wNative, hNative) {
       if (wNative && hNative) {
         canvas.widthNative = wNative;
         canvas.heightNative = hNative;
@@ -1239,7 +1239,6 @@ var LibraryBrowser = {
 
 #if BUILD_AS_WORKER
   emscripten_worker_respond_provisionally__proxy: 'sync',
-  emscripten_worker_respond_provisionally__sig: 'vii',
   emscripten_worker_respond_provisionally: function(data, size) {
     if (workerResponded) throw 'already responded with final response!';
     var transferObject = {
@@ -1255,7 +1254,6 @@ var LibraryBrowser = {
   },
 
   emscripten_worker_respond__proxy: 'sync',
-  emscripten_worker_respond__sig: 'vii',
   emscripten_worker_respond: function(data, size) {
     if (workerResponded) throw 'already responded with final response!';
     workerResponded = true;

@@ -183,7 +183,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #endif
 
 #if !DECLARE_ASM_MODULE_EXPORTS
-  exportAsmFunctions(wasmExports);
+  exportWasmSymbols(wasmExports);
 #else
   <<< WASM_MODULE_EXPORTS >>>
 #endif

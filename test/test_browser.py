@@ -380,13 +380,13 @@ If manually bisecting:
 
     # Test subdirectory handling with asset packaging.
     delete_dir('assets')
-    ensure_dir('assets/sub/asset1/'.replace('\\', '/'))
-    ensure_dir('assets/sub/asset1/.git'.replace('\\', '/')) # Test adding directory that shouldn't exist.
-    ensure_dir('assets/sub/asset2/'.replace('\\', '/'))
+    ensure_dir('assets/sub/asset1')
+    ensure_dir('assets/sub/asset1/.git') # Test adding directory that shouldn't exist.
+    ensure_dir('assets/sub/asset2')
     create_file('assets/sub/asset1/file1.txt', '''load me right before running the code please''')
     create_file('assets/sub/asset1/.git/shouldnt_be_embedded.txt', '''this file should not get embedded''')
     create_file('assets/sub/asset2/file2.txt', '''load me right before running the code please''')
-    absolute_assets_src_path = 'assets'.replace('\\', '/')
+    absolute_assets_src_path = 'assets'
 
     def make_main_two_files(path1, path2, nonexistingpath):
       create_file('main.cpp', r'''

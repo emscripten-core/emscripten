@@ -1040,7 +1040,7 @@ function createWasm() {
 #if !DECLARE_ASM_MODULE_EXPORTS
     // If we didn't declare the asm exports as top level enties this function
     // is in charge of programatically exporting them on the global object.
-    exportAsmFunctions(exports);
+    exportWasmSymbols(exports);
 #endif
 
 #if PTHREADS || WASM_WORKERS
