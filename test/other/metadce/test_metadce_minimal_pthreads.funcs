@@ -25,7 +25,7 @@ $__wasm_init_tls
 $_do_call
 $_emscripten_check_mailbox
 $_emscripten_proxy_main
-$_emscripten_run_in_main_runtime_thread_js
+$_emscripten_run_on_main_thread_js
 $_emscripten_thread_crashed
 $_emscripten_thread_exit
 $_emscripten_thread_free_data

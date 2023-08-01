@@ -188,7 +188,7 @@ static void _do_call(void* arg) {
       break;
     case EM_PROXIED_JS_FUNCTION:
       q->returnValue.d =
-        emscripten_receive_on_main_thread_js((intptr_t)q->functionPtr, q->callingThread, q->args[0].i, &q->args[1].d);
+        _emscripten_receive_on_main_thread_js((intptr_t)q->functionPtr, q->callingThread, q->args[0].i, &q->args[1].d);
       break;
     case EM_FUNC_SIG_V:
       ((em_func_v)q->functionPtr)();
@@ -420,7 +420,7 @@ int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void* fun
   return q.returnValue.i;
 }
 
-double _emscripten_run_in_main_runtime_thread_js(int index, int num_args, int64_t* buffer, int sync) {
+double _emscripten_run_on_main_thread_js(int index, int num_args, int64_t* buffer, int sync) {
   em_queued_call q;
   em_queued_call *c;
   if (sync) {
