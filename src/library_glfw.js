@@ -1743,11 +1743,11 @@ var LibraryGLFW = {
 
   glfwMakeContextCurrent: function(winid) {
     if (winid !== null && GLFW.windows !== null) {
-      for (i = 0; i < GLFW.windows.length && GLFW.windows[i].id != winid; i++) {
-        // no-op
-      }
-      if (i < GLFW.windows.length) {
-        Module['ctx'] = Module['ctx' + (winid - 1)];
+      for (var i in GLFW.windows) {
+        if (GLFW.windows[i].id == winid) {
+          Module['ctx'] = Module['ctx' + (winid - 1)];
+          break;
+        }
       }
     } else {
         Module['ctx'] = Module['ctx0'];
