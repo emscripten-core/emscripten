@@ -5,7 +5,11 @@
  */
 
 var LibraryHTML5 = {
-  $JSEvents__deps: ['$withStackSave'],
+  $JSEvents__deps: ['$withStackSave',
+#if PTHREADS
+    'emscripten_dispatch_to_thread_',
+#endif
+  ],
   $JSEvents: {
 
 /* We do not depend on the exact initial values of falsey member fields - these fields can be populated on-demand

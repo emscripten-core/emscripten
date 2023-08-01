@@ -965,12 +965,6 @@ var LibraryPThread = {
     // We also pass 'sync' to C separately, since C needs to look at it.
     var numCallArgs = arguments.length - 2;
     var outerArgs = arguments;
-#if ASSERTIONS
-    var maxArgs = {{{ cDefs.EM_QUEUED_JS_CALL_MAX_ARGS - 1 }}};
-    if (numCallArgs > maxArgs) {
-      throw 'proxyToMainThread: Too many arguments ' + numCallArgs + ' to proxied function idx=' + index + ', maximum supported is ' + maxArgs;
-    }
-#endif
     // Allocate a buffer, which will be copied by the C code.
     return withStackSave(() => {
       // First passed parameter specifies the number of arguments to the function.

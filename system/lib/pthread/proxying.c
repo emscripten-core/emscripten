@@ -10,11 +10,13 @@
 #include <emscripten/threading.h>
 #include <pthread.h>
 #include <stdatomic.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "em_task_queue.h"
 #include "thread_mailbox.h"
+#include "threading_internal.h"
 
 struct em_proxying_queue {
   // Protects all accesses to em_task_queues, size, and capacity.
@@ -579,4 +581,61 @@ em_promise_t emscripten_proxy_promise(em_proxying_queue* q,
                           promise,
                           &block->ctx,
                           &block->promise_ctx);
+}
+
+typedef struct proxied_js_func_t {
+  int funcIndex;
+  pthread_t callingThread;
+  int numArgs;
+  double* argBuffer;
+  double result;
+  bool owned;
+} proxied_js_func_t;
+
+static void run_js_func(void* arg) {
+  proxied_js_func_t* f = (proxied_js_func_t*)arg;
+  f->result = _emscripten_receive_on_main_thread_js(
+    f->funcIndex, f->callingThread, f->numArgs, f->argBuffer);
+  if (f->owned) {
+    free(f->argBuffer);
+    free(f);
+  }
+}
+
+double _emscripten_run_on_main_thread_js(int index,
+                                         int num_args,
+                                         double* buffer,
+                                         int sync) {
+  proxied_js_func_t f = {
+    .funcIndex = index,
+    .callingThread = pthread_self(),
+    .numArgs = num_args,
+    .argBuffer = buffer,
+    .owned = false,
+  };
+
+  em_proxying_queue* q = emscripten_proxy_get_system_queue();
+  pthread_t target = emscripten_main_runtime_thread_id();
+
+  if (sync) {
+    if (!emscripten_proxy_sync(q, target, run_js_func, &f)) {
+      assert(false && "emscripten_proxy_sync failed");
+      return 0;
+    }
+    return f.result;
+  }
+
+  // Make a heap-heap allocated copy of the proxied_js_func_t
+  proxied_js_func_t* arg = malloc(sizeof(proxied_js_func_t));
+  *arg = f;
+  arg->owned = true;
+
+  // Also make a copyh of the argBuffer.
+  arg->argBuffer = malloc(num_args*sizeof(double));
+  memcpy(arg->argBuffer, buffer, num_args*sizeof(double));
+
+  if (!emscripten_proxy_async(q, target, run_js_func, arg)) {
+    assert(false && "emscripten_proxy_async failed");
+  }
+  return 0;
 }
