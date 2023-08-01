@@ -5,6 +5,12 @@
  */
 
 mergeInto(LibraryManager.library, {
+  $MEMFS__deps: ['wasmfs_create_memory_backend'],
+  $MEMFS: {
+    createBackend(opts) {
+      return _wasmfs_create_memory_backend();
+    }
+  },
   $wasmFSPreloadedFiles: [],
   $wasmFSPreloadedDirs: [],
   // We must note when preloading has been "flushed", that is, the time at which
@@ -18,6 +24,7 @@ FS.init();
 FS.createPreloadedFile = FS_createPreloadedFile;
 `,
   $FS__deps: [
+    '$MEMFS',
     '$wasmFSPreloadedFiles',
     '$wasmFSPreloadedDirs',
     '$wasmFSPreloadingFlushed',
@@ -35,6 +42,21 @@ FS.createPreloadedFile = FS_createPreloadedFile;
                                              // up requiring all of our code
                                              // here.
     '$FS_modeStringToFlags',
+#if LibraryManager.has('library_icasefs.js')
+    '$ICASEFS',
+#endif
+#if LibraryManager.has('library_nodefs.js')
+    '$NODEFS',
+#endif
+#if LibraryManager.has('library_opfs.js')
+    '$OPFS',
+#endif
+#if LibraryManager.has('library_jsfilefs.js')
+    '$JSFILEFS',
+#endif
+#if LibraryManager.has('library_fetchfs.js')
+    '$FETCHFS',
+#endif
     'malloc',
     'free',
 #endif
@@ -349,8 +371,20 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       __wasmfs_readdir_finish(state);
       return entries;
     }),
-    // TODO: mount
-    // TODO: unmount
+    mount: (type, opts, mountpoint) => {
+#if ASSERTIONS
+      if (typeof type == 'string') {
+        // The filesystem was not included, and instead we have an error
+        // message stored in the variable.
+        throw type;
+      }
+#endif
+      var backendPointer = type.createBackend(opts);
+      return FS.handleError(withStackSave(() => __wasmfs_mount(stringToUTF8OnStack(mountpoint), backendPointer)));
+    },
+    unmount: (mountpoint) => (
+      FS.handleError(withStackSave(() => __wasmfs_unmount(stringToUTF8OnStack(mountpoint))))
+    ),
     // TODO: lookup
     mknod(path, mode, dev) {
       return FS.handleError(withStackSave(() => {

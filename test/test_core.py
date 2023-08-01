@@ -5634,6 +5634,9 @@ Module = {
 
   def test_mount(self):
     self.set_setting('FORCE_FILESYSTEM')
+    if self.get_setting('WASMFS'):
+      self.emcc_args += ['-licasefs.js']
+      self.emcc_args += ['-ljsfilefs.js']
     self.do_runf(test_file('fs/test_mount.c'), 'success')
 
   def test_getdents64(self):
@@ -5941,6 +5944,8 @@ Module = {
   @also_with_noderawfs
   @requires_node
   def test_fs_nodefs_cloexec(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_cloexec.c'), 'success')
 
@@ -5952,12 +5957,16 @@ Module = {
 
   @requires_node
   def test_fs_nodefs_nofollow(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_nofollow.c'), 'success')
 
   @requires_node
   def test_fs_nodefs_readdir(self):
     # externally setup an existing folder structure: existing/a
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
     os.makedirs(os.path.join(self.working_dir, 'existing', 'a'))
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_readdir.c'), 'success')
@@ -5978,6 +5987,8 @@ Module = {
   @also_with_noderawfs
   @also_with_wasmfs_js
   def test_fs_writeFile(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting("FORCE_FILESYSTEM")
     self.do_run_in_out_file_test('fs/test_writeFile.cpp')
 
   def test_fs_js_api(self):
