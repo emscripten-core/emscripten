@@ -32,7 +32,7 @@ import clang_native
 import jsrun
 from tools.shared import EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import get_canonical_temp_dir, path_from_root
-from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_file, write_binary, exit_with_error
+from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_binary, exit_with_error
 from tools import shared, line_endings, building, config, utils
 
 logger = logging.getLogger('common')
@@ -902,7 +902,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     inputfile = os.path.abspath(filename)
     # For some reason es-check requires unix paths, even on windows
     if WINDOWS:
-      inputfile = inputfile.replace('\\', '/')
+      inputfile = utils.normalize_path(inputfile)
     try:
       # es-check prints the details of the errors to stdout, but it also prints
       # stuff in the case there are no errors:
@@ -1114,8 +1114,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   # Tests that the given two paths are identical, modulo path delimiters. E.g. "C:/foo" is equal to "C:\foo".
   def assertPathsIdentical(self, path1, path2):
-    path1 = path1.replace('\\', '/')
-    path2 = path2.replace('\\', '/')
+    path1 = utils.normalize_path(path1)
+    path2 = utils.normalize_path(path2)
     return self.assertIdentical(path1, path2)
 
   # Tests that the given two multiline text content are identical, modulo line
@@ -1438,7 +1438,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         filename = 'src.c'
       else:
         filename = 'src.cpp'
-      write_file(filename, src)
+      create_file(filename, src)
     return self._build_and_run(filename, expected_output, **kwargs)
 
   def do_runf(self, filename, expected_output=None, **kwargs):
@@ -1458,7 +1458,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       expected = read_file(outfile)
     output = self._build_and_run(srcfile, expected, **kwargs)
     if EMTEST_REBASELINE:
-      write_file(outfile, output)
+      utils.write_file(outfile, output)
     return output
 
   ## Does a complete test - builds, runs, checks output, etc.
@@ -1639,7 +1639,7 @@ def harness_server_func(in_queue, out_queue, port):
         ensure_dir('dump_out')
         filename = os.path.join('dump_out', query['file'][0])
         contentLength = int(self.headers['Content-Length'])
-        write_binary(filename, self.rfile.read(contentLength))
+        create_file(filename, self.rfile.read(contentLength), binary=True)
         self.send_response(200)
         self.end_headers()
 
@@ -1884,7 +1884,7 @@ class BrowserCore(RunnerCore):
     basename = os.path.basename(expected)
     shutil.copyfile(expected, self.in_dir(basename))
     reporting = read_file(test_file('browser_reporting.js'))
-    write_file('reftest.js', '''
+    create_file('reftest.js', '''
       function doReftest() {
         if (doReftest.done) return;
         doReftest.done = true;

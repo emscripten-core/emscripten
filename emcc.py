@@ -639,8 +639,6 @@ def get_binaryen_passes():
   # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
   if settings.SAFE_HEAP:
     passes += ['--safe-heap']
-  if settings.MEMORY64 == 2:
-    passes += ['--memory64-lowering']
   # sign-ext is enabled by default by llvm.  If the target browser settings don't support
   # this we lower it away here using a binaryen pass.
   if not feature_matrix.caniuse(feature_matrix.Feature.SIGN_EXT):
@@ -708,6 +706,9 @@ def get_binaryen_passes():
     passes += ['--pass-arg=jspi-exports@%s' % ','.join(settings.ASYNCIFY_EXPORTS)]
     if settings.SPLIT_MODULE:
       passes += ['--pass-arg=jspi-split-module']
+
+  if settings.MEMORY64 == 2:
+    passes += ['--memory64-lowering']
 
   if settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
     passes += ['--ignore-implicit-traps']
@@ -847,11 +848,16 @@ def process_dynamic_libs(dylibs, lib_dirs):
     # main module to avoid creating new invoke functions at runtime.
     imports = set(imports)
     imports = set(i for i in imports if not i.startswith('invoke_'))
-    strong_imports = sorted(imports.difference(exports))
+    weak_imports = webassembly.get_weak_imports(dylib)
+    strong_imports = sorted(imports.difference(weak_imports))
     logger.debug('Adding symbols requirements from `%s`: %s', dylib, imports)
 
     mangled_imports = [shared.asmjs_mangle(e) for e in sorted(imports)]
     mangled_strong_imports = [shared.asmjs_mangle(e) for e in strong_imports]
+    for sym in weak_imports:
+      mangled = shared.asmjs_mangle(sym)
+      if mangled not in settings.SIDE_MODULE_IMPORTS and mangled not in building.user_requested_exports:
+        settings.WEAK_IMPORTS.append(sym)
     settings.SIDE_MODULE_IMPORTS.extend(mangled_imports)
     settings.EXPORT_IF_DEFINED.extend(sorted(imports))
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(sorted(imports))
@@ -2003,6 +2009,7 @@ def phase_linker_setup(options, state, newargs):
   if settings.STRICT:
     if not settings.MODULARIZE and not settings.EXPORT_ES6:
       default_setting('STRICT_JS', 1)
+    default_setting('USE_GLFW', 0)
     default_setting('AUTO_JS_LIBRARIES', 0)
     default_setting('AUTO_NATIVE_LIBRARIES', 0)
     default_setting('AUTO_ARCHIVE_INDEXES', 0)
@@ -2420,7 +2427,7 @@ def phase_linker_setup(options, state, newargs):
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$unSign']
 
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exportAsmFunctions']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exportWasmSymbols']
 
   if settings.ALLOW_MEMORY_GROWTH:
     # Setting ALLOW_MEMORY_GROWTH turns off ABORTING_MALLOC, as in that mode we default to
@@ -2441,8 +2448,6 @@ def phase_linker_setup(options, state, newargs):
     settings.JS_LIBRARIES.append((0, 'library_pthread_stub.js'))
 
   if settings.MEMORY64:
-    if settings.ASYNCIFY and settings.MEMORY64 == 2:
-      exit_with_error('MEMORY64=2 is not compatible with ASYNCIFY')
     # Any "pointers" passed to JS will now be i64's, in both modes.
     settings.WASM_BIGINT = 1
 
@@ -4291,7 +4296,7 @@ class ScriptSource:
 
 def is_valid_abspath(options, path_name):
   # Any path that is underneath the emscripten repository root must be ok.
-  if utils.path_from_root().replace('\\', '/') in path_name.replace('\\', '/'):
+  if utils.normalize_path(path_name).startswith(utils.normalize_path(utils.path_from_root())):
     return True
 
   def in_directory(root, child):

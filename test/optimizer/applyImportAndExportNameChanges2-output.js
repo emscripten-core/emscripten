@@ -227,8 +227,8 @@ function run() {
  var ret = _main();
 }
 
-function initRuntime(asm) {
- asm["i"]();
+function initRuntime(wasmExports) {
+ wasmExports["i"]();
 }
 
 var env = wasmImports;
@@ -265,14 +265,14 @@ var imports = {
 var ___errno_location, _llvm_bswap_i32, _main, _memcpy, _memset, dynCall_ii, dynCall_iiii;
 
 WebAssembly.instantiate(Module["wasm"], imports).then(output => {
- var asm = output.instance.exports;
- ___errno_location = asm["j"];
- _llvm_bswap_i32 = asm["k"];
- _main = asm["l"];
- _memcpy = asm["m"];
- _memset = asm["n"];
- dynCall_ii = asm["o"];
- dynCall_iiii = asm["p"];
- initRuntime(asm);
+ var wasmExports = output.instance.exports;
+ ___errno_location = wasmExports["j"];
+ _llvm_bswap_i32 = wasmExports["k"];
+ _main = wasmExports["l"];
+ _memcpy = wasmExports["m"];
+ _memset = wasmExports["n"];
+ dynCall_ii = wasmExports["o"];
+ dynCall_iiii = wasmExports["p"];
+ initRuntime(wasmExports);
  ready();
 });

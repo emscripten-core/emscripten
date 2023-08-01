@@ -35,6 +35,8 @@ Usage:
 
   --obj-output=FILE create an object file from embedded files, for direct linking into a wasm binary.
 
+  --depfile=FILE Writes a dependency list containing the list of directories and files walked, compatible with Make, Ninja, CMake, etc.
+
   --wasm64 When used with `--obj-output` create a wasm64 object file
 
   --export-name=EXPORT_NAME Use custom export name (default is `Module`)
@@ -96,6 +98,7 @@ AV_WORKAROUND = 0
 
 excluded_patterns: List[str] = []
 new_data_files = []
+walked = []
 
 
 class Options:
@@ -105,6 +108,7 @@ class Options:
     self.has_embedded = False
     self.jsoutput = None
     self.obj_output = None
+    self.depfile = None
     self.from_emcc = False
     self.force = True
     # If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally
@@ -136,10 +140,6 @@ options = Options()
 
 def err(*args):
   print(*args, file=sys.stderr)
-
-
-def to_unix_path(p):
-  return p.replace(os.path.sep, '/')
 
 
 def base64_encode(b):
@@ -183,11 +183,13 @@ def add(mode, rootpathsrc, rootpathdst):
   rootpathdst: The name we want to make the source path available on the
                emscripten virtual FS.
   """
+  walked.append(rootpathsrc)
   for dirpath, dirnames, filenames in os.walk(rootpathsrc):
     new_dirnames = []
     for name in dirnames:
       fullname = os.path.join(dirpath, name)
       if not should_ignore(fullname):
+        walked.append(fullname)
         new_dirnames.append(name)
       elif DEBUG:
         err('Skipping directory "%s" from inclusion in the emscripten '
@@ -195,6 +197,7 @@ def add(mode, rootpathsrc, rootpathdst):
     for name in filenames:
       fullname = os.path.join(dirpath, name)
       if not should_ignore(fullname):
+        walked.append(fullname)
         # Convert source filename relative to root directory of target FS.
         dstpath = os.path.join(rootpathdst,
                                os.path.relpath(fullname, rootpathsrc))
@@ -274,7 +277,7 @@ def generate_object_file(data_files):
 
       size = os.path.getsize(f.srcpath)
       dstpath = to_asm_string(f.dstpath)
-      srcpath = to_unix_path(f.srcpath)
+      srcpath = utils.normalize_path(f.srcpath)
       out.write(dedent(f'''
       .section .rodata.{f.c_symbol_name},"",@
 
@@ -400,6 +403,9 @@ def main():
     elif arg.startswith('--obj-output'):
       options.obj_output = arg.split('=', 1)[1] if '=' in arg else None
       leading = ''
+    elif arg.startswith('--depfile'):
+      options.depfile = arg.split('=', 1)[1] if '=' in arg else None
+      leading = ''
     elif arg == '--wasm64':
       options.wasm64 = True
     elif arg.startswith('--export-name'):
@@ -457,11 +463,13 @@ def main():
     err('error: TARGET should not be the same value of --js-output')
     return 1
 
+  walked.append(__file__)
   for file_ in data_files:
     if not should_ignore(file_.srcpath):
       if os.path.isdir(file_.srcpath):
         add(file_.mode, file_.srcpath, file_.dstpath)
       else:
+        walked.append(file_.srcpath)
         new_data_files.append(file_)
   data_files = [file_ for file_ in new_data_files
                 if not os.path.isdir(file_.srcpath)]
@@ -502,7 +510,7 @@ def main():
 
   for file_ in data_files:
     # name in the filesystem, native and emulated
-    file_.dstpath = to_unix_path(file_.dstpath)
+    file_.dstpath = utils.normalize_path(file_.dstpath)
     # If user has submitted a directory name as the destination but omitted
     # the destination filename, use the filename from source file
     if file_.dstpath.endswith('/'):
@@ -563,7 +571,26 @@ def main():
       if options.separate_metadata:
         utils.write_file(options.jsoutput + '.metadata', json.dumps(metadata, separators=(',', ':')))
 
+  if options.depfile:
+    with open(options.depfile, 'w') as f:
+      for target in [data_target, options.jsoutput]:
+        if target:
+          f.write(escape_for_makefile(target))
+          f.write(' \\\n')
+      f.write(': \\\n')
+      for dependency in walked:
+        f.write(escape_for_makefile(dependency))
+        f.write(' \\\n')
+
   return 0
+
+
+def escape_for_makefile(fpath):
+  # Escapes for CMake's "pathname" grammar as described here:
+  #   https://cmake.org/cmake/help/latest/command/add_custom_command.html#grammar-token-depfile-pathname
+  # Which is congruent with how Ninja and GNU Make expect characters escaped.
+  fpath = utils.normalize_path(fpath)
+  return fpath.replace('$', '$$').replace('#', '\\#').replace(' ', '\\ ')
 
 
 def generate_js(data_target, data_files, metadata):

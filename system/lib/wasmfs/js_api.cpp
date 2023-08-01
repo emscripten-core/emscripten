@@ -34,7 +34,7 @@ void* _wasmfs_read_file(char* path) {
   int err = 0;
   err = stat(path, &file);
   if (err < 0) {
-    emscripten_console_error("Fatal error in FS.readFile");
+    emscripten_err("Fatal error in FS.readFile");
     abort();
   }
 
@@ -51,7 +51,7 @@ void* _wasmfs_read_file(char* path) {
 
   int fd = open(path, O_RDONLY);
   if (fd < 0) {
-    emscripten_console_error("Fatal error in FS.readFile");
+    emscripten_err("Fatal error in FS.readFile");
     abort();
   }
   [[maybe_unused]] int numRead = pread(fd, result + sizeof(size), size, 0);
@@ -60,7 +60,7 @@ void* _wasmfs_read_file(char* path) {
   assert(numRead == size);
   err = close(fd);
   if (err < 0) {
-    emscripten_console_error("Fatal error in FS.readFile");
+    emscripten_err("Fatal error in FS.readFile");
     abort();
   }
 
@@ -100,7 +100,7 @@ int _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
   auto lockedFile = dataFile->locked();
   int err = lockedFile.open(O_WRONLY);
   if (err < 0) {
-    emscripten_console_error("Fatal error in FS.writeFile");
+    emscripten_err("Fatal error in FS.writeFile");
     abort();
   }
 
@@ -112,7 +112,7 @@ int _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
 
   err = lockedFile.close();
   if (err < 0) {
-    emscripten_console_error("Fatal error in FS.writeFile");
+    emscripten_err("Fatal error in FS.writeFile");
     abort();
   }
 
@@ -150,10 +150,11 @@ int _wasmfs_symlink(char* old_path, char* new_path) {
 intptr_t _wasmfs_readlink(char* path) {
   static thread_local void* readBuf = nullptr;
   readBuf = realloc(readBuf, PATH_MAX);
-  int err = __syscall_readlinkat(AT_FDCWD, (intptr_t)path, (intptr_t)readBuf, PATH_MAX);
-  if (err < 0) {
-    return err;
+  int bytes = __syscall_readlinkat(AT_FDCWD, (intptr_t)path, (intptr_t)readBuf, PATH_MAX);
+  if (bytes < 0) {
+    return bytes;
   }
+  ((char*)readBuf)[bytes] = '\0';
   return (intptr_t)readBuf;
 }
 

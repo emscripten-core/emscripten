@@ -380,13 +380,13 @@ If manually bisecting:
 
     # Test subdirectory handling with asset packaging.
     delete_dir('assets')
-    ensure_dir('assets/sub/asset1/'.replace('\\', '/'))
-    ensure_dir('assets/sub/asset1/.git'.replace('\\', '/')) # Test adding directory that shouldn't exist.
-    ensure_dir('assets/sub/asset2/'.replace('\\', '/'))
+    ensure_dir('assets/sub/asset1')
+    ensure_dir('assets/sub/asset1/.git') # Test adding directory that shouldn't exist.
+    ensure_dir('assets/sub/asset2')
     create_file('assets/sub/asset1/file1.txt', '''load me right before running the code please''')
     create_file('assets/sub/asset1/.git/shouldnt_be_embedded.txt', '''this file should not get embedded''')
     create_file('assets/sub/asset2/file2.txt', '''load me right before running the code please''')
-    absolute_assets_src_path = 'assets'.replace('\\', '/')
+    absolute_assets_src_path = 'assets'
 
     def make_main_two_files(path1, path2, nonexistingpath):
       create_file('main.cpp', r'''
@@ -5475,7 +5475,7 @@ Module["preRun"].push(function () {
     self.do_run_in_out_file_test('browser', 'test_2GB_fail.cpp')
 
   @no_firefox('no 4GB support yet')
-  # @also_with_wasm64 Blocked on https://bugs.chromium.org/p/v8/issues/detail?id=4153
+  @also_with_wasm64
   @requires_v8
   def test_zzz_zzz_4gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.

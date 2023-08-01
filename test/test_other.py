@@ -32,7 +32,7 @@ from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP,
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
-from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64
+from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
 from common import requires_wasm_eh, crossplatform, with_both_sjlj, also_with_standalone_wasm
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64
 from common import EMTEST_BUILD_VERBOSE, PYTHON
@@ -3109,6 +3109,27 @@ int f() {
     output = self.run_js('a.out.js')
     self.assertContained('hello data', output)
 
+  @crossplatform
+  def test_file_packager_depfile(self):
+    create_file('data1.txt', 'data1')
+    ensure_dir('subdir')
+    create_file('subdir/data2.txt', 'data2')
+
+    self.run_process([FILE_PACKAGER, 'test.data', '--js-output=test.js', '--depfile=test.data.d', '--from-emcc', '--preload', '.'])
+    output = read_file('test.data.d')
+    file_packager = utils.normalize_path(shared.replace_suffix(FILE_PACKAGER, '.py'))
+    lines = output.splitlines()
+    split = lines.index(': \\')
+    before, after = set(lines[:split]), set(lines[split + 1:])
+    # Set comparison used because depfile is not order-sensitive.
+    self.assertTrue('test.data \\' in before)
+    self.assertTrue('test.js \\' in before)
+    self.assertTrue(file_packager + ' \\' in after)
+    self.assertTrue('. \\' in after)
+    self.assertTrue('./data1.txt \\' in after)
+    self.assertTrue('./subdir \\' in after)
+    self.assertTrue('./subdir/data2.txt \\' in after)
+
   def test_sdl_headless(self):
     shutil.copyfile(test_file('screenshot.png'), 'example.png')
     self.do_other_test('test_sdl_headless.c', emcc_args=['-sHEADLESS'])
@@ -4673,6 +4694,7 @@ int main() {
   def test_unlink(self):
     self.do_other_test('test_unlink.cpp')
 
+  @crossplatform
   def test_argv0_node(self):
     create_file('code.c', r'''
 #include <stdio.h>
@@ -4682,8 +4704,8 @@ int main(int argc, char **argv) {
 }
 ''')
 
-    self.run_process([EMCC, 'code.c'])
-    self.assertContained('I am ' + os.path.realpath(self.get_dir()).replace('\\', '/') + '/a.out.js', self.run_js('a.out.js').replace('\\', '/'))
+    output = self.do_runf('code.c')
+    self.assertContained('I am ' + utils.normalize_path(os.path.realpath(self.get_dir())) + '/code.js', utils.normalize_path(output))
 
   @parameterized({
     'no_exit_runtime': [True],
@@ -6304,10 +6326,9 @@ int main() {
     self.run_process([EMCC, '-O1', 'test.c', '-sALLOW_MEMORY_GROWTH'])
     self.assertContained('done', self.run_js('a.out.js'))
 
+  @requires_wasm64
+  @requires_node_canary
   def test_failing_growth_wasm64(self):
-    # For now we skip this test because failure to create the TypedArray views
-    # causes weird unrecoverable failures.
-    self.skipTest('https://bugs.chromium.org/p/v8/issues/detail?id=4153')
     self.require_wasm64()
     create_file('test.c', r'''
 #include <assert.h>
@@ -8628,6 +8649,10 @@ int main() {
         else:
           self.expect_fail(separate_dwarf_cmd)
 
+  @requires_v8
+  def test_single_file_shell(self):
+    self.do_runf(test_file('hello_world.c'), emcc_args=['-sSINGLE_FILE'])
+
   def test_emar_M(self):
     create_file('file1', ' ')
     create_file('file2', ' ')
@@ -8829,6 +8854,7 @@ end
     for sym in glsyms:
       self.assertContained('.' + sym, js)
 
+  @also_with_wasm64
   def test_closure_webgpu(self):
     # This test can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
     self.build(test_file('hello_world.c'), emcc_args=[
@@ -10055,7 +10081,7 @@ int main () {
 
       output = read_file('a.js')
       delete_file('a.js')
-      self.assertNotContained('asm["_thisIsAFunctionExportedFromAsmJsOrWasmWithVeryLongFunction"]', output)
+      self.assertNotContained('_thisIsAFunctionExportedFromAsmJsOrWasmWithVeryLongFunction', output)
 
       # TODO: Add stricter testing when Wasm side is also optimized: (currently Wasm does still need
       # to reference exports multiple times)
@@ -10273,10 +10299,12 @@ int main () {
   def test_strict_mode_hello_world(self):
     # Verify that strict mode can be used for simple hello world program both
     # via the environment EMCC_STRICT=1 and from the command line `-sSTRICT`
-    cmd = [EMCC, test_file('hello_world.c'), '-sSTRICT']
-    self.run_process(cmd)
+    self.do_runf(test_file('hello_world.c'), emcc_args=['-sSTRICT'])
     with env_modify({'EMCC_STRICT': '1'}):
       self.do_runf(test_file('hello_world.c'), 'hello, world!')
+
+  def test_strict_mode_full_library(self):
+    self.do_runf(test_file('hello_world.c'), emcc_args=['-sSTRICT', '-sINCLUDE_FULL_LIBRARY'])
 
   def test_legacy_settings(self):
     cmd = [EMCC, test_file('hello_world.c'), '-sSPLIT_MEMORY=0']
@@ -12023,7 +12051,7 @@ exec "$@"
   # Tests that the filename suffix of the response files can be used to detect which encoding the file is.
   @crossplatform
   def test_response_file_encoding(self):
-    open('äö.c', 'w').write('int main(){}')
+    create_file('äö.c', 'int main(){}')
 
     open('a.rsp', 'w', encoding='utf-8').write('äö.c') # Write a response file with unicode contents ...
     self.run_process([EMCC, '@a.rsp']) # ... and test that in the absence of a file suffix, it is autodetected to utf-8.
@@ -12867,10 +12895,16 @@ int main() {
 
   # Smoketest for MEMORY64 setting.  Most of the testing of MEMORY64 is by way of the wasm64
   # variant of the core test suite.
+  @parameterized({
+    'O0': (['-O0'],),
+    'O1': (['-O1'],),
+    'O2': (['-O2'],),
+    'O3': (['-O3'],),
+    'Oz': (['-Oz'],),
+  })
   @requires_wasm64
-  def test_memory64(self):
-    for opt in ['-O0', '-O1', '-O2', '-O3']:
-      self.do_runf(test_file('hello_world.c'), 'hello, world', emcc_args=['-sMEMORY64', '-Wno-experimental', opt])
+  def test_memory64(self, args):
+    self.do_run_in_out_file_test(test_file('core/test_hello_argc.c'), args=['hello', 'world'], emcc_args=['-sMEMORY64', '-Wno-experimental'] + args)
 
   # Verfy that MAIN_MODULE=1 (which includes all symbols from all libraries)
   # works with -sPROXY_POSIX_SOCKETS and -Oz, both of which affect linking of
@@ -13130,7 +13164,7 @@ j1: 8589934599, j2: 30064771074, j3: 12884901891
     self.assertExists('foo.tar')
     names = []
     root = os.path.splitdrive(path_from_root())[1][1:]
-    root = root.replace('\\', '/')
+    root = utils.normalize_path(root)
     print('root: %s' % root)
     with tarfile.open('foo.tar') as f:
       for name in f.getnames():
@@ -13149,7 +13183,7 @@ foo/version.txt
 <root>/test/hello_world.c
 '''
     response = read_file('foo/response.txt')
-    response = response.replace('\\', '/')
+    response = utils.normalize_path(response)
     response = response.replace(root, '<root>')
     self.assertTextDataIdentical(expected, response)
 
@@ -13591,3 +13625,19 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--target=arm64'])
     self.assertContained('emcc: error: unsupported target: arm64 (emcc only supports wasm64-unknown-emscripten and wasm32-unknown-emscripten', err)
+
+  def test_quick_exit(self):
+    self.do_other_test('test_quick_exit.c')
+
+  @requires_wasm64
+  @requires_node_canary
+  def test_memory64_proxies(self):
+    self.run_process([EMCC, test_file('hello_world.c'),
+                      '-sMEMORY64=1',
+                      '-sINITIAL_MEMORY=5gb',
+                      '-sMAXIMUM_MEMORY=5gb',
+                      '-sALLOW_MEMORY_GROWTH',
+                      '-sEXPORTED_FUNCTIONS=_malloc,_main',
+                      '-Wno-experimental',
+                      '--extern-post-js', test_file('other/test_memory64_proxies.js')])
+    self.run_js('a.out.js')

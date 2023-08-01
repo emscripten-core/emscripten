@@ -840,7 +840,7 @@ var LibraryEmbind = {
     var destructors = [];
     return function() {
       if (arguments.length !== expectedArgCount) {
-        throwBindingError(`function ${humanName} called with ${arguments.length} arguments, expected ${expectedArgCount} args!`);
+        throwBindingError(`function ${humanName} called with ${arguments.length} arguments, expected ${expectedArgCount}`);
       }
 #if EMSCRIPTEN_TRACING
       Module.emscripten_trace_enter_context(`embind::${humanName}`);
@@ -904,7 +904,7 @@ var LibraryEmbind = {
     var invokerFnBody = `
       return function ${makeLegalFunctionName(humanName)}(${argsList}) {
       if (arguments.length !== ${argCount - 2}) {
-        throwBindingError('function ${humanName} called with ${arguments.length} arguments, expected ${argCount - 2} args!');
+        throwBindingError('function ${humanName} called with ' + arguments.length + ' arguments, expected ${argCount - 2}');
       }`;
 
 #if EMSCRIPTEN_TRACING

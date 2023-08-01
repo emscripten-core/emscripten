@@ -136,6 +136,10 @@ EMSCRIPTEN_RESULT _emscripten_set_offscreencanvas_size(const char *target, int w
 // to perform the wasm worker creation.
 emscripten_wasm_worker_t _emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize);
 
+void __resumeException(void* exn);
+void __cxa_call_unexpected(void* exn);
+void llvm_eh_typeid_for(void* exn);
+
 #ifdef __cplusplus
 }
 #endif
