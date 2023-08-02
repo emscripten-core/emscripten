@@ -819,7 +819,6 @@ def process_dynamic_libs(dylibs, lib_dirs):
   while to_process:
     dylib = to_process.pop()
     dylink = webassembly.parse_dylink_section(dylib)
-    print(dylink)
     for needed in dylink.needed:
       if needed in seen:
         continue
@@ -1711,7 +1710,7 @@ def setup_pthreads(target):
     '_emscripten_thread_free_data',
     'emscripten_main_runtime_thread_id',
     'emscripten_main_thread_process_queued_calls',
-    '_emscripten_run_in_main_runtime_thread_js',
+    '_emscripten_run_on_main_thread_js',
     'emscripten_stack_set_limits',
   ]
 
@@ -2010,6 +2009,7 @@ def phase_linker_setup(options, state, newargs):
   if settings.STRICT:
     if not settings.MODULARIZE and not settings.EXPORT_ES6:
       default_setting('STRICT_JS', 1)
+    default_setting('USE_GLFW', 0)
     default_setting('AUTO_JS_LIBRARIES', 0)
     default_setting('AUTO_NATIVE_LIBRARIES', 0)
     default_setting('AUTO_ARCHIVE_INDEXES', 0)
@@ -2339,6 +2339,8 @@ def phase_linker_setup(options, state, newargs):
       # included, as the entire JS library can refer to things that require
       # these exports.)
       settings.REQUIRED_EXPORTS += [
+        '_wasmfs_mount',
+        '_wasmfs_unmount',
         '_wasmfs_read_file',
         '_wasmfs_write_file',
         '_wasmfs_open',
@@ -4297,7 +4299,7 @@ class ScriptSource:
 
 def is_valid_abspath(options, path_name):
   # Any path that is underneath the emscripten repository root must be ok.
-  if utils.path_from_root().replace('\\', '/') in path_name.replace('\\', '/'):
+  if utils.normalize_path(path_name).startswith(utils.normalize_path(utils.path_from_root())):
     return True
 
   def in_directory(root, child):

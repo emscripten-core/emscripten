@@ -57,7 +57,7 @@ var LibraryPThread = {
     pthreads: {},
 #if ASSERTIONS
     nextWorkerID: 1,
-    debugInit: function() {
+    debugInit() {
       function pthreadLogPrefix() {
         var t = 0;
         if (runtimeInitialized && typeof _pthread_self != 'undefined'
@@ -80,7 +80,7 @@ var LibraryPThread = {
 #endif
     },
 #endif
-    init: function() {
+    init() {
 #if ASSERTIONS
       PThread.debugInit();
 #endif
@@ -94,7 +94,7 @@ var LibraryPThread = {
         PThread.initMainThread();
       }
     },
-    initMainThread: function() {
+    initMainThread() {
 #if PTHREAD_POOL_SIZE
       var pthreadPoolSize = {{{ PTHREAD_POOL_SIZE }}};
       // Start loading up the Worker pool, if requested.
@@ -118,7 +118,7 @@ var LibraryPThread = {
 #endif
     },
 
-    initWorker: function() {
+    initWorker() {
 #if USE_CLOSURE_COMPILER
       // worker.js is not compiled together with us, and must access certain
       // things.
@@ -142,13 +142,13 @@ var LibraryPThread = {
     },
 
 #if PTHREADS_PROFILING
-    getThreadName: function(pthreadPtr) {
+    getThreadName(pthreadPtr) {
       var profilerBlock = {{{ makeGetValue('pthreadPtr', C_STRUCTS.pthread.profilerBlock, POINTER_TYPE) }}};
       if (!profilerBlock) return "";
       return UTF8ToString(profilerBlock + {{{ C_STRUCTS.thread_profiler_block.name }}});
     },
 
-    threadStatusToString: function(threadStatus) {
+    threadStatusToString(threadStatus) {
       switch (threadStatus) {
         case 0: return "not yet started";
         case 1: return "running";
@@ -161,7 +161,7 @@ var LibraryPThread = {
       }
     },
 
-    threadStatusAsString: function(pthreadPtr) {
+    threadStatusAsString(pthreadPtr) {
       var profilerBlock = {{{ makeGetValue('pthreadPtr', C_STRUCTS.pthread.profilerBlock, POINTER_TYPE) }}};
       var status = (profilerBlock == 0) ? 0 : Atomics.load(HEAPU32, (profilerBlock + {{{ C_STRUCTS.thread_profiler_block.threadStatus }}} ) >> 2);
       return PThread.threadStatusToString(status);
@@ -230,7 +230,7 @@ var LibraryPThread = {
       // linear memory.
       __emscripten_thread_free_data(pthread_ptr);
     },
-    receiveObjectTransfer: function(data) {
+    receiveObjectTransfer(data) {
 #if OFFSCREENCANVAS_SUPPORT
       if (typeof GL != 'undefined') {
         Object.assign(GL.offscreenCanvases, data.offscreenCanvases);
@@ -242,7 +242,7 @@ var LibraryPThread = {
 #endif
     },
     // Called by worker.js each time a thread is started.
-    threadInitTLS: function() {
+    threadInitTLS() {
 #if PTHREADS_DEBUG
       dbg('threadInitTLS');
 #endif
@@ -406,7 +406,7 @@ var LibraryPThread = {
       });
     }),
 
-    loadWasmModuleToAllWorkers: function(onMaybeReady) {
+    loadWasmModuleToAllWorkers(onMaybeReady) {
 #if !PTHREAD_POOL_SIZE
       onMaybeReady();
 #else
@@ -435,7 +435,7 @@ var LibraryPThread = {
     },
 
     // Creates a new web Worker and places it in the unused worker pool to wait for its use.
-    allocateUnusedWorker: function() {
+    allocateUnusedWorker() {
       var worker;
 #if MINIMAL_RUNTIME
       var pthreadMainJs = Module['worker'];
@@ -452,9 +452,7 @@ var LibraryPThread = {
           var p = trustedTypes.createPolicy(
             'emscripten#workerPolicy1',
             {
-              createScriptURL: function(ignored) {
-                return new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url);
-              }
+              createScriptURL: (ignored) => new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url);
             }
           );
           worker = new Worker(p.createScriptURL('ignored'));
@@ -474,7 +472,7 @@ var LibraryPThread = {
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
       if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
-        var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: function(ignored) { return pthreadMainJs } });
+        var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: (ignored) => pthreadMainJs });
         worker = new Worker(p.createScriptURL('ignored'));
       } else
 #endif
@@ -485,7 +483,7 @@ var LibraryPThread = {
     PThread.unusedWorkers.push(worker);
     },
 
-    getNewWorker: function() {
+    getNewWorker() {
       if (PThread.unusedWorkers.length == 0) {
 // PTHREAD_POOL_SIZE_STRICT should show a warning and, if set to level `2`, return from the function.
 #if (PTHREAD_POOL_SIZE_STRICT && ASSERTIONS) || PTHREAD_POOL_SIZE_STRICT == 2
@@ -957,7 +955,7 @@ var LibraryPThread = {
     _exit(returnCode);
   },
 
-  $proxyToMainThread__deps: ['$withStackSave', '_emscripten_run_in_main_runtime_thread_js'],
+  $proxyToMainThread__deps: ['$withStackSave', '_emscripten_run_on_main_thread_js'],
   $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...(number|boolean))} */',
   $proxyToMainThread: function(index, sync) {
     // Additional arguments are passed after those two, which are the actual
@@ -1000,37 +998,37 @@ var LibraryPThread = {
         HEAPF64[b + i] = arg;
 #endif
       }
-      return __emscripten_run_in_main_runtime_thread_js(index, serializedNumCallArgs, args, sync);
+      return __emscripten_run_on_main_thread_js(index, serializedNumCallArgs, args, sync);
     });
   },
 
-  $emscripten_receive_on_main_thread_js_callArgs: '=[]',
+  // Reuse global JS array to avoid creating JS garbage for each proxied call
+  $proxiedJSCallArgs: '=[]',
 
-  emscripten_receive_on_main_thread_js__deps: [
+  _emscripten_receive_on_main_thread_js__deps: [
     '$proxyToMainThread',
-    '$emscripten_receive_on_main_thread_js_callArgs'],
-  emscripten_receive_on_main_thread_js: function(index, callingThread, numCallArgs, args) {
+    '$proxiedJSCallArgs'],
+  _emscripten_receive_on_main_thread_js: function(index, callingThread, numCallArgs, args) {
     // Sometimes we need to backproxy events to the calling thread (e.g.
     // HTML5 DOM events handlers such as
     // emscripten_set_mousemove_callback()), so keep track in a globally
     // accessible variable about the thread that initiated the proxying.
-    PThread.currentProxiedOperationCallerThread = callingThread;
 #if WASM_BIGINT
     numCallArgs /= 2;
 #endif
-    emscripten_receive_on_main_thread_js_callArgs.length = numCallArgs;
+    proxiedJSCallArgs.length = numCallArgs;
     var b = args >> 3;
     for (var i = 0; i < numCallArgs; i++) {
 #if WASM_BIGINT
       if (HEAP64[b + 2*i]) {
         // It's a BigInt.
-        emscripten_receive_on_main_thread_js_callArgs[i] = HEAP64[b + 2*i + 1];
+        proxiedJSCallArgs[i] = HEAP64[b + 2*i + 1];
       } else {
         // It's a Number.
-        emscripten_receive_on_main_thread_js_callArgs[i] = HEAPF64[b + 2*i + 1];
+        proxiedJSCallArgs[i] = HEAPF64[b + 2*i + 1];
       }
 #else
-      emscripten_receive_on_main_thread_js_callArgs[i] = HEAPF64[b + i];
+      proxiedJSCallArgs[i] = HEAPF64[b + i];
 #endif
     }
     // Proxied JS library funcs are encoded as positive values, and
@@ -1042,9 +1040,12 @@ var LibraryPThread = {
     var func = proxiedFunctionTable[index];
 #endif
 #if ASSERTIONS
-    assert(func.length == numCallArgs, 'Call args mismatch in emscripten_receive_on_main_thread_js');
+    assert(func.length == numCallArgs, 'Call args mismatch in _emscripten_receive_on_main_thread_js');
 #endif
-    return func.apply(null, emscripten_receive_on_main_thread_js_callArgs);
+    PThread.currentProxiedOperationCallerThread = callingThread;
+    var rtn = func.apply(null, proxiedJSCallArgs);
+    PThread.currentProxiedOperationCallerThread = 0;
+    return rtn;
   },
 
   $establishStackSpace__internal: true,

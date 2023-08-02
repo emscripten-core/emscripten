@@ -20,7 +20,7 @@ var SyscallsLibrary = {
     DEFAULT_POLLMASK: {{{ cDefs.POLLIN }}} | {{{ cDefs.POLLOUT }}},
 
     // shared utilities
-    calculateAt: function(dirfd, path, allowEmpty) {
+    calculateAt(dirfd, path, allowEmpty) {
       if (PATH.isAbs(path)) {
         return path;
       }
@@ -41,7 +41,7 @@ var SyscallsLibrary = {
       return PATH.join2(dir, path);
     },
 
-    doStat: function(func, path, buf) {
+    doStat(func, path, buf) {
       try {
         var stat = func(path);
       } catch (e) {
@@ -72,7 +72,7 @@ var SyscallsLibrary = {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i64') }}};
       return 0;
     },
-    doMsync: function(addr, stream, len, flags, offset) {
+    doMsync(addr, stream, len, flags, offset) {
       if (!FS.isFile(stream.node.mode)) {
         throw new FS.ErrnoError({{{ cDefs.ENODEV }}});
       }
@@ -109,7 +109,7 @@ var SyscallsLibrary = {
     },
 #if SYSCALLS_REQUIRE_FILESYSTEM
     // Just like `FS.getStream` but will throw EBADF if stream is undefined.
-    getStreamFromFD: function(fd) {
+    getStreamFromFD(fd) {
       var stream = FS.getStreamChecked(fd);
 #if SYSCALL_DEBUG
       dbg(`    (stream: "${stream.path}")`);

@@ -192,7 +192,7 @@ void WasmFS::preloadFiles() {
     std::shared_ptr<Directory> parentDir;
     if (parsed.getError() ||
         !(parentDir = parsed.getFile()->dynCast<Directory>())) {
-      emscripten_console_error(
+      emscripten_err(
         "Fatal error during directory creation in file preloading.");
       abort();
     }
@@ -219,7 +219,7 @@ void WasmFS::preloadFiles() {
 
     auto parsed = path::parseParent(fileName);
     if (parsed.getError()) {
-      emscripten_console_error("Fatal error during file preloading");
+      emscripten_err("Fatal error during file preloading");
       abort();
     }
     auto& [parent, childName] = parsed.getParentChild();

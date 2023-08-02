@@ -5634,6 +5634,9 @@ Module = {
 
   def test_mount(self):
     self.set_setting('FORCE_FILESYSTEM')
+    if self.get_setting('WASMFS'):
+      self.emcc_args += ['-licasefs.js']
+      self.emcc_args += ['-ljsfilefs.js']
     self.do_runf(test_file('fs/test_mount.c'), 'success')
 
   def test_getdents64(self):
@@ -5941,6 +5944,8 @@ Module = {
   @also_with_noderawfs
   @requires_node
   def test_fs_nodefs_cloexec(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_cloexec.c'), 'success')
 
@@ -5952,12 +5957,16 @@ Module = {
 
   @requires_node
   def test_fs_nodefs_nofollow(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_nofollow.c'), 'success')
 
   @requires_node
   def test_fs_nodefs_readdir(self):
     # externally setup an existing folder structure: existing/a
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
     os.makedirs(os.path.join(self.working_dir, 'existing', 'a'))
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_readdir.c'), 'success')
@@ -5978,6 +5987,8 @@ Module = {
   @also_with_noderawfs
   @also_with_wasmfs_js
   def test_fs_writeFile(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting("FORCE_FILESYSTEM")
     self.do_run_in_out_file_test('fs/test_writeFile.cpp')
 
   def test_fs_js_api(self):
@@ -6702,6 +6713,7 @@ void* operator new(size_t size) {
   @no_safe_heap('has unaligned 64-bit operations in wasm')
   @is_slow_test
   @no_ubsan('https://github.com/emscripten-core/emscripten/issues/19688')
+  @no_asan('local count too large')
   def test_sse2(self):
     src = test_file('sse/test_sse2.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)

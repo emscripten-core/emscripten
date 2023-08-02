@@ -42,12 +42,12 @@ var LibraryEmbind = {
     printFunction(nameMap, out) {
       out.push(`${this.name}`);
       this.printSignature(nameMap, out);
-      out.push(';\n');
     }
 
     printModuleEntry(nameMap, out) {
       out.push('  ');
       this.printFunction(nameMap, out);
+      out.push(';\n');
     }
   },
   $ClassDefinition: class ClassDefinition {
@@ -55,6 +55,7 @@ var LibraryEmbind = {
       this.typeId = typeId;
       this.name = name;
       this.methods = [];
+      this.staticMethods = [];
       this.constructors = [
         new FunctionDefinition('default', this, [])
       ];
@@ -75,6 +76,7 @@ var LibraryEmbind = {
       for (const method of this.methods) {
         out.push('  ');
         method.printFunction(nameMap, out);
+        out.push(';\n');
       }
       out.push('  delete(): void;\n');
       out.push('}\n\n');
@@ -85,6 +87,10 @@ var LibraryEmbind = {
       // TODO Handle constructor overloading
       const constructor = this.constructors[this.constructors.length > 1 ? 1 : 0];
       constructor.printSignature(nameMap, out);
+      for (const method of this.staticMethods) {
+        out.push('; ');
+        method.printFunction(nameMap, out);
+      }
       out.push('};\n');
     }
   },
@@ -372,6 +378,23 @@ var LibraryEmbind = {
         const prop = new ClassProperty(types[0], fieldName);
         classType.properties.push(prop);
         return [];
+      });
+      return [];
+    });
+  },
+  _embind_register_class_class_function__deps: ['$createFunctionDefinition'],
+  _embind_register_class_class_function: function(rawClassType,
+                                                  methodName,
+                                                  argCount,
+                                                  rawArgTypesAddr,
+                                                  invokerSignature,
+                                                  rawInvoker,
+                                                  fn,
+                                                  isAsync) {
+    whenDependentTypesAreResolved([], [rawClassType], function(classType) {
+      classType = classType[0];
+      createFunctionDefinition(methodName, argCount, rawArgTypesAddr, false, (funcDef) => {
+        classType.staticMethods.push(funcDef);
       });
       return [];
     });
