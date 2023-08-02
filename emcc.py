@@ -3474,6 +3474,7 @@ def parse_args(newargs):
             settings.SEPARATE_DWARF = requested_level.split('=')[1]
           else:
             settings.SEPARATE_DWARF = True
+          settings.GENERATE_DWARF = 1
         elif requested_level == 'source-map':
           settings.GENERATE_SOURCE_MAP = 1
           newargs[i] = '-g'
