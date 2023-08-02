@@ -909,7 +909,7 @@ var LibrarySDL = {
       switch (event.type) {
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
-          //out('Received key event: ' + event.keyCode);
+          //dbg('Received key event: ' + event.keyCode);
           var key = SDL.lookupKeyCodeForEvent(event);
           var scan;
           if (key >= 1024) {
@@ -1098,7 +1098,7 @@ var LibrarySDL = {
             info.audio.volume = info.volume; // For <audio> element
             if (info.audio.webAudioGainNode) info.audio.webAudioGainNode['gain']['value'] = info.volume; // For WebAudio playback
           } catch(e) {
-            err('setGetVolume failed to set audio volume: ' + e);
+            err(`setGetVolume failed to set audio volume: ${e}`);
           }
         }
       }
@@ -1150,7 +1150,7 @@ var LibrarySDL = {
         audio.webAudioNode['start'](0, audio.currentPosition);
         audio.startTime = SDL.audioContext['currentTime'] - audio.currentPosition;
       } catch(e) {
-        err('playWebAudio failed: ' + e);
+        err(`playWebAudio failed: ${e}`);
       }
     },
 
@@ -1168,7 +1168,7 @@ var LibrarySDL = {
           audio.webAudioNode.stop(0); // 0 is a default parameter, but WebKit is confused by it #3861
           audio.webAudioNode = undefined;
         } catch(e) {
-          err('pauseWebAudio failed: ' + e);
+          err(`pauseWebAudio failed: ${e}`);
         }
       }
       audio.paused = true;
@@ -1217,15 +1217,17 @@ var LibrarySDL = {
 
     // Debugging
 
+#if ASSERTIONS
     debugSurface: function(surfData) {
-      out('dumping surface ' + [surfData.surf, surfData.source, surfData.width, surfData.height]);
+      dbg('dumping surface ' + [surfData.surf, surfData.source, surfData.width, surfData.height]);
       var image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
       var data = image.data;
       var num = Math.min(surfData.width, surfData.height);
       for (var i = 0; i < num; i++) {
-        out('   diagonal ' + i + ':' + [data[i*surfData.width*4 + i*4 + 0], data[i*surfData.width*4 + i*4 + 1], data[i*surfData.width*4 + i*4 + 2], data[i*surfData.width*4 + i*4 + 3]]);
+        dbg('   diagonal ' + i + ':' + [data[i*surfData.width*4 + i*4 + 0], data[i*surfData.width*4 + i*4 + 1], data[i*surfData.width*4 + i*4 + 2], data[i*surfData.width*4 + i*4 + 3]]);
       }
     },
+#endif
 
     // Joystick helper methods and state
 
@@ -1813,7 +1815,7 @@ var LibrarySDL = {
       case -1: // SDL_QUERY
         return !Browser.pointerLock;
       default:
-        out( "SDL_ShowCursor called with unknown toggle parameter value: " + toggle + "." );
+        err(`SDL_ShowCursor called with unknown toggle parameter value: ${toggle}`);
         break;
     }
   },
@@ -1842,7 +1844,7 @@ var LibrarySDL = {
     if (depth !== 32) {
       // TODO: Actually fill pixel data to created surface.
       // TODO: Take into account depth and pitch parameters.
-      out('TODO: Partially unimplemented SDL_CreateRGBSurfaceFrom called!');
+      err('TODO: Partially unimplemented SDL_CreateRGBSurfaceFrom called!');
       return surf;
     }
 
@@ -2303,7 +2305,7 @@ var LibrarySDL = {
             data[destPtr++] = 255;
           }
         } else {
-          err('cannot handle bpp ' + raw.bpp);
+          err(`cannot handle bpp ${raw.bpp}`);
           return 0;
         }
         surfData.ctx.putImageData(imageData, 0, 0);
@@ -2379,19 +2381,19 @@ var LibrarySDL = {
       } else if (SDL.audio.freq <= 96000) {
         SDL.audio.freq = 96000;
       } else {
-        throw 'Unsupported sound frequency ' + SDL.audio.freq + '!';
+        throw `Unsupported sound frequency ${SDL.audio.freq}!`;
       }
       if (SDL.audio.channels == 0) {
         SDL.audio.channels = 1; // In SDL both 0 and 1 mean mono.
       } else if (SDL.audio.channels < 0 || SDL.audio.channels > 32) {
-        throw 'Unsupported number of audio channels for SDL audio: ' + SDL.audio.channels + '!';
+        throw `Unsupported number of audio channels for SDL audio: ${SDL.audio.channels}!`;
       } else if (SDL.audio.channels != 1 && SDL.audio.channels != 2) { // Unsure what SDL audio spec supports. Web Audio spec supports up to 32 channels.
-        out('Warning: Using untested number of audio channels ' + SDL.audio.channels);
+        out(`Warning: Using untested number of audio channels ${SDL.audio.channels}`);
       }
       if (SDL.audio.samples < 128 || SDL.audio.samples > 524288 /* arbitrary cap */) {
-        throw 'Unsupported audio callback buffer size ' + SDL.audio.samples + '!';
+        throw `Unsupported audio callback buffer size ${SDL.audio.samples}!`;
       } else if ((SDL.audio.samples & (SDL.audio.samples-1)) != 0) {
-        throw 'Audio callback buffer size ' + SDL.audio.samples + ' must be a power-of-two!';
+        throw `Audio callback buffer size ${SDL.audio.samples} must be a power-of-two!`;
       }
 
       var totalSamples = SDL.audio.samples*SDL.audio.channels;
@@ -2402,7 +2404,7 @@ var LibrarySDL = {
       } else if (SDL.audio.format == {{{ cDefs.AUDIO_F32 }}}) {
         SDL.audio.bytesPerSample = 4;
       } else {
-        throw 'Invalid SDL audio format ' + SDL.audio.format + '!';
+        throw `Invalid SDL audio format ${SDL.audio.format}!`;
       }
       SDL.audio.bufferSize = totalSamples*SDL.audio.bytesPerSample;
       SDL.audio.bufferDurationSecs = SDL.audio.bufferSize / SDL.audio.bytesPerSample / SDL.audio.channels / SDL.audio.freq; // Duration of a single queued buffer in seconds.
@@ -2502,7 +2504,7 @@ var LibrarySDL = {
           var curtime = SDL.audioContext['currentTime'];
 #if ASSERTIONS
           if (curtime > SDL.audio.nextPlayTime && SDL.audio.nextPlayTime != 0) {
-            err('warning: Audio callback had starved sending audio by ' + (curtime - SDL.audio.nextPlayTime) + ' seconds.');
+            err(`warning: Audio callback had starved sending audio by ${curtime - SDL.audio.nextPlayTime} seconds`);
           }
 #endif
           // Don't ever start buffer playbacks earlier from current time than a given constant 'SDL.audio.bufferingDelay', since a browser
@@ -2524,7 +2526,7 @@ var LibrarySDL = {
 
           SDL.audio.nextPlayTime = playtime + SDL.audio.bufferDurationSecs;
         } catch(e) {
-          out('Web Audio API error playing back audio: ' + e.toString());
+          err(`Web Audio API error playing back audio: ${e.toString()}`);
         }
       }
 
@@ -2541,7 +2543,7 @@ var LibrarySDL = {
       SDL.allocateChannels(32);
 
     } catch(e) {
-      out('Initializing SDL audio threw an exception: "' + e.toString() + '"! Continuing without audio.');
+      err(`Initializing SDL audio threw an exception: "${e.toString()}"! Continuing without audio`);
       SDL.audio = null;
       SDL.allocateChannels(0);
       if (obtained) {
@@ -2728,7 +2730,7 @@ var LibrarySDL = {
         try {
           bytes = FS.readFile(filename);
         } catch (e) {
-          err('Couldn\'t find file for: ' + filename);
+          err(`Couldn't find file for: ${filename}`);
           return 0;
         }
       }
@@ -2858,7 +2860,7 @@ var LibrarySDL = {
         }
       }
       if (channel == -1) {
-        err('All ' + SDL.numChannels + ' channels in use!');
+        err(`All ${SDL.numChannels}  channels in use!`);
         return -1;
       }
     }
@@ -2949,7 +2951,7 @@ var LibrarySDL = {
   Mix_PlayMusic: function(id, loops) {
     // Pause old music if it exists.
     if (SDL.music.audio) {
-      if (!SDL.music.audio.paused) err('Music is already playing. ' + SDL.music.source);
+      if (!SDL.music.audio.paused) err(`Music is already playing. ${SDL.music.source}`);
       SDL.music.audio.pause();
     }
     var info = SDL.audios[id];
@@ -3040,7 +3042,7 @@ var LibrarySDL = {
     if (info && info.audio) {
       info.audio.pause();
     } else {
-      //err('Mix_Pause: no sound found for channel: ' + channel);
+      //err(`Mix_Pause: no sound found for channel: ${channel}`);
     }
   },
 

@@ -791,7 +791,7 @@ var LibraryGLEmulation = {
       default:
         GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
-        err('GL_INVALID_ENUM in glGetPointerv: Unsupported name ' + name + '!');
+        err(`GL_INVALID_ENUM in glGetPointerv: Unsupported name ${name}!`);
 #endif
         return;
     }

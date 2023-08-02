@@ -265,7 +265,7 @@ var LibraryPThread = {
           if (targetWorker) {
             targetWorker.postMessage(d, d['transferList']);
           } else {
-            err('Internal error! Worker sent a message "' + cmd + '" to target pthread ' + d['targetThread'] + ', but that thread no longer exists!');
+            err(`Internal error! Worker sent a message "${cmd}" to target pthread ${d['targetThread']}, but that thread no longer exists!`);
           }
           return;
         }
@@ -308,7 +308,7 @@ var LibraryPThread = {
           // The received message looks like something that should be handled by this message
           // handler, (since there is a e.data.cmd field present), but is not one of the
           // recognized commands:
-          err("worker sent an unknown command " + cmd);
+          err(`worker sent an unknown command ${cmd}`);
         }
       };
 
@@ -319,7 +319,7 @@ var LibraryPThread = {
           message = 'Pthread ' + ptrToString(worker.pthread_ptr) + ' sent an error!';
         }
 #endif
-        err(message + ' ' + e.filename + ':' + e.lineno + ': ' + e.message);
+        err(`${message} ${e.filename}:${e.lineno}: ${e.message}`);
         throw e;
       };
 
@@ -467,7 +467,7 @@ var LibraryPThread = {
       var pthreadMainJs = locateFile('{{{ PTHREAD_WORKER_FILE }}}');
 #endif
 #if PTHREADS_DEBUG
-      dbg('Allocating a new web worker from ' + pthreadMainJs);
+      dbg(`Allocating a new web worker from ${pthreadMainJs}`);
 #endif
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
@@ -519,7 +519,7 @@ var LibraryPThread = {
 
   $terminateWorker: function(worker) {
 #if PTHREADS_DEBUG
-    dbg('terminateWorker: ' + worker.workerID);
+    dbg(`terminateWorker: ${worker.workerID}`);
 #endif
     worker.terminate();
     // terminate() can be asynchronous, so in theory the worker can continue
@@ -530,7 +530,7 @@ var LibraryPThread = {
     worker.onmessage = (e) => {
 #if ASSERTIONS
       var cmd = e['data']['cmd'];
-      err('received "' + cmd + '" command from terminated worker: ' + worker.workerID);
+      err(`received "${cmd}" command from terminated worker: ${worker.workerID}`);
 #endif
     };
   },
@@ -538,7 +538,7 @@ var LibraryPThread = {
   $killThread__deps: ['_emscripten_thread_free_data', '$terminateWorker'],
   $killThread: function(pthread_ptr) {
 #if PTHREADS_DEBUG
-    dbg('killThread ' + ptrToString(pthread_ptr));
+    dbg(`killThread ${ptrToString(pthread_ptr)}`);
 #endif
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! killThread() can only ever be called from main application thread!');
@@ -561,7 +561,7 @@ var LibraryPThread = {
     // Detached threads are responsible for calling this themselves,
     // otherwise pthread_join is responsible for calling this.
 #if PTHREADS_DEBUG
-    dbg('__emscripten_thread_cleanup: ' + ptrToString(thread))
+    dbg(`__emscripten_thread_cleanup: ${ptrToString(thread)}`)
 #endif
     if (!ENVIRONMENT_IS_PTHREAD) cleanupThread(thread);
     else postMessage({ 'cmd': 'cleanupThread', 'thread': thread });
@@ -582,7 +582,7 @@ var LibraryPThread = {
 
   $cleanupThread: function(pthread_ptr) {
 #if PTHREADS_DEBUG
-    dbg('cleanupThread: ' + ptrToString(pthread_ptr))
+    dbg(`cleanupThread: ${ptrToString(pthread_ptr)}`)
 #endif
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! cleanupThread() can only ever be called from main application thread!');
@@ -610,7 +610,7 @@ var LibraryPThread = {
     function tlsInitWrapper() {
       var __tls_base = tlsInitFunc();
 #if DYLINK_DEBUG
-      dbg('tlsInit -> ' + __tls_base);
+      dbg(`tlsInit -> ${__tls_base}`);
 #endif
       if (!__tls_base) {
 #if ASSERTIONS
@@ -777,7 +777,7 @@ var LibraryPThread = {
     if (transferredCanvasNames) transferredCanvasNames = UTF8ToString(transferredCanvasNames).trim();
     if (transferredCanvasNames) transferredCanvasNames = transferredCanvasNames.split(',');
 #if GL_DEBUG
-    dbg('pthread_create: transferredCanvasNames="' + transferredCanvasNames + '"');
+    dbg(`pthread_create: transferredCanvasNames="${transferredCanvasNames}"`);
 #endif
 
     var offscreenCanvases = {}; // Dictionary of OffscreenCanvas objects we'll transfer to the created thread to own
@@ -789,7 +789,7 @@ var LibraryPThread = {
       try {
         if (name == '#canvas') {
           if (!Module['canvas']) {
-            err('pthread_create: could not find canvas with ID "' + name + '" to transfer to thread!');
+            err(`pthread_create: could not find canvas with ID "${name}" to transfer to thread!`);
             error = {{{ cDefs.EINVAL }}};
             break;
           }
@@ -805,12 +805,12 @@ var LibraryPThread = {
         } else if (!ENVIRONMENT_IS_PTHREAD) {
           var canvas = (Module['canvas'] && Module['canvas'].id === name) ? Module['canvas'] : document.querySelector(name);
           if (!canvas) {
-            err('pthread_create: could not find canvas with ID "' + name + '" to transfer to thread!');
+            err(`pthread_create: could not find canvas with ID "${name}" to transfer to thread!`);
             error = {{{ cDefs.EINVAL }}};
             break;
           }
           if (canvas.controlTransferredOffscreen) {
-            err('pthread_create: cannot transfer canvas with ID "' + name + '" to thread, since the current thread does not have control over it!');
+            err(`pthread_create: cannot transfer canvas with ID "${name}" to thread, since the current thread does not have control over it!`);
             error = {{{ cDefs.EPERM }}}; // Operation not permitted, some other thread is accessing the canvas.
             break;
           }
@@ -839,7 +839,7 @@ var LibraryPThread = {
             // way to undo this in the spec)
             canvas.controlTransferredOffscreen = true;
           } else {
-            err('pthread_create: cannot transfer control of canvas "' + name + '" to pthread, because current browser does not support OffscreenCanvas!');
+            err(`pthread_create: cannot transfer control of canvas "${name}" to pthread, because current browser does not support OffscreenCanvas!`);
             // If building with OFFSCREEN_FRAMEBUFFER=1 mode, we don't need to
             // be able to transfer control to offscreen, but WebGL can be
             // proxied from worker to main thread.
@@ -854,7 +854,7 @@ var LibraryPThread = {
           offscreenCanvases[offscreenCanvasInfo.id] = offscreenCanvasInfo;
         }
       } catch(e) {
-        err('pthread_create: failed to transfer control of canvas "' + name + '" to OffscreenCanvas! Error: ' + e);
+        err(`pthread_create: failed to transfer control of canvas "${name}" to OffscreenCanvas! Error: ${e}`);
         return {{{ cDefs.EINVAL }}}; // Hitting this might indicate an implementation bug or some other internal error
       }
     }
@@ -1049,7 +1049,7 @@ var LibraryPThread = {
     var stackSize = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack_size, 'i32') }}};
     var stackLow = stackHigh - stackSize;
 #if PTHREADS_DEBUG
-    dbg('establishStackSpace: ' + ptrToString(stackHigh) + ' -> ' + ptrToString(stackLow));
+    dbg(`establishStackSpace: ${ptrToString(stackHigh)} -> ${ptrToString(stackLow)}`);
 #endif
 #if ASSERTIONS
     assert(stackHigh != 0);
@@ -1077,7 +1077,7 @@ var LibraryPThread = {
   $invokeEntryPoint__deps: ['_emscripten_thread_exit'],
   $invokeEntryPoint: function(ptr, arg) {
 #if PTHREADS_DEBUG
-    dbg('invokeEntryPoint: ' + ptrToString(ptr));
+    dbg(`invokeEntryPoint: ${ptrToString(ptr)}`);
 #endif
 #if EXIT_RUNTIME && !MINIMAL_RUNTIME
     // An old thread on this worker may have been canceled without returning the
@@ -1138,7 +1138,7 @@ var LibraryPThread = {
 
   $markAsFinshed: function(pthread_ptr) {
 #if PTHREADS_DEBUG
-    dbg('markAsFinshed: ' + ptrToString(pthread_ptr));
+    dbg(`markAsFinshed: ${ptrToString(pthread_ptr)}`);
 #endif
     PThread.finishedThreads.add(pthread_ptr);
     if (pthread_ptr in PThread.outstandingPromises) {
@@ -1258,7 +1258,7 @@ var LibraryPThread = {
       var worker = PThread.pthreads[targetThreadId];
       if (!worker) {
 #if ASSERTIONS
-        err('Cannot send message to thread with ID ' + targetThreadId + ', unknown thread ID!');
+        err(`Cannot send message to thread with ID ${targetThreadId}, unknown thread ID!`);
 #endif
         return;
       }
