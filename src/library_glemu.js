@@ -3810,18 +3810,18 @@ var LibraryGLEmulation = {
     }
   },
 
-  glTexGeni: function() { throw 'glTexGeni: TODO' },
-  glTexGenfv: function() { throw 'glTexGenfv: TODO' },
-  glTexEnvi: function() { warnOnce('glTexEnvi: TODO') },
-  glTexEnvf: function() { warnOnce('glTexEnvf: TODO') },
-  glTexEnvfv: function() { warnOnce('glTexEnvfv: TODO') },
+  glTexGeni: function(coord, pname, param) { throw 'glTexGeni: TODO' },
+  glTexGenfv: function(coord, pname, param) { throw 'glTexGenfv: TODO' },
+  glTexEnvi: function(target, pname, params) { warnOnce('glTexEnvi: TODO') },
+  glTexEnvf: function(target, pname, params) { warnOnce('glTexEnvf: TODO') },
+  glTexEnvfv: function(target, pname, params) { warnOnce('glTexEnvfv: TODO') },
 
   glGetTexEnviv: function(target, pname, param) { throw 'GL emulation not initialized!'; },
   glGetTexEnvfv: function(target, pname, param) { throw 'GL emulation not initialized!'; },
 
-  glTexImage1D: function() { throw 'glTexImage1D: TODO' },
-  glTexCoord3f: function() { throw 'glTexCoord3f: TODO' },
-  glGetTexLevelParameteriv: function() { throw 'glGetTexLevelParameteriv: TODO' },
+  glTexImage1D: function(target, level, internalformat, width, border, format, type, data) { throw 'glTexImage1D: TODO' },
+  glTexCoord3f: function(target, level, internalformat, width, border, format, type, data) { throw 'glTexCoord3f: TODO' },
+  glGetTexLevelParameteriv: function(target, level, pname, params) { throw 'glGetTexLevelParameteriv: TODO' },
 
   glShadeModel: function() { warnOnce('TODO: glShadeModel') },
 
