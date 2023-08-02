@@ -469,7 +469,7 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getMonth()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getYear()', 'i32') }}};
 
-    return date.getTime() / 1000;
+    return (date.getTime() / 1000) | 0;
   },
 
   _gmtime_js__i53abi: true,
@@ -503,7 +503,7 @@ mergeInto(LibraryManager.library, {
     var yday = ((date.getTime() - start) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
 
-    return date.getTime() / 1000;
+    return (date.getTime() / 1000) | 0;
   },
 
   _localtime_js__i53abi: true,
