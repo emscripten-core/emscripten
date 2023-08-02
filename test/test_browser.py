@@ -2197,7 +2197,9 @@ void *getBindBuffer() {
 
   @requires_graphics_hardware
   def test_glgettexenv(self):
-    self.btest('glgettexenv.c', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], expected='1')
+    # Test with 4GB maximum memory to test that GL emulation does not error
+    # during link.
+    self.btest('glgettexenv.c', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-sMAXIMUM_MEMORY=4GB', '-sALLOW_MEMORY_GROWTH'], expected='1')
 
   def test_sdl_canvas_blank(self):
     self.btest('browser/test_sdl_canvas_blank.c', args=['-lSDL', '-lGL'], reference='browser/test_sdl_canvas_blank.png')
