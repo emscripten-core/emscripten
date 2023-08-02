@@ -6713,6 +6713,7 @@ void* operator new(size_t size) {
   @no_safe_heap('has unaligned 64-bit operations in wasm')
   @is_slow_test
   @no_ubsan('https://github.com/emscripten-core/emscripten/issues/19688')
+  @no_asan('local count too large')
   def test_sse2(self):
     src = test_file('sse/test_sse2.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -9799,6 +9800,13 @@ wasm64 = make_run('wasm64', emcc_args=['-O1', '-Wno-experimental', '--profiling-
                   settings={'MEMORY64': 1}, require_wasm64=True, require_node=True)
 wasm64_v8 = make_run('wasm64_v8', emcc_args=['-Wno-experimental', '--profiling-funcs'],
                      settings={'MEMORY64': 1}, require_wasm64=True, require_v8=True)
+# Run the wasm64 tests with all memory offsets > 4gb.  Be careful running this test
+# suite with any kind of parallelism.
+wasm64_4gb = make_run('wasm64_4gb', emcc_args=['-Wno-experimental', '--profiling-funcs'],
+                      settings={'MEMORY64': 1, 'INITIAL_MEMORY': '4200mb',
+                                'MAXIMUM_MEMORY': '4200mb', # TODO(sbc): should not be needed
+                                'GLOBAL_BASE': '4gb'},
+                      require_wasm64=True)
 # MEMORY64=2, or "lowered"
 wasm64l = make_run('wasm64l', emcc_args=['-O1', '-Wno-experimental', '--profiling-funcs'],
                    settings={'MEMORY64': 2},

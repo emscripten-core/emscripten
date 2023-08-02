@@ -606,6 +606,7 @@ jobs:
           title: "wasm64"
           test_targets: "
             wasm64
+            wasm64_4gb.test_hello_world
             wasm64l.test_bigswitch
             other.test_memory64_proxies
             other.test_failing_growth_wasm64"
