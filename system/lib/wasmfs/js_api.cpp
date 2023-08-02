@@ -25,12 +25,9 @@ extern "C" {
 // TODO: Replace forward declarations with #include <emscripten/wasmfs.h> and 
 // resolve wasmfs::backend_t namespace conflicts.
 __wasi_fd_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend);
-<<<<<<< HEAD
 void wasmfs_flush(void);
-=======
 int wasmfs_create_directory(char* path, int mode, backend_t backend);
 int wasmfs_unmount(intptr_t path);
->>>>>>> main
 
 // Copy the file specified by the pathname into JS.
 // Return a pointer to the JS buffer in HEAPU8.
