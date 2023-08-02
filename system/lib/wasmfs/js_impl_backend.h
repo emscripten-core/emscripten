@@ -90,6 +90,7 @@ class JSImplFile : public DataFile {
   }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
+    printf("Js impl backend read");
     return _wasmfs_jsimpl_read(
       getBackendIndex(), getFileIndex(), buf, len, offset);
   }
@@ -115,7 +116,6 @@ public:
 class JSImplBackend : public Backend {
 public:
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
-    printf("createFile mode: %d, %d\n", mode, S_ISCHR(mode));
     return std::make_shared<JSImplFile>(mode, this);
   }
   std::shared_ptr<Directory> createDirectory(mode_t mode) override {

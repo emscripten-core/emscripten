@@ -8,6 +8,7 @@
 #include <emscripten.h>
 #include <stdio.h>
 #include <assert.h>
+#include <errno.h>
 
 int main(int argc, char *argv[])
 {
@@ -15,9 +16,17 @@ int main(int argc, char *argv[])
     var counter = FS.makedev(64, 0);
 
     FS.registerDevice(counter, {
-      open: function(stream) {},
+      open: function(stream) {
+        console.log("Opened");
+      },
       close: function(stream) {},
       read: function(stream, buffer, offset, length, position) {
+        console.log("Read: stream: ", stream);
+        console.log("Read: buffer: ", buffer);
+        console.log("Read: offset: ", offset);
+        console.log("Read: length: ", length);
+        console.log("Read: position: ", position);
+
         for (var i = 0; i < length; ++i) {
           buffer[offset + i] = position + i;
         }
@@ -38,7 +47,10 @@ int main(int argc, char *argv[])
   FILE* file = fopen("/counter", "rb");
   assert(file != NULL);
   fseeko(file, 0x10000005A, SEEK_SET);
-  assert(fgetc(file) == 0x5A);
+  int val = fgetc(file);
+  printf("Val: %d\n", val);
+  printf("Errno: %d\n", errno);
+  assert(val == 0x5A);
   fclose(file);
 
   puts("success");

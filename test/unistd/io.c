@@ -27,9 +27,11 @@ int main() {
     var device = FS.makedev(major++, 0);
     FS.registerDevice(device, {
       open: function(stream) {
+        console.log("Opened");
         stream.payload = [65, 66, 67, 68];
       },
       read: function(stream, buffer, offset, length, pos) {
+        console.log("Try to read");
         var bytesRead = 0;
         for (var i = 0; i < length; i++) {
           if (stream.payload.length) {
@@ -53,6 +55,7 @@ int main() {
     var broken_device = FS.makedev(major++, 0);
     FS.registerDevice(broken_device, {
       read: function(stream, buffer, offset, length, pos) {
+        console.log("Reading broken...");
         throw new FS.ErrnoError(ERRNO_CODES.EIO);
       },
       write: function(stream, buffer, offset, length, pos) {
@@ -63,8 +66,8 @@ int main() {
 
     // NB: These are meant to test FS.createDevice specifically,
     //     and as such do not use registerDevice/mkdev
-    FS.createDevice('/', 'createDevice-read-only', function() {});
-    FS.createDevice('/', 'createDevice-write-only', null, function() {});
+    // FS.createDevice('/', 'createDevice-read-only', function() {});
+    // FS.createDevice('/', 'createDevice-write-only', null, function() {});
 
     FS.mkdir('/working/folder');
     FS.writeFile('/working/file', '1234567890');
@@ -90,6 +93,7 @@ int main() {
   errno = 0;
 
   int d = open("/device", O_RDWR);
+  printf("Device fd: %d/%d\n", d, errno);
   printf("read from device: %zd\n", read(d, readBuffer, sizeof readBuffer));
   printf("data: %s\n", readBuffer);
   memset(readBuffer, 0, sizeof readBuffer);

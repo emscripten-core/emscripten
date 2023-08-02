@@ -267,13 +267,7 @@ int _wasmfs_lstat(char* path, struct stat* statBuf) {
 }
 
 int _wasmfs_mkdev(char* path, mode_t mode, backend_t backend) {
-  int err = wasmfs_create_file(path, mode, backend);
-  if (err < 0) {
-    return err;
-  }
-  printf("Mkdev mode: %d, %d\n", mode, mode | S_IFCHR);
-
-  return __syscall_chmod((intptr_t)path, mode | S_IFCHR);
+  return wasmfs_create_file(path, mode, backend);
 }
 
 // Helper method that identifies what a path is:

@@ -368,8 +368,6 @@ int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
   }
   buffer->st_size = size;
 
-  printf("Syscall stat mode: %d\n", lockedFile.getMode());
-
   // ATTN: hard-coded constant values are copied from the existing JS file
   // system. Specific values were chosen to match existing library_fs.js
   // values.
@@ -454,9 +452,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       }
 
       // Mask out everything except the permissions bits.
-      printf("C Before Mask: %d, %d\n", mode, S_ISCHR(mode));
       mode &= S_IALLUGO;
-      printf("C After Mask: %d, %d\n", mode, S_ISCHR(mode));
 
       // If there is no explicitly provided backend, use the parent's backend.
       if (!backend) {
@@ -470,14 +466,15 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
         if (!created) {
           // TODO Receive a specific error code, and report it here. For now,
           //      report a generic error.
+          printf("Same backend not created\n");
           return -EIO;
         }
       } else {
         created = backend->createFile(mode);
-        printf("Syscalls mode: %d\n", created->locked().getMode());
         if (!created) {
           // TODO Receive a specific error code, and report it here. For now,
           //      report a generic error.
+          printf("Diff backend not created\n");
           return -EIO;
         }
         [[maybe_unused]] bool mounted = lockedParent.mountChild(std::string(childName), created);
@@ -1124,7 +1121,6 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
 
 // TODO: Test this with non-AT_FDCWD values.
 int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
-  printf("Syscall fchmodat mode: %d\n", mode);
   int flags = 0;
   va_list v1;
   va_start(v1, mode);
