@@ -69,12 +69,6 @@ int main(int argc, char *argv[])
     assert(colora[2] == colorb[2]);
     assert(colora[3] == colorb[3]);
 
-    // Check for no compilation errors with the following.
-    if (argc == 1234) {
-      GLint i;
-      glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &i);
-    }
-
     SDL_Quit();
 
 #ifdef REPORT_RESULT
