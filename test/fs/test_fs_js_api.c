@@ -411,7 +411,11 @@ int main() {
 
     EM_ASM(
         var id = FS.makedev(64, 0);
-        FS.registerDevice(id, {});
+        FS.registerDevice(id, {
+            allocFile: (file) => {
+                console.log("allocFile: ", file);
+            }
+        });
         FS.mkdev("/dummydevice", id);
         console.log("ID: ", id);
     );

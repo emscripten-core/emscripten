@@ -115,7 +115,7 @@ public:
 class JSImplBackend : public Backend {
 public:
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
-    printf("Backend mode: %d, %d\n", mode, S_ISCHR(mode));
+    printf("createFile mode: %d, %d\n", mode, S_ISCHR(mode));
     return std::make_shared<JSImplFile>(mode, this);
   }
   std::shared_ptr<Directory> createDirectory(mode_t mode) override {
