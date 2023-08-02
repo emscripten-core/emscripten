@@ -90,6 +90,8 @@ extern "C" void wasmfs_flush(void) {
 #ifndef NDEBUG
           std::string errorMessage = "Non-fatal error code " + std::to_string(err) + " while flushing file: " + entry.name;
           emscripten_console_error(errorMessage.c_str());
+#else
+          emscripten_console_error("A non-fatal error occurred while flushing a file.");
 #endif
         }
       } else if (entry.kind == File::FileKind::DirectoryKind) {
