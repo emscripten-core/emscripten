@@ -9,10 +9,6 @@
 
 #include <pthread.h>
 
-// Proxied JS function can support a few more arguments than proxied C/C++
-// functions, because the dispatch is variadic and signature independent.
-#define EM_QUEUED_JS_CALL_MAX_ARGS 20
-
 #define EM_THREAD_NAME_MAX 32
 
 #define EM_THREAD_STATUS int
