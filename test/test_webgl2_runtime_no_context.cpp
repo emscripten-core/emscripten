@@ -20,9 +20,9 @@ int main()
   EM_ASM({
     var original = Module.canvas.getContext;
     Module.canvas.getContext = function(name, attrs) {
-      console.log('ask', name, attrs);
+      out('ask', name, attrs);
       if (name === "webgl2") return null;
-      console.log('provide!');
+      out('provide!');
       return original.call(Module.canvas, name, attrs);
     };
   });
