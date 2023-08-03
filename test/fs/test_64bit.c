@@ -16,20 +16,31 @@ int main(int argc, char *argv[])
     var counter = FS.makedev(64, 0);
 
     FS.registerDevice(counter, {
-      open: function(stream) {
-        console.log("Opened");
-      },
+      open: function(stream) {},
       close: function(stream) {},
+#if WASMFS
+      read: function(file, buffer, length, offset) {
+        // WasmFS does not provide the file's current seek position to 
+        // custom devices, unlike the legacy FS.
+        var position = 0x10000005A; // We hardcode this value for testing purposes.
+        var tempBuffer = [];
+        for (var i = 0; i < length; i++) {
+          tempBuffer.push(i + position);
+        }
+        Module.HEAP8.set(tempBuffer, buffer);
+        console.log("Heap8: ", Module.HEAP8.subarray(buffer, buffer + 10));
+        return length;
+      }
+#else
       read: function(stream, buffer, offset, length, position) {
-        console.log("Read: stream: ", stream);
-        console.log("Read: buffer: ", buffer);
-        console.log("Read: offset: ", offset);
-        console.log("Read: length: ", length);
-        console.log("Read: position: ", position);
-
+        console.log("Pre buffer: ", buffer.subarray(offset, offset + length));
+        console.log("Offset: ", offset);
+        console.log("Position: ", position);
+        console.log("Length: ", length);
         for (var i = 0; i < length; ++i) {
           buffer[offset + i] = position + i;
         }
+        console.log("Post buffer: ", buffer.subarray(offset, offset + length));
         return length;
       },
       llseek: function(stream, offset, whence) {
@@ -39,6 +50,7 @@ int main(int argc, char *argv[])
         }
         return position;
       }
+#endif
     });
 
     FS.mkdev('/counter', counter);

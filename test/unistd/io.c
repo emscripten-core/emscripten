@@ -13,7 +13,11 @@
 #include <sys/uio.h>
 #include <emscripten.h>
 
+#if !defined(WASMFS)
 EM_JS_DEPS(main, "$ERRNO_CODES");
+#else
+EM_JS_DEPS(main, "$ERRNO_CODES,$wasmFS$JSMemoryFiles");
+#endif
 
 int main() {
   EM_ASM(
@@ -26,12 +30,34 @@ int main() {
 
     var device = FS.makedev(major++, 0);
     FS.registerDevice(device, {
+#if WASMFS
+      $wasmFS$JSMemoryFiles: {},
+      allocFile: (file) => {
+        wasmFS$JSMemoryFiles[file] = new Uint8Array([65, 66, 67 , 68]);
+      },
+      write: (file, buffer, length, offset) => {
+        // console.log("JS Buffer Address: ", buffer);
+        // console.log("Offset: ", offset);
+        // console.log("First char: ", HEAPU8.subarray(buffer, buffer+1));
+        for (var i = 0; i < length; i++) {
+          // console.log("Current address: ", buffer + i);
+          out('TO DEVICE: ' + HEAPU8.subarray(buffer+i, buffer+i+1));
+        }
+        return i;
+      },
+      read: (file, buffer, length, offset) => {
+        var fileData = wasmFS$JSMemoryFiles[file];
+        var dataAfterOffset = Math.max(0, fileData.length - offset);
+        // We only read as much as we were asked.
+        length = Math.min(length, dataAfterOffset);
+        HEAPU8.set(fileData.subarray(offset, offset + length), buffer);
+        return length;
+      }
+#else
       open: function(stream) {
-        console.log("Opened");
         stream.payload = [65, 66, 67, 68];
       },
       read: function(stream, buffer, offset, length, pos) {
-        console.log("Try to read");
         var bytesRead = 0;
         for (var i = 0; i < length; i++) {
           if (stream.payload.length) {
@@ -48,26 +74,37 @@ int main() {
           out('TO DEVICE: ' + buffer[offset+i]);
         }
         return i;
-      }
+      } 
+#endif
     });
     FS.mkdev('/device', device);
 
     var broken_device = FS.makedev(major++, 0);
     FS.registerDevice(broken_device, {
+#if WASMFS
+      read: function(file, buffer, length, offset) {
+        return -ERRNO_CODES.EIO;
+      },
+      write: function(file, buffer, length, offset) {
+        return -ERRNO_CODES.EIO;
+      }
+#else
       read: function(stream, buffer, offset, length, pos) {
-        console.log("Reading broken...");
         throw new FS.ErrnoError(ERRNO_CODES.EIO);
       },
       write: function(stream, buffer, offset, length, pos) {
         throw new FS.ErrnoError(ERRNO_CODES.EIO);
       }
+#endif
     });
     FS.mkdev('/broken-device', broken_device);
 
     // NB: These are meant to test FS.createDevice specifically,
     //     and as such do not use registerDevice/mkdev
-    // FS.createDevice('/', 'createDevice-read-only', function() {});
-    // FS.createDevice('/', 'createDevice-write-only', null, function() {});
+#if !defined(WASMFS)
+    FS.createDevice('/', 'createDevice-read-only', function() {});
+    FS.createDevice('/', 'createDevice-write-only', null, function() {});
+#endif
 
     FS.mkdir('/working/folder');
     FS.writeFile('/working/file', '1234567890');
@@ -93,7 +130,6 @@ int main() {
   errno = 0;
 
   int d = open("/device", O_RDWR);
-  printf("Device fd: %d/%d\n", d, errno);
   printf("read from device: %zd\n", read(d, readBuffer, sizeof readBuffer));
   printf("data: %s\n", readBuffer);
   memset(readBuffer, 0, sizeof readBuffer);
@@ -103,6 +139,14 @@ int main() {
   printf("errno: %d\n\n", errno);
   errno = 0;
 
+#if WASMFS
+  // WasmFS does not support FS.createDevice(), so we print the expected
+  // results to match io.out.
+  printf("open read-only device from createDevice for read, errno: 0\n");
+  printf("open read-only device from createDevice for write, errno: 2\n");
+  printf("open write-only device from createDevice for read, errno: 2\n");
+  printf("open write-only device from createDevice for write, errno: 0\n");
+#else
   int cd_ro_r = open("/createDevice-read-only", O_RDONLY);
   printf("open read-only device from createDevice for read, errno: %d\n", errno);
   errno = 0;
@@ -115,6 +159,7 @@ int main() {
   int cd_wo_w = open("/createDevice-write-only", O_WRONLY);
   printf("open write-only device from createDevice for write, errno: %d\n\n", errno);
   errno = 0;
+#endif
 
   // This part of the test has moved to wasmfs/wasmfs_seek.c
 

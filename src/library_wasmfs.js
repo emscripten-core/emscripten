@@ -366,7 +366,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     minor: (dev) => ((dev) & 0xff),
     makedev: (ma, mi) => ((ma) << 8 | (mi)),
     registerDevice: (dev, ops) => {
-      console.log("Pre ops: ", ops);
       var backendPointer = _wasmfs_create_jsimpl_backend();
 
       var defaultOps = {
@@ -393,15 +392,11 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
       if (typeof ops.read === 'undefined') {
         ops.read = defaultOps.read;
-      } else {
-        console.log("Found read");
       }
 
       if (typeof ops.getSize === 'undefined') {
         ops.getSize = defaultOps.getSize;
       }
-
-      console.log("Post ops: ", ops);
 
       wasmFS$backends[backendPointer] = ops;
 

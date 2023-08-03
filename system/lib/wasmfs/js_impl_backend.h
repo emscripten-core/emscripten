@@ -90,7 +90,6 @@ class JSImplFile : public DataFile {
   }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
-    printf("Js impl backend read");
     return _wasmfs_jsimpl_read(
       getBackendIndex(), getFileIndex(), buf, len, offset);
   }

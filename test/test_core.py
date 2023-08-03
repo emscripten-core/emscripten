@@ -5816,13 +5816,8 @@ Module = {
     self.do_run_in_out_file_test('fcntl/test_fcntl_misc.c')
 
   def test_poll(self):
-    self.add_pre_run('''
-      var dummy_device = FS.makedev(64, 0);
-      FS.registerDevice(dummy_device, {});
-
-      FS.createDataFile('/', 'file', 'abcdef', true, true, false);
-      FS.mkdev('/device', dummy_device);
-    ''')
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
     self.do_core_test('test_poll.c')
 
   def test_statvfs(self):
@@ -5917,6 +5912,9 @@ Module = {
       self.do_core_test('test_istream.cpp')
 
   def test_fs_base(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+      self.emcc_args += ['--profiling', '--profiling-funcs', '-sASSERTIONS']
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
     self.uses_es6 = True
     self.add_pre_run(read_file(test_file('filesystem/src.js')))

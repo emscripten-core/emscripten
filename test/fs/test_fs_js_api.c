@@ -409,17 +409,6 @@ int main() {
     test_fs_mkdirTree();
     test_fs_utime();
 
-    EM_ASM(
-        var id = FS.makedev(64, 0);
-        FS.registerDevice(id, {
-            allocFile: (file) => {
-                console.log("allocFile: ", file);
-            }
-        });
-        FS.mkdev("/dummydevice", id);
-        console.log("ID: ", id);
-    );
-
     cleanup();
 
     puts("success");

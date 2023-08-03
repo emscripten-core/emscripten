@@ -1336,24 +1336,31 @@ int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
     if (openFile) {
       mask = 0;
       auto flags = openFile->locked().getFlags();
+      auto accessMode = flags & O_ACCMODE;
+      printf("Fd: %d, flags: %d, access: %d\n", fd, flags, accessMode);
       auto readBit = pollfd->events & POLLOUT;
-      if (readBit && (flags == O_WRONLY || flags == O_RDWR)) {
+      if (readBit && (accessMode == O_WRONLY || accessMode == O_RDWR)) {
         mask |= readBit;
       }
       auto writeBit = pollfd->events & POLLIN;
-      if (writeBit && (flags == O_RDONLY || flags == O_RDWR)) {
+      if (writeBit && (accessMode == O_RDONLY || accessMode == O_RDWR)) {
+        printf("Inside if: %d\n", writeBit);
         // If there is data in the file, then there is also the ability to read.
         // TODO: Does this need to consider the position as well? That is, if
         // the position is at the end, we can't read from the current position
         // at least. If we update this, make sure the size isn't an error!
         if (openFile->locked().getFile()->locked().getSize() > 0) {
+          printf("Good to OR with writeBit\n");
           mask |= writeBit;
+        } else {
+          printf("Size is zero\n");
         }
       }
       // TODO: get mask from File dynamically using a poll() hook?
     }
     // TODO: set the state based on the state of the other end of the pipe, for
     //       pipes (POLLERR | POLLHUP)
+    printf("Fd: %d, mask: %d\n", fd, mask);
     if (mask) {
       nonzero++;
     }
