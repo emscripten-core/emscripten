@@ -2114,34 +2114,12 @@ int main() {
     self.set_setting('ASYNCIFY')
     self.do_run(src, '1')
 
-  # TODO: test only worked in non-fastcomp
-  def test_inlinejs(self):
-    self.skipTest('non-fastcomp is deprecated and fails in 3.5') # only supports EM_ASM
-
-    self.do_core_test('test_inlinejs.c')
-
-    if self.emcc_args == []:
-      # opts will eliminate the comments
-      out = read_file('src.js')
-      for i in range(1, 5):
-        assert ('comment%d' % i) in out
-
-  # TODO: test only worked in non-fastcomp
-  def test_inlinejs2(self):
-    self.skipTest('non-fastcomp is deprecated and fails in 3.5') # only supports EM_ASM
-
-    self.do_core_test('test_inlinejs2.c')
-
   def test_inlinejs3(self):
-    if self.is_wasm():
-      self.skipTest('wasm requires a proper asm module')
-
-    src = test_file('core/test_inlinejs3.c')
-    output = shared.unsuffixed(src) + '.out'
-
     self.do_core_test('test_inlinejs3.c')
 
     print('no debugger, check validation')
+    src = test_file('core/test_inlinejs3.c')
+    output = test_file('core/test_inlinejs3.out')
     src = read_file(src).replace('emscripten_debugger();', '')
     self.do_run(src, read_file(output))
 
