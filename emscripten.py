@@ -446,7 +446,7 @@ def get_metadata(infile, outfile, modify_wasm, args):
 
 def create_sourcemapping_url_file(infile, url):
   """Create a file with the contents of the sourceMappingURL section"""
-  filename = shared.get_temp_files().get('.ext').name
+  filename = os.path.join(shared.get_emscripten_temp_dir(), infile + '.smu')
   utils.write_binary(filename, leb128.u.encode(len(url)) + url.encode('utf-8'))
   return filename
 
