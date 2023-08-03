@@ -920,7 +920,7 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
 
 
 def strip(infile, outfile, debug=False, sections=None):
-  'Strip DWARF and/or other specified sections from a wasm file'
+  """Strip DWARF and/or other specified sections from a wasm file"""
   cmd = [LLVM_OBJCOPY, infile, outfile]
   if debug:
     cmd += ['--remove-section=.debug*']
