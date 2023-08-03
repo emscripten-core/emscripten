@@ -49,7 +49,7 @@ void *ThreadMain(void *arg)
 	int numGood = 0;
 	for(unsigned int i = 0; i < N; ++i)
 		if (n[i] == i) ++numGood;
-		else EM_ASM(err('n['+$0+']='+$1), i, n[i]);
+		else emscripten_errf("n[%d]=%d", i, n[i]);
 
 	emscripten_outf("Thread idx %ld with param %d: all done with result %d.", idx, param, numGood);
 	pthread_exit((void*)numGood);
@@ -84,7 +84,7 @@ int main()
 				int status;
 				int rc = pthread_join(thread[i], (void**)&status);
 				assert(rc == 0);
-				EM_ASM(err('Main: Joined thread idx ' + $0 + ' (param ' + $1 + ') with status ' + $2), i, global_shared_data[i], (int)status);
+				emscripten_errf("Main: Joined thread idx %d (param %d) with status %d", i, global_shared_data[i], (int)status);
 				assert(status == N);
 				thread[i] = 0;
 				if (numThreadsToCreate > 0)
