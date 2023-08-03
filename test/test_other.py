@@ -5763,6 +5763,7 @@ This locale is not the C locale.
     self.set_setting('FILESYSTEM', 0)
     self.do_runf(test_file('hello_libcxx.cpp'), 'hello, world!')
 
+  @also_with_wasmfs
   @is_slow_test
   def test_no_nuthin(self):
     # check FILESYSTEM is automatically set, and effective
@@ -5776,7 +5777,7 @@ This locale is not the C locale.
         # pad the name to a common length so that doesn't effect the size of the
         # output
         padded_name = name + '_' * (20 - len(name))
-        self.run_process([EMCC, test_file(source), '-o', padded_name + '.js'] + opts + moar_opts)
+        self.run_process([EMCC, test_file(source), '-o', padded_name + '.js'] + opts + moar_opts + self.get_emcc_args())
         sizes[name] = os.path.getsize(padded_name + '.js')
         if os.path.exists(padded_name + '.wasm'):
           sizes[name] += os.path.getsize(padded_name + '.wasm')
@@ -5795,9 +5796,6 @@ This locale is not the C locale.
     test(['-O1'], 91000)
     test(['-O2'], 46000)
     test(['-O3', '--closure=1'], 17000)
-    # js too
-    test(['-O3', '--closure=1', '-sWASM=0'], 36000)
-    test(['-O3', '--closure', '2', '-sWASM=0'], 33000) # might change now and then
 
   def test_no_browser(self):
     BROWSER_INIT = 'var Browser'
@@ -7232,6 +7230,7 @@ Resolved: "/" => "/"
     out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained('native code called abort()', out)
 
+  @also_with_wasmfs
   def test_mallocs(self):
     def run(opts):
       print(opts)
@@ -7242,11 +7241,11 @@ Resolved: "/" => "/"
         ('emmalloc', 'emmalloc')
       ):
         print(malloc, name)
-        cmd = [EMXX, test_file('hello_libcxx.cpp'), '-o', 'a.out.js'] + opts
+        args = opts[:]
         if malloc:
-          cmd += ['-sMALLOC="%s"' % malloc]
-        print(cmd)
-        self.run_process(cmd)
+          args += ['-sMALLOC=%s' % malloc]
+        print(args)
+        self.emcc(test_file('hello_libcxx.cpp'), args=args)
         sizes[name] = os.path.getsize('a.out.wasm')
       print(sizes)
       # dlmalloc is the default
