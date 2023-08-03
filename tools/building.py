@@ -213,6 +213,7 @@ def lld_flags_for_executable(external_symbols):
     cmd += [
       '-z', 'stack-size=%s' % settings.STACK_SIZE,
       '--initial-memory=%d' % settings.INITIAL_MEMORY,
+      '--max-memory=%d' % settings.MAXIMUM_MEMORY,
     ]
 
     if settings.STANDALONE_WASM:
@@ -228,10 +229,6 @@ def lld_flags_for_executable(external_symbols):
         # `__main_argv_argc`, but we should address that by using a single `_start`
         # function like we do in STANDALONE_WASM mode.
         cmd += ['--no-entry']
-    if not settings.ALLOW_MEMORY_GROWTH:
-      cmd.append('--max-memory=%d' % settings.INITIAL_MEMORY)
-    elif settings.MAXIMUM_MEMORY != -1:
-      cmd.append('--max-memory=%d' % settings.MAXIMUM_MEMORY)
 
   if settings.STACK_FIRST:
     cmd.append('--stack-first')

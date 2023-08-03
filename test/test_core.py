@@ -9781,9 +9781,7 @@ wasm64_v8 = make_run('wasm64_v8', emcc_args=['-Wno-experimental', '--profiling-f
 # Run the wasm64 tests with all memory offsets > 4gb.  Be careful running this test
 # suite with any kind of parallelism.
 wasm64_4gb = make_run('wasm64_4gb', emcc_args=['-Wno-experimental', '--profiling-funcs'],
-                      settings={'MEMORY64': 1, 'INITIAL_MEMORY': '4200mb',
-                                'MAXIMUM_MEMORY': '4200mb', # TODO(sbc): should not be needed
-                                'GLOBAL_BASE': '4gb'},
+                      settings={'MEMORY64': 1, 'INITIAL_MEMORY': '4200mb', 'GLOBAL_BASE': '4gb'},
                       require_wasm64=True)
 # MEMORY64=2, or "lowered"
 wasm64l = make_run('wasm64l', emcc_args=['-O1', '-Wno-experimental', '--profiling-funcs'],
