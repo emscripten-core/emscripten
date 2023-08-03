@@ -15,8 +15,8 @@
 _Atomic long res = 43;
 static void cleanup_handler(void *arg)
 {
-  emscripten_outf("Called clean-up handler with arg %p", arg);
   long a = (long)arg;
+  emscripten_outf("Called clean-up handler with arg %ld", a);
   res -= a;
 }
 
