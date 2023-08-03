@@ -163,6 +163,14 @@ int main() {
   printf("mktime guesses DST (winter): %d\n", tm_winter.tm_isdst == oldDstWinter);
   printf("mktime guesses DST (summer): %d\n", tm_summer.tm_isdst == oldDstSummer);
 
+  struct tm tm_big = {0};
+  tm_big.tm_year = 292278994;
+  tm_big.tm_mday = 31;
+  tm_big.tm_hour = 23;
+  tm_big.tm_min = 59;
+  tm_big.tm_sec = 59;
+  assert(mktime(&tm_big) == -1);
+
   // Verify localtime_r() doesn't clobber static data.
   time_t t3 = 60*60*24*5; // Jan 5 1970
   struct tm tm3;

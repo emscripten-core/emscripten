@@ -469,6 +469,8 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getMonth()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getYear()', 'i32') }}};
 
+    if (isNaN(date.getTime()))
+      return -1;
     return date.getTime() / 1000;
   },
 
