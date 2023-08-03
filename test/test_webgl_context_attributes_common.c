@@ -12,6 +12,7 @@
 #include <assert.h>
 
 #include <emscripten.h>
+#include <emscripten/console.h>
 
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 
@@ -289,18 +290,18 @@ extern int webglAlphaSupported(void);
 static void checkContextAttributesSupport() {
   if (!webglAntialiasSupported()) {
     resultAA = true;
-    EM_ASM(err('warning: no antialiasing\n'));
+    emscripten_err("warning: no antialiasing");
   }
   if (!webglDepthSupported()) {
     resultDepth = true;
-    EM_ASM(err('warning: no depth\n'));
+    emscripten_err("warning: no depth");
   }
   if (!webglStencilSupported()) {
     resultStencil = true;
-    EM_ASM(err('warning: no stencil\n'));
+    emscripten_err("warning: no stencil");
   }
   if (!webglAlphaSupported()) {
     resultAlpha = true;
-    EM_ASM(err('warning: no alpha\n'));
+    emscripten_err("warning: no alpha");
   }
 }

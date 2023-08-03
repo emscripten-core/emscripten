@@ -1778,6 +1778,22 @@ def setup_pthreads(target):
       settings.EXPORTED_RUNTIME_METHODS += ['ExitStatus']
 
 
+def set_max_memory():
+  # When memory growth is disallowed set MAXIMUM_MEMORY equal to INITIAL_MEMORY
+  if not settings.ALLOW_MEMORY_GROWTH:
+    if 'MAXIMUM_MEMORY' in user_settings:
+      diagnostics.warning('unused-command-line-argument', 'MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH')
+    settings.MAXIMUM_MEMORY = settings.INITIAL_MEMORY
+
+  # INITIAL_MEMORY sets a lower bound for MAXIMUM_MEMORY
+  if 'MAXIMUM_MEMORY' not in user_settings:
+    if settings.INITIAL_MEMORY > settings.MAXIMUM_MEMORY:
+      settings.MAXIMUM_MEMORY = settings.INITIAL_MEMORY
+
+  if settings.MAXIMUM_MEMORY < settings.INITIAL_MEMORY:
+    exit_with_error('MAXIMUM_MEMORY cannot be less than INITIAL_MEMORY')
+
+
 @ToolchainProfiler.profile_block('linker_setup')
 def phase_linker_setup(options, state, newargs):
   autoconf = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in state.orig_args or 'conftest.cpp' in state.orig_args
@@ -2522,12 +2538,6 @@ def phase_linker_setup(options, state, newargs):
   if settings.MEMORY_GROWTH_LINEAR_STEP != -1:
     check_memory_setting('MEMORY_GROWTH_LINEAR_STEP')
 
-  if settings.ALLOW_MEMORY_GROWTH and settings.MAXIMUM_MEMORY < settings.INITIAL_MEMORY:
-    exit_with_error('MAXIMUM_MEMORY must be larger then INITIAL_MEMORY')
-
-  if 'MAXIMUM_MEMORY' in user_settings and not settings.ALLOW_MEMORY_GROWTH:
-    diagnostics.warning('unused-command-line-argument', 'MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH')
-
   if settings.EXPORT_ES6:
     if not settings.MODULARIZE:
       # EXPORT_ES6 requires output to be a module
@@ -2774,6 +2784,12 @@ def phase_linker_setup(options, state, newargs):
   if sanitize and settings.GENERATE_SOURCE_MAP:
     settings.LOAD_SOURCE_MAP = 1
 
+  set_max_memory()
+
+  # check if we can address the 2GB mark and higher.
+  if not settings.MEMORY64 and settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024:
+    settings.CAN_ADDRESS_2GB = 1
+
   if settings.MINIMAL_RUNTIME:
     if settings.EXIT_RUNTIME:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['proc_exit', '$callRuntimeCallbacks']
@@ -2873,14 +2889,6 @@ def phase_linker_setup(options, state, newargs):
     settings.REQUIRED_EXPORTS += ['emscripten_stack_get_current',
                                   'emscripten_stack_get_base',
                                   'emscripten_stack_get_end']
-
-  # check if we can address the 2GB mark and higher: either if we start at
-  # 2GB, or if we allow growth to either any amount or to 2GB or more.
-  if not settings.MEMORY64 and (settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or
-     (settings.ALLOW_MEMORY_GROWTH and
-      (settings.MAXIMUM_MEMORY < 0 or
-       settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024))):
-    settings.CAN_ADDRESS_2GB = 1
 
   settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
   settings.SOURCE_MAP_BASE = options.source_map_base or ''
