@@ -11,13 +11,13 @@ var headlessPrint = (x) => {
 var window = {
   // adjustable parameters
   location: {
-    toString: function() {
+    toString() {
       return 'http://emscripten.org';
     },
     search: '',
     pathname: null,
   },
-  onIdle: function() {
+  onIdle() {
     headlessPrint('triggering click');
     document.querySelector('.fullscreen-button.low-res').callEventListeners('click');
     window.onIdle = null;
@@ -31,12 +31,12 @@ var window = {
   rafs: [],
   timeouts: [],
   uid: 0,
-  requestAnimationFrame: function(func) {
+  requestAnimationFrame(func) {
     func.uid = window.uid++;
     headlessPrint(`adding raf ${func.uid}`);
     window.rafs.push(func);
   },
-  setTimeout: function(func, ms) {
+  setTimeout(func, ms) {
     func.uid = window.uid++;
     headlessPrint(`adding timeout ${func.uid}`);
     window.timeouts.push({
@@ -45,7 +45,7 @@ var window = {
     });
     window.timeouts.sort((x, y) => { return y.when - x.when });
   },
-  runEventLoop: function() {
+  runEventLoop() {
     // run forever until an exception stops this replay
     var iter = 0;
     while (!this.stopped) {
@@ -81,14 +81,14 @@ var window = {
     }
   },
   eventListeners: {},
-  addEventListener: function(id, func) {
+  addEventListener(id, func) {
     var listeners = this.eventListeners[id];
     if (!listeners) {
       listeners = this.eventListeners[id] = [];
     }
     listeners.push(func);
   },
-  removeEventListener: function(id, func) {
+  removeEventListener(id, func) {
     var listeners = this.eventListeners[id];
     if (!listeners) return;
     for (var i = 0; i < listeners.length; i++) {
@@ -98,19 +98,19 @@ var window = {
       }
     }
   },
-  callEventListeners: function(id) {
+  callEventListeners(id) {
     var listeners = this.eventListeners[id];
     if (listeners) {
       listeners.forEach((listener) => listener());
     }
   },
   URL: {
-    createObjectURL: function(x) {
+    createObjectURL(x) {
       return x; // the blob itself is returned
     },
-    revokeObjectURL: function(x) {},
+    revokeObjectURL(x) {},
   },
-  encodeURIComponent: function(x) { return x },
+  encodeURIComponent(x) { return x },
 };
 var setTimeout = window.setTimeout;
 var document = {
@@ -119,7 +119,7 @@ var document = {
   addEventListener: window.addEventListener,
   removeEventListener: window.removeEventListener,
   callEventListeners: window.callEventListeners,
-  getElementById: function(id) {
+  getElementById(id) {
     switch (id) {
       case 'canvas': {
         if (this.canvas) return this.canvas;
@@ -131,7 +131,7 @@ var document = {
       default: throw 'getElementById: ' + id;
     }
   },
-  createElement: function(what) {
+  createElement(what) {
     switch (what) {
       case 'canvas': return document.getElementById(what);
       case 'script': {
@@ -150,8 +150,8 @@ var document = {
       }
       case 'div': {
         return {
-          appendChild: function() {},
-          requestFullscreen: function() {
+          appendChild() {},
+          requestFullscreen() {
             return document.getElementById('canvas').requestFullscreen();
           },
         };
@@ -160,12 +160,12 @@ var document = {
     }
   },
   elements: {},
-  querySelector: function(id) {
+  querySelector(id) {
     if (!document.elements[id]) {
       document.elements[id] = {
         classList: {
-          add: function(){},
-          remove: function(){},
+          add() {},
+          remove() {},
         },
         eventListeners: {},
         addEventListener: document.addEventListener,
@@ -177,19 +177,19 @@ var document = {
   },
   styleSheets: [{
     cssRules: [],
-    insertRule: function(){},
+    insertRule() {},
   }],
   body: {
-    appendChild: function(){},
+    appendChild() {},
   },
-  exitPointerLock: function(){},
-  exitFullscreen: function(){},
+  exitPointerLock() {},
+  exitFullscreen() {},
 };
 var alert = function(x) {
   print(x);
 };
 var performance = {
-  now: function() {
+  now() {
     return Date.now();
   },
 };
@@ -202,13 +202,13 @@ function fixPath(path) {
 }
 var XMLHttpRequest = function() {
   return {
-    open: function(mode, path, async) {
+    open(mode, path, async) {
       path = fixPath(path);
       this.mode = mode;
       this.path = path;
       this.async = async;
     },
-    send: function() {
+    send() {
       if (!this.async) {
         this.doSend();
       } else {
@@ -218,7 +218,7 @@ var XMLHttpRequest = function() {
         }, 0);
       }
     },
-    doSend: function() {
+    doSend() {
       if (this.responseType == 'arraybuffer') {
         this.response = read(this.path, 'binary');
       } else {
@@ -229,15 +229,15 @@ var XMLHttpRequest = function() {
 };
 var Audio = () => {
   return {
-    play: function(){},
-    pause: function(){},
-    cloneNode: function() {
+    play() {},
+    pause() {},
+    cloneNode() {
       return this;
     },
   };
 };
 var Image = () => {
-  window.setTimeout(() => {
+  window.setTimeout(function() {
     this.complete = true;
     this.width = 64;
     this.height = 64;
@@ -290,9 +290,7 @@ var screen = { // XXX these values may need to be adjusted
 };
 if (typeof console == 'undefined') {
   console = {
-    log: function(x) {
-      print(x);
-    }
+    log(x) { print(x); },
   };
 }
 

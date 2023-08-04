@@ -18,7 +18,7 @@ mergeInto(LibraryManager.library, {
   // Note that unlike the most other function variants in this library, there is no separate
   // function $writeI53ToU64(): the implementation would be identical, and it is up to the
   // C/C++ side code to interpret the resulting number as signed or unsigned as is desirable.
-  $writeI53ToI64: function(ptr, num) {
+  $writeI53ToI64: (ptr, num) => {
     HEAPU32[ptr>>2] = num;
     HEAPU32[ptr+4>>2] = (num - HEAPU32[ptr>>2])/4294967296;
 #if ASSERTIONS
@@ -29,7 +29,7 @@ mergeInto(LibraryManager.library, {
 
   // Same as writeI53ToI64, but if the double precision number does not fit within the
   // 64-bit number, the number is clamped to range [-2^63, 2^63-1].
-  $writeI53ToI64Clamped: function(ptr, num) {
+  $writeI53ToI64Clamped: (ptr, num) => {
     if (num > 0x7FFFFFFFFFFFFFFF) {
       HEAPU32[ptr>>2] = 0xFFFFFFFF;
       HEAPU32[ptr+4>>2] = 0x7FFFFFFF;
@@ -43,7 +43,7 @@ mergeInto(LibraryManager.library, {
   },
 
   // Like writeI53ToI64, but throws if the passed number is out of range of int64.
-  $writeI53ToI64Signaling: function(ptr, num) {
+  $writeI53ToI64Signaling: (ptr, num) => {
     if (num > 0x7FFFFFFFFFFFFFFF || num < -0x8000000000000000) {
 #if ASSERTIONS
       throw 'RangeError in writeI53ToI64Signaling(): input value ' + num + ' is out of range of int64';
@@ -57,7 +57,7 @@ mergeInto(LibraryManager.library, {
 
   // Uint64 variant of writeI53ToI64Clamped. Writes the Number to a Uint64 variable on
   // the heap, clamping out of range values to range [0, 2^64-1].
-  $writeI53ToU64Clamped: function(ptr, num) {
+  $writeI53ToU64Clamped: (ptr, num) => {
     if (num > 0xFFFFFFFFFFFFFFFF) HEAPU32[ptr>>2] = HEAPU32[ptr+4>>2] = 0xFFFFFFFF;
     else if (num < 0) HEAPU32[ptr>>2] = HEAPU32[ptr+4>>2] = 0;
     else {
@@ -67,7 +67,7 @@ mergeInto(LibraryManager.library, {
   },
 
   // Like writeI53ToI64, but throws if the passed number is out of range of uint64.
-  $writeI53ToU64Signaling: function(ptr, num) {
+  $writeI53ToU64Signaling: (ptr, num) => {
     if (num < 0 || num > 0xFFFFFFFFFFFFFFFF) {
 #if ASSERTIONS
       throw 'RangeError in writeI53ToU64Signaling(): input value ' + num + ' is out of range of uint64';
@@ -82,20 +82,20 @@ mergeInto(LibraryManager.library, {
   // Reads a 64-bit signed integer from the WebAssembly heap and
   // converts it to a JavaScript Number, which can represent 53 integer bits precisely.
   // TODO: Add $readI53FromI64Signaling() variant.
-  $readI53FromI64: function(ptr) {
+  $readI53FromI64: (ptr) => {
     return HEAPU32[ptr>>2] + HEAP32[ptr+4>>2] * 4294967296;
   },
 
   // Reads a 64-bit unsigned integer from the WebAssembly heap and
   // converts it to a JavaScript Number, which can represent 53 integer bits precisely.
   // TODO: Add $readI53FromU64Signaling() variant.
-  $readI53FromU64: function(ptr) {
+  $readI53FromU64: (ptr) => {
     return HEAPU32[ptr>>2] + HEAPU32[ptr+4>>2] * 4294967296;
   },
 
   // Converts the given signed 32-bit low-high pair to a JavaScript Number that
   // can represent 53 bits of precision.
-  $convertI32PairToI53: function(lo, hi) {
+  $convertI32PairToI53: (lo, hi) => {
 #if ASSERTIONS
     // This function should not be getting called with too large unsigned numbers
     // in high part (if hi >= 0x7FFFFFFFF, one should have been calling
@@ -108,7 +108,7 @@ mergeInto(LibraryManager.library, {
   // Converts the given signed 32-bit low-high pair to a JavaScript Number that can
   // represent 53 bits of precision. Returns a NaN if the number exceeds the safe
   // integer range representable by a Number (x > 9007199254740992 || x < -9007199254740992)
-  $convertI32PairToI53Checked: function(lo, hi) {
+  $convertI32PairToI53Checked: (lo, hi) => {
 #if ASSERTIONS
     assert(lo == (lo >>> 0) || lo == (lo|0)); // lo should either be a i32 or a u32
     assert(hi === (hi|0));                    // hi should be a i32
@@ -119,7 +119,7 @@ mergeInto(LibraryManager.library, {
   // Converts the given unsigned 32-bit low-high pair to a JavaScript Number that can
   // represent 53 bits of precision.
   // TODO: Add $convertU32PairToI53Checked() variant.
-  $convertU32PairToI53: function(lo, hi) {
+  $convertU32PairToI53: (lo, hi) => {
     return (lo >>> 0) + (hi >>> 0) * 4294967296;
   },
 
@@ -131,7 +131,7 @@ mergeInto(LibraryManager.library, {
   // pointer or size_t and is expected to be withing the int53 range.
   // Returns NaN if the incoming bigint is outside the range.
   $bigintToI53Checked__deps: ['$MAX_INT53', '$MIN_INT53'],
-  $bigintToI53Checked: function(num) {
+  $bigintToI53Checked: (num) => {
     return (num < MIN_INT53 || num > MAX_INT53) ? NaN : Number(num);
   },
 #endif

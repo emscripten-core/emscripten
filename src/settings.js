@@ -896,8 +896,8 @@ var EXTRA_EXPORTED_RUNTIME_METHODS = [];
 // you have this:
 //
 //  var Module = {
-//    print: function(x) { console.log('print: ' + x) },
-//    preRun: [function() { console.log('pre run') }]
+//    print: (x) => console.log('print: ' + x),
+//    preRun: [() => console.log('pre run')]
 //  };
 //
 // Then MODULE_JS_API must contain 'print' and 'preRun'; if it does not then
