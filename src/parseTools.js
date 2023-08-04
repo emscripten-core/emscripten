@@ -295,7 +295,7 @@ function getHeapOffset(offset, type) {
   const sz = getNativeTypeSize(type);
   const shifts = Math.log(sz) / Math.LN2;
   if (MEMORY64 == 1) {
-    return `((${offset})/2**${shifts})`;
+    return `((${offset})/${2 ** shifts})`;
   } else {
     return `((${offset})>>${shifts})`;
   }
