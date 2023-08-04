@@ -866,7 +866,7 @@ def create_pointer_conversion_wrappers(metadata):
     '__cxa_decrement_exception_refcount': '_p',
     '_wasmfs_write_file': '_ppp',
     '__dl_seterr': '_pp',
-    '_emscripten_run_in_main_runtime_thread_js': '___p_',
+    '_emscripten_run_on_main_thread_js': '___p_',
     '_emscripten_proxy_execute_task_queue': '_p',
     '_emscripten_thread_exit': '_p',
     '_emscripten_thread_init': '_p_____',

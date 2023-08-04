@@ -218,3 +218,7 @@ mergeInto(LibraryManager.library, {
     }
   }
 });
+
+if (WASMFS) {
+  error("using -lproxyfs is not currently supported in WasmFS.");
+}

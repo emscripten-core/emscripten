@@ -380,13 +380,13 @@ If manually bisecting:
 
     # Test subdirectory handling with asset packaging.
     delete_dir('assets')
-    ensure_dir('assets/sub/asset1/'.replace('\\', '/'))
-    ensure_dir('assets/sub/asset1/.git'.replace('\\', '/')) # Test adding directory that shouldn't exist.
-    ensure_dir('assets/sub/asset2/'.replace('\\', '/'))
+    ensure_dir('assets/sub/asset1')
+    ensure_dir('assets/sub/asset1/.git') # Test adding directory that shouldn't exist.
+    ensure_dir('assets/sub/asset2')
     create_file('assets/sub/asset1/file1.txt', '''load me right before running the code please''')
     create_file('assets/sub/asset1/.git/shouldnt_be_embedded.txt', '''this file should not get embedded''')
     create_file('assets/sub/asset2/file2.txt', '''load me right before running the code please''')
-    absolute_assets_src_path = 'assets'.replace('\\', '/')
+    absolute_assets_src_path = 'assets'
 
     def make_main_two_files(path1, path2, nonexistingpath):
       create_file('main.cpp', r'''
@@ -1498,6 +1498,7 @@ keydown(100);keyup(100); // trigger the end
     self.run_process([FILE_PACKAGER, 'more.data', '--preload', 'data.dat', '--separate-metadata', '--js-output=more.js'])
     self.btest(Path('browser/separate_metadata_later.cpp'), '1', args=['-sFORCE_FILESYSTEM'])
 
+  @also_with_wasm64
   def test_idbstore(self):
     secret = str(time.time())
     for stage in [0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5]:
@@ -1506,6 +1507,7 @@ keydown(100);keyup(100); // trigger the end
                       args=['-lidbstore.js', f'-DSTAGE={stage}', f'-DSECRET="{secret}"'],
                       output_basename=f'idbstore_{stage}')
 
+  @also_with_wasm64
   def test_idbstore_sync(self):
     secret = str(time.time())
     self.btest(test_file('browser/test_idbstore_sync.c'), '6', args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '-sASYNCIFY'])
@@ -2636,7 +2638,8 @@ Module["preRun"].push(function () {
   @parameterized({
     '': ([],),
     'closure': (['-O2', '-g1', '--closure=1', '-sHTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0'],),
-    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+    'pthread': (['-pthread'],),
+    'proxy_to_pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
     'legacy': (['-sMIN_FIREFOX_VERSION=0', '-sMIN_SAFARI_VERSION=0', '-sMIN_IE_VERSION=0', '-sMIN_EDGE_VERSION=0', '-sMIN_CHROME_VERSION=0', '-Wno-transpile'],)
   })
   @requires_threads
@@ -3820,7 +3823,7 @@ Module["preRun"].push(function () {
 
   # Test that the emscripten_ atomics api functions work.
   @parameterized({
-    'normal': ([],),
+    '': ([],),
     'closure': (['--closure=1'],),
   })
   @requires_threads

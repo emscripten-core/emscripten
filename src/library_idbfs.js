@@ -312,3 +312,7 @@ mergeInto(LibraryManager.library, {
     }
   }
 });
+
+if (WASMFS) {
+  error("using -lidbfs is not currently supported in WasmFS.");
+}

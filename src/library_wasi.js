@@ -552,7 +552,7 @@ var WasiLibrary = {
       }
       mount.type.syncfs(mount, false, function(err) {
         if (err) {
-          wakeUp(function() { return {{{ cDefs.EIO }}} });
+          wakeUp({{{ cDefs.EIO }}});
           return;
         }
         wakeUp(0);

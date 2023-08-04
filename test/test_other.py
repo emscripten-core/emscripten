@@ -1374,7 +1374,7 @@ int f() {
 
     create_file('pre.js', '''
       Module.onRuntimeInitialized = () => {
-        console.log(Module._libf1 ? Module._libf1() : 'unexported');
+        out(Module._libf1 ? Module._libf1() : 'unexported');
       };
     ''')
 
@@ -2421,7 +2421,7 @@ int f() {
         # Calling main later should still work, filesystem etc. must be set up.
         print('call main later')
         src = read_file('a.out.js')
-        src += '\nconsole.log("callMain -> " + Module.callMain());\n'
+        src += '\nout("callMain -> " + Module.callMain());\n'
         create_file('a.out.js', src)
         self.assertContained('hello from main\ncallMain -> 0\n', self.run_js('a.out.js'))
 
@@ -3109,19 +3109,22 @@ int f() {
     output = self.run_js('a.out.js')
     self.assertContained('hello data', output)
 
+  @crossplatform
   def test_file_packager_depfile(self):
     create_file('data1.txt', 'data1')
     ensure_dir('subdir')
     create_file('subdir/data2.txt', 'data2')
 
     self.run_process([FILE_PACKAGER, 'test.data', '--js-output=test.js', '--depfile=test.data.d', '--from-emcc', '--preload', '.'])
-    lines = read_file('test.data.d').splitlines()
+    output = read_file('test.data.d')
+    file_packager = utils.normalize_path(shared.replace_suffix(FILE_PACKAGER, '.py'))
+    lines = output.splitlines()
     split = lines.index(': \\')
     before, after = set(lines[:split]), set(lines[split + 1:])
     # Set comparison used because depfile is not order-sensitive.
     self.assertTrue('test.data \\' in before)
     self.assertTrue('test.js \\' in before)
-    self.assertTrue(FILE_PACKAGER + '.py \\' in after)
+    self.assertTrue(file_packager + ' \\' in after)
     self.assertTrue('. \\' in after)
     self.assertTrue('./data1.txt \\' in after)
     self.assertTrue('./subdir \\' in after)
@@ -3369,7 +3372,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     create_file('pre.js', '''
       Module.onRuntimeInitialized = () => {
         Module.setErrNo(88);
-        console.log('done');
+        out('done');
       };
     ''')
     self.do_runf(test_file('hello_world.c'), 'done', emcc_args=['--pre-js=pre.js', '-sEXPORTED_RUNTIME_METHODS=setErrNo'])
@@ -4691,6 +4694,7 @@ int main() {
   def test_unlink(self):
     self.do_other_test('test_unlink.cpp')
 
+  @crossplatform
   def test_argv0_node(self):
     create_file('code.c', r'''
 #include <stdio.h>
@@ -4700,8 +4704,8 @@ int main(int argc, char **argv) {
 }
 ''')
 
-    self.run_process([EMCC, 'code.c'])
-    self.assertContained('I am ' + os.path.realpath(self.get_dir()).replace('\\', '/') + '/a.out.js', self.run_js('a.out.js').replace('\\', '/'))
+    output = self.do_runf('code.c')
+    self.assertContained('I am ' + utils.normalize_path(os.path.realpath(self.get_dir())) + '/code.js', utils.normalize_path(output))
 
   @parameterized({
     'no_exit_runtime': [True],
@@ -8770,7 +8774,8 @@ end
   @parameterized({
     '': ([],),
     'asyncify': (['-sASYNCIFY'],),
-    'gl_emu': (['-sLEGACY_GL_EMULATION'],),
+    # set max_memory to 4GB to test handleI64Signatures() with GL emulation
+    'gl_emu': (['-sLEGACY_GL_EMULATION', '-sMAXIMUM_MEMORY=4GB', '-sALLOW_MEMORY_GROWTH'],),
     'no_exception_throwing': (['-sDISABLE_EXCEPTION_THROWING'],),
     'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
   })
@@ -9068,8 +9073,9 @@ end
     create_file('pre.js', 'Module.onRuntimeInitialized = () => Module._foo();')
     create_file('src.c', r'''
 #include <emscripten.h>
+#include <emscripten/console.h>
 EMSCRIPTEN_KEEPALIVE void foo() {
-  EM_ASM({ console.log("bar") });
+  emscripten_out("bar");
 }
 ''')
     self.do_runf('src.c', 'bar', emcc_args=['--pre-js', 'pre.js', '-sMAIN_MODULE=2'])
@@ -10295,10 +10301,12 @@ int main () {
   def test_strict_mode_hello_world(self):
     # Verify that strict mode can be used for simple hello world program both
     # via the environment EMCC_STRICT=1 and from the command line `-sSTRICT`
-    cmd = [EMCC, test_file('hello_world.c'), '-sSTRICT']
-    self.run_process(cmd)
+    self.do_runf(test_file('hello_world.c'), emcc_args=['-sSTRICT'])
     with env_modify({'EMCC_STRICT': '1'}):
       self.do_runf(test_file('hello_world.c'), 'hello, world!')
+
+  def test_strict_mode_full_library(self):
+    self.do_runf(test_file('hello_world.c'), emcc_args=['-sSTRICT', '-sINCLUDE_FULL_LIBRARY'])
 
   def test_legacy_settings(self):
     cmd = [EMCC, test_file('hello_world.c'), '-sSPLIT_MEMORY=0']
@@ -10677,7 +10685,7 @@ int main(void) {
                                      changed)
 
   def test_INCOMING_MODULE_JS_API_missing(self):
-    create_file('pre.js', 'Module.onRuntimeInitialized = () => console.log("initialized");')
+    create_file('pre.js', 'Module.onRuntimeInitialized = () => out("initialized");')
     self.emcc_args += ['--pre-js=pre.js']
     self.do_runf(test_file('hello_world.c'), 'initialized')
 
@@ -10856,11 +10864,11 @@ int main(void) {
       #include <emscripten.h>
       int main() {
         EM_ASM({
-          console.log();
+          out();
           function check(name) {
             try {
               Module[name];
-              console.log("success: " + name);
+              out("success: " + name);
             } catch(e) {
             }
           }
@@ -10945,7 +10953,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     create_file('foo.c', '''
       #include <emscripten.h>
       void foo() {
-        EM_ASM({ console.log('Hello, world!'); });
+        EM_ASM({ out('Hello, world!'); });
       }
     ''')
     create_file('main.c', '''
@@ -10955,7 +10963,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
 
       int main() {
         foo();
-        EM_ASM({ console.log('Hello, world!'); });
+        EM_ASM({ out('Hello, world!'); });
         return 0;
       }
     ''')
@@ -10968,7 +10976,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     create_file('src.c', '''
       #include <emscripten/em_asm.h>
       int main(void) {
-        EM_ASM({ console.log('hello'); });
+        EM_ASM({ out('hello'); });
       }\n''')
     self.run_process([EMCC, '-c', 'src.c',
                       '-pedantic', '-Wall', '-Werror',
@@ -10978,7 +10986,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     create_file('src.c', '''
       #include <emscripten/em_asm.h>
       int main() {
-        EM_ASM({ console.log('Hello, world!'); });
+        EM_ASM({ out('Hello, world!'); });
       }
     ''')
     err = self.expect_fail([EMCC, '-std=c11', 'src.c'])
@@ -10996,7 +11004,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
         jmp_buf buf;
         setjmp(buf);
         EM_ASM({
-          console.log("hello world");
+          out("hello world");
         });
       }
     ''')
@@ -11364,7 +11372,9 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     # was matched
     self.run_process([EMCC, test_file('hello_world.c'), '--minify=0'])
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--minifyXX'])
-    self.assertContained("error: unsupported option '--minifyXX'", err)
+    # The clang error message changed from 'unsupported' to 'unknown' so
+    # for now handle both options.
+    self.assertContained("clang: error: (unsupported option|unknown argument:) '--minifyXX'", err, regex=True)
 
   def test_argument_missing(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--minify'])
@@ -11469,7 +11479,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
   def test_native_call_before_init(self):
     self.set_setting('ASSERTIONS')
     self.set_setting('EXPORTED_FUNCTIONS', ['_foo'])
-    self.add_pre_run('console.log("calling foo"); Module["_foo"]();')
+    self.add_pre_run('out("calling foo"); Module["_foo"]();')
     create_file('foo.c', '#include <stdio.h>\nint foo() { puts("foo called"); return 3; }')
     self.build('foo.c')
     out = self.run_js('foo.js', assert_returncode=NON_ZERO)
@@ -11478,7 +11488,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
   def test_native_call_after_exit(self):
     self.set_setting('ASSERTIONS')
     self.set_setting('EXIT_RUNTIME')
-    self.add_on_exit('console.log("calling main again"); Module["_main"]();')
+    self.add_on_exit('out("calling main again"); Module["_main"]();')
     create_file('foo.c', '#include <stdio.h>\nint main() { puts("foo called"); return 0; }')
     self.build('foo.c')
     out = self.run_js('foo.js', assert_returncode=NON_ZERO)
@@ -11583,12 +11593,12 @@ int main () {
           try {
             _malloc(1);
           } catch(e) {
-            console.log('exception:', e);
+            out('exception:', e);
           }
           try {
             _free();
           } catch(e) {
-            console.log('exception:', e);
+            out('exception:', e);
           }
         });
       }
@@ -13158,7 +13168,7 @@ j1: 8589934599, j2: 30064771074, j3: 12884901891
     self.assertExists('foo.tar')
     names = []
     root = os.path.splitdrive(path_from_root())[1][1:]
-    root = root.replace('\\', '/')
+    root = utils.normalize_path(root)
     print('root: %s' % root)
     with tarfile.open('foo.tar') as f:
       for name in f.getnames():
@@ -13177,7 +13187,7 @@ foo/version.txt
 <root>/test/hello_world.c
 '''
     response = read_file('foo/response.txt')
-    response = response.replace('\\', '/')
+    response = utils.normalize_path(response)
     response = response.replace(root, '<root>')
     self.assertTextDataIdentical(expected, response)
 

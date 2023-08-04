@@ -16,6 +16,8 @@ class Test {
   int getX() const { return x; }
   void setX(int x_) { x = x_; }
 
+  static int static_function(int x) { return 1; }
+
 private:
   int x;
 };
@@ -84,6 +86,7 @@ EMSCRIPTEN_BINDINGS(Test) {
       .function("functionFour", &Test::function_four)
       .function("constFn", &Test::const_fn)
       .property("x", &Test::getX, &Test::setX)
+      .class_function("staticFunction", &Test::static_function)
 	;
 
   function("class_returning_fn", &class_returning_fn);

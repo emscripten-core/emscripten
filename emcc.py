@@ -819,7 +819,6 @@ def process_dynamic_libs(dylibs, lib_dirs):
   while to_process:
     dylib = to_process.pop()
     dylink = webassembly.parse_dylink_section(dylib)
-    print(dylink)
     for needed in dylink.needed:
       if needed in seen:
         continue
@@ -1707,11 +1706,10 @@ def setup_pthreads(target):
 
   # Functions needs to be exported from the module since they are used in worker.js
   settings.REQUIRED_EXPORTS += [
-    'emscripten_dispatch_to_thread_',
     '_emscripten_thread_free_data',
     'emscripten_main_runtime_thread_id',
     'emscripten_main_thread_process_queued_calls',
-    '_emscripten_run_in_main_runtime_thread_js',
+    '_emscripten_run_on_main_thread_js',
     'emscripten_stack_set_limits',
   ]
 
@@ -1777,6 +1775,22 @@ def setup_pthreads(target):
     # object, only regular runtime has it.
     if not settings.MINIMAL_RUNTIME:
       settings.EXPORTED_RUNTIME_METHODS += ['ExitStatus']
+
+
+def set_max_memory():
+  # When memory growth is disallowed set MAXIMUM_MEMORY equal to INITIAL_MEMORY
+  if not settings.ALLOW_MEMORY_GROWTH:
+    if 'MAXIMUM_MEMORY' in user_settings:
+      diagnostics.warning('unused-command-line-argument', 'MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH')
+    settings.MAXIMUM_MEMORY = settings.INITIAL_MEMORY
+
+  # INITIAL_MEMORY sets a lower bound for MAXIMUM_MEMORY
+  if 'MAXIMUM_MEMORY' not in user_settings:
+    if settings.INITIAL_MEMORY > settings.MAXIMUM_MEMORY:
+      settings.MAXIMUM_MEMORY = settings.INITIAL_MEMORY
+
+  if settings.MAXIMUM_MEMORY < settings.INITIAL_MEMORY:
+    exit_with_error('MAXIMUM_MEMORY cannot be less than INITIAL_MEMORY')
 
 
 @ToolchainProfiler.profile_block('linker_setup')
@@ -2010,6 +2024,7 @@ def phase_linker_setup(options, state, newargs):
   if settings.STRICT:
     if not settings.MODULARIZE and not settings.EXPORT_ES6:
       default_setting('STRICT_JS', 1)
+    default_setting('USE_GLFW', 0)
     default_setting('AUTO_JS_LIBRARIES', 0)
     default_setting('AUTO_NATIVE_LIBRARIES', 0)
     default_setting('AUTO_ARCHIVE_INDEXES', 0)
@@ -2339,6 +2354,8 @@ def phase_linker_setup(options, state, newargs):
       # included, as the entire JS library can refer to things that require
       # these exports.)
       settings.REQUIRED_EXPORTS += [
+        '_wasmfs_mount',
+        '_wasmfs_unmount',
         '_wasmfs_read_file',
         '_wasmfs_write_file',
         '_wasmfs_open',
@@ -2520,12 +2537,6 @@ def phase_linker_setup(options, state, newargs):
     exit_with_error(f'INITIAL_MEMORY must be larger than STACK_SIZE, was {settings.INITIAL_MEMORY} (STACK_SIZE={settings.STACK_SIZE})')
   if settings.MEMORY_GROWTH_LINEAR_STEP != -1:
     check_memory_setting('MEMORY_GROWTH_LINEAR_STEP')
-
-  if settings.ALLOW_MEMORY_GROWTH and settings.MAXIMUM_MEMORY < settings.INITIAL_MEMORY:
-    exit_with_error('MAXIMUM_MEMORY must be larger then INITIAL_MEMORY')
-
-  if 'MAXIMUM_MEMORY' in user_settings and not settings.ALLOW_MEMORY_GROWTH:
-    diagnostics.warning('unused-command-line-argument', 'MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH')
 
   if settings.EXPORT_ES6:
     if not settings.MODULARIZE:
@@ -2773,6 +2784,12 @@ def phase_linker_setup(options, state, newargs):
   if sanitize and settings.GENERATE_SOURCE_MAP:
     settings.LOAD_SOURCE_MAP = 1
 
+  set_max_memory()
+
+  # check if we can address the 2GB mark and higher.
+  if not settings.MEMORY64 and settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024:
+    settings.CAN_ADDRESS_2GB = 1
+
   if settings.MINIMAL_RUNTIME:
     if settings.EXIT_RUNTIME:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['proc_exit', '$callRuntimeCallbacks']
@@ -2872,14 +2889,6 @@ def phase_linker_setup(options, state, newargs):
     settings.REQUIRED_EXPORTS += ['emscripten_stack_get_current',
                                   'emscripten_stack_get_base',
                                   'emscripten_stack_get_end']
-
-  # check if we can address the 2GB mark and higher: either if we start at
-  # 2GB, or if we allow growth to either any amount or to 2GB or more.
-  if not settings.MEMORY64 and (settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or
-     (settings.ALLOW_MEMORY_GROWTH and
-      (settings.MAXIMUM_MEMORY < 0 or
-       settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024))):
-    settings.CAN_ADDRESS_2GB = 1
 
   settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
   settings.SOURCE_MAP_BASE = options.source_map_base or ''
@@ -4297,7 +4306,7 @@ class ScriptSource:
 
 def is_valid_abspath(options, path_name):
   # Any path that is underneath the emscripten repository root must be ok.
-  if utils.path_from_root().replace('\\', '/') in path_name.replace('\\', '/'):
+  if utils.normalize_path(path_name).startswith(utils.normalize_path(utils.path_from_root())):
     return True
 
   def in_directory(root, child):

@@ -10,7 +10,7 @@ mergeInto(LibraryManager.library, {
     DIR_MODE: {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */,
     FILE_MODE: {{{ cDefs.S_IFREG }}} | 511 /* 0777 */,
     reader: null,
-    mount (mount) {
+    mount(mount) {
       assert(ENVIRONMENT_IS_WORKER);
       if (!WORKERFS.reader) WORKERFS.reader = new FileReaderSync();
       var root = WORKERFS.createNode(null, '/', WORKERFS.DIR_MODE, 0);
@@ -54,7 +54,7 @@ mergeInto(LibraryManager.library, {
       });
       return root;
     },
-    createNode (parent, name, mode, dev, contents, mtime) {
+    createNode(parent, name, mode, dev, contents, mtime) {
       var node = FS.createNode(parent, name, mode);
       node.mode = mode;
       node.node_ops = WORKERFS.node_ops;
@@ -156,3 +156,7 @@ mergeInto(LibraryManager.library, {
     },
   },
 });
+
+if (WASMFS) {
+  error("using -lworkerfs is not currently supported in WasmFS.");
+}

@@ -902,7 +902,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     inputfile = os.path.abspath(filename)
     # For some reason es-check requires unix paths, even on windows
     if WINDOWS:
-      inputfile = inputfile.replace('\\', '/')
+      inputfile = utils.normalize_path(inputfile)
     try:
       # es-check prints the details of the errors to stdout, but it also prints
       # stuff in the case there are no errors:
@@ -1114,8 +1114,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   # Tests that the given two paths are identical, modulo path delimiters. E.g. "C:/foo" is equal to "C:\foo".
   def assertPathsIdentical(self, path1, path2):
-    path1 = path1.replace('\\', '/')
-    path2 = path2.replace('\\', '/')
+    path1 = utils.normalize_path(path1)
+    path2 = utils.normalize_path(path2)
     return self.assertIdentical(path1, path2)
 
   # Tests that the given two multiline text content are identical, modulo line
@@ -1169,11 +1169,20 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.assertTextDataIdentical(expected_content, contents, message,
                                  filename, filename + '.new')
 
-  def assertContained(self, values, string, additional_info=''):
-    if type(values) not in [list, tuple]:
-      values = [values]
+  def assertContained(self, values, string, additional_info='', regex=False):
     if callable(string):
       string = string()
+
+    if regex:
+      if type(values) == str:
+        self.assertTrue(re.search(values, string), 'Expected regex "%s" to match on:\n%s' % (values, string))
+      else:
+        match_any = any(re.search(o, string) for o in values)
+        self.assertTrue(match_any, 'Expected at least one of "%s" to match on:\n%s' % (values, string))
+      return
+
+    if type(values) not in [list, tuple]:
+      values = [values]
 
     if not any(v in string for v in values):
       diff = difflib.unified_diff(values[0].split('\n'), string.split('\n'), fromfile='expected', tofile='actual')
@@ -1507,16 +1516,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
             self.assertIdentical(expected_output, js_output)
           elif assert_all or len(expected_output) == 1:
             for o in expected_output:
-              if regex:
-                self.assertTrue(re.search(o, js_output), 'Expected regex "%s" to match on:\n%s' % (o, js_output))
-              else:
-                self.assertContained(o, js_output)
+              self.assertContained(o, js_output, regex=regex)
           else:
-            if regex:
-              match_any = any(re.search(o, js_output) for o in expected_output)
-              self.assertTrue(match_any, 'Expected at least one of "%s" to match on:\n%s' % (expected_output, js_output))
-            else:
-              self.assertContained(expected_output, js_output)
+            self.assertContained(expected_output, js_output, regex=regex)
             if assert_returncode == 0 and check_for_error:
               self.assertNotContained('ERROR', js_output)
         except Exception:

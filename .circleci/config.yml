@@ -544,6 +544,21 @@ jobs:
             wasmfs.test_readdir_unlink
             wasmfs.test_unistd_pipe
             wasmfs.test_fs_write
+            wasmfs.test_fs_writev
+            wasmfs.test_fs_writev_rawfs
+            wasmfs.test_fs_writeFile
+            wasmfs.test_fs_writeFile_rawfs
+            wasmfs.test_fs_readv
+            wasmfs.test_fs_write
+            wasmfs.test_fs_readv_rawfs
+            wasmfs.test_fs_nodefs_nofollow
+            wasmfs.test_fs_nodefs_readdir
+            wasmfs.test_fs_nodefs_home
+            wasmfs.test_fs_nodefs_cloexec
+            wasmfs.test_fs_nodefs_cloexec_rawfs
+            wasmfs.test_fs_errorstack
+            wasmfs.test_fs_errorstack_rawfs
+            wasmfs.test_fs_emptyPath
             wasmfs.test_webidl
             wasmfs.test_dlfcn_self
             wasmfs.test_dlfcn_unique_sig
@@ -551,6 +566,7 @@ jobs:
             wasmfs.test_exit_status
             wasmfs.test_minimal_runtime_memorygrowth
             wasmfs.test_mmap_anon*
+            wasmfs.test_mount
             wasmfs.test_getcwd_with_non_ascii_name
             wasmfs.test_stat
             wasmfs.test_fstatat
@@ -559,6 +575,7 @@ jobs:
             wasmfs.test_fcntl_open
             wasmfs.test_fs_js_api
             wasmfs.test_fs_llseek
+            wasmfs.test_fs_llseek_rawfs
             wasmfs.test_freetype"
   test-wasm2js1:
     environment:
@@ -589,6 +606,7 @@ jobs:
           title: "wasm64"
           test_targets: "
             wasm64
+            wasm64_4gb.test_hello_world
             wasm64l.test_bigswitch
             other.test_memory64_proxies
             other.test_failing_growth_wasm64"

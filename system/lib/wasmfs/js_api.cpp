@@ -22,12 +22,16 @@ using namespace wasmfs;
 
 extern "C" {
 
+// TODO: Replace forward declarations with #include <emscripten/wasmfs.h> and 
+// resolve wasmfs::backend_t namespace conflicts.
 __wasi_fd_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend);
-int wasmfs_create_directory(const char* path __attribute__((nonnull)), mode_t mode, backend_t backend);
+int wasmfs_create_directory(char* path, int mode, backend_t backend);
+int wasmfs_unmount(intptr_t path);
 
 // Copy the file specified by the pathname into JS.
 // Return a pointer to the JS buffer in HEAPU8.
 // The buffer will also contain the file length.
+// TODO: Use WasmFS ErrnoError handling instead of aborting on failure.
 void* _wasmfs_read_file(char* path) {
   static_assert(sizeof(off_t) == 8, "File offset type must be 64-bit");
 
@@ -35,7 +39,7 @@ void* _wasmfs_read_file(char* path) {
   int err = 0;
   err = stat(path, &file);
   if (err < 0) {
-    emscripten_console_error("Fatal error in FS.readFile");
+    emscripten_err("Fatal error in FS.readFile");
     abort();
   }
 
@@ -52,7 +56,7 @@ void* _wasmfs_read_file(char* path) {
 
   int fd = open(path, O_RDONLY);
   if (fd < 0) {
-    emscripten_console_error("Fatal error in FS.readFile");
+    emscripten_err("Fatal error in FS.readFile");
     abort();
   }
   [[maybe_unused]] int numRead = pread(fd, result + sizeof(size), size, 0);
@@ -61,7 +65,7 @@ void* _wasmfs_read_file(char* path) {
   assert(numRead == size);
   err = close(fd);
   if (err < 0) {
-    emscripten_console_error("Fatal error in FS.readFile");
+    emscripten_err("Fatal error in FS.readFile");
     abort();
   }
 
@@ -101,7 +105,7 @@ int _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
   auto lockedFile = dataFile->locked();
   int err = lockedFile.open(O_WRONLY);
   if (err < 0) {
-    emscripten_console_error("Fatal error in FS.writeFile");
+    emscripten_err("Fatal error in FS.writeFile");
     abort();
   }
 
@@ -113,7 +117,7 @@ int _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
 
   err = lockedFile.close();
   if (err < 0) {
-    emscripten_console_error("Fatal error in FS.writeFile");
+    emscripten_err("Fatal error in FS.writeFile");
     abort();
   }
 
@@ -208,7 +212,7 @@ int _wasmfs_llseek(int fd, off_t offset, int whence) {
 
 int _wasmfs_rename(char* oldpath, char* newpath) {
   return __syscall_renameat(AT_FDCWD, (intptr_t)oldpath, AT_FDCWD, (intptr_t)newpath);
-};
+}
 
 int _wasmfs_read(int fd, void *buf, size_t count) {
   __wasi_iovec_t iovs[1];
@@ -266,8 +270,27 @@ int _wasmfs_lstat(char* path, struct stat* statBuf) {
   return __syscall_lstat64((intptr_t)path, (intptr_t)statBuf);
 }
 
+<<<<<<< HEAD
 int _wasmfs_mkdev(char* path, mode_t mode, backend_t backend) {
   return wasmfs_create_file(path, mode, backend);
+=======
+// The legacy JS API requires a mountpoint to already exist, so  WasmFS will attempt to remove 
+// the target directory if it exists before replacing it with a mounted directory.
+int _wasmfs_mount(char* path, wasmfs::backend_t created_backend) {
+  int err = __syscall_rmdir((intptr_t)path);
+
+  // The legacy JS API mount requires the directory to already exist, but we will also allow it to be missing.
+  if (err && err != -ENOENT) {
+    return err;
+  }
+
+  return wasmfs_create_directory(path, 0777, created_backend);
+}
+
+// WasmFS will always remove the mounted directory, regardless of if the directory existed before.
+int _wasmfs_unmount(char* path) {
+  return wasmfs_unmount((intptr_t)path);
+>>>>>>> main
 }
 
 // Helper method that identifies what a path is:
