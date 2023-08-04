@@ -619,6 +619,7 @@ jobs:
             wasm64_4gb.test_hello_world
             wasm64_4gb.test_em_asm
             wasm64_4gb.test_async_main
+            wasm64_4gb.*embind*
             core_2gb.test_em_asm
             wasm64l.test_bigswitch
             other.test_memory64_proxies
