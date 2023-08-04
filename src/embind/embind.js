@@ -13,7 +13,7 @@
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 // -- jshint doesn't understand library syntax, so we need to specifically tell it about the symbols we define
-/*global typeDependencies, flushPendingDeletes, getTypeName, getBasestPointer, throwBindingError, UnboundTypeError, embindRepr, registeredInstances, registeredTypes, getShiftFromSize*/
+/*global typeDependencies, flushPendingDeletes, getTypeName, getBasestPointer, throwBindingError, UnboundTypeError, embindRepr, registeredInstances, registeredTypes*/
 /*global ensureOverloadTable, embind__requireFunction, awaitingDependencies, makeLegalFunctionName, embind_charCodes:true, registerType, createNamedFunction, RegisteredPointer, throwInternalError*/
 /*global simpleReadValueFromPointer, floatReadValueFromPointer, integerReadValueFromPointer, enumReadValueFromPointer, replacePublicSymbol, craftInvokerFunction, tupleRegistrations*/
 /*global finalizationRegistry, attachFinalizer, detachFinalizer, releaseClassHandle, runDestructor*/
@@ -274,110 +274,88 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_bool__deps: [
-    '$getShiftFromSize', '$readLatin1String', '$registerType'],
-  _embind_register_bool: (rawType, name, size, trueValue, falseValue) => {
-    var shift = getShiftFromSize(size);
-
+  _embind_register_bool__deps: ['$readLatin1String', '$registerType'],
+  _embind_register_bool: (rawType, name, trueValue, falseValue) => {
     name = readLatin1String(name);
     registerType(rawType, {
-      name,
-      // ambiguous emscripten ABI: sometimes return values are
-      // true or false, and sometimes integers (0 or 1)
-      'fromWireType': (wt) => !!wt,
-      'toWireType': (destructors, o) => o ? trueValue : falseValue,
-      'argPackAdvance': 8,
-      'readValueFromPointer': function(pointer) {
-        // TODO: if heap is fixed (like in asm.js) this could be executed outside
-        var heap;
-        if (size === 1) {
-          heap = HEAP8;
-        } else if (size === 2) {
-          heap = HEAP16;
-        } else if (size === 4) {
-          heap = HEAP32;
-        } else {
-          throw new TypeError("Unknown boolean type size: " + name);
-        }
-        return this['fromWireType'](heap[pointer >> shift]);
-      },
-      destructorFunction: null, // This type does not need a destructor
-  });
-  },
-
-  $getShiftFromSize__deps: [],
-  $getShiftFromSize: (size) => {
-    switch (size) {
-        case 1: return 0;
-        case 2: return 1;
-        case 4: return 2;
-        case 8: return 3;
-        default:
-            throw new TypeError(`Unknown type size: ${size}`);
-    }
+        name,
+        'fromWireType': function(wt) {
+            // ambiguous emscripten ABI: sometimes return values are
+            // true or false, and sometimes integers (0 or 1)
+            return !!wt;
+        },
+        'toWireType': function(destructors, o) {
+            return o ? trueValue : falseValue;
+        },
+        'argPackAdvance': 8,
+        'readValueFromPointer': function(pointer) {
+            return this['fromWireType'](HEAPU8[pointer]);
+        },
+        destructorFunction: null, // This type does not need a destructor
+    });
   },
 
   $integerReadValueFromPointer__deps: [],
-  $integerReadValueFromPointer: (name, shift, signed) => {
+  $integerReadValueFromPointer: (name, width, signed) => {
     // integers are quite common, so generate very specialized functions
-    switch (shift) {
-        case 0: return signed ?
+    switch (width) {
+        case 1: return signed ?
             function readS8FromPointer(pointer) { return HEAP8[pointer]; } :
             function readU8FromPointer(pointer) { return HEAPU8[pointer]; };
-        case 1: return signed ?
+        case 2: return signed ?
             function readS16FromPointer(pointer) { return HEAP16[pointer >> 1]; } :
             function readU16FromPointer(pointer) { return HEAPU16[pointer >> 1]; };
-        case 2: return signed ?
+        case 4: return signed ?
             function readS32FromPointer(pointer) { return HEAP32[pointer >> 2]; } :
             function readU32FromPointer(pointer) { return HEAPU32[pointer >> 2]; };
 #if WASM_BIGINT
-        case 3: return signed ?
+        case 8: return signed ?
             function readS64FromPointer(pointer) { return HEAP64[pointer >> 3]; } :
             function readU64FromPointer(pointer) { return HEAPU64[pointer >> 3]; };
 #endif
         default:
-            throw new TypeError("Unknown integer type: " + name);
+            throw new TypeError(`invalid integer width (${width}): ${name}`);
     }
   },
 
   $enumReadValueFromPointer__deps: [],
-  $enumReadValueFromPointer: (name, shift, signed) => {
-    switch (shift) {
-        case 0: return function(pointer) {
+  $enumReadValueFromPointer: (name, width, signed) => {
+    switch (width) {
+        case 1: return function(pointer) {
             var heap = signed ? HEAP8 : HEAPU8;
             return this['fromWireType'](heap[pointer]);
         };
-        case 1: return function(pointer) {
+        case 2: return function(pointer) {
             var heap = signed ? HEAP16 : HEAPU16;
             return this['fromWireType'](heap[pointer >> 1]);
         };
-        case 2: return function(pointer) {
+        case 4: return function(pointer) {
             var heap = signed ? HEAP32 : HEAPU32;
             return this['fromWireType'](heap[pointer >> 2]);
         };
         default:
-            throw new TypeError("Unknown integer type: " + name);
+            throw new TypeError(`invalid integer width (${width}): ${name}`);
     }
   },
 
   $floatReadValueFromPointer__deps: [],
-  $floatReadValueFromPointer: (name, shift) => {
-    switch (shift) {
-        case 2: return function(pointer) {
+  $floatReadValueFromPointer: (name, width) => {
+    switch (width) {
+        case 4: return function(pointer) {
             return this['fromWireType'](HEAPF32[pointer >> 2]);
         };
-        case 3: return function(pointer) {
+        case 8: return function(pointer) {
             return this['fromWireType'](HEAPF64[pointer >> 3]);
         };
         default:
-            throw new TypeError("Unknown float type: " + name);
+            throw new TypeError(`invalid float width (${width}): ${name}`);
     }
   },
 
   // When converting a number from JS to C++ side, the valid range of the number is
   // [minRange, maxRange], inclusive.
   _embind_register_integer__deps: [
-    '$embindRepr', '$getShiftFromSize', '$integerReadValueFromPointer',
+    '$embindRepr', '$integerReadValueFromPointer',
     '$readLatin1String', '$registerType'],
   _embind_register_integer: (primitiveType, name, size, minRange, maxRange) => {
     name = readLatin1String(name);
@@ -386,8 +364,6 @@ var LibraryEmbind = {
     if (maxRange === -1) {
       maxRange = 4294967295;
     }
-
-    var shift = getShiftFromSize(size);
 
     var fromWireType = (value) => value;
 
@@ -426,7 +402,7 @@ var LibraryEmbind = {
       'fromWireType': fromWireType,
       'toWireType': toWireType,
       'argPackAdvance': 8,
-      'readValueFromPointer': integerReadValueFromPointer(name, shift, minRange !== 0),
+      'readValueFromPointer': integerReadValueFromPointer(name, size, minRange !== 0),
       destructorFunction: null, // This type does not need a destructor
     });
   },
@@ -436,8 +412,6 @@ var LibraryEmbind = {
     '$embindRepr', '$readLatin1String', '$registerType', '$integerReadValueFromPointer'],
   _embind_register_bigint: (primitiveType, name, size, minRange, maxRange) => {
     name = readLatin1String(name);
-
-    var shift = getShiftFromSize(size);
 
     var isUnsignedType = (name.indexOf('u') != -1);
 
@@ -459,7 +433,7 @@ var LibraryEmbind = {
         return value;
       },
       'argPackAdvance': 8,
-      'readValueFromPointer': integerReadValueFromPointer(name, shift, !isUnsignedType),
+      'readValueFromPointer': integerReadValueFromPointer(name, size, !isUnsignedType),
       destructorFunction: null, // This type does not need a destructor
     });
   },
@@ -469,10 +443,9 @@ var LibraryEmbind = {
 #endif
 
   _embind_register_float__deps: [
-    '$embindRepr', '$floatReadValueFromPointer', '$getShiftFromSize',
+    '$embindRepr', '$floatReadValueFromPointer',
     '$readLatin1String', '$registerType'],
   _embind_register_float: (rawType, name, size) => {
-    var shift = getShiftFromSize(size);
     name = readLatin1String(name);
     registerType(rawType, {
       name,
@@ -488,7 +461,7 @@ var LibraryEmbind = {
         return value;
       },
       'argPackAdvance': 8,
-      'readValueFromPointer': floatReadValueFromPointer(name, shift),
+      'readValueFromPointer': floatReadValueFromPointer(name, size),
       destructorFunction: null, // This type does not need a destructor
     });
   },
@@ -2391,10 +2364,9 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_enum__deps: ['$exposePublicSymbol', '$getShiftFromSize', '$enumReadValueFromPointer',
+  _embind_register_enum__deps: ['$exposePublicSymbol', '$enumReadValueFromPointer',
     '$readLatin1String', '$registerType'],
   _embind_register_enum: (rawType, name, size, isSigned) => {
-    var shift = getShiftFromSize(size);
     name = readLatin1String(name);
 
     function ctor() {}
@@ -2408,7 +2380,7 @@ var LibraryEmbind = {
       },
       'toWireType': (destructors, c) => c.value,
       'argPackAdvance': 8,
-      'readValueFromPointer': enumReadValueFromPointer(name, shift, isSigned),
+      'readValueFromPointer': enumReadValueFromPointer(name, size, isSigned),
       destructorFunction: null,
     });
     exposePublicSymbol(name, ctor);
