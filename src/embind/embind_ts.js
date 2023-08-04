@@ -267,7 +267,7 @@ var LibraryEmbind = {
     registerPrimitiveType(rawType, name);
   },
   _embind_register_bool__deps: ['$registerPrimitiveType'],
-  _embind_register_bool: (rawType, name, size, trueValue, falseValue) => {
+  _embind_register_bool: (rawType, name, trueValue, falseValue) => {
     registerPrimitiveType(rawType, name);
   },
   _embind_register_integer__deps: ['$registerPrimitiveType'],
