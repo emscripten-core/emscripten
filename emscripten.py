@@ -521,18 +521,19 @@ def finalize_wasm(infile, outfile, memfile, js_syms):
              infile]
       shared.check_call(cmd)
 
-  if not settings.GENERATE_DWARF or not settings.EMIT_PRODUCERS_SECTION:
-    # For sections we no longer need, strip now to speed subsequent passes
-    building.save_intermediate(infile, 'strip.wasm')
-    sections = ['producers'] if not settings.EMIT_PRODUCERS_SECTION else []
-    building.strip(infile, infile, debug=not settings.GENERATE_DWARF,
-                   sections=sections)
-
   metadata = get_metadata(infile, outfile, modify_wasm, args)
   if modify_wasm:
     building.save_intermediate(infile, 'post_finalize.wasm')
   elif infile != outfile:
     shutil.copy(infile, outfile)
+
+  if not settings.GENERATE_DWARF or not settings.EMIT_PRODUCERS_SECTION:
+    # For sections we no longer need, strip now to speed subsequent passes
+    building.save_intermediate(outfile, 'strip.wasm')
+    sections = ['producers'] if not settings.EMIT_PRODUCERS_SECTION else []
+    building.strip(outfile, outfile, debug=not settings.GENERATE_DWARF,
+                   sections=sections)
+
   if settings.GENERATE_SOURCE_MAP:
     building.save_intermediate(infile + '.map', 'post_finalize.map')
 
