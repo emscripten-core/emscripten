@@ -543,6 +543,10 @@ jobs:
             wasmfs.test_readdir
             wasmfs.test_readdir_unlink
             wasmfs.test_unistd_pipe
+            wasmfs.test_unistd_io
+            wasmfs.test_unistd_curdir
+            wasmfs.test_poll
+            wasmfs.test_fs_64bit
             wasmfs.test_fs_write
             wasmfs.test_fs_writev
             wasmfs.test_fs_writev_rawfs
