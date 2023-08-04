@@ -2869,7 +2869,6 @@ addToLibrary({
     var ch;
     // Most arguments are i32s, so shift the buffer pointer so it is a plain
     // index into HEAP32.
-    buf >>= 2;
     while (ch = HEAPU8[sigPtr++]) {
 #if ASSERTIONS
       var chr = String.fromCharCode(ch);
@@ -2885,22 +2884,22 @@ addToLibrary({
 #endif
       assert(validChars.includes(chr), `Invalid character ${ch}("${chr}") in readEmAsmArgs! Use only [${validChars}], and do not specify "v" for void return argument.`);
 #endif
-      // Floats are always passed as doubles, and doubles and int64s take up 8
-      // bytes (two 32-bit slots) in memory, align reads to these:
-      buf += (ch != {{{ charCode('i') }}}) & buf;
+      // Floats are always passed as doubles, so all types except for 'i'
+      // are 8 bytes and require alignment.
+      buf += (ch != {{{ charCode('i') }}}) && buf % 8 ? 4 : 0;
       readEmAsmArgsArray.push(
-        ch == {{{ charCode('i') }}} ? HEAP32[buf] :
 #if MEMORY64
         // Special case for pointers under wasm64 which we read as int53 Numbers.
-        ch == {{{ charCode('p') }}} ? {{{ makeGetValue('buf++ << 2', 0, '*') }}} :
+        ch == {{{ charCode('p') }}} ?  {{{ makeGetValue('buf', 0, '*') }}} :
 #endif
 #if WASM_BIGINT
-        (ch == {{{ charCode('j') }}} ? HEAP64 : HEAPF64)[buf++ >> 1]
-#else
-        HEAPF64[buf++ >> 1]
+        ch == {{{ charCode('j') }}} ?  {{{ makeGetValue('buf', 0, 'i64') }}} :
 #endif
+        ch == {{{ charCode('i') }}} ?
+          {{{ makeGetValue('buf', 0, 'i32') }}} :
+          {{{ makeGetValue('buf', 0, 'double') }}}
       );
-      ++buf;
+      buf += ch == {{{ charCode('i') }}} ? 4 : 8;
     }
     return readEmAsmArgsArray;
   },
