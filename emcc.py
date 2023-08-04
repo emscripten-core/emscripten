@@ -384,10 +384,6 @@ def setup_environment_settings():
     exit_with_error('When building with multithreading enabled and a "-sENVIRONMENT=" directive is specified, it must include "worker" as a target! (Try e.g. -sENVIRONMENT=web,worker)')
 
 
-def minify_whitespace():
-  return settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0
-
-
 def embed_memfile(options):
   return (settings.SINGLE_FILE or
           (settings.WASM2JS and not options.memory_init_file and
@@ -2951,6 +2947,8 @@ def phase_linker_setup(options, state, newargs):
   settings.PRE_JS_FILES = [os.path.abspath(f) for f in options.pre_js]
   settings.POST_JS_FILES = [os.path.abspath(f) for f in options.post_js]
 
+  settings.MINIFY_WHITESPACE = settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0
+
   return target, wasm_target
 
 
@@ -3223,8 +3221,8 @@ def create_worker_file(input_file, target_dir, output_file):
   contents = shared.read_and_preprocess(input_file, expand_macros=True)
   write_file(output_file, contents)
 
-  # Minify the worker JS files file in optimized builds
-  if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
+  # Minify the worker JS file, if JS minification is enabled.
+  if settings.MINIFY_WHITESPACE:
     contents = building.acorn_optimizer(output_file, ['minifyWhitespace'], return_output=True)
     write_file(output_file, contents)
 
@@ -3258,7 +3256,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     # Finally, rerun Closure compile with simple optimizations. It will be able
     # to further minify the code. (n.b. it would not be safe to run in advanced
     # mode)
-    final_js = building.closure_compiler(final_js, pretty=False, advanced=False, extra_closure_args=options.closure_args)
+    final_js = building.closure_compiler(final_js, advanced=False, extra_closure_args=options.closure_args)
 
   # Unmangle previously mangled `import.meta` and `await import` references in
   # both main code and libraries.
@@ -3769,7 +3767,6 @@ def phase_binaryen(target, options, wasm_target):
         final_js = building.minify_wasm_js(js_file=final_js,
                                            wasm_file=wasm_target,
                                            expensive_optimizations=will_metadce(),
-                                           minify_whitespace=minify_whitespace() and not options.use_closure_compiler,
                                            debug_info=intermediate_debug_info)
         save_intermediate_with_wasm('postclean', wasm_target)
 
@@ -3780,11 +3777,10 @@ def phase_binaryen(target, options, wasm_target):
   if final_js and (options.use_closure_compiler or settings.TRANSPILE_TO_ES5):
     if options.use_closure_compiler:
       with ToolchainProfiler.profile_block('closure_compile'):
-        final_js = building.closure_compiler(final_js, pretty=not minify_whitespace(),
-                                             extra_closure_args=options.closure_args)
+        final_js = building.closure_compiler(final_js, extra_closure_args=options.closure_args)
     else:
       with ToolchainProfiler.profile_block('closure_transpile'):
-        final_js = building.closure_transpile(final_js, pretty=not minify_whitespace())
+        final_js = building.closure_transpile(final_js)
     save_intermediate_with_wasm('closure', wasm_target)
 
   symbols_file = None
@@ -3810,7 +3806,6 @@ def phase_binaryen(target, options, wasm_target):
     wasm2js = building.wasm2js(wasm2js_template,
                                wasm_target,
                                opt_level=settings.OPT_LEVEL,
-                               minify_whitespace=minify_whitespace(),
                                use_closure_compiler=options.use_closure_compiler,
                                debug_info=debug_info,
                                symbols_file=symbols_file,

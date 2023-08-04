@@ -265,3 +265,5 @@ var POST_JS_FILES = [];
 var PTHREADS = false;
 
 var BULK_MEMORY = false;
+
+var MINIFY_WHITESPACE = true;
