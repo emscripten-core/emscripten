@@ -866,7 +866,7 @@ var LibraryGLFW = {
               break;
             }
             case 0x00034002: { // GLFW_CURSOR_HIDDEN
-              out("glfwSetInputMode called with GLFW_CURSOR_HIDDEN value not implemented.");
+              err('glfwSetInputMode called with GLFW_CURSOR_HIDDEN value not implemented');
               break;
             }
             case 0x00034003: { // GLFW_CURSOR_DISABLED
@@ -876,30 +876,30 @@ var LibraryGLFW = {
               break;
             }
             default: {
-              out("glfwSetInputMode called with unknown value parameter value: " + value + ".");
+              err(`glfwSetInputMode called with unknown value parameter value: ${value}`);
               break;
             }
           }
           break;
         }
         case 0x00033002: { // GLFW_STICKY_KEYS
-          out("glfwSetInputMode called with GLFW_STICKY_KEYS mode not implemented.");
+          err('glfwSetInputMode called with GLFW_STICKY_KEYS mode not implemented');
           break;
         }
         case 0x00033003: { // GLFW_STICKY_MOUSE_BUTTONS
-          out("glfwSetInputMode called with GLFW_STICKY_MOUSE_BUTTONS mode not implemented.");
+          err('glfwSetInputMode called with GLFW_STICKY_MOUSE_BUTTONS mode not implemented');
           break;
         }
         case 0x00033004: { // GLFW_LOCK_KEY_MODS
-          out("glfwSetInputMode called with GLFW_LOCK_KEY_MODS mode not implemented.");
+          err('glfwSetInputMode called with GLFW_LOCK_KEY_MODS mode not implemented');
           break;
         }
         case 0x000330005: { // GLFW_RAW_MOUSE_MOTION
-          out("glfwSetInputMode called with GLFW_RAW_MOUSE_MOTION mode not implemented.");
+          err('glfwSetInputMode called with GLFW_RAW_MOUSE_MOTION mode not implemented');
           break;
         }
         default: {
-          out("glfwSetInputMode called with unknown mode parameter value: " + mode + ".");
+          err(`glfwSetInputMode called with unknown mode parameter value: ${mode}`);
           break;
         }
       }

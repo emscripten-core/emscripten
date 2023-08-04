@@ -1848,7 +1848,7 @@ var LibraryWebGPU = {
       mapped = bufferWrapper.object["getMappedRange"](offset, size);
     } catch (ex) {
 #if ASSERTIONS
-      err("wgpuBufferGetConstMappedRange(" + offset + ", " + size + ") failed: " + ex);
+      err(`wgpuBufferGetConstMappedRange(${offset}, ${size}) failed: ${ex}`);
 #endif
       // TODO(kainino0x): Somehow inject a validation error?
       return 0;
@@ -1889,7 +1889,7 @@ var LibraryWebGPU = {
       mapped = bufferWrapper.object["getMappedRange"](offset, size);
     } catch (ex) {
 #if ASSERTIONS
-      err("wgpuBufferGetMappedRange(" + offset + ", " + size + ") failed: " + ex);
+      err(`wgpuBufferGetMappedRange(${offset}, ${size}) failed: ${ex}`);
 #endif
       // TODO(kainino0x): Somehow inject a validation error?
       return 0;

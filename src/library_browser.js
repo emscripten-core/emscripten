@@ -132,7 +132,7 @@ var LibraryBrowser = {
 #endif
         var img = new Image();
         img.onload = () => {
-          assert(img.complete, 'Image ' + name + ' could not be decoded');
+          assert(img.complete, `Image ${name} could not be decoded`);
           var canvas = /** @type {!HTMLCanvasElement} */ (document.createElement('canvas'));
           canvas.width = img.width;
           canvas.height = img.height;
@@ -143,7 +143,7 @@ var LibraryBrowser = {
           if (onload) onload(byteArray);
         };
         img.onerror = (event) => {
-          out('Image ' + url + ' could not be decoded');
+          err(`Image ${url} could not be decoded`);
           if (onerror) onerror();
         };
         img.src = url;
@@ -177,7 +177,7 @@ var LibraryBrowser = {
         audio.addEventListener('canplaythrough', () => finish(audio), false); // use addEventListener due to chromium bug 124926
         audio.onerror = function audio_onerror(event) {
           if (done) return;
-          err('warning: browser could not fully decode audio ' + name + ', trying slower base64 approach');
+          err(`warning: browser could not fully decode audio ${name}, trying slower base64 approach`);
           function encode64(data) {
             var BASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
             var PAD = '=';
@@ -769,7 +769,7 @@ var LibraryBrowser = {
 
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
-      err('emscripten_async_load_script("' + url + '") failed, emscripten_async_load_script is currently not available in pthreads!');
+      err(`emscripten_async_load_script("${url}") failed, emscripten_async_load_script is currently not available in pthreads!`);
       return onerror ? onerror() : undefined;
     }
 #endif
@@ -953,7 +953,9 @@ var LibraryBrowser = {
             Browser.mainLoop.remainingBlockers = (8*remaining + next)/9;
           }
         }
-        out('main loop blocker "' + blocker.name + '" took ' + (Date.now() - start) + ' ms'); //, left: ' + Browser.mainLoop.remainingBlockers);
+#if RUNTIME_DEBUG
+        dbg(`main loop blocker "${blocker.name}" took '${Date.now() - start} ms`); //, left: ' + Browser.mainLoop.remainingBlockers);
+#endif
         Browser.mainLoop.updateStatus();
 
         // catches pause/resume main loop from blocker execution

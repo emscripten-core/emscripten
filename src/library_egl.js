@@ -344,7 +344,7 @@ var LibraryEGL = {
       if (glesContextVersion == 3) {
         err('When initializing GLES3/WebGL2 via EGL, one must build with -sMAX_WEBGL_VERSION=2!');
       } else {
-        err('When initializing GLES2/WebGL1 via EGL, one must pass EGL_CONTEXT_CLIENT_VERSION = 2 to GL context attributes! GLES version ' + glesContextVersion + ' is not supported!');
+        err(`When initializing GLES2/WebGL1 via EGL, one must pass EGL_CONTEXT_CLIENT_VERSION = 2 to GL context attributes! GLES version ${glesContextVersion} is not supported!`);
       }
 #endif
       EGL.setErrorCode(0x3005 /* EGL_BAD_CONFIG */);
