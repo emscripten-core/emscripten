@@ -34,15 +34,9 @@ mergeInto(LibraryManager.library, {
 
   _wasmfs_jsimpl_read__i53abi: true,
   _wasmfs_jsimpl_read: function(backend, file, buffer, length, offset) {
-    // console.log("jsimpl read: ", wasmFS$backends);
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
-    try {
-      wasmFS$backends[backend].read(file, buffer, length, offset);
-    } catch (err) {
-      console.log("Err: ", err);
-    }
     return wasmFS$backends[backend].read(file, buffer, length, offset);
   },
 
