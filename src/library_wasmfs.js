@@ -395,11 +395,10 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         return __wasmfs_mknod(pathBuffer, mode, dev);
       }));
     },
-    // TODO: mkdev
     major: (dev) => ((dev) >> 8),
     minor: (dev) => ((dev) & 0xff),
     makedev: (ma, mi) => ((ma) << 8 | (mi)),
-    registerDevice: (dev, ops) => {
+    registerDevice(dev, ops) {
       var backendPointer = _wasmfs_create_jsimpl_backend();
 
       var defaultOps = {
@@ -409,8 +408,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         read: (file, buffer, length, offset) => {},
         getSize: (file) => {}
       }
-
-      // console.log("Pre ops: ", ops);
 
       if (typeof ops.allocFile === 'undefined') {
         ops.allocFile = defaultOps.allocFile;
@@ -434,11 +431,10 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
       wasmFS$backends[backendPointer] = ops;
 
-      // console.log("Backend: ", backendPointer);
       FS.devices[dev] = backendPointer;
     },
     // mode is an optional argument, which will be set to 0666 if not passed in.
-    mkdev: (path, mode, dev) => {
+    mkdev(path, mode, dev) {
       if (typeof dev === 'undefined') {
         dev = mode;
         mode = 438 /* 0666 */;
@@ -449,13 +445,9 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         throw new Error("Invalid device ID.");
       }
 
-      // console.log("JS API MODE: ", mode);
-      // console.log("BIT OR: ", mode);
-      var err = withStackSave(() => (
+      return FS.handleError(withStackSave(() => (
         __wasmfs_mkdev(stringToUTF8OnStack(path), mode, deviceBackend)
-      ));
-      // console.log("JS ERR: ", err);
-      return FS.handleError(err);
+      )));
     },
     rename(oldPath, newPath) {
       return FS.handleError(withStackSave(() => {

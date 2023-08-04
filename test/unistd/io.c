@@ -13,10 +13,10 @@
 #include <sys/uio.h>
 #include <emscripten.h>
 
-#if !defined(WASMFS)
-EM_JS_DEPS(main, "$ERRNO_CODES");
-#else
+#if WASMFS
 EM_JS_DEPS(main, "$ERRNO_CODES,$wasmFS$JSMemoryFiles");
+#else
+EM_JS_DEPS(main, "$ERRNO_CODES");
 #endif
 
 int main() {
@@ -36,11 +36,7 @@ int main() {
         wasmFS$JSMemoryFiles[file] = new Uint8Array([65, 66, 67 , 68]);
       },
       write: (file, buffer, length, offset) => {
-        // console.log("JS Buffer Address: ", buffer);
-        // console.log("Offset: ", offset);
-        // console.log("First char: ", HEAPU8.subarray(buffer, buffer+1));
         for (var i = 0; i < length; i++) {
-          // console.log("Current address: ", buffer + i);
           out('TO DEVICE: ' + HEAPU8.subarray(buffer+i, buffer+i+1));
         }
         return i;
@@ -48,7 +44,6 @@ int main() {
       read: (file, buffer, length, offset) => {
         var fileData = wasmFS$JSMemoryFiles[file];
         var dataAfterOffset = Math.max(0, fileData.length - offset);
-        // We only read as much as we were asked.
         length = Math.min(length, dataAfterOffset);
         HEAPU8.set(fileData.subarray(offset, offset + length), buffer);
         return length;
@@ -82,6 +77,7 @@ int main() {
     var broken_device = FS.makedev(major++, 0);
     FS.registerDevice(broken_device, {
 #if WASMFS
+      // We return error codes in WasmFS instead of throwing.
       read: function(file, buffer, length, offset) {
         return -ERRNO_CODES.EIO;
       },
@@ -102,6 +98,7 @@ int main() {
     // NB: These are meant to test FS.createDevice specifically,
     //     and as such do not use registerDevice/mkdev
 #if !defined(WASMFS)
+    // WasmFS does not support FS.createDevice()
     FS.createDevice('/', 'createDevice-read-only', function() {});
     FS.createDevice('/', 'createDevice-write-only', null, function() {});
 #endif

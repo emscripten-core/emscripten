@@ -5901,9 +5901,6 @@ Module = {
       self.do_core_test('test_istream.cpp')
 
   def test_fs_base(self):
-    if self.get_setting('WASMFS'):
-      self.set_setting('FORCE_FILESYSTEM')
-      self.emcc_args += ['--profiling', '--profiling-funcs', '-sASSERTIONS']
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
     self.uses_es6 = True
     self.add_pre_run(read_file(test_file('filesystem/src.js')))
@@ -6076,7 +6073,6 @@ Module.onRuntimeInitialized = () => {
   def test_fs_64bit(self):
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-      self.emcc_args += ['--profiling', '--profiling-funcs']
     self.do_runf(test_file('fs/test_64bit.c'), 'success')
 
   def test_sigalrm(self):
@@ -6113,7 +6109,6 @@ Module.onRuntimeInitialized = () => {
     self.uses_es6 = True
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-      self.emcc_args += ['--profiling', '--profiling-funcs']
     self.do_run_in_out_file_test('unistd/curdir.c')
 
   @also_with_noderawfs
@@ -6240,9 +6235,6 @@ Module.onRuntimeInitialized = () => {
   @also_with_wasm_bigint
   def test_unistd_io(self):
     orig_compiler_opts = self.emcc_args.copy()
-    if self.get_setting('WASMFS'):
-      self.set_setting('FORCE_FILESYSTEM')
-      self.emcc_args += ['--profiling', '--profiling-funcs']
     for fs in ['MEMFS', 'NODEFS']:
       self.clear()
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
