@@ -1706,7 +1706,6 @@ def setup_pthreads(target):
 
   # Functions needs to be exported from the module since they are used in worker.js
   settings.REQUIRED_EXPORTS += [
-    'emscripten_dispatch_to_thread_',
     '_emscripten_thread_free_data',
     'emscripten_main_runtime_thread_id',
     'emscripten_main_thread_process_queued_calls',
