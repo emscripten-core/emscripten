@@ -9789,6 +9789,10 @@ core3 = make_run('core3', emcc_args=['-O3'])
 cores = make_run('cores', emcc_args=['-Os'])
 corez = make_run('corez', emcc_args=['-Oz'])
 
+# Test >2gb memory addresses
+core_2gb = make_run('core_2gb', emcc_args=['--profiling-funcs'],
+                    settings={'INITIAL_MEMORY': '2200mb', 'GLOBAL_BASE': '2gb'})
+
 # MEMORY64=1
 wasm64 = make_run('wasm64', emcc_args=['-O1', '-Wno-experimental', '--profiling-funcs'],
                   settings={'MEMORY64': 1}, require_wasm64=True, require_node=True)
