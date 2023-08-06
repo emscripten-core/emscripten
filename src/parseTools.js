@@ -626,10 +626,6 @@ Please update to new syntax.`);
   return `getWasmTableEntry(${funcPtr})`;
 }
 
-function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    splitChunk, relptr
-  return heap + ',' + ptr;
-}
-
 function makeEval(code) {
   if (DYNAMIC_EXECUTION == 0) {
     // Treat eval as error.
