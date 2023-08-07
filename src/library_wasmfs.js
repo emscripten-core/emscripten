@@ -305,9 +305,9 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     },
     stat(path) {
       var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
-      FS.handleError(withStackSave(() => {
-        return __wasmfs_stat(stringToUTF8OnStack(path), statBuf);
-      }));
+      FS.handleError(withStackSave(() =>
+        __wasmfs_stat(stringToUTF8OnStack(path), statBuf)
+      ));
       var stats = FS.statBufToObject(statBuf);
       _free(statBuf);
 
@@ -315,9 +315,9 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     },
     lstat(path) {
       var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
-      FS.handleError(withStackSave(() => {
-        return __wasmfs_lstat(stringToUTF8OnStack(path), statBuf);
-      }));
+      FS.handleError(withStackSave(() =>
+        __wasmfs_lstat(stringToUTF8OnStack(path), statBuf)
+      ));
       var stats = FS.statBufToObject(statBuf);
       _free(statBuf);
 
@@ -468,7 +468,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
   _wasmfs_get_num_preloaded_files__deps: [
     '$wasmFSPreloadedFiles',
     '$wasmFSPreloadingFlushed'],
-  _wasmfs_get_num_preloaded_files: function() {
+  _wasmfs_get_num_preloaded_files: () => {
     // When this method is called from WasmFS it means that we are about to
     // flush all the preloaded data, so mark that. (There is no call that
     // occurs at the end of that flushing, which would be more natural, but it
@@ -478,34 +478,28 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     return wasmFSPreloadedFiles.length;
   },
   _wasmfs_get_num_preloaded_dirs__deps: ['$wasmFSPreloadedDirs'],
-  _wasmfs_get_num_preloaded_dirs: function() {
-    return wasmFSPreloadedDirs.length;
-  },
-  _wasmfs_get_preloaded_file_mode: function(index) {
-    return wasmFSPreloadedFiles[index].mode;
-  },
-  _wasmfs_get_preloaded_parent_path: function(index, parentPathBuffer) {
+  _wasmfs_get_num_preloaded_dirs: () => wasmFSPreloadedDirs.length,
+  _wasmfs_get_preloaded_file_mode: (index) => wasmFSPreloadedFiles[index].mode,
+  _wasmfs_get_preloaded_parent_path: (index, parentPathBuffer) => {
     var s = wasmFSPreloadedDirs[index].parentPath;
     var len = lengthBytesUTF8(s) + 1;
     stringToUTF8(s, parentPathBuffer, len);
   },
-  _wasmfs_get_preloaded_child_path: function(index, childNameBuffer) {
+  _wasmfs_get_preloaded_child_path: (index, childNameBuffer) => {
     var s = wasmFSPreloadedDirs[index].childName;
     var len = lengthBytesUTF8(s) + 1;
     stringToUTF8(s, childNameBuffer, len);
   },
   _wasmfs_get_preloaded_path_name__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
-  _wasmfs_get_preloaded_path_name: function(index, fileNameBuffer) {
+  _wasmfs_get_preloaded_path_name: (index, fileNameBuffer) => {
     var s = wasmFSPreloadedFiles[index].pathName;
     var len = lengthBytesUTF8(s) + 1;
     stringToUTF8(s, fileNameBuffer, len);
   },
-  _wasmfs_get_preloaded_file_size: function(index) {
-    return wasmFSPreloadedFiles[index].fileData.length;
-  },
-  _wasmfs_copy_preloaded_file_data: function(index, buffer) {
-    HEAPU8.set(wasmFSPreloadedFiles[index].fileData, buffer);
-  },
+  _wasmfs_get_preloaded_file_size: (index) =>
+    wasmFSPreloadedFiles[index].fileData.length,
+  _wasmfs_copy_preloaded_file_data: (index, buffer) =>
+    HEAPU8.set(wasmFSPreloadedFiles[index].fileData, buffer),
 
   _wasmfs_thread_utils_heartbeat__deps: ['emscripten_proxy_execute_queue'],
   _wasmfs_thread_utils_heartbeat: (queue) => {
