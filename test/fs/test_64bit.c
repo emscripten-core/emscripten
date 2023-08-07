@@ -19,6 +19,8 @@ int main(int argc, char *argv[])
       open: function(stream) {},
       close: function(stream) {},
 #if WASMFS
+      // WasmFS has different requirements for a device's functions compared
+      // to the legacy API.
       read: function(file, buffer, length, offset) {
         // WasmFS does not provide the file's current seek position to 
         // custom devices, unlike the legacy FS.
