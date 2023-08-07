@@ -295,7 +295,7 @@ function getHeapOffset(offset, type) {
   const sz = getNativeTypeSize(type);
   const shifts = Math.log(sz) / Math.LN2;
   if (MEMORY64 == 1) {
-    return `((${offset})/2**${shifts})`;
+    return `((${offset})/${2 ** shifts})`;
   } else {
     return `((${offset})>>${shifts})`;
   }
@@ -545,17 +545,6 @@ function storeException(varName, excPtr) {
 
 function charCode(char) {
   return char.charCodeAt(0);
-}
-
-function ensureValidFFIType(type) {
-  return type === 'float' ? 'double' : type; // ffi does not tolerate float XXX
-}
-
-// FFI return values must arrive as doubles, and we can force them to floats afterwards
-function asmFFICoercion(value, type) {
-  value = asmCoercion(value, ensureValidFFIType(type));
-  if (type === 'float') value = asmCoercion(value, 'float');
-  return value;
 }
 
 function makeDynCall(sig, funcPtr) {

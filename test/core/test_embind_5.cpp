@@ -3,7 +3,8 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-#include <emscripten.h>
+#include <emscripten/em_asm.h>
+#include <emscripten/console.h>
 #include <emscripten/bind.h>
 
 using namespace emscripten;
@@ -12,26 +13,26 @@ using namespace emscripten;
 class MyFoo {
 public:
   MyFoo() {
-    EM_ASM({out("constructing my foo");});
+    emscripten_out("constructing my foo");
   }
   virtual void doit() {
-    EM_ASM({out("doing it");});
+    emscripten_out("doing it");
   }
   virtual ~MyFoo() {
-    EM_ASM({out("destructing my foo");});
+    emscripten_out("destructing my foo");
   }
 };
 
 class MyBar : public MyFoo {
 public:
   MyBar() {
-    EM_ASM({out("constructing my bar");});
+    emscripten_out("constructing my bar");
   }
   void doit() override {
-    EM_ASM({out("doing something else");});
+    emscripten_out("doing something else");
   }
   virtual ~MyBar() override {
-    EM_ASM({out("destructing my bar");});
+    emscripten_out("destructing my bar");
   }
 };
 

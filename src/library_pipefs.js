@@ -5,9 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $PIPEFS__postset: function() {
-    addAtInit('PIPEFS.root = FS.mount(PIPEFS, {}, null);');
-  },
+  $PIPEFS__postset: () => addAtInit('PIPEFS.root = FS.mount(PIPEFS, {}, null);'),
   $PIPEFS__deps: ['$FS'],
   $PIPEFS: {
     BUCKET_BUFFER_SIZE: 1024 * 8, // 8KiB Buffer

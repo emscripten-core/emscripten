@@ -6,7 +6,7 @@
 
 mergeInto(LibraryManager.library, {
   $IDBFS__deps: ['$FS', '$MEMFS', '$PATH'],
-  $IDBFS__postset: function() {
+  $IDBFS__postset: () => {
     addAtExit('IDBFS.quit();');
     return '';
   },

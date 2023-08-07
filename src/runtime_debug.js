@@ -159,7 +159,7 @@ function prettyPrint(arg) {
 }
 #endif
 
-#if ASSERTIONS || RUNTIME_DEBUG
+#if ASSERTIONS || RUNTIME_DEBUG || AUTODEBUG
 // Used by XXXXX_DEBUG settings to output debug messages.
 function dbg(text) {
 #if ENVIRONMENT_MAY_BE_NODE && PTHREADS

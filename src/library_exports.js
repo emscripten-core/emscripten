@@ -6,7 +6,7 @@
 
 mergeInto(LibraryManager.library, {
   emscripten_get_exported_function__deps: ['$addFunction', '$UTF8ToString'],
-  emscripten_get_exported_function: function(name) {
+  emscripten_get_exported_function: (name) => {
     name = UTF8ToString(name);
     // Wasm backend does not use C name mangling on exports,
     // so adjust for that manually.

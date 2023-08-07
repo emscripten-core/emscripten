@@ -384,10 +384,6 @@ def setup_environment_settings():
     exit_with_error('When building with multithreading enabled and a "-sENVIRONMENT=" directive is specified, it must include "worker" as a target! (Try e.g. -sENVIRONMENT=web,worker)')
 
 
-def minify_whitespace():
-  return settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0
-
-
 def embed_memfile(options):
   return (settings.SINGLE_FILE or
           (settings.WASM2JS and not options.memory_init_file and
@@ -1706,7 +1702,6 @@ def setup_pthreads(target):
 
   # Functions needs to be exported from the module since they are used in worker.js
   settings.REQUIRED_EXPORTS += [
-    'emscripten_dispatch_to_thread_',
     '_emscripten_thread_free_data',
     'emscripten_main_runtime_thread_id',
     'emscripten_main_thread_process_queued_calls',
@@ -1776,6 +1771,22 @@ def setup_pthreads(target):
     # object, only regular runtime has it.
     if not settings.MINIMAL_RUNTIME:
       settings.EXPORTED_RUNTIME_METHODS += ['ExitStatus']
+
+
+def set_max_memory():
+  # When memory growth is disallowed set MAXIMUM_MEMORY equal to INITIAL_MEMORY
+  if not settings.ALLOW_MEMORY_GROWTH:
+    if 'MAXIMUM_MEMORY' in user_settings:
+      diagnostics.warning('unused-command-line-argument', 'MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH')
+    settings.MAXIMUM_MEMORY = settings.INITIAL_MEMORY
+
+  # INITIAL_MEMORY sets a lower bound for MAXIMUM_MEMORY
+  if 'MAXIMUM_MEMORY' not in user_settings:
+    if settings.INITIAL_MEMORY > settings.MAXIMUM_MEMORY:
+      settings.MAXIMUM_MEMORY = settings.INITIAL_MEMORY
+
+  if settings.MAXIMUM_MEMORY < settings.INITIAL_MEMORY:
+    exit_with_error('MAXIMUM_MEMORY cannot be less than INITIAL_MEMORY')
 
 
 @ToolchainProfiler.profile_block('linker_setup')
@@ -2523,12 +2534,6 @@ def phase_linker_setup(options, state, newargs):
   if settings.MEMORY_GROWTH_LINEAR_STEP != -1:
     check_memory_setting('MEMORY_GROWTH_LINEAR_STEP')
 
-  if settings.ALLOW_MEMORY_GROWTH and settings.MAXIMUM_MEMORY < settings.INITIAL_MEMORY:
-    exit_with_error('MAXIMUM_MEMORY must be larger then INITIAL_MEMORY')
-
-  if 'MAXIMUM_MEMORY' in user_settings and not settings.ALLOW_MEMORY_GROWTH:
-    diagnostics.warning('unused-command-line-argument', 'MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH')
-
   if settings.EXPORT_ES6:
     if not settings.MODULARIZE:
       # EXPORT_ES6 requires output to be a module
@@ -2775,6 +2780,12 @@ def phase_linker_setup(options, state, newargs):
   if sanitize and settings.GENERATE_SOURCE_MAP:
     settings.LOAD_SOURCE_MAP = 1
 
+  set_max_memory()
+
+  # check if we can address the 2GB mark and higher.
+  if not settings.MEMORY64 and settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024:
+    settings.CAN_ADDRESS_2GB = 1
+
   if settings.MINIMAL_RUNTIME:
     if settings.EXIT_RUNTIME:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['proc_exit', '$callRuntimeCallbacks']
@@ -2875,14 +2886,6 @@ def phase_linker_setup(options, state, newargs):
                                   'emscripten_stack_get_base',
                                   'emscripten_stack_get_end']
 
-  # check if we can address the 2GB mark and higher: either if we start at
-  # 2GB, or if we allow growth to either any amount or to 2GB or more.
-  if not settings.MEMORY64 and (settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or
-     (settings.ALLOW_MEMORY_GROWTH and
-      (settings.MAXIMUM_MEMORY < 0 or
-       settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024))):
-    settings.CAN_ADDRESS_2GB = 1
-
   settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
   settings.SOURCE_MAP_BASE = options.source_map_base or ''
 
@@ -2944,6 +2947,8 @@ def phase_linker_setup(options, state, newargs):
 
   settings.PRE_JS_FILES = [os.path.abspath(f) for f in options.pre_js]
   settings.POST_JS_FILES = [os.path.abspath(f) for f in options.post_js]
+
+  settings.MINIFY_WHITESPACE = settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0
 
   return target, wasm_target
 
@@ -3217,8 +3222,8 @@ def create_worker_file(input_file, target_dir, output_file):
   contents = shared.read_and_preprocess(input_file, expand_macros=True)
   write_file(output_file, contents)
 
-  # Minify the worker JS files file in optimized builds
-  if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
+  # Minify the worker JS file, if JS minification is enabled.
+  if settings.MINIFY_WHITESPACE:
     contents = building.acorn_optimizer(output_file, ['minifyWhitespace'], return_output=True)
     write_file(output_file, contents)
 
@@ -3252,7 +3257,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     # Finally, rerun Closure compile with simple optimizations. It will be able
     # to further minify the code. (n.b. it would not be safe to run in advanced
     # mode)
-    final_js = building.closure_compiler(final_js, pretty=False, advanced=False, extra_closure_args=options.closure_args)
+    final_js = building.closure_compiler(final_js, advanced=False, extra_closure_args=options.closure_args)
 
   # Unmangle previously mangled `import.meta` and `await import` references in
   # both main code and libraries.
@@ -3763,7 +3768,6 @@ def phase_binaryen(target, options, wasm_target):
         final_js = building.minify_wasm_js(js_file=final_js,
                                            wasm_file=wasm_target,
                                            expensive_optimizations=will_metadce(),
-                                           minify_whitespace=minify_whitespace() and not options.use_closure_compiler,
                                            debug_info=intermediate_debug_info)
         save_intermediate_with_wasm('postclean', wasm_target)
 
@@ -3774,11 +3778,10 @@ def phase_binaryen(target, options, wasm_target):
   if final_js and (options.use_closure_compiler or settings.TRANSPILE_TO_ES5):
     if options.use_closure_compiler:
       with ToolchainProfiler.profile_block('closure_compile'):
-        final_js = building.closure_compiler(final_js, pretty=not minify_whitespace(),
-                                             extra_closure_args=options.closure_args)
+        final_js = building.closure_compiler(final_js, extra_closure_args=options.closure_args)
     else:
       with ToolchainProfiler.profile_block('closure_transpile'):
-        final_js = building.closure_transpile(final_js, pretty=not minify_whitespace())
+        final_js = building.closure_transpile(final_js)
     save_intermediate_with_wasm('closure', wasm_target)
 
   symbols_file = None
@@ -3804,7 +3807,6 @@ def phase_binaryen(target, options, wasm_target):
     wasm2js = building.wasm2js(wasm2js_template,
                                wasm_target,
                                opt_level=settings.OPT_LEVEL,
-                               minify_whitespace=minify_whitespace(),
                                use_closure_compiler=options.use_closure_compiler,
                                debug_info=debug_info,
                                symbols_file=symbols_file,

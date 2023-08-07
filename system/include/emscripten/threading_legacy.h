@@ -27,6 +27,10 @@ typedef struct em_queued_call em_queued_call;
 // in the future. Do not depend on the exact numbers in this scheme.
 #define EM_FUNC_SIGNATURE unsigned int
 
+// Proxied JS function can support a few more arguments than proxied C/C++
+// functions, because the dispatch is variadic and signature independent.
+#define EM_QUEUED_JS_CALL_MAX_ARGS 20
+
 // The encoding scheme is as follows:
 // - highest three bits identify the type of the return value
 #define EM_FUNC_SIG_RETURN_VALUE_MASK (0x7U << 29)
@@ -115,7 +119,6 @@ typedef struct em_queued_call em_queued_call;
 #define EM_PROXIED_FUNC_SPECIAL(x) (EM_FUNC_SIG_SPECIAL_INTERNAL | ((x) << 20))
 
 #define EM_PROXIED_RESIZE_OFFSCREENCANVAS (EM_PROXIED_FUNC_SPECIAL(0) | EM_FUNC_SIG_IIII)
-#define EM_PROXIED_JS_FUNCTION (EM_PROXIED_FUNC_SPECIAL(1) | EM_FUNC_SIG_D)
 
 // Runs the given function synchronously on the main Emscripten runtime thread.
 // If this thread is the main thread, the operation is immediately performed,
