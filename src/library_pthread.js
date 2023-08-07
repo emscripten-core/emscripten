@@ -399,6 +399,9 @@ var LibraryPThread = {
 #if ASSERTIONS
         'workerID': worker.workerID,
 #endif
+#if WASMFS
+        'extWasmMemFS': Module['extWasmMemFS'],
+#endif
       });
     }),
 
