@@ -61,6 +61,11 @@ function preprocess(filename) {
   const isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
   let inStyle = false;
   const lines = text.split('\n');
+  // text.split yields an extra empty element at the end if text itself ends with a newline.
+  if (!lines[lines.length - 1]) {
+    lines.pop();
+  }
+
   let ret = '';
   let emptyLine = false;
 
@@ -208,6 +213,12 @@ function makeInlineCalculation(expression, value, tempVar) {
 // value, represented by a low and high i32 pair.
 // Will suffer from rounding and truncation.
 function splitI64(value) {
+  if (WASM_BIGINT) {
+    // Nothing to do: just make sure it is a BigInt (as it must be of that
+    // type, to be sent into wasm).
+    return `BigInt(${value})`;
+  }
+
   // general idea:
   //
   //  $1$0 = ~~$d >>> 0;
@@ -224,7 +235,6 @@ function splitI64(value) {
   // For negatives, we need to ensure a -1 if the value is overall negative,
   // even if not significant negative component
 
-  assert(!WASM_BIGINT, 'splitI64 should not be used when WASM_BIGINT is enabled');
   const low = value + '>>>0';
   const high = makeInlineCalculation(
       asmCoercion('Math.abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
@@ -282,15 +292,13 @@ function getNativeTypeSize(type) {
 }
 
 function getHeapOffset(offset, type) {
-  if (type == 'i64' && !WASM_BIGINT) {
-    // We are foreced to use the 32-bit heap for 64-bit values when we don't
-    // have WASM_BIGINT.
-    type = 'i32';
-  }
-
   const sz = getNativeTypeSize(type);
   const shifts = Math.log(sz) / Math.LN2;
-  return `((${offset})>>${shifts})`;
+  if (MEMORY64 == 1) {
+    return `((${offset})/${2 ** shifts})`;
+  } else {
+    return `((${offset})>>${shifts})`;
+  }
 }
 
 function ensureDot(value) {
@@ -499,12 +507,12 @@ function getHeapForType(type) {
     case 'u8':     return 'HEAPU8';
     case 'i16':    return 'HEAP16';
     case 'u16':    return 'HEAPU16';
-    case 'i64':    // fallthrough
     case 'i32':    return 'HEAP32';
-    case 'u64':    // fallthrough
     case 'u32':    return 'HEAPU32';
     case 'double': return 'HEAPF64';
     case 'float':  return 'HEAPF32';
+    case 'i64':    // fallthrough
+    case 'u64':    error('use i53/u53, or avoid i64/u64 without WASM_BIGINT');
   }
   assert(false, 'bad heap type: ' + type);
 }
@@ -537,17 +545,6 @@ function storeException(varName, excPtr) {
 
 function charCode(char) {
   return char.charCodeAt(0);
-}
-
-function ensureValidFFIType(type) {
-  return type === 'float' ? 'double' : type; // ffi does not tolerate float XXX
-}
-
-// FFI return values must arrive as doubles, and we can force them to floats afterwards
-function asmFFICoercion(value, type) {
-  value = asmCoercion(value, ensureValidFFIType(type));
-  if (type === 'float') value = asmCoercion(value, 'float');
-  return value;
 }
 
 function makeDynCall(sig, funcPtr) {
@@ -629,10 +626,6 @@ Please update to new syntax.`);
   return `getWasmTableEntry(${funcPtr})`;
 }
 
-function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    splitChunk, relptr
-  return heap + ',' + ptr;
-}
-
 function makeEval(code) {
   if (DYNAMIC_EXECUTION == 0) {
     // Treat eval as error.
@@ -686,35 +679,44 @@ function makeRetainedCompilerSettings() {
 const WASM_PAGE_SIZE = 65536;
 
 // Receives a function as text, and a function that constructs a modified
-// function, to which we pass the parsed-out name, arguments, body, and possible
+// function, to which we pass the parsed-out arguments, body, and possible
 // "async" prefix of the input function. Returns the output of that function.
-function modifyFunction(text, func) {
+function modifyJSFunction(text, func) {
   // Match a function with a name.
-  let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   let async_;
-  let name;
   let args;
   let rest;
+  let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   if (match) {
     async_ = match[1] || '';
-    name = match[2];
     args = match[3];
     rest = text.substr(match[0].length);
   } else {
-    // Match a function without a name (we could probably use a single regex
-    // for both, but it would be more complex).
-    match = text.match(/^\s*(async\s+)?function\(([^)]*)\)/);
-    assert(match, 'could not match function ' + text + '.');
-    name = '';
-    async_ = match[1] || '';
-    args = match[2];
-    rest = text.substr(match[0].length);
+    // Match an arrow function
+    let match = text.match(/^\s*(var (\w+) = )?(async\s+)?\(([^)]*)\)\s+=>\s+/);
+    if (match) {
+      async_ = match[3] || '';
+      args = match[4];
+      rest = text.substr(match[0].length);
+    } else {
+      // Match a function without a name (we could probably use a single regex
+      // for both, but it would be more complex).
+      match = text.match(/^\s*(async\s+)?function\(([^)]*)\)/);
+      assert(match, `could not match function:\n${text}\n`);
+      async_ = match[1] || '';
+      args = match[2];
+      rest = text.substr(match[0].length);
+    }
   }
+  let body = rest;
   const bodyStart = rest.indexOf('{');
-  assert(bodyStart >= 0);
-  const bodyEnd = rest.lastIndexOf('}');
-  assert(bodyEnd > 0);
-  return func(name, args, rest.substring(bodyStart + 1, bodyEnd), async_);
+  let oneliner = bodyStart < 0;
+  if (!oneliner) {
+    const bodyEnd = rest.lastIndexOf('}');
+    assert(bodyEnd > 0);
+    body = rest.substring(bodyStart + 1, bodyEnd);
+  }
+  return func(args, body, async_, oneliner);
 }
 
 function runIfMainThread(text) {
@@ -746,7 +748,7 @@ function makeRemovedModuleAPIAssert(moduleName, localName) {
 function checkReceiving(name) {
   // ALL_INCOMING_MODULE_JS_API contains all valid incoming module API symbols
   // so calling makeModuleReceive* with a symbol not in this list is an error
-  assert(ALL_INCOMING_MODULE_JS_API.has(name));
+  assert(ALL_INCOMING_MODULE_JS_API.has(name), `${name} is not part of INCOMING_MODULE_JS_API`);
 }
 
 // Make code to receive a value on the incoming Module object.
@@ -848,6 +850,16 @@ function hasExportedSymbol(sym) {
   return WASM_EXPORTS.has(sym);
 }
 
+// Called when global runtime symbols such as wasmMemory, wasmExports and
+// wasmTable are set. In this case we maybe need to re-export them on the
+// Module object.
+function receivedSymbol(sym) {
+  if (EXPORTED_RUNTIME_METHODS.includes(sym)) {
+    return `Module['${sym}'] = ${sym};`
+  }
+  return '';
+}
+
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,
 // it is a BigInt. Otherwise, we legalize into pairs of i32s.
 function defineI64Param(name) {
@@ -857,33 +869,23 @@ function defineI64Param(name) {
   return `${name}_low, ${name}_high`;
 }
 
-function receiveI64ParamAsI32s(name) {
-  if (WASM_BIGINT) {
-    return `var ${name}_low = Number(${name} & 0xffffffffn) | 0, ${name}_high = Number(${name} >> 32n) | 0;`;
-  }
-  return '';
-}
 
-function receiveI64ParamAsI53(name, onError) {
+function receiveI64ParamAsI53(name, onError, handleErrors = true) {
+  var errorHandler = handleErrors ? `if (isNaN(${name})) return ${onError}` : '';
   if (WASM_BIGINT) {
     // Just convert the bigint into a double.
-    return `${name} = bigintToI53Checked(${name}); if (isNaN(${name})) return ${onError};`;
+    return `${name} = bigintToI53Checked(${name});${errorHandler};`;
   }
   // Convert the high/low pair to a Number, checking for
   // overflow of the I53 range and returning onError in that case.
-  return `var ${name} = convertI32PairToI53Checked(${name}_low, ${name}_high); if (isNaN(${name})) return ${onError};`;
+  return `var ${name} = convertI32PairToI53Checked(${name}_low, ${name}_high);${errorHandler};`;
 }
 
 function receiveI64ParamAsI53Unchecked(name) {
-  if (WASM_BIGINT) return `${name} = Number(${name});`;
-  return `var ${name} = convertI32PairToI53(${name}_low, ${name}_high);`;
-}
-
-function sendI64Argument(low, high) {
   if (WASM_BIGINT) {
-    return 'BigInt(low) | (BigInt(high) << 32n)';
+    return `${name} = Number(${name});`;
   }
-  return low + ', ' + high;
+  return `var ${name} = convertI32PairToI53(${name}_low, ${name}_high);`;
 }
 
 // Any function called from wasm64 may have bigint args, this function takes
@@ -1007,4 +1009,12 @@ function formattedMinNodeVersion() {
   var minor = (MIN_NODE_VERSION / 100) % 100
   var rev = MIN_NODE_VERSION % 100
   return `v${major}.${minor}.${rev}`;
+}
+
+function getPerformanceNow() {
+  if (DETERMINISTIC) {
+    return 'deterministicNow';
+  } else {
+    return 'performance.now';
+  }
 }

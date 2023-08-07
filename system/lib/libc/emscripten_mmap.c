@@ -105,13 +105,13 @@ int __syscall_msync(intptr_t addr, size_t len, int flags) {
   return _msync_js(addr, len, map->prot, map->flags, map->fd, map->offset);
 }
 
-intptr_t __syscall_mmap2(intptr_t addr, size_t len, int prot, int flags, int fd, size_t off) {
+intptr_t __syscall_mmap2(intptr_t addr, size_t len, int prot, int flags, int fd, off_t offset) {
   if (addr != 0) {
     // We don't currently support location hints for the address of the mapping
     return -EINVAL;
   }
 
-  off *= SYSCALL_MMAP2_UNIT;
+  offset *= SYSCALL_MMAP2_UNIT;
   struct map* new_map;
 
   // MAP_ANONYMOUS (aka MAP_ANON) isn't actually defined by POSIX spec,
@@ -132,7 +132,7 @@ intptr_t __syscall_mmap2(intptr_t addr, size_t len, int prot, int flags, int fd,
   } else {
     new_map = emscripten_builtin_malloc(sizeof(struct map));
     int rtn =
-      _mmap_js(len, prot, flags, fd, off, &new_map->allocated, &new_map->addr);
+      _mmap_js(len, prot, flags, fd, offset, &new_map->allocated, &new_map->addr);
     if (rtn < 0) {
       emscripten_builtin_free(new_map);
       return rtn;
@@ -142,7 +142,7 @@ intptr_t __syscall_mmap2(intptr_t addr, size_t len, int prot, int flags, int fd,
 
   new_map->length = len;
   new_map->flags = flags;
-  new_map->offset = off;
+  new_map->offset = offset;
   new_map->prot = prot;
 
   LOCK(lock);

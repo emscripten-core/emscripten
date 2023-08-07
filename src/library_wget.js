@@ -9,7 +9,7 @@ var LibraryWget = {
     wgetRequests: {},
     nextWgetRequestHandle: 0,
 
-    getNextWgetRequestHandle: function() {
+    getNextWgetRequestHandle() {
       var handle = wget.nextWgetRequestHandle;
       wget.nextWgetRequestHandle++;
       return handle;
@@ -18,7 +18,7 @@ var LibraryWget = {
 
   emscripten_async_wget__deps: ['$PATH_FS', '$wget', '$callUserCallback', '$Browser', '$withStackSave', '$stringToUTF8OnStack'],
   emscripten_async_wget__proxy: 'sync',
-  emscripten_async_wget: function(url, file, onload, onerror) {
+  emscripten_async_wget: (url, file, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
 
     var _url = UTF8ToString(url);
@@ -60,7 +60,7 @@ var LibraryWget = {
 
   emscripten_async_wget_data__deps: ['$asyncLoad', 'malloc', 'free', '$callUserCallback'],
   emscripten_async_wget_data__proxy: 'sync',
-  emscripten_async_wget_data: function(url, arg, onload, onerror) {
+  emscripten_async_wget_data: (url, arg, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
     asyncLoad(UTF8ToString(url), function(byteArray) {
       {{{ runtimeKeepalivePop() }}}
@@ -82,7 +82,7 @@ var LibraryWget = {
 
   emscripten_async_wget2__deps: ['$PATH_FS', '$wget', '$withStackSave', '$stringToUTF8OnStack'],
   emscripten_async_wget2__proxy: 'sync',
-  emscripten_async_wget2: function(url, file, request, param, arg, onload, onerror, onprogress) {
+  emscripten_async_wget2: (url, file, request, param, arg, onload, onerror, onprogress) => {
     {{{ runtimeKeepalivePush() }}}
 
     var _url = UTF8ToString(url);
@@ -160,7 +160,7 @@ var LibraryWget = {
 
   emscripten_async_wget2_data__deps: ['$wget', 'malloc', 'free'],
   emscripten_async_wget2_data__proxy: 'sync',
-  emscripten_async_wget2_data: function(url, request, param, arg, free, onload, onerror, onprogress) {
+  emscripten_async_wget2_data: (url, request, param, arg, free, onload, onerror, onprogress) => {
     var _url = UTF8ToString(url);
     var _request = UTF8ToString(request);
     var _param = UTF8ToString(param);
@@ -228,7 +228,7 @@ var LibraryWget = {
 
   emscripten_async_wget2_abort__deps: ['$wget'],
   emscripten_async_wget2_abort__proxy: 'sync',
-  emscripten_async_wget2_abort: function(handle) {
+  emscripten_async_wget2_abort: (handle) => {
     var http = wget.wgetRequests[handle];
     if (http) {
       http.abort();

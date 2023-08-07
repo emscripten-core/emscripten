@@ -6,7 +6,7 @@
 
 mergeInto(LibraryManager.library, {
   $createDyncallWrapper__deps: ['$generateFuncType', '$uleb128Encode', 'setTempRet0'],
-  $createDyncallWrapper: function(sig) {
+  $createDyncallWrapper: (sig) => {
     var sections = [];
     var prelude = [
       0x00, 0x61, 0x73, 0x6d, // magic ("\0asm")

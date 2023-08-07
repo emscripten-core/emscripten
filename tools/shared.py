@@ -29,9 +29,14 @@ from . import colored_logger
 # Configure logging before importing any other local modules so even
 # log message during import are shown as expected.
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
+EMCC_LOGGING = int(os.environ.get('EMCC_LOGGING', '1'))
+log_level = logging.ERROR
+if DEBUG:
+  log_level = logging.DEBUG
+elif EMCC_LOGGING:
+  log_level = logging.INFO
 # can add  %(asctime)s  to see timestamps
-logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
-                    level=logging.DEBUG if DEBUG else logging.INFO)
+logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s', level=log_level)
 colored_logger.enable()
 
 from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
@@ -44,12 +49,17 @@ from .settings import settings
 
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
+PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
 # Minimum node version required to run the emscripten compiler.  This is distinct
 # from the minimum version required to execute the generated code.  This is not an
 # exact requirement, but is the oldest version of node that we do any testing with.
 # This version aligns with the current Ubuuntu TLS 20.04 (Focal).
 MINIMUM_NODE_VERSION = (10, 19, 0)
-EXPECTED_LLVM_VERSION = 17
+EXPECTED_LLVM_VERSION = 18
+
+# These get set by setup_temp_dirs
+TEMP_DIR = None
+EMSCRIPTEN_TEMP_DIR = None
 
 logger = logging.getLogger('shared')
 
@@ -120,16 +130,6 @@ def run_process(cmd, check=True, input=None, *args, **kw):
 
 def get_num_cores():
   return int(os.environ.get('EMCC_CORES', os.cpu_count()))
-
-
-def mp_run_process(command_tuple):
-  cmd, env, route_stdout_to_temp_files_suffix = command_tuple
-  stdout = None
-  if route_stdout_to_temp_files_suffix:
-    stdout = get_temp_files().get(route_stdout_to_temp_files_suffix)
-  subprocess.run(cmd, stdout=stdout, stderr=None, env=env, check=True)
-  if route_stdout_to_temp_files_suffix:
-    return stdout.name
 
 
 def returncode_to_str(code):
@@ -628,7 +628,7 @@ def is_c_symbol(name):
   return name.startswith('_') or name in settings.WASM_SYSTEM_EXPORTS
 
 
-def treat_as_user_function(name):
+def treat_as_user_export(name):
   if name.startswith('dynCall_'):
     return False
   if name in settings.WASM_SYSTEM_EXPORTS:
@@ -646,7 +646,7 @@ def asmjs_mangle(name):
   # to simply `main` which is expected by the emscripten JS glue code.
   if name == '__main_argc_argv':
     name = 'main'
-  if treat_as_user_function(name):
+  if treat_as_user_export(name):
     return '_' + name
   return name
 
@@ -666,11 +666,6 @@ def unsuffixed(name):
 
 def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
-
-
-def strip_prefix(string, prefix):
-  assert string.startswith(prefix)
-  return string[len(prefix):]
 
 
 def make_writable(filename):
@@ -740,6 +735,11 @@ def get_llvm_target():
     return 'wasm32-unknown-emscripten'
 
 
+def init():
+  set_version_globals()
+  setup_temp_dirs()
+
+
 # ============================================================================
 # End declarations.
 # ============================================================================
@@ -747,8 +747,6 @@ def get_llvm_target():
 # Everything below this point is top level code that get run when importing this
 # file.  TODO(sbc): We should try to reduce that amount we do here and instead
 # have consumers explicitly call initialization functions.
-
-set_version_globals()
 
 CLANG_CC = os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
 CLANG_CXX = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
@@ -771,12 +769,4 @@ EM_NM = bat_suffix(path_from_root('emnm'))
 FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
 WASM_SOURCEMAP = bat_suffix(path_from_root('tools/wasm-sourcemap'))
 
-# These get set by setup_temp_dirs
-TEMP_DIR = None
-EMSCRIPTEN_TEMP_DIR = None
-
-setup_temp_dirs()
-
-cache.setup(config.CACHE)
-
-PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
+init()

@@ -17,8 +17,8 @@ from typing import List, Optional
 from . import shared, building, utils
 from . import diagnostics
 from . import cache
-from tools.settings import settings
-from tools.utils import read_file
+from .settings import settings
+from .utils import read_file
 
 logger = logging.getLogger('system_libs')
 
@@ -431,7 +431,7 @@ class Library:
       return fullpath
     # For libraries (.a) files, we pass the abbreviated `-l` form.
     base = shared.unsuffixed_basename(fullpath)
-    return '-l' + shared.strip_prefix(base, 'lib')
+    return '-l' + utils.removeprefix(base, 'lib')
 
   def get_files(self):
     """
@@ -1058,6 +1058,7 @@ class libc(MuslInternalLibrary,
           'library_pthread.c',
           'em_task_queue.c',
           'proxying.c',
+          'proxying_legacy.c',
           'thread_mailbox.c',
           'pthread_create.c',
           'pthread_kill.c',
@@ -1171,7 +1172,7 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/exit',
-        filenames=['_Exit.c', 'atexit.c'])
+        filenames=['_Exit.c', 'atexit.c', 'at_quick_exit.c', 'quick_exit.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/ldso',
@@ -1379,6 +1380,11 @@ class libwasm_workers(MTLibrary):
     return files_in_path(
         path='system/lib/wasm_worker',
         filenames=['library_wasm_worker.c' if self.is_ww or self.is_mt else 'library_wasm_worker_stub.c'])
+
+  def can_use(self):
+    # see src/library_wasm_worker.js
+    return super().can_use() and not settings.SINGLE_FILE \
+      and not settings.RELOCATABLE and not settings.PROXY_TO_WORKER
 
 
 class libsockets(MuslInternalLibrary, MTLibrary):
@@ -1857,6 +1863,7 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
         filenames=['file.cpp',
                    'file_table.cpp',
                    'js_api.cpp',
+                   'emscripten.cpp',
                    'paths.cpp',
                    'special_files.cpp',
                    'support.cpp',
@@ -1865,6 +1872,20 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
 
   def can_use(self):
     return settings.WASMFS
+
+
+# Minimal syscall implementation, enough for printf. If this can be linked in
+# instead of the full WasmFS then it saves a lot of code size for simple
+# programs that don't need a full FS implementation.
+class libwasmfs_no_fs(Library):
+  name = 'libwasmfs_no_fs'
+
+  src_dir = 'system/lib/wasmfs'
+  src_files = ['no_fs.c']
+
+  def can_use(self):
+    # If the filesystem is forced then we definitely do not need this library.
+    return settings.WASMFS and not settings.FORCE_FILESYSTEM
 
 
 class libwasmfs_noderawfs(Library):
@@ -1914,6 +1935,7 @@ class libsanitizer_common_rt(CompilerRTLibrary, MTLibrary):
               'system/lib/compiler-rt/lib',
               'system/lib/libc']
   never_force = True
+  cflags = ['-D_LARGEFILE64_SOURCE']
 
   src_dir = 'system/lib/compiler-rt/lib/sanitizer_common'
   src_glob = '*.cpp'
@@ -1930,6 +1952,7 @@ class SanitizerLibrary(CompilerRTLibrary, MTLibrary):
 class libubsan_rt(SanitizerLibrary):
   name = 'libubsan_rt'
 
+  includes = ['system/lib/libc']
   cflags = ['-DUBSAN_CAN_USE_CXXABI']
   src_dir = 'system/lib/compiler-rt/lib/ubsan'
   src_glob_exclude = ['ubsan_diag_standalone.cpp']
@@ -1945,6 +1968,7 @@ class liblsan_common_rt(SanitizerLibrary):
 class liblsan_rt(SanitizerLibrary):
   name = 'liblsan_rt'
 
+  includes = ['system/lib/libc']
   src_dir = 'system/lib/compiler-rt/lib/lsan'
   src_glob_exclude = ['lsan_common.cpp', 'lsan_common_mac.cpp', 'lsan_common_linux.cpp',
                       'lsan_common_emscripten.cpp']
@@ -1953,6 +1977,7 @@ class liblsan_rt(SanitizerLibrary):
 class libasan_rt(SanitizerLibrary):
   name = 'libasan_rt'
 
+  includes = ['system/lib/libc']
   src_dir = 'system/lib/compiler-rt/lib/asan'
 
 
@@ -2200,6 +2225,16 @@ def get_libs_to_link(args, forced, only_forced):
 
   if settings.WASM_WORKERS:
     add_library('libwasm_workers')
+
+  if settings.WASMFS:
+    # Link in the no-fs version first, so that if it provides all the needed
+    # system libraries then WasmFS is not linked in at all. (We only do this if
+    # the filesystem is not forced; if it is then we know we definitely need the
+    # whole thing, and it would be unnecessary work to try to link in the no-fs
+    # version).
+    if not settings.FORCE_FILESYSTEM:
+      add_library('libwasmfs_no_fs')
+    add_library('libwasmfs')
 
   add_sanitizer_libs()
   return libs_to_link

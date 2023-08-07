@@ -39,9 +39,27 @@ int stdFunction(const MyClass& target, int i) {
   return i + 1;
 }
 
+EM_ASYNC_JS(void, jsSuspend, (), {
+  await new Promise(resolve => {
+    Module.unsuspendResolve = resolve;
+  });
+});
+
+void suspend() {
+  jsSuspend();
+};
+
+void unsuspend() {
+  EM_ASM({
+    Module.unsuspendResolve();
+  });
+}
+
 EMSCRIPTEN_BINDINGS(xxx) {
   function("voidFunc", &voidFunc, async());
   function("intFunc", &intFunc, async());
+  function("unsuspend", &unsuspend);
+  function("suspend", &suspend, async());
 
   class_<MyClass>("MyClass")
     .constructor<>()
@@ -76,9 +94,12 @@ EM_ASYNC_JS(void, test, (), {
     await check(Module.MyClass.voidClass());
     await check(Module.MyClass.intClass(1), 2);
 
-    console.log('done');
+    setTimeout(Module.unsuspend);
+    await Module.suspend();
+
+    out('done');
   } catch (e) {
-    console.log('Failed: ' + e.stack);
+    out('Failed: ' + e.stack);
   }
 });
 

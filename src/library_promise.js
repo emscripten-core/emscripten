@@ -9,12 +9,10 @@ mergeInto(LibraryManager.library, {
   $promiseMap: "new HandleAllocator();",
 
   $getPromise__deps: ['$promiseMap'],
-  $getPromise: function(id) {
-    return promiseMap.get(id).promise;
-  },
+  $getPromise: (id) => promiseMap.get(id).promise,
 
   $makePromise__deps: ['$promiseMap'],
-  $makePromise: function() {
+  $makePromise: () => {
     var promiseInfo = {};
     promiseInfo.promise = new Promise((resolve, reject) => {
       promiseInfo.reject = reject;
@@ -28,7 +26,7 @@ mergeInto(LibraryManager.library, {
   },
 
   $idsToPromises__deps: ['$promiseMap', '$getPromise'],
-  $idsToPromises: function(idBuf, size) {
+  $idsToPromises: (idBuf, size) => {
     var promises = [];
     for (var i = 0; i < size; i++) {
       var id = {{{ makeGetValue('idBuf', `i*${POINTER_SIZE}`, 'i32') }}};
@@ -38,12 +36,10 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_promise_create__deps: ['$makePromise'],
-  emscripten_promise_create: function() {
-    return makePromise().id;
-  },
+  emscripten_promise_create: () => makePromise().id,
 
   emscripten_promise_destroy__deps: ['$promiseMap'],
-  emscripten_promise_destroy: function(id) {
+  emscripten_promise_destroy: (id) => {
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_destroy: ${id}`);
 #endif
@@ -53,7 +49,7 @@ mergeInto(LibraryManager.library, {
   emscripten_promise_resolve__deps: ['$promiseMap',
                                      '$getPromise',
                                      'emscripten_promise_destroy'],
-  emscripten_promise_resolve: function(id, result, value) {
+  emscripten_promise_resolve: (id, result, value) => {
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_resolve: ${id}`);
 #endif
@@ -81,7 +77,7 @@ mergeInto(LibraryManager.library, {
   $makePromiseCallback__deps: ['$getPromise',
                                '$POINTER_SIZE',
                                'emscripten_promise_destroy'],
-  $makePromiseCallback: function(callback, userData) {
+  $makePromiseCallback: (callback, userData) => {
     return (value) => {
 #if RUNTIME_DEBUG
       dbg(`emscripten promise callback: ${value}`);
@@ -137,10 +133,7 @@ mergeInto(LibraryManager.library, {
   emscripten_promise_then__deps: ['$promiseMap',
                                   '$getPromise',
                                   '$makePromiseCallback'],
-  emscripten_promise_then: function(id,
-                                    onFulfilled,
-                                    onRejected,
-                                    userData) {
+  emscripten_promise_then: (id, onFulfilled, onRejected, userData) => {
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_then: ${id}`);
 #endif
@@ -157,7 +150,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_promise_all__deps: ['$promiseMap', '$idsToPromises'],
-  emscripten_promise_all: function(idBuf, resultBuf, size) {
+  emscripten_promise_all: (idBuf, resultBuf, size) => {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_all: ${promises}`);
@@ -179,8 +172,18 @@ mergeInto(LibraryManager.library, {
     return id;
   },
 
-  emscripten_promise_all_settled__deps: ['$promiseMap', '$idsToPromises'],
-  emscripten_promise_all_settled: function(idBuf, resultBuf, size) {
+  $setPromiseResult__internal: true,
+  $setPromiseResult: (ptr, fulfill, value) => {
+#if ASSERTIONS
+    assert(typeof value == 'undefined' || typeof value === 'number', `native promises can only handle numeric results (${value} ${typeof value})`);
+#endif
+    var result = fulfill ? {{{ cDefs.EM_PROMISE_FULFILL }}} : {{{ cDefs.EM_PROMISE_REJECT }}}
+    {{{ makeSetValue('ptr', C_STRUCTS.em_settled_result_t.result, 'result', 'i32') }}};
+    {{{ makeSetValue('ptr', C_STRUCTS.em_settled_result_t.value, 'value', '*') }}};
+  },
+
+  emscripten_promise_all_settled__deps: ['$promiseMap', '$idsToPromises', '$setPromiseResult'],
+  emscripten_promise_all_settled: (idBuf, resultBuf, size) => {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_all_settled: ${promises}`);
@@ -188,22 +191,12 @@ mergeInto(LibraryManager.library, {
     var id = promiseMap.allocate({
       promise: Promise.allSettled(promises).then((results) => {
         if (resultBuf) {
-          for (var i = 0; i < size; i++) {
-            var baseOffset = i * {{{ C_STRUCTS.em_settled_result_t.__size__ }}};
-            var resultOffset =
-                baseOffset + {{{ C_STRUCTS.em_settled_result_t.result }}};
-            var valueOffset =
-                baseOffset + {{{ C_STRUCTS.em_settled_result_t.value }}};
+          var offset = resultBuf;
+          for (var i = 0; i < size; i++, offset += {{{ C_STRUCTS.em_settled_result_t.__size__ }}}) {
             if (results[i].status === 'fulfilled') {
-              var fulfill = {{{ cDefs.EM_PROMISE_FULFILL }}};
-              {{{ makeSetValue('resultBuf', 'resultOffset', 'fulfill', 'i32') }}};
-              {{{ makeSetValue('resultBuf', 'valueOffset', 'results[i].value', '*') }}};
+              setPromiseResult(offset, true, results[i].value);
             } else {
-              var reject = {{{ cDefs.EM_PROMISE_REJECT }}};
-              {{{ makeSetValue('resultBuf', 'resultOffset', 'reject', 'i32') }}};
-              // Closure can't type `reason` in some contexts.
-              var reason = /** @type {number} */ (results[i].reason);
-              {{{ makeSetValue('resultBuf', 'valueOffset', 'reason', '*') }}};
+              setPromiseResult(offset, false, results[i].reason);
             }
           }
         }
@@ -216,14 +209,13 @@ mergeInto(LibraryManager.library, {
     return id;
   },
 
-
   emscripten_promise_any__deps: [
     '$promiseMap', '$idsToPromises',
 #if !SUPPORTS_PROMISE_ANY && !INCLUDE_FULL_LIBRARY
     () => error("emscripten_promise_any used, but Promise.any is not supported by the current runtime configuration (run with EMCC_DEBUG=1 in the env for more details)"),
 #endif
   ],
-  emscripten_promise_any: function(idBuf, errorBuf, size) {
+  emscripten_promise_any: (idBuf, errorBuf, size) => {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_any: ${promises}`);
@@ -248,7 +240,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_promise_race__deps: ['$promiseMap', '$idsToPromises'],
-  emscripten_promise_race: function(idBuf, size) {
+  emscripten_promise_race: (idBuf, size) => {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_race: ${promises}`);
@@ -260,5 +252,26 @@ mergeInto(LibraryManager.library, {
     dbg(`create: ${id}`);
 #endif
     return id;
-  }
+  },
+
+  emscripten_promise_await__async: true,
+  emscripten_promise_await__deps: ['$getPromise', '$setPromiseResult'],
+  emscripten_promise_await: (returnValuePtr, id) => {
+#if ASYNCIFY
+#if RUNTIME_DEBUG
+    dbg(`emscripten_promise_await: ${id}`);
+#endif
+    return Asyncify.handleSleep((wakeUp) => {
+      getPromise(id).then((value) => {
+        setPromiseResult(returnValuePtr, true, value);
+        wakeUp();
+      }, (value) => {
+        setPromiseResult(returnValuePtr, false, value);
+        wakeUp();
+      });
+    });
+#else
+    abort('emscripten_promise_await is only available with ASYNCIFY');
+#endif
+  },
 });

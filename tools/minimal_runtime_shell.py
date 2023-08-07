@@ -5,12 +5,12 @@ import logging
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
-sys.path.append(__rootdir__)
+sys.path.insert(0, __rootdir__)
 
-from tools import shared
-from tools import line_endings
-from tools import utils
-from tools.settings import settings
+from . import shared
+from . import line_endings
+from . import utils
+from .settings import settings
 
 logger = logging.getLogger('minimal_runtime_shell')
 
@@ -75,7 +75,7 @@ def generate_minimal_runtime_load_statement(target_basename):
     if download_wasm and settings.WASM_WORKERS == 1:
       files_to_load += ["binary('%s')" % (target_basename + '.ww.js')]
 
-  if settings.MODULARIZE and settings.USE_PTHREADS:
+  if settings.MODULARIZE and settings.PTHREADS:
     modularize_imports += ["worker: '{{{ PTHREAD_WORKER_FILE }}}'"]
 
   # Download Wasm2JS code if target browser does not support WebAssembly
@@ -153,7 +153,7 @@ def generate_minimal_runtime_load_statement(target_basename):
     # script load from direct script() load to a binary() load so we can still
     # immediately start the download, but can control when we add the script to the
     # DOM.
-    if settings.USE_PTHREADS or settings.WASM_WORKERS:
+    if settings.PTHREADS or settings.WASM_WORKERS:
       script_load = "script(url)"
     else:
       script_load = "script(url).then(() => { URL.revokeObjectURL(url) });"

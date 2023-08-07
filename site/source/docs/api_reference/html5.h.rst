@@ -2375,33 +2375,6 @@ Functions
   :returns: A high precision wallclock time value in msecs.
 
 
-Console
-=======
-
-Functions
----------
-
-.. c:function:: void emscripten_console_log(const char *utf8String)
-
-  Prints a string using ``console.log()``.
-
-  :param utf8String: A string encoded as UTF-8.
-
-
-.. c:function:: void emscripten_console_warn(const char *utf8String)
-
-  Prints a string using ``console.warn()``.
-
-  :param utf8String: A string encoded as UTF-8.
-
-
-.. c:function:: void emscripten_console_error(const char *utf8String)
-
-  Prints a string using ``console.error()``.
-
-  :param utf8String: A string encoded as UTF-8.
-
-
 Throw
 =====
 

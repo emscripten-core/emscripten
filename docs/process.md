@@ -107,8 +107,8 @@ How:
    name release. Running this
    [`scripts/create_release.py`][create_release_emsdk] script will update
    [emscripten-releases-tags.json][emscripten_releases_tags], adding a new
-   version. The script will create a new git branch that can be uploaded as a
-   PR. An example of this PR is emscripten-core/emsdk#1071.
+   version. The script will create a new local git branch and push it up to
+   ``origin``.  An example of this PR is emscripten-core/emsdk#1071.
 1. [Tag][emsdk_tags] the `emsdk` repo with the new version number, on the commit
    that does the update, after it lands on main.
 1. [Tag][emscripten_tags] the `emscripten` repo with the new version number, on

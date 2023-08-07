@@ -16,8 +16,8 @@
 // underscore.
 var WASM_EXPORTS = [];
 
-// Similar to above but only includes the functions symbols.
-var WASM_FUNCTION_EXPORTS = [];
+// Similar to above but only includes the global/data symbols.
+var WASM_GLOBAL_EXPORTS = [];
 
 // An array of all symbols exported from all the side modules specified on the
 // command line.
@@ -186,8 +186,12 @@ var WASM_SYSTEM_EXPORTS = ['stackAlloc', 'stackSave', 'stackRestore', 'getTempRe
 // Internal: value of -flto argument (either full or thin)
 var LTO = 0;
 
-// Whether we may be accessing the address 2GB or higher. If so then we need
-// to be using unsigned pointers in JS.
+// Whether we may be accessing the address 2GB or higher. If so, then we need
+// to interpret incoming i32 pointers as unsigned.
+//
+// This setting does not apply (and is never set to true) under MEMORY64, since
+// in that case we get 64-bit pointers coming through to JS (converting them to
+// i53 in most cases).
 var CAN_ADDRESS_2GB = false;
 
 // Whether to emit DWARF in a separate wasm file on the side (this is not called
@@ -261,3 +265,5 @@ var POST_JS_FILES = [];
 var PTHREADS = false;
 
 var BULK_MEMORY = false;
+
+var MINIFY_WHITESPACE = true;

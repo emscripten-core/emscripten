@@ -53,12 +53,15 @@ mergeInto(LibraryManager.library, {
   },
 
   $wasmfsOPFSCreateAsyncAccessHandle__deps: ['$FileSystemAsyncAccessHandle'],
-  $wasmfsOPFSCreateAsyncAccessHandle: function(fileHandle) {
+  $wasmfsOPFSCreateAsyncAccessHandle: (fileHandle) => {
     return new FileSystemAsyncAccessHandle(fileHandle);
   },
 #endif
 
-  $wasmfsOPFSProxyFinish: function(ctx) {
+#if PTHREADS
+  $wasmfsOPFSProxyFinish__deps: ['emscripten_proxy_finish'],
+#endif
+  $wasmfsOPFSProxyFinish: (ctx) => {
     // When using pthreads the proxy needs to know when the work is finished.
     // When used with JSPI the work will be executed in an async block so there
     // is no need to notify when done.
@@ -71,6 +74,11 @@ mergeInto(LibraryManager.library, {
   _wasmfs_opfs_init_root_directory: async function(ctx) {
     // allocated.length starts off as 1 since 0 is a reserved handle
     if (wasmfsOPFSDirectoryHandles.allocated.length == 1) {
+      // Closure compiler errors on this as it does not recognize the OPFS
+      // API yet, it seems. Unfortunately an existing annotation for this is in
+      // the closure compiler codebase, and cannot be overridden in user code
+      // (it complains on a duplicate type annotation), so just suppress it.
+      /** @suppress {checkTypes} */
       let root = await navigator.storage.getDirectory();
       wasmfsOPFSDirectoryHandles.allocated.push(root);
     }
@@ -143,7 +151,11 @@ mergeInto(LibraryManager.library, {
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_get_entries__deps: ['$wasmfsOPFSProxyFinish'],
+  _wasmfs_opfs_get_entries__deps: [
+    '$wasmfsOPFSProxyFinish',
+    '$withStackSave',
+    '_wasmfs_opfs_record_entry',
+  ],
   _wasmfs_opfs_get_entries: async function(ctx, dirID, entriesPtr, errPtr) {
     let dirHandle = wasmfsOPFSDirectoryHandles.get(dirID);
 
@@ -214,12 +226,12 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_opfs_free_file__deps: ['$wasmfsOPFSFileHandles'],
-  _wasmfs_opfs_free_file: function(fileID) {
+  _wasmfs_opfs_free_file: (fileID) => {
     wasmfsOPFSFileHandles.free(fileID);
   },
 
   _wasmfs_opfs_free_directory__deps: ['$wasmfsOPFSDirectoryHandles'],
-  _wasmfs_opfs_free_directory: function(dirID) {
+  _wasmfs_opfs_free_directory: (dirID) => {
     wasmfsOPFSDirectoryHandles.free(dirID);
   },
 
@@ -236,7 +248,11 @@ mergeInto(LibraryManager.library, {
       let accessHandle;
 #if PTHREADS
       // TODO: Remove this once the Access Handles API has settled.
-      if (FileSystemFileHandle.prototype.createSyncAccessHandle.length == 0) {
+      // TODO: Closure is confused by this code that supports two versions of
+      //       the same API, so suppress type checking on it.
+      /** @suppress {checkTypes} */
+      var len = FileSystemFileHandle.prototype.createSyncAccessHandle.length;
+      if (len == 0) {
         accessHandle = await fileHandle.createSyncAccessHandle();
       } else {
         accessHandle = await fileHandle.createSyncAccessHandle(
@@ -298,7 +314,7 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_opfs_close_blob__deps: ['$wasmfsOPFSBlobs'],
-  _wasmfs_opfs_close_blob: function(blobID) {
+  _wasmfs_opfs_close_blob: (blobID) => {
     wasmfsOPFSBlobs.free(blobID);
   },
 
@@ -379,7 +395,7 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_opfs_get_size_blob__deps: ['$wasmfsOPFSBlobs'],
-  _wasmfs_opfs_get_size_blob: function(blobID) {
+  _wasmfs_opfs_get_size_blob: (blobID) => {
     // This cannot fail.
     return wasmfsOPFSBlobs.get(blobID).size;
   },
@@ -397,11 +413,9 @@ mergeInto(LibraryManager.library, {
     wasmfsOPFSProxyFinish(ctx);
   },
 
+  _wasmfs_opfs_set_size_access__i53abi: true,
   _wasmfs_opfs_set_size_access__deps: ['$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish'],
-  _wasmfs_opfs_set_size_access: async function(ctx, accessID,
-                                               {{{ defineI64Param('size') }}},
-                                               errPtr) {
-    {{{ receiveI64ParamAsDouble('size') }}};
+  _wasmfs_opfs_set_size_access: async function(ctx, accessID, size, errPtr) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     try {
       await accessHandle.truncate(size);
@@ -412,11 +426,9 @@ mergeInto(LibraryManager.library, {
     wasmfsOPFSProxyFinish(ctx);
   },
 
+  _wasmfs_opfs_set_size_file__i53abi: true,
   _wasmfs_opfs_set_size_file__deps: ['$wasmfsOPFSFileHandles', '$wasmfsOPFSProxyFinish'],
-  _wasmfs_opfs_set_size_file: async function(ctx, fileID,
-                                             {{{ defineI64Param('size') }}},
-                                             errPtr) {
-    {{{ receiveI64ParamAsDouble('size') }}};
+  _wasmfs_opfs_set_size_file: async function(ctx, fileID, size, errPtr) {
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
     try {
       let writable = await fileHandle.createWritable({keepExistingData: true});

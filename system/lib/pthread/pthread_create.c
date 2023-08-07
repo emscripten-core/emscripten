@@ -17,13 +17,13 @@
 #include <emscripten/heap.h>
 #include <emscripten/threading.h>
 
-#define STACK_ALIGN 16
+#define STACK_ALIGN __BIGGEST_ALIGNMENT__
 #define TSD_ALIGN (sizeof(void*))
 
 // Comment this line to enable tracing of thread creation and destruction:
 // #define PTHREAD_DEBUG
 #ifdef PTHREAD_DEBUG
-#define dbg(fmt, ...) _emscripten_dbgf(fmt, ##__VA_ARGS__)
+#define dbg(fmt, ...) emscripten_dbgf(fmt, ##__VA_ARGS__)
 #else
 #define dbg(fmt, ...)
 #endif

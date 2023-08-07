@@ -11,9 +11,8 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner.py interactive')
 
 from common import parameterized
-from common import BrowserCore, test_file, also_with_minimal_runtime
+from common import BrowserCore, test_file, create_file, also_with_minimal_runtime
 from tools.shared import WINDOWS
-from tools.utils import which
 
 
 class interactive(BrowserCore):
@@ -60,7 +59,7 @@ class interactive(BrowserCore):
     shutil.copyfile(test_file('sounds', 'alarmcreatemiltaryfoot_1.wav'), self.in_dir('sound2.wav'))
     shutil.copyfile(test_file('sounds', 'noise.ogg'), self.in_dir('noise.ogg'))
     shutil.copyfile(test_file('sounds', 'the_entertainer.ogg'), self.in_dir('the_entertainer.ogg'))
-    open(self.in_dir('bad.ogg'), 'w').write('I claim to be audio, but am lying')
+    create_file('bad.ogg', 'I claim to be audio, but am lying')
 
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
     self.btest_exit(test_file('sdl_audio.c'), args=['--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg'])
@@ -186,7 +185,7 @@ class interactive(BrowserCore):
 
   def get_freealut_library(self):
     self.emcc_args += ['-Wno-pointer-sign']
-    if WINDOWS and which('cmake'):
+    if WINDOWS and shutil.which('cmake'):
       return self.get_library(os.path.join('third_party', 'freealut'), 'libalut.a', configure=['cmake', '.'], configure_args=['-DBUILD_TESTS=ON'])
     else:
       return self.get_library(os.path.join('third_party', 'freealut'), os.path.join('src', '.libs', 'libalut.a'), configure_args=['--disable-shared'])
@@ -238,13 +237,17 @@ class interactive(BrowserCore):
     for args in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
       self.btest('html5_callbacks_on_calling_thread.c', expected='1', args=args + ['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR', '-pthread', '-sPROXY_TO_PTHREAD'])
 
-  # Test that it is possible to register HTML5 event callbacks on either main browser thread, or application main thread,
-  # and that the application can manually proxy the event from main browser thread to the application main thread, to
-  # implement event suppression capabilities.
-  def test_html5_callback_on_two_threads(self):
+  # Test that it is possible to register HTML5 event callbacks on either main browser thread, or
+  # application main thread, and that the application can manually proxy the event from main browser
+  # thread to the application main thread, to implement event suppression capabilities.
+  @parameterized({
+    '': ([],),
+    'pthread': (['-pthread'],),
+    'proxy_to_pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
+  def test_html5_event_callback_in_two_threads(self, args):
     # TODO: Make this automatic by injecting enter key press in e.g. shell html file.
-    for args in [[], ['-pthread', '-sPROXY_TO_PTHREAD']]:
-      self.btest('html5_event_callback_in_two_threads.c', expected='1', args=args)
+    self.btest('html5_event_callback_in_two_threads.c', expected='1', args=args)
 
   # Test that emscripten_hide_mouse() is callable from pthreads (and proxies to main thread to obtain the proper window.devicePixelRatio value).
   def test_emscripten_hide_mouse(self):

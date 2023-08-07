@@ -151,14 +151,14 @@ var emscriptenCpuProfiler = {
     if (!sect) {
       sect = {
         count: 0,
-        name: name,
+        name,
         startTick: 0,
         accumulatedTimeInsideMainLoop: 0,
         accumulatedTimeOutsideMainLoop: 0,
         frametimesInsideMainLoop: [],
         frametimesOutsideMainLoop: [],
-        drawColor: drawColor,
-        traceable: traceable,
+        drawColor,
+        traceable,
         accumulatedFrameTimeInsideMainLoop: function(startX, numSamples) {
           var total = 0;
           numSamples = Math.min(numSamples, this.frametimesInsideMainLoop.length);

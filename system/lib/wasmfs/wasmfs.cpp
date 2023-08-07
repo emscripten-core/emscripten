@@ -43,18 +43,46 @@ WasmFS::WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {
   preloadFiles();
 }
 
-WasmFS::~WasmFS() {
+// Manual integration with LSan. LSan installs itself during startup at the
+// first allocation, which happens inside WasmFS code (since the WasmFS global
+// object creates some data structures). As a result LSan's atexit() destructor
+// will be called last, after WasmFS is cleaned up, since atexit() calls work
+// are LIFO (like a stack). But that is a problem, since if WasmFS has shut
+// down and deallocated itself then the leak code cannot actually print any of
+// its findings, if it has any. To avoid that, define the LSan entry point as a
+// weak symbol, and call it; if LSan is not enabled this can be optimized out,
+// and if LSan is enabled then we'll check for leaks right at the start of the
+// WasmFS destructor, which is the last time during which it is valid to print.
+// (Note that this means we can't find leaks inside WasmFS code itself, but that
+// seems fundamentally impossible for the above reasons, unless we made LSan log
+// its findings in a way that does not depend on normal file I/O.)
+__attribute__((weak)) extern "C" void __lsan_do_leak_check(void) {
+}
+
+extern "C" void wasmfs_flush(void) {
   // Flush musl libc streams.
-  // TODO: Integrate musl exit() which would call this for us. That might also
-  //       help with destructor priority - we need to happen last.
   fflush(0);
 
-  // Flush our own streams. TODO: flush all possible streams.
-  // Note that we lock here, although strictly speaking it is unnecessary given
-  // that we are in the destructor of WasmFS: nothing can possibly be running
-  // on files at this time.
+  // Flush our own streams. TODO: flush all backends.
   (void)SpecialFiles::getStdout()->locked().flush();
   (void)SpecialFiles::getStderr()->locked().flush();
+}
+
+WasmFS::~WasmFS() {
+  // See comment above on this function.
+  //
+  // Note that it is ok for us to call it here, as LSan internally makes all
+  // calls after the first into no-ops. That is, calling it here makes the one
+  // time that leak checks are run be done here, or potentially earlier, but not
+  // later; and as mentioned in the comment above, this is the latest possible
+  // time for the checks to run (since right after this nothing can be printed).
+  __lsan_do_leak_check();
+
+  // TODO: Integrate musl exit() which would flush the libc part for us. That
+  //       might also help with destructor priority - we need to happen last.
+  //       (But we would still need to flush the internal WasmFS buffers, see
+  //       wasmfs_flush() and the comment on it in the header.)
+  wasmfs_flush();
 
   // Break the reference cycle caused by the root directory being its own
   // parent.
@@ -133,7 +161,7 @@ void WasmFS::preloadFiles() {
     std::shared_ptr<Directory> parentDir;
     if (parsed.getError() ||
         !(parentDir = parsed.getFile()->dynCast<Directory>())) {
-      emscripten_console_error(
+      emscripten_err(
         "Fatal error during directory creation in file preloading.");
       abort();
     }
@@ -160,7 +188,7 @@ void WasmFS::preloadFiles() {
 
     auto parsed = path::parseParent(fileName);
     if (parsed.getError()) {
-      emscripten_console_error("Fatal error during file preloading");
+      emscripten_err("Fatal error during file preloading");
       abort();
     }
     auto& [parent, childName] = parsed.getParentChild();

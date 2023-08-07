@@ -5,18 +5,16 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $PIPEFS__postset: function() {
-    addAtInit('PIPEFS.root = FS.mount(PIPEFS, {}, null);');
-  },
+  $PIPEFS__postset: () => addAtInit('PIPEFS.root = FS.mount(PIPEFS, {}, null);'),
   $PIPEFS__deps: ['$FS'],
   $PIPEFS: {
     BUCKET_BUFFER_SIZE: 1024 * 8, // 8KiB Buffer
-    mount: function (mount) {
+    mount(mount) {
       // Do not pollute the real root directory or its child nodes with pipes
       // Looks like it is OK to create another pseudo-root node not linked to the FS.root hierarchy this way
       return FS.createNode(null, '/', {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */, 0);
     },
-    createPipe: function () {
+    createPipe() {
       var pipe = {
         buckets: [],
         // refcnt 2 because pipe has a read end and a write end. We need to be
@@ -62,7 +60,7 @@ mergeInto(LibraryManager.library, {
       };
     },
     stream_ops: {
-      poll: function (stream) {
+      poll(stream) {
         var pipe = stream.node.pipe;
 
         if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_WRONLY }}}) {
@@ -79,13 +77,13 @@ mergeInto(LibraryManager.library, {
 
         return 0;
       },
-      ioctl: function (stream, request, varargs) {
+      ioctl(stream, request, varargs) {
         return {{{ cDefs.EINVAL }}};
       },
-      fsync: function (stream) {
+      fsync(stream) {
         return {{{ cDefs.EINVAL }}};
       },
-      read: function (stream, buffer, offset, length, position /* ignored */) {
+      read(stream, buffer, offset, length, position /* ignored */) {
         var pipe = stream.node.pipe;
         var currentLength = 0;
 
@@ -148,7 +146,7 @@ mergeInto(LibraryManager.library, {
 
         return totalRead;
       },
-      write: function (stream, buffer, offset, length, position /* ignored */) {
+      write(stream, buffer, offset, length, position /* ignored */) {
         var pipe = stream.node.pipe;
 
 #if PTHREADS
@@ -215,7 +213,7 @@ mergeInto(LibraryManager.library, {
 
         return dataLen;
       },
-      close: function (stream) {
+      close(stream) {
         var pipe = stream.node.pipe;
         pipe.refcnt--;
         if (pipe.refcnt === 0) {
@@ -223,7 +221,7 @@ mergeInto(LibraryManager.library, {
         }
       }
     },
-    nextname: function () {
+    nextname() {
       if (!PIPEFS.nextname.current) {
         PIPEFS.nextname.current = 0;
       }

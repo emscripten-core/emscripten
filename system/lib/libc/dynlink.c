@@ -34,7 +34,7 @@
 //#define DYLINK_DEBUG
 
 #ifdef DYLINK_DEBUG
-#define dbg(fmt, ...) _emscripten_dbgf(fmt, ##__VA_ARGS__)
+#define dbg(fmt, ...) emscripten_dbgf(fmt, ##__VA_ARGS__)
 #else
 #define dbg(fmt, ...)
 #endif
@@ -244,7 +244,7 @@ static void dlsync_next(struct dlevent* dlevent, em_promise_t promise) {
     dbg("calling _dlsym_catchup_js ....");
     void* success = _dlsym_catchup_js(dlevent->dso, dlevent->sym_index);
     if (!success) {
-      _emscripten_errf("_dlsym_catchup_js failed: %s", dlerror());
+      emscripten_errf("_dlsym_catchup_js failed: %s", dlerror());
       sync_one_onerror(dlevent->dso, promise);
       return;
     }
@@ -288,7 +288,7 @@ bool _emscripten_dlsync_self() {
           p->sym_index);
       void* success = _dlsym_catchup_js(p->dso, p->sym_index);
       if (!success) {
-        _emscripten_errf("_dlsym_catchup_js failed: %s", dlerror());
+        emscripten_errf("_dlsym_catchup_js failed: %s", dlerror());
         return false;
       }
     } else {
@@ -306,7 +306,7 @@ bool _emscripten_dlsync_self() {
         // TODO(sbc): Ideally this would never happen and we could/should
         // abort, but on the main thread (where we don't have sync xhr) its
         // often not possible to syncronously load side module.
-        _emscripten_errf("_dlopen_js failed: %s", dlerror());
+        emscripten_errf("_dlopen_js failed: %s", dlerror());
         return false;
       }
     }
@@ -333,11 +333,21 @@ static void do_thread_sync_out(void* arg) {
   *result = _emscripten_dlsync_self();
 }
 
-// Called once _emscripten_proxy_dlsync completes
-static void done_thread_sync(void* arg) {
+// Called when a thread exists prior to being able to completely sync operation.
+// We can just ignore this case and report success.
+static void thread_sync_cancelled(void* arg) {
+  struct promise_result* info = arg;
+  dbg("thread_sync_cancelled: promise=%p result=%i", info->promise, info->result);
+  emscripten_promise_resolve(info->promise, EM_PROMISE_FULFILL, NULL);
+  emscripten_promise_destroy(info->promise);
+  free(info);
+}
+
+// Called once do_thread_sync completes
+static void thread_sync_done(void* arg) {
   struct promise_result* info = arg;
   em_promise_t promise = info->promise;
-  dbg("done_thread_sync: promise=%p result=%i", promise, info->result);
+  dbg("thread_sync_done: promise=%p result=%i", promise, info->result);
   if (info->result) {
     emscripten_promise_resolve(promise, EM_PROMISE_FULFILL, NULL);
   } else {
@@ -389,8 +399,8 @@ int _emscripten_proxy_dlsync_async(pthread_t target_thread, em_promise_t promise
   int rtn = emscripten_proxy_callback(dlopen_proxying_queue,
                                       target_thread,
                                       do_thread_sync,
-                                      done_thread_sync,
-                                      done_thread_sync,
+                                      thread_sync_done,
+                                      thread_sync_cancelled,
                                       info);
   if (!rtn) {
     // If we failed to proxy, then the target thread is no longer alive and no

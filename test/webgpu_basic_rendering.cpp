@@ -17,13 +17,12 @@
 #include <emscripten/html5.h>
 #include <emscripten/html5_webgpu.h>
 
-void GetDevice(void (*callback)(wgpu::Device)) {
-    // Left as null (until supported in Emscripten)
-    static const WGPUInstance instance = nullptr;
+static const wgpu::Instance instance = wgpuCreateInstance(nullptr);
 
-    wgpuInstanceRequestAdapter(instance, nullptr, [](WGPURequestAdapterStatus status, WGPUAdapter adapter, const char* message, void* userdata) {
+void GetDevice(void (*callback)(wgpu::Device)) {
+    instance.RequestAdapter(nullptr, [](WGPURequestAdapterStatus status, WGPUAdapter cAdapter, const char* message, void* userdata) {
         if (message) {
-            printf("wgpuInstanceRequestAdapter: %s\n", message);
+            printf("RequestAdapter: %s\n", message);
         }
         if (status == WGPURequestAdapterStatus_Unavailable) {
             printf("WebGPU unavailable; exiting cleanly\n");
@@ -32,13 +31,14 @@ void GetDevice(void (*callback)(wgpu::Device)) {
         }
         assert(status == WGPURequestAdapterStatus_Success);
 
-        wgpuAdapterRequestDevice(adapter, nullptr, [](WGPURequestDeviceStatus status, WGPUDevice dev, const char* message, void* userdata) {
+        wgpu::Adapter adapter = wgpu::Adapter::Acquire(cAdapter);
+        adapter.RequestDevice(nullptr, [](WGPURequestDeviceStatus status, WGPUDevice cDevice, const char* message, void* userdata) {
             if (message) {
-                printf("wgpuAdapterRequestDevice: %s\n", message);
+                printf("RequestDevice: %s\n", message);
             }
             assert(status == WGPURequestDeviceStatus_Success);
 
-            wgpu::Device device = wgpu::Device::Acquire(dev);
+            wgpu::Device device = wgpu::Device::Acquire(cDevice);
             reinterpret_cast<void (*)(wgpu::Device)>(userdata)(device);
         }, userdata);
     }, reinterpret_cast<void*>(callback));
@@ -75,7 +75,7 @@ void init() {
     wgpu::ShaderModule shaderModule{};
     {
         wgpu::ShaderModuleWGSLDescriptor wgslDesc{};
-        wgslDesc.source = shaderCode;
+        wgslDesc.code = shaderCode;
 
         wgpu::ShaderModuleDescriptor descriptor{};
         descriptor.nextInChain = &wgslDesc;
@@ -108,6 +108,7 @@ void init() {
 
         wgpu::DepthStencilState depthStencilState{};
         depthStencilState.format = wgpu::TextureFormat::Depth32Float;
+        depthStencilState.depthCompare = wgpu::CompareFunction::Always;
 
         wgpu::RenderPipelineDescriptor descriptor{};
         descriptor.layout = device.CreatePipelineLayout(&pl);
@@ -376,7 +377,6 @@ void run() {
 
         wgpu::SurfaceDescriptor surfDesc{};
         surfDesc.nextInChain = &canvasDesc;
-        wgpu::Instance instance{};  // null instance
         wgpu::Surface surface = instance.CreateSurface(&surfDesc);
 
         wgpu::SwapChainDescriptor scDesc{};

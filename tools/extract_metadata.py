@@ -6,7 +6,7 @@
 import logging
 from typing import List, Dict
 
-from . import webassembly
+from . import webassembly, utils
 from .webassembly import OpCode, AtomicOpCode, MemoryOpCode
 from .shared import exit_with_error
 from .settings import settings
@@ -247,8 +247,12 @@ def get_named_globals(module, exports):
   return named_globals
 
 
-def get_export_names(module):
-  return [e.name for e in module.get_exports() if e.kind in [webassembly.ExternType.FUNC, webassembly.ExternType.TAG]]
+def get_function_exports(module):
+  rtn = {}
+  for e in module.get_exports():
+    if e.kind == webassembly.ExternType.FUNC:
+      rtn[e.name] = len(module.get_function_type(e.index).params)
+  return rtn
 
 
 def update_metadata(filename, metadata):
@@ -264,7 +268,8 @@ def update_metadata(filename, metadata):
       elif i.kind in (webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG):
         imports.append(i.field)
 
-    metadata.exports = get_export_names(module)
+    metadata.function_exports = get_function_exports(module)
+    metadata.all_exports = [utils.removeprefix(e.name, '__em_js__') for e in module.get_exports()]
 
   metadata.imports = imports
   metadata.invokeFuncs = invoke_funcs
@@ -306,7 +311,7 @@ def extract_metadata(filename):
     export_map = {e.name: e for e in exports}
     for e in exports:
       if e.kind == webassembly.ExternType.GLOBAL and e.name.startswith('__em_js__'):
-        name = e.name[len('__em_js__'):]
+        name = utils.removeprefix(e.name, '__em_js__')
         globl = module.get_global(e.index)
         string_address = get_global_value(globl)
         em_js_funcs[name] = get_string_at(module, string_address)
@@ -333,7 +338,8 @@ def extract_metadata(filename):
     # calls __original_main (which has no parameters).
     metadata = Metadata()
     metadata.imports = import_names
-    metadata.exports = get_export_names(module)
+    metadata.function_exports = get_function_exports(module)
+    metadata.all_exports = [utils.removeprefix(e.name, '__em_js__') for e in exports]
     metadata.asmConsts = get_section_strings(module, export_map, 'em_asm')
     metadata.jsDeps = [d for d in get_section_strings(module, export_map, 'em_lib_deps').values() if d]
     metadata.emJsFuncs = em_js_funcs

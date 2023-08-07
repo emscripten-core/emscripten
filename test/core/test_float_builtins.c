@@ -33,6 +33,7 @@ int test_builtins() {
   TEST(fmax)
   TEST(fmin)
   TEST(fmod)
+  TEST(scalbn)
 
   TEST(pow)
   TESTI(powi)
@@ -57,6 +58,7 @@ void test_long_double(long double x) {
   printf("acos(x) = %Lf\n", acosl(x));
   printf("expl(x) = %Lf\n", expl(x));
   printf("ldexpl(x) = %Lf\n", ldexpl(x, 7));
+  printf("scalbnl(x) = %Lf\n", scalbnl(x, 2));
 }
 
 int main() {

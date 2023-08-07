@@ -20,7 +20,7 @@ weak time_t mktime(struct tm *tm) {
 
 weak struct tm *__localtime_r(const time_t *restrict t, struct tm *restrict tm) {
   tzset();
-  _localtime_js(t, tm);
+  _localtime_js(*t, tm);
   // __localtime_js sets everything but the tmzone pointer
   tm->__tm_zone = tm->tm_isdst ? tzname[1] :tzname[0];
   return tm;
@@ -28,7 +28,7 @@ weak struct tm *__localtime_r(const time_t *restrict t, struct tm *restrict tm) 
 
 weak struct tm *__gmtime_r(const time_t *restrict t, struct tm *restrict tm) {
   tzset();
-  _gmtime_js(t, tm);
+  _gmtime_js(*t, tm);
   tm->tm_isdst = 0;
   tm->__tm_gmtoff = 0;
   tm->__tm_zone = "GMT";

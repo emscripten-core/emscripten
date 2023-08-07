@@ -9,19 +9,19 @@ var WasiLibrary = {
   $ExitStatus__docs: '/** @constructor */',
   $ExitStatus: function(status) {
     this.name = 'ExitStatus';
-    this.message = 'Program terminated with exit(' + status + ')';
+    this.message = `Program terminated with exit(${status})`;
     this.status = status;
   },
   proc_exit__deps: ['$ExitStatus'],
 #endif
 
   proc_exit__nothrow: true,
-  proc_exit: function(code) {
+  proc_exit: (code) => {
 #if MINIMAL_RUNTIME
-    throw 'exit(' + code + ')';
+    throw `exit(${code})`;
 #else
 #if RUNTIME_DEBUG
-    dbg('proc_exit: ' + code);
+    dbg(`proc_exit: ${code}`);
 #endif
     EXITSTATUS = code;
     if (!keepRuntimeAlive()) {
@@ -38,18 +38,16 @@ var WasiLibrary = {
   },
 
   sched_yield__nothrow: true,
-  sched_yield: function() {
-    return 0;
-  },
+  sched_yield: () => 0,
 
   random_get__deps: ['getentropy'],
-  random_get: function(buf, buf_len) {
+  random_get: (buf, buf_len) => {
     _getentropy(buf, buf_len);
     return 0;
   },
 
   $getEnvStrings__deps: ['$ENV', '$getExecutableName'],
-  $getEnvStrings: function() {
+  $getEnvStrings: () => {
     if (!getEnvStrings.strings) {
       // Default values.
 #if !DETERMINISTIC
@@ -80,7 +78,7 @@ var WasiLibrary = {
       }
       var strings = [];
       for (var x in env) {
-        strings.push(x + '=' + env[x]);
+        strings.push(`${x}=${env[x]}`);
       }
       getEnvStrings.strings = strings;
     }
@@ -89,22 +87,20 @@ var WasiLibrary = {
 
   environ_sizes_get__deps: ['$getEnvStrings'],
   environ_sizes_get__nothrow: true,
-  environ_sizes_get: function(penviron_count, penviron_buf_size) {
+  environ_sizes_get: (penviron_count, penviron_buf_size) => {
     var strings = getEnvStrings();
     {{{ makeSetValue('penviron_count', 0, 'strings.length', SIZE_TYPE) }}};
     var bufSize = 0;
-    strings.forEach(function(string) {
-      bufSize += string.length + 1;
-    });
+    strings.forEach((string) => bufSize += string.length + 1);
     {{{ makeSetValue('penviron_buf_size', 0, 'bufSize', SIZE_TYPE) }}};
     return 0;
   },
 
   environ_get__deps: ['$getEnvStrings', '$stringToAscii'],
   environ_get__nothrow: true,
-  environ_get: function(__environ, environ_buf) {
+  environ_get: (__environ, environ_buf) => {
     var bufSize = 0;
-    getEnvStrings().forEach(function(string, i) {
+    getEnvStrings().forEach((string, i) => {
       var ptr = environ_buf + bufSize;
       {{{ makeSetValue('__environ', `i*${POINTER_SIZE}`, 'ptr', POINTER_TYPE) }}};
       stringToAscii(string, ptr);
@@ -117,13 +113,11 @@ var WasiLibrary = {
   // to main, and the `mainArgs` global does not exist.
 #if STANDALONE_WASM
   args_sizes_get__nothrow: true,
-  args_sizes_get: function(pargc, pargv_buf_size) {
+  args_sizes_get: (pargc, pargv_buf_size) => {
 #if MAIN_READS_PARAMS
     {{{ makeSetValue('pargc', 0, 'mainArgs.length', SIZE_TYPE) }}};
     var bufSize = 0;
-    mainArgs.forEach(function(arg) {
-      bufSize += arg.length + 1;
-    });
+    mainArgs.forEach((arg) => bufSize += arg.length + 1);
     {{{ makeSetValue('pargv_buf_size', 0, 'bufSize', SIZE_TYPE) }}};
 #else
     {{{ makeSetValue('pargc', 0, '0', SIZE_TYPE) }}};
@@ -133,10 +127,10 @@ var WasiLibrary = {
 
   args_get__nothrow: true,
   args_get__deps: ['$stringToAscii'],
-  args_get: function(argv, argv_buf) {
+  args_get: (argv, argv_buf) => {
 #if MAIN_READS_PARAMS
     var bufSize = 0;
-    mainArgs.forEach(function(arg, i) {
+    mainArgs.forEach((arg, i) => {
       var ptr = argv_buf + bufSize;
       {{{ makeSetValue('argv', `i*${POINTER_SIZE}`, 'ptr', POINTER_TYPE) }}};
       stringToAscii(arg, ptr);
@@ -147,7 +141,7 @@ var WasiLibrary = {
   },
 #endif
 
-  $checkWasiClock: function(clock_id) {
+  $checkWasiClock: (clock_id) => {
     return clock_id == {{{ cDefs.__WASI_CLOCKID_REALTIME }}} ||
            clock_id == {{{ cDefs.__WASI_CLOCKID_MONOTONIC }}} ||
            clock_id == {{{ cDefs.__WASI_CLOCKID_PROCESS_CPUTIME_ID }}} ||
@@ -158,9 +152,10 @@ var WasiLibrary = {
   // but the wasm file can't be legalized in standalone mode, which is where
   // this is needed. To get this code to be usable as a JS shim we need to
   // either wait for BigInt support or to legalize on the client.
+  clock_time_get__i53abi: true,
   clock_time_get__nothrow: true,
   clock_time_get__deps: ['emscripten_get_now', '$nowIsMonotonic', '$checkWasiClock'],
-  clock_time_get: function(clk_id, {{{ defineI64Param('ignored_precision') }}}, ptime) {
+  clock_time_get: (clk_id, ignored_precision, ptime) => {
     if (!checkWasiClock(clk_id)) {
       return {{{ cDefs.EINVAL }}};
     }
@@ -182,7 +177,7 @@ var WasiLibrary = {
 
   clock_res_get__nothrow: true,
   clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_res', '$nowIsMonotonic', '$checkWasiClock'],
-  clock_res_get: function(clk_id, pres) {
+  clock_res_get: (clk_id, pres) => {
     if (!checkWasiClock(clk_id)) {
       return {{{ cDefs.EINVAL }}};
     }
@@ -202,13 +197,13 @@ var WasiLibrary = {
 
 #if SYSCALLS_REQUIRE_FILESYSTEM
   $doReadv__docs: '/** @param {number=} offset */',
-  $doReadv: function(stream, iov, iovcnt, offset) {
+  $doReadv: (stream, iov, iovcnt, offset) => {
     var ret = 0;
     for (var i = 0; i < iovcnt; i++) {
       var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
       var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
       iov += {{{ C_STRUCTS.iovec.__size__ }}};
-      var curr = FS.read(stream, {{{ heapAndOffset('HEAP8', 'ptr') }}}, len, offset);
+      var curr = FS.read(stream, HEAP8, ptr, len, offset);
       if (curr < 0) return -1;
       ret += curr;
       if (curr < len) break; // nothing more to read
@@ -219,13 +214,13 @@ var WasiLibrary = {
     return ret;
   },
   $doWritev__docs: '/** @param {number=} offset */',
-  $doWritev: function(stream, iov, iovcnt, offset) {
+  $doWritev: (stream, iov, iovcnt, offset) => {
     var ret = 0;
     for (var i = 0; i < iovcnt; i++) {
       var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
       var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
       iov += {{{ C_STRUCTS.iovec.__size__ }}};
-      var curr = FS.write(stream, {{{ heapAndOffset('HEAP8', 'ptr') }}}, len, offset);
+      var curr = FS.write(stream, HEAP8, ptr, len, offset);
       if (curr < 0) return -1;
       ret += curr;
       if (typeof offset !== 'undefined') {
@@ -240,7 +235,7 @@ var WasiLibrary = {
   $printCharBuffers__internal: true,
   $printChar__internal: true,
   $printChar__deps: ['$printCharBuffers', '$UTF8ArrayToString'],
-  $printChar: function(stream, curr) {
+  $printChar: (stream, curr) => {
     var buffer = printCharBuffers[stream];
 #if ASSERTIONS
     assert(buffer);
@@ -258,7 +253,7 @@ var WasiLibrary = {
   fd_write__deps: ['$doWritev'],
 #elif (!MINIMAL_RUNTIME || EXIT_RUNTIME)
   $flush_NO_FILESYSTEM__deps: ['$printChar', '$printCharBuffers'],
-  $flush_NO_FILESYSTEM: function() {
+  $flush_NO_FILESYSTEM: () => {
     // flush anything remaining in the buffers during shutdown
 #if hasExportedSymbol('fflush')
     _fflush(0);
@@ -267,13 +262,11 @@ var WasiLibrary = {
     if (printCharBuffers[2].length) printChar(2, {{{ charCode("\n") }}});
   },
   fd_write__deps: ['$flush_NO_FILESYSTEM', '$printChar'],
-  fd_write__postset: function() {
-    addAtExit('flush_NO_FILESYSTEM()');
-  },
+  fd_write__postset: () => addAtExit('flush_NO_FILESYSTEM()'),
 #else
   fd_write__deps: ['$printChar'],
 #endif
-  fd_write: function(fd, iov, iovcnt, pnum) {
+  fd_write: (fd, iov, iovcnt, pnum) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     var num = doWritev(stream, iov, iovcnt);
@@ -294,14 +287,13 @@ var WasiLibrary = {
     return 0;
   },
 
-  fd_pwrite__deps: [
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    '$doWritev',
+  fd_pwrite__deps: ['$doWritev'],
 #endif
-  ].concat(i53ConversionDeps),
-  fd_pwrite: function(fd, iov, iovcnt, {{{ defineI64Param('offset') }}}, pnum) {
+  fd_pwrite__i53abi: true,
+  fd_pwrite: (fd, iov, iovcnt, offset, pnum) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    {{{ receiveI64ParamAsI53('offset', cDefs.EOVERFLOW) }}}
+    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
     var stream = SYSCALLS.getStreamFromFD(fd)
     var num = doWritev(stream, iov, iovcnt, offset);
     {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
@@ -313,7 +305,7 @@ var WasiLibrary = {
 #endif
   },
 
-  fd_close: function(fd) {
+  fd_close: (fd) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     FS.close(stream);
@@ -335,7 +327,7 @@ var WasiLibrary = {
 #if SYSCALLS_REQUIRE_FILESYSTEM
   fd_read__deps: ['$doReadv'],
 #endif
-  fd_read: function(fd, iov, iovcnt, pnum) {
+  fd_read: (fd, iov, iovcnt, pnum) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     var num = doReadv(stream, iov, iovcnt);
@@ -348,14 +340,13 @@ var WasiLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
-  fd_pread__deps: [
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    '$doReadv',
+  fd_pread__deps: ['$doReadv'],
 #endif
-  ].concat(i53ConversionDeps),
-  fd_pread: function(fd, iov, iovcnt, {{{ defineI64Param('offset') }}}, pnum) {
+  fd_pread__i53abi: true,
+  fd_pread: (fd, iov, iovcnt, offset, pnum) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    {{{ receiveI64ParamAsI53('offset', cDefs.EOVERFLOW) }}}
+    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
     var stream = SYSCALLS.getStreamFromFD(fd)
     var num = doReadv(stream, iov, iovcnt, offset);
     {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
@@ -367,10 +358,10 @@ var WasiLibrary = {
 #endif
   },
 
-  fd_seek__deps: i53ConversionDeps,
-  fd_seek: function(fd, {{{ defineI64Param('offset') }}}, whence, newOffset) {
+  fd_seek__i53abi: true,
+  fd_seek: (fd, offset, whence, newOffset) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    {{{ receiveI64ParamAsI53('offset', cDefs.EOVERFLOW) }}}
+    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
     var stream = SYSCALLS.getStreamFromFD(fd);
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('newOffset', '0', 'stream.position', 'i64') }}};
@@ -381,9 +372,9 @@ var WasiLibrary = {
 #endif
   },
 
-  $wasiRightsToMuslOFlags: function(rights) {
+  $wasiRightsToMuslOFlags: (rights) => {
 #if SYSCALL_DEBUG
-    dbg('wasiRightsToMuslOFlags: ' + rights);
+    dbg(`wasiRightsToMuslOFlags: ${rights}`);
 #endif
     if ((rights & {{{ cDefs.__WASI_RIGHTS_FD_READ }}}) && (rights & {{{ cDefs.__WASI_RIGHTS_FD_WRITE }}})) {
       return {{{ cDefs.O_RDWR }}};
@@ -397,7 +388,7 @@ var WasiLibrary = {
     throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
   },
 
-  $wasiOFlagsToMuslOFlags: function(oflags) {
+  $wasiOFlagsToMuslOFlags: (oflags) => {
     var musl_oflags = 0;
     if (oflags & {{{ cDefs.__WASI_OFLAGS_CREAT }}}) {
       musl_oflags |= {{{ cDefs.O_CREAT }}};
@@ -422,20 +413,20 @@ var WasiLibrary = {
 
   path_open__sig: 'iiiiiiiiii',
   path_open__deps: ['$wasiRightsToMuslOFlags', '$wasiOFlagsToMuslOFlags', '$preopens'],
-  path_open: function(fd, dirflags, path, path_len, oflags,
-                      fs_rights_base, fs_rights_inherting,
-                      fdflags, opened_fd) {
+  path_open: (fd, dirflags, path, path_len, oflags,
+              fs_rights_base, fs_rights_inherting,
+              fdflags, opened_fd) => {
     if (!(fd in preopens)) {
       return {{{ cDefs.EBADF }}};
     }
     var pathname = UTF8ToString(path, path_len);
     var musl_oflags = wasiRightsToMuslOFlags(Number(fs_rights_base));
 #if SYSCALL_DEBUG
-    dbg("oflags1: 0x" + musl_oflags.toString(16));
+    dbg(`oflags1: ${ptrToString(musl_oflags)}`);
 #endif
     musl_oflags |= wasiOFlagsToMuslOFlags(Number(oflags));
 #if SYSCALL_DEBUG
-    dbg("oflags2: 0x" + musl_oflags.toString(16));
+    dbg(`oflags2: ${ptrToString(musl_oflags)}`);
 #endif
     var stream = FS.open(pathname, musl_oflags);
     {{{ makeSetValue('opened_fd', '0', 'stream.fd', 'i32') }}};
@@ -445,14 +436,14 @@ var WasiLibrary = {
   fd_prestat_dir_name__deps: ['$preopens'],
   fd_prestat_dir_name__sig: 'iiii',
   fd_prestat_dir_name__nothrow: true,
-  fd_prestat_dir_name: function(fd, path, path_len) {
+  fd_prestat_dir_name: (fd, path, path_len) => {
     if (!(fd in preopens)) {
       return {{{ cDefs.EBADF }}};
     }
     var preopen_path = preopens[fd];
     stringToUTF8Array(preopen_path, HEAP8, path, path_len)
 #if SYSCALL_DEBUG
-    dbg('fd_prestat_dir_name -> "' + preopen_path + '"');
+    dbg(`fd_prestat_dir_name -> "${preopen_path}"`);
 #endif
     return 0;
   },
@@ -460,7 +451,7 @@ var WasiLibrary = {
   fd_prestat_get__deps: ['$preopens'],
   fd_prestat_get__sig: 'iii',
   fd_prestat_get__nothrow: true,
-  fd_prestat_get: function(fd, stat_buf) {
+  fd_prestat_get: (fd, stat_buf) => {
     if (!(fd in preopens)) {
       return {{{ cDefs.EBADF }}};
     }
@@ -471,14 +462,14 @@ var WasiLibrary = {
   },
 
   fd_fdstat_set_flags__sig: 'iii',
-  fd_fdstat_set_flags: function(fd, flags) {
+  fd_fdstat_set_flags: (fd, flags) => {
     // TODO(sbc): implement
     var stream = SYSCALLS.getStreamFromFD(fd);
     return 0;
   },
 
   fd_filestat_get__sig: 'iii',
-  fd_filestat_get: function(fd, stat_buf) {
+  fd_filestat_get: (fd, stat_buf) => {
     // TODO(sbc): implement
     var stream = SYSCALLS.getStreamFromFD(fd);
     {{{ makeSetValue('stat_buf', C_STRUCTS.__wasi_filestat_t.dev, '0', 'i64') }}};
@@ -496,7 +487,7 @@ var WasiLibrary = {
 #if PURE_WASI
   fd_fdstat_get__deps: ['$preopens'],
 #endif
-  fd_fdstat_get: function(fd, pbuf) {
+  fd_fdstat_get: (fd, pbuf) => {
     var rightsBase = 0;
     var rightsInheriting = 0;
     var flags = 0;
@@ -519,8 +510,12 @@ var WasiLibrary = {
                  FS.isLink(stream.mode) ? {{{ cDefs.__WASI_FILETYPE_SYMBOLIC_LINK }}} :
                  {{{ cDefs.__WASI_FILETYPE_REGULAR_FILE }}};
 #else
-      // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
-      var type = fd == 0 || fd == 1 || fd == 2 ? {{{ cDefs.__WASI_FILETYPE_CHARACTER_DEVICE }}} : abort();
+      // Hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0. We support at
+      // least stdin, stdout, stderr in a simple way.
+#if ASSERTIONS
+      assert(fd == 0 || fd == 1 || fd == 2);
+#endif
+      var type = {{{ cDefs.__WASI_FILETYPE_CHARACTER_DEVICE }}};
       if (fd == 0) {
         rightsBase = {{{ cDefs.__WASI_RIGHTS_FD_READ }}};
       } else if (fd == 1 || fd == 2) {
@@ -536,20 +531,20 @@ var WasiLibrary = {
     return 0;
   },
 
-  fd_sync: function(fd) {
+  fd_sync: (fd) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
 #if ASYNCIFY
-    return Asyncify.handleSleep(function(wakeUp) {
+    return Asyncify.handleSleep((wakeUp) => {
       var mount = stream.node.mount;
       if (!mount.type.syncfs) {
         // We write directly to the file system, so there's nothing to do here.
         wakeUp(0);
         return;
       }
-      mount.type.syncfs(mount, false, function(err) {
+      mount.type.syncfs(mount, false, (err) => {
         if (err) {
-          wakeUp(function() { return {{{ cDefs.EIO }}} });
+          wakeUp({{{ cDefs.EIO }}});
           return;
         }
         wakeUp(0);

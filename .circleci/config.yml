@@ -26,6 +26,12 @@ executors:
     macos:
       xcode: "13.4.1"
     resource_class: macos.x86.medium.gen2
+  mac-arm64:
+    environment:
+      EMSDK_NOTTY: "1"
+    macos:
+      xcode: "14.2.0"
+    resource_class: macos.m1.medium.gen1
 
 commands:
   download-chrome:
@@ -101,7 +107,7 @@ commands:
     description: "install canary version of node"
     steps:
       - install-node-version:
-         node_version: "20.0.0-v8-canary202302081604228b65"
+         node_version: "20.0.0-v8-canary2023041819be670741"
          canary: true
   install-v8:
     description: "install v8 using jsvu"
@@ -230,7 +236,7 @@ commands:
           name: run tests (<< parameters.title >>)
           command: |
             ./test/runner << parameters.test_targets >>
-            $EMSDK_PYTHON ./tools/check_clean.py
+            $EMSDK_PYTHON ./test/check_clean.py
   freeze-cache:
     description: "Freeze emscripten cache"
     steps:
@@ -261,6 +267,21 @@ commands:
           test_targets: << parameters.test_targets >>
           title: << parameters.title >>
       - upload-test-results
+  setup-macos:
+    steps:
+      - run:
+          name: Install brew package dependencies
+          environment:
+            HOMEBREW_NO_AUTO_UPDATE: "1"
+          command: |
+            brew list cmake || brew install cmake
+            brew list ninja || brew install ninja
+            brew list python3 || brew install python3
+            brew list pkg-config || brew install pkg-config
+      - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
   test-firefox:
     description: "Runs emscripten tests under firefox"
     steps:
@@ -339,7 +360,7 @@ commands:
             export EM_FROZEN_CACHE=""
             test/runner emrun
             # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
-            test/runner posixtest_browser.test_pthread_create_1_1 browser skip:browser.test_zzz_zzz_4gb_fail
+            test/runner posixtest_browser.test_pthread_create_1_1 browser skip:browser.test_zzz_zzz_4gb_fail skip:browser.test_zzz_zzz_4gb_fail_wasm64
       - upload-test-results
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
@@ -444,6 +465,8 @@ jobs:
           test_targets: "posixtest"
   test-core0:
     executor: bionic
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run-tests-linux:
           test_targets: "core0"
@@ -451,6 +474,7 @@ jobs:
     executor: bionic
     environment:
       EMTEST_BROWSER: "node"
+      EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run-tests-linux:
           # also run a few asan tests.  Run these with frozen_cache disabled
@@ -467,8 +491,9 @@ jobs:
             asan.test_dyncall_specific_minimal_runtime
             asan.test_async_hello
             asan.test_dlfcn_basic
-            asan.test_async_hello_stack_switching
+            asan.test_async_hello_jspi
             asan.test_cubescript
+            asan.test_wasm_worker_hello
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
             lsan.test_pthread_create"
@@ -484,6 +509,8 @@ jobs:
       - upload-test-results
   test-core3:
     executor: bionic
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run-tests-linux:
           frozen_cache: false
@@ -514,25 +541,52 @@ jobs:
             wasmfs.test_unistd_close
             wasmfs.test_unistd_truncate
             wasmfs.test_readdir
+            wasmfs.test_readdir_unlink
             wasmfs.test_unistd_pipe
+            wasmfs.test_fs_write
+            wasmfs.test_fs_writev
+            wasmfs.test_fs_writev_rawfs
+            wasmfs.test_fs_writeFile
+            wasmfs.test_fs_writeFile_rawfs
+            wasmfs.test_fs_readv
+            wasmfs.test_fs_write
+            wasmfs.test_fs_readv_rawfs
+            wasmfs.test_fs_nodefs_nofollow
+            wasmfs.test_fs_nodefs_readdir
+            wasmfs.test_fs_nodefs_home
+            wasmfs.test_fs_nodefs_cloexec
+            wasmfs.test_fs_nodefs_cloexec_rawfs
+            wasmfs.test_fs_errorstack
+            wasmfs.test_fs_errorstack_rawfs
+            wasmfs.test_fs_emptyPath
+            wasmfs.test_webidl
             wasmfs.test_dlfcn_self
             wasmfs.test_dlfcn_unique_sig
             wasmfs.test_dylink_basics
             wasmfs.test_exit_status
             wasmfs.test_minimal_runtime_memorygrowth
             wasmfs.test_mmap_anon*
+            wasmfs.test_mount
             wasmfs.test_getcwd_with_non_ascii_name
             wasmfs.test_stat
             wasmfs.test_fstatat
+            wasmfs.test_futimens
             wasmfs.test_unistd_links_memfs
             wasmfs.test_fcntl_open
+            wasmfs.test_fs_js_api
+            wasmfs.test_fs_llseek
+            wasmfs.test_fs_llseek_rawfs
             wasmfs.test_freetype"
   test-wasm2js1:
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
     executor: bionic
     steps:
       - run-tests-linux:
           test_targets: "wasm2js1"
   test-wasm64:
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
     # We don't use `bionic` here since its tool old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
     executor: linux-python
@@ -544,16 +598,69 @@ jobs:
       - install-v8
       - run-tests:
           title: "wasm64l"
-          test_targets: "wasm64l"
+          # On older versions of node wasm64l.test_bigswitch uses a lot (~3.5Gb)
+          # of memory, so skip it here, but run it below under node-canary.
+          test_targets: "wasm64l skip:wasm64l.test_bigswitch"
       - install-node-canary
       - run-tests:
           title: "wasm64"
-          test_targets: "wasm64"
+          test_targets: "
+            wasm64
+            wasm64_4gb.test_hello_world
+            wasm64l.test_bigswitch
+            other.test_memory64_proxies
+            other.test_failing_growth_wasm64"
       - upload-test-results
+  test-jsc:
+    executor: linux-python
+    steps:
+      - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
+      - pip-install
+      - build
+      - run:
+          name: install jsc
+          command: |
+            cd $HOME
+            wget https://nodejs.org/dist/v18.12.0/node-v18.12.0-linux-x64.tar.xz
+            tar -xf node-v18.12.0-linux-x64.tar.xz
+            export PATH="`pwd`/node-v18.12.0-linux-x64/bin:${PATH}"
+            npm install jsvu -g
+            jsvu --os=default --engines=javascriptcore
+            echo "JSC_ENGINE = [os.path.expanduser('~/.jsvu/bin/javascriptcore')]" >> ~/emsdk/.emscripten
+            echo "JS_ENGINES = [JSC_ENGINE]" >> ~/emsdk/.emscripten
+      - run-tests:
+          test_targets: "core0.test_hello_world other.test_modularize_incoming other.test_modularize_incoming_export_name"
+  test-spidermonkey:
+    executor: linux-python
+    steps:
+      - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
+      - pip-install
+      - build
+      - run:
+          name: install spidermonkey
+          command: |
+            cd $HOME
+            wget https://nodejs.org/dist/v18.12.0/node-v18.12.0-linux-x64.tar.xz
+            tar -xf node-v18.12.0-linux-x64.tar.xz
+            export PATH="`pwd`/node-v18.12.0-linux-x64/bin:${PATH}"
+            npm install jsvu -g
+            jsvu --os=default --engines=spidermonkey
+            echo "SPIDERMONKEY_ENGINE = [os.path.expanduser('~/.jsvu/bin/spidermonkey')]" >> ~/emsdk/.emscripten
+            echo "JS_ENGINES = [SPIDERMONKEY_ENGINE]" >> ~/emsdk/.emscripten
+      - run-tests:
+          test_targets: "core0.test_hello_world core2.test_demangle_stacks_symbol_map"
   test-node-compat:
     # We don't use `bionic` here since its tool old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
     executor: linux-python
+    environment:
+      EMTEST_SKIP_V8: "1"
     steps:
       - checkout
       - run:
@@ -565,10 +672,15 @@ jobs:
       - run-tests:
           title: "selected subset"
           test_targets: "
+            other.test_deterministic
             other.test_gen_struct_info
             other.test_native_call_before_init
             other.test_node_unhandled_rejection
-            core2.test_hello_world"
+            core2.test_hello_world
+            core0.test_pthread_join_and_asyncify
+            core0.test_async_ccall_promise_jspi
+            core0.test_async_ccall_promise_exit_runtime_jspi
+            core0.test_cubescript_jspi"
       # Run some basic tests with the minimum version of node that we currently
       # support.
       - install-node-version:
@@ -604,6 +716,8 @@ jobs:
       - upload-test-results
   test-other:
     executor: bionic
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run: apt-get install ninja-build scons
       - run-tests-linux:
@@ -639,6 +753,7 @@ jobs:
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SIMD: "1"
       EMTEST_SKIP_SCONS: "1"
+      EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - checkout
       - run:
@@ -648,9 +763,9 @@ jobs:
       - run:
           name: Add python to bash path
           command: echo "export PATH=\"$PATH:/c/Python27amd64/\"" >> $BASH_ENV
-      - build
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
+      - build
       - pip-install:
           python: "$EMSDK_PYTHON"
       - run-tests:
@@ -671,34 +786,51 @@ jobs:
       EMTEST_SKIP_V8: "1"
       EMTEST_SKIP_EH: "1"
       EMTEST_SKIP_WASM64: "1"
-      EMTEST_SKIP_SIMD: "1"
       EMTEST_SKIP_SCONS: "1"
       EMCC_SKIP_SANITY_CHECK: "1"
+      # test_sse1 (the only @crossplatform native clang test) currently fails
+      # on the macOS bots).
+      EMTEST_LACKS_NATIVE_CLANG: "1"
+      EMTEST_SKIP_NODE_CANARY: "1"
     steps:
-      - run:
-          name: Install brew package dependencies
-          environment:
-            HOMEBREW_NO_AUTO_UPDATE: "1"
-          command: |
-            brew list cmake || brew install cmake
-            brew list ninja || brew install ninja
-            brew list python3 || brew install python3
-            brew list pkg-config || brew install pkg-config
+      - setup-macos
       - attach_workspace:
           at: ~/
-      - checkout
-      - run:
-          name: submodule update
-          command: git submodule update --init
       - run:
           name: Remove Linux binaries
           command: |
             rm -rf ~/emsdk ~/vms ~/.jsvu
-      - build
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
+      - build
       - pip-install:
           python: "$EMSDK_PYTHON"
+      - run-tests:
+          title: "crossplatform tests"
+          test_targets: "--crossplatform-only"
+      - upload-test-results
+
+  test-mac-arm64:
+    executor: mac-arm64
+    environment:
+      # We don't install d8 or modern node on the mac runner so we skip any
+      # tests that depend on those.
+      EMTEST_SKIP_V8: "1"
+      EMTEST_SKIP_EH: "1"
+      EMTEST_SKIP_WASM64: "1"
+      EMTEST_SKIP_SCONS: "1"
+      # Some native clang tests assume x86 clang (e.g. -sse2)
+      EMTEST_LACKS_NATIVE_CLANG: "1"
+      EMCC_SKIP_SANITY_CHECK: "1"
+    steps:
+      - setup-macos
+      - build
+      # TODO: We can't currently do pip install here since numpy and other packages
+      # are currently missing arm64 macos binaries.
+      # TODO: Remove this once emsdk has an arm64 version of node
+      - run:
+          name: Install Rosetta
+          command: /usr/sbin/softwareupdate --install-rosetta --agree-to-license
       - run-tests:
           title: "crossplatform tests"
           test_targets: "--crossplatform-only"
@@ -745,8 +877,11 @@ workflows:
       - test-sockets-chrome:
           requires:
             - build-linux
+      - test-jsc
+      - test-spidermonkey
       - test-node-compat
       - test-windows
+      - test-mac-arm64
       - test-mac:
           # The mac tester also uses the libraries built on the linux builder to
           # save total build time (this is fine because the libraries are wasm

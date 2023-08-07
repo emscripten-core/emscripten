@@ -23,7 +23,7 @@ from urllib.request import urlopen
 
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
-from common import read_file, requires_v8, also_with_minimal_runtime, EMRUN
+from common import read_file, requires_v8, also_with_minimal_runtime, also_with_wasm64, EMRUN
 from tools import shared
 from tools import ports
 from tools import utils
@@ -92,6 +92,27 @@ def also_with_wasmfs(f):
   return metafunc
 
 
+# This is similar to @core.no_wasmfs, but it disable WasmFS and runs the test
+# normally. That is, in core we skip the test if we are in the wasmfs.* mode,
+# while in browser we don't have such modes, so we force the test to run without
+# WasmFS.
+#
+# When WasmFS is on by default, these annotations will still be needed. Only
+# when we remove the old JS FS entirely would we remove them.
+def no_wasmfs(note):
+  assert not callable(note)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      self.set_setting('WASMFS', 0)
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
 def also_with_wasm2js(f):
   assert callable(f)
 
@@ -105,22 +126,6 @@ def also_with_wasm2js(f):
 
   metafunc._parameterize = {'': (False,),
                             'wasm2js': (True,)}
-  return metafunc
-
-
-def also_with_wasm64(f):
-  assert callable(f)
-
-  def metafunc(self, with_wasm64):
-    if with_wasm64:
-      self.set_setting('MEMORY64')
-      self.emcc_args.append('-Wno-experimental')
-      f(self)
-    else:
-      f(self)
-
-  metafunc._parameterize = {'': (False,),
-                            'wasm64': (True,)}
   return metafunc
 
 
@@ -233,6 +238,10 @@ class browser(BrowserCore):
       '-Wno-int-conversion',
     ]
 
+  def require_wasm64(self):
+    # All the browsers we run on support wasm64 (Chrome and Firefox).
+    return True
+
   def test_sdl1_in_emscripten_nonstrict_mode(self):
     if 'EMCC_STRICT' in os.environ and int(os.environ['EMCC_STRICT']):
       self.skipTest('This test requires being run in non-strict mode (EMCC_STRICT env. variable unset)')
@@ -291,7 +300,7 @@ If manually bisecting:
 
   def test_emscripten_log(self):
     self.btest_exit(test_file('emscripten_log/emscripten_log.cpp'),
-                    args=['--pre-js', path_from_root('src/emscripten-source-map.min.js'), '-gsource-map'])
+                    args=['-Wno-deprecated-pragma', '--pre-js', path_from_root('src/emscripten-source-map.min.js'), '-gsource-map'])
 
   @also_with_wasmfs
   def test_preload_file(self):
@@ -371,13 +380,13 @@ If manually bisecting:
 
     # Test subdirectory handling with asset packaging.
     delete_dir('assets')
-    ensure_dir('assets/sub/asset1/'.replace('\\', '/'))
-    ensure_dir('assets/sub/asset1/.git'.replace('\\', '/')) # Test adding directory that shouldn't exist.
-    ensure_dir('assets/sub/asset2/'.replace('\\', '/'))
+    ensure_dir('assets/sub/asset1')
+    ensure_dir('assets/sub/asset1/.git') # Test adding directory that shouldn't exist.
+    ensure_dir('assets/sub/asset2')
     create_file('assets/sub/asset1/file1.txt', '''load me right before running the code please''')
     create_file('assets/sub/asset1/.git/shouldnt_be_embedded.txt', '''this file should not get embedded''')
     create_file('assets/sub/asset2/file2.txt', '''load me right before running the code please''')
-    absolute_assets_src_path = 'assets'.replace('\\', '/')
+    absolute_assets_src_path = 'assets'
 
     def make_main_two_files(path1, path2, nonexistingpath):
       create_file('main.cpp', r'''
@@ -432,9 +441,8 @@ If manually bisecting:
     # With FS.preloadFile
 
     create_file('pre.js', '''
-      Module.preRun = function() {
-        FS.createPreloadedFile('/', 'someotherfile.txt', 'somefile.txt', true, false); // we need --use-preload-plugins for this.
-      };
+      // we need --use-preload-plugins for this.
+      Module.preRun = () => FS.createPreloadedFile('/', 'someotherfile.txt', 'somefile.txt', true, false);
     ''')
     make_main('someotherfile.txt')
     self.btest_exit('main.cpp', args=['--pre-js', 'pre.js', '--use-preload-plugins'])
@@ -705,7 +713,7 @@ If manually bisecting:
           <center><canvas id='canvas' width='256' height='256'></canvas></center>
           <hr><div id='output'></div><hr>
           <script type='text/javascript'>
-            window.onerror = function(error) {
+            window.onerror = (error) => {
               window.disableErrorReporting = true;
               window.onerror = null;
               var result = error.indexOf("test.data") >= 0 ? 1 : 0;
@@ -761,6 +769,7 @@ If manually bisecting:
     # Test Emscripten-specific extensions to optimize SDL_LockSurface and SDL_UnlockSurface.
     self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-DTEST_SDL_LOCK_OPTS', '-lSDL', '-lGL'])
 
+  @also_with_wasmfs
   def test_sdl_image(self):
     # load an image file, get pixel data. Also O2 coverage for --preload-file, and memory-init
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
@@ -773,7 +782,6 @@ If manually bisecting:
           '-O2', '-lSDL', '-lGL',
           '--preload-file', dest, '-DSCREENSHOT_DIRNAME="' + dirname + '"', '-DSCREENSHOT_BASENAME="' + basename + '"', '--use-preload-plugins'
         ])
-      return
 
   @also_with_wasmfs
   def test_sdl_image_jpeg(self):
@@ -785,6 +793,7 @@ If manually bisecting:
       '-lSDL', '-lGL',
     ])
 
+  @also_with_wasmfs
   def test_sdl_image_prepare(self):
     # load an image file, get pixel data.
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
@@ -858,7 +867,7 @@ function assert(x, y) { if (!x) throw 'assertion failed ' + y }
 %s
 
 var windowClose = window.close;
-window.close = function() {
+window.close = () => {
   // wait for rafs to arrive and the screen to update before reftesting
   setTimeout(function() {
     doReftest();
@@ -926,8 +935,7 @@ window.close = function() {
 
   def test_sdl_key_proxy(self):
     create_file('pre.js', '''
-      var Module = {};
-      Module.postRun = function() {
+      Module.postRun = () => {
         function doOne() {
           Module._one();
           setTimeout(doOne, 1000/60);
@@ -1016,7 +1024,7 @@ keydown(100);keyup(100); // trigger the end
 
   def test_sdl_text(self):
     create_file('pre.js', '''
-      Module.postRun = function() {
+      Module.postRun = () => {
         function doOne() {
           Module._one();
           setTimeout(doOne, 1000/60);
@@ -1163,10 +1171,8 @@ keydown(100);keyup(100); // trigger the end
     create_file('pre.js', '''
       var gamepads = [];
       // Spoof this function.
-      navigator['getGamepads'] = function() {
-        return gamepads;
-      };
-      window['addNewGamepad'] = function(id, numAxes, numButtons) {
+      navigator['getGamepads'] = () => gamepads;
+      window['addNewGamepad'] = (id, numAxes, numButtons) => {
         var index = gamepads.length;
         gamepads.push({
           axes: new Array(numAxes),
@@ -1178,13 +1184,13 @@ keydown(100);keyup(100); // trigger the end
         for (i = 0; i < numAxes; i++) gamepads[index].axes[i] = 0;
         for (i = 0; i < numButtons; i++) gamepads[index].buttons[i] = 0;
       };
-      window['simulateGamepadButtonDown'] = function (index, button) {
+      window['simulateGamepadButtonDown'] = (index, button) => {
         gamepads[index].buttons[button] = 1;
       };
-      window['simulateGamepadButtonUp'] = function (index, button) {
+      window['simulateGamepadButtonUp'] = (index, button) => {
         gamepads[index].buttons[button] = 0;
       };
-      window['simulateAxisMotion'] = function (index, axis, value) {
+      window['simulateAxisMotion'] = (index, axis, value) => {
         gamepads[index].axes[axis] = value;
       };
     ''')
@@ -1197,10 +1203,8 @@ keydown(100);keyup(100); // trigger the end
     create_file('pre.js', '''
       var gamepads = [];
       // Spoof this function.
-      navigator['getGamepads'] = function() {
-        return gamepads;
-      };
-      window['addNewGamepad'] = function(id, numAxes, numButtons) {
+      navigator['getGamepads'] = () => gamepads;
+      window['addNewGamepad'] = (id, numAxes, numButtons) => {
         var index = gamepads.length;
         gamepads.push({
           axes: new Array(numAxes),
@@ -1214,15 +1218,15 @@ keydown(100);keyup(100); // trigger the end
         for (i = 0; i < numButtons; i++) gamepads[index].buttons[i] = { pressed: false, value: 0 };
       };
       // FF mutates the original objects.
-      window['simulateGamepadButtonDown'] = function (index, button) {
+      window['simulateGamepadButtonDown'] = (index, button) => {
         gamepads[index].buttons[button].pressed = true;
         gamepads[index].buttons[button].value = 1;
       };
-      window['simulateGamepadButtonUp'] = function (index, button) {
+      window['simulateGamepadButtonUp'] = (index, button) => {
         gamepads[index].buttons[button].pressed = false;
         gamepads[index].buttons[button].value = 0;
       };
-      window['simulateAxisMotion'] = function (index, axis, value) {
+      window['simulateAxisMotion'] = (index, axis, value) => {
         gamepads[index].axes[axis] = value;
       };
     ''')
@@ -1236,10 +1240,8 @@ keydown(100);keyup(100); // trigger the end
     create_file('pre.js', '''
       var gamepads = [];
       // Spoof this function.
-      navigator['getGamepads'] = function() {
-        return gamepads;
-      };
-      window['addNewGamepad'] = function(id, numAxes, numButtons) {
+      navigator['getGamepads'] = () => gamepads;
+      window['addNewGamepad'] = (id, numAxes, numButtons) => {
         var index = gamepads.length;
         var gamepad = {
           axes: new Array(numAxes),
@@ -1259,15 +1261,15 @@ keydown(100);keyup(100); // trigger the end
         window.dispatchEvent(event);
       };
       // FF mutates the original objects.
-      window['simulateGamepadButtonDown'] = function (index, button) {
+      window['simulateGamepadButtonDown'] = (index, button) => {
         gamepads[index].buttons[button].pressed = true;
         gamepads[index].buttons[button].value = 1;
       };
-      window['simulateGamepadButtonUp'] = function (index, button) {
+      window['simulateGamepadButtonUp'] = (index, button) => {
         gamepads[index].buttons[button].pressed = false;
         gamepads[index].buttons[button].value = 0;
       };
-      window['simulateAxisMotion'] = function (index, axis, value) {
+      window['simulateAxisMotion'] = (index, axis, value) => {
         gamepads[index].axes[axis] = value;
       };
     ''')
@@ -1384,7 +1386,7 @@ keydown(100);keyup(100); // trigger the end
     # sync from persisted state into memory before main()
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
     create_file('pre.js', '''
-      Module.preRun = function() {
+      Module.preRun = () => {
         addRunDependency('syncfs');
 
         FS.mkdir('/working1');
@@ -1410,8 +1412,7 @@ keydown(100);keyup(100); // trigger the end
     secret = 'a' * 10
     secret2 = 'b' * 10
     create_file('pre.js', '''
-      var Module = {};
-      Module.preRun = function() {
+      Module.preRun = () => {
         var blob = new Blob(['%s']);
         var file = new File(['%s'], 'file.txt');
         FS.mkdir('/work');
@@ -1497,6 +1498,7 @@ keydown(100);keyup(100); // trigger the end
     self.run_process([FILE_PACKAGER, 'more.data', '--preload', 'data.dat', '--separate-metadata', '--js-output=more.js'])
     self.btest(Path('browser/separate_metadata_later.cpp'), '1', args=['-sFORCE_FILESYSTEM'])
 
+  @also_with_wasm64
   def test_idbstore(self):
     secret = str(time.time())
     for stage in [0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5]:
@@ -1505,6 +1507,7 @@ keydown(100);keyup(100); // trigger the end
                       args=['-lidbstore.js', f'-DSTAGE={stage}', f'-DSECRET="{secret}"'],
                       output_basename=f'idbstore_{stage}')
 
+  @also_with_wasm64
   def test_idbstore_sync(self):
     secret = str(time.time())
     self.btest(test_file('browser/test_idbstore_sync.c'), '6', args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '-sASYNCIFY'])
@@ -1648,7 +1651,7 @@ keydown(100);keyup(100); // trigger the end
         Worker Test
         <script>
           var worker = new Worker('worker.js');
-          worker.onmessage = function(event) {
+          worker.onmessage = (event) => {
             var xhr = new XMLHttpRequest();
             xhr.open('GET', 'http://localhost:%s/report_result?' + event.data);
             xhr.send();
@@ -1668,6 +1671,7 @@ keydown(100);keyup(100); // trigger the end
 
     self.assertContained('you should not see this text when in a worker!', self.run_js('worker.js')) # code should run standalone too
 
+  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/19608')
   def test_mmap_lazyfile(self):
     create_file('lazydata.dat', 'hello world')
     create_file('pre.js', '''
@@ -1678,6 +1682,7 @@ keydown(100);keyup(100); // trigger the end
     self.emcc_args += ['--pre-js=pre.js', '--proxy-to-worker']
     self.btest_exit(test_file('test_mmap_lazyfile.c'))
 
+  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/19608')
   @no_firefox('keeps sending OPTIONS requests, and eventually errors')
   def test_chunked_synchronous_xhr(self):
     main = 'chunked_sync_xhr.html'
@@ -1692,7 +1697,7 @@ keydown(100);keyup(100); // trigger the end
         <script>
           var worker = new Worker(""" + json.dumps(worker_filename) + r""");
           var buffer = [];
-          worker.onmessage = function(event) {
+          worker.onmessage = (event) => {
             if (event.data.channel === "stdout") {
               var xhr = new XMLHttpRequest();
               xhr.open('GET', 'http://localhost:%s/report_result?' + event.data.line);
@@ -1719,14 +1724,13 @@ keydown(100);keyup(100); // trigger the end
     """ % self.port)
 
     create_file('worker_prejs.js', r"""
-      if (typeof(Module) === "undefined") Module = {};
-      Module["arguments"] = ["/bigfile"];
-      Module["preInit"] = function() {
-          FS.createLazyFile('/', "bigfile", "http://localhost:11111/bogus_file_path", true, false);
+      Module.arguments = ["/bigfile"];
+      Module.preInit = () => {
+        FS.createLazyFile('/', "bigfile", "http://localhost:11111/bogus_file_path", true, false);
       };
       var doTrace = true;
-      Module["print"] = function(s) { self.postMessage({channel: "stdout", line: s}); };
-      Module["printErr"] = function(s) { self.postMessage({channel: "stderr", char: s, trace: ((doTrace && s === 10) ? new Error().stack : null)}); doTrace = false; };
+      Module.print = (s) => self.postMessage({channel: "stdout", line: s});
+      Module.printErr = (s) => { self.postMessage({channel: "stderr", char: s, trace: ((doTrace && s === 10) ? new Error().stack : null)}); doTrace = false; };
     """)
     self.compile_btest([test_file('checksummer.c'), '-g', '-sSMALL_XHR_CHUNKS', '-o', worker_filename,
                         '--pre-js', 'worker_prejs.js'])
@@ -1771,14 +1775,12 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   @parameterized({
-    '': ([False],),
+    '': ([],),
     # Enabling FULL_ES3 also enables ES2 automatically
-    'proxy': ([True],)
+    'proxy': (['--proxy-to-worker'],)
   })
-  def test_glgears_long(self, proxy):
-    args = ['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST', '-lGL', '-lglut', '-DANIMATE']
-    if proxy:
-      args += ['--proxy-to-worker']
+  def test_glgears_long(self, args):
+    args += ['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST', '-lGL', '-lglut', '-DANIMATE']
     self.btest('hello_world_gles.c', expected='0', args=args)
 
   @requires_graphics_hardware
@@ -1875,6 +1877,7 @@ keydown(100);keyup(100); // trigger the end
   def test_emscripten_api(self):
     self.btest_exit('emscripten_api_browser.c', args=['-sEXPORTED_FUNCTIONS=_main,_third', '-lSDL'])
 
+  @also_with_wasmfs
   def test_emscripten_async_load_script(self):
     def setup():
       create_file('script1.js', '''
@@ -2110,6 +2113,7 @@ void *getBindBuffer() {
 ''')
     self.btest('third_party/cubegeom/cubegeom_proc.c', reference='third_party/cubegeom/cubegeom.png', args=opts + ['side.c', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
+  @also_with_wasmfs
   @requires_graphics_hardware
   def test_cubegeom_glew(self):
     self.btest('third_party/cubegeom/cubegeom_glew.c', reference='third_party/cubegeom/cubegeom.png', args=['-O2', '--closure=1', '-sLEGACY_GL_EMULATION', '-lGL', '-lGLEW', '-lSDL'])
@@ -2359,7 +2363,7 @@ void *getBindBuffer() {
   def test_pre_run_deps(self):
     # Adding a dependency in preRun will delay run
     create_file('pre.js', '''
-      Module.preRun = function() {
+      Module.preRun = () => {
         addRunDependency();
         out('preRun called, added a dependency...');
         setTimeout(function() {
@@ -2378,10 +2382,8 @@ void *getBindBuffer() {
       function myJSCallback() { // called from main()
         Module._note(1);
       }
-      Module.preRun = function() {
-        addOnPreMain(function() {
-          Module._note(2);
-        });
+      Module.preRun = () => {
+        addOnPreMain(() => Module._note(2));
       };
     ''')
     create_file('post.js', '''
@@ -2405,7 +2407,7 @@ void *getBindBuffer() {
         xhr.responseType = 'arraybuffer';
         xhr.send(null);
 
-        console.warn = function(x) {
+        console.warn = (x) => {
           if (x.indexOf('a problem seems to have happened with Module.memoryInitializerRequest') >= 0) {
             maybeReportResultToServer('got_error');
           }
@@ -2492,9 +2494,7 @@ void *getBindBuffer() {
     ''' % self.port
 
     create_file('pre_runtime.js', r'''
-      Module.onRuntimeInitialized = function(){
-        myJSCallback();
-      };
+      Module.onRuntimeInitialized = () => myJSCallback();
     ''')
 
     for filename, extra_args, second_code in [
@@ -2538,6 +2538,7 @@ void *getBindBuffer() {
     stderr = self.expect_fail([EMCC, 'hello.o', '-o', 'a.js', '-g', '--closure=1', '-pthread', '-sBUILD_AS_WORKER'])
     self.assertContained("pthreads + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854", stderr)
 
+  @also_with_wasmfs
   def test_emscripten_async_wget2(self):
     self.btest_exit('test_emscripten_async_wget2.cpp')
 
@@ -2637,7 +2638,8 @@ Module["preRun"].push(function () {
   @parameterized({
     '': ([],),
     'closure': (['-O2', '-g1', '--closure=1', '-sHTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0'],),
-    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+    'pthread': (['-pthread'],),
+    'proxy_to_pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
     'legacy': (['-sMIN_FIREFOX_VERSION=0', '-sMIN_SAFARI_VERSION=0', '-sMIN_IE_VERSION=0', '-sMIN_EDGE_VERSION=0', '-sMIN_CHROME_VERSION=0', '-Wno-transpile'],)
   })
   @requires_threads
@@ -2829,6 +2831,7 @@ Module["preRun"].push(function () {
       print(opts)
       self.btest_exit(test_file('test_sdl_mousewheel.c'), args=opts + ['-DAUTOMATE_SUCCESS=1', '-lSDL', '-lGL'])
 
+  @also_with_wasmfs
   def test_wget(self):
     create_file('test.txt', 'emscripten')
     self.btest_exit(test_file('test_wget.c'), args=['-sASYNCIFY'])
@@ -2863,7 +2866,7 @@ Module["preRun"].push(function () {
         }
       ''')
       create_file('data.txt', 'load me right before...')
-      create_file('pre.js', 'Module.locateFile = function(x) { return "sub/" + x };')
+      create_file('pre.js', 'Module.locateFile = (x) => "sub/" + x;')
       self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w'))
       # put pre.js first, then the file packager data, so locateFile is there for the file loading code
       self.compile_btest(['src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-sFORCE_FILESYSTEM', '-sWASM=' + str(wasm)] + args, reporting=Reporting.JS_ONLY)
@@ -2957,6 +2960,7 @@ Module["preRun"].push(function () {
       '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--use-preload-plugins'
     ])
 
+  @also_with_wasmfs
   @requires_graphics_hardware
   def test_sdl2_image_formats(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
@@ -2974,7 +2978,7 @@ Module["preRun"].push(function () {
 
   def test_sdl2_key(self):
     create_file('pre.js', '''
-      Module.postRun = function() {
+      Module.postRun = () => {
         function doOne() {
           Module._one();
           setTimeout(doOne, 1000/60);
@@ -3003,7 +3007,7 @@ Module["preRun"].push(function () {
 
   def test_sdl2_text(self):
     create_file('pre.js', '''
-      Module.postRun = function() {
+      Module.postRun = () => {
         function doOne() {
           Module._one();
           setTimeout(doOne, 1000/60);
@@ -3344,6 +3348,10 @@ Module["preRun"].push(function () {
     preload_file = os.path.join(cocos2d_root, 'samples', 'Cpp', 'HelloCpp', 'Resources') + '@'
     self.btest('cocos2d_hello.cpp', reference='cocos2d_hello.png', reference_slack=1,
                args=['-sUSE_COCOS2D=3', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
+                     # This line should really just be `-std=c++14` like we use to compile
+                     # the cocos library itself, but that doesn't work in this case because
+                     # btest adds browser_reporting.c to the command.
+                     '-D_LIBCPP_ENABLE_CXX17_REMOVED_UNARY_BINARY_FUNCTION',
                      '-Wno-js-compiler',
                      '-Wno-experimental',
                      '--preload-file', preload_file, '--use-preload-plugins',
@@ -3532,6 +3540,7 @@ Module["preRun"].push(function () {
 
   # test illustrating the regression on the modularize feature since commit c5af8f6
   # when compiling with the --preload-file option
+  @also_with_wasmfs
   def test_modularize_and_preload_files(self):
     self.set_setting('EXIT_RUNTIME')
     # TODO(sbc): Fix closure warnings with MODULARIZE + WASM=0
@@ -3590,7 +3599,7 @@ Module["preRun"].push(function () {
         temp[1] = 'x';
         EM_ASM({
           Module.realPrint = out;
-          out = function(x) {
+          out = (x) => {
             if (!Module.printed) Module.printed = x;
             Module.realPrint(x);
           };
@@ -3658,7 +3667,7 @@ Module["preRun"].push(function () {
       # setup by the shell).
       create_file('post.js', r'''
           Module.realPrint = out;
-          out = function(x) {
+          out = (x) => {
             if (!Module.printed) Module.printed = "";
             Module.printed += x + '\n'; // out is passed str without last \n
             Module.realPrint(x);
@@ -3730,6 +3739,7 @@ Module["preRun"].push(function () {
     self.run_process([EMCC, 'side2.c', '-sSIDE_MODULE', '-o', 'side2.wasm'])
     self.btest_exit(self.in_dir('main.c'), args=['-sMAIN_MODULE=2', 'side1.wasm', 'side2.wasm'])
 
+  @requires_threads
   def test_dynamic_link_pthread_many(self):
     # Test asynchronously loading two side modules during startup
     # They should always load in the same order
@@ -3813,7 +3823,7 @@ Module["preRun"].push(function () {
 
   # Test that the emscripten_ atomics api functions work.
   @parameterized({
-    'normal': ([],),
+    '': ([],),
     'closure': (['--closure=1'],),
   })
   @requires_threads
@@ -4348,18 +4358,18 @@ Module["preRun"].push(function () {
       var real_wasm_instantiate = WebAssembly.instantiate;
       var real_wasm_instantiateStreaming = WebAssembly.instantiateStreaming;
       if (typeof real_wasm_instantiateStreaming === 'function') {
-        WebAssembly.instantiateStreaming = function(a, b) {
+        WebAssembly.instantiateStreaming = (a, b) => {
           Module.sawAsyncCompilation = true;
           return real_wasm_instantiateStreaming(a, b);
         };
       } else {
-        WebAssembly.instantiate = function(a, b) {
+        WebAssembly.instantiate = (a, b) => {
           Module.sawAsyncCompilation = true;
           return real_wasm_instantiate(a, b);
         };
       }
       // show stderr for the viewer's fun
-      err = function(x) {
+      err = (x) => {
         out('<<< ' + x + ' >>>');
         console.log(x);
       };
@@ -4373,8 +4383,11 @@ Module["preRun"].push(function () {
       (['-O1'], 1),
       (['-O2'], 1),
       (['-O3'], 1),
-      (['-sWASM_ASYNC_COMPILATION'], 1), # force it on
-      (['-O1', '-sWASM_ASYNC_COMPILATION=0'], 0), # force it off
+      # force it on
+      (['-sWASM_ASYNC_COMPILATION'], 1),
+      # force it off. note that we use -O3 here to make the binary small enough
+      # for chrome to allow compiling it synchronously
+      (['-O3', '-sWASM_ASYNC_COMPILATION=0'], 0),
     ]:
       print(opts, returncode)
       self.btest_exit('binaryen_async.c', assert_returncode=returncode, args=common_args + opts)
@@ -4442,7 +4455,7 @@ Module["preRun"].push(function () {
     size = os.path.getsize('test.js')
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
-    self.assertLess(abs(size - 4930), 100)
+    self.assertLess(abs(size - 4800), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
@@ -4751,6 +4764,9 @@ Module["preRun"].push(function () {
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/idb_delete.cpp', args=['-pthread', '-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])
 
+  def test_fetch_post(self):
+    self.btest_exit('fetch/test_fetch_post.c', args=['-sFETCH'])
+
   @requires_threads
   def test_pthread_locale(self):
     self.emcc_args.append('-I' + path_from_root('system/lib/libc/musl/src/internal'))
@@ -4855,31 +4871,6 @@ Module["preRun"].push(function () {
     self.compile_btest([test_file('pthread/hello_thread.c'), '-pthread', '-o', 'hello_thread_with_blob_url.js'], reporting=Reporting.JS_ONLY)
     shutil.copyfile(test_file('pthread/main_js_as_blob_loader.html'), 'hello_thread_with_blob_url.html')
     self.run_browser('hello_thread_with_blob_url.html', '/report_result?exit:0')
-
-  # Tests that base64 utils work in browser with no native atob function
-  def test_base64_atob_fallback(self):
-    create_file('test.c', r'''
-      #include <stdio.h>
-      #include <emscripten.h>
-      int main() {
-        return 0;
-      }
-    ''')
-    # generate a dummy file
-    create_file('dummy_file', 'dummy')
-    # compile the code with the modularize feature and the preload-file option enabled
-    self.compile_btest(['test.c', '-sEXIT_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME="Foo"', '--preload-file', 'dummy_file', '-sSINGLE_FILE'])
-    create_file('a.html', '''
-      <script>
-        atob = undefined;
-        fetch = undefined;
-      </script>
-      <script src="a.out.js"></script>
-      <script>
-        var foo = Foo();
-      </script>
-    ''')
-    self.run_browser('a.html', '/report_result?exit:0')
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
   def test_single_file_html(self):
@@ -5086,8 +5077,15 @@ Module["preRun"].push(function () {
   def test_embind_with_pthreads(self):
     self.btest_exit(test_file('embind/test_pthreads.cpp'), args=['-lembind', '-pthread', '-sPTHREAD_POOL_SIZE=2'])
 
-  def test_embind_with_asyncify(self):
-    self.btest('embind_with_asyncify.cpp', '1', args=['-lembind', '-sASYNCIFY'])
+  @parameterized({
+    'asyncify': (['-sASYNCIFY=1'],),
+    'jspi': (['-sASYNCIFY=2', '-Wno-experimental'],),
+  })
+  def test_embind(self, args):
+    if is_jspi(args) and not is_chrome():
+      self.skipTest(f'Current browser ({EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
+
+    self.btest('embind_with_asyncify.cpp', '1', args=['-lembind'] + args)
 
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):
@@ -5480,6 +5478,7 @@ Module["preRun"].push(function () {
     self.do_run_in_out_file_test('browser', 'test_2GB_fail.cpp')
 
   @no_firefox('no 4GB support yet')
+  @also_with_wasm64
   @requires_v8
   def test_zzz_zzz_4gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
@@ -5490,7 +5489,11 @@ Module["preRun"].push(function () {
 
     # test that we properly report an allocation error that would overflow over
     # 4GB.
-    self.emcc_args += ['-O2', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB', '-sABORTING_MALLOC=0']
+    if self.get_setting('MEMORY64'):
+      self.set_setting('MAXIMUM_MEMORY', '6GB')
+    else:
+      self.set_setting('MAXIMUM_MEMORY', '4GB')
+    self.emcc_args += ['-O2', '-sALLOW_MEMORY_GROWTH', '-sABORTING_MALLOC=0', '-sASSERTIONS']
     self.do_run_in_out_file_test('browser', 'test_4GB_fail.cpp')
 
   # Tests that Emscripten-compiled applications can be run when a slash in the URL query or fragment of the js file

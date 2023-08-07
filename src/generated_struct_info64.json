@@ -21,6 +21,7 @@
         "AL_DOPPLER_FACTOR": 49152,
         "AL_FALSE": 0,
         "AL_GAIN": 4106,
+        "AL_INITIAL": 4113,
         "AL_INVALID_ENUM": 40962,
         "AL_INVALID_NAME": 40961,
         "AL_INVALID_OPERATION": 40964,
@@ -28,8 +29,12 @@
         "AL_NONE": 0,
         "AL_NO_ERROR": 0,
         "AL_ORIENTATION": 4111,
+        "AL_PAUSED": 4115,
+        "AL_PLAYING": 4114,
         "AL_POSITION": 4100,
         "AL_SPEED_OF_SOUND": 49155,
+        "AL_STATIC": 4136,
+        "AL_STOPPED": 4116,
         "AL_TRUE": 1,
         "AL_VELOCITY": 4102,
         "AT_EMPTY_PATH": 4096,
@@ -40,7 +45,10 @@
         "AUDIO_F32": 33056,
         "AUDIO_S16LSB": 32784,
         "AUDIO_U8": 8,
+        "B38400": 15,
         "CLOCK_REALTIME": 0,
+        "CREAD": 128,
+        "CSIZE": 48,
         "E2BIG": 1,
         "EACCES": 2,
         "EADDRINUSE": 3,
@@ -70,6 +78,11 @@
         "EBUSY": 10,
         "ECANCELED": 11,
         "ECHILD": 12,
+        "ECHO": 8,
+        "ECHOCTL": 512,
+        "ECHOE": 16,
+        "ECHOK": 32,
+        "ECHOKE": 2048,
         "ECHRNG": 106,
         "ECOMM": 124,
         "ECONNABORTED": 13,
@@ -207,9 +220,7 @@
         "EM_LOG_CONSOLE": 1,
         "EM_LOG_C_STACK": 8,
         "EM_LOG_DEBUG": 256,
-        "EM_LOG_DEMANGLE": 32,
         "EM_LOG_ERROR": 4,
-        "EM_LOG_FUNC_PARAMS": 128,
         "EM_LOG_INFO": 512,
         "EM_LOG_JS_STACK": 16,
         "EM_LOG_NO_PATHS": 64,
@@ -219,7 +230,6 @@
         "EM_PROMISE_MATCH_RELEASE": 2,
         "EM_PROMISE_REJECT": 3,
         "EM_PROXIED_RESIZE_OFFSCREENCANVAS": 654311424,
-        "EM_QUEUED_JS_CALL_MAX_ARGS": 20,
         "EM_TIMING_RAF": 1,
         "EM_TIMING_SETIMMEDIATE": 2,
         "EM_TIMING_SETTIMEOUT": 0,
@@ -291,32 +301,39 @@
         "F_GETFD": 1,
         "F_GETFL": 3,
         "F_GETLK": 5,
-        "F_GETLK64": 5,
         "F_GETOWN": 9,
         "F_GETOWN_EX": 16,
         "F_SETFD": 2,
         "F_SETFL": 4,
         "F_SETLK": 6,
-        "F_SETLK64": 6,
         "F_SETLKW": 7,
-        "F_SETLKW64": 7,
         "F_SETOWN": 8,
         "F_UNLCK": 2,
         "File::DataFileKind": 1,
         "File::DirectoryKind": 2,
         "File::SymlinkKind": 3,
         "File::UnknownKind": 0,
+        "ICANON": 2,
+        "ICRNL": 256,
+        "IEXTEN": 32768,
+        "IMAXBEL": 8192,
         "INADDR_LOOPBACK": 2130706433,
         "IPPROTO_TCP": 6,
         "IPPROTO_UDP": 17,
+        "ISIG": 1,
+        "IUTF8": 16384,
+        "IXON": 1024,
         "MAP_ANONYMOUS": 32,
         "MAP_FIXED": 16,
         "MAP_PRIVATE": 2,
+        "NCCS": 32,
         "NI_NAMEREQD": 8,
         "NI_NUMERICHOST": 1,
         "NOTIFICATION_NONE": 0,
         "NOTIFICATION_PENDING": 2,
         "NOTIFICATION_RECEIVED": 1,
+        "ONLCR": 4,
+        "OPOST": 1,
         "O_ACCMODE": 2097155,
         "O_APPEND": 1024,
         "O_CLOEXEC": 524288,
@@ -377,6 +394,7 @@
         "S_ISVTX": 512,
         "S_IWUGO": 146,
         "S_IXUGO": 73,
+        "TCFLSH": 21515,
         "TCGETA": 21509,
         "TCGETS": 21505,
         "TCSETA": 21510,
@@ -758,10 +776,11 @@
             "patch": 2
         },
         "WGPUAdapterProperties": {
-            "__size__": 64,
+            "__size__": 72,
             "adapterType": 56,
             "architecture": 24,
             "backendType": 60,
+            "compatibilityMode": 64,
             "deviceID": 32,
             "driverDescription": 48,
             "name": 40,
@@ -866,14 +885,17 @@
             "nextInChain": 0
         },
         "WGPUCompilationMessage": {
-            "__size__": 56,
+            "__size__": 80,
             "length": 48,
             "lineNum": 24,
             "linePos": 32,
             "message": 8,
             "nextInChain": 0,
             "offset": 40,
-            "type": 16
+            "type": 16,
+            "utf16Length": 72,
+            "utf16LinePos": 56,
+            "utf16Offset": 64
         },
         "WGPUComputePassDescriptor": {
             "__size__": 32,
@@ -916,8 +938,10 @@
             "stencilWriteMask": 56
         },
         "WGPUDeviceDescriptor": {
-            "__size__": 56,
+            "__size__": 72,
             "defaultQueue": 40,
+            "deviceLostCallback": 56,
+            "deviceLostUserdata": 64,
             "label": 8,
             "nextInChain": 0,
             "requiredFeatures": 24,
@@ -959,35 +983,39 @@
             "nextInChain": 0
         },
         "WGPULimits": {
-            "__size__": 120,
+            "__size__": 144,
             "maxBindGroups": 16,
-            "maxColorAttachments": 92,
-            "maxComputeInvocationsPerWorkgroup": 100,
-            "maxComputeWorkgroupSizeX": 104,
-            "maxComputeWorkgroupSizeY": 108,
-            "maxComputeWorkgroupSizeZ": 112,
-            "maxComputeWorkgroupStorageSize": 96,
-            "maxComputeWorkgroupsPerDimension": 116,
-            "maxDynamicStorageBuffersPerPipelineLayout": 24,
-            "maxDynamicUniformBuffersPerPipelineLayout": 20,
-            "maxInterStageShaderComponents": 84,
-            "maxInterStageShaderVariables": 88,
-            "maxSampledTexturesPerShaderStage": 28,
-            "maxSamplersPerShaderStage": 32,
-            "maxStorageBufferBindingSize": 56,
-            "maxStorageBuffersPerShaderStage": 36,
-            "maxStorageTexturesPerShaderStage": 40,
+            "maxBindGroupsPlusVertexBuffers": 20,
+            "maxBindingsPerBindGroup": 24,
+            "maxBufferSize": 88,
+            "maxColorAttachmentBytesPerSample": 116,
+            "maxColorAttachments": 112,
+            "maxComputeInvocationsPerWorkgroup": 124,
+            "maxComputeWorkgroupSizeX": 128,
+            "maxComputeWorkgroupSizeY": 132,
+            "maxComputeWorkgroupSizeZ": 136,
+            "maxComputeWorkgroupStorageSize": 120,
+            "maxComputeWorkgroupsPerDimension": 140,
+            "maxDynamicStorageBuffersPerPipelineLayout": 32,
+            "maxDynamicUniformBuffersPerPipelineLayout": 28,
+            "maxInterStageShaderComponents": 104,
+            "maxInterStageShaderVariables": 108,
+            "maxSampledTexturesPerShaderStage": 36,
+            "maxSamplersPerShaderStage": 40,
+            "maxStorageBufferBindingSize": 64,
+            "maxStorageBuffersPerShaderStage": 44,
+            "maxStorageTexturesPerShaderStage": 48,
             "maxTextureArrayLayers": 12,
             "maxTextureDimension1D": 0,
             "maxTextureDimension2D": 4,
             "maxTextureDimension3D": 8,
-            "maxUniformBufferBindingSize": 48,
-            "maxUniformBuffersPerShaderStage": 44,
-            "maxVertexAttributes": 76,
-            "maxVertexBufferArrayStride": 80,
-            "maxVertexBuffers": 72,
-            "minStorageBufferOffsetAlignment": 68,
-            "minUniformBufferOffsetAlignment": 64
+            "maxUniformBufferBindingSize": 56,
+            "maxUniformBuffersPerShaderStage": 52,
+            "maxVertexAttributes": 96,
+            "maxVertexBufferArrayStride": 100,
+            "maxVertexBuffers": 80,
+            "minStorageBufferOffsetAlignment": 76,
+            "minUniformBufferOffsetAlignment": 72
         },
         "WGPUMultisampleState": {
             "__size__": 24,
@@ -1061,12 +1089,13 @@
             "stencilReadOnly": 41
         },
         "WGPURenderPassColorAttachment": {
-            "__size__": 56,
-            "clearValue": 24,
-            "loadOp": 16,
-            "resolveTarget": 8,
-            "storeOp": 20,
-            "view": 0
+            "__size__": 64,
+            "clearValue": 32,
+            "loadOp": 24,
+            "nextInChain": 0,
+            "resolveTarget": 16,
+            "storeOp": 28,
+            "view": 8
         },
         "WGPURenderPassDepthStencilAttachment": {
             "__size__": 40,
@@ -1114,14 +1143,16 @@
             "vertex": 24
         },
         "WGPURequestAdapterOptions": {
-            "__size__": 24,
+            "__size__": 32,
+            "backendType": 20,
+            "compatibilityMode": 25,
             "compatibleSurface": 8,
-            "forceFallbackAdapter": 20,
+            "forceFallbackAdapter": 24,
             "nextInChain": 0,
             "powerPreference": 16
         },
         "WGPURequiredLimits": {
-            "__size__": 128,
+            "__size__": 152,
             "limits": 8,
             "nextInChain": 0
         },
@@ -1159,7 +1190,7 @@
         "WGPUShaderModuleWGSLDescriptor": {
             "__size__": 24,
             "chain": 0,
-            "source": 16
+            "code": 16
         },
         "WGPUStencilFaceState": {
             "__size__": 16,
@@ -1176,7 +1207,7 @@
             "viewDimension": 16
         },
         "WGPUSupportedLimits": {
-            "__size__": 128,
+            "__size__": 152,
             "limits": 8,
             "nextInChain": 0
         },
@@ -1246,10 +1277,10 @@
             "shaderLocation": 16
         },
         "WGPUVertexBufferLayout": {
-            "__size__": 24,
+            "__size__": 32,
             "arrayStride": 0,
-            "attributeCount": 12,
-            "attributes": 16,
+            "attributeCount": 16,
+            "attributes": 24,
             "stepMode": 8
         },
         "WGPUVertexState": {
@@ -1454,33 +1485,32 @@
             "sin6_port": 2
         },
         "stat": {
-            "__size__": 120,
-            "__st_ino_truncated": 8,
+            "__size__": 104,
             "st_atim": {
                 "__size__": 16,
-                "tv_nsec": 72,
-                "tv_sec": 64
+                "tv_nsec": 56,
+                "tv_sec": 48
             },
-            "st_blksize": 56,
-            "st_blocks": 60,
+            "st_blksize": 40,
+            "st_blocks": 44,
             "st_ctim": {
-                "__size__": 16,
-                "tv_nsec": 104,
-                "tv_sec": 96
-            },
-            "st_dev": 0,
-            "st_gid": 36,
-            "st_ino": 112,
-            "st_mode": 16,
-            "st_mtim": {
                 "__size__": 16,
                 "tv_nsec": 88,
                 "tv_sec": 80
             },
-            "st_nlink": 24,
-            "st_rdev": 40,
-            "st_size": 48,
-            "st_uid": 32
+            "st_dev": 0,
+            "st_gid": 20,
+            "st_ino": 96,
+            "st_mode": 4,
+            "st_mtim": {
+                "__size__": 16,
+                "tv_nsec": 72,
+                "tv_sec": 64
+            },
+            "st_nlink": 8,
+            "st_rdev": 24,
+            "st_size": 32,
+            "st_uid": 16
         },
         "statfs": {
             "__size__": 104,
@@ -1495,6 +1525,17 @@
             "f_fsid": 36,
             "f_namelen": 48
         },
+        "termios": {
+            "__c_ispeed": 52,
+            "__c_ospeed": 56,
+            "__size__": 60,
+            "c_cc": 17,
+            "c_cflag": 8,
+            "c_iflag": 0,
+            "c_lflag": 12,
+            "c_line": 16,
+            "c_oflag": 4
+        },
         "thread_profiler_block": {
             "__size__": 104,
             "name": 72,
@@ -1505,6 +1546,11 @@
             "__size__": 16,
             "tv_nsec": 8,
             "tv_sec": 0
+        },
+        "timeval": {
+            "__size__": 16,
+            "tv_sec": 0,
+            "tv_usec": 8
         },
         "tm": {
             "__size__": 56,

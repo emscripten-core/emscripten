@@ -137,6 +137,7 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note:: Options can be specified as a single argument with or without a space
             between the ``-s`` and option name.  e.g. ``-sFOO`` or ``-s FOO``.
+            It's `highly recommended <https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-specify-s-options-in-a-cmake-project>`_ you use the notation without space.
 
 .. _emcc-g:
 
@@ -380,6 +381,12 @@ Options that are modified or new in *emcc* are listed below:
 ``--bind``
   [link]
   Links against embind library.  Deprecated: Use ``-lembind`` instead.
+
+.. _emcc-embind-emit-tsd:
+
+``--embind-emit-tsd <path>``
+  [link]
+  Generate a TypeScript definition file from the exported embind bindings. The program will be instrumented and run in node in order to to generate the file. Note: the program will need to be rebuilt without this flag to be executed normally.
 
 ``--ignore-dynamic-linking``
   [link]

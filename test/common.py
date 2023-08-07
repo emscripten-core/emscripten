@@ -8,7 +8,7 @@ from functools import wraps
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 from typing import Dict, Tuple
-from urllib.parse import unquote, unquote_plus
+from urllib.parse import unquote, unquote_plus, urlparse, parse_qs
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 import contextlib
 import difflib
@@ -32,7 +32,7 @@ import clang_native
 import jsrun
 from tools.shared import EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import get_canonical_temp_dir, path_from_root
-from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_file, write_binary, exit_with_error
+from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_binary, exit_with_error
 from tools import shared, line_endings, building, config, utils
 
 logger = logging.getLogger('common')
@@ -190,6 +190,16 @@ def requires_node(func):
   return decorated
 
 
+def requires_node_canary(func):
+  assert callable(func)
+
+  def decorated(self, *args, **kwargs):
+    self.require_node_canary()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 def requires_wasm64(func):
   assert callable(func)
 
@@ -301,6 +311,64 @@ def also_with_wasm_bigint(f):
   return metafunc
 
 
+def also_with_wasm64(f):
+  assert callable(f)
+
+  def metafunc(self, with_wasm64):
+    if with_wasm64:
+      self.require_wasm64()
+      self.set_setting('MEMORY64')
+      self.emcc_args.append('-Wno-experimental')
+      f(self)
+    else:
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'wasm64': (True,)}
+  return metafunc
+
+
+def can_do_standalone(self, impure=False):
+  # Pure standalone engines don't support MEMORY64 yet.  Even with MEMORY64=2 (lowered)
+  # the WASI APIs that take pointer values don't have 64-bit variants yet.
+  if self.get_setting('MEMORY64') and not impure:
+    return False
+  return self.is_wasm() and \
+      self.get_setting('STACK_OVERFLOW_CHECK', 0) < 2 and \
+      not self.get_setting('MINIMAL_RUNTIME') and \
+      not self.get_setting('SAFE_HEAP') and \
+      not any(a.startswith('-fsanitize=') for a in self.emcc_args)
+
+
+# Impure means a test that cannot run in a wasm VM yet, as it is not 100%
+# standalone. We can still run them with the JS code though.
+def also_with_standalone_wasm(impure=False):
+  def decorated(func):
+    def metafunc(self, standalone):
+      if not standalone:
+        func(self)
+      else:
+        if not can_do_standalone(self, impure):
+          self.skipTest('Test configuration is not compatible with STANDALONE_WASM')
+        self.set_setting('STANDALONE_WASM')
+        # we will not legalize the JS ffi interface, so we must use BigInt
+        # support in order for JS to have a chance to run this without trapping
+        # when it sees an i64 on the ffi.
+        self.set_setting('WASM_BIGINT')
+        self.emcc_args.append('-Wno-unused-command-line-argument')
+        # if we are impure, disallow all wasm engines
+        if impure:
+          self.wasm_engines = []
+        self.node_args += shared.node_bigint_flags()
+        func(self)
+
+    metafunc._parameterize = {'': (False,),
+                              'standalone': (True,)}
+    return metafunc
+
+  return decorated
+
+
 # This works just like `with_both_eh_sjlj` above but doesn't enable exceptions.
 # Use this for tests that use setjmp/longjmp but not exceptions handling.
 def with_both_sjlj(f):
@@ -337,7 +405,7 @@ def limit_size(string):
     max_line = 500
   else:
     max_line = 5000
-    maxlines = 100000
+    maxlines = 1000
   lines = string.splitlines()
   for i, line in enumerate(lines):
     if len(line) > max_line:
@@ -351,9 +419,9 @@ def limit_size(string):
   return string
 
 
-def create_file(name, contents, binary=False):
+def create_file(name, contents, binary=False, absolute=False):
   name = Path(name)
-  assert not name.is_absolute()
+  assert absolute or not name.is_absolute(), name
   if binary:
     name.write_bytes(contents)
   else:
@@ -391,6 +459,11 @@ def make_dir_writeable(dirname):
 def force_delete_dir(dirname):
   make_dir_writeable(dirname)
   utils.delete_dir(dirname)
+
+
+def force_delete_contents(dirname):
+  make_dir_writeable(dirname)
+  utils.delete_contents(dirname)
 
 
 def parameterized(parameters):
@@ -509,6 +582,18 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
     self.require_engine(config.NODE_JS)
 
+  def require_node_canary(self):
+    if config.NODE_JS or config.NODE_JS in config.JS_ENGINES:
+      version = shared.check_node_version()
+      if version >= (20, 0, 0):
+        self.require_engine(config.NODE_JS)
+        return
+
+    if 'EMTEST_SKIP_NODE_CANARY' in os.environ:
+      self.skipTest('test requires node canary and EMTEST_SKIP_NODE_CANARY is set')
+    else:
+      self.fail('node canary required to run this test.  Use EMTEST_SKIP_NODE_CANARY to skip')
+
   def require_engine(self, engine):
     logger.debug(f'require_engine: {engine}')
     if self.required_engine and self.required_engine != engine:
@@ -563,13 +648,41 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
       self.emcc_args.append('-sENVIRONMENT=shell')
       self.js_engines = [config.V8_ENGINE]
-      self.v8_args.append('--experimental-wasm-eh')
       return
 
     if 'EMTEST_SKIP_EH' in os.environ:
-      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_EH is set)')
+      self.skipTest('test requires node >= 17 or d8 (and EMTEST_SKIP_EH is set)')
     else:
-      self.fail('either d8 or node >= 16 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
+      self.fail('either d8 or node >= 17 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
+
+  def require_jspi(self):
+    # emcc warns about stack switching being experimental, and we build with
+    # warnings-as-errors, so disable that warning
+    self.emcc_args += ['-Wno-experimental']
+    self.emcc_args += ['-sASYNCIFY=2']
+    if not self.is_wasm():
+      self.skipTest('JSPI is not currently supported for WASM2JS')
+
+    exp_args = ['--experimental-wasm-stack-switching', '--experimental-wasm-type-reflection']
+    if config.NODE_JS and config.NODE_JS in self.js_engines:
+      version = shared.check_node_version()
+      # Support for JSPI came earlier than 19, but 19 is what currently works
+      # with emscripten's implementation.
+      if version >= (19, 0, 0):
+        self.js_engines = [config.NODE_JS]
+        self.node_args += exp_args
+        return
+
+    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+      self.emcc_args.append('-sENVIRONMENT=shell')
+      self.js_engines = [config.V8_ENGINE]
+      self.v8_args += exp_args
+      return
+
+    if 'EMTEST_SKIP_JSPI' in os.environ:
+      self.skipTest('test requires node >= 19 or d8 (and EMTEST_SKIP_JSPI is set)')
+    else:
+      self.fail('either d8 or node >= 19 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
 
   def setup_node_pthreads(self):
     self.require_node()
@@ -640,8 +753,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.js_engines = config.JS_ENGINES.copy()
     self.required_engine = None
     self.wasm_engines = config.WASM_ENGINES.copy()
-    self.banned_js_engines = []
     self.use_all_engines = EMTEST_ALL_ENGINES
+    if self.js_engines[0] != config.NODE_JS:
+      # If our primary JS engine is something other than node then enable
+      # shell support.
+      default_envs = 'web,webview,worker,node'
+      self.set_setting('ENVIRONMENT', default_envs + ',shell')
 
     if EMTEST_DETECT_TEMPFILE_LEAKS:
       for root, dirnames, filenames in os.walk(self.temp_dir):
@@ -661,7 +778,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           # expect this.  --no-clean can be used to keep the old contents for the new test
           # run. This can be useful when iterating on a given test with extra files you want to keep
           # around in the output directory.
-          utils.delete_contents(self.working_dir)
+          force_delete_contents(self.working_dir)
       else:
         print('Creating new test output directory')
         ensure_dir(self.working_dir)
@@ -785,7 +902,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     inputfile = os.path.abspath(filename)
     # For some reason es-check requires unix paths, even on windows
     if WINDOWS:
-      inputfile = inputfile.replace('\\', '/')
+      inputfile = utils.normalize_path(inputfile)
     try:
       # es-check prints the details of the errors to stdout, but it also prints
       # stuff in the case there are no errors:
@@ -997,8 +1114,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   # Tests that the given two paths are identical, modulo path delimiters. E.g. "C:/foo" is equal to "C:\foo".
   def assertPathsIdentical(self, path1, path2):
-    path1 = path1.replace('\\', '/')
-    path2 = path2.replace('\\', '/')
+    path1 = utils.normalize_path(path1)
+    path2 = utils.normalize_path(path2)
     return self.assertIdentical(path1, path2)
 
   # Tests that the given two multiline text content are identical, modulo line
@@ -1052,11 +1169,20 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.assertTextDataIdentical(expected_content, contents, message,
                                  filename, filename + '.new')
 
-  def assertContained(self, values, string, additional_info=''):
-    if type(values) not in [list, tuple]:
-      values = [values]
+  def assertContained(self, values, string, additional_info='', regex=False):
     if callable(string):
       string = string()
+
+    if regex:
+      if type(values) == str:
+        self.assertTrue(re.search(values, string), 'Expected regex "%s" to match on:\n%s' % (values, string))
+      else:
+        match_any = any(re.search(o, string) for o in values)
+        self.assertTrue(match_any, 'Expected at least one of "%s" to match on:\n%s' % (values, string))
+      return
+
+    if type(values) not in [list, tuple]:
+      values = [values]
 
     if not any(v in string for v in values):
       diff = difflib.unified_diff(values[0].split('\n'), string.split('\n'), fromfile='expected', tofile='actual')
@@ -1143,7 +1269,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                          cache_name, env_init=env_init, native=native)
 
   def clear(self):
-    utils.delete_contents(self.get_dir())
+    force_delete_contents(self.get_dir())
     if shared.EMSCRIPTEN_TEMP_DIR:
       utils.delete_contents(shared.EMSCRIPTEN_TEMP_DIR)
 
@@ -1313,15 +1439,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     ''' % locals(),
            'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', emcc_args=extra_args)
 
-  def filtered_js_engines(self):
-    for engine in self.js_engines:
-      assert engine in config.JS_ENGINES, "js engine does not exist in config.JS_ENGINES"
-      assert type(engine) == list
-    for engine in self.banned_js_engines:
-      assert type(engine) in (list, type(None))
-    banned = [b[0] for b in self.banned_js_engines if b]
-    return [engine for engine in self.js_engines if engine and engine[0] not in banned]
-
   def do_run(self, src, expected_output=None, force_c=False, **kwargs):
     if 'no_build' in kwargs:
       filename = src
@@ -1330,7 +1447,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         filename = 'src.c'
       else:
         filename = 'src.cpp'
-      write_file(filename, src)
+      create_file(filename, src)
     return self._build_and_run(filename, expected_output, **kwargs)
 
   def do_runf(self, filename, expected_output=None, **kwargs):
@@ -1350,7 +1467,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       expected = read_file(outfile)
     output = self._build_and_run(srcfile, expected, **kwargs)
     if EMTEST_REBASELINE:
-      write_file(outfile, output)
+      utils.write_file(outfile, output)
     return output
 
   ## Does a complete test - builds, runs, checks output, etc.
@@ -1373,7 +1490,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                            output_basename=output_basename)
     self.assertExists(js_file)
 
-    engines = self.filtered_js_engines()
+    engines = self.js_engines.copy()
     if len(engines) > 1 and not self.use_all_engines:
       engines = engines[:1]
     # In standalone mode, also add wasm vms as we should be able to run there too.
@@ -1384,7 +1501,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         logger.warning('no wasm engine was found to run the standalone part of this test')
       engines += self.wasm_engines
     if len(engines) == 0:
-      self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
+      self.fail('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
     for engine in engines:
       js_output = self.run_js(js_file, engine, args,
                               output_nicerizer=output_nicerizer,
@@ -1399,16 +1516,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
             self.assertIdentical(expected_output, js_output)
           elif assert_all or len(expected_output) == 1:
             for o in expected_output:
-              if regex:
-                self.assertTrue(re.search(o, js_output), 'Expected regex "%s" to match on:\n%s' % (o, js_output))
-              else:
-                self.assertContained(o, js_output)
+              self.assertContained(o, js_output, regex=regex)
           else:
-            if regex:
-              match_any = any(re.search(o, js_output) for o in expected_output)
-              self.assertTrue(match_any, 'Expected at least one of "%s" to match on:\n%s' % (expected_output, js_output))
-            else:
-              self.assertContained(expected_output, js_output)
+            self.assertContained(expected_output, js_output, regex=regex)
             if assert_returncode == 0 and check_for_error:
               self.assertNotContained('ERROR', js_output)
         except Exception:
@@ -1521,6 +1631,19 @@ def harness_server_func(in_queue, out_queue, port):
       self.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
       self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
       return SimpleHTTPRequestHandler.end_headers(self)
+
+    def do_POST(self):
+      urlinfo = urlparse(self.path)
+      query = parse_qs(urlinfo.query)
+      # Mirror behaviour of emrun which is to write POST'd files to dump_out/ by default
+      if query['file']:
+        print('do_POST: got file: %s' % query['file'])
+        ensure_dir('dump_out')
+        filename = os.path.join('dump_out', query['file'][0])
+        contentLength = int(self.headers['Content-Length'])
+        create_file(filename, self.rfile.read(contentLength), binary=True)
+        self.send_response(200)
+        self.end_headers()
 
     def do_GET(self):
       if self.path == '/run_harness':
@@ -1763,7 +1886,7 @@ class BrowserCore(RunnerCore):
     basename = os.path.basename(expected)
     shutil.copyfile(expected, self.in_dir(basename))
     reporting = read_file(test_file('browser_reporting.js'))
-    write_file('reftest.js', '''
+    create_file('reftest.js', '''
       function doReftest() {
         if (doReftest.done) return;
         doReftest.done = true;
@@ -1934,7 +2057,7 @@ class BrowserCore(RunnerCore):
     if not isinstance(expected, list):
       expected = [expected]
     if EMTEST_BROWSER == 'node':
-      self.js_engines = [config.NODE_JS]
+      self.require_node()
       self.node_args += shared.node_pthread_flags()
       output = self.run_js('test.js')
       self.assertContained('RESULT: ' + expected[0], output)

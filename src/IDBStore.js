@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: MIT
  */
 
-{
-  indexedDB: function() {
+var IDBStore = {
+  indexedDB() {
     if (typeof indexedDB != 'undefined') return indexedDB;
     var ret = null;
     if (typeof window == 'object') ret = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
@@ -16,7 +16,7 @@
   DB_STORE_NAME: 'FILE_DATA',
   dbs: {},
   blobs: [0],
-  getDB: function(name, callback) {
+  getDB(name, callback) {
     // check the cache first
     var db = IDBStore.dbs[name];
     if (db) {
@@ -49,8 +49,8 @@
       event.preventDefault();
     };
   },
-  getStore: function(dbName, type, callback) {
-    IDBStore.getDB(dbName, function(error, db) {
+  getStore(dbName, type, callback) {
+    IDBStore.getDB(dbName, (error, db) => {
       if (error) return callback(error);
       var transaction = db.transaction([IDBStore.DB_STORE_NAME], type);
       transaction.onerror = (event) => {
@@ -62,8 +62,8 @@
     });
   },
   // External API
-  getFile: function(dbName, id, callback) {
-    IDBStore.getStore(dbName, 'readonly', function(err, store) {
+  getFile(dbName, id, callback) {
+    IDBStore.getStore(dbName, 'readonly', (err, store) => {
       if (err) return callback(err);
       var req = store.get(id);
       req.onsuccess = (event) => {
@@ -78,29 +78,28 @@
       };
     });
   },
-  setFile: function(dbName, id, data, callback) {
-    IDBStore.getStore(dbName, 'readwrite', function(err, store) {
+  setFile(dbName, id, data, callback) {
+    IDBStore.getStore(dbName, 'readwrite', (err, store) => {
       if (err) return callback(err);
       var req = store.put(data, id);
       req.onsuccess = (event) => callback();
       req.onerror = (error) => callback(error);
     });
   },
-  deleteFile: function(dbName, id, callback) {
-    IDBStore.getStore(dbName, 'readwrite', function(err, store) {
+  deleteFile(dbName, id, callback) {
+    IDBStore.getStore(dbName, 'readwrite', (err, store) => {
       if (err) return callback(err);
       var req = store.delete(id);
       req.onsuccess = (event) => callback();
       req.onerror = (error) => callback(error);
     });
   },
-  existsFile: function(dbName, id, callback) {
-    IDBStore.getStore(dbName, 'readonly', function(err, store) {
+  existsFile(dbName, id, callback) {
+    IDBStore.getStore(dbName, 'readonly', (err, store) => {
       if (err) return callback(err);
       var req = store.count(id);
       req.onsuccess = (event) => callback(null, event.target.result > 0);
       req.onerror = (error) => callback(error);
     });
   },
-}
-
+};

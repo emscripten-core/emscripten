@@ -38,7 +38,7 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 113
+EXPECTED_BINARYEN_VERSION = 114
 
 _is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
@@ -60,6 +60,7 @@ def remove_quotes(arg):
 
 
 def get_building_env():
+  cache.ensure()
   env = os.environ.copy()
   # point CC etc. to the em* tools.
   env['CC'] = EMCC
@@ -212,6 +213,7 @@ def lld_flags_for_executable(external_symbols):
     cmd += [
       '-z', 'stack-size=%s' % settings.STACK_SIZE,
       '--initial-memory=%d' % settings.INITIAL_MEMORY,
+      '--max-memory=%d' % settings.MAXIMUM_MEMORY,
     ]
 
     if settings.STANDALONE_WASM:
@@ -227,10 +229,6 @@ def lld_flags_for_executable(external_symbols):
         # `__main_argv_argc`, but we should address that by using a single `_start`
         # function like we do in STANDALONE_WASM mode.
         cmd += ['--no-entry']
-    if not settings.ALLOW_MEMORY_GROWTH:
-      cmd.append('--max-memory=%d' % settings.INITIAL_MEMORY)
-    elif settings.MAXIMUM_MEMORY != -1:
-      cmd.append('--max-memory=%d' % settings.MAXIMUM_MEMORY)
 
   if settings.STACK_FIRST:
     cmd.append('--stack-first')
@@ -319,7 +317,7 @@ def opt_level_to_str(opt_level, shrink_level=0):
 def js_optimizer(filename, passes):
   from . import js_optimizer
   try:
-    return js_optimizer.run(filename, passes)
+    return js_optimizer.run_on_js(filename, passes)
   except subprocess.CalledProcessError as e:
     exit_with_error("'%s' failed (%d)", ' '.join(e.cmd), e.returncode)
 
@@ -368,9 +366,9 @@ WASM_CALL_CTORS = '__wasm_call_ctors'
 # for this, and we are in wasm mode
 def eval_ctors(js_file, wasm_file, debug_info):
   if settings.MINIMAL_RUNTIME:
-    CTOR_ADD_PATTERN = f"asm['{WASM_CALL_CTORS}']();" # TODO test
+    CTOR_ADD_PATTERN = f"wasmExports['{WASM_CALL_CTORS}']();" # TODO test
   else:
-    CTOR_ADD_PATTERN = f"addOnInit(Module['asm']['{WASM_CALL_CTORS}']);"
+    CTOR_ADD_PATTERN = f"addOnInit(wasmExports['{WASM_CALL_CTORS}']);"
 
   js = utils.read_file(js_file)
 
@@ -487,16 +485,16 @@ def get_closure_compiler_and_env(user_args):
 
 
 @ToolchainProfiler.profile()
-def closure_transpile(filename, pretty):
+def closure_transpile(filename):
   user_args = []
   closure_cmd, env = get_closure_compiler_and_env(user_args)
   closure_cmd += ['--language_out', 'ES5']
   closure_cmd += ['--compilation_level', 'WHITESPACE_ONLY']
-  return run_closure_cmd(closure_cmd, filename, env, pretty)
+  return run_closure_cmd(closure_cmd, filename, env)
 
 
 @ToolchainProfiler.profile()
-def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
+def closure_compiler(filename, advanced=True, extra_closure_args=None):
   user_args = []
   env_args = os.environ.get('EMCC_CLOSURE_ARGS')
   if env_args:
@@ -516,9 +514,9 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   # Closure compiler needs to know about all exports that come from the wasm module, because to optimize for small code size,
   # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
   # externs file for the exports, Closure is able to reason about the exports.
-  if settings.WASM_FUNCTION_EXPORTS and not settings.DECLARE_ASM_MODULE_EXPORTS:
+  if settings.WASM_EXPORTS and not settings.DECLARE_ASM_MODULE_EXPORTS:
     # Generate an exports file that records all the exported symbols from the wasm module.
-    module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % asmjs_mangle(i) for i in settings.WASM_FUNCTION_EXPORTS])
+    module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % asmjs_mangle(i) for i in settings.WASM_EXPORTS])
     exports_file = shared.get_temp_files().get('.js', prefix='emcc_module_exports_')
     exports_file.write(module_exports_suppressions.encode())
     exports_file.close()
@@ -551,7 +549,7 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   if settings.DYNCALLS:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/dyncall-externs.js')]
 
-  if settings.MINIMAL_RUNTIME and settings.USE_PTHREADS:
+  if settings.MINIMAL_RUNTIME and settings.PTHREADS:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/minimal_runtime_worker_externs.js')]
 
   args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
@@ -575,10 +573,10 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   args += user_args
 
   cmd = closure_cmd + args
-  return run_closure_cmd(cmd, filename, env, pretty=pretty)
+  return run_closure_cmd(cmd, filename, env)
 
 
-def run_closure_cmd(cmd, filename, env, pretty):
+def run_closure_cmd(cmd, filename, env):
   cmd += ['--js', filename]
 
   # Closure compiler is unable to deal with path names that are not 7-bit ASCII:
@@ -607,7 +605,7 @@ def run_closure_cmd(cmd, filename, env, pretty):
 
   # Specify output file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
   cmd += ['--js_output_file', os.path.relpath(outfile, tempfiles.tmpdir)]
-  if pretty:
+  if not settings.MINIFY_WHITESPACE:
     cmd += ['--formatting', 'PRETTY_PRINT']
 
   shared.print_compiler_stage(cmd)
@@ -647,7 +645,7 @@ def run_closure_cmd(cmd, filename, env, pretty):
 
     # Exit and print final hint to get clearer output
     msg = f'closure compiler failed (rc: {proc.returncode}): {shared.shlex_join(cmd)}'
-    if not pretty:
+    if settings.MINIFY_WHITESPACE:
       msg += ' the error message may be clearer with -g1 and EMCC_DEBUG=2 set'
     exit_with_error(msg)
 
@@ -659,7 +657,7 @@ def run_closure_cmd(cmd, filename, env, pretty):
       logger.warn(proc.stderr)
 
     # Exit and/or print final hint to get clearer output
-    if not pretty:
+    if settings.MINIFY_WHITESPACE:
       logger.warn('(rerun with -g1 linker flag for an unminified output)')
     elif DEBUG != 2:
       logger.warn('(rerun with EMCC_DEBUG=2 enabled to dump Closure input file)')
@@ -672,14 +670,16 @@ def run_closure_cmd(cmd, filename, env, pretty):
 
 # minify the final wasm+JS combination. this is done after all the JS
 # and wasm optimizations; here we do the very final optimizations on them
-def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, debug_info):
+def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
   # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
   # use AJSDCE (aggressive JS DCE, performs multiple iterations). Clean up
   # whitespace if necessary too.
   passes = []
   if not settings.LINKABLE:
     passes.append('JSDCE' if not expensive_optimizations else 'AJSDCE')
-  if minify_whitespace:
+  # Don't minify if we are going to run closure compiler afterwards
+  minify = settings.MINIFY_WHITESPACE and not settings.USE_CLOSURE_COMPILER
+  if minify:
     passes.append('minifyWhitespace')
   if passes:
     logger.debug('running cleanup on shell code: ' + ' '.join(passes))
@@ -690,24 +690,23 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespac
     # if we are optimizing for size, shrink the combined wasm+JS
     # TODO: support this when a symbol map is used
     if expensive_optimizations:
-      js_file = metadce(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
+      js_file = metadce(js_file, wasm_file, debug_info=debug_info)
       # now that we removed unneeded communication between js and wasm, we can clean up
       # the js some more.
       passes = ['AJSDCE']
-      if minify_whitespace:
+      if minify:
         passes.append('minifyWhitespace')
       logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
       js_file = acorn_optimizer(js_file, passes)
       if settings.MINIFY_WASM_IMPORTS_AND_EXPORTS:
         js_file = minify_wasm_imports_and_exports(js_file, wasm_file,
-                                                  minify_whitespace=minify_whitespace,
                                                   minify_exports=settings.MINIFY_WASM_EXPORT_NAMES,
                                                   debug_info=debug_info)
   return js_file
 
 
 # run binaryen's wasm-metadce to dce both js and wasm
-def metadce(js_file, wasm_file, minify_whitespace, debug_info):
+def metadce(js_file, wasm_file, debug_info):
   logger.debug('running meta-DCE')
   temp_files = shared.get_temp_files()
   # first, get the JS part of the graph
@@ -721,7 +720,8 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     # will take precedence.
     exports = settings.WASM_EXPORTS
   else:
-    exports = settings.WASM_FUNCTION_EXPORTS
+    # Ignore exported wasm globals.  Those get inlined directly into the JS code.
+    exports = sorted(set(settings.WASM_EXPORTS) - set(settings.WASM_GLOBAL_EXPORTS))
 
   extra_info = '{ "exports": [' + ','.join(f'["{asmjs_mangle(x)}", "{x}"]' for x in exports) + ']}'
 
@@ -734,21 +734,6 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
       export = asmjs_mangle(item['export'])
       if settings.EXPORT_ALL or export in required_symbols:
         item['root'] = True
-  # in standalone wasm, always export the memory
-  if not settings.IMPORTED_MEMORY:
-    graph.append({
-      'export': 'memory',
-      'name': 'emcc$export$memory',
-      'reaches': [],
-      'root': True
-    })
-  if not settings.RELOCATABLE:
-    graph.append({
-      'export': '__indirect_function_table',
-      'name': 'emcc$export$__indirect_function_table',
-      'reaches': [],
-      'root': True
-    })
   # fix wasi imports TODO: support wasm stable with an option?
   WASI_IMPORTS = {
     'environ_get',
@@ -804,7 +789,7 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
       unused.append(name)
   # remove them
   passes = ['applyDCEGraphRemovals']
-  if minify_whitespace:
+  if settings.MINIFY_WHITESPACE:
     passes.append('minifyWhitespace')
   extra_info = {'unused': unused}
   return acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
@@ -835,7 +820,7 @@ def asyncify_lazy_load_code(wasm_target, debug):
                debug=debug)
 
 
-def minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace, minify_exports, debug_info):
+def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_info):
   logger.debug('minifying wasm imports and exports')
   # run the pass
   if minify_exports:
@@ -866,13 +851,13 @@ def minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace, minif
       mapping[old] = new
   # apply them
   passes = ['applyImportAndExportNameChanges']
-  if minify_whitespace:
+  if settings.MINIFY_WHITESPACE:
     passes.append('minifyWhitespace')
   extra_info = {'mapping': mapping}
   return acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
 
-def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compiler, debug_info, symbols_file=None, symbols_file_js=None):
+def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, symbols_file=None, symbols_file_js=None):
   logger.debug('wasm2js')
   args = ['--emscripten']
   if opt_level > 0:
@@ -888,11 +873,11 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
   # JS optimizations
   if opt_level >= 2:
     passes = []
-    if not debug_info and not settings.USE_PTHREADS:
+    if not debug_info and not settings.PTHREADS:
       passes += ['minifyNames']
       if symbols_file_js:
         passes += ['symbolMap=%s' % symbols_file_js]
-    if minify_whitespace:
+    if settings.MINIFY_WHITESPACE:
       passes += ['minifyWhitespace']
     passes += ['last']
     if passes:
@@ -913,7 +898,7 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
     temp = shared.get_temp_files().get('.js').name
     with open(temp, 'a') as f:
       f.write(wasm2js_js)
-    temp = closure_compiler(temp, pretty=not minify_whitespace, advanced=False)
+    temp = closure_compiler(temp, advanced=False)
     wasm2js_js = utils.read_file(temp)
     # closure may leave a trailing `;`, which would be invalid given where we place
     # this code (inside parens)
@@ -957,7 +942,7 @@ def emit_debug_on_side(wasm_file):
     embedded_path = os.path.relpath(wasm_file_with_dwarf,
                                     os.path.dirname(wasm_file))
     # normalize the path to use URL-style separators, per the spec
-    embedded_path = embedded_path.replace('\\', '/').replace('//', '/')
+    embedded_path = utils.normalize_path(embedded_path)
 
   shutil.move(wasm_file, wasm_file_with_dwarf)
   strip(wasm_file_with_dwarf, wasm_file, debug=True)
@@ -1015,6 +1000,7 @@ def instrument_js_for_safe_heap(js_file):
   return acorn_optimizer(js_file, ['safeHeap'])
 
 
+@ToolchainProfiler.profile()
 def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
   logger.debug('handle_final_wasm_symbols')
   args = []
@@ -1082,7 +1068,7 @@ def is_wasm_dylib(filename):
   return False
 
 
-def map_to_js_libs(library_name):
+def map_to_js_libs(library_name, emit_tsd):
   """Given the name of a special Emscripten-implemented system library, returns an
   pair containing
   1. Array of absolute paths to JS library files, inside emscripten/src/ that corresponds to the
@@ -1091,8 +1077,11 @@ def map_to_js_libs(library_name):
   2. Optional name of a corresponding native library to link in.
   """
   # Some native libraries are implemented in Emscripten as system side JS libraries
+  embind = 'embind/embind.js'
+  if emit_tsd:
+    embind = 'embind/embind_ts.js'
   library_map = {
-    'embind': ['embind/embind.js', 'embind/emval.js'],
+    'embind': [embind, 'embind/emval.js'],
     'EGL': ['library_egl.js'],
     'GL': ['library_webgl.js', 'library_html5_webgl.js'],
     'webgl.js': ['library_webgl.js', 'library_html5_webgl.js'],
