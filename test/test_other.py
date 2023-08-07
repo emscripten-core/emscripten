@@ -12115,7 +12115,7 @@ exec "$@"
 
   @also_with_wasm64
   def test_missing_symbols_at_runtime(self):
-    # We deliberately pick as symbol there that take a pointer as an argument.
+    # We deliberately pick a symbol there that takes a pointer as an argument.
     # We had a regression where the pointer-handling wrapper function could
     # not be created because the "missing functions" stubs don't take any
     # arguments.
