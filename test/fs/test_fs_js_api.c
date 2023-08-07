@@ -416,6 +416,16 @@ int main() {
     test_fs_mkdirTree();
     test_fs_utime();
 
+    EM_ASM(
+        console.log(FS.readdir("/dev"));
+        console.log(FS.open("/dev/tty").stream_ops);
+        console.log("#####");
+        console.log(FS.open("/dev/tty1").stream_ops);
+        console.log("#####");
+        console.log(FS.open("/dev/stdin").stream_ops);
+        console.log(FS.ioctl(FS.open("/dev/stdin"), 0));
+    );
+
     cleanup();
 
     puts("success");
