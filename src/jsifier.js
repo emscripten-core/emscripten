@@ -11,9 +11,11 @@
 
 global.addedLibraryItems = {};
 
-// Some JS-implemented library functions are proxied to be called on the main browser thread, if the Emscripten runtime is executing in a Web Worker.
-// Each such proxied function is identified via an ordinal number (this is not the same namespace as function pointers in general).
-global.proxiedFunctionTable = ['null'/* Reserve index 0 for an undefined function*/];
+// Some JS-implemented library functions are proxied to be called on the main
+// browser thread, if the Emscripten runtime is executing in a Web Worker.
+// Each such proxied function is identified via an ordinal number (this is not
+// the same namespace as function pointers in general).
+global.proxiedFunctionTable = [];
 
 // Mangles the given C/JS side function name to assembly level function name (adds an underscore)
 function mangleCSymbolName(f) {
@@ -605,8 +607,15 @@ function(${args}) {
     }
 
     if (PTHREADS) {
-      print('\n // proxiedFunctionTable specifies the list of functions that can be called either synchronously or asynchronously from other threads in postMessage()d or internally queued events. This way a pthread in a Worker can synchronously access e.g. the DOM on the main thread.');
-      print('\nvar proxiedFunctionTable = [' + proxiedFunctionTable.join() + '];\n');
+      print(`
+// proxiedFunctionTable specifies the list of functions that can be called
+// either synchronously or asynchronously from other threads in postMessage()d
+// or internally queued events. This way a pthread in a Worker can synchronously
+// access e.g. the DOM on the main thread.
+var proxiedFunctionTable = [
+  ${proxiedFunctionTable.join(',\n  ')}
+];
+`);
     }
 
     if (abortExecution) {
