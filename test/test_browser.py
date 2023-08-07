@@ -1510,7 +1510,7 @@ keydown(100);keyup(100); // trigger the end
   @also_with_wasm64
   def test_idbstore_sync(self):
     secret = str(time.time())
-    self.btest(test_file('browser/test_idbstore_sync.c'), '6', args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '-sASYNCIFY'])
+    self.btest(test_file('browser/test_idbstore_sync.c'), '6', args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '-sASYNCIFY=2', '-Wno-experimental'])
 
   def test_idbstore_sync_worker(self):
     secret = str(time.time())

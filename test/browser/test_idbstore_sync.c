@@ -25,7 +25,10 @@ void test() {
   sum++;
 
   printf("checking\n");
+  exists = 5555;
   emscripten_idb_exists(DB, "the_secret", &exists, &error);
+  // exists is still 5555 here!!!
+  assert(exists != 5555);
   assert(!error);
   assert(exists);
   sum++;
