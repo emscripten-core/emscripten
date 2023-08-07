@@ -38,12 +38,12 @@ mergeInto(LibraryManager.library, {
   // startup has finished, after which these postponed function calls can be dispatched.
   $_wasmWorkerDelayedMessageQueue: [],
 
-  $_wasmWorkerAppendToQueue: function(e) {
+  $_wasmWorkerAppendToQueue: (e) => {
     _wasmWorkerDelayedMessageQueue.push(e);
   },
 
   // Executes a wasm function call received via a postMessage.
-  $_wasmWorkerRunPostMessage: function(e) {
+  $_wasmWorkerRunPostMessage: (e) => {
     let data = e.data, wasmCall = data['_wsc']; // '_wsc' is short for 'wasm call', trying to use an identifier name that will never conflict with user code
     wasmCall && getWasmTableEntry(wasmCall)(...data['x']);
   },
@@ -51,7 +51,7 @@ mergeInto(LibraryManager.library, {
   // src/postamble_minimal.js brings this symbol in to the build, and calls this function synchronously
   // from main JS file at the startup of each Worker.
   $_wasmWorkerInitializeRuntime__deps: ['$_wasmWorkerDelayedMessageQueue', '$_wasmWorkerRunPostMessage', '$_wasmWorkerAppendToQueue', 'emscripten_wasm_worker_initialize'],
-  $_wasmWorkerInitializeRuntime: function() {
+  $_wasmWorkerInitializeRuntime: () => {
     let m = Module;
 #if ASSERTIONS
     assert(m['sb'] % 16 == 0);
@@ -114,7 +114,7 @@ mergeInto(LibraryManager.library, {
     + '_wasmWorkers[0] = this;\n'
     + 'addEventListener("message", _wasmWorkerAppendToQueue);\n'
     + '}\n',
-  _emscripten_create_wasm_worker: function(stackLowestAddress, stackSize) {
+  _emscripten_create_wasm_worker: (stackLowestAddress, stackSize) => {
     let worker = _wasmWorkers[_wasmWorkersID] = new Worker(
 #if WASM_WORKERS == 2 // WASM_WORKERS=2 mode embeds .ww.js file contents into the main .js file as a Blob URL. (convenient, but not CSP security safe, since this is eval-like)
       _wasmWorkerBlobUrl
@@ -143,7 +143,7 @@ mergeInto(LibraryManager.library, {
     return _wasmWorkersID++;
   },
 
-  emscripten_terminate_wasm_worker: function(id) {
+  emscripten_terminate_wasm_worker: (id) => {
 #if ASSERTIONS
     assert(id != 0, 'emscripten_terminate_wasm_worker() cannot be called with id=0!');
 #endif
@@ -153,7 +153,7 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  emscripten_terminate_all_wasm_workers: function() {
+  emscripten_terminate_all_wasm_workers: () => {
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_WASM_WORKER, 'emscripten_terminate_all_wasm_workers() cannot be called from a Wasm Worker: only the main browser thread has visibility to terminate all Workers!');
 #endif
@@ -163,7 +163,7 @@ mergeInto(LibraryManager.library, {
     _wasmWorkers = {};
   },
 
-  emscripten_current_thread_is_wasm_worker: function() {
+  emscripten_current_thread_is_wasm_worker: () => {
 #if WASM_WORKERS
     return ENVIRONMENT_IS_WASM_WORKER;
 #else
@@ -171,16 +171,16 @@ mergeInto(LibraryManager.library, {
 #endif
   },
 
-  emscripten_wasm_worker_self_id: function() {
+  emscripten_wasm_worker_self_id: () => {
     return Module['$ww'];
   },
 
-  emscripten_wasm_worker_post_function_v: function(id, funcPtr) {
+  emscripten_wasm_worker_post_function_v: (id, funcPtr) => {
     _wasmWorkers[id].postMessage({'_wsc': funcPtr, 'x': [] }); // "WaSm Call"
   },
 
   $_wasmWorkerPostFunction1__sig: 'vipd',
-  $_wasmWorkerPostFunction1: function(id, funcPtr, arg0) {
+  $_wasmWorkerPostFunction1: (id, funcPtr, arg0) => {
     _wasmWorkers[id].postMessage({'_wsc': funcPtr, 'x': [arg0] }); // "WaSm Call"
   },
 
@@ -188,21 +188,21 @@ mergeInto(LibraryManager.library, {
   emscripten_wasm_worker_post_function_vd: '$_wasmWorkerPostFunction1',
 
   $_wasmWorkerPostFunction2__sig: 'vipdd',
-  $_wasmWorkerPostFunction2: function(id, funcPtr, arg0, arg1) {
+  $_wasmWorkerPostFunction2: (id, funcPtr, arg0, arg1) => {
     _wasmWorkers[id].postMessage({'_wsc': funcPtr, 'x': [arg0, arg1] }); // "WaSm Call"
   },
   emscripten_wasm_worker_post_function_vii: '$_wasmWorkerPostFunction2',
   emscripten_wasm_worker_post_function_vdd: '$_wasmWorkerPostFunction2',
 
   $_wasmWorkerPostFunction3__sig: 'vipddd',
-  $_wasmWorkerPostFunction3: function(id, funcPtr, arg0, arg1, arg2) {
+  $_wasmWorkerPostFunction3: (id, funcPtr, arg0, arg1, arg2) => {
     _wasmWorkers[id].postMessage({'_wsc': funcPtr, 'x': [arg0, arg1, arg2] }); // "WaSm Call"
   },
   emscripten_wasm_worker_post_function_viii: '$_wasmWorkerPostFunction3',
   emscripten_wasm_worker_post_function_vddd: '$_wasmWorkerPostFunction3',
 
   emscripten_wasm_worker_post_function_sig__deps: ['$readEmAsmArgs'],
-  emscripten_wasm_worker_post_function_sig: function(id, funcPtr, sigPtr, varargs) {
+  emscripten_wasm_worker_post_function_sig: (id, funcPtr, sigPtr, varargs) => {
 #if ASSERTIONS
     assert(id >= 0);
     assert(funcPtr);
@@ -248,7 +248,7 @@ function __Atomics_pollWaitAsyncAddresses() {
 #if ASSERTIONS
   if (!ENVIRONMENT_IS_WASM_WORKER) err('Current environment does not support Atomics.waitAsync(): polyfilling it, but this is going to be suboptimal.');
 #endif
-Atomics['waitAsync'] = function(i32a, index, value, maxWaitMilliseconds) {
+Atomics['waitAsync'] = (i32a, index, value, maxWaitMilliseconds) => {
   let val = Atomics.load(i32a, index);
   if (val != value) return { async: false, value: 'not-equal' };
   if (maxWaitMilliseconds <= 0) return { async: false, value: 'timed-out' };
@@ -273,7 +273,7 @@ Atomics['waitAsync'] = function(i32a, index, value, maxWaitMilliseconds) {
   $atomicLiveWaitAsyncsCounter: '0',
 
   emscripten_atomic_wait_async__deps: ['$atomicWaitStates', '$atomicLiveWaitAsyncs', '$atomicLiveWaitAsyncsCounter', '$jstoi_q'],
-  emscripten_atomic_wait_async: function(addr, val, asyncWaitFinished, userData, maxWaitMilliseconds) {
+  emscripten_atomic_wait_async: (addr, val, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let wait = Atomics['waitAsync'](HEAP32, addr >> 2, val, maxWaitMilliseconds);
     if (!wait.async) return atomicWaitStates.indexOf(wait.value);
     // Increment waitAsync generation counter, account for wraparound in case application does huge amounts of waitAsyncs per second (not sure if possible?)
@@ -291,7 +291,7 @@ Atomics['waitAsync'] = function(i32a, index, value, maxWaitMilliseconds) {
   },
 
   emscripten_atomic_cancel_wait_async__deps: ['$atomicLiveWaitAsyncs'],
-  emscripten_atomic_cancel_wait_async: function(waitToken) {
+  emscripten_atomic_cancel_wait_async: (waitToken) => {
 #if ASSERTIONS
     if (waitToken == 1 /* ATOMICS_WAIT_NOT_EQUAL */) warnOnce('Attempted to call emscripten_atomic_cancel_wait_async() with a value ATOMICS_WAIT_NOT_EQUAL (1) that is not a valid wait token! Check success in return value from call to emscripten_atomic_wait_async()');
     else if (waitToken == 2 /* ATOMICS_WAIT_TIMED_OUT */) warnOnce('Attempted to call emscripten_atomic_cancel_wait_async() with a value ATOMICS_WAIT_TIMED_OUT (2) that is not a valid wait token! Check success in return value from call to emscripten_atomic_wait_async()');
@@ -311,7 +311,7 @@ Atomics['waitAsync'] = function(i32a, index, value, maxWaitMilliseconds) {
   },
 
   emscripten_atomic_cancel_all_wait_asyncs__deps: ['$atomicLiveWaitAsyncs'],
-  emscripten_atomic_cancel_all_wait_asyncs: function() {
+  emscripten_atomic_cancel_all_wait_asyncs: () => {
     let waitAsyncs = Object.values(atomicLiveWaitAsyncs);
     waitAsyncs.forEach((address) => {
       Atomics.notify(HEAP32, address);
@@ -321,7 +321,7 @@ Atomics['waitAsync'] = function(i32a, index, value, maxWaitMilliseconds) {
   },
 
   emscripten_atomic_cancel_all_wait_asyncs_at_address__deps: ['$atomicLiveWaitAsyncs'],
-  emscripten_atomic_cancel_all_wait_asyncs_at_address: function(address) {
+  emscripten_atomic_cancel_all_wait_asyncs_at_address: (address) => {
     address >>= 2;
     let numCancelled = 0;
     Object.keys(atomicLiveWaitAsyncs).forEach((waitToken) => {
@@ -334,18 +334,18 @@ Atomics['waitAsync'] = function(i32a, index, value, maxWaitMilliseconds) {
     return numCancelled;
   },
 
-  emscripten_navigator_hardware_concurrency: function() {
+  emscripten_navigator_hardware_concurrency: () => {
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) return require('os').cpus().length;
 #endif
     return navigator['hardwareConcurrency'];
   },
 
-  emscripten_atomics_is_lock_free: function(width) {
+  emscripten_atomics_is_lock_free: (width) => {
     return Atomics.isLockFree(width);
   },
 
-  emscripten_lock_async_acquire: function(lock, asyncWaitFinished, userData, maxWaitMilliseconds) {
+  emscripten_lock_async_acquire: (lock, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let dispatch = (val, ret) => {
       setTimeout(() => {
         {{{ makeDynCall('viiii', 'asyncWaitFinished') }}}(lock, val, /*waitResult=*/ret, userData);
@@ -366,7 +366,7 @@ Atomics['waitAsync'] = function(i32a, index, value, maxWaitMilliseconds) {
     tryAcquireLock();
   },
 
-  emscripten_semaphore_async_acquire: function(sem, num, asyncWaitFinished, userData, maxWaitMilliseconds) {
+  emscripten_semaphore_async_acquire: (sem, num, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let dispatch = (idx, ret) => {
       setTimeout(() => {
         {{{ makeDynCall('viiii', 'asyncWaitFinished') }}}(sem, /*val=*/idx, /*waitResult=*/ret, userData);

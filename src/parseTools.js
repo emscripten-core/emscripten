@@ -295,7 +295,7 @@ function getHeapOffset(offset, type) {
   const sz = getNativeTypeSize(type);
   const shifts = Math.log(sz) / Math.LN2;
   if (MEMORY64 == 1) {
-    return `((${offset})/2**${shifts})`;
+    return `((${offset})/${2 ** shifts})`;
   } else {
     return `((${offset})>>${shifts})`;
   }
@@ -547,17 +547,6 @@ function charCode(char) {
   return char.charCodeAt(0);
 }
 
-function ensureValidFFIType(type) {
-  return type === 'float' ? 'double' : type; // ffi does not tolerate float XXX
-}
-
-// FFI return values must arrive as doubles, and we can force them to floats afterwards
-function asmFFICoercion(value, type) {
-  value = asmCoercion(value, ensureValidFFIType(type));
-  if (type === 'float') value = asmCoercion(value, 'float');
-  return value;
-}
-
 function makeDynCall(sig, funcPtr) {
   assert(!sig.includes('j'), 'Cannot specify 64-bit signatures ("j" in signature string) with makeDynCall!');
 
@@ -635,10 +624,6 @@ Please update to new syntax.`);
     return `((${args}) => getWasmTableEntry(${funcPtr}).call(null, ${callArgs}))`;
   }
   return `getWasmTableEntry(${funcPtr})`;
-}
-
-function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    splitChunk, relptr
-  return heap + ',' + ptr;
 }
 
 function makeEval(code) {

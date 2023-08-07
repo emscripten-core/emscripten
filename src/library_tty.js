@@ -11,7 +11,7 @@ mergeInto(LibraryManager.library, {
     '$FS_stdin_getChar'
   ],
 #if !MINIMAL_RUNTIME
-  $TTY__postset: function() {
+  $TTY__postset: () => {
     addAtInit('TTY.init();');
     addAtExit('TTY.shutdown();');
   },

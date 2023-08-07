@@ -283,7 +283,7 @@ mergeInto(LibraryManager.library, {
       var replacement = growMemory(newSize);
 #if ASSERTIONS == 2
       var t1 = _emscripten_get_now();
-      out(`Heap resize call from ${oldSize} to ${newSize} took ${(t1 - t0)} msecs. Success: ${!!replacement}`);
+      dbg(`Heap resize call from ${oldSize} to ${newSize} took ${(t1 - t0)} msecs. Success: ${!!replacement}`);
 #endif
       if (replacement) {
 #if ASSERTIONS && WASM2JS

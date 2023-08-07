@@ -56,7 +56,6 @@ void _embind_register_void(
 void _embind_register_bool(
     TYPEID boolType,
     const char* name,
-    size_t size,
     bool trueValue,
     bool falseValue);
 
