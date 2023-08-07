@@ -1146,11 +1146,6 @@ weak double emscripten_get_now(void) {
   return (double)ts.tv_sec * 1000 + (double)ts.tv_nsec / 1000000;
 }
 
-weak void _emscripten_throw_longjmp() {
-  REPORT_UNSUPPORTED(call longjmp);
-  abort();
-}
-
 // C++ ABI
 
 #if EMSCRIPTEN_NOCATCH
