@@ -524,7 +524,7 @@ def finalize_wasm(infile, outfile, memfile, js_syms):
   post_strip_file = infile
   if not settings.GENERATE_DWARF or not settings.EMIT_PRODUCERS_SECTION:
     # For sections we no longer need, strip now to speed subsequent passes
-    post_strip_file = shared.get_temp_files().get('.wasm')
+    post_strip_file = shared.get_temp_files().get('.wasm').name
     building.save_intermediate(infile, 'strip.wasm')
     sections = ['producers'] if not settings.EMIT_PRODUCERS_SECTION else []
     building.strip(infile, post_strip_file, debug=not settings.GENERATE_DWARF,
