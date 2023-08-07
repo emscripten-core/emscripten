@@ -3485,14 +3485,13 @@ def parse_args(newargs):
         elif requested_level == 'source-map':
           settings.GENERATE_SOURCE_MAP = 1
           newargs[i] = '-g'
-        # a non-integer level can be something like -gline-tables-only. keep
-        # the flag for the clang frontend to emit the appropriate DWARF info.
-        # set the emscripten debug level to 3 so that we do not remove that
-        # debug info during link (during compile, this does not make a
-        # difference).
         else:
-          # Assume unknown non-integer levels are clang flags that emit dwarf.
+          # Other non-integer levels (e.g. -gline-tables-only or -gdwarf-5) are
+          # usually clang flags that emit DWARF. So we pass them through to
+          # clang and make the emscripten code treat it like any other DWARF.
           settings.GENERATE_DWARF = 1
+        # In all cases set the emscripten debug level to 3 so that we do not
+        # strip during link (during compile, this does not make a difference).
         settings.DEBUG_LEVEL = 3
     elif check_flag('-profiling') or check_flag('--profiling'):
       settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 2)
