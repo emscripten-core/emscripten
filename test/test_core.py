@@ -5804,6 +5804,9 @@ Module = {
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl/test_fcntl_misc.c')
 
+  def test_fcntl_dup(self):
+    self.do_run_in_out_file_test('fcntl/test_fcntl_dup.c')
+
   def test_poll(self):
     self.add_pre_run('''
       var dummy_device = FS.makedev(64, 0);
