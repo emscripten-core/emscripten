@@ -290,12 +290,15 @@ int _wasmfs_unmount(char* path) {
 }
 
 int _wasmfs_ioctl(int fd, int request, ...) {
+  printf("Inside js_api: %d, %d\n", fd, request);
   void *arg;
 	va_list ap;
 	va_start(ap, request);
 	arg = va_arg(ap, void *);
 	va_end(ap);
-  return __syscall_ioctl(fd, request, arg);
+  int err = __syscall_ioctl(fd, request, arg);
+  printf("js api err: %d\n", err);
+  return err;
 }
 
 // Helper method that identifies what a path is:

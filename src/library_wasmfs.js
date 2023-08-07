@@ -403,8 +403,14 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: syncfs
     llseek(stream, offset, whence) {
       return FS.handleError(__wasmfs_llseek(stream.fd, {{{ splitI64('offset') }}}, whence));
-    }
+    },
     // TODO: ioctl
+    ioctl(stream, cmd, args) {
+      console.log("Stream: ", stream);
+      var err = FS.handleError(__wasmfs_ioctl(stream.fd, cmd, args));
+      console.log("Err: ", err);
+      return err;
+    }
 
 #endif
   },
