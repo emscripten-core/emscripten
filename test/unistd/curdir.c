@@ -14,7 +14,19 @@
 int main() {
   EM_ASM(
     var dummy_device = FS.makedev(64, 0);
+#if WASMFS
+    // WasmFS has different requirements for a device's functions compared
+    // to the legacy API.
+    FS.registerDevice(dummy_device, {
+      allocFile: (file) => {},
+      freeFile: (file) => {},
+      write: (file, buffer, length, offset) => {},
+      read: (file, buffer, length, offset) => {},
+      getSize: (file) => {}
+    });
+#else
     FS.registerDevice(dummy_device, {});
+#endif
     FS.mkdev('/device', dummy_device);
 
     FS.mkdir('/folder');
