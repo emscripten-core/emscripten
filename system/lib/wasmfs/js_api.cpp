@@ -291,10 +291,10 @@ int _wasmfs_unmount(char* path) {
 
 int _wasmfs_ioctl(int fd, int request, ...) {
   void *arg;
-	va_list ap;
-	va_start(ap, request);
-	arg = va_arg(ap, void *);
-	va_end(ap);
+  va_list ap;
+  va_start(ap, request);
+  arg = va_arg(ap, void *);
+  va_end(ap);
   return __syscall_ioctl(fd, request, arg);
 }
 
