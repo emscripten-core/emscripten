@@ -222,7 +222,7 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     assert(typeof maxBytesToWrite == 'number', 'stringToUTF8(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
 #endif
-    return stringToUTF8Array(str, {{{ heapAndOffset('HEAPU8', 'outPtr') }}}, maxBytesToWrite);
+    return stringToUTF8Array(str, HEAPU8, outPtr, maxBytesToWrite);
   },
 
   /**

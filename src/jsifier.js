@@ -398,11 +398,12 @@ function(${args}) {
         }
         if (!RELOCATABLE) {
           // emit a stub that will fail at runtime
-          LibraryManager.library[symbol] = new Function(`err('missing function: ${symbol}'); abort(-1);`);
+          LibraryManager.library[symbol] = new Function(`abort('missing function: ${symbol}');`);
           // We have already warned/errored about this function, so for the purposes of Closure use, mute all type checks
           // regarding this function, marking ot a variadic function that can take in anything and return anything.
           // (not useful to warn/error multiple times)
           LibraryManager.library[symbol + '__docs'] = '/** @type {function(...*):?} */';
+          isStub = true;
         } else {
           // Create a stub for this symbol which can later be replaced by the
           // dynamic linker.  If this stub is called before the symbol is
