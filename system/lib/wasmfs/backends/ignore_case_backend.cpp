@@ -234,11 +234,10 @@ backend_t createIgnoreCaseBackend(std::function<backend_t()> createBackend) {
 
 extern "C" {
 
-// C API FOR creating an ignore case backend by supplying a pointer to another backend.
+// C API FOR creating an ignore case backend by supplying a pointer to another
+// backend.
 backend_t wasmfs_create_icase_backend(backend_t backend) {
-  return createIgnoreCaseBackend(
-    [backend]() { return backend; }
-  );
+  return createIgnoreCaseBackend([backend]() { return backend; });
 }
 
 } // extern "C"
