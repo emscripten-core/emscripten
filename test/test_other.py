@@ -7127,7 +7127,12 @@ int main(int argc, char **argv) {
     self.assertContained('Resolved: /boot/README.txt', self.run_js('a.out.js'))
 
   @crossplatform
-  def test_realpath_nodefs(self):
+  @parameterized({
+    '': ([],),
+    # WasmFS requires FORCE_FILESYSTEM for the full JS API (FS.mkdir etc.).
+    'wasmfs': (['-sWASMFS', '-sFORCE_FILESYSTEM'],),
+  })
+  def test_realpath_nodefs(self, args):
     create_file('src.c', r'''
 #include <stdlib.h>
 #include <stdio.h>
@@ -7154,8 +7159,9 @@ int main(int argc, char **argv) {
 }
 ''')
     create_file('TEST_NODEFS.txt', ' ')
-    self.run_process([EMCC, 'src.c', '-lnodefs.js'])
-    self.assertContained('Resolved: /working/TEST_NODEFS.txt', self.run_js('a.out.js'))
+    self.do_runf('src.c',
+                 expected_output='Resolved: /working/TEST_NODEFS.txt',
+                 emcc_args=args + ['-lnodefs.js'])
 
   def test_realpath_2(self):
     ensure_dir('Folder')
