@@ -16,10 +16,10 @@
 #include <mutex>
 #include <optional>
 #include <sys/stat.h>
+#include <time.h>
 #include <variant>
 #include <vector>
 #include <wasi/api.h>
-#include <time.h>
 
 namespace wasmfs {
 
@@ -320,9 +320,7 @@ public:
   struct timespec getCTime() {
     return file->ctime;
   }
-  void setCTime(struct timespec time) {
-    file->ctime = time;
-  }
+  void setCTime(struct timespec time) { file->ctime = time; }
   // updateCTime() updates the ctime to the current time.
   void updateCTime() {
     struct timespec ts;
@@ -332,9 +330,7 @@ public:
   struct timespec getMTime() {
     return file->mtime;
   }
-  void setMTime(struct timespec time) {
-    file->mtime = time;
-  }
+  void setMTime(struct timespec time) { file->mtime = time; }
   // updateMTime() updates the mtime to the current time.
   void updateMTime() {
     struct timespec ts;
@@ -344,9 +340,7 @@ public:
   struct timespec getATime() {
     return file->atime;
   }
-  void setATime(struct timespec time) {
-    file->atime = time;
-  }
+  void setATime(struct timespec time) { file->atime = time; }
   // updateATime() updates the atime to the current time.
   void updateATime() {
     struct timespec ts;
