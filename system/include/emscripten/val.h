@@ -17,6 +17,7 @@
 #include <emscripten/wire.h>
 #include <cstdint> // uintptr_t
 #include <vector>
+#include <type_traits>
 
 
 namespace emscripten {
@@ -625,10 +626,18 @@ private:
   friend struct internal::BindingType<val>;
 };
 
+// Declare a custom type that can be used in conjuction with
+// emscripten::register_type to emit custom TypeScript defintions for val types.
+#define EMSCRIPTEN_DECLARE_VAL_TYPE(name)                                          \
+struct name : public val {                                                     \
+  name(val const &other) : val(other) {}                                       \
+};
+
 namespace internal {
 
-template<>
-struct BindingType<val> {
+template<typename T>
+struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
+                                              !std::is_const<T>::value>::type> {
   typedef EM_VAL WireType;
   static WireType toWireType(const val& v) {
     _emval_incref(v.handle);
