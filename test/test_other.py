@@ -2673,6 +2673,7 @@ int f() {
       (['-g0'], False, False, False),
       (['-g1'], False, False, False),
       (['-g1', '-O2'], False, False, False),
+      (['-O2'], False, False, False),
       (['--minify=0'], False, False, False),
       # last numeric g flag "wins", so g0 overrides -g
       (['-g', '-g0'], False, False, False),
