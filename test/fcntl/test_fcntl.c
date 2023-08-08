@@ -17,11 +17,11 @@ int main() {
   printf("F_DUPFD 1: %d\n", fcntl(f, F_DUPFD, 0) == 4);
   printf("errno: %d\n", errno);
   printf("\n");
-  
+
   printf("F_DUPFD 2: %d\n", fcntl(f, F_DUPFD, 100) == 100);
   printf("errno: %d\n", errno);
   printf("\n");
-  
+
   printf("F_DUPFD_CLOEXEC: %d\n", fcntl(f, F_DUPFD_CLOEXEC, 0) == 5);
   printf("errno: %d\n", errno);
   printf("\n");
