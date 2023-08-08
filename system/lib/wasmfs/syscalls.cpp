@@ -1295,7 +1295,6 @@ static bool isTTY(std::shared_ptr<File>& file) {
 }
 
 int __syscall_ioctl(int fd, int request, ...) {
-  printf("Syscall: %d %d\n", fd, request);
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;
