@@ -7,7 +7,6 @@
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
 #include <emscripten/threading.h>
-#include <stack>
 
 #include "memory_backend.h"
 #include "paths.h"
@@ -57,8 +56,7 @@ WasmFS::WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {
 // (Note that this means we can't find leaks inside WasmFS code itself, but that
 // seems fundamentally impossible for the above reasons, unless we made LSan log
 // its findings in a way that does not depend on normal file I/O.)
-__attribute__((weak)) extern "C" void __lsan_do_leak_check(void) {
-}
+__attribute__((weak)) extern "C" void __lsan_do_leak_check(void) {}
 
 extern "C" void wasmfs_flush(void) {
   // Flush musl libc streams.
@@ -68,32 +66,39 @@ extern "C" void wasmfs_flush(void) {
   (void)SpecialFiles::getStdout()->locked().flush();
   (void)SpecialFiles::getStderr()->locked().flush();
 
-  std::stack<std::shared_ptr<Directory>> toFlush;
-  toFlush.push(wasmFS.getRootDirectory());
-  
-  while(!toFlush.empty()) {
-    auto dir = toFlush.top();
-    toFlush.pop();
-    
+  std::vector<std::shared_ptr<Directory>> toFlush;
+  toFlush.push_back(wasmFS.getRootDirectory());
+
+  while (!toFlush.empty()) {
+    auto dir = toFlush.back();
+    toFlush.pop_back();
+
     auto lockedDir = dir->locked();
     Directory::MaybeEntries entries = lockedDir.getEntries();
 #ifndef NDEBUG
     if (int err = entries.getError()) {
-      std::string errorMessage = "Non-fatal error code " + std::to_string(err) + " while flushing directory: " + lockedDir.getName(dir);
+      std::string errorMessage =
+        "Non-fatal error code " + std::to_string(err) +
+        " while flushing directory: " + lockedDir.getName(dir);
       emscripten_console_error(errorMessage.c_str());
       continue;
     }
 #endif
     for (auto entry : *lockedDir.getEntries()) {
       if (entry.kind == File::FileKind::DataFileKind) {
-        if (int err = lockedDir.getChild(entry.name)->dynCast<DataFile>()->locked().flush()) {
+        if (int err = lockedDir.getChild(entry.name)
+                        ->dynCast<DataFile>()
+                        ->locked()
+                        .flush()) {
 #ifndef NDEBUG
-          std::string errorMessage = "Non-fatal error code " + std::to_string(err) + " while flushing file: " + entry.name;
+          std::string errorMessage = "Non-fatal error code " +
+                                     std::to_string(err) +
+                                     " while flushing file: " + entry.name;
           emscripten_console_error(errorMessage.c_str());
 #endif
         }
       } else if (entry.kind == File::FileKind::DirectoryKind) {
-        toFlush.push(lockedDir.getChild(entry.name)->dynCast<Directory>());
+        toFlush.push_back(lockedDir.getChild(entry.name)->dynCast<Directory>());
       }
     }
   }
