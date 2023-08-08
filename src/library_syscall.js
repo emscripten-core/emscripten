@@ -204,7 +204,6 @@ var SyscallsLibrary = {
     return 0;
 #else
     var stream = SYSCALLS.getStreamFromFD(fd);
-    console.log("Stream: ", stream);
     switch (op) {
       case {{{ cDefs.TCGETA }}}: {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};

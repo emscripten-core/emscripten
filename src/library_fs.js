@@ -1253,7 +1253,6 @@ FS.staticInit();` +
     munmap: (stream) => 0,
     ioctl(stream, cmd, arg) {
       if (!stream.stream_ops.ioctl) {
-        console.log(">> no ioctl method");
         throw new FS.ErrnoError({{{ cDefs.ENOTTY }}});
       }
       return stream.stream_ops.ioctl(stream, cmd, arg);
