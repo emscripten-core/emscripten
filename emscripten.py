@@ -444,13 +444,6 @@ def get_metadata(infile, outfile, modify_wasm, args):
   return metadata
 
 
-def create_sourcemapping_url_file(infile, url):
-  """Create a file with the contents of the sourceMappingURL section"""
-  filename = os.path.join(shared.get_emscripten_temp_dir(), infile + '.smu')
-  utils.write_binary(filename, leb128.u.encode(len(url)) + url.encode('utf-8'))
-  return filename
-
-
 def finalize_wasm(infile, outfile, memfile, js_syms):
   building.save_intermediate(infile, 'base.wasm')
   args = []
@@ -517,12 +510,16 @@ def finalize_wasm(infile, outfile, memfile, js_syms):
     else:
       # Otherwise use objcopy. This avoids re-encoding the file (thus
       # preserving DWARF) and is faster.
-      url_file = create_sourcemapping_url_file(infile, base_url)
-      cmd = [shared.LLVM_OBJCOPY,
-             '--add-section',
-             'sourceMappingURL=' + url_file,
-             infile]
-      shared.check_call(cmd)
+
+      # Create a file with the contents of the sourceMappingURL section
+      with shared.get_temp_files().get_file('.bin') as url_file:
+        utils.write_binary(url_file,
+                           leb128.u.encode(len(base_url)) + base_url.encode('utf-8'))
+        cmd = [shared.LLVM_OBJCOPY,
+               '--add-section',
+               'sourceMappingURL=' + url_file,
+               infile]
+        shared.check_call(cmd)
 
   if not settings.GENERATE_DWARF or not settings.EMIT_PRODUCERS_SECTION:
     # For sections we no longer need, strip now to speed subsequent passes
