@@ -420,10 +420,10 @@ var SyscallsLibrary = {
     var dest = getSocketAddress(addr, addr_len, true);
     if (!dest) {
       // send, no address provided
-      return FS.write(sock.stream, {{{ heapAndOffset('HEAP8', 'message') }}}, length);
+      return FS.write(sock.stream, HEAP8, message, length);
     }
     // sendto an address
-    return sock.sock_ops.sendmsg(sock, {{{ heapAndOffset('HEAP8', 'message') }}}, length, dest.addr, dest.port);
+    return sock.sock_ops.sendmsg(sock, HEAP8, message, length, dest.addr, dest.port);
   },
   __syscall_getsockopt__deps: ['$getSocketFromFD'],
   __syscall_getsockopt: (fd, level, optname, optval, optlen, d1) => {
@@ -751,6 +751,9 @@ var SyscallsLibrary = {
         var arg = SYSCALLS.get();
         if (arg < 0) {
           return -{{{ cDefs.EINVAL }}};
+        }
+        while (FS.streams[arg]) {
+          arg++;
         }
         var newStream;
         newStream = FS.createStream(stream, arg);

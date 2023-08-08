@@ -203,7 +203,7 @@ var WasiLibrary = {
       var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
       var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
       iov += {{{ C_STRUCTS.iovec.__size__ }}};
-      var curr = FS.read(stream, {{{ heapAndOffset('HEAP8', 'ptr') }}}, len, offset);
+      var curr = FS.read(stream, HEAP8, ptr, len, offset);
       if (curr < 0) return -1;
       ret += curr;
       if (curr < len) break; // nothing more to read
@@ -220,7 +220,7 @@ var WasiLibrary = {
       var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
       var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
       iov += {{{ C_STRUCTS.iovec.__size__ }}};
-      var curr = FS.write(stream, {{{ heapAndOffset('HEAP8', 'ptr') }}}, len, offset);
+      var curr = FS.write(stream, HEAP8, ptr, len, offset);
       if (curr < 0) return -1;
       ret += curr;
       if (typeof offset !== 'undefined') {

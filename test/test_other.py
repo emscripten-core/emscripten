@@ -7127,7 +7127,12 @@ int main(int argc, char **argv) {
     self.assertContained('Resolved: /boot/README.txt', self.run_js('a.out.js'))
 
   @crossplatform
-  def test_realpath_nodefs(self):
+  @parameterized({
+    '': ([],),
+    # WasmFS requires FORCE_FILESYSTEM for the full JS API (FS.mkdir etc.).
+    'wasmfs': (['-sWASMFS', '-sFORCE_FILESYSTEM'],),
+  })
+  def test_realpath_nodefs(self, args):
     create_file('src.c', r'''
 #include <stdlib.h>
 #include <stdio.h>
@@ -7154,8 +7159,9 @@ int main(int argc, char **argv) {
 }
 ''')
     create_file('TEST_NODEFS.txt', ' ')
-    self.run_process([EMCC, 'src.c', '-lnodefs.js'])
-    self.assertContained('Resolved: /working/TEST_NODEFS.txt', self.run_js('a.out.js'))
+    self.do_runf('src.c',
+                 expected_output='Resolved: /working/TEST_NODEFS.txt',
+                 emcc_args=args + ['-lnodefs.js'])
 
   def test_realpath_2(self):
     ensure_dir('Folder')
@@ -12112,6 +12118,25 @@ exec "$@"
     # negative case: foo is undefined in test_check_undefined.c
     err = self.expect_fail([EMCC, flag, '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('other/test_check_undefined.c')])
     self.assertContained('undefined symbol: foo', err)
+
+  @also_with_wasm64
+  def test_missing_symbols_at_runtime(self):
+    # We deliberately pick a symbol there that takes a pointer as an argument.
+    # We had a regression where the pointer-handling wrapper function could
+    # not be created because the "missing functions" stubs don't take any
+    # arguments.
+    create_file('test.c', '''
+    #include <GL/gl.h>
+
+    int main() {
+      glGetTexLevelParameteriv(0, 0, 0, 0);
+    }
+    ''')
+
+    expected = 'Aborted(missing function: glGetTexLevelParameteriv)'
+    self.do_runf('test.c', expected,
+                 emcc_args=['-sWARN_ON_UNDEFINED_SYMBOLS=0', '-sAUTO_JS_LIBRARIES=0'],
+                 assert_returncode=NON_ZERO)
 
   @with_env_modify({'EMMAKEN_NO_SDK': '1'})
   def test_EMMAKEN_NO_SDK(self):
