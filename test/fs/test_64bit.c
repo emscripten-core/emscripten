@@ -21,17 +21,18 @@ int main(int argc, char *argv[])
 #if WASMFS
       // WasmFS has different requirements for a device's functions compared
       // to the legacy API.
+      allocFile: function(file) {},
+      freeFile: function(file) {},
       read: function(file, buffer, length, offset) {
-        // WasmFS does not provide the file's current seek position to 
-        // custom devices, unlike the legacy FS.
-        var position = 0x10000005A; // We hardcode this value for testing purposes.
         var tempBuffer = [];
         for (var i = 0; i < length; i++) {
-          tempBuffer.push(i + position);
+          tempBuffer.push(i + offset);
         }
         Module.HEAP8.set(tempBuffer, buffer);
         return length;
-      }
+      },
+      write: function(file, buffer, length, offset) {},
+      getSize: function(file) {}
 #else
       read: function(stream, buffer, offset, length, position) {
         for (var i = 0; i < length; ++i) {

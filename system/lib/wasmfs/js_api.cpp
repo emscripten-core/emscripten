@@ -270,10 +270,6 @@ int _wasmfs_lstat(char* path, struct stat* statBuf) {
   return __syscall_lstat64((intptr_t)path, (intptr_t)statBuf);
 }
 
-int _wasmfs_mkdev(char* path, mode_t mode, backend_t backend) {
-  return wasmfs_create_file(path, mode, backend);
-}
-
 // The legacy JS API requires a mountpoint to already exist, so  WasmFS will attempt to remove 
 // the target directory if it exists before replacing it with a mounted directory.
 int _wasmfs_mount(char* path, wasmfs::backend_t created_backend) {

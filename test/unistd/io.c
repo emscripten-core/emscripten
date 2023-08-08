@@ -77,6 +77,9 @@ int main() {
     var broken_device = FS.makedev(major++, 0);
     FS.registerDevice(broken_device, {
 #if WASMFS
+      allocFile: function(file) {},
+      freeFile: function(file) {},
+      getSize: function(file) {},
       // We return error codes in WasmFS instead of throwing.
       read: function(file, buffer, length, offset) {
         return -ERRNO_CODES.EIO;

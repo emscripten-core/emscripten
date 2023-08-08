@@ -400,37 +400,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     makedev: (ma, mi) => ((ma) << 8 | (mi)),
     registerDevice(dev, ops) {
       var backendPointer = _wasmfs_create_jsimpl_backend();
-
-      var defaultOps = {
-        allocFile: (file) => {},
-        freeFile: (file) => {},
-        write: (file, buffer, length, offset) => {},
-        read: (file, buffer, length, offset) => {},
-        getSize: (file) => {}
-      }
-
-      if (typeof ops.allocFile === 'undefined') {
-        ops.allocFile = defaultOps.allocFile;
-      }
-
-      if (typeof ops.freeFile === 'undefined') {
-        ops.freeFile = defaultOps.freeFile;
-      }
-
-      if (typeof ops.write === 'undefined') {
-        ops.write = defaultOps.write;
-      }
-
-      if (typeof ops.read === 'undefined') {
-        ops.read = defaultOps.read;
-      }
-
-      if (typeof ops.getSize === 'undefined') {
-        ops.getSize = defaultOps.getSize;
-      }
-
       wasmFS$backends[backendPointer] = ops;
-
       FS.devices[dev] = backendPointer;
     },
     // mode is an optional argument, which will be set to 0666 if not passed in.
@@ -446,7 +416,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       }
 
       return FS.handleError(withStackSave(() => (
-        __wasmfs_mkdev(stringToUTF8OnStack(path), mode, deviceBackend)
+        _wasmfs_create_file(stringToUTF8OnStack(path), mode, deviceBackend)
       )));
     },
     rename(oldPath, newPath) {
