@@ -752,6 +752,9 @@ var SyscallsLibrary = {
         if (arg < 0) {
           return -{{{ cDefs.EINVAL }}};
         }
+        while (FS.streams[arg]) {
+          arg++;
+        }
         var newStream;
         newStream = FS.createStream(stream, arg);
         return newStream.fd;
