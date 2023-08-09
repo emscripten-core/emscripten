@@ -11,7 +11,7 @@
 mergeInto(LibraryManager.library, {
   // error handling
 
-  $runAndAbortIfError: function(func) {
+  $runAndAbortIfError: (func) => {
     try {
       return func();
     } catch (e) {
@@ -481,7 +481,7 @@ mergeInto(LibraryManager.library, {
 
   emscripten_sleep__deps: ['$safeSetTimeout'],
   emscripten_sleep__async: true,
-  emscripten_sleep: function(ms) {
+  emscripten_sleep: (ms) => {
     // emscripten_sleep() does not return a value, but we still need a |return|
     // here for stack switching support (ASYNCIFY=2). In that mode this function
     // returns a Promise instead of nothing, and that Promise is what tells the
@@ -491,7 +491,7 @@ mergeInto(LibraryManager.library, {
 
   emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
   emscripten_wget_data__async: true,
-  emscripten_wget_data: function(url, pbuffer, pnum, perror) {
+  emscripten_wget_data: (url, pbuffer, pnum, perror) => {
     return Asyncify.handleSleep((wakeUp) => {
       asyncLoad(UTF8ToString(url), (byteArray) => {
         // can only allocate the buffer after the wakeUp, not during an asyncing
@@ -510,7 +510,7 @@ mergeInto(LibraryManager.library, {
 
   emscripten_scan_registers__deps: ['$safeSetTimeout'],
   emscripten_scan_registers__async: true,
-  emscripten_scan_registers: function(func) {
+  emscripten_scan_registers: (func) => {
     return Asyncify.handleSleep((wakeUp) => {
       // We must first unwind, so things are spilled to the stack. Then while
       // we are pausing we do the actual scan. After that we can resume. Note
@@ -526,7 +526,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_lazy_load_code__async: true,
-  emscripten_lazy_load_code: function() {
+  emscripten_lazy_load_code: () => {
     return Asyncify.handleSleep((wakeUp) => {
       // Update the expected wasm binary file to be the lazy one.
       wasmBinaryFile += '.lazy.wasm';
@@ -611,7 +611,7 @@ mergeInto(LibraryManager.library, {
 
   emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
   emscripten_fiber_swap__async: true,
-  emscripten_fiber_swap: function(oldFiber, newFiber) {
+  emscripten_fiber_swap: (oldFiber, newFiber) => {
     if (ABORT) return;
 #if ASYNCIFY_DEBUG
     dbg('ASYNCIFY/FIBER: swap', oldFiber, '->', newFiber, 'state:', Asyncify.state);
@@ -645,16 +645,16 @@ mergeInto(LibraryManager.library, {
     }
   },
 #else // ASYNCIFY
-  emscripten_sleep: function() {
+  emscripten_sleep: () => {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
   },
-  emscripten_wget: function(url, file) {
+  emscripten_wget: (url, file) => {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget';
   },
-  emscripten_wget_data: function(url, pbuffer, pnum, perror) {
+  emscripten_wget_data: (url, pbuffer, pnum, perror) => {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget_data';
   },
-  emscripten_scan_registers: function(func) {
+  emscripten_scan_registers: (func) => {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers';
   },
   emscripten_fiber_swap: function(oldFiber, newFiber) {

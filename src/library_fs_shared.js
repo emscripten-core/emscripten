@@ -12,14 +12,14 @@ mergeInto(LibraryManager.library, {
   // it was handled.
   $FS_handledByPreloadPlugin__internal: true,
   $FS_handledByPreloadPlugin__deps: ['$preloadPlugins'],
-  $FS_handledByPreloadPlugin: function(byteArray, fullname, finish, onerror) {
+  $FS_handledByPreloadPlugin: (byteArray, fullname, finish, onerror) => {
 #if LibraryManager.has('library_browser.js')
     // Ensure plugins are ready.
     if (typeof Browser != 'undefined') Browser.init();
 #endif
 
     var handled = false;
-    preloadPlugins.forEach(function(plugin) {
+    preloadPlugins.forEach((plugin) => {
       if (handled) return;
       if (plugin['canHandle'](fullname)) {
         plugin['handle'](byteArray, fullname, finish, onerror);
@@ -49,7 +49,7 @@ mergeInto(LibraryManager.library, {
     '$FS_handledByPreloadPlugin',
 #endif
   ],
-  $FS_createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
+  $FS_createPreloadedFile: (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
     // TODO we should allow people to just pass in a complete filename instead
     // of parent and name being that we just join them anyways
     var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
@@ -81,7 +81,7 @@ mergeInto(LibraryManager.library, {
     }
   },
   // convert the 'r', 'r+', etc. to it's corresponding set of O_* flags
-  $FS_modeStringToFlags: function(str) {
+  $FS_modeStringToFlags: (str) => {
     var flagModes = {
       'r': {{{ cDefs.O_RDONLY }}},
       'r+': {{{ cDefs.O_RDWR }}},
@@ -96,7 +96,7 @@ mergeInto(LibraryManager.library, {
     }
     return flags;
   },
-  $FS_getMode: function(canRead, canWrite) {
+  $FS_getMode: (canRead, canWrite) => {
     var mode = 0;
     if (canRead) mode |= {{{ cDefs.S_IRUGO }}} | {{{ cDefs.S_IXUGO }}};
     if (canWrite) mode |= {{{ cDefs.S_IWUGO }}};

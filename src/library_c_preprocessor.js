@@ -1,7 +1,7 @@
 mergeInto(LibraryManager.library, {
   // Removes all C++ '//' and '/* */' comments from the given source string.
   // N.b. will also eat comments inside strings.
-  $remove_cpp_comments_in_shaders: function(code) {
+  $remove_cpp_comments_in_shaders: (code) => {
     var i = 0, out = '', ch, next, len = code.length;
     for(; i < len; ++i) {
       ch = code[i];
@@ -23,7 +23,7 @@ mergeInto(LibraryManager.library, {
 
   // Finds the index of closing parens from the opening parens at arr[i].
   // Used polymorphically for strings ("foo") and token arrays (['(', 'foo', ')']) as input.
-  $find_closing_parens_index: function(arr, i, opening='(', closing=')') {
+  $find_closing_parens_index: (arr, i, opening='(', closing=')') => {
     for(var nesting = 0; i < arr.length; ++i) {
       if (arr[i] == opening) ++nesting;
       if (arr[i] == closing && --nesting == 0) {

@@ -153,10 +153,6 @@ static void _do_call(void* arg) {
       q->returnValue.i =
         _emscripten_set_offscreencanvas_size(q->args[0].cp, q->args[1].i, q->args[2].i);
       break;
-    case EM_PROXIED_JS_FUNCTION:
-      q->returnValue.d =
-        _emscripten_receive_on_main_thread_js((intptr_t)q->functionPtr, q->callingThread, q->args[0].i, &q->args[1].d);
-      break;
     case EM_FUNC_SIG_V:
       ((em_func_v)q->functionPtr)();
       break;
@@ -411,44 +407,6 @@ int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void* fun
   va_end(args);
   sync_run_in_main_thread(&q);
   return q.returnValue.i;
-}
-
-double _emscripten_run_on_main_thread_js(int index, int num_args, int64_t* buffer, int sync) {
-  em_queued_call q;
-  em_queued_call *c;
-  if (sync) {
-    q.operationDone = 0;
-    q.satelliteData = 0;
-    c = &q;
-  } else {
-    c = em_queued_call_malloc();
-  }
-  c->calleeDelete = !sync;
-  c->functionEnum = EM_PROXIED_JS_FUNCTION;
-  // Index not needed to ever be more than 32-bit.
-  c->functionPtr = (void*)(intptr_t)index;
-  c->callingThread = pthread_self();
-  assert(num_args+1 <= EM_QUEUED_JS_CALL_MAX_ARGS);
-  // The types are only known at runtime in these calls, so we store values that
-  // must be able to contain any valid JS value, including a 64-bit BigInt if
-  // BigInt support is enabled. We store to an i64, which can contain both a
-  // BigInt and a JS Number which is a 64-bit double.
-  c->args[0].i = num_args;
-  for (int i = 0; i < num_args; i++) {
-    c->args[i+1].i64 = buffer[i];
-  }
-
-  if (sync) {
-    sync_run_in_main_thread(&q);
-    // TODO: support BigInt return values somehow.
-    return q.returnValue.d;
-  } else {
-    // 'async' runs are fire and forget, where the caller detaches itself from the call object after
-    // returning here, and it is the callee's responsibility to free up the memory after the call
-    // has been performed.
-    emscripten_async_run_in_main_thread(c);
-    return 0;
-  }
 }
 
 void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void* func_ptr, ...) {
