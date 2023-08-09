@@ -1596,7 +1596,7 @@ int main(int argc, char **argv) {
                   // https://github.com/emscripten-core/emscripten/issues/17115
                   incrementExceptionRefcount(p);
 #endif
-                  console.log(getExceptionMessage(p).toString());
+                  out(getExceptionMessage(p).toString());
                   decrementExceptionRefcount(p);
               }
             }
@@ -2690,6 +2690,14 @@ The current type of b is: 9
   def test_atexit_threads(self):
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_atexit_threads.cpp')
+
+  @node_pthreads
+  def test_pthread_cancel(self):
+    self.do_run_in_out_file_test('pthread/test_pthread_cancel.cpp')
+
+  @node_pthreads
+  def test_pthread_cancel_async(self):
+    self.do_run_in_out_file_test('pthread/test_pthread_cancel_async.c')
 
   @no_asan('test relies on null pointer reads')
   def test_pthread_specific(self):
@@ -7662,7 +7670,7 @@ void* operator new(size_t size) {
       #include <stdio.h>
 
       EM_JS(void, calltest, (), {
-        console.log("dotest returned: " + Module.dotest());
+        out("dotest returned: " + Module.dotest());
       });
 
       int main(int argc, char** argv){
@@ -7694,7 +7702,7 @@ void* operator new(size_t size) {
       #include <stdio.h>
 
       EM_JS(void, calltest, (), {
-        console.log("dotest returned: " + Module.dotest());
+        out("dotest returned: " + Module.dotest());
       });
 
       int main(int argc, char** argv){
@@ -8254,9 +8262,9 @@ Module.onRuntimeInitialized = () => {
   runtimeKeepalivePush();
   ccall('stringf', 'string', ['string'], ['first\n'], { async: true })
     .then(function(val) {
-      console.log(val);
+      out(val);
       ccall('floatf', 'number', null, null, { async: true }).then(function(arg) {
-        console.log(arg);
+        out(arg);
         runtimeKeepalivePop();
         maybeExit();
       });
@@ -8609,9 +8617,9 @@ Module.onRuntimeInitialized = () => {
         out(typeof FS.filesystems['IDBFS']);
         out(typeof FS.filesystems['NODEFS']);
         // Globals
-        console.log(typeof MEMFS);
-        console.log(typeof IDBFS);
-        console.log(typeof NODEFS);
+        out(typeof MEMFS);
+        out(typeof IDBFS);
+        out(typeof NODEFS);
       };
     ''')
     self.emcc_args += ['--pre-js', 'pre.js']
@@ -8627,14 +8635,14 @@ Module.onRuntimeInitialized = () => {
         out(typeof FS.filesystems['IDBFS']);
         out(typeof FS.filesystems['NODEFS']);
         // Globals
-        console.log(typeof MEMFS);
-        console.log(IDBFS);
-        console.log(NODEFS);
+        out(typeof MEMFS);
+        out(IDBFS);
+        out(NODEFS);
         FS.mkdir('/working1');
         try {
           FS.mount(IDBFS, {}, '/working1');
         } catch (e) {
-          console.log('|' + e + '|');
+          out('|' + e + '|');
         }
       };
     ''')
@@ -9489,14 +9497,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
       'result is 42')
 
   # Tests the emscripten_get_exported_function() API.
-  def test_emscripten_get_exported_function(self):
+  def test_get_exported_function(self):
     self.set_setting('ALLOW_TABLE_GROWTH')
     self.emcc_args += ['-lexports.js']
     self.do_core_test('test_get_exported_function.cpp')
 
   # Tests the emscripten_get_exported_function() API.
   @no_asan('TODO: ASan support in minimal runtime')
-  def test_minimal_runtime_emscripten_get_exported_function(self):
+  def test_minimal_runtime_get_exported_function(self):
     self.set_setting('ALLOW_TABLE_GROWTH')
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
@@ -9781,9 +9789,7 @@ wasm64_v8 = make_run('wasm64_v8', emcc_args=['-Wno-experimental', '--profiling-f
 # Run the wasm64 tests with all memory offsets > 4gb.  Be careful running this test
 # suite with any kind of parallelism.
 wasm64_4gb = make_run('wasm64_4gb', emcc_args=['-Wno-experimental', '--profiling-funcs'],
-                      settings={'MEMORY64': 1, 'INITIAL_MEMORY': '4200mb',
-                                'MAXIMUM_MEMORY': '4200mb', # TODO(sbc): should not be needed
-                                'GLOBAL_BASE': '4gb'},
+                      settings={'MEMORY64': 1, 'INITIAL_MEMORY': '4200mb', 'GLOBAL_BASE': '4gb'},
                       require_wasm64=True)
 # MEMORY64=2, or "lowered"
 wasm64l = make_run('wasm64l', emcc_args=['-O1', '-Wno-experimental', '--profiling-funcs'],

@@ -10,14 +10,14 @@ mergeInto(LibraryManager.library, {
   // in C++, together with the js_impl calls defined right after it.
   $wasmFS$backends: {},
 
-  _wasmfs_jsimpl_alloc_file: function(backend, file) {
+  _wasmfs_jsimpl_alloc_file: (backend, file) => {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
     return wasmFS$backends[backend].allocFile(file);
   },
 
-  _wasmfs_jsimpl_free_file: function(backend, file) {
+  _wasmfs_jsimpl_free_file: (backend, file) => {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
@@ -25,7 +25,7 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_jsimpl_write__i53abi: true,
-  _wasmfs_jsimpl_write: function(backend, file, buffer, length, offset) {
+  _wasmfs_jsimpl_write: (backend, file, buffer, length, offset) => {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
@@ -33,14 +33,14 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_jsimpl_read__i53abi: true,
-  _wasmfs_jsimpl_read: function(backend, file, buffer, length, offset) {
+  _wasmfs_jsimpl_read: (backend, file, buffer, length, offset) => {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
     return wasmFS$backends[backend].read(file, buffer, length, offset);
   },
 
-  _wasmfs_jsimpl_get_size: function(backend, file) {
+  _wasmfs_jsimpl_get_size: (backend, file) => {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif

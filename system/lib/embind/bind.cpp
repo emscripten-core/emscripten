@@ -119,7 +119,8 @@ EMSCRIPTEN_BINDINGS(builtin) {
 
   _embind_register_void(TypeID<void>::get(), "void");
 
-  _embind_register_bool(TypeID<bool>::get(), "bool", sizeof(bool), true, false);
+  _embind_register_bool(TypeID<bool>::get(), "bool", true, false);
+  static_assert(sizeof(bool) == 1);
 
   register_integer<char>("char");
   register_integer<signed char>("signed char");

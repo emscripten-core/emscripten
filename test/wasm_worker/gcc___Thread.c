@@ -8,7 +8,7 @@ __thread int tls = 1;
 void main_thread_func()
 {
   assert(!emscripten_current_thread_is_wasm_worker());
-  EM_ASM(console.log($0), tls);
+  EM_ASM(out($0), tls);
 #ifdef REPORT_RESULT
   REPORT_RESULT(tls);
 #endif
@@ -28,7 +28,7 @@ char stack[1024];
 
 int main()
 {
-  EM_ASM(console.log($0), tls);
+  EM_ASM(out($0), tls);
   assert(!emscripten_current_thread_is_wasm_worker());
   tls = 42;
   emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));

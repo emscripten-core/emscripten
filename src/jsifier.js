@@ -11,9 +11,11 @@
 
 global.addedLibraryItems = {};
 
-// Some JS-implemented library functions are proxied to be called on the main browser thread, if the Emscripten runtime is executing in a Web Worker.
-// Each such proxied function is identified via an ordinal number (this is not the same namespace as function pointers in general).
-global.proxiedFunctionTable = ['null'/* Reserve index 0 for an undefined function*/];
+// Some JS-implemented library functions are proxied to be called on the main
+// browser thread, if the Emscripten runtime is executing in a Web Worker.
+// Each such proxied function is identified via an ordinal number (this is not
+// the same namespace as function pointers in general).
+global.proxiedFunctionTable = [];
 
 // Mangles the given C/JS side function name to assembly level function name (adds an underscore)
 function mangleCSymbolName(f) {
@@ -233,12 +235,17 @@ function(${args}) {
         }
         const sync = proxyingMode === 'sync';
         if (PTHREADS) {
-          snippet = modifyJSFunction(snippet, (args, body) => `
+          snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
+            if (oneliner) {
+              body = `return ${body}`;
+            }
+            return `
 function(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
   return proxyToMainThread(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
 ${body}
-}\n`);
+}\n`
+          });
         } else if (WASM_WORKERS && ASSERTIONS) {
           // In ASSERTIONS builds add runtime checks that proxied functions are not attempted to be called in Wasm Workers
           // (since there is no automatic proxying architecture available)
@@ -391,11 +398,12 @@ function(${args}) {
         }
         if (!RELOCATABLE) {
           // emit a stub that will fail at runtime
-          LibraryManager.library[symbol] = new Function(`err('missing function: ${symbol}'); abort(-1);`);
+          LibraryManager.library[symbol] = new Function(`abort('missing function: ${symbol}');`);
           // We have already warned/errored about this function, so for the purposes of Closure use, mute all type checks
           // regarding this function, marking ot a variadic function that can take in anything and return anything.
           // (not useful to warn/error multiple times)
           LibraryManager.library[symbol + '__docs'] = '/** @type {function(...*):?} */';
+          isStub = true;
         } else {
           // Create a stub for this symbol which can later be replaced by the
           // dynamic linker.  If this stub is called before the symbol is
@@ -600,8 +608,15 @@ function(${args}) {
     }
 
     if (PTHREADS) {
-      print('\n // proxiedFunctionTable specifies the list of functions that can be called either synchronously or asynchronously from other threads in postMessage()d or internally queued events. This way a pthread in a Worker can synchronously access e.g. the DOM on the main thread.');
-      print('\nvar proxiedFunctionTable = [' + proxiedFunctionTable.join() + '];\n');
+      print(`
+// proxiedFunctionTable specifies the list of functions that can be called
+// either synchronously or asynchronously from other threads in postMessage()d
+// or internally queued events. This way a pthread in a Worker can synchronously
+// access e.g. the DOM on the main thread.
+var proxiedFunctionTable = [
+  ${proxiedFunctionTable.join(',\n  ')}
+];
+`);
     }
 
     if (abortExecution) {

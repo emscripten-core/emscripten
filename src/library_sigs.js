@@ -289,7 +289,7 @@ sigs = {
   _embind_finalize_value_array__sig: 'vp',
   _embind_finalize_value_object__sig: 'vp',
   _embind_register_bigint__sig: 'vpppjj',
-  _embind_register_bool__sig: 'vpppii',
+  _embind_register_bool__sig: 'vppii',
   _embind_register_class__sig: 'vppppppppppppp',
   _embind_register_class_class_function__sig: 'vppippppi',
   _embind_register_class_class_property__sig: 'vpppppppp',
