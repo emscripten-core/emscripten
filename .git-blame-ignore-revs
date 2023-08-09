@@ -10,3 +10,6 @@
 
 # [embind docs] Reformat and cleanup whitespace.
 9b1a5910c4f31cff4949541a42ac956ba45e4701
+
+# [NFC] WasmFS: Run clang-format (#19995)
+2384d4e16f5309a642481387edb3774913fab382
