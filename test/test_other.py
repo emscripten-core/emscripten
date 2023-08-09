@@ -2569,28 +2569,9 @@ int f() {
           if debug is None:
             self.assertFalse(os.path.exists(self.canonical_temp_dir))
           elif debug == '1':
-            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-3-original.js'))
+            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-4-original.js'))
           elif debug == '2':
-            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-3-original.js'))
-
-  def test_debuginfo(self):
-    for args, expect_debug in [
-        (['-O0'], False),
-        (['-O0', '-g'], True),
-        (['-O0', '-gsource-map'], True),
-        (['-O1'], False),
-        (['-O1', '-g'], True),
-        (['-O2'], False),
-        (['-O2', '-g'], True),
-      ]:
-      print(args, expect_debug)
-      err = self.run_process([EMCC, '-v', test_file('hello_world.c')] + args, stdout=PIPE, stderr=PIPE).stderr
-      lines = err.splitlines()
-      finalize = [l for l in lines if 'wasm-emscripten-finalize' in l][0]
-      if expect_debug:
-        self.assertIn(' -g ', finalize)
-      else:
-        self.assertNotIn(' -g ', finalize)
+            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-4-original.js'))
 
   def test_debuginfo_line_tables_only(self):
     def test(do_compile):
@@ -2664,13 +2645,13 @@ int f() {
     self.assertIn('sources', data)
     self.assertIn('mappings', data)
 
-  def verify_name_sec_existence(self, wasm_file, expect_names):
+  def verify_custom_sec_existence(self, wasm_file, section_name, expect_existence):
     with webassembly.Module(wasm_file) as module:
-      section = module.get_custom_section("name")
-      if expect_names:
-        self.assertIsNotNone(section, "Name section unexpectedly missing")
+      section = module.get_custom_section(section_name)
+      if expect_existence:
+        self.assertIsNotNone(section, f'section {section_name} unexpectedly missing')
       else:
-        self.assertIsNone(section, "Name section unexpectedly found")
+        self.assertIsNone(section, f'section {section_name} unexpectedly found')
 
   def test_dwarf(self):
     def compile_with_dwarf(args, output):
@@ -2691,35 +2672,50 @@ int f() {
       ([], False, False, False),
       (['-g0'], False, False, False),
       (['-g1'], False, False, False),
+      (['-g1', '-O2'], False, False, False),
+      (['-O2'], False, False, False),
+      (['--minify=0'], False, False, False),
       # last numeric g flag "wins", so g0 overrides -g
       (['-g', '-g0'], False, False, False),
       (['-g2'], False, False, True),
       (['-gline-tables-only'], True, False, True),
       (['--profiling'], False, False, True),
       (['--profiling-funcs'], False, False, True),
+      (['-O2', '--profiling-funcs'], False, False, True),
       (['-g'], True, False, True),
       (['-g3'], True, False, True),
-      (['-O2', '-g'], True, False, True),
+      (['-O1', '-g'], True, False, True),
+      (['-O3', '-g'], True, False, True),
       (['-gsplit-dwarf'], True, False, True),
+      # TODO: It seems odd that -gsource-map leaves behind a name section. Should it?
       (['-gsource-map'], False, True, True),
-      (['-g0', '-gsource-map'], False, True, True),
+      (['-g1', '-Oz', '-gsource-map'], False, True, True),
       # -g0 does not override -gsource-map but does remove name section. TODO: should it?
       (['-gsource-map', '-g0'], False, True, False),
+      # --emit-symbol-map should not affect the results
+      (['--emit-symbol-map', '-gsource-map'], False, True, True),
+      (['--emit-symbol-map'], False, False, False),
+      (['--emit-symbol-map', '-Oz'], False, False, False),
+      (['-sASYNCIFY=1', '-g0'], False, False, False),
+      (['-sASYNCIFY=1', '-gsource-map'], False, True, True),
       (['-g', '-gsource-map'], True, True, True),
+      (['-g2', '-gsource-map'], False, True, True),
       # (['-gsplit-dwarf', '-gsource-map'], True, True, True), TODO this currently fails!
+      (['-gsource-map', '-sWASM_BIGINT', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False, True, True),
     ]:
       print(flags, expect_dwarf, expect_sourcemap, expect_names)
       self.emcc(test_file(source_file), flags, js_file)
-
+      self.assertExists(js_file)
       assertion = self.assertIn if expect_dwarf else self.assertNotIn
       self.verify_dwarf(wasm_file, assertion)
 
+      self.verify_custom_sec_existence(wasm_file, 'sourceMappingURL', expect_sourcemap)
       if expect_sourcemap:
         self.verify_source_map_exists(map_file)
       else:
-        self.assertFalse(os.path.isfile(map_file), "Sourcemap unexpectedly exists")
+        self.assertFalse(os.path.isfile(map_file), 'Sourcemap unexpectedly exists')
 
-      self.verify_name_sec_existence(wasm_file, expect_names)
+      self.verify_custom_sec_existence(wasm_file, 'name', expect_names)
 
       self.clear()
 
@@ -4551,8 +4547,14 @@ EM_ASM({ _middle() });
     # any difference in how the optimizer operates
     self.run_process([EMCC, test_file('hello_world.c'), '-Oz', '-o', 'test1.js'] + args)
     self.run_process([EMCC, test_file('hello_world.c'), '-Oz', '-o', 'test2.js', '--emit-symbol-map'] + args)
+
     self.assertEqual(os.path.getsize('test1.js'), os.path.getsize('test2.js'))
-    self.assertEqual(os.path.getsize('test1.wasm'), os.path.getsize('test2.wasm'))
+
+    def get_code_section_size(filename):
+      with webassembly.Module(filename) as module:
+        return module.get_section(webassembly.SecType.CODE).size
+
+    self.assertEqual(get_code_section_size('test1.wasm'), get_code_section_size('test2.wasm'))
 
   def test_bitcode_linking(self):
     # emcc used to be able to link bitcode together, but these days partial linking
@@ -9459,13 +9461,12 @@ int main() {
   })
   def test_wasm_producers_section(self, args):
     self.run_process([EMCC, test_file('hello_world.c')] + args)
-    data = read_binary('a.out.wasm')
     # if there is no producers section expected by default, verify that, and
     # see that the flag works to add it.
-    self.assertNotIn('clang', str(data))
+    self.verify_custom_sec_existence('a.out.wasm', 'producers', False)
     size = os.path.getsize('a.out.wasm')
     self.run_process([EMCC, test_file('hello_world.c'), '-sEMIT_PRODUCERS_SECTION'] + args)
-    self.assertIn(b'clang', read_binary('a.out.wasm'))
+    self.verify_custom_sec_existence('a.out.wasm', 'producers', True)
     size_with_section = os.path.getsize('a.out.wasm')
     self.assertLess(size, size_with_section)
 

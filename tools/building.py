@@ -921,6 +921,7 @@ def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, sym
 
 
 def strip(infile, outfile, debug=False, sections=None):
+  """Strip DWARF and/or other specified sections from a wasm file"""
   cmd = [LLVM_OBJCOPY, infile, outfile]
   if debug:
     cmd += ['--remove-section=.debug*']
@@ -1218,7 +1219,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=None, debug=False, std
       # in are not enough to see what went wrong)
       if settings.LEGALIZE_JS_FFI:
         extra += '\nnote: to disable int64 legalization (which requires changes after link) use -sWASM_BIGINT'
-      if settings.OPT_LEVEL > 0:
+      if settings.OPT_LEVEL > 1:
         extra += '\nnote: -O2+ optimizations always require changes, build with -O0 or -O1 instead'
       exit_with_error(f'changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK: {cmd}{extra}')
   if debug:
@@ -1241,18 +1242,6 @@ def run_binaryen_command(tool, infile, outfile=None, args=None, debug=False, std
 
 
 def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
-  if outfile and not settings.GENERATE_DWARF:
-    # remove any dwarf debug info sections if dwarf is not requested.
-    # note that we add this pass first, so that it doesn't interfere with
-    # the final set of passes (which may generate stack IR, and nothing
-    # should be run after that)
-    # TODO: if lld can strip dwarf then we don't need this. atm though it can
-    #       only strip all debug info or none, which includes the name section
-    #       which we may need
-    # TODO: once fastcomp is gone, either remove source maps entirely, or
-    #       support them by emitting a source map at the end from the dwarf,
-    #       and use llvm-objcopy to remove that final dwarf
-    args.insert(0, '--strip-dwarf')
   return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 
