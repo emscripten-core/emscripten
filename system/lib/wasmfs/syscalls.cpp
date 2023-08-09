@@ -22,11 +22,11 @@
 #include <sys/stat.h>
 #include <sys/statfs.h>
 #include <syscall_arch.h>
+#include <time.h>
 #include <unistd.h>
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
-#include <time.h>
 
 #include "backend.h"
 #include "file.h"
@@ -475,7 +475,8 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
           //      report a generic error.
           return -EIO;
         }
-        [[maybe_unused]] bool mounted = lockedParent.mountChild(std::string(childName), created);
+        [[maybe_unused]] bool mounted =
+          lockedParent.mountChild(std::string(childName), created);
         assert(mounted);
       }
       // TODO: Check that the insert actually succeeds.
@@ -861,8 +862,8 @@ int __syscall_rmdir(intptr_t path) {
   return __syscall_unlinkat(AT_FDCWD, path, AT_REMOVEDIR);
 }
 
-// wasmfs_unmount is similar to __syscall_unlinkat, but assumes AT_REMOVEDIR is true
-// and will only unlink mountpoints (Empty and nonempty).
+// wasmfs_unmount is similar to __syscall_unlinkat, but assumes AT_REMOVEDIR is
+// true and will only unlink mountpoints (Empty and nonempty).
 int wasmfs_unmount(intptr_t path) {
   auto parsed = path::parseParent((char*)path, AT_FDCWD);
   if (auto err = parsed.getError()) {
@@ -1092,7 +1093,10 @@ int __syscall_symlink(intptr_t target, intptr_t linkpath) {
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_readlinkat(int dirfd, intptr_t path, intptr_t buf, size_t bufsize) {
+int __syscall_readlinkat(int dirfd,
+                         intptr_t path,
+                         intptr_t buf,
+                         size_t bufsize) {
   // TODO: Handle empty paths.
   auto parsed = path::parseFile((char*)path, dirfd, path::NoFollowLinks);
   if (auto err = parsed.getError()) {
@@ -1132,7 +1136,7 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
   // TODO: Handle tv_nsec being UTIME_NOW or UTIME_OMIT.
   // TODO: Check for write access to the file (see man page for specifics).
   struct timespec aTime, mTime;
-  
+
   if (times == NULL) {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
@@ -1530,7 +1534,8 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
   }
 }
 
-static int doStatFS(std::shared_ptr<File>& file, size_t size, struct statfs* buf) {
+static int
+doStatFS(std::shared_ptr<File>& file, size_t size, struct statfs* buf) {
   if (size != sizeof(struct statfs)) {
     // We only know how to write to a standard statfs, not even a truncated one.
     return -EINVAL;
@@ -1762,7 +1767,11 @@ int __syscall_fadvise64(int fd, off_t offset, off_t length, int advice) {
   return 0;
 }
 
-int __syscall__newselect(int nfds, intptr_t readfds_, intptr_t writefds_, intptr_t exceptfds_, intptr_t timeout_) {
+int __syscall__newselect(int nfds,
+                         intptr_t readfds_,
+                         intptr_t writefds_,
+                         intptr_t exceptfds_,
+                         intptr_t timeout_) {
   // TODO: Implement this syscall. For now, we return an error code,
   //       specifically ENOMEM which is valid per the docs:
   //          ENOMEM Unable to allocate memory for internal tables

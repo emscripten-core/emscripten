@@ -7,8 +7,8 @@
 // Current Status: Work in Progress.
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
-#include "backend.h"
 #include "memory_backend.h"
+#include "backend.h"
 #include "wasmfs.h"
 
 namespace wasmfs {
