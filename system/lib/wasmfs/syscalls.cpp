@@ -22,7 +22,6 @@
 #include <sys/stat.h>
 #include <sys/statfs.h>
 #include <syscall_arch.h>
-#include <time.h>
 #include <unistd.h>
 #include <utility>
 #include <vector>
@@ -346,6 +345,18 @@ backend_t wasmfs_get_backend_by_path(const char* path) {
   return parsed.getFile()->getBackend();
 }
 
+static timespec ms_to_timespec(double ms) {
+  long long seconds = ms / 1000;
+  timespec ts;
+  ts.tv_sec = seconds; // seconds
+  ts.tv_nsec = (ms - (seconds * 1000)) * 1000 * 1000; // nanoseconds
+  return ts;
+}
+
+static double timespec_to_ms(timespec ts) {
+  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec) / (1000 * 1000);
+}
+
 int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
   // Only accept valid flags.
   if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
@@ -386,9 +397,9 @@ int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
   buffer->st_blocks = (buffer->st_size + 511) / 512;
   // Specifies the preferred blocksize for efficient disk I/O.
   buffer->st_blksize = 4096;
-  buffer->st_atim = lockedFile.getATime();
-  buffer->st_mtim = lockedFile.getMTime();
-  buffer->st_ctim = lockedFile.getCTime();
+  buffer->st_atim = ms_to_timespec(lockedFile.getATime());
+  buffer->st_mtim = ms_to_timespec(lockedFile.getMTime());
+  buffer->st_ctim = ms_to_timespec(lockedFile.getCTime());
   return __WASI_ERRNO_SUCCESS;
 }
 
@@ -1135,16 +1146,13 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
 
   // TODO: Handle tv_nsec being UTIME_NOW or UTIME_OMIT.
   // TODO: Check for write access to the file (see man page for specifics).
-  struct timespec aTime, mTime;
+  double aTime, mTime;
 
   if (times == NULL) {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    aTime = ts;
-    mTime = ts;
+    aTime = mTime = emscripten_get_now();
   } else {
-    aTime = times[0];
-    mTime = times[1];
+    aTime = timespec_to_ms(times[0]);
+    mTime = timespec_to_ms(times[1]);
   }
 
   auto locked = parsed.getFile()->locked();
