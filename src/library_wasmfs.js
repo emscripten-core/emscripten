@@ -18,6 +18,7 @@ mergeInto(LibraryManager.library, {
   // data needs to be preloaded (and it would be invalid to do so, as any
   // further additions to wasmFSPreloadedFiles|Dirs would be ignored).
   $wasmFSPreloadingFlushed: false,
+  $wasmFSDevices: {},
 
   $FS__postset: `
 FS.init();
@@ -60,11 +61,11 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     'malloc',
     'free',
     'wasmfs_create_jsimpl_backend',
-    '$wasmFS$backends'
+    '$wasmFS$backends',
+    '$wasmFSDevices'
 #endif
   ],
   $FS : {
-    devices: {},
     init() {
       FS.ensureErrnoError();
     },
@@ -395,13 +396,11 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         return __wasmfs_mknod(pathBuffer, mode, dev);
       }));
     },
-    major: (dev) => ((dev) >> 8),
-    minor: (dev) => ((dev) & 0xff),
     makedev: (ma, mi) => ((ma) << 8 | (mi)),
     registerDevice(dev, ops) {
       var backendPointer = _wasmfs_create_jsimpl_backend();
       wasmFS$backends[backendPointer] = ops;
-      FS.devices[dev] = backendPointer;
+      wasmFSDevices[dev] = backendPointer;
     },
     // mode is an optional argument, which will be set to 0666 if not passed in.
     mkdev(path, mode, dev) {
@@ -410,7 +409,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         mode = 438 /* 0666 */;
       }
 
-      var deviceBackend = FS.devices[dev];
+      var deviceBackend = wasmFSDevices[dev];
       if (!deviceBackend) {
         throw new Error("Invalid device ID.");
       }

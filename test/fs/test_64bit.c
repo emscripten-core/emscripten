@@ -16,8 +16,6 @@ int main(int argc, char *argv[])
     var counter = FS.makedev(64, 0);
 
     FS.registerDevice(counter, {
-      open: function(stream) {},
-      close: function(stream) {},
 #if WASMFS
       // WasmFS has different requirements for a device's functions compared
       // to the legacy API.
@@ -34,6 +32,8 @@ int main(int argc, char *argv[])
       write: function(file, buffer, length, offset) {},
       getSize: function(file) {}
 #else
+      open: function(stream) {},
+      close: function(stream) {},
       read: function(stream, buffer, offset, length, position) {
         for (var i = 0; i < length; ++i) {
           buffer[offset + i] = position + i;
