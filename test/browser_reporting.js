@@ -70,7 +70,9 @@ if (typeof window === 'object' && window) {
 if (hasModule) {
   if (!Module['onExit']) {
     Module['onExit'] = function(status) {
-      maybeReportResultToServer('exit:' + status);
+      if (Module['REPORT_EXIT'] !== false) {
+        maybeReportResultToServer('exit:' + status);
+      }
     }
   }
 
