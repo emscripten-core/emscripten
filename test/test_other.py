@@ -5777,7 +5777,7 @@ This locale is not the C locale.
         # pad the name to a common length so that doesn't effect the size of the
         # output
         padded_name = name + '_' * (20 - len(name))
-        self.run_process([EMCC, test_file(source), '-o', padded_name + '.js'] + opts + moar_opts + self.get_emcc_args())
+        self.run_process([EMCC, test_file(source), '-o', padded_name + '.js'] + self.get_emcc_args() + opts + moar_opts)
         sizes[name] = os.path.getsize(padded_name + '.js')
         if os.path.exists(padded_name + '.wasm'):
           sizes[name] += os.path.getsize(padded_name + '.wasm')
@@ -5796,6 +5796,11 @@ This locale is not the C locale.
     test(['-O1'], 91000)
     test(['-O2'], 46000)
     test(['-O3', '--closure=1'], 17000)
+    # js too
+    # -Wclosure is needed due to
+    # https://github.com/google/closure-compiler/issues/4108
+    test(['-O3', '--closure=1', '-Wno-closure', '-sWASM=0'], 36000)
+    test(['-O3', '--closure=2', '-Wno-closure', '-sWASM=0'], 33000) # might change now and then
 
   def test_no_browser(self):
     BROWSER_INIT = 'var Browser'
