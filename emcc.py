@@ -2808,7 +2808,6 @@ def phase_linker_setup(options, state, newargs):
   # we need to explictly require those exports.
   if settings.BUILD_AS_WORKER or \
      settings.ASYNCIFY or \
-     settings.WASMFS or \
      settings.FORCE_FILESYSTEM or \
      options.memory_profiler or \
      sanitize:
