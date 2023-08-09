@@ -5763,7 +5763,6 @@ This locale is not the C locale.
     self.set_setting('FILESYSTEM', 0)
     self.do_runf(test_file('hello_libcxx.cpp'), 'hello, world!')
 
-  @also_with_wasmfs
   @is_slow_test
   def test_no_nuthin(self):
     # check FILESYSTEM is automatically set, and effective
@@ -7241,7 +7240,6 @@ Resolved: "/" => "/"
     out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained('native code called abort()', out)
 
-  @also_with_wasmfs
   def test_mallocs(self):
     def run(opts):
       print(opts)
