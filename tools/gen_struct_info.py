@@ -251,6 +251,9 @@ def inspect_headers(headers, cflags):
                                compiler_rt,
                                '-sBOOTSTRAPPING_STRUCT_INFO',
                                '-sSTRICT',
+                               # library_wasmfs.js depends on some cDefs, which
+                               # don't exist during this bootstrapping
+                               '-sWASMFS=0',
                                '-sASSERTIONS=0'] + node_flags
 
   # Default behavior for emcc is to warn for binaryen version check mismatches

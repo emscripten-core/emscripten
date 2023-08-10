@@ -285,6 +285,10 @@ def extract_sigs(symbols, obj_file):
 
 
 def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False):
+  if 'WASMFS' not in extra_settings:
+    # Unless the input says to use or not use WasmFS, default to not using it,
+    # as WasmFS has greater requirements for bootstrapping.
+    extra_settings['WASMFS'] = 0
   print(' .. ' + str(extra_settings) + ' + ' + str(extra_cflags))
   tempfiles = shared.get_temp_files()
   settings = {
