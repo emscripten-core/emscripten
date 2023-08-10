@@ -1149,7 +1149,7 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
   double aTime, mTime;
 
   if (times == NULL) {
-    aTime = mTime = emscripten_get_now();
+    aTime = mTime = emscripten_date_now();
   } else {
     aTime = timespec_to_ms(times[0]);
     mTime = timespec_to_ms(times[1]);

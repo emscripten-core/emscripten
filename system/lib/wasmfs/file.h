@@ -97,7 +97,7 @@ public:
 protected:
   File(FileKind kind, mode_t mode, backend_t backend)
     : kind(kind), mode(mode), backend(backend) {
-    atime = mtime = ctime = emscripten_get_now();
+    atime = mtime = ctime = emscripten_date_now();
   }
 
   // A mutex is needed for multiple accesses to the same file.
@@ -321,7 +321,7 @@ public:
   void setCTime(double time) { file->ctime = time; }
   // updateCTime() updates the ctime to the current time.
   void updateCTime() {
-    file->ctime = emscripten_get_now();
+    file->ctime = emscripten_date_now();
   }
   double getMTime() {
     return file->mtime;
@@ -329,7 +329,7 @@ public:
   void setMTime(double time) { file->mtime = time; }
   // updateMTime() updates the mtime to the current time.
   void updateMTime() {
-    file->mtime = emscripten_get_now();
+    file->mtime = emscripten_date_now();
   }
   double getATime() {
     return file->atime;
@@ -337,7 +337,7 @@ public:
   void setATime(double time) { file->atime = time; }
   // updateATime() updates the atime to the current time.
   void updateATime() {
-    file->atime = emscripten_get_now();
+    file->atime = emscripten_date_now();
   }
 
   // Note: parent.lock() creates a new shared_ptr to the same Directory
