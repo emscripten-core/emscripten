@@ -9,8 +9,8 @@ _wasmfs_get_preloaded_parent_path
 _wasmfs_get_preloaded_path_name
 _wasmfs_stdin_get_char
 abort
+emscripten_date_now
 emscripten_err
-emscripten_get_now
 emscripten_memcpy_big
 emscripten_out
 emscripten_resize_heap

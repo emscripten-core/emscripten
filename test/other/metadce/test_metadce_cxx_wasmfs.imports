@@ -9,8 +9,8 @@ env._wasmfs_get_preloaded_parent_path
 env._wasmfs_get_preloaded_path_name
 env._wasmfs_stdin_get_char
 env.abort
+env.emscripten_date_now
 env.emscripten_err
-env.emscripten_get_now
 env.emscripten_memcpy_big
 env.emscripten_out
 env.emscripten_resize_heap
