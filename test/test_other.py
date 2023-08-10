@@ -5778,7 +5778,7 @@ This locale is not the C locale.
         # pad the name to a common length so that doesn't effect the size of the
         # output
         padded_name = name + '_' * (20 - len(name))
-        self.run_process([EMCC, test_file(source), '-o', padded_name + '.js'] + opts + moar_opts)
+        self.run_process([EMCC, test_file(source), '-o', padded_name + '.js'] + self.get_emcc_args() + opts + moar_opts)
         sizes[name] = os.path.getsize(padded_name + '.js')
         if os.path.exists(padded_name + '.wasm'):
           sizes[name] += os.path.getsize(padded_name + '.wasm')
@@ -5798,8 +5798,10 @@ This locale is not the C locale.
     test(['-O2'], 46000)
     test(['-O3', '--closure=1'], 17000)
     # js too
-    test(['-O3', '--closure=1', '-sWASM=0'], 36000)
-    test(['-O3', '--closure', '2', '-sWASM=0'], 33000) # might change now and then
+    # -Wclosure is needed due to
+    # https://github.com/google/closure-compiler/issues/4108
+    test(['-O3', '--closure=1', '-Wno-closure', '-sWASM=0'], 36000)
+    test(['-O3', '--closure=2', '-Wno-closure', '-sWASM=0'], 33000) # might change now and then
 
   def test_no_browser(self):
     BROWSER_INIT = 'var Browser'
@@ -7250,11 +7252,11 @@ Resolved: "/" => "/"
         ('emmalloc', 'emmalloc')
       ):
         print(malloc, name)
-        cmd = [EMXX, test_file('hello_libcxx.cpp'), '-o', 'a.out.js'] + opts
+        args = opts[:]
         if malloc:
-          cmd += ['-sMALLOC="%s"' % malloc]
-        print(cmd)
-        self.run_process(cmd)
+          args += ['-sMALLOC=%s' % malloc]
+        print(args)
+        self.emcc(test_file('hello_libcxx.cpp'), args=args)
         sizes[name] = os.path.getsize('a.out.wasm')
       print(sizes)
       # dlmalloc is the default
