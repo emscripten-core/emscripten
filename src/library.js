@@ -2368,7 +2368,6 @@ mergeInto(LibraryManager.library, {
     return 1000; // microseconds (1/1000 of a millisecond)
 #endif
   },
-
   // Represents whether emscripten_get_now is guaranteed monotonic; the Date.now
   // implementation is not :(
   $nowIsMonotonic__internal: true,
@@ -2387,6 +2386,25 @@ mergeInto(LibraryManager.library, {
   _emscripten_get_now_is_monotonic__internal: true,
   _emscripten_get_now_is_monotonic__deps: ['$nowIsMonotonic'],
   _emscripten_get_now_is_monotonic: () => nowIsMonotonic,
+
+  __emscripten_atomics_sleep: (ms) => {
+    try {
+      Atomics.wait(waitBuffer, 0, 0, ms);
+      return 1;
+    } catch (_) {
+      return 0;
+    }
+  },
+  __emscripten_atomics_sleep__postset: `
+    var waitBuffer;
+    try {
+      var SharedArrayBuffer = new WebAssembly.Memory({"shared":true,"initial":0,"maximum":0}).buffer.constructor;
+      waitBuffer = new Int32Array(new SharedArrayBuffer(4));
+    } catch (_) { }
+  `,
+  __emscripten_atomics_sleep__sig: 'ii',
+  __emscripten_atomics_sleep__internal: true,
+
 
   $warnOnce: (text) => {
     if (!warnOnce.shown) warnOnce.shown = {};

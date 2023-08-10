@@ -389,13 +389,24 @@ void __acquire_ptc() {}
 
 void __release_ptc() {}
 
-// When pthreads is not enabled, we can't use the Atomics futex api to do
-// proper sleeps, so simulate a busy spin wait loop instead.
-void emscripten_thread_sleep(double msecs) {
+// busy spin wait sleep
+static void busy_sleep(double msecs) {
   double start = emscripten_get_now();
   double now = start;
   do {
     _emscripten_yield(now);
     now = emscripten_get_now();
   } while (now - start < msecs);
+}
+
+int __emscripten_atomics_sleep(int);
+
+void emscripten_thread_sleep(double msecs) {
+  // try atomics sleep
+  int success = __emscripten_atomics_sleep(msecs);
+  if(success) {
+    return;
+  }
+  // fall back to busy spin wait sleep
+  busy_sleep(msecs);
 }
