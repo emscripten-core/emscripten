@@ -84,11 +84,10 @@ extern "C" void wasmfs_flush(void) {
 #endif
       continue;
     }
-    for (auto entry : *entries) {
-      if (entry.kind == File::FileKind::DataFileKind) {
-        if (int err = lockedDir.getChild(entry.name)
-                        ->dynCast<DataFile>()
-                        ->locked()
+    for (auto& entry : *entries) {
+      if (auto child = lockedDir.getChild(entry.name)
+                        ->dynCast<DataFile>()) {
+        if (int err = child->locked()
                         .flush()) {
 #ifndef NDEBUG
           std::string errorMessage = "Non-fatal error code " +
@@ -97,8 +96,8 @@ extern "C" void wasmfs_flush(void) {
           emscripten_console_error(errorMessage.c_str());
 #endif
         }
-      } else if (entry.kind == File::FileKind::DirectoryKind) {
-        toFlush.push_back(lockedDir.getChild(entry.name)->dynCast<Directory>());
+      } else if (auto child = lockedDir.getChild(entry.name)->dynCast<Directory>()) {
+        toFlush.push_back(child);
       }
     }
   }
