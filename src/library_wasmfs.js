@@ -404,8 +404,8 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     llseek(stream, offset, whence) {
       return FS.handleError(__wasmfs_llseek(stream.fd, {{{ splitI64('offset') }}}, whence));
     },
-    ioctl(stream, cmd, args) {
-      return FS.handleError(__wasmfs_ioctl(stream.fd, cmd, args));
+    ioctl(stream, cmd, arg) {
+      return FS.handleError(__wasmfs_ioctl(stream.fd, cmd, arg));
     }
 
 #endif
