@@ -404,7 +404,7 @@ int __emscripten_atomics_sleep(int);
 void emscripten_thread_sleep(double msecs) {
   // try atomics sleep
   int success = __emscripten_atomics_sleep(msecs);
-  if(success) {
+  if (success) {
     return;
   }
   // fall back to busy spin wait sleep
