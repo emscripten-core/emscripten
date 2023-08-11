@@ -60,7 +60,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     'malloc',
     'free',
 #endif
-  ],
+  ].concat(i53ConversionDeps),
   $FS : {
     init() {
       FS.ensureErrnoError();
@@ -254,9 +254,19 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     allocate(stream, offset, length) {
       return FS.handleError(__wasmfs_allocate(stream.fd, {{{ splitI64('offset') }}}, {{{ splitI64('length') }}}));
     },
-    // TODO: mmap
-    // TODO: msync
-    // TODO: munmap
+    mmap: (stream, length, offset, prot, flags) => {
+      var buf = FS.handleError(__wasmfs_mmap(length, prot, flags, stream.fd, {{{ splitI64('offset') }}}));
+      return { ptr: buf, allocated: true };
+    },
+    // offset is passed to msync to maintain backwards compatability with the legacy JS API but is not used by WasmFS.
+    msync: (stream, bufferPtr, offset, length, mmapFlags) => {
+      assert(offset === 0);
+      // TODO: assert that stream has the fd corresponding to the mapped buffer (bufferPtr).
+      return FS.handleError(__wasmfs_msync(bufferPtr, length, mmapFlags));
+    },
+    munmap: (addr, length) => (
+      FS.handleError(__wasmfs_munmap(addr, length))
+    ),
     writeFile: (path, data) => withStackSave(() => {
       var pathBuffer = stringToUTF8OnStack(path);
       if (typeof data == 'string') {

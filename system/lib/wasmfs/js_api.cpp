@@ -253,6 +253,18 @@ int _wasmfs_ftruncate(int fd, off_t length) {
 
 int _wasmfs_close(int fd) { return __wasi_fd_close(fd); }
 
+int _wasmfs_mmap(size_t length, int prot, int flags, int fd, off_t offset) {
+  return __syscall_mmap2(0, length, prot, flags, fd, offset);
+}
+
+int _wasmfs_msync(void* addr, size_t length, int flags) {
+  return __syscall_msync((intptr_t)addr, length, flags);
+}
+
+int _wasmfs_munmap(void* addr, size_t length) {
+  return __syscall_munmap((intptr_t)addr, length);
+}
+
 int _wasmfs_utime(char* path, long atime_ms, long mtime_ms) {
   struct timespec times[2];
   times[0].tv_sec = atime_ms / 1000;
@@ -261,7 +273,7 @@ int _wasmfs_utime(char* path, long atime_ms, long mtime_ms) {
   times[1].tv_nsec = (mtime_ms % 1000) * 1000000;
 
   return __syscall_utimensat(AT_FDCWD, (intptr_t)path, (intptr_t)times, 0);
-};
+}
 
 int _wasmfs_stat(char* path, struct stat* statBuf) {
   return __syscall_stat64((intptr_t)path, (intptr_t)statBuf);
