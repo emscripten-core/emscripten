@@ -81,7 +81,7 @@ var LibraryIDBStore = {
   emscripten_idb_load__async: true,
   emscripten_idb_load__deps: ['malloc'],
   emscripten_idb_load: (db, id, pbuffer, pnum, perror) => {
-    Asyncify.handleSleep(function(wakeUp) {
+    return Asyncify.handleSleep(function(wakeUp) {
       IDBStore.getFile(UTF8ToString(db), UTF8ToString(id), function(error, byteArray) {
         if (error) {
           {{{ makeSetValue('perror', 0, '1', 'i32') }}};
@@ -99,7 +99,7 @@ var LibraryIDBStore = {
   },
   emscripten_idb_store__async: true,
   emscripten_idb_store: (db, id, ptr, num, perror) => {
-    Asyncify.handleSleep(function(wakeUp) {
+    return Asyncify.handleSleep(function(wakeUp) {
       IDBStore.setFile(UTF8ToString(db), UTF8ToString(id), new Uint8Array(HEAPU8.subarray(ptr, ptr+num)), function(error) {
         {{{ makeSetValue('perror', 0, '!!error', 'i32') }}};
         wakeUp();
@@ -108,7 +108,7 @@ var LibraryIDBStore = {
   },
   emscripten_idb_delete__async: true,
   emscripten_idb_delete: (db, id, perror) => {
-    Asyncify.handleSleep(function(wakeUp) {
+    return Asyncify.handleSleep(function(wakeUp) {
       IDBStore.deleteFile(UTF8ToString(db), UTF8ToString(id), function(error) {
         {{{ makeSetValue('perror', 0, '!!error', 'i32') }}};
         wakeUp();
@@ -117,7 +117,7 @@ var LibraryIDBStore = {
   },
   emscripten_idb_exists__async: true,
   emscripten_idb_exists: (db, id, pexists, perror) => {
-    Asyncify.handleSleep(function(wakeUp) {
+    return Asyncify.handleSleep(function(wakeUp) {
       IDBStore.existsFile(UTF8ToString(db), UTF8ToString(id), function(error, exists) {
         {{{ makeSetValue('pexists', 0, '!!exists', 'i32') }}};
         {{{ makeSetValue('perror',  0, '!!error', 'i32') }}};
@@ -128,7 +128,7 @@ var LibraryIDBStore = {
   // extra worker methods - proxied
   emscripten_idb_load_blob__async: true,
   emscripten_idb_load_blob: (db, id, pblob, perror) => {
-    Asyncify.handleSleep(function(wakeUp) {
+    return Asyncify.handleSleep(function(wakeUp) {
       assert(!IDBStore.pending);
       IDBStore.pending = function(msg) {
         IDBStore.pending = null;
@@ -154,7 +154,7 @@ var LibraryIDBStore = {
   },
   emscripten_idb_store_blob__async: true,
   emscripten_idb_store_blob: (db, id, ptr, num, perror) => {
-    Asyncify.handleSleep(function(wakeUp) {
+    return Asyncify.handleSleep(function(wakeUp) {
       assert(!IDBStore.pending);
       IDBStore.pending = function(msg) {
         IDBStore.pending = null;
