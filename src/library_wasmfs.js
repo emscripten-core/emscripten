@@ -399,7 +399,13 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     makedev: (ma, mi) => ((ma) << 8 | (mi)),
     registerDevice(dev, ops) {
       var backendPointer = _wasmfs_create_jsimpl_backend();
-      wasmFS$backends[backendPointer] = ops;
+      var defaultOps = {
+        allocFile: (file) => {},
+        freeFile: (file) => {},
+        getSize: (file) => {}
+      }
+      const definedOps = Object.assign(defaultOps, ops);
+      wasmFS$backends[backendPointer] = definedOps;
       wasmFSDevices[dev] = backendPointer;
     },
     // mode is an optional argument, which will be set to 0666 if not passed in.

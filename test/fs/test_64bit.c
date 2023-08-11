@@ -19,8 +19,6 @@ int main(int argc, char *argv[])
 #if WASMFS
       // WasmFS has different requirements for a device's functions compared
       // to the legacy API.
-      allocFile: function(file) {},
-      freeFile: function(file) {},
       read: function(file, buffer, length, offset) {
         var tempBuffer = [];
         for (var i = 0; i < length; i++) {
@@ -29,17 +27,14 @@ int main(int argc, char *argv[])
         Module.HEAP8.set(tempBuffer, buffer);
         return length;
       },
-      write: function(file, buffer, length, offset) {},
-      getSize: function(file) {}
 #else
-      open: function(stream) {},
-      close: function(stream) {},
       read: function(stream, buffer, offset, length, position) {
         for (var i = 0; i < length; ++i) {
           buffer[offset + i] = position + i;
         }
         return length;
       },
+#endif
       llseek: function(stream, offset, whence) {
         var position = offset;
         if (whence === 1) {
@@ -47,7 +42,6 @@ int main(int argc, char *argv[])
         }
         return position;
       }
-#endif
     });
 
     FS.mkdev('/counter', counter);
