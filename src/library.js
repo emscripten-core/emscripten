@@ -2388,20 +2388,36 @@ mergeInto(LibraryManager.library, {
   _emscripten_get_now_is_monotonic: () => nowIsMonotonic,
 
   __emscripten_atomics_sleep__internal: true,
+  // In a browser without cross origin isolation, SharedArrayBuffer is deleted
+  // from the global scope:
+  // https://html.spec.whatwg.org/multipage/webappapis.html#creating-a-new-javascript-realm
+  // However, it says:
+  //
+  // > Web developers can still get at the constructor through
+  // > `new WebAssembly.Memory({ shared:true, initial:0, maximum:0}).buffer.constructor`.
+  //
+  // That is what we are up to here. Use an IIFE to avoid shadowing
+  // SharedArrayBuffer globally.
   __emscripten_atomics_sleep__postset: `
-    var waitBuffer;
-    try {
-      var SharedArrayBuffer = new WebAssembly.Memory({"shared":true,"initial":0,"maximum":0}).buffer.constructor;
-      waitBuffer = new Int32Array(new SharedArrayBuffer(4));
-    } catch (_) { }
+    var waitBuffer, canBlock;
+    (function() {
+      try {
+        var SharedArrayBuffer = new WebAssembly.Memory({"shared":true,"initial":0,"maximum":0}).buffer.constructor;
+        waitBuffer = new Int32Array(new SharedArrayBuffer(4));
+        Atomics.wait(waitBuffer, 0, 0, 0);
+        canBlock = true;
+      } catch (_) {
+        canBlock = false;
+      }
+    })();
   `,
+
   __emscripten_atomics_sleep: (ms) => {
-    try {
-      Atomics.wait(waitBuffer, 0, 0, ms);
-      return 1;
-    } catch (_) {
+    if (!canBlock) {
       return 0;
     }
+    Atomics.wait(waitBuffer, 0, 0, ms);
+    return 1;
   },
 
 
