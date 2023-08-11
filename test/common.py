@@ -557,6 +557,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def is_wasm(self):
     return self.get_setting('WASM') != 0
 
+  def is_browser_test(self):
+    return False
+
   def check_dylink(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
       self.skipTest('no dynamic linking with memory growth (without wasm)')
@@ -662,6 +665,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.emcc_args += ['-sASYNCIFY=2']
     if not self.is_wasm():
       self.skipTest('JSPI is not currently supported for WASM2JS')
+
+    if self.is_browser_test():
+      return
 
     exp_args = ['--experimental-wasm-stack-switching', '--experimental-wasm-type-reflection']
     if config.NODE_JS and config.NODE_JS in self.js_engines:
@@ -1808,6 +1814,9 @@ class BrowserCore(RunnerCore):
       # On Windows, shutil.rmtree() in tearDown() raises this exception if we do not wait a bit:
       # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.
       time.sleep(0.1)
+
+  def is_browser_test(self):
+    return True
 
   def assert_out_queue_empty(self, who):
     if not self.harness_out_queue.empty():

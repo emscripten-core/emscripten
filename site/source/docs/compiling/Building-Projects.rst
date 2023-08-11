@@ -89,7 +89,7 @@ which files are produced under which conditions:
 
 - ``emcc ... -o output.html`` builds a ``output.html`` file as an output, as well as an accompanying ``output.js`` launcher file, and a ``output.wasm`` WebAssembly file.
 - ``emcc ... -o output.js`` omits generating a HTML launcher file (expecting you to provide it yourself if you plan to run in browser), and produces two files, ``output.js`` and ``output.wasm``. (that can be run in e.g. node.js shell)
-- ``emcc ... -o output.wasm`` omits generating either JavaScript or HTML launcher file, and produces a single Wasm file built in standalone mode as if the ``-sSTANDALONE_WASM`` settting had been used.
+- ``emcc ... -o output.wasm`` omits generating either JavaScript or HTML launcher file, and produces a single Wasm file built in standalone mode as if the ``-sSTANDALONE_WASM`` settting had been used. The resulting file expects to be run with the `WASI ABI <https://github.com/WebAssembly/WASI/blob/4712d490fd7662f689af6faa5d718e042f014931/legacy/application-abi.md>`_ - in particular, as soon as you initialize the module you must manually invoke either the ``_start`` export or (in the case of ``--no-entry``) the ``_initialize`` export before doing anything else with it.
 - ``emcc ... -o output.{html,js} -sWASM=0`` causes the compiler to target JavaScript, and therefore a ``.wasm`` file is not produced.
 - ``emcc ... -o output.{html,js} --emit-symbol-map`` produces a file ``output.{html,js}.symbols`` if WebAssembly is being targeted (``-sWASM=0`` not specified), or if JavaScript is being targeted and ``-Os``, ``-Oz`` or ``-O2`` or higher is specified, but debug level setting is ``-g1`` or lower (i.e. if symbols minification did occur).
 - ``emcc ... -o output.{html,js} -sWASM=0 --memory-init-file 1`` causes the generation of ``output.{html,js}.mem`` memory initializer file. Pasing ``-O2``, ``-Os`` or ``-Oz`` also implies ``--memory-init-file 1``.
@@ -406,3 +406,4 @@ Troubleshooting
   .. note:: You can use ``llvm-nm`` to see which symbols are defined in each object file.
 
   One solution is to use :ref:`dynamic-linking <Dynamic-Linking>`. This ensures that libraries are linked only once, in the final build stage.
+- When generating standalone wasm, make sure to invoke the ``_start`` or (for ``--no-entry``) ``_initialize`` export before attempting to use the module.
