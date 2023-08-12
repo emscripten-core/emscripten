@@ -85,6 +85,20 @@ COMPILE_TIME_SETTINGS = {
     'RUNTIME_LINKED_LIBS',
 }.union(PORTS_SETTINGS)
 
+# Settings for which repeated occurances add to a list rather then replacing
+# the current one.
+APPENDING_SETTINGS = {
+    'EXPORTED_FUNCTIONS',
+    'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE',
+    'EXPORTED_RUNTIME_METHODS',
+    'SIGNATURE_CONVERSIONS',
+    'EXCEPTION_CATCHING_ALLOWED',
+    'ASYNCIFY_IMPORTS',
+    'ASYNCIFY_REMOVE',
+    'ASYNCIFY_ADD',
+    'ASYNCIFY_ONLY',
+    'ASYNCIFY_EXPORTS',
+}
 
 # Settings that don't need to be externalized when serializing to json because they
 # are not used by the JS compiler.
