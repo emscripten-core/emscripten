@@ -60,7 +60,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     'malloc',
     'free',
 #endif
-  ].concat(i53ConversionDeps),
+  ],
   $FS : {
     init() {
       FS.ensureErrnoError();
