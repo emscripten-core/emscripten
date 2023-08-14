@@ -250,6 +250,7 @@ class EmccOptions:
   def __init__(self):
     self.target = ''
     self.output_file = None
+    self.no_minify = False
     self.post_link = False
     self.executable = False
     self.compiler_wrapper = None
@@ -2946,7 +2947,7 @@ def phase_linker_setup(options, state, newargs):
   settings.PRE_JS_FILES = [os.path.abspath(f) for f in options.pre_js]
   settings.POST_JS_FILES = [os.path.abspath(f) for f in options.post_js]
 
-  settings.MINIFY_WHITESPACE = settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0
+  settings.MINIFY_WHITESPACE = settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0 and not options.no_minify
 
   return target, wasm_target
 
@@ -3444,7 +3445,7 @@ def parse_args(newargs):
       arg = consume_arg()
       if arg != '0':
         exit_with_error('0 is the only supported option for --minify; 1 has been deprecated')
-      settings.DEBUG_LEVEL = max(1, settings.DEBUG_LEVEL)
+      options.no_minify = True
     elif arg.startswith('-g'):
       options.requested_debug = arg
       requested_level = removeprefix(arg, '-g') or '3'
