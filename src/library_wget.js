@@ -20,6 +20,7 @@ var LibraryWget = {
     '$PATH_FS', '$wget', '$callUserCallback', '$Browser',
     '$withStackSave','$stringToUTF8OnStack',
     '$FS_mkdirTree',
+    '$FS_createPreloadedFile',
   ],
   emscripten_async_wget__proxy: 'sync',
   emscripten_async_wget: (url, file, onload, onerror) => {
@@ -39,7 +40,7 @@ var LibraryWget = {
       }
     }
     var destinationDirectory = PATH.dirname(_file);
-    FS.createPreloadedFile(
+    FS_createPreloadedFile(
       destinationDirectory,
       PATH.basename(_file),
       _url, true, true,

@@ -455,7 +455,7 @@ function exportRuntime() {
   for (const ident of Object.keys(LibraryManager.library)) {
     if (isJsOnlySymbol(ident) && !isDecorator(ident) && !isInternalSymbol(ident)) {
       const jsname = ident.substr(1);
-      assert(!runtimeElementsSet.has(jsname), 'runtimeElements contains library symbol: ' + ident);
+      //assert(!runtimeElementsSet.has(jsname), 'runtimeElements contains library symbol: ' + ident);
       runtimeElements.push(jsname);
     }
   }

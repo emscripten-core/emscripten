@@ -45,6 +45,7 @@ mergeInto(LibraryManager.library, {
   $FS_createPreloadedFile__deps: [
     '$asyncLoad',
     '$PATH_FS',
+    '$FS_createDataFile',
 #if !MINIMAL_RUNTIME
     '$FS_handledByPreloadPlugin',
 #endif

@@ -20,6 +20,64 @@ mergeInto(LibraryManager.library, {
   $wasmFSPreloadingFlushed: false,
 
   // TODO: explanation and comparison to old FS
+
+  $FS_createDataFile__deps: [
+    '$wasmFSPreloadingFlushed', '$wasmFSPreloadedFiles',
+    '$FS_create', '$FS_writeFile',
+  ],
+  $FS_createDataFile: (parent, name, fileData, canRead, canWrite, canOwn) => {
+    var pathName = name ? parent + '/' + name : parent;
+    var mode = FS_getMode(canRead, canWrite);
+
+    if (!wasmFSPreloadingFlushed) {
+      // WasmFS code in the wasm is not ready to be called yet. Cache the
+      // files we want to create here in JS, and WasmFS will read them
+      // later.
+      wasmFSPreloadedFiles.push({pathName, fileData, mode});
+    } else {
+      // WasmFS is already running, so create the file normally.
+      FS_create(pathName, mode);
+      FS_writeFile(pathName, fileData);
+    }
+  },
+
+  $FS_mknod__deps: ['_wasmfs_mknod'],
+  $FS_mknod: (path, mode, dev) => {
+    return FS.handleError(withStackSave(() => {
+      var pathBuffer = stringToUTF8OnStack(path);
+      return __wasmfs_mknod(pathBuffer, mode, dev);
+    }));
+  },
+
+  $FS_create__deps: ['$FS_mknod'],
+  $FS_create: (path, mode) => {
+    // Default settings copied from the legacy JS FS API.
+    mode = mode !== undefined ? mode : 438 /* 0666 */;
+    mode &= {{{ cDefs.S_IALLUGO }}};
+    mode |= {{{ cDefs.S_IFREG }}};
+    return FS_mknod(path, mode, 0);
+  },
+
+  $FS_writeFile__deps: ['_wasmfs_write_file'],
+  $FS_writeFile: (path, data) => withStackSave(() => {
+    var pathBuffer = stringToUTF8OnStack(path);
+    if (typeof data == 'string') {
+      var buf = new Uint8Array(lengthBytesUTF8(data) + 1);
+      var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
+      data = buf.slice(0, actualNumBytes);
+    }
+    var dataBuffer = _malloc(data.length);
+#if ASSERTIONS
+    assert(dataBuffer);
+#endif
+    for (var i = 0; i < data.length; i++) {
+      {{{ makeSetValue('dataBuffer', 'i', 'data[i]', 'i8') }}};
+    }
+    var ret = __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
+    _free(dataBuffer);
+    return ret;
+  }),
+
   $FS_mkdir__deps: ['_wasmfs_mkdir'],
   $FS_mkdir: (path, mode) => FS.handleError(withStackSave(() => {
     mode = mode !== undefined ? mode : 511 /* 0777 */;
@@ -44,7 +102,6 @@ mergeInto(LibraryManager.library, {
 
   $FS__postset: `
 FS.init();
-FS.createPreloadedFile = FS_createPreloadedFile;
 `,
   $FS__deps: [
     '$MEMFS',
@@ -56,6 +113,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     '$withStackSave',
     '$readI53FromI64',
     '$readI53FromU64',
+    '$FS_createDataFile',
     '$FS_createPreloadedFile',
     '$FS_getMode',
     // For FS.readFile
@@ -65,8 +123,11 @@ FS.createPreloadedFile = FS_createPreloadedFile;
                                              // up requiring all of our code
                                              // here.
     '$FS_modeStringToFlags',
+    '$FS_create',
+    '$FS_mknod',
     '$FS_mkdir',
     '$FS_mkdirTree',
+    '$FS_writeFile',
 #if LibraryManager.has('library_icasefs.js')
     '$ICASEFS',
 #endif
@@ -112,19 +173,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       FS.ErrnoError.prototype.constructor = FS.ErrnoError;
     },
     createDataFile(parent, name, fileData, canRead, canWrite, canOwn) {
-      var pathName = name ? parent + '/' + name : parent;
-      var mode = FS_getMode(canRead, canWrite);
-
-      if (!wasmFSPreloadingFlushed) {
-        // WasmFS code in the wasm is not ready to be called yet. Cache the
-        // files we want to create here in JS, and WasmFS will read them
-        // later.
-        wasmFSPreloadedFiles.push({pathName, fileData, mode});
-      } else {
-        // WasmFS is already running, so create the file normally.
-        FS.create(pathName, mode);
-        FS.writeFile(pathName, fileData);
-      }
+      return FS_createDataFile(parent, name, fileData, canRead, canWrite, canOwn);
     },
     createPath(parent, path, canRead, canWrite) {
       // Cache file path directory names.
@@ -141,6 +190,10 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         parent = current;
       }
       return current;
+    },
+
+    createPreloadedFile(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
+      return FS_createPreloadedFile(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish);
     },
 
 #if hasExportedSymbol('_wasmfs_read_file') // Support the JS function exactly
@@ -209,11 +262,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       return { fd : fd };
     }),
     create(path, mode) {
-      // Default settings copied from the legacy JS FS API.
-      mode = mode !== undefined ? mode : 438 /* 0666 */;
-      mode &= {{{ cDefs.S_IALLUGO }}};
-      mode |= {{{ cDefs.S_IFREG }}};
-      return FS.mknod(path, mode, 0);
+      return FS_create(path, mode);
     },
     close: (stream) => FS.handleError(-__wasmfs_close(stream.fd)),
     unlink: (path) => withStackSave(() => {
@@ -270,24 +319,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: mmap
     // TODO: msync
     // TODO: munmap
-    writeFile: (path, data) => withStackSave(() => {
-      var pathBuffer = stringToUTF8OnStack(path);
-      if (typeof data == 'string') {
-        var buf = new Uint8Array(lengthBytesUTF8(data) + 1);
-        var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
-        data = buf.slice(0, actualNumBytes);
-      }
-      var dataBuffer = _malloc(data.length);
-#if ASSERTIONS
-      assert(dataBuffer);
-#endif
-      for (var i = 0; i < data.length; i++) {
-        {{{ makeSetValue('dataBuffer', 'i', 'data[i]', 'i8') }}};
-      }
-      var ret = __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
-      _free(dataBuffer);
-      return ret;
-    }),
+    writeFile: (path, data) => FS_writeFile(path, data),
     symlink: (target, linkpath) => withStackSave(() => (
       __wasmfs_symlink(stringToUTF8OnStack(target), stringToUTF8OnStack(linkpath))
     )),
@@ -400,10 +432,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     ),
     // TODO: lookup
     mknod(path, mode, dev) {
-      return FS.handleError(withStackSave(() => {
-        var pathBuffer = stringToUTF8OnStack(path);
-        return __wasmfs_mknod(pathBuffer, mode, dev);
-      }));
+      return FS_mknod(path, mode, dev);
     },
     // TODO: mkdev
     rename(oldPath, newPath) {
