@@ -57,6 +57,7 @@ $cancel_notification
 $dispose_chunk
 $dlfree
 $dlmalloc
+$dlmemalign
 $do_proxy
 $em_proxying_ctx_deinit
 $em_task_queue_cancel

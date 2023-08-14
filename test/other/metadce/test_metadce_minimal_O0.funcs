@@ -7,6 +7,10 @@ $__unlock
 $__unlockfile
 $__wasm_call_ctors
 $add
+$dispose_chunk
+$dlmalloc
+$dlmemalign
+$emscripten_get_heap_size
 $emscripten_stack_get_base
 $emscripten_stack_get_current
 $emscripten_stack_get_end
@@ -14,6 +18,8 @@ $emscripten_stack_get_free
 $emscripten_stack_init
 $fflush
 $getTempRet0
+$internal_memalign
+$sbrk
 $setTempRet0
 $stackAlloc
 $stackRestore

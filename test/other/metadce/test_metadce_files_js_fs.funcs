@@ -1,2 +1,6 @@
 $__wasm_call_ctors
+$dispose_chunk
+$dlmalloc
+$dlmemalign
 $main
+$sbrk

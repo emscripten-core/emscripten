@@ -2,6 +2,7 @@ __errno_location
 __indirect_function_table
 __wasm_call_ctors
 dynCall_jiji
+emscripten_builtin_memalign
 main
 memory
 stackAlloc

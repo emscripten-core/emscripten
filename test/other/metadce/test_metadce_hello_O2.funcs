@@ -6,8 +6,12 @@ $__stdio_write
 $__towrite
 $__wasi_syscall_ret
 $__wasm_call_ctors
+$dispose_chunk
+$dlmalloc
+$dlmemalign
 $legalstub$dynCall_jiji
 $main
+$sbrk
 $stackAlloc
 $stackRestore
 $stackSave
