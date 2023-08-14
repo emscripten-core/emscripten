@@ -21,6 +21,7 @@ var LibraryWget = {
     '$withStackSave','$stringToUTF8OnStack',
     '$FS_mkdirTree',
     '$FS_createPreloadedFile',
+    '$FS_unlink',
   ],
   emscripten_async_wget__proxy: 'sync',
   emscripten_async_wget: (url, file, onload, onerror) => {
@@ -55,7 +56,7 @@ var LibraryWget = {
       function() { // preFinish
         // if a file exists there, we overwrite it
         try {
-          FS.unlink(_file);
+          FS_unlink(_file);
         } catch (e) {}
         // if the destination directory does not yet exist, create it
         FS_mkdirTree(destinationDirectory);

@@ -100,6 +100,12 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  $FS_unlink__deps: ['_wasmfs_unlink'],
+  $FS_unlink: (path) => withStackSave(() => {
+    var buffer = stringToUTF8OnStack(path);
+    return __wasmfs_unlink(buffer);
+  }),
+
   $FS__postset: `
 FS.init();
 `,
@@ -128,6 +134,7 @@ FS.init();
     '$FS_mkdir',
     '$FS_mkdirTree',
     '$FS_writeFile',
+    '$FS_unlink',
 #if LibraryManager.has('library_icasefs.js')
     '$ICASEFS',
 #endif
@@ -265,10 +272,7 @@ FS.init();
       return FS_create(path, mode);
     },
     close: (stream) => FS.handleError(-__wasmfs_close(stream.fd)),
-    unlink: (path) => withStackSave(() => {
-      var buffer = stringToUTF8OnStack(path);
-      return __wasmfs_unlink(buffer);
-    }),
+    unlink: (path) => FS_unlink(path),
     chdir: (path) => withStackSave(() => {
       var buffer = stringToUTF8OnStack(path);
       return __wasmfs_chdir(buffer);
