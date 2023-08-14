@@ -16,7 +16,11 @@ var LibraryWget = {
     },
   },
 
-  emscripten_async_wget__deps: ['$PATH_FS', '$wget', '$callUserCallback', '$Browser', '$withStackSave', '$stringToUTF8OnStack'],
+  emscripten_async_wget__deps: [
+    '$PATH_FS', '$wget', '$callUserCallback', '$Browser',
+    '$withStackSave','$stringToUTF8OnStack',
+    '$FS_mkdirTree',
+  ],
   emscripten_async_wget__proxy: 'sync',
   emscripten_async_wget: (url, file, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
@@ -53,7 +57,7 @@ var LibraryWget = {
           FS.unlink(_file);
         } catch (e) {}
         // if the destination directory does not yet exist, create it
-        FS.mkdirTree(destinationDirectory);
+        FS_mkdirTree(destinationDirectory);
       }
     );
   },

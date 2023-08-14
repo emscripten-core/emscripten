@@ -19,6 +19,29 @@ mergeInto(LibraryManager.library, {
   // further additions to wasmFSPreloadedFiles|Dirs would be ignored).
   $wasmFSPreloadingFlushed: false,
 
+  // TODO: explanation and comparison to old FS
+  $FS_mkdir__deps: ['_wasmfs_mkdir'],
+  $FS_mkdir: (path, mode) => FS.handleError(withStackSave(() => {
+    mode = mode !== undefined ? mode : 511 /* 0777 */;
+    var buffer = stringToUTF8OnStack(path);
+    return __wasmfs_mkdir(buffer, mode);
+  })),
+
+  $FS_mkdirTree__deps: ['$FS_mkdir'],
+  $FS_mkdirTree: (path, mode) => {
+    var dirs = path.split('/');
+    var d = '';
+    for (var i = 0; i < dirs.length; ++i) {
+      if (!dirs[i]) continue;
+      d += '/' + dirs[i];
+      try {
+        FS_mkdir(d, mode);
+      } catch(e) {
+        if (e.errno != {{{ cDefs.EEXIST }}}) throw e;
+      }
+    }
+  },
+
   $FS__postset: `
 FS.init();
 FS.createPreloadedFile = FS_createPreloadedFile;
@@ -42,6 +65,8 @@ FS.createPreloadedFile = FS_createPreloadedFile;
                                              // up requiring all of our code
                                              // here.
     '$FS_modeStringToFlags',
+    '$FS_mkdir',
+    '$FS_mkdirTree',
 #if LibraryManager.has('library_icasefs.js')
     '$ICASEFS',
 #endif
@@ -167,23 +192,11 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 
     // libc methods
 
-    mkdir: (path, mode) => FS.handleError(withStackSave(() => {
-      mode = mode !== undefined ? mode : 511 /* 0777 */;
-      var buffer = stringToUTF8OnStack(path);
-      return __wasmfs_mkdir(buffer, mode);
-    })),
+    mkdir(path, mode) {
+      return FS_mkdir(path, mode);
+    },
     mkdirTree(path, mode) {
-      var dirs = path.split('/');
-      var d = '';
-      for (var i = 0; i < dirs.length; ++i) {
-        if (!dirs[i]) continue;
-        d += '/' + dirs[i];
-        try {
-          FS.mkdir(d, mode);
-        } catch(e) {
-          if (e.errno != {{{ cDefs.EEXIST }}}) throw e;
-        }
-      }
+      return FS_mkdirTree(path, mode);
     },
     rmdir: (path) => FS.handleError(
       withStackSave(() => __wasmfs_rmdir(stringToUTF8OnStack(path)))
