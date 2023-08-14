@@ -16,25 +16,12 @@ int main(int argc, char *argv[])
     var counter = FS.makedev(64, 0);
 
     FS.registerDevice(counter, {
-#if WASMFS
-      // WasmFS has different requirements for a device's functions compared
-      // to the legacy API.
-      read: function(file, buffer, length, offset) {
-        var tempBuffer = [];
-        for (var i = 0; i < length; i++) {
-          tempBuffer.push(i + offset);
-        }
-        Module.HEAP8.set(tempBuffer, buffer);
-        return length;
-      },
-#else
       read: function(stream, buffer, offset, length, position) {
         for (var i = 0; i < length; ++i) {
           buffer[offset + i] = position + i;
         }
         return length;
       },
-#endif
       llseek: function(stream, offset, whence) {
         var position = offset;
         if (whence === 1) {

@@ -30,29 +30,8 @@ int main() {
 
     var device = FS.makedev(major++, 0);
     FS.registerDevice(device, {
-#if WASMFS
-      $wasmFS$JSMemoryFiles: {},
-      allocFile: (file) => {
-        wasmFS$JSMemoryFiles[file] = new Uint8Array([65, 66, 67 , 68]);
-      },
-      write: (file, buffer, length, offset) => {
-        for (var i = 0; i < length; i++) {
-          out('TO DEVICE: ' + HEAPU8.subarray(buffer+i, buffer+i+1));
-        }
-        return i;
-      },
-      read: (file, buffer, length, offset) => {
-        var fileData = wasmFS$JSMemoryFiles[file];
-        var dataAfterOffset = Math.max(0, fileData.length - offset);
-        length = Math.min(length, dataAfterOffset);
-        HEAPU8.set(fileData.subarray(offset, offset + length), buffer);
-        return length;
-      }
-#else
-      open: function(stream) {
-        stream.payload = [65, 66, 67, 68];
-      },
       read: function(stream, buffer, offset, length, pos) {
+        stream.payload = [65, 66, 67, 68];
         var bytesRead = 0;
         for (var i = 0; i < length; i++) {
           if (stream.payload.length) {
@@ -69,8 +48,7 @@ int main() {
           out('TO DEVICE: ' + buffer[offset+i]);
         }
         return i;
-      } 
-#endif
+      }
     });
     FS.mkdev('/device', device);
 

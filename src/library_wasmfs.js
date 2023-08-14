@@ -19,6 +19,7 @@ mergeInto(LibraryManager.library, {
   // further additions to wasmFSPreloadedFiles|Dirs would be ignored).
   $wasmFSPreloadingFlushed: false,
   $wasmFSDevices: {},
+  $wasmFSDeviceStreams: {},
 
   $FS__postset: `
 FS.init();
@@ -62,7 +63,8 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     'free',
     'wasmfs_create_jsimpl_backend',
     '$wasmFS$backends',
-    '$wasmFSDevices'
+    '$wasmFSDevices',
+    '$wasmFSDeviceStreams'
 #endif
   ],
   $FS : {
@@ -399,12 +401,31 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     makedev: (ma, mi) => ((ma) << 8 | (mi)),
     registerDevice(dev, ops) {
       var backendPointer = _wasmfs_create_jsimpl_backend();
-      var defaultOps = {
-        allocFile: (file) => {},
-        freeFile: (file) => {},
-        getSize: (file) => {}
-      }
-      const definedOps = Object.assign(defaultOps, ops);
+      var definedOps = {
+        userRead: ops.read,
+        userWrite: ops.write,
+
+        allocFile: (file) => {
+          wasmFSDeviceStreams[file] = {}
+        },
+        freeFile: (file) => {
+          wasmFSDeviceStreams[file] = undefined;
+        },
+        getSize: (file) => {},
+        read: (file, buffer, length, offset) => {
+          var bufferArray = Module.HEAP8.subarray(buffer, buffer + length);
+          var bytesRead = definedOps.userRead(wasmFSDeviceStreams[file], bufferArray, 0, length, offset);
+          Module.HEAP8.set(bufferArray, buffer);
+          return bytesRead;
+        },
+        write: (file, buffer, length, offset) => {
+          var bufferArray = Module.HEAP8.subarray(buffer, buffer + length);
+          var bytesWritten = definedOps.userWrite(wasmFSDeviceStreams[file], bufferArray, 0, length, offset);
+          Module.HEAP8.set(bufferArray, buffer);
+          return bytesWritten;       
+        },
+      };
+
       wasmFS$backends[backendPointer] = definedOps;
       wasmFSDevices[dev] = backendPointer;
     },
