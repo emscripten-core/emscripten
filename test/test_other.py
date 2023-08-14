@@ -2908,9 +2908,11 @@ int f() {
     self.do_runf(test_file('other/test_jspi_add_function.c'), 'done')
 
   def test_embind_tsgen(self):
-    self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
+    self.run_process([EMCC, test_file('other/embind_tsgen.cpp'), '-o', 'out.html',
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'])
     actual = read_file('embind_tsgen.d.ts')
+    self.assertNotExists('out.html')
+    self.assertNotExists('out.js')
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), actual)
 
   def test_emconfig(self):

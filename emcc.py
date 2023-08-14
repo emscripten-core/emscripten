@@ -1845,6 +1845,13 @@ def phase_linker_setup(options, state, newargs):
     logger.warning('disabling source maps because a js transform is being done')
     settings.GENERATE_SOURCE_MAP = 0
 
+  if options.embind_emit_tsd:
+    # Ignore any -o command line arguments when running in --embind-emit-tsd
+    # With this option we don't actually output the program itself only the
+    # TS bindings.
+    options.output_file = in_temp('a.out.js')
+    settings.INVOKE_RUN = False
+
   # options.output_file is the user-specified one, target is what we will generate
   if options.output_file:
     target = options.output_file
@@ -3526,7 +3533,6 @@ def parse_args(newargs):
       options.source_map_base = consume_arg()
     elif check_arg('--embind-emit-tsd'):
       options.embind_emit_tsd = consume_arg()
-      settings.INVOKE_RUN = False
     elif check_flag('--no-entry'):
       options.no_entry = True
     elif check_arg('--js-library'):
