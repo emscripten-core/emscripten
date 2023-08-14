@@ -14,7 +14,7 @@ function intArrayFromBase64(s) {
 #if ENVIRONMENT_MAY_BE_NODE
   if (typeof ENVIRONMENT_IS_NODE != 'undefined' && ENVIRONMENT_IS_NODE) {
     var buf = Buffer.from(s, 'base64');
-    return new Uint8Array(buf['buffer'], buf['byteOffset'], buf['byteLength']);
+    return new Uint8Array(buf.buffer, buf.byteOffset, buf.length);
   }
 #endif
 
