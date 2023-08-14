@@ -8606,20 +8606,23 @@ int main() {
             self.run_process([EMCC] + std + ['-Werror', '-Wall', '-pedantic', 'a.c', 'b.c'])
 
   @is_slow_test
-  def test_single_file(self):
+  @parameterized({
+    '': (False,),
+    'wasm2js': (True,),
+  })
+  def test_single_file(self, wasm2js):
     for (single_file_enabled,
          meminit1_enabled,
          debug_enabled,
-         closure_enabled,
-         wasm_enabled) in itertools.product([True, False], repeat=5):
+         closure_enabled) in itertools.product([True, False], repeat=4):
       # skip unhelpful option combinations
-      if wasm_enabled and meminit1_enabled:
+      if meminit1_enabled and not wasm2js:
         continue
       if closure_enabled and debug_enabled:
         continue
 
-      expect_wasm = wasm_enabled
-      expect_meminit = meminit1_enabled and not wasm_enabled
+      expect_wasm = not wasm2js
+      expect_meminit = meminit1_enabled and wasm2js
 
       cmd = [EMCC, test_file('hello_world.c')]
 
@@ -8633,7 +8636,7 @@ int main() {
         cmd += ['-g']
       if closure_enabled:
         cmd += ['--closure=1']
-      if not wasm_enabled:
+      if wasm2js:
         cmd += ['-sWASM=0']
 
       self.clear()
@@ -8653,11 +8656,11 @@ int main() {
 
       if debug_enabled:
         separate_dwarf_cmd = cmd + ['-gseparate-dwarf']
-        if wasm_enabled:
+        if wasm2js:
+          self.expect_fail(separate_dwarf_cmd)
+        else:
           do_test(separate_dwarf_cmd)
           self.assertExists('a.out.wasm.debug.wasm')
-        else:
-          self.expect_fail(separate_dwarf_cmd)
 
   @requires_v8
   def test_single_file_shell(self):
