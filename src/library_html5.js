@@ -2375,31 +2375,14 @@ var LibraryHTML5 = {
 #if OFFSCREENCANVAS_SUPPORT
   _emscripten_set_offscreencanvas_size: 'emscripten_set_canvas_element_size',
 
-  $setOffscreenCanvasSizeOnTargetThread__deps: ['$stringToNewUTF8', 'emscripten_dispatch_to_thread_', '$withStackSave'],
+  $setOffscreenCanvasSizeOnTargetThread__deps: ['$stringToNewUTF8', '_emscripten_set_offscreencanvas_size_on_thread', '$withStackSave'],
   $setOffscreenCanvasSizeOnTargetThread: (targetThread, targetCanvas, width, height) => {
     targetCanvas = targetCanvas ? UTF8ToString(targetCanvas) : '';
-    withStackSave(() => {
-      var varargs = stackAlloc(12);
-      var targetCanvasPtr = 0;
-      if (targetCanvas) {
-        targetCanvasPtr = stringToNewUTF8(targetCanvas);
-      }
-      {{{ makeSetValue('varargs', 0, 'targetCanvasPtr', 'i32')}}};
-      {{{ makeSetValue('varargs', 4, 'width', 'i32')}}};
-      {{{ makeSetValue('varargs', 8, 'height', 'i32')}}};
-      // Note: If we are also a pthread, the call below could theoretically be done synchronously. However if the target pthread is waiting for a mutex from us, then
-      // these two threads will deadlock. At the moment, we'd like to consider that this kind of deadlock would be an Emscripten runtime bug, although if
-      // emscripten_set_canvas_element_size() was documented to require running an event in the queue of thread that owns the OffscreenCanvas, then that might be ok.
-      // (safer this way however)
-      _emscripten_dispatch_to_thread_(targetThread, {{{ cDefs.EM_PROXIED_RESIZE_OFFSCREENCANVAS }}}, 0, targetCanvasPtr /* satellite data */, varargs);
-    });
-  },
-#else
-  _emscripten_set_offscreencanvas_size: (target, width, height) => {
-#if ASSERTIONS
-    err('emscripten_set_offscreencanvas_size: Build with -sOFFSCREENCANVAS_SUPPORT=1 to enable transferring canvases to pthreads.');
-#endif
-    return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    var targetCanvasPtr = 0;
+    if (targetCanvas) {
+      targetCanvasPtr = stringToNewUTF8(targetCanvas);
+    }
+    __emscripten_set_offscreencanvas_size_on_thread(targetThread, targetCanvasPtr, width, height);
   },
 #endif
 
@@ -2506,6 +2489,15 @@ var LibraryHTML5 = {
     if (!canvas) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
     {{{ makeSetValue('width', '0', 'canvas.width', 'i32') }}};
     {{{ makeSetValue('height', '0', 'canvas.height', 'i32') }}};
+  },
+#endif
+
+#if !PTHREADS || !OFFSCREENCANVAS_SUPPORT
+  _emscripten_set_offscreencanvas_size: (target, width, height) => {
+#if ASSERTIONS
+    err('emscripten_set_offscreencanvas_size: Build with -sOFFSCREENCANVAS_SUPPORT=1 to enable transferring canvases to pthreads.');
+#endif
+    return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
   },
 #endif
 
