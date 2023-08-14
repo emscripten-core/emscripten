@@ -24,19 +24,6 @@ void GetDevice(void (*callback)(wgpu::Device)) {
         if (message) {
             printf("RequestAdapter: %s\n", message);
         }
-        if (status == WGPURequestAdapterStatus_Unavailable) {
-            printf("WebGPU unavailable; exiting cleanly\n");
-            // exit(0) (rather than emscripten_force_exit(0)) ensures there is
-            // no dangling keepalive.
-#if _REENTRANT
-            // FIXME: In multi-threaded builds this callback runs on the main
-            // which seems to be causing the runtime to stay alive here and
-            // results in the 99 being returned.
-            emscripten_force_exit(0);
-#else
-            exit(0);
-#endif
-        }
         assert(status == WGPURequestAdapterStatus_Success);
 
         wgpu::Adapter adapter = wgpu::Adapter::Acquire(cAdapter);

@@ -348,12 +348,13 @@ commands:
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             # --no-sandbox because we are running as root and chrome requires
             # this flag for now: https://crbug.com/638180
-            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features"
-            CHROME_FLAGS_HEADLESS: "--headless=new --remote-debugging-port=1234"
+            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-angle=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features"
+            CHROME_FLAGS_HEADLESS: "--headless --remote-debugging-port=1234"
             CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-memory64 --experimental-wasm-stack-switching --experimental-wasm-type-reflection\""
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
+            CHROME_FLAGS_WEBGPU: "--enable-unsafe-webgpu --use-webgpu-adapter=swiftshader --enable-features=Vulkan"
           command: |
-            export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
+            export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE $CHROME_FLAGS_WEBGPU"
             # There are tests in the browser test suite that using libraries
             # that are not included by "./embuilder build ALL".  For example the
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
@@ -382,8 +383,8 @@ commands:
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             # --no-sandbox becasue we are running as root and chrome requires
             # this flag for now: https://crbug.com/638180
-            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile"
-            CHROME_FLAGS_HEADLESS: "--headless=new --remote-debugging-port=1234"
+            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-angle=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile"
+            CHROME_FLAGS_HEADLESS: "--headless --remote-debugging-port=1234"
             CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-memory64\""
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |

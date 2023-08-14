@@ -185,7 +185,7 @@ def no_swiftshader(f):
   assert callable(f)
 
   def decorated(self, *args, **kwargs):
-    if is_chrome() and '--use-gl=swiftshader' in EMTEST_BROWSER:
+    if is_chrome() and 'swiftshader' in EMTEST_BROWSER:
       self.skipTest('not compatible with swiftshader')
     return f(self, *args, **kwargs)
 
