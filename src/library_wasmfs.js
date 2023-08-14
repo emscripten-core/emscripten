@@ -414,13 +414,23 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         getSize: (file) => {},
         read: (file, buffer, length, offset) => {
           var bufferArray = Module.HEAP8.subarray(buffer, buffer + length);
-          var bytesRead = definedOps.userRead(wasmFSDeviceStreams[file], bufferArray, 0, length, offset);
+          try {
+            var bytesRead = definedOps.userRead(wasmFSDeviceStreams[file], bufferArray, 0, length, offset);
+          } catch (e) {
+            console.log(e);
+            return -e.errno;
+          }
           Module.HEAP8.set(bufferArray, buffer);
           return bytesRead;
         },
         write: (file, buffer, length, offset) => {
           var bufferArray = Module.HEAP8.subarray(buffer, buffer + length);
-          var bytesWritten = definedOps.userWrite(wasmFSDeviceStreams[file], bufferArray, 0, length, offset);
+          try {
+            var bytesWritten = definedOps.userWrite(wasmFSDeviceStreams[file], bufferArray, 0, length, offset);
+          } catch (e) {
+            console.log(e);
+            return -e.errno;
+          }
           Module.HEAP8.set(bufferArray, buffer);
           return bytesWritten;       
         },

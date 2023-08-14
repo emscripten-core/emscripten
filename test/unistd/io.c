@@ -13,11 +13,7 @@
 #include <sys/uio.h>
 #include <emscripten.h>
 
-#if WASMFS
-EM_JS_DEPS(main, "$ERRNO_CODES,$wasmFS$JSMemoryFiles");
-#else
 EM_JS_DEPS(main, "$ERRNO_CODES");
-#endif
 
 int main() {
   EM_ASM(
@@ -54,22 +50,12 @@ int main() {
 
     var broken_device = FS.makedev(major++, 0);
     FS.registerDevice(broken_device, {
-#if WASMFS
-      // We return error codes in WasmFS instead of throwing.
-      read: function(file, buffer, length, offset) {
-        return -ERRNO_CODES.EIO;
-      },
-      write: function(file, buffer, length, offset) {
-        return -ERRNO_CODES.EIO;
-      }
-#else
       read: function(stream, buffer, offset, length, pos) {
         throw new FS.ErrnoError(ERRNO_CODES.EIO);
       },
       write: function(stream, buffer, offset, length, pos) {
         throw new FS.ErrnoError(ERRNO_CODES.EIO);
       }
-#endif
     });
     FS.mkdev('/broken-device', broken_device);
 
