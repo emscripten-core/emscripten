@@ -1869,4 +1869,20 @@ FS.staticInit();` +
     },
 #endif
   },
+
+  $FS_createPreloadedFile__deps: ['$FS'],
+  $FS_createPreloadedFile: (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
+    return FS.createPreloadedFile(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish);
+  },
+
+  $FS_unlink__deps: ['$FS'],
+  $FS_unlink: (path) => FS.unlink(path),
+
+  $FS_mkdirTree__docs: `
+  /**
+   * @param {number=} mode Optionally, the mode to create in. Uses mkdir's
+   *                       default if not set.
+   */`,
+  $FS_mkdirTree__deps: ['$FS'],
+  $FS_mkdirTree: (path, mode) => FS.mkdirTree(path, mode),
 });
