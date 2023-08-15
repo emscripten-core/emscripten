@@ -96,3 +96,8 @@ int _emscripten_default_pthread_stack_size();
 void __set_thread_state(pthread_t ptr, int is_main, int is_runtime, int can_block);
 
 double _emscripten_receive_on_main_thread_js(int functionIndex, pthread_t callingThread, int numCallArgs, double* args);
+
+// Return non-zero if the calling thread supports Atomic.wait (For example
+// if called from the main browser thread, this function will return zero
+// since blocking is not allowed there).
+int _emscripten_thread_supports_atomics_wait(void);

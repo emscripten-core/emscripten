@@ -10,9 +10,7 @@ dynCall_iij
 dynCall_ji
 dynCall_jiji
 dynCall_viijii
-free
 main
-malloc
 memory
 stackAlloc
 stackRestore

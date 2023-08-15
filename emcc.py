@@ -250,6 +250,7 @@ class EmccOptions:
   def __init__(self):
     self.target = ''
     self.output_file = None
+    self.no_minify = False
     self.post_link = False
     self.executable = False
     self.compiler_wrapper = None
@@ -1844,6 +1845,13 @@ def phase_linker_setup(options, state, newargs):
     logger.warning('disabling source maps because a js transform is being done')
     settings.GENERATE_SOURCE_MAP = 0
 
+  if options.embind_emit_tsd:
+    # Ignore any -o command line arguments when running in --embind-emit-tsd
+    # With this option we don't actually output the program itself only the
+    # TS bindings.
+    options.output_file = in_temp('a.out.js')
+    settings.INVOKE_RUN = False
+
   # options.output_file is the user-specified one, target is what we will generate
   if options.output_file:
     target = options.output_file
@@ -2809,7 +2817,6 @@ def phase_linker_setup(options, state, newargs):
   # we need to explictly require those exports.
   if settings.BUILD_AS_WORKER or \
      settings.ASYNCIFY or \
-     settings.WASMFS or \
      settings.FORCE_FILESYSTEM or \
      options.memory_profiler or \
      sanitize:
@@ -2948,7 +2955,7 @@ def phase_linker_setup(options, state, newargs):
   settings.PRE_JS_FILES = [os.path.abspath(f) for f in options.pre_js]
   settings.POST_JS_FILES = [os.path.abspath(f) for f in options.post_js]
 
-  settings.MINIFY_WHITESPACE = settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0
+  settings.MINIFY_WHITESPACE = settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0 and not options.no_minify
 
   return target, wasm_target
 
@@ -3446,7 +3453,7 @@ def parse_args(newargs):
       arg = consume_arg()
       if arg != '0':
         exit_with_error('0 is the only supported option for --minify; 1 has been deprecated')
-      settings.DEBUG_LEVEL = max(1, settings.DEBUG_LEVEL)
+      options.no_minify = True
     elif arg.startswith('-g'):
       options.requested_debug = arg
       requested_level = removeprefix(arg, '-g') or '3'
@@ -3480,14 +3487,17 @@ def parse_args(newargs):
             settings.SEPARATE_DWARF = requested_level.split('=')[1]
           else:
             settings.SEPARATE_DWARF = True
+          settings.GENERATE_DWARF = 1
         elif requested_level == 'source-map':
           settings.GENERATE_SOURCE_MAP = 1
           newargs[i] = '-g'
-        # a non-integer level can be something like -gline-tables-only. keep
-        # the flag for the clang frontend to emit the appropriate DWARF info.
-        # set the emscripten debug level to 3 so that we do not remove that
-        # debug info during link (during compile, this does not make a
-        # difference).
+        else:
+          # Other non-integer levels (e.g. -gline-tables-only or -gdwarf-5) are
+          # usually clang flags that emit DWARF. So we pass them through to
+          # clang and make the emscripten code treat it like any other DWARF.
+          settings.GENERATE_DWARF = 1
+        # In all cases set the emscripten debug level to 3 so that we do not
+        # strip during link (during compile, this does not make a difference).
         settings.DEBUG_LEVEL = 3
     elif check_flag('-profiling') or check_flag('--profiling'):
       settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 2)
@@ -3524,7 +3534,6 @@ def parse_args(newargs):
       options.source_map_base = consume_arg()
     elif check_arg('--embind-emit-tsd'):
       options.embind_emit_tsd = consume_arg()
-      settings.INVOKE_RUN = False
     elif check_flag('--no-entry'):
       options.no_entry = True
     elif check_arg('--js-library'):
@@ -3670,7 +3679,7 @@ def phase_binaryen(target, options, wasm_target):
   global final_js
   logger.debug('using binaryen')
   # whether we need to emit -g (function name debug info) in the final wasm
-  debug_info = settings.DEBUG_LEVEL >= 2 or settings.EMIT_NAME_SECTION
+  debug_function_names = settings.DEBUG_LEVEL >= 2 or settings.EMIT_NAME_SECTION
   # whether we need to emit -g in the intermediate binaryen invocations (but not
   # necessarily at the very end). this is necessary if we depend on debug info
   # during compilation, even if we do not emit it at the end.
@@ -3679,36 +3688,25 @@ def phase_binaryen(target, options, wasm_target):
   # important so that we stop emitting it before the end, and it is not in the
   # final binary (if it shouldn't be)
   intermediate_debug_info = 0
-  if debug_info:
+  if debug_function_names:
     intermediate_debug_info += 1
   if options.emit_symbol_map:
     intermediate_debug_info += 1
   if settings.ASYNCIFY == 1:
     intermediate_debug_info += 1
-  # note that wasm-ld can strip DWARF info for us too (--strip-debug), but it
-  # also strips the Names section. so to emit just the Names section we don't
-  # tell wasm-ld to strip anything, and we do it here.
-  strip_debug = settings.DEBUG_LEVEL < 3
-  strip_producers = not settings.EMIT_PRODUCERS_SECTION
+
   # run wasm-opt if we have work for it: either passes, or if we are using
   # source maps (which requires some extra processing to keep the source map
   # but remove DWARF)
   passes = get_binaryen_passes()
-  if passes or settings.GENERATE_SOURCE_MAP:
-    # if we need to strip certain sections, and we have wasm-opt passes
-    # to run anyhow, do it with them.
-    if strip_debug:
-      passes += ['--strip-debug']
-    if strip_producers:
-      passes += ['--strip-producers']
+  if passes:
     # if asyncify is used, we will use it in the next stage, and so if it is
     # the only reason we need intermediate debug info, we can stop keeping it
     if settings.ASYNCIFY == 1:
       intermediate_debug_info -= 1
     # currently binaryen's DWARF support will limit some optimizations; warn on
     # that. see https://github.com/emscripten-core/emscripten/issues/15269
-    dwarf_info = settings.DEBUG_LEVEL >= 3
-    if dwarf_info:
+    if settings.GENERATE_DWARF:
       diagnostics.warning('limited-postlink-optimizations', 'running limited binaryen optimizations because DWARF info requested (or indirectly required)')
     with ToolchainProfiler.profile_block('wasm_opt'):
       building.run_wasm_opt(wasm_target,
@@ -3716,14 +3714,6 @@ def phase_binaryen(target, options, wasm_target):
                             args=passes,
                             debug=intermediate_debug_info)
       building.save_intermediate(wasm_target, 'byn.wasm')
-  elif strip_debug or strip_producers:
-    # we are not running wasm-opt. if we need to strip certain sections
-    # then do so using llvm-objcopy which is fast and does not rewrite the
-    # code (which is better for debug info)
-    sections = ['producers'] if strip_producers else []
-    with ToolchainProfiler.profile_block('strip_producers'):
-      building.strip(wasm_target, wasm_target, debug=strip_debug, sections=sections)
-      building.save_intermediate(wasm_target, 'strip.wasm')
 
   if settings.EVAL_CTORS:
     with ToolchainProfiler.profile_block('eval_ctors'):
@@ -3808,7 +3798,7 @@ def phase_binaryen(target, options, wasm_target):
                                wasm_target,
                                opt_level=settings.OPT_LEVEL,
                                use_closure_compiler=options.use_closure_compiler,
-                               debug_info=debug_info,
+                               debug_info=debug_function_names,
                                symbols_file=symbols_file,
                                symbols_file_js=symbols_file_js)
 
@@ -3839,14 +3829,14 @@ def phase_binaryen(target, options, wasm_target):
 
   # we have finished emitting the wasm, and so intermediate debug info will
   # definitely no longer be used tracking it.
-  if debug_info:
+  if debug_function_names:
     intermediate_debug_info -= 1
   assert intermediate_debug_info == 0
   # strip debug info if it was not already stripped by the last command
-  if not debug_info and building.binaryen_kept_debug_info and \
+  if not debug_function_names and building.binaryen_kept_debug_info and \
      building.os.path.exists(wasm_target):
-    with ToolchainProfiler.profile_block('strip_with_wasm_opt'):
-      building.run_wasm_opt(wasm_target, wasm_target)
+    with ToolchainProfiler.profile_block('strip_name_section'):
+      building.strip(wasm_target, wasm_target, debug=False, sections=["name"])
 
   # replace placeholder strings with correct subresource locations
   if final_js and settings.SINGLE_FILE and not settings.WASM2JS:
