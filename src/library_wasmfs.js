@@ -442,6 +442,10 @@ FS.init();
     return __wasmfs_mkdir(buffer, mode);
   })),
 
+  $FS_mkdirTree__docs: `
+  /**
+   * @param {number=} mode
+   */`,
   $FS_mkdirTree__deps: ['$FS_mkdir'],
   $FS_mkdirTree: (path, mode) => {
     var dirs = path.split('/');
