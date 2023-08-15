@@ -2102,7 +2102,7 @@ var LibraryGL = {
 
         // Store placeholder integers in place that highlight that these
         // >0 index locations are array indices pending population.
-        for(j = 0; j < sz; ++j) {
+        for (j = 0; j < sz; ++j) {
           uniformLocsById[id] = j;
           program.uniformArrayNamesById[id++] = arrayName;
         }
@@ -3058,7 +3058,7 @@ var LibraryGL = {
 #if GL_EXPLICIT_UNIFORM_LOCATION
     // Extract the layout(location = x) directives.
     var regex = /layout\s*\(\s*location\s*=\s*(-?\d+)\s*\)\s*(uniform\s+((lowp|mediump|highp)\s+)?\w+\s+(\w+))/g, explicitUniformLocations = {}, match;
-    while(match = regex.exec(source)) {
+    while (match = regex.exec(source)) {
 #if GL_DEBUG
       console.dir(match);
 #endif
@@ -3094,13 +3094,13 @@ var LibraryGL = {
     // layout(std140, binding = 1) uniform MainBlock { ... };
     // layout(binding = 1) uniform MainBlock { ... };
     var bindingRegex = /layout\s*\(.*?binding\s*=\s*(-?\d+).*?\)\s*uniform\s+(\w+)\s+(\w+)?/g, samplerBindings = {}, uniformBindings = {}, bindingMatch;
-    while(bindingMatch = bindingRegex.exec(source)) {
+    while (bindingMatch = bindingRegex.exec(source)) {
       // We have a layout(binding=x) enabled uniform. Parse the array length of that uniform, if it is an array, i.e. a
       //    layout(binding = 3) uniform sampler2D mainTexture[arrayLength];
       // or
       //    layout(binding = 1, std140) uniform MainBlock { ... } name[arrayLength];
       var arrayLength = 1;
-      for(var i = bindingMatch.index; i < source.length && source[i] != ';'; ++i) {
+      for (var i = bindingMatch.index; i < source.length && source[i] != ';'; ++i) {
         if (source[i] == '[') {
           arrayLength = jstoi_q(source.slice(i+1));
           break;
@@ -3417,7 +3417,7 @@ var LibraryGL = {
 #endif
         Object.keys(p.explicitUniformBindings).forEach((ubo) => {
           var bindings = p.explicitUniformBindings[ubo];
-          for(var i = 0; i < bindings[1]; ++i) {
+          for (var i = 0; i < bindings[1]; ++i) {
             var blockIndex = GLctx.getUniformBlockIndex(p, ubo + (bindings[1] > 1 ? '[' + i + ']' : ''));
 #if GL_DEBUG
             dbg('Applying initial UBO binding point ' + (bindings[0]+i) + ' for UBO "' + (ubo + (bindings[1] > 1 ? '[' + i + ']' : '')) + '" at block index ' + blockIndex + ' ' + (bindings[1] > 1 ? ' (array index='+i+')' : ''));
@@ -3431,7 +3431,7 @@ var LibraryGL = {
 #endif
       Object.keys(p.explicitSamplerBindings).forEach((sampler) => {
         var bindings = p.explicitSamplerBindings[sampler];
-        for(var i = 0; i < bindings[1]; ++i) {
+        for (var i = 0; i < bindings[1]; ++i) {
 #if GL_DEBUG
           dbg('Applying initial sampler binding point ' + (bindings[0]+i) + ' for sampler "' + sampler + (i > 0 ? '['+i+']' : '') +  '"');
 #endif

@@ -230,7 +230,7 @@ let __Atomics_waitAsyncAddresses = [/*[i32a, index, value, maxWaitMilliseconds, 
 function __Atomics_pollWaitAsyncAddresses() {
   let now = performance.now();
   let l = __Atomics_waitAsyncAddresses.length;
-  for(let i = 0; i < l; ++i) {
+  for (let i = 0; i < l; ++i) {
     let a = __Atomics_waitAsyncAddresses[i];
     let expired = (now > a[3]);
     let awoken = (Atomics.load(a[0], a[1]) != a[2]);
@@ -356,7 +356,7 @@ Atomics['waitAsync'] = (i32a, index, value, maxWaitMilliseconds) => {
         var val = Atomics.compareExchange(HEAP32, lock >> 2, 0/*zero represents lock being free*/, 1/*one represents lock being acquired*/);
         if (!val) return dispatch(0, 0/*'ok'*/);
         var wait = Atomics['waitAsync'](HEAP32, lock >> 2, val, maxWaitMilliseconds);
-      } while(wait.value === 'not-equal');
+      } while (wait.value === 'not-equal');
 #if ASSERTIONS
       assert(wait.async || wait.value === 'timed-out');
 #endif
@@ -381,7 +381,7 @@ Atomics['waitAsync'] = (i32a, index, value, maxWaitMilliseconds) => {
         if (ret == val) return dispatch(ret/*index of resource acquired*/, 0/*'ok'*/);
         val = ret;
         let wait = Atomics['waitAsync'](HEAP32, sem >> 2, ret, maxWaitMilliseconds);
-      } while(wait.value === 'not-equal');
+      } while (wait.value === 'not-equal');
 #if ASSERTIONS
       assert(wait.async || wait.value === 'timed-out');
 #endif
