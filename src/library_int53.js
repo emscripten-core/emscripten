@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
 #if ASSERTIONS
   $writeI53ToI64__deps: ['$readI53FromI64', '$readI53FromU64'
 #if MINIMAL_RUNTIME

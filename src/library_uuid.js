@@ -6,7 +6,7 @@
 
 // Implementation of libuuid creating RFC4122 version 4 random UUIDs.
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   // Clear a 'compact' UUID.
   uuid_clear__deps: ['$zeroMemory'],
   uuid_clear: (uu) => zeroMemory(uu, 16),

@@ -1,6 +1,6 @@
 // Tests for JS library compile time helpers defined in parseTools.js
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   test_receiveI64ParamAsI53__deps: i53ConversionDeps,
   test_receiveI64ParamAsI53: function({{{ defineI64Param('arg1') }}},
                                       {{{ defineI64Param('arg2') }}}) {

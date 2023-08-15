@@ -10,4 +10,4 @@ var LibraryCyberdwarf = {
   metadata_llvm_dbg_value_local: (a,b,c,d) => {}
 };
 
-mergeInto(LibraryManager.library, LibraryCyberdwarf);
+addToLibrary(LibraryCyberdwarf);

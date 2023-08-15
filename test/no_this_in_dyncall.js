@@ -1,4 +1,4 @@
-mergeInto(LibraryManager.library, {
+addToLibrary({
 	$classLike: {
 		fnptr: 0,
     call: function(val) {

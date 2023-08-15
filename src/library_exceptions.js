@@ -422,4 +422,4 @@ for (let i = 2; i < 5; i++) {
 }
 #endif
 
-mergeInto(LibraryManager.library, LibraryExceptions);
+addToLibrary(LibraryExceptions);

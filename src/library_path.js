@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $PATH: {
     isAbs: (path) => path.charAt(0) === '/',
     // split a filename into [root, dir, basename, ext], unix version

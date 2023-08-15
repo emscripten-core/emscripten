@@ -4103,4 +4103,4 @@ function recordGLProcAddressGet(lib) {
 recordGLProcAddressGet(LibraryGL);
 
 // Final merge
-mergeInto(LibraryManager.library, LibraryGL);
+addToLibrary(LibraryGL);

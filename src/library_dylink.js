@@ -1258,4 +1258,4 @@ var LibraryDylink = {
   },
 };
 
-mergeInto(LibraryManager.library, LibraryDylink);
+addToLibrary(LibraryDylink);

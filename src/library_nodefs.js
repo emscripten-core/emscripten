@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
 #if WASMFS
   $NODEFS__deps: ['$stringToUTF8OnStack', 'wasmfs_create_node_backend'],
   $NODEFS: {
