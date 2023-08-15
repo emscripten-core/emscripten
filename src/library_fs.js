@@ -1870,9 +1870,9 @@ FS.staticInit();` +
 #endif
   },
 
-  $FS_createPreloadedFile__deps: ['$FS'],
-  $FS_createPreloadedFile: (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
-    return FS.createPreloadedFile(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish);
+  $FS_createDataFile__deps: ['$FS'],
+  $FS_createDataFile: (parent, name, fileData, canRead, canWrite, canOwn) => {
+    return FS.createDataFile(parent, name, fileData, canRead, canWrite, canOwn);
   },
 
   $FS_unlink__deps: ['$FS'],
