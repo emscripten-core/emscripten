@@ -74,9 +74,11 @@ extern "C" void wasmfs_flush(void) {
     toFlush.pop_back();
 
     auto lockedDir = dir->locked();
+    EM_ASM(alert("Line 77"));
     Directory::MaybeEntries entries = lockedDir.getEntries();
     printf("Entries: %p\n", &entries);
     if (int err = entries.getError()) {
+      EM_ASM(alert("entries.getError() triggered"));
 #ifndef NDEBUG
       std::string errorMessage =
         "Non-fatal error code " + std::to_string(err) +
@@ -85,12 +87,21 @@ extern "C" void wasmfs_flush(void) {
 #endif
       continue;
     }
-    printf("Right before for loop: %p\n", &entries);
+    printf("Right before for loop: %p, size: %zu\n", &entries, entries->size());
+    Directory::MaybeEntries entries2 = lockedDir.getEntries();
+    printf("Entries 2: %p, size: %zu\n", &entries2, entries2->size());
+    EM_ASM(alert("before getEntries() in for loop"));
+    // TODO: Investigate why *lockedDir.getEntries() does not go through the loop.
     for (auto& entry : *entries) {
-      if (auto child = lockedDir.getChild(entry.name)
-                        ->dynCast<DataFile>()) {
-        if (int err = child->locked()
-                        .flush()) {
+      auto child = lockedDir.getChild(entry.name);
+      printf("Entry name: %s\n", entry.name.c_str());
+      if (!child) {
+        EM_ASM(alert("Child was null"));
+        continue;
+      }
+
+      if (auto castedChild = child->dynCast<DataFile>()) {
+        if (int err = castedChild->locked().flush()) {
 #ifndef NDEBUG
           std::string errorMessage = "Non-fatal error code " +
                                      std::to_string(err) +
@@ -98,8 +109,8 @@ extern "C" void wasmfs_flush(void) {
           emscripten_console_error(errorMessage.c_str());
 #endif
         }
-      } else if (auto child = lockedDir.getChild(entry.name)->dynCast<Directory>()) {
-        toFlush.push_back(child);
+      } else if (auto castedChild = child->dynCast<Directory>()) {
+        toFlush.push_back(castedChild);
       }
     }
   }

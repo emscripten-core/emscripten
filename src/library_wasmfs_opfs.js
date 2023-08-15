@@ -160,6 +160,7 @@ mergeInto(LibraryManager.library, {
     let dirHandle = wasmfsOPFSDirectoryHandles.get(dirID);
 
     console.log("Dir handle: ", dirHandle);
+    alert("_wasmfs_opfs_get_entries called");
     // TODO: Use 'for await' once Acorn supports that.
     try {
       let iter = dirHandle.entries();
@@ -172,7 +173,7 @@ mergeInto(LibraryManager.library, {
           let type = child.kind == "file" ?
               {{{ cDefine('File::DataFileKind') }}} :
           {{{ cDefine('File::DirectoryKind') }}};
-          __wasmfs_opfs_record_entry(entriesPtr, namePtr, type)
+          // __wasmfs_opfs_record_entry(entriesPtr, namePtr, type)
         });
       }
     } catch {
