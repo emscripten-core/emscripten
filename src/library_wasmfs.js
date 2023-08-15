@@ -19,93 +19,6 @@ mergeInto(LibraryManager.library, {
   // further additions to wasmFSPreloadedFiles|Dirs would be ignored).
   $wasmFSPreloadingFlushed: false,
 
-  // TODO: explanation and comparison to old FS
-
-  $FS_createDataFile__deps: [
-    '$wasmFSPreloadingFlushed', '$wasmFSPreloadedFiles',
-    '$FS_create', '$FS_writeFile',
-  ],
-  $FS_createDataFile: (parent, name, fileData, canRead, canWrite, canOwn) => {
-    var pathName = name ? parent + '/' + name : parent;
-    var mode = FS_getMode(canRead, canWrite);
-
-    if (!wasmFSPreloadingFlushed) {
-      // WasmFS code in the wasm is not ready to be called yet. Cache the
-      // files we want to create here in JS, and WasmFS will read them
-      // later.
-      wasmFSPreloadedFiles.push({pathName, fileData, mode});
-    } else {
-      // WasmFS is already running, so create the file normally.
-      FS_create(pathName, mode);
-      FS_writeFile(pathName, fileData);
-    }
-  },
-
-  $FS_mknod__deps: ['_wasmfs_mknod'],
-  $FS_mknod: (path, mode, dev) => {
-    return FS.handleError(withStackSave(() => {
-      var pathBuffer = stringToUTF8OnStack(path);
-      return __wasmfs_mknod(pathBuffer, mode, dev);
-    }));
-  },
-
-  $FS_create__deps: ['$FS_mknod'],
-  $FS_create: (path, mode) => {
-    // Default settings copied from the legacy JS FS API.
-    mode = mode !== undefined ? mode : 438 /* 0666 */;
-    mode &= {{{ cDefs.S_IALLUGO }}};
-    mode |= {{{ cDefs.S_IFREG }}};
-    return FS_mknod(path, mode, 0);
-  },
-
-  $FS_writeFile__deps: ['_wasmfs_write_file'],
-  $FS_writeFile: (path, data) => withStackSave(() => {
-    var pathBuffer = stringToUTF8OnStack(path);
-    if (typeof data == 'string') {
-      var buf = new Uint8Array(lengthBytesUTF8(data) + 1);
-      var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
-      data = buf.slice(0, actualNumBytes);
-    }
-    var dataBuffer = _malloc(data.length);
-#if ASSERTIONS
-    assert(dataBuffer);
-#endif
-    for (var i = 0; i < data.length; i++) {
-      {{{ makeSetValue('dataBuffer', 'i', 'data[i]', 'i8') }}};
-    }
-    var ret = __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
-    _free(dataBuffer);
-    return ret;
-  }),
-
-  $FS_mkdir__deps: ['_wasmfs_mkdir'],
-  $FS_mkdir: (path, mode) => FS.handleError(withStackSave(() => {
-    mode = mode !== undefined ? mode : 511 /* 0777 */;
-    var buffer = stringToUTF8OnStack(path);
-    return __wasmfs_mkdir(buffer, mode);
-  })),
-
-  $FS_mkdirTree__deps: ['$FS_mkdir'],
-  $FS_mkdirTree: (path, mode) => {
-    var dirs = path.split('/');
-    var d = '';
-    for (var i = 0; i < dirs.length; ++i) {
-      if (!dirs[i]) continue;
-      d += '/' + dirs[i];
-      try {
-        FS_mkdir(d, mode);
-      } catch(e) {
-        if (e.errno != {{{ cDefs.EEXIST }}}) throw e;
-      }
-    }
-  },
-
-  $FS_unlink__deps: ['_wasmfs_unlink'],
-  $FS_unlink: (path) => withStackSave(() => {
-    var buffer = stringToUTF8OnStack(path);
-    return __wasmfs_unlink(buffer);
-  }),
-
   $FS__postset: `
 FS.init();
 `,
@@ -454,6 +367,103 @@ FS.init();
 
 #endif
   },
+
+  // Split-out FS.* methods. These are split out for code size reasons, so that
+  // we can include the ones we need on demand, rather than put them all on the
+  // main FS object. They add themselves to the FS object for JS API usage.
+  //
+  // In contrast, the old JS FS (library_fs.js) does the opposite: it puts all
+  // things on the FS object, and copies them to FS_* methods for use from JS
+  // library code. Given that the JS FS is implemented entirely in JS, that
+  // makes sense there (as almost all that FS object ends up needed anyhow all
+  // the time).
+
+  $FS_createDataFile__deps: [
+    '$wasmFSPreloadingFlushed', '$wasmFSPreloadedFiles',
+    '$FS_create', '$FS_writeFile',
+  ],
+  $FS_createDataFile: (parent, name, fileData, canRead, canWrite, canOwn) => {
+    var pathName = name ? parent + '/' + name : parent;
+    var mode = FS_getMode(canRead, canWrite);
+
+    if (!wasmFSPreloadingFlushed) {
+      // WasmFS code in the wasm is not ready to be called yet. Cache the
+      // files we want to create here in JS, and WasmFS will read them
+      // later.
+      wasmFSPreloadedFiles.push({pathName, fileData, mode});
+    } else {
+      // WasmFS is already running, so create the file normally.
+      FS_create(pathName, mode);
+      FS_writeFile(pathName, fileData);
+    }
+  },
+
+  $FS_mknod__deps: ['_wasmfs_mknod'],
+  $FS_mknod: (path, mode, dev) => {
+    return FS.handleError(withStackSave(() => {
+      var pathBuffer = stringToUTF8OnStack(path);
+      return __wasmfs_mknod(pathBuffer, mode, dev);
+    }));
+  },
+
+  $FS_create__deps: ['$FS_mknod'],
+  $FS_create: (path, mode) => {
+    // Default settings copied from the legacy JS FS API.
+    mode = mode !== undefined ? mode : 438 /* 0666 */;
+    mode &= {{{ cDefs.S_IALLUGO }}};
+    mode |= {{{ cDefs.S_IFREG }}};
+    return FS_mknod(path, mode, 0);
+  },
+
+  $FS_writeFile__deps: ['_wasmfs_write_file'],
+  $FS_writeFile: (path, data) => withStackSave(() => {
+    var pathBuffer = stringToUTF8OnStack(path);
+    if (typeof data == 'string') {
+      var buf = new Uint8Array(lengthBytesUTF8(data) + 1);
+      var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
+      data = buf.slice(0, actualNumBytes);
+    }
+    var dataBuffer = _malloc(data.length);
+#if ASSERTIONS
+    assert(dataBuffer);
+#endif
+    for (var i = 0; i < data.length; i++) {
+      {{{ makeSetValue('dataBuffer', 'i', 'data[i]', 'i8') }}};
+    }
+    var ret = __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
+    _free(dataBuffer);
+    return ret;
+  }),
+
+  $FS_mkdir__deps: ['_wasmfs_mkdir'],
+  $FS_mkdir: (path, mode) => FS.handleError(withStackSave(() => {
+    mode = mode !== undefined ? mode : 511 /* 0777 */;
+    var buffer = stringToUTF8OnStack(path);
+    return __wasmfs_mkdir(buffer, mode);
+  })),
+
+  $FS_mkdirTree__deps: ['$FS_mkdir'],
+  $FS_mkdirTree: (path, mode) => {
+    var dirs = path.split('/');
+    var d = '';
+    for (var i = 0; i < dirs.length; ++i) {
+      if (!dirs[i]) continue;
+      d += '/' + dirs[i];
+      try {
+        FS_mkdir(d, mode);
+      } catch(e) {
+        if (e.errno != {{{ cDefs.EEXIST }}}) throw e;
+      }
+    }
+  },
+
+  $FS_unlink__deps: ['_wasmfs_unlink'],
+  $FS_unlink: (path) => withStackSave(() => {
+    var buffer = stringToUTF8OnStack(path);
+    return __wasmfs_unlink(buffer);
+  }),
+
+  // Wasm access calls.
 
   _wasmfs_get_num_preloaded_files__deps: [
     '$wasmFSPreloadedFiles',
