@@ -75,6 +75,7 @@ extern "C" void wasmfs_flush(void) {
 
     auto lockedDir = dir->locked();
     Directory::MaybeEntries entries = lockedDir.getEntries();
+    printf("Entries: %p\n", &entries);
     if (int err = entries.getError()) {
 #ifndef NDEBUG
       std::string errorMessage =
@@ -84,6 +85,7 @@ extern "C" void wasmfs_flush(void) {
 #endif
       continue;
     }
+    printf("Right before for loop: %p\n", &entries);
     for (auto& entry : *entries) {
       if (auto child = lockedDir.getChild(entry.name)
                         ->dynCast<DataFile>()) {
@@ -117,6 +119,7 @@ WasmFS::~WasmFS() {
   //       might also help with destructor priority - we need to happen last.
   //       (But we would still need to flush the internal WasmFS buffers, see
   //       wasmfs_flush() and the comment on it in the header.)
+  printf("Inside destructor\n");
   wasmfs_flush();
 
   // Break the reference cycle caused by the root directory being its own
