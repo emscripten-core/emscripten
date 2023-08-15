@@ -444,7 +444,8 @@ FS.init();
 
   $FS_mkdirTree__docs: `
   /**
-   * @param {number=} mode
+   * @param {number=} mode Optionally, the mode to create in. Uses mkdir's
+   *                       default if not set.
    */`,
   $FS_mkdirTree__deps: ['$FS_mkdir'],
   $FS_mkdirTree: (path, mode) => {
