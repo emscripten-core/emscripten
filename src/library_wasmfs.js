@@ -417,7 +417,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
           try {
             var bytesRead = definedOps.userRead(wasmFSDeviceStreams[file], bufferArray, 0, length, offset);
           } catch (e) {
-            console.log(e);
             return -e.errno;
           }
           Module.HEAP8.set(bufferArray, buffer);
@@ -428,7 +427,6 @@ FS.createPreloadedFile = FS_createPreloadedFile;
           try {
             var bytesWritten = definedOps.userWrite(wasmFSDeviceStreams[file], bufferArray, 0, length, offset);
           } catch (e) {
-            console.log(e);
             return -e.errno;
           }
           Module.HEAP8.set(bufferArray, buffer);
