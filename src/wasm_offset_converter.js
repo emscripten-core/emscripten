@@ -130,7 +130,7 @@ function WasmOffsetConverter(wasmBytes, wasmModule) {
       var subsection_type = buffer[offset++];
       var len = unsignedLEB128(); // byte count
       if (subsection_type != 1) {
-        // Skip the whole sub-section if its not a function name sub-section.
+        // Skip the whole sub-section if it's not a function name sub-section.
         offset += len;
         continue;
       }
