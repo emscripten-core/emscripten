@@ -7,6 +7,7 @@ import os
 
 TAG = '1.6.39'
 HASH = '19851afffbe2ffde62d918f7e9017dec778a7ce9c60c75cdc65072f086e6cdc9d9895eb7b207535a84cb5f4ead77ebc2aa9d80025f153662903023e1f7ab9bae'
+SUBDIR = 'libpng-' + TAG
 
 deps = ['zlib']
 variants = {
@@ -34,7 +35,7 @@ def get(ports, settings, shared):
   ports.fetch_project('libpng', f'https://storage.googleapis.com/webassembly/emscripten-ports/libpng-{TAG}.tar.gz', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'libpng', 'libpng-' + TAG)
+    source_path = os.path.join(ports.get_dir(), 'libpng', SUBDIR)
     ports.write_file(os.path.join(source_path, 'pnglibconf.h'), pnglibconf_h)
     ports.install_headers(source_path)
 

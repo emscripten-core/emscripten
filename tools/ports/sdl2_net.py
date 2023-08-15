@@ -7,6 +7,7 @@ import os
 
 TAG = 'version_2'
 HASH = '317b22ad9b6b2f7b40fac7b7c426da2fa2da1803bbe58d480631f1e5b190d730763f2768c77c72affa806c69a1e703f401b15a1be3ec611cd259950d5ebc3711'
+SUBDIR = 'SDL2_net-' + TAG
 
 deps = ['sdl2']
 
@@ -21,7 +22,7 @@ def get(ports, settings, shared):
   ports.fetch_project('sdl2_net', f'https://github.com/emscripten-ports/SDL2_net/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    src_dir = os.path.join(ports.get_dir(), 'sdl2_net', 'SDL2_net-' + TAG)
+    src_dir = os.path.join(ports.get_dir(), 'sdl2_net', SUBDIR)
     ports.install_headers(src_dir, target='SDL2')
     excludes = ['chatd.c', 'chat.cpp', 'showinterfaces.c']
     ports.build_port(src_dir, final, 'sdl2_net', exclude_files=excludes, flags=['-sUSE_SDL=2'])

@@ -7,6 +7,7 @@ import os
 
 TAG = 'version_1'
 HASH = '99bee75beb662f8520bbb18ad6dbf8590d30eb3a7360899f0ac4764ca72fe8013da37c9df21e525f9d2dc5632827d4b4cea558cbc938e7fbed0c41a29a7a2dc5'
+SUBDIR = 'Vorbis-' + TAG
 
 deps = ['ogg']
 
@@ -19,7 +20,7 @@ def get(ports, settings, shared):
   ports.fetch_project('vorbis', f'https://github.com/emscripten-ports/vorbis/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'vorbis', 'Vorbis-' + TAG)
+    source_path = os.path.join(ports.get_dir(), 'vorbis', SUBDIR)
     ports.install_header_dir(os.path.join(source_path, 'include', 'vorbis'))
     ports.build_port(os.path.join(source_path, 'lib'), final, 'vorbis',
                      flags=['-sUSE_OGG'],

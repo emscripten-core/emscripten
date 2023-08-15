@@ -7,6 +7,7 @@ import os
 
 VERSION = '9c'
 HASH = 'b2affe9a1688bd49fc033f4682c4a242d4ee612f1affaef532f5adcb4602efc4433c4a52a4b3d69e7440ff1f6413b1b041b419bc90efd6d697999961a9a6afb7'
+SUBDIR = 'jpeg-' + VERSION
 
 
 def needed(settings):
@@ -20,7 +21,7 @@ def get(ports, settings, shared):
   ports.fetch_project('libjpeg', f'https://storage.googleapis.com/webassembly/emscripten-ports/jpegsrc.v{VERSION}.tar.gz', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'libjpeg', f'jpeg-{VERSION}')
+    source_path = os.path.join(ports.get_dir(), 'libjpeg', SUBDIR)
     ports.write_file(os.path.join(source_path, 'jconfig.h'), jconfig_h)
     ports.install_headers(source_path)
     excludes = [

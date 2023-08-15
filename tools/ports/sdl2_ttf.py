@@ -7,6 +7,7 @@ import os
 
 TAG = 'release-2.20.2' # Latest as of 21 February 2023
 HASH = '8a625d29bef2ab7cbfe2143136a303c0fdb066ecd802d6c725de1b73ad8b056908cb524fe58f38eaee9f105471d2af50bbcb17911d46506dbcf573db218b3685'
+SUBDIR = 'SDL_ttf-' + TAG
 
 deps = ['freetype', 'sdl2', 'harfbuzz']
 
@@ -19,7 +20,7 @@ def get(ports, settings, shared):
   ports.fetch_project('sdl2_ttf', f'https://github.com/libsdl-org/SDL_ttf/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    src_root = os.path.join(ports.get_dir(), 'sdl2_ttf', 'SDL_ttf-' + TAG)
+    src_root = os.path.join(ports.get_dir(), 'sdl2_ttf', SUBDIR)
     ports.install_headers(src_root, target='SDL2')
     flags = ['-DTTF_USE_HARFBUZZ=1', '-sUSE_SDL=2', '-sUSE_FREETYPE', '-sUSE_HARFBUZZ']
     ports.build_port(src_root, final, 'sdl2_ttf', flags=flags, srcs=['SDL_ttf.c'])

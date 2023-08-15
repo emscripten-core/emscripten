@@ -7,6 +7,7 @@ import os
 
 VERSION = '3.2.0'
 HASH = 'c9d88068d8017046842f444f02f31dbae109026ede943aaf265db5508de8b4b2be84203950f274a237f515bf7cbd361629d2032c6e8ee8f50354b430bba3a8ca'
+SUBDIR = 'harfbuzz-' + VERSION
 
 deps = ['freetype']
 variants = {'harfbuzz-mt': {'PTHREADS': 1}}
@@ -82,7 +83,7 @@ def get(ports, settings, shared):
   ports.fetch_project('harfbuzz', f'https://github.com/harfbuzz/harfbuzz/releases/download/{VERSION}/harfbuzz-{VERSION}.tar.xz', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'harfbuzz', 'harfbuzz-' + VERSION)
+    source_path = os.path.join(ports.get_dir(), 'harfbuzz', SUBDIR)
     freetype_include = ports.get_include_dir('freetype2')
     ports.install_headers(os.path.join(source_path, 'src'), target='harfbuzz')
 
