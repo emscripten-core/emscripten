@@ -224,7 +224,7 @@ let LibraryWebAudio = {
       audioParamDescriptors = HEAPU32[options+2] >> 2,
       i = 0;
 
-    while(numAudioParams--) {
+    while (numAudioParams--) {
       audioParams.push({
         name: i++,
         defaultValue: HEAPF32[audioParamDescriptors++],
@@ -257,7 +257,7 @@ let LibraryWebAudio = {
 
     function readChannelCountArray(heapIndex, numOutputs) {
       let channelCounts = [];
-      while(numOutputs--) channelCounts.push(HEAPU32[heapIndex++]);
+      while (numOutputs--) channelCounts.push(HEAPU32[heapIndex++]);
       return channelCounts;
     }
 

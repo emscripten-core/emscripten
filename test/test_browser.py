@@ -2376,7 +2376,11 @@ void *getBindBuffer() {
     self.run_process([EMCC, 'supp.c', '-o', 'supp.wasm', '-sSIDE_MODULE', '-O2'])
     self.btest_exit('main.c', args=['-sMAIN_MODULE=2', '-O2', 'supp.wasm'])
 
-  def test_pre_run_deps(self):
+  @parameterized({
+    '': ([],),
+    'memfile': (['-sWASM=0', '--memory-init-file=1'],)
+  })
+  def test_pre_run_deps(self, args):
     # Adding a dependency in preRun will delay run
     create_file('pre.js', '''
       Module.preRun = () => {
@@ -2389,8 +2393,7 @@ void *getBindBuffer() {
       };
     ''')
 
-    for args in [[], ['-sWASM=0', '--memory-init-file=1']]:
-      self.btest('pre_run_deps.cpp', expected='10', args=args + ['--pre-js', 'pre.js'])
+    self.btest('pre_run_deps.cpp', expected='10', args=args + ['--pre-js', 'pre.js'])
 
   def test_mem_init(self):
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
@@ -2952,20 +2955,23 @@ Module["preRun"].push(function () {
     self.btest(test_file('browser/test_glfw_events.c'), args=['-sUSE_GLFW=3', "-DUSE_GLFW=3", '-lglfw', '-lGL'], expected='1')
 
   @requires_graphics_hardware
-  def test_sdl2_image(self):
+  @parameterized({
+    '': ([],),
+    'memfile': (['-sWASM=0', '--memory-init-file=1'],)
+  })
+  def test_sdl2_image(self, args):
     # load an image file, get pixel data. Also O2 coverage for --preload-file, and memory-init
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
 
-    for args in [[], ['--memory-init-file=1', '-sWASM=0']]:
-      for dest, dirname, basename in [('screenshot.jpg', '/', 'screenshot.jpg'),
-                                      ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
-        self.btest_exit('browser/test_sdl2_image.c', 600, args=args + [
-          '-O2',
-          '--preload-file', dest,
-          '-DSCREENSHOT_DIRNAME="' + dirname + '"',
-          '-DSCREENSHOT_BASENAME="' + basename + '"',
-          '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--use-preload-plugins'
-        ])
+    for dest, dirname, basename in [('screenshot.jpg', '/', 'screenshot.jpg'),
+                                    ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
+      self.btest_exit('browser/test_sdl2_image.c', 600, args=args + [
+        '-O2',
+        '--preload-file', dest,
+        '-DSCREENSHOT_DIRNAME="' + dirname + '"',
+        '-DSCREENSHOT_BASENAME="' + basename + '"',
+        '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--use-preload-plugins'
+      ])
 
   @requires_graphics_hardware
   def test_sdl2_image_jpeg(self):
@@ -4094,10 +4100,13 @@ Module["preRun"].push(function () {
     self.btest_exit(test_file('pthread/test_pthread_file_io.cpp'), args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
 
   # Test that the pthread_create() function operates benignly in the case that threading is not supported.
+  @parameterized({
+   '': ([],),
+   'mt': (['-pthread', '-sPTHREAD_POOL_SIZE=8'],),
+  })
   @requires_threads
-  def test_pthread_supported(self):
-    for args in [[], ['-pthread', '-sPTHREAD_POOL_SIZE=8']]:
-      self.btest_exit(test_file('pthread/test_pthread_supported.cpp'), args=['-O3'] + args)
+  def test_pthread_supported(self, args):
+    self.btest_exit(test_file('pthread/test_pthread_supported.cpp'), args=['-O3'] + args)
 
   @requires_threads
   def test_pthread_dispatch_after_exit(self):
@@ -4160,11 +4169,14 @@ Module["preRun"].push(function () {
       self.btest_exit(test_file('pthread/test_pthread_sbrk.cpp'), args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '-sABORTING_MALLOC=' + str(aborting_malloc), '-DABORTING_MALLOC=' + str(aborting_malloc), '-sINITIAL_MEMORY=128MB'])
 
   # Test that -sABORTING_MALLOC=0 works in both pthreads and non-pthreads builds. (sbrk fails gracefully)
+  @parameterized({
+    '': ([],),
+    'mt': (['-pthread'],),
+  })
   @requires_threads
-  def test_pthread_gauge_available_memory(self):
+  def test_pthread_gauge_available_memory(self, args):
     for opts in [[], ['-O2']]:
-      for args in [[], ['-pthread']]:
-        self.btest(test_file('gauge_available_memory.cpp'), expected='1', args=['-sABORTING_MALLOC=0'] + args + opts)
+      self.btest(test_file('gauge_available_memory.cpp'), expected='1', args=['-sABORTING_MALLOC=0'] + args + opts)
 
   # Test that the proxying operations of user code from pthreads to main thread work
   @disabled('https://github.com/emscripten-core/emscripten/issues/18210')
@@ -4478,22 +4490,28 @@ Module["preRun"].push(function () {
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
   @no_chrome('see https://crbug.com/961765')
+  @parameterized({
+    '': ([],),
+    'chained': (['-DTEST_CHAINED_WEBGL_CONTEXT_PASSING'],),
+  })
   @requires_threads
   @requires_offscreen_canvas
   @requires_graphics_hardware
-  def test_webgl_offscreen_canvas_in_pthread(self):
-    for args in [[], ['-DTEST_CHAINED_WEBGL_CONTEXT_PASSING']]:
-      self.btest('gl_in_pthread.cpp', expected='1', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
+  def test_webgl_offscreen_canvas_in_pthread(self, args):
+    self.btest('gl_in_pthread.cpp', expected='1', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
 
   # Tests that it is possible to render WebGL content on a <canvas> on the main thread, after it has once been used to render WebGL content in a pthread first
   # -DTEST_MAIN_THREAD_EXPLICIT_COMMIT: Test the same (WebGL on main thread after pthread), but by using explicit .commit() to swap on the main thread instead of implicit "swap when rAF ends" logic
+  @parameterized({
+    '': ([],),
+    'explicit': (['-DTEST_MAIN_THREAD_EXPLICIT_COMMIT'],),
+  })
   @requires_threads
   @requires_offscreen_canvas
   @requires_graphics_hardware
   @disabled('This test is disabled because current OffscreenCanvas does not allow transfering it after a rendering context has been created for it.')
-  def test_webgl_offscreen_canvas_in_mainthread_after_pthread(self):
-    for args in [[], ['-DTEST_MAIN_THREAD_EXPLICIT_COMMIT']]:
-      self.btest('gl_in_mainthread_after_pthread.cpp', expected='0', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
+  def test_webgl_offscreen_canvas_in_mainthread_after_pthread(self, args):
+    self.btest('gl_in_mainthread_after_pthread.cpp', expected='0', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
 
   @requires_threads
   @requires_offscreen_canvas
@@ -4644,14 +4662,17 @@ Module["preRun"].push(function () {
                '-sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=' + str(simple_enable_extensions)]
         self.btest_exit('webgl2_simple_enable_extensions.c', args=cmd)
 
+  @parameterized({
+    '': ([],),
+    'closure': (['-sASSERTIONS', '--closure=1'],),
+    'main_module': (['-sMAIN_MODULE=1'],),
+  })
   @requires_graphics_hardware
-  def test_webgpu_basic_rendering(self):
-    for args in [[], ['-sASSERTIONS', '--closure=1'], ['-sMAIN_MODULE=1']]:
-      self.btest_exit('webgpu_basic_rendering.cpp', args=['-sUSE_WEBGPU'] + args)
+  def test_webgpu_basic_rendering(self, args):
+    self.btest_exit('webgpu_basic_rendering.cpp', args=['-sUSE_WEBGPU'] + args)
 
   def test_webgpu_get_device(self):
-    for args in [['-sASSERTIONS', '--closure=1']]:
-      self.btest_exit('webgpu_get_device.cpp', args=['-sUSE_WEBGPU'] + args)
+    self.btest_exit('webgpu_get_device.cpp', args=['-sUSE_WEBGPU', '-sASSERTIONS', '--closure=1'])
 
   # Tests the feature that shell html page can preallocate the typed array and place it
   # to Module.buffer before loading the script page.
@@ -4785,16 +4806,15 @@ Module["preRun"].push(function () {
   def test_fetch_post(self):
     self.btest_exit('fetch/test_fetch_post.c', args=['-sFETCH'])
 
+  @parameterized({
+    '': ([],),
+    'mt': (['-pthread', '-sPTHREAD_POOL_SIZE=2'],),
+  })
   @requires_threads
-  def test_pthread_locale(self):
+  def test_pthread_locale(self, args):
     self.emcc_args.append('-I' + path_from_root('system/lib/libc/musl/src/internal'))
     self.emcc_args.append('-I' + path_from_root('system/lib/pthread'))
-    for args in [
-        [],
-        ['-pthread', '-sPTHREAD_POOL_SIZE=2'],
-    ]:
-      print("Testing with: ", args)
-      self.btest_exit('pthread/test_pthread_locale.c', args=args)
+    self.btest_exit('pthread/test_pthread_locale.c', args=args)
 
   # Tests the Emscripten HTML5 API emscripten_set_canvas_element_size() and
   # emscripten_get_canvas_element_size() functionality in singlethreaded programs.
@@ -4803,17 +4823,23 @@ Module["preRun"].push(function () {
 
   # Test that emscripten_get_device_pixel_ratio() is callable from pthreads (and proxies to main
   # thread to obtain the proper window.devicePixelRatio value).
+  @parameterized({
+    '': ([],),
+    'mt': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
   @requires_threads
-  def test_emscripten_get_device_pixel_ratio(self):
-    for args in [[], ['-pthread', '-sPROXY_TO_PTHREAD']]:
-      self.btest_exit('emscripten_get_device_pixel_ratio.c', args=args)
+  def test_emscripten_get_device_pixel_ratio(self, args):
+    self.btest_exit('emscripten_get_device_pixel_ratio.c', args=args)
 
   # Tests that emscripten_run_script() variants of functions work in pthreads.
+  @parameterized({
+    '': ([],),
+    'mt': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
   @requires_threads
-  def test_pthread_run_script(self):
+  def test_pthread_run_script(self, args):
     shutil.copyfile(test_file('pthread/foo.js'), 'foo.js')
-    for args in [[], ['-pthread', '-sPROXY_TO_PTHREAD']]:
-      self.btest_exit(test_file('pthread/test_pthread_run_script.c'), args=['-O3'] + args)
+    self.btest_exit(test_file('pthread/test_pthread_run_script.c'), args=['-O3'] + args)
 
   # Tests emscripten_set_canvas_element_size() and OffscreenCanvas functionality in different build configurations.
   @requires_threads
