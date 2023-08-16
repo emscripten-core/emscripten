@@ -7656,13 +7656,13 @@ int main() {}
     test("Module['FS_createPreloadedFile']('waka waka, just warning check')")
 
     # text is in the source when needed, but when forcing FS, it isn't there
-    self.run_process([EMCC, 'src.c'])
+    self.emcc('src.c')
     self.assertContained(error, read_file('a.out.js'))
-    self.run_process([EMCC, 'src.c', '-sFORCE_FILESYSTEM']) # forcing FS means no need
+    self.emcc('src.c', args=['-sFORCE_FILESYSTEM']) # forcing FS means no need
     self.assertNotContained(error, read_file('a.out.js'))
-    self.run_process([EMCC, 'src.c', '-sASSERTIONS=0']) # no assertions, no need
+    self.emcc('src.c', args=['-sASSERTIONS=0']) # no assertions, no need
     self.assertNotContained(error, read_file('a.out.js'))
-    self.run_process([EMCC, 'src.c', '-O2']) # optimized, so no assertions
+    self.emcc('src.c', args=['-O2']) # optimized, so no assertions
     self.assertNotContained(error, read_file('a.out.js'))
 
   def test_warn_module_out_err(self):
