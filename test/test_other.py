@@ -2908,8 +2908,11 @@ int f() {
     self.do_runf(test_file('other/test_jspi_add_function.c'), 'done')
 
   def test_embind_tsgen(self):
-    self.run_process([EMCC, test_file('other/embind_tsgen.cpp'), '-o', 'out.html',
-                      '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'])
+    # These extra arguments are not related to TS binding generation but we want to
+    # verify that they do not interfere with it.
+    extra_args = ['-o', 'out.html', '-sMODULARIZE']
+    self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
+                      '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'] + extra_args)
     actual = read_file('embind_tsgen.d.ts')
     self.assertNotExists('out.html')
     self.assertNotExists('out.js')
