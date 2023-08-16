@@ -146,4 +146,4 @@ LibraryJSEventLoop = {
   },
 };
 
-mergeInto(LibraryManager.library, LibraryJSEventLoop);
+addToLibrary(LibraryJSEventLoop);

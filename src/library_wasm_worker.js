@@ -29,7 +29,7 @@
 #endif // ~WASM_WORKERS
 
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $_wasmWorkers: {},
   $_wasmWorkersID: 1,
 

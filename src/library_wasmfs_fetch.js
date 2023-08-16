@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   // Fetch backend: On first access of the file (either a read or a getSize), it
   // will fetch() the data from the network asynchronously. Otherwise, after
   // that fetch it behaves just like JSFile (and it reuses the code from there).

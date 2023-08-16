@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $promiseMap__deps: ['$HandleAllocator'],
   $promiseMap: "new HandleAllocator();",
 

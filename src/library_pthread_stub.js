@@ -25,4 +25,4 @@ var LibraryPThreadStub = {
   ,
 };
 
-mergeInto(LibraryManager.library, LibraryPThreadStub);
+addToLibrary(LibraryPThreadStub);

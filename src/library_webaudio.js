@@ -337,4 +337,4 @@ let LibraryWebAudio = {
   }
 };
 
-mergeInto(LibraryManager.library, LibraryWebAudio);
+addToLibrary(LibraryWebAudio);

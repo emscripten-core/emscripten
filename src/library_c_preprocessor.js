@@ -1,4 +1,4 @@
-mergeInto(LibraryManager.library, {
+addToLibrary({
   // Removes all C++ '//' and '/* */' comments from the given source string.
   // N.b. will also eat comments inside strings.
   $remove_cpp_comments_in_shaders: (code) => {

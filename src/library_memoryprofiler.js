@@ -6,4 +6,4 @@ var memoryProfiler = {
   },
 };
 
-mergeInto(LibraryManager.library, memoryProfiler);
+addToLibrary(memoryProfiler);

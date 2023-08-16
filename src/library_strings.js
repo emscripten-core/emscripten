@@ -6,7 +6,7 @@
 
 #include "arrayUtils.js"
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
 #if TEXTDECODER == 2
   $UTF8Decoder: "new TextDecoder('utf8')",
 #elif TEXTDECODER == 1

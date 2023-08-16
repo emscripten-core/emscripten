@@ -541,7 +541,7 @@ If manually bisecting:
     ''' % 'somefile.txt')
 
     create_file('test.js', '''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         checkPreloadResults: function() {
           var cached = 0;
           var packages = Object.keys(Module['preloadResults']);
@@ -597,7 +597,7 @@ If manually bisecting:
       ''' % path)
 
     create_file('test.js', '''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         checkPreloadResults: function() {
           var cached = 0;
           var packages = Object.keys(Module['preloadResults']);
@@ -1287,7 +1287,7 @@ keydown(100);keyup(100); // trigger the end
     # (request the attribute, create a context and check its value afterwards in the context attributes).
     # Tests will succeed when an attribute is not supported.
     create_file('check_webgl_attributes_support.js', '''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         webglAntialiasSupported: function() {
           canvas = document.createElement('canvas');
           context = canvas.getContext('experimental-webgl', {antialias: true});

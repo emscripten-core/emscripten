@@ -539,4 +539,4 @@ var LibraryEmbind = {
 
 DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$embindEmitTypes');
 
-mergeInto(LibraryManager.library, LibraryEmbind);
+addToLibrary(LibraryEmbind);

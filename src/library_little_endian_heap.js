@@ -36,4 +36,4 @@ var LibraryLittleEndianHeap = {
     HEAP_DATA_VIEW.getFloat64(byteOffset, true),
 }
 
-mergeInto(LibraryManager.library, LibraryLittleEndianHeap);
+addToLibrary(LibraryLittleEndianHeap);

@@ -199,4 +199,4 @@ var LibraryIDBStore = {
 };
 
 autoAddDeps(LibraryIDBStore, '$IDBStore');
-mergeInto(LibraryManager.library, LibraryIDBStore);
+addToLibrary(LibraryIDBStore);

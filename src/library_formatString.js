@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $reallyNegative: (x) => x < 0 || (x === 0 && (1/x) === -Infinity),
 
   // Converts a value we have as signed, into an unsigned value. For
