@@ -12500,7 +12500,7 @@ void foo() {}
     self.emcc_args += ['--profiling-funcs', '-pthread']
     output = self.do_runf(test_file('pthread/test_pthread_trap.c'), assert_returncode=NON_ZERO)
     self.assertContained('sent an error!', output)
-    self.assertContained('at (test_pthread_trap.wasm.?)thread_main', output, regex=True)
+    self.assertContained('at (test_pthread_trap.wasm.)?thread_main', output, regex=True)
 
   @node_pthreads
   def test_emscripten_set_interval(self):
