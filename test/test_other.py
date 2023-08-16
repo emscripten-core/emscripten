@@ -8438,21 +8438,21 @@ int main() {
 
     # Stack trace and message example for this example code:
     # exiting due to exception: [object WebAssembly.Exception],Error: std::runtime_error,my message
-    #     at __cxa_throw (wasm://wasm/009a7c9a:wasm-function[1551]:0x24367)
-    #     at bar() (wasm://wasm/009a7c9a:wasm-function[12]:0xf53)
-    #     at foo() (wasm://wasm/009a7c9a:wasm-function[19]:0x154e)
+    #     at src.wasm.__cxa_throw (wasm://wasm/009a7c9a:wasm-function[1551]:0x24367)
+    #     at src.wasm.bar() (wasm://wasm/009a7c9a:wasm-function[12]:0xf53)
+    #     at src.wasm.foo() (wasm://wasm/009a7c9a:wasm-function[19]:0x154e)
     #     at __original_main (wasm://wasm/009a7c9a:wasm-function[20]:0x15a6)
-    #     at main (wasm://wasm/009a7c9a:wasm-function[56]:0x25be)
+    #     at src.wasm.main (wasm://wasm/009a7c9a:wasm-function[56]:0x25be)
     #     at test.js:833:22
     #     at callMain (test.js:4567:15)
     #     at doRun (test.js:4621:23)
     #     at run (test.js:4636:5)
     stack_trace_checks = [
       'std::runtime_error[:,][ ]?my message',  # 'std::runtime_error: my message' for Emscripten EH
-      'at [_]{2,3}cxa_throw',  # '___cxa_throw' (JS symbol) for Emscripten EH
-      'at bar',
-      'at foo',
-      'at main']
+      'at (src.wasm.)?_?__cxa_throw',  # '___cxa_throw' (JS symbol) for Emscripten EH
+      'at (src.wasm.)?bar',
+      'at (src.wasm.)?foo',
+      'at (src.wasm.)?main']
 
     if wasm_eh:
       # FIXME Node v18.13 (LTS as of Jan 2023) has not yet implemented the new
@@ -12500,7 +12500,7 @@ void foo() {}
     self.emcc_args += ['--profiling-funcs', '-pthread']
     output = self.do_runf(test_file('pthread/test_pthread_trap.c'), assert_returncode=NON_ZERO)
     self.assertContained('sent an error!', output)
-    self.assertContained('at thread_main', output)
+    self.assertContained('at (test_pthread_trap.wasm.?)thread_main', output, regex=True)
 
   @node_pthreads
   def test_emscripten_set_interval(self):
