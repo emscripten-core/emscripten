@@ -2887,19 +2887,17 @@ addToLibrary({
 #endif
       // Floats are always passed as doubles, and doubles and int64s take up 8
       // bytes (two 32-bit slots) in memory, align reads to these:
-      buf += (ch != 105/*i*/) & buf;
-#if MEMORY64
-      // Special case for pointers under wasm64 which we read as int53 Numbers.
-      if (ch == 112/*p*/) {
-        readEmAsmArgsArray.push(readI53FromI64(buf++ << 2));
-      } else
-#endif
+      buf += (ch != {{{ charCode('i') }}}) & buf;
       readEmAsmArgsArray.push(
-        ch == 105/*i*/ ? HEAP32[buf] :
+        ch == {{{ charCode('i') }}} ? HEAP32[buf] :
+#if MEMORY64
+        // Special case for pointers under wasm64 which we read as int53 Numbers.
+        ch == {{{ charCode('p') }}} ? {{{ makeGetValue('buf++ << 2', 0, '*') }}} :
+#endif
 #if WASM_BIGINT
-       (ch == 106/*j*/ ? HEAP64 : HEAPF64)[buf++ >> 1]
+        (ch == {{{ charCode('j') }}} ? HEAP64 : HEAPF64)[buf++ >> 1]
 #else
-       HEAPF64[buf++ >> 1]
+        HEAPF64[buf++ >> 1]
 #endif
       );
       ++buf;
