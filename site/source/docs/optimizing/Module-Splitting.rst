@@ -222,7 +222,7 @@ Multithreaded Programs
 
 By default, the data gathered by the wasm-split instrumentation is stored in
 Wasm globals, so it is thread local. But in a multithreaded program, it is
-important to collect profile information from all threads. To do so, you can can
+important to collect profile information from all threads. To do so, you can
 tell wasm-split to collect shared profile information in shared memory using the
 ``--in-memory`` wasm-split flag. This will use memory starting at address zero
 to store the profile information, so you must also pass ``-sGLOBAL_BASE=N`` to
