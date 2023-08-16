@@ -2237,7 +2237,7 @@ var LibraryGLEmulation = {
                 vsClipPlaneDefs += 'varying float v_clipDistance' + clipPlaneId + ';';
                 vsClipPlaneInit += '  v_clipDistance' + clipPlaneId + ' = dot(ecPosition, u_clipPlaneEquation' + clipPlaneId + ');';
                 fsClipPlaneDefs += 'varying float v_clipDistance' + clipPlaneId + ';';
-                fsClipPlanePass += '  if(v_clipDistance' + clipPlaneId + ' < 0.0) discard;';
+                fsClipPlanePass += '  if (v_clipDistance' + clipPlaneId + ' < 0.0) discard;';
               }
             }
 
@@ -2343,22 +2343,22 @@ var LibraryGLEmulation = {
                   fsAlphaTestPass = 'discard;';
                   break;
                 case 0x201: // GL_LESS
-                  fsAlphaTestPass = 'if( !(gl_FragColor.a < u_alphaTestRef) ) { discard; }';
+                  fsAlphaTestPass = 'if (!(gl_FragColor.a < u_alphaTestRef)) { discard; }';
                   break;
                 case 0x202: // GL_EQUAL
-                  fsAlphaTestPass = 'if( !(gl_FragColor.a == u_alphaTestRef) ) { discard; }';
+                  fsAlphaTestPass = 'if (!(gl_FragColor.a == u_alphaTestRef)) { discard; }';
                   break;
                 case 0x203: // GL_LEQUAL
-                  fsAlphaTestPass = 'if( !(gl_FragColor.a <= u_alphaTestRef) ) { discard; }';
+                  fsAlphaTestPass = 'if (!(gl_FragColor.a <= u_alphaTestRef)) { discard; }';
                   break;
                 case 0x204: // GL_GREATER
-                  fsAlphaTestPass = 'if( !(gl_FragColor.a > u_alphaTestRef) ) { discard; }';
+                  fsAlphaTestPass = 'if (!(gl_FragColor.a > u_alphaTestRef)) { discard; }';
                   break;
                 case 0x205: // GL_NOTEQUAL
-                  fsAlphaTestPass = 'if( !(gl_FragColor.a != u_alphaTestRef) ) { discard; }';
+                  fsAlphaTestPass = 'if (!(gl_FragColor.a != u_alphaTestRef)) { discard; }';
                   break;
                 case 0x206: // GL_GEQUAL
-                  fsAlphaTestPass = 'if( !(gl_FragColor.a >= u_alphaTestRef) ) { discard; }';
+                  fsAlphaTestPass = 'if (!(gl_FragColor.a >= u_alphaTestRef)) { discard; }';
                   break;
                 case 0x207: // GL_ALWAYS
                   fsAlphaTestPass = '';
