@@ -74,11 +74,11 @@ extern "C" void wasmfs_flush(void) {
     toFlush.pop_back();
 
     auto lockedDir = dir->locked();
-    EM_ASM(alert("Line 77"));
+    // EM_ASM(alert("Line 77"));
     Directory::MaybeEntries entries = lockedDir.getEntries();
     printf("Entries: %p\n", &entries);
     if (int err = entries.getError()) {
-      EM_ASM(alert("entries.getError() triggered"));
+      // EM_ASM(alert("entries.getError() triggered"));
 #ifndef NDEBUG
       std::string errorMessage =
         "Non-fatal error code " + std::to_string(err) +
@@ -90,7 +90,7 @@ extern "C" void wasmfs_flush(void) {
     printf("Right before for loop: %p, size: %zu\n", &entries, entries->size());
     Directory::MaybeEntries entries2 = lockedDir.getEntries();
     printf("Entries 2: %p, size: %zu\n", &entries2, entries2->size());
-    EM_ASM(alert("before getEntries() in for loop"));
+    // EM_ASM(alert("before getEntries() in for loop"));
     // TODO: Investigate why *lockedDir.getEntries() does not go through the loop.
     for (auto& entry : *entries) {
       auto child = lockedDir.getChild(entry.name);

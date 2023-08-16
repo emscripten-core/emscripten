@@ -5465,6 +5465,7 @@ Module["preRun"].push(function () {
   def test_wasmfs_opfs(self, args):
     test = test_file('wasmfs/wasmfs_opfs.c')
     self.emcc_args += ['--profiling', '--profiling-funcs']
+    self.emcc_args += ['-sASYNCIFY_EXPORTS=__funcs_on_exit']
     args = ['-sWASMFS', '-O3'] + args
     self.btest_exit(test, args=args + ['-DWASMFS_SETUP'])
     # self.btest_exit(test, args=args + ['-DWASMFS_RESUME'])
