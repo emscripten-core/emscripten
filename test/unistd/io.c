@@ -27,7 +27,9 @@ int main() {
     var device = FS.makedev(major++, 0);
     FS.registerDevice(device, {
       read: function(stream, buffer, offset, length, pos) {
-        stream.payload = [65, 66, 67, 68];
+        if (!stream.payload) {
+          stream.payload = [65, 66, 67, 68];
+        }
         var bytesRead = 0;
         for (var i = 0; i < length; i++) {
           if (stream.payload.length) {
@@ -61,11 +63,8 @@ int main() {
 
     // NB: These are meant to test FS.createDevice specifically,
     //     and as such do not use registerDevice/mkdev
-#if !defined(WASMFS)
-    // WasmFS does not support FS.createDevice()
     FS.createDevice('/', 'createDevice-read-only', function() {});
     FS.createDevice('/', 'createDevice-write-only', null, function() {});
-#endif
 
     FS.mkdir('/working/folder');
     FS.writeFile('/working/file', '1234567890');
@@ -100,14 +99,6 @@ int main() {
   printf("errno: %d\n\n", errno);
   errno = 0;
 
-#if WASMFS
-  // WasmFS does not support FS.createDevice(), so we print the expected
-  // results to match io.out.
-  printf("open read-only device from createDevice for read, errno: 0\n");
-  printf("open read-only device from createDevice for write, errno: 2\n");
-  printf("open write-only device from createDevice for read, errno: 2\n");
-  printf("open write-only device from createDevice for write, errno: 0\n");
-#else
   int cd_ro_r = open("/createDevice-read-only", O_RDONLY);
   printf("open read-only device from createDevice for read, errno: %d\n", errno);
   errno = 0;
@@ -120,7 +111,6 @@ int main() {
   int cd_wo_w = open("/createDevice-write-only", O_WRONLY);
   printf("open write-only device from createDevice for write, errno: %d\n\n", errno);
   errno = 0;
-#endif
 
   // This part of the test has moved to wasmfs/wasmfs_seek.c
 

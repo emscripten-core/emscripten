@@ -2555,7 +2555,8 @@ void *getBindBuffer() {
 
   @also_with_wasmfs
   def test_emscripten_async_wget2(self):
-    self.set_setting('FORCE_FILESYSTEM')
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
     self.btest_exit('test_emscripten_async_wget2.cpp')
 
   @disabled('https://github.com/emscripten-core/emscripten/issues/15818')
