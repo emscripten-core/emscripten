@@ -418,7 +418,7 @@ If you add it to your own file, you should write something like
      },
    });
 
-``addToLibrary`` copies the properties of the first parameter into
+``addToLibrary`` copies the properties of the input object into
 ``LibraryManager.library`` (the global object where all JavaScript library code
 lives). In this case its adds a function called ``my_js`` onto this object.
 
