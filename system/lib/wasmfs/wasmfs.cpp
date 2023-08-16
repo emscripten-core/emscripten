@@ -74,11 +74,8 @@ extern "C" void wasmfs_flush(void) {
     toFlush.pop_back();
 
     auto lockedDir = dir->locked();
-    // EM_ASM(alert("Line 77"));
     Directory::MaybeEntries entries = lockedDir.getEntries();
-    printf("Entries: %p\n", &entries);
     if (int err = entries.getError()) {
-      // EM_ASM(alert("entries.getError() triggered"));
 #ifndef NDEBUG
       std::string errorMessage =
         "Non-fatal error code " + std::to_string(err) +
@@ -87,16 +84,16 @@ extern "C" void wasmfs_flush(void) {
 #endif
       continue;
     }
-    printf("Right before for loop: %p, size: %zu\n", &entries, entries->size());
-    Directory::MaybeEntries entries2 = lockedDir.getEntries();
-    printf("Entries 2: %p, size: %zu\n", &entries2, entries2->size());
-    // EM_ASM(alert("before getEntries() in for loop"));
     // TODO: Investigate why *lockedDir.getEntries() does not go through the loop.
     for (auto& entry : *entries) {
       auto child = lockedDir.getChild(entry.name);
-      printf("Entry name: %s\n", entry.name.c_str());
       if (!child) {
-        EM_ASM(alert("Child was null"));
+#ifndef NDEBUG
+          std::string errorMessage = "Child: " +
+                                     entry.name +
+                                     " was null while flushing directory: " + lockedDir.getName();
+          emscripten_console_error(errorMessage.c_str());
+#endif
         continue;
       }
 
@@ -130,7 +127,6 @@ WasmFS::~WasmFS() {
   //       might also help with destructor priority - we need to happen last.
   //       (But we would still need to flush the internal WasmFS buffers, see
   //       wasmfs_flush() and the comment on it in the header.)
-  printf("Inside destructor\n");
   wasmfs_flush();
 
   // Break the reference cycle caused by the root directory being its own

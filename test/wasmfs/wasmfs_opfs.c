@@ -86,7 +86,6 @@ int main(int argc, char* argv[]) {
   emscripten_console_log("statted");
 
 #ifndef WASMFS_SETUP
-  emscripten_console_log("ndef wasmfs setup");
   err = ftruncate(fd, 100);
   assert(err == 0);
   err = fstat(fd, &stat_buf);
@@ -217,7 +216,6 @@ int main(int argc, char* argv[]) {
   emscripten_console_log("done");
 
 #endif // !WASMFS_SETUP
-  emscripten_console_log("out of ifdef");
 }
 
 void cleanup(void) {

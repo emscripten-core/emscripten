@@ -159,20 +159,17 @@ mergeInto(LibraryManager.library, {
   _wasmfs_opfs_get_entries: async function(ctx, dirID, entriesPtr, errPtr) {
     let dirHandle = wasmfsOPFSDirectoryHandles.get(dirID);
 
-    console.log("Dir handle: ", dirHandle);
     // TODO: Use 'for await' once Acorn supports that.
     try {
       let iter = dirHandle.entries();
-      console.log("Iter: ", iter);
       for (let entry; entry = await iter.next(), !entry.done;) {
-        console.log("Entry: ", entry);
         let [name, child] = entry.value;
         withStackSave(() => {
           let namePtr = stringToUTF8OnStack(name);
           let type = child.kind == "file" ?
               {{{ cDefine('File::DataFileKind') }}} :
           {{{ cDefine('File::DirectoryKind') }}};
-          // __wasmfs_opfs_record_entry(entriesPtr, namePtr, type)
+          __wasmfs_opfs_record_entry(entriesPtr, namePtr, type)
         });
       }
     } catch {
