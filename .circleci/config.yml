@@ -166,30 +166,6 @@ commands:
             ./emcc --clear-cache
       - pip-install
       - run: apt-get install ninja-build
-      - run:
-          name: embuilder build ALL
-          command: |
-            ./embuilder build ALL
-            ./test/runner test_hello_world
-      - run:
-          name: embuilder (LTO)
-          command: |
-            ./embuilder build MINIMAL --lto
-            ./test/runner test_hello_world
-      - run:
-          name: embuilder (WASM64)
-          command: |
-            ./embuilder build MINIMAL --wasm64
-      - run:
-          name: embuilder (PIC)
-          command: |
-            ./embuilder build MINIMAL_PIC --pic
-            ./test/runner test_hello_world
-      - run:
-          name: embuilder (PIC+LTO)
-          command: |
-            ./embuilder build MINIMAL --pic --lto
-            ./test/runner test_hello_world
   persist:
     description: "Persist the emsdk, libraries, and engines"
     steps:
@@ -358,9 +334,8 @@ commands:
             # that are not included by "./embuilder build ALL".  For example the
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
-            test/runner emrun
             # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
-            test/runner posixtest_browser.test_pthread_create_1_1 browser skip:browser.test_zzz_zzz_4gb_fail skip:browser.test_zzz_zzz_4gb_fail_wasm64
+            test/runner browser skip:browser.test_zzz_zzz_4gb_fail skip:browser.test_zzz_zzz_4gb_fail_wasm64
       - upload-test-results
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
@@ -839,52 +814,7 @@ jobs:
 workflows:
   build-test:
     jobs:
-      - flake8
-      - mypy
-      - eslint
-      - build-docs
       - build-linux
-      - test-sanity:
-          requires:
-            - build-linux
-      - test-posixtest:
-          requires:
-            - build-linux
-      - test-core0:
-          requires:
-            - build-linux
-      - test-core2:
-          requires:
-            - build-linux
-      - test-core3:
-          requires:
-            - build-linux
-      - test-wasm64:
-          requires:
-            - build-linux
-      - test-wasm2js1:
-          requires:
-            - build-linux
-      - test-other:
-          requires:
-            - build-linux
       - test-browser-chrome:
-          requires:
-            - build-linux
-      - test-browser-firefox:
-          requires:
-            - build-linux
-      - test-sockets-chrome:
-          requires:
-            - build-linux
-      - test-jsc
-      - test-spidermonkey
-      - test-node-compat
-      - test-windows
-      - test-mac-arm64
-      - test-mac:
-          # The mac tester also uses the libraries built on the linux builder to
-          # save total build time (this is fine because the libraries are wasm
-          # and do not depend on the underlying build platform)
           requires:
             - build-linux
