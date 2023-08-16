@@ -371,12 +371,10 @@ function exportRuntime() {
     'removeRunDependency',
     'FS_createFolder',
     'FS_createPath',
-    'FS_createDataFile',
     'FS_createLazyFile',
     'FS_createLink',
     'FS_createDevice',
     'FS_readFile',
-    'FS_unlink',
     'out',
     'err',
     'callMain',
@@ -455,6 +453,10 @@ function exportRuntime() {
   for (const ident of Object.keys(LibraryManager.library)) {
     if (isJsOnlySymbol(ident) && !isDecorator(ident) && !isInternalSymbol(ident)) {
       const jsname = ident.substr(1);
+      // Note that this assertion may be hit when a function is moved into the
+      // JS library. In that case the function should be removed from the list
+      // of runtime elements above.
+      assert(!runtimeElementsSet.has(jsname), 'runtimeElements contains library symbol: ' + ident);
       runtimeElements.push(jsname);
     }
   }
