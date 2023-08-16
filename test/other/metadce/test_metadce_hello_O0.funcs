@@ -22,11 +22,7 @@ $__unlockfile
 $__vfprintf_internal
 $__wasi_syscall_ret
 $__wasm_call_ctors
-$dispose_chunk
-$dlmalloc
-$dlmemalign
 $dynCall_jiji
-$emscripten_get_heap_size
 $emscripten_stack_get_base
 $emscripten_stack_get_current
 $emscripten_stack_get_end
@@ -42,7 +38,6 @@ $getTempRet0
 $getint
 $getpid
 $init_pthread_self
-$internal_memalign
 $isdigit
 $legalstub$dynCall_jiji
 $main
@@ -53,7 +48,6 @@ $pop_arg
 $pop_arg_long_double
 $printf
 $printf_core
-$sbrk
 $setTempRet0
 $stackAlloc
 $stackRestore

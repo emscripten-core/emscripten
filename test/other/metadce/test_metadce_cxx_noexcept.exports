@@ -7,7 +7,6 @@ dynCall_iiiiij
 dynCall_iiiiijj
 dynCall_jiji
 dynCall_viijii
-emscripten_builtin_memalign
 main
 memory
 stackAlloc

@@ -2,7 +2,6 @@ __errno_location
 __indirect_function_table
 __wasm_call_ctors
 dynCall_jiji
-emscripten_builtin_memalign
 emscripten_stack_get_base
 emscripten_stack_get_current
 emscripten_stack_get_end
