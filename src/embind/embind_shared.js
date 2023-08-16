@@ -146,4 +146,4 @@ var LibraryEmbindShared = {
   }
 };
 
-mergeInto(LibraryManager.library, LibraryEmbindShared);
+addToLibrary(LibraryEmbindShared);

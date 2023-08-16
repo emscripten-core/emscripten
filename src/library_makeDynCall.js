@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $createDyncallWrapper__deps: ['$generateFuncType', '$uleb128Encode', 'setTempRet0'],
   $createDyncallWrapper: (sig) => {
     var sections = [];

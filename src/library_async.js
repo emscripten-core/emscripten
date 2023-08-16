@@ -8,7 +8,7 @@
 // Async support via ASYNCIFY
 //
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   // error handling
 
   $runAndAbortIfError: (func) => {

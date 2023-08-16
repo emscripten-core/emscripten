@@ -380,4 +380,4 @@ var LibraryTracing = {
 };
 
 autoAddDeps(LibraryTracing, '$EmscriptenTrace');
-mergeInto(LibraryManager.library, LibraryTracing);
+addToLibrary(LibraryTracing);

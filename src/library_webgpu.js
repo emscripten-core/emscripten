@@ -2645,4 +2645,4 @@ for (const key of Object.keys(LibraryWebGPU)) {
 }
 
 autoAddDeps(LibraryWebGPU, '$WebGPU');
-mergeInto(LibraryManager.library, LibraryWebGPU);
+addToLibrary(LibraryWebGPU);

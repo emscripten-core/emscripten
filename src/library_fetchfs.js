@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $FETCHFS__deps: ['$stringToUTF8OnStack', 'wasmfs_create_fetch_backend'],
   $FETCHFS: {
     createBackend(opts) {

@@ -78,4 +78,4 @@ var LibraryStackTrace = {
   }
 }
 
-mergeInto(LibraryManager.library, LibraryStackTrace);
+addToLibrary(LibraryStackTrace);

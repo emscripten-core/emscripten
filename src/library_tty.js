@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $TTY__deps: [
     '$FS',
     '$UTF8ArrayToString',

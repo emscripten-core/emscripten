@@ -1263,4 +1263,4 @@ var LibraryPThread = {
 };
 
 autoAddDeps(LibraryPThread, '$PThread');
-mergeInto(LibraryManager.library, LibraryPThread);
+addToLibrary(LibraryPThread);

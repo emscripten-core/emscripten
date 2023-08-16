@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $ALLOC_NORMAL: 0,  // Tries to use _malloc()
   $ALLOC_STACK: 1,  // Lives for the duration of the current function call
 

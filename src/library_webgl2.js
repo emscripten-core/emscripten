@@ -1041,6 +1041,6 @@ createGLPassthroughFunctions(LibraryWebGL2, webgl2PassthroughFuncs);
 
 recordGLProcAddressGet(LibraryWebGL2);
 
-mergeInto(LibraryManager.library, LibraryWebGL2);
+addToLibrary(LibraryWebGL2);
 
 #endif

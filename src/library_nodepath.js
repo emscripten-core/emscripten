@@ -11,7 +11,7 @@
 // will replace all normal filesystem access with direct Node.js
 // operations. Hence, using `nodePath` should be safe here.
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $PATH: {
     isAbs: (path) => nodePath['isAbsolute'](path),
     normalize: (path) => nodePath['normalize'](path),

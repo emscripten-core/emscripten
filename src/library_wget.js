@@ -236,4 +236,4 @@ var LibraryWget = {
   },
 };
 
-mergeInto(LibraryManager.library, LibraryWget);
+addToLibrary(LibraryWget);

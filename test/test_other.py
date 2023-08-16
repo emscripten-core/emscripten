@@ -3788,13 +3788,13 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
       }
     ''')
     create_file('duplicated_func_1.js', '''
-      mergeInto(LibraryManager.library,
+      addToLibrary(
         { duplicatedFunc: () => 1 },
         { noOverride: true }
       );
     ''')
     create_file('duplicated_func_2.js', '''
-      mergeInto(LibraryManager.library,
+      addToLibrary(
         { duplicatedFunc: () => 2 },
         { noOverride: true }
       );
@@ -3819,7 +3819,7 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
       }
     ''')
     create_file('some_func.js', '''
-      mergeInto(LibraryManager.library,
+      addToLibrary(
         { someFunc: () => 1 },
         { checkSig: true }
       );
@@ -3831,7 +3831,7 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
 
   def test_js_lib_quoted_key(self):
     create_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   __internal_data:{
     '<' : 0,
     'white space' : 1
@@ -3847,7 +3847,7 @@ mergeInto(LibraryManager.library, {
 
   def test_js_lib_exported(self):
     create_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
  jslibfunc: (x) => 2 * x
 });
 ''')
@@ -3867,7 +3867,7 @@ int main() {
 
   def test_js_lib_using_asm_lib(self):
     create_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   jslibfunc__deps: ['asmlibfunc'],
   jslibfunc: (x) => 2 * _asmlibfunc(x),
 
@@ -3890,7 +3890,7 @@ int main() {
 
   def test_js_internal_deps(self):
     create_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   jslibfunc__deps: ['$callRuntimeCallbacks'],
   jslibfunc: (x) => {
     callRuntimeCallbacks();
@@ -3909,12 +3909,12 @@ int main() {
 
   def test_js_lib_sig_redefinition(self):
     create_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   jslibfunc__sig: 'ii',
   jslibfunc: (x) => {},
 });
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   jslibfunc__sig: 'ii',
   jslibfunc: (x) => {},
 });
@@ -3931,7 +3931,7 @@ int main() {
 
     # Add another redefinition, this time not matching
     create_file('lib2.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   jslibfunc__sig: 'pp',
   jslibfunc: (x) => {},
 });
@@ -3941,7 +3941,7 @@ mergeInto(LibraryManager.library, {
 
   def test_js_lib_invalid_deps(self):
     create_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   jslibfunc__deps: 'hello',
   jslibfunc: (x) => {},
 });
@@ -3955,6 +3955,21 @@ int main() {
 ''')
     err = self.expect_fail([EMCC, 'src.c', '--js-library', 'lib.js'])
     self.assertContained('lib.js: JS library directive jslibfunc__deps=hello is of type string, but it should be an array', err)
+
+  def test_js_lib_legacy(self):
+    create_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  jslibfunc: (x) => { return 42 },
+});
+''')
+    create_file('src.c', r'''
+#include <stdio.h>
+int jslibfunc();
+int main() {
+  printf("main: %d\n", jslibfunc());
+}
+''')
+    self.do_runf('src.c', 'main: 42\n', emcc_args=['--js-library', 'lib.js'])
 
   def test_EMCC_BUILD_DIR(self):
     # EMCC_BUILD_DIR env var contains the dir we were building in, when running the js compiler (e.g. when
@@ -6815,7 +6830,7 @@ int main(int argc, char** argv) {
 
   def test_dlsym_rtld_default_js_symbol(self):
     create_file('lib.js', '''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
        foo__sig: 'ii',
        foo: function(f) { return f + 10 },
        bar: function(f) {  returnf + 10 },
@@ -7047,7 +7062,7 @@ int main() {
 
     # main() is implemented in C, and even if requested from JS, we should not warn
     create_file('library_foo.js', '''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   my_js__deps: ['main'],
   my_js: (function() {
       return () => console.log("hello " + _nonexistingvariable);
@@ -7069,7 +7084,7 @@ int main() {
 
     # but we do error on a missing js var
     create_file('library_foo_missing.js', '''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   my_js__deps: ['main', 'nonexistingvariable'],
   my_js: (function() {
       return () => console.log("hello " + _nonexistingvariable);
@@ -7087,7 +7102,7 @@ mergeInto(LibraryManager.library, {
     # Verify that memset (which lives in compiled code), can be specified as a JS library
     # dependency.
     create_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   depper__deps: ['memset'],
   depper: (ptr) => {
     _memset(ptr, 'd'.charCodeAt(0), 10);
@@ -7533,7 +7548,7 @@ int main() {
   @with_env_modify({'EMCC_DEBUG': '1'})
   def test_eval_ctors_debug_output(self):
     create_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   external_thing: () => {}
 });
 ''')
@@ -11704,7 +11719,7 @@ exec "$@"
     # prevent processing of further libraries.
     create_file('lib1.js', 'for (var i = 0; i < 100; i++) {}')
     create_file('lib2.js', '''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         foo: () => {}
       });
       ''')
@@ -11715,7 +11730,7 @@ exec "$@"
 
   def test_jslib_bad_config(self):
     create_file('lib.js', '''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
        foo__sig: 'ii',
       });
       ''')
@@ -11733,7 +11748,7 @@ exec "$@"
 
   def test_jslib_mangling(self):
     create_file('lib.js', '''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         $__foo: () => 43,
       });
       ''')
@@ -12685,7 +12700,7 @@ Module.postRun = () => {{
     # - for..of
     # - object.assign
     create_file('es6_library.js', '''\
-    mergeInto(LibraryManager.library, {
+    addToLibrary({
       foo: function(arg="hello") {
         // Object.assign + let
         let obj = Object.assign({}, {prop:1});
@@ -13322,7 +13337,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       err(_foo());
     ''')
     create_file('lib.js', '''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         foo: () => {{{ Runtime.POINTER_SIZE }}}
       });
     ''')

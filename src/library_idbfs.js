@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $IDBFS__deps: ['$FS', '$MEMFS', '$PATH'],
   $IDBFS__postset: () => {
     addAtExit('IDBFS.quit();');
