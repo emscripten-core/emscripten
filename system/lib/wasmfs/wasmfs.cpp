@@ -91,7 +91,7 @@ extern "C" void wasmfs_flush(void) {
 #ifndef NDEBUG
           std::string errorMessage = "Child: " +
                                      entry.name +
-                                     " was null while flushing directory: " + lockedDir.getName();
+                                     " was null while flushing directory: " + lockedDir.getName(dir);
           emscripten_console_error(errorMessage.c_str());
 #endif
         continue;
