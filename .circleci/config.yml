@@ -584,6 +584,17 @@ jobs:
     steps:
       - run-tests-linux:
           test_targets: "wasm2js1"
+  test-wasm64l:
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
+    executor: bionic
+    steps:
+      - run-tests-linux:
+          frozen_cache: false
+          # On older versions of node wasm64l.test_bigswitch uses a lot (~3.5Gb)
+          # of memory, so skip it here, but run it in test-wasm64 instead which
+          # has node canary installed.
+          test_targets: "wasm64l skip:wasm64l.test_bigswitch"
   test-wasm64:
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
@@ -596,11 +607,6 @@ jobs:
       # hardcodes /root into its launcher scripts do we need to reinstall v8.
       - run: rm -rf $HOME/.jsvu
       - install-v8
-      - run-tests:
-          title: "wasm64l"
-          # On older versions of node wasm64l.test_bigswitch uses a lot (~3.5Gb)
-          # of memory, so skip it here, but run it below under node-canary.
-          test_targets: "wasm64l skip:wasm64l.test_bigswitch"
       - install-node-canary
       - run-tests:
           title: "wasm64"
@@ -860,6 +866,9 @@ workflows:
           requires:
             - build-linux
       - test-wasm64:
+          requires:
+            - build-linux
+      - test-wasm64l:
           requires:
             - build-linux
       - test-wasm2js1:
