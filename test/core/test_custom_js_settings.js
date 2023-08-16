@@ -1,4 +1,4 @@
-mergeInto(LibraryManager.library, {
+addToLibrary({
 	js_function: function() {
 #if CUSTOM_JS_OPTION
 		return 1;

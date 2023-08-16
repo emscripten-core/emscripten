@@ -568,4 +568,4 @@ for (var x in WasiLibrary) {
   wrapSyscallFunction(x, WasiLibrary, true);
 }
 
-mergeInto(LibraryManager.library, WasiLibrary);
+addToLibrary(WasiLibrary);

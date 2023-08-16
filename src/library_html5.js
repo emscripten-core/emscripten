@@ -2595,4 +2595,4 @@ var LibraryHTML5 = {
   }
 };
 
-mergeInto(LibraryManager.library, LibraryHTML5);
+addToLibrary(LibraryHTML5);

@@ -29,4 +29,4 @@ var LibraryExceptions = {};
 #endif
 });
 
-mergeInto(LibraryManager.library, LibraryExceptions);
+addToLibrary(LibraryExceptions);

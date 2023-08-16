@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $wasmfsOPFSDirectoryHandles__deps: ['$HandleAllocator'],
   $wasmfsOPFSDirectoryHandles: "new HandleAllocator()",
   $wasmfsOPFSFileHandles__deps: ['$HandleAllocator'],

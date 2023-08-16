@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.45 (in development)
 -----------------------
+- The function used to add symbols the JS library has been renamed from
+  `mergeInto`, to the more specific `addToLibrary`.  This new function does not
+  require the passing of `LibraryManager.library` as a first argument.  The old
+  `mergeInto` continues to exist for backwards compat.
 
 3.1.44 - 07/25/23
 -----------------

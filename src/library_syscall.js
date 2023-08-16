@@ -1015,4 +1015,4 @@ for (var x in SyscallsLibrary) {
   wrapSyscallFunction(x, SyscallsLibrary, false);
 }
 
-mergeInto(LibraryManager.library, SyscallsLibrary);
+addToLibrary(SyscallsLibrary);
