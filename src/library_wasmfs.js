@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $MEMFS__deps: ['wasmfs_create_memory_backend'],
   $MEMFS: {
     createBackend(opts) {

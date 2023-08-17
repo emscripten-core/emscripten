@@ -259,9 +259,10 @@ var LibraryPThread = {
         var d = e['data'];
         var cmd = d['cmd'];
 
-        // If this message is intended to a recipient that is not the main thread, forward it to the target thread.
+        // If this message is intended to a recipient that is not the main
+        // thread, forward it to the target thread.
         if (d['targetThread'] && d['targetThread'] != _pthread_self()) {
-          var targetWorker = PThread.pthreads[d.targetThread];
+          var targetWorker = PThread.pthreads[d['targetThread']];
           if (targetWorker) {
             targetWorker.postMessage(d, d['transferList']);
           } else {
@@ -297,7 +298,7 @@ var LibraryPThread = {
 #endif
           onFinishedLoading(worker);
         } else if (cmd === 'alert') {
-          alert('Thread ' + d['threadId'] + ': ' + d['text']);
+          alert(`Thread ${d['threadId']}: ${d['text']}`);
         } else if (d.target === 'setimmediate') {
           // Worker wants to postMessage() to itself to implement setImmediate()
           // emulation.
@@ -316,7 +317,7 @@ var LibraryPThread = {
         var message = 'worker sent an error!';
 #if ASSERTIONS
         if (worker.pthread_ptr) {
-          message = 'Pthread ' + ptrToString(worker.pthread_ptr) + ' sent an error!';
+          message = `Pthread ${ptrToString(worker.pthread_ptr)} sent an error!`;
         }
 #endif
         err(`${message} ${e.filename}:${e.lineno}: ${e.message}`);
@@ -1262,4 +1263,4 @@ var LibraryPThread = {
 };
 
 autoAddDeps(LibraryPThread, '$PThread');
-mergeInto(LibraryManager.library, LibraryPThread);
+addToLibrary(LibraryPThread);

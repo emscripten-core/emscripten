@@ -2714,6 +2714,7 @@ The current type of b is: 9
   def test_pthread_proxying(self, modularize):
     if modularize and self.get_setting('WASM') == 0:
       self.skipTest('MODULARIZE + WASM=0 + pthreads does not work (#16794)')
+    self.maybe_closure()
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('INITIAL_MEMORY=32mb')
     args = []
@@ -4665,7 +4666,7 @@ res64 - external 64\n''', header='''\
   @needs_dylink
   def test_dylink_jslib(self):
     create_file('lib.js', r'''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         test_lib_func: function(x) {
           return x + 17.2;
         }
@@ -6383,12 +6384,12 @@ PORT: 3979
       }
     ''')
     create_file('mylib1.js', '''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         printey: () => out('hello from lib!')
       });
     ''')
     create_file('mylib2.js', '''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         calcey: (x, y) => x + y
       });
     ''')
@@ -8589,7 +8590,7 @@ Module.onRuntimeInitialized = () => {
       }
     ''')
     create_file('lib.js', '''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         check_memprof_requirements: () => {
           if (typeof _emscripten_stack_get_base === 'function' &&
               typeof _emscripten_stack_get_end === 'function' &&
@@ -9408,7 +9409,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', 'jslib_func')
     create_file('lib.js', r'''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         jslib_func__sig: 'v',
         jslib_func: () => err('hello from js')
       });

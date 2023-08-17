@@ -1,4 +1,4 @@
-mergeInto(LibraryManager.library, {
+addToLibrary({
   emscripten_math_cbrt: (x) => Math.cbrt(x),
   emscripten_math_pow: (x, y) => Math.pow(x, y),
   emscripten_math_random: () => Math.random(),

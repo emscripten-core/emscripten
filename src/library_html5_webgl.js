@@ -595,4 +595,4 @@ handleWebGLProxying(LibraryHtml5WebGL);
 autoAddDeps(LibraryHtml5WebGL, '$GL');
 #endif
 
-mergeInto(LibraryManager.library, LibraryHtml5WebGL);
+addToLibrary(LibraryHtml5WebGL);

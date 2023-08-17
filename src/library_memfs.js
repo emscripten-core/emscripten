@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $MEMFS__deps: ['$FS', '$mmapAlloc'],
   $MEMFS: {
     ops_table: null,

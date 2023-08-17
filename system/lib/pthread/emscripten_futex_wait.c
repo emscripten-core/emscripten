@@ -17,8 +17,6 @@
 
 extern void* _emscripten_main_thread_futex;
 
-int _emscripten_thread_supports_atomics_wait(void);
-
 static int futex_wait_main_browser_thread(volatile void* addr,
                                           uint32_t val,
                                           double timeout) {

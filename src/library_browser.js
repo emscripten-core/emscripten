@@ -1319,4 +1319,4 @@ var LibraryBrowser = {
 
 autoAddDeps(LibraryBrowser, '$Browser');
 
-mergeInto(LibraryManager.library, LibraryBrowser);
+addToLibrary(LibraryBrowser);

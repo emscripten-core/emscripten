@@ -3570,4 +3570,4 @@ var LibrarySDL = {
 };
 
 autoAddDeps(LibrarySDL, '$SDL');
-mergeInto(LibraryManager.library, LibrarySDL);
+addToLibrary(LibrarySDL);

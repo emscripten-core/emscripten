@@ -20,7 +20,7 @@
 // object. For convenience, the short name appears here. Note that if you add a
 // new function with an '_', it will not be found.
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $ptrToString: (ptr) => {
 #if ASSERTIONS
     assert(typeof ptr === 'number');
