@@ -337,13 +337,13 @@ commands:
             export EM_FROZEN_CACHE=""
             # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
             echo
-            echo "emrun"
-            echo
-            test/runner emrun
-            echo
             echo "browser"
             echo
             test/runner browser skip:browser.test_zzz_zzz_4gb_fail skip:browser.test_zzz_zzz_4gb_fail_wasm64
+            echo
+            echo "emrun"
+            echo
+            test/runner emrun
       - upload-test-results
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
