@@ -5489,6 +5489,8 @@ Module["preRun"].push(function () {
   })
   @requires_threads
   def test_wasmfs_opfs(self, args):
+    if '-sASYNCIFY=2' in args:
+      self.require_jspi()
     test = test_file('wasmfs/wasmfs_opfs.c')
     args = ['-sWASMFS', '-O3'] + args
     self.btest_exit(test, args=args + ['-DWASMFS_SETUP'])
