@@ -711,10 +711,10 @@ var LibraryPThread = {
     // to access this value will read the wrong value, but that is UB anyway.
     __emscripten_thread_init(
       tb,
-      /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER,
-      /*isMainRuntimeThread=*/1,
-      /*canBlock=*/!ENVIRONMENT_IS_WEB,
-      {{{ DEFAULT_PTHREAD_STACK_SIZE }}},
+      /*is_main=*/!ENVIRONMENT_IS_WORKER,
+      /*is_runtime=*/1,
+      /*can_block=*/!ENVIRONMENT_IS_WEB,
+      /*default_stacksize=*/{{{ DEFAULT_PTHREAD_STACK_SIZE }}},
 #if PTHREADS_PROFILING
       /*start_profiling=*/true,
 #else
