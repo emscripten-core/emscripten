@@ -2399,25 +2399,15 @@ addToLibrary({
   // That is what we are up to here. Use an IIFE to avoid shadowing
   // SharedArrayBuffer globally.
   __emscripten_atomics_sleep__postset: `
-    var waitBuffer, canBlock;
+    var waitBuffer;
     (function() {
-      try {
-        var SharedArrayBuffer = new WebAssembly.Memory({"shared":true,"initial":0,"maximum":0}).buffer.constructor;
-        waitBuffer = new Int32Array(new SharedArrayBuffer(4));
-        Atomics.wait(waitBuffer, 0, 0, 0);
-        canBlock = true;
-      } catch (_) {
-        canBlock = false;
-      }
+      var SharedArrayBuffer = new WebAssembly.Memory({"shared":true,"initial":0,"maximum":0}).buffer.constructor;
+      waitBuffer = new Int32Array(new SharedArrayBuffer(4));
     })();
   `,
 
   __emscripten_atomics_sleep: (ms) => {
-    if (!canBlock) {
-      return 0;
-    }
     Atomics.wait(waitBuffer, 0, 0, ms);
-    return 1;
   },
 
 

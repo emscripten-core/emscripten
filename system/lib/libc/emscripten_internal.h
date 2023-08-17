@@ -123,7 +123,7 @@ void _emscripten_throw_longjmp(void);
 
 void __handle_stack_overflow(void* addr);
 
-int __emscripten_atomics_sleep(int);
+void __emscripten_atomics_sleep(int);
 
 // Internal fetch API
 struct emscripten_fetch_t;

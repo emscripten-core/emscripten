@@ -16,6 +16,7 @@
 #include <emscripten/stack.h>
 #include <emscripten/threading.h>
 #include <emscripten/emscripten.h>
+#include <emscripten_internal.h>
 
 int emscripten_has_threading_support() { return 0; }
 
@@ -402,11 +403,11 @@ static void busy_sleep(double msecs) {
 int __emscripten_atomics_sleep(int);
 
 void emscripten_thread_sleep(double msecs) {
-  // try atomics sleep
-  int success = __emscripten_atomics_sleep(msecs);
-  if (success) {
-    return;
+  if (_emscripten_thread_supports_atomics_wait()) {
+    // maybe use atomics sleep
+    __emscripten_atomics_sleep(msecs);
+  } else {
+    // fall back to busy spin wait sleep
+    busy_sleep(msecs);
   }
-  // fall back to busy spin wait sleep
-  busy_sleep(msecs);
 }
