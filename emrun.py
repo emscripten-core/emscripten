@@ -16,7 +16,6 @@ See emrun --help for more information
 # standalone outside Emscripten directory tree.
 import argparse
 import atexit
-import cgi
 import json
 import os
 import platform
@@ -39,16 +38,10 @@ if sys.version_info.major == 2:
   from SimpleHTTPServer import SimpleHTTPRequestHandler
   from urllib import unquote
   from urlparse import urlsplit
-
-  def print_to_handle(handle, line):
-    print >> handle, line # noqa: F633
 else:
   import socketserver
   from http.server import HTTPServer, SimpleHTTPRequestHandler
   from urllib.parse import unquote, urlsplit
-
-  def print_to_handle(handle, line):
-    handle.write(line + '\n')
 
 # Populated from cmdline params
 emrun_options = None
@@ -138,15 +131,6 @@ page_start_time = tick()
 page_last_served_time = None
 
 
-def format_html(msg):
-  """Returns given log message formatted to be outputted on a HTML page."""
-  if not msg.endswith('\n'):
-    msg += '\n'
-  msg = cgi.escape(msg)
-  msg = msg.replace('\r\n', '<br />').replace('\n', '<br />')
-  return msg
-
-
 # HTTP requests are handled from separate threads - synchronize them to avoid race conditions
 http_mutex = threading.RLock()
 
@@ -156,10 +140,7 @@ def logi(msg):
   """
   global last_message_time
   with http_mutex:
-    if emrun_options.log_html:
-      sys.stdout.write(format_html(msg))
-    else:
-      print_to_handle(sys.stdout, msg)
+    sys.stdout.write(msg + '\n')
     sys.stdout.flush()
     last_message_time = tick()
 
@@ -171,10 +152,7 @@ def logv(msg):
   global last_message_time
   if emrun_options.verbose:
     with http_mutex:
-      if emrun_options.log_html:
-        sys.stdout.write(format_html(msg))
-      else:
-        print_to_handle(sys.stdout, msg)
+      sys.stdout.write(msg + '\n')
       sys.stdout.flush()
       last_message_time = tick()
 
@@ -184,10 +162,7 @@ def loge(msg):
   """
   global last_message_time
   with http_mutex:
-    if emrun_options.log_html:
-      sys.stderr.write(format_html(msg))
-    else:
-      print_to_handle(sys.stderr, msg)
+    sys.stderr.write(msg + '\n')
     sys.stderr.flush()
     last_message_time = tick()
 
@@ -203,7 +178,7 @@ def browser_logi(msg):
   """
   global last_message_time
   msg = format_eol(msg)
-  print_to_handle(browser_stdout_handle, msg)
+  browser_stdout_handle.write(msg + '\n')
   browser_stdout_handle.flush()
   last_message_time = tick()
 
@@ -213,7 +188,7 @@ def browser_loge(msg):
   """
   global last_message_time
   msg = format_eol(msg)
-  print_to_handle(browser_stderr_handle, msg)
+  browser_stderr_handle.write(msg + '\n')
   browser_stderr_handle.flush()
   last_message_time = tick()
 
@@ -527,7 +502,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
           return
 
   def serve_forever(self, timeout=0.5):
-    global last_message_time, page_exit_code, emrun_not_enabled_nag_printed
+    global page_exit_code, emrun_not_enabled_nag_printed
     self.is_running = True
     self.timeout = timeout
     logi('Now listening at http://%s/' % ':'.join(map(str, self.socket.getsockname())))
@@ -1573,9 +1548,6 @@ def parse_args():
                            'Firefox profile that is suitable for unattended '
                            'automated runs. (If target browser != Firefox, '
                            'this parameter is ignored)')
-
-  parser.add_argument('--log_html', action='store_true',
-                      help='If set, information lines are printed out an HTML-friendly format.')
 
   parser.add_argument('--private_browsing', action='store_true',
                       help='If specified, opens browser in private/incognito mode.')
