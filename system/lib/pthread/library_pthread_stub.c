@@ -16,7 +16,7 @@
 #include <emscripten/stack.h>
 #include <emscripten/threading.h>
 #include <emscripten/emscripten.h>
-#include <emscripten_internal.h>
+#include "threading_internal.h"
 
 int emscripten_has_threading_support() { return 0; }
 
