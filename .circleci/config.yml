@@ -44,7 +44,8 @@ commands:
             apt-get install libu2f-udev libvulkan1
             # wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
             # If that download link breaks, temporarily use this URL instead:
-            wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-unstable_current_amd64.deb
+            # wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
+            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-unstable_current_amd64.deb
             dpkg -i ~/chrome.deb
   emsdk-env:
     description: "emsdk_env.sh"
