@@ -54,6 +54,7 @@ EMTEST_SAVE_DIR = None
 # to force testing on all js engines, good to find js engine bugs
 EMTEST_ALL_ENGINES = None
 EMTEST_SKIP_SLOW = None
+EMTEST_SKIP_FLAKY = None
 EMTEST_LACKS_NATIVE_CLANG = None
 EMTEST_VERBOSE = None
 EMTEST_REBASELINE = None
@@ -140,6 +141,13 @@ def is_slow_test(func):
     return func(self, *args, **kwargs)
 
   return decorated
+
+
+def flaky(note=''):
+  assert not callable(note)
+  if EMTEST_SKIP_FLAKY:
+    return unittest.skip(note)
+  return lambda f: f
 
 
 def disabled(note=''):

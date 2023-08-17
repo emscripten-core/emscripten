@@ -26,7 +26,7 @@ from tools import shared, building, config, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
-from common import env_modify, with_env_modify, disabled, node_pthreads, also_with_wasm_bigint
+from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_node_canary, compiler_for, crossplatform
 from common import with_both_sjlj, also_with_standalone_wasm, can_do_standalone
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
@@ -2798,6 +2798,7 @@ The current type of b is: 9
 
   @node_pthreads
   @no_mac('https://github.com/emscripten-core/emscripten/issues/15014')
+  @flaky('https://github.com/emscripten-core/emscripten/issues/15014')
   def test_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
     # Add the onAbort handler at runtime during preRun.  This means that onAbort
@@ -9600,6 +9601,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertNotContained('Aborted', output)
 
   @node_pthreads
+  @flaky('https://github.com/emscripten-core/emscripten/issues/20067')
   def test_abort_on_exceptions_pthreads(self):
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('PROXY_TO_PTHREAD')
