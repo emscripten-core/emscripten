@@ -336,6 +336,13 @@ commands:
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
             # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
+            echo
+            echo "emrun"
+            echo
+            test/runner emrun
+            echo
+            echo "browser"
+            echo
             test/runner browser skip:browser.test_zzz_zzz_4gb_fail skip:browser.test_zzz_zzz_4gb_fail_wasm64
       - upload-test-results
   test-sockets-chrome:
