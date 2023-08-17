@@ -56,7 +56,7 @@ def get_base_cflags(force_object_files=False):
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
   if settings.RELOCATABLE:
-    flags += ['-sRELOCATABLE']
+    flags += ['-sRELOCATABLE', '-DEMSCRIPTEN_DYNAMIC_LINKING']
   if settings.MEMORY64:
     flags += ['-Wno-experimental', '-sMEMORY64=' + str(settings.MEMORY64)]
   return flags
