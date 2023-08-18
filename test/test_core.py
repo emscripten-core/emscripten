@@ -2144,6 +2144,7 @@ int main(int argc, char **argv) {
 ''', 'false', assert_returncode=NON_ZERO)
 
   def test_em_asm(self):
+    self.maybe_closure()
     self.do_core_test('test_em_asm.cpp')
 
   def test_em_asm_c(self):
@@ -9787,6 +9788,10 @@ core2g = make_run('core2g', emcc_args=['-O2', '-g'])
 core3 = make_run('core3', emcc_args=['-O3'])
 cores = make_run('cores', emcc_args=['-Os'])
 corez = make_run('corez', emcc_args=['-Oz'])
+
+# Test >2gb memory addresses
+core_2gb = make_run('core_2gb', emcc_args=['--profiling-funcs'],
+                    settings={'INITIAL_MEMORY': '2200mb', 'GLOBAL_BASE': '2gb'})
 
 # MEMORY64=1
 wasm64 = make_run('wasm64', emcc_args=['-O1', '-Wno-experimental', '--profiling-funcs'],

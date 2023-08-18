@@ -149,12 +149,19 @@ def get_passive_segment_offsets(module):
   return offset_map
 
 
+def to_unsigned(val):
+  if val < 0:
+    return val & ((2 ** 32) - 1)
+  else:
+    return val
+
+
 def find_segment_with_address(module, address):
   segments = module.get_segments()
   active = [s for s in segments if s.init]
 
   for seg in active:
-    offset = get_const_expr_value(seg.init)
+    offset = to_unsigned(get_const_expr_value(seg.init))
     if offset is None:
       continue
     if address >= offset and address < offset + seg.size:
@@ -194,8 +201,8 @@ def get_section_strings(module, export_map, section_name):
   end = export_map[stop_name]
   start_global = module.get_global(start.index)
   end_global = module.get_global(end.index)
-  start_addr = get_global_value(start_global)
-  end_addr = get_global_value(end_global)
+  start_addr = to_unsigned(get_global_value(start_global))
+  end_addr = to_unsigned(get_global_value(end_global))
 
   seg = find_segment_with_address(module, start_addr)
   if not seg:

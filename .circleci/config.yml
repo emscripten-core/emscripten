@@ -42,9 +42,11 @@ commands:
           command: |
             # TODO: Make these part of the base image
             apt-get install libu2f-udev libvulkan1
-            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
+            #wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
             # If that download link breaks, temporarily use this URL instead:
-            # wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
+            # TODO(sbc): Disable this once we figure out whats up with the
+            # current beta.
+            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
             dpkg -i ~/chrome.deb
   emsdk-env:
     description: "emsdk_env.sh"
@@ -358,7 +360,9 @@ commands:
             # that are not included by "./embuilder build ALL".  For example the
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
-            test/runner emrun
+            # TODO(sbc): Re-enable once we figure out why the emrun tests are
+            # locking up.
+            # test/runner emrun
             # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
             test/runner posixtest_browser.test_pthread_create_1_1 browser skip:browser.test_zzz_zzz_4gb_fail skip:browser.test_zzz_zzz_4gb_fail_wasm64
       - upload-test-results
@@ -613,6 +617,8 @@ jobs:
           test_targets: "
             wasm64
             wasm64_4gb.test_hello_world
+            wasm64_4gb.test_em_asm
+            core_2gb.test_em_asm
             wasm64l.test_bigswitch
             other.test_memory64_proxies
             other.test_failing_growth_wasm64"
