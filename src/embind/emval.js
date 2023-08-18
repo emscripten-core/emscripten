@@ -13,7 +13,7 @@
 
 // -- jshint doesn't understand library syntax, so we need to mark the symbols exposed here
 /*global getStringOrSymbol, emval_handles, Emval, __emval_unregister, count_emval_handles, emval_symbols, __emval_decref, emval_newers*/
-/*global craftEmvalAllocator, emval_addMethodCaller, emval_methodCallers, LibraryManager, mergeInto, emval_allocateDestructors, global, emval_lookupTypes, makeLegalFunctionName*/
+/*global craftEmvalAllocator, emval_addMethodCaller, emval_methodCallers, addToLibrary, emval_allocateDestructors, global, emval_lookupTypes, makeLegalFunctionName*/
 /*global emval_get_global*/
 
 var LibraryEmVal = {
@@ -540,4 +540,4 @@ var LibraryEmVal = {
 #endif
 };
 
-mergeInto(LibraryManager.library, LibraryEmVal);
+addToLibrary(LibraryEmVal);

@@ -29,7 +29,7 @@
 #endif // ~WASM_WORKERS
 
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $_wasmWorkers: {},
   $_wasmWorkersID: 1,
 
@@ -225,7 +225,7 @@ mergeInto(LibraryManager.library, {
   // see https://bugs.chromium.org/p/chromium/issues/detail?id=1167541
   // https://github.com/tc39/proposal-atomics-wait-async/blob/master/PROPOSAL.md
   // This polyfill performs polling with setTimeout() to observe a change in the target memory location.
-  emscripten_atomic_wait_async__postset: `if (!Atomics.waitAsync || jstoi_q((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91) {
+  emscripten_atomic_wait_async__postset: `if (!Atomics.waitAsync || (typeof navigator !== 'undefined' && jstoi_q((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91)) {
 let __Atomics_waitAsyncAddresses = [/*[i32a, index, value, maxWaitMilliseconds, promiseResolve]*/];
 function __Atomics_pollWaitAsyncAddresses() {
   let now = performance.now();
@@ -284,7 +284,7 @@ Atomics.waitAsync = (i32a, index, value, maxWaitMilliseconds) => {
     wait.value.then((value) => {
       if (atomicLiveWaitAsyncs[counter]) {
         delete atomicLiveWaitAsyncs[counter];
-        {{{ makeDynCall('viiii', 'asyncWaitFinished') }}}(addr, val, atomicWaitStates.indexOf(value), userData);
+        {{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}(addr, val, atomicWaitStates.indexOf(value), userData);
       }
     });
     return -counter;

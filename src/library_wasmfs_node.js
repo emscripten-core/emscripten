@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $wasmfsNodeIsWindows: !!process.platform.match(/^win/),
 
   $wasmfsNodeConvertNodeCode__deps: ['$ERRNO_CODES'],

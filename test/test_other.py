@@ -3788,13 +3788,13 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
       }
     ''')
     create_file('duplicated_func_1.js', '''
-      mergeInto(LibraryManager.library,
+      addToLibrary(
         { duplicatedFunc: () => 1 },
         { noOverride: true }
       );
     ''')
     create_file('duplicated_func_2.js', '''
-      mergeInto(LibraryManager.library,
+      addToLibrary(
         { duplicatedFunc: () => 2 },
         { noOverride: true }
       );
@@ -3819,7 +3819,7 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
       }
     ''')
     create_file('some_func.js', '''
-      mergeInto(LibraryManager.library,
+      addToLibrary(
         { someFunc: () => 1 },
         { checkSig: true }
       );
@@ -3831,7 +3831,7 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
 
   def test_js_lib_quoted_key(self):
     create_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   __internal_data:{
     '<' : 0,
     'white space' : 1
@@ -3847,7 +3847,7 @@ mergeInto(LibraryManager.library, {
 
   def test_js_lib_exported(self):
     create_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
  jslibfunc: (x) => 2 * x
 });
 ''')
@@ -3867,7 +3867,7 @@ int main() {
 
   def test_js_lib_using_asm_lib(self):
     create_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   jslibfunc__deps: ['asmlibfunc'],
   jslibfunc: (x) => 2 * _asmlibfunc(x),
 
@@ -3890,7 +3890,7 @@ int main() {
 
   def test_js_internal_deps(self):
     create_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   jslibfunc__deps: ['$callRuntimeCallbacks'],
   jslibfunc: (x) => {
     callRuntimeCallbacks();
@@ -3909,12 +3909,12 @@ int main() {
 
   def test_js_lib_sig_redefinition(self):
     create_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   jslibfunc__sig: 'ii',
   jslibfunc: (x) => {},
 });
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   jslibfunc__sig: 'ii',
   jslibfunc: (x) => {},
 });
@@ -3931,7 +3931,7 @@ int main() {
 
     # Add another redefinition, this time not matching
     create_file('lib2.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   jslibfunc__sig: 'pp',
   jslibfunc: (x) => {},
 });
@@ -3941,7 +3941,7 @@ mergeInto(LibraryManager.library, {
 
   def test_js_lib_invalid_deps(self):
     create_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   jslibfunc__deps: 'hello',
   jslibfunc: (x) => {},
 });
@@ -3955,6 +3955,21 @@ int main() {
 ''')
     err = self.expect_fail([EMCC, 'src.c', '--js-library', 'lib.js'])
     self.assertContained('lib.js: JS library directive jslibfunc__deps=hello is of type string, but it should be an array', err)
+
+  def test_js_lib_legacy(self):
+    create_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  jslibfunc: (x) => { return 42 },
+});
+''')
+    create_file('src.c', r'''
+#include <stdio.h>
+int jslibfunc();
+int main() {
+  printf("main: %d\n", jslibfunc());
+}
+''')
+    self.do_runf('src.c', 'main: 42\n', emcc_args=['--js-library', 'lib.js'])
 
   def test_EMCC_BUILD_DIR(self):
     # EMCC_BUILD_DIR env var contains the dir we were building in, when running the js compiler (e.g. when
@@ -6815,7 +6830,7 @@ int main(int argc, char** argv) {
 
   def test_dlsym_rtld_default_js_symbol(self):
     create_file('lib.js', '''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
        foo__sig: 'ii',
        foo: function(f) { return f + 10 },
        bar: function(f) {  returnf + 10 },
@@ -7047,7 +7062,7 @@ int main() {
 
     # main() is implemented in C, and even if requested from JS, we should not warn
     create_file('library_foo.js', '''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   my_js__deps: ['main'],
   my_js: (function() {
       return () => console.log("hello " + _nonexistingvariable);
@@ -7069,7 +7084,7 @@ int main() {
 
     # but we do error on a missing js var
     create_file('library_foo_missing.js', '''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   my_js__deps: ['main', 'nonexistingvariable'],
   my_js: (function() {
       return () => console.log("hello " + _nonexistingvariable);
@@ -7087,7 +7102,7 @@ mergeInto(LibraryManager.library, {
     # Verify that memset (which lives in compiled code), can be specified as a JS library
     # dependency.
     create_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   depper__deps: ['memset'],
   depper: (ptr) => {
     _memset(ptr, 'd'.charCodeAt(0), 10);
@@ -7533,7 +7548,7 @@ int main() {
   @with_env_modify({'EMCC_DEBUG': '1'})
   def test_eval_ctors_debug_output(self):
     create_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   external_thing: () => {}
 });
 ''')
@@ -7641,13 +7656,13 @@ int main() {}
     test("Module['FS_createPreloadedFile']('waka waka, just warning check')")
 
     # text is in the source when needed, but when forcing FS, it isn't there
-    self.run_process([EMCC, 'src.c'])
+    self.emcc('src.c')
     self.assertContained(error, read_file('a.out.js'))
-    self.run_process([EMCC, 'src.c', '-sFORCE_FILESYSTEM']) # forcing FS means no need
+    self.emcc('src.c', args=['-sFORCE_FILESYSTEM']) # forcing FS means no need
     self.assertNotContained(error, read_file('a.out.js'))
-    self.run_process([EMCC, 'src.c', '-sASSERTIONS=0']) # no assertions, no need
+    self.emcc('src.c', args=['-sASSERTIONS=0']) # no assertions, no need
     self.assertNotContained(error, read_file('a.out.js'))
-    self.run_process([EMCC, 'src.c', '-O2']) # optimized, so no assertions
+    self.emcc('src.c', args=['-O2']) # optimized, so no assertions
     self.assertNotContained(error, read_file('a.out.js'))
 
   def test_warn_module_out_err(self):
@@ -8423,21 +8438,21 @@ int main() {
 
     # Stack trace and message example for this example code:
     # exiting due to exception: [object WebAssembly.Exception],Error: std::runtime_error,my message
-    #     at __cxa_throw (wasm://wasm/009a7c9a:wasm-function[1551]:0x24367)
-    #     at bar() (wasm://wasm/009a7c9a:wasm-function[12]:0xf53)
-    #     at foo() (wasm://wasm/009a7c9a:wasm-function[19]:0x154e)
+    #     at src.wasm.__cxa_throw (wasm://wasm/009a7c9a:wasm-function[1551]:0x24367)
+    #     at src.wasm.bar() (wasm://wasm/009a7c9a:wasm-function[12]:0xf53)
+    #     at src.wasm.foo() (wasm://wasm/009a7c9a:wasm-function[19]:0x154e)
     #     at __original_main (wasm://wasm/009a7c9a:wasm-function[20]:0x15a6)
-    #     at main (wasm://wasm/009a7c9a:wasm-function[56]:0x25be)
+    #     at src.wasm.main (wasm://wasm/009a7c9a:wasm-function[56]:0x25be)
     #     at test.js:833:22
     #     at callMain (test.js:4567:15)
     #     at doRun (test.js:4621:23)
     #     at run (test.js:4636:5)
     stack_trace_checks = [
       'std::runtime_error[:,][ ]?my message',  # 'std::runtime_error: my message' for Emscripten EH
-      'at [_]{2,3}cxa_throw',  # '___cxa_throw' (JS symbol) for Emscripten EH
-      'at bar',
-      'at foo',
-      'at main']
+      'at (src.wasm.)?_?__cxa_throw',  # '___cxa_throw' (JS symbol) for Emscripten EH
+      'at (src.wasm.)?bar',
+      'at (src.wasm.)?foo',
+      'at (src.wasm.)?main']
 
     if wasm_eh:
       # FIXME Node v18.13 (LTS as of Jan 2023) has not yet implemented the new
@@ -11704,7 +11719,7 @@ exec "$@"
     # prevent processing of further libraries.
     create_file('lib1.js', 'for (var i = 0; i < 100; i++) {}')
     create_file('lib2.js', '''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         foo: () => {}
       });
       ''')
@@ -11715,7 +11730,7 @@ exec "$@"
 
   def test_jslib_bad_config(self):
     create_file('lib.js', '''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
        foo__sig: 'ii',
       });
       ''')
@@ -11733,7 +11748,7 @@ exec "$@"
 
   def test_jslib_mangling(self):
     create_file('lib.js', '''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         $__foo: () => 43,
       });
       ''')
@@ -12485,7 +12500,7 @@ void foo() {}
     self.emcc_args += ['--profiling-funcs', '-pthread']
     output = self.do_runf(test_file('pthread/test_pthread_trap.c'), assert_returncode=NON_ZERO)
     self.assertContained('sent an error!', output)
-    self.assertContained('at thread_main', output)
+    self.assertContained('at (test_pthread_trap.wasm.)?thread_main', output, regex=True)
 
   @node_pthreads
   def test_emscripten_set_interval(self):
@@ -12685,7 +12700,7 @@ Module.postRun = () => {{
     # - for..of
     # - object.assign
     create_file('es6_library.js', '''\
-    mergeInto(LibraryManager.library, {
+    addToLibrary({
       foo: function(arg="hello") {
         // Object.assign + let
         let obj = Object.assign({}, {prop:1});
@@ -13322,7 +13337,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       err(_foo());
     ''')
     create_file('lib.js', '''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         foo: () => {{{ Runtime.POINTER_SIZE }}}
       });
     ''')
