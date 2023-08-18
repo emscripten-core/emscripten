@@ -2393,6 +2393,8 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_readdir_finish',
         '_wasmfs_get_cwd',
       ]
+    if settings.ASYNCIFY == 2:
+      settings.ASYNCIFY_EXPORTS += ['__funcs_on_exit']
 
   if settings.FETCH and final_suffix in EXECUTABLE_ENDINGS:
     state.forced_stdlibs.append('libfetch')
