@@ -56,6 +56,7 @@ passing_core_test_modes = [
   'core3',
   'cores',
   'corez',
+  'core_2gb',
   'strict',
   'wasm2js0',
   'wasm2js1',
