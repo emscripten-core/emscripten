@@ -617,6 +617,7 @@ jobs:
           test_targets: "
             wasm64
             wasm64_4gb.test_hello_world
+            wasm64_4gb.test_em_asm
             wasm64l.test_bigswitch
             other.test_memory64_proxies
             other.test_failing_growth_wasm64"
