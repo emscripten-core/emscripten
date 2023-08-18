@@ -2144,6 +2144,7 @@ int main(int argc, char **argv) {
 ''', 'false', assert_returncode=NON_ZERO)
 
   def test_em_asm(self):
+    self.maybe_closure()
     self.do_core_test('test_em_asm.cpp')
 
   def test_em_asm_c(self):
