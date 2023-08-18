@@ -9,7 +9,7 @@
 #error "Should only be incldued in AUTODEBUG mode"
 #endif
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $log_execution: (loc) => dbg('log_execution ' + loc),
   $get_i32: (loc, index, value) => {
     dbg('get_i32 ' + [loc, index, value]);

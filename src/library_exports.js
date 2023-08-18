@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   emscripten_get_exported_function__deps: ['$addFunction', '$UTF8ToString'],
   emscripten_get_exported_function: (name) => {
     name = UTF8ToString(name);

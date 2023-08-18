@@ -132,4 +132,4 @@ var LibraryGLEW = {
 };
 
 autoAddDeps(LibraryGLEW, '$GLEW');
-mergeInto(LibraryManager.library, LibraryGLEW);
+addToLibrary(LibraryGLEW);

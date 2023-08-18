@@ -1,5 +1,4 @@
 env.__cxa_throw
-env._emscripten_get_now_is_monotonic
 env._wasmfs_copy_preloaded_file_data
 env._wasmfs_get_num_preloaded_dirs
 env._wasmfs_get_num_preloaded_files

@@ -25,4 +25,4 @@ var LibraryXlib = {
   XPending: (display) => 0,
 };
 
-mergeInto(LibraryManager.library, LibraryXlib);
+addToLibrary(LibraryXlib);

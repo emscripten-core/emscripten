@@ -40,4 +40,4 @@ var LibraryFetch = {
   ]
 };
 
-mergeInto(LibraryManager.library, LibraryFetch);
+addToLibrary(LibraryFetch);

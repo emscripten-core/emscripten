@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $preloadPlugins: "{{{ makeModuleReceiveExpr('preloadPlugins', '[]') }}}",
 
 #if !MINIMAL_RUNTIME

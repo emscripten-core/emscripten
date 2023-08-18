@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $WORKERFS__deps: ['$FS'],
   $WORKERFS: {
     DIR_MODE: {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */,

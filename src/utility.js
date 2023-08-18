@@ -105,6 +105,10 @@ function sum(x) {
 // key: checkSig, value: true
 // if it is set, __sig is checked for functions and error is reported
 // if <function name>__sig is missing
+function addToLibrary(obj, options = null) {
+  mergeInto(LibraryManager.library, obj, options);
+}
+
 function mergeInto(obj, other, options = null) {
   if (options) {
     // check for unintended symbol redefinition

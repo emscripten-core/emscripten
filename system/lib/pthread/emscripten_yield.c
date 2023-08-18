@@ -45,7 +45,7 @@ void _emscripten_yield(double now) {
     // singlethreaded.
     emscripten_main_thread_process_queued_calls();
   }
-#ifdef __PIC__
+#ifdef EMSCRIPTEN_DYNAMIC_LINKING
   else {
     _emscripten_process_dlopen_queue();
   }

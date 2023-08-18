@@ -379,6 +379,7 @@ def configure():
   common.EMTEST_SAVE_DIR = int(os.getenv('EMTEST_SAVE_DIR', '0'))
   common.EMTEST_ALL_ENGINES = int(os.getenv('EMTEST_ALL_ENGINES', '0'))
   common.EMTEST_SKIP_SLOW = int(os.getenv('EMTEST_SKIP_SLOW', '0'))
+  common.EMTEST_SKIP_FLAKY = int(os.getenv('EMTEST_SKIP_FLAKY', '0'))
   common.EMTEST_LACKS_NATIVE_CLANG = int(os.getenv('EMTEST_LACKS_NATIVE_CLANG', '0'))
   common.EMTEST_REBASELINE = int(os.getenv('EMTEST_REBASELINE', '0'))
   common.EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG

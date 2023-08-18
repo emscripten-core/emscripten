@@ -29,7 +29,7 @@
 #endif // ~WASM_WORKERS
 
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $_wasmWorkers: {},
   $_wasmWorkersID: 1,
 
@@ -225,12 +225,12 @@ mergeInto(LibraryManager.library, {
   // see https://bugs.chromium.org/p/chromium/issues/detail?id=1167541
   // https://github.com/tc39/proposal-atomics-wait-async/blob/master/PROPOSAL.md
   // This polyfill performs polling with setTimeout() to observe a change in the target memory location.
-  emscripten_atomic_wait_async__postset: `if (!Atomics['waitAsync'] || jstoi_q((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91) {
+  emscripten_atomic_wait_async__postset: `if (!Atomics.waitAsync || (typeof navigator !== 'undefined' && jstoi_q((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91)) {
 let __Atomics_waitAsyncAddresses = [/*[i32a, index, value, maxWaitMilliseconds, promiseResolve]*/];
 function __Atomics_pollWaitAsyncAddresses() {
   let now = performance.now();
   let l = __Atomics_waitAsyncAddresses.length;
-  for(let i = 0; i < l; ++i) {
+  for (let i = 0; i < l; ++i) {
     let a = __Atomics_waitAsyncAddresses[i];
     let expired = (now > a[3]);
     let awoken = (Atomics.load(a[0], a[1]) != a[2]);
@@ -248,7 +248,7 @@ function __Atomics_pollWaitAsyncAddresses() {
 #if ASSERTIONS
   if (!ENVIRONMENT_IS_WASM_WORKER) err('Current environment does not support Atomics.waitAsync(): polyfilling it, but this is going to be suboptimal.');
 #endif
-Atomics['waitAsync'] = (i32a, index, value, maxWaitMilliseconds) => {
+Atomics.waitAsync = (i32a, index, value, maxWaitMilliseconds) => {
   let val = Atomics.load(i32a, index);
   if (val != value) return { async: false, value: 'not-equal' };
   if (maxWaitMilliseconds <= 0) return { async: false, value: 'timed-out' };
@@ -274,7 +274,7 @@ Atomics['waitAsync'] = (i32a, index, value, maxWaitMilliseconds) => {
 
   emscripten_atomic_wait_async__deps: ['$atomicWaitStates', '$atomicLiveWaitAsyncs', '$atomicLiveWaitAsyncsCounter', '$jstoi_q'],
   emscripten_atomic_wait_async: (addr, val, asyncWaitFinished, userData, maxWaitMilliseconds) => {
-    let wait = Atomics['waitAsync'](HEAP32, addr >> 2, val, maxWaitMilliseconds);
+    let wait = Atomics.waitAsync(HEAP32, addr >> 2, val, maxWaitMilliseconds);
     if (!wait.async) return atomicWaitStates.indexOf(wait.value);
     // Increment waitAsync generation counter, account for wraparound in case application does huge amounts of waitAsyncs per second (not sure if possible?)
     // Valid counterrange: 0...2^31-1
@@ -284,7 +284,7 @@ Atomics['waitAsync'] = (i32a, index, value, maxWaitMilliseconds) => {
     wait.value.then((value) => {
       if (atomicLiveWaitAsyncs[counter]) {
         delete atomicLiveWaitAsyncs[counter];
-        {{{ makeDynCall('viiii', 'asyncWaitFinished') }}}(addr, val, atomicWaitStates.indexOf(value), userData);
+        {{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}(addr, val, atomicWaitStates.indexOf(value), userData);
       }
     });
     return -counter;
@@ -355,8 +355,8 @@ Atomics['waitAsync'] = (i32a, index, value, maxWaitMilliseconds) => {
       do {
         var val = Atomics.compareExchange(HEAP32, lock >> 2, 0/*zero represents lock being free*/, 1/*one represents lock being acquired*/);
         if (!val) return dispatch(0, 0/*'ok'*/);
-        var wait = Atomics['waitAsync'](HEAP32, lock >> 2, val, maxWaitMilliseconds);
-      } while(wait.value === 'not-equal');
+        var wait = Atomics.waitAsync(HEAP32, lock >> 2, val, maxWaitMilliseconds);
+      } while (wait.value === 'not-equal');
 #if ASSERTIONS
       assert(wait.async || wait.value === 'timed-out');
 #endif
@@ -380,8 +380,8 @@ Atomics['waitAsync'] = (i32a, index, value, maxWaitMilliseconds) => {
                                           val - num /* Acquire 'num' of them */);
         if (ret == val) return dispatch(ret/*index of resource acquired*/, 0/*'ok'*/);
         val = ret;
-        let wait = Atomics['waitAsync'](HEAP32, sem >> 2, ret, maxWaitMilliseconds);
-      } while(wait.value === 'not-equal');
+        let wait = Atomics.waitAsync(HEAP32, sem >> 2, ret, maxWaitMilliseconds);
+      } while (wait.value === 'not-equal');
 #if ASSERTIONS
       assert(wait.async || wait.value === 'timed-out');
 #endif

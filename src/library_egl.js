@@ -675,4 +675,4 @@ var LibraryEGL = {
 
 autoAddDeps(LibraryEGL, '$EGL');
 
-mergeInto(LibraryManager.library, LibraryEGL);
+addToLibrary(LibraryEGL);
