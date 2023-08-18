@@ -83,7 +83,6 @@ $std::__2::vector<unsigned\20char\2c\20std::__2::allocator<unsigned\20char>>::__
 $std::__2::vector<wasmfs::MemoryDirectory::ChildEntry\2c\20std::__2::allocator<wasmfs::MemoryDirectory::ChildEntry>>::erase\5babi:v160004\5d\28std::__2::__wrap_iter<wasmfs::MemoryDirectory::ChildEntry\20const*>\29
 $strlen
 $void\20std::__2::__libcpp_operator_delete\5babi:v160004\5d<void*>\28void*\29
-$void\20std::__2::vector<std::__2::shared_ptr<wasmfs::Directory>\2c\20std::__2::allocator<std::__2::shared_ptr<wasmfs::Directory>>>::__push_back_slow_path<std::__2::shared_ptr<wasmfs::Directory>>\28std::__2::shared_ptr<wasmfs::Directory>&&\29
 $void\20std::__2::vector<std::__2::shared_ptr<wasmfs::OpenFileState>\2c\20std::__2::allocator<std::__2::shared_ptr<wasmfs::OpenFileState>>>::__emplace_back_slow_path<>\28\29
 $wasmfs::DataFile::Handle::flush\28\29
 $wasmfs::DataFile::Handle::write\28unsigned\20char\20const*\2c\20unsigned\20long\2c\20long\20long\29
