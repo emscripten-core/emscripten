@@ -212,7 +212,7 @@ function handleMessage(e) {
 #endif // MODULARIZE && EXPORT_ES6
     } else if (e.data.cmd === 'run') {
       // Pass the thread address to wasm to store it for fast access.
-      Module['__emscripten_thread_init'](e.data.pthread_ptr, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0, /*canBlock=*/1);
+      Module['__emscripten_thread_init'](e.data.pthread_ptr, /*is_main=*/0, /*is_runtime=*/0, /*can_block=*/1);
 
       // Await mailbox notifications with `Atomics.waitAsync` so we can start
       // using the fast `Atomics.notify` notification path.
