@@ -420,9 +420,12 @@ public:
   }
 
   val& operator=(val&& v) & {
-    internal::_emval_decref(handle);
-    handle = v.handle;
+    auto v_handle = v.handle;
     v.handle = 0;
+    if (handle) {
+      internal::_emval_decref(handle);
+    }
+    handle = v_handle;
     return *this;
   }
 
