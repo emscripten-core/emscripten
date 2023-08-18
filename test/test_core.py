@@ -978,16 +978,16 @@ base align: 0, 0, 0, 0'''])
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
   @no_ubsan('UBSan changes memory consumption')
-  def test_emmalloc_memory_statistics(self, *args):
+  def test_emmalloc_memory_statistics(self):
     if self.is_wasm64():
       out_suffix = '64'
     else:
       out_suffix = ''
 
+    self.set_setting('INITIAL_MEMORY', '128mb')
     self.set_setting('MALLOC', 'emmalloc')
-    self.emcc_args += ['-sINITIAL_MEMORY=128MB', '-g'] + list(args)
-
-    self.do_core_test('test_emmalloc_memory_statistics.cpp', out_suffix=out_suffix)
+    self.emcc_args += ['-g']
+    self.do_core_test('test_emmalloc_memory_statistics.c', out_suffix=out_suffix)
 
   @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
   @no_wasm64('output is sensitive to absolute data size')
@@ -7504,10 +7504,12 @@ void* operator new(size_t size) {
 
     do_test(test2, level=2, prefix='hello_libcxx')
 
-  def test_embind(self):
-    # Verify that both the old `--bind` arg and the new `-lembind` arg work
-    for args in [['-lembind'], ['--bind']]:
-      create_file('test_embind.cpp', r'''
+  @parameterized({
+    '': (['-lembind', '-sDYNAMIC_EXECUTION=0'],),
+    'flag': (['--bind'],),
+  })
+  def test_embind(self, args):
+    create_file('test_embind.cpp', r'''
       #include <stdio.h>
       #include <emscripten/val.h>
 
@@ -7522,8 +7524,8 @@ void* operator new(size_t size) {
 
         return 0;
       }
-      ''')
-      self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
+    ''')
+    self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
 
   @parameterized({
     '': ([],),
@@ -8691,7 +8693,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_asan('mallinfo is not part of ASan malloc')
   @no_lsan('mallinfo is not part of LSan malloc')
   def test_mallinfo(self):
-    self.do_runf(test_file('mallinfo.cpp'), 'OK.')
+    self.do_core_test('test_mallinfo.c')
 
   @no_asan('cannot replace malloc/free with ASan')
   @no_lsan('cannot replace malloc/free with LSan')
