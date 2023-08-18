@@ -2915,6 +2915,12 @@ int f() {
     self.assertNotExists('out.js')
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), actual)
 
+  def test_embind_tsgen_val(self):
+    # Check that any dependencies from val still works with TS generation enabled.
+    self.run_process([EMCC, test_file('other/embind_tsgen_val.cpp'),
+                      '-lembind', '--embind-emit-tsd', 'embind_tsgen_val.d.ts'])
+    self.assertExists('embind_tsgen_val.d.ts')
+
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, config.LLVM_ROOT)

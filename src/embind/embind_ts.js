@@ -535,6 +535,11 @@ var LibraryEmbind = {
     const printer = new TsPrinter(moduleDefinitions);
     printer.print();
   },
+
+  // Stub functions used by eval, but not needed for TS generation:
+  $makeLegalFunctionName: () => assert(false, 'stub function should not be called'),
+  $newFunc: () => assert(false, 'stub function should not be called'),
+  $runDestructors: () => assert(false, 'stub function should not be called'),
 };
 
 DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$embindEmitTypes');
