@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $JSFILEFS__deps: ['wasmfs_create_js_file_backend'],
   $JSFILEFS: {
     createBackend(opts) {

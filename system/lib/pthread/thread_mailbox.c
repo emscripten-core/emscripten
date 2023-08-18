@@ -44,9 +44,6 @@ void emscripten_thread_mailbox_unref(pthread_t thread) {
   }
 }
 
-// Defined in emscripten_thread_state.S.
-int _emscripten_thread_supports_atomics_wait(void);
-
 void _emscripten_thread_mailbox_shutdown(pthread_t thread) {
   assert(thread == pthread_self());
 

@@ -26,7 +26,7 @@ from tools import shared, building, config, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
-from common import env_modify, with_env_modify, disabled, node_pthreads, also_with_wasm_bigint
+from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_node_canary, compiler_for, crossplatform
 from common import with_both_sjlj, also_with_standalone_wasm, can_do_standalone
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
@@ -2144,6 +2144,7 @@ int main(int argc, char **argv) {
 ''', 'false', assert_returncode=NON_ZERO)
 
   def test_em_asm(self):
+    self.maybe_closure()
     self.do_core_test('test_em_asm.cpp')
 
   def test_em_asm_c(self):
@@ -2714,6 +2715,7 @@ The current type of b is: 9
   def test_pthread_proxying(self, modularize):
     if modularize and self.get_setting('WASM') == 0:
       self.skipTest('MODULARIZE + WASM=0 + pthreads does not work (#16794)')
+    self.maybe_closure()
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('INITIAL_MEMORY=32mb')
     args = []
@@ -2797,6 +2799,7 @@ The current type of b is: 9
 
   @node_pthreads
   @no_mac('https://github.com/emscripten-core/emscripten/issues/15014')
+  @flaky('https://github.com/emscripten-core/emscripten/issues/15014')
   def test_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
     # Add the onAbort handler at runtime during preRun.  This means that onAbort
@@ -4665,7 +4668,7 @@ res64 - external 64\n''', header='''\
   @needs_dylink
   def test_dylink_jslib(self):
     create_file('lib.js', r'''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         test_lib_func: function(x) {
           return x + 17.2;
         }
@@ -6383,12 +6386,12 @@ PORT: 3979
       }
     ''')
     create_file('mylib1.js', '''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         printey: () => out('hello from lib!')
       });
     ''')
     create_file('mylib2.js', '''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         calcey: (x, y) => x + y
       });
     ''')
@@ -8589,7 +8592,7 @@ Module.onRuntimeInitialized = () => {
       }
     ''')
     create_file('lib.js', '''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         check_memprof_requirements: () => {
           if (typeof _emscripten_stack_get_base === 'function' &&
               typeof _emscripten_stack_get_end === 'function' &&
@@ -9408,7 +9411,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', 'jslib_func')
     create_file('lib.js', r'''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         jslib_func__sig: 'v',
         jslib_func: () => err('hello from js')
       });
@@ -9599,6 +9602,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertNotContained('Aborted', output)
 
   @node_pthreads
+  @flaky('https://github.com/emscripten-core/emscripten/issues/20067')
   def test_abort_on_exceptions_pthreads(self):
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('PROXY_TO_PTHREAD')
@@ -9707,6 +9711,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_wasm_worker_malloc(self):
     self.do_runf(test_file('wasm_worker/malloc_wasm_worker.c'), emcc_args=['-sWASM_WORKERS'])
 
+  @node_pthreads
+  def test_wasm_worker_wait_async(self):
+    self.do_runf(test_file('wasm_worker/wait_async.c'), emcc_args=['-sWASM_WORKERS'])
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None,
@@ -9780,6 +9788,10 @@ core2g = make_run('core2g', emcc_args=['-O2', '-g'])
 core3 = make_run('core3', emcc_args=['-O3'])
 cores = make_run('cores', emcc_args=['-Os'])
 corez = make_run('corez', emcc_args=['-Oz'])
+
+# Test >2gb memory addresses
+core_2gb = make_run('core_2gb', emcc_args=['--profiling-funcs'],
+                    settings={'INITIAL_MEMORY': '2200mb', 'GLOBAL_BASE': '2gb'})
 
 # MEMORY64=1
 wasm64 = make_run('wasm64', emcc_args=['-O1', '-Wno-experimental', '--profiling-funcs'],

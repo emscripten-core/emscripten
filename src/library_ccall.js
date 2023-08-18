@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
   $getCFunc: (ident) => {
     var func = Module['_' + ident]; // closure exported function

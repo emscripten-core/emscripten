@@ -20,6 +20,13 @@ See docs/process.md for more on how version tagging works.
 
 3.1.45 (in development)
 -----------------------
+- The function used to add symbols the JS library has been renamed from
+  `mergeInto`, to the more specific `addToLibrary`.  This new function does not
+  require the passing of `LibraryManager.library` as a first argument.  The old
+  `mergeInto` continues to exist for backwards compat.
+- The `--log_html` option was removed from `emrun`.  This option was already not
+  working with python3.8 or above so we hope is safe to say that nobody was
+  relying on it.
 
 3.1.44 - 07/25/23
 -----------------

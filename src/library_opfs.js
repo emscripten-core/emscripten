@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $OPFS__deps: ['wasmfs_create_opfs_backend'],
   $OPFS: {
     createBackend(opts) {

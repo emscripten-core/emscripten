@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   // This gives correct answers for everything less than 2^{14} = 16384
   // I hope nobody is contemplating functions with 16384 arguments...
   $uleb128Encode: (n, target) => {
