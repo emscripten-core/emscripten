@@ -2421,7 +2421,7 @@ def phase_linker_setup(options, state, newargs):
     settings.EXPORT_IF_DEFINED.append('__wasm_apply_data_relocs')
 
   if settings.SIDE_MODULE and 'GLOBAL_BASE' in user_settings:
-    exit_with_error('GLOBAL_BASE is not compatible with SIDE_MODULE')
+    diagnostics.warning('unused-command-line-argument', 'GLOBAL_BASE is not compatible with SIDE_MODULE')
 
   if settings.PROXY_TO_WORKER or options.use_preload_plugins:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
