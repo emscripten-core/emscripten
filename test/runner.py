@@ -56,6 +56,7 @@ passing_core_test_modes = [
   'core3',
   'cores',
   'corez',
+  'core_2gb',
   'strict',
   'wasm2js0',
   'wasm2js1',
@@ -284,7 +285,7 @@ def load_test_suites(args, modules):
       for test in tests:
         suite.addTest(test)
       suites.append((m.__name__, suite))
-  if total_tests == 1:
+  if total_tests == 1 or parallel_testsuite.num_cores() == 1:
     common.EMTEST_SAVE_DIR = True
   return suites, unmatched_test_names
 
