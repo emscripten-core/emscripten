@@ -5492,7 +5492,6 @@ Module["preRun"].push(function () {
     if '-sASYNCIFY=2' in args:
       self.require_jspi()
     test = test_file('wasmfs/wasmfs_opfs.c')
-    self.emcc_args += ['-sASYNCIFY=2']
     args = ['-sWASMFS', '-O3'] + args
     self.btest_exit(test, args=args + ['-DWASMFS_SETUP'])
     self.btest_exit(test, args=args + ['-DWASMFS_RESUME'])
