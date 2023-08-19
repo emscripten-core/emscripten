@@ -619,6 +619,8 @@ jobs:
             wasm64_4gb.test_async_main
             wasm64_4gb.*embind*
             core_2gb.test_em_asm
+            core_2gb.test_embind_unsigned_bigint
+            core_2gb.test_embind_no_rtti
             wasm64l.test_bigswitch
             other.test_memory64_proxies
             other.test_failing_growth_wasm64"

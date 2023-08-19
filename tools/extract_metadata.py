@@ -320,7 +320,7 @@ def extract_metadata(filename):
       if e.kind == webassembly.ExternType.GLOBAL and e.name.startswith('__em_js__'):
         name = utils.removeprefix(e.name, '__em_js__')
         globl = module.get_global(e.index)
-        string_address = get_global_value(globl)
+        string_address = to_unsigned(get_global_value(globl))
         em_js_funcs[name] = get_string_at(module, string_address)
 
     for i in imports:
