@@ -36,7 +36,8 @@ int main() {
   printf("errno: %d\n", errno);
   printf("multi[0].revents: %d\n", multi[0].revents == (POLLIN | POLLOUT));
 #if WASMFS
-  // The size of the device is 0 in WasmFS, so the device cannot POLLIN.
+  // TODO: Add support for POLLIN. The size of the device is 0 in WasmFS, so 
+  // devices cannot POLLIN.
   printf("multi[1].revents: %d\n", multi[1].revents == POLLOUT);
 #else
   printf("multi[1].revents: %d\n", multi[1].revents == (POLLIN | POLLOUT));
