@@ -74,11 +74,12 @@ function callMain() {
 
   var argc = args.length;
   var argv = stackAlloc((argc + 1) * {{{ POINTER_SIZE }}});
-  var argv_ptr = argv >> {{{ POINTER_SHIFT }}};
+  var argv_ptr = argv;
   args.forEach((arg) => {
-    {{{ POINTER_HEAP }}}[argv_ptr++] = {{{ to64('stringToUTF8OnStack(arg)') }}};
+    {{{ makeSetValue('argv_ptr', 0, 'stringToUTF8OnStack(arg)', '*') }}};
+    argv_ptr += {{{ POINTER_SIZE }}};
   });
-  {{{ POINTER_HEAP }}}[argv_ptr] = {{{ to64('0') }}};
+  {{{ makeSetValue('argv_ptr', 0, 0, '*') }}};
 #else
   var argc = 0;
   var argv = 0;

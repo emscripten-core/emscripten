@@ -26,7 +26,7 @@ from tools import shared, building, config, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
-from common import env_modify, with_env_modify, disabled, node_pthreads, also_with_wasm_bigint
+from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_node_canary, compiler_for, crossplatform
 from common import with_both_sjlj, also_with_standalone_wasm, can_do_standalone
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
@@ -978,16 +978,16 @@ base align: 0, 0, 0, 0'''])
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
   @no_ubsan('UBSan changes memory consumption')
-  def test_emmalloc_memory_statistics(self, *args):
+  def test_emmalloc_memory_statistics(self):
     if self.is_wasm64():
       out_suffix = '64'
     else:
       out_suffix = ''
 
+    self.set_setting('INITIAL_MEMORY', '128mb')
     self.set_setting('MALLOC', 'emmalloc')
-    self.emcc_args += ['-sINITIAL_MEMORY=128MB', '-g'] + list(args)
-
-    self.do_core_test('test_emmalloc_memory_statistics.cpp', out_suffix=out_suffix)
+    self.emcc_args += ['-g']
+    self.do_core_test('test_emmalloc_memory_statistics.c', out_suffix=out_suffix)
 
   @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
   @no_wasm64('output is sensitive to absolute data size')
@@ -2144,6 +2144,7 @@ int main(int argc, char **argv) {
 ''', 'false', assert_returncode=NON_ZERO)
 
   def test_em_asm(self):
+    self.maybe_closure()
     self.do_core_test('test_em_asm.cpp')
 
   def test_em_asm_c(self):
@@ -2798,6 +2799,7 @@ The current type of b is: 9
 
   @node_pthreads
   @no_mac('https://github.com/emscripten-core/emscripten/issues/15014')
+  @flaky('https://github.com/emscripten-core/emscripten/issues/15014')
   def test_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
     # Add the onAbort handler at runtime during preRun.  This means that onAbort
@@ -7502,10 +7504,12 @@ void* operator new(size_t size) {
 
     do_test(test2, level=2, prefix='hello_libcxx')
 
-  def test_embind(self):
-    # Verify that both the old `--bind` arg and the new `-lembind` arg work
-    for args in [['-lembind'], ['--bind']]:
-      create_file('test_embind.cpp', r'''
+  @parameterized({
+    '': (['-lembind', '-sDYNAMIC_EXECUTION=0'],),
+    'flag': (['--bind'],),
+  })
+  def test_embind(self, args):
+    create_file('test_embind.cpp', r'''
       #include <stdio.h>
       #include <emscripten/val.h>
 
@@ -7520,8 +7524,8 @@ void* operator new(size_t size) {
 
         return 0;
       }
-      ''')
-      self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
+    ''')
+    self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
 
   @parameterized({
     '': ([],),
@@ -8689,7 +8693,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_asan('mallinfo is not part of ASan malloc')
   @no_lsan('mallinfo is not part of LSan malloc')
   def test_mallinfo(self):
-    self.do_runf(test_file('mallinfo.cpp'), 'OK.')
+    self.do_core_test('test_mallinfo.c')
 
   @no_asan('cannot replace malloc/free with ASan')
   @no_lsan('cannot replace malloc/free with LSan')
@@ -9600,6 +9604,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertNotContained('Aborted', output)
 
   @node_pthreads
+  @flaky('https://github.com/emscripten-core/emscripten/issues/20067')
   def test_abort_on_exceptions_pthreads(self):
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('PROXY_TO_PTHREAD')
@@ -9708,6 +9713,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_wasm_worker_malloc(self):
     self.do_runf(test_file('wasm_worker/malloc_wasm_worker.c'), emcc_args=['-sWASM_WORKERS'])
 
+  @node_pthreads
+  def test_wasm_worker_wait_async(self):
+    self.do_runf(test_file('wasm_worker/wait_async.c'), emcc_args=['-sWASM_WORKERS'])
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None,
@@ -9781,6 +9790,10 @@ core2g = make_run('core2g', emcc_args=['-O2', '-g'])
 core3 = make_run('core3', emcc_args=['-O3'])
 cores = make_run('cores', emcc_args=['-Os'])
 corez = make_run('corez', emcc_args=['-Oz'])
+
+# Test >2gb memory addresses
+core_2gb = make_run('core_2gb', emcc_args=['--profiling-funcs'],
+                    settings={'INITIAL_MEMORY': '2200mb', 'GLOBAL_BASE': '2gb'})
 
 # MEMORY64=1
 wasm64 = make_run('wasm64', emcc_args=['-O1', '-Wno-experimental', '--profiling-funcs'],
