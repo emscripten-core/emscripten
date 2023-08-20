@@ -2368,6 +2368,7 @@ addToLibrary({
     return 1000; // microseconds (1/1000 of a millisecond)
 #endif
   },
+
   // Represents whether emscripten_get_now is guaranteed monotonic; the Date.now
   // implementation is not :(
   $nowIsMonotonic__internal: true,
@@ -2399,17 +2400,10 @@ addToLibrary({
   // That is what we are up to here. Use an IIFE to avoid shadowing
   // SharedArrayBuffer globally.
   __emscripten_atomics_sleep__postset: `
-    var waitBuffer;
-    (function() {
-      var SharedArrayBuffer = new WebAssembly.Memory({"shared":true,"initial":0,"maximum":0}).buffer.constructor;
-      waitBuffer = new Int32Array(new SharedArrayBuffer(4));
-    })();
+    var SABConstructor = new WebAssembly.Memory({"shared":true,"initial":0,"maximum":0}).buffer.constructor;
+    var waitBuffer = new Int32Array(new SABConstructor(4));
   `,
-
-  __emscripten_atomics_sleep: (ms) => {
-    Atomics.wait(waitBuffer, 0, 0, ms);
-  },
-
+  __emscripten_atomics_sleep: (ms) => Atomics.wait(waitBuffer, 0, 0, ms),
 
   $warnOnce: (text) => {
     if (!warnOnce.shown) warnOnce.shown = {};

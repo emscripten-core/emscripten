@@ -404,10 +404,8 @@ void __emscripten_atomics_sleep(double);
 
 void emscripten_thread_sleep(double msecs) {
   if (_emscripten_thread_supports_atomics_wait()) {
-    // maybe use atomics sleep
     __emscripten_atomics_sleep(msecs);
   } else {
-    // fall back to busy spin wait sleep
     busy_sleep(msecs);
   }
 }
