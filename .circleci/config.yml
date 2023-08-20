@@ -600,15 +600,13 @@ jobs:
           # has node canary installed.
           test_targets: "wasm64l skip:wasm64l.test_bigswitch"
   test-wasm64:
-    environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
     # We don't use `bionic` here since its tool old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
     executor: linux-python
     steps:
       - prepare-for-tests
       # The linux-python image uses /home/circleci rather than /root and jsvu
-      # hardcodes /root into its launcher scripts do we need to reinstall v8.
+      # hardcodes /root into its launcher scripts so we need to reinstall v8.
       - run: rm -rf $HOME/.jsvu
       - install-v8
       - install-node-canary
@@ -618,6 +616,8 @@ jobs:
             wasm64
             wasm64_4gb.test_hello_world
             wasm64_4gb.test_em_asm
+            wasm64_4gb.test_async_main
+            wasm64_4gb.*embind*
             core_2gb.test_em_asm
             wasm64l.test_bigswitch
             other.test_memory64_proxies
@@ -668,7 +668,7 @@ jobs:
       - run-tests:
           test_targets: "core0.test_hello_world core2.test_demangle_stacks_symbol_map"
   test-node-compat:
-    # We don't use `bionic` here since its tool old to run recent node versions:
+    # We don't use `bionic` here since its too old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
     executor: linux-python
     environment:
