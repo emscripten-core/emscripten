@@ -225,7 +225,7 @@ sigs = {
   __cxa_rethrow_primary_exception__sig: 'vp',
   __cxa_throw__sig: 'vppp',
   __cxa_uncaught_exceptions__sig: 'i',
-  __emscripten_atomics_sleep__sig: 'vi',
+  __emscripten_atomics_sleep__sig: 'vd',
   __emscripten_init_main_thread_js__sig: 'vp',
   __emscripten_thread_cleanup__sig: 'vp',
   __handle_stack_overflow__sig: 'vp',

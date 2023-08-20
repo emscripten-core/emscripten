@@ -400,7 +400,7 @@ static void busy_sleep(double msecs) {
   } while (now - start < msecs);
 }
 
-int __emscripten_atomics_sleep(int);
+void __emscripten_atomics_sleep(double);
 
 void emscripten_thread_sleep(double msecs) {
   if (_emscripten_thread_supports_atomics_wait()) {
