@@ -6,7 +6,7 @@
 
 
 #if !AUTODEBUG
-#error "Should only be incldued in AUTODEBUG mode"
+#error "Should only be included in AUTODEBUG mode"
 #endif
 
 addToLibrary({

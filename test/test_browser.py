@@ -2011,7 +2011,7 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   @requires_threads
   def test_gl_textures(self, args):
-    self.btest('gl_textures.cpp', '0', args=['-lGL'] + args)
+    self.btest_exit('gl_textures.cpp', args=['-lGL'] + args)
 
   @requires_graphics_hardware
   def test_gl_ps(self):
@@ -2675,7 +2675,7 @@ Module["preRun"].push(function () {
       });
       ''')
       self.emcc_args.append('--pre-js=pre.js')
-    self.btest(test_file('test_html5_core.c'), args=opts, expected='0')
+    self.btest_exit(test_file('test_html5_core.c'), args=opts)
 
   @requires_threads
   def test_html5_gamepad(self):
@@ -5490,6 +5490,8 @@ Module["preRun"].push(function () {
   })
   @requires_threads
   def test_wasmfs_opfs(self, args):
+    if '-sASYNCIFY=2' in args:
+      self.require_jspi()
     test = test_file('wasmfs/wasmfs_opfs.c')
     args = ['-sWASMFS', '-O3'] + args
     self.btest_exit(test, args=args + ['-DWASMFS_SETUP'])

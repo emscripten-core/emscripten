@@ -56,6 +56,7 @@ var LibraryEmbind = {
       this.name = name;
       this.methods = [];
       this.staticMethods = [];
+      this.staticProperties = [];
       this.constructors = [
         new FunctionDefinition('default', this, [])
       ];
@@ -72,6 +73,7 @@ var LibraryEmbind = {
       for (const property of this.properties) {
         out.push('  ');
         property.print(nameMap, out);
+        out.push(';\n');
       }
       for (const method of this.methods) {
         out.push('  ');
@@ -91,6 +93,10 @@ var LibraryEmbind = {
         out.push('; ');
         method.printFunction(nameMap, out);
       }
+      for (const prop of this.staticProperties) {
+        out.push('; ');
+        prop.print(nameMap, out);
+      }
       out.push('};\n');
     }
   },
@@ -101,7 +107,7 @@ var LibraryEmbind = {
     }
 
     print(nameMap, out) {
-      out.push(`${this.name}: ${nameMap(this.type)};\n`);
+      out.push(`${this.name}: ${nameMap(this.type)}`);
     }
   },
   $ConstantDefinition: class ConstantDefinition {
@@ -399,6 +405,27 @@ var LibraryEmbind = {
       return [];
     });
   },
+  _embind_register_class_class_property__deps: [
+    '$readLatin1String', '$whenDependentTypesAreResolved', '$ClassProperty'],
+  _embind_register_class_class_property: (rawClassType,
+                                          fieldName,
+                                          rawFieldType,
+                                          rawFieldPtr,
+                                          getterSignature,
+                                          getter,
+                                          setterSignature,
+                                          setter) => {
+    fieldName = readLatin1String(fieldName);
+    whenDependentTypesAreResolved([], [rawClassType], function(classType) {
+      classType = classType[0];
+      whenDependentTypesAreResolved([], [rawFieldType], function(types) {
+        const prop = new ClassProperty(types[0], fieldName);
+        classType.staticProperties.push(prop);
+        return [];
+      });
+      return [];
+    });
+  },
   _embind_register_enum__deps: ['$readLatin1String', '$EnumDefinition', '$moduleDefinitions'],
   _embind_register_enum: function(rawType, name, size, isSigned) {
     name = readLatin1String(name);
@@ -535,6 +562,11 @@ var LibraryEmbind = {
     const printer = new TsPrinter(moduleDefinitions);
     printer.print();
   },
+
+  // Stub functions used by eval, but not needed for TS generation:
+  $makeLegalFunctionName: () => assert(false, 'stub function should not be called'),
+  $newFunc: () => assert(false, 'stub function should not be called'),
+  $runDestructors: () => assert(false, 'stub function should not be called'),
 };
 
 DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$embindEmitTypes');

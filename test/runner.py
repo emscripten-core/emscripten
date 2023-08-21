@@ -56,6 +56,7 @@ passing_core_test_modes = [
   'core3',
   'cores',
   'corez',
+  'core_2gb',
   'strict',
   'wasm2js0',
   'wasm2js1',
@@ -68,6 +69,7 @@ passing_core_test_modes = [
   'ubsan',
   'wasm64',
   'wasm64_v8',
+  'wasm64_4gb',
 ]
 
 # The default core test mode, used when none is specified
@@ -284,7 +286,7 @@ def load_test_suites(args, modules):
       for test in tests:
         suite.addTest(test)
       suites.append((m.__name__, suite))
-  if total_tests == 1:
+  if total_tests == 1 or parallel_testsuite.num_cores() == 1:
     common.EMTEST_SAVE_DIR = True
   return suites, unmatched_test_names
 
@@ -379,6 +381,7 @@ def configure():
   common.EMTEST_SAVE_DIR = int(os.getenv('EMTEST_SAVE_DIR', '0'))
   common.EMTEST_ALL_ENGINES = int(os.getenv('EMTEST_ALL_ENGINES', '0'))
   common.EMTEST_SKIP_SLOW = int(os.getenv('EMTEST_SKIP_SLOW', '0'))
+  common.EMTEST_SKIP_FLAKY = int(os.getenv('EMTEST_SKIP_FLAKY', '0'))
   common.EMTEST_LACKS_NATIVE_CLANG = int(os.getenv('EMTEST_LACKS_NATIVE_CLANG', '0'))
   common.EMTEST_REBASELINE = int(os.getenv('EMTEST_REBASELINE', '0'))
   common.EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG
