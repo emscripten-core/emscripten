@@ -5674,6 +5674,26 @@ class emrun(RunnerCore):
       proc.terminate()
       proc.wait()
 
+  def inject_emtest_browser(self, args):
+    if EMTEST_BROWSER is not None:
+      # If EMTEST_BROWSER carried command line arguments to pass to the browser,
+      # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
+      # so strip them out.
+      browser_cmd = shlex.split(EMTEST_BROWSER)
+      browser_path = browser_cmd[0]
+      args += ['--browser', browser_path]
+      if len(browser_cmd) > 1:
+        browser_args = browser_cmd[1:]
+        if 'firefox' in browser_path and ('-profile' in browser_args or '--profile' in browser_args):
+          # emrun uses its own -profile, strip it out
+          parser = argparse.ArgumentParser(add_help=False) # otherwise it throws with -headless
+          parser.add_argument('-profile')
+          parser.add_argument('--profile')
+          browser_args = parser.parse_known_args(browser_args)[1]
+        if browser_args:
+          args += ['--browser_args', ' ' + ' '.join(browser_args)]
+    return args
+
   def test_emrun(self):
     self.run_process([EMCC, test_file('test_emrun.c'), '--emrun', '-o', 'hello_world.html'])
     if not has_browser():
@@ -5696,23 +5716,7 @@ class emrun(RunnerCore):
     self.assertContained('error: unrecognized arguments: --foo', err)
     self.assertContained('remember to add `--` between arguments', err)
 
-    if EMTEST_BROWSER is not None:
-      # If EMTEST_BROWSER carried command line arguments to pass to the browser,
-      # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
-      # so strip them out.
-      browser_cmd = shlex.split(EMTEST_BROWSER)
-      browser_path = browser_cmd[0]
-      args_base += ['--browser', browser_path]
-      if len(browser_cmd) > 1:
-        browser_args = browser_cmd[1:]
-        if 'firefox' in browser_path and ('-profile' in browser_args or '--profile' in browser_args):
-          # emrun uses its own -profile, strip it out
-          parser = argparse.ArgumentParser(add_help=False) # otherwise it throws with -headless
-          parser.add_argument('-profile')
-          parser.add_argument('--profile')
-          browser_args = parser.parse_known_args(browser_args)[1]
-        if browser_args:
-          args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
+    args_base = self.inject_emtest_browser(args_base)
 
     for args in [
         args_base,
@@ -5737,3 +5741,24 @@ class emrun(RunnerCore):
       self.assertContained('Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', stdout)
       self.assertContained('Testing char sequences: %20%21 &auml;', stdout)
       self.assertContained('hello, error stream!', stderr)
+
+  def test_emrun_prepend_js_in_html(self):
+    if not has_browser():
+      self.skipTest('need a browser')
+    open('script1.js', 'w').write('window.foo = 42;')
+    open('script2.js', 'w').write('window.foo = -42;')
+    open('test.c', 'w').write('#include <emscripten.h>\nint main() { return EM_ASM_INT(return window.foo); }')
+    self.run_process([EMCC, 'test.c', '--emrun', '-o', 'test.html'])
+    root = os.getcwd()
+
+    os.chdir(path_from_root())
+    args = [EMRUN, '--timeout', '30', '--safe_firefox_profile',
+                   '--prepend-js-in-html', os.path.join(root, 'script1.js'),
+                   '--prepend-js-in-html', os.path.join(root, 'script2.js'),
+                   '--kill_exit', '--port', '6940', '--verbose', os.path.join(root, 'test.html')]
+
+    args = self.inject_emtest_browser(args)
+    print(shared.shlex_join(args))
+    proc = self.run_process(args, check=False)
+    print(str(proc.stdout))
+    self.assertEqual(proc.returncode, 42)

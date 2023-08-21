@@ -429,6 +429,36 @@ def detect_browser_processes():
     logv('Was unable to detect the browser process that was spawned by emrun. This may occur if the target page was opened in a tab on a browser process that already existed before emrun started up.')
 
 
+# Prepends custom specified JavaScript code snippets to be executed first in the given HTML file.
+def prepend_js_in_html(html):
+  global emrun_options
+  if len(emrun_options.prepend_js_in_html) == 0:
+    return html # Nothing to prepend
+
+  # Insert the JS code either right after the <head> element, or before the first <script> element, or
+  # first right inside <body>, whichever appears first.
+  head_pos = re.search('<head.*?>', html, re.IGNORECASE)
+  head_start = float('inf') if head_pos is None else head_pos.end()
+
+  script_pos = re.search('<script', html, re.IGNORECASE)
+  script_start = float('inf') if script_pos is None else script_pos.start()
+
+  insert_pos = min(head_start, script_start)
+
+  if head_pos is None and script_pos is None:
+    body_pos = re.search('<body.*?>', html, re.IGNORECASE)
+    if body_pos is None:
+      return html # HTML file contains no <body>, <head> or <script>s, give up attempting to prepend.
+    insert_pos = body_pos.end()
+
+  # Ordering is important: insert in an order such that later --prepend-js-in-html directives on command line
+  # appear earlier in the file, i.e. they are prepended after the earlier prepends to be able to
+  # "get in first" before the earlier ones.
+  for script in emrun_options.prepend_js_in_html:
+    html = html[:insert_pos] + '<script>' + open(script, 'r').read() + '</script>' + html[insert_pos:]
+  return html
+
+
 # Our custom HTTP web server that will server the target page to run via .html.
 # This is used so that we can load the page via a http:// URL instead of a
 # file:// URL, since those wouldn't work too well unless user allowed XHR
@@ -655,6 +685,20 @@ class HTTPHandler(SimpleHTTPRequestHandler):
     # Filter out 404 messages on favicon.ico not being found to remove noise.
     if 'favicon.ico' not in msg:
       sys.stderr.write(msg)
+
+  def do_GET(self):
+    (_, _, path, query, _) = urlsplit(self.path)
+    if path[0] == '/':
+      path = path[1:] # Remove leading '/' so the path can be joined with web server root
+    path = os.path.normpath(path) # Prevent escaping the web server root with '..'
+    path = os.path.join(os.getcwd(), path) # Turn path relative to current web server root
+    if (path.lower().endswith('.html') or path.lower().endswith('.htm')) and os.path.isfile(path):
+      html = open(path, 'r', encoding='utf-8').read()
+      self.send_response(200)
+      self.end_headers()
+      self.wfile.write(prepend_js_in_html(html).encode('utf-8'))
+    else: # Run default GET handler
+      return SimpleHTTPRequestHandler.do_GET(self)
 
   def do_POST(self):
     self.protocol_version = 'HTTP/1.1'
@@ -1298,7 +1342,7 @@ def list_pc_browsers():
   logi('')
   for browser in browsers:
     browser_exe = find_browser(browser)
-    if type(browser_exe) == list:
+    if isinstance(browser_exe, list):
       browser_exe = browser_exe[0]
     if browser_exe:
       logi('  - ' + browser + ': ' + browser_display_name(browser_exe) + ' ' + get_executable_version(browser_exe))
@@ -1555,6 +1599,13 @@ def parse_args():
   parser.add_argument('--dump_out_directory', default='dump_out', type=str,
                       help='If specified, overrides the directory for dump files using emrun_file_dump method.')
 
+  parser.add_argument('--prepend-js-in-html', default=[], type=str, action='append', nargs='*',
+                      help='Prepends given JS script inline in every served HTML file.'
+                      'Multiple --prepend-js-in-html directives may be passed, in which'
+                      'case the scripts are prepended in the order that they appear on'
+                      'the command line. This means that later scripts appear earlier in'
+                      'the served .html file.')
+
   parser.add_argument('serve', nargs='?', default='')
 
   parser.add_argument('cmdlineparams', nargs='*')
@@ -1621,6 +1672,10 @@ def run():
     url = file_to_serve
   else:
     url = os.path.relpath(os.path.abspath(file_to_serve), serve_dir)
+
+  # If there are any --prepend-js-in-html arguments, convert the paths to absolute paths before changing the directory,
+  # so that the --prepend-js-in-html arguments can be located outside the web server root.
+  emrun_options.prepend_js_in_html = [os.path.join(os.getcwd(), f[0]) for f in emrun_options.prepend_js_in_html]
 
   os.chdir(serve_dir)
   if options.run_server:
