@@ -2716,11 +2716,8 @@ Module["preRun"].push(function () {
       print(opts)
       self.btest_exit(test_file('webgl_destroy_context.cpp'), args=opts + ['--shell-file', test_file('webgl_destroy_context_shell.html'), '-lGL'])
 
-  @no_chrome('see #7373')
   @requires_graphics_hardware
   def test_webgl_context_params(self):
-    if WINDOWS:
-      self.skipTest('SKIPPED due to bug https://bugzilla.mozilla.org/show_bug.cgi?id=1310005 - WebGL implementation advertises implementation defined GL_IMPLEMENTATION_COLOR_READ_TYPE/FORMAT pair that it cannot read with')
     self.btest_exit(test_file('webgl_color_buffer_readpixels.cpp'), args=['-lGL'])
 
   # Test for PR#5373 (https://github.com/emscripten-core/emscripten/pull/5373)
