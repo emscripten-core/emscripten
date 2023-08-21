@@ -18,6 +18,8 @@ class Test {
 
   static int static_function(int x) { return 1; }
 
+  static int static_property;
+
 private:
   int x;
 };
@@ -87,6 +89,7 @@ EMSCRIPTEN_BINDINGS(Test) {
       .function("constFn", &Test::const_fn)
       .property("x", &Test::getX, &Test::setX)
       .class_function("staticFunction", &Test::static_function)
+      .class_property("staticProperty", &Test::static_property)
 	;
 
   function("class_returning_fn", &class_returning_fn);
@@ -143,6 +146,8 @@ EMSCRIPTEN_BINDINGS(Test) {
   class_<DerivedClass, base<BaseClass>>("DerivedClass")
       .function("fn2", &DerivedClass::fn2);
 }
+
+int Test::static_property = 42;
 
 int main() {
   // Main should not be run during TypeScript generation.
