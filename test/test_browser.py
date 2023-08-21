@@ -4561,17 +4561,16 @@ Module["preRun"].push(function () {
     self.btest_exit('webgl_sample_query.cpp', args=cmd)
 
   @requires_graphics_hardware
-  def test_webgl_timer_query(self):
-    for args in [
-        # EXT query entrypoints on WebGL 1.0
-        ['-sMAX_WEBGL_VERSION'],
-        # builtin query entrypoints on WebGL 2.0
-        ['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2'],
-        # EXT query entrypoints on a WebGL 1.0 context while built for WebGL 2.0
-        ['-sMAX_WEBGL_VERSION=2'],
-      ]:
-      cmd = args + ['-lGL']
-      self.btest_exit('webgl_timer_query.cpp', args=cmd)
+  @parameterized({
+    # EXT query entrypoints on WebGL 1.0
+    '': (['-sMAX_WEBGL_VERSION'],),
+    # EXT query entrypoints on a WebGL 1.0 context while built for WebGL 2.0
+    'v2': (['-sMAX_WEBGL_VERSION=2'],),
+    # builtin query entrypoints on WebGL 2.0
+    'v2api': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2'],),
+  })
+  def test_webgl_timer_query(self, args):
+    self.btest_exit('webgl_timer_query.c', args=args + ['-lGL'])
 
   # Tests that -sOFFSCREEN_FRAMEBUFFER rendering works.
   @requires_graphics_hardware
