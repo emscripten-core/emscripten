@@ -1781,8 +1781,11 @@ def set_max_memory():
       diagnostics.warning('unused-command-line-argument', 'MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH')
     settings.MAXIMUM_MEMORY = settings.INITIAL_MEMORY
 
-  # INITIAL_MEMORY sets a lower bound for MAXIMUM_MEMORY
   if 'MAXIMUM_MEMORY' not in user_settings:
+    if settings.ALLOW_MEMORY_GROWTH and settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024:
+        settings.MAXIMUM_MEMORY = 4 * 1024 * 1024 * 1024
+
+    # INITIAL_MEMORY sets a lower bound for MAXIMUM_MEMORY
     if settings.INITIAL_MEMORY > settings.MAXIMUM_MEMORY:
       settings.MAXIMUM_MEMORY = settings.INITIAL_MEMORY
 
@@ -2875,10 +2878,12 @@ def phase_linker_setup(options, state, newargs):
   if settings.WASM2JS:
     if settings.GENERATE_SOURCE_MAP:
       exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
-    if settings.WASM_BIGINT:
-      exit_with_error('wasm2js does not support WASM_BIGINT')
     if settings.MEMORY64:
       exit_with_error('wasm2js does not support MEMORY64')
+    if settings.WASM_BIGINT:
+      exit_with_error('wasm2js does not support WASM_BIGINT')
+    if settings.CAN_ADDRESS_2GB:
+      exit_with_error('wasm2js does not support >2gb address space')
 
   if settings.NODE_CODE_CACHING:
     if settings.WASM_ASYNC_COMPILATION:
