@@ -59,7 +59,7 @@ addToLibrary({
       function finish(byteArray) {
         if (preFinish) preFinish();
         if (!dontCreateFile) {
-          FS.createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
+          FS_createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
         }
         if (onload) onload();
         removeRunDependency(dep);
