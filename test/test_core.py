@@ -251,6 +251,21 @@ def no_lsan(note):
   return decorator
 
 
+def no_4gb(note):
+  assert not callable(note)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      if self.get_setting('INITIAL_MEMORY') == '4200mb':
+        self.skipTest(note)
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
 def no_ubsan(note):
   assert not callable(note)
 
@@ -896,6 +911,7 @@ base align: 0, 0, 0, 0'''])
 
   @no_sanitize('sanitizers do not yet support dynamic linking')
   @no_wasm2js('MAIN_MODULE support')
+  @needs_dylink
   def test_stack_placement_pic(self):
     self.set_setting('STACK_SIZE', 1024)
     self.set_setting('MAIN_MODULE')
@@ -978,6 +994,7 @@ base align: 0, 0, 0, 0'''])
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
   @no_ubsan('UBSan changes memory consumption')
+  @no_4gb('uses INITIAL_MEMORY')
   def test_emmalloc_memory_statistics(self):
     if self.is_wasm64():
       out_suffix = '64'
@@ -2257,6 +2274,7 @@ int main(int argc, char **argv) {
     self.do_runf(test_file('core/test_runtime_stacksave.c'), 'success')
 
   # Tests that -sMINIMAL_RUNTIME builds can utilize -sALLOW_MEMORY_GROWTH option.
+  @no_4gb('memory growth issues')
   def test_minimal_runtime_memorygrowth(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2268,6 +2286,7 @@ int main(int argc, char **argv) {
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
+  @no_4gb('memory growth issues')
   def test_memorygrowth(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2302,6 +2321,7 @@ int main(int argc, char **argv) {
       self.emcc_args += ['--tracing']
       self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
+  @no_4gb('memory growth issues')
   def test_memorygrowth_2(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2333,6 +2353,7 @@ int main(int argc, char **argv) {
     self.do_core_test('test_memorygrowth_3.c')
 
   @also_with_standalone_wasm(impure=True)
+  @no_4gb('depends on INITIAL_MEMORY')
   def test_memorygrowth_MAXIMUM_MEMORY(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2343,6 +2364,7 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=64Mb', '-sMAXIMUM_MEMORY=100Mb']
     self.do_core_test('test_memorygrowth_wasm_mem_max.c')
 
+  @no_4gb('depends on INITIAL_MEMORY')
   def test_memorygrowth_linear_step(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2354,6 +2376,7 @@ int main(int argc, char **argv) {
     self.do_core_test('test_memorygrowth_memory_growth_step.c')
 
   @no_ubsan('UBSan seems to effect the precise memory usage')
+  @no_4gb('depends on specifc memory layout')
   def test_memorygrowth_geometric_step(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2377,6 +2400,7 @@ int main(int argc, char **argv) {
   })
   @no_asan('requires more memory when growing')
   @no_lsan('requires more memory when growing')
+  @no_4gb('depends on INITIAL_MEMORY')
   def test_aborting_new(self, args):
     # test that C++ new properly errors if we fail to malloc when growth is
     # enabled, with or without growth
@@ -2386,6 +2410,7 @@ int main(int argc, char **argv) {
   @no_wasm2js('no WebAssembly.Memory()')
   @no_asan('ASan alters the memory size')
   @no_lsan('LSan alters the memory size')
+  @no_4gb('uses IMPORTED_MEMORY')
   def test_module_wasm_memory(self):
     self.emcc_args += ['--pre-js', test_file('core/test_module_wasm_memory.js')]
     self.set_setting('IMPORTED_MEMORY')
@@ -6168,6 +6193,12 @@ Module.onRuntimeInitialized = () => {
     filename = test_file('unistd/sysconf_phys_pages.c')
     if self.get_setting('ALLOW_MEMORY_GROWTH'):
       expected = (2 * 1024 * 1024 * 1024) // webassembly.WASM_PAGE_SIZE
+    elif self.has_changed_setting('INITIAL_MEMORY'):
+      if self.get_setting('INITIAL_MEMORY') == '4200mb':
+        expected = (4200 * 1024 * 1024) // webassembly.WASM_PAGE_SIZE
+      else:
+        assert self.get_setting('INITIAL_MEMORY') == '2200mb'
+        expected = (2200 * 1024 * 1024) // webassembly.WASM_PAGE_SIZE
     else:
       expected = 16 * 1024 * 1024 // webassembly.WASM_PAGE_SIZE
     self.do_runf(filename, str(expected) + ', errno: 0')
@@ -6515,6 +6546,7 @@ int main(void) {
   @requires_v8
   @no_asan('depends on the specifics of memory size, which for asan we are forced to increase')
   @no_lsan('depends on the specifics of memory size, which for lsan we are forced to increase')
+  @no_4gb('uses INITIAL_MEMORY')
   def test_dlmalloc_inline(self):
     # needed with typed arrays
     self.set_setting('INITIAL_MEMORY', '128mb')
@@ -6528,6 +6560,7 @@ int main(void) {
   @no_asan('depends on the specifics of memory size, which for asan we are forced to increase')
   @no_lsan('depends on the specifics of memory size, which for lsan we are forced to increase')
   @no_wasmfs('wasmfs does some malloc/free during startup, fragmenting the heap, leading to differences later')
+  @no_4gb('uses INITIAL_MEMORY')
   def test_dlmalloc(self):
     # needed with typed arrays
     self.set_setting('INITIAL_MEMORY', '128mb')
@@ -6560,6 +6593,7 @@ int main(void) {
   # Tests that a large allocation should gracefully fail
   @no_asan('the memory size limit here is too small for asan')
   @no_lsan('the memory size limit here is too small for lsan')
+  @no_4gb('uses INITIAL_MEMORY')
   def test_dlmalloc_large(self):
     self.emcc_args += ['-sABORTING_MALLOC=0', '-sALLOW_MEMORY_GROWTH=1', '-sMAXIMUM_MEMORY=128MB']
     self.do_runf(test_file('dlmalloc_test_large.c'), '0 0 0 1')
@@ -6616,7 +6650,7 @@ void* operator new(size_t size) {
   @also_with_standalone_wasm()
   def test_mmap_anon(self):
     # ASan needs more memory, but that is set up separately
-    if '-fsanitize=address' not in self.emcc_args:
+    if '-fsanitize=address' not in self.emcc_args and not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY', '128mb')
 
     self.do_core_test('test_mmap_anon.c')
@@ -8397,12 +8431,14 @@ Module.onRuntimeInitialized = () => {
   @no_lsan('undefined symbol __global_base')
   @no_wasm2js('dynamic linking support in wasm2js')
   @with_asyncify_and_jspi
+  @needs_dylink
   def test_asyncify_main_module(self):
     self.set_setting('MAIN_MODULE', 2)
     self.do_core_test('test_hello_world.c')
 
   # Test that pthread_join works correctly with asyncify.
   @requires_node_canary
+  @node_pthreads
   def test_pthread_join_and_asyncify(self):
     # TODO Test with ASYNCIFY=1 https://github.com/emscripten-core/emscripten/issues/17552
     self.require_jspi()
@@ -8417,6 +8453,7 @@ Module.onRuntimeInitialized = () => {
     'conditional': (True,),
     'unconditional': (False,),
   })
+  @no_4gb('uses imported memory')
   def test_emscripten_lazy_load_code(self, conditional):
     if self.get_setting('STACK_OVERFLOW_CHECK'):
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/16828')
@@ -8915,6 +8952,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_full_null_ref(self, args):
+    if '-sMAIN_MODULE=2' in args:
+      self.check_dylink()
     if is_sanitizing(self.emcc_args):
       self.skipTest('test is specific to null sanitizer')
     self.emcc_args += args
