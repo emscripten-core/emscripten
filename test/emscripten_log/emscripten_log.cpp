@@ -96,11 +96,12 @@ void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) {
   delete[] callstack;
 
   // Test that obtaining a truncated callstack works. (https://github.com/emscripten-core/emscripten/issues/2171)
-  char *buffer = new char[50];
-  buffer[50] = 0x01; // Magic sentinel that should not change its value.
-  emscripten_get_callstack(EM_LOG_C_STACK | EM_LOG_NO_PATHS | EM_LOG_FUNC_PARAMS, buffer, 50);
+  const size_t callstack_buf_len = 50;
+  char *buffer = new char[callstack_buf_len+1];
+  buffer[callstack_buf_len] = 0x01; // Magic sentinel that should not change its value.
+  emscripten_get_callstack(EM_LOG_C_STACK | EM_LOG_NO_PATHS | EM_LOG_FUNC_PARAMS, buffer, callstack_buf_len);
   MYASSERT(!!strstr(buffer, "bar(int,"), "Truncated callstack was %s!", buffer);
-  MYASSERT(buffer[50] == 0x01, "");
+  MYASSERT(buffer[callstack_buf_len] == 0x01, "");
   delete[] buffer;
 
   // Or alternatively use a fixed-size buffer for the callstack (and get a truncated output if it was too small).
