@@ -48,7 +48,7 @@ function createProxyHandler(type, heapBlocks) {
 
   function getRealStartAndEnd(start, end) {
     let startReal = (start || 0) * bpe
-    let endReal = end ? end * bpe : wasmMemory.byteLength
+    let endReal = end ? end * bpe : wasmMemory.buffer.byteLength
     return [startReal, endReal]
   }
 
@@ -59,9 +59,8 @@ function createProxyHandler(type, heapBlocks) {
       let sourceArray = getHeapBlock(type, start * bpe, len)
       targetArray.set(sourceArray)
       return heapBlocks[0]
-    } else {
-      return heapBlocks[0].copyWithin(target, start, end)
     }
+    return heapBlocks[0].copyWithin(target, start, end)
   }
 
   function setOverridden(array, offset) {
@@ -78,9 +77,8 @@ function createProxyHandler(type, heapBlocks) {
     let [startReal, endReal] = getRealStartAndEnd(start, end)
     if (startReal >= maxArraySize || endReal >= maxArraySize) {
       return getHeapBlock(type, startReal, endReal - startReal)
-    } else {
-      return firstHeapBlock.subarray(start, end)
     }
+    return firstHeapBlock.subarray(start, end)
   }
 
   function fill(value, start, end) {
@@ -89,18 +87,16 @@ function createProxyHandler(type, heapBlocks) {
       let hb = getHeapBlock(type, startReal, endReal - startReal)
       hb.fill(value, 0, end - start)
       return firstHeapBlock
-    } else {
-      return firstHeapBlock.fill(value, start, end)
     }
+    return firstHeapBlock.fill(value, start, end)
   }
   function slice(start, end) {
     let [startReal, endReal] = getRealStartAndEnd(start, end)
     if (startReal >= maxArraySize || endReal >= maxArraySize) {
       let hb = getHeapBlock(type, startReal, endReal - startReal)
-      return hb.slice(start, end)
-    } else {
-      return firstHeapBlock.slice(start, end)
+      return hb.slice(0, end - start)
     }
+    return firstHeapBlock.slice(start, end)
   }
 
   return {
@@ -110,27 +106,14 @@ function createProxyHandler(type, heapBlocks) {
         let blockNumber = Math.floor(memoryOffset / maxArraySize)
         return heapBlocks[blockNumber][property - blockNumber * maxArraySize]
       }
-
-      if (property === 'copyWithin') {
-        return copyWithin
+      switch (property) {
+        case 'copyWithin': return copyWithin;
+        case 'set': return setOverridden;
+        case 'subarray': return subarray;
+        case 'fill': return fill;
+        case 'slice': return slice;
+        case 'length': return wasmMemory.buffer.byteLength;
       }
-
-      if (property === 'set') {
-        return setOverridden
-      }
-
-      if (property === 'subarray') {
-        return subarray
-      }
-
-      if (property === 'fill') {
-        return fill
-      }
-
-      if (property === 'slice') {
-        return slice
-      }
-
       return firstHeapBlock[property]
     },
     set(target, property, value) {
