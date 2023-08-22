@@ -5808,13 +5808,8 @@ Module = {
     self.do_run_in_out_file_test('fcntl/test_fcntl_misc.c')
 
   def test_poll(self):
-    self.add_pre_run('''
-      var dummy_device = FS.makedev(64, 0);
-      FS.registerDevice(dummy_device, {});
-
-      FS.createDataFile('/', 'file', 'abcdef', true, true, false);
-      FS.mkdev('/device', dummy_device);
-    ''')
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
     self.do_core_test('test_poll.c')
 
   def test_statvfs(self):
@@ -6079,6 +6074,8 @@ Module.onRuntimeInitialized = () => {
     self.do_runf(test_file('fs/test_writev.c'), 'success')
 
   def test_fs_64bit(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
     self.do_runf(test_file('fs/test_64bit.c'), 'success')
 
   def test_sigalrm(self):
@@ -6113,6 +6110,8 @@ Module.onRuntimeInitialized = () => {
 
   def test_unistd_curdir(self):
     self.uses_es6 = True
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
     self.do_run_in_out_file_test('unistd/curdir.c')
 
   @also_with_noderawfs

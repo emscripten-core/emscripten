@@ -2359,6 +2359,7 @@ def phase_linker_setup(options, state, newargs):
       # these exports.)
       settings.REQUIRED_EXPORTS += [
         'emscripten_builtin_memalign',
+        'wasmfs_create_file',
         '_wasmfs_mount',
         '_wasmfs_unmount',
         '_wasmfs_read_file',

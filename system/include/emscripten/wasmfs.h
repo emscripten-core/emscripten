@@ -72,6 +72,9 @@ backend_t wasmfs_create_node_backend(const char* root __attribute__((nonnull)));
 // thread.
 backend_t wasmfs_create_opfs_backend(void);
 
+// Creates a generic JSIMPL backend in the new file system.
+backend_t wasmfs_create_jsimpl_backend(void);
+
 backend_t wasmfs_create_icase_backend(backend_t backend);
 
 // Similar to fflush(0), but also flushes all internal buffers inside WasmFS.

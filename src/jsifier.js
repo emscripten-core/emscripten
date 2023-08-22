@@ -140,10 +140,8 @@ function runJSify() {
           error(`handleI64Signatures: missing name for argument ${i} in ${symbol}`);
           return snippet;
         }
-        if (WASM_BIGINT) {
-          if (sig[i] == 'p' || (sig[i] == 'j' && i53abi)) {
-            argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
-          }
+        if (WASM_BIGINT && ((MEMORY64 && sig[i] == 'p') || (i53abi && sig[i] == 'j'))) {
+          argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
         } else {
           if (sig[i] == 'j' && i53abi) {
             argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;

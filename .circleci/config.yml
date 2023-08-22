@@ -547,6 +547,10 @@ jobs:
             wasmfs.test_readdir
             wasmfs.test_readdir_unlink
             wasmfs.test_unistd_pipe
+            wasmfs.test_unistd_io
+            wasmfs.test_unistd_curdir
+            wasmfs.test_poll
+            wasmfs.test_fs_64bit
             wasmfs.test_fs_write
             wasmfs.test_fs_writev
             wasmfs.test_fs_writev_rawfs
@@ -619,6 +623,8 @@ jobs:
             wasm64_4gb.test_async_main
             wasm64_4gb.*embind*
             core_2gb.test_em_asm
+            core_2gb.test_embind_unsigned_bigint
+            core_2gb.test_embind_no_rtti
             wasm64l.test_bigswitch
             other.test_memory64_proxies
             other.test_failing_growth_wasm64"

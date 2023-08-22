@@ -101,13 +101,14 @@ var LibraryEmbind = {
     }
   },
   $ClassProperty: class ClassProperty {
-    constructor(type, name) {
+    constructor(type, name, readonly) {
       this.type = type;
       this.name = name;
+      this.readonly = readonly;
     }
 
     print(nameMap, out) {
-      out.push(`${this.name}: ${nameMap(this.type)}`);
+      out.push(`${this.readonly ? 'readonly ' : ''}${this.name}: ${nameMap(this.type)}`);
     }
   },
   $ConstantDefinition: class ConstantDefinition {
@@ -377,11 +378,12 @@ var LibraryEmbind = {
                                             setter,
                                             setterContext) {
     fieldName = readLatin1String(fieldName);
-    assert(getterReturnType === setterArgumentType, 'Mismatched getter and setter types are not supported.');
+    const readonly = setter === 0;
+    assert(readonly || getterReturnType === setterArgumentType, 'Mismatched getter and setter types are not supported.');
     whenDependentTypesAreResolved([], [classType], function(classType) {
       classType = classType[0];
       whenDependentTypesAreResolved([], [getterReturnType], function(types) {
-        const prop = new ClassProperty(types[0], fieldName);
+        const prop = new ClassProperty(types[0], fieldName, readonly);
         classType.properties.push(prop);
         return [];
       });

@@ -18,6 +18,8 @@ addToLibrary({
   // data needs to be preloaded (and it would be invalid to do so, as any
   // further additions to wasmFSPreloadedFiles|Dirs would be ignored).
   $wasmFSPreloadingFlushed: false,
+  $wasmFSDevices: {},
+  $wasmFSDeviceStreams: {},
 
   $FS__postset: `
 FS.init();
@@ -59,6 +61,10 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 #endif
     'malloc',
     'free',
+    'wasmfs_create_jsimpl_backend',
+    '$wasmFS$backends',
+    '$wasmFSDevices',
+    '$wasmFSDeviceStreams'
 #endif
   ],
   $FS : {
@@ -402,7 +408,104 @@ FS.createPreloadedFile = FS_createPreloadedFile;
         return __wasmfs_mknod(pathBuffer, mode, dev);
       }));
     },
-    // TODO: mkdev
+    makedev: (ma, mi) => ((ma) << 8 | (mi)),
+    registerDevice(dev, ops) {
+      var backendPointer = _wasmfs_create_jsimpl_backend();
+      var definedOps = {
+        userRead: ops.read,
+        userWrite: ops.write,
+
+        allocFile: (file) => {
+          wasmFSDeviceStreams[file] = {}
+        },
+        freeFile: (file) => {
+          wasmFSDeviceStreams[file] = undefined;
+        },
+        getSize: (file) => {},
+        read: (file, buffer, length, offset) => {
+          var bufferArray = Module.HEAP8.subarray(buffer, buffer + length);
+          try {
+            var bytesRead = definedOps.userRead(wasmFSDeviceStreams[file], bufferArray, 0, length, offset);
+          } catch (e) {
+            return -e.errno;
+          }
+          Module.HEAP8.set(bufferArray, buffer);
+          return bytesRead;
+        },
+        write: (file, buffer, length, offset) => {
+          var bufferArray = Module.HEAP8.subarray(buffer, buffer + length);
+          try {
+            var bytesWritten = definedOps.userWrite(wasmFSDeviceStreams[file], bufferArray, 0, length, offset);
+          } catch (e) {
+            return -e.errno;
+          }
+          Module.HEAP8.set(bufferArray, buffer);
+          return bytesWritten;       
+        },
+      };
+
+      wasmFS$backends[backendPointer] = definedOps;
+      wasmFSDevices[dev] = backendPointer;
+    },
+    createDevice(parent, name, input, output) {
+      if (typeof parent != 'string') {
+        // The old API allowed parents to be objects, which do not exist in WasmFS.
+        throw new Error("Only string paths are accepted");
+      }
+      var path = PATH.join2(parent, name);
+      var mode = FS_getMode(!!input, !!output);
+      if (!FS.createDevice.major) FS.createDevice.major = 64;
+      var dev = FS.makedev(FS.createDevice.major++, 0);
+      // Create a fake device with a set of stream ops to emulate
+      // the old API's createDevice().
+      FS.registerDevice(dev, {
+        read(stream, buffer, offset, length, pos /* ignored */) {
+          var bytesRead = 0;
+          for (var i = 0; i < length; i++) {
+            var result;
+            try {
+              result = input();
+            } catch (e) {
+              throw new FS.ErrnoError({{{ cDefs.EIO }}});
+            }
+            if (result === undefined && bytesRead === 0) {
+              throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
+            }
+            if (result === null || result === undefined) break;
+            bytesRead++;
+            buffer[offset+i] = result;
+          }
+          return bytesRead;
+        },
+        write(stream, buffer, offset, length, pos) {
+          for (var i = 0; i < length; i++) {
+            try {
+              output(buffer[offset+i]);
+            } catch (e) {
+              throw new FS.ErrnoError({{{ cDefs.EIO }}});
+            }
+          }
+          return i;
+        }
+      });
+      return FS.mkdev(path, mode, dev);
+    },
+    // mode is an optional argument, which will be set to 0666 if not passed in.
+    mkdev(path, mode, dev) {
+      if (typeof dev === 'undefined') {
+        dev = mode;
+        mode = 438 /* 0666 */;
+      }
+
+      var deviceBackend = wasmFSDevices[dev];
+      if (!deviceBackend) {
+        throw new Error("Invalid device ID.");
+      }
+
+      return FS.handleError(withStackSave(() => (
+        _wasmfs_create_file(stringToUTF8OnStack(path), mode, deviceBackend)
+      )));
+    },
     rename(oldPath, newPath) {
       return FS.handleError(withStackSave(() => {
         var oldPathBuffer = stringToUTF8OnStack(oldPath);
