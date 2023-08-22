@@ -18,7 +18,7 @@ var LibraryWget = {
 
   emscripten_async_wget__deps: [
     '$PATH_FS', '$wget', '$callUserCallback', '$Browser',
-    '$withStackSave','$stringToUTF8OnStack',
+    '$withStackSave', '$stringToUTF8OnStack',
     '$FS_mkdirTree',
     '$FS_createPreloadedFile',
     '$FS_unlink',

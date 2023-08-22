@@ -171,12 +171,8 @@ FS.init();
 
     // libc methods
 
-    mkdir(path, mode) {
-      return FS_mkdir(path, mode);
-    },
-    mkdirTree(path, mode) {
-      return FS_mkdirTree(path, mode);
-    },
+    mkdir: (path, mode) => FS_mkdir(path, mode),
+    mkdirTree: (path, mode) => FS_mkdirTree(path, mode),
     rmdir: (path) => FS.handleError(
       withStackSave(() => __wasmfs_rmdir(stringToUTF8OnStack(path)))
     ),
@@ -187,9 +183,7 @@ FS.init();
       var fd = FS.handleError(__wasmfs_open(buffer, flags, mode));
       return { fd : fd };
     }),
-    create(path, mode) {
-      return FS_create(path, mode);
-    },
+    create: (path, mode) => FS_create(path, mode),
     close: (stream) => FS.handleError(-__wasmfs_close(stream.fd)),
     unlink: (path) => FS_unlink(path),
     chdir: (path) => withStackSave(() => {
@@ -354,9 +348,7 @@ FS.init();
       FS.handleError(withStackSave(() => __wasmfs_unmount(stringToUTF8OnStack(mountpoint))))
     ),
     // TODO: lookup
-    mknod(path, mode, dev) {
-      return FS_mknod(path, mode, dev);
-    },
+    mknod: (path, mode, dev) => FS_mknod(path, mode, dev),
     makedev: (ma, mi) => ((ma) << 8 | (mi)),
     registerDevice(dev, ops) {
       var backendPointer = _wasmfs_create_jsimpl_backend();
