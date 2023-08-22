@@ -27,6 +27,7 @@ See docs/process.md for more on how version tagging works.
 - The `--log_html` option was removed from `emrun`.  This option was already not
   working with python3.8 or above so we hope is safe to say that nobody was
   relying on it.
+- libunwind updated to LLVM 16.0.6. (#20088)
 
 3.1.44 - 07/25/23
 -----------------
