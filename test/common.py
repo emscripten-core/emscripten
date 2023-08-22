@@ -575,6 +575,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('no dynamic linking support in wasm2js yet')
     if '-fsanitize=undefined' in self.emcc_args:
       self.skipTest('no dynamic linking support in UBSan yet')
+    # Dynamic linking requires IMPORTED_MEMORY which depends on the JS API
+    # for creating 64-bit memories.
+    if self.get_setting('GLOBAL_BASE') == '4gb':
+      self.skipTest('no support for IMPORTED_MEMORY over 4gb yet')
 
   def require_v8(self):
     if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
