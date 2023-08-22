@@ -473,7 +473,9 @@ FS.init();
 
   // Split-out FS.* methods. These are split out for code size reasons, so that
   // we can include the ones we need on demand, rather than put them all on the
-  // main FS object. They add themselves to the FS object for JS API usage.
+  // main FS object. As a result the entire FS object is not needed if you just
+  // need some specific FS_* operations. When the FS object is present, it calls
+  // into those FS_* methods as needed.
   //
   // In contrast, the old JS FS (library_fs.js) does the opposite: it puts all
   // things on the FS object, and copies them to FS_* methods for use from JS
