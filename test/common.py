@@ -339,8 +339,12 @@ def also_with_wasm64(f):
 def can_do_standalone(self, impure=False):
   # Pure standalone engines don't support MEMORY64 yet.  Even with MEMORY64=2 (lowered)
   # the WASI APIs that take pointer values don't have 64-bit variants yet.
-  if self.get_setting('MEMORY64') and not impure:
-    return False
+  if not impure:
+    if self.get_setting('MEMORY64'):
+      return False
+    # This is way to detect the core_2gb test mode in test_core.py
+    if self.get_setting('INITIAL_MEMORY') == '2200mb':
+      return False
   return self.is_wasm() and \
       self.get_setting('STACK_OVERFLOW_CHECK', 0) < 2 and \
       not self.get_setting('MINIMAL_RUNTIME') and \
@@ -1399,7 +1403,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.clear_setting('SIDE_MODULE')
 
     # XXX in wasm each lib load currently takes 5MB; default INITIAL_MEMORY=16MB is thus not enough
-    self.set_setting('INITIAL_MEMORY', '32mb')
+    if not self.has_changed_setting('INITIAL_MEMORY'):
+      self.set_setting('INITIAL_MEMORY', '32mb')
 
     so = '.wasm' if self.is_wasm() else '.js'
 

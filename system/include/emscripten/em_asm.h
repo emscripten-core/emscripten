@@ -69,11 +69,12 @@ void emscripten_asm_const_async_on_main_thread(
 
 // We can use the generic selection C11 feature (that clang supports pre-C11
 // as an extension) to emulate function overloading in C.
-// All other types, including *all* pointer types go through the default case.
-// This means we need to use a different default type for `__wasm64__` where
-// pointers are 64-bits wide, and we also need to include more non-default
-// cases, for example, we don't want `short` to end up using the wider default.
-#if __wasm64__
+// All other types, including *all* pointer types go through the default case
+#ifdef __wasm64__
+#define LONG_CODE 'j'
+#else
+#define LONG_CODE 'i'
+#endif
 #define _EM_ASM_SIG_CHAR(x) _Generic((x), \
     float: 'f', \
     double: 'd', \
@@ -81,21 +82,14 @@ void emscripten_asm_const_async_on_main_thread(
     unsigned char: 'i', \
     unsigned short: 'i', \
     unsigned int: 'i', \
-    unsigned long: 'j', \
+    unsigned long: LONG_CODE, \
     unsigned long long: 'j', \
     signed char: 'i', \
     signed short: 'i', \
     signed int: 'i', \
-    signed long: 'j', \
+    signed long: LONG_CODE, \
     signed long long: 'j', \
     default: 'p')
-#else
-#define _EM_ASM_SIG_CHAR(x) _Generic((x), \
-    float: 'f', \
-    double: 'd', \
-    long long: 'j', \
-    default: 'i')
-#endif
 
 // This indirection is needed to allow us to concatenate computed results, e.g.
 //   #define BAR(N) _EM_ASM_CONCATENATE(FOO_, N)
@@ -170,11 +164,7 @@ template<> struct __em_asm_sig<bool> { static const char value = 'i'; };
 template<> struct __em_asm_sig<wchar_t> { static const char value = 'i'; };
 template<> struct __em_asm_sig<long long> { static const char value = 'j'; };
 template<> struct __em_asm_sig<unsigned long long> { static const char value = 'j'; };
-#if __wasm64__
 template<typename T> struct __em_asm_sig<T*> { static const char value = 'p'; };
-#else
-template<typename T> struct __em_asm_sig<T*> { static const char value = 'i'; };
-#endif
 
 // Explicit support for enums, they're passed as int via variadic arguments.
 template<bool> struct __em_asm_if { };

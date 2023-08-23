@@ -484,7 +484,7 @@ static bool claim_more_memory(size_t numBytes)
     return false;
   }
 #ifdef EMMALLOC_VERBOSE
-  MAIN_THREAD_ASYNC_EM_ASM(console.log('claim_more_memory: claimed 0x' + ($0>>>0).toString(16) + ' - 0x' + ($1>>>0).toString(16) + ' (' + ($2>>>0) + ' bytes) via sbrk()'), startPtr, startPtr + numBytes, numBytes);
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('claim_more_memory: claimed ' + ptrToString($0) + ' - ' + ptrToString($1) + ' (' + ($2>>>0) + ' bytes) via sbrk()'), startPtr, startPtr + numBytes, numBytes);
 #endif
   assert(HAS_ALIGNMENT(startPtr, alignof(size_t)));
   uint8_t *endPtr = startPtr + numBytes;
@@ -634,7 +634,7 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
 #endif
 
 #ifdef EMMALLOC_VERBOSE
-  MAIN_THREAD_ASYNC_EM_ASM(console.log('attempt_allocate - succeeded allocating memory, region ptr=0x' + ($0>>>0).toString(16) + ', align=' + $1 + ', payload size=' + ($2>>>0) + ' bytes)'), freeRegion, alignment, size);
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('attempt_allocate - succeeded allocating memory, region ptr=' + ptrToString($0) + ', align=' + $1 + ', payload size=' + ($2>>>0) + ' bytes)'), freeRegion, alignment, size);
 #endif
 
   return (uint8_t*)freeRegion + sizeof(size_t);
@@ -660,6 +660,10 @@ static size_t validate_alloc_size(size_t size)
 
   return validatedSize;
 }
+
+#ifdef EMMALLOC_VERBOSE
+EM_JS_DEPS(deps, "$ptrToString");
+#endif
 
 static void *allocate_memory(size_t alignment, size_t size)
 {

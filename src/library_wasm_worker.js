@@ -294,7 +294,7 @@ Atomics.waitAsync = (i32a, index, value, maxWaitMilliseconds) => {
 
   emscripten_atomic_wait_async__deps: ['$atomicWaitStates', '$liveAtomicWaitAsyncs', '$liveAtomicWaitAsyncCounter', '$jstoi_q'],
   emscripten_atomic_wait_async: (addr, val, asyncWaitFinished, userData, maxWaitMilliseconds) => {
-    let wait = Atomics.waitAsync(HEAP32, addr >> 2, val, maxWaitMilliseconds);
+    let wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('addr', 'i32') }}}, val, maxWaitMilliseconds);
     if (!wait.async) return atomicWaitStates.indexOf(wait.value);
     // Increment waitAsync generation counter, account for wraparound in case
     // application does huge amounts of waitAsyncs per second (not sure if
@@ -302,7 +302,7 @@ Atomics.waitAsync = (i32a, index, value, maxWaitMilliseconds) => {
     // Valid counterrange: 0...2^31-1
     let counter = liveAtomicWaitAsyncCounter;
     liveAtomicWaitAsyncCounter = Math.max(0, (liveAtomicWaitAsyncCounter+1)|0);
-    liveAtomicWaitAsyncs[counter] = addr >> 2;
+    liveAtomicWaitAsyncs[counter] = addr;
     wait.value.then((value) => {
       if (liveAtomicWaitAsyncs[counter]) {
         delete liveAtomicWaitAsyncs[counter];
@@ -323,13 +323,14 @@ Atomics.waitAsync = (i32a, index, value, maxWaitMilliseconds) => {
       warnOnce(`Attempted to call emscripten_atomic_cancel_wait_async() with an invalid wait token value ${waitToken}`);
     }
 #endif
-    if (liveAtomicWaitAsyncs[waitToken]) {
+    var address = liveAtomicWaitAsyncs[waitToken];
+    if (address) {
       // Notify the waitAsync waiters on the memory location, so that JavaScript
       // garbage collection can occur.
       // See https://github.com/WebAssembly/threads/issues/176
       // This has the unfortunate effect of causing spurious wakeup of all other
       // waiters at the address (which causes a small performance loss).
-      Atomics.notify(HEAP32, liveAtomicWaitAsyncs[waitToken]);
+      Atomics.notify(HEAP32, {{{ getHeapOffset('address', 'i32') }}});
       delete liveAtomicWaitAsyncs[waitToken];
       return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
     }
@@ -341,7 +342,7 @@ Atomics.waitAsync = (i32a, index, value, maxWaitMilliseconds) => {
   emscripten_atomic_cancel_all_wait_asyncs: () => {
     let waitAsyncs = Object.values(liveAtomicWaitAsyncs);
     waitAsyncs.forEach((address) => {
-      Atomics.notify(HEAP32, address);
+      Atomics.notify(HEAP32, {{{ getHeapOffset('address', 'i32') }}});
     });
     liveAtomicWaitAsyncs = {};
     return waitAsyncs.length;
@@ -349,11 +350,10 @@ Atomics.waitAsync = (i32a, index, value, maxWaitMilliseconds) => {
 
   emscripten_atomic_cancel_all_wait_asyncs_at_address__deps: ['$liveAtomicWaitAsyncs'],
   emscripten_atomic_cancel_all_wait_asyncs_at_address: (address) => {
-    address >>= 2;
     let numCancelled = 0;
     Object.keys(liveAtomicWaitAsyncs).forEach((waitToken) => {
       if (liveAtomicWaitAsyncs[waitToken] == address) {
-        Atomics.notify(HEAP32, address);
+        Atomics.notify(HEAP32, {{{ getHeapOffset('address', 'i32') }}});
         delete liveAtomicWaitAsyncs[waitToken];
         numCancelled++;
       }

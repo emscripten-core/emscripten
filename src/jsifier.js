@@ -160,7 +160,7 @@ function runJSify() {
         args = newArgs.join(',');
       }
 
-      if ((sig[0] == 'j' && i53abi) || (sig[0] == 'p' && WASM_BIGINT)) {
+      if ((sig[0] == 'j' && i53abi) || (sig[0] == 'p' && MEMORY64)) {
         // For functions that where we need to mutate the return value, we
         // also need to wrap the body in an inner function.
         if (oneliner) {
