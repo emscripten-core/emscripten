@@ -30,6 +30,8 @@ See docs/process.md for more on how version tagging works.
   incoming module but forget to include them in `-sINCOMING_MODULE_API`
   will see an error in debug builds so this change will not generate any
   silent failures.
+- JS library decorators such as `__deps` and `__async` are now type checked so
+  that errors are not silently ignored.
 
 3.1.45 - 08/23/23
 -----------------

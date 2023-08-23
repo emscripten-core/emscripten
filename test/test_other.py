@@ -3963,15 +3963,29 @@ addToLibrary({
   jslibfunc: (x) => {},
 });
 ''')
-    create_file('src.c', r'''
-#include <stdio.h>
-int jslibfunc();
-int main() {
-  printf("c calling: %d\n", jslibfunc());
-}
+
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'])
+    self.assertContained('lib.js: JS library directive jslibfunc__deps=hello is of type \'string\', but it should be an array', err)
+
+    create_file('lib2.js', r'''
+addToLibrary({
+  jslibfunc__deps: [1,2,3],
+  jslibfunc: (x) => {},
+});
 ''')
-    err = self.expect_fail([EMCC, 'src.c', '--js-library', 'lib.js'])
-    self.assertContained('lib.js: JS library directive jslibfunc__deps=hello is of type string, but it should be an array', err)
+
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib2.js'])
+    self.assertContained("lib2.js: __deps entries must be of type 'string' or 'function' not 'number': jslibfunc__deps", err)
+
+  def test_js_lib_invalid_decorator(self):
+    create_file('lib.js', r'''
+addToLibrary({
+  jslibfunc__async: 'hello',
+  jslibfunc: (x) => {},
+});
+''')
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'])
+    self.assertContained("lib.js: Decorator (jslibfunc__async} has wrong type. Expected 'boolean' not 'string'", err)
 
   def test_js_lib_legacy(self):
     create_file('lib.js', r'''

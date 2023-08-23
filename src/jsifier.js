@@ -227,7 +227,7 @@ function(${args}) {
 
     const proxyingMode = LibraryManager.library[symbol + '__proxy'];
     if (proxyingMode) {
-      if (proxyingMode !== 'sync' && proxyingMode !== 'async') {
+      if (proxyingMode !== 'sync' && proxyingMode !== 'async' && proxyingMode !== 'none') {
         throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
       }
       if (SHARED_MEMORY) {
