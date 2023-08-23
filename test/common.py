@@ -363,6 +363,8 @@ def also_with_standalone_wasm(impure=False):
         if not can_do_standalone(self, impure):
           self.skipTest('Test configuration is not compatible with STANDALONE_WASM')
         self.set_setting('STANDALONE_WASM')
+        if not impure:
+          self.set_setting('PURE_WASI')
         # we will not legalize the JS ffi interface, so we must use BigInt
         # support in order for JS to have a chance to run this without trapping
         # when it sees an i64 on the ffi.
