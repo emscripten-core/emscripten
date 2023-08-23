@@ -2358,6 +2358,7 @@ def phase_linker_setup(options, state, newargs):
       # included, as the entire JS library can refer to things that require
       # these exports.)
       settings.REQUIRED_EXPORTS += [
+        'emscripten_builtin_memalign',
         'wasmfs_create_file',
         '_wasmfs_mount',
         '_wasmfs_unmount',
@@ -2374,6 +2375,9 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_chdir',
         '_wasmfs_mknod',
         '_wasmfs_rmdir',
+        '_wasmfs_mmap',
+        '_wasmfs_munmap',
+        '_wasmfs_msync',
         '_wasmfs_read',
         '_wasmfs_pread',
         '_wasmfs_symlink',
