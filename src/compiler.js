@@ -8,6 +8,7 @@
 // LLVM => JavaScript compiler, main entry point
 
 const fs = require('fs');
+global.vm = require('vm');
 global.assert = require('assert');
 global.nodePath = require('path');
 
@@ -20,6 +21,7 @@ global.printErr = (x) => {
 };
 
 function find(filename) {
+  assert(filename);
   const prefixes = [__dirname, process.cwd()];
   for (let i = 0; i < prefixes.length; ++i) {
     const combined = nodePath.join(prefixes[i], filename);
@@ -31,48 +33,64 @@ function find(filename) {
 }
 
 global.read = (filename) => {
+  assert(filename);
   const absolute = find(filename);
   return fs.readFileSync(absolute).toString();
 };
 
 function load(f) {
-  eval.call(null, read(f));
+  (0, eval)(read(f) + '//# sourceURL=' + find(f));
 };
 
 // Basic utilities
 load('utility.js');
 
+// Load default settings
+load('./settings.js');
+load('./settings_internal.js');
+
+const argv = process.argv.slice(2);
+const symbolsOnlyArg = argv.indexOf('--symbols-only');
+if (symbolsOnlyArg != -1) {
+  argv.splice(symbolsOnlyArg, 1);
+}
+
 // Load settings from JSON passed on the command line
-const settingsFile = process.argv[2];
+const settingsFile = argv[0];
 assert(settingsFile);
 
 const settings = JSON.parse(read(settingsFile));
 Object.assign(global, settings);
 
+global.symbolsOnly = symbolsOnlyArg != -1;
+
+// In case compiler.js is run directly (as in gen_sig_info)
+// ALL_INCOMING_MODULE_JS_API might not be populated yet.
+if (!ALL_INCOMING_MODULE_JS_API.length) {
+  ALL_INCOMING_MODULE_JS_API = INCOMING_MODULE_JS_API
+}
+
 EXPORTED_FUNCTIONS = new Set(EXPORTED_FUNCTIONS);
 WASM_EXPORTS = new Set(WASM_EXPORTS);
 SIDE_MODULE_EXPORTS = new Set(SIDE_MODULE_EXPORTS);
 INCOMING_MODULE_JS_API = new Set(INCOMING_MODULE_JS_API);
+ALL_INCOMING_MODULE_JS_API = new Set(ALL_INCOMING_MODULE_JS_API);
 WEAK_IMPORTS = new Set(WEAK_IMPORTS);
+if (symbolsOnly) {
+  INCLUDE_FULL_LIBRARY = 1;
+}
 
 // Side modules are pure wasm and have no JS
-assert(!SIDE_MODULE, 'JS compiler should not run on side modules');
-
-// Output some info and warnings based on settings
-
-if (VERBOSE) {
-  printErr('VERBOSE is on, this generates a lot of output and can slow down compilation');
-}
+assert(!SIDE_MODULE || (ASYNCIFY && global.symbolsOnly), 'JS compiler should only run on side modules if asyncify is used.');
 
 // Load compiler code
 
 load('modules.js');
 load('parseTools.js');
+load('jsifier.js');
 if (!STRICT) {
   load('parseTools_legacy.js');
 }
-load('jsifier.js');
-load('runtime.js');
 
 // ===============================
 // Main
@@ -92,7 +110,7 @@ try {
     // Compiler failed on internal compiler error!
     printErr('Internal compiler error in src/compiler.js!');
     printErr('Please create a bug report at https://github.com/emscripten-core/emscripten/issues/');
-    printErr('with a log of the build and the input files used to run. Exception message: "' + err + '" | ' + err.stack);
+    printErr('with a log of the build and the input files used to run. Exception message: "' + (err.stack || err));
   }
 
   // Work around a node.js bug where stdout buffer is not flushed at process exit:

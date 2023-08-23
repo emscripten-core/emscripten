@@ -16,7 +16,6 @@ See emrun --help for more information
 # standalone outside Emscripten directory tree.
 import argparse
 import atexit
-import cgi
 import json
 import os
 import platform
@@ -39,16 +38,10 @@ if sys.version_info.major == 2:
   from SimpleHTTPServer import SimpleHTTPRequestHandler
   from urllib import unquote
   from urlparse import urlsplit
-
-  def print_to_handle(handle, line):
-    print >> handle, line # noqa: F633
 else:
   import socketserver
   from http.server import HTTPServer, SimpleHTTPRequestHandler
   from urllib.parse import unquote, urlsplit
-
-  def print_to_handle(handle, line):
-    handle.write(line + '\n')
 
 # Populated from cmdline params
 emrun_options = None
@@ -138,15 +131,6 @@ page_start_time = tick()
 page_last_served_time = None
 
 
-def format_html(msg):
-  """Returns given log message formatted to be outputted on a HTML page."""
-  if not msg.endswith('\n'):
-    msg += '\n'
-  msg = cgi.escape(msg)
-  msg = msg.replace('\r\n', '<br />').replace('\n', '<br />')
-  return msg
-
-
 # HTTP requests are handled from separate threads - synchronize them to avoid race conditions
 http_mutex = threading.RLock()
 
@@ -156,10 +140,7 @@ def logi(msg):
   """
   global last_message_time
   with http_mutex:
-    if emrun_options.log_html:
-      sys.stdout.write(format_html(msg))
-    else:
-      print_to_handle(sys.stdout, msg)
+    sys.stdout.write(msg + '\n')
     sys.stdout.flush()
     last_message_time = tick()
 
@@ -171,10 +152,7 @@ def logv(msg):
   global last_message_time
   if emrun_options.verbose:
     with http_mutex:
-      if emrun_options.log_html:
-        sys.stdout.write(format_html(msg))
-      else:
-        print_to_handle(sys.stdout, msg)
+      sys.stdout.write(msg + '\n')
       sys.stdout.flush()
       last_message_time = tick()
 
@@ -184,10 +162,7 @@ def loge(msg):
   """
   global last_message_time
   with http_mutex:
-    if emrun_options.log_html:
-      sys.stderr.write(format_html(msg))
-    else:
-      print_to_handle(sys.stderr, msg)
+    sys.stderr.write(msg + '\n')
     sys.stderr.flush()
     last_message_time = tick()
 
@@ -203,7 +178,7 @@ def browser_logi(msg):
   """
   global last_message_time
   msg = format_eol(msg)
-  print_to_handle(browser_stdout_handle, msg)
+  browser_stdout_handle.write(msg + '\n')
   browser_stdout_handle.flush()
   last_message_time = tick()
 
@@ -213,7 +188,7 @@ def browser_loge(msg):
   """
   global last_message_time
   msg = format_eol(msg)
-  print_to_handle(browser_stderr_handle, msg)
+  browser_stderr_handle.write(msg + '\n')
   browser_stderr_handle.flush()
   last_message_time = tick()
 
@@ -527,9 +502,10 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
           return
 
   def serve_forever(self, timeout=0.5):
-    global last_message_time, page_exit_code, emrun_not_enabled_nag_printed
+    global page_exit_code, emrun_not_enabled_nag_printed
     self.is_running = True
     self.timeout = timeout
+    logi('Now listening at http://%s/' % ':'.join(map(str, self.socket.getsockname())))
     logv("Entering web server loop.")
     while self.is_running:
       now = tick()
@@ -636,9 +612,15 @@ class HTTPHandler(SimpleHTTPRequestHandler):
     # gzipped file, instead of having the browser decompress it immediately,
     # then it can't use the suffix .gz when using emrun.
     # To work around, one can use the suffix .gzip instead.
-    if 'Accept-Encoding' in self.headers and 'gzip' in self.headers['Accept-Encoding'] and path.lower().endswith('gz'):
+    if path.lower().endswith('gz'):
       self.send_header('Content-Encoding', 'gzip')
       logv('Serving ' + path + ' as gzip-compressed.')
+      guess_file_type = guess_file_type[:-2]
+      if guess_file_type.endswith('.'):
+        guess_file_type = guess_file_type[:-1]
+    elif path.lower().endswith('br'):
+      self.send_header('Content-Encoding', 'br')
+      logv('Serving ' + path + ' as brotli-compressed.')
       guess_file_type = guess_file_type[:-2]
       if guess_file_type.endswith('.'):
         guess_file_type = guess_file_type[:-1]
@@ -650,7 +632,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
       ctype = 'application/javascript'
     self.send_header('Content-type', ctype)
     fs = os.fstat(f.fileno())
-    self.send_header("Content-Length", str(fs[6]))
+    self.send_header("Content-Length", str(fs.st_size))
     self.send_header("Last-Modified", self.date_time_string(fs.st_mtime))
     self.send_header('Cache-Control', 'no-cache, must-revalidate')
     self.send_header('Connection', 'close')
@@ -1217,7 +1199,7 @@ def find_browser(name):
                          ('chrome', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'),
                          ('chrome_canary', '/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary')]
   elif WINDOWS:
-    pf_locations = ['ProgramFiles(x86)', 'ProgramFiles', 'ProgramW6432']
+    pf_locations = ['ProgramFiles(x86)', 'ProgramFiles', 'ProgramW6432', 'LOCALAPPDATA']
 
     for pf_env in pf_locations:
       if pf_env not in os.environ:
@@ -1360,7 +1342,7 @@ def subprocess_env():
 def remove_tree(d):
   os.chmod(d, stat.S_IWRITE)
   try:
-    def remove_readonly_and_try_again(func, path, exc_info):
+    def remove_readonly_and_try_again(func, path, _exc_info):
       if not (os.stat(path).st_mode & stat.S_IWRITE):
         os.chmod(path, stat.S_IWRITE)
         func(path)
@@ -1567,9 +1549,6 @@ def parse_args():
                            'automated runs. (If target browser != Firefox, '
                            'this parameter is ignored)')
 
-  parser.add_argument('--log_html', action='store_true',
-                      help='If set, information lines are printed out an HTML-friendly format.')
-
   parser.add_argument('--private_browsing', action='store_true',
                       help='If specified, opens browser in private/incognito mode.')
 
@@ -1642,10 +1621,6 @@ def run():
     url = file_to_serve
   else:
     url = os.path.relpath(os.path.abspath(file_to_serve), serve_dir)
-    if len(options.cmdlineparams):
-      url += '?' + '&'.join(options.cmdlineparams)
-    hostname = socket.gethostbyname(socket.gethostname()) if options.android else options.hostname
-    url = 'http://' + hostname + ':' + str(options.port) + '/' + url
 
   os.chdir(serve_dir)
   if options.run_server:
@@ -1653,6 +1628,17 @@ def run():
       logv('Web server root directory: ' + os.path.abspath('.'))
     else:
       logi('Web server root directory: ' + os.path.abspath('.'))
+    logv('Starting web server: http://%s:%i/' % (options.hostname, options.port))
+    httpd = HTTPWebServer((options.hostname, options.port), HTTPHandler)
+    # to support binding to port zero we must allow the server to open to socket then retrieve the final port number
+    options.port = httpd.socket.getsockname()[1]
+
+  if not file_to_serve_is_url:
+    if len(options.cmdlineparams):
+      url += '?' + '&'.join(options.cmdlineparams)
+    hostname = socket.gethostbyname(socket.gethostname()) if options.android else options.hostname
+    # create url for browser after opening the server so we have the final port number in case we are binding to port 0
+    url = 'http://' + hostname + ':' + str(options.port) + '/' + url
 
   if options.android:
     if options.run_browser or options.browser_info:
@@ -1719,7 +1705,8 @@ def run():
         processname_killed_atexit = 'Safari'
       elif 'chrome' in browser_exe.lower():
         processname_killed_atexit = 'chrome'
-        browser_args += ['--enable-nacl', '--enable-pnacl', '--disable-restore-session-state', '--enable-webgl', '--no-default-browser-check', '--no-first-run', '--allow-file-access-from-files']
+        browser_args += ['--enable-nacl', '--enable-pnacl', '--disable-restore-session-state', '--enable-webgl',
+                         '--no-default-browser-check', '--no-first-run', '--allow-file-access-from-files', '--password-store=basic']
         if options.private_browsing:
           browser_args += ['--incognito']
     #    if not options.run_server:
@@ -1792,11 +1779,6 @@ def run():
       browser_stderr_handle = browser_stdout_handle
     else:
       browser_stderr_handle = open(options.log_stderr, 'a')
-
-  if options.run_server:
-    logv('Starting web server: http://%s:%i/' % (options.hostname, options.port))
-    httpd = HTTPWebServer((options.hostname, options.port), HTTPHandler)
-
   if options.run_browser:
     logv("Starting browser: %s" % ' '.join(browser))
     # if browser[0] == 'cmd':
@@ -1817,8 +1799,6 @@ def run():
     # represent a browser and no point killing it.
     if options.android:
       browser_process = None
-  elif options.run_server:
-    logi('Now listening at http://%s:%i/' % (options.hostname, options.port))
 
   if browser_process:
     premature_quit_code = browser_process.poll()

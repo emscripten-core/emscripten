@@ -40,6 +40,7 @@ extern "C" {
 
 #define MAP_HUGE_SHIFT 26
 #define MAP_HUGE_MASK  0x3f
+#define MAP_HUGE_16KB  (14 << 26)
 #define MAP_HUGE_64KB  (16 << 26)
 #define MAP_HUGE_512KB (19 << 26)
 #define MAP_HUGE_1MB   (20 << 26)
@@ -140,7 +141,7 @@ int mincore (void *, size_t, unsigned char *);
 int shm_open (const char *, int, mode_t);
 int shm_unlink (const char *);
 
-#if defined(_LARGEFILE64_SOURCE) || defined(_GNU_SOURCE)
+#if defined(_LARGEFILE64_SOURCE)
 #define mmap64 mmap
 #define off64_t off_t
 #endif

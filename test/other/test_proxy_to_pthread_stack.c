@@ -16,7 +16,7 @@ int main(void) {
   assert(rtn == 0);
   printf("stack size %zd\n", stacksize);
 
-  // This test is run with TOTAL_STACK=128k so we always expect that to be
+  // This test is run with STACK_SIZE=128k so we always expect that to be
   // the ammount of stack we have in main()
   assert(stacksize == 128*1024);
 

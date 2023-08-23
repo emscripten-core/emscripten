@@ -106,7 +106,7 @@ Macros:
 #include <__config>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 /* C99 stdlib (e.g. glibc < 2.18) does not provide macros needed
@@ -120,6 +120,8 @@ Macros:
 #   define __STDC_CONSTANT_MACROS
 #endif
 
-#include_next <stdint.h>
+#if __has_include_next(<stdint.h>)
+#  include_next <stdint.h>
+#endif
 
 #endif // _LIBCPP_STDINT_H

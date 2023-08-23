@@ -22,14 +22,15 @@
 #include <__utility/declval.h>
 #include <__utility/forward.h>
 #include <__utility/move.h>
+#include <new>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-#if !defined(_LIBCPP_HAS_NO_CONCEPTS) && !defined(_LIBCPP_HAS_NO_INCOMPLETE_RANGES)
+#if _LIBCPP_STD_VER > 17
 namespace ranges {
 
 // construct_at
@@ -38,7 +39,7 @@ namespace __construct_at {
 
 struct __fn {
   template<class _Tp, class... _Args, class = decltype(
-    ::new (declval<void*>()) _Tp(declval<_Args>()...)
+    ::new (std::declval<void*>()) _Tp(std::declval<_Args>()...)
   )>
   _LIBCPP_HIDE_FROM_ABI
   constexpr _Tp* operator()(_Tp* __location, _Args&& ...__args) const {
@@ -117,7 +118,7 @@ inline namespace __cpo {
 
 } // namespace ranges
 
-#endif // !defined(_LIBCPP_HAS_NO_CONCEPTS) && !defined(_LIBCPP_HAS_NO_INCOMPLETE_RANGES)
+#endif // _LIBCPP_STD_VER > 17
 
 _LIBCPP_END_NAMESPACE_STD
 

@@ -1,9 +1,7 @@
-__cxa_allocate_exception
 __cxa_begin_catch
 __cxa_end_catch
 __cxa_find_matching_catch_2
 __cxa_find_matching_catch_3
-__cxa_free_exception
 __cxa_rethrow
 __cxa_throw
 __cxa_uncaught_exceptions

@@ -9,6 +9,7 @@
 
 #ifndef _LIBCPP_EXPERIMENTAL_MAP
 #define _LIBCPP_EXPERIMENTAL_MAP
+
 /*
     experimental/map synopsis
 
@@ -33,15 +34,18 @@ namespace pmr {
 
  */
 
+#include <__assert> // all public C++ headers provide the assertion handler
 #include <experimental/__config>
 #include <experimental/memory_resource>
 #include <map>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
+
+#ifndef _LIBCPP_CXX03_LANG
 
 template <class _Key, class _Value, class  _Compare = less<_Key>>
 using map = _VSTD::map<_Key, _Value, _Compare,
@@ -50,6 +54,8 @@ using map = _VSTD::map<_Key, _Value, _Compare,
 template <class _Key, class _Value, class  _Compare = less<_Key>>
 using multimap = _VSTD::multimap<_Key, _Value, _Compare,
                         polymorphic_allocator<pair<const _Key, _Value>>>;
+
+#endif // _LIBCPP_CXX03_LANG
 
 _LIBCPP_END_NAMESPACE_LFTS_PMR
 

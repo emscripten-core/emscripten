@@ -20,11 +20,13 @@ extern "C" int baz() {
   return 3;
 }
 
+EM_JS_DEPS(main, "$addFunction,$removeFunction");
+
 int main(int argc, char **argv) {
 #if defined(GROWTH)
   EM_ASM({
     // Get an export that isn't in the table (we never took its address in C).
-    var baz = asm["baz"];
+    var baz = wasmExports["baz"];
     var tableSizeBefore = wasmTable.length;
     var bazIndex = addFunction(baz);
     assert(bazIndex >= tableSizeBefore, "we actually added it");

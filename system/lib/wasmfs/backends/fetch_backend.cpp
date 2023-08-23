@@ -6,15 +6,10 @@
 // This file defines the JS file backend and JS file of the new file system.
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
+#include "fetch_backend.h"
 #include "backend.h"
 #include "proxied_async_js_impl_backend.h"
 #include "wasmfs.h"
-
-// See library_wasmfs_fetch.js
-
-extern "C" {
-void _wasmfs_create_fetch_backend_js(wasmfs::backend_t);
-}
 
 namespace wasmfs {
 
@@ -84,6 +79,10 @@ public:
 
 extern "C" {
 backend_t wasmfs_create_fetch_backend(const char* base_url) {
+  // ProxyWorker cannot safely be synchronously spawned from the main browser
+  // thread. See comment in thread_utils.h for more details.
+  assert(!emscripten_is_main_browser_thread() &&
+         "Cannot safely create fetch backend on main browser thread");
   return wasmFS.addBackend(std::make_unique<FetchBackend>(
     base_url ? base_url : "",
     [](backend_t backend) { _wasmfs_create_fetch_backend_js(backend); }));

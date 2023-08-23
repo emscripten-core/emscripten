@@ -20,17 +20,13 @@
 #include <__config>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 #ifdef __cplusplus
-
-#include <ccomplex>
-
-#else  // __cplusplus
-
-#include_next <complex.h>
-
-#endif // __cplusplus
+#  include <ccomplex>
+#elif __has_include_next(<complex.h>)
+#  include_next <complex.h>
+#endif
 
 #endif // _LIBCPP_COMPLEX_H

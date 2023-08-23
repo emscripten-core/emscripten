@@ -4,6 +4,7 @@
 #include <emscripten/wasmfs.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -81,7 +82,7 @@ EMSCRIPTEN_KEEPALIVE
 int try_oob_read(void) {
   int fd = open(file, O_RDWR);
   if (fd < 0) {
-    EM_ASM({ console.log('fd', $0); }, fd);
+    emscripten_outf("fd %d", fd);
     return 2;
   }
   char buf;
@@ -94,7 +95,7 @@ int try_oob_read(void) {
     close(fd);
     return 0;
   }
-  EM_ASM({ console.log('errno', $0); }, errno);
+  emscripten_outf("errno %d", errno);
   close(fd);
   return 2;
 }
@@ -122,8 +123,27 @@ int try_oob_write(void) {
 }
 
 EMSCRIPTEN_KEEPALIVE
+int try_rename_dir(void) {
+  int err = mkdir("/opfs/dir1", 0666);
+  if (err != 0) {
+    return 2;
+  }
+  err = rename("/opfs/dir1", "/opfs/dir2");
+  if (err == 0) {
+    return 1;
+  }
+  if (errno == EBUSY) {
+    rmdir("/opfs/dir1");
+    return 0;
+  }
+  emscripten_console_error(strerror(errno));
+  rmdir("/opfs/dir1");
+  return 2;
+}
+
+EMSCRIPTEN_KEEPALIVE
 void report_result(int result) {
-  EM_ASM({ console.log(new Error().stack); });
+  EM_ASM({ out(new Error().stack); });
 #ifdef REPORT_RESULT
   REPORT_RESULT(result);
 #else

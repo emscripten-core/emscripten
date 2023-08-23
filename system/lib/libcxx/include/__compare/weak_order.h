@@ -13,22 +13,23 @@
 #include <__compare/ordering.h>
 #include <__compare/strong_order.h>
 #include <__config>
+#include <__type_traits/decay.h>
 #include <__utility/forward.h>
 #include <__utility/priority_tag.h>
 #include <cmath>
-#include <type_traits>
 
 #ifndef _LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-#if !defined(_LIBCPP_HAS_NO_CONCEPTS)
+#if _LIBCPP_STD_VER > 17
 
 // [cmp.alg]
 namespace __weak_order {
     struct __fn {
+    // NOLINTBEGIN(libcpp-robust-against-adl) weak_order should use ADL, but only here
         template<class _Tp, class _Up>
             requires is_same_v<decay_t<_Tp>, decay_t<_Up>>
         _LIBCPP_HIDE_FROM_ABI static constexpr auto
@@ -36,6 +37,7 @@ namespace __weak_order {
             noexcept(noexcept(weak_ordering(weak_order(_VSTD::forward<_Tp>(__t), _VSTD::forward<_Up>(__u)))))
             -> decltype(      weak_ordering(weak_order(_VSTD::forward<_Tp>(__t), _VSTD::forward<_Up>(__u))))
             { return          weak_ordering(weak_order(_VSTD::forward<_Tp>(__t), _VSTD::forward<_Up>(__u))); }
+    // NOLINTEND(libcpp-robust-against-adl)
 
         template<class _Tp, class _Up, class _Dp = decay_t<_Tp>>
             requires is_same_v<_Dp, decay_t<_Up>> && is_floating_point_v<_Dp>
@@ -93,7 +95,7 @@ inline namespace __cpo {
     inline constexpr auto weak_order = __weak_order::__fn{};
 } // namespace __cpo
 
-#endif // !defined(_LIBCPP_HAS_NO_CONCEPTS)
+#endif // _LIBCPP_STD_VER > 17
 
 _LIBCPP_END_NAMESPACE_STD
 

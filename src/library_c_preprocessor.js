@@ -1,16 +1,16 @@
-mergeInto(LibraryManager.library, {
+addToLibrary({
   // Removes all C++ '//' and '/* */' comments from the given source string.
   // N.b. will also eat comments inside strings.
-  $remove_cpp_comments_in_shaders: function(code) {
+  $remove_cpp_comments_in_shaders: (code) => {
     var i = 0, out = '', ch, next, len = code.length;
-    for(; i < len; ++i) {
+    for (; i < len; ++i) {
       ch = code[i];
       if (ch == '/') {
         next = code[i+1];
         if (next == '/') {
-          while(i < len && code[i+1] != '\n') ++i;
+          while (i < len && code[i+1] != '\n') ++i;
         } else if (next == '*') {
-          while(i < len && (code[i-1] != '*' || code[i] != '/')) ++i;
+          while (i < len && (code[i-1] != '*' || code[i] != '/')) ++i;
         } else {
           out += ch;
         }
@@ -23,8 +23,8 @@ mergeInto(LibraryManager.library, {
 
   // Finds the index of closing parens from the opening parens at arr[i].
   // Used polymorphically for strings ("foo") and token arrays (['(', 'foo', ')']) as input.
-  $find_closing_parens_index: function(arr, i, opening='(', closing=')') {
-    for(var nesting = 0; i < arr.length; ++i) {
+  $find_closing_parens_index: (arr, i, opening='(', closing=')') => {
+    for (var nesting = 0; i < arr.length; ++i) {
       if (arr[i] == opening) ++nesting;
       if (arr[i] == closing && --nesting == 0) {
         return i;
@@ -45,8 +45,9 @@ mergeInto(LibraryManager.library, {
     defs['defined'] = (args) => { // built-in "#if defined(x)"" macro.
 #if ASSERTIONS
       assert(args.length == 1);
+      assert(/^[A-Za-z0-9_$]+$/.test(args[0].trim())); // Test that a C preprocessor identifier contains only valid characters (we likely parsed wrong if this fails)
 #endif
-      return defs[args[0]] ? 1 : 0;
+      return defs[args[0].trim()] ? 1 : 0;
     };
 
     // Returns true if str[i] is whitespace.
@@ -56,7 +57,7 @@ mergeInto(LibraryManager.library, {
 
     // Returns index to the next whitespace character starting at str[i].
     function nextWhitespace(str, i) {
-      while(!isWhitespace(str, i)) ++i;
+      while (!isWhitespace(str, i)) ++i;
       return i;
     }
 
@@ -82,10 +83,10 @@ mergeInto(LibraryManager.library, {
     // Optionally keeps whitespace as tokens to be able to reconstruct the original input string.
     function tokenize(exprString, keepWhitespace) {
       var out = [], len = exprString.length;
-      for(var i = 0; i <= len; ++i) {
+      for (var i = 0; i <= len; ++i) {
         var kind = classifyChar(exprString, i);
         if (kind == 2/*0-9*/ || kind == 3/*a-z*/) { // a character or a number
-          for(var j = i+1; j <= len; ++j) {
+          for (var j = i+1; j <= len; ++j) {
             var kind2 = classifyChar(exprString, j);
             if (kind2 != kind && (kind2 != 2/*0-9*/ || kind != 3/*a-z*/)) { // parse number sequence "423410", and identifier sequence "FOO32BAR"
               out.push(exprString.substring(i, j));
@@ -112,22 +113,27 @@ mergeInto(LibraryManager.library, {
       if (lineEnd === undefined) lineEnd = str.length;
       var len = str.length;
       var out = '';
-      for(var i = lineStart; i < lineEnd; ++i) {
+      for (var i = lineStart; i < lineEnd; ++i) {
         var kind = classifyChar(str, i);
         if (kind == 3/*a-z*/) {
-          for(var j = i + 1; j <= lineEnd; ++j) {
+          for (var j = i + 1; j <= lineEnd; ++j) {
             var kind2 = classifyChar(str, j);
             if (kind2 != 2/*0-9*/ && kind2 != 3/*a-z*/) {
               var symbol = str.substring(i, j);
               var pp = defs[symbol];
               if (pp) {
                 var expanded = str.substring(lineStart, i);
-                if (pp.length && str[j] == '(') { // Expanding a macro? (#define FOO(X) ...)
-                  var closeParens = find_closing_parens_index(str, j);
-#if ASSERTIONS
-                  assert(str[closeParens] == ')');
-#endif
-                  expanded += pp(str.substring(j+1, closeParens).split(',')) + str.substring(closeParens+1, lineEnd);
+                if (pp.length) { // Expanding a macro? (#define FOO(X) ...)
+                  while (isWhitespace(str, j)) ++j;
+                  if (str[j] == '(') {
+                    var closeParens = find_closing_parens_index(str, j);
+                    // N.b. this has a limitation that multiparameter macros cannot nest with other multiparameter macros
+                    // e.g. FOO(a, BAR(b, c)) is not supported.
+                    expanded += pp(str.substring(j+1, closeParens).split(',')) + str.substring(closeParens+1, lineEnd);
+                  } else {
+                    var j2 = nextWhitespace(str, j);
+                    expanded += pp([str.substring(j, j2)]) + str.substring(j2, lineEnd);
+                  }
                 } else { // Expanding a non-macro (#define FOO BAR)
                   expanded += pp() + str.substring(j, lineEnd);
                 }
@@ -153,7 +159,7 @@ mergeInto(LibraryManager.library, {
         tokens = (function(tokens) {
           // Find the index 'i' of the operator we should evaluate next:
           var i, j, p, operatorAndPriority = -2;
-          for(j = 0; j < tokens.length; ++j) {
+          for (j = 0; j < tokens.length; ++j) {
             if ((p = ['*', '/', '+', '-', '!', '<', '<=', '>', '>=', '==', '!=', '&&', '||', '('].indexOf(tokens[j])) > operatorAndPriority) {
               i = j;
               operatorAndPriority = p;
@@ -209,7 +215,7 @@ mergeInto(LibraryManager.library, {
     }
 
     // Preprocess the input one line at a time.
-    for(; i < len; ++i) {
+    for (; i < len; ++i) {
       // Find the start of the current line.
       var lineStart = i;
 
@@ -218,7 +224,7 @@ mergeInto(LibraryManager.library, {
       if (i < 0) i = len;
 
       // Find the first non-whitespace character on the line.
-      for(var j = lineStart; j < i && isWhitespace(code, j); ++j);
+      for (var j = lineStart; j < i && isWhitespace(code, j); ++j);
 
       // Is this a non-preprocessor directive line?
       var thisLineIsInActivePreprocessingBlock = stack[stack.length-1];
@@ -243,7 +249,7 @@ mergeInto(LibraryManager.library, {
         break;
       case 'ifdef': stack.push(!!defs[expression] * stack[stack.length-1]); break;
       case 'ifndef': stack.push(!defs[expression] * stack[stack.length-1]); break;
-      case 'else': stack[stack.length-1] = 1-stack[stack.length-1]; break;
+      case 'else': stack[stack.length-1] = (1-stack[stack.length-1]) * stack[stack.length-2]; break;
       case 'endif': stack.pop(); break;
       case 'define':
         if (thisLineIsInActivePreprocessingBlock) {
@@ -272,7 +278,7 @@ mergeInto(LibraryManager.library, {
         break;
       case 'undef': if (thisLineIsInActivePreprocessingBlock) delete defs[expression]; break;
       default:
-        if (directive != 'version' && directive != 'pragma' && directive != 'extension') { // GLSL shader compiler specific #directives.
+        if (directive != 'version' && directive != 'pragma' && directive != 'extension' && directive != 'line') { // GLSL shader compiler specific #directives.
 #if ASSERTIONS
           err('Unrecognized preprocessor directive #' + directive + '!');
 #endif

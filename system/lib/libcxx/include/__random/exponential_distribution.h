@@ -11,13 +11,14 @@
 
 #include <__config>
 #include <__random/generate_canonical.h>
+#include <__random/is_valid.h>
 #include <__random/uniform_real_distribution.h>
 #include <cmath>
 #include <iosfwd>
 #include <limits>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 _LIBCPP_PUSH_MACROS
@@ -109,6 +110,7 @@ template<class _URNG>
 _RealType
 exponential_distribution<_RealType>::operator()(_URNG& __g, const param_type& __p)
 {
+    static_assert(__libcpp_random_is_valid_urng<_URNG>::value, "");
     return -_VSTD::log
                   (
                       result_type(1) -
@@ -119,7 +121,7 @@ exponential_distribution<_RealType>::operator()(_URNG& __g, const param_type& __
 }
 
 template <class _CharT, class _Traits, class _RealType>
-basic_ostream<_CharT, _Traits>&
+_LIBCPP_HIDE_FROM_ABI basic_ostream<_CharT, _Traits>&
 operator<<(basic_ostream<_CharT, _Traits>& __os,
            const exponential_distribution<_RealType>& __x)
 {
@@ -131,7 +133,7 @@ operator<<(basic_ostream<_CharT, _Traits>& __os,
 }
 
 template <class _CharT, class _Traits, class _RealType>
-basic_istream<_CharT, _Traits>&
+_LIBCPP_HIDE_FROM_ABI basic_istream<_CharT, _Traits>&
 operator>>(basic_istream<_CharT, _Traits>& __is,
            exponential_distribution<_RealType>& __x)
 {

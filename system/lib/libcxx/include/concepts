@@ -129,6 +129,7 @@ namespace std {
 
 */
 
+#include <__assert> // all public C++ headers provide the assertion handler
 #include <__concepts/arithmetic.h>
 #include <__concepts/assignable.h>
 #include <__concepts/boolean_testable.h>
@@ -154,8 +155,12 @@ namespace std {
 #include <__config>
 #include <version>
 
+#if _LIBCPP_STD_VER <= 20 && !defined(_LIPCPP_REMOVE_TRANSITIVE_INCLUDES)
+#  include <type_traits>
+#endif
+
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 #endif // _LIBCPP_CONCEPTS

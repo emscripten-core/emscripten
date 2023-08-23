@@ -3,14 +3,13 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
 import os
 
 TAG = 'release-68-2'
 VERSION = '68_2'
 HASH = '12c3db5966c234c94e7918fb8acc8bd0838edc36a620f3faa788e7ff27b06f1aa431eb117401026e3963622b9323212f444b735d5c9dd3d0b82d772a4834b993'
 
-variants = {'icu-mt': {'USE_PTHREADS': 1}}
+variants = {'icu-mt': {'PTHREADS': 1}}
 
 libname_libicu_common = 'libicu_common'
 libname_libicu_stubdata = 'libicu_stubdata'
@@ -22,12 +21,11 @@ def needed(settings):
 
 
 def get_lib_name(base_name, settings):
-  return base_name + ('-mt' if settings.USE_PTHREADS else '') + '.a'
+  return base_name + ('-mt' if settings.PTHREADS else '') + '.a'
 
 
 def get(ports, settings, shared):
-  url = 'https://github.com/unicode-org/icu/releases/download/%s/icu4c-%s-src.zip' % (TAG, VERSION)
-  ports.fetch_project('icu', url, 'icu', sha512hash=HASH)
+  ports.fetch_project('icu', f'https://github.com/unicode-org/icu/releases/download/{TAG}/icu4c-{VERSION}-src.zip', sha512hash=HASH)
   icu_source_path = None
 
   def prepare_build():
@@ -36,8 +34,6 @@ def get(ports, settings, shared):
     icu_source_path = os.path.join(source_path, 'source')
 
   def build_lib(lib_output, lib_src, other_includes, build_flags):
-    logging.debug('building port: icu- ' + lib_output)
-
     additional_build_flags = [
         # TODO: investigate why this is needed and remove
         '-Wno-macro-redefined',
@@ -54,7 +50,7 @@ def get(ports, settings, shared):
         # CXXFLAGS
         '-std=c++11'
     ]
-    if settings.USE_PTHREADS:
+    if settings.PTHREADS:
       additional_build_flags.append('-pthread')
 
     ports.build_port(lib_src, lib_output, 'icu', includes=other_includes, flags=build_flags + additional_build_flags)
@@ -80,16 +76,16 @@ def get(ports, settings, shared):
     build_lib(lib_output, lib_src, other_includes, ['-DU_I18N_IMPLEMENTATION=1'])
 
   return [
-      shared.Cache.get_lib(get_lib_name(libname_libicu_common, settings), create_libicu_common), # this also prepares the build
-      shared.Cache.get_lib(get_lib_name(libname_libicu_stubdata, settings), create_libicu_stubdata),
-      shared.Cache.get_lib(get_lib_name(libname_libicu_i18n, settings), create_libicu_i18n)
+      shared.cache.get_lib(get_lib_name(libname_libicu_common, settings), create_libicu_common), # this also prepares the build
+      shared.cache.get_lib(get_lib_name(libname_libicu_stubdata, settings), create_libicu_stubdata),
+      shared.cache.get_lib(get_lib_name(libname_libicu_i18n, settings), create_libicu_i18n)
   ]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib(get_lib_name(libname_libicu_common, settings))
-  shared.Cache.erase_lib(get_lib_name(libname_libicu_stubdata, settings))
-  shared.Cache.erase_lib(get_lib_name(libname_libicu_i18n, settings))
+  shared.cache.erase_lib(get_lib_name(libname_libicu_common, settings))
+  shared.cache.erase_lib(get_lib_name(libname_libicu_stubdata, settings))
+  shared.cache.erase_lib(get_lib_name(libname_libicu_i18n, settings))
 
 
 def process_args(ports):

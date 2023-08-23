@@ -8,13 +8,13 @@
 
 var LibraryOpenAL = {
   // ************************************************************************
-  // ** INTERNALS 
+  // ** INTERNALS
   // ************************************************************************
 
   $AL__deps: ['$Browser'],
   $AL: {
     // ------------------------------------------------------
-    // -- Constants 
+    // -- Constants
     // ------------------------------------------------------
 
     QUEUE_INTERVAL: 25,
@@ -46,7 +46,7 @@ var LibraryOpenAL = {
     },
     set alcErr(val) {
       // Errors should not be overwritten by later errors until they are cleared by a query.
-      if (this._alcErr === 0 /* ALC_NO_ERROR */ || val === 0 /* ALC_NO_ERROR */) {
+      if (this._alcErr === {{{ cDefs.ALC_NO_ERROR }}} || val === {{{ cDefs.ALC_NO_ERROR }}}) {
         this._alcErr = val;
       }
     },
@@ -77,20 +77,18 @@ var LibraryOpenAL = {
     paramArray: [], // Used to prevent allocating a new array for each param call
 
     _nextId: 1,
-    newId: function() {
-      return AL.freeIds.length > 0 ? AL.freeIds.pop() : AL._nextId++;
-    },
+    newId: () => AL.freeIds.length > 0 ? AL.freeIds.pop() : AL._nextId++,
     freeIds: [],
 
     // ------------------------------------------------------
     // -- Mixing Logic
     // ------------------------------------------------------
 
-    scheduleContextAudio: function(ctx) {
+    scheduleContextAudio: (ctx) => {
       // If we are animating using the requestAnimationFrame method, then the main loop does not run when in the background.
       // To give a perfect glitch-free audio stop when switching from foreground to background, we need to avoid updating
       // audio altogether when in the background, so detect that case and kill audio buffer streaming if so.
-      if (Browser.mainLoop.timingMode === 1 /* EM_TIMING_RAF */ && document['visibilityState'] != 'visible') {
+      if (Browser.mainLoop.timingMode === {{{ cDefs.EM_TIMING_RAF }}} && document['visibilityState'] != 'visible') {
         return;
       }
 
@@ -105,12 +103,12 @@ var LibraryOpenAL = {
     // represents the queue of buffers scheduled for physical playback. These two queues are
     // distinct because of the differing semantics of OpenAL and web audio. Some changes
     // to OpenAL parameters, such as pitch, may require the web audio queue to be flushed and rescheduled.
-    scheduleSourceAudio: function(src, lookahead) {
+    scheduleSourceAudio: (src, lookahead) => {
       // See comment on scheduleContextAudio above.
-      if (Browser.mainLoop.timingMode === 1 /*EM_TIMING_RAF*/ && document['visibilityState'] != 'visible') {
+      if (Browser.mainLoop.timingMode === {{{ cDefs.EM_TIMING_RAF }}} && document['visibilityState'] != 'visible') {
         return;
       }
-      if (src.state !== 0x1012 /* AL_PLAYING */) {
+      if (src.state !== {{{ cDefs.AL_PLAYING }}}) {
         return;
       }
 
@@ -161,7 +159,7 @@ var LibraryOpenAL = {
 
           var duration = 0.0;
           // If the source is a looping static buffer, use native looping for gapless playback
-          if (src.type === 0x1028 /* AL_STATIC */ && src.looping) {
+          if (src.type === {{{ cDefs.AL_STATIC }}} && src.looping) {
             duration = Number.POSITIVE_INFINITY;
             audioSrc.loop = true;
             if (buf.audioBuf._loopStart) {
@@ -199,7 +197,7 @@ var LibraryOpenAL = {
             warnOnce('Unable to start AudioBufferSourceNode playback! Not supported by the browser?');
           }
 
-          out('scheduleSourceAudio() queuing buffer ' + buf.id + ' for source ' + src.id + ' at ' + startTime + ' (offset by ' + startOffset + ')');
+          dbg(`scheduleSourceAudio() queuing buffer ${buf.id} for source ${src.id} at ${startTime} (offset by ${startOffset})`);
 #endif
           audioSrc._startTime = startTime;
           src.audioQueue.push(audioSrc);
@@ -213,9 +211,9 @@ var LibraryOpenAL = {
     },
 
     // Advance the state of a source forward to the current time
-    updateSourceTime: function(src) {
+    updateSourceTime: (src) => {
       var currentTime = src.context.audioCtx.currentTime;
-      if (src.state !== 0x1012 /* AL_PLAYING */) {
+      if (src.state !== {{{ cDefs.AL_PLAYING }}}) {
         return currentTime;
       }
 
@@ -246,8 +244,8 @@ var LibraryOpenAL = {
 
       if (src.bufsProcessed >= src.bufQueue.length && !src.looping) {
         // The source has played its entire queue and is non-looping, so just mark it as stopped.
-        AL.setSourceState(src, 0x1014 /* AL_STOPPED */);
-      } else if (src.type === 0x1028 /* AL_STATIC */ && src.looping) {
+        AL.setSourceState(src, {{{ cDefs.AL_STOPPED }}});
+      } else if (src.type === {{{ cDefs.AL_STATIC }}} && src.looping) {
         // If the source is a looping static buffer, determine the buffer offset based on the loop points
         var buf = src.bufQueue[0];
         if (buf.length === 0) {
@@ -276,7 +274,7 @@ var LibraryOpenAL = {
         // We need to determine what state we would be in by this point in time so that when we next schedule
         // audio playback, it will be just as if no underrun occurred.
 
-        if (src.type !== 0x1028 /* AL_STATIC */ && src.looping) {
+        if (src.type !== {{{ cDefs.AL_STATIC }}} && src.looping) {
           // if the source is a looping buffer queue, let's first calculate the queue duration, so we can
           // quickly fast forward past any full loops of the queue and only worry about the remainder.
           var srcDuration = AL.sourceDuration(src) / src.playbackRate;
@@ -293,7 +291,7 @@ var LibraryOpenAL = {
             if (src.looping) {
               src.bufsProcessed %= src.bufQueue.length;
             } else {
-              AL.setSourceState(src, 0x1014 /* AL_STOPPED */);
+              AL.setSourceState(src, {{{ cDefs.AL_STOPPED }}});
               break;
             }
           }
@@ -318,7 +316,7 @@ var LibraryOpenAL = {
       return currentTime;
     },
 
-    cancelPendingSourceAudio: function(src) {
+    cancelPendingSourceAudio: (src) => {
       AL.updateSourceTime(src);
 
       for (var i = 1; i < src.audioQueue.length; i++) {
@@ -331,69 +329,69 @@ var LibraryOpenAL = {
       }
     },
 
-    stopSourceAudio: function(src) {
+    stopSourceAudio: (src) => {
       for (var i = 0; i < src.audioQueue.length; i++) {
         src.audioQueue[i].stop();
       }
       src.audioQueue.length = 0;
     },
 
-    setSourceState: function(src, state) {
-      if (state === 0x1012 /* AL_PLAYING */) {
-        if (src.state === 0x1012 /* AL_PLAYING */ || src.state == 0x1014 /* AL_STOPPED */) {
+    setSourceState: (src, state) => {
+      if (state === {{{ cDefs.AL_PLAYING }}}) {
+        if (src.state === {{{ cDefs.AL_PLAYING }}} || src.state == {{{ cDefs.AL_STOPPED }}}) {
           src.bufsProcessed = 0;
           src.bufOffset = 0.0;
 #if OPENAL_DEBUG
-          out('setSourceState() resetting and playing source ' + src.id);
+          dbg(`setSourceState() resetting and playing source ${src.id}`);
 #endif
         } else {
 #if OPENAL_DEBUG
-          out('setSourceState() playing source ' + src.id + ' at ' + src.bufOffset);
+          dbg(`setSourceState() playing source ${src.id} at ${src.bufOffset}`);
 #endif
         }
 
         AL.stopSourceAudio(src);
 
-        src.state = 0x1012 /* AL_PLAYING */;
+        src.state = {{{ cDefs.AL_PLAYING }}};
         src.bufStartTime = Number.NEGATIVE_INFINITY;
         AL.scheduleSourceAudio(src);
-      } else if (state === 0x1013 /* AL_PAUSED */) {
-        if (src.state === 0x1012 /* AL_PLAYING */) {
+      } else if (state === {{{ cDefs.AL_PAUSED }}}) {
+        if (src.state === {{{ cDefs.AL_PLAYING }}}) {
           // Store off the current offset to restore with on resume.
           AL.updateSourceTime(src);
           AL.stopSourceAudio(src);
 
-          src.state = 0x1013 /* AL_PAUSED */;
+          src.state = {{{ cDefs.AL_PAUSED }}};
 #if OPENAL_DEBUG
-          out('setSourceState() pausing source ' + src.id + ' at ' + src.bufOffset);
+          dbg(`setSourceState() pausing source ${src.id} at ${src.bufOffset}`);
 #endif
         }
-      } else if (state === 0x1014 /* AL_STOPPED */) {
-        if (src.state !== 0x1011 /* AL_INITIAL */) {
-          src.state = 0x1014 /* AL_STOPPED */;
+      } else if (state === {{{ cDefs.AL_STOPPED }}}) {
+        if (src.state !== {{{ cDefs.AL_INITIAL }}}) {
+          src.state = {{{ cDefs.AL_STOPPED }}};
           src.bufsProcessed = src.bufQueue.length;
           src.bufStartTime = Number.NEGATIVE_INFINITY;
           src.bufOffset = 0.0;
           AL.stopSourceAudio(src);
 #if OPENAL_DEBUG
-          out('setSourceState() stopping source ' + src.id);
+          dbg(`setSourceState() stopping source ${src.id}`);
 #endif
         }
-      } else if (state === 0x1011 /* AL_INITIAL */) {
-        if (src.state !== 0x1011 /* AL_INITIAL */) {
-          src.state = 0x1011 /* AL_INITIAL */;
+      } else if (state === {{{ cDefs.AL_INITIAL }}}) {
+        if (src.state !== {{{ cDefs.AL_INITIAL }}}) {
+          src.state = {{{ cDefs.AL_INITIAL }}};
           src.bufsProcessed = 0;
           src.bufStartTime = Number.NEGATIVE_INFINITY;
           src.bufOffset = 0.0;
           AL.stopSourceAudio(src);
 #if OPENAL_DEBUG
-          out('setSourceState() initializing source ' + src.id);
+          dbg(`setSourceState() initializing source ${src.id}`);
 #endif
         }
       }
     },
 
-    initSourcePanner: function(src) {
+    initSourcePanner: (src) => {
       if (src.type === 0x1030 /* AL_UNDETERMINED */) {
         return;
       }
@@ -407,7 +405,7 @@ var LibraryOpenAL = {
         }
       }
       // Create a panner if AL_SOURCE_SPATIALIZE_SOFT is set to true, or alternatively if it's set to auto and the source is mono
-      if (src.spatialize === 1 /* AL_TRUE */ || (src.spatialize === 2 /* AL_AUTO_SOFT */ && templateBuf.channels === 1)) {
+      if (src.spatialize === {{{ cDefs.AL_TRUE }}} || (src.spatialize === 2 /* AL_AUTO_SOFT */ && templateBuf.channels === 1)) {
         if (src.panner) {
           return;
         }
@@ -431,13 +429,13 @@ var LibraryOpenAL = {
       }
     },
 
-    updateContextGlobal: function(ctx) {
+    updateContextGlobal: (ctx) => {
       for (var i in ctx.sources) {
         AL.updateSourceGlobal(ctx.sources[i]);
       }
     },
 
-    updateSourceGlobal: function(src) {
+    updateSourceGlobal: (src) => {
       var panner = src.panner;
       if (!panner) {
         return;
@@ -452,7 +450,7 @@ var LibraryOpenAL = {
       // Use the source's distance model if AL_SOURCE_DISTANCE_MODEL is enabled
       var distanceModel = src.context.sourceDistanceModel ? src.distanceModel : src.context.distanceModel;
       switch (distanceModel) {
-      case 0 /* AL_NONE */:
+      case {{{ cDefs.AL_NONE }}}:
         panner.distanceModel = 'inverse';
         panner.refDistance = 3.40282e38 /* FLT_MAX */;
         break;
@@ -471,7 +469,7 @@ var LibraryOpenAL = {
       }
     },
 
-    updateListenerSpace: function(ctx) {
+    updateListenerSpace: (ctx) => {
       var listener = ctx.audioCtx.listener;
       if (listener.positionX) {
         listener.positionX.value = ctx.listener.position[0];
@@ -505,7 +503,7 @@ var LibraryOpenAL = {
       }
     },
 
-    updateSourceSpace: function(src) {
+    updateSourceSpace: (src) => {
       if (!src.panner) {
         return;
       }
@@ -545,7 +543,7 @@ var LibraryOpenAL = {
         var lUpY = listener.up[1];
         var lUpZ = listener.up[2];
 
-        var inverseMagnitude = function(x, y, z) {
+        var inverseMagnitude = (x, y, z) => {
           var length = Math.sqrt(x * x + y * y + z * z);
 
           if (length < Number.EPSILON) {
@@ -669,8 +667,8 @@ var LibraryOpenAL = {
       }
     },
 
-    updateSourceRate: function(src) {
-      if (src.state === 0x1012 /* AL_PLAYING */) {
+    updateSourceRate: (src) => {
+      if (src.state === {{{ cDefs.AL_PLAYING }}}) {
         // clear scheduled buffers
         AL.cancelPendingSourceAudio(src);
 
@@ -680,7 +678,7 @@ var LibraryOpenAL = {
         }
 
         var duration;
-        if (src.type === 0x1028 /* AL_STATIC */ && src.looping) {
+        if (src.type === {{{ cDefs.AL_STATIC }}} && src.looping) {
           duration = Number.POSITIVE_INFINITY;
         } else {
           // audioSrc._duration is expressed after factoring in playbackRate, so when changing playback rate, need
@@ -696,7 +694,7 @@ var LibraryOpenAL = {
       }
     },
 
-    sourceDuration: function(src) {
+    sourceDuration: (src) => {
       var length = 0.0;
       for (var i = 0; i < src.bufQueue.length; i++) {
         var audioBuf = src.bufQueue[i].audioBuf;
@@ -705,7 +703,7 @@ var LibraryOpenAL = {
       return length;
     },
 
-    sourceTell: function(src) {
+    sourceTell: (src) => {
       AL.updateSourceTime(src);
 
       var offset = 0.0;
@@ -719,10 +717,10 @@ var LibraryOpenAL = {
       return offset;
     },
 
-    sourceSeek: function(src, offset) {
-      var playing = src.state == 0x1012 /* AL_PLAYING */;
+    sourceSeek: (src, offset) => {
+      var playing = src.state == {{{ cDefs.AL_PLAYING }}};
       if (playing) {
-        AL.setSourceState(src, 0x1011 /* AL_INITIAL */);
+        AL.setSourceState(src, {{{ cDefs.AL_INITIAL }}});
       }
 
       if (src.bufQueue[src.bufsProcessed].audioBuf !== null) {
@@ -736,7 +734,7 @@ var LibraryOpenAL = {
       }
 
       if (playing) {
-        AL.setSourceState(src, 0x1012 /* AL_PLAYING */);
+        AL.setSourceState(src, {{{ cDefs.AL_PLAYING }}});
       }
     },
 
@@ -744,66 +742,66 @@ var LibraryOpenAL = {
     // -- Accessor Helpers
     // ------------------------------------------------------
 
-    getGlobalParam: function(funcname, param) {
+    getGlobalParam: (funcname, param) => {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-        err(funcname + '() called without a valid context');
+        dbg(`${funcname}() called without a valid context`);
 #endif
         return null;
       }
 
       switch (param) {
-      case 0xC000 /* AL_DOPPLER_FACTOR */:
+      case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
         return AL.currentCtx.dopplerFactor;
-      case 0xC003 /* AL_SPEED_OF_SOUND */:
+      case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
         return AL.currentCtx.speedOfSound;
-      case 0xD000 /* AL_DISTANCE_MODEL */:
+      case {{{ cDefs.AL_DISTANCE_MODEL }}}:
         return AL.currentCtx.distanceModel;
       default:
 #if OPENAL_DEBUG
-        err(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
+        dbg(`${funcname}() param ${ptrToString(param} is unknown or not implemented`);
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return null;
       }
     },
 
-    setGlobalParam: function(funcname, param, value) {
+    setGlobalParam: (funcname, param, value) => {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-        err(funcname + '() called without a valid context');
+        dbg(`${funcname}() called without a valid context`);
 #endif
         return;
       }
 
       switch (param) {
-      case 0xC000 /* AL_DOPPLER_FACTOR */:
+      case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
         if (!Number.isFinite(value) || value < 0.0) { // Strictly negative values are disallowed
 #if OPENAL_DEBUG
-          err(funcname + '() value ' + value + ' is out of range');
+          dbg(`${funcname}() value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
         AL.currentCtx.dopplerFactor = value;
         AL.updateListenerSpace(AL.currentCtx);
         break;
-      case 0xC003 /* AL_SPEED_OF_SOUND */:
+      case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
         if (!Number.isFinite(value) || value <= 0.0) { // Negative or zero values are disallowed
 #if OPENAL_DEBUG
-          err(funcname + '() value ' + value + ' is out of range');
+          dbg(`${funcname}() value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
         AL.currentCtx.speedOfSound = value;
         AL.updateListenerSpace(AL.currentCtx);
         break;
-      case 0xD000 /* AL_DISTANCE_MODEL */:
+      case {{{ cDefs.AL_DISTANCE_MODEL }}}:
         switch (value) {
-        case 0 /* AL_NONE */:
+        case {{{ cDefs.AL_NONE }}}:
         case 0xd001 /* AL_INVERSE_DISTANCE */:
         case 0xd002 /* AL_INVERSE_DISTANCE_CLAMPED */:
         case 0xd003 /* AL_LINEAR_DISTANCE */:
@@ -815,70 +813,70 @@ var LibraryOpenAL = {
           break;
         default:
 #if OPENAL_DEBUG
-          err(funcname + '() value ' + value + ' is out of range');
+          dbg(`${funcname}() value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
         break;
       default:
 #if OPENAL_DEBUG
-        err(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
+        dbg(`${funcname}() param ${ptrToString(param)} is unknown or not implemented`);
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
       }
     },
 
-    getListenerParam: function(funcname, param) {
+    getListenerParam: (funcname, param) => {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-        err(funcname + '() called without a valid context');
+        dbg(`${funcname}() called without a valid context`);
 #endif
         return null;
       }
 
       switch (param) {
-      case 0x1004 /* AL_POSITION */:
+      case {{{ cDefs.AL_POSITION }}}:
         return AL.currentCtx.listener.position;
-      case 0x1006 /* AL_VELOCITY */:
+      case {{{ cDefs.AL_VELOCITY }}}:
         return AL.currentCtx.listener.velocity;
-      case 0x100F /* AL_ORIENTATION */:
+      case {{{ cDefs.AL_ORIENTATION }}}:
         return AL.currentCtx.listener.direction.concat(AL.currentCtx.listener.up);
-      case 0x100A /* AL_GAIN */:
+      case {{{ cDefs.AL_GAIN }}}:
         return AL.currentCtx.gain.gain.value;
       default:
 #if OPENAL_DEBUG
-        err(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
+        dbg(`${funcname}() param ${ptrToString(param)} is unknown or not implemented`);
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return null;
       }
     },
 
-    setListenerParam: function(funcname, param, value) {
+    setListenerParam: (funcname, param, value) => {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-        err(funcname + '() called without a valid context');
+        dbg(`${funcname}() called without a valid context`);
 #endif
         return;
       }
       if (value === null) {
 #if OPENAL_DEBUG
-        err(funcname + '(): param 0x' + param.toString(16) + ' has wrong signature');
+        dbg(`${funcname}(): param ${ptrToString(param)} has wrong signature`);
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
       }
 
       var listener = AL.currentCtx.listener;
       switch (param) {
-      case 0x1004 /* AL_POSITION */:
+      case {{{ cDefs.AL_POSITION }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_POSITION value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_POSITION value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -887,12 +885,12 @@ var LibraryOpenAL = {
         listener.position[2] = value[2];
         AL.updateListenerSpace(AL.currentCtx);
         break;
-      case 0x1006 /* AL_VELOCITY */:
+      case {{{ cDefs.AL_VELOCITY }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_VELOCITY value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_VELOCITY value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -901,25 +899,25 @@ var LibraryOpenAL = {
         listener.velocity[2] = value[2];
         AL.updateListenerSpace(AL.currentCtx);
         break;
-      case 0x100A /* AL_GAIN */:
+      case {{{ cDefs.AL_GAIN }}}:
         if (!Number.isFinite(value) || value < 0.0) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_GAIN value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_GAIN value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
         AL.currentCtx.gain.gain.value = value;
         break;
-      case 0x100F /* AL_ORIENTATION */:
+      case {{{ cDefs.AL_ORIENTATION }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])
           || !Number.isFinite(value[3]) || !Number.isFinite(value[4]) || !Number.isFinite(value[5])
         ) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_ORIENTATION value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_ORIENTATION value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -933,26 +931,26 @@ var LibraryOpenAL = {
         break;
       default:
 #if OPENAL_DEBUG
-        err(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
+        dbg(`${funcname}() param ${ptrToString(param)} is unknown or not implemented`);
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
       }
     },
 
-    getBufferParam: function(funcname, bufferId, param) {
+    getBufferParam: (funcname, bufferId, param) => {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-        err(funcname + '() called without a valid context');
+        dbg(`${funcname}() called without a valid context`);
 #endif
         return;
       }
       var buf = AL.buffers[bufferId];
       if (!buf || bufferId === 0) {
 #if OPENAL_DEBUG
-        err(funcname + '() called with an invalid buffer');
+        dbg(`${funcname}() called with an invalid buffer`);
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
       }
 
@@ -975,33 +973,33 @@ var LibraryOpenAL = {
         ];
       default:
 #if OPENAL_DEBUG
-        err(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
+        dbg(`${funcname}() param ${ptrToString(param)} is unknown or not implemented`);
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return null;
       }
     },
 
-    setBufferParam: function(funcname, bufferId, param, value) {
+    setBufferParam: (funcname, bufferId, param, value) => {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-        err(funcname + '() called without a valid context');
+        dbg(`${funcname}() called without a valid context`);
 #endif
         return;
       }
       var buf = AL.buffers[bufferId];
       if (!buf || bufferId === 0) {
 #if OPENAL_DEBUG
-        err(funcname + '() called with an invalid buffer');
+        dbg(`${funcname}() called with an invalid buffer`);
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
       }
       if (value === null) {
 #if OPENAL_DEBUG
-        err(funcname + '(): param 0x' + param.toString(16) + ' has wrong signature');
+        dbg(`${funcname}(): param ${ptrToString(param)} has wrong signature`);
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
       }
 
@@ -1009,9 +1007,9 @@ var LibraryOpenAL = {
       case 0x2004 /* AL_SIZE */:
         if (value !== 0) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_SIZE value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_SIZE value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -1020,16 +1018,16 @@ var LibraryOpenAL = {
       case 0x2015 /* AL_LOOP_POINTS_SOFT */:
         if (value[0] < 0 || value[0] > buf.length || value[1] < 0 || value[1] > buf.Length || value[0] >= value[1]) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_LOOP_POINTS_SOFT value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_LOOP_POINTS_SOFT value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
         if (buf.refCount > 0) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_LOOP_POINTS_SOFT set on bound buffer');
+          dbg(`${funcname}() param AL_LOOP_POINTS_SOFT set on bound buffer`);
 #endif
-          AL.currentCtx.err = 0xA004 /* AL_INVALID_OPERATION */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_OPERATION }}};
           return;
         }
 
@@ -1040,26 +1038,26 @@ var LibraryOpenAL = {
         break;
       default:
 #if OPENAL_DEBUG
-        err(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
+        dbg(`${funcname}() param ${ptrToString(param)}' is unknown or not implemented`);
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
       }
     },
 
-    getSourceParam: function(funcname, sourceId, param) {
+    getSourceParam: (funcname, sourceId, param) => {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-        err(funcname + '() called without a valid context');
+        dbg(`${funcname}() called without a valid context`);
 #endif
         return null;
       }
       var src = AL.currentCtx.sources[sourceId];
       if (!src) {
 #if OPENAL_DEBUG
-        err(funcname + '() called with an invalid source');
+        dbg(`${funcname}() called with an invalid source`);
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return null;
       }
 
@@ -1072,20 +1070,20 @@ var LibraryOpenAL = {
         return src.coneOuterAngle;
       case 0x1003 /* AL_PITCH */:
         return src.pitch;
-      case 0x1004 /* AL_POSITION */:
+      case {{{ cDefs.AL_POSITION }}}:
         return src.position;
-      case 0x1005 /* AL_DIRECTION */:
+      case {{{ cDefs.AL_DIRECTION }}}:
         return src.direction;
-      case 0x1006 /* AL_VELOCITY */:
+      case {{{ cDefs.AL_VELOCITY }}}:
         return src.velocity;
       case 0x1007 /* AL_LOOPING */:
         return src.looping;
       case 0x1009 /* AL_BUFFER */:
-        if (src.type === 0x1028 /* AL_STATIC */) {
+        if (src.type === {{{ cDefs.AL_STATIC }}}) {
           return src.bufQueue[0].id;
         }
         return 0;
-      case 0x100A /* AL_GAIN */:
+      case {{{ cDefs.AL_GAIN }}}:
         return src.gain.gain.value;
        case 0x100D /* AL_MIN_GAIN */:
         return src.minGain;
@@ -1129,7 +1127,7 @@ var LibraryOpenAL = {
         return src.type;
       case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
         return src.spatialize;
-      case 0x2009 /* AL_BYTE_LENGTH_SOFT */: 
+      case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
         var length = 0;
         var bytesPerFrame = 0;
         for (var i = 0; i < src.bufQueue.length; i++) {
@@ -1147,62 +1145,62 @@ var LibraryOpenAL = {
         return length;
       case 0x200B /* AL_SEC_LENGTH_SOFT */:
         return AL.sourceDuration(src);
-      case 0xD000 /* AL_DISTANCE_MODEL */:
+      case {{{ cDefs.AL_DISTANCE_MODEL }}}:
         return src.distanceModel;
       default:
 #if OPENAL_DEBUG
-        err(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
+        dbg(`${funcname}() param ${ptrToString(param)}' is unknown or not implemented`);
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return null;
       }
     },
 
-    setSourceParam: function(funcname, sourceId, param, value) {
+    setSourceParam: (funcname, sourceId, param, value) => {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-        err(funcname + '() called without a valid context');
+        dbg(`${funcname}() called without a valid context`);
 #endif
         return;
       }
       var src = AL.currentCtx.sources[sourceId];
       if (!src) {
 #if OPENAL_DEBUG
-        err('alSourcef() called with an invalid source');
+        dbg('alSourcef() called with an invalid source');
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
       }
       if (value === null) {
 #if OPENAL_DEBUG
-        err(funcname + '(): param 0x' + param.toString(16) + ' has wrong signature');
+        dbg(`${funcname}(): param ${ptrToString(param)}' has wrong signature`);
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
       }
 
       switch (param) {
       case 0x202 /* AL_SOURCE_RELATIVE */:
-        if (value === 1 /* AL_TRUE */) {
+        if (value === {{{ cDefs.AL_TRUE }}}) {
           src.relative = true;
           AL.updateSourceSpace(src);
-        } else if (value === 0 /* AL_FALSE */) {
+        } else if (value === {{{ cDefs.AL_FALSE }}}) {
           src.relative = false;
           AL.updateSourceSpace(src);
         } else {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_SOURCE_RELATIVE value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_SOURCE_RELATIVE value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
         break;
       case 0x1001 /* AL_CONE_INNER_ANGLE */:
         if (!Number.isFinite(value)) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_CONE_INNER_ANGLE value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_CONE_INNER_ANGLE value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -1214,9 +1212,9 @@ var LibraryOpenAL = {
       case 0x1002 /* AL_CONE_OUTER_ANGLE */:
         if (!Number.isFinite(value)) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_CONE_OUTER_ANGLE value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_CONE_OUTER_ANGLE value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -1228,9 +1226,9 @@ var LibraryOpenAL = {
       case 0x1003 /* AL_PITCH */:
         if (!Number.isFinite(value) || value <= 0.0) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_PITCH value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_PITCH value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -1241,12 +1239,12 @@ var LibraryOpenAL = {
         src.pitch = value;
         AL.updateSourceRate(src);
         break;
-      case 0x1004 /* AL_POSITION */:
+      case {{{ cDefs.AL_POSITION }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_POSITION value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_POSITION value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -1255,12 +1253,12 @@ var LibraryOpenAL = {
         src.position[2] = value[2];
         AL.updateSourceSpace(src);
         break;
-      case 0x1005 /* AL_DIRECTION */:
+      case {{{ cDefs.AL_DIRECTION }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_DIRECTION value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_DIRECTION value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -1269,12 +1267,12 @@ var LibraryOpenAL = {
         src.direction[2] = value[2];
         AL.updateSourceSpace(src);
         break;
-      case 0x1006 /* AL_VELOCITY */:
+      case {{{ cDefs.AL_VELOCITY }}}:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_VELOCITY value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_VELOCITY value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -1284,18 +1282,18 @@ var LibraryOpenAL = {
         AL.updateSourceSpace(src);
         break;
       case 0x1007 /* AL_LOOPING */:
-        if (value === 1 /* AL_TRUE */) {
+        if (value === {{{ cDefs.AL_TRUE }}}) {
           src.looping = true;
           AL.updateSourceTime(src);
-          if (src.type === 0x1028 /* AL_STATIC */ && src.audioQueue.length > 0) {
+          if (src.type === {{{ cDefs.AL_STATIC }}} && src.audioQueue.length > 0) {
             var audioSrc  = src.audioQueue[0];
             audioSrc.loop = true;
             audioSrc._duration = Number.POSITIVE_INFINITY;
           }
-        } else if (value === 0 /* AL_FALSE */) {
+        } else if (value === {{{ cDefs.AL_FALSE }}}) {
           src.looping = false;
           var currentTime = AL.updateSourceTime(src);
-          if (src.type === 0x1028 /* AL_STATIC */ && src.audioQueue.length > 0) {
+          if (src.type === {{{ cDefs.AL_STATIC }}} && src.audioQueue.length > 0) {
             var audioSrc  = src.audioQueue[0];
             audioSrc.loop = false;
             audioSrc._duration = src.bufQueue[0].audioBuf.duration / src.playbackRate;
@@ -1303,18 +1301,18 @@ var LibraryOpenAL = {
           }
         } else {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_LOOPING value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_LOOPING value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
         break;
       case 0x1009 /* AL_BUFFER */:
-        if (src.state === 0x1012 /* AL_PLAYING */ || src.state === 0x1013 /* AL_PAUSED */) {
+        if (src.state === {{{ cDefs.AL_PLAYING }}} || src.state === {{{ cDefs.AL_PAUSED }}}) {
 #if OPENAL_DEBUG
-          err(funcname + '(AL_BUFFER) called while source is playing or paused');
+          dbg(`${funcname}(AL_BUFFER) called while source is playing or paused`);
 #endif
-          AL.currentCtx.err = 0xA004 /* AL_INVALID_OPERATION */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_OPERATION }}};
           return;
         }
 
@@ -1331,9 +1329,9 @@ var LibraryOpenAL = {
           var buf = AL.buffers[value];
           if (!buf) {
 #if OPENAL_DEBUG
-            err('alSourcei(AL_BUFFER) called with an invalid buffer');
+            dbg('alSourcei(AL_BUFFER) called with an invalid buffer');
 #endif
-            AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+            AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
             return;
           }
 
@@ -1345,18 +1343,18 @@ var LibraryOpenAL = {
           buf.refCount++;
           src.bufQueue = [buf];
           src.bufsProcessed = 0;
-          src.type = 0x1028 /* AL_STATIC */;
+          src.type = {{{ cDefs.AL_STATIC }}};
         }
 
         AL.initSourcePanner(src);
         AL.scheduleSourceAudio(src);
         break;
-      case 0x100A /* AL_GAIN */:
+      case {{{ cDefs.AL_GAIN }}}:
         if (!Number.isFinite(value) || value < 0.0) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_GAIN value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_GAIN value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
         src.gain.gain.value = value;
@@ -1364,9 +1362,9 @@ var LibraryOpenAL = {
       case 0x100D /* AL_MIN_GAIN */:
         if (!Number.isFinite(value) || value < 0.0 || value > Math.min(src.maxGain, 1.0)) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_MIN_GAIN value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_MIN_GAIN value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 #if OPENAL_DEBUG
@@ -1377,9 +1375,9 @@ var LibraryOpenAL = {
       case 0x100E /* AL_MAX_GAIN */:
         if (!Number.isFinite(value) || value < Math.max(0.0, src.minGain) || value > 1.0) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_MAX_GAIN value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_MAX_GAIN value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 #if OPENAL_DEBUG
@@ -1390,9 +1388,9 @@ var LibraryOpenAL = {
       case 0x1020 /* AL_REFERENCE_DISTANCE */:
         if (!Number.isFinite(value) || value < 0.0) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_REFERENCE_DISTANCE value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_REFERENCE_DISTANCE value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
         src.refDistance = value;
@@ -1403,9 +1401,9 @@ var LibraryOpenAL = {
       case 0x1021 /* AL_ROLLOFF_FACTOR */:
         if (!Number.isFinite(value) || value < 0.0) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_ROLLOFF_FACTOR value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_ROLLOFF_FACTOR value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
         src.rolloffFactor = value;
@@ -1416,9 +1414,9 @@ var LibraryOpenAL = {
       case 0x1022 /* AL_CONE_OUTER_GAIN */:
         if (!Number.isFinite(value) || value < 0.0 || value > 1.0) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_CORE_OUTER_GAIN value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_CORE_OUTER_GAIN value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
         src.coneOuterGain = value;
@@ -1429,9 +1427,9 @@ var LibraryOpenAL = {
       case 0x1023 /* AL_MAX_DISTANCE */:
         if (!Number.isFinite(value) || value < 0.0) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_MAX_DISTANCE value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_MAX_DISTANCE value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
         src.maxDistance = value;
@@ -1442,9 +1440,9 @@ var LibraryOpenAL = {
       case 0x1024 /* AL_SEC_OFFSET */:
         if (value < 0.0 || value > AL.sourceDuration(src)) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_SEC_OFFSET value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_SEC_OFFSET value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -1464,9 +1462,9 @@ var LibraryOpenAL = {
         }
         if (value < 0.0 || value > srcLen) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_SAMPLE_OFFSET value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_SAMPLE_OFFSET value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
@@ -1487,37 +1485,37 @@ var LibraryOpenAL = {
         }
         if (value < 0.0 || value > srcLen) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_BYTE_OFFSET value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_BYTE_OFFSET value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
         AL.sourceSeek(src, value);
         break;
       case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
-        if (value !== 0 /* AL_FALSE */ && value !== 1 /* AL_TRUE */ && value !== 2 /* AL_AUTO_SOFT */) {
+        if (value !== {{{ cDefs.AL_FALSE }}} && value !== {{{ cDefs.AL_TRUE }}} && value !== 2 /* AL_AUTO_SOFT */) {
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_SOURCE_SPATIALIZE_SOFT value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_SOURCE_SPATIALIZE_SOFT value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
 
         src.spatialize = value;
         AL.initSourcePanner(src);
         break;
-      case 0x2009 /* AL_BYTE_LENGTH_SOFT */: 
+      case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
       case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
       case 0x200B /* AL_SEC_LENGTH_SOFT */:
 #if OPENAL_DEBUG
-        err(funcname + '() param AL_*_LENGTH_SOFT is read only');
+        dbg(`${funcname}() param AL_*_LENGTH_SOFT is read only`);
 #endif
-        AL.currentCtx.err = 0xA004 /* AL_INVALID_OPERATION */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_OPERATION }}};
         break;
-      case 0xD000 /* AL_DISTANCE_MODEL */:
+      case {{{ cDefs.AL_DISTANCE_MODEL }}}:
         switch (value) {
-        case 0 /* AL_NONE */:
+        case {{{ cDefs.AL_NONE }}}:
         case 0xd001 /* AL_INVERSE_DISTANCE */:
         case 0xd002 /* AL_INVERSE_DISTANCE_CLAMPED */:
         case 0xd003 /* AL_LINEAR_DISTANCE */:
@@ -1531,17 +1529,17 @@ var LibraryOpenAL = {
           break;
         default:
 #if OPENAL_DEBUG
-          err(funcname + '() param AL_DISTANCE_MODEL value ' + value + ' is out of range');
+          dbg(`${funcname}() param AL_DISTANCE_MODEL value ${value} is out of range`);
 #endif
-          AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
           return;
         }
         break;
       default:
 #if OPENAL_DEBUG
-        err(funcname + '() param 0x' + param.toString(16) + ' is unknown or not implemented');
+        dbg(`${funcname}() param ${ptrToString(param)} is unknown or not implemented`);
 #endif
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return;
       }
     },
@@ -1562,20 +1560,20 @@ var LibraryOpenAL = {
     // Treat NULL and <invalid> separately because careless
     // people might assume that most alcCapture functions
     // accept NULL as a 'use the default' device.
-    requireValidCaptureDevice: function(deviceId, funcname) {
+    requireValidCaptureDevice: (deviceId, funcname) => {
       if (deviceId === 0) {
 #if OPENAL_DEBUG
-        err(funcname+'() on a NULL device is an error');
+        dbg(`${funcname}() on a NULL device is an error`);
 #endif
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return null;
       }
       var c = AL.captures[deviceId];
       if (!c) {
 #if OPENAL_DEBUG
-        err(funcname+'() on an invalid device');
+        dbg(`${funcname}() on an invalid device`);
 #endif
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return null;
       }
       var err = c.mediaStreamError;
@@ -1583,17 +1581,17 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         switch (err.name) {
         case 'PermissionDeniedError':
-          err(funcname+'() but the user denied access to the device');
+          dbg(`${funcname}() but the user denied access to the device`);
           break;
         case 'NotFoundError':
-          err(funcname+'() but no capture device was found');
+          dbg(`${funcname}() but no capture device was found`);
           break;
         default:
-          err(funcname+'() but a MediaStreamError was encountered: ' + err);
+          dbg(`${funcname}() but a MediaStreamError was encountered: ${err}`);
           break;
         }
 #endif
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return null;
       }
       return c;
@@ -1602,7 +1600,7 @@ var LibraryOpenAL = {
   },
 
   // ***************************************************************************
-  // ** ALC API 
+  // ** ALC API
   // ***************************************************************************
 
   // -------------------------------------------------------
@@ -1613,8 +1611,7 @@ var LibraryOpenAL = {
   // bufferFrameCapacity here for clarity.
   alcCaptureOpenDevice__deps: ['$autoResumeAudioContext'],
   alcCaptureOpenDevice__proxy: 'sync',
-  alcCaptureOpenDevice__sig: 'iiiii',
-  alcCaptureOpenDevice: function(pDeviceName, requestedSampleRate, format, bufferFrameCapacity) {
+  alcCaptureOpenDevice: (pDeviceName, requestedSampleRate, format, bufferFrameCapacity) => {
 
     var resolvedDeviceName = AL.CAPTURE_DEVICE_NAME;
 
@@ -1623,7 +1620,7 @@ var LibraryOpenAL = {
       resolvedDeviceName = UTF8ToString(pDeviceName);
       if (resolvedDeviceName !== AL.CAPTURE_DEVICE_NAME) {
 #if OPENAL_DEBUG
-        err('alcCaptureOpenDevice() with invalid device name \''+resolvedDeviceName+'\'');
+        dbg(`alcCaptureOpenDevice() with invalid device name '${resolvedDeviceName}'`);
 #endif
         // ALC_OUT_OF_MEMORY
         // From the programmer's guide, ALC_OUT_OF_MEMORY's meaning is
@@ -1638,23 +1635,23 @@ var LibraryOpenAL = {
     // Otherwise it's probably okay (though useless) for bufferFrameCapacity to be zero.
     if (bufferFrameCapacity < 0) { // ALCsizei is signed int
 #if OPENAL_DEBUG
-      err('alcCaptureOpenDevice() with negative bufferSize');
+      dbg('alcCaptureOpenDevice() with negative bufferSize');
 #endif
-      AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
+      AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
       return 0;
     }
 
-    navigator.getUserMedia = navigator.getUserMedia 
-      || navigator.webkitGetUserMedia 
-      || navigator.mozGetUserMedia 
+    navigator.getUserMedia = navigator.getUserMedia
+      || navigator.webkitGetUserMedia
+      || navigator.mozGetUserMedia
       || navigator.msGetUserMedia;
-    var has_getUserMedia = navigator.getUserMedia 
-      || (navigator.mediaDevices 
+    var has_getUserMedia = navigator.getUserMedia
+      || (navigator.mediaDevices
       &&  navigator.mediaDevices.getUserMedia);
 
     if (!has_getUserMedia) {
 #if OPENAL_DEBUG
-      err('alcCaptureOpenDevice() cannot capture audio, because your browser lacks a `getUserMedia()` implementation');
+      dbg('alcCaptureOpenDevice() cannot capture audio, because your browser lacks a `getUserMedia()` implementation');
 #endif
       // See previously mentioned rationale for ALC_OUT_OF_MEMORY
       AL.alcErr = 0xA005 /* ALC_OUT_OF_MEMORY */;
@@ -1668,7 +1665,7 @@ var LibraryOpenAL = {
         AL.sharedCaptureAudioCtx = new AudioContext();
       } catch(e) {
 #if OPENAL_DEBUG
-        err('alcCaptureOpenDevice() could not create the shared capture AudioContext: ' + e);
+        dbg(`alcCaptureOpenDevice() could not create the shared capture AudioContext: ${e}`);
 #endif
         // See previously mentioned rationale for ALC_OUT_OF_MEMORY
         AL.alcErr = 0xA005 /* ALC_OUT_OF_MEMORY */;
@@ -1693,9 +1690,9 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      err('alcCaptureOpenDevice() with unsupported format ' + format);
+      dbg(`alcCaptureOpenDevice() with unsupported format ${format}`);
 #endif
-      AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
+      AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
       return 0;
     }
 
@@ -1731,7 +1728,7 @@ var LibraryOpenAL = {
       }
     } catch(e) {
 #if OPENAL_DEBUG
-      err('alcCaptureOpenDevice() failed to allocate internal buffers (is bufferSize low enough?): ' + e);
+      dbg(`alcCaptureOpenDevice() failed to allocate internal buffers (is bufferSize low enough?): ${e}`);
 #endif
       AL.alcErr = 0xA005 /* ALC_OUT_OF_MEMORY */;
       return 0;
@@ -1743,9 +1740,9 @@ var LibraryOpenAL = {
     var newCapture = {
       audioCtx: AL.sharedCaptureAudioCtx,
       deviceName: resolvedDeviceName,
-      requestedSampleRate: requestedSampleRate,
-      requestedSampleType: requestedSampleType,
-      outputChannelCount: outputChannelCount,
+      requestedSampleRate,
+      requestedSampleType,
+      outputChannelCount,
       inputChannelCount: null, // Not known until the getUserMedia() promise resolves
       mediaStreamError: null, // Used by other functions to return early and report an error.
       mediaStreamSourceNode: null,
@@ -1755,7 +1752,7 @@ var LibraryOpenAL = {
       splitterNode: null,
       scriptProcessorNode: null,
       isCapturing: false,
-      buffers: buffers,
+      buffers,
       get bufferFrameCapacity() {
         return buffers[0].length;
       },
@@ -1766,13 +1763,13 @@ var LibraryOpenAL = {
 
     // Preparing for getUserMedia()
 
-    var onError = function(mediaStreamError) {
+    var onError = (mediaStreamError) => {
       newCapture.mediaStreamError = mediaStreamError;
 #if OPENAL_DEBUG
-      err('navigator.getUserMedia() errored with: ' + mediaStreamError);
+      dbg(`navigator.getUserMedia() errored with: ${mediaStreamError}`);
 #endif
     };
-    var onSuccess = function(mediaStream) {
+    var onSuccess = (mediaStream) => {
       newCapture.mediaStreamSourceNode = newCapture.audioCtx.createMediaStreamSource(mediaStream);
       newCapture.mediaStream = mediaStream;
 
@@ -1793,7 +1790,7 @@ var LibraryOpenAL = {
 
 #if OPENAL_DEBUG
       if (inputChannelCount > 2 || outputChannelCount > 2) {
-        console.warn('The number of input or output channels is too high, capture might not work as expected!');
+        dbg('The number of input or output channels is too high, capture might not work as expected!');
       }
 #endif
 
@@ -1820,8 +1817,7 @@ var LibraryOpenAL = {
 
       newCapture.scriptProcessorNode.connect(newCapture.audioCtx.destination);
 
-      newCapture.scriptProcessorNode.onaudioprocess = function(audioProcessingEvent) {
-
+      newCapture.scriptProcessorNode.onaudioprocess = (audioProcessingEvent) => {
         if (!newCapture.isCapturing) {
           return;
         }
@@ -1905,8 +1901,7 @@ var LibraryOpenAL = {
   },
 
   alcCaptureCloseDevice__proxy: 'sync',
-  alcCaptureCloseDevice__sig: 'ii',
-  alcCaptureCloseDevice: function(deviceId) {
+  alcCaptureCloseDevice: (deviceId) => {
     var c = AL.requireValidCaptureDevice(deviceId, 'alcCaptureCloseDevice');
     if (!c) return false;
 
@@ -1924,9 +1919,7 @@ var LibraryOpenAL = {
     if (c.mediaStream) {
       // Disabling the microphone of the browser.
       // Without this operation, the red dot on the browser tab page will remain.
-      c.mediaStream.getTracks().forEach(function(track) {
-        track.stop();
-      });
+      c.mediaStream.getTracks().forEach((track) => track.stop());
     }
 
     delete c.buffers;
@@ -1938,17 +1931,16 @@ var LibraryOpenAL = {
   },
 
   alcCaptureStart__proxy: 'sync',
-  alcCaptureStart__sig: 'vi',
-  alcCaptureStart: function(deviceId) {
+  alcCaptureStart: (deviceId) => {
     var c = AL.requireValidCaptureDevice(deviceId, 'alcCaptureStart');
     if (!c) return;
 
     if (c.isCapturing) {
 #if OPENAL_DEBUG
-      console.warn('Redundant call to alcCaptureStart()');
+      dbg('Redundant call to alcCaptureStart()');
 #endif
       // NOTE: Spec says (emphasis mine):
-      //     The amount of audio samples available after **restarting** a 
+      //     The amount of audio samples available after **restarting** a
       //     stopped capture device is reset to zero.
       // So redundant calls to alcCaptureStart() must have no effect.
       return;
@@ -1959,50 +1951,48 @@ var LibraryOpenAL = {
   },
 
   alcCaptureStop__proxy: 'sync',
-  alcCaptureStop__sig: 'vi',
-  alcCaptureStop: function(deviceId) {
+  alcCaptureStop: (deviceId) => {
     var c = AL.requireValidCaptureDevice(deviceId, 'alcCaptureStop');
     if (!c) return;
 
 #if OPENAL_DEBUG
     if (!c.isCapturing) {
-      console.warn('Redundant call to alcCaptureStop()');
+      dbg('Redundant call to alcCaptureStop()');
     }
 #endif
     c.isCapturing = false;
   },
 
-  // The OpenAL spec hints that implementations are allowed to 
+  // The OpenAL spec hints that implementations are allowed to
   // 'defer resampling and other conversions' up until this point.
   //
   // The last parameter is actually 'number of sample frames', so was
   // renamed accordingly here
   alcCaptureSamples__proxy: 'sync',
-  alcCaptureSamples__sig: 'viii',
-  alcCaptureSamples: function(deviceId, pFrames, requestedFrameCount) {
+  alcCaptureSamples: (deviceId, pFrames, requestedFrameCount) => {
     var c = AL.requireValidCaptureDevice(deviceId, 'alcCaptureSamples');
     if (!c) return;
 
     // ALCsizei is actually 32-bit signed int, so could be negative
     // Also, spec says :
-    //   Requesting more sample frames than are currently available is 
+    //   Requesting more sample frames than are currently available is
     //   an error.
 
     var dstfreq = c.requestedSampleRate;
     var srcfreq = c.audioCtx.sampleRate;
 
     var fratio = srcfreq / dstfreq;
-    
+
     if (requestedFrameCount < 0
-    ||  requestedFrameCount > (c.capturedFrameCount / fratio)) 
+    ||  requestedFrameCount > (c.capturedFrameCount / fratio))
     {
-  // if OPENAL_DEBUG
-      err('alcCaptureSamples() with invalid bufferSize');
-  // endif
-      AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
+#if OPENAL_DEBUG
+      dbg('alcCaptureSamples() with invalid bufferSize');
+#endif
+      AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
       return;
     }
-    
+
     function setF32Sample(i, sample) {
       {{{ makeSetValue('pFrames', '4*i', 'sample', 'float') }}};
     }
@@ -2019,13 +2009,13 @@ var LibraryOpenAL = {
     case 'f32': setSample = setF32Sample; break;
     case 'i16': setSample = setI16Sample; break;
     case 'u8' : setSample = setU8Sample ; break;
-    default: 
+    default:
 #if OPENAL_DEBUG
-      err('Internal error: Unknown sample type \''+c.requestedSampleType+'\'');
+      dbg(`Internal error: Unknown sample type '${c.requestedSampleType}'`);
 #endif
       return;
     }
-    
+
     // If fratio is an integer we don't need linear resampling, just skip samples
     if (Math.floor(fratio) == fratio) {
       for (var i = 0, frame_i = 0; frame_i < requestedFrameCount; ++frame_i) {
@@ -2066,8 +2056,7 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alcOpenDevice__proxy: 'sync',
-  alcOpenDevice__sig: 'ii',
-  alcOpenDevice: function(pDeviceName) {
+  alcOpenDevice: (pDeviceName) => {
     if (pDeviceName) {
       var name = UTF8ToString(pDeviceName);
       if (name !== AL.DEVICE_NAME) {
@@ -2084,24 +2073,22 @@ var LibraryOpenAL = {
   },
 
   alcCloseDevice__proxy: 'sync',
-  alcCloseDevice__sig: 'ii',
-  alcCloseDevice: function(deviceId) {
+  alcCloseDevice: (deviceId) => {
     if (!(deviceId in AL.deviceRefCounts) || AL.deviceRefCounts[deviceId] > 0) {
-      return 0 /* ALC_FALSE */;
+      return {{{ cDefs.ALC_FALSE }}};
     }
 
     delete AL.deviceRefCounts[deviceId];
     AL.freeIds.push(deviceId);
-    return 1 /* ALC_TRUE */;
+    return {{{ cDefs.ALC_TRUE }}};
   },
 
   alcCreateContext__deps: ['$autoResumeAudioContext'],
   alcCreateContext__proxy: 'sync',
-  alcCreateContext__sig: 'iii',
-  alcCreateContext: function(deviceId, pAttrList) {
+  alcCreateContext: (deviceId, pAttrList) => {
     if (!(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
-      out('alcCreateContext() called with an invalid device');
+      dbg('alcCreateContext() called with an invalid device');
 #endif
       AL.alcErr = 0xA001; /* ALC_INVALID_DEVICE */
       return 0;
@@ -2137,34 +2124,34 @@ var LibraryOpenAL = {
           break
         case 0x1992 /* ALC_HRTF_SOFT */:
           switch (val) {
-            case 0 /* ALC_FALSE */:
+            case {{{ cDefs.ALC_FALSE }}}:
               hrtf = false;
               break;
-            case 1 /* ALC_TRUE */:
+            case {{{ cDefs.ALC_TRUE }}}:
               hrtf = true;
               break;
             case 2 /* ALC_DONT_CARE_SOFT */:
               break;
             default:
 #if OPENAL_DEBUG
-              out('Unsupported ALC_HRTF_SOFT mode ' + val);
+              dbg(`Unsupported ALC_HRTF_SOFT mode ${val}`);
 #endif
-              AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
+              AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
               return 0;
           }
           break;
         case 0x1996 /* ALC_HRTF_ID_SOFT */:
           if (val !== 0) {
 #if OPENAL_DEBUG
-            out('Invalid ALC_HRTF_ID_SOFT index ' + val);
+            dbg(`Invalid ALC_HRTF_ID_SOFT index ${val}`);
 #endif
-            AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
+            AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
             return 0;
           }
           break;
         default:
 #if OPENAL_DEBUG
-          out('Unsupported context attribute 0x' + attr.toString(16));
+          dbg(`Unsupported context attribute ${ptrToString(attr)}`);
 #endif
           AL.alcErr = 0xA004; /* ALC_INVALID_VALUE */
           return 0;
@@ -2184,7 +2171,7 @@ var LibraryOpenAL = {
     } catch (e) {
       if (e.name === 'NotSupportedError') {
 #if OPENAL_DEBUG
-        out('Invalid or unsupported options');
+        dbg('Invalid or unsupported options');
 #endif
         AL.alcErr = 0xA004; /* ALC_INVALID_VALUE */
       } else {
@@ -2204,19 +2191,19 @@ var LibraryOpenAL = {
     var gain = ac.createGain();
     gain.connect(ac.destination);
     var ctx = {
-      deviceId: deviceId,
+      deviceId,
       id: AL.newId(),
-      attrs: attrs,
+      attrs,
       audioCtx: ac,
       listener: {
-    	  position: [0.0, 0.0, 0.0],
-    	  velocity: [0.0, 0.0, 0.0],
-    	  direction: [0.0, 0.0, 0.0],
-    	  up: [0.0, 0.0, 0.0]
+        position: [0.0, 0.0, 0.0],
+        velocity: [0.0, 0.0, 0.0],
+        direction: [0.0, 0.0, 0.0],
+        up: [0.0, 0.0, 0.0]
       },
       sources: [],
-      interval: setInterval(function() { AL.scheduleContextAudio(ctx); }, AL.QUEUE_INTERVAL),
-      gain: gain,
+      interval: setInterval(() => AL.scheduleContextAudio(ctx), AL.QUEUE_INTERVAL),
+      gain,
       distanceModel: 0xd002 /* AL_INVERSE_DISTANCE_CLAMPED */,
       speedOfSound: 343.3,
       dopplerFactor: 1.0,
@@ -2229,7 +2216,7 @@ var LibraryOpenAL = {
       },
       set err(val) {
         // Errors should not be overwritten by later errors until they are cleared by a query.
-        if (this._err === 0 /* AL_NO_ERROR */ || val === 0 /* AL_NO_ERROR */) {
+        if (this._err === {{{ cDefs.AL_NO_ERROR }}} || val === {{{ cDefs.AL_NO_ERROR }}}) {
           this._err = val;
         }
       }
@@ -2252,12 +2239,11 @@ var LibraryOpenAL = {
   },
 
   alcDestroyContext__proxy: 'sync',
-  alcDestroyContext__sig: 'vi',
-  alcDestroyContext: function(contextId) {
+  alcDestroyContext: (contextId) => {
     var ctx = AL.contexts[contextId];
     if (AL.currentCtx === ctx) {
 #if OPENAL_DEBUG
-      out('alcDestroyContext() called with an invalid context');
+      dbg('alcDestroyContext() called with an invalid context');
 #endif
       AL.alcErr = 0xA002 /* ALC_INVALID_CONTEXT */;
       return;
@@ -2277,16 +2263,14 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alcGetError__proxy: 'sync',
-  alcGetError__sig: 'ii',
-  alcGetError: function(deviceId) {
+  alcGetError: (deviceId) => {
     var err = AL.alcErr;
-    AL.alcErr = 0 /* ALC_NO_ERROR */;
+    AL.alcErr = {{{ cDefs.ALC_NO_ERROR }}};
     return err;
   },
 
   alcGetCurrentContext__proxy: 'sync',
-  alcGetCurrentContext__sig: 'i',
-  alcGetCurrentContext: function() {
+  alcGetCurrentContext: () => {
     if (AL.currentCtx !== null) {
       return AL.currentCtx.id;
     }
@@ -2294,19 +2278,17 @@ var LibraryOpenAL = {
   },
 
   alcMakeContextCurrent__proxy: 'sync',
-  alcMakeContextCurrent__sig: 'ii',
-  alcMakeContextCurrent: function(contextId) {
+  alcMakeContextCurrent: (contextId) => {
     if (contextId === 0) {
       AL.currentCtx = null;
     } else {
       AL.currentCtx = AL.contexts[contextId];
     }
-    return 1 /* ALC_TRUE */;
+    return {{{ cDefs.ALC_TRUE }}};
   },
 
   alcGetContextsDevice__proxy: 'sync',
-  alcGetContextsDevice__sig: 'ii',
-  alcGetContextsDevice: function(contextId) {
+  alcGetContextsDevice: (contextId) => {
     if (contextId in AL.contexts) {
       return AL.contexts[contextId].deviceId;
     }
@@ -2314,35 +2296,31 @@ var LibraryOpenAL = {
   },
 
   // The spec is vague about what these are actually supposed to do, and NOP is a reasonable implementation
-  alcProcessContext__sig: 'vi',
-  alcProcessContext: function(contextId) {},
-  alcSuspendContext__sig: 'vi',
-  alcSuspendContext: function(contextId) {},
+  alcProcessContext: (contextId) => {},
+  alcSuspendContext: (contextId) => {},
 
   alcIsExtensionPresent__proxy: 'sync',
-  alcIsExtensionPresent__sig: 'iii',
-  alcIsExtensionPresent: function(deviceId, pExtName) {
+  alcIsExtensionPresent: (deviceId, pExtName) => {
     var name = UTF8ToString(pExtName);
 
     return AL.ALC_EXTENSIONS[name] ? 1 : 0;
   },
 
   alcGetEnumValue__proxy: 'sync',
-  alcGetEnumValue__sig: 'iii',
-  alcGetEnumValue: function(deviceId, pEnumName) {
+  alcGetEnumValue: (deviceId, pEnumName) => {
     // Spec says :
     // Using a NULL handle is legal, but only the
     // tokens defined by the AL core are guaranteed.
     if (deviceId !== 0 && !(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
-      err('alcGetEnumValue() called with an invalid device');
+      dbg('alcGetEnumValue() called with an invalid device');
 #endif
       // ALC_INVALID_DEVICE is not listed as a possible error state for
       // this function, sadly.
-      return 0 /* ALC_NONE */;
+      return 0;
     } else if (!pEnumName) {
-      AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
-      return 0; /* ALC_NONE */
+      AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
+      return 0;
     }
     var name = UTF8ToString(pEnumName);
     // See alGetEnumValue(), but basically behave the same as OpenAL-Soft
@@ -2385,36 +2363,35 @@ var LibraryOpenAL = {
 
     default:
 #if OPENAL_DEBUG
-      err('No value for `' + pEnumName + '` is known by alcGetEnumValue()');
+      dbg(`No value for `${pEnumName}` is known by alcGetEnumValue()`);
 #endif
-      AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
-      return 0 /* AL_NONE */;
+      AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
+      return {{{ cDefs.AL_NONE }}};
     }
   },
 
   alcGetString__proxy: 'sync',
-  alcGetString__sig: 'iii',
-  alcGetString__deps: ['$allocateUTF8'],
-  alcGetString: function(deviceId, param) {
+  alcGetString__deps: ['$stringToNewUTF8'],
+  alcGetString: (deviceId, param) => {
     if (AL.alcStringCache[param]) {
       return AL.alcStringCache[param];
     }
 
     var ret;
     switch (param) {
-    case 0 /* ALC_NO_ERROR */:
+    case {{{ cDefs.ALC_NO_ERROR }}}:
       ret = 'No Error';
       break;
-    case 0xA001 /* ALC_INVALID_DEVICE */:
+    case {{{ cDefs.ALC_INVALID_DEVICE }}}:
       ret = 'Invalid Device';
       break;
     case 0xA002 /* ALC_INVALID_CONTEXT */:
       ret = 'Invalid Context';
       break;
-    case 0xA003 /* ALC_INVALID_ENUM */:
+    case {{{ cDefs.ALC_INVALID_ENUM }}}:
       ret = 'Invalid Enum';
       break;
-    case 0xA004 /* ALC_INVALID_VALUE */:
+    case {{{ cDefs.ALC_INVALID_VALUE }}}:
       ret = 'Invalid Value';
       break;
     case 0xA005 /* ALC_OUT_OF_MEMORY */:
@@ -2440,7 +2417,7 @@ var LibraryOpenAL = {
       ret = AL.CAPTURE_DEVICE_NAME;
       break;
     case 0x310 /* ALC_CAPTURE_DEVICE_SPECIFIER */:
-      if (deviceId === 0) 
+      if (deviceId === 0)
         ret = AL.CAPTURE_DEVICE_NAME.concat('\0');
         else {
         var c = AL.requireValidCaptureDevice(deviceId, 'alcGetString');
@@ -2448,11 +2425,11 @@ var LibraryOpenAL = {
           return 0;
         }
         ret = c.deviceName;
-      }  
+      }
       break;
     case 0x1006 /* ALC_EXTENSIONS */:
       if (!deviceId) {
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return 0;
       }
 
@@ -2464,18 +2441,17 @@ var LibraryOpenAL = {
       ret = ret.trim();
       break;
     default:
-      AL.alcErr = 0xA003 /* ALC_INVALID_ENUM */;
+      AL.alcErr = {{{ cDefs.ALC_INVALID_ENUM }}};
       return 0;
     }
 
-    ret = allocateUTF8(ret);
+    ret = stringToNewUTF8(ret);
     AL.alcStringCache[param] = ret;
     return ret;
   },
 
   alcGetIntegerv__proxy: 'sync',
-  alcGetIntegerv__sig: 'viiii',
-  alcGetIntegerv: function(deviceId, param, size, pValues) {
+  alcGetIntegerv: (deviceId, param, size, pValues) => {
     if (size === 0 || !pValues) {
       // Ignore the query, per the spec
       return;
@@ -2490,7 +2466,7 @@ var LibraryOpenAL = {
       break;
     case 0x1002 /* ALC_ATTRIBUTES_SIZE */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return;
       }
       if (!AL.currentCtx) {
@@ -2502,7 +2478,7 @@ var LibraryOpenAL = {
       break;
     case 0x1003 /* ALC_ALL_ATTRIBUTES */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return;
       }
       if (!AL.currentCtx) {
@@ -2516,7 +2492,7 @@ var LibraryOpenAL = {
       break;
     case 0x1007 /* ALC_FREQUENCY */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return;
       }
       if (!AL.currentCtx) {
@@ -2529,7 +2505,7 @@ var LibraryOpenAL = {
     case 0x1010 /* ALC_MONO_SOURCES */:
     case 0x1011 /* ALC_STEREO_SOURCES */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return;
       }
       if (!AL.currentCtx) {
@@ -2542,7 +2518,7 @@ var LibraryOpenAL = {
     case 0x1992 /* ALC_HRTF_SOFT */:
     case 0x1993 /* ALC_HRTF_STATUS_SOFT */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return;
       }
 
@@ -2557,14 +2533,14 @@ var LibraryOpenAL = {
       break;
     case 0x1994 /* ALC_NUM_HRTF_SPECIFIERS_SOFT */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return;
       }
       {{{ makeSetValue('pValues', '0', '1', 'i32') }}};
       break;
     case 0x20003 /* ALC_MAX_AUXILIARY_SENDS */:
       if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
         return;
       }
       if (!AL.currentCtx) {
@@ -2586,21 +2562,21 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      out('alcGetIntegerv() with param 0x' + param.toString(16) + ' not implemented yet');
+      dbg(`alcGetIntegerv() with param ${ptrToString(param)} not implemented yet`);
 #endif
-      AL.alcErr = 0xA003 /* ALC_INVALID_ENUM */;
+      AL.alcErr = {{{ cDefs.ALC_INVALID_ENUM }}};
       return;
     }
   },
 
   emscripten_alcDevicePauseSOFT__proxy: 'sync',
   emscripten_alcDevicePauseSOFT__sig: 'vi',
-  emscripten_alcDevicePauseSOFT: function(deviceId) {
+  emscripten_alcDevicePauseSOFT: (deviceId) => {
     if (!(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
-      out('alcDevicePauseSOFT() called with an invalid device');
+      dbg('alcDevicePauseSOFT() called with an invalid device');
 #endif
-      AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+      AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
       return;
     }
 
@@ -2623,12 +2599,12 @@ var LibraryOpenAL = {
 
   emscripten_alcDeviceResumeSOFT__proxy: 'sync',
   emscripten_alcDeviceResumeSOFT__sig: 'vi',
-  emscripten_alcDeviceResumeSOFT: function(deviceId) {
+  emscripten_alcDeviceResumeSOFT: (deviceId) => {
     if (!(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
-      out('alcDeviceResumeSOFT() called with an invalid device');
+      dbg('alcDeviceResumeSOFT() called with an invalid device');
 #endif
-      AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+      AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
       return;
     }
 
@@ -2643,20 +2619,20 @@ var LibraryOpenAL = {
         continue;
       }
 
-      ctx.interval = setInterval(function() { AL.scheduleContextAudio(ctx); }, AL.QUEUE_INTERVAL);
+      ctx.interval = setInterval(() => AL.scheduleContextAudio(ctx), AL.QUEUE_INTERVAL);
       ctx.audioCtx.resume();
     }
   },
 
   emscripten_alcGetStringiSOFT__proxy: 'sync',
   emscripten_alcGetStringiSOFT__sig: 'iiii',
-  emscripten_alcGetStringiSOFT__deps: ['alcGetString', '$allocateUTF8'],
-  emscripten_alcGetStringiSOFT: function(deviceId, param, index) {
+  emscripten_alcGetStringiSOFT__deps: ['alcGetString', '$stringToNewUTF8'],
+  emscripten_alcGetStringiSOFT: (deviceId, param, index) => {
     if (!(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
-      out('alcGetStringiSOFT() called with an invalid device');
+      dbg('alcGetStringiSOFT() called with an invalid device');
 #endif
-      AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+      AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
       return 0;
     }
 
@@ -2671,37 +2647,37 @@ var LibraryOpenAL = {
         ret = 'Web Audio HRTF';
       } else {
 #if OPENAL_DEBUG
-        out('alcGetStringiSOFT() with param ALC_HRTF_SPECIFIER_SOFT index ' + index + ' is out of range');
+        dbg(`alcGetStringiSOFT() with param ALC_HRTF_SPECIFIER_SOFT index ${index} is out of range`);
 #endif
-        AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
+        AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
         return 0;
       }
       break;
     default:
       if (index !== 0) {
 #if OPENAL_DEBUG
-        out('alcGetStringiSOFT() with param 0x' + param.toString(16) + ' not implemented yet');
+        dbg(`alcGetStringiSOFT() with param ${ptrToString(param)} not implemented yet`);
 #endif
-        AL.alcErr = 0xA003 /* ALC_INVALID_ENUM */;
+        AL.alcErr = {{{ cDefs.ALC_INVALID_ENUM }}};
         return 0;
       }
       return _alcGetString(deviceId, param);
     }
 
-    ret = allocateUTF8(ret);
+    ret = stringToNewUTF8(ret);
     AL.alcStringCache[param] = ret;
     return ret;
   },
 
   emscripten_alcResetDeviceSOFT__proxy: 'sync',
   emscripten_alcResetDeviceSOFT__sig: 'iii',
-  emscripten_alcResetDeviceSOFT: function(deviceId, pAttrList) {
+  emscripten_alcResetDeviceSOFT: (deviceId, pAttrList) => {
     if (!(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
-      out('alcResetDeviceSOFT() called with an invalid device');
+      dbg('alcResetDeviceSOFT() called with an invalid device');
 #endif
-      AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
-      return 0 /* ALC_FALSE */;
+      AL.alcErr = {{{ cDefs.ALC_INVALID_DEVICE }}};
+      return {{{ cDefs.ALC_FALSE }}};
     }
 
     var hrtf = null;
@@ -2718,9 +2694,9 @@ var LibraryOpenAL = {
 
         switch (attr) {
         case 0x1992 /* ALC_HRTF_SOFT */:
-          if (val === 1 /* ALC_TRUE */) {
+          if (val === {{{ cDefs.ALC_TRUE }}}) {
             hrtf = true;
-          } else if (val === 0 /* ALC_FALSE */) {
+          } else if (val === {{{ cDefs.ALC_FALSE }}}) {
             hrtf = false;
           }
           break;
@@ -2739,11 +2715,11 @@ var LibraryOpenAL = {
       }
     }
 
-    return 1 /* ALC_TRUE */;
+    return {{{ cDefs.ALC_TRUE }}};
   },
 
   // ***************************************************************************
-  // ** AL API 
+  // ** AL API
   // ***************************************************************************
 
   // -------------------------------------------------------
@@ -2751,11 +2727,10 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alGenBuffers__proxy: 'sync',
-  alGenBuffers__sig: 'vii',
-  alGenBuffers: function(count, pBufferIds) {
+  alGenBuffers: (count, pBufferIds) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alGenBuffers() called without a valid context');
+      dbg('alGenBuffers() called without a valid context');
 #endif
       return;
     }
@@ -2778,11 +2753,10 @@ var LibraryOpenAL = {
   },
 
   alDeleteBuffers__proxy: 'sync',
-  alDeleteBuffers__sig: 'vii',
-  alDeleteBuffers: function(count, pBufferIds) {
+  alDeleteBuffers: (count, pBufferIds) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alDeleteBuffers() called without a valid context');
+      dbg('alDeleteBuffers() called without a valid context');
 #endif
       return;
     }
@@ -2797,18 +2771,18 @@ var LibraryOpenAL = {
       // Make sure the buffer index is valid.
       if (!AL.buffers[bufId]) {
 #if OPENAL_DEBUG
-        err('alDeleteBuffers() called with an invalid buffer');
+        dbg('alDeleteBuffers() called with an invalid buffer');
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
       }
 
       // Make sure the buffer is no longer in use.
       if (AL.buffers[bufId].refCount) {
 #if OPENAL_DEBUG
-        err('alDeleteBuffers() called with a used buffer');
+        dbg('alDeleteBuffers() called with a used buffer');
 #endif
-        AL.currentCtx.err = 0xA004 /* AL_INVALID_OPERATION */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_OPERATION }}};
         return;
       }
     }
@@ -2826,11 +2800,10 @@ var LibraryOpenAL = {
   },
 
   alGenSources__proxy: 'sync',
-  alGenSources__sig: 'vii',
-  alGenSources: function(count, pSourceIds) {
+  alGenSources: (count, pSourceIds) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alGenSources() called without a valid context');
+      dbg('alGenSources() called without a valid context');
 #endif
       return;
     }
@@ -2841,13 +2814,13 @@ var LibraryOpenAL = {
         context: AL.currentCtx,
         id: AL.newId(),
         type: 0x1030 /* AL_UNDETERMINED */,
-        state: 0x1011 /* AL_INITIAL */,
+        state: {{{ cDefs.AL_INITIAL }}},
         bufQueue: [AL.buffers[0]],
         audioQueue: [],
         looping: false,
         pitch: 1.0,
         dopplerShift: 1.0,
-        gain: gain,
+        gain,
         minGain: 0.0,
         maxGain: 1.0,
         panner: null,
@@ -2878,11 +2851,10 @@ var LibraryOpenAL = {
 
   alDeleteSources__deps: ['alSourcei'],
   alDeleteSources__proxy: 'sync',
-  alDeleteSources__sig: 'vii',
-  alDeleteSources: function(count, pSourceIds) {
+  alDeleteSources: (count, pSourceIds) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alDeleteSources() called without a valid context');
+      dbg('alDeleteSources() called without a valid context');
 #endif
       return;
     }
@@ -2891,16 +2863,16 @@ var LibraryOpenAL = {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
       if (!AL.currentCtx.sources[srcId]) {
 #if OPENAL_DEBUG
-        err('alDeleteSources() called with an invalid source');
+        dbg('alDeleteSources() called with an invalid source');
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
       }
     }
 
     for (var i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      AL.setSourceState(AL.currentCtx.sources[srcId], 0x1014 /* AL_STOPPED */);
+      AL.setSourceState(AL.currentCtx.sources[srcId], {{{ cDefs.AL_STOPPED }}});
       _alSourcei(srcId, 0x1009 /* AL_BUFFER */, 0);
       delete AL.currentCtx.sources[srcId];
       AL.freeIds.push(srcId);
@@ -2912,41 +2884,38 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alGetError__proxy: 'sync',
-  alGetError__sig: 'i',
-  alGetError: function() {
+  alGetError: () => {
     if (!AL.currentCtx) {
-      return 0xA004 /* AL_INVALID_OPERATION */;
+      return {{{ cDefs.AL_INVALID_OPERATION }}};
     }
     // Reset error on get.
     var err = AL.currentCtx.err;
-    AL.currentCtx.err = 0 /* AL_NO_ERROR */;
+    AL.currentCtx.err = {{{ cDefs.AL_NO_ERROR }}};
     return err;
   },
 
   alIsExtensionPresent__proxy: 'sync',
-  alIsExtensionPresent__sig: 'ii',
-  alIsExtensionPresent: function(pExtName) {
+  alIsExtensionPresent: (pExtName) => {
     var name = UTF8ToString(pExtName);
 
     return AL.AL_EXTENSIONS[name] ? 1 : 0;
   },
 
   alGetEnumValue__proxy: 'sync',
-  alGetEnumValue__sig: 'ii',
-  alGetEnumValue: function(pEnumName) {
+  alGetEnumValue: (pEnumName) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alGetEnumValue() called without a valid context');
+      dbg('alGetEnumValue() called without a valid context');
 #endif
       return 0;
     }
 
     if (!pEnumName) {
 #if OPENAL_DEBUG
-      err('alGetEnumValue() called with null pointer');
+      dbg('alGetEnumValue() called with null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
-      return 0 /* AL_NONE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
+      return {{{ cDefs.AL_NONE }}};
     }
     var name = UTF8ToString(pEnumName);
 
@@ -3036,36 +3005,35 @@ var LibraryOpenAL = {
 
     default:
 #if OPENAL_DEBUG
-      err('No value for `' + name + '` is known by alGetEnumValue()');
+      dbg(`No value for `${name}` is known by alGetEnumValue()`);
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return 0;
     }
   },
 
   alGetString__proxy: 'sync',
-  alGetString__sig: 'ii',
-  alGetString__deps: ['$allocateUTF8'],
-  alGetString: function(param) {
+  alGetString__deps: ['$stringToNewUTF8'],
+  alGetString: (param) => {
     if (AL.stringCache[param]) {
       return AL.stringCache[param];
     }
 
     var ret;
     switch (param) {
-    case 0 /* AL_NO_ERROR */:
+    case {{{ cDefs.AL_NO_ERROR }}}:
       ret = 'No Error';
       break;
-    case 0xA001 /* AL_INVALID_NAME */:
+    case {{{ cDefs.AL_INVALID_NAME }}}:
       ret = 'Invalid Name';
       break;
-    case 0xA002 /* AL_INVALID_ENUM */:
+    case {{{ cDefs.AL_INVALID_ENUM }}}:
       ret = 'Invalid Enum';
       break;
-    case 0xA003 /* AL_INVALID_VALUE */:
+    case {{{ cDefs.AL_INVALID_VALUE }}}:
       ret = 'Invalid Value';
       break;
-    case 0xA004 /* AL_INVALID_OPERATION */:
+    case {{{ cDefs.AL_INVALID_OPERATION }}}:
       ret = 'Invalid Operation';
       break;
     case 0xA005 /* AL_OUT_OF_MEMORY */:
@@ -3090,26 +3058,25 @@ var LibraryOpenAL = {
       break;
     default:
       if (AL.currentCtx) {
-        AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       } else {
   #if OPENAL_DEBUG
-        err('alGetString() called without a valid context');
+        dbg('alGetString() called without a valid context');
   #endif
       }
       return 0;
     }
 
-    ret = allocateUTF8(ret);
+    ret = stringToNewUTF8(ret);
     AL.stringCache[param] = ret;
     return ret;
   },
 
   alEnable__proxy: 'sync',
-  alEnable__sig: 'vi',
-  alEnable: function(param) {
+  alEnable: (param) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alEnable() called without a valid context');
+      dbg('alEnable() called without a valid context');
 #endif
       return;
     }
@@ -3120,19 +3087,18 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      err('alEnable() with param 0x' + param.toString(16) + ' not implemented yet');
+      dbg(`alEnable() with param ${ptrToString(param)} not implemented yet`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alDisable__proxy: 'sync',
-  alDisable__sig: 'vi',
-  alDisable: function(param) {
+  alDisable: (param) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alDisable() called without a valid context');
+      dbg('alDisable() called without a valid context');
 #endif
       return;
     }
@@ -3143,59 +3109,56 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      err('alDisable() with param 0x' + param.toString(16) + ' not implemented yet');
+      dbg(`alDisable() with param ${ptrToString(param)} not implemented yet`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alIsEnabled__proxy: 'sync',
-  alIsEnabled__sig: 'ii',
-  alIsEnabled: function(param) {
+  alIsEnabled: (param) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alIsEnabled() called without a valid context');
+      dbg('alIsEnabled() called without a valid context');
 #endif
       return 0;
     }
     switch (param) {
     case 'AL_SOURCE_DISTANCE_MODEL':
-      return AL.currentCtx.sourceDistanceModel ? 0 /* AL_FALSE */ : 1 /* AL_TRUE */;
+      return AL.currentCtx.sourceDistanceModel ? {{{ cDefs.AL_FALSE }}} : {{{ cDefs.AL_TRUE }}};
     default:
 #if OPENAL_DEBUG
-      err('alIsEnabled() with param 0x' + param.toString(16) + ' not implemented yet');
+      dbg(`alIsEnabled() with param ${ptrToString(param)} not implemented yet`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return 0;
     }
   },
 
   alGetDouble__proxy: 'sync',
-  alGetDouble__sig: 'di',
-  alGetDouble: function(param) {
+  alGetDouble: (param) => {
     var val = AL.getGlobalParam('alGetDouble', param);
     if (val === null) {
       return 0.0;
     }
 
     switch (param) {
-    case 0xC000 /* AL_DOPPLER_FACTOR */:
-    case 0xC003 /* AL_SPEED_OF_SOUND */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
+    case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       return val;
     default:
 #if OPENAL_DEBUG
-      err('alGetDouble(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetDouble(): param ${ptrToString(param)} has wrong signature`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return 0.0;
     }
   },
 
   alGetDoublev__proxy: 'sync',
-  alGetDoublev__sig: 'vii',
-  alGetDoublev: function(param, pValues) {
+  alGetDoublev: (param, pValues) => {
     var val = AL.getGlobalParam('alGetDoublev', param);
     // Silently ignore null destinations, as per the spec for global state functions
     if (val === null || !pValues) {
@@ -3203,44 +3166,42 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0xC000 /* AL_DOPPLER_FACTOR */:
-    case 0xC003 /* AL_SPEED_OF_SOUND */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
+    case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       {{{ makeSetValue('pValues', '0', 'val', 'double') }}};
       break;
     default:
 #if OPENAL_DEBUG
-      err('alGetDoublev(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetDoublev(): param ${ptrToString(param)} has wrong signature`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetFloat__proxy: 'sync',
-  alGetFloat__sig: 'fi',
-  alGetFloat: function(param) {
+  alGetFloat: (param) => {
     var val = AL.getGlobalParam('alGetFloat', param);
     if (val === null) {
       return 0.0;
     }
 
     switch (param) {
-    case 0xC000 /* AL_DOPPLER_FACTOR */:
-    case 0xC003 /* AL_SPEED_OF_SOUND */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
+    case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       return val;
     default:
 #if OPENAL_DEBUG
-      err('alGetFloat(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetFloat(): param ${ptrToString(param)} has wrong signature`);
 #endif
       return 0.0;
     }
   },
 
   alGetFloatv__proxy: 'sync',
-  alGetFloatv__sig: 'vii',
-  alGetFloatv: function(param, pValues) {
+  alGetFloatv: (param, pValues) => {
     var val = AL.getGlobalParam('alGetFloatv', param);
     // Silently ignore null destinations, as per the spec for global state functions
     if (val === null || !pValues) {
@@ -3248,45 +3209,43 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0xC000 /* AL_DOPPLER_FACTOR */:
-    case 0xC003 /* AL_SPEED_OF_SOUND */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
+    case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       {{{ makeSetValue('pValues', '0', 'val', 'float') }}};
       break;
     default:
 #if OPENAL_DEBUG
-      err('alGetFloatv(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetFloatv(): param ${ptrToString(param)} has wrong signature`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetInteger__proxy: 'sync',
-  alGetInteger__sig: 'ii',
-  alGetInteger: function(param) {
+  alGetInteger: (param) => {
     var val = AL.getGlobalParam('alGetInteger', param);
     if (val === null) {
       return 0;
     }
 
     switch (param) {
-    case 0xC000 /* AL_DOPPLER_FACTOR */:
-    case 0xC003 /* AL_SPEED_OF_SOUND */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
+    case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       return val;
     default:
 #if OPENAL_DEBUG
-      err('alGetInteger(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetInteger(): param ${ptrToString(param)} has wrong signature`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return 0;
     }
   },
 
   alGetIntegerv__proxy: 'sync',
-  alGetIntegerv__sig: 'vii',
-  alGetIntegerv: function(param, pValues) {
+  alGetIntegerv: (param, pValues) => {
     var val = AL.getGlobalParam('alGetIntegerv', param);
     // Silently ignore null destinations, as per the spec for global state functions
     if (val === null || !pValues) {
@@ -3294,45 +3253,43 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0xC000 /* AL_DOPPLER_FACTOR */:
-    case 0xC003 /* AL_SPEED_OF_SOUND */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
+    case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       {{{ makeSetValue('pValues', '0', 'val', 'i32') }}};
       break;
     default:
 #if OPENAL_DEBUG
-      err('alGetIntegerv(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetIntegerv(): param ${ptrToString(param)} has wrong signature`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetBoolean__proxy: 'sync',
-  alGetBoolean__sig: 'ii',
-  alGetBoolean: function(param) {
+  alGetBoolean: (param) => {
     var val = AL.getGlobalParam('alGetBoolean', param);
     if (val === null) {
-      return 0 /* AL_FALSE */;
+      return {{{ cDefs.AL_FALSE }}};
     }
 
     switch (param) {
-    case 0xC000 /* AL_DOPPLER_FACTOR */:
-    case 0xC003 /* AL_SPEED_OF_SOUND */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
-      return val !== 0 ? 1 /* AL_TRUE */ : 0 /* AL_FALSE */;
+    case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
+    case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
+      return val !== 0 ? {{{ cDefs.AL_TRUE }}} : {{{ cDefs.AL_FALSE }}};
     default:
 #if OPENAL_DEBUG
-      err('alGetBoolean(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetBoolean(): param ${ptrToString(param)} has wrong signature`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
-      return 0 /* AL_FALSE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
+      return {{{ cDefs.AL_FALSE }}};
     }
   },
 
   alGetBooleanv__proxy: 'sync',
-  alGetBooleanv__sig: 'vii',
-  alGetBooleanv: function(param, pValues) {
+  alGetBooleanv: (param, pValues) => {
     var val = AL.getGlobalParam('alGetBooleanv', param);
     // Silently ignore null destinations, as per the spec for global state functions
     if (val === null || !pValues) {
@@ -3340,36 +3297,33 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0xC000 /* AL_DOPPLER_FACTOR */:
-    case 0xC003 /* AL_SPEED_OF_SOUND */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
+    case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       {{{ makeSetValue('pValues', '0', 'val', 'i8') }}};
       break;
     default:
 #if OPENAL_DEBUG
-      err('alGetBooleanv(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetBooleanv(): param ${ptrToString(param)} has wrong signature`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alDistanceModel__proxy: 'sync',
-  alDistanceModel__sig: 'vi',
-  alDistanceModel: function(model) {
-    AL.setGlobalParam('alDistanceModel', 0xD000 /* AL_DISTANCE_MODEL */, model);
+  alDistanceModel: (model) => {
+    AL.setGlobalParam('alDistanceModel', {{{ cDefs.AL_DISTANCE_MODEL }}}, model);
   },
 
   alSpeedOfSound__proxy: 'sync',
-  alSpeedOfSound__sig: 'vi',
-  alSpeedOfSound: function(value) {
-    AL.setGlobalParam('alSpeedOfSound', 0xC003 /* AL_SPEED_OF_SOUND */, value);
+  alSpeedOfSound: (value) => {
+    AL.setGlobalParam('alSpeedOfSound', {{{ cDefs.AL_SPEED_OF_SOUND }}}, value);
   },
 
   alDopplerFactor__proxy: 'sync',
-  alDopplerFactor__sig: 'vi',
-  alDopplerFactor: function(value) {
-    AL.setGlobalParam('alDopplerFactor', 0xC000 /* AL_DOPPLER_FACTOR */, value);
+  alDopplerFactor: (value) => {
+    AL.setGlobalParam('alDopplerFactor', {{{ cDefs.AL_DOPPLER_FACTOR }}}, value);
   },
 
   // http://openal.996291.n3.nabble.com/alSpeedOfSound-or-alDopperVelocity-tp1960.html
@@ -3377,17 +3331,16 @@ var LibraryOpenAL = {
   // It's deprecated since it's equivalent to directly calling
   // alSpeedOfSound() with an appropriately premultiplied value.
   alDopplerVelocity__proxy: 'sync',
-  alDopplerVelocity__sig: 'vi',
-  alDopplerVelocity: function(value) {
+  alDopplerVelocity: (value) => {
     warnOnce('alDopplerVelocity() is deprecated, and only kept for compatibility with OpenAL 1.0. Use alSpeedOfSound() instead.');
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alDopplerVelocity() called without a valid context');
+      dbg('alDopplerVelocity() called without a valid context');
 #endif
       return;
     }
     if (value <= 0) { // Negative or zero values are disallowed
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
   },
@@ -3397,87 +3350,84 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alGetListenerf__proxy: 'sync',
-  alGetListenerf__sig: 'vii',
-  alGetListenerf: function(param, pValue) {
+  alGetListenerf: (param, pValue) => {
     var val = AL.getListenerParam('alGetListenerf', param);
     if (val === null) {
       return;
     }
     if (!pValue) {
 #if OPENAL_DEBUG
-      err('alGetListenerf() called with a null pointer');
+      dbg('alGetListenerf() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
     switch (param) {
-    case 0x100A /* AL_GAIN */:
+    case {{{ cDefs.AL_GAIN }}}:
       {{{ makeSetValue('pValue', '0', 'val', 'float') }}};
       break;
     default:
 #if OPENAL_DEBUG
-      err('alGetListenerf(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetListenerf(): param ${ptrToString(param)} has wrong signature`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetListener3f__proxy: 'sync',
-  alGetListener3f__sig: 'viiii',
-  alGetListener3f: function(param, pValue0, pValue1, pValue2) {
+  alGetListener3f: (param, pValue0, pValue1, pValue2) => {
     var val = AL.getListenerParam('alGetListener3f', param);
     if (val === null) {
       return;
     }
     if (!pValue0 || !pValue1 || !pValue2) {
 #if OPENAL_DEBUG
-      err('alGetListener3f() called with a null pointer');
+      dbg('alGetListener3f() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       {{{ makeSetValue('pValue0', '0', 'val[0]', 'float') }}};
       {{{ makeSetValue('pValue1', '0', 'val[1]', 'float') }}};
       {{{ makeSetValue('pValue2', '0', 'val[2]', 'float') }}};
       break;
     default:
 #if OPENAL_DEBUG
-      err('alGetListener3f(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetListener3f(): param ${ptrToString(param)} has wrong signature`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetListenerfv__proxy: 'sync',
-  alGetListenerfv__sig: 'vii',
-  alGetListenerfv: function(param, pValues) {
+  alGetListenerfv: (param, pValues) => {
     var val = AL.getListenerParam('alGetListenerfv', param);
     if (val === null) {
       return;
     }
     if (!pValues) {
 #if OPENAL_DEBUG
-      err('alGetListenerfv() called with a null pointer');
+      dbg('alGetListenerfv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'float') }}};
       {{{ makeSetValue('pValues', '4', 'val[1]', 'float') }}};
       {{{ makeSetValue('pValues', '8', 'val[2]', 'float') }}};
       break;
-    case 0x100F /* AL_ORIENTATION */:
+    case {{{ cDefs.AL_ORIENTATION }}}:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'float') }}};
       {{{ makeSetValue('pValues', '4', 'val[1]', 'float') }}};
       {{{ makeSetValue('pValues', '8', 'val[2]', 'float') }}};
@@ -3487,88 +3437,85 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      err('alGetListenerfv(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetListenerfv(): param ${ptrToString(param)} has wrong signature`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetListeneri__proxy: 'sync',
-  alGetListeneri__sig: 'vii',
-  alGetListeneri: function(param, pValue) {
+  alGetListeneri: (param, pValue) => {
     var val = AL.getListenerParam('alGetListeneri', param);
     if (val === null) {
       return;
     }
     if (!pValue) {
 #if OPENAL_DEBUG
-      err('alGetListeneri() called with a null pointer');
+      dbg('alGetListeneri() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
 #if OPENAL_DEBUG
-    err('alGetListeneri(): param 0x' + param.toString(16) + ' has wrong signature');
+    dbg(`alGetListeneri(): param ${ptrToString(param)} has wrong signature`);
 #endif
-    AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+    AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
   },
 
   alGetListener3i__proxy: 'sync',
-  alGetListener3i__sig: 'viiii',
-  alGetListener3i: function(param, pValue0, pValue1, pValue2) {
+  alGetListener3i: (param, pValue0, pValue1, pValue2) => {
     var val = AL.getListenerParam('alGetListener3i', param);
     if (val === null) {
       return;
     }
     if (!pValue0 || !pValue1 || !pValue2) {
 #if OPENAL_DEBUG
-      err('alGetListener3i() called with a null pointer');
+      dbg('alGetListener3i() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       {{{ makeSetValue('pValue0', '0', 'val[0]', 'i32') }}};
       {{{ makeSetValue('pValue1', '0', 'val[1]', 'i32') }}};
       {{{ makeSetValue('pValue2', '0', 'val[2]', 'i32') }}};
       break;
     default:
 #if OPENAL_DEBUG
-      err('alGetListener3i(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetListener3i(): param ${ptrToString(param)} has wrong signature`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetListeneriv__proxy: 'sync',
-  alGetListeneriv__sig: 'vii',
-  alGetListeneriv: function(param, pValues) {
+  alGetListeneriv: (param, pValues) => {
     var val = AL.getListenerParam('alGetListeneriv', param);
     if (val === null) {
       return;
     }
     if (!pValues) {
 #if OPENAL_DEBUG
-      err('alGetListeneriv() called with a null pointer');
+      dbg('alGetListeneriv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'i32') }}};
       {{{ makeSetValue('pValues', '4', 'val[1]', 'i32') }}};
       {{{ makeSetValue('pValues', '8', 'val[2]', 'i32') }}};
       break;
-    case 0x100F /* AL_ORIENTATION */:
+    case {{{ cDefs.AL_ORIENTATION }}}:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'i32') }}};
       {{{ makeSetValue('pValues', '4', 'val[1]', 'i32') }}};
       {{{ makeSetValue('pValues', '8', 'val[2]', 'i32') }}};
@@ -3578,18 +3525,17 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      err('alGetListeneriv(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetListeneriv(): param ${ptrToString(param)} has wrong signature`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alListenerf__proxy: 'sync',
-  alListenerf__sig: 'vif',
-  alListenerf: function(param, value) {
+  alListenerf: (param, value) => {
     switch (param) {
-    case 0x100A /* AL_GAIN */:
+    case {{{ cDefs.AL_GAIN }}}:
       AL.setListenerParam('alListenerf', param, value);
       break;
     default:
@@ -3599,11 +3545,10 @@ var LibraryOpenAL = {
   },
 
   alListener3f__proxy: 'sync',
-  alListener3f__sig: 'vifff',
-  alListener3f: function(param, value0, value1, value2) {
+  alListener3f: (param, value0, value1, value2) => {
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       AL.paramArray[0] = value0;
       AL.paramArray[1] = value1;
       AL.paramArray[2] = value2;
@@ -3616,31 +3561,30 @@ var LibraryOpenAL = {
   },
 
   alListenerfv__proxy: 'sync',
-  alListenerfv__sig: 'vii',
-  alListenerfv: function(param, pValues) {
+  alListenerfv: (param, pValues) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alListenerfv() called without a valid context');
+      dbg('alListenerfv() called without a valid context');
 #endif
       return;
     }
     if (!pValues) {
 #if OPENAL_DEBUG
-      err('alListenerfv() called with a null pointer');
+      dbg('alListenerfv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'float') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'float') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'float') }}};
       AL.setListenerParam('alListenerfv', param, AL.paramArray);
       break;
-    case 0x100F /* AL_ORIENTATION */:
+    case {{{ cDefs.AL_ORIENTATION }}}:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'float') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'float') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'float') }}};
@@ -3656,17 +3600,15 @@ var LibraryOpenAL = {
   },
 
   alListeneri__proxy: 'sync',
-  alListeneri__sig: 'vii',
-  alListeneri: function(param, value) {
+  alListeneri: (param, value) => {
     AL.setListenerParam('alListeneri', param, null);
   },
 
   alListener3i__proxy: 'sync',
-  alListener3i__sig: 'viiii',
-  alListener3i: function(param, value0, value1, value2) {
+  alListener3i: (param, value0, value1, value2) => {
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       AL.paramArray[0] = value0;
       AL.paramArray[1] = value1;
       AL.paramArray[2] = value2;
@@ -3679,31 +3621,30 @@ var LibraryOpenAL = {
   },
 
   alListeneriv__proxy: 'sync',
-  alListeneriv__sig: 'vii',
-  alListeneriv: function(param, pValues) {
+  alListeneriv: (param, pValues) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alListeneriv() called without a valid context');
+      dbg('alListeneriv() called without a valid context');
 #endif
       return;
     }
     if (!pValues) {
 #if OPENAL_DEBUG
-      err('alListeneriv() called with a null pointer');
+      dbg('alListeneriv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'i32') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'i32') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'i32') }}};
       AL.setListenerParam('alListeneriv', param, AL.paramArray);
       break;
-    case 0x100F /* AL_ORIENTATION */:
+    case {{{ cDefs.AL_ORIENTATION }}}:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'i32') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'i32') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'i32') }}};
@@ -3723,8 +3664,7 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alIsBuffer__proxy: 'sync',
-  alIsBuffer__sig: 'ii',
-  alIsBuffer: function(bufferId) {
+  alIsBuffer: (bufferId) => {
     if (!AL.currentCtx) {
       return false;
     }
@@ -3739,27 +3679,26 @@ var LibraryOpenAL = {
   },
 
   alBufferData__proxy: 'sync',
-  alBufferData__sig: 'viiiii',
-  alBufferData: function(bufferId, format, pData, size, freq) {
+  alBufferData: (bufferId, format, pData, size, freq) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alBufferData() called without a valid context');
+      dbg('alBufferData() called without a valid context');
 #endif
       return;
     }
     var buf = AL.buffers[bufferId];
     if (!buf) {
 #if OPENAL_DEBUG
-      err('alBufferData() called with an invalid buffer');
+      dbg('alBufferData() called with an invalid buffer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
     if (freq <= 0) {
 #if OPENAL_DEBUG
-      err('alBufferData() called with an invalid frequency');
+      dbg('alBufferData() called with an invalid frequency');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -3850,97 +3789,93 @@ var LibraryOpenAL = {
         break;
       default:
 #if OPENAL_DEBUG
-        err('alBufferData() called with invalid format ' + format);
+        dbg(`alBufferData() called with invalid format ${format}`;
 #endif
-        AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
         return;
       }
       buf.frequency = freq;
       buf.audioBuf = audioBuf;
     } catch (e) {
 #if OPENAL_DEBUG
-      err('alBufferData() upload failed with an exception ' + e);
+      dbg(`alBufferData() upload failed with an exception ${e}`;
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
   },
 
   alGetBufferf__proxy: 'sync',
-  alGetBufferf__sig: 'viii',
-  alGetBufferf: function(bufferId, param, pValue) {
+  alGetBufferf: (bufferId, param, pValue) => {
     var val = AL.getBufferParam('alGetBufferf', bufferId, param);
     if (val === null) {
       return;
     }
     if (!pValue) {
 #if OPENAL_DEBUG
-      err('alGetBufferf() called with a null pointer');
+      dbg('alGetBufferf() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
 #if OPENAL_DEBUG
-    err('alGetBufferf(): param 0x' + param.toString(16) + ' has wrong signature');
+    dbg(`alGetBufferf(): param ${ptrToString(param)} has wrong signature`);
 #endif
-    AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+    AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
   },
 
   alGetBuffer3f__proxy: 'sync',
-  alGetBuffer3f__sig: 'viiiii',
-  alGetBuffer3f: function(bufferId, param, pValue0, pValue1, pValue2) {
+  alGetBuffer3f: (bufferId, param, pValue0, pValue1, pValue2) => {
     var val = AL.getBufferParam('alGetBuffer3f', bufferId, param);
     if (val === null) {
       return;
     }
     if (!pValue0 || !pValue1 || !pValue2) {
 #if OPENAL_DEBUG
-      err('alGetBuffer3f() called with a null pointer');
+      dbg('alGetBuffer3f() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
 #if OPENAL_DEBUG
-    err('alGetBuffer3f(): param 0x' + param.toString(16) + ' has wrong signature');
+    dbg(`alGetBuffer3f(): param ${ptrToString(param)} has wrong signature`);
 #endif
-    AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+    AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
   },
 
   alGetBufferfv__proxy: 'sync',
-  alGetBufferfv__sig: 'viii',
-  alGetBufferfv: function(bufferId, param, pValues) {
+  alGetBufferfv: (bufferId, param, pValues) => {
     var val = AL.getBufferParam('alGetBufferfv', bufferId, param);
     if (val === null) {
       return;
     }
     if (!pValues) {
 #if OPENAL_DEBUG
-      err('alGetBufferfv() called with a null pointer');
+      dbg('alGetBufferfv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
 #if OPENAL_DEBUG
-    err('alGetBufferfv(): param 0x' + param.toString(16) + ' has wrong signature');
+    dbg(`alGetBufferfv(): param ${ptrToString(param)} has wrong signature`);
 #endif
-    AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+    AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
   },
 
   alGetBufferi__proxy: 'sync',
-  alGetBufferi__sig: 'viii',
-  alGetBufferi: function(bufferId, param, pValue) {
+  alGetBufferi: (bufferId, param, pValue) => {
     var val = AL.getBufferParam('alGetBufferi', bufferId, param);
     if (val === null) {
       return;
     }
     if (!pValue) {
 #if OPENAL_DEBUG
-      err('alGetBufferi() called with a null pointer');
+      dbg('alGetBufferi() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -3953,46 +3888,44 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      err('alGetBufferi(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetBufferi(): param ${ptrToString(param)} has wrong signature`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetBuffer3i__proxy: 'sync',
-  alGetBuffer3i__sig: 'viiiii',
-  alGetBuffer3i: function(bufferId, param, pValue0, pValue1, pValue2) {
+  alGetBuffer3i: (bufferId, param, pValue0, pValue1, pValue2) => {
     var val = AL.getBufferParam('alGetBuffer3i', bufferId, param);
     if (val === null) {
       return;
     }
     if (!pValue0 || !pValue1 || !pValue2) {
 #if OPENAL_DEBUG
-      err('alGetBuffer3i() called with a null pointer');
+      dbg('alGetBuffer3i() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
 #if OPENAL_DEBUG
-    err('alGetBuffer3i(): param 0x' + param.toString(16) + ' has wrong signature');
+    dbg(`alGetBuffer3i(): param ${ptrToString(param)} has wrong signature`);
 #endif
-    AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+    AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
   },
 
   alGetBufferiv__proxy: 'sync',
-  alGetBufferiv__sig: 'viii',
-  alGetBufferiv: function(bufferId, param, pValues) {
+  alGetBufferiv: (bufferId, param, pValues) => {
     var val = AL.getBufferParam('alGetBufferiv', bufferId, param);
     if (val === null) {
       return;
     }
     if (!pValues) {
 #if OPENAL_DEBUG
-      err('alGetBufferiv() called with a null pointer');
+      dbg('alGetBufferiv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -4009,9 +3942,9 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      err('alGetBufferiv(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetBufferiv(): param ${ptrToString(param)} has wrong signature`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
@@ -4021,31 +3954,28 @@ var LibraryOpenAL = {
   // property for these.
 
   alBufferf__proxy: 'sync',
-  alBufferf__sig: 'viif',
-  alBufferf: function(bufferId, param, value) {
+  alBufferf: (bufferId, param, value) => {
     AL.setBufferParam('alBufferf', bufferId, param, null);
   },
 
   alBuffer3f__proxy: 'sync',
-  alBuffer3f__sig: 'viifff',
-  alBuffer3f: function(bufferId, param, value0, value1, value2) {
+  alBuffer3f: (bufferId, param, value0, value1, value2) => {
     AL.setBufferParam('alBuffer3f', bufferId, param, null);
   },
 
   alBufferfv__proxy: 'sync',
-  alBufferfv__sig: 'viii',
-  alBufferfv: function(bufferId, param, pValues) {
+  alBufferfv: (bufferId, param, pValues) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alBufferfv() called without a valid context');
+      dbg('alBufferfv() called without a valid context');
 #endif
       return;
     }
     if (!pValues) {
 #if OPENAL_DEBUG
-      err('alBufferfv() called with a null pointer');
+      dbg('alBufferfv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -4053,31 +3983,28 @@ var LibraryOpenAL = {
   },
 
   alBufferi__proxy: 'sync',
-  alBufferi__sig: 'viii',
-  alBufferi: function(bufferId, param, value) {
+  alBufferi: (bufferId, param, value) => {
     AL.setBufferParam('alBufferi', bufferId, param, null);
   },
 
   alBuffer3i__proxy: 'sync',
-  alBuffer3i__sig: 'viiiii',
-  alBuffer3i: function(bufferId, param, value0, value1, value2) {
+  alBuffer3i: (bufferId, param, value0, value1, value2) => {
     AL.setBufferParam('alBuffer3i', bufferId, param, null);
   },
 
   alBufferiv__proxy: 'sync',
-  alBufferiv__sig: 'viii',
-  alBufferiv: function(bufferId, param, pValues) {
+  alBufferiv: (bufferId, param, pValues) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alBufferiv() called without a valid context');
+      dbg('alBufferiv() called without a valid context');
 #endif
       return;
     }
     if (!pValues) {
 #if OPENAL_DEBUG
-      err('alBufferiv() called with a null pointer');
+      dbg('alBufferiv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -4098,8 +4025,7 @@ var LibraryOpenAL = {
   // -------------------------------------------------------
 
   alIsSource__proxy: 'sync',
-  alIsSource__sig: 'ii',
-  alIsSource: function(sourceId) {
+  alIsSource: (sourceId) => {
     if (!AL.currentCtx) {
       return false;
     }
@@ -4111,27 +4037,26 @@ var LibraryOpenAL = {
   },
 
   alSourceQueueBuffers__proxy: 'sync',
-  alSourceQueueBuffers__sig: 'viii',
-  alSourceQueueBuffers: function(sourceId, count, pBufferIds) {
+  alSourceQueueBuffers: (sourceId, count, pBufferIds) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alSourceQueueBuffers() called without a valid context');
+      dbg('alSourceQueueBuffers() called without a valid context');
 #endif
       return;
     }
     var src = AL.currentCtx.sources[sourceId];
     if (!src) {
 #if OPENAL_DEBUG
-      err('alSourceQueueBuffers() called with an invalid source');
+      dbg('alSourceQueueBuffers() called with an invalid source');
 #endif
-      AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
       return;
     }
-    if (src.type === 0x1028 /* AL_STATIC */) {
+    if (src.type === {{{ cDefs.AL_STATIC }}}) {
 #if OPENAL_DEBUG
-      err('alSourceQueueBuffers() called while a static buffer is bound');
+      dbg('alSourceQueueBuffers() called while a static buffer is bound');
 #endif
-      AL.currentCtx.err = 0xA004 /* AL_INVALID_OPERATION */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_OPERATION }}};
       return;
     }
 
@@ -4153,9 +4078,9 @@ var LibraryOpenAL = {
       var buf = AL.buffers[bufId];
       if (!buf) {
 #if OPENAL_DEBUG
-        err('alSourceQueueBuffers() called with an invalid buffer');
+        dbg('alSourceQueueBuffers() called with an invalid buffer');
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
       }
 
@@ -4166,9 +4091,9 @@ var LibraryOpenAL = {
         || buf.channels !== templateBuf.channels)
       ) {
 #if OPENAL_DEBUG
-        err('alSourceQueueBuffers() called with a buffer of different format');
+        dbg('alSourceQueueBuffers() called with a buffer of different format');
 #endif
-        AL.currentCtx.err = 0xA004 /* AL_INVALID_OPERATION */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_OPERATION }}};
       }
     }
 
@@ -4195,24 +4120,23 @@ var LibraryOpenAL = {
   },
 
   alSourceUnqueueBuffers__proxy: 'sync',
-  alSourceUnqueueBuffers__sig: 'viii',
-  alSourceUnqueueBuffers: function(sourceId, count, pBufferIds) {
+  alSourceUnqueueBuffers: (sourceId, count, pBufferIds) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alSourceUnqueueBuffers() called without a valid context');
+      dbg('alSourceUnqueueBuffers() called without a valid context');
 #endif
       return;
     }
     var src = AL.currentCtx.sources[sourceId];
     if (!src) {
 #if OPENAL_DEBUG
-      err('alSourceUnqueueBuffers() called with an invalid source');
+      dbg('alSourceUnqueueBuffers() called with an invalid source');
 #endif
-      AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
       return;
     }
     if (count > (src.bufQueue.length === 1 && src.bufQueue[0].id === 0 ? 0 : src.bufsProcessed)) {
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -4238,224 +4162,215 @@ var LibraryOpenAL = {
   },
 
   alSourcePlay__proxy: 'sync',
-  alSourcePlay__sig: 'vi',
-  alSourcePlay: function(sourceId) {
+  alSourcePlay: (sourceId) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alSourcePlay() called without a valid context');
+      dbg('alSourcePlay() called without a valid context');
 #endif
       return;
     }
     var src = AL.currentCtx.sources[sourceId];
     if (!src) {
 #if OPENAL_DEBUG
-      err('alSourcePlay() called with an invalid source');
+      dbg('alSourcePlay() called with an invalid source');
 #endif
-      AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
       return;
     }
-    AL.setSourceState(src, 0x1012 /* AL_PLAYING */);
+    AL.setSourceState(src, {{{ cDefs.AL_PLAYING }}});
   },
 
   alSourcePlayv__proxy: 'sync',
-  alSourcePlayv__sig: 'vii',
-  alSourcePlayv: function(count, pSourceIds) {
+  alSourcePlayv: (count, pSourceIds) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alSourcePlayv() called without a valid context');
+      dbg('alSourcePlayv() called without a valid context');
 #endif
       return;
     }
     if (!pSourceIds) {
 #if OPENAL_DEBUG
-      err('alSourcePlayv() called with null pointer');
+      dbg('alSourcePlayv() called with null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
     }
     for (var i = 0; i < count; ++i) {
       if (!AL.currentCtx.sources[{{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}]) {
 #if OPENAL_DEBUG
-        err('alSourcePlayv() called with an invalid source');
+        dbg('alSourcePlayv() called with an invalid source');
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
       }
     }
 
     for (var i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      AL.setSourceState(AL.currentCtx.sources[srcId], 0x1012 /* AL_PLAYING */);
+      AL.setSourceState(AL.currentCtx.sources[srcId], {{{ cDefs.AL_PLAYING }}});
     }
   },
 
   alSourceStop__proxy: 'sync',
-  alSourceStop__sig: 'vi',
-  alSourceStop: function(sourceId) {
+  alSourceStop: (sourceId) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alSourceStop() called without a valid context');
+      dbg('alSourceStop() called without a valid context');
 #endif
       return;
     }
     var src = AL.currentCtx.sources[sourceId];
     if (!src) {
 #if OPENAL_DEBUG
-      err('alSourceStop() called with an invalid source');
+      dbg('alSourceStop() called with an invalid source');
 #endif
-      AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
       return;
     }
-    AL.setSourceState(src, 0x1014 /* AL_STOPPED */);
+    AL.setSourceState(src, {{{ cDefs.AL_STOPPED }}});
   },
 
   alSourceStopv__proxy: 'sync',
-  alSourceStopv__sig: 'vii',
-  alSourceStopv: function(count, pSourceIds) {
+  alSourceStopv: (count, pSourceIds) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alSourceStopv() called without a valid context');
+      dbg('alSourceStopv() called without a valid context');
 #endif
       return;
     }
     if (!pSourceIds) {
 #if OPENAL_DEBUG
-      err('alSourceStopv() called with null pointer');
+      dbg('alSourceStopv() called with null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
     }
     for (var i = 0; i < count; ++i) {
       if (!AL.currentCtx.sources[{{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}]) {
 #if OPENAL_DEBUG
-        err('alSourceStopv() called with an invalid source');
+        dbg('alSourceStopv() called with an invalid source');
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
       }
     }
 
     for (var i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      AL.setSourceState(AL.currentCtx.sources[srcId], 0x1014 /* AL_STOPPED */);
+      AL.setSourceState(AL.currentCtx.sources[srcId], {{{ cDefs.AL_STOPPED }}});
     }
   },
 
   alSourceRewind__proxy: 'sync',
-  alSourceRewind__sig: 'vi',
-  alSourceRewind: function(sourceId) {
+  alSourceRewind: (sourceId) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alSourceRewind() called without a valid context');
+      dbg('alSourceRewind() called without a valid context');
 #endif
       return;
     }
     var src = AL.currentCtx.sources[sourceId];
     if (!src) {
 #if OPENAL_DEBUG
-      err('alSourceRewind() called with an invalid source');
+      dbg('alSourceRewind() called with an invalid source');
 #endif
-      AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
       return;
     }
     // Stop the source first to clear the source queue
-    AL.setSourceState(src, 0x1014 /* AL_STOPPED */);
+    AL.setSourceState(src, {{{ cDefs.AL_STOPPED }}});
     // Now set the state of AL_INITIAL according to the specification
-    AL.setSourceState(src, 0x1011 /* AL_INITIAL */);
+    AL.setSourceState(src, {{{ cDefs.AL_INITIAL }}});
   },
 
   alSourceRewindv__proxy: 'sync',
-  alSourceRewindv__sig: 'vii',
-  alSourceRewindv: function(count, pSourceIds) {
+  alSourceRewindv: (count, pSourceIds) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alSourceRewindv() called without a valid context');
+      dbg('alSourceRewindv() called without a valid context');
 #endif
       return;
     }
     if (!pSourceIds) {
 #if OPENAL_DEBUG
-      err('alSourceRewindv() called with null pointer');
+      dbg('alSourceRewindv() called with null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
     }
     for (var i = 0; i < count; ++i) {
       if (!AL.currentCtx.sources[{{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}]) {
 #if OPENAL_DEBUG
-        err('alSourceRewindv() called with an invalid source');
+        dbg('alSourceRewindv() called with an invalid source');
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
       }
     }
 
     for (var i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      AL.setSourceState(AL.currentCtx.sources[srcId], 0x1011 /* AL_INITIAL */);
+      AL.setSourceState(AL.currentCtx.sources[srcId], {{{ cDefs.AL_INITIAL }}});
     }
   },
 
   alSourcePause__proxy: 'sync',
-  alSourcePause__sig: 'vi',
-  alSourcePause: function(sourceId) {
+  alSourcePause: (sourceId) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alSourcePause() called without a valid context');
+      dbg('alSourcePause() called without a valid context');
 #endif
       return;
     }
     var src = AL.currentCtx.sources[sourceId];
     if (!src) {
 #if OPENAL_DEBUG
-      err('alSourcePause() called with an invalid source');
+      dbg('alSourcePause() called with an invalid source');
 #endif
-      AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
       return;
     }
-    AL.setSourceState(src, 0x1013 /* AL_PAUSED */);
+    AL.setSourceState(src, {{{ cDefs.AL_PAUSED }}});
   },
 
   alSourcePausev__proxy: 'sync',
-  alSourcePausev__sig: 'vii',
-  alSourcePausev: function(count, pSourceIds) {
+  alSourcePausev: (count, pSourceIds) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alSourcePausev() called without a valid context');
+      dbg('alSourcePausev() called without a valid context');
 #endif
       return;
     }
     if (!pSourceIds) {
 #if OPENAL_DEBUG
-      err('alSourcePausev() called with null pointer');
+      dbg('alSourcePausev() called with null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
     }
     for (var i = 0; i < count; ++i) {
       if (!AL.currentCtx.sources[{{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}]) {
 #if OPENAL_DEBUG
-        err('alSourcePausev() called with an invalid source');
+        dbg('alSourcePausev() called with an invalid source');
 #endif
-        AL.currentCtx.err = 0xA001 /* AL_INVALID_NAME */;
+        AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
         return;
       }
     }
 
     for (var i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      AL.setSourceState(AL.currentCtx.sources[srcId], 0x1013 /* AL_PAUSED */);
+      AL.setSourceState(AL.currentCtx.sources[srcId], {{{ cDefs.AL_PAUSED }}});
     }
   },
 
   alGetSourcef__proxy: 'sync',
-  alGetSourcef__sig: 'viii',
-  alGetSourcef: function(sourceId, param, pValue) {
+  alGetSourcef: (sourceId, param, pValue) => {
     var val = AL.getSourceParam('alGetSourcef', sourceId, param);
     if (val === null) {
       return;
     }
     if (!pValue) {
 #if OPENAL_DEBUG
-      err('alGetSourcef() called with a null pointer');
+      dbg('alGetSourcef() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -4463,7 +4378,7 @@ var LibraryOpenAL = {
     case 0x1001 /* AL_CONE_INNER_ANGLE */:
     case 0x1002 /* AL_CONE_OUTER_ANGLE */:
     case 0x1003 /* AL_PITCH */:
-    case 0x100A /* AL_GAIN */:
+    case {{{ cDefs.AL_GAIN }}}:
     case 0x100D /* AL_MIN_GAIN */:
     case 0x100E /* AL_MAX_GAIN */:
     case 0x1020 /* AL_REFERENCE_DISTANCE */:
@@ -4478,57 +4393,55 @@ var LibraryOpenAL = {
       break;
     default:
 #if OPENAL_DEBUG
-      err('alGetSourcef(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetSourcef(): param ${ptrToString(param)} has wrong signature`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetSource3f__proxy: 'sync',
-  alGetSource3f__sig: 'viiiii',
-  alGetSource3f: function(sourceId, param, pValue0, pValue1, pValue2) {
+  alGetSource3f: (sourceId, param, pValue0, pValue1, pValue2) => {
     var val = AL.getSourceParam('alGetSource3f', sourceId, param);
     if (val === null) {
       return;
     }
     if (!pValue0 || !pValue1 || !pValue2) {
 #if OPENAL_DEBUG
-      err('alGetSource3f() called with a null pointer');
+      dbg('alGetSource3f() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1005 /* AL_DIRECTION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_DIRECTION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       {{{ makeSetValue('pValue0', '0', 'val[0]', 'float') }}};
       {{{ makeSetValue('pValue1', '0', 'val[1]', 'float') }}};
       {{{ makeSetValue('pValue2', '0', 'val[2]', 'float') }}};
       break;
     default:
 #if OPENAL_DEBUG
-      err('alGetSource3f(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetSource3f(): param ${ptrToString(param)} has wrong signature`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetSourcefv__proxy: 'sync',
-  alGetSourcefv__sig: 'viii',
-  alGetSourcefv: function(sourceId, param, pValues) {
+  alGetSourcefv: (sourceId, param, pValues) => {
     var val = AL.getSourceParam('alGetSourcefv', sourceId, param);
     if (val === null) {
       return;
     }
     if (!pValues) {
 #if OPENAL_DEBUG
-      err('alGetSourcefv() called with a null pointer');
+      dbg('alGetSourcefv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -4536,7 +4449,7 @@ var LibraryOpenAL = {
     case 0x1001 /* AL_CONE_INNER_ANGLE */:
     case 0x1002 /* AL_CONE_OUTER_ANGLE */:
     case 0x1003 /* AL_PITCH */:
-    case 0x100A /* AL_GAIN */:
+    case {{{ cDefs.AL_GAIN }}}:
     case 0x100D /* AL_MIN_GAIN */:
     case 0x100E /* AL_MAX_GAIN */:
     case 0x1020 /* AL_REFERENCE_DISTANCE */:
@@ -4549,34 +4462,33 @@ var LibraryOpenAL = {
     case 0x200B /* AL_SEC_LENGTH_SOFT */:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'float') }}};
       break;
-    case 0x1004 /* AL_POSITION */:
-    case 0x1005 /* AL_DIRECTION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_DIRECTION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'float') }}};
       {{{ makeSetValue('pValues', '4', 'val[1]', 'float') }}};
       {{{ makeSetValue('pValues', '8', 'val[2]', 'float') }}};
       break;
     default:
 #if OPENAL_DEBUG
-      err('alGetSourcefv(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetSourcefv(): param ${ptrToString(param)} has wrong signature`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetSourcei__proxy: 'sync',
-  alGetSourcei__sig: 'viii',
-  alGetSourcei: function(sourceId, param, pValue) {
+  alGetSourcei: (sourceId, param, pValue) => {
     var val = AL.getSourceParam('alGetSourcei', sourceId, param);
     if (val === null) {
       return;
     }
     if (!pValue) {
 #if OPENAL_DEBUG
-      err('alGetSourcei() called with a null pointer');
+      dbg('alGetSourcei() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -4597,64 +4509,62 @@ var LibraryOpenAL = {
     case 0x1026 /* AL_BYTE_OFFSET */:
     case 0x1027 /* AL_SOURCE_TYPE */:
     case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
-    case 0x2009 /* AL_BYTE_LENGTH_SOFT */: 
+    case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       {{{ makeSetValue('pValue', '0', 'val', 'i32') }}};
       break;
     default:
 #if OPENAL_DEBUG
-      err('alGetSourcei(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetSourcei(): param ${ptrToString(param)} has wrong signature`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetSource3i__proxy: 'sync',
-  alGetSource3i__sig: 'viiiii',
-  alGetSource3i: function(sourceId, param, pValue0, pValue1, pValue2) {
+  alGetSource3i: (sourceId, param, pValue0, pValue1, pValue2) => {
     var val = AL.getSourceParam('alGetSource3i', sourceId, param);
     if (val === null) {
       return;
     }
     if (!pValue0 || !pValue1 || !pValue2) {
 #if OPENAL_DEBUG
-      err('alGetSource3i() called with a null pointer');
+      dbg('alGetSource3i() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1005 /* AL_DIRECTION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_DIRECTION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       {{{ makeSetValue('pValue0', '0', 'val[0]', 'i32') }}};
       {{{ makeSetValue('pValue1', '0', 'val[1]', 'i32') }}};
       {{{ makeSetValue('pValue2', '0', 'val[2]', 'i32') }}};
       break;
     default:
 #if OPENAL_DEBUG
-      err('alGetSource3i(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetSource3i(): param ${ptrToString(param)} has wrong signature`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alGetSourceiv__proxy: 'sync',
-  alGetSourceiv__sig: 'viii',
-  alGetSourceiv: function(sourceId, param, pValues) {
+  alGetSourceiv: (sourceId, param, pValues) => {
     var val = AL.getSourceParam('alGetSourceiv', sourceId, param);
     if (val === null) {
       return;
     }
     if (!pValues) {
 #if OPENAL_DEBUG
-      err('alGetSourceiv() called with a null pointer');
+      dbg('alGetSourceiv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -4675,35 +4585,34 @@ var LibraryOpenAL = {
     case 0x1026 /* AL_BYTE_OFFSET */:
     case 0x1027 /* AL_SOURCE_TYPE */:
     case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
-    case 0x2009 /* AL_BYTE_LENGTH_SOFT */: 
+    case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       {{{ makeSetValue('pValues', '0', 'val', 'i32') }}};
       break;
-    case 0x1004 /* AL_POSITION */:
-    case 0x1005 /* AL_DIRECTION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_DIRECTION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'i32') }}};
       {{{ makeSetValue('pValues', '4', 'val[1]', 'i32') }}};
       {{{ makeSetValue('pValues', '8', 'val[2]', 'i32') }}};
       break;
     default:
 #if OPENAL_DEBUG
-      err('alGetSourceiv(): param 0x' + param.toString(16) + ' has wrong signature');
+      dbg(`alGetSourceiv(): param ${ptrToString(param)} has wrong signature`);
 #endif
-      AL.currentCtx.err = 0xA002 /* AL_INVALID_ENUM */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
       return;
     }
   },
 
   alSourcef__proxy: 'sync',
-  alSourcef__sig: 'viif',
-  alSourcef: function(sourceId, param, value) {
+  alSourcef: (sourceId, param, value) => {
     switch (param) {
     case 0x1001 /* AL_CONE_INNER_ANGLE */:
     case 0x1002 /* AL_CONE_OUTER_ANGLE */:
     case 0x1003 /* AL_PITCH */:
-    case 0x100A /* AL_GAIN */:
+    case {{{ cDefs.AL_GAIN }}}:
     case 0x100D /* AL_MIN_GAIN */:
     case 0x100E /* AL_MAX_GAIN */:
     case 0x1020 /* AL_REFERENCE_DISTANCE */:
@@ -4723,12 +4632,11 @@ var LibraryOpenAL = {
   },
 
   alSource3f__proxy: 'sync',
-  alSource3f__sig: 'viifff',
-  alSource3f: function(sourceId, param, value0, value1, value2) {
+  alSource3f: (sourceId, param, value0, value1, value2) => {
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1005 /* AL_DIRECTION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_DIRECTION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       AL.paramArray[0] = value0;
       AL.paramArray[1] = value1;
       AL.paramArray[2] = value2;
@@ -4741,19 +4649,18 @@ var LibraryOpenAL = {
   },
 
   alSourcefv__proxy: 'sync',
-  alSourcefv__sig: 'viii',
-  alSourcefv: function(sourceId, param, pValues) {
+  alSourcefv: (sourceId, param, pValues) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alSourcefv() called without a valid context');
+      dbg('alSourcefv() called without a valid context');
 #endif
       return;
     }
     if (!pValues) {
 #if OPENAL_DEBUG
-      err('alSourcefv() called with a null pointer');
+      dbg('alSourcefv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -4761,7 +4668,7 @@ var LibraryOpenAL = {
     case 0x1001 /* AL_CONE_INNER_ANGLE */:
     case 0x1002 /* AL_CONE_OUTER_ANGLE */:
     case 0x1003 /* AL_PITCH */:
-    case 0x100A /* AL_GAIN */:
+    case {{{ cDefs.AL_GAIN }}}:
     case 0x100D /* AL_MIN_GAIN */:
     case 0x100E /* AL_MAX_GAIN */:
     case 0x1020 /* AL_REFERENCE_DISTANCE */:
@@ -4775,9 +4682,9 @@ var LibraryOpenAL = {
       var val = {{{ makeGetValue('pValues', '0', 'float') }}};
       AL.setSourceParam('alSourcefv', sourceId, param, val);
       break;
-    case 0x1004 /* AL_POSITION */:
-    case 0x1005 /* AL_DIRECTION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_DIRECTION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'float') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'float') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'float') }}};
@@ -4790,8 +4697,7 @@ var LibraryOpenAL = {
   },
 
   alSourcei__proxy: 'sync',
-  alSourcei__sig: 'viii',
-  alSourcei: function(sourceId, param, value) {
+  alSourcei: (sourceId, param, value) => {
     switch (param) {
     case 0x202 /* AL_SOURCE_RELATIVE */:
     case 0x1001 /* AL_CONE_INNER_ANGLE */:
@@ -4805,9 +4711,9 @@ var LibraryOpenAL = {
     case 0x1025 /* AL_SAMPLE_OFFSET */:
     case 0x1026 /* AL_BYTE_OFFSET */:
     case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
-    case 0x2009 /* AL_BYTE_LENGTH_SOFT */: 
+    case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       AL.setSourceParam('alSourcei', sourceId, param, value);
       break;
     default:
@@ -4817,12 +4723,11 @@ var LibraryOpenAL = {
   },
 
   alSource3i__proxy: 'sync',
-  alSource3i__sig: 'viiiii',
-  alSource3i: function(sourceId, param, value0, value1, value2) {
+  alSource3i: (sourceId, param, value0, value1, value2) => {
     switch (param) {
-    case 0x1004 /* AL_POSITION */:
-    case 0x1005 /* AL_DIRECTION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_DIRECTION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       AL.paramArray[0] = value0;
       AL.paramArray[1] = value1;
       AL.paramArray[2] = value2;
@@ -4835,19 +4740,18 @@ var LibraryOpenAL = {
   },
 
   alSourceiv__proxy: 'sync',
-  alSourceiv__sig: 'viii',
-  alSourceiv: function(sourceId, param, pValues) {
+  alSourceiv: (sourceId, param, pValues) => {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
-      err('alSourceiv() called without a valid context');
+      dbg('alSourceiv() called without a valid context');
 #endif
       return;
     }
     if (!pValues) {
 #if OPENAL_DEBUG
-      err('alSourceiv() called with a null pointer');
+      dbg('alSourceiv() called with a null pointer');
 #endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
@@ -4864,15 +4768,15 @@ var LibraryOpenAL = {
     case 0x1025 /* AL_SAMPLE_OFFSET */:
     case 0x1026 /* AL_BYTE_OFFSET */:
     case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
-    case 0x2009 /* AL_BYTE_LENGTH_SOFT */: 
+    case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
-    case 0xD000 /* AL_DISTANCE_MODEL */:
+    case {{{ cDefs.AL_DISTANCE_MODEL }}}:
       var val = {{{ makeGetValue('pValues', '0', 'i32') }}};
       AL.setSourceParam('alSourceiv', sourceId, param, val);
       break;
-    case 0x1004 /* AL_POSITION */:
-    case 0x1005 /* AL_DIRECTION */:
-    case 0x1006 /* AL_VELOCITY */:
+    case {{{ cDefs.AL_POSITION }}}:
+    case {{{ cDefs.AL_DIRECTION }}}:
+    case {{{ cDefs.AL_VELOCITY }}}:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'i32') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'i32') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'i32') }}};
@@ -4886,4 +4790,4 @@ var LibraryOpenAL = {
 };
 
 autoAddDeps(LibraryOpenAL, '$AL');
-mergeInto(LibraryManager.library, LibraryOpenAL);
+addToLibrary(LibraryOpenAL);

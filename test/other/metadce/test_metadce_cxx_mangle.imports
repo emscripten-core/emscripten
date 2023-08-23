@@ -1,9 +1,7 @@
-env.__cxa_allocate_exception
 env.__cxa_begin_catch
 env.__cxa_end_catch
 env.__cxa_find_matching_catch_2
 env.__cxa_find_matching_catch_3
-env.__cxa_free_exception
 env.__cxa_rethrow
 env.__cxa_throw
 env.__cxa_uncaught_exceptions

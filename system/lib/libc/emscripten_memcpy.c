@@ -6,6 +6,7 @@
 #include <string.h>
 #include <emscripten/emscripten.h>
 #include "libc.h"
+#include "emscripten_internal.h"
 
 // Use the simple/naive version of memcpy when building with asan
 #if defined(EMSCRIPTEN_OPTIMIZE_FOR_OZ) || __has_feature(address_sanitizer)
@@ -20,12 +21,6 @@ static void *__memcpy(void *dest, const void *src, size_t n) {
 
 #else
 
-#ifndef EMSCRIPTEN_STANDALONE_WASM
-// An external JS implementation that is efficient for very large copies, using
-// HEAPU8.set()
-void emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) EM_IMPORT(emscripten_memcpy_big);
-#endif
-
 static void *__memcpy(void *restrict dest, const void *restrict src, size_t n) {
   unsigned char *d = dest;
   const unsigned char *s = src;
@@ -34,7 +29,7 @@ static void *__memcpy(void *restrict dest, const void *restrict src, size_t n) {
   unsigned char *block_aligned_d_end;
   unsigned char *d_end;
 
-#ifndef EMSCRIPTEN_STANDALONE_WASM
+#if !defined(EMSCRIPTEN_STANDALONE_WASM) || defined(__wasm_bulk_memory__)
   if (n >= 512) {
     emscripten_memcpy_big(dest, src, n);
     return dest;

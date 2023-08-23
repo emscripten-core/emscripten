@@ -10,17 +10,18 @@
 #ifndef _LIBCPP___FUNCTIONAL_RANGES_OPERATIONS_H
 #define _LIBCPP___FUNCTIONAL_RANGES_OPERATIONS_H
 
+#include <__concepts/equality_comparable.h>
+#include <__concepts/totally_ordered.h>
 #include <__config>
-#include <concepts>
-#include <utility>
+#include <__utility/forward.h>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-#if !defined(_LIBCPP_HAS_NO_CONCEPTS) && !defined(_LIBCPP_HAS_NO_INCOMPLETE_RANGES)
+#if _LIBCPP_STD_VER > 17
 
 namespace ranges {
 
@@ -91,7 +92,8 @@ struct greater_equal {
 };
 
 } // namespace ranges
-#endif // !defined(_LIBCPP_HAS_NO_CONCEPTS) && !defined(_LIBCPP_HAS_NO_INCOMPLETE_RANGES)
+
+#endif // _LIBCPP_STD_VER > 17
 
 _LIBCPP_END_NAMESPACE_STD
 

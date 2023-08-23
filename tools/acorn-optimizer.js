@@ -63,9 +63,7 @@ function visitChildren(node, c) {
 // Simple post-order walk, calling properties on an object by node type,
 // if the type exists.
 function simpleWalk(node, cs) {
-  visitChildren(node, function(child) {
-    simpleWalk(child, cs);
-  });
+  visitChildren(node, (child) => simpleWalk(child, cs));
   if (node.type in cs) {
     cs[node.type](node);
   }
@@ -73,9 +71,7 @@ function simpleWalk(node, cs) {
 
 // Full post-order walk, calling a single function for all types.
 function fullWalk(node, c) {
-  visitChildren(node, function(child) {
-    fullWalk(child, c);
-  });
+  visitChildren(node, (child) => fullWalk(child, c));
   c(node);
 }
 
@@ -84,9 +80,7 @@ function fullWalk(node, c) {
 function recursiveWalk(node, cs) {
   (function c(node) {
     if (!(node.type in cs)) {
-      visitChildren(node, function(child) {
-        recursiveWalk(child, cs);
-      });
+      visitChildren(node, (child) => recursiveWalk(child, cs));
     } else {
       cs[node.type](node, c);
     }
@@ -135,14 +129,17 @@ function isNull(node) {
   return node.type === 'Literal' && node.raw === 'null';
 }
 
+function isUseStrict(node) {
+  return node.type === 'Literal' && node.value === 'use strict';
+}
+
 function setLiteralValue(item, value) {
   item.value = value;
   item.raw = "'" + value + "'";
 }
 
 function isLiteralString(node) {
-  return node.type === 'Literal' &&
-         (node.raw[0] === '"' || node.raw[0] === "'");
+  return node.type === 'Literal' && (node.raw[0] === '"' || node.raw[0] === "'");
 }
 
 function dump(node, text) {
@@ -175,7 +172,7 @@ function ignoreInnerScopes(node) {
 
 // Mark inner scopes temporarily as empty statements.
 function restoreInnerScopes(node, map) {
-  fullWalk(node, function(node) {
+  fullWalk(node, (node) => {
     if (map.has(node)) {
       node.type = map.get(node);
       map.delete(node);
@@ -206,6 +203,9 @@ function restoreForVars(node) {
     ForInStatement(node) {
       fix(node.left);
     },
+    ForOfStatement(node) {
+      fix(node.left);
+    },
   });
   return restored;
 }
@@ -214,7 +214,7 @@ function hasSideEffects(node) {
   // Conservative analysis.
   const map = ignoreInnerScopes(node);
   let has = false;
-  fullWalk(node, function(node) {
+  fullWalk(node, (node) => {
     switch (node.type) {
       // TODO: go through all the ESTree spec
       case 'Literal':
@@ -232,6 +232,7 @@ function hasSideEffects(node) {
       case 'VariableDeclarator':
       case 'ObjectExpression':
       case 'Property':
+      case 'SpreadElement':
       case 'BlockStatement':
       case 'ArrayExpression':
       case 'EmptyStatement': {
@@ -239,8 +240,7 @@ function hasSideEffects(node) {
       }
       case 'MemberExpression': {
         // safe if on Math (or other familiar objects, TODO)
-        if (node.object.type !== 'Identifier' ||
-            node.object.name !== 'Math') {
+        if (node.object.type !== 'Identifier' || node.object.name !== 'Math') {
           // console.error('because member on ' + node.object.name);
           has = true;
         }
@@ -250,16 +250,18 @@ function hasSideEffects(node) {
         // default to unsafe, but can be safe on some familiar objects
         if (node.callee.type === 'Identifier') {
           const name = node.callee.name;
-          if (name === 'TextDecoder' ||
-              name === 'ArrayBuffer' ||
-              name === 'Int8Array' ||
-              name === 'Uint8Array' ||
-              name === 'Int16Array' ||
-              name === 'Uint16Array' ||
-              name === 'Int32Array' ||
-              name === 'Uint32Array' ||
-              name === 'Float32Array' ||
-              name === 'Float64Array') {
+          if (
+            name === 'TextDecoder' ||
+            name === 'ArrayBuffer' ||
+            name === 'Int8Array' ||
+            name === 'Uint8Array' ||
+            name === 'Int16Array' ||
+            name === 'Uint16Array' ||
+            name === 'Int32Array' ||
+            name === 'Uint32Array' ||
+            name === 'Float32Array' ||
+            name === 'Float64Array'
+          ) {
             // no side effects, but the arguments might (we walk them in
             // full walk as well)
             break;
@@ -316,7 +318,7 @@ function runJSDCE(ast, aggressive) {
         VariableDeclaration(node, c) {
           const old = node.declarations;
           let removedHere = 0;
-          node.declarations = node.declarations.filter(function(node) {
+          node.declarations = node.declarations.filter((node) => {
             const curr = node.id.name;
             const value = node.init;
             const keep = !(curr in names) || (value && hasSideEffects(value));
@@ -332,7 +334,7 @@ function runJSDCE(ast, aggressive) {
         },
         ExpressionStatement(node, c) {
           if (aggressive && !hasSideEffects(node)) {
-            if (!isNull(node.expression)) {
+            if (!isNull(node.expression) && !isUseStrict(node.expression)) {
               convertToNullStatement(node);
               removed++;
             }
@@ -359,7 +361,7 @@ function runJSDCE(ast, aggressive) {
         ensureData(scopes[scopes.length - 1], node.id.name).def = 1;
       }
       const scope = {};
-      node.params.forEach(function(param) {
+      node.params.forEach((param) => {
         const name = param.name;
         ensureData(scope, name).def = 1;
         scope[name].param = 1;
@@ -394,8 +396,12 @@ function runJSDCE(ast, aggressive) {
       },
       ObjectExpression(node, c) {
         // ignore the property identifiers
-        node.properties.forEach(function(node) {
-          c(node.value);
+        node.properties.forEach((node) => {
+          if (node.value) {
+            c(node.value);
+          } else if (node.argument) {
+            c(node.argument);
+          }
         });
       },
       MemberExpression(node, c) {
@@ -436,7 +442,7 @@ function runJSDCE(ast, aggressive) {
     cleanUp(ast, names);
     return removed;
   }
-  while (iteration() && aggressive) { }
+  while (iteration() && aggressive) {}
 }
 
 // Aggressive JSDCE - multiple iterations
@@ -444,85 +450,73 @@ function runAJSDCE(ast) {
   runJSDCE(ast, /* aggressive= */ true);
 }
 
-function isAsmLibraryArgAssign(node) { // var asmLibraryArg = ..
-  return node.type === 'VariableDeclaration' &&
-         node.declarations.length === 1 &&
-         node.declarations[0].id.name === 'asmLibraryArg' &&
-         node.declarations[0].init &&
-         node.declarations[0].init.type === 'ObjectExpression';
+function isWasmImportsAssign(node) {
+  // var wasmImports = ..
+  return (
+    node.type === 'VariableDeclaration' &&
+    node.declarations.length === 1 &&
+    node.declarations[0].id.name === 'wasmImports' &&
+    node.declarations[0].init &&
+    node.declarations[0].init.type === 'ObjectExpression'
+  );
 }
 
-function getAsmLibraryArgValue(node) {
+function getWasmImportsValue(node) {
   return node.declarations[0].init;
 }
 
-function isAsmUse(node) {
-  return node.type === 'MemberExpression' &&
-         ((node.object.type === 'Identifier' && // asm['X']
-           node.object.name === 'asm' &&
-           node.property.type === 'Literal') ||
-          (node.object.type === 'MemberExpression' && // Module['asm']['X']
-           node.object.object.type === 'Identifier' &&
-           node.object.object.name === 'Module' &&
-           node.object.property.type === 'Literal' &&
-           node.object.property.value === 'asm' &&
-           isLiteralString(node.property)));
+function isExportUse(node) {
+  // Match usages of symbols on the `wasmExports` object. e.g:
+  //   wasmExports['X']
+  return (
+    node.type === 'MemberExpression' &&
+    node.object.type === 'Identifier' &&
+    isLiteralString(node.property) &&
+    node.object.name === 'wasmExports'
+  );
 }
 
-function getAsmOrModuleUseName(node) {
+function getExportOrModuleUseName(node) {
   return node.property.value;
 }
 
 function isModuleUse(node) {
-  return node.type === 'MemberExpression' && // Module['X']
-         node.object.type === 'Identifier' &&
-         node.object.name === 'Module' &&
-         isLiteralString(node.property);
-}
-
-function isModuleAsmUse(node) { // Module['asm'][..string..]
-  return node.type === 'MemberExpression' &&
-         node.object.type === 'MemberExpression' &&
-         node.object.object.type === 'Identifier' &&
-         node.object.object.name === 'Module' &&
-         node.object.property.type === 'Literal' &&
-         node.object.property.value === 'asm' &&
-         isLiteralString(node.property);
+  return (
+    node.type === 'MemberExpression' && // Module['X']
+    node.object.type === 'Identifier' &&
+    node.object.name === 'Module' &&
+    isLiteralString(node.property)
+  );
 }
 
 // Apply import/export name changes (after minifying them)
 function applyImportAndExportNameChanges(ast) {
   const mapping = extraInfo.mapping;
-  fullWalk(ast, function(node) {
-    if (isAsmLibraryArgAssign(node)) {
-      const assignedObject = getAsmLibraryArgValue(node);
-      assignedObject.properties.forEach(function(item) {
-        if (mapping[item.key.value]) {
-          setLiteralValue(item.key, mapping[item.key.value]);
+  fullWalk(ast, (node) => {
+    if (isWasmImportsAssign(node)) {
+      const assignedObject = getWasmImportsValue(node);
+      assignedObject.properties.forEach((item) => {
+        if (mapping[item.key.name]) {
+          item.key.name = mapping[item.key.name];
         }
       });
     } else if (node.type === 'AssignmentExpression') {
       const target = node.left;
       const value = node.right;
-      if (isAsmUse(value)) {
+      if (isExportUse(value)) {
         const name = value.property.value;
         if (mapping[name]) {
           setLiteralValue(value.property, mapping[name]);
         }
       }
-    } else if (node.type === 'CallExpression' && isAsmUse(node.callee)) { // asm["___wasm_call_ctors"](); -> asm["M"]();
+    } else if (node.type === 'CallExpression' && isExportUse(node.callee)) {
+      // wasmExports["___wasm_call_ctors"](); -> wasmExports["M"]();
       const callee = node.callee;
       const name = callee.property.value;
       if (mapping[name]) {
         setLiteralValue(callee.property, mapping[name]);
       }
-    } else if (isModuleAsmUse(node)) {
-      const prop = node.property;
-      const name = prop.value;
-      if (mapping[name]) {
-        setLiteralValue(prop, mapping[name]);
-      }
-    } else if (isAsmUse(node)) {
+    } else if (isExportUse(node)) {
       const prop = node.property;
       const name = prop.value;
       if (mapping[name]) {
@@ -535,10 +529,12 @@ function applyImportAndExportNameChanges(ast) {
 // A static dyncall is dynCall('vii', ..), which is actually static even
 // though we call dynCall() - we see the string signature statically.
 function isStaticDynCall(node) {
-  return node.type === 'CallExpression' &&
-         node.callee.type === 'Identifier' &&
-         node.callee.name === 'dynCall' &&
-         isLiteralString(node.arguments[0]);
+  return (
+    node.type === 'CallExpression' &&
+    node.callee.type === 'Identifier' &&
+    node.callee.name === 'dynCall' &&
+    isLiteralString(node.arguments[0])
+  );
 }
 
 function getStaticDynCallName(node) {
@@ -553,12 +549,31 @@ function getStaticDynCallName(node) {
 // as that prefix means we may be constructing a dynamic dyncall name
 // (dynCall and embind's requireFunction do this internally).
 function isDynamicDynCall(node) {
-  return (node.type === 'CallExpression' &&
-          node.callee.type === 'Identifier' &&
-          node.callee.name === 'dynCall' &&
-          !isLiteralString(node.arguments[0])) ||
-         (isLiteralString(node) &&
-          node.value === 'dynCall_');
+  return (
+    (node.type === 'CallExpression' &&
+      node.callee.type === 'Identifier' &&
+      node.callee.name === 'dynCall' &&
+      !isLiteralString(node.arguments[0])) ||
+    (isLiteralString(node) && node.value === 'dynCall_')
+  );
+}
+
+//
+// Matches the wasm export wrappers generated by emcc (see make_export_wrappers
+// in emscripten.py). For example:
+//
+//   var _foo = (a0, a1) => (_foo = wasmExports['foo'])(a0, a1):
+//
+function isExportWrapperFunction(f) {
+  if (f.body.type != 'CallExpression') return null;
+  let callee = f.body.callee;
+  if (callee.type == 'ParenthesizedExpression') {
+    callee = callee.expression;
+  }
+  if (callee.type != 'AssignmentExpression' || callee.right.type != 'MemberExpression') return null;
+  var rhs = callee.right;
+  if (rhs.type != 'MemberExpression' || !isExportUse(rhs)) return null;
+  return getExportOrModuleUseName(rhs);
 }
 
 //
@@ -608,26 +623,28 @@ function emitDCEGraph(ast) {
   //
   // The imports that wasm receives look like this:
   //
-  //  var asmLibraryArg = { "abort": abort, "assert": assert, [..] };
+  //  var wasmImports = { "abort": abort, "assert": assert, [..] };
   //
   // The exports are trickier, as they have a different form whether or not
   // async compilation is enabled. It can be either:
   //
-  //  var _malloc = Module["_malloc"] = asm["_malloc"];
+  //  var _malloc = Module['_malloc'] = wasmExports['_malloc'];
   //
   // or
   //
-  //  var _malloc = Module["_malloc"] = (function() {
-  //   return Module["asm"]["_malloc"].apply(null, arguments);
-  //  });
+  //  var _malloc = wasmExports['_malloc'];
+  //
+  // or
+  //
+  //  var _malloc = Module['_malloc'] = (x) => wasmExports['_malloc'](x);
   //
   // or, in the minimal runtime, it looks like
   //
-  //  WebAssembly.instantiate(Module["wasm"], imports).then(function(output) {
-  //   var asm = output.instance.exports; // may also not have "var", if
-  //                                      // declared outside and used elsewhere
+  //  WebAssembly.instantiate(Module["wasm"], imports).then((output) => {
+  //   var wasmExports = output.instance.exports; // may also not have "var", if
+  //                                              // declared outside and used elsewhere
   //   ..
-  //   _malloc = asm["malloc"];
+  //   _malloc = wasmExports["malloc"];
   //   ..
   //  });
   const imports = [];
@@ -635,9 +652,9 @@ function emitDCEGraph(ast) {
   const dynCallNames = [];
   const nameToGraphName = {};
   const modulePropertyToGraphName = {};
-  const exportNameToGraphName = {}; // identical to asm['..'] nameToGraphName
+  const exportNameToGraphName = {}; // identical to wasmExports['..'] nameToGraphName
   const graph = [];
-  let foundAsmLibraryArgAssign = false;
+  let foundWasmImportsAssign = false;
   let foundMinimalRuntimeExports = false;
 
   function saveAsmExport(name, asmName) {
@@ -652,10 +669,10 @@ function emitDCEGraph(ast) {
     }
   }
 
-  fullWalk(ast, function(node) {
-    if (isAsmLibraryArgAssign(node)) {
-      const assignedObject = getAsmLibraryArgValue(node);
-      assignedObject.properties.forEach(function(item) {
+  fullWalk(ast, (node) => {
+    if (isWasmImportsAssign(node)) {
+      const assignedObject = getWasmImportsValue(node);
+      assignedObject.properties.forEach((item) => {
         let value = item.value;
         if (value.type === 'Literal' || value.type === 'FunctionExpression') {
           return; // if it's a numeric or function literal, nothing to do here
@@ -668,25 +685,47 @@ function emitDCEGraph(ast) {
         assert(value.type === 'Identifier');
         imports.push(value.name); // the name doesn't matter, only the value which is that actual thing we are importing
       });
-      foundAsmLibraryArgAssign = true;
+      foundWasmImportsAssign = true;
       emptyOut(node); // ignore this in the second pass; this does not root
+    } else if (node.type === 'AssignmentExpression') {
+      const target = node.left;
+      const value = node.right;
+      // Ignore assignment to the wasmExports object (as happens in
+      // applySignatureConversions).
+      if (isExportUse(target)) {
+        emptyOut(node);
+      }
     } else if (node.type === 'VariableDeclaration') {
       if (node.declarations.length === 1) {
         const item = node.declarations[0];
         const name = item.id.name;
         const value = item.init;
-        if (value && value.type === 'AssignmentExpression') {
+        if (value && isExportUse(value)) {
+          const asmName = getExportOrModuleUseName(value);
+          // this is:
+          //  var _x = wasmExports['x'];
+          saveAsmExport(name, asmName);
+          emptyOut(node);
+        } else if (value && value.type === 'ArrowFunctionExpression') {
+          // this is
+          //  var x = () => (x = wasmExports['x'])(..)
+          let asmName = isExportWrapperFunction(value);
+          if (asmName) {
+            saveAsmExport(name, asmName);
+            emptyOut(node);
+          }
+        } else if (value && value.type === 'AssignmentExpression') {
           const assigned = value.left;
-          if (isModuleUse(assigned) && getAsmOrModuleUseName(assigned) === name) {
+          if (isModuleUse(assigned) && getExportOrModuleUseName(assigned) === name) {
             // this is
             //  var x = Module['x'] = ?
             // which looks like a wasm export being received. confirm with the asm use
             let found = 0;
             let asmName;
-            fullWalk(value.right, function(node) {
-              if (isAsmUse(node)) {
+            fullWalk(value.right, (node) => {
+              if (isExportUse(node)) {
                 found++;
-                asmName = getAsmOrModuleUseName(node);
+                asmName = getExportOrModuleUseName(node);
               }
             });
             // in the wasm backend, the asm name may have one fewer "_" prefixed
@@ -720,50 +759,60 @@ function emitDCEGraph(ast) {
       const name = node.id.name;
       nameToGraphName[name] = getGraphName(name, 'defun');
       emptyOut(node); // ignore this in the second pass; we scan defuns separately
-    } else if (node.type === 'FunctionExpression') {
+    } else if (node.type === 'ArrowFunctionExpression') {
       // Check if this is the minimal runtime exports function, which looks like
-      //   (output) => { var asm = output.instance.exports;
-      if (node.params.length === 1 && node.params[0].type === 'Identifier' &&
-          node.params[0].name === 'output' && node.body.type === 'BlockStatement') {
+      //   (output) => { var wasmExports = output.instance.exports;
+      if (
+        node.params.length === 1 &&
+        node.params[0].type === 'Identifier' &&
+        node.params[0].name === 'output' &&
+        node.body.type === 'BlockStatement'
+      ) {
         const body = node.body.body;
         if (body.length >= 1) {
           const first = body[0];
           let target;
           let value; // "(var?) target = value"
-          // Look either for  var asm =  or just   asm =
+          // Look either for  var wasmExports =  or just   wasmExports =
           if (first.type === 'VariableDeclaration' && first.declarations.length === 1) {
             const decl = first.declarations[0];
             target = decl.id;
             value = decl.init;
-          } else if (first.type === 'ExpressionStatement' &&
-                     first.expression.type === 'AssignmentExpression') {
+          } else if (
+            first.type === 'ExpressionStatement' &&
+            first.expression.type === 'AssignmentExpression'
+          ) {
             const assign = first.expression;
             if (assign.operator === '=') {
               target = assign.left;
               value = assign.right;
             }
           }
-          if (target && target.type === 'Identifier' && target.name === 'asm' && value) {
-            if (value.type === 'MemberExpression' &&
-                value.object.type === 'MemberExpression' &&
-                value.object.object.type === 'Identifier' &&
-                value.object.object.name === 'output' &&
-                value.object.property.type === 'Identifier' &&
-                value.object.property.name === 'instance' &&
-                value.property.type === 'Identifier' &&
-                value.property.name === 'exports') {
+          if (target && target.type === 'Identifier' && target.name === 'wasmExports' && value) {
+            if (
+              value.type === 'MemberExpression' &&
+              value.object.type === 'MemberExpression' &&
+              value.object.object.type === 'Identifier' &&
+              value.object.object.name === 'output' &&
+              value.object.property.type === 'Identifier' &&
+              value.object.property.name === 'instance' &&
+              value.property.type === 'Identifier' &&
+              value.property.name === 'exports'
+            ) {
               // This looks very much like what we are looking for.
               assert(!foundMinimalRuntimeExports);
               for (let i = 1; i < body.length; i++) {
                 const item = body[i];
-                if (item.type === 'ExpressionStatement' &&
-                    item.expression.type === 'AssignmentExpression' &&
-                    item.expression.operator === '=' &&
-                    item.expression.left.type === 'Identifier' &&
-                    item.expression.right.type === 'MemberExpression' &&
-                    item.expression.right.object.type === 'Identifier' &&
-                    item.expression.right.object.name === 'asm' &&
-                    item.expression.right.property.type === 'Literal') {
+                if (
+                  item.type === 'ExpressionStatement' &&
+                  item.expression.type === 'AssignmentExpression' &&
+                  item.expression.operator === '=' &&
+                  item.expression.left.type === 'Identifier' &&
+                  item.expression.right.type === 'MemberExpression' &&
+                  item.expression.right.object.type === 'Identifier' &&
+                  item.expression.right.object.name === 'wasmExports' &&
+                  item.expression.right.property.type === 'Literal'
+                ) {
                   const name = item.expression.left.name;
                   const asmName = item.expression.right.property.value;
                   saveAsmExport(name, asmName);
@@ -778,7 +827,10 @@ function emitDCEGraph(ast) {
     }
   });
   // must find the info we need
-  assert(foundAsmLibraryArgAssign, 'could not find the assigment to "asmLibraryArg". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)');
+  assert(
+    foundWasmImportsAssign,
+    'could not find the assigment to "wasmImports". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)'
+  );
   // Read exports that were declared in extraInfo
   if (extraInfo) {
     for (const exp of extraInfo.exports) {
@@ -793,11 +845,11 @@ function emitDCEGraph(ast) {
   const infos = {}; // the graph name of the item => info for it
   for (const import_ of imports) {
     const name = getGraphName(import_, 'import');
-    const info = infos[name] = {
+    const info = (infos[name] = {
       name: name,
       import: ['env', import_],
       reaches: {},
-    };
+    });
     if (nameToGraphName.hasOwnProperty(import_)) {
       info.reaches[nameToGraphName[import_]] = 1;
     } // otherwise, it's a number, ignore
@@ -822,7 +874,7 @@ function emitDCEGraph(ast) {
         reached = nameToGraphName[name];
       }
     } else if (isModuleUse(node)) {
-      const name = getAsmOrModuleUseName(node);
+      const name = getExportOrModuleUseName(node);
       if (modulePropertyToGraphName.hasOwnProperty(name)) {
         reached = modulePropertyToGraphName[name];
       }
@@ -831,9 +883,9 @@ function emitDCEGraph(ast) {
     } else if (isDynamicDynCall(node)) {
       // this can reach *all* dynCall_* targets, we can't narrow it down
       reached = dynCallNames;
-    } else if (isAsmUse(node)) {
+    } else if (isExportUse(node)) {
       // any remaining asm uses are always rooted in any case
-      const name = getAsmOrModuleUseName(node);
+      const name = getExportOrModuleUseName(node);
       if (exportNameToGraphName.hasOwnProperty(name)) {
         infos[exportNameToGraphName[name]].root = true;
       }
@@ -866,10 +918,10 @@ function emitDCEGraph(ast) {
   }
   defuns.forEach((defun) => {
     const name = getGraphName(defun.id.name, 'defun');
-    const info = infos[name] = {
+    const info = (infos[name] = {
       name: name,
       reaches: {},
-    };
+    });
     fullWalk(defun.body, (node) => visitNode(node, info));
   });
   fullWalk(ast, (node) => visitNode(node, null));
@@ -896,37 +948,56 @@ function applyDCEGraphRemovals(ast) {
   const unused = new Set(extraInfo.unused);
 
   fullWalk(ast, (node) => {
-    if (isAsmLibraryArgAssign(node)) {
-      const assignedObject = getAsmLibraryArgValue(node);
+    if (isWasmImportsAssign(node)) {
+      const assignedObject = getWasmImportsValue(node);
       assignedObject.properties = assignedObject.properties.filter((item) => {
-        const name = item.key.value;
+        const name = item.key.name;
         const value = item.value;
         const full = 'emcc$import$' + name;
         return !(unused.has(full) && !hasSideEffects(value));
       });
     } else if (node.type === 'AssignmentExpression') {
       // when we assign to a thing we don't need, we can just remove the assign
+      //   var x = Module['x'] = wasmExports['x'];
       const target = node.left;
-      if (isAsmUse(target) || isModuleUse(target)) {
-        const name = getAsmOrModuleUseName(target);
+      if (isExportUse(target) || isModuleUse(target)) {
+        const name = getExportOrModuleUseName(target);
         const full = 'emcc$export$' + name;
         const value = node.right;
-        if (unused.has(full) &&
-            (isAsmUse(value) || !hasSideEffects(value))) {
+        if (unused.has(full) && (isExportUse(value) || !hasSideEffects(value))) {
           // This will be in a var init, and we just remove that value.
           convertToNothingInVarInit(node);
         }
       }
+    } else if (node.type === 'VariableDeclaration') {
+      // Handle the case we declare a variable but don't assign to the module:
+      //   var x = wasmExports['x'];
+      // and
+      //   var x = () => (x = wasmExports['x']).apply(...);
+      const init = node.declarations[0].init;
+      if (init) {
+        if (isExportUse(init)) {
+          const name = getExportOrModuleUseName(init);
+          const full = 'emcc$export$' + name;
+          if (unused.has(full)) {
+            convertToNothingInVarInit(init);
+          }
+        } else if (init.type == 'ArrowFunctionExpression') {
+          const name = isExportWrapperFunction(init);
+          const full = 'emcc$export$' + name;
+          if (unused.has(full)) {
+            convertToNothingInVarInit(init);
+          }
+        }
+      }
     } else if (node.type === 'ExpressionStatement') {
       const expr = node.expression;
-      // In the minimal runtime code pattern we have just
-      //   x = asm['x']
+      // In the MINIMAL_RUNTIME code pattern we have just
+      //   x = wasmExports['x']
       // and never in a var.
-      if (expr.operator === '=' &&
-          expr.left.type === 'Identifier' &&
-          isAsmUse(expr.right)) {
+      if (expr.operator === '=' && expr.left.type === 'Identifier' && isExportUse(expr.right)) {
         const name = expr.left.name;
-        if (name === getAsmOrModuleUseName(expr.right)) {
+        if (name === getExportOrModuleUseName(expr.right)) {
           const full = 'emcc$export$' + name;
           if (unused.has(full)) {
             emptyOut(node);
@@ -990,8 +1061,7 @@ function littleEndianHeap(ast) {
   recursiveWalk(ast, {
     FunctionDeclaration: (node, c) => {
       // do not recurse into LE_HEAP_STORE, LE_HEAP_LOAD functions
-      if (!(node.id.type === 'Identifier' &&
-          node.id.name.startsWith('LE_HEAP'))) {
+      if (!(node.id.type === 'Identifier' && node.id.name.startsWith('LE_HEAP'))) {
         c(node.body);
       }
     },
@@ -1042,7 +1112,7 @@ function littleEndianHeap(ast) {
             makeCallExpression(node, 'LE_HEAP_STORE_F64', [multiply(idx, 8), value]);
             break;
           }
-        };
+        }
       }
     },
     MemberExpression: (node, c) => {
@@ -1089,7 +1159,7 @@ function littleEndianHeap(ast) {
             makeCallExpression(node, 'LE_HEAP_LOAD_F64', [multiply(idx, 8)]);
             break;
           }
-        };
+        }
       }
     },
   });
@@ -1101,8 +1171,7 @@ function littleEndianHeap(ast) {
 function growableHeap(ast) {
   recursiveWalk(ast, {
     AssignmentExpression: (node) => {
-      if (node.left.type === 'Identifier' &&
-          isEmscriptenHEAP(node.left.name)) {
+      if (node.left.type === 'Identifier' && isEmscriptenHEAP(node.left.name)) {
         // Don't transform initial setup of the arrays.
         return;
       }
@@ -1111,7 +1180,7 @@ function growableHeap(ast) {
     },
     VariableDeclaration: (node) => {
       // Don't transform the var declarations for HEAP8 etc
-      node.declarations.forEach(function(decl) {
+      node.declarations.forEach((decl) => {
         // but do transform anything that sets a var to
         // something from HEAP8 etc
         if (decl.init) {
@@ -1155,7 +1224,8 @@ function growableHeap(ast) {
             makeCallExpression(node, 'GROWABLE_HEAP_F64', []);
             break;
           }
-          default: {}
+          default: {
+          }
         }
       }
     },
@@ -1198,20 +1268,20 @@ function unsignPointers(ast) {
     };
   }
 
-  fullWalk(ast, function(node) {
+  fullWalk(ast, (node) => {
     if (node.type === 'MemberExpression') {
       // Check if this is HEAP*[?]
-      if (node.object.type === 'Identifier' &&
-          isHeap(node.object.name) &&
-          node.computed) {
+      if (node.object.type === 'Identifier' && isHeap(node.object.name) && node.computed) {
         node.property = unsign(node.property);
       }
     } else if (node.type === 'CallExpression') {
-      if (node.callee.type === 'MemberExpression' &&
-          node.callee.object.type === 'Identifier' &&
-          isHeap(node.callee.object.name) &&
-          node.callee.property.type === 'Identifier' &&
-          !node.computed) {
+      if (
+        node.callee.type === 'MemberExpression' &&
+        node.callee.object.type === 'Identifier' &&
+        isHeap(node.callee.object.name) &&
+        node.callee.property.type === 'Identifier' &&
+        !node.computed
+      ) {
         // This is a call on HEAP*.?. Specific things we need to fix up are
         // subarray, set, and copyWithin. TODO more?
         if (node.callee.property.name === 'set') {
@@ -1238,10 +1308,12 @@ function unsignPointers(ast) {
 }
 
 function isHEAPAccess(node) {
-  return node.type === 'MemberExpression' &&
-         node.object.type === 'Identifier' &&
-         node.computed && // notice a[X] but not a.X
-         isEmscriptenHEAP(node.object.name);
+  return (
+    node.type === 'MemberExpression' &&
+    node.object.type === 'Identifier' &&
+    node.computed && // notice a[X] but not a.X
+    isEmscriptenHEAP(node.object.name)
+  );
 }
 
 // Replace direct HEAP* loads/stores with calls into C, in which ASan checks
@@ -1296,7 +1368,8 @@ function asanify(ast) {
             makeCallExpression(node, '_asan_js_store_d', [ptr, value]);
             break;
           }
-          default: {}
+          default: {
+          }
         }
       } else {
         c(target);
@@ -1342,7 +1415,8 @@ function asanify(ast) {
             makeCallExpression(node, '_asan_js_load_d', [ptr]);
             break;
           }
-          default: {}
+          default: {
+          }
         }
       }
     },
@@ -1362,10 +1436,12 @@ function multiply(value, by) {
 function safeHeap(ast) {
   recursiveWalk(ast, {
     FunctionDeclaration(node, c) {
-      if (node.id.type === 'Identifier' &&
-          (node.id.name.startsWith('SAFE_HEAP') ||
-           node.id.name === 'setValue_safe' ||
-           node.id.name === 'getValue_safe')) {
+      if (
+        node.id.type === 'Identifier' &&
+        (node.id.name.startsWith('SAFE_HEAP') ||
+          node.id.name === 'setValue_safe' ||
+          node.id.name === 'getValue_safe')
+      ) {
         // do not recurse into this js impl function, which we use during
         // startup before the wasm is ready
       } else {
@@ -1387,20 +1463,36 @@ function safeHeap(ast) {
           }
           case 'HEAP16':
           case 'HEAPU16': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE', [multiply(ptr, 2), value, createLiteral(2)]);
+            makeCallExpression(node, 'SAFE_HEAP_STORE', [
+              multiply(ptr, 2),
+              value,
+              createLiteral(2),
+            ]);
             break;
           }
           case 'HEAP32':
           case 'HEAPU32': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE', [multiply(ptr, 4), value, createLiteral(4)]);
+            makeCallExpression(node, 'SAFE_HEAP_STORE', [
+              multiply(ptr, 4),
+              value,
+              createLiteral(4),
+            ]);
             break;
           }
           case 'HEAPF32': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE_D', [multiply(ptr, 4), value, createLiteral(4)]);
+            makeCallExpression(node, 'SAFE_HEAP_STORE_D', [
+              multiply(ptr, 4),
+              value,
+              createLiteral(4),
+            ]);
             break;
           }
           case 'HEAPF64': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE_D', [multiply(ptr, 8), value, createLiteral(8)]);
+            makeCallExpression(node, 'SAFE_HEAP_STORE_D', [
+              multiply(ptr, 8),
+              value,
+              createLiteral(8),
+            ]);
             break;
           }
         }
@@ -1425,30 +1517,55 @@ function safeHeap(ast) {
             break;
           }
           case 'HEAP16': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [multiply(ptr, 2), createLiteral(2), createLiteral(0)]);
+            makeCallExpression(node, 'SAFE_HEAP_LOAD', [
+              multiply(ptr, 2),
+              createLiteral(2),
+              createLiteral(0),
+            ]);
             break;
           }
           case 'HEAPU16': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [multiply(ptr, 2), createLiteral(2), createLiteral(1)]);
+            makeCallExpression(node, 'SAFE_HEAP_LOAD', [
+              multiply(ptr, 2),
+              createLiteral(2),
+              createLiteral(1),
+            ]);
             break;
           }
           case 'HEAP32': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [multiply(ptr, 4), createLiteral(4), createLiteral(0)]);
+            makeCallExpression(node, 'SAFE_HEAP_LOAD', [
+              multiply(ptr, 4),
+              createLiteral(4),
+              createLiteral(0),
+            ]);
             break;
           }
           case 'HEAPU32': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [multiply(ptr, 4), createLiteral(4), createLiteral(1)]);
+            makeCallExpression(node, 'SAFE_HEAP_LOAD', [
+              multiply(ptr, 4),
+              createLiteral(4),
+              createLiteral(1),
+            ]);
             break;
           }
           case 'HEAPF32': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD_D', [multiply(ptr, 4), createLiteral(4), createLiteral(0)]);
+            makeCallExpression(node, 'SAFE_HEAP_LOAD_D', [
+              multiply(ptr, 4),
+              createLiteral(4),
+              createLiteral(0),
+            ]);
             break;
           }
           case 'HEAPF64': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD_D', [multiply(ptr, 8), createLiteral(8), createLiteral(0)]);
+            makeCallExpression(node, 'SAFE_HEAP_LOAD_D', [
+              multiply(ptr, 8),
+              createLiteral(8),
+              createLiteral(0),
+            ]);
             break;
           }
-          default: {}
+          default: {
+          }
         }
       }
     },
@@ -1457,7 +1574,24 @@ function safeHeap(ast) {
 
 // Name minification
 
-const RESERVED = new Set(['do', 'if', 'in', 'for', 'new', 'try', 'var', 'env', 'let', 'case', 'else', 'enum', 'void', 'this', 'void', 'with']);
+const RESERVED = new Set([
+  'do',
+  'if',
+  'in',
+  'for',
+  'new',
+  'try',
+  'var',
+  'env',
+  'let',
+  'case',
+  'else',
+  'enum',
+  'void',
+  'this',
+  'void',
+  'with',
+]);
 const VALID_MIN_INITS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$';
 const VALID_MIN_LATERS = VALID_MIN_INITS + '0123456789';
 
@@ -1516,7 +1650,7 @@ function minifyLocals(ast) {
     const newNames = new Map();
 
     // The names in use, that must not be collided with.
-    const usedNames = new Set;
+    const usedNames = new Set();
 
     // Put the function name aside. We don't want to traverse it as it is not
     // in the scope of itself.
@@ -1620,7 +1754,7 @@ function minifyLocals(ast) {
 function minifyGlobals(ast) {
   // The input is in form
   //
-  //   function instantiate(asmLibraryArg, wasmMemory, wasmTable) {
+  //   function instantiate(wasmImports, wasmMemory, wasmTable) {
   //      var helper..
   //      function asmFunc(global, env, buffer) {
   //        var memory = env.memory;
@@ -1634,7 +1768,7 @@ function minifyGlobals(ast) {
   // simple - as wasm2js output is - and looks at all the minifiable names as
   // a whole. A possible bug here is something like
   //
-  //   function instantiate(asmLibraryArg, wasmMemory, wasmTable) {
+  //   function instantiate(wasmImports, wasmMemory, wasmTable) {
   //      var x = foo;
   //      function asmFunc(global, env, buffer) {
   //        var foo = 10;
@@ -1647,9 +1781,12 @@ function minifyGlobals(ast) {
   // analysis here. FIXME
 
   // We must run on a singleton instantiate() function as described above.
-  assert(ast.type === 'Program' && ast.body.length === 1 &&
-         ast.body[0].type === 'FunctionDeclaration' &&
-         ast.body[0].id.name === 'instantiate');
+  assert(
+    ast.type === 'Program' &&
+      ast.body.length === 1 &&
+      ast.body[0].type === 'FunctionDeclaration' &&
+      ast.body[0].id.name === 'instantiate'
+  );
   const fun = ast.body[0];
 
   // Swap the function's name away so that we can then minify everything else.
@@ -1748,11 +1885,13 @@ function reattachComments(ast, comments) {
   const symbols = [];
 
   // Collect all code symbols
-  ast.walk(new terser.TreeWalker(function(node) {
-    if (node.start && node.start.pos) {
-      symbols.push(node);
-    }
-  }));
+  ast.walk(
+    new terser.TreeWalker((node) => {
+      if (node.start && node.start.pos) {
+        symbols.push(node);
+      }
+    })
+  );
 
   // Sort them by ascending line number
   symbols.sort((a, b) => a.start.pos - b.start.pos);
@@ -1774,24 +1913,18 @@ function reattachComments(ast, comments) {
     if (!Array.isArray(symbols[j].start.comments_before)) {
       symbols[j].start.comments_before = [];
     }
-    symbols[j].start.comments_before.push(new terser.AST_Token({
-      end: undefined,
-      quote: undefined,
-      raw: undefined,
-      file: '0',
-      comments_after: undefined,
-      comments_before: undefined,
-      nlb: false,
-      endpos: undefined,
-      endcol: undefined,
-      endline: undefined,
-      pos: undefined,
-      col: undefined,
-      line: undefined,
-      value: comments[i].value,
-      type: comments[i].type == 'Line' ? 'comment' : 'comment2',
-      flags: 0,
-    }));
+    symbols[j].start.comments_before.push(
+      new terser.AST_Token(
+        comments[i].type == 'Line' ? 'comment' : 'comment2',
+        comments[i].value,
+        undefined,
+        undefined,
+        false,
+        undefined,
+        undefined,
+        '0'
+      )
+    );
   }
 }
 
@@ -1879,8 +2012,7 @@ const registry = {
     verbose = true;
   },
   // TODO: remove 'last' in the python driver code
-  last: () => {
-  },
+  last: () => {},
   dump: () => dump(ast),
   littleEndianHeap: littleEndianHeap,
   growableHeap: growableHeap,
@@ -1900,19 +2032,25 @@ if (!noPrint) {
     reattachComments(terserAst, sourceComments);
   }
 
-  const output = terserAst.print_to_string({
+  let output = terserAst.print_to_string({
     beautify: !minifyWhitespace,
     indent_level: minifyWhitespace ? 0 : 1,
     keep_quoted_props: true, // for closure
+    wrap_func_args: false, // don't add extra braces
     comments: true, // for closure as well
   });
 
-  let fd = process.stdout.fd;
-  if (outfile) {
-    fd = fs.openSync(outfile, 'w');
-  }
-  fs.writeSync(fd, output + '\n');
+  output += '\n';
   if (suffix) {
-    fs.writeSync(fd, suffix + '\n');
+    output += suffix + '\n';
+  }
+
+  if (outfile) {
+    fs.writeFileSync(outfile, output);
+  } else {
+    // Simply using `fs.writeFileSync` on `process.stdout` has issues with
+    // large amount of data. It can cause:
+    //   Error: EAGAIN: resource temporarily unavailable, write
+    process.stdout.write(output);
   }
 }

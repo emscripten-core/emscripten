@@ -21,6 +21,7 @@ copy_dirs = [
   'compiler-rt',
   'libcxx',
   'libcxxabi',
+  'libunwind',
 ]
 
 

@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <emscripten/em_asm.h>
+#include <emscripten/console.h>
 #include <vector>
 
 pthread_t threads[5];
@@ -28,7 +29,7 @@ static void *thread_start(void *arg)
 }
 
 void CreateThread(int idx) {
-  EM_ASM(out('Main: Spawning thread '+$0+'...'), idx);
+  emscripten_outf("Main: Spawning thread %d...", idx);
   int rc = pthread_create(&threads[idx], NULL, thread_start, (void*)idx);
   assert(rc == 0);
 }

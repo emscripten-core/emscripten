@@ -55,8 +55,9 @@ further changes to the JS produced by the initial compilation.
 Basic Example
 -------------
 
-Let’s run through a basic example of using SPLIT_MODULE with Node. Later we will
-adapt the example to run on the Web as well.
+Let’s run through a basic example of using SPLIT_MODULE with Node. Later in the
+"Running on the Web" section we will discuss how to adapt the example to run on
+the Web as well.
 
 Here’s our application code::
 
@@ -123,7 +124,7 @@ included in the profile.
 Here’s the function to write the profile and our new main function::
 
   EM_JS(void, write_profile, (), {
-    var __write_profile = Module['asm']['__write_profile'];
+    var __write_profile = wasmExports['__write_profile'];
     if (__write_profile) {
 
       // Get the size of the profile and allocate a buffer for it.
@@ -221,7 +222,7 @@ Multithreaded Programs
 
 By default, the data gathered by the wasm-split instrumentation is stored in
 Wasm globals, so it is thread local. But in a multithreaded program, it is
-important to collect profile information from all threads. To do so, you can can
+important to collect profile information from all threads. To do so, you can
 tell wasm-split to collect shared profile information in shared memory using the
 ``--in-memory`` wasm-split flag. This will use memory starting at address zero
 to store the profile information, so you must also pass ``-sGLOBAL_BASE=N`` to
@@ -337,7 +338,7 @@ be called either.
 
 When eagerly instantiating the secondary module, the imports object should be::
 
-  {'primary': Module['asm']}
+  {'primary': wasmExports}
 
 Debugging
 ---------

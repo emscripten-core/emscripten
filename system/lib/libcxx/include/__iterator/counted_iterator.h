@@ -6,11 +6,17 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
+
 #ifndef _LIBCPP___ITERATOR_COUNTED_ITERATOR_H
 #define _LIBCPP___ITERATOR_COUNTED_ITERATOR_H
 
+#include <__assert>
+#include <__concepts/assignable.h>
+#include <__concepts/common_with.h>
+#include <__concepts/constructible.h>
+#include <__concepts/convertible_to.h>
+#include <__concepts/same_as.h>
 #include <__config>
-#include <__debug>
 #include <__iterator/concepts.h>
 #include <__iterator/default_sentinel.h>
 #include <__iterator/incrementable_traits.h>
@@ -19,18 +25,18 @@
 #include <__iterator/iterator_traits.h>
 #include <__iterator/readable_traits.h>
 #include <__memory/pointer_traits.h>
+#include <__type_traits/add_pointer.h>
+#include <__type_traits/conditional.h>
 #include <__utility/move.h>
 #include <compare>
-#include <concepts>
-#include <type_traits>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-#if !defined(_LIBCPP_HAS_NO_CONCEPTS)
+#if _LIBCPP_STD_VER > 17
 
 template<class>
 struct __counted_iterator_concept {};
@@ -65,7 +71,7 @@ class counted_iterator
   , public __counted_iterator_value_type<_Iter>
 {
 public:
-  [[no_unique_address]] _Iter __current_ = _Iter();
+  _LIBCPP_NO_UNIQUE_ADDRESS _Iter __current_ = _Iter();
   iter_difference_t<_Iter> __count_ = 0;
 
   using iterator_type = _Iter;
@@ -263,7 +269,7 @@ public:
   }
 
   template<common_with<_Iter> _I2>
-  friend constexpr strong_ordering operator<=>(
+  _LIBCPP_HIDE_FROM_ABI friend constexpr strong_ordering operator<=>(
     const counted_iterator& __lhs, const counted_iterator<_I2>& __rhs)
   {
     return __rhs.__count_ <=> __lhs.__count_;
@@ -288,6 +294,7 @@ public:
     return ranges::iter_swap(__x.__current_, __y.__current_);
   }
 };
+_LIBCPP_CTAD_SUPPORTED_FOR_TYPE(counted_iterator);
 
 template<input_iterator _Iter>
   requires same_as<_ITER_TRAITS<_Iter>, iterator_traits<_Iter>>
@@ -296,7 +303,7 @@ struct iterator_traits<counted_iterator<_Iter>> : iterator_traits<_Iter> {
                                 add_pointer_t<iter_reference_t<_Iter>>, void>;
 };
 
-#endif // !defined(_LIBCPP_HAS_NO_CONCEPTS)
+#endif // _LIBCPP_STD_VER > 17
 
 _LIBCPP_END_NAMESPACE_STD
 

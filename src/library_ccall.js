@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
-  $getCFunc: function(ident) {
+  $getCFunc: (ident) => {
     var func = Module['_' + ident]; // closure exported function
 #if ASSERTIONS
     assert(func, 'Cannot call unknown function ' + ident + ', make sure it is exported');
@@ -15,7 +15,7 @@ mergeInto(LibraryManager.library, {
   },
 
   // C calling interface.
-  $ccall__deps: ['$getCFunc'],
+  $ccall__deps: ['$getCFunc', '$writeArrayToMemory', '$stringToUTF8OnStack'],
   $ccall__docs: `
   /**
    * @param {string|null=} returnType
@@ -23,7 +23,7 @@ mergeInto(LibraryManager.library, {
    * @param {Arguments|Array=} args
    * @param {Object=} opts
    */`,
-  $ccall: function(ident, returnType, argTypes, args, opts) {
+  $ccall: (ident, returnType, argTypes, args, opts) => {
     // For fast lookup of conversion functions
     var toC = {
 #if MEMORY64
@@ -33,9 +33,7 @@ mergeInto(LibraryManager.library, {
         var ret = 0;
         if (str !== null && str !== undefined && str !== 0) { // null string
           // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
-          var len = (str.length << 2) + 1;
-          ret = stackAlloc(len);
-          stringToUTF8(str, ret, len);
+          ret = stringToUTF8OnStack(str);
         }
         return {{{ to64('ret') }}};
       },
@@ -75,23 +73,26 @@ mergeInto(LibraryManager.library, {
         }
       }
     }
-#if ASYNCIFY
+#if ASYNCIFY == 1
     // Data for a previous async operation that was in flight before us.
     var previousAsync = Asyncify.currData;
 #endif
     var ret = func.apply(null, cArgs);
     function onDone(ret) {
-#if ASYNCIFY
+#if ASYNCIFY == 1
       runtimeKeepalivePop();
 #endif
       if (stack !== 0) stackRestore(stack);
       return convertReturnValue(ret);
     }
 #if ASYNCIFY
+  var asyncMode = opts && opts.async;
+#endif
+
+#if ASYNCIFY == 1
     // Keep the runtime alive through all calls. Note that this call might not be
     // async, but for simplicity we push and pop in all calls.
     runtimeKeepalivePush();
-    var asyncMode = opts && opts.async;
     if (Asyncify.currData != previousAsync) {
 #if ASSERTIONS
       // A change in async operation happened. If there was already an async
@@ -113,8 +114,12 @@ mergeInto(LibraryManager.library, {
     }
 #endif
 
+#if ASYNCIFY == 2
+    if (asyncMode) return ret.then(onDone);
+#endif
+
     ret = onDone(ret);
-#if ASYNCIFY
+#if ASYNCIFY == 1
     // If this is an async ccall, ensure we return a promise
     if (asyncMode) return Promise.resolve(ret);
 #endif
@@ -128,12 +133,11 @@ mergeInto(LibraryManager.library, {
    * @param {Object=} opts
    */`,
   $cwrap__deps: ['$getCFunc', '$ccall'],
-  $cwrap: function(ident, returnType, argTypes, opts) {
+  $cwrap: (ident, returnType, argTypes, opts) => {
 #if !ASSERTIONS
-    argTypes = argTypes || [];
     // When the function takes numbers and returns a number, we can just return
     // the original function
-    var numericArgs = argTypes.every((type) => type === 'number' || type === 'boolean');
+    var numericArgs = !argTypes || argTypes.every((type) => type === 'number' || type === 'boolean');
     var numericRet = returnType !== 'string';
     if (numericRet && numericArgs && !opts) {
       return getCFunc(ident);

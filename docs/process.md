@@ -1,8 +1,7 @@
-Development Processes
-=====================
+# Development Processes
 
-Landing PRs
------------
+
+## Landing PRs
 
  * Even after the code of a PR is approved, it should only be landed if the
    CI on github is green, or the failures are known intermittent things
@@ -28,12 +27,41 @@ Landing PRs
    When landing multiple commits in such a scenario, use the "rebase" option,
    to avoid a merge commit.
 
+## Coding Style
 
-Release Processes
-=================
+### C/C++ Code
 
-Minor version updates (1.X.Y to 1.X.Y+1)
-----------------------------------------
+When writing new C/C++ in emscripten follow the LLVM style (as does binaryen).
+You can use `clang-format` to automatically format new code (and `git
+clang-format origin/main` to format just the lines you are changing).
+See [`.clang-format`][clang-format] for more details.
+
+When editing third party code such (e.g. musl, libc++) follow the upstream
+conventions.
+
+### JavaScript Code
+
+We use the same LLVM-based style as for C/C++.  Sadly, `clang-format` doesn't
+always work well with our library code since it can use custom macros and
+pre-processor.  See [`.clang-format`][clang-format] for more details.
+
+### Python Code
+
+We generally follow the pep8 standard with the major exception that we use 2
+spaces for indentation.  `flake8` is run on all PRs to ensure that python code
+conforms to this style.  See [`.flake8`][flake8] for more details.
+
+#### Static Type Checking
+
+We are beginning to use python3's type annotation syntax, along with the `mypy`
+tool to check python types statically.  See [`.mypy`][mypy] for more details.
+
+The goal is to one day check all type by running `mypy` with
+`--disallow-untyped-defs`, but this is happening incrementally over time.
+
+# Release Processes
+
+## Minor version updates (1.X.Y to 1.X.Y+1)
 
 When:
 
@@ -60,8 +88,8 @@ How:
    [emscripten-releases][releases_repo] repo. When this CL is committed, let the
    resulting SHA be `<LTO-sha>`. An example of this CL is
    https://chromium-review.googlesource.com/c/emscripten-releases/+/3781978.
-1. Run [`./scripts/create_release.py`][create_release] in the emsdk repository.
-   When we do both an LTO and a non-LTO release, run:
+1. Run [`scripts/create_release.py`][create_release_emsdk] in the emsdk
+   repository. When we do both an LTO and a non-LTO release, run:
    ```
    ./scripts/create_release.py <LTO-sha> <non-LTO-sha>
    ```
@@ -73,25 +101,26 @@ How:
    ```
    This will make the `<non-LTO-sha>` point directly to the versioned name
    release (e.g. `3.1.7`) and there will be no assert build release. If we run
-   [`./scripts/create_release.py`][create_release] without any arguments, it
+   [`scripts/create_release.py`][create_release_emsdk] without any arguments, it
    will automatically pick a tot version from
    [emscripten-releases][releases_repo] repo and make it point to the versioned
-   name release. Running this [`./scripts/create_release.py`][create_release]
-   script will update [emscripten-releases-tags.json][emscripten_releases_tags],
-   adding a new version. The script will create a new git branch that can be
-   uploaded as a PR. An example of this PR is emscripten-core/emsdk#1071.
+   name release. Running this
+   [`scripts/create_release.py`][create_release_emsdk] script will update
+   [emscripten-releases-tags.json][emscripten_releases_tags], adding a new
+   version. The script will create a new local git branch and push it up to
+   ``origin``.  An example of this PR is emscripten-core/emsdk#1071.
 1. [Tag][emsdk_tags] the `emsdk` repo with the new version number, on the commit
    that does the update, after it lands on main.
 1. [Tag][emscripten_tags] the `emscripten` repo with the new version number, on
    the commit referred to in the [DEPS][DEPS] (or DEPS.tagged-release) file
    above.
-1. Run the `tools/maint/create_release.py` tool in the emscripten repo to update
+1. Run the [`tools/maint/create_release.py`][create_release_emscripten]
+   tool in the emscripten repo to update
    [`emscripten-version.txt`][emscripten_version] and
    [`ChangeLog.md`][changelog].  An example of such PR is
    emscripten-core/emscripten#17439.
 
-Major version update (1.X.Y to 1.(X+1).0)
------------------------------------------
+## Major version update (1.X.Y to 1.(X+1).0)
 
 When:
 
@@ -115,23 +144,21 @@ How:
 1. Follow the same steps for a minor version update.
 
 
-Updating the `emscripten.org` Website
---------------------------------------
+## Updating the `emscripten.org` Website
 
 The site is currently hosted in `gh-pages` branch of the separate [site
 repository][site_repo]. To update the docs, rebuild them and copy them into
 this repository.  There is a script that will perform these steps automatically:
-`tools/maint/update_docs.py`.  Just run this script with no arguments if the
-emscripten-site repository is checked out alongside emscripten itself, or pass
-the location of the checkout if not.
+[`tools/maint/update_docs.py`][update_docs].  Just run this script with no
+arguments if the emscripten-site repository is checked out alongside emscripten
+itself, or pass the location of the checkout if not.
 
 You will need the specific sphinx version installed, which you can do using
 `pip3 install -r requirements-dev.txt` (depending on your system, you may then
 need to add `~/.local/bin` to your path, if pip installs to there).
 
 
-Updating the `emcc.py` help text
---------------------------------
+## Updating the `emcc.py` help text
 
 `emcc --help` output is generated from the main documentation under `site/`,
 so it is the same as shown on the website, but it is rendered to text. After
@@ -152,9 +179,14 @@ See notes above on installing sphinx.
 [waterfall]: https://ci.chromium.org/p/emscripten-releases/g/main/console
 [emscripten_version]: https://github.com/emscripten-core/emscripten/blob/main/emscripten-version.txt
 [changelog]: https://github.com/emscripten-core/emscripten/blob/main/ChangeLog.md
-[create_release]: https://github.com/emscripten-core/emsdk/blob/main/scripts/create_release.py
+[create_release_emsdk]: https://github.com/emscripten-core/emsdk/blob/main/scripts/create_release.py
+[create_release_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/tools/maint/create_release.py
 [emscripten_releases_tags]: https://github.com/emscripten-core/emsdk/blob/main/emscripten-releases-tags.json
 [DEPS]: https://chromium.googlesource.com/emscripten-releases/+/refs/heads/main/DEPS
 [DEPS.tagged-release]: https://chromium.googlesource.com/emscripten-releases/+/refs/heads/main/DEPS.tagged-release
 [emsdk_tags]: https://github.com/emscripten-core/emsdk/tags
 [emscripten_tags]: https://github.com/emscripten-core/emscripten/tags
+[clang-format]: https://github.com/emscripten-core/emscripten/blob/main/.clang-format
+[flake8]: https://github.com/emscripten-core/emscripten/blob/main/.flake8
+[mypy]: https://github.com/emscripten-core/emscripten/blob/main/.mypy
+[update_docs]: https://github.com/emscripten-core/emscripten/blob/main/tools/maint/update_docs.py

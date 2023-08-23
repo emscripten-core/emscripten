@@ -20,13 +20,13 @@ int __main_argc_argv(int argc, char *argv[]);
 // be included, and `_start` will call the application's `__main_void` directly.
 //
 // If the application's `main` does use argc/argv, then _start will call this
-// function which which loads argv valud values and sends them to to the
+// function which which loads argv values and sends them to to the
 // application's `main` which gets mangled to `__main_argc_argv` by llvm.
 __attribute__((weak))
 int __main_void(void) {
   /* Fill in the arguments from WASI syscalls. */
   size_t argc;
-  char **argv;
+  char **argv = NULL;
   size_t argv_buf_size;
   __wasi_errno_t err;
 

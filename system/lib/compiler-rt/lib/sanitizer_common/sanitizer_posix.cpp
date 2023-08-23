@@ -87,10 +87,14 @@ void *MmapAlignedOrDieOnFatalError(uptr size, uptr alignment,
   CHECK(IsPowerOfTwo(size));
   CHECK(IsPowerOfTwo(alignment));
   uptr map_size = size + alignment;
+  // mmap maps entire pages and rounds up map_size needs to be a an integral 
+  // number of pages. 
+  // We need to be aware of this size for calculating end and for unmapping
+  // fragments before and after the alignment region.
+  map_size = RoundUpTo(map_size, GetPageSizeCached());
   uptr map_res = (uptr)MmapOrDieOnFatalError(map_size, mem_type);
   if (UNLIKELY(!map_res))
     return nullptr;
-  uptr map_end = map_res + map_size;
   uptr res = map_res;
   if (!IsAligned(res, alignment)) {
     res = (map_res + alignment - 1) & ~(alignment - 1);
@@ -99,13 +103,6 @@ void *MmapAlignedOrDieOnFatalError(uptr size, uptr alignment,
     UnmapOrDie((void*)map_res, res - map_res);
 #endif
   }
-#ifndef SANITIZER_EMSCRIPTEN
-  // Emscripten's fake mmap doesn't support partial unmapping
-  uptr end = res + size;
-  end = RoundUpTo(end, GetPageSizeCached());
-  if (end != map_end)
-    UnmapOrDie((void*)end, map_end - end);
-#endif
   return (void*)res;
 }
 
@@ -230,13 +227,6 @@ void *MapWritableFileToMemory(void *addr, uptr size, fd_t fd, OFF_T offset) {
   return (void *)p;
 }
 
-static inline bool IntervalsAreSeparate(uptr start1, uptr end1,
-                                        uptr start2, uptr end2) {
-  CHECK(start1 <= end1);
-  CHECK(start2 <= end2);
-  return (end1 < start2) || (end2 < start1);
-}
-
 #if SANITIZER_EMSCRIPTEN
 bool MemoryRangeIsAvailable(uptr /*range_start*/, uptr /*range_end*/) {
   // TODO: actually implement this.
@@ -247,6 +237,13 @@ void DumpProcessMap() {
   Report("Cannot dump memory map on emscripten");
 }
 #else
+static inline bool IntervalsAreSeparate(uptr start1, uptr end1,
+                                        uptr start2, uptr end2) {
+  CHECK(start1 <= end1);
+  CHECK(start2 <= end2);
+  return (end1 < start2) || (end2 < start1);
+}
+
 // FIXME: this is thread-unsafe, but should not cause problems most of the time.
 // When the shadow is mapped only a single thread usually exists (plus maybe
 // several worker threads on Mac, which aren't expected to map big chunks of

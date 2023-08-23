@@ -52,9 +52,9 @@ void _emval_decref(EM_VAL value);
 
 void _emval_run_destructors(EM_DESTRUCTORS handle);
 
-EM_VAL _emval_new_array();
+EM_VAL _emval_new_array(void);
 EM_VAL _emval_new_array_from_memory_view(EM_VAL mv);
-EM_VAL _emval_new_object();
+EM_VAL _emval_new_object(void);
 EM_VAL _emval_new_cstring(const char*);
 EM_VAL _emval_new_u8string(const char*);
 EM_VAL _emval_new_u16string(const char16_t*);
@@ -109,7 +109,7 @@ bool _emval_is_number(EM_VAL object);
 bool _emval_is_string(EM_VAL object);
 bool _emval_in(EM_VAL item, EM_VAL object);
 bool _emval_delete(EM_VAL object, EM_VAL property);
-bool _emval_throw(EM_VAL object);
+[[noreturn]] bool _emval_throw(EM_VAL object);
 EM_VAL _emval_await(EM_VAL promise);
 
 } // extern "C"
@@ -191,17 +191,14 @@ struct PackSize<Arg, Args...> {
 union GenericWireType {
   union {
     unsigned u;
+    size_t s;
     float f;
-    // Use uint32_t for pointer values.  This limits us, for now, to 32-bit
-    // address ranges even on wasm64.  This is enforced by assertions below.
-    // TODO(sbc): Allow full 64-bit address range here under wasm64, most
-    // likely by increasing the size of GenericWireType on wasm64.
-    uint32_t p;
+    void* p;
   } w[2];
-    double d;
-    uint64_t u;
+  double d;
+  uint64_t u;
 };
-static_assert(sizeof(GenericWireType) == 8, "GenericWireType must be 8 bytes");
+static_assert(sizeof(GenericWireType) == 2*sizeof(void*), "GenericWireType must be size of 2 pointers");
 static_assert(alignof(GenericWireType) == 8, "GenericWireType must be 8-byte-aligned");
 
 inline void writeGenericWireType(GenericWireType*& cursor, float wt) {
@@ -226,18 +223,14 @@ inline void writeGenericWireType(GenericWireType*& cursor, uint64_t wt) {
 
 template<typename T>
 void writeGenericWireType(GenericWireType*& cursor, T* wt) {
-  uintptr_t short_ptr = reinterpret_cast<uintptr_t>(wt);
-  assert(short_ptr <= UINT32_MAX);
-  cursor->w[0].p = short_ptr;
+  cursor->w[0].p = wt;
   ++cursor;
 }
 
 template<typename ElementType>
 inline void writeGenericWireType(GenericWireType*& cursor, const memory_view<ElementType>& wt) {
-  uintptr_t short_ptr = reinterpret_cast<uintptr_t>(wt.data);
-  assert(short_ptr <= UINT32_MAX);
-  cursor->w[0].u = wt.size;
-  cursor->w[1].p = short_ptr;
+  cursor->w[0].s = wt.size;
+  cursor->w[1].p = (void*)wt.data;
   ++cursor;
 }
 
@@ -420,9 +413,12 @@ public:
   }
 
   val& operator=(val&& v) & {
-    internal::_emval_decref(handle);
-    handle = v.handle;
+    auto v_handle = v.handle;
     v.handle = 0;
+    if (handle) {
+      internal::_emval_decref(handle);
+    }
+    handle = v_handle;
     return *this;
   }
 

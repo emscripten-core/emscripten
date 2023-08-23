@@ -11,10 +11,10 @@
 #define _LIBCPP___UTILITY_TO_UNDERLYING_H
 
 #include <__config>
-#include <type_traits>
+#include <__type_traits/underlying_type.h>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD

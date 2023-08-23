@@ -35,6 +35,7 @@ exclude_dirs = (
   's390x', 'mips', 'mips64', 'mipsn32', 'powerpc', 'powerpc64',
   'm68k', 'microblaze', 'or1k')
 exclude_files = (
+  'aio.h',
   'sendfile.h',
   'auxv.h',
   'personality.h',

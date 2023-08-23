@@ -9,7 +9,7 @@ Generally you should first compile and run your code without optimizations (the 
 How to optimize code
 ====================
 
-Code is optimized by specifying :ref:`optimization flags <emcc-compiler-optimization-options>` when running :ref:`emcc <emccdoc>`. The levels include: :ref:`-O0 <emcc-O0>` (no optimization), :ref:`-O1 <emcc-O1>`, :ref:`-O2 <emcc-O2>`, :ref:`-Os <emcc-Os>`, :ref:`-Oz <emcc-Oz>`, and :ref:`-O3 <emcc-O3>`.
+Code is optimized by specifying :ref:`optimization flags <emcc-compiler-optimization-options>` when running :ref:`emcc <emccdoc>`. The levels include: :ref:`-O0 <emcc-O0>` (no optimization), :ref:`-O1 <emcc-O1>`, :ref:`-O2 <emcc-O2>`, :ref:`-Os <emcc-Os>`, :ref:`-Oz <emcc-Oz>`, :ref:`-Og <emcc-Og>`, and :ref:`-O3 <emcc-O3>`.
 
 For example, to compile with optimization level ``-O2``:
 
@@ -245,7 +245,7 @@ To ensure that compiled code contains enough information for profiling, build yo
 Troubleshooting poor performance
 ================================
 
-Emscripten-compiled code can currently achieve approximately half the speed of a native build. If the performance is significantly poorer than expected, you can also run through the additional troubleshooting steps below:
+Emscripten-compiled code can often be close to the speed of a native build. If the performance is significantly poorer than expected, you can also run through the additional troubleshooting steps below:
 
 -  :ref:`Building-Projects` is a two-stage process: compiling source code files to LLVM **and** generating JavaScript from LLVM. Did you build using the same optimization values in **both** steps (``-O2`` or ``-O3``)?
 -  Test on multiple browsers. If performance is acceptable on one browser and significantly poorer on another, then :ref:`file a bug report <bug-reports>`, noting the problem browser and other relevant information.

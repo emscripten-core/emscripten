@@ -143,7 +143,14 @@ void test() {
   //printf("name_at_loc: %s\n", name_at_loc);
   assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
   ent = readdir(dir);
+#ifndef WASMFS_NODERAWFS
+  // WasmFS + NODERAWFS lacks ino numbers in directory listings, see
+  // https://github.com/emscripten-core/emscripten/issues/19418
+  // This is not an issue for "." and ".." (the other checks before and after
+  // us) since "." and ".." are added by WasmFS code itself; only "file.txt" is
+  // added from the node JS API, and as a result it has inode 0.
   assert(ent && ent->d_ino);
+#endif
   assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
   seekdir(dir, loc);
   ent = readdir(dir);

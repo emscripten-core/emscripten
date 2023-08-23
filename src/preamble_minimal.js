@@ -4,6 +4,21 @@
  * SPDX-License-Identifier: MIT
  */
 
+{{{
+  // Helper function to export a symbol on the module object
+  // if requested.
+  global.maybeExport = (x) => {
+    return MODULARIZE && EXPORT_ALL ? `Module['${x}'] = ` : '';
+  };
+  // Export to the AudioWorkletGlobalScope the needed variables to access
+  // the heap. AudioWorkletGlobalScope is unable to access global JS vars
+  // in the compiled main JS file.
+  global.maybeExportIfAudioWorklet = (x) => {
+    return (MODULARIZE && EXPORT_ALL) || AUDIO_WORKLET ? `Module['${x}'] = ` : '';
+  };
+  null;
+}}}
+
 #if SAFE_HEAP
 #include "runtime_safe_heap.js"
 #endif
@@ -24,7 +39,7 @@ function abort(what) {
   throw {{{ ASSERTIONS ? 'new Error(what)' : 'what' }}};
 }
 
-#if SAFE_HEAP
+#if SAFE_HEAP && !WASM_BIGINT
 // Globals used by JS i64 conversions (see makeSetValue)
 var tempDouble;
 var tempI64;
@@ -45,8 +60,6 @@ if (Module['doWasm2JS']) {
 Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
 #endif
 
-#include "runtime_strings.js"
-
 var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
 #if WASM_BIGINT
   HEAP64, HEAPU64,
@@ -54,33 +67,36 @@ var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
 #if SUPPORT_BIG_ENDIAN
   HEAP_DATA_VIEW,
 #endif
-  wasmMemory, buffer, wasmTable;
+  wasmMemory, wasmTable;
 
-
-function updateGlobalBufferAndViews(b) {
+function updateMemoryViews() {
+  var b = wasmMemory.buffer;
 #if ASSERTIONS && SHARED_MEMORY
   assert(b instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
 #endif
-  buffer = b;
 #if SUPPORT_BIG_ENDIAN
-  HEAP_DATA_VIEW = new DataView(b);
+  {{{ maybeExport('HEAP_DATA_VIEW') }}} HEAP_DATA_VIEW = new DataView(b);
 #endif
-  HEAP8 = new Int8Array(b);
-  HEAP16 = new Int16Array(b);
-  HEAP32 = new Int32Array(b);
-  HEAPU8 = new Uint8Array(b);
-  HEAPU16 = new Uint16Array(b);
-  HEAPU32 = new Uint32Array(b);
-  HEAPF32 = new Float32Array(b);
-  HEAPF64 = new Float64Array(b);
+#if MEMORY64 && MAXIMUM_MEMORY > FOUR_GB
+#include "runtime_view_proxy.js"
+#else
+  {{{ maybeExport('HEAP8') }}} HEAP8 = new Int8Array(b);
+  {{{ maybeExport('HEAP16') }}} HEAP16 = new Int16Array(b);
+  {{{ maybeExport('HEAPU8') }}} HEAPU8 = new Uint8Array(b);
+  {{{ maybeExport('HEAPU16') }}} HEAPU16 = new Uint16Array(b);
+#endif
+  {{{ maybeExport('HEAP32') }}} HEAP32 = new Int32Array(b);
+  {{{ maybeExportIfAudioWorklet('HEAPU32') }}} HEAPU32 = new Uint32Array(b);
+  {{{ maybeExportIfAudioWorklet('HEAPF32') }}} HEAPF32 = new Float32Array(b);
+  {{{ maybeExport('HEAPF64') }}} HEAPF64 = new Float64Array(b);
 #if WASM_BIGINT
-  HEAP64 = new BigInt64Array(b);
-  HEAPU64 = new BigUint64Array(b);
+  {{{ maybeExport('HEAP64') }}} HEAP64 = new BigInt64Array(b);
+  {{{ maybeExport('HEAPU64') }}} HEAPU64 = new BigUint64Array(b);
 #endif
 }
 
 #if IMPORTED_MEMORY
-#if USE_PTHREADS
+#if PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
   wasmMemory =
@@ -96,12 +112,16 @@ if (!ENVIRONMENT_IS_PTHREAD) {
     , 'shared': true
 #endif
     });
-  updateGlobalBufferAndViews(wasmMemory.buffer);
-#if USE_PTHREADS
-} else {
-  updateGlobalBufferAndViews({{{ MODULARIZE ? 'Module.buffer' : 'wasmMemory.buffer' }}});
+#if PTHREADS
 }
-#endif // USE_PTHREADS
+#if MODULARIZE
+else {
+  wasmMemory = Module['wasmMemory'];
+}
+#endif // MODULARIZE
+#endif // PTHREADS
+
+updateMemoryViews();
 #endif // IMPORTED_MEMORY
 
 #include "runtime_stack_check.js"
@@ -128,6 +148,7 @@ var runtimeInitialized = false;
 
 #include "runtime_math.js"
 #include "memoryprofiler.js"
+#include "runtime_exceptions.js"
 #include "runtime_debug.js"
 
 // === Body ===

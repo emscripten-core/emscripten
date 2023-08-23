@@ -62,7 +62,7 @@ void* alcGetProcAddress(ALCdevice *device, const ALCchar *name) {
   else if (!strcmp(name, "alcGetStringiSOFT")) { return emscripten_alcGetStringiSOFT; }
   else if (!strcmp(name, "alcResetDeviceSOFT")) { return emscripten_alcResetDeviceSOFT; }
 
-  emscripten_console_errorf("bad name in alcGetProcAddress: %s", name);
+  emscripten_errf("bad name in alcGetProcAddress: %s", name);
   return 0;
 }
 
@@ -159,6 +159,6 @@ void* alGetProcAddress(const ALchar *name) {
 
   // Extensions
 
-  emscripten_console_errorf("bad name in alGetProcAddress: %s", name);
+  emscripten_errf("bad name in alGetProcAddress: %s", name);
   return 0;
 }

@@ -9,31 +9,30 @@
 #ifndef FILESYSTEM_COMMON_H
 #define FILESYSTEM_COMMON_H
 
-#include "__config"
-#include "array"
-#include "chrono"
-#include "climits"
-#include "cstdarg"
-#include "cstdlib"
-#include "ctime"
-#include "filesystem"
-#include "ratio"
-#include "system_error"
+#include <__assert>
+#include <__config>
+#include <array>
+#include <chrono>
+#include <climits>
+#include <cstdarg>
+#include <ctime>
+#include <filesystem>
+#include <ratio>
+#include <system_error>
+#include <utility>
 
 #if defined(_LIBCPP_WIN32API)
 # define WIN32_LEAN_AND_MEAN
 # define NOMINMAX
 # include <windows.h>
-#endif
-
-#if !defined(_LIBCPP_WIN32API)
+#else
 # include <dirent.h>   // for DIR & friends
 # include <fcntl.h>    /* values for fchmodat */
 # include <sys/stat.h>
 # include <sys/statvfs.h>
 # include <sys/time.h> // for ::utimes as used in __last_write_time
 # include <unistd.h>
-#endif
+#endif // defined(_LIBCPP_WIN32API)
 
 #include "../include/apple_availability.h"
 
@@ -45,17 +44,16 @@
 #endif
 #endif
 
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-function"
-#endif
+_LIBCPP_DIAGNOSTIC_PUSH
+_LIBCPP_GCC_DIAGNOSTIC_IGNORED("-Wunused-function")
+_LIBCPP_CLANG_DIAGNOSTIC_IGNORED("-Wunused-function")
 
 #if defined(_LIBCPP_WIN32API)
-#define PS(x) (L##x)
-#define PATH_CSTR_FMT "\"%ls\""
+#  define PATHSTR(x) (L##x)
+#  define PATH_CSTR_FMT "\"%ls\""
 #else
-#define PS(x) (x)
-#define PATH_CSTR_FMT "\"%s\""
+#  define PATHSTR(x) (x)
+#  define PATH_CSTR_FMT "\"%s\""
 #endif
 
 _LIBCPP_BEGIN_NAMESPACE_FILESYSTEM
@@ -113,7 +111,7 @@ format_string(const char* msg, ...) {
 }
 
 error_code capture_errno() {
-  _LIBCPP_ASSERT(errno, "Expected errno to be non-zero");
+  _LIBCPP_ASSERT(errno != 0, "Expected errno to be non-zero");
   return error_code(errno, generic_category());
 }
 
@@ -126,7 +124,7 @@ error_code make_windows_error(int err) {
 template <class T>
 T error_value();
 template <>
-_LIBCPP_CONSTEXPR_AFTER_CXX11 void error_value<void>() {}
+_LIBCPP_CONSTEXPR_SINCE_CXX14 void error_value<void>() {}
 template <>
 bool error_value<bool>() {
   return false;
@@ -142,7 +140,7 @@ uintmax_t error_value<uintmax_t>() {
   return uintmax_t(-1);
 }
 template <>
-_LIBCPP_CONSTEXPR_AFTER_CXX11 file_time_type error_value<file_time_type>() {
+_LIBCPP_CONSTEXPR_SINCE_CXX14 file_time_type error_value<file_time_type>() {
   return file_time_type::min();
 }
 template <>
@@ -178,7 +176,7 @@ struct ErrorHandler {
     case 2:
       __throw_filesystem_error(what, *p1_, *p2_, ec);
     }
-    _LIBCPP_UNREACHABLE();
+    __libcpp_unreachable();
   }
 
   _LIBCPP_ATTRIBUTE_FORMAT(__printf__, 3, 0)
@@ -197,7 +195,7 @@ struct ErrorHandler {
     case 2:
       __throw_filesystem_error(what, *p1_, *p2_, ec);
     }
-    _LIBCPP_UNREACHABLE();
+    __libcpp_unreachable();
   }
 
   _LIBCPP_ATTRIBUTE_FORMAT(__printf__, 3, 4)
@@ -311,7 +309,7 @@ struct time_util_base {
           .count();
 
 private:
-  static _LIBCPP_CONSTEXPR_AFTER_CXX11 fs_duration get_min_nsecs() {
+  static _LIBCPP_CONSTEXPR_SINCE_CXX14 fs_duration get_min_nsecs() {
     return duration_cast<fs_duration>(
         fs_nanoseconds(min_nsec_timespec) -
         duration_cast<fs_nanoseconds>(fs_seconds(1)));
@@ -321,7 +319,7 @@ private:
                     FileTimeT::duration::min(),
                 "value doesn't roundtrip");
 
-  static _LIBCPP_CONSTEXPR_AFTER_CXX11 bool check_range() {
+  static _LIBCPP_CONSTEXPR_SINCE_CXX14 bool check_range() {
     // This kinda sucks, but it's what happens when we don't have __int128_t.
     if (sizeof(TimeT) == sizeof(rep)) {
       typedef duration<long long, ratio<3600 * 24 * 365> > Years;
@@ -387,7 +385,7 @@ struct time_util : time_util_base<FileTimeT, TimeT> {
 
 public:
   template <class CType, class ChronoType>
-  static _LIBCPP_CONSTEXPR_AFTER_CXX11 bool checked_set(CType* out,
+  static _LIBCPP_CONSTEXPR_SINCE_CXX14 bool checked_set(CType* out,
                                                         ChronoType time) {
     using Lim = numeric_limits<CType>;
     if (time > Lim::max() || time < Lim::min())
@@ -396,7 +394,7 @@ public:
     return true;
   }
 
-  static _LIBCPP_CONSTEXPR_AFTER_CXX11 bool is_representable(TimeSpecT tm) {
+  static _LIBCPP_CONSTEXPR_SINCE_CXX14 bool is_representable(TimeSpecT tm) {
     if (tm.tv_sec >= 0) {
       return tm.tv_sec < max_seconds ||
              (tm.tv_sec == max_seconds && tm.tv_nsec <= max_nsec);
@@ -407,7 +405,7 @@ public:
     }
   }
 
-  static _LIBCPP_CONSTEXPR_AFTER_CXX11 bool is_representable(FileTimeT tm) {
+  static _LIBCPP_CONSTEXPR_SINCE_CXX14 bool is_representable(FileTimeT tm) {
     auto secs = duration_cast<fs_seconds>(tm.time_since_epoch());
     auto nsecs = duration_cast<fs_nanoseconds>(tm.time_since_epoch() - secs);
     if (nsecs.count() < 0) {
@@ -420,7 +418,7 @@ public:
     return secs.count() >= TLim::min();
   }
 
-  static _LIBCPP_CONSTEXPR_AFTER_CXX11 FileTimeT
+  static _LIBCPP_CONSTEXPR_SINCE_CXX14 FileTimeT
   convert_from_timespec(TimeSpecT tm) {
     if (tm.tv_sec >= 0 || tm.tv_nsec == 0) {
       return FileTimeT(fs_seconds(tm.tv_sec) +
@@ -434,7 +432,7 @@ public:
   }
 
   template <class SubSecT>
-  static _LIBCPP_CONSTEXPR_AFTER_CXX11 bool
+  static _LIBCPP_CONSTEXPR_SINCE_CXX14 bool
   set_times_checked(TimeT* sec_out, SubSecT* subsec_out, FileTimeT tp) {
     auto dur = tp.time_since_epoch();
     auto sec_dur = duration_cast<fs_seconds>(dur);
@@ -451,7 +449,7 @@ public:
     return checked_set(sec_out, sec_dur.count()) &&
            checked_set(subsec_out, subsec_dur.count());
   }
-  static _LIBCPP_CONSTEXPR_AFTER_CXX11 bool convert_to_timespec(TimeSpecT& dest,
+  static _LIBCPP_CONSTEXPR_SINCE_CXX14 bool convert_to_timespec(TimeSpecT& dest,
                                                                 FileTimeT tp) {
     if (!is_representable(tp))
       return false;
@@ -609,5 +607,7 @@ static file_time_type get_write_time(const WIN32_FIND_DATAW& data) {
 } // end namespace detail
 
 _LIBCPP_END_NAMESPACE_FILESYSTEM
+
+_LIBCPP_DIAGNOSTIC_POP
 
 #endif // FILESYSTEM_COMMON_H

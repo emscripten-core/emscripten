@@ -14,10 +14,15 @@
 #include <__config>
 #include <__filesystem/path.h>
 #include <__memory/shared_ptr.h>
+#include <__utility/forward.h>
 #include <iosfwd>
 #include <new>
 #include <system_error>
 #include <type_traits>
+
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
+#  pragma GCC system_header
+#endif
 
 #ifndef _LIBCPP_CXX03_LANG
 
@@ -56,7 +61,7 @@ public:
   filesystem_error(const filesystem_error&) = default;
   ~filesystem_error() override; // key function
 
-  _LIBCPP_INLINE_VISIBILITY
+  _LIBCPP_HIDE_FROM_ABI_VIRTUAL
   const char* what() const noexcept override {
     return __storage_->__what_.c_str();
   }

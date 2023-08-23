@@ -27,9 +27,9 @@ function dump(item) {
       if (Object.prototype.hasOwnProperty.call(item, i)) {
         const j = item[i];
         if (typeof j == 'string' || typeof j == 'number') {
-          ret.push(i + ': ' + j);
+          ret.push(`${i}: ${j}`);
         } else {
-          ret.push(i + ': [?]');
+          ret.push(`${i}: [?]`);
         }
       }
     }
@@ -40,6 +40,15 @@ function dump(item) {
 }
 
 global.warnings = false;
+global.currentFile = null;
+
+function errorPrefix() {
+  if (currentFile) {
+    return currentFile + ': '
+  } else {
+    return '';
+  }
+}
 
 function warn(a, msg) {
   global.warnings = true;
@@ -48,7 +57,7 @@ function warn(a, msg) {
     a = false;
   }
   if (!a) {
-    printErr('warning: ' + msg);
+    printErr(`warning: ${errorPrefix()}${msg}`);
   }
 }
 
@@ -69,7 +78,7 @@ global.abortExecution = false;
 
 function error(msg) {
   abortExecution = true;
-  printErr('error: ' + msg);
+  printErr(`error: ${errorPrefix()}${msg}`);
 }
 
 function range(size) {
@@ -92,13 +101,66 @@ function sum(x) {
 // key: noOverride, value: true
 // if it is set, it prevents symbol redefinition and shows error
 // in case of redefinition
+//
+// key: checkSig, value: true
+// if it is set, __sig is checked for functions and error is reported
+// if <function name>__sig is missing
+function addToLibrary(obj, options = null) {
+  mergeInto(LibraryManager.library, obj, options);
+}
+
 function mergeInto(obj, other, options = null) {
-  // check for unintended symbol redefinition
-  if (options && options.noOverride) {
-    for (const key of Object.keys(other)) {
+  if (options) {
+    // check for unintended symbol redefinition
+    if (options.noOverride) {
+      for (const key of Object.keys(other)) {
+        if (obj.hasOwnProperty(key)) {
+          error(`Symbol re-definition in JavaScript library: ${key}. Do not use noOverride if this is intended`);
+          return;
+        }
+      }
+    }
+
+    // check if sig is missing for added functions
+    if (options.checkSig) {
+      for (const [key, value] of Object.entries(other)) {
+        if (typeof value === 'function' && !other.hasOwnProperty(key + '__sig')) {
+          error(`__sig is missing for function: ${key}. Do not use checkSig if this is intended`);
+          return;
+        }
+      }
+    }
+  }
+
+  if (!options || !options.allowMissing) {
+    for (const ident of Object.keys(other)) {
+      if (isDecorator(ident)) {
+        const index = ident.lastIndexOf('__');
+        const basename = ident.slice(0, index);
+        if (!(basename in obj) && !(basename in other)) {
+          error(`Missing library element '${basename}' for library config '${ident}'`);
+        }
+      }
+    }
+  }
+
+  for (const key of Object.keys(other)) {
+    if (key.endsWith('__sig')) {
       if (obj.hasOwnProperty(key)) {
-        error('Symbol re-definition in JavaScript library: ' + key + '. Do not use noOverride if this is intended');
-        return;
+        const oldsig = obj[key];
+        const newsig = other[key];
+        if (oldsig == newsig) {
+          warn(`signature redefinition for: ${key}`);
+        } else {
+          error(`signature redefinition for: ${key}. (old=${oldsig} vs new=${newsig})`);
+        }
+      }
+    }
+
+    if (key.endsWith('__deps')) {
+      const deps = other[key];
+      if (!Array.isArray(deps)) {
+        error(`JS library directive ${key}=${deps.toString()} is of type ${typeof deps}, but it should be an array`);
       }
     }
   }
@@ -111,7 +173,13 @@ function isNumber(x) {
   return x == parseFloat(x) || (typeof x == 'string' && x.match(/^-?\d+$/)) || x == 'NaN';
 }
 
-function isJsLibraryConfigIdentifier(ident) {
+// Symbols that start with '$' are not exported to the wasm module.
+// They are intended to be called exclusively by JS code.
+function isJsOnlySymbol(symbol) {
+  return symbol[0] == '$';
+}
+
+function isDecorator(ident) {
   suffixes = [
     '__sig',
     '__proxy',
@@ -124,6 +192,8 @@ function isJsLibraryConfigIdentifier(ident) {
     '__noleakcheck',
     '__internal',
     '__user',
+    '__async',
+    '__i53abi',
   ];
   return suffixes.some((suffix) => ident.endsWith(suffix));
 }

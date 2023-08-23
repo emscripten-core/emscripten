@@ -206,20 +206,39 @@ the stack trace (in an unminified build); building with
 Limitations
 -----------
 
--  Chromium does not support compiling >4kB WASM on the main thread, and
-   that includes side modules; you can use ``--use-preload-plugins`` (in
-   ``emcc`` or ``file_packager.py``) to make Emscripten compile them on
-   startup
-   `[doc] <https://emscripten.org/docs/porting/files/packaging_files.html#preloading-files>`__
-   `[discuss] <https://groups.google.com/forum/#!topic/emscripten-discuss/cE3hUV3fDSw>`__.
+- Chromium does not support compiling >4kB WASM on the main thread, and that
+  includes side modules; you can use ``--use-preload-plugins`` (in ``emcc`` or
+  ``file_packager.py``) to make Emscripten compile them on startup
+  `[doc] <https://emscripten.org/docs/porting/files/packaging_files.html#preloading-files>`__
+  `[discuss] <https://groups.google.com/forum/#!topic/emscripten-discuss/cE3hUV3fDSw>`__.
+- ``EM_ASM`` code defined within side modules depends on ``eval`` support are
+  is therefore incompatible with ``-sDYNAMIC_EXECUTION=0``.
+- ``EM_JS`` functions defined in side modules are not yet supported.
+
 
 Pthreads support
 ----------------
 
-Dynamic linking + pthreads is is still experimental.  While you can link with
-``MAIN_MODULE`` and ``-pthread`` emscripten will produce a warning by default
-when you do this.
+Dynamic linking + pthreads is is still experimental.  As such, linking with both
+``MAIN_MODULE`` and ``-pthread`` will produce a warning.
 
-While load-time dynamic linking should largely work and does not have any major
-known issues, runtime dynamic linking (with ``dlopen()``) has limited support
-when used with pthreads.
+While load-time dynamic linking works without any complications, runtime dynamic
+linking via ``dlopen``/``dlsym`` can require some extra consideration.  The
+reason for this is that keeping the indirection function pointer table in sync
+between threads has to be done by emscripten library code.  Each time a new
+library is loaded or a new symbol is requested via ``dlsym``, table slots can be
+added and these changes need to be mirrored on every thread in the process.
+
+Changes to the table are protected by a mutex, and before any thread returns
+from ``dlopen`` or ``dlsym`` it will wait until all other threads are sync.  In
+order to make this synchronization as seamless as possible, we hook into the
+low level primitives of `emscripten_futex_wait` and `emscirpten_yield`.
+
+For most use cases all this happens under hood and no special action is needed.
+However, there there is one class of application that currently may require
+modification.  If your applications busy waits, or directly uses the
+``atomic.waitXX`` instructions (or the clang
+``__builtin_wasm_memory_atomic_waitXX`` builtins) you maybe need to switch it
+to use ``emscripten_futex_wait`` or order avoid deadlocks.  If you don't use
+``emscripten_futex_wait`` while you block, you could potentially block other
+threads that are calling ``dlopen`` and/or ``dlsym``.

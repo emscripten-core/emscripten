@@ -48,7 +48,7 @@ typedef int wchar_t;
 #endif
 #endif
 #if defined(__NEED_wint_t) && !defined(__DEFINED_wint_t)
-typedef unsigned wint_t;
+typedef __WINT_TYPE__ wint_t;
 #define __DEFINED_wint_t
 #endif
 
@@ -93,7 +93,7 @@ typedef struct {
     union {
         int __i[10];
         volatile int __vi[10];
-        unsigned __s[10];
+        unsigned long __s[10];
     } __u;
 #ifdef __EMSCRIPTEN__
     // For canvas transfer implementation in Emscripten, use an extra control field

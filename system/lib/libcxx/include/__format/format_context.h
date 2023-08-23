@@ -11,12 +11,20 @@
 #define _LIBCPP___FORMAT_FORMAT_CONTEXT_H
 
 #include <__availability>
+#include <__concepts/same_as.h>
 #include <__config>
+#include <__format/buffer.h>
+#include <__format/format_arg.h>
+#include <__format/format_arg_store.h>
 #include <__format/format_args.h>
+#include <__format/format_error.h>
 #include <__format/format_fwd.h>
 #include <__iterator/back_insert_iterator.h>
 #include <__iterator/concepts.h>
-#include <concepts>
+#include <__memory/addressof.h>
+#include <__utility/move.h>
+#include <__variant/monostate.h>
+#include <cstddef>
 
 #ifndef _LIBCPP_HAS_NO_LOCALIZATION
 #include <locale>
@@ -24,21 +32,12 @@
 #endif
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
-
-_LIBCPP_PUSH_MACROS
-#include <__undef_macros>
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 #if _LIBCPP_STD_VER > 17
-
-// TODO FMT Remove this once we require compilers with proper C++20 support.
-// If the compiler has no concepts support, the format header will be disabled.
-// Without concepts support enable_if needs to be used and that too much effort
-// to support compilers with partial C++20 support.
-#if !defined(_LIBCPP_HAS_NO_CONCEPTS)
 
 template <class _OutIt, class _CharT>
 requires output_iterator<_OutIt, const _CharT&>
@@ -56,8 +55,7 @@ __format_context_create(
     _OutIt __out_it,
     basic_format_args<basic_format_context<_OutIt, _CharT>> __args,
     optional<_VSTD::locale>&& __loc = nullopt) {
-  return _VSTD::basic_format_context(_VSTD::move(__out_it), __args,
-                                     _VSTD::move(__loc));
+  return _VSTD::basic_format_context(_VSTD::move(__out_it), __args, _VSTD::move(__loc));
 }
 #else
 template <class _OutIt, class _CharT>
@@ -69,16 +67,12 @@ __format_context_create(
 }
 #endif
 
-// TODO FMT Implement [format.context]/4
-// [Note 1: For a given type charT, implementations are encouraged to provide a
-// single instantiation of basic_format_context for appending to
-// basic_string<charT>, vector<charT>, or any other container with contiguous
-// storage by wrapping those in temporary objects with a uniform interface
-// (such as a span<charT>) and polymorphic reallocation. - end note]
-
-using format_context = basic_format_context<back_insert_iterator<string>, char>;
+using format_context =
+    basic_format_context<back_insert_iterator<__format::__output_buffer<char>>,
+                         char>;
 #ifndef _LIBCPP_HAS_NO_WIDE_CHARACTERS
-using wformat_context = basic_format_context<back_insert_iterator<wstring>, wchar_t>;
+using wformat_context = basic_format_context<
+    back_insert_iterator<__format::__output_buffer<wchar_t>>, wchar_t>;
 #endif
 
 template <class _OutIt, class _CharT>
@@ -97,11 +91,8 @@ public:
   template <class _Tp>
   using formatter_type = formatter<_Tp, _CharT>;
 
-  basic_format_context(const basic_format_context&) = delete;
-  basic_format_context& operator=(const basic_format_context&) = delete;
-
   _LIBCPP_HIDE_FROM_ABI basic_format_arg<basic_format_context>
-  arg(size_t __id) const {
+  arg(size_t __id) const noexcept {
     return __args_.get(__id);
   }
 #ifndef _LIBCPP_HAS_NO_LOCALIZATION
@@ -111,8 +102,8 @@ public:
     return *__loc_;
   }
 #endif
-  _LIBCPP_HIDE_FROM_ABI iterator out() { return __out_it_; }
-  _LIBCPP_HIDE_FROM_ABI void advance_to(iterator __it) { __out_it_ = __it; }
+  _LIBCPP_HIDE_FROM_ABI iterator out() { return std::move(__out_it_); }
+  _LIBCPP_HIDE_FROM_ABI void advance_to(iterator __it) { __out_it_ = std::move(__it); }
 
 private:
   iterator __out_it_;
@@ -154,12 +145,79 @@ private:
 #endif
 };
 
-#endif // !defined(_LIBCPP_HAS_NO_CONCEPTS)
+// A specialization for __retarget_buffer
+//
+// See __retarget_buffer for the motivation for this specialization.
+//
+// This context holds a reference to the instance of the basic_format_context
+// that is retargeted. It converts a formatting argument when it is requested
+// during formatting. It is expected that the usage of the arguments is rare so
+// the lookups are not expected to be used often. An alternative would be to
+// convert all elements during construction.
+//
+// The elements of the retargets context are only used when an underlying
+// formatter uses a locale specific formatting or an formatting argument is
+// part for the format spec. For example
+//   format("{:256:{}}", input, 8);
+// Here the width of an element in input is determined dynamically.
+// Note when the top-level element has no width the retargeting is not needed.
+template <class _CharT>
+class _LIBCPP_TEMPLATE_VIS _LIBCPP_AVAILABILITY_FORMAT
+    basic_format_context<typename __format::__retarget_buffer<_CharT>::__iterator, _CharT> {
+public:
+  using iterator  = typename __format::__retarget_buffer<_CharT>::__iterator;
+  using char_type = _CharT;
+  template <class _Tp>
+  using formatter_type = formatter<_Tp, _CharT>;
 
+  template <class _Context>
+  _LIBCPP_HIDE_FROM_ABI explicit basic_format_context(iterator __out_it, _Context& __ctx)
+      : __out_it_(std::move(__out_it)),
+#  ifndef _LIBCPP_HAS_NO_LOCALIZATION
+        __loc_([](void* __c) { return static_cast<_Context*>(__c)->locale(); }),
+#  endif
+        __ctx_(std::addressof(__ctx)),
+        __arg_([](void* __c, size_t __id) {
+          return std::visit_format_arg(
+              [&](auto __arg) -> basic_format_arg<basic_format_context> {
+                if constexpr (same_as<decltype(__arg), monostate>)
+                  return {};
+                else if constexpr (same_as<decltype(__arg), typename basic_format_arg<_Context>::handle>)
+                  // At the moment it's not possible for formatting to use a re-targeted handle.
+                  // TODO FMT add this when support is needed.
+                  std::__throw_format_error("Re-targeting handle not supported");
+                else
+                  return basic_format_arg<basic_format_context>{
+                      __format::__determine_arg_t<basic_format_context, decltype(__arg)>(),
+                      __basic_format_arg_value<basic_format_context>(__arg)};
+              },
+              static_cast<_Context*>(__c)->arg(__id));
+        }) {
+  }
+
+  _LIBCPP_HIDE_FROM_ABI basic_format_arg<basic_format_context> arg(size_t __id) const noexcept {
+    return __arg_(__ctx_, __id);
+  }
+#  ifndef _LIBCPP_HAS_NO_LOCALIZATION
+  _LIBCPP_HIDE_FROM_ABI _VSTD::locale locale() { return __loc_(__ctx_); }
+#  endif
+  _LIBCPP_HIDE_FROM_ABI iterator out() { return std::move(__out_it_); }
+  _LIBCPP_HIDE_FROM_ABI void advance_to(iterator __it) { __out_it_ = std::move(__it); }
+
+private:
+  iterator __out_it_;
+
+#  ifndef _LIBCPP_HAS_NO_LOCALIZATION
+  std::locale (*__loc_)(void* __ctx);
+#  endif
+
+  void* __ctx_;
+  basic_format_arg<basic_format_context> (*__arg_)(void* __ctx, size_t __id);
+};
+
+_LIBCPP_CTAD_SUPPORTED_FOR_TYPE(basic_format_context);
 #endif //_LIBCPP_STD_VER > 17
 
 _LIBCPP_END_NAMESPACE_STD
-
-_LIBCPP_POP_MACROS
 
 #endif // _LIBCPP___FORMAT_FORMAT_CONTEXT_H

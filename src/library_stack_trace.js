@@ -5,24 +5,21 @@
  */
 
 var LibraryStackTrace = {
-  $demangle__deps: ['$withStackSave'],
-  $demangle: function(func) {
+#if DEMANGLE_SUPPORT
+  $demangle__deps: ['$withStackSave', '__cxa_demangle', 'free', '$stringToUTF8OnStack'],
+#endif
+  $demangle: (func) => {
 #if DEMANGLE_SUPPORT
     // If demangle has failed before, stop demangling any further function names
     // This avoids an infinite recursion with malloc()->abort()->stackTrace()->demangle()->malloc()->...
     demangle.recursionGuard = (demangle.recursionGuard|0)+1;
     if (demangle.recursionGuard > 1) return func;
-#if ASSERTIONS
-    assert(___cxa_demangle);
-#endif
-    return withStackSave(function() {
+    return withStackSave(() => {
       try {
         var s = func;
         if (s.startsWith('__Z'))
           s = s.substr(1);
-        var len = lengthBytesUTF8(s)+1;
-        var buf = stackAlloc(len);
-        stringToUTF8(s, buf, len);
+        var buf = stringToUTF8OnStack(s);
         var status = stackAlloc(4);
         var ret = ___cxa_demangle(buf, 0, 0, status);
         if ({{{ makeGetValue('status', '0', 'i32') }}} === 0 && ret) {
@@ -45,7 +42,8 @@ var LibraryStackTrace = {
 #endif // DEMANGLE_SUPPORT
   },
 
-  $demangleAll: function(text) {
+  $demangleAll__deps: ['$demangle'],
+  $demangleAll: (text) => {
     var regex =
       /\b_Z[\w\d_]+/g;
     return text.replace(regex,
@@ -72,6 +70,7 @@ var LibraryStackTrace = {
     return error.stack.toString();
   },
 
+  $stackTrace__deps: ['$jsStackTrace', '$demangleAll'],
   $stackTrace: function() {
     var js = jsStackTrace();
     if (Module['extraStackTrace']) js += '\n' + Module['extraStackTrace']();
@@ -79,4 +78,4 @@ var LibraryStackTrace = {
   }
 }
 
-mergeInto(LibraryManager.library, LibraryStackTrace);
+addToLibrary(LibraryStackTrace);

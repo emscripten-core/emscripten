@@ -12,15 +12,15 @@
 #include <__concepts/convertible_to.h>
 #include <__concepts/same_as.h>
 #include <__config>
-#include <type_traits>
+#include <__type_traits/common_reference.h>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-#if !defined(_LIBCPP_HAS_NO_CONCEPTS)
+#if _LIBCPP_STD_VER > 17
 
 // [concept.commonref]
 
@@ -30,7 +30,7 @@ concept common_reference_with =
   convertible_to<_Tp, common_reference_t<_Tp, _Up>> &&
   convertible_to<_Up, common_reference_t<_Tp, _Up>>;
 
-#endif // !defined(_LIBCPP_HAS_NO_CONCEPTS)
+#endif // _LIBCPP_STD_VER > 17
 
 _LIBCPP_END_NAMESPACE_STD
 

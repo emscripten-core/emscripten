@@ -109,6 +109,7 @@ class OpCode(IntEnum):
   F32_CONST = 0x43
   F64_CONST = 0x44
   I32_ADD = 0x6a
+  I64_ADD = 0x7c
   REF_NULL = 0xd0
   ATOMIC_PREFIX = 0xfe
   MEMORY_PREFIX = 0xfc
@@ -197,7 +198,7 @@ class Module:
   def __enter__(self):
     return self
 
-  def __exit__(self, exc_type, exc_val, exc_tb): # noqa
+  def __exit__(self, _exc_type, _exc_val, _exc_tb):
     if self.buf:
       self.buf.close()
       self.buf = None
@@ -235,11 +236,13 @@ class Module:
     while 1:
       opcode = OpCode(self.read_byte())
       args = []
-      if opcode in (OpCode.GLOBAL_GET, OpCode.I32_CONST, OpCode.I64_CONST):
+      if opcode == OpCode.GLOBAL_GET:
         args.append(self.read_uleb())
+      elif opcode in (OpCode.I32_CONST, OpCode.I64_CONST):
+        args.append(self.read_sleb())
       elif opcode in (OpCode.REF_NULL,):
         args.append(self.read_type())
-      elif opcode in (OpCode.END,):
+      elif opcode in (OpCode.END, OpCode.I32_ADD, OpCode.I64_ADD):
         pass
       else:
         raise Exception('unexpected opcode %s' % opcode)
@@ -370,7 +373,7 @@ class Module:
           print(f'unknown subsection: {subsection_type}')
           # ignore unknown subsections
           self.skip(subsection_size)
-        assert(self.tell() == end)
+        assert self.tell() == end
     else:
       utils.exit_with_error('error parsing shared library')
 
@@ -572,3 +575,13 @@ def get_exports(wasm_file):
 def get_imports(wasm_file):
   with Module(wasm_file) as module:
     return module.get_imports()
+
+
+def get_weak_imports(wasm_file):
+  weak_imports = []
+  dylink_sec = parse_dylink_section(wasm_file)
+  for symbols in dylink_sec.import_info.values():
+    for symbol, flags in symbols.items():
+      if flags & SYMBOL_BINDING_MASK == SYMBOL_BINDING_WEAK:
+        weak_imports.append(symbol)
+  return weak_imports

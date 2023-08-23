@@ -4,10 +4,10 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   // This gives correct answers for everything less than 2^{14} = 16384
   // I hope nobody is contemplating functions with 16384 arguments...
-  $uleb128Encode: function(n, target) {
+  $uleb128Encode: (n, target) => {
 #if ASSERTIONS
     assert(n < 16384);
 #endif
@@ -20,7 +20,10 @@ mergeInto(LibraryManager.library, {
 
   // Converts a signature like 'vii' into a description of the wasm types, like
   // { parameters: ['i32', 'i32'], results: [] }.
-  $sigToWasmTypes: function(sig) {
+  $sigToWasmTypes: (sig) => {
+#if ASSERTIONS && !WASM_BIGINT
+    assert(!sig.includes('j'), 'i64 not permitted in function signatures when WASM_BIGINT is disabled');
+#endif
     var typeNames = {
       'i': 'i32',
       'j': 'i64',
@@ -45,7 +48,7 @@ mergeInto(LibraryManager.library, {
     return type;
   },
   $generateFuncType__deps: ['$uleb128Encode'],
-  $generateFuncType : function(sig, target){
+  $generateFuncType: (sig, target) => {
     var sigRet = sig.slice(0, 1);
     var sigParam = sig.slice(1);
     var typeCodes = {
@@ -59,7 +62,7 @@ mergeInto(LibraryManager.library, {
       'f': 0x7d, // f32
       'd': 0x7c, // f64
     };
-  
+
     // Parameters, length + signatures
     target.push(0x60 /* form: func */);
     uleb128Encode(sigParam.length, target);
@@ -80,10 +83,14 @@ mergeInto(LibraryManager.library, {
   },
   // Wraps a JS function as a wasm function with a given signature.
   $convertJsFunctionToWasm__deps: ['$uleb128Encode', '$sigToWasmTypes', '$generateFuncType'],
-  $convertJsFunctionToWasm: function(func, sig) {
+  $convertJsFunctionToWasm: (func, sig) => {
 #if WASM2JS
     // return func;
 #else // WASM2JS
+
+#if ASSERTIONS && !WASM_BIGINT
+    assert(!sig.includes('j'), 'i64 not permitted in function signatures when WASM_BIGINT is disabled');
+#endif
 
     // If the type reflection proposal is available, use the new
     // "WebAssembly.Function" constructor.
@@ -135,7 +142,7 @@ mergeInto(LibraryManager.library, {
   $functionsInTableMap: undefined,
 
   $getEmptyTableSlot__deps: ['$freeTableIndexes'],
-  $getEmptyTableSlot: function() {
+  $getEmptyTableSlot: () => {
     // Reuse a free index if there is one, otherwise grow.
     if (freeTableIndexes.length) {
       return freeTableIndexes.pop();
@@ -153,7 +160,7 @@ mergeInto(LibraryManager.library, {
   },
 
   $updateTableMap__deps: ['$getWasmTableEntry'],
-  $updateTableMap: function(offset, count) {
+  $updateTableMap: (offset, count) => {
     if (functionsInTableMap) {
       for (var i = offset; i < offset + count; i++) {
         var item = getWasmTableEntry(i);
@@ -165,27 +172,33 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  $getFunctionAddress__deps: ['$updateTableMap', '$functionsInTableMap'],
+  $getFunctionAddress: (func) => {
+    // First, create the map if this is the first use.
+    if (!functionsInTableMap) {
+      functionsInTableMap = new WeakMap();
+      updateTableMap(0, wasmTable.length);
+    }
+    return functionsInTableMap.get(func) || 0;
+  },
+
   /**
    * Add a function to the table.
    * 'sig' parameter is required if the function being added is a JS function.
    */
   $addFunction__docs: '/** @param {string=} sig */',
-  $addFunction__deps: ['$convertJsFunctionToWasm', '$updateTableMap',
+  $addFunction__deps: ['$convertJsFunctionToWasm', '$getFunctionAddress',
                        '$functionsInTableMap', '$getEmptyTableSlot',
                        '$getWasmTableEntry', '$setWasmTableEntry'],
-  $addFunction: function(func, sig) {
+  $addFunction: (func, sig) => {
   #if ASSERTIONS
     assert(typeof func != 'undefined');
   #endif // ASSERTIONS
-
     // Check if the function is already in the table, to ensure each function
-    // gets a unique index. First, create the map if this is the first use.
-    if (!functionsInTableMap) {
-      functionsInTableMap = new WeakMap();
-      updateTableMap(0, wasmTable.length);
-    }
-    if (functionsInTableMap.has(func)) {
-      return functionsInTableMap.get(func);
+    // gets a unique index.
+    var rtn = getFunctionAddress(func);
+    if (rtn) {
+      return rtn;
     }
 
     // It's not in the table, add it now.
@@ -222,7 +235,7 @@ mergeInto(LibraryManager.library, {
   },
 
   $removeFunction__deps: ['$functionsInTableMap', '$freeTableIndexes', '$getWasmTableEntry'],
-  $removeFunction: function(index) {
+  $removeFunction: (index) => {
     functionsInTableMap.delete(getWasmTableEntry(index));
     freeTableIndexes.push(index);
   },

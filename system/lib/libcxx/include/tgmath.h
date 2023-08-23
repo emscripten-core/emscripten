@@ -20,17 +20,15 @@
 #include <__config>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 #ifdef __cplusplus
-
-#include <ctgmath>
-
-#else  // __cplusplus
-
-#include_next <tgmath.h>
-
-#endif // __cplusplus
+#  include <ctgmath>
+#else
+#  if __has_include_next(<tgmath.h>)
+#    include_next <tgmath.h>
+#  endif
+#endif
 
 #endif // _LIBCPP_TGMATH_H

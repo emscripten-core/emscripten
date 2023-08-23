@@ -14,12 +14,12 @@
 #include <__errc>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-#ifndef _LIBCPP_CXX03_LANG
+#if _LIBCPP_STD_VER > 14
 
 struct _LIBCPP_TYPE_VIS from_chars_result
 {
@@ -30,7 +30,7 @@ struct _LIBCPP_TYPE_VIS from_chars_result
 #  endif
 };
 
-#endif // _LIBCPP_CXX03_LANG
+#endif // _LIBCPP_STD_VER > 14
 
 _LIBCPP_END_NAMESPACE_STD
 

@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
-  $createDyncallWrapper__deps: ['$generateFuncType', '$uleb128Encode'],
-  $createDyncallWrapper: function(sig) {
+addToLibrary({
+  $createDyncallWrapper__deps: ['$generateFuncType', '$uleb128Encode', 'setTempRet0'],
+  $createDyncallWrapper: (sig) => {
     var sections = [];
     var prelude = [
       0x00, 0x61, 0x73, 0x6d, // magic ("\0asm")
@@ -19,7 +19,7 @@ mergeInto(LibraryManager.library, {
       "i", // The first argument is the function pointer to call
       // in the rest of the argument list, one 64 bit integer is legalized into
       // two 32 bit integers.
-      sig.slice(1).replace("j", "ii"),
+      sig.slice(1).replace(/j/g, "ii")
     ].join("");
 
     var typeSectionBody = [

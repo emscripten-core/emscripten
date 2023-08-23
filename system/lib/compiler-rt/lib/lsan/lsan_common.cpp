@@ -27,9 +27,22 @@
 
 #if SANITIZER_EMSCRIPTEN
 #include "lsan/lsan_allocator.h"
+#include "emscripten/heap.h"
 #endif
 
 #if CAN_SANITIZE_LEAKS
+
+#  if SANITIZER_APPLE
+// https://github.com/apple-oss-distributions/objc4/blob/8701d5672d3fd3cd817aeb84db1077aafe1a1604/runtime/objc-runtime-new.h#L127
+#    if SANITIZER_IOS && !SANITIZER_IOSSIM
+#      define OBJC_DATA_MASK 0x0000007ffffffff8UL
+#    else
+#      define OBJC_DATA_MASK 0x00007ffffffffff8UL
+#    endif
+// https://github.com/apple-oss-distributions/objc4/blob/8701d5672d3fd3cd817aeb84db1077aafe1a1604/runtime/objc-runtime-new.h#L139
+#    define OBJC_FAST_IS_RW 0x8000000000000000UL
+#  endif
+
 namespace __lsan {
 
 // This mutex is used to prevent races between DoLeakCheck and IgnoreObject, and
@@ -164,6 +177,17 @@ static uptr GetCallerPC(const StackTrace &stack) {
   return 0;
 }
 
+#  if SANITIZER_APPLE
+// Objective-C class data pointers are stored with flags in the low bits, so
+// they need to be transformed back into something that looks like a pointer.
+static inline void *MaybeTransformPointer(void *p) {
+  uptr ptr = reinterpret_cast<uptr>(p);
+  if ((ptr & OBJC_FAST_IS_RW) == OBJC_FAST_IS_RW)
+    ptr &= OBJC_DATA_MASK;
+  return reinterpret_cast<void *>(ptr);
+}
+#  endif
+
 // On Linux, treats all chunks allocated from ld-linux.so as reachable, which
 // covers dynamically allocated TLS blocks, internal dynamic loader's loaded
 // modules accounting etc.
@@ -266,6 +290,9 @@ static inline bool MaybeUserPointer(uptr p) {
 #  elif defined(__aarch64__)
   // Accept up to 48 bit VMA.
   return ((p >> 48) == 0);
+#  elif defined(__loongarch_lp64)
+  // Allow 47-bit user-space VMA at current.
+  return ((p >> 47) == 0);
 #  else
   return true;
 #  endif
@@ -297,6 +324,9 @@ void ScanRangeForPointers(uptr begin, uptr end, Frontier *frontier,
 
   for (; pp + sizeof(void *) <= end; pp += alignment) {  // NOLINT
     void *p = *reinterpret_cast<void **>(pp);
+#  if SANITIZER_APPLE
+    p = MaybeTransformPointer(p);
+#  endif
     if (!MaybeUserPointer(reinterpret_cast<uptr>(p)))
       continue;
     uptr chunk = PointsIntoChunk(p);
@@ -353,15 +383,19 @@ void ScanGlobalRange(uptr begin, uptr end, Frontier *frontier) {
   }
 }
 
-void ForEachExtraStackRangeCb(uptr begin, uptr end, void *arg) {
-  Frontier *frontier = reinterpret_cast<Frontier *>(arg);
-  ScanRangeForPointers(begin, end, frontier, "FAKE STACK", kReachable);
+void ScanExtraStackRanges(const InternalMmapVector<Range> &ranges,
+                          Frontier *frontier) {
+  for (uptr i = 0; i < ranges.size(); i++) {
+    ScanRangeForPointers(ranges[i].begin, ranges[i].end, frontier, "FAKE STACK",
+                         kReachable);
+  }
 }
 
 #  if SANITIZER_FUCHSIA
 
 // Fuchsia handles all threads together with its own callback.
-static void ProcessThreads(SuspendedThreadsList const &, Frontier *) {}
+static void ProcessThreads(SuspendedThreadsList const &, Frontier *, tid_t,
+                           uptr) {}
 
 #  else
 
@@ -371,10 +405,12 @@ extern "C" SANITIZER_WEAK_ATTRIBUTE void __libc_iterate_dynamic_tls(
     pid_t, void (*cb)(void *, void *, uptr, void *), void *);
 #    endif
 
+#if SANITIZER_EMSCRIPTEN
+void ProcessThreads(SuspendedThreadsList const &, Frontier *, tid_t, uptr);
+#else
 static void ProcessThreadRegistry(Frontier *frontier) {
   InternalMmapVector<uptr> ptrs;
-  GetThreadRegistryLocked()->RunCallbackForEachThreadLocked(
-      GetAdditionalThreadContextPtrs, &ptrs);
+  GetAdditionalThreadContextPtrsLocked(&ptrs);
 
   for (uptr i = 0; i < ptrs.size(); ++i) {
     void *ptr = reinterpret_cast<void *>(ptrs[i]);
@@ -392,11 +428,12 @@ static void ProcessThreadRegistry(Frontier *frontier) {
   }
 }
 
-#if !SANITIZER_EMSCRIPTEN
 // Scans thread data (stacks and TLS) for heap pointers.
 static void ProcessThreads(SuspendedThreadsList const &suspended_threads,
-                           Frontier *frontier) {
+                           Frontier *frontier, tid_t caller_tid,
+                           uptr caller_sp) {
   InternalMmapVector<uptr> registers;
+  InternalMmapVector<Range> extra_ranges;
   for (uptr i = 0; i < suspended_threads.ThreadCount(); i++) {
     tid_t os_id = static_cast<tid_t>(suspended_threads.GetThreadID(i));
     LOG_THREADS("Processing thread %llu.\n", os_id);
@@ -421,6 +458,9 @@ static void ProcessThreads(SuspendedThreadsList const &suspended_threads,
       if (have_registers == REGISTERS_UNAVAILABLE_FATAL)
         continue;
       sp = stack_begin;
+    }
+    if (suspended_threads.GetThreadID(i) == caller_tid) {
+      sp = caller_sp;
     }
 
     if (flags()->use_registers && have_registers) {
@@ -454,7 +494,9 @@ static void ProcessThreads(SuspendedThreadsList const &suspended_threads,
       }
       ScanRangeForPointers(stack_begin, stack_end, frontier, "STACK",
                            kReachable);
-      ForEachExtraStackRange(os_id, ForEachExtraStackRangeCb, frontier);
+      extra_ranges.clear();
+      GetThreadExtraStackRangesLocked(os_id, &extra_ranges);
+      ScanExtraStackRanges(extra_ranges, frontier);
     }
 
     if (flags()->use_tls) {
@@ -530,10 +572,6 @@ void ScanRootRegion(Frontier *frontier, const RootRegion &root_region,
     ScanRangeForPointers(intersection_begin, intersection_end, frontier, "ROOT",
                          kReachable);
 }
-
-#if SANITIZER_EMSCRIPTEN
-extern "C" uptr emscripten_get_heap_size();
-#endif
 
 static void ProcessRootRegion(Frontier *frontier,
                               const RootRegion &root_region) {
@@ -611,7 +649,8 @@ static void CollectIgnoredCb(uptr chunk, void *arg) {
 
 // Sets the appropriate tag on each chunk.
 static void ClassifyAllChunks(SuspendedThreadsList const &suspended_threads,
-                              Frontier *frontier) {
+                              Frontier *frontier, tid_t caller_tid,
+                              uptr caller_sp) {
   const InternalMmapVector<u32> &suppressed_stacks =
       GetSuppressionContext()->GetSortedSuppressedStacks();
   if (!suppressed_stacks.empty()) {
@@ -620,7 +659,7 @@ static void ClassifyAllChunks(SuspendedThreadsList const &suspended_threads,
   }
   ForEachChunk(CollectIgnoredCb, frontier);
   ProcessGlobalRegions(frontier);
-  ProcessThreads(suspended_threads, frontier);
+  ProcessThreads(suspended_threads, frontier, caller_tid, caller_sp);
   ProcessRootRegions(frontier);
   FloodFillTag(frontier, kReachable);
 
@@ -676,25 +715,13 @@ void LeakSuppressionContext::PrintMatchedSuppressions() {
   Printf("%s\n\n", line);
 }
 
-static void ReportIfNotSuspended(ThreadContextBase *tctx, void *arg) {
-  const InternalMmapVector<tid_t> &suspended_threads =
-      *(const InternalMmapVector<tid_t> *)arg;
-  if (tctx->status == ThreadStatusRunning) {
-    uptr i = InternalLowerBound(suspended_threads, tctx->os_id);
-    if (i >= suspended_threads.size() || suspended_threads[i] != tctx->os_id)
-      Report(
-          "Running thread %llu was not suspended. False leaks are possible.\n",
-          tctx->os_id);
-  }
-}
-
-#  if SANITIZER_FUCHSIA
+#  if SANITIZER_FUCHSIA || SANITIZER_EMSCRIPTEN
 
 // Fuchsia provides a libc interface that guarantees all threads are
 // covered, and SuspendedThreadList is never really used.
 static void ReportUnsuspendedThreads(const SuspendedThreadsList &) {}
 
-#  else  // !SANITIZER_FUCHSIA
+#  else  // !(SANITIZER_FUCHSIA || SANITIZER_EMSCRIPTEN)
 
 static void ReportUnsuspendedThreads(
     const SuspendedThreadsList &suspended_threads) {
@@ -704,8 +731,16 @@ static void ReportUnsuspendedThreads(
 
   Sort(threads.data(), threads.size());
 
-  GetThreadRegistryLocked()->RunCallbackForEachThreadLocked(
-      &ReportIfNotSuspended, &threads);
+  InternalMmapVector<tid_t> unsuspended;
+  GetRunningThreadsLocked(&unsuspended);
+
+  for (auto os_id : unsuspended) {
+    uptr i = InternalLowerBound(threads, os_id);
+    if (i >= threads.size() || threads[i] != os_id)
+      Report(
+          "Running thread %zu was not suspended. False leaks are possible.\n",
+          os_id);
+  }
 }
 
 #  endif  // !SANITIZER_FUCHSIA
@@ -715,10 +750,9 @@ static void CheckForLeaksCallback(const SuspendedThreadsList &suspended_threads,
   CheckForLeaksParam *param = reinterpret_cast<CheckForLeaksParam *>(arg);
   CHECK(param);
   CHECK(!param->success);
-#if !SANITIZER_EMSCRIPTEN
   ReportUnsuspendedThreads(suspended_threads);
-#endif
-  ClassifyAllChunks(suspended_threads, &param->frontier);
+  ClassifyAllChunks(suspended_threads, &param->frontier, param->caller_tid,
+                    param->caller_sp);
   ForEachChunk(CollectLeaksCb, &param->leaks);
   // Clean up for subsequent leak checks. This assumes we did not overwrite any
   // kIgnored tags.
@@ -749,14 +783,23 @@ static bool PrintResults(LeakReport &report) {
 }
 
 static bool CheckForLeaks() {
-  if (&__lsan_is_turned_off && __lsan_is_turned_off())
+  if (&__lsan_is_turned_off && __lsan_is_turned_off()) {
+    VReport(1, "LeakSanitizer is disabled");
     return false;
+  }
+  VReport(1, "LeakSanitizer: checking for leaks");
   // Inside LockStuffAndStopTheWorld we can't run symbolizer, so we can't match
   // suppressions. However if a stack id was previously suppressed, it should be
   // suppressed in future checks as well.
   for (int i = 0;; ++i) {
     EnsureMainThreadIDIsCorrect();
     CheckForLeaksParam param;
+    // Capture calling thread's stack pointer early, to avoid false negatives.
+    // Old frame with dead pointers might be overlapped by new frame inside
+    // CheckForLeaks which does not use bytes with pointers before the
+    // threads are suspended and stack pointers captured.
+    param.caller_tid = GetTid();
+    param.caller_sp = reinterpret_cast<uptr>(__builtin_frame_address(0));
     LockStuffAndStopTheWorld(CheckForLeaksCallback, &param);
     if (!param.success) {
       Report("LeakSanitizer has encountered a fatal error.\n");

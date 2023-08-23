@@ -1,6 +1,8 @@
 #include <emscripten.h>
 #include <stdio.h>
 
+EM_JS_DEPS(main, "$runtimeKeepalivePush,$runtimeKeepalivePop,$callUserCallback");
+
 int main() {
   EM_ASM({
     Module["onExit"] = () => { out("onExit"); };
@@ -19,7 +21,9 @@ int main() {
       callUserCallback(() => {
         out("in user callback: " + counter);
       }, 0);
-      setTimeout(timerCallback, 0);
+      if (!runtimeExited) {
+        setTimeout(timerCallback, 0);
+      }
     }
     setTimeout(timerCallback, 0);
   });

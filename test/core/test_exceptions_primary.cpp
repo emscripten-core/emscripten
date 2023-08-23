@@ -9,6 +9,7 @@
 #include <stdexcept>      // std::logic_error
 
 int main () {
+  std::cout << "in main\n";
   std::exception_ptr p;
   try {
      throw std::logic_error("some logic_error exception");   // throws
@@ -20,7 +21,7 @@ int main () {
   std::cout << "(after exception)\n";
 
   try {
-     std::rethrow_exception (p);
+     std::rethrow_exception(p);
   } catch (const std::exception& e) {
      std::cout << "exception caught: " << e.what() << '\n';
   }

@@ -14,7 +14,7 @@
 #include <type_traits>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
@@ -25,8 +25,7 @@ template <class _Tp, class, class = void>
 struct __is_transparent : false_type {};
 
 template <class _Tp, class _Up>
-struct __is_transparent<_Tp, _Up,
-                        typename __void_t<typename _Tp::is_transparent>::type>
+struct __is_transparent<_Tp, _Up, __void_t<typename _Tp::is_transparent> >
    : true_type {};
 
 #endif

@@ -72,6 +72,13 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note:: This is a good setting for a release build.
 
+.. _emcc-Og:
+
+``-Og``
+  [compile+link]
+  Like ``-O1``. In future versions, this option might disable different
+  optimizations in order to improve debuggability.
+
 .. _emcc-Os:
 
 ``-Os``
@@ -130,6 +137,7 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note:: Options can be specified as a single argument with or without a space
             between the ``-s`` and option name.  e.g. ``-sFOO`` or ``-s FOO``.
+            It's `highly recommended <https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-specify-s-options-in-a-cmake-project>`_ you use the notation without space.
 
 .. _emcc-g:
 
@@ -155,8 +163,14 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-gsource-map:
 
 ``-gsource-map``
-  When linking, generate a source map using LLVM debug information (which must
+  [link]
+  Generate a source map using LLVM debug information (which must
   be present in object files, i.e., they should have been compiled with ``-g``).
+  When this option is provided, the **.wasm** file is updated to have a
+  ``sourceMappingURL`` section. The resulting URL will have format:
+  ``<base-url>`` + ``<wasm-file-name>`` + ``.map``. ``<base-url>`` defaults
+  to being empty (which means the source map is served from the same directory
+  as the wasm file). It can be changed using :ref:`--source-map-base <emcc-source-map-base>`.
 
 .. _emcc-gN:
 
@@ -190,6 +204,8 @@ Options that are modified or new in *emcc* are listed below:
   [same as -g2 if passed at compile time, otherwise applies at link]
   Use reasonable defaults when emitting JavaScript to make the build readable but still useful for profiling. This sets ``-g2`` (preserve whitespace and function names) and may also enable optimizations that affect performance and otherwise might not be performed in ``-g2``.
 
+.. _emcc-profiling-funcs:
+
 ``--profiling-funcs``
   [link]
   Preserve function names in profiling, but otherwise minify whitespace and names as we normally do in optimized builds. This is useful if you want to look at profiler results based on function names, but do *not* intend to read the emitted code.
@@ -197,6 +213,12 @@ Options that are modified or new in *emcc* are listed below:
 ``--tracing``
   [link]
   Enable the :ref:`Emscripten Tracing API <trace-h>`.
+
+``--reproduce=<file.tar>``
+  [compile+link]
+  Write tar file containing inputs and command to reproduce invocation.  When
+  sharing this file be aware that it will any object files, source files and
+  libraries that that were passed to the compiler.
 
 .. _emcc-emit-symbol-map:
 
@@ -273,28 +295,44 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--embed-file <file>``
   [link]
-  Specify a file (with path) to embed inside the generated JavaScript. The path is relative to the current directory at compile time. If a directory is passed here, its entire contents will be embedded.
+  Specify a file (with path) to embed inside the generated WebAssembly module.
+  The path is relative to the current directory at compile time. If a directory
+  is passed here, its entire contents will be embedded.
 
-  For example, if the command includes ``--embed-file dir/file.dat``, then ``dir/file.dat`` must exist relative to the directory where you run *emcc*.
+  For example, if the command includes ``--embed-file dir/file.dat``, then
+  ``dir/file.dat`` must exist relative to the directory where you run *emcc*.
 
-  .. note:: Embedding files is much less efficient than :ref:`preloading <emcc-preload-file>` them. You should only use it for small files, in small numbers. Instead use ``--preload-file``, which emits efficient binary data.
+  .. note:: Embedding files is generally more efficient than :ref:`preloading
+     <emcc-preload-file>` as it avoids copying the file data at runtime.
 
-  For more information about the ``--embed-file`` options, see :ref:`packaging-files`.
+  For more information about the ``--embed-file`` options, see
+  :ref:`packaging-files`.
 
 .. _emcc-preload-file:
 
 ``--preload-file <name>``
   [link]
-  Specify a file to preload before running the compiled code asynchronously. The path is relative to the current directory at compile time. If a directory is passed here, its entire contents will be embedded.
+  Specify a file to preload before running the compiled code asynchronously. The
+  path is relative to the current directory at compile time. If a directory is
+  passed here, its entire contents will be embedded.
 
-  Preloaded files are stored in **filename.data**, where **filename.html** is the main file you are compiling to. To run your code, you will need both the **.html** and the **.data**.
+  Preloaded files are stored in **filename.data**, where **filename.html** is
+  the main file you are compiling to. To run your code, you will need both the
+  **.html** and the **.data**.
 
-  .. note:: This option is similar to :ref:`--embed-file <emcc-embed-file>`, except that it is only relevant when generating HTML (it uses asynchronous binary :term:`XHRs <XHR>`), or JavaScript that will be used in a web page.
+  .. note:: This option is similar to :ref:`--embed-file <emcc-embed-file>`,
+     except that it is only relevant when generating HTML (it uses asynchronous
+     binary :term:`XHRs <XHR>`), or JavaScript that will be used in a web page.
 
-  *emcc* runs `tools/file_packager <https://github.com/emscripten-core/emscripten/blob/main/tools/file_packager.py>`_ to do the actual packaging of embedded and preloaded files. You can run the file packager yourself if you want (see :ref:`packaging-files-file-packager`). You should then put the output of the file packager in an emcc ``--pre-js``, so that it executes before your main compiled code.
+  *emcc* runs `tools/file_packager
+  <https://github.com/emscripten-core/emscripten/blob/main/tools/file_packager.py>`_
+  to do the actual packaging of embedded and preloaded files. You can run the
+  file packager yourself if you want (see :ref:`packaging-files-file-packager`).
+  You should then put the output of the file packager in an emcc ``--pre-js``,
+  so that it executes before your main compiled code.
 
-  For more information about the ``--preload-file`` options, see :ref:`packaging-files`.
-
+  For more information about the ``--preload-file`` options, see
+  :ref:`packaging-files`.
 
 .. _emcc-exclude-file:
 
@@ -321,7 +359,8 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--source-map-base <base-url>``
   [link]
-  The URL for the location where WebAssembly source maps will be published. When this option is provided, the **.wasm** file is updated to have a ``sourceMappingURL`` section. The resulting URL will have format: ``<base-url>`` + ``<wasm-file-name>`` + ``.map``.
+  The base URL for the location where WebAssembly source maps will be published. Must be used
+  with :ref:`-gsource-map <emcc-gsource-map>`.
 
 .. _emcc-minify:
 
@@ -342,6 +381,16 @@ Options that are modified or new in *emcc* are listed below:
 ``--bind``
   [link]
   Links against embind library.  Deprecated: Use ``-lembind`` instead.
+
+.. _emcc-embind-emit-tsd:
+
+``--embind-emit-tsd <path>``
+  [link]
+  Generate a TypeScript definition file from the exported embind bindings. The
+  program will be instrumented and run in node in order to to generate the file.
+  Note that the program itself will not be generated when this flag is
+  used.  You will need to be rebuild without this flag to build the program
+  itself.
 
 ``--ignore-dynamic-linking``
   [link]
@@ -463,7 +512,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--threadprofiler``
   [link]
-  Embeds a thread activity profiler onto the generated page. Use this to profile the application usage of pthreads when targeting multithreaded builds (-sUSE_PTHREADS=1/2).
+  Embeds a thread activity profiler onto the generated page. Use this to profile the application usage of pthreads when targeting multithreaded builds (-pthread).
 
 .. _emcc-config:
 

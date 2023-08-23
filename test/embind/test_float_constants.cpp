@@ -19,10 +19,10 @@ EMSCRIPTEN_BINDINGS(constants) {
 }
 
 int main() {
-    EM_ASM(
-        console.log("PI (as double) = " + Module['PI']);
-        console.log("EULER = " + Module['EULER']);
-        console.log("pi (as float) = " + Module['pi']);
-        console.log("euler = " + Module['euler']);
-    );
+  EM_ASM(
+    out("PI (as double) = " + Module['PI']);
+    out("EULER = " + Module['EULER']);
+    out("pi (as float) = " + Module['pi']);
+    out("euler = " + Module['euler']);
+  );
 }

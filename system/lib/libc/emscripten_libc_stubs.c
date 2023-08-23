@@ -20,11 +20,15 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#ifndef weak
+#define weak __attribute__((__weak__))
+#endif
+
 // ==========================================================================
 // sys/wait.h
 // ==========================================================================
 
-int waitid(idtype_t idtype, id_t id, siginfo_t *infop, int options) {
+weak int waitid(idtype_t idtype, id_t id, siginfo_t *infop, int options) {
   errno = ECHILD;
   return -1;
 }
@@ -50,12 +54,12 @@ struct tm *getdate(const char *string) {
   return 0;
 }
 
-int stime(const time_t *t) {
+weak int stime(const time_t *t) {
   errno = EPERM;
   return -1;
 }
 
-int clock_getcpuclockid(pid_t pid, clockid_t *clockid) {
+weak int clock_getcpuclockid(pid_t pid, clockid_t *clockid) {
   if (pid < 0) {
     return ESRCH;
   }
@@ -68,8 +72,9 @@ int clock_getcpuclockid(pid_t pid, clockid_t *clockid) {
   return 0;
 }
 
-
+// ==========================================================================
 // pwd.h
+// ==========================================================================
 
 struct passwd *getpwnam(const char *name) {
   errno = ENOENT;
@@ -81,20 +86,20 @@ struct passwd *getpwuid(uid_t uid) {
   return 0;
 }
 
-int getpwnam_r(const char *name, struct passwd *pwd,
+weak int getpwnam_r(const char *name, struct passwd *pwd,
                char *buf, size_t buflen, struct passwd **result) {
   return ENOENT;
 }
 
-int getpwuid_r(uid_t uid, struct passwd *pwd,
+weak int getpwuid_r(uid_t uid, struct passwd *pwd,
                       char *buf, size_t buflen, struct passwd **result) {
   return ENOENT;
 }
 
-void setpwent(void) {
+weak void setpwent(void) {
 }
 
-void endpwent(void) {
+weak void endpwent(void) {
 }
 
 struct passwd *getpwent(void) {
@@ -102,57 +107,59 @@ struct passwd *getpwent(void) {
   return NULL;
 }
 
+// ==========================================================================
 // grp.h
+// ==========================================================================
 
-struct group *getgrnam(const char *name) {
+weak struct group *getgrnam(const char *name) {
   errno = ENOENT;
   return 0;
 }
 
-struct group *getgrgid(gid_t gid) {
+weak struct group *getgrgid(gid_t gid) {
   errno = ENOENT;
   return 0;
 }
 
-int getgrnam_r(const char *name, struct group *grp,
+weak int getgrnam_r(const char *name, struct group *grp,
                char *buf, size_t buflen, struct group **result) {
   return ENOENT;
 }
 
-int getgrgid_r(gid_t gid, struct group *grp,
+weak int getgrgid_r(gid_t gid, struct group *grp,
                char *buf, size_t buflen, struct group **result) {
   return ENOENT;
 }
 
-struct group *getgrent(void) {
+weak struct group *getgrent(void) {
   errno = EIO;
   return NULL;
 }
 
-void endgrent(void) {
+weak void endgrent(void) {
 }
 
-void setgrent(void) {
+weak void setgrent(void) {
 }
 
 // ==========================================================================
 // sys/file.h
 // ==========================================================================
 
-int flock(int fd, int operation) {
+weak int flock(int fd, int operation) {
   // int flock(int fd, int operation);
   // Pretend to succeed
   return 0;
 }
 
-int chroot(const char *path) {
+weak int chroot(const char *path) {
   // int chroot(const char *path);
   // http://pubs.opengroup.org/onlinepubs/7908799/xsh/chroot.html
   errno = EACCES;
   return -1;
 }
 
-int execve(const char *pathname, char *const argv[],
+weak int execve(const char *pathname, char *const argv[],
            char *const envp[]) {
   // int execve(const char *pathname, char *const argv[],
   //            char *const envp[]);
@@ -162,7 +169,7 @@ int execve(const char *pathname, char *const argv[],
   return -1;
 }
 
-pid_t fork(void) {
+weak pid_t fork(void) {
   // pid_t fork(void);
   // http://pubs.opengroup.org/onlinepubs/000095399/functions/fork.html
   // We don't support multiple processes.
@@ -170,12 +177,12 @@ pid_t fork(void) {
   return -1;
 }
 
-pid_t vfork(void) {
+weak pid_t vfork(void) {
   errno = ENOSYS;
   return -1;
 }
 
-int posix_spawn(pid_t *pid, const char *path,
+weak int posix_spawn(pid_t *pid, const char *path,
                        const posix_spawn_file_actions_t *file_actions,
                        const posix_spawnattr_t *attrp,
                        char *const argv[], char *const envp[]) {
@@ -183,17 +190,21 @@ int posix_spawn(pid_t *pid, const char *path,
   return -1;
 }
 
-FILE *popen(const char *command, const char *type) {
+// ==========================================================================
+// stdio.h
+// ==========================================================================
+
+weak FILE *popen(const char *command, const char *type) {
   errno = ENOSYS;
   return NULL;
 }
 
-int pclose(FILE *stream) {
+weak int pclose(FILE *stream) {
   errno = ENOSYS;
   return -1;
 }
 
-int setgroups(size_t size, const gid_t *list) {
+weak int setgroups(size_t size, const gid_t *list) {
   // int setgroups(int ngroups, const gid_t *gidset);
   // https://developer.apple.com/library/mac/#documentation/Darwin/Reference/ManPages/man2/setgroups.2.html
   if (size < 1 || size > sysconf(_SC_NGROUPS_MAX)) {
@@ -205,7 +216,40 @@ int setgroups(size_t size, const gid_t *list) {
   return -1;
 }
 
-int sigaltstack(const stack_t *restrict ss, stack_t *restrict old_ss) {
+weak int sigaltstack(const stack_t *restrict ss, stack_t *restrict old_ss) {
   errno = ENOSYS;
   return -1;
+}
+
+// ==========================================================================
+// dlfcn.h
+// ==========================================================================
+
+#ifndef EMSCRIPTEN_DYNAMIC_LINKING
+void __dl_seterr(const char*, ...);
+
+weak void *__dlsym(void *restrict p, const char *restrict s, void *restrict ra) {
+  __dl_seterr("dynamic linking not enabled");
+  return NULL;
+}
+
+weak void* dlopen(const char* file, int flags) {
+  __dl_seterr("dynamic linking not enabled");
+  return NULL;
+}
+#endif
+
+// ==========================================================================
+// stdlib.h
+// ==========================================================================
+
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+
+weak int getloadavg(double loadavg[], int nelem) {
+  // http://linux.die.net/man/3/getloadavg
+  int limit = MIN(nelem, 3);
+  for (int i = 0; i < limit; i++) {
+    loadavg[i] = 0.1;
+  }
+  return limit;
 }

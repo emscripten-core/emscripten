@@ -31,7 +31,7 @@ import sys
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
-sys.path.append(__rootdir__)
+sys.path.insert(0, __rootdir__)
 
 from tools import shared, building
 
@@ -45,12 +45,8 @@ cmd = [os.path.join(building.get_binaryen_bin(), 'wasm2js'), '--emscripten', was
 cmd += opts
 js = shared.run_process(cmd, stdout=subprocess.PIPE).stdout
 # assign the instantiate function to where it will be used
-if 'instantiate(asmLibraryArg)' in js:
-  js = shared.do_replace(js, 'function instantiate(asmLibraryArg) {',
-                         "Module['__wasm2jsInstantiate__'] = function(asmLibraryArg) {")
-else:
-  js = shared.do_replace(js, 'function instantiate(info) {',
-                         "Module['__wasm2jsInstantiate__'] = function(info) {")
+js = shared.do_replace(js, 'function instantiate(info) {',
+                       "Module['__wasm2jsInstantiate__'] = function(info) {")
 
 # create the combined js to run in wasm2js mode
 print('var Module = { doWasm2JS: true };\n')

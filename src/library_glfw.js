@@ -68,7 +68,9 @@ var LibraryGLFW = {
       this.windowRefreshFunc = null; // GLFWwindowrefreshfun
       this.windowFocusFunc = null; // GLFWwindowfocusfun
       this.windowIconifyFunc = null; // GLFWwindowiconifyfun
+      this.windowMaximizeFunc = null; // GLFWwindowmaximizefun
       this.framebufferSizeFunc = null; // GLFWframebuffersizefun
+      this.windowContentScaleFunc = null; // GLFWwindowcontentscalefun
       this.mouseButtonFunc = null; // GLFWmousebuttonfun
       this.cursorPosFunc = null; // GLFWcursorposfun
       this.cursorEnterFunc = null; // GLFWcursorenterfun
@@ -80,13 +82,13 @@ var LibraryGLFW = {
     },
 
   $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
-    '$allocateUTF8',
+    '$stringToNewUTF8',
 #if FILESYSTEM
     '$FS',
 #endif
   ],
   $GLFW: {
-    WindowFromId: function(id) {
+    WindowFromId: (id) => {
       if (id <= 0 || !GLFW.windows) return null;
       return GLFW.windows[id - 1];
     },
@@ -95,6 +97,7 @@ var LibraryGLFW = {
     errorFunc: null, // GLFWerrorfun
     monitorFunc: null, // GLFWmonitorfun
     active: null, // active window
+    scale: null,
     windows: null,
     monitors: null,
     monitorString: null,
@@ -108,6 +111,8 @@ var LibraryGLFW = {
       0x00020003:1, // GLFW_RESIZABLE
       0x00020004:1, // GLFW_VISIBLE
       0x00020005:1, // GLFW_DECORATED
+      0x0002000A:0, // GLFW_TRANSPARENT_FRAMEBUFFER
+      0x0002200C:0, // GLFW_SCALE_TO_MONITOR. can we emulate this?
 
       0x00021001:8, // GLFW_RED_BITS
       0x00021002:8, // GLFW_GREEN_BITS
@@ -140,7 +145,7 @@ var LibraryGLFW = {
  ******************************************************************************/
 
     /* https://developer.mozilla.org/en/Document_Object_Model_%28DOM%29/KeyboardEvent and GLFW/glfw3.h */
-    DOMToGLFWKeyCode: function(keycode) {
+    DOMToGLFWKeyCode: (keycode) => {
       switch (keycode) {
         // these keycodes are only defined for GLFW3, assume they are the same for GLFW2
         case 0x20:return 32; // DOM_VK_SPACE -> GLFW_KEY_SPACE
@@ -344,16 +349,17 @@ var LibraryGLFW = {
       };
     },
 
-    getModBits: function(win) {
+    getModBits: (win) => {
       var mod = 0;
       if (win.keys[340]) mod |= 0x0001; // GLFW_MOD_SHIFT
       if (win.keys[341]) mod |= 0x0002; // GLFW_MOD_CONTROL
       if (win.keys[342]) mod |= 0x0004; // GLFW_MOD_ALT
       if (win.keys[343]) mod |= 0x0008; // GLFW_MOD_SUPER
+      // add caps and num lock keys? only if lock_key_mod is set
       return mod;
     },
 
-    onKeyPress: function(event) {
+    onKeyPress: (event) => {
       if (!GLFW.active || !GLFW.active.charFunc) return;
       if (event.ctrlKey || event.metaKey) return;
 
@@ -364,13 +370,12 @@ var LibraryGLFW = {
 #if USE_GLFW == 2
       {{{ makeDynCall('vii', 'GLFW.active.charFunc') }}}(charCode, 1);
 #endif
-
 #if USE_GLFW == 3
       {{{ makeDynCall('vii', 'GLFW.active.charFunc') }}}(GLFW.active.id, charCode);
 #endif
     },
 
-    onKeyChanged: function(keyCode, status) {
+    onKeyChanged: (keyCode, status) => {
       if (!GLFW.active) return;
 
       var key = GLFW.DOMToGLFWKeyCode(keyCode);
@@ -381,27 +386,27 @@ var LibraryGLFW = {
 #endif
       GLFW.active.keys[key] = status;
       GLFW.active.domKeys[keyCode] = status;
-      if (!GLFW.active.keyFunc) return;
 
+      if (GLFW.active.keyFunc) {
 #if USE_GLFW == 2
-      {{{ makeDynCall('vii', 'GLFW.active.keyFunc') }}}(key, status);
+        {{{ makeDynCall('vii', 'GLFW.active.keyFunc') }}}(key, status);
 #endif
-
 #if USE_GLFW == 3
-      if (repeat) status = 2; // GLFW_REPEAT
-      {{{ makeDynCall('viiiii', 'GLFW.active.keyFunc') }}}(GLFW.active.id, key, keyCode, status, GLFW.getModBits(GLFW.active));
+        if (repeat) status = 2; // GLFW_REPEAT
+        {{{ makeDynCall('viiiii', 'GLFW.active.keyFunc') }}}(GLFW.active.id, key, keyCode, status, GLFW.getModBits(GLFW.active));
 #endif
+      }
     },
 
-    onGamepadConnected: function(event) {
+    onGamepadConnected: (event) => {
       GLFW.refreshJoysticks();
     },
 
-    onGamepadDisconnected: function(event) {
+    onGamepadDisconnected: (event) => {
       GLFW.refreshJoysticks();
     },
 
-    onKeydown: function(event) {
+    onKeydown: (event) => {
       GLFW.onKeyChanged(event.keyCode, 1); // GLFW_PRESS or GLFW_REPEAT
 
       // This logic comes directly from the sdl implementation. We cannot
@@ -412,11 +417,11 @@ var LibraryGLFW = {
       }
     },
 
-    onKeyup: function(event) {
+    onKeyup: (event) => {
       GLFW.onKeyChanged(event.keyCode, 0); // GLFW_RELEASE
     },
 
-    onBlur: function(event) {
+    onBlur: (event) => {
       if (!GLFW.active) return;
 
       for (var i = 0; i < GLFW.active.domKeys.length; ++i) {
@@ -426,23 +431,24 @@ var LibraryGLFW = {
       }
     },
 
-    onMousemove: function(event) {
+    onMousemove: (event) => {
       if (!GLFW.active) return;
 
       Browser.calculateMouseEvent(event);
 
       if (event.target != Module["canvas"] || !GLFW.active.cursorPosFunc) return;
 
+      if (GLFW.active.cursorPosFunc) {
 #if USE_GLFW == 2
-      {{{ makeDynCall('vii', 'GLFW.active.cursorPosFunc') }}}(Browser.mouseX, Browser.mouseY);
+        {{{ makeDynCall('vii', 'GLFW.active.cursorPosFunc') }}}(Browser.mouseX, Browser.mouseY);
 #endif
-
 #if USE_GLFW == 3
-      {{{ makeDynCall('vidd', 'GLFW.active.cursorPosFunc') }}}(GLFW.active.id, Browser.mouseX, Browser.mouseY);
+        {{{ makeDynCall('vidd', 'GLFW.active.cursorPosFunc') }}}(GLFW.active.id, Browser.mouseX, Browser.mouseY);
 #endif
+      }
     },
 
-    DOMToGLFWMouseButton: function(event) {
+    DOMToGLFWMouseButton: (event) => {
       // DOM and glfw have different button codes.
       // See http://www.w3schools.com/jsref/event_button.asp.
       var eventButton = event['button'];
@@ -456,27 +462,31 @@ var LibraryGLFW = {
       return eventButton;
     },
 
-    onMouseenter: function(event) {
+    onMouseenter: (event) => {
       if (!GLFW.active) return;
 
-      if (event.target != Module["canvas"] || !GLFW.active.cursorEnterFunc) return;
+      if (event.target != Module["canvas"]) return;
 
 #if USE_GLFW == 3
-      {{{ makeDynCall('vii', 'GLFW.active.cursorEnterFunc') }}}(GLFW.active.id, 1);
+      if (GLFW.active.cursorEnterFunc) {
+        {{{ makeDynCall('vii', 'GLFW.active.cursorEnterFunc') }}}(GLFW.active.id, 1);
+      }
 #endif
     },
 
-    onMouseleave: function(event) {
+    onMouseleave: (event) => {
       if (!GLFW.active) return;
 
-      if (event.target != Module["canvas"] || !GLFW.active.cursorEnterFunc) return;
+      if (event.target != Module["canvas"]) return;
 
 #if USE_GLFW == 3
-      {{{ makeDynCall('vii', 'GLFW.active.cursorEnterFunc') }}}(GLFW.active.id, 0);
+      if (GLFW.active.cursorEnterFunc) {
+        {{{ makeDynCall('vii', 'GLFW.active.cursorEnterFunc') }}}(GLFW.active.id, 0);
+      }
 #endif
     },
 
-    onMouseButtonChanged: function(event, status) {
+    onMouseButtonChanged: (event, status) => {
       if (!GLFW.active) return;
 
       Browser.calculateMouseEvent(event);
@@ -494,39 +504,36 @@ var LibraryGLFW = {
         GLFW.active.buttons &= ~(1 << eventButton);
       }
 
-      if (!GLFW.active.mouseButtonFunc) return;
-
+      if (GLFW.active.mouseButtonFunc) {
 #if USE_GLFW == 2
-      {{{ makeDynCall('vii', 'GLFW.active.mouseButtonFunc') }}}(eventButton, status);
+        {{{ makeDynCall('vii', 'GLFW.active.mouseButtonFunc') }}}(eventButton, status);
 #endif
-
 #if USE_GLFW == 3
-      {{{ makeDynCall('viiii', 'GLFW.active.mouseButtonFunc') }}}(GLFW.active.id, eventButton, status, GLFW.getModBits(GLFW.active));
+        {{{ makeDynCall('viiii', 'GLFW.active.mouseButtonFunc') }}}(GLFW.active.id, eventButton, status, GLFW.getModBits(GLFW.active));
 #endif
+      }
     },
 
-    onMouseButtonDown: function(event) {
+    onMouseButtonDown: (event) => {
       if (!GLFW.active) return;
       GLFW.onMouseButtonChanged(event, 1); // GLFW_PRESS
     },
 
-    onMouseButtonUp: function(event) {
+    onMouseButtonUp: (event) => {
       if (!GLFW.active) return;
       GLFW.onMouseButtonChanged(event, 0); // GLFW_RELEASE
     },
 
-    onMouseWheel: function(event) {
+    onMouseWheel: (event) => {
       // Note the minus sign that flips browser wheel direction (positive direction scrolls page down) to native wheel direction (positive direction is mouse wheel up)
       var delta = -Browser.getMouseWheelDelta(event);
       delta = (delta == 0) ? 0 : (delta > 0 ? Math.max(delta, 1) : Math.min(delta, -1)); // Quantize to integer so that minimum scroll is at least +/- 1.
       GLFW.wheelPos += delta;
 
       if (!GLFW.active || !GLFW.active.scrollFunc || event.target != Module['canvas']) return;
-
 #if USE_GLFW == 2
       {{{ makeDynCall('vi', 'GLFW.active.scrollFunc') }}}(GLFW.wheelPos);
 #endif
-
 #if USE_GLFW == 3
       var sx = 0;
       var sy = delta;
@@ -542,7 +549,7 @@ var LibraryGLFW = {
       event.preventDefault();
     },
 
-    onCanvasResize: function(width, height) {
+    onCanvasResize: (width, height) => {
       if (!GLFW.active) return;
 
       var resizeNeeded = true;
@@ -585,37 +592,47 @@ var LibraryGLFW = {
       }
     },
 
-    onWindowSizeChanged: function() {
+    onWindowSizeChanged: () => {
       if (!GLFW.active) return;
 
-      if (!GLFW.active.windowSizeFunc) return;
-
+      if (GLFW.active.windowSizeFunc) {
 #if USE_GLFW == 2
-      {{{ makeDynCall('vii', 'GLFW.active.windowSizeFunc') }}}(GLFW.active.width, GLFW.active.height);
+        {{{ makeDynCall('vii', 'GLFW.active.windowSizeFunc') }}}(GLFW.active.width, GLFW.active.height);
 #endif
-
 #if USE_GLFW == 3
-      {{{ makeDynCall('viii', 'GLFW.active.windowSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
+        {{{ makeDynCall('viii', 'GLFW.active.windowSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
 #endif
+      }
     },
 
-    onFramebufferSizeChanged: function() {
+    onFramebufferSizeChanged: () => {
       if (!GLFW.active) return;
 
-      if (!GLFW.active.framebufferSizeFunc) return;
-
 #if USE_GLFW == 3
-      {{{ makeDynCall('viii', 'GLFW.active.framebufferSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
+      if (GLFW.active.framebufferSizeFunc) {
+        {{{ makeDynCall('viii', 'GLFW.active.framebufferSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
+      }
 #endif
     },
 
-    getTime: function() {
+    onWindowContentScaleChanged: (scale) => {
+      GLFW.scale = scale;
+      if (!GLFW.active) return;
+
+#if USE_GLFW == 3
+      if (GLFW.active.windowContentScaleFunc) {
+        {{{ makeDynCall('viff', 'GLFW.active.windowContentScaleFunc') }}}(GLFW.active.id, GLFW.scale, GLFW.scale);
+      }
+#endif
+    },
+
+    getTime: () => {
       return _emscripten_get_now() / 1000;
     },
 
     /* GLFW2 wrapping */
 
-    setWindowTitle: function(winid, title) {
+    setWindowTitle: (winid, title) => {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
 
@@ -625,7 +642,7 @@ var LibraryGLFW = {
       }
     },
 
-    setJoystickCallback: function(cbfun) {
+    setJoystickCallback: (cbfun) => {
       GLFW.joystickFunc = cbfun;
       GLFW.refreshJoysticks();
     },
@@ -634,7 +651,7 @@ var LibraryGLFW = {
     lastGamepadState: [],
     lastGamepadStateFrame: null, // The integer value of Browser.mainLoop.currentFrameNumber of when the last gamepad state was produced.
 
-    refreshJoysticks: function() {
+    refreshJoysticks: () => {
       // Produce a new Gamepad API sample if we are ticking a new game frame, or if not using emscripten_set_main_loop() at all to drive animation.
       if (Browser.mainLoop.currentFrameNumber !== GLFW.lastGamepadStateFrame || !Browser.mainLoop.currentFrameNumber) {
         GLFW.lastGamepadState = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads : []);
@@ -647,7 +664,7 @@ var LibraryGLFW = {
             if (!GLFW.joys[joy]) {
               out('glfw joystick connected:',joy);
               GLFW.joys[joy] = {
-                id: allocateUTF8(gamepad.id),
+                id: stringToNewUTF8(gamepad.id),
                 buttonsCount: gamepad.buttons.length,
                 axesCount: gamepad.axes.length,
                 buttons: _malloc(gamepad.buttons.length),
@@ -687,7 +704,7 @@ var LibraryGLFW = {
       }
     },
 
-    setKeyCallback: function(winid, cbfun) {
+    setKeyCallback: (winid, cbfun) => {
       var win = GLFW.WindowFromId(winid);
       if (!win) return null;
       var prevcbfun = win.keyFunc;
@@ -695,7 +712,7 @@ var LibraryGLFW = {
       return prevcbfun;
     },
 
-    setCharCallback: function(winid, cbfun) {
+    setCharCallback: (winid, cbfun) => {
       var win = GLFW.WindowFromId(winid);
       if (!win) return null;
       var prevcbfun = win.charFunc;
@@ -703,7 +720,7 @@ var LibraryGLFW = {
       return prevcbfun;
     },
 
-    setMouseButtonCallback: function(winid, cbfun) {
+    setMouseButtonCallback: (winid, cbfun) => {
       var win = GLFW.WindowFromId(winid);
       if (!win) return null;
       var prevcbfun = win.mouseButtonFunc;
@@ -711,7 +728,7 @@ var LibraryGLFW = {
       return prevcbfun;
     },
 
-    setCursorPosCallback: function(winid, cbfun) {
+    setCursorPosCallback: (winid, cbfun) => {
       var win = GLFW.WindowFromId(winid);
       if (!win) return null;
       var prevcbfun = win.cursorPosFunc;
@@ -719,7 +736,7 @@ var LibraryGLFW = {
       return prevcbfun;
     },
 
-    setScrollCallback: function(winid, cbfun) {
+    setScrollCallback: (winid, cbfun) => {
       var win = GLFW.WindowFromId(winid);
       if (!win) return null;
       var prevcbfun = win.scrollFunc;
@@ -727,7 +744,7 @@ var LibraryGLFW = {
       return prevcbfun;
     },
 
-    setDropCallback: function(winid, cbfun) {
+    setDropCallback: (winid, cbfun) => {
       var win = GLFW.WindowFromId(winid);
       if (!win) return null;
       var prevcbfun = win.dropFunc;
@@ -735,7 +752,7 @@ var LibraryGLFW = {
       return prevcbfun;
     },
 
-    onDrop: function(event) {
+    onDrop: (event) => {
       if (!GLFW.active || !GLFW.active.dropFunc) return;
       if (!event.dataTransfer || !event.dataTransfer.files || event.dataTransfer.files.length == 0) return;
 
@@ -774,7 +791,7 @@ var LibraryGLFW = {
         };
         reader.readAsArrayBuffer(file);
 
-        var filename = allocateUTF8(path);
+        var filename = stringToNewUTF8(path);
         filenamesArray.push(filename);
         {{{ makeSetValue('filenames + i*4', '0', 'filename', POINTER_TYPE) }}};
       }
@@ -787,14 +804,14 @@ var LibraryGLFW = {
       return false;
     },
 
-    onDragover: function(event) {
+    onDragover: (event) => {
       if (!GLFW.active || !GLFW.active.dropFunc) return;
 
       event.preventDefault();
       return false;
     },
 
-    setWindowSizeCallback: function(winid, cbfun) {
+    setWindowSizeCallback: (winid, cbfun) => {
       var win = GLFW.WindowFromId(winid);
       if (!win) return null;
       var prevcbfun = win.windowSizeFunc;
@@ -812,7 +829,7 @@ var LibraryGLFW = {
       return prevcbfun;
     },
 
-    setWindowCloseCallback: function(winid, cbfun) {
+    setWindowCloseCallback: (winid, cbfun) => {
       var win = GLFW.WindowFromId(winid);
       if (!win) return null;
       var prevcbfun = win.windowCloseFunc;
@@ -820,7 +837,7 @@ var LibraryGLFW = {
       return prevcbfun;
     },
 
-    setWindowRefreshCallback: function(winid, cbfun) {
+    setWindowRefreshCallback: (winid, cbfun) => {
       var win = GLFW.WindowFromId(winid);
       if (!win) return null;
       var prevcbfun = win.windowRefreshFunc;
@@ -828,14 +845,14 @@ var LibraryGLFW = {
       return prevcbfun;
     },
 
-    onClickRequestPointerLock: function(e) {
+    onClickRequestPointerLock: (e) => {
       if (!Browser.pointerLock && Module['canvas'].requestPointerLock) {
         Module['canvas'].requestPointerLock();
         e.preventDefault();
       }
     },
 
-    setInputMode: function(winid, mode, value) {
+    setInputMode: (winid, mode, value) => {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
 
@@ -849,7 +866,7 @@ var LibraryGLFW = {
               break;
             }
             case 0x00034002: { // GLFW_CURSOR_HIDDEN
-              out("glfwSetInputMode called with GLFW_CURSOR_HIDDEN value not implemented.");
+              err('glfwSetInputMode called with GLFW_CURSOR_HIDDEN value not implemented');
               break;
             }
             case 0x00034003: { // GLFW_CURSOR_DISABLED
@@ -859,53 +876,61 @@ var LibraryGLFW = {
               break;
             }
             default: {
-              out("glfwSetInputMode called with unknown value parameter value: " + value + ".");
+              err(`glfwSetInputMode called with unknown value parameter value: ${value}`);
               break;
             }
           }
           break;
         }
         case 0x00033002: { // GLFW_STICKY_KEYS
-          out("glfwSetInputMode called with GLFW_STICKY_KEYS mode not implemented.");
+          err('glfwSetInputMode called with GLFW_STICKY_KEYS mode not implemented');
           break;
         }
         case 0x00033003: { // GLFW_STICKY_MOUSE_BUTTONS
-          out("glfwSetInputMode called with GLFW_STICKY_MOUSE_BUTTONS mode not implemented.");
+          err('glfwSetInputMode called with GLFW_STICKY_MOUSE_BUTTONS mode not implemented');
+          break;
+        }
+        case 0x00033004: { // GLFW_LOCK_KEY_MODS
+          err('glfwSetInputMode called with GLFW_LOCK_KEY_MODS mode not implemented');
+          break;
+        }
+        case 0x000330005: { // GLFW_RAW_MOUSE_MOTION
+          err('glfwSetInputMode called with GLFW_RAW_MOUSE_MOTION mode not implemented');
           break;
         }
         default: {
-          out("glfwSetInputMode called with unknown mode parameter value: " + mode + ".");
+          err(`glfwSetInputMode called with unknown mode parameter value: ${mode}`);
           break;
         }
       }
     },
 
-    getKey: function(winid, key) {
+    getKey: (winid, key) => {
       var win = GLFW.WindowFromId(winid);
       if (!win) return 0;
       return win.keys[key];
     },
 
-    getMouseButton: function(winid, button) {
+    getMouseButton: (winid, button) => {
       var win = GLFW.WindowFromId(winid);
       if (!win) return 0;
       return (win.buttons & (1 << button)) > 0;
     },
 
-    getCursorPos: function(winid, x, y) {
+    getCursorPos: (winid, x, y) => {
       {{{ makeSetValue('x', '0', 'Browser.mouseX', 'double') }}};
       {{{ makeSetValue('y', '0', 'Browser.mouseY', 'double') }}};
     },
 
-    getMousePos: function(winid, x, y) {
+    getMousePos: (winid, x, y) => {
       {{{ makeSetValue('x', '0', 'Browser.mouseX', 'i32') }}};
       {{{ makeSetValue('y', '0', 'Browser.mouseY', 'i32') }}};
     },
 
-    setCursorPos: function(winid, x, y) {
+    setCursorPos: (winid, x, y) => {
     },
 
-    getWindowPos: function(winid, x, y) {
+    getWindowPos: (winid, x, y) => {
       var wx = 0;
       var wy = 0;
 
@@ -924,14 +949,14 @@ var LibraryGLFW = {
       }
     },
 
-    setWindowPos: function(winid, x, y) {
+    setWindowPos: (winid, x, y) => {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
       win.x = x;
       win.y = y;
     },
 
-    getWindowSize: function(winid, width, height) {
+    getWindowSize: (winid, width, height) => {
       var ww = 0;
       var wh = 0;
 
@@ -950,7 +975,7 @@ var LibraryGLFW = {
       }
     },
 
-    setWindowSize: function(winid, width, height) {
+    setWindowSize: (winid, width, height) => {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
 
@@ -965,18 +990,17 @@ var LibraryGLFW = {
         }
       }
 
-      if (!win.windowSizeFunc) return;
-
+      if (win.windowSizeFunc) {
 #if USE_GLFW == 2
-      {{{ makeDynCall('vii', 'win.windowSizeFunc') }}}(width, height);
+        {{{ makeDynCall('vii', 'win.windowSizeFunc') }}}(width, height);
 #endif
-
 #if USE_GLFW == 3
-      {{{ makeDynCall('viii', 'win.windowSizeFunc') }}}(win.id, width, height);
+        {{{ makeDynCall('viii', 'win.windowSizeFunc') }}}(win.id, width, height);
 #endif
+      }
     },
 
-    createWindow: function(width, height, title, monitor, share) {
+    createWindow: (width, height, title, monitor, share) => {
       var i, id;
       for (i = 0; i < GLFW.windows.length && GLFW.windows[i] !== null; i++) {
         // no-op
@@ -1035,13 +1059,14 @@ var LibraryGLFW = {
       return win.id;
     },
 
-    destroyWindow: function(winid) {
+    destroyWindow: (winid) => {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
 
 #if USE_GLFW == 3
-      if (win.windowCloseFunc)
+      if (win.windowCloseFunc) {
         {{{ makeDynCall('vi', 'win.windowCloseFunc') }}}(win.id);
+      }
 #endif
 
       GLFW.windows[win.id - 1] = null;
@@ -1055,10 +1080,10 @@ var LibraryGLFW = {
       Module.ctx = Browser.destroyContext(Module['canvas'], true, true);
     },
 
-    swapBuffers: function(winid) {
+    swapBuffers: (winid) => {
     },
 
-    GLFW2ParamToGLFW3Param: function(param) {
+    GLFW2ParamToGLFW3Param: (param) => {
       var table = {
         0x00030001:0, // GLFW_MOUSE_CURSOR
         0x00030002:0, // GLFW_STICKY_KEYS
@@ -1098,14 +1123,16 @@ var LibraryGLFW = {
 /*******************************************************************************
  * GLFW FUNCTIONS
  ******************************************************************************/
-  glfwInit__sig: 'i',
-  glfwInit: function() {
+  glfwInit__deps: ['emscripten_get_device_pixel_ratio', 'malloc', 'free'],
+  glfwInit: () => {
     if (GLFW.windows) return 1; // GL_TRUE
 
     GLFW.initialTime = GLFW.getTime();
     GLFW.hints = GLFW.defaultHints;
     GLFW.windows = new Array()
     GLFW.active = null;
+    GLFW.scale  = _emscripten_get_device_pixel_ratio();
+
 
     window.addEventListener("gamepadconnected", GLFW.onGamepadConnected, true);
     window.addEventListener("gamepaddisconnected", GLFW.onGamepadDisconnected, true);
@@ -1113,6 +1140,13 @@ var LibraryGLFW = {
     window.addEventListener("keypress", GLFW.onKeyPress, true);
     window.addEventListener("keyup", GLFW.onKeyup, true);
     window.addEventListener("blur", GLFW.onBlur, true);
+    // from https://stackoverflow.com/a/70514686/7484780 . maybe add this to browser.js?
+    // no idea how to remove this listener.
+    (function updatePixelRatio(){
+      window.matchMedia("(resolution: " + window.devicePixelRatio + "dppx)")
+      .addEventListener('change', updatePixelRatio, {once: true});
+      GLFW.onWindowContentScaleChanged(_emscripten_get_device_pixel_ratio());
+      })();
     Module["canvas"].addEventListener("touchmove", GLFW.onMousemove, true);
     Module["canvas"].addEventListener("touchstart", GLFW.onMouseButtonDown, true);
     Module["canvas"].addEventListener("touchcancel", GLFW.onMouseButtonUp, true);
@@ -1133,8 +1167,7 @@ var LibraryGLFW = {
     return 1; // GL_TRUE
   },
 
-  glfwTerminate__sig: 'v',
-  glfwTerminate: function() {
+  glfwTerminate: () => {
     window.removeEventListener("gamepadconnected", GLFW.onGamepadConnected, true);
     window.removeEventListener("gamepaddisconnected", GLFW.onGamepadDisconnected, true);
     window.removeEventListener("keydown", GLFW.onKeydown, true);
@@ -1161,8 +1194,7 @@ var LibraryGLFW = {
     GLFW.active = null;
   },
 
-  glfwGetVersion__sig: 'viii',
-  glfwGetVersion: function(major, minor, rev) {
+  glfwGetVersion: (major, minor, rev) => {
 #if USE_GLFW == 2
     {{{ makeSetValue('major', '0', '2', 'i32') }}};
     {{{ makeSetValue('minor', '0', '7', 'i32') }}};
@@ -1176,25 +1208,18 @@ var LibraryGLFW = {
 #endif
   },
 
-  glfwPollEvents__sig: 'v',
-  glfwPollEvents: function() {},
+  glfwPollEvents: () => {},
 
-  glfwWaitEvents__sig: 'v',
-  glfwWaitEvents: function() {},
+  glfwWaitEvents: () => {},
 
-  glfwGetTime__sig: 'd',
-  glfwGetTime: function() {
-    return GLFW.getTime() - GLFW.initialTime;
-  },
+  glfwGetTime: () => GLFW.getTime() - GLFW.initialTime,
 
-  glfwSetTime__sig: 'vd',
-  glfwSetTime: function(time) {
+  glfwSetTime: (time) => {
     GLFW.initialTime = GLFW.getTime() - time;
   },
 
   glfwExtensionSupported__deps: ['glGetString'],
-  glfwExtensionSupported__sig: 'ii',
-  glfwExtensionSupported: function(extension) {
+  glfwExtensionSupported: (extension) => {
     if (!GLFW.extensions) {
       GLFW.extensions = UTF8ToString(_glGetString(0x1F03)).split(' ');
     }
@@ -1207,58 +1232,56 @@ var LibraryGLFW = {
   },
 
   glfwSwapInterval__deps: ['emscripten_set_main_loop_timing'],
-  glfwSwapInterval__sig: 'vi',
-  glfwSwapInterval: function(interval) {
+  glfwSwapInterval: (interval) => {
     interval = Math.abs(interval); // GLFW uses negative values to enable GLX_EXT_swap_control_tear, which we don't have, so just treat negative and positive the same.
-    if (interval == 0) _emscripten_set_main_loop_timing(0/*EM_TIMING_SETTIMEOUT*/, 0);
-    else _emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, interval);
+    if (interval == 0) _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_SETTIMEOUT }}}, 0);
+    else _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_RAF }}}, interval);
   },
 
 #if USE_GLFW == 3
-  glfwGetVersionString__sig: 'i',
-  glfwGetVersionString: function() {
+  glfwGetVersionString: () => {
     if (!GLFW.versionString) {
-      GLFW.versionString = allocateUTF8("3.2.1 JS WebGL Emscripten");
+      GLFW.versionString = stringToNewUTF8("3.2.1 JS WebGL Emscripten");
     }
     return GLFW.versionString;
   },
 
-  glfwSetErrorCallback__sig: 'ii',
-  glfwSetErrorCallback: function(cbfun) {
+  glfwSetErrorCallback: (cbfun) => {
     var prevcbfun = GLFW.errorFunc;
     GLFW.errorFunc = cbfun;
     return prevcbfun;
   },
 
-  glfwWaitEventsTimeout__sig: 'vd',
-  glfwWaitEventsTimeout: function(timeout) {},
+  glfwWaitEventsTimeout: (timeout) => {},
 
-  glfwPostEmptyEvent__sig: 'v',
-  glfwPostEmptyEvent: function() {},
+  glfwPostEmptyEvent: () => {},
 
-  glfwGetMonitors__sig: 'ii',
-  glfwGetMonitors: function(count) {
+  glfwGetMonitors__deps: ['malloc'],
+  glfwGetMonitors: (count) => {
     {{{ makeSetValue('count', '0', '1', 'i32') }}};
     if (!GLFW.monitors) {
-      GLFW.monitors = {{{ makeMalloc('glfwGetMonitors', Runtime.POINTER_SIZE) }}};
+      GLFW.monitors = _malloc({{{ POINTER_SIZE }}});
       {{{ makeSetValue('GLFW.monitors', '0', '1', 'i32') }}};
     }
     return GLFW.monitors;
   },
 
-  glfwGetPrimaryMonitor__sig: 'i',
-  glfwGetPrimaryMonitor: function() {
-    return 1;
-  },
+  glfwGetPrimaryMonitor: () => 1,
 
-  glfwGetMonitorPos__sig: 'viii',
-  glfwGetMonitorPos: function(monitor, x, y) {
+  glfwGetMonitorPos: (monitor, x, y) => {
     {{{ makeSetValue('x', '0', '0', 'i32') }}};
     {{{ makeSetValue('y', '0', '0', 'i32') }}};
   },
 
-  glfwGetMonitorPhysicalSize__sig: 'viii',
-  glfwGetMonitorPhysicalSize: function(monitor, width, height) {
+  glfwGetMonitorWorkarea: (monitor, x, y, w, h) => {
+    {{{ makeSetValue('x', '0', '0', 'i32') }}};
+    {{{ makeSetValue('y', '0', '0', 'i32') }}};
+
+    {{{ makeSetValue('w', '0', 'screen.availWidth', 'i32') }}};
+    {{{ makeSetValue('h', '0', 'screen.availHeight', 'i32') }}};
+  },
+
+  glfwGetMonitorPhysicalSize: (monitor, width, height) => {
     // AFAIK there is no way to do this in javascript
     // Maybe with platform specific ccalls?
     //
@@ -1267,107 +1290,81 @@ var LibraryGLFW = {
     {{{ makeSetValue('height', '0', '0', 'i32') }}};
   },
 
-  glfwGetMonitorName__sig: 'ii',
-  glfwGetMonitorName: function(mon) {
+  glfwGetMonitorContentScale: (monitor, x, y) => {
+    {{{ makeSetValue('x', '0', 'GLFW.scale', 'float') }}};
+    {{{ makeSetValue('y', '0', 'GLFW.scale', 'float') }}};
+  },
+
+  glfwGetMonitorName: (mon) => {
     if (!GLFW.monitorString) {
-      GLFW.monitorString = allocateUTF8("HTML5 WebGL Canvas");
+      GLFW.monitorString = stringToNewUTF8("HTML5 WebGL Canvas");
     }
     return GLFW.monitorString;
   },
 
-  glfwSetMonitorCallback__sig: 'ii',
-  glfwSetMonitorCallback: function(cbfun) {
+  glfwSetMonitorCallback: (cbfun) => {
     var prevcbfun = GLFW.monitorFunc;
     GLFW.monitorFunc = cbfun;
     return prevcbfun;
   },
 
   // TODO: implement
-  glfwGetVideoModes__sig: 'iii',
-  glfwGetVideoModes: function(monitor, count) {
+  glfwGetVideoModes: (monitor, count) => {
     {{{ makeSetValue('count', '0', '0', 'i32') }}};
     return 0;
   },
 
   // TODO: implement
-  glfwGetVideoMode__sig: 'ii',
-  glfwGetVideoMode: function(monitor) { return 0; },
+  glfwGetVideoMode: (monitor) => 0,
 
   // TODO: implement
-  glfwSetGamma__sig: 'vif',
-  glfwSetGamma: function(monitor, gamma) { },
+  glfwSetGamma: (monitor, gamma) => {},
 
-  glfwGetGammaRamp__sig: 'ii',
-  glfwGetGammaRamp: function(monitor) {
-    throw "glfwGetGammaRamp not implemented.";
-  },
+  glfwGetGammaRamp: (monitor) => { throw "glfwGetGammaRamp not implemented."; },
 
-  glfwSetGammaRamp__sig: 'vii',
-  glfwSetGammaRamp: function(monitor, ramp) {
-    throw "glfwSetGammaRamp not implemented.";
-  },
+  glfwSetGammaRamp: (monitor, ramp) => { throw "glfwSetGammaRamp not implemented."; },
 
-  glfwDefaultWindowHints__sig: 'v',
-  glfwDefaultWindowHints: function() {
+  glfwDefaultWindowHints: () => {
     GLFW.hints = GLFW.defaultHints;
   },
 
-  glfwWindowHint__sig: 'vii',
-  glfwWindowHint: function(target, hint) {
+  glfwWindowHint: (target, hint) => {
     GLFW.hints[target] = hint;
   },
 
-  glfwCreateWindow__sig: 'iiiiii',
-  glfwCreateWindow: function(width, height, title, monitor, share) {
-    return GLFW.createWindow(width, height, title, monitor, share);
+  glfwWindowHintString: (hint, value) => {
+    // from glfw docs -> we just ignore this.
+    // Some hints are platform specific.  These may be set on any platform but they
+    // will only affect their specific platform.  Other platforms will ignore them.
   },
 
-  glfwDestroyWindow__sig: 'vi',
-  glfwDestroyWindow: function(winid) {
-    return GLFW.destroyWindow(winid);
-  },
+  glfwCreateWindow: (width, height, title, monitor, share) => GLFW.createWindow(width, height, title, monitor, share),
 
-  glfwWindowShouldClose__sig: 'ii',
-  glfwWindowShouldClose: function(winid) {
+  glfwDestroyWindow: (winid) => GLFW.destroyWindow(winid),
+
+  glfwWindowShouldClose: (winid) => {
     var win = GLFW.WindowFromId(winid);
     if (!win) return 0;
     return win.shouldClose;
   },
 
-  glfwSetWindowShouldClose__sig: 'vii',
-  glfwSetWindowShouldClose: function(winid, value) {
+  glfwSetWindowShouldClose: (winid, value) => {
     var win = GLFW.WindowFromId(winid);
     if (!win) return;
     win.shouldClose = value;
   },
 
-  glfwSetWindowTitle__sig: 'vii',
-  glfwSetWindowTitle: function(winid, title) {
-    GLFW.setWindowTitle(winid, title);
-  },
+  glfwSetWindowTitle: (winid, title) => GLFW.setWindowTitle(winid, title),
 
-  glfwGetWindowPos__sig: 'viii',
-  glfwGetWindowPos: function(winid, x, y) {
-    GLFW.getWindowPos(winid, x, y);
-  },
+  glfwGetWindowPos: (winid, x, y) => GLFW.getWindowPos(winid, x, y),
 
-  glfwSetWindowPos__sig: 'viii',
-  glfwSetWindowPos: function(winid, x, y) {
-    GLFW.setWindowPos(winid, x, y);
-  },
+  glfwSetWindowPos: (winid, x, y) => GLFW.setWindowPos(winid, x, y),
 
-  glfwGetWindowSize__sig: 'viii',
-  glfwGetWindowSize: function(winid, width, height) {
-    GLFW.getWindowSize(winid, width, height);
-  },
+  glfwGetWindowSize: (winid, width, height) => GLFW.getWindowSize(winid, width, height),
 
-  glfwSetWindowSize__sig: 'viii',
-  glfwSetWindowSize: function(winid, width, height) {
-    GLFW.setWindowSize(winid, width, height);
-  },
+  glfwSetWindowSize: (winid, width, height) => GLFW.setWindowSize(winid, width, height),
 
-  glfwGetFramebufferSize__sig: 'viii',
-  glfwGetFramebufferSize: function(winid, width, height) {
+  glfwGetFramebufferSize: (winid, width, height) => {
     var ww = 0;
     var wh = 0;
 
@@ -1386,56 +1383,64 @@ var LibraryGLFW = {
     }
   },
 
-  glfwIconifyWindow__sig: 'vi',
-  glfwIconifyWindow: function(winid) {
+  glfwGetWindowContentScale: (winid, x, y) => {
+    // winid doesn't matter. all windows will use same scale anyway.
+    // hope i used this makeSetValue correctly
+    {{{ makeSetValue('x', '0', 'GLFW.scale', 'float') }}};
+    {{{ makeSetValue('y', '0', 'GLFW.scale', 'float') }}};
+  },
+
+  glfwGetWindowOpacity: (winid) => 1.0,
+
+  glfwSetWindowOpacity: (winid, opacity) => { /* error */ },
+
+  glfwIconifyWindow: (winid) => {
 #if ASSERTIONS
     warnOnce('glfwIconifyWindow is not implemented');
 #endif
   },
 
-  glfwRestoreWindow__sig: 'vi',
-  glfwRestoreWindow: function(winid) {
+  glfwRestoreWindow: (winid) => {
 #if ASSERTIONS
     warnOnce('glfwRestoreWindow is not implemented');
 #endif
   },
 
-  glfwShowWindow__sig: 'vi',
-  glfwShowWindow: function(winid) {},
+  glfwShowWindow: (winid) => {},
 
-  glfwHideWindow__sig: 'vi',
-  glfwHideWindow: function(winid) {},
+  glfwHideWindow: (winid) => {},
 
-  glfwGetWindowMonitor__sig: 'ii',
-  glfwGetWindowMonitor: function(winid) {
+  glfwGetWindowMonitor: (winid) => {
     var win = GLFW.WindowFromId(winid);
     if (!win) return 0;
     return win.monitor;
   },
 
-  glfwGetWindowAttrib__sig: 'iii',
-  glfwGetWindowAttrib: function(winid, attrib) {
+  glfwGetWindowAttrib: (winid, attrib) => {
     var win = GLFW.WindowFromId(winid);
     if (!win) return 0;
     return win.attributes[attrib];
   },
 
-  glfwSetWindowUserPointer__sig: 'vii',
-  glfwSetWindowUserPointer: function(winid, ptr) {
+  glfwSetWindowAttrib: (winid, attrib, value) => {
+    var win = GLFW.WindowFromId(winid);
+    if (!win) return;
+    win.attributes[attrib] = value;
+  },
+
+  glfwSetWindowUserPointer: (winid, ptr) => {
     var win = GLFW.WindowFromId(winid);
     if (!win) return;
     win.userptr = ptr;
   },
 
-  glfwGetWindowUserPointer__sig: 'ii',
-  glfwGetWindowUserPointer: function(winid) {
+  glfwGetWindowUserPointer: (winid) => {
     var win = GLFW.WindowFromId(winid);
     if (!win) return 0;
     return win.userptr;
   },
 
-  glfwSetWindowPosCallback__sig: 'iii',
-  glfwSetWindowPosCallback: function(winid, cbfun) {
+  glfwSetWindowPosCallback: (winid, cbfun) => {
     var win = GLFW.WindowFromId(winid);
     if (!win) return null;
     var prevcbfun = win.windowPosFunc;
@@ -1443,23 +1448,13 @@ var LibraryGLFW = {
     return prevcbfun;
   },
 
-  glfwSetWindowSizeCallback__sig: 'iii',
-  glfwSetWindowSizeCallback: function(winid, cbfun) {
-    return GLFW.setWindowSizeCallback(winid, cbfun);
-  },
+  glfwSetWindowSizeCallback: (winid, cbfun) => GLFW.setWindowSizeCallback(winid, cbfun),
 
-  glfwSetWindowCloseCallback__sig: 'iii',
-  glfwSetWindowCloseCallback: function(winid, cbfun) {
-    return GLFW.setWindowCloseCallback(winid, cbfun);
-  },
+  glfwSetWindowCloseCallback: (winid, cbfun) => GLFW.setWindowCloseCallback(winid, cbfun),
 
-  glfwSetWindowRefreshCallback__sig: 'iii',
-  glfwSetWindowRefreshCallback: function(winid, cbfun) {
-    return GLFW.setWindowRefreshCallback(winid, cbfun);
-  },
+  glfwSetWindowRefreshCallback: (winid, cbfun) => GLFW.setWindowRefreshCallback(winid, cbfun),
 
-  glfwSetWindowFocusCallback__sig: 'iii',
-  glfwSetWindowFocusCallback: function(winid, cbfun) {
+  glfwSetWindowFocusCallback: (winid, cbfun) => {
     var win = GLFW.WindowFromId(winid);
     if (!win) return null;
     var prevcbfun = win.windowFocusFunc;
@@ -1467,8 +1462,7 @@ var LibraryGLFW = {
     return prevcbfun;
   },
 
-  glfwSetWindowIconifyCallback__sig: 'iii',
-  glfwSetWindowIconifyCallback: function(winid, cbfun) {
+  glfwSetWindowIconifyCallback: (winid, cbfun) => {
     var win = GLFW.WindowFromId(winid);
     if (!win) return null;
     var prevcbfun = win.windowIconifyFunc;
@@ -1476,41 +1470,39 @@ var LibraryGLFW = {
     return prevcbfun;
   },
 
-  glfwSetWindowIcon__sig: 'viii',
-  glfwSetWindowIcon: function(winid, count, images) {},
+  glfwSetWindowMaximizeCallback: (winid, cbfun) => {
+    var win = GLFW.WindowFromId(winid);
+    if (!win) return null;
+    var prevcbfun = win.windowMaximizeFunc;
+    win.windowMaximizeFunc = cbfun;
+    return prevcbfun;
+  },
 
-  glfwSetWindowSizeLimits__sig: 'viiiii',
-  glfwSetWindowSizeLimits: function(winid, minwidth, minheight, maxwidth, maxheight) {},
+  glfwSetWindowIcon: (winid, count, images) => {},
 
-  glfwSetWindowAspectRatio__sig: 'viii',
-  glfwSetWindowAspectRatio: function(winid, numer, denom) {},
+  glfwSetWindowSizeLimits: (winid, minwidth, minheight, maxwidth, maxheight) => {},
 
-  glfwGetWindowFrameSize__sig: 'viiiii',
-  glfwGetWindowFrameSize: function(winid, left, top, right, bottom) { throw "glfwGetWindowFrameSize not implemented."; },
+  glfwSetWindowAspectRatio: (winid, numer, denom) => {},
 
-  glfwMaximizeWindow__sig: 'vi',
-  glfwMaximizeWindow: function(winid) {},
+  glfwGetWindowFrameSize: (winid, left, top, right, bottom) => { throw "glfwGetWindowFrameSize not implemented."; },
 
-  glfwFocusWindow__sig: 'vi',
-  glfwFocusWindow: function(winid) {},
+  glfwMaximizeWindow: (winid) => {},
 
-  glfwSetWindowMonitor__sig: 'viiiiiii',
-  glfwSetWindowMonitor: function(winid, monitor, xpos, ypos, width, height, refreshRate) { throw "glfwSetWindowMonitor not implemented."; },
+  glfwFocusWindow: (winid) => {},
 
-  glfwCreateCursor__sig: 'iiii',
-  glfwCreateCursor: function(image, xhot, yhot) {},
+  glfwRequestWindowAttention: (winid) => {}, // maybe do window.focus()?
 
-  glfwCreateStandardCursor__sig: 'ii',
-  glfwCreateStandardCursor: function(shape) {},
+  glfwSetWindowMonitor: (winid, monitor, xpos, ypos, width, height, refreshRate) => { throw "glfwSetWindowMonitor not implemented."; },
 
-  glfwDestroyCursor__sig: 'vi',
-  glfwDestroyCursor: function(cursor) {},
+  glfwCreateCursor: (image, xhot, yhot) => {},
 
-  glfwSetCursor__sig: 'vii',
-  glfwSetCursor: function(winid, cursor) {},
+  glfwCreateStandardCursor: (shape) => {},
 
-  glfwSetFramebufferSizeCallback__sig: 'iii',
-  glfwSetFramebufferSizeCallback: function(winid, cbfun) {
+  glfwDestroyCursor: (cursor) => {},
+
+  glfwSetCursor: (winid, cursor) => {},
+
+  glfwSetFramebufferSizeCallback: (winid, cbfun) => {
     var win = GLFW.WindowFromId(winid);
     if (!win) return null;
     var prevcbfun = win.framebufferSizeFunc;
@@ -1518,8 +1510,15 @@ var LibraryGLFW = {
     return prevcbfun;
   },
 
-  glfwGetInputMode__sig: 'iii',
-  glfwGetInputMode: function(winid, mode) {
+  glfwSetWindowContentScaleCallback: (winid, cbfun) => {
+    var win = GLFW.WindowFromId(winid);
+    if (!win) return null;
+    var prevcbfun = win.windowContentScaleFunc;
+    win.windowContentScaleFunc = cbfun;
+    return prevcbfun;
+  },
+
+  glfwGetInputMode: (winid, mode) => {
     var win = GLFW.WindowFromId(winid);
     if (!win) return;
 
@@ -1536,60 +1535,36 @@ var LibraryGLFW = {
     return win.inputModes[mode];
   },
 
-  glfwSetInputMode__sig: 'viii',
-  glfwSetInputMode: function(winid, mode, value) {
+  glfwSetInputMode: (winid, mode, value) => {
     GLFW.setInputMode(winid, mode, value);
   },
 
-  glfwGetKey__sig: 'iii',
-  glfwGetKey: function(winid, key) {
-    return GLFW.getKey(winid, key);
-  },
+  glfwRawMouseMotionSupported: () => 0,
 
-  glfwGetKeyName__sig: 'iii',
-  glfwGetKeyName: function(key, scancode) { throw "glfwGetKeyName not implemented."; },
+  glfwGetKey: (winid, key) => GLFW.getKey(winid, key),
 
-  glfwGetMouseButton__sig: 'iii',
-  glfwGetMouseButton: function(winid, button) {
-    return GLFW.getMouseButton(winid, button);
-  },
+  glfwGetKeyName: (key, scancode) => { throw "glfwGetKeyName not implemented."; },
 
-  glfwGetCursorPos__sig: 'viii',
-  glfwGetCursorPos: function(winid, x, y) {
-    GLFW.getCursorPos(winid, x, y);
-  },
+  glfwGetKeyScancode: (key) => { throw "glfwGetKeyScancode not implemented."; },
+
+  glfwGetMouseButton: (winid, button) => GLFW.getMouseButton(winid, button),
+
+  glfwGetCursorPos: (winid, x, y) => GLFW.getCursorPos(winid, x, y),
 
   // I believe it is not possible to move the mouse with javascript
-  glfwSetCursorPos__sig: 'vidd',
-  glfwSetCursorPos: function(winid, x, y) {
-    GLFW.setCursorPos(winid, x, y);
-  },
+  glfwSetCursorPos: (winid, x, y) => GLFW.setCursorPos(winid, x, y),
 
-  glfwSetKeyCallback__sig: 'iii',
-  glfwSetKeyCallback: function(winid, cbfun) {
-    return GLFW.setKeyCallback(winid, cbfun);
-  },
+  glfwSetKeyCallback: (winid, cbfun) => GLFW.setKeyCallback(winid, cbfun),
 
-  glfwSetCharCallback__sig: 'iii',
-  glfwSetCharCallback: function(winid, cbfun) {
-    return GLFW.setCharCallback(winid, cbfun);
-  },
+  glfwSetCharCallback: (winid, cbfun) => GLFW.setCharCallback(winid, cbfun),
 
-  glfwSetCharModsCallback__sig: 'iii',
-  glfwSetCharModsCallback: function(winid, cbfun) { throw "glfwSetCharModsCallback not implemented."; },
+  glfwSetCharModsCallback: (winid, cbfun) => { throw "glfwSetCharModsCallback not implemented."; },
 
-  glfwSetMouseButtonCallback__sig: 'iii',
-  glfwSetMouseButtonCallback: function(winid, cbfun) {
-    return GLFW.setMouseButtonCallback(winid, cbfun);
-  },
+  glfwSetMouseButtonCallback: (winid, cbfun) => GLFW.setMouseButtonCallback(winid, cbfun),
 
-  glfwSetCursorPosCallback__sig: 'iii',
-  glfwSetCursorPosCallback: function(winid, cbfun) {
-    return GLFW.setCursorPosCallback(winid, cbfun);
-  },
+  glfwSetCursorPosCallback: (winid, cbfun) => GLFW.setCursorPosCallback(winid, cbfun),
 
-  glfwSetCursorEnterCallback__sig: 'iii',
-  glfwSetCursorEnterCallback: function(winid, cbfun) {
+  glfwSetCursorEnterCallback: (winid, cbfun) => {
     var win = GLFW.WindowFromId(winid);
     if (!win) return null;
     var prevcbfun = win.cursorEnterFunc;
@@ -1597,48 +1572,25 @@ var LibraryGLFW = {
     return prevcbfun;
   },
 
-  glfwSetScrollCallback__sig: 'iii',
-  glfwSetScrollCallback: function(winid, cbfun) {
-    return GLFW.setScrollCallback(winid, cbfun);
-  },
+  glfwSetScrollCallback: (winid, cbfun) => GLFW.setScrollCallback(winid, cbfun),
 
-  glfwVulkanSupported__sig: 'i',
-  glfwVulkanSupported: function() {
-    return 0;
-  },
+  glfwVulkanSupported: () => 0,
 
-  glfwSetDropCallback__sig: 'iii',
-  glfwSetDropCallback: function(winid, cbfun) {
-    return GLFW.setDropCallback(winid, cbfun);
-  },
+  glfwSetDropCallback: (winid, cbfun) => GLFW.setDropCallback(winid, cbfun),
 
-  glfwGetTimerValue__sig: 'j',
-  glfwGetTimerValue: function() { throw "glfwGetTimerValue is not implemented."; },
+  glfwGetTimerValue: () => { throw "glfwGetTimerValue is not implemented."; },
 
-  glfwGetTimerFrequency__sig: 'j',
-  glfwGetTimerFrequency: function() { throw "glfwGetTimerFrequency is not implemented."; },
+  glfwGetTimerFrequency: () => { throw "glfwGetTimerFrequency is not implemented."; },
 
-  glfwGetRequiredInstanceExtensions__sig: 'ii',
-  glfwGetRequiredInstanceExtensions: function(count) { throw "glfwGetRequiredInstanceExtensions is not implemented."; },
+  glfwGetRequiredInstanceExtensions: (count) => { throw "glfwGetRequiredInstanceExtensions is not implemented."; },
 
-  glfwGetInstanceProcAddress__sig: 'iii',
-  glfwGetInstanceProcAddress: function(instance, procname) { throw "glfwGetInstanceProcAddress is not implemented."; },
-
-  glfwGetPhysicalDevicePresentationSupport__sig: 'iiii',
-  glfwGetPhysicalDevicePresentationSupport: function(instance, device, queuefamily) { throw "glfwGetPhysicalDevicePresentationSupport is not implemented"; },
-
-  glfwCreateWindowSurface__sig: 'iiiii',
-  glfwCreateWindowSurface: function(instance, winid, allocator, surface) { throw "glfwCreateWindowSurface is not implemented."; },
-
-  glfwJoystickPresent__sig: 'ii',
-  glfwJoystickPresent: function(joy) {
+  glfwJoystickPresent: (joy) => {
     GLFW.refreshJoysticks();
 
     return GLFW.joys[joy] !== undefined;
   },
 
-  glfwGetJoystickAxes__sig: 'iii',
-  glfwGetJoystickAxes: function(joy, count) {
+  glfwGetJoystickAxes: (joy, count) => {
     GLFW.refreshJoysticks();
 
     var state = GLFW.joys[joy];
@@ -1651,8 +1603,7 @@ var LibraryGLFW = {
     return state.axes;
   },
 
-  glfwGetJoystickButtons__sig: 'iii',
-  glfwGetJoystickButtons: function(joy, count) {
+  glfwGetJoystickButtons: (joy, count) => {
     GLFW.refreshJoysticks();
 
     var state = GLFW.joys[joy];
@@ -1665,42 +1616,37 @@ var LibraryGLFW = {
     return state.buttons;
   },
 
-  glfwGetJoystickName__sig: 'ii',
-  glfwGetJoystickName: function(joy) {
+  glfwGetJoystickHats: (joy, count) => { throw "glfwGetJoystickHats is not implemented"; },
+
+  glfwGetJoystickName: (joy) => {
     if (GLFW.joys[joy]) {
       return GLFW.joys[joy].id;
     }
     return 0;
   },
 
-  glfwSetJoystickCallback__sig: 'ii',
-  glfwSetJoystickCallback: function(cbfun) {
-    GLFW.setJoystickCallback(cbfun);
-  },
+  glfwGetJoystickGUID: (jid) => { throw "glfwGetJoystickGUID not implemented"; },
 
-  glfwSetClipboardString__sig: 'vii',
-  glfwSetClipboardString: function(win, string) {},
+  glfwSetJoystickUserPointer: (jid, ptr) => { throw "glfwSetJoystickUserPointer not implemented"; },
 
-  glfwGetClipboardString__sig: 'ii',
-  glfwGetClipboardString: function(win) {},
+  glfwGetJoystickUserPointer: (jid) => { throw "glfwGetJoystickUserPointer not implemented"; },
 
-  glfwMakeContextCurrent__sig: 'vi',
-  glfwMakeContextCurrent: function(winid) {},
+  glfwJoystickIsGamepad: (jid) => { throw "glfwJoystickIsGamepad not implemented"; },
 
-  glfwGetCurrentContext__sig: 'i',
-  glfwGetCurrentContext: function() {
-    return GLFW.active ? GLFW.active.id : 0;
-  },
+  glfwSetJoystickCallback: (cbfun) => GLFW.setJoystickCallback(cbfun),
 
-  glfwSwapBuffers__sig: 'vi',
-  glfwSwapBuffers: function(winid) {
-    GLFW.swapBuffers(winid);
-  },
+  glfwSetClipboardString: (win, string) => {},
 
-#endif // GLFW 3
+  glfwGetClipboardString: (win) => {},
 
-#if USE_GLFW == 2
-  glfwOpenWindow: function(width, height, redbits, greenbits, bluebits, alphabits, depthbits, stencilbits, mode) {
+  glfwMakeContextCurrent: (winid) => {},
+
+  glfwGetCurrentContext: () => GLFW.active ? GLFW.active.id : 0,
+
+  glfwSwapBuffers: (winid) => GLFW.swapBuffers(winid),
+
+#elif USE_GLFW == 2
+  glfwOpenWindow: (width, height, redbits, greenbits, bluebits, alphabits, depthbits, stencilbits, mode) => {
     GLFW.hints[0x00021001] = redbits;     // GLFW_RED_BITS
     GLFW.hints[0x00021002] = greenbits;   // GLFW_GREEN_BITS
     GLFW.hints[0x00021003] = bluebits;    // GLFW_BLUE_BITS
@@ -1711,187 +1657,153 @@ var LibraryGLFW = {
     return 1; // GL_TRUE
   },
 
-  glfwCloseWindow: function() {
-    GLFW.destroyWindow(GLFW.active.id);
-  },
+  glfwCloseWindow: () => GLFW.destroyWindow(GLFW.active.id),
 
-  glfwOpenWindowHint: function(target, hint) {
+  glfwOpenWindowHint: (target, hint) => {
     target = GLFW.GLFW2ParamToGLFW3Param(target);
     GLFW.hints[target] = hint;
   },
 
-  glfwGetWindowSize: function(width, height) {
-    GLFW.getWindowSize(GLFW.active.id, width, height);
-  },
+  glfwGetWindowSize_v2: (width, height) => GLFW.getWindowSize(GLFW.active.id, width, height),
 
-  glfwSetWindowSize: function(width, height) {
-    GLFW.setWindowSize(GLFW.active.id, width, height);
-  },
+  glfwSetWindowSize_v2: (width, height) => GLFW.setWindowSize(GLFW.active.id, width, height),
 
-  glfwGetWindowPos: function(x, y) {
-    GLFW.getWindowPos(GLFW.active.id, x, y);
-  },
+  glfwSetWindowPos_v2: (x, y) => GLFW.setWindowPos(GLFW.active.id, x, y),
 
-  glfwSetWindowPos: function(x, y) {
-    GLFW.setWindowPos(GLFW.active.id, x, y);
-  },
+  glfwSetWindowTitle_v2: (title) => GLFW.setWindowTitle(GLFW.active.id, title),
 
-  glfwSetWindowTitle: function(title) {
-    GLFW.setWindowTitle(GLFW.active.id, title);
-  },
-
-  glfwIconifyWindow: function() {
+  glfwIconifyWindow_v2: () => {
 #if ASSERTIONS
     warnOnce('glfwIconifyWindow is not implemented');
 #endif
   },
 
-  glfwRestoreWindow: function() {
+  glfwRestoreWindow_v2: () => {
 #if ASSERTIONS
     warnOnce('glfwRestoreWindow is not implemented');
 #endif
   },
 
-  glfwSwapBuffers: function() {
-    GLFW.swapBuffers(GLFW.active.id);
-  },
+  glfwSwapBuffers_v2: () => GLFW.swapBuffers(GLFW.active.id),
 
-  glfwGetWindowParam: function(param) {
+  glfwGetWindowParam: (param) => {
     param = GLFW.GLFW2ParamToGLFW3Param(param);
     return GLFW.hints[param];
   },
 
-  glfwSetWindowSizeCallback: function(cbfun) {
+  glfwSetWindowSizeCallback_v2: (cbfun) => {
     GLFW.setWindowSizeCallback(GLFW.active.id, cbfun);
   },
 
-  glfwSetWindowCloseCallback: function(cbfun) {
+  glfwSetWindowCloseCallback_v2: (cbfun) => {
     GLFW.setWindowCloseCallback(GLFW.active.id, cbfun);
   },
 
-  glfwSetWindowRefreshCallback: function(cbfun) {
-    GLFW.setWindowRefreshCallback(GLFW.active.id, cbfun);
-  },
+  glfwSetWindowRefreshCallback_v2: (cbfun) => GLFW.setWindowRefreshCallback(GLFW.active.id, cbfun),
 
-  glfwGetKey: function(key) {
-    return GLFW.getKey(GLFW.active.id, key);
-  },
+  glfwGetKey_v2: (key) => GLFW.getKey(GLFW.active.id, key),
 
-  glfwGetMouseButton: function(button) {
-    return GLFW.getMouseButton(GLFW.active.id, button);
-  },
+  glfwGetMouseButton_v2: (button) => GLFW.getMouseButton(GLFW.active.id, button),
 
-  glfwGetMousePos: function(x, y) {
+  glfwGetMousePos: (x, y) => {
     GLFW.getMousePos(GLFW.active.id, x, y);
   },
 
-  glfwSetMousePos: function(x, y) {
+  glfwSetMousePos: (x, y) => {
     GLFW.setCursorPos(GLFW.active.id, x, y);
   },
 
-  glfwGetMouseWheel: function() {
-    return 0;
-  },
+  glfwGetMouseWheel: () => 0,
 
-  glfwSetMouseWheel: function(pos) {
-  },
+  glfwSetMouseWheel: (pos) => {},
 
-  glfwSetKeyCallback: function(cbfun) {
+  glfwSetKeyCallback_v2: (cbfun) => {
     GLFW.setKeyCallback(GLFW.active.id, cbfun);
   },
 
-  glfwSetCharCallback: function(cbfun) {
+  glfwSetCharCallback_v2: (cbfun) => {
     GLFW.setCharCallback(GLFW.active.id, cbfun);
   },
 
-  glfwSetMouseButtonCallback: function(cbfun) {
+  glfwSetMouseButtonCallback_v2: (cbfun) => {
     GLFW.setMouseButtonCallback(GLFW.active.id, cbfun);
   },
 
-  glfwSetMousePosCallback: function(cbfun) {
+  glfwSetMousePosCallback: (cbfun) => {
     GLFW.setCursorPosCallback(GLFW.active.id, cbfun);
   },
 
-  glfwSetMouseWheelCallback: function(cbfun) {
+  glfwSetMouseWheelCallback: (cbfun) => {
     GLFW.setScrollCallback(GLFW.active.id, cbfun);
   },
 
-  glfwGetDesktopMode: function(mode) {
-    throw "glfwGetDesktopMode is not implemented.";
-  },
+  glfwGetDesktopMode: (mode) => { throw "glfwGetDesktopMode is not implemented."; },
 
   glfwSleep__deps: ['sleep'],
-  glfwSleep: function(time) {
-    _sleep(time);
-  },
+  glfwSleep: (time) => _sleep(time),
 
-  glfwEnable: function(target) {
+  glfwEnable: (target) => {
     target = GLFW.GLFW2ParamToGLFW3Param(target);
     GLFW.hints[target] = false;
   },
 
-  glfwDisable: function(target) {
+  glfwDisable: (target) => {
     target = GLFW.GLFW2ParamToGLFW3Param(target);
     GLFW.hints[target] = true;
   },
 
-  glfwGetGLVersion: function(major, minor, rev) {
+  glfwGetGLVersion: (major, minor, rev) => {
     {{{ makeSetValue('major', '0', '0', 'i32') }}};
     {{{ makeSetValue('minor', '0', '0', 'i32') }}};
     {{{ makeSetValue('rev', '0', '1', 'i32') }}};
   },
 
-  glfwCreateThread: function(fun, arg) {
+  glfwCreateThread: (fun, arg) => {
     {{{ makeDynCall('vi', 'fun') }}}(arg);
     // One single thread
     return 0;
   },
 
-  glfwDestroyThread: function(ID) {},
+  glfwDestroyThread: (ID) => {},
 
-  glfwWaitThread: function(ID, waitmode) {},
+  glfwWaitThread: (ID, waitmode) => {},
 
-  glfwGetThreadID: function() {
-    // One single thread
-    return 0;
-  },
+  // One single thread
+  glfwGetThreadID: () => 0,
 
-  glfwCreateMutex: function() { throw "glfwCreateMutex is not implemented."; },
+  glfwCreateMutex: () => { throw "glfwCreateMutex is not implemented."; },
 
-  glfwDestroyMutex: function(mutex) { throw "glfwDestroyMutex is not implemented."; },
+  glfwDestroyMutex: (mutex) => { throw "glfwDestroyMutex is not implemented."; },
 
-  glfwLockMutex: function(mutex) { throw "glfwLockMutex is not implemented."; },
+  glfwLockMutex: (mutex) => { throw "glfwLockMutex is not implemented."; },
 
-  glfwUnlockMutex: function(mutex) { throw "glfwUnlockMutex is not implemented."; },
+  glfwUnlockMutex: (mutex) => { throw "glfwUnlockMutex is not implemented."; },
 
-  glfwCreateCond: function() { throw "glfwCreateCond is not implemented."; },
+  glfwCreateCond: () => { throw "glfwCreateCond is not implemented."; },
 
-  glfwDestroyCond: function(cond) { throw "glfwDestroyCond is not implemented."; },
+  glfwDestroyCond: (cond) => { throw "glfwDestroyCond is not implemented."; },
 
-  glfwWaitCond: function(cond, mutex, timeout) { throw "glfwWaitCond is not implemented."; },
+  glfwWaitCond: (cond, mutex, timeout) => { throw "glfwWaitCond is not implemented."; },
 
-  glfwSignalCond: function(cond) { throw "glfwSignalCond is not implemented."; },
+  glfwSignalCond: (cond) => { throw "glfwSignalCond is not implemented."; },
 
-  glfwBroadcastCond: function(cond) { throw "glfwBroadcastCond is not implemented."; },
+  glfwBroadcastCond: (cond) => { throw "glfwBroadcastCond is not implemented."; },
 
-  glfwGetNumberOfProcessors: function() {
-    // Threads are disabled anyway…
-    return 1;
-  },
+  glfwGetNumberOfProcessors: () => 1, // Threads are disabled anyway…
 
-  glfwReadImage: function(name, img, flags) { throw "glfwReadImage is not implemented."; },
+  glfwReadImage: (name, img, flags) => { throw "glfwReadImage is not implemented."; },
 
-  glfwReadMemoryImage: function(data, size, img, flags) { throw "glfwReadMemoryImage is not implemented."; },
+  glfwReadMemoryImage: (data, size, img, flags) => { throw "glfwReadMemoryImage is not implemented."; },
 
-  glfwFreeImage: function(img) { throw "glfwFreeImage is not implemented."; },
+  glfwFreeImage: (img) => { throw "glfwFreeImage is not implemented."; },
 
-  glfwLoadTexture2D: function(name, flags) { throw "glfwLoadTexture2D is not implemented."; },
+  glfwLoadTexture2D: (name, flags) => { throw "glfwLoadTexture2D is not implemented."; },
 
-  glfwLoadMemoryTexture2D: function(data, size, flags) { throw "glfwLoadMemoryTexture2D is not implemented."; },
+  glfwLoadMemoryTexture2D: (data, size, flags) => { throw "glfwLoadMemoryTexture2D is not implemented."; },
 
-  glfwLoadTextureImage2D: function(img, flags) { throw "glfwLoadTextureImage2D is not implemented."; },
+  glfwLoadTextureImage2D: (img, flags) => { throw "glfwLoadTextureImage2D is not implemented."; },
 #endif // GLFW2
 };
 
 autoAddDeps(LibraryGLFW, '$GLFW');
-mergeInto(LibraryManager.library, LibraryGLFW);
+addToLibrary(LibraryGLFW);

@@ -39,19 +39,20 @@ emscripten_stack_init:
   # emscripten_stack_get_base, or emscripten_stack_get_free are called
   .functype emscripten_stack_init () -> ()
 
-  # The heap base is where the stack grown down from.
+  # What llvm calls __stack_high is the high address from where is grows
+  # downwards.  We call this the stack base here in emscripten.
 #ifdef __PIC__
-  global.get __heap_base@GOT
+  global.get __stack_high@GOT
 #else
-  PTR.const __heap_base
+  PTR.const __stack_high
 #endif
   global.set __stack_base
 
-  # The end of stack data is the limit of the stack growth
+  # What llvm calls __stack_low is that end of the stack
 #ifdef __PIC__
-  global.get __data_end@GOT
+  global.get __stack_low@GOT
 #else
-  PTR.const __data_end
+  PTR.const __stack_low
 #endif
   # Align up to 16 bytes
   PTR.const 0xf
@@ -88,9 +89,6 @@ emscripten_wasm_worker_initialize:
   local.get 0
   .globaltype __tls_size, PTR, immutable
   global.get __tls_size
-#ifdef __wasm64__
-  i64.extend_i32_u
-#endif
   PTR.add
   PTR.const 0xf
   PTR.add

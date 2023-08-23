@@ -10,25 +10,19 @@
 #ifndef _LIBCPP___FORMAT_FORMAT_STRING_H
 #define _LIBCPP___FORMAT_FORMAT_STRING_H
 
+#include <__assert>
 #include <__config>
-#include <__debug>
 #include <__format/format_error.h>
 #include <cstddef>
 #include <cstdint>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 #if _LIBCPP_STD_VER > 17
-
-// TODO FMT Remove this once we require compilers with proper C++20 support.
-// If the compiler has no concepts support, the format header will be disabled.
-// Without concepts support enable_if needs to be used and that too much effort
-// to support compilers with partial C++20 support.
-#if !defined(_LIBCPP_HAS_NO_CONCEPTS)
 
 namespace __format {
 
@@ -37,6 +31,9 @@ struct _LIBCPP_TEMPLATE_VIS __parse_number_result {
   const _CharT* __ptr;
   uint32_t __value;
 };
+
+template <class _CharT>
+__parse_number_result(const _CharT*, uint32_t) -> __parse_number_result<_CharT>;
 
 template <class _CharT>
 _LIBCPP_HIDE_FROM_ABI constexpr __parse_number_result<_CharT>
@@ -76,7 +73,7 @@ __parse_automatic(const _CharT* __begin, const _CharT*, auto& __parse_ctx) {
 template <class _CharT>
 _LIBCPP_HIDE_FROM_ABI constexpr __parse_number_result<_CharT>
 __parse_manual(const _CharT* __begin, const _CharT* __end, auto& __parse_ctx) {
-  __parse_number_result<_CharT> __r = __parse_number(__begin, __end);
+  __parse_number_result<_CharT> __r = __format::__parse_number(__begin, __end);
   __parse_ctx.check_arg_id(__r.__value);
   return __r;
 }
@@ -123,7 +120,7 @@ __parse_number(const _CharT* __begin, const _CharT* __end_input) {
     if (__v > __number_max ||
         (__begin != __end_input && *__begin >= _CharT('0') &&
          *__begin <= _CharT('9')))
-      __throw_format_error("The numeric value of the format-spec is too large");
+      std::__throw_format_error("The numeric value of the format-spec is too large");
 
     __value = __v;
   }
@@ -152,15 +149,12 @@ __parse_arg_id(const _CharT* __begin, const _CharT* __end, auto& __parse_ctx) {
     return __detail::__parse_automatic(__begin, __end, __parse_ctx);
   }
   if (*__begin < _CharT('0') || *__begin > _CharT('9'))
-    __throw_format_error(
-        "The arg-id of the format-spec starts with an invalid character");
+    std::__throw_format_error("The arg-id of the format-spec starts with an invalid character");
 
   return __detail::__parse_manual(__begin, __end, __parse_ctx);
 }
 
 } // namespace __format
-
-#endif // !defined(_LIBCPP_HAS_NO_CONCEPTS)
 
 #endif //_LIBCPP_STD_VER > 17
 

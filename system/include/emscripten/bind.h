@@ -19,6 +19,7 @@
 #include <type_traits>
 #include <vector>
 
+#include <emscripten/em_macros.h>
 #include <emscripten/val.h>
 #include <emscripten/wire.h>
 
@@ -55,7 +56,6 @@ void _embind_register_void(
 void _embind_register_bool(
     TYPEID boolType,
     const char* name,
-    size_t size,
     bool trueValue,
     bool falseValue);
 
@@ -102,7 +102,8 @@ void _embind_register_function(
     const TYPEID argTypes[],
     const char* signature,
     GenericFunction invoker,
-    GenericFunction function);
+    GenericFunction function,
+    bool isAsync);
 
 void _embind_register_value_array(
     TYPEID tupleType,
@@ -178,7 +179,8 @@ void _embind_register_class_function(
     const char* invokerSignature,
     GenericFunction invoker,
     void* context,
-    unsigned isPureVirtual);
+    unsigned isPureVirtual,
+    bool isAsync);
 
 void _embind_register_class_property(
     TYPEID classType,
@@ -199,7 +201,8 @@ void _embind_register_class_class_function(
     const TYPEID argTypes[],
     const char* invokerSignature,
     GenericFunction invoker,
-    GenericFunction method);
+    GenericFunction method,
+    bool isAsync);
 
 void _embind_register_class_class_property(
     TYPEID classType,
@@ -311,6 +314,35 @@ template<typename Slot>
 struct allow_raw_pointer : public allow_raw_pointers {
 };
 
+struct async {
+    template<typename InputType, int Index>
+    struct Transform {
+        typedef InputType type;
+    };
+};
+
+namespace internal {
+
+template<typename... Policies>
+struct isAsync;
+
+template<typename... Rest>
+struct isAsync<async, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename T, typename... Rest>
+struct isAsync<T, Rest...> {
+    static constexpr bool value = isAsync<Rest...>::value;
+};
+
+template<>
+struct isAsync<> {
+    static constexpr bool value = false;
+};
+
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // select_overload and select_const
 ////////////////////////////////////////////////////////////////////////////////
@@ -385,6 +417,25 @@ struct Invoker<void, Args...> {
         );
     }
 };
+
+namespace async {
+
+template<typename F, F f> struct Wrapper;
+template<typename ReturnType, typename... Args, ReturnType(*f)(Args...)>
+struct Wrapper<ReturnType(*)(Args...), f> {
+    EMSCRIPTEN_KEEPALIVE static ReturnType invoke(Args... args) {
+        return f(args...);
+    }
+};
+
+} // end namespace async
+
+template<typename T, typename... Policies>
+using maybe_wrap_async = typename std::conditional<
+        isAsync<Policies...>::value,
+        async::Wrapper<decltype(&T::invoke), &T::invoke>,
+        T
+        >::type;
 
 template<typename FunctorType, typename ReturnType, typename... Args>
 struct FunctorInvoker {
@@ -502,20 +553,20 @@ EMSCRIPTEN_ALWAYS_INLINE const char* getSignature(Return (*)(Args...)) {
 // FUNCTIONS
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "C" void* __getDynamicPointerType(void* p);
-
 template<typename ReturnType, typename... Args, typename... Policies>
 void function(const char* name, ReturnType (*fn)(Args...), Policies...) {
     using namespace internal;
     typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-    auto invoker = &Invoker<ReturnType, Args...>::invoke;
+    using OriginalInvoker = Invoker<ReturnType, Args...>;
+    auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
     _embind_register_function(
         name,
         args.getCount(),
         args.getTypes(),
-        getSignature(invoker),
-        reinterpret_cast<GenericFunction>(invoker),
-        reinterpret_cast<GenericFunction>(fn));
+        getSignature(invoke),
+        reinterpret_cast<GenericFunction>(invoke),
+        reinterpret_cast<GenericFunction>(fn),
+        isAsync<Policies...>::value);
 }
 
 namespace internal {
@@ -1366,7 +1417,8 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...)> {
     template <typename CT, typename... Policies>
     static void invoke(const char* methodName,
                        ReturnType (ClassType::*memberFunction)(Args...)) {
-        auto invoker = &MethodInvoker<decltype(memberFunction), ReturnType, ClassType*, Args...>::invoke;
+        using OriginalInvoker = MethodInvoker<decltype(memberFunction), ReturnType, ClassType*, Args...>;
+        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<ClassType>, Args...> args;
         _embind_register_class_function(
@@ -1374,10 +1426,11 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...)> {
             methodName,
             args.getCount(),
             args.getTypes(),
-            getSignature(invoker),
-            reinterpret_cast<GenericFunction>(invoker),
+            getSignature(invoke),
+            reinterpret_cast<GenericFunction>(invoke),
             getContext(memberFunction),
-            isPureVirtual<Policies...>::value);
+            isPureVirtual<Policies...>::value,
+            isAsync<Policies...>::value);
     }
 };
 
@@ -1393,7 +1446,8 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {
     template <typename CT, typename... Policies>
     static void invoke(const char* methodName,
                        ReturnType (ClassType::*memberFunction)(Args...) const)  {
-        auto invoker = &MethodInvoker<decltype(memberFunction), ReturnType, const ClassType*, Args...>::invoke;
+        using OriginalInvoker = MethodInvoker<decltype(memberFunction), ReturnType, const ClassType*, Args...>;
+        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<const ClassType>, Args...> args;
         _embind_register_class_function(
@@ -1401,10 +1455,11 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {
             methodName,
             args.getCount(),
             args.getTypes(),
-            getSignature(invoker),
-            reinterpret_cast<GenericFunction>(invoker),
+            getSignature(invoke),
+            reinterpret_cast<GenericFunction>(invoke),
             getContext(memberFunction),
-            isPureVirtual<Policies...>::value);
+            isPureVirtual<Policies...>::value,
+            isAsync<Policies...>::value);
     }
 };
 
@@ -1421,7 +1476,8 @@ struct RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {
     static void invoke(const char* methodName,
                        ReturnType (*function)(ThisType, Args...)) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
-        auto invoke = &FunctionInvoker<decltype(function), ReturnType, ThisType, Args...>::invoke;
+        using OriginalInvoker = FunctionInvoker<decltype(function), ReturnType, ThisType, Args...>;
+        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
             methodName,
@@ -1430,7 +1486,8 @@ struct RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {
             getSignature(invoke),
             reinterpret_cast<GenericFunction>(invoke),
             getContext(function),
-            false);
+            false,
+            isAsync<Policies...>::value);
     }
 };
 
@@ -1447,7 +1504,8 @@ struct RegisterClassMethod<std::function<ReturnType (ThisType, Args...)>> {
     static void invoke(const char* methodName,
                        std::function<ReturnType (ThisType, Args...)> function) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
-        auto invoke = &FunctorInvoker<decltype(function), ReturnType, ThisType, Args...>::invoke;
+        using OriginalInvoker = FunctorInvoker<decltype(function), ReturnType, ThisType, Args...>;
+        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
             methodName,
@@ -1456,7 +1514,8 @@ struct RegisterClassMethod<std::function<ReturnType (ThisType, Args...)>> {
             getSignature(invoke),
             reinterpret_cast<GenericFunction>(invoke),
             getContext(function),
-            false);
+            false,
+            isAsync<Policies...>::value);
     }
 };
 
@@ -1467,7 +1526,8 @@ struct RegisterClassMethod<ReturnType (ThisType, Args...)> {
     static void invoke(const char* methodName,
                        Callable& callable) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
-        auto invoke = &FunctorInvoker<decltype(callable), ReturnType, ThisType, Args...>::invoke;
+        using OriginalInvoker = FunctorInvoker<decltype(callable), ReturnType, ThisType, Args...>;
+        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
             methodName,
@@ -1476,7 +1536,8 @@ struct RegisterClassMethod<ReturnType (ThisType, Args...)> {
             getSignature(invoke),
             reinterpret_cast<GenericFunction>(invoke),
             getContext(callable),
-            false);
+            false,
+            isAsync<Policies...>::value);
     }
 };
 
@@ -1747,7 +1808,8 @@ public:
         using namespace internal;
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-        auto invoke = &internal::Invoker<ReturnType, Args...>::invoke;
+        using OriginalInvoker = internal::Invoker<ReturnType, Args...>;
+        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
         _embind_register_class_class_function(
             TypeID<ClassType>::get(),
             methodName,
@@ -1755,7 +1817,8 @@ public:
             args.getTypes(),
             getSignature(invoke),
             reinterpret_cast<GenericFunction>(invoke),
-            reinterpret_cast<GenericFunction>(classMethod));
+            reinterpret_cast<GenericFunction>(classMethod),
+            isAsync<Policies...>::value);
         return *this;
     }
 

@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
 import os
 
 TAG = '1.75.0'
@@ -15,12 +14,11 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('boost_headers', 'https://github.com/emscripten-ports/boost/releases/download/boost-1.75.0/boost-headers-' + TAG + '.zip',
-                      'boost', sha512hash=HASH)
+  ports.fetch_project('boost_headers',
+                      f'https://github.com/emscripten-ports/boost/releases/download/boost-{TAG}/boost-headers-{TAG}.zip',
+                      sha512hash=HASH)
 
   def create(final):
-    logging.info('building port: boost_headers')
-
     # includes
     source_path = os.path.join(ports.get_dir(), 'boost_headers')
     source_path_include = os.path.join(source_path, 'boost')
@@ -34,11 +32,11 @@ def get(ports, settings, shared):
 
     ports.build_port(source_path, final, 'boost_headers', srcs=['dummy.cpp'])
 
-  return [shared.Cache.get_lib('libboost_headers.a', create, what='port')]
+  return [shared.cache.get_lib('libboost_headers.a', create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib('libboost_headers.a')
+  shared.cache.erase_lib('libboost_headers.a')
 
 
 def process_args(ports):

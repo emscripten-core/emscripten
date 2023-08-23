@@ -22,12 +22,13 @@ get using the emsdk:
 
 ::
 
-    emsdk install tot-upstream
-    emsdk activate tot-upstream
+    emsdk install tot
+    emsdk activate tot
 
-That gets a "tip-of-tree" build of the very latest binaries. You can use those
-binaries with a checkout of the core Emscripten repository, simply by calling
-``emcc.py`` from that checkout, and it will use the binaries from the emsdk.
+This with install the latest "tip-of-tree" binaries needed to run Emscripten.
+You can use these emsdk-provided binaries with a git checkout of the Emscripten
+repository.  To do this, you can either edit your local ``.emscripten`` config
+file, or set ``EM_CONFIG=/path/to/emsdk/.emscripten`` in your environment.
 
 If you do want to contribute to LLVM or Binaryen, or to test modifications
 to them, you can
@@ -150,10 +151,20 @@ one of them, with the others kept fixed). Doing this will require rebuilding
 locally, which was not needed in the main bisection described in this
 section.
 
+Working with C structs and defines
+==================================
+
+If you change the layout of C structs or modify C defines that are used in
+JavaScript library files you may need to modify ``tools/struct_info.json``.  Any
+time that file is modified or a struct layout is changed you will need to run
+``./tools/gen_struct_info.py`` to re-generate the information used by
+JavaScript. Note that you need to run both ``./tools/gen_struct_info.py`` and
+``./tools/gen_struct_info.py --wasm64``.
+
+The ``test_gen_struct_info`` test will fail if you forget to do this.
+
 See also
 ========
 
 - :ref:`Debugging`
 - :ref:`Building-Projects`
-
-

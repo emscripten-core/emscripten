@@ -8,11 +8,20 @@ static int __pthread_detach(pthread_t t)
 	// for the benefit of the conformance tests.
 	if (!_emscripten_thread_is_valid(t))
 		return ESRCH;
+	// Even though the man page says this is undefined behaviour to attempt to
+	// detach an already-detached thread we have several tests in the posixtest
+	// suite that depend on this (pthread_join.c)
+	if (a_cas(&t->detach_state, DT_JOINABLE, DT_DETACHED) == DT_DETACHED)
+		return EINVAL;
 #endif
 	/* If the cas fails, detach state is either already-detached
 	 * or exiting/exited, and pthread_join will trap or cleanup. */
-	if (a_cas(&t->detach_state, DT_JOINABLE, DT_DETACHED) != DT_JOINABLE)
-		return __pthread_join(t, 0);
+	if (a_cas(&t->detach_state, DT_JOINABLE, DT_DETACHED) != DT_JOINABLE) {
+		int cs;
+		__pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
+		__pthread_join(t, 0);
+		__pthread_setcancelstate(cs, 0);
+	}
 	return 0;
 }
 

@@ -25,7 +25,7 @@ void *ThreadMain(void *arg)
 		for(int i = 0; i < NUM_KEYS; ++i)
 		{
 			local_keys[i] = (uintptr_t)pthread_getspecific(keys[i]);
-//			EM_ASM(err('Thread ' + $0 + ': Read value ' + $1 + ' from TLS for key at index ' + $2), pthread_self(), (int)local_keys[i], i);
+//		emscripten_errf("Thread %d: Read value %d from TLS for key at index %d", pthread_self(), (int)local_keys[i], i);
 		}
 
 		for(int i = 0; i < NUM_KEYS; ++i)
@@ -38,7 +38,7 @@ void *ThreadMain(void *arg)
 	for(int i = 0; i < NUM_KEYS; ++i)
 	{
 		local_keys[i] = (uintptr_t)pthread_getspecific(keys[i]);
-//		EM_ASM(err('Thread ' + $0 + ' final verify: Read value ' + $1 + ' from TLS for key at index ' + $2), pthread_self(), (int)local_keys[i], i);
+//	emscripten_errf("Thread %d final verify: Read value %d from TLS for key at index %d", pthread_self(), (int)local_keys[i], i);
 		assert(local_keys[i] == NUM_ITERS);
 	}
 	return 0;
@@ -83,10 +83,10 @@ int main()
 		{
 			if (thread[i])
 			{
-				int status;
+				intptr_t status;
 				int rc = pthread_join(thread[i], (void**)&status);
 				assert(rc == 0);
-				printf("Main: Joined thread idx %ld with status %d\n", i, status);
+				printf("Main: Joined thread idx %ld with status %lu\n", i, status);
 				assert(status == 0);
 				thread[i] = 0;
 				if (numThreadsToCreate > 0)
@@ -102,10 +102,10 @@ int main()
 	{
 			if (thread[i])
 			{
-				int status = 1;
+				intptr_t status = 1;
 				int rc = pthread_join(thread[i], (void**)&status);
 				assert(rc == 0);
-				printf("Main: Joined thread idx %d with status %d\n", i, status);
+				printf("Main: Joined thread idx %d with status %lu\n", i, status);
 				assert(status == 0);
 			}
 	}

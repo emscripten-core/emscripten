@@ -11,8 +11,18 @@
  * The closure_compiler() method in tools/shared.py refers to this file when calling closure.
  */
 
-// Special placeholder for `import.meta`.
+// Special placeholder for `import.meta` and `await import`.
 var EMSCRIPTEN$IMPORT$META;
+var EMSCRIPTEN$AWAIT$IMPORT;
+
+// Don't minify createRequire
+var createRequire;
+
+// Don't minify startWorker which we use to start workers once the runtime is ready.
+/**
+ * @param {Object} Module
+ */
+var startWorker = function(Module) {};
 
 // Closure externs used by library_sockfs.js
 
@@ -75,18 +85,6 @@ var WebAssembly = {};
  */
 WebAssembly.Global = function(globalDescriptor, value) {};
 /**
- * @constructor
- * @param {Object} type
- */
-WebAssembly.Tag = function(type) {};
-/**
- * @constructor
- * @param {!WebAssembly.Tag} tag
- * @param {Array<Object>} payload
- * @param {Object=} options
- */
-WebAssembly.Exception = function(tag, payload, options) {};
-/**
  * @param {!WebAssembly.Tag} tag
  * @param {number} index
  */
@@ -116,6 +114,44 @@ WebAssembly.Memory.prototype.buffer;
 WebAssembly.Table.prototype.length;
 
 /**
+ * @record
+ */
+function FunctionType() {}
+/**
+ * @type {Array<string>}
+ */
+FunctionType.prototype.parameters;
+/**
+ * @type {Array<string>}
+ */
+FunctionType.prototype.results;
+/**
+ * @record
+ */
+ function FunctionUsage() {}
+ /**
+  * @type {string|undefined}
+  */
+FunctionUsage.prototype.promising;
+ /**
+  * @type {string|undefined}
+  */
+FunctionUsage.prototype.suspending;
+
+/**
+ * @constructor
+ * @param {!FunctionType} type
+ * @param {!Function} func
+ * @param {FunctionUsage=} usage
+ */
+WebAssembly.Function = function(type, func, usage) {};
+/**
+ * @param {Function} func
+ * @return {FunctionType}
+ */
+WebAssembly.Function.type = function(func) {};
+
+/**
  * @suppress {undefinedVars}
  */
 var wakaUnknownAfter;
@@ -123,10 +159,6 @@ var wakaUnknownAfter;
  * @suppress {undefinedVars}
  */
 var wakaUnknownBefore;
-/**
- * @suppress {undefinedVars}
- */
-var MozBlobBuilder;
 
 // Module loaders externs, for AMD etc.
 
@@ -163,13 +195,6 @@ var removeEventListener = function (type, listener) {};
  * @type {Function}
  */
 var close;
-
-// Fetch.js/Fetch Worker
-
-/**
- * @suppress {undefinedVars}
- */
-var ENVIRONMENT_IS_FETCH_WORKER;
 
 // Due to the way MODULARIZE works, Closure is run on generated code that does not define _scriptDir,
 // but only after MODULARIZE has finished, _scriptDir is injected to the generated code.
@@ -221,46 +246,8 @@ var currentTime;
 var sampleRate;
 
 /*
- * WebGPU globals
- */
-var GPUBufferUsage;
-var GPUColorWrite;
-var GPUMapMode;
-var GPUShaderStage;
-var GPUTextureUsage;
-var GPU;
-var GPUAdapter;
-var GPUBindGroup;
-var GPUBindGroupLayout;
-var GPUBuffer;
-var GPUCanvasContext;
-var GPUCommandBuffer;
-var GPUCommandEncoder;
-var GPUCompilationInfo;
-var GPUCompilationMessage;
-var GPUComputePassEncoder;
-var GPUComputePipeline;
-var GPUDevice;
-var GPUDeviceLostInfo;
-var GPUExternalTexture;
-var GPUOutOfMemoryError;
-var GPUPipelineLayout;
-var GPUQuerySet;
-var GPUQueue;
-var GPURenderBundle;
-var GPURenderBundleEncoder;
-var GPURenderPassEncoder;
-var GPURenderPipeline;
-var GPUSampler;
-var GPUShaderModule;
-var GPUSupportedFeatures;
-var GPUSupportedLimits;
-var GPUTexture;
-var GPUTextureView;
-var GPUUncapturedErrorEvent;
-var GPUValidationError;
-
-/*
  * Avoid closure minifying anything to "id". See #13965
  */
 var id;
+
+var moduleArg;

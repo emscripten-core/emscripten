@@ -12,7 +12,7 @@
 #include <__config>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
@@ -27,7 +27,7 @@ _Tp __declval(long);
 _LIBCPP_SUPPRESS_DEPRECATED_POP
 
 template <class _Tp>
-decltype(__declval<_Tp>(0)) declval() _NOEXCEPT;
+decltype(std::__declval<_Tp>(0)) declval() _NOEXCEPT;
 
 _LIBCPP_END_NAMESPACE_STD
 

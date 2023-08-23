@@ -5,11 +5,11 @@
 
 import os
 
-TAG = 'release-2.24.0'
-HASH = '33ea357de1c137b4ce101349b119105d090ef2e05224fd3f05074b65579e53b068fa94aba6a37ac44c21f246e14ed15f0045dcdd1ddf7357a35aa7e8f2db2d3b'
+TAG = 'release-2.24.2'
+HASH = 'b178bdc8f7c40271e09a72f639649d1d61953dda4dc12b77437259667b63b961fd3b2c67b0de6fdc5f9f9c80c49bfafd164e4c13715bc1056e550acc8bad5a3c'
 SUBDIR = 'SDL-' + TAG
 
-variants = {'sdl2-mt': {'USE_PTHREADS': 1}}
+variants = {'sdl2-mt': {'PTHREADS': 1}}
 
 
 def needed(settings):
@@ -17,12 +17,12 @@ def needed(settings):
 
 
 def get_lib_name(settings):
-  return 'libSDL2' + ('-mt' if settings.USE_PTHREADS else '') + '.a'
+  return 'libSDL2' + ('-mt' if settings.PTHREADS else '') + '.a'
 
 
 def get(ports, settings, shared):
   # get the port
-  ports.fetch_project('sdl2', 'https://github.com/libsdl-org/SDL/archive/' + TAG + '.zip', SUBDIR, sha512hash=HASH)
+  ports.fetch_project('sdl2', f'https://github.com/libsdl-org/SDL/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     # copy includes to a location so they can be used as 'SDL2/'
@@ -46,8 +46,9 @@ def get(ports, settings, shared):
     render/software/SDL_blendpoint.c render/software/SDL_drawline.c render/software/SDL_drawpoint.c
     render/software/SDL_render_sw.c render/software/SDL_rotate.c render/software/SDL_triangle.c
     sensor/SDL_sensor.c sensor/dummy/SDL_dummysensor.c
-    stdlib/SDL_crc32.c stdlib/SDL_getenv.c stdlib/SDL_iconv.c stdlib/SDL_malloc.c stdlib/SDL_qsort.c
-    stdlib/SDL_stdlib.c stdlib/SDL_string.c stdlib/SDL_strtokr.c thread/SDL_thread.c timer/SDL_timer.c
+    stdlib/SDL_crc16.c stdlib/SDL_crc32.c stdlib/SDL_getenv.c stdlib/SDL_iconv.c stdlib/SDL_malloc.c
+    stdlib/SDL_qsort.c stdlib/SDL_stdlib.c stdlib/SDL_string.c stdlib/SDL_strtokr.c
+    thread/SDL_thread.c timer/SDL_timer.c
     video/SDL_RLEaccel.c video/SDL_blit.c video/SDL_blit_0.c video/SDL_blit_1.c video/SDL_blit_A.c
     video/SDL_blit_N.c video/SDL_blit_auto.c video/SDL_blit_copy.c video/SDL_blit_slow.c
     video/SDL_bmp.c video/SDL_clipboard.c video/SDL_egl.c video/SDL_fillrect.c video/SDL_pixels.c
@@ -63,24 +64,25 @@ def get(ports, settings, shared):
     main/dummy/SDL_dummy_main.c locale/SDL_locale.c locale/emscripten/SDL_syslocale.c misc/SDL_url.c
     misc/emscripten/SDL_sysurl.c'''.split()
     thread_srcs = ['SDL_syscond.c', 'SDL_sysmutex.c', 'SDL_syssem.c', 'SDL_systhread.c', 'SDL_systls.c']
-    thread_backend = 'generic' if not settings.USE_PTHREADS else 'pthread'
+    thread_backend = 'generic' if not settings.PTHREADS else 'pthread'
     srcs += ['thread/%s/%s' % (thread_backend, s) for s in thread_srcs]
 
     srcs = [os.path.join(src_dir, 'src', s) for s in srcs]
     flags = ['-sUSE_SDL=0']
     includes = [ports.get_include_dir('SDL2')]
-    if settings.USE_PTHREADS:
-      flags += ['-sUSE_PTHREADS']
+    if settings.PTHREADS:
+      flags += ['-pthread']
     ports.build_port(src_dir, final, 'sdl2', srcs=srcs, includes=includes, flags=flags)
 
-  return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
+  return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib(get_lib_name(settings))
+  shared.cache.erase_lib(get_lib_name(settings))
 
 
 def linker_setup(ports, settings):
+  # TODO(sbc): Move these into native code use EM_JS_DEPS macro.
   settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$autoResumeAudioContext', '$dynCall']
 
 

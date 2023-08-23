@@ -76,7 +76,7 @@ The following ``Module`` attributes affect code execution. Set them to customize
 
 .. js:attribute:: Module.wasmMemory
 
-  Allows you to provide your own ``WebAssembly.Memory`` to use as the memory. The properites used to initialize the memory should match the compiler options.
+  Allows you to provide your own ``WebAssembly.Memory`` to use as the memory. The properties used to initialize the memory should match the compiler options.
 
   For example, if you set ``INITIAL_MEMORY`` to 8MB without memory growth, then the ``wasmMemory`` you provide (if any) should have both the ``'initial'`` and ``'maximum'`` set to 128 (due to WASM page sizes being 64KB).
 
@@ -147,6 +147,9 @@ The following ``Module`` attributes affect code execution. Set them to customize
 
   Called when something is printed to standard error (stderr)
 
+.. js:attribute:: Module.mainScriptUrlOrBlob
+
+  Allows pthread workers or WASM workers to independently load up the main application module JavaScript file (e.g. main.js) from a URL or blob. Creation of pthread workers or WASM workers need to load the main application module JavaScript file (e.g. main.js). By default, they load the content of main.js from the URL of main.js. However, if the main.js file was loaded from a Blob, it is not possible to access the URL of the main.js. Also, when main.js is bundled by a Node.JS module bundler (e.g. webpack), the URL of that script can be wrong, the URL after webpack bundler will result in wrong URL like main.chunk.js
 
 Other methods
 =============
@@ -159,7 +162,7 @@ Other methods
 
 .. js:function:: Module.getPreloadedPackage
 
-  If you want to manually manage the download of .data file packages for custom caching, progress reporting and error handling behavior, you can implement the ``Module.getPreloadedPackage = function(remotePackageName, remotePackageSize)`` callback to provide the contents of the data files back to the file loading scripts. The return value of this callback should be an Arraybuffer with the contents of the downloade file data. See file ``test/manual_download_data.html`` and the test ``browser.test_preload_file_with_manual_data_download`` for an example.
+  If you want to manually manage the download of .data file packages for custom caching, progress reporting and error handling behavior, you can implement the ``Module.getPreloadedPackage = function(remotePackageName, remotePackageSize)`` callback to provide the contents of the data files back to the file loading scripts. The return value of this callback should be an Arraybuffer with the contents of the downloaded file data. See file ``test/manual_download_data.html`` and the test ``browser.test_preload_file_with_manual_data_download`` for an example.
 
 .. js:function:: Module.instantiateWasm
 

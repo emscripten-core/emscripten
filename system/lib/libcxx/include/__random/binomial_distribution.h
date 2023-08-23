@@ -10,12 +10,13 @@
 #define _LIBCPP___RANDOM_BINOMIAL_DISTRIBUTION_H
 
 #include <__config>
+#include <__random/is_valid.h>
 #include <__random/uniform_real_distribution.h>
 #include <cmath>
 #include <iosfwd>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 _LIBCPP_PUSH_MACROS
@@ -26,6 +27,7 @@ _LIBCPP_BEGIN_NAMESPACE_STD
 template<class _IntType = int>
 class _LIBCPP_TEMPLATE_VIS binomial_distribution
 {
+    static_assert(__libcpp_random_is_valid_inttype<_IntType>::value, "IntType must be a supported integer type");
 public:
     // types
     typedef _IntType result_type;
@@ -131,9 +133,9 @@ binomial_distribution<_IntType>::param_type::param_type(result_type __t, double 
     if (0 < __p_ && __p_ < 1)
     {
         __r0_ = static_cast<result_type>((__t_ + 1) * __p_);
-        __pr_ = _VSTD::exp(__libcpp_lgamma(__t_ + 1.) -
-                           __libcpp_lgamma(__r0_ + 1.) -
-                           __libcpp_lgamma(__t_ - __r0_ + 1.) + __r0_ * _VSTD::log(__p_) +
+        __pr_ = _VSTD::exp(std::__libcpp_lgamma(__t_ + 1.) -
+                           std::__libcpp_lgamma(__r0_ + 1.) -
+                           std::__libcpp_lgamma(__t_ - __r0_ + 1.) + __r0_ * _VSTD::log(__p_) +
                            (__t_ - __r0_) * _VSTD::log(1 - __p_));
         __odds_ratio_ = __p_ / (1 - __p_);
     }
@@ -146,6 +148,7 @@ template<class _URNG>
 _IntType
 binomial_distribution<_IntType>::operator()(_URNG& __g, const param_type& __pr)
 {
+    static_assert(__libcpp_random_is_valid_urng<_URNG>::value, "");
     if (__pr.__t_ == 0 || __pr.__p_ == 0)
         return 0;
     if (__pr.__p_ == 1)
@@ -186,7 +189,7 @@ binomial_distribution<_IntType>::operator()(_URNG& __g, const param_type& __pr)
 }
 
 template <class _CharT, class _Traits, class _IntType>
-basic_ostream<_CharT, _Traits>&
+_LIBCPP_HIDE_FROM_ABI basic_ostream<_CharT, _Traits>&
 operator<<(basic_ostream<_CharT, _Traits>& __os,
            const binomial_distribution<_IntType>& __x)
 {
@@ -200,7 +203,7 @@ operator<<(basic_ostream<_CharT, _Traits>& __os,
 }
 
 template <class _CharT, class _Traits, class _IntType>
-basic_istream<_CharT, _Traits>&
+_LIBCPP_HIDE_FROM_ABI basic_istream<_CharT, _Traits>&
 operator>>(basic_istream<_CharT, _Traits>& __is,
            binomial_distribution<_IntType>& __x)
 {

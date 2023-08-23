@@ -4,7 +4,7 @@
 Building Projects
 =================
 
-Building large projects with Emscripten is very easy. Emscripten provides two simple scripts that configure your makefiles to use :ref:`emcc <emccdoc>` as a drop-in replacement for *gcc* — in most cases the rest of your project’s current build system remains unchanged.
+Emscripten provides two scripts that configure your makefiles to use :ref:`emcc <emccdoc>` as a drop-in replacement for *gcc* — in most cases the rest of your project’s current build system remains unchanged.
 
 
 .. _building-projects-build-system:
@@ -20,6 +20,8 @@ Consider the case where you normally build with the following commands:
 
   ./configure
   make
+
+.. tip:: If you're not familiar with these build commands, the article `The magic behind configure, make, make install <https://thoughtbot.com/blog/the-magic-behind-configure-make-make-install>`_ is a good primer.
 
 To build with Emscripten, you would instead use the following commands:
 
@@ -87,7 +89,7 @@ which files are produced under which conditions:
 
 - ``emcc ... -o output.html`` builds a ``output.html`` file as an output, as well as an accompanying ``output.js`` launcher file, and a ``output.wasm`` WebAssembly file.
 - ``emcc ... -o output.js`` omits generating a HTML launcher file (expecting you to provide it yourself if you plan to run in browser), and produces two files, ``output.js`` and ``output.wasm``. (that can be run in e.g. node.js shell)
-- ``emcc ... -o output.wasm`` omits generating either JavaScript or HTML launcher file, and produces a single Wasm file built in standalone mode as if the ``-sSTANDALONE_WASM`` settting had been used.
+- ``emcc ... -o output.wasm`` omits generating either JavaScript or HTML launcher file, and produces a single Wasm file built in standalone mode as if the ``-sSTANDALONE_WASM`` settting had been used. The resulting file expects to be run with the `WASI ABI <https://github.com/WebAssembly/WASI/blob/4712d490fd7662f689af6faa5d718e042f014931/legacy/application-abi.md>`_ - in particular, as soon as you initialize the module you must manually invoke either the ``_start`` export or (in the case of ``--no-entry``) the ``_initialize`` export before doing anything else with it.
 - ``emcc ... -o output.{html,js} -sWASM=0`` causes the compiler to target JavaScript, and therefore a ``.wasm`` file is not produced.
 - ``emcc ... -o output.{html,js} --emit-symbol-map`` produces a file ``output.{html,js}.symbols`` if WebAssembly is being targeted (``-sWASM=0`` not specified), or if JavaScript is being targeted and ``-Os``, ``-Oz`` or ``-O2`` or higher is specified, but debug level setting is ``-g1`` or lower (i.e. if symbols minification did occur).
 - ``emcc ... -o output.{html,js} -sWASM=0 --memory-init-file 1`` causes the generation of ``output.{html,js}.mem`` memory initializer file. Pasing ``-O2``, ``-Os`` or ``-Oz`` also implies ``--memory-init-file 1``.
@@ -99,7 +101,7 @@ This list is not exhaustive, but illustrates most commonly used combinations.
 
 .. note::
    Regardless of the name of the output file ``emcc`` will always perform
-   linking and produce a final exectuable, unless a specific flags (e.g. ``-c``)
+   linking and produce a final executable, unless a specific flags (e.g. ``-c``)
    direct it do something else.  This differs to previous behaviour where
    ``emcc`` would default to combining object files (essentially assuming
    ``-r``) unless given a specific executable extension (e.g. ``.js`` or
@@ -167,7 +169,7 @@ with :term:`clang` or *gcc* normally).
 
 .. note:: Each build-system defines its own mechanisms for setting debug flags. **To get Clang to emit LLVM debug information, you will need to work out the correct approach for your system**.
 
-  - Some build systems have a flag like ``./configure --enable-debug``.
+  - Some build systems have a flag like ``./configure --enable-debug``. In *CMake*-based build systems, set the ``CMAKE_BUILD_TYPE`` to ``"Debug"``.
 
 To get *emcc* to include the debug information present in object files when
 generating the final JavaScript and WebAssembly, your final ``emcc`` command
@@ -213,7 +215,7 @@ For example, consider the case where a project "project" uses a library "libstuf
 Emscripten Ports
 ================
 
-Emscripten Ports is a collection of useful libraries, ported to Emscripten. They reside `on github <https://github.com/emscripten-ports>`_, and have integration support in *emcc*. When you request that a port be used, emcc will fetch it from the remote server, set it up and build it locally, then link it with your project, add necessary include to your build commands, etc. For example, SDL2 is in ports, and you can request that it be used with ``-sUSE_SDL=2``. For example,
+Emscripten Ports is a collection of useful libraries, ported to Emscripten. They reside `on GitHub <https://github.com/emscripten-ports>`_, and have integration support in *emcc*. When you request that a port be used, emcc will fetch it from the remote server, set it up and build it locally, then link it with your project, add necessary include to your build commands, etc. For example, SDL2 is in ports, and you can request that it be used with ``-sUSE_SDL=2``. For example,
 
 .. code-block:: bash
 
@@ -327,7 +329,7 @@ The :ref:`Tutorial` showed how :ref:`emcc <emccdoc>` can be used to compile sing
   emcc src1.o src2.o -r -o combined.o
 
   # Combine two object files into library file
-  emar rcs libfoo.a src1.o src2.o 
+  emar rcs libfoo.a src1.o src2.o
 
 
 In addition to the capabilities it shares with *gcc*, *emcc* supports options to optimize code, control what debug information is emitted, generate HTML and other output formats, etc. These options are documented in the :ref:`emcc tool reference <emccdoc>` (``emcc --help`` on the command line).
@@ -349,7 +351,7 @@ Emscripten provides the following preprocessor macros that can be used to identi
  * Likewise, ``__clang_version__`` is present and indicates both Emscripten and LLVM version information.
  * Emscripten is a 32-bit platform, so ``size_t`` is a 32-bit unsigned integer, ``__POINTER_WIDTH__=32``, ``__SIZEOF_LONG__=4`` and ``__LONG_MAX__`` equals ``2147483647L``.
  * When targeting SSEx SIMD APIs using one of the command line compiler flags ``-msse``, ``-msse2``, ``-msse3``, ``-mssse3``, or ``-msse4.1``, one or more of the preprocessor flags ``__SSE__``, ``__SSE2__``, ``__SSE3__``, ``__SSSE3__``, ``__SSE4_1__`` will be present to indicate available support for these instruction sets.
- * If targeting the pthreads multithreading support with the compiler & linker flag ``-sUSE_PTHREADS``, the preprocessor define ``__EMSCRIPTEN_PTHREADS__`` will be present.
+ * If targeting the pthreads multithreading support with the compiler & linker flag ``-pthread``, the preprocessor define ``__EMSCRIPTEN_PTHREADS__`` will be present.
 
 
 Using a compiler wrapper
@@ -404,3 +406,4 @@ Troubleshooting
   .. note:: You can use ``llvm-nm`` to see which symbols are defined in each object file.
 
   One solution is to use :ref:`dynamic-linking <Dynamic-Linking>`. This ensures that libraries are linked only once, in the final build stage.
+- When generating standalone wasm, make sure to invoke the ``_start`` or (for ``--no-entry``) ``_initialize`` export before attempting to use the module.

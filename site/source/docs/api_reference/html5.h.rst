@@ -67,7 +67,7 @@ The ``target`` parameter is the ID of the HTML element to which the callback reg
   - ``EMSCRIPTEN_EVENT_TARGET_SCREEN``: The event listener is applied to the JavaScript ``window.screen`` object.
   - ``0`` or ``NULL``: If building with the option ``-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR`` (default), ``NULL`` denotes an invalid element. If building with legacy option ``-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0`` (not recommended), a default element is chosen automatically based on the event type.
   - ``#canvas``: If building with legacy option ``-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0`` (not recommended), the event listener is applied to the Emscripten default WebGL canvas element. If building with the option ``-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR`` (default), ``#canvas`` is interpreted as a CSS query selector: "the first element with CSS ID 'canvas'".
-  - Any other string: A CSS selector lookup is performed to the DOM with the passed string, and the the event listener is applied to the first element that matches the query.
+  - Any other string: A CSS selector lookup is performed to the DOM with the passed string, and the event listener is applied to the first element that matches the query.
 
 If the above are insufficient for you, you can add custom mappings in JavaScript
 using something like
@@ -1662,13 +1662,13 @@ Struct
 
     An ID for the brand or style of the connected gamepad device. Typically, this will include the USB vendor and a product ID.
 
-    Maximum size 64 ``char`` (i.e. ``EM_UTF8 id[128]``).
+    Maximum size 64 ``char`` (i.e. ``EM_UTF8 id[64]``).
 
   .. c:member:: EM_UTF8 mapping
 
     A string that identifies the layout or control mapping of this device.
 
-    Maximum size 128 ``char`` (i.e. ``EM_UTF8 mapping[128]``).
+    Maximum size 64 ``char`` (i.e. ``EM_UTF8 mapping[64]``).
 
 
 
@@ -2373,33 +2373,6 @@ Functions
   counting time from 0 at the time when a pthread starts)
 
   :returns: A high precision wallclock time value in msecs.
-
-
-Console
-=======
-
-Functions
----------
-
-.. c:function:: void emscripten_console_log(const char *utf8String)
-
-  Prints a string using ``console.log()``.
-
-  :param utf8String: A string encoded as UTF-8.
-
-
-.. c:function:: void emscripten_console_warn(const char *utf8String)
-
-  Prints a string using ``console.warn()``.
-
-  :param utf8String: A string encoded as UTF-8.
-
-
-.. c:function:: void emscripten_console_error(const char *utf8String)
-
-  Prints a string using ``console.error()``.
-
-  :param utf8String: A string encoded as UTF-8.
 
 
 Throw

@@ -13,13 +13,13 @@
 #include <__config>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 template <class _Tp>
-inline _LIBCPP_CONSTEXPR_AFTER_CXX14
+inline _LIBCPP_CONSTEXPR_SINCE_CXX17
 _LIBCPP_NO_CFI _LIBCPP_INLINE_VISIBILITY
 _Tp*
 addressof(_Tp& __x) _NOEXCEPT

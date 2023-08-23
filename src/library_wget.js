@@ -9,17 +9,16 @@ var LibraryWget = {
     wgetRequests: {},
     nextWgetRequestHandle: 0,
 
-    getNextWgetRequestHandle: function() {
+    getNextWgetRequestHandle() {
       var handle = wget.nextWgetRequestHandle;
       wget.nextWgetRequestHandle++;
       return handle;
     },
   },
 
-  emscripten_async_wget__deps: ['$PATH_FS', '$wget', '$callUserCallback', '$Browser', '$withStackSave', '$allocateUTF8OnStack'],
+  emscripten_async_wget__deps: ['$PATH_FS', '$wget', '$callUserCallback', '$Browser', '$withStackSave', '$stringToUTF8OnStack'],
   emscripten_async_wget__proxy: 'sync',
-  emscripten_async_wget__sig: 'viiii',
-  emscripten_async_wget: function(url, file, onload, onerror) {
+  emscripten_async_wget: (url, file, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
 
     var _url = UTF8ToString(url);
@@ -30,7 +29,7 @@ var LibraryWget = {
         {{{ runtimeKeepalivePop() }}}
         callUserCallback(function() {
           withStackSave(function() {
-            {{{ makeDynCall('vi', 'callback') }}}(allocateUTF8OnStack(_file));
+            {{{ makeDynCall('vi', 'callback') }}}(stringToUTF8OnStack(_file));
           });
         });
       }
@@ -61,8 +60,7 @@ var LibraryWget = {
 
   emscripten_async_wget_data__deps: ['$asyncLoad', 'malloc', 'free', '$callUserCallback'],
   emscripten_async_wget_data__proxy: 'sync',
-  emscripten_async_wget_data__sig: 'viiii',
-  emscripten_async_wget_data: function(url, arg, onload, onerror) {
+  emscripten_async_wget_data: (url, arg, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
     asyncLoad(UTF8ToString(url), function(byteArray) {
       {{{ runtimeKeepalivePop() }}}
@@ -82,10 +80,9 @@ var LibraryWget = {
     }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
   },
 
-  emscripten_async_wget2__deps: ['$PATH_FS', '$wget', '$withStackSave', '$allocateUTF8OnStack'],
+  emscripten_async_wget2__deps: ['$PATH_FS', '$wget', '$withStackSave', '$stringToUTF8OnStack'],
   emscripten_async_wget2__proxy: 'sync',
-  emscripten_async_wget2__sig: 'iiiiiiiii',
-  emscripten_async_wget2: function(url, file, request, param, arg, onload, onerror, onprogress) {
+  emscripten_async_wget2: (url, file, request, param, arg, onload, onerror, onprogress) => {
     {{{ runtimeKeepalivePush() }}}
 
     var _url = UTF8ToString(url);
@@ -117,7 +114,7 @@ var LibraryWget = {
         FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(/** @type{ArrayBuffer}*/(http.response)), true, true, false);
         if (onload) {
           withStackSave(function() {
-            {{{ makeDynCall('viii', 'onload') }}}(handle, arg, allocateUTF8OnStack(_file));
+            {{{ makeDynCall('viii', 'onload') }}}(handle, arg, stringToUTF8OnStack(_file));
           });
         }
       } else {
@@ -163,8 +160,7 @@ var LibraryWget = {
 
   emscripten_async_wget2_data__deps: ['$wget', 'malloc', 'free'],
   emscripten_async_wget2_data__proxy: 'sync',
-  emscripten_async_wget2_data__sig: 'iiiiiiiii',
-  emscripten_async_wget2_data: function(url, request, param, arg, free, onload, onerror, onprogress) {
+  emscripten_async_wget2_data: (url, request, param, arg, free, onload, onerror, onprogress) => {
     var _url = UTF8ToString(url);
     var _request = UTF8ToString(request);
     var _param = UTF8ToString(param);
@@ -177,13 +173,13 @@ var LibraryWget = {
 
     function onerrorjs() {
       if (onerror) {
-        var statusText = 0;
-        if (http.statusText) {
-          var len = lengthBytesUTF8(http.statusText) + 1;
-          statusText = stackAlloc(len);
-          stringToUTF8(http.statusText, statusText, len);
-        }
-        {{{ makeDynCall('viiii', 'onerror') }}}(handle, arg, http.status, statusText);
+        withStackSave(() => {
+          var statusText = 0;
+          if (http.statusText) {
+            statusText = stringToUTF8OnStack(http.statusText);
+          }
+          {{{ makeDynCall('viiii', 'onerror') }}}(handle, arg, http.status, statusText);
+        });
       }
     }
 
@@ -232,8 +228,7 @@ var LibraryWget = {
 
   emscripten_async_wget2_abort__deps: ['$wget'],
   emscripten_async_wget2_abort__proxy: 'sync',
-  emscripten_async_wget2_abort__sig: 'vi',
-  emscripten_async_wget2_abort: function(handle) {
+  emscripten_async_wget2_abort: (handle) => {
     var http = wget.wgetRequests[handle];
     if (http) {
       http.abort();
@@ -241,4 +236,4 @@ var LibraryWget = {
   },
 };
 
-mergeInto(LibraryManager.library, LibraryWget);
+addToLibrary(LibraryWget);

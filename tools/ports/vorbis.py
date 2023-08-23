@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
 import os
 
 TAG = 'version_1'
@@ -17,21 +16,20 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('vorbis', 'https://github.com/emscripten-ports/vorbis/archive/' + TAG + '.zip', 'Vorbis-' + TAG, sha512hash=HASH)
+  ports.fetch_project('vorbis', f'https://github.com/emscripten-ports/vorbis/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    logging.info('building port: vorbis')
     source_path = os.path.join(ports.get_dir(), 'vorbis', 'Vorbis-' + TAG)
     ports.install_header_dir(os.path.join(source_path, 'include', 'vorbis'))
     ports.build_port(os.path.join(source_path, 'lib'), final, 'vorbis',
-                     flags=['-sUSE_OGG=1'],
+                     flags=['-sUSE_OGG'],
                      exclude_files=['psytune', 'barkmel', 'tone', 'misc'])
 
-  return [shared.Cache.get_lib('libvorbis.a', create)]
+  return [shared.cache.get_lib('libvorbis.a', create)]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib('libvorbis.a')
+  shared.cache.erase_lib('libvorbis.a')
 
 
 def process_dependencies(settings):
@@ -43,4 +41,4 @@ def process_args(ports):
 
 
 def show():
-  return 'vorbis (USE_VORBIS=1; zlib license)'
+  return 'vorbis (-sUSE_VORBIS; zlib license)'

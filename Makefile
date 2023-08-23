@@ -7,7 +7,7 @@ dist: $(DISTFILE)
 install:
 	@rm -rf $(DESTDIR)
 	./tools/install.py $(DESTDIR)
-	npm install --prefix $(DESTDIR)
+	npm install --production --prefix $(DESTDIR)
 
 # Create an distributable archive of emscripten suitable for use
 # by end users. This archive excludes node_modules as it can include native

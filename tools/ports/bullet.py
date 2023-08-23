@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
 import os
 import shutil
 
@@ -16,11 +15,9 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('bullet', 'https://github.com/emscripten-ports/bullet/archive/' + TAG + '.zip', 'Bullet-' + TAG, sha512hash=HASH)
+  ports.fetch_project('bullet', f'https://github.com/emscripten-ports/bullet/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    logging.info('building port: bullet')
-
     source_path = os.path.join(ports.get_dir(), 'bullet', 'Bullet-' + TAG)
     src_path = os.path.join(source_path, 'bullet', 'src')
 
@@ -47,11 +44,11 @@ def get(ports, settings, shared):
 
     ports.build_port(src_path, final, 'bullet', includes=includes, flags=flags, exclude_dirs=['MiniCL'])
 
-  return [shared.Cache.get_lib('libbullet.a', create)]
+  return [shared.cache.get_lib('libbullet.a', create)]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib('libbullet.a')
+  shared.cache.erase_lib('libbullet.a')
 
 
 def process_args(ports):

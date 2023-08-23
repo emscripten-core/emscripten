@@ -11,6 +11,8 @@
 // Uncomment to compute the expected result:
 //#define GENERATE_ANSWERS
 
+EM_JS_DEPS(main, "$convertI32PairToI53,$convertU32PairToI53,$readI53FromU64,$readI53FromI64,$writeI53ToI64,$writeI53ToI64Clamped,$writeI53ToU64Clamped,$writeI53ToI64Signaling,$writeI53ToU64Signaling");
+
 void writeI53ToI64_int64(int64_t *heapAddress, int64_t num) {
 #ifdef GENERATE_ANSWERS
   *heapAddress = num;
@@ -56,8 +58,8 @@ void writeI53ToI64Signaling_double(int64_t *heapAddress, double num) {
   EM_ASM(try {
     writeI53ToI64Signaling($0, $1)
   } catch(e) {
-    HEAPU32[$0>>2] = 0x01020304;
-    HEAPU32[$0+4>>2] = 0x01020304;
+    HEAPU32[($0) / 4] = 0x01020304;
+    HEAPU32[($0+4) / 4] = 0x01020304;
   }, heapAddress, num);
 #endif
 }
@@ -86,8 +88,8 @@ void writeI53ToU64Signaling_double(uint64_t *heapAddress, double num) {
   EM_ASM(try {
     writeI53ToU64Signaling($0, $1)
   } catch(e) {
-    HEAPU32[$0>>2] = 0x01020304;
-    HEAPU32[$0+4>>2] = 0x01020304;
+    HEAPU32[$0 / 4] = 0x01020304;
+    HEAPU32[($0+4) / 4] = 0x01020304;
   } , heapAddress, num);
 #endif
 }
@@ -261,7 +263,7 @@ int main() {
       printf("  writeI53ToI64Clamped: 0x%llx (%lld): error difference: %g\n", u, u, u - num);
       writeI53ToI64Signaling_double(&u, num);
       if (u == 0x0102030401020304)
-        printf("  writeI53ToU64Signaling: (RangeError)\n");
+        printf("  writeI53ToI64Signaling: (RangeError)\n");
       else
         printf("  writeI53ToI64Signaling: 0x%llx (%lld): error difference: %g\n", u, u, u - num);
       writeI53ToU64Clamped_double((uint64_t*)&u, num);

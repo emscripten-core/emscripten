@@ -119,7 +119,8 @@ EMSCRIPTEN_BINDINGS(builtin) {
 
   _embind_register_void(TypeID<void>::get(), "void");
 
-  _embind_register_bool(TypeID<bool>::get(), "bool", sizeof(bool), true, false);
+  _embind_register_bool(TypeID<bool>::get(), "bool", true, false);
+  static_assert(sizeof(bool) == 1);
 
   register_integer<char>("char");
   register_integer<signed char>("signed char");
@@ -173,10 +174,9 @@ EMSCRIPTEN_BINDINGS(builtin) {
   register_memory_view<uint16_t>("emscripten::memory_view<uint16_t>");
   register_memory_view<int32_t>("emscripten::memory_view<int32_t>");
   register_memory_view<uint32_t>("emscripten::memory_view<uint32_t>");
+  register_memory_view<int64_t>("emscripten::memory_view<int64_t>");
+  register_memory_view<uint64_t>("emscripten::memory_view<uint64_t>");
 
   register_memory_view<float>("emscripten::memory_view<float>");
   register_memory_view<double>("emscripten::memory_view<double>");
-#if __SIZEOF_LONG_DOUBLE__ == __SIZEOF_DOUBLE__
-  register_memory_view<long double>("emscripten::memory_view<long double>");
-#endif
 }

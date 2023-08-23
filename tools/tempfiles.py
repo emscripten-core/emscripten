@@ -39,7 +39,7 @@ class TempFiles:
         self_.file.close() # NamedTemporaryFile passes out open file handles, but callers prefer filenames (and open their own handles manually if needed)
         return self_.file.name
 
-      def __exit__(self_, type, value, traceback):
+      def __exit__(self_, _type, _value, _traceback):
         if not self.save_debug_files:
           utils.delete_file(self_.file.name)
     return TempFileObject()

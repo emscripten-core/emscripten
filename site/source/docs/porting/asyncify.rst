@@ -210,6 +210,8 @@ the list of imports to the wasm module that the Asyncify instrumentation must be
 aware of. Giving it that list tells it that all other JS calls will **not** do
 an async operation, which lets it not add overhead where it isn't needed.
 
+.. note:: If the import is not inside ``env`` the full path must be specified, for example, ``ASYNCIFY_IMPORTS=wasi_snapshot_preview1.fd_write``
+
 Asyncify with Dynamic Linking
 #############################
 
@@ -292,7 +294,7 @@ returning a ``Promise`` to the return value, as demonstrated below.
 Build with
 ::
 
-    emcc -O3 example.cpp --bind -sASYNCIFY
+    emcc -O3 example.cpp -lembind -sASYNCIFY
 
 Then invoke from JavaScript
 

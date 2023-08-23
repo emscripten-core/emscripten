@@ -7,8 +7,9 @@ import logging
 import hashlib
 import os
 import shutil
-import sys
 import glob
+from typing import Set
+from tools import cache
 from tools import config
 from tools import shared
 from tools import system_libs
@@ -69,9 +70,29 @@ def get_all_files_under(dirname):
 def dir_is_newer(dir_a, dir_b):
   assert os.path.exists(dir_a)
   assert os.path.exists(dir_b)
-  newest_a = max([os.path.getmtime(x) for x in get_all_files_under(dir_a)])
-  newest_b = max([os.path.getmtime(x) for x in get_all_files_under(dir_b)])
-  return newest_a < newest_b
+  files_a = [(x, os.path.getmtime(x)) for x in get_all_files_under(dir_a)]
+  files_b = [(x, os.path.getmtime(x)) for x in get_all_files_under(dir_b)]
+  newest_a = max([f for f in files_a], key=lambda f: f[1])
+  newest_b = max([f for f in files_b], key=lambda f: f[1])
+  logger.debug('newest_a: %s %s', *newest_a)
+  logger.debug('newest_b: %s %s', *newest_b)
+  return newest_a[1] > newest_b[1]
+
+
+def maybe_copy(src, dest):
+  """Just like shutil.copyfile, but will do nothing if the destination already
+  exists and has the same contents as the source.
+
+  In the case where a library is built in multiple different configurations,
+  we want to avoids racing between processes that are reading headers (without
+  holding the cache lock) (e.g. normal compile steps) and a process that is
+  building/installing a new flavor of a given library.  In this case the
+  headers will be "re-installed" but we skip the actual filesystem mods
+  to avoid racing with other processes that might be reading these files.
+  """
+  if os.path.exists(dest) and utils.read_file(src) == utils.read_file(dest):
+    return
+  shutil.copyfile(src, dest)
 
 
 class Ports:
@@ -80,7 +101,7 @@ class Ports:
 
   @staticmethod
   def get_include_dir(*parts):
-    dirname = shared.Cache.get_include_dir(*parts)
+    dirname = cache.get_include_dir(*parts)
     shared.safe_ensure_dirs(dirname)
     return dirname
 
@@ -105,18 +126,19 @@ class Ports:
     assert matches, f'no headers found to install in {src_dir}'
     for f in matches:
       logger.debug('installing: ' + os.path.join(dest, os.path.basename(f)))
-      shutil.copyfile(f, os.path.join(dest, os.path.basename(f)))
+      maybe_copy(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
-  def build_port(src_dir, output_path, port_name, includes=[], flags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
+  def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
     build_dir = os.path.join(Ports.get_build_dir(), port_name)
     if srcs:
       srcs = [os.path.join(src_dir, s) for s in srcs]
     else:
       srcs = []
-      for root, _, files in os.walk(src_dir, topdown=False):
-        if any((excluded in root) for excluded in exclude_dirs):
-          continue
+      for root, dirs, files in os.walk(src_dir):
+        for ex in exclude_dirs:
+          if ex in dirs:
+            dirs.remove(ex)
         for f in files:
           ext = shared.suffix(f)
           if ext in ('.c', '.cpp') and not any((excluded in f) for excluded in exclude_files):
@@ -127,8 +149,7 @@ class Ports:
       cflags.append('-I' + include)
 
     if system_libs.USE_NINJA:
-      if not os.path.exists(build_dir):
-        os.makedirs(build_dir)
+      os.makedirs(build_dir, exist_ok=True)
       ninja_file = os.path.join(build_dir, 'build.ninja')
       system_libs.ensure_sysroot()
       system_libs.create_ninja_file(srcs, ninja_file, output_path, cflags=cflags)
@@ -140,9 +161,12 @@ class Ports:
         relpath = os.path.relpath(src, src_dir)
         obj = os.path.join(build_dir, relpath) + '.o'
         dirname = os.path.dirname(obj)
-        if not os.path.exists(dirname):
-          os.makedirs(dirname)
-        commands.append([shared.EMCC, '-c', src, '-o', obj] + cflags)
+        os.makedirs(dirname, exist_ok=True)
+        cmd = [shared.EMCC, '-c', src, '-o', obj] + cflags
+        if shared.suffix(src) in ('.cc', '.cxx', '.cpp'):
+          cmd[0] = shared.EMXX
+          cmd += cxxflags
+        commands.append(cmd)
         objects.append(obj)
 
       system_libs.run_build_commands(commands)
@@ -163,14 +187,19 @@ class Ports:
 
   @staticmethod
   def get_build_dir():
-    return shared.Cache.get_path('ports-builds')
+    return cache.get_path('ports-builds')
 
-  name_cache = set()
+  name_cache: Set[str] = set()
 
   @staticmethod
-  def fetch_project(name, url, subdir, sha512hash=None):
+  def fetch_project(name, url, sha512hash=None):
     # To compute the sha512 hash, run `curl URL | sha512sum`.
     fullname = os.path.join(Ports.get_dir(), name)
+
+    if name not in Ports.name_cache: # only mention each port once in log
+      logger.debug(f'including port: {name}')
+      logger.debug(f'    (at {fullname})')
+      Ports.name_cache.add(name)
 
     # EMCC_LOCAL_PORTS: A hacky way to use a local directory for a port. This
     #                   is not tested but can be useful for debugging
@@ -189,35 +218,36 @@ class Ports:
     if local_ports:
       logger.warning('using local ports: %s' % local_ports)
       local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
-      with shared.Cache.lock('local ports'):
-        for local in local_ports:
-          if name == local[0]:
-            path = local[1]
-            if name not in ports_by_name:
-              utils.exit_with_error('%s is not a known port' % name)
-            port = ports_by_name[name]
-            if not hasattr(port, 'SUBDIR'):
-              logger.error(f'port {name} lacks .SUBDIR attribute, which we need in order to override it locally, please update it')
-              sys.exit(1)
-            subdir = port.SUBDIR
-            target = os.path.join(fullname, subdir)
-            if os.path.exists(target) and not dir_is_newer(path, target):
-              logger.warning(f'not grabbing local port: {name} from {path} to {fullname} (subdir: {subdir}) as the destination {target} is newer (run emcc --clear-ports if that is incorrect)')
-            else:
-              logger.warning(f'grabbing local port: {name} from {path} to {fullname} (subdir: {subdir})')
-              utils.delete_file(fullname)
-              shutil.copytree(path, target)
-              Ports.clear_project_build(name)
+      for local_name, path in local_ports:
+        if name == local_name:
+          port = ports_by_name.get(name)
+          if not port:
+            utils.exit_with_error('%s is not a known port' % name)
+          if not hasattr(port, 'SUBDIR'):
+            utils.exit_with_error(f'port {name} lacks .SUBDIR attribute, which we need in order to override it locally, please update it')
+          subdir = port.SUBDIR
+          target = os.path.join(fullname, subdir)
+
+          uptodate_message = f'not grabbing local port: {name} from {path} to {fullname} (subdir: {subdir}) as the destination {target} is newer (run emcc --clear-ports if that is incorrect)'
+          # before acquiring the lock we have an early out if the port already exists
+          if os.path.exists(target) and dir_is_newer(path, target):
+            logger.warning(uptodate_message)
             return
+          with cache.lock('unpack local port'):
+            # Another early out in case another process unpackage the library while we were
+            # waiting for the lock
+            if os.path.exists(target) and not dir_is_newer(path, target):
+              logger.warning(uptodate_message)
+              return
+            logger.warning(f'grabbing local port: {name} from {path} to {fullname} (subdir: {subdir})')
+            utils.delete_dir(fullname)
+            shutil.copytree(path, target)
+            Ports.clear_project_build(name)
+          return
 
     url_filename = url.rsplit('/')[-1]
     ext = url_filename.split('.', 1)[1]
     fullpath = fullname + '.' + ext
-
-    if name not in Ports.name_cache: # only mention each port once in log
-      logger.debug(f'including port: {name}')
-      logger.debug(f'    (at {fullname})')
-      Ports.name_cache.add(name)
 
     def retrieve():
       # retrieve from remote server
@@ -258,9 +288,9 @@ class Ports:
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
     # retrieve the same port at once
-    with shared.Cache.lock('unpack port'):
+    with cache.lock('unpack port'):
       if os.path.exists(fullpath):
-        # Another early out in case another process build the library while we were
+        # Another early out in case another process unpackage the library while we were
         # waiting for the lock
         if up_to_date():
           return

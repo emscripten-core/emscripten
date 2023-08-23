@@ -15,6 +15,7 @@
 
 #include "sanitizer_common/sanitizer_platform.h"
 #include "lsan_common.h"
+#include "lsan_thread.h"
 
 #if CAN_SANITIZE_LEAKS && SANITIZER_EMSCRIPTEN
 #include <emscripten.h>
@@ -32,8 +33,6 @@
   } while (0)
 
 namespace __lsan {
-
-extern "C" uptr emscripten_get_heap_size();
 
 static const char kLinkerName[] = "ld";
 
@@ -176,8 +175,10 @@ static void ProcessThreadsCallback(ThreadContextBase *tctx, void *arg) {
   }
 }
 
-void ProcessThreads(SuspendedThreadsList const &suspended_threads,
-                    Frontier *frontier) {
+void ProcessThreads(SuspendedThreadsList const& suspended_threads,
+                    Frontier* frontier,
+                    tid_t caller_tid,
+                    uptr caller_sp) {
   GetThreadRegistryLocked()->RunCallbackForEachThreadLocked(
     ProcessThreadsCallback, frontier);
 }

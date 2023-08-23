@@ -4,6 +4,7 @@
 #include <dlfcn.h>
 #include <pthread.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <emscripten/threading.h>
 
 typedef int* (*sidey_data_type)();
@@ -21,16 +22,12 @@ static atomic_bool ready = false;
 static void* thread_main(void* arg) {
   printf("in thread_main\n");
   started = true;
-  // Spin until the main thread has loaded the side module
-  while (!ready) {}
 
-#ifdef YIELD
-  // Without this explicit yield we could "invalid index into function table"
-  // below because this thread will not have loaded the side module.
-  // Uncommenting the calls to printf will also, in practice, end up loading
-  // the side module because internally they may end up waiting on a lock.
-  sched_yield();
-#endif
+  while (!ready) {
+    printf("yeilding ..\n");
+    sched_yield();
+    usleep(1000*100);
+  }
 
   int* data_addr = p_side_data_address();
   assert(data_addr == expected_data_addr);
@@ -55,7 +52,7 @@ int main() {
   while (!started) {}
 
   printf("loading dylib\n");
-  void* handle = dlopen("liblib.so", RTLD_NOW|RTLD_GLOBAL);
+  void* handle = dlopen("libside.so", RTLD_NOW|RTLD_GLOBAL);
   if (!handle) {
     printf("dlerror: %s\n", dlerror());
   }
@@ -80,6 +77,18 @@ int main() {
   rc = pthread_join(t, NULL);
   assert(rc == 0);
   printf("done join\n");
+
+  printf("starting second & third thread\n");
+  pthread_t t2, t3;
+  rc = pthread_create(&t2, NULL, thread_main, NULL);
+  assert(rc == 0);
+  rc = pthread_create(&t3, NULL, thread_main, NULL);
+  assert(rc == 0);
+  rc = pthread_join(t2, NULL);
+  assert(rc == 0);
+  rc = pthread_join(t3, NULL);
+  assert(rc == 0);
+  printf("starting second & third thread\n");
 
   dlclose(handle);
   return 0;

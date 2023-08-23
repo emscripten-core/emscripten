@@ -238,7 +238,7 @@ uintmax_t wcstoumax(const wchar_t* restrict nptr, wchar_t** restrict endptr, int
 #include <__config>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 /* C99 stdlib (e.g. glibc < 2.18) does not provide format macros needed
@@ -248,7 +248,9 @@ uintmax_t wcstoumax(const wchar_t* restrict nptr, wchar_t** restrict endptr, int
 #   define __STDC_FORMAT_MACROS
 #endif
 
-#include_next <inttypes.h>
+#if __has_include_next(<inttypes.h>)
+#  include_next <inttypes.h>
+#endif
 
 #ifdef __cplusplus
 

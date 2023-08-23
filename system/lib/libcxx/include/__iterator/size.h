@@ -11,11 +11,12 @@
 #define _LIBCPP___ITERATOR_SIZE_H
 
 #include <__config>
+#include <__type_traits/common_type.h>
+#include <__type_traits/make_signed.h>
 #include <cstddef>
-#include <type_traits>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
@@ -41,9 +42,14 @@ _NOEXCEPT_(noexcept(static_cast<common_type_t<ptrdiff_t, make_signed_t<decltype(
 ->                              common_type_t<ptrdiff_t, make_signed_t<decltype(__c.size())>>
 { return            static_cast<common_type_t<ptrdiff_t, make_signed_t<decltype(__c.size())>>>(__c.size()); }
 
+// GCC complains about the implicit conversion from ptrdiff_t to size_t in
+// the array bound.
+_LIBCPP_DIAGNOSTIC_PUSH
+_LIBCPP_GCC_DIAGNOSTIC_IGNORED("-Wsign-conversion")
 template <class _Tp, ptrdiff_t _Sz>
 _LIBCPP_INLINE_VISIBILITY
 constexpr ptrdiff_t ssize(const _Tp (&)[_Sz]) noexcept { return _Sz; }
+_LIBCPP_DIAGNOSTIC_POP
 #endif
 
 #endif // _LIBCPP_STD_VER > 14

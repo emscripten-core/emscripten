@@ -169,9 +169,14 @@
       // instantiation is performed asynchronously, or false if instantiation failed.
       Module.instantiateWasm = function(imports, successCallback) {
         console.log('instantiateWasm: instantiating asynchronously');
-        wasm.then(function(wasmBinary) {
+        wasm.then((wasmBinary) => {
           console.log('wasm download finished, begin instantiating');
-          var wasmInstantiate = WebAssembly.instantiate(new Uint8Array(wasmBinary), imports).then(function(output) {
+          var wasmInstantiate = WebAssembly.instantiate(new Uint8Array(wasmBinary), imports).then((output) => {
+            // When overriding instantiateWasm, in asan builds, we also need
+            // to take care of creating the WasmOffsetConverter
+            if (typeof WasmOffsetConverter != "undefined") {
+              wasmOffsetConverter = new WasmOffsetConverter(wasmBinary, output.module);
+            }
             console.log('wasm instantiation succeeded');
             Module.testWasmInstantiationSucceeded = 1;
             successCallback(output.instance);

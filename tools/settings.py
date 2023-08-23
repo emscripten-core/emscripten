@@ -6,12 +6,15 @@
 import difflib
 import os
 import re
+from typing import Set, Dict, Any
 
 from .utils import path_from_root, exit_with_error
 from . import diagnostics
 
 # Subset of settings that take a memory size (i.e. 1Gb, 64kb etc)
 MEM_SIZE_SETTINGS = {
+    'GLOBAL_BASE',
+    'STACK_SIZE',
     'TOTAL_STACK',
     'INITIAL_MEMORY',
     'MEMORY_GROWTH_LINEAR_STEP',
@@ -62,12 +65,14 @@ COMPILE_TIME_SETTINGS = {
     'RELOCATABLE',
     'STRICT',
     'EMSCRIPTEN_TRACING',
-    'USE_PTHREADS',
+    'PTHREADS',
+    'USE_PTHREADS', # legacy name of PTHREADS setting
     'SHARED_MEMORY',
     'SUPPORT_LONGJMP',
     'DEFAULT_TO_CXX',
     'WASM_OBJECT_FILES',
     'WASM_WORKERS',
+    'BULK_MEMORY',
 
     # Internal settings used during compilation
     'EXCEPTION_CATCHING_ALLOWED',
@@ -78,19 +83,25 @@ COMPILE_TIME_SETTINGS = {
 
     # This is legacy setting that we happen to handle very early on
     'RUNTIME_LINKED_LIBS',
-    # TODO: should not be here
-    'AUTO_ARCHIVE_INDEXES',
-    'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE',
 }.union(PORTS_SETTINGS)
 
 
+# Settings that don't need to be externalized when serializing to json because they
+# are not used by the JS compiler.
+INTERNAL_SETTINGS = {
+    'SIDE_MODULE_IMPORTS',
+}
+
+user_settings: Dict[str, str] = {}
+
+
 class SettingsManager:
-  attrs = {}
-  types = {}
-  allowed_settings = set()
-  legacy_settings = {}
-  alt_names = {}
-  internal_settings = set()
+  attrs: Dict[str, Any] = {}
+  types: Dict[str, Any] = {}
+  allowed_settings: Set[str] = set()
+  legacy_settings: Dict[str, tuple] = {}
+  alt_names: Dict[str, str] = {}
+  internal_settings: Set[str] = set()
 
   def __init__(self):
     self.attrs.clear()
@@ -147,6 +158,14 @@ class SettingsManager:
 
   def dict(self):
     return self.attrs
+
+  def external_dict(self, skip_keys={}): # noqa
+    external_settings = {k: v for k, v in self.dict().items() if k not in INTERNAL_SETTINGS and k not in skip_keys}
+    # Only the names of the legacy settings are used by the JS compiler
+    # so we can reduce the size of serialized json by simplifying this
+    # otherwise complex value.
+    external_settings['LEGACY_SETTINGS'] = [l[0] for l in external_settings['LEGACY_SETTINGS']]
+    return external_settings
 
   def keys(self):
     return self.attrs.keys()

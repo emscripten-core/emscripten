@@ -47,6 +47,7 @@
 #include <memory.h>
 #include <assert.h>
 #include <malloc.h>
+#include <stdio.h>
 #include <emscripten/heap.h>
 #include <emscripten/threading.h>
 
@@ -107,7 +108,7 @@ typedef struct RootRegion
   uint8_t* endPtr;
 } RootRegion;
 
-#if defined(__EMSCRIPTEN_PTHREADS__)
+#ifdef __EMSCRIPTEN_SHARED_MEMORY__
 // In multithreaded builds, use a simple global spinlock strategy to acquire/release access to the memory allocator.
 static volatile uint8_t multithreadingLock = 0;
 #define MALLOC_ACQUIRE() while(__sync_lock_test_and_set(&multithreadingLock, 1)) { while(multithreadingLock) { /*nop*/ } }
@@ -228,7 +229,11 @@ static int compute_free_list_bucket(size_t allocSize)
 {
   if (allocSize < 128) return (allocSize >> 3) - 1;
   int clz = __builtin_clz(allocSize);
-  int bucketIndex = (clz > 19) ? 110 - (clz<<2) + ((allocSize >> (29-clz)) ^ 4) : MIN(71 - (clz<<1) + ((allocSize >> (30-clz)) ^ 2), NUM_FREE_BUCKETS-1);
+  int bucketIndex =
+    (clz > 19)
+      ?     110 - (clz<<2) + ((allocSize >> (29-clz)) ^ 4)
+      : MIN( 71 - (clz<<1) + ((allocSize >> (30-clz)) ^ 2), NUM_FREE_BUCKETS-1);
+
   assert(bucketIndex >= 0);
   assert(bucketIndex < NUM_FREE_BUCKETS);
   return bucketIndex;
@@ -584,7 +589,7 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
   // from the list of free regions: whatever slop remains will be later added back to the free region pool.
   unlink_from_free_list(freeRegion);
 
-  // Before we proceed further, fix up the boundary of this region and the region that precedes this one,
+  // Before we proceed further, fix up the boundary between this and the preceding region,
   // so that the boundary between the two regions happens at a right spot for the payload to be aligned.
   if (payloadStartPtr != payloadStartPtrAligned)
   {
@@ -739,8 +744,7 @@ static void *allocate_memory(size_t alignment, size_t size)
       bucketMask ^= 1;
     }
     // Instead of recomputing bucketMask from scratch at the end of each loop, it is updated as we go,
-    // to avoid undefined behavior with (x >> 32)/(x >> 64) when bucketIndex reaches 32/64, (the shift would comes out as a no-op instead of 0).
-
+    // to avoid undefined behavior with (x >> 32)/(x >> 64) when bucketIndex reaches 32/64, (the shift would come out as a no-op instead of 0).
     assert((bucketIndex == NUM_FREE_BUCKETS && bucketMask == 0) || (bucketMask == freeRegionBucketsUsed >> bucketIndex));
   }
 
@@ -753,6 +757,7 @@ static void *allocate_memory(size_t alignment, size_t size)
   int largestBucketIndex = NUM_FREE_BUCKETS - 1 - __builtin_clzll(freeRegionBucketsUsed);
   // freeRegion will be null if there is absolutely no memory left. (all buckets are 100% used)
   Region *freeRegion = freeRegionBucketsUsed ? freeRegionBuckets[largestBucketIndex].next : 0;
+  // The 30 first free region buckets cover memory blocks < 2048 bytes, so skip looking at those here (too small)
   if (freeRegionBucketsUsed >> 30)
   {
     // Look only at a constant number of regions in this bucket max, to avoid bad worst case behavior.
@@ -1422,6 +1427,15 @@ size_t emmalloc_compute_free_dynamic_memory_fragmentation_map(size_t freeMemoryS
   }
   MALLOC_RELEASE();
   return numFreeMemoryRegions;
+}
+
+void emmalloc_dump_free_dynamic_memory_fragmentation_map()
+{
+  size_t freeMemorySizeMap[32];
+  size_t numFreeMemoryRegions = emmalloc_compute_free_dynamic_memory_fragmentation_map(freeMemorySizeMap);
+  printf("numFreeMemoryRegions: %zu\n", numFreeMemoryRegions);
+  for(int i = 0; i < 32; ++i)
+    printf("Free memory regions of size [%llu,%llu[ bytes: %zu regions\n", 1ull<<i, 1ull<<(i+1), freeMemorySizeMap[i]);
 }
 
 size_t emmalloc_unclaimed_heap_memory(void) {

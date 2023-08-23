@@ -111,6 +111,12 @@ module({
             derived.delete();
         });
 
+        test("class functions are inherited in subclasses", function() {
+            assert.equal("Base", cm.Base.classFunction());
+            assert.equal("Derived", cm.Derived.classFunction());
+            assert.equal("Derived", cm.DerivedTwice.classFunction());
+        });
+
         test("calling method on unrelated class throws error", function() {
             var a = new cm.HasTwoBases;
             var e = assert.throws(cm.BindingError, function() {
@@ -162,17 +168,16 @@ module({
         });
 
         test("setting and getting property on unrelated class throws error", function() {
-            var className = cm['DYNAMIC_EXECUTION'] ? 'HasTwoBases' : '';
             var a = new cm.HasTwoBases;
             var e = assert.throws(cm.BindingError, function() {
                 Object.getOwnPropertyDescriptor(cm.HeldBySmartPtr.prototype, 'i').set.call(a, 10);
             });
-            assert.equal('HeldBySmartPtr.i setter incompatible with "this" of type ' + className, e.message);
+            assert.equal('HeldBySmartPtr.i setter incompatible with "this" of type HasTwoBases', e.message);
 
             var e = assert.throws(cm.BindingError, function() {
                 Object.getOwnPropertyDescriptor(cm.HeldBySmartPtr.prototype, 'i').get.call(a);
             });
-            assert.equal('HeldBySmartPtr.i getter incompatible with "this" of type ' + className, e.message);
+            assert.equal('HeldBySmartPtr.i getter incompatible with "this" of type HasTwoBases', e.message);
 
             a.delete();
         });
@@ -379,7 +384,7 @@ module({
     });
 
     BaseFixture.extend("string", function() {
-        var stdStringIsUTF8 = (cm['EMBIND_STD_STRING_IS_UTF8'] === true);
+        var stdStringIsUTF8 = (cm.getCompilerSetting('EMBIND_STD_STRING_IS_UTF8') === true);
 
         test("non-ascii strings", function() {
 
@@ -643,7 +648,7 @@ module({
             assert.throws(TypeError, function() { cm.const_ref_adder(0n, 1); });
         });
 
-        if (cm['ASSERTIONS']) {
+        if (cm.getCompilerSetting('ASSERTIONS')) {
             test("can pass only number and boolean as floats with assertions", function() {
                 assert.throws(TypeError, function() { cm.const_ref_adder(1, undefined); });
                 assert.throws(TypeError, function() { cm.const_ref_adder(1, null); });
@@ -825,7 +830,7 @@ module({
             assert.equal("-2147483648", cm.long_to_string(-2147483648));
 
             // passing out of range values should fail with assertions.
-            if (cm['ASSERTIONS']) {
+            if (cm.getCompilerSetting('ASSERTIONS')) {
                 assert.throws(TypeError, function() { cm.char_to_string(-129); });
                 assert.throws(TypeError, function() { cm.char_to_string(128); });
                 assert.throws(TypeError, function() { cm.signed_char_to_string(-129); });
@@ -864,7 +869,7 @@ module({
             assert.equal(2147483648, cm.load_unsigned_long());
         });
 
-        if (cm['ASSERTIONS']) {
+        if (cm.getCompilerSetting('ASSERTIONS')) {
             test("throws type error when attempting to coerce null to int", function() {
                 var e = assert.throws(TypeError, function() {
                     cm.int_to_string(null);
@@ -1045,13 +1050,13 @@ module({
 
             assert.equal(undefined, vec.get(4));
             // only test a negative index without assertions.
-            if (!cm['ASSERTIONS']) {
+            if (!cm.getCompilerSetting('ASSERTIONS')) {
                 assert.equal(undefined, vec.get(-1));
             }
             vec.delete();
         });
 
-        if (cm['ASSERTIONS']) {
+        if (cm.getCompilerSetting('ASSERTIONS')) {
             test("out of type range array index throws with assertions", function() {
                 var vec = cm.emval_test_return_vector();
 
@@ -1446,7 +1451,7 @@ module({
             c.delete();
         });
 
-        if (cm['ASSERTIONS']) {
+        if (cm.getCompilerSetting('ASSERTIONS')) {
             test("assigning string or object to integer raises TypeError with assertions", function() {
                 var c = new cm.CustomStruct();
                 var e = assert.throws(TypeError, function() {
@@ -1766,8 +1771,7 @@ module({
 
         test("smart pointer object has correct constructor name", function() {
             var e = new cm.HeldBySmartPtr(10, "foo");
-            var expectedName = cm['DYNAMIC_EXECUTION'] ? "HeldBySmartPtr" : "";
-            assert.equal(expectedName, e.constructor.name);
+            assert.equal("HeldBySmartPtr", e.constructor.name);
             e.delete();
         });
 
@@ -2510,12 +2514,12 @@ module({
     });
 
     BaseFixture.extend("function names", function() {
-        if (!cm['DYNAMIC_EXECUTION']) {
-          assert.equal('', cm.ValHolder.name);
+        assert.equal('ValHolder', cm.ValHolder.name);
+
+        if (!cm.getCompilerSetting('DYNAMIC_EXECUTION')) {
           assert.equal('', cm.ValHolder.prototype.setVal.name);
           assert.equal('', cm.ValHolder.makeConst.name);
         } else {
-          assert.equal('ValHolder', cm.ValHolder.name);
           assert.equal('ValHolder$setVal', cm.ValHolder.prototype.setVal.name);
           assert.equal('ValHolder$makeConst', cm.ValHolder.makeConst.name);
         }

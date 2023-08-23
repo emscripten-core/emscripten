@@ -1,28 +1,25 @@
 #include <stdbool.h>
 #include <sched.h>
 #include <threads.h>
-#include "syscall.h"
 
 #include <emscripten/threading.h>
 
-static _Atomic bool thread_crashed = false;
+#include "syscall.h"
+#include "threading_internal.h"
+
+static _Atomic pthread_t crashed_thread_id = NULL;
 
 void _emscripten_thread_crashed() {
-  thread_crashed = true;
+  crashed_thread_id = pthread_self();
 }
 
-static void dummy()
+static void dummy(double now)
 {
 }
 
-weak_alias(dummy, _emscripten_thread_sync_code);
+weak_alias(dummy, _emscripten_check_timers);
 
-/*
- * Called whenever a thread performs a blocking action (or calls sched_yield).
- * This function takes care of running the event queue and other housekeeping
- * tasks.
- */
-void _emscripten_yield() {
+void _emscripten_yield(double now) {
   int is_runtime_thread = emscripten_is_main_runtime_thread();
 
   // When a secondary thread crashes, we need to be able to interrupt the main
@@ -31,16 +28,26 @@ void _emscripten_yield() {
   // allocate (or otherwise itself crash) so use a low level atomic primitive
   // for this signal.
   if (is_runtime_thread) {
-    if (thread_crashed) {
+    if (crashed_thread_id) {
+      // Mark the crashed thread as strongly referenced so that Node.js doesn't
+      // exit while the pthread is propagating the uncaught exception back to
+      // the main thread.
+      _emscripten_thread_set_strongref(crashed_thread_id);
       // Return the event loop so we can handle the message from the crashed
       // thread.
-      emscripten_unwind_to_js_event_loop();
+      emscripten_exit_with_live_runtime();
     }
+
+    // This is no-op in programs that don't include use of itimer/alarm.
+    _emscripten_check_timers(now);
 
     // Assist other threads by executing proxied operations that are effectively
     // singlethreaded.
     emscripten_main_thread_process_queued_calls();
   }
-
-  _emscripten_thread_sync_code();
+#ifdef EMSCRIPTEN_DYNAMIC_LINKING
+  else {
+    _emscripten_process_dlopen_queue();
+  }
+#endif
 }

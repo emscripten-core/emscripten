@@ -10,22 +10,22 @@
 #ifndef _LIBCPP___ITERATOR_NEXT_H
 #define _LIBCPP___ITERATOR_NEXT_H
 
+#include <__assert>
 #include <__config>
-#include <__debug>
 #include <__iterator/advance.h>
 #include <__iterator/concepts.h>
 #include <__iterator/incrementable_traits.h>
 #include <__iterator/iterator_traits.h>
-#include <type_traits>
+#include <__type_traits/enable_if.h>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#  pragma GCC system_header
 #endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 template <class _InputIter>
-inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX14
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX17
     typename enable_if<__is_cpp17_input_iterator<_InputIter>::value, _InputIter>::type
     next(_InputIter __x, typename iterator_traits<_InputIter>::difference_type __n = 1) {
   _LIBCPP_ASSERT(__n >= 0 || __is_cpp17_bidirectional_iterator<_InputIter>::value,
@@ -35,7 +35,7 @@ inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX14
   return __x;
 }
 
-#if !defined(_LIBCPP_HAS_NO_CONCEPTS) && !defined(_LIBCPP_HAS_NO_INCOMPLETE_RANGES)
+#if _LIBCPP_STD_VER > 17
 
 // [range.iter.op.next]
 
@@ -58,16 +58,14 @@ struct __fn {
   }
 
   template <input_or_output_iterator _Ip, sentinel_for<_Ip> _Sp>
-  _LIBCPP_HIDE_FROM_ABI
-  constexpr _Ip operator()(_Ip __x, _Sp __bound) const {
-    ranges::advance(__x, __bound);
+  _LIBCPP_HIDE_FROM_ABI constexpr _Ip operator()(_Ip __x, _Sp __bound_sentinel) const {
+    ranges::advance(__x, __bound_sentinel);
     return __x;
   }
 
   template <input_or_output_iterator _Ip, sentinel_for<_Ip> _Sp>
-  _LIBCPP_HIDE_FROM_ABI
-  constexpr _Ip operator()(_Ip __x, iter_difference_t<_Ip> __n, _Sp __bound) const {
-    ranges::advance(__x, __n, __bound);
+  _LIBCPP_HIDE_FROM_ABI constexpr _Ip operator()(_Ip __x, iter_difference_t<_Ip> __n, _Sp __bound_sentinel) const {
+    ranges::advance(__x, __n, __bound_sentinel);
     return __x;
   }
 };
@@ -79,7 +77,7 @@ inline namespace __cpo {
 } // namespace __cpo
 } // namespace ranges
 
-#endif // !defined(_LIBCPP_HAS_NO_CONCEPTS) && !defined(_LIBCPP_HAS_NO_INCOMPLETE_RANGES)
+#endif // _LIBCPP_STD_VER > 17
 
 _LIBCPP_END_NAMESPACE_STD
 

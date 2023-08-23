@@ -25,6 +25,7 @@ import logging
 import math
 import operator
 import os
+import platform
 import random
 import sys
 import unittest
@@ -55,6 +56,7 @@ passing_core_test_modes = [
   'core3',
   'cores',
   'corez',
+  'core_2gb',
   'strict',
   'wasm2js0',
   'wasm2js1',
@@ -65,6 +67,9 @@ passing_core_test_modes = [
   'asan',
   'lsan',
   'ubsan',
+  'wasm64',
+  'wasm64_v8',
+  'wasm64_4gb',
 ]
 
 # The default core test mode, used when none is specified
@@ -123,6 +128,21 @@ def get_all_tests(modules):
         tests = [t for t in dir(getattr(m, s)) if t.startswith('test_')]
         all_tests += [s + '.' + t for t in tests]
   return all_tests
+
+
+def get_crossplatform_tests(modules):
+  suites = ['core2', 'other'] # We don't need all versions of every test
+  crossplatform_tests = []
+  # Walk over the test suites and find the test functions with the
+  # is_crossplatform_test attribute applied by @crossplatform decorator
+  for m in modules:
+    for s in suites:
+      if hasattr(m, s):
+        testclass = getattr(m, s)
+        for funcname in dir(testclass):
+          if hasattr(getattr(testclass, funcname), 'is_crossplatform_test'):
+            crossplatform_tests.append(s + '.' + funcname)
+  return crossplatform_tests
 
 
 def tests_with_expanded_wildcards(args, all_tests):
@@ -190,14 +210,12 @@ def get_random_test_parameters(arg):
   relevant_modes = passing_core_test_modes
   if len(arg):
     num_str = arg
-    if arg.startswith('other'):
-      base_module = 'other'
-      relevant_modes = ['other']
-      num_str = arg.replace('other', '')
-    elif arg.startswith('browser'):
-      base_module = 'browser'
-      relevant_modes = ['browser']
-      num_str = arg.replace('browser', '')
+    for mode in passing_core_test_modes + misc_test_modes:
+      if arg.startswith(mode):
+        base_module = mode
+        relevant_modes = [mode]
+        num_str = arg.replace(mode, '')
+        break
     num_tests = int(num_str)
   return num_tests, base_module, relevant_modes
 
@@ -250,6 +268,7 @@ def load_test_suites(args, modules):
   error_on_legacy_suite_names(args)
   unmatched_test_names = set(args)
   suites = []
+  total_tests = 0
   for m in modules:
     names_in_module = []
     for name in list(unmatched_test_names):
@@ -262,10 +281,13 @@ def load_test_suites(args, modules):
     if len(names_in_module):
       loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
       tests = flattened_tests(loaded_tests)
+      total_tests += len(tests)
       suite = suite_for_module(m, tests)
       for test in tests:
         suite.addTest(test)
       suites.append((m.__name__, suite))
+  if total_tests == 1 or parallel_testsuite.num_cores() == 1:
+    common.EMTEST_SAVE_DIR = True
   return suites, unmatched_test_names
 
 
@@ -294,7 +316,20 @@ def run_tests(options, suites):
   print('Test suites:')
   print([s[0] for s in suites])
   # Run the discovered tests
-  testRunner = unittest.TextTestRunner(verbosity=2, failfast=options.failfast)
+
+  # We currently don't support xmlrunner on macOS M1 runner since
+  # `pip` doesn't seeem to yet have pre-built binaries for M1.
+  if os.getenv('CI') and not (utils.MACOS and platform.machine() == 'arm64'):
+    os.makedirs('out', exist_ok=True)
+    # output fd must remain open until after testRunner.run() below
+    output = open('out/test-results.xml', 'wb')
+    import xmlrunner # type: ignore
+    testRunner = xmlrunner.XMLTestRunner(output=output, verbosity=2,
+                                         failfast=options.failfast)
+    print('Writing XML test output to ' + os.path.abspath(output.name))
+  else:
+    testRunner = unittest.TextTestRunner(verbosity=2, failfast=options.failfast)
+
   for mod_name, suite in suites:
     print('Running %s: (%s tests)' % (mod_name, suite.countTestCases()))
     res = testRunner.run(suite)
@@ -317,7 +352,7 @@ def parse_args(args):
   parser = argparse.ArgumentParser(prog='runner.py', description=__doc__)
   parser.add_argument('--save-dir', action='store_true', default=None,
                       help='Save the temporary directory used during for each '
-                           'test.  Implies --cores=1.')
+                           'test.  Implies --cores=1.  Defaults to true when running a single test')
   parser.add_argument('--no-clean', action='store_true',
                       help='Do not clean the temporary directory before each test run')
   parser.add_argument('--verbose', '-v', action='store_true', default=None)
@@ -336,6 +371,7 @@ def parse_args(args):
                       const=True, default=False)
   parser.add_argument('--force64', dest='force64', action='store_const',
                       const=True, default=None)
+  parser.add_argument('--crossplatform-only', action='store_true')
   return parser.parse_args()
 
 
@@ -345,6 +381,7 @@ def configure():
   common.EMTEST_SAVE_DIR = int(os.getenv('EMTEST_SAVE_DIR', '0'))
   common.EMTEST_ALL_ENGINES = int(os.getenv('EMTEST_ALL_ENGINES', '0'))
   common.EMTEST_SKIP_SLOW = int(os.getenv('EMTEST_SKIP_SLOW', '0'))
+  common.EMTEST_SKIP_FLAKY = int(os.getenv('EMTEST_SKIP_FLAKY', '0'))
   common.EMTEST_LACKS_NATIVE_CLANG = int(os.getenv('EMTEST_LACKS_NATIVE_CLANG', '0'))
   common.EMTEST_REBASELINE = int(os.getenv('EMTEST_REBASELINE', '0'))
   common.EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG
@@ -355,6 +392,10 @@ def configure():
   assert 'PARALLEL_SUITE_EMCC_CORES' not in os.environ, 'use EMTEST_CORES rather than PARALLEL_SUITE_EMCC_CORES'
   parallel_testsuite.NUM_CORES = os.environ.get('EMTEST_CORES') or os.environ.get('EMCC_CORES')
 
+
+def main(args):
+  options = parse_args(args)
+
   # Some options make sense being set in the environment, others not-so-much.
   # TODO(sbc): eventually just make these command-line only.
   if os.getenv('EMTEST_SAVE_DIR'):
@@ -363,10 +404,6 @@ def configure():
     print('Prefer --rebaseline over setting $EMTEST_REBASELINE')
   if os.getenv('EMTEST_VERBOSE'):
     print('Prefer --verbose over setting $EMTEST_VERBOSE')
-
-
-def main(args):
-  options = parse_args(args)
 
   # We set the environments variables here and then call configure,
   # to apply them.  This means the python's multiprocessing child
@@ -385,7 +422,6 @@ def main(args):
 
   set_env('EMTEST_BROWSER', options.browser)
   set_env('EMTEST_DETECT_TEMPFILE_LEAKS', options.detect_leaks)
-  set_env('EMTEST_SAVE_DIR', options.save_dir)
   if options.no_clean:
     set_env('EMTEST_SAVE_DIR', 2)
   else:
@@ -410,9 +446,12 @@ def main(args):
 
   modules = get_and_import_modules()
   all_tests = get_all_tests(modules)
-  tests = tests_with_expanded_wildcards(tests, all_tests)
-  tests = skip_requested_tests(tests, modules)
-  tests = args_for_random_tests(tests, modules)
+  if options.crossplatform_only:
+    tests = get_crossplatform_tests(modules)
+  else:
+    tests = tests_with_expanded_wildcards(tests, all_tests)
+    tests = skip_requested_tests(tests, modules)
+    tests = args_for_random_tests(tests, modules)
   suites, unmatched_tests = load_test_suites(tests, modules)
   if unmatched_tests:
     print('ERROR: could not find the following tests: ' + ' '.join(unmatched_tests))

@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <emscripten/wasm_worker.h>
 #include <stdio.h>
 
@@ -14,5 +15,6 @@ void run_in_worker()
 int main()
 {
   emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(/*stack size: */1024);
+  assert(worker);
   emscripten_wasm_worker_post_function_v(worker, run_in_worker);
 }
