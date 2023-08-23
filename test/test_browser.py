@@ -216,7 +216,6 @@ def also_with_threads(f):
 
 requires_graphics_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE'), "This test requires graphics hardware")
 requires_sound_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), "This test requires sound hardware")
-requires_sync_compilation = unittest.skipIf(is_chrome(), "This test requires synchronous compilation, which does not work in Chrome (except for tiny wasms)")
 requires_offscreen_canvas = unittest.skipIf(os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'), "This test requires a browser with OffscreenCanvas")
 
 
@@ -2073,7 +2072,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest('third_party/cubegeom/cubegeom_pre.c', reference='third_party/cubegeom/cubegeom_pre.png', args=['-sUSE_REGAL', '-DUSE_REGAL', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
-  @requires_sync_compilation
+  @no_swiftshader
   def test_cubegeom_pre_relocatable(self):
     self.btest('third_party/cubegeom/cubegeom_pre.c', reference='third_party/cubegeom/cubegeom_pre.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-sRELOCATABLE'])
 
@@ -3467,7 +3466,6 @@ Module["preRun"].push(function () {
   def test_minimal_runtime_export_name(self):
     self.btest_exit(test_file('browser_test_hello_world.c'), args=['-sEXPORT_NAME=Foo', '-sMINIMAL_RUNTIME'])
 
-  @requires_sync_compilation
   def test_modularize(self):
     for opts in [
       [],
@@ -3602,7 +3600,6 @@ Module["preRun"].push(function () {
       print(opts)
       self.btest('webidl/test.cpp', '1', args=['--post-js', 'glue.js', '-I.', '-DBROWSER'] + opts)
 
-  @requires_sync_compilation
   def test_dynamic_link(self):
     create_file('main.c', r'''
       #include <stdio.h>
@@ -3708,7 +3705,6 @@ Module["preRun"].push(function () {
     self._test_dylink_dso_needed(do_run)
 
   @requires_graphics_hardware
-  @requires_sync_compilation
   def test_dynamic_link_glemu(self):
     create_file('main.c', r'''
       #include <stdio.h>
@@ -4216,7 +4212,6 @@ Module["preRun"].push(function () {
         self.btest_exit(test_file('pthread/test_pthread_global_data_initialization.c'), args=args + mem_init_mode + ['-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
 
   @requires_threads
-  @requires_sync_compilation
   def test_pthread_global_data_initialization_in_sync_compilation_mode(self):
     mem_init_modes = [[], ['-sWASM=0', '--memory-init-file', '0'], ['-sWASM=0', '--memory-init-file', '1']]
     for mem_init_mode in mem_init_modes:
@@ -4375,8 +4370,7 @@ Module["preRun"].push(function () {
       print('default html')
       self.btest('in_flight_memfile_request.c', expected='0' if o < 2 else '1', args=opts) # should happen when there is a mem init file (-O2+)
 
-  @requires_sync_compilation
-  def test_binaryen_async(self):
+  def test_async_compile(self):
     # notice when we use async compilation
     script = '''
     <script>
@@ -4416,11 +4410,11 @@ Module["preRun"].push(function () {
       (['-O3', '-sWASM_ASYNC_COMPILATION=0'], 0),
     ]:
       print(opts, returncode)
-      self.btest_exit('binaryen_async.c', assert_returncode=returncode, args=common_args + opts)
+      self.btest_exit('browser/test_async_compile.c', assert_returncode=returncode, args=common_args + opts)
     # Ensure that compilation still works and is async without instantiateStreaming available
     no_streaming = ' <script> WebAssembly.instantiateStreaming = undefined;</script>'
     shell_with_script('shell.html', 'shell.html', no_streaming + script)
-    self.btest_exit('binaryen_async.c', assert_returncode=1, args=common_args)
+    self.btest_exit('browser/test_async_compile.c', assert_returncode=1, args=common_args)
 
   # Test that implementing Module.instantiateWasm() callback works.
   @parameterized({
