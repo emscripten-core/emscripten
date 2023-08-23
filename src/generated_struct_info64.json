@@ -37,6 +37,8 @@
         "AL_STOPPED": 4116,
         "AL_TRUE": 1,
         "AL_VELOCITY": 4102,
+        "ATOMICS_WAIT_NOT_EQUAL": 1,
+        "ATOMICS_WAIT_TIMED_OUT": 2,
         "AT_EMPTY_PATH": 4096,
         "AT_FDCWD": -100,
         "AT_NO_AUTOMOUNT": 2048,
