@@ -555,11 +555,11 @@ var SyscallsLibrary = {
   __syscall__newselect: (nfds, readfds, writefds, exceptfds, timeout) => {
     // readfds are supported,
     // writefds checks socket open status
-    // exceptfds not supported
-    // timeout is always 0 - fully async
+    // exceptfds are supported, although on web, such exceptional conditions never arise in web sockets
+    //                          and so the exceptfds list will always return empty.
+    // timeout is supported, although on SOCKFS and PIPEFS these are ignored and always treated as 0 - fully async
 #if ASSERTIONS
     assert(nfds <= 64, 'nfds must be less than or equal to 64');  // fd sets have 64 bits // TODO: this could be 1024 based on current musl headers
-    assert(!exceptfds, 'exceptfds not supported');
 #endif
 
     var total = 0;
