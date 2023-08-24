@@ -713,10 +713,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.emcc_args += ['-Wno-pthreads-mem-growth', '-pthread']
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
-    # Pthread support requires IMPORTED_MEMORY which depends on the JS API
-    # for creating 64-bit memories.
-    if self.get_setting('GLOBAL_BASE') == '4gb':
-      self.skipTest('no support for IMPORTED_MEMORY over 4gb yet')
     self.js_engines = [config.NODE_JS]
     self.node_args += shared.node_pthread_flags()
 

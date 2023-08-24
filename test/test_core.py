@@ -2440,7 +2440,10 @@ int main(int argc, char **argv) {
   @no_4gb('depends on memory size')
   @no_2gb('depends on memory size')
   def test_module_wasm_memory(self):
-    self.emcc_args += ['--pre-js', test_file('core/test_module_wasm_memory.js')]
+    if self.get_setting('MEMORY64') == 1:
+      self.emcc_args += ['--pre-js', test_file('core/test_module_wasm_memory64.js')]
+    else:
+      self.emcc_args += ['--pre-js', test_file('core/test_module_wasm_memory.js')]
     self.set_setting('IMPORTED_MEMORY')
     self.do_runf(test_file('core/test_module_wasm_memory.c'), 'success')
 
@@ -8490,7 +8493,6 @@ Module.onRuntimeInitialized = () => {
     'conditional': (True,),
     'unconditional': (False,),
   })
-  @no_4gb('uses imported memory')
   def test_emscripten_lazy_load_code(self, conditional):
     if self.get_setting('STACK_OVERFLOW_CHECK'):
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/16828')
