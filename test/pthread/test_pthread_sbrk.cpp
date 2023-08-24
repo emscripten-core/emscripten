@@ -40,7 +40,7 @@ static void *thread_start(void *arg)
   pthread_mutex_unlock( &mutex );
 #endif
 
-  intptr_t id = arg+1;
+  intptr_t id = (intptr_t)(arg)+1;
   intptr_t return_code = RESULT_OK;
 
   uint8_t *allocated_buffers[NUM_ALLOCATIONS] = {};
@@ -73,7 +73,7 @@ static void *thread_start(void *arg)
       {
         ++return_code; // Failed! (but run to completion so that the barriers will all properly proceed without hanging)
         if (!reported_once) {
-          emscripten_errf("Memory corrupted! mem[i]: %d != %d, i: %d, j: %d", allocated_buffers[i][j], id, i, j);
+          emscripten_errf("Memory corrupted! mem[i]: %d != %ld, i: %d, j: %d", allocated_buffers[i][j], id, i, j);
           reported_once = 1; // Avoid print flood that makes debugging hard.
         }
       }
