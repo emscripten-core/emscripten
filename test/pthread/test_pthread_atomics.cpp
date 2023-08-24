@@ -129,7 +129,7 @@ void RunTest(int test)
 
 	for(int i = 0; i < NUM_THREADS; ++i)
 	{
-		int status = 1;
+		intptr_t status = 1;
 		int rc = pthread_join(thread[i], (void**)&status);
 		assert(rc == 0);
 		assert(status == 0);

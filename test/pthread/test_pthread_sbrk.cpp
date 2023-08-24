@@ -40,8 +40,8 @@ static void *thread_start(void *arg)
   pthread_mutex_unlock( &mutex );
 #endif
 
-  int id = (int)(intptr_t)(arg)+1;
-  int return_code = RESULT_OK;
+  intptr_t id = arg+1;
+  intptr_t return_code = RESULT_OK;
 
   uint8_t *allocated_buffers[NUM_ALLOCATIONS] = {};
 
@@ -111,7 +111,7 @@ int main()
   assert(ret == 0);
 
   pthread_t thr[8/*NUM_THREADS*/];
-  for(int i = 0; i < NUM_THREADS; ++i)
+  for(intptr_t i = 0; i < NUM_THREADS; ++i)
   {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
