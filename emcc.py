@@ -1853,7 +1853,11 @@ def phase_linker_setup(options, state, newargs):
     # With this option we don't actually output the program itself only the
     # TS bindings.
     options.output_file = in_temp('a.out.js')
+    # Don't invoke the program's `main` function.
     settings.INVOKE_RUN = False
+    # Ignore -sMODULARIZE which could otherwise effect how we run the module
+    # to generate the bindings.
+    settings.MODULARIZE = False
 
   # options.output_file is the user-specified one, target is what we will generate
   if options.output_file:
