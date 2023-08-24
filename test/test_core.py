@@ -2804,6 +2804,7 @@ The current type of b is: 9
         interleaved_output=False)
 
   @node_pthreads
+  @flaky('https://github.com/emscripten-core/emscripten/issues/19795')
   def test_pthread_proxying_refcount(self):
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PTHREAD_POOL_SIZE=1')
