@@ -336,7 +336,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
   cmd = config.NODE_JS + [optimizer, filename] + passes
   # Keep JS code comments intact through the acorn optimization pass so that JSDoc comments
   # will be carried over to a later Closure run.
-  if settings.USE_CLOSURE_COMPILER:
+  if settings.USE_CLOSURE_COMPILER or not settings.MINIFY_WHITESPACE:
     cmd += ['--closureFriendly']
   if settings.EXPORT_ES6:
     cmd += ['--exportES6']

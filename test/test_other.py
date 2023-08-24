@@ -13705,3 +13705,23 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
                       '-Wno-experimental',
                       '--extern-post-js', test_file('other/test_memory64_proxies.js')])
     self.run_js('a.out.js')
+
+  def test_no_minify(self):
+    # Test that comments are preserved with `--minify=0` is used, even in `-Oz` builds.
+    # This allows the output of emscripten to be run through the closure compiler as
+    # as a seperate build step.
+    create_file('pre.js', '''
+    /**
+     * This comment should be preserved
+     */
+    console.log('hello');
+    ''')
+    comment = 'This comment should be preserved'
+
+    self.run_process([EMCC, test_file('hello_world.c'), '--pre-js=pre.js', '-Oz'])
+    content = read_file('a.out.js')
+    self.assertNotContained(comment, content)
+
+    self.run_process([EMCC, test_file('hello_world.c'), '--pre-js=pre.js', '-Oz', '--minify=0'])
+    content = read_file('a.out.js')
+    self.assertContained(comment, content)
