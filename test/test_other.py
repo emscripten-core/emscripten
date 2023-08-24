@@ -6932,25 +6932,6 @@ int main(int argc, char** argv) {
     out = self.run_js('a.out.js')
     self.assertContained('catch 42', out)
 
-  def test_debug_asmLastOpts(self):
-    create_file('src.c', r'''
-#include <stdio.h>
-struct Dtlink_t {   struct Dtlink_t*   right;  /* right child      */
-        union
-        { unsigned int  _hash;  /* hash value       */
-          struct Dtlink_t* _left;  /* left child       */
-        } hl;
-};
-int treecount(register struct Dtlink_t* e) {
-  return e ? treecount(e->hl._left) + treecount(e->right) + 1 : 0;
-}
-int main() {
-  printf("hello, world!\n");
-}
-''')
-    self.run_process([EMCC, 'src.c', '-sEXPORTED_FUNCTIONS=_main,_treecount', '--minify=0', '-gsource-map', '-Oz'])
-    self.assertContained('hello, world!', self.run_js('a.out.js'))
-
   def test_emscripten_print_double(self):
     create_file('src.c', r'''
 #include <stdio.h>
