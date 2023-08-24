@@ -8760,6 +8760,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @also_with_standalone_wasm()
   def test_sbrk(self):
     self.do_runf(test_file('sbrk_brk.cpp'), 'OK.')
+    self.set_setting('ALLOW_MEMORY_GROWTH')
+    self.do_runf(test_file('sbrk_brk.cpp'), 'OK.')
 
   def test_brk(self):
     self.emcc_args += ['-DTEST_BRK=1']
