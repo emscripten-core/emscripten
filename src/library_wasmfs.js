@@ -233,10 +233,20 @@ FS.init();
     allocate(stream, offset, length) {
       return FS.handleError(__wasmfs_allocate(stream.fd, {{{ splitI64('offset') }}}, {{{ splitI64('length') }}}));
     },
-    // TODO: mmap
-    // TODO: msync
-    // TODO: munmap
     writeFile: (path, data) => FS_writeFile(path, data),
+    mmap: (stream, length, offset, prot, flags) => {
+      var buf = FS.handleError(__wasmfs_mmap(length, prot, flags, stream.fd, {{{ splitI64('offset') }}}));
+      return { ptr: buf, allocated: true };
+    },
+    // offset is passed to msync to maintain backwards compatability with the legacy JS API but is not used by WasmFS.
+    msync: (stream, bufferPtr, offset, length, mmapFlags) => {
+      assert(offset === 0);
+      // TODO: assert that stream has the fd corresponding to the mapped buffer (bufferPtr).
+      return FS.handleError(__wasmfs_msync(bufferPtr, length, mmapFlags));
+    },
+    munmap: (addr, length) => (
+      FS.handleError(__wasmfs_munmap(addr, length))
+    ),
     symlink: (target, linkpath) => withStackSave(() => (
       __wasmfs_symlink(stringToUTF8OnStack(target), stringToUTF8OnStack(linkpath))
     )),

@@ -339,8 +339,12 @@ def also_with_wasm64(f):
 def can_do_standalone(self, impure=False):
   # Pure standalone engines don't support MEMORY64 yet.  Even with MEMORY64=2 (lowered)
   # the WASI APIs that take pointer values don't have 64-bit variants yet.
-  if self.get_setting('MEMORY64') and not impure:
-    return False
+  if not impure:
+    if self.get_setting('MEMORY64'):
+      return False
+    # This is way to detect the core_2gb test mode in test_core.py
+    if self.get_setting('INITIAL_MEMORY') == '2200mb':
+      return False
   return self.is_wasm() and \
       self.get_setting('STACK_OVERFLOW_CHECK', 0) < 2 and \
       not self.get_setting('MINIMAL_RUNTIME') and \
@@ -709,10 +713,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.emcc_args += ['-Wno-pthreads-mem-growth', '-pthread']
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
-    # Pthread support requires IMPORTED_MEMORY which depends on the JS API
-    # for creating 64-bit memories.
-    if self.get_setting('GLOBAL_BASE') == '4gb':
-      self.skipTest('no support for IMPORTED_MEMORY over 4gb yet')
     self.js_engines = [config.NODE_JS]
     self.node_args += shared.node_pthread_flags()
 
@@ -1399,7 +1399,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.clear_setting('SIDE_MODULE')
 
     # XXX in wasm each lib load currently takes 5MB; default INITIAL_MEMORY=16MB is thus not enough
-    self.set_setting('INITIAL_MEMORY', '32mb')
+    if not self.has_changed_setting('INITIAL_MEMORY'):
+      self.set_setting('INITIAL_MEMORY', '32mb')
 
     so = '.wasm' if self.is_wasm() else '.js'
 

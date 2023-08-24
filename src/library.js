@@ -2872,34 +2872,31 @@ addToLibrary({
     while (ch = HEAPU8[sigPtr++]) {
 #if ASSERTIONS
       var chr = String.fromCharCode(ch);
-      var validChars = ['d', 'f', 'i'];
+      var validChars = ['d', 'f', 'i', 'p'];
 #if WASM_BIGINT
       // In WASM_BIGINT mode we support passing i64 values as bigint.
       validChars.push('j');
-#endif
-#if MEMORY64
-      // In MEMORY64 mode we also support passing i64 pointer types which
-      // get automatically converted to int53/Double.
-      validChars.push('p');
 #endif
       assert(validChars.includes(chr), `Invalid character ${ch}("${chr}") in readEmAsmArgs! Use only [${validChars}], and do not specify "v" for void return argument.`);
 #endif
       // Floats are always passed as doubles, so all types except for 'i'
       // are 8 bytes and require alignment.
-      buf += (ch != {{{ charCode('i') }}}) && buf % 8 ? 4 : 0;
-      readEmAsmArgsArray.push(
-#if MEMORY64
-        // Special case for pointers under wasm64 which we read as int53 Numbers.
-        ch == {{{ charCode('p') }}} ?  {{{ makeGetValue('buf', 0, '*') }}} :
+      var wide = (ch != {{{ charCode('i') }}});
+#if !MEMORY64
+      wide &= (ch != {{{ charCode('p') }}});
 #endif
+      buf += wide && (buf % 8) ? 4 : 0;
+      readEmAsmArgsArray.push(
+        // Special case for pointers under wasm64 or CAN_ADDRESS_2GB mode.
+        ch == {{{ charCode('p') }}} ? {{{ makeGetValue('buf', 0, '*') }}} :
 #if WASM_BIGINT
-        ch == {{{ charCode('j') }}} ?  {{{ makeGetValue('buf', 0, 'i64') }}} :
+        ch == {{{ charCode('j') }}} ? {{{ makeGetValue('buf', 0, 'i64') }}} :
 #endif
         ch == {{{ charCode('i') }}} ?
           {{{ makeGetValue('buf', 0, 'i32') }}} :
           {{{ makeGetValue('buf', 0, 'double') }}}
       );
-      buf += ch == {{{ charCode('i') }}} ? 4 : 8;
+      buf += wide ? 8 : 4;
     }
     return readEmAsmArgsArray;
   },

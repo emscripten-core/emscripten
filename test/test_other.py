@@ -2915,6 +2915,12 @@ int f() {
     self.assertNotExists('out.js')
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), actual)
 
+  def test_embind_tsgen_test_embind(self):
+    self.run_process([EMCC, test_file('embind/embind_test.cpp'),
+                      '-lembind', '--embind-emit-tsd', 'embind_tsgen_test_embind.d.ts',
+                      '-DSKIP_UNBOUND_TYPES']) # TypeScript generation requires all type to be bound.
+    self.assertExists('embind_tsgen_test_embind.d.ts')
+
   def test_embind_tsgen_val(self):
     # Check that any dependencies from val still works with TS generation enabled.
     self.run_process([EMCC, test_file('other/embind_tsgen_val.cpp'),

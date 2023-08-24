@@ -163,7 +163,7 @@ var LibraryPThread = {
 
     threadStatusAsString(pthreadPtr) {
       var profilerBlock = {{{ makeGetValue('pthreadPtr', C_STRUCTS.pthread.profilerBlock, POINTER_TYPE) }}};
-      var status = (profilerBlock == 0) ? 0 : Atomics.load(HEAPU32, (profilerBlock + {{{ C_STRUCTS.thread_profiler_block.threadStatus }}} ) >> 2);
+      var status = (profilerBlock == 0) ? 0 : Atomics.load(HEAPU32, {{{ getHeapOffset('profilerBlock + ' + C_STRUCTS.thread_profiler_block.threadStatus, 'i32') }}});
       return PThread.threadStatusToString(status);
     },
 #endif
@@ -972,7 +972,7 @@ var LibraryPThread = {
       // values we serialize for proxying. TODO: pack this?
       var serializedNumCallArgs = numCallArgs {{{ WASM_BIGINT ? "* 2" : "" }}};
       var args = stackAlloc(serializedNumCallArgs * 8);
-      var b = args >> 3;
+      var b = {{{ getHeapOffset('args', 'i64') }}};
       for (var i = 0; i < numCallArgs; i++) {
         var arg = outerArgs[2 + i];
 #if WASM_BIGINT
@@ -1008,7 +1008,7 @@ var LibraryPThread = {
     numCallArgs /= 2;
 #endif
     proxiedJSCallArgs.length = numCallArgs;
-    var b = args >> 3;
+    var b = {{{ getHeapOffset('args', 'i64') }}};
     for (var i = 0; i < numCallArgs; i++) {
 #if WASM_BIGINT
       if (HEAP64[b + 2*i]) {
@@ -1042,8 +1042,8 @@ var LibraryPThread = {
   $establishStackSpace__internal: true,
   $establishStackSpace: () => {
     var pthread_ptr = _pthread_self();
-    var stackHigh = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack, 'i32') }}};
-    var stackSize = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack_size, 'i32') }}};
+    var stackHigh = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack, '*') }}};
+    var stackSize = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack_size, '*') }}};
     var stackLow = stackHigh - stackSize;
 #if PTHREADS_DEBUG
     dbg(`establishStackSpace: ${ptrToString(stackHigh)} -> ${ptrToString(stackLow)}`);
@@ -1233,13 +1233,13 @@ var LibraryPThread = {
   _emscripten_thread_mailbox_await: (pthread_ptr) => {
     if (typeof Atomics.waitAsync === 'function') {
       // TODO: How to make this work with wasm64?
-      var wait = Atomics.waitAsync(HEAP32, pthread_ptr >> 2, pthread_ptr);
+      var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('pthread_ptr', 'i32') }}}, pthread_ptr);
 #if ASSERTIONS
       assert(wait.async);
 #endif
       wait.value.then(checkMailbox);
       var waitingAsync = pthread_ptr + {{{ C_STRUCTS.pthread.waiting_async }}};
-      Atomics.store(HEAP32, waitingAsync >> 2, 1);
+      Atomics.store(HEAP32, {{{ getHeapOffset('waitingAsync', 'i32') }}}, 1);
     }
   },
 

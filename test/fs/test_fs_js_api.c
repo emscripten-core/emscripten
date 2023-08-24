@@ -7,6 +7,7 @@
 
 #include <emscripten/emscripten.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <assert.h>
@@ -333,6 +334,63 @@ void test_fs_truncate() {
     remove("truncatetest");
 }
 
+void test_fs_mmap() {
+    EM_ASM(
+        FS.writeFile('mmaptest', 'a=1_b=2_');
+
+        var stream = FS.open('mmaptest', 'r+');
+        assert(stream);
+
+        var mapped = FS.mmap(stream, 12, 0, 1 | 2 /* PROT_READ | PROT_WRITE */, 1 /* MAP_SHARED */);
+        var ret = new Uint8Array(Module.HEAPU8.subarray(mapped.ptr, mapped.ptr + 12));
+        var fileContents = "";
+        for (var i = 0; i < 12; i++) {
+            fileContents += String.fromCharCode(ret[i]);
+        }
+        assert(fileContents === 'a=1_b=2_\0\0\0\0');
+
+        ret[8] = ':'.charCodeAt(0);
+        ret[9] = 'x'.charCodeAt(0);
+        ret[10] = 'y'.charCodeAt(0);
+        ret[11] = 'z'.charCodeAt(0);
+        Module.HEAPU8.set(ret, mapped.ptr);
+
+        // The WasmFS msync syscall requires a pointer to the mapped memory, while the legacy JS API takes in any Uint8Array 
+        // buffer to write to a file.
+#if WASMFS
+        FS.msync(stream, mapped.ptr, 0, 12, 1 /* MAP_SHARED */);
+
+        var ex;
+        try {
+            FS.munmap(mapped.ptr, 4);
+        } catch (err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+
+        FS.munmap(mapped.ptr, 12);
+
+        // WasmFS correctly handles unmapping, while the legacy JS API does not.
+        try {
+            FS.msync(stream, mapped.ptr, 0, 12, 1 /* MAP_SHARED */);
+        } catch (err) {
+            ex = err;
+        }
+        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+#else
+        FS.msync(stream, new Uint8Array(ret), 0, 12, 1 /* MAP_SHARED */);
+        FS.munmap(stream);
+#endif
+    );
+
+    FILE *fptr = fopen("mmaptest", "r");
+    char res[13];
+    fgets(res, 13, fptr);
+    assert(strcmp(res, "a=1_b=2_:xyz") == 0);
+
+    remove("mmaptest");
+}
+
 void test_fs_mkdirTree() {
     EM_ASM(
         FS.mkdirTree("/test1/test2/test3");
@@ -413,6 +471,10 @@ int main() {
     test_fs_mknod();
     test_fs_allocate();
     test_fs_truncate();
+#if WASMFS
+    // TODO: Fix legacy API FS.mmap bug involving emscripten_builtin_memalign
+    test_fs_mmap();
+#endif
     test_fs_mkdirTree();
     test_fs_utime();
 
