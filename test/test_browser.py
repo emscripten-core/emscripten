@@ -1915,6 +1915,7 @@ keydown(100);keyup(100); // trigger the end
   def test_emscripten_api_infloop(self):
     self.btest_exit('emscripten_api_browser_infloop.cpp', assert_returncode=7)
 
+  @also_with_wasmfs
   def test_emscripten_fs_api(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png') # preloaded *after* run
     self.btest_exit('emscripten_fs_api_browser.c', assert_returncode=1, args=['-lSDL'])
