@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $preloadPlugins: "{{{ makeModuleReceiveExpr('preloadPlugins', '[]') }}}",
 
 #if !MINIMAL_RUNTIME
@@ -45,6 +45,7 @@ mergeInto(LibraryManager.library, {
   $FS_createPreloadedFile__deps: [
     '$asyncLoad',
     '$PATH_FS',
+    '$FS_createDataFile',
 #if !MINIMAL_RUNTIME
     '$FS_handledByPreloadPlugin',
 #endif
@@ -58,7 +59,7 @@ mergeInto(LibraryManager.library, {
       function finish(byteArray) {
         if (preFinish) preFinish();
         if (!dontCreateFile) {
-          FS.createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
+          FS_createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
         }
         if (onload) onload();
         removeRunDependency(dep);
@@ -133,7 +134,7 @@ mergeInto(LibraryManager.library, {
         var fd = process.stdin.fd;
 
         try {
-          bytesRead = fs.readSync(fd, buf, 0, BUFSIZE, -1);
+          bytesRead = fs.readSync(fd, buf);
         } catch(e) {
           // Cross-platform differences: on Windows, reading EOF throws an exception, but on other OSes,
           // reading EOF returns 0. Uniformize behavior by treating the EOF exception to return 0.

@@ -56,7 +56,7 @@ def get_base_cflags(force_object_files=False):
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
   if settings.RELOCATABLE:
-    flags += ['-sRELOCATABLE']
+    flags += ['-sRELOCATABLE', '-DEMSCRIPTEN_DYNAMIC_LINKING']
   if settings.MEMORY64:
     flags += ['-Wno-experimental', '-sMEMORY64=' + str(settings.MEMORY64)]
   return flags
@@ -1580,7 +1580,7 @@ class libunwind(NoExceptLibrary, MTLibrary):
   # See https://bugs.llvm.org/show_bug.cgi?id=44353
   force_object_files = True
 
-  cflags = ['-Oz', '-fno-inline-functions', '-D_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS']
+  cflags = ['-Oz', '-fno-inline-functions', '-D_LIBUNWIND_HIDE_SYMBOLS']
   src_dir = 'system/lib/libunwind/src'
   # Without this we can't build libunwind since it will pickup the unwind.h
   # that is part of llvm (which is not compatible for some reason).
@@ -2006,6 +2006,7 @@ class libstandalonewasm(MuslInternalLibrary):
 
   def __init__(self, **kwargs):
     self.is_mem_grow = kwargs.pop('is_mem_grow')
+    self.is_pure = kwargs.pop('is_pure')
     self.nocatch = kwargs.pop('nocatch')
     super().__init__(**kwargs)
 
@@ -2015,6 +2016,8 @@ class libstandalonewasm(MuslInternalLibrary):
       name += '-nocatch'
     if self.is_mem_grow:
       name += '-memgrow'
+    if self.is_pure:
+      name += '-pure'
     return name
 
   def get_cflags(self):
@@ -2022,18 +2025,21 @@ class libstandalonewasm(MuslInternalLibrary):
     cflags += ['-DNDEBUG', '-DEMSCRIPTEN_STANDALONE_WASM']
     if self.is_mem_grow:
       cflags += ['-DEMSCRIPTEN_MEMORY_GROWTH']
+    if self.is_pure:
+      cflags += ['-DEMSCRIPTEN_PURE_WASI']
     if self.nocatch:
       cflags.append('-DEMSCRIPTEN_NOCATCH')
     return cflags
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_mem_grow', 'nocatch']
+    return super().vary_on() + ['is_mem_grow', 'is_pure', 'nocatch']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
       is_mem_grow=settings.ALLOW_MEMORY_GROWTH,
+      is_pure=settings.PURE_WASI,
       nocatch=settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS,
       **kwargs
     )

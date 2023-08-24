@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $PIPEFS__postset: () => addAtInit('PIPEFS.root = FS.mount(PIPEFS, {}, null);'),
   $PIPEFS__deps: ['$FS'],
   $PIPEFS: {
@@ -92,10 +92,12 @@ mergeInto(LibraryManager.library, {
           currentLength += bucket.offset - bucket.roffset;
         }
 
+#if ASSERTIONS && !(MEMORY64 && MAXIMUM_MEMORY > FOUR_GB)
 #if PTHREADS
         assert(buffer instanceof ArrayBuffer || buffer instanceof SharedArrayBuffer || ArrayBuffer.isView(buffer));
 #else
         assert(buffer instanceof ArrayBuffer || ArrayBuffer.isView(buffer));
+#endif
 #endif
         var data = buffer.subarray(offset, offset + length);
 
@@ -149,10 +151,12 @@ mergeInto(LibraryManager.library, {
       write(stream, buffer, offset, length, position /* ignored */) {
         var pipe = stream.node.pipe;
 
+#if ASSERTIONS && !(MEMORY64 && MAXIMUM_MEMORY > FOUR_GB)
 #if PTHREADS
         assert(buffer instanceof ArrayBuffer || buffer instanceof SharedArrayBuffer || ArrayBuffer.isView(buffer));
 #else
         assert(buffer instanceof ArrayBuffer || ArrayBuffer.isView(buffer));
+#endif
 #endif
         var data = buffer.subarray(offset, offset + length);
 

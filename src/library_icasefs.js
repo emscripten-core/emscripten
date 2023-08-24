@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $ICASEFS__deps: ['wasmfs_create_icase_backend'],
   $ICASEFS: {
     createBackend(opts) {

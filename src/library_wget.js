@@ -16,7 +16,13 @@ var LibraryWget = {
     },
   },
 
-  emscripten_async_wget__deps: ['$PATH_FS', '$wget', '$callUserCallback', '$Browser', '$withStackSave', '$stringToUTF8OnStack'],
+  emscripten_async_wget__deps: [
+    '$PATH_FS', '$wget', '$callUserCallback', '$Browser',
+    '$withStackSave', '$stringToUTF8OnStack',
+    '$FS_mkdirTree',
+    '$FS_createPreloadedFile',
+    '$FS_unlink',
+  ],
   emscripten_async_wget__proxy: 'sync',
   emscripten_async_wget: (url, file, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
@@ -35,7 +41,7 @@ var LibraryWget = {
       }
     }
     var destinationDirectory = PATH.dirname(_file);
-    FS.createPreloadedFile(
+    FS_createPreloadedFile(
       destinationDirectory,
       PATH.basename(_file),
       _url, true, true,
@@ -50,10 +56,10 @@ var LibraryWget = {
       function() { // preFinish
         // if a file exists there, we overwrite it
         try {
-          FS.unlink(_file);
+          FS_unlink(_file);
         } catch (e) {}
         // if the destination directory does not yet exist, create it
-        FS.mkdirTree(destinationDirectory);
+        FS_mkdirTree(destinationDirectory);
       }
     );
   },
@@ -236,4 +242,4 @@ var LibraryWget = {
   },
 };
 
-mergeInto(LibraryManager.library, LibraryWget);
+addToLibrary(LibraryWget);

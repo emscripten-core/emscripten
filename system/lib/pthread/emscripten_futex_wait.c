@@ -17,8 +17,6 @@
 
 extern void* _emscripten_main_thread_futex;
 
-int _emscripten_thread_supports_atomics_wait(void);
-
 static int futex_wait_main_browser_thread(volatile void* addr,
                                           uint32_t val,
                                           double timeout) {
@@ -102,7 +100,7 @@ static int futex_wait_main_browser_thread(volatile void* addr,
     // here and return, it's the same is if what happened on the main thread
     // was the same as calling _emscripten_yield()
     // a few times before calling emscripten_futex_wait().
-    if (__c11_atomic_load((_Atomic uintptr_t*)addr, __ATOMIC_SEQ_CST) != val) {
+    if (__c11_atomic_load((_Atomic uint32_t*)addr, __ATOMIC_SEQ_CST) != val) {
       return -EWOULDBLOCK;
     }
 
@@ -139,7 +137,7 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   if (max_wait_ms != INFINITY) {
     max_wait_ns = (int64_t)(max_wait_ms*1000*1000);
   }
-#ifdef __PIC__
+#ifdef EMSCRIPTEN_DYNAMIC_LINKING
   // After the main thread queues dlopen events, it checks if the target threads
   // are sleeping.
   // If `sleeping` is set then the main thread knows that event will be
@@ -155,7 +153,7 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   }
 #endif
   ret = __builtin_wasm_memory_atomic_wait32((int*)addr, val, max_wait_ns);
-#ifdef __PIC__
+#ifdef EMSCRIPTEN_DYNAMIC_LINKING
   if (!is_runtime_thread) {
     __pthread_self()->sleeping = 0;
     _emscripten_process_dlopen_queue();

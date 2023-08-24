@@ -20,7 +20,7 @@
 // object. For convenience, the short name appears here. Note that if you add a
 // new function with an '_', it will not be found.
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $ptrToString: (ptr) => {
 #if ASSERTIONS
     assert(typeof ptr === 'number');
@@ -159,9 +159,9 @@ mergeInto(LibraryManager.library, {
   // it. Returns 1 on success, 0 on error.
   $growMemory: (size) => {
     var b = wasmMemory.buffer;
-    var pages = (size - b.byteLength + 65535) >>> 16;
+    var pages = (size - b.byteLength + {{{ WASM_PAGE_SIZE - 1 }}}) / {{{ WASM_PAGE_SIZE }}};
 #if RUNTIME_DEBUG
-    dbg(`emscripten_resize_heap: ${size} (+${size - b.byteLength} bytes / ${pages} pages)`);
+    dbg(`growMemory: ${size} (+${size - b.byteLength} bytes / ${pages} pages)`);
 #endif
 #if MEMORYPROFILER
     var oldHeapSize = b.byteLength;
@@ -249,7 +249,7 @@ mergeInto(LibraryManager.library, {
     var maxHeapSize = getHeapMax();
     if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
-      err(`Cannot enlarge memory, asked to go up to ${requestedSize} bytes, but the limit is ${maxHeapSize} bytes!`);
+      err(`Cannot enlarge memory, requested ${requestedSize} bytes, but the limit is ${maxHeapSize} bytes!`);
 #endif
 #if ABORTING_MALLOC
       abortOnCannotGrowMemory(requestedSize);
@@ -693,7 +693,7 @@ mergeInto(LibraryManager.library, {
     // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html
 
-    var tm_zone = {{{ makeGetValue('tm', C_STRUCTS.tm.tm_zone, 'i32') }}};
+    var tm_zone = {{{ makeGetValue('tm', C_STRUCTS.tm.tm_zone, '*') }}};
 
     var date = {
       tm_sec: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_sec, 'i32') }}},
@@ -2869,40 +2869,34 @@ mergeInto(LibraryManager.library, {
     var ch;
     // Most arguments are i32s, so shift the buffer pointer so it is a plain
     // index into HEAP32.
-    buf >>= 2;
     while (ch = HEAPU8[sigPtr++]) {
 #if ASSERTIONS
       var chr = String.fromCharCode(ch);
-      var validChars = ['d', 'f', 'i'];
+      var validChars = ['d', 'f', 'i', 'p'];
 #if WASM_BIGINT
       // In WASM_BIGINT mode we support passing i64 values as bigint.
       validChars.push('j');
 #endif
-#if MEMORY64
-      // In MEMORY64 mode we also support passing i64 pointer types which
-      // get automatically converted to int53/Double.
-      validChars.push('p');
-#endif
       assert(validChars.includes(chr), `Invalid character ${ch}("${chr}") in readEmAsmArgs! Use only [${validChars}], and do not specify "v" for void return argument.`);
 #endif
-      // Floats are always passed as doubles, and doubles and int64s take up 8
-      // bytes (two 32-bit slots) in memory, align reads to these:
-      buf += (ch != 105/*i*/) & buf;
-#if MEMORY64
-      // Special case for pointers under wasm64 which we read as int53 Numbers.
-      if (ch == 112/*p*/) {
-        readEmAsmArgsArray.push(readI53FromI64(buf++ << 2));
-      } else
+      // Floats are always passed as doubles, so all types except for 'i'
+      // are 8 bytes and require alignment.
+      var wide = (ch != {{{ charCode('i') }}});
+#if !MEMORY64
+      wide &= (ch != {{{ charCode('p') }}});
 #endif
+      buf += wide && (buf % 8) ? 4 : 0;
       readEmAsmArgsArray.push(
-        ch == 105/*i*/ ? HEAP32[buf] :
+        // Special case for pointers under wasm64 or CAN_ADDRESS_2GB mode.
+        ch == {{{ charCode('p') }}} ? {{{ makeGetValue('buf', 0, '*') }}} :
 #if WASM_BIGINT
-       (ch == 106/*j*/ ? HEAP64 : HEAPF64)[buf++ >> 1]
-#else
-       HEAPF64[buf++ >> 1]
+        ch == {{{ charCode('j') }}} ? {{{ makeGetValue('buf', 0, 'i64') }}} :
 #endif
+        ch == {{{ charCode('i') }}} ?
+          {{{ makeGetValue('buf', 0, 'i32') }}} :
+          {{{ makeGetValue('buf', 0, 'double') }}}
       );
-      ++buf;
+      buf += wide ? 8 : 4;
     }
     return readEmAsmArgsArray;
   },

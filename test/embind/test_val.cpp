@@ -225,6 +225,17 @@ int main() {
   ensure_not(val::global("c").isArray());
   ensure_not(val::global("d").isArray());
 
+  test("val& operator=(val&& v)");
+  val source(val::object());
+  val target(val::object());
+  source.set("val", 1);
+  target = std::move(source);
+  ensure(target["val"].as<int>() == 1);
+  // move and assign to itself
+  target.set("val", 2);
+  target = std::move(target);
+  ensure(target["val"].as<int>() == 2);
+
   test("bool equals(const val& v)");
   EM_ASM(
     a = 1;

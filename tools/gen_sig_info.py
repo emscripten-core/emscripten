@@ -232,7 +232,7 @@ def write_sig_library(filename, sig_info):
       '',
       '// We have to merge with `allowMissing` since this file contains signatures',
       '// for functions that might not exist in all build configurations.',
-      'mergeInto(LibraryManager.library, sigs, {allowMissing: true});'
+      'addToLibrary(sigs, {allowMissing: true});'
   ]
   utils.write_file(filename, '\n'.join(lines) + '\n')
 

@@ -1,4 +1,4 @@
-mergeInto(LibraryManager.library, {
+addToLibrary({
   // JSFile backend: Store a file's data in JS. We map File objects in C++ to
   // entries here that contain typed arrays.
   $wasmFS$JSMemoryFiles: {},

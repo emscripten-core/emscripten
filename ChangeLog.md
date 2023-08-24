@@ -18,8 +18,22 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.45 (in development)
+3.1.46 (in development)
 -----------------------
+- libunwind updated to LLVM 16.0.6. (#20088)
+- The `--minify=0` commnad line flag will now preserve comments as well as
+  whitespace.  This means the resulting output can then be run though closure
+  compiler or some other tool that gives comments semantic meaning. (#20121)
+
+3.1.45 - 08/23/23
+-----------------
+- The function used to add symbols the JS library has been renamed from
+  `mergeInto`, to the more specific `addToLibrary`.  This new function does not
+  require the passing of `LibraryManager.library` as a first argument.  The old
+  `mergeInto` continues to exist for backwards compat.
+- The `--log_html` option was removed from `emrun`.  This option was already not
+  working with python3.8 or above so we hope is safe to say that nobody was
+  relying on it.
 
 3.1.44 - 07/25/23
 -----------------

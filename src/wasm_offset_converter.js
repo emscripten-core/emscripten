@@ -122,18 +122,25 @@ function WasmOffsetConverter(wasmBytes, wasmModule) {
   }
 
   var sections = WebAssembly.Module.customSections(wasmModule, "name");
-  for (var i = 0; i < sections.length; ++i) {
-    buffer = new Uint8Array(sections[i]);
-    if (buffer[0] != 1) // not a function name section
-      continue;
-    offset = 1;
-    unsignedLEB128(); // skip byte count
-    var count = unsignedLEB128();
-    while (count-- > 0) {
-      var index = unsignedLEB128();
-      var length = unsignedLEB128();
-      this.name_map[index] = UTF8ArrayToString(buffer, offset, length);
-      offset += length;
+  var nameSection = sections.length ? sections[0] : undefined;
+  if (nameSection) {
+    buffer = new Uint8Array(nameSection);
+    offset = 0;
+    while (offset < buffer.length) {
+      var subsection_type = buffer[offset++];
+      var len = unsignedLEB128(); // byte count
+      if (subsection_type != 1) {
+        // Skip the whole sub-section if it's not a function name sub-section.
+        offset += len;
+        continue;
+      }
+      var count = unsignedLEB128();
+      while (count-- > 0) {
+        var index = unsignedLEB128();
+        var length = unsignedLEB128();
+        this.name_map[index] = UTF8ArrayToString(buffer, offset, length);
+        offset += length;
+      }
     }
   }
 }

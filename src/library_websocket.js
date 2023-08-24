@@ -425,4 +425,4 @@ var LibraryWebSocket = {
   }
 }
 
-mergeInto(LibraryManager.library, LibraryWebSocket);
+addToLibrary(LibraryWebSocket);

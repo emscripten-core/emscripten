@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   // Backend support. wasmFS$backends will contain a mapping of backend IDs to
   // the JS code that implements them. This is the JS side of the JSImpl* class
   // in C++, together with the js_impl calls defined right after it.
@@ -29,6 +29,9 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
+    if (!wasmFS$backends[backend].write) {
+      return -{{{ cDefs.EINVAL }}};
+    }
     return wasmFS$backends[backend].write(file, buffer, length, offset);
   },
 
@@ -37,6 +40,9 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);
 #endif
+    if (!wasmFS$backends[backend].read) {
+      return -{{{ cDefs.EINVAL }}};
+    }
     return wasmFS$backends[backend].read(file, buffer, length, offset);
   },
 

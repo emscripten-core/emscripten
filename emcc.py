@@ -250,6 +250,7 @@ class EmccOptions:
   def __init__(self):
     self.target = ''
     self.output_file = None
+    self.no_minify = False
     self.post_link = False
     self.executable = False
     self.compiler_wrapper = None
@@ -1780,8 +1781,11 @@ def set_max_memory():
       diagnostics.warning('unused-command-line-argument', 'MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH')
     settings.MAXIMUM_MEMORY = settings.INITIAL_MEMORY
 
-  # INITIAL_MEMORY sets a lower bound for MAXIMUM_MEMORY
   if 'MAXIMUM_MEMORY' not in user_settings:
+    if settings.ALLOW_MEMORY_GROWTH and settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024:
+        settings.MAXIMUM_MEMORY = 4 * 1024 * 1024 * 1024
+
+    # INITIAL_MEMORY sets a lower bound for MAXIMUM_MEMORY
     if settings.INITIAL_MEMORY > settings.MAXIMUM_MEMORY:
       settings.MAXIMUM_MEMORY = settings.INITIAL_MEMORY
 
@@ -1843,6 +1847,17 @@ def phase_linker_setup(options, state, newargs):
   if options.js_transform and settings.GENERATE_SOURCE_MAP:
     logger.warning('disabling source maps because a js transform is being done')
     settings.GENERATE_SOURCE_MAP = 0
+
+  if options.embind_emit_tsd:
+    # Ignore any -o command line arguments when running in --embind-emit-tsd
+    # With this option we don't actually output the program itself only the
+    # TS bindings.
+    options.output_file = in_temp('a.out.js')
+    # Don't invoke the program's `main` function.
+    settings.INVOKE_RUN = False
+    # Ignore -sMODULARIZE which could otherwise effect how we run the module
+    # to generate the bindings.
+    settings.MODULARIZE = False
 
   # options.output_file is the user-specified one, target is what we will generate
   if options.output_file:
@@ -2350,6 +2365,8 @@ def phase_linker_setup(options, state, newargs):
       # included, as the entire JS library can refer to things that require
       # these exports.)
       settings.REQUIRED_EXPORTS += [
+        'emscripten_builtin_memalign',
+        'wasmfs_create_file',
         '_wasmfs_mount',
         '_wasmfs_unmount',
         '_wasmfs_read_file',
@@ -2365,6 +2382,9 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_chdir',
         '_wasmfs_mknod',
         '_wasmfs_rmdir',
+        '_wasmfs_mmap',
+        '_wasmfs_munmap',
+        '_wasmfs_msync',
         '_wasmfs_read',
         '_wasmfs_pread',
         '_wasmfs_symlink',
@@ -2413,7 +2433,7 @@ def phase_linker_setup(options, state, newargs):
     settings.EXPORT_IF_DEFINED.append('__wasm_apply_data_relocs')
 
   if settings.SIDE_MODULE and 'GLOBAL_BASE' in user_settings:
-    exit_with_error('GLOBAL_BASE is not compatible with SIDE_MODULE')
+    diagnostics.warning('unused-command-line-argument', 'GLOBAL_BASE is not compatible with SIDE_MODULE')
 
   if settings.PROXY_TO_WORKER or options.use_preload_plugins:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
@@ -2862,10 +2882,12 @@ def phase_linker_setup(options, state, newargs):
   if settings.WASM2JS:
     if settings.GENERATE_SOURCE_MAP:
       exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
-    if settings.WASM_BIGINT:
-      exit_with_error('wasm2js does not support WASM_BIGINT')
     if settings.MEMORY64:
       exit_with_error('wasm2js does not support MEMORY64')
+    if settings.WASM_BIGINT:
+      exit_with_error('wasm2js does not support WASM_BIGINT')
+    if settings.CAN_ADDRESS_2GB:
+      exit_with_error('wasm2js does not support >2gb address space')
 
   if settings.NODE_CODE_CACHING:
     if settings.WASM_ASYNC_COMPILATION:
@@ -2946,7 +2968,7 @@ def phase_linker_setup(options, state, newargs):
   settings.PRE_JS_FILES = [os.path.abspath(f) for f in options.pre_js]
   settings.POST_JS_FILES = [os.path.abspath(f) for f in options.post_js]
 
-  settings.MINIFY_WHITESPACE = settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0
+  settings.MINIFY_WHITESPACE = settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0 and not options.no_minify
 
   return target, wasm_target
 
@@ -3444,7 +3466,7 @@ def parse_args(newargs):
       arg = consume_arg()
       if arg != '0':
         exit_with_error('0 is the only supported option for --minify; 1 has been deprecated')
-      settings.DEBUG_LEVEL = max(1, settings.DEBUG_LEVEL)
+      options.no_minify = True
     elif arg.startswith('-g'):
       options.requested_debug = arg
       requested_level = removeprefix(arg, '-g') or '3'
@@ -3525,7 +3547,6 @@ def parse_args(newargs):
       options.source_map_base = consume_arg()
     elif check_arg('--embind-emit-tsd'):
       options.embind_emit_tsd = consume_arg()
-      settings.INVOKE_RUN = False
     elif check_flag('--no-entry'):
       options.no_entry = True
     elif check_arg('--js-library'):

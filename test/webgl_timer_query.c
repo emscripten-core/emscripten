@@ -3,10 +3,11 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-#include <cassert>
-#include <cstdlib>
-#include <cstdio>
-#include <cstring>
+#include <assert.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
 #include <emscripten.h>
 #include <emscripten/html5.h>
 
@@ -22,18 +23,17 @@
 int result = 0;
 GLuint timerQuery = 0;
 
-#define GL_CALL( x ) \
-    { \
-        x; \
-        GLenum error = glGetError(); \
-        if( error != GL_NO_ERROR ) { \
-            printf( "GL ERROR: %d,  %s\n", (int)error, #x ); \
-            result = 1; \
-        } \
-    } \
+#define GL_CALL(x)                                                             \
+  {                                                                            \
+    x;                                                                         \
+    GLenum error = glGetError();                                               \
+    if (error != GL_NO_ERROR) {                                                \
+      printf("GL ERROR: %d,  %s\n", (int)error, #x);                           \
+      result = 1;                                                              \
+    }                                                                          \
+  }
 
-void getQueryResult()
-{
+void getQueryResult() {
   /* Get the result. It should be nonzero. */
   GLuint64 time = 0;
 #ifdef TEST_WEBGL2
@@ -42,7 +42,7 @@ void getQueryResult()
   GL_CALL(glGetQueryObjectui64vEXT(timerQuery, GL_QUERY_RESULT_EXT, &time));
 #endif
 
-  if(!time) return;
+  if (!time) return;
 
   printf("queried time: %llu\n", time);
   emscripten_cancel_main_loop();
@@ -56,8 +56,7 @@ void getQueryResult()
   exit(result);
 }
 
-int main()
-{
+int main() {
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);
 
@@ -78,8 +77,7 @@ int main()
   /* Skip WebGL 2 tests if not supported */
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context( "#canvas", &attrs );
   #ifdef TEST_WEBGL2
-  if (!context)
-  {
+  if (!context) {
     printf("Skipped: WebGL 2 is not supported.\n");
     return 0;
   }
@@ -88,8 +86,7 @@ int main()
 
   /* Check if the extension is actually supported. Firefox reports
      EXT_disjoint_timer_query on WebGL 2 as well. */
-  if (!std::strstr(reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS)), "EXT_disjoint_timer_query"))
-  {
+  if (!strstr(glGetString(GL_EXTENSIONS), "EXT_disjoint_timer_query")) {
     printf("EXT_disjoint_timer_query[_webgl2] not supported\n");
     return 0;
   }

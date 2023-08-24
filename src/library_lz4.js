@@ -5,7 +5,7 @@
  */
 
 #if LZ4
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $LZ4__deps: ['$FS', '$preloadPlugins'],
   $LZ4: {
     DIR_MODE: {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */,

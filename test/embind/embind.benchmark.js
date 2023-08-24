@@ -1,4 +1,4 @@
-mergeInto(LibraryManager.library, {
+addToLibrary({
     increment_counter_benchmark_js: function(N) {
         var ctr = _get_counter();
         var a = _emscripten_get_now();
