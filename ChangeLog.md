@@ -21,6 +21,9 @@ See docs/process.md for more on how version tagging works.
 3.1.46 (in development)
 -----------------------
 - libunwind updated to LLVM 16.0.6. (#20088)
+- The `--minify=0` commnad line flag will now preserve comments as well as
+  whitespace.  This means the resulting output can then be run though closure
+  compiler or some other tool that gives comments semantic meaning. (#20121)
 
 3.1.45 - 08/23/23
 -----------------
