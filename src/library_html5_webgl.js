@@ -514,13 +514,13 @@ var LibraryHtml5WebGL = {
   emscripten_webgl_get_parameter_i64v: (param, dst) => writeI53ToI64(dst, GLctx.getParameter(param)),
 };
 
-#if PTHREADS
+function handleWebGLProxying(funcs) {
+#if SHARED_MEMORY
 // Process 'sync_on_webgl_context_handle_thread' and 'sync_on_current_webgl_context_thread' pseudo-proxying modes
 // to appropriate proxying mechanism, either proxying on-demand, unconditionally, or never, depending on build modes.
 // 'sync_on_webgl_context_handle_thread' is used for function signatures that take a HTML5 WebGL context handle
 // object as the first argument. 'sync_on_current_webgl_context_thread' is used for functions that operate on the
 // implicit "current WebGL context" as activated via emscripten_webgl_make_current() function.
-function handleWebGLProxying(funcs) {
 
   function listOfNFunctionArgs(func) {
     var args = [];
@@ -586,10 +586,16 @@ function handleWebGLProxying(funcs) {
       delete funcs[i + '__proxy'];
     }
   }
+#else
+  // In single threaded mode just delete out custom __proxy addributes, otherwise
+  // they will causes errors in the JS compiler.
+  for (var i in funcs) {
+    delete funcs[i + '__proxy'];
+  }
+#endif // SHARED_MEMORY
 }
 
 handleWebGLProxying(LibraryHtml5WebGL);
-#endif // PTHREADS
 
 #if LibraryManager.has('library_webgl.js')
 autoAddDeps(LibraryHtml5WebGL, '$GL');
