@@ -25,6 +25,7 @@ extern "C" {
 // TODO: Replace forward declarations with #include <emscripten/wasmfs.h> and
 // resolve wasmfs::backend_t namespace conflicts.
 __wasi_fd_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend);
+void wasmfs_flush(void);
 int wasmfs_create_directory(char* path, int mode, backend_t backend);
 int wasmfs_unmount(intptr_t path);
 
@@ -281,6 +282,11 @@ int _wasmfs_stat(char* path, struct stat* statBuf) {
 
 int _wasmfs_lstat(char* path, struct stat* statBuf) {
   return __syscall_lstat64((intptr_t)path, (intptr_t)statBuf);
+}
+
+int _wasmfs_syncfs() {
+  wasmfs_flush();
+  return 0;
 }
 
 // The legacy JS API requires a mountpoint to already exist, so  WasmFS will

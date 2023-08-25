@@ -33,7 +33,6 @@ int main(int argc, char* argv[]) {
   emscripten_console_log("mounted OPFS root directory");
 
 #ifdef WASMFS_RESUME
-
   fd = open("/opfs/working/foo.txt", O_RDWR);
   assert(fd > 0);
   emscripten_console_log("opened existing OPFS file");

@@ -2398,6 +2398,7 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_ftruncate',
         '_wasmfs_stat',
         '_wasmfs_lstat',
+        '_wasmfs_syncfs',
         '_wasmfs_chmod',
         '_wasmfs_fchmod',
         '_wasmfs_lchmod',
@@ -2410,6 +2411,13 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_readdir_finish',
         '_wasmfs_get_cwd',
       ]
+    # When using JSPI with OPFS and WasmFS, the destructor of WasmFS
+    # (which is not async) invokes the flush() function. flush()
+    # then calls _wasmfs_opfs_get_entries, which is async.
+    # To prevent errors, it is necessary to provide an async wrapper to __funcs_on_exit.
+    # (https://github.com/emscripten-core/emscripten/pull/19903#issuecomment-1679785838)
+    if settings.ASYNCIFY == 2:
+      settings.ASYNCIFY_EXPORTS += ['__funcs_on_exit']
 
   if settings.FETCH and final_suffix in EXECUTABLE_ENDINGS:
     state.forced_stdlibs.append('libfetch')

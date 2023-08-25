@@ -464,7 +464,10 @@ FS.init();
         return __wasmfs_rename(oldPathBuffer, newPathBuffer);
       }));
     },
-    // TODO: syncfs
+    syncfs(callback) {
+      __wasmfs_syncfs();
+      return callback(null);
+    },
     llseek(stream, offset, whence) {
       return FS.handleError(__wasmfs_llseek(stream.fd, {{{ splitI64('offset') }}}, whence));
     }

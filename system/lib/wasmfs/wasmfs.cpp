@@ -62,9 +62,49 @@ extern "C" void wasmfs_flush(void) {
   // Flush musl libc streams.
   fflush(0);
 
-  // Flush our own streams. TODO: flush all backends.
+  // Flush our own streams.
   (void)SpecialFiles::getStdout()->locked().flush();
   (void)SpecialFiles::getStderr()->locked().flush();
+
+  std::vector<std::shared_ptr<Directory>> toFlush;
+  toFlush.push_back(wasmFS.getRootDirectory());
+
+  while (!toFlush.empty()) {
+    auto dir = toFlush.back();
+    toFlush.pop_back();
+
+    auto lockedDir = dir->locked();
+    Directory::MaybeEntries entries = lockedDir.getEntries();
+    if (int err = entries.getError()) {
+#ifndef NDEBUG
+      std::string errorMessage =
+        "Non-fatal error code " + std::to_string(err) +
+        " while flushing directory: " + lockedDir.getName(dir);
+      emscripten_console_error(errorMessage.c_str());
+#endif
+      continue;
+    }
+    for (auto& entry : *entries) {
+      auto child = lockedDir.getChild(entry.name);
+      if (!child) {
+        // This file must have been deleted between the call to `getEntries()` and now.
+        continue;
+      }
+
+      if (auto castedChild = child->dynCast<DataFile>()) {
+        if (int err = castedChild->locked().flush()) {
+#ifndef NDEBUG
+          std::string errorMessage = "Non-fatal error code " +
+                                     std::to_string(err) +
+                                     " while flushing file: " + entry.name;
+          emscripten_console_error(errorMessage.c_str());
+#endif
+        }
+      } else if (auto castedChild = child->dynCast<Directory>()) {
+        toFlush.push_back(castedChild);
+      }
+    }
+  }
 }
 
 WasmFS::~WasmFS() {

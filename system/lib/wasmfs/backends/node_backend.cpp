@@ -143,7 +143,8 @@ private:
   }
 
   int flush() override {
-    WASMFS_UNREACHABLE("TODO: implement NodeFile::flush");
+    // TODO: implement NodeFile::flush
+    return 0;
   }
 };
 

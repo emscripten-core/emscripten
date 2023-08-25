@@ -454,11 +454,22 @@ void test_fs_utime() {
     remove("utimetest");
 }
 
+EM_JS(void, test_fs_syncfs, (), {
+    FS.mkdir("/synctestdir");
+    FS.mkdir("/nesteddir");
+    FS.writeFile("/nesteddir/synctestfile", "a=1");
+    FS.syncfs(err => assert(!err));
+});
+
+
 void cleanup() {
     remove("testfile");
     remove("renametestfile");
     remove("readtestfile");
     remove("closetestfile");
+    remove("/nesteddir/synctestfile");
+    remove("/nesteddir");
+    remove("/synctestdir");
 }
 
 int main() {
@@ -477,6 +488,7 @@ int main() {
 #endif
     test_fs_mkdirTree();
     test_fs_utime();
+    test_fs_syncfs();
 
     cleanup();
 
