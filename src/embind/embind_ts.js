@@ -260,7 +260,7 @@ var LibraryEmbind = {
   $createFunctionDefinition__deps: ['$FunctionDefinition', '$heap32VectorToArray', '$readLatin1String', '$Argument', '$whenDependentTypesAreResolved'],
   $createFunctionDefinition: (name, argCount, rawArgTypesAddr, hasThis, cb) => {
     const argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
-    name = readLatin1String(name);
+    name = typeof name === 'string' ? name : readLatin1String(name);
 
     whenDependentTypesAreResolved([], argTypes, function(argTypes) {
       const returnType = argTypes[0];
