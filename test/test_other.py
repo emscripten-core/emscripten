@@ -4030,17 +4030,16 @@ int main(void) {
 ''')
 
     create_file('pre.js', r'''
-if (!Module['preRun']) Module['preRun'] = [];
-Module["preRun"].push(function () {
-    addRunDependency('test_run_dependency');
-    removeRunDependency('test_run_dependency');
-});
+Module["preRun"] = () => {
+  addRunDependency('test_run_dependency');
+  removeRunDependency('test_run_dependency');
+};
 ''')
 
     self.run_process([EMCC, 'code.c', '--pre-js', 'pre.js'])
     output = self.run_js('a.out.js')
 
-    assert output.count('This should only appear once.') == 1, output
+    self.assertEqual(output.count('This should only appear once.'), 1)
 
   def test_module_print(self):
     create_file('code.c', r'''

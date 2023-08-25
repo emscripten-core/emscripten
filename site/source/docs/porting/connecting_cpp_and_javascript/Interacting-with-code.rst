@@ -755,7 +755,7 @@ For example, to set an environment variable ``MY_FILE_ROOT`` to be
 
 .. code:: javascript
 
-    Module.preRun.push(function() {ENV.MY_FILE_ROOT = "/usr/lib/test"})
+    Module.preRun = () => {ENV.MY_FILE_ROOT = "/usr/lib/test"};
 
 Note that Emscripten will set default values for some environment variables
 (e.g. LANG) after you have configured ``ENV``, if you have not set your own
@@ -764,7 +764,7 @@ their value to `undefined`. For example:
 
 .. code:: javascript
 
-    Module.preRun.push(function() {ENV.LANG = undefined})
+    Module.preRun = () => {ENV.LANG = undefined};
 
 .. _interacting-with-code-binding-cpp:
 

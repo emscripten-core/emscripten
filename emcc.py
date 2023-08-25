@@ -75,6 +75,7 @@ DYNAMICLIB_ENDINGS = ['.dylib', '.so'] # Windows .dll suffix is not included in 
 STATICLIB_ENDINGS = ['.a']
 ASSEMBLY_ENDINGS = ['.s']
 HEADER_ENDINGS = ['.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH']
+DEFAULT_SHELL_HTML = utils.path_from_root('src/shell.html')
 
 # Supported LLD flags which we will pass through to the linker.
 SUPPORTED_LINKER_FLAGS = (
@@ -268,7 +269,7 @@ class EmccOptions:
     self.embed_files = []
     self.exclude_files = []
     self.ignore_dynamic_linking = False
-    self.shell_path = utils.path_from_root('src/shell.html')
+    self.shell_path = DEFAULT_SHELL_HTML
     self.source_map_base = ''
     self.embind_emit_tsd = ''
     self.emrun = False
@@ -2041,6 +2042,11 @@ def phase_linker_setup(options, state, newargs):
     default_setting('AUTO_ARCHIVE_INDEXES', 0)
     default_setting('IGNORE_MISSING_MAIN', 0)
     default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
+    if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
+      # Out default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
+      default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,setStatus'.split(','))
+    else:
+      default_setting('INCOMING_MODULE_JS_API', [])
 
   if 'GLOBAL_BASE' not in user_settings and not settings.SHRINK_LEVEL and not settings.OPT_LEVEL:
     # When optimizing for size it helps to put static data first before
@@ -2602,7 +2608,7 @@ def phase_linker_setup(options, state, newargs):
 
   if settings.MINIMAL_RUNTIME:
     # Minimal runtime uses a different default shell file
-    if options.shell_path == utils.path_from_root('src/shell.html'):
+    if options.shell_path == DEFAULT_SHELL_HTML:
       options.shell_path = utils.path_from_root('src/shell_minimal_runtime.html')
 
     if settings.ASSERTIONS:
@@ -2614,7 +2620,7 @@ def phase_linker_setup(options, state, newargs):
 
   if settings.MODULARIZE and not (settings.EXPORT_ES6 and not settings.SINGLE_FILE) and \
      settings.EXPORT_NAME == 'Module' and options.oformat == OFormat.HTML and \
-     (options.shell_path == utils.path_from_root('src/shell.html') or options.shell_path == utils.path_from_root('src/shell_minimal.html')):
+     (options.shell_path == DEFAULT_SHELL_HTML or options.shell_path == utils.path_from_root('src/shell_minimal.html')):
     exit_with_error(f'Due to collision in variable name "Module", the shell file "{options.shell_path}" is not compatible with build options "-sMODULARIZE -sEXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
   # TODO(sbc): Remove WASM2JS here once the size regression it would introduce has been fixed.
@@ -4154,7 +4160,7 @@ def generate_html(target, options, js_target, target_basename,
 
   if settings.EXPORT_NAME != 'Module' and \
      not settings.MINIMAL_RUNTIME and \
-     options.shell_path == utils.path_from_root('src/shell.html'):
+     options.shell_path == DEFAULT_SHELL_HTML:
     # the minimal runtime shell HTML is designed to support changing the export
     # name, but the normal one does not support that currently
     exit_with_error('Customizing EXPORT_NAME requires that the HTML be customized to use that name (see https://github.com/emscripten-core/emscripten/issues/10086)')
