@@ -84,16 +84,10 @@ extern "C" void wasmfs_flush(void) {
 #endif
       continue;
     }
-    // TODO: Investigate why *lockedDir.getEntries() does not go through the loop.
     for (auto& entry : *entries) {
       auto child = lockedDir.getChild(entry.name);
       if (!child) {
-#ifndef NDEBUG
-          std::string errorMessage = "Child: " +
-                                     entry.name +
-                                     " was null while flushing directory: " + lockedDir.getName(dir);
-          emscripten_console_error(errorMessage.c_str());
-#endif
+        // This file must have been deleted between the call to `getEntries()` and now.
         continue;
       }
 
