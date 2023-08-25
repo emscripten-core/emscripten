@@ -124,7 +124,7 @@ included in the profile.
 Here’s the function to write the profile and our new main function::
 
   EM_JS(void, write_profile, (), {
-    var __write_profile = Module.asm.__write_profile;
+    var __write_profile = wasmExports.__write_profile;
     if (!__write_profile) {
       return;
     }
