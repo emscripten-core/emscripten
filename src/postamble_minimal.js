@@ -89,7 +89,7 @@ function initRuntime(wasmExports) {
 
 // Initialize wasm (asynchronous)
 
-var imports = {
+var wasmImports = {
 #if MINIFY_WASM_IMPORTED_MODULES
   'a': envImports,
 #else // MINIFY_WASM_IMPORTED_MODULES
@@ -124,10 +124,10 @@ var wasmModule;
 if (!WebAssembly.instantiateStreaming && !Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
 #endif
 (WebAssembly.instantiateStreaming
-  ? WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
-  : WebAssembly.instantiate(Module['wasm'], imports)).then((output) => {
+  ? WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), wasmImports)
+  : WebAssembly.instantiate(Module['wasm'], wasmImports)).then((output) => {
 #else
-WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports).then((output) => {
+WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), wasmImports).then((output) => {
 #endif
 
 #else // Non-streaming instantiation
@@ -137,7 +137,7 @@ WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
 if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
 #endif
 
-WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
+WebAssembly.instantiate(Module['wasm'], wasmImports).then((output) => {
 #endif
 
 #if !LibraryManager.has('library_exports.js')

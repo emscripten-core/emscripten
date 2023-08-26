@@ -924,8 +924,8 @@ function instantiateAsync(binary, binaryFile, imports, callback) {
 }
 #endif // WASM_ASYNC_COMPILATION
 
-// prepare imports
-var imports = {
+// prepare wasmImports
+var wasmImports = {
 #if MINIFY_WASM_IMPORTED_MODULES
   'a': envImports,
 #else // MINIFY_WASM_IMPORTED_MODULES
@@ -1109,7 +1109,7 @@ function createWasm() {
 #endif
 
     try {
-      return Module['instantiateWasm'](imports, receiveInstance);
+      return Module['instantiateWasm'](wasmImports, receiveInstance);
     } catch(e) {
       err(`Module.instantiateWasm callback failed with error: ${e}`);
       #if MODULARIZE
@@ -1128,16 +1128,16 @@ function createWasm() {
 #endif
 #if MODULARIZE
   // If instantiation fails, reject the module ready promise.
-  instantiateAsync(wasmBinary, wasmBinaryFile, imports, receiveInstantiationResult).catch(readyPromiseReject);
+  instantiateAsync(wasmBinary, wasmBinaryFile, wasmImports, receiveInstantiationResult).catch(readyPromiseReject);
 #else
-  instantiateAsync(wasmBinary, wasmBinaryFile, imports, receiveInstantiationResult);
+  instantiateAsync(wasmBinary, wasmBinaryFile, wasmImports, receiveInstantiationResult);
 #endif
 #if LOAD_SOURCE_MAP
   getSourceMapPromise().then(receiveSourceMapJSON);
 #endif
   return {}; // no exports yet; we'll fill them in later
 #else
-  var result = instantiateSync(wasmBinaryFile, imports);
+  var result = instantiateSync(wasmBinaryFile, wasmImports);
 #if PTHREADS || MAIN_MODULE
   return receiveInstance(result[0], result[1]);
 #else
