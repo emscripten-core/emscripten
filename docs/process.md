@@ -174,6 +174,48 @@ updating `emcc.rst` in a PR, the following should be done:
 See notes above on installing sphinx.
 
 
+## Updating the LLVM libraries
+
+We maintain our ports of compiler-rt, libcxx, libcxxabi, and libunwind under
+https://github.com/emscripten-core/emscripten/tree/main/system/lib from the
+[LLVM repository][llvm_repo] and periodically update them to newer versions when
+new LLVM release comes out. To update our libraries to a newer LLVM release:
+
+1. Create a new branch for the libraries in our LLVM fork (
+   https://github.com/emscripten-core/llvm-project). For example, the branch for
+   LLVM 16 is
+   https://github.com/emscripten-core/llvm-project/tree/emscripten-libs-16. We
+   create a single branch for a major LLVM version, so if you want to update a
+   minor version within the same major version, you can use the same branch.
+1. Create a PR to merge new LLVM release tag in the upstream repo into our
+   library branch. For example, if we want to merge LLVM 16.0.6 release into our
+   `emscripten-libs-16` branch, you can do
+   ```
+   git co emscripten-libs-16
+   git remote add upstream https://github.com/llvm/llvm-project
+   git fetch --tags upstream
+   git merge llvmorg-16.0.6
+   ```
+   An example of such PR is emscripten-core/llvm-project#3.
+1. Add downstream changes from emscripten to the updated library branch in LLVM
+   fork. You can use [`push_llvm_changes.py`][push_llvm_changes_emscripten] to
+   do that.
+   ```
+   ./system/lib/push_llvm_changes.py <Emscripten's LLVM fork directory>
+   ```
+   Example of such PR is emscripten-core/llvm-project#5.
+1. Now we have merged all the changes to our LLVM fork branch, pull those
+   changes with the new version back into the Emscripten repo. You can use
+   [`update_compiler_rt.py`][update_compiler_rt_emscripten],
+   [`update_libcxx.py`][update_libcxx_emscripten],
+   [`update_libcxxabi.py`][update_libcxxabi_emscripten],
+   [`update_libunwind.py`][update_libunwind_emscripten] for that. For example,
+   ```
+   ./system/lib/update_comiler_rt.py <Emscripten's LLVM fork directory>
+   ```
+   An example of such PR is emscripten-core/emscripten#19515.
+
+
 [site_repo]: https://github.com/kripken/emscripten-site
 [releases_repo]: https://chromium.googlesource.com/emscripten-releases
 [waterfall]: https://ci.chromium.org/p/emscripten-releases/g/main/console
@@ -190,3 +232,9 @@ See notes above on installing sphinx.
 [flake8]: https://github.com/emscripten-core/emscripten/blob/main/.flake8
 [mypy]: https://github.com/emscripten-core/emscripten/blob/main/.mypy
 [update_docs]: https://github.com/emscripten-core/emscripten/blob/main/tools/maint/update_docs.py
+[llvm_repo]: https://github.com/llvm/llvm-project
+[push_llvm_changes_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/push_llvm_changes.py
+[update_compiler_rt_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_compiler_rt.py
+[update_libcxx_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_libcxx.py
+[update_libcxxabi_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_libcxxabi.py
+[update_libunwind_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_libunwind.py
