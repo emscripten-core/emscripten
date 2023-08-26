@@ -262,7 +262,7 @@ void __throw_exception_with_stack_trace(_Unwind_Exception*);
 
 void
 #ifdef __USING_WASM_EXCEPTIONS__
-// In wasm, destructors return their argument
+// In Wasm, a destructor returns its argument
 __cxa_throw(void *thrown_object, std::type_info *tinfo, void *(_LIBCXXABI_DTOR_FUNC *dest)(void *)) {
 #else
 __cxa_throw(void *thrown_object, std::type_info *tinfo, void (_LIBCXXABI_DTOR_FUNC *dest)(void *)) {
