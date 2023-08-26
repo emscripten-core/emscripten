@@ -204,6 +204,8 @@ LLVM release:
    ```
    ./system/lib/push_llvm_changes.py <Emscripten's LLVM fork directory>
    ```
+   (The library branch should be checked out in your Emscripten's LLVM fork
+   directory.)
    Example of such PR is emscripten-core/llvm-project#5.
 1. Now we have merged all the changes to our LLVM fork branch, pull those
    changes with the new version back into the Emscripten repo. You can use
@@ -214,6 +216,8 @@ LLVM release:
    ```
    ./system/lib/update_comiler_rt.py <Emscripten's LLVM fork directory>
    ```
+   (The library branch should be checked out in your Emscripten's LLVM fork
+   directory.)
    An example of such PR is emscripten-core/emscripten#19515.
 
 
