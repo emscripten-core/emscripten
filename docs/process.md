@@ -177,13 +177,14 @@ See notes above on installing sphinx.
 ## Updating the LLVM libraries
 
 We maintain our ports of compiler-rt, libcxx, libcxxabi, and libunwind under
-https://github.com/emscripten-core/emscripten/tree/main/system/lib from the
-[LLVM repository][llvm_repo] and periodically update them to newer versions when
-new LLVM release comes out. To update our libraries to a newer LLVM release:
+https://github.com/emscripten-core/emscripten/tree/main/system/lib from [the
+upstream LLVM repository][llvm_repo] and periodically update them to a newer
+version when a new LLVM release comes out. To update our libraries to a newer
+LLVM release:
 
-1. Create a new branch for the libraries in our LLVM fork (
-   https://github.com/emscripten-core/llvm-project). For example, the branch for
-   LLVM 16 is
+1. Create a new branch for the libraries in our LLVM fork
+   (https://github.com/emscripten-core/llvm-project). For example, the branch
+   for LLVM 16 is
    https://github.com/emscripten-core/llvm-project/tree/emscripten-libs-16. We
    create a single branch for a major LLVM version, so if you want to update a
    minor version within the same major version, you can use the same branch.
