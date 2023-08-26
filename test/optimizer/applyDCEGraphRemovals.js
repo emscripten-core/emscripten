@@ -1,5 +1,5 @@
 var name;
-var wasmImports = { save1: 1, number: 33, name: name, func: function() {}, save2: 2 };
+var envImports = { save1: 1, number: 33, name: name, func: function() {}, save2: 2 };
 
 // exports gotten directly
 var expD1 = Module['expD1'] = wasmExports['expD1'];

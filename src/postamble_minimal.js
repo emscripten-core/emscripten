@@ -91,10 +91,10 @@ function initRuntime(wasmExports) {
 
 var imports = {
 #if MINIFY_WASM_IMPORTED_MODULES
-  'a': wasmImports,
+  'a': envImports,
 #else // MINIFY_WASM_IMPORTED_MODULES
-  'env': wasmImports,
-  '{{{ WASI_MODULE_NAME }}}': wasmImports,
+  'env': envImports,
+  '{{{ WASI_MODULE_NAME }}}': envImports,
 #endif // MINIFY_WASM_IMPORTED_MODULES
 };
 

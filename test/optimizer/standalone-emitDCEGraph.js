@@ -5,4 +5,4 @@
 // standalone mode). 
 dynCall('v', 0)
 
-var wasmImports = {};
+var envImports = {};

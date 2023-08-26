@@ -1,6 +1,6 @@
 var name;
 
-var wasmImports = {
+var envImports = {
  a: 1,
  A: 33,
  b: ___syscall6,

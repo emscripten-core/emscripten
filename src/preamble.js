@@ -927,17 +927,17 @@ function instantiateAsync(binary, binaryFile, imports, callback) {
 // prepare imports
 var imports = {
 #if MINIFY_WASM_IMPORTED_MODULES
-  'a': wasmImports,
+  'a': envImports,
 #else // MINIFY_WASM_IMPORTED_MODULES
-  'env': wasmImports,
-  '{{{ WASI_MODULE_NAME }}}': wasmImports,
+  'env': envImports,
+  '{{{ WASI_MODULE_NAME }}}': envImports,
 #endif // MINIFY_WASM_IMPORTED_MODULES
 #if SPLIT_MODULE
   'placeholder': new Proxy({}, splitModuleProxyHandler),
 #endif
 #if RELOCATABLE
-  'GOT.mem': new Proxy(wasmImports, GOTHandler),
-  'GOT.func': new Proxy(wasmImports, GOTHandler),
+  'GOT.mem': new Proxy(envImports, GOTHandler),
+  'GOT.func': new Proxy(envImports, GOTHandler),
 #endif
 };
 
@@ -1250,7 +1250,7 @@ function runMemoryInitializer() {
 
 #if MAIN_MODULE && ASYNCIFY
 // With MAIN_MODULE + ASYNCIFY the normal method of placing stub functions in
-// wasmImports for as-yet-undefined symbols doesn't work since ASYNCIFY then
+// envImports for as-yet-undefined symbols doesn't work since ASYNCIFY then
 // wraps these stub functions and we can't then replace them directly.  Instead
 // the stub functions call into `asyncifyStubs` which gets populated by the
 // dynamic linker as symbols are loaded.

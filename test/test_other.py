@@ -7987,14 +7987,14 @@ int main() {
     filename = test_file('other/metadce', filename)
     expected_basename = test_file('other/metadce', self.id().split('.')[-1])
 
-    # Run once without closure and parse output to find wasmImports
+    # Run once without closure and parse output to find envImports
     build_cmd = [compiler_for(filename), filename] + args + self.get_emcc_args()
     self.run_process(build_cmd + ['-g2'])
     # find the imports we send from JS
     # TODO(sbc): Find a way to do that that doesn't depend on internal details of
     # the generated code.
     js = read_file('a.out.js')
-    start = js.find('wasmImports = ')
+    start = js.find('envImports = ')
     self.assertNotEqual(start, -1)
     end = js.find('}', start)
     self.assertNotEqual(end, -1)

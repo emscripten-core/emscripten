@@ -411,7 +411,7 @@ function(${args}) {
             // is needed.
             target = `asyncifyStubs['${symbol}']`;
           } else {
-            target = `wasmImports['${symbol}']`;
+            target = `envImports['${symbol}']`;
           }
           let assertion = '';
           if (ASSERTIONS) {

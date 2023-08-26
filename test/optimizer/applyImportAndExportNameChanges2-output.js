@@ -212,7 +212,7 @@ if (ENVIRONMENT_IS_NODE) {
  _emscripten_get_now = Date.now;
 }
 
-var wasmImports = {
+var envImports = {
  b: abort,
  h: ___syscall140,
  a: ___syscall146,
@@ -231,7 +231,7 @@ function initRuntime(wasmExports) {
  wasmExports["i"]();
 }
 
-var env = wasmImports;
+var env = envImports;
 
 env["memory"] = wasmMemory;
 

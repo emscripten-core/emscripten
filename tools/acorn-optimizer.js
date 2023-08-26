@@ -451,11 +451,11 @@ function runAJSDCE(ast) {
 }
 
 function isWasmImportsAssign(node) {
-  // var wasmImports = ..
+  // var envImports = ..
   return (
     node.type === 'VariableDeclaration' &&
     node.declarations.length === 1 &&
-    node.declarations[0].id.name === 'wasmImports' &&
+    node.declarations[0].id.name === 'envImports' &&
     node.declarations[0].init &&
     node.declarations[0].init.type === 'ObjectExpression'
   );
@@ -623,7 +623,7 @@ function emitDCEGraph(ast) {
   //
   // The imports that wasm receives look like this:
   //
-  //  var wasmImports = { "abort": abort, "assert": assert, [..] };
+  //  var envImports = { "abort": abort, "assert": assert, [..] };
   //
   // The exports are trickier, as they have a different form whether or not
   // async compilation is enabled. It can be either:
@@ -829,7 +829,7 @@ function emitDCEGraph(ast) {
   // must find the info we need
   assert(
     foundWasmImportsAssign,
-    'could not find the assigment to "wasmImports". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)'
+    'could not find the assigment to "envImports". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)'
   );
   // Read exports that were declared in extraInfo
   if (extraInfo) {
@@ -1754,7 +1754,7 @@ function minifyLocals(ast) {
 function minifyGlobals(ast) {
   // The input is in form
   //
-  //   function instantiate(wasmImports, wasmMemory, wasmTable) {
+  //   function instantiate(envImports, wasmMemory, wasmTable) {
   //      var helper..
   //      function asmFunc(global, env, buffer) {
   //        var memory = env.memory;
@@ -1768,7 +1768,7 @@ function minifyGlobals(ast) {
   // simple - as wasm2js output is - and looks at all the minifiable names as
   // a whole. A possible bug here is something like
   //
-  //   function instantiate(wasmImports, wasmMemory, wasmTable) {
+  //   function instantiate(envImports, wasmMemory, wasmTable) {
   //      var x = foo;
   //      function asmFunc(global, env, buffer) {
   //        var foo = 10;
