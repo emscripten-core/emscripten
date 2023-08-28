@@ -232,8 +232,11 @@ def lld_flags_for_executable(external_symbols):
 
   if settings.STACK_FIRST:
     cmd.append('--stack-first')
-  elif not settings.RELOCATABLE:
-    cmd.append('--global-base=%s' % settings.GLOBAL_BASE)
+
+  if not settings.RELOCATABLE:
+    cmd.append('--table-base=%s' % settings.TABLE_BASE)
+    if not settings.STACK_FIRST:
+      cmd.append('--global-base=%s' % settings.GLOBAL_BASE)
 
   return cmd
 
