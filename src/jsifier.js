@@ -225,12 +225,12 @@ function(${args}) {
       i53ConversionDeps.forEach((d) => deps.push(d))
     }
 
-    if (SHARED_MEMORY) {
-      const proxyingMode = LibraryManager.library[symbol + '__proxy'];
-      if (proxyingMode) {
-        if (proxyingMode !== 'sync' && proxyingMode !== 'async') {
-          throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
-        }
+    const proxyingMode = LibraryManager.library[symbol + '__proxy'];
+    if (proxyingMode) {
+      if (proxyingMode !== 'sync' && proxyingMode !== 'async') {
+        throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
+      }
+      if (SHARED_MEMORY) {
         const sync = proxyingMode === 'sync';
         if (PTHREADS) {
           snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
