@@ -124,13 +124,6 @@ var LibraryEmbindShared = {
     _free(ptr);
     return rv;
   },
-  $getTypeName__deps: ['$readLatin1String', '__getTypeName', 'free'],
-  $getTypeName: (type) => {
-    var ptr = ___getTypeName(type);
-    var rv = readLatin1String(ptr);
-    _free(ptr);
-    return rv;
-  },
   $getFunctionName__deps: [],
   $getFunctionName: (signature) => {
     signature = signature.trim();
@@ -139,6 +132,16 @@ var LibraryEmbindShared = {
       return signature.substr(0, argsIndex);
     } else {
       return signature;
+    }
+  },
+  $getFunctionArgsName__deps: [],
+  $getFunctionArgsName: (signature) => {
+    signature = signature.trim();
+    const argsIndex = signature.indexOf("(") + 1;
+    if (argsIndex !== -1 && signature[signature.length - 1] == ")") {
+      return signature.substr(argsIndex, signature.length - argsIndex - 1).replaceAll(" ", "").split(",").filter(n => n.length);
+    } else {
+      return [];
     }
   },
   $heap32VectorToArray: (count, firstElement) => {
