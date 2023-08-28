@@ -257,12 +257,14 @@ var LibraryEmbind = {
   $registerIntegerType: (id) => {
     registerType(id, new IntegerType(id));
   },
-  $createFunctionDefinition__deps: ['$FunctionDefinition', '$heap32VectorToArray', '$readLatin1String', '$Argument', '$whenDependentTypesAreResolved'],
+  $createFunctionDefinition__deps: ['$FunctionDefinition', '$heap32VectorToArray', '$readLatin1String', '$Argument', '$whenDependentTypesAreResolved', '$getFunctionName', '$getFunctionArgsName'],
   $createFunctionDefinition: (name, argCount, rawArgTypesAddr, hasThis, cb) => {
     const argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = readLatin1String(name);
 
-    whenDependentTypesAreResolved([], argTypes, function(argTypes) {
+    whenDependentTypesAreResolved([], argTypes, function (argTypes) {
+      const argsName = getFunctionArgsName(name);
+      name = getFunctionName(name);
       const returnType = argTypes[0];
       let thisType = null;
       let argStart = 1;
@@ -271,8 +273,13 @@ var LibraryEmbind = {
         argStart = 2;
       }
       const args = [];
+      let x = 0;
       for (let i = argStart; i < argTypes.length; i++) {
-        args.push(new Argument(`_${i - argStart}`, argTypes[i]));
+        if (argsName.length && x < argsName.length) {
+          args.push(new Argument(argsName[x++], argTypes[i]));
+        } else {
+          args.push(new Argument(`_${i - argStart}`, argTypes[i]));
+        }
       }
       const funcDef = new FunctionDefinition(name, returnType, args, thisType);
       cb(funcDef);

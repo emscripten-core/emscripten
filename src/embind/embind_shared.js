@@ -124,7 +124,23 @@ var LibraryEmbindShared = {
     _free(ptr);
     return rv;
   },
-
+  $getTypeName__deps: ['$readLatin1String', '__getTypeName', 'free'],
+  $getTypeName: (type) => {
+    var ptr = ___getTypeName(type);
+    var rv = readLatin1String(ptr);
+    _free(ptr);
+    return rv;
+  },
+  $getFunctionName__deps: [],
+  $getFunctionName: (signature) => {
+    signature = signature.trim();
+    const argsIndex = signature.indexOf("(");
+    if (argsIndex !== -1 && signature[signature.length - 1] == ")") {
+      return signature.substr(0, argsIndex);
+    } else {
+      return signature;
+    }
+  },
   $heap32VectorToArray: (count, firstElement) => {
     var array = [];
     for (var i = 0; i < count; i++) {
