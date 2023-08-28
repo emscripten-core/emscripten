@@ -98,16 +98,6 @@ var imports = {
 #endif // MINIFY_WASM_IMPORTED_MODULES
 };
 
-// In non-fastcomp non-asm.js builds, grab wasm exports to outer scope
-// for emscripten_get_exported_function() to be able to access them.
-#if LibraryManager.has('library_exports.js')
-var wasmExports;
-#endif
-
-#if PTHREADS
-var wasmModule;
-#endif
-
 #if DECLARE_ASM_MODULE_EXPORTS
 <<< WASM_MODULE_EXPORTS_DECLARES >>>
 #endif
