@@ -587,7 +587,7 @@ function handleWebGLProxying(funcs) {
     }
   }
 #else
-  // In single threaded mode just delete out custom __proxy addributes, otherwise
+  // In single threaded mode just delete our custom __proxy addributes, otherwise
   // they will causes errors in the JS compiler.
   for (var i in funcs) {
     delete funcs[i + '__proxy'];
