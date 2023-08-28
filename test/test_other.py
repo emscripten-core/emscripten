@@ -2176,6 +2176,8 @@ int f() {
                  emcc_args=['--embed-file', 'pngtest.png', '-sUSE_LIBPNG', '-pthread'])
 
   def test_giflib(self):
+    # giftext.c contains a sprintf warning
+    self.emcc_args += ['-Wno-fortify-source']
     shutil.copyfile(test_file('third_party/giflib/treescap.gif'), 'treescap.gif')
     self.do_runf(test_file('third_party/giflib/giftext.c'),
                  'GIF file terminated normally',
