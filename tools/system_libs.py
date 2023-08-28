@@ -1315,7 +1315,7 @@ class libbulkmemory(MuslInternalLibrary, AsanInstrumentedLibrary):
   name = 'libbulkmemory'
   src_dir = 'system/lib/libc'
   src_files = ['emscripten_memcpy.c', 'emscripten_memset.c',
-               'emscripten_memcpy_big.S', 'emscripten_memset_big.S']
+               'emscripten_memcpy_bulkmem.S', 'emscripten_memset_bulkmem.S']
   cflags = ['-mbulk-memory']
 
   def can_use(self):
