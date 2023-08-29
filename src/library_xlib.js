@@ -5,25 +5,24 @@
  */
 
 var LibraryXlib = {
-  XOpenDisplay: function(name) {
+  XOpenDisplay: (name) => {
     return 1; // We support 1 display, the canvas
   },
 
   XCreateWindow__deps: ['$Browser'],
-  XCreateWindow: function(display, parent, x, y, width, height, border_width, depth, class_, visual, valuemask, attributes) {
+  XCreateWindow: (display, parent, x, y, width, height, border_width, depth, class_, visual, valuemask, attributes) => {
     // All we can do is set the width and height
     Browser.setCanvasSize(width, height);
     return 2;
   },
 
-  XChangeWindowAttributes: function(display, window, valuemask, attributes){},
-  XSetWMHints: function(display, win, hints){},
-  XMapWindow: function(display, win){},
-  XStoreName: function(display, win, name){},
-  XInternAtom: function(display, name_, hmm) { return 0 },
-  XSendEvent: function(display, win, propagate, event_mask, even_send){},
-  XPending: function(display) { return 0 },
+  XChangeWindowAttributes: (display, window, valuemask, attributes) => {},
+  XSetWMHints: (display, win, hints) => {},
+  XMapWindow: (display, win) => {},
+  XStoreName: (display, win, name) => {},
+  XInternAtom: (display, name_, hmm)  => 0,
+  XSendEvent: (display, win, propagate, event_mask, even_send) => {},
+  XPending: (display) => 0,
 };
 
-mergeInto(LibraryManager.library, LibraryXlib);
-
+addToLibrary(LibraryXlib);

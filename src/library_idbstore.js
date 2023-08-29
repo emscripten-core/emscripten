@@ -7,59 +7,81 @@
 #include "IDBStore.js"
 
 var LibraryIDBStore = {
-  // A simple IDB-backed storage mechanism. Suitable for saving and loading large files asynchronously. This does
-  // *NOT* use the emscripten filesystem, intentionally, to avoid overhead. It lets you application define whatever
-  // filesystem-like layer you want, with the overhead 100% controlled by you. At the extremes, you could either
-  // just store large files, with almost no extra code; or you could implement a file b-tree using posix-compliant
+  // A simple IDB-backed storage mechanism. Suitable for saving and loading
+  // large files asynchronously. This does *NOT* use the emscripten filesystem,
+  // intentionally, to avoid overhead. It lets you application define whatever
+  // filesystem-like layer you want, with the overhead 100% controlled by you.
+  // At the extremes, you could either just store large files, with almost no
+  // extra code; or you could implement a file b-tree using posix-compliant
   // filesystem on top.
   $IDBStore: IDBStore,
-  emscripten_idb_async_load__deps: ['$UTF8ToString', 'malloc', 'free'],
-  emscripten_idb_async_load: function(db, id, arg, onload, onerror) {
-    IDBStore.getFile(UTF8ToString(db), UTF8ToString(id), function(error, byteArray) {
-      if (error) {
-        if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(arg);
-        return;
-      }
-      var buffer = _malloc(byteArray.length);
-      HEAPU8.set(byteArray, buffer);
-      {{{ makeDynCall('viii', 'onload') }}}(arg, buffer, byteArray.length);
-      _free(buffer);
+  emscripten_idb_async_load__deps: ['$UTF8ToString', '$callUserCallback', 'malloc', 'free'],
+  emscripten_idb_async_load: (db, id, arg, onload, onerror) => {
+    {{{ runtimeKeepalivePush() }}};
+    IDBStore.getFile(UTF8ToString(db), UTF8ToString(id), (error, byteArray) => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        if (error) {
+          if (onerror) {{{ makeDynCall('vp', 'onerror') }}}(arg);
+          return;
+        }
+        var buffer = _malloc(byteArray.length);
+        HEAPU8.set(byteArray, buffer);
+        {{{ makeDynCall('vppi', 'onload') }}}(arg, buffer, byteArray.length);
+        _free(buffer);
+      });
     });
   },
-  emscripten_idb_async_store: function(db, id, ptr, num, arg, onstore, onerror) {
-    // note that we copy the data here, as these are async operatins - changes to HEAPU8 meanwhile should not affect us!
-    IDBStore.setFile(UTF8ToString(db), UTF8ToString(id), new Uint8Array(HEAPU8.subarray(ptr, ptr+num)), function(error) {
-      if (error) {
-        if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(arg);
-        return;
-      }
-      if (onstore) {{{ makeDynCall('vi', 'onstore') }}}(arg);
+  emscripten_idb_async_store__deps: ['$UTF8ToString', 'free', '$callUserCallback'],
+  emscripten_idb_async_store: (db, id, ptr, num, arg, onstore, onerror) => {
+    // note that we copy the data here, as these are async operatins - changes
+    // to HEAPU8 meanwhile should not affect us!
+    {{{ runtimeKeepalivePush() }}};
+    IDBStore.setFile(UTF8ToString(db), UTF8ToString(id), new Uint8Array(HEAPU8.subarray(ptr, ptr+num)), (error) => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        if (error) {
+          if (onerror) {{{ makeDynCall('vp', 'onerror') }}}(arg);
+          return;
+        }
+        if (onstore) {{{ makeDynCall('vp', 'onstore') }}}(arg);
+      });
     });
   },
-  emscripten_idb_async_delete: function(db, id, arg, ondelete, onerror) {
-    IDBStore.deleteFile(UTF8ToString(db), UTF8ToString(id), function(error) {
-      if (error) {
-        if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(arg);
-        return;
-      }
-      if (ondelete) {{{ makeDynCall('vi', 'ondelete') }}}(arg);
+  emscripten_idb_async_delete__deps: ['$UTF8ToString', '$callUserCallback'],
+  emscripten_idb_async_delete: (db, id, arg, ondelete, onerror) => {
+    {{{ runtimeKeepalivePush() }}};
+    IDBStore.deleteFile(UTF8ToString(db), UTF8ToString(id), (error) => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        if (error) {
+          if (onerror) {{{ makeDynCall('vp', 'onerror') }}}(arg);
+          return;
+        }
+        if (ondelete) {{{ makeDynCall('vp', 'ondelete') }}}(arg);
+      });
     });
   },
-  emscripten_idb_async_exists: function(db, id, arg, oncheck, onerror) {
-    IDBStore.existsFile(UTF8ToString(db), UTF8ToString(id), function(error, exists) {
-      if (error) {
-        if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(arg);
-        return;
-      }
-      if (oncheck) {{{ makeDynCall('vii', 'oncheck') }}}(arg, exists);
+  emscripten_idb_async_exists__deps: ['$UTF8ToString', '$callUserCallback'],
+  emscripten_idb_async_exists: (db, id, arg, oncheck, onerror) => {
+    {{{ runtimeKeepalivePush() }}};
+    IDBStore.existsFile(UTF8ToString(db), UTF8ToString(id), (error, exists) => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        if (error) {
+          if (onerror) {{{ makeDynCall('vp', 'onerror') }}}(arg);
+          return;
+        }
+        if (oncheck) {{{ makeDynCall('vpi', 'oncheck') }}}(arg, exists);
+      });
     });
   },
 
 #if ASYNCIFY
   emscripten_idb_load__async: true,
   emscripten_idb_load__deps: ['malloc'],
-  emscripten_idb_load: function(db, id, pbuffer, pnum, perror) {
-    Asyncify.handleSleep(function(wakeUp) {
+  emscripten_idb_load: (db, id, pbuffer, pnum, perror) => {
+    return Asyncify.handleSleep(function(wakeUp) {
       IDBStore.getFile(UTF8ToString(db), UTF8ToString(id), function(error, byteArray) {
         if (error) {
           {{{ makeSetValue('perror', 0, '1', 'i32') }}};
@@ -76,8 +98,8 @@ var LibraryIDBStore = {
     });
   },
   emscripten_idb_store__async: true,
-  emscripten_idb_store: function(db, id, ptr, num, perror) {
-    Asyncify.handleSleep(function(wakeUp) {
+  emscripten_idb_store: (db, id, ptr, num, perror) => {
+    return Asyncify.handleSleep(function(wakeUp) {
       IDBStore.setFile(UTF8ToString(db), UTF8ToString(id), new Uint8Array(HEAPU8.subarray(ptr, ptr+num)), function(error) {
         {{{ makeSetValue('perror', 0, '!!error', 'i32') }}};
         wakeUp();
@@ -85,8 +107,8 @@ var LibraryIDBStore = {
     });
   },
   emscripten_idb_delete__async: true,
-  emscripten_idb_delete: function(db, id, perror) {
-    Asyncify.handleSleep(function(wakeUp) {
+  emscripten_idb_delete: (db, id, perror) => {
+    return Asyncify.handleSleep(function(wakeUp) {
       IDBStore.deleteFile(UTF8ToString(db), UTF8ToString(id), function(error) {
         {{{ makeSetValue('perror', 0, '!!error', 'i32') }}};
         wakeUp();
@@ -94,8 +116,8 @@ var LibraryIDBStore = {
     });
   },
   emscripten_idb_exists__async: true,
-  emscripten_idb_exists: function(db, id, pexists, perror) {
-    Asyncify.handleSleep(function(wakeUp) {
+  emscripten_idb_exists: (db, id, pexists, perror) => {
+    return Asyncify.handleSleep(function(wakeUp) {
       IDBStore.existsFile(UTF8ToString(db), UTF8ToString(id), function(error, exists) {
         {{{ makeSetValue('pexists', 0, '!!exists', 'i32') }}};
         {{{ makeSetValue('perror',  0, '!!error', 'i32') }}};
@@ -105,8 +127,8 @@ var LibraryIDBStore = {
   },
   // extra worker methods - proxied
   emscripten_idb_load_blob__async: true,
-  emscripten_idb_load_blob: function(db, id, pblob, perror) {
-    Asyncify.handleSleep(function(wakeUp) {
+  emscripten_idb_load_blob: (db, id, pblob, perror) => {
+    return Asyncify.handleSleep(function(wakeUp) {
       assert(!IDBStore.pending);
       IDBStore.pending = function(msg) {
         IDBStore.pending = null;
@@ -131,8 +153,8 @@ var LibraryIDBStore = {
     });
   },
   emscripten_idb_store_blob__async: true,
-  emscripten_idb_store_blob: function(db, id, ptr, num, perror) {
-    Asyncify.handleSleep(function(wakeUp) {
+  emscripten_idb_store_blob: (db, id, ptr, num, perror) => {
+    return Asyncify.handleSleep(function(wakeUp) {
       assert(!IDBStore.pending);
       IDBStore.pending = function(msg) {
         IDBStore.pending = null;
@@ -148,7 +170,7 @@ var LibraryIDBStore = {
       });
     });
   },
-  emscripten_idb_read_from_blob: function(blobId, start, num, buffer) {
+  emscripten_idb_read_from_blob: (blobId, start, num, buffer) => {
     var blob = IDBStore.blobs[blobId];
     if (!blob) return 1;
     if (start+num > blob.size) return 2;
@@ -156,26 +178,25 @@ var LibraryIDBStore = {
     HEAPU8.set(new Uint8Array(byteArray), buffer);
     return 0;
   },
-  emscripten_idb_free_blob: function(blobId) {
+  emscripten_idb_free_blob: (blobId) => {
     assert(IDBStore.blobs[blobId]);
     IDBStore.blobs[blobId] = null;
   },
 #else
-  emscripten_idb_load: function(db, id, pbuffer, pnum, perror) {
+  emscripten_idb_load: (db, id, pbuffer, pnum, perror) => {
     throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_load, etc.';
   },
-  emscripten_idb_store: function(db, id, ptr, num, perror) {
+  emscripten_idb_store: (db, id, ptr, num, perror) => {
     throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_store, etc.';
   },
-  emscripten_idb_delete: function(db, id, perror) {
+  emscripten_idb_delete: (db, id, perror) => {
     throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_delete, etc.';
   },
-  emscripten_idb_exists: function(db, id, pexists, perror) {
+  emscripten_idb_exists: (db, id, pexists, perror) => {
     throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_exists, etc.';
   },
 #endif // ASYNCIFY
 };
 
 autoAddDeps(LibraryIDBStore, '$IDBStore');
-mergeInto(LibraryManager.library, LibraryIDBStore);
-
+addToLibrary(LibraryIDBStore);

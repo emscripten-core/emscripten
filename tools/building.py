@@ -213,6 +213,7 @@ def lld_flags_for_executable(external_symbols):
     cmd += [
       '-z', 'stack-size=%s' % settings.STACK_SIZE,
       '--initial-memory=%d' % settings.INITIAL_MEMORY,
+      '--max-memory=%d' % settings.MAXIMUM_MEMORY,
     ]
 
     if settings.STANDALONE_WASM:
@@ -228,10 +229,6 @@ def lld_flags_for_executable(external_symbols):
         # `__main_argv_argc`, but we should address that by using a single `_start`
         # function like we do in STANDALONE_WASM mode.
         cmd += ['--no-entry']
-    if not settings.ALLOW_MEMORY_GROWTH:
-      cmd.append('--max-memory=%d' % settings.INITIAL_MEMORY)
-    elif settings.MAXIMUM_MEMORY != -1:
-      cmd.append('--max-memory=%d' % settings.MAXIMUM_MEMORY)
 
   if settings.STACK_FIRST:
     cmd.append('--stack-first')
@@ -369,7 +366,7 @@ WASM_CALL_CTORS = '__wasm_call_ctors'
 # for this, and we are in wasm mode
 def eval_ctors(js_file, wasm_file, debug_info):
   if settings.MINIMAL_RUNTIME:
-    CTOR_ADD_PATTERN = f"asm['{WASM_CALL_CTORS}']();" # TODO test
+    CTOR_ADD_PATTERN = f"wasmExports['{WASM_CALL_CTORS}']();" # TODO test
   else:
     CTOR_ADD_PATTERN = f"addOnInit(wasmExports['{WASM_CALL_CTORS}']);"
 
@@ -488,16 +485,16 @@ def get_closure_compiler_and_env(user_args):
 
 
 @ToolchainProfiler.profile()
-def closure_transpile(filename, pretty):
+def closure_transpile(filename):
   user_args = []
   closure_cmd, env = get_closure_compiler_and_env(user_args)
   closure_cmd += ['--language_out', 'ES5']
   closure_cmd += ['--compilation_level', 'WHITESPACE_ONLY']
-  return run_closure_cmd(closure_cmd, filename, env, pretty)
+  return run_closure_cmd(closure_cmd, filename, env)
 
 
 @ToolchainProfiler.profile()
-def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
+def closure_compiler(filename, advanced=True, extra_closure_args=None):
   user_args = []
   env_args = os.environ.get('EMCC_CLOSURE_ARGS')
   if env_args:
@@ -576,10 +573,10 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   args += user_args
 
   cmd = closure_cmd + args
-  return run_closure_cmd(cmd, filename, env, pretty=pretty)
+  return run_closure_cmd(cmd, filename, env)
 
 
-def run_closure_cmd(cmd, filename, env, pretty):
+def run_closure_cmd(cmd, filename, env):
   cmd += ['--js', filename]
 
   # Closure compiler is unable to deal with path names that are not 7-bit ASCII:
@@ -608,7 +605,7 @@ def run_closure_cmd(cmd, filename, env, pretty):
 
   # Specify output file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
   cmd += ['--js_output_file', os.path.relpath(outfile, tempfiles.tmpdir)]
-  if pretty:
+  if not settings.MINIFY_WHITESPACE:
     cmd += ['--formatting', 'PRETTY_PRINT']
 
   shared.print_compiler_stage(cmd)
@@ -648,7 +645,7 @@ def run_closure_cmd(cmd, filename, env, pretty):
 
     # Exit and print final hint to get clearer output
     msg = f'closure compiler failed (rc: {proc.returncode}): {shared.shlex_join(cmd)}'
-    if not pretty:
+    if settings.MINIFY_WHITESPACE:
       msg += ' the error message may be clearer with -g1 and EMCC_DEBUG=2 set'
     exit_with_error(msg)
 
@@ -660,7 +657,7 @@ def run_closure_cmd(cmd, filename, env, pretty):
       logger.warn(proc.stderr)
 
     # Exit and/or print final hint to get clearer output
-    if not pretty:
+    if settings.MINIFY_WHITESPACE:
       logger.warn('(rerun with -g1 linker flag for an unminified output)')
     elif DEBUG != 2:
       logger.warn('(rerun with EMCC_DEBUG=2 enabled to dump Closure input file)')
@@ -673,14 +670,16 @@ def run_closure_cmd(cmd, filename, env, pretty):
 
 # minify the final wasm+JS combination. this is done after all the JS
 # and wasm optimizations; here we do the very final optimizations on them
-def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, debug_info):
+def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
   # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
   # use AJSDCE (aggressive JS DCE, performs multiple iterations). Clean up
   # whitespace if necessary too.
   passes = []
   if not settings.LINKABLE:
     passes.append('JSDCE' if not expensive_optimizations else 'AJSDCE')
-  if minify_whitespace:
+  # Don't minify if we are going to run closure compiler afterwards
+  minify = settings.MINIFY_WHITESPACE and not settings.USE_CLOSURE_COMPILER
+  if minify:
     passes.append('minifyWhitespace')
   if passes:
     logger.debug('running cleanup on shell code: ' + ' '.join(passes))
@@ -691,24 +690,23 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespac
     # if we are optimizing for size, shrink the combined wasm+JS
     # TODO: support this when a symbol map is used
     if expensive_optimizations:
-      js_file = metadce(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
+      js_file = metadce(js_file, wasm_file, debug_info=debug_info)
       # now that we removed unneeded communication between js and wasm, we can clean up
       # the js some more.
       passes = ['AJSDCE']
-      if minify_whitespace:
+      if minify:
         passes.append('minifyWhitespace')
       logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
       js_file = acorn_optimizer(js_file, passes)
       if settings.MINIFY_WASM_IMPORTS_AND_EXPORTS:
         js_file = minify_wasm_imports_and_exports(js_file, wasm_file,
-                                                  minify_whitespace=minify_whitespace,
                                                   minify_exports=settings.MINIFY_WASM_EXPORT_NAMES,
                                                   debug_info=debug_info)
   return js_file
 
 
 # run binaryen's wasm-metadce to dce both js and wasm
-def metadce(js_file, wasm_file, minify_whitespace, debug_info):
+def metadce(js_file, wasm_file, debug_info):
   logger.debug('running meta-DCE')
   temp_files = shared.get_temp_files()
   # first, get the JS part of the graph
@@ -791,7 +789,7 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
       unused.append(name)
   # remove them
   passes = ['applyDCEGraphRemovals']
-  if minify_whitespace:
+  if settings.MINIFY_WHITESPACE:
     passes.append('minifyWhitespace')
   extra_info = {'unused': unused}
   return acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
@@ -822,7 +820,7 @@ def asyncify_lazy_load_code(wasm_target, debug):
                debug=debug)
 
 
-def minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace, minify_exports, debug_info):
+def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_info):
   logger.debug('minifying wasm imports and exports')
   # run the pass
   if minify_exports:
@@ -853,13 +851,13 @@ def minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace, minif
       mapping[old] = new
   # apply them
   passes = ['applyImportAndExportNameChanges']
-  if minify_whitespace:
+  if settings.MINIFY_WHITESPACE:
     passes.append('minifyWhitespace')
   extra_info = {'mapping': mapping}
   return acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
 
-def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compiler, debug_info, symbols_file=None, symbols_file_js=None):
+def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, symbols_file=None, symbols_file_js=None):
   logger.debug('wasm2js')
   args = ['--emscripten']
   if opt_level > 0:
@@ -879,7 +877,7 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
       passes += ['minifyNames']
       if symbols_file_js:
         passes += ['symbolMap=%s' % symbols_file_js]
-    if minify_whitespace:
+    if settings.MINIFY_WHITESPACE:
       passes += ['minifyWhitespace']
     passes += ['last']
     if passes:
@@ -900,7 +898,7 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
     temp = shared.get_temp_files().get('.js').name
     with open(temp, 'a') as f:
       f.write(wasm2js_js)
-    temp = closure_compiler(temp, pretty=not minify_whitespace, advanced=False)
+    temp = closure_compiler(temp, advanced=False)
     wasm2js_js = utils.read_file(temp)
     # closure may leave a trailing `;`, which would be invalid given where we place
     # this code (inside parens)
@@ -923,6 +921,7 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
 
 
 def strip(infile, outfile, debug=False, sections=None):
+  """Strip DWARF and/or other specified sections from a wasm file"""
   cmd = [LLVM_OBJCOPY, infile, outfile]
   if debug:
     cmd += ['--remove-section=.debug*']
@@ -944,7 +943,7 @@ def emit_debug_on_side(wasm_file):
     embedded_path = os.path.relpath(wasm_file_with_dwarf,
                                     os.path.dirname(wasm_file))
     # normalize the path to use URL-style separators, per the spec
-    embedded_path = embedded_path.replace('\\', '/').replace('//', '/')
+    embedded_path = utils.normalize_path(embedded_path)
 
   shutil.move(wasm_file, wasm_file_with_dwarf)
   strip(wasm_file_with_dwarf, wasm_file, debug=True)
@@ -1220,7 +1219,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=None, debug=False, std
       # in are not enough to see what went wrong)
       if settings.LEGALIZE_JS_FFI:
         extra += '\nnote: to disable int64 legalization (which requires changes after link) use -sWASM_BIGINT'
-      if settings.OPT_LEVEL > 0:
+      if settings.OPT_LEVEL > 1:
         extra += '\nnote: -O2+ optimizations always require changes, build with -O0 or -O1 instead'
       exit_with_error(f'changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK: {cmd}{extra}')
   if debug:
@@ -1243,18 +1242,6 @@ def run_binaryen_command(tool, infile, outfile=None, args=None, debug=False, std
 
 
 def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
-  if outfile and not settings.GENERATE_DWARF:
-    # remove any dwarf debug info sections if dwarf is not requested.
-    # note that we add this pass first, so that it doesn't interfere with
-    # the final set of passes (which may generate stack IR, and nothing
-    # should be run after that)
-    # TODO: if lld can strip dwarf then we don't need this. atm though it can
-    #       only strip all debug info or none, which includes the name section
-    #       which we may need
-    # TODO: once fastcomp is gone, either remove source maps entirely, or
-    #       support them by emitting a source map at the end from the dwarf,
-    #       and use llvm-objcopy to remove that final dwarf
-    args.insert(0, '--strip-dwarf')
   return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 

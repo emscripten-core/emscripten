@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if POLYFILL &&  ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 160000
+#if POLYFILL && (ENVIRONMENT_MAY_BE_SHELL || (ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 160000))
 #include "polyfill/atob.js"
 #endif
 
@@ -14,7 +14,7 @@ function intArrayFromBase64(s) {
 #if ENVIRONMENT_MAY_BE_NODE
   if (typeof ENVIRONMENT_IS_NODE != 'undefined' && ENVIRONMENT_IS_NODE) {
     var buf = Buffer.from(s, 'base64');
-    return new Uint8Array(buf['buffer'], buf['byteOffset'], buf['byteLength']);
+    return new Uint8Array(buf.buffer, buf.byteOffset, buf.length);
   }
 #endif
 

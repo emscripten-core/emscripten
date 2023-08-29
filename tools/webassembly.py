@@ -236,8 +236,10 @@ class Module:
     while 1:
       opcode = OpCode(self.read_byte())
       args = []
-      if opcode in (OpCode.GLOBAL_GET, OpCode.I32_CONST, OpCode.I64_CONST):
+      if opcode == OpCode.GLOBAL_GET:
         args.append(self.read_uleb())
+      elif opcode in (OpCode.I32_CONST, OpCode.I64_CONST):
+        args.append(self.read_sleb())
       elif opcode in (OpCode.REF_NULL,):
         args.append(self.read_type())
       elif opcode in (OpCode.END, OpCode.I32_ADD, OpCode.I64_ADD):
@@ -573,3 +575,13 @@ def get_exports(wasm_file):
 def get_imports(wasm_file):
   with Module(wasm_file) as module:
     return module.get_imports()
+
+
+def get_weak_imports(wasm_file):
+  weak_imports = []
+  dylink_sec = parse_dylink_section(wasm_file)
+  for symbols in dylink_sec.import_info.values():
+    for symbol, flags in symbols.items():
+      if flags & SYMBOL_BINDING_MASK == SYMBOL_BINDING_WEAK:
+        weak_imports.append(symbol)
+  return weak_imports

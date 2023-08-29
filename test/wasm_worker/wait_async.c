@@ -17,7 +17,6 @@ void worker_main()
   emscripten_wasm_notify((int32_t*)&addr, 1);
 }
 
-char stack[1024];
 
 int numCalled = 0;
 
@@ -55,7 +54,7 @@ void asyncWaitFinishedShouldBeOk(int32_t *ptr, uint32_t val, ATOMICS_WAIT_RESULT
 int main()
 {
   emscripten_console_log("main: creating worker");
-  emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));
+  emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(1024);
   emscripten_console_log("main: posting function");
   emscripten_wasm_worker_post_function_v(worker, worker_main);
 

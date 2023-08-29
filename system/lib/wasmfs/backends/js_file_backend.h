@@ -10,5 +10,4 @@ extern "C" {
 // These helper functions are defined in library_wasmfs_js_file.js
 
 void _wasmfs_create_js_file_backend_js(wasmfs::backend_t);
-
 }

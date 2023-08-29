@@ -146,6 +146,7 @@ For example:
        .constructor<int, std::string>()
        .function("incrementX", &MyClass::incrementX)
        .property("x", &MyClass::getX, &MyClass::setX)
+       .property("x_readonly", &MyClass::getX)
        .class_function("getStringFromInstance", &MyClass::getStringFromInstance)
        ;
    }

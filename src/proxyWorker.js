@@ -113,7 +113,7 @@ window.close = () => {
 };
 
 window.alert = (text) => {
-  err('alert forever: ' + text);
+  err(`alert forever: ${text}`);
   while (1) {};
 };
 

@@ -42,9 +42,11 @@ commands:
           command: |
             # TODO: Make these part of the base image
             apt-get install libu2f-udev libvulkan1
-            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
+            #wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
             # If that download link breaks, temporarily use this URL instead:
-            # wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
+            # TODO(sbc): Disable this once we figure out whats up with the
+            # current beta.
+            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
             dpkg -i ~/chrome.deb
   emsdk-env:
     description: "emsdk_env.sh"
@@ -358,9 +360,11 @@ commands:
             # that are not included by "./embuilder build ALL".  For example the
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
-            test/runner emrun
+            # TODO(sbc): Re-enable once we figure out why the emrun tests are
+            # locking up.
+            # test/runner emrun
             # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
-            test/runner posixtest_browser.test_pthread_create_1_1 browser skip:browser.test_zzz_zzz_4gb_fail
+            test/runner posixtest_browser.test_pthread_create_1_1 browser skip:browser.test_zzz_zzz_4gb_fail skip:browser.test_zzz_zzz_4gb_fail_wasm64
       - upload-test-results
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
@@ -543,7 +547,26 @@ jobs:
             wasmfs.test_readdir
             wasmfs.test_readdir_unlink
             wasmfs.test_unistd_pipe
+            wasmfs.test_unistd_io
+            wasmfs.test_unistd_curdir
+            wasmfs.test_poll
+            wasmfs.test_fs_64bit
             wasmfs.test_fs_write
+            wasmfs.test_fs_writev
+            wasmfs.test_fs_writev_rawfs
+            wasmfs.test_fs_writeFile
+            wasmfs.test_fs_writeFile_rawfs
+            wasmfs.test_fs_readv
+            wasmfs.test_fs_write
+            wasmfs.test_fs_readv_rawfs
+            wasmfs.test_fs_nodefs_nofollow
+            wasmfs.test_fs_nodefs_readdir
+            wasmfs.test_fs_nodefs_home
+            wasmfs.test_fs_nodefs_cloexec
+            wasmfs.test_fs_nodefs_cloexec_rawfs
+            wasmfs.test_fs_errorstack
+            wasmfs.test_fs_errorstack_rawfs
+            wasmfs.test_fs_emptyPath
             wasmfs.test_webidl
             wasmfs.test_dlfcn_self
             wasmfs.test_dlfcn_unique_sig
@@ -551,6 +574,7 @@ jobs:
             wasmfs.test_exit_status
             wasmfs.test_minimal_runtime_memorygrowth
             wasmfs.test_mmap_anon*
+            wasmfs.test_mount
             wasmfs.test_getcwd_with_non_ascii_name
             wasmfs.test_stat
             wasmfs.test_fstatat
@@ -559,6 +583,7 @@ jobs:
             wasmfs.test_fcntl_open
             wasmfs.test_fs_js_api
             wasmfs.test_fs_llseek
+            wasmfs.test_fs_llseek_rawfs
             wasmfs.test_freetype"
   test-wasm2js1:
     environment:
@@ -567,27 +592,56 @@ jobs:
     steps:
       - run-tests-linux:
           test_targets: "wasm2js1"
-  test-wasm64:
+  test-wasm64l:
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
+    executor: bionic
+    steps:
+      - run-tests-linux:
+          frozen_cache: false
+          # On older versions of node wasm64l.test_bigswitch uses a lot (~3.5Gb)
+          # of memory, so skip it here, but run it in test-wasm64 instead which
+          # has node canary installed.
+          test_targets: "wasm64l skip:wasm64l.test_bigswitch"
+  test-wasm64:
     # We don't use `bionic` here since its tool old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
     executor: linux-python
     steps:
       - prepare-for-tests
       # The linux-python image uses /home/circleci rather than /root and jsvu
-      # hardcodes /root into its launcher scripts do we need to reinstall v8.
+      # hardcodes /root into its launcher scripts so we need to reinstall v8.
       - run: rm -rf $HOME/.jsvu
       - install-v8
-      - run-tests:
-          title: "wasm64l"
-          # On older versions of node wasm64l.test_bigswitch uses a lot (~3.5Gb)
-          # of memory, so skip it here, but run it below under node-canary.
-          test_targets: "wasm64l skip:wasm64l.test_bigswitch"
       - install-node-canary
       - run-tests:
           title: "wasm64"
-          test_targets: "wasm64 wasm64l.test_bigswitch"
+          test_targets: "
+            wasm64
+            core_2gb.test_em_asm
+            core_2gb.test_embind_unsigned_bigint
+            core_2gb.test_embind_no_rtti
+            wasm64l.test_bigswitch
+            other.test_memory64_proxies
+            other.test_failing_growth_wasm64"
+      - upload-test-results
+  test-wasm64_4gb:
+    environment:
+      # Only run 2 tests at a time to avoid OOM (since each tests used >4gb)
+      EMCC_CORES: "2"
+    # We don't use `bionic` here since its too old to run recent node versions:
+    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
+    executor: linux-python
+    steps:
+      - prepare-for-tests
+      # The linux-python image uses /home/circleci rather than /root and jsvu
+      # hardcodes /root into its launcher scripts so we need to reinstall v8.
+      - run: rm -rf $HOME/.jsvu
+      - install-v8
+      - install-node-canary
+      - run-tests:
+          title: "wasm64_4gb"
+          test_targets: "wasm64_4gb"
       - upload-test-results
   test-jsc:
     executor: linux-python
@@ -634,7 +688,7 @@ jobs:
       - run-tests:
           test_targets: "core0.test_hello_world core2.test_demangle_stacks_symbol_map"
   test-node-compat:
-    # We don't use `bionic` here since its tool old to run recent node versions:
+    # We don't use `bionic` here since its too old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
     executor: linux-python
     environment:
@@ -694,6 +748,8 @@ jobs:
       - upload-test-results
   test-other:
     executor: bionic
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run: apt-get install ninja-build scons
       - run-tests-linux:
@@ -836,6 +892,12 @@ workflows:
           requires:
             - build-linux
       - test-wasm64:
+          requires:
+            - build-linux
+      - test-wasm64_4gb:
+          requires:
+            - build-linux
+      - test-wasm64l:
           requires:
             - build-linux
       - test-wasm2js1:

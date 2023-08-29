@@ -1,0 +1,15 @@
+# This file contains a list of commits that are not likely what you
+# are looking for in a blame, such as mass reformatting or renaming.
+# You can set this file as a default ignore file for blame by running
+# the following command.
+#
+# $ git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Remove tabs and fix formatting in test/sse/.  NFC (#18245)
+3cd47cff5da467ae7ca2a29490d8b04af897023f
+
+# [embind docs] Reformat and cleanup whitespace.
+9b1a5910c4f31cff4949541a42ac956ba45e4701
+
+# [NFC] WasmFS: Run clang-format (#19995)
+2384d4e16f5309a642481387edb3774913fab382

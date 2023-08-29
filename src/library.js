@@ -20,7 +20,7 @@
 // object. For convenience, the short name appears here. Note that if you add a
 // new function with an '_', it will not be found.
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $ptrToString: (ptr) => {
 #if ASSERTIONS
     assert(typeof ptr === 'number');
@@ -159,9 +159,9 @@ mergeInto(LibraryManager.library, {
   // it. Returns 1 on success, 0 on error.
   $growMemory: (size) => {
     var b = wasmMemory.buffer;
-    var pages = (size - b.byteLength + 65535) >>> 16;
+    var pages = (size - b.byteLength + {{{ WASM_PAGE_SIZE - 1 }}}) / {{{ WASM_PAGE_SIZE }}};
 #if RUNTIME_DEBUG
-    dbg(`emscripten_resize_heap: ${size} (+${size - b.byteLength} bytes / ${pages} pages)`);
+    dbg(`growMemory: ${size} (+${size - b.byteLength} bytes / ${pages} pages)`);
 #endif
 #if MEMORYPROFILER
     var oldHeapSize = b.byteLength;
@@ -249,7 +249,7 @@ mergeInto(LibraryManager.library, {
     var maxHeapSize = getHeapMax();
     if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
-      err(`Cannot enlarge memory, asked to go up to ${requestedSize} bytes, but the limit is ${maxHeapSize} bytes!`);
+      err(`Cannot enlarge memory, requested ${requestedSize} bytes, but the limit is ${maxHeapSize} bytes!`);
 #endif
 #if ABORTING_MALLOC
       abortOnCannotGrowMemory(requestedSize);
@@ -283,7 +283,7 @@ mergeInto(LibraryManager.library, {
       var replacement = growMemory(newSize);
 #if ASSERTIONS == 2
       var t1 = _emscripten_get_now();
-      out(`Heap resize call from ${oldSize} to ${newSize} took ${(t1 - t0)} msecs. Success: ${!!replacement}`);
+      dbg(`Heap resize call from ${oldSize} to ${newSize} took ${(t1 - t0)} msecs. Success: ${!!replacement}`);
 #endif
       if (replacement) {
 #if ASSERTIONS && WASM2JS
@@ -383,17 +383,6 @@ mergeInto(LibraryManager.library, {
   // This object can be modified by the user during startup, which affects
   // the initial values of the environment accessible by getenv.
   $ENV: {},
-
-  getloadavg: (loadavg, nelem) => {
-    // int getloadavg(double loadavg[], int nelem);
-    // http://linux.die.net/man/3/getloadavg
-    var limit = Math.min(nelem, 3);
-    var doubleSize = {{{ getNativeTypeSize('double') }}};
-    for (var i = 0; i < limit; i++) {
-      {{{ makeSetValue('loadavg', 'i * doubleSize', '0.1', 'double') }}};
-    }
-    return limit;
-  },
 
   // In -Oz builds, we replace memcpy() altogether with a non-unrolled wasm
   // variant, so we should never emit emscripten_memcpy_big() in the build.
@@ -704,7 +693,7 @@ mergeInto(LibraryManager.library, {
     // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html
 
-    var tm_zone = {{{ makeGetValue('tm', C_STRUCTS.tm.tm_zone, 'i32') }}};
+    var tm_zone = {{{ makeGetValue('tm', C_STRUCTS.tm.tm_zone, '*') }}};
 
     var date = {
       tm_sec: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_sec, 'i32') }}},
@@ -1766,7 +1755,7 @@ mergeInto(LibraryManager.library, {
       names: {}
     },
 
-    lookup_name: (name) => {
+    lookup_name(name) {
       // If the name is already a valid ipv4 / ipv6 address, don't generate a fake one.
       var res = inetPton4(name);
       if (res !== null) {
@@ -1795,7 +1784,7 @@ mergeInto(LibraryManager.library, {
       return addr;
     },
 
-    lookup_addr: (addr) => {
+    lookup_addr(addr) {
       if (DNS.address_map.names[addr]) {
         return DNS.address_map.names[addr];
       }
@@ -2736,6 +2725,7 @@ mergeInto(LibraryManager.library, {
   emscripten_pc_get_function: (pc) => {
 #if !USE_OFFSET_CONVERTER
     abort('Cannot use emscripten_pc_get_function without -sUSE_OFFSET_CONVERTER');
+    return 0;
 #else
     var name;
     if (pc & 0x80000000) {
@@ -2879,7 +2869,6 @@ mergeInto(LibraryManager.library, {
     var ch;
     // Most arguments are i32s, so shift the buffer pointer so it is a plain
     // index into HEAP32.
-    buf >>= 2;
     while (ch = HEAPU8[sigPtr++]) {
 #if ASSERTIONS
       var chr = String.fromCharCode(ch);
@@ -2895,24 +2884,22 @@ mergeInto(LibraryManager.library, {
 #endif
       assert(validChars.includes(chr), `Invalid character ${ch}("${chr}") in readEmAsmArgs! Use only [${validChars}], and do not specify "v" for void return argument.`);
 #endif
-      // Floats are always passed as doubles, and doubles and int64s take up 8
-      // bytes (two 32-bit slots) in memory, align reads to these:
-      buf += (ch != 105/*i*/) & buf;
-#if MEMORY64
-      // Special case for pointers under wasm64 which we read as int53 Numbers.
-      if (ch == 112/*p*/) {
-        readEmAsmArgsArray.push(readI53FromI64(buf++ << 2));
-      } else
-#endif
+      // Floats are always passed as doubles, so all types except for 'i'
+      // are 8 bytes and require alignment.
+      buf += (ch != {{{ charCode('i') }}}) && buf % 8 ? 4 : 0;
       readEmAsmArgsArray.push(
-        ch == 105/*i*/ ? HEAP32[buf] :
-#if WASM_BIGINT
-       (ch == 106/*j*/ ? HEAP64 : HEAPF64)[buf++ >> 1]
-#else
-       HEAPF64[buf++ >> 1]
+#if MEMORY64
+        // Special case for pointers under wasm64 which we read as int53 Numbers.
+        ch == {{{ charCode('p') }}} ?  {{{ makeGetValue('buf', 0, '*') }}} :
 #endif
+#if WASM_BIGINT
+        ch == {{{ charCode('j') }}} ?  {{{ makeGetValue('buf', 0, 'i64') }}} :
+#endif
+        ch == {{{ charCode('i') }}} ?
+          {{{ makeGetValue('buf', 0, 'i32') }}} :
+          {{{ makeGetValue('buf', 0, 'double') }}}
       );
-      ++buf;
+      buf += ch == {{{ charCode('i') }}} ? 4 : 8;
     }
     return readEmAsmArgsArray;
   },
@@ -2982,8 +2969,8 @@ mergeInto(LibraryManager.library, {
 #if !DECLARE_ASM_MODULE_EXPORTS
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
-  $exportAsmFunctions__deps: ['$asmjsMangle'],
-  $exportAsmFunctions: (asm) => {
+  $exportWasmSymbols__deps: ['$asmjsMangle'],
+  $exportWasmSymbols: (wasmExports) => {
 #if ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_WEB
     var global_object = (typeof process != "undefined" ? global : this);
 #elif ENVIRONMENT_MAY_BE_NODE
@@ -2992,12 +2979,12 @@ mergeInto(LibraryManager.library, {
     var global_object = this;
 #endif
 
-    for (var __exportedFunc in asm) {
+    for (var __exportedFunc in wasmExports) {
       var jsname = asmjsMangle(__exportedFunc);
 #if MINIMAL_RUNTIME
-      global_object[jsname] = asm[__exportedFunc];
+      global_object[jsname] = wasmExports[__exportedFunc];
 #else
-      global_object[jsname] = Module[jsname] = asm[__exportedFunc];
+      global_object[jsname] = Module[jsname] = wasmExports[__exportedFunc];
 #endif
     }
 
@@ -3029,9 +3016,9 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  _Unwind_GetIPInfo: () => abort('Unwind_GetIPInfo'),
+  _Unwind_GetIPInfo: (context, ipBefore) => abort('Unwind_GetIPInfo'),
 
-  _Unwind_FindEnclosingFunction: () => 0, // we cannot succeed
+  _Unwind_FindEnclosingFunction: (ip) => 0, // we cannot succeed
 
   _Unwind_RaiseException__deps: ['__cxa_throw'],
   _Unwind_RaiseException: (ex) => {
@@ -3111,6 +3098,9 @@ mergeInto(LibraryManager.library, {
   $dynCallLegacy__deps: ['$createDyncallWrapper'],
 #endif
   $dynCallLegacy: (sig, ptr, args) => {
+#if MEMORY64
+    sig = sig.replace(/p/g, 'j')
+#endif
 #if ASSERTIONS
 #if MINIMAL_RUNTIME
     assert(typeof dynCalls != 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall linker flag to include it!');
@@ -3165,8 +3155,16 @@ mergeInto(LibraryManager.library, {
 
   $dynCall__docs: '/** @param {Object=} args */',
   $dynCall: (sig, ptr, args) => {
+#if MEMORY64
+    // With MEMORY64 we have an additional step to convert `p` arguments to
+    // bigint. This is the runtime equivalent of the wrappers we create for wasm
+    // exports in `emscripten.py:create_wasm64_wrappers`.
+    for (var i = 1; i < sig.length; ++i) {
+      if (sig[i] == 'p') args[i-1] = BigInt(args[i-1]);
+    }
+#endif
 #if DYNCALLS
-    return dynCallLegacy(sig, ptr, args);
+    var rtn = dynCallLegacy(sig, ptr, args);
 #else
 #if !WASM_BIGINT
     // Without WASM_BIGINT support we cannot directly call function with i64 as
@@ -3179,21 +3177,12 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     assert(getWasmTableEntry(ptr), `missing table entry in dynCall: ${ptr}`);
 #endif
-#if MEMORY64
-    // With MEMORY64 we have an additional step to convert `p` arguments to
-    // bigint. This is the runtime equivalent of the wrappers we create for wasm
-    // exports in `emscripten.py:create_wasm64_wrappers`.
-    for (var i = 1; i < sig.length; ++i) {
-      if (sig[i] == 'p') args[i-1] = BigInt(args[i-1]);
-    }
-#endif
     var rtn = getWasmTableEntry(ptr).apply(null, args);
+#endif
 #if MEMORY64
     return sig[0] == 'p' ? Number(rtn) : rtn;
 #else
     return rtn;
-#endif
-
 #endif
   },
 

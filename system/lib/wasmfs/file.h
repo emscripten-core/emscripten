@@ -11,6 +11,7 @@
 
 #include "support.h"
 #include <assert.h>
+#include <emscripten.h>
 #include <emscripten/html5.h>
 #include <map>
 #include <mutex>
@@ -19,7 +20,6 @@
 #include <variant>
 #include <vector>
 #include <wasi/api.h>
-#include <time.h>
 
 namespace wasmfs {
 
@@ -97,9 +97,7 @@ public:
 protected:
   File(FileKind kind, mode_t mode, backend_t backend)
     : kind(kind), mode(mode), backend(backend) {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    atime = mtime = ctime = ts;
+    atime = mtime = ctime = emscripten_date_now();
   }
 
   // A mutex is needed for multiple accesses to the same file.
@@ -111,9 +109,9 @@ protected:
 
   mode_t mode = 0; // User and group mode bits for access permission.
 
-  struct timespec atime; // Time when the content was last accessed.
-  struct timespec mtime; // Time when the file content was last modified.
-  struct timespec ctime; // Time when the file node was last modified.
+  double atime; // Time when the content was last accessed, in ms.
+  double mtime; // Time when the file content was last modified, in ms.
+  double ctime; // Time when the file node was last modified, in ms.
 
   // Reference to parent of current file node. This can be used to
   // traverse up the directory tree. A weak_ptr ensures that the ref
@@ -317,41 +315,29 @@ public:
     // directory, for example).
     file->mode = (file->mode & S_IFMT) | (mode & ~S_IFMT);
   }
-  struct timespec getCTime() {
+  double getCTime() {
     return file->ctime;
   }
-  void setCTime(struct timespec time) {
-    file->ctime = time;
-  }
+  void setCTime(double time) { file->ctime = time; }
   // updateCTime() updates the ctime to the current time.
   void updateCTime() {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    file->ctime = ts;
+    file->ctime = emscripten_date_now();
   }
-  struct timespec getMTime() {
+  double getMTime() {
     return file->mtime;
   }
-  void setMTime(struct timespec time) {
-    file->mtime = time;
-  }
+  void setMTime(double time) { file->mtime = time; }
   // updateMTime() updates the mtime to the current time.
   void updateMTime() {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    file->mtime = ts;
+    file->mtime = emscripten_date_now();
   }
-  struct timespec getATime() {
+  double getATime() {
     return file->atime;
   }
-  void setATime(struct timespec time) {
-    file->atime = time;
-  }
+  void setATime(double time) { file->atime = time; }
   // updateATime() updates the atime to the current time.
   void updateATime() {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    file->atime = ts;
+    file->atime = emscripten_date_now();
   }
 
   // Note: parent.lock() creates a new shared_ptr to the same Directory

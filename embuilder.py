@@ -64,10 +64,12 @@ MINIMAL_TASKS = [
     'libstandalonewasm-nocatch',
     'crt1',
     'crt1_proxy_main',
+    'crtbegin',
     'libunwind-except',
     'libnoexit',
     'sqlite3',
     'sqlite3-mt',
+    'libwebgpu_cpp',
 ]
 
 # Additional tasks on top of MINIMAL_TASKS that are necessary for PIC testing on
@@ -97,7 +99,6 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libsanitizer_common_rt',
     'libubsan_rt',
     'libwasm_workers_stub-debug',
-    'libwebgpu_cpp',
     'libfetch',
     'libfetch-mt',
     'libwasmfs',

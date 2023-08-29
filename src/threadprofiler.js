@@ -12,7 +12,7 @@ var emscriptenThreadProfiler = {
   threadProfilerDiv: null,
 
   // Installs startup hook and periodic UI update timer.
-  initialize: function initialize() {
+  initialize() {
     this.threadProfilerDiv = document.getElementById('threadprofiler');
     if (!this.threadProfilerDiv) {
       var div = document.createElement("div");
@@ -24,7 +24,7 @@ var emscriptenThreadProfiler = {
     addOnExit(() => clearInterval(i));
   },
 
-  initializeNode: function initializeNode() {
+  initializeNode() {
     addOnInit(() => {
       emscriptenThreadProfiler.dumpState();
       var i = setInterval(function() { emscriptenThreadProfiler.dumpState() }, this.uiUpdateIntervalMsecs);
@@ -32,7 +32,7 @@ var emscriptenThreadProfiler = {
     });
   },
 
-  dumpState: function dumpState() {
+  dumpState() {
     var mainThread = _emscripten_main_runtime_thread_id();
 
     var threads = [mainThread];
@@ -53,7 +53,7 @@ var emscriptenThreadProfiler = {
     }
   },
 
-  updateUi: function updateUi() {
+  updateUi() {
     if (typeof PThread == 'undefined') {
       // Likely running threadprofiler on a singlethreaded build, or not
       // initialized yet, ignore updating.

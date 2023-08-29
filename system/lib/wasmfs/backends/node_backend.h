@@ -42,5 +42,4 @@ int _wasmfs_node_read(
 // the number of bytes written to `nread`. Return 0 on success or an error code.
 int _wasmfs_node_write(
   int fd, const void* buf, uint32_t len, uint32_t pos, uint32_t* nwritten);
-
 }

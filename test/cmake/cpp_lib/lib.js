@@ -3,7 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
 		js_library_function: function() {
 			return 0;
 		}

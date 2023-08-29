@@ -1,4 +1,4 @@
-mergeInto(LibraryManager.library, {
+addToLibrary({
   // JSFile backend: Store a file's data in JS. We map File objects in C++ to
   // entries here that contain typed arrays.
   $wasmFS$JSMemoryFiles: {},
@@ -7,7 +7,7 @@ mergeInto(LibraryManager.library, {
     '$wasmFS$backends',
     '$wasmFS$JSMemoryFiles',
   ],
-  _wasmfs_create_js_file_backend_js: function(backend) {
+  _wasmfs_create_js_file_backend_js: (backend) => {
     wasmFS$backends[backend] = {
       allocFile: (file) => {
         // Do nothing: we allocate the typed array lazily, see write()

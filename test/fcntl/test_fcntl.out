@@ -1,4 +1,10 @@
-F_DUPFD: 1
+F_DUPFD 1: 1
+errno: 0
+
+F_DUPFD 2: 1
+errno: 0
+
+F_DUPFD_CLOEXEC: 1
 errno: 0
 
 F_DUPFD/error1: -1

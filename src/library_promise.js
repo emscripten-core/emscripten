@@ -4,17 +4,15 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $promiseMap__deps: ['$HandleAllocator'],
   $promiseMap: "new HandleAllocator();",
 
   $getPromise__deps: ['$promiseMap'],
-  $getPromise: function(id) {
-    return promiseMap.get(id).promise;
-  },
+  $getPromise: (id) => promiseMap.get(id).promise,
 
   $makePromise__deps: ['$promiseMap'],
-  $makePromise: function() {
+  $makePromise: () => {
     var promiseInfo = {};
     promiseInfo.promise = new Promise((resolve, reject) => {
       promiseInfo.reject = reject;
@@ -28,7 +26,7 @@ mergeInto(LibraryManager.library, {
   },
 
   $idsToPromises__deps: ['$promiseMap', '$getPromise'],
-  $idsToPromises: function(idBuf, size) {
+  $idsToPromises: (idBuf, size) => {
     var promises = [];
     for (var i = 0; i < size; i++) {
       var id = {{{ makeGetValue('idBuf', `i*${POINTER_SIZE}`, 'i32') }}};
@@ -38,12 +36,10 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_promise_create__deps: ['$makePromise'],
-  emscripten_promise_create: function() {
-    return makePromise().id;
-  },
+  emscripten_promise_create: () => makePromise().id,
 
   emscripten_promise_destroy__deps: ['$promiseMap'],
-  emscripten_promise_destroy: function(id) {
+  emscripten_promise_destroy: (id) => {
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_destroy: ${id}`);
 #endif
@@ -53,7 +49,7 @@ mergeInto(LibraryManager.library, {
   emscripten_promise_resolve__deps: ['$promiseMap',
                                      '$getPromise',
                                      'emscripten_promise_destroy'],
-  emscripten_promise_resolve: function(id, result, value) {
+  emscripten_promise_resolve: (id, result, value) => {
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_resolve: ${id}`);
 #endif
@@ -81,7 +77,7 @@ mergeInto(LibraryManager.library, {
   $makePromiseCallback__deps: ['$getPromise',
                                '$POINTER_SIZE',
                                'emscripten_promise_destroy'],
-  $makePromiseCallback: function(callback, userData) {
+  $makePromiseCallback: (callback, userData) => {
     return (value) => {
 #if RUNTIME_DEBUG
       dbg(`emscripten promise callback: ${value}`);
@@ -137,10 +133,7 @@ mergeInto(LibraryManager.library, {
   emscripten_promise_then__deps: ['$promiseMap',
                                   '$getPromise',
                                   '$makePromiseCallback'],
-  emscripten_promise_then: function(id,
-                                    onFulfilled,
-                                    onRejected,
-                                    userData) {
+  emscripten_promise_then: (id, onFulfilled, onRejected, userData) => {
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_then: ${id}`);
 #endif
@@ -157,7 +150,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_promise_all__deps: ['$promiseMap', '$idsToPromises'],
-  emscripten_promise_all: function(idBuf, resultBuf, size) {
+  emscripten_promise_all: (idBuf, resultBuf, size) => {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_all: ${promises}`);
@@ -190,7 +183,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_promise_all_settled__deps: ['$promiseMap', '$idsToPromises', '$setPromiseResult'],
-  emscripten_promise_all_settled: function(idBuf, resultBuf, size) {
+  emscripten_promise_all_settled: (idBuf, resultBuf, size) => {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_all_settled: ${promises}`);
@@ -222,7 +215,7 @@ mergeInto(LibraryManager.library, {
     () => error("emscripten_promise_any used, but Promise.any is not supported by the current runtime configuration (run with EMCC_DEBUG=1 in the env for more details)"),
 #endif
   ],
-  emscripten_promise_any: function(idBuf, errorBuf, size) {
+  emscripten_promise_any: (idBuf, errorBuf, size) => {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_any: ${promises}`);
@@ -247,7 +240,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_promise_race__deps: ['$promiseMap', '$idsToPromises'],
-  emscripten_promise_race: function(idBuf, size) {
+  emscripten_promise_race: (idBuf, size) => {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_race: ${promises}`);

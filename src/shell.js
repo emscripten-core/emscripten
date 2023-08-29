@@ -485,6 +485,11 @@ assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has be
 {{{ makeRemovedFSAssert('IDBFS') }}}
 {{{ makeRemovedFSAssert('PROXYFS') }}}
 {{{ makeRemovedFSAssert('WORKERFS') }}}
+{{{ makeRemovedFSAssert('FETCHFS') }}}
+{{{ makeRemovedFSAssert('ICASEFS') }}}
+{{{ makeRemovedFSAssert('JSFILEFS') }}}
+{{{ makeRemovedFSAssert('OPFS') }}}
+
 #if !NODERAWFS
 {{{ makeRemovedFSAssert('NODEFS') }}}
 #endif

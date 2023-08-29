@@ -53,6 +53,7 @@ function missingGlobal(sym, msg) {
 }
 
 missingGlobal('buffer', 'Please use HEAP8.buffer or wasmMemory.buffer');
+missingGlobal('asm', 'Please use wasmExports instead');
 
 function missingLibrarySymbol(sym) {
   if (typeof globalThis !== 'undefined' && !Object.getOwnPropertyDescriptor(globalThis, sym)) {
@@ -158,7 +159,7 @@ function prettyPrint(arg) {
 }
 #endif
 
-#if ASSERTIONS || RUNTIME_DEBUG
+#if ASSERTIONS || RUNTIME_DEBUG || AUTODEBUG
 // Used by XXXXX_DEBUG settings to output debug messages.
 function dbg(text) {
 #if ENVIRONMENT_MAY_BE_NODE && PTHREADS

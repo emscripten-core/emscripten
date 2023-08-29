@@ -1137,13 +1137,21 @@ int emscripten_resize_heap(size_t size) {
   return 0;
 }
 
-weak double emscripten_get_now(void) {
+// Call clock_gettime with a particular clock and return the result in ms.
+static double clock_gettime_ms(clockid_t clock) {
   struct timespec ts;
-  if (clock_gettime(CLOCK_MONOTONIC, &ts)) {
+  if (clock_gettime(clock, &ts)) {
     return 0;
   }
-  // emscripten_get_now returns time in milliseconds (as a double)
   return (double)ts.tv_sec * 1000 + (double)ts.tv_nsec / 1000000;
+}
+
+weak double emscripten_get_now(void) {
+  return clock_gettime_ms(CLOCK_MONOTONIC);
+}
+
+weak double emscripten_date_now(void) {
+  return clock_gettime_ms(CLOCK_REALTIME);
 }
 
 // C++ ABI

@@ -896,8 +896,8 @@ var EXTRA_EXPORTED_RUNTIME_METHODS = [];
 // you have this:
 //
 //  var Module = {
-//    print: function(x) { console.log('print: ' + x) },
-//    preRun: [function() { console.log('pre run') }]
+//    print: (x) => console.log('print: ' + x),
+//    preRun: [() => console.log('pre run')]
 //  };
 //
 // Then MODULE_JS_API must contain 'print' and 'preRun'; if it does not then
@@ -1114,6 +1114,7 @@ var LINKABLE = false;
 //   * AUTO_NATIVE_LIBRARIES is disabled.
 //   * AUTO_ARCHIVE_INDEXES is disabled.
 //   * DEFAULT_TO_CXX is disabled.
+//   * USE_GLFW is set to 0 rather than 2 by default.
 //   * ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
 // [compile+link]
 var STRICT = false;
@@ -1305,7 +1306,7 @@ var EMSCRIPTEN_TRACING = false;
 // Specify the GLFW version that is being linked against.  Only relevant, if you
 // are linking against the GLFW library.  Valid options are 2 for GLFW2 and 3
 // for GLFW3.
-// In MINIMAL_RUNTIME builds, this option defaults to 0.
+// This defaults to 0 in either MINIMAL_RUNTIME or STRICT modes.
 // [link]
 var USE_GLFW = 2;
 
@@ -2059,6 +2060,14 @@ var RUNTIME_DEBUG = false;
 // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE, or via the dependencies of another JS
 // library symbol.
 var LEGACY_RUNTIME = false;
+
+// User-defined functions to wrap with signature conversion, which take or return
+// pointer argument. Only affects MEMORY64=1 builds, see create_pointer_conversion_wrappers
+// in emscripten.py for details.
+// Use _ for non-pointer arguments, p for pointer/i53 arguments, and P for optional pointer/i53 values.
+// Example use -sSIGNATURE_CONVERSIONS=someFunction:_p,anotherFunction:p
+// [link]
+var SIGNATURE_CONVERSIONS = [];
 
 //===========================================
 // Internal, used for testing only, from here
