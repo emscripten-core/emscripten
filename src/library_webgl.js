@@ -1433,7 +1433,7 @@ var LibraryGL = {
     }
   },
 
-  glCompressedTexImage2D__docs: '/** @suppress{uselessCode} */',
+  glCompressedTexImage2D__docs: '/** @suppress{duplicate,uselessCode} */',
   glCompressedTexImage2D: (target, level, internalFormat, width, height, border, imageSize, data) => {
     {{{ convertPtrToIdx('data') }}};
 #if MAX_WEBGL_VERSION >= 2
@@ -1450,7 +1450,7 @@ var LibraryGL = {
   },
 
 
-  glCompressedTexSubImage2D__docs: '/** @suppress{uselessCode} */',
+  glCompressedTexSubImage2D__docs: '/** @suppress{duplicate,uselessCode} */',
   glCompressedTexSubImage2D: (target, level, xoffset, yoffset, width, height, format, imageSize, data) => {
     {{{ convertPtrToIdx('data') }}};
 #if MAX_WEBGL_VERSION >= 2
@@ -1529,7 +1529,7 @@ var LibraryGL = {
                        , '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'
 #endif
   ],
-  glTexImage2D__docs: '/** @suppress{uselessCode} */',
+  glTexImage2D__docs: '/** @suppress{duplicate,uselessCode} */',
   glTexImage2D: (target, level, internalFormat, width, height, border, format, type, pixels) => {
 #if MAX_WEBGL_VERSION >= 2
 #if WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION
@@ -1571,7 +1571,7 @@ var LibraryGL = {
                           , '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'
 #endif
   ],
-  glTexSubImage2D__docs: '/** @suppress{uselessCode} */',
+  glTexSubImage2D__docs: '/** @suppress{duplicate,uselessCode} */',
   glTexSubImage2D: (target, level, xoffset, yoffset, width, height, format, type, pixels) => {
 #if MAX_WEBGL_VERSION >= 2
 #if WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION
@@ -1605,7 +1605,7 @@ var LibraryGL = {
                        , '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'
 #endif
   ],
-  glReadPixels__docs: '/** @suppress{uselessCode} */',
+  glReadPixels__docs: '/** @suppress{duplicate,uselessCode} */',
   glReadPixels: (x, y, width, height, format, type, pixels) => {
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
@@ -1766,7 +1766,7 @@ var LibraryGL = {
     {{{ makeSetValue('data', '0', 'GLctx.getBufferParameter(target, value)', 'i32') }}};
   },
 
-  glBufferData__docs: '/** @suppress{uselessCode} */',
+  glBufferData__docs: '/** @suppress{duplicate,uselessCode} */',
   glBufferData: (target, size, data, usage) => {
     {{{ convertPtrToIdx('data') }}};
 #if LEGACY_GL_EMULATION
@@ -1806,7 +1806,7 @@ var LibraryGL = {
 #endif
   },
 
-  glBufferSubData__docs: '/** @suppress{uselessCode} */',
+  glBufferSubData__docs: '/** @suppress{duplicate,uselessCode} */',
   glBufferSubData: (target, offset, size, data) => {
     {{{ convertPtrToIdx('data') }}};
 #if MAX_WEBGL_VERSION >= 2
@@ -2355,7 +2355,7 @@ var LibraryGL = {
     , '$miniTempWebGLIntBuffers'
 #endif
   ],
-  glUniform1iv__docs: '/** @suppress{uselessCode} */',
+  glUniform1iv__docs: '/** @suppress{duplicate,uselessCode} */',
   glUniform1iv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform1iv', 'location');
@@ -2400,7 +2400,7 @@ var LibraryGL = {
     , '$miniTempWebGLIntBuffers'
 #endif
   ],
-  glUniform2iv__docs: '/** @suppress{uselessCode} */',
+  glUniform2iv__docs: '/** @suppress{duplicate,uselessCode} */',
   glUniform2iv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform2iv', 'location');
@@ -2446,7 +2446,7 @@ var LibraryGL = {
     , '$miniTempWebGLIntBuffers'
 #endif
   ],
-  glUniform3iv__docs: '/** @suppress{uselessCode} */',
+  glUniform3iv__docs: '/** @suppress{duplicate,uselessCode} */',
   glUniform3iv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform3iv', 'location');
@@ -2493,7 +2493,7 @@ var LibraryGL = {
     , '$miniTempWebGLIntBuffers'
 #endif
   ],
-  glUniform4iv__docs: '/** @suppress{uselessCode} */',
+  glUniform4iv__docs: '/** @suppress{duplicate,uselessCode} */',
   glUniform4iv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform4iv', 'location');
@@ -2541,7 +2541,7 @@ var LibraryGL = {
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
-  glUniform1fv__docs: '/** @suppress{uselessCode} */',
+  glUniform1fv__docs: '/** @suppress{duplicate,uselessCode} */',
   glUniform1fv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform1fv', 'location');
@@ -2586,7 +2586,7 @@ var LibraryGL = {
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
-  glUniform2fv__docs: '/** @suppress{uselessCode} */',
+  glUniform2fv__docs: '/** @suppress{duplicate,uselessCode} */',
   glUniform2fv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform2fv', 'location');
@@ -2632,7 +2632,7 @@ var LibraryGL = {
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
-  glUniform3fv__docs: '/** @suppress{uselessCode} */',
+  glUniform3fv__docs: '/** @suppress{duplicate,uselessCode} */',
   glUniform3fv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform3fv', 'location');
@@ -2679,7 +2679,7 @@ var LibraryGL = {
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
-  glUniform4fv__docs: '/** @suppress{uselessCode} */',
+  glUniform4fv__docs: '/** @suppress{duplicate,uselessCode} */',
   glUniform4fv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform4fv', 'location');
@@ -2730,7 +2730,7 @@ var LibraryGL = {
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
-  glUniformMatrix2fv__docs: '/** @suppress{uselessCode} */',
+  glUniformMatrix2fv__docs: '/** @suppress{duplicate,uselessCode} */',
   glUniformMatrix2fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix2fv', 'location');
@@ -2781,7 +2781,7 @@ var LibraryGL = {
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
-  glUniformMatrix3fv__docs: '/** @suppress{uselessCode} */',
+  glUniformMatrix3fv__docs: '/** @suppress{duplicate,uselessCode} */',
   glUniformMatrix3fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix3fv', 'location');
@@ -2834,7 +2834,7 @@ var LibraryGL = {
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
-  glUniformMatrix4fv__docs: '/** @suppress{uselessCode} */',
+  glUniformMatrix4fv__docs: '/** @suppress{duplicate,uselessCode} */',
   glUniformMatrix4fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix4fv', 'location');
@@ -4088,7 +4088,7 @@ var LibraryGL = {
   },
 
   glUnmapBuffer__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget', 'free'],
-  glUnmapBuffer__docs: '/** @suppress{uselessCode} */',
+  glUnmapBuffer__docs: '/** @suppress{duplicate,uselessCode} */',
   glUnmapBuffer: (target) => {
     if (!emscriptenWebGLValidateMapBufferTarget(target)) {
       GL.recordError(0x500/*GL_INVALID_ENUM*/);
