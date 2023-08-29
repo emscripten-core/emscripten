@@ -509,6 +509,8 @@ function(${args}) {
         //   'var foo;[code here verbatim];'
         contentText = 'var ' + mangled + snippet;
         if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}') contentText += ';';
+      } else if (typeof snippet == 'undefined') {
+        contentText = `var ${mangled};`;
       } else {
         // In JS libraries
         //   foo: '=[value]'

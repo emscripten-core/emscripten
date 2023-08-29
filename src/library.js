@@ -3199,7 +3199,7 @@ addToLibrary({
   $wasmTableMirror: [],
 
   $setWasmTableEntry__internal: true,
-  $setWasmTableEntry__deps: ['$wasmTableMirror'],
+  $setWasmTableEntry__deps: ['$wasmTableMirror', '$wasmTable'],
   $setWasmTableEntry: (idx, func) => {
     wasmTable.set(idx, func);
     // With ABORT_ON_WASM_EXCEPTIONS wasmTable.get is overriden to return wrapped
@@ -3209,7 +3209,7 @@ addToLibrary({
   },
 
   $getWasmTableEntry__internal: true,
-  $getWasmTableEntry__deps: ['$wasmTableMirror'],
+  $getWasmTableEntry__deps: ['$wasmTableMirror', '$wasmTable'],
   $getWasmTableEntry: (funcPtr) => {
 #if MEMORY64
     // Function pointers are 64-bit, but wasmTable.get() requires a Number.
@@ -3234,8 +3234,10 @@ addToLibrary({
 
 #else
 
+  $setWasmTableEntry__deps: ['$wasmTable'],
   $setWasmTableEntry: (idx, func) => wasmTable.set(idx, func),
 
+  $getWasmTableEntry__deps: ['$wasmTable'],
   $getWasmTableEntry: (funcPtr) => {
 #if MEMORY64
     // Function pointers are 64-bit, but wasmTable.get() requires a Number.
@@ -3611,6 +3613,20 @@ addToLibrary({
 
   $getNativeTypeSize__deps: ['$POINTER_SIZE'],
   $getNativeTypeSize: {{{ getNativeTypeSize }}},
+
+#if RELOCATABLE
+  // In RELOCATABLE mode we create the table in JS.
+  $wasmTable: `=new WebAssembly.Table({
+  'initial': {{{ INITIAL_TABLE }}},
+#if !ALLOW_TABLE_GROWTH
+  'maximum': {{{ INITIAL_TABLE }}},
+#endif
+  'element': 'anyfunc'
+});
+`,
+#else
+  $wasmTable: undefined,
+#endif
 
   // We used to define these globals unconditionally in support code.
   // Instead, we now define them here so folks can pull it in explicitly, on
