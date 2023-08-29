@@ -14,6 +14,14 @@
     if (MAX_WEBGL_VERSION <= 1) return 'false';
     return 'GL.currentContext.version >= 2';
   }
+  global.browserIsNotBuggyToRunMoreThan2GBWebGL = () => {
+    if (MIN_FIREFOX_VERSION != 0x7FFFFFFF || MIN_CHROME_VERSION != 0x7FFFFFFF) {
+      // Chrome WebGL 2 is buggy and does not work with > 2GB Wasm heaps: https://bugs.chromium.org/p/chromium/issues/detail?id=1476859
+      // Firefox WebGL 2 is buggy and does not work with > 2GB Wasm heaps: https://bugzilla.mozilla.org/show_bug.cgi?id=1838218
+      return (MAXIMUM_MEMORY > 2*1024*1024*1024) ? 'true' : 'false';
+    }
+    return 'true';
+  }
   null;
 }}}
 
@@ -1428,7 +1436,7 @@ var LibraryGL = {
   glCompressedTexImage2D: (target, level, internalFormat, width, height, border, imageSize, data) => {
     {{{ convertPtrToIdx('data') }}};
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}} && {{{ browserIsNotBuggyToRunMoreThan2GBWebGL() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding || !imageSize) {
         GLctx.compressedTexImage2D(target, level, internalFormat, width, height, border, imageSize, data);
       } else {
@@ -1444,7 +1452,7 @@ var LibraryGL = {
   glCompressedTexSubImage2D: (target, level, xoffset, yoffset, width, height, format, imageSize, data) => {
     {{{ convertPtrToIdx('data') }}};
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}} && {{{ browserIsNotBuggyToRunMoreThan2GBWebGL() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding || !imageSize) {
         GLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, imageSize, data);
       } else {
@@ -1539,7 +1547,7 @@ var LibraryGL = {
       }
     }
 #endif
-    if ({{{ isCurrentContextWebGL2() }}}) {
+    if ({{{ isCurrentContextWebGL2() }}} && {{{ browserIsNotBuggyToRunMoreThan2GBWebGL() }}}) {
       // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, {{{ ptrToIdx('pixels') }}});
@@ -1570,7 +1578,7 @@ var LibraryGL = {
       if (type == 0x8d61/*GL_HALF_FLOAT_OES*/) type = 0x140B /*GL_HALF_FLOAT*/;
     }
 #endif
-    if ({{{ isCurrentContextWebGL2() }}}) {
+    if ({{{ isCurrentContextWebGL2() }}} && {{{ browserIsNotBuggyToRunMoreThan2GBWebGL() }}}) {
       // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, {{{ ptrToIdx('pixels') }}});
@@ -1598,11 +1606,12 @@ var LibraryGL = {
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelPackBufferBinding) {
         GLctx.readPixels(x, y, width, height, format, type, {{{ ptrToIdx('pixels') }}});
-      } else {
+        return;
+      } else if ({{{ browserIsNotBuggyToRunMoreThan2GBWebGL() }}}) {
         var heap = heapObjectForWebGLType(type);
         GLctx.readPixels(x, y, width, height, format, type, heap, {{{ ptrToIdx('pixels', 'heapAccessShiftForWebGLHeap(heap)') }}});
+        return;
       }
-      return;
     }
 #endif
     var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, format);
@@ -1772,7 +1781,7 @@ var LibraryGL = {
 #endif
 
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}} && {{{ browserIsNotBuggyToRunMoreThan2GBWebGL() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       // If size is zero, WebGL would interpret uploading the whole input arraybuffer (starting from given offset), which would
       // not make sense in WebAssembly, so avoid uploading if size is zero. However we must still call bufferData to establish a
       // backing storage of zero bytes.
@@ -1794,7 +1803,7 @@ var LibraryGL = {
   glBufferSubData: (target, offset, size, data) => {
     {{{ convertPtrToIdx('data') }}};
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}} && {{{ browserIsNotBuggyToRunMoreThan2GBWebGL() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       size && GLctx.bufferSubData(target, offset, HEAPU8, data, size);
       return;
     }
@@ -2353,7 +2362,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}} && {{{ browserIsNotBuggyToRunMoreThan2GBWebGL() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       count && GLctx.uniform1iv(webglGetUniformLocation(location), HEAP32, {{{ ptrToIdx('value', 2) }}}, count);
       return;
     }
@@ -2397,7 +2406,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}} && {{{ browserIsNotBuggyToRunMoreThan2GBWebGL() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       count && GLctx.uniform2iv(webglGetUniformLocation(location), HEAP32, {{{ ptrToIdx('value', 2) }}}, count*2);
       return;
     }
@@ -2442,7 +2451,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}} && {{{ browserIsNotBuggyToRunMoreThan2GBWebGL() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       count && GLctx.uniform3iv(webglGetUniformLocation(location), HEAP32, {{{ ptrToIdx('value', 2) }}}, count*3);
       return;
     }
@@ -2488,7 +2497,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}} && {{{ browserIsNotBuggyToRunMoreThan2GBWebGL() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       count && GLctx.uniform4iv(webglGetUniformLocation(location), HEAP32, {{{ ptrToIdx('value', 2) }}}, count*4);
       return;
     }
@@ -2535,7 +2544,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}} && {{{ browserIsNotBuggyToRunMoreThan2GBWebGL() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       count && GLctx.uniform1fv(webglGetUniformLocation(location), HEAPF32, {{{ ptrToIdx('value', 2) }}}, count);
       return;
     }
@@ -2579,7 +2588,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}} && {{{ browserIsNotBuggyToRunMoreThan2GBWebGL() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       count && GLctx.uniform2fv(webglGetUniformLocation(location), HEAPF32, {{{ ptrToIdx('value', 2) }}}, count*2);
       return;
     }
@@ -2624,7 +2633,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}} && {{{ browserIsNotBuggyToRunMoreThan2GBWebGL() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       count && GLctx.uniform3fv(webglGetUniformLocation(location), HEAPF32, {{{ ptrToIdx('value', 2) }}}, count*3);
       return;
     }
@@ -2670,7 +2679,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}} && {{{ browserIsNotBuggyToRunMoreThan2GBWebGL() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       count && GLctx.uniform4fv(webglGetUniformLocation(location), HEAPF32, {{{ ptrToIdx('value', 2) }}}, count*4);
       return;
     }
@@ -2720,7 +2729,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}} && {{{ browserIsNotBuggyToRunMoreThan2GBWebGL() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       count && GLctx.uniformMatrix2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ ptrToIdx('value', 2) }}}, count*4);
       return;
     }
@@ -2770,7 +2779,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}} && {{{ browserIsNotBuggyToRunMoreThan2GBWebGL() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       count && GLctx.uniformMatrix3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ ptrToIdx('value', 2) }}}, count*9);
       return;
     }
@@ -2822,7 +2831,7 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}} && {{{ browserIsNotBuggyToRunMoreThan2GBWebGL() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       count && GLctx.uniformMatrix4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ ptrToIdx('value', 2) }}}, count*16);
       return;
     }
@@ -4077,7 +4086,7 @@ var LibraryGL = {
     }
 
     if (!(mapping.access & 0x10)) /* GL_MAP_FLUSH_EXPLICIT_BIT */
-      if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      if ({{{ isCurrentContextWebGL2() }}} && {{{ browserIsNotBuggyToRunMoreThan2GBWebGL() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
         GLctx.bufferSubData(target, mapping.offset, HEAPU8, mapping.mem, mapping.length);
       } else {
         GLctx.bufferSubData(target, mapping.offset, HEAPU8.subarray(mapping.mem, mapping.mem+mapping.length));
