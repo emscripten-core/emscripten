@@ -211,8 +211,8 @@ To update our libraries to a newer LLVM release:
    cases to run [`push_llvm_changes.py`][push_llvm_changes_emscripten] first to
    ensure that no emscripten changes are lost in the process.
 1. Create a PR to merge new LLVM release tag in the upstream repo into our new
-   library branch. For example, if we want to merge LLVM 16.0.6 release into our
-   `emscripten-libs-16` branch, you can do
+   library branch. For example, if we want to merge `llvmorg-16.0.6` tag into
+   our `emscripten-libs-16` branch, you can do
    ```
    git co emscripten-libs-16
    git remote add upstream git@github.com:llvm/llvm-project.git
@@ -254,10 +254,10 @@ To update our libraries to a newer musl release:
    create the new branch and cherry-pick all the emscripten-specific changes
    from the old branch, resolving any conflicts that might arise.
 1. Create a PR to merge new mrelease tag in the upstream repo into our new
-   library branch. For example, if we want to merge musl v1.2.4 into our
-   `v1.2.4` branch, you can do
+   library branch. For example, if we want to merge musl `v1.2.4` tag into our
+   `merge-v1.2.4` branch, you can do
    ```
-   git co v1.2.4
+   git co merge-v1.2.4
    git remote add upstream git://git.musl-libc.org/musl
    git fetch --tags upstream
    git merge v1.2.4
