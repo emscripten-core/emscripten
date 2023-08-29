@@ -140,8 +140,8 @@ if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.w
 WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #endif
 
-#if !LibraryManager.has('library_exports.js') && !EMBIND
-  // If not using the emscripten_get_exported_function() API or embind, keep the
+#if !LibraryManager.has('library_exports.js')
+  // If not using the emscripten_get_exported_function() API, keep the
   // `wasmExports` variable in local scope to this instantiate function to save
   // code size.  (otherwise access it without to export it to outer scope)
   var
