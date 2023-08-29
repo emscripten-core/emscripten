@@ -191,10 +191,12 @@ a minor version update. We mostly do updates per LLVM major release.
 To update our libraries to a newer LLVM release:
 
 1. If you are updating an existing branch the first step is to run
-   [`push_llvm_changes.py`][push_llvm_changes] to make sure the current branch
-   is up-to-date with the current emscripten codebase.
+   [`push_llvm_changes.py`][push_llvm_changes_emscripten] to make sure the
+   current branch is up-to-date with the current emscripten codebase.
+
    If you are creating a new branch, first make sure the previous/existing
-   branch is up-to-date using [`push_llvm_changes.py`][push_llvm_changes]. Then
+   branch is up-to-date using
+   [`push_llvm_changes.py`][push_llvm_changes_emscripten]. Then
    create the new branch and cherry-pick all the emscripten-specific changes
    from the old branch, resolving any conflicts that might arise.
    ```
@@ -203,9 +205,10 @@ To update our libraries to a newer LLVM release:
    (The existing library branch should be checked out in your Emscripten's LLVM
    fork directory.)
    An example of such PR is emscripten-core/llvm-project#5.
+
    In either case, once that branch is up-to-date use the update scripts to copy
    the llvm branch contents into the emscripten tree. Its important in both
-   cases to run [`push_llvm_changes.py`][push_llvm_changes] first to ensure that
+   cases to run [`push_llvm_changes.py`][push_llvm_changes_emscripten] first to ensure that
    no emscripten changes are lost in the process.
 1. Create a PR to merge new LLVM release tag in the upstream repo into our new
    library branch. For example, if we want to merge LLVM 16.0.6 release into our
