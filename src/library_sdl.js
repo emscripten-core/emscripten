@@ -1723,9 +1723,10 @@ var LibrarySDL = {
 #endif
 
   SDL_WM_SetCaption__proxy: 'sync',
+  SDL_WM_SetCaption__deps: ['emscripten_set_window_title'],
   SDL_WM_SetCaption: (title, icon) => {
-    if (title && typeof setWindowTitle != 'undefined') {
-      setWindowTitle(UTF8ToString(title));
+    if (title) {
+      _emscripten_set_window_title(title);
     }
     icon = icon && UTF8ToString(icon);
   },
