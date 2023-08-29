@@ -18,7 +18,7 @@
     if (MIN_FIREFOX_VERSION != 0x7FFFFFFF || MIN_CHROME_VERSION != 0x7FFFFFFF) {
       // Chrome WebGL 2 is buggy and does not work with > 2GB Wasm heaps: https://bugs.chromium.org/p/chromium/issues/detail?id=1476859
       // Firefox WebGL 2 is buggy and does not work with > 2GB Wasm heaps: https://bugzilla.mozilla.org/show_bug.cgi?id=1838218
-      return (MAXIMUM_MEMORY > 2*1024*1024*1024) ? 'true' : 'false';
+      return (MAXIMUM_MEMORY > 2*1024*1024*1024) ? 'false' : 'true';
     }
     return 'true';
   }
