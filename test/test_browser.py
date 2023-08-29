@@ -1620,7 +1620,11 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_glfw(self):
+    # Using only the `-l` flag
     self.btest_exit('browser/test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-lglfw', '-lGL'])
+    # Using only the `-s` flag
+    self.btest_exit('browser/test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-sUSE_GLFW=2', '-lGL'])
+    # Using both `-s` and `-l` flags
     self.btest_exit('browser/test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-sUSE_GLFW=2', '-lglfw', '-lGL'])
 
   def test_glfw_minimal(self):
