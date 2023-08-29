@@ -1220,6 +1220,7 @@ var LibraryGL = {
 
   $emscriptenWebGLGet__deps: ['$writeI53ToI64'],
   $emscriptenWebGLGet: (name_, p, type) => {
+    {{{ convertPtrToIdx('p') }}};
     // Guard against user passing a null pointer.
     // Note that GLES2 spec does not say anything about how passing a null pointer should be treated.
     // Testing on desktop core GL 3, the application crashes on glGetIntegerv to a null pointer, but
@@ -1413,6 +1414,7 @@ var LibraryGL = {
   },
 
   glDeleteTextures: (n, textures) => {
+    {{{ convertPtrToIdx('textures') }}};
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('textures', 'i*4', 'i32') }}};
       var texture = GL.textures[id];
@@ -1424,6 +1426,7 @@ var LibraryGL = {
   },
 
   glCompressedTexImage2D: (target, level, internalFormat, width, height, border, imageSize, data) => {
+    {{{ convertPtrToIdx('data') }}};
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding || !imageSize) {
@@ -1439,6 +1442,7 @@ var LibraryGL = {
 
 
   glCompressedTexSubImage2D: (target, level, xoffset, yoffset, width, height, format, imageSize, data) => {
+    {{{ convertPtrToIdx('data') }}};
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding || !imageSize) {
@@ -1629,6 +1633,7 @@ var LibraryGL = {
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
+    {{{ convertPtrToIdx('params') }}};
     {{{ makeSetValue('params', '0', 'GLctx.getTexParameter(target, pname)', 'float') }}};
   },
 
@@ -1642,15 +1647,18 @@ var LibraryGL = {
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
+    {{{ convertPtrToIdx('params') }}};
     {{{ makeSetValue('params', '0', 'GLctx.getTexParameter(target, pname)', 'i32') }}};
   },
 
   glTexParameterfv: (target, pname, params) => {
+    {{{ convertPtrToIdx('params') }}};
     var param = {{{ makeGetValue('params', '0', 'float') }}};
     GLctx.texParameterf(target, pname, param);
   },
 
   glTexParameteriv: (target, pname, params) => {
+    {{{ convertPtrToIdx('params') }}};
     var param = {{{ makeGetValue('params', '0', 'i32') }}};
     GLctx.texParameteri(target, pname, param);
   },
@@ -1670,6 +1678,7 @@ var LibraryGL = {
     , functionName
 #endif
     ) => {
+    {{{ convertPtrToIdx('buffers') }}};
     for (var i = 0; i < n; i++) {
       var buffer = GLctx[createFunction]();
       var id = buffer && GL.getNewId(objectTable);
@@ -1705,6 +1714,7 @@ var LibraryGL = {
   },
 
   glDeleteBuffers: (n, buffers) => {
+    {{{ convertPtrToIdx('buffers') }}};
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('buffers', 'i*4', 'i32') }}};
       var buffer = GL.buffers[id];
@@ -1738,10 +1748,12 @@ var LibraryGL = {
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
+    {{{ convertPtrToIdx('data') }}};
     {{{ makeSetValue('data', '0', 'GLctx.getBufferParameter(target, value)', 'i32') }}};
   },
 
   glBufferData: (target, size, data, usage) => {
+    {{{ convertPtrToIdx('data') }}};
 #if LEGACY_GL_EMULATION
     switch (usage) { // fix usages, WebGL 1 only has *_DRAW
       case 0x88E1: // GL_STREAM_READ
@@ -1780,6 +1792,7 @@ var LibraryGL = {
   },
 
   glBufferSubData: (target, offset, size, data) => {
+    {{{ convertPtrToIdx('data') }}};
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       size && GLctx.bufferSubData(target, offset, HEAPU8, data, size);
@@ -1792,6 +1805,7 @@ var LibraryGL = {
   // Queries EXT
   glGenQueriesEXT__sig: 'vii',
   glGenQueriesEXT: (n, ids) => {
+    {{{ convertPtrToIdx('ids') }}};
     for (var i = 0; i < n; i++) {
       var query = GLctx.disjointTimerQueryExt['createQueryEXT']();
       if (!query) {
@@ -1811,6 +1825,7 @@ var LibraryGL = {
 
   glDeleteQueriesEXT__sig: 'vii',
   glDeleteQueriesEXT: (n, ids) => {
+    {{{ convertPtrToIdx('ids') }}};
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
       var query = GL.queries[id];
@@ -1862,6 +1877,7 @@ var LibraryGL = {
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
+    {{{ convertPtrToIdx('params') }}};
     {{{ makeSetValue('params', '0', 'GLctx.disjointTimerQueryExt[\'getQueryEXT\'](target, pname)', 'i32') }}};
   },
 
@@ -1887,6 +1903,7 @@ var LibraryGL = {
     } else {
       ret = param;
     }
+    {{{ convertPtrToIdx('params') }}};
     {{{ makeSetValue('params', '0', 'ret', 'i32') }}};
   },
   glGetQueryObjectuivEXT: 'glGetQueryObjectivEXT',
@@ -1925,6 +1942,7 @@ var LibraryGL = {
     } else {
       ret = param;
     }
+    {{{ convertPtrToIdx('params') }}};
     writeI53ToI64(params, ret);
   },
   glGetQueryObjectui64vEXT: 'glGetQueryObjecti64vEXT',
@@ -1945,6 +1963,7 @@ var LibraryGL = {
   },
 
   glDeleteRenderbuffers: (n, renderbuffers) => {
+    {{{ convertPtrToIdx('renderbuffers') }}};
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('renderbuffers', 'i*4', 'i32') }}};
       var renderbuffer = GL.renderbuffers[id];
@@ -1972,6 +1991,7 @@ var LibraryGL = {
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
+    {{{ convertPtrToIdx('params') }}};
     {{{ makeSetValue('params', '0', 'GLctx.getRenderbufferParameter(target, pname)', 'i32') }}};
   },
 
@@ -2000,6 +2020,7 @@ var LibraryGL = {
     program = GL.programs[program];
     webglPrepareUniformLocationsBeforeFirstUse(program);
     var data = GLctx.getUniform(program, webglGetUniformLocation(location));
+    {{{ convertPtrToIdx('params') }}};
     if (typeof data == 'number' || typeof data == 'boolean') {
       switch (type) {
         case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
@@ -2189,6 +2210,7 @@ var LibraryGL = {
       err("glGetVertexAttrib*v on client-side array: not supported, bad data returned");
     }
 #endif
+    {{{ convertPtrToIdx('params') }}};
     var data = GLctx.getVertexAttrib(index, pname);
     if (pname == 0x889F/*VERTEX_ATTRIB_ARRAY_BUFFER_BINDING*/) {
       {{{ makeSetValue('params', '0', 'data && data["name"]', 'i32') }}};
@@ -2244,6 +2266,7 @@ var LibraryGL = {
       err("glGetVertexAttribPointer on client-side array: not supported, bad data returned");
     }
 #endif
+    {{{ convertPtrToIdx('pointer') }}};
     {{{ makeSetValue('pointer', '0', 'GLctx.getVertexAttribOffset(index, pname)', 'i32') }}};
   },
 
@@ -2660,11 +2683,11 @@ var LibraryGL = {
       // hoist the heap out of the loop for pthreads+growth.
       var heap = HEAPF32;
       value = {{{ ptrToIdx('value', 2) }}};
-      for (var i = 0; i < 4 * count; i += 4) {
-        view[i] = heap[value++];
-        view[i + 1] = heap[value++];
-        view[i + 2] = heap[value++];
-        view[i + 3] = heap[value++];
+      for (var i = 0; i < 4 * count;) {
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
       }
     } else
 #endif
@@ -2707,11 +2730,14 @@ var LibraryGL = {
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
       // avoid allocation when uploading few enough uniforms
       var view = miniTempWebGLFloatBuffers[4*count-1];
-      for (var i = 0; i < 4*count; i += 4) {
-        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
-        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
-        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
-        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+      // hoist the heap out of the loop for pthreads+growth.
+      var heap = HEAPF32;
+      value = {{{ ptrToIdx('value', 2) }}};
+      for (var i = 0; i < 4 * count;) {
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
       }
     } else
 #endif
@@ -2809,23 +2835,23 @@ var LibraryGL = {
       // hoist the heap out of the loop for pthreads+growth.
       var heap = HEAPF32;
       value = {{{ ptrToIdx('value', 2) }}};
-      for (var i = 0; i < 16 * count; i += 16) {
-        view[i] = heap[value++];
-        view[i + 1] = heap[value++];
-        view[i + 2] = heap[value++];
-        view[i + 3] = heap[value++];
-        view[i + 4] = heap[value++];
-        view[i + 5] = heap[value++];
-        view[i + 6] = heap[value++];
-        view[i + 7] = heap[value++];
-        view[i + 8] = heap[value++];
-        view[i + 9] = heap[value++];
-        view[i + 10] = heap[value++];
-        view[i + 11] = heap[value++];
-        view[i + 12] = heap[value++];
-        view[i + 13] = heap[value++];
-        view[i + 14] = heap[value++];
-        view[i + 15] = heap[value++];
+      for (var i = 0; i < 16 * count;) {
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
+        view[i++] = heap[value++];
       }
     } else
 #endif
@@ -2923,6 +2949,9 @@ var LibraryGL = {
     var info = GLctx[funcName](program, index);
     if (info) { // If an error occurs, nothing will be written to length, size and type and name.
       var numBytesWrittenExclNull = name && stringToUTF8(info.name, name, bufSize);
+      {{{ convertPtrToIdx('length') }}};
+      {{{ convertPtrToIdx('size') }}};
+      {{{ convertPtrToIdx('type') }}};
       if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
       if (size) {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
       if (type) {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
@@ -2971,6 +3000,8 @@ var LibraryGL = {
     if (len > maxCount) {
       len = maxCount;
     }
+    {{{ convertPtrToIdx('count') }}};
+    {{{ convertPtrToIdx('shaders') }}};
     {{{ makeSetValue('count', '0', 'len', 'i32') }}};
     for (var i = 0; i < len; ++i) {
       var id = GL.shaders.indexOf(result[i]);
@@ -2988,6 +3019,8 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.shaders, shader, 'glShaderSource', 'shader');
 #endif
+    {{{ convertPtrToIdx('string') }}};
+    {{{ convertPtrToIdx('length') }}};
     var source = GL.getSource(shader, count, string, length);
 
 #if WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION
@@ -3161,6 +3194,8 @@ var LibraryGL = {
 #endif
     var result = GLctx.getShaderSource(GL.shaders[shader]);
     if (!result) return; // If an error occurs, nothing will be written to length or source.
+    {{{ convertPtrToIdx('length') }}};
+    {{{ convertPtrToIdx('source') }}};
     var numBytesWrittenExclNull = (bufSize > 0 && source) ? stringToUTF8(result, source, bufSize) : 0;
     if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
   },
@@ -3185,6 +3220,8 @@ var LibraryGL = {
 #if GL_ASSERTIONS || GL_TRACK_ERRORS
     if (log === null) log = '(unknown error)';
 #endif
+    {{{ convertPtrToIdx('length') }}};
+    {{{ convertPtrToIdx('infoLog') }}};
     var numBytesWrittenExclNull = (maxLength > 0 && infoLog) ? stringToUTF8(log, infoLog, maxLength) : 0;
     if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
   },
@@ -3202,6 +3239,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.shaders, shader, 'glGetShaderiv', 'shader');
 #endif
+    {{{ convertPtrToIdx('p') }}};
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
       var log = GLctx.getShaderInfoLog(GL.shaders[shader]);
 #if GL_ASSERTIONS || GL_TRACK_ERRORS
@@ -3247,6 +3285,8 @@ var LibraryGL = {
     }
 
     program = GL.programs[program];
+
+    {{{ convertPtrToIdx('p') }}};
 
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
       var log = GLctx.getProgramInfoLog(program);
@@ -3335,6 +3375,8 @@ var LibraryGL = {
 
   glGetShaderPrecisionFormat: (shaderType, precisionType, range, precision) => {
     var result = GLctx.getShaderPrecisionFormat(shaderType, precisionType);
+    {{{ convertPtrToIdx('range') }}};
+    {{{ convertPtrToIdx('precision') }}};
     {{{ makeSetValue('range', '0', 'result.rangeMin', 'i32') }}};
     {{{ makeSetValue('range', '4', 'result.rangeMax', 'i32') }}};
     {{{ makeSetValue('precision', '0', 'result.precision', 'i32') }}};
@@ -3400,6 +3442,8 @@ var LibraryGL = {
 #if GL_ASSERTIONS || GL_TRACK_ERRORS
     if (log === null) log = '(unknown error)';
 #endif
+    {{{ convertPtrToIdx('length') }}};
+    {{{ convertPtrToIdx('infoLog') }}};
     var numBytesWrittenExclNull = (maxLength > 0 && infoLog) ? stringToUTF8(log, infoLog, maxLength) : 0;
     if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
   },
@@ -3508,6 +3552,7 @@ var LibraryGL = {
   },
 
   glDeleteFramebuffers: (n, framebuffers) => {
+    {{{ convertPtrToIdx('framebuffers') }}};
     for (var i = 0; i < n; ++i) {
       var id = {{{ makeGetValue('framebuffers', 'i*4', 'i32') }}};
       var framebuffer = GL.framebuffers[id];
@@ -3649,6 +3694,7 @@ var LibraryGL = {
   // GLES2 emulation
 
   glVertexAttribPointer: (index, size, type, normalized, stride, ptr) => {
+    {{{ convertPtrToIdx('ptr') }}};
 #if FULL_ES2
     var cb = GL.currentContext.clientBuffers[index];
 #if GL_ASSERTIONS
@@ -3711,6 +3757,7 @@ var LibraryGL = {
   },
 
   glDrawElements: (mode, count, type, indices) => {
+    {{{ convertPtrToIdx('indices') }}};
 #if FULL_ES2
     var buf;
     if (!GLctx.currentElementArrayBufferBinding) {
@@ -3771,6 +3818,7 @@ var LibraryGL = {
   },
 
   glDrawArraysInstanced: (mode, first, count, primcount) => {
+    {{{ convertPtrToIdx('first') }}};
 #if GL_ASSERTIONS
     assert(GLctx.drawArraysInstanced, 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
 #endif
@@ -3778,6 +3826,7 @@ var LibraryGL = {
   },
 
   glDrawElementsInstanced: (mode, count, type, indices, primcount) => {
+    {{{ convertPtrToIdx('indices') }}};
 #if GL_ASSERTIONS
     assert(GLctx.drawElementsInstanced, 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
 #endif
@@ -3958,7 +4007,7 @@ var LibraryGL = {
     if (!GL.mappedBuffers[binding]) GL.mappedBuffers[binding] = {};
     binding = GL.mappedBuffers[binding];
     binding.offset = offset;
-    binding.length = length;
+    binding.length = {{{ ptrToIdx('length') }}};
     binding.mem = mem;
     binding.access = access;
     return mem;
