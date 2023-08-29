@@ -187,9 +187,11 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #else
   <<< WASM_MODULE_EXPORTS >>>
 #endif
+#if '$wasmTable' in addedLibraryItems
   wasmTable = wasmExports['__indirect_function_table'];
 #if ASSERTIONS
   assert(wasmTable);
+#endif
 #endif
 
 #if AUDIO_WORKLET

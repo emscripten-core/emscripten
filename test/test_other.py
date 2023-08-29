@@ -13725,3 +13725,12 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.run_process([EMCC, test_file('hello_world.c'), '--pre-js=pre.js', '-Oz', '--minify=0'])
     content = read_file('a.out.js')
     self.assertContained(comment, content)
+
+  def test_table_base(self):
+    create_file('test.c', r'''
+    #include <stdio.h>
+    int main() {
+      printf("addr = %p\n", &printf);
+    }''')
+    self.do_runf('test.c', 'addr = 0x1\n')
+    self.do_runf('test.c', 'addr = 0x400\n', emcc_args=['-sTABLE_BASE=1024'])

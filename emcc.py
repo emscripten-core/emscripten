@@ -2121,6 +2121,9 @@ def phase_linker_setup(options, state, newargs):
   if not settings.BOOTSTRAPPING_STRUCT_INFO and settings.SAFE_HEAP:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue_safe', '$setValue_safe']
 
+  if settings.ABORT_ON_WASM_EXCEPTIONS or settings.SPLIT_MODULE:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$wasmTable']
+
   if settings.MAIN_MODULE:
     assert not settings.SIDE_MODULE
     if settings.MAIN_MODULE == 1:
