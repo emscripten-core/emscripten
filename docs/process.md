@@ -188,6 +188,17 @@ LLVM release:
    https://github.com/emscripten-core/llvm-project/tree/emscripten-libs-16. We
    create a single branch for a major LLVM version, so if you want to update a
    minor version within the same major version, you can use the same branch.
+   After creating a new branch, cherry-pick all emscripten-specific commits from
+   the previous version of the library branch into the new branch.
+1. Add new downstream changes from emscripten to the updated library branch in
+   LLVM fork. You can use [`push_llvm_changes.py`][push_llvm_changes_emscripten]
+   to do that.
+   ```
+   ./system/lib/push_llvm_changes.py <Emscripten's LLVM fork directory>
+   ```
+   (The library branch should be checked out in your Emscripten's LLVM fork
+   directory.)
+   Example of such PR is emscripten-core/llvm-project#5.
 1. Create a PR to merge new LLVM release tag in the upstream repo into our
    library branch. For example, if we want to merge LLVM 16.0.6 release into our
    `emscripten-libs-16` branch, you can do
@@ -198,15 +209,6 @@ LLVM release:
    git merge llvmorg-16.0.6
    ```
    An example of such PR is emscripten-core/llvm-project#3.
-1. Add downstream changes from emscripten to the updated library branch in LLVM
-   fork. You can use [`push_llvm_changes.py`][push_llvm_changes_emscripten] to
-   do that.
-   ```
-   ./system/lib/push_llvm_changes.py <Emscripten's LLVM fork directory>
-   ```
-   (The library branch should be checked out in your Emscripten's LLVM fork
-   directory.)
-   Example of such PR is emscripten-core/llvm-project#5.
 1. Now we have merged all the changes to our LLVM fork branch, pull those
    changes with the new version back into the Emscripten repo. You can use
    [`update_compiler_rt.py`][update_compiler_rt_emscripten],
