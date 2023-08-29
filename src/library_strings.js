@@ -27,9 +27,7 @@ addToLibrary({
   $UTF8ArrayToString__deps: ['$UTF8Decoder'],
 #endif
   $UTF8ArrayToString: (heapOrArray, idx, maxBytesToRead) => {
-#if CAN_ADDRESS_2GB
-    idx >>>= 0;
-#endif
+    {{{ convertPtrToIdx('idx') }}};
     var endIdx = idx + maxBytesToRead;
 #if TEXTDECODER
     var endPtr = idx;
@@ -118,9 +116,7 @@ addToLibrary({
 #if ASSERTIONS
     assert(typeof ptr == 'number');
 #endif
-#if CAN_ADDRESS_2GB
-    ptr >>>= 0;
-#endif
+    {{{ convertPtrToIdx('ptr') }}};
 #if TEXTDECODER == 2
     if (!ptr) return '';
     var maxPtr = ptr + maxBytesToRead;
@@ -154,9 +150,7 @@ addToLibrary({
    * @return {number} The number of bytes written, EXCLUDING the null terminator.
    */
   $stringToUTF8Array: (str, heap, outIdx, maxBytesToWrite) => {
-#if CAN_ADDRESS_2GB
-    outIdx >>>= 0;
-#endif
+    {{{ convertPtrToIdx('outIdx') }}};
 #if ASSERTIONS
     assert(typeof str === 'string');
 #endif
@@ -262,9 +256,7 @@ addToLibrary({
   // emscripten HEAP, returns a copy of that string as a Javascript String
   // object.
   $AsciiToString: (ptr) => {
-#if CAN_ADDRESS_2GB
-    ptr >>>= 0;
-#endif
+    {{{ convertPtrToIdx('ptr') }}};
     var str = '';
     while (1) {
       var ch = {{{ makeGetValue('ptr++', 0, 'u8') }}};
@@ -429,9 +421,7 @@ addToLibrary({
   //                    output, not even the null terminator.
   // Returns the number of bytes written, EXCLUDING the null terminator.
   $stringToUTF32: (str, outPtr, maxBytesToWrite) => {
-#if CAN_ADDRESS_2GB
-    outPtr >>>= 0;
-#endif
+    {{{ convertPtrToIdx('outPtr') }}};
 #if ASSERTIONS
     assert(outPtr % 4 == 0, 'Pointer passed to stringToUTF32 must be aligned to four bytes!');
 #endif

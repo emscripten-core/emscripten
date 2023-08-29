@@ -25,10 +25,7 @@ addToLibrary({
 #if ASSERTIONS
     assert(typeof ptr === 'number');
 #endif
-#if !CAN_ADDRESS_2GB && !MEMORY64
-    // With CAN_ADDRESS_2GB or MEMORY64, pointers are already unsigned.
-    ptr >>>= 0;
-#endif
+    {{{ convertPtrToIdx('ptr') }}};
     return '0x' + ptr.toString(16).padStart(8, '0');
   },
 
@@ -201,10 +198,7 @@ addToLibrary({
   emscripten_resize_heap: 'ip',
   emscripten_resize_heap: (requestedSize) => {
     var oldSize = HEAPU8.length;
-#if !MEMORY64 && !CAN_ADDRESS_2GB
-    // With CAN_ADDRESS_2GB or MEMORY64, pointers are already unsigned.
-    requestedSize >>>= 0;
-#endif
+    {{{ convertPtrToIdx('requestedSize') }}};
 #if ALLOW_MEMORY_GROWTH == 0
 #if ABORTING_MALLOC
     abortOnCannotGrowMemory(requestedSize);

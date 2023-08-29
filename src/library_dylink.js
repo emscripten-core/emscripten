@@ -811,9 +811,7 @@ var LibraryDylink = {
 
         for (var name in moduleExports) {
           if (name.startsWith('__em_js__')) {
-            var start = moduleExports[name]
-            {{{ from64('start') }}}
-            var jsString = UTF8ToString(start);
+            var jsString = UTF8ToString(moduleExports[name]);
             // EM_JS strings are stored in the data section in the form
             // SIG<::>BODY.
             var parts = jsString.split('<::>');
