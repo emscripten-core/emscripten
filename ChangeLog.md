@@ -32,6 +32,11 @@ See docs/process.md for more on how version tagging works.
   silent failures.
 - JS library decorators such as `__deps` and `__async` are now type checked so
   that errors are not silently ignored.
+- The `USE_GLFW` settings now defaults to 0 rather than 2.  This matches other
+  other settings such as `USE_SDL` that default to 0 these days and also matches
+  the existing behaviour for `MINIMAL_RUNTIME` and `STRICT` mode.
+  If you use GLFW you now need to explictly opt into it using `-sUSE_GLFW` or
+  `-lglfw`. (#19939)
 
 3.1.45 - 08/23/23
 -----------------
