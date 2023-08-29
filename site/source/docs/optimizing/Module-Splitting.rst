@@ -124,23 +124,25 @@ included in the profile.
 Here’s the function to write the profile and our new main function::
 
   EM_JS(void, write_profile, (), {
-    var __write_profile = wasmExports['__write_profile'];
-    if (__write_profile) {
-
-      // Get the size of the profile and allocate a buffer for it.
-      var len = __write_profile(0, 0);
-      var ptr = _malloc(len);
-
-      // Write the profile data to the buffer.
-      __write_profile(ptr, len);
-
-      // Write the profile file.
-      var profile_data = new Uint8Array(buffer, ptr, len);
-      nodeFS.writeFileSync('profile.data', profile_data);
-
-      // Free the buffer.
-      _free(ptr);
+    var __write_profile = wasmExports.__write_profile;
+    if (!__write_profile) {
+      return;
     }
+
+    // Get the size of the profile and allocate a buffer for it.
+    var len = __write_profile(0, 0);
+    var ptr = _malloc(len);
+
+    // Write the profile data to the buffer.
+    __write_profile(ptr, len);
+
+    // Write the profile file.
+    var profile_data = new Uint8Array(HEAP8.buffer, ptr, len);
+    const fs = require("fs");
+    fs.writeFileSync('profile.data', profile_data);
+
+    // Free the buffer.
+    _free(ptr);
   });
 
   int main() {

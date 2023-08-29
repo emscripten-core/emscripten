@@ -2176,6 +2176,8 @@ int f() {
                  emcc_args=['--embed-file', 'pngtest.png', '-sUSE_LIBPNG', '-pthread'])
 
   def test_giflib(self):
+    # giftext.c contains a sprintf warning
+    self.emcc_args += ['-Wno-fortify-source']
     shutil.copyfile(test_file('third_party/giflib/treescap.gif'), 'treescap.gif')
     self.do_runf(test_file('third_party/giflib/giftext.c'),
                  'GIF file terminated normally',
@@ -6030,7 +6032,7 @@ int main(void) {
 
   @crossplatform
   @node_pthreads
-  @no_mac('https://github.com/emscripten-core/emscripten/issues/19683')
+  @flaky('https://github.com/emscripten-core/emscripten/issues/19683')
   def test_pthread_print_override_modularize(self):
     self.set_setting('EXPORT_NAME', 'Test')
     self.set_setting('PROXY_TO_PTHREAD')
@@ -13484,11 +13486,11 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       funcs = self.parse_wasm('test_memops_bulk_memory.wasm')[2]
       js = read_file('test_memops_bulk_memory.js')
       if expect_bulk_mem:
-        self.assertNotContained('_emscripten_memcpy_big', js)
-        self.assertIn('$emscripten_memcpy_big', funcs)
+        self.assertNotContained('_emscripten_memcpy_js', js)
+        self.assertIn('$emscripten_memcpy_bulkmem', funcs)
       else:
-        self.assertContained('_emscripten_memcpy_big', js)
-        self.assertNotIn('$emscripten_memcpy_big', funcs)
+        self.assertContained('_emscripten_memcpy_js', js)
+        self.assertNotIn('$emscripten_memcpy_bulkmem', funcs)
 
     # By default we expect to find _emscripten_memcpy_big in the generaed JS and not in the
     # native code.
