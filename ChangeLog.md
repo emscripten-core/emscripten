@@ -41,6 +41,9 @@ See docs/process.md for more on how version tagging works.
   the existing behaviour for `MINIMAL_RUNTIME` and `STRICT` mode.
   If you use GLFW you now need to explictly opt into it using `-sUSE_GLFW` or
   `-lglfw`. (#19939)
+- A new settings `TABLE_BASE` was introduced that can be used to place static
+  function addresses (table slots) at a certain offset.  This defaults to 1
+  which is the previously fixed value. (#20149)
 
 3.1.45 - 08/23/23
 -----------------
