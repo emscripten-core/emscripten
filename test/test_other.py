@@ -6047,6 +6047,9 @@ int main(void) {
   @crossplatform
   @node_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/19683')
+  # The flakiness of this test is very high on macOS so just disable it
+  # completely.
+  @no_mac('https://github.com/emscripten-core/emscripten/issues/19683')
   def test_pthread_print_override_modularize(self):
     self.set_setting('EXPORT_NAME', 'Test')
     self.set_setting('PROXY_TO_PTHREAD')
