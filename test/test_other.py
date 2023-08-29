@@ -10127,11 +10127,11 @@ int main () {
     'hello_world_wasm2js': ('hello_world', True, True),
     'random_printf_wasm': ('random_printf', False),
     'random_printf_wasm2js': ('random_printf', True),
-    'hello_webgl_wasm': ('hello_webgl', False),
+    'hello_webgl_wasm': ('hello_webgl', False, True),
     'hello_webgl_wasm2js': ('hello_webgl', True),
-    'hello_webgl2_wasm': ('hello_webgl2', False),
+    'hello_webgl2_wasm': ('hello_webgl2', False, True),
     'hello_webgl2_wasm2js': ('hello_webgl2', True),
-    'math': ('math', False),
+    'math': ('math', False, True),
     'hello_wasm_worker': ('hello_wasm_worker', False, True),
   })
   @crossplatform
