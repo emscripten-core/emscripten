@@ -441,7 +441,7 @@ var LibraryHTML5 = {
   emscripten_set_keydown_callback_on_thread__proxy: 'sync',
   emscripten_set_keydown_callback_on_thread__deps: ['$registerKeyEventCallback'],
   emscripten_set_keydown_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) =>
-    registerKeyEventCallback({{{ ptrToIdx('target') }}}et, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_KEYDOWN }}}, "keydown", targetThread),
+    registerKeyEventCallback({{{ ptrToIdx('target') }}}, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_KEYDOWN }}}, "keydown", targetThread),
 
   emscripten_set_keyup_callback_on_thread__proxy: 'sync',
   emscripten_set_keyup_callback_on_thread__deps: ['$registerKeyEventCallback'],
@@ -572,7 +572,7 @@ var LibraryHTML5 = {
   emscripten_set_click_callback_on_thread__proxy: 'sync',
   emscripten_set_click_callback_on_thread__deps: ['$registerMouseEventCallback'],
   emscripten_set_click_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) =>
-    registerMouseEventCallback({{{ ptrToIdx('target') }}}rget, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_CLICK }}}, "click", targetThread),
+    registerMouseEventCallback({{{ ptrToIdx('target') }}}, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_CLICK }}}, "click", targetThread),
 
   emscripten_set_mousedown_callback_on_thread__proxy: 'sync',
   emscripten_set_mousedown_callback_on_thread__deps: ['$registerMouseEventCallback'],
