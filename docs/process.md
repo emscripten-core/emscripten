@@ -215,7 +215,7 @@ To update our libraries to a newer LLVM release:
    `emscripten-libs-16` branch, you can do
    ```
    git co emscripten-libs-16
-   git remote add upstream https://github.com/llvm/llvm-project
+   git remote add upstream git@github.com:llvm/llvm-project.git
    git fetch --tags upstream
    git merge llvmorg-16.0.6
    ```
@@ -232,6 +232,39 @@ To update our libraries to a newer LLVM release:
    (The library branch should be checked out in your Emscripten's LLVM fork
    directory.)
    An example of such PR is emscripten-core/emscripten#19515.
+
+
+## Updating musl
+
+We maintain our musl in
+https://github.com/emscripten-core/emscripten/tree/main/system/lib/libc/musl.
+We maintain a fork of musl in https://github.com/emscripten-core/musl for
+updates and periodically update it to a newer version.
+
+The process for updating musl is similar to that of updating the LLVM libraries.
+To update our libraries to a newer musl release:
+
+1. If you are updating an existing branch the first step is to run
+   [`push_musl_changes.py`][push_musl_changes_emscripten] to make sure the
+   current branch is up-to-date with the current emscripten codebase.
+
+   If you are creating a new branch, first make sure the previous/existing
+   branch is up-to-date using
+   [`push_musl_changes.py`][push_musl_changes_emscripten]. Then
+   create the new branch and cherry-pick all the emscripten-specific changes
+   from the old branch, resolving any conflicts that might arise.
+1. Create a PR to merge new mrelease tag in the upstream repo into our new
+   library branch. For example, if we want to merge musl v1.2.4 into our
+   `v1.2.4` branch, you can do
+   ```
+   git co v1.2.4
+   git remote add upstream git://git.musl-libc.org/musl
+   git fetch --tags upstream
+   git merge v1.2.4
+   ```
+1. Now we have merged all the changes to our musl fork branch, pull those
+   changes with the new version back into the Emscripten repo. You can use
+   [`update_musl.py`][update_musl_emscripten] for that.
 
 
 [site_repo]: https://github.com/kripken/emscripten-site
@@ -253,7 +286,9 @@ To update our libraries to a newer LLVM release:
 [llvm_repo]: https://github.com/llvm/llvm-project
 [llvm_emscripten_fork]: https://github.com/emscripten-core/llvm-project
 [push_llvm_changes_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/push_llvm_changes.py
+[push_musl_changes_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/push_musl_changes.py
 [update_compiler_rt_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_compiler_rt.py
 [update_libcxx_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_libcxx.py
 [update_libcxxabi_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_libcxxabi.py
 [update_libunwind_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_libunwind.py
+[update_musl_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_musl.py
