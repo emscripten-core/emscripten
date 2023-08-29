@@ -254,7 +254,7 @@ To update our libraries to a newer musl release:
    create the new branch and cherry-pick all the emscripten-specific changes
    from the old branch, resolving any conflicts that might arise.
 1. Create a PR to merge new mrelease tag in the upstream repo into our new
-   library branch. For example, if we want to merge musl `v1.2.4` tag into our
+   library branch. For example, if we want to merge musl's `v1.2.4` tag into our
    `merge-v1.2.4` branch, you can do
    ```
    git co merge-v1.2.4
