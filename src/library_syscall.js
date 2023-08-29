@@ -838,7 +838,7 @@ var SyscallsLibrary = {
     return ___syscall_statfs64(0, size, buf);
   },
   __syscall_fadvise64__nothrow: true,
-  __syscall_fadvise64__proxy: false,
+  __syscall_fadvise64__proxy: 'none',
   __syscall_fadvise64: (fd, offset, len, advice) => {
     return 0; // your advice is important to us (but we can't use it)
   },
