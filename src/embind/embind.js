@@ -275,6 +275,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_bool__docs: '/** @suppress {globalThis} */',
   _embind_register_bool__deps: ['$readLatin1String', '$registerType', '$GenericWireTypeSize'],
   _embind_register_bool: (rawType, name, trueValue, falseValue) => {
     name = readLatin1String(name);
@@ -350,6 +351,7 @@ var LibraryEmbind = {
     }
   },
 
+  _embind_register_integer__docs: '/** @suppress {globalThis} */',
   // When converting a number from JS to C++ side, the valid range of the number is
   // [minRange, maxRange], inclusive.
   _embind_register_integer__deps: [
@@ -464,11 +466,13 @@ var LibraryEmbind = {
     });
   },
 
+  $simpleReadValueFromPointer__docs: '/** @suppress {globalThis} */',
   // For types whose wire types are 32-bit pointers.
   $simpleReadValueFromPointer: function(pointer) {
     return this['fromWireType']({{{ makeGetValue('pointer', '0', 'i32') }}});
   },
 
+  $readPointer__docs: '/** @suppress {globalThis} */',
   $readPointer: function(pointer) {
     return this['fromWireType']({{{ makeGetValue('pointer', '0', '*') }}});
   },
@@ -1217,6 +1221,7 @@ var LibraryEmbind = {
     });
   },
 
+  $genericPointerToWireType__docs: '/** @suppress {globalThis} */',
   $genericPointerToWireType__deps: ['$throwBindingError', '$upcastPointer'],
   $genericPointerToWireType: function(destructors, handle) {
     var ptr;
@@ -1292,6 +1297,7 @@ var LibraryEmbind = {
     return ptr;
   },
 
+  $constNoSmartPtrRawPointerToWireType__docs: '/** @suppress {globalThis} */',
   // If we know a pointer type is not going to have SmartPtr logic in it, we can
   // special-case optimize it a bit (compare to genericPointerToWireType)
   $constNoSmartPtrRawPointerToWireType__deps: ['$throwBindingError', '$upcastPointer'],
@@ -1314,6 +1320,7 @@ var LibraryEmbind = {
     return ptr;
   },
 
+  $nonConstNoSmartPtrRawPointerToWireType__docs: '/** @suppress {globalThis} */',
   // An optimized version for non-const method accesses - there we must additionally restrict that
   // the pointer is not a const-pointer.
   $nonConstNoSmartPtrRawPointerToWireType__deps: ['$throwBindingError', '$upcastPointer'],
@@ -1410,6 +1417,7 @@ var LibraryEmbind = {
     }
   },
 
+  $RegisteredPointer_getPointee__docs: '/** @suppress {globalThis} */',
   $RegisteredPointer_getPointee: function(ptr) {
     if (this.rawGetPointee) {
       ptr = this.rawGetPointee(ptr);
@@ -1417,6 +1425,7 @@ var LibraryEmbind = {
     return ptr;
   },
 
+  $RegisteredPointer_destructor__docs: '/** @suppress {globalThis} */',
   $RegisteredPointer_destructor: function(ptr) {
     if (this.rawDestructor) {
       this.rawDestructor(ptr);
@@ -1429,6 +1438,7 @@ var LibraryEmbind = {
     }
   },
 
+  $RegisteredPointer_fromWireType__docs: '/** @suppress {globalThis} */',
   $RegisteredPointer_fromWireType__deps: [
     '$downcastPointer', '$registeredPointers',
     '$getInheritedInstance', '$makeClassHandle',
@@ -1621,6 +1631,7 @@ var LibraryEmbind = {
   $ClassHandle: function() {
   },
 
+  $ClassHandle_isAliasOf__docs: '/** @suppress {globalThis,checkTypes} */',
   $ClassHandle_isAliasOf: function(other) {
     if (!(this instanceof ClassHandle)) {
       return false;
@@ -1655,6 +1666,7 @@ var LibraryEmbind = {
     throwBindingError(getInstanceTypeName(obj) + ' instance already deleted');
   },
 
+  $ClassHandle_clone__docs: '/** @suppress {globalThis} */',
   $ClassHandle_clone__deps: ['$shallowCopyInternalPointer', '$throwInstanceAlreadyDeleted', '$attachFinalizer'],
   $ClassHandle_clone: function() {
     if (!this.$$.ptr) {
@@ -1677,6 +1689,7 @@ var LibraryEmbind = {
     }
   },
 
+  $ClassHandle_delete__docs: '/** @suppress {globalThis} */',
   $ClassHandle_delete__deps: ['$releaseClassHandle', '$throwBindingError',
                               '$detachFinalizer', '$throwInstanceAlreadyDeleted'],
   $ClassHandle_delete: function() {
@@ -1699,10 +1712,12 @@ var LibraryEmbind = {
 
   $deletionQueue: [],
 
+  $ClassHandle_isDeleted__docs: '/** @suppress {globalThis} */',
   $ClassHandle_isDeleted: function() {
     return !this.$$.ptr;
   },
 
+  $ClassHandle_deleteLater__docs: '/** @suppress {globalThis} */',
   $ClassHandle_deleteLater__deps: [
     '$delayFunction', '$deletionQueue', '$flushPendingDeletes'],
   $ClassHandle_deleteLater: function() {
@@ -2364,6 +2379,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_enum__docs: '/** @suppress {globalThis} */',
   _embind_register_enum__deps: ['$exposePublicSymbol', '$enumReadValueFromPointer',
     '$readLatin1String', '$registerType'],
   _embind_register_enum: (rawType, name, size, isSigned) => {
