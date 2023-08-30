@@ -2436,7 +2436,7 @@ int main(int argc, char **argv) {
 
   @parameterized({
     'nogrow': (['-sABORTING_MALLOC=0'],),
-    'grow': (['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=18MB'],)
+    'grow': (['-sABORTING_MALLOC=0', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=18MB'],)
   })
   @no_asan('requires more memory when growing')
   @no_lsan('requires more memory when growing')
