@@ -581,6 +581,7 @@ var LibraryDylink = {
   },
 
 #if DYLINK_DEBUG
+  $dumpTable__deps: ['$wasmTable'],
   $dumpTable: () => {
     for (var i = 0; i < wasmTable.length; i++)
       dbg(`table: ${i} : ${wasmTable.get(i)}`);
@@ -601,6 +602,7 @@ var LibraryDylink = {
     '$getDylinkMetadata', '$alignMemory', '$zeroMemory',
     '$currentModuleWeakSymbols',
     '$updateTableMap',
+    '$wasmTable',
   ],
   $loadWebAssemblyModule: (binary, flags, libName, localScope, handle) => {
 #if DYLINK_DEBUG

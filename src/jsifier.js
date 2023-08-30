@@ -227,7 +227,7 @@ function(${args}) {
 
     const proxyingMode = LibraryManager.library[symbol + '__proxy'];
     if (proxyingMode) {
-      if (proxyingMode !== 'sync' && proxyingMode !== 'async') {
+      if (proxyingMode !== 'sync' && proxyingMode !== 'async' && proxyingMode !== 'none') {
         throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
       }
       if (SHARED_MEMORY) {
@@ -509,6 +509,8 @@ function(${args}) {
         //   'var foo;[code here verbatim];'
         contentText = 'var ' + mangled + snippet;
         if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}') contentText += ';';
+      } else if (typeof snippet == 'undefined') {
+        contentText = `var ${mangled};`;
       } else {
         // In JS libraries
         //   foo: '=[value]'
