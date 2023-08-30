@@ -1120,9 +1120,7 @@ var LibraryBrowser = {
   },
 
   emscripten_set_window_title__proxy: 'sync',
-  emscripten_set_window_title: (title) => {
-    setWindowTitle(UTF8ToString(title));
-  },
+  emscripten_set_window_title: (title) => document.title = UTF8ToString(title),
 
   emscripten_get_screen_size__proxy: 'sync',
   emscripten_get_screen_size: (width, height) => {
