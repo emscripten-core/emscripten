@@ -140,7 +140,7 @@ var LibraryDylink = {
         args = args.map(Number);
 #endif
         var rtn = findMatchingCatch(args);
-        return {{{ to64('rtn') }}};
+        return {{{ idxToPtr('rtn') }}};
       }
     }
 #endif
@@ -893,7 +893,7 @@ var LibraryDylink = {
 #endif
       var lib = LDSO.loadedLibsByName[name];
       if (lib.exports['__set_stack_limits']) {
-        lib.exports['__set_stack_limits']({{{ to64("stackTop") }}}, {{{ to64("stackMax") }}});
+        lib.exports['__set_stack_limits']({{{ idxToPtr("stackTop") }}}, {{{ idxToPtr("stackMax") }}});
       }
     }
   },
