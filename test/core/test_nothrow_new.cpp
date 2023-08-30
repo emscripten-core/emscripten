@@ -6,8 +6,10 @@
 #include <iostream>
 #include <new>
 
+char* data;
+
 int main() {
-  const char* data = new (std::nothrow) char[20 * 1024 * 1024];
+  data = new (std::nothrow) char[20 * 1024 * 1024];
   if (data == nullptr) {
     std::cout << "success" << std::endl;
     return 0;
