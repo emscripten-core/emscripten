@@ -12,7 +12,6 @@
 # If there is a name section or symbol table, llvm-nm can show the symbol name.
 
 import argparse
-from collections import namedtuple
 import json
 import os
 import re
