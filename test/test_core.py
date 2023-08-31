@@ -9749,6 +9749,20 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-mreference-types']
     self.do_core_test('test_externref.c', libraries=['asm.o'])
 
+  @parameterized({
+    '': [False],
+    'dynlink': [True]
+  })
+  @requires_node
+  @no_wasm2js('wasm2js does not support reference types')
+  def test_externref2(self, dynlink):
+    self.emcc_args += ['-mreference-types']
+    self.node_args.append("--experimental-wasm-reftypes")
+    if dynlink:
+      self.set_setting('MAIN_MODULE', 2)
+    self.do_core_test('test_externref2.c')
+
+
   def test_syscall_intercept(self):
     self.do_core_test('test_syscall_intercept.c')
 
