@@ -44,7 +44,7 @@ See docs/process.md for more on how version tagging works.
 - A new settings `TABLE_BASE` was introduced that can be used to place static
   function addresses (table slots) at a certain offset.  This defaults to 1
   which is the previously fixed value. (#20149)
-- Clang's error detection of unused variables improved. As a result, three unused variables were removed. (#20169)
+- Clang's error detection of unused variables improved, which may require changes in user code (see #20169).
 
 3.1.45 - 08/23/23
 -----------------
