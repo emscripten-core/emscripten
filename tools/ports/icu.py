@@ -14,7 +14,7 @@ variants = {'icu-mt': {'PTHREADS': 1}}
 libname_libicu_common = 'libicu_common'
 libname_libicu_stubdata = 'libicu_stubdata'
 libname_libicu_i18n = 'libicu_i18n'
-
+libname_libicu_io = 'libicu_io'
 
 def needed(settings):
   return settings.USE_ICU
@@ -78,7 +78,8 @@ def get(ports, settings, shared):
   return [
       shared.cache.get_lib(get_lib_name(libname_libicu_common, settings), create_libicu_common), # this also prepares the build
       shared.cache.get_lib(get_lib_name(libname_libicu_stubdata, settings), create_libicu_stubdata),
-      shared.cache.get_lib(get_lib_name(libname_libicu_i18n, settings), create_libicu_i18n)
+      shared.cache.get_lib(get_lib_name(libname_libicu_i18n, settings), create_libicu_i18n),
+      shared.cache.get_lib(get_lib_name(libname_libicu_io, settings), create_libicu_io)
   ]
 
 
@@ -86,6 +87,7 @@ def clear(ports, settings, shared):
   shared.cache.erase_lib(get_lib_name(libname_libicu_common, settings))
   shared.cache.erase_lib(get_lib_name(libname_libicu_stubdata, settings))
   shared.cache.erase_lib(get_lib_name(libname_libicu_i18n, settings))
+  shared.cache.erase_lib(get_lib_name(libname_libicu_io, settings))
 
 
 def process_args(ports):
