@@ -1505,7 +1505,7 @@ keydown(100);keyup(100); // trigger the end
   @also_with_wasm64
   def test_idbstore(self):
     secret = str(time.time())
-    for stage in [0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5]:
+    for stage in [0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5, 0, 4, 6, 5]:
       print(stage)
       self.btest_exit('test_idbstore.c',
                       args=['-lidbstore.js', f'-DSTAGE={stage}', f'-DSECRET="{secret}"'],
@@ -1524,7 +1524,7 @@ keydown(100);keyup(100); // trigger the end
     if asyncify == 2:
       self.require_jspi()
     secret = str(time.time())
-    self.btest('test_idbstore_sync.c', '6', args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '-sASYNCIFY=' + str(asyncify)])
+    self.btest('test_idbstore_sync.c', '8', args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '-sASYNCIFY=' + str(asyncify)])
 
   def test_idbstore_sync_worker(self):
     secret = str(time.time())
