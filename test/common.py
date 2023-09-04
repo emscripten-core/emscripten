@@ -1064,7 +1064,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def run_js(self, filename, engine=None, args=None,
              output_nicerizer=None,
              assert_returncode=0,
-             interleaved_output=True):
+             interleaved_output=True,
+             timeout=None, timeout_as_error=True):
     # use files, as PIPE can get too full and hang us
     stdout_file = self.in_dir('stdout')
     stderr_file = None
@@ -1086,9 +1087,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       jsrun.run_js(filename, engine, args,
                    stdout=stdout,
                    stderr=stderr,
-                   assert_returncode=assert_returncode)
+                   assert_returncode=assert_returncode,
+                   timeout=timeout)
     except subprocess.TimeoutExpired as e:
-      timeout_error = e
+      if timeout_as_error:
+        timeout_error = e
     except subprocess.CalledProcessError as e:
       error = e
     finally:
@@ -1506,7 +1509,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                      check_for_error=True, force_c=False, emcc_args=None,
                      interleaved_output=True,
                      regex=False,
-                     output_basename=None):
+                     output_basename=None,
+                     timeout=None, timeout_as_error=True):
     logger.debug(f'_build_and_run: {filename}')
 
     if no_build:
@@ -1533,7 +1537,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       js_output = self.run_js(js_file, engine, args,
                               output_nicerizer=output_nicerizer,
                               assert_returncode=assert_returncode,
-                              interleaved_output=interleaved_output)
+                              interleaved_output=interleaved_output,
+                              timeout=timeout,
+                              timeout_as_error=timeout_as_error)
       js_output = js_output.replace('\r\n', '\n')
       if expected_output:
         if type(expected_output) not in [list, tuple]:

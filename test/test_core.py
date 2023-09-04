@@ -9795,15 +9795,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   def test_wasm_worker_hello(self):
-    self.do_runf(test_file('wasm_worker/hello_wasm_worker.c'), emcc_args=['-sWASM_WORKERS'])
+    self.do_run_in_out_file_test(test_file('wasm_worker/hello_wasm_worker.c'), emcc_args=['-sWASM_WORKERS'], timeout=3)
 
   @node_pthreads
   def test_wasm_worker_malloc(self):
-    self.do_runf(test_file('wasm_worker/malloc_wasm_worker.c'), emcc_args=['-sWASM_WORKERS'])
+    self.do_runf(test_file('wasm_worker/malloc_wasm_worker.c'), emcc_args=['-sWASM_WORKERS'], timeout=3)
 
   @node_pthreads
   def test_wasm_worker_wait_async(self):
-    self.do_runf(test_file('wasm_worker/wait_async.c'), emcc_args=['-sWASM_WORKERS'])
+    self.do_runf(test_file('wasm_worker/wait_async.c'), emcc_args=['-sWASM_WORKERS'], timeout=3)
 
 
 # Generate tests for everything

@@ -47,7 +47,12 @@ addToLibrary({
   $_wasmWorkerRunPostMessage: (e) => {
     // '_wsc' is short for 'wasm call', trying to use an identifier name that
     // will never conflict with user code
-    let data = e.data, wasmCall = data['_wsc'];
+#if ENVIRONMENT_MAY_BE_NODE
+    const data = ENVIRONMENT_IS_NODE ? e : e.data;
+#else
+    const data = e.data;
+#endif
+    const wasmCall = data['_wsc'];
     wasmCall && getWasmTableEntry(wasmCall)(...data['x']);
   },
 
