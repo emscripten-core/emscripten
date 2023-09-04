@@ -47,7 +47,12 @@ addToLibrary({
   $_wasmWorkerRunPostMessage: (e) => {
     // '_wsc' is short for 'wasm call', trying to use an identifier name that
     // will never conflict with user code
-    let data = e.data, wasmCall = data['_wsc'];
+#if ENVIRONMENT_MAY_BE_NODE
+    let data = ENVIRONMENT_IS_NODE ? e : e.data;
+#else
+    let data = e.data;
+#endif
+    let wasmCall = data['_wsc'];
     wasmCall && getWasmTableEntry(wasmCall)(...data['x']);
   },
 
@@ -155,6 +160,12 @@ if (ENVIRONMENT_IS_WASM_WORKER) {
 #endif
       'sb': stackLowestAddress, // sb = stack bottom (lowest stack address, SP points at this when stack is full)
       'sz': stackSize,          // sz = stack size
+#if USE_OFFSET_CONVERTER
+      'wasmOffsetData': wasmOffsetConverter,
+#endif
+#if LOAD_SOURCE_MAP
+      'wasmSourceMapData': wasmSourceMap,
+#endif
     });
     worker.onmessage = _wasmWorkerRunPostMessage;
     return _wasmWorkersID++;
