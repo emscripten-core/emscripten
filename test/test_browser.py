@@ -2949,9 +2949,13 @@ Module["preRun"] = () => {
       self.btest(test_file('browser/test_glfw3.c'), args=['-sUSE_GLFW=3', '-lglfw', '-lGL'] + args + opts, expected='1')
 
   @requires_graphics_hardware
-  def test_glfw_events(self):
-    self.btest(test_file('browser/test_glfw_events.c'), args=['-sUSE_GLFW=2', "-DUSE_GLFW=2", '-lglfw', '-lGL'], expected='1')
-    self.btest(test_file('browser/test_glfw_events.c'), args=['-sUSE_GLFW=3', "-DUSE_GLFW=3", '-lglfw', '-lGL'], expected='1')
+  @parameterized({
+    'proxy': (['-sPROXY_TO_WORKER=1'],),
+    'no_proxy': ([],),
+  })
+  def test_glfw_events(self, args):
+    self.btest(test_file('browser/test_glfw_events.c'), args=['-sUSE_GLFW=2', "-DUSE_GLFW=2", '-lglfw', '-lGL'] + args, expected='1')
+    self.btest(test_file('browser/test_glfw_events.c'), args=['-sUSE_GLFW=3', "-DUSE_GLFW=3", '-lglfw', '-lGL'] + args, expected='1')
 
   @requires_graphics_hardware
   @parameterized({
