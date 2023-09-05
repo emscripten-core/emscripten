@@ -3926,7 +3926,7 @@ def modularize():
   if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
     # Single threaded MINIMAL_RUNTIME programs do not need access to
     # document.currentScript, so a simple export declaration is enough.
-    src = 'var %s=%s' % (settings.EXPORT_NAME, src)
+    src = '/** @nocollapse */ var %s=%s' % (settings.EXPORT_NAME, src)
   else:
     script_url_node = ''
     # When MODULARIZE this JS may be executed later,
