@@ -93,7 +93,7 @@ var SyscallsLibrary = {
 #if ASSERTIONS
       assert(SYSCALLS.varargs != undefined);
 #endif
-      var ret = {{{ makeGetValue('SYSCALLS.varargs', 0, 'i32') }}};
+      var ret = {{{ makeGetValue('+SYSCALLS.varargs', 0, 'i32') }}};
       SYSCALLS.varargs += 4;
 #if SYSCALL_DEBUG
       dbg(`    (raw: "${ret}")`);
