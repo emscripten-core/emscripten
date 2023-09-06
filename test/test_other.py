@@ -13729,6 +13729,15 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     content = read_file('a.out.js')
     self.assertContained(comment, content)
 
+  def test_no_minify_and_later_closure(self):
+    # test that running closure after --minify=0 works
+    self.run_process([EMCC, test_file('hello_libcxx.cpp'), '-O2', '--minify=0'])
+    temp = building.closure_compiler('a.out.js',
+                                     advanced=True,
+                                     extra_closure_args=['--formatting', 'PRETTY_PRINT'])
+    shutil.copyfile(temp, 'closured.js')
+    self.assertContained('hello, world!', self.run_js('closured.js'))
+
   def test_table_base(self):
     create_file('test.c', r'''
     #include <stdio.h>
