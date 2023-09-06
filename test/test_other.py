@@ -7983,7 +7983,9 @@ int main() {
     start = js.find('{', start)
     self.assertNotEqual(start, -1)
     relevant = js[start + 2:end - 1]
-    relevant = relevant.replace(' ', '').replace('"', '').replace("'", '').split(',')
+    relevant = relevant.replace(' ', '').replace('"', '').replace("'", '')
+    relevant = relevant.replace('/**@export*/', '')
+    relevant = relevant.split(',')
     sent = [x.split(':')[0].strip() for x in relevant]
     sent = [x for x in sent if x]
     sent.sort()
@@ -13728,6 +13730,15 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.run_process([EMCC, test_file('hello_world.c'), '--pre-js=pre.js', '-Oz', '--minify=0'])
     content = read_file('a.out.js')
     self.assertContained(comment, content)
+
+  def test_no_minify_and_later_closure(self):
+    # test that running closure after --minify=0 works
+    self.run_process([EMCC, test_file('hello_libcxx.cpp'), '-O2', '--minify=0'])
+    temp = building.closure_compiler('a.out.js',
+                                     advanced=True,
+                                     extra_closure_args=['--formatting', 'PRETTY_PRINT'])
+    shutil.copyfile(temp, 'closured.js')
+    self.assertContained('hello, world!', self.run_js('closured.js'))
 
   def test_table_base(self):
     create_file('test.c', r'''
