@@ -191,7 +191,7 @@ addToLibrary({
     StackSize: {{{ ASYNCIFY_STACK_SIZE }}},
     currData: null,
     // The return value passed to wakeUp() in
-    // Asyncify.handleSleep(function(wakeUp){...}) is stored here,
+    // Asyncify.handleSleep((wakeUp) => {...}) is stored here,
     // so we can return it later from the C function that called
     // Asyncify.handleSleep() after rewinding finishes.
     handleSleepReturnValue: 0,
