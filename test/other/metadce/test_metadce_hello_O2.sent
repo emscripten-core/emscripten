@@ -1,2 +1,2 @@
-emscripten_memcpy_js
-fd_write
+/**@export*/emscripten_memcpy_js
+/**@export*/fd_write

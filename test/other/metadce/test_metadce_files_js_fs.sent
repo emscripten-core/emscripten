@@ -1,4 +1,4 @@
-a
-b
-c
-d
+/**@export*/a
+/**@export*/b
+/**@export*/c
+/**@export*/d
