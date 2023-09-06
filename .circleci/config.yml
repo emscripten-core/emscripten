@@ -10,6 +10,10 @@ executors:
   linux-python:
     docker:
       - image: cimg/python:3.10.7
+  linux-arm64:
+    docker:
+      - image: cimg/base:current
+    resource_class: arm.large
   bionic:
     docker:
       - image: emscripten/emscripten-ci
@@ -745,6 +749,21 @@ jobs:
             core2.test_exceptions_wasm
             core2.test_pthread_unhandledrejection"
       - upload-test-results
+  test-linux-arm64:
+    executor: linux-arm64
+    steps:
+      - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
+      - run: sudo apt-get update
+      - run: sudo apt-get install python3-pip
+      - pip-install
+      - build
+      - run-tests:
+          title: "core2.test_hello_world"
+          test_targets: "core2.test_hello_world"
+      - upload-test-results
   test-other:
     executor: bionic
     environment:
@@ -870,58 +889,4 @@ jobs:
 workflows:
   build-test:
     jobs:
-      - flake8
-      - mypy
-      - eslint
-      - build-docs
-      - build-linux
-      - test-sanity:
-          requires:
-            - build-linux
-      - test-posixtest:
-          requires:
-            - build-linux
-      - test-core0:
-          requires:
-            - build-linux
-      - test-core2:
-          requires:
-            - build-linux
-      - test-core3:
-          requires:
-            - build-linux
-      - test-wasm64:
-          requires:
-            - build-linux
-      - test-wasm64_4gb:
-          requires:
-            - build-linux
-      - test-wasm64l:
-          requires:
-            - build-linux
-      - test-wasm2js1:
-          requires:
-            - build-linux
-      - test-other:
-          requires:
-            - build-linux
-      - test-browser-chrome:
-          requires:
-            - build-linux
-      - test-browser-firefox:
-          requires:
-            - build-linux
-      - test-sockets-chrome:
-          requires:
-            - build-linux
-      - test-jsc
-      - test-spidermonkey
-      - test-node-compat
-      - test-windows
-      - test-mac-arm64
-      - test-mac:
-          # The mac tester also uses the libraries built on the linux builder to
-          # save total build time (this is fine because the libraries are wasm
-          # and do not depend on the underlying build platform)
-          requires:
-            - build-linux
+      - test-linux-arm64
