@@ -93,7 +93,8 @@ var SyscallsLibrary = {
 #if ASSERTIONS
       assert(SYSCALLS.varargs != undefined);
 #endif
-      var ret = {{{ makeGetValue('SYSCALLS.varargs', 0, 'i32') }}};
+      // the `+` prepended here is necessary to convince the JSCompiler that varargs is indeed a number.
+      var ret = {{{ makeGetValue('+SYSCALLS.varargs', 0, 'i32') }}};
       SYSCALLS.varargs += 4;
 #if SYSCALL_DEBUG
       dbg(`    (raw: "${ret}")`);
