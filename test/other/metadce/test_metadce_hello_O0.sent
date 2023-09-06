@@ -1,4 +1,2 @@
-/**@export*/
 emscripten_memcpy_js
-/**@export*/
 fd_write

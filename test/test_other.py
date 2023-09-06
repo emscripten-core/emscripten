@@ -7983,7 +7983,9 @@ int main() {
     start = js.find('{', start)
     self.assertNotEqual(start, -1)
     relevant = js[start + 2:end - 1]
-    relevant = relevant.replace(' ', '').replace('"', '').replace("'", '').split(',')
+    relevant = relevant.replace(' ', '').replace('"', '').replace("'", '')
+    relevant = relevant.replace('/**@export*/', '')
+    relevant = relevant.split(',')
     sent = [x.split(':')[0].strip() for x in relevant]
     sent = [x for x in sent if x]
     sent.sort()

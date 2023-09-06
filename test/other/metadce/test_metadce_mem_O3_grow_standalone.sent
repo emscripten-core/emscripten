@@ -1,4 +1,4 @@
-/**@export*/args_get
-/**@export*/args_sizes_get
-/**@export*/emscripten_notify_memory_growth
-/**@export*/proc_exit
+args_get
+args_sizes_get
+emscripten_notify_memory_growth
+proc_exit
