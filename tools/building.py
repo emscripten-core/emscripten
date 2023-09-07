@@ -681,7 +681,7 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
   if not settings.LINKABLE:
     passes.append('JSDCE' if not expensive_optimizations else 'AJSDCE')
   # Don't minify if we are going to run closure compiler afterwards
-  minify = not settings.MAYBE_CLOSURE_COMPILER
+  minify = settings.MINIFY_WHITESPACE and not settings.MAYBE_CLOSURE_COMPILER
   if minify:
     passes.append('minifyWhitespace')
   if passes:
