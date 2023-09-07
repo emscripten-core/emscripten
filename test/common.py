@@ -2066,7 +2066,10 @@ class BrowserCore(RunnerCore):
     original_args = args
     args = args.copy()
     if not os.path.exists(filename):
-      filename = test_file(filename)
+      fullname = test_file('browser', filename)
+      if not os.path.exists(fullname):
+        fullname = test_file(filename)
+      filename = fullname
     if reference:
       self.reference = reference
       expected = [str(i) for i in range(0, reference_slack + 1)]

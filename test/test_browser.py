@@ -767,7 +767,7 @@ If manually bisecting:
     self.btest_exit(Path('filesystem/dev_random.cpp'))
 
   def test_sdl_swsurface(self):
-    self.btest_exit('browser/test_sdl_swsurface.c', args=['-lSDL', '-lGL'])
+    self.btest_exit('test_sdl_swsurface.c', args=['-lSDL', '-lGL'])
 
   def test_sdl_surface_lock_opts(self):
     # Test Emscripten-specific extensions to optimize SDL_LockSurface and SDL_UnlockSurface.
@@ -801,7 +801,7 @@ If manually bisecting:
   def test_sdl_image_prepare(self):
     # load an image file, get pixel data.
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
-    self.btest('browser/test_sdl_image_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'], also_proxied=True, manually_trigger_reftest=True)
+    self.btest('test_sdl_image_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'], also_proxied=True, manually_trigger_reftest=True)
 
   @parameterized({
     '': ([],),
@@ -813,54 +813,54 @@ If manually bisecting:
   def test_sdl_image_prepare_data(self, args):
     # load an image file, get pixel data.
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
-    self.btest('browser/test_sdl_image_prepare_data.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'] + args, manually_trigger_reftest=True)
+    self.btest('test_sdl_image_prepare_data.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'] + args, manually_trigger_reftest=True)
 
   def test_sdl_image_must_prepare(self):
     # load an image file, get pixel data.
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
-    self.btest('browser/test_sdl_image_must_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.jpg', '-lSDL', '-lGL'], manually_trigger_reftest=True)
+    self.btest('test_sdl_image_must_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.jpg', '-lSDL', '-lGL'], manually_trigger_reftest=True)
 
   def test_sdl_stb_image(self):
     # load an image file, get pixel data.
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
-    self.btest('browser/test_sdl_stb_image.c', reference='screenshot.jpg', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
+    self.btest('test_sdl_stb_image.c', reference='screenshot.jpg', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
   def test_sdl_stb_image_bpp(self):
     # load grayscale image without alpha
     shutil.copyfile(test_file('browser/test_sdl-stb-bpp1.png'), 'screenshot.not')
-    self.btest('browser/test_sdl_stb_image.c', reference='browser/test_sdl-stb-bpp1.png', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
+    self.btest('test_sdl_stb_image.c', reference='browser/test_sdl-stb-bpp1.png', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
     # load grayscale image with alpha
     self.clear()
     shutil.copyfile(test_file('browser/test_sdl-stb-bpp2.png'), 'screenshot.not')
-    self.btest('browser/test_sdl_stb_image.c', reference='browser/test_sdl-stb-bpp2.png', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
+    self.btest('test_sdl_stb_image.c', reference='browser/test_sdl-stb-bpp2.png', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
     # load RGB image
     self.clear()
     shutil.copyfile(test_file('browser/test_sdl-stb-bpp3.png'), 'screenshot.not')
-    self.btest('browser/test_sdl_stb_image.c', reference='browser/test_sdl-stb-bpp3.png', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
+    self.btest('test_sdl_stb_image.c', reference='browser/test_sdl-stb-bpp3.png', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
     # load RGBA image
     self.clear()
     shutil.copyfile(test_file('browser/test_sdl-stb-bpp4.png'), 'screenshot.not')
-    self.btest('browser/test_sdl_stb_image.c', reference='browser/test_sdl-stb-bpp4.png', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
+    self.btest('test_sdl_stb_image.c', reference='browser/test_sdl-stb-bpp4.png', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
   def test_sdl_stb_image_data(self):
     # load an image file, get pixel data.
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
-    self.btest('browser/test_sdl_stb_image_data.c', reference='screenshot.jpg', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
+    self.btest('test_sdl_stb_image_data.c', reference='screenshot.jpg', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
   def test_sdl_stb_image_cleanup(self):
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
-    self.btest_exit('browser/test_sdl_stb_image_cleanup.c', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL', '--memoryprofiler'])
+    self.btest_exit('test_sdl_stb_image_cleanup.c', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL', '--memoryprofiler'])
 
   def test_sdl_canvas(self):
-    self.btest_exit('browser/test_sdl_canvas.c', args=['-sLEGACY_GL_EMULATION', '-lSDL', '-lGL'])
+    self.btest_exit('test_sdl_canvas.c', args=['-sLEGACY_GL_EMULATION', '-lSDL', '-lGL'])
     # some extra coverage
     self.clear()
-    self.btest_exit('browser/test_sdl_canvas.c', args=['-sLEGACY_GL_EMULATION', '-O0', '-sSAFE_HEAP', '-lSDL', '-lGL'])
+    self.btest_exit('test_sdl_canvas.c', args=['-sLEGACY_GL_EMULATION', '-O0', '-sSAFE_HEAP', '-lSDL', '-lGL'])
     self.clear()
-    self.btest_exit('browser/test_sdl_canvas.c', args=['-sLEGACY_GL_EMULATION', '-O2', '-sSAFE_HEAP', '-lSDL', '-lGL'])
+    self.btest_exit('test_sdl_canvas.c', args=['-sLEGACY_GL_EMULATION', '-O2', '-sSAFE_HEAP', '-lSDL', '-lGL'])
 
   def post_manual_reftest(self):
     assert os.path.exists('reftest.js')
@@ -884,7 +884,7 @@ window.close = () => {
 
   def test_sdl_canvas_proxy(self):
     create_file('data.txt', 'datum')
-    self.btest('browser/test_sdl_canvas_proxy.c', reference='browser/test_sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt', '-lSDL', '-lGL'], manual_reference=True, post_build=self.post_manual_reftest)
+    self.btest('test_sdl_canvas_proxy.c', reference='browser/test_sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt', '-lSDL', '-lGL'], manual_reference=True, post_build=self.post_manual_reftest)
 
   @requires_graphics_hardware
   def test_glgears_proxy_jstarget(self):
@@ -902,8 +902,8 @@ window.close = () => {
       Module['arguments'] = ['-0'];
     ''')
 
-    self.btest('browser/test_sdl_canvas_alpha.c', args=['-lSDL', '-lGL'], reference='browser/test_sdl_canvas_alpha.png', reference_slack=12)
-    self.btest('browser/test_sdl_canvas_alpha.c', args=['--pre-js', 'flag_0.js', '-lSDL', '-lGL'], reference='browser/test_sdl_canvas_alpha_flag_0.png', reference_slack=12)
+    self.btest('test_sdl_canvas_alpha.c', args=['-lSDL', '-lGL'], reference='browser/test_sdl_canvas_alpha.png', reference_slack=12)
+    self.btest('test_sdl_canvas_alpha.c', args=['--pre-js', 'flag_0.js', '-lSDL', '-lGL'], reference='browser/test_sdl_canvas_alpha_flag_0.png', reference_slack=12)
 
   @parameterized({
     '': ([False],),
@@ -935,7 +935,7 @@ window.close = () => {
            %s
           }
         ''' % ('setTimeout(function() {' if delay else '', '}, 1);' if delay else '', 'setTimeout(function() {' if delay else '', '}, 1);' if delay else ''))
-        self.btest_exit('browser/test_sdl_key.c', 223092870, args=defines + async_ + ['--pre-js=pre.js', '-lSDL', '-lGL'])
+        self.btest_exit('test_sdl_key.c', 223092870, args=defines + async_ + ['--pre-js=pre.js', '-lSDL', '-lGL'])
 
   def test_sdl_key_proxy(self):
     create_file('pre.js', '''
@@ -974,7 +974,7 @@ keydown(100);keyup(100); // trigger the end
 </body>''')
       create_file('test.html', html)
 
-    self.btest_exit('browser/test_sdl_key_proxy.c', 223092870, args=['--proxy-to-worker', '--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main,_one', '-lSDL', '-lGL'], post_build=post)
+    self.btest_exit('test_sdl_key_proxy.c', 223092870, args=['--proxy-to-worker', '--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main,_one', '-lSDL', '-lGL'], post_build=post)
 
   def test_canvas_focus(self):
     self.btest_exit('canvas_focus.c')
@@ -1042,7 +1042,7 @@ keydown(100);keyup(100); // trigger the end
       }
     ''')
 
-    self.btest_exit('browser/test_sdl_text.c', args=['--pre-js', 'pre.js', '-lSDL', '-lGL'])
+    self.btest_exit('test_sdl_text.c', args=['--pre-js', 'pre.js', '-lSDL', '-lGL'])
 
   def test_sdl_mouse(self):
     create_file('pre.js', '''
@@ -1073,7 +1073,7 @@ keydown(100);keyup(100); // trigger the end
       window['simulateMouseEvent'] = simulateMouseEvent;
     ''')
 
-    self.btest_exit('browser/test_sdl_mouse.c', args=['-O2', '--minify=0', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
+    self.btest_exit('test_sdl_mouse.c', args=['-O2', '--minify=0', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
 
   def test_sdl_mouse_offsets(self):
     create_file('pre.js', '''
@@ -1199,7 +1199,7 @@ keydown(100);keyup(100); // trigger the end
       };
     ''')
 
-    self.btest_exit('browser/test_sdl_joystick.c', args=['-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
+    self.btest_exit('test_sdl_joystick.c', args=['-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
 
   def test_sdl_joystick_2(self):
     # Generates events corresponding to the Editor's Draft of the HTML5 Gamepad API.
@@ -1235,7 +1235,7 @@ keydown(100);keyup(100); // trigger the end
       };
     ''')
 
-    self.btest_exit('browser/test_sdl_joystick.c', args=['-O2', '--minify=0', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
+    self.btest_exit('test_sdl_joystick.c', args=['-O2', '--minify=0', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_glfw_joystick(self):
@@ -1278,7 +1278,7 @@ keydown(100);keyup(100); // trigger the end
       };
     ''')
 
-    self.btest_exit('browser/test_glfw_joystick.c', args=['-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-lGL', '-lglfw3', '-sUSE_GLFW=3'])
+    self.btest_exit('test_glfw_joystick.c', args=['-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-lGL', '-lglfw3', '-sUSE_GLFW=3'])
 
   @requires_graphics_hardware
   def test_webgl_context_attributes(self):
@@ -1507,7 +1507,7 @@ keydown(100);keyup(100); // trigger the end
     secret = str(time.time())
     for stage in [0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5]:
       print(stage)
-      self.btest_exit('browser/test_idbstore.c',
+      self.btest_exit('test_idbstore.c',
                       args=['-lidbstore.js', f'-DSTAGE={stage}', f'-DSECRET="{secret}"'],
                       output_basename=f'idbstore_{stage}')
 
@@ -1524,11 +1524,11 @@ keydown(100);keyup(100); // trigger the end
     if asyncify == 2:
       self.require_jspi()
     secret = str(time.time())
-    self.btest('browser/test_idbstore_sync.c', '6', args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '-sASYNCIFY=' + str(asyncify)])
+    self.btest('test_idbstore_sync.c', '6', args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '-sASYNCIFY=' + str(asyncify)])
 
   def test_idbstore_sync_worker(self):
     secret = str(time.time())
-    self.btest('browser/test_idbstore_sync_worker.c', expected='0', args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '--proxy-to-worker', '-sINITIAL_MEMORY=80MB', '-sASYNCIFY'])
+    self.btest('test_idbstore_sync_worker.c', expected='0', args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '--proxy-to-worker', '-sINITIAL_MEMORY=80MB', '-sASYNCIFY'])
 
   def test_force_exit(self):
     self.btest_exit('force_exit.c', assert_returncode=10)
@@ -1541,98 +1541,98 @@ keydown(100);keyup(100); // trigger the end
         document.dispatchEvent(event);
       }
     ''')
-    self.btest_exit('browser/test_sdl_pumpevents.c', assert_returncode=7, args=['--pre-js', 'pre.js', '-lSDL', '-lGL'])
+    self.btest_exit('test_sdl_pumpevents.c', assert_returncode=7, args=['--pre-js', 'pre.js', '-lSDL', '-lGL'])
 
   def test_sdl_canvas_size(self):
-    self.btest_exit('browser/test_sdl_canvas_size.c',
+    self.btest_exit('test_sdl_canvas_size.c',
                     args=['-O2', '--minify=0', '--shell-file',
                           test_file('browser/test_sdl_canvas_size.html'), '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_gl_read(self):
     # SDL, OpenGL, readPixels
-    self.btest_exit('browser/test_sdl_gl_read.c', args=['-lSDL', '-lGL'])
+    self.btest_exit('test_sdl_gl_read.c', args=['-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_gl_mapbuffers(self):
-    self.btest_exit('browser/test_sdl_gl_mapbuffers.c', args=['-sFULL_ES3', '-lSDL', '-lGL'])
+    self.btest_exit('test_sdl_gl_mapbuffers.c', args=['-sFULL_ES3', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_ogl(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
-    self.btest('browser/test_sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
+    self.btest('test_sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
                args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_ogl_regal(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
-    self.btest('browser/test_sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
+    self.btest('test_sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
                args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sUSE_REGAL', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_ogl_defaultmatrixmode(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
-    self.btest('browser/test_sdl_ogl_defaultMatrixMode.c', reference='screenshot-gray-purple.png', reference_slack=1,
+    self.btest('test_sdl_ogl_defaultMatrixMode.c', reference='screenshot-gray-purple.png', reference_slack=1,
                args=['--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_ogl_p(self):
     # Immediate mode with pointers
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
-    self.btest('browser/test_sdl_ogl_p.c', reference='screenshot-gray.png', reference_slack=1,
+    self.btest('test_sdl_ogl_p.c', reference='screenshot-gray.png', reference_slack=1,
                args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_ogl_proc_alias(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
-    self.btest('browser/test_sdl_ogl_proc_alias.c', reference='screenshot-gray-purple.png', reference_slack=1,
+    self.btest('test_sdl_ogl_proc_alias.c', reference='screenshot-gray-purple.png', reference_slack=1,
                args=['-O2', '-g2', '-sINLINING_LIMIT', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_fog_simple(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
-    self.btest('browser/test_sdl_fog_simple.c', reference='screenshot-fog-simple.png',
+    self.btest('test_sdl_fog_simple.c', reference='screenshot-fog-simple.png',
                args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_fog_negative(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
-    self.btest('browser/test_sdl_fog_negative.c', reference='screenshot-fog-negative.png',
+    self.btest('test_sdl_fog_negative.c', reference='screenshot-fog-negative.png',
                args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_fog_density(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
-    self.btest('browser/test_sdl_fog_density.c', reference='screenshot-fog-density.png',
+    self.btest('test_sdl_fog_density.c', reference='screenshot-fog-density.png',
                args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_fog_exp2(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
-    self.btest('browser/test_sdl_fog_exp2.c', reference='screenshot-fog-exp2.png',
+    self.btest('test_sdl_fog_exp2.c', reference='screenshot-fog-exp2.png',
                args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_fog_linear(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
-    self.btest('browser/test_sdl_fog_linear.c', reference='screenshot-fog-linear.png', reference_slack=1,
+    self.btest('test_sdl_fog_linear.c', reference='screenshot-fog-linear.png', reference_slack=1,
                args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_glfw(self):
     # Using only the `-l` flag
-    self.btest_exit('browser/test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-lglfw', '-lGL'])
+    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-lglfw', '-lGL'])
     # Using only the `-s` flag
-    self.btest_exit('browser/test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-sUSE_GLFW=2', '-lGL'])
+    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-sUSE_GLFW=2', '-lGL'])
     # Using both `-s` and `-l` flags
-    self.btest_exit('browser/test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-sUSE_GLFW=2', '-lglfw', '-lGL'])
+    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-sUSE_GLFW=2', '-lglfw', '-lGL'])
 
   def test_glfw_minimal(self):
-    self.btest_exit('browser/test_glfw_minimal.c', args=['-lglfw', '-lGL'])
-    self.btest_exit('browser/test_glfw_minimal.c', args=['-sUSE_GLFW=2', '-lglfw', '-lGL'])
+    self.btest_exit('test_glfw_minimal.c', args=['-lglfw', '-lGL'])
+    self.btest_exit('test_glfw_minimal.c', args=['-sUSE_GLFW=2', '-lglfw', '-lGL'])
 
   def test_glfw_time(self):
-    self.btest_exit('browser/test_glfw_time.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
+    self.btest_exit('test_glfw_time.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
 
   def _test_egl_base(self, *args):
     self.btest_exit('test_egl.c', args=['-O2', '-lEGL', '-lGL'] + list(args))
@@ -1976,12 +1976,12 @@ keydown(100);keyup(100); // trigger the end
     self.btest('fs_after_main.cpp', '0', args=args)
 
   def test_sdl_quit(self):
-    self.btest_exit('browser/test_sdl_quit.c', args=['-lSDL', '-lGL'])
+    self.btest_exit('test_sdl_quit.c', args=['-lSDL', '-lGL'])
 
   def test_sdl_resize(self):
     # FIXME(https://github.com/emscripten-core/emscripten/issues/12978)
     self.emcc_args.append('-Wno-deprecated-declarations')
-    self.btest_exit('browser/test_sdl_resize.c', args=['-lSDL', '-lGL'])
+    self.btest_exit('test_sdl_resize.c', args=['-lSDL', '-lGL'])
 
   def test_glshaderinfo(self):
     self.btest('glshaderinfo.cpp', '1', args=['-lGL', '-lglut'])
@@ -1997,11 +1997,11 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_sdl_glshader(self):
-    self.btest('browser/test_sdl_glshader.c', reference='browser/test_sdl_glshader.png', args=['-O2', '--closure=1', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
+    self.btest('test_sdl_glshader.c', reference='browser/test_sdl_glshader.png', args=['-O2', '--closure=1', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_sdl_glshader2(self):
-    self.btest_exit('browser/test_sdl_glshader2.c', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], also_proxied=True)
+    self.btest_exit('test_sdl_glshader2.c', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], also_proxied=True)
 
   @requires_graphics_hardware
   def test_gl_glteximage(self):
@@ -2219,29 +2219,29 @@ void *getBindBuffer() {
     self.btest('glgettexenv.c', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], expected='1')
 
   def test_sdl_canvas_blank(self):
-    self.btest('browser/test_sdl_canvas_blank.c', args=['-lSDL', '-lGL'], reference='browser/test_sdl_canvas_blank.png')
+    self.btest('test_sdl_canvas_blank.c', args=['-lSDL', '-lGL'], reference='browser/test_sdl_canvas_blank.png')
 
   def test_sdl_canvas_palette(self):
-    self.btest('browser/test_sdl_canvas_palette.c', args=['-lSDL', '-lGL'], reference='browser/test_sdl_canvas_palette.png')
+    self.btest('test_sdl_canvas_palette.c', args=['-lSDL', '-lGL'], reference='browser/test_sdl_canvas_palette.png')
 
   def test_sdl_canvas_twice(self):
-    self.btest('browser/test_sdl_canvas_twice.c', args=['-lSDL', '-lGL'], reference='browser/test_sdl_canvas_twice.png')
+    self.btest('test_sdl_canvas_twice.c', args=['-lSDL', '-lGL'], reference='browser/test_sdl_canvas_twice.png')
 
   def test_sdl_set_clip_rect(self):
-    self.btest('browser/test_sdl_set_clip_rect.c', args=['-lSDL', '-lGL'], reference='browser/test_sdl_set_clip_rect.png')
+    self.btest('test_sdl_set_clip_rect.c', args=['-lSDL', '-lGL'], reference='browser/test_sdl_set_clip_rect.png')
 
   def test_sdl_maprgba(self):
-    self.btest('browser/test_sdl_maprgba.c', args=['-lSDL', '-lGL'], reference='browser/test_sdl_maprgba.png', reference_slack=3)
+    self.btest('test_sdl_maprgba.c', args=['-lSDL', '-lGL'], reference='browser/test_sdl_maprgba.png', reference_slack=3)
 
   def test_sdl_create_rgb_surface_from(self):
-    self.btest('browser/test_sdl_create_rgb_surface_from.c', args=['-lSDL', '-lGL'], reference='browser/test_sdl_create_rgb_surface_from.png')
+    self.btest('test_sdl_create_rgb_surface_from.c', args=['-lSDL', '-lGL'], reference='browser/test_sdl_create_rgb_surface_from.png')
 
   def test_sdl_rotozoom(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
-    self.btest('browser/test_sdl_rotozoom.c', reference='browser/test_sdl_rotozoom.png', args=['--preload-file', 'screenshot.png', '--use-preload-plugins', '-lSDL', '-lGL'], reference_slack=3)
+    self.btest('test_sdl_rotozoom.c', reference='browser/test_sdl_rotozoom.png', args=['--preload-file', 'screenshot.png', '--use-preload-plugins', '-lSDL', '-lGL'], reference_slack=3)
 
   def test_sdl_gfx_primitives(self):
-    self.btest('browser/test_sdl_gfx_primitives.c', args=['-lSDL', '-lGL'], reference='browser/test_sdl_gfx_primitives.png', reference_slack=1)
+    self.btest('test_sdl_gfx_primitives.c', args=['-lSDL', '-lGL'], reference='browser/test_sdl_gfx_primitives.png', reference_slack=1)
 
   def test_sdl_canvas_palette_2(self):
     create_file('pre.js', '''
@@ -2262,21 +2262,21 @@ void *getBindBuffer() {
       Module['arguments'] = ['-b'];
     ''')
 
-    self.btest('browser/test_sdl_canvas_palette_2.c', reference='browser/test_sdl_canvas_palette_r.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-r.js', '-lSDL', '-lGL'])
-    self.btest('browser/test_sdl_canvas_palette_2.c', reference='browser/test_sdl_canvas_palette_g.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-g.js', '-lSDL', '-lGL'])
-    self.btest('browser/test_sdl_canvas_palette_2.c', reference='browser/test_sdl_canvas_palette_b.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-b.js', '-lSDL', '-lGL'])
+    self.btest('test_sdl_canvas_palette_2.c', reference='browser/test_sdl_canvas_palette_r.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-r.js', '-lSDL', '-lGL'])
+    self.btest('test_sdl_canvas_palette_2.c', reference='browser/test_sdl_canvas_palette_g.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-g.js', '-lSDL', '-lGL'])
+    self.btest('test_sdl_canvas_palette_2.c', reference='browser/test_sdl_canvas_palette_b.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-b.js', '-lSDL', '-lGL'])
 
   def test_sdl_ttf_render_text_solid(self):
-    self.btest('browser/test_sdl_ttf_render_text_solid.c', reference='browser/test_sdl_ttf_render_text_solid.png', args=['-O2', '-sINITIAL_MEMORY=16MB', '-lSDL', '-lGL'])
+    self.btest('test_sdl_ttf_render_text_solid.c', reference='browser/test_sdl_ttf_render_text_solid.png', args=['-O2', '-sINITIAL_MEMORY=16MB', '-lSDL', '-lGL'])
 
   def test_sdl_alloctext(self):
-    self.btest_exit('browser/test_sdl_alloctext.c', args=['-sINITIAL_MEMORY=16MB', '-lSDL', '-lGL'])
+    self.btest_exit('test_sdl_alloctext.c', args=['-sINITIAL_MEMORY=16MB', '-lSDL', '-lGL'])
 
   def test_sdl_surface_refcount(self):
-    self.btest_exit('browser/test_sdl_surface_refcount.c', args=['-lSDL'])
+    self.btest_exit('test_sdl_surface_refcount.c', args=['-lSDL'])
 
   def test_sdl_free_screen(self):
-    self.btest('browser/test_sdl_free_screen.cpp', args=['-lSDL', '-lGL'], reference='htmltest.png')
+    self.btest('test_sdl_free_screen.cpp', args=['-lSDL', '-lGL'], reference='htmltest.png')
 
   @requires_graphics_hardware
   def test_glbegin_points(self):
@@ -2297,7 +2297,7 @@ void *getBindBuffer() {
   @also_with_wasm64
   def test_anisotropic(self):
     shutil.copyfile(test_file('browser/water.dds'), 'water.dds')
-    self.btest('browser/test_anisotropic.c', reference='browser/test_anisotropic.png', reference_slack=2, args=['--preload-file', 'water.dds', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-Wno-incompatible-pointer-types'])
+    self.btest('test_anisotropic.c', reference='browser/test_anisotropic.png', reference_slack=2, args=['--preload-file', 'water.dds', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-Wno-incompatible-pointer-types'])
 
   @requires_graphics_hardware
   def test_tex_nonbyte(self):
@@ -2711,7 +2711,7 @@ Module["preRun"] = () => {
   # Verify bug https://github.com/emscripten-core/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
   # (this only makes sense in the old deprecated -sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0 mode)
   def test_html5_special_event_targets(self):
-    self.btest('browser/html5_special_event_targets.cpp', args=['-lGL'], expected='0')
+    self.btest('html5_special_event_targets.cpp', args=['-lGL'], expected='0')
 
   @requires_graphics_hardware
   def test_html5_webgl_destroy_context(self):
@@ -2837,7 +2837,7 @@ Module["preRun"] = () => {
   def test_sdl_touch(self):
     for opts in [[], ['-O2', '-g1', '--closure=1']]:
       print(opts)
-      self.btest_exit('browser/test_sdl_touch.c', args=opts + ['-DAUTOMATE_SUCCESS=1', '-lSDL', '-lGL'])
+      self.btest_exit('test_sdl_touch.c', args=opts + ['-DAUTOMATE_SUCCESS=1', '-lSDL', '-lGL'])
 
   def test_html5_mouse(self):
     for opts in [[], ['-O2', '-g1', '--closure=1']]:
@@ -2946,12 +2946,12 @@ Module["preRun"] = () => {
   def test_glfw3(self, args):
     for opts in [[], ['-sLEGACY_GL_EMULATION'], ['-Os', '--closure=1']]:
       print(opts)
-      self.btest('browser/test_glfw3.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'] + args + opts, expected='1')
+      self.btest('test_glfw3.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'] + args + opts, expected='1')
 
   @requires_graphics_hardware
   def test_glfw_events(self):
-    self.btest('browser/test_glfw_events.c', args=['-sUSE_GLFW=2', "-DUSE_GLFW=2", '-lglfw', '-lGL'], expected='1')
-    self.btest('browser/test_glfw_events.c', args=['-sUSE_GLFW=3', "-DUSE_GLFW=3", '-lglfw', '-lGL'], expected='1')
+    self.btest('test_glfw_events.c', args=['-sUSE_GLFW=2', "-DUSE_GLFW=2", '-lglfw', '-lGL'], expected='1')
+    self.btest('test_glfw_events.c', args=['-sUSE_GLFW=3', "-DUSE_GLFW=3", '-lglfw', '-lGL'], expected='1')
 
   @requires_graphics_hardware
   @parameterized({
@@ -2964,7 +2964,7 @@ Module["preRun"] = () => {
 
     for dest, dirname, basename in [('screenshot.jpg', '/', 'screenshot.jpg'),
                                     ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
-      self.btest_exit('browser/test_sdl2_image.c', 600, args=args + [
+      self.btest_exit('test_sdl2_image.c', 600, args=args + [
         '-O2',
         '--preload-file', dest,
         '-DSCREENSHOT_DIRNAME="' + dirname + '"',
@@ -2975,7 +2975,7 @@ Module["preRun"] = () => {
   @requires_graphics_hardware
   def test_sdl2_image_jpeg(self):
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpeg')
-    self.btest_exit('browser/test_sdl2_image.c', 600, args=[
+    self.btest_exit('test_sdl2_image.c', 600, args=[
       '--preload-file', 'screenshot.jpeg',
       '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"',
       '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--use-preload-plugins'
@@ -2986,12 +2986,12 @@ Module["preRun"] = () => {
   def test_sdl2_image_formats(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
-    self.btest_exit('browser/test_sdl2_image.c', 512, args=[
+    self.btest_exit('test_sdl2_image.c', 512, args=[
       '--preload-file', 'screenshot.png',
       '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.png"', '-DNO_PRELOADED',
       '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-sSDL2_IMAGE_FORMATS=["png"]'
     ])
-    self.btest_exit('browser/test_sdl2_image.c', 600, args=[
+    self.btest_exit('test_sdl2_image.c', 600, args=[
       '--preload-file', 'screenshot.jpg',
       '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpg"', '-DBITSPERPIXEL=24', '-DNO_PRELOADED',
       '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-sSDL2_IMAGE_FORMATS=["jpg"]'
@@ -3024,7 +3024,7 @@ Module["preRun"] = () => {
       }
     ''')
 
-    self.btest_exit('browser/test_sdl2_key.c', 37182145, args=['-sUSE_SDL=2', '--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main,_one'])
+    self.btest_exit('test_sdl2_key.c', 37182145, args=['-sUSE_SDL=2', '--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main,_one'])
 
   def test_sdl2_text(self):
     create_file('pre.js', '''
@@ -3042,7 +3042,7 @@ Module["preRun"] = () => {
       }
     ''')
 
-    self.btest_exit('browser/test_sdl2_text.c', args=['--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main,_one', '-sUSE_SDL=2'])
+    self.btest_exit('test_sdl2_text.c', args=['--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main,_one', '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_mouse(self):
@@ -3074,7 +3074,7 @@ Module["preRun"] = () => {
       window['simulateMouseEvent'] = simulateMouseEvent;
     ''')
 
-    self.btest_exit('browser/test_sdl2_mouse.c', args=['-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-sUSE_SDL=2'])
+    self.btest_exit('test_sdl2_mouse.c', args=['-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_mouse_offsets(self):
@@ -3156,28 +3156,28 @@ Module["preRun"] = () => {
 
   @requires_threads
   def test_sdl2_threads(self):
-      self.btest_exit('browser/test_sdl2_threads.c', args=['-pthread', '-sUSE_SDL=2', '-sPROXY_TO_PTHREAD'])
+      self.btest_exit('test_sdl2_threads.c', args=['-pthread', '-sUSE_SDL=2', '-sPROXY_TO_PTHREAD'])
 
   @requires_graphics_hardware
   def test_sdl2_glshader(self):
-    self.btest('browser/test_sdl2_glshader.c', reference='browser/test_sdl_glshader.png', args=['-sUSE_SDL=2', '-O2', '--closure=1', '-g1', '-sLEGACY_GL_EMULATION'])
-    self.btest('browser/test_sdl2_glshader.c', reference='browser/test_sdl_glshader.png', args=['-sUSE_SDL=2', '-O2', '-sLEGACY_GL_EMULATION'], also_proxied=True) # XXX closure fails on proxy
+    self.btest('test_sdl2_glshader.c', reference='browser/test_sdl_glshader.png', args=['-sUSE_SDL=2', '-O2', '--closure=1', '-g1', '-sLEGACY_GL_EMULATION'])
+    self.btest('test_sdl2_glshader.c', reference='browser/test_sdl_glshader.png', args=['-sUSE_SDL=2', '-O2', '-sLEGACY_GL_EMULATION'], also_proxied=True) # XXX closure fails on proxy
 
   @requires_graphics_hardware
   def test_sdl2_canvas_blank(self):
-    self.btest('browser/test_sdl2_canvas_blank.c', reference='browser/test_sdl_canvas_blank.png', args=['-sUSE_SDL=2'])
+    self.btest('test_sdl2_canvas_blank.c', reference='browser/test_sdl_canvas_blank.png', args=['-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_canvas_palette(self):
-    self.btest('browser/test_sdl2_canvas_palette.c', reference='browser/test_sdl_canvas_palette.png', args=['-sUSE_SDL=2'])
+    self.btest('test_sdl2_canvas_palette.c', reference='browser/test_sdl_canvas_palette.png', args=['-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_canvas_twice(self):
-    self.btest('browser/test_sdl2_canvas_twice.c', reference='browser/test_sdl_canvas_twice.png', args=['-sUSE_SDL=2'])
+    self.btest('test_sdl2_canvas_twice.c', reference='browser/test_sdl_canvas_twice.png', args=['-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_gfx(self):
-    self.btest('browser/test_sdl2_gfx.cpp', args=['-sUSE_SDL=2', '-sUSE_SDL_GFX=2'], reference='browser/test_sdl2_gfx.png', reference_slack=2)
+    self.btest('test_sdl2_gfx.cpp', args=['-sUSE_SDL=2', '-sUSE_SDL_GFX=2'], reference='browser/test_sdl2_gfx.png', reference_slack=2)
 
   @requires_graphics_hardware
   def test_sdl2_canvas_palette_2(self):
@@ -3193,29 +3193,29 @@ Module["preRun"] = () => {
       Module['arguments'] = ['-b'];
     ''')
 
-    self.btest('browser/test_sdl2_canvas_palette_2.c', reference='browser/test_sdl_canvas_palette_r.png', args=['-sUSE_SDL=2', '--pre-js', 'args-r.js'])
-    self.btest('browser/test_sdl2_canvas_palette_2.c', reference='browser/test_sdl_canvas_palette_g.png', args=['-sUSE_SDL=2', '--pre-js', 'args-g.js'])
-    self.btest('browser/test_sdl2_canvas_palette_2.c', reference='browser/test_sdl_canvas_palette_b.png', args=['-sUSE_SDL=2', '--pre-js', 'args-b.js'])
+    self.btest('test_sdl2_canvas_palette_2.c', reference='browser/test_sdl_canvas_palette_r.png', args=['-sUSE_SDL=2', '--pre-js', 'args-r.js'])
+    self.btest('test_sdl2_canvas_palette_2.c', reference='browser/test_sdl_canvas_palette_g.png', args=['-sUSE_SDL=2', '--pre-js', 'args-g.js'])
+    self.btest('test_sdl2_canvas_palette_2.c', reference='browser/test_sdl_canvas_palette_b.png', args=['-sUSE_SDL=2', '--pre-js', 'args-b.js'])
 
   def test_sdl2_swsurface(self):
-    self.btest_exit('browser/test_sdl2_swsurface.c', args=['-sUSE_SDL=2', '-sINITIAL_MEMORY=64MB'])
+    self.btest_exit('test_sdl2_swsurface.c', args=['-sUSE_SDL=2', '-sINITIAL_MEMORY=64MB'])
 
   @requires_graphics_hardware
   def test_sdl2_image_prepare(self):
     # load an image file, get pixel data.
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
-    self.btest('browser/test_sdl2_image_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2'], manually_trigger_reftest=True)
+    self.btest('test_sdl2_image_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2'], manually_trigger_reftest=True)
 
   @requires_graphics_hardware
   def test_sdl2_image_prepare_data(self):
     # load an image file, get pixel data.
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
-    self.btest('browser/test_sdl2_image_prepare_data.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2'], manually_trigger_reftest=True)
+    self.btest('test_sdl2_image_prepare_data.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2'], manually_trigger_reftest=True)
 
   @requires_graphics_hardware
   def test_sdl2_canvas_proxy(self):
     create_file('data.txt', 'datum')
-    self.btest('browser/test_sdl2_canvas_proxy.c', reference='browser/test_sdl2_canvas.png', args=['-sUSE_SDL=2', '--proxy-to-worker', '--preload-file', 'data.txt', '-sGL_TESTING'], manual_reference=True, post_build=self.post_manual_reftest)
+    self.btest('test_sdl2_canvas_proxy.c', reference='browser/test_sdl2_canvas.png', args=['-sUSE_SDL=2', '--proxy-to-worker', '--preload-file', 'data.txt', '-sGL_TESTING'], manual_reference=True, post_build=self.post_manual_reftest)
 
   def test_sdl2_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
@@ -3225,74 +3225,74 @@ Module["preRun"] = () => {
         document.dispatchEvent(event);
       }
     ''')
-    self.btest_exit('browser/test_sdl2_pumpevents.c', args=['--pre-js', 'pre.js', '-sUSE_SDL=2'])
+    self.btest_exit('test_sdl2_pumpevents.c', args=['--pre-js', 'pre.js', '-sUSE_SDL=2'])
 
   def test_sdl2_timer(self):
-    self.btest_exit('browser/test_sdl2_timer.c', args=['-sUSE_SDL=2'])
+    self.btest_exit('test_sdl2_timer.c', args=['-sUSE_SDL=2'])
 
   def test_sdl2_canvas_size(self):
-    self.btest_exit('browser/test_sdl2_canvas_size.c', args=['-sUSE_SDL=2'])
+    self.btest_exit('test_sdl2_canvas_size.c', args=['-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_gl_read(self):
     # SDL, OpenGL, readPixels
-    self.btest_exit('browser/test_sdl2_gl_read.c', args=['-sUSE_SDL=2'])
+    self.btest_exit('test_sdl2_gl_read.c', args=['-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_glmatrixmode_texture(self):
-    self.btest('browser/test_sdl2_glmatrixmode_texture.c', reference='browser/test_sdl2_glmatrixmode_texture.png',
+    self.btest('test_sdl2_glmatrixmode_texture.c', reference='browser/test_sdl2_glmatrixmode_texture.png',
                args=['-sLEGACY_GL_EMULATION', '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_gldrawelements(self):
-    self.btest('browser/test_sdl2_gldrawelements.c', reference='browser/test_sdl2_gldrawelements.png',
+    self.btest('test_sdl2_gldrawelements.c', reference='browser/test_sdl2_gldrawelements.png',
                args=['-sLEGACY_GL_EMULATION', '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_glclipplane_gllighting(self):
-    self.btest('browser/test_sdl2_glclipplane_gllighting.c', reference='browser/test_sdl2_glclipplane_gllighting.png',
+    self.btest('test_sdl2_glclipplane_gllighting.c', reference='browser/test_sdl2_glclipplane_gllighting.png',
                args=['-sLEGACY_GL_EMULATION', '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_glalphatest(self):
-    self.btest('browser/test_sdl2_glalphatest.c', reference='browser/test_sdl2_glalphatest.png',
+    self.btest('test_sdl2_glalphatest.c', reference='browser/test_sdl2_glalphatest.png',
                args=['-sLEGACY_GL_EMULATION', '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_fog_simple(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
-    self.btest('browser/test_sdl2_fog_simple.c', reference='screenshot-fog-simple.png',
+    self.btest('test_sdl2_fog_simple.c', reference='screenshot-fog-simple.png',
                args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   @requires_graphics_hardware
   def test_sdl2_fog_negative(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
-    self.btest('browser/test_sdl2_fog_negative.c', reference='screenshot-fog-negative.png',
+    self.btest('test_sdl2_fog_negative.c', reference='screenshot-fog-negative.png',
                args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   @requires_graphics_hardware
   def test_sdl2_fog_density(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
-    self.btest('browser/test_sdl2_fog_density.c', reference='screenshot-fog-density.png',
+    self.btest('test_sdl2_fog_density.c', reference='screenshot-fog-density.png',
                args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   @requires_graphics_hardware
   def test_sdl2_fog_exp2(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
-    self.btest('browser/test_sdl2_fog_exp2.c', reference='screenshot-fog-exp2.png',
+    self.btest('test_sdl2_fog_exp2.c', reference='screenshot-fog-exp2.png',
                args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   @requires_graphics_hardware
   def test_sdl2_fog_linear(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
-    self.btest('browser/test_sdl2_fog_linear.c', reference='screenshot-fog-linear.png', reference_slack=1,
+    self.btest('test_sdl2_fog_linear.c', reference='screenshot-fog-linear.png', reference_slack=1,
                args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   def test_sdl2_unwasteful(self):
-    self.btest_exit('browser/test_sdl2_unwasteful.cpp', args=['-sUSE_SDL=2', '-O1'])
+    self.btest_exit('test_sdl2_unwasteful.cpp', args=['-sUSE_SDL=2', '-O1'])
 
   def test_sdl2_canvas_write(self):
-    self.btest_exit('browser/test_sdl2_canvas_write.cpp', args=['-sUSE_SDL=2'])
+    self.btest_exit('test_sdl2_canvas_write.cpp', args=['-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_gl_frames_swap(self):
@@ -3302,29 +3302,29 @@ Module["preRun"] = () => {
       html2 = html.replace('''Module['postRun'] = doReftest;''', '') # we don't want the very first frame
       assert html != html2
       create_file('test.html', html2)
-    self.btest('browser/test_sdl2_gl_frames_swap.c', reference='browser/test_sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-sGL_TESTING', '-sUSE_SDL=2'], manual_reference=True, post_build=post_build)
+    self.btest('test_sdl2_gl_frames_swap.c', reference='browser/test_sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-sGL_TESTING', '-sUSE_SDL=2'], manual_reference=True, post_build=post_build)
 
   @requires_graphics_hardware
   def test_sdl2_ttf(self):
     shutil.copy2(test_file('freetype/LiberationSansBold.ttf'), self.get_dir())
-    self.btest('browser/test_sdl2_ttf.c', reference='browser/test_sdl2_ttf.png',
+    self.btest('test_sdl2_ttf.c', reference='browser/test_sdl2_ttf.png',
                args=['-O2', '-sUSE_SDL=2', '-sUSE_SDL_TTF=2', '--embed-file', 'LiberationSansBold.ttf'])
 
   @requires_graphics_hardware
   def test_sdl2_ttf_rtl(self):
     shutil.copy2(test_file('third_party/notofont/NotoNaskhArabic-Regular.ttf'), self.get_dir())
-    self.btest('browser/test_sdl2_ttf_rtl.c', reference='browser/test_sdl2_ttf_rtl.png',
+    self.btest('test_sdl2_ttf_rtl.c', reference='browser/test_sdl2_ttf_rtl.png',
                args=['-O2', '-sUSE_SDL=2', '-sUSE_SDL_TTF=2', '--embed-file', 'NotoNaskhArabic-Regular.ttf'])
 
   def test_sdl2_custom_cursor(self):
     shutil.copyfile(test_file('cursor.bmp'), 'cursor.bmp')
-    self.btest_exit('browser/test_sdl2_custom_cursor.c', args=['--preload-file', 'cursor.bmp', '-sUSE_SDL=2'])
+    self.btest_exit('test_sdl2_custom_cursor.c', args=['--preload-file', 'cursor.bmp', '-sUSE_SDL=2'])
 
   def test_sdl2_misc(self):
-    self.btest_exit('browser/test_sdl2_misc.c', args=['-sUSE_SDL=2'])
+    self.btest_exit('test_sdl2_misc.c', args=['-sUSE_SDL=2'])
 
   def test_sdl2_misc_main_module(self):
-    self.btest_exit('browser/test_sdl2_misc.c', args=['-sUSE_SDL=2', '-sMAIN_MODULE'])
+    self.btest_exit('test_sdl2_misc.c', args=['-sUSE_SDL=2', '-sMAIN_MODULE'])
 
   def test_sdl2_misc_via_object(self):
     self.run_process([EMCC, '-c', test_file('browser/test_sdl2_misc.c'), '-sUSE_SDL=2', '-o', 'test.o'])
@@ -3338,7 +3338,7 @@ Module["preRun"] = () => {
   @requires_sound_hardware
   def test_sdl2_mixer_wav(self, flags):
     shutil.copyfile(test_file('sounds/the_entertainer.wav'), 'sound.wav')
-    self.btest_exit('browser/test_sdl2_mixer_wav.c', args=['--preload-file', 'sound.wav', '-sINITIAL_MEMORY=33554432'] + flags)
+    self.btest_exit('test_sdl2_mixer_wav.c', args=['--preload-file', 'sound.wav', '-sINITIAL_MEMORY=33554432'] + flags)
 
   @parameterized({
     'wav': ([],         '0',            'the_entertainer.wav'),
@@ -3351,7 +3351,7 @@ Module["preRun"] = () => {
   @requires_sound_hardware
   def test_sdl2_mixer_music(self, formats, flags, music_name):
     shutil.copyfile(test_file('sounds', music_name), music_name)
-    self.btest_exit('browser/test_sdl2_mixer_music.c', args=[
+    self.btest_exit('test_sdl2_mixer_music.c', args=[
       '--preload-file', music_name,
       '-DSOUND_PATH=' + json.dumps(music_name),
       '-DFLAGS=' + flags,
@@ -3390,30 +3390,30 @@ Module["preRun"] = () => {
 
     for opts in [0, 1, 2, 3]:
       print(opts)
-      self.btest_exit('browser/async.cpp', args=['-O' + str(opts), '-g2'] + args)
+      self.btest_exit('async.cpp', args=['-O' + str(opts), '-g2'] + args)
 
   def test_asyncify_tricky_function_sig(self):
-    self.btest('browser/test_asyncify_tricky_function_sig.cpp', '85', args=['-sASYNCIFY_ONLY=[foo(char.const*?.int#),foo2(),main,__original_main]', '-sASYNCIFY'])
+    self.btest('test_asyncify_tricky_function_sig.cpp', '85', args=['-sASYNCIFY_ONLY=[foo(char.const*?.int#),foo2(),main,__original_main]', '-sASYNCIFY'])
 
   @requires_threads
   def test_async_in_pthread(self):
-    self.btest_exit('browser/async.cpp', args=['-sASYNCIFY', '-pthread', '-sPROXY_TO_PTHREAD', '-g'])
+    self.btest_exit('async.cpp', args=['-sASYNCIFY', '-pthread', '-sPROXY_TO_PTHREAD', '-g'])
 
   def test_async_2(self):
     # Error.stackTraceLimit default to 10 in chrome but this test relies on more
     # than 40 stack frames being reported.
     create_file('pre.js', 'Error.stackTraceLimit = 80;\n')
-    self.btest_exit('browser/async_2.cpp', args=['-O3', '--pre-js', 'pre.js', '-sASYNCIFY', '-sSTACK_SIZE=1MB'])
+    self.btest_exit('async_2.cpp', args=['-O3', '--pre-js', 'pre.js', '-sASYNCIFY', '-sSTACK_SIZE=1MB'])
 
   def test_async_virtual(self):
     for opts in [0, 3]:
       print(opts)
-      self.btest_exit('browser/async_virtual.cpp', args=['-O' + str(opts), '-profiling', '-sASYNCIFY'])
+      self.btest_exit('async_virtual.cpp', args=['-O' + str(opts), '-profiling', '-sASYNCIFY'])
 
   def test_async_virtual_2(self):
     for opts in [0, 3]:
       print(opts)
-      self.btest_exit('browser/async_virtual_2.cpp', args=['-O' + str(opts), '-sASSERTIONS', '-sSAFE_HEAP', '-profiling', '-sASYNCIFY'])
+      self.btest_exit('async_virtual_2.cpp', args=['-O' + str(opts), '-sASSERTIONS', '-sSAFE_HEAP', '-profiling', '-sASYNCIFY'])
 
   # Test async sleeps in the presence of invoke_* calls, which can happen with
   # longjmp or exceptions.
@@ -3422,16 +3422,16 @@ Module["preRun"] = () => {
     'O3': (['-O3'],), # noqa
   })
   def test_async_longjmp(self, args):
-    self.btest_exit('browser/async_longjmp.cpp', args=args + ['-sASYNCIFY'])
+    self.btest_exit('async_longjmp.cpp', args=args + ['-sASYNCIFY'])
 
   def test_async_mainloop(self):
     for opts in [0, 3]:
       print(opts)
-      self.btest_exit('browser/async_mainloop.cpp', args=['-O' + str(opts), '-sASYNCIFY'])
+      self.btest_exit('async_mainloop.cpp', args=['-O' + str(opts), '-sASYNCIFY'])
 
   @requires_sound_hardware
   def test_sdl_audio_beep_sleep(self):
-    self.btest_exit('browser/test_sdl_audio_beep_sleep.cpp', args=['-Os', '-sASSERTIONS', '-sDISABLE_EXCEPTION_CATCHING=0', '-profiling', '-sSAFE_HEAP', '-lSDL', '-sASYNCIFY'], timeout=90)
+    self.btest_exit('test_sdl_audio_beep_sleep.cpp', args=['-Os', '-sASSERTIONS', '-sDISABLE_EXCEPTION_CATCHING=0', '-profiling', '-sSAFE_HEAP', '-lSDL', '-sASYNCIFY'], timeout=90)
 
   def test_mainloop_reschedule(self):
     self.btest('mainloop_reschedule.cpp', '1', args=['-Os', '-sASYNCIFY'])
@@ -3440,7 +3440,7 @@ Module["preRun"] = () => {
     self.btest('mainloop_infloop.cpp', '1', args=['-sASYNCIFY'])
 
   def test_async_iostream(self):
-    self.btest('browser/async_iostream.cpp', '1', args=['-sASYNCIFY'])
+    self.btest('async_iostream.cpp', '1', args=['-sASYNCIFY'])
 
   # Test an async return value. The value goes through a custom JS library
   # method that uses asyncify, and therefore it needs to be declared in
@@ -3457,10 +3457,10 @@ Module["preRun"] = () => {
   def test_async_returnvalue(self, args):
     if '@' in str(args):
       create_file('filey.txt', 'sync_tunnel\nsync_tunnel_bool\n')
-    self.btest('browser/async_returnvalue.cpp', '0', args=['-sASYNCIFY', '-sASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser/async_returnvalue.js')] + args + ['-sASSERTIONS'])
+    self.btest('async_returnvalue.cpp', '0', args=['-sASYNCIFY', '-sASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser/async_returnvalue.js')] + args + ['-sASSERTIONS'])
 
   def test_async_bad_list(self):
-    self.btest('browser/async_bad_list.cpp', '0', args=['-sASYNCIFY', '-sASYNCIFY_ONLY=[waka]', '--profiling'])
+    self.btest('async_bad_list.cpp', '0', args=['-sASYNCIFY', '-sASYNCIFY_ONLY=[waka]', '--profiling'])
 
   # Tests that when building with -sMINIMAL_RUNTIME, the build can use -sMODULARIZE as well.
   def test_minimal_runtime_modularize(self):
@@ -4414,11 +4414,11 @@ Module["preRun"] = () => {
       (['-O3', '-sWASM_ASYNC_COMPILATION=0'], 0),
     ]:
       print(opts, returncode)
-      self.btest_exit('browser/test_async_compile.c', assert_returncode=returncode, args=common_args + opts)
+      self.btest_exit('test_async_compile.c', assert_returncode=returncode, args=common_args + opts)
     # Ensure that compilation still works and is async without instantiateStreaming available
     no_streaming = ' <script> WebAssembly.instantiateStreaming = undefined;</script>'
     shell_with_script('shell.html', 'shell.html', no_streaming + script)
-    self.btest_exit('browser/test_async_compile.c', assert_returncode=1, args=common_args)
+    self.btest_exit('test_async_compile.c', assert_returncode=1, args=common_args)
 
   # Test that implementing Module.instantiateWasm() callback works.
   @parameterized({
@@ -5178,7 +5178,7 @@ Module["preRun"] = () => {
 
   @requires_threads
   def test_offset_converter(self, *args):
-    self.btest_exit('browser/test_offset_converter.c', assert_returncode=1, args=['-sUSE_OFFSET_CONVERTER', '-gsource-map', '-sPROXY_TO_PTHREAD', '-pthread'])
+    self.btest_exit('test_offset_converter.c', assert_returncode=1, args=['-sUSE_OFFSET_CONVERTER', '-gsource-map', '-sPROXY_TO_PTHREAD', '-pthread'])
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self, *args):
@@ -5500,7 +5500,7 @@ Module["preRun"] = () => {
 
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_emmalloc_memgrowth(self, *args):
-    self.btest('browser/emmalloc_memgrowth.cpp', expected='0', args=['-sMALLOC=emmalloc', '-sALLOW_MEMORY_GROWTH=1', '-sABORTING_MALLOC=0', '-sASSERTIONS=2', '-sMINIMAL_RUNTIME=1', '-sMAXIMUM_MEMORY=4GB'])
+    self.btest('emmalloc_memgrowth.cpp', expected='0', args=['-sMALLOC=emmalloc', '-sALLOW_MEMORY_GROWTH=1', '-sABORTING_MALLOC=0', '-sASSERTIONS=2', '-sMINIMAL_RUNTIME=1', '-sMAXIMUM_MEMORY=4GB'])
 
   @no_firefox('no 4GB support yet')
   @requires_v8
@@ -5568,7 +5568,7 @@ Module["preRun"] = () => {
                     extra_tries=0)
 
   def test_assert_failure(self):
-    self.btest('browser/test_assert_failure.c', 'abort:Assertion failed: false && "this is a test"')
+    self.btest('test_assert_failure.c', 'abort:Assertion failed: false && "this is a test"')
 
   def test_pthread_unhandledrejection(self):
     # Check that an unhandled promise rejection is propagated to the main thread
