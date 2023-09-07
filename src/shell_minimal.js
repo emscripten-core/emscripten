@@ -6,7 +6,7 @@
 
 #if MODULARIZE
 var Module = moduleArg;
-#elif MAYBE_CLOSURE_COMPILER
+#elif USE_CLOSURE_COMPILER
 // if (!Module)` is crucial for Closure Compiler here as it will
 // otherwise replace every `Module` occurrence with the object below
 var /** @type{Object} */ Module;
