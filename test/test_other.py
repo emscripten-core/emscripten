@@ -939,12 +939,21 @@ f.close()
         self.assertContained(version, out)
 
   @parameterized({
-    '': [[]],
-    'pthreads': [['-DCMAKE_CXX_FLAGS=-pthread', '-DCMAKE_C_FLAGS=-pthread']],
+    '': [None],
+    'wasm64': ['-sMEMORY64'],
+    'pthreads': ['-pthread'],
   })
-  def test_cmake_check_type_size(self, flags):
-    cmd = [EMCMAKE, 'cmake', test_file('cmake/check_type_size')] + flags
-    self.run_process(cmd)
+  def test_cmake_check_type_size(self, cflag):
+    if cflag == '-sMEMORY64':
+      self.require_wasm64()
+    cmd = [EMCMAKE, 'cmake', test_file('cmake/check_type_size')]
+    if cflag:
+      cmd += [f'-DCMAKE_CXX_FLAGS={cflag}', f'-DCMAKE_C_FLAGS={cflag}']
+    output = self.run_process(cmd, stdout=PIPE).stdout
+    if cflag == '-sMEMORY64':
+      self.assertContained('CMAKE_SIZEOF_VOID_P -> 8', output)
+    else:
+      self.assertContained('CMAKE_SIZEOF_VOID_P -> 4', output)
 
     # Verify that this test works without needing to run node.  We do this by breaking node
     # execution.
