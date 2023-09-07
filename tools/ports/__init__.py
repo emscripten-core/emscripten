@@ -390,8 +390,8 @@ def get_libs(settings):
   for port in dependency_order(needed):
     if port.needed(settings):
       port.linker_setup(Ports, settings)
-      # ports return their output files, which will be linked, or a txt file
-      ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
+      # port.get returns a list of libraries to link
+      ret += port.get(Ports, settings, shared)
 
   ret.reverse()
   return ret
