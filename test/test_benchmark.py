@@ -308,7 +308,7 @@ class AndroidBenchmarker(Benchmarker):
       cmd += shared_args
     if native_args:
       cmd += native_args
-    cmd += clang_native.get_clang_native_args()
+    cmd += android_args
     print('compile src to wasm: ' + shlex.join(cmd))
     run_process(cmd, env=clang_native.get_clang_native_env())
 
