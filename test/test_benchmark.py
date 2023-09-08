@@ -244,6 +244,7 @@ class EmscriptenBenchmarker(Benchmarker):
     return ret
 
 
+# LLVM should point to a build with the Android patches of LLVM
 # WASM_LIBRARY_PATH should be something like wasm_ndk/libs
 # WASM_PLATFORM_SPECIFIC_INCLUDE_PATH should be slt wasm_ndk/include/wasm64
 # WABT should point to a build of the Android fork of wabt
@@ -254,6 +255,7 @@ class AndroidBenchmarker(Benchmarker):
     self.binaryen_opts = binaryen_opts or []
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
+    LLVM = os.environ['LLVM']
     WASM_LIBRARY_PATH = os.environ['WASM_LIBRARY_PATH']
     WASM_PLATFORM_SPECIFIC_INCLUDE_PATH = os.environ['WASM_PLATFORM_SPECIFIC_INCLUDE_PATH']
     WABT = os.environ['WABT']
@@ -275,26 +277,25 @@ class AndroidBenchmarker(Benchmarker):
       '-static-libstdc++',
       '-Wl,--strip-debug',
     ]
-    self.parent = parent
+
+    cc = os.path.join(LLVM, 'clang')
+    cxx = os.path.join(LLVM, 'clang++')
+
     if lib_builder:
       # build as "native" (so no emcc env stuff), but with all the android stuff
       # set in the env
       android_args = android_args + lib_builder(self.name, native=True, env_init={
-        'CC': 'clang',
-        'CXX': 'clang++',
-        'LD': 'clang',
+        'CC': cc,
+        'CXX': cxx,
+        'LD': cc,
         'NM': 'llvm-nm',
-        'LDSHARED': 'clang',
+        'LDSHARED': cc,
         'CFLAGS': shlex.split(android_args),
         'CXXFLAGS': '-Wno-c++11-narrowing'
       })
 
     # Compile source to wasm
-    if filename.endswith('.c'):
-      compiler = 'clang'
-    else:
-      compiler = 'clang++'
-    compiler = self.cxx if filename.endswith('cpp') else self.cc
+    compiler = cc if filename.endswith('.c') else cxx
     wasm = filename + '.wasm-nosandbox'
     cmd = compiler + [
       '-fno-math-errno',
