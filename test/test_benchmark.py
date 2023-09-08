@@ -312,7 +312,7 @@ class AndroidBenchmarker(Benchmarker):
 
     # Compile wasm to C
     c = wasm + '.c'
-    cmd = [f'{WABT}/build/wasm2c', 'wasm', '-o', c, '--experimental', '--disable-sandbox',
+    cmd = [f'{WABT}/build/wasm2c', wasm, '-o', c, '--experimental', '--disable-sandbox',
            '--enable-memory64']
     run_process(cmd, env=clang_native.get_clang_native_env())
 
