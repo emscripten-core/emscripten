@@ -285,7 +285,7 @@ class AndroidBenchmarker(Benchmarker):
         'LD': 'clang',
         'NM': 'llvm-nm',
         'LDSHARED': 'clang',
-        'CFLAGS': shlex.split(android_args)
+        'CFLAGS': shlex.split(android_args),
         'CXXFLAGS': '-Wno-c++11-narrowing'
       })
 
