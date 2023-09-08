@@ -244,6 +244,90 @@ class EmscriptenBenchmarker(Benchmarker):
     return ret
 
 
+# WASM_LIBRARY_PATH should be something like wasm_ndk/libs
+# WASM_PLATFORM_SPECIFIC_INCLUDE_PATH should be slt wasm_ndk/include/wasm64
+# WABT should point to a build of the Android fork of wabt
+class AndroidBenchmarker(Benchmarker):
+  def __init__(self, name, engine, args=None, binaryen_opts=None):
+    self.name = name
+    self.engine = engine
+    self.args = args or [OPTIMIZATIONS]
+    self.binaryen_opts = binaryen_opts or []
+
+  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
+    WASM_LIBRARY_PATH = os.environ['WASM_LIBRARY_PATH']
+    WASM_PLATFORM_SPECIFIC_INCLUDE_PATH = os.environ['WASM_PLATFORM_SPECIFIC_INCLUDE_PATH']
+    WABT = os.environ['WABT']
+
+    android_args = [
+      '-DANDROID',
+      '--no-standard-libraries',
+      '-mllvm',
+      '-wasm-omit-64-bit-function-pointer-cast',
+      '-fvisibility=default',
+      '-mno-bulk-memory',
+      '--target=wasm64-unknown-unknown',
+      f'-I{WASM_PLATFORM_SPECIFIC_INCLUDE_PATH}',
+      '-fno-math-errno',
+      '-Wl,--emit-relocs',
+      '-Wl,--no-entry',
+      '-mno-bulk-memory',
+      f'-Wl,--allow-undefined-file={WASM_LIBRARY_PATH}/libc.txt',
+      '-static-libstdc++',
+    ]
+    self.parent = parent
+    if lib_builder:
+      # build as "native" (so no emcc env stuff), but with all the android stuff
+      # set in the env
+      android_args = android_args + lib_builder(self.name, native=True, env_init={
+        'CC': 'clang',
+        'CXX': 'clang++',
+        'LD': 'clang',
+        'NM': 'llvm-nm',
+        'LDSHARED': 'clang',
+        'CFLAGS': shlex.split(android_args)
+        'CXXFLAGS': '-Wno-c++11-narrowing'
+      })
+
+    # Compile source to wasm
+    if filename.endswith('.c'):
+      compiler = 'clang'
+    else:
+      compiler = 'clang++'
+    compiler = self.cxx if filename.endswith('cpp') else self.cc
+    wasm = filename + '.wasm-nosandbox'
+    cmd = compiler + [
+      '-fno-math-errno',
+      filename,
+      '-o', wasm
+    ] + self.args + shared_args + native_args + clang_native.get_clang_native_args()
+    run_process(cmd, env=clang_native.get_clang_native_env())
+
+    # Compile wasm to C
+    c = wasm + '.c'
+    cmd = [f'{WABT}wasm2c', 'wasm', '-o', c, '--experimental', '--disable-sandbox',
+           '--enable-memory64']
+    run_process(cmd, env=clang_native.get_clang_native_env())
+
+    # Compile C to native
+    native = c + '.native'
+    cmd = ['clang', OPTIMIZATIONS, c, '-o', native]
+    run_process(cmd, env=clang_native.get_clang_native_env())
+
+    final = os.path.dirname(filename) + os.path.sep + self.name + '_' + os.path.basename(filename) + '.native'
+    shutil.move(native, final)
+    self.filename = final
+
+  def run(self, args):
+    return run_process([self.filename] + args, stdout=PIPE, stderr=PIPE, check=False).stdout
+
+  def get_output_files(self):
+    return [self.filename]
+
+  def get_size_text(self):
+    return 'dynamically linked - libc etc. are not included!'
+
+
 CHEERP_BIN = '/opt/cheerp/bin/'
 
 
