@@ -274,6 +274,7 @@ class AndroidBenchmarker(Benchmarker):
       '-mno-bulk-memory',
       f'-Wl,--allow-undefined-file={WASM_LIBRARY_PATH}/libc.txt',
       '-static-libstdc++',
+      '-Wl,--strip-debug',
     ]
     self.parent = parent
     if lib_builder:
