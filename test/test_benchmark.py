@@ -248,9 +248,8 @@ class EmscriptenBenchmarker(Benchmarker):
 # WASM_PLATFORM_SPECIFIC_INCLUDE_PATH should be slt wasm_ndk/include/wasm64
 # WABT should point to a build of the Android fork of wabt
 class AndroidBenchmarker(Benchmarker):
-  def __init__(self, name, engine, args=None, binaryen_opts=None):
+  def __init__(self, name, args=None, binaryen_opts=None):
     self.name = name
-    self.engine = engine
     self.args = args or [OPTIMIZATIONS]
     self.binaryen_opts = binaryen_opts or []
 
@@ -400,6 +399,7 @@ benchmarkers: List[Benchmarker] = []
 
 if not common.EMTEST_FORCE64:
   benchmarkers += [
+    AndroidBenchmarker('android'),
     NativeBenchmarker('clang', [CLANG_CC], [CLANG_CXX]),
     # NativeBenchmarker('gcc',   ['gcc', '-no-pie'],  ['g++', '-no-pie'])
   ]
