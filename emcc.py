@@ -2972,6 +2972,15 @@ def phase_linker_setup(options, state, newargs):
 
   settings.MINIFY_WHITESPACE = settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0 and not options.no_minify
 
+  # Closure might be run if we run it ourselves, or if whitespace is not being
+  # minifed. In the latter case we keep both whitespace and comments, and the
+  # purpose of the comments might be closure compiler, so also perform all
+  # adjustments necessary to ensure that works (which amounts to a few more
+  # comments; adding some more of them is not an issue in such a build which
+  # includes all comments and whitespace anyhow).
+  if settings.USE_CLOSURE_COMPILER or not settings.MINIFY_WHITESPACE:
+    settings.MAYBE_CLOSURE_COMPILER = 1
+
   return target, wasm_target
 
 
