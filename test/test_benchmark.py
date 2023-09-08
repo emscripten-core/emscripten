@@ -302,7 +302,12 @@ class AndroidBenchmarker(Benchmarker):
       '-fno-math-errno',
       filename,
       '-o', wasm
-    ] + self.args + shared_args + native_args + clang_native.get_clang_native_args()
+    ] + self.args
+    if shared_args:
+      cmd += shared_args
+    if native_args:
+      cmd += native_args
+    cmd += clang_native.get_clang_native_args()
     run_process(cmd, env=clang_native.get_clang_native_env())
 
     # Compile wasm to C
