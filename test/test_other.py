@@ -8339,8 +8339,7 @@ int main() {
       self.assertTrue(building.is_wasm_dylib(target))
 
       create_file('main.c', '')
-      self.run_process([EMCC, '-sMAIN_MODULE=2', 'main.c', '-Werror', target])
-      self.run_js('a.out.js')
+      self.do_runf('main.c', emcc_args=['-sMAIN_MODULE=2', 'main.c', '-Werror', target])
 
   def test_side_module_missing(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sSIDE_MODULE', '-o', 'libside1.wasm'])
