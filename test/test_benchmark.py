@@ -308,17 +308,20 @@ class AndroidBenchmarker(Benchmarker):
     if native_args:
       cmd += native_args
     cmd += clang_native.get_clang_native_args()
+    print('compile src to wasm: ' + shlex.join(cmd))
     run_process(cmd, env=clang_native.get_clang_native_env())
 
     # Compile wasm to C
     c = wasm + '.c'
     cmd = [f'{WABT}/build/wasm2c', wasm, '-o', c, '--experimental', '--disable-sandbox',
            '--enable-memory64']
+    print('compile wasm to c: ' + shlex.join(cmd))
     run_process(cmd, env=clang_native.get_clang_native_env())
 
     # Compile C to native
     native = c + '.native'
     cmd = ['clang', OPTIMIZATIONS, c, '-o', native, f'-I{WABT}/wasm2c']
+    print('compile c to native: ' + shlex.join(cmd))
     run_process(cmd, env=clang_native.get_clang_native_env())
 
     final = os.path.dirname(filename) + os.path.sep + self.name + '_' + os.path.basename(filename) + '.native'
