@@ -247,7 +247,8 @@ class EmscriptenBenchmarker(Benchmarker):
 # LLVM should point to a build with the Android patches of LLVM
 # WASM_LIBRARY_PATH should be something like wasm_ndk/libs
 # WASM_PLATFORM_SPECIFIC_INCLUDE_PATH should be slt wasm_ndk/include/wasm64
-# WABT should point to a build of the Android fork of wabt
+# WABT should point to a build of the Android fork of wabt, under which is
+#   build/ with binaries and wasm2c/ with the usual runtime headers
 class AndroidBenchmarker(Benchmarker):
   def __init__(self, name, args=None, binaryen_opts=None):
     self.name = name
@@ -297,7 +298,7 @@ class AndroidBenchmarker(Benchmarker):
     # Compile source to wasm
     compiler = cc if filename.endswith('.c') else cxx
     wasm = filename + '.wasm-nosandbox'
-    cmd = compiler + [
+    cmd = [compiler,
       '-fno-math-errno',
       filename,
       '-o', wasm
@@ -306,7 +307,7 @@ class AndroidBenchmarker(Benchmarker):
 
     # Compile wasm to C
     c = wasm + '.c'
-    cmd = [f'{WABT}wasm2c', 'wasm', '-o', c, '--experimental', '--disable-sandbox',
+    cmd = [f'{WABT}/build/wasm2c', 'wasm', '-o', c, '--experimental', '--disable-sandbox',
            '--enable-memory64']
     run_process(cmd, env=clang_native.get_clang_native_env())
 
