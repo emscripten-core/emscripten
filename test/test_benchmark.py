@@ -311,7 +311,7 @@ class AndroidBenchmarker(Benchmarker):
 
     # Compile C to native
     native = c + '.native'
-    cmd = ['clang', OPTIMIZATIONS, c, '-o', native]
+    cmd = ['clang', OPTIMIZATIONS, c, '-o', native, f'-I{WABT}/wasm2c']
     run_process(cmd, env=clang_native.get_clang_native_env())
 
     final = os.path.dirname(filename) + os.path.sep + self.name + '_' + os.path.basename(filename) + '.native'
