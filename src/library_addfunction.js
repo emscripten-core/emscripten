@@ -235,9 +235,11 @@ addToLibrary({
     return ret;
   },
 
-  $removeFunction__deps: ['$functionsInTableMap', '$freeTableIndexes', '$getWasmTableEntry'],
+  $removeFunction__deps: ['$functionsInTableMap', '$freeTableIndexes',
+                          '$getWasmTableEntry', '$setWasmTableEntry'],
   $removeFunction: (index) => {
     functionsInTableMap.delete(getWasmTableEntry(index));
+    setWasmTableEntry(index, null);
     freeTableIndexes.push(index);
   },
 });
