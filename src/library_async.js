@@ -41,15 +41,14 @@ addToLibrary({
 #if ASYNCIFY_DEBUG
       dbg('asyncify instrumenting imports');
 #endif
-      var importPatterns = [{{{ ASYNCIFY_IMPORTS.map(x => '/^' + x.split('.')[1].replace(new RegExp('\\*', 'g'), '.*') + '$/') }}}];
+      var importPattern = {{{ new RegExp(`^(${ASYNCIFY_IMPORTS.map(x => x.split('.')[1]).join('|').replace(/\*/g, '.*')})$`) }}};
 
       for (var x in imports) {
         (function(x) {
           var original = imports[x];
           var sig = original.sig;
           if (typeof original == 'function') {
-            var isAsyncifyImport = original.isAsync ||
-                                   importPatterns.some(pattern => !!x.match(pattern));
+            var isAsyncifyImport = original.isAsync || importPattern.test(x);
 #if ASYNCIFY == 2
             // Wrap async imports with a suspending WebAssembly function.
             if (isAsyncifyImport) {
