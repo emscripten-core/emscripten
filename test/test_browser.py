@@ -1315,7 +1315,7 @@ keydown(100);keyup(100); // trigger the end
     ''')
 
     # Copy common code file to temporary directory
-    filepath = test_file('test_webgl_context_attributes_common.c')
+    filepath = test_file('browser/test_webgl_context_attributes_common.c')
     temp_filepath = os.path.basename(filepath)
     shutil.copyfile(filepath, temp_filepath)
 
@@ -2717,7 +2717,7 @@ Module["preRun"] = () => {
   def test_html5_webgl_destroy_context(self):
     for opts in [[], ['-O2', '-g1'], ['-sFULL_ES2']]:
       print(opts)
-      self.btest_exit('webgl_destroy_context.cpp', args=opts + ['--shell-file', test_file('webgl_destroy_context_shell.html'), '-lGL'])
+      self.btest_exit('webgl_destroy_context.cpp', args=opts + ['--shell-file', test_file('browser/webgl_destroy_context_shell.html'), '-lGL'])
 
   @requires_graphics_hardware
   def test_webgl_context_params(self):
@@ -4523,13 +4523,13 @@ Module["preRun"] = () => {
   # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
   @requires_graphics_hardware
   def test_webgl_multi_draw(self):
-    self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
+    self.btest('webgl_multi_draw_test.c', reference='browser/webgl_multi_draw.png',
                args=['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DMULTI_DRAW_ARRAYS=1', '-DEXPLICIT_SWAP=1'])
-    self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
+    self.btest('webgl_multi_draw_test.c', reference='browser/webgl_multi_draw.png',
                args=['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DMULTI_DRAW_ARRAYS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
-    self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
+    self.btest('webgl_multi_draw_test.c', reference='browser/webgl_multi_draw.png',
                args=['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DMULTI_DRAW_ELEMENTS=1', '-DEXPLICIT_SWAP=1'])
-    self.btest('webgl_multi_draw_test.c', reference='webgl_multi_draw.png',
+    self.btest('webgl_multi_draw_test.c', reference='browser/webgl_multi_draw.png',
                args=['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DMULTI_DRAW_ELEMENTS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
 
   # Tests for base_vertex/base_instance extension
@@ -4541,7 +4541,7 @@ Module["preRun"] = () => {
   def test_webgl_draw_base_vertex_base_instance(self):
     for multiDraw in [0, 1]:
       for drawElements in [0, 1]:
-        self.btest('webgl_draw_base_vertex_base_instance_test.c', reference='webgl_draw_instanced_base_vertex_base_instance.png',
+        self.btest('webgl_draw_base_vertex_base_instance_test.c', reference='browser/webgl_draw_instanced_base_vertex_base_instance.png',
                    args=['-lGL',
                          '-sMAX_WEBGL_VERSION=2',
                          '-sOFFSCREEN_FRAMEBUFFER',
@@ -4609,7 +4609,7 @@ Module["preRun"] = () => {
   # Tests that using an array of structs in GL uniforms works.
   @requires_graphics_hardware
   def test_webgl_array_of_structs_uniform(self):
-    self.btest('webgl_array_of_structs_uniform.c', args=['-lGL', '-sMAX_WEBGL_VERSION=2'], reference='webgl_array_of_structs_uniform.png')
+    self.btest('webgl_array_of_structs_uniform.c', args=['-lGL', '-sMAX_WEBGL_VERSION=2'], reference='browser/webgl_array_of_structs_uniform.png')
 
   # Tests that if a WebGL context is created in a pthread on a canvas that has not been transferred to that pthread, WebGL calls are then proxied to the main thread
   # -DTEST_OFFSCREEN_CANVAS=1: Tests that if a WebGL context is created on a pthread that has the canvas transferred to it via using Emscripten's EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES="#canvas", then OffscreenCanvas is used
