@@ -9762,7 +9762,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.set_setting('MAIN_MODULE', 2)
     self.do_core_test('test_externref2.c')
 
-
   def test_syscall_intercept(self):
     self.do_core_test('test_syscall_intercept.c')
 
