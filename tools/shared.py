@@ -365,7 +365,6 @@ def node_reference_types_flags():
     return []
 
 
-
 def node_memory64_flags():
   return ['--experimental-wasm-memory64']
 
