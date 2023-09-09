@@ -60,7 +60,7 @@ def memoize(method):
   @wraps(method)
   def wrapper(self, *args, **kwargs):
     assert not kwargs
-    key = method
+    key = (method.__name__, args)
     if key not in self._cache:
       self._cache[key] = method(self, *args, **kwargs)
     return self._cache[key]
