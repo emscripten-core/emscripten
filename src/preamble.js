@@ -175,7 +175,6 @@ assert(!Module['wasmMemory'], 'Use of `wasmMemory` detected.  Use -sIMPORTED_MEM
 assert(!Module['INITIAL_MEMORY'], 'Detected runtime INITIAL_MEMORY setting.  Use -sIMPORTED_MEMORY to define wasmMemory dynamically');
 #endif // !IMPORTED_MEMORY && ASSERTIONS
 
-#include "runtime_init_table.js"
 #include "runtime_stack_check.js"
 #include "runtime_assertions.js"
 
@@ -1010,12 +1009,11 @@ function createWasm() {
     runMemoryInitializer();
 #endif
 
-#if !RELOCATABLE
+#if '$wasmTable' in addedLibraryItems && !RELOCATABLE
     wasmTable = wasmExports['__indirect_function_table'];
     {{{ receivedSymbol('wasmTable') }}}
 #if ASSERTIONS && !PURE_WASI
     assert(wasmTable, "table not found in wasm exports");
-#endif
 #endif
 
 #if AUDIO_WORKLET
@@ -1023,6 +1021,7 @@ function createWasm() {
     // and not the global scope of the main JS script. Therefore we need to export
     // all functions that the audio worklet scope needs onto the Module object.
     Module['wasmTable'] = wasmTable;
+#endif
 #endif
 
 #if hasExportedSymbol('__wasm_call_ctors')

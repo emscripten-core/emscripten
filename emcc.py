@@ -54,7 +54,7 @@ from tools import js_manipulation
 from tools import webassembly
 from tools import config
 from tools import cache
-from tools.settings import user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
+from tools.settings import default_setting, user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
 from tools.utils import read_file, write_file, read_binary, delete_file, removeprefix
 
 logger = logging.getLogger('emcc')
@@ -408,11 +408,6 @@ def expand_byte_size_suffixes(value):
     size_suffixes = {suffix: 1024 ** i for i, suffix in enumerate(['b', 'kb', 'mb', 'gb', 'tb'])}
     value *= size_suffixes[suffix.lower()]
   return value
-
-
-def default_setting(name, new_default):
-  if name not in user_settings:
-    setattr(settings, name, new_default)
 
 
 def apply_user_settings():
@@ -2028,7 +2023,6 @@ def phase_linker_setup(options, state, newargs):
     default_setting('AUTO_JS_LIBRARIES', 0)
     # When using MINIMAL_RUNTIME, symbols should only be exported if requested.
     default_setting('EXPORT_KEEPALIVE', 0)
-    default_setting('USE_GLFW', 0)
 
   if settings.STRICT_JS and (settings.MODULARIZE or settings.EXPORT_ES6):
     exit_with_error("STRICT_JS doesn't work with MODULARIZE or EXPORT_ES6")
@@ -2036,7 +2030,6 @@ def phase_linker_setup(options, state, newargs):
   if settings.STRICT:
     if not settings.MODULARIZE and not settings.EXPORT_ES6:
       default_setting('STRICT_JS', 1)
-    default_setting('USE_GLFW', 0)
     default_setting('AUTO_JS_LIBRARIES', 0)
     default_setting('AUTO_NATIVE_LIBRARIES', 0)
     default_setting('AUTO_ARCHIVE_INDEXES', 0)
@@ -2127,6 +2120,9 @@ def phase_linker_setup(options, state, newargs):
 
   if not settings.BOOTSTRAPPING_STRUCT_INFO and settings.SAFE_HEAP:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue_safe', '$setValue_safe']
+
+  if settings.ABORT_ON_WASM_EXCEPTIONS or settings.SPLIT_MODULE:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$wasmTable']
 
   if settings.MAIN_MODULE:
     assert not settings.SIDE_MODULE
@@ -2975,6 +2971,15 @@ def phase_linker_setup(options, state, newargs):
   settings.POST_JS_FILES = [os.path.abspath(f) for f in options.post_js]
 
   settings.MINIFY_WHITESPACE = settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0 and not options.no_minify
+
+  # Closure might be run if we run it ourselves, or if whitespace is not being
+  # minifed. In the latter case we keep both whitespace and comments, and the
+  # purpose of the comments might be closure compiler, so also perform all
+  # adjustments necessary to ensure that works (which amounts to a few more
+  # comments; adding some more of them is not an issue in such a build which
+  # includes all comments and whitespace anyhow).
+  if settings.USE_CLOSURE_COMPILER or not settings.MINIFY_WHITESPACE:
+    settings.MAYBE_CLOSURE_COMPILER = 1
 
   return target, wasm_target
 
@@ -3930,7 +3935,7 @@ def modularize():
   if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
     # Single threaded MINIMAL_RUNTIME programs do not need access to
     # document.currentScript, so a simple export declaration is enough.
-    src = 'var %s=%s' % (settings.EXPORT_NAME, src)
+    src = '/** @nocollapse */ var %s=%s' % (settings.EXPORT_NAME, src)
   else:
     script_url_node = ''
     # When MODULARIZE this JS may be executed later,

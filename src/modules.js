@@ -381,7 +381,6 @@ function exportRuntime() {
     'abort',
     'keepRuntimeAlive',
     'wasmMemory',
-    'wasmTable',
     'wasmExports',
   ];
 
