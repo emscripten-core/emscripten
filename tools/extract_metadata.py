@@ -221,6 +221,36 @@ def get_section_strings(module, export_map, section_name):
   return asm_strings
 
 
+def get_wasm_custom_section(module, section_name):
+  section = module.get_custom_section(section_name)
+  if section is None:
+    logger.debug(f'no custom section found: {section_name}')
+    return {}
+
+  custom_strings = {}
+
+  module.seek(section.offset)
+  section_name = module.read_string()
+  section_name_offset = len(section_name) + 1 # +1 for uleb
+
+  start_index = 0
+  offset = section.offset + section_name_offset
+  data_size = section.size - section_name_offset
+  data = module.read_at(offset, data_size)
+
+  while start_index < data_size:
+    end_of_string_index = data.find(b'\0', start_index)
+
+    string_data = data[start_index:end_of_string_index]
+    string_key = str(1028 # TODO: fix this. Offset depends on some factors I don't know
+                      + start_index)
+    custom_strings[string_key] = data_to_string(string_data)
+    
+    start_index = end_of_string_index + 1
+
+  return custom_strings
+
+
 def get_main_reads_params(module, export_map):
   if settings.STANDALONE_WASM:
     return True
@@ -348,6 +378,8 @@ def extract_metadata(filename):
     metadata.function_exports = get_function_exports(module)
     metadata.all_exports = [utils.removeprefix(e.name, '__em_js__') for e in exports]
     metadata.asmConsts = get_section_strings(module, export_map, 'em_asm')
+    custom_asmConsts = get_wasm_custom_section(module, 'em_asm')
+    metadata.asmConsts.update(custom_asmConsts)
     metadata.jsDeps = [d for d in get_section_strings(module, export_map, 'em_lib_deps').values() if d]
     metadata.emJsFuncs = em_js_funcs
     metadata.emJsFuncTypes = em_js_func_types
