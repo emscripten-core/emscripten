@@ -128,7 +128,8 @@ var LibraryEmbindShared = {
   $getFunctionName: (signature) => {
     signature = signature.trim();
     const argsIndex = signature.indexOf("(");
-    if (argsIndex !== -1 && signature[signature.length - 1] == ")") {
+    if (argsIndex !== -1) {
+      assert(signature[signature.length - 1] == ")", "Unmatching paranthesis for argument names.");
       return signature.substr(0, argsIndex);
     } else {
       return signature;
@@ -138,7 +139,8 @@ var LibraryEmbindShared = {
   $getFunctionArgsName: (signature) => {
     signature = signature.trim();
     const argsIndex = signature.indexOf("(") + 1;
-    if (argsIndex !== -1 && signature[signature.length - 1] == ")") {
+    if (argsIndex !== 0) {
+      assert(signature[signature.length - 1] == ")", "Unmatching paranthesis for argument names.");
       return signature.substr(argsIndex, signature.length - argsIndex - 1).replaceAll(" ", "").split(",").filter(n => n.length);
     } else {
       return [];
