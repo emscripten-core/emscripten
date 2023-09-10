@@ -220,6 +220,14 @@ def get_section_strings(module, export_map, section_name):
     str_start = str_end + 1
   return asm_strings
 
+# FIXME: This is a temporary workaround for getting Emscripten to work with Rust.
+# This workaround is applicable to Rust version 1.72.0 and Emscripten version 3.1.45.
+# It should be removed once we have a proper solution for this issue on the Rust side.
+# 
+# The problem is that, as of the date (10 Sept, 2023), Rust cannot write to specific sections in the wasm 
+# file when used in conjunction with Emscripten. Instead, it writes to a custom section. 
+# But emscripten requires the data to be in the data section.
+# See https://github.com/emscripten-core/emscripten/issues/13838#issuecomment-820656350 for more details.
 
 def get_wasm_custom_section(module, section_name):
   section = module.get_custom_section(section_name)
