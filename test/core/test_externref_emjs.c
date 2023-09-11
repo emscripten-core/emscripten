@@ -1,4 +1,4 @@
-#include "emscripten.h"
+#include "emscripten/em_js.h"
 
 
 EM_JS(__externref_t, get_ref, (), {
