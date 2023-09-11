@@ -248,6 +248,8 @@ class EmscriptenBenchmarker(Benchmarker):
 # ANDROID_LLVM should point to a build with the Android patches of LLVM
 # WASM_LIBRARY_PATH should be something like wasm_ndk/libs
 # WASM_PLATFORM_SPECIFIC_INCLUDE_PATH should be slt wasm_ndk/include/wasm64
+# ANDROID_PREBUILT_SYSROOT should be something like
+#   ndk/android-ndk-r25c/toolchains/llvm/prebuilt/linux-x86_64/sysroot/
 # WABT should point to a build of the Android fork of wabt, under which is
 #   build/ with binaries and wasm2c/ with the usual runtime headers
 class AndroidBenchmarker(Benchmarker):
@@ -260,6 +262,7 @@ class AndroidBenchmarker(Benchmarker):
     ANDROID_LLVM = os.environ['ANDROID_LLVM']
     WASM_LIBRARY_PATH = os.environ['WASM_LIBRARY_PATH']
     WASM_PLATFORM_SPECIFIC_INCLUDE_PATH = os.environ['WASM_PLATFORM_SPECIFIC_INCLUDE_PATH']
+    ANDROID_PREBUILT_SYSROOT = os.environ['ANDROID_PREBUILT_SYSROOT']
     WABT = os.environ['WABT']
 
     android_args = [
@@ -270,6 +273,8 @@ class AndroidBenchmarker(Benchmarker):
       '-fvisibility=default',
       '-mno-bulk-memory',
       '--target=wasm64-unknown-unknown',
+      f'-I{ANDROID_PREBUILT_SYSROOT}/usr/include',
+      f'-I{ANDROID_PREBUILT_SYSROOT}/usr/local/include',
       f'-I{WASM_PLATFORM_SPECIFIC_INCLUDE_PATH}',
       '-fno-math-errno',
       '-Wl,--emit-relocs',
@@ -278,6 +283,11 @@ class AndroidBenchmarker(Benchmarker):
       f'-Wl,--allow-undefined-file={WASM_LIBRARY_PATH}/libc.txt',
       '-static-libstdc++',
       '-Wl,--strip-debug',
+    ]
+
+    android_cxx_flags = [
+      '-Wno-c++11-narrowing',
+      f'-I{ANDROID_PREBUILT_SYSROOT}/usr/include/c++/v1',
     ]
 
     cc = os.path.join(ANDROID_LLVM, 'clang')
@@ -293,11 +303,15 @@ class AndroidBenchmarker(Benchmarker):
         'NM': 'llvm-nm',
         'LDSHARED': cc,
         'CFLAGS': shlex.split(android_args),
-        'CXXFLAGS': '-Wno-c++11-narrowing'
+        'CXXFLAGS': android_cxx_flags,
       })
 
     # Compile source to wasm
-    compiler = cc if filename.endswith('.c') else cxx
+    if filename.endswith('.c'):
+      compiler = cc
+    else:
+      compiler = cxx
+      android_args += android_cxx_args
     wasm = filename + '.wasm-nosandbox'
     cmd = [compiler,
       '-fno-math-errno',
