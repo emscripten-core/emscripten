@@ -285,7 +285,7 @@ class AndroidBenchmarker(Benchmarker):
       '-Wl,--strip-debug',
     ]
 
-    android_cxx_flags = [
+    android_cxx_args = [
       '-Wno-c++11-narrowing',
       f'-I{ANDROID_PREBUILT_SYSROOT}/usr/include/c++/v1',
     ]
@@ -303,7 +303,7 @@ class AndroidBenchmarker(Benchmarker):
         'NM': 'llvm-nm',
         'LDSHARED': cc,
         'CFLAGS': shlex.split(android_args),
-        'CXXFLAGS': android_cxx_flags,
+        'CXXFLAGS': android_cxx_args,
       })
 
     # Compile source to wasm
