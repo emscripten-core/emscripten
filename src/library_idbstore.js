@@ -76,6 +76,20 @@ var LibraryIDBStore = {
       });
     });
   },
+  emscripten_idb_async_clear__deps: ['$UTF8ToString', '$callUserCallback'],
+  emscripten_idb_async_clear: (db, arg, onclear, onerror) => {
+    {{{ runtimeKeepalivePush() }}};
+    IDBStore.clearStore(UTF8ToString(db), (error) => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        if (error) {
+          if (onerror) {{{ makeDynCall('vp', 'onerror') }}}(arg);
+          return;
+        }
+        if (onclear) {{{ makeDynCall('vp', 'onclear') }}}(arg);
+      });
+    });
+  },
 
 #if ASYNCIFY
   emscripten_idb_load__async: true,
@@ -121,6 +135,15 @@ var LibraryIDBStore = {
       IDBStore.existsFile(UTF8ToString(db), UTF8ToString(id), (error, exists) => {
         {{{ makeSetValue('pexists', 0, '!!exists', 'i32') }}};
         {{{ makeSetValue('perror',  0, '!!error', 'i32') }}};
+        wakeUp();
+      });
+    });
+  },
+  emscripten_idb_clear__async: true,
+  emscripten_idb_clear: (db, perror) => {
+    return Asyncify.handleSleep((wakeUp) => {
+      IDBStore.clearStore(UTF8ToString(db), (error) => {
+        {{{ makeSetValue('perror', 0, '!!error', 'i32') }}};
         wakeUp();
       });
     });
@@ -194,6 +217,9 @@ var LibraryIDBStore = {
   },
   emscripten_idb_exists: (db, id, pexists, perror) => {
     throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_exists, etc.';
+  },
+  emscripten_idb_clear: (db, perror) => {
+    throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_clear, etc.';
   },
 #endif // ASYNCIFY
 };
