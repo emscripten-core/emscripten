@@ -52,6 +52,16 @@ void test() {
   assert(error); // expected error!
   sum++;
 
+  printf("storing %s again\n", SECRET);
+  emscripten_idb_store(DB, "the_secret", SECRET, strlen(SECRET)+1, &error);
+  assert(!error);
+  sum++;
+
+  printf("clearing the store\n");
+  emscripten_idb_clear(DB, &error);
+  assert(!error);
+  sum++;
+
   printf("last checking\n");
   emscripten_idb_exists(DB, "the_secret", &exists, &error);
   assert(!error);

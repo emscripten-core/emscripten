@@ -729,12 +729,9 @@ def create_sending(metadata, library_symbols):
 
   sorted_items = sorted(send_items_map.items())
   prefix = ''
-  if settings.USE_CLOSURE_COMPILER or not settings.MINIFY_WHITESPACE:
+  if settings.MAYBE_CLOSURE_COMPILER:
     # This prevents closure compiler from minifying the field names in this
-    # object. Note that we also apply this when whitespace is not minified so
-    # that closure can be run on the output later, after emscripten runs (and
-    # when whitespace is present we keep comments as well, so adding more
-    # comments is not an issue).
+    # object.
     prefix = '/** @export */\n  '
   return '{\n  ' + ',\n  '.join(f'{prefix}{k}: {v}' for k, v in sorted_items) + '\n}'
 

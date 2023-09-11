@@ -100,9 +100,7 @@ UNSUPPORTED_LLD_FLAGS = {
     '-install_name': True,
 }
 
-DEFAULT_ASYNCIFY_IMPORTS = [
-  'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync', '__asyncjs__*'
-]
+DEFAULT_ASYNCIFY_IMPORTS = ['__asyncjs__*']
 
 DEFAULT_ASYNCIFY_EXPORTS = [
   'main',
@@ -1332,7 +1330,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       for sym in settings.EXPORTED_RUNTIME_METHODS:
         add_js_deps(shared.demangle_c_symbol_name(sym))
     if settings.ASYNCIFY:
-      settings.ASYNCIFY_IMPORTS += ['env.' + x for x in js_info['asyncFuncs']]
+      settings.ASYNCIFY_IMPORTS += ['*.' + x for x in js_info['asyncFuncs']]
 
   phase_calculate_system_libraries(state, linker_arguments, newargs)
 
@@ -2971,6 +2969,15 @@ def phase_linker_setup(options, state, newargs):
   settings.POST_JS_FILES = [os.path.abspath(f) for f in options.post_js]
 
   settings.MINIFY_WHITESPACE = settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0 and not options.no_minify
+
+  # Closure might be run if we run it ourselves, or if whitespace is not being
+  # minifed. In the latter case we keep both whitespace and comments, and the
+  # purpose of the comments might be closure compiler, so also perform all
+  # adjustments necessary to ensure that works (which amounts to a few more
+  # comments; adding some more of them is not an issue in such a build which
+  # includes all comments and whitespace anyhow).
+  if settings.USE_CLOSURE_COMPILER or not settings.MINIFY_WHITESPACE:
+    settings.MAYBE_CLOSURE_COMPILER = 1
 
   return target, wasm_target
 
