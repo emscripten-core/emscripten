@@ -283,6 +283,7 @@ class AndroidBenchmarker(Benchmarker):
       f'-Wl,--allow-undefined-file={WASM_LIBRARY_PATH}/libc.txt',
       '-static-libstdc++',
       '-Wl,--strip-debug',
+      '-D__wasi__',
     ]
 
     android_cxx_args = [
