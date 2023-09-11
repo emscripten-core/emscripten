@@ -119,7 +119,7 @@ addToLibrary({
       dbg('asyncify instrumenting exports');
 #endif
 #if ASYNCIFY == 2
-      var exportPatterns = [{{{ ASYNCIFY_EXPORTS.map(x => new RegExp('^' + x.replace(/\*/g, '.*') + '$')) }}}];
+      var exportPattern = {{{ new RegExp(`^(${ASYNCIFY_EXPORTS.join('|').replace(/\*/g, '.*')})$`) }}};
       Asyncify.asyncExports = new Set();
 #endif
       var ret = {};
@@ -129,7 +129,7 @@ addToLibrary({
           if (typeof original == 'function') {
 #if ASYNCIFY == 2
             // Wrap all exports with a promising WebAssembly function.
-            var isAsyncifyExport = exportPatterns.some(pattern => !!x.match(pattern));
+            var isAsyncifyExport = exportPattern.test(x);
             if (isAsyncifyExport) {
               Asyncify.asyncExports.add(original);
               original = Asyncify.makeAsyncFunction(original);
