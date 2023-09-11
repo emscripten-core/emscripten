@@ -245,7 +245,7 @@ class EmscriptenBenchmarker(Benchmarker):
     return ret
 
 
-# LLVM should point to a build with the Android patches of LLVM
+# ANDROID_LLVM should point to a build with the Android patches of LLVM
 # WASM_LIBRARY_PATH should be something like wasm_ndk/libs
 # WASM_PLATFORM_SPECIFIC_INCLUDE_PATH should be slt wasm_ndk/include/wasm64
 # WABT should point to a build of the Android fork of wabt, under which is
@@ -257,7 +257,7 @@ class AndroidBenchmarker(Benchmarker):
     self.binaryen_opts = binaryen_opts or []
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
-    LLVM = os.environ['LLVM']
+    ANDROID_LLVM = os.environ['ANDROID_LLVM']
     WASM_LIBRARY_PATH = os.environ['WASM_LIBRARY_PATH']
     WASM_PLATFORM_SPECIFIC_INCLUDE_PATH = os.environ['WASM_PLATFORM_SPECIFIC_INCLUDE_PATH']
     WABT = os.environ['WABT']
@@ -280,8 +280,8 @@ class AndroidBenchmarker(Benchmarker):
       '-Wl,--strip-debug',
     ]
 
-    cc = os.path.join(LLVM, 'clang')
-    cxx = os.path.join(LLVM, 'clang++')
+    cc = os.path.join(ANDROID_LLVM, 'clang')
+    cxx = os.path.join(ANDROID_LLVM, 'clang++')
 
     if lib_builder:
       # build as "native" (so no emcc env stuff), but with all the android stuff
