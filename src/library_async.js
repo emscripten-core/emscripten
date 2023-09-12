@@ -41,7 +41,7 @@ addToLibrary({
 #if ASYNCIFY_DEBUG
       dbg('asyncify instrumenting imports');
 #endif
-      var importPattern = {{{ new RegExp(`^(${ASYNCIFY_IMPORTS.map(x => x.split('.')[1]).join('|').replace(/\*/g, '.*')})$`) }}};
+      var importPattern = {{{ new RegExp(`^(${ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS.map(x => x.split('.')[1]).join('|').replace(/\*/g, '.*')})$`) }}};
 
       for (var x in imports) {
         (function(x) {
