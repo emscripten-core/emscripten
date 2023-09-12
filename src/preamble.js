@@ -948,7 +948,7 @@ function createWasm() {
   // performing other necessary setup
   /** @param {WebAssembly.Module=} module*/
   function receiveInstance(instance, module) {
-    var wasmExports = instance.exports;
+    wasmExports = instance.exports;
 
 #if RELOCATABLE
     wasmExports = relocateExports(wasmExports, {{{ GLOBAL_BASE }}});
