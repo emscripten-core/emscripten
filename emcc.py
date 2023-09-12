@@ -1330,6 +1330,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       for sym in settings.EXPORTED_RUNTIME_METHODS:
         add_js_deps(shared.demangle_c_symbol_name(sym))
     if settings.ASYNCIFY:
+      settings.ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS = settings.ASYNCIFY_IMPORTS[:]
       settings.ASYNCIFY_IMPORTS += ['*.' + x for x in js_info['asyncFuncs']]
 
   phase_calculate_system_libraries(state, linker_arguments, newargs)
