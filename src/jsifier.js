@@ -326,14 +326,9 @@ function(${args}) {
         deps.push('setTempRet0');
       }
 
-      let isAsyncFunction = false;
       if (ASYNCIFY) {
         const original = LibraryManager.library[symbol];
-        if (typeof original == 'function' ) {
-          isAsyncFunction = LibraryManager.library[symbol + '__async'] ||
-                            original.constructor.name == 'AsyncFunction'
-        }
-        if (isAsyncFunction) {
+        if (typeof original == 'function' && LibraryManager.library[symbol + '__async']) {
           asyncFuncs.push(symbol);
         }
       }
