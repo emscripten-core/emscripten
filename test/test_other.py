@@ -2872,6 +2872,7 @@ int f() {
          '--pre-js', test_file('embind/test.pre.js'),
          '--post-js', test_file('embind/test.post.js'),
          '-sWASM_ASYNC_COMPILATION=0',
+         '-sSTRICT_JS',
          # This test uses a `CustomSmartPtr` class which has 1MB of data embedded in
          # it which means we need more stack space than normal.
          '-sSTACK_SIZE=2MB'] + args)
