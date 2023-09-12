@@ -63,6 +63,7 @@ int main()
   std::array<std::int64_t, 5> int64Array = {-2, -1, 0, 1, 2};
 
   printf("start\n");
+  EM_ASM({globalThis.a = null});
 
   test("val(int64_t v)");
   val::global().set("a", val(int64_t(1234)));
