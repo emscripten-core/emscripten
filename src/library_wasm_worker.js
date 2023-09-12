@@ -156,7 +156,7 @@ if (ENVIRONMENT_IS_WASM_WORKER) {
       'sb': stackLowestAddress, // sb = stack bottom (lowest stack address, SP points at this when stack is full)
       'sz': stackSize,          // sz = stack size
     });
-    worker.onmessage = _wasmWorkerRunPostMessage;
+    worker.addEventListener('message', _wasmWorkerRunPostMessage);
     return _wasmWorkersID++;
   },
 

@@ -142,6 +142,7 @@ class BootstrapMessages extends AudioWorkletProcessor {
     // Listen to messages from the main thread. These messages will ask this scope to create the real
     // AudioWorkletProcessors that call out to Wasm to do audio processing.
     let p = globalThis['messagePort'] = this.port;
+    // We are the only user of this BootstrapMessages processor, so can use the .onmessage handler directly instead of addEventListener().
     p.onmessage = (msg) => {
       let d = msg.data;
       if (d['_wpn']) { // '_wpn' is short for 'Worklet Processor Node', using an identifier that will never conflict with user messages

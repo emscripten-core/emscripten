@@ -187,6 +187,7 @@ let LibraryWebAudio = {
           'sz': stackSize,          // sz = stack size
         }
       });
+      // We are the only user of this BootstrapMessages processor, so can use the .onmessage handler directly instead of addEventListener().
       audioWorklet.bootstrapMessage.port.onmessage = _EmAudioDispatchProcessorCallback;
 
       // AudioWorklets do not have a importScripts() function like Web Workers do (and AudioWorkletGlobalScope does not allow dynamic import() either),

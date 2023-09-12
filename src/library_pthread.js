@@ -255,7 +255,7 @@ var LibraryPThread = {
     //                    the workers have been initialized and are
     //                    ready to host pthreads.
     loadWasmModuleToWorker: (worker) => new Promise((onFinishedLoading) => {
-      worker.onmessage = (e) => {
+      worker.addEventListener('message', (e) => {
         var d = e['data'];
         var cmd = d['cmd'];
 
@@ -311,7 +311,7 @@ var LibraryPThread = {
           // recognized commands:
           err(`worker sent an unknown command ${cmd}`);
         }
-      };
+      });
 
       worker.onerror = (e) => {
         var message = 'worker sent an error!';
@@ -524,12 +524,12 @@ var LibraryPThread = {
     // the worker now dead and we don't want to hear from it again, so we stub
     // out its message handler here.  This avoids having to check in each of
     // the onmessage handlers if the message was coming from valid worker.
-    worker.onmessage = (e) => {
+    worker.addEventListener('message', (e) => {
 #if ASSERTIONS
       var cmd = e['data']['cmd'];
       err(`received "${cmd}" command from terminated worker: ${worker.workerID}`);
 #endif
-    };
+    });
   },
 
   $killThread__deps: ['_emscripten_thread_free_data', '$terminateWorker'],
