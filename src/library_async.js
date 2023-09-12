@@ -441,21 +441,18 @@ addToLibrary({
     isAsyncExport(func) {
       return Asyncify.asyncExports && Asyncify.asyncExports.has(func);
     },
-    handleSleep(startAsync) {
+    async handleAsync(startAsync) {
       {{{ runtimeKeepalivePush(); }}}
-      var promise = new Promise((resolve) => {
-        startAsync(resolve);
-      });
-      promise.finally(() => {
+      try {
+        return await startAsync();
+      } finally {
         {{{ runtimeKeepalivePop(); }}}
-      });
-      return promise;
+      }
     },
-    handleAsync(startAsync) {
-      return Asyncify.handleSleep((wakeUp) => {
-        // TODO: add error handling as a second param when handleSleep implements it.
-        startAsync().then(wakeUp);
-      });
+    handleSleep(startAsync) {
+      return Asyncify.handleAsync(() => (
+        new Promise((wakeUp) => startAsync(wakeUp))
+      ));
     },
     makeAsyncFunction(original) {
 #if ASYNCIFY_DEBUG
