@@ -9339,6 +9339,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # test that the node environment can be specified by itself, and that still
     # works with pthreads (even though we did not specify 'node,worker')
     self.set_setting('ENVIRONMENT', 'node')
+    self.set_setting('STRICT_JS')
     self.do_run_in_out_file_test('core/pthread/create.cpp')
 
   @node_pthreads
@@ -10017,6 +10018,7 @@ bigint = make_run('bigint', emcc_args=['--profiling-funcs'], settings={'WASM_BIG
 
 # Add DEFAULT_TO_CXX=0
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
+strict_js = make_run('strict_js', emcc_args=[], settings={'STRICT_JS': 1})
 
 ubsan = make_run('ubsan', emcc_args=['-fsanitize=undefined', '--profiling'])
 lsan = make_run('lsan', emcc_args=['-fsanitize=leak', '--profiling'], settings={'ALLOW_MEMORY_GROWTH': 1})

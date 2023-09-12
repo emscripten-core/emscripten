@@ -25,7 +25,7 @@ void setup() {
     FS.chdir('working');
     FS.writeFile('towrite', 'abcdef');
     FS.writeFile('toread', 'abcdef');
-    FS.chmod('toread', 0444);
+    FS.chmod('toread', 0o444);
   );
 #else
   FILE* f = fopen("towrite", "w");
