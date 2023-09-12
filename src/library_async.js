@@ -441,7 +441,7 @@ addToLibrary({
     isAsyncExport(func) {
       return Asyncify.asyncExports && Asyncify.asyncExports.has(func);
     },
-    async handleAsync(startAsync) {
+    handleAsync: async (startAsync) => {
       {{{ runtimeKeepalivePush(); }}}
       try {
         return await startAsync();
