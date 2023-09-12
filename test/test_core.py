@@ -7612,6 +7612,7 @@ void* operator new(size_t size) {
     'flag': (['--bind'],),
   })
   def test_embind(self, args):
+    self.maybe_closure()
     create_file('test_embind.cpp', r'''
       #include <stdio.h>
       #include <emscripten/val.h>
