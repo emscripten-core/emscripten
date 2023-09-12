@@ -4102,29 +4102,46 @@ ok
 
   @needs_dylink
   def test_dlfcn_rtld_local(self):
+    # Create two shared libraries that both depend on a third.
+    #  liba.so -> libsub.so
+    #  libb.so -> libsub.so
     create_file('liba.c', r'''
       #include <stdio.h>
 
-      void func_b();
+      void func_sub();
 
       void func_a() {
         printf("func_a\n");
         // Call a function from a dependent DSO. This symbol should
         // be available here even though liba itself is loaded with RTLD_LOCAL.
-        func_b();
+        func_sub();
       }
       ''')
 
     create_file('libb.c', r'''
       #include <stdio.h>
 
+      void func_sub();
+
       void func_b() {
         printf("func_b\n");
+        // Call a function from a dependent DSO. This symbol should
+        // be available here even though liba itself is loaded with RTLD_LOCAL.
+        func_sub();
       }
     ''')
 
-    self.build_dlfcn_lib('libb.c', outfile='libb.so')
-    self.build_dlfcn_lib('liba.c', outfile='liba.so', emcc_args=['libb.so'])
+    create_file('libsub.c', r'''
+      #include <stdio.h>
+
+      void func_sub() {
+        printf("func_sub\n");
+      }
+    ''')
+
+    self.build_dlfcn_lib('libsub.c', outfile='libsub.so')
+    self.build_dlfcn_lib('libb.c', outfile='libb.so', emcc_args=['libsub.so'])
+    self.build_dlfcn_lib('liba.c', outfile='liba.so', emcc_args=['libsub.so'])
 
     self.prep_dlfcn_main(['liba.so', 'libb.so', '-L.'])
     create_file('main.c', r'''
@@ -4133,28 +4150,41 @@ ok
       #include <stdio.h>
 
       int main() {
+        void* handle;
+        void (*f)();
+
         printf("main\n");
-        void* handle = dlopen("liba.so", RTLD_NOW|RTLD_LOCAL);
+        // Call a function from libb
+        handle = dlopen("liba.so", RTLD_NOW|RTLD_LOCAL);
         assert(handle);
 
-        void (*f)();
         f = dlsym(handle, "func_a");
         assert(f);
         f();
 
-        // Verify that symbols from liba.so and libb.so are not globally
+        // Same for libb
+        handle = dlopen("libb.so", RTLD_NOW|RTLD_LOCAL);
+        assert(handle);
+
+        f = dlsym(handle, "func_b");
+        assert(f);
+        f();
+
+        // Verify that symbols from all three libraries are not globally
         // visible.
-        void* func_a = dlsym(RTLD_DEFAULT, "func_a");
-        assert(func_a == NULL);
-        void* func_b = dlsym(RTLD_DEFAULT, "func_b");
-        assert(func_b == NULL);
+        f = dlsym(RTLD_DEFAULT, "func_a");
+        assert(f == NULL);
+        f = dlsym(RTLD_DEFAULT, "func_b");
+        assert(f == NULL);
+        f = dlsym(RTLD_DEFAULT, "func_sub");
+        assert(f == NULL);
 
         printf("done\n");
         return 0;
       }
       ''')
 
-    self.do_runf('main.c', 'main\nfunc_a\nfunc_b\ndone\n')
+    self.do_runf('main.c', 'main\nfunc_a\nfunc_sub\nfunc_b\nfunc_sub\ndone\n')
 
   def dylink_test(self, main, side, expected=None, header=None, force_c=False,
                   main_module=2, **kwargs):
@@ -7582,6 +7612,7 @@ void* operator new(size_t size) {
     'flag': (['--bind'],),
   })
   def test_embind(self, args):
+    self.maybe_closure()
     create_file('test_embind.cpp', r'''
       #include <stdio.h>
       #include <emscripten/val.h>

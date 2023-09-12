@@ -41,15 +41,14 @@ addToLibrary({
 #if ASYNCIFY_DEBUG
       dbg('asyncify instrumenting imports');
 #endif
-      var importPatterns = [{{{ ASYNCIFY_IMPORTS.map(x => '/^' + x.split('.')[1].replace(new RegExp('\\*', 'g'), '.*') + '$/') }}}];
+      var importPattern = {{{ new RegExp(`^(${ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS.map(x => x.split('.')[1]).join('|').replace(/\*/g, '.*')})$`) }}};
 
       for (var x in imports) {
         (function(x) {
           var original = imports[x];
           var sig = original.sig;
           if (typeof original == 'function') {
-            var isAsyncifyImport = original.isAsync ||
-                                   importPatterns.some(pattern => !!x.match(pattern));
+            var isAsyncifyImport = original.isAsync || importPattern.test(x);
 #if ASYNCIFY == 2
             // Wrap async imports with a suspending WebAssembly function.
             if (isAsyncifyImport) {
@@ -120,7 +119,7 @@ addToLibrary({
       dbg('asyncify instrumenting exports');
 #endif
 #if ASYNCIFY == 2
-      var exportPatterns = [{{{ ASYNCIFY_EXPORTS.map(x => new RegExp('^' + x.replace(/\*/g, '.*') + '$')) }}}];
+      var exportPattern = {{{ new RegExp(`^(${ASYNCIFY_EXPORTS.join('|').replace(/\*/g, '.*')})$`) }}};
       Asyncify.asyncExports = new Set();
 #endif
       var ret = {};
@@ -130,7 +129,7 @@ addToLibrary({
           if (typeof original == 'function') {
 #if ASYNCIFY == 2
             // Wrap all exports with a promising WebAssembly function.
-            var isAsyncifyExport = exportPatterns.some(pattern => !!x.match(pattern));
+            var isAsyncifyExport = exportPattern.test(x);
             if (isAsyncifyExport) {
               Asyncify.asyncExports.add(original);
               original = Asyncify.makeAsyncFunction(original);
@@ -191,7 +190,7 @@ addToLibrary({
     StackSize: {{{ ASYNCIFY_STACK_SIZE }}},
     currData: null,
     // The return value passed to wakeUp() in
-    // Asyncify.handleSleep(function(wakeUp){...}) is stored here,
+    // Asyncify.handleSleep((wakeUp) => {...}) is stored here,
     // so we can return it later from the C function that called
     // Asyncify.handleSleep() after rewinding finishes.
     handleSleepReturnValue: 0,

@@ -562,6 +562,7 @@ var WasiLibrary = {
     return {{{ cDefs.ENOSYS }}};
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
+  fd_sync__async: true,
 };
 
 for (var x in WasiLibrary) {

@@ -83,6 +83,7 @@ var LibraryGLFW = {
 
   $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
     '$stringToNewUTF8',
+    'emscripten_set_window_title',
 #if FILESYSTEM
     '$FS',
 #endif
@@ -636,9 +637,9 @@ var LibraryGLFW = {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
 
-      win.title = UTF8ToString(title);
+      win.title = title;
       if (GLFW.active.id == win.id) {
-        document.title = win.title;
+        _emscripten_set_window_title(title);
       }
     },
 

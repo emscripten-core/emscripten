@@ -2144,6 +2144,7 @@ var LibraryWebGPU = {
   wgpuRenderPassEncoderSetIndexBuffer: (passId, bufferId, format, offset, size) => {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
+    {{{ gpu.convertSentinelToUndefined('size') }}}
     pass["setIndexBuffer"](buffer, WebGPU.IndexFormat[format], offset, size);
   },
   wgpuRenderPassEncoderSetPipeline: (passId, pipelineId) => {
@@ -2166,6 +2167,7 @@ var LibraryWebGPU = {
   wgpuRenderPassEncoderSetVertexBuffer: (passId, slot, bufferId, offset, size) => {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
+    {{{ gpu.convertSentinelToUndefined('size') }}}
     pass["setVertexBuffer"](slot, buffer, offset, size);
   },
 
@@ -2272,6 +2274,7 @@ var LibraryWebGPU = {
   wgpuRenderBundleEncoderSetIndexBuffer: (bundleId, bufferId, format, offset, size) => {
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
+    {{{ gpu.convertSentinelToUndefined('size') }}}
     pass["setIndexBuffer"](buffer, WebGPU.IndexFormat[format], offset, size);
   },
   wgpuRenderBundleEncoderSetPipeline: (bundleId, pipelineId) => {
@@ -2282,6 +2285,7 @@ var LibraryWebGPU = {
   wgpuRenderBundleEncoderSetVertexBuffer: (bundleId, slot, bufferId, offset, size) => {
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
+    {{{ gpu.convertSentinelToUndefined('size') }}}
     pass["setVertexBuffer"](slot, buffer, offset, size);
   },
 

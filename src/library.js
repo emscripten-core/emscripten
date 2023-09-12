@@ -385,8 +385,8 @@ addToLibrary({
   $ENV: {},
 
   // In -Oz builds, we replace memcpy() altogether with a non-unrolled wasm
-  // variant, so we should never emit emscripten_memcpy_big() in the build.
-  // In STANDALONE_WASM we avoid the emscripten_memcpy_big dependency so keep
+  // variant, so we should never emit emscripten_memcpy_js() in the build.
+  // In STANDALONE_WASM we avoid the emscripten_memcpy_js dependency so keep
   // the wasm file standalone.
   // In BULK_MEMORY mode we include native versions of these functions based
   // on memory.fill and memory.copy.
@@ -407,11 +407,11 @@ addToLibrary({
   //   AppleWebKit/605.1.15 Safari/604.1 Version/13.0.4 iPhone OS 13_3 on iPhone 6s with iOS 13.3
   //   AppleWebKit/605.1.15 Version/13.0.3 Intel Mac OS X 10_15_1 on Safari 13.0.3 (15608.3.10.1.4) on macOS Catalina 10.15.1
   // Hence the support status of .copyWithin() for Safari version range [10.0.0, 10.1.0] is unknown.
-  emscripten_memcpy_big: `= Uint8Array.prototype.copyWithin
+  emscripten_memcpy_js: `= Uint8Array.prototype.copyWithin
     ? (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num)
     : (dest, src, num) => HEAPU8.set(HEAPU8.subarray(src, src+num), dest)`,
 #else
-  emscripten_memcpy_big: (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num),
+  emscripten_memcpy_js: (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num),
 #endif
 
 #endif
@@ -3199,7 +3199,7 @@ addToLibrary({
   $wasmTableMirror: [],
 
   $setWasmTableEntry__internal: true,
-  $setWasmTableEntry__deps: ['$wasmTableMirror'],
+  $setWasmTableEntry__deps: ['$wasmTableMirror', '$wasmTable'],
   $setWasmTableEntry: (idx, func) => {
     wasmTable.set(idx, func);
     // With ABORT_ON_WASM_EXCEPTIONS wasmTable.get is overriden to return wrapped
@@ -3209,7 +3209,7 @@ addToLibrary({
   },
 
   $getWasmTableEntry__internal: true,
-  $getWasmTableEntry__deps: ['$wasmTableMirror'],
+  $getWasmTableEntry__deps: ['$wasmTableMirror', '$wasmTable'],
   $getWasmTableEntry: (funcPtr) => {
 #if MEMORY64
     // Function pointers are 64-bit, but wasmTable.get() requires a Number.
@@ -3234,8 +3234,10 @@ addToLibrary({
 
 #else
 
+  $setWasmTableEntry__deps: ['$wasmTable'],
   $setWasmTableEntry: (idx, func) => wasmTable.set(idx, func),
 
+  $getWasmTableEntry__deps: ['$wasmTable'],
   $getWasmTableEntry: (funcPtr) => {
 #if MEMORY64
     // Function pointers are 64-bit, but wasmTable.get() requires a Number.
@@ -3518,12 +3520,12 @@ addToLibrary({
   // tell the memory segments where to place themselves
   __memory_base: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': false}, {{{ to64(GLOBAL_BASE) }}})",
   // the wasm backend reserves slot 0 for the NULL function pointer
-  __table_base: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': false}, {{{ to64(1) }}})",
+  __table_base: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': false}, {{{ to64(TABLE_BASE) }}})",
 #if MEMORY64 == 2
   __memory_base32: "new WebAssembly.Global({'value': 'i32', 'mutable': false}, {{{ GLOBAL_BASE }}})",
 #endif
 #if MEMORY64
-  __table_base32: 1,
+  __table_base32: {{{ TABLE_BASE }}},
 #endif
   // To support such allocations during startup, track them on __heap_base and
   // then when the main module is loaded it reads that value and uses it to
@@ -3611,6 +3613,20 @@ addToLibrary({
 
   $getNativeTypeSize__deps: ['$POINTER_SIZE'],
   $getNativeTypeSize: {{{ getNativeTypeSize }}},
+
+#if RELOCATABLE
+  // In RELOCATABLE mode we create the table in JS.
+  $wasmTable: `=new WebAssembly.Table({
+  'initial': {{{ INITIAL_TABLE }}},
+#if !ALLOW_TABLE_GROWTH
+  'maximum': {{{ INITIAL_TABLE }}},
+#endif
+  'element': 'anyfunc'
+});
+`,
+#else
+  $wasmTable: undefined,
+#endif
 
   // We used to define these globals unconditionally in support code.
   // Instead, we now define them here so folks can pull it in explicitly, on

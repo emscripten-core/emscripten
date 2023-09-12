@@ -729,8 +729,9 @@ def create_sending(metadata, library_symbols):
 
   sorted_items = sorted(send_items_map.items())
   prefix = ''
-  if settings.USE_CLOSURE_COMPILER:
-    # This prevents closure compiler from minifying the field names in this object.
+  if settings.MAYBE_CLOSURE_COMPILER:
+    # This prevents closure compiler from minifying the field names in this
+    # object.
     prefix = '/** @export */\n  '
   return '{\n  ' + ',\n  '.join(f'{prefix}{k}: {v}' for k, v in sorted_items) + '\n}'
 
