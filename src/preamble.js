@@ -948,18 +948,18 @@ function createWasm() {
   // performing other necessary setup
   /** @param {WebAssembly.Module=} module*/
   function receiveInstance(instance, module) {
-    var instExports = instance.exports;
+    var wasmExports = instance.exports;
 
 #if RELOCATABLE
-    instExports = relocateExports(instExports, {{{ GLOBAL_BASE }}});
+    wasmExports = relocateExports(wasmExports, {{{ GLOBAL_BASE }}});
 #endif
 
 #if ASYNCIFY
-    instExports = Asyncify.instrumentWasmExports(instExports);
+    wasmExports = Asyncify.instrumentWasmExports(wasmExports);
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
-    instExports = instrumentWasmExportsWithAbort(instExports);
+    wasmExports = instrumentWasmExportsWithAbort(wasmExports);
 #endif
 
 #if MAIN_MODULE
@@ -969,7 +969,7 @@ function createWasm() {
       dynamicLibraries = metadata.neededDynlibs.concat(dynamicLibraries);
     }
 #endif
-    mergeLibSymbols(instExports, 'main')
+    mergeLibSymbols(wasmExports, 'main')
 #if '$LDSO' in addedLibraryItems
     LDSO.init();
 #endif
@@ -979,10 +979,9 @@ function createWasm() {
 #endif
 
 #if MEMORY64 || CAN_ADDRESS_2GB
-    instExports = applySignatureConversions(instExports);
+    wasmExports = applySignatureConversions(wasmExports);
 #endif
 
-    wasmExports = instExports;
     {{{ receivedSymbol('wasmExports') }}}
 
 #if PTHREADS
@@ -1039,7 +1038,7 @@ function createWasm() {
 #if !DECLARE_ASM_MODULE_EXPORTS
     // If we didn't declare the asm exports as top level enties this function
     // is in charge of programatically exporting them on the global object.
-    exportWasmSymbols(instExports);
+    exportWasmSymbols(wasmExports);
 #endif
 
 #if PTHREADS || WASM_WORKERS
@@ -1047,7 +1046,7 @@ function createWasm() {
     wasmModule = module;
 #endif
     removeRunDependency('wasm-instantiate');
-    return instExports;
+    return wasmExports;
   }
   // wait for the pthread pool (if any)
   addRunDependency('wasm-instantiate');
