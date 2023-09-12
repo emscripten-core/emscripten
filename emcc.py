@@ -1853,6 +1853,16 @@ def phase_linker_setup(options, state, newargs):
     # Ignore -sMODULARIZE which could otherwise effect how we run the module
     # to generate the bindings.
     settings.MODULARIZE = False
+    # Don't include any custom user JS or files.
+    options.pre_js = []
+    options.post_js = []
+    options.extern_pre_js = []
+    options.extern_post_js = []
+    options.use_preload_cache = False
+    options.preload_files = []
+    options.embed_files = []
+    # Force node since that is where the tool runs.
+    settings.ENVIRONMENT = 'node'
 
   # options.output_file is the user-specified one, target is what we will generate
   if options.output_file:
