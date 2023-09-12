@@ -2211,8 +2211,8 @@ def get_libs_to_link(args, forced, only_forced):
     if not settings.EXIT_RUNTIME:
       add_library('libnoexit')
     add_library('libc')
-    if settings.MALLOC != 'none':
-      add_library('libmalloc')
+    #if settings.MALLOC != 'none':
+    #  add_library('libmalloc')
   add_library('libcompiler_rt')
   if settings.LINK_AS_CXX:
     add_library('libc++')
