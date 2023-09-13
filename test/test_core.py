@@ -7637,10 +7637,11 @@ void* operator new(size_t size) {
   })
   @node_pthreads
   def test_embind_2(self, args):
+    self.maybe_closure()
     self.emcc_args += ['-lembind', '--post-js', 'post.js'] + args
     create_file('post.js', '''
       function printLerp() {
-        out('lerp ' + Module.lerp(100, 200, 66) + '.');
+        out('lerp ' + Module['lerp'](100, 200, 66) + '.');
       }
     ''')
     create_file('test_embind_2.cpp', r'''
@@ -7668,7 +7669,7 @@ void* operator new(size_t size) {
     create_file('post.js', '''
       function ready() {
         try {
-          Module.compute(new Uint8Array([1,2,3]));
+          Module['compute'](new Uint8Array([1,2,3]));
         } catch(e) {
           out(e);
         }
@@ -7695,7 +7696,7 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind', '--post-js', 'post.js']
     create_file('post.js', '''
       function printFirstElement() {
-        out(Module.getBufferView()[0]);
+        out(Module['getBufferView']()[0]);
       }
     ''')
     create_file('test_embind_4.cpp', r'''
@@ -7779,7 +7780,7 @@ void* operator new(size_t size) {
       #include <stdio.h>
 
       EM_JS(void, calltest, (), {
-        out("dotest returned: " + Module.dotest());
+        out("dotest returned: " + Module["dotest"]());
       });
 
       int main(int argc, char** argv){
@@ -7811,7 +7812,7 @@ void* operator new(size_t size) {
       #include <stdio.h>
 
       EM_JS(void, calltest, (), {
-        out("dotest returned: " + Module.dotest());
+        out("dotest returned: " + Module["dotest"]());
       });
 
       int main(int argc, char** argv){

@@ -408,6 +408,7 @@ var LibraryEmbind = {
   },
 
 #if WASM_BIGINT
+  _embind_register_bigint__docs: '/** @suppress {globalThis} */',
   _embind_register_bigint__deps: [
     '$embindRepr', '$readLatin1String', '$registerType', '$integerReadValueFromPointer'],
   _embind_register_bigint: (primitiveType, name, size, minRange, maxRange) => {
