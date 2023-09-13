@@ -16,6 +16,7 @@ libname_libicu_stubdata = 'libicu_stubdata'
 libname_libicu_i18n = 'libicu_i18n'
 libname_libicu_io = 'libicu_io'
 
+
 def needed(settings):
   return settings.USE_ICU
 
