@@ -388,7 +388,7 @@ var LibraryEmVal = {
     return id;
   },
 
-  $emval_registeredMethods: [],
+  $emval_registeredMethods: {},
   _emval_get_method_caller__deps: [
     '$emval_addMethodCaller', '$emval_lookupTypes',,
     '$makeLegalFunctionName', '$emval_registeredMethods',

@@ -95,7 +95,7 @@ def parse_function_for_memory_inits(module, func_index, offset_map):
     elif opcode in (OpCode.BLOCK,):
       module.read_type()
     elif opcode in (OpCode.I32_CONST, OpCode.I64_CONST):
-      const_values.append(module.read_uleb())
+      const_values.append(module.read_sleb())
     elif opcode in (OpCode.GLOBAL_SET, OpCode.BR, OpCode.GLOBAL_GET, OpCode.LOCAL_SET, OpCode.LOCAL_GET, OpCode.LOCAL_TEE):
       module.read_uleb()
     elif opcode == OpCode.CALL:
@@ -105,7 +105,7 @@ def parse_function_for_memory_inits(module, func_index, offset_map):
       if opcode == MemoryOpCode.MEMORY_INIT:
         segment_idx = module.read_uleb()
         segment = segments[segment_idx]
-        offset = const_values[-3]
+        offset = to_unsigned(const_values[-3])
         offset_map[segment] = offset
         memory = module.read_uleb()
         assert memory == 0

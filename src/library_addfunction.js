@@ -141,7 +141,7 @@ addToLibrary({
   // Weak map of functions in the table to their indexes, created on first use.
   $functionsInTableMap: undefined,
 
-  $getEmptyTableSlot__deps: ['$freeTableIndexes'],
+  $getEmptyTableSlot__deps: ['$freeTableIndexes', '$wasmTable'],
   $getEmptyTableSlot: () => {
     // Reuse a free index if there is one, otherwise grow.
     if (freeTableIndexes.length) {
@@ -172,7 +172,7 @@ addToLibrary({
     }
   },
 
-  $getFunctionAddress__deps: ['$updateTableMap', '$functionsInTableMap'],
+  $getFunctionAddress__deps: ['$updateTableMap', '$functionsInTableMap', '$wasmTable'],
   $getFunctionAddress: (func) => {
     // First, create the map if this is the first use.
     if (!functionsInTableMap) {
@@ -189,7 +189,8 @@ addToLibrary({
   $addFunction__docs: '/** @param {string=} sig */',
   $addFunction__deps: ['$convertJsFunctionToWasm', '$getFunctionAddress',
                        '$functionsInTableMap', '$getEmptyTableSlot',
-                       '$getWasmTableEntry', '$setWasmTableEntry'],
+                       '$getWasmTableEntry', '$setWasmTableEntry',
+                       '$wasmTable'],
   $addFunction: (func, sig) => {
   #if ASSERTIONS
     assert(typeof func != 'undefined');
@@ -234,9 +235,11 @@ addToLibrary({
     return ret;
   },
 
-  $removeFunction__deps: ['$functionsInTableMap', '$freeTableIndexes', '$getWasmTableEntry'],
+  $removeFunction__deps: ['$functionsInTableMap', '$freeTableIndexes',
+                          '$getWasmTableEntry', '$setWasmTableEntry'],
   $removeFunction: (index) => {
     functionsInTableMap.delete(getWasmTableEntry(index));
+    setWasmTableEntry(index, null);
     freeTableIndexes.push(index);
   },
 });

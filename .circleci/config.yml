@@ -109,7 +109,7 @@ commands:
     description: "install canary version of node"
     steps:
       - install-node-version:
-         node_version: "20.0.0-v8-canary2023041819be670741"
+         node_version: "21.0.0-v8-canary20230822f5e30d0702"
          canary: true
   install-v8:
     description: "install v8 using jsvu"
@@ -125,7 +125,7 @@ commands:
             export PATH="`pwd`/node-v15.14.0-linux-x64/bin:${PATH}"
             npm install jsvu -g
             jsvu --os=default --engines=v8
-  build:
+  install-emsdk:
     description: "Install emsdk"
     steps:
       - run:
@@ -135,7 +135,6 @@ commands:
             tar -C ~ -xf ~/emsdk-main.tar.gz
             mv ~/emsdk-main ~/emsdk
             cd ~/emsdk
-            ./emsdk update-tags
             ./emsdk install tot
             ./emsdk activate tot
             # Remove the emsdk version of emscripten to save space in the
@@ -458,7 +457,7 @@ jobs:
             tar xvf libclang_rt.builtins-wasm32-wasi-11.0.tar.gz -C ~/wasi-sdk
             tar xvf wasi-sysroot-11.0.tar.gz -C ~/wasi-sdk/
       - install-v8
-      - build
+      - install-emsdk
       - build-libs
       - persist
   # Perhaps we don't need to run this suite with every commit. Consider moving this to FYI bot.
@@ -523,6 +522,7 @@ jobs:
           title: "core3+extras"
           test_targets: "
             lto2.test_dylink_syslibs_all
+            lto2.test_float_builtins
             lto0.test_exceptions_allowed_uncaught
             core3
             core2g.test_externref
@@ -618,9 +618,8 @@ jobs:
           title: "wasm64"
           test_targets: "
             wasm64
-            core_2gb.test_em_asm
-            core_2gb.test_embind_unsigned_bigint
-            core_2gb.test_embind_no_rtti
+            core_2gb.test_*em_asm*
+            core_2gb.test_*embind*
             wasm64l.test_bigswitch
             other.test_memory64_proxies
             other.test_failing_growth_wasm64"
@@ -651,7 +650,7 @@ jobs:
           name: submodule update
           command: git submodule update --init
       - pip-install
-      - build
+      - install-emsdk
       - run:
           name: install jsc
           command: |
@@ -673,7 +672,7 @@ jobs:
           name: submodule update
           command: git submodule update --init
       - pip-install
-      - build
+      - install-emsdk
       - run:
           name: install spidermonkey
           command: |
@@ -699,7 +698,7 @@ jobs:
           name: submodule update
           command: git submodule update --init
       - pip-install
-      - build
+      - install-emsdk
       - install-node-canary
       - run-tests:
           title: "selected subset"
@@ -797,7 +796,7 @@ jobs:
           command: echo "export PATH=\"$PATH:/c/Python27amd64/\"" >> $BASH_ENV
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
-      - build
+      - install-emsdk
       - pip-install:
           python: "$EMSDK_PYTHON"
       - run-tests:
@@ -834,7 +833,7 @@ jobs:
             rm -rf ~/emsdk ~/vms ~/.jsvu
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
-      - build
+      - install-emsdk
       - pip-install:
           python: "$EMSDK_PYTHON"
       - run-tests:
@@ -856,7 +855,7 @@ jobs:
       EMCC_SKIP_SANITY_CHECK: "1"
     steps:
       - setup-macos
-      - build
+      - install-emsdk
       # TODO: We can't currently do pip install here since numpy and other packages
       # are currently missing arm64 macos binaries.
       # TODO: Remove this once emsdk has an arm64 version of node

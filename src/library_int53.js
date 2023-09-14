@@ -24,7 +24,8 @@ addToLibrary({
     {{{ makeSetValue('ptr', 4, '(num - lower)/4294967296', 'u32') }}};
 #if ASSERTIONS
     var deserialized = (num >= 0) ? readI53FromU64(ptr) : readI53FromI64(ptr);
-    if (deserialized != num) warnOnce(`writeI53ToI64() out of range: serialized JS Number ${num} to Wasm heap as bytes lo=${ptrToString(HEAPU32[ptr/4])}, hi=${ptrToString(HEAPU32[ptr/4+1])}, which deserializes back to ${deserialized} instead!`);
+    var offset = {{{ getHeapOffset('ptr', 'u32') }}};
+    if (deserialized != num) warnOnce(`writeI53ToI64() out of range: serialized JS Number ${num} to Wasm heap as bytes lo=${ptrToString(HEAPU32[offset])}, hi=${ptrToString(HEAPU32[offset+1])}, which deserializes back to ${deserialized} instead!`);
 #endif
   },
 
@@ -48,9 +49,9 @@ addToLibrary({
   $writeI53ToI64Signaling: (ptr, num) => {
     if (num > 0x7FFFFFFFFFFFFFFF || num < -0x8000000000000000) {
 #if ASSERTIONS
-      throw 'RangeError in writeI53ToI64Signaling(): input value ' + num + ' is out of range of int64';
+      throw `RangeError in writeI53ToI64Signaling(): input value ${num} is out of range of int64`;
 #else
-      throw 'RangeError:' + num;
+      throw `RangeError: ${num}`;
 #endif
     }
     writeI53ToI64(ptr, num);
@@ -76,9 +77,9 @@ addToLibrary({
   $writeI53ToU64Signaling: (ptr, num) => {
     if (num < 0 || num > 0xFFFFFFFFFFFFFFFF) {
 #if ASSERTIONS
-      throw 'RangeError in writeI53ToU64Signaling(): input value ' + num + ' is out of range of uint64';
+      throw `RangeError in writeI53ToU64Signaling(): input value ${num} is out of range of uint64`;
 #else
-      throw 'RangeError:'+num;
+      throw `RangeError: ${num}`;
 #endif
     }
     writeI53ToI64(ptr, num);

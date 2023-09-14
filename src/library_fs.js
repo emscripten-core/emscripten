@@ -1869,4 +1869,20 @@ FS.staticInit();` +
     },
 #endif
   },
+
+  $FS_createDataFile__deps: ['$FS'],
+  $FS_createDataFile: (parent, name, fileData, canRead, canWrite, canOwn) => {
+    return FS.createDataFile(parent, name, fileData, canRead, canWrite, canOwn);
+  },
+
+  $FS_unlink__deps: ['$FS'],
+  $FS_unlink: (path) => FS.unlink(path),
+
+  $FS_mkdirTree__docs: `
+  /**
+   * @param {number=} mode Optionally, the mode to create in. Uses mkdir's
+   *                       default if not set.
+   */`,
+  $FS_mkdirTree__deps: ['$FS'],
+  $FS_mkdirTree: (path, mode) => FS.mkdirTree(path, mode),
 });
