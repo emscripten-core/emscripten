@@ -1,19 +1,19 @@
-Module.onRuntimeInitialized = async () => {
+Module['onRuntimeInitialized'] = async () => {
   try {
-    let delayedThrowResult = Module.delayed_throw();
+    let delayedThrowResult = Module["delayed_throw"]();
     assert(delayedThrowResult instanceof Promise);
     let err = await delayedThrowResult.then(() => '', err => err.message);
     assert(err === 'my message', `"${err}" doesn't contain the expected error`);
 
-    let fooResult = Module.foo();
+    let fooResult = Module["foo"]();
     assert(fooResult instanceof Promise);
     fooResult = await fooResult;
     assert(fooResult === 10);
 
-    let barInstancePromise = new Module.Bar();
+    let barInstancePromise = new Module["Bar"]();
     assert(barInstancePromise instanceof Promise);
     let barInstance = await barInstancePromise;
-    assert(barInstance instanceof Module.Bar);
+    assert(barInstance instanceof Module["Bar"]);
     assert(barInstance.x === 20);
 
     let barMethodResult = barInstance.method();
@@ -27,7 +27,7 @@ Module.onRuntimeInitialized = async () => {
     assert(barMethodResult instanceof Promise);
     assert(await barMethodResult === undefined);
 
-    let barStaticMethodResult = Module.Bar.static_method();
+    let barStaticMethodResult = Module["Bar"].static_method();
     assert(barStaticMethodResult instanceof Promise);
     assert(await barStaticMethodResult === 50);
 

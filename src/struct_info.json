@@ -968,6 +968,13 @@
         ]
     },
     {
+        "file": "emscripten/wasm_worker.h",
+        "defines": [
+            "ATOMICS_WAIT_NOT_EQUAL",
+            "ATOMICS_WAIT_TIMED_OUT"
+        ]
+    },
+    {
         "file": "emscripten/emscripten.h",
         "defines": [
             "EM_LOG_CONSOLE",

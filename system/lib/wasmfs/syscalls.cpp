@@ -1379,12 +1379,13 @@ int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
     if (openFile) {
       mask = 0;
       auto flags = openFile->locked().getFlags();
+      auto accessMode = flags & O_ACCMODE;
       auto readBit = pollfd->events & POLLOUT;
-      if (readBit && (flags == O_WRONLY || flags == O_RDWR)) {
+      if (readBit && (accessMode == O_WRONLY || accessMode == O_RDWR)) {
         mask |= readBit;
       }
       auto writeBit = pollfd->events & POLLIN;
-      if (writeBit && (flags == O_RDONLY || flags == O_RDWR)) {
+      if (writeBit && (accessMode == O_RDONLY || accessMode == O_RDWR)) {
         // If there is data in the file, then there is also the ability to read.
         // TODO: Does this need to consider the position as well? That is, if
         // the position is at the end, we can't read from the current position

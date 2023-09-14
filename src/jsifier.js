@@ -140,10 +140,8 @@ function runJSify() {
           error(`handleI64Signatures: missing name for argument ${i} in ${symbol}`);
           return snippet;
         }
-        if (WASM_BIGINT) {
-          if (sig[i] == 'p' || (sig[i] == 'j' && i53abi)) {
-            argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
-          }
+        if (WASM_BIGINT && ((MEMORY64 && sig[i] == 'p') || (i53abi && sig[i] == 'j'))) {
+          argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
         } else {
           if (sig[i] == 'j' && i53abi) {
             argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
@@ -162,7 +160,7 @@ function runJSify() {
         args = newArgs.join(',');
       }
 
-      if ((sig[0] == 'j' && i53abi) || (sig[0] == 'p' && WASM_BIGINT)) {
+      if ((sig[0] == 'j' && i53abi) || (sig[0] == 'p' && MEMORY64)) {
         // For functions that where we need to mutate the return value, we
         // also need to wrap the body in an inner function.
         if (oneliner) {
@@ -227,12 +225,12 @@ function(${args}) {
       i53ConversionDeps.forEach((d) => deps.push(d))
     }
 
-    if (SHARED_MEMORY) {
-      const proxyingMode = LibraryManager.library[symbol + '__proxy'];
-      if (proxyingMode) {
-        if (proxyingMode !== 'sync' && proxyingMode !== 'async') {
-          throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
-        }
+    const proxyingMode = LibraryManager.library[symbol + '__proxy'];
+    if (proxyingMode) {
+      if (proxyingMode !== 'sync' && proxyingMode !== 'async' && proxyingMode !== 'none') {
+        throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
+      }
+      if (SHARED_MEMORY) {
         const sync = proxyingMode === 'sync';
         if (PTHREADS) {
           snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
@@ -511,6 +509,8 @@ function(${args}) {
         //   'var foo;[code here verbatim];'
         contentText = 'var ' + mangled + snippet;
         if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}') contentText += ';';
+      } else if (typeof snippet == 'undefined') {
+        contentText = `var ${mangled};`;
       } else {
         // In JS libraries
         //   foo: '=[value]'

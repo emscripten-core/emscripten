@@ -238,11 +238,11 @@ EM_BOOL webglcontext_callback(int eventType, const void *reserved, void *userDat
   return 0;
 }
 
-#ifdef REPORT_RESULT
-void report_result(void *arg)
+#ifndef KEEP_ALIVE
+void test_done(void *arg)
 {
   emscripten_html5_remove_all_event_listeners();
-  REPORT_RESULT(0);
+  exit(0);
 }
 #endif
 
@@ -428,11 +428,11 @@ int main()
   ret = (width && height) ? EMSCRIPTEN_RESULT_SUCCESS : EMSCRIPTEN_RESULT_FAILED;
   TEST_RESULT(emscripten_get_screen_size);
 
-#ifdef REPORT_RESULT
-  // Keep the page running for a moment.
-  emscripten_async_call(report_result, 0, 5000);
-#else
+#ifdef KEEP_ALIVE
   emscripten_exit_with_live_runtime();
+#else
+  // Keep the page running for a moment.
+  emscripten_async_call(test_done, 0, 5000);
 #endif
   return 0;
 }

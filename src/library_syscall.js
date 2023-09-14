@@ -93,13 +93,31 @@ var SyscallsLibrary = {
 #if ASSERTIONS
       assert(SYSCALLS.varargs != undefined);
 #endif
+      // the `+` prepended here is necessary to convince the JSCompiler that varargs is indeed a number.
+      var ret = {{{ makeGetValue('+SYSCALLS.varargs', 0, 'i32') }}};
       SYSCALLS.varargs += 4;
-      var ret = {{{ makeGetValue('SYSCALLS.varargs', '-4', 'i32') }}};
 #if SYSCALL_DEBUG
       dbg(`    (raw: "${ret}")`);
 #endif
       return ret;
     },
+
+#if MEMORY64
+    getp() {
+#if ASSERTIONS
+      assert(SYSCALLS.varargs != undefined);
+#endif
+      var ret = {{{ makeGetValue('SYSCALLS.varargs', 0, '*') }}};
+      SYSCALLS.varargs += {{{ POINTER_SIZE }}};
+#if SYSCALL_DEBUG
+      dbg(`    (raw: "${ret}")`);
+#endif
+      return ret;
+    },
+#else
+    getp() { return SYSCALLS.get() },
+#endif
+
     getStr(ptr) {
       var ret = UTF8ToString(ptr);
 #if SYSCALL_DEBUG
@@ -216,7 +234,7 @@ var SyscallsLibrary = {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
         if (stream.tty.ops.ioctl_tcgets) {
           var termios = stream.tty.ops.ioctl_tcgets(stream);
-          var argp = SYSCALLS.get();
+          var argp = SYSCALLS.getp();
           {{{ makeSetValue('argp', C_STRUCTS.termios.c_iflag, 'termios.c_iflag || 0', 'i32') }}};
           {{{ makeSetValue('argp', C_STRUCTS.termios.c_oflag, 'termios.c_oflag || 0', 'i32') }}};
           {{{ makeSetValue('argp', C_STRUCTS.termios.c_cflag, 'termios.c_cflag || 0', 'i32') }}};
@@ -242,7 +260,7 @@ var SyscallsLibrary = {
       case {{{ cDefs.TCSETSF }}}: {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
         if (stream.tty.ops.ioctl_tcsets) {
-          var argp = SYSCALLS.get();
+          var argp = SYSCALLS.getp();
           var c_iflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_iflag, 'i32') }}};
           var c_oflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_oflag, 'i32') }}};
           var c_cflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_cflag, 'i32') }}};
@@ -257,7 +275,7 @@ var SyscallsLibrary = {
       }
       case {{{ cDefs.TIOCGPGRP }}}: {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
-        var argp = SYSCALLS.get();
+        var argp = SYSCALLS.getp();
         {{{ makeSetValue('argp', 0, 0, 'i32') }}};
         return 0;
       }
@@ -266,7 +284,7 @@ var SyscallsLibrary = {
         return -{{{ cDefs.EINVAL }}}; // not supported
       }
       case {{{ cDefs.FIONREAD }}}: {
-        var argp = SYSCALLS.get();
+        var argp = SYSCALLS.getp();
         return FS.ioctl(stream, op, argp);
       }
       case {{{ cDefs.TIOCGWINSZ }}}: {
@@ -275,7 +293,7 @@ var SyscallsLibrary = {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
         if (stream.tty.ops.ioctl_tiocgwinsz) {
           var winsize = stream.tty.ops.ioctl_tiocgwinsz(stream.tty);
-          var argp = SYSCALLS.get();
+          var argp = SYSCALLS.getp();
           {{{ makeSetValue('argp', 0, 'winsize[0]', 'i16') }}};
           {{{ makeSetValue('argp', 2, 'winsize[1]', 'i16') }}};
         }
@@ -538,11 +556,11 @@ var SyscallsLibrary = {
   __syscall__newselect: (nfds, readfds, writefds, exceptfds, timeout) => {
     // readfds are supported,
     // writefds checks socket open status
-    // exceptfds not supported
-    // timeout is always 0 - fully async
+    // exceptfds are supported, although on web, such exceptional conditions never arise in web sockets
+    //                          and so the exceptfds list will always return empty.
+    // timeout is supported, although on SOCKFS and PIPEFS these are ignored and always treated as 0 - fully async
 #if ASSERTIONS
     assert(nfds <= 64, 'nfds must be less than or equal to 64');  // fd sets have 64 bits // TODO: this could be 1024 based on current musl headers
-    assert(!exceptfds, 'exceptfds not supported');
 #endif
 
     var total = 0;
@@ -770,7 +788,7 @@ var SyscallsLibrary = {
         return 0;
       }
       case {{{ cDefs.F_GETLK }}}: {
-        var arg = SYSCALLS.get();
+        var arg = SYSCALLS.getp();
         var offset = {{{ C_STRUCTS.flock.l_type }}};
         // We're always unlocked.
         {{{ makeSetValue('arg', 'offset', cDefs.F_UNLCK, 'i16') }}};
@@ -821,7 +839,7 @@ var SyscallsLibrary = {
     return ___syscall_statfs64(0, size, buf);
   },
   __syscall_fadvise64__nothrow: true,
-  __syscall_fadvise64__proxy: false,
+  __syscall_fadvise64__proxy: 'none',
   __syscall_fadvise64: (fd, offset, len, advice) => {
     return 0; // your advice is important to us (but we can't use it)
   },

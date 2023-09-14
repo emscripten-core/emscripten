@@ -225,7 +225,7 @@ weak int sigaltstack(const stack_t *restrict ss, stack_t *restrict old_ss) {
 // dlfcn.h
 // ==========================================================================
 
-#ifndef __PIC__
+#ifndef EMSCRIPTEN_DYNAMIC_LINKING
 void __dl_seterr(const char*, ...);
 
 weak void *__dlsym(void *restrict p, const char *restrict s, void *restrict ra) {

@@ -67,7 +67,7 @@ var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
 #if SUPPORT_BIG_ENDIAN
   HEAP_DATA_VIEW,
 #endif
-  wasmMemory, wasmTable;
+  wasmMemory;
 
 function updateMemoryViews() {
   var b = wasmMemory.buffer;
@@ -77,11 +77,15 @@ function updateMemoryViews() {
 #if SUPPORT_BIG_ENDIAN
   {{{ maybeExport('HEAP_DATA_VIEW') }}} HEAP_DATA_VIEW = new DataView(b);
 #endif
+#if MEMORY64 && MAXIMUM_MEMORY > FOUR_GB
+#include "runtime_view_proxy.js"
+#else
   {{{ maybeExport('HEAP8') }}} HEAP8 = new Int8Array(b);
   {{{ maybeExport('HEAP16') }}} HEAP16 = new Int16Array(b);
-  {{{ maybeExport('HEAP32') }}} HEAP32 = new Int32Array(b);
   {{{ maybeExport('HEAPU8') }}} HEAPU8 = new Uint8Array(b);
   {{{ maybeExport('HEAPU16') }}} HEAPU16 = new Uint16Array(b);
+#endif
+  {{{ maybeExport('HEAP32') }}} HEAP32 = new Int32Array(b);
   {{{ maybeExportIfAudioWorklet('HEAPU32') }}} HEAPU32 = new Uint32Array(b);
   {{{ maybeExportIfAudioWorklet('HEAPF32') }}} HEAPF32 = new Float32Array(b);
   {{{ maybeExport('HEAPF64') }}} HEAPF64 = new Float64Array(b);

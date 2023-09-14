@@ -248,6 +248,11 @@ var ALLOW_TABLE_GROWTH = false;
 // [link]
 var GLOBAL_BASE = 1024;
 
+// Where where table slots (function addresses) are allocated.
+// This must be at least 1 to reserve the zero slot for the null pointer.
+// [link]
+var TABLE_BASE = 1;
+
 // Whether closure compiling is being run on this output
 // [link]
 var USE_CLOSURE_COMPILER = false;
@@ -1116,6 +1121,7 @@ var LINKABLE = false;
 //   * DEFAULT_TO_CXX is disabled.
 //   * USE_GLFW is set to 0 rather than 2 by default.
 //   * ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
+//   * INCOMING_MODULE_JS_API is set to empty by default.
 // [compile+link]
 var STRICT = false;
 
@@ -1306,9 +1312,8 @@ var EMSCRIPTEN_TRACING = false;
 // Specify the GLFW version that is being linked against.  Only relevant, if you
 // are linking against the GLFW library.  Valid options are 2 for GLFW2 and 3
 // for GLFW3.
-// This defaults to 0 in either MINIMAL_RUNTIME or STRICT modes.
 // [link]
-var USE_GLFW = 2;
+var USE_GLFW = 0;
 
 // Whether to use compile code to WebAssembly. Set this to 0 to compile to JS
 // instead of wasm.

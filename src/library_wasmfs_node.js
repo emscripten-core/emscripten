@@ -187,7 +187,7 @@ addToLibrary({
     try {
       // TODO: Cache open file descriptors to guarantee that opened files will
       // still exist when we try to access them.
-      let nread = fs.readSync(fd, HEAPU8, buf_p, len, pos);
+      let nread = fs.readSync(fd, new Int8Array(HEAPU8.buffer, buf_p, len), { position: pos });
       {{{ makeSetValue('nread_p', 0, 'nread', 'i32') }}};
     } catch (e) {
       if (!e.code) throw e;
@@ -201,7 +201,7 @@ addToLibrary({
     try {
       // TODO: Cache open file descriptors to guarantee that opened files will
       // still exist when we try to access them.
-      let nwritten = fs.writeSync(fd, HEAPU8, buf_p, len, pos);
+      let nwritten = fs.writeSync(fd, new Int8Array(HEAPU8.buffer, buf_p, len), { position: pos });
       {{{ makeSetValue('nwritten_p', 0, 'nwritten', 'i32') }}};
     } catch (e) {
       if (!e.code) throw e;

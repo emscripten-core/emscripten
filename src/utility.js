@@ -145,22 +145,55 @@ function mergeInto(obj, other, options = null) {
   }
 
   for (const key of Object.keys(other)) {
-    if (key.endsWith('__sig')) {
-      if (obj.hasOwnProperty(key)) {
-        const oldsig = obj[key];
-        const newsig = other[key];
-        if (oldsig == newsig) {
-          warn(`signature redefinition for: ${key}`);
-        } else {
-          error(`signature redefinition for: ${key}. (old=${oldsig} vs new=${newsig})`);
+    if (isDecorator(key)) {
+      if (key.endsWith('__sig')) {
+        if (obj.hasOwnProperty(key)) {
+          const oldsig = obj[key];
+          const newsig = other[key];
+          if (oldsig == newsig) {
+            warn(`signature redefinition for: ${key}`);
+          } else {
+            error(`signature redefinition for: ${key}. (old=${oldsig} vs new=${newsig})`);
+          }
         }
       }
-    }
 
-    if (key.endsWith('__deps')) {
-      const deps = other[key];
-      if (!Array.isArray(deps)) {
-        error(`JS library directive ${key}=${deps.toString()} is of type ${typeof deps}, but it should be an array`);
+      const index = key.lastIndexOf('__');
+      const decoratorName = key.slice(index);
+      const type = typeof other[key];
+
+      // Specific type checking for `__deps` which is expected to be an array
+      // (not just any old `object`)
+      if (decoratorName === '__deps') {
+        const deps = other[key];
+        if (!Array.isArray(deps)) {
+          error(`JS library directive ${key}=${deps.toString()} is of type '${type}', but it should be an array`);
+        }
+        for (let dep of deps) {
+          if (dep && typeof dep !== 'string' && typeof dep !== 'function') {
+            error(`__deps entries must be of type 'string' or 'function' not '${typeof dep}': ${key}`)
+          }
+        }
+      } else {
+        // General type checking for all other decorators
+        const decoratorTypes = {
+          '__sig': 'string',
+          '__proxy': 'string',
+          '__asm': 'boolean',
+          '__inline': 'boolean',
+          '__postset': ['string', 'function'],
+          '__docs': 'string',
+          '__nothrow': 'boolean',
+          '__noleakcheck': 'boolean',
+          '__internal': 'boolean',
+          '__user': 'boolean',
+          '__async': 'boolean',
+          '__i53abi': 'boolean',
+        };
+        const expected = decoratorTypes[decoratorName];
+        if (type !== expected && !expected.includes(type)) {
+          error(`Decorator (${key}} has wrong type. Expected '${expected}' not '${type}'`);
+        }
       }
     }
   }
