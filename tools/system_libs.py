@@ -49,14 +49,16 @@ def glob_in_path(path, glob_pattern, excludes=()):
   return sorted(f for f in files if os.path.basename(f) not in excludes)
 
 
-def get_base_cflags(force_object_files=False):
+def get_base_cflags(force_object_files=False, preprocess=True):
   # Always build system libraries with debug information.  Non-debug builds
   # will ignore this at link time because we link with `-strip-debug`.
-  flags = ['-g', '-sSTRICT']
+  flags = ['-g', '-sSTRICT', '-Werror']
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
   if settings.RELOCATABLE:
-    flags += ['-sRELOCATABLE', '-DEMSCRIPTEN_DYNAMIC_LINKING']
+    flags += ['-sRELOCATABLE']
+    if preprocess:
+      flags += ['-DEMSCRIPTEN_DYNAMIC_LINKING']
   if settings.MEMORY64:
     flags += ['-Wno-experimental', '-sMEMORY64=' + str(settings.MEMORY64)]
   return flags
@@ -339,7 +341,7 @@ class Library:
   # extra code size. The -fno-unroll-loops flags was added here when loop
   # unrolling landed upstream in LLVM to avoid changing behavior but was not
   # specifically evaluated.
-  cflags = ['-O2', '-Wall', '-Werror', '-fno-unroll-loops']
+  cflags = ['-O2', '-Wall', '-fno-unroll-loops']
 
   # A list of directories to put in the include path when building.
   # This is a list of tuples of path components.
@@ -460,7 +462,7 @@ class Library:
       source_dir = utils.path_from_root()
       cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
                  '-fdebug-compilation-dir=/emsdk/emscripten']
-    asflags = get_base_cflags()
+    asflags = get_base_cflags(preprocess=False)
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
     create_ninja_file(input_files, ninja_file, libname, cflags, asflags=asflags, customize_build_flags=self.customize_build_cmd)
@@ -503,7 +505,7 @@ class Library:
         # .s files are processed directly by the assembler.  In this case we can't pass
         # pre-processor flags such as `-I` and `-D` but we still want core flags such as
         # `-sMEMORY64`.
-        cmd += get_base_cflags()
+        cmd += get_base_cflags(preprocess=False)
       else:
         cmd += cflags
       if ext in ('.s', '.S'):
@@ -969,7 +971,8 @@ class libc(MuslInternalLibrary,
       '__math_oflow.c', '__math_oflowf.c',
       '__math_uflow.c', '__math_uflowf.c',
       '__math_invalid.c', '__math_invalidf.c', '__math_invalidl.c',
-      'pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c'
+      'pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c',
+      'scalbnf.c',
     ]
     math_files = files_in_path(path='system/lib/libc/musl/src/math', filenames=math_files)
 
@@ -1315,7 +1318,7 @@ class libbulkmemory(MuslInternalLibrary, AsanInstrumentedLibrary):
   name = 'libbulkmemory'
   src_dir = 'system/lib/libc'
   src_files = ['emscripten_memcpy.c', 'emscripten_memset.c',
-               'emscripten_memcpy_big.S', 'emscripten_memset_big.S']
+               'emscripten_memcpy_bulkmem.S', 'emscripten_memset_bulkmem.S']
   cflags = ['-mbulk-memory']
 
   def can_use(self):

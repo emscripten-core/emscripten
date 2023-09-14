@@ -225,12 +225,12 @@ function(${args}) {
       i53ConversionDeps.forEach((d) => deps.push(d))
     }
 
-    if (SHARED_MEMORY) {
-      const proxyingMode = LibraryManager.library[symbol + '__proxy'];
-      if (proxyingMode) {
-        if (proxyingMode !== 'sync' && proxyingMode !== 'async') {
-          throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
-        }
+    const proxyingMode = LibraryManager.library[symbol + '__proxy'];
+    if (proxyingMode) {
+      if (proxyingMode !== 'sync' && proxyingMode !== 'async' && proxyingMode !== 'none') {
+        throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
+      }
+      if (SHARED_MEMORY) {
         const sync = proxyingMode === 'sync';
         if (PTHREADS) {
           snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
@@ -509,6 +509,8 @@ function(${args}) {
         //   'var foo;[code here verbatim];'
         contentText = 'var ' + mangled + snippet;
         if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}') contentText += ';';
+      } else if (typeof snippet == 'undefined') {
+        contentText = `var ${mangled};`;
       } else {
         // In JS libraries
         //   foo: '=[value]'

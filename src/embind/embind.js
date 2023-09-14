@@ -1632,6 +1632,7 @@ var LibraryEmbind = {
 
     var leftClass = this.$$.ptrType.registeredClass;
     var left = this.$$.ptr;
+    other.$$ = /** @type {Object} */ (other.$$);
     var rightClass = other.$$.ptrType.registeredClass;
     var right = other.$$.ptr;
 
