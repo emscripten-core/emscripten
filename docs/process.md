@@ -26,7 +26,8 @@
       should pass after each commit).
    When landing multiple commits in such a scenario, use the "rebase" option,
    to avoid a merge commit.
- * Add `NFC` to the end of the PR title for Non-Function Changes.
+ * Add `NFC` to the end of the PR title for Non-Functional Changes (i.e.,
+   changes that do not add/modify functionality, such as internal refactoring).
  * Add a `[prefix]` to start of the PR title to signify the subsystem or area
    that the PR targets. e.g. `[test] Update foo test` or `[ports] Fix zlib port`
 
