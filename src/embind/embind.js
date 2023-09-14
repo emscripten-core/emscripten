@@ -154,15 +154,16 @@ var LibraryEmbind = {
             stack.replace(/^Error(:[^\n]*)?\n/, '');
       }
     });
-    errorClass.prototype = Object.create(baseErrorType.prototype);
-    errorClass.prototype.constructor = errorClass;
-    errorClass.prototype.toString = function() {
-      if (this.message === undefined) {
-        return this.name;
-      } else {
-        return `${this.name}: ${this.message}`;
+    errorClass.prototype = Object.create(baseErrorType.prototype, {
+      constructor: errorClass;
+      toString(): {
+        if (this.message === undefined) {
+          return this.name;
+        } else {
+          return `${this.name}: ${this.message}`;
+        }
       }
-    };
+    });
 
     return errorClass;
   },
@@ -1611,7 +1612,7 @@ var LibraryEmbind = {
     record.count = { value: 1 };
     return attachFinalizer(Object.create(prototype, {
       $$: {
-          value: record,
+        value: record,
       },
     }));
   },
@@ -2315,8 +2316,7 @@ var LibraryEmbind = {
       unregisterInheritedInstance(registeredClass, this.$$.ptr);
     };
 
-    ctor.prototype = Object.create(wrapperPrototype);
-    Object.assign(ctor.prototype, properties);
+    ctor.prototype = Object.create(wrapperPrototype, properties);
     return Emval.toHandle(ctor);
   },
 
