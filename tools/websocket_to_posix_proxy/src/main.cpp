@@ -110,7 +110,7 @@ bool WebSocketValidateMessageSize(uint8_t *data, uint64_t obtainedNumBytes) {
   uint64_t expectedNumBytes = WebSocketFullMessageSize(data, obtainedNumBytes);
 
   if (expectedNumBytes != obtainedNumBytes) {
-    printf("Corrupt WebSocket message size! (got %llu bytes, expected %llu bytes)\n", obtainedNumBytes, expectedNumBytes);
+    printf("Corrupt WebSocket message size! (got %lu bytes, expected %lu bytes)\n", obtainedNumBytes, expectedNumBytes);
     printf("Received data:");
     for (size_t i = 0; i < obtainedNumBytes; ++i)
       printf(" %02X", data[i]);
@@ -187,14 +187,14 @@ void DumpWebSocketMessage(uint8_t *data, uint64_t numBytes) {
   uint64_t payloadLength = WebSocketMessagePayloadLength(data, numBytes);
   uint8_t *payload = WebSocketMessageData(data, numBytes);
 
-  printf("Received: FIN: %d, opcode: %s, mask: 0x%08X, payload length: %llu bytes, unmasked payload:", header->fin, WebSocketOpcodeToString(header->opcode),
+  printf("Received: FIN: %d, opcode: %s, mask: 0x%08X, payload length: %lu bytes, unmasked payload:", header->fin, WebSocketOpcodeToString(header->opcode),
     WebSocketMessageMaskingKey(data, numBytes), payloadLength);
   for (uint64_t i = 0; i < payloadLength; ++i) {
     if (i%16 == 0) printf("\n");
     if (i%8==0) printf(" ");
     printf(" %02X", payload[i]);
     if (i >= 63 && payloadLength > 64) {
-      printf("\n   ... (%llu more bytes)", payloadLength-i);
+      printf("\n   ... (%lu more bytes)", payloadLength-i);
       break;
     }
   }
