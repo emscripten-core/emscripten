@@ -10,7 +10,7 @@ find_package(Threads)
 target_link_libraries(websocket_to_posix_proxy ${CMAKE_THREAD_LIBS_INIT})
 
 if (WIN32)
-	add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-	add_definitions(/wd4200) # "nonstandard extension used: zero-sized array in struct/union"
-	target_link_libraries(websocket_to_posix_proxy Ws2_32.lib)
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+  add_definitions(/wd4200) # "nonstandard extension used: zero-sized array in struct/union"
+  target_link_libraries(websocket_to_posix_proxy Ws2_32.lib)
 endif()
