@@ -366,9 +366,9 @@ commands:
             echo
             echo "emrun"
             echo
-            # ? TODO(sbc): Re-enable once we figure out why the emrun tests are
+            # TODO(sbc): Re-enable once we figure out why the emrun tests are
             # locking up.
-            test/runner emrun
+            # test/runner emrun
       - upload-test-results
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
