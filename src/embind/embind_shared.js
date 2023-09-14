@@ -129,7 +129,7 @@ var LibraryEmbindShared = {
     signature = signature.trim();
     const argsIndex = signature.indexOf("(");
     if (argsIndex !== -1) {
-      assert(signature[signature.length - 1] == ")", "Unmatching paranthesis for argument names.");
+      assert(signature[signature.length - 1] == ")", "Parentheses for argument names should match.");
       return signature.substr(0, argsIndex);
     } else {
       return signature;
@@ -140,7 +140,7 @@ var LibraryEmbindShared = {
     signature = signature.trim();
     const argsIndex = signature.indexOf("(") + 1;
     if (argsIndex !== 0) {
-      assert(signature[signature.length - 1] == ")", "Unmatching paranthesis for argument names.");
+      assert(signature[signature.length - 1] == ")", "Parentheses for argument names should match.");
       return signature.substr(argsIndex, signature.length - argsIndex - 1).replaceAll(" ", "").split(",").filter(n => n.length);
     } else {
       return [];
