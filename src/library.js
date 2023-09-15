@@ -2958,6 +2958,11 @@ addToLibrary({
     return runMainThreadEmAsm(code, sigPtr, argbuf, 1);
   },
 
+  emscripten_asm_const_ptr_sync_on_main_thread__deps: ['$runMainThreadEmAsm'],
+  emscripten_asm_const_ptr_sync_on_main_thread: (code, sigPtr, argbuf) => {
+    return runMainThreadEmAsm(code, sigPtr, argbuf, 1);
+  },
+
   emscripten_asm_const_double_sync_on_main_thread: 'emscripten_asm_const_int_sync_on_main_thread',
   emscripten_asm_const_async_on_main_thread__deps: ['$runMainThreadEmAsm'],
   emscripten_asm_const_async_on_main_thread: (code, sigPtr, argbuf) => runMainThreadEmAsm(code, sigPtr, argbuf, 0),

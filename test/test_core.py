@@ -2196,9 +2196,12 @@ int main(int argc, char **argv) {
     self.emcc_args.append('-std=gnu89')
     self.do_core_test('test_em_asm_2.cpp', force_c=True)
 
-  # Tests various different ways to invoke the MAIN_THREAD_EM_ASM(), MAIN_THREAD_EM_ASM_INT() and MAIN_THREAD_EM_ASM_DOUBLE() macros.
-  # This test is identical to test_em_asm_2, just search-replaces EM_ASM to MAIN_THREAD_EM_ASM on the test file. That way if new
-  # test cases are added to test_em_asm_2.cpp for EM_ASM, they will also get tested in MAIN_THREAD_EM_ASM form.
+  # Tests various different ways to invoke the MAIN_THREAD_EM_ASM(),
+  # MAIN_THREAD_EM_ASM_INT(), MAIN_THREAD_EM_ASM_PTR, and
+  # MAIN_THREAD_EM_ASM_DOUBLE() macros.  This test is identical to
+  # test_em_asm_2, just search-replaces EM_ASM to MAIN_THREAD_EM_ASM on the test
+  # file. That way if new test cases are added to test_em_asm_2.cpp for EM_ASM,
+  # they will also get tested in MAIN_THREAD_EM_ASM form.
   def test_main_thread_em_asm(self):
     src = read_file(test_file('core/test_em_asm_2.cpp'))
     create_file('src.cpp', src.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
