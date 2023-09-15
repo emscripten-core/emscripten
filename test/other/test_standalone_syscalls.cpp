@@ -40,6 +40,6 @@ int main() {
   // This doesn't do anything because we have not handler registered, but it
   // verifies that `raise` can be included in the build without any non-standard
   // imports being generated.
-  raise(SIGUSR1);
+  raise(SIGCHLD);
   return 0;
 }
