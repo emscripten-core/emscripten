@@ -6182,7 +6182,7 @@ Module.onRuntimeInitialized = () => {
 
   @parameterized({
     'sigint': (['sigint', signal.SIGINT, 128+signal.SIGINT, True]),
-    'sigtrap': (['sigtrap', signal.SIGTRAP, 7, False])
+    'sigabrt': (['sigabrt', signal.SIGABRT, 7, False])
   })
   def test_sig_default(self, suffix, signal, exit_code, assert_identical):
     self.do_run_from_file(
