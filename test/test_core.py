@@ -6181,14 +6181,13 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test(test_file('test_signals.c'))
 
   @parameterized({
-    'sigint': (['sigint', signal.SIGINT, 128 + signal.SIGINT, True]),
-    'sigabrt': (['sigabrt', signal.SIGABRT, 7, False])
+    'sigint': (signal.SIGINT, 128 + signal.SIGINT, True),
+    'sigabrt': (signal.SIGABRT, 7, False)
   })
-  def test_sig_default(self, suffix, signal, exit_code, assert_identical):
-    self.do_run_from_file(
-      test_file('test_sig_default.c'),
-      test_file(f'test_sig_default_{suffix}.out'),
-      emcc_args=['-sEXIT_RUNTIME'],
+  def test_sigaction_default(self, signal, exit_code, assert_identical):
+    self.set_setting('EXIT_RUNTIME')
+    self.do_core_test(
+      test_file('test_sigaction_default.c'),
       args=[str(int(signal))],
       assert_identical=assert_identical,
       assert_returncode=exit_code
