@@ -3891,9 +3891,11 @@ addToLibrary({
     # See https://github.com/emscripten-core/emscripten/issues/20264
     create_file('lib.js', r'''
 addToLibrary({
+  $doNotCall: (x) => {},
+  foo__deps: ['$doNotCall'],
   foo__proxy: 'sync',
-  foo: () => setTimeout(() => {
-    console.log('should not see this before "done"');
+  foo: () => doNotCall(() => {
+    out('should never see this');
   }),
 });
 ''')
