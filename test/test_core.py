@@ -10,6 +10,7 @@ import os
 import random
 import re
 import shutil
+import signal
 import sys
 import time
 import unittest
@@ -6178,6 +6179,20 @@ Module.onRuntimeInitialized = () => {
 
   def test_signals(self):
     self.do_core_test(test_file('test_signals.c'))
+
+  @parameterized({
+    'sigint': (['sigint', signal.SIGINT, 128+signal.SIGINT, True]),
+    'sigtrap': (['sigtrap', signal.SIGTRAP, 7, False])
+  })
+  def test_sig_default(self, suffix, signal, exit_code, assert_identical):
+    self.do_run_from_file(
+      test_file('test_sig_default.c'),
+      test_file(f'test_sig_default_{suffix}.out'),
+      emcc_args=['-sEXIT_RUNTIME'],
+      args=[str(int(signal))],
+      assert_identical=assert_identical,
+      assert_returncode=exit_code
+    )
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @requires_node
