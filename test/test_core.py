@@ -6181,7 +6181,7 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test(test_file('test_signals.c'))
 
   @parameterized({
-    'sigint': (['sigint', signal.SIGINT, 128+signal.SIGINT, True]),
+    'sigint': (['sigint', signal.SIGINT, 128 + signal.SIGINT, True]),
     'sigabrt': (['sigabrt', signal.SIGABRT, 7, False])
   })
   def test_sig_default(self, suffix, signal, exit_code, assert_identical):
