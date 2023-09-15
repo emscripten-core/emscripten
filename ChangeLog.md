@@ -27,6 +27,7 @@ See docs/process.md for more on how version tagging works.
 - The `DEMANGLE_SUPPORT` setting and the associated `demangle` function are
   now deprecated since Wasm stack traces always contain demangled symbols these
   days. (#21346)
+- SDL2 port updated from v2.24.2 to v2.30.0.
 - The type of `EMSCRIPTEN_WEBGL_CONTEXT_HANDLE` was changed to unsigned and
   the only valid error returned from `emscripten_webgl_create_context` is
   now zero.  This allows `EMSCRIPTEN_WEBGL_CONTEXT_HANDLE` to hold a pointer

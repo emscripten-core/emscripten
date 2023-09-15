@@ -5,8 +5,8 @@
 
 import os
 
-TAG = 'release-2.26.0'
-HASH = '2e53af5aa3d3ca7e2b8653f999379bf424b2190aad32a7997350fc058624818cca3a780907af74c8f72305ca18a83a2aa15839e1dbc94107128125a7df9cd7fd'
+TAG = 'release-2.30.0'
+HASH = '6c6c9677f0f8bda934a7762bdcb7440077fce4a2a3fc2614da5038d85716b85a0f99b16dbb089d6a37edf5b2a9c8725a4e1c491b5302af774ce261a5cc1a27cc'
 SUBDIR = 'SDL-' + TAG
 
 variants = {'sdl2-mt': {'PTHREADS': 1}}
@@ -38,6 +38,7 @@ def get(ports, settings, shared):
     events/SDL_events.c events/SDL_gesture.c events/SDL_keyboard.c events/SDL_mouse.c events/SDL_quit.c
     events/SDL_touch.c events/SDL_windowevents.c file/SDL_rwops.c haptic/SDL_haptic.c
     joystick/controller_type.c joystick/SDL_gamecontroller.c joystick/SDL_joystick.c
+    joystick/SDL_steam_virtual_gamepad.c
     power/SDL_power.c render/SDL_d3dmath.c render/SDL_render.c
     render/SDL_yuv_sw.c render/direct3d/SDL_render_d3d.c render/direct3d11/SDL_render_d3d11.c
     render/opengl/SDL_render_gl.c render/opengl/SDL_shaders_gl.c render/opengles/SDL_render_gles.c
@@ -57,7 +58,7 @@ def get(ports, settings, shared):
     video/emscripten/SDL_emscriptenframebuffer.c video/emscripten/SDL_emscriptenmouse.c
     video/emscripten/SDL_emscriptenopengles.c video/emscripten/SDL_emscriptenvideo.c
     audio/emscripten/SDL_emscriptenaudio.c video/dummy/SDL_nullevents.c
-    video/dummy/SDL_nullframebuffer.c video/dummy/SDL_nullvideo.c video/yuv2rgb/yuv_rgb.c
+    video/dummy/SDL_nullframebuffer.c video/dummy/SDL_nullvideo.c video/yuv2rgb/yuv_rgb_std.c
     audio/disk/SDL_diskaudio.c audio/dummy/SDL_dummyaudio.c loadso/dlopen/SDL_sysloadso.c
     power/emscripten/SDL_syspower.c joystick/emscripten/SDL_sysjoystick.c
     filesystem/emscripten/SDL_sysfilesystem.c timer/unix/SDL_systimer.c haptic/dummy/SDL_syshaptic.c
