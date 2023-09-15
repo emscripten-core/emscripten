@@ -689,6 +689,7 @@ function modifyJSFunction(text, func) {
   let async_;
   let args;
   let rest;
+  let oneliner = false;
   let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   if (match) {
     async_ = match[1] || '';
@@ -701,6 +702,8 @@ function modifyJSFunction(text, func) {
       async_ = match[3] || '';
       args = match[4];
       rest = text.substr(match[0].length);
+      rest = rest.trim();
+      oneliner = rest[0] != '{';
     } else {
       // Match a function without a name (we could probably use a single regex
       // for both, but it would be more complex).
@@ -712,9 +715,8 @@ function modifyJSFunction(text, func) {
     }
   }
   let body = rest;
-  const bodyStart = rest.indexOf('{');
-  let oneliner = bodyStart < 0;
   if (!oneliner) {
+    const bodyStart = rest.indexOf('{');
     const bodyEnd = rest.lastIndexOf('}');
     assert(bodyEnd > 0);
     body = rest.substring(bodyStart + 1, bodyEnd);
