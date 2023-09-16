@@ -10,7 +10,6 @@ import os
 import random
 import re
 import shutil
-import signal
 import sys
 import time
 import unittest
@@ -36,6 +35,9 @@ import clang_native
 # decorators for limiting which modes a test can run in
 
 logger = logging.getLogger("test_core")
+
+EM_SIGINT = 2
+EM_SIGABRT = 6
 
 
 def wasm_simd(f):
@@ -6184,14 +6186,15 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test(test_file('test_signals.c'))
 
   @parameterized({
-    'sigint': (signal.SIGINT, 128 + signal.SIGINT, True),
-    'sigabrt': (signal.SIGABRT, 7, False)
+    'sigint': (EM_SIGINT, 128 + EM_SIGINT, True),
+    'sigabrt': (EM_SIGABRT, 7, False)
   })
+  @crossplatform
   def test_sigaction_default(self, signal, exit_code, assert_identical):
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test(
       test_file('test_sigaction_default.c'),
-      args=[str(int(signal))],
+      args=[str(signal)],
       assert_identical=assert_identical,
       assert_returncode=exit_code
     )
