@@ -185,7 +185,7 @@ code will resume:
 .. code-block:: cpp
 
     EM_JS(int, do_fetch, (), {
-      return Asyncify.handleSleep(function (wakeUp) {
+      return Asyncify.handleSleep((wakeUp) => {
         out("waiting for a fetch");
         fetch("a.html").then(function (response) {
           out("got the fetch response");

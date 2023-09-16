@@ -67,7 +67,7 @@ var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
 #if SUPPORT_BIG_ENDIAN
   HEAP_DATA_VIEW,
 #endif
-  wasmMemory, wasmTable;
+  wasmMemory;
 
 function updateMemoryViews() {
   var b = wasmMemory.buffer;

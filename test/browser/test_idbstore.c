@@ -77,6 +77,10 @@ int main() {
 #elif STAGE == 5
   expected = 77;
   emscripten_idb_async_exists(DB, "the_secret", (void*)expected, onchecknope, onerror);
+#elif STAGE == 6
+  expected = 88;
+  printf("clearing\n");
+  emscripten_idb_async_clear(DB, (void*)expected, ok, onerror);
 #else
   assert(0);
 #endif

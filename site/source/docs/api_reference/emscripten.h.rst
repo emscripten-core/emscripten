@@ -865,6 +865,21 @@ Asynchronous IndexedDB API
 
     - *(void*)* : Equal to ``arg`` (user defined data).
 
+.. c:function:: void emscripten_idb_async_clear(const char *db_name, void* arg, em_arg_callback_func onclear, em_arg_callback_func onerror)
+
+  Clears all data from local IndexedDB storage asynchronously.
+
+  When the storage has been cleared then the ``onclear`` callback will be called. If any error occurred ``onerror`` will be called.
+
+  :param db_name: The IndexedDB database.
+  :param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be used by a callback to identify the associated call.
+  :param em_arg_callback_func onclear: Callback on successful clear. The callback function parameter is:
+
+    - *(void*)* : Equal to ``arg`` (user defined data).
+
+  :param em_arg_callback_func onerror: Callback in the event of failure. The callback function parameter is:
+
+    - *(void*)* : Equal to ``arg`` (user defined data).
 
 
 .. c:function:: int emscripten_run_preload_plugins(const char* file, em_str_callback_func onload, em_str_callback_func onerror)
@@ -1360,6 +1375,13 @@ IndexedDB
   :param db_name: The name of the database to check in
   :param file_id: The name of the file to check
   :param pexists: An out parameter that will be filled with a non-zero value if the file exists in that database.
+  :param perror: An out parameter that will be filled with a non-zero value if an error occurred.
+
+.. c:function:: void emscripten_idb_clear(const char *db_name, int *perror);
+
+  Synchronously clears all data from IndexedDB.
+
+  :param db_name: The name of the database to clear
   :param perror: An out parameter that will be filled with a non-zero value if an error occurred.
 
 

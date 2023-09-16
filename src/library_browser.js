@@ -902,7 +902,7 @@ var LibraryBrowser = {
     Browser.mainLoop.func = browserIterationFunc;
     Browser.mainLoop.arg = arg;
 
-#if USE_CLOSURE_COMPILER
+#if MAYBE_CLOSURE_COMPILER
     // Closure compiler bug(?): Closure does not see that the assignment
     //   var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop
     // is a value copy of a number (even with the JSDoc @type annotation)
@@ -1120,9 +1120,7 @@ var LibraryBrowser = {
   },
 
   emscripten_set_window_title__proxy: 'sync',
-  emscripten_set_window_title: (title) => {
-    setWindowTitle(UTF8ToString(title));
-  },
+  emscripten_set_window_title: (title) => document.title = UTF8ToString(title),
 
   emscripten_get_screen_size__proxy: 'sync',
   emscripten_get_screen_size: (width, height) => {
