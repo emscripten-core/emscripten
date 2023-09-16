@@ -1112,7 +1112,7 @@ var LibraryWebGPU = {
     var bgls = [];
     for (var i = 0; i < bglCount; ++i) {
       bgls.push(WebGPU.mgrBindGroupLayout.get(
-        {{{ makeGetValue('bglPtr', '4 * i', '*') }}}));
+        {{{ makeGetValue('bglPtr', `${POINTER_SIZE} * i`, '*') }}}));
     }
     var desc = {
       "label": undefined,
