@@ -4,11 +4,11 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $wasmfsNodeIsWindows: !!process.platform.match(/^win/),
 
   $wasmfsNodeConvertNodeCode__deps: ['$ERRNO_CODES'],
-  $wasmfsNodeConvertNodeCode: function(e) {
+  $wasmfsNodeConvertNodeCode: (e) => {
     var code = e.code;
 #if ASSERTIONS
     assert(code in ERRNO_CODES, 'unexpected node error code: ' + code + ' (' + e + ')');
@@ -17,7 +17,7 @@ mergeInto(LibraryManager.library, {
   },
 
   $wasmfsNodeFixStat__deps: ['$wasmfsNodeIsWindows'],
-  $wasmfsNodeFixStat: function(stat) {
+  $wasmfsNodeFixStat: (stat) => {
     if (wasmfsNodeIsWindows) {
       // Node.js on Windows never represents permission bit 'x', so
       // propagate read bits to execute bits
@@ -27,7 +27,7 @@ mergeInto(LibraryManager.library, {
   },
 
   $wasmfsNodeLstat__deps: ['$wasmfsNodeFixStat'],
-  $wasmfsNodeLstat: function(path) {
+  $wasmfsNodeLstat: (path) => {
     let stat;
     try {
       stat = fs.lstatSync(path);
@@ -39,7 +39,7 @@ mergeInto(LibraryManager.library, {
   },
 
   $wasmfsNodeFstat__deps: ['$wasmfsNodeFixStat'],
-  $wasmfsNodeFstat: function(fd) {
+  $wasmfsNodeFstat: (fd) => {
     let stat;
     try {
       stat = fs.fstatSync(fd);
@@ -59,7 +59,7 @@ mergeInto(LibraryManager.library, {
     '$stringToUTF8OnStack',
     '_wasmfs_node_record_dirent',
   ],
-  _wasmfs_node_readdir: function(path_p, vec) {
+  _wasmfs_node_readdir: (path_p, vec) => {
     let path = UTF8ToString(path_p);
     let entries;
     try {
@@ -89,7 +89,7 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_node_get_mode__deps: ['$wasmfsNodeLstat'],
-  _wasmfs_node_get_mode: function(path_p, mode_p) {
+  _wasmfs_node_get_mode: (path_p, mode_p) => {
     let stat = wasmfsNodeLstat(UTF8ToString(path_p));
     if (stat === undefined) {
       return 1;
@@ -99,7 +99,7 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_node_stat_size__deps: ['$wasmfsNodeLstat'],
-  _wasmfs_node_stat_size: function(path_p, size_p) {
+  _wasmfs_node_stat_size: (path_p, size_p) => {
     let stat = wasmfsNodeLstat(UTF8ToString(path_p));
     if (stat === undefined) {
       return 1;
@@ -109,7 +109,7 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_node_fstat_size__deps: ['$wasmfsNodeFstat'],
-  _wasmfs_node_fstat_size: function(fd, size_p) {
+  _wasmfs_node_fstat_size: (fd, size_p) => {
     let stat = wasmfsNodeFstat(fd);
     if (stat === undefined) {
       return 1;
@@ -119,7 +119,7 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_node_insert_file__deps: ['$wasmfsNodeConvertNodeCode'],
-  _wasmfs_node_insert_file: function(path_p, mode) {
+  _wasmfs_node_insert_file: (path_p, mode) => {
     try {
       fs.closeSync(fs.openSync(UTF8ToString(path_p), 'ax', mode));
     } catch (e) {
@@ -130,7 +130,7 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_node_insert_directory__deps: ['$wasmfsNodeConvertNodeCode'],
-  _wasmfs_node_insert_directory: function(path_p, mode) {
+  _wasmfs_node_insert_directory: (path_p, mode) => {
     try {
       fs.mkdirSync(UTF8ToString(path_p), mode);
     } catch (e) {
@@ -141,7 +141,7 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_node_unlink__deps: ['$wasmfsNodeConvertNodeCode'],
-  _wasmfs_node_unlink: function(path_p) {
+  _wasmfs_node_unlink: (path_p) => {
     try {
       fs.unlinkSync(UTF8ToString(path_p));
     } catch (e) {
@@ -152,7 +152,7 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_node_rmdir__deps: ['$wasmfsNodeConvertNodeCode'],
-  _wasmfs_node_rmdir: function(path_p) {
+  _wasmfs_node_rmdir: (path_p) => {
     try {
       fs.rmdirSync(UTF8ToString(path_p));
     } catch (e) {
@@ -163,7 +163,7 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_node_open__deps: ['$wasmfsNodeConvertNodeCode'],
-  _wasmfs_node_open: function(path_p, mode_p) {
+  _wasmfs_node_open: (path_p, mode_p) => {
     try {
       return fs.openSync(UTF8ToString(path_p), UTF8ToString(mode_p));
     } catch (e) {
@@ -173,7 +173,7 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_node_close__deps: [],
-  _wasmfs_node_close: function(fd) {
+  _wasmfs_node_close: (fd) => {
     try {
       fs.closeSync(fd);
     } catch (e) {
@@ -183,11 +183,11 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_node_read__deps: ['$wasmfsNodeConvertNodeCode'],
-  _wasmfs_node_read: function(fd, buf_p, len, pos, nread_p) {
+  _wasmfs_node_read: (fd, buf_p, len, pos, nread_p) => {
     try {
       // TODO: Cache open file descriptors to guarantee that opened files will
       // still exist when we try to access them.
-      let nread = fs.readSync(fd, HEAPU8, buf_p, len, pos);
+      let nread = fs.readSync(fd, new Int8Array(HEAPU8.buffer, buf_p, len), { position: pos });
       {{{ makeSetValue('nread_p', 0, 'nread', 'i32') }}};
     } catch (e) {
       if (!e.code) throw e;
@@ -197,11 +197,11 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_node_write__deps : ['$wasmfsNodeConvertNodeCode'],
-  _wasmfs_node_write : function(fd, buf_p, len, pos, nwritten_p) {
+  _wasmfs_node_write : (fd, buf_p, len, pos, nwritten_p) => {
     try {
       // TODO: Cache open file descriptors to guarantee that opened files will
       // still exist when we try to access them.
-      let nwritten = fs.writeSync(fd, HEAPU8, buf_p, len, pos);
+      let nwritten = fs.writeSync(fd, new Int8Array(HEAPU8.buffer, buf_p, len), { position: pos });
       {{{ makeSetValue('nwritten_p', 0, 'nwritten', 'i32') }}};
     } catch (e) {
       if (!e.code) throw e;

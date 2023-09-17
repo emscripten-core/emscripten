@@ -6,7 +6,7 @@
 
 var LibraryWebGL2 = {
   glGetStringi__deps: ['$stringToNewUTF8'],
-  glGetStringi: function(name, index) {
+  glGetStringi: (name, index) => {
     if (GL.currentContext.version < 2) {
       GL.recordError(0x502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
       return 0;
@@ -49,11 +49,11 @@ var LibraryWebGL2 = {
   },
 
   glGetInteger64v__deps: ['$emscriptenWebGLGet'],
-  glGetInteger64v: function(name_, p) {
+  glGetInteger64v: (name_, p) => {
     emscriptenWebGLGet(name_, p, {{{ cDefs.EM_FUNC_SIG_PARAM_I64 }}});
   },
 
-  glGetInternalformativ: function(target, internalformat, pname, bufSize, params) {
+  glGetInternalformativ: (target, internalformat, pname, bufSize, params) => {
 #if GL_TRACK_ERRORS
     if (bufSize < 0) {
 #if GL_ASSERTIONS
@@ -79,7 +79,7 @@ var LibraryWebGL2 = {
     }
   },
 
-  glCompressedTexImage3D: function(target, level, internalFormat, width, height, depth, border, imageSize, data) {
+  glCompressedTexImage3D: (target, level, internalFormat, width, height, depth, border, imageSize, data) => {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx.compressedTexImage3D(target, level, internalFormat, width, height, depth, border, imageSize, data);
     } else {
@@ -87,7 +87,7 @@ var LibraryWebGL2 = {
     }
   },
 
-  glCompressedTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, imageSize, data) {
+  glCompressedTexSubImage3D: (target, level, xoffset, yoffset, zoffset, width, height, depth, format, imageSize, data) => {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx.compressedTexSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, imageSize, data);
     } else {
@@ -96,7 +96,7 @@ var LibraryWebGL2 = {
   },
 
   glGetBufferParameteri64v__deps: ['$writeI53ToI64'],
-  glGetBufferParameteri64v: function(target, value, data) {
+  glGetBufferParameteri64v: (target, value, data) => {
 #if GL_TRACK_ERRORS
     if (!data) {
       // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
@@ -111,7 +111,7 @@ var LibraryWebGL2 = {
     writeI53ToI64(data, GLctx.getBufferParameter(target, value));
   },
 
-  glGetBufferSubData: function(target, offset, size, data) {
+  glGetBufferSubData: (target, offset, size, data) => {
 #if GL_TRACK_ERRORS
     if (!data) {
       // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
@@ -127,7 +127,7 @@ var LibraryWebGL2 = {
   },
 
   glInvalidateFramebuffer__deps: ['$tempFixedLengthArray'],
-  glInvalidateFramebuffer: function(target, numAttachments, attachments) {
+  glInvalidateFramebuffer: (target, numAttachments, attachments) => {
 #if GL_ASSERTIONS
     assert(numAttachments < tempFixedLengthArray.length, 'Invalid count of numAttachments=' + numAttachments + ' passed to glInvalidateFramebuffer (that many attachment points do not exist in GL)');
 #endif
@@ -140,7 +140,7 @@ var LibraryWebGL2 = {
   },
 
   glInvalidateSubFramebuffer__deps: ['$tempFixedLengthArray'],
-  glInvalidateSubFramebuffer: function(target, numAttachments, attachments, x, y, width, height) {
+  glInvalidateSubFramebuffer: (target, numAttachments, attachments, x, y, width, height) => {
 #if GL_ASSERTIONS
     assert(numAttachments < tempFixedLengthArray.length, 'Invalid count of numAttachments=' + numAttachments + ' passed to glInvalidateSubFramebuffer (that many attachment points do not exist in GL)');
 #endif
@@ -153,7 +153,7 @@ var LibraryWebGL2 = {
   },
 
   glTexImage3D__deps: ['$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'],
-  glTexImage3D: function(target, level, internalFormat, width, height, depth, border, format, type, pixels) {
+  glTexImage3D: (target, level, internalFormat, width, height, depth, border, format, type, pixels) => {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, pixels);
     } else if (pixels) {
@@ -165,7 +165,7 @@ var LibraryWebGL2 = {
   },
 
   glTexSubImage3D__deps: ['$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'],
-  glTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels) {
+  glTexSubImage3D: (target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels) => {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
     } else if (pixels) {
@@ -178,7 +178,7 @@ var LibraryWebGL2 = {
 
   // Queries
   glGenQueries__deps: ['$__glGenObject'],
-  glGenQueries: function(n, ids) {
+  glGenQueries: (n, ids) => {
     __glGenObject(n, ids, 'createQuery', GL.queries
 #if GL_ASSERTIONS
     , 'glGenQueries'
@@ -186,7 +186,7 @@ var LibraryWebGL2 = {
       );
   },
 
-  glDeleteQueries: function(n, ids) {
+  glDeleteQueries: (n, ids) => {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
       var query = GL.queries[id];
@@ -196,20 +196,20 @@ var LibraryWebGL2 = {
     }
   },
 
-  glIsQuery: function(id) {
+  glIsQuery: (id) => {
     var query = GL.queries[id];
     if (!query) return 0;
     return GLctx.isQuery(query);
   },
 
-  glBeginQuery: function(target, id) {
+  glBeginQuery: (target, id) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.queries, id, 'glBeginQuery', 'id');
 #endif
     GLctx.beginQuery(target, GL.queries[id]);
   },
 
-  glGetQueryiv: function(target, pname, params) {
+  glGetQueryiv: (target, pname, params) => {
 #if GL_TRACK_ERRORS
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
@@ -224,7 +224,7 @@ var LibraryWebGL2 = {
     {{{ makeSetValue('params', '0', 'GLctx.getQuery(target, pname)', 'i32') }}};
   },
 
-  glGetQueryObjectuiv: function(id, pname, params) {
+  glGetQueryObjectuiv: (id, pname, params) => {
 #if GL_TRACK_ERRORS
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
@@ -252,7 +252,7 @@ var LibraryWebGL2 = {
 
   // Sampler objects
   glGenSamplers__deps: ['$__glGenObject'],
-  glGenSamplers: function(n, samplers) {
+  glGenSamplers: (n, samplers) => {
     __glGenObject(n, samplers, 'createSampler', GL.samplers
 #if GL_ASSERTIONS
     , 'glGenSamplers'
@@ -260,7 +260,7 @@ var LibraryWebGL2 = {
       );
   },
 
-  glDeleteSamplers: function(n, samplers) {
+  glDeleteSamplers: (n, samplers) => {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('samplers', 'i*4', 'i32') }}};
       var sampler = GL.samplers[id];
@@ -271,34 +271,34 @@ var LibraryWebGL2 = {
     }
   },
 
-  glIsSampler: function(id) {
+  glIsSampler: (id) => {
     var sampler = GL.samplers[id];
     if (!sampler) return 0;
     return GLctx.isSampler(sampler);
   },
 
-  glBindSampler: function(unit, sampler) {
+  glBindSampler: (unit, sampler) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
     GLctx.bindSampler(unit, GL.samplers[sampler]);
   },
 
-  glSamplerParameterf: function(sampler, pname, param) {
+  glSamplerParameterf: (sampler, pname, param) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
     GLctx.samplerParameterf(GL.samplers[sampler], pname, param);
   },
 
-  glSamplerParameteri: function(sampler, pname, param) {
+  glSamplerParameteri: (sampler, pname, param) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
     GLctx.samplerParameteri(GL.samplers[sampler], pname, param);
   },
 
-  glSamplerParameterfv: function(sampler, pname, params) {
+  glSamplerParameterfv: (sampler, pname, params) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
@@ -306,7 +306,7 @@ var LibraryWebGL2 = {
     GLctx.samplerParameterf(GL.samplers[sampler], pname, param);
   },
 
-  glSamplerParameteriv: function(sampler, pname, params) {
+  glSamplerParameteriv: (sampler, pname, params) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
@@ -314,7 +314,7 @@ var LibraryWebGL2 = {
     GLctx.samplerParameteri(GL.samplers[sampler], pname, param);
   },
 
-  glGetSamplerParameterfv: function(sampler, pname, params) {
+  glGetSamplerParameterfv: (sampler, pname, params) => {
 #if GL_TRACK_ERRORS
     if (!params) {
       // GLES3 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
@@ -329,7 +329,7 @@ var LibraryWebGL2 = {
     {{{ makeSetValue('params', '0', 'GLctx.getSamplerParameter(GL.samplers[sampler], pname)', 'float') }}};
   },
 
-  glGetSamplerParameteriv: function(sampler, pname, params) {
+  glGetSamplerParameteriv: (sampler, pname, params) => {
 #if GL_TRACK_ERRORS
     if (!params) {
       // GLES3 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
@@ -346,7 +346,7 @@ var LibraryWebGL2 = {
 
   // Transform Feedback
   glGenTransformFeedbacks__deps: ['$__glGenObject'],
-  glGenTransformFeedbacks: function(n, ids) {
+  glGenTransformFeedbacks: (n, ids) => {
     __glGenObject(n, ids, 'createTransformFeedback', GL.transformFeedbacks
 #if GL_ASSERTIONS
     , 'glGenTransformFeedbacks'
@@ -354,7 +354,7 @@ var LibraryWebGL2 = {
       );
   },
 
-  glDeleteTransformFeedbacks: function(n, ids) {
+  glDeleteTransformFeedbacks: (n, ids) => {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
       var transformFeedback = GL.transformFeedbacks[id];
@@ -365,18 +365,16 @@ var LibraryWebGL2 = {
     }
   },
 
-  glIsTransformFeedback: function(id) {
-    return GLctx.isTransformFeedback(GL.transformFeedbacks[id]);
-  },
+  glIsTransformFeedback: (id) => GLctx.isTransformFeedback(GL.transformFeedbacks[id]),
 
-  glBindTransformFeedback: function(target, id) {
+  glBindTransformFeedback: (target, id) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.transformFeedbacks, id, 'glBindTransformFeedback', 'id');
 #endif
     GLctx.bindTransformFeedback(target, GL.transformFeedbacks[id]);
   },
 
-  glTransformFeedbackVaryings: function(program, count, varyings, bufferMode) {
+  glTransformFeedbackVaryings: (program, count, varyings, bufferMode) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glTransformFeedbackVaryings', 'program');
 #endif
@@ -388,7 +386,7 @@ var LibraryWebGL2 = {
     GLctx.transformFeedbackVaryings(program, vars, bufferMode);
   },
 
-  glGetTransformFeedbackVarying: function(program, index, bufSize, length, size, type, name) {
+  glGetTransformFeedbackVarying: (program, index, bufSize, length, size, type, name) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetTransformFeedbackVarying', 'program');
 #endif
@@ -408,7 +406,7 @@ var LibraryWebGL2 = {
   },
 
   $emscriptenWebGLGetIndexed__deps: ['$writeI53ToI64'],
-  $emscriptenWebGLGetIndexed: function(target, index, data, type) {
+  $emscriptenWebGLGetIndexed: (target, index, data, type) => {
 #if GL_TRACK_ERRORS
     if (!data) {
       // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
@@ -472,31 +470,29 @@ var LibraryWebGL2 = {
   },
 
   glGetIntegeri_v__deps: ['$emscriptenWebGLGetIndexed'],
-  glGetIntegeri_v: function(target, index, data) {
-    emscriptenWebGLGetIndexed(target, index, data, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}});
-  },
+  glGetIntegeri_v: (target, index, data) =>
+    emscriptenWebGLGetIndexed(target, index, data, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}),
 
   glGetInteger64i_v__deps: ['$emscriptenWebGLGetIndexed'],
-  glGetInteger64i_v: function(target, index, data) {
-    emscriptenWebGLGetIndexed(target, index, data, {{{ cDefs.EM_FUNC_SIG_PARAM_I64 }}});
-  },
+  glGetInteger64i_v: (target, index, data) =>
+    emscriptenWebGLGetIndexed(target, index, data, {{{ cDefs.EM_FUNC_SIG_PARAM_I64 }}}),
 
   // Uniform Buffer objects
-  glBindBufferBase: function(target, index, buffer) {
+  glBindBufferBase: (target, index, buffer) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.buffers, buffer, 'glBindBufferBase', 'buffer');
 #endif
     GLctx.bindBufferBase(target, index, GL.buffers[buffer]);
   },
 
-  glBindBufferRange: function(target, index, buffer, offset, ptrsize) {
+  glBindBufferRange: (target, index, buffer, offset, ptrsize) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.buffers, buffer, 'glBindBufferRange', 'buffer');
 #endif
     GLctx.bindBufferRange(target, index, GL.buffers[buffer], offset, ptrsize);
   },
 
-  glGetUniformIndices: function(program, uniformCount, uniformNames, uniformIndices) {
+  glGetUniformIndices: (program, uniformCount, uniformNames, uniformIndices) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetUniformIndices', 'program');
 #endif
@@ -529,7 +525,7 @@ var LibraryWebGL2 = {
     }
   },
 
-  glGetActiveUniformsiv: function(program, uniformCount, uniformIndices, pname, params) {
+  glGetActiveUniformsiv: (program, uniformCount, uniformIndices, pname, params) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetActiveUniformsiv', 'program');
 #endif
@@ -563,14 +559,14 @@ var LibraryWebGL2 = {
     }
   },
 
-  glGetUniformBlockIndex: function(program, uniformBlockName) {
+  glGetUniformBlockIndex: (program, uniformBlockName) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetUniformBlockIndex', 'program');
 #endif
     return GLctx.getUniformBlockIndex(GL.programs[program], UTF8ToString(uniformBlockName));
   },
 
-  glGetActiveUniformBlockiv: function(program, uniformBlockIndex, pname, params) {
+  glGetActiveUniformBlockiv: (program, uniformBlockIndex, pname, params) => {
 #if GL_TRACK_ERRORS
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
@@ -604,7 +600,7 @@ var LibraryWebGL2 = {
     }
   },
 
-  glGetActiveUniformBlockName: function(program, uniformBlockIndex, bufSize, length, uniformBlockName) {
+  glGetActiveUniformBlockName: (program, uniformBlockIndex, bufSize, length, uniformBlockName) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetActiveUniformBlockName', 'program');
 #endif
@@ -620,7 +616,7 @@ var LibraryWebGL2 = {
     }
   },
 
-  glUniformBlockBinding: function(program, uniformBlockIndex, uniformBlockBinding) {
+  glUniformBlockBinding: (program, uniformBlockIndex, uniformBlockBinding) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glUniformBlockBinding', 'program');
 #endif
@@ -629,7 +625,7 @@ var LibraryWebGL2 = {
     GLctx.uniformBlockBinding(program, uniformBlockIndex, uniformBlockBinding);
   },
 
-  glClearBufferiv: function(buffer, drawbuffer, value) {
+  glClearBufferiv: (buffer, drawbuffer, value) => {
 #if GL_ASSERTIONS
     assert((value & 3) == 0, 'Pointer to integer data passed to glClearBufferiv must be aligned to four bytes!');
 #endif
@@ -637,7 +633,7 @@ var LibraryWebGL2 = {
     GLctx.clearBufferiv(buffer, drawbuffer, HEAP32, value>>2);
   },
 
-  glClearBufferuiv: function(buffer, drawbuffer, value) {
+  glClearBufferuiv: (buffer, drawbuffer, value) => {
 #if GL_ASSERTIONS
     assert((value & 3) == 0, 'Pointer to integer data passed to glClearBufferuiv must be aligned to four bytes!');
 #endif
@@ -645,7 +641,7 @@ var LibraryWebGL2 = {
     GLctx.clearBufferuiv(buffer, drawbuffer, HEAPU32, value>>2);
   },
 
-  glClearBufferfv: function(buffer, drawbuffer, value) {
+  glClearBufferfv: (buffer, drawbuffer, value) => {
 #if GL_ASSERTIONS
     assert((value & 3) == 0, 'Pointer to float data passed to glClearBufferfv must be aligned to four bytes!');
 #endif
@@ -653,7 +649,7 @@ var LibraryWebGL2 = {
     GLctx.clearBufferfv(buffer, drawbuffer, HEAPF32, value>>2);
   },
 
-  glFenceSync: function(condition, flags) {
+  glFenceSync: (condition, flags) => {
     var sync = GLctx.fenceSync(condition, flags);
     if (sync) {
       var id = GL.getNewId(GL.syncs);
@@ -664,7 +660,7 @@ var LibraryWebGL2 = {
     return 0; // Failed to create a sync object
   },
 
-  glDeleteSync: function(id) {
+  glDeleteSync: (id) => {
     if (!id) return;
     var sync = GL.syncs[id];
     if (!sync) { // glDeleteSync signals an error when deleting a nonexisting object, unlike some other GL delete functions.
@@ -679,7 +675,7 @@ var LibraryWebGL2 = {
 #if !WASM_BIGINT
   glClientWaitSync__deps: ['$convertI32PairToI53'],
 #endif
-  glClientWaitSync: function(sync, flags, {{{ defineI64Param('timeout') }}}) {
+  glClientWaitSync: (sync, flags, {{{ defineI64Param('timeout') }}}) => {
     // WebGL2 vs GLES3 differences: in GLES3, the timeout parameter is a uint64, where 0xFFFFFFFFFFFFFFFFULL means GL_TIMEOUT_IGNORED.
     // In JS, there's no 64-bit value types, so instead timeout is taken to be signed, and GL_TIMEOUT_IGNORED is given value -1.
     // Inherently the value accepted in the timeout is lossy, and can't take in arbitrary u64 bit pattern (but most likely doesn't matter)
@@ -691,13 +687,13 @@ var LibraryWebGL2 = {
 #if !WASM_BIGINT
   glWaitSync__deps: ['$convertI32PairToI53'],
 #endif
-  glWaitSync: function(sync, flags, {{{ defineI64Param('timeout') }}}) {
+  glWaitSync: (sync, flags, {{{ defineI64Param('timeout') }}}) => {
     // See WebGL2 vs GLES3 difference on GL_TIMEOUT_IGNORED above (https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.15)
     {{{ receiveI64ParamAsI53Unchecked('timeout'); }}}
     GLctx.waitSync(GL.syncs[sync], flags, timeout);
   },
 
-  glGetSynciv: function(sync, pname, bufSize, length, values) {
+  glGetSynciv: (sync, pname, bufSize, length, values) => {
 #if GL_TRACK_ERRORS
     if (bufSize < 0) {
       // GLES3 specification does not specify how to behave if bufSize < 0, however in the spec wording for glGetInternalformativ, it does say that GL_INVALID_VALUE should be raised,
@@ -725,16 +721,13 @@ var LibraryWebGL2 = {
     }
   },
 
-  glIsSync: function(sync) {
-    return GLctx.isSync(GL.syncs[sync]);
-  },
+  glIsSync: (sync) => GLctx.isSync(GL.syncs[sync]),
 
   glGetUniformuiv__deps: ['$emscriptenWebGLGetUniform'],
-  glGetUniformuiv: function(program, location, params) {
-    emscriptenWebGLGetUniform(program, location, params, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}});
-  },
+  glGetUniformuiv: (program, location, params) =>
+    emscriptenWebGLGetUniform(program, location, params, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}),
 
-  glGetFragDataLocation: function(program, name) {
+  glGetFragDataLocation: (program, name) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetFragDataLocation', 'program');
 #endif
@@ -742,7 +735,7 @@ var LibraryWebGL2 = {
   },
 
   glGetVertexAttribIiv__deps: ['$emscriptenWebGLGetVertexAttrib'],
-  glGetVertexAttribIiv: function(index, pname, params) {
+  glGetVertexAttribIiv: (index, pname, params) => {
     // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttribI4iv(),
     // otherwise the results are undefined. (GLES3 spec 6.1.12)
     emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}});
@@ -754,7 +747,7 @@ var LibraryWebGL2 = {
   glGetVertexAttribIuiv: 'glGetVertexAttribIiv',
 
   glUniform1ui__deps: ['$webglGetUniformLocation'],
-  glUniform1ui: function(location, v0) {
+  glUniform1ui: (location, v0) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform1ui', 'location');
 #endif
@@ -762,7 +755,7 @@ var LibraryWebGL2 = {
   },
 
   glUniform2ui__deps: ['$webglGetUniformLocation'],
-  glUniform2ui: function(location, v0, v1) {
+  glUniform2ui: (location, v0, v1) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform2ui', 'location');
 #endif
@@ -770,7 +763,7 @@ var LibraryWebGL2 = {
   },
 
   glUniform3ui__deps: ['$webglGetUniformLocation'],
-  glUniform3ui: function(location, v0, v1, v2) {
+  glUniform3ui: (location, v0, v1, v2) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform3ui', 'location');
 #endif
@@ -778,7 +771,7 @@ var LibraryWebGL2 = {
   },
 
   glUniform4ui__deps: ['$webglGetUniformLocation'],
-  glUniform4ui: function(location, v0, v1, v2, v3) {
+  glUniform4ui: (location, v0, v1, v2, v3) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform4ui', 'location');
 #endif
@@ -786,7 +779,7 @@ var LibraryWebGL2 = {
   },
 
   glUniform1uiv__deps: ['$webglGetUniformLocation'],
-  glUniform1uiv: function(location, count, value) {
+  glUniform1uiv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform1uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform1uiv must be aligned to four bytes!');
@@ -795,7 +788,7 @@ var LibraryWebGL2 = {
   },
 
   glUniform2uiv__deps: ['$webglGetUniformLocation'],
-  glUniform2uiv: function(location, count, value) {
+  glUniform2uiv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform2uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform2uiv must be aligned to four bytes!');
@@ -804,7 +797,7 @@ var LibraryWebGL2 = {
   },
 
   glUniform3uiv__deps: ['$webglGetUniformLocation'],
-  glUniform3uiv: function(location, count, value) {
+  glUniform3uiv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform3uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform3uiv must be aligned to four bytes!');
@@ -813,7 +806,7 @@ var LibraryWebGL2 = {
   },
 
   glUniform4uiv__deps: ['$webglGetUniformLocation'],
-  glUniform4uiv: function(location, count, value) {
+  glUniform4uiv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform4uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform4uiv must be aligned to four bytes!');
@@ -822,7 +815,7 @@ var LibraryWebGL2 = {
   },
 
   glUniformMatrix2x3fv__deps: ['$webglGetUniformLocation'],
-  glUniformMatrix2x3fv: function(location, count, transpose, value) {
+  glUniformMatrix2x3fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix2x3fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x3fv must be aligned to four bytes!');
@@ -831,7 +824,7 @@ var LibraryWebGL2 = {
   },
 
   glUniformMatrix3x2fv__deps: ['$webglGetUniformLocation'],
-  glUniformMatrix3x2fv: function(location, count, transpose, value) {
+  glUniformMatrix3x2fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix3x2fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x2fv must be aligned to four bytes!');
@@ -840,7 +833,7 @@ var LibraryWebGL2 = {
   },
 
   glUniformMatrix2x4fv__deps: ['$webglGetUniformLocation'],
-  glUniformMatrix2x4fv: function(location, count, transpose, value) {
+  glUniformMatrix2x4fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix2x4fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x4fv must be aligned to four bytes!');
@@ -849,7 +842,7 @@ var LibraryWebGL2 = {
   },
 
   glUniformMatrix4x2fv__deps: ['$webglGetUniformLocation'],
-  glUniformMatrix4x2fv: function(location, count, transpose, value) {
+  glUniformMatrix4x2fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix4x2fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x2fv must be aligned to four bytes!');
@@ -858,7 +851,7 @@ var LibraryWebGL2 = {
   },
 
   glUniformMatrix3x4fv__deps: ['$webglGetUniformLocation'],
-  glUniformMatrix3x4fv: function(location, count, transpose, value) {
+  glUniformMatrix3x4fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix3x4fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x4fv must be aligned to four bytes!');
@@ -867,7 +860,7 @@ var LibraryWebGL2 = {
   },
 
   glUniformMatrix4x3fv__deps: ['$webglGetUniformLocation'],
-  glUniformMatrix4x3fv: function(location, count, transpose, value) {
+  glUniformMatrix4x3fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix4x3fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x3fv must be aligned to four bytes!');
@@ -875,7 +868,7 @@ var LibraryWebGL2 = {
     count && GLctx.uniformMatrix4x3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*12);
   },
 
-  glVertexAttribI4iv: function(index, v) {
+  glVertexAttribI4iv: (index, v) => {
 #if GL_ASSERTIONS
     assert((v & 3) == 0, 'Pointer to integer data passed to glVertexAttribI4iv must be aligned to four bytes!');
     assert(v != 0, 'Null pointer passed to glVertexAttribI4iv!');
@@ -883,7 +876,7 @@ var LibraryWebGL2 = {
     GLctx.vertexAttribI4i(index, HEAP32[v>>2], HEAP32[v+4>>2], HEAP32[v+8>>2], HEAP32[v+12>>2]);
   },
 
-  glVertexAttribI4uiv: function(index, v) {
+  glVertexAttribI4uiv: (index, v) => {
 #if GL_ASSERTIONS
     assert((v & 3) == 0, 'Pointer to integer data passed to glVertexAttribI4uiv must be aligned to four bytes!');
     assert(v != 0, 'Null pointer passed to glVertexAttribI4uiv!');
@@ -891,35 +884,35 @@ var LibraryWebGL2 = {
     GLctx.vertexAttribI4ui(index, HEAPU32[v>>2], HEAPU32[v+4>>2], HEAPU32[v+8>>2], HEAPU32[v+12>>2]);
   },
 
-  glProgramParameteri: function(program, pname, value) {
+  glProgramParameteri: (program, pname, value) => {
     GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
     err("GL_INVALID_ENUM in glProgramParameteri: WebGL does not support binary shader formats! Calls to glProgramParameteri always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
 #endif
   },
 
-  glGetProgramBinary: function(program, bufSize, length, binaryFormat, binary) {
+  glGetProgramBinary: (program, bufSize, length, binaryFormat, binary) => {
     GL.recordError(0x502/*GL_INVALID_OPERATION*/);
 #if GL_ASSERTIONS
     err("GL_INVALID_OPERATION in glGetProgramBinary: WebGL does not support binary shader formats! Calls to glGetProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
 #endif
   },
 
-  glProgramBinary: function(program, binaryFormat, binary, length) {
+  glProgramBinary: (program, binaryFormat, binary, length) => {
     GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
     err("GL_INVALID_ENUM in glProgramBinary: WebGL does not support binary shader formats! Calls to glProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
 #endif
   },
 
-  glFramebufferTextureLayer: function(target, attachment, texture, level, layer) {
+  glFramebufferTextureLayer: (target, attachment, texture, level, layer) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.textures, texture, 'glFramebufferTextureLayer', 'texture');
 #endif
     GLctx.framebufferTextureLayer(target, attachment, GL.textures[texture], level, layer);
   },
 
-  glVertexAttribIPointer: function(index, size, type, stride, ptr) {
+  glVertexAttribIPointer: (index, size, type, stride, ptr) => {
 #if FULL_ES3
     var cb = GL.currentContext.clientBuffers[index];
 #if GL_ASSERTIONS
@@ -948,7 +941,7 @@ var LibraryWebGL2 = {
 #if !LEGACY_GL_EMULATION
   // Defined in library_glemu.js when LEGACY_GL_EMULATION is set
   glDrawRangeElements__deps: ['glDrawElements'],
-  glDrawRangeElements: function(mode, start, end, count, type, indices) {
+  glDrawRangeElements: (mode, start, end, count, type, indices) => {
     // TODO: This should be a trivial pass-though function registered at the bottom of this page as
     // glFuncs[6][1] += ' drawRangeElements';
     // but due to https://bugzilla.mozilla.org/show_bug.cgi?id=1202427,
@@ -958,30 +951,28 @@ var LibraryWebGL2 = {
 #endif
 
   glDrawArraysInstancedBaseInstanceWEBGL__sig: 'viiiii',
-  glDrawArraysInstancedBaseInstanceWEBGL: function(mode, first, count, instanceCount, baseInstance) {
+  glDrawArraysInstancedBaseInstanceWEBGL: (mode, first, count, instanceCount, baseInstance) => {
     GLctx.dibvbi['drawArraysInstancedBaseInstanceWEBGL'](mode, first, count, instanceCount, baseInstance);
   },
   glDrawArraysInstancedBaseInstance: 'glDrawArraysInstancedBaseInstanceWEBGL',
   glDrawArraysInstancedBaseInstanceANGLE: 'glDrawArraysInstancedBaseInstanceWEBGL',
 
   glDrawElementsInstancedBaseVertexBaseInstanceWEBGL__sig: 'viiiiiii',
-  glDrawElementsInstancedBaseVertexBaseInstanceWEBGL: function(mode, count, type, offset, instanceCount, baseVertex, baseinstance) {
+  glDrawElementsInstancedBaseVertexBaseInstanceWEBGL: (mode, count, type, offset, instanceCount, baseVertex, baseinstance) => {
     GLctx.dibvbi['drawElementsInstancedBaseVertexBaseInstanceWEBGL'](mode, count, type, offset, instanceCount, baseVertex, baseinstance);
   },
   glDrawElementsInstancedBaseVertexBaseInstanceANGLE: 'glDrawElementsInstancedBaseVertexBaseInstanceWEBGL',
 
-  $webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance: function(ctx) {
+  $webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance: (ctx) =>
     // Closure is expected to be allowed to minify the '.dibvbi' property, so not accessing it quoted.
-    return !!(ctx.dibvbi = ctx.getExtension('WEBGL_draw_instanced_base_vertex_base_instance'));
-  },
+    !!(ctx.dibvbi = ctx.getExtension('WEBGL_draw_instanced_base_vertex_base_instance')),
 
   emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance__deps: ['$webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance'],
-  emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance: function(ctx) {
-    return webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GL.contexts[ctx].GLctx);
-  },
+  emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance: (ctx) =>
+    webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GL.contexts[ctx].GLctx),
 
   glMultiDrawArraysInstancedBaseInstanceWEBGL__sig: 'viiiiii',
-  glMultiDrawArraysInstancedBaseInstanceWEBGL: function(mode, firsts, counts, instanceCounts, baseInstances, drawCount) {
+  glMultiDrawArraysInstancedBaseInstanceWEBGL: (mode, firsts, counts, instanceCounts, baseInstances, drawCount) => {
     GLctx.mdibvbi['multiDrawArraysInstancedBaseInstanceWEBGL'](
       mode,
       HEAP32,
@@ -997,7 +988,7 @@ var LibraryWebGL2 = {
   glMultiDrawArraysInstancedBaseInstanceANGLE: 'glMultiDrawArraysInstancedBaseInstanceWEBGL',
 
   glMultiDrawElementsInstancedBaseVertexBaseInstanceWEBGL__sig: 'viiiiiiii',
-  glMultiDrawElementsInstancedBaseVertexBaseInstanceWEBGL: function(mode, counts, type, offsets, instanceCounts, baseVertices, baseInstances, drawCount) {
+  glMultiDrawElementsInstancedBaseVertexBaseInstanceWEBGL: (mode, counts, type, offsets, instanceCounts, baseVertices, baseInstances, drawCount) => {
     GLctx.mdibvbi['multiDrawElementsInstancedBaseVertexBaseInstanceWEBGL'](
       mode,
       HEAP32,
@@ -1015,16 +1006,14 @@ var LibraryWebGL2 = {
   },
   glMultiDrawElementsInstancedBaseVertexBaseInstanceANGLE: 'glMultiDrawElementsInstancedBaseVertexBaseInstanceWEBGL',
 
-  $webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance: function(ctx) {
+  $webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance: (ctx) => {
     // Closure is expected to be allowed to minify the '.mdibvbi' property, so not accessing it quoted.
     return !!(ctx.mdibvbi = ctx.getExtension('WEBGL_multi_draw_instanced_base_vertex_base_instance'));
   },
 
   emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance__deps: ['$webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance'],
-  emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance: function(ctx) {
-    return webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GL.contexts[ctx].GLctx);
-  },
-
+  emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance: (ctx) =>
+    webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GL.contexts[ctx].GLctx),
 };
 
 #if MAX_WEBGL_VERSION >= 2
@@ -1052,6 +1041,6 @@ createGLPassthroughFunctions(LibraryWebGL2, webgl2PassthroughFuncs);
 
 recordGLProcAddressGet(LibraryWebGL2);
 
-mergeInto(LibraryManager.library, LibraryWebGL2);
+addToLibrary(LibraryWebGL2);
 
 #endif

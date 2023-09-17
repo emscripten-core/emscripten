@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <emscripten/em_asm.h>
+#include <emscripten/console.h>
 #include <assert.h>
 
 #define NUM_THREADS 8
@@ -27,7 +28,7 @@ void *ThreadMain(void *arg)
 
 #define N 100
 
-	EM_ASM(err('Thread idx '+$0+': sorting ' + $1 + ' numbers with param ' + $2 + '.'), idx, N, param);
+	emscripten_errf("Thread idx %lu: sorting %d numbers with param %d", idx, N, param);
 
 	unsigned int n[N];
 	for(unsigned int i = 0; i < N; ++i)
@@ -48,9 +49,9 @@ void *ThreadMain(void *arg)
 	int numGood = 0;
 	for(unsigned int i = 0; i < N; ++i)
 		if (n[i] == i) ++numGood;
-		else EM_ASM(err('n['+$0+']='+$1), i, n[i]);
+		else emscripten_errf("n[%d]=%d", i, n[i]);
 
-	EM_ASM(out('Thread idx ' + $0 + ' with param '+$1+': all done with result '+$2+'.'), idx, param, numGood);
+	emscripten_outf("Thread idx %ld with param %d: all done with result %d.", idx, param, numGood);
 	pthread_exit((void*)numGood);
 }
 
@@ -62,7 +63,7 @@ void CreateThread(int i)
 {
 	static int counter = 1;
 	global_shared_data[i] = (counter++ * 12141231) & 0x7FFFFFFF; // Arbitrary random'ish data for perturbing the sort for this thread task.
-//	EM_ASM(out('Main: Creating thread idx ' + $0 + ' (param ' + $1 + ')'), i, global_shared_data[i]);
+//	emscripten_outf("Main: Creating thread idx %d (param %d)", i, global_shared_data[i]);
 	int rc = pthread_create(&thread[i], NULL, ThreadMain, (void*)i);
 	assert(rc == 0);
 }
@@ -83,7 +84,7 @@ int main()
 				int status;
 				int rc = pthread_join(thread[i], (void**)&status);
 				assert(rc == 0);
-				EM_ASM(err('Main: Joined thread idx ' + $0 + ' (param ' + $1 + ') with status ' + $2), i, global_shared_data[i], (int)status);
+				emscripten_errf("Main: Joined thread idx %d (param %d) with status %d", i, global_shared_data[i], (int)status);
 				assert(status == N);
 				thread[i] = 0;
 				if (numThreadsToCreate > 0)

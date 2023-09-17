@@ -60,7 +60,7 @@ def memoize(method):
   @wraps(method)
   def wrapper(self, *args, **kwargs):
     assert not kwargs
-    key = method
+    key = (method.__name__, args)
     if key not in self._cache:
       self._cache[key] = method(self, *args, **kwargs)
     return self._cache[key]
@@ -236,8 +236,10 @@ class Module:
     while 1:
       opcode = OpCode(self.read_byte())
       args = []
-      if opcode in (OpCode.GLOBAL_GET, OpCode.I32_CONST, OpCode.I64_CONST):
+      if opcode == OpCode.GLOBAL_GET:
         args.append(self.read_uleb())
+      elif opcode in (OpCode.I32_CONST, OpCode.I64_CONST):
+        args.append(self.read_sleb())
       elif opcode in (OpCode.REF_NULL,):
         args.append(self.read_type())
       elif opcode in (OpCode.END, OpCode.I32_ADD, OpCode.I64_ADD):

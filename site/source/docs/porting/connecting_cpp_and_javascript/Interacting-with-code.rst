@@ -412,15 +412,15 @@ If you add it to your own file, you should write something like
 
 .. code-block:: javascript
 
-   mergeInto(LibraryManager.library, {
+   addToLibrary({
      my_js: function() {
        alert('hi');
      },
    });
 
-``mergeInto`` just copies the properties on the second parameter onto the
-first, so this add ``my_js`` onto ``LibraryManager.library``, the global
-object where all JavaScript library code should be.
+``addToLibrary`` copies the properties of the input object into
+``LibraryManager.library`` (the global object where all JavaScript library code
+lives). In this case its adds a function called ``my_js`` onto this object.
 
 JavaScript limits in library files
 ----------------------------------
@@ -438,7 +438,7 @@ that you can't use a closure directly, for example, as ``toString``
 isn't compatible with that - just like when using a string to create
 a Web Worker, where you also can't pass a closure. (Note that this
 limitation is just for the values for the keys of the object
-passes to ``mergeInto`` in the JS library, that is, the toplevel
+passes to ``addToLibrary`` in the JS library, that is, the toplevel
 key-value pairs are special. Interior code inside a function can
 have arbitrary JS, of course).
 
@@ -453,7 +453,7 @@ initialization.
 
 .. code-block:: javascript
 
-   mergeInto(LibraryManager.library, {
+   addToLibrary({
 
      // Solution for bind or referencing other functions directly
      good_02__postset: '_good_02();',
@@ -511,7 +511,7 @@ various methods to the functions we actually want.
 
 .. code-block:: javascript
 
-  mergeInto(LibraryManager.library, {
+  addToLibrary({
     $method_support: {},
     $method_support__postset: [
       '(function() {                                  ',
@@ -554,7 +554,7 @@ a function,
 
 .. code-block:: javascript
 
-  mergeInto(LibraryManager.library, {
+  addToLibrary({
     $method_support__postset: 'method_support();',
     $method_support: function() {
       var SomeLib = function() {
@@ -601,7 +601,7 @@ See the `library_*.js`_ files for other examples.
      This is useful when all the implemented methods use a JavaScript
      singleton containing helper methods. See ``library_webgl.js`` for
      an example.
-   - The keys passed into `mergeInto` generate functions that are prefixed
+   - The keys passed into `addToLibrary` generate functions that are prefixed
      by ``_``. In other words ``my_func: function() {},`` becomes
      ``function _my_func() {}``, as all C methods in emscripten have a ``_`` prefix. Keys starting with ``$`` have the ``$``
      stripped and no underscore added.
@@ -755,7 +755,7 @@ For example, to set an environment variable ``MY_FILE_ROOT`` to be
 
 .. code:: javascript
 
-    Module.preRun.push(function() {ENV.MY_FILE_ROOT = "/usr/lib/test"})
+    Module.preRun = () => {ENV.MY_FILE_ROOT = "/usr/lib/test"};
 
 Note that Emscripten will set default values for some environment variables
 (e.g. LANG) after you have configured ``ENV``, if you have not set your own
@@ -764,7 +764,7 @@ their value to `undefined`. For example:
 
 .. code:: javascript
 
-    Module.preRun.push(function() {ENV.LANG = undefined})
+    Module.preRun = () => {ENV.LANG = undefined};
 
 .. _interacting-with-code-binding-cpp:
 

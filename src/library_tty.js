@@ -4,21 +4,21 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $TTY__deps: [
     '$FS',
     '$UTF8ArrayToString',
     '$FS_stdin_getChar'
   ],
 #if !MINIMAL_RUNTIME
-  $TTY__postset: function() {
+  $TTY__postset: () => {
     addAtInit('TTY.init();');
     addAtExit('TTY.shutdown();');
   },
 #endif
   $TTY: {
     ttys: [],
-    init: function () {
+    init() {
       // https://github.com/emscripten-core/emscripten/pull/1555
       // if (ENVIRONMENT_IS_NODE) {
       //   // currently, FS.init does not distinguish if process.stdin is a file or TTY
@@ -28,7 +28,7 @@ mergeInto(LibraryManager.library, {
       //   process.stdin.setEncoding('utf8');
       // }
     },
-    shutdown: function() {
+    shutdown() {
       // https://github.com/emscripten-core/emscripten/pull/1555
       // if (ENVIRONMENT_IS_NODE) {
       //   // inolen: any idea as to why node -e 'process.stdin.read()' wouldn't exit immediately (with process.stdin being a tty)?
@@ -39,12 +39,12 @@ mergeInto(LibraryManager.library, {
       //   process.stdin.pause();
       // }
     },
-    register: function(dev, ops) {
+    register(dev, ops) {
       TTY.ttys[dev] = { input: [], output: [], ops: ops };
       FS.registerDevice(dev, TTY.stream_ops);
     },
     stream_ops: {
-      open: function(stream) {
+      open(stream) {
         var tty = TTY.ttys[stream.node.rdev];
         if (!tty) {
           throw new FS.ErrnoError({{{ cDefs.ENODEV }}});
@@ -52,14 +52,14 @@ mergeInto(LibraryManager.library, {
         stream.tty = tty;
         stream.seekable = false;
       },
-      close: function(stream) {
+      close(stream) {
         // flush any pending line data
         stream.tty.ops.fsync(stream.tty);
       },
-      fsync: function(stream) {
+      fsync(stream) {
         stream.tty.ops.fsync(stream.tty);
       },
-      read: function(stream, buffer, offset, length, pos /* ignored */) {
+      read(stream, buffer, offset, length, pos /* ignored */) {
         if (!stream.tty || !stream.tty.ops.get_char) {
           throw new FS.ErrnoError({{{ cDefs.ENXIO }}});
         }
@@ -83,7 +83,7 @@ mergeInto(LibraryManager.library, {
         }
         return bytesRead;
       },
-      write: function(stream, buffer, offset, length, pos) {
+      write(stream, buffer, offset, length, pos) {
         if (!stream.tty || !stream.tty.ops.put_char) {
           throw new FS.ErrnoError({{{ cDefs.ENXIO }}});
         }
@@ -101,10 +101,10 @@ mergeInto(LibraryManager.library, {
       }
     },
     default_tty_ops: {
-      get_char: function(tty) {
+      get_char(tty) {
         return FS_stdin_getChar();
       },
-      put_char: function(tty, val) {
+      put_char(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
           out(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
@@ -112,13 +112,13 @@ mergeInto(LibraryManager.library, {
           if (val != 0) tty.output.push(val); // val == 0 would cut text output off in the middle.
         }
       },
-      fsync: function(tty) {
+      fsync(tty) {
         if (tty.output && tty.output.length > 0) {
           out(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         }
       },
-      ioctl_tcgets: function(tty) {
+      ioctl_tcgets(tty) {
         // typical setting
         return {
           c_iflag: {{{ cDefs.ICRNL | cDefs.IXON | cDefs.IMAXBEL | cDefs.IUTF8 }}},
@@ -132,16 +132,16 @@ mergeInto(LibraryManager.library, {
           ]
         };
       },
-      ioctl_tcsets: function(tty, optional_actions, data) {
+      ioctl_tcsets(tty, optional_actions, data) {
         // currently just ignore
         return 0;
       },
-      ioctl_tiocgwinsz: function(tty) {
+      ioctl_tiocgwinsz(tty) {
         return [24, 80];
       }
     },
     default_tty1_ops: {
-      put_char: function(tty, val) {
+      put_char(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
           err(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
@@ -149,7 +149,7 @@ mergeInto(LibraryManager.library, {
           if (val != 0) tty.output.push(val);
         }
       },
-      fsync: function(tty) {
+      fsync(tty) {
         if (tty.output && tty.output.length > 0) {
           err(UTF8ArrayToString(tty.output, 0));
           tty.output = [];

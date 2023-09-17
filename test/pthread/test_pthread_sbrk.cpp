@@ -5,6 +5,7 @@
 
 #include <pthread.h>
 #include <emscripten.h>
+#include <emscripten/console.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -39,8 +40,8 @@ static void *thread_start(void *arg)
   pthread_mutex_unlock( &mutex );
 #endif
 
-  int id = (int)(intptr_t)(arg)+1;
-  int return_code = RESULT_OK;
+  intptr_t id = (intptr_t)(arg)+1;
+  intptr_t return_code = RESULT_OK;
 
   uint8_t *allocated_buffers[NUM_ALLOCATIONS] = {};
 
@@ -72,7 +73,7 @@ static void *thread_start(void *arg)
       {
         ++return_code; // Failed! (but run to completion so that the barriers will all properly proceed without hanging)
         if (!reported_once) {
-          EM_ASM(console.error('Memory corrupted! mem[i]: ' + $0 + ' != ' + $1 + ', i: ' + $2 + ', j: ' + $3), allocated_buffers[i][j], id, i, j);
+          emscripten_errf("Memory corrupted! mem[i]: %d != %ld, i: %d, j: %d", allocated_buffers[i][j], id, i, j);
           reported_once = 1; // Avoid print flood that makes debugging hard.
         }
       }
@@ -110,7 +111,7 @@ int main()
   assert(ret == 0);
 
   pthread_t thr[8/*NUM_THREADS*/];
-  for(int i = 0; i < NUM_THREADS; ++i)
+  for(intptr_t i = 0; i < NUM_THREADS; ++i)
   {
     pthread_attr_t attr;
     pthread_attr_init(&attr);

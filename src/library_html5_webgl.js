@@ -6,7 +6,7 @@
 
 var LibraryHtml5WebGL = {
   // Writes a JS typed array containing 32-bit floats or ints to memory
-  $writeGLArray: function(arr, dst, dstLength, heapType) {
+  $writeGLArray: (arr, dst, dstLength, heapType) => {
 #if ASSERTIONS
     assert(arr);
     assert(typeof arr.length != 'undefined');
@@ -21,7 +21,7 @@ var LibraryHtml5WebGL = {
   },
 
   // Execute in calling thread without proxying needed.
-  emscripten_webgl_init_context_attributes: function(attributes) {
+  emscripten_webgl_init_context_attributes: (attributes) => {
 #if ASSERTIONS
     assert(attributes);
 #endif
@@ -52,9 +52,8 @@ var LibraryHtml5WebGL = {
   // emscripten_webgl_create_context() function in JS.
   emscripten_webgl_create_context_proxied__proxy: 'sync',
   emscripten_webgl_create_context_proxied__deps: ['emscripten_webgl_do_create_context'],
-  emscripten_webgl_create_context_proxied: function(target, attributes) {
-    return _emscripten_webgl_do_create_context(target, attributes);
-  },
+  emscripten_webgl_create_context_proxied: (target, attributes) =>
+    _emscripten_webgl_do_create_context(target, attributes),
 
   // The other proxied GL commands are defined in C (guarded by the
   // __EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__ definition).
@@ -77,7 +76,7 @@ var LibraryHtml5WebGL = {
 #endif
   '$JSEvents', '$emscripten_webgl_power_preferences', '$findEventTarget', '$findCanvasEventTarget'],
   // This function performs proxying manually, depending on the style of context that is to be created.
-  emscripten_webgl_do_create_context: function(target, attributes) {
+  emscripten_webgl_do_create_context: (target, attributes) => {
 #if ASSERTIONS
     assert(attributes);
 #endif
@@ -209,7 +208,7 @@ var LibraryHtml5WebGL = {
 #if PTHREADS && OFFSCREEN_FRAMEBUFFER
   // Runs on the calling thread, proxies if needed.
   emscripten_webgl_make_context_current_calling_thread__sig: 'ii',
-  emscripten_webgl_make_context_current_calling_thread: function(contextHandle) {
+  emscripten_webgl_make_context_current_calling_thread: (contextHandle) => {
     var success = GL.makeContextCurrent(contextHandle);
     if (success) GL.currentContextIsProxied = false; // If succeeded above, we will have a local GL context from this thread (worker or main).
     return success ? {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}} : {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
@@ -218,23 +217,21 @@ var LibraryHtml5WebGL = {
   // In this scenario, the pthread does not hold a high-level JS object to the GL context, because it lives on the main thread, in which case we record
   // an integer pointer as a token value to represent the GL context activation from another thread. (when this function is called, the main browser thread
   // has already accepted the GL context activation for our pthread, so that side is good)
-  _emscripten_proxied_gl_context_activated_from_main_browser_thread: function(contextHandle) {
+  _emscripten_proxied_gl_context_activated_from_main_browser_thread: (contextHandle) => {
     GLctx = Module.ctx = GL.currentContext = contextHandle;
     GL.currentContextIsProxied = true;
   },
 #else
-  emscripten_webgl_make_context_current: function(contextHandle) {
+  emscripten_webgl_make_context_current: (contextHandle) => {
     var success = GL.makeContextCurrent(contextHandle);
     return success ? {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}} : {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
   },
 #endif
 
-  emscripten_webgl_do_get_current_context: function() {
-    return GL.currentContext ? GL.currentContext.handle : 0;
-  },
+  emscripten_webgl_do_get_current_context: () => GL.currentContext ? GL.currentContext.handle : 0,
 
   emscripten_webgl_get_drawing_buffer_size__proxy: 'sync_on_webgl_context_handle_thread',
-  emscripten_webgl_get_drawing_buffer_size: function(contextHandle, width, height) {
+  emscripten_webgl_get_drawing_buffer_size: (contextHandle, width, height) => {
     var GLContext = GL.getContext(contextHandle);
 
     if (!GLContext || !GLContext.GLctx || !width || !height) {
@@ -245,9 +242,9 @@ var LibraryHtml5WebGL = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_webgl_do_commit_frame: function() {
+  emscripten_webgl_do_commit_frame: () => {
 #if TRACE_WEBGL_CALLS
-    var threadId = (typeof _pthread_self != 'undefined') ? _pthread_self : function() { return 1; };
+    var threadId = (typeof _pthread_self != 'undefined') ? _pthread_self : () => 1;
     err(`[Thread ${threadId()}, GL ctx: ${GL.currentContext.handle}]: emscripten_webgl_do_commit_frame()`);
 #endif
     if (!GL.currentContext || !GL.currentContext.GLctx) {
@@ -280,7 +277,7 @@ var LibraryHtml5WebGL = {
 
   emscripten_webgl_get_context_attributes__proxy: 'sync_on_webgl_context_handle_thread',
   emscripten_webgl_get_context_attributes__deps: ['$emscripten_webgl_power_preferences'],
-  emscripten_webgl_get_context_attributes: function(c, a) {
+  emscripten_webgl_get_context_attributes: (c, a) => {
     if (!a) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
     c = GL.contexts[c];
     if (!c) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
@@ -310,7 +307,7 @@ var LibraryHtml5WebGL = {
 
   emscripten_webgl_destroy_context__proxy: 'sync_on_webgl_context_handle_thread',
   emscripten_webgl_destroy_context__deps: ['free'],
-  emscripten_webgl_destroy_context: function(contextHandle) {
+  emscripten_webgl_destroy_context: (contextHandle) => {
     if (GL.currentContext == contextHandle) GL.currentContext = 0;
     GL.deleteContext(contextHandle);
   },
@@ -319,7 +316,7 @@ var LibraryHtml5WebGL = {
   // Special function that will be invoked on the thread calling emscripten_webgl_destroy_context(), before routing
   // the call over to the target thread.
   $emscripten_webgl_destroy_context_before_on_calling_thread__deps: ['emscripten_webgl_get_current_context', 'emscripten_webgl_make_context_current'],
-  $emscripten_webgl_destroy_context_before_on_calling_thread: function(contextHandle) {
+  $emscripten_webgl_destroy_context_before_on_calling_thread: (contextHandle) => {
     if (_emscripten_webgl_get_current_context() == contextHandle) _emscripten_webgl_make_context_current(0);
   },
 #endif
@@ -339,7 +336,7 @@ var LibraryHtml5WebGL = {
 #endif
   ],
   emscripten_webgl_enable_extension__proxy: 'sync_on_webgl_context_handle_thread',
-  emscripten_webgl_enable_extension: function(contextHandle, extension) {
+  emscripten_webgl_enable_extension: (contextHandle, extension) => {
     var context = GL.getContext(contextHandle);
     var extString = UTF8ToString(extension);
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
@@ -384,18 +381,18 @@ var LibraryHtml5WebGL = {
     return !!ext;
   },
 
-  emscripten_supports_offscreencanvas: function() {
+  emscripten_supports_offscreencanvas: () =>
     // TODO: Add a new build mode, e.g. OFFSCREENCANVAS_SUPPORT=2, which
     // necessitates OffscreenCanvas support at build time, and "return 1;" here in that build mode.
 #if OFFSCREENCANVAS_SUPPORT
-    return typeof OffscreenCanvas != 'undefined';
+    typeof OffscreenCanvas != 'undefined'
 #else
-    return 0;
+    0
 #endif
-  },
+  ,
 
   $registerWebGlEventCallback__deps: ['$JSEvents', '$findEventTarget'],
-  $registerWebGlEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
+  $registerWebGlEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
@@ -424,123 +421,106 @@ var LibraryHtml5WebGL = {
 
   emscripten_set_webglcontextlost_callback_on_thread__proxy: 'sync',
   emscripten_set_webglcontextlost_callback_on_thread__deps: ['$registerWebGlEventCallback'],
-  emscripten_set_webglcontextlost_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
+  emscripten_set_webglcontextlost_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
     registerWebGlEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST }}}, "webglcontextlost", targetThread);
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
   emscripten_set_webglcontextrestored_callback_on_thread__proxy: 'sync',
   emscripten_set_webglcontextrestored_callback_on_thread__deps: ['$registerWebGlEventCallback'],
-  emscripten_set_webglcontextrestored_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
+  emscripten_set_webglcontextrestored_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
     registerWebGlEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_WEBGLCONTEXTRESTORED }}}, "webglcontextrestored", targetThread);
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
   emscripten_is_webgl_context_lost__proxy: 'sync_on_webgl_context_handle_thread',
-  emscripten_is_webgl_context_lost: function(contextHandle) {
+  emscripten_is_webgl_context_lost: (contextHandle) => {
     return !GL.contexts[contextHandle] || GL.contexts[contextHandle].GLctx.isContextLost(); // No context ~> lost context.
   },
 
   emscripten_webgl_get_supported_extensions__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_supported_extensions__deps: ['$stringToNewUTF8'],
-  emscripten_webgl_get_supported_extensions: function() {
-    return stringToNewUTF8(GLctx.getSupportedExtensions().join(' '));
-  },
+  emscripten_webgl_get_supported_extensions: () =>
+    stringToNewUTF8(GLctx.getSupportedExtensions().join(' ')),
 
   emscripten_webgl_get_program_parameter_d__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_program_parameter_d: function(program, param) {
-    return GLctx.getProgramParameter(GL.programs[program], param);
-  },
+  emscripten_webgl_get_program_parameter_d: (program, param) =>
+    GLctx.getProgramParameter(GL.programs[program], param),
 
   emscripten_webgl_get_program_info_log_utf8__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_program_info_log_utf8__deps: ['$stringToNewUTF8'],
-  emscripten_webgl_get_program_info_log_utf8: function(program) {
-    return stringToNewUTF8(GLctx.getProgramInfoLog(GL.programs[program]));
-  },
+  emscripten_webgl_get_program_info_log_utf8: (program) =>
+    stringToNewUTF8(GLctx.getProgramInfoLog(GL.programs[program])),
 
   emscripten_webgl_get_shader_parameter_d__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_shader_parameter_d: function(shader, param) {
-    return GLctx.getShaderParameter(GL.shaders[shader], param);
-  },
+  emscripten_webgl_get_shader_parameter_d: (shader, param) =>
+    GLctx.getShaderParameter(GL.shaders[shader], param),
 
   emscripten_webgl_get_shader_info_log_utf8__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_shader_info_log_utf8__deps: ['$stringToNewUTF8'],
-  emscripten_webgl_get_shader_info_log_utf8: function(shader) {
-    return stringToNewUTF8(GLctx.getShaderInfoLog(GL.shaders[shader]));
-  },
+  emscripten_webgl_get_shader_info_log_utf8: (shader) =>
+    stringToNewUTF8(GLctx.getShaderInfoLog(GL.shaders[shader])),
 
   emscripten_webgl_get_shader_source_utf8__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_shader_source_utf8__deps: ['$stringToNewUTF8'],
-  emscripten_webgl_get_shader_source_utf8: function(shader) {
-    return stringToNewUTF8(GLctx.getShaderSource(GL.shaders[shader]));
-  },
+  emscripten_webgl_get_shader_source_utf8: (shader) =>
+    stringToNewUTF8(GLctx.getShaderSource(GL.shaders[shader])),
 
   emscripten_webgl_get_vertex_attrib_d__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_vertex_attrib_d: function(index, param) {
-    return GLctx.getVertexAttrib(index, param);
-  },
+  emscripten_webgl_get_vertex_attrib_d: (index, param) =>
+    GLctx.getVertexAttrib(index, param),
 
   emscripten_webgl_get_vertex_attrib_o__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_vertex_attrib_o: function(index, param) {
+  emscripten_webgl_get_vertex_attrib_o: (index, param) => {
     var obj = GLctx.getVertexAttrib(index, param);
     return obj && obj.name;
   },
 
   emscripten_webgl_get_vertex_attrib_v__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_vertex_attrib_v__deps: ['$writeGLArray'],
-  emscripten_webgl_get_vertex_attrib_v: function(index, param, dst, dstLength, dstType) {
-    return writeGLArray(GLctx.getVertexAttrib(index, param), dst, dstLength, dstType);
-  },
+  emscripten_webgl_get_vertex_attrib_v: (index, param, dst, dstLength, dstType) =>
+    writeGLArray(GLctx.getVertexAttrib(index, param), dst, dstLength, dstType),
 
   emscripten_webgl_get_uniform_d__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_uniform_d__deps: ['$webglGetUniformLocation'],
-  emscripten_webgl_get_uniform_d: function(program, location) {
-    return GLctx.getUniform(GL.programs[program], webglGetUniformLocation(location));
-  },
+  emscripten_webgl_get_uniform_d: (program, location) =>
+    GLctx.getUniform(GL.programs[program], webglGetUniformLocation(location)),
 
   emscripten_webgl_get_uniform_v__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_uniform_v__deps: ['$writeGLArray', '$webglGetUniformLocation'],
-  emscripten_webgl_get_uniform_v: function(program, location, dst, dstLength, dstType) {
-    return writeGLArray(GLctx.getUniform(GL.programs[program], webglGetUniformLocation(location)), dst, dstLength, dstType);
-  },
+  emscripten_webgl_get_uniform_v: (program, location, dst, dstLength, dstType) =>
+    writeGLArray(GLctx.getUniform(GL.programs[program], webglGetUniformLocation(location)), dst, dstLength, dstType),
 
   emscripten_webgl_get_parameter_v__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_parameter_v__deps: ['$writeGLArray'],
-  emscripten_webgl_get_parameter_v: function(param, dst, dstLength, dstType) {
-    return writeGLArray(GLctx.getParameter(param), dst, dstLength, dstType);
-  },
+  emscripten_webgl_get_parameter_v: (param, dst, dstLength, dstType) =>
+    writeGLArray(GLctx.getParameter(param), dst, dstLength, dstType),
 
   emscripten_webgl_get_parameter_d__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_parameter_d: function(param) {
-    return GLctx.getParameter(param);
-  },
+  emscripten_webgl_get_parameter_d: (param) => GLctx.getParameter(param),
 
   emscripten_webgl_get_parameter_o__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_parameter_o: function(param) {
+  emscripten_webgl_get_parameter_o: (param) => {
     var obj = GLctx.getParameter(param);
     return obj && obj.name;
   },
 
   emscripten_webgl_get_parameter_utf8__deps: ['$stringToNewUTF8'],
   emscripten_webgl_get_parameter_utf8__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_parameter_utf8: function(param) {
-    return stringToNewUTF8(GLctx.getParameter(param));
-  },
+  emscripten_webgl_get_parameter_utf8: (param) => stringToNewUTF8(GLctx.getParameter(param)),
 
   emscripten_webgl_get_parameter_i64v__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_parameter_i64v__deps: ['$writeI53ToI64'],
-  emscripten_webgl_get_parameter_i64v: function(param, dst) {
-    writeI53ToI64(dst, GLctx.getParameter(param));
-  },
+  emscripten_webgl_get_parameter_i64v: (param, dst) => writeI53ToI64(dst, GLctx.getParameter(param)),
 };
 
-#if PTHREADS
+function handleWebGLProxying(funcs) {
+#if SHARED_MEMORY
 // Process 'sync_on_webgl_context_handle_thread' and 'sync_on_current_webgl_context_thread' pseudo-proxying modes
 // to appropriate proxying mechanism, either proxying on-demand, unconditionally, or never, depending on build modes.
 // 'sync_on_webgl_context_handle_thread' is used for function signatures that take a HTML5 WebGL context handle
 // object as the first argument. 'sync_on_current_webgl_context_thread' is used for functions that operate on the
 // implicit "current WebGL context" as activated via emscripten_webgl_make_current() function.
-function handleWebGLProxying(funcs) {
 
   function listOfNFunctionArgs(func) {
     var args = [];
@@ -606,13 +586,19 @@ function handleWebGLProxying(funcs) {
       delete funcs[i + '__proxy'];
     }
   }
+#else
+  // In single threaded mode just delete our custom __proxy addributes, otherwise
+  // they will causes errors in the JS compiler.
+  for (var i in funcs) {
+    delete funcs[i + '__proxy'];
+  }
+#endif // SHARED_MEMORY
 }
 
 handleWebGLProxying(LibraryHtml5WebGL);
-#endif // PTHREADS
 
 #if LibraryManager.has('library_webgl.js')
 autoAddDeps(LibraryHtml5WebGL, '$GL');
 #endif
 
-mergeInto(LibraryManager.library, LibraryHtml5WebGL);
+addToLibrary(LibraryHtml5WebGL);

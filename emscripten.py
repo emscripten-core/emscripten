@@ -18,6 +18,7 @@ import time
 import logging
 import pprint
 import shutil
+import sys
 
 from tools import building
 from tools import diagnostics
@@ -30,6 +31,9 @@ from tools.utils import exit_with_error, path_from_root, removeprefix
 from tools.shared import DEBUG, asmjs_mangle
 from tools.shared import treat_as_user_export
 from tools.settings import settings
+
+sys.path.append(path_from_root('third_party'))
+import leb128
 
 logger = logging.getLogger('emscripten')
 
@@ -451,11 +455,6 @@ def finalize_wasm(infile, outfile, memfile, js_syms):
     # wasm2js requires full legalization (and will do extra wasm binary
     # later processing later anyhow)
     modify_wasm = True
-  if settings.GENERATE_SOURCE_MAP:
-    building.emit_wasm_source_map(infile, infile + '.map', outfile)
-    building.save_intermediate(infile + '.map', 'base_wasm.map')
-    args += ['--output-source-map-url=' + settings.SOURCE_MAP_BASE + os.path.basename(outfile) + '.map']
-    modify_wasm = True
   if settings.DEBUG_LEVEL >= 2 or settings.ASYNCIFY_ADD or settings.ASYNCIFY_ADVISE or settings.ASYNCIFY_ONLY or settings.ASYNCIFY_REMOVE or settings.EMIT_SYMBOL_MAP or settings.EMIT_NAME_SECTION:
     args.append('-g')
   if settings.WASM_BIGINT:
@@ -498,13 +497,43 @@ def finalize_wasm(infile, outfile, memfile, js_syms):
   if settings.DEBUG_LEVEL >= 3:
     args.append('--dwarf')
 
-  metadata = get_metadata(infile, outfile, modify_wasm, args)
-  if modify_wasm:
-    building.save_intermediate(infile, 'post_finalize.wasm')
-  elif infile != outfile:
+  if infile != outfile:
     shutil.copy(infile, outfile)
+
   if settings.GENERATE_SOURCE_MAP:
-    building.save_intermediate(infile + '.map', 'post_finalize.map')
+    building.emit_wasm_source_map(infile, outfile + '.map', outfile)
+    building.save_intermediate(outfile + '.map', 'base_wasm.map')
+    base_url = settings.SOURCE_MAP_BASE + os.path.basename(outfile) + '.map'
+    if modify_wasm:
+      # If we are already modifying, just let Binaryen add the sourcemap URL
+      args += ['--output-source-map-url=' + base_url]
+    else:
+      # Otherwise use objcopy. This avoids re-encoding the file (thus
+      # preserving DWARF) and is faster.
+
+      # Create a file with the contents of the sourceMappingURL section
+      with shared.get_temp_files().get_file('.bin') as url_file:
+        utils.write_binary(url_file,
+                           leb128.u.encode(len(base_url)) + base_url.encode('utf-8'))
+        cmd = [shared.LLVM_OBJCOPY,
+               '--add-section',
+               'sourceMappingURL=' + url_file,
+               infile]
+        shared.check_call(cmd)
+
+  if not settings.GENERATE_DWARF or not settings.EMIT_PRODUCERS_SECTION:
+    # For sections we no longer need, strip now to speed subsequent passes
+    building.save_intermediate(outfile, 'strip.wasm')
+    sections = ['producers'] if not settings.EMIT_PRODUCERS_SECTION else []
+    building.strip(infile, outfile, debug=not settings.GENERATE_DWARF,
+                   sections=sections)
+
+  metadata = get_metadata(outfile, outfile, modify_wasm, args)
+  if modify_wasm:
+    building.save_intermediate(outfile, 'post_finalize.wasm')
+
+  if settings.GENERATE_SOURCE_MAP:
+    building.save_intermediate(outfile + '.map', 'post_finalize.map')
 
   if memfile:
     # we have a separate .mem file. binaryen did not strip any trailing zeros,
@@ -700,8 +729,9 @@ def create_sending(metadata, library_symbols):
 
   sorted_items = sorted(send_items_map.items())
   prefix = ''
-  if settings.USE_CLOSURE_COMPILER:
-    # This prevents closure compiler from minifying the field names in this object.
+  if settings.MAYBE_CLOSURE_COMPILER:
+    # This prevents closure compiler from minifying the field names in this
+    # object.
     prefix = '/** @export */\n  '
   return '{\n  ' + ',\n  '.join(f'{prefix}{k}: {v}' for k, v in sorted_items) + '\n}'
 
@@ -866,7 +896,7 @@ def create_pointer_conversion_wrappers(metadata):
     '__cxa_decrement_exception_refcount': '_p',
     '_wasmfs_write_file': '_ppp',
     '__dl_seterr': '_pp',
-    '_emscripten_run_in_main_runtime_thread_js': '___p_',
+    '_emscripten_run_on_main_thread_js': '___p_',
     '_emscripten_proxy_execute_task_queue': '_p',
     '_emscripten_thread_exit': '_p',
     '_emscripten_thread_init': '_p_____',

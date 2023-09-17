@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $PROXYFS__deps: ['$FS', '$PATH', '$ERRNO_CODES'],
   $PROXYFS: {
     mount(mount) {
@@ -218,3 +218,7 @@ mergeInto(LibraryManager.library, {
     }
   }
 });
+
+if (WASMFS) {
+  error("using -lproxyfs is not currently supported in WasmFS.");
+}

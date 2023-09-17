@@ -55,9 +55,9 @@ std::string getPath(int fd) {
 
 extern "C" {
 
-char *emscripten_get_preloaded_image_data_from_FILE(FILE *file,
-                                                    int *w,
-                                                    int *h) {
+char* emscripten_get_preloaded_image_data_from_FILE(FILE* file,
+                                                    int* w,
+                                                    int* h) {
   auto fd = fileno(file);
   if (fd < 0) {
     return 0;

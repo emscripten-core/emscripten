@@ -1,16 +1,16 @@
-mergeInto(LibraryManager.library, {
+addToLibrary({
   // Removes all C++ '//' and '/* */' comments from the given source string.
   // N.b. will also eat comments inside strings.
-  $remove_cpp_comments_in_shaders: function(code) {
+  $remove_cpp_comments_in_shaders: (code) => {
     var i = 0, out = '', ch, next, len = code.length;
-    for(; i < len; ++i) {
+    for (; i < len; ++i) {
       ch = code[i];
       if (ch == '/') {
         next = code[i+1];
         if (next == '/') {
-          while(i < len && code[i+1] != '\n') ++i;
+          while (i < len && code[i+1] != '\n') ++i;
         } else if (next == '*') {
-          while(i < len && (code[i-1] != '*' || code[i] != '/')) ++i;
+          while (i < len && (code[i-1] != '*' || code[i] != '/')) ++i;
         } else {
           out += ch;
         }
@@ -23,8 +23,8 @@ mergeInto(LibraryManager.library, {
 
   // Finds the index of closing parens from the opening parens at arr[i].
   // Used polymorphically for strings ("foo") and token arrays (['(', 'foo', ')']) as input.
-  $find_closing_parens_index: function(arr, i, opening='(', closing=')') {
-    for(var nesting = 0; i < arr.length; ++i) {
+  $find_closing_parens_index: (arr, i, opening='(', closing=')') => {
+    for (var nesting = 0; i < arr.length; ++i) {
       if (arr[i] == opening) ++nesting;
       if (arr[i] == closing && --nesting == 0) {
         return i;
@@ -57,7 +57,7 @@ mergeInto(LibraryManager.library, {
 
     // Returns index to the next whitespace character starting at str[i].
     function nextWhitespace(str, i) {
-      while(!isWhitespace(str, i)) ++i;
+      while (!isWhitespace(str, i)) ++i;
       return i;
     }
 
@@ -83,10 +83,10 @@ mergeInto(LibraryManager.library, {
     // Optionally keeps whitespace as tokens to be able to reconstruct the original input string.
     function tokenize(exprString, keepWhitespace) {
       var out = [], len = exprString.length;
-      for(var i = 0; i <= len; ++i) {
+      for (var i = 0; i <= len; ++i) {
         var kind = classifyChar(exprString, i);
         if (kind == 2/*0-9*/ || kind == 3/*a-z*/) { // a character or a number
-          for(var j = i+1; j <= len; ++j) {
+          for (var j = i+1; j <= len; ++j) {
             var kind2 = classifyChar(exprString, j);
             if (kind2 != kind && (kind2 != 2/*0-9*/ || kind != 3/*a-z*/)) { // parse number sequence "423410", and identifier sequence "FOO32BAR"
               out.push(exprString.substring(i, j));
@@ -113,10 +113,10 @@ mergeInto(LibraryManager.library, {
       if (lineEnd === undefined) lineEnd = str.length;
       var len = str.length;
       var out = '';
-      for(var i = lineStart; i < lineEnd; ++i) {
+      for (var i = lineStart; i < lineEnd; ++i) {
         var kind = classifyChar(str, i);
         if (kind == 3/*a-z*/) {
-          for(var j = i + 1; j <= lineEnd; ++j) {
+          for (var j = i + 1; j <= lineEnd; ++j) {
             var kind2 = classifyChar(str, j);
             if (kind2 != 2/*0-9*/ && kind2 != 3/*a-z*/) {
               var symbol = str.substring(i, j);
@@ -159,7 +159,7 @@ mergeInto(LibraryManager.library, {
         tokens = (function(tokens) {
           // Find the index 'i' of the operator we should evaluate next:
           var i, j, p, operatorAndPriority = -2;
-          for(j = 0; j < tokens.length; ++j) {
+          for (j = 0; j < tokens.length; ++j) {
             if ((p = ['*', '/', '+', '-', '!', '<', '<=', '>', '>=', '==', '!=', '&&', '||', '('].indexOf(tokens[j])) > operatorAndPriority) {
               i = j;
               operatorAndPriority = p;
@@ -215,7 +215,7 @@ mergeInto(LibraryManager.library, {
     }
 
     // Preprocess the input one line at a time.
-    for(; i < len; ++i) {
+    for (; i < len; ++i) {
       // Find the start of the current line.
       var lineStart = i;
 
@@ -224,7 +224,7 @@ mergeInto(LibraryManager.library, {
       if (i < 0) i = len;
 
       // Find the first non-whitespace character on the line.
-      for(var j = lineStart; j < i && isWhitespace(code, j); ++j);
+      for (var j = lineStart; j < i && isWhitespace(code, j); ++j);
 
       // Is this a non-preprocessor directive line?
       var thisLineIsInActivePreprocessingBlock = stack[stack.length-1];

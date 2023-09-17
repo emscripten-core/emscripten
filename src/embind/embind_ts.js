@@ -14,6 +14,11 @@ var LibraryEmbind = {
       this.name = name;
     }
   },
+  $IntegerType: class IntegerType {
+    constructor(typeId) {
+      this.typeId = typeId;
+    }
+  },
   $Argument: class Argument {
     constructor(name, type) {
       this.name = name;
@@ -42,12 +47,12 @@ var LibraryEmbind = {
     printFunction(nameMap, out) {
       out.push(`${this.name}`);
       this.printSignature(nameMap, out);
-      out.push(';\n');
     }
 
     printModuleEntry(nameMap, out) {
       out.push('  ');
       this.printFunction(nameMap, out);
+      out.push(';\n');
     }
   },
   $ClassDefinition: class ClassDefinition {
@@ -55,6 +60,8 @@ var LibraryEmbind = {
       this.typeId = typeId;
       this.name = name;
       this.methods = [];
+      this.staticMethods = [];
+      this.staticProperties = [];
       this.constructors = [
         new FunctionDefinition('default', this, [])
       ];
@@ -71,10 +78,12 @@ var LibraryEmbind = {
       for (const property of this.properties) {
         out.push('  ');
         property.print(nameMap, out);
+        out.push(';\n');
       }
       for (const method of this.methods) {
         out.push('  ');
         method.printFunction(nameMap, out);
+        out.push(';\n');
       }
       out.push('  delete(): void;\n');
       out.push('}\n\n');
@@ -85,17 +94,26 @@ var LibraryEmbind = {
       // TODO Handle constructor overloading
       const constructor = this.constructors[this.constructors.length > 1 ? 1 : 0];
       constructor.printSignature(nameMap, out);
+      for (const method of this.staticMethods) {
+        out.push('; ');
+        method.printFunction(nameMap, out);
+      }
+      for (const prop of this.staticProperties) {
+        out.push('; ');
+        prop.print(nameMap, out);
+      }
       out.push('};\n');
     }
   },
   $ClassProperty: class ClassProperty {
-    constructor(type, name) {
+    constructor(type, name, readonly) {
       this.type = type;
       this.name = name;
+      this.readonly = readonly;
     }
 
     print(nameMap, out) {
-      out.push(`${this.name}: ${nameMap(this.type)};\n`);
+      out.push(`${this.readonly ? 'readonly ' : ''}${this.name}: ${nameMap(this.type)}`);
     }
   },
   $ConstantDefinition: class ConstantDefinition {
@@ -180,21 +198,22 @@ var LibraryEmbind = {
       const jsString = 'ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string';
       this.builtInToJsName = new Map([
         ['bool', 'boolean'],
-        ['char', 'number'],
-        ['unsigned char', 'number'],
-        ['int', 'number'],
-        ['unsigned int', 'number'],
-        ['unsigned long', 'number'],
         ['float', 'number'],
         ['double', 'number'],
         ['void', 'void'],
         ['std::string', jsString],
         ['std::basic_string<unsigned char>', jsString],
+        ['std::wstring', jsString],
+        ['std::u16string', jsString],
+        ['std::u32string', jsString],
         ['emscripten::val', 'any'],
       ]);
     }
 
     typeToJsName(type) {
+      if (type instanceof IntegerType) {
+        return 'number';
+      }
       if (type instanceof PrimitiveType) {
         if (!this.builtInToJsName.has(type.name)) {
           throw new Error(`Missing primitive type to TS type for '${type.name}'`);
@@ -230,14 +249,18 @@ var LibraryEmbind = {
     return sharedRegisterType(rawType, registeredInstance, options);
   },
   $registerPrimitiveType__deps: ['$registerType', '$PrimitiveType'],
-  $registerPrimitiveType: function(id, name) {
+  $registerPrimitiveType: (id, name) => {
     name = readLatin1String(name);
     registerType(id, new PrimitiveType(id, name));
   },
+  $registerIntegerType__deps: ['$registerType', '$IntegerType'],
+  $registerIntegerType: (id) => {
+    registerType(id, new IntegerType(id));
+  },
   $createFunctionDefinition__deps: ['$FunctionDefinition', '$heap32VectorToArray', '$readLatin1String', '$Argument', '$whenDependentTypesAreResolved'],
-  $createFunctionDefinition: function(name, argCount, rawArgTypesAddr, hasThis, cb) {
+  $createFunctionDefinition: (name, argCount, rawArgTypesAddr, hasThis, cb) => {
     const argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
-    name = readLatin1String(name);
+    name = typeof name === 'string' ? name : readLatin1String(name);
 
     whenDependentTypesAreResolved([], argTypes, function(argTypes) {
       const returnType = argTypes[0];
@@ -257,39 +280,39 @@ var LibraryEmbind = {
     });
   },
   _embind_register_void__deps: ['$registerPrimitiveType'],
-  _embind_register_void: function(rawType, name) {
+  _embind_register_void: (rawType, name) => {
     registerPrimitiveType(rawType, name);
   },
   _embind_register_bool__deps: ['$registerPrimitiveType'],
-  _embind_register_bool: function(rawType, name, size, trueValue, falseValue) {
+  _embind_register_bool: (rawType, name, trueValue, falseValue) => {
     registerPrimitiveType(rawType, name);
   },
-  _embind_register_integer__deps: ['$registerPrimitiveType'],
-  _embind_register_integer: function(primitiveType, name, size, minRange, maxRange) {
-    registerPrimitiveType(primitiveType, name);
+  _embind_register_integer__deps: ['$registerIntegerType'],
+  _embind_register_integer: (primitiveType, name, size, minRange, maxRange) => {
+    registerIntegerType(primitiveType, name);
   },
-  _embind_register_bigint: function(primitiveType, name, size, minRange, maxRange) {
+  _embind_register_bigint: (primitiveType, name, size, minRange, maxRange) => {
     registerPrimitiveType(primitiveType, name);
   },
   _embind_register_float__deps: ['$registerPrimitiveType'],
-  _embind_register_float: function(rawType, name, size) {
+  _embind_register_float: (rawType, name, size) => {
     registerPrimitiveType(rawType, name);
   },
   _embind_register_std_string__deps: ['$registerPrimitiveType'],
-  _embind_register_std_string: function(rawType, name) {
+  _embind_register_std_string: (rawType, name) => {
     registerPrimitiveType(rawType, name);
   },
-  _embind_register_std_wstring: function(rawType, charSize, name) {
+  _embind_register_std_wstring: (rawType, charSize, name) => {
     registerPrimitiveType(rawType, name);
   },
-  _embind_register_emval: function(rawType, name) {
+  _embind_register_emval: (rawType, name) => {
     registerPrimitiveType(rawType, name);
   },
-  _embind_register_memory_view: function(rawType, dataTypeIndex, name) {
+  _embind_register_memory_view: (rawType, dataTypeIndex, name) => {
     // TODO
   },
   _embind_register_function__deps: ['$moduleDefinitions', '$createFunctionDefinition'],
-  _embind_register_function: function(name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync) {
+  _embind_register_function: (name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync) => {
     createFunctionDefinition(name, argCount, rawArgTypesAddr, false, (funcDef) => {
       moduleDefinitions.push(funcDef);
     });
@@ -320,7 +343,7 @@ var LibraryEmbind = {
     );
 
   },
-  _embind_register_class_constructor__deps: ['$whenDependentTypesAreResolved'],
+  _embind_register_class_constructor__deps: ['$whenDependentTypesAreResolved', '$createFunctionDefinition'],
   _embind_register_class_constructor: function(
     rawClassType,
     argCount,
@@ -365,17 +388,58 @@ var LibraryEmbind = {
                                             setter,
                                             setterContext) {
     fieldName = readLatin1String(fieldName);
-    assert(getterReturnType === setterArgumentType, 'Mismatched getter and setter types are not supported.');
+    const readonly = setter === 0;
+    assert(readonly || getterReturnType === setterArgumentType, 'Mismatched getter and setter types are not supported.');
     whenDependentTypesAreResolved([], [classType], function(classType) {
       classType = classType[0];
       whenDependentTypesAreResolved([], [getterReturnType], function(types) {
-        const prop = new ClassProperty(types[0], fieldName);
+        const prop = new ClassProperty(types[0], fieldName, readonly);
         classType.properties.push(prop);
         return [];
       });
       return [];
     });
   },
+  _embind_register_class_class_function__deps: ['$createFunctionDefinition'],
+  _embind_register_class_class_function: function(rawClassType,
+                                                  methodName,
+                                                  argCount,
+                                                  rawArgTypesAddr,
+                                                  invokerSignature,
+                                                  rawInvoker,
+                                                  fn,
+                                                  isAsync) {
+    whenDependentTypesAreResolved([], [rawClassType], function(classType) {
+      classType = classType[0];
+      createFunctionDefinition(methodName, argCount, rawArgTypesAddr, false, (funcDef) => {
+        classType.staticMethods.push(funcDef);
+      });
+      return [];
+    });
+  },
+  _embind_register_class_class_property__deps: [
+    '$readLatin1String', '$whenDependentTypesAreResolved', '$ClassProperty'],
+  _embind_register_class_class_property: (rawClassType,
+                                          fieldName,
+                                          rawFieldType,
+                                          rawFieldPtr,
+                                          getterSignature,
+                                          getter,
+                                          setterSignature,
+                                          setter) => {
+    fieldName = readLatin1String(fieldName);
+    whenDependentTypesAreResolved([], [rawClassType], function(classType) {
+      classType = classType[0];
+      whenDependentTypesAreResolved([], [rawFieldType], function(types) {
+        const prop = new ClassProperty(types[0], fieldName);
+        classType.staticProperties.push(prop);
+        return [];
+      });
+      return [];
+    });
+  },
+  // Stub function. This is called a when extending an object and not needed for TS generation.
+  _embind_create_inheriting_constructor: (constructorName, wrapperType, properties) => {},
   _embind_register_enum__deps: ['$readLatin1String', '$EnumDefinition', '$moduleDefinitions'],
   _embind_register_enum: function(rawType, name, size, isSigned) {
     name = readLatin1String(name);
@@ -505,15 +569,20 @@ var LibraryEmbind = {
 
   $embindEmitTypes__deps: ['$awaitingDependencies', '$throwBindingError', '$getTypeName', '$moduleDefinitions', '$TsPrinter'],
   $embindEmitTypes__postset: 'addOnInit(embindEmitTypes);',
-  $embindEmitTypes: function() {
+  $embindEmitTypes: () => {
     for (const typeId in awaitingDependencies) {
-      throwBindingError(`Missing type definition for '${getTypeName(typeId)}'`);
+      throwBindingError(`Missing binding for type: '${getTypeName(typeId)}' typeId: ${typeId}`);
     }
     const printer = new TsPrinter(moduleDefinitions);
     printer.print();
   },
+
+  // Stub functions used by eval, but not needed for TS generation:
+  $makeLegalFunctionName: () => assert(false, 'stub function should not be called'),
+  $newFunc: () => assert(false, 'stub function should not be called'),
+  $runDestructors: () => assert(false, 'stub function should not be called'),
 };
 
 DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$embindEmitTypes');
 
-mergeInto(LibraryManager.library, LibraryEmbind);
+addToLibrary(LibraryEmbind);

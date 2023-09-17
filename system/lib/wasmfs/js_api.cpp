@@ -22,11 +22,16 @@ using namespace wasmfs;
 
 extern "C" {
 
+// TODO: Replace forward declarations with #include <emscripten/wasmfs.h> and
+// resolve wasmfs::backend_t namespace conflicts.
 __wasi_fd_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend);
+int wasmfs_create_directory(char* path, int mode, backend_t backend);
+int wasmfs_unmount(intptr_t path);
 
 // Copy the file specified by the pathname into JS.
 // Return a pointer to the JS buffer in HEAPU8.
 // The buffer will also contain the file length.
+// TODO: Use WasmFS ErrnoError handling instead of aborting on failure.
 void* _wasmfs_read_file(char* path) {
   static_assert(sizeof(off_t) == 8, "File offset type must be 64-bit");
 
@@ -123,7 +128,9 @@ int _wasmfs_mkdir(char* path, int mode) {
   return __syscall_mkdirat(AT_FDCWD, (intptr_t)path, mode);
 }
 
-int _wasmfs_rmdir(char* path){ return __syscall_unlinkat(AT_FDCWD, (intptr_t)path, AT_REMOVEDIR); }
+int _wasmfs_rmdir(char* path) {
+  return __syscall_unlinkat(AT_FDCWD, (intptr_t)path, AT_REMOVEDIR);
+}
 
 int _wasmfs_open(char* path, int flags, mode_t mode) {
   return __syscall_openat(AT_FDCWD, (intptr_t)path, flags, mode);
@@ -150,7 +157,8 @@ int _wasmfs_symlink(char* old_path, char* new_path) {
 intptr_t _wasmfs_readlink(char* path) {
   static thread_local void* readBuf = nullptr;
   readBuf = realloc(readBuf, PATH_MAX);
-  int bytes = __syscall_readlinkat(AT_FDCWD, (intptr_t)path, (intptr_t)readBuf, PATH_MAX);
+  int bytes =
+    __syscall_readlinkat(AT_FDCWD, (intptr_t)path, (intptr_t)readBuf, PATH_MAX);
   if (bytes < 0) {
     return bytes;
   }
@@ -158,7 +166,7 @@ intptr_t _wasmfs_readlink(char* path) {
   return (intptr_t)readBuf;
 }
 
-int _wasmfs_write(int fd, void *buf, size_t count) {
+int _wasmfs_write(int fd, void* buf, size_t count) {
   __wasi_ciovec_t iovs[1];
   iovs[0].buf = (uint8_t*)buf;
   iovs[0].buf_len = count;
@@ -171,7 +179,7 @@ int _wasmfs_write(int fd, void *buf, size_t count) {
   return numBytes;
 }
 
-int _wasmfs_pwrite(int fd, void *buf, size_t count, off_t offset) {
+int _wasmfs_pwrite(int fd, void* buf, size_t count, off_t offset) {
   __wasi_ciovec_t iovs[1];
   iovs[0].buf = (uint8_t*)buf;
   iovs[0].buf_len = count;
@@ -188,12 +196,11 @@ int _wasmfs_chmod(char* path, mode_t mode) {
   return __syscall_chmod((intptr_t)path, mode);
 }
 
-int _wasmfs_fchmod(int fd, mode_t mode) {
-  return __syscall_fchmod(fd, mode);
-}
+int _wasmfs_fchmod(int fd, mode_t mode) { return __syscall_fchmod(fd, mode); }
 
 int _wasmfs_lchmod(char* path, mode_t mode) {
-  return __syscall_fchmodat(AT_FDCWD, (intptr_t)path, mode, AT_SYMLINK_NOFOLLOW);
+  return __syscall_fchmodat(
+    AT_FDCWD, (intptr_t)path, mode, AT_SYMLINK_NOFOLLOW);
 }
 
 int _wasmfs_llseek(int fd, off_t offset, int whence) {
@@ -206,12 +213,13 @@ int _wasmfs_llseek(int fd, off_t offset, int whence) {
 }
 
 int _wasmfs_rename(char* oldpath, char* newpath) {
-  return __syscall_renameat(AT_FDCWD, (intptr_t)oldpath, AT_FDCWD, (intptr_t)newpath);
-};
+  return __syscall_renameat(
+    AT_FDCWD, (intptr_t)oldpath, AT_FDCWD, (intptr_t)newpath);
+}
 
-int _wasmfs_read(int fd, void *buf, size_t count) {
+int _wasmfs_read(int fd, void* buf, size_t count) {
   __wasi_iovec_t iovs[1];
-  iovs[0].buf = (uint8_t *)buf;
+  iovs[0].buf = (uint8_t*)buf;
   iovs[0].buf_len = count;
 
   __wasi_size_t numBytes;
@@ -222,9 +230,9 @@ int _wasmfs_read(int fd, void *buf, size_t count) {
   return numBytes;
 }
 
-int _wasmfs_pread(int fd, void *buf, size_t count, off_t offset) {
+int _wasmfs_pread(int fd, void* buf, size_t count, off_t offset) {
   __wasi_iovec_t iovs[1];
-  iovs[0].buf = (uint8_t *)buf;
+  iovs[0].buf = (uint8_t*)buf;
   iovs[0].buf_len = count;
 
   __wasi_size_t numBytes;
@@ -243,11 +251,21 @@ int _wasmfs_ftruncate(int fd, off_t length) {
   return __syscall_ftruncate64(fd, length);
 }
 
-int _wasmfs_close(int fd) {
-  return __wasi_fd_close(fd);
+int _wasmfs_close(int fd) { return __wasi_fd_close(fd); }
+
+int _wasmfs_mmap(size_t length, int prot, int flags, int fd, off_t offset) {
+  return __syscall_mmap2(0, length, prot, flags, fd, offset);
 }
 
-int _wasmfs_utime(char *path, long atime_ms, long mtime_ms) {
+int _wasmfs_msync(void* addr, size_t length, int flags) {
+  return __syscall_msync((intptr_t)addr, length, flags);
+}
+
+int _wasmfs_munmap(void* addr, size_t length) {
+  return __syscall_munmap((intptr_t)addr, length);
+}
+
+int _wasmfs_utime(char* path, long atime_ms, long mtime_ms) {
   struct timespec times[2];
   times[0].tv_sec = atime_ms / 1000;
   times[0].tv_nsec = (atime_ms % 1000) * 1000000;
@@ -255,7 +273,7 @@ int _wasmfs_utime(char *path, long atime_ms, long mtime_ms) {
   times[1].tv_nsec = (mtime_ms % 1000) * 1000000;
 
   return __syscall_utimensat(AT_FDCWD, (intptr_t)path, (intptr_t)times, 0);
-};
+}
 
 int _wasmfs_stat(char* path, struct stat* statBuf) {
   return __syscall_stat64((intptr_t)path, (intptr_t)statBuf);
@@ -264,6 +282,25 @@ int _wasmfs_stat(char* path, struct stat* statBuf) {
 int _wasmfs_lstat(char* path, struct stat* statBuf) {
   return __syscall_lstat64((intptr_t)path, (intptr_t)statBuf);
 }
+
+// The legacy JS API requires a mountpoint to already exist, so  WasmFS will
+// attempt to remove the target directory if it exists before replacing it with
+// a mounted directory.
+int _wasmfs_mount(char* path, wasmfs::backend_t created_backend) {
+  int err = __syscall_rmdir((intptr_t)path);
+
+  // The legacy JS API mount requires the directory to already exist, but we
+  // will also allow it to be missing.
+  if (err && err != -ENOENT) {
+    return err;
+  }
+
+  return wasmfs_create_directory(path, 0777, created_backend);
+}
+
+// WasmFS will always remove the mounted directory, regardless of if the
+// directory existed before.
+int _wasmfs_unmount(char* path) { return wasmfs_unmount((intptr_t)path); }
 
 // Helper method that identifies what a path is:
 //   ENOENT - if nothing exists there

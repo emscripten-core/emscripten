@@ -25,7 +25,7 @@ void *ThreadMain(void *arg)
 		for(int i = 0; i < NUM_KEYS; ++i)
 		{
 			local_keys[i] = (uintptr_t)pthread_getspecific(keys[i]);
-//			EM_ASM(err('Thread ' + $0 + ': Read value ' + $1 + ' from TLS for key at index ' + $2), pthread_self(), (int)local_keys[i], i);
+//		emscripten_errf("Thread %d: Read value %d from TLS for key at index %d", pthread_self(), (int)local_keys[i], i);
 		}
 
 		for(int i = 0; i < NUM_KEYS; ++i)
@@ -38,7 +38,7 @@ void *ThreadMain(void *arg)
 	for(int i = 0; i < NUM_KEYS; ++i)
 	{
 		local_keys[i] = (uintptr_t)pthread_getspecific(keys[i]);
-//		EM_ASM(err('Thread ' + $0 + ' final verify: Read value ' + $1 + ' from TLS for key at index ' + $2), pthread_self(), (int)local_keys[i], i);
+//	emscripten_errf("Thread %d final verify: Read value %d from TLS for key at index %d", pthread_self(), (int)local_keys[i], i);
 		assert(local_keys[i] == NUM_ITERS);
 	}
 	return 0;

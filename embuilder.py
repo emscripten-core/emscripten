@@ -64,6 +64,7 @@ MINIMAL_TASKS = [
     'libstandalonewasm-nocatch',
     'crt1',
     'crt1_proxy_main',
+    'crtbegin',
     'libunwind-except',
     'libnoexit',
     'sqlite3',

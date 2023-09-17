@@ -1,4 +1,3 @@
-$__clock_gettime
 $__cxx_global_array_dtor
 $__cxx_global_array_dtor.1
 $__cxx_global_array_dtor.2
@@ -15,6 +14,7 @@ $__cxxabiv1::__class_type_info::process_found_base_class\28__cxxabiv1::__dynamic
 $__cxxabiv1::__class_type_info::process_static_type_above_dst\28__cxxabiv1::__dynamic_cast_info*\2c\20void\20const*\2c\20void\20const*\2c\20int\29\20const
 $__cxxabiv1::__class_type_info::search_above_dst\28__cxxabiv1::__dynamic_cast_info*\2c\20void\20const*\2c\20void\20const*\2c\20int\2c\20bool\29\20const
 $__cxxabiv1::__class_type_info::search_below_dst\28__cxxabiv1::__dynamic_cast_info*\2c\20void\20const*\2c\20int\2c\20bool\29\20const
+$__cxxabiv1::__class_type_info::~__class_type_info\28\29
 $__cxxabiv1::__si_class_type_info::has_unambiguous_public_base\28__cxxabiv1::__dynamic_cast_info*\2c\20void*\2c\20int\29\20const
 $__cxxabiv1::__si_class_type_info::search_above_dst\28__cxxabiv1::__dynamic_cast_info*\2c\20void\20const*\2c\20void\20const*\2c\20int\2c\20bool\29\20const
 $__cxxabiv1::__si_class_type_info::search_below_dst\28__cxxabiv1::__dynamic_cast_info*\2c\20void\20const*\2c\20int\2c\20bool\29\20const
@@ -32,9 +32,8 @@ $__unlockfile
 $__wasi_fd_close
 $__wasi_fd_write
 $__wasm_call_ctors
-$decltype\28auto\29\20std::__2::__variant_detail::__visitation::__base::__dispatcher<0ul>::__dispatch\5babi:v160004\5d<std::__2::__variant_detail::__dtor<std::__2::__variant_detail::__traits<std::__2::vector<wasmfs::Directory::Entry\2c\20std::__2::allocator<wasmfs::Directory::Entry>>\2c\20int>\2c\20\28std::__2::__variant_detail::_Trait\291>::__destroy\5babi:v160004\5d\28\29::'lambda'\28auto&\29&&\2c\20std::__2::__variant_detail::__base<\28std::__2::__variant_detail::_Trait\291\2c\20std::__2::vector<wasmfs::Directory::Entry\2c\20std::__2::allocator<wasmfs::Directory::Entry>>\2c\20int>&>\28auto\2c\20std::__2::__variant_detail::__base<\28std::__2::__variant_detail::_Trait\291\2c\20std::__2::vector<wasmfs::Directory::Entry\2c\20std::__2::allocator<wasmfs::Directory::Entry>>\2c\20int>&\29
-$decltype\28auto\29\20std::__2::__variant_detail::__visitation::__base::__dispatcher<1ul>::__dispatch\5babi:v160004\5d<std::__2::__variant_detail::__dtor<std::__2::__variant_detail::__traits<long\2c\20std::__2::shared_ptr<wasmfs::File>>\2c\20\28std::__2::__variant_detail::_Trait\291>::__destroy\5babi:v160004\5d\28\29::'lambda'\28auto&\29&&\2c\20std::__2::__variant_detail::__base<\28std::__2::__variant_detail::_Trait\291\2c\20long\2c\20std::__2::shared_ptr<wasmfs::File>>&>\28auto\2c\20std::__2::__variant_detail::__base<\28std::__2::__variant_detail::_Trait\291\2c\20long\2c\20std::__2::shared_ptr<wasmfs::File>>&\29
-$dlfree
+$decltype\28auto\29\20std::__2::__variant_detail::__visitation::__base::__dispatcher<0ul>::__dispatch\5babi:v160006\5d<std::__2::__variant_detail::__dtor<std::__2::__variant_detail::__traits<std::__2::vector<wasmfs::Directory::Entry\2c\20std::__2::allocator<wasmfs::Directory::Entry>>\2c\20int>\2c\20\28std::__2::__variant_detail::_Trait\291>::__destroy\5babi:v160006\5d\28\29::'lambda'\28auto&\29&&\2c\20std::__2::__variant_detail::__base<\28std::__2::__variant_detail::_Trait\291\2c\20std::__2::vector<wasmfs::Directory::Entry\2c\20std::__2::allocator<wasmfs::Directory::Entry>>\2c\20int>&>\28auto\2c\20std::__2::__variant_detail::__base<\28std::__2::__variant_detail::_Trait\291\2c\20std::__2::vector<wasmfs::Directory::Entry\2c\20std::__2::allocator<wasmfs::Directory::Entry>>\2c\20int>&\29
+$decltype\28auto\29\20std::__2::__variant_detail::__visitation::__base::__dispatcher<1ul>::__dispatch\5babi:v160006\5d<std::__2::__variant_detail::__dtor<std::__2::__variant_detail::__traits<long\2c\20std::__2::shared_ptr<wasmfs::File>>\2c\20\28std::__2::__variant_detail::_Trait\291>::__destroy\5babi:v160006\5d\28\29::'lambda'\28auto&\29&&\2c\20std::__2::__variant_detail::__base<\28std::__2::__variant_detail::_Trait\291\2c\20long\2c\20std::__2::shared_ptr<wasmfs::File>>&>\28auto\2c\20std::__2::__variant_detail::__base<\28std::__2::__variant_detail::_Trait\291\2c\20long\2c\20std::__2::shared_ptr<wasmfs::File>>&\29
 $dlmalloc
 $dummy
 $fflush
@@ -42,10 +41,11 @@ $is_equal\28std::type_info\20const*\2c\20std::type_info\20const*\2c\20bool\29
 $main
 $memcmp
 $memmove
+$operator\20delete\28void*\29
 $operator\20new\28unsigned\20long\29
 $pthread_mutex_init
 $sbrk
-$std::__2::__allocation_result<std::__2::allocator_traits<std::__2::allocator<char>>::pointer>\20std::__2::__allocate_at_least\5babi:v160004\5d<std::__2::allocator<char>>\28std::__2::allocator<char>&\2c\20unsigned\20long\29
+$std::__2::__allocation_result<std::__2::allocator_traits<std::__2::allocator<char>>::pointer>\20std::__2::__allocate_at_least\5babi:v160006\5d<std::__2::allocator<char>>\28std::__2::allocator<char>&\2c\20unsigned\20long\29
 $std::__2::__shared_ptr_emplace<wasmfs::MemoryDataFile\2c\20std::__2::allocator<wasmfs::MemoryDataFile>>::~__shared_ptr_emplace\28\29
 $std::__2::__shared_ptr_emplace<wasmfs::MemoryDataFile\2c\20std::__2::allocator<wasmfs::MemoryDataFile>>::~__shared_ptr_emplace\28\29.1
 $std::__2::__shared_ptr_emplace<wasmfs::MemoryDirectory\2c\20std::__2::allocator<wasmfs::MemoryDirectory>>::__on_zero_shared\28\29
@@ -75,14 +75,14 @@ $std::__2::basic_string<char\2c\20std::__2::char_traits<char>\2c\20std::__2::all
 $std::__2::basic_string<char\2c\20std::__2::char_traits<char>\2c\20std::__2::allocator<char>>&\20std::__2::basic_string<char\2c\20std::__2::char_traits<char>\2c\20std::__2::allocator<char>>::__assign_no_alias<true>\28char\20const*\2c\20unsigned\20long\29
 $std::__2::basic_string<char\2c\20std::__2::char_traits<char>\2c\20std::__2::allocator<char>>::__grow_by_and_replace\28unsigned\20long\2c\20unsigned\20long\2c\20unsigned\20long\2c\20unsigned\20long\2c\20unsigned\20long\2c\20unsigned\20long\2c\20char\20const*\29
 $std::__2::basic_string<char\2c\20std::__2::char_traits<char>\2c\20std::__2::allocator<char>>::__init_copy_ctor_external\28char\20const*\2c\20unsigned\20long\29
-$std::__2::basic_string<char\2c\20std::__2::char_traits<char>\2c\20std::__2::allocator<char>>::__invalidate_iterators_past\5babi:v160004\5d\28unsigned\20long\29
-$std::__2::basic_string<char\2c\20std::__2::char_traits<char>\2c\20std::__2::allocator<char>>::__throw_length_error\5babi:v160004\5d\28\29\20const
+$std::__2::basic_string<char\2c\20std::__2::char_traits<char>\2c\20std::__2::allocator<char>>::__invalidate_iterators_past\5babi:v160006\5d\28unsigned\20long\29
+$std::__2::basic_string<char\2c\20std::__2::char_traits<char>\2c\20std::__2::allocator<char>>::__throw_length_error\5babi:v160006\5d\28\29\20const
 $std::__2::char_traits<char>::copy\28char*\2c\20char\20const*\2c\20unsigned\20long\29
-$std::__2::shared_ptr<wasmfs::SpecialFiles::\28anonymous\20namespace\29::RandomFile>\20std::__2::make_shared\5babi:v160004\5d<wasmfs::SpecialFiles::\28anonymous\20namespace\29::RandomFile\2c\20void>\28\29
+$std::__2::shared_ptr<wasmfs::SpecialFiles::\28anonymous\20namespace\29::RandomFile>\20std::__2::make_shared\5babi:v160006\5d<wasmfs::SpecialFiles::\28anonymous\20namespace\29::RandomFile\2c\20void>\28\29
 $std::__2::vector<unsigned\20char\2c\20std::__2::allocator<unsigned\20char>>::__append\28unsigned\20long\29
-$std::__2::vector<wasmfs::MemoryDirectory::ChildEntry\2c\20std::__2::allocator<wasmfs::MemoryDirectory::ChildEntry>>::erase\5babi:v160004\5d\28std::__2::__wrap_iter<wasmfs::MemoryDirectory::ChildEntry\20const*>\29
+$std::__2::vector<wasmfs::MemoryDirectory::ChildEntry\2c\20std::__2::allocator<wasmfs::MemoryDirectory::ChildEntry>>::erase\5babi:v160006\5d\28std::__2::__wrap_iter<wasmfs::MemoryDirectory::ChildEntry\20const*>\29
 $strlen
-$void\20std::__2::__libcpp_operator_delete\5babi:v160004\5d<void*>\28void*\29
+$void\20std::__2::__libcpp_operator_delete\5babi:v160006\5d<void*>\28void*\29
 $void\20std::__2::vector<std::__2::shared_ptr<wasmfs::OpenFileState>\2c\20std::__2::allocator<std::__2::shared_ptr<wasmfs::OpenFileState>>>::__emplace_back_slow_path<>\28\29
 $wasmfs::DataFile::Handle::flush\28\29
 $wasmfs::DataFile::Handle::write\28unsigned\20char\20const*\2c\20unsigned\20long\2c\20long\20long\29

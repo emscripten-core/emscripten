@@ -6,107 +6,105 @@
 
 
 #if !AUTODEBUG
-#error "Should only be incldued in AUTODEBUG mode"
+#error "Should only be included in AUTODEBUG mode"
 #endif
 
-mergeInto(LibraryManager.library, {
-  $log_execution: function(loc) {
-    out('log_execution ' + loc);
-  },
-  $get_i32: function(loc, index, value) {
-    out('get_i32 ' + [loc, index, value]);
+addToLibrary({
+  $log_execution: (loc) => dbg('log_execution ' + loc),
+  $get_i32: (loc, index, value) => {
+    dbg('get_i32 ' + [loc, index, value]);
     return value;
   },
   $get_i64__deps: ['setTempRet0'],
-  $get_i64: function(loc, index, low, high) {
-    out('get_i64 ' + [loc, index, low, high]);
+  $get_i64: (loc, index, low, high) => {
+    dbg('get_i64 ' + [loc, index, low, high]);
     setTempRet0(high);
     return low;
   },
-  $get_f32: function(loc, index, value) {
-    out('get_f32 ' + [loc, index, value]);
+  $get_f32: (loc, index, value) => {
+    dbg('get_f32 ' + [loc, index, value]);
     return value;
   },
-  $get_f64: function(loc, index, value) {
-    out('get_f64 ' + [loc, index, value]);
+  $get_f64: (loc, index, value) => {
+    dbg('get_f64 ' + [loc, index, value]);
     return value;
   },
-  $get_anyref: function(loc, index, value) {
-    out('get_anyref ' + [loc, index, value]);
+  $get_anyref: (loc, index, value) => {
+    dbg('get_anyref ' + [loc, index, value]);
     return value;
   },
-  $get_exnref: function(loc, index, value) {
-    out('get_exnref ' + [loc, index, value]);
+  $get_exnref: (loc, index, value) => {
+    dbg('get_exnref ' + [loc, index, value]);
     return value;
   },
-  $set_i32: function(loc, index, value) {
-    out('set_i32 ' + [loc, index, value]);
+  $set_i32: (loc, index, value) => {
+    dbg('set_i32 ' + [loc, index, value]);
     return value;
   },
   $set_i64__deps: ['setTempRet0'],
-  $set_i64: function(loc, index, low, high) {
-    out('set_i64 ' + [loc, index, low, high]);
+  $set_i64: (loc, index, low, high) => {
+    dbg('set_i64 ' + [loc, index, low, high]);
     setTempRet0(high);
     return low;
   },
-  $set_f32: function(loc, index, value) {
-    out('set_f32 ' + [loc, index, value]);
+  $set_f32: (loc, index, value) => {
+    dbg('set_f32 ' + [loc, index, value]);
     return value;
   },
-  $set_f64: function(loc, index, value) {
-    out('set_f64 ' + [loc, index, value]);
+  $set_f64: (loc, index, value) => {
+    dbg('set_f64 ' + [loc, index, value]);
     return value;
   },
-  $set_anyref: function(loc, index, value) {
-    out('set_anyref ' + [loc, index, value]);
+  $set_anyref: (loc, index, value) => {
+    dbg('set_anyref ' + [loc, index, value]);
     return value;
   },
-  $set_exnref: function(loc, index, value) {
-    out('set_exnref ' + [loc, index, value]);
+  $set_exnref: (loc, index, value) => {
+    dbg('set_exnref ' + [loc, index, value]);
     return value;
   },
-  $load_ptr: function(loc, bytes, offset, ptr) {
-    out('load_ptr ' + [loc, bytes, offset, ptr]);
+  $load_ptr: (loc, bytes, offset, ptr) => {
+    dbg('load_ptr ' + [loc, bytes, offset, ptr]);
     return ptr;
   },
-  $load_val_i32: function(loc, value) {
-    out('load_val_i32 ' + [loc, value]);
+  $load_val_i32: (loc, value) => {
+    dbg('load_val_i32 ' + [loc, value]);
     return value;
   },
   $load_val_i64__deps: ['setTempRet0'],
-  $load_val_i64: function(loc, low, high) {
-    out('load_val_i64 ' + [loc, low, high]);
+  $load_val_i64: (loc, low, high) => {
+    dbg('load_val_i64 ' + [loc, low, high]);
     setTempRet0(high);
     return low;
   },
-  $load_val_f32: function(loc, value) {
-    out('load_val_f32 ' + [loc, value]);
+  $load_val_f32: (loc, value) => {
+    dbg('load_val_f32 ' + [loc, value]);
     return value;
   },
-  $load_val_f64: function(loc, value) {
-    out('load_val_f64 ' + [loc, value]);
+  $load_val_f64: (loc, value) => {
+    dbg('load_val_f64 ' + [loc, value]);
     return value;
   },
-  $store_ptr: function(loc, bytes, offset, ptr) {
-    out('store_ptr ' + [loc, bytes, offset, ptr]);
+  $store_ptr: (loc, bytes, offset, ptr) => {
+    dbg('store_ptr ' + [loc, bytes, offset, ptr]);
     return ptr;
   },
-  $store_val_i32: function(loc, value) {
-    out('store_val_i32 ' + [loc, value]);
+  $store_val_i32: (loc, value) => {
+    dbg('store_val_i32 ' + [loc, value]);
     return value;
   },
   $store_val_i64__deps: ['setTempRet0'],
-  $store_val_i64: function(loc, low, high) {
-    out('store_val_i64 ' + [loc, low, high]);
+  $store_val_i64: (loc, low, high) => {
+    dbg('store_val_i64 ' + [loc, low, high]);
     setTempRet0(high);
     return low;
   },
-  $store_val_f32: function(loc, value) {
-    out('store_val_f32 ' + [loc, value]);
+  $store_val_f32: (loc, value) => {
+    dbg('store_val_f32 ' + [loc, value]);
     return value;
   },
-  $store_val_f64: function(loc, value) {
-    out('store_val_f64 ' + [loc, value]);
+  $store_val_f64: (loc, value) => {
+    dbg('store_val_f64 ' + [loc, value]);
     return value;
   },
 });

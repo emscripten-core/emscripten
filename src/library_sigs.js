@@ -289,7 +289,7 @@ sigs = {
   _embind_finalize_value_array__sig: 'vp',
   _embind_finalize_value_object__sig: 'vp',
   _embind_register_bigint__sig: 'vpppjj',
-  _embind_register_bool__sig: 'vpppii',
+  _embind_register_bool__sig: 'vppii',
   _embind_register_class__sig: 'vppppppppppppp',
   _embind_register_class_class_function__sig: 'vppippppi',
   _embind_register_class_class_property__sig: 'vpppppppp',
@@ -325,6 +325,7 @@ sigs = {
   _emscripten_notify_mailbox_postmessage__sig: 'vppp',
   _emscripten_push_main_loop_blocker__sig: 'vppp',
   _emscripten_push_uncounted_main_loop_blocker__sig: 'vppp',
+  _emscripten_receive_on_main_thread_js__sig: 'dipip',
   _emscripten_set_offscreencanvas_size__sig: 'ipii',
   _emscripten_thread_exit_joinable__sig: 'vp',
   _emscripten_thread_mailbox_await__sig: 'vp',
@@ -564,6 +565,7 @@ sigs = {
   emscripten_asm_const_int__sig: 'ippp',
   emscripten_asm_const_int_sync_on_main_thread__sig: 'ippp',
   emscripten_asm_const_ptr__sig: 'pppp',
+  emscripten_asm_const_ptr_sync_on_main_thread__sig: 'pppp',
   emscripten_async_call__sig: 'vppi',
   emscripten_async_load_script__sig: 'vppp',
   emscripten_async_run_script__sig: 'vpi',
@@ -649,10 +651,12 @@ sigs = {
   emscripten_has_threading_support__sig: 'i',
   emscripten_hide_mouse__sig: 'v',
   emscripten_html5_remove_all_event_listeners__sig: 'v',
+  emscripten_idb_async_clear__sig: 'vpppp',
   emscripten_idb_async_delete__sig: 'vppppp',
   emscripten_idb_async_exists__sig: 'vppppp',
   emscripten_idb_async_load__sig: 'vppppp',
   emscripten_idb_async_store__sig: 'vpppippp',
+  emscripten_idb_clear__sig: 'vpp',
   emscripten_idb_delete__sig: 'vppp',
   emscripten_idb_exists__sig: 'vpppp',
   emscripten_idb_load__sig: 'vppppp',
@@ -689,7 +693,7 @@ sigs = {
   emscripten_math_sqrt__sig: 'dd',
   emscripten_math_tan__sig: 'dd',
   emscripten_math_tanh__sig: 'dd',
-  emscripten_memcpy_big__sig: 'vppp',
+  emscripten_memcpy_js__sig: 'vppp',
   emscripten_navigator_hardware_concurrency__sig: 'i',
   emscripten_notify_memory_growth__sig: 'vp',
   emscripten_num_logical_cores__sig: 'i',
@@ -712,7 +716,6 @@ sigs = {
   emscripten_promise_resolve__sig: 'vpip',
   emscripten_promise_then__sig: 'ppppp',
   emscripten_random__sig: 'f',
-  emscripten_receive_on_main_thread_js__sig: 'dipip',
   emscripten_request_animation_frame__sig: 'ipp',
   emscripten_request_animation_frame_loop__sig: 'vpp',
   emscripten_request_fullscreen__sig: 'ipi',
@@ -1735,4 +1738,4 @@ sigs = {
 
 // We have to merge with `allowMissing` since this file contains signatures
 // for functions that might not exist in all build configurations.
-mergeInto(LibraryManager.library, sigs, {allowMissing: true});
+addToLibrary(sigs, {allowMissing: true});

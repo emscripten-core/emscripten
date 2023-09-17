@@ -11,8 +11,9 @@ extern "C" {
 #endif // __cplusplus
 
 // You can use these functions by passing format string to arg_sigs.
-// Note that `code` requires you to provide a const C string known at compile time,
-// otherwise the "unable to find data for ASM/EM_JS const" error will be thrown.
+// Note that `code` requires you to provide a const C string known at compile
+// time, otherwise the "unable to find data for ASM/EM_JS const" error will be
+// thrown.
 // https://github.com/WebAssembly/binaryen/blob/51c8f2469f8fd05197b7694c65041b1567f2c6b5/src/wasm/wasm-emscripten.cpp#L183
 
 // C++ needs the nothrow attribute so -O0 doesn't lower these calls as invokes.
@@ -25,6 +26,9 @@ double emscripten_asm_const_double(const char* code, const char* arg_sigs, ...);
 
 __attribute__((nothrow))
 int emscripten_asm_const_int_sync_on_main_thread(
+  const char* code, const char* arg_sigs, ...);
+__attribute__((nothrow))
+void* emscripten_asm_const_ptr_sync_on_main_thread(
   const char* code, const char* arg_sigs, ...);
 __attribute__((nothrow))
 double emscripten_asm_const_double_sync_on_main_thread(
@@ -48,6 +52,7 @@ void emscripten_asm_const_async_on_main_thread(
 #define EM_ASM_DOUBLE(...) EM_ASM_ERROR
 #define MAIN_THREAD_EM_ASM(...) EM_ASM_ERROR
 #define MAIN_THREAD_EM_ASM_INT(...) EM_ASM_ERROR
+#define MAIN_THREAD_EM_ASM_PTR(...) EM_ASM_ERROR
 #define MAIN_THREAD_EM_ASM_DOUBLE(...) EM_ASM_ERROR
 #define MAIN_THREAD_ASYNC_EM_ASM(...) EM_ASM_ERROR
 #define EM_ASM_(...) EM_ASM_ERROR
@@ -69,11 +74,12 @@ void emscripten_asm_const_async_on_main_thread(
 
 // We can use the generic selection C11 feature (that clang supports pre-C11
 // as an extension) to emulate function overloading in C.
-// All other types, including *all* pointer types go through the default case.
-// This means we need to use a different default type for `__wasm64__` where
-// pointers are 64-bits wide, and we also need to include more non-default
-// cases, for example, we don't want `short` to end up using the wider default.
-#if __wasm64__
+// All other types, including *all* pointer types go through the default case
+#ifdef __wasm64__
+#define LONG_CODE 'j'
+#else
+#define LONG_CODE 'i'
+#endif
 #define _EM_ASM_SIG_CHAR(x) _Generic((x), \
     float: 'f', \
     double: 'd', \
@@ -81,21 +87,14 @@ void emscripten_asm_const_async_on_main_thread(
     unsigned char: 'i', \
     unsigned short: 'i', \
     unsigned int: 'i', \
-    unsigned long: 'j', \
+    unsigned long: LONG_CODE, \
     unsigned long long: 'j', \
     signed char: 'i', \
     signed short: 'i', \
     signed int: 'i', \
-    signed long: 'j', \
+    signed long: LONG_CODE, \
     signed long long: 'j', \
     default: 'p')
-#else
-#define _EM_ASM_SIG_CHAR(x) _Generic((x), \
-    float: 'f', \
-    double: 'd', \
-    long long: 'j', \
-    default: 'i')
-#endif
 
 // This indirection is needed to allow us to concatenate computed results, e.g.
 //   #define BAR(N) _EM_ASM_CONCATENATE(FOO_, N)
@@ -170,11 +169,7 @@ template<> struct __em_asm_sig<bool> { static const char value = 'i'; };
 template<> struct __em_asm_sig<wchar_t> { static const char value = 'i'; };
 template<> struct __em_asm_sig<long long> { static const char value = 'j'; };
 template<> struct __em_asm_sig<unsigned long long> { static const char value = 'j'; };
-#if __wasm64__
 template<typename T> struct __em_asm_sig<T*> { static const char value = 'p'; };
-#else
-template<typename T> struct __em_asm_sig<T*> { static const char value = 'i'; };
-#endif
 
 // Explicit support for enums, they're passed as int via variadic arguments.
 template<bool> struct __em_asm_if { };
@@ -211,9 +206,9 @@ const char __em_asm_sig_builder<__em_asm_type_tuple<Args...> >::buffer[] = { __e
     , __em_asm_sig_builder<__typeof__(__em_asm_make_type_tuple(__VA_ARGS__))>::buffer, ##__VA_ARGS__
 #endif // __cplusplus
 
-// Note: If the code block in the EM_ASM() family of functions below contains a comma,
-// then wrap the whole code block inside parentheses (). See test/core/test_em_asm_2.cpp
-// for example code snippets.
+// Note: If the code block in the EM_ASM() family of functions below contains a
+// comma, then wrap the whole code block inside parentheses (). See
+// test/core/test_em_asm_2.cpp for example code snippets.
 
 #define CODE_EXPR(code) (__extension__({           \
     __attribute__((section("em_asm"), aligned(1))) \
@@ -221,42 +216,65 @@ const char __em_asm_sig_builder<__em_asm_type_tuple<Args...> >::buffer[] = { __e
     x;                                             \
   }))
 
-// Runs the given JavaScript code on the calling thread (synchronously), and returns no value back.
+// Runs the given JavaScript code on the calling thread (synchronously), and
+// returns no value back.
 #define EM_ASM(code, ...) ((void)emscripten_asm_const_int(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__)))
 
-// Runs the given JavaScript code on the calling thread (synchronously), and returns an i32 back.
+// Runs the given JavaScript code on the calling thread (synchronously), and
+// returns an i32 back.
 #define EM_ASM_INT(code, ...) emscripten_asm_const_int(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
 
-// Runs the given JavaScript code on the calling thread (synchronously), and returns an pointer back.
-// On wasm32 this is the same as emscripten_asm_const_int but on wasm64 it returns an i64.
+// Runs the given JavaScript code on the calling thread (synchronously), and
+// returns an pointer back.
+// On wasm32 this is the same as emscripten_asm_const_int but on wasm64 it
+// returns an i64.
 #define EM_ASM_PTR(code, ...) emscripten_asm_const_ptr(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
 
-// Runs the given JavaScript code on the calling thread (synchronously), and returns a double back.
+// Runs the given JavaScript code on the calling thread (synchronously), and
+// returns a double back.
 #define EM_ASM_DOUBLE(code, ...) emscripten_asm_const_double(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
 
-// Runs the given JavaScript code synchronously on the main browser thread, and returns no value back.
-// Call this function for example to access DOM elements in a pthread when building with -pthread.
-// Avoid calling this function in performance sensitive code, because this will effectively sleep the
-// calling thread until the main browser thread is able to service the proxied function call. If you have
-// multiple MAIN_THREAD_EM_ASM() code blocks to call in succession, it will likely be much faster to
-// coalesce all the calls to a single MAIN_THREAD_EM_ASM() block. If you do not need synchronization nor
-// a return value back, consider using the function MAIN_THREAD_ASYNC_EM_ASM() instead, which will not block.
+// Runs the given JavaScript code synchronously on the main browser thread, and
+// returns no value back.
+// Call this function for example to access DOM elements in a pthread when
+// building with -pthread.
+// Avoid calling this function in performance sensitive code, because this will
+// effectively sleep the calling thread until the main browser thread is able to
+// service the proxied function call. If you have multiple MAIN_THREAD_EM_ASM()
+// code blocks to call in succession, it will likely be much faster to coalesce
+// all the calls to a single MAIN_THREAD_EM_ASM() block. If you do not need
+// synchronization nor a return value back, consider using the function
+// MAIN_THREAD_ASYNC_EM_ASM() instead, which will not block.
 // In single-threaded builds (including proxy-to-worker), MAIN_THREAD_EM_ASM*()
-// functions are direct aliases to the corresponding EM_ASM*() family of functions.
+// functions are direct aliases to the corresponding EM_ASM*() family of
+// functions.
 #define MAIN_THREAD_EM_ASM(code, ...) ((void)emscripten_asm_const_int_sync_on_main_thread(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__)))
 
-// Runs the given JavaScript code synchronously on the main browser thread, and returns an integer back.
+// Runs the given JavaScript code synchronously on the main browser thread, and
+// returns an integer back.
 // The same considerations apply as with MAIN_THREAD_EM_ASM().
 #define MAIN_THREAD_EM_ASM_INT(code, ...) emscripten_asm_const_int_sync_on_main_thread(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
 
-// Runs the given JavaScript code synchronously on the main browser thread, and returns a double back.
+// Runs the given JavaScript code synchronously on the main browser thread, and
+// returns an pointer back.
+// The same considerations apply as with MAIN_THREAD_EM_ASM().
+// On wasm32 this is the same as emscripten_asm_const_int but on wasm64 it
+// returns an i64.
+#define MAIN_THREAD_EM_ASM_PTR(code, ...) emscripten_asm_const_ptr_sync_on_main_thread(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
+
+// Runs the given JavaScript code synchronously on the main browser thread, and
+// returns a double back.
 // The same considerations apply as with MAIN_THREAD_EM_ASM().
 #define MAIN_THREAD_EM_ASM_DOUBLE(code, ...) emscripten_asm_const_double_sync_on_main_thread(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
 
-// Asynchronously dispatches the given JavaScript code to be run on the main browser thread.
-// If the calling thread is the main browser thread, then the specified JavaScript code is executed
-// synchronously. Otherwise an event will be queued on the main browser thread to execute the call
-// later (think postMessage()), and this call will immediately return without waiting. Be sure to guard any accesses to shared memory on the heap inside the JavaScript code with appropriate locking.
+// Asynchronously dispatches the given JavaScript code to be run on the main
+// browser thread.
+// If the calling thread is the main browser thread, then the specified
+// JavaScript code is executed synchronously. Otherwise an event will be queued
+// on the main browser thread to execute the call later (think postMessage()),
+// and this call will immediately return without waiting. Be sure to guard any
+// accesses to shared memory on the heap inside the JavaScript code with
+// appropriate locking.
 #define MAIN_THREAD_ASYNC_EM_ASM(code, ...) ((void)emscripten_asm_const_async_on_main_thread(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__)))
 
 // Old forms for compatibility, no need to use these.
