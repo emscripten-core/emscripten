@@ -802,7 +802,7 @@ var LibraryDylink = {
           if (cSig != 'void') {
             cSig = cSig.split(',');
             for (var i in cSig) {
-              var jsArg = cSig[i].split(' ').pop();
+              var jsArg = cSig[i].split(' ').pop().replace('*', '');
               jsArgs.push(jsArg.replace('*', ''));
             }
           }
