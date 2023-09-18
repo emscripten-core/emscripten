@@ -3460,16 +3460,6 @@ addToLibrary({
   },
 #endif // MINIMAL_RUNTIME
 
-  $safeSetTimeout__deps: ['$callUserCallback'],
-  $safeSetTimeout__docs: '/** @param {number=} timeout */',
-  $safeSetTimeout: (func, timeout) => {
-    {{{ runtimeKeepalivePush() }}}
-    return setTimeout(() => {
-      {{{ runtimeKeepalivePop() }}}
-      callUserCallback(func);
-    }, timeout);
-  },
-
   $asmjsMangle: (x) => {
     var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};
     if (x == '__main_argc_argv') {
