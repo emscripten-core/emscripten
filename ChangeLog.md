@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.47 (in development)
 -----------------------
+- `EM_JS` and `EM_ASM` that are present in side module now have their syntax
+  validated at build time. (#20258)
 
 3.1.46 - 09/15/23
 -----------------
