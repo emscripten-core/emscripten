@@ -219,6 +219,10 @@ Defines
 
   Similar to :c:macro:`MAIN_THREAD_EM_ASM` but returns a ``double`` value.
 
+.. c:macro:: MAIN_THREAD_EM_ASM_PTR(code, ...)
+
+  Similar to :c:macro:`MAIN_THREAD_EM_ASM` but returns a pointer value.
+
 .. c:macro:: MAIN_THREAD_ASYNC_EM_ASM(code, ...)
 
   Similar to :c:macro:`MAIN_THREAD_EM_ASM` but is proxied in an
