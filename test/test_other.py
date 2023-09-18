@@ -4107,6 +4107,8 @@ Module.print = (x) => { throw '<{(' + x + ')}>' };
     'pch': ['pch'],
   })
   def test_precompiled_headers(self, suffix):
+    self.skipTest('disable while LLVM changes to pch roll in (new defaults&output)')
+
     create_file('header.h', '#define X 5\n')
     self.run_process([EMCC, '-xc++-header', 'header.h', '-c'])
     self.assertExists('header.h.gch') # default output is gch
