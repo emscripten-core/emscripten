@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.47 (in development)
 -----------------------
+- Value types in `emscripten/html5.h` that correspond the WebIDL `long` type are
+  now represented as `int` rather than `long` types so that they are 32-bit wide
+  on both wasm32 and wasm64.  (#20290)
 - `EM_JS` and `EM_ASM` that are present in side module now have their syntax
   validated at build time. (#20258)
 - `MAIN_THREAD_EM_ASM_PTR` macro added for code that returns a pointer.  This
