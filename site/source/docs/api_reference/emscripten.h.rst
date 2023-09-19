@@ -219,6 +219,10 @@ Defines
 
   Similar to :c:macro:`MAIN_THREAD_EM_ASM` but returns a ``double`` value.
 
+.. c:macro:: MAIN_THREAD_EM_ASM_PTR(code, ...)
+
+  Similar to :c:macro:`MAIN_THREAD_EM_ASM` but returns a pointer value.
+
 .. c:macro:: MAIN_THREAD_ASYNC_EM_ASM(code, ...)
 
   Similar to :c:macro:`MAIN_THREAD_EM_ASM` but is proxied in an
@@ -1385,10 +1389,10 @@ IndexedDB
   :param perror: An out parameter that will be filled with a non-zero value if an error occurred.
 
 
-Upstream Asyncify functions
-===========================
+Asyncify functions
+==================
 
-These functions only work with the upstream wasm backend when using Asyncify.
+These functions only work when using Asyncify.
 
 Typedefs
 --------
@@ -1408,18 +1412,18 @@ Functions
 .. c:function:: void emscripten_scan_stack(em_scan_func func)
 
     Scan the C userspace stack, which means the stack managed by the compiled
-    code (as opposed to the wasm VM's internal stack, which is not directly
+    code (as opposed to the Wasm VM's internal stack, which is not directly
     observable). This data is already in linear memory; this function just
     gives you a simple way to know where it is.
 
 .. c:function:: void emscripten_scan_registers(em_scan_func func)
 
-    Scan "registers", by which we mean data that is not in memory. In wasm,
+    Scan "registers", by which we mean data that is not in memory. In Wasm,
     that means data stored in locals, including locals in functions higher up
-    the stack - the wasm VM has spilled them, but none of that is observable to
+    the stack - the Wasm VM has spilled them, but none of that is observable to
     user code).
 
-    Note that this function scans wasm locals. Depending on the LLVM
+    Note that this function scans Wasm locals. Depending on the LLVM
     optimization level, this may not scan the original locals in your source
     code. For example in ``-O0`` locals may be stored on the stack. To make
     sure you scan everything necessary, you can also do
@@ -1431,15 +1435,15 @@ Functions
 
 .. c:function:: void emscripten_lazy_load_code()
 
-    This creates two wasm files at compile time: the first wasm which is
+    This creates two Wasm files at compile time: the first Wasm which is
     downloaded and run normally, and a second that is lazy-loaded. When an
-    ``emscripten_lazy_load_code()`` call is reached, we load the second wasm
+    ``emscripten_lazy_load_code()`` call is reached, we load the second Wasm
     and resume execution using it.
 
     The idea here is that the initial download can be quite small, if you
     place enough ``emscripten_lazy_load_code()`` calls in your codebase, as
-    the optimizer can remove code from the first wasm if it sees it can't
-    be reached. The second downloaded wasm can contain your full codebase,
+    the optimizer can remove code from the first Wasm if it sees it can't
+    be reached. The second downloaded Wasm can contain your full codebase,
     including rarely-used functions, in which case the lazy-loading may
     not happen at all.
 
@@ -1456,8 +1460,8 @@ Emscripten runtime JS code, or run Emscripten binaries in your own runtime.
 .. c:function:: void emscripten_notify_memory_growth(i32 index)
 
     Called when memory has grown. In a JS runtime, this is used to know when
-    to update the JS views on the wasm memory, which otherwise we would need
-    to constantly check for after any wasm code runs. See
+    to update the JS views on the Wasm memory, which otherwise we would need
+    to constantly check for after any Wasm code runs. See
     `this wasi discussion <https://github.com/WebAssembly/WASI/issues/82>`_.
 
     :param i32 index: Which memory has grown.

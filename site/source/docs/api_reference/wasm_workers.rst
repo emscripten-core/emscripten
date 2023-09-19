@@ -18,7 +18,7 @@ Quick Example
 
   void run_in_worker()
   {
-    printf("Hello from wasm worker!\n");
+    printf("Hello from Wasm Worker!\n");
   }
 
   int main()
