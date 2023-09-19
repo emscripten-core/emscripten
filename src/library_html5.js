@@ -209,6 +209,7 @@ var LibraryHTML5 = {
     },
 
 #if PTHREADS
+    // TODO: Support proxied events for MEMORY64
     queueEventHandlerOnThread_iiii(targetThread, eventHandlerFunc, eventTypeId, eventData, userData) {
       withStackSave(() => {
         var varargs = stackAlloc(12);
@@ -307,7 +308,7 @@ var LibraryHTML5 = {
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, keyEventData, userData);
       else
 #endif
-      if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, keyEventData, userData)) e.preventDefault();
+      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, keyEventData, userData)) e.preventDefault();
     };
 
     var eventHandler = {
@@ -547,7 +548,7 @@ var LibraryHTML5 = {
         JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, mouseEventData, userData);
       } else
 #endif
-      if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, JSEvents.mouseEvent, userData)) e.preventDefault();
+      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, JSEvents.mouseEvent, userData)) e.preventDefault();
     };
 
     var eventHandler = {
@@ -646,7 +647,7 @@ var LibraryHTML5 = {
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, wheelEvent, userData);
       else
 #endif
-      if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, wheelEvent, userData)) e.preventDefault();
+      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, wheelEvent, userData)) e.preventDefault();
     };
 #if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
     // The 'mousewheel' event as implemented in Safari 6.0.5
@@ -658,7 +659,7 @@ var LibraryHTML5 = {
       {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, 'wheelDeltaY', 'double') }}};
       {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, '0 /* Not available */', 'double') }}};
       {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaMode, '0 /* DOM_DELTA_PIXEL */', 'i32') }}};
-      var shouldCancel = {{{ makeDynCall('iiii', 'callbackfunc') }}}( eventTypeId, JSEvents.wheelEvent, userData);
+      var shouldCancel = {{{ makeDynCall('iipp', 'callbackfunc') }}}( eventTypeId, JSEvents.wheelEvent, userData);
       if (shouldCancel) {
         e.preventDefault();
       }
@@ -747,7 +748,7 @@ var LibraryHTML5 = {
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, uiEvent, userData);
       else
 #endif
-      if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, uiEvent, userData)) e.preventDefault();
+      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, uiEvent, userData)) e.preventDefault();
     };
 
     var eventHandler = {
@@ -793,7 +794,7 @@ var LibraryHTML5 = {
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, focusEvent, userData);
       else
 #endif
-      if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, focusEvent, userData)) e.preventDefault();
+      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, focusEvent, userData)) e.preventDefault();
     };
 
     var eventHandler = {
@@ -855,7 +856,7 @@ var LibraryHTML5 = {
         JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, deviceOrientationEvent, userData);
       } else
 #endif
-      if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, JSEvents.deviceOrientationEvent, userData)) e.preventDefault();
+      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, JSEvents.deviceOrientationEvent, userData)) e.preventDefault();
     };
 
     var eventHandler = {
@@ -925,7 +926,7 @@ var LibraryHTML5 = {
         JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, deviceMotionEvent, userData);
       } else
 #endif
-      if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, JSEvents.deviceMotionEvent, userData)) e.preventDefault();
+      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, JSEvents.deviceMotionEvent, userData)) e.preventDefault();
     };
 
     var eventHandler = {
@@ -995,7 +996,7 @@ var LibraryHTML5 = {
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, orientationChangeEvent, userData);
       else
 #endif
-      if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, orientationChangeEvent, userData)) e.preventDefault();
+      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, orientationChangeEvent, userData)) e.preventDefault();
     };
 
     if (eventTypeString == "orientationchange" && screen.mozOrientation !== undefined) {
@@ -1114,7 +1115,7 @@ var LibraryHTML5 = {
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, fullscreenChangeEvent, userData);
       else
 #endif
-      if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, fullscreenChangeEvent, userData)) e.preventDefault();
+      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, fullscreenChangeEvent, userData)) e.preventDefault();
     };
 
     var eventHandler = {
@@ -1197,7 +1198,7 @@ var LibraryHTML5 = {
       if (strategy.canvasResizedCallbackTargetThread) JSEvents.queueEventHandlerOnThread_iiii(strategy.canvasResizedCallbackTargetThread, strategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
       else
 #endif
-      {{{ makeDynCall('iiii', 'strategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
+      {{{ makeDynCall('iipp', 'strategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
     }
 
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
@@ -1349,7 +1350,7 @@ var LibraryHTML5 = {
           if (currentFullscreenStrategy.canvasResizedCallbackTargetThread) JSEvents.queueEventHandlerOnThread_iiii(currentFullscreenStrategy.canvasResizedCallbackTargetThread, currentFullscreenStrategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, currentFullscreenStrategy.canvasResizedCallbackUserData);
           else
 #endif
-          {{{ makeDynCall('iiii', 'currentFullscreenStrategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, currentFullscreenStrategy.canvasResizedCallbackUserData);
+          {{{ makeDynCall('iipp', 'currentFullscreenStrategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, currentFullscreenStrategy.canvasResizedCallbackUserData);
         }
       }
     }
@@ -1477,7 +1478,7 @@ var LibraryHTML5 = {
       if (currentFullscreenStrategy.canvasResizedCallbackTargetThread) JSEvents.queueEventHandlerOnThread_iiii(currentFullscreenStrategy.canvasResizedCallbackTargetThread, currentFullscreenStrategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, currentFullscreenStrategy.canvasResizedCallbackUserData);
       else
 #endif
-      {{{ makeDynCall('iiii', 'currentFullscreenStrategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, currentFullscreenStrategy.canvasResizedCallbackUserData);
+      {{{ makeDynCall('iipp', 'currentFullscreenStrategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, currentFullscreenStrategy.canvasResizedCallbackUserData);
     }
   },
 
@@ -1597,7 +1598,7 @@ var LibraryHTML5 = {
         if (strategy.canvasResizedCallbackTargetThread) JSEvents.queueEventHandlerOnThread_iiii(strategy.canvasResizedCallbackTargetThread, strategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
         else
 #endif
-        {{{ makeDynCall('iiii', 'strategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
+        {{{ makeDynCall('iipp', 'strategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
       }
       currentFullscreenStrategy = 0;
     }
@@ -1611,7 +1612,7 @@ var LibraryHTML5 = {
       if (strategy.canvasResizedCallbackTargetThread) JSEvents.queueEventHandlerOnThread_iiii(strategy.canvasResizedCallbackTargetThread, strategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
       else
 #endif
-      {{{ makeDynCall('iiii', 'strategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
+      {{{ makeDynCall('iipp', 'strategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
     }
 
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
@@ -1691,7 +1692,7 @@ var LibraryHTML5 = {
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, pointerlockChangeEvent, userData);
       else
 #endif
-      if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, pointerlockChangeEvent, userData)) e.preventDefault();
+      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, pointerlockChangeEvent, userData)) e.preventDefault();
     };
 
     var eventHandler = {
@@ -1736,7 +1737,7 @@ var LibraryHTML5 = {
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, 0, userData);
       else
 #endif
-      if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, 0, userData)) e.preventDefault();
+      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, 0, userData)) e.preventDefault();
     };
 
     var eventHandler = {
@@ -1936,7 +1937,7 @@ var LibraryHTML5 = {
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, visibilityChangeEvent, userData);
       else
 #endif
-      if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, visibilityChangeEvent, userData)) e.preventDefault();
+      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, visibilityChangeEvent, userData)) e.preventDefault();
     };
 
     var eventHandler = {
@@ -2053,7 +2054,7 @@ var LibraryHTML5 = {
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, touchEvent, userData);
       else
 #endif
-      if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, touchEvent, userData)) e.preventDefault();
+      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, touchEvent, userData)) e.preventDefault();
     };
 
     var eventHandler = {
@@ -2140,7 +2141,7 @@ var LibraryHTML5 = {
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, gamepadEvent, userData);
       else
 #endif
-      if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, gamepadEvent, userData)) e.preventDefault();
+      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, gamepadEvent, userData)) e.preventDefault();
     };
 
     var eventHandler = {
@@ -2212,7 +2213,7 @@ var LibraryHTML5 = {
   $registerBeforeUnloadEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) => {
     var beforeUnloadEventHandlerFunc = (e = event) => {
       // Note: This is always called on the main browser thread, since it needs synchronously return a value!
-      var confirmationMessage = {{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, 0, userData);
+      var confirmationMessage = {{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, 0, userData);
 
       if (confirmationMessage) {
         confirmationMessage = UTF8ToString(confirmationMessage);
@@ -2272,7 +2273,7 @@ var LibraryHTML5 = {
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, batteryEvent, userData);
       else
 #endif
-      if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, batteryEvent, userData)) e.preventDefault();
+      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, batteryEvent, userData)) e.preventDefault();
     };
 
     var eventHandler = {
@@ -2564,13 +2565,13 @@ var LibraryHTML5 = {
   emscripten_html5_remove_all_event_listeners: () => JSEvents.removeAllEventListeners(),
 
   emscripten_request_animation_frame: (cb, userData) =>
-    requestAnimationFrame((timeStamp) => {{{ makeDynCall('idi', 'cb') }}}(timeStamp, userData)),
+    requestAnimationFrame((timeStamp) => {{{ makeDynCall('idp', 'cb') }}}(timeStamp, userData)),
 
   emscripten_cancel_animation_frame: (id) => cancelAnimationFrame(id),
 
   emscripten_request_animation_frame_loop: (cb, userData) => {
     function tick(timeStamp) {
-      if ({{{ makeDynCall('idi', 'cb') }}}(timeStamp, userData)) {
+      if ({{{ makeDynCall('idp', 'cb') }}}(timeStamp, userData)) {
         requestAnimationFrame(tick);
       }
     }
