@@ -2198,7 +2198,7 @@ var LibraryWebGPU = {
 #endif
 
     var bundles = Array.from(HEAP32.subarray(bundlesPtr >> 2, (bundlesPtr >> 2) + count),
-      function(id) { return WebGPU.mgrRenderBundle.get(id); });
+      (id) => WebGPU.mgrRenderBundle.get(id));
     pass["executeBundles"](bundles);
   },
 
@@ -2586,23 +2586,22 @@ var LibraryWebGPU = {
     var device = WebGPU.mgrDevice.get(deviceId);
     var context = WebGPU.mgrSurface.get(surfaceId);
 
-
 #if ASSERTIONS
     assert({{{ gpu.PresentMode.Fifo }}} ===
       {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.presentMode) }}});
 #endif
 
     var canvasSize = [
-        {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.width) }}},
-        {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.height) }}}
+      {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.width) }}},
+      {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.height) }}}
     ];
 
     if (canvasSize[0] !== 0) {
-        context["canvas"]["width"] = canvasSize[0];
+      context["canvas"]["width"] = canvasSize[0];
     }
 
     if (canvasSize[1] !== 0) {
-        context["canvas"]["height"] = canvasSize[1];
+      context["canvas"]["height"] = canvasSize[1];
     }
 
     var configuration = {
@@ -2645,7 +2644,12 @@ for (var value in LibraryWebGPU.$WebGPU.FeatureName) {
 }
 
 for (const key of Object.keys(LibraryWebGPU)) {
-  LibraryWebGPU[key + '__i53abi'] = true;
+  if (typeof LibraryWebGPU[key] === 'function') {
+    LibraryWebGPU[key + '__i53abi'] = true;
+    if (!(key + '__proxy' in LibraryWebGPU)) {
+      LibraryWebGPU[key + '__proxy'] = 'sync';
+    }
+  }
 }
 
 autoAddDeps(LibraryWebGPU, '$WebGPU');
