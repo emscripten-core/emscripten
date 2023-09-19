@@ -307,7 +307,11 @@ var LibraryHTML5 = {
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, keyEventData, userData);
       else
 #endif
-      if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, keyEventData, userData)) e.preventDefault();
+      if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, keyEventData, userData)) {
+        if(!(event.ctrlKey && event.key == 'v')) {
+          e.preventDefault();
+        }
+      }
     };
 
     var eventHandler = {
