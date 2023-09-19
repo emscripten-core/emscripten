@@ -4107,6 +4107,8 @@ Module.print = (x) => { throw '<{(' + x + ')}>' };
     'pch': ['pch'],
   })
   def test_precompiled_headers(self, suffix):
+    self.skipTest('disable while LLVM changes to pch roll in (new defaults&output)')
+
     create_file('header.h', '#define X 5\n')
     self.run_process([EMCC, '-xc++-header', 'header.h', '-c'])
     self.assertExists('header.h.gch') # default output is gch
@@ -11063,6 +11065,12 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     err = self.expect_fail([EMCC, '-std=c11', 'src.c'])
     self.assertIn('EM_ASM does not work in -std=c* modes, use -std=gnu* modes instead', err)
 
+  def test_em_asm_invalid(self):
+    # Test that invalid EM_ASM in side modules since is detected at build time.
+    err = self.expect_fail([EMCC, '-sSIDE_MODULE', test_file('other/test_em_asm_invalid.c')])
+    self.assertContained("SyntaxError: Unexpected token '*'", err)
+    self.assertContained('emcc: error: EM_ASM function validation failed', err)
+
   def test_boost_graph(self):
     self.do_runf(test_file('test_boost_graph.cpp'), emcc_args=['-std=c++14', '-sUSE_BOOST_HEADERS'])
 
@@ -12050,6 +12058,13 @@ exec "$@"
     self.uses_es6 = True
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_runtime_keepalive.cpp')
+
+  @crossplatform
+  def test_em_js_invalid(self):
+    # Test that invalid EM_JS in side modules since is detected at build time.
+    err = self.expect_fail([EMCC, '-sSIDE_MODULE', test_file('other/test_em_js_invalid.c')])
+    self.assertContained("SyntaxError: Unexpected token '*'", err)
+    self.assertContained('emcc: error: EM_JS function validation failed', err)
 
   @crossplatform
   def test_em_js_side_module(self):
