@@ -4107,14 +4107,12 @@ Module.print = (x) => { throw '<{(' + x + ')}>' };
     'pch': ['pch'],
   })
   def test_precompiled_headers(self, suffix):
-    self.skipTest('disable while LLVM changes to pch roll in (new defaults&output)')
-
     create_file('header.h', '#define X 5\n')
     self.run_process([EMCC, '-xc++-header', 'header.h', '-c'])
-    self.assertExists('header.h.gch') # default output is gch
-    if suffix != 'gch':
+    self.assertExists('header.h.pch') # default output is pch
+    if suffix != 'pch':
       self.run_process([EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix])
-      self.assertBinaryEqual('header.h.gch', 'header.h.' + suffix)
+      self.assertBinaryEqual('header.h.pch', 'header.h.' + suffix)
 
     create_file('src.cpp', r'''
 #include <stdio.h>
@@ -4130,7 +4128,7 @@ int main() {
 
     # also verify that the gch is actually used
     err = self.run_process([EMXX, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
-    self.assertTextDataContained('*** PCH/Modules Loaded:\nModule: header.h.' + suffix, err)
+    self.assertTextDataContained('*** PCH/Modules Loaded:\nModule: header.h.pch', err)
     # and sanity check it is not mentioned when not
     delete_file('header.h.' + suffix)
     err = self.run_process([EMXX, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
