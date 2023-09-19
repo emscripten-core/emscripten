@@ -52,13 +52,13 @@ var LibraryDylink = {
 
   $isSymbolDefined: (symName) => {
     // Ignore 'stub' symbols that are auto-generated as part of the original
-    // `wasmImports` used to instantate the main module.
-    var existing = wasmImports[symName];
+    // `envImports` used to instantate the main module.
+    var existing = envImports[symName];
     if (!existing || existing.stub) {
       return false;
     }
 #if ASYNCIFY
-    // Even if a symbol exists in wasmImports, and is not itself a stub, it
+    // Even if a symbol exists in envImports, and is not itself a stub, it
     // could be an ASYNCIFY wrapper function that wraps a stub function.
     if (symName in asyncifyStubs && !asyncifyStubs[symName]) {
       return false;
@@ -114,18 +114,18 @@ var LibraryDylink = {
 #if !WASM_BIGINT
     // First look for the orig$ symbol which is the symbol without i64
     // legalization performed.
-    if (direct && ('orig$' + symName in wasmImports)) {
+    if (direct && ('orig$' + symName in envImports)) {
       symName = 'orig$' + symName;
     }
 #endif
     if (isSymbolDefined(symName)) {
-      sym = wasmImports[symName];
+      sym = envImports[symName];
     }
 #if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
     // Asm.js-style exception handling: invoke wrapper generation
     else if (symName.startsWith('invoke_')) {
       // Create (and cache) new invoke_ functions on demand.
-      sym = wasmImports[symName] = createInvokeFunction(symName.split('_')[1]);
+      sym = envImports[symName] = createInvokeFunction(symName.split('_')[1]);
     }
 #endif
 #if !DISABLE_EXCEPTION_CATCHING
@@ -134,7 +134,7 @@ var LibraryDylink = {
       // `__cxa_find_matching_catch_` (see jsifier.js) that we know are needed,
       // but a side module loaded at runtime might need different/additional
       // variants so we create those dynamically.
-      sym = wasmImports[symName] = function() {
+      sym = envImports[symName] = function() {
         var args = Array.from(arguments);
 #if MEMORY64
         args = args.map(Number);
@@ -333,11 +333,11 @@ var LibraryDylink = {
     loadedLibsByHandle: {},
     init() {
 #if ASSERTIONS
-      // This function needs to run after the initial wasmImports object
+      // This function needs to run after the initial envImports object
       // as been created.
-      assert(wasmImports);
+      assert(envImports);
 #endif
-      newDSO('__main__', {{{ cDefs.RTLD_DEFAULT }}}, wasmImports);
+      newDSO('__main__', {{{ cDefs.RTLD_DEFAULT }}}, envImports);
     },
   },
 
@@ -535,7 +535,7 @@ var LibraryDylink = {
       }
 #if ASSERTIONS == 2
       if (isSymbolDefined(sym)) {
-        var curr = wasmImports[sym], next = exports[sym];
+        var curr = envImports[sym], next = exports[sym];
         // don't warn on functions - might be odr, linkonce_odr, etc.
         if (!(typeof curr == 'function' && typeof next == 'function')) {
           err(`warning: symbol '${sym}' from '${libName}' already exists (duplicate symbol? or weak linking, which isn't supported yet?)`); // + [curr, ' vs ', next]);
@@ -556,7 +556,7 @@ var LibraryDylink = {
         }
 #endif
         if (!isSymbolDefined(target)) {
-          wasmImports[target] = exports[sym];
+          envImports[target] = exports[sym];
         }
       }
       setImport(sym);
@@ -704,9 +704,9 @@ var LibraryDylink = {
               return tableBase;
 #endif
           }
-          if (prop in wasmImports && !wasmImports[prop].stub) {
+          if (prop in envImports && !envImports[prop].stub) {
             // No stub needed, symbol already exists in symbol table
-            return wasmImports[prop];
+            return envImports[prop];
           }
           // Return a stub function that will resolve the symbol
           // when first called.

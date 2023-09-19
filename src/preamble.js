@@ -924,25 +924,26 @@ function instantiateAsync(binary, binaryFile, imports, callback) {
 }
 #endif // WASM_ASYNC_COMPILATION
 
+// prepare wasmImports
+var wasmImports = {
+#if MINIFY_WASM_IMPORTED_MODULES
+  'a': envImports,
+#else // MINIFY_WASM_IMPORTED_MODULES
+  'env': envImports,
+  '{{{ WASI_MODULE_NAME }}}': envImports,
+#endif // MINIFY_WASM_IMPORTED_MODULES
+#if SPLIT_MODULE
+  'placeholder': new Proxy({}, splitModuleProxyHandler),
+#endif
+#if RELOCATABLE
+  'GOT.mem': new Proxy(envImports, GOTHandler),
+  'GOT.func': new Proxy(envImports, GOTHandler),
+#endif
+};
+
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm() {
-  // prepare imports
-  var info = {
-#if MINIFY_WASM_IMPORTED_MODULES
-    'a': wasmImports,
-#else // MINIFY_WASM_IMPORTED_MODULES
-    'env': wasmImports,
-    '{{{ WASI_MODULE_NAME }}}': wasmImports,
-#endif // MINIFY_WASM_IMPORTED_MODULES
-#if SPLIT_MODULE
-    'placeholder': new Proxy({}, splitModuleProxyHandler),
-#endif
-#if RELOCATABLE
-    'GOT.mem': new Proxy(wasmImports, GOTHandler),
-    'GOT.func': new Proxy(wasmImports, GOTHandler),
-#endif
-  };
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
   // performing other necessary setup
@@ -1108,7 +1109,7 @@ function createWasm() {
 #endif
 
     try {
-      return Module['instantiateWasm'](info, receiveInstance);
+      return Module['instantiateWasm'](wasmImports, receiveInstance);
     } catch(e) {
       err(`Module.instantiateWasm callback failed with error: ${e}`);
       #if MODULARIZE
@@ -1127,16 +1128,16 @@ function createWasm() {
 #endif
 #if MODULARIZE
   // If instantiation fails, reject the module ready promise.
-  instantiateAsync(wasmBinary, wasmBinaryFile, info, receiveInstantiationResult).catch(readyPromiseReject);
+  instantiateAsync(wasmBinary, wasmBinaryFile, wasmImports, receiveInstantiationResult).catch(readyPromiseReject);
 #else
-  instantiateAsync(wasmBinary, wasmBinaryFile, info, receiveInstantiationResult);
+  instantiateAsync(wasmBinary, wasmBinaryFile, wasmImports, receiveInstantiationResult);
 #endif
 #if LOAD_SOURCE_MAP
   getSourceMapPromise().then(receiveSourceMapJSON);
 #endif
   return {}; // no exports yet; we'll fill them in later
 #else
-  var result = instantiateSync(wasmBinaryFile, info);
+  var result = instantiateSync(wasmBinaryFile, wasmImports);
 #if PTHREADS || MAIN_MODULE
   return receiveInstance(result[0], result[1]);
 #else
@@ -1249,7 +1250,7 @@ function runMemoryInitializer() {
 
 #if MAIN_MODULE && ASYNCIFY
 // With MAIN_MODULE + ASYNCIFY the normal method of placing stub functions in
-// wasmImports for as-yet-undefined symbols doesn't work since ASYNCIFY then
+// envImports for as-yet-undefined symbols doesn't work since ASYNCIFY then
 // wraps these stub functions and we can't then replace them directly.  Instead
 // the stub functions call into `asyncifyStubs` which gets populated by the
 // dynamic linker as symbols are loaded.

@@ -10,6 +10,6 @@ var __DUB = Module["__DUB"] = () => wasmExports["_DUB"]();
 
 var __UNUSED = Module["__UNUSED"] = () => wasmExports["_UNUSED"]();
 
-var wasmImports = {
+var envImports = {
 };
 

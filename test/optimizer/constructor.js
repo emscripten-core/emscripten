@@ -1,5 +1,5 @@
 // EMSCRIPTEN_START_ASM
-function instantiate(wasmImports, wasmMemory, wasmTable) {
+function instantiate(envImports, wasmMemory, wasmTable) {
   var scratchBuffer = new ArrayBuffer(16);
   var i32ScratchView = new Int32Array(scratchBuffer);
   var f32ScratchView = new Float32Array(scratchBuffer);
@@ -53,7 +53,7 @@ return asmFunc({
     'Infinity': Infinity,
     'Math': Math
   },
-  wasmImports,
+  envImports,
   wasmMemory.buffer
 )
 

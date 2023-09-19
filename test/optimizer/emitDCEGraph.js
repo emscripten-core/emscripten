@@ -32,7 +32,7 @@ function useManySorted() {
   Module['expI2']();
 }
 
-var wasmImports = {
+var envImports = {
   'tempNum': tempNum,
   'tempFunc': tempFunc,
   'rootedFunc1': rootedFunc1,

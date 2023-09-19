@@ -1,6 +1,6 @@
 var name;
 
-var wasmImports = {
+var envImports = {
  save1: 1,
  save2: 2
 };

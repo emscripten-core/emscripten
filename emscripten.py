@@ -728,7 +728,7 @@ def create_sending(metadata, library_symbols):
     # When including dynamic linking support, also add any JS library functions
     # that are part of EXPORTED_FUNCTIONS (or in the case of MAIN_MODULE=1 add
     # all JS library functions).  This allows `dlsym(RTLD_DEFAULT)` to lookup JS
-    # library functions, since `wasmImports` acts as the global symbol table.
+    # library functions, since `envImports` acts as the global symbol table.
     wasm_exports = set(metadata.function_exports)
     library_symbols = set(library_symbols)
     if settings.MAIN_MODULE == 1:
@@ -848,12 +848,12 @@ def create_module(receiving, metadata, library_symbols):
   module = []
 
   sending = create_sending(metadata, library_symbols)
-  module.append('var wasmImports = %s;\n' % sending)
+  module.append('var envImports = %s;\n' % sending)
   if settings.ASYNCIFY and (settings.ASSERTIONS or settings.ASYNCIFY == 2):
     # instrumenting imports is used in asyncify in two ways: to add assertions
     # that check for proper import use, and for ASYNCIFY=2 we use them to set up
     # the Promise API on the import side.
-    module.append('Asyncify.instrumentWasmImports(wasmImports);\n')
+    module.append('Asyncify.instrumentWasmImports(envImports);\n')
 
   if not settings.MINIMAL_RUNTIME:
     module.append("var wasmExports = createWasm();\n")
