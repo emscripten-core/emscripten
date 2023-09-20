@@ -1428,11 +1428,12 @@ var LibraryWebGPU = {
       case {{{ gpu.SType.ShaderModuleSPIRVDescriptor }}}: {
         var count = {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUShaderModuleSPIRVDescriptor.codeSize) }}};
         var start = {{{ makeGetValue('nextInChainPtr', C_STRUCTS.WGPUShaderModuleSPIRVDescriptor.code, '*') }}};
+        var offset = {{{ getHeapOffset('start', 'u32') }}};
 #if PTHREADS
         // Chrome can't currently handle a SharedArrayBuffer view here, so make a copy.
-        desc["code"] = HEAPU32.slice(start >> 2, (start >> 2) + count);
+        desc["code"] = HEAPU32.slice(offset, offset + count);
 #else
-        desc["code"] = HEAPU32.subarray(start >> 2, (start >> 2) + count);
+        desc["code"] = HEAPU32.subarray(offset, offset + count);
 #endif
         break;
       }

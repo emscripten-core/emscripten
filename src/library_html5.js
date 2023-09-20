@@ -288,7 +288,7 @@ var LibraryHTML5 = {
 #endif
       {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.timestamp, 'e.timeStamp', 'double') }}};
 
-      var idx = keyEventData >> 2;
+      var idx ={{{ getHeapOffset('keyEventData', 'i32') }}};
 
       HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.location / 4}}}] = e.location;
       HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.ctrlKey / 4}}}] = e.ctrlKey;
@@ -462,7 +462,7 @@ var LibraryHTML5 = {
     assert(eventStruct % 4 == 0);
 #endif
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.timestamp, 'e.timeStamp', 'double') }}};
-    var idx = eventStruct >> 2;
+    var idx = {{{ getHeapOffset('eventStruct', 'i32') }}};
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.screenX / 4 }}}] = e.screenX;
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.screenY / 4 }}}] = e.screenY;
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.clientX / 4 }}}] = e.clientX;
@@ -2013,7 +2013,7 @@ var LibraryHTML5 = {
       var touchEvent = JSEvents.touchEvent;
 #endif
       {{{ makeSetValue('touchEvent', C_STRUCTS.EmscriptenTouchEvent.timestamp, 'e.timeStamp', 'double') }}};
-      var idx = touchEvent>>2; // Pre-shift the ptr to index to HEAP32 to save code size
+      var idx ={{{ getHeapOffset('touchEvent', 'i32') }}};// Pre-shift the ptr to index to HEAP32 to save code size
       HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.ctrlKey / 4}}}] = e.ctrlKey;
       HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.shiftKey / 4}}}] = e.shiftKey;
       HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.altKey / 4}}}] = e.altKey;
