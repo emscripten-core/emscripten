@@ -35,7 +35,7 @@ from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROO
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
 from common import requires_wasm_eh, crossplatform, with_both_sjlj, also_with_standalone_wasm
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, flaky
-from common import EMTEST_BUILD_VERBOSE, PYTHON
+from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
 from tools import shared, building, utils, response_file, cache
 from tools.utils import read_file, write_file, delete_file, read_binary
 import common
@@ -13787,3 +13787,10 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     }''')
     self.do_runf('test.c', 'addr = 0x1\n')
     self.do_runf('test.c', 'addr = 0x400\n', emcc_args=['-sTABLE_BASE=1024'])
+
+  def test_webidl_empty(self):
+    create_file('test.idl', '')
+    self.run_process([WEBIDL_BINDER, 'test.idl', 'glue'])
+    self.assertExists('glue.cpp')
+    self.assertExists('glue.js')
+    self.emcc('glue.cpp', ['-c', '-Wall', '-Werror'])
