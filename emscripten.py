@@ -892,6 +892,7 @@ def create_pointer_conversion_wrappers(metadata):
     'stackAlloc': 'pp',
     'emscripten_builtin_malloc': 'pp',
     'malloc': 'pp',
+    'memalign': 'ppp',
     '__getTypeName': 'pp',
     'setThrew': '_p',
     'free': '_p',

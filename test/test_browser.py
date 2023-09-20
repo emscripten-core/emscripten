@@ -766,9 +766,11 @@ If manually bisecting:
   def test_dev_random(self):
     self.btest_exit(Path('filesystem/dev_random.cpp'))
 
+  @also_with_wasm64
   def test_sdl_swsurface(self):
     self.btest_exit('test_sdl_swsurface.c', args=['-lSDL', '-lGL'])
 
+  @also_with_wasm64
   def test_sdl_surface_lock_opts(self):
     # Test Emscripten-specific extensions to optimize SDL_LockSurface and SDL_UnlockSurface.
     self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-DTEST_SDL_LOCK_OPTS', '-lSDL', '-lGL'])
@@ -854,6 +856,7 @@ If manually bisecting:
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
     self.btest_exit('test_sdl_stb_image_cleanup.c', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL', '--memoryprofiler'])
 
+  @also_with_wasm64
   def test_sdl_canvas(self):
     self.btest_exit('test_sdl_canvas.c', args=['-sLEGACY_GL_EMULATION', '-lSDL', '-lGL'])
     # some extra coverage
@@ -882,6 +885,7 @@ window.close = () => {
 </body>''' % read_file('reftest.js'))
     create_file('test.html', html)
 
+  @also_with_wasm64
   def test_sdl_canvas_proxy(self):
     create_file('data.txt', 'datum')
     self.btest('test_sdl_canvas_proxy.c', reference='browser/test_sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt', '-lSDL', '-lGL'], manual_reference=True, post_build=self.post_manual_reftest)
@@ -895,6 +899,7 @@ window.close = () => {
     self.post_manual_reftest()
     self.run_browser('test.html', '/report_result?0')
 
+  @also_with_wasm64
   def test_sdl_canvas_alpha(self):
     # N.B. On Linux with Intel integrated graphics cards, this test needs Firefox 49 or newer.
     # See https://github.com/emscripten-core/emscripten/issues/4069.
@@ -976,6 +981,7 @@ keydown(100);keyup(100); // trigger the end
 
     self.btest_exit('test_sdl_key_proxy.c', 223092870, args=['--proxy-to-worker', '--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main,_one', '-lSDL', '-lGL'], post_build=post)
 
+  @also_with_wasm64
   def test_canvas_focus(self):
     self.btest_exit('canvas_focus.c')
 
@@ -1026,6 +1032,7 @@ keydown(100);keyup(100); // trigger the end
 
     self.btest('keydown_preventdefault_proxy.cpp', '300', args=['--proxy-to-worker', '-sEXPORTED_FUNCTIONS=_main'], post_build=post)
 
+  @also_with_wasm64
   def test_sdl_text(self):
     create_file('pre.js', '''
       Module.postRun = () => {
@@ -1044,6 +1051,7 @@ keydown(100);keyup(100); // trigger the end
 
     self.btest_exit('test_sdl_text.c', args=['--pre-js', 'pre.js', '-lSDL', '-lGL'])
 
+  @also_with_wasm64
   def test_sdl_mouse(self):
     create_file('pre.js', '''
       function simulateMouseEvent(x, y, button) {
@@ -1075,6 +1083,7 @@ keydown(100);keyup(100); // trigger the end
 
     self.btest_exit('test_sdl_mouse.c', args=['-O2', '--minify=0', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
 
+  @also_with_wasm64
   def test_sdl_mouse_offsets(self):
     create_file('pre.js', '''
       function simulateMouseEvent(x, y, button) {
@@ -1169,6 +1178,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest_exit('glut_glutget.c', args=['-lglut', '-lGL'])
     self.btest_exit('glut_glutget.c', args=['-lglut', '-lGL', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED'])
 
+  @also_with_wasm64
   def test_sdl_joystick_1(self):
     # Generates events corresponding to the Working Draft of the HTML5 Gamepad API.
     # http://www.w3.org/TR/2012/WD-gamepad-20120529/#gamepad-interface
@@ -1201,6 +1211,7 @@ keydown(100);keyup(100); // trigger the end
 
     self.btest_exit('test_sdl_joystick.c', args=['-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
 
+  @also_with_wasm64
   def test_sdl_joystick_2(self):
     # Generates events corresponding to the Editor's Draft of the HTML5 Gamepad API.
     # https://dvcs.w3.org/hg/gamepad/raw-file/default/gamepad.html#idl-def-Gamepad
@@ -1533,6 +1544,7 @@ keydown(100);keyup(100); // trigger the end
   def test_force_exit(self):
     self.btest_exit('force_exit.c', assert_returncode=10)
 
+  @also_with_wasm64
   def test_sdl_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
     create_file('pre.js', '''
@@ -1543,20 +1555,24 @@ keydown(100);keyup(100); // trigger the end
     ''')
     self.btest_exit('test_sdl_pumpevents.c', assert_returncode=7, args=['--pre-js', 'pre.js', '-lSDL', '-lGL'])
 
+  @also_with_wasm64
   def test_sdl_canvas_size(self):
     self.btest_exit('test_sdl_canvas_size.c',
                     args=['-O2', '--minify=0', '--shell-file',
                           test_file('browser/test_sdl_canvas_size.html'), '-lSDL', '-lGL'])
 
+  @also_with_wasm64
   @requires_graphics_hardware
   def test_sdl_gl_read(self):
     # SDL, OpenGL, readPixels
     self.btest_exit('test_sdl_gl_read.c', args=['-lSDL', '-lGL'])
 
+  @also_with_wasm64
   @requires_graphics_hardware
   def test_sdl_gl_mapbuffers(self):
     self.btest_exit('test_sdl_gl_mapbuffers.c', args=['-sFULL_ES3', '-lSDL', '-lGL'])
 
+  @also_with_wasm64
   @requires_graphics_hardware
   def test_sdl_ogl(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
@@ -1569,12 +1585,14 @@ keydown(100);keyup(100); // trigger the end
     self.btest('test_sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
                args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sUSE_REGAL', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL'])
 
+  @also_with_wasm64
   @requires_graphics_hardware
   def test_sdl_ogl_defaultmatrixmode(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('test_sdl_ogl_defaultMatrixMode.c', reference='screenshot-gray-purple.png', reference_slack=1,
                args=['--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
+  @also_with_wasm64
   @requires_graphics_hardware
   def test_sdl_ogl_p(self):
     # Immediate mode with pointers
@@ -1582,36 +1600,42 @@ keydown(100);keyup(100); // trigger the end
     self.btest('test_sdl_ogl_p.c', reference='screenshot-gray.png', reference_slack=1,
                args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
+  @also_with_wasm64
   @requires_graphics_hardware
   def test_sdl_ogl_proc_alias(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('test_sdl_ogl_proc_alias.c', reference='screenshot-gray-purple.png', reference_slack=1,
                args=['-O2', '-g2', '-sINLINING_LIMIT', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
+  @also_with_wasm64
   @requires_graphics_hardware
   def test_sdl_fog_simple(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('test_sdl_fog_simple.c', reference='screenshot-fog-simple.png',
                args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
+  @also_with_wasm64
   @requires_graphics_hardware
   def test_sdl_fog_negative(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('test_sdl_fog_negative.c', reference='screenshot-fog-negative.png',
                args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
+  @also_with_wasm64
   @requires_graphics_hardware
   def test_sdl_fog_density(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('test_sdl_fog_density.c', reference='screenshot-fog-density.png',
                args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
+  @also_with_wasm64
   @requires_graphics_hardware
   def test_sdl_fog_exp2(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('test_sdl_fog_exp2.c', reference='screenshot-fog-exp2.png',
                args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
+  @also_with_wasm64
   @requires_graphics_hardware
   def test_sdl_fog_linear(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
@@ -1637,6 +1661,7 @@ keydown(100);keyup(100); // trigger the end
   def _test_egl_base(self, *args):
     self.btest_exit('test_egl.c', args=['-O2', '-lEGL', '-lGL'] + list(args))
 
+  @also_with_wasm64
   @requires_graphics_hardware
   def test_egl(self):
     self._test_egl_base()
@@ -1649,13 +1674,16 @@ keydown(100);keyup(100); // trigger the end
   def _test_egl_width_height_base(self, *args):
     self.btest_exit('test_egl_width_height.c', args=['-O2', '-lEGL', '-lGL'] + list(args))
 
+  @also_with_wasm64
   def test_egl_width_height(self):
     self._test_egl_width_height_base()
 
+  # @also_with_wasm64 FIXME: LinkError: WebAssembly.instantiate(): cannot import memory32 as memory64
   @requires_threads
   def test_egl_width_height_with_proxy_to_pthread(self):
     self._test_egl_width_height_base('-pthread', '-sPROXY_TO_PTHREAD')
 
+  @also_with_wasm64
   @requires_graphics_hardware
   def test_egl_createcontext_error(self):
     self.btest_exit('test_egl_createcontext_error.c', args=['-lEGL', '-lGL'])
@@ -1801,6 +1829,7 @@ keydown(100);keyup(100); // trigger the end
     args += ['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST', '-lGL', '-lglut', '-DANIMATE']
     self.btest('hello_world_gles.c', expected='0', args=args)
 
+  @also_with_wasm64
   @requires_graphics_hardware
   def test_glgears_animation(self):
     for filename in ['hello_world_gles.c', 'hello_world_gles_full.c', 'hello_world_gles_full_944.c']:
@@ -1817,6 +1846,7 @@ keydown(100);keyup(100); // trigger the end
   def test_fulles2_sdlproc(self):
     self.btest_exit('full_es2_sdlproc.c', assert_returncode=1, args=['-sGL_TESTING', '-DHAVE_BUILTIN_SINCOS', '-sFULL_ES2', '-lGL', '-lSDL', '-lglut'])
 
+  @also_with_wasm64
   @requires_graphics_hardware
   def test_glgears_deriv(self):
     self.btest('hello_world_gles_deriv.c', reference='gears.png', reference_slack=2,
@@ -4669,6 +4699,7 @@ Module["preRun"] = () => {
   def test_webgpu_basic_rendering_pthreads(self):
     self.btest_exit('webgpu_basic_rendering.cpp', args=['-sUSE_WEBGPU', '-pthread', '-sPROXY_TO_PTHREAD'])
 
+  @also_with_wasm64
   def test_webgpu_get_device(self):
     self.btest_exit('webgpu_get_device.cpp', args=['-sUSE_WEBGPU', '-sASSERTIONS', '--closure=1'])
 

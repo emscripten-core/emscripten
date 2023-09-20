@@ -871,7 +871,7 @@ var LibrarySDL = {
       if (!SDL.eventHandler) return;
 
       while (SDL.pollEvent(SDL.eventHandlerTemp)) {
-        {{{ makeDynCall('iii', 'SDL.eventHandler') }}}(SDL.eventHandlerContext, SDL.eventHandlerTemp);
+        {{{ makeDynCall('ipp', 'SDL.eventHandler') }}}(SDL.eventHandlerContext, SDL.eventHandlerTemp);
       }
     },
 
@@ -3525,7 +3525,7 @@ var LibrarySDL = {
   SDL_AddTimer__deps: ['$safeSetTimeout'],
   SDL_AddTimer: (interval, callback, param) =>
     safeSetTimeout(
-      () => {{{ makeDynCall('iii', 'callback') }}}(interval, param),
+      () => {{{ makeDynCall('iip', 'callback') }}}(interval, param),
       interval),
 
   SDL_RemoveTimer__proxy: 'sync',
