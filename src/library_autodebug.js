@@ -109,7 +109,7 @@ addToLibrary({
   },
 });
 
-DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
+extraLibraryFuncs.push(
   '$log_execution',
   '$get_i32',
   '$get_i64',

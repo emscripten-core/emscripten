@@ -7122,7 +7122,8 @@ int main() {
     self.run_process([EMCC, 'src.c'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
-  def test_no_missing_symbols(self): # simple hello world should not show any missing symbols
+  def test_no_missing_symbols(self):
+    # simple hello world should not show any missing symbols
     self.run_process([EMCC, test_file('hello_world.c')])
 
     # main() is implemented in C, and even if requested from JS, we should not warn
@@ -7187,6 +7188,20 @@ int main(int argc, char** argv) {
 ''')
 
     self.do_runf('test.c', 'dddddddddd\n', emcc_args=['--js-library', 'lib.js'])
+
+  def test_js_lib_native_deps_extra(self):
+    # Similar to above but the JS symbol is not used by the native code.
+    # Instead is it explictly injected using `extraLibraryFuncs`.
+    create_file('lib.js', r'''
+addToLibrary({
+  jsfunc__deps: ['raise'],
+  jsfunc: (ptr) => {
+    _raise(1);
+  },
+});
+extraLibraryFuncs.push('jsfunc');
+''')
+    self.do_runf(test_file('hello_world.c'), emcc_args=['--js-library', 'lib.js'])
 
   @crossplatform
   def test_realpath(self):

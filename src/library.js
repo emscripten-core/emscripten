@@ -3644,7 +3644,7 @@ function autoAddDeps(object, name) {
 #if LEGACY_RUNTIME
 // Library functions that were previously included as runtime functions are
 // automatically included when `LEGACY_RUNTIME` is set.
-DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
+extraLibraryFuncs.push(
   '$addFunction',
   '$removeFunction',
   '$allocate',
