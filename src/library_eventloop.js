@@ -11,6 +11,16 @@ LibraryJSEventLoop = {
     throw 'unwind';
   },
 
+  $safeSetTimeout__deps: ['$callUserCallback'],
+  $safeSetTimeout__docs: '/** @param {number=} timeout */',
+  $safeSetTimeout: (func, timeout) => {
+    {{{ runtimeKeepalivePush() }}}
+    return setTimeout(() => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(func);
+    }, timeout);
+  },
+
   // Just like setImmediate but returns an i32 that can be passed back
   // to wasm rather than a JS object.
   $setImmediateWrapped: (func) => {

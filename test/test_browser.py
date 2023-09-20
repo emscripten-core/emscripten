@@ -4672,8 +4672,17 @@ Module["preRun"] = () => {
   def test_webgpu_basic_rendering(self, args):
     self.btest_exit('webgpu_basic_rendering.cpp', args=['-sUSE_WEBGPU'] + args)
 
+  @requires_graphics_hardware
+  @requires_threads
+  def test_webgpu_basic_rendering_pthreads(self):
+    self.btest_exit('webgpu_basic_rendering.cpp', args=['-sUSE_WEBGPU', '-pthread', '-sPROXY_TO_PTHREAD'])
+
   def test_webgpu_get_device(self):
     self.btest_exit('webgpu_get_device.cpp', args=['-sUSE_WEBGPU', '-sASSERTIONS', '--closure=1'])
+
+  @requires_threads
+  def test_webgpu_get_device_pthreads(self):
+    self.btest_exit('webgpu_get_device.cpp', args=['-sUSE_WEBGPU', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Tests the feature that shell html page can preallocate the typed array and place it
   # to Module.buffer before loading the script page.
@@ -4722,7 +4731,9 @@ Module["preRun"] = () => {
 
   # Tests that response headers get set on emscripten_fetch_t values.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
-  @also_with_wasm2js_or_wasm64
+  # TODO(sbc): https://github.com/emscripten-core/emscripten/issues/20262
+  # @also_with_wasm2js_or_wasm64
+  @also_with_wasm2js
   @requires_threads
   def test_fetch_response_headers(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
@@ -4755,7 +4766,9 @@ Module["preRun"] = () => {
   # Tests emscripten_fetch() usage in synchronous mode when used from the main
   # thread proxied to a Worker with -sPROXY_TO_PTHREAD option.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
-  @also_with_wasm64
+  # TODO(sbc): https://github.com/emscripten-core/emscripten/issues/20262
+  # @also_with_wasm2js_or_wasm64
+  @also_with_wasm2js
   @requires_threads
   def test_fetch_sync_xhr(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
@@ -4764,7 +4777,8 @@ Module["preRun"] = () => {
   # Tests emscripten_fetch() usage when user passes none of the main 3 flags (append/replace/no_download).
   # In that case, in append is implicitly understood.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
-  @also_with_wasm64
+  # TODO(sbc): https://github.com/emscripten-core/emscripten/issues/20262
+  # @also_with_wasm64
   @requires_threads
   def test_fetch_implicit_append(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
@@ -5599,7 +5613,8 @@ Module["preRun"] = () => {
   # Tests the AudioWorklet demo
   @parameterized({
     '': ([],),
-    'memory64': (['-sMEMORY64', '-Wno-experimental'],),
+    # TODO(sbc): https://github.com/emscripten-core/emscripten/issues/20262
+    # 'memory64': (['-sMEMORY64', '-Wno-experimental'],),
     'with_fs': (['--preload-file', test_file('hello_world.c') + '@/'],),
     'closure': (['--closure', '1', '-Oz'],),
     'asyncify': (['-sASYNCIFY'],),

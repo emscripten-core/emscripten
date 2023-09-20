@@ -35,7 +35,7 @@ from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROO
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
 from common import requires_wasm_eh, crossplatform, with_both_sjlj, also_with_standalone_wasm
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, flaky
-from common import EMTEST_BUILD_VERBOSE, PYTHON
+from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
 from tools import shared, building, utils, response_file, cache
 from tools.utils import read_file, write_file, delete_file, read_binary
 import common
@@ -2919,13 +2919,22 @@ int f() {
     self.do_runf(test_file('other/test_jspi_add_function.c'), 'done')
 
   def test_embind_tsgen(self):
+    create_file('fail.js', 'assert(false);')
     # These extra arguments are not related to TS binding generation but we want to
     # verify that they do not interfere with it.
     extra_args = ['-o',
                   'out.html',
                   '-sMODULARIZE',
                   '-sALLOW_MEMORY_GROWTH=1',
-                  '-sMAXIMUM_MEMORY=4GB']
+                  '-sMAXIMUM_MEMORY=4GB',
+                  '--pre-js', 'fail.js',
+                  '--post-js', 'fail.js',
+                  '--extern-pre-js', 'fail.js',
+                  '--extern-post-js', 'fail.js',
+                  '-sENVIRONMENT=worker',
+                  '--use-preload-cache',
+                  '--preload-file', 'fail.js',
+                  '--embed-file', 'fail.js']
     self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'] + extra_args)
     actual = read_file('embind_tsgen.d.ts')
@@ -4100,10 +4109,10 @@ Module.print = (x) => { throw '<{(' + x + ')}>' };
   def test_precompiled_headers(self, suffix):
     create_file('header.h', '#define X 5\n')
     self.run_process([EMCC, '-xc++-header', 'header.h', '-c'])
-    self.assertExists('header.h.gch') # default output is gch
-    if suffix != 'gch':
+    self.assertExists('header.h.pch') # default output is pch
+    if suffix != 'pch':
       self.run_process([EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix])
-      self.assertBinaryEqual('header.h.gch', 'header.h.' + suffix)
+      self.assertBinaryEqual('header.h.pch', 'header.h.' + suffix)
 
     create_file('src.cpp', r'''
 #include <stdio.h>
@@ -4119,7 +4128,7 @@ int main() {
 
     # also verify that the gch is actually used
     err = self.run_process([EMXX, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
-    self.assertTextDataContained('*** PCH/Modules Loaded:\nModule: header.h.' + suffix, err)
+    self.assertTextDataContained('*** PCH/Modules Loaded:\nModule: header.h.pch', err)
     # and sanity check it is not mentioned when not
     delete_file('header.h.' + suffix)
     err = self.run_process([EMXX, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
@@ -11054,6 +11063,12 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     err = self.expect_fail([EMCC, '-std=c11', 'src.c'])
     self.assertIn('EM_ASM does not work in -std=c* modes, use -std=gnu* modes instead', err)
 
+  def test_em_asm_invalid(self):
+    # Test that invalid EM_ASM in side modules since is detected at build time.
+    err = self.expect_fail([EMCC, '-sSIDE_MODULE', test_file('other/test_em_asm_invalid.c')])
+    self.assertContained("SyntaxError: Unexpected token '*'", err)
+    self.assertContained('emcc: error: EM_ASM function validation failed', err)
+
   def test_boost_graph(self):
     self.do_runf(test_file('test_boost_graph.cpp'), emcc_args=['-std=c++14', '-sUSE_BOOST_HEADERS'])
 
@@ -12041,6 +12056,13 @@ exec "$@"
     self.uses_es6 = True
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_runtime_keepalive.cpp')
+
+  @crossplatform
+  def test_em_js_invalid(self):
+    # Test that invalid EM_JS in side modules since is detected at build time.
+    err = self.expect_fail([EMCC, '-sSIDE_MODULE', test_file('other/test_em_js_invalid.c')])
+    self.assertContained("SyntaxError: Unexpected token '*'", err)
+    self.assertContained('emcc: error: EM_JS function validation failed', err)
 
   @crossplatform
   def test_em_js_side_module(self):
@@ -13765,3 +13787,10 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     }''')
     self.do_runf('test.c', 'addr = 0x1\n')
     self.do_runf('test.c', 'addr = 0x400\n', emcc_args=['-sTABLE_BASE=1024'])
+
+  def test_webidl_empty(self):
+    create_file('test.idl', '')
+    self.run_process([WEBIDL_BINDER, 'test.idl', 'glue'])
+    self.assertExists('glue.cpp')
+    self.assertExists('glue.js')
+    self.emcc('glue.cpp', ['-c', '-Wall', '-Werror'])

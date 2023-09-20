@@ -36,6 +36,9 @@ import clang_native
 
 logger = logging.getLogger("test_core")
 
+EM_SIGINT = 2
+EM_SIGABRT = 6
+
 
 def wasm_simd(f):
   @wraps(f)
@@ -2195,9 +2198,12 @@ int main(int argc, char **argv) {
     self.emcc_args.append('-std=gnu89')
     self.do_core_test('test_em_asm_2.cpp', force_c=True)
 
-  # Tests various different ways to invoke the MAIN_THREAD_EM_ASM(), MAIN_THREAD_EM_ASM_INT() and MAIN_THREAD_EM_ASM_DOUBLE() macros.
-  # This test is identical to test_em_asm_2, just search-replaces EM_ASM to MAIN_THREAD_EM_ASM on the test file. That way if new
-  # test cases are added to test_em_asm_2.cpp for EM_ASM, they will also get tested in MAIN_THREAD_EM_ASM form.
+  # Tests various different ways to invoke the MAIN_THREAD_EM_ASM(),
+  # MAIN_THREAD_EM_ASM_INT(), MAIN_THREAD_EM_ASM_PTR, and
+  # MAIN_THREAD_EM_ASM_DOUBLE() macros.  This test is identical to
+  # test_em_asm_2, just search-replaces EM_ASM to MAIN_THREAD_EM_ASM on the test
+  # file. That way if new test cases are added to test_em_asm_2.cpp for EM_ASM,
+  # they will also get tested in MAIN_THREAD_EM_ASM form.
   def test_main_thread_em_asm(self):
     src = read_file(test_file('core/test_em_asm_2.cpp'))
     create_file('src.cpp', src.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
@@ -6179,6 +6185,20 @@ Module.onRuntimeInitialized = () => {
   def test_signals(self):
     self.do_core_test(test_file('test_signals.c'))
 
+  @parameterized({
+    'sigint': (EM_SIGINT, 128 + EM_SIGINT, True),
+    'sigabrt': (EM_SIGABRT, 7, False)
+  })
+  @crossplatform
+  def test_sigaction_default(self, signal, exit_code, assert_identical):
+    self.set_setting('EXIT_RUNTIME')
+    self.do_core_test(
+      test_file('test_sigaction_default.c'),
+      args=[str(signal)],
+      assert_identical=assert_identical,
+      assert_returncode=exit_code
+    )
+
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @requires_node
   def test_unistd_access(self):
@@ -7637,10 +7657,11 @@ void* operator new(size_t size) {
   })
   @node_pthreads
   def test_embind_2(self, args):
+    self.maybe_closure()
     self.emcc_args += ['-lembind', '--post-js', 'post.js'] + args
     create_file('post.js', '''
       function printLerp() {
-        out('lerp ' + Module.lerp(100, 200, 66) + '.');
+        out('lerp ' + Module['lerp'](100, 200, 66) + '.');
       }
     ''')
     create_file('test_embind_2.cpp', r'''
@@ -7668,7 +7689,7 @@ void* operator new(size_t size) {
     create_file('post.js', '''
       function ready() {
         try {
-          Module.compute(new Uint8Array([1,2,3]));
+          Module['compute'](new Uint8Array([1,2,3]));
         } catch(e) {
           out(e);
         }
@@ -7695,7 +7716,7 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind', '--post-js', 'post.js']
     create_file('post.js', '''
       function printFirstElement() {
-        out(Module.getBufferView()[0]);
+        out(Module['getBufferView']()[0]);
       }
     ''')
     create_file('test_embind_4.cpp', r'''
@@ -7779,7 +7800,7 @@ void* operator new(size_t size) {
       #include <stdio.h>
 
       EM_JS(void, calltest, (), {
-        out("dotest returned: " + Module.dotest());
+        out("dotest returned: " + Module["dotest"]());
       });
 
       int main(int argc, char** argv){
@@ -7811,7 +7832,7 @@ void* operator new(size_t size) {
       #include <stdio.h>
 
       EM_JS(void, calltest, (), {
-        out("dotest returned: " + Module.dotest());
+        out("dotest returned: " + Module["dotest"]());
       });
 
       int main(int argc, char** argv){
@@ -7871,7 +7892,7 @@ void* operator new(size_t size) {
 
     # Export things on "TheModule". This matches the typical use pattern of the bound library
     # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
-    self.emcc_args += ['--post-js=glue.js', '--extern-post-js=extern-post.js']
+    self.emcc_args += ['-Wall', '--post-js=glue.js', '--extern-post-js=extern-post.js']
     if mode == 'ALL':
       self.emcc_args += ['-sASSERTIONS']
     if allow_memory_growth:

@@ -73,7 +73,7 @@ addToLibrary({
       assert(!implicit);
 #endif
 #if PTHREADS_DEBUG
-      dbg(`Pthread ${ptrToString(_pthread_self())} called exit(), posting exitOnMainThread.`);
+      dbg(`Pthread ${ptrToString(_pthread_self())} called exit(${status}), posting exitOnMainThread.`);
 #endif
       // When running in a pthread we propagate the exit back to the main thread
       // where it can decide if the whole process should be shut down or not.
@@ -83,7 +83,7 @@ addToLibrary({
       throw 'unwind';
     }
 #if PTHREADS_DEBUG
-    err(`main thread called exit: keepRuntimeAlive=${keepRuntimeAlive()} (counter=${runtimeKeepaliveCounter})`);
+    err(`main thread called exit(${status}): keepRuntimeAlive=${keepRuntimeAlive()} (counter=${runtimeKeepaliveCounter})`);
 #endif // PTHREADS_DEBUG
 #endif // PTHREADS
 
@@ -2958,6 +2958,11 @@ addToLibrary({
     return runMainThreadEmAsm(code, sigPtr, argbuf, 1);
   },
 
+  emscripten_asm_const_ptr_sync_on_main_thread__deps: ['$runMainThreadEmAsm'],
+  emscripten_asm_const_ptr_sync_on_main_thread: (code, sigPtr, argbuf) => {
+    return runMainThreadEmAsm(code, sigPtr, argbuf, 1);
+  },
+
   emscripten_asm_const_double_sync_on_main_thread: 'emscripten_asm_const_int_sync_on_main_thread',
   emscripten_asm_const_async_on_main_thread__deps: ['$runMainThreadEmAsm'],
   emscripten_asm_const_async_on_main_thread: (code, sigPtr, argbuf) => runMainThreadEmAsm(code, sigPtr, argbuf, 0),
@@ -3454,16 +3459,6 @@ addToLibrary({
     func();
   },
 #endif // MINIMAL_RUNTIME
-
-  $safeSetTimeout__deps: ['$callUserCallback'],
-  $safeSetTimeout__docs: '/** @param {number=} timeout */',
-  $safeSetTimeout: (func, timeout) => {
-    {{{ runtimeKeepalivePush() }}}
-    return setTimeout(() => {
-      {{{ runtimeKeepalivePop() }}}
-      callUserCallback(func);
-    }, timeout);
-  },
 
   $asmjsMangle: (x) => {
     var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};

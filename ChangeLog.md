@@ -18,8 +18,18 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.46 (in development)
+3.1.47 (in development)
 -----------------------
+- Value types in `emscripten/html5.h` that correspond the WebIDL `long` type are
+  now represented as `int` rather than `long` types so that they are 32-bit wide
+  on both wasm32 and wasm64.  (#20290)
+- `EM_JS` and `EM_ASM` that are present in side module now have their syntax
+  validated at build time. (#20258)
+- `MAIN_THREAD_EM_ASM_PTR` macro added for code that returns a pointer.  This
+  mirrors the existing `EM_ASM_PTR`. (#20261)
+
+3.1.46 - 09/15/23
+-----------------
 - The `wasmTable` global is now a JS library function that will only be included
   as needed.  Code that references `wasmTable` will no need to declare a
   dependency on it.  It can also be explictly included using
@@ -44,7 +54,8 @@ See docs/process.md for more on how version tagging works.
 - A new settings `TABLE_BASE` was introduced that can be used to place static
   function addresses (table slots) at a certain offset.  This defaults to 1
   which is the previously fixed value. (#20149)
-- Clang's error detection of unused variables `-Wunused-variable` improved, which may require changes in user code (see #20169).
+- Clang's error detection of unused variables `-Wunused-variable` improved,
+  which may require changes in user code (see #20169).
 
 3.1.45 - 08/23/23
 -----------------

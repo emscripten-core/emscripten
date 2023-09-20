@@ -42,11 +42,10 @@ commands:
           command: |
             # TODO: Make these part of the base image
             apt-get install libu2f-udev libvulkan1
-            #wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
+            # wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
             # If that download link breaks, temporarily use this URL instead:
-            # TODO(sbc): Disable this once we figure out whats up with the
-            # current beta.
-            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+            # wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
+            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-unstable_current_amd64.deb
             dpkg -i ~/chrome.deb
   emsdk-env:
     description: "emsdk_env.sh"
@@ -109,7 +108,7 @@ commands:
     description: "install canary version of node"
     steps:
       - install-node-version:
-         node_version: "21.0.0-v8-canary20230822f5e30d0702"
+         node_version: "21.0.0-v8-canary202309143a48826a08"
          canary: true
   install-v8:
     description: "install v8 using jsvu"
@@ -350,7 +349,7 @@ commands:
             # --no-sandbox because we are running as root and chrome requires
             # this flag for now: https://crbug.com/638180
             CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features"
-            CHROME_FLAGS_HEADLESS: "--headless --remote-debugging-port=1234"
+            CHROME_FLAGS_HEADLESS: "--headless=new --remote-debugging-port=1234"
             CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-memory64 --experimental-wasm-stack-switching --experimental-wasm-type-reflection\""
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
@@ -359,11 +358,17 @@ commands:
             # that are not included by "./embuilder build ALL".  For example the
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
+            echo
+            echo "browser"
+            echo
+            # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
+            test/runner browser skip:browser.test_zzz_zzz_4gb_fail skip:browser.test_zzz_zzz_4gb_fail_wasm64
+            echo
+            echo "emrun"
+            echo
             # TODO(sbc): Re-enable once we figure out why the emrun tests are
             # locking up.
             # test/runner emrun
-            # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
-            test/runner posixtest_browser.test_pthread_create_1_1 browser skip:browser.test_zzz_zzz_4gb_fail skip:browser.test_zzz_zzz_4gb_fail_wasm64
       - upload-test-results
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
@@ -378,7 +383,7 @@ commands:
             # --no-sandbox becasue we are running as root and chrome requires
             # this flag for now: https://crbug.com/638180
             CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile"
-            CHROME_FLAGS_HEADLESS: "--headless --remote-debugging-port=1234"
+            CHROME_FLAGS_HEADLESS: "--headless=new --remote-debugging-port=1234"
             CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-memory64\""
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
