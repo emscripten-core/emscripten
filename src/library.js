@@ -1813,9 +1813,7 @@ addToLibrary({
 
   gethostbyname__deps: ['$getHostByName'],
   gethostbyname__proxy: 'sync',
-  gethostbyname: (name) => {
-    return getHostByName(UTF8ToString(name));
-  },
+  gethostbyname: (name) => getHostByName(UTF8ToString(name)),
 
   $getHostByName__deps: ['malloc', '$stringToNewUTF8', '$DNS', '$inetPton4'],
   $getHostByName: (name) => {
