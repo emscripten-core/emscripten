@@ -1327,6 +1327,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       for sym in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE:
         add_js_deps(sym)
+      for sym in js_info['extraLibraryFuncs']:
+        add_js_deps(sym)
       for sym in settings.EXPORTED_RUNTIME_METHODS:
         add_js_deps(shared.demangle_c_symbol_name(sym))
     if settings.ASYNCIFY:

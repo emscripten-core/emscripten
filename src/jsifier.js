@@ -11,6 +11,8 @@
 
 global.addedLibraryItems = {};
 
+global.extraLibraryFuncs = [];
+
 // Some JS-implemented library functions are proxied to be called on the main
 // browser thread, if the Emscripten runtime is executing in a Web Worker.
 // Each such proxied function is identified via an ordinal number (this is not
@@ -104,6 +106,7 @@ function runJSify() {
   LibraryManager.load();
 
   const symbolsNeeded = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
+  symbolsNeeded.push(...extraLibraryFuncs);
   for (const sym of EXPORTED_RUNTIME_METHODS) {
     if ('$' + sym in LibraryManager.library) {
       symbolsNeeded.push('$' + sym);
@@ -653,7 +656,8 @@ var proxiedFunctionTable = [
   if (symbolsOnly) {
     print(JSON.stringify({
       deps: symbolDeps,
-      asyncFuncs
+      asyncFuncs,
+      extraLibraryFuncs,
     }));
   } else {
     finalCombiner();
