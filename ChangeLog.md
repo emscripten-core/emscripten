@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.47 (in development)
 -----------------------
+- The egl, html5, sdl and webgpu libraries now support basic functionality with
+  `-sMEMORY64`. (#20276)
 - Value types in `emscripten/html5.h` that correspond the WebIDL `long` type are
   now represented as `int` rather than `long` types so that they are 32-bit wide
   on both wasm32 and wasm64.  (#20290)
