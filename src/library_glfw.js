@@ -89,11 +89,6 @@ var LibraryGLFW = {
 #endif
   ],
   $GLFW: {
-    WindowFromId: (id) => {
-      if (id <= 0 || !GLFW.windows) return null;
-      return GLFW.windows[id - 1];
-    },
-
     joystickFunc: null, // GLFWjoystickfun
     errorFunc: null, // GLFWerrorfun
     monitorFunc: null, // GLFWmonitorfun
@@ -634,7 +629,7 @@ var LibraryGLFW = {
     /* GLFW2 wrapping */
 
     setWindowTitle: (winid, title) => {
-      var win = GLFW.WindowFromId(winid);
+      var win = GLFW.windows.get(winid);
       if (!win) return;
 
       win.title = title;
@@ -706,7 +701,7 @@ var LibraryGLFW = {
     },
 
     setKeyCallback: (winid, cbfun) => {
-      var win = GLFW.WindowFromId(winid);
+      var win = GLFW.windows.get(winid);
       if (!win) return null;
       var prevcbfun = win.keyFunc;
       win.keyFunc = cbfun;
@@ -714,7 +709,7 @@ var LibraryGLFW = {
     },
 
     setCharCallback: (winid, cbfun) => {
-      var win = GLFW.WindowFromId(winid);
+      var win = GLFW.windows.get(winid);
       if (!win) return null;
       var prevcbfun = win.charFunc;
       win.charFunc = cbfun;
@@ -722,7 +717,7 @@ var LibraryGLFW = {
     },
 
     setMouseButtonCallback: (winid, cbfun) => {
-      var win = GLFW.WindowFromId(winid);
+      var win = GLFW.windows.get(winid);
       if (!win) return null;
       var prevcbfun = win.mouseButtonFunc;
       win.mouseButtonFunc = cbfun;
@@ -730,7 +725,7 @@ var LibraryGLFW = {
     },
 
     setCursorPosCallback: (winid, cbfun) => {
-      var win = GLFW.WindowFromId(winid);
+      var win = GLFW.windows.get(winid);
       if (!win) return null;
       var prevcbfun = win.cursorPosFunc;
       win.cursorPosFunc = cbfun;
@@ -738,7 +733,7 @@ var LibraryGLFW = {
     },
 
     setScrollCallback: (winid, cbfun) => {
-      var win = GLFW.WindowFromId(winid);
+      var win = GLFW.windows.get(winid);
       if (!win) return null;
       var prevcbfun = win.scrollFunc;
       win.scrollFunc = cbfun;
@@ -746,7 +741,7 @@ var LibraryGLFW = {
     },
 
     setDropCallback: (winid, cbfun) => {
-      var win = GLFW.WindowFromId(winid);
+      var win = GLFW.windows.get(winid);
       if (!win) return null;
       var prevcbfun = win.dropFunc;
       win.dropFunc = cbfun;
@@ -813,7 +808,7 @@ var LibraryGLFW = {
     },
 
     setWindowSizeCallback: (winid, cbfun) => {
-      var win = GLFW.WindowFromId(winid);
+      var win = GLFW.windows.get(winid);
       if (!win) return null;
       var prevcbfun = win.windowSizeFunc;
       win.windowSizeFunc = cbfun;
@@ -831,7 +826,7 @@ var LibraryGLFW = {
     },
 
     setWindowCloseCallback: (winid, cbfun) => {
-      var win = GLFW.WindowFromId(winid);
+      var win = GLFW.windows.get(winid);
       if (!win) return null;
       var prevcbfun = win.windowCloseFunc;
       win.windowCloseFunc = cbfun;
@@ -839,7 +834,7 @@ var LibraryGLFW = {
     },
 
     setWindowRefreshCallback: (winid, cbfun) => {
-      var win = GLFW.WindowFromId(winid);
+      var win = GLFW.windows.get(winid);
       if (!win) return null;
       var prevcbfun = win.windowRefreshFunc;
       win.windowRefreshFunc = cbfun;
@@ -854,7 +849,7 @@ var LibraryGLFW = {
     },
 
     setInputMode: (winid, mode, value) => {
-      var win = GLFW.WindowFromId(winid);
+      var win = GLFW.windows.get(winid);
       if (!win) return;
 
       switch (mode) {
@@ -907,13 +902,13 @@ var LibraryGLFW = {
     },
 
     getKey: (winid, key) => {
-      var win = GLFW.WindowFromId(winid);
+      var win = GLFW.windows.get(winid);
       if (!win) return 0;
       return win.keys[key];
     },
 
     getMouseButton: (winid, button) => {
-      var win = GLFW.WindowFromId(winid);
+      var win = GLFW.windows.get(winid);
       if (!win) return 0;
       return (win.buttons & (1 << button)) > 0;
     },
@@ -935,7 +930,7 @@ var LibraryGLFW = {
       var wx = 0;
       var wy = 0;
 
-      var win = GLFW.WindowFromId(winid);
+      var win = GLFW.windows.get(winid);
       if (win) {
         wx = win.x;
         wy = win.y;
@@ -951,7 +946,7 @@ var LibraryGLFW = {
     },
 
     setWindowPos: (winid, x, y) => {
-      var win = GLFW.WindowFromId(winid);
+      var win = GLFW.windows.get(winid);
       if (!win) return;
       win.x = x;
       win.y = y;
@@ -961,7 +956,7 @@ var LibraryGLFW = {
       var ww = 0;
       var wh = 0;
 
-      var win = GLFW.WindowFromId(winid);
+      var win = GLFW.windows.get(winid);
       if (win) {
         ww = win.width;
         wh = win.height;
@@ -977,7 +972,7 @@ var LibraryGLFW = {
     },
 
     setWindowSize: (winid, width, height) => {
-      var win = GLFW.WindowFromId(winid);
+      var win = GLFW.windows.get(winid);
       if (!win) return;
 
       if (GLFW.active.id == win.id) {
@@ -1002,15 +997,6 @@ var LibraryGLFW = {
     },
 
     createWindow: (width, height, title, monitor, share) => {
-      var i, id;
-      for (i = 0; i < GLFW.windows.length && GLFW.windows[i] !== null; i++) {
-        // no-op
-      }
-      if (i > 0) throw "glfwCreateWindow only supports one window at time currently";
-
-      // id for window
-      id = i + 1;
-
       // not valid
       if (width <= 0 || height <= 0) return 0;
 
@@ -1020,40 +1006,29 @@ var LibraryGLFW = {
         Browser.setCanvasSize(width, height);
       }
 
-      // Create context when there are no existing alive windows
-      for (i = 0; i < GLFW.windows.length && GLFW.windows[i] == null; i++) {
-        // no-op
-      }
-      var useWebGL = GLFW.hints[0x00022001] > 0; // Use WebGL when we are told to based on GLFW_CLIENT_API
-      if (i == GLFW.windows.length) {
-        if (useWebGL) {
-          var contextAttributes = {
-            antialias: (GLFW.hints[0x0002100D] > 1), // GLFW_SAMPLES
-            depth: (GLFW.hints[0x00021005] > 0),     // GLFW_DEPTH_BITS
-            stencil: (GLFW.hints[0x00021006] > 0),   // GLFW_STENCIL_BITS
-            alpha: (GLFW.hints[0x00021004] > 0)      // GLFW_ALPHA_BITS
-          }
-#if OFFSCREEN_FRAMEBUFFER
-          // TODO: Make GLFW explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
-          GL.enableOffscreenFramebufferAttributes(contextAttributes);
-#endif
-          Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
-        } else {
-          Browser.init();
+      // Use WebGL when we are told to based on GLFW_CLIENT_API
+      var useWebGL = GLFW.hints[0x00022001] > 0;
+      if (useWebGL && !Module.ctx) {
+        var contextAttributes = {
+          antialias: (GLFW.hints[0x0002100D] > 1), // GLFW_SAMPLES
+          depth: (GLFW.hints[0x00021005] > 0),     // GLFW_DEPTH_BITS
+          stencil: (GLFW.hints[0x00021006] > 0),   // GLFW_STENCIL_BITS
+          alpha: (GLFW.hints[0x00021004] > 0)      // GLFW_ALPHA_BITS
         }
+#if OFFSCREEN_FRAMEBUFFER
+        // TODO: Make GLFW explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
+        GL.enableOffscreenFramebufferAttributes(contextAttributes);
+#endif
+        Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
+        // If context creation failed, do not return a valid window
+        if (!Module.ctx) return 0;
       }
+      Browser.init();
 
-      // If context creation failed, do not return a valid window
-      if (!Module.ctx && useWebGL) return 0;
-
-      // Get non alive id
-      var win = new GLFW_Window(id, width, height, title, monitor, share);
-
-      // Set window to array
-      if (id - 1 == GLFW.windows.length) {
-        GLFW.windows.push(win);
-      } else {
-        GLFW.windows[id - 1] = win;
+      var win = new GLFW_Window(width, height, title, monitor, share);
+      win.id = GLFW.windows.allocate(win);
+      if (win.id != 1) {
+        throw "glfwCreateWindow only supports one window at time currently";
       }
 
       GLFW.active = win;
@@ -1061,7 +1036,7 @@ var LibraryGLFW = {
     },
 
     destroyWindow: (winid) => {
-      var win = GLFW.WindowFromId(winid);
+      var win = GLFW.windows.get(winid);
       if (!win) return;
 
 #if USE_GLFW == 3
@@ -1070,13 +1045,15 @@ var LibraryGLFW = {
       }
 #endif
 
-      GLFW.windows[win.id - 1] = null;
-      if (GLFW.active.id == win.id)
+      GLFW.free(win);
+      if (GLFW.active.id == win.id) {
         GLFW.active = null;
+      }
 
       // Destroy context when no alive windows
-      for (var i = 0; i < GLFW.windows.length; i++)
-        if (GLFW.windows[i] !== null) return;
+      for (var id in GLFW.windows.allocated) {
+        if (GLFW.windows.allocated[id] !== null) return;
+      }
 
       Module.ctx = Browser.destroyContext(Module['canvas'], true, true);
     },
@@ -1124,16 +1101,14 @@ var LibraryGLFW = {
 /*******************************************************************************
  * GLFW FUNCTIONS
  ******************************************************************************/
-  glfwInit__deps: ['emscripten_get_device_pixel_ratio', 'malloc', 'free'],
+  glfwInit__deps: ['emscripten_get_device_pixel_ratio', 'malloc', 'free', '$HandleAllocator'],
   glfwInit: () => {
     if (GLFW.windows) return 1; // GL_TRUE
 
     GLFW.initialTime = GLFW.getTime();
     GLFW.hints = GLFW.defaultHints;
-    GLFW.windows = new Array()
-    GLFW.active = null;
-    GLFW.scale  = _emscripten_get_device_pixel_ratio();
-
+    GLFW.windows = new HandleAllocator();
+    GLFW.scale = _emscripten_get_device_pixel_ratio();
 
     window.addEventListener("gamepadconnected", GLFW.onGamepadConnected, true);
     window.addEventListener("gamepaddisconnected", GLFW.onGamepadDisconnected, true);
@@ -1188,7 +1163,6 @@ var LibraryGLFW = {
     Module["canvas"].removeEventListener('mouseleave', GLFW.onMouseleave, true);
     Module["canvas"].removeEventListener('drop', GLFW.onDrop, true);
     Module["canvas"].removeEventListener('dragover', GLFW.onDragover, true);
-
 
     Module["canvas"].width = Module["canvas"].height = 1;
     GLFW.windows = null;
@@ -1344,13 +1318,13 @@ var LibraryGLFW = {
   glfwDestroyWindow: (winid) => GLFW.destroyWindow(winid),
 
   glfwWindowShouldClose: (winid) => {
-    var win = GLFW.WindowFromId(winid);
+    var win = GLFW.windows.get(winid);
     if (!win) return 0;
     return win.shouldClose;
   },
 
   glfwSetWindowShouldClose: (winid, value) => {
-    var win = GLFW.WindowFromId(winid);
+    var win = GLFW.windows.get(winid);
     if (!win) return;
     win.shouldClose = value;
   },
@@ -1369,7 +1343,7 @@ var LibraryGLFW = {
     var ww = 0;
     var wh = 0;
 
-    var win = GLFW.WindowFromId(winid);
+    var win = GLFW.windows.get(winid);
     if (win) {
       ww = win.width;
       wh = win.height;
@@ -1412,37 +1386,37 @@ var LibraryGLFW = {
   glfwHideWindow: (winid) => {},
 
   glfwGetWindowMonitor: (winid) => {
-    var win = GLFW.WindowFromId(winid);
+    var win = GLFW.windows.get(winid);
     if (!win) return 0;
     return win.monitor;
   },
 
   glfwGetWindowAttrib: (winid, attrib) => {
-    var win = GLFW.WindowFromId(winid);
+    var win = GLFW.windows.get(winid);
     if (!win) return 0;
     return win.attributes[attrib];
   },
 
   glfwSetWindowAttrib: (winid, attrib, value) => {
-    var win = GLFW.WindowFromId(winid);
+    var win = GLFW.windows.get(winid);
     if (!win) return;
     win.attributes[attrib] = value;
   },
 
   glfwSetWindowUserPointer: (winid, ptr) => {
-    var win = GLFW.WindowFromId(winid);
+    var win = GLFW.windows.get(winid);
     if (!win) return;
     win.userptr = ptr;
   },
 
   glfwGetWindowUserPointer: (winid) => {
-    var win = GLFW.WindowFromId(winid);
+    var win = GLFW.windows.get(winid);
     if (!win) return 0;
     return win.userptr;
   },
 
   glfwSetWindowPosCallback: (winid, cbfun) => {
-    var win = GLFW.WindowFromId(winid);
+    var win = GLFW.windows.get(winid);
     if (!win) return null;
     var prevcbfun = win.windowPosFunc;
     win.windowPosFunc = cbfun;
@@ -1456,7 +1430,7 @@ var LibraryGLFW = {
   glfwSetWindowRefreshCallback: (winid, cbfun) => GLFW.setWindowRefreshCallback(winid, cbfun),
 
   glfwSetWindowFocusCallback: (winid, cbfun) => {
-    var win = GLFW.WindowFromId(winid);
+    var win = GLFW.windows.get(winid);
     if (!win) return null;
     var prevcbfun = win.windowFocusFunc;
     win.windowFocusFunc = cbfun;
@@ -1464,7 +1438,7 @@ var LibraryGLFW = {
   },
 
   glfwSetWindowIconifyCallback: (winid, cbfun) => {
-    var win = GLFW.WindowFromId(winid);
+    var win = GLFW.windows.get(winid);
     if (!win) return null;
     var prevcbfun = win.windowIconifyFunc;
     win.windowIconifyFunc = cbfun;
@@ -1472,7 +1446,7 @@ var LibraryGLFW = {
   },
 
   glfwSetWindowMaximizeCallback: (winid, cbfun) => {
-    var win = GLFW.WindowFromId(winid);
+    var win = GLFW.windows.get(winid);
     if (!win) return null;
     var prevcbfun = win.windowMaximizeFunc;
     win.windowMaximizeFunc = cbfun;
@@ -1504,7 +1478,7 @@ var LibraryGLFW = {
   glfwSetCursor: (winid, cursor) => {},
 
   glfwSetFramebufferSizeCallback: (winid, cbfun) => {
-    var win = GLFW.WindowFromId(winid);
+    var win = GLFW.windows.get(winid);
     if (!win) return null;
     var prevcbfun = win.framebufferSizeFunc;
     win.framebufferSizeFunc = cbfun;
@@ -1512,7 +1486,7 @@ var LibraryGLFW = {
   },
 
   glfwSetWindowContentScaleCallback: (winid, cbfun) => {
-    var win = GLFW.WindowFromId(winid);
+    var win = GLFW.windows.get(winid);
     if (!win) return null;
     var prevcbfun = win.windowContentScaleFunc;
     win.windowContentScaleFunc = cbfun;
@@ -1520,7 +1494,7 @@ var LibraryGLFW = {
   },
 
   glfwGetInputMode: (winid, mode) => {
-    var win = GLFW.WindowFromId(winid);
+    var win = GLFW.windows.get(winid);
     if (!win) return;
 
     switch (mode) {
@@ -1566,7 +1540,7 @@ var LibraryGLFW = {
   glfwSetCursorPosCallback: (winid, cbfun) => GLFW.setCursorPosCallback(winid, cbfun),
 
   glfwSetCursorEnterCallback: (winid, cbfun) => {
-    var win = GLFW.WindowFromId(winid);
+    var win = GLFW.windows.get(winid);
     if (!win) return null;
     var prevcbfun = win.cursorEnterFunc;
     win.cursorEnterFunc = cbfun;
