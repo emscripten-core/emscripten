@@ -871,7 +871,7 @@ var LibrarySDL = {
       if (!SDL.eventHandler) return;
 
       while (SDL.pollEvent(SDL.eventHandlerTemp)) {
-        {{{ makeDynCall('iii', 'SDL.eventHandler') }}}(SDL.eventHandlerContext, SDL.eventHandlerTemp);
+        {{{ makeDynCall('ipp', 'SDL.eventHandler') }}}(SDL.eventHandlerContext, SDL.eventHandlerTemp);
       }
     },
 
@@ -1723,9 +1723,10 @@ var LibrarySDL = {
 #endif
 
   SDL_WM_SetCaption__proxy: 'sync',
+  SDL_WM_SetCaption__deps: ['emscripten_set_window_title'],
   SDL_WM_SetCaption: (title, icon) => {
-    if (title && typeof setWindowTitle != 'undefined') {
-      setWindowTitle(UTF8ToString(title));
+    if (title) {
+      _emscripten_set_window_title(title);
     }
     icon = icon && UTF8ToString(icon);
   },
@@ -3524,7 +3525,7 @@ var LibrarySDL = {
   SDL_AddTimer__deps: ['$safeSetTimeout'],
   SDL_AddTimer: (interval, callback, param) =>
     safeSetTimeout(
-      () => {{{ makeDynCall('iii', 'callback') }}}(interval, param),
+      () => {{{ makeDynCall('iip', 'callback') }}}(interval, param),
       interval),
 
   SDL_RemoveTimer__proxy: 'sync',

@@ -89,10 +89,13 @@ EMSCRIPTEN_BINDINGS(Test) {
       .function("functionTwo", &Test::function_two)
       .function("functionThree", &Test::function_three)
       .function("functionFour", &Test::function_four)
+      .function("functionFive(x, y)", &Test::function_one)
+      .function("functionSix(str)", &Test::function_three)
       .function("constFn", &Test::const_fn)
       .property("x", &Test::getX, &Test::setX)
       .property("y", &Test::getY)
       .class_function("staticFunction", &Test::static_function)
+      .class_function("staticFunctionWithParam(x)", &Test::static_function)
       .class_property("staticProperty", &Test::static_property)
 	;
 
@@ -144,6 +147,7 @@ EMSCRIPTEN_BINDINGS(Test) {
       .function("fn", &ClassWithSmartPtrConstructor::fn);
 
   function("smart_ptr_function", &smart_ptr_function);
+  function("smart_ptr_function_with_params(foo)", &smart_ptr_function);
 
   class_<BaseClass>("BaseClass").function("fn", &BaseClass::fn);
 

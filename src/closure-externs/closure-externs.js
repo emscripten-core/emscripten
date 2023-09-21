@@ -251,3 +251,20 @@ var sampleRate;
 var id;
 
 var moduleArg;
+
+/**
+ * This was removed from upstream closure compiler in
+ * https://github.com/google/closure-compiler/commit/f83322c1b.
+ * Perhaps we should remove it do?
+ *
+ * @param {MediaStreamConstraints} constraints A MediaStreamConstraints object.
+ * @param {function(!MediaStream)} successCallback
+ *     A NavigatorUserMediaSuccessCallback function.
+ * @param {function(!NavigatorUserMediaError)=} errorCallback A
+ *     NavigatorUserMediaErrorCallback function.
+ * @see http://dev.w3.org/2011/webrtc/editor/getusermedia.html
+ * @see https://www.w3.org/TR/mediacapture-streams/
+ * @return {undefined}
+ */
+Navigator.prototype.webkitGetUserMedia = function(
+    constraints, successCallback, errorCallback) {};

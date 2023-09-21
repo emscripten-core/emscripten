@@ -238,6 +238,11 @@ var HAS_MAIN = false;
 // Set to true if we are linking as C++ and including C++ stdlibs
 var LINK_AS_CXX = false;
 
+// Set when closure compiler may be run: Either emcc will run it, or the user
+// might run it after emcc. Either way, some JS changes and annotations must be
+// emitted in that case for closure compiler.
+var MAYBE_CLOSURE_COMPILER = false;
+
 // Set when some minimum browser version triggers doesn't support the
 // minimum set of ES6 features.  This triggers transpilation to ES5
 // using closure compiler.
@@ -267,3 +272,5 @@ var PTHREADS = false;
 var BULK_MEMORY = false;
 
 var MINIFY_WHITESPACE = true;
+
+var ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS = [];

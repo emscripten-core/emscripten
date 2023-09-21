@@ -902,7 +902,7 @@ var LibraryBrowser = {
     Browser.mainLoop.func = browserIterationFunc;
     Browser.mainLoop.arg = arg;
 
-#if USE_CLOSURE_COMPILER
+#if MAYBE_CLOSURE_COMPILER
     // Closure compiler bug(?): Closure does not see that the assignment
     //   var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop
     // is a value copy of a number (even with the JSDoc @type annotation)
@@ -1044,7 +1044,7 @@ var LibraryBrowser = {
   // Runs natively in pthread, no __proxy needed.
   emscripten_set_main_loop_arg__deps: ['$setMainLoop'],
   emscripten_set_main_loop_arg: (func, arg, fps, simulateInfiniteLoop) => {
-    var browserIterationFunc = () => {{{ makeDynCall('vi', 'func') }}}(arg);
+    var browserIterationFunc = () => {{{ makeDynCall('vp', 'func') }}}(arg);
     setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop, arg);
   },
 
@@ -1067,7 +1067,7 @@ var LibraryBrowser = {
   // Runs natively in pthread, no __proxy needed.
   _emscripten_push_main_loop_blocker: (func, arg, name) => {
     Browser.mainLoop.queue.push({ func: () => {
-      {{{ makeDynCall('vi', 'func') }}}(arg);
+      {{{ makeDynCall('vp', 'func') }}}(arg);
     }, name: UTF8ToString(name), counted: true });
     Browser.mainLoop.updateStatus();
   },
@@ -1075,7 +1075,7 @@ var LibraryBrowser = {
   // Runs natively in pthread, no __proxy needed.
   _emscripten_push_uncounted_main_loop_blocker: (func, arg, name) => {
     Browser.mainLoop.queue.push({ func: () => {
-      {{{ makeDynCall('vi', 'func') }}}(arg);
+      {{{ makeDynCall('vp', 'func') }}}(arg);
     }, name: UTF8ToString(name), counted: false });
     Browser.mainLoop.updateStatus();
   },
@@ -1120,9 +1120,7 @@ var LibraryBrowser = {
   },
 
   emscripten_set_window_title__proxy: 'sync',
-  emscripten_set_window_title: (title) => {
-    setWindowTitle(UTF8ToString(title));
-  },
+  emscripten_set_window_title: (title) => document.title = UTF8ToString(title),
 
   emscripten_get_screen_size__proxy: 'sync',
   emscripten_get_screen_size: (width, height) => {

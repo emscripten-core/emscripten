@@ -119,7 +119,7 @@ var LibraryPThread = {
     },
 
     initWorker() {
-#if USE_CLOSURE_COMPILER
+#if MAYBE_CLOSURE_COMPILER
       // worker.js is not compiled together with us, and must access certain
       // things.
       PThread['receiveObjectTransfer'] = PThread.receiveObjectTransfer;

@@ -25,7 +25,7 @@ class interactive(BrowserCore):
     print()
 
   def test_html5_fullscreen(self):
-    self.btest(test_file('test_html5_fullscreen.c'), expected='0', args=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR', '-sEXPORTED_FUNCTIONS=_requestFullscreen,_enterSoftFullscreen,_main', '--shell-file', test_file('test_html5_fullscreen.html')])
+    self.btest('test_html5_fullscreen.c', expected='0', args=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR', '-sEXPORTED_FUNCTIONS=_requestFullscreen,_enterSoftFullscreen,_main', '--shell-file', test_file('test_html5_fullscreen.html')])
 
   def test_html5_emscripten_exit_with_escape(self):
     self.btest('test_html5_emscripten_exit_fullscreen.c', expected='1', args=['-DEXIT_WITH_F'])
@@ -34,16 +34,16 @@ class interactive(BrowserCore):
     self.btest('test_html5_emscripten_exit_fullscreen.c', expected='1')
 
   def test_html5_mouse(self):
-    self.btest(test_file('test_html5_mouse.c'), expected='0', args=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR'])
+    self.btest('test_html5_mouse.c', expected='0', args=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR'])
 
   def test_html5_pointerlockerror(self):
-    self.btest(test_file('test_html5_pointerlockerror.c'), expected='0', args=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR'])
+    self.btest('test_html5_pointerlockerror.c', expected='0', args=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR'])
 
   def test_sdl_mousewheel(self):
-    self.btest_exit(test_file('test_sdl_mousewheel.c'))
+    self.btest_exit('test_sdl_mousewheel.c')
 
   def test_sdl_touch(self):
-    self.btest(test_file('sdl_touch.c'), args=['-O2', '-g1', '--closure=1'], expected='0')
+    self.btest('sdl_touch.c', args=['-O2', '-g1', '--closure=1'], expected='0')
 
   def test_sdl_wm_togglefullscreen(self):
     self.btest_exit('sdl_wm_togglefullscreen.c')
@@ -62,7 +62,7 @@ class interactive(BrowserCore):
     create_file('bad.ogg', 'I claim to be audio, but am lying')
 
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    self.btest_exit(test_file('sdl_audio.c'), args=['--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg'])
+    self.btest_exit('sdl_audio.c', args=['--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg'])
 
     # print('SDL2')
     # check sdl2 as well
@@ -101,7 +101,7 @@ class interactive(BrowserCore):
 
   def test_sdl_audio_beeps(self):
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    self.btest_exit(test_file('sdl_audio_beep.cpp'), args=['-O2', '--closure=1', '--minify=0', '-sDISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html'])
+    self.btest_exit('sdl_audio_beep.cpp', args=['-O2', '--closure=1', '--minify=0', '-sDISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html'])
 
   def test_sdl2_mixer_wav(self):
     shutil.copyfile(test_file('sounds', 'the_entertainer.wav'), 'sound.wav')
@@ -135,7 +135,7 @@ class interactive(BrowserCore):
   def test_sdl2_audio_beeps(self):
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
     # TODO: investigate why this does not pass
-    self.btest_exit(test_file('browser/test_sdl2_audio_beep.cpp'), args=['-O2', '--closure=1', '--minify=0', '-sDISABLE_EXCEPTION_CATCHING=0', '-sUSE_SDL=2'])
+    self.btest_exit('browser/test_sdl2_audio_beep.cpp', args=['-O2', '--closure=1', '--minify=0', '-sDISABLE_EXCEPTION_CATCHING=0', '-sUSE_SDL=2'])
 
   def test_openal_playback(self):
     shutil.copyfile(test_file('sounds', 'audio.wav'), self.in_dir('audio.wav'))

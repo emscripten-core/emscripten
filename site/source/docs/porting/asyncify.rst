@@ -98,8 +98,8 @@ Making async Web APIs behave as if they were synchronous
 
 Aside from ``emscripten_sleep`` and the other standard sync APIs Asyncify
 supports, you can also add your own functions. To do so, you must create a JS
-function that is called from wasm (since Emscripten controls pausing and
-resuming the wasm from the JS runtime).
+function that is called from Wasm (since Emscripten controls pausing and
+resuming the Wasm from the JS runtime).
 
 One way to do that is with a JS library function. Another is to use
 ``EM_ASYNC_JS``, which we'll use in this next example:
@@ -185,7 +185,7 @@ code will resume:
 .. code-block:: cpp
 
     EM_JS(int, do_fetch, (), {
-      return Asyncify.handleSleep(function (wakeUp) {
+      return Asyncify.handleSleep((wakeUp) => {
         out("waiting for a fetch");
         fetch("a.html").then(function (response) {
           out("got the fetch response");
@@ -206,7 +206,7 @@ More on ``ASYNCIFY_IMPORTS``
 As in the above example, you can add JS functions that do an async operation but
 look synchronous from the perspective of C. If you don't use ``EM_ASYNC_JS``,
 it's vital to add such methods to ``ASYNCIFY_IMPORTS``. That list of imports is
-the list of imports to the wasm module that the Asyncify instrumentation must be
+the list of imports to the Wasm module that the Asyncify instrumentation must be
 aware of. Giving it that list tells it that all other JS calls will **not** do
 an async operation, which lets it not add overhead where it isn't needed.
 
@@ -319,7 +319,7 @@ value is an ``instanceof Promise`` or simply ``await`` on the returned value.
 Usage with ``ccall``
 ####################
 
-To make use of an Asyncify-using wasm export from Javascript, you can use the
+To make use of an Asyncify-using Wasm export from Javascript, you can use the
 ``Module.ccall`` function and pass ``async: true`` to its call options object.
 ``ccall`` will then return a Promise, which will resolve with the result of the
 function once the computation completes.

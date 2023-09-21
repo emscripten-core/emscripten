@@ -102,4 +102,12 @@ var IDBStore = {
       req.onerror = (error) => callback(error);
     });
   },
+  clearStore(dbName, callback) {
+    IDBStore.getStore(dbName, 'readwrite', (err, store) => {
+      if (err) return callback(err);
+      var req = store.clear();
+      req.onsuccess = (event) => callback();
+      req.onerror = (error) => callback(error);
+    });
+  },
 };
