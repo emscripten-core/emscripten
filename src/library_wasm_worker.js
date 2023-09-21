@@ -292,7 +292,11 @@ Atomics.waitAsync = (i32a, index, value, maxWaitMilliseconds) => {
   $liveAtomicWaitAsyncs: '{}',
   $liveAtomicWaitAsyncCounter: '0',
 
-  emscripten_atomic_wait_async__deps: ['$atomicWaitStates', '$liveAtomicWaitAsyncs', '$liveAtomicWaitAsyncCounter', '$jstoi_q'],
+  emscripten_atomic_wait_async__deps: ['$atomicWaitStates', '$liveAtomicWaitAsyncs', '$liveAtomicWaitAsyncCounter', '$jstoi_q',
+#if !MINIMAL_RUNTIME
+  '$runtimeKeepalivePush', '$runtimeKeepalivePop',
+#endif
+  ],
   emscripten_atomic_wait_async: (addr, val, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('addr', 'i32') }}}, val, maxWaitMilliseconds);
     if (!wait.async) return atomicWaitStates.indexOf(wait.value);
@@ -300,10 +304,12 @@ Atomics.waitAsync = (i32a, index, value, maxWaitMilliseconds) => {
     // application does huge amounts of waitAsyncs per second (not sure if
     // possible?)
     // Valid counterrange: 0...2^31-1
+    {{{ runtimeKeepalivePush() }}}
     let counter = liveAtomicWaitAsyncCounter;
     liveAtomicWaitAsyncCounter = Math.max(0, (liveAtomicWaitAsyncCounter+1)|0);
     liveAtomicWaitAsyncs[counter] = addr;
     wait.value.then((value) => {
+      {{{ runtimeKeepalivePop() }}}
       if (liveAtomicWaitAsyncs[counter]) {
         delete liveAtomicWaitAsyncs[counter];
         {{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}(addr, val, atomicWaitStates.indexOf(value), userData);
