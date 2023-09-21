@@ -2388,6 +2388,7 @@ addToLibrary({
   _emscripten_get_now_is_monotonic__deps: ['$nowIsMonotonic'],
   _emscripten_get_now_is_monotonic: () => nowIsMonotonic,
 
+#if !SHARED_MEMORY
   __emscripten_atomics_sleep__internal: true,
   // In a browser without cross origin isolation, SharedArrayBuffer is deleted
   // from the global scope:
@@ -2402,8 +2403,15 @@ addToLibrary({
   __emscripten_atomics_sleep__postset: `
     var SABConstructor = new WebAssembly.Memory({"shared":true,"initial":0,"maximum":0}).buffer.constructor;
     var waitBuffer = new Int32Array(new SABConstructor(4));
+    try {
+      __emscripten_atomics_sleep(0);
+      Module._supports_atomics_wait = true;
+    } catch (e) {
+      Module._supports_atomics_wait = false;
+    }
   `,
   __emscripten_atomics_sleep: (ms) => Atomics.wait(waitBuffer, 0, 0, ms),
+#endif // !SHARED_MEMORY
 
   $warnOnce: (text) => {
     if (!warnOnce.shown) warnOnce.shown = {};
