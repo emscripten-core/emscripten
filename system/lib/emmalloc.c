@@ -63,7 +63,21 @@ static_assert((((int32_t)0x80000000U) >> 31) == -1, "This malloc implementation 
 #define MALLOC_ALIGNMENT alignof(max_align_t)
 static_assert(alignof(max_align_t) == 8, "max_align_t must be correct");
 
+// By default we declare all standard exports (malloc, free, etc.) as weak and
+// default-visible. You can override this by defining EMMALLOC_NO_EXPORTS.
+#ifdef EMMALLOC_NO_EXPORTS
+#define EMMALLOC_EXPORT
+#else
 #define EMMALLOC_EXPORT __attribute__((weak, __visibility__("default")))
+#endif
+
+// By default we create aliases for several standard names (__libc_malloc,
+// etc.), but that can be overridden by defining EMMALLOC_NO_ALIASES.
+#ifdef EMMALLOC_NO_ALIASES
+#define EMMALLOC_ALIAS(ALIAS, ORIGINAL)
+#else
+#define EMMALLOC_ALIAS(ALIAS, ORIGINAL) extern __typeof(ORIGINAL) ALIAS __attribute__((alias(#ORIGINAL)));
+#endif
 
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
@@ -812,7 +826,7 @@ void *emmalloc_memalign(size_t alignment, size_t size)
   MALLOC_RELEASE();
   return ptr;
 }
-extern __typeof(emmalloc_memalign) emscripten_builtin_memalign __attribute__((alias("emmalloc_memalign")));
+EMMALLOC_ALIAS(emscripten_builtin_memalign, emmalloc_memalign);
 
 void * EMMALLOC_EXPORT memalign(size_t alignment, size_t size)
 {
@@ -830,8 +844,8 @@ void *emmalloc_malloc(size_t size)
 {
   return emmalloc_memalign(MALLOC_ALIGNMENT, size);
 }
-extern __typeof(emmalloc_malloc) emscripten_builtin_malloc __attribute__((alias("emmalloc_malloc")));
-extern __typeof(emmalloc_malloc) __libc_malloc __attribute__((alias("emmalloc_malloc")));
+EMMALLOC_ALIAS(emscripten_builtin_malloc, emmalloc_malloc);
+EMMALLOC_ALIAS(__libc_malloc, emmalloc_malloc);
 
 void * EMMALLOC_EXPORT malloc(size_t size)
 {
@@ -932,8 +946,8 @@ void emmalloc_free(void *ptr)
   emmalloc_validate_memory_regions();
 #endif
 }
-extern __typeof(emmalloc_free) emscripten_builtin_free __attribute__((alias("emmalloc_free")));
-extern __typeof(emmalloc_free) __libc_free __attribute__((alias("emmalloc_free")));
+EMMALLOC_ALIAS(emscripten_builtin_free, emmalloc_free);
+EMMALLOC_ALIAS(__libc_free, emmalloc_free);
 
 void EMMALLOC_EXPORT free(void *ptr)
 {
@@ -1154,7 +1168,7 @@ void *emmalloc_realloc(void *ptr, size_t size)
 {
   return emmalloc_aligned_realloc(ptr, MALLOC_ALIGNMENT, size);
 }
-extern __typeof(emmalloc_realloc) __libc_realloc __attribute__((alias("emmalloc_realloc")));
+EMMALLOC_ALIAS(__libc_realloc, emmalloc_realloc);
 
 void * EMMALLOC_EXPORT realloc(void *ptr, size_t size)
 {
@@ -1190,7 +1204,7 @@ void *emmalloc_calloc(size_t num, size_t size)
     memset(ptr, 0, bytes);
   return ptr;
 }
-extern __typeof(emmalloc_calloc) __libc_calloc __attribute__((alias("emmalloc_calloc")));
+EMMALLOC_ALIAS(__libc_calloc, emmalloc_calloc);
 
 void * EMMALLOC_EXPORT calloc(size_t num, size_t size)
 {
