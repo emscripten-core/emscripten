@@ -1037,14 +1037,16 @@ var LibraryGLFW = {
         GL.enableOffscreenFramebufferAttributes(contextAttributes);
 #endif
 
-        if (Module['ctx'] === undefined)
-          Module['ctx'] = _emscripten_webgl_do_create_context(stringToNewUTF8('#canvas'), contextAttributes);
+        if (Module.ctx === undefined)
+          Module.ctx = _emscripten_webgl_do_create_context(stringToNewUTF8('#canvas'), contextAttributes);
 
 
         if (id <= 1) {
-          Module['canvas0'] = Module['canvas'];
-          Module['ctx0'] = Module['ctx'];
-          _emscripten_webgl_make_context_current(Module['ctx0']);
+          GLFW.canvases = {};
+          GLFW.contexts = {};
+          GLFW.canvases.canvas0 = Module.canvas;
+          GLFW.contexts.ctx0 = Module.ctx;
+          _emscripten_webgl_make_context_current(GLFW.contexts.ctx0);
         } else {
           var canvasElement = document.getElementById(canvasID);
           if (!canvasElement) {
@@ -1058,9 +1060,9 @@ var LibraryGLFW = {
             body.appendChild(canvasElement);
           }
 
-          Module[canvasID] = canvasElement;
-          Module[ctxID] = _emscripten_webgl_do_create_context(stringToNewUTF8('#' + canvasID), contextAttributes);
-          _emscripten_webgl_make_context_current(Module[ctxID]);
+          GLFW.canvases[canvasID] = canvasElement;
+          GLFW.contexts[ctxID] = _emscripten_webgl_do_create_context(stringToNewUTF8('#' + canvasID), contextAttributes);
+          _emscripten_webgl_make_context_current(GLFW.contexts[ctxID]);
         }
       } else {
         Browser.init();
@@ -1078,7 +1080,7 @@ var LibraryGLFW = {
       }
 
       // If context creation failed, do not return a valid window
-      if (!Module[ctxID] && useWebGL) return 0;
+      if (!GLFW.contexts[ctxID] && useWebGL) return 0;
 
       // Get non alive id
       var win = new GLFW_Window(id, width, height, title, monitor, share);
@@ -1678,14 +1680,12 @@ var LibraryGLFW = {
     if (winid !== null && GLFW.windows !== null) {
       for (var i in GLFW.windows) {
         if (GLFW.windows[i].id == winid) {
-          Module['ctx'] = Module['ctx' + (winid - 1)];
+          Module.ctx = GLFW.contexts['ctx' + (winid - 1)];
           break;
         }
       }
-    } else {
-        Module['ctx'] = Module['ctx0'];
     }
-    GL.makeContextCurrent(Module['ctx']);
+    GL.makeContextCurrent(Module.ctx);
   },
 
   glfwGetCurrentContext: () => GLFW.active ? GLFW.active.id : 0,
