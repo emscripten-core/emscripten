@@ -3454,6 +3454,8 @@ def parse_args(newargs):
         settings.LTO = arg.split('=')[1]
       else:
         settings.LTO = 'full'
+    elif arg == '-fno-lto':
+      settings.LTO = 0
     elif check_arg('--llvm-lto'):
       logger.warning('--llvm-lto ignored when using llvm backend')
       consume_arg()
