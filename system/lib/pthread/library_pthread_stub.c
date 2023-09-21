@@ -402,11 +402,6 @@ static void busy_sleep(double msecs) {
 
 void __emscripten_atomics_sleep(double);
 
-#include "emscripten.h"
-EM_JS(int, _emscripten_thread_supports_atomics_wait, (void), {
-  return Module._supports_atomics_wait;
-});
-
 void emscripten_thread_sleep(double msecs) {
   if (_emscripten_thread_supports_atomics_wait()) {
     __emscripten_atomics_sleep(msecs);

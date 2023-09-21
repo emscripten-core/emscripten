@@ -2409,6 +2409,7 @@ addToLibrary({
     }
   `,
   __emscripten_atomics_sleep: (ms) => Atomics.wait(waitBuffer, 0, 0, ms),
+  _emscripten_thread_supports_atomics_wait: () => Module._supports_atomics_wait,
 #endif // !SHARED_MEMORY
 
   $warnOnce: (text) => {
