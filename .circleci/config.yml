@@ -42,11 +42,10 @@ commands:
           command: |
             # TODO: Make these part of the base image
             apt-get install libu2f-udev libvulkan1
-            #wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
+            # wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
             # If that download link breaks, temporarily use this URL instead:
-            # TODO(sbc): Disable this once we figure out whats up with the
-            # current beta.
-            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+            # wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
+            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-unstable_current_amd64.deb
             dpkg -i ~/chrome.deb
   emsdk-env:
     description: "emsdk_env.sh"
@@ -109,7 +108,7 @@ commands:
     description: "install canary version of node"
     steps:
       - install-node-version:
-         node_version: "20.0.0-v8-canary2023041819be670741"
+         node_version: "21.0.0-v8-canary202309143a48826a08"
          canary: true
   install-v8:
     description: "install v8 using jsvu"
@@ -125,7 +124,7 @@ commands:
             export PATH="`pwd`/node-v15.14.0-linux-x64/bin:${PATH}"
             npm install jsvu -g
             jsvu --os=default --engines=v8
-  build:
+  install-emsdk:
     description: "Install emsdk"
     steps:
       - run:
@@ -135,7 +134,6 @@ commands:
             tar -C ~ -xf ~/emsdk-main.tar.gz
             mv ~/emsdk-main ~/emsdk
             cd ~/emsdk
-            ./emsdk update-tags
             ./emsdk install tot
             ./emsdk activate tot
             # Remove the emsdk version of emscripten to save space in the
@@ -351,7 +349,7 @@ commands:
             # --no-sandbox because we are running as root and chrome requires
             # this flag for now: https://crbug.com/638180
             CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features"
-            CHROME_FLAGS_HEADLESS: "--headless --remote-debugging-port=1234"
+            CHROME_FLAGS_HEADLESS: "--headless=new --remote-debugging-port=1234"
             CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-memory64 --experimental-wasm-stack-switching --experimental-wasm-type-reflection\""
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
@@ -360,11 +358,17 @@ commands:
             # that are not included by "./embuilder build ALL".  For example the
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
+            echo
+            echo "browser"
+            echo
+            # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
+            test/runner browser skip:browser.test_zzz_zzz_4gb_fail skip:browser.test_zzz_zzz_4gb_fail_wasm64
+            echo
+            echo "emrun"
+            echo
             # TODO(sbc): Re-enable once we figure out why the emrun tests are
             # locking up.
             # test/runner emrun
-            # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
-            test/runner posixtest_browser.test_pthread_create_1_1 browser skip:browser.test_zzz_zzz_4gb_fail skip:browser.test_zzz_zzz_4gb_fail_wasm64
       - upload-test-results
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
@@ -379,7 +383,7 @@ commands:
             # --no-sandbox becasue we are running as root and chrome requires
             # this flag for now: https://crbug.com/638180
             CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile"
-            CHROME_FLAGS_HEADLESS: "--headless --remote-debugging-port=1234"
+            CHROME_FLAGS_HEADLESS: "--headless=new --remote-debugging-port=1234"
             CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-memory64\""
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
@@ -458,7 +462,7 @@ jobs:
             tar xvf libclang_rt.builtins-wasm32-wasi-11.0.tar.gz -C ~/wasi-sdk
             tar xvf wasi-sysroot-11.0.tar.gz -C ~/wasi-sdk/
       - install-v8
-      - build
+      - install-emsdk
       - build-libs
       - persist
   # Perhaps we don't need to run this suite with every commit. Consider moving this to FYI bot.
@@ -523,6 +527,7 @@ jobs:
           title: "core3+extras"
           test_targets: "
             lto2.test_dylink_syslibs_all
+            lto2.test_float_builtins
             lto0.test_exceptions_allowed_uncaught
             core3
             core2g.test_externref
@@ -547,6 +552,10 @@ jobs:
             wasmfs.test_readdir
             wasmfs.test_readdir_unlink
             wasmfs.test_unistd_pipe
+            wasmfs.test_unistd_io
+            wasmfs.test_unistd_curdir
+            wasmfs.test_poll
+            wasmfs.test_fs_64bit
             wasmfs.test_fs_write
             wasmfs.test_fs_writev
             wasmfs.test_fs_writev_rawfs
@@ -614,14 +623,29 @@ jobs:
           title: "wasm64"
           test_targets: "
             wasm64
-            wasm64_4gb.test_hello_world
-            wasm64_4gb.test_em_asm
-            wasm64_4gb.test_async_main
-            wasm64_4gb.*embind*
-            core_2gb.test_em_asm
+            core_2gb.test_*em_asm*
+            core_2gb.test_*embind*
             wasm64l.test_bigswitch
             other.test_memory64_proxies
             other.test_failing_growth_wasm64"
+      - upload-test-results
+  test-wasm64_4gb:
+    environment:
+      # Only run 2 tests at a time to avoid OOM (since each tests used >4gb)
+      EMCC_CORES: "2"
+    # We don't use `bionic` here since its too old to run recent node versions:
+    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
+    executor: linux-python
+    steps:
+      - prepare-for-tests
+      # The linux-python image uses /home/circleci rather than /root and jsvu
+      # hardcodes /root into its launcher scripts so we need to reinstall v8.
+      - run: rm -rf $HOME/.jsvu
+      - install-v8
+      - install-node-canary
+      - run-tests:
+          title: "wasm64_4gb"
+          test_targets: "wasm64_4gb"
       - upload-test-results
   test-jsc:
     executor: linux-python
@@ -631,7 +655,7 @@ jobs:
           name: submodule update
           command: git submodule update --init
       - pip-install
-      - build
+      - install-emsdk
       - run:
           name: install jsc
           command: |
@@ -653,7 +677,7 @@ jobs:
           name: submodule update
           command: git submodule update --init
       - pip-install
-      - build
+      - install-emsdk
       - run:
           name: install spidermonkey
           command: |
@@ -679,7 +703,7 @@ jobs:
           name: submodule update
           command: git submodule update --init
       - pip-install
-      - build
+      - install-emsdk
       - install-node-canary
       - run-tests:
           title: "selected subset"
@@ -777,7 +801,7 @@ jobs:
           command: echo "export PATH=\"$PATH:/c/Python27amd64/\"" >> $BASH_ENV
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
-      - build
+      - install-emsdk
       - pip-install:
           python: "$EMSDK_PYTHON"
       - run-tests:
@@ -814,7 +838,7 @@ jobs:
             rm -rf ~/emsdk ~/vms ~/.jsvu
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
-      - build
+      - install-emsdk
       - pip-install:
           python: "$EMSDK_PYTHON"
       - run-tests:
@@ -836,7 +860,7 @@ jobs:
       EMCC_SKIP_SANITY_CHECK: "1"
     steps:
       - setup-macos
-      - build
+      - install-emsdk
       # TODO: We can't currently do pip install here since numpy and other packages
       # are currently missing arm64 macos binaries.
       # TODO: Remove this once emsdk has an arm64 version of node
@@ -872,6 +896,9 @@ workflows:
           requires:
             - build-linux
       - test-wasm64:
+          requires:
+            - build-linux
+      - test-wasm64_4gb:
           requires:
             - build-linux
       - test-wasm64l:

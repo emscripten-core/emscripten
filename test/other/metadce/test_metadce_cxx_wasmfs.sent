@@ -11,7 +11,7 @@ _wasmfs_stdin_get_char
 abort
 emscripten_date_now
 emscripten_err
-emscripten_memcpy_big
+emscripten_memcpy_js
 emscripten_out
 emscripten_resize_heap
 environ_get

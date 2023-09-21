@@ -58,8 +58,8 @@ void writeI53ToI64Signaling_double(int64_t *heapAddress, double num) {
   EM_ASM(try {
     writeI53ToI64Signaling($0, $1)
   } catch(e) {
-    HEAPU32[$0>>2] = 0x01020304;
-    HEAPU32[$0+4>>2] = 0x01020304;
+    HEAPU32[($0) / 4] = 0x01020304;
+    HEAPU32[($0+4) / 4] = 0x01020304;
   }, heapAddress, num);
 #endif
 }
@@ -88,8 +88,8 @@ void writeI53ToU64Signaling_double(uint64_t *heapAddress, double num) {
   EM_ASM(try {
     writeI53ToU64Signaling($0, $1)
   } catch(e) {
-    HEAPU32[$0>>2] = 0x01020304;
-    HEAPU32[$0+4>>2] = 0x01020304;
+    HEAPU32[$0 / 4] = 0x01020304;
+    HEAPU32[($0+4) / 4] = 0x01020304;
   } , heapAddress, num);
 #endif
 }

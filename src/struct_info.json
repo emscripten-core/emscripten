@@ -950,7 +950,6 @@
     {
         "file": "emscripten/threading.h",
         "defines": [
-            "EM_PROXIED_RESIZE_OFFSCREENCANVAS",
             "EM_FUNC_SIG_V",
             "EM_FUNC_SIG_VI",
             "EM_FUNC_SIG_VII",
@@ -965,6 +964,13 @@
             "EM_FUNC_SIG_PARAM_D",
             "EM_FUNC_SIG_PARAM_B",
             "EM_FUNC_SIG_PARAM_F2I"
+        ]
+    },
+    {
+        "file": "emscripten/wasm_worker.h",
+        "defines": [
+            "ATOMICS_WAIT_NOT_EQUAL",
+            "ATOMICS_WAIT_TIMED_OUT"
         ]
     },
     {

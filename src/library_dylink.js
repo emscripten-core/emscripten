@@ -581,6 +581,7 @@ var LibraryDylink = {
   },
 
 #if DYLINK_DEBUG
+  $dumpTable__deps: ['$wasmTable'],
   $dumpTable: () => {
     for (var i = 0; i < wasmTable.length; i++)
       dbg(`table: ${i} : ${wasmTable.get(i)}`);
@@ -601,6 +602,7 @@ var LibraryDylink = {
     '$getDylinkMetadata', '$alignMemory', '$zeroMemory',
     '$currentModuleWeakSymbols',
     '$updateTableMap',
+    '$wasmTable',
   ],
   $loadWebAssemblyModule: (binary, flags, libName, localScope, handle) => {
 #if DYLINK_DEBUG
@@ -957,15 +959,18 @@ var LibraryDylink = {
     var dso = LDSO.loadedLibsByName[libName];
     if (dso) {
       // the library is being loaded or has been loaded already.
-      //
-      // however it could be previously loaded only locally and if we get
-      // load request with global=true we have to make it globally visible now.
-      if (flags.global && !dso.global) {
-        dso.global = true;
-        if (dso.exports !== 'loading') {
-          // ^^^ if module is 'loading' - symbols merging will be eventually done by the loader.
-          mergeLibSymbols(dso.exports, libName)
+#if ASSERTIONS
+      assert(dso.exports !== 'loading', `Attempt to load '${libName}' twice before the first load completed`);
+#endif
+      if (!flags.global) {
+        if (localScope) {
+          Object.assign(localScope, dso.exports);
         }
+      } else if (!dso.global) {
+        // The library was previously loaded only locally but not
+        // we have a request with global=true.
+        dso.global = true;
+        mergeLibSymbols(dso.exports, libName)
       }
       // same for "nodelete"
       if (flags.nodelete && dso.refcount !== Infinity) {

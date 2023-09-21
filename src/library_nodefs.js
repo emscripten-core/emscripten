@@ -272,14 +272,14 @@ addToLibrary({
         // Node.js < 6 compatibility: node errors on 0 length reads
         if (length === 0) return 0;
         try {
-          return fs.readSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
+          return fs.readSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), { position: position });
         } catch (e) {
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
       write(stream, buffer, offset, length, position) {
         try {
-          return fs.writeSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
+          return fs.writeSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), { position: position });
         } catch (e) {
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }

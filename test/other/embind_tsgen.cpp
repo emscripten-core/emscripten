@@ -16,10 +16,15 @@ class Test {
   int getX() const { return x; }
   void setX(int x_) { x = x_; }
 
+  int getY() const { return y; }
+
   static int static_function(int x) { return 1; }
+
+  static int static_property;
 
 private:
   int x;
+  int y;
 };
 
 Test class_returning_fn() { return Test(); }
@@ -84,9 +89,14 @@ EMSCRIPTEN_BINDINGS(Test) {
       .function("functionTwo", &Test::function_two)
       .function("functionThree", &Test::function_three)
       .function("functionFour", &Test::function_four)
+      .function("functionFive(x, y)", &Test::function_one)
+      .function("functionSix(str)", &Test::function_three)
       .function("constFn", &Test::const_fn)
       .property("x", &Test::getX, &Test::setX)
+      .property("y", &Test::getY)
       .class_function("staticFunction", &Test::static_function)
+      .class_function("staticFunctionWithParam(x)", &Test::static_function)
+      .class_property("staticProperty", &Test::static_property)
 	;
 
   function("class_returning_fn", &class_returning_fn);
@@ -137,12 +147,15 @@ EMSCRIPTEN_BINDINGS(Test) {
       .function("fn", &ClassWithSmartPtrConstructor::fn);
 
   function("smart_ptr_function", &smart_ptr_function);
+  function("smart_ptr_function_with_params(foo)", &smart_ptr_function);
 
   class_<BaseClass>("BaseClass").function("fn", &BaseClass::fn);
 
   class_<DerivedClass, base<BaseClass>>("DerivedClass")
       .function("fn2", &DerivedClass::fn2);
 }
+
+int Test::static_property = 42;
 
 int main() {
   // Main should not be run during TypeScript generation.

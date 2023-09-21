@@ -622,7 +622,7 @@ See `test_add_function in test/test_core.py`_ for an example.
 You should build with ``-sALLOW_TABLE_GROWTH`` to allow new functions to be
 added to the table. Otherwise by default the table has a fixed size.
 
-.. note:: When using ``addFunction`` on LLVM wasm backend, you need to provide
+.. note:: When using ``addFunction`` on LLVM Wasm backend, you need to provide
    an additional second argument, a Wasm function signature string. Each
    character within a signature string represents a type. The first character
    represents the return type of a function, and remaining characters are for
@@ -679,7 +679,7 @@ Here ``my_function`` is a C function that receives a single integer parameter
 integer. This could be something like ``int my_function(char *buf)``.
 
 The converse case of exporting allocated memory into JavaScript can be
-tricky when wasm-based memory is allowed to **grow**, by compiling with
+tricky when Wasm-based memory is allowed to **grow**, by compiling with
 ``-sALLOW_MEMORY_GROWTH``. Increasing the size of memory changes
 to a new buffer and existing array views essentially become invalid,
 so you cannot simply do this:
@@ -755,7 +755,7 @@ For example, to set an environment variable ``MY_FILE_ROOT`` to be
 
 .. code:: javascript
 
-    Module.preRun.push(function() {ENV.MY_FILE_ROOT = "/usr/lib/test"})
+    Module.preRun = () => {ENV.MY_FILE_ROOT = "/usr/lib/test"};
 
 Note that Emscripten will set default values for some environment variables
 (e.g. LANG) after you have configured ``ENV``, if you have not set your own
@@ -764,7 +764,7 @@ their value to `undefined`. For example:
 
 .. code:: javascript
 
-    Module.preRun.push(function() {ENV.LANG = undefined})
+    Module.preRun = () => {ENV.LANG = undefined};
 
 .. _interacting-with-code-binding-cpp:
 

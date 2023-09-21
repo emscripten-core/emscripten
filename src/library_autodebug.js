@@ -6,7 +6,7 @@
 
 
 #if !AUTODEBUG
-#error "Should only be incldued in AUTODEBUG mode"
+#error "Should only be included in AUTODEBUG mode"
 #endif
 
 addToLibrary({
@@ -109,7 +109,7 @@ addToLibrary({
   },
 });
 
-DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
+extraLibraryFuncs.push(
   '$log_execution',
   '$get_i32',
   '$get_i64',

@@ -26,6 +26,10 @@
       should pass after each commit).
    When landing multiple commits in such a scenario, use the "rebase" option,
    to avoid a merge commit.
+ * Add `NFC` to the end of the PR title for Non-Functional Changes (i.e.,
+   changes that do not add/modify functionality, such as internal refactoring).
+ * Add a `[prefix]` to start of the PR title to signify the subsystem or area
+   that the PR targets. e.g. `[test] Update foo test` or `[ports] Fix zlib port`
 
 ## Coding Style
 
@@ -174,6 +178,99 @@ updating `emcc.rst` in a PR, the following should be done:
 See notes above on installing sphinx.
 
 
+## Updating the LLVM libraries
+
+We maintain our ports of compiler-rt, libcxx, libcxxabi, and libunwind under
+https://github.com/emscripten-core/emscripten/tree/main/system/lib from
+[the upstream LLVM repository][llvm_repo] and periodically update them to a newer
+version when a new LLVM release comes out.
+
+We maintain [a fork of LLVM][llvm_emscripten_fork] for library updates, where we
+create a branch for each new LLVM major release. For example, the branch for
+LLVM 16 is
+https://github.com/emscripten-core/llvm-project/tree/emscripten-libs-16. We
+create a new branch for a major version update and reuse the existing branch for
+a minor version update. We mostly do updates per LLVM major release.
+
+To update our libraries to a newer LLVM release:
+
+1. If you are updating an existing branch the first step is to run
+   [`push_llvm_changes.py`][push_llvm_changes_emscripten] to make sure the
+   current branch is up-to-date with the current emscripten codebase.
+   ```
+   ./system/lib/push_llvm_changes.py <Emscripten's LLVM fork directory>
+   ```
+   (The existing library branch should be checked out in your Emscripten's LLVM
+   fork directory.)
+   An example of such PR is emscripten-core/llvm-project#5.
+
+   If you are creating a new branch, first make sure the previous/existing
+   branch is up-to-date using
+   [`push_llvm_changes.py`][push_llvm_changes_emscripten]. Then
+   create the new branch and cherry-pick all the emscripten-specific changes
+   from the old branch, resolving any conflicts that might arise.
+
+   In either case, once that branch is up-to-date use the update scripts to copy
+   the llvm branch contents into the emscripten tree. Its important in both
+   cases to run [`push_llvm_changes.py`][push_llvm_changes_emscripten] first to
+   ensure that no emscripten changes are lost in the process.
+1. Create a PR to merge new LLVM release tag in the upstream repo into our new
+   library branch. For example, if we want to merge `llvmorg-16.0.6` tag into
+   our `emscripten-libs-16` branch, you can do
+   ```
+   git co emscripten-libs-16
+   git remote add upstream git@github.com:llvm/llvm-project.git
+   git fetch --tags upstream
+   git merge llvmorg-16.0.6
+   ```
+   An example of such PR is emscripten-core/llvm-project#3.
+1. Now we have merged all the changes to our LLVM fork branch, pull those
+   changes with the new version back into the Emscripten repo. You can use
+   [`update_compiler_rt.py`][update_compiler_rt_emscripten],
+   [`update_libcxx.py`][update_libcxx_emscripten],
+   [`update_libcxxabi.py`][update_libcxxabi_emscripten],
+   [`update_libunwind.py`][update_libunwind_emscripten] for that. For example,
+   ```
+   ./system/lib/update_comiler_rt.py <Emscripten's LLVM fork directory>
+   ```
+   (The library branch should be checked out in your Emscripten's LLVM fork
+   directory.)
+   An example of such PR is emscripten-core/emscripten#19515.
+
+
+## Updating musl
+
+We maintain our musl in
+https://github.com/emscripten-core/emscripten/tree/main/system/lib/libc/musl.
+We maintain a fork of musl in https://github.com/emscripten-core/musl for
+updates and periodically update it to a newer version.
+
+The process for updating musl is similar to that of updating the LLVM libraries.
+To update our libraries to a newer musl release:
+
+1. If you are updating an existing branch the first step is to run
+   [`push_musl_changes.py`][push_musl_changes_emscripten] to make sure the
+   current branch is up-to-date with the current emscripten codebase.
+
+   If you are creating a new branch, first make sure the previous/existing
+   branch is up-to-date using
+   [`push_musl_changes.py`][push_musl_changes_emscripten]. Then
+   create the new branch and cherry-pick all the emscripten-specific changes
+   from the old branch, resolving any conflicts that might arise.
+1. Create a PR to merge new mrelease tag in the upstream repo into our new
+   library branch. For example, if we want to merge musl's `v1.2.4` tag into our
+   `merge-v1.2.4` branch, you can do
+   ```
+   git co merge-v1.2.4
+   git remote add upstream git://git.musl-libc.org/musl
+   git fetch --tags upstream
+   git merge v1.2.4
+   ```
+1. Now we have merged all the changes to our musl fork branch, pull those
+   changes with the new version back into the Emscripten repo. You can use
+   [`update_musl.py`][update_musl_emscripten] for that.
+
+
 [site_repo]: https://github.com/kripken/emscripten-site
 [releases_repo]: https://chromium.googlesource.com/emscripten-releases
 [waterfall]: https://ci.chromium.org/p/emscripten-releases/g/main/console
@@ -190,3 +287,12 @@ See notes above on installing sphinx.
 [flake8]: https://github.com/emscripten-core/emscripten/blob/main/.flake8
 [mypy]: https://github.com/emscripten-core/emscripten/blob/main/.mypy
 [update_docs]: https://github.com/emscripten-core/emscripten/blob/main/tools/maint/update_docs.py
+[llvm_repo]: https://github.com/llvm/llvm-project
+[llvm_emscripten_fork]: https://github.com/emscripten-core/llvm-project
+[push_llvm_changes_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/push_llvm_changes.py
+[push_musl_changes_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/push_musl_changes.py
+[update_compiler_rt_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_compiler_rt.py
+[update_libcxx_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_libcxx.py
+[update_libcxxabi_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_libcxxabi.py
+[update_libunwind_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_libunwind.py
+[update_musl_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_musl.py

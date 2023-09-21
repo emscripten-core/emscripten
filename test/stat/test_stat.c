@@ -5,6 +5,9 @@
  * found in the LICENSE file.
  */
 
+// For LFS functions (e.g. stat64)
+#define _GNU_SOURCE 1
+
 #include <assert.h>
 #include <dirent.h>
 #include <errno.h>
@@ -57,6 +60,12 @@ void test() {
 
   // non-existent
   err = stat("does_not_exist", &s);
+  assert(err == -1);
+  assert(errno == ENOENT);
+
+  // test stat64 LFS functions
+  struct stat64 s64;
+  err = stat("does_not_exist", &s64);
   assert(err == -1);
   assert(errno == ENOENT);
 
@@ -208,7 +217,7 @@ void test() {
   );
 
   symlink("folder/file", "folder/symlinkfile");
-  
+
   EM_ASM(
     var linkStats = FS.lstat("folder/symlinkfile");
     assert(linkStats.dev == 1);
@@ -224,7 +233,7 @@ void test() {
     assert(linkStats.atime);
     assert(linkStats.mtime);
     assert(linkStats.ctime);
-    
+
     var ex;
     try {
       FS.stat("nonexistent");

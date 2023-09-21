@@ -51,10 +51,10 @@ EMSCRIPTEN_BINDINGS(my_module) {
 int main(int argc, char **argv) {
   EM_ASM(
     try {
-      var foo = new Module.MyFoo();
-      foo.doit();
-      var bar = new Module.MyBar();
-      bar.doit();
+      var foo = new Module['MyFoo']();
+      foo['doit']();
+      var bar = new Module['MyBar']();
+      bar['doit']();
     } catch(e) {
       out(e);
     } finally {

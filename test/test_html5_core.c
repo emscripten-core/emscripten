@@ -40,7 +40,7 @@ const char *emscripten_result_to_string(EMSCRIPTEN_RESULT result) {
 // Returning 0 signals that the event was not consumed by the code, and will allow the event to pass on and bubble up normally.
 EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData)
 {
-  printf("%s, key: \"%s\", code: \"%s\", location: %lu,%s%s%s%s repeat: %d, locale: \"%s\", char: \"%s\", charCode: %lu, keyCode: %lu, which: %lu, timestamp: %lf\n",
+  printf("%s, key: \"%s\", code: \"%s\", location: %u,%s%s%s%s repeat: %d, locale: \"%s\", char: \"%s\", charCode: %u, keyCode: %u, which: %u, timestamp: %lf\n",
     emscripten_event_type_to_string(eventType), e->key, e->code, e->location, 
     e->ctrlKey ? " CTRL" : "", e->shiftKey ? " SHIFT" : "", e->altKey ? " ALT" : "", e->metaKey ? " META" : "", 
     e->repeat, e->locale, e->charValue, e->charCode, e->keyCode, e->which,
@@ -91,7 +91,7 @@ EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *user
 
 EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData)
 {
-  printf("%s, screen: (%ld,%ld), client: (%ld,%ld),%s%s%s%s button: %hu, buttons: %hu, movement: (%ld,%ld), canvas: (%ld,%ld), timestamp: %lf\n",
+  printf("%s, screen: (%d,%d), client: (%d,%d),%s%s%s%s button: %hu, buttons: %hu, movement: (%d,%d), canvas: (%d,%d), timestamp: %lf\n",
     emscripten_event_type_to_string(eventType), e->screenX, e->screenY, e->clientX, e->clientY,
     e->ctrlKey ? " CTRL" : "", e->shiftKey ? " SHIFT" : "", e->altKey ? " ALT" : "", e->metaKey ? " META" : "", 
     e->button, e->buttons, e->movementX, e->movementY, e->canvasX, e->canvasY,
@@ -102,7 +102,7 @@ EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userD
 
 EM_BOOL wheel_callback(int eventType, const EmscriptenWheelEvent *e, void *userData)
 {
-  printf("%s, screen: (%ld,%ld), client: (%ld,%ld),%s%s%s%s button: %hu, buttons: %hu, canvas: (%ld,%ld), delta:(%g,%g,%g), deltaMode:%lu, timestamp: %lf\n",
+  printf("%s, screen: (%d,%d), client: (%d,%d),%s%s%s%s button: %hu, buttons: %hu, canvas: (%d,%d), delta:(%g,%g,%g), deltaMode:%u, timestamp: %lf\n",
     emscripten_event_type_to_string(eventType), e->mouse.screenX, e->mouse.screenY, e->mouse.clientX, e->mouse.clientY,
     e->mouse.ctrlKey ? " CTRL" : "", e->mouse.shiftKey ? " SHIFT" : "", e->mouse.altKey ? " ALT" : "", e->mouse.metaKey ? " META" : "", 
     e->mouse.button, e->mouse.buttons, e->mouse.canvasX, e->mouse.canvasY,
@@ -114,7 +114,7 @@ EM_BOOL wheel_callback(int eventType, const EmscriptenWheelEvent *e, void *userD
 
 EM_BOOL uievent_callback(int eventType, const EmscriptenUiEvent *e, void *userData)
 {
-  printf("%s, detail: %ld, document.body.client size: (%d,%d), window.inner size: (%d,%d), scrollPos: (%d, %d)\n",
+  printf("%s, detail: %d, document.body.client size: (%d,%d), window.inner size: (%d,%d), scrollPos: (%d, %d)\n",
     emscripten_event_type_to_string(eventType), e->detail, e->documentBodyClientWidth, e->documentBodyClientHeight,
     e->windowInnerWidth, e->windowInnerHeight, e->scrollTop, e->scrollLeft);
 
@@ -187,7 +187,7 @@ EM_BOOL touch_callback(int eventType, const EmscriptenTouchEvent *e, void *userD
   for(int i = 0; i < e->numTouches; ++i)
   {
     const EmscriptenTouchPoint *t = &e->touches[i];
-    printf("  %ld: screen: (%ld,%ld), client: (%ld,%ld), page: (%ld,%ld), isChanged: %d, onTarget: %d, canvas: (%ld, %ld)\n",
+    printf("  %d: screen: (%d,%d), client: (%d,%d), page: (%d,%d), isChanged: %d, onTarget: %d, canvas: (%d, %d)\n",
       t->identifier, t->screenX, t->screenY, t->clientX, t->clientY, t->pageX, t->pageY, t->isChanged, t->onTarget, t->canvasX, t->canvasY);
   }
   
@@ -238,11 +238,11 @@ EM_BOOL webglcontext_callback(int eventType, const void *reserved, void *userDat
   return 0;
 }
 
-#ifdef REPORT_RESULT
-void report_result(void *arg)
+#ifndef KEEP_ALIVE
+void test_done(void *arg)
 {
   emscripten_html5_remove_all_event_listeners();
-  REPORT_RESULT(0);
+  exit(0);
 }
 #endif
 
@@ -428,11 +428,11 @@ int main()
   ret = (width && height) ? EMSCRIPTEN_RESULT_SUCCESS : EMSCRIPTEN_RESULT_FAILED;
   TEST_RESULT(emscripten_get_screen_size);
 
-#ifdef REPORT_RESULT
-  // Keep the page running for a moment.
-  emscripten_async_call(report_result, 0, 5000);
-#else
+#ifdef KEEP_ALIVE
   emscripten_exit_with_live_runtime();
+#else
+  // Keep the page running for a moment.
+  emscripten_async_call(test_done, 0, 5000);
 #endif
   return 0;
 }

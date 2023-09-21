@@ -180,7 +180,7 @@ int IgnoreCaseDirectory::removeChild(const std::string& name) {
 
 Directory::MaybeEntries IgnoreCaseDirectory::getEntries() {
   auto entries = real->locked().getEntries();
-  if (auto err = entries.getError()) {
+  if (entries.getError()) {
     return entries;
   }
   for (auto& entry : *entries) {

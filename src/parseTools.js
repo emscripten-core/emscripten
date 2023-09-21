@@ -296,6 +296,8 @@ function getHeapOffset(offset, type) {
   const shifts = Math.log(sz) / Math.LN2;
   if (MEMORY64 == 1) {
     return `((${offset})/${2 ** shifts})`;
+  } else if (CAN_ADDRESS_2GB) {
+    return `((${offset})>>>${shifts})`;
   } else {
     return `((${offset})>>${shifts})`;
   }
@@ -422,7 +424,8 @@ function makeSetValueImpl(ptr, pos, value, type) {
 
 function makeHEAPView(which, start, end) {
   const size = parseInt(which.replace('U', '').replace('F', '')) / 8;
-  const mod = size == 1 ? '' : ('>>' + Math.log2(size));
+  const shift = Math.log2(size);
+  const mod = size == 1 ? '' : (CAN_ADDRESS_2GB || MEMORY64) ? ('>>>' + shift) : ('>>' + shift);
   return `HEAP${which}.subarray((${start})${mod}, (${end})${mod})`;
 }
 
@@ -686,6 +689,7 @@ function modifyJSFunction(text, func) {
   let async_;
   let args;
   let rest;
+  let oneliner = false;
   let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   if (match) {
     async_ = match[1] || '';
@@ -698,6 +702,8 @@ function modifyJSFunction(text, func) {
       async_ = match[3] || '';
       args = match[4];
       rest = text.substr(match[0].length);
+      rest = rest.trim();
+      oneliner = rest[0] != '{';
     } else {
       // Match a function without a name (we could probably use a single regex
       // for both, but it would be more complex).
@@ -709,9 +715,8 @@ function modifyJSFunction(text, func) {
     }
   }
   let body = rest;
-  const bodyStart = rest.indexOf('{');
-  let oneliner = bodyStart < 0;
   if (!oneliner) {
+    const bodyStart = rest.indexOf('{');
     const bodyEnd = rest.lastIndexOf('}');
     assert(bodyEnd > 0);
     body = rest.substring(bodyStart + 1, bodyEnd);
