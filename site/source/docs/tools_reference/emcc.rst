@@ -388,9 +388,6 @@ Options that are modified or new in *emcc* are listed below:
   [link]
   Generate a TypeScript definition file from the exported embind bindings. The
   program will be instrumented and run in node in order to to generate the file.
-  Note that the program itself will not be generated when this flag is
-  used.  You will need to be rebuild without this flag to build the program
-  itself.
 
 ``--ignore-dynamic-linking``
   [link]
