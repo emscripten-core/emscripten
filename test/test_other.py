@@ -2919,13 +2919,18 @@ int f() {
     self.do_runf(test_file('other/test_jspi_add_function.c'), 'done')
 
   def test_embind_tsgen(self):
+    # Check that TypeScript generation works and that the program is runs as
+    # expected.
+    self.do_runf(test_file('other/embind_tsgen.cpp'), 'main ran',
+                 emcc_args=['-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'])
+    actual = read_file('embind_tsgen.d.ts')
+    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), actual)
+
+  def test_embind_tsgen_ignore(self):
     create_file('fail.js', 'assert(false);')
     # These extra arguments are not related to TS binding generation but we want to
     # verify that they do not interfere with it.
-    extra_args = ['-o',
-                  'out.html',
-                  '-sMODULARIZE',
-                  '-sALLOW_MEMORY_GROWTH=1',
+    extra_args = ['-sALLOW_MEMORY_GROWTH=1',
                   '-sMAXIMUM_MEMORY=4GB',
                   '--pre-js', 'fail.js',
                   '--post-js', 'fail.js',
@@ -2933,14 +2938,14 @@ int f() {
                   '--extern-post-js', 'fail.js',
                   '-sENVIRONMENT=worker',
                   '--use-preload-cache',
-                  '--preload-file', 'fail.js',
+                  '--preload-file', 'fail.js']
+    self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
+                      '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'] + extra_args)
+    # Test these args separately since they conflict with arguments in the first test.
+    extra_args = ['-sMODULARIZE',
                   '--embed-file', 'fail.js']
     self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'] + extra_args)
-    actual = read_file('embind_tsgen.d.ts')
-    self.assertNotExists('out.html')
-    self.assertNotExists('out.js')
-    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), actual)
 
   def test_embind_tsgen_test_embind(self):
     self.run_process([EMCC, test_file('embind/embind_test.cpp'),
