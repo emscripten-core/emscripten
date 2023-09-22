@@ -29,6 +29,7 @@ addToLibrary({
       'j': 'i64',
       'f': 'f32',
       'd': 'f64',
+      'e': 'externref',
 #if MEMORY64
       'p': 'i64',
 #else
