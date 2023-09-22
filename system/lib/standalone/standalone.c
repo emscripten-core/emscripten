@@ -342,4 +342,6 @@ _emscripten_thread_supports_atomics_wait(void) {
 
 // This will never be called because supports_atomics_wait returns false.
 void
-__emscripten_atomics_sleep(double t) {}
+__emscripten_atomics_sleep(double t) {
+  abort();
+}
