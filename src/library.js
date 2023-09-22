@@ -3269,8 +3269,10 @@ addToLibrary({
 
   _emscripten_runtime_keepalive_clear__proxy: 'sync',
   _emscripten_runtime_keepalive_clear: () => {
-#if !MINIMAL_RUNTIME
+#if isSymbolNeeded('$noExitRuntime')
     noExitRuntime = false;
+#endif
+#if !MINIMAL_RUNTIME
     runtimeKeepaliveCounter = 0;
 #endif
   },
@@ -3388,7 +3390,11 @@ addToLibrary({
   $runtimeKeepaliveCounter: 0,
 
   $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter'],
+#if isSymbolNeeded('$noExitRuntime')
   $keepRuntimeAlive: () => noExitRuntime || runtimeKeepaliveCounter > 0,
+#else
+  $keepRuntimeAlive: () => runtimeKeepaliveCounter > 0,
+#endif
 
   // Callable in pthread without __proxy needed.
   $runtimeKeepalivePush__deps: ['$runtimeKeepaliveCounter'],
@@ -3645,6 +3651,8 @@ addToLibrary({
 #else
   $wasmTable: undefined,
 #endif
+
+  $noExitRuntime: "{{{ makeModuleReceiveExpr('noExitRuntime', !EXIT_RUNTIME) }}}",
 
   // We used to define these globals unconditionally in support code.
   // Instead, we now define them here so folks can pull it in explicitly, on

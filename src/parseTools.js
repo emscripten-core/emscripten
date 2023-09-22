@@ -744,6 +744,18 @@ function expectToReceiveOnModule(name) {
   return INCOMING_MODULE_JS_API.has(name);
 }
 
+// Return true if the user requested that a library symbol be included
+// either via DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS.
+function isSymbolNeeded(symName) {
+  if (DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.includes(symName)) {
+    return true;
+  }
+  if (symName.startsWith('$') && symName.slice(1) in EXPORTED_RUNTIME_METHODS) {
+    return true;
+  }
+  return false;
+}
+
 function makeRemovedModuleAPIAssert(moduleName, localName) {
   if (!ASSERTIONS) return '';
   if (!localName) localName = moduleName;
