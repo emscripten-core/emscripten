@@ -2386,8 +2386,12 @@ addToLibrary({
   _emscripten_get_now_is_monotonic__deps: ['$nowIsMonotonic'],
   _emscripten_get_now_is_monotonic: () => nowIsMonotonic,
 
-#if !SHARED_MEMORY
   __emscripten_atomics_sleep__internal: true,
+#if SHARED_MEMORY
+  // When SHARED_MEMORY is true, this isn't used, but we need it here to make
+  // gen_sig_info happy.
+  __emscripten_atomics_sleep: (ms) => {},
+#else
   // In a browser without cross origin isolation, SharedArrayBuffer is deleted
   // from the global scope:
   // https://html.spec.whatwg.org/multipage/webappapis.html#creating-a-new-javascript-realm
