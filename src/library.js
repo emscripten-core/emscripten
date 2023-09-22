@@ -2401,11 +2401,12 @@ addToLibrary({
   __emscripten_atomics_sleep__postset: `
     var SABConstructor = new WebAssembly.Memory({"shared":true,"initial":0,"maximum":0}).buffer.constructor;
     var waitBuffer = new Int32Array(new SABConstructor(4));
+    var _supports_atomics_wait;
     try {
       __emscripten_atomics_sleep(0);
-      Module._supports_atomics_wait = true;
+      _supports_atomics_wait = true;
     } catch (e) {
-      Module._supports_atomics_wait = false;
+      _supports_atomics_wait = false;
     }
   `,
   __emscripten_atomics_sleep: (ms) => Atomics.wait(waitBuffer, 0, 0, ms),
