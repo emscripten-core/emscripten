@@ -125,6 +125,8 @@ void _emscripten_fs_load_embedded_files(void* ptr);
 
 void _emscripten_throw_longjmp(void);
 
+void emscripten_prepare_force_exit();
+
 void __handle_stack_overflow(void* addr);
 
 // Internal fetch API

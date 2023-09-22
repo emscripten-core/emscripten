@@ -619,6 +619,7 @@ sigs = {
   emscripten_exit_soft_fullscreen__sig: 'i',
   emscripten_exit_with_live_runtime__sig: 'v',
   emscripten_fiber_swap__sig: 'vpp',
+  emscripten_prepare_force_exit__sig: 'v',
   emscripten_force_exit__sig: 'vi',
   emscripten_get_battery_status__sig: 'ip',
   emscripten_get_callstack__sig: 'iipi',

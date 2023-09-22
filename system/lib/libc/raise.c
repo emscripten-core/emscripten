@@ -65,12 +65,12 @@ int raise(int sig) {
         case ACTION_IGNORE:
           break;
         case ACTION_TERMINATE:
+          // Prepare to forcibly shut down runtime even if it has async work in flight.
+          emscripten_prepare_force_exit();
           // Intentionally exiting via a function that doesn't call atexit handlers.
           _Exit(128 + sig);
         case ACTION_ABORT:
-          // TODO: should this integrate with `Module['onAbort'] once `abort` is migrated
-          // to raise SIGABRT as per spec?
-          __builtin_trap();
+          abort();
       }
     } else if (handler != SIG_IGN) {
         // Avoid a direct call to the handler, and instead call via JS so we can
