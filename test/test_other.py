@@ -3298,45 +3298,34 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     # This is important as if module.export is not present the Module
     # object will not be visible to node.js
 
-    # compile with -O2 --closure 0
-    self.run_process([EMCC, test_file('Module-exports/test.c'),
-                      '-o', 'test.js', '-O2', '--closure', '0',
-                      '--pre-js', test_file('Module-exports/setup.js'),
+    # compile without --closure=1
+    self.run_process([EMCC, test_file('module_exports/test.c'),
+                      '-o', 'test.js', '-O2',
                       '-sEXPORTED_FUNCTIONS=_bufferTest,_malloc,_free',
                       '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap',
                       '-sWASM_ASYNC_COMPILATION=0'])
 
-    # Check that compilation was successful
-    self.assertExists('test.js')
-    test_js_closure_0 = read_file('test.js')
-
-    # Check that test.js compiled with --closure 0 contains "module['exports'] = Module;"
-    assert ("module['exports'] = Module;" in test_js_closure_0) or ('module["exports"]=Module' in test_js_closure_0) or ('module["exports"] = Module;' in test_js_closure_0)
+    # Check that test.js compiled without --closure=1 contains "module['exports'] = Module;"
+    self.assertContained('module["exports"]=Module', read_file('test.js'))
 
     # Check that main.js (which requires test.js) completes successfully when run in node.js
     # in order to check that the exports are indeed functioning correctly.
-    shutil.copyfile(test_file('Module-exports/main.js'), 'main.js')
+    shutil.copyfile(test_file('module_exports/main.js'), 'main.js')
     self.assertContained('bufferTest finished', self.run_js('main.js'))
 
     # Delete test.js again and check it's gone.
     delete_file('test.js')
-    self.assertNotExists('test.js')
 
-    # compile with -O2 --closure 1
-    self.run_process([EMCC, test_file('Module-exports/test.c'),
+    # compile with --closure=1
+    self.run_process([EMCC, test_file('module_exports/test.c'),
                       '-o', 'test.js', '-O2', '--closure=1',
-                      '--pre-js', test_file('Module-exports/setup.js'),
                       '-sEXPORTED_FUNCTIONS=_bufferTest,_malloc,_free',
                       '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap',
                       '-sWASM_ASYNC_COMPILATION=0'])
 
-    # Check that compilation was successful
-    self.assertExists('test.js')
-    test_js_closure_1 = read_file('test.js')
-
     # Check that test.js compiled with --closure 1 contains "module.exports", we want to verify that
     # "module['exports']" got minified to "module.exports" when compiling with --closure 1
-    self.assertContained("module.exports", test_js_closure_1)
+    self.assertContained('module.exports=', read_file('test.js'))
 
     # Check that main.js (which requires test.js) completes successfully when run in node.js
     # in order to check that the exports are indeed functioning correctly.
@@ -3591,7 +3580,6 @@ m0.ccall('myreadSeekEnd', 'number', [], []);
 
     create_file('proxyfs_pre.js', r'''
 Module["noInitialRun"]=true;
-Module["noExitRuntime"]=true;
 ''')
 
     create_file('proxyfs_embed.txt', 'test\n')
@@ -7406,7 +7394,7 @@ Resolved: "/" => "/"
     self.assertEqual(less, none)
 
   @parameterized({
-    'normal': (['-sWASM_BIGINT=0'], 'testbind.js'),
+    '': ([], 'testbind.js'),
     'bigint': (['-sWASM_BIGINT'], 'testbind_bigint.js'),
   })
   @requires_node
