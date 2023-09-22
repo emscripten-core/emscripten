@@ -333,3 +333,13 @@ weak char* _emscripten_sanitizer_get_option(const char* name) {
 weak char* emscripten_get_module_name(char* buf, size_t length) {
   return strncpy(buf, "<unknown>", length);
 }
+
+// Stubs for non-busy sleep
+int
+_emscripten_thread_supports_atomics_wait(void) {
+  return 0;
+}
+
+// This will never be called because supports_atomics_wait returns false.
+void
+__emscripten_atomics_sleep(double t) {}
