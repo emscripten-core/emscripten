@@ -2403,7 +2403,7 @@ addToLibrary({
     var waitBuffer = new Int32Array(new SABConstructor(4));
     var _supports_atomics_wait;
     try {
-      __emscripten_atomics_sleep(0);
+      ___emscripten_atomics_sleep(0);
       _supports_atomics_wait = true;
     } catch (e) {
       _supports_atomics_wait = false;
