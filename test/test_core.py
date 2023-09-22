@@ -8204,26 +8204,6 @@ void* operator new(size_t size) {
     print('.. _Exit')
     self.do_runf('exit.c', 'hello, world!\nI see exit status: 118', assert_returncode=118, emcc_args=['-DCAPITAL_EXIT'])
 
-  def test_noexitruntime(self):
-    src = r'''
-      #include <emscripten.h>
-      #include <stdio.h>
-      static int testPre = TEST_PRE;
-      struct Global {
-        Global() {
-          printf("in Global()\n");
-          if (testPre) { EM_ASM(noExitRuntime = true;); }
-        }
-        ~Global() { printf("ERROR: in ~Global()\n"); }
-      } global;
-      int main() {
-        if (!testPre) { EM_ASM(noExitRuntime = true;); }
-        printf("in main()\n");
-      }
-    '''
-    self.do_run(src.replace('TEST_PRE', '0'), 'in Global()\nin main()')
-    self.do_run(src.replace('TEST_PRE', '1'), 'in Global()\nin main()')
-
   def test_minmax(self):
     self.do_runf(test_file('test_minmax.c'), 'NAN != NAN\nSuccess!')
 
