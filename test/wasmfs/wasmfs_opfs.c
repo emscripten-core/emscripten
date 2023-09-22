@@ -10,6 +10,9 @@
 #include <unistd.h>
 
 #include <emscripten/console.h>
+#include <emscripten/emscripten.h>
+#include <emscripten/eventloop.h>
+#include <emscripten/promise.h>
 #include <emscripten/wasmfs.h>
 
 // Define WASMFS_SETUP then WASMFS_RESUME to run the test as two separate
@@ -18,15 +21,12 @@
 
 void cleanup(void);
 
-int main(int argc, char* argv[]) {
+void run(backend_t opfs) {
   int err, fd, nwritten;
   const char* msg = "Hello, OPFS!";
   const char* msg2 = "Hello, OPFS!Hello, OPFS!";
 
-  emscripten_console_log("starting main");
-
-  backend_t opfs = wasmfs_create_opfs_backend();
-  emscripten_console_log("created OPFS backend");
+  emscripten_console_log("starting run");
 
   err = wasmfs_create_directory("/opfs", 0777, opfs);
   assert(err == 0);
@@ -229,4 +229,52 @@ void cleanup(void) {
   assert(access("/opfs/working/foo.txt", F_OK) != 0);
   assert(access("/opfs/working", F_OK) != 0);
   assert(access("/opfs/foo.txt", F_OK) != 0);
+}
+
+em_promise_result_t do_run(void** result, void* data, void* value) {
+  backend_t opfs = (backend_t)value;
+  emscripten_console_log("created OPFS backend");
+  run(opfs);
+  return EM_PROMISE_FULFILL;
+}
+
+void force_exit(void* _) { emscripten_force_exit(0); }
+
+em_promise_result_t do_exit(void** result, void* data, void* value) {
+  // Cannot exit directly without rejecting promise. Schedule future exit.
+  emscripten_async_call(force_exit, NULL, 0);
+  return EM_PROMISE_FULFILL;
+}
+
+em_promise_result_t fail(void** result, void* data, void* value) {
+  emscripten_console_log("fail!");
+  emscripten_runtime_keepalive_pop();
+  emscripten_async_call(force_exit, NULL, 0);
+  return EM_PROMISE_REJECT;
+}
+
+int main(int argc, char* argv[]) {
+#ifdef OPFS_ASYNC
+  em_promise_t did_start = wasmfs_create_opfs_backend_async();
+  em_promise_t did_run = emscripten_promise_then(did_start, do_run, fail, NULL);
+  em_promise_t did_exit = emscripten_promise_then(did_run, do_exit, fail, NULL);
+  emscripten_promise_destroy(did_start);
+  emscripten_promise_destroy(did_run);
+  emscripten_promise_destroy(did_exit);
+  emscripten_runtime_keepalive_push();
+#else
+#ifdef OPFS_ASYNC_AWAIT
+  em_promise_t promise = wasmfs_create_opfs_backend_async();
+  em_settled_restult_t result = emscripten_promise_await(promise);
+  emscripten_promise_destroy(promise);
+  assert(result.result == EM_PROMISE_FULFILL);
+  backend_t opfs = (backend_t)result.result;
+  emscripten_console_log("created OPFS backend");
+  run(opfs);
+#else
+  backend_t opfs = wasmfs_create_opfs_backend();
+  emscripten_console_log("created OPFS backend");
+  run(opfs);
+#endif
+#endif
 }
