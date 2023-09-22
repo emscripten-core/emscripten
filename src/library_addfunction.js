@@ -62,6 +62,7 @@ addToLibrary({
       'j': 0x7e, // i64
       'f': 0x7d, // f32
       'd': 0x7c, // f64
+      'e': 0x6f, // externref
     };
 
     // Parameters, length + signatures
@@ -71,9 +72,9 @@ addToLibrary({
 #if ASSERTIONS
       assert(sigParam[i] in typeCodes, 'invalid signature char: ' + sigParam[i]);
 #endif
-  target.push(typeCodes[sigParam[i]]);
+      target.push(typeCodes[sigParam[i]]);
     }
-  
+
     // Return values, length + signatures
     // With no multi-return in MVP, either 0 (void) or 1 (anything else)
     if (sigRet == 'v') {
