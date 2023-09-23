@@ -1054,7 +1054,6 @@ var LibraryGLFW = {
             canvasElement.id = canvasID;
             canvasElement.width = width;
             canvasElement.height = height;
-            canvasElement.style.display = "none";
 
             var body = document.getElementsByTagName("body")[0];
             body.appendChild(canvasElement);
