@@ -1910,6 +1910,7 @@ class libwasmfs_noderawfs(Library):
 class libhtml5(Library):
   name = 'libhtml5'
 
+  includes = ['system/lib/libc']
   cflags = ['-Oz', '-fno-inline-functions']
   src_dir = 'system/lib/html5'
   src_glob = '*.c'

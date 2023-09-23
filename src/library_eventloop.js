@@ -11,6 +11,16 @@ LibraryJSEventLoop = {
     throw 'unwind';
   },
 
+  $safeSetTimeout__deps: ['$callUserCallback'],
+  $safeSetTimeout__docs: '/** @param {number=} timeout */',
+  $safeSetTimeout: (func, timeout) => {
+    {{{ runtimeKeepalivePush() }}}
+    return setTimeout(() => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(func);
+    }, timeout);
+  },
+
   // Just like setImmediate but returns an i32 that can be passed back
   // to wasm rather than a JS object.
   $setImmediateWrapped: (func) => {
@@ -117,7 +127,7 @@ LibraryJSEventLoop = {
       var n = t + msecs;
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(function() {
-        if ({{{ makeDynCall('idi', 'cb') }}}(t, userData)) {
+        if ({{{ makeDynCall('idp', 'cb') }}}(t, userData)) {
           // Save a little bit of code space: modern browsers should treat
           // negative setTimeout as timeout of 0
           // (https://stackoverflow.com/questions/8430966/is-calling-settimeout-with-a-negative-delay-ok)
@@ -135,7 +145,7 @@ LibraryJSEventLoop = {
     {{{ runtimeKeepalivePush() }}}
     return setInterval(function() {
       callUserCallback(function() {
-        {{{ makeDynCall('vi', 'cb') }}}(userData)
+        {{{ makeDynCall('vp', 'cb') }}}(userData)
       });
     }, msecs);
   },

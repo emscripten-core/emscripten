@@ -829,7 +829,7 @@ function emitDCEGraph(ast) {
   // must find the info we need
   assert(
     foundWasmImportsAssign,
-    'could not find the assigment to "wasmImports". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)'
+    'could not find the assigment to "wasmImports". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)',
   );
   // Read exports that were declared in extraInfo
   if (extraInfo) {
@@ -1785,7 +1785,7 @@ function minifyGlobals(ast) {
     ast.type === 'Program' &&
       ast.body.length === 1 &&
       ast.body[0].type === 'FunctionDeclaration' &&
-      ast.body[0].id.name === 'instantiate'
+      ast.body[0].id.name === 'instantiate',
   );
   const fun = ast.body[0];
 
@@ -1890,7 +1890,7 @@ function reattachComments(ast, comments) {
       if (node.start && node.start.pos) {
         symbols.push(node);
       }
-    })
+    }),
   );
 
   // Sort them by ascending line number
@@ -1922,8 +1922,8 @@ function reattachComments(ast, comments) {
         false,
         undefined,
         undefined,
-        '0'
-      )
+        '0',
+      ),
     );
   }
 }

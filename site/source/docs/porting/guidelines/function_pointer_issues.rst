@@ -10,7 +10,7 @@ There are two main issues with function pointers:
 #.
   Function pointer casts can cause function pointer calls to fail.
 
-  Function pointers must be called with the correct type: it is undefined behavior in C and C++ to cast a function pointer to another type and call it that way. This does work in most native platforms, however, despite it being UB, but in asm.js and in wasm it can fail. In that case, you may see an ``abort(10)`` or some other number, and if assertions are on you may see a message with details that start with
+  Function pointers must be called with the correct type: it is undefined behavior in C and C++ to cast a function pointer to another type and call it that way. This does work in most native platforms, however, despite it being UB, but in Wasm it can fail. In that case, you may see an ``abort(10)`` or some other number, and if assertions are on you may see a message with details that start with
 
   ::
 

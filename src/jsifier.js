@@ -11,6 +11,8 @@
 
 global.addedLibraryItems = {};
 
+global.extraLibraryFuncs = [];
+
 // Some JS-implemented library functions are proxied to be called on the main
 // browser thread, if the Emscripten runtime is executing in a Web Worker.
 // Each such proxied function is identified via an ordinal number (this is not
@@ -104,6 +106,7 @@ function runJSify() {
   LibraryManager.load();
 
   const symbolsNeeded = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
+  symbolsNeeded.push(...extraLibraryFuncs);
   for (const sym of EXPORTED_RUNTIME_METHODS) {
     if ('$' + sym in LibraryManager.library) {
       symbolsNeeded.push('$' + sym);
@@ -428,11 +431,9 @@ function(${args}) {
       const original = LibraryManager.library[symbol];
       let snippet = original;
 
+      // Check for dependencies on `__internal` symbols from user libraries.
       const isUserSymbol = LibraryManager.library[symbol + '__user'];
       deps.forEach((dep) => {
-        if (typeof snippet == 'string' && !(dep in LibraryManager.library)) {
-          warn(`missing library dependency ${dep}, make sure you are compiling with the right options (see #if in src/library*.js)`);
-        }
         if (isUserSymbol && LibraryManager.library[dep + '__internal']) {
           warn(`user library symbol '${symbol}' depends on internal symbol '${dep}'`);
         }
@@ -653,7 +654,8 @@ var proxiedFunctionTable = [
   if (symbolsOnly) {
     print(JSON.stringify({
       deps: symbolDeps,
-      asyncFuncs
+      asyncFuncs,
+      extraLibraryFuncs,
     }));
   } else {
     finalCombiner();

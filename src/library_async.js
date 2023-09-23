@@ -660,5 +660,5 @@ addToLibrary({
 });
 
 if (ASYNCIFY) {
-  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$Asyncify');
+  extraLibraryFuncs.push('$Asyncify');
 }

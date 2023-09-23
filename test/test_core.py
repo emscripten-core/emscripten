@@ -10,7 +10,6 @@ import os
 import random
 import re
 import shutil
-import signal
 import sys
 import time
 import unittest
@@ -36,6 +35,9 @@ import clang_native
 # decorators for limiting which modes a test can run in
 
 logger = logging.getLogger("test_core")
+
+EM_SIGINT = 2
+EM_SIGABRT = 6
 
 
 def wasm_simd(f):
@@ -6184,14 +6186,15 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test(test_file('test_signals.c'))
 
   @parameterized({
-    'sigint': (signal.SIGINT, 128 + signal.SIGINT, True),
-    'sigabrt': (signal.SIGABRT, 7, False)
+    'sigint': (EM_SIGINT, 128 + EM_SIGINT, True),
+    'sigabrt': (EM_SIGABRT, 7, False)
   })
+  @crossplatform
   def test_sigaction_default(self, signal, exit_code, assert_identical):
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test(
       test_file('test_sigaction_default.c'),
-      args=[str(int(signal))],
+      args=[str(signal)],
       assert_identical=assert_identical,
       assert_returncode=exit_code
     )
@@ -7889,7 +7892,7 @@ void* operator new(size_t size) {
 
     # Export things on "TheModule". This matches the typical use pattern of the bound library
     # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
-    self.emcc_args += ['--post-js=glue.js', '--extern-post-js=extern-post.js']
+    self.emcc_args += ['-Wall', '--post-js=glue.js', '--extern-post-js=extern-post.js']
     if mode == 'ALL':
       self.emcc_args += ['-sASSERTIONS']
     if allow_memory_growth:
@@ -8200,26 +8203,6 @@ void* operator new(size_t size) {
     self.do_runf('exit.c', 'hello, world!\nI see exit status: 118', assert_returncode=118, emcc_args=['-DUNDER_EXIT'])
     print('.. _Exit')
     self.do_runf('exit.c', 'hello, world!\nI see exit status: 118', assert_returncode=118, emcc_args=['-DCAPITAL_EXIT'])
-
-  def test_noexitruntime(self):
-    src = r'''
-      #include <emscripten.h>
-      #include <stdio.h>
-      static int testPre = TEST_PRE;
-      struct Global {
-        Global() {
-          printf("in Global()\n");
-          if (testPre) { EM_ASM(noExitRuntime = true;); }
-        }
-        ~Global() { printf("ERROR: in ~Global()\n"); }
-      } global;
-      int main() {
-        if (!testPre) { EM_ASM(noExitRuntime = true;); }
-        printf("in main()\n");
-      }
-    '''
-    self.do_run(src.replace('TEST_PRE', '0'), 'in Global()\nin main()')
-    self.do_run(src.replace('TEST_PRE', '1'), 'in Global()\nin main()')
 
   def test_minmax(self):
     self.do_runf(test_file('test_minmax.c'), 'NAN != NAN\nSuccess!')
@@ -9797,6 +9780,19 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['--js-library', test_file('core/test_externref.js')]
     self.emcc_args += ['-mreference-types']
     self.do_core_test('test_externref.c', libraries=['asm.o'])
+
+  @parameterized({
+    '': [False],
+    'dynlink': [True]
+  })
+  @requires_node
+  @no_wasm2js('wasm2js does not support reference types')
+  def test_externref_emjs(self, dynlink):
+    self.emcc_args += ['-mreference-types']
+    self.node_args += shared.node_reference_types_flags()
+    if dynlink:
+      self.set_setting('MAIN_MODULE', 2)
+    self.do_core_test('test_externref_emjs.c')
 
   def test_syscall_intercept(self):
     self.do_core_test('test_syscall_intercept.c')
