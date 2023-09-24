@@ -1031,6 +1031,7 @@ var LibraryGLFW = {
           depth: (GLFW.hints[0x00021005] > 0),     // GLFW_DEPTH_BITS
           stencil: (GLFW.hints[0x00021006] > 0),   // GLFW_STENCIL_BITS
           alpha: (GLFW.hints[0x00021004] > 0),      // GLFW_ALPHA_BITS
+          explicitSwapControl: true
         }
 #if OFFSCREEN_FRAMEBUFFER
         // TODO: Make GLFW explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
@@ -1038,15 +1039,13 @@ var LibraryGLFW = {
 #endif
 
         if (Module.ctx === undefined)
-          Module.ctx = _emscripten_webgl_do_create_context(stringToNewUTF8('#canvas'), contextAttributes);
-
+          Module.ctx = GL.createContext(Module.canvas, contextAttributes);
 
         if (id <= 1) {
           GLFW.canvases = {};
           GLFW.contexts = {};
           GLFW.canvases.canvas0 = Module.canvas;
           GLFW.contexts.ctx0 = Module.ctx;
-          _emscripten_webgl_make_context_current(GLFW.contexts.ctx0);
         } else {
           var canvasElement = document.getElementById(canvasID);
           if (!canvasElement) {
@@ -1060,8 +1059,7 @@ var LibraryGLFW = {
           }
 
           GLFW.canvases[canvasID] = canvasElement;
-          GLFW.contexts[ctxID] = _emscripten_webgl_do_create_context(stringToNewUTF8('#' + canvasID), contextAttributes);
-          _emscripten_webgl_make_context_current(GLFW.contexts[ctxID]);
+          GLFW.contexts[ctxID] = GL.createContext(canvasElement, contextAttributes);
         }
       } else {
         Browser.init();
