@@ -620,6 +620,7 @@ def type_to_sig(type):
     webassembly.Type.I64: 'j',
     webassembly.Type.F32: 'f',
     webassembly.Type.F64: 'd',
+    webassembly.Type.EXTERNREF: 'e',
     webassembly.Type.VOID: 'v'
   }[type]
 
@@ -892,6 +893,7 @@ def create_pointer_conversion_wrappers(metadata):
     'stackAlloc': 'pp',
     'emscripten_builtin_malloc': 'pp',
     'malloc': 'pp',
+    'memalign': 'ppp',
     '__getTypeName': 'pp',
     'setThrew': '_p',
     'free': '_p',

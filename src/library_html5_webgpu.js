@@ -90,4 +90,10 @@ var LibraryHTML5WebGPU = {
 {{{ html5_gpu.makeImportExport('render_bundle_encoder', 'RenderBundleEncoder') }}}
 {{{ html5_gpu.makeImportExport('render_bundle', 'RenderBundle') }}}
 
+for (const key of Object.keys(LibraryHTML5WebGPU)) {
+  if (typeof LibraryHTML5WebGPU[key] === 'function' && !(key + '__proxy' in LibraryHTML5WebGPU)) {
+    LibraryHTML5WebGPU[key + '__proxy'] = 'sync';
+  }
+}
+
 addToLibrary(LibraryHTML5WebGPU);

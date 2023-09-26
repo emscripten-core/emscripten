@@ -73,7 +73,7 @@ addToLibrary({
       assert(!implicit);
 #endif
 #if PTHREADS_DEBUG
-      dbg(`Pthread ${ptrToString(_pthread_self())} called exit(), posting exitOnMainThread.`);
+      dbg(`Pthread ${ptrToString(_pthread_self())} called exit(${status}), posting exitOnMainThread.`);
 #endif
       // When running in a pthread we propagate the exit back to the main thread
       // where it can decide if the whole process should be shut down or not.
@@ -83,7 +83,7 @@ addToLibrary({
       throw 'unwind';
     }
 #if PTHREADS_DEBUG
-    err(`main thread called exit: keepRuntimeAlive=${keepRuntimeAlive()} (counter=${runtimeKeepaliveCounter})`);
+    err(`main thread called exit(${status}): keepRuntimeAlive=${keepRuntimeAlive()} (counter=${runtimeKeepaliveCounter})`);
 #endif // PTHREADS_DEBUG
 #endif // PTHREADS
 
@@ -1813,9 +1813,7 @@ addToLibrary({
 
   gethostbyname__deps: ['$getHostByName'],
   gethostbyname__proxy: 'sync',
-  gethostbyname: (name) => {
-    return getHostByName(UTF8ToString(name));
-  },
+  gethostbyname: (name) => getHostByName(UTF8ToString(name)),
 
   $getHostByName__deps: ['malloc', '$stringToNewUTF8', '$DNS', '$inetPton4'],
   $getHostByName: (name) => {
@@ -3646,7 +3644,7 @@ function autoAddDeps(object, name) {
 #if LEGACY_RUNTIME
 // Library functions that were previously included as runtime functions are
 // automatically included when `LEGACY_RUNTIME` is set.
-DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
+extraLibraryFuncs.push(
   '$addFunction',
   '$removeFunction',
   '$allocate',
