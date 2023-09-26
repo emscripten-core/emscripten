@@ -1071,7 +1071,15 @@ var LibraryPThread = {
 #endif
   },
 
-  $invokeEntryPoint__deps: ['_emscripten_thread_exit'],
+  $invokeEntryPoint__deps: [
+    '_emscripten_thread_exit',
+#if !MINIMAL_RUNTIME
+    '$keepRuntimeAlive',
+#endif
+#if EXIT_RUNTIME && !MINIMAL_RUNTIME
+    '$runtimeKeepaliveCounter',
+#endif
+  ],
   $invokeEntryPoint: (ptr, arg) => {
 #if PTHREADS_DEBUG
     dbg(`invokeEntryPoint: ${ptrToString(ptr)}`);
