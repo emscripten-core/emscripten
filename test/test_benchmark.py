@@ -508,6 +508,58 @@ class benchmark(common.RunnerCore):
     assert main_pattern in code
     code = code.replace(main_pattern, 'int benchmark_main(int argc, char **argv)')
     code += '''
+
+#if __wasm__
+int printf(const char* fmt, ...)
+{
+  int ret = 0;
+  va_list ap;
+  va_start(ap, fmt);
+
+  while (char c = *fmt++) {
+    if (c == '%') {
+      c = *fmt++;
+      switch (c) {
+        case 'd': {
+          int arg = va_arg(ap, int);
+          if (arg < 0) {
+            putchar('-');
+            ret++;
+            arg = -arg;
+          }
+          int digits = 1;
+          int max = 10;
+          while (arg >= max) {
+            digits++;
+            max *= 10;
+          }
+          while (digits) {
+            max /= 10;
+            int curr = arg / max;
+            putchar('0' + curr);
+            ret++;
+            digits--;
+            arg -= curr * max;
+          }
+          break;
+        }
+        default: {
+          puts("unsupported printf");
+          abort();
+        }
+      }
+    } else {
+      putchar(c);
+      ret++;
+    }
+  }
+
+  va_end(ap);
+  return ret;
+}
+#endif
+
+
       __attribute__((used)) int main()  __attribute__((export_name("main"))) {
       //int main() {
         int newArgc = 2;
