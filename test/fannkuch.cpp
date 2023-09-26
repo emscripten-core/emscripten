@@ -17,6 +17,56 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#if 1
+int printf(const char* fmt, ...)
+{
+  int ret = 0;
+  va_list ap;
+  va_start(ap, fmt);
+
+  while (char c = *fmt++) {
+    if (c == '%') {
+      c = *fmt++;
+      switch (c) {
+        case 'd': {
+          int arg = va_arg(ap, int);
+          if (arg < 0) {
+            putchar('-');
+            ret++;
+            arg = -arg;
+          }
+          int digits = 1;
+          int max = 10;
+          while (arg >= max) {
+            digits++;
+            max *= 10;
+          }
+          while (digits) {
+            max /= 10;
+            int curr = arg / max;
+            putchar('0' + curr);
+            ret++;
+            digits--;
+            arg -= curr * max;
+          }
+          break;
+        }
+        default: {
+          puts("unsupported printf");
+          abort();
+        }
+      }
+    } else {
+      putchar(c);
+      ret++;
+    }
+  }
+
+  va_end(ap);
+  return ret;
+}
+#endif
+
 struct worker_args {
    int i, n;
    struct worker_args *next;
