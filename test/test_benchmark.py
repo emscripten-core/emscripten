@@ -278,8 +278,8 @@ class AndroidBenchmarker(Benchmarker):
       f'-I{WASM_PLATFORM_SPECIFIC_INCLUDE_PATH}',
       '-fno-math-errno',
       '-Wl,--emit-relocs',
-      '-Wl,--entry=main',
-      #'-Wl,--no-entry',
+      #'-Wl,--entry=main',
+      '-Wl,--no-entry',
       '-mno-bulk-memory',
       f'-Wl,--allow-undefined-file={WASM_LIBRARY_PATH}/libc.txt',
       '-static-libstdc++',
@@ -508,7 +508,8 @@ class benchmark(common.RunnerCore):
     assert main_pattern in code
     code = code.replace(main_pattern, 'int benchmark_main(int argc, char **argv)')
     code += '''
-      int main() {
+      __attribute__((used)) int main()  __attribute__((export_name("main"))) {
+      //int main() {
         int newArgc = 2;
         char* newArgv[] = { (char*)"./program.exe", (char*)"%s" };
         int ret = benchmark_main(newArgc, newArgv);
