@@ -304,7 +304,7 @@ class AndroidBenchmarker(Benchmarker):
         'LD': cc,
         'NM': 'llvm-nm',
         'LDSHARED': cc,
-        'CFLAGS': shlex.split(android_args),
+        'CFLAGS': shlex.join(android_args),
         'CXXFLAGS': android_cxx_args,
       })
 
