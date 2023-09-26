@@ -285,6 +285,7 @@ class AndroidBenchmarker(Benchmarker):
       '-static-libstdc++',
       '-Wl,--strip-debug',
       '-D__wasi__',
+      '-Wno-incompatible-library-redeclaration',
     ]
 
     android_cxx_args = [
