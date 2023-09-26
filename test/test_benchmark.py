@@ -517,7 +517,7 @@ int printf(const char* fmt, ...)
   va_start(ap, fmt);
 
   char c;
-  while (c = *fmt++) {
+  while ((c = *fmt++)) {
     if (c == '%%') {
       c = *fmt++;
       switch (c) {
