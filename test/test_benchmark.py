@@ -285,7 +285,6 @@ class AndroidBenchmarker(Benchmarker):
       '-static-libstdc++',
       '-Wl,--strip-debug',
       '-D__wasi__',
-      '-Wno-incompatible-library-redeclaration',
     ]
 
     android_cxx_args = [
@@ -338,7 +337,10 @@ class AndroidBenchmarker(Benchmarker):
 
     # Compile C to native
     native = c + '.native'
-    cmd = ['clang', OPTIMIZATIONS, c, '-o', native, f'-I{WABT}/wasm2c']
+    cmd = [
+      'clang', OPTIMIZATIONS, c, '-o', native, f'-I{WABT}/wasm2c',
+      '-Wno-incompatible-library-redeclaration',
+    ]
     print('compile c to native: ' + shlex.join(cmd))
     run_process(cmd, env=clang_native.get_clang_native_env())
 
