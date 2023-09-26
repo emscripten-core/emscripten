@@ -305,7 +305,7 @@ class AndroidBenchmarker(Benchmarker):
         'NM': 'llvm-nm',
         'LDSHARED': cc,
         'CFLAGS': shlex.join(android_args),
-        'CXXFLAGS': android_cxx_args,
+        'CXXFLAGS': shlex.join(android_cxx_args),
       })
 
     # Compile source to wasm
