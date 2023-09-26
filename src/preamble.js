@@ -196,12 +196,6 @@ var runtimeInitialized = false;
 var runtimeExited = false;
 #endif
 
-var runtimeKeepaliveCounter = 0;
-
-function keepRuntimeAlive() {
-  return noExitRuntime || runtimeKeepaliveCounter > 0;
-}
-
 function preRun() {
 #if ASSERTIONS && PTHREADS
   assert(!ENVIRONMENT_IS_PTHREAD); // PThreads reuse the runtime from the main thread.
