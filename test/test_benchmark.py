@@ -507,7 +507,7 @@ class benchmark(common.RunnerCore):
     main_pattern = 'int main(int argc, char **argv)'
     assert main_pattern in code
     code = code.replace(main_pattern, 'int benchmark_main(int argc, char **argv)')
-    code += '''
+    code += r'''
 
 #if __wasm__
 int printf(const char* fmt, ...)
