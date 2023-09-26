@@ -435,7 +435,7 @@ if not common.EMTEST_FORCE64:
     # NativeBenchmarker('gcc',   ['gcc', '-no-pie'],  ['g++', '-no-pie'])
   ]
 
-if config.V8_ENGINE and config.V8_ENGINE in config.JS_ENGINES:
+if 0 and config.V8_ENGINE and config.V8_ENGINE in config.JS_ENGINES:
   # avoid the baseline compiler running, because it adds a lot of noise
   # (the nondeterministic time it takes to get to the full compiler ends up
   # mattering as much as the actual benchmark)
@@ -466,7 +466,7 @@ if config.SPIDERMONKEY_ENGINE and config.SPIDERMONKEY_ENGINE in config.JS_ENGINE
       # CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE),
     ]
 
-if config.NODE_JS and config.NODE_JS in config.JS_ENGINES:
+if 0 and config.NODE_JS and config.NODE_JS in config.JS_ENGINES:
   if common.EMTEST_FORCE64:
     benchmarkers += [
       EmscriptenBenchmarker('Node.js', config.NODE_JS, ['-sMEMORY64=2']),
