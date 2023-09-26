@@ -507,7 +507,7 @@ class benchmark(common.RunnerCore):
     main_pattern = 'int main(int argc, char **argv)'
     assert main_pattern in code
     code = code.replace(main_pattern, 'int benchmark_main(int argc, char **argv)')
-    code += r'''
+    code += '''
 
 #if __wasm__
 int printf(const char* fmt, ...)
@@ -517,7 +517,7 @@ int printf(const char* fmt, ...)
   va_start(ap, fmt);
 
   while (char c = *fmt++) {
-    if (c == '%') {
+    if (c == '%%') {
       c = *fmt++;
       switch (c) {
         case 'd': {
