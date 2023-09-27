@@ -6192,6 +6192,8 @@ Module.onRuntimeInitialized = () => {
   @crossplatform
   def test_sigaction_default(self, signal, exit_code, assert_identical):
     self.set_setting('EXIT_RUNTIME')
+    # TODO: re-enable assertions when https://github.com/emscripten-core/emscripten/issues/20315 is fixed.
+    self.set_setting('ASSERTIONS', 0)
     self.do_core_test(
       test_file('test_sigaction_default.c'),
       args=[str(signal)],
