@@ -13308,6 +13308,26 @@ j1: 8589934599, j2: 30064771074, j3: 12884901891
     ''')
     self.do_runf('f2.c', emcc_args=['f1.c'])
 
+  def test_em_js_deps_cpp(self):
+    # Check that EM_JS_DEPS is not mangled in C++.
+    create_file('test_em_js_deps.cpp', '''
+    #include <emscripten.h>
+
+    namespace {
+      EM_JS_DEPS(test, "$stringToUTF8OnStack");
+      EM_JS(void, test, (), {
+        var x = stackSave();
+        stringToUTF8OnStack("hello");
+        stackRestore(x);
+      });
+    }
+
+    int main() {
+      test();
+    }
+    ''')
+    self.do_runf('test_em_js_deps.cpp')
+
   @no_mac('https://github.com/emscripten-core/emscripten/issues/18175')
   @crossplatform
   def test_stack_overflow(self):
