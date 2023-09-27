@@ -397,7 +397,7 @@ public:
 
   val(val&& v) : handle_(v.handle_)
 #if !defined(NDEBUG) && defined(_REENTRANT)
-      , thread(pthread_self())
+      , thread(v.thread)
 #endif
   {
     v.handle_ = 0;
@@ -405,7 +405,7 @@ public:
 
   val(const val& v) : handle_(v.handle_)
 #if !defined(NDEBUG) && defined(_REENTRANT)
-      , thread(pthread_self())
+      , thread(v.thread)
 #endif
   {
     internal::_emval_incref(handle_);
