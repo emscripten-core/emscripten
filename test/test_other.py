@@ -3903,6 +3903,23 @@ addToLibrary({
     ''')
     self.do_runf('src.c', 'main\ndone\n', emcc_args=['-sEXIT_RUNTIME', '-pthread', '-sPROXY_TO_PTHREAD', '--js-library', 'lib.js'])
 
+  def test_js_lib_method_syntax(self):
+    create_file('lib.js', r'''
+addToLibrary({
+  foo() {
+    out('foo');
+  },
+});
+''')
+    create_file('src.c', r'''
+    #include <stdio.h>
+    void foo();
+    int main() {
+      foo();
+    }
+    ''')
+    self.do_runf('src.c', 'foo', emcc_args=['--js-library', 'lib.js'])
+
   def test_js_lib_exported(self):
     create_file('lib.js', r'''
 addToLibrary({

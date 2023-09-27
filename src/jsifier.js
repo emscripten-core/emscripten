@@ -204,6 +204,12 @@ ${argConvertions}
     // uniform.
     snippet = snippet.toString().replace(/\r\n/gm, '\n');
 
+    // Is this a shorthand `foo() {}` method syntax?
+    // If so, prepend a function keyword so that it's valid syntax when extracted.
+    if (snippet.startsWith(symbol)) {
+      snippet = 'function ' + snippet;
+    }
+
     if (isStub) {
       return snippet;
     }
