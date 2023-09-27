@@ -395,25 +395,17 @@ public:
       : val(internal::_emval_new_cstring(v))
   {}
 
-  val(val&& v) : handle_(v.handle_)
-#if !defined(NDEBUG) && defined(_REENTRANT)
-      , thread(v.thread)
-#endif
-  {
+  val(val&& v) : val(v.as_handle()) {
     v.handle_ = 0;
   }
 
-  val(const val& v) : handle_(v.handle_)
-#if !defined(NDEBUG) && defined(_REENTRANT)
-      , thread(v.thread)
-#endif
-  {
+  val(const val& v) : val(v.as_handle()) {
     internal::_emval_incref(handle_);
   }
 
   ~val() {
-    if (handle_) {
-      internal::_emval_decref(handle_);
+    if (EM_VAL handle = as_handle()) {
+      internal::_emval_decref(handle);
       handle_ = 0;
     }
   }
