@@ -2943,7 +2943,9 @@ int f() {
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'] + extra_args)
     # Test these args separately since they conflict with arguments in the first test.
     extra_args = ['-sMODULARIZE',
-                  '--embed-file', 'fail.js']
+                  '--embed-file', 'fail.js',
+                  '-sMINIMAL_RUNTIME=2',
+                  '-sEXPORT_ES6=1']
     self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'] + extra_args)
 
