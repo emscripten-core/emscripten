@@ -396,7 +396,7 @@ public:
   {}
 
   val(val&& v) : handle_(v.handle_)
-#if defined(DEBUG) && defined(_REENTRANT)
+#if !defined(NDEBUG) && defined(_REENTRANT)
       , thread(pthread_self())
 #endif
   {
@@ -404,7 +404,7 @@ public:
   }
 
   val(const val& v) : handle_(v.handle_)
-#if defined(DEBUG) && defined(_REENTRANT)
+#if !defined(NDEBUG) && defined(_REENTRANT)
       , thread(pthread_self())
 #endif
   {
@@ -419,7 +419,7 @@ public:
   }
 
   EM_VAL as_handle() const {
-#if defined(DEBUG) && defined(_REENTRANT)
+#if !defined(NDEBUG) && defined(_REENTRANT)
     assert(pthread_equal(thread, pthread_self()) && "val accessed from wrong thread");
 #endif
     return handle_;
@@ -604,7 +604,7 @@ private:
   // takes ownership, assumes handle already incref'd and lives on the same thread
   explicit val(EM_VAL handle)
       : handle_(handle)
-#if defined(DEBUG) && defined(_REENTRANT)
+#if !defined(NDEBUG) && defined(_REENTRANT)
       , thread(pthread_self())
 #endif
   {}
@@ -630,7 +630,7 @@ private:
     return v;
   }
 
-#if defined(DEBUG) && defined(_REENTRANT)
+#if !defined(NDEBUG) && defined(_REENTRANT)
   pthread_t thread;
 #endif
   EM_VAL handle_;
