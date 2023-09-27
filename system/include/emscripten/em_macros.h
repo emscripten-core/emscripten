@@ -49,6 +49,5 @@
   EMSCRIPTEN_KEEPALIVE                    \
   __attribute__((section("em_lib_deps"))) \
   __attribute__((aligned(1)))             \
-  _EM_CDECL                               \
   char __em_lib_deps_##tag[] = deps;      \
   _EM_JS_CPP_END
