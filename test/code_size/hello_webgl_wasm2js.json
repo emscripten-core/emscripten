@@ -1,10 +1,10 @@
 {
   "a.html": 567,
   "a.html.gz": 379,
-  "a.js": 17450,
-  "a.js.gz": 7869,
+  "a.js": 17430,
+  "a.js.gz": 7872,
   "a.mem": 3171,
   "a.mem.gz": 2713,
-  "total": 21188,
-  "total_gz": 10961
+  "total": 21168,
+  "total_gz": 10964
 }
