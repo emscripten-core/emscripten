@@ -3903,6 +3903,23 @@ addToLibrary({
     ''')
     self.do_runf('src.c', 'main\ndone\n', emcc_args=['-sEXIT_RUNTIME', '-pthread', '-sPROXY_TO_PTHREAD', '--js-library', 'lib.js'])
 
+  def test_js_lib_method_syntax(self):
+    create_file('lib.js', r'''
+addToLibrary({
+  foo() {
+    out('foo');
+  },
+});
+''')
+    create_file('src.c', r'''
+    #include <stdio.h>
+    void foo();
+    int main() {
+      foo();
+    }
+    ''')
+    self.do_runf('src.c', 'foo', emcc_args=['--js-library', 'lib.js'])
+
   def test_js_lib_exported(self):
     create_file('lib.js', r'''
 addToLibrary({
@@ -13307,6 +13324,26 @@ j1: 8589934599, j2: 30064771074, j3: 12884901891
     }
     ''')
     self.do_runf('f2.c', emcc_args=['f1.c'])
+
+  def test_em_js_deps_anon_ns(self):
+    # Check that EM_JS_DEPS is not eliminated in
+    # an anonymous C++ namespace.
+    create_file('test_em_js_deps.cpp', '''
+    #include <emscripten.h>
+
+    namespace {
+      EM_JS_DEPS(test, "$stringToUTF8OnStack");
+    }
+
+    int main() {
+      EM_ASM({
+        var x = stackSave();
+        stringToUTF8OnStack("hello");
+        stackRestore(x);
+      });
+    }
+    ''')
+    self.do_runf('test_em_js_deps.cpp')
 
   @no_mac('https://github.com/emscripten-core/emscripten/issues/18175')
   @crossplatform
