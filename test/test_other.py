@@ -3903,7 +3903,7 @@ addToLibrary({
     ''')
     self.do_runf('src.c', 'main\ndone\n', emcc_args=['-sEXIT_RUNTIME', '-pthread', '-sPROXY_TO_PTHREAD', '--js-library', 'lib.js'])
 
-  def test_js_lib_shorthand(self):
+  def test_js_lib_method_syntax(self):
     create_file('lib.js', r'''
 addToLibrary({
   foo() {
