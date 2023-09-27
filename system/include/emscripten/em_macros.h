@@ -15,6 +15,12 @@
 #define EM_IMPORT(NAME)
 #endif
 
+#ifdef __cplusplus
+#define _EM_CDECL extern "C"
+#else
+#define _EM_CDECL
+#endif
+
 /*
  * EM_JS_DEPS: Use this macro to declare indirect dependencies on JS symbols.
  * The first argument is just unique name for the set of dependencies.  The
@@ -40,4 +46,5 @@
   EMSCRIPTEN_KEEPALIVE                    \
   __attribute__((section("em_lib_deps"))) \
   __attribute__((aligned(1)))             \
+  _EM_CDECL                               \
   char __em_lib_deps_##tag[] = deps;

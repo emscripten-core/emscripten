@@ -29,6 +29,8 @@ See docs/process.md for more on how version tagging works.
   validated at build time. (#20258)
 - `MAIN_THREAD_EM_ASM_PTR` macro added for code that returns a pointer.  This
   mirrors the existing `EM_ASM_PTR`. (#20261)
+- Emscripten now implements default POSIX signal handlers. These can
+  terminate or abort the program in response to `raise` cals. (#20257)
 
 3.1.46 - 09/15/23
 -----------------
