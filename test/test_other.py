@@ -13308,8 +13308,9 @@ j1: 8589934599, j2: 30064771074, j3: 12884901891
     ''')
     self.do_runf('f2.c', emcc_args=['f1.c'])
 
-  def test_em_js_deps_cpp(self):
-    # Check that EM_JS_DEPS is not mangled in C++.
+  def test_em_js_deps_anon_ns(self):
+    # Check that EM_JS_DEPS is not eliminated in
+    # an anonymous C++ namespace.
     create_file('test_em_js_deps.cpp', '''
     #include <emscripten.h>
 
