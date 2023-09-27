@@ -385,47 +385,55 @@ public:
   explicit val(T&& value) {
     using namespace internal;
 
-    typedef internal::BindingType<T> BT;
     WireTypePack<T> argv(std::forward<T>(value));
-    handle = _emval_take_value(internal::TypeID<T>::get(), argv);
+    new (this) val(_emval_take_value(internal::TypeID<T>::get(), argv));
   }
 
-  val() : handle(EM_VAL(internal::_EMVAL_UNDEFINED)) {}
+  val() : val(EM_VAL(internal::_EMVAL_UNDEFINED)) {}
 
   explicit val(const char* v)
-      : handle(internal::_emval_new_cstring(v))
+      : val(internal::_emval_new_cstring(v))
   {}
 
-  val(val&& v) : handle(v.handle) {
-    v.handle = 0;
+  val(val&& v) : handle_(v.handle_)
+#if defined(DEBUG) && defined(_REENTRANT)
+      , thread(pthread_self())
+#endif
+  {
+    v.handle_ = 0;
   }
 
-  val(const val& v) : handle(v.handle) {
-    internal::_emval_incref(handle);
+  val(const val& v) : handle_(v.handle_)
+#if defined(DEBUG) && defined(_REENTRANT)
+      , thread(pthread_self())
+#endif
+  {
+    internal::_emval_incref(handle_);
   }
 
   ~val() {
-    internal::_emval_decref(handle);
+    if (handle_) {
+      internal::_emval_decref(handle_);
+      handle_ = 0;
+    }
   }
 
   EM_VAL as_handle() const {
-    return handle;
+#if defined(DEBUG) && defined(_REENTRANT)
+    assert(pthread_equal(thread, pthread_self()) && "val accessed from wrong thread");
+#endif
+    return handle_;
   }
 
   val& operator=(val&& v) & {
-    auto v_handle = v.handle;
-    v.handle = 0;
-    if (handle) {
-      internal::_emval_decref(handle);
-    }
-    handle = v_handle;
+    this->~val();
+    new (this) val(std::move(v));
     return *this;
   }
 
   val& operator=(const val& v) & {
-    internal::_emval_incref(v.handle);
-    internal::_emval_decref(handle);
-    handle = v.handle;
+    this->~val();
+    new (this) val(v);
     return *this;
   }
 
@@ -434,27 +442,27 @@ public:
   }
 
   bool isNull() const {
-    return handle == EM_VAL(internal::_EMVAL_NULL);
+    return as_handle() == EM_VAL(internal::_EMVAL_NULL);
   }
 
   bool isUndefined() const {
-    return handle == EM_VAL(internal::_EMVAL_UNDEFINED);
+    return as_handle() == EM_VAL(internal::_EMVAL_UNDEFINED);
   }
 
   bool isTrue() const {
-    return handle == EM_VAL(internal::_EMVAL_TRUE);
+    return as_handle() == EM_VAL(internal::_EMVAL_TRUE);
   }
 
   bool isFalse() const {
-    return handle == EM_VAL(internal::_EMVAL_FALSE);
+    return as_handle() == EM_VAL(internal::_EMVAL_FALSE);
   }
 
   bool isNumber() const {
-    return internal::_emval_is_number(handle);
+    return internal::_emval_is_number(as_handle());
   }
 
   bool isString() const {
-    return internal::_emval_is_string(handle);
+    return internal::_emval_is_string(as_handle());
   }
 
   bool isArray() const {
@@ -462,11 +470,11 @@ public:
   }
 
   bool equals(const val& v) const {
-    return internal::_emval_equals(handle, v.handle);
+    return internal::_emval_equals(as_handle(), v.as_handle());
   }
 
   bool operator==(const val& v) const {
-    return internal::_emval_equals(handle, v.handle);
+    return internal::_emval_equals(as_handle(), v.as_handle());
   }
 
   bool operator!=(const val& v) const {
@@ -474,11 +482,11 @@ public:
   }
 
   bool strictlyEquals(const val& v) const {
-    return internal::_emval_strictly_equals(handle, v.handle);
+    return internal::_emval_strictly_equals(as_handle(), v.as_handle());
   }
 
   bool operator>(const val& v) const {
-    return internal::_emval_greater_than(handle, v.handle);
+    return internal::_emval_greater_than(as_handle(), v.as_handle());
   }
 
   bool operator>=(const val& v) const {
@@ -486,7 +494,7 @@ public:
   }
 
   bool operator<(const val& v) const {
-    return internal::_emval_less_than(handle, v.handle);
+    return internal::_emval_less_than(as_handle(), v.as_handle());
   }
 
   bool operator<=(const val& v) const {
@@ -494,7 +502,7 @@ public:
   }
 
   bool operator!() const {
-    return internal::_emval_not(handle);
+    return internal::_emval_not(as_handle());
   }
 
   template<typename... Args>
@@ -504,17 +512,17 @@ public:
 
   template<typename T>
   val operator[](const T& key) const {
-    return val(internal::_emval_get_property(handle, val_ref(key).handle));
+    return val(internal::_emval_get_property(as_handle(), val_ref(key).as_handle()));
   }
 
   template<typename K, typename V>
   void set(const K& key, const V& value) {
-    internal::_emval_set_property(handle, val_ref(key).handle, val_ref(value).handle);
+    internal::_emval_set_property(as_handle(), val_ref(key).as_handle(), val_ref(value).as_handle());
   }
 
   template<typename T>
   bool delete_(const T& property) const {
-    return internal::_emval_delete(handle, val_ref(property).handle);
+    return internal::_emval_delete(as_handle(), val_ref(property).as_handle());
   }
 
   template<typename... Args>
@@ -526,7 +534,7 @@ public:
   ReturnValue call(const char* name, Args&&... args) const {
     using namespace internal;
 
-    return MethodCaller<ReturnValue, Args...>::call(handle, name, std::forward<Args>(args)...);
+    return MethodCaller<ReturnValue, Args...>::call(as_handle(), name, std::forward<Args>(args)...);
   }
 
   template<typename T, typename ...Policies>
@@ -538,7 +546,7 @@ public:
 
     EM_DESTRUCTORS destructors;
     EM_GENERIC_WIRE_TYPE result = _emval_as(
-        handle,
+        as_handle(),
         targetType.getTypes()[0],
         &destructors);
     DestructorsRunner dr(destructors);
@@ -552,7 +560,7 @@ public:
     typedef BindingType<int64_t> BT;
     typename WithPolicies<>::template ArgTypeList<int64_t> targetType;
 
-    return _emval_as_int64(handle, targetType.getTypes()[0]);
+    return _emval_as_int64(as_handle(), targetType.getTypes()[0]);
   }
 
   template<>
@@ -562,41 +570,44 @@ public:
     typedef BindingType<uint64_t> BT;
     typename WithPolicies<>::template ArgTypeList<uint64_t> targetType;
 
-    return  _emval_as_uint64(handle, targetType.getTypes()[0]);
+    return  _emval_as_uint64(as_handle(), targetType.getTypes()[0]);
   }
 
 // If code is not being compiled with GNU extensions enabled, typeof() is not a reserved keyword, so support that as a member function.
 #if __STRICT_ANSI__
   val typeof() const {
-    return val(internal::_emval_typeof(handle));
+    return val(internal::_emval_typeof(as_handle()));
   }
 #endif
 
 // Prefer calling val::typeOf() over val::typeof(), since this form works in both C++11 and GNU++11 build modes. "typeof" is a reserved word in GNU++11 extensions.
   val typeOf() const {
-    return val(internal::_emval_typeof(handle));
+    return val(internal::_emval_typeof(as_handle()));
   }
 
   bool instanceof(const val& v) const {
-    return internal::_emval_instanceof(handle, v.handle);
+    return internal::_emval_instanceof(as_handle(), v.as_handle());
   }
 
   bool in(const val& v) const {
-    return internal::_emval_in(handle, v.handle);
+    return internal::_emval_in(as_handle(), v.as_handle());
   }
 
   [[noreturn]] void throw_() const {
-    internal::_emval_throw(handle);
+    internal::_emval_throw(as_handle());
   }
 
   val await() const {
-    return val(internal::_emval_await(handle));
+    return val(internal::_emval_await(as_handle()));
   }
 
 private:
-  // takes ownership, assumes handle already incref'd
+  // takes ownership, assumes handle already incref'd and lives on the same thread
   explicit val(EM_VAL handle)
-      : handle(handle)
+      : handle_(handle)
+#if defined(DEBUG) && defined(_REENTRANT)
+      , thread(pthread_self())
+#endif
   {}
 
   template<typename WrapperType>
@@ -608,7 +619,7 @@ private:
 
     WithPolicies<>::ArgTypeList<Args...> argList;
     WireTypePack<Args...> argv(std::forward<Args>(args)...);
-    return val(impl(handle, argList.getCount(), argList.getTypes(), argv));
+    return val(impl(as_handle(), argList.getCount(), argList.getTypes(), argv));
   }
 
   template<typename T>
@@ -620,7 +631,10 @@ private:
     return v;
   }
 
-  EM_VAL handle;
+#if defined(DEBUG) && defined(_REENTRANT)
+  pthread_t thread;
+#endif
+  EM_VAL handle_;
 
   friend struct internal::BindingType<val>;
 };
@@ -631,8 +645,9 @@ template<>
 struct BindingType<val> {
   typedef EM_VAL WireType;
   static WireType toWireType(const val& v) {
-    _emval_incref(v.handle);
-    return v.handle;
+    EM_VAL handle = v.as_handle();
+    _emval_incref(handle);
+    return handle;
   }
   static val fromWireType(WireType v) {
     return val::take_ownership(v);
