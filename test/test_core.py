@@ -7780,6 +7780,7 @@ void* operator new(size_t size) {
       #include <emscripten.h>
       #include <emscripten/val.h>
       #include <thread>
+      #include <stdio.h>
 
       using emscripten::val;
 
@@ -7791,7 +7792,10 @@ void* operator new(size_t size) {
           value = val(1);
         }).join();
         // Try to access the stored handle from the main thread.
-        value.as<int>();
+        // Without the check (if compiled with -DNDEBUG) this will incorrectly
+        // print "0" instead of "1" since the handle with the same ID
+        // resolves to different values on different threads.
+        printf("%d\n", value.as<int>());
       }
     ''')
     self.do_runf('test_embind_val_cross_thread.cpp', 'val accessed from wrong thread', assert_returncode=NON_ZERO)
