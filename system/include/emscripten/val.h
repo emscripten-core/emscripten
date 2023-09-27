@@ -396,17 +396,17 @@ public:
   {}
 
   val(val&& v) : val(v.as_handle()) {
-    v.handle_ = 0;
+    v.handle = 0;
   }
 
   val(const val& v) : val(v.as_handle()) {
-    internal::_emval_incref(handle_);
+    internal::_emval_incref(handle);
   }
 
   ~val() {
     if (EM_VAL handle = as_handle()) {
       internal::_emval_decref(handle);
-      handle_ = 0;
+      handle = 0;
     }
   }
 
@@ -414,7 +414,7 @@ public:
 #if !defined(NDEBUG) && defined(_REENTRANT)
     assert(pthread_equal(thread, pthread_self()) && "val accessed from wrong thread");
 #endif
-    return handle_;
+    return handle;
   }
 
   val& operator=(val&& v) & {
@@ -595,7 +595,7 @@ public:
 private:
   // takes ownership, assumes handle already incref'd and lives on the same thread
   explicit val(EM_VAL handle)
-      : handle_(handle)
+      : handle(handle)
 #if !defined(NDEBUG) && defined(_REENTRANT)
       , thread(pthread_self())
 #endif
@@ -625,7 +625,7 @@ private:
 #if !defined(NDEBUG) && defined(_REENTRANT)
   pthread_t thread;
 #endif
-  EM_VAL handle_;
+  EM_VAL handle;
 
   friend struct internal::BindingType<val>;
 };
