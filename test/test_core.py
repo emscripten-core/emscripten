@@ -7776,6 +7776,7 @@ void* operator new(size_t size) {
 
   def test_embind_val_cross_thread(self):
     self.emcc_args += ['--bind', '-pthread']
+    self.setup_node_pthreads()
     create_file('test_embind_val_cross_thread.cpp', r'''
       #include <emscripten.h>
       #include <emscripten/val.h>
