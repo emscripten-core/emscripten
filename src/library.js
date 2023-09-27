@@ -3267,7 +3267,15 @@ addToLibrary({
     throw 'unwind';
   },
 
-  emscripten_force_exit__deps: ['exit',
+  _emscripten_runtime_keepalive_clear__proxy: 'sync',
+  _emscripten_runtime_keepalive_clear: () => {
+#if !MINIMAL_RUNTIME
+    noExitRuntime = false;
+    runtimeKeepaliveCounter = 0;
+#endif
+  },
+
+  emscripten_force_exit__deps: ['exit', '_emscripten_runtime_keepalive_clear',
 #if !EXIT_RUNTIME && ASSERTIONS
     '$warnOnce',
 #endif
@@ -3283,10 +3291,7 @@ addToLibrary({
 #if !EXIT_RUNTIME && ASSERTIONS
     warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set');
 #endif
-#if !MINIMAL_RUNTIME
-    noExitRuntime = false;
-    runtimeKeepaliveCounter = 0;
-#endif
+    __emscripten_runtime_keepalive_clear();
     _exit(status);
   },
 
