@@ -26,7 +26,7 @@ void action_abort(int sig) {
 
 void action_terminate(int sig) {
   // Prepare to forcibly shut down runtime even if it has async work in flight.
-  emscripten_prepare_force_exit();
+  _emscripten_runtime_keepalive_clear();
   // Intentionally exiting via a function that doesn't call atexit handlers.
   _Exit(128 + sig);
 }
