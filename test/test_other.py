@@ -13315,15 +13315,14 @@ j1: 8589934599, j2: 30064771074, j3: 12884901891
 
     namespace {
       EM_JS_DEPS(test, "$stringToUTF8OnStack");
-      EM_JS(void, test, (), {
+    }
+
+    int main() {
+      EM_ASM({
         var x = stackSave();
         stringToUTF8OnStack("hello");
         stackRestore(x);
       });
-    }
-
-    int main() {
-      test();
     }
     ''')
     self.do_runf('test_em_js_deps.cpp')
