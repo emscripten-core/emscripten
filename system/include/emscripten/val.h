@@ -426,15 +426,14 @@ public:
   }
 
   val& operator=(val&& v) & {
+    val tmp(std::move(v));
     this->~val();
-    new (this) val(std::move(v));
+    new (this) val(std::move(tmp));
     return *this;
   }
 
   val& operator=(const val& v) & {
-    this->~val();
-    new (this) val(v);
-    return *this;
+    return *this = val(v);
   }
 
   bool hasOwnProperty(const char* key) const {
