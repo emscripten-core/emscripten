@@ -23,7 +23,7 @@ EM_JS(void, js_side_func_void, (), {
 
 void test_side() {
   const int argc = 2;
-  const char* argv[] = { "4", "2" }
+  const char* argv[] = { "4", "2" };
   js_side_func_doubleasterisk(sizeof(char*), argc, (char**)argv);
   js_side_func(42, "hello");
   js_side_func2("hello again");
