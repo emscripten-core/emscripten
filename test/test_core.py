@@ -7774,8 +7774,9 @@ void* operator new(size_t size) {
     err = self.expect_fail([EMCC, test_file('embind/test_val_assignment.cpp'), '-lembind', '-c'])
     self.assertContained('candidate function not viable: expects an lvalue for object argument', err)
 
+  @node_pthreads
   def test_embind_val_cross_thread(self):
-    self.emcc_args += ['--bind', '-pthread']
+    self.emcc_args += ['--bind']
     self.setup_node_pthreads()
     create_file('test_embind_val_cross_thread.cpp', r'''
       #include <emscripten.h>
