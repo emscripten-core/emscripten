@@ -411,7 +411,7 @@ public:
   }
 
   EM_VAL as_handle() const {
-#if !defined(NDEBUG) && defined(_REENTRANT)
+#ifdef _REENTRANT
     assert(pthread_equal(thread, pthread_self()) && "val accessed from wrong thread");
 #endif
     return handle;
@@ -595,10 +595,7 @@ public:
 private:
   // takes ownership, assumes handle already incref'd and lives on the same thread
   explicit val(EM_VAL handle)
-      : handle(handle)
-#if !defined(NDEBUG) && defined(_REENTRANT)
-      , thread(pthread_self())
-#endif
+      : handle(handle), thread(pthread_self())
   {}
 
   template<typename WrapperType>
@@ -622,9 +619,7 @@ private:
     return v;
   }
 
-#if !defined(NDEBUG) && defined(_REENTRANT)
   pthread_t thread;
-#endif
   EM_VAL handle;
 
   friend struct internal::BindingType<val>;
