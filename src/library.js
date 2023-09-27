@@ -2394,6 +2394,37 @@ addToLibrary({
   _emscripten_get_now_is_monotonic__deps: ['$nowIsMonotonic'],
   _emscripten_get_now_is_monotonic: () => nowIsMonotonic,
 
+  __emscripten_atomics_sleep__internal: true,
+#if SHARED_MEMORY
+  // When SHARED_MEMORY is true, this isn't used, but we need it here to make
+  // gen_sig_info happy.
+  __emscripten_atomics_sleep: (ms) => {},
+#else
+  // In a browser without cross origin isolation, SharedArrayBuffer is deleted
+  // from the global scope:
+  // https://html.spec.whatwg.org/multipage/webappapis.html#creating-a-new-javascript-realm
+  // However, it says:
+  //
+  // > Web developers can still get at the constructor through
+  // > `new WebAssembly.Memory({ shared:true, initial:0, maximum:0}).buffer.constructor`.
+  //
+  // That is what we are up to here. Use an IIFE to avoid shadowing
+  // SharedArrayBuffer globally.
+  __emscripten_atomics_sleep__postset: `
+    var SABConstructor = new WebAssembly.Memory({"shared":true,"initial":0,"maximum":0}).buffer.constructor;
+    var waitBuffer = new Int32Array(new SABConstructor(4));
+    var _supports_atomics_wait;
+    try {
+      ___emscripten_atomics_sleep(0);
+      _supports_atomics_wait = true;
+    } catch (e) {
+      _supports_atomics_wait = false;
+    }
+  `,
+  __emscripten_atomics_sleep: (ms) => Atomics.wait(waitBuffer, 0, 0, ms),
+  _emscripten_thread_supports_atomics_wait: () => Module._supports_atomics_wait,
+#endif // !SHARED_MEMORY
+
   $warnOnce: (text) => {
     if (!warnOnce.shown) warnOnce.shown = {};
     if (!warnOnce.shown[text]) {

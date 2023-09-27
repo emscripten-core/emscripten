@@ -16,6 +16,7 @@
 #include <emscripten/stack.h>
 #include <emscripten/threading.h>
 #include <emscripten/emscripten.h>
+#include "threading_internal.h"
 
 int emscripten_has_threading_support() { return 0; }
 
@@ -389,13 +390,22 @@ void __acquire_ptc() {}
 
 void __release_ptc() {}
 
-// When pthreads is not enabled, we can't use the Atomics futex api to do
-// proper sleeps, so simulate a busy spin wait loop instead.
-void emscripten_thread_sleep(double msecs) {
+// busy spin wait sleep
+static void busy_sleep(double msecs) {
   double start = emscripten_get_now();
   double now = start;
   do {
     _emscripten_yield(now);
     now = emscripten_get_now();
   } while (now - start < msecs);
+}
+
+void __emscripten_atomics_sleep(double);
+
+void emscripten_thread_sleep(double msecs) {
+  if (_emscripten_thread_supports_atomics_wait()) {
+    __emscripten_atomics_sleep(msecs);
+  } else {
+    busy_sleep(msecs);
+  }
 }
