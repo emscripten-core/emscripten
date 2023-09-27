@@ -16,11 +16,11 @@
 #endif
 
 #ifdef __cplusplus
-#define _EM_JS_CPP_BEGIN extern "C" {
-#define _EM_JS_CPP_END   }
+#define _EM_BEGIN_CDECL extern "C" {
+#define _EM_END_CDECL   }
 #else // __cplusplus
-#define _EM_JS_CPP_BEGIN
-#define _EM_JS_CPP_END
+#define _EM_BEGIN_CDECL
+#define _EM_END_CDECL
 #endif // __cplusplus
 
 /*
@@ -45,9 +45,9 @@
  * to.
  */
 #define EM_JS_DEPS(tag, deps)             \
-  _EM_JS_CPP_BEGIN                        \
+  _EM_BEGIN_CDECL                         \
   EMSCRIPTEN_KEEPALIVE                    \
   __attribute__((section("em_lib_deps"))) \
   __attribute__((aligned(1)))             \
   char __em_lib_deps_##tag[] = deps;      \
-  _EM_JS_CPP_END
+  _EM_END_CDECL

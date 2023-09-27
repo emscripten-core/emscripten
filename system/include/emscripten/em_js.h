@@ -59,13 +59,13 @@
 // array of JS function strings to be included in the JS output.
 
 #define _EM_JS(ret, c_name, js_name, params, code)                             \
-  _EM_JS_CPP_BEGIN                                                             \
+  _EM_BEGIN_CDECL                                                              \
   ret c_name params EM_IMPORT(js_name);                                        \
   __attribute__((used)) static void* __em_js_ref_##c_name = (void*)&c_name;    \
   EMSCRIPTEN_KEEPALIVE                                                         \
   __attribute__((section("em_js"), aligned(1))) char __em_js__##js_name[] =    \
     #params "<::>" code;                                                       \
-  _EM_JS_CPP_END
+  _EM_END_CDECL
 
 #define EM_JS(ret, name, params, ...) _EM_JS(ret, name, name, params, #__VA_ARGS__)
 
