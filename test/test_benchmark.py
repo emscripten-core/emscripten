@@ -510,6 +510,9 @@ class benchmark(common.RunnerCore):
     code += '''
 
 #if __wasm__
+
+#include <stdarg.h>
+
 int printf(const char* fmt, ...)
 {
   int ret = 0;
