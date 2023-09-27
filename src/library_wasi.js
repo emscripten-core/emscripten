@@ -263,8 +263,11 @@ var WasiLibrary = {
   },
   fd_write__deps: ['$flush_NO_FILESYSTEM', '$printChar'],
   fd_write__postset: () => addAtExit('flush_NO_FILESYSTEM()'),
+  // Avoid proxying when we are not using the filesystem
+  fd_write__proxy: 'none',
 #else
   fd_write__deps: ['$printChar'],
+  fd_write__proxy: 'none',
 #endif
   fd_write: (fd, iov, iovcnt, pnum) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
@@ -305,6 +308,9 @@ var WasiLibrary = {
 #endif
   },
 
+#if !SYSCALLS_REQUIRE_FILESYSTEM
+  fd_close__sync: 'none',
+#endif
   fd_close: (fd) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);

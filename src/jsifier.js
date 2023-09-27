@@ -253,7 +253,8 @@ if (ENVIRONMENT_IS_PTHREAD)
 ${body}
 }\n`
           });
-        } else if (WASM_WORKERS && ASSERTIONS) {
+        }
+        if (WASM_WORKERS && ASSERTIONS) {
           // In ASSERTIONS builds add runtime checks that proxied functions are not attempted to be called in Wasm Workers
           // (since there is no automatic proxying architecture available)
           snippet = modifyJSFunction(snippet, (args, body) => `
