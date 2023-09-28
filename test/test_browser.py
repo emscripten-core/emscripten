@@ -1992,7 +1992,8 @@ keydown(100);keyup(100); // trigger the end
   @parameterized({
     '': ([],),
     'worker': (['--proxy-to-worker'],),
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD'],)
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+    'strict': (['-sSTRICT'],),
   })
   @requires_threads
   def test_emscripten_main_loop_setimmediate(self, args):
