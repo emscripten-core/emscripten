@@ -155,10 +155,6 @@ def ensure_target_in_ninja_file(ninja_file, target):
 def create_ninja_file(input_files, filename, libname, cflags, asflags=None, customize_build_flags=None):
   if asflags is None:
     asflags = []
-  # TODO(sbc) There is an llvm bug that causes a crash when `-g` is used with
-  # assembly files that define wasm globals.
-  asflags = [arg for arg in asflags if arg != '-g']
-  cflags_asm = [arg for arg in cflags if arg != '-g']
 
   def join(flags):
     return ' '.join(flags)
@@ -170,7 +166,6 @@ ninja_required_version = 1.5
 
 ASFLAGS = {join(asflags)}
 CFLAGS = {join(cflags)}
-CFLAGS_ASM = {join(cflags_asm)}
 EMCC = {shared.EMCC}
 EMXX = {shared.EMXX}
 EMAR = {shared.EMAR}
@@ -191,7 +186,7 @@ rule asm
 
 rule asm_cpp
   depfile = $out.d
-  command = $EMCC -MD -MF $out.d $CFLAGS_ASM -c $in -o $out
+  command = $EMCC -MD -MF $out.d $CFLAGS -c $in -o $out
   description = ASM $out
 
 rule direct_cc
@@ -234,7 +229,7 @@ rule archive
         flags = asflags
       elif ext == '.S':
         out += f'build {o}: asm_cpp {src}\n'
-        flags = cflags_asm
+        flags = cflags
       elif ext == '.c':
         out += f'build {o}: cc {src}\n'
         flags = cflags
@@ -508,10 +503,6 @@ class Library:
         cmd += get_base_cflags(preprocess=False)
       else:
         cmd += cflags
-      if ext in ('.s', '.S'):
-        # TODO(sbc) There is an llvm bug that causes a crash when `-g` is used with
-        # assembly files that define wasm globals.
-        cmd = [arg for arg in cmd if arg != '-g']
       cmd = self.customize_build_cmd(cmd, src)
       commands.append(cmd + ['-c', src, '-o', o])
       objects.append(o)
