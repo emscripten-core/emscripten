@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.47 (in development)
 -----------------------
+- The egl, html5, sdl and webgpu libraries now support basic functionality with
+  `-sMEMORY64`. (#20276)
 - Value types in `emscripten/html5.h` that correspond the WebIDL `long` type are
   now represented as `int` rather than `long` types so that they are 32-bit wide
   on both wasm32 and wasm64.  (#20290)
@@ -27,6 +29,8 @@ See docs/process.md for more on how version tagging works.
   validated at build time. (#20258)
 - `MAIN_THREAD_EM_ASM_PTR` macro added for code that returns a pointer.  This
   mirrors the existing `EM_ASM_PTR`. (#20261)
+- Emscripten now implements default POSIX signal handlers. These can
+  terminate or abort the program in response to `raise` cals. (#20257)
 
 3.1.46 - 09/15/23
 -----------------

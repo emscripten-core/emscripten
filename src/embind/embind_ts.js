@@ -602,6 +602,6 @@ var LibraryEmbind = {
   $runDestructors: () => assert(false, 'stub function should not be called'),
 };
 
-DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$embindEmitTypes');
+extraLibraryFuncs.push('$embindEmitTypes');
 
 addToLibrary(LibraryEmbind);

@@ -327,6 +327,7 @@ sigs = {
   _emscripten_push_main_loop_blocker__sig: 'vppp',
   _emscripten_push_uncounted_main_loop_blocker__sig: 'vppp',
   _emscripten_receive_on_main_thread_js__sig: 'dipip',
+  _emscripten_runtime_keepalive_clear__sig: 'v',
   _emscripten_set_offscreencanvas_size__sig: 'ipii',
   _emscripten_thread_exit_joinable__sig: 'vp',
   _emscripten_thread_mailbox_await__sig: 'vp',

@@ -2919,13 +2919,18 @@ int f() {
     self.do_runf(test_file('other/test_jspi_add_function.c'), 'done')
 
   def test_embind_tsgen(self):
+    # Check that TypeScript generation works and that the program is runs as
+    # expected.
+    self.do_runf(test_file('other/embind_tsgen.cpp'), 'main ran',
+                 emcc_args=['-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'])
+    actual = read_file('embind_tsgen.d.ts')
+    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), actual)
+
+  def test_embind_tsgen_ignore(self):
     create_file('fail.js', 'assert(false);')
     # These extra arguments are not related to TS binding generation but we want to
     # verify that they do not interfere with it.
-    extra_args = ['-o',
-                  'out.html',
-                  '-sMODULARIZE',
-                  '-sALLOW_MEMORY_GROWTH=1',
+    extra_args = ['-sALLOW_MEMORY_GROWTH=1',
                   '-sMAXIMUM_MEMORY=4GB',
                   '--pre-js', 'fail.js',
                   '--post-js', 'fail.js',
@@ -2933,14 +2938,16 @@ int f() {
                   '--extern-post-js', 'fail.js',
                   '-sENVIRONMENT=worker',
                   '--use-preload-cache',
-                  '--preload-file', 'fail.js',
-                  '--embed-file', 'fail.js']
+                  '--preload-file', 'fail.js']
     self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'] + extra_args)
-    actual = read_file('embind_tsgen.d.ts')
-    self.assertNotExists('out.html')
-    self.assertNotExists('out.js')
-    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), actual)
+    # Test these args separately since they conflict with arguments in the first test.
+    extra_args = ['-sMODULARIZE',
+                  '--embed-file', 'fail.js',
+                  '-sMINIMAL_RUNTIME=2',
+                  '-sEXPORT_ES6=1']
+    self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
+                      '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'] + extra_args)
 
   def test_embind_tsgen_test_embind(self):
     self.run_process([EMCC, test_file('embind/embind_test.cpp'),
@@ -3293,45 +3300,34 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     # This is important as if module.export is not present the Module
     # object will not be visible to node.js
 
-    # compile with -O2 --closure 0
-    self.run_process([EMCC, test_file('Module-exports/test.c'),
-                      '-o', 'test.js', '-O2', '--closure', '0',
-                      '--pre-js', test_file('Module-exports/setup.js'),
+    # compile without --closure=1
+    self.run_process([EMCC, test_file('module_exports/test.c'),
+                      '-o', 'test.js', '-O2',
                       '-sEXPORTED_FUNCTIONS=_bufferTest,_malloc,_free',
                       '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap',
                       '-sWASM_ASYNC_COMPILATION=0'])
 
-    # Check that compilation was successful
-    self.assertExists('test.js')
-    test_js_closure_0 = read_file('test.js')
-
-    # Check that test.js compiled with --closure 0 contains "module['exports'] = Module;"
-    assert ("module['exports'] = Module;" in test_js_closure_0) or ('module["exports"]=Module' in test_js_closure_0) or ('module["exports"] = Module;' in test_js_closure_0)
+    # Check that test.js compiled without --closure=1 contains "module['exports'] = Module;"
+    self.assertContained('module["exports"]=Module', read_file('test.js'))
 
     # Check that main.js (which requires test.js) completes successfully when run in node.js
     # in order to check that the exports are indeed functioning correctly.
-    shutil.copyfile(test_file('Module-exports/main.js'), 'main.js')
+    shutil.copyfile(test_file('module_exports/main.js'), 'main.js')
     self.assertContained('bufferTest finished', self.run_js('main.js'))
 
     # Delete test.js again and check it's gone.
     delete_file('test.js')
-    self.assertNotExists('test.js')
 
-    # compile with -O2 --closure 1
-    self.run_process([EMCC, test_file('Module-exports/test.c'),
+    # compile with --closure=1
+    self.run_process([EMCC, test_file('module_exports/test.c'),
                       '-o', 'test.js', '-O2', '--closure=1',
-                      '--pre-js', test_file('Module-exports/setup.js'),
                       '-sEXPORTED_FUNCTIONS=_bufferTest,_malloc,_free',
                       '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap',
                       '-sWASM_ASYNC_COMPILATION=0'])
 
-    # Check that compilation was successful
-    self.assertExists('test.js')
-    test_js_closure_1 = read_file('test.js')
-
     # Check that test.js compiled with --closure 1 contains "module.exports", we want to verify that
     # "module['exports']" got minified to "module.exports" when compiling with --closure 1
-    self.assertContained("module.exports", test_js_closure_1)
+    self.assertContained('module.exports=', read_file('test.js'))
 
     # Check that main.js (which requires test.js) completes successfully when run in node.js
     # in order to check that the exports are indeed functioning correctly.
@@ -3586,7 +3582,6 @@ m0.ccall('myreadSeekEnd', 'number', [], []);
 
     create_file('proxyfs_pre.js', r'''
 Module["noInitialRun"]=true;
-Module["noExitRuntime"]=true;
 ''')
 
     create_file('proxyfs_embed.txt', 'test\n')
@@ -3883,6 +3878,49 @@ addToLibrary({
 ''')
 
     self.do_runf(test_file('hello_world.c'), 'hello, world!', emcc_args=['--js-library', 'lib.js'])
+
+  def test_js_lib_proxying(self):
+    # Regression test for a bug we had where jsifier would find and use
+    # the inner function in a library function consisting of a single
+    # line arrow function.
+    # See https://github.com/emscripten-core/emscripten/issues/20264
+    create_file('lib.js', r'''
+addToLibrary({
+  $doNotCall: (x) => {},
+  foo__deps: ['$doNotCall'],
+  foo__proxy: 'sync',
+  foo: () => doNotCall(() => {
+    out('should never see this');
+  }),
+});
+''')
+    create_file('src.c', r'''
+    #include <stdio.h>
+    void foo();
+    int main() {
+      printf("main\n");
+      foo();
+      printf("done\n");
+    }
+    ''')
+    self.do_runf('src.c', 'main\ndone\n', emcc_args=['-sEXIT_RUNTIME', '-pthread', '-sPROXY_TO_PTHREAD', '--js-library', 'lib.js'])
+
+  def test_js_lib_method_syntax(self):
+    create_file('lib.js', r'''
+addToLibrary({
+  foo() {
+    out('foo');
+  },
+});
+''')
+    create_file('src.c', r'''
+    #include <stdio.h>
+    void foo();
+    int main() {
+      foo();
+    }
+    ''')
+    self.do_runf('src.c', 'foo', emcc_args=['--js-library', 'lib.js'])
 
   def test_js_lib_exported(self):
     create_file('lib.js', r'''
@@ -7098,7 +7136,8 @@ int main() {
     self.run_process([EMCC, 'src.c'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
-  def test_no_missing_symbols(self): # simple hello world should not show any missing symbols
+  def test_no_missing_symbols(self):
+    # simple hello world should not show any missing symbols
     self.run_process([EMCC, test_file('hello_world.c')])
 
     # main() is implemented in C, and even if requested from JS, we should not warn
@@ -7163,6 +7202,20 @@ int main(int argc, char** argv) {
 ''')
 
     self.do_runf('test.c', 'dddddddddd\n', emcc_args=['--js-library', 'lib.js'])
+
+  def test_js_lib_native_deps_extra(self):
+    # Similar to above but the JS symbol is not used by the native code.
+    # Instead is it explictly injected using `extraLibraryFuncs`.
+    create_file('lib.js', r'''
+addToLibrary({
+  jsfunc__deps: ['raise'],
+  jsfunc: (ptr) => {
+    _raise(1);
+  },
+});
+extraLibraryFuncs.push('jsfunc');
+''')
+    self.do_runf(test_file('hello_world.c'), emcc_args=['--js-library', 'lib.js'])
 
   @crossplatform
   def test_realpath(self):
@@ -7360,7 +7413,7 @@ Resolved: "/" => "/"
     self.assertEqual(less, none)
 
   @parameterized({
-    'normal': (['-sWASM_BIGINT=0'], 'testbind.js'),
+    '': ([], 'testbind.js'),
     'bigint': (['-sWASM_BIGINT'], 'testbind_bigint.js'),
   })
   @requires_node
@@ -11107,6 +11160,24 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     ''')
     self.do_runf('src.c', 'ok\ndone\n', emcc_args=['-sEMULATE_FUNCTION_POINTER_CASTS'])
 
+  def test_no_lto(self):
+    # This used to fail because settings.LTO didn't reflect `-fno-lto`.
+    # See bug https://github.com/emscripten-core/emscripten/issues/20308
+    create_file('src.c', r'''
+      #include <stdio.h>
+      #include <setjmp.h>
+      int main() {
+        jmp_buf jb;
+        if (!setjmp(jb)) {
+          printf("ok\n");
+          longjmp(jb, 1);
+        } else {
+          printf("done\n");
+        }
+      }
+    ''')
+    self.do_runf('src.c', 'ok\ndone\n', emcc_args=['-flto', '-fno-lto'])
+
   def test_missing_stdlibs(self):
     # Certain standard libraries are expected to be useable via -l flags but
     # don't actually exist in our standard library path.  Make sure we don't
@@ -13256,6 +13327,26 @@ j1: 8589934599, j2: 30064771074, j3: 12884901891
     ''')
     self.do_runf('f2.c', emcc_args=['f1.c'])
 
+  def test_em_js_deps_anon_ns(self):
+    # Check that EM_JS_DEPS is not eliminated in
+    # an anonymous C++ namespace.
+    create_file('test_em_js_deps.cpp', '''
+    #include <emscripten.h>
+
+    namespace {
+      EM_JS_DEPS(test, "$stringToUTF8OnStack");
+    }
+
+    int main() {
+      EM_ASM({
+        var x = stackSave();
+        stringToUTF8OnStack("hello");
+        stackRestore(x);
+      });
+    }
+    ''')
+    self.do_runf('test_em_js_deps.cpp')
+
   @no_mac('https://github.com/emscripten-core/emscripten/issues/18175')
   @crossplatform
   def test_stack_overflow(self):
@@ -13794,3 +13885,25 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.assertExists('glue.cpp')
     self.assertExists('glue.js')
     self.emcc('glue.cpp', ['-c', '-Wall', '-Werror'])
+
+  def test_noExitRuntime(self):
+    onexit_called = 'onExit called'
+    create_file('pre.js', f'Module.onExit = () => console.log("${onexit_called}");')
+    self.emcc_args += ['--pre-js=pre.js']
+    self.set_setting('EXIT_RUNTIME')
+
+    # Normally with EXIT_RUNTIME set we expect onExit to be called;
+    output = self.do_runf(test_file('hello_world.c'), 'hello, world')
+    self.assertContained(onexit_called, output)
+
+    # However, if we set `Module.noExitRuntime = true`, then we expect
+    # it not to be called.
+    create_file('noexit.js', 'Module.noExitRuntime = true;')
+    output = self.do_runf(test_file('hello_world.c'), 'hello, world', emcc_args=['--pre-js=noexit.js'])
+    self.assertNotContained(onexit_called, output)
+
+    # Setting the internal `noExitRuntime` after startup should have the
+    # same effect.
+    create_file('noexit_oninit.js', 'Module.preRun = () => { noExitRuntime = true; }')
+    output = self.do_runf(test_file('hello_world.c'), 'hello, world', emcc_args=['--pre-js=noexit_oninit.js'])
+    self.assertNotContained(onexit_called, output)
