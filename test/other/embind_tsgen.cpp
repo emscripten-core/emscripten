@@ -70,6 +70,13 @@ int smart_ptr_function(std::shared_ptr<ClassWithSmartPtrConstructor>) {
   return 0;
 }
 
+EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
+
+int function_with_callback_param(CallbackType ct) {
+  ct(val("hello"));
+  return 0;
+}
+
 int global_fn(int, int) { return 0; }
 
 class BaseClass {
@@ -149,6 +156,11 @@ EMSCRIPTEN_BINDINGS(Test) {
 
   function("smart_ptr_function", &smart_ptr_function);
   function("smart_ptr_function_with_params(foo)", &smart_ptr_function);
+
+  function("function_with_callback_param",
+           &function_with_callback_param);
+
+  register_type<CallbackType>("(message: string) => void");
 
   class_<BaseClass>("BaseClass").function("fn", &BaseClass::fn);
 
