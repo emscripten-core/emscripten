@@ -7768,6 +7768,13 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_unsigned.cpp')
 
+  @also_with_wasm_bigint
+  def test_embind_val_integers(self):
+    self.emcc_args += ['-lembind']
+    if self.get_setting('WASM_BIGINT'):
+      self.emcc_args += ['-DWASM_BIGINT']
+    self.do_runf(test_file('embind/test_val_integers.cpp'))
+
   def test_embind_val(self):
     self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_val.cpp')
