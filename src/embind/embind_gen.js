@@ -34,6 +34,12 @@ var LibraryEmbind = {
       this.destructorType = 'none'; // Same as emval.
     }
   },
+  $OptionalType: class {
+    constructor(type) {
+      this.type = type;
+      this.destructorType = 'none'; // Same as emval.
+    }
+  },
   $FunctionDefinition__deps: ['$createJsInvoker'],
   $FunctionDefinition: class {
     constructor(name, returnType, argumentTypes, functionIndex, thisType = null, isAsync = false) {
@@ -294,6 +300,7 @@ var LibraryEmbind = {
       out.push('\n};\n\n');
     }
   },
+  $TsPrinter__deps: ['$OptionalType'],
   $TsPrinter: class {
     constructor(definitions) {
       this.definitions = definitions;
@@ -335,6 +342,9 @@ var LibraryEmbind = {
       }
       if (type instanceof PointerDefinition) {
         return this.typeToJsName(type.classType);
+      }
+      if (type instanceof OptionalType) {
+        return `${this.typeToJsName(type.type)} | undefined`;
       }
       return type.name;
     }
@@ -460,6 +470,13 @@ var LibraryEmbind = {
   _embind_register_user_type: (rawType, name) => {
     name = readLatin1String(name);
     registerType(rawType, new UserType(rawType, name));
+  },
+  _embind_register_optional__deps: ['_embind_register_emval', '$OptionalType'],
+  _embind_register_optional: (rawOptionalType, rawType) => {
+    whenDependentTypesAreResolved([rawOptionalType], [rawType], function(type) {
+      type = type[0];
+      return [new OptionalType(type)];
+    });
   },
   _embind_register_memory_view: (rawType, dataTypeIndex, name) => {
     // TODO

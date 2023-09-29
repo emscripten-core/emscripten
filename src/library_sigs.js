@@ -304,6 +304,7 @@ sigs = {
   _embind_register_function__sig: 'vpippppi',
   _embind_register_integer__sig: 'vpppii',
   _embind_register_memory_view__sig: 'vpip',
+  _embind_register_optional__sig: 'vpp',
   _embind_register_smart_ptr__sig: 'vpppipppppppp',
   _embind_register_std_string__sig: 'vpp',
   _embind_register_std_wstring__sig: 'vppp',
