@@ -1186,6 +1186,28 @@ module({
        });
     });
 
+    BaseFixture.extend("optional", function() {
+        if (!("embind_test_return_optional_string_with_value" in cm)) {
+            return;
+        }
+        test("std::optional returns works with value", function() {
+            var optional = cm.embind_test_return_optional_string_with_value();
+
+            assert.equal(true, optional.hasValue());
+            assert.equal("hello", optional.value());
+
+            optional.delete();
+        });
+
+        test("std::optional returns works with empty value", function() {
+            var optional = cm.embind_test_return_optional_string_empty();
+
+            assert.equal(false, optional.hasValue());
+
+            optional.delete();
+        });
+    });
+
     BaseFixture.extend("functors", function() {
         test("can get and call function ptrs", function() {
             var ptr = cm.emval_test_get_function_ptr();

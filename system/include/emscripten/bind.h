@@ -23,6 +23,13 @@
 #include <emscripten/val.h>
 #include <emscripten/wire.h>
 
+#ifdef __has_include
+#if __has_include(<optional>) && __cplusplus >= 201703L
+#include <optional>
+#define EMSCRIPTEN_HAS_OPTIONAL 1
+#endif
+#endif
+
 #if __has_feature(leak_sanitizer) || __has_feature(address_sanitizer)
 #include <sanitizer/lsan_interface.h>
 #endif
@@ -1905,6 +1912,36 @@ class_<std::vector<T>> register_vector(const char* name) {
         .function("set", &internal::VectorAccess<VecType>::set)
         ;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Optional
+////////////////////////////////////////////////////////////////////////////////
+
+#if defined(EMSCRIPTEN_HAS_OPTIONAL)
+namespace internal {
+
+template<typename T>
+struct OptionalAccess {
+    static bool has_value(const std::optional<T>& o) {
+        return o.has_value();
+    }
+
+    static T value(const std::optional<T> optional) {
+        return optional.value();
+    }
+};
+
+} // end namespace internal
+
+template<typename T>
+class_<std::optional<T>> register_optional(const char* name) {
+    return class_<std::optional<T>>(name)
+        .constructor<T>()
+        .function("hasValue", &internal::OptionalAccess<T>::has_value)
+        .function("value", &internal::OptionalAccess<T>::value)
+        ;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // MAPS

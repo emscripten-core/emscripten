@@ -925,14 +925,15 @@ Out of the box, *embind* provides converters for many standard C++ types:
 +---------------------+--------------------------------------------------------------------+
 
 For convenience, *embind* provides factory functions to register
-``std::vector<T>`` (:cpp:func:`register_vector`) and ``std::map<K, V>``
-(:cpp:func:`register_map`) types:
+``std::vector<T>`` (:cpp:func:`register_vector`), ``std::map<K, V>``
+(:cpp:func:`register_map`), and ``std::optional<T>`` (:cpp:func:`register_optional`) types:
 
 .. code:: cpp
 
     EMSCRIPTEN_BINDINGS(stl_wrappers) {
         register_vector<int>("VectorInt");
         register_map<int,int>("MapIntInt");
+        register_map<std::string>("OptionalString");
     }
 
 A full example is shown below:
@@ -942,6 +943,7 @@ A full example is shown below:
     #include <emscripten/bind.h>
     #include <string>
     #include <vector>
+    #include <optional>
 
     using namespace emscripten;
 
@@ -956,13 +958,20 @@ A full example is shown below:
       return m;
     }
 
+    std::optional<std::string> returnOptionalData() {
+      return "hello";
+    }
+
     EMSCRIPTEN_BINDINGS(module) {
       function("returnVectorData", &returnVectorData);
       function("returnMapData", &returnMapData);
+      function("returnOptionalData", &returnOptionalData);
 
-      // register bindings for std::vector<int> and std::map<int, std::string>.
+      // register bindings for std::vector<int>, std::map<int, std::string>, and
+      // std::optional<std::string>.
       register_vector<int>("vector<int>");
       register_map<int, std::string>("map<int, string>");
+      register_optional<std::string>("optional<string>");
     }
 
 
@@ -1008,6 +1017,12 @@ The following JavaScript can be used to interact with the above C++.
 
     // reset the value at the given index position
     retMap.set(10, "OtherValue");
+
+    // Using an optional<std::string>.
+    var optional = Module['returnOptionalData']();
+    if (optional.hasValue()) {
+        console.log(optional.value());
+    }
 
 
 TypeScript Definitions

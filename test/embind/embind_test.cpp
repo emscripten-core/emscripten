@@ -10,6 +10,10 @@
 #include <emscripten/heap.h>
 #include <emscripten/em_asm.h>
 
+#if defined(EMSCRIPTEN_HAS_OPTIONAL)
+#include <optional>
+#endif
+
 using namespace emscripten;
 
 val emval_test_mallinfo() {
@@ -1282,6 +1286,16 @@ void test_string_with_vec(const std::string& p1, std::vector<std::string>& v1) {
     printf("%s\n", p1.c_str());
 }
 
+#if defined(EMSCRIPTEN_HAS_OPTIONAL)
+std::optional<std::string> embind_test_return_optional_string_with_value() {
+    return "hello";
+}
+
+std::optional<std::string> embind_test_return_optional_string_empty() {
+    return {};
+}
+#endif
+
 val embind_test_getglobal() {
     return val::global();
 }
@@ -2277,6 +2291,12 @@ EMSCRIPTEN_BINDINGS(tests) {
         ;
 
     function("test_string_with_vec", &test_string_with_vec);
+
+#if defined(EMSCRIPTEN_HAS_OPTIONAL)
+    register_optional<std::string>("OptionalString");
+    function("embind_test_return_optional_string_with_value", &embind_test_return_optional_string_with_value);
+    function("embind_test_return_optional_string_empty", &embind_test_return_optional_string_empty);
+#endif
 
     register_map<std::string, int>("StringIntMap");
     function("embind_test_get_string_int_map", embind_test_get_string_int_map);
