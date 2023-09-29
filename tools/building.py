@@ -504,6 +504,30 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     user_args += shlex.split(env_args)
   if extra_closure_args:
     user_args += extra_closure_args
+  user_args += ["--closure_pass",
+    "--coalesce_variable_names=on",
+    "--collapse_object_literals=on",
+    "--collapse_variable_declarations=true",
+    "--compute_function_side_effects=false",
+    "--convert_to_dotted_properties=true",
+    "--devirtualize_methods=false",
+    "--extract_prototype_member_decl=false",
+    "--inline_functions=false",
+    "--inline_local_functions=on",
+    "--inline_local_variables=on",
+    "--inline_variables=false",
+    "--label_renaming=true",
+    "--optimize_arguments_array=true",
+    "--property_renaming=OFF",
+    "--remove_closure_asserts=false",
+    "--remove_dead_assignments=true",
+    "--remove_dead_code=true",
+    "--remove_unused_local_vars=on",
+    "--remove_unused_prototype_props=false",
+    "--remove_unused_vars=false",
+    "--rewrite_function_expressions=false",
+    "--smart_name_removal=false",
+    "--variable_renaming=LOCAL",]
 
   closure_cmd, env = get_closure_compiler_and_env(user_args)
 
