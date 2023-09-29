@@ -8593,6 +8593,64 @@ int main() {
     for check in stack_trace_checks:
       self.assertFalse(re.search(check, err), 'Expected regex "%s" to not match on:\n%s' % (check, err))
 
+    # Rethrowing exception currently loses the stack trace before the
+    # rethrowing due to how rethrowing is implemented. So in the examples below
+    # we don't print 'bar' at the moment.
+    # TODO Make rethrow preserve stack traces before rethrowing?
+    rethrow_src1 = r'''
+      #include <stdexcept>
+
+      void bar() {
+        throw std::runtime_error("my message");
+      }
+      void foo() {
+        try {
+          bar();
+        } catch (...) {
+          throw; // rethrowing by throw;
+        }
+      }
+      int main() {
+        foo();
+        return 0;
+      }
+    '''
+    rethrow_src2 = r'''
+      #include <stdexcept>
+
+      void bar() {
+        throw std::runtime_error("my message");
+      }
+      void foo() {
+        try {
+          bar();
+        } catch (...) {
+          auto e = std::current_exception();
+          std::rethrow_exception(e); // rethrowing by std::rethrow_exception
+        }
+      }
+      int main() {
+        foo();
+        return 0;
+      }
+    '''
+    rethrow_stack_trace_checks = [
+      'std::runtime_error[:,][ ]?my message',  # 'std::runtime_error: my message' for Emscripten EH
+      'at ((src.wasm.)?_?__cxa_rethrow|___resumeException)',  # '___resumeException' (JS symbol) for Emscripten EH
+      'at (src.wasm.)?foo',
+      'at (src.wasm.)?main']
+
+    self.set_setting('ASSERTIONS', 1)
+    self.clear_setting('EXCEPTION_STACK_TRACES')
+    err = self.do_run(rethrow_src1, emcc_args=emcc_args, assert_all=True,
+                      assert_returncode=NON_ZERO,
+                      expected_output=rethrow_stack_trace_checks, regex=True)
+    self.assertNotContained('bar', err)
+    err = self.do_run(rethrow_src2, emcc_args=emcc_args, assert_all=True,
+                      assert_returncode=NON_ZERO,
+                      expected_output=rethrow_stack_trace_checks, regex=True)
+    self.assertNotContained('bar', err)
+
   @requires_node
   def test_jsrun(self):
     print(config.NODE_JS)
