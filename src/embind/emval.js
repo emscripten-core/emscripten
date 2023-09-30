@@ -213,14 +213,22 @@ var LibraryEmVal = {
     handle[key] = value;
   },
 
-  _emval_as__deps: ['$Emval', '$requireRegisteredType'],
+  $emval_returnValue__deps: []
+  $emval_returnValue: (returnType, destructorsRef, handle) => {
+    var destructors = [];
+    var result = returnType['toWireType'](destructors, handle);
+    if (destructors.length) {
+      // void, primitives and any other types w/o destructors don't need to allocate a handle
+      {{{ makeSetValue('destructorsRef', '0', 'Emval.toHandle(destructors)', '*') }}};
+    }
+    return result;
+  },
+
+  _emval_as__deps: ['$Emval', '$requireRegisteredType', '$emval_returnValue'],
   _emval_as: (handle, returnType, destructorsRef) => {
     handle = Emval.toValue(handle);
     returnType = requireRegisteredType(returnType, 'emval::as');
-    var destructors = [];
-    var rd = Emval.toHandle(destructors);
-    {{{ makeSetValue('destructorsRef', '0', 'rd', '*') }}};
-    return returnType['toWireType'](destructors, handle);
+    return emval_returnValue(returnType, destructorsRef, handle);
   },
 
   _emval_as_int64__deps: ['$Emval', '$requireRegisteredType'],
@@ -311,9 +319,9 @@ var LibraryEmVal = {
 
   $emval_registeredMethods: {},
   _emval_get_method_caller__deps: [
-    '$emval_addMethodCaller', '$emval_lookupTypes',,
+    '$emval_addMethodCaller', '$emval_lookupTypes',
     '$makeLegalFunctionName', '$emval_registeredMethods',
-    '$reflectConstruct',
+    '$reflectConstruct', '$emval_returnValue',
 #if DYNAMIC_EXECUTION
     '$newFunc',
 #endif
@@ -329,7 +337,7 @@ var LibraryEmVal = {
 
 #if !DYNAMIC_EXECUTION
     var argN = new Array(argCount - 1);
-    var invokerFunction = (obj, func, destructors, args) => {
+    var invokerFunction = (obj, func, destructorsRef, args) => {
       var offset = 0;
       for (var i = 0; i < argCount - 1; ++i) {
         argN[i] = types[i]['readValueFromPointer'](args + offset);
@@ -341,12 +349,12 @@ var LibraryEmVal = {
           types[i].deleteObject(argN[i]);
         }
       }
-      return retType['toWireType'](destructors, rv);
+      return emval_returnValue(retType, destructorsRef, rv);
     };
 #else
     var functionName = makeLegalFunctionName("methodCaller_" + signatureName);
     var functionBody =
-        "return function " + functionName + "(obj, func, destructors, args) {\n";
+        "return function " + functionName + "(obj, func, destructorsRef, args) {\n";
 
     var offset = 0;
     var argsList = ""; // 'arg0, arg1, arg2, ... , argN'
@@ -376,7 +384,7 @@ var LibraryEmVal = {
     }
     if (!retType.isVoid) {
         functionBody +=
-        "    return retType.toWireType(destructors, rv);\n";
+        "    return emval_returnValue(retType, destructorsRef, rv);\n";
     }
     functionBody +=
         "};\n";
@@ -392,13 +400,7 @@ var LibraryEmVal = {
   $callAndDestruct__deps: ['$emval_methodCallers'],
   $callAndDestruct: (caller, obj, method, destructorsRef, args) => {
     caller = emval_methodCallers[caller];
-    var destructors = [];
-    var result = caller(obj, method, destructors, args);
-    // void and any other types w/o destructors don't need to allocate a handle
-    if (destructors.length) {
-      {{{ makeSetValue('destructorsRef', '0', 'Emval.toHandle(destructors)', '*') }}};
-    }
-    return result;
+    return caller(obj, method, destructorsRef, args);
   },
 
   _emval_call_method__deps: ['$getStringOrSymbol', '$callAndDestruct', '$Emval'],
