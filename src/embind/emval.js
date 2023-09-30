@@ -320,8 +320,8 @@ var LibraryEmVal = {
   ],
   _emval_get_method_caller: (argCount, argTypes, asCtor) => {
     var types = emval_lookupTypes(argCount, argTypes);
-    var retType = types[0];
-    var signatureName = retType.name + "_$" + types.slice(1).map(function (t) { return t.name; }).join("_") + "$";
+    var retType = types.shift();
+    var signatureName = retType.name + "_$" + types.map(function (t) { return t.name; }).join("_") + "$";
     var returnId = emval_registeredMethods[signatureName];
     if (returnId !== undefined) {
       return returnId;
@@ -332,13 +332,13 @@ var LibraryEmVal = {
     var invokerFunction = (obj, func, destructors, args) => {
       var offset = 0;
       for (var i = 0; i < argCount - 1; ++i) {
-        argN[i] = types[i + 1]['readValueFromPointer'](args + offset);
-        offset += types[i + 1]['argPackAdvance'];
+        argN[i] = types[i]['readValueFromPointer'](args + offset);
+        offset += types[i]['argPackAdvance'];
       }
       var rv = asCtor ? reflectConstruct(func, argN) : func.apply(obj, argN);
       for (var i = 0; i < argCount - 1; ++i) {
-        if (types[i + 1].deleteObject) {
-          types[i + 1].deleteObject(argN[i]);
+        if (types[i].deleteObject) {
+          types[i].deleteObject(argN[i]);
         }
       }
       return retType['toWireType'](destructors, rv);
@@ -356,10 +356,10 @@ var LibraryEmVal = {
         if (argsList) argsList += ", ";
         argsList += "arg" + i;
         params.push("argType" + i);
-        args.push(types[1 + i]);
+        args.push(types[i]);
         functionBody +=
         "    var arg" + i + " = argType" + i + ".readValueFromPointer(args" + (offset ? ("+"+offset) : "") + ");\n";
-        offset += types[i + 1]['argPackAdvance'];
+        offset += types[i]['argPackAdvance'];
     }
     if (asCtor) {
         functionBody +=
@@ -369,7 +369,7 @@ var LibraryEmVal = {
         "    var rv = func.call(" + argsList + ");\n";
     }
     for (var i = 0; i < argCount - 1; ++i) {
-        if (types[i + 1]['deleteObject']) {
+        if (types[i]['deleteObject']) {
             functionBody +=
             "    argType" + i + ".deleteObject(arg" + i + ");\n";
         }
