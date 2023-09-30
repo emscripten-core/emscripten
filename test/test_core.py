@@ -7776,6 +7776,34 @@ void* operator new(size_t size) {
     err = self.expect_fail([EMCC, test_file('embind/test_val_assignment.cpp'), '-lembind', '-c'])
     self.assertContained('candidate function not viable: expects an lvalue for object argument', err)
 
+  @node_pthreads
+  def test_embind_val_cross_thread(self):
+    self.emcc_args += ['--bind']
+    self.setup_node_pthreads()
+    create_file('test_embind_val_cross_thread.cpp', r'''
+      #include <emscripten.h>
+      #include <emscripten/val.h>
+      #include <thread>
+      #include <stdio.h>
+
+      using emscripten::val;
+
+      int main(int argc, char **argv) {
+        // Store a value handle from the main thread.
+        val value(0);
+        std::thread([&] {
+          // Set to a value handle from a different thread.
+          value = val(1);
+        }).join();
+        // Try to access the stored handle from the main thread.
+        // Without the check (if compiled with -DNDEBUG) this will incorrectly
+        // print "0" instead of "1" since the handle with the same ID
+        // resolves to different values on different threads.
+        printf("%d\n", value.as<int>());
+      }
+    ''')
+    self.do_runf('test_embind_val_cross_thread.cpp', 'val accessed from wrong thread', assert_returncode=NON_ZERO)
+
   def test_embind_dynamic_initialization(self):
     self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_dynamic_initialization.cpp')

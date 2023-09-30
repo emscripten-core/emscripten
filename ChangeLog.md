@@ -31,6 +31,9 @@ See docs/process.md for more on how version tagging works.
   mirrors the existing `EM_ASM_PTR`. (#20261)
 - Emscripten now implements default POSIX signal handlers. These can
   terminate or abort the program in response to `raise` cals. (#20257)
+- `emscripten::val` now prevents accidental access to the underlying JavaScript
+  value from threads other than its owner. This already didn't work correctly
+  in majority of cases, but now it will throw a clear assertion failure. (#20344)
 
 3.1.46 - 09/15/23
 -----------------
