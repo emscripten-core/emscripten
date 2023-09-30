@@ -213,7 +213,7 @@ var LibraryEmVal = {
     handle[key] = value;
   },
 
-  $emval_returnValue__deps: []
+  $emval_returnValue__deps: [],
   $emval_returnValue: (returnType, destructorsRef, handle) => {
     var destructors = [];
     var result = returnType['toWireType'](destructors, handle);
