@@ -279,10 +279,11 @@ var LibraryEmVal = {
     return !object;
   },
 
-  _emval_call__deps: ['$callAndDestruct', '$Emval'],
+  _emval_call__deps: ['$emval_methodCallers', '$Emval'],
   _emval_call: (caller, handle, destructorsRef, args) => {
+    caller = emval_methodCallers[caller];
     handle = Emval.toValue(handle);
-    return callAndDestruct(caller, null, handle, destructorsRef, args);
+    return caller(handle, destructorsRef, args);
   },
 
   $emval_lookupTypes__deps: ['$requireRegisteredType'],
@@ -337,13 +338,13 @@ var LibraryEmVal = {
 
 #if !DYNAMIC_EXECUTION
     var argN = new Array(argCount - 1);
-    var invokerFunction = (obj, func, destructorsRef, args) => {
+    var invokerFunction = function (func, destructorsRef, args) {
       var offset = 0;
       for (var i = 0; i < argCount - 1; ++i) {
         argN[i] = types[i]['readValueFromPointer'](args + offset);
         offset += types[i]['argPackAdvance'];
       }
-      var rv = asCtor ? reflectConstruct(func, argN) : func.apply(obj, argN);
+      var rv = asCtor ? reflectConstruct(func, argN) : func.apply(this, argN);
       for (var i = 0; i < argCount - 1; ++i) {
         if (types[i].deleteObject) {
           types[i].deleteObject(argN[i]);
@@ -354,7 +355,7 @@ var LibraryEmVal = {
 #else
     var functionName = makeLegalFunctionName("methodCaller_" + signatureName);
     var functionBody =
-        "return function " + functionName + "(obj, func, destructorsRef, args) {\n";
+        "return function " + functionName + "(func, destructorsRef, args) {\n";
 
     var offset = 0;
     var argsList = ""; // 'arg0, arg1, arg2, ... , argN'
@@ -374,7 +375,7 @@ var LibraryEmVal = {
         "    var rv = new func(" + argsList + ");\n";
     } else {
         functionBody +=
-        "    var rv = func.call(obj, " + argsList + ");\n";
+        "    var rv = func.call(this, " + argsList + ");\n";
     }
     for (var i = 0; i < argCount - 1; ++i) {
         if (types[i]['deleteObject']) {
@@ -397,17 +398,12 @@ var LibraryEmVal = {
     return returnId;
   },
 
-  $callAndDestruct__deps: ['$emval_methodCallers'],
-  $callAndDestruct: (caller, obj, method, destructorsRef, args) => {
-    caller = emval_methodCallers[caller];
-    return caller(obj, method, destructorsRef, args);
-  },
-
-  _emval_call_method__deps: ['$getStringOrSymbol', '$callAndDestruct', '$Emval'],
+  _emval_call_method__deps: ['$getStringOrSymbol', '$emval_methodCallers', '$Emval'],
   _emval_call_method: (caller, handle, methodName, destructorsRef, args) => {
+    caller = emval_methodCallers[caller];
     handle = Emval.toValue(handle);
     methodName = getStringOrSymbol(methodName);
-    return callAndDestruct(caller, handle, handle[methodName], destructorsRef, args);
+    return caller.call(handle, handle[methodName], destructorsRef, args);
   },
 
   _emval_typeof__deps: ['$Emval'],
