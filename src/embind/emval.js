@@ -371,10 +371,10 @@ var LibraryEmVal = {
     }
     if (asCtor) {
         functionBody +=
-        "    var rv = new func(obj, " + argsList + ");\n";
+        "    var rv = new func(" + argsList + ");\n";
     } else {
         functionBody +=
-        "    var rv = func.call(" + argsList + ");\n";
+        "    var rv = func.call(obj, " + argsList + ");\n";
     }
     for (var i = 0; i < argCount - 1; ++i) {
         if (types[i]['deleteObject']) {
