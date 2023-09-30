@@ -344,20 +344,10 @@ var LibraryEmVal = {
     return !object;
   },
 
-  _emval_call__deps: ['$emval_lookupTypes', '$Emval'],
-  _emval_call: (handle, argCount, argTypes, argv) => {
+  _emval_call__deps: ['$callAndDestruct', '$Emval'],
+  _emval_call: (caller, handle, destructorsRef, args) => {
     handle = Emval.toValue(handle);
-    var types = emval_lookupTypes(argCount, argTypes);
-
-    var args = new Array(argCount);
-    for (var i = 0; i < argCount; ++i) {
-      var type = types[i];
-      args[i] = type['readValueFromPointer'](argv);
-      argv += type['argPackAdvance'];
-    }
-
-    var rv = handle.apply(undefined, args);
-    return Emval.toHandle(rv);
+    return callAndDestruct(caller, null, handle, destructorsRef, args);
   },
 
   $emval_lookupTypes__deps: ['$requireRegisteredType'],
@@ -400,33 +390,39 @@ var LibraryEmVal = {
 
 #if !DYNAMIC_EXECUTION
     var argN = new Array(argCount - 1);
-    var invokerFunction = (handle, name, destructors, args) => {
+    var invokerFunction = (obj, func, destructors, args) => {
       var offset = 0;
       for (var i = 0; i < argCount - 1; ++i) {
         argN[i] = types[i + 1]['readValueFromPointer'](args + offset);
         offset += types[i + 1]['argPackAdvance'];
       }
-      var rv = handle[name].apply(handle, argN);
+      var rv = func.apply(obj, argN);
       for (var i = 0; i < argCount - 1; ++i) {
         if (types[i + 1].deleteObject) {
           types[i + 1].deleteObject(argN[i]);
         }
       }
-        return retType['toWireType'](destructors, rv);
+      return retType['toWireType'](destructors, rv);
     };
 #else
     var functionName = makeLegalFunctionName("methodCaller_" + signatureName);
     var functionBody =
-        "return function " + functionName + "(handle, name, destructors, args) {\n";
+        "return function " + functionName + "(obj, func, destructors, args) {\n";
 
     var offset = 0;
+    var argsList = "obj"; // 'arg0, arg1, arg2, ... , argN'
+    var params = ["retType"];
+    var args = [retType];
     for (var i = 0; i < argCount - 1; ++i) {
+        argsList += ", arg" + i;
+        params.push("argType" + i);
+        args.push(types[1 + i]);
         functionBody +=
         "    var arg" + i + " = argType" + i + ".readValueFromPointer(args" + (offset ? ("+"+offset) : "") + ");\n";
         offset += types[i + 1]['argPackAdvance'];
     }
     functionBody +=
-        "    var rv = handle[name](" + argsList + ");\n";
+        "    var rv = func.call(" + argsList + ");\n";
     for (var i = 0; i < argCount - 1; ++i) {
         if (types[i + 1]['deleteObject']) {
             functionBody +=
@@ -448,18 +444,23 @@ var LibraryEmVal = {
     return returnId;
   },
 
-  _emval_call_method__deps: ['$getStringOrSymbol', '$emval_methodCallers', '$Emval'],
-  _emval_call_method: (caller, handle, methodName, destructorsRef, args) => {
+  $callAndDestruct__deps: ['$emval_methodCallers'],
+  $callAndDestruct: (caller, obj, method, destructorsRef, args) => {
     caller = emval_methodCallers[caller];
-    handle = Emval.toValue(handle);
-    methodName = getStringOrSymbol(methodName);
     var destructors = [];
-    var result = caller(handle, methodName, destructors, args);
+    var result = caller(obj, method, destructors, args);
     // void and any other types w/o destructors don't need to allocate a handle
     if (destructors.length) {
       {{{ makeSetValue('destructorsRef', '0', 'Emval.toHandle(destructors)', '*') }}};
     }
     return result;
+  },
+
+  _emval_call_method__deps: ['$getStringOrSymbol', '$callAndDestruct', '$Emval'],
+  _emval_call_method: (caller, handle, methodName, destructorsRef, args) => {
+    handle = Emval.toValue(handle);
+    methodName = getStringOrSymbol(methodName);
+    return callAndDestruct(caller, handle, handle[methodName], destructorsRef, args);
   },
 
   _emval_typeof__deps: ['$Emval'],
