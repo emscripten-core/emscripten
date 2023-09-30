@@ -13,7 +13,7 @@
 
 // -- jshint doesn't understand library syntax, so we need to mark the symbols exposed here
 /*global getStringOrSymbol, emval_handles, Emval, __emval_unregister, count_emval_handles, emval_symbols, __emval_decref, emval_newers*/
-/*global craftEmvalAllocator, emval_addMethodCaller, emval_methodCallers, addToLibrary, emval_allocateDestructors, global, emval_lookupTypes, makeLegalFunctionName*/
+/*global craftEmvalAllocator, emval_addMethodCaller, emval_methodCallers, addToLibrary, global, emval_lookupTypes, makeLegalFunctionName*/
 /*global emval_get_global*/
 
 var LibraryEmVal = {
@@ -370,13 +370,6 @@ var LibraryEmVal = {
     return a;
   },
 
-  $emval_allocateDestructors__deps: ['$Emval'],
-  $emval_allocateDestructors: (destructorsRef) => {
-    var destructors = [];
-    {{{ makeSetValue('destructorsRef', '0', 'Emval.toHandle(destructors)', '*') }}};
-    return destructors;
-  },
-
   // Leave id 0 undefined.  It's not a big deal, but might be confusing
   // to have null be a valid method caller.
   $emval_methodCallers: [undefined],
@@ -419,21 +412,9 @@ var LibraryEmVal = {
           types[i + 1].deleteObject(argN[i]);
         }
       }
-      if (!retType.isVoid) {
         return retType['toWireType'](destructors, rv);
-      }
     };
 #else
-    var params = ["retType"];
-    var args = [retType];
-
-    var argsList = ""; // 'arg0, arg1, arg2, ... , argN'
-    for (var i = 0; i < argCount - 1; ++i) {
-      argsList += (i !== 0 ? ", " : "") + "arg" + i;
-      params.push("argType" + i);
-      args.push(types[1 + i]);
-    }
-
     var functionName = makeLegalFunctionName("methodCaller_" + signatureName);
     var functionBody =
         "return function " + functionName + "(handle, name, destructors, args) {\n";
@@ -467,20 +448,18 @@ var LibraryEmVal = {
     return returnId;
   },
 
-  _emval_call_method__deps: ['$emval_allocateDestructors', '$getStringOrSymbol', '$emval_methodCallers', '$Emval'],
+  _emval_call_method__deps: ['$getStringOrSymbol', '$emval_methodCallers', '$Emval'],
   _emval_call_method: (caller, handle, methodName, destructorsRef, args) => {
     caller = emval_methodCallers[caller];
     handle = Emval.toValue(handle);
     methodName = getStringOrSymbol(methodName);
-    return caller(handle, methodName, emval_allocateDestructors(destructorsRef), args);
-  },
-
-  _emval_call_void_method__deps: ['$emval_allocateDestructors', '$getStringOrSymbol', '$emval_methodCallers', '$Emval'],
-  _emval_call_void_method: (caller, handle, methodName, args) => {
-    caller = emval_methodCallers[caller];
-    handle = Emval.toValue(handle);
-    methodName = getStringOrSymbol(methodName);
-    caller(handle, methodName, null, args);
+    var destructors = [];
+    var result = caller(handle, methodName, destructors, args);
+    // void and any other types w/o destructors don't need to allocate a handle
+    if (destructors.length) {
+      {{{ makeSetValue('destructorsRef', '0', 'Emval.toHandle(destructors)', '*') }}};
+    }
+    return result;
   },
 
   _emval_typeof__deps: ['$Emval'],

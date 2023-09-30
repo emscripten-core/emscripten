@@ -339,7 +339,6 @@ sigs = {
   _emval_await__sig: 'pp',
   _emval_call__sig: 'ppipp',
   _emval_call_method__sig: 'dppppp',
-  _emval_call_void_method__sig: 'vpppp',
   _emval_decref__sig: 'vp',
   _emval_delete__sig: 'ipp',
   _emval_equals__sig: 'ipp',
