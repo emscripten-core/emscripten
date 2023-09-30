@@ -7,6 +7,7 @@ import os
 
 TAG = 'version_7'
 HASH = 'a921dab254f21cf5d397581c5efe58faf147c31527228b4fb34aed75164c736af4b3347092a8d9ec1249160230fa163309a87a20c2b9ceef8554566cc215de9d'
+SUBDIR = 'regal-' + TAG
 
 variants = {'regal-mt': {'PTHREADS': 1}}
 
@@ -23,7 +24,7 @@ def get(ports, settings, shared):
   ports.fetch_project('regal', f'https://github.com/emscripten-ports/regal/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'regal', 'regal-' + TAG)
+    source_path = os.path.join(ports.get_dir(), 'regal', SUBDIR)
 
     # copy sources
     # only what is needed is copied: regal, boost, lookup3

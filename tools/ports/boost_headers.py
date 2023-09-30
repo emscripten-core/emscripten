@@ -7,6 +7,7 @@ import os
 
 TAG = '1.75.0'
 HASH = '8c38be1ebef1b8ada358ad6b7c9ec17f5e0a300e8085db3473a13e19712c95eeb3c3defacd3c53482eb96368987c4b022efa8da2aac2431a154e40153d3c3dcd'
+SUBDIR = ''
 
 
 def needed(settings):

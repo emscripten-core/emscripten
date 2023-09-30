@@ -7,6 +7,7 @@ import os
 
 VERSION = '1.0.6'
 HASH = '512cbfde5144067f677496452f3335e9368fd5d7564899cb49e77847b9ae7dca598218276637cbf5ec524523be1e8ace4ad36a148ef7f4badf3f6d5a002a4bb2'
+SUBDIR = 'bzip2-' + VERSION
 
 
 def needed(settings):
@@ -17,7 +18,7 @@ def get(ports, settings, shared):
   ports.fetch_project('bzip2', f'https://github.com/emscripten-ports/bzip2/archive/{VERSION}.zip', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'bzip2', 'bzip2-' + VERSION)
+    source_path = os.path.join(ports.get_dir(), 'bzip2', SUBDIR)
     ports.install_headers(source_path)
 
     # build

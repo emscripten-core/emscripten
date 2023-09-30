@@ -7,6 +7,7 @@ import os
 
 TAG = 'release-2.6.0'
 HASH = '2175d11a90211871f2289c8d57b31fe830e4b46af7361925c2c30cd521c1c677d2ee244feb682b6d3909cf085129255934751848fc81b480ea410952d990ffe0'
+SUBDIR = 'SDL_image-' + TAG
 
 deps = ['sdl2']
 variants = {
@@ -36,7 +37,7 @@ def get(ports, settings, shared):
   libname = get_lib_name(settings)
 
   def create(final):
-    src_dir = os.path.join(ports.get_dir(), 'sdl2_image', 'SDL_image-' + TAG)
+    src_dir = os.path.join(ports.get_dir(), 'sdl2_image', SUBDIR)
     ports.install_headers(src_dir, target='SDL2')
     srcs = '''IMG.c IMG_bmp.c IMG_gif.c IMG_jpg.c IMG_lbm.c IMG_pcx.c IMG_png.c IMG_pnm.c IMG_tga.c
               IMG_tif.c IMG_xcf.c IMG_xpm.c IMG_xv.c IMG_webp.c IMG_ImageIO.m

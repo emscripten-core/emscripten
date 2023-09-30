@@ -8,6 +8,7 @@ import shutil
 
 TAG = 'version_1'
 HASH = '3922486816cf7d99ee02c3c1ef63d94290e8ed304016dd9927137d04206e7674d9df8773a4abb7bb57783d0a5107ad0f893aa87acfb34f7b316eec22ca55a536'
+SUBDIR = 'Bullet-' + TAG
 
 
 def needed(settings):
@@ -18,7 +19,7 @@ def get(ports, settings, shared):
   ports.fetch_project('bullet', f'https://github.com/emscripten-ports/bullet/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'bullet', 'Bullet-' + TAG)
+    source_path = os.path.join(ports.get_dir(), 'bullet', SUBDIR)
     src_path = os.path.join(source_path, 'bullet', 'src')
 
     dest_include_path = ports.get_include_dir('bullet')
