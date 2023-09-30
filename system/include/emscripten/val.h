@@ -570,7 +570,7 @@ public:
   }
 
 // If code is not being compiled with GNU extensions enabled, typeof() is not a reserved keyword, so support that as a member function.
-#if __STRICT_ANSI__
+#if __is_identifier(typeof)
   val typeof() const {
     return val(internal::_emval_typeof(as_handle()));
   }
