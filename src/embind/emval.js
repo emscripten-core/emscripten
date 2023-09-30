@@ -279,10 +279,11 @@ var LibraryEmVal = {
     return !object;
   },
 
-  _emval_call__deps: ['$callAndDestruct', '$Emval'],
+  _emval_call__deps: ['$emval_methodCallers', '$Emval'],
   _emval_call: (caller, handle, destructorsRef, args) => {
+    caller = emval_methodCallers[caller];
     handle = Emval.toValue(handle);
-    return callAndDestruct(caller, null, handle, destructorsRef, args);
+    return caller(null, handle, destructorsRef, args);
   },
 
   $emval_lookupTypes__deps: ['$requireRegisteredType'],
@@ -388,17 +389,12 @@ var LibraryEmVal = {
     return emval_addMethodCaller(invokerFunction);
   },
 
-  $callAndDestruct__deps: ['$emval_methodCallers'],
-  $callAndDestruct: (caller, obj, func, destructorsRef, args) => {
-    caller = emval_methodCallers[caller];
-    return caller(obj, func, destructorsRef, args);
-  },
-
-  _emval_call_method__deps: ['$getStringOrSymbol', '$callAndDestruct', '$Emval'],
+  _emval_call_method__deps: ['$getStringOrSymbol', '$emval_methodCallers', '$Emval'],
   _emval_call_method: (caller, objHandle, methodName, destructorsRef, args) => {
+    caller = emval_methodCallers[caller];
     objHandle = Emval.toValue(objHandle);
     methodName = getStringOrSymbol(methodName);
-    return callAndDestruct(caller, objHandle, objHandle[methodName], destructorsRef, args);
+    return caller(objHandle, objHandle[methodName], destructorsRef, args);
   },
 
   _emval_typeof__deps: ['$Emval'],
