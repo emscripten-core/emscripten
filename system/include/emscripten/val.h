@@ -395,7 +395,11 @@ public:
       : val(internal::_emval_new_cstring(v))
   {}
 
-  val(val&& v) : val(v.as_handle()) {
+  // Note: unlike other constructors, this doesn't use as_handle() because
+  // it just moves a value and doesn't need to go via incref/decref.
+  // This means it's safe to move values across threads - an error will
+  // only arise if you access or free it from the wrong thread later.
+  val(val&& v) : handle(v.handle), thread(v.thread) {
     v.handle = 0;
   }
 
