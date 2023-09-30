@@ -12,8 +12,8 @@
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 // -- jshint doesn't understand library syntax, so we need to mark the symbols exposed here
-/*global getStringOrSymbol, emval_handles, Emval, __emval_unregister, count_emval_handles, emval_symbols, __emval_decref, emval_newers*/
-/*global craftEmvalAllocator, emval_addMethodCaller, emval_methodCallers, addToLibrary, global, emval_lookupTypes, makeLegalFunctionName*/
+/*global getStringOrSymbol, emval_handles, Emval, __emval_unregister, count_emval_handles, emval_symbols, __emval_decref*/
+/*global emval_addMethodCaller, emval_methodCallers, addToLibrary, global, emval_lookupTypes, makeLegalFunctionName*/
 /*global emval_get_global*/
 
 var LibraryEmVal = {
@@ -143,79 +143,6 @@ var LibraryEmVal = {
     type = requireRegisteredType(type, '_emval_take_value');
     var v = type['readValueFromPointer'](arg);
     return Emval.toHandle(v);
-  },
-
-  $emval_newers: {}, // arity -> function
-  $craftEmvalAllocator__deps: ['$Emval', '$requireRegisteredType'],
-  $craftEmvalAllocator: (argCount) => {
-    /*This function returns a new function that looks like this:
-    function emval_allocator_3(constructor, argTypes, args) {
-        var argType0 = requireRegisteredType(HEAP32[(argTypes >> 2)], "parameter 0");
-        var arg0 = argType0['readValueFromPointer'](args);
-        var argType1 = requireRegisteredType(HEAP32[(argTypes >> 2) + 1], "parameter 1");
-        var arg1 = argType1['readValueFromPointer'](args + 8);
-        var argType2 = requireRegisteredType(HEAP32[(argTypes >> 2) + 2], "parameter 2");
-        var arg2 = argType2['readValueFromPointer'](args + 16);
-        var obj = new constructor(arg0, arg1, arg2);
-        return Emval.toHandle(obj);
-    } */
-#if !DYNAMIC_EXECUTION
-    var argsList = new Array(argCount + 1);
-    return function(constructor, argTypes, args) {
-      argsList[0] = constructor;
-      for (var i = 0; i < argCount; ++i) {
-        var argType = requireRegisteredType({{{ makeGetValue('argTypes', 'i * ' + POINTER_SIZE, '*') }}}, 'parameter ' + i);
-        argsList[i + 1] = argType['readValueFromPointer'](args);
-        args += argType['argPackAdvance'];
-      }
-      var obj = new (constructor.bind.apply(constructor, argsList));
-      return Emval.toHandle(obj);
-    };
-#else
-    var argsList = "";
-    for (var i = 0; i < argCount; ++i) {
-      argsList += (i!==0?", ":"")+"arg"+i; // 'arg0, arg1, ..., argn'
-    }
-
-    // The body of the generated function does not have access to enclosing
-    // scope where HEAPU64/HEAPU32/etc are defined, and we cannot pass them
-    // directly as arguments (like we do the Module object) since memory
-    // growth can cause them to be re-bound.
-    var getMemory = () => {{{ MEMORY64 ? "HEAPU64" : "HEAPU32" }}};
-
-    var functionBody =
-        "return function emval_allocator_"+argCount+"(constructor, argTypes, args) {\n" +
-        "  var {{{ MEMORY64 ? 'HEAPU64' : 'HEAPU32' }}} = getMemory();\n";
-
-    for (var i = 0; i < argCount; ++i) {
-        functionBody +=
-            "var argType"+i+" = requireRegisteredType({{{ makeGetValue('argTypes', '0', '*') }}}, 'parameter "+i+"');\n" +
-            "var arg"+i+" = argType"+i+".readValueFromPointer(args);\n" +
-            "args += argType"+i+"['argPackAdvance'];\n" +
-            "argTypes += {{{ POINTER_SIZE }}};\n";
-    }
-    functionBody +=
-        "var obj = new constructor("+argsList+");\n" +
-        "return valueToHandle(obj);\n" +
-        "}\n";
-
-    /*jshint evil:true*/
-    return (new Function("requireRegisteredType", "Module", "valueToHandle", "getMemory" , functionBody))(
-        requireRegisteredType, Module, Emval.toHandle, getMemory);
-#endif
-  },
-
-  _emval_new__deps: ['$craftEmvalAllocator', '$emval_newers', '$Emval'],
-  _emval_new: (handle, argCount, argTypes, args) => {
-    handle = Emval.toValue(handle);
-
-    var newer = emval_newers[argCount];
-    if (!newer) {
-      newer = craftEmvalAllocator(argCount);
-      emval_newers[argCount] = newer;
-    }
-
-    return newer(handle, argTypes, args);
   },
 
 #if !DYNAMIC_EXECUTION
@@ -371,15 +298,27 @@ var LibraryEmVal = {
     return id;
   },
 
+  $reflectConstruct: null,
+  $reflectConstruct__postset: `
+    if (typeof Reflect !== 'undefined') {
+      reflectConstruct = Reflect.construct;
+    } else {
+      reflectConstruct = function(target, args) {
+        return new (target.bind.apply(target, [null].concat(args)))();
+      };
+    }
+  `,
+
   $emval_registeredMethods: {},
   _emval_get_method_caller__deps: [
     '$emval_addMethodCaller', '$emval_lookupTypes',,
     '$makeLegalFunctionName', '$emval_registeredMethods',
+    '$reflectConstruct',
 #if DYNAMIC_EXECUTION
     '$newFunc',
 #endif
   ],
-  _emval_get_method_caller: (argCount, argTypes) => {
+  _emval_get_method_caller: (argCount, argTypes, asCtor) => {
     var types = emval_lookupTypes(argCount, argTypes);
     var retType = types[0];
     var signatureName = retType.name + "_$" + types.slice(1).map(function (t) { return t.name; }).join("_") + "$";
@@ -396,7 +335,7 @@ var LibraryEmVal = {
         argN[i] = types[i + 1]['readValueFromPointer'](args + offset);
         offset += types[i + 1]['argPackAdvance'];
       }
-      var rv = func.apply(obj, argN);
+      var rv = asCtor ? reflectConstruct(func, argN) : func.apply(obj, argN);
       for (var i = 0; i < argCount - 1; ++i) {
         if (types[i + 1].deleteObject) {
           types[i + 1].deleteObject(argN[i]);
@@ -410,19 +349,25 @@ var LibraryEmVal = {
         "return function " + functionName + "(obj, func, destructors, args) {\n";
 
     var offset = 0;
-    var argsList = "obj"; // 'arg0, arg1, arg2, ... , argN'
+    var argsList = ""; // 'arg0, arg1, arg2, ... , argN'
     var params = ["retType"];
     var args = [retType];
     for (var i = 0; i < argCount - 1; ++i) {
-        argsList += ", arg" + i;
+        if (argsList) argsList += ", ";
+        argsList += "arg" + i;
         params.push("argType" + i);
         args.push(types[1 + i]);
         functionBody +=
         "    var arg" + i + " = argType" + i + ".readValueFromPointer(args" + (offset ? ("+"+offset) : "") + ");\n";
         offset += types[i + 1]['argPackAdvance'];
     }
-    functionBody +=
+    if (asCtor) {
+        functionBody +=
+        "    var rv = new func(obj, " + argsList + ");\n";
+    } else {
+        functionBody +=
         "    var rv = func.call(" + argsList + ");\n";
+    }
     for (var i = 0; i < argCount - 1; ++i) {
         if (types[i + 1]['deleteObject']) {
             functionBody +=

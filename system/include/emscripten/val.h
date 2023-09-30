@@ -92,7 +92,8 @@ EM_GENERIC_WIRE_TYPE _emval_call(
 // leak generated function objects!
 EM_METHOD_CALLER _emval_get_method_caller(
     unsigned argCount, // including return value
-    const TYPEID argTypes[]);
+    const TYPEID argTypes[],
+    bool asCtor);
 EM_GENERIC_WIRE_TYPE _emval_call_method(
     EM_METHOD_CALLER caller,
     EM_VAL handle,
@@ -117,7 +118,7 @@ struct symbol_registrar {
   }
 };
 
-template<typename ReturnType, typename... Args>
+template<bool AsCtor, typename ReturnType, typename... Args>
 struct Signature {
   /*
   typedef typename BindingType<ReturnType>::WireType (*MethodCaller)(
@@ -126,10 +127,9 @@ struct Signature {
       EM_DESTRUCTORS* destructors,
       typename BindingType<Args>::WireType...);
   */
-
   static EM_METHOD_CALLER get_method_caller() {
-    constexpr WithPolicies<>::ArgTypeList<ReturnType, Args...> args;
-    thread_local EM_METHOD_CALLER mc = _emval_get_method_caller(args.getCount(), args.getTypes());
+    static constexpr WithPolicies<>::ArgTypeList<ReturnType, Args...> args;
+    thread_local EM_METHOD_CALLER mc = _emval_get_method_caller(args.getCount(), args.getTypes(), AsCtor);
     return mc;
   }
 };
@@ -471,11 +471,6 @@ public:
     return internal::_emval_not(as_handle());
   }
 
-  template<typename... Args>
-  val new_(Args&&... args) const {
-    return internalCall(internal::_emval_new, std::forward<Args>(args)...);
-  }
-
   template<typename T>
   val operator[](const T& key) const {
     return val(internal::_emval_get_property(as_handle(), val_ref(key).as_handle()));
@@ -492,38 +487,27 @@ public:
   }
 
   template<typename... Args>
+  val new_(Args&&... args) const {
+    return internalCall<true, val>(internal::_emval_call, std::forward<Args>(args)...);
+  }
+
+  template<typename... Args>
   val operator()(Args&&... args) const {
-    using namespace internal;
-
-    auto caller = Signature<val, Args...>::get_method_caller();
-
-    WireTypePack<Args...> argv(std::forward<Args>(args)...);
-    EM_DESTRUCTORS destructors = nullptr;
-    EM_GENERIC_WIRE_TYPE result = _emval_call(
-      caller,
-      as_handle(),
-      &destructors,
-      argv);
-    DestructorsRunner rd(destructors);
-    return fromGenericWireType<val>(result);
+    return internalCall<false, val>(internal::_emval_call, std::forward<Args>(args)...);
   }
 
   template<typename ReturnValue, typename... Args>
   ReturnValue call(const char* name, Args&&... args) const {
-    using namespace internal;
-
-    auto caller = Signature<ReturnValue, Args...>::get_method_caller();
-
-    WireTypePack<Args...> argv(std::forward<Args>(args)...);
-    EM_DESTRUCTORS destructors = nullptr;
-    EM_GENERIC_WIRE_TYPE result = _emval_call_method(
-      caller,
-      handle,
-      name,
-      &destructors,
-      argv);
-    DestructorsRunner rd(destructors);
-    return fromGenericWireType<ReturnValue>(result);
+    return internalCall<false, ReturnValue>(
+      [name](auto caller, auto handle, auto destructors, auto argv) {
+        return internal::_emval_call_method(
+          caller,
+          handle,
+          name,
+              destructors,
+          argv);
+      },
+      std::forward<Args>(args)...);
   }
 
   template<typename T, typename ...Policies>
@@ -533,7 +517,7 @@ public:
     typedef BindingType<T> BT;
     typename WithPolicies<Policies...>::template ArgTypeList<T> targetType;
 
-    EM_DESTRUCTORS destructors;
+    EM_DESTRUCTORS destructors = nullptr;
     EM_GENERIC_WIRE_TYPE result = _emval_as(
         as_handle(),
         targetType.getTypes()[0],
@@ -599,13 +583,19 @@ private:
   template<typename WrapperType>
   friend val internal::wrapped_extend(const std::string& , const val& );
 
-  template<typename Implementation, typename... Args>
-  val internalCall(Implementation impl, Args&&... args) const {
+  template<bool AsCtor, typename Ret, typename Implementation, typename... Args>
+  Ret internalCall(Implementation impl, Args&&... args) const {
     using namespace internal;
 
-    WithPolicies<>::ArgTypeList<Args...> argList;
     WireTypePack<Args...> argv(std::forward<Args>(args)...);
-    return val(impl(as_handle(), argList.getCount(), argList.getTypes(), argv));
+    EM_DESTRUCTORS destructors = nullptr;
+    EM_GENERIC_WIRE_TYPE result = impl(
+      Signature<AsCtor, Ret, Args...>::get_method_caller(),
+      as_handle(),
+      &destructors,
+      argv);
+    DestructorsRunner rd(destructors);
+    return fromGenericWireType<Ret>(result);
   }
 
   template<typename T>
