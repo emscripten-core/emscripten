@@ -19,12 +19,97 @@
 #include <vector>
 #include <type_traits>
 
-
 namespace emscripten {
 
 class val;
 
 typedef struct _EM_VAL* EM_VAL;
+
+////////////////////////////////////////////////////////////////////////////////
+// SignatureCode, SignatureString
+////////////////////////////////////////////////////////////////////////////////
+
+namespace internal {
+
+template<typename T>
+struct SignatureCode {};
+
+template<>
+struct SignatureCode<int> {
+    static constexpr char get() {
+        return 'i';
+    }
+};
+
+template<>
+struct SignatureCode<void> {
+    static constexpr char get() {
+        return 'v';
+    }
+};
+
+template<>
+struct SignatureCode<float> {
+    static constexpr char get() {
+        return 'f';
+    }
+};
+
+template<>
+struct SignatureCode<double> {
+    static constexpr char get() {
+        return 'd';
+    }
+};
+
+#ifdef __wasm64__
+// With wasm32 we can fallback to 'i' for pointer types but we need special
+// handling with wasm64.
+template<>
+struct SignatureCode<void*> {
+    static constexpr char get() {
+        return 'p';
+    }
+};
+template<>
+struct SignatureCode<size_t> {
+    static constexpr char get() {
+        return 'p';
+    }
+};
+#endif
+
+template<typename... Args>
+const char* getGenericSignature() {
+    static constexpr char signature[] = { SignatureCode<Args>::get()..., 0 };
+    return signature;
+}
+
+template<typename T> struct SignatureTranslator { using type = int; };
+template<> struct SignatureTranslator<void> { using type = void; };
+template<> struct SignatureTranslator<float> { using type = float; };
+template<> struct SignatureTranslator<double> { using type = double; };
+#ifdef __wasm64__
+template<> struct SignatureTranslator<size_t> { using type = size_t; };
+template<typename PtrType>
+struct SignatureTranslator<PtrType*> { using type = void*; };
+template<typename PtrType>
+struct SignatureTranslator<PtrType&> { using type = void*; };
+template<typename ReturnType, typename... Args>
+struct SignatureTranslator<ReturnType (*)(Args...)> { using type = void*; };
+#endif
+
+template<typename... Args>
+EMSCRIPTEN_ALWAYS_INLINE const char* getSpecificSignature() {
+    return getGenericSignature<typename SignatureTranslator<Args>::type...>();
+}
+
+template<typename Return, typename... Args>
+EMSCRIPTEN_ALWAYS_INLINE const char* getSignature(Return (*)(Args...)) {
+    return getSpecificSignature<Return, Args...>();
+}
+
+} // end namespace internal
 
 namespace internal {
 
@@ -82,24 +167,13 @@ bool _emval_greater_than(EM_VAL first, EM_VAL second);
 bool _emval_less_than(EM_VAL first, EM_VAL second);
 bool _emval_not(EM_VAL object);
 
-EM_GENERIC_WIRE_TYPE _emval_call(
-    EM_METHOD_CALLER caller,
-    EM_VAL func,
-    EM_DESTRUCTORS* destructors,
-    EM_VAR_ARGS argv);
-
 // DO NOT call this more than once per signature. It will
 // leak generated function objects!
 EM_METHOD_CALLER _emval_get_method_caller(
+    const char *sig,
     unsigned argCount, // including return value
     const TYPEID argTypes[],
-    bool asCtor);
-EM_GENERIC_WIRE_TYPE _emval_call_method(
-    EM_METHOD_CALLER caller,
-    EM_VAL handle,
-    const char* methodName,
-    EM_DESTRUCTORS* destructors,
-    EM_VAR_ARGS argv);
+    int mode);
 EM_VAL _emval_typeof(EM_VAL value);
 bool _emval_instanceof(EM_VAL object, EM_VAL constructor);
 bool _emval_is_number(EM_VAL object);
@@ -118,27 +192,21 @@ struct symbol_registrar {
   }
 };
 
-template<bool AsCtor, typename ReturnType, typename... Args>
+template<int Mode, typename ReturnType, typename... Args>
 struct Signature {
-  /*
-  typedef typename BindingType<ReturnType>::WireType (*MethodCaller)(
-      EM_VAL object,
-      EM_VAL method,
-      EM_DESTRUCTORS* destructors,
-      typename BindingType<Args>::WireType...);
-  */
-  static EM_METHOD_CALLER get_method_caller() {
-    static constexpr WithPolicies<>::ArgTypeList<ReturnType, Args...> args;
-    thread_local EM_METHOD_CALLER mc = _emval_get_method_caller(args.getCount(), args.getTypes(), AsCtor);
-    return mc;
+  static auto get_method_caller() {
+    static constexpr WithPolicies<>::ArgTypeList<Args..., ReturnType> args;
+    using MethodCallerType = typename BindingType<ReturnType>::WireType (*) (EM_DESTRUCTORS *, typename BindingType<Args>::WireType...);
+    thread_local auto method_caller = (MethodCallerType)_emval_get_method_caller(getSignature((MethodCallerType)nullptr), args.getCount(), args.getTypes(), Mode);
+    return method_caller;
   }
 };
 
 struct DestructorsRunner {
 public:
-  explicit DestructorsRunner(EM_DESTRUCTORS d)
-      : destructors(d)
-  {}
+  EM_DESTRUCTORS destructors;
+
+  DestructorsRunner() : destructors(nullptr) {}
   ~DestructorsRunner() {
     if (destructors) {
       _emval_run_destructors(destructors);
@@ -147,124 +215,6 @@ public:
 
   DestructorsRunner(const DestructorsRunner&) = delete;
   void operator=(const DestructorsRunner&) = delete;
-
-private:
-  EM_DESTRUCTORS destructors;
-};
-
-template<typename WireType>
-struct GenericWireTypeConverter {
-  static WireType from(double wt) {
-    return static_cast<WireType>(wt);
-  }
-};
-
-template<typename Pointee>
-struct GenericWireTypeConverter<Pointee*> {
-  static Pointee* from(double wt) {
-    return reinterpret_cast<Pointee*>(static_cast<uintptr_t>(wt));
-  }
-};
-
-template<typename T>
-T fromGenericWireType(double g) {
-  typedef typename BindingType<T>::WireType WireType;
-  WireType wt = GenericWireTypeConverter<WireType>::from(g);
-  return BindingType<T>::fromWireType(wt);
-}
-
-template<>
-void fromGenericWireType<void>(double g) {
-  (void)g;
-}
-
-template<typename... Args>
-struct PackSize;
-
-template<>
-struct PackSize<> {
-  static constexpr size_t value = 0;
-};
-
-template<typename Arg, typename... Args>
-struct PackSize<Arg, Args...> {
-  static constexpr size_t value = (sizeof(typename BindingType<Arg>::WireType) + 7) / 8 + PackSize<Args...>::value;
-};
-
-union GenericWireType {
-  union {
-    unsigned u;
-    size_t s;
-    float f;
-    void* p;
-  } w[2];
-  double d;
-  uint64_t u;
-};
-static_assert(sizeof(GenericWireType) == 2*sizeof(void*), "GenericWireType must be size of 2 pointers");
-static_assert(alignof(GenericWireType) == 8, "GenericWireType must be 8-byte-aligned");
-
-inline void writeGenericWireType(GenericWireType*& cursor, float wt) {
-  cursor->w[0].f = wt;
-  ++cursor;
-}
-
-inline void writeGenericWireType(GenericWireType*& cursor, double wt) {
-  cursor->d = wt;
-  ++cursor;
-}
-
-inline void writeGenericWireType(GenericWireType*& cursor, int64_t wt) {
-  cursor->u = wt;
-  ++cursor;
-}
-
-inline void writeGenericWireType(GenericWireType*& cursor, uint64_t wt) {
-  cursor->u = wt;
-  ++cursor;
-}
-
-template<typename T>
-void writeGenericWireType(GenericWireType*& cursor, T* wt) {
-  cursor->w[0].p = wt;
-  ++cursor;
-}
-
-template<typename ElementType>
-inline void writeGenericWireType(GenericWireType*& cursor, const memory_view<ElementType>& wt) {
-  cursor->w[0].s = wt.size;
-  cursor->w[1].p = (void*)wt.data;
-  ++cursor;
-}
-
-template<typename T>
-void writeGenericWireType(GenericWireType*& cursor, T wt) {
-  cursor->w[0].u = static_cast<unsigned>(wt);
-  ++cursor;
-}
-
-inline void writeGenericWireTypes(GenericWireType*&) {
-}
-
-template<typename First, typename... Rest>
-EMSCRIPTEN_ALWAYS_INLINE void writeGenericWireTypes(GenericWireType*& cursor, First&& first, Rest&&... rest) {
-  writeGenericWireType(cursor, BindingType<First>::toWireType(std::forward<First>(first)));
-  writeGenericWireTypes(cursor, std::forward<Rest>(rest)...);
-}
-
-template<typename... Args>
-struct WireTypePack {
-  WireTypePack(Args&&... args) {
-    GenericWireType* cursor = elements.data();
-    writeGenericWireTypes(cursor, std::forward<Args>(args)...);
-  }
-
-  operator EM_VAR_ARGS() const {
-    return elements.data();
-  }
-
-private:
-  std::array<GenericWireType, PackSize<Args...>::value> elements;
 };
 
 } // end namespace internal
@@ -487,27 +437,18 @@ public:
   }
 
   template<typename... Args>
-  val new_(Args&&... args) const {
-    return internalCall<true, val>(internal::_emval_call, std::forward<Args>(args)...);
-  }
-
-  template<typename... Args>
   val operator()(Args&&... args) const {
-    return internalCall<false, val>(internal::_emval_call, std::forward<Args>(args)...);
+    return internalCall<0, val>(std::forward<Args>(args)..., *this);
   }
 
   template<typename ReturnValue, typename... Args>
   ReturnValue call(const char* name, Args&&... args) const {
-    return internalCall<false, ReturnValue>(
-      [name](auto caller, auto handle, auto destructors, auto argv) {
-        return internal::_emval_call_method(
-          caller,
-          handle,
-          name,
-              destructors,
-          argv);
-      },
-      std::forward<Args>(args)...);
+    return internalCall<1, ReturnValue>(std::forward<Args>(args)..., *this, std::string(name));
+  }
+
+  template<typename... Args>
+  val new_(Args&&... args) const {
+    return internalCall<2, val>(std::forward<Args>(args)..., *this);
   }
 
   template<typename T, typename ...Policies>
@@ -517,13 +458,11 @@ public:
     typedef BindingType<T> BT;
     typename WithPolicies<Policies...>::template ArgTypeList<T> targetType;
 
-    EM_DESTRUCTORS destructors = nullptr;
-    EM_GENERIC_WIRE_TYPE result = _emval_as(
+    DestructorsRunner dr;
+    return fromGenericWireType<T>(_emval_as(
         as_handle(),
         targetType.getTypes()[0],
-        &destructors);
-    DestructorsRunner dr(destructors);
-    return fromGenericWireType<T>(result);
+        &dr.destructors));
   }
 
   template<>
@@ -583,19 +522,17 @@ private:
   template<typename WrapperType>
   friend val internal::wrapped_extend(const std::string& , const val& );
 
-  template<bool AsCtor, typename Ret, typename Implementation, typename... Args>
-  Ret internalCall(Implementation impl, Args&&... args) const {
+  template<int Mode, typename Ret, typename... Args>
+  static Ret internalCall(Args&&... args) {
     using namespace internal;
 
-    WireTypePack<Args...> argv(std::forward<Args>(args)...);
-    EM_DESTRUCTORS destructors = nullptr;
-    EM_GENERIC_WIRE_TYPE result = impl(
-      Signature<AsCtor, Ret, Args...>::get_method_caller(),
-      as_handle(),
-      &destructors,
-      argv);
-    DestructorsRunner rd(destructors);
-    return fromGenericWireType<Ret>(result);
+    auto caller = Signature<Mode, Ret, Args...>::get_method_caller();
+    DestructorsRunner rd;
+    if constexpr (std::is_same_v<Ret, void>) {
+      caller(&rd.destructors, toWireType(std::forward<Args>(args))...);
+    } else {
+      return BindingType<Ret>::fromWireType(caller(&rd.destructors, toWireType(std::forward<Args>(args))...));
+    }
   }
 
   template<typename T>

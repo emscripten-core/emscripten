@@ -13,7 +13,7 @@
 
 // -- jshint doesn't understand library syntax, so we need to mark the symbols exposed here
 /*global getStringOrSymbol, emval_handles, Emval, __emval_unregister, count_emval_handles, emval_symbols, __emval_decref*/
-/*global emval_addMethodCaller, emval_methodCallers, addToLibrary, global, emval_lookupTypes, makeLegalFunctionName*/
+/*global addToLibrary, global, emval_lookupTypes, makeLegalFunctionName*/
 /*global emval_get_global*/
 
 var LibraryEmVal = {
@@ -279,13 +279,6 @@ var LibraryEmVal = {
     return !object;
   },
 
-  _emval_call__deps: ['$emval_methodCallers', '$Emval'],
-  _emval_call: (caller, handle, destructorsRef, args) => {
-    caller = emval_methodCallers[caller];
-    handle = Emval.toValue(handle);
-    return caller(handle, destructorsRef, args);
-  },
-
   $emval_lookupTypes__deps: ['$requireRegisteredType'],
   $emval_lookupTypes: (argCount, argTypes) => {
     var a = new Array(argCount);
@@ -294,17 +287,6 @@ var LibraryEmVal = {
                                    "parameter " + i);
     }
     return a;
-  },
-
-  // Leave id 0 undefined.  It's not a big deal, but might be confusing
-  // to have null be a valid method caller.
-  $emval_methodCallers: [undefined],
-
-  $emval_addMethodCaller__deps: ['$emval_methodCallers'],
-  $emval_addMethodCaller: (caller) => {
-    var id = emval_methodCallers.length;
-    emval_methodCallers.push(caller);
-    return id;
   },
 
   $reflectConstruct: null,
@@ -319,28 +301,39 @@ var LibraryEmVal = {
   `,
 
   _emval_get_method_caller__deps: [
-    '$emval_addMethodCaller', '$emval_lookupTypes',
+    '$addFunction', '$emval_lookupTypes',
     '$makeLegalFunctionName',
     '$reflectConstruct', '$emval_returnValue',
 #if DYNAMIC_EXECUTION
     '$newFunc',
 #endif
   ],
-  _emval_get_method_caller: (argCount, argTypes, asCtor) => {
+  _emval_get_method_caller: (sig, argCount, argTypes, mode) => {
+    /* ...args, ctx?, funcOrMethodName, retType */
     var types = emval_lookupTypes(argCount, argTypes);
-    var retType = types.shift();
-    argCount--; // remove the shifted off return type
+    var retType = types.pop();
 
 #if !DYNAMIC_EXECUTION
-    var argN = new Array(argCount);
-    var invokerFunction = function (func, destructorsRef, args) {
-      var offset = 0;
-      for (var i = 0; i < argCount; ++i) {
-        argN[i] = types[i]['readValueFromPointer'](args + offset);
-        offset += types[i]['argPackAdvance'];
+    var invokerFunction = (destructorsRef, ...args) => {
+      var argN = new Array(types.length);
+      for (var i = 0; i < types.length; ++i) {
+        argN[i] = types[i]['fromWireType'](args[i]);
       }
-      var rv = asCtor ? reflectConstruct(func, argN) : func.apply(this, argN);
-      for (var i = 0; i < argCount; ++i) {
+      var func = argN.pop();
+      var rv;
+      switch (mode) {
+        case /* plain function */ 0:
+          rv = func.apply(undefined, argN);
+          break;
+        case /* class method */ 1:
+          var ctx = argN.pop();
+          rv = ctx[func].apply(ctx, argN);
+          break;
+        case /* constructor */ 2:
+          rv = reflectConstruct(func, argN);
+          break;
+      }
+      for (var i = 0; i < types.length; ++i) {
         if (types[i].deleteObject) {
           types[i].deleteObject(argN[i]);
         }
@@ -348,56 +341,55 @@ var LibraryEmVal = {
       return emval_returnValue(retType, destructorsRef, rv);
     };
 #else
-    var signatureName = retType.name + "_$" + types.map(t => t.name).join("_") + "$";
-    var functionName = makeLegalFunctionName("methodCaller_" + signatureName);
-    var functionBody =
-        "return function " + functionName + "(func, destructorsRef, args) {\n";
-
-    var offset = 0;
-    var argsList = ""; // 'arg0, arg1, arg2, ... , argN'
-    var params = ["emval_returnValue", "retType"];
-    var args = [emval_returnValue, retType];
-    for (var i = 0; i < argCount; ++i) {
-        if (argsList) argsList += ", ";
-        argsList += "arg" + i;
-        params.push("argType" + i);
-        args.push(types[i]);
-        functionBody +=
-        "    var arg" + i + " = argType" + i + ".readValueFromPointer(args" + (offset ? ("+"+offset) : "") + ");\n";
-        offset += types[i]['argPackAdvance'];
+    var argNames = types.map((_, i) => "arg" + i);
+    var reservedArgsStart = argNames.length;
+    argNames[--reservedArgsStart] = "func";
+    var invoker;
+    switch (mode) {
+      case /* plain function */ 0:
+        invoker = "func";
+        break;
+      case /* class method */ 1:
+        argNames[--reservedArgsStart] = "ctx";
+        invoker = "ctx[func]";
+        break;
+      case /* constructor */ 2:
+        invoker = "new func";
+        break;
     }
-    if (asCtor) {
-        functionBody +=
-        "    var rv = new func(" + argsList + ");\n";
-    } else {
-        functionBody +=
-        "    var rv = func.call(this, " + argsList + ");\n";
+    var functionBody = "";
+    for (var i = 0; i < argNames.length; ++i) {
+        var argName = argNames[i];
+        functionBody += `${argName} = ${argName}Type.fromWireType(${argName});\n`;
     }
-    for (var i = 0; i < argCount; ++i) {
+    functionBody += `var rv = ${invoker}(${argNames.slice(0, reservedArgsStart).join(", ")});\n`;
+    for (var i = 0; i < argNames.length; ++i) {
         if (types[i]['deleteObject']) {
-            functionBody +=
-            "    argType" + i + ".deleteObject(arg" + i + ");\n";
+            var argName = argNames[i];
+            functionBody += `${argName}Type.deleteObject(${argName});\n`;
         }
     }
     if (!retType.isVoid) {
-        functionBody +=
-        "    return emval_returnValue(retType, destructorsRef, rv);\n";
+        functionBody += `return emval_returnValue(retType, destructorsRef, rv);\n`;
     }
-    functionBody +=
+
+    var signatureName = retType.name + "_$" + types.map(t => t.name).join("_") + "$";
+    var functionName = makeLegalFunctionName("methodCaller_" + signatureName);
+    functionBody =
+        `return function ${functionName}(destructorsRef, ${argNames.join(", ")}) {\n` +
+        functionBody +
         "};\n";
 
-    params.push(functionBody);
-    var invokerFunction = newFunc(Function, params).apply(null, args);
+    var newFuncParams = argNames.map(argName => `${argName}Type`);
+    var newFuncArgs = types.slice();
+    if (!retType.isVoid) {
+        newFuncParams.push("retType", "emval_returnValue");
+        newFuncArgs.push(retType, emval_returnValue);
+    }
+    newFuncParams.push(functionBody);
+    var invokerFunction = newFunc(Function, newFuncParams).apply(null, newFuncArgs);
 #endif
-    return emval_addMethodCaller(invokerFunction);
-  },
-
-  _emval_call_method__deps: ['$getStringOrSymbol', '$emval_methodCallers', '$Emval'],
-  _emval_call_method: (caller, handle, methodName, destructorsRef, args) => {
-    caller = emval_methodCallers[caller];
-    handle = Emval.toValue(handle);
-    methodName = getStringOrSymbol(methodName);
-    return caller.call(handle, handle[methodName], destructorsRef, args);
+    return addFunction(invokerFunction, UTF8ToString(sig));
   },
 
   _emval_typeof__deps: ['$Emval'],
