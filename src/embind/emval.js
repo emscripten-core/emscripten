@@ -17,9 +17,9 @@
 /*global emval_get_global*/
 
 var LibraryEmVal = {
+#if !REFERENCE_TYPES
   $emval_handles__deps: ['$HandleAllocator'],
   $emval_handles: "new HandleAllocator();",
-  $emval_symbols: {}, // address -> string
 
   $init_emval__deps: ['$count_emval_handles', '$emval_handles'],
   $init_emval__postset: 'init_emval();',
@@ -45,20 +45,6 @@ var LibraryEmVal = {
       }
     }
     return count;
-  },
-
-  _emval_register_symbol__deps: ['$emval_symbols', '$readLatin1String'],
-  _emval_register_symbol: (address) => {
-    emval_symbols[address] = readLatin1String(address);
-  },
-
-  $getStringOrSymbol__deps: ['$emval_symbols', '$readLatin1String'],
-  $getStringOrSymbol: (address) => {
-    var symbol = emval_symbols[address];
-    if (symbol === undefined) {
-      return readLatin1String(address);
-    }
-    return symbol;
   },
 
   $Emval__deps: ['$emval_handles', '$throwBindingError', '$init_emval'],
@@ -95,6 +81,33 @@ var LibraryEmVal = {
     if (handle >= emval_handles.reserved && 0 === --emval_handles.get(handle).refcount) {
       emval_handles.free(handle);
     }
+  },
+#else
+  $Emval: {
+    toValue: (x) => x,
+    toHandle: (x) => x,
+  },
+
+  _emval_get_undefined: () => {},
+  _emval_get_null: () => null,
+  _emval_get_true: () => true,
+  _emval_get_false: () => false,
+#endif
+
+  $emval_symbols: {}, // address -> string
+
+  _emval_register_symbol__deps: ['$emval_symbols', '$readLatin1String'],
+  _emval_register_symbol: (address) => {
+    emval_symbols[address] = readLatin1String(address);
+  },
+
+  $getStringOrSymbol__deps: ['$emval_symbols', '$readLatin1String'],
+  $getStringOrSymbol: (address) => {
+    var symbol = emval_symbols[address];
+    if (symbol === undefined) {
+      return readLatin1String(address);
+    }
+    return symbol;
   },
 
   _emval_run_destructors__deps: ['_emval_decref', '$Emval', '$runDestructors'],

@@ -3651,6 +3651,10 @@ def parse_args(newargs):
       settings.BULK_MEMORY = 1
     elif arg == '-mno-bulk-memory':
       settings.BULK_MEMORY = 0
+    elif arg == '-mreference-types':
+      settings.REFERENCE_TYPES = 1
+    elif arg == '-mno-reference-types':
+      settings.REFERENCE_TYPES = 0
     elif arg == '-fexceptions':
       # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
       # exception handling by default when -fexceptions is given when wasm

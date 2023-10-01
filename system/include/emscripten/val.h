@@ -19,11 +19,112 @@
 #include <vector>
 #include <type_traits>
 
+#ifdef __wasm_reference_types__
+static __externref_t em_values[0];
+#endif
+
 namespace emscripten {
 
 class val;
 
+typedef struct _EM_VAL_STORE* EM_VAL_STORE;
+
+const EM_VAL_STORE EM_VAL_STORE_UNDEFINED = (EM_VAL_STORE)1;
+const EM_VAL_STORE EM_VAL_STORE_NULL = (EM_VAL_STORE)2;
+const EM_VAL_STORE EM_VAL_STORE_TRUE = (EM_VAL_STORE)3;
+const EM_VAL_STORE EM_VAL_STORE_FALSE = (EM_VAL_STORE)4;
+
+#ifdef __wasm_reference_types__
+typedef __externref_t EM_VAL;
+
+std::vector<size_t> em_values_refcounts;
+std::vector<EM_VAL_STORE> em_values_freelist;
+
+extern "C" {
+  EM_VAL _emval_get_undefined();
+  EM_VAL _emval_get_null();
+  EM_VAL _emval_get_true();
+  EM_VAL _emval_get_false();
+
+  EM_VAL_STORE _emval_store(EM_VAL value) {
+    if (em_values_freelist.empty()) {
+      // expand_table from https://discourse.llvm.org/t/rfc-webassembly-reference-types-in-clang/66939
+      size_t old_size = __builtin_wasm_table_size(em_values);
+      size_t grow = (old_size >> 1) + 1;
+      if (__builtin_wasm_table_grow(em_values, __builtin_wasm_ref_null_extern(), grow) == -1) {
+        throw std::bad_alloc();
+      }
+
+      size_t end = __builtin_wasm_table_size(em_values);
+      while (end != old_size) {
+        em_values_freelist.push_back((EM_VAL_STORE)--end);
+      }
+      em_values_refcounts.resize(end);
+    }
+
+    auto index = em_values_freelist.back();
+    em_values_freelist.pop_back();
+    __builtin_wasm_table_set(em_values, (size_t)index, value);
+    em_values_refcounts[(size_t)index] = 1;
+    return index;
+  }
+}
+
+struct em_values_init {
+  em_values_init() {
+    _emval_store(_emval_get_undefined());
+    _emval_store(_emval_get_null());
+    _emval_store(_emval_get_true());
+    _emval_store(_emval_get_false());
+  }
+} em_values_init;
+constexpr size_t em_values_reserved_size = 4;
+
+extern "C" {
+  EM_VAL _emval_get(EM_VAL_STORE store) {
+    return __builtin_wasm_table_get(em_values, (size_t)store);
+  }
+
+  void _emval_incref(EM_VAL_STORE value) {
+    auto index = (size_t)value;
+    if (index >= em_values_reserved_size) {
+      em_values_refcounts[(size_t)value]++;
+    }
+  }
+
+  void _emval_decref(EM_VAL_STORE value) {
+    auto index = (size_t)value;
+    if (index >= em_values_reserved_size && --em_values_refcounts[index] == 0) {
+      em_values_freelist.push_back(value);
+    }
+  }
+
+  bool _emval_equals(EM_VAL first, EM_VAL second);
+
+  bool _emval_equals_builtin(EM_VAL handle, EM_VAL_STORE builtin) {
+    return _emval_equals(handle, _emval_get(builtin));
+  }
+}
+#else
 typedef struct _EM_VAL* EM_VAL;
+
+extern "C" {
+  EM_VAL _emval_get(EM_VAL_STORE store) {
+    return (EM_VAL)store;
+  }
+
+  EM_VAL_STORE _emval_store(EM_VAL value) {
+    return (EM_VAL_STORE)value;
+  }
+
+  void _emval_incref(EM_VAL_STORE value);
+  void _emval_decref(EM_VAL_STORE value);
+
+  bool _emval_equals_builtin(EM_VAL handle, EM_VAL_STORE builtin) {
+    return handle == (EM_VAL)builtin;
+  }
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // SignatureCode, SignatureString
@@ -121,20 +222,10 @@ extern "C" {
 
 void _emval_register_symbol(const char*);
 
-enum {
-  _EMVAL_UNDEFINED = 1,
-  _EMVAL_NULL = 2,
-  _EMVAL_TRUE = 3,
-  _EMVAL_FALSE = 4
-};
-
 typedef struct _EM_DESTRUCTORS* EM_DESTRUCTORS;
 typedef struct _EM_METHOD_CALLER* EM_METHOD_CALLER;
 typedef double EM_GENERIC_WIRE_TYPE;
 typedef const void* EM_VAR_ARGS;
-
-void _emval_incref(EM_VAL value);
-void _emval_decref(EM_VAL value);
 
 void _emval_run_destructors(EM_DESTRUCTORS handle);
 
@@ -285,11 +376,11 @@ public:
   }
 
   static val undefined() {
-    return val(EM_VAL(internal::_EMVAL_UNDEFINED));
+    return val(EM_VAL_STORE_UNDEFINED);
   }
 
   static val null() {
-    return val(EM_VAL(internal::_EMVAL_NULL));
+    return val(EM_VAL_STORE_NULL);
   }
 
   static val take_ownership(EM_VAL e) {
@@ -312,7 +403,9 @@ public:
     new (this) val(_emval_take_value(internal::TypeID<T>::get(), argv));
   }
 
-  val() : val(EM_VAL(internal::_EMVAL_UNDEFINED)) {}
+  explicit val(bool value): val(value ? EM_VAL_STORE_TRUE : EM_VAL_STORE_FALSE) {}
+
+  val() : val(EM_VAL_STORE_UNDEFINED) {}
 
   explicit val(const char* v)
       : val(internal::_emval_new_cstring(v))
@@ -326,22 +419,19 @@ public:
     v.handle = 0;
   }
 
-  val(const val& v) : val(v.as_handle()) {
-    internal::_emval_incref(handle);
+  val(const val& v) : val(v.as_store_handle()) {
+    _emval_incref(handle);
   }
 
   ~val() {
-    if (EM_VAL handle = as_handle()) {
-      internal::_emval_decref(handle);
+    if (auto handle = as_store_handle()) {
+      _emval_decref(handle);
       handle = 0;
     }
   }
 
   EM_VAL as_handle() const {
-#ifdef _REENTRANT
-    assert(pthread_equal(thread, pthread_self()) && "val accessed from wrong thread");
-#endif
-    return handle;
+    return _emval_get(as_store_handle());
   }
 
   val& operator=(val&& v) & {
@@ -360,19 +450,19 @@ public:
   }
 
   bool isNull() const {
-    return as_handle() == EM_VAL(internal::_EMVAL_NULL);
+    return _emval_equals_builtin(as_handle(), EM_VAL_STORE_NULL);
   }
 
   bool isUndefined() const {
-    return as_handle() == EM_VAL(internal::_EMVAL_UNDEFINED);
+    return _emval_equals_builtin(as_handle(), EM_VAL_STORE_UNDEFINED);
   }
 
   bool isTrue() const {
-    return as_handle() == EM_VAL(internal::_EMVAL_TRUE);
+    return _emval_equals_builtin(as_handle(), EM_VAL_STORE_TRUE);
   }
 
   bool isFalse() const {
-    return as_handle() == EM_VAL(internal::_EMVAL_FALSE);
+    return _emval_equals_builtin(as_handle(), EM_VAL_STORE_FALSE);
   }
 
   bool isNumber() const {
@@ -489,9 +579,9 @@ public:
 
 // If code is not being compiled with GNU extensions enabled, typeof() is not a reserved keyword, so support that as a member function.
 #if __STRICT_ANSI__
-  val typeof() const {
-    return val(internal::_emval_typeof(as_handle()));
-  }
+  // val typeof() const {
+  //   return val(internal::_emval_typeof(as_handle()));
+  // }
 #endif
 
 // Prefer calling val::typeOf() over val::typeof(), since this form works in both C++11 and GNU++11 build modes. "typeof" is a reserved word in GNU++11 extensions.
@@ -523,9 +613,18 @@ public:
 
 private:
   // takes ownership, assumes handle already incref'd and lives on the same thread
-  explicit val(EM_VAL handle)
+  explicit val(EM_VAL_STORE handle)
       : handle(handle), thread(pthread_self())
   {}
+
+  explicit val(EM_VAL handle): val(_emval_store(handle)) {}
+
+  EM_VAL_STORE as_store_handle() const {
+#ifdef _REENTRANT
+    assert(pthread_equal(thread, pthread_self()) && "val accessed from wrong thread");
+#endif
+    return handle;
+  }
 
   template<typename WrapperType>
   friend val internal::wrapped_extend(const std::string& , const val& );
@@ -553,7 +652,7 @@ private:
   }
 
   pthread_t thread;
-  EM_VAL handle;
+  EM_VAL_STORE handle;
 
   friend struct internal::BindingType<val>;
 };
@@ -568,7 +667,7 @@ struct val::iterator {
   val&& operator*() { return std::move(cur_value); }
   const val& operator*() const { return cur_value; }
   void operator++() { cur_value = val(internal::_emval_iter_next(iter.as_handle())); }
-  bool operator!=(nullptr_t) const { return cur_value.as_handle() != nullptr; }
+  bool operator!=(nullptr_t) const { return cur_value.as_store_handle() != nullptr; }
 
 private:
   val iter;
@@ -591,14 +690,14 @@ namespace internal {
 template<typename T>
 struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
                                               !std::is_const<T>::value>::type> {
-  typedef EM_VAL WireType;
+  typedef EM_VAL_STORE WireType;
   static WireType toWireType(const val& v) {
-    EM_VAL handle = v.as_handle();
+    auto handle = v.as_store_handle();
     _emval_incref(handle);
     return handle;
   }
   static val fromWireType(WireType v) {
-    return val::take_ownership(v);
+    return val(v);
   }
 };
 
