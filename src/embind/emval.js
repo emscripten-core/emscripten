@@ -320,7 +320,7 @@ var LibraryEmVal = {
 
   _emval_get_method_caller__deps: [
     '$emval_addMethodCaller', '$emval_lookupTypes',
-    '$makeLegalFunctionName', '$emval_registeredMethods',
+    '$makeLegalFunctionName',
     '$reflectConstruct', '$emval_returnValue',
 #if DYNAMIC_EXECUTION
     '$newFunc',
@@ -355,8 +355,8 @@ var LibraryEmVal = {
 
     var offset = 0;
     var argsList = ""; // 'arg0, arg1, arg2, ... , argN'
-    var params = ["retType"];
-    var args = [retType];
+    var params = ["emval_returnValue", "retType"];
+    var args = [emval_returnValue, retType];
     for (var i = 0; i < argCount; ++i) {
         if (argsList) argsList += ", ";
         argsList += "arg" + i;
