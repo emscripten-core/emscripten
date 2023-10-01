@@ -329,17 +329,18 @@ var LibraryEmVal = {
   _emval_get_method_caller: (argCount, argTypes, asCtor) => {
     var types = emval_lookupTypes(argCount, argTypes);
     var retType = types.shift();
+    argCount--; // remove the shifted off return type
 
 #if !DYNAMIC_EXECUTION
-    var argN = new Array(argCount - 1);
+    var argN = new Array(argCount);
     var invokerFunction = function (func, destructorsRef, args) {
       var offset = 0;
-      for (var i = 0; i < argCount - 1; ++i) {
+      for (var i = 0; i < argCount; ++i) {
         argN[i] = types[i]['readValueFromPointer'](args + offset);
         offset += types[i]['argPackAdvance'];
       }
       var rv = asCtor ? reflectConstruct(func, argN) : func.apply(this, argN);
-      for (var i = 0; i < argCount - 1; ++i) {
+      for (var i = 0; i < argCount; ++i) {
         if (types[i].deleteObject) {
           types[i].deleteObject(argN[i]);
         }
@@ -356,7 +357,7 @@ var LibraryEmVal = {
     var argsList = ""; // 'arg0, arg1, arg2, ... , argN'
     var params = ["retType"];
     var args = [retType];
-    for (var i = 0; i < argCount - 1; ++i) {
+    for (var i = 0; i < argCount; ++i) {
         if (argsList) argsList += ", ";
         argsList += "arg" + i;
         params.push("argType" + i);
@@ -372,7 +373,7 @@ var LibraryEmVal = {
         functionBody +=
         "    var rv = func.call(this, " + argsList + ");\n";
     }
-    for (var i = 0; i < argCount - 1; ++i) {
+    for (var i = 0; i < argCount; ++i) {
         if (types[i]['deleteObject']) {
             functionBody +=
             "    argType" + i + ".deleteObject(arg" + i + ");\n";
