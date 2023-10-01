@@ -690,14 +690,14 @@ namespace internal {
 template<typename T>
 struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
                                               !std::is_const<T>::value>::type> {
-  typedef EM_VAL_STORE WireType;
+  typedef EM_VAL WireType;
   static WireType toWireType(const val& v) {
-    auto handle = v.as_store_handle();
-    _emval_incref(handle);
-    return handle;
+    auto store = v.as_store_handle();
+    _emval_incref(store);
+    return _emval_get(store);
   }
   static val fromWireType(WireType v) {
-    return val(v);
+    return val::take_ownership(v);
   }
 };
 
