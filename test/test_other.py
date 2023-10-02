@@ -2943,7 +2943,9 @@ int f() {
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'] + extra_args)
     # Test these args separately since they conflict with arguments in the first test.
     extra_args = ['-sMODULARIZE',
-                  '--embed-file', 'fail.js']
+                  '--embed-file', 'fail.js',
+                  '-sMINIMAL_RUNTIME=2',
+                  '-sEXPORT_ES6=1']
     self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'] + extra_args)
 
@@ -13324,6 +13326,26 @@ j1: 8589934599, j2: 30064771074, j3: 12884901891
     }
     ''')
     self.do_runf('f2.c', emcc_args=['f1.c'])
+
+  def test_em_js_deps_anon_ns(self):
+    # Check that EM_JS_DEPS is not eliminated in
+    # an anonymous C++ namespace.
+    create_file('test_em_js_deps.cpp', '''
+    #include <emscripten.h>
+
+    namespace {
+      EM_JS_DEPS(test, "$stringToUTF8OnStack");
+    }
+
+    int main() {
+      EM_ASM({
+        var x = stackSave();
+        stringToUTF8OnStack("hello");
+        stackRestore(x);
+      });
+    }
+    ''')
+    self.do_runf('test_em_js_deps.cpp')
 
   @no_mac('https://github.com/emscripten-core/emscripten/issues/18175')
   @crossplatform

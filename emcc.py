@@ -3234,15 +3234,20 @@ def phase_embind_emit_tsd(options, in_wasm, wasm_target, memfile, js_syms):
   settings.POST_JS_FILES = []
   # Force node since that is where the tool runs.
   settings.ENVIRONMENT = 'node'
+  settings.MINIMAL_RUNTIME = 0
+  # Required function to trigger TS generation.
+  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']
+  settings.EXPORT_ES6 = False
   setup_environment_settings()
   # Replace embind with the TypeScript generation version.
   embind_index = settings.JS_LIBRARIES.index('embind/embind.js')
   settings.JS_LIBRARIES[embind_index] = 'embind/embind_ts.js'
 
-  outfile_js = 'tsgen_a.out.js'
+  outfile_js = os.path.join(os.path.dirname(wasm_target), 'tsgen_a.out.js')
   emscripten.run(in_wasm, wasm_target, outfile_js, memfile, js_syms)
   out = shared.run_js_tool(outfile_js, [], stdout=PIPE)
-  write_file(options.embind_emit_tsd, out)
+  write_file(
+    os.path.join(os.path.dirname(wasm_target), options.embind_emit_tsd), out)
   delete_file(outfile_js)
   settings.restore(original_settings)
 

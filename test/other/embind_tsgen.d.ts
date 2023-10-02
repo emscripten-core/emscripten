@@ -78,4 +78,5 @@ export interface MainModule {
   global_fn(_0: number, _1: number): number;
   smart_ptr_function(_0: ClassWithSmartPtrConstructor): number;
   smart_ptr_function_with_params(foo: ClassWithSmartPtrConstructor): number;
+  function_with_callback_param(_0: (message: string) => void): number;
 }
