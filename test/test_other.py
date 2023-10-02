@@ -8593,9 +8593,26 @@ int main() {
     for check in stack_trace_checks:
       self.assertFalse(re.search(check, err), 'Expected regex "%s" to not match on:\n%s' % (check, err))
 
-    # Rethrowing exception currently loses the stack trace before the
-    # rethrowing due to how rethrowing is implemented. So in the examples below
-    # we don't print 'bar' at the moment.
+  @parameterized({
+    '': (False,),
+    'wasm': (True,),
+  })
+  def test_exceptions_rethrow_stack_trace_and_message(self, wasm_eh):
+    emcc_args = ['-g']
+    if wasm_eh:
+      # FIXME Node v18.13 (LTS as of Jan 2023) has not yet implemented the new
+      # optional 'traceStack' option in WebAssembly.Exception constructor
+      # (https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Exception/Exception)
+      # and embeds stack traces unconditionally. Change this back to
+      # self.require_wasm_eh() if this issue is fixed later.
+      self.require_v8()
+      emcc_args += ['-fwasm-exceptions']
+    else:
+      emcc_args += ['-fexceptions']
+
+    # Rethrowing exception currently loses the stack trace before the rethrowing
+    # due to how rethrowing is implemented. So in the examples below we don't
+    # print 'bar' at the moment.
     # TODO Make rethrow preserve stack traces before rethrowing?
     rethrow_src1 = r'''
       #include <stdexcept>
@@ -8641,7 +8658,6 @@ int main() {
       'at (src.wasm.)?main']
 
     self.set_setting('ASSERTIONS', 1)
-    self.clear_setting('EXCEPTION_STACK_TRACES')
     err = self.do_run(rethrow_src1, emcc_args=emcc_args, assert_all=True,
                       assert_returncode=NON_ZERO,
                       expected_output=rethrow_stack_trace_checks, regex=True)
