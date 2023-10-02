@@ -1,4 +1,6 @@
 in main
+argc=0 == 4
+argc=1 == 2
 hello from side module 42 + hello
 hello again
 hello from void func
