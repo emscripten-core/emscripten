@@ -397,20 +397,21 @@ var LibraryEmVal = {
   ],
   _emval_get_method_caller: (argCount, argTypes) => {
     var types = emval_lookupTypes(argCount, argTypes);
-    var retType = types[0];
+    var retType = types.shift();
+    argCount--; // remove the shifted off return type
 
 #if !DYNAMIC_EXECUTION
-    var argN = new Array(argCount - 1);
+    var argN = new Array(argCount);
     var invokerFunction = (handle, name, destructors, args) => {
       var offset = 0;
-      for (var i = 0; i < argCount - 1; ++i) {
-        argN[i] = types[i + 1]['readValueFromPointer'](args + offset);
-        offset += types[i + 1]['argPackAdvance'];
+      for (var i = 0; i < argCount; ++i) {
+        argN[i] = types[i]['readValueFromPointer'](args + offset);
+        offset += types[i]['argPackAdvance'];
       }
       var rv = handle[name].apply(handle, argN);
-      for (var i = 0; i < argCount - 1; ++i) {
-        if (types[i + 1].deleteObject) {
-          types[i + 1].deleteObject(argN[i]);
+      for (var i = 0; i < argCount; ++i) {
+        if (types[i].deleteObject) {
+          types[i].deleteObject(argN[i]);
         }
       }
       if (!retType.isVoid) {
@@ -422,27 +423,27 @@ var LibraryEmVal = {
     var args = [retType];
 
     var argsList = ""; // 'arg0, arg1, arg2, ... , argN'
-    for (var i = 0; i < argCount - 1; ++i) {
+    for (var i = 0; i < argCount; ++i) {
       argsList += (i !== 0 ? ", " : "") + "arg" + i;
       params.push("argType" + i);
-      args.push(types[1 + i]);
+      args.push(types[i]);
     }
 
-    var signatureName = retType.name + "_$" + types.slice(1).map(t => t.name).join("_") + "$";
+    var signatureName = retType.name + "_$" + types.map(t => t.name).join("_") + "$";
     var functionName = makeLegalFunctionName("methodCaller_" + signatureName);
     var functionBody =
         "return function " + functionName + "(handle, name, destructors, args) {\n";
 
     var offset = 0;
-    for (var i = 0; i < argCount - 1; ++i) {
+    for (var i = 0; i < argCount; ++i) {
         functionBody +=
         "    var arg" + i + " = argType" + i + ".readValueFromPointer(args" + (offset ? ("+"+offset) : "") + ");\n";
-        offset += types[i + 1]['argPackAdvance'];
+        offset += types[i]['argPackAdvance'];
     }
     functionBody +=
         "    var rv = handle[name](" + argsList + ");\n";
-    for (var i = 0; i < argCount - 1; ++i) {
-        if (types[i + 1]['deleteObject']) {
+    for (var i = 0; i < argCount; ++i) {
+        if (types[i]['deleteObject']) {
             functionBody +=
             "    argType" + i + ".deleteObject(arg" + i + ");\n";
         }
