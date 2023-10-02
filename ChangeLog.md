@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 3.1.47 (in development)
 -----------------------
+- The `noExitRuntime` global is now a JS library symbol that will only be
+  included as needed.  User of `noExitRuntime` will now need to declare a
+  dependency on it.  It will get implicitly included if `noExitRuntime` is part
+  of `INCOMING_MODULE_JS_API.` (which it is by default), or it can be added to
+  either `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` or `noExitRuntime`. (#20336)
 - The egl, html5, sdl and webgpu libraries now support basic functionality with
   `-sMEMORY64`. (#20276)
 - Value types in `emscripten/html5.h` that correspond the WebIDL `long` type are

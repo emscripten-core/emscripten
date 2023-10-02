@@ -13888,17 +13888,17 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
   def test_noExitRuntime(self):
     onexit_called = 'onExit called'
-    create_file('pre.js', f'Module.onExit = () => console.log("${onexit_called}");')
+    create_file('pre.js', f'Module.onExit = () => console.log("${onexit_called}");\n')
     self.emcc_args += ['--pre-js=pre.js']
     self.set_setting('EXIT_RUNTIME')
 
-    # Normally with EXIT_RUNTIME set we expect onExit to be called;
+    # Normally, with EXIT_RUNTIME set we expect onExit to be called.
     output = self.do_runf(test_file('hello_world.c'), 'hello, world')
     self.assertContained(onexit_called, output)
 
-    # However, if we set `Module.noExitRuntime = true`, then we expect
-    # it not to be called.
-    create_file('noexit.js', 'Module.noExitRuntime = true;')
+    # However, if we set `Module.noExitRuntime = true`, then it should
+    # not be called.
+    create_file('noexit.js', 'Module.noExitRuntime = true;\n')
     output = self.do_runf(test_file('hello_world.c'), 'hello, world', emcc_args=['--pre-js=noexit.js'])
     self.assertNotContained(onexit_called, output)
 
@@ -13907,3 +13907,15 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     create_file('noexit_oninit.js', 'Module.preRun = () => { noExitRuntime = true; }')
     output = self.do_runf(test_file('hello_world.c'), 'hello, world', emcc_args=['--pre-js=noexit_oninit.js'])
     self.assertNotContained(onexit_called, output)
+
+  def test_noExitRuntime_deps(self):
+    create_file('lib.js', r'''
+addToLibrary({
+  foo__deps: ['$noExitRuntime'],
+  foo: () => {
+    return 0;
+  }
+});
+''')
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=foo'])
+    self.assertContained('error: noExitRuntime cannot be referenced via __deps mechansim', err)

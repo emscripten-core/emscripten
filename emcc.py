@@ -1804,6 +1804,9 @@ def phase_linker_setup(options, state, newargs):
   system_libpath = '-L' + str(cache.get_lib_dir(absolute=True))
   add_link_flag(state, sys.maxsize, system_libpath)
 
+  if 'noExitRuntime' in settings.INCOMING_MODULE_JS_API:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$noExitRuntime')
+
   if settings.OPT_LEVEL >= 1:
     default_setting('ASSERTIONS', 0)
 

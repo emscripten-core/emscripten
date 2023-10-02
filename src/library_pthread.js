@@ -129,7 +129,7 @@ var LibraryPThread = {
 #endif
 #endif
 
-#if !MINIMAL_RUNTIME
+#if isSymbolNeeded('$noExitRuntime')
       // The default behaviour for pthreads is always to exit once they return
       // from their entry point (or call pthread_exit).  If we set noExitRuntime
       // to true here on pthreads they would never complete and attempt to

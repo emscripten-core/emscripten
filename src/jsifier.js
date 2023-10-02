@@ -487,6 +487,12 @@ function(${args}) {
         if (typeof dep == 'function') {
           return dep();
         }
+        // $noExitRuntime is special since there are conditional usages of it
+        // in library.js and library_pthread.js.  These happen before deps are
+        // processed so depending on it via `__deps` doesn't work.
+        if (dep === '$noExitRuntime') {
+          error('noExitRuntime cannot be referenced via __deps mechansim.  Use DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS')
+        }
         return addFromLibrary(dep, `${symbol}, referenced by ${dependent}`, dep === aliasTarget);
       }
       let contentText;
