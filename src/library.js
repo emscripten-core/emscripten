@@ -2912,7 +2912,7 @@ addToLibrary({
   $runEmAsmFunction: (code, sigPtr, argbuf) => {
     var args = readEmAsmArgs(sigPtr, argbuf);
 #if ASSERTIONS
-    if (!ASM_CONSTS.hasOwnProperty(code)) abort(`No EM_ASM constant found at address ${code}`);
+    assert(ASM_CONSTS.hasOwnProperty(code), `No EM_ASM constant found at address ${code}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
 #endif
     return ASM_CONSTS[code].apply(null, args);
   },
@@ -2955,7 +2955,7 @@ addToLibrary({
     }
 #endif
 #if ASSERTIONS
-    if (!ASM_CONSTS.hasOwnProperty(code)) abort(`No EM_ASM constant found at address ${code}`);
+    assert(ASM_CONSTS.hasOwnProperty(code), `No EM_ASM constant found at address ${code}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
 #endif
     return ASM_CONSTS[code].apply(null, args);
   },
