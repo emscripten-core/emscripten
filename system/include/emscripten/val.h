@@ -574,8 +574,9 @@ public:
     return val(internal::_emval_typeof(as_handle()));
   }
 
-// If code is not being compiled with GNU extensions enabled, typeof() is not a reserved keyword, so support that as a member function.
+// If code is not being compiled with GNU extensions enabled, typeof() is a valid identifier, so support that as a member function.
 #if __is_identifier(typeof)
+  [[deprecated("Use typeOf() instead.")]]
   val typeof() const {
     return typeOf();
   }
