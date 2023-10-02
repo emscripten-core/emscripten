@@ -2938,7 +2938,8 @@ int f() {
                   '--extern-post-js', 'fail.js',
                   '-sENVIRONMENT=worker',
                   '--use-preload-cache',
-                  '--preload-file', 'fail.js']
+                  '--preload-file', 'fail.js',
+                  '-O3']
     self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'] + extra_args)
     # Test these args separately since they conflict with arguments in the first test.
