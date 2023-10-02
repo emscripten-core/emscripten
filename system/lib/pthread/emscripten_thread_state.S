@@ -4,6 +4,8 @@
 #define PTR i32
 #endif
 
+.section .globals,"",@
+
 .globaltype thread_ptr, PTR
 thread_ptr:
 
@@ -15,6 +17,8 @@ is_runtime_thread:
 
 .globaltype supports_wait, i32
 supports_wait:
+
+.section .text,"",@
 
 .globl __get_tp
 __get_tp:
