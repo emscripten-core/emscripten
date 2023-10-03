@@ -4754,9 +4754,7 @@ Module["preRun"] = () => {
 
   # Tests that response headers get set on emscripten_fetch_t values.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
-  # TODO(sbc): https://github.com/emscripten-core/emscripten/issues/20262
-  # @also_with_wasm2js_or_wasm64
-  @also_with_wasm2js
+  @also_with_wasm2js_or_wasm64
   @requires_threads
   def test_fetch_response_headers(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
@@ -4789,9 +4787,7 @@ Module["preRun"] = () => {
   # Tests emscripten_fetch() usage in synchronous mode when used from the main
   # thread proxied to a Worker with -sPROXY_TO_PTHREAD option.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
-  # TODO(sbc): https://github.com/emscripten-core/emscripten/issues/20262
-  # @also_with_wasm2js_or_wasm64
-  @also_with_wasm2js
+  @also_with_wasm2js_or_wasm64
   @requires_threads
   def test_fetch_sync_xhr(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
@@ -4800,8 +4796,7 @@ Module["preRun"] = () => {
   # Tests emscripten_fetch() usage when user passes none of the main 3 flags (append/replace/no_download).
   # In that case, in append is implicitly understood.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
-  # TODO(sbc): https://github.com/emscripten-core/emscripten/issues/20262
-  # @also_with_wasm64
+  @also_with_wasm64
   @requires_threads
   def test_fetch_implicit_append(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
@@ -5634,8 +5629,7 @@ Module["preRun"] = () => {
   # Tests the AudioWorklet demo
   @parameterized({
     '': ([],),
-    # TODO(sbc): https://github.com/emscripten-core/emscripten/issues/20262
-    # 'memory64': (['-sMEMORY64', '-Wno-experimental'],),
+    'memory64': (['-sMEMORY64', '-Wno-experimental'],),
     'with_fs': (['--preload-file', test_file('hello_world.c') + '@/'],),
     'closure': (['--closure', '1', '-Oz'],),
     'asyncify': (['-sASYNCIFY'],),
