@@ -11,7 +11,6 @@
 // compiled in cygwin with:
 // g++ -Wall -O2 -o skinning_test_no_simd skinning_test_no_simd.cpp
 
-#include <vector>
 #include <set>
 #include <map>
 #include <assert.h>
