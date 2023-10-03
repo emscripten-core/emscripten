@@ -307,16 +307,21 @@ var LibraryEmVal = {
     return id;
   },
 
+#if MIN_CHROME_VERSION < 49 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 42 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101
   $reflectConstruct: null,
   $reflectConstruct__postset: `
     if (typeof Reflect !== 'undefined') {
       reflectConstruct = Reflect.construct;
     } else {
       reflectConstruct = function(target, args) {
+        // limited polyfill for Reflect.construct that handles variadic args and native objects, but not new.target
         return new (target.bind.apply(target, [null].concat(args)))();
       };
     }
   `,
+#else
+  $reflectConstruct: 'Reflect.construct',
+#endif
 
   _emval_get_method_caller__deps: [
     '$emval_addMethodCaller', '$emval_lookupTypes',
