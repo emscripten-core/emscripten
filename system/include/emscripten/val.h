@@ -167,14 +167,14 @@ struct GenericWireTypeConverter<Pointee*> {
 };
 
 template<typename T>
-T fromGenericWireType(double g) {
+T fromGenericWireType(EM_GENERIC_WIRE_TYPE g) {
   typedef typename BindingType<T>::WireType WireType;
   WireType wt = GenericWireTypeConverter<WireType>::from(g);
   return BindingType<T>::fromWireType(wt);
 }
 
 template<>
-inline void fromGenericWireType<void>(double g) {
+inline void fromGenericWireType<void>(EM_GENERIC_WIRE_TYPE g) {
   (void)g;
 }
 
