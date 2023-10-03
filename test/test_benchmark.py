@@ -566,7 +566,7 @@ int printf(const char* fmt, ...)
           break;
         }
         case 'f': {
-          float arg = va_arg(ap, float);
+          double arg = va_arg(ap, double);
           if (arg < 0) {
             putchar('-');
             ret++;
@@ -580,7 +580,7 @@ int printf(const char* fmt, ...)
           }
           while (digits) {
             max /= 10;
-            float curr = arg / max;
+            double curr = arg / max;
             putchar('0' + curr);
             ret++;
             digits--;
