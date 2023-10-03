@@ -513,6 +513,17 @@ class benchmark(common.RunnerCore):
 
 #include <stdarg.h>
 
+#ifdef __cplusplus
+#include <cstddef>
+#include <cstdlib>
+
+void *
+operator new(std::size_t size)
+{
+  return std::malloc(size);
+}
+#endif
+
 int printf(const char* fmt, ...)
 {
   int ret = 0;
