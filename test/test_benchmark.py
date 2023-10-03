@@ -511,6 +511,10 @@ class benchmark(common.RunnerCore):
 
 #if __wasm__
 
+float wasm_quietf(float x) {
+  return x;
+}
+
 #include <stdarg.h>
 
 #ifdef __cplusplus
