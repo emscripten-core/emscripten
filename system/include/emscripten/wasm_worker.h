@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <emscripten/html5.h>
+#include <emscripten/atomic.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -88,53 +89,6 @@ void emscripten_wasm_worker_post_function_vdd(emscripten_wasm_worker_t id, void 
 void emscripten_wasm_worker_post_function_vddd(emscripten_wasm_worker_t id, void (*funcPtr)(double, double, double) __attribute__((nonnull)), double arg0, double arg1, double arg2);
 void emscripten_wasm_worker_post_function_sig(emscripten_wasm_worker_t id, void *funcPtr __attribute__((nonnull)), const char *sig __attribute__((nonnull)), ...);
 
-#define ATOMICS_WAIT_RESULT_T int
-
-// Numbering dictated by https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md#wait
-#define ATOMICS_WAIT_OK 0
-#define ATOMICS_WAIT_NOT_EQUAL 1
-#define ATOMICS_WAIT_TIMED_OUT 2
-
-#define ATOMICS_WAIT_DURATION_INFINITE -1ll
-
-// Issues the wasm 'memory.atomic.wait32' instruction:
-// If the given memory address contains value 'expectedValue', puts the calling
-// thread to sleep to wait for that address to be notified.
-// Returns one of the ATOMICS_WAIT_* return codes.
-// NOTE: This function takes in the wait value in int64_t nanosecond units. Pass
-// in maxWaitNanoseconds = -1 (or ATOMICS_WAIT_DURATION_INFINITE) to wait
-// infinitely long.
-static __attribute__((always_inline)) ATOMICS_WAIT_RESULT_T emscripten_wasm_wait_i32(int32_t *address __attribute__((nonnull)), int expectedValue, int64_t maxWaitNanoseconds)
-{
-  return __builtin_wasm_memory_atomic_wait32(address, expectedValue, maxWaitNanoseconds);
-}
-
-// Issues the wasm 'memory.atomic.wait64' instruction:
-// If the given memory address contains value 'expectedValue', puts the calling
-// thread to sleep to wait for that address to be notified.
-// Returns one of the ATOMICS_WAIT_* return codes.
-// NOTE: This function takes in the wait value in int64_t nanosecond units. Pass
-// in maxWaitNanoseconds = -1 (or ATOMICS_WAIT_DURATION_INFINITE) to wait
-// infinitely long.
-static __attribute__((always_inline)) ATOMICS_WAIT_RESULT_T emscripten_wasm_wait_i64(int64_t *address __attribute__((nonnull)), int64_t expectedValue, int64_t maxWaitNanoseconds)
-{
-  return __builtin_wasm_memory_atomic_wait64(address, expectedValue, maxWaitNanoseconds);
-}
-
-#define EMSCRIPTEN_NOTIFY_ALL_WAITERS (-1LL)
-
-// Issues the wasm 'memory.atomic.notify' instruction:
-// Notifies the given number of threads waiting on a location.
-// Pass count == EMSCRIPTEN_NOTIFY_ALL_WAITERS to notify all waiters on the
-// given location.
-// Returns the number of threads that were woken up.
-// Note: this function is used to notify both waiters waiting on an i32 and i64
-// addresses.
-static __attribute__((always_inline)) int64_t emscripten_wasm_notify(int32_t *address __attribute__((nonnull)), int64_t count)
-{
-  return __builtin_wasm_memory_atomic_notify(address, count);
-}
-
 #define EMSCRIPTEN_WAIT_ASYNC_INFINITY __builtin_inf()
 
 // Represents a pending 'Atomics.waitAsync' wait operation.
@@ -147,8 +101,8 @@ static __attribute__((always_inline)) int64_t emscripten_wasm_notify(int32_t *ad
 // 'address' contains 'value', issues a deferred wait that will invoke the
 // specified callback function 'asyncWaitFinished' once that address has been
 // notified by another thread.
-// NOTE: Unlike functions emscripten_wasm_wait_i32() and
-// emscripten_wasm_wait_i64() which take in the wait timeout parameter as int64
+// NOTE: Unlike functions emscripten_atomic_wait_u32() and
+// emscripten_atomic_wait_u64() which take in the wait timeout parameter as int64
 // nanosecond units, this function takes in the wait timeout parameter as double
 // millisecond units. See https://github.com/WebAssembly/threads/issues/175 for
 // more information.
@@ -388,6 +342,15 @@ ATOMICS_WAIT_TOKEN_T emscripten_condvar_wait_async(emscripten_condvar_t *condvar
 // Pass numWaitersToSignal == EMSCRIPTEN_NOTIFY_ALL_WAITERS to wake all waiters
 // ("broadcast" operation).
 void emscripten_condvar_signal(emscripten_condvar_t *condvar __attribute__((nonnull)), int64_t numWaitersToSignal);
+
+// Legacy names for emscripten_atomic_wait/notify functions, defined in
+// emscripten/atomic.h
+#define emscripten_wasm_wait_i32 emscripten_atomic_wait_u32
+#define emscripten_wasm_wait_i64 emscripten_atomic_wait_u64
+#define emscripten_wasm_notify emscripten_atomic_notify
+#pragma clang deprecated(emscripten_wasm_wait_i32, "use emscripten_atomic_wait_u32 instead")
+#pragma clang deprecated(emscripten_wasm_wait_i64, "use emscripten_atomic_wait_u64 instead")
+#pragma clang deprecated(emscripten_wasm_notify, "use emscripten_atomic_notify instead")
 
 #ifdef __cplusplus
 }
