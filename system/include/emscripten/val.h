@@ -174,7 +174,7 @@ T fromGenericWireType(double g) {
 }
 
 template<>
-void fromGenericWireType<void>(double g) {
+inline void fromGenericWireType<void>(double g) {
   (void)g;
 }
 
