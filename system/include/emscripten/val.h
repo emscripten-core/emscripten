@@ -494,14 +494,14 @@ public:
 
   template<typename ReturnValue, typename... Args>
   ReturnValue call(const char* name, Args&&... args) const {
+    using namespace internal;
+
     return internalCall<false, ReturnValue>(
-      [name](auto caller, auto handle, auto destructorsRef, auto argv) {
-        return internal::_emval_call_method(
-          caller,
-          handle,
-          name,
-          destructorsRef,
-          argv);
+      [name](EM_METHOD_CALLER caller,
+             EM_VAL handle,
+             EM_DESTRUCTORS* destructorsRef,
+             EM_VAR_ARGS argv) {
+        return _emval_call_method(caller, handle, name, destructorsRef, argv);
       },
       std::forward<Args>(args)...);
   }
