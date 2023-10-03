@@ -565,6 +565,33 @@ int printf(const char* fmt, ...)
           }
           break;
         }
+        case 'f': {
+          float arg = va_arg(ap, float);
+          if (arg < 0) {
+            putchar('-');
+            ret++;
+            arg = -arg;
+          }
+          int digits = 1;
+          int max = 10;
+          while (arg >= max) {
+            digits++;
+            max *= 10;
+          }
+          while (digits) {
+            max /= 10;
+            float curr = arg / max;
+            putchar('0' + curr);
+            ret++;
+            digits--;
+            arg -= curr * max;
+          }
+          if (arg) {
+            putchar('.');
+            putchar('0' + int(10*curr));
+          }
+          break;
+        }
         default: {
           puts("unsupported printf!!!!!");
         }
