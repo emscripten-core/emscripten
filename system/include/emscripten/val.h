@@ -62,12 +62,6 @@ EM_VAL _emval_new_u16string(const char16_t*);
 
 EM_VAL _emval_take_value(TYPEID type, EM_VAR_ARGS argv);
 
-EM_VAL _emval_new(
-    EM_VAL value,
-    unsigned argCount,
-    const TYPEID argTypes[],
-    EM_VAR_ARGS argv);
-
 EM_VAL _emval_get_global(const char* name);
 EM_VAL _emval_get_module_property(const char* name);
 EM_VAL _emval_get_property(EM_VAL object, EM_VAL key);
