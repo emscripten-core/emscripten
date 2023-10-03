@@ -572,6 +572,7 @@ int printf(const char* fmt, ...)
             ret++;
             arg = -arg;
           }
+          double frac = arg - int(arg);
           int digits = 1;
           int max = 10;
           while (arg >= max) {
@@ -586,9 +587,9 @@ int printf(const char* fmt, ...)
             digits--;
             arg -= curr * max;
           }
-          if (arg) {
+          if (frac) {
             putchar('.');
-            putchar('0' + int(10*curr));
+            putchar('0' + int(10*frac));
           }
           break;
         }
