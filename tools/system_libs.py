@@ -1223,7 +1223,7 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
         path='system/lib/pthread',
-        filenames=['emscripten_atomic.c', 'thread_profiler.c'])
+        filenames=['thread_profiler.c'])
 
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
 
