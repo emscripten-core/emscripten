@@ -184,8 +184,8 @@ int main(int argc, char **argv) {
     default: printf("error: %d\\n", arg); return -1;
   }
 
-  Vertex *v = new Vertex[N];
-  Influence *i = new Influence[N];
+  Vertex *v = (Vertex*)malloc(sizeof(Vertex) * N);
+  Influence *i = (Influence*)malloc(sizeof(Influence) * N);
   for (int k = 0; k < N; ++k) {
     v[k].position.setAsPoint(1.0f, 2.0f, 3.0f);
     v[k].normal.setAsVector(0.0f, 0.0f, 1.0f);
@@ -197,7 +197,7 @@ int main(int argc, char **argv) {
   BoneTransform bt;
   memset(&bt, 0, sizeof(bt));
 
-  CalVector4 *output = new CalVector4[N * 2];
+  CalVector4 *output = (CalVector4*)malloc(sizeof(CalVector4) * N * 2);
 
   for (unsigned j = 0; j < M; j++)
     calculateVerticesAndNormals_x87(&bt, N, v, i, output);

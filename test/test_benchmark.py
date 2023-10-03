@@ -514,11 +514,10 @@ class benchmark(common.RunnerCore):
 #include <stdarg.h>
 
 #ifdef __cplusplus
-#include <cstddef>
 #include <cstdlib>
 
 void *
-operator new(std::size_t size)
+operator new(unsigned long size)
 {
   return std::malloc(size);
 }
