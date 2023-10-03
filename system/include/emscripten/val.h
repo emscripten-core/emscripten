@@ -569,17 +569,18 @@ public:
     return  _emval_as_uint64(as_handle(), targetType.getTypes()[0]);
   }
 
-// If code is not being compiled with GNU extensions enabled, typeof() is not a reserved keyword, so support that as a member function.
-#if __STRICT_ANSI__
-  val typeof() const {
-    return val(internal::_emval_typeof(as_handle()));
-  }
-#endif
-
 // Prefer calling val::typeOf() over val::typeof(), since this form works in both C++11 and GNU++11 build modes. "typeof" is a reserved word in GNU++11 extensions.
   val typeOf() const {
     return val(internal::_emval_typeof(as_handle()));
   }
+
+// If code is not being compiled with GNU extensions enabled, typeof() is a valid identifier, so support that as a member function.
+#if __is_identifier(typeof)
+  [[deprecated("Use typeOf() instead.")]]
+  val typeof() const {
+    return typeOf();
+  }
+#endif
 
   bool instanceof(const val& v) const {
     return internal::_emval_instanceof(as_handle(), v.as_handle());
