@@ -8529,7 +8529,7 @@ int main() {
         return 0;
       }
     '''
-    emcc_args = ['-g']
+    self.emcc_args = ['-g']
 
     # Stack trace and message example for this example code:
     # exiting due to exception: [object WebAssembly.Exception],Error: std::runtime_error,my message
@@ -8557,9 +8557,9 @@ int main() {
       # self.require_wasm_eh() if this issue is fixed later.
       self.require_v8()
 
-      emcc_args += ['-fwasm-exceptions']
+      self.emcc_args += ['-fwasm-exceptions']
     else:
-      emcc_args += ['-fexceptions']
+      self.emcc_args += ['-fexceptions']
 
     # Stack traces are enabled when either of ASSERTIONS or
     # EXCEPTION_STACK_TRACES is enabled. You can't disable
@@ -8568,16 +8568,14 @@ int main() {
     # Prints stack traces
     self.set_setting('ASSERTIONS', 1)
     self.set_setting('EXCEPTION_STACK_TRACES', 1)
-    self.do_run(src, emcc_args=emcc_args, assert_all=True,
-                assert_returncode=NON_ZERO, expected_output=stack_trace_checks,
-                regex=True)
+    self.do_run(src, assert_all=True, assert_returncode=NON_ZERO,
+                expected_output=stack_trace_checks, regex=True)
 
     # Prints stack traces
     self.set_setting('ASSERTIONS', 0)
     self.set_setting('EXCEPTION_STACK_TRACES', 1)
-    self.do_run(src, emcc_args=emcc_args, assert_all=True,
-                assert_returncode=NON_ZERO, expected_output=stack_trace_checks,
-                regex=True)
+    self.do_run(src, assert_all=True, assert_returncode=NON_ZERO,
+                expected_output=stack_trace_checks, regex=True)
 
     # Not allowed
     self.set_setting('ASSERTIONS', 1)
@@ -8589,7 +8587,7 @@ int main() {
     # Doesn't print stack traces
     self.set_setting('ASSERTIONS', 0)
     self.set_setting('EXCEPTION_STACK_TRACES', 0)
-    err = self.do_run(src, emcc_args=emcc_args, assert_returncode=NON_ZERO)
+    err = self.do_run(src, assert_returncode=NON_ZERO)
     for check in stack_trace_checks:
       self.assertFalse(re.search(check, err), 'Expected regex "%s" to not match on:\n%s' % (check, err))
 
@@ -8598,7 +8596,7 @@ int main() {
     'wasm': (True,),
   })
   def test_exceptions_rethrow_stack_trace_and_message(self, wasm_eh):
-    emcc_args = ['-g']
+    self.emcc_args = ['-g']
     if wasm_eh:
       # FIXME Node v18.13 (LTS as of Jan 2023) has not yet implemented the new
       # optional 'traceStack' option in WebAssembly.Exception constructor
@@ -8606,9 +8604,9 @@ int main() {
       # and embeds stack traces unconditionally. Change this back to
       # self.require_wasm_eh() if this issue is fixed later.
       self.require_v8()
-      emcc_args += ['-fwasm-exceptions']
+      self.emcc_args += ['-fwasm-exceptions']
     else:
-      emcc_args += ['-fexceptions']
+      self.emcc_args += ['-fexceptions']
 
     # Rethrowing exception currently loses the stack trace before the rethrowing
     # due to how rethrowing is implemented. So in the examples below we don't
@@ -8658,12 +8656,10 @@ int main() {
       'at (src.wasm.)?main']
 
     self.set_setting('ASSERTIONS', 1)
-    err = self.do_run(rethrow_src1, emcc_args=emcc_args, assert_all=True,
-                      assert_returncode=NON_ZERO,
+    err = self.do_run(rethrow_src1, assert_all=True, assert_returncode=NON_ZERO,
                       expected_output=rethrow_stack_trace_checks, regex=True)
     self.assertNotContained('bar', err)
-    err = self.do_run(rethrow_src2, emcc_args=emcc_args, assert_all=True,
-                      assert_returncode=NON_ZERO,
+    err = self.do_run(rethrow_src2, assert_all=True, assert_returncode=NON_ZERO,
                       expected_output=rethrow_stack_trace_checks, regex=True)
     self.assertNotContained('bar', err)
 
