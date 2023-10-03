@@ -99,11 +99,6 @@ EM_GENERIC_WIRE_TYPE _emval_call_method(
     const char* methodName,
     EM_DESTRUCTORS* destructors,
     EM_VAR_ARGS argv);
-void _emval_call_void_method(
-    EM_METHOD_CALLER caller,
-    EM_VAL handle,
-    const char* methodName,
-    EM_VAR_ARGS argv);
 EM_VAL _emval_typeof(EM_VAL value);
 bool _emval_instanceof(EM_VAL object, EM_VAL constructor);
 bool _emval_is_number(EM_VAL object);
@@ -145,7 +140,9 @@ public:
       : destructors(d)
   {}
   ~DestructorsRunner() {
-    _emval_run_destructors(destructors);
+    if (destructors) {
+      _emval_run_destructors(destructors);
+    }
   }
 
   DestructorsRunner(const DestructorsRunner&) = delete;
@@ -170,10 +167,15 @@ struct GenericWireTypeConverter<Pointee*> {
 };
 
 template<typename T>
-T fromGenericWireType(double g) {
+T fromGenericWireType(EM_GENERIC_WIRE_TYPE g) {
   typedef typename BindingType<T>::WireType WireType;
   WireType wt = GenericWireTypeConverter<WireType>::from(g);
   return BindingType<T>::fromWireType(wt);
+}
+
+template<>
+inline void fromGenericWireType<void>(EM_GENERIC_WIRE_TYPE g) {
+  (void)g;
 }
 
 template<typename... Args>
@@ -271,7 +273,7 @@ struct MethodCaller {
     auto caller = Signature<ReturnType, Args...>::get_method_caller();
 
     WireTypePack<Args...> argv(std::forward<Args>(args)...);
-    EM_DESTRUCTORS destructors;
+    EM_DESTRUCTORS destructors = nullptr;
     EM_GENERIC_WIRE_TYPE result = _emval_call_method(
       caller,
       handle,
@@ -280,20 +282,6 @@ struct MethodCaller {
       argv);
     DestructorsRunner rd(destructors);
     return fromGenericWireType<ReturnType>(result);
-  }
-};
-
-template<typename... Args>
-struct MethodCaller<void, Args...> {
-  static void call(EM_VAL handle, const char* methodName, Args&&... args) {
-    auto caller = Signature<void, Args...>::get_method_caller();
-
-    WireTypePack<Args...> argv(std::forward<Args>(args)...);
-    _emval_call_void_method(
-      caller,
-      handle,
-      methodName,
-      argv);
   }
 };
 
