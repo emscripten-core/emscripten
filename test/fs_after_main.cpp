@@ -12,7 +12,7 @@
 #define NAME "file.cpp"
 
 EMSCRIPTEN_KEEPALIVE
-extern "C" void finish(void*) {
+extern "C" void finish() {
   EM_ASM({
     var printed = Module['extraSecretBuffer'].split('Iteration').length - 1;
     console.log(printed);
