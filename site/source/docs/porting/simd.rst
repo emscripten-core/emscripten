@@ -167,7 +167,7 @@ The following legend is used to highlight the expected performance of various in
 
 Certain intrinsics in the table below are marked "virtual". This means that there does not actually exist a native x86 SSE instruction set opcode to implement them, but native compilers offer the function as a convenience. Different compilers might generate a different instruction sequence for these.
 
-In addition to consulting the tables below, you can turn on diagnostics for slow, emulated functions by defining the macro `WASM_SIMD_COMPAT_SLOW`. This will print out warnings if you attempt to use any of the slow paths (corresponding to ❌ or 💣 in the legend).
+In addition to consulting the tables below, you can turn on diagnostics for slow, emulated functions by defining the macro ``#define WASM_SIMD_COMPAT_SLOW``. This will print out warnings if you attempt to use any of the slow paths (corresponding to ❌ or 💣 in the legend).
 
 .. list-table:: x86 SSE intrinsics available via #include <xmmintrin.h> and -msse
    :widths: 20 30
