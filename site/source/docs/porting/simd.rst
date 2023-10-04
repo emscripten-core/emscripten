@@ -3,27 +3,72 @@
 .. role:: raw-html(raw)
     :format: html
 
-=======================================
-Porting SIMD code targeting WebAssembly
-=======================================
+===========================
+Using SIMD with WebAssembly
+===========================
 
-Emscripten supports the `WebAssembly SIMD proposal <https://github.com/webassembly/simd/>`_ when using the WebAssembly LLVM backend. To enable SIMD, pass the -msimd128 flag at compile time. This will also turn on LLVM's autovectorization passes, so no source modifications are necessary to benefit from SIMD.
+Emscripten supports the `WebAssembly SIMD <https://github.com/webassembly/simd/>`_ feature. There are five different ways to leverage WebAssembly SIMD in your C/C++ programs:
 
-At the source level, the GCC/Clang `SIMD Vector Extensions <https://gcc.gnu.org/onlinedocs/gcc/Vector-Extensions.html>`_ can be used and will be lowered to WebAssembly SIMD instructions where possible. In addition, there is a portable intrinsics header file that can be used.
+# Enable LLVM/Clang SIMD autovectorizer to automatically target WebAssembly SIMD, without requiring changes to C/C++ source code.
+# Write SIMD code using the GCC/Clang SIMD Vector Extensions (__attribute__((vector_size(16))))
+# Write SIMD code using the WebAssembly SIMD intrinsics (wasm_simd128.h)
+# Compile existing SIMD code that uses the x86 SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2 or 128-bit subset of the AVX intrinsics (\*mmintrin.h)
+# Compile existing SIMD code that uses the ARM NEON intrinsics (arm_neon.h)
+
+These techniques can be freely combined in a single program.
+
+To enable any of the five types of SIMD above, pass the WebAssembly-specific -msimd128 flag at compile time. This will also turn on LLVM's autovectorization passes. If that is not desirable, additionally pass flags -fno-vectorize -fno-slp-vectorize to disable the autovectorizer. See `Auto-Vectorization in LLVM <https://llvm.org/docs/Vectorizers.html>`_ for more information.
+
+WebAssembly SIMD is supported by
+* Chrome ≥ 91 (May 2021),
+* Firefox ≥ 89 (June 2021),
+* Safari ≥ 16.4 (March 2023) and
+* Node.js ≥ 16.4 (June 2021).
+
+See `WebAssembly Roadmap <https://webassembly.org/roadmap/>`_ for details about other VMs.
+
+An upcoming `Relaxed SIMD proposal <https://github.com/WebAssembly/relaxed-simd/tree/main/proposals/relaxed-simd>`_ will add more SIMD instructions to WebAssembly.
+
+================================
+GCC/Clang SIMD Vector Extensions
+================================
+
+At the source level, the GCC/Clang `SIMD Vector Extensions <https://gcc.gnu.org/onlinedocs/gcc/Vector-Extensions.html>`_ can be used and will be lowered to WebAssembly SIMD instructions where possible.
+
+This enables developers to create custom wide vector types via typedefs, and use arithmetic operators (+,-,*,/) on the vectorized types, as well as allow individual lane access via the vector[i] notation. However, the `GCC vector built-in functions <https://gcc.gnu.org/onlinedocs/gcc/x86-Built-in-Functions.html>`_ are not available. Instead, use the WebAssembly SIMD Intrinsics functions below.
+
+===========================
+WebAssembly SIMD Intrinsics
+===========================
+
+LLVM maintains a WebAssembly SIMD Intrinsics header file that is provided with Emscripten, and adds type definitions for the different supported vector types.
 
     .. code-block:: cpp
 
        #include <wasm_simd128.h>
+       #include <stdio.h>
 
-Separate documentation for the intrinsics header is a work in progress, but its usage is straightforward and its source can be found at `wasm_simd128.h <https://github.com/llvm/llvm-project/blob/main/clang/lib/Headers/wasm_simd128.h>`_. These intrinsics are under active development in parallel with the SIMD proposal and should not be considered any more stable than the proposal itself. Note that most engines will also require an extra flag to enable SIMD. For example, Node requires `--experimental-wasm-simd`.
+       int main() {
+       #ifdef __wasm_simd128__
+       __f32x4 v1 = wasm_f32x4_make(1.2f, 3.4f, 5.6f, 7.8f);
+       __f32x4 v2 = wasm_f32x4_make(2.1f, 4.3f, 6.5f, 8.7f);
+       __f32x4 v3 = v1 + v2;
+       // Prints "v3: [3.3, 7.7, 12.1, 16.5]"
+       printf("v3: [%.1f, %.1f, %.1f, %.1f]\n", v3[0], v3[1], v3[2], v3[3]);
+       #endif
+       }
 
-WebAssembly SIMD is not supported when using the Fastcomp backend.
+The Wasm SIMD header can be browsed online at `wasm_simd128.h <https://github.com/llvm/llvm-project/blob/main/clang/lib/Headers/wasm_simd128.h>`_.
+
+Pass -msimd128 flag at compile time to enable targeting WebAssembly SIMD Intrinsics. C/C++ code can use the built-in preprocessor define __wasm_simd128__ to detect when building with WebAssembly SIMD enabled.
+
+Pass -mrelaxed-simd to target WebAssembly Relaxed SIMD Intrinsics. C/C++ code can use the built-in preprocessor define __wasm_relaxed_simd__ to detect when this target is active. At the time of writing, Relaxed SIMD is experimental.
 
 ======================================
 Limitations and behavioral differences
 ======================================
 
-When porting native SIMD code, it should be noted that because of portability concerns, the WebAssembly SIMD specification does not expose the full native instruction sets. In particular the following changes exist:
+When porting native SIMD code, it should be noted that because of portability concerns, the WebAssembly SIMD specification does not expose access to all of the native x86/ARM SIMD instructions. In particular the following changes exist:
 
  - Emscripten does not support x86 or any other native inline SIMD assembly or building .s assembly files, so all code should be written to use SIMD intrinsic functions or compiler vector extensions.
 
@@ -39,14 +84,14 @@ SIMD-related bug reports are tracked in the `Emscripten bug tracker with the lab
 Optimization considerations
 ===========================
 
-When porting SIMD code to use WebAssembly SIMD, implementors should be aware of semantic differences between the host hardware and WebAssembly semantics; as acknowledged in the WebAssembly design documentation, "`this sometimes will lead to poor performance <https://github.com/WebAssembly/design/blob/master/Portability.md#assumptions-for-efficient-execution>`_." The following list outlines some WebAssembly SIMD instructions to look out for when performance tuning:
+When developing SIMD code to use WebAssembly SIMD, implementors should be aware of semantic differences between the host hardware and WebAssembly semantics; as acknowledged in the WebAssembly design documentation, "`this sometimes will lead to poor performance <https://github.com/WebAssembly/design/blob/master/Portability.md#assumptions-for-efficient-execution>`_." The following list outlines some WebAssembly SIMD instructions to look out for when performance tuning:
 
 .. list-table:: WebAssembly SIMD instructions with performance implications
    :widths: 10 10 30
    :header-rows: 1
 
    * - WebAssembly SIMD instruction
-     - Hardware architecture
+     - Arch
      - Considerations
 
    * - [i8x16|i16x8|i32x4|i64x2].[shl|shr_s|shr_u]
@@ -86,15 +131,23 @@ When porting SIMD code to use WebAssembly SIMD, implementors should be aware of 
      - Included for orthogonality, these instructions have no equivalent x86 instruction and are `emulated with 10 x86 instructions in v8 <https://github.com/v8/v8/blob/b6520eda5eafc3b007a5641b37136dfc9d92f63d/src/compiler/backend/x64/code-generator-x64.cc#L2834-L2858>`_.
 
 
-=====================================================
-Compiling SIMD code targeting x86 SSE instruction set
-=====================================================
+=======================================================
+Compiling SIMD code targeting x86 SSE* instruction sets
+=======================================================
 
-Emscripten supports compiling existing codebases that use x86 SSE by passing the `-msse` directive to the compiler, and including the header `<xmmintrin.h>`.
+Emscripten supports compiling existing codebases that use x86 SSE instructions by passing the `-msimd128` flag, and additionally one of the following:
 
-Currently only the SSE1, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, and 128-bit AVX instruction sets are supported.
+* SSE: pass `-msse` and `#include <xmmintrin.h>`. Use `#ifdef __SSE__` to detect if compiler currently enables targeting SSE.
+* SSE2: pass `-msse2` and `#include <emmintrin.h>`. Use `#ifdef __SSE2__` to detect if compiler currently enables targeting SSE2.
+* SSE3: pass `-msse3` and `#include <pmmintrin.h>`. Use `#ifdef __SSE3__` to detect if compiler currently enables targeting SSE3.
+* SSSE3: pass `-mssse3` and `#include <tmmintrin.h>`. Use `#ifdef __SSSE3__` to detect if compiler currently enables targeting SSSE3.
+* SSE4.1: pass `-msse4.1` and `#include <smmintrin.h>`. Use `#ifdef __SSE4_1__` to detect if compiler currently enables targeting SSE4.1.
+* SSE4.2: pass `-msse4.2` and `#include <nmmintrin.h>`. Use `#ifdef __SSE4_2__` to detect if compiler currently enables targeting SSE4.2.
+* AVX: pass `-mavx` and `#include <immintrin.h>`. Use `#ifdef __AVX__` to detect if compiler currently enables targeting AVX.
 
-The following table highlights the availability and expected performance of different SSE1 intrinsics. Even if you are directly targeting the native Wasm SIMD opcodes via wasm_simd128.h header, this table can be useful for understanding the performance limitations that the Wasm SIMD specification has when running on x86 hardware.
+Currently only the SSE1, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, and 128-bit AVX instruction sets are supported. Each of these instruction sets add on top of the previous ones, so e.g. when targeting SSE3, the instruction sets SSE1 and SSE2 are also available.
+
+The following tables highlight the availability and expected performance of different SSE* intrinsics. This can be useful for understanding the performance limitations that the Wasm SIMD specification has when running on x86 hardware.
 
 For detailed information on each SSE intrinsic function, visit the excellent `Intel Intrinsics Guide on SSE1 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE>`_.
 
