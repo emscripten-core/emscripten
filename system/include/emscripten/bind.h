@@ -1268,7 +1268,7 @@ struct NoBaseClass {
 // NOTE: this returns the class type, not the pointer type
 template<typename T>
 inline TYPEID getActualType(T* ptr) {
-    return getLightTypeID(*ptr);
+    return LightTypeID<T>::get();
 };
 
 } // end namespace internal

@@ -80,21 +80,6 @@ struct LightTypeID {
     }
 };
 
-template<typename T>
-constexpr TYPEID getLightTypeID(const T& value) {
-    if (has_unbound_type_names) {
-#if __has_feature(cxx_rtti)
-        return &typeid(value);
-#else
-        static_assert(!has_unbound_type_names,
-            "Unbound type names are illegal with RTTI disabled. "
-            "Either add -DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0 to or remove -fno-rtti "
-            "from the compiler arguments");
-#endif
-    }
-    return LightTypeID<T>::get();
-}
-
 // The second typename is an unused stub so it's possible to
 // specialize groups of classes via SFINAE.
 template<typename T, typename = void>
