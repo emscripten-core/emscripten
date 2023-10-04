@@ -9,20 +9,24 @@ Using SIMD with WebAssembly
 
 Emscripten supports the `WebAssembly SIMD <https://github.com/webassembly/simd/>`_ feature. There are five different ways to leverage WebAssembly SIMD in your C/C++ programs:
 
-# Enable LLVM/Clang SIMD autovectorizer to automatically target WebAssembly SIMD, without requiring changes to C/C++ source code.
-# Write SIMD code using the GCC/Clang SIMD Vector Extensions (__attribute__((vector_size(16))))
-# Write SIMD code using the WebAssembly SIMD intrinsics (wasm_simd128.h)
-# Compile existing SIMD code that uses the x86 SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2 or 128-bit subset of the AVX intrinsics (\*mmintrin.h)
-# Compile existing SIMD code that uses the ARM NEON intrinsics (arm_neon.h)
+1. Enable LLVM/Clang SIMD autovectorizer to automatically target WebAssembly SIMD, without requiring changes to C/C++ source code.
+2. Write SIMD code using the GCC/Clang SIMD Vector Extensions (``__attribute__((vector_size(16)))``)
+3. Write SIMD code using the WebAssembly SIMD intrinsics (``#include <wasm_simd128.h>``)
+4. Compile existing SIMD code that uses the x86 SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2 or 128-bit subset of the AVX intrinsics (``#include <*mmintrin.h>``)
+5. Compile existing SIMD code that uses the ARM NEON intrinsics (``#include <arm_neon.h>``)
 
 These techniques can be freely combined in a single program.
 
-To enable any of the five types of SIMD above, pass the WebAssembly-specific -msimd128 flag at compile time. This will also turn on LLVM's autovectorization passes. If that is not desirable, additionally pass flags -fno-vectorize -fno-slp-vectorize to disable the autovectorizer. See `Auto-Vectorization in LLVM <https://llvm.org/docs/Vectorizers.html>`_ for more information.
+To enable any of the five types of SIMD above, pass the WebAssembly-specific ``-msimd128`` flag at compile time. This will also turn on LLVM's autovectorization passes. If that is not desirable, additionally pass flags ``-fno-vectorize -fno-slp-vectorize`` to disable the autovectorizer. See `Auto-Vectorization in LLVM <https://llvm.org/docs/Vectorizers.html>`_ for more information.
 
 WebAssembly SIMD is supported by
+
 * Chrome ≥ 91 (May 2021),
+
 * Firefox ≥ 89 (June 2021),
+
 * Safari ≥ 16.4 (March 2023) and
+
 * Node.js ≥ 16.4 (June 2021).
 
 See `WebAssembly Roadmap <https://webassembly.org/roadmap/>`_ for details about other VMs.
@@ -50,19 +54,19 @@ LLVM maintains a WebAssembly SIMD Intrinsics header file that is provided with E
 
        int main() {
        #ifdef __wasm_simd128__
-       __f32x4 v1 = wasm_f32x4_make(1.2f, 3.4f, 5.6f, 7.8f);
-       __f32x4 v2 = wasm_f32x4_make(2.1f, 4.3f, 6.5f, 8.7f);
-       __f32x4 v3 = v1 + v2;
-       // Prints "v3: [3.3, 7.7, 12.1, 16.5]"
-       printf("v3: [%.1f, %.1f, %.1f, %.1f]\n", v3[0], v3[1], v3[2], v3[3]);
+         __f32x4 v1 = wasm_f32x4_make(1.2f, 3.4f, 5.6f, 7.8f);
+         __f32x4 v2 = wasm_f32x4_make(2.1f, 4.3f, 6.5f, 8.7f);
+         __f32x4 v3 = v1 + v2;
+         // Prints "v3: [3.3, 7.7, 12.1, 16.5]"
+         printf("v3: [%.1f, %.1f, %.1f, %.1f]\n", v3[0], v3[1], v3[2], v3[3]);
        #endif
        }
 
 The Wasm SIMD header can be browsed online at `wasm_simd128.h <https://github.com/llvm/llvm-project/blob/main/clang/lib/Headers/wasm_simd128.h>`_.
 
-Pass -msimd128 flag at compile time to enable targeting WebAssembly SIMD Intrinsics. C/C++ code can use the built-in preprocessor define __wasm_simd128__ to detect when building with WebAssembly SIMD enabled.
+Pass flag ``-msimd128`` at compile time to enable targeting WebAssembly SIMD Intrinsics. C/C++ code can use the built-in preprocessor define ``#ifdef __wasm_simd128__`` to detect when building with WebAssembly SIMD enabled.
 
-Pass -mrelaxed-simd to target WebAssembly Relaxed SIMD Intrinsics. C/C++ code can use the built-in preprocessor define __wasm_relaxed_simd__ to detect when this target is active. At the time of writing, Relaxed SIMD is experimental.
+Pass ``-mrelaxed-simd`` to target WebAssembly Relaxed SIMD Intrinsics. C/C++ code can use the built-in preprocessor define ``#ifdef __wasm_relaxed_simd__`` to detect when this target is active. At the time of writing, Relaxed SIMD is experimental.
 
 ======================================
 Limitations and behavioral differences
@@ -135,15 +139,15 @@ When developing SIMD code to use WebAssembly SIMD, implementors should be aware 
 Compiling SIMD code targeting x86 SSE* instruction sets
 =======================================================
 
-Emscripten supports compiling existing codebases that use x86 SSE instructions by passing the `-msimd128` flag, and additionally one of the following:
+Emscripten supports compiling existing codebases that use x86 SSE instructions by passing the ``-msimd128`` flag, and additionally one of the following:
 
-* SSE: pass `-msse` and `#include <xmmintrin.h>`. Use `#ifdef __SSE__` to detect if compiler currently enables targeting SSE.
-* SSE2: pass `-msse2` and `#include <emmintrin.h>`. Use `#ifdef __SSE2__` to detect if compiler currently enables targeting SSE2.
-* SSE3: pass `-msse3` and `#include <pmmintrin.h>`. Use `#ifdef __SSE3__` to detect if compiler currently enables targeting SSE3.
-* SSSE3: pass `-mssse3` and `#include <tmmintrin.h>`. Use `#ifdef __SSSE3__` to detect if compiler currently enables targeting SSSE3.
-* SSE4.1: pass `-msse4.1` and `#include <smmintrin.h>`. Use `#ifdef __SSE4_1__` to detect if compiler currently enables targeting SSE4.1.
-* SSE4.2: pass `-msse4.2` and `#include <nmmintrin.h>`. Use `#ifdef __SSE4_2__` to detect if compiler currently enables targeting SSE4.2.
-* AVX: pass `-mavx` and `#include <immintrin.h>`. Use `#ifdef __AVX__` to detect if compiler currently enables targeting AVX.
+* **SSE**: pass ``-msse`` and ``#include <xmmintrin.h>``. Use ``#ifdef __SSE__`` to gate code.
+* **SSE2**: pass ``-msse2`` and ``#include <emmintrin.h>``. Use ``#ifdef __SSE2__`` to gate code.
+* **SSE3**: pass ``-msse3`` and ``#include <pmmintrin.h>``. Use ``#ifdef __SSE3__`` to gate code.
+* **SSSE3**: pass ``-mssse3`` and ``#include <tmmintrin.h>``. Use ``#ifdef __SSSE3__`` to gate code.
+* **SSE4.1**: pass ``-msse4.1`` and ``#include <smmintrin.h>``. Use ``#ifdef __SSE4_1__`` to gate code.
+* **SSE4.2**: pass ``-msse4.2`` and ``#include <nmmintrin.h>``. Use ``#ifdef __SSE4_2__`` to gate code.
+* **AVX**: pass ``-mavx`` and ``#include <immintrin.h>``. Use ``#ifdef __AVX__`` to gate code.
 
 Currently only the SSE1, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, and 128-bit AVX instruction sets are supported. Each of these instruction sets add on top of the previous ones, so e.g. when targeting SSE3, the instruction sets SSE1 and SSE2 are also available.
 
