@@ -66,7 +66,7 @@ _Unwind_RaiseException(_Unwind_Exception *exception_object) {
 #if defined(__EMSCRIPTEN__) && !defined(NDEBUG)
   // In debug mode, call a JS library function to use WebAssembly.Exception JS
   // API, which enables us to include stack traces
-  __throw_exception_with_stack_trace(&exception_header->unwindHeader);
+  __throw_exception_with_stack_trace(exception_object);
 #else
   // Use Wasm EH's 'throw' instruction.
   __builtin_wasm_throw(0, exception_object);
