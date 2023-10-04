@@ -1176,8 +1176,6 @@ def run(args):
   # Strip args[0] (program name)
   args = args[1:]
 
-  misc_temp_files = shared.get_temp_files()
-
   # Handle some global flags
 
   # read response files very early on
@@ -1223,7 +1221,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if '--cflags' in args:
     # fake running the command, to see the full args we pass to clang
     args = [x for x in args if x != '--cflags']
-    with misc_temp_files.get_file(suffix='.o') as temp_target:
+    with shared.get_temp_files().get_file(suffix='.o') as temp_target:
       input_file = 'hello_world.c'
       compiler = shared.EMCC
       if run_via_emxx:
