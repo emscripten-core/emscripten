@@ -5301,17 +5301,17 @@ Module["preRun"] = () => {
   # Tests emscripten_atomic_wait_u32() and emscripten_atomic_notify() functions.
   @also_with_minimal_runtime
   def test_wasm_worker_wait32_notify(self):
-    self.btest('wasm_worker/wait32_notify.c', expected='3', args=['-sWASM_WORKERS'])
+    self.btest('atomic/test_wait32_notify.c', expected='3', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_wait_u64() and emscripten_atomic_notify() functions.
   @also_with_minimal_runtime
   def test_wasm_worker_wait64_notify(self):
-    self.btest('wasm_worker/wait64_notify.c', expected='3', args=['-sWASM_WORKERS'])
+    self.btest('atomic/test_wait64_notify.c', expected='3', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_wait_async() function.
   @also_with_minimal_runtime
   def test_wasm_worker_wait_async(self):
-    self.btest('wasm_worker/wait_async.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest('atomic/test_wait_async.c', expected='0', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_cancel_wait_async() function.
   @also_with_minimal_runtime

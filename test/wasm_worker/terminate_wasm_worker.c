@@ -1,4 +1,6 @@
 #include <emscripten.h>
+#include <emscripten/console.h>
+#include <emscripten/eventloop.h>
 #include <emscripten/wasm_worker.h>
 #include <assert.h>
 

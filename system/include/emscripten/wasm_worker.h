@@ -1,8 +1,9 @@
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
-#include <emscripten/html5.h>
 #include <emscripten/atomic.h>
+#include <emscripten/em_types.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -88,71 +89,6 @@ void emscripten_wasm_worker_post_function_vd(emscripten_wasm_worker_t id, void (
 void emscripten_wasm_worker_post_function_vdd(emscripten_wasm_worker_t id, void (*funcPtr)(double, double) __attribute__((nonnull)), double arg0, double arg1);
 void emscripten_wasm_worker_post_function_vddd(emscripten_wasm_worker_t id, void (*funcPtr)(double, double, double) __attribute__((nonnull)), double arg0, double arg1, double arg2);
 void emscripten_wasm_worker_post_function_sig(emscripten_wasm_worker_t id, void *funcPtr __attribute__((nonnull)), const char *sig __attribute__((nonnull)), ...);
-
-#define EMSCRIPTEN_WAIT_ASYNC_INFINITY __builtin_inf()
-
-// Represents a pending 'Atomics.waitAsync' wait operation.
-#define ATOMICS_WAIT_TOKEN_T int32_t
-
-#define EMSCRIPTEN_IS_VALID_WAIT_TOKEN(token) ((token) <= 0)
-
-// Issues the JavaScript 'Atomics.waitAsync' instruction:
-// performs an asynchronous wait operation on the main thread. If the given
-// 'address' contains 'value', issues a deferred wait that will invoke the
-// specified callback function 'asyncWaitFinished' once that address has been
-// notified by another thread.
-// NOTE: Unlike functions emscripten_atomic_wait_u32() and
-// emscripten_atomic_wait_u64() which take in the wait timeout parameter as int64
-// nanosecond units, this function takes in the wait timeout parameter as double
-// millisecond units. See https://github.com/WebAssembly/threads/issues/175 for
-// more information.
-// Pass in maxWaitMilliseconds == EMSCRIPTEN_WAIT_ASYNC_INFINITY
-// (==__builtin_inf()) to wait infinitely long.
-// Returns one of:
-//  - ATOMICS_WAIT_NOT_EQUAL if the waitAsync operation could not be registered
-//    since the memory value did not contain the value 'value'.
-//  - ATOMICS_WAIT_TIMED_OUT if the waitAsync operation timeout parameter was <= 0.
-//  - Any other value: denotes a 'wait token' that can be passed to function
-//    emscripten_atomic_cancel_wait_async() to unregister an asynchronous wait.
-//    You can use the macro EMSCRIPTEN_IS_VALID_WAIT_TOKEN(retval) to check if
-//    this function returned a valid wait token.
-ATOMICS_WAIT_TOKEN_T emscripten_atomic_wait_async(int32_t *address __attribute__((nonnull)),
-                                                  uint32_t value,
-                                                  void (*asyncWaitFinished)(int32_t *address, uint32_t value, ATOMICS_WAIT_RESULT_T waitResult, void *userData) __attribute__((nonnull)),
-                                                  void *userData,
-                                                  double maxWaitMilliseconds);
-
-// Unregisters a pending Atomics.waitAsync operation that was established via a
-// call to emscripten_atomic_wait_async() in the calling thread. Pass in the
-// wait token handle that was received as the return value from the wait
-// function.  Returns EMSCRIPTEN_RESULT_SUCCESS if the cancellation was
-// successful, or EMSCRIPTEN_RESULT_INVALID_PARAM if the asynchronous wait has
-// already resolved prior and the callback has already been called.
-// NOTE: Because of needing to work around issue
-// https://github.com/WebAssembly/threads/issues/176, calling this function has
-// an effect of introducing spurious wakeups to any other threads waiting on the
-// same address that the async wait denoted by the token does. This means that
-// in order to safely use this function, the mechanisms used in any wait code on
-// that address must be written to be spurious wakeup safe. (this is the case
-// for all the synchronization primitives declared in this header, but if you
-// are rolling out your own, you need to be aware of this). If
-// https://github.com/tc39/proposal-cancellation/issues/29 is resolved, then the
-// spurious wakeups can be avoided.
-EMSCRIPTEN_RESULT emscripten_atomic_cancel_wait_async(ATOMICS_WAIT_TOKEN_T waitToken);
-
-// Cancels all pending async waits in the calling thread. Because of
-// https://github.com/WebAssembly/threads/issues/176, if you are using
-// asynchronous waits in your application, and need to be able to let GC reclaim
-// Wasm heap memory when deinitializing an application, you *must* call this
-// function to help the GC unpin all necessary memory.  Otherwise, you can wrap
-// the Wasm content in an iframe and unload the iframe to let GC occur.
-// (navigating away from the page or closing that tab will also naturally
-// reclaim the memory)
-int emscripten_atomic_cancel_all_wait_asyncs(void);
-
-// Cancels all pending async waits in the calling thread to the given memory
-// address.  Returns the number of async waits canceled.
-int emscripten_atomic_cancel_all_wait_asyncs_at_address(int32_t *address __attribute__((nonnull)));
 
 // Sleeps the calling wasm worker for the given nanoseconds. Calling this
 // function on the main thread either results in a TypeError exception
