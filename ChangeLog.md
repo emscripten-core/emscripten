@@ -20,6 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 3.1.47 (in development)
 -----------------------
+- The boost-headers port was updated to v1.83.0.
 - The `noExitRuntime` global is now a JS library symbol that will only be
   included as needed.  User of `noExitRuntime` will now need to declare a
   dependency on it.  It will get implicitly included if `noExitRuntime` is part
