@@ -287,10 +287,6 @@ __cxa_throw(void *thrown_object, std::type_info *tinfo, void (_LIBCXXABI_DTOR_FU
 
 #ifdef __USING_SJLJ_EXCEPTIONS__
     _Unwind_SjLj_RaiseException(&exception_header->unwindHeader);
-#elif defined(__EMSCRIPTEN__) && defined(__USING_WASM_EXCEPTIONS__) && !defined(NDEBUG)
-    // In debug mode, call a JS library function to use WebAssembly.Exception JS
-    // API, which enables us to include stack traces
-    __throw_exception_with_stack_trace(&exception_header->unwindHeader);
 #else
     _Unwind_RaiseException(&exception_header->unwindHeader);
 #endif
@@ -640,10 +636,6 @@ void __cxa_rethrow() {
     }
 #ifdef __USING_SJLJ_EXCEPTIONS__
     _Unwind_SjLj_RaiseException(&exception_header->unwindHeader);
-#elif defined(__EMSCRIPTEN__) && defined(__USING_WASM_EXCEPTIONS__) && !defined(NDEBUG)
-    // In debug mode, call a JS library function to use WebAssembly.Exception JS
-    // API, which enables us to include stack traces
-    __throw_exception_with_stack_trace(&exception_header->unwindHeader);
 #else
     _Unwind_RaiseException(&exception_header->unwindHeader);
 #endif
@@ -769,11 +761,6 @@ __cxa_rethrow_primary_exception(void* thrown_object)
         dep_exception_header->unwindHeader.exception_cleanup = dependent_exception_cleanup;
 #ifdef __USING_SJLJ_EXCEPTIONS__
         _Unwind_SjLj_RaiseException(&dep_exception_header->unwindHeader);
-#elif defined(__EMSCRIPTEN__) && defined(__USING_WASM_EXCEPTIONS__) && !defined(NDEBUG)
-        // In debug mode, call a JS library function to use
-        // WebAssembly.Exception JS API, which enables us to include stack
-        // traces
-        __throw_exception_with_stack_trace(&exception_header->unwindHeader);
 #else
         _Unwind_RaiseException(&exception_header->unwindHeader);
 #endif

@@ -63,8 +63,14 @@ _LIBUNWIND_EXPORT _Unwind_Reason_Code
 _Unwind_RaiseException(_Unwind_Exception *exception_object) {
   _LIBUNWIND_TRACE_API("_Unwind_RaiseException(exception_object=%p)",
                        (void *)exception_object);
+#if defined(__EMSCRIPTEN__) && !defined(NDEBUG)
+  // In debug mode, call a JS library function to use WebAssembly.Exception JS
+  // API, which enables us to include stack traces
+  __throw_exception_with_stack_trace(&exception_header->unwindHeader);
+#else
   // Use Wasm EH's 'throw' instruction.
   __builtin_wasm_throw(0, exception_object);
+#endif
 }
 
 /// Called by __cxa_end_catch.
