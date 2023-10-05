@@ -321,9 +321,10 @@ function runJSDCE(ast, aggressive) {
           node.declarations = node.declarations.filter((node) => {
             assert(node.type === 'VariableDeclarator');
             const id = node.id;
-            if (id.type === 'ObjectPattern') {
+            if (id.type === 'ObjectPattern' || id.type === 'ArrayPattern') {
               // TODO: DCE into object patterns, that is, things like
               //         let { a, b } = ..
+              //         let [ a, b ] = ..
               return true;
             }
             assert(id.type === 'Identifier');
@@ -406,8 +407,14 @@ function runJSDCE(ast, aggressive) {
             const name = value.name;
             ensureData(scopes[scopes.length - 1], name).def = 1;
           });
+        } else if (id.type === 'ArrayPattern') {
+          id.elements.forEach((node) => {
+            assert(node.type === 'Identifier');
+            const name = node.name;
+            ensureData(scopes[scopes.length - 1], name).def = 1;
+          });
         } else {
-          assert(id.type === 'Identifier');
+          assert(id.type === 'Identifier', JSON.stringify(id));
           const name = id.name;
           ensureData(scopes[scopes.length - 1], name).def = 1;
         }

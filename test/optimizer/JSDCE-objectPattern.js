@@ -15,3 +15,14 @@ globalThis.f = function(r) {
   let { z: c } = r;
   return g(a, b, c, d, z);
 };
+
+// As above, but now with array destructuring.
+let a2 = 10;
+let b2 = 20;
+let c2 = 30;
+let d2 = 40;
+
+globalThis.f2 = function(r2) {
+  let [ a2, b2, c2 ] = r2;
+  return g2(a2, b2, c2, d2);
+};
