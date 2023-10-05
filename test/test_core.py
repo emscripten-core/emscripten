@@ -8249,6 +8249,12 @@ void* operator new(size_t size) {
   def test_vswprintf_utf8(self):
     self.do_core_test('test_vswprintf_utf8.c')
 
+  # Test async sleeps in the presence of invoke_* calls, which can happen with
+  # longjmp or exceptions.
+  def test_asyncify_longjmp(self):
+    self.set_setting('ASYNCIFY')
+    self.do_core_test('test_asyncify_longjmp.c')
+
   # Test that a main with arguments is automatically asyncified.
   @with_asyncify_and_jspi
   def test_async_main(self):

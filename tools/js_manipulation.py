@@ -108,6 +108,9 @@ def isidentifier(name):
 
 def make_dynCall(sig, args):
   # wasm2c and asyncify are not yet compatible with direct wasm table calls
+  if settings.MEMORY64:
+    args = list(args)
+    args[0] = f'Number({args[0]})'
   if settings.DYNCALLS or not is_legal_sig(sig):
     args = ','.join(args)
     if not settings.MAIN_MODULE and not settings.SIDE_MODULE:
@@ -117,11 +120,8 @@ def make_dynCall(sig, args):
     else:
       return 'Module["dynCall_%s"](%s)' % (sig, args)
   else:
-    func_ptr = args[0]
-    if settings.MEMORY64:
-      func_ptr = f'Number({func_ptr})'
     call_args = ",".join(args[1:])
-    return f'getWasmTableEntry({func_ptr})({call_args})'
+    return f'getWasmTableEntry({args[0]})({call_args})'
 
 
 def make_invoke(sig):
