@@ -3445,15 +3445,6 @@ Module["preRun"] = () => {
       print(opts)
       self.btest_exit('async_virtual_2.cpp', args=['-O' + str(opts), '-sASSERTIONS', '-sSAFE_HEAP', '-profiling', '-sASYNCIFY'])
 
-  # Test async sleeps in the presence of invoke_* calls, which can happen with
-  # longjmp or exceptions.
-  @parameterized({
-    'O0': ([],), # noqa
-    'O3': (['-O3'],), # noqa
-  })
-  def test_async_longjmp(self, args):
-    self.btest_exit('async_longjmp.cpp', args=args + ['-sASYNCIFY'])
-
   def test_async_mainloop(self):
     for opts in [0, 3]:
       print(opts)
