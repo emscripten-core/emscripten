@@ -414,7 +414,7 @@ function runJSDCE(ast, aggressive) {
             ensureData(scopes[scopes.length - 1], name).def = 1;
           });
         } else {
-          assert(id.type === 'Identifier', JSON.stringify(id));
+          assert(id.type === 'Identifier');
           const name = id.name;
           ensureData(scopes[scopes.length - 1], name).def = 1;
         }
