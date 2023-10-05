@@ -2940,9 +2940,12 @@ int f() {
                   '--use-preload-cache',
                   '--preload-file', 'fail.js',
                   '-O3',
-                  '-msimd128']
+                  '-msimd128',
+                  '-lembind', # Test duplicated link option.
+                  ]
     self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'] + extra_args)
+    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
     # Test these args separately since they conflict with arguments in the first test.
     extra_args = ['-sMODULARIZE',
                   '--embed-file', 'fail.js',
@@ -2950,6 +2953,7 @@ int f() {
                   '-sEXPORT_ES6=1']
     self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'] + extra_args)
+    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_tsgen_test_embind(self):
     self.run_process([EMCC, test_file('embind/embind_test.cpp'),
