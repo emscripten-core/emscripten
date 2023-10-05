@@ -3239,6 +3239,9 @@ def phase_embind_emit_tsd(options, in_wasm, wasm_target, memfile, js_syms):
   # Required function to trigger TS generation.
   settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']
   settings.EXPORT_ES6 = False
+  # Disable minify since the binaryen pass has not been run yet to change the
+  # import names.
+  settings.MINIFY_WASM_IMPORTED_MODULES = False
   setup_environment_settings()
   # Replace embind with the TypeScript generation version.
   embind_index = settings.JS_LIBRARIES.index('embind/embind.js')
