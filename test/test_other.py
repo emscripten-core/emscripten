@@ -2503,6 +2503,7 @@ int f() {
     'JSDCE': ('optimizer/JSDCE.js', ['JSDCE']),
     'JSDCE-hasOwnProperty': ('optimizer/JSDCE-hasOwnProperty.js', ['JSDCE']),
     'JSDCE-fors': ('optimizer/JSDCE-fors.js', ['JSDCE']),
+    'JSDCE-objectPattern': ('optimizer/JSDCE-objectPattern.js', ['JSDCE']),
     'AJSDCE': ('optimizer/AJSDCE.js', ['AJSDCE']),
     'emitDCEGraph': ('optimizer/emitDCEGraph.js', ['emitDCEGraph', 'noPrint']),
     'emitDCEGraph-closure': ('optimizer/emitDCEGraph.js', ['emitDCEGraph', 'noPrint', '--closureFriendly']),
