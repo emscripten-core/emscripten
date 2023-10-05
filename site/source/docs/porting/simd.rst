@@ -54,11 +54,15 @@ LLVM maintains a WebAssembly SIMD Intrinsics header file that is provided with E
 
        int main() {
        #ifdef __wasm_simd128__
-         __f32x4 v1 = wasm_f32x4_make(1.2f, 3.4f, 5.6f, 7.8f);
-         __f32x4 v2 = wasm_f32x4_make(2.1f, 4.3f, 6.5f, 8.7f);
-         __f32x4 v3 = v1 + v2;
+         v128 v1 = wasm_f32x4_make(1.2f, 3.4f, 5.6f, 7.8f);
+         v128 v2 = wasm_f32x4_make(2.1f, 4.3f, 6.5f, 8.7f);
+         v128 v3 = v1 + v2;
          // Prints "v3: [3.3, 7.7, 12.1, 16.5]"
-         printf("v3: [%.1f, %.1f, %.1f, %.1f]\n", v3[0], v3[1], v3[2], v3[3]);
+         printf("v3: [%.1f, %.1f, %.1f, %.1f]\n",
+                wasm_f32x4_extract_lane(v3, 0),
+                wasm_f32x4_extract_lane(v3, 1),
+                wasm_f32x4_extract_lane(v3, 2),
+                wasm_f32x4_extract_lane(v3, 3));
        #endif
        }
 
@@ -66,7 +70,7 @@ The Wasm SIMD header can be browsed online at `wasm_simd128.h <https://github.co
 
 Pass flag ``-msimd128`` at compile time to enable targeting WebAssembly SIMD Intrinsics. C/C++ code can use the built-in preprocessor define ``#ifdef __wasm_simd128__`` to detect when building with WebAssembly SIMD enabled.
 
-Pass ``-mrelaxed-simd`` to target WebAssembly Relaxed SIMD Intrinsics. C/C++ code can use the built-in preprocessor define ``#ifdef __wasm_relaxed_simd__`` to detect when this target is active. At the time of writing, Relaxed SIMD is experimental.
+Pass ``-mrelaxed-simd`` to target WebAssembly Relaxed SIMD Intrinsics. C/C++ code can use the built-in preprocessor define ``#ifdef __wasm_relaxed_simd__`` to detect when this target is active.
 
 ======================================
 Limitations and behavioral differences
