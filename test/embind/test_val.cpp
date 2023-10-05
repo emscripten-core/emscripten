@@ -73,6 +73,11 @@ int main() {
   ensure_js("a[1] == 1");
   ensure_js("a[2] == 3");
   ensure_js_not("a[2] == 2");
+  vector<int> vec2_from_iter;
+  for (val&& v : val::global("a")) {
+    vec2_from_iter.push_back(v.as<int>());
+  }
+  ensure(vec2 == vec2_from_iter);
 
   test("template<typename Iter> val array(Iter begin, Iter end)");
   val::global().set("a", val::array(vec1.begin(), vec1.end()));

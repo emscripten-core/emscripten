@@ -107,6 +107,8 @@ bool _emval_in(EM_VAL item, EM_VAL object);
 bool _emval_delete(EM_VAL object, EM_VAL property);
 [[noreturn]] bool _emval_throw(EM_VAL object);
 EM_VAL _emval_await(EM_VAL promise);
+EM_VAL _emval_iter_begin(EM_VAL iterable);
+EM_VAL _emval_iter_next(EM_VAL iterator);
 
 } // extern "C"
 
@@ -586,6 +588,12 @@ public:
     return val(internal::_emval_await(as_handle()));
   }
 
+  struct iterator;
+
+  iterator begin() const;
+  // our iterators are sentinel-based range iterators; use nullptr as the end sentinel
+  constexpr nullptr_t end() const { return nullptr; }
+
 private:
   // takes ownership, assumes handle already incref'd and lives on the same thread
   explicit val(EM_VAL handle)
@@ -618,6 +626,27 @@ private:
 
   friend struct internal::BindingType<val>;
 };
+
+struct val::iterator {
+  iterator() = delete;
+  // Make sure iterator is only moveable, not copyable as it represents a mutable state.
+  iterator(iterator&&) = default;
+  iterator(const val& v) : iter(internal::_emval_iter_begin(v.as_handle())) {
+    this->operator++();
+  }
+  val&& operator*() { return std::move(cur_value); }
+  const val& operator*() const { return cur_value; }
+  void operator++() { cur_value = val(internal::_emval_iter_next(iter.as_handle())); }
+  bool operator!=(nullptr_t) const { return cur_value.as_handle() != nullptr; }
+
+private:
+  val iter;
+  val cur_value;
+};
+
+inline val::iterator val::begin() const {
+  return iterator(*this);
+}
 
 // Declare a custom type that can be used in conjuction with
 // emscripten::register_type to emit custom TypeScript defintions for val types.

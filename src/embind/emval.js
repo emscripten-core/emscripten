@@ -521,6 +521,19 @@ var LibraryEmVal = {
     });
   },
 #endif
+
+  _emval_iter_begin__deps: ['$Emval'],
+  _emval_iter_begin: (iterable) => {
+    iterable = Emval.toValue(iterable);
+    return Emval.toHandle(iterable[Symbol.iterator]());
+  },
+
+  _emval_iter_next__deps: ['$Emval'],
+  _emval_iter_next: (iterator) => {
+    iterator = Emval.toValue(iterator);
+    var result = iterator.next();
+    return result.done ? 0 : Emval.toHandle(result.value);
+  },
 };
 
 addToLibrary(LibraryEmVal);

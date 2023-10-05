@@ -352,6 +352,8 @@ sigs = {
   _emval_instanceof__sig: 'ipp',
   _emval_is_number__sig: 'ip',
   _emval_is_string__sig: 'ip',
+  _emval_iter_begin__sig: 'pp',
+  _emval_iter_next__sig: 'pp',
   _emval_less_than__sig: 'ipp',
   _emval_new__sig: 'ppipp',
   _emval_new_array__sig: 'p',
