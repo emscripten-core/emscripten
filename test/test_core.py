@@ -2921,6 +2921,15 @@ The current type of b is: 9
     self.set_setting('EXIT_RUNTIME')
     self.do_runf(test_file('pthread/test_pthread_run_script.c'))
 
+  @node_pthreads
+  def test_pthread_wait32_notify(self):
+    self.do_run_in_out_file_test(test_file('wasm_worker/wait32_notify.c'))
+
+  @node_pthreads
+  @no_wasm2js('https://github.com/WebAssembly/binaryen/issues/5991')
+  def test_pthread_wait64_notify(self):
+    self.do_run_in_out_file_test(test_file('wasm_worker/wait64_notify.c'))
+
   def test_tcgetattr(self):
     self.do_runf(test_file('termios/test_tcgetattr.c'), 'success')
 

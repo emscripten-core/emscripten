@@ -5353,12 +5353,12 @@ Module["preRun"] = () => {
   def test_wasm_worker_hardware_concurrency_is_lock_free(self):
     self.btest('wasm_worker/hardware_concurrency_is_lock_free.c', expected='0', args=['-sWASM_WORKERS'])
 
-  # Tests emscripten_wasm_wait_i32() and emscripten_wasm_notify() functions.
+  # Tests emscripten_atomic_wait_u32() and emscripten_atomic_notify() functions.
   @also_with_minimal_runtime
   def test_wasm_worker_wait32_notify(self):
     self.btest('wasm_worker/wait32_notify.c', expected='2', args=['-sWASM_WORKERS'])
 
-  # Tests emscripten_wasm_wait_i64() and emscripten_wasm_notify() functions.
+  # Tests emscripten_atomic_wait_u64() and emscripten_atomic_notify() functions.
   @also_with_minimal_runtime
   def test_wasm_worker_wait64_notify(self):
     self.btest('wasm_worker/wait64_notify.c', expected='2', args=['-sWASM_WORKERS'])
