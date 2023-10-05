@@ -95,6 +95,7 @@ misc_test_modes = [
   'wasm64',
   'wasm64l',
   'bigint',
+  'browser64',
 ]
 
 
