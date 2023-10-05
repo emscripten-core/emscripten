@@ -399,8 +399,8 @@ public:
   }
 
   ~val() {
-    if (EM_VAL handle = as_handle()) {
-      internal::_emval_decref(handle);
+    if (handle) {
+      internal::_emval_decref(as_handle());
       handle = 0;
     }
   }

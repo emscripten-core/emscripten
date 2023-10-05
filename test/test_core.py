@@ -7779,7 +7779,6 @@ void* operator new(size_t size) {
   @node_pthreads
   def test_embind_val_cross_thread(self):
     self.emcc_args += ['--bind']
-    self.setup_node_pthreads()
     create_file('test_embind_val_cross_thread.cpp', r'''
       #include <emscripten.h>
       #include <emscripten/val.h>
@@ -7803,6 +7802,34 @@ void* operator new(size_t size) {
       }
     ''')
     self.do_runf('test_embind_val_cross_thread.cpp', 'val accessed from wrong thread', assert_returncode=NON_ZERO)
+
+  @node_pthreads
+  def test_embind_val_cross_thread_deleted(self):
+    self.emcc_args += ['--bind']
+    create_file('test_embind_val_cross_thread.cpp', r'''
+      #include <emscripten.h>
+      #include <emscripten/val.h>
+      #include <thread>
+      #include <stdio.h>
+      #include <optional>
+
+      using emscripten::val;
+
+      int main(int argc, char **argv) {
+        // Create a storage for value handles on the main thread.
+        std::optional<val> opt_value;
+        std::thread([&] {
+          // Set to a value handle from a different thread.
+          val& value = opt_value.emplace(1);
+          // Move out from the optional storage so that we free the value on the same thread.
+          val moved_out = std::move(value);
+        }).join();
+        // Now std::optional is initialized but with a deleted value handle.
+        // There should be no cross-thread error here when it tries to free that value,
+        // because the value has already been deleted on the correct thread.
+      }
+    ''')
+    self.do_runf('test_embind_val_cross_thread.cpp')
 
   def test_embind_dynamic_initialization(self):
     self.emcc_args += ['-lembind']
