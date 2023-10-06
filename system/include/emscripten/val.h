@@ -460,11 +460,11 @@ public:
   }
 
   bool operator==(const val& v) const {
-    return internal::_emval_equals(as_handle(), v.as_handle());
+    return equals(v);
   }
 
   bool operator!=(const val& v) const {
-    return !(*this == v);
+    return !equals(v);
   }
 
   bool strictlyEquals(const val& v) const {
