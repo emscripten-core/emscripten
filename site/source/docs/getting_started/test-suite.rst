@@ -91,7 +91,7 @@ will run the whole browser suite except for all the pthread tests in it.
 Exiting on first failure
 ========================
 
-Sometimes is it useful to be able to iteratively fix one test at a time.  In
+Sometimes it is useful to be able to iteratively fix one test at a time.  In
 this case the ``--failfast`` option can be used to exit the test runner after
 the first failure.
 
