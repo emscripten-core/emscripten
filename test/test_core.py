@@ -2921,6 +2921,15 @@ The current type of b is: 9
     self.set_setting('EXIT_RUNTIME')
     self.do_runf(test_file('pthread/test_pthread_run_script.c'))
 
+  @node_pthreads
+  def test_pthread_wait32_notify(self):
+    self.do_run_in_out_file_test(test_file('wasm_worker/wait32_notify.c'))
+
+  @node_pthreads
+  @no_wasm2js('https://github.com/WebAssembly/binaryen/issues/5991')
+  def test_pthread_wait64_notify(self):
+    self.do_run_in_out_file_test(test_file('wasm_worker/wait64_notify.c'))
+
   def test_tcgetattr(self):
     self.do_runf(test_file('termios/test_tcgetattr.c'), 'success')
 
@@ -7779,7 +7788,6 @@ void* operator new(size_t size) {
   @node_pthreads
   def test_embind_val_cross_thread(self):
     self.emcc_args += ['--bind']
-    self.setup_node_pthreads()
     create_file('test_embind_val_cross_thread.cpp', r'''
       #include <emscripten.h>
       #include <emscripten/val.h>
@@ -7803,6 +7811,34 @@ void* operator new(size_t size) {
       }
     ''')
     self.do_runf('test_embind_val_cross_thread.cpp', 'val accessed from wrong thread', assert_returncode=NON_ZERO)
+
+  @node_pthreads
+  def test_embind_val_cross_thread_deleted(self):
+    self.emcc_args += ['--bind']
+    create_file('test_embind_val_cross_thread.cpp', r'''
+      #include <emscripten.h>
+      #include <emscripten/val.h>
+      #include <thread>
+      #include <stdio.h>
+      #include <optional>
+
+      using emscripten::val;
+
+      int main(int argc, char **argv) {
+        // Create a storage for value handles on the main thread.
+        std::optional<val> opt_value;
+        std::thread([&] {
+          // Set to a value handle from a different thread.
+          val& value = opt_value.emplace(1);
+          // Move out from the optional storage so that we free the value on the same thread.
+          val moved_out = std::move(value);
+        }).join();
+        // Now std::optional is initialized but with a deleted value handle.
+        // There should be no cross-thread error here when it tries to free that value,
+        // because the value has already been deleted on the correct thread.
+      }
+    ''')
+    self.do_runf('test_embind_val_cross_thread.cpp')
 
   def test_embind_dynamic_initialization(self):
     self.emcc_args += ['-lembind']
@@ -8248,6 +8284,12 @@ void* operator new(size_t size) {
 
   def test_vswprintf_utf8(self):
     self.do_core_test('test_vswprintf_utf8.c')
+
+  # Test async sleeps in the presence of invoke_* calls, which can happen with
+  # longjmp or exceptions.
+  def test_asyncify_longjmp(self):
+    self.set_setting('ASYNCIFY')
+    self.do_core_test('test_asyncify_longjmp.c')
 
   # Test that a main with arguments is automatically asyncified.
   @with_asyncify_and_jspi

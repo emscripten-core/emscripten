@@ -11,6 +11,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#ifdef __EMSCRIPTEN__
+
 #include "cxxabi.h"
 #include "cxa_exception.h"
 #include "include/atomic_support.h"
@@ -153,3 +155,5 @@ void __cxa_decrement_exception_refcount(void *thrown_object) throw() {
 }  // extern "C"
 
 }  // abi
+
+#endif // __EMSCRIPTEN__

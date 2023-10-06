@@ -99,11 +99,6 @@ EM_GENERIC_WIRE_TYPE _emval_call_method(
     const char* methodName,
     EM_DESTRUCTORS* destructors,
     EM_VAR_ARGS argv);
-void _emval_call_void_method(
-    EM_METHOD_CALLER caller,
-    EM_VAL handle,
-    const char* methodName,
-    EM_VAR_ARGS argv);
 EM_VAL _emval_typeof(EM_VAL value);
 bool _emval_instanceof(EM_VAL object, EM_VAL constructor);
 bool _emval_is_number(EM_VAL object);
@@ -112,6 +107,8 @@ bool _emval_in(EM_VAL item, EM_VAL object);
 bool _emval_delete(EM_VAL object, EM_VAL property);
 [[noreturn]] bool _emval_throw(EM_VAL object);
 EM_VAL _emval_await(EM_VAL promise);
+EM_VAL _emval_iter_begin(EM_VAL iterable);
+EM_VAL _emval_iter_next(EM_VAL iterator);
 
 } // extern "C"
 
@@ -145,7 +142,9 @@ public:
       : destructors(d)
   {}
   ~DestructorsRunner() {
-    _emval_run_destructors(destructors);
+    if (destructors) {
+      _emval_run_destructors(destructors);
+    }
   }
 
   DestructorsRunner(const DestructorsRunner&) = delete;
@@ -170,10 +169,15 @@ struct GenericWireTypeConverter<Pointee*> {
 };
 
 template<typename T>
-T fromGenericWireType(double g) {
+T fromGenericWireType(EM_GENERIC_WIRE_TYPE g) {
   typedef typename BindingType<T>::WireType WireType;
   WireType wt = GenericWireTypeConverter<WireType>::from(g);
   return BindingType<T>::fromWireType(wt);
+}
+
+template<>
+inline void fromGenericWireType<void>(EM_GENERIC_WIRE_TYPE g) {
+  (void)g;
 }
 
 template<typename... Args>
@@ -271,7 +275,7 @@ struct MethodCaller {
     auto caller = Signature<ReturnType, Args...>::get_method_caller();
 
     WireTypePack<Args...> argv(std::forward<Args>(args)...);
-    EM_DESTRUCTORS destructors;
+    EM_DESTRUCTORS destructors = nullptr;
     EM_GENERIC_WIRE_TYPE result = _emval_call_method(
       caller,
       handle,
@@ -280,20 +284,6 @@ struct MethodCaller {
       argv);
     DestructorsRunner rd(destructors);
     return fromGenericWireType<ReturnType>(result);
-  }
-};
-
-template<typename... Args>
-struct MethodCaller<void, Args...> {
-  static void call(EM_VAL handle, const char* methodName, Args&&... args) {
-    auto caller = Signature<void, Args...>::get_method_caller();
-
-    WireTypePack<Args...> argv(std::forward<Args>(args)...);
-    _emval_call_void_method(
-      caller,
-      handle,
-      methodName,
-      argv);
   }
 };
 
@@ -409,8 +399,8 @@ public:
   }
 
   ~val() {
-    if (EM_VAL handle = as_handle()) {
-      internal::_emval_decref(handle);
+    if (handle) {
+      internal::_emval_decref(as_handle());
       handle = 0;
     }
   }
@@ -598,6 +588,12 @@ public:
     return val(internal::_emval_await(as_handle()));
   }
 
+  struct iterator;
+
+  iterator begin() const;
+  // our iterators are sentinel-based range iterators; use nullptr as the end sentinel
+  constexpr nullptr_t end() const { return nullptr; }
+
 private:
   // takes ownership, assumes handle already incref'd and lives on the same thread
   explicit val(EM_VAL handle)
@@ -630,6 +626,27 @@ private:
 
   friend struct internal::BindingType<val>;
 };
+
+struct val::iterator {
+  iterator() = delete;
+  // Make sure iterator is only moveable, not copyable as it represents a mutable state.
+  iterator(iterator&&) = default;
+  iterator(const val& v) : iter(internal::_emval_iter_begin(v.as_handle())) {
+    this->operator++();
+  }
+  val&& operator*() { return std::move(cur_value); }
+  const val& operator*() const { return cur_value; }
+  void operator++() { cur_value = val(internal::_emval_iter_next(iter.as_handle())); }
+  bool operator!=(nullptr_t) const { return cur_value.as_handle() != nullptr; }
+
+private:
+  val iter;
+  val cur_value;
+};
+
+inline val::iterator val::begin() const {
+  return iterator(*this);
+}
 
 // Declare a custom type that can be used in conjuction with
 // emscripten::register_type to emit custom TypeScript defintions for val types.
