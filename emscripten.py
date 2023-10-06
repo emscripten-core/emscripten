@@ -555,7 +555,7 @@ def finalize_wasm(infile, outfile, memfile, js_syms):
     # automatically, but if we did not modify the wasm then we didn't run it,
     # and must strip it manually. note that we must do this *after* getting the
     # metadata, as the features are among the metadata we collect.
-    building.save_intermediate(outfile, 'strip.wasm')
+    building.save_intermediate(outfile, 'strip-features.wasm')
     building.strip(infile, outfile, sections=['target_features'])
 
   if settings.GENERATE_SOURCE_MAP:
