@@ -99,7 +99,7 @@ the first failure.
    that are normally run in parallel you can force them to run serially using
    ``-j1``.
 
-One a test is fixed you continue where you left of using ``--start-at`` option:
+One a test is fixed you continue where you left off using ``--start-at`` option:
 
 .. code-block:: bash
 
