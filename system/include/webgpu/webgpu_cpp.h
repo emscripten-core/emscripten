@@ -139,6 +139,7 @@ namespace wgpu {
     static constexpr uint32_t kLimitU32Undefined = WGPU_LIMIT_U32_UNDEFINED;
     static constexpr uint64_t kLimitU64Undefined = WGPU_LIMIT_U64_UNDEFINED;
     static constexpr uint32_t kMipLevelCountUndefined = WGPU_MIP_LEVEL_COUNT_UNDEFINED;
+    static constexpr uint32_t kQuerySetIndexUndefined = WGPU_QUERY_SET_INDEX_UNDEFINED;
     static constexpr size_t kWholeMapSize = WGPU_WHOLE_MAP_SIZE;
     static constexpr uint64_t kWholeSize = WGPU_WHOLE_SIZE;
 
@@ -239,11 +240,6 @@ namespace wgpu {
         Error = 0x00000000,
         Warning = 0x00000001,
         Info = 0x00000002,
-    };
-
-    enum class ComputePassTimestampLocation : uint32_t {
-        Beginning = 0x00000000,
-        End = 0x00000001,
     };
 
     enum class CreatePipelineAsyncStatus : uint32_t {
@@ -363,11 +359,6 @@ namespace wgpu {
         Error = 0x00000001,
         Unknown = 0x00000002,
         DeviceLost = 0x00000003,
-    };
-
-    enum class RenderPassTimestampLocation : uint32_t {
-        Beginning = 0x00000000,
-        End = 0x00000001,
     };
 
     enum class RequestAdapterStatus : uint32_t {
@@ -681,7 +672,7 @@ namespace wgpu {
     struct CommandBufferDescriptor;
     struct CommandEncoderDescriptor;
     struct CompilationMessage;
-    struct ComputePassTimestampWrite;
+    struct ComputePassTimestampWrites;
     struct ConstantEntry;
     struct Extent3D;
     struct InstanceDescriptor;
@@ -697,7 +688,7 @@ namespace wgpu {
     struct RenderBundleEncoderDescriptor;
     struct RenderPassDepthStencilAttachment;
     struct RenderPassDescriptorMaxDrawCount;
-    struct RenderPassTimestampWrite;
+    struct RenderPassTimestampWrites;
     struct RequestAdapterOptions;
     struct SamplerBindingLayout;
     struct SamplerDescriptor;
@@ -1322,10 +1313,10 @@ namespace wgpu {
         uint64_t utf16Length;
     };
 
-    struct ComputePassTimestampWrite {
+    struct ComputePassTimestampWrites {
         QuerySet querySet;
-        uint32_t queryIndex;
-        ComputePassTimestampLocation location;
+        uint32_t beginningOfPassWriteIndex;
+        uint32_t endOfPassWriteIndex;
     };
 
     struct ConstantEntry {
@@ -1467,10 +1458,10 @@ namespace wgpu {
         alignas(kFirstMemberAlignment) uint64_t maxDrawCount = 50000000;
     };
 
-    struct RenderPassTimestampWrite {
+    struct RenderPassTimestampWrites {
         QuerySet querySet;
-        uint32_t queryIndex;
-        RenderPassTimestampLocation location;
+        uint32_t beginningOfPassWriteIndex;
+        uint32_t endOfPassWriteIndex;
     };
 
     struct RequestAdapterOptions {
@@ -1628,8 +1619,7 @@ namespace wgpu {
     struct ComputePassDescriptor {
         ChainedStruct const * nextInChain = nullptr;
         char const * label = nullptr;
-        size_t timestampWriteCount = 0;
-        ComputePassTimestampWrite const * timestampWrites;
+        ComputePassTimestampWrites const * timestampWrites = nullptr;
     };
 
     struct DepthStencilState {
@@ -1746,8 +1736,7 @@ namespace wgpu {
         RenderPassColorAttachment const * colorAttachments;
         RenderPassDepthStencilAttachment const * depthStencilAttachment = nullptr;
         QuerySet occlusionQuerySet = nullptr;
-        size_t timestampWriteCount = 0;
-        RenderPassTimestampWrite const * timestampWrites;
+        RenderPassTimestampWrites const * timestampWrites = nullptr;
     };
 
     struct VertexState {
