@@ -747,3 +747,46 @@ fi
 
     make_fake_tool(self.in_dir('fake', 'bin', 'wasm-opt'), '70')
     self.check_working([EMCC, test_file('hello_world.c')], 'unexpected binaryen version: 70 (expected ')
+
+  def test_emcc_link_forget(self):
+    restore_and_set_up()
+
+    create_file('main.c', r'''
+    #include <stdio.h>
+
+    void hello_world();
+
+    int main() {
+      hello_world();
+      return 0;
+    }
+    ''')
+
+    create_file('hello.c', r'''
+    #include <stdio.h>
+
+    void hello2_world();
+
+    void hello_world() {
+      printf("Hello, world\n");
+      hello2_world();
+    }
+    ''')
+
+    create_file('hello2.c', r'''
+    #include <stdio.h>
+
+    void hello2_world() {
+      printf("Hello2, world\n");
+    }
+    ''')
+
+    self.run_process([EMCC, '-c', 'hello2.c', '-fPIC', '-o', 'hello2.o'], stderr=STDOUT)
+    self.run_process([EMCC, '-sSIDE_MODULE=2', '-sEXPORTED_FUNCTIONS=_hello_world,_hello2_world', '-o', 'hello2.so', 'hello2.o'], stderr=STDOUT)
+    self.run_process([EMCC, '-c', 'hello.c', '-fPIC', '-o', 'hello.o'], stderr=STDOUT)
+    self.run_process([EMCC, '-sSIDE_MODULE=2', '-sEXPORTED_FUNCTIONS=_hello_world,_hello2_world', '-o', 'hello.so', 'hello.so', 'hello2.so'], stderr=STDOUT)
+
+    self.run_process([EMCC, '-c', 'main.c', '-o', 'main.o'], stderr=STDOUT)
+
+    executed = os.system('emcc -sMAIN_MODULE -o main main.o hello.so hello2.so')
+    self.assertEqual(executed, 0)
