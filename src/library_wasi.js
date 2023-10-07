@@ -229,8 +229,7 @@ var WasiLibrary = {
     }
     return ret;
   },
-#endif
-#if !SYSCALLS_REQUIRE_FILESYSTEM || WASM_WORKERS
+#else
   // MEMFS filesystem disabled lite handling of stdout and stderr:
   $printCharBuffers: [null, [], []], // 1 => stdout, 2 => stderr
   $printCharBuffers__internal: true,
@@ -248,7 +247,11 @@ var WasiLibrary = {
       buffer.push(curr);
     }
   },
-#if !MINIMAL_RUNTIME || EXIT_RUNTIME
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
+
+#if SYSCALLS_REQUIRE_FILESYSTEM
+  fd_write__deps: ['$doWritev'],
+#elif (!MINIMAL_RUNTIME || EXIT_RUNTIME)
   $flush_NO_FILESYSTEM__deps: ['$printChar', '$printCharBuffers'],
   $flush_NO_FILESYSTEM: () => {
     // flush anything remaining in the buffers during shutdown
@@ -258,13 +261,17 @@ var WasiLibrary = {
     if (printCharBuffers[1].length) printChar(1, {{{ charCode("\n") }}});
     if (printCharBuffers[2].length) printChar(2, {{{ charCode("\n") }}});
   },
-  $fd_write_nofs__postset: () => addAtExit('flush_NO_FILESYSTEM()'),
-  $fd_write_nofs__deps: ['$printChar', '$flush_NO_FILESYSTEM'],
+  fd_write__deps: ['$flush_NO_FILESYSTEM', '$printChar'],
+  fd_write__postset: () => addAtExit('flush_NO_FILESYSTEM()'),
 #else
-  $fd_write_nofs__deps: ['$printChar'],
+  fd_write__deps: ['$printChar'],
 #endif
-  $fd_write_nofs__sig: 'iippp',
-  $fd_write_nofs: (fd, iov, iovcnt, pnum) => {
+  fd_write: (fd, iov, iovcnt, pnum) => {
+#if SYSCALLS_REQUIRE_FILESYSTEM
+    var stream = SYSCALLS.getStreamFromFD(fd);
+    var num = doWritev(stream, iov, iovcnt);
+#else
+    // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
     var num = 0;
     for (var i = 0; i < iovcnt; i++) {
       var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
@@ -275,36 +282,10 @@ var WasiLibrary = {
       }
       num += len;
     }
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
     {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
     return 0;
   },
-#endif
-
-#if SYSCALLS_REQUIRE_FILESYSTEM
-  fd_write__deps: [
-    '$doWritev',
-#if WASM_WORKERS
-    '$fd_write_nofs',
-#endif
-  ],
-  fd_write: (fd, iov, iovcnt, pnum) => {
-#if WASM_WORKERS
-    if (ENVIRONMENT_IS_WASM_WORKER) {
-      return fd_write_nofs(fd, iov, iovcnt, pnum);
-    }
-#endif // WASM_WORKERS
-    var stream = SYSCALLS.getStreamFromFD(fd);
-    var num = doWritev(stream, iov, iovcnt);
-    {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
-    return 0;
-  },
-#else
-  fd_write__deps: ['$fd_write_nofs'],
-  fd_write: (fd, iov, iovcnt, pnum) => {
-    // May be wrapped by wrapSyscallFunction
-    return fd_write_nofs(fd, iov, iovcnt, pnum);
-  },
-#endif
 
 #if SYSCALLS_REQUIRE_FILESYSTEM
   fd_pwrite__deps: ['$doWritev'],

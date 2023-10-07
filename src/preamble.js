@@ -785,7 +785,7 @@ function instantiateSync(file, info) {
 }
 #endif
 
-#if SHARED_MEMORY && (LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER)
+#if (PTHREADS || WASM_WORKERS) && (LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER)
 // When using postMessage to send an object, it is processed by the structured
 // clone algorithm.  The prototype, and hence methods, on that object is then
 // lost. This function adds back the lost prototype.  This does not work with
@@ -1034,7 +1034,7 @@ function createWasm() {
     exportWasmSymbols(wasmExports);
 #endif
 
-#if SHARED_MEMORY
+#if PTHREADS || WASM_WORKERS
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
 #endif
