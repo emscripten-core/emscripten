@@ -16,6 +16,11 @@ export interface BarValue<T extends number> {
 }
 export type Bar = BarValue<0>|BarValue<1>|BarValue<2>;
 
+export interface EmptyEnumValue<T extends number> {
+  value: T;
+}
+export type EmptyEnum = never/* Empty Enumerator */;
+
 export type ValArrIx = [ Bar, Bar, Bar, Bar ];
 
 export interface IntVec {
@@ -66,6 +71,7 @@ export interface MainModule {
   a_class_instance: Test;
   an_enum: Bar;
   Bar: {valueOne: BarValue<0>, valueTwo: BarValue<1>, valueThree: BarValue<2>};
+  EmptyEnum: {};
   enum_returning_fn(): Bar;
   IntVec: {new(): IntVec};
   Foo: {new(): Foo};
