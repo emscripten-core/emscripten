@@ -319,7 +319,16 @@ function runJSDCE(ast, aggressive) {
           const old = node.declarations;
           let removedHere = 0;
           node.declarations = node.declarations.filter((node) => {
-            const curr = node.id.name;
+            assert(node.type === 'VariableDeclarator');
+            const id = node.id;
+            if (id.type === 'ObjectPattern' || id.type === 'ArrayPattern') {
+              // TODO: DCE into object patterns, that is, things like
+              //         let { a, b } = ..
+              //         let [ a, b ] = ..
+              return true;
+            }
+            assert(id.type === 'Identifier');
+            const curr = id.name;
             const value = node.init;
             const keep = !(curr in names) || (value && hasSideEffects(value));
             if (!keep) removedHere = 1;
@@ -390,8 +399,25 @@ function runJSDCE(ast, aggressive) {
 
     recursiveWalk(ast, {
       VariableDeclarator(node, c) {
-        const name = node.id.name;
-        ensureData(scopes[scopes.length - 1], name).def = 1;
+        const id = node.id;
+        if (id.type === 'ObjectPattern') {
+          id.properties.forEach((node) => {
+            const value = node.value;
+            assert(value.type === 'Identifier');
+            const name = value.name;
+            ensureData(scopes[scopes.length - 1], name).def = 1;
+          });
+        } else if (id.type === 'ArrayPattern') {
+          id.elements.forEach((node) => {
+            assert(node.type === 'Identifier');
+            const name = node.name;
+            ensureData(scopes[scopes.length - 1], name).def = 1;
+          });
+        } else {
+          assert(id.type === 'Identifier');
+          const name = id.name;
+          ensureData(scopes[scopes.length - 1], name).def = 1;
+        }
         if (node.init) c(node.init);
       },
       ObjectExpression(node, c) {

@@ -77,7 +77,7 @@ emscripten_wasm_worker_t emscripten_malloc_wasm_worker(size_t stackSize)
 void emscripten_wasm_worker_sleep(int64_t nsecs)
 {
 	int32_t addr = 0;
-	emscripten_wasm_wait_i32(&addr, 0, nsecs);
+	emscripten_atomic_wait_u32(&addr, 0, nsecs);
 }
 
 void emscripten_lock_init(emscripten_lock_t *lock)
@@ -92,7 +92,7 @@ EM_BOOL emscripten_lock_wait_acquire(emscripten_lock_t *lock, int64_t maxWaitNan
 	int64_t waitEnd = (int64_t)(emscripten_performance_now() * 1e6) + maxWaitNanoseconds;
 	while(maxWaitNanoseconds > 0)
 	{
-		emscripten_wasm_wait_i32((int32_t*)lock, val, maxWaitNanoseconds);
+		emscripten_atomic_wait_u32((int32_t*)lock, val, maxWaitNanoseconds);
 		val = emscripten_atomic_cas_u32((void*)lock, 0, 1);
 		if (!val) return EM_TRUE;
 		maxWaitNanoseconds = waitEnd - (int64_t)(emscripten_performance_now() * 1e6);
@@ -107,7 +107,7 @@ void emscripten_lock_waitinf_acquire(emscripten_lock_t *lock)
 	{
 		val = emscripten_atomic_cas_u32((void*)lock, 0, 1);
 		if (val)
-			emscripten_wasm_wait_i32((int32_t*)lock, val, ATOMICS_WAIT_DURATION_INFINITE);
+			emscripten_atomic_wait_u32((int32_t*)lock, val, ATOMICS_WAIT_DURATION_INFINITE);
 	} while(val);
 }
 
@@ -145,7 +145,7 @@ EM_BOOL emscripten_lock_try_acquire(emscripten_lock_t *lock)
 void emscripten_lock_release(emscripten_lock_t *lock)
 {
 	emscripten_atomic_store_u32((void*)lock, 0);
-	emscripten_wasm_notify((int32_t*)lock, 1);
+	emscripten_atomic_notify((int32_t*)lock, 1);
 }
 
 void emscripten_semaphore_init(emscripten_semaphore_t *sem, int num)
@@ -173,7 +173,7 @@ int emscripten_semaphore_wait_acquire(emscripten_semaphore_t *sem, int num, int6
 		while(val < num)
 		{
 			// TODO: Shave off maxWaitNanoseconds
-			ATOMICS_WAIT_RESULT_T waitResult = emscripten_wasm_wait_i32((int32_t*)sem, val, maxWaitNanoseconds);
+			ATOMICS_WAIT_RESULT_T waitResult = emscripten_atomic_wait_u32((int32_t*)sem, val, maxWaitNanoseconds);
 			if (waitResult == ATOMICS_WAIT_TIMED_OUT) return -1;
 			val = emscripten_atomic_load_u32((void*)sem);
 		}
@@ -190,7 +190,7 @@ int emscripten_semaphore_waitinf_acquire(emscripten_semaphore_t *sem, int num)
 	{
 		while(val < num)
 		{
-			emscripten_wasm_wait_i32((int32_t*)sem, val, ATOMICS_WAIT_DURATION_INFINITE);
+			emscripten_atomic_wait_u32((int32_t*)sem, val, ATOMICS_WAIT_DURATION_INFINITE);
 			val = emscripten_atomic_load_u32((void*)sem);
 		}
 		int ret = (int)emscripten_atomic_cas_u32((void*)sem, val, val - num);
@@ -202,7 +202,7 @@ int emscripten_semaphore_waitinf_acquire(emscripten_semaphore_t *sem, int num)
 uint32_t emscripten_semaphore_release(emscripten_semaphore_t *sem, int num)
 {
 	uint32_t ret = emscripten_atomic_add_u32((void*)sem, num);
-	emscripten_wasm_notify((int*)sem, num);
+	emscripten_atomic_notify((int*)sem, num);
 	return ret;
 }
 
@@ -215,7 +215,7 @@ void emscripten_condvar_waitinf(emscripten_condvar_t *condvar, emscripten_lock_t
 {
 	int val = emscripten_atomic_load_u32((void*)condvar);
 	emscripten_lock_release(lock);
-	emscripten_wasm_wait_i32((int32_t*)condvar, val, ATOMICS_WAIT_DURATION_INFINITE);
+	emscripten_atomic_wait_u32((int32_t*)condvar, val, ATOMICS_WAIT_DURATION_INFINITE);
 	emscripten_lock_waitinf_acquire(lock);
 }
 
@@ -223,7 +223,7 @@ EM_BOOL emscripten_condvar_wait(emscripten_condvar_t *condvar, emscripten_lock_t
 {
 	int val = emscripten_atomic_load_u32((void*)condvar);
 	emscripten_lock_release(lock);
-	int waitValue = emscripten_wasm_wait_i32((int32_t*)condvar, val, maxWaitNanoseconds);
+	int waitValue = emscripten_atomic_wait_u32((int32_t*)condvar, val, maxWaitNanoseconds);
 	if (waitValue == ATOMICS_WAIT_TIMED_OUT)
 		return EM_FALSE;
 
@@ -244,5 +244,5 @@ ATOMICS_WAIT_TOKEN_T emscripten_condvar_wait_async(emscripten_condvar_t *condvar
 void emscripten_condvar_signal(emscripten_condvar_t *condvar, int64_t numWaitersToSignal)
 {
 	emscripten_atomic_add_u32((void*)condvar, 1);
-	emscripten_wasm_notify((int*)condvar, numWaitersToSignal);
+	emscripten_atomic_notify((int*)condvar, numWaitersToSignal);
 }
