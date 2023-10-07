@@ -144,7 +144,7 @@ var LibraryEmbind = {
       out.push('  value: T;\n}\n');
       out.push(`export type ${this.name} = `);
       if (this.items.length === 0) {
-        out.push('never/* No any enumerators */');
+        out.push('never/* Empty Enumerator */');
       } else {
         const outItems = [];
         for (const [name, value] of this.items) {
