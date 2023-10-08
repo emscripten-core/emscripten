@@ -66,17 +66,22 @@ def main():
   def generate_entry_points(cmd, path):
     sh_file = path + '.sh'
     bat_file = path + '.bat'
+    ps1_file = path + '.ps1'
     with open(sh_file) as f:
       sh_file = f.read()
     with open(bat_file) as f:
       bat_file = f.read()
+    with open(ps1_file) as f:
+      ps1_file = f.read()
 
     for entry_point in cmd:
       sh_data = sh_file
       bat_data = bat_file
+      ps1_data = ps1_file
       if entry_point in entry_remap:
         sh_data = sh_data.replace('$0', '$(dirname $0)/' + entry_remap[entry_point])
         bat_data = bat_data.replace('%~n0', entry_remap[entry_point].replace('/', '\\'))
+        ps1_data = ps1_data.replace(r"$MyInvocation.MyCommand.Path -replace '\.ps1$', '.py'", fr'"$PSScriptRoot/{entry_remap[entry_point]}.py"')
 
       out_sh_file = os.path.join(root_dir, entry_point)
       with open(out_sh_file, 'w') as f:
@@ -85,6 +90,9 @@ def main():
 
       with open(os.path.join(root_dir, entry_point + '.bat'), 'w') as f:
         f.write(bat_data)
+
+      with open(os.path.join(root_dir, entry_point + '.ps1'), 'w') as f:
+        f.write(ps1_data)
 
   generate_entry_points(entry_points, os.path.join(tools_dir, 'run_python'))
   generate_entry_points(compiler_entry_points, os.path.join(tools_dir, 'run_python_compiler'))
