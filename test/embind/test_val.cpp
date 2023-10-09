@@ -39,6 +39,10 @@ EMSCRIPTEN_BINDINGS(test_bindings) {
   emscripten::function("makeDummy", &makeDummy, emscripten::allow_raw_pointers());
 }
 
+EM_JS(EM_VAL, roundtrip, (EM_VAL v), {
+  return Emval.toHandle(Emval.toValue(v));
+});
+
 int main() {
   printf("start\n");
 
@@ -108,12 +112,19 @@ int main() {
   val::global().set("a", val::object());
   ensure_js("a instanceof Object");
 
-  // Test emval{From,To}Handle roundtrip.
+  test("emval{From,To}Handle roundtrip via EM_ASM");
   {
     val a = val::global("a");
     val a_roundtrip = val::take_ownership(EM_VAL(EM_ASM_PTR({
       return Emval.toHandle(Emval.toValue($0));
     }, a.as_handle())));
+    ensure(a == a_roundtrip);
+  }
+
+  test("emval{From,To}Handle roundtrip via EM_JS");
+  {
+    val a = val::global("a");
+    val a_roundtrip = val::take_ownership(roundtrip(a.as_handle()));
     ensure(a == a_roundtrip);
   }
 
