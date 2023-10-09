@@ -18,6 +18,10 @@
 #include <cstdint> // uintptr_t
 #include <vector>
 #include <type_traits>
+#if _LIBCPP_STD_VER >= 20
+#include <coroutine>
+#include <variant>
+#endif
 
 
 namespace emscripten {
@@ -109,6 +113,11 @@ bool _emval_delete(EM_VAL object, EM_VAL property);
 EM_VAL _emval_await(EM_VAL promise);
 EM_VAL _emval_iter_begin(EM_VAL iterable);
 EM_VAL _emval_iter_next(EM_VAL iterator);
+
+#if _LIBCPP_STD_VER >= 20
+void _emval_coro_suspend(EM_VAL promise, void* coro_ptr);
+EM_VAL _emval_coro_make_promise(EM_VAL *resolve, EM_VAL *reject);
+#endif
 
 } // extern "C"
 
@@ -586,6 +595,10 @@ public:
   // our iterators are sentinel-based range iterators; use nullptr as the end sentinel
   constexpr nullptr_t end() const { return nullptr; }
 
+#if _LIBCPP_STD_VER >= 20
+  struct promise_type;
+#endif
+
 private:
   // takes ownership, assumes handle already incref'd and lives on the same thread
   explicit val(EM_VAL handle)
@@ -645,6 +658,83 @@ private:
 inline val::iterator val::begin() const {
   return iterator(*this);
 }
+
+#if _LIBCPP_STD_VER >= 20
+namespace internal {
+struct val_awaiter {
+  val_awaiter(val&& promise)
+    : state(std::in_place_index<STATE_PROMISE>, std::move(promise)) {}
+
+  // just in case, ensure nobody moves / copies this type around
+  val_awaiter(val_awaiter&&) = delete;
+
+  bool await_ready() { return false; }
+
+  void await_suspend(std::coroutine_handle<val::promise_type> handle) {
+    internal::_emval_coro_suspend(std::get<STATE_PROMISE>(state).as_handle(), this);
+    state.emplace<STATE_CORO>(handle);
+  }
+
+  void resume_with(val&& result) {
+    auto coro = std::move(std::get<STATE_CORO>(state));
+    state.emplace<STATE_RESULT>(std::move(result));
+    coro.resume();
+  }
+
+  val await_resume() { return std::move(std::get<STATE_RESULT>(state)); }
+
+private:
+  // State machine holding awaiter's current state. One of:
+  //  - initially created with promise
+  //  - waiting with a given coroutine handle
+  //  - completed with a result
+  std::variant<val, std::coroutine_handle<val::promise_type>, val> state;
+
+  constexpr static std::size_t STATE_PROMISE = 0;
+  constexpr static std::size_t STATE_CORO = 1;
+  constexpr static std::size_t STATE_RESULT = 2;
+};
+
+extern "C" {
+  void _emval_coro_resume(val_awaiter* awaiter, EM_VAL result) {
+    awaiter->resume_with(val::take_ownership(result));
+  }
+}
+}
+
+// Note: this type can't be internal because coroutines look for the public `promise_type` member.
+struct val::promise_type {
+  promise_type() {
+    EM_VAL resolve_handle;
+    EM_VAL reject_handle;
+    promise = val(internal::_emval_coro_make_promise(&resolve_handle, &reject_handle));
+    resolve = val(resolve_handle);
+    reject_with_current_exception = val(reject_handle);
+  }
+
+  val get_return_object() { return promise; }
+
+  auto initial_suspend() noexcept { return std::suspend_never{}; }
+
+  auto final_suspend() noexcept { return std::suspend_never{}; }
+
+  void unhandled_exception() {
+    reject_with_current_exception();
+  }
+
+  template<typename T>
+  void return_value(T&& value) {
+    resolve(std::forward<T>(value));
+  }
+
+  internal::val_awaiter await_transform(val promise) {
+    return {std::move(promise)};
+  }
+
+private:
+  val promise, resolve, reject_with_current_exception;
+};
+#endif
 
 // Declare a custom type that can be used in conjunction with
 // emscripten::register_type to emit custom TypeScript definitions for val

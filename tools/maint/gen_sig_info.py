@@ -391,7 +391,7 @@ def main(args):
                               'USE_SDL': 0,
                               'MAX_WEBGL_VERSION': 0,
                               'AUTO_JS_LIBRARIES': 0,
-                              'ASYNCIFY': 1}, cxx=True)
+                              'ASYNCIFY': 1}, cxx=True, extra_cflags=['-std=c++20'])
   extract_sig_info(sig_info, {'LEGACY_GL_EMULATION': 1}, ['-DGLES'])
   extract_sig_info(sig_info, {'USE_GLFW': 2, 'FULL_ES3': 1, 'MAX_WEBGL_VERSION': 2})
   extract_sig_info(sig_info, {'STANDALONE_WASM': 1})
