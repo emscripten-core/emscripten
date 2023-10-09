@@ -9664,6 +9664,18 @@ int main() {
     size_with_section = os.path.getsize('a.out.wasm')
     self.assertLess(size, size_with_section)
 
+  @parameterized({
+    '':       ([],),
+    # in some modes we skip wasm-emscripten-finalize, which normally strips the
+    # features section for us, so add testing for those
+    'bigint': (['-sWASM_BIGINT'],),
+    'wasm64': (['-sMEMORY64'],),
+  })
+  def test_wasm_features_section(self, args):
+    # The features section should never be in our output, when we optimize.
+    self.run_process([EMCC, test_file('hello_world.c'), '-O2'] + args)
+    self.verify_custom_sec_existence('a.out.wasm', 'target_features', False)
+
   def test_js_preprocess(self):
     # Use stderr rather than stdout here because stdout is redirected to the output JS file itself.
     create_file('lib.js', '''
