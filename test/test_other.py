@@ -9672,7 +9672,7 @@ int main() {
     'wasm64': (['-sMEMORY64'],),
   })
   def test_wasm_features_section(self, args):
-    # The features section should never be in our output.
+    # The features section should never be in our output, when we optimize.
     self.run_process([EMCC, test_file('hello_world.c'), '-O2'] + args)
     self.verify_custom_sec_existence('a.out.wasm', 'target_features', False)
 
