@@ -627,6 +627,14 @@ def should_run_binaryen_optimizer():
 def get_binaryen_passes():
   passes = []
   optimizing = should_run_binaryen_optimizer()
+  # wasm-emscripten-finalize will strip the features section for us
+  # automatically, but if we did not modify the wasm then we didn't run it,
+  # and in an optimized build we strip it manually here. (note that in an
+  # unoptimized build we might end up with the features section, if we neither
+  # optimize nor run wasm-emscripten-finalize, but a few extra bytes in the
+  # binary don't matter in an unoptimized build)
+  if optimizing:
+    passes += ['--strip-target-features']
   # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
   if settings.SAFE_HEAP:
     passes += ['--safe-heap']
@@ -711,11 +719,10 @@ def get_binaryen_passes():
   # previously used.
   if optimizing and not settings.SIDE_MODULE:
     passes += ['--zero-filled-memory']
+  # LLVM output always has immutable initial table contents: the table is
+  # fixed and may only be appended to at runtime (that is true even in
+  # relocatable mode)
   if optimizing:
-    # LLVM output always has immutable initial table contents: the table is
-    # fixed and may only be appended to at runtime (that is true even in
-    # relocatable mode)
-    passes += ['--pass-arg=directize-initial-contents-immutable']
     # wasm-emscripten-finalize will strip the features section for us
     # automatically, but if we did not modify the wasm then we didn't run it,
     # and in an optimized build we strip it manually here. (note that in an
