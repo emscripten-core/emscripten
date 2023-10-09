@@ -72,12 +72,13 @@ var LibraryEmVal = {
 
     toHandle: (value) => {
       switch (value) {
-        case undefined: return 1;
-        case null: return 2;
-        case true: return 3;
-        case false: return 4;
+        case undefined: return {{{ to64(1) }}};
+        case null: return {{{ to64(2) }}};
+        case true: return {{{ to64(3) }}};
+        case false: return {{{ to64(4) }}};
         default:{
-          return emval_handles.allocate({refcount: 1, value: value});
+          let id = emval_handles.allocate({refcount: 1, value: value});
+          return {{{ to64('id') }}};
         }
       }
     }

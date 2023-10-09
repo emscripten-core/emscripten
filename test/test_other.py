@@ -13996,3 +13996,22 @@ addToLibrary({
 ''')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=foo'])
     self.assertContained('error: noExitRuntime cannot be referenced via __deps mechansim', err)
+
+  @also_with_wasm64
+  def test_return_emval(self):
+    create_file('test.cpp', r'''
+    #include <emscripten.h>
+    #include <emscripten/val.h>
+
+    using namespace emscripten;
+
+    EM_JS(EM_VAL, get_val, (), {
+      return Emval.toHandle(0);
+    });
+
+    int main() {
+      return val::take_ownership(get_val()).as<int>();
+    }
+    ''')
+    self.emcc_args += ['--bind']
+    self.do_runf('test.cpp')
