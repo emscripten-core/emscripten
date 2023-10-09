@@ -550,13 +550,6 @@ def finalize_wasm(infile, outfile, memfile, js_syms):
   metadata = get_metadata(outfile, outfile, modify_wasm, args)
   if modify_wasm:
     building.save_intermediate(outfile, 'post_finalize.wasm')
-  else:
-    # wasm-emscripten-finalize will strip the features section for us
-    # automatically, but if we did not modify the wasm then we didn't run it,
-    # and must strip it manually. note that we must do this *after* getting the
-    # metadata, as the features are among the metadata we collect.
-    building.save_intermediate(outfile, 'strip-features.wasm')
-    building.strip(infile, outfile, sections=['target_features'])
 
   if settings.GENERATE_SOURCE_MAP:
     building.save_intermediate(outfile + '.map', 'post_finalize.map')
