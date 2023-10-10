@@ -337,8 +337,13 @@ class AndroidBenchmarker(Benchmarker):
 
     # Extra runtime
     open('support.c', 'w').write('''
+#include <math.h>
+
 float wasm_quietf(float x) {
   return x;
+}
+float wasm_fabs(float x) {
+  return fabs(x);
 }
 
 #include <stdarg.h>
