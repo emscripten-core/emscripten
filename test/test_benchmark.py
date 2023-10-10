@@ -349,6 +349,9 @@ float wasm_quietf(float x) {
 float wasm_fabs(float x) {
   return fabs(x);
 }
+float wasm_sqrtf(float x) {
+  return sqrtf(x);
+}
 
 #include <stdarg.h>
 
