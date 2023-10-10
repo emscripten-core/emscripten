@@ -23,8 +23,7 @@ if (!performance.realNow) {
   }
 }
 
-// Declared in globalThis so that `onclick` handlers work when `-sMODULARIZE=1`
-globalThis.emscriptenCpuProfiler = {
+var emscriptenCpuProfiler = {
   // UI update interval in milliseconds.
   uiUpdateInterval: 1,
 
@@ -696,3 +695,6 @@ function cpuprofiler_add_hooks() { emscriptenCpuProfiler.initialize(); }
 if (typeof document != 'undefined') {
   emscriptenCpuProfiler.initialize();
 }
+
+// Declared in globalThis so that `onclick` handlers work when `-sMODULARIZE=1`
+globalThis.emscriptenCpuProfiler = emscriptenCpuProfiler;

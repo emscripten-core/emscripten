@@ -6,8 +6,7 @@
 
 #if MEMORYPROFILER
 
-// Declared in globalThis so that `onclick` handlers work when `-sMODULARIZE=1`
-globalThis.emscriptenMemoryProfiler = {
+var emscriptenMemoryProfiler = {
   // If true, walks all allocated pointers at graphing time to print a detailed
   // memory fragmentation map. If false, used memory is only graphed in one
   // block (at the bottom of DYNAMIC memory space). Set this to false to improve
@@ -637,5 +636,8 @@ function memoryprofiler_add_hooks() {
 if (typeof document != 'undefined' && typeof window != 'undefined' && typeof process == 'undefined') {
   emscriptenMemoryProfiler.initialize();
 }
+
+// Declared in globalThis so that `onclick` handlers work when `-sMODULARIZE=1`
+globalThis.emscriptenMemoryProfiler = emscriptenMemoryProfiler;
 
 #endif
