@@ -1540,7 +1540,7 @@ var LibraryWebGPU = {
 
     if (descriptor) {
       {{{ gpu.makeCheckDescriptor('descriptor') }}}
-      var desc = {
+      desc = {
         "label": undefined,
         "timestampWrites": makeComputePassTimestampWrites(
           {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePassDescriptor.timestampWrites, '*') }}}),
