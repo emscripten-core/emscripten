@@ -579,7 +579,7 @@ globalThis.emscriptenCpuProfiler = {
   },
 
   hookWebGLFunction: function(f, glCtx) {
-    var section = (this.hotGLFunctions.incudes(f) || f.startsWith('uniform') || f.startsWith('vertexAttrib')) ? 0 : 1;
+    var section = (this.hotGLFunctions.includes(f) || f.startsWith('uniform') || f.startsWith('vertexAttrib')) ? 0 : 1;
     var realf = 'real_' + f;
     glCtx[realf] = glCtx[f];
     var numArgs = this.webGLFunctionLength(f); // On Firefox & Chrome, could do "glCtx[realf].length", but that doesn't work on Edge, which always reports 0.
