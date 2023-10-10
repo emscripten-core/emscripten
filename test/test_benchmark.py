@@ -533,6 +533,7 @@ class benchmark(common.RunnerCore):
 
 #include <math.h>
 
+extern "C" {
 int I32_TRUNC_S_F64(double x) {
   return x;
 }
@@ -545,6 +546,7 @@ float wasm_fabs(float x) {
 }
 float wasm_sqrtf(float x) {
   return sqrtf(x);
+}
 }
 
 int printf(const char* fmt, ...)
