@@ -385,10 +385,6 @@ var LibraryWebGPU = {
       'device-lost',
       'unknown',
     ],
-    ComputePassTimestampLocation: [
-      'beginning',
-      'end',
-    ],
     CullMode: [
       'none',
       'front',
@@ -459,10 +455,6 @@ var LibraryWebGPU = {
       'occlusion',
       'pipeline-statistics',
       'timestamp',
-    ],
-    RenderPassTimestampLocation: [
-      'beginning',
-      'end',
     ],
     SamplerBindingType: [
       undefined,
@@ -1535,36 +1527,27 @@ var LibraryWebGPU = {
   wgpuCommandEncoderBeginComputePass: (encoderId, descriptor) => {
     var desc;
 
-    function makeComputePassTimestampWrite(twPtr) {
+    function makeComputePassTimestampWrites(twPtr) {
+      if (twPtr === 0) return undefined;
+
       return {
         "querySet": WebGPU.mgrQuerySet.get(
-          {{{ makeGetValue('twPtr', C_STRUCTS.WGPUComputePassTimestampWrite.querySet, '*') }}}),
-        "queryIndex": {{{ gpu.makeGetU32('twPtr', C_STRUCTS.WGPUComputePassTimestampWrite.queryIndex) }}},
-        "location": WebGPU.ComputePassTimestampLocation[
-          {{{ gpu.makeGetU32('twPtr', C_STRUCTS.WGPUComputePassTimestampWrite.location) }}}],
+          {{{ makeGetValue('twPtr', C_STRUCTS.WGPUComputePassTimestampWrites.querySet, '*') }}}),
+        "beginningOfPassWriteIndex": {{{ gpu.makeGetU32('twPtr', C_STRUCTS.WGPUComputePassTimestampWrites.beginningOfPassWriteIndex) }}},
+        "endOfPassWriteIndex": {{{ gpu.makeGetU32('twPtr', C_STRUCTS.WGPUComputePassTimestampWrites.endOfPassWriteIndex) }}},
       };
-    }
-
-    function makeComputePassTimestampWrites(count, twPtr) {
-      var timestampWrites = [];
-      for (var i = 0; i < count; ++i) {
-        timestampWrites.push(makeComputePassTimestampWrite(twPtr + {{{ C_STRUCTS.WGPUComputePassTimestampWrite.__size__ }}} * i));
-      }
-      return timestampWrites;
     }
 
     if (descriptor) {
       {{{ gpu.makeCheckDescriptor('descriptor') }}}
-      desc = {};
+      desc = {
+        "label": undefined,
+        "timestampWrites": makeComputePassTimestampWrites(
+          {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePassDescriptor.timestampWrites, '*') }}}),
+      };
       var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePassDescriptor.label, '*') }}};
       if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
-      var timestampWriteCount = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUComputePassDescriptor.timestampWriteCount) }}};
-      if (timestampWriteCount) {
-        desc["timestampWrites"] = makeComputePassTimestampWrites(
-          timestampWriteCount,
-          {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePassDescriptor.timestampWrites, '*') }}});
-      }
     }
     var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
     return WebGPU.mgrComputePassEncoder.create(commandEncoder["beginComputePass"](desc));
@@ -1631,22 +1614,15 @@ var LibraryWebGPU = {
       };
     }
 
-    function makeRenderPassTimestampWrite(twPtr) {
+    function makeRenderPassTimestampWrites(twPtr) {
+      if (twPtr === 0) return undefined;
+
       return {
         "querySet": WebGPU.mgrQuerySet.get(
-          {{{ makeGetValue('twPtr', C_STRUCTS.WGPURenderPassTimestampWrite.querySet, '*') }}}),
-        "queryIndex": {{{ gpu.makeGetU32('twPtr', C_STRUCTS.WGPURenderPassTimestampWrite.queryIndex) }}},
-        "location": WebGPU.RenderPassTimestampLocation[
-          {{{ gpu.makeGetU32('twPtr', C_STRUCTS.WGPURenderPassTimestampWrite.location) }}}],
+          {{{ makeGetValue('twPtr', C_STRUCTS.WGPURenderPassTimestampWrites.querySet, '*') }}}),
+        "beginningOfPassWriteIndex": {{{ gpu.makeGetU32('twPtr', C_STRUCTS.WGPURenderPassTimestampWrites.beginningOfPassWriteIndex) }}},
+        "endOfPassWriteIndex": {{{ gpu.makeGetU32('twPtr', C_STRUCTS.WGPURenderPassTimestampWrites.endOfPassWriteIndex) }}},
       };
-    }
-
-    function makeRenderPassTimestampWrites(count, twPtr) {
-      var timestampWrites = [];
-      for (var i = 0; i < count; ++i) {
-        timestampWrites.push(makeRenderPassTimestampWrite(twPtr + {{{ C_STRUCTS.WGPURenderPassTimestampWrite.__size__ }}} * i));
-      }
-      return timestampWrites;
     }
 
     function makeRenderPassDescriptor(descriptor) {
@@ -1674,17 +1650,12 @@ var LibraryWebGPU = {
           {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.depthStencilAttachment, '*') }}}),
         "occlusionQuerySet": WebGPU.mgrQuerySet.get(
           {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.occlusionQuerySet, '*') }}}),
-        "maxDrawCount": maxDrawCount,
+        "timestampWrites": makeRenderPassTimestampWrites(
+          {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.timestampWrites, '*') }}}),
+          "maxDrawCount": maxDrawCount,
       };
       var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.label, '*') }}};
       if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
-
-      var timestampWriteCount = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPURenderPassDescriptor.timestampWriteCount) }}};
-      if (timestampWriteCount) {
-        desc["timestampWrites"] = makeRenderPassTimestampWrites(
-          timestampWriteCount,
-          {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.timestampWrites, '*') }}});
-      }
 
       return desc;
     }
