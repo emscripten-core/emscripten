@@ -642,6 +642,27 @@ globalThis.emscriptenCpuProfiler = {
       this.endSection(0);
       return ret;
     };
+    glCtx['bufferData'] = (a1, a2, a3, a4, a5) => {
+      // WebGL1/2 versions have different parameters (not just extra ones)
+      var ret = (a4 !== undefined) ? glCtx['real_bufferData'](a1, a2, a3, a4, a5) : glCtx['real_bufferData'](a1, a2, a3);
+      return ret;
+    };
+    const matrixFuncs = ['uniformMatrix2fv', 'uniformMatrix3fv', 'uniformMatrix4fv'];
+    matrixFuncs.forEach(f => {
+      glCtx[f] = (a1, a2, a3, a4, a5) => {
+        // WebGL2 version has 2 extra optional parameters, ensure we forward them
+        var ret = (a4 !== undefined) ? glCtx['real_' + f](a1, a2, a3, a4, a5) : glCtx['real_' + f](a1, a2, a3);
+        return ret;
+      }
+    });
+    const ndvFuncs = ['uniform1fv', 'uniform1iv', 'uniform2fv', 'uniform2iv', 'uniform3fv', 'uniform3iv', 'uniform4fv', 'uniform4iv'];
+    ndvFuncs.forEach(f => {
+      glCtx[f] = (a1, a2, a3, a4) => {
+        // WebGL2 version has 1 extra parameter, ensure we forward them
+        var ret = (a4 !== undefined) ? glCtx['real_' + f](a1, a2, a3, a4) : glCtx['real_' + f](a1, a2, a3);
+        return ret;
+      }
+    });
   }
 };
 
