@@ -264,11 +264,14 @@ def error_on_legacy_suite_names(args):
       utils.exit_with_error('`%s` test suite has been replaced with `%s`', a, new)
 
 
-def load_test_suites(args, modules):
+def load_test_suites(args, modules, start_at):
+  found_start = not start_at
+
   loader = unittest.TestLoader()
   error_on_legacy_suite_names(args)
   unmatched_test_names = set(args)
   suites = []
+
   total_tests = 0
   for m in modules:
     names_in_module = []
@@ -282,11 +285,19 @@ def load_test_suites(args, modules):
     if len(names_in_module):
       loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
       tests = flattened_tests(loaded_tests)
-      total_tests += len(tests)
       suite = suite_for_module(m, tests)
       for test in tests:
+        if not found_start:
+          # Skip over tests until we find the start
+          if test.id().endswith(start_at):
+            found_start = True
+          else:
+            continue
+        total_tests += 1
         suite.addTest(test)
       suites.append((m.__name__, suite))
+  if not found_start:
+    utils.exit_with_error(f'unable to find --start-at test: {start_at}')
   if total_tests == 1 or parallel_testsuite.num_cores() == 1:
     common.EMTEST_SAVE_DIR = True
   return suites, unmatched_test_names
@@ -360,7 +371,7 @@ def parse_args(args):
   parser.add_argument('--all-engines', action='store_true', default=None)
   parser.add_argument('--detect-leaks', action='store_true', default=None)
   parser.add_argument('--skip-slow', action='store_true', help='Skip tests marked as slow')
-  parser.add_argument('--cores',
+  parser.add_argument('--cores', '-j',
                       help='Set the number tests to run in parallel.  Defaults '
                            'to the number of CPU cores.', default=None)
   parser.add_argument('--rebaseline', action='store_true', default=None,
@@ -368,10 +379,9 @@ def parse_args(args):
   parser.add_argument('--browser',
                       help='Command to launch web browser in which to run browser tests.')
   parser.add_argument('tests', nargs='*')
-  parser.add_argument('--failfast', dest='failfast', action='store_const',
-                      const=True, default=False)
-  parser.add_argument('--force64', dest='force64', action='store_const',
-                      const=True, default=None)
+  parser.add_argument('--failfast', action='store_const', const=True, default=False)
+  parser.add_argument('--start-at', metavar='NAME', help='Skip all tests up until <NAME>')
+  parser.add_argument('--force64', action='store_const', const=True, default=None)
   parser.add_argument('--crossplatform-only', action='store_true')
   return parser.parse_args()
 
@@ -453,7 +463,7 @@ def main(args):
     tests = tests_with_expanded_wildcards(tests, all_tests)
     tests = skip_requested_tests(tests, modules)
     tests = args_for_random_tests(tests, modules)
-  suites, unmatched_tests = load_test_suites(tests, modules)
+  suites, unmatched_tests = load_test_suites(tests, modules, options.start_at)
   if unmatched_tests:
     print('ERROR: could not find the following tests: ' + ' '.join(unmatched_tests))
     return 1
