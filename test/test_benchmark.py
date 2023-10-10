@@ -375,6 +375,7 @@ operator new(unsigned long size)
       '-Wno-incompatible-library-redeclaration',
       '-Wno-builtin-requires-header',
       'support.c',
+      '-lm',
       # XXX this hack needs to be done properly on wabt side:   wasm2c_support,
     ]
     print('compile c to native: ' + shlex.join(cmd))
