@@ -337,22 +337,6 @@ class AndroidBenchmarker(Benchmarker):
 
     # Extra runtime
     open('support.c', 'w').write('''
-#include <math.h>
-
-int I32_TRUNC_S_F64(double x) {
-  return x;
-}
-
-float wasm_quietf(float x) {
-  return x;
-}
-float wasm_fabs(float x) {
-  return fabs(x);
-}
-float wasm_sqrtf(float x) {
-  return sqrtf(x);
-}
-
 #include <stdarg.h>
 
 #ifdef __cplusplus
@@ -546,6 +530,22 @@ class benchmark(common.RunnerCore):
     code += '''
 
 #if __wasm__
+
+#include <math.h>
+
+int I32_TRUNC_S_F64(double x) {
+  return x;
+}
+
+float wasm_quietf(float x) {
+  return x;
+}
+float wasm_fabs(float x) {
+  return fabs(x);
+}
+float wasm_sqrtf(float x) {
+  return sqrtf(x);
+}
 
 int printf(const char* fmt, ...)
 {
