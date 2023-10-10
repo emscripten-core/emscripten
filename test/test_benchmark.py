@@ -337,6 +337,10 @@ class AndroidBenchmarker(Benchmarker):
 
     # Extra runtime
     open('support.c', 'w').write('''
+float wasm_quietf(float x) {
+  return x;
+}
+
 #include <stdarg.h>
 
 #ifdef __cplusplus
@@ -359,7 +363,7 @@ operator new(unsigned long size)
       '-Wno-incompatible-library-redeclaration',
       '-Wno-builtin-requires-header',
       'support.c',
-      wasm2c_support,
+      # XXX this hack needs to be done properly on wabt side:   wasm2c_support,
     ]
     print('compile c to native: ' + shlex.join(cmd))
     run_process(cmd, env=clang_native.get_clang_native_env())
