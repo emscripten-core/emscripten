@@ -23,7 +23,8 @@ if (!performance.realNow) {
   }
 }
 
-var emscriptenCpuProfiler = {
+// Declared in globalThis so that `onclick` handlers work when `-sMODULARIZE=1`
+globalThis.emscriptenCpuProfiler = {
   // UI update interval in milliseconds.
   uiUpdateInterval: 1,
 

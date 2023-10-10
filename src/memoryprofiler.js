@@ -6,7 +6,8 @@
 
 #if MEMORYPROFILER
 
-var emscriptenMemoryProfiler = {
+// Declared in globalThis so that `onclick` handlers work when `-sMODULARIZE=1`
+globalThis.emscriptenMemoryProfiler = {
   // If true, walks all allocated pointers at graphing time to print a detailed
   // memory fragmentation map. If false, used memory is only graphed in one
   // block (at the bottom of DYNAMIC memory space). Set this to false to improve
