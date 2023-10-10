@@ -339,6 +339,10 @@ class AndroidBenchmarker(Benchmarker):
     open('support.c', 'w').write('''
 #include <math.h>
 
+int I32_TRUNC_S_F64(double x) {
+  return x;
+}
+
 float wasm_quietf(float x) {
   return x;
 }
