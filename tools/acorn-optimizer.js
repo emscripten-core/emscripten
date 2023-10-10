@@ -370,12 +370,20 @@ function runJSDCE(ast, aggressive) {
         ensureData(scopes[scopes.length - 1], node.id.name).def = 1;
       }
       const scope = {};
+      scopes.push(scope);
       node.params.forEach((param) => {
+        if (param.type === 'RestElement') {
+          param = param.argument;
+        }
+        if (param.type === 'AssignmentPattern') {
+          c(param.right);
+          param = param.left;
+        }
+        assert(param.type === 'Identifier', param.type);
         const name = param.name;
         ensureData(scope, name).def = 1;
         scope[name].param = 1;
       });
-      scopes.push(scope);
       c(node.body);
       // we can ignore self-references, i.e., references to ourselves inside
       // ourselves, for named defined (defun) functions
