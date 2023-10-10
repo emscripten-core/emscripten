@@ -57,6 +57,10 @@ commands:
             # In order make our external version of emscripten use the emsdk
             # config we need to explicitly set EM_CONFIG here.
             echo "export EM_CONFIG=~/emsdk/.emscripten" >> $BASH_ENV
+  bootstrap:
+    description: "bootstrap"
+    steps:
+      - run: ./bootstrap
   npm-install:
     description: "npm ci"
     steps:
@@ -156,6 +160,7 @@ commands:
             echo "final .emscripten:"
             cat ~/emsdk/.emscripten
       - emsdk-env
+      - bootstrap
       - npm-install
   build-libs:
     description: "Build all libraries"
@@ -214,6 +219,7 @@ commands:
           name: submodule update
           command: git submodule update --init
       - emsdk-env
+      - bootstrap
       - npm-install
       - pip-install
   upload-test-results:

@@ -19,12 +19,14 @@ import sys
 
 EXCLUDES = [os.path.normpath(x) for x in '''
 test/third_party
+tools/maint
 site
 node_modules
 Makefile
 .git
 cache
 cache.lock
+bootstrap.py
 '''.split()]
 
 EXCLUDE_PATTERNS = '''
@@ -82,7 +84,6 @@ def copy_emscripten(target):
 
 
 def main():
-
   parser = argparse.ArgumentParser(description=__doc__)
   parser.add_argument('-v', '--verbose', action='store_true', help='verbose',
                       default=int(os.environ.get('EMCC_DEBUG', '0')))
