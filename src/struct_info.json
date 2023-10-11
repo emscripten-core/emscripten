@@ -950,15 +950,6 @@
     {
         "file": "emscripten/threading.h",
         "defines": [
-            "EM_PROXIED_RESIZE_OFFSCREENCANVAS",
-            "EM_FUNC_SIG_V",
-            "EM_FUNC_SIG_VI",
-            "EM_FUNC_SIG_VII",
-            "EM_FUNC_SIG_VIII",
-            "EM_FUNC_SIG_I",
-            "EM_FUNC_SIG_II",
-            "EM_FUNC_SIG_III",
-            "EM_FUNC_SIG_IIII",
             "EM_FUNC_SIG_PARAM_I",
             "EM_FUNC_SIG_PARAM_I64",
             "EM_FUNC_SIG_PARAM_F",
@@ -1262,10 +1253,10 @@
                 "utf16Offset",
                 "utf16Length"
             ],
-            "WGPUComputePassTimestampWrite": [
+            "WGPUComputePassTimestampWrites": [
                 "querySet",
-                "queryIndex",
-                "location"
+                "beginningOfPassWriteIndex",
+                "endOfPassWriteIndex"
             ],
             "WGPUConstantEntry": [
                 "nextInChain",
@@ -1383,10 +1374,10 @@
                 "chain",
                 "maxDrawCount"
             ],
-            "WGPURenderPassTimestampWrite": [
+            "WGPURenderPassTimestampWrites": [
                 "querySet",
-                "queryIndex",
-                "location"
+                "beginningOfPassWriteIndex",
+                "endOfPassWriteIndex"
             ],
             "WGPURequestAdapterOptions": [
                 "nextInChain",
@@ -1512,7 +1503,6 @@
             "WGPUComputePassDescriptor": [
                 "nextInChain",
                 "label",
-                "timestampWriteCount",
                 "timestampWrites"
             ],
             "WGPUDepthStencilState": [
@@ -1616,7 +1606,6 @@
                 "colorAttachments",
                 "depthStencilAttachment",
                 "occlusionQuerySet",
-                "timestampWriteCount",
                 "timestampWrites"
             ],
             "WGPUVertexState": [

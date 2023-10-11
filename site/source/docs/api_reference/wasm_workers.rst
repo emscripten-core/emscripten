@@ -18,7 +18,7 @@ Quick Example
 
   void run_in_worker()
   {
-    printf("Hello from wasm worker!\n");
+    printf("Hello from Wasm Worker!\n");
   }
 
   int main()
@@ -287,7 +287,7 @@ table.
 
     <tr><td class='cellborder'>Futex API</td>
     <td class='cellborder'><pre>emscripten_futex_wait</pre><pre>emscripten_futex_wake</pre> in emscripten/threading.h</td>
-    <td class='cellborder'><pre>emscripten_wasm_wait_i32</pre><pre>emscripten_wasm_wait_i64</pre><pre>emscripten_wasm_notify</pre> in emscripten/wasm_workers.h</td></tr>
+    <td class='cellborder'><pre>emscripten_atomic_wait_u32</pre><pre>emscripten_atomic_wait_u64</pre><pre>emscripten_atomic_notify</pre> in emscripten/atomic.h</td></tr>
 
     <tr><td class='cellborder'>Asynchronous futex wait</td>
     <td class='cellborder'>N/A</td>

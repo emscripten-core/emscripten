@@ -43,7 +43,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
       'shared': true,
 #endif
 #if MEMORY64 == 1
-      'index': 'u64',
+      'index': 'i64',
 #endif
     });
 #if SHARED_MEMORY

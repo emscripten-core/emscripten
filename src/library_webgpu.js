@@ -157,7 +157,7 @@ var LibraryWebGPU = {
     errorCallback: (callback, type, message, userdata) => {
       withStackSave(() => {
         var messagePtr = stringToUTF8OnStack(message);
-        {{{ makeDynCall('viii', 'callback') }}}(type, messagePtr, userdata);
+        {{{ makeDynCall('vipp', 'callback') }}}(type, messagePtr, userdata);
       });
     },
 
@@ -385,10 +385,6 @@ var LibraryWebGPU = {
       'device-lost',
       'unknown',
     ],
-    ComputePassTimestampLocation: [
-      'beginning',
-      'end',
-    ],
     CullMode: [
       'none',
       'front',
@@ -459,10 +455,6 @@ var LibraryWebGPU = {
       'occlusion',
       'pipeline-statistics',
       'timestamp',
-    ],
-    RenderPassTimestampLocation: [
-      'beginning',
-      'end',
     ],
     SamplerBindingType: [
       undefined,
@@ -792,10 +784,10 @@ var LibraryWebGPU = {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
         if (!gpuError) {
-          {{{ makeDynCall('viii', 'callback') }}}(
+          {{{ makeDynCall('vipp', 'callback') }}}(
             {{{ gpu.ErrorType.NoError }}}, 0, userdata);
         } else if (gpuError instanceof GPUOutOfMemoryError) {
-          {{{ makeDynCall('viii', 'callback') }}}(
+          {{{ makeDynCall('vipp', 'callback') }}}(
             {{{ gpu.ErrorType.OutOfMemory }}}, 0, userdata);
         } else {
 #if ASSERTIONS
@@ -902,7 +894,7 @@ var LibraryWebGPU = {
     var viewFormatCount = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureDescriptor.viewFormatCount) }}};
     if (viewFormatCount) {
       var viewFormatsPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUTextureDescriptor.viewFormats, '*') }}};
-      desc["viewFormats"] = Array.from(HEAP32.subarray(viewFormatsPtr >> 2, (viewFormatsPtr >> 2) + viewFormatCount),
+      desc["viewFormats"] = Array.from({{{ makeHEAPView(`${POINTER_BITS}`, 'viewFormatsPtr', `viewFormatsPtr + viewFormatCount * ${POINTER_SIZE}`) }}},
         function(format) { return WebGPU.TextureFormat[format]; });
     }
 
@@ -1112,7 +1104,7 @@ var LibraryWebGPU = {
     var bgls = [];
     for (var i = 0; i < bglCount; ++i) {
       bgls.push(WebGPU.mgrBindGroupLayout.get(
-        {{{ makeGetValue('bglPtr', '4 * i', '*') }}}));
+        {{{ makeGetValue('bglPtr', `${POINTER_SIZE} * i`, '*') }}}));
     }
     var desc = {
       "label": undefined,
@@ -1428,11 +1420,12 @@ var LibraryWebGPU = {
       case {{{ gpu.SType.ShaderModuleSPIRVDescriptor }}}: {
         var count = {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUShaderModuleSPIRVDescriptor.codeSize) }}};
         var start = {{{ makeGetValue('nextInChainPtr', C_STRUCTS.WGPUShaderModuleSPIRVDescriptor.code, '*') }}};
+        var offset = {{{ getHeapOffset('start', 'u32') }}};
 #if PTHREADS
         // Chrome can't currently handle a SharedArrayBuffer view here, so make a copy.
-        desc["code"] = HEAPU32.slice(start >> 2, (start >> 2) + count);
+        desc["code"] = HEAPU32.slice(offset, offset + count);
 #else
-        desc["code"] = HEAPU32.subarray(start >> 2, (start >> 2) + count);
+        desc["code"] = HEAPU32.subarray(offset, offset + count);
 #endif
         break;
       }
@@ -1481,7 +1474,7 @@ var LibraryWebGPU = {
     assert(commands % 4 === 0);
 #endif
     var queue = WebGPU.mgrQueue.get(queueId);
-    var cmds = Array.from(HEAP32.subarray(commands >> 2, (commands >> 2) + commandCount),
+    var cmds = Array.from({{{ makeHEAPView(`${POINTER_BITS}`, 'commands', `commands + commandCount * ${POINTER_SIZE}`)}}},
       function(id) { return WebGPU.mgrCommandBuffer.get(id); });
     queue["submit"](cmds);
   },
@@ -1497,12 +1490,12 @@ var LibraryWebGPU = {
     queue["onSubmittedWorkDone"]().then(() => {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
-        {{{ makeDynCall('vii', 'callback') }}}({{{ gpu.QueueWorkDoneStatus.Success }}}, userdata);
+        {{{ makeDynCall('vip', 'callback') }}}({{{ gpu.QueueWorkDoneStatus.Success }}}, userdata);
       });
     }, () => {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
-        {{{ makeDynCall('vii', 'callback') }}}({{{ gpu.QueueWorkDoneStatus.Error }}}, userdata);
+        {{{ makeDynCall('vip', 'callback') }}}({{{ gpu.QueueWorkDoneStatus.Error }}}, userdata);
       });
     });
   },
@@ -1534,36 +1527,27 @@ var LibraryWebGPU = {
   wgpuCommandEncoderBeginComputePass: (encoderId, descriptor) => {
     var desc;
 
-    function makeComputePassTimestampWrite(twPtr) {
+    function makeComputePassTimestampWrites(twPtr) {
+      if (twPtr === 0) return undefined;
+
       return {
         "querySet": WebGPU.mgrQuerySet.get(
-          {{{ makeGetValue('twPtr', C_STRUCTS.WGPUComputePassTimestampWrite.querySet, '*') }}}),
-        "queryIndex": {{{ gpu.makeGetU32('twPtr', C_STRUCTS.WGPUComputePassTimestampWrite.queryIndex) }}},
-        "location": WebGPU.ComputePassTimestampLocation[
-          {{{ gpu.makeGetU32('twPtr', C_STRUCTS.WGPUComputePassTimestampWrite.location) }}}],
+          {{{ makeGetValue('twPtr', C_STRUCTS.WGPUComputePassTimestampWrites.querySet, '*') }}}),
+        "beginningOfPassWriteIndex": {{{ gpu.makeGetU32('twPtr', C_STRUCTS.WGPUComputePassTimestampWrites.beginningOfPassWriteIndex) }}},
+        "endOfPassWriteIndex": {{{ gpu.makeGetU32('twPtr', C_STRUCTS.WGPUComputePassTimestampWrites.endOfPassWriteIndex) }}},
       };
-    }
-
-    function makeComputePassTimestampWrites(count, twPtr) {
-      var timestampWrites = [];
-      for (var i = 0; i < count; ++i) {
-        timestampWrites.push(makeComputePassTimestampWrite(twPtr + {{{ C_STRUCTS.WGPUComputePassTimestampWrite.__size__ }}} * i));
-      }
-      return timestampWrites;
     }
 
     if (descriptor) {
       {{{ gpu.makeCheckDescriptor('descriptor') }}}
-      desc = {};
+      desc = {
+        "label": undefined,
+        "timestampWrites": makeComputePassTimestampWrites(
+          {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePassDescriptor.timestampWrites, '*') }}}),
+      };
       var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePassDescriptor.label, '*') }}};
       if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
-      var timestampWriteCount = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUComputePassDescriptor.timestampWriteCount) }}};
-      if (timestampWriteCount) {
-        desc["timestampWrites"] = makeComputePassTimestampWrites(
-          timestampWriteCount,
-          {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePassDescriptor.timestampWrites, '*') }}});
-      }
     }
     var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
     return WebGPU.mgrComputePassEncoder.create(commandEncoder["beginComputePass"](desc));
@@ -1630,22 +1614,15 @@ var LibraryWebGPU = {
       };
     }
 
-    function makeRenderPassTimestampWrite(twPtr) {
+    function makeRenderPassTimestampWrites(twPtr) {
+      if (twPtr === 0) return undefined;
+
       return {
         "querySet": WebGPU.mgrQuerySet.get(
-          {{{ makeGetValue('twPtr', C_STRUCTS.WGPURenderPassTimestampWrite.querySet, '*') }}}),
-        "queryIndex": {{{ gpu.makeGetU32('twPtr', C_STRUCTS.WGPURenderPassTimestampWrite.queryIndex) }}},
-        "location": WebGPU.RenderPassTimestampLocation[
-          {{{ gpu.makeGetU32('twPtr', C_STRUCTS.WGPURenderPassTimestampWrite.location) }}}],
+          {{{ makeGetValue('twPtr', C_STRUCTS.WGPURenderPassTimestampWrites.querySet, '*') }}}),
+        "beginningOfPassWriteIndex": {{{ gpu.makeGetU32('twPtr', C_STRUCTS.WGPURenderPassTimestampWrites.beginningOfPassWriteIndex) }}},
+        "endOfPassWriteIndex": {{{ gpu.makeGetU32('twPtr', C_STRUCTS.WGPURenderPassTimestampWrites.endOfPassWriteIndex) }}},
       };
-    }
-
-    function makeRenderPassTimestampWrites(count, twPtr) {
-      var timestampWrites = [];
-      for (var i = 0; i < count; ++i) {
-        timestampWrites.push(makeRenderPassTimestampWrite(twPtr + {{{ C_STRUCTS.WGPURenderPassTimestampWrite.__size__ }}} * i));
-      }
-      return timestampWrites;
     }
 
     function makeRenderPassDescriptor(descriptor) {
@@ -1673,17 +1650,12 @@ var LibraryWebGPU = {
           {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.depthStencilAttachment, '*') }}}),
         "occlusionQuerySet": WebGPU.mgrQuerySet.get(
           {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.occlusionQuerySet, '*') }}}),
-        "maxDrawCount": maxDrawCount,
+        "timestampWrites": makeRenderPassTimestampWrites(
+          {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.timestampWrites, '*') }}}),
+          "maxDrawCount": maxDrawCount,
       };
       var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.label, '*') }}};
       if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
-
-      var timestampWriteCount = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPURenderPassDescriptor.timestampWriteCount) }}};
-      if (timestampWriteCount) {
-        desc["timestampWrites"] = makeRenderPassTimestampWrites(
-          timestampWriteCount,
-          {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPassDescriptor.timestampWrites, '*') }}});
-      }
 
       return desc;
     }
@@ -1853,7 +1825,6 @@ var LibraryWebGPU = {
       // TODO(kainino0x): Somehow inject a validation error?
       return 0;
     }
-
     var data = _memalign(16, mapped.byteLength);
     HEAPU8.set(new Uint8Array(mapped), data);
     bufferWrapper.onUnmap.push(() => _free(data));
@@ -1922,13 +1893,13 @@ var LibraryWebGPU = {
     buffer["mapAsync"](mode, offset, size).then(() => {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
-        {{{ makeDynCall('vii', 'callback') }}}({{{ gpu.BufferMapAsyncStatus.Success }}}, userdata);
+        {{{ makeDynCall('vip', 'callback') }}}({{{ gpu.BufferMapAsyncStatus.Success }}}, userdata);
       });
     }, () => {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
         // TODO(kainino0x): Figure out how to pick other error status values.
-        {{{ makeDynCall('vii', 'callback') }}}({{{ gpu.BufferMapAsyncStatus.ValidationError }}}, userdata);
+        {{{ makeDynCall('vip', 'callback') }}}({{{ gpu.BufferMapAsyncStatus.ValidationError }}}, userdata);
       });
     });
   },
@@ -2197,8 +2168,8 @@ var LibraryWebGPU = {
     assert(bundlesPtr % 4 === 0);
 #endif
 
-    var bundles = Array.from(HEAP32.subarray(bundlesPtr >> 2, (bundlesPtr >> 2) + count),
-      function(id) { return WebGPU.mgrRenderBundle.get(id); });
+    var bundles = Array.from({{{ makeHEAPView(`${POINTER_BITS}`, 'bundlesPtr', `bundlesPtr + count * ${POINTER_SIZE}`) }}},
+      (id) => WebGPU.mgrRenderBundle.get(id));
     pass["executeBundles"](bundles);
   },
 
@@ -2392,7 +2363,7 @@ var LibraryWebGPU = {
     if (!('gpu' in navigator)) {
       withStackSave(() => {
         var messagePtr = stringToUTF8OnStack('WebGPU not available on this browser (navigator.gpu is not available)');
-        {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestAdapterStatus.Unavailable }}}, 0, messagePtr, userdata);
+        {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestAdapterStatus.Unavailable }}}, 0, messagePtr, userdata);
       });
       return;
     }
@@ -2403,11 +2374,11 @@ var LibraryWebGPU = {
       callUserCallback(() => {
         if (adapter) {
           var adapterId = WebGPU.mgrAdapter.create(adapter);
-          {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestAdapterStatus.Success }}}, adapterId, 0, userdata);
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestAdapterStatus.Success }}}, adapterId, 0, userdata);
         } else {
           withStackSave(() => {
             var messagePtr = stringToUTF8OnStack('WebGPU not available on this system (requestAdapter returned null)');
-            {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestAdapterStatus.Unavailable }}}, 0, messagePtr, userdata);
+            {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestAdapterStatus.Unavailable }}}, 0, messagePtr, userdata);
           });
         }
       });
@@ -2416,7 +2387,7 @@ var LibraryWebGPU = {
       callUserCallback(() => {
         withStackSave(() => {
           var messagePtr = stringToUTF8OnStack(ex.message);
-          {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestAdapterStatus.Error }}}, 0, messagePtr, userdata);
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestAdapterStatus.Error }}}, 0, messagePtr, userdata);
         });
       });
     });
@@ -2469,7 +2440,7 @@ var LibraryWebGPU = {
       var requiredFeaturesCount = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredFeaturesCount) }}};
       if (requiredFeaturesCount) {
         var requiredFeaturesPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredFeatures, '*') }}};
-        desc["requiredFeatures"] = Array.from(HEAP32.subarray(requiredFeaturesPtr >> 2, (requiredFeaturesPtr >> 2) + requiredFeaturesCount),
+        desc["requiredFeatures"] = Array.from({{{ makeHEAPView(`${POINTER_BITS}`, 'requiredFeaturesPtr', `requiredFeaturesPtr + requiredFeaturesCount * ${POINTER_SIZE}`) }}},
           (feature) => WebGPU.FeatureName[feature]);
       }
       var requiredLimitsPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredLimits, '*') }}};
@@ -2552,14 +2523,14 @@ var LibraryWebGPU = {
               WebGPU.DeviceLostReason[info.reason], info.message, deviceLostUserdataPtr));
           });
         }
-        {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestDeviceStatus.Success }}}, deviceId, 0, userdata);
+        {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestDeviceStatus.Success }}}, deviceId, 0, userdata);
       });
     }, function(ex) {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
         withStackSave(() => {
           var messagePtr = stringToUTF8OnStack(ex.message);
-          {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestDeviceStatus.Error }}}, 0, messagePtr, userdata);
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestDeviceStatus.Error }}}, 0, messagePtr, userdata);
         });
       });
     });
@@ -2586,23 +2557,22 @@ var LibraryWebGPU = {
     var device = WebGPU.mgrDevice.get(deviceId);
     var context = WebGPU.mgrSurface.get(surfaceId);
 
-
 #if ASSERTIONS
     assert({{{ gpu.PresentMode.Fifo }}} ===
       {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.presentMode) }}});
 #endif
 
     var canvasSize = [
-        {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.width) }}},
-        {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.height) }}}
+      {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.width) }}},
+      {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.height) }}}
     ];
 
     if (canvasSize[0] !== 0) {
-        context["canvas"]["width"] = canvasSize[0];
+      context["canvas"]["width"] = canvasSize[0];
     }
 
     if (canvasSize[1] !== 0) {
-        context["canvas"]["height"] = canvasSize[1];
+      context["canvas"]["height"] = canvasSize[1];
     }
 
     var configuration = {
@@ -2645,7 +2615,12 @@ for (var value in LibraryWebGPU.$WebGPU.FeatureName) {
 }
 
 for (const key of Object.keys(LibraryWebGPU)) {
-  LibraryWebGPU[key + '__i53abi'] = true;
+  if (typeof LibraryWebGPU[key] === 'function') {
+    LibraryWebGPU[key + '__i53abi'] = true;
+    if (!(key + '__proxy' in LibraryWebGPU)) {
+      LibraryWebGPU[key + '__proxy'] = 'sync';
+    }
+  }
 }
 
 autoAddDeps(LibraryWebGPU, '$WebGPU');

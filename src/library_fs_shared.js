@@ -176,5 +176,5 @@ addToLibrary({
 // FORCE_FILESYSTEM makes us always include the FS object, which lets the user
 // call APIs on it from JS freely.
 if (FORCE_FILESYSTEM) {
-  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$FS');
+  extraLibraryFuncs.push('$FS');
 }

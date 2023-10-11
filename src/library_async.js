@@ -458,7 +458,8 @@ addToLibrary({
 #if ASYNCIFY_DEBUG
       dbg('asyncify: returnPromiseOnSuspend for', original);
 #endif
-      var type = WebAssembly.Function.type(original);
+      // TODO: remove `WebAssembly.Function.type` call when the new API is ready on all the testers.
+      var type = original.type ? original.type() : WebAssembly.Function.type(original);
       var parameters = type.parameters;
       var results = type.results;
 #if ASSERTIONS
@@ -660,5 +661,5 @@ addToLibrary({
 });
 
 if (ASYNCIFY) {
-  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$Asyncify');
+  extraLibraryFuncs.push('$Asyncify');
 }

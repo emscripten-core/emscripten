@@ -11,6 +11,8 @@
 
 global.addedLibraryItems = {};
 
+global.extraLibraryFuncs = [];
+
 // Some JS-implemented library functions are proxied to be called on the main
 // browser thread, if the Emscripten runtime is executing in a Web Worker.
 // Each such proxied function is identified via an ordinal number (this is not
@@ -104,6 +106,7 @@ function runJSify() {
   LibraryManager.load();
 
   const symbolsNeeded = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
+  symbolsNeeded.push(...extraLibraryFuncs);
   for (const sym of EXPORTED_RUNTIME_METHODS) {
     if ('$' + sym in LibraryManager.library) {
       symbolsNeeded.push('$' + sym);
@@ -200,6 +203,12 @@ ${argConvertions}
     // in the output for binary file writes, so make sure the endings are
     // uniform.
     snippet = snippet.toString().replace(/\r\n/gm, '\n');
+
+    // Is this a shorthand `foo() {}` method syntax?
+    // If so, prepend a function keyword so that it's valid syntax when extracted.
+    if (snippet.startsWith(symbol)) {
+      snippet = 'function ' + snippet;
+    }
 
     if (isStub) {
       return snippet;
@@ -302,16 +311,22 @@ function(${args}) {
     }
 
     function addFromLibrary(symbol, dependent, force = false) {
-      // dependencies can be JS functions, which we just run
-      if (typeof symbol == 'function') {
-        return symbol();
-      }
-
       // don't process any special identifiers. These are looked up when
       // processing the base name of the identifier.
       if (isDecorator(symbol)) {
         return;
       }
+
+      // if the function was implemented in compiled code, there is no need to
+      // include the js version
+      if (WASM_EXPORTS.has(symbol) && !force) {
+        return;
+      }
+
+      if (symbol in addedLibraryItems) {
+        return;
+      }
+      addedLibraryItems[symbol] = true;
 
       if (!(symbol + '__deps' in LibraryManager.library)) {
         LibraryManager.library[symbol + '__deps'] = [];
@@ -351,17 +366,6 @@ function(${args}) {
         }
         return;
       }
-
-      // if the function was implemented in compiled code, there is no need to
-      // include the js version
-      if (WASM_EXPORTS.has(symbol) && !force) {
-        return;
-      }
-
-      if (symbol in addedLibraryItems) {
-        return;
-      }
-      addedLibraryItems[symbol] = true;
 
       // This gets set to true in the case of dynamic linking for symbols that
       // are undefined in the main module.  In this case we create a stub that
@@ -428,11 +432,9 @@ function(${args}) {
       const original = LibraryManager.library[symbol];
       let snippet = original;
 
+      // Check for dependencies on `__internal` symbols from user libraries.
       const isUserSymbol = LibraryManager.library[symbol + '__user'];
       deps.forEach((dep) => {
-        if (typeof snippet == 'string' && !(dep in LibraryManager.library)) {
-          warn(`missing library dependency ${dep}, make sure you are compiling with the right options (see #if in src/library*.js)`);
-        }
         if (isUserSymbol && LibraryManager.library[dep + '__internal']) {
           warn(`user library symbol '${symbol}' depends on internal symbol '${dep}'`);
         }
@@ -481,6 +483,16 @@ function(${args}) {
       const deps_list = deps.join("','");
       const identDependents = symbol + `__deps: ['${deps_list}']`;
       function addDependency(dep) {
+        // dependencies can be JS functions, which we just run
+        if (typeof dep == 'function') {
+          return dep();
+        }
+        // $noExitRuntime is special since there are conditional usages of it
+        // in library.js and library_pthread.js.  These happen before deps are
+        // processed so depending on it via `__deps` doesn't work.
+        if (dep === '$noExitRuntime') {
+          error('noExitRuntime cannot be referenced via __deps mechansim.  Use DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS')
+        }
         return addFromLibrary(dep, `${symbol}, referenced by ${dependent}`, dep === aliasTarget);
       }
       let contentText;
@@ -653,7 +665,8 @@ var proxiedFunctionTable = [
   if (symbolsOnly) {
     print(JSON.stringify({
       deps: symbolDeps,
-      asyncFuncs
+      asyncFuncs,
+      extraLibraryFuncs,
     }));
   } else {
     finalCombiner();

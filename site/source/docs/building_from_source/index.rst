@@ -4,18 +4,30 @@
 Building Emscripten from Source
 ===============================
 
-Building Emscripten yourself is an alternative to getting binaries using the emsdk.
+Building Emscripten yourself is an alternative to getting binaries using the
+emsdk.
 
-Emscripten's core codebase, which is in the main "emscripten" repo, does not need to be compiled (it uses Python for most of the scripting that glues together all the tools). What do need to be compiled are LLVM (which in particular provides clang and wasm-ld) and Binaryen. After compiling them, simply edit the ``.emscripten`` file to point to the right place for each of those tools (if the file doesn't exist yet, run ``emcc`` for the first time).
+Emscripten itself is written in Python and JavaScript so it does not need to be
+compiled.  However, after checkout you will need to perform various steps
+before it can be used (e.g. ``npm install``).  The ``bootstrap`` script in the
+top level of the repository takes care of running these steps and ``emcc`` will
+error out if it detects that ``bootstrap`` needs to be run.
 
-Get the ``main`` branches, or check the `Packaging <https://github.com/emscripten-core/emscripten/blob/main/docs/packaging.md>`_ instructions to identify precise commits in existing releases.
+In addition to the main emscripten repository you will also need to checkout
+and build LLVM and Binaryen (as detailed below).  After compiling these, you
+will need to edit your ``.emscripten`` file to point to their corresponding
+locations.
+
+Use the ``main`` branches of each of these repositories, or check the `Packaging
+<https://github.com/emscripten-core/emscripten/blob/main/docs/packaging.md>`_
+instructions to identify precise commits used in a specific release.
 
 
 Building LLVM
 -------------
 
-For using the LLVM wasm backend (recommended), simply build normal upstream LLVM from the `monorepo <https://github.com/llvm/llvm-project>`_.
-Include clang and wasm-ld (using something like ``-DLLVM_ENABLE_PROJECTS='lld;clang'``) and the wasm backend (which is included by default; just don't disable it), following `that project's instructions <http://llvm.org/docs/CMake.html>`_.
+Build LLVM from the `git repo <https://github.com/llvm/llvm-project>`_.
+Include clang and wasm-ld (using something like ``-DLLVM_ENABLE_PROJECTS='lld;clang'``) and the Wasm backend (which is included by default; just don't disable it), following `that project's instructions <http://llvm.org/docs/CMake.html>`_.
 For example, something like this can work:
 
   ::
