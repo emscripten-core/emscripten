@@ -30,6 +30,7 @@ if [ -z "$_EM_PY" ]; then
   exit 1
 fi
 
+export _EM_LAUNCHER=1
 if [ -z "$_EMCC_CCACHE" ]; then
   exec "$_EM_PY" -E "$0.py" "$@"
 else

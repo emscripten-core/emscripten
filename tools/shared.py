@@ -621,6 +621,15 @@ def get_llvm_target():
 def init():
   utils.set_version_globals()
   setup_temp_dirs()
+  if '_EM_LAUNCHER' not in os.environ:
+    pyfile = os.path.basename(sys.argv[0])
+    launcher = os.path.splitext(pyfile)[0]
+    if utils.WINDOWS:
+      launcher += '.exe'
+    diagnostics.warn(f'python script (`{pyfile}`) was run directly rather than run via launcher.  Running via `{launcher}` is recommended')
+  else:
+    # We don't want subprocesses to inherit this environment variable.
+    del os.environ['_EM_LAUNCHER']
 
 
 # ============================================================================
