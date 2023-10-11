@@ -15210,3 +15210,7 @@ for(var i = 0; i < 65536; ++i)
 console.log('OK');'''
     write_file('test.js', read_file(path_from_root('src/binaryDecode.js')) + '\nvar src = ' + binary_encoded + ';\n' + test_js)
     self.assertContained('OK', self.run_js('test.js'))
+
+  def test_direct_usage_warning(self):
+    err = self.run_process([sys.executable, path_from_root('emcc.py'), '--version'], stderr=PIPE).stderr
+    self.assertContained('emcc: warning: python script (`emcc.py`) was run directly rather than run via launcher', err)
