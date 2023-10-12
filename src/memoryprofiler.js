@@ -637,4 +637,7 @@ if (typeof document != 'undefined' && typeof window != 'undefined' && typeof pro
   emscriptenMemoryProfiler.initialize();
 }
 
+// Declared in globalThis so that `onclick` handlers work when `-sMODULARIZE=1`
+globalThis.emscriptenMemoryProfiler = emscriptenMemoryProfiler;
+
 #endif
