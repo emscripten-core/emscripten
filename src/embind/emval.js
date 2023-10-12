@@ -90,11 +90,11 @@ var LibraryEmVal = {
     }
   },
 
-  _emval_run_destructors__deps: ['_emval_decref', '$Emval', '$runDestructors'],
+  _emval_run_destructors__deps: ['_emval_free', '$Emval', '$runDestructors'],
   _emval_run_destructors: (handle) => {
     var destructors = Emval.toValue(handle);
     runDestructors(destructors);
-    __emval_decref(handle);
+    __emval_free(handle);
   },
 
   _emval_new_array__deps: ['$Emval'],
