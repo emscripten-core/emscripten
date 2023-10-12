@@ -286,6 +286,46 @@ struct MethodCaller {
   }
 };
 
+struct val_metadata {
+public:
+  val_metadata(EM_VAL handle)
+    : refcount(1)
+    , thread(pthread_self())
+    , handle(handle)
+  {}
+
+  // automatically deletes copy constructors and assignment operators as well
+  val_metadata(val_metadata&&) = delete;
+
+  val_metadata* inc_ref() {
+    ++refcount;
+    return this;
+  }
+
+  void dec_ref() {
+    if (--refcount == 0) {
+      delete this;
+    }
+  }
+
+  constexpr EM_VAL as_handle() const {
+#ifdef _REENTRANT
+    assert(pthread_equal(thread, pthread_self()) && "val accessed from wrong thread");
+#endif
+    return handle;
+  }
+
+private:
+  size_t refcount;
+  pthread_t thread;
+  EM_VAL handle;
+
+  // should be only accessible from dec_ref
+  ~val_metadata() {
+    _emval_free(handle);
+  }
+};
+
 } // end namespace internal
 
 #define EMSCRIPTEN_SYMBOL(name)                                         \
@@ -385,21 +425,14 @@ public:
       : val(internal::_emval_new_cstring(v))
   {}
 
-  val(const val& v) : handle(v.handle), thread(v.thread), refcount(v.refcount) {
-    ++*refcount;
-  }
+  val(const val& v) : data(v.data->inc_ref()) {}
 
   ~val() {
-    if (--*refcount == 0) {
-      internal::_emval_free(as_handle());
-    }
+    data->dec_ref();
   }
 
   EM_VAL as_handle() const {
-#ifdef _REENTRANT
-    assert(pthread_equal(thread, pthread_self()) && "val accessed from wrong thread");
-#endif
-    return handle;
+    return data->as_handle();
   }
 
   val& operator=(val&& v) & {
@@ -587,7 +620,7 @@ public:
 private:
   // takes ownership, assumes handle already incref'd and lives on the same thread
   explicit val(EM_VAL handle)
-      : handle(handle), thread(pthread_self())
+      : data(new internal::val_metadata(handle))
   {}
 
   template<typename WrapperType>
@@ -611,18 +644,7 @@ private:
     return v;
   }
 
-  static size_t *make_refcount() {
-    // Note: C++ standard doesn't allow optimising out new/delete pairs,
-    // but malloc/free pairs get optimised out by LLVM completely if all
-    // your values are local (if you don't leak / store val elsewhere).
-    size_t *refcount = (size_t*)malloc(sizeof(size_t));
-    *refcount = 1;
-    return refcount;
-  }
-
-  pthread_t thread;
-  EM_VAL handle;
-  size_t *refcount = make_refcount();
+  internal::val_metadata* data;
 
   friend struct internal::BindingType<val>;
 };
