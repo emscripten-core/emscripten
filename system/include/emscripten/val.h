@@ -38,10 +38,9 @@ void _emval_register_symbol(const char*);
 
 enum {
   _EMVAL_UNDEFINED = 1,
-  _EMVAL_NULL,
-  _EMVAL_TRUE,
-  _EMVAL_FALSE,
-  _EMVAL_UNRESERVED_START
+  _EMVAL_NULL = 2,
+  _EMVAL_TRUE = 3,
+  _EMVAL_FALSE = 4
 };
 
 typedef struct _EM_DESTRUCTORS* EM_DESTRUCTORS;
@@ -340,9 +339,7 @@ private:
 
   // should be only accessible from dec_ref
   ~val_metadata() {
-    if (handle >= EM_VAL(internal::_EMVAL_UNRESERVED_START)) {
-      internal::_emval_free(handle);
-    }
+    _emval_free(handle);
   }
 };
 
