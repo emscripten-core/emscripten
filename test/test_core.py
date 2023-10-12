@@ -2923,11 +2923,13 @@ The current type of b is: 9
 
   @node_pthreads
   def test_pthread_wait32_notify(self):
+    self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test(test_file('wasm_worker/wait32_notify.c'))
 
   @node_pthreads
   @no_wasm2js('https://github.com/WebAssembly/binaryen/issues/5991')
   def test_pthread_wait64_notify(self):
+    self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test(test_file('wasm_worker/wait64_notify.c'))
 
   def test_tcgetattr(self):

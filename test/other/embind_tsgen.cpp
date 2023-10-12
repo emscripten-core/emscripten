@@ -41,6 +41,8 @@ class Foo {
 
 enum Bar { kValueOne, kValueTwo, kValueThree };
 
+enum EmptyEnum {};
+
 Bar enum_returning_fn() { return kValueOne; }
 
 struct ValArr {
@@ -120,6 +122,7 @@ EMSCRIPTEN_BINDINGS(Test) {
       .value("valueOne", Bar::kValueOne)
       .value("valueTwo", Bar::kValueTwo)
       .value("valueThree", Bar::kValueThree);
+  enum_<EmptyEnum>("EmptyEnum");
 
   function("enum_returning_fn", &enum_returning_fn);
 

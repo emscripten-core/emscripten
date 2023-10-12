@@ -59,6 +59,14 @@ from tools.utils import read_file, write_file, read_binary, delete_file, removep
 
 logger = logging.getLogger('emcc')
 
+# In git checkouts of emscripten `bootstrap.py` exists to run post-checkout
+# steps.  In packaged versions (e.g. emsdk) this file does not exist (because
+# it is excluded in tools/install.py) and these steps are assumed to have been
+# run already.
+if os.path.exists(utils.path_from_root('.git')) and os.path.exists(utils.path_from_root('bootstrap.py')):
+  import bootstrap
+  bootstrap.check()
+
 # endings = dot + a suffix, compare against result of shared.suffix()
 C_ENDINGS = ['.c', '.i']
 CXX_ENDINGS = ['.cppm', '.pcm', '.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii']
@@ -627,6 +635,14 @@ def should_run_binaryen_optimizer():
 def get_binaryen_passes():
   passes = []
   optimizing = should_run_binaryen_optimizer()
+  # wasm-emscripten-finalize will strip the features section for us
+  # automatically, but if we did not modify the wasm then we didn't run it,
+  # and in an optimized build we strip it manually here. (note that in an
+  # unoptimized build we might end up with the features section, if we neither
+  # optimize nor run wasm-emscripten-finalize, but a few extra bytes in the
+  # binary don't matter in an unoptimized build)
+  if optimizing:
+    passes += ['--strip-target-features']
   # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
   if settings.SAFE_HEAP:
     passes += ['--safe-heap']

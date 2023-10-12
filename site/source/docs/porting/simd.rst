@@ -848,9 +848,9 @@ The following table highlights the availability and expected performance of diff
    * - _mm_unpacklo_pd
      - 💡 emulated with a shuffle
    * - _mm_xor_pd
-     - 🟡 wasm_v128_or. VM must guess type.
+     - 🟡 wasm_v128_xor. VM must guess type.
    * - _mm_xor_si128
-     - 🟡 wasm_v128_or. VM must guess type.
+     - 🟡 wasm_v128_xor. VM must guess type.
 
 ⚫ The following extensions that SSE2 instruction set brought to 64-bit wide MMX registers are not available:
  - _mm_add_si64, _mm_movepi64_pi64, _mm_movpi64_epi64, _mm_mul_su32, _mm_sub_si64, _mm_cvtpd_pi32, _mm_cvtpi32_pd, _mm_cvttpd_pi32

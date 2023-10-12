@@ -747,3 +747,19 @@ fi
 
     make_fake_tool(self.in_dir('fake', 'bin', 'wasm-opt'), '70')
     self.check_working([EMCC, test_file('hello_world.c')], 'unexpected binaryen version: 70 (expected ')
+
+  def test_bootstrap(self):
+    restore_and_set_up()
+    self.run_process([EMCC, test_file('hello_world.c')])
+
+    # Touching package.json should cause compiler to fail with bootstrap message
+    Path(utils.path_from_root('package.json')).touch()
+    err = self.expect_fail([EMCC, test_file('hello_world.c')])
+    self.assertContained('emcc: error: emscripten setup is not complete ("npm packages" is out-of-date). Run bootstrap.py to update', err)
+
+    # Running bootstrap.py should fix that
+    bootstrap = shared.bat_suffix(shared.path_from_root('bootstrap'))
+    self.run_process([bootstrap])
+
+    # Now the compiler should work again
+    self.run_process([EMCC, test_file('hello_world.c')])
