@@ -59,6 +59,14 @@ from tools.utils import read_file, write_file, read_binary, delete_file, removep
 
 logger = logging.getLogger('emcc')
 
+# In git checkouts of emscripten `bootstrap.py` exists to run post-checkout
+# steps.  In packaged versions (e.g. emsdk) this file does not exist (because
+# it is excluded in tools/install.py) and these steps are assumed to have been
+# run already.
+if os.path.exists(utils.path_from_root('.git')) and os.path.exists(utils.path_from_root('bootstrap.py')):
+  import bootstrap
+  bootstrap.check()
+
 # endings = dot + a suffix, compare against result of shared.suffix()
 C_ENDINGS = ['.c', '.i']
 CXX_ENDINGS = ['.cppm', '.pcm', '.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii']
