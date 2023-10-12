@@ -317,9 +317,16 @@ public:
   }
 
   // Elimination-friendly overrides of operator new and delete.
+  // These intentionally do less work than the default implementations,
+  // which need to support custom handlers for out-of-memory conditions,
+  // while malloc/free pairs get inlined and can be and are eliminated
+  // by LLVM easily.
+  // Since most our values are temporary, we really want this optimisation.
 
   void* operator new(size_t count) noexcept {
-    return malloc(count * sizeof(val_metadata));
+    auto ptr = malloc(count * sizeof(val_metadata));
+    if (!ptr) abort();
+    return ptr;
   }
 
   void operator delete(void* ptr) noexcept {
