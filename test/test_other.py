@@ -14015,3 +14015,40 @@ addToLibrary({
 
   def test_arguments_global(self):
     self.emcc(test_file('hello_world_argv.c'), ['-sENVIRONMENT=web', '-sSTRICT', '--closure=1', '-O2'])
+
+  def test_emval_allocation_optimisations(self):
+    # Abort on any attempts to use dynamic allocation in runtime.
+    # This way we can check that LLVM optimised them all away.
+    # It's possible (but very unlikely) that in some future LLVM
+    # will regress in this optimisation, but it's more likely that
+    # we modify `val` in some way that makes those optimisations
+    # impossible - this is what the test is designed to help catch.
+    create_file('no_alloc.c', r'''
+      #include <stdlib.h>
+
+      void *malloc(size_t size) {
+        // Ensure all calls to malloc were compiled away when forbidden.
+        abort();
+      }
+
+      void free(void *ptr) {
+        // Same for free.
+        abort();
+      }
+    ''')
+    # Add this allocation implementation to compilation.
+    self.emcc_args += ['-xc', 'no_alloc.c']
+    create_file('test.cpp', r'''
+      #include <emscripten/val.h>
+
+      using emscripten::val;
+
+      int main() {
+        val::global("console").call<void>("log", val("Hello, world!"));
+      }
+    ''')
+    self.emcc_args += ['-xc++', '--bind']
+    # Test that even minimal optimisation level optimises allocations away
+    # for all those temporary emscripten::val values.
+    self.emcc_args += ['-O1']
+    self.do_runf('test.cpp', 'Hello, world!')
