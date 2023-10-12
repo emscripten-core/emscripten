@@ -63,12 +63,7 @@ var LibraryEmVal = {
 
   $Emval__deps: ['$emval_handles', '$throwBindingError', '$init_emval'],
   $Emval: {
-    toValue: (handle) => {
-      if (!handle) {
-          throwBindingError('Cannot use deleted val. handle = ' + handle);
-      }
-      return emval_handles.get(handle);
-    },
+    toValue: (handle) => emval_handles.get(handle),
 
     toHandle: (value) => {
       switch (value) {
