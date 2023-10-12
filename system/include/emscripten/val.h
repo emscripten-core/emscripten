@@ -48,8 +48,7 @@ typedef struct _EM_METHOD_CALLER* EM_METHOD_CALLER;
 typedef double EM_GENERIC_WIRE_TYPE;
 typedef const void* EM_VAR_ARGS;
 
-void _emval_incref(EM_VAL value);
-void _emval_decref(EM_VAL value);
+void _emval_free(EM_VAL object);
 
 void _emval_run_destructors(EM_DESTRUCTORS handle);
 
@@ -386,22 +385,13 @@ public:
       : val(internal::_emval_new_cstring(v))
   {}
 
-  // Note: unlike other constructors, this doesn't use as_handle() because
-  // it just moves a value and doesn't need to go via incref/decref.
-  // This means it's safe to move values across threads - an error will
-  // only arise if you access or free it from the wrong thread later.
-  val(val&& v) : handle(v.handle), thread(v.thread) {
-    v.handle = 0;
-  }
-
-  val(const val& v) : val(v.as_handle()) {
-    internal::_emval_incref(handle);
+  val(const val& v) : handle(v.handle), thread(v.thread), refcount(v.refcount) {
+    ++*refcount;
   }
 
   ~val() {
-    if (handle) {
-      internal::_emval_decref(as_handle());
-      handle = 0;
+    if (--*refcount == 0) {
+      internal::_emval_free(as_handle());
     }
   }
 
@@ -621,8 +611,18 @@ private:
     return v;
   }
 
+  static size_t *make_refcount() {
+    // Note: C++ standard doesn't allow optimising out new/delete pairs,
+    // but malloc/free pairs get optimised out by LLVM completely if all
+    // your values are local (if you don't leak / store val elsewhere).
+    size_t *refcount = (size_t*)malloc(sizeof(size_t));
+    *refcount = 1;
+    return refcount;
+  }
+
   pthread_t thread;
   EM_VAL handle;
+  size_t *refcount = make_refcount();
 
   friend struct internal::BindingType<val>;
 };
@@ -663,7 +663,7 @@ struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
   typedef EM_VAL WireType;
   static WireType toWireType(const val& v) {
     EM_VAL handle = v.as_handle();
-    _emval_incref(handle);
+    ++*v.refcount;
     return handle;
   }
   static val fromWireType(WireType v) {

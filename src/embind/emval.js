@@ -67,7 +67,7 @@ var LibraryEmVal = {
       if (!handle) {
           throwBindingError('Cannot use deleted val. handle = ' + handle);
       }
-      return emval_handles.get(handle).value;
+      return emval_handles.get(handle);
     },
 
     toHandle: (value) => {
@@ -77,22 +77,15 @@ var LibraryEmVal = {
         case true: return 3;
         case false: return 4;
         default:{
-          return emval_handles.allocate({refcount: 1, value: value});
+          return emval_handles.allocate(value);
         }
       }
     }
   },
 
-  _emval_incref__deps: ['$emval_handles'],
-  _emval_incref: (handle) => {
-    if (handle > 4) {
-      emval_handles.get(handle).refcount += 1;
-    }
-  },
-
-  _emval_decref__deps: ['$emval_handles'],
-  _emval_decref: (handle) => {
-    if (handle >= emval_handles.reserved && 0 === --emval_handles.get(handle).refcount) {
+  _emval_free__deps: ['$emval_handles'],
+  _emval_free: (handle) => {
+    if (handle >= emval_handles.reserved) {
       emval_handles.free(handle);
     }
   },
