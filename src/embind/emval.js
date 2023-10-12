@@ -80,9 +80,7 @@ var LibraryEmVal = {
 
   _emval_free__deps: ['$emval_handles'],
   _emval_free: (handle) => {
-    if (handle >= emval_handles.reserved) {
-      emval_handles.free(handle);
-    }
+    emval_handles.free(handle);
   },
 
   _emval_run_destructors__deps: ['_emval_free', '$Emval', '$runDestructors'],
