@@ -316,6 +316,16 @@ public:
     return handle;
   }
 
+  // Elimination-friendly overrides of operator new and delete.
+
+  void* operator new(size_t count) noexcept {
+    return malloc(count * sizeof(val_metadata));
+  }
+
+  void operator delete(void* ptr) noexcept {
+    free(ptr);
+  }
+
 private:
   size_t refcount;
   pthread_t thread;
