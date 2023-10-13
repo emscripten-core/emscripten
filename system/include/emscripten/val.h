@@ -442,7 +442,9 @@ public:
       : val(internal::_emval_new_cstring(v))
   {}
 
-  val(const val& v) : data(v.data->inc_ref()) {}
+  val(val&& v) : data(v.data->inc_ref()) {}
+
+  val(const val& v) : val(std::move(v)) {}
 
   ~val() {
     data->dec_ref();
