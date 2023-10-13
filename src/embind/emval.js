@@ -27,10 +27,10 @@ var LibraryEmVal = {
     // reserve some special values. These never get de-allocated.
     // The HandleAllocator takes care of reserving zero.
     emval_handles.allocated.push(
-      {value: undefined},
-      {value: null},
-      {value: true},
-      {value: false},
+      undefined,
+      null,
+      true,
+      false,
     );
     emval_handles.reserved = emval_handles.allocated.length
     Module['count_emval_handles'] = count_emval_handles;
