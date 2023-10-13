@@ -140,6 +140,10 @@ var MALLOC = "dlmalloc";
 //      which it did not previously. If you don't want that, just stop passing
 //      it in at link time.
 //
+// Note that this setting does not affect the behavior of operator new in C++.
+// This function will always abort on allocation failure if exceptions are disabled.
+// If you want new to return 0 on failure, use it with std::nothrow.
+//
 // [link]
 var ABORTING_MALLOC = true;
 

@@ -30,6 +30,9 @@ See docs/process.md for more on how version tagging works.
   incoming module but forget to include them in `-sINCOMING_MODULE_API`
   will see an error in debug builds so this change will not generate any
   silent failures.
+- If exceptions are disabled, using `new` together with `std::nothrow` no
+  longer aborts if the allocation fails. Instead `nullptr` is returned now.
+  This does not change the behavior of regular usage of `new`.
 
 3.1.45 - 08/23/23
 -----------------
