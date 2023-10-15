@@ -475,6 +475,11 @@ module({
             var e = cm.emval_test_take_and_return_std_string(string);
             assert.equal(string, e);
         });
+
+        var utf8TestString = String.fromCharCode(10) +
+            String.fromCharCode(1234) +
+            String.fromCharCode(2345) +
+            String.fromCharCode(65535);
         
         var utf16TestString = String.fromCharCode(10) +
             String.fromCharCode(1234) +
@@ -492,6 +497,10 @@ module({
             assert.equal(utf16TestString, cm.get_non_ascii_wstring());
         });
 
+        test("non-ascii u8strings", function() {
+            assert.equal(utf8TestString, cm.get_non_ascii_u8string());
+        });
+
         test("non-ascii u16strings", function() {
             assert.equal(utf16TestString, cm.get_non_ascii_u16string());
         });
@@ -502,6 +511,10 @@ module({
 
         test("passing unicode (wide) string into C++", function() {
             assert.equal(utf16TestString, cm.take_and_return_std_wstring(utf16TestString));
+        });
+
+        test("passing unicode (utf-8) string into C++", function() {
+            assert.equal(utf8TestString, cm.take_and_return_std_u8string(utf8TestString));
         });
 
         test("passing unicode (utf-16) string into C++", function() {
@@ -516,6 +529,11 @@ module({
             test("can access a literal wstring after a memory growth", function() {
                 cm.force_memory_growth();
                 assert.equal("get_literal_wstring", cm.get_literal_wstring());
+            });
+
+            test("can access a literal u8string after a memory growth", function() {
+                cm.force_memory_growth();
+                assert.equal("get_literal_u8string", cm.get_literal_u8string());
             });
             
             test("can access a literal u16string after a memory growth", function() {
