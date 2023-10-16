@@ -22,13 +22,45 @@ This article describes the main tools and settings provided by Emscripten for de
 Debugging in the browser
 =================
 
-:ref:`Emcc <emccdoc>` can ouptut debug information in two formats, either as DWARF symbols or as source maps. Both allow you to view and debug the *C/C++ source code* in a browser's debugger. DWARF offers the most precise and detailed debugging experience and is suppored in Chrome with an `extension <https://goo.gle/wasm-debugging-extension>`. Source maps are more widely supported in Firefox, Chrome, and Safari, but unlike DWARF they cannot be used to inspect variables, for example.
+:ref:`Emcc <emccdoc>` can ouptut debug information in two formats, either as
+DWARF symbols or as source maps. Both allow you to view and debug the *C/C++
+source code* in a browser's debugger. DWARF offers the most precise and detailed
+debugging experience and is suppored in Chrome with an `extension
+<https://goo.gle/wasm-debugging-extension>`. Source maps are more widely
+supported in Firefox, Chrome, and Safari, but unlike DWARF they cannot be used
+to inspect variables, for example.
 
-:ref:`Emcc <emccdoc>` strips out most of the debug information from :ref:`optimized builds <Optimizing-Code>` by default. DWARF can be produced with the *emcc* :ref:`-g flag <emcc-g>`, and source maps can be emitted with the :ref:`-gsource-map <emcc-gsource-map>` option. Be aware that optimisation levels :ref:`-O1 <emcc-O1>` and above increasingly remove LLVM debug information, and also disable runtime :ref:`ASSERTIONS <debugging-ASSERTIONS>` checks. Passing a ``-g`` flag also affects the generated JavaScript code and preserves white-space, function names, and variable names,
+:ref:`Emcc <emccdoc>` strips out most of the debug information from
+:ref:`optimized builds <Optimizing-Code>` by default. DWARF can be produced with
+the *emcc* :ref:`-g flag <emcc-g>`, and source maps can be emitted with the
+:ref:`-gsource-map <emcc-gsource-map>` option. Be aware that optimisation levels
+:ref:`-O1 <emcc-O1>` and above increasingly remove LLVM debug information, and
+also disable runtime :ref:`ASSERTIONS <debugging-ASSERTIONS>` checks. Passing a
+``-g`` flag also affects the generated JavaScript code and preserves
+white-space, function names, and variable names,
 
-.. tip:: Even for medium-sized projects, DWARF debug information can be of substantial size and negatively impact the page performance, particularly compiling and loading of the module. Debug information can also be emitted in a side-module instead with the :ref:`-gseparate-dwarf <emcc-gseparate-dwarf>` option! The debug information size also affects the linking time, because the debug information in all object files needs to be linked as well. Passing the ``-gsplit-dwarf`` option can help here, which causes clang to leave debug information scattered across object files. That debug information needs to be linked into a DWARF package file (``.dwp``) using the ``llvm-dwp`` tool then, but that could happen in parallel to the linking of the compiled output! A compatible version should be part of your emscripten distribution, for example in ``$EMSDK/upstream/bin/llvm-dwp``. When running it after linking, it's as simple as ``llvm-dwp -e foo.wasm -o foo.wasm.dwp``, or ``llvm-dwp -e foo.debug.wasm -o foo.debug.wasm.dwp`` when used together with ``-gseparate-dwarf`` (the dwp file should have the same file name as the main symbol file with an extra ``.dwp`` extension).
+.. tip:: Even for medium-sized projects, DWARF debug information can be of
+  substantial size and negatively impact the page performance, particularly
+  compiling and loading of the module. Debug information can also be emitted in
+  a file on the side instead with the :ref:`-gseparate-dwarf
+  <emcc-gseparate-dwarf>` option! The debug information size also affects the
+  linking time, because the debug information in all object files needs to be
+  linked as well. Passing the ``-gsplit-dwarf`` option can help here, which
+  causes clang to leave debug information scattered across object files. That
+  debug information needs to be linked into a DWARF package file (``.dwp``)
+  using the ``llvm-dwp`` tool then, but that could happen in parallel to the
+  linking of the compiled output! A compatible version should be part of your
+  emscripten distribution, for example in ``$EMSDK/upstream/bin/llvm-dwp``. When
+  running it after linking, it's as simple as ``llvm-dwp -e foo.wasm -o
+  foo.wasm.dwp``, or ``llvm-dwp -e foo.debug.wasm -o foo.debug.wasm.dwp`` when
+  used together with ``-gseparate-dwarf`` (the dwp file should have the same
+  file name as the main symbol file with an extra ``.dwp`` extension).
 
-The ``-g`` flag can also be specified with an integer levels: :ref:`-g0 <emcc-g0>`, :ref:`-g1 <emcc-g1>`, :ref:`-g2 <emcc-g2>` (default with ``-gsource-map``), and :ref:`-g3 <emcc-g3>` (default with ``-g``). Each level builds on the last to provide progressively more debug information in the compiled output.
+The ``-g`` flag can also be specified with an integer levels: :ref:`-g0
+<emcc-g0>`, :ref:`-g1 <emcc-g1>`, :ref:`-g2 <emcc-g2>` (default with
+``-gsource-map``), and :ref:`-g3 <emcc-g3>` (default with ``-g``). Each level
+builds on the last to provide progressively more debug information in the
+compiled output.
 
 .. note:: Because Binaryen optimization degrades the quality of DWARF info further, ``-O1 -g`` will skip running the Binaryen optimizer (``wasm-opt``) entirely unless required by other options. You can also throw in ``-sERROR_ON_WASM_CHANGES_AFTER_LINK`` option if you want to ensure the debug info is preserved. See `Skipping Binaryen <https://developer.chrome.com/blog/faster-wasm-debugging/#skipping-binaryen>`_ for more details.
 
