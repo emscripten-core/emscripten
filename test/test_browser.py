@@ -1937,7 +1937,8 @@ keydown(100);keyup(100); // trigger the end
   @parameterized({
     '': ([],),
     'worker': (['--proxy-to-worker'],),
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD'],)
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+    'strict': (['-sSTRICT'],),
   })
   @requires_threads
   def test_emscripten_main_loop_setimmediate(self, args):
@@ -2585,8 +2586,12 @@ void *getBindBuffer() {
   # This does not actually verify anything except that --cpuprofiler and --memoryprofiler compiles.
   # Run interactive.test_cpuprofiler_memoryprofiler for interactive testing.
   @requires_graphics_hardware
-  def test_cpuprofiler_memoryprofiler(self):
-    self.btest_exit('hello_world_gles.c', args=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '--cpuprofiler', '--memoryprofiler', '-lGL', '-lglut', '-DANIMATE'])
+  @parameterized({
+    '': ([],),
+    'modularized': (['-sMODULARIZE=1', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')],),
+  })
+  def test_cpuprofiler_memoryprofiler(self, opts):
+    self.btest_exit('hello_world_gles.c', args=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '--cpuprofiler', '--memoryprofiler', '-lGL', '-lglut', '-DANIMATE'] + opts)
 
   def test_uuid(self):
     # Run with ./runner browser.test_uuid
