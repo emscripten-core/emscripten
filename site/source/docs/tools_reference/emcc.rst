@@ -149,6 +149,8 @@ Options that are modified or new in *emcc* are listed below:
     adds DWARF debug information to the object files.
   - When linking, this is equivalent to :ref:`-g3 <emcc-g3>`.
 
+.. _emcc-gseparate-dwarf:
+
 ``-gseparate-dwarf[=FILENAME]``
   [same as -g3 if passed at compile time, otherwise applies at link]
   Preserve debug information, but in a separate file on the side. This is the
