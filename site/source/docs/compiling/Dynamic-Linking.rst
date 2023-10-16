@@ -212,7 +212,7 @@ Limitations
   `[doc] <https://emscripten.org/docs/porting/files/packaging_files.html#preloading-files>`__
   `[discuss] <https://groups.google.com/forum/#!topic/emscripten-discuss/cE3hUV3fDSw>`__.
 - ``EM_ASM`` and ``EM_JS`` code defined within side modules depends on ``eval``
-  support are is therefore incompatible with ``-sDYNAMIC_EXECUTION=0``.
+  support and are therefore incompatible with ``-sDYNAMIC_EXECUTION=0``.
 
 
 Pthreads support
