@@ -50,11 +50,10 @@ white-space, function names, and variable names,
   :ref:`-gsplit-dwarf <emcc-gsplit-dwarf>` option can help here, which causes
   clang to leave debug information scattered across object files. That debug
   information needs to be linked into a DWARF package file (``.dwp``) using the
-  ``llvm-dwp`` tool then, but that could happen in parallel to the linking of
-  the compiled output! A compatible version should be part of your emscripten
-  distribution, for example in ``$EMSDK/upstream/bin/llvm-dwp``. When running it
-  after linking, it's as simple as ``llvm-dwp -e foo.wasm -o foo.wasm.dwp``, or
-  ``llvm-dwp -e foo.debug.wasm -o foo.debug.wasm.dwp`` when used together with
+  ``emdwp`` tool then, but that could happen in parallel to the linking of
+  the compiled output! When running it
+  after linking, it's as simple as ``emdwp -e foo.wasm -o foo.wasm.dwp``, or
+  ``emdwp -e foo.debug.wasm -o foo.debug.wasm.dwp`` when used together with
   ``-gseparate-dwarf`` (the dwp file should have the same file name as the main
   symbol file with an extra ``.dwp`` extension).
 
