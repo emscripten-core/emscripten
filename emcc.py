@@ -1226,10 +1226,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 ''')
     return 0
 
-  if '-dumpmachine' in args:
-    print(shared.get_llvm_target())
-    return 0
-
   if '-dumpversion' in args: # gcc's doc states "Print the compiler version [...] and don't do anything else."
     print(shared.EMSCRIPTEN_VERSION)
     return 0
@@ -1281,6 +1277,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   settings.limit_settings(COMPILE_TIME_SETTINGS)
 
   newargs, input_files = phase_setup(options, state, newargs)
+
+  if '-dumpmachine' in newargs:
+    print(shared.get_llvm_target())
+    return 0
+
+  if not input_files and not state.link_flags:
+    exit_with_error('no input files')
 
   if options.reproduce:
     create_reproduce_file(options.reproduce, args)
@@ -1557,9 +1560,6 @@ def phase_setup(options, state, newargs):
     elif arg == '-':
       input_files.append((i, arg))
       newargs[i] = ''
-
-  if not input_files and not state.link_flags:
-    exit_with_error('no input files')
 
   newargs = [a for a in newargs if a]
 
