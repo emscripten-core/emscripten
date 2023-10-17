@@ -3971,15 +3971,10 @@ def modularize():
 
   return %(return_value)s
 }
-%(capture_module_function_for_audio_worklet)s
 ''' % {
     'maybe_async': async_emit,
     'src': src,
     'return_value': return_value,
-    # Given the async nature of how the Module function and Module object come into existence in AudioWorkletGlobalScope,
-    # store the Module function under a different variable name so that AudioWorkletGlobalScope will be able to reference
-    # it without aliasing/conflicting with the Module variable name.
-    'capture_module_function_for_audio_worklet': 'globalThis.AudioWorkletModule = Module;' if settings.AUDIO_WORKLET and settings.MODULARIZE else ''
   }
 
   if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
@@ -4004,12 +3999,17 @@ var %(EXPORT_NAME)s = (() => {
   %(script_url_node)s
   return (%(src)s);
 })();
+%(capture_module_function_for_audio_worklet)s;
 ''' % {
       'node_imports': node_es6_imports(),
       'EXPORT_NAME': settings.EXPORT_NAME,
       'script_url': script_url,
       'script_url_node': script_url_node,
-      'src': src
+      'src': src,
+      # Given the async nature of how the Module function and Module object come into existence in AudioWorkletGlobalScope,
+      # store the Module function under a different variable name so that AudioWorkletGlobalScope will be able to reference
+      # it without aliasing/conflicting with the Module variable name.
+      'capture_module_function_for_audio_worklet': 'globalThis.AudioWorkletModule = ' + settings.EXPORT_NAME if settings.AUDIO_WORKLET and settings.MODULARIZE else ''
     }
 
   final_js += '.modular.js'
