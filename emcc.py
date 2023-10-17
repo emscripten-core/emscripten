@@ -3808,12 +3808,12 @@ def phase_binaryen(target, options, wasm_target):
       with ToolchainProfiler.profile_block('use_unsigned_pointers_in_js'):
         final_js = building.use_unsigned_pointers_in_js(final_js)
 
-    # pthreads memory growth requires some additional JS fixups.
+    # shared memory growth requires some additional JS fixups.
     # note that we must do this after handling of unsigned pointers. unsigning
     # adds some >>> 0 things, while growth will replace a HEAP8 with a call to
     # a method to get the heap, and that call would not be recognized by the
     # unsigning pass
-    if settings.PTHREADS and settings.ALLOW_MEMORY_GROWTH:
+    if settings.SHARED_MEMORY and settings.ALLOW_MEMORY_GROWTH:
       with ToolchainProfiler.profile_block('apply_wasm_memory_growth'):
         final_js = building.apply_wasm_memory_growth(final_js)
 
