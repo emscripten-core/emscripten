@@ -24,6 +24,9 @@ See docs/process.md for more on how version tagging works.
   developers and helps take a care of post-checkout tasks such as `npm install`.
   If this script needs to be run (e.g. becuase package.json was changed, emcc
   will exit with an error. (#19736)
+- If exceptions are disabled, using `new` together with `std::nothrow` no
+  longer aborts if the allocation fails. Instead `nullptr` is returned now.
+  This does not change the behavior of regular usage of `new`.
 
 3.1.47 - 10/09/23
 -----------------
@@ -66,9 +69,6 @@ See docs/process.md for more on how version tagging works.
   incoming module but forget to include them in `-sINCOMING_MODULE_API`
   will see an error in debug builds so this change will not generate any
   silent failures.
-- If exceptions are disabled, using `new` together with `std::nothrow` no
-  longer aborts if the allocation fails. Instead `nullptr` is returned now.
-  This does not change the behavior of regular usage of `new`.
 - JS library decorators such as `__deps` and `__async` are now type checked so
   that errors are not silently ignored.
 - The `USE_GLFW` settings now defaults to 0 rather than 2.  This matches other
