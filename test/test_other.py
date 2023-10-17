@@ -389,10 +389,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.assertContained('Display this information', output.stdout)
     self.assertContained('Most clang options will work', output.stdout)
 
-    # -dumpmachine
-    output = self.run_process([compiler, '-dumpmachine'], stdout=PIPE, stderr=PIPE)
-    self.assertContained('wasm32-unknown-emscripten', output.stdout)
-
     # -dumpversion
     output = self.run_process([compiler, '-dumpversion'], stdout=PIPE, stderr=PIPE)
     self.assertEqual(shared.EMSCRIPTEN_VERSION, output.stdout.strip())
@@ -405,6 +401,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.assertContained('error: invalid preprocessing directive', stderr)
     self.assertContained(["error: use of undeclared identifier 'cheez", "error: unknown type name 'cheez'"], stderr)
     self.assertContained('errors generated.', stderr.splitlines()[-2])
+
+  def test_dumpmachine(self):
+    output = self.run_process([EMCC, '-dumpmachine'], stdout=PIPE, stderr=PIPE)
+    self.assertContained('wasm32-unknown-emscripten', output.stdout)
+
+    output = self.run_process([EMCC, '-sMEMORY64', '-dumpmachine'], stdout=PIPE, stderr=PIPE)
+    self.assertContained('wasm64-unknown-emscripten', output.stdout)
 
   @parameterized({
     'c': [EMCC, '.c'],
