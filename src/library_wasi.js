@@ -12,7 +12,7 @@ var WasiLibrary = {
     this.message = `Program terminated with exit(${status})`;
     this.status = status;
   },
-  proc_exit__deps: ['$ExitStatus'],
+  proc_exit__deps: ['$ExitStatus', '$keepRuntimeAlive'],
 #endif
 
   proc_exit__nothrow: true,
@@ -562,6 +562,7 @@ var WasiLibrary = {
     return {{{ cDefs.ENOSYS }}};
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
+  fd_sync__async: true,
 };
 
 for (var x in WasiLibrary) {

@@ -32,13 +32,13 @@ from .shared import asmjs_mangle, DEBUG
 from .shared import LLVM_DWARFDUMP, demangle_c_symbol_name
 from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol
 from .utils import WINDOWS
-from .settings import settings
+from .settings import settings, default_setting
 
 logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 114
+EXPECTED_BINARYEN_VERSION = 115
 
 _is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
@@ -232,8 +232,11 @@ def lld_flags_for_executable(external_symbols):
 
   if settings.STACK_FIRST:
     cmd.append('--stack-first')
-  elif not settings.RELOCATABLE:
-    cmd.append('--global-base=%s' % settings.GLOBAL_BASE)
+
+  if not settings.RELOCATABLE:
+    cmd.append('--table-base=%s' % settings.TABLE_BASE)
+    if not settings.STACK_FIRST:
+      cmd.append('--global-base=%s' % settings.GLOBAL_BASE)
 
   return cmd
 
@@ -334,9 +337,9 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
       f.write('// EXTRA_INFO: ' + extra_info)
     filename = temp
   cmd = config.NODE_JS + [optimizer, filename] + passes
-  # Keep JS code comments intact through the acorn optimization pass so that JSDoc comments
-  # will be carried over to a later Closure run.
-  if settings.USE_CLOSURE_COMPILER or not settings.MINIFY_WHITESPACE:
+  # Keep JS code comments intact through the acorn optimization pass so that
+  # JSDoc comments will be carried over to a later Closure run.
+  if settings.MAYBE_CLOSURE_COMPILER:
     cmd += ['--closureFriendly']
   if settings.EXPORT_ES6:
     cmd += ['--exportES6']
@@ -678,7 +681,7 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
   if not settings.LINKABLE:
     passes.append('JSDCE' if not expensive_optimizations else 'AJSDCE')
   # Don't minify if we are going to run closure compiler afterwards
-  minify = settings.MINIFY_WHITESPACE and not settings.USE_CLOSURE_COMPILER
+  minify = settings.MINIFY_WHITESPACE and not settings.MAYBE_CLOSURE_COMPILER
   if minify:
     passes.append('minifyWhitespace')
   if passes:
@@ -1069,7 +1072,7 @@ def is_wasm_dylib(filename):
   return False
 
 
-def map_to_js_libs(library_name, emit_tsd):
+def map_to_js_libs(library_name):
   """Given the name of a special Emscripten-implemented system library, returns an
   pair containing
   1. Array of absolute paths to JS library files, inside emscripten/src/ that corresponds to the
@@ -1078,11 +1081,8 @@ def map_to_js_libs(library_name, emit_tsd):
   2. Optional name of a corresponding native library to link in.
   """
   # Some native libraries are implemented in Emscripten as system side JS libraries
-  embind = 'embind/embind.js'
-  if emit_tsd:
-    embind = 'embind/embind_ts.js'
   library_map = {
-    'embind': [embind, 'embind/emval.js'],
+    'embind': ['embind/embind.js', 'embind/emval.js'],
     'EGL': ['library_egl.js'],
     'GL': ['library_webgl.js', 'library_html5_webgl.js'],
     'webgl.js': ['library_webgl.js', 'library_html5_webgl.js'],
@@ -1114,6 +1114,15 @@ def map_to_js_libs(library_name, emit_tsd):
     'embind': 'libembind',
     'GL': 'libGL',
   }
+  settings_map = {
+    'glfw': {'USE_GLFW': 2},
+    'glfw3': {'USE_GLFW': 3},
+    'SDL': {'USE_SDL': 1},
+  }
+
+  if library_name in settings_map:
+    for key, value in settings_map[library_name].items():
+      default_setting(key, value)
 
   if library_name in library_map:
     libs = library_map[library_name]

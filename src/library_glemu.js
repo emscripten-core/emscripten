@@ -8,7 +8,7 @@ var LibraryGLEmulation = {
   // GL emulation: provides misc. functionality not present in OpenGL ES 2.0 or WebGL
   $GLEmulation__deps: ['$GLImmediateSetup', 'glEnable', 'glDisable', 'glIsEnabled', 'glGetBooleanv', 'glGetIntegerv', 'glGetString', 'glCreateShader', 'glShaderSource', 'glCompileShader', 'glAttachShader', 'glDetachShader', 'glUseProgram', 'glDeleteProgram', 'glBindAttribLocation', 'glLinkProgram', 'glBindBuffer', 'glGetFloatv', 'glHint', 'glEnableVertexAttribArray', 'glDisableVertexAttribArray', 'glVertexAttribPointer', 'glActiveTexture', '$stringToNewUTF8', '$ptrToString'],
   $GLEmulation__postset:
-#if USE_CLOSURE_COMPILER
+#if MAYBE_CLOSURE_COMPILER
     // Forward declare GL functions that are overridden by GLEmulation here to appease Closure compiler.
     '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glDrawArrays;' +
     '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glDrawElements;' +
@@ -3905,7 +3905,7 @@ var LibraryGLEmulation = {
 
 // Legacy GL emulation
 if (LEGACY_GL_EMULATION) {
-  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$GLEmulation');
+  extraLibraryFuncs.push('$GLEmulation');
 }
 
 recordGLProcAddressGet(LibraryGLEmulation);

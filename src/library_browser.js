@@ -844,31 +844,35 @@ var LibraryBrowser = {
       };
       Browser.mainLoop.method = 'rAF';
     } else if (mode == {{{ cDefs.EM_TIMING_SETIMMEDIATE}}}) {
-      if (typeof setImmediate == 'undefined') {
-        // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
-        var setImmediates = [];
-        var emscriptenMainLoopMessageId = 'setimmediate';
-        /** @param {Event} event */
-        var Browser_setImmediate_messageHandler = (event) => {
-          // When called in current thread or Worker, the main loop ID is structured slightly different to accommodate for --proxy-to-worker runtime listening to Worker events,
-          // so check for both cases.
-          if (event.data === emscriptenMainLoopMessageId || event.data.target === emscriptenMainLoopMessageId) {
-            event.stopPropagation();
-            setImmediates.shift()();
-          }
-        };
-        addEventListener("message", Browser_setImmediate_messageHandler, true);
-        setImmediate = /** @type{function(function(): ?, ...?): number} */(function Browser_emulated_setImmediate(func) {
-          setImmediates.push(func);
-          if (ENVIRONMENT_IS_WORKER) {
-            if (Module['setImmediates'] === undefined) Module['setImmediates'] = [];
-            Module['setImmediates'].push(func);
-            postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js
-          } else postMessage(emscriptenMainLoopMessageId, "*"); // On the main thread, can just send the message to itself.
-        });
+      if (typeof Browser.setImmediate == 'undefined') {
+        if (typeof setImmediate == 'undefined') {
+          // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
+          var setImmediates = [];
+          var emscriptenMainLoopMessageId = 'setimmediate';
+          /** @param {Event} event */
+          var Browser_setImmediate_messageHandler = (event) => {
+            // When called in current thread or Worker, the main loop ID is structured slightly different to accommodate for --proxy-to-worker runtime listening to Worker events,
+            // so check for both cases.
+            if (event.data === emscriptenMainLoopMessageId || event.data.target === emscriptenMainLoopMessageId) {
+              event.stopPropagation();
+              setImmediates.shift()();
+            }
+          };
+          addEventListener("message", Browser_setImmediate_messageHandler, true);
+          Browser.setImmediate = /** @type{function(function(): ?, ...?): number} */(function Browser_emulated_setImmediate(func) {
+            setImmediates.push(func);
+            if (ENVIRONMENT_IS_WORKER) {
+              if (Module['setImmediates'] === undefined) Module['setImmediates'] = [];
+              Module['setImmediates'].push(func);
+              postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js
+            } else postMessage(emscriptenMainLoopMessageId, "*"); // On the main thread, can just send the message to itself.
+          });
+        } else {
+          Browser.setImmediate = setImmediate;
+        }
       }
       Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler_setImmediate() {
-        setImmediate(Browser.mainLoop.runner);
+        Browser.setImmediate(Browser.mainLoop.runner);
       };
       Browser.mainLoop.method = 'immediate';
     }
@@ -902,7 +906,7 @@ var LibraryBrowser = {
     Browser.mainLoop.func = browserIterationFunc;
     Browser.mainLoop.arg = arg;
 
-#if USE_CLOSURE_COMPILER
+#if MAYBE_CLOSURE_COMPILER
     // Closure compiler bug(?): Closure does not see that the assignment
     //   var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop
     // is a value copy of a number (even with the JSDoc @type annotation)
@@ -1044,7 +1048,7 @@ var LibraryBrowser = {
   // Runs natively in pthread, no __proxy needed.
   emscripten_set_main_loop_arg__deps: ['$setMainLoop'],
   emscripten_set_main_loop_arg: (func, arg, fps, simulateInfiniteLoop) => {
-    var browserIterationFunc = () => {{{ makeDynCall('vi', 'func') }}}(arg);
+    var browserIterationFunc = () => {{{ makeDynCall('vp', 'func') }}}(arg);
     setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop, arg);
   },
 
@@ -1067,7 +1071,7 @@ var LibraryBrowser = {
   // Runs natively in pthread, no __proxy needed.
   _emscripten_push_main_loop_blocker: (func, arg, name) => {
     Browser.mainLoop.queue.push({ func: () => {
-      {{{ makeDynCall('vi', 'func') }}}(arg);
+      {{{ makeDynCall('vp', 'func') }}}(arg);
     }, name: UTF8ToString(name), counted: true });
     Browser.mainLoop.updateStatus();
   },
@@ -1075,7 +1079,7 @@ var LibraryBrowser = {
   // Runs natively in pthread, no __proxy needed.
   _emscripten_push_uncounted_main_loop_blocker: (func, arg, name) => {
     Browser.mainLoop.queue.push({ func: () => {
-      {{{ makeDynCall('vi', 'func') }}}(arg);
+      {{{ makeDynCall('vp', 'func') }}}(arg);
     }, name: UTF8ToString(name), counted: false });
     Browser.mainLoop.updateStatus();
   },
@@ -1120,9 +1124,7 @@ var LibraryBrowser = {
   },
 
   emscripten_set_window_title__proxy: 'sync',
-  emscripten_set_window_title: (title) => {
-    setWindowTitle(UTF8ToString(title));
-  },
+  emscripten_set_window_title: (title) => document.title = UTF8ToString(title),
 
   emscripten_get_screen_size__proxy: 'sync',
   emscripten_get_screen_size: (width, height) => {

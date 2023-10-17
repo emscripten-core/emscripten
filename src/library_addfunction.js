@@ -29,6 +29,7 @@ addToLibrary({
       'j': 'i64',
       'f': 'f32',
       'd': 'f64',
+      'e': 'externref',
 #if MEMORY64
       'p': 'i64',
 #else
@@ -61,6 +62,7 @@ addToLibrary({
       'j': 0x7e, // i64
       'f': 0x7d, // f32
       'd': 0x7c, // f64
+      'e': 0x6f, // externref
     };
 
     // Parameters, length + signatures
@@ -70,9 +72,9 @@ addToLibrary({
 #if ASSERTIONS
       assert(sigParam[i] in typeCodes, 'invalid signature char: ' + sigParam[i]);
 #endif
-  target.push(typeCodes[sigParam[i]]);
+      target.push(typeCodes[sigParam[i]]);
     }
-  
+
     // Return values, length + signatures
     // With no multi-return in MVP, either 0 (void) or 1 (anything else)
     if (sigRet == 'v') {
@@ -141,7 +143,7 @@ addToLibrary({
   // Weak map of functions in the table to their indexes, created on first use.
   $functionsInTableMap: undefined,
 
-  $getEmptyTableSlot__deps: ['$freeTableIndexes'],
+  $getEmptyTableSlot__deps: ['$freeTableIndexes', '$wasmTable'],
   $getEmptyTableSlot: () => {
     // Reuse a free index if there is one, otherwise grow.
     if (freeTableIndexes.length) {
@@ -172,7 +174,7 @@ addToLibrary({
     }
   },
 
-  $getFunctionAddress__deps: ['$updateTableMap', '$functionsInTableMap'],
+  $getFunctionAddress__deps: ['$updateTableMap', '$functionsInTableMap', '$wasmTable'],
   $getFunctionAddress: (func) => {
     // First, create the map if this is the first use.
     if (!functionsInTableMap) {
@@ -189,7 +191,8 @@ addToLibrary({
   $addFunction__docs: '/** @param {string=} sig */',
   $addFunction__deps: ['$convertJsFunctionToWasm', '$getFunctionAddress',
                        '$functionsInTableMap', '$getEmptyTableSlot',
-                       '$getWasmTableEntry', '$setWasmTableEntry'],
+                       '$getWasmTableEntry', '$setWasmTableEntry',
+                       '$wasmTable'],
   $addFunction: (func, sig) => {
   #if ASSERTIONS
     assert(typeof func != 'undefined');
@@ -234,9 +237,11 @@ addToLibrary({
     return ret;
   },
 
-  $removeFunction__deps: ['$functionsInTableMap', '$freeTableIndexes', '$getWasmTableEntry'],
+  $removeFunction__deps: ['$functionsInTableMap', '$freeTableIndexes',
+                          '$getWasmTableEntry', '$setWasmTableEntry'],
   $removeFunction: (index) => {
     functionsInTableMap.delete(getWasmTableEntry(index));
+    setWasmTableEntry(index, null);
     freeTableIndexes.push(index);
   },
 });

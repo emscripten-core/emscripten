@@ -119,7 +119,7 @@ var LibraryPThread = {
     },
 
     initWorker() {
-#if USE_CLOSURE_COMPILER
+#if MAYBE_CLOSURE_COMPILER
       // worker.js is not compiled together with us, and must access certain
       // things.
       PThread['receiveObjectTransfer'] = PThread.receiveObjectTransfer;
@@ -129,7 +129,7 @@ var LibraryPThread = {
 #endif
 #endif
 
-#if !MINIMAL_RUNTIME
+#if isSymbolNeeded('$noExitRuntime')
       // The default behaviour for pthreads is always to exit once they return
       // from their entry point (or call pthread_exit).  If we set noExitRuntime
       // to true here on pthreads they would never complete and attempt to
@@ -452,10 +452,10 @@ var LibraryPThread = {
               createScriptURL: (ignored) => new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url);
             }
           );
-          worker = new Worker(p.createScriptURL('ignored'));
+          worker = new Worker(p.createScriptURL('ignored'), {type: 'module'});
         } else
 #endif
-        worker = new Worker(new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url));
+        worker = new Worker(new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url), {type: 'module'});
       } else {
 #endif
       // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
@@ -568,7 +568,7 @@ var LibraryPThread = {
     // Called when a thread needs to be strongly referenced.
     // Currently only used for:
     // - keeping the "main" thread alive in PROXY_TO_PTHREAD mode;
-    // - crashed threads that needs to propagate the uncaught exception 
+    // - crashed threads that needs to propagate the uncaught exception
     //   back to the main thread.
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
@@ -1071,7 +1071,15 @@ var LibraryPThread = {
 #endif
   },
 
-  $invokeEntryPoint__deps: ['_emscripten_thread_exit'],
+  $invokeEntryPoint__deps: [
+    '_emscripten_thread_exit',
+#if !MINIMAL_RUNTIME
+    '$keepRuntimeAlive',
+#endif
+#if EXIT_RUNTIME && !MINIMAL_RUNTIME
+    '$runtimeKeepaliveCounter',
+#endif
+  ],
   $invokeEntryPoint: (ptr, arg) => {
 #if PTHREADS_DEBUG
     dbg(`invokeEntryPoint: ${ptrToString(ptr)}`);

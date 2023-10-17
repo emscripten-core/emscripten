@@ -24,7 +24,6 @@ out = err = () => {};
 #endif
 
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
-{{{ makeModuleReceiveWithVar('noExitRuntime', undefined, EXIT_RUNTIME ? 'false' : 'true') }}}
 
 #if WASM != 2 && MAYBE_WASM2JS
 #if !WASM2JS
@@ -175,7 +174,6 @@ assert(!Module['wasmMemory'], 'Use of `wasmMemory` detected.  Use -sIMPORTED_MEM
 assert(!Module['INITIAL_MEMORY'], 'Detected runtime INITIAL_MEMORY setting.  Use -sIMPORTED_MEMORY to define wasmMemory dynamically');
 #endif // !IMPORTED_MEMORY && ASSERTIONS
 
-#include "runtime_init_table.js"
 #include "runtime_stack_check.js"
 #include "runtime_assertions.js"
 
@@ -196,12 +194,6 @@ var runtimeInitialized = false;
 #if EXIT_RUNTIME
 var runtimeExited = false;
 #endif
-
-var runtimeKeepaliveCounter = 0;
-
-function keepRuntimeAlive() {
-  return noExitRuntime || runtimeKeepaliveCounter > 0;
-}
 
 function preRun() {
 #if ASSERTIONS && PTHREADS
@@ -949,18 +941,18 @@ function createWasm() {
   // performing other necessary setup
   /** @param {WebAssembly.Module=} module*/
   function receiveInstance(instance, module) {
-    var exports = instance.exports;
+    wasmExports = instance.exports;
 
 #if RELOCATABLE
-    exports = relocateExports(exports, {{{ GLOBAL_BASE }}});
+    wasmExports = relocateExports(wasmExports, {{{ GLOBAL_BASE }}});
 #endif
 
 #if ASYNCIFY
-    exports = Asyncify.instrumentWasmExports(exports);
+    wasmExports = Asyncify.instrumentWasmExports(wasmExports);
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
-    exports = instrumentWasmExportsWithAbort(exports);
+    wasmExports = instrumentWasmExportsWithAbort(wasmExports);
 #endif
 
 #if MAIN_MODULE
@@ -970,7 +962,7 @@ function createWasm() {
       dynamicLibraries = metadata.neededDynlibs.concat(dynamicLibraries);
     }
 #endif
-    mergeLibSymbols(exports, 'main')
+    mergeLibSymbols(wasmExports, 'main')
 #if '$LDSO' in addedLibraryItems
     LDSO.init();
 #endif
@@ -980,10 +972,9 @@ function createWasm() {
 #endif
 
 #if MEMORY64 || CAN_ADDRESS_2GB
-    exports = applySignatureConversions(exports);
+    wasmExports = applySignatureConversions(wasmExports);
 #endif
 
-    wasmExports = exports;
     {{{ receivedSymbol('wasmExports') }}}
 
 #if PTHREADS
@@ -1010,12 +1001,11 @@ function createWasm() {
     runMemoryInitializer();
 #endif
 
-#if !RELOCATABLE
+#if '$wasmTable' in addedLibraryItems && !RELOCATABLE
     wasmTable = wasmExports['__indirect_function_table'];
     {{{ receivedSymbol('wasmTable') }}}
 #if ASSERTIONS && !PURE_WASI
     assert(wasmTable, "table not found in wasm exports");
-#endif
 #endif
 
 #if AUDIO_WORKLET
@@ -1023,6 +1013,7 @@ function createWasm() {
     // and not the global scope of the main JS script. Therefore we need to export
     // all functions that the audio worklet scope needs onto the Module object.
     Module['wasmTable'] = wasmTable;
+#endif
 #endif
 
 #if hasExportedSymbol('__wasm_call_ctors')
@@ -1040,7 +1031,7 @@ function createWasm() {
 #if !DECLARE_ASM_MODULE_EXPORTS
     // If we didn't declare the asm exports as top level enties this function
     // is in charge of programatically exporting them on the global object.
-    exportWasmSymbols(exports);
+    exportWasmSymbols(wasmExports);
 #endif
 
 #if PTHREADS || WASM_WORKERS
@@ -1048,7 +1039,7 @@ function createWasm() {
     wasmModule = module;
 #endif
     removeRunDependency('wasm-instantiate');
-    return exports;
+    return wasmExports;
   }
   // wait for the pthread pool (if any)
   addRunDependency('wasm-instantiate');

@@ -5,7 +5,7 @@
  */
 
 addToLibrary({
-  $createDyncallWrapper__deps: ['$generateFuncType', '$uleb128Encode', 'setTempRet0'],
+  $createDyncallWrapper__deps: ['$generateFuncType', '$uleb128Encode', 'setTempRet0', '$wasmTable'],
   $createDyncallWrapper: (sig) => {
     var sections = [];
     var prelude = [

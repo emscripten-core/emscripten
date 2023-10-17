@@ -35,7 +35,7 @@ individual test, or use wildcards to run some tests in some modes. For example:
 .. code-block:: bash
 
   # run one test (in the default mode)
-  test/runner test_loop
+  test/runner test_foo
 
   # run a bunch of tests in one mode (here, all i64 tests in -O3)
   test/runner core3.test_*i64*
@@ -45,11 +45,11 @@ individual test, or use wildcards to run some tests in some modes. For example:
 
 The *core* test modes (defined at the bottom of `test/test_core.py
 <https://github.com/emscripten-core/emscripten/blob/main/test/test_core.py>`_)
-let you run a specific test in either asm.js or wasm, and with different
-optimization flags. There are also non-core test modes, that run tests in more
-special manner (in particular, in those tests it is not possible to say "run the
-test with a different optimization flag" - that is what the core tests are for).
-The non-core test modes include
+let you run the tests in variety of different configurations and with different
+optimization flags.  For example, wasm2js or wasm64.  There are also non-core
+test suites, that run tests in more special manner (in particular, in those tests
+it is not possible to say "run the test with a different optimization flag" -
+that is what the core tests are for).  The non-core test suites include
 
  * `other`: Non-core tests running in the shell.
  * `browser`: Tests that run in a browser.
@@ -88,6 +88,23 @@ Wildcards can also be passed in skip, so
 
 will run the whole browser suite except for all the pthread tests in it.
 
+Exiting on first failure
+========================
+
+Sometimes it is useful to be able to iteratively fix one test at a time.  In
+this case the ``--failfast`` option can be used to exit the test runner after
+the first failure.
+
+.. note:: This option only works with the serial test runner.  For test suites
+   that are normally run in parallel you can force them to run serially using
+   ``-j1``.
+
+One a test is fixed you continue where you left off using ``--start-at`` option:
+
+.. code-block:: bash
+
+  test/runner browser --start-at test_foo --failfast
+
 Running a bunch of random tests
 ===============================
 
@@ -119,8 +136,8 @@ commands:
 
 .. code-block:: bash
 
-  # Run all core wasm tests
-  test/runner wasm*
+  # Run all core tests
+  test/runner core*
 
   # Run "other" test suite
   test/runner other

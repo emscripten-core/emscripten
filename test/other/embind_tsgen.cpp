@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <memory>
 #include <string>
 #include <emscripten/bind.h>
@@ -40,6 +41,8 @@ class Foo {
 
 enum Bar { kValueOne, kValueTwo, kValueThree };
 
+enum EmptyEnum {};
+
 Bar enum_returning_fn() { return kValueOne; }
 
 struct ValArr {
@@ -69,6 +72,13 @@ int smart_ptr_function(std::shared_ptr<ClassWithSmartPtrConstructor>) {
   return 0;
 }
 
+EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
+
+int function_with_callback_param(CallbackType ct) {
+  ct(val("hello"));
+  return 0;
+}
+
 int global_fn(int, int) { return 0; }
 
 class BaseClass {
@@ -89,10 +99,13 @@ EMSCRIPTEN_BINDINGS(Test) {
       .function("functionTwo", &Test::function_two)
       .function("functionThree", &Test::function_three)
       .function("functionFour", &Test::function_four)
+      .function("functionFive(x, y)", &Test::function_one)
+      .function("functionSix(str)", &Test::function_three)
       .function("constFn", &Test::const_fn)
       .property("x", &Test::getX, &Test::setX)
       .property("y", &Test::getY)
       .class_function("staticFunction", &Test::static_function)
+      .class_function("staticFunctionWithParam(x)", &Test::static_function)
       .class_property("staticProperty", &Test::static_property)
 	;
 
@@ -109,6 +122,7 @@ EMSCRIPTEN_BINDINGS(Test) {
       .value("valueOne", Bar::kValueOne)
       .value("valueTwo", Bar::kValueTwo)
       .value("valueThree", Bar::kValueThree);
+  enum_<EmptyEnum>("EmptyEnum");
 
   function("enum_returning_fn", &enum_returning_fn);
 
@@ -144,6 +158,12 @@ EMSCRIPTEN_BINDINGS(Test) {
       .function("fn", &ClassWithSmartPtrConstructor::fn);
 
   function("smart_ptr_function", &smart_ptr_function);
+  function("smart_ptr_function_with_params(foo)", &smart_ptr_function);
+
+  function("function_with_callback_param",
+           &function_with_callback_param);
+
+  register_type<CallbackType>("(message: string) => void");
 
   class_<BaseClass>("BaseClass").function("fn", &BaseClass::fn);
 
@@ -154,7 +174,8 @@ EMSCRIPTEN_BINDINGS(Test) {
 int Test::static_property = 42;
 
 int main() {
-  // Main should not be run during TypeScript generation.
-  abort();
+  // Main should not be run during TypeScript generation, but should run when
+  // the program is run normally.
+  printf("main ran\n");
   return 0;
 }

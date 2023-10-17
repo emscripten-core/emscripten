@@ -504,7 +504,7 @@ var emscriptenCpuProfiler = {
 
   // Work around Microsoft Edge bug where webGLContext.function.length always returns 0.
   webGLFunctionLength: function(f) {
-    var l0 = ['getContextAttributes','isContextLost','getSupportedExtensions','createBuffer','createFramebuffer','createProgram','createRenderbuffer','createTexture','finish','flush','getError', 'createVertexArray', 'createQuery', 'createSampler', 'createTransformFeedback', 'endTransformFeedback', 'pauseTransformFeedback', 'resumeTransformFeedback'];
+    var l0 = ['getContextAttributes','isContextLost','getSupportedExtensions','createBuffer','createFramebuffer','createProgram','createRenderbuffer','createTexture','finish','flush','getError', 'createVertexArray', 'createQuery', 'createSampler', 'createTransformFeedback', 'endTransformFeedback', 'pauseTransformFeedback', 'resumeTransformFeedback', 'makeXRCompatible'];
     var l1 = ['getExtension','activeTexture','blendEquation','checkFramebufferStatus','clear','clearDepth','clearStencil','compileShader','createShader','cullFace','deleteBuffer','deleteFramebuffer','deleteProgram','deleteRenderbuffer','deleteShader','deleteTexture','depthFunc','depthMask','disable','disableVertexAttribArray','enable','enableVertexAttribArray','frontFace','generateMipmap','getAttachedShaders','getParameter','getProgramInfoLog','getShaderInfoLog','getShaderSource','isBuffer','isEnabled','isFramebuffer','isProgram','isRenderbuffer','isShader','isTexture','lineWidth','linkProgram','stencilMask','useProgram','validateProgram', 'deleteQuery', 'isQuery', 'deleteVertexArray', 'bindVertexArray', 'isVertexArray', 'drawBuffers', 'readBuffer', 'endQuery', 'deleteSampler', 'isSampler', 'isSync', 'deleteSync', 'deleteTransformFeedback', 'isTransformFeedback', 'beginTransformFeedback'];
     var l2 = ['attachShader','bindBuffer','bindFramebuffer','bindRenderbuffer','bindTexture','blendEquationSeparate','blendFunc','depthRange','detachShader','getActiveAttrib','getActiveUniform','getAttribLocation','getBufferParameter','getProgramParameter','getRenderbufferParameter','getShaderParameter','getShaderPrecisionFormat','getTexParameter','getUniform','getUniformLocation','getVertexAttrib','getVertexAttribOffset','hint','pixelStorei','polygonOffset','sampleCoverage','shaderSource','stencilMaskSeparate','uniform1f','uniform1fv','uniform1i','uniform1iv','uniform2fv','uniform2iv','uniform3fv','uniform3iv','uniform4fv','uniform4iv','vertexAttrib1f','vertexAttrib1fv','vertexAttrib2fv','vertexAttrib3fv','vertexAttrib4fv', 'vertexAttribDivisor', 'beginQuery', 'invalidateFramebuffer', 'getFragDataLocation', 'uniform1ui', 'uniform1uiv', 'uniform2uiv', 'uniform3uiv', 'uniform4uiv', 'vertexAttribI4iv', 'vertexAttribI4uiv', 'getQuery', 'getQueryParameter', 'bindSampler', 'getSamplerParameter', 'fenceSync', 'getSyncParameter', 'bindTransformFeedback', 'getTransformFeedbackVarying', 'getIndexedParameter', 'getUniformIndices', 'getUniformBlockIndex', 'getActiveUniformBlockName'];
     var l3 = ['bindAttribLocation','bufferData','bufferSubData','drawArrays','getFramebufferAttachmentParameter','stencilFunc','stencilOp','texParameterf','texParameteri','uniform2f','uniform2i','uniformMatrix2fv','uniformMatrix3fv','uniformMatrix4fv','vertexAttrib2f', 'getBufferSubData', 'getInternalformatParameter', 'uniform2ui', 'uniformMatrix2x3fv', 'uniformMatrix3x2fv', 'uniformMatrix2x4fv', 'uniformMatrix4x2fv', 'uniformMatrix3x4fv', 'uniformMatrix4x3fv', 'clearBufferiv', 'clearBufferuiv', 'clearBufferfv', 'samplerParameteri', 'samplerParameterf', 'clientWaitSync', 'waitSync', 'transformFeedbackVaryings', 'bindBufferBase', 'getActiveUniforms', 'getActiveUniformBlockParameter', 'uniformBlockBinding'];
@@ -578,7 +578,7 @@ var emscriptenCpuProfiler = {
   },
 
   hookWebGLFunction: function(f, glCtx) {
-    var section = (this.hotGLFunctions.incudes(f) || f.startsWith('uniform') || f.startsWith('vertexAttrib')) ? 0 : 1;
+    var section = (this.hotGLFunctions.includes(f) || f.startsWith('uniform') || f.startsWith('vertexAttrib')) ? 0 : 1;
     var realf = 'real_' + f;
     glCtx[realf] = glCtx[f];
     var numArgs = this.webGLFunctionLength(f); // On Firefox & Chrome, could do "glCtx[realf].length", but that doesn't work on Edge, which always reports 0.
@@ -641,6 +641,27 @@ var emscriptenCpuProfiler = {
       this.endSection(0);
       return ret;
     };
+    glCtx['bufferData'] = (a1, a2, a3, a4, a5) => {
+      // WebGL1/2 versions have different parameters (not just extra ones)
+      var ret = (a4 !== undefined) ? glCtx['real_bufferData'](a1, a2, a3, a4, a5) : glCtx['real_bufferData'](a1, a2, a3);
+      return ret;
+    };
+    const matrixFuncs = ['uniformMatrix2fv', 'uniformMatrix3fv', 'uniformMatrix4fv'];
+    matrixFuncs.forEach(f => {
+      glCtx[f] = (a1, a2, a3, a4, a5) => {
+        // WebGL2 version has 2 extra optional parameters, ensure we forward them
+        var ret = (a4 !== undefined) ? glCtx['real_' + f](a1, a2, a3, a4, a5) : glCtx['real_' + f](a1, a2, a3);
+        return ret;
+      }
+    });
+    const ndvFuncs = ['uniform1fv', 'uniform1iv', 'uniform2fv', 'uniform2iv', 'uniform3fv', 'uniform3iv', 'uniform4fv', 'uniform4iv'];
+    ndvFuncs.forEach(f => {
+      glCtx[f] = (a1, a2, a3, a4) => {
+        // WebGL2 version has 1 extra parameter, ensure we forward them
+        var ret = (a4 !== undefined) ? glCtx['real_' + f](a1, a2, a3, a4) : glCtx['real_' + f](a1, a2, a3);
+        return ret;
+      }
+    });
   }
 };
 
@@ -674,3 +695,6 @@ function cpuprofiler_add_hooks() { emscriptenCpuProfiler.initialize(); }
 if (typeof document != 'undefined') {
   emscriptenCpuProfiler.initialize();
 }
+
+// Declared in globalThis so that `onclick` handlers work when `-sMODULARIZE=1`
+globalThis.emscriptenCpuProfiler = emscriptenCpuProfiler;
