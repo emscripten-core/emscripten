@@ -331,7 +331,7 @@ var LibraryEmVal = {
     '$newFunc',
 #endif
   ],
-  _emval_get_method_caller: (argCount, argTypes, asCtor) => {
+  _emval_get_method_caller: (argCount, argTypes, kind) => {
     var types = emval_lookupTypes(argCount, argTypes);
     var retType = types.shift();
     argCount--; // remove the shifted off return type
@@ -344,7 +344,7 @@ var LibraryEmVal = {
         argN[i] = types[i]['readValueFromPointer'](args + offset);
         offset += types[i]['argPackAdvance'];
       }
-      var rv = asCtor ? reflectConstruct(func, argN) : func.apply(obj, argN);
+      var rv = kind === /* CONSTRUCTOR */ 1 ? reflectConstruct(func, argN) : func.apply(obj, argN);
       for (var i = 0; i < argCount; ++i) {
         if (types[i].deleteObject) {
           types[i].deleteObject(argN[i]);
@@ -360,7 +360,9 @@ var LibraryEmVal = {
 
     var offset = 0;
     var argsList = []; // 'obj?, arg0, arg1, arg2, ... , argN'
-    if (!asCtor) argsList.push("obj");
+    if (kind === /* FUNCTION */ 0) {
+      argsList.push("obj");
+    }
     var params = ["retType"];
     var args = [retType];
     for (var i = 0; i < argCount; ++i) {
@@ -371,8 +373,9 @@ var LibraryEmVal = {
         `  var arg${i} = argType${i}.readValueFromPointer(args${offset ? "+" + offset : ""});\n`;
       offset += types[i]['argPackAdvance'];
     }
+    var invoker = kind === /* CONSTRUCTOR */ 1 ? 'new func' : 'func.call';
     functionBody +=
-      `  var rv = ${asCtor ? 'new func' : 'func.call'}(${argsList.join(", ")});\n`;
+      `  var rv = ${invoker}(${argsList.join(", ")});\n`;
     for (var i = 0; i < argCount; ++i) {
       if (types[i]['deleteObject']) {
         functionBody +=
