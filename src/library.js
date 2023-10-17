@@ -985,41 +985,58 @@ addToLibrary({
     // TODO: take care of locale
 
     var DATE_PATTERNS = {
-      /* weeday name */     '%a': '(?:Sun(?:day)?)|(?:Mon(?:day)?)|(?:Tue(?:sday)?)|(?:Wed(?:nesday)?)|(?:Thu(?:rsday)?)|(?:Fri(?:day)?)|(?:Sat(?:urday)?)',
-      /* month name */      '%b': '(?:Jan(?:uary)?)|(?:Feb(?:ruary)?)|(?:Mar(?:ch)?)|(?:Apr(?:il)?)|May|(?:Jun(?:e)?)|(?:Jul(?:y)?)|(?:Aug(?:ust)?)|(?:Sep(?:tember)?)|(?:Oct(?:ober)?)|(?:Nov(?:ember)?)|(?:Dec(?:ember)?)',
-      /* century */         '%C': '\\d\\d',
-      /* day of month */    '%d': '0[1-9]|[1-9](?!\\d)|1\\d|2\\d|30|31',
-      /* hour (24hr) */     '%H': '\\d(?!\\d)|[0,1]\\d|20|21|22|23',
-      /* hour (12hr) */     '%I': '\\d(?!\\d)|0\\d|10|11|12',
-      /* day of year */     '%j': '00[1-9]|0?[1-9](?!\\d)|0?[1-9]\\d(?!\\d)|[1,2]\\d\\d|3[0-6]\\d',
-      /* month */           '%m': '0[1-9]|[1-9](?!\\d)|10|11|12',
-      /* minutes */         '%M': '0\\d|\\d(?!\\d)|[1-5]\\d',
-      /* whitespace */      '%n': '\\s',
-      /* AM/PM */           '%p': 'AM|am|PM|pm|A\\.M\\.|a\\.m\\.|P\\.M\\.|p\\.m\\.',
-      /* seconds */         '%S': '0\\d|\\d(?!\\d)|[1-5]\\d|60',
-      /* week number */     '%U': '0\\d|\\d(?!\\d)|[1-4]\\d|50|51|52|53',
-      /* week number */     '%W': '0\\d|\\d(?!\\d)|[1-4]\\d|50|51|52|53',
-      /* weekday number */  '%w': '[0-6]',
-      /* 2-digit year */    '%y': '\\d\\d',
-      /* 4-digit year */    '%Y': '\\d\\d\\d\\d',
-      /* % */               '%%': '%',
-      /* whitespace */      '%t': '\\s',
+      /* weeday name */     'a': '(?:Sun(?:day)?)|(?:Mon(?:day)?)|(?:Tue(?:sday)?)|(?:Wed(?:nesday)?)|(?:Thu(?:rsday)?)|(?:Fri(?:day)?)|(?:Sat(?:urday)?)',
+      /* month name */      'b': '(?:Jan(?:uary)?)|(?:Feb(?:ruary)?)|(?:Mar(?:ch)?)|(?:Apr(?:il)?)|May|(?:Jun(?:e)?)|(?:Jul(?:y)?)|(?:Aug(?:ust)?)|(?:Sep(?:tember)?)|(?:Oct(?:ober)?)|(?:Nov(?:ember)?)|(?:Dec(?:ember)?)',
+      /* century */         'C': '\\d\\d',
+      /* day of month */    'd': '0[1-9]|[1-9](?!\\d)|1\\d|2\\d|30|31',
+      /* hour (24hr) */     'H': '\\d(?!\\d)|[0,1]\\d|20|21|22|23',
+      /* hour (12hr) */     'I': '\\d(?!\\d)|0\\d|10|11|12',
+      /* day of year */     'j': '00[1-9]|0?[1-9](?!\\d)|0?[1-9]\\d(?!\\d)|[1,2]\\d\\d|3[0-6]\\d',
+      /* month */           'm': '0[1-9]|[1-9](?!\\d)|10|11|12',
+      /* minutes */         'M': '0\\d|\\d(?!\\d)|[1-5]\\d',
+      /* whitespace */      'n': '\\s',
+      /* AM/PM */           'p': 'AM|am|PM|pm|A\\.M\\.|a\\.m\\.|P\\.M\\.|p\\.m\\.',
+      /* seconds */         'S': '0\\d|\\d(?!\\d)|[1-5]\\d|60',
+      /* week number */     'U': '0\\d|\\d(?!\\d)|[1-4]\\d|50|51|52|53',
+      /* week number */     'W': '0\\d|\\d(?!\\d)|[1-4]\\d|50|51|52|53',
+      /* weekday number */  'w': '[0-6]',
+      /* 2-digit year */    'y': '\\d\\d',
+      /* 4-digit year */    'Y': '\\d\\d\\d\\d',
+      /* whitespace */      't': '\\s',
+      /* time zone */       'z': 'Z|(?:[\\+\\-]\\d\\d:?(?:\\d\\d)?)'
     };
 
     var MONTH_NUMBERS = {JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11};
     var DAY_NUMBERS_SUN_FIRST = {SUN: 0, MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6};
     var DAY_NUMBERS_MON_FIRST = {MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6};
 
-    for (var datePattern in DATE_PATTERNS) {
-      pattern = pattern.replace(datePattern, '('+datePattern+DATE_PATTERNS[datePattern]+')');
+    var pattern_out="";
+    var in_percent=false;
+    var capture = [];
+    for(const c of pattern)
+    {
+      if(in_percent)
+      {
+        if(c==="%")
+        {
+          pattern_out+="%";
+        }
+        if(c in DATE_PATTERNS)
+        {
+          capture.push(c)
+          pattern_out+="("+DATE_PATTERNS[c]+")";
+        }
+        in_percent=false;
+      }else{
+        if(c === "%"){
+          in_percent=true;
+        }else{
+          pattern_out+=c
+        }
+      }
     }
 
-    // take care of capturing groups
-    var capture = [];
-    for (var i=pattern.indexOf('%'); i>=0; i=pattern.indexOf('%')) {
-      capture.push(pattern[i+1]);
-      pattern = pattern.replace(new RegExp('\\%'+pattern[i+1], 'g'), '');
-    }
+    pattern=pattern_out;
 
     var matches = new RegExp('^'+pattern, "i").exec(UTF8ToString(buf))
     // out(UTF8ToString(buf)+ ' is matched by '+((new RegExp('^'+pattern)).source)+' into: '+JSON.stringify(matches));
@@ -1039,6 +1056,7 @@ addToLibrary({
     };
 
     if (matches) {
+      let gmtoffset=0;
       var date = initDate();
       var value;
 
@@ -1161,6 +1179,31 @@ addToLibrary({
         }
       }
 
+      // time zone
+      if ((value=getMatch('z'))) {
+        // GMT offset as either 'Z' or +-HH:MM or +-HH or +-HHMM
+        if(value.toLowerCase()=='Z'){
+          gmtoffset=0;
+        }else
+        {
+          const re=/^(?<sign>\-|\+)(?<hours>\d\d):?(?<mins>\d\d)?/;
+          let match=value.match(re);
+          if(match)
+          {
+            let sign=1;
+            if(match.groups.sign==="-"){
+              sign=-1;
+            }
+            gmtoffset=sign*parseInt(match.groups.hours)*3600;
+            if(match.groups.mins){
+              gmtoffset+=sign*parseInt(match.groups.mins)*60;
+            }
+          }
+        }
+
+      }
+
+
       /*
       tm_sec  int seconds after the minute  0-61*
       tm_min  int minutes after the hour  0-59
@@ -1171,6 +1214,7 @@ addToLibrary({
       tm_wday int days since Sunday 0-6
       tm_yday int days since January 1  0-365
       tm_isdst  int Daylight Saving Time flag
+      tm_gmtoff long offset from GMT (seconds)
       */
 
       var fullDate = new Date(date.year, date.month, date.day, date.hour, date.min, date.sec, 0);
@@ -1183,7 +1227,8 @@ addToLibrary({
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_wday, 'fullDate.getDay()', 'i32') }}};
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_yday, 'arraySum(isLeapYear(fullDate.getFullYear()) ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, fullDate.getMonth()-1)+fullDate.getDate()-1', 'i32') }}};
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_isdst, '0', 'i32') }}};
-
+      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_gmtoff, 'gmtoffset', 'i32') }}};
+ 
       // we need to convert the matched sequence into an integer array to take care of UTF-8 characters > 0x7F
       // TODO: not sure that intArrayFromString handles all unicode characters correctly
       return buf+intArrayFromString(matches[0]).length-1;

@@ -61,5 +61,21 @@ int main() {
   ReadMonth("november");
   ReadMonth("december");
 
+
+  // check that %% is handled correctly
+
+  strptime("2020-05-01T00:01%z","%Y-%m-%dT%H:%M%%z",&tm);
+  printf("%d\n",tm.tm_min);
+  
+  // check timezone offsets
+  strptime("2020-05-01T00:00+0100","%Y-%m-%dT%H:%M%z",&tm);
+  printf("%ld\n",tm.tm_gmtoff); // 3600
+
+  strptime("2020-05-01T00:00Z","%Y-%m-%dT%H:%M%z",&tm);
+  printf("%ld\n",tm.tm_gmtoff); // 0
+
+  strptime("2020-05-01T00:00-02:30","%Y-%m-%dT%H:%M%z",&tm);
+  printf("%ld\n",tm.tm_gmtoff); // -9000
+
   return 0;
 }
