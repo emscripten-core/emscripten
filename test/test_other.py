@@ -28,7 +28,7 @@ if __name__ == '__main__':
 
 from tools.shared import config
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, FILE_PACKAGER, WINDOWS, LLVM_NM
-from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, EMCMAKE, EMCONFIGURE
+from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, EMCMAKE, EMCONFIGURE, WASM_LD
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
@@ -256,6 +256,21 @@ class other(RunnerCore):
       self.assertContained('GNU', proc.stderr)
       self.assertContained('Target: wasm32-unknown-emscripten', proc.stderr)
       self.assertNotContained('this is dangerous', proc.stderr)
+
+  def test_log_subcommands(self):
+    # `-v` when combined with other arguments will trace the subcommands
+    # that get run
+    proc = self.run_process([EMCC, '-v', test_file('hello_world.c')], stdout=PIPE, stderr=PIPE)
+    self.assertContained(CLANG_CC, proc.stderr)
+    self.assertContained(WASM_LD, proc.stderr)
+    self.assertExists('a.out.js')
+
+  def test_skip_subcommands(self):
+    # The -### flag is like `-v` but it doesn't actaully execute the sub-commands
+    proc = self.run_process([EMCC, '-###', test_file('hello_world.c')], stdout=PIPE, stderr=PIPE)
+    self.assertContained(CLANG_CC, proc.stderr)
+    self.assertContained(WASM_LD, proc.stderr)
+    self.assertNotExists('a.out.js')
 
   def test_emcc_check(self):
     proc = self.run_process([EMCC, '--check'], stdout=PIPE, stderr=PIPE)

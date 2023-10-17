@@ -1257,7 +1257,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   state = EmccState(args)
   options, newargs = phase_parse_arguments(state)
 
-  shared.check_sanity()
+  if not shared.SKIP_SUBPROCS:
+    shared.check_sanity()
 
   if 'EMMAKEN_NO_SDK' in os.environ:
     exit_with_error('EMMAKEN_NO_SDK is no longer supported.  The standard -nostdlib and -nostdinc flags should be used instead')
@@ -1331,7 +1332,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     return 0
 
   js_syms = {}
-  if not settings.SIDE_MODULE or settings.ASYNCIFY:
+  if (not settings.SIDE_MODULE or settings.ASYNCIFY) and not shared.SKIP_SUBPROCS:
     js_info = get_js_sym_info()
     if not settings.SIDE_MODULE:
       js_syms = js_info['deps']
@@ -3128,7 +3129,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
       cmd += ['-Xclang', '-split-dwarf-file', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
       cmd += ['-Xclang', '-split-dwarf-output', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
     shared.check_call(cmd)
-    if output_file not in ('-', os.devnull):
+    if output_file not in ('-', os.devnull) and not shared.SKIP_SUBPROCS:
       assert os.path.exists(output_file)
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
@@ -3229,6 +3230,9 @@ def phase_emscript(options, in_wasm, wasm_target, memfile, js_syms):
 
   settings.SUPPORT_BASE64_EMBEDDING = embed_memfile(options)
 
+  if shared.SKIP_SUBPROCS:
+    return
+
   emscripten.run(in_wasm, wasm_target, final_js, memfile, js_syms)
   save_intermediate('original')
 
@@ -3314,6 +3318,9 @@ def create_worker_file(input_file, target_dir, output_file):
 @ToolchainProfiler.profile_block('final emitting')
 def phase_final_emitting(options, state, target, wasm_target, memfile):
   global final_js
+
+  if shared.SKIP_SUBPROCS:
+    return
 
   target_dir = os.path.dirname(os.path.abspath(target))
   if settings.PTHREADS:
@@ -3601,7 +3608,9 @@ def parse_args(newargs):
     elif check_flag('--ignore-dynamic-linking'):
       options.ignore_dynamic_linking = True
     elif arg == '-v':
-      shared.PRINT_STAGES = True
+      shared.PRINT_SUBPROCS = True
+    elif arg == '-###':
+      shared.SKIP_SUBPROCS = True
     elif check_arg('--shell-file'):
       options.shell_path = consume_arg_file()
     elif check_arg('--source-map-base'):
