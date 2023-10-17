@@ -359,12 +359,12 @@ var LibraryEmVal = {
       `return function ${functionName}(obj, func, destructorsRef, args) {\n`;
 
     var offset = 0;
-    var argsList = asCtor ? "" : "obj"; // 'obj?, arg0, arg1, arg2, ... , argN'
+    var argsList = []; // 'obj?, arg0, arg1, arg2, ... , argN'
+    if (!asCtor) argsList.push("obj");
     var params = ["retType"];
     var args = [retType];
     for (var i = 0; i < argCount; ++i) {
-      if (argsList) argsList += ", ";
-      argsList += "arg" + i;
+      argsList.push("arg" + i);
       params.push("argType" + i);
       args.push(types[i]);
       functionBody +=
@@ -372,7 +372,7 @@ var LibraryEmVal = {
       offset += types[i]['argPackAdvance'];
     }
     functionBody +=
-      `  var rv = ${asCtor ? 'new func' : 'func.call'}(${argsList});\n`;
+      `  var rv = ${asCtor ? 'new func' : 'func.call'}(${argsList.join(", ")});\n`;
     for (var i = 0; i < argCount; ++i) {
       if (types[i]['deleteObject']) {
         functionBody +=
