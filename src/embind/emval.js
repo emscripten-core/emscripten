@@ -356,37 +356,37 @@ var LibraryEmVal = {
     var signatureName = retType.name + "_$" + types.map(t => t.name).join("_") + "$";
     var functionName = makeLegalFunctionName("methodCaller_" + signatureName);
     var functionBody =
-        "return function " + functionName + "(obj, func, destructorsRef, args) {\n";
+      `return function ${functionName}(obj, func, destructorsRef, args) {\n`;
 
     var offset = 0;
     var argsList = asCtor ? "" : "obj"; // 'obj?, arg0, arg1, arg2, ... , argN'
     var params = ["retType"];
     var args = [retType];
     for (var i = 0; i < argCount; ++i) {
-        if (argsList) argsList += ", ";
-        argsList += "arg" + i;
-        params.push("argType" + i);
-        args.push(types[i]);
-        functionBody +=
-        "    var arg" + i + " = argType" + i + ".readValueFromPointer(args" + (offset ? ("+"+offset) : "") + ");\n";
-        offset += types[i]['argPackAdvance'];
+      if (argsList) argsList += ", ";
+      argsList += "arg" + i;
+      params.push("argType" + i);
+      args.push(types[i]);
+      functionBody +=
+        `  var arg${i} = argType${i}.readValueFromPointer(args${offset ? "+" + offset : ""});\n`;
+      offset += types[i]['argPackAdvance'];
     }
     functionBody +=
-    `    var rv = ${asCtor ? 'new func' : 'func.call'}(${argsList});\n`;
+      `  var rv = ${asCtor ? 'new func' : 'func.call'}(${argsList});\n`;
     for (var i = 0; i < argCount; ++i) {
-        if (types[i]['deleteObject']) {
-            functionBody +=
-            "    argType" + i + ".deleteObject(arg" + i + ");\n";
-        }
+      if (types[i]['deleteObject']) {
+        functionBody +=
+          `  argType${i}.deleteObject(arg${i});\n`;
+      }
     }
     if (!retType.isVoid) {
       params.push("emval_returnValue");
       args.push(emval_returnValue);
       functionBody +=
-      "    return emval_returnValue(retType, destructorsRef, rv);\n";
+        "  return emval_returnValue(retType, destructorsRef, rv);\n";
     }
     functionBody +=
-        "};\n";
+      "};\n";
 
     params.push(functionBody);
     var invokerFunction = newFunc(Function, params).apply(null, args);
