@@ -1194,9 +1194,9 @@ addToLibrary({
             if(match.groups.sign==="-"){
               sign=-1;
             }
-            gmtoffset=sign*parseInt(match.groups.hours)*3600;
+            gmtoffset=sign*match.groups.hours*3600;
             if(match.groups.mins){
-              gmtoffset+=sign*parseInt(match.groups.mins)*60;
+              gmtoffset+=sign*match.groups.mins*60;
             }
           }
         }
