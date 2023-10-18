@@ -14021,7 +14021,7 @@ addToLibrary({
 
   @parameterized({
     'no_std_exp':   (['-DEMMALLOC_NO_STD_EXPORTS'],),
-    'with_std_exp': (['-D_TEST_WITH_STD_EXP'],),
+    'with_std_exp': (['-DTEST_EMMALLOC_IS_MALLOC'],),
   })
   def test_emmalloc_in_addition(self, args):
     # Test that we can use emmalloc in addition to another malloc impl. When we
