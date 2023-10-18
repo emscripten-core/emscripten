@@ -1010,8 +1010,8 @@ addToLibrary({
     var DAY_NUMBERS_SUN_FIRST = {SUN: 0, MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6};
     var DAY_NUMBERS_MON_FIRST = {MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6};
 
-    var pattern_out="";
-    var in_percent=false;
+    var pattern_out = "";
+    var in_percent = false;
     var capture = [];
     for (let i = 0; i < pattern.length; i++) {
       var c = pattern[i];
@@ -1023,7 +1023,7 @@ addToLibrary({
       } else if (in_percent && c in DATE_PATTERNS) {
         capture.push(c)
         pattern_out += "(" + DATE_PATTERNS[c] + ")";
-        in_percent=false;
+        in_percent = false;
       } else {
         pattern_out += c;
       }
