@@ -167,11 +167,9 @@ var LibraryEmbind = {
     return errorClass;
   },
 
-  $createNamedFunction: function(name, body) {
-    return Object.defineProperty(body, 'name', {
-      value: name
-    });
-  },
+  $createNamedFunction: (name, body) => Object.defineProperty(body, 'name', {
+    value: name
+  }),
   // All browsers that support WebAssembly also support configurable function name,
   // but we might be building for very old browsers via WASM2JS.
 #if MIN_CHROME_VERSION < 43 || MIN_EDGE_VERSION < 14 || MIN_SAFARI_VERSION < 100101 || MIN_FIREFOX_VERSION < 38
