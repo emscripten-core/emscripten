@@ -37,6 +37,14 @@
  *  - Debugging and logging directly uses console.log via uses EM_ASM, not
  *    printf etc., to minimize any risk of debugging or logging depending on
  *    malloc.
+ *
+ * Exporting:
+ *
+ *  - By default we declare not only emmalloc_malloc, free, etc. (with prefix
+ *    emmalloc_) but also also the standard library methods like malloc and
+ *    free. You can override this by defining EMMALLOC_NO_STD_EXPORTS, in which
+ *    case we only declare the emalloc_* ones but not the standard ones.
+ *
  */
 
 #include <stdalign.h>
@@ -63,20 +71,11 @@ static_assert((((int32_t)0x80000000U) >> 31) == -1, "This malloc implementation 
 #define MALLOC_ALIGNMENT alignof(max_align_t)
 static_assert(alignof(max_align_t) == 8, "max_align_t must be correct");
 
-// By default we declare all standard exports (malloc, free, etc.) as weak and
-// default-visible. You can override this by defining EMMALLOC_NO_EXPORTS,
-// which will avoid declaring them.
 #ifdef EMMALLOC_NO_EXPORTS
 #define EMMALLOC_EXPORT
-#else
-#define EMMALLOC_EXPORT __attribute__((weak, __visibility__("default")))
-#endif
-
-// By default we create aliases for several standard names (__libc_malloc,
-// etc.), but that can be overridden by defining EMMALLOC_NO_ALIASES.
-#ifdef EMMALLOC_NO_ALIASES
 #define EMMALLOC_ALIAS(ALIAS, ORIGINAL)
 #else
+#define EMMALLOC_EXPORT __attribute__((weak, __visibility__("default")))
 #define EMMALLOC_ALIAS(ALIAS, ORIGINAL) extern __typeof(ORIGINAL) ALIAS __attribute__((alias(#ORIGINAL)));
 #endif
 
