@@ -368,7 +368,8 @@ operator new(unsigned long size)
 
     wasm2c_support = os.path.join(WABT, 'src', 'template', 'wasm2c.declarations.c')
 
-    # Compile C to native
+    # Compile C to native (using the right compiler, as we may want to get
+    # libc++ linked in etc.)
     native = c + '.native'
     cmd = [
       compiler, OPTIMIZATIONS, c, '-o', native, f'-I{WABT}/wasm2c',
