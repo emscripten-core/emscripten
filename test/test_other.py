@@ -14018,3 +14018,18 @@ addToLibrary({
 
   def test_arguments_global(self):
     self.emcc(test_file('hello_world_argv.c'), ['-sENVIRONMENT=web', '-sSTRICT', '--closure=1', '-O2'])
+
+  @parameterized({
+    'no_std_exp':   (['-DEMMALLOC_NO_STD_EXPORTS'],),
+    'with_std_exp': (['-D_TEST_WITH_STD_EXP'],),
+  })
+  def test_emmalloc_in_addition(self, args):
+    # Test that we can use emmalloc in addition to another malloc impl. When we
+    # build emmalloc using -DEMMALLOC_NO_STD_EXPORTS it will not export malloc
+    # etc., and only provide the emmalloc_malloc etc. family of functions that
+    # we can use.
+
+    emmalloc = path_from_root('system', 'lib', 'emmalloc.c')
+
+    self.run_process([EMCC, test_file('other/test_emmalloc_in_addition.c'), emmalloc] + args)
+    self.assertContained('success', self.run_js('a.out.js'))
