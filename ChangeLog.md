@@ -18,8 +18,21 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.47 (in development)
+3.1.48 (in development)
 -----------------------
+- A new top-level `bootstrap` script was added.  This script is for emscripten
+  developers and helps take a care of post-checkout tasks such as `npm install`.
+  If this script needs to be run (e.g. becuase package.json was changed, emcc
+  will exit with an error. (#19736)
+
+3.1.47 - 10/09/23
+-----------------
+- The boost-headers port was updated to v1.83.0.
+- The `noExitRuntime` global is now a JS library symbol that will only be
+  included as needed.  User of `noExitRuntime` will now need to declare a
+  dependency on it.  It will get implicitly included if `noExitRuntime` is part
+  of `INCOMING_MODULE_JS_API.` (which it is by default), or it can be added to
+  either `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` or `noExitRuntime`. (#20336)
 - The egl, html5, sdl and webgpu libraries now support basic functionality with
   `-sMEMORY64`. (#20276)
 - Value types in `emscripten/html5.h` that correspond the WebIDL `long` type are
@@ -29,6 +42,13 @@ See docs/process.md for more on how version tagging works.
   validated at build time. (#20258)
 - `MAIN_THREAD_EM_ASM_PTR` macro added for code that returns a pointer.  This
   mirrors the existing `EM_ASM_PTR`. (#20261)
+- Emscripten now implements default POSIX signal handlers. These can
+  terminate or abort the program in response to `raise` cals. (#20257)
+- `emscripten::val` now prevents accidental access to the underlying JavaScript
+  value from threads other than its owner. This already didn't work correctly
+  in majority of cases, but now it will throw a clear assertion failure. (#20344)
+- `emscripten::val` can now be iterated over with a C++ range-based for loop.
+  (#20364)
 
 3.1.46 - 09/15/23
 -----------------

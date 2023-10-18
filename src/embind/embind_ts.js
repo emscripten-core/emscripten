@@ -25,6 +25,12 @@ var LibraryEmbind = {
       this.type = type;
     }
   },
+  $UserType: class UserType {
+    constructor(typeId, name) {
+      this.typeId = typeId;
+      this.name = name;
+    }
+  },
   $FunctionDefinition: class FunctionDefinition {
     constructor(name, returnType, argumentTypes, thisType = null) {
       this.name = name;
@@ -137,11 +143,15 @@ var LibraryEmbind = {
       out.push(`export interface ${this.name}Value<T extends number> {\n`);
       out.push('  value: T;\n}\n');
       out.push(`export type ${this.name} = `);
-      const outItems = [];
-      for (const [name, value] of this.items) {
-        outItems.push(`${this.name}Value<${value}>`);
+      if (this.items.length === 0) {
+        out.push('never/* Empty Enumerator */');
+      } else {
+        const outItems = [];
+        for (const [name, value] of this.items) {
+          outItems.push(`${this.name}Value<${value}>`);
+        }
+        out.push(outItems.join('|'));
       }
-      out.push(outItems.join('|'));
       out.push(';\n\n');
     }
 
@@ -315,6 +325,11 @@ var LibraryEmbind = {
   },
   _embind_register_emval: (rawType, name) => {
     registerPrimitiveType(rawType, name);
+  },
+  _embind_register_user_type__deps: ['$registerType', '$readLatin1String', '$UserType'],
+  _embind_register_user_type: (rawType, name) => {
+    name = readLatin1String(name);
+    registerType(rawType, new UserType(rawType, name));
   },
   _embind_register_memory_view: (rawType, dataTypeIndex, name) => {
     // TODO

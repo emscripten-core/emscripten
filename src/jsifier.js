@@ -204,6 +204,12 @@ ${argConvertions}
     // uniform.
     snippet = snippet.toString().replace(/\r\n/gm, '\n');
 
+    // Is this a shorthand `foo() {}` method syntax?
+    // If so, prepend a function keyword so that it's valid syntax when extracted.
+    if (snippet.startsWith(symbol)) {
+      snippet = 'function ' + snippet;
+    }
+
     if (isStub) {
       return snippet;
     }
@@ -305,16 +311,22 @@ function(${args}) {
     }
 
     function addFromLibrary(symbol, dependent, force = false) {
-      // dependencies can be JS functions, which we just run
-      if (typeof symbol == 'function') {
-        return symbol();
-      }
-
       // don't process any special identifiers. These are looked up when
       // processing the base name of the identifier.
       if (isDecorator(symbol)) {
         return;
       }
+
+      // if the function was implemented in compiled code, there is no need to
+      // include the js version
+      if (WASM_EXPORTS.has(symbol) && !force) {
+        return;
+      }
+
+      if (symbol in addedLibraryItems) {
+        return;
+      }
+      addedLibraryItems[symbol] = true;
 
       if (!(symbol + '__deps' in LibraryManager.library)) {
         LibraryManager.library[symbol + '__deps'] = [];
@@ -354,17 +366,6 @@ function(${args}) {
         }
         return;
       }
-
-      // if the function was implemented in compiled code, there is no need to
-      // include the js version
-      if (WASM_EXPORTS.has(symbol) && !force) {
-        return;
-      }
-
-      if (symbol in addedLibraryItems) {
-        return;
-      }
-      addedLibraryItems[symbol] = true;
 
       // This gets set to true in the case of dynamic linking for symbols that
       // are undefined in the main module.  In this case we create a stub that
@@ -482,6 +483,16 @@ function(${args}) {
       const deps_list = deps.join("','");
       const identDependents = symbol + `__deps: ['${deps_list}']`;
       function addDependency(dep) {
+        // dependencies can be JS functions, which we just run
+        if (typeof dep == 'function') {
+          return dep();
+        }
+        // $noExitRuntime is special since there are conditional usages of it
+        // in library.js and library_pthread.js.  These happen before deps are
+        // processed so depending on it via `__deps` doesn't work.
+        if (dep === '$noExitRuntime') {
+          error('noExitRuntime cannot be referenced via __deps mechansim.  Use DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS')
+        }
         return addFromLibrary(dep, `${symbol}, referenced by ${dependent}`, dep === aliasTarget);
       }
       let contentText;

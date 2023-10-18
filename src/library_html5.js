@@ -7,7 +7,7 @@
 var LibraryHTML5 = {
   $JSEvents__deps: ['$withStackSave',
 #if PTHREADS
-    'emscripten_dispatch_to_thread_',
+    '_emscripten_run_callback_on_thread',
 #endif
   ],
   $JSEvents: {
@@ -209,19 +209,6 @@ var LibraryHTML5 = {
     },
 
 #if PTHREADS
-    // TODO: Support proxied events for MEMORY64
-    queueEventHandlerOnThread_iiii(targetThread, eventHandlerFunc, eventTypeId, eventData, userData) {
-      withStackSave(() => {
-        var varargs = stackAlloc(12);
-        {{{ makeSetValue('varargs', 0, 'eventTypeId', 'i32') }}};
-        {{{ makeSetValue('varargs', 4, 'eventData', 'i32') }}};
-        {{{ makeSetValue('varargs', 8, 'userData', 'i32') }}};
-        _emscripten_dispatch_to_thread_(targetThread, {{{ cDefs.EM_FUNC_SIG_IIII }}}, eventHandlerFunc, eventData, varargs);
-      });
-    },
-#endif
-
-#if PTHREADS
     getTargetThreadForEventCallback(targetThread) {
       switch (targetThread) {
         case {{{ cDefs.EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD }}}:
@@ -305,7 +292,7 @@ var LibraryHTML5 = {
       stringToUTF8(e.locale || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.locale }}}, {{{ cDefs.EM_HTML5_SHORT_STRING_LEN_BYTES }}});
 
 #if PTHREADS
-      if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, keyEventData, userData);
+      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, keyEventData, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, keyEventData, userData)) e.preventDefault();
@@ -545,7 +532,7 @@ var LibraryHTML5 = {
       if (targetThread) {
         var mouseEventData = _malloc({{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}}); // This allocated block is passed as satellite data to the proxied function call, so the call frees up the data block when done.
         fillMouseEventData(mouseEventData, e, target);
-        JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, mouseEventData, userData);
+        __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, mouseEventData, userData);
       } else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, JSEvents.mouseEvent, userData)) e.preventDefault();
@@ -644,7 +631,7 @@ var LibraryHTML5 = {
       {{{ makeSetValue('wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, 'e["deltaZ"]', 'double') }}};
       {{{ makeSetValue('wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaMode, 'e["deltaMode"]', 'i32') }}};
 #if PTHREADS
-      if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, wheelEvent, userData);
+      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, wheelEvent, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, wheelEvent, userData)) e.preventDefault();
@@ -745,7 +732,7 @@ var LibraryHTML5 = {
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollTop, 'pageXOffset', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollLeft, 'pageYOffset', 'i32') }}};
 #if PTHREADS
-      if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, uiEvent, userData);
+      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, uiEvent, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, uiEvent, userData)) e.preventDefault();
@@ -791,7 +778,7 @@ var LibraryHTML5 = {
       stringToUTF8(id, focusEvent + {{{ C_STRUCTS.EmscriptenFocusEvent.id }}}, {{{ cDefs.EM_HTML5_LONG_STRING_LEN_BYTES }}});
 
 #if PTHREADS
-      if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, focusEvent, userData);
+      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, focusEvent, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, focusEvent, userData)) e.preventDefault();
@@ -853,7 +840,7 @@ var LibraryHTML5 = {
       if (targetThread) {
         var deviceOrientationEvent = _malloc({{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}});
         fillDeviceOrientationEventData(deviceOrientationEvent, e, target);
-        JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, deviceOrientationEvent, userData);
+        __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, deviceOrientationEvent, userData);
       } else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, JSEvents.deviceOrientationEvent, userData)) e.preventDefault();
@@ -923,7 +910,7 @@ var LibraryHTML5 = {
       if (targetThread) {
         var deviceMotionEvent = _malloc({{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}});
         fillDeviceMotionEventData(deviceMotionEvent, e, target);
-        JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, deviceMotionEvent, userData);
+        __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, deviceMotionEvent, userData);
       } else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, JSEvents.deviceMotionEvent, userData)) e.preventDefault();
@@ -993,7 +980,7 @@ var LibraryHTML5 = {
       fillOrientationChangeEventData(orientationChangeEvent);
 
 #if PTHREADS
-      if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, orientationChangeEvent, userData);
+      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, orientationChangeEvent, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, orientationChangeEvent, userData)) e.preventDefault();
@@ -1112,7 +1099,7 @@ var LibraryHTML5 = {
       fillFullscreenChangeEventData(fullscreenChangeEvent);
 
 #if PTHREADS
-      if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, fullscreenChangeEvent, userData);
+      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, fullscreenChangeEvent, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, fullscreenChangeEvent, userData)) e.preventDefault();
@@ -1195,7 +1182,7 @@ var LibraryHTML5 = {
 
     if (strategy.canvasResizedCallback) {
 #if PTHREADS
-      if (strategy.canvasResizedCallbackTargetThread) JSEvents.queueEventHandlerOnThread_iiii(strategy.canvasResizedCallbackTargetThread, strategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
+      if (strategy.canvasResizedCallbackTargetThread) __emscripten_run_callback_on_thread(strategy.canvasResizedCallbackTargetThread, strategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
       else
 #endif
       {{{ makeDynCall('iipp', 'strategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
@@ -1347,7 +1334,7 @@ var LibraryHTML5 = {
 
         if (currentFullscreenStrategy.canvasResizedCallback) {
 #if PTHREADS
-          if (currentFullscreenStrategy.canvasResizedCallbackTargetThread) JSEvents.queueEventHandlerOnThread_iiii(currentFullscreenStrategy.canvasResizedCallbackTargetThread, currentFullscreenStrategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, currentFullscreenStrategy.canvasResizedCallbackUserData);
+          if (currentFullscreenStrategy.canvasResizedCallbackTargetThread) __emscripten_run_callback_on_thread(currentFullscreenStrategy.canvasResizedCallbackTargetThread, currentFullscreenStrategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, currentFullscreenStrategy.canvasResizedCallbackUserData);
           else
 #endif
           {{{ makeDynCall('iipp', 'currentFullscreenStrategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, currentFullscreenStrategy.canvasResizedCallbackUserData);
@@ -1475,7 +1462,7 @@ var LibraryHTML5 = {
 
     if (!inCenteredWithoutScalingFullscreenMode && currentFullscreenStrategy.canvasResizedCallback) {
 #if PTHREADS
-      if (currentFullscreenStrategy.canvasResizedCallbackTargetThread) JSEvents.queueEventHandlerOnThread_iiii(currentFullscreenStrategy.canvasResizedCallbackTargetThread, currentFullscreenStrategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, currentFullscreenStrategy.canvasResizedCallbackUserData);
+      if (currentFullscreenStrategy.canvasResizedCallbackTargetThread) __emscripten_run_callback_on_thread(currentFullscreenStrategy.canvasResizedCallbackTargetThread, currentFullscreenStrategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, currentFullscreenStrategy.canvasResizedCallbackUserData);
       else
 #endif
       {{{ makeDynCall('iipp', 'currentFullscreenStrategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, currentFullscreenStrategy.canvasResizedCallbackUserData);
@@ -1595,7 +1582,7 @@ var LibraryHTML5 = {
       removeEventListener('resize', softFullscreenResizeWebGLRenderTarget);
       if (strategy.canvasResizedCallback) {
 #if PTHREADS
-        if (strategy.canvasResizedCallbackTargetThread) JSEvents.queueEventHandlerOnThread_iiii(strategy.canvasResizedCallbackTargetThread, strategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
+        if (strategy.canvasResizedCallbackTargetThread) __emscripten_run_callback_on_thread(strategy.canvasResizedCallbackTargetThread, strategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
         else
 #endif
         {{{ makeDynCall('iipp', 'strategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
@@ -1609,7 +1596,7 @@ var LibraryHTML5 = {
     // Inform the caller that the canvas size has changed.
     if (strategy.canvasResizedCallback) {
 #if PTHREADS
-      if (strategy.canvasResizedCallbackTargetThread) JSEvents.queueEventHandlerOnThread_iiii(strategy.canvasResizedCallbackTargetThread, strategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
+      if (strategy.canvasResizedCallbackTargetThread) __emscripten_run_callback_on_thread(strategy.canvasResizedCallbackTargetThread, strategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
       else
 #endif
       {{{ makeDynCall('iipp', 'strategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
@@ -1689,7 +1676,7 @@ var LibraryHTML5 = {
       fillPointerlockChangeEventData(pointerlockChangeEvent);
 
 #if PTHREADS
-      if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, pointerlockChangeEvent, userData);
+      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, pointerlockChangeEvent, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, pointerlockChangeEvent, userData)) e.preventDefault();
@@ -1734,7 +1721,7 @@ var LibraryHTML5 = {
 
     var pointerlockErrorEventHandlerFunc = (e = event) => {
 #if PTHREADS
-      if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, 0, userData);
+      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, 0, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, 0, userData)) e.preventDefault();
@@ -1934,7 +1921,7 @@ var LibraryHTML5 = {
       fillVisibilityChangeEventData(visibilityChangeEvent);
 
 #if PTHREADS
-      if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, visibilityChangeEvent, userData);
+      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, visibilityChangeEvent, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, visibilityChangeEvent, userData)) e.preventDefault();
@@ -2051,7 +2038,7 @@ var LibraryHTML5 = {
       {{{ makeSetValue('touchEvent', C_STRUCTS.EmscriptenTouchEvent.numTouches, 'numTouches', 'i32') }}};
 
 #if PTHREADS
-      if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, touchEvent, userData);
+      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, touchEvent, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, touchEvent, userData)) e.preventDefault();
@@ -2138,7 +2125,7 @@ var LibraryHTML5 = {
       fillGamepadEventData(gamepadEvent, e["gamepad"]);
 
 #if PTHREADS
-      if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, gamepadEvent, userData);
+      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, gamepadEvent, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, gamepadEvent, userData)) e.preventDefault();
@@ -2270,7 +2257,7 @@ var LibraryHTML5 = {
       fillBatteryEventData(batteryEvent, battery());
 
 #if PTHREADS
-      if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, batteryEvent, userData);
+      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, batteryEvent, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, batteryEvent, userData)) e.preventDefault();
@@ -2375,31 +2362,14 @@ var LibraryHTML5 = {
 #if OFFSCREENCANVAS_SUPPORT
   _emscripten_set_offscreencanvas_size: 'emscripten_set_canvas_element_size',
 
-  $setOffscreenCanvasSizeOnTargetThread__deps: ['$stringToNewUTF8', 'emscripten_dispatch_to_thread_', '$withStackSave'],
+  $setOffscreenCanvasSizeOnTargetThread__deps: ['$stringToNewUTF8', '_emscripten_set_offscreencanvas_size_on_thread', '$withStackSave'],
   $setOffscreenCanvasSizeOnTargetThread: (targetThread, targetCanvas, width, height) => {
     targetCanvas = targetCanvas ? UTF8ToString(targetCanvas) : '';
-    withStackSave(() => {
-      var varargs = stackAlloc(12);
-      var targetCanvasPtr = 0;
-      if (targetCanvas) {
-        targetCanvasPtr = stringToNewUTF8(targetCanvas);
-      }
-      {{{ makeSetValue('varargs', 0, 'targetCanvasPtr', 'i32')}}};
-      {{{ makeSetValue('varargs', 4, 'width', 'i32')}}};
-      {{{ makeSetValue('varargs', 8, 'height', 'i32')}}};
-      // Note: If we are also a pthread, the call below could theoretically be done synchronously. However if the target pthread is waiting for a mutex from us, then
-      // these two threads will deadlock. At the moment, we'd like to consider that this kind of deadlock would be an Emscripten runtime bug, although if
-      // emscripten_set_canvas_element_size() was documented to require running an event in the queue of thread that owns the OffscreenCanvas, then that might be ok.
-      // (safer this way however)
-      _emscripten_dispatch_to_thread_(targetThread, {{{ cDefs.EM_PROXIED_RESIZE_OFFSCREENCANVAS }}}, 0, targetCanvasPtr /* satellite data */, varargs);
-    });
-  },
-#else
-  _emscripten_set_offscreencanvas_size: (target, width, height) => {
-#if ASSERTIONS
-    err('emscripten_set_offscreencanvas_size: Build with -sOFFSCREENCANVAS_SUPPORT=1 to enable transferring canvases to pthreads.');
-#endif
-    return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    var targetCanvasPtr = 0;
+    if (targetCanvas) {
+      targetCanvasPtr = stringToNewUTF8(targetCanvas);
+    }
+    __emscripten_set_offscreencanvas_size_on_thread(targetThread, targetCanvasPtr, width, height);
   },
 #endif
 
@@ -2506,6 +2476,15 @@ var LibraryHTML5 = {
     if (!canvas) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
     {{{ makeSetValue('width', '0', 'canvas.width', 'i32') }}};
     {{{ makeSetValue('height', '0', 'canvas.height', 'i32') }}};
+  },
+#endif
+
+#if !PTHREADS || !OFFSCREENCANVAS_SUPPORT
+  _emscripten_set_offscreencanvas_size: (target, width, height) => {
+#if ASSERTIONS
+    err('emscripten_set_offscreencanvas_size: Build with -sOFFSCREENCANVAS_SUPPORT=1 to enable transferring canvases to pthreads.');
+#endif
+    return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
   },
 #endif
 

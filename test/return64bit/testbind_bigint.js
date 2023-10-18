@@ -3,10 +3,6 @@
 // returned in the normal return value, but the most significant 32 bits are
 // returned via the accessor method getTempRet0()
 
-var Module = {
-    'noExitRuntime' : true
-};
-
 Module['runtest'] = function() {
   // Use eval to create BigInt, as no support for Xn notation yet in JS
   // optimizer.

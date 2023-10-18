@@ -129,7 +129,7 @@ var LibraryPThread = {
 #endif
 #endif
 
-#if !MINIMAL_RUNTIME
+#if isSymbolNeeded('$noExitRuntime')
       // The default behaviour for pthreads is always to exit once they return
       // from their entry point (or call pthread_exit).  If we set noExitRuntime
       // to true here on pthreads they would never complete and attempt to
@@ -1071,7 +1071,15 @@ var LibraryPThread = {
 #endif
   },
 
-  $invokeEntryPoint__deps: ['_emscripten_thread_exit'],
+  $invokeEntryPoint__deps: [
+    '_emscripten_thread_exit',
+#if !MINIMAL_RUNTIME
+    '$keepRuntimeAlive',
+#endif
+#if EXIT_RUNTIME && !MINIMAL_RUNTIME
+    '$runtimeKeepaliveCounter',
+#endif
+  ],
   $invokeEntryPoint: (ptr, arg) => {
 #if PTHREADS_DEBUG
     dbg(`invokeEntryPoint: ${ptrToString(ptr)}`);

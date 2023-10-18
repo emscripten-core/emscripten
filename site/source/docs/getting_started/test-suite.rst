@@ -35,7 +35,7 @@ individual test, or use wildcards to run some tests in some modes. For example:
 .. code-block:: bash
 
   # run one test (in the default mode)
-  test/runner test_loop
+  test/runner test_foo
 
   # run a bunch of tests in one mode (here, all i64 tests in -O3)
   test/runner core3.test_*i64*
@@ -87,6 +87,23 @@ Wildcards can also be passed in skip, so
   test/runner browser skip:browser.test_pthread_*
 
 will run the whole browser suite except for all the pthread tests in it.
+
+Exiting on first failure
+========================
+
+Sometimes it is useful to be able to iteratively fix one test at a time.  In
+this case the ``--failfast`` option can be used to exit the test runner after
+the first failure.
+
+.. note:: This option only works with the serial test runner.  For test suites
+   that are normally run in parallel you can force them to run serially using
+   ``-j1``.
+
+One a test is fixed you continue where you left off using ``--start-at`` option:
+
+.. code-block:: bash
+
+  test/runner browser --start-at test_foo --failfast
 
 Running a bunch of random tests
 ===============================

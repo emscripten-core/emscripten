@@ -58,7 +58,15 @@ addToLibrary({
 
 #if !MINIMAL_RUNTIME
   $exitJS__docs: '/** @param {boolean|number=} implicit */',
-  $exitJS__deps: ['proc_exit'],
+  $exitJS__deps: [
+    'proc_exit',
+#if ASSERTIONS || EXIT_RUNTIME
+    '$keepRuntimeAlive',
+#endif
+#if PTHREADS_DEBUG
+    '$runtimeKeepaliveCounter',
+#endif
+  ],
   $exitJS: (status, implicit) => {
     EXITSTATUS = status;
 
@@ -2904,7 +2912,7 @@ addToLibrary({
   $runEmAsmFunction: (code, sigPtr, argbuf) => {
     var args = readEmAsmArgs(sigPtr, argbuf);
 #if ASSERTIONS
-    if (!ASM_CONSTS.hasOwnProperty(code)) abort(`No EM_ASM constant found at address ${code}`);
+    assert(ASM_CONSTS.hasOwnProperty(code), `No EM_ASM constant found at address ${code}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
 #endif
     return ASM_CONSTS[code].apply(null, args);
   },
@@ -2947,7 +2955,7 @@ addToLibrary({
     }
 #endif
 #if ASSERTIONS
-    if (!ASM_CONSTS.hasOwnProperty(code)) abort(`No EM_ASM constant found at address ${code}`);
+    assert(ASM_CONSTS.hasOwnProperty(code), `No EM_ASM constant found at address ${code}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
 #endif
     return ASM_CONSTS[code].apply(null, args);
   },
@@ -3259,9 +3267,22 @@ addToLibrary({
     throw 'unwind';
   },
 
-  emscripten_force_exit__deps: ['exit',
+  _emscripten_runtime_keepalive_clear__proxy: 'sync',
+  _emscripten_runtime_keepalive_clear: () => {
+#if isSymbolNeeded('$noExitRuntime')
+    noExitRuntime = false;
+#endif
+#if !MINIMAL_RUNTIME
+    runtimeKeepaliveCounter = 0;
+#endif
+  },
+
+  emscripten_force_exit__deps: ['exit', '_emscripten_runtime_keepalive_clear',
 #if !EXIT_RUNTIME && ASSERTIONS
     '$warnOnce',
+#endif
+#if !MINIMAL_RUNTIME
+    '$runtimeKeepaliveCounter',
 #endif
   ],
   emscripten_force_exit__proxy: 'sync',
@@ -3272,10 +3293,7 @@ addToLibrary({
 #if !EXIT_RUNTIME && ASSERTIONS
     warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set');
 #endif
-#if !MINIMAL_RUNTIME
-    noExitRuntime = false;
-    runtimeKeepaliveCounter = 0;
-#endif
+    __emscripten_runtime_keepalive_clear();
     _exit(status);
   },
 
@@ -3368,7 +3386,18 @@ addToLibrary({
 #endif
   },
 
+  $runtimeKeepaliveCounter__internal: true,
+  $runtimeKeepaliveCounter: 0,
+
+  $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter'],
+#if isSymbolNeeded('$noExitRuntime')
+  $keepRuntimeAlive: () => noExitRuntime || runtimeKeepaliveCounter > 0,
+#else
+  $keepRuntimeAlive: () => runtimeKeepaliveCounter > 0,
+#endif
+
   // Callable in pthread without __proxy needed.
+  $runtimeKeepalivePush__deps: ['$runtimeKeepaliveCounter'],
   $runtimeKeepalivePush__sig: 'v',
   $runtimeKeepalivePush: () => {
     runtimeKeepaliveCounter += 1;
@@ -3377,6 +3406,7 @@ addToLibrary({
 #endif
   },
 
+  $runtimeKeepalivePop__deps: ['$runtimeKeepaliveCounter'],
   $runtimeKeepalivePop__sig: 'v',
   $runtimeKeepalivePop: () => {
 #if ASSERTIONS
@@ -3390,9 +3420,7 @@ addToLibrary({
 
   emscripten_runtime_keepalive_push: '$runtimeKeepalivePush',
   emscripten_runtime_keepalive_pop: '$runtimeKeepalivePop',
-  // keepRuntimeAlive is a runtime function rather than a library function,
-  // so we can't use an alias like we do for the two functions above.
-  emscripten_runtime_keepalive_check: () => keepRuntimeAlive(),
+  emscripten_runtime_keepalive_check: '$keepRuntimeAlive',
 
   // Used to call user callbacks from the embedder / event loop.  For example
   // setTimeout or any other kind of event handler that calls into user case
@@ -3421,9 +3449,12 @@ addToLibrary({
     }
   },
 
-  $maybeExit__deps: ['exit', '$handleException',
+  $maybeExit__deps: ['exit', '$handleException', '$keepRuntimeAlive',
 #if PTHREADS
     '_emscripten_thread_exit',
+#endif
+#if RUNTIME_DEBUG
+    '$runtimeKeepaliveCounter',
 #endif
   ],
   $maybeExit: () => {
@@ -3620,6 +3651,8 @@ addToLibrary({
 #else
   $wasmTable: undefined,
 #endif
+
+  $noExitRuntime: "{{{ makeModuleReceiveExpr('noExitRuntime', !EXIT_RUNTIME) }}}",
 
   // We used to define these globals unconditionally in support code.
   // Instead, we now define them here so folks can pull it in explicitly, on
