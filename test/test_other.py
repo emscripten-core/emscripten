@@ -14021,6 +14021,8 @@ addToLibrary({
 
   @parameterized({
     'no_std_exp':   (['-DEMMALLOC_NO_STD_EXPORTS'],),
+    # When we let emmalloc build with the standard exports like malloc,
+    # emmalloc == malloc.
     'with_std_exp': (['-DTEST_EMMALLOC_IS_MALLOC'],),
   })
   def test_emmalloc_in_addition(self, args):
@@ -14028,8 +14030,6 @@ addToLibrary({
     # build emmalloc using -DEMMALLOC_NO_STD_EXPORTS it will not export malloc
     # etc., and only provide the emmalloc_malloc etc. family of functions that
     # we can use.
-
     emmalloc = path_from_root('system', 'lib', 'emmalloc.c')
-
     self.run_process([EMCC, test_file('other/test_emmalloc_in_addition.c'), emmalloc] + args)
     self.assertContained('success', self.run_js('a.out.js'))
