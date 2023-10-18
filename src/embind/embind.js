@@ -167,18 +167,21 @@ var LibraryEmbind = {
     return errorClass;
   },
 
-
-  $createNamedFunction__deps: ['$makeLegalFunctionName'],
-  $createNamedFunction: function(name, body) {
-    name = makeLegalFunctionName(name);
-    // Use an abject with a computed property name to create a new function with
-    // a name specified at runtime, but without using `new Function` or `eval`.
-    return {
-      [name]: function() {
-        return body.apply(this, arguments);
-      }
-    }[name];
-  },
+  $createNamedFunction: (name, body) => Object.defineProperty(body, 'name', {
+    value: name
+  }),
+  // All browsers that support WebAssembly also support configurable function name,
+  // but we might be building for very old browsers via WASM2JS.
+#if MIN_CHROME_VERSION < 43 || MIN_EDGE_VERSION < 14 || MIN_SAFARI_VERSION < 100101 || MIN_FIREFOX_VERSION < 38
+  // In that case, check if configurable function name is supported at init time
+  // and, if not, replace with a fallback that returns function as-is as those browsers
+  // don't support other methods either.
+  $createNamedFunction__postset: `
+    if (!Object.getOwnPropertyDescriptor(Function.prototype, 'name').configurable) {
+      createNamedFunction = (name, body) => body;
+    }
+  `,
+#endif
 
   $embindRepr: (v) => {
     if (v === null) {
