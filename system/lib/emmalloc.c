@@ -40,11 +40,10 @@
  *
  * Exporting:
  *
- *  - By default we declare not only emmalloc_malloc, free, etc. (with prefix
- *    emmalloc_) but also also the standard library methods like malloc and
- *    free. You can override this by defining EMMALLOC_NO_STD_EXPORTS, in which
- *    case we only declare the emalloc_* ones but not the standard ones.
- *
+ *  - By default we declare not only emmalloc_malloc, emmalloc_free, etc. but
+ *    also the standard library methods like malloc, free, and some aliases.
+ *    You can override this by defining EMMALLOC_NO_STD_EXPORTS, in which case
+ *    we only declare the emalloc_* ones but not the standard ones.
  */
 
 #include <stdalign.h>
