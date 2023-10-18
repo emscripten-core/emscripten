@@ -70,7 +70,7 @@ static_assert((((int32_t)0x80000000U) >> 31) == -1, "This malloc implementation 
 #define MALLOC_ALIGNMENT alignof(max_align_t)
 static_assert(alignof(max_align_t) == 8, "max_align_t must be correct");
 
-#ifdef EMMALLOC_NO_EXPORTS
+#ifdef EMMALLOC_NO_STD_EXPORTS
 #define EMMALLOC_EXPORT
 #define EMMALLOC_ALIAS(ALIAS, ORIGINAL)
 #else
@@ -827,14 +827,14 @@ void *emmalloc_memalign(size_t alignment, size_t size)
 }
 EMMALLOC_ALIAS(emscripten_builtin_memalign, emmalloc_memalign);
 
-#ifndef EMMALLOC_NO_EXPORTS
+#ifndef EMMALLOC_NO_STD_EXPORTS
 void * EMMALLOC_EXPORT memalign(size_t alignment, size_t size)
 {
   return emmalloc_memalign(alignment, size);
 }
 #endif
 
-#ifndef EMMALLOC_NO_EXPORTS
+#ifndef EMMALLOC_NO_STD_EXPORTS
 void * EMMALLOC_EXPORT aligned_alloc(size_t alignment, size_t size)
 {
   if ((alignment % sizeof(void *) != 0) || (size % alignment) != 0)
@@ -850,7 +850,7 @@ void *emmalloc_malloc(size_t size)
 EMMALLOC_ALIAS(emscripten_builtin_malloc, emmalloc_malloc);
 EMMALLOC_ALIAS(__libc_malloc, emmalloc_malloc);
 
-#ifndef EMMALLOC_NO_EXPORTS
+#ifndef EMMALLOC_NO_STD_EXPORTS
 void * EMMALLOC_EXPORT malloc(size_t size)
 {
   return emmalloc_malloc(size);
@@ -877,7 +877,7 @@ size_t emmalloc_usable_size(void *ptr)
   return size - REGION_HEADER_SIZE;
 }
 
-#ifndef EMMALLOC_NO_EXPORTS
+#ifndef EMMALLOC_NO_STD_EXPORTS
 size_t EMMALLOC_EXPORT malloc_usable_size(void *ptr)
 {
   return emmalloc_usable_size(ptr);
@@ -956,7 +956,7 @@ void emmalloc_free(void *ptr)
 EMMALLOC_ALIAS(emscripten_builtin_free, emmalloc_free);
 EMMALLOC_ALIAS(__libc_free, emmalloc_free);
 
-#ifndef EMMALLOC_NO_EXPORTS
+#ifndef EMMALLOC_NO_STD_EXPORTS
 void EMMALLOC_EXPORT free(void *ptr)
 {
   return emmalloc_free(ptr);
@@ -1090,7 +1090,7 @@ void *emmalloc_aligned_realloc(void *ptr, size_t alignment, size_t size)
   return newptr;
 }
 
-#ifndef EMMALLOC_NO_EXPORTS
+#ifndef EMMALLOC_NO_STD_EXPORTS
 void * EMMALLOC_EXPORT aligned_realloc(void *ptr, size_t alignment, size_t size)
 {
   return emmalloc_aligned_realloc(ptr, alignment, size);
@@ -1181,7 +1181,7 @@ void *emmalloc_realloc(void *ptr, size_t size)
 }
 EMMALLOC_ALIAS(__libc_realloc, emmalloc_realloc);
 
-#ifndef EMMALLOC_NO_EXPORTS
+#ifndef EMMALLOC_NO_STD_EXPORTS
 void * EMMALLOC_EXPORT realloc(void *ptr, size_t size)
 {
   return emmalloc_realloc(ptr, size);
@@ -1204,7 +1204,7 @@ int emmalloc_posix_memalign(void **memptr, size_t alignment, size_t size)
   return *memptr ?  0 : 12/*ENOMEM*/;
 }
 
-#ifndef EMMALLOC_NO_EXPORTS
+#ifndef EMMALLOC_NO_STD_EXPORTS
 int EMMALLOC_EXPORT posix_memalign(void **memptr, size_t alignment, size_t size)
 {
   return emmalloc_posix_memalign(memptr, alignment, size);
@@ -1221,7 +1221,7 @@ void *emmalloc_calloc(size_t num, size_t size)
 }
 EMMALLOC_ALIAS(__libc_calloc, emmalloc_calloc);
 
-#ifndef EMMALLOC_NO_EXPORTS
+#ifndef EMMALLOC_NO_STD_EXPORTS
 void * EMMALLOC_EXPORT calloc(size_t num, size_t size)
 {
   return emmalloc_calloc(num, size);
@@ -1317,7 +1317,7 @@ struct mallinfo emmalloc_mallinfo()
   return info;
 }
 
-#ifndef EMMALLOC_NO_EXPORTS
+#ifndef EMMALLOC_NO_STD_EXPORTS
 struct mallinfo EMMALLOC_EXPORT mallinfo()
 {
   return emmalloc_mallinfo();
@@ -1385,7 +1385,7 @@ int emmalloc_trim(size_t pad)
   return success;
 }
 
-#ifndef EMMALLOC_NO_EXPORTS
+#ifndef EMMALLOC_NO_STD_EXPORTS
 int EMMALLOC_EXPORT malloc_trim(size_t pad)
 {
   return emmalloc_trim(pad);
