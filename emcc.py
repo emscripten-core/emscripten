@@ -1226,10 +1226,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 ''')
     return 0
 
-  if '-dumpmachine' in args:
-    print(shared.get_llvm_target())
-    return 0
-
   if '-dumpversion' in args: # gcc's doc states "Print the compiler version [...] and don't do anything else."
     print(shared.EMSCRIPTEN_VERSION)
     return 0
@@ -1281,6 +1277,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   settings.limit_settings(COMPILE_TIME_SETTINGS)
 
   newargs, input_files = phase_setup(options, state, newargs)
+
+  if '-dumpmachine' in newargs:
+    print(shared.get_llvm_target())
+    return 0
+
+  if not input_files and not state.link_flags:
+    exit_with_error('no input files')
 
   if options.reproduce:
     create_reproduce_file(options.reproduce, args)
@@ -1557,9 +1560,6 @@ def phase_setup(options, state, newargs):
     elif arg == '-':
       input_files.append((i, arg))
       newargs[i] = ''
-
-  if not input_files and not state.link_flags:
-    exit_with_error('no input files')
 
   newargs = [a for a in newargs if a]
 
@@ -3808,12 +3808,12 @@ def phase_binaryen(target, options, wasm_target):
       with ToolchainProfiler.profile_block('use_unsigned_pointers_in_js'):
         final_js = building.use_unsigned_pointers_in_js(final_js)
 
-    # pthreads memory growth requires some additional JS fixups.
+    # shared memory growth requires some additional JS fixups.
     # note that we must do this after handling of unsigned pointers. unsigning
     # adds some >>> 0 things, while growth will replace a HEAP8 with a call to
     # a method to get the heap, and that call would not be recognized by the
     # unsigning pass
-    if settings.PTHREADS and settings.ALLOW_MEMORY_GROWTH:
+    if settings.SHARED_MEMORY and settings.ALLOW_MEMORY_GROWTH:
       with ToolchainProfiler.profile_block('apply_wasm_memory_growth'):
         final_js = building.apply_wasm_memory_growth(final_js)
 
@@ -3971,15 +3971,10 @@ def modularize():
 
   return %(return_value)s
 }
-%(capture_module_function_for_audio_worklet)s
 ''' % {
     'maybe_async': async_emit,
     'src': src,
     'return_value': return_value,
-    # Given the async nature of how the Module function and Module object come into existence in AudioWorkletGlobalScope,
-    # store the Module function under a different variable name so that AudioWorkletGlobalScope will be able to reference
-    # it without aliasing/conflicting with the Module variable name.
-    'capture_module_function_for_audio_worklet': 'globalThis.AudioWorkletModule = Module;' if settings.AUDIO_WORKLET and settings.MODULARIZE else ''
   }
 
   if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
@@ -4004,12 +3999,17 @@ var %(EXPORT_NAME)s = (() => {
   %(script_url_node)s
   return (%(src)s);
 })();
+%(capture_module_function_for_audio_worklet)s;
 ''' % {
       'node_imports': node_es6_imports(),
       'EXPORT_NAME': settings.EXPORT_NAME,
       'script_url': script_url,
       'script_url_node': script_url_node,
-      'src': src
+      'src': src,
+      # Given the async nature of how the Module function and Module object come into existence in AudioWorkletGlobalScope,
+      # store the Module function under a different variable name so that AudioWorkletGlobalScope will be able to reference
+      # it without aliasing/conflicting with the Module variable name.
+      'capture_module_function_for_audio_worklet': 'globalThis.AudioWorkletModule = ' + settings.EXPORT_NAME if settings.AUDIO_WORKLET and settings.MODULARIZE else ''
     }
 
   final_js += '.modular.js'

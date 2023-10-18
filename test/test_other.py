@@ -303,7 +303,7 @@ class other(RunnerCore):
                       test_file('hello_world.c')] + args)
     src = read_file('subdir/hello_world.mjs')
     self.assertContained("new URL('hello_world.wasm', import.meta.url)", src)
-    self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url))", src)
+    self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url), {type: 'module'})", src)
     self.assertContained('export default Module;', src)
     src = read_file('subdir/hello_world.worker.js')
     self.assertContained("import('./hello_world.mjs')", src)
@@ -317,7 +317,7 @@ class other(RunnerCore):
                       test_file('hello_world.c'), '-sSINGLE_FILE'])
     src = read_file('hello_world.mjs')
     self.assertNotContained("new URL('data:", src)
-    self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url))", src)
+    self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url), {type: 'module'})", src)
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
   def test_emcc_output_mjs_closure(self):
@@ -389,10 +389,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.assertContained('Display this information', output.stdout)
     self.assertContained('Most clang options will work', output.stdout)
 
-    # -dumpmachine
-    output = self.run_process([compiler, '-dumpmachine'], stdout=PIPE, stderr=PIPE)
-    self.assertContained('wasm32-unknown-emscripten', output.stdout)
-
     # -dumpversion
     output = self.run_process([compiler, '-dumpversion'], stdout=PIPE, stderr=PIPE)
     self.assertEqual(shared.EMSCRIPTEN_VERSION, output.stdout.strip())
@@ -405,6 +401,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.assertContained('error: invalid preprocessing directive', stderr)
     self.assertContained(["error: use of undeclared identifier 'cheez", "error: unknown type name 'cheez'"], stderr)
     self.assertContained('errors generated.', stderr.splitlines()[-2])
+
+  def test_dumpmachine(self):
+    output = self.run_process([EMCC, '-dumpmachine'], stdout=PIPE, stderr=PIPE)
+    self.assertContained('wasm32-unknown-emscripten', output.stdout)
+
+    output = self.run_process([EMCC, '-sMEMORY64', '-dumpmachine'], stdout=PIPE, stderr=PIPE)
+    self.assertContained('wasm64-unknown-emscripten', output.stdout)
 
   @parameterized({
     'c': [EMCC, '.c'],
@@ -2502,6 +2505,7 @@ int f() {
     'minifyLocals': ('optimizer/test-js-optimizer-minifyLocals.js', ['minifyLocals']),
     'JSDCE': ('optimizer/JSDCE.js', ['JSDCE']),
     'JSDCE-hasOwnProperty': ('optimizer/JSDCE-hasOwnProperty.js', ['JSDCE']),
+    'JSDCE-defaultArg': ('optimizer/JSDCE-defaultArg.js', ['JSDCE']),
     'JSDCE-fors': ('optimizer/JSDCE-fors.js', ['JSDCE']),
     'JSDCE-objectPattern': ('optimizer/JSDCE-objectPattern.js', ['JSDCE']),
     'AJSDCE': ('optimizer/AJSDCE.js', ['AJSDCE']),
@@ -14008,3 +14012,9 @@ addToLibrary({
 ''')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=foo'])
     self.assertContained('error: noExitRuntime cannot be referenced via __deps mechansim', err)
+
+  def test_hello_world_argv(self):
+    self.do_runf(test_file('hello_world_argv.c'), 'hello, world! (1)')
+
+  def test_arguments_global(self):
+    self.emcc(test_file('hello_world_argv.c'), ['-sENVIRONMENT=web', '-sSTRICT', '--closure=1', '-O2'])
