@@ -27,10 +27,10 @@ var LibraryEmVal = {
     // reserve some special values. These never get de-allocated.
     // The HandleAllocator takes care of reserving zero.
     emval_handles.allocated.push(
-      {value: undefined},
-      {value: null},
-      {value: true},
-      {value: false},
+      undefined,
+      null,
+      true,
+      false,
     );
     emval_handles.reserved = emval_handles.allocated.length
     Module['count_emval_handles'] = count_emval_handles;
@@ -63,12 +63,7 @@ var LibraryEmVal = {
 
   $Emval__deps: ['$emval_handles', '$throwBindingError', '$init_emval'],
   $Emval: {
-    toValue: (handle) => {
-      if (!handle) {
-          throwBindingError('Cannot use deleted val. handle = ' + handle);
-      }
-      return emval_handles.get(handle).value;
-    },
+    toValue: (handle) => emval_handles.get(handle),
 
     toHandle: (value) => {
       switch (value) {
@@ -77,31 +72,24 @@ var LibraryEmVal = {
         case true: return 3;
         case false: return 4;
         default:{
-          return emval_handles.allocate({refcount: 1, value: value});
+          return emval_handles.allocate(value);
         }
       }
     }
   },
 
-  _emval_incref__deps: ['$emval_handles'],
-  _emval_incref: (handle) => {
-    if (handle > 4) {
-      emval_handles.get(handle).refcount += 1;
-    }
-  },
-
-  _emval_decref__deps: ['$emval_handles'],
-  _emval_decref: (handle) => {
-    if (handle >= emval_handles.reserved && 0 === --emval_handles.get(handle).refcount) {
+  _emval_free__deps: ['$emval_handles'],
+  _emval_free: (handle) => {
+    if (handle >= emval_handles.reserved) {
       emval_handles.free(handle);
     }
   },
 
-  _emval_run_destructors__deps: ['_emval_decref', '$Emval', '$runDestructors'],
+  _emval_run_destructors__deps: ['_emval_free', '$Emval', '$runDestructors'],
   _emval_run_destructors: (handle) => {
     var destructors = Emval.toValue(handle);
     runDestructors(destructors);
-    __emval_decref(handle);
+    __emval_free(handle);
   },
 
   _emval_new_array__deps: ['$Emval'],

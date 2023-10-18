@@ -3598,16 +3598,21 @@ addToLibrary({
 #endif
   },
 
+  // sentinel for invalid handles; it's intentionally a distinct object
+  // so that we could distinguish it from `undefined` as an actual stored value
+  $invalidHandleSentinel: {},
+
+  $handleAllocatorInit__deps: ['$invalidHandleSentinel'],
   $handleAllocatorInit: function() {
     Object.assign(HandleAllocator.prototype, /** @lends {HandleAllocator.prototype} */ {
       get(id) {
   #if ASSERTIONS
-        assert(this.allocated[id] !== undefined, `invalid handle: ${id}`);
+        assert(this.allocated[id] !== invalidHandleSentinel, `invalid handle: ${id}`);
   #endif
         return this.allocated[id];
       },
       has(id) {
-        return this.allocated[id] !== undefined;
+        return this.allocated[id] !== invalidHandleSentinel;
       },
       allocate(handle) {
         var id = this.freelist.pop() || this.allocated.length;
@@ -3616,22 +3621,20 @@ addToLibrary({
       },
       free(id) {
   #if ASSERTIONS
-        assert(this.allocated[id] !== undefined);
+        assert(this.allocated[id] !== invalidHandleSentinel);
   #endif
-        // Set the slot to `undefined` rather than using `delete` here since
-        // apparently arrays with holes in them can be less efficient.
-        this.allocated[id] = undefined;
+        this.allocated[id] = invalidHandleSentinel;
         this.freelist.push(id);
       }
     });
   },
 
   $HandleAllocator__postset: 'handleAllocatorInit()',
-  $HandleAllocator__deps: ['$handleAllocatorInit'],
+  $HandleAllocator__deps: ['$handleAllocatorInit', '$invalidHandleSentinel'],
   $HandleAllocator__docs: '/** @constructor */',
   $HandleAllocator: function() {
     // Reserve slot 0 so that 0 is always an invalid handle
-    this.allocated = [undefined];
+    this.allocated = [invalidHandleSentinel];
     this.freelist = [];
   },
 

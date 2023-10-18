@@ -48,8 +48,7 @@ typedef struct _EM_METHOD_CALLER* EM_METHOD_CALLER;
 typedef double EM_GENERIC_WIRE_TYPE;
 typedef const void* EM_VAR_ARGS;
 
-void _emval_incref(EM_VAL value);
-void _emval_decref(EM_VAL value);
+void _emval_free(EM_VAL object);
 
 void _emval_run_destructors(EM_DESTRUCTORS handle);
 
@@ -287,6 +286,63 @@ struct MethodCaller {
   }
 };
 
+struct val_metadata {
+public:
+  val_metadata(EM_VAL handle)
+    : refcount(1)
+    , thread(pthread_self())
+    , handle(handle)
+  {}
+
+  // automatically deletes copy constructors and assignment operators as well
+  val_metadata(val_metadata&&) = delete;
+
+  val_metadata* inc_ref() {
+    ++refcount;
+    return this;
+  }
+
+  void dec_ref() {
+    if (--refcount == 0) {
+      delete this;
+    }
+  }
+
+  constexpr EM_VAL as_handle() const {
+#ifdef _REENTRANT
+    assert(pthread_equal(thread, pthread_self()) && "val accessed from wrong thread");
+#endif
+    return handle;
+  }
+
+  // Elimination-friendly overrides of operator new and delete.
+  // These intentionally do less work than the default implementations,
+  // which need to support custom handlers for out-of-memory conditions,
+  // while malloc/free pairs get inlined and can be and are eliminated
+  // by LLVM easily.
+  // Since most our values are temporary, we really want this optimisation.
+
+  void* operator new(size_t count) noexcept {
+    auto ptr = malloc(count * sizeof(val_metadata));
+    if (!ptr) abort();
+    return ptr;
+  }
+
+  void operator delete(void* ptr) noexcept {
+    free(ptr);
+  }
+
+private:
+  size_t refcount;
+  pthread_t thread;
+  EM_VAL handle;
+
+  // should be only accessible from dec_ref
+  ~val_metadata() {
+    _emval_free(handle);
+  }
+};
+
 } // end namespace internal
 
 #define EMSCRIPTEN_SYMBOL(name)                                         \
@@ -386,30 +442,16 @@ public:
       : val(internal::_emval_new_cstring(v))
   {}
 
-  // Note: unlike other constructors, this doesn't use as_handle() because
-  // it just moves a value and doesn't need to go via incref/decref.
-  // This means it's safe to move values across threads - an error will
-  // only arise if you access or free it from the wrong thread later.
-  val(val&& v) : handle(v.handle), thread(v.thread) {
-    v.handle = 0;
-  }
+  val(val&& v) : data(v.data->inc_ref()) {}
 
-  val(const val& v) : val(v.as_handle()) {
-    internal::_emval_incref(handle);
-  }
+  val(const val& v) : val(std::move(v)) {}
 
   ~val() {
-    if (handle) {
-      internal::_emval_decref(as_handle());
-      handle = 0;
-    }
+    data->dec_ref();
   }
 
   EM_VAL as_handle() const {
-#ifdef _REENTRANT
-    assert(pthread_equal(thread, pthread_self()) && "val accessed from wrong thread");
-#endif
-    return handle;
+    return data->as_handle();
   }
 
   val& operator=(val&& v) & {
@@ -597,7 +639,7 @@ public:
 private:
   // takes ownership, assumes handle already incref'd and lives on the same thread
   explicit val(EM_VAL handle)
-      : handle(handle), thread(pthread_self())
+      : data(new internal::val_metadata(handle))
   {}
 
   template<typename WrapperType>
@@ -621,8 +663,7 @@ private:
     return v;
   }
 
-  pthread_t thread;
-  EM_VAL handle;
+  internal::val_metadata* data;
 
   friend struct internal::BindingType<val>;
 };
@@ -662,9 +703,7 @@ struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
                                               !std::is_const<T>::value>::type> {
   typedef EM_VAL WireType;
   static WireType toWireType(const val& v) {
-    EM_VAL handle = v.as_handle();
-    _emval_incref(handle);
-    return handle;
+    return v.as_handle();
   }
   static val fromWireType(WireType v) {
     return val::take_ownership(v);

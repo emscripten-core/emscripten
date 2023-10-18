@@ -659,17 +659,13 @@ var LibraryEmbind = {
   },
 
   _embind_register_emval__deps: [
-    '_emval_decref', '$Emval',
+    '$Emval',
     '$readLatin1String', '$registerType', '$simpleReadValueFromPointer'],
   _embind_register_emval: (rawType, name) => {
     name = readLatin1String(name);
     registerType(rawType, {
       name,
-      'fromWireType': (handle) => {
-        var rv = Emval.toValue(handle);
-        __emval_decref(handle);
-        return rv;
-      },
+      'fromWireType': (handle) => Emval.toValue(handle),
       'toWireType': (destructors, value) => Emval.toHandle(value),
       'argPackAdvance': GenericWireTypeSize,
       'readValueFromPointer': simpleReadValueFromPointer,
