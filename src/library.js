@@ -985,7 +985,7 @@ addToLibrary({
     // TODO: take care of locale
 
     var DATE_PATTERNS = {
-      /* weeday name */     'a': '(?:Sun(?:day)?)|(?:Mon(?:day)?)|(?:Tue(?:sday)?)|(?:Wed(?:nesday)?)|(?:Thu(?:rsday)?)|(?:Fri(?:day)?)|(?:Sat(?:urday)?)',
+      /* weekday name */     'a': '(?:Sun(?:day)?)|(?:Mon(?:day)?)|(?:Tue(?:sday)?)|(?:Wed(?:nesday)?)|(?:Thu(?:rsday)?)|(?:Fri(?:day)?)|(?:Sat(?:urday)?)',
       /* month name */      'b': '(?:Jan(?:uary)?)|(?:Feb(?:ruary)?)|(?:Mar(?:ch)?)|(?:Apr(?:il)?)|May|(?:Jun(?:e)?)|(?:Jul(?:y)?)|(?:Aug(?:ust)?)|(?:Sep(?:tember)?)|(?:Oct(?:ober)?)|(?:Nov(?:ember)?)|(?:Dec(?:ember)?)',
       /* century */         'C': '\\d\\d',
       /* day of month */    'd': '0[1-9]|[1-9](?!\\d)|1\\d|2\\d|30|31',
@@ -1013,32 +1013,23 @@ addToLibrary({
     var pattern_out="";
     var in_percent=false;
     var capture = [];
-    for(const c of pattern)
-    {
-      if(in_percent)
-      {
-        if(c==="%")
-        {
-          pattern_out+="%";
+    for (let i = 0; i < pattern.length; i++) {
+      var c = pattern[i];
+      if (c === "%") {
+        if (in_percent) {
+          pattern_out += "%";
         }
-        if(c in DATE_PATTERNS)
-        {
-          capture.push(c)
-          pattern_out+="("+DATE_PATTERNS[c]+")";
-        }
+        in_percent = !in_percent;
+      } else if (in_percent && c in DATE_PATTERNS) {
+        capture.push(c)
+        pattern_out += "(" + DATE_PATTERNS[c] + ")";
         in_percent=false;
-      }else{
-        if(c === "%"){
-          in_percent=true;
-        }else{
-          pattern_out+=c
-        }
+      } else {
+        pattern_out += c;
       }
     }
+    var matches = new RegExp('^'+pattern_out, "i").exec(UTF8ToString(buf))
 
-    pattern=pattern_out;
-
-    var matches = new RegExp('^'+pattern, "i").exec(UTF8ToString(buf))
     // out(UTF8ToString(buf)+ ' is matched by '+((new RegExp('^'+pattern)).source)+' into: '+JSON.stringify(matches));
 
     function initDate() {
@@ -1051,12 +1042,12 @@ addToLibrary({
         day: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_mday, 'i32') }}}, 1, 31),
         hour: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_hour, 'i32') }}}, 0, 23),
         min: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_min, 'i32') }}}, 0, 59),
-        sec: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_sec, 'i32') }}}, 0, 59)
+        sec: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_sec, 'i32') }}}, 0, 59),
+        gmtoff: 0
       };
     };
 
     if (matches) {
-      let gmtoffset=0;
       var date = initDate();
       var value;
 
@@ -1180,29 +1171,18 @@ addToLibrary({
       }
 
       // time zone
-      if ((value=getMatch('z'))) {
+      if ((value = getMatch('z'))) {
         // GMT offset as either 'Z' or +-HH:MM or +-HH or +-HHMM
-        if(value.toLowerCase()=='Z'){
-          gmtoffset=0;
-        }else
-        {
-          const re=/^(?<sign>\-|\+)(?<hours>\d\d):?(?<mins>\d\d)?/;
-          let match=value.match(re);
-          if(match)
-          {
-            let sign=1;
-            if(match.groups.sign==="-"){
-              sign=-1;
-            }
-            gmtoffset=sign*match.groups.hours*3600;
-            if(match.groups.mins){
-              gmtoffset+=sign*match.groups.mins*60;
-            }
+        if (value.toLowerCase() === 'z'){
+          date.gmtoff = 0;
+        } else {          
+          var match = value.match(/^(?<hours>(?:\-|\+)\d\d):?(?<mins>\d\d)?/);
+          date.gmtoff = match.groups.hours * 3600;
+          if (match.groups.mins) {
+            date.gmtoff += date.gmtoff >0 ? match.groups.mins * 60 : -match.groups.mins * 60
           }
         }
-
       }
-
 
       /*
       tm_sec  int seconds after the minute  0-61*
@@ -1227,7 +1207,11 @@ addToLibrary({
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_wday, 'fullDate.getDay()', 'i32') }}};
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_yday, 'arraySum(isLeapYear(fullDate.getFullYear()) ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, fullDate.getMonth()-1)+fullDate.getDate()-1', 'i32') }}};
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_isdst, '0', 'i32') }}};
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_gmtoff, 'gmtoffset', 'i32') }}};
+      #if MEMORY64
+        {{{ makeSetValue('tm', C_STRUCTS.tm.tm_gmtoff, 'date.gmtoff', 'i64') }}};
+      #else
+        {{{ makeSetValue('tm', C_STRUCTS.tm.tm_gmtoff, 'date.gmtoff', 'i32') }}};
+      #endif
  
       // we need to convert the matched sequence into an integer array to take care of UTF-8 characters > 0x7F
       // TODO: not sure that intArrayFromString handles all unicode characters correctly
