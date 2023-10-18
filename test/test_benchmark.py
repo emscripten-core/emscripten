@@ -371,7 +371,7 @@ operator new(unsigned long size)
     # Compile C to native
     native = c + '.native'
     cmd = [
-      'clang', OPTIMIZATIONS, c, '-o', native, f'-I{WABT}/wasm2c',
+      compiler, OPTIMIZATIONS, c, '-o', native, f'-I{WABT}/wasm2c',
       '-Wno-incompatible-library-redeclaration',
       '-Wno-builtin-requires-header',
       'support.c',
@@ -1036,7 +1036,7 @@ int printf(const char* fmt, ...)
 
   def test_skinning(self):
     src = read_file(test_file('skinning_test_no_simd.cpp'))
-    self.do_benchmark('skinning', src, 'blah=0.000000')
+    self.do_benchmark('skinning', src, 'blah=0')
 
   def test_havlak(self):
     src = read_file(test_file('havlak.cpp'))
