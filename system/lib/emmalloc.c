@@ -1324,7 +1324,7 @@ struct mallinfo EMMALLOC_EXPORT mallinfo()
 }
 #endif
 
-// Note! This function is not fully multithreadin safe: while this function is running, other threads should not be
+// Note! This function is not fully multithreading safe: while this function is running, other threads should not be
 // allowed to call sbrk()!
 static int trim_dynamic_heap_reservation(size_t pad)
 {
