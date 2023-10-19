@@ -3245,10 +3245,10 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms):
 
   settings.TARGET_JS_NAME = os.path.basename(state.js_target)
 
-  if options.embind_emit_tsd:
-    phase_embind_emit_tsd(options, in_wasm, wasm_target, js_syms)
-
   phase_emscript(options, in_wasm, wasm_target, js_syms)
+
+  if options.embind_emit_tsd:
+    phase_embind_emit_tsd(options, wasm_target, js_syms)
 
   if options.js_transform:
     phase_source_transforms(options)
@@ -3280,7 +3280,7 @@ def phase_emscript(options, in_wasm, wasm_target, js_syms):
 
 
 @ToolchainProfiler.profile_block('embind emit tsd')
-def phase_embind_emit_tsd(options, in_wasm, wasm_target, js_syms):
+def phase_embind_emit_tsd(options, wasm_target, js_syms):
   logger.debug('emit tsd')
   # Save settings so they can be restored after TS generation.
   original_settings = settings.backup()
@@ -3318,7 +3318,7 @@ def phase_embind_emit_tsd(options, in_wasm, wasm_target, js_syms):
   outfile_js = in_temp('tsgen_a.out.js')
   # The Wasm outfile may be modified by emscripten.run, so use a temporary file.
   outfile_wasm = in_temp('tsgen_a.out.wasm')
-  emscripten.run(in_wasm, outfile_wasm, outfile_js, js_syms)
+  emscripten.run(wasm_target, outfile_wasm, outfile_js, js_syms, False)
   out = shared.run_js_tool(outfile_js, [], stdout=PIPE)
   write_file(
     os.path.join(os.path.dirname(wasm_target), options.embind_emit_tsd), out)

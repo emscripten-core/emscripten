@@ -281,7 +281,7 @@ def create_named_globals(metadata):
   return '\n'.join(named_globals)
 
 
-def emscript(in_wasm, out_wasm, outfile_js, js_syms):
+def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
   # Overview:
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
   #     to use emscripten's wasm<->JS ABI
@@ -294,7 +294,13 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms):
     # set file locations, so that JS glue can find what it needs
     settings.WASM_BINARY_FILE = js_manipulation.escape_for_js_string(os.path.basename(out_wasm))
 
-  metadata = finalize_wasm(in_wasm, out_wasm, js_syms)
+  if finalize:
+    metadata = finalize_wasm(in_wasm, out_wasm, js_syms)
+  else:
+    # Skip finalize and only extract the metadata.
+    if in_wasm != out_wasm:
+      shutil.copy(in_wasm, out_wasm)
+    metadata = get_metadata(in_wasm, out_wasm, False, [])
 
   if settings.RELOCATABLE and settings.MEMORY64 == 2:
     metadata.imports += ['__memory_base32']
@@ -305,7 +311,10 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms):
     metadata.function_exports['asyncify_start_rewind'] = 1
     metadata.function_exports['asyncify_stop_rewind'] = 0
 
-  update_settings_glue(out_wasm, metadata)
+  # If the binary has already been finalized the settings have already been
+  # updated and we can skip updating them.
+  if finalize:
+    update_settings_glue(out_wasm, metadata)
 
   if not settings.WASM_BIGINT and metadata.emJsFuncs:
     import_map = {}
@@ -967,5 +976,5 @@ function applySignatureConversions(wasmExports) {
   return wrappers
 
 
-def run(in_wasm, out_wasm, outfile_js, js_syms):
-  emscript(in_wasm, out_wasm, outfile_js, js_syms)
+def run(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
+  emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize)
