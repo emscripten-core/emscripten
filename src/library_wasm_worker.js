@@ -257,7 +257,8 @@ if (ENVIRONMENT_IS_WASM_WORKER) {
   // https://github.com/tc39/proposal-atomics-wait-async/blob/master/PROPOSAL.md
   // This polyfill performs polling with setTimeout() to observe a change in the
   // target memory location.
-  emscripten_atomic_wait_async__postset: `if (!Atomics.waitAsync || (typeof navigator !== 'undefined' && navigator.userAgent && jstoi_q((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91)) {
+  $polyfillWaitAsync__deps: ['$jstoi_q'],
+  $polyfillWaitAsync__postset: `if (!Atomics.waitAsync || (typeof navigator !== 'undefined' && navigator.userAgent && jstoi_q((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91)) {
 let __Atomics_waitAsyncAddresses = [/*[i32a, index, value, maxWaitMilliseconds, promiseResolve]*/];
 function __Atomics_pollWaitAsyncAddresses() {
   let now = performance.now();
@@ -292,20 +293,19 @@ Atomics.waitAsync = (i32a, index, value, maxWaitMilliseconds) => {
   return { async: true, value: promise };
 };
 }`,
-
-  // These dependencies are artificial, issued so that we still get the
-  // waitAsync polyfill emitted if code only calls
-  // emscripten_lock/semaphore_async_acquire() but not
-  // emscripten_atomic_wait_async() directly.
-  emscripten_lock_async_acquire__deps: ['emscripten_atomic_wait_async'],
-  emscripten_semaphore_async_acquire__deps: ['emscripten_atomic_wait_async'],
-
 #endif
 
-  $liveAtomicWaitAsyncs: '{}',
-  $liveAtomicWaitAsyncCounter: '0',
+  $polyfillWaitAsync__internal: true,
+  $polyfillWaitAsync: () => {
+    // nop, used for its postset to ensure `Atomics.waitAsync()` polyfill is
+    // included exactly once and only included when needed.
+    // Any function using Atomics.waitAsync should depend on this.
+  },
 
-  emscripten_atomic_wait_async__deps: ['$atomicWaitStates', '$liveAtomicWaitAsyncs', '$liveAtomicWaitAsyncCounter', '$jstoi_q'],
+  $liveAtomicWaitAsyncs: {},
+  $liveAtomicWaitAsyncCounter: 0,
+
+  emscripten_atomic_wait_async__deps: ['$atomicWaitStates', '$liveAtomicWaitAsyncs', '$liveAtomicWaitAsyncCounter', '$polyfillWaitAsync'],
   emscripten_atomic_wait_async: (addr, val, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('addr', 'i32') }}}, val, maxWaitMilliseconds);
     if (!wait.async) return atomicWaitStates.indexOf(wait.value);
@@ -385,6 +385,7 @@ Atomics.waitAsync = (i32a, index, value, maxWaitMilliseconds) => {
     return Atomics.isLockFree(width);
   },
 
+  emscripten_lock_async_acquire__deps: ['$polyfillWaitAsync'],
   emscripten_lock_async_acquire: (lock, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let dispatch = (val, ret) => {
       setTimeout(() => {
@@ -406,6 +407,7 @@ Atomics.waitAsync = (i32a, index, value, maxWaitMilliseconds) => {
     tryAcquireLock();
   },
 
+  emscripten_semaphore_async_acquire__deps: ['$polyfillWaitAsync'],
   emscripten_semaphore_async_acquire: (sem, num, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let dispatch = (idx, ret) => {
       setTimeout(() => {
