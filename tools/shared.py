@@ -49,7 +49,9 @@ from .settings import settings
 
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
-PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
+PRINT_SUBPROCS = int(os.getenv('EMCC_VERBOSE', '0'))
+SKIP_SUBPROCS = False
+
 # Minimum node version required to run the emscripten compiler.  This is distinct
 # from the minimum version required to execute the generated code.  This is not an
 # exact requirement, but is the oldest version of node that we do any testing with.
@@ -225,6 +227,8 @@ def run_multiple_processes(commands,
 def check_call(cmd, *args, **kw):
   """Like `run_process` above but treat failures as fatal and exit_with_error."""
   print_compiler_stage(cmd)
+  if SKIP_SUBPROCS:
+    return 0
   try:
     return run_process(cmd, *args, **kw)
   except subprocess.CalledProcessError as e:
@@ -616,10 +620,20 @@ def target_environment_may_be(environment):
 
 
 def print_compiler_stage(cmd):
-  """Emulate the '-v' of clang/gcc by printing the name of the sub-command
-  before executing it."""
-  if PRINT_STAGES:
-    print(' "%s" %s' % (cmd[0], shlex_join(cmd[1:])), file=sys.stderr)
+  """Emulate the '-v/-###' flags of clang/gcc by printing the sub-commands
+  that we run."""
+
+  def maybe_quote(arg):
+    if all(c.isalnum() or c in './-_' for c in arg):
+      return arg
+    else:
+      return f'"{arg}"'
+
+  if SKIP_SUBPROCS:
+    print(' ' + ' '.join([maybe_quote(a) for a in cmd]), file=sys.stderr)
+    sys.stderr.flush()
+  elif PRINT_SUBPROCS:
+    print(' %s %s' % (maybe_quote(cmd[0]), shlex_join(cmd[1:])), file=sys.stderr)
     sys.stderr.flush()
 
 
