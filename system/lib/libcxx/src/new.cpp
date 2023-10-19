@@ -95,7 +95,7 @@ void* _new_nothrow(size_t size) noexcept
 {
     /// We cannot call ::operator new(size) here because it would abort
     /// when malloc returns 0 and exceptions are disabled.
-    /// Expected behaviour of std::nothrow is not return 0 in that case.
+    /// Expected behaviour of std::nothrow is to return 0 in that case.
     void* p = nullptr;
     if (size == 0)
         size = 1;
