@@ -238,9 +238,7 @@ var LibraryEmbind = {
   },
 
   $getInheritedInstanceCount__deps: ['$registeredInstances'],
-  $getInheritedInstanceCount: () => {
-    return Object.keys(registeredInstances).length;
-  },
+  $getInheritedInstanceCount: () => Object.keys(registeredInstances).length,
 
   $getLiveInheritedInstances__deps: ['$registeredInstances'],
   $getLiveInheritedInstances: () => {
@@ -1085,9 +1083,7 @@ var LibraryEmbind = {
         var setterArgumentType = elementTypes[i + elementsLength];
         var setter = elt.setter;
         var setterContext = elt.setterContext;
-        elt.read = (ptr) => {
-          return getterReturnType['fromWireType'](getter(getterContext, ptr));
-        };
+        elt.read = (ptr) => getterReturnType['fromWireType'](getter(getterContext, ptr));
         elt.write = (ptr, o) => {
           var destructors = [];
           setter(setterContext, ptr, setterArgumentType['toWireType'](destructors, o));
@@ -1191,10 +1187,7 @@ var LibraryEmbind = {
         var setter = field.setter;
         var setterContext = field.setterContext;
         fields[fieldName] = {
-          read: (ptr) => {
-            return getterReturnType['fromWireType'](
-                getter(getterContext, ptr));
-          },
+          read: (ptr) => getterReturnType['fromWireType'](getter(getterContext, ptr)),
           write: (ptr, o) => {
             var destructors = [];
             setter(setterContext, ptr, setterArgumentType['toWireType'](destructors, o));

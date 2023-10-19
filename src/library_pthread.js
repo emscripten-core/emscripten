@@ -694,9 +694,7 @@ var LibraryPThread = {
     return 0;
   },
 
-  emscripten_has_threading_support: () => {
-    return typeof SharedArrayBuffer != 'undefined';
-  },
+  emscripten_has_threading_support: () => typeof SharedArrayBuffer != 'undefined',
 
   emscripten_num_logical_cores: () => {
 #if ENVIRONMENT_MAY_BE_NODE
@@ -727,9 +725,7 @@ var LibraryPThread = {
   $pthreadCreateProxied__internal: true,
   $pthreadCreateProxied__proxy: 'sync',
   $pthreadCreateProxied__deps: ['__pthread_create_js'],
-  $pthreadCreateProxied: (pthread_ptr, attr, startRoutine, arg) => {
-    return ___pthread_create_js(pthread_ptr, attr, startRoutine, arg);
-  },
+  $pthreadCreateProxied: (pthread_ptr, attr, startRoutine, arg) => ___pthread_create_js(pthread_ptr, attr, startRoutine, arg),
 
 #if OFFSCREENCANVAS_SUPPORT
   // ASan wraps the emscripten_builtin_pthread_create call in

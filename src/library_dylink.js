@@ -877,11 +877,11 @@ var LibraryDylink = {
 
     // now load needed libraries and the module itself.
     if (flags.loadAsync) {
-      return metadata.neededDynlibs.reduce((chain, dynNeeded) => {
-        return chain.then(() => {
-          return loadDynamicLibrary(dynNeeded, flags);
-        });
-      }, Promise.resolve()).then(loadModule);
+      return metadata.neededDynlibs
+        .reduce((chain, dynNeeded) => chain.then(() =>
+          loadDynamicLibrary(dynNeeded, flags)
+        ), Promise.resolve())
+        .then(loadModule);
     }
 
     metadata.neededDynlibs.forEach((needed) => loadDynamicLibrary(needed, flags, localScope));
@@ -1089,18 +1089,18 @@ var LibraryDylink = {
 
     // Load binaries asynchronously
     addRunDependency('loadDylibs');
-    dynamicLibraries.reduce((chain, lib) => {
-      return chain.then(() => {
-        return loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true, allowUndefined: true});
+    dynamicLibraries
+      .reduce((chain, lib) => chain.then(() =>
+        loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true, allowUndefined: true})
+      ), Promise.resolve())
+      .then(() => {
+        // we got them all, wonderful
+        reportUndefinedSymbols();
+        removeRunDependency('loadDylibs');
+  #if DYLINK_DEBUG
+        dbg('loadDylibs done!');
+  #endif
       });
-    }, Promise.resolve()).then(() => {
-      // we got them all, wonderful
-      reportUndefinedSymbols();
-      removeRunDependency('loadDylibs');
-#if DYLINK_DEBUG
-      dbg('loadDylibs done!');
-#endif
-    });
   },
 
   // void* dlopen(const char* filename, int flags);

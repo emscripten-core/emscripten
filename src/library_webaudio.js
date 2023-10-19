@@ -35,9 +35,7 @@ let LibraryWebAudio = {
 
   // Call this function from JavaScript to get the Web Audio object corresponding to the given
   // Wasm handle ID.
-  $emscriptenGetAudioObject: (objectHandle) => {
-    return EmAudio[objectHandle];
-  },
+  $emscriptenGetAudioObject: (objectHandle) => EmAudio[objectHandle],
 
   // emscripten_create_audio_context() does not itself use emscriptenGetAudioObject() function, but mark it as a
   // dependency, because the user will not be able to utilize the node unless they call emscriptenGetAudioObject()
@@ -276,9 +274,7 @@ let LibraryWebAudio = {
   },
 #endif // ~AUDIO_WORKLET
 
-  emscripten_current_thread_is_audio_worklet: () => {
-    return typeof AudioWorkletGlobalScope !== 'undefined';
-  },
+  emscripten_current_thread_is_audio_worklet: () => typeof AudioWorkletGlobalScope !== 'undefined',
 
   emscripten_audio_worklet_post_function_v: (audioContext, funcPtr) => {
     (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : globalThis['messagePort']).postMessage({'_wsc': funcPtr, 'x': [] }); // "WaSm Call"

@@ -7,15 +7,11 @@
 {{{
   // Helper function to export a symbol on the module object
   // if requested.
-  global.maybeExport = (x) => {
-    return MODULARIZE && EXPORT_ALL ? `Module['${x}'] = ` : '';
-  };
+  global.maybeExport = (x) => MODULARIZE && EXPORT_ALL ? `Module['${x}'] = ` : '';
   // Export to the AudioWorkletGlobalScope the needed variables to access
   // the heap. AudioWorkletGlobalScope is unable to access global JS vars
   // in the compiled main JS file.
-  global.maybeExportIfAudioWorklet = (x) => {
-    return (MODULARIZE && EXPORT_ALL) || AUDIO_WORKLET ? `Module['${x}'] = ` : '';
-  };
+  global.maybeExportIfAudioWorklet = (x) => (MODULARIZE && EXPORT_ALL) || AUDIO_WORKLET ? `Module['${x}'] = ` : '';
   null;
 }}}
 

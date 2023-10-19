@@ -94,105 +94,91 @@ var LibraryIDBStore = {
 #if ASYNCIFY
   emscripten_idb_load__async: true,
   emscripten_idb_load__deps: ['malloc'],
-  emscripten_idb_load: (db, id, pbuffer, pnum, perror) => {
-    return Asyncify.handleSleep((wakeUp) => {
-      IDBStore.getFile(UTF8ToString(db), UTF8ToString(id), (error, byteArray) => {
-        if (error) {
-          {{{ makeSetValue('perror', 0, '1', 'i32') }}};
-          wakeUp();
-          return;
-        }
-        var buffer = _malloc(byteArray.length); // must be freed by the caller!
-        HEAPU8.set(byteArray, buffer);
-        {{{ makeSetValue('pbuffer', 0, 'buffer', 'i32') }}};
-        {{{ makeSetValue('pnum',    0, 'byteArray.length', 'i32') }}};
-        {{{ makeSetValue('perror',  0, '0', 'i32') }}};
+  emscripten_idb_load: (db, id, pbuffer, pnum, perror) => Asyncify.handleSleep((wakeUp) => {
+    IDBStore.getFile(UTF8ToString(db), UTF8ToString(id), (error, byteArray) => {
+      if (error) {
+        {{{ makeSetValue('perror', 0, '1', 'i32') }}};
         wakeUp();
-      });
+        return;
+      }
+      var buffer = _malloc(byteArray.length); // must be freed by the caller!
+      HEAPU8.set(byteArray, buffer);
+      {{{ makeSetValue('pbuffer', 0, 'buffer', 'i32') }}};
+      {{{ makeSetValue('pnum',    0, 'byteArray.length', 'i32') }}};
+      {{{ makeSetValue('perror',  0, '0', 'i32') }}};
+      wakeUp();
     });
-  },
+  }),
   emscripten_idb_store__async: true,
-  emscripten_idb_store: (db, id, ptr, num, perror) => {
-    return Asyncify.handleSleep((wakeUp) => {
-      IDBStore.setFile(UTF8ToString(db), UTF8ToString(id), new Uint8Array(HEAPU8.subarray(ptr, ptr+num)), (error) => {
-        {{{ makeSetValue('perror', 0, '!!error', 'i32') }}};
-        wakeUp();
-      });
+  emscripten_idb_store: (db, id, ptr, num, perror) => Asyncify.handleSleep((wakeUp) => {
+    IDBStore.setFile(UTF8ToString(db), UTF8ToString(id), new Uint8Array(HEAPU8.subarray(ptr, ptr+num)), (error) => {
+      {{{ makeSetValue('perror', 0, '!!error', 'i32') }}};
+      wakeUp();
     });
-  },
+  }),
   emscripten_idb_delete__async: true,
-  emscripten_idb_delete: (db, id, perror) => {
-    return Asyncify.handleSleep((wakeUp) => {
-      IDBStore.deleteFile(UTF8ToString(db), UTF8ToString(id), (error) => {
-        {{{ makeSetValue('perror', 0, '!!error', 'i32') }}};
-        wakeUp();
-      });
+  emscripten_idb_delete: (db, id, perror) => Asyncify.handleSleep((wakeUp) => {
+    IDBStore.deleteFile(UTF8ToString(db), UTF8ToString(id), (error) => {
+      {{{ makeSetValue('perror', 0, '!!error', 'i32') }}};
+      wakeUp();
     });
-  },
+  }),
   emscripten_idb_exists__async: true,
-  emscripten_idb_exists: (db, id, pexists, perror) => {
-    return Asyncify.handleSleep((wakeUp) => {
-      IDBStore.existsFile(UTF8ToString(db), UTF8ToString(id), (error, exists) => {
-        {{{ makeSetValue('pexists', 0, '!!exists', 'i32') }}};
-        {{{ makeSetValue('perror',  0, '!!error', 'i32') }}};
-        wakeUp();
-      });
+  emscripten_idb_exists: (db, id, pexists, perror) => Asyncify.handleSleep((wakeUp) => {
+    IDBStore.existsFile(UTF8ToString(db), UTF8ToString(id), (error, exists) => {
+      {{{ makeSetValue('pexists', 0, '!!exists', 'i32') }}};
+      {{{ makeSetValue('perror',  0, '!!error', 'i32') }}};
+      wakeUp();
     });
-  },
+  }),
   emscripten_idb_clear__async: true,
-  emscripten_idb_clear: (db, perror) => {
-    return Asyncify.handleSleep((wakeUp) => {
-      IDBStore.clearStore(UTF8ToString(db), (error) => {
-        {{{ makeSetValue('perror', 0, '!!error', 'i32') }}};
-        wakeUp();
-      });
+  emscripten_idb_clear: (db, perror) => Asyncify.handleSleep((wakeUp) => {
+    IDBStore.clearStore(UTF8ToString(db), (error) => {
+      {{{ makeSetValue('perror', 0, '!!error', 'i32') }}};
+      wakeUp();
     });
-  },
+  }),
   // extra worker methods - proxied
   emscripten_idb_load_blob__async: true,
-  emscripten_idb_load_blob: (db, id, pblob, perror) => {
-    return Asyncify.handleSleep((wakeUp) => {
-      assert(!IDBStore.pending);
-      IDBStore.pending = (msg) => {
-        IDBStore.pending = null;
-        var blob = msg.blob;
-        if (!blob) {
-          {{{ makeSetValue('perror', 0, '1', 'i32') }}};
-          wakeUp();
-          return;
-        }
-        assert(blob instanceof Blob);
-        var blobId = IDBStore.blobs.length;
-        IDBStore.blobs.push(blob);
-        {{{ makeSetValue('pblob', 0, 'blobId', 'i32') }}};
+  emscripten_idb_load_blob: (db, id, pblob, perror) => Asyncify.handleSleep((wakeUp) => {
+    assert(!IDBStore.pending);
+    IDBStore.pending = (msg) => {
+      IDBStore.pending = null;
+      var blob = msg.blob;
+      if (!blob) {
+        {{{ makeSetValue('perror', 0, '1', 'i32') }}};
         wakeUp();
-      };
-      postMessage({
-        target: 'IDBStore',
-        method: 'loadBlob',
-        db: UTF8ToString(db),
-        id: UTF8ToString(id)
-      });
+        return;
+      }
+      assert(blob instanceof Blob);
+      var blobId = IDBStore.blobs.length;
+      IDBStore.blobs.push(blob);
+      {{{ makeSetValue('pblob', 0, 'blobId', 'i32') }}};
+      wakeUp();
+    };
+    postMessage({
+      target: 'IDBStore',
+      method: 'loadBlob',
+      db: UTF8ToString(db),
+      id: UTF8ToString(id)
     });
-  },
+  }),
   emscripten_idb_store_blob__async: true,
-  emscripten_idb_store_blob: (db, id, ptr, num, perror) => {
-    return Asyncify.handleSleep((wakeUp) => {
-      assert(!IDBStore.pending);
-      IDBStore.pending = (msg) => {
-        IDBStore.pending = null;
-        {{{ makeSetValue('perror', 0, '!!msg.error', 'i32') }}};
-        wakeUp();
-      };
-      postMessage({
-        target: 'IDBStore',
-        method: 'storeBlob',
-        db: UTF8ToString(db),
-        id: UTF8ToString(id),
-        blob: new Blob([new Uint8Array(HEAPU8.subarray(ptr, ptr+num))])
-      });
+  emscripten_idb_store_blob: (db, id, ptr, num, perror) => Asyncify.handleSleep((wakeUp) => {
+    assert(!IDBStore.pending);
+    IDBStore.pending = (msg) => {
+      IDBStore.pending = null;
+      {{{ makeSetValue('perror', 0, '!!msg.error', 'i32') }}};
+      wakeUp();
+    };
+    postMessage({
+      target: 'IDBStore',
+      method: 'storeBlob',
+      db: UTF8ToString(db),
+      id: UTF8ToString(id),
+      blob: new Blob([new Uint8Array(HEAPU8.subarray(ptr, ptr+num))])
     });
-  },
+  }),
   emscripten_idb_read_from_blob: (blobId, start, num, buffer) => {
     var blob = IDBStore.blobs[blobId];
     if (!blob) return 1;
