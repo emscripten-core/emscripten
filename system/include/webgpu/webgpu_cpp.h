@@ -282,7 +282,7 @@ namespace wgpu {
         DepthClipControl = 0x00000001,
         Depth32FloatStencil8 = 0x00000002,
         TimestampQuery = 0x00000003,
-        PipelineStatisticsQuery = 0x00000004,
+        ChromiumExperimentalPipelineStatisticsQuery = 0x00000004,
         TextureCompressionBC = 0x00000005,
         TextureCompressionETC2 = 0x00000006,
         TextureCompressionASTC = 0x00000007,

@@ -400,7 +400,7 @@ var LibraryWebGPU = {
       'depth-clip-control',
       'depth32float-stencil8',
       'timestamp-query',
-      'pipeline-statistics-query',
+      'chromium-experimental-pipeline-statistics-query',
       'texture-compression-bc',
       'texture-compression-etc2',
       'texture-compression-astc',
