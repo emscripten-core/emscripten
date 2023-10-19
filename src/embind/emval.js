@@ -315,7 +315,6 @@ var LibraryEmVal = {
 
   _emval_get_method_caller__deps: [
     '$emval_addMethodCaller', '$emval_lookupTypes',
-    '$makeLegalFunctionName',
     '$reflectConstruct', '$emval_returnValue',
 #if DYNAMIC_EXECUTION
     '$newFunc',
@@ -343,10 +342,8 @@ var LibraryEmVal = {
       return emval_returnValue(retType, destructorsRef, rv);
     };
 #else
-    var signatureName = retType.name + "_$" + types.map(t => t.name).join("_") + "$";
-    var functionName = makeLegalFunctionName("methodCaller_" + signatureName);
     var functionBody =
-      `return function ${functionName}(obj, func, destructorsRef, args) {\n`;
+      `return function (obj, func, destructorsRef, args) {\n`;
 
     var offset = 0;
     var argsList = []; // 'obj?, arg0, arg1, arg2, ... , argN'
@@ -384,7 +381,8 @@ var LibraryEmVal = {
     params.push(functionBody);
     var invokerFunction = newFunc(Function, params).apply(null, args);
 #endif
-    return emval_addMethodCaller(invokerFunction);
+    var functionName = `methodCaller<(${types.map(t => t.name).join(', ')}) => ${retType.name}>`;
+    return emval_addMethodCaller(createNamedFunction(functionName, invokerFunction));
   },
 
   _emval_call_method__deps: ['$getStringOrSymbol', '$emval_methodCallers', '$Emval'],
