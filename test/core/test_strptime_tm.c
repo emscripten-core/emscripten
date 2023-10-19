@@ -62,11 +62,29 @@ int main() {
   ReadMonth("december");
 
 
-  // check that %% is handled correctly
-
+  // check that %% is handled correctly for normal strings
   strptime("2020-05-01T00:01%z","%Y-%m-%dT%H:%M%%z",&tm);
   printf("%d\n",tm.tm_min);
   
+  // check that %% is handled correctly even if the letter after it is 
+  // in EQUIVALENT_MATCHERS
+  strptime("%D2020-05-01T00:01","%%D%Y-%m-%dT%H:%M",&tm);
+  printf("%d,%d\n",tm.tm_year+1900,tm.tm_min);
+
+
+  // check that EQUIVALENT_MATCHERS works
+  // %c == %a %b %d %H:%M:%S %Y
+  strptime("Sun March 31 12:34:56 2345","%c",&tm);
+  printf("%d,%d,%d,%d,%d,%d\n",tm.tm_year+1900,tm.tm_mon+1,tm.tm_mday,tm.tm_hour,tm.tm_min,tm.tm_sec);
+
+  // check that EQUIVALENT_MATCHERS works twice
+  //      'T':  '%H\\:%M\\:%S',
+  //      'D':  '%m\\/%d\\/%y',
+  strptime("12:34:56 01/02/03","%T %D",&tm);
+  printf("%d,%d,%d,%d,%d,%d\n",tm.tm_year+1900,tm.tm_mon+1,tm.tm_mday,tm.tm_hour,tm.tm_min,tm.tm_sec);
+
+
+
   // check timezone offsets
   strptime("2020-05-01T00:00+0100","%Y-%m-%dT%H:%M%z",&tm);
   printf("%ld\n",tm.tm_gmtoff); // 3600

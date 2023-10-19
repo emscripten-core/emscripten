@@ -965,27 +965,23 @@ addToLibrary({
 
     // reduce number of matchers
     var EQUIVALENT_MATCHERS = {
-      '%A':  '%a',
-      '%B':  '%b',
-      '%c':  '%a %b %d %H:%M:%S %Y',
-      '%D':  '%m\\/%d\\/%y',
-      '%e':  '%d',
-      '%F':  '%Y-%m-%d',
-      '%h':  '%b',
-      '%R':  '%H\\:%M',
-      '%r':  '%I\\:%M\\:%S\\s%p',
-      '%T':  '%H\\:%M\\:%S',
-      '%x':  '%m\\/%d\\/(?:%y|%Y)',
-      '%X':  '%H\\:%M\\:%S'
+      'A':  '%a',
+      'B':  '%b',
+      'c':  '%a %b %d %H:%M:%S %Y',
+      'D':  '%m\\/%d\\/%y',
+      'e':  '%d',
+      'F':  '%Y-%m-%d',
+      'h':  '%b',
+      'R':  '%H\\:%M',
+      'r':  '%I\\:%M\\:%S\\s%p',
+      'T':  '%H\\:%M\\:%S',
+      'x':  '%m\\/%d\\/(?:%y|%Y)',
+      'X':  '%H\\:%M\\:%S'
     };
-    for (var matcher in EQUIVALENT_MATCHERS) {
-      pattern = pattern.replace(matcher, EQUIVALENT_MATCHERS[matcher]);
-    }
-
     // TODO: take care of locale
 
     var DATE_PATTERNS = {
-      /* weekday name */     'a': '(?:Sun(?:day)?)|(?:Mon(?:day)?)|(?:Tue(?:sday)?)|(?:Wed(?:nesday)?)|(?:Thu(?:rsday)?)|(?:Fri(?:day)?)|(?:Sat(?:urday)?)',
+      /* weekday name */    'a': '(?:Sun(?:day)?)|(?:Mon(?:day)?)|(?:Tue(?:sday)?)|(?:Wed(?:nesday)?)|(?:Thu(?:rsday)?)|(?:Fri(?:day)?)|(?:Sat(?:urday)?)',
       /* month name */      'b': '(?:Jan(?:uary)?)|(?:Feb(?:ruary)?)|(?:Mar(?:ch)?)|(?:Apr(?:il)?)|May|(?:Jun(?:e)?)|(?:Jul(?:y)?)|(?:Aug(?:ust)?)|(?:Sep(?:tember)?)|(?:Oct(?:ober)?)|(?:Nov(?:ember)?)|(?:Dec(?:ember)?)',
       /* century */         'C': '\\d\\d',
       /* day of month */    'd': '0[1-9]|[1-9](?!\\d)|1\\d|2\\d|30|31',
@@ -1013,6 +1009,10 @@ addToLibrary({
     var pattern_out = "";
     var in_percent = false;
     var capture = [];
+    // go through each character in the string finding 
+    // the %X %Y etc. patterns. We used to do this with find, but that 
+    // approach caused bugs when doing something like 
+    // %%Z (a literal % followed by a Z). This is less fragile.
     for (var i = 0; i < pattern.length; i++) {
       var c = pattern[i];
       if (c === "%") {
@@ -1020,9 +1020,16 @@ addToLibrary({
           pattern_out += "%";
         }
         in_percent = !in_percent;
-      } else if (in_percent && c in DATE_PATTERNS) {
-        capture.push(c)
-        pattern_out += "(" + DATE_PATTERNS[c] + ")";
+      } else if (in_percent){
+        if (c in EQUIVALENT_MATCHERS){
+          // replace this pattern with the equivalent then
+          // reset the loop to this position
+          pattern=pattern.slice(0,i-1)+EQUIVALENT_MATCHERS[c]+pattern.slice(i+1)
+          i=i-2;
+        }else if (c in DATE_PATTERNS) {
+          capture.push(c)
+          pattern_out += "(" + DATE_PATTERNS[c] + ")";
+        }
         in_percent = false;
       } else {
         pattern_out += c;
