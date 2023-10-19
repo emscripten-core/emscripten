@@ -424,9 +424,7 @@ var LibrarySDL = {
         usePageCanvas,
         source,
 
-        isFlagSet: (flag) => {
-          return flags & flag;
-        }
+        isFlagSet: (flag) => flags & flag
       };
 
       return surf;
@@ -1812,9 +1810,7 @@ var LibrarySDL = {
 
   SDL_CreateRGBSurface__deps: ['malloc', 'free'],
   SDL_CreateRGBSurface__proxy: 'sync',
-  SDL_CreateRGBSurface: (flags, width, height, depth, rmask, gmask, bmask, amask) => {
-    return SDL.makeSurface(width, height, flags, false, 'CreateRGBSurface', rmask, gmask, bmask, amask);
-  },
+  SDL_CreateRGBSurface: (flags, width, height, depth, rmask, gmask, bmask, amask) => SDL.makeSurface(width, height, flags, false, 'CreateRGBSurface', rmask, gmask, bmask, amask),
 
   SDL_CreateRGBSurfaceFrom__proxy: 'sync',
   SDL_CreateRGBSurfaceFrom: (pixels, width, height, depth, pitch, rmask, gmask, bmask, amask) => {
@@ -3027,9 +3023,7 @@ var LibrarySDL = {
   },
 
   Mix_PausedMusic__proxy: 'sync',
-  Mix_PausedMusic: () => {
-    return (SDL.music.audio && SDL.music.audio.paused) ? 1 : 0;
-  },
+  Mix_PausedMusic: () => (SDL.music.audio && SDL.music.audio.paused) ? 1 : 0,
 
   // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_33.html#SEC33
   Mix_Resume__proxy: 'sync',
@@ -3306,9 +3300,7 @@ var LibrarySDL = {
   // SDL 2
 
   SDL_GL_ExtensionSupported__proxy: 'sync',
-  SDL_GL_ExtensionSupported: (extension) => {
-    return Module.ctx.getExtension(extension) | 0;
-  },
+  SDL_GL_ExtensionSupported: (extension) => Module.ctx.getExtension(extension) | 0,
 
   SDL_DestroyWindow: (window) => {},
 

@@ -44,9 +44,7 @@ addToLibrary({
         HEAPU8.set(fileData.subarray(offset, offset + length), buffer);
         return length;
       },
-      getSize: (file) => {
-        return wasmFS$JSMemoryFiles[file] ? wasmFS$JSMemoryFiles[file].length : 0;
-      },
+      getSize: (file) => wasmFS$JSMemoryFiles[file] ? wasmFS$JSMemoryFiles[file].length : 0,
     };
   },
 });
