@@ -1055,8 +1055,6 @@
             "count": 20,
             "label": 8,
             "nextInChain": 0,
-            "pipelineStatistics": 24,
-            "pipelineStatisticsCount": 32,
             "type": 16
         },
         "WGPUQueueDescriptor": {
