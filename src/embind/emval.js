@@ -315,6 +315,7 @@ var LibraryEmVal = {
 
   _emval_get_method_caller__deps: [
     '$emval_addMethodCaller', '$emval_lookupTypes',
+    '$createNamedFunction',
     '$reflectConstruct', '$emval_returnValue',
 #if DYNAMIC_EXECUTION
     '$newFunc',
