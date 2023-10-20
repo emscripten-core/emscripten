@@ -13,6 +13,7 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 import contextlib
 import difflib
 import hashlib
+import itertools
 import logging
 import multiprocessing
 import os
@@ -509,7 +510,14 @@ def parameterized(parameters):
       # runs test_something(4, 5, 6)
   """
   def decorator(func):
-    func._parameterize = parameters
+    prev = getattr(func, '_parameterize', None)
+    if prev:
+      # If we're parameterizing 2nd time, construct a cartesian product for various combinations.
+      func._parameterize = {
+        '_'.join(filter(None, [k1, k2])): v1 + v2 for (k1, v1), (k2, v2) in itertools.product(prev.items(), parameters.items())
+      }
+    else:
+      func._parameterize = parameters
     return func
   return decorator
 
