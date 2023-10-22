@@ -10398,7 +10398,9 @@ int main () {
                           '-lembind',
                           '-fno-rtti',
                           '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0',
-                          '-sDYNAMIC_EXECUTION=0'
+                          '-sDYNAMIC_EXECUTION=0',
+                          '-lc++',
+                          '-lc++abi'
                           ]
 
     sources = {
