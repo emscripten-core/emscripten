@@ -1226,8 +1226,10 @@ var LibraryPThread = {
     // pthread_self to return 0 if there is no live runtime.
     var pthread_ptr = _pthread_self();
     if (pthread_ptr) {
-      // If we are using Atomics.waitAsync as our notification mechanism, wait for
-      // a notification before processing the mailbox to avoid missing any work.
+      // If we are using Atomics.waitAsync as our notification mechanism, wait
+      // for a notification before processing the mailbox to avoid missing any
+      // work that could otherwise arrive after we've finished processing the
+      // mailbox and before we're ready for the next notification.
       __emscripten_thread_mailbox_await(pthread_ptr);
       callUserCallback(() => __emscripten_check_mailbox());
     }
@@ -1236,6 +1238,9 @@ var LibraryPThread = {
   _emscripten_thread_mailbox_await__deps: ['$checkMailbox'],
   _emscripten_thread_mailbox_await: (pthread_ptr) => {
     if (typeof Atomics.waitAsync === 'function') {
+      // Wait on the pthread's initial self-pointer field because it is easy and
+      // safe to access from sending threads that need to notify the waiting
+      // thread.
       // TODO: How to make this work with wasm64?
       var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('pthread_ptr', 'i32') }}}, pthread_ptr);
 #if ASSERTIONS
@@ -1245,8 +1250,14 @@ var LibraryPThread = {
       var waitingAsync = pthread_ptr + {{{ C_STRUCTS.pthread.waiting_async }}};
       Atomics.store(HEAP32, {{{ getHeapOffset('waitingAsync', 'i32') }}}, 1);
     }
+    // If `Atomics.waitAsync` is not implemented, then we will always fall back
+    // to postMessage and there is no need to do anything here.
   },
 
+  // PostMessage is used to notify threads instead of Atomics.notify whenever
+  // the environment does not implement Atomics.waitAsync or when messaging a
+  // new thread that has not had a chance to initialize itself and execute
+  // Atomics.waitAsync to prepare for the notification.
   _emscripten_notify_mailbox_postmessage__deps: ['$checkMailbox'],
   _emscripten_notify_mailbox_postmessage: (targetThreadId, currThreadId, mainThreadId) => {
     if (targetThreadId == currThreadId) {
