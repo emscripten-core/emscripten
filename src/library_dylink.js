@@ -1075,6 +1075,9 @@ var LibraryDylink = {
   $loadDylibs__internal: true,
   $loadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols'],
   $loadDylibs: () => {
+#if PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return;
+#endif
     if (!dynamicLibraries.length) {
 #if DYLINK_DEBUG
       dbg('loadDylibs: no libraries to preload');
