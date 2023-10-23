@@ -890,9 +890,6 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
 
 class libnoexit(Library):
   name = 'libnoexit'
-  # __cxa_atexit calls can be generated during LTO the implemenation cannot
-  # itself be LTO.  See `get_libcall_files` below for more details.
-  force_object_files = True
   src_dir = 'system/lib/libc'
   src_files = ['atexit_dummy.c']
 
