@@ -2440,6 +2440,18 @@ int main(int argc, char **argv) {
     self.emcc_args += args
     self.do_core_test('test_aborting_new.cpp')
 
+  @parameterized({
+    'nogrow': (['-sABORTING_MALLOC=0'],),
+    'grow': (['-sABORTING_MALLOC=0', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=18MB'],)
+  })
+  @no_asan('requires more memory when growing')
+  @no_lsan('requires more memory when growing')
+  @no_4gb('depends on MAXIMUM_MEMORY')
+  @no_2gb('depends on MAXIMUM_MEMORY')
+  def test_nothrow_new(self, args):
+    self.emcc_args += args
+    self.do_core_test('test_nothrow_new.cpp')
+
   @no_wasm2js('no WebAssembly.Memory()')
   @no_asan('ASan alters the memory size')
   @no_lsan('LSan alters the memory size')
