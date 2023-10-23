@@ -1250,7 +1250,9 @@ addToLibrary({
   // errno.h
   // ==========================================================================
 
-  $ERRNO_CODES__postset: `ERRNO_CODES = {
+  // We use a string literal here to avoid the string quotes on the object
+  // keys being removed when processed by jsifier.
+  $ERRNO_CODES: `{
     'EPERM': {{{ cDefs.EPERM }}},
     'ENOENT': {{{ cDefs.ENOENT }}},
     'ESRCH': {{{ cDefs.ESRCH }}},
@@ -1372,8 +1374,7 @@ addToLibrary({
     'ENOTRECOVERABLE': {{{ cDefs.ENOTRECOVERABLE }}},
     'EOWNERDEAD': {{{ cDefs.EOWNERDEAD }}},
     'ESTRPIPE': {{{ cDefs.ESTRPIPE }}},
-  };`,
-  $ERRNO_CODES: {},
+  }`,
   $ERRNO_MESSAGES: {
     0: 'Success',
     {{{ cDefs.EPERM }}}: 'Not super-user',
