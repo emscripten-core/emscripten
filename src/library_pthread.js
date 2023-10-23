@@ -470,10 +470,10 @@ var LibraryPThread = {
       // Use Trusted Types compatible wrappers.
       if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
         var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: (ignored) => pthreadMainJs });
-        worker = new Worker(p.createScriptURL('ignored'));
+        worker = new Worker(p.createScriptURL('ignored'){{{ EXPORT_ES6 ? ", {type: 'module'}" : '' }}});
       } else
 #endif
-      worker = new Worker(pthreadMainJs);
+      worker = new Worker(pthreadMainJs{{{ EXPORT_ES6 ? ", {type: 'module'}" : '' }}});
 #if EXPORT_ES6 && USE_ES6_IMPORT_META
     }
 #endif
