@@ -211,6 +211,7 @@ var LibraryEmbind = {
         ['float', 'number'],
         ['double', 'number'],
         ['int64_t', 'bigint'],
+        ['uint64_t', 'bigint'],
         ['void', 'void'],
         ['std::string', jsString],
         ['std::basic_string<unsigned char>', jsString],
