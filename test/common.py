@@ -953,6 +953,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   # Build JavaScript code from source code
   def build(self, filename, libraries=None, includes=None, force_c=False, js_outfile=True, emcc_args=None, output_basename=None):
+    if not os.path.exists(filename):
+      filename = test_file(filename)
     suffix = '.js' if js_outfile else '.wasm'
     compiler = [compiler_for(filename, force_c)]
     if compiler[0] == EMCC:
