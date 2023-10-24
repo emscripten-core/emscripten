@@ -83,9 +83,7 @@ var LibraryGL = {
     return HEAPU16;
   },
 
-  $heapAccessShiftForWebGLHeap: (heap) => {
-    return 31 - Math.clz32(heap.BYTES_PER_ELEMENT);
-  },
+  $heapAccessShiftForWebGLHeap: (heap) => 31 - Math.clz32(heap.BYTES_PER_ELEMENT),
 
 #if MIN_WEBGL_VERSION == 1
   $webgl_enable_ANGLE_instanced_arrays: (ctx) => {
@@ -100,9 +98,7 @@ var LibraryGL = {
   },
 
   emscripten_webgl_enable_ANGLE_instanced_arrays__deps: ['$webgl_enable_ANGLE_instanced_arrays'],
-  emscripten_webgl_enable_ANGLE_instanced_arrays: (ctx) => {
-    return webgl_enable_ANGLE_instanced_arrays(GL.contexts[ctx].GLctx);
-  },
+  emscripten_webgl_enable_ANGLE_instanced_arrays: (ctx) => webgl_enable_ANGLE_instanced_arrays(GL.contexts[ctx].GLctx),
 
   $webgl_enable_OES_vertex_array_object: (ctx) => {
     // Extension available in WebGL 1 from Firefox 25 and WebKit 536.28/desktop Safari 6.0.3 onwards. Core feature in WebGL 2.
@@ -117,9 +113,7 @@ var LibraryGL = {
   },
 
   emscripten_webgl_enable_OES_vertex_array_object__deps: ['$webgl_enable_OES_vertex_array_object'],
-  emscripten_webgl_enable_OES_vertex_array_object: (ctx) => {
-    return webgl_enable_OES_vertex_array_object(GL.contexts[ctx].GLctx);
-  },
+  emscripten_webgl_enable_OES_vertex_array_object: (ctx) => webgl_enable_OES_vertex_array_object(GL.contexts[ctx].GLctx),
 
   $webgl_enable_WEBGL_draw_buffers: (ctx) => {
     // Extension available in WebGL 1 from Firefox 28 onwards. Core feature in WebGL 2.
@@ -131,9 +125,7 @@ var LibraryGL = {
   },
 
   emscripten_webgl_enable_WEBGL_draw_buffers__deps: ['$webgl_enable_WEBGL_draw_buffers'],
-  emscripten_webgl_enable_WEBGL_draw_buffers: (ctx) => {
-    return webgl_enable_WEBGL_draw_buffers(GL.contexts[ctx].GLctx);
-  },
+  emscripten_webgl_enable_WEBGL_draw_buffers: (ctx) => webgl_enable_WEBGL_draw_buffers(GL.contexts[ctx].GLctx),
 #endif
 
   $webgl_enable_WEBGL_multi_draw: (ctx) => {
@@ -142,9 +134,7 @@ var LibraryGL = {
   },
 
   emscripten_webgl_enable_WEBGL_multi_draw__deps: ['$webgl_enable_WEBGL_multi_draw'],
-  emscripten_webgl_enable_WEBGL_multi_draw: (ctx) => {
-    return webgl_enable_WEBGL_multi_draw(GL.contexts[ctx].GLctx);
-  },
+  emscripten_webgl_enable_WEBGL_multi_draw: (ctx) => webgl_enable_WEBGL_multi_draw(GL.contexts[ctx].GLctx),
 
   $GL__postset: 'var GLctx;',
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
@@ -266,9 +256,7 @@ var LibraryGL = {
     // Precompute a lookup table for the function ceil(log2(x)), i.e. how many bits are needed to represent x, or,
     // if x was rounded up to next pow2, which index is the single '1' bit at?
     // Then log2ceilLookup[x] returns ceil(log2(x)).
-    log2ceilLookup: (i) => {
-      return 32 - Math.clz32(i === 0 ? 0 : i - 1);
-    },
+    log2ceilLookup: (i) => 32 - Math.clz32(i === 0 ? 0 : i - 1),
 
     generateTempBuffers: (quads, context) => {
       var largestIndex = GL.log2ceilLookup(GL.MAX_TEMP_BUFFER_SIZE);
@@ -2114,9 +2102,7 @@ var LibraryGL = {
   // Closure does counterproductive inlining: https://github.com/google/closure-compiler/issues/3203, so prevent
   // inlining manually.
   $webglGetLeftBracePos__docs: '/** @noinline */',
-  $webglGetLeftBracePos: (name) => {
-    return name.slice(-1) == ']' && name.lastIndexOf('[');
-  },
+  $webglGetLeftBracePos: (name) => name.slice(-1) == ']' && name.lastIndexOf('['),
 
   glGetUniformLocation__deps: ['$jstoi_q', '$webglPrepareUniformLocationsBeforeFirstUse', '$webglGetLeftBracePos'],
   glGetUniformLocation: (program, name) => {

@@ -76,6 +76,10 @@ EM_BOOL main_loop(double time, void *userData) {
     emscripten_out("main: waking worker");
     emscripten_atomic_notify((int32_t*)&addr, 1);
 
+#ifndef __EMSCRIPTEN_WASM_WORKERS__
+    pthread_join(t, NULL);
+#endif
+
     return EM_FALSE;
   }
   return EM_TRUE;

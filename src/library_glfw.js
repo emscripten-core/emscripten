@@ -627,9 +627,7 @@ var LibraryGLFW = {
 #endif
     },
 
-    getTime: () => {
-      return _emscripten_get_now() / 1000;
-    },
+    getTime: () => _emscripten_get_now() / 1000,
 
     /* GLFW2 wrapping */
 

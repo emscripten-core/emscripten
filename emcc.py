@@ -1226,10 +1226,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 ''')
     return 0
 
-  if '-dumpmachine' in args:
-    print(shared.get_llvm_target())
-    return 0
-
   if '-dumpversion' in args: # gcc's doc states "Print the compiler version [...] and don't do anything else."
     print(shared.EMSCRIPTEN_VERSION)
     return 0
@@ -1261,7 +1257,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   state = EmccState(args)
   options, newargs = phase_parse_arguments(state)
 
-  shared.check_sanity()
+  if not shared.SKIP_SUBPROCS:
+    shared.check_sanity()
 
   if 'EMMAKEN_NO_SDK' in os.environ:
     exit_with_error('EMMAKEN_NO_SDK is no longer supported.  The standard -nostdlib and -nostdinc flags should be used instead')
@@ -1281,6 +1278,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   settings.limit_settings(COMPILE_TIME_SETTINGS)
 
   newargs, input_files = phase_setup(options, state, newargs)
+
+  if '-dumpmachine' in newargs:
+    print(shared.get_llvm_target())
+    return 0
+
+  if not input_files and not state.link_flags:
+    exit_with_error('no input files')
 
   if options.reproduce:
     create_reproduce_file(options.reproduce, args)
@@ -1328,7 +1332,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     return 0
 
   js_syms = {}
-  if not settings.SIDE_MODULE or settings.ASYNCIFY:
+  if (not settings.SIDE_MODULE or settings.ASYNCIFY) and not shared.SKIP_SUBPROCS:
     js_info = get_js_sym_info()
     if not settings.SIDE_MODULE:
       js_syms = js_info['deps']
@@ -1557,9 +1561,6 @@ def phase_setup(options, state, newargs):
     elif arg == '-':
       input_files.append((i, arg))
       newargs[i] = ''
-
-  if not input_files and not state.link_flags:
-    exit_with_error('no input files')
 
   newargs = [a for a in newargs if a]
 
@@ -2503,7 +2504,7 @@ def phase_linker_setup(options, state, newargs):
     # set location of Wasm Worker bootstrap JS file
     if settings.WASM_WORKERS == 1:
       settings.WASM_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.ww.js'
-    settings.JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_wasm_worker.js')))
+    settings.JS_LIBRARIES.append((0, 'library_wasm_worker.js'))
 
   # Set min browser versions based on certain settings such as WASM_BIGINT,
   # PTHREADS, AUDIO_WORKLET
@@ -3128,7 +3129,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
       cmd += ['-Xclang', '-split-dwarf-file', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
       cmd += ['-Xclang', '-split-dwarf-output', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
     shared.check_call(cmd)
-    if output_file not in ('-', os.devnull):
+    if output_file not in ('-', os.devnull) and not shared.SKIP_SUBPROCS:
       assert os.path.exists(output_file)
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
@@ -3229,6 +3230,9 @@ def phase_emscript(options, in_wasm, wasm_target, memfile, js_syms):
 
   settings.SUPPORT_BASE64_EMBEDDING = embed_memfile(options)
 
+  if shared.SKIP_SUBPROCS:
+    return
+
   emscripten.run(in_wasm, wasm_target, final_js, memfile, js_syms)
   save_intermediate('original')
 
@@ -3314,6 +3318,9 @@ def create_worker_file(input_file, target_dir, output_file):
 @ToolchainProfiler.profile_block('final emitting')
 def phase_final_emitting(options, state, target, wasm_target, memfile):
   global final_js
+
+  if shared.SKIP_SUBPROCS:
+    return
 
   target_dir = os.path.dirname(os.path.abspath(target))
   if settings.PTHREADS:
@@ -3601,7 +3608,9 @@ def parse_args(newargs):
     elif check_flag('--ignore-dynamic-linking'):
       options.ignore_dynamic_linking = True
     elif arg == '-v':
-      shared.PRINT_STAGES = True
+      shared.PRINT_SUBPROCS = True
+    elif arg == '-###':
+      shared.SKIP_SUBPROCS = True
     elif check_arg('--shell-file'):
       options.shell_path = consume_arg_file()
     elif check_arg('--source-map-base'):
@@ -3808,12 +3817,12 @@ def phase_binaryen(target, options, wasm_target):
       with ToolchainProfiler.profile_block('use_unsigned_pointers_in_js'):
         final_js = building.use_unsigned_pointers_in_js(final_js)
 
-    # pthreads memory growth requires some additional JS fixups.
+    # shared memory growth requires some additional JS fixups.
     # note that we must do this after handling of unsigned pointers. unsigning
     # adds some >>> 0 things, while growth will replace a HEAP8 with a call to
     # a method to get the heap, and that call would not be recognized by the
     # unsigning pass
-    if settings.PTHREADS and settings.ALLOW_MEMORY_GROWTH:
+    if settings.SHARED_MEMORY and settings.ALLOW_MEMORY_GROWTH:
       with ToolchainProfiler.profile_block('apply_wasm_memory_growth'):
         final_js = building.apply_wasm_memory_growth(final_js)
 
@@ -3971,15 +3980,10 @@ def modularize():
 
   return %(return_value)s
 }
-%(capture_module_function_for_audio_worklet)s
 ''' % {
     'maybe_async': async_emit,
     'src': src,
     'return_value': return_value,
-    # Given the async nature of how the Module function and Module object come into existence in AudioWorkletGlobalScope,
-    # store the Module function under a different variable name so that AudioWorkletGlobalScope will be able to reference
-    # it without aliasing/conflicting with the Module variable name.
-    'capture_module_function_for_audio_worklet': 'globalThis.AudioWorkletModule = Module;' if settings.AUDIO_WORKLET and settings.MODULARIZE else ''
   }
 
   if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
@@ -4004,12 +4008,17 @@ var %(EXPORT_NAME)s = (() => {
   %(script_url_node)s
   return (%(src)s);
 })();
+%(capture_module_function_for_audio_worklet)s;
 ''' % {
       'node_imports': node_es6_imports(),
       'EXPORT_NAME': settings.EXPORT_NAME,
       'script_url': script_url,
       'script_url_node': script_url_node,
-      'src': src
+      'src': src,
+      # Given the async nature of how the Module function and Module object come into existence in AudioWorkletGlobalScope,
+      # store the Module function under a different variable name so that AudioWorkletGlobalScope will be able to reference
+      # it without aliasing/conflicting with the Module variable name.
+      'capture_module_function_for_audio_worklet': 'globalThis.AudioWorkletModule = ' + settings.EXPORT_NAME if settings.AUDIO_WORKLET and settings.MODULARIZE else ''
     }
 
   final_js += '.modular.js'

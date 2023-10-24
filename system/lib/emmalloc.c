@@ -37,6 +37,13 @@
  *  - Debugging and logging directly uses console.log via uses EM_ASM, not
  *    printf etc., to minimize any risk of debugging or logging depending on
  *    malloc.
+ *
+ * Exporting:
+ *
+ *  - By default we declare not only emmalloc_malloc, emmalloc_free, etc. but
+ *    also the standard library methods like malloc, free, and some aliases.
+ *    You can override this by defining EMMALLOC_NO_STD_EXPORTS, in which case
+ *    we only declare the emalloc_* ones but not the standard ones.
  */
 
 #include <stdalign.h>
@@ -63,7 +70,12 @@ static_assert((((int32_t)0x80000000U) >> 31) == -1, "This malloc implementation 
 #define MALLOC_ALIGNMENT alignof(max_align_t)
 static_assert(alignof(max_align_t) == 8, "max_align_t must be correct");
 
+#ifdef EMMALLOC_NO_STD_EXPORTS
+#define EMMALLOC_ALIAS(ALIAS, ORIGINAL)
+#else
 #define EMMALLOC_EXPORT __attribute__((weak, __visibility__("default")))
+#define EMMALLOC_ALIAS(ALIAS, ORIGINAL) extern __typeof(ORIGINAL) ALIAS __attribute__((weak, alias(#ORIGINAL)));
+#endif
 
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
@@ -812,31 +824,25 @@ void *emmalloc_memalign(size_t alignment, size_t size)
   MALLOC_RELEASE();
   return ptr;
 }
-extern __typeof(emmalloc_memalign) emscripten_builtin_memalign __attribute__((alias("emmalloc_memalign")));
+EMMALLOC_ALIAS(emscripten_builtin_memalign, emmalloc_memalign);
+EMMALLOC_ALIAS(memalign,                    emmalloc_memalign);
 
-void * EMMALLOC_EXPORT memalign(size_t alignment, size_t size)
-{
-  return emmalloc_memalign(alignment, size);
-}
-
+#ifndef EMMALLOC_NO_STD_EXPORTS
 void * EMMALLOC_EXPORT aligned_alloc(size_t alignment, size_t size)
 {
   if ((alignment % sizeof(void *) != 0) || (size % alignment) != 0)
     return 0;
   return emmalloc_memalign(alignment, size);
 }
+#endif
 
 void *emmalloc_malloc(size_t size)
 {
   return emmalloc_memalign(MALLOC_ALIGNMENT, size);
 }
-extern __typeof(emmalloc_malloc) emscripten_builtin_malloc __attribute__((alias("emmalloc_malloc")));
-extern __typeof(emmalloc_malloc) __libc_malloc __attribute__((alias("emmalloc_malloc")));
-
-void * EMMALLOC_EXPORT malloc(size_t size)
-{
-  return emmalloc_malloc(size);
-}
+EMMALLOC_ALIAS(emscripten_builtin_malloc, emmalloc_malloc);
+EMMALLOC_ALIAS(__libc_malloc,             emmalloc_malloc);
+EMMALLOC_ALIAS(malloc,                    emmalloc_malloc);
 
 size_t emmalloc_usable_size(void *ptr)
 {
@@ -857,11 +863,7 @@ size_t emmalloc_usable_size(void *ptr)
 
   return size - REGION_HEADER_SIZE;
 }
-
-size_t EMMALLOC_EXPORT malloc_usable_size(void *ptr)
-{
-  return emmalloc_usable_size(ptr);
-}
+EMMALLOC_ALIAS(malloc_usable_size, emmalloc_usable_size);
 
 void emmalloc_free(void *ptr)
 {
@@ -932,13 +934,9 @@ void emmalloc_free(void *ptr)
   emmalloc_validate_memory_regions();
 #endif
 }
-extern __typeof(emmalloc_free) emscripten_builtin_free __attribute__((alias("emmalloc_free")));
-extern __typeof(emmalloc_free) __libc_free __attribute__((alias("emmalloc_free")));
-
-void EMMALLOC_EXPORT free(void *ptr)
-{
-  return emmalloc_free(ptr);
-}
+EMMALLOC_ALIAS(emscripten_builtin_free, emmalloc_free);
+EMMALLOC_ALIAS(__libc_free,             emmalloc_free);
+EMMALLOC_ALIAS(free,                    emmalloc_free);
 
 // Can be called to attempt to increase or decrease the size of the given region
 // to a new size (in-place). Returns 1 if resize succeeds, and 0 on failure.
@@ -1066,11 +1064,7 @@ void *emmalloc_aligned_realloc(void *ptr, size_t alignment, size_t size)
   // null pointer is returned.
   return newptr;
 }
-
-void * EMMALLOC_EXPORT aligned_realloc(void *ptr, size_t alignment, size_t size)
-{
-  return emmalloc_aligned_realloc(ptr, alignment, size);
-}
+EMMALLOC_ALIAS(aligned_realloc, emmalloc_aligned_realloc);
 
 // realloc_try() is like realloc(), but only attempts to try to resize the existing memory
 // area. If resizing the existing memory area fails, then realloc_try() will return 0
@@ -1154,12 +1148,8 @@ void *emmalloc_realloc(void *ptr, size_t size)
 {
   return emmalloc_aligned_realloc(ptr, MALLOC_ALIGNMENT, size);
 }
-extern __typeof(emmalloc_realloc) __libc_realloc __attribute__((alias("emmalloc_realloc")));
-
-void * EMMALLOC_EXPORT realloc(void *ptr, size_t size)
-{
-  return emmalloc_realloc(ptr, size);
-}
+EMMALLOC_ALIAS(__libc_realloc, emmalloc_realloc);
+EMMALLOC_ALIAS(realloc,        emmalloc_realloc);
 
 // realloc_uninitialized() is like realloc(), but old memory contents
 // will be undefined after reallocation. (old memory is not preserved in any case)
@@ -1176,11 +1166,7 @@ int emmalloc_posix_memalign(void **memptr, size_t alignment, size_t size)
   *memptr = emmalloc_memalign(alignment, size);
   return *memptr ?  0 : 12/*ENOMEM*/;
 }
-
-int EMMALLOC_EXPORT posix_memalign(void **memptr, size_t alignment, size_t size)
-{
-  return emmalloc_posix_memalign(memptr, alignment, size);
-}
+EMMALLOC_ALIAS(posix_memalign, emmalloc_posix_memalign);
 
 void *emmalloc_calloc(size_t num, size_t size)
 {
@@ -1190,12 +1176,8 @@ void *emmalloc_calloc(size_t num, size_t size)
     memset(ptr, 0, bytes);
   return ptr;
 }
-extern __typeof(emmalloc_calloc) __libc_calloc __attribute__((alias("emmalloc_calloc")));
-
-void * EMMALLOC_EXPORT calloc(size_t num, size_t size)
-{
-  return emmalloc_calloc(num, size);
-}
+EMMALLOC_ALIAS(__libc_calloc, emmalloc_calloc);
+EMMALLOC_ALIAS(calloc,        emmalloc_calloc);
 
 static int count_linked_list_size(Region *list)
 {
@@ -1285,13 +1267,9 @@ struct mallinfo emmalloc_mallinfo()
   MALLOC_RELEASE();
   return info;
 }
+EMMALLOC_ALIAS(mallinfo, emmalloc_mallinfo);
 
-struct mallinfo EMMALLOC_EXPORT mallinfo()
-{
-  return emmalloc_mallinfo();
-}
-
-// Note! This function is not fully multithreadin safe: while this function is running, other threads should not be
+// Note! This function is not fully multithreading safe: while this function is running, other threads should not be
 // allowed to call sbrk()!
 static int trim_dynamic_heap_reservation(size_t pad)
 {
@@ -1351,11 +1329,7 @@ int emmalloc_trim(size_t pad)
   MALLOC_RELEASE();
   return success;
 }
-
-int EMMALLOC_EXPORT malloc_trim(size_t pad)
-{
-  return emmalloc_trim(pad);
-}
+EMMALLOC_ALIAS(malloc_trim, emmalloc_trim)
 
 size_t emmalloc_dynamic_heap_size()
 {

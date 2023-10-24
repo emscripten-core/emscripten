@@ -137,9 +137,7 @@ addToLibrary({
   // pointer or size_t and is expected to be withing the int53 range.
   // Returns NaN if the incoming bigint is outside the range.
   $bigintToI53Checked__deps: ['$MAX_INT53', '$MIN_INT53'],
-  $bigintToI53Checked: (num) => {
-    return (num < MIN_INT53 || num > MAX_INT53) ? NaN : Number(num);
-  },
+  $bigintToI53Checked: (num) => (num < MIN_INT53 || num > MAX_INT53) ? NaN : Number(num),
 #endif
 });
 

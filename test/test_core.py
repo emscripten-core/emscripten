@@ -2440,6 +2440,18 @@ int main(int argc, char **argv) {
     self.emcc_args += args
     self.do_core_test('test_aborting_new.cpp')
 
+  @parameterized({
+    'nogrow': (['-sABORTING_MALLOC=0'],),
+    'grow': (['-sABORTING_MALLOC=0', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=18MB'],)
+  })
+  @no_asan('requires more memory when growing')
+  @no_lsan('requires more memory when growing')
+  @no_4gb('depends on MAXIMUM_MEMORY')
+  @no_2gb('depends on MAXIMUM_MEMORY')
+  def test_nothrow_new(self, args):
+    self.emcc_args += args
+    self.do_core_test('test_nothrow_new.cpp')
+
   @no_wasm2js('no WebAssembly.Memory()')
   @no_asan('ASan alters the memory size')
   @no_lsan('LSan alters the memory size')
@@ -2924,13 +2936,18 @@ The current type of b is: 9
   @node_pthreads
   def test_pthread_wait32_notify(self):
     self.set_setting('EXIT_RUNTIME')
-    self.do_run_in_out_file_test(test_file('wasm_worker/wait32_notify.c'))
+    self.do_run_in_out_file_test(test_file('atomic/test_wait32_notify.c'))
 
   @node_pthreads
   @no_wasm2js('https://github.com/WebAssembly/binaryen/issues/5991')
   def test_pthread_wait64_notify(self):
     self.set_setting('EXIT_RUNTIME')
-    self.do_run_in_out_file_test(test_file('wasm_worker/wait64_notify.c'))
+    self.do_run_in_out_file_test(test_file('atomic/test_wait64_notify.c'))
+
+  @node_pthreads
+  def test_pthread_wait_async(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.do_run_in_out_file_test(test_file('atomic/test_wait_async.c'))
 
   def test_tcgetattr(self):
     self.do_runf(test_file('termios/test_tcgetattr.c'), 'success')
@@ -9912,17 +9929,24 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt', '--from-emcc', '--js-output=script2.js'])
     self.do_runf(test_file('test_emscripten_async_load_script.c'), emcc_args=['-sFORCE_FILESYSTEM'])
 
+  def prep_wasm_worker_in_node(self):
+    # Auto exit after 3 seconds in Nodejs environment to get WASM Worker stdout
+    self.add_pre_run("setTimeout(()=>process.exit(), 3000);")
+
   @node_pthreads
   def test_wasm_worker_hello(self):
-    self.do_runf(test_file('wasm_worker/hello_wasm_worker.c'), emcc_args=['-sWASM_WORKERS'])
+    self.prep_wasm_worker_in_node()
+    self.do_run_in_out_file_test(test_file('wasm_worker/hello_wasm_worker.c'), emcc_args=['-sWASM_WORKERS'])
 
   @node_pthreads
   def test_wasm_worker_malloc(self):
-    self.do_runf(test_file('wasm_worker/malloc_wasm_worker.c'), emcc_args=['-sWASM_WORKERS'])
+    self.prep_wasm_worker_in_node()
+    self.do_run_in_out_file_test(test_file('wasm_worker/malloc_wasm_worker.c'), emcc_args=['-sWASM_WORKERS'])
 
   @node_pthreads
   def test_wasm_worker_wait_async(self):
-    self.do_runf(test_file('wasm_worker/wait_async.c'), emcc_args=['-sWASM_WORKERS'])
+    self.prep_wasm_worker_in_node()
+    self.do_runf(test_file('atomic/test_wait_async.c'), emcc_args=['-sWASM_WORKERS'])
 
 
 # Generate tests for everything

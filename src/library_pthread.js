@@ -452,10 +452,10 @@ var LibraryPThread = {
               createScriptURL: (ignored) => new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url);
             }
           );
-          worker = new Worker(p.createScriptURL('ignored'));
+          worker = new Worker(p.createScriptURL('ignored'), {type: 'module'});
         } else
 #endif
-        worker = new Worker(new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url));
+        worker = new Worker(new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url), {type: 'module'});
       } else {
 #endif
       // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
@@ -568,7 +568,7 @@ var LibraryPThread = {
     // Called when a thread needs to be strongly referenced.
     // Currently only used for:
     // - keeping the "main" thread alive in PROXY_TO_PTHREAD mode;
-    // - crashed threads that needs to propagate the uncaught exception 
+    // - crashed threads that needs to propagate the uncaught exception
     //   back to the main thread.
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
@@ -694,9 +694,7 @@ var LibraryPThread = {
     return 0;
   },
 
-  emscripten_has_threading_support: () => {
-    return typeof SharedArrayBuffer != 'undefined';
-  },
+  emscripten_has_threading_support: () => typeof SharedArrayBuffer != 'undefined',
 
   emscripten_num_logical_cores: () => {
 #if ENVIRONMENT_MAY_BE_NODE
@@ -727,9 +725,7 @@ var LibraryPThread = {
   $pthreadCreateProxied__internal: true,
   $pthreadCreateProxied__proxy: 'sync',
   $pthreadCreateProxied__deps: ['__pthread_create_js'],
-  $pthreadCreateProxied: (pthread_ptr, attr, startRoutine, arg) => {
-    return ___pthread_create_js(pthread_ptr, attr, startRoutine, arg);
-  },
+  $pthreadCreateProxied: (pthread_ptr, attr, startRoutine, arg) => ___pthread_create_js(pthread_ptr, attr, startRoutine, arg),
 
 #if OFFSCREENCANVAS_SUPPORT
   // ASan wraps the emscripten_builtin_pthread_create call in

@@ -28,7 +28,7 @@ if __name__ == '__main__':
 
 from tools.shared import config
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, FILE_PACKAGER, WINDOWS, LLVM_NM
-from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, EMCMAKE, EMCONFIGURE
+from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, EMCMAKE, EMCONFIGURE, WASM_LD
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
@@ -257,6 +257,21 @@ class other(RunnerCore):
       self.assertContained('Target: wasm32-unknown-emscripten', proc.stderr)
       self.assertNotContained('this is dangerous', proc.stderr)
 
+  def test_log_subcommands(self):
+    # `-v` when combined with other arguments will trace the subcommands
+    # that get run
+    proc = self.run_process([EMCC, '-v', test_file('hello_world.c')], stdout=PIPE, stderr=PIPE)
+    self.assertContained(CLANG_CC, proc.stderr)
+    self.assertContained(WASM_LD, proc.stderr)
+    self.assertExists('a.out.js')
+
+  def test_skip_subcommands(self):
+    # The -### flag is like `-v` but it doesn't actaully execute the sub-commands
+    proc = self.run_process([EMCC, '-###', test_file('hello_world.c')], stdout=PIPE, stderr=PIPE)
+    self.assertContained(CLANG_CC, proc.stderr)
+    self.assertContained(WASM_LD, proc.stderr)
+    self.assertNotExists('a.out.js')
+
   def test_emcc_check(self):
     proc = self.run_process([EMCC, '--check'], stdout=PIPE, stderr=PIPE)
     self.assertEqual(proc.stdout, '')
@@ -303,7 +318,7 @@ class other(RunnerCore):
                       test_file('hello_world.c')] + args)
     src = read_file('subdir/hello_world.mjs')
     self.assertContained("new URL('hello_world.wasm', import.meta.url)", src)
-    self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url))", src)
+    self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url), {type: 'module'})", src)
     self.assertContained('export default Module;', src)
     src = read_file('subdir/hello_world.worker.js')
     self.assertContained("import('./hello_world.mjs')", src)
@@ -317,7 +332,7 @@ class other(RunnerCore):
                       test_file('hello_world.c'), '-sSINGLE_FILE'])
     src = read_file('hello_world.mjs')
     self.assertNotContained("new URL('data:", src)
-    self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url))", src)
+    self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url), {type: 'module'})", src)
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
   def test_emcc_output_mjs_closure(self):
@@ -389,10 +404,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.assertContained('Display this information', output.stdout)
     self.assertContained('Most clang options will work', output.stdout)
 
-    # -dumpmachine
-    output = self.run_process([compiler, '-dumpmachine'], stdout=PIPE, stderr=PIPE)
-    self.assertContained('wasm32-unknown-emscripten', output.stdout)
-
     # -dumpversion
     output = self.run_process([compiler, '-dumpversion'], stdout=PIPE, stderr=PIPE)
     self.assertEqual(shared.EMSCRIPTEN_VERSION, output.stdout.strip())
@@ -405,6 +416,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.assertContained('error: invalid preprocessing directive', stderr)
     self.assertContained(["error: use of undeclared identifier 'cheez", "error: unknown type name 'cheez'"], stderr)
     self.assertContained('errors generated.', stderr.splitlines()[-2])
+
+  def test_dumpmachine(self):
+    output = self.run_process([EMCC, '-dumpmachine'], stdout=PIPE, stderr=PIPE)
+    self.assertContained('wasm32-unknown-emscripten', output.stdout)
+
+    output = self.run_process([EMCC, '-sMEMORY64', '-dumpmachine'], stdout=PIPE, stderr=PIPE)
+    self.assertContained('wasm64-unknown-emscripten', output.stdout)
 
   @parameterized({
     'c': [EMCC, '.c'],
@@ -14015,3 +14033,18 @@ addToLibrary({
 
   def test_arguments_global(self):
     self.emcc(test_file('hello_world_argv.c'), ['-sENVIRONMENT=web', '-sSTRICT', '--closure=1', '-O2'])
+
+  @parameterized({
+    'no_std_exp':   (['-DEMMALLOC_NO_STD_EXPORTS'],),
+    # When we let emmalloc build with the standard exports like malloc,
+    # emmalloc == malloc.
+    'with_std_exp': (['-DTEST_EMMALLOC_IS_MALLOC'],),
+  })
+  def test_emmalloc_in_addition(self, args):
+    # Test that we can use emmalloc in addition to another malloc impl. When we
+    # build emmalloc using -DEMMALLOC_NO_STD_EXPORTS it will not export malloc
+    # etc., and only provide the emmalloc_malloc etc. family of functions that
+    # we can use.
+    emmalloc = path_from_root('system', 'lib', 'emmalloc.c')
+    self.run_process([EMCC, test_file('other/test_emmalloc_in_addition.c'), emmalloc] + args)
+    self.assertContained('success', self.run_js('a.out.js'))

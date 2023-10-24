@@ -523,16 +523,14 @@ addToLibrary({
   },
 
   emscripten_lazy_load_code__async: true,
-  emscripten_lazy_load_code: () => {
-    return Asyncify.handleSleep((wakeUp) => {
-      // Update the expected wasm binary file to be the lazy one.
-      wasmBinaryFile += '.lazy.wasm';
-      // Add a callback for when all run dependencies are fulfilled, which happens when async wasm loading is done.
-      dependenciesFulfilled = wakeUp;
-      // Load the new wasm.
-      createWasm();
-    });
-  },
+  emscripten_lazy_load_code: () => Asyncify.handleSleep((wakeUp) => {
+    // Update the expected wasm binary file to be the lazy one.
+    wasmBinaryFile += '.lazy.wasm';
+    // Add a callback for when all run dependencies are fulfilled, which happens when async wasm loading is done.
+    dependenciesFulfilled = wakeUp;
+    // Load the new wasm.
+    createWasm();
+  }),
 
   _load_secondary_module__sig: 'v',
   _load_secondary_module: async function() {

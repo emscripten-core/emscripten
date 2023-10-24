@@ -391,7 +391,7 @@ FS.init();
             return -e.errno;
           }
           Module.HEAP8.set(bufferArray, buffer);
-          return bytesWritten;       
+          return bytesWritten;
         },
       };
 
@@ -506,12 +506,10 @@ FS.init();
   },
 
   $FS_mknod__deps: ['_wasmfs_mknod'],
-  $FS_mknod: (path, mode, dev) => {
-    return FS.handleError(withStackSave(() => {
-      var pathBuffer = stringToUTF8OnStack(path);
-      return __wasmfs_mknod(pathBuffer, mode, dev);
-    }));
-  },
+  $FS_mknod: (path, mode, dev) => FS.handleError(withStackSave(() => {
+    var pathBuffer = stringToUTF8OnStack(path);
+    return __wasmfs_mknod(pathBuffer, mode, dev);
+  })),
 
   $FS_create__deps: ['$FS_mknod'],
   $FS_create: (path, mode) => {

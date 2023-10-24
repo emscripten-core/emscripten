@@ -24,6 +24,9 @@ See docs/process.md for more on how version tagging works.
   developers and helps take a care of post-checkout tasks such as `npm install`.
   If this script needs to be run (e.g. becuase package.json was changed, emcc
   will exit with an error. (#19736)
+- If exceptions are disabled, using `new` together with `std::nothrow` no
+  longer aborts if the allocation fails. Instead `nullptr` is returned now.
+  This does not change the behavior of regular usage of `new`.
 
 3.1.47 - 10/09/23
 -----------------
@@ -112,6 +115,7 @@ See docs/process.md for more on how version tagging works.
   with the new `__i53abi` decorator.  When this is set to true, i64 values are
   automatically converted to JS numbers (i53) at the JS boundary.  Parameters
   outside of the i53 will show up as NaN in the JS code (#19711)
+- EM_JS functions are now supported in side modules (#19705)
 
 3.1.42 - 06/22/23
 -----------------
@@ -357,6 +361,7 @@ See docs/process.md for more on how version tagging works.
   occupy linear memory at all.  The default for `DEFAULT_PTHREAD_STACK_SIZE` was
   also reduced from 2MB to 64KB to match.
 - Improved error messages for writing custom JS libraries. (#18266)
+- EM_ASM code is now supported in side modules (#18228)
 
 3.1.26 - 11/17/22
 -----------------

@@ -736,6 +736,18 @@ function runIfMainThread(text) {
   }
 }
 
+function runIfWorkerThread(text) {
+  if (WASM_WORKERS && PTHREADS) {
+    return `if (ENVIRONMENT_IS_WASM_WORKER || ENVIRONMENT_IS_PTHREAD) { ${text} }`;
+  } else if (WASM_WORKERS) {
+    return `if (ENVIRONMENT_IS_WASM_WORKER) { ${text} }`;
+  } else if (PTHREADS) {
+    return `if (ENVIRONMENT_IS_PTHREAD) { ${text} }`;
+  } else {
+    return '';
+  }
+}
+
 function expectToReceiveOnModule(name) {
   return INCOMING_MODULE_JS_API.has(name);
 }
@@ -1030,4 +1042,8 @@ function getPerformanceNow() {
   } else {
     return 'performance.now';
   }
+}
+
+function implicitSelf() {
+  return ENVIRONMENT.includes('node') ? 'self.' : '';
 }

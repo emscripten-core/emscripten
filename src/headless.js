@@ -227,15 +227,13 @@ var XMLHttpRequest = function() {
     },
   };
 };
-var Audio = () => {
-  return {
-    play() {},
-    pause() {},
-    cloneNode() {
-      return this;
-    },
-  };
-};
+var Audio = () => ({
+  play() {},
+  pause() {},
+  cloneNode() {
+    return this;
+  },
+});
 var Image = () => {
   window.setTimeout(function() {
     this.complete = true;

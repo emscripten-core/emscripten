@@ -1937,7 +1937,8 @@ keydown(100);keyup(100); // trigger the end
   @parameterized({
     '': ([],),
     'worker': (['--proxy-to-worker'],),
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD'],)
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+    'strict': (['-sSTRICT'],),
   })
   @requires_threads
   def test_emscripten_main_loop_setimmediate(self, args):
@@ -5300,17 +5301,17 @@ Module["preRun"] = () => {
   # Tests emscripten_atomic_wait_u32() and emscripten_atomic_notify() functions.
   @also_with_minimal_runtime
   def test_wasm_worker_wait32_notify(self):
-    self.btest('wasm_worker/wait32_notify.c', expected='3', args=['-sWASM_WORKERS'])
+    self.btest('atomic/test_wait32_notify.c', expected='3', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_wait_u64() and emscripten_atomic_notify() functions.
   @also_with_minimal_runtime
   def test_wasm_worker_wait64_notify(self):
-    self.btest('wasm_worker/wait64_notify.c', expected='3', args=['-sWASM_WORKERS'])
+    self.btest('atomic/test_wait64_notify.c', expected='3', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_wait_async() function.
   @also_with_minimal_runtime
   def test_wasm_worker_wait_async(self):
-    self.btest('wasm_worker/wait_async.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest('atomic/test_wait_async.c', expected='0', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_cancel_wait_async() function.
   @also_with_minimal_runtime
@@ -5584,6 +5585,13 @@ Module["preRun"] = () => {
   })
   def test_audio_worklet_post_function(self, args):
     self.btest('webaudio/audioworklet_post_function.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args, expected='1')
+
+  @parameterized({
+    '': ([],),
+    'closure': (['--closure', '1', '-Oz'],),
+  })
+  def test_audio_worklet_modularize(self, args):
+    self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMODULARIZE=1', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')] + args)
 
   def test_error_reporting(self):
     # Test catching/reporting Error objects
