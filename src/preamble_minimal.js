@@ -100,12 +100,15 @@ if (!ENVIRONMENT_IS_PTHREAD) {
     Module['mem'] ||
 #endif
     new WebAssembly.Memory({
-    'initial': {{{ INITIAL_MEMORY >>> 16 }}}
+      'initial': {{{ INITIAL_MEMORY >>> 16 }}},
 #if SHARED_MEMORY || !ALLOW_MEMORY_GROWTH || MAXIMUM_MEMORY != FOUR_GB
-    , 'maximum': {{{ (ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != FOUR_GB ? MAXIMUM_MEMORY : INITIAL_MEMORY) >>> 16 }}}
+      'maximum': {{{ (ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != FOUR_GB ? MAXIMUM_MEMORY : INITIAL_MEMORY) >>> 16 }}},
 #endif
 #if SHARED_MEMORY
-    , 'shared': true
+      'shared': true,
+#endif
+#if MEMORY64 == 1
+      'index': 'i64',
 #endif
     });
 #if PTHREADS
