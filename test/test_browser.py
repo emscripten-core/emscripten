@@ -4855,7 +4855,7 @@ Module["preRun"] = () => {
   @requires_threads
   def test_pthread_growth_mainthread(self, emcc_args):
     self.emcc_args.remove('-Werror')
-    self.btest_exit('pthread/test_pthread_memory_growth_mainthread.c', args=['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + emcc_args, also_wasm2js=False)
+    self.btest_exit('pthread/test_pthread_memory_growth_mainthread.c', args=['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + emcc_args)
 
   # Tests memory growth in a pthread.
   @parameterized({
@@ -4867,7 +4867,7 @@ Module["preRun"] = () => {
   @requires_threads
   def test_pthread_growth(self, emcc_args):
     self.emcc_args.remove('-Werror')
-    self.btest_exit('pthread/test_pthread_memory_growth.c', args=['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB', '-g'] + emcc_args, also_wasm2js=False)
+    self.btest_exit('pthread/test_pthread_memory_growth.c', args=['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB', '-g'] + emcc_args)
 
   # Tests that time in a pthread is relative to the main thread, so measurements
   # on different threads are still monotonic, as if checking a single central
