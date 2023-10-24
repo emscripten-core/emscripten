@@ -3259,6 +3259,9 @@ def phase_embind_emit_tsd(options, in_wasm, wasm_target, memfile, js_syms):
   # Required function to trigger TS generation.
   settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']
   settings.EXPORT_ES6 = False
+  # Disable proxying and thread pooling so a worker is not automatically created.
+  settings.PROXY_TO_PTHREAD = False
+  settings.PTHREAD_POOL_SIZE = 0
   # Disable minify since the binaryen pass has not been run yet to change the
   # import names.
   settings.MINIFY_WASM_IMPORTED_MODULES = False

@@ -2961,6 +2961,9 @@ int f() {
                   '--preload-file', 'fail.js',
                   '-O3',
                   '-msimd128',
+                  '-sUSE_PTHREADS',
+                  '-sPROXY_TO_PTHREAD',
+                  '-sPTHREAD_POOL_SIZE=1',
                   '-lembind', # Test duplicated link option.
                   ]
     self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
