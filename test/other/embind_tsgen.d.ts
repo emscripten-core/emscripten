@@ -6,6 +6,7 @@ export interface Test {
   functionFour(_0: boolean): number;
   functionFive(x: number, y: number): number;
   constFn(): number;
+  bigintFn(_0: bigint): bigint;
   functionThree(_0: ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string): number;
   functionSix(str: ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string): number;
   delete(): void;
