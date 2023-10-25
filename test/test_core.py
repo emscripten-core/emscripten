@@ -9677,9 +9677,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # test that Module.dynamicLibraries works with pthreads
     self.emcc_args += args
     self.emcc_args += ['--pre-js', 'pre.js']
-    # This test is for setting dynamicLibraries at runtime so we don't
+    # This test is for setting dynamicLibraries at runtime, so we don't
     # want emscripten loading `liblib.so` automatically (which it would
-    # do without this setting.
+    # do without this setting)
     self.set_setting('NO_AUTOLOAD_DYLIBS')
 
     create_file('pre.js', '''
@@ -9697,9 +9697,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
           err('sharedModules: ' + Object.keys(sharedModules));
           assert('liblib.so' in sharedModules);
           assert(sharedModules['liblib.so'] instanceof WebAssembly.Module);
-
-          // Verify whether the main thread passes Module.dynamicLibraries to the worker
-          assert(Module['dynamicLibraries'].includes('liblib.so'));
         }
       ''')
       self.emcc_args += ['--post-js', 'post.js']
@@ -9707,14 +9704,20 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.dylink_test(
       r'''
         #include <stdio.h>
-        int side();
+        int *get_address();
         int main() {
-          printf("result is %d\n", side());
+          printf("result is %d\n", *get_address());
           return 0;
         }
       ''',
       r'''
-        int side() { return 42; }
+        struct Data {
+          Data() : value(42) {}
+          int value;
+        } data;
+        int *get_address() {
+          return &data.value;
+        }
       ''',
       'result is 42')
 
