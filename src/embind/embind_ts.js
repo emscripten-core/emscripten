@@ -210,8 +210,10 @@ var LibraryEmbind = {
         ['bool', 'boolean'],
         ['float', 'number'],
         ['double', 'number'],
+#if WASM_BIGINT
         ['int64_t', 'bigint'],
         ['uint64_t', 'bigint'],
+#endif
         ['void', 'void'],
         ['std::string', jsString],
         ['std::basic_string<unsigned char>', jsString],
