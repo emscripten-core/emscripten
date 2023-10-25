@@ -14,8 +14,6 @@ class Test {
 
   int const_fn() const { return 0; }
 
-  uint64_t bigint_fn(int64_t x) { return 3; }
-
   int getX() const { return x; }
   void setX(int x_) { x = x_; }
 
@@ -104,7 +102,6 @@ EMSCRIPTEN_BINDINGS(Test) {
       .function("functionFive(x, y)", &Test::function_one)
       .function("functionSix(str)", &Test::function_three)
       .function("constFn", &Test::const_fn)
-      .function("bigintFn", &Test::bigint_fn)
       .property("x", &Test::getX, &Test::setX)
       .property("y", &Test::getY)
       .class_function("staticFunction", &Test::static_function)

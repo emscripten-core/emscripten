@@ -2987,6 +2987,15 @@ int f() {
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen_val.d.ts'])
     self.assertExists('embind_tsgen_val.d.ts')
 
+  def test_embind_tsgen_bigint(self):
+    args = [EMCC, test_file('other/embind_tsgen_bigint.cpp'), '-lembind', '--embind-emit-tsd', 'embind_tsgen_bigint.d.ts']
+    # Check that TypeScript generation fails when code contains bigints but their support is not enabled
+    stderr = self.expect_fail(args)
+    self.assertContained("Missing primitive type to TS type for 'int64_t", stderr)
+    # Check that TypeScript generation works when bigint support is enabled
+    self.run_process(args + ['-sWASM_BIGINT'])
+    self.assertFileContents(test_file('other/embind_tsgen_bigint.d.ts'), read_file('embind_tsgen_bigint.d.ts'))
+
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, config.LLVM_ROOT)
