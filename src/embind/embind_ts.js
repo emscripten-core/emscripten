@@ -213,6 +213,9 @@ var LibraryEmbind = {
 #if WASM_BIGINT
         ['int64_t', 'bigint'],
         ['uint64_t', 'bigint'],
+#else
+        ['int64_t', 'number'],
+        ['uint64_t', 'number'],
 #endif
         ['void', 'void'],
         ['std::string', jsString],
