@@ -153,6 +153,10 @@ global.LibraryManager = {
       libraries.push('library_lz4.js');
     }
 
+    if (SHARED_MEMORY) {
+      libraries.push('library_atomic.js');
+    }
+
     if (MAX_WEBGL_VERSION >= 2) {
       // library_webgl2.js must be included only after library_webgl.js, so if we are
       // about to include library_webgl2.js, first squeeze in library_webgl.js.

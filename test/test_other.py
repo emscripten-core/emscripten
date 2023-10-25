@@ -2961,6 +2961,9 @@ int f() {
                   '--preload-file', 'fail.js',
                   '-O3',
                   '-msimd128',
+                  '-sUSE_PTHREADS',
+                  '-sPROXY_TO_PTHREAD',
+                  '-sPTHREAD_POOL_SIZE=1',
                   '-lembind', # Test duplicated link option.
                   ]
     self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
@@ -14048,3 +14051,8 @@ addToLibrary({
     emmalloc = path_from_root('system', 'lib', 'emmalloc.c')
     self.run_process([EMCC, test_file('other/test_emmalloc_in_addition.c'), emmalloc] + args)
     self.assertContained('success', self.run_js('a.out.js'))
+
+  def test_unused_destructor(self):
+    self.do_runf(test_file('other/test_unused_destructor.c'), emcc_args=['-flto', '-O2'])
+    # Verify that the string constant in the destructor is not included in the binary
+    self.assertNotIn(b'hello from dtor', read_binary('test_unused_destructor.wasm'))
