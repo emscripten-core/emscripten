@@ -1231,7 +1231,7 @@ var LibraryPThread = {
       // work that could otherwise arrive after we've finished processing the
       // mailbox and before we're ready for the next notification.
       __emscripten_thread_mailbox_await(pthread_ptr);
-      callUserCallback(() => __emscripten_check_mailbox());
+      callUserCallback(__emscripten_check_mailbox);
     }
   },
 
