@@ -589,7 +589,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # For internal consistency, ensure we don't attempt or read or write any link time
   # settings until we reach the linking phase.
-  settings.limit_settings(COMPILE_TIME_SETTINGS)
+#  settings.limit_settings(COMPILE_TIME_SETTINGS)
 
   newargs, input_files = phase_setup(options, state, newargs)
 
@@ -633,6 +633,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   ## Compile source code to object files
   linker_inputs = phase_compile_inputs(options, state, newargs, input_files)
+  settings.LINKER_INPUTS = [x[1] for x in linker_inputs]
 
   if state.mode != Mode.COMPILE_AND_LINK:
     logger.debug('stopping after compile phase')

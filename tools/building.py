@@ -84,6 +84,36 @@ def get_building_env():
   return env
 
 
+@ToolchainProfiler.profile()
+def find_undef_symbols(files):
+  cmd = get_command_with_possible_response_file([LLVM_NM, '--print-file-name'] + files)
+  results = run_process(cmd, stdout=PIPE, stderr=PIPE, check=False)
+
+  # If one or more of the input files cannot be processed, llvm-nm will return
+  # a non-zero error code, but it will still process and print out all the
+  # other files in order. So even if process return code is non zero, we should
+  # always look at what we got to stdout.
+  if results.returncode != 0:
+    logger.debug(f'Subcommand {" ".join(cmd)} failed with return code {results.returncode}! (An input file was corrupt?)')
+
+  # a dictionary from 'filename' -> set() containing the undefs
+  symbols = {}
+
+  # Line format: "[archive filename:]object filename: address status name",
+  # but canonicalize double backslashes due to a LLVM quirk of using response files on Windows.
+  for line in results.stdout.replace('\\\\', '\\').split('\n'):
+    entry_pos = line.rfind(': ')
+    if entry_pos < 0:
+      continue
+    filename = line[:entry_pos]
+
+    if filename not in symbols:
+      record = symbols.setdefault(filename, set())
+    if line[entry_pos + 11] == 'U':
+      record |= {line[entry_pos + 13:]}
+  return symbols
+
+
 def llvm_backend_args():
   # disable slow and relatively unimportant optimization passes
   args = ['-combiner-global-alias-analysis=false']

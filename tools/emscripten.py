@@ -17,6 +17,7 @@ import subprocess
 import time
 import logging
 import pprint
+import re
 import shutil
 import sys
 
@@ -178,6 +179,8 @@ def compile_javascript(symbols_only=False):
     stderr_file = os.path.abspath(stderr_file)
     logger.info('logging stderr in js compiler phase into %s' % stderr_file)
     stderr_file = open(stderr_file, 'w')
+  else:
+    stderr_file = subprocess.PIPE
 
   # Save settings to a file to work around v8 issue 1579
   with shared.get_temp_files().get_file('.json') as settings_file:
@@ -190,9 +193,27 @@ def compile_javascript(symbols_only=False):
     args = [settings_file]
     if symbols_only:
       args += ['--symbols-only']
-    out = shared.run_js_tool(path_from_root('src/compiler.js'),
-                             args, stdout=subprocess.PIPE, stderr=stderr_file,
-                             cwd=path_from_root('src'), env=env, encoding='utf-8')
+    ret = subprocess.run(shared.config.NODE_JS + [path_from_root('src/compiler.js')] + args, stdout=subprocess.PIPE, stderr=stderr_file,
+                          cwd=path_from_root('src'), env=env, encoding='utf-8')
+    out = ret.stdout
+
+    if ret.stderr:
+      undefs = building.find_undef_symbols(settings.LINKER_INPUTS)
+
+      for line in ret.stderr.split('\n'):
+        top_level_undefined = re.match('error: undefined symbol: (.*) \\(referenced by top-level compiled C/C\\+\\+ code\\)', line)
+        if top_level_undefined:
+          undef = top_level_undefined[1]
+
+          refs = []
+          for filename, nm in undefs.items():
+            if undef in list(nm):
+              refs += [filename]
+
+          refs = ','.join(refs) if len(refs) > 0 else 'referenced by top-level compiled C/C++ code'
+          logger.error(f'undefined symbol: {undef} (referenced by {refs})')
+    if ret.returncode:
+      sys.exit(ret.returncode)
   if symbols_only:
     glue = None
     forwarded_data = out
