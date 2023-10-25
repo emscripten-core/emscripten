@@ -21,7 +21,6 @@ import argparse
 import atexit
 import fnmatch
 import glob
-import logging
 import math
 import operator
 import os
@@ -38,12 +37,12 @@ sys.path.append(__rootpath__)
 import jsrun
 import parallel_testsuite
 import common
-from tools import shared, config, utils
+from tools import log, shared, config, utils
 
 
 sys.path.append(utils.path_from_root('third_party/websockify'))
 
-logger = logging.getLogger("runner")
+logger = log.getLogger("runner")
 
 
 # Test modes from 'core' that fully pass all tests. When running a random

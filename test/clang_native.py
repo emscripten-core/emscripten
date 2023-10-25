@@ -3,14 +3,14 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
 import os
 import platform
 import sys
+from tools import log
 from tools.shared import PIPE, run_process, CLANG_CC, CLANG_CXX
 from tools.utils import MACOS, WINDOWS, path_from_root
 
-logger = logging.getLogger('clang_native')
+logger = log.getLogger('clang_native')
 
 
 def get_native_triple():

@@ -5,7 +5,6 @@
 
 import hashlib
 import json
-import logging
 import os
 import random
 import re
@@ -22,7 +21,7 @@ if __name__ == '__main__':
 from tools.shared import PIPE
 from tools.shared import EMCC, EMAR, FILE_PACKAGER
 from tools.utils import WINDOWS, MACOS, write_file, delete_file
-from tools import shared, building, config, webassembly
+from tools import log, shared, building, config, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
@@ -35,7 +34,7 @@ import clang_native
 
 # decorators for limiting which modes a test can run in
 
-logger = logging.getLogger("test_core")
+logger = log.getLogger("test_core")
 
 EM_SIGINT = 2
 EM_SIGABRT = 6

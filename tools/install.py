@@ -11,7 +11,7 @@ and run on non-unix platforms (basically windows).
 
 import argparse
 import fnmatch
-import logging
+from . import log
 import os
 import shutil
 import subprocess
@@ -35,7 +35,7 @@ EXCLUDE_PATTERNS = '''
 __pycache__
 '''.split()
 
-logger = logging.getLogger('install')
+logger = log.getLogger('install')
 
 
 def add_revision_file(target):

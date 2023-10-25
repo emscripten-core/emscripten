@@ -7,14 +7,13 @@
 """
 
 import contextlib
-import logging
 import os
 from pathlib import Path
 
-from . import filelock, config, utils
+from . import log, filelock, config, utils
 from .settings import settings
 
-logger = logging.getLogger('cache')
+logger = log.getLogger('cache')
 
 
 acquired_count = 0

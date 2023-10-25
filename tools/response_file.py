@@ -3,10 +3,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
 import os
 import shlex
 import tempfile
+from . import log
 from .utils import WINDOWS
 
 

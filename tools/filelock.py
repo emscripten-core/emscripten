@@ -37,7 +37,7 @@ A platform independent file lock that supports the with-statement.
 
 # Modules
 # ------------------------------------------------
-import logging
+from . import log
 import os
 import threading
 import time
@@ -83,7 +83,7 @@ _logger = None
 def logger():
     """Returns the logger instance used in this module."""
     global _logger
-    _logger = _logger or logging.getLogger(__name__)
+    _logger = _logger or log.getLogger(__name__)
     return _logger
 
 

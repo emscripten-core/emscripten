@@ -12,7 +12,6 @@ sections from a wasm file.
 
 import argparse
 import json
-import logging
 from math import floor, log
 import os
 import re
@@ -24,9 +23,10 @@ __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
+from . import log
 from tools import utils
 
-logger = logging.getLogger('wasm-sourcemap')
+logger = log.getLogger('wasm-sourcemap')
 
 
 def parse_args():

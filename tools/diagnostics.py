@@ -7,15 +7,15 @@
 """
 
 import ctypes
-import logging
 import os
 import sys
+from . import log
 from typing import Dict
 
 
 WINDOWS = sys.platform.startswith('win')
 
-logger = logging.getLogger('diagnostics')
+logger = log.getLogger('diagnostics')
 color_enabled = sys.stderr.isatty()
 tool_name = os.path.splitext(os.path.basename(sys.argv[0]))[0]
 

@@ -3,16 +3,15 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
 from typing import List, Dict
 
-from . import webassembly, utils
+from . import log, webassembly, utils
 from .webassembly import OpCode, AtomicOpCode, MemoryOpCode
 from .shared import exit_with_error
 from .settings import settings
 
 
-logger = logging.getLogger('extract_metadata')
+logger = log.getLogger('extract_metadata')
 
 
 def skip_function_header(module):

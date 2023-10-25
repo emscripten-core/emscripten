@@ -5,13 +5,12 @@
 
 """Utilities for mapping browser versions to webassembly features."""
 
-import logging
 from enum import IntEnum, auto
 
 from .settings import settings, user_settings
-from . import diagnostics
+from . import diagnostics, log
 
-logger = logging.getLogger('feature_matrix')
+logger = log.getLogger('feature_matrix')
 
 
 class Feature(IntEnum):

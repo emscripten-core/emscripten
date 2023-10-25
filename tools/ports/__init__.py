@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
 import hashlib
 import os
 import shutil
@@ -11,6 +10,7 @@ import glob
 from typing import Set
 from tools import cache
 from tools import config
+from tools import log
 from tools import shared
 from tools import system_libs
 from tools import utils
@@ -26,7 +26,7 @@ port_variants = {}
 
 ports_dir = os.path.dirname(os.path.abspath(__file__))
 
-logger = logging.getLogger('ports')
+logger = log.getLogger('ports')
 
 
 def read_ports():

@@ -6,7 +6,6 @@
 from .toolchain_profiler import ToolchainProfiler
 
 import json
-import logging
 import os
 import re
 import shlex
@@ -18,6 +17,7 @@ from subprocess import PIPE
 
 from . import cache
 from . import diagnostics
+from . import log
 from . import response_file
 from . import shared
 from . import webassembly
@@ -34,7 +34,7 @@ from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol
 from .utils import WINDOWS
 from .settings import settings, default_setting
 
-logger = logging.getLogger('building')
+logger = log.getLogger('building')
 
 #  Building
 binaryen_checked = False

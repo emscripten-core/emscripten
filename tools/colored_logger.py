@@ -7,8 +7,8 @@
 """
 
 import ctypes
-import sys
 import logging
+import sys
 
 
 def add_coloring_to_emit_windows(fn):

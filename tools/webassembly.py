@@ -9,17 +9,17 @@
 from collections import namedtuple
 from enum import IntEnum
 from functools import wraps
-import logging
 import os
 import sys
 
+from . import log
 from . import utils
 
 sys.path.append(utils.path_from_root('third_party'))
 
 import leb128
 
-logger = logging.getLogger('webassembly')
+logger = log.getLogger('webassembly')
 
 WASM_PAGE_SIZE = 65536
 

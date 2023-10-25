@@ -9,8 +9,8 @@ from enum import Enum, unique, auto
 from functools import wraps
 from subprocess import PIPE
 import atexit
-import json
 import logging
+import json
 import os
 import re
 import shutil
@@ -25,6 +25,7 @@ if sys.version_info < (3, 6):
   print('error: emscripten requires python 3.6 or above', file=sys.stderr)
   sys.exit(1)
 
+from . import log
 from . import colored_logger
 
 # Configure logging before importing any other local modules so even
@@ -37,7 +38,7 @@ if DEBUG:
 elif EMCC_LOGGING:
   log_level = logging.INFO
 # can add  %(asctime)s  to see timestamps
-logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s', level=log_level)
+logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s', level=log_level, filename=os.environ.get('EMCC_LOG_FILE'))
 colored_logger.enable()
 
 from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
@@ -65,7 +66,9 @@ EXPECTED_LLVM_VERSION = 18
 TEMP_DIR = None
 EMSCRIPTEN_TEMP_DIR = None
 
-logger = logging.getLogger('shared')
+logger = log.getLogger('shared')
+subprocess_logger = log.getLogger('subprocess')
+sanity_logger = log.getLogger('sanity')
 
 # warning about absolute-paths is disabled by default, and not enabled by -Wall
 diagnostics.add_warning('absolute-paths', enabled=False, part_of_all=False)
@@ -128,7 +131,7 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   kw.setdefault('encoding', 'utf-8')
   ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', shlex_join(cmd))
-  logger.debug(debug_text)
+  subprocess_logger.debug(debug_text)
   return ret
 
 
@@ -424,10 +427,10 @@ def perform_sanity_checks():
   llvm_ok = check_llvm()
 
   if os.environ.get('EM_IGNORE_SANITY'):
-    logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
+    sanity_logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
     return
 
-  logger.info('(Emscripten: Running sanity checks)')
+  sanity_logger.info('(Emscripten: Running sanity checks)')
 
   if not llvm_ok:
     exit_with_error('failing sanity checks due to previous llvm failure')
@@ -485,7 +488,7 @@ def check_sanity(force=False):
     except Exception:
       pass
     if sanity_data == expected:
-      logger.debug(f'sanity file up-to-date: {sanity_file}')
+      sanity_logger.debug(f'sanity file up-to-date: {sanity_file}')
       # Even if the sanity file is up-to-date we still run the checks
       # when force is set.
       if force:

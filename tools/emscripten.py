@@ -15,7 +15,6 @@ import os
 import json
 import subprocess
 import time
-import logging
 import pprint
 import shutil
 import sys
@@ -23,6 +22,7 @@ import sys
 from tools import building
 from tools import config
 from tools import diagnostics
+from tools import log
 from tools import js_manipulation
 from tools import shared
 from tools import utils
@@ -36,7 +36,7 @@ from tools.settings import settings
 sys.path.append(path_from_root('third_party'))
 import leb128
 
-logger = logging.getLogger('emscripten')
+logger = log.getLogger('emscripten')
 
 
 def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):

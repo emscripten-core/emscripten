@@ -6,13 +6,12 @@
 import os
 import shutil
 import sys
-import logging
 from typing import List, Optional
 
-from . import utils, diagnostics
+from . import log, utils, diagnostics
 from .utils import path_from_root, exit_with_error, __rootpath__
 
-logger = logging.getLogger('config')
+logger = log.getLogger('config')
 
 # The following class can be overridden by the config file and/or
 # environment variables.  Specifically any variable whose name

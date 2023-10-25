@@ -23,7 +23,6 @@ emcc can be influenced by a few environment variables:
 from tools.toolchain_profiler import ToolchainProfiler
 
 import json
-import logging
 import os
 import re
 import shlex
@@ -33,6 +32,8 @@ import time
 import tarfile
 from enum import Enum, auto, unique
 from subprocess import PIPE
+from tools import log
+from urllib.parse import quote
 
 
 from tools import shared, system_libs, utils, ports
@@ -48,7 +49,10 @@ from tools import link
 from tools.settings import default_setting, user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
 from tools.utils import read_file, removeprefix
 
-logger = logging.getLogger('emcc')
+logger = log.getLogger('emcc')
+input_logger = log.getLogger('input') # Prints the input cmdline to emcc.
+profiler_logger = log.getLogger('profiler')
+flow_logger = log.getLogger('flow')
 
 # In git checkouts of emscripten `bootstrap.py` exists to run post-checkout
 # steps.  In packaged versions (e.g. emsdk) this file does not exist (because
@@ -504,8 +508,7 @@ def run(args):
   if EMCC_CFLAGS:
     args += shlex.split(EMCC_CFLAGS)
 
-  if DEBUG:
-    logger.warning(f'invocation: {shared.shlex_join(args)} (in {os.getcwd()})')
+  input_logger.info(f'invocation: {shared.shlex_join(args)} (in {os.getcwd()})')
 
   # Strip args[0] (program name)
   args = args[1:]
@@ -513,10 +516,14 @@ def run(args):
   # Handle some global flags
 
   # read response files very early on
+  have_response_files = any(arg.startswith('@') for arg in args)
   try:
     args = substitute_response_files(args)
   except IOError as e:
     exit_with_error(e)
+
+  if have_response_files:
+    input_logger.info(f'with rsp expanded: {shared.shlex_join(args)} (in {os.getcwd()})')
 
   if '--help' in args:
     # Documentation for emcc and its options must be updated in:
@@ -635,7 +642,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   linker_inputs = phase_compile_inputs(options, state, newargs, input_files)
 
   if state.mode != Mode.COMPILE_AND_LINK:
-    logger.debug('stopping after compile phase')
+    flow_logger.debug('stopping after compile phase')
     for flag in state.link_flags:
       diagnostics.warning('unused-command-line-argument', "argument unused during compilation: '%s'" % flag[1])
     return 0
@@ -1059,7 +1066,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     return in_temp(unsuffixed(uniquename(input_file)) + options.default_object_extension)
 
   def compile_source_file(i, input_file):
-    logger.debug(f'compiling source file: {input_file}')
+    flow_logger.debug(f'compiling source file: {input_file}')
     output_file = get_object_filename(input_file)
     linker_inputs.append((i, output_file))
     if get_file_suffix(input_file) in ASSEMBLY_ENDINGS:
@@ -1602,7 +1609,7 @@ def is_int(s):
 def main(args):
   start_time = time.time()
   ret = run(args)
-  logger.debug('total time: %.2f seconds', (time.time() - start_time))
+  profiler_logger.debug('total time: %.2f seconds', (time.time() - start_time))
   return ret
 
 

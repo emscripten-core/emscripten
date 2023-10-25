@@ -8,7 +8,6 @@ from time import time
 from .toolchain_profiler import ToolchainProfiler
 
 import itertools
-import logging
 import os
 import shutil
 import textwrap
@@ -16,13 +15,13 @@ from enum import IntEnum, auto
 from glob import iglob
 from typing import List, Optional
 
-from . import shared, building, utils
+from . import shared, building, log, utils
 from . import diagnostics
 from . import cache
 from .settings import settings
 from .utils import read_file
 
-logger = logging.getLogger('system_libs')
+logger = log.getLogger('system_libs')
 
 # Files that are part of libsockets.a and so should be excluded from libc.a
 LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',

@@ -4,15 +4,15 @@
 # found in the LICENSE file.
 
 import atexit
-import logging
 import os
 import sys
 import subprocess
 import tempfile
 import time
+from . import log
 from contextlib import ContextDecorator
 
-logger = logging.getLogger('profiler')
+logger = log.getLogger('profiler')
 
 from . import response_file
 

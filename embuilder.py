@@ -13,12 +13,12 @@ running multiple build commands in parallel, confusion can occur).
 """
 
 import argparse
-import logging
 import sys
 import time
 from contextlib import contextmanager
 
 from tools import cache
+from tools import log
 from tools import shared
 from tools import system_libs
 from tools import ports
@@ -113,7 +113,7 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
 PORTS = sorted(list(ports.ports_by_name.keys()) + list(ports.port_variants.keys()))
 
 temp_files = shared.get_temp_files()
-logger = logging.getLogger('embuilder')
+logger = log.getLogger('embuilder')
 legacy_prefixes = {
   'libgl': 'libGL',
 }

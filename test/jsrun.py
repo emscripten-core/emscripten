@@ -4,13 +4,12 @@
 # found in the LICENSE file.
 
 import common
-import logging
 import os
 import subprocess
 import sys
 from subprocess import PIPE, CalledProcessError
 
-from tools import shared, utils
+from tools import log, shared, utils
 
 WORKING_ENGINES = {} # Holds all configured engines and whether they work: maps path -> True/False
 DEFAULT_TIMEOUT = 5 * 60
