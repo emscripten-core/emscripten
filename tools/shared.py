@@ -724,7 +724,7 @@ def make_writable(filename):
 
 
 def safe_copy(src, dst):
-  logging.debug('copy: %s -> %s', src, dst)
+  logger.debug('copy: %s -> %s', src, dst)
   src = os.path.abspath(src)
   dst = os.path.abspath(dst)
   if os.path.isdir(dst):

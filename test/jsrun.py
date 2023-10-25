@@ -14,6 +14,8 @@ from tools import log, shared, utils
 WORKING_ENGINES = {} # Holds all configured engines and whether they work: maps path -> True/False
 DEFAULT_TIMEOUT = 5 * 60
 
+sanity_logger = log.getLogger('sanity')
+
 
 def make_command(filename, engine, args=None):
   args = args or []
@@ -56,7 +58,7 @@ def check_engine(engine):
     engine_path = engine
   global WORKING_ENGINES
   if engine_path not in WORKING_ENGINES:
-    logging.debug('Checking JS engine %s' % engine)
+    sanity_logger.debug('Checking JS engine %s' % engine)
     try:
       output = run_js(utils.path_from_root('test/hello_world.js'), engine, skip_check=True)
       if 'hello, world!' in output:
@@ -64,7 +66,7 @@ def check_engine(engine):
       else:
         WORKING_ENGINES[engine_path] = False
     except Exception as e:
-      logging.info('Checking JS engine %s failed. Check your config file. Details: %s' % (str(engine), str(e)))
+      sanity_logger.info('Checking JS engine %s failed. Check your config file. Details: %s' % (str(engine), str(e)))
       WORKING_ENGINES[engine_path] = False
   return WORKING_ENGINES[engine_path]
 
@@ -78,7 +80,7 @@ def require_engine(engine):
   if engine_path not in WORKING_ENGINES:
     check_engine(engine)
   if not WORKING_ENGINES[engine_path]:
-    logging.critical('The engine (%s) does not seem to work, check the paths in the config file' % engine)
+    sanity_logger.critical('The engine (%s) does not seem to work, check the paths in the config file' % engine)
     sys.exit(1)
 
 

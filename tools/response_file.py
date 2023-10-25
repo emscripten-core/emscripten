@@ -10,6 +10,8 @@ from . import log
 from .utils import WINDOWS
 
 
+rsp_log = log.getLogger('rsp')
+
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 
 
@@ -55,7 +57,7 @@ def create_response_file(args, directory, suffix='.rsp.utf-8'):
     f.write(contents)
 
   if DEBUG:
-    logging.warning('Creating response file ' + response_filename + ' with following contents: ' + contents)
+    rsp_log.warning('Creating response file ' + response_filename + ' with following contents: ' + contents)
 
   # Register the created .rsp file to be automatically cleaned up once this
   # process finishes, so that caller does not have to remember to do it.
@@ -98,7 +100,7 @@ def read_response_file(response_filename):
       args = f.read()
   except (ValueError, LookupError): # UnicodeDecodeError is a subclass of ValueError, and Python raises either a ValueError or a UnicodeDecodeError on decode errors. LookupError is raised if guessed encoding is not an encoding.
     if DEBUG:
-      logging.warning(f'Failed to parse response file {response_filename} with guessed encoding "{guessed_encoding}". Trying default system encoding...')
+      rsp_log.warning(f'Failed to parse response file {response_filename} with guessed encoding "{guessed_encoding}". Trying default system encoding...')
     # If that fails, try with the Python default locale.getpreferredencoding()
     with open(response_filename) as f:
       args = f.read()
@@ -106,7 +108,7 @@ def read_response_file(response_filename):
   args = shlex.split(args)
 
   if DEBUG:
-    logging.warning('Read response file ' + response_filename + ': ' + str(args))
+    rsp_log.warning('Read response file ' + response_filename + ': ' + str(args))
 
   return args
 
