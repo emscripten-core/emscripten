@@ -416,8 +416,7 @@ class benchmark(common.RunnerCore):
     dirname = self.get_dir()
     filename = os.path.join(dirname, name + '.c' + ('' if force_c else 'pp'))
     src = self.hardcode_arguments(src)
-    with open(filename, 'w') as f:
-      f.write(src)
+    utils.write_file(filename, src)
 
     print()
     baseline = None
@@ -1024,44 +1023,43 @@ class benchmark(common.RunnerCore):
                       force_c=True)
 
   def test_zzz_poppler(self):
-    with open('pre.js', 'w') as f:
-      f.write('''
-        var benchmarkArgument = %s;
-        var benchmarkArgumentToPageCount = {
-          '0': 0,
-          '1': 1,
-          '2': 5,
-          '3': 15,
-          '4': 26,
-          '5': 55,
-        };
-        if (benchmarkArgument === 0) {
-          Module['arguments'] = ['-?'];
-          Module['printErr'] = function(){};
-        } else {
-          // Add 'filename' after 'input.pdf' to write the output so it can be verified.
-          Module['arguments'] = ['-scale-to', '1024', 'input.pdf',  '-f', '1', '-l', '' + benchmarkArgumentToPageCount[benchmarkArgument]];
-          Module['postRun'] = function() {
-            var files = [];
-            for (var x in FS.root.contents) {
-              if (x.startsWith('filename-')) {
-                files.push(x);
-              }
+    utils.write_file('pre.js', '''
+      var benchmarkArgument = %s;
+      var benchmarkArgumentToPageCount = {
+        '0': 0,
+        '1': 1,
+        '2': 5,
+        '3': 15,
+        '4': 26,
+        '5': 55,
+      };
+      if (benchmarkArgument === 0) {
+        Module['arguments'] = ['-?'];
+        Module['printErr'] = function(){};
+      } else {
+        // Add 'filename' after 'input.pdf' to write the output so it can be verified.
+        Module['arguments'] = ['-scale-to', '1024', 'input.pdf',  '-f', '1', '-l', '' + benchmarkArgumentToPageCount[benchmarkArgument]];
+        Module['postRun'] = function() {
+          var files = [];
+          for (var x in FS.root.contents) {
+            if (x.startsWith('filename-')) {
+              files.push(x);
             }
-            files.sort();
-            var hash = 5381;
-            var totalSize = 0;
-            files.forEach(function(file) {
-              var data = Array.from(MEMFS.getFileDataAsTypedArray(FS.root.contents[file]));
-              for (var i = 0; i < data.length; i++) {
-                hash = ((hash << 5) + hash) ^ (data[i] & 0xff);
-              }
-              totalSize += data.length;
-            });
-            out(files.length + ' files emitted, total output size: ' + totalSize + ', hashed printout: ' + hash);
-          };
-        }
-      ''' % DEFAULT_ARG)
+          }
+          files.sort();
+          var hash = 5381;
+          var totalSize = 0;
+          files.forEach(function(file) {
+            var data = Array.from(MEMFS.getFileDataAsTypedArray(FS.root.contents[file]));
+            for (var i = 0; i < data.length; i++) {
+              hash = ((hash << 5) + hash) ^ (data[i] & 0xff);
+            }
+            totalSize += data.length;
+          });
+          out(files.length + ' files emitted, total output size: ' + totalSize + ', hashed printout: ' + hash);
+        };
+      }
+    ''' % DEFAULT_ARG)
 
     def lib_builder(name, native, env_init):
       return self.get_poppler_library(env_init=env_init)

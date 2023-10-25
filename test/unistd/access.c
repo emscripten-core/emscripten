@@ -73,11 +73,7 @@ int main() {
   
   EM_ASM(
     var fchmodstream = FS.open("fchmodtest", "r");
-#if WASMFS
-    FS.fchmod(fchmodstream, 0777);
-#else
     FS.fchmod(fchmodstream.fd, 0777);
-#endif
   );
   stat("fchmodtest", &fileStats);
   assert(fileStats.st_mode & 0777);

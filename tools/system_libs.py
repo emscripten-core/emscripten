@@ -17,8 +17,8 @@ from typing import List, Optional
 from . import shared, building, utils
 from . import diagnostics
 from . import cache
-from tools.settings import settings
-from tools.utils import read_file
+from .settings import settings
+from .utils import read_file
 
 logger = logging.getLogger('system_libs')
 
@@ -49,14 +49,16 @@ def glob_in_path(path, glob_pattern, excludes=()):
   return sorted(f for f in files if os.path.basename(f) not in excludes)
 
 
-def get_base_cflags(force_object_files=False):
+def get_base_cflags(force_object_files=False, preprocess=True):
   # Always build system libraries with debug information.  Non-debug builds
   # will ignore this at link time because we link with `-strip-debug`.
-  flags = ['-g', '-sSTRICT']
+  flags = ['-g', '-sSTRICT', '-Werror']
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
   if settings.RELOCATABLE:
     flags += ['-sRELOCATABLE']
+    if preprocess:
+      flags += ['-DEMSCRIPTEN_DYNAMIC_LINKING']
   if settings.MEMORY64:
     flags += ['-Wno-experimental', '-sMEMORY64=' + str(settings.MEMORY64)]
   return flags
@@ -138,7 +140,7 @@ def get_top_level_ninja_file():
 def run_ninja(build_dir):
   diagnostics.warning('experimental', 'ninja support is experimental')
   cmd = ['ninja', '-C', build_dir, f'-j{shared.get_num_cores()}']
-  if shared.PRINT_STAGES:
+  if shared.PRINT_SUBPROCS:
     cmd.append('-v')
   shared.check_call(cmd, env=clean_env())
 
@@ -153,10 +155,6 @@ def ensure_target_in_ninja_file(ninja_file, target):
 def create_ninja_file(input_files, filename, libname, cflags, asflags=None, customize_build_flags=None):
   if asflags is None:
     asflags = []
-  # TODO(sbc) There is an llvm bug that causes a crash when `-g` is used with
-  # assembly files that define wasm globals.
-  asflags = [arg for arg in asflags if arg != '-g']
-  cflags_asm = [arg for arg in cflags if arg != '-g']
 
   def join(flags):
     return ' '.join(flags)
@@ -168,7 +166,6 @@ ninja_required_version = 1.5
 
 ASFLAGS = {join(asflags)}
 CFLAGS = {join(cflags)}
-CFLAGS_ASM = {join(cflags_asm)}
 EMCC = {shared.EMCC}
 EMXX = {shared.EMXX}
 EMAR = {shared.EMAR}
@@ -189,7 +186,7 @@ rule asm
 
 rule asm_cpp
   depfile = $out.d
-  command = $EMCC -MD -MF $out.d $CFLAGS_ASM -c $in -o $out
+  command = $EMCC -MD -MF $out.d $CFLAGS -c $in -o $out
   description = ASM $out
 
 rule direct_cc
@@ -232,7 +229,7 @@ rule archive
         flags = asflags
       elif ext == '.S':
         out += f'build {o}: asm_cpp {src}\n'
-        flags = cflags_asm
+        flags = cflags
       elif ext == '.c':
         out += f'build {o}: cc {src}\n'
         flags = cflags
@@ -339,7 +336,7 @@ class Library:
   # extra code size. The -fno-unroll-loops flags was added here when loop
   # unrolling landed upstream in LLVM to avoid changing behavior but was not
   # specifically evaluated.
-  cflags = ['-O2', '-Wall', '-Werror', '-fno-unroll-loops']
+  cflags = ['-O2', '-Wall', '-fno-unroll-loops']
 
   # A list of directories to put in the include path when building.
   # This is a list of tuples of path components.
@@ -431,7 +428,7 @@ class Library:
       return fullpath
     # For libraries (.a) files, we pass the abbreviated `-l` form.
     base = shared.unsuffixed_basename(fullpath)
-    return '-l' + shared.strip_prefix(base, 'lib')
+    return '-l' + utils.removeprefix(base, 'lib')
 
   def get_files(self):
     """
@@ -460,7 +457,7 @@ class Library:
       source_dir = utils.path_from_root()
       cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
                  '-fdebug-compilation-dir=/emsdk/emscripten']
-    asflags = get_base_cflags()
+    asflags = get_base_cflags(preprocess=False)
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
     create_ninja_file(input_files, ninja_file, libname, cflags, asflags=asflags, customize_build_flags=self.customize_build_cmd)
@@ -503,13 +500,9 @@ class Library:
         # .s files are processed directly by the assembler.  In this case we can't pass
         # pre-processor flags such as `-I` and `-D` but we still want core flags such as
         # `-sMEMORY64`.
-        cmd += get_base_cflags()
+        cmd += get_base_cflags(preprocess=False)
       else:
         cmd += cflags
-      if ext in ('.s', '.S'):
-        # TODO(sbc) There is an llvm bug that causes a crash when `-g` is used with
-        # assembly files that define wasm globals.
-        cmd = [arg for arg in cmd if arg != '-g']
       cmd = self.customize_build_cmd(cmd, src)
       commands.append(cmd + ['-c', src, '-o', o])
       objects.append(o)
@@ -897,9 +890,6 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
 
 class libnoexit(Library):
   name = 'libnoexit'
-  # __cxa_atexit calls can be generated during LTO the implemenation cannot
-  # itself be LTO.  See `get_libcall_files` below for more details.
-  force_object_files = True
   src_dir = 'system/lib/libc'
   src_files = ['atexit_dummy.c']
 
@@ -969,7 +959,8 @@ class libc(MuslInternalLibrary,
       '__math_oflow.c', '__math_oflowf.c',
       '__math_uflow.c', '__math_uflowf.c',
       '__math_invalid.c', '__math_invalidf.c', '__math_invalidl.c',
-      'pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c'
+      'pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c',
+      'scalbnf.c',
     ]
     math_files = files_in_path(path='system/lib/libc/musl/src/math', filenames=math_files)
 
@@ -1058,6 +1049,7 @@ class libc(MuslInternalLibrary,
           'library_pthread.c',
           'em_task_queue.c',
           'proxying.c',
+          'proxying_legacy.c',
           'thread_mailbox.c',
           'pthread_create.c',
           'pthread_kill.c',
@@ -1171,7 +1163,7 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/exit',
-        filenames=['_Exit.c', 'atexit.c'])
+        filenames=['_Exit.c', 'atexit.c', 'at_quick_exit.c', 'quick_exit.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/ldso',
@@ -1228,7 +1220,7 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
         path='system/lib/pthread',
-        filenames=['emscripten_atomic.c', 'thread_profiler.c'])
+        filenames=['thread_profiler.c'])
 
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
 
@@ -1314,7 +1306,7 @@ class libbulkmemory(MuslInternalLibrary, AsanInstrumentedLibrary):
   name = 'libbulkmemory'
   src_dir = 'system/lib/libc'
   src_files = ['emscripten_memcpy.c', 'emscripten_memset.c',
-               'emscripten_memcpy_big.S', 'emscripten_memset_big.S']
+               'emscripten_memcpy_bulkmem.S', 'emscripten_memset_bulkmem.S']
   cflags = ['-mbulk-memory']
 
   def can_use(self):
@@ -1379,6 +1371,11 @@ class libwasm_workers(MTLibrary):
     return files_in_path(
         path='system/lib/wasm_worker',
         filenames=['library_wasm_worker.c' if self.is_ww or self.is_mt else 'library_wasm_worker_stub.c'])
+
+  def can_use(self):
+    # see src/library_wasm_worker.js
+    return super().can_use() and not settings.SINGLE_FILE \
+      and not settings.RELOCATABLE and not settings.PROXY_TO_WORKER
 
 
 class libsockets(MuslInternalLibrary, MTLibrary):
@@ -1574,7 +1571,7 @@ class libunwind(NoExceptLibrary, MTLibrary):
   # See https://bugs.llvm.org/show_bug.cgi?id=44353
   force_object_files = True
 
-  cflags = ['-Oz', '-fno-inline-functions', '-D_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS']
+  cflags = ['-Oz', '-fno-inline-functions', '-D_LIBUNWIND_HIDE_SYMBOLS']
   src_dir = 'system/lib/libunwind/src'
   # Without this we can't build libunwind since it will pickup the unwind.h
   # that is part of llvm (which is not compatible for some reason).
@@ -1857,6 +1854,7 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
         filenames=['file.cpp',
                    'file_table.cpp',
                    'js_api.cpp',
+                   'emscripten.cpp',
                    'paths.cpp',
                    'special_files.cpp',
                    'support.cpp',
@@ -1865,6 +1863,20 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
 
   def can_use(self):
     return settings.WASMFS
+
+
+# Minimal syscall implementation, enough for printf. If this can be linked in
+# instead of the full WasmFS then it saves a lot of code size for simple
+# programs that don't need a full FS implementation.
+class libwasmfs_no_fs(Library):
+  name = 'libwasmfs_no_fs'
+
+  src_dir = 'system/lib/wasmfs'
+  src_files = ['no_fs.c']
+
+  def can_use(self):
+    # If the filesystem is forced then we definitely do not need this library.
+    return settings.WASMFS and not settings.FORCE_FILESYSTEM
 
 
 class libwasmfs_noderawfs(Library):
@@ -1886,6 +1898,7 @@ class libwasmfs_noderawfs(Library):
 class libhtml5(Library):
   name = 'libhtml5'
 
+  includes = ['system/lib/libc']
   cflags = ['-Oz', '-fno-inline-functions']
   src_dir = 'system/lib/html5'
   src_glob = '*.c'
@@ -1914,6 +1927,7 @@ class libsanitizer_common_rt(CompilerRTLibrary, MTLibrary):
               'system/lib/compiler-rt/lib',
               'system/lib/libc']
   never_force = True
+  cflags = ['-D_LARGEFILE64_SOURCE']
 
   src_dir = 'system/lib/compiler-rt/lib/sanitizer_common'
   src_glob = '*.cpp'
@@ -1930,6 +1944,7 @@ class SanitizerLibrary(CompilerRTLibrary, MTLibrary):
 class libubsan_rt(SanitizerLibrary):
   name = 'libubsan_rt'
 
+  includes = ['system/lib/libc']
   cflags = ['-DUBSAN_CAN_USE_CXXABI']
   src_dir = 'system/lib/compiler-rt/lib/ubsan'
   src_glob_exclude = ['ubsan_diag_standalone.cpp']
@@ -1945,6 +1960,7 @@ class liblsan_common_rt(SanitizerLibrary):
 class liblsan_rt(SanitizerLibrary):
   name = 'liblsan_rt'
 
+  includes = ['system/lib/libc']
   src_dir = 'system/lib/compiler-rt/lib/lsan'
   src_glob_exclude = ['lsan_common.cpp', 'lsan_common_mac.cpp', 'lsan_common_linux.cpp',
                       'lsan_common_emscripten.cpp']
@@ -1953,6 +1969,7 @@ class liblsan_rt(SanitizerLibrary):
 class libasan_rt(SanitizerLibrary):
   name = 'libasan_rt'
 
+  includes = ['system/lib/libc']
   src_dir = 'system/lib/compiler-rt/lib/asan'
 
 
@@ -1981,6 +1998,7 @@ class libstandalonewasm(MuslInternalLibrary):
 
   def __init__(self, **kwargs):
     self.is_mem_grow = kwargs.pop('is_mem_grow')
+    self.is_pure = kwargs.pop('is_pure')
     self.nocatch = kwargs.pop('nocatch')
     super().__init__(**kwargs)
 
@@ -1990,6 +2008,8 @@ class libstandalonewasm(MuslInternalLibrary):
       name += '-nocatch'
     if self.is_mem_grow:
       name += '-memgrow'
+    if self.is_pure:
+      name += '-pure'
     return name
 
   def get_cflags(self):
@@ -1997,18 +2017,21 @@ class libstandalonewasm(MuslInternalLibrary):
     cflags += ['-DNDEBUG', '-DEMSCRIPTEN_STANDALONE_WASM']
     if self.is_mem_grow:
       cflags += ['-DEMSCRIPTEN_MEMORY_GROWTH']
+    if self.is_pure:
+      cflags += ['-DEMSCRIPTEN_PURE_WASI']
     if self.nocatch:
       cflags.append('-DEMSCRIPTEN_NOCATCH')
     return cflags
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_mem_grow', 'nocatch']
+    return super().vary_on() + ['is_mem_grow', 'is_pure', 'nocatch']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
       is_mem_grow=settings.ALLOW_MEMORY_GROWTH,
+      is_pure=settings.PURE_WASI,
       nocatch=settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS,
       **kwargs
     )
@@ -2202,6 +2225,13 @@ def get_libs_to_link(args, forced, only_forced):
     add_library('libwasm_workers')
 
   if settings.WASMFS:
+    # Link in the no-fs version first, so that if it provides all the needed
+    # system libraries then WasmFS is not linked in at all. (We only do this if
+    # the filesystem is not forced; if it is then we know we definitely need the
+    # whole thing, and it would be unnecessary work to try to link in the no-fs
+    # version).
+    if not settings.FORCE_FILESYSTEM:
+      add_library('libwasmfs_no_fs')
     add_library('libwasmfs')
 
   add_sanitizer_libs()

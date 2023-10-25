@@ -1,6 +1,6 @@
 env.__cxa_throw
 env.abort
-env.emscripten_memcpy_big
+env.emscripten_memcpy_js
 env.emscripten_resize_heap
 env.strftime_l
 wasi_snapshot_preview1.fd_close

@@ -514,6 +514,29 @@ static int path_find(const char *name, const char *s, char *buf, size_t buf_size
   }
 }
 
+// Resolve filename using LD_LIBRARY_PATH
+static const char* resolve_path(char* buf, const char* file, size_t buflen) {
+  if (!strchr(file, '/')) {
+    const char* env_path = getenv("LD_LIBRARY_PATH");
+    if (env_path && path_find(file, env_path, buf, buflen) == 0) {
+      dbg("dlopen: found in LD_LIBRARY_PATH: %s", buf);
+      return buf;
+    }
+  }
+  return file;
+}
+
+// Search for library name to see if it's already loaded
+static struct dso* find_existing(const char* file) {
+  for (struct dlevent* e = head; e; e = e->next) {
+    if (e->sym_index == -1 && !strcmp(e->dso->name, file)) {
+      dbg("dlopen: already opened: %p", e->dso);
+      return e->dso;
+    }
+  }
+  return NULL;
+}
+
 // Internal version of dlopen with typed return value.
 // Without this, the compiler won't tell us if we have the wrong return type.
 static struct dso* _dlopen(const char* file, int flags) {
@@ -528,30 +551,13 @@ static struct dso* _dlopen(const char* file, int flags) {
   int cs;
   pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
   do_write_lock();
-#ifdef _REENTRANT
-  // Make sure we are in sync before performing any write operations.
-  dlsync();
-#endif
 
-  struct dso* p;
-
-  /* Resolve filename using LD_LIBRARY_PATH */
   char buf[2*NAME_MAX+2];
-  if (!strchr(file, '/')) {
-    const char* env_path = getenv("LD_LIBRARY_PATH");
-    if (env_path && path_find(file, env_path, buf, sizeof buf) == 0) {
-      dbg("dlopen: found in LD_LIBRARY_PATH: %s", buf);
-      file = buf;
-    }
-  }
+  file = resolve_path(buf, file, sizeof buf);
 
-  /* Search for the name to see if it's already loaded */
-  for (struct dlevent* e = head; e; e = e->next) {
-    if (e->sym_index == -1 && !strcmp(e->dso->name, file)) {
-      dbg("dlopen: already opened: %p", e->dso);
-      p = e->dso;
-      goto end;
-    }
+  struct dso* p = find_existing(file);
+  if (p) {
+    goto end;
   }
 
   p = load_library_start(file, flags);
@@ -580,16 +586,20 @@ void* dlopen(const char* file, int flags) {
 
 void emscripten_dlopen(const char* filename, int flags, void* user_data,
                        em_dlopen_callback onsuccess, em_arg_callback_func onerror) {
+  dbg("emscripten_dlopen: %s", filename);
   if (!filename) {
-    onsuccess(user_data, head);
+    onsuccess(user_data, head->dso);
     return;
   }
   do_write_lock();
-#ifdef _REENTRANT
-  // Make sure we are in sync before performing any write operations.
-  dlsync();
-#endif
-  struct dso* p = load_library_start(filename, flags);
+  char buf[2*NAME_MAX+2];
+  filename = resolve_path(buf, filename, sizeof buf);
+  struct dso* p = find_existing(filename);
+  if (p) {
+    onsuccess(user_data, p);
+    return;
+  }
+  p = load_library_start(filename, flags);
   if (!p) {
     do_write_unlock();
     onerror(user_data);

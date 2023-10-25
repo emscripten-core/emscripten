@@ -12,9 +12,17 @@
 
 int main() {
   int f = open("test", O_RDWR, 0777);
-  assert(f > 0);
+  assert(f == 3);
 
-  printf("F_DUPFD: %d\n", fcntl(f, F_DUPFD, 100) >= 100);
+  printf("F_DUPFD 1: %d\n", fcntl(f, F_DUPFD, 0) == 4);
+  printf("errno: %d\n", errno);
+  printf("\n");
+
+  printf("F_DUPFD 2: %d\n", fcntl(f, F_DUPFD, 100) == 100);
+  printf("errno: %d\n", errno);
+  printf("\n");
+
+  printf("F_DUPFD_CLOEXEC: %d\n", fcntl(f, F_DUPFD_CLOEXEC, 0) == 5);
   printf("errno: %d\n", errno);
   printf("\n");
   errno = 0;

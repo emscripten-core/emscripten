@@ -28,21 +28,21 @@ extern "C" {
 
 // An external JS implementation that is efficient for very large copies, using
 // HEAPU8.set()
-void emscripten_memcpy_big(void* __restrict__ dest,
+void emscripten_memcpy_js(void* __restrict__ dest,
                            const void* __restrict__ src,
-                           size_t n) EM_IMPORT(emscripten_memcpy_big);
-void emscripten_memset_big(void* ptr, char value, size_t n);
+                           size_t n) EM_IMPORT(emscripten_memcpy_js);
+
+void* emscripten_memcpy_bulkmem(void* __restrict__ dest,
+                                const void* __restrict__ src,
+                                size_t n);
+void* emscripten_memset_bulkmem(void* ptr, char value, size_t n);
 
 void emscripten_notify_memory_growth(size_t memory_index);
 
-// Declare these functions `int` rather than time_t to avoid int64 at the wasm
-// boundary (avoids 64-bit complexity at the boundary when WASM_BIGINT is
-// missing).
-// TODO(sbc): Covert back to `time_t` before 2038 ...
-int _timegm_js(struct tm* tm);
-int _mktime_js(struct tm* tm);
-void _localtime_js(const time_t* __restrict__ t, struct tm* __restrict__ tm);
-void _gmtime_js(const time_t* __restrict__ t, struct tm* __restrict__ tm);
+time_t _timegm_js(struct tm* tm);
+time_t _mktime_js(struct tm* tm);
+void _localtime_js(time_t t, struct tm* __restrict__ tm);
+void _gmtime_js(time_t t, struct tm* __restrict__ tm);
 
 void _tzset_js(long* timezone, int* daylight, char** tzname);
 
@@ -75,13 +75,13 @@ int _mmap_js(size_t length,
              int prot,
              int flags,
              int fd,
-             size_t offset,
+             off_t offset,
              int* allocated,
              void** addr);
 int _munmap_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset);
+  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset);
 int _msync_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset);
+  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset);
 
 struct dso;
 
@@ -118,9 +118,14 @@ double emscripten_get_now_res(void);
 
 void* emscripten_return_address(int level);
 
+int _emscripten_sanitizer_use_colors(void);
+char* _emscripten_sanitizer_get_option(const char* name);
+
 void _emscripten_fs_load_embedded_files(void* ptr);
 
 void _emscripten_throw_longjmp(void);
+
+void _emscripten_runtime_keepalive_clear();
 
 void __handle_stack_overflow(void* addr);
 
@@ -136,6 +141,10 @@ EMSCRIPTEN_RESULT _emscripten_set_offscreencanvas_size(const char *target, int w
 // Internal implementation function in JavaScript side that emscripten_create_wasm_worker() calls to
 // to perform the wasm worker creation.
 emscripten_wasm_worker_t _emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize);
+
+void __resumeException(void* exn);
+void __cxa_call_unexpected(void* exn);
+void llvm_eh_typeid_for(void* exn);
 
 #ifdef __cplusplus
 }

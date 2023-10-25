@@ -1,4 +1,4 @@
-mergeInto(LibraryManager.library, {
+addToLibrary({
   getUrlOrigin: function (ptr, len) {
     try {
       var orig = self.location.origin;

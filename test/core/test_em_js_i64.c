@@ -2,11 +2,11 @@
 #include <emscripten.h>
 
 EM_JS(void, foo, (uint64_t a, int64_t b), {
-  console.log(typeof a);
-  console.log(typeof b);
+  out(typeof a);
+  out(typeof b);
 
-  console.log('a:' + a);
-  console.log('b:' + b);
+  out('a:' + a);
+  out('b:' + b);
 })
 
 int main() {

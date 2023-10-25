@@ -1,4 +1,5 @@
 #include <emscripten.h>
+#include <emscripten/console.h>
 #include <emscripten/wasm_worker.h>
 #include <assert.h>
 
@@ -6,7 +7,7 @@
 
 void worker_main()
 {
-  emscripten_console_log("Hello from wasm worker!");
+  emscripten_out("Hello from wasm worker!");
   assert(emscripten_current_thread_is_wasm_worker());
 #ifdef REPORT_RESULT
   REPORT_RESULT(0);

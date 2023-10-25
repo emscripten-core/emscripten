@@ -27,7 +27,7 @@ EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *targ
   GL_FUNCTION_TRACE(__func__);
   if (!attributes)
   {
-    emscripten_console_error("emscripten_webgl_create_context: attributes pointer is null!");
+    emscripten_err("emscripten_webgl_create_context: attributes pointer is null!");
     return 0;
   }
   pthread_once(&tlsInit, InitWebGLTls);

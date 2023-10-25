@@ -19,7 +19,7 @@ var Fetch = {
 
 #if FETCH_SUPPORT_INDEXEDDB
   // Be cautious that `onerror` may be run synchronously
-  openDatabase: function(dbname, dbversion, onsuccess, onerror) {
+  openDatabase(dbname, dbversion, onsuccess, onerror) {
     try {
 #if FETCH_DEBUG
       dbg(`fetch: indexedDB.open(dbname="${dbname}", dbversion="${dbversion}");`);
@@ -42,7 +42,7 @@ var Fetch = {
   },
 #endif
 
-  init: function() {
+  init() {
     Fetch.xhrs = new HandleAllocator();
 #if FETCH_SUPPORT_INDEXEDDB
 #if PTHREADS

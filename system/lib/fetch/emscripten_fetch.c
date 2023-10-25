@@ -57,7 +57,7 @@ void emscripten_proxy_fetch(emscripten_fetch_t* fetch) {
   //	TODO handle case when queue->numQueuedItems >= queue->queueSize
   queue->queuedOperations[queue->numQueuedItems++] = fetch;
 #ifdef FETCH_DEBUG
-  emscripten_console_logf("Queued fetch to fetch-worker to process. There are "
+  emscripten_dbgf("Queued fetch to fetch-worker to process. There are "
                           "now %d operations in the queue.", queue->numQueuedItems);
 #endif
   // TODO: mutex unlock
@@ -81,7 +81,7 @@ emscripten_fetch_t* emscripten_fetch(emscripten_fetch_attr_t* fetch_attr, const 
   const bool performXhr = (fetch_attr->attributes & EMSCRIPTEN_FETCH_NO_DOWNLOAD) == 0;
   if (emscripten_is_main_browser_thread() && synchronous && (performXhr || readFromIndexedDB || writeToIndexedDB)) {
 #ifdef FETCH_DEBUG
-    emscripten_console_errorf("emscripten_fetch('%s') failed! Synchronous blocking XHRs and IndexedDB operations are not supported on the main browser thread. Try dropping the EMSCRIPTEN_FETCH_SYNCHRONOUS flag, or run with the linker flag --proxy-to-worker to decouple main C runtime thread from the main browser thread.", url);
+    emscripten_errf("emscripten_fetch('%s') failed! Synchronous blocking XHRs and IndexedDB operations are not supported on the main browser thread. Try dropping the EMSCRIPTEN_FETCH_SYNCHRONOUS flag, or run with the linker flag --proxy-to-worker to decouple main C runtime thread from the main browser thread.", url);
 #endif
     return NULL;
   }
@@ -156,7 +156,7 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t* fetch, double timeou
   if (proxyState != 1)
     return EMSCRIPTEN_RESULT_INVALID_PARAM; // the fetch should be ongoing?
 #ifdef FETCH_DEBUG
-  emscripten_console_log("fetch: emscripten_fetch_wait..");
+  emscripten_dbg("fetch: emscripten_fetch_wait..");
 #endif
   if (timeoutMsecs <= 0)
     return EMSCRIPTEN_RESULT_TIMED_OUT;
@@ -167,12 +167,12 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t* fetch, double timeou
         return EMSCRIPTEN_RESULT_TIMED_OUT;
       proxyState = fetch->__proxyState;
     } else {
-      emscripten_console_error("fetch: emscripten_fetch_wait failed: main thread cannot block to wait for long periods of time! Migrate the application to run in a worker to perform synchronous file IO, or switch to using asynchronous IO.");
+      emscripten_err("fetch: emscripten_fetch_wait failed: main thread cannot block to wait for long periods of time! Migrate the application to run in a worker to perform synchronous file IO, or switch to using asynchronous IO.");
       return EMSCRIPTEN_RESULT_FAILED;
     }
   }
 #ifdef FETCH_DEBUG
-  emscripten_console_log("fetch: emscripten_fetch_wait done..");
+  emscripten_dbg("fetch: emscripten_fetch_wait done..");
 #endif
 
   if (proxyState == 2)
@@ -186,7 +186,7 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t* fetch, double timeou
     return EMSCRIPTEN_RESULT_TIMED_OUT /*Main thread testing completion with sleep=0msecs*/;
   else {
 #ifdef FETCH_DEBUG
-    emscripten_console_error("fetch: emscripten_fetch_wait() cannot stop to wait when building without pthreads!");
+    emscripten_err("fetch: emscripten_fetch_wait() cannot stop to wait when building without pthreads!");
 #endif
     return EMSCRIPTEN_RESULT_FAILED /*Main thread cannot block to wait*/;
   }

@@ -48,7 +48,7 @@ var LibraryTracing = {
     EVENT_TASK_SUSPEND: 'task-suspend',
     EVENT_USER_NAME: 'user-name',
 
-    init: function() {
+    init: () => {
       Module['emscripten_trace_configure'] = traceConfigure;
       Module['emscripten_trace_configure_for_google_wtf'] = _emscripten_trace_configure_for_google_wtf;
       Module['emscripten_trace_enter_context'] = traceEnterContext;
@@ -58,7 +58,7 @@ var LibraryTracing = {
     },
 
     // Work around CORS issues ...
-    loadWorkerViaXHR: function(url, ready, scope) {
+    loadWorkerViaXHR: (url, ready, scope) => {
       var req = new XMLHttpRequest();
       req.addEventListener('load', function() {
         var blob = new Blob([this.responseText], { type: 'text/javascript' });
@@ -71,7 +71,7 @@ var LibraryTracing = {
       req.send();
     },
 
-    configure: function(collector_url, application) {
+    configure: (collector_url, application) => {
       EmscriptenTrace.now = _emscripten_get_now;
       var now = new Date();
       var session_id = now.getTime().toString() + '_' +
@@ -94,13 +94,13 @@ var LibraryTracing = {
       EmscriptenTrace.post([EmscriptenTrace.EVENT_SESSION_NAME, now.toISOString()]);
     },
 
-    configureForTest: function() {
+    configureForTest: () => {
       EmscriptenTrace.postEnabled = true;
       EmscriptenTrace.testingEnabled = true;
       EmscriptenTrace.now = function() { return 0.0; };
     },
 
-    configureForGoogleWTF: function() {
+    configureForGoogleWTF: () => {
       if (window && window['wtf']) {
         EmscriptenTrace.googleWTFEnabled = true;
       } else {
@@ -108,7 +108,7 @@ var LibraryTracing = {
       }
     },
 
-    post: function(entry) {
+    post: (entry) => {
       if (EmscriptenTrace.postEnabled && EmscriptenTrace.collectorEnabled) {
         EmscriptenTrace.worker.postMessage({ 'cmd': 'post',
                                              'entry': entry });
@@ -117,7 +117,7 @@ var LibraryTracing = {
       }
     },
 
-    googleWTFEnterScope: function(name) {
+    googleWTFEnterScope: (name) => {
       var scopeEvent = EmscriptenTrace.googleWTFData['cachedScopes'][name];
       if (!scopeEvent) {
         scopeEvent = window['wtf'].trace.events.createScope(name);
@@ -127,52 +127,52 @@ var LibraryTracing = {
       EmscriptenTrace.googleWTFData['scopeStack'].push(scope);
     },
 
-    googleWTFExitScope: function() {
+    googleWTFExitScope: () => {
       var scope = EmscriptenTrace.googleWTFData['scopeStack'].pop();
       window['wtf'].trace.leaveScope(scope);
     }
   },
 
-  $traceConfigure: function(collector_url, application) {
+  $traceConfigure: (collector_url, application) => {
     EmscriptenTrace.configure(collector_url, application);
   },
 
-  emscripten_trace_configure: function(collector_url, application) {
+  emscripten_trace_configure: (collector_url, application) => {
     EmscriptenTrace.configure(UTF8ToString(collector_url),
                               UTF8ToString(application));
   },
 
-  emscripten_trace_configure_for_test: function() {
+  emscripten_trace_configure_for_test: () => {
     EmscriptenTrace.configureForTest();
   },
 
-  emscripten_trace_configure_for_google_wtf: function() {
+  emscripten_trace_configure_for_google_wtf: () => {
     EmscriptenTrace.configureForGoogleWTF();
   },
 
-  emscripten_trace_set_enabled: function(enabled) {
+  emscripten_trace_set_enabled: (enabled) => {
     EmscriptenTrace.postEnabled = !!enabled;
   },
 
-  emscripten_trace_set_session_username: function(username) {
+  emscripten_trace_set_session_username: (username) => {
     EmscriptenTrace.post(EmscriptenTrace.EVENT_USER_NAME, UTF8ToString(username));
   },
 
-  emscripten_trace_record_frame_start: function() {
+  emscripten_trace_record_frame_start: () => {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_FRAME_START, now]);
     }
   },
 
-  emscripten_trace_record_frame_end: function() {
+  emscripten_trace_record_frame_end: () => {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_FRAME_END, now]);
     }
   },
 
-  $traceLogMessage: function(channel, message) {
+  $traceLogMessage: (channel, message) => {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_LOG_MESSAGE, now,
@@ -180,7 +180,7 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_log_message: function(channel, message) {
+  emscripten_trace_log_message: (channel, message) => {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_LOG_MESSAGE, now,
@@ -189,7 +189,7 @@ var LibraryTracing = {
     }
   },
 
-  $traceMark: function(message) {
+  $traceMark: (message) => {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_LOG_MESSAGE, now,
@@ -200,7 +200,7 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_mark: function(message) {
+  emscripten_trace_mark: (message) => {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_LOG_MESSAGE, now,
@@ -211,14 +211,14 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_report_error: function(error) {
+  emscripten_trace_report_error: (error) => {
     var now = EmscriptenTrace.now();
     var callstack = (new Error).stack;
     EmscriptenTrace.post([EmscriptenTrace.EVENT_REPORT_ERROR, now,
                           UTF8ToString(error), callstack]);
   },
 
-  emscripten_trace_record_allocation: function(address, size) {
+  emscripten_trace_record_allocation: (address, size) => {
     if (typeof Module['onMalloc'] == 'function') Module['onMalloc'](address, size);
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
@@ -227,7 +227,7 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_record_reallocation: function(old_address, new_address, size) {
+  emscripten_trace_record_reallocation: (old_address, new_address, size) => {
     if (typeof Module['onRealloc'] == 'function') Module['onRealloc'](old_address, new_address, size);
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
@@ -236,7 +236,7 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_record_free: function(address) {
+  emscripten_trace_record_free: (address) => {
     if (typeof Module['onFree'] == 'function') Module['onFree'](address);
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
@@ -245,28 +245,28 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_annotate_address_type: function(address, type_name) {
+  emscripten_trace_annotate_address_type: (address, type_name) => {
     if (EmscriptenTrace.postEnabled) {
       EmscriptenTrace.post([EmscriptenTrace.EVENT_ANNOTATE_TYPE, address,
                             UTF8ToString(type_name)]);
     }
   },
 
-  emscripten_trace_associate_storage_size: function(address, size) {
+  emscripten_trace_associate_storage_size: (address, size) => {
     if (EmscriptenTrace.postEnabled) {
       EmscriptenTrace.post([EmscriptenTrace.EVENT_ASSOCIATE_STORAGE_SIZE,
                             address, size]);
     }
   },
 
-  emscripten_trace_report_memory_layout: function() {
+  emscripten_trace_report_memory_layout: () => {
     if (EmscriptenTrace.postEnabled) {
       var memory_layout = {
         'static_base':  {{{ GLOBAL_BASE }}},
         'stack_base':   _emscripten_stack_get_base(),
         'stack_top':    _emscripten_stack_get_current(),
         'stack_max':    _emscripten_stack_get_end(),
-        'dynamic_top':  _sbrk(),
+        'dynamic_top':  _sbrk(0),
         'total_memory': HEAP8.length
       };
       var now = EmscriptenTrace.now();
@@ -298,7 +298,7 @@ var LibraryTracing = {
     }
   },
 
-  $traceEnterContext: function(name) {
+  $traceEnterContext: (name) => {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_ENTER_CONTEXT,
@@ -309,7 +309,7 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_enter_context: function(name) {
+  emscripten_trace_enter_context: (name) => {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_ENTER_CONTEXT,
@@ -320,7 +320,7 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_exit_context: function() {
+  emscripten_trace_exit_context: () => {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_EXIT_CONTEXT, now]);
@@ -330,7 +330,7 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_task_start: function(task_id, name) {
+  emscripten_trace_task_start: (task_id, name) => {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_TASK_START,
@@ -338,7 +338,7 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_task_associate_data: function(key, value) {
+  emscripten_trace_task_associate_data: (key, value) => {
     if (EmscriptenTrace.postEnabled) {
       EmscriptenTrace.post([EmscriptenTrace.EVENT_TASK_ASSOCIATE_DATA,
                             UTF8ToString(key),
@@ -346,7 +346,7 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_task_suspend: function(explanation) {
+  emscripten_trace_task_suspend: (explanation) => {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_TASK_SUSPEND,
@@ -354,7 +354,7 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_task_resume: function(task_id, explanation) {
+  emscripten_trace_task_resume: (task_id, explanation) => {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_TASK_RESUME,
@@ -362,14 +362,14 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_task_end: function() {
+  emscripten_trace_task_end: () => {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_TASK_END, now]);
     }
   },
 
-  emscripten_trace_close: function() {
+  emscripten_trace_close: () => {
     EmscriptenTrace.collectorEnabled = false;
     EmscriptenTrace.googleWTFEnabled = false;
     EmscriptenTrace.postEnabled = false;
@@ -380,4 +380,4 @@ var LibraryTracing = {
 };
 
 autoAddDeps(LibraryTracing, '$EmscriptenTrace');
-mergeInto(LibraryManager.library, LibraryTracing);
+addToLibrary(LibraryTracing);

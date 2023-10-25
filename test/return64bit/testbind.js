@@ -3,10 +3,6 @@
 // returned in the normal return value, but the most significant 32 bits are
 // returned via the accessor method getTempRet0()
 
-var Module = {
-    'noExitRuntime' : true
-};
-
 Module['runtest'] = function() {
   var low = _test_return64(0x11223344, 0xaabbccdd);
   var high = getTempRet0();

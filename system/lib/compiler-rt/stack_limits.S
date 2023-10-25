@@ -16,12 +16,16 @@
 
 .globaltype __stack_pointer, PTR
 
+.section .globals,"",@
+
 # TODO(sbc): It would be nice if these we initialized directly
 # using PTR.const rather than using the `emscripten_stack_init`
 .globaltype __stack_end, PTR
 __stack_end:
 .globaltype __stack_base, PTR
 __stack_base:
+
+.section .text,"",@
 
 emscripten_stack_get_base:
   .functype emscripten_stack_get_base () -> (PTR)

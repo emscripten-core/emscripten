@@ -54,7 +54,7 @@ __cxa_uncaught_exceptions() throw() { return 0; }
 // DISABLE_EXCEPTION_CATCHING is set but DISABLE_EXCEPTION_THROWING is not.
 // TODO(sbc): Perhaps just call std::terminate here. It could
 // just be some test code that needs updating.
-void *__cxa_allocate_exception(size_t thrown_size) _NOEXCEPT {
+void *__cxa_allocate_exception(size_t thrown_size) throw() {
   char* allocation = (char*)malloc(thrown_size + sizeof(__cxa_exception));
   return allocation + sizeof(__cxa_exception);
 }
@@ -68,7 +68,7 @@ cxa_exception_from_thrown_object(void* thrown_object)
 }
 
 //  Free a __cxa_exception object allocated with __cxa_allocate_exception.
-void __cxa_free_exception(void *thrown_object) _NOEXCEPT {
+void __cxa_free_exception(void *thrown_object) throw() {
     // Compute the size of the padding before the header.
     char *raw_buffer =
         ((char *)cxa_exception_from_thrown_object(thrown_object));

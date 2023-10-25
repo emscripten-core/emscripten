@@ -35,7 +35,8 @@ void emscripten_async_wget2_abort(int handle);
 
 // wget "sync"
 
-void emscripten_wget(const char* url, const char* file);
+int emscripten_wget(const char* url, const char* file);
+
 void emscripten_wget_data(const char* url, void** pbuffer, int* pnum, int *perror);
 
 #ifdef __cplusplus

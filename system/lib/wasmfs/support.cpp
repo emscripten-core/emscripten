@@ -18,11 +18,11 @@ void handle_unreachable(const char* msg, const char* file, unsigned line) {
 #ifndef NDEBUG
 #ifdef __EMSCRIPTEN__
   if (msg) {
-    emscripten_console_error(msg);
+    emscripten_err(msg);
   }
-  emscripten_console_error("UNREACHABLE executed");
+  emscripten_err("UNREACHABLE executed");
   if (file) {
-    emscripten_console_errorf("at %s:%d", file, line);
+    emscripten_errf("at %s:%d", file, line);
   }
 #else // EMSCRIPTEN
   if (msg) {

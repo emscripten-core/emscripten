@@ -2327,3 +2327,72 @@ bugs fixed:
 arch-specific bugs fixed:
 - powerpc (32-bit) struct shmid_ds layout was wrong for some fields
 - time64 struct layout was wrong in sound ioctl fallback (32-bit archs)
+
+
+
+1.2.4 release notes
+
+new features:
+- large dns record lookups via tcp fallback
+- new getaddrinfo EAI_NODATA result to distinguish NODATA/NxDomain
+- support for new RELR compressed format for relative relocations
+- sysconf keys for querying signal stack size requirements
+- real vfork on riscv64
+
+performance:
+- mallocng no longer uses MADV_FREE (high performance cost, little gain)
+- vdso clock_gettime is supported once again on 32-bit arm
+
+compatibility:
+- gethostbyname family now distinguishes NO_DATA from HOST_NOT_FOUND
+- res_send now works with caller-provided edns0 queries
+- arpa/nameser.h RR types list is now up-to-date
+- previously-missing POSIX confstr keys have been added
+- mntent interfaces now accept missing fields
+- alt signal stack, if any, is now used for internal signals
+- the LFS64 macros are no longer exposed without _LARGEFILE64_SOURCE
+- memmem (POSIX-future) is now exposed in default feature profile
+- pthread_atfork now admits calls from an application-provided malloc
+- debugger tracking of shared libraries now works on MIPS PIE binaries
+- sendmsg now supports up to SCM_MAX_FD fds in SCM_RIGHTS messages
+
+bugs fixed:
+- gethostbyname[2]_r wrongly returned nonzero (error) on negative result
+- parallel v4/v6 address queries could fail on query id collisions
+- spurious getaddrinfo/AI_ADDRCONFIG failures due to errno clobbering
+- dns search domains ending in dot (including lone dot) broke lookups
+- ipv6 servers in resolv.conf broke lookups on systems with v6 disabled
+- systems with bindv6only failed to query both v4 and v6 nameservers
+- res_mkquery mishandled consecutive final dots in name
+- res_send could malfunction for very small answer buffer sizes
+- resolver dns backend accepted answers with wrong (A vs AAAA) RR type
+- getservbyport_r returned junk or ENOENT (vs ERANGE) on buffer size errors
+- dns result parsing of malformed responses could process uninitialized data
+- freopen didn't reset stream orientation (byte/wide) & encoding rule
+- fwprintf didn't print most fields on open_wmemstream FILEs
+- wide printf %lc ignored field width
+- wide printf erroneously processed %n after encoding errors
+- use of wide printf %9$ argument slot overflowed undersized buffer
+- swprintf malfunctioned on nul character in output
+- strverscmp ordered digit sequences vs nondigits incorrectly
+- timer_create/SIGEV_THREAD failure leaked the thread
+- semaphores were subject to missed-wake under certain usage patterns
+- several possible rare deadlocks with lock handling at thread exit
+- several possible rare deadlocks with aio and multithreaded fork
+- dynamic linker relro processing was broken on archs w/variable pagesize
+- async cancellation could run cancellation handlers in invalid context
+- pthread_detach was wrongly a cancellation point in rare race code path
+- use-after-close/double-close errors in mq_notify error paths
+- mq_notify event thread wrongly ran with signals unmasked
+- wcs{,n}cmp, wmemcmp returned wrong results when difference overflowed
+- accept4, pipe2, and dup3 handled unknown flags wrong in fallback cases
+- CPU_SETSIZE macro had wrong unit
+- select fallback for pre-time64 kernels truncated timeout (vs clamping)
+
+arch-specific bugs fixed:
+- x32 new socketcalls took fallback path due to pointer sign extension
+- x32 wait4 didn't fill rusage structure (time64 regression)
+- x32 semtimedop mismatched timespec ABI with kernel (time64 regression)
+- sigaction signal mask was bogus on or1k, microblaze, mips, and riscv
+- powerpc-sf longjmp asm clobbered value argument
+- or1k poll function passed timeout to syscall in wrong form

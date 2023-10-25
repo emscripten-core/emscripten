@@ -7,11 +7,11 @@
 
 #include <pthread.h>
 #include <emscripten.h>
-#include <emscripten/html5.h>
+#include <emscripten/console.h>
 
 void *thread_main(void *arg)
 {
-	EM_ASM(out('hello from thread!'));
+	emscripten_out("hello from thread!");
 	emscripten_force_exit(0);
 	__builtin_trap();
 }

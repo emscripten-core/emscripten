@@ -5,12 +5,12 @@ import logging
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
-sys.path.append(__rootdir__)
+sys.path.insert(0, __rootdir__)
 
-from tools import shared
-from tools import line_endings
-from tools import utils
-from tools.settings import settings
+from . import shared
+from . import line_endings
+from . import utils
+from .settings import settings
 
 logger = logging.getLogger('minimal_runtime_shell')
 

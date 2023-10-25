@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <emscripten/em_asm.h>
+#include <emscripten/console.h>
 
 long fib(long n)
 {
@@ -22,9 +23,9 @@ long fib(long n)
 static void *thread_start(void *arg)
 {
   long n = (long)arg;
-  EM_ASM(out('Thread: Computing fib('+$0+')...'), n);
+  emscripten_outf("Thread: Computing fib(%ld)...", n);
   long fibn = fib(n);
-  EM_ASM(out('Thread: Computation done. fib('+$0+') = '+$1+'.'), n, fibn);
+  emscripten_outf("Thread: Computation done. fib(%ld) = %ld", n, fibn);
   pthread_exit((void*)fibn);
 }
 
@@ -40,10 +41,10 @@ int main()
   assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 8); // This test should be run with a prepopulated pool of size 8.
 
   int n = 20;
-  EM_ASM(out('Main: Spawning thread to compute fib('+$0+')...'), n);
+  emscripten_outf("Main: Spawning thread to compute fib(%d)...", n);
   int s = pthread_create(&thr, NULL, thread_start, (void*)n);
   assert(s == 0);
-  EM_ASM(out('Main: Waiting for thread to join.'));
+  emscripten_out("Main: Waiting for thread to join");
   int result = 0;
 
   assert(EM_ASM_INT(return PThread.runningWorkers.length) == 1);
@@ -51,7 +52,7 @@ int main()
 
   s = pthread_join(thr, (void**)&result);
   assert(s == 0);
-  EM_ASM(out('Main: Thread joined with result: '+$0+'.'), result);
+  emscripten_outf("Main: Thread joined with result: %d", result);
 
   assert(EM_ASM_INT(return PThread.runningWorkers.length) == 0);
   assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 8);

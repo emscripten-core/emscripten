@@ -66,20 +66,24 @@ def lock(reason):
 
 
 def ensure():
+  ensure_setup()
   utils.safe_ensure_dirs(cachedir)
 
 
 def erase():
+  ensure_setup()
   with lock('erase'):
     # Delete everything except the lockfile itself
     utils.delete_contents(cachedir, exclude=[os.path.basename(cachelock_name)])
 
 
 def get_path(name):
+  ensure_setup()
   return Path(cachedir, name)
 
 
 def get_sysroot(absolute):
+  ensure_setup()
   if absolute:
     return os.path.join(cachedir, 'sysroot')
   return 'sysroot'
@@ -94,6 +98,7 @@ def get_sysroot_dir(*parts):
 
 
 def get_lib_dir(absolute):
+  ensure_setup()
   path = Path(get_sysroot(absolute=absolute), 'lib')
   if settings.MEMORY64:
     path = Path(path, 'wasm64-emscripten')
@@ -137,6 +142,7 @@ def get_lib(libname, *args, **kwargs):
 # Request a cached file. If it isn't in the cache, it will be created with
 # the given creator function
 def get(shortname, creator, what=None, force=False, quiet=False, deferred=False):
+  ensure_setup()
   cachename = Path(cachedir, shortname)
   # Check for existence before taking the lock in case we can avoid the
   # lock completely.
@@ -168,13 +174,18 @@ def get(shortname, creator, what=None, force=False, quiet=False, deferred=False)
   return str(cachename)
 
 
-def setup(dirname):
+def setup():
   global cachedir, cachelock, cachelock_name
   # figure out the root directory for all caching
-  cachedir = Path(dirname).resolve()
+  cachedir = Path(config.CACHE).resolve()
 
   # since the lock itself lives inside the cache directory we need to ensure it
   # exists.
   ensure()
   cachelock_name = Path(cachedir, 'cache.lock')
   cachelock = filelock.FileLock(cachelock_name)
+
+
+def ensure_setup():
+  if not cachedir:
+    setup()

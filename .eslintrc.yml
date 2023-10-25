@@ -7,6 +7,7 @@ extends:
 parserOptions:
   ecmaVersion: 12
 ignorePatterns:
+  - "out/"
   - "site/"
   - "cache/"
   - "third_party/"

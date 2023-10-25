@@ -90,10 +90,34 @@ operator new(std::size_t size) _THROW_BAD_ALLOC
     return p;
 }
 
+#if defined(__EMSCRIPTEN__) && defined(_LIBCPP_NO_EXCEPTIONS)
+void* _new_nothrow(size_t size) noexcept
+{
+    /// We cannot call ::operator new(size) here because it would abort
+    /// when malloc returns 0 and exceptions are disabled.
+    /// Expected behaviour of std::nothrow is to return 0 in that case.
+    void* p = nullptr;
+    if (size == 0)
+        size = 1;
+    while ((p = ::malloc(size)) == nullptr)
+    {
+        std::new_handler nh = std::get_new_handler();
+        if (nh)
+            nh();
+        else
+            break;
+    }
+    return p;
+}
+#endif
+
 _LIBCPP_WEAK
 void*
 operator new(size_t size, const std::nothrow_t&) noexcept
 {
+#if defined(__EMSCRIPTEN__) && defined(_LIBCPP_NO_EXCEPTIONS)
+    return _new_nothrow(size);
+#else
     void* p = nullptr;
 #ifndef _LIBCPP_NO_EXCEPTIONS
     try
@@ -107,6 +131,7 @@ operator new(size_t size, const std::nothrow_t&) noexcept
     }
 #endif // _LIBCPP_NO_EXCEPTIONS
     return p;
+#endif // __EMSCRIPTEN__ && _LIBCPP_NO_EXCEPTIONS
 }
 
 _LIBCPP_WEAK
@@ -120,6 +145,9 @@ _LIBCPP_WEAK
 void*
 operator new[](size_t size, const std::nothrow_t&) noexcept
 {
+#if defined(__EMSCRIPTEN__) && defined(_LIBCPP_NO_EXCEPTIONS)
+    return _new_nothrow(size);
+#else
     void* p = nullptr;
 #ifndef _LIBCPP_NO_EXCEPTIONS
     try
@@ -133,6 +161,7 @@ operator new[](size_t size, const std::nothrow_t&) noexcept
     }
 #endif // _LIBCPP_NO_EXCEPTIONS
     return p;
+#endif // __EMSCRIPTEN__ && _LIBCPP_NO_EXCEPTIONS
 }
 
 _LIBCPP_WEAK

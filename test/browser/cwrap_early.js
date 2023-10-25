@@ -1,5 +1,4 @@
-
-Module['preRun'].push(function() {
+Module['preRun'] = () => {
   console.log('preRun');
   // it is ok to call cwrap before the runtime is loaded. we don't need the code
   // and everything to be ready, since cwrap just prepares to call code, it 
@@ -15,6 +14,4 @@ Module['preRun'].push(function() {
     xhr.send();
     setTimeout(function() { window.close() }, 1000);
   };
-});
-
-
+};

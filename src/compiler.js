@@ -83,12 +83,6 @@ if (symbolsOnly) {
 // Side modules are pure wasm and have no JS
 assert(!SIDE_MODULE || (ASYNCIFY && global.symbolsOnly), 'JS compiler should only run on side modules if asyncify is used.');
 
-// Output some info and warnings based on settings
-
-if (VERBOSE) {
-  printErr('VERBOSE is on, this generates a lot of output and can slow down compilation');
-}
-
 // Load compiler code
 
 load('modules.js');

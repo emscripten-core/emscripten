@@ -13,9 +13,8 @@
 #define EXIT_THREAD(code) pthread_exit((void*)(uintptr_t)code)
 #define THREAD_RETURN_T void*
 #define MUTEX_T pthread_mutex_t
-inline void CREATE_MUTEX(MUTEX_T *m)
-{
-	pthread_mutex_init(m, 0);
+inline void CREATE_MUTEX(MUTEX_T *m) {
+  pthread_mutex_init(m, 0);
 }
 #define LOCK_MUTEX(m) pthread_mutex_lock(m)
 #define UNLOCK_MUTEX(m) pthread_mutex_unlock(m)
@@ -33,9 +32,8 @@ inline void CREATE_MUTEX(MUTEX_T *m)
 #define EXIT_THREAD(code) ExitThread((DWORD)code)
 #define THREAD_RETURN_T DWORD WINAPI
 #define MUTEX_T CRITICAL_SECTION
-inline void CREATE_MUTEX(MUTEX_T *m)
-{
-	InitializeCriticalSectionAndSpinCount(m, 0x00000400);
+inline void CREATE_MUTEX(MUTEX_T *m) {
+  InitializeCriticalSectionAndSpinCount(m, 0x00000400);
 }
 #define LOCK_MUTEX(m) EnterCriticalSection(m)
 #define UNLOCK_MUTEX(m) LeaveCriticalSection(m)

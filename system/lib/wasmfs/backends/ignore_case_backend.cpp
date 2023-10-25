@@ -180,7 +180,7 @@ int IgnoreCaseDirectory::removeChild(const std::string& name) {
 
 Directory::MaybeEntries IgnoreCaseDirectory::getEntries() {
   auto entries = real->locked().getEntries();
-  if (auto err = entries.getError()) {
+  if (entries.getError()) {
     return entries;
   }
   for (auto& entry : *entries) {
@@ -234,11 +234,10 @@ backend_t createIgnoreCaseBackend(std::function<backend_t()> createBackend) {
 
 extern "C" {
 
-// C API for creating ignore case backend.
-backend_t wasmfs_create_icase_backend(backend_constructor_t create_backend,
-                                      void* arg) {
-  return createIgnoreCaseBackend(
-    [create_backend, arg]() { return create_backend(arg); });
+// C API FOR creating an ignore case backend by supplying a pointer to another
+// backend.
+backend_t wasmfs_create_icase_backend(backend_t backend) {
+  return createIgnoreCaseBackend([backend]() { return backend; });
 }
 
 } // extern "C"

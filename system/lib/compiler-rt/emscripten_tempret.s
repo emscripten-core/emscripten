@@ -1,5 +1,9 @@
+.section .globals,"",@
+
 .globaltype tempRet0, i32
 tempRet0:
+
+.section .text,"",@
 
 .globl setTempRet0
 setTempRet0:

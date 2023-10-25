@@ -26,19 +26,19 @@ global.LibraryManager = {
   loaded: false,
   libraries: [],
 
-  has: function(name) {
+  has(name) {
     return this.libraries.includes(name);
   },
 
-  load: function() {
+  load() {
     assert(!this.loaded);
     this.loaded = true;
 
     // Core system libraries (always linked against)
     let libraries = [
+      'library_int53.js',
       'library.js',
       'library_sigs.js',
-      'library_int53.js',
       'library_ccall.js',
       'library_addfunction.js',
       'library_formatString.js',
@@ -49,7 +49,6 @@ global.LibraryManager = {
       'library_html5.js',
       'library_stack_trace.js',
       'library_wasi.js',
-      'library_dylink.js',
       'library_makeDynCall.js',
       'library_eventloop.js',
       'library_promise.js',
@@ -78,6 +77,10 @@ global.LibraryManager = {
 
     if (!WASMFS) {
       libraries.push('library_syscall.js');
+    }
+
+    if (RELOCATABLE) {
+      libraries.push('library_dylink.js');
     }
 
     if (FILESYSTEM) {
@@ -150,6 +153,10 @@ global.LibraryManager = {
       libraries.push('library_lz4.js');
     }
 
+    if (SHARED_MEMORY) {
+      libraries.push('library_atomic.js');
+    }
+
     if (MAX_WEBGL_VERSION >= 2) {
       // library_webgl2.js must be included only after library_webgl.js, so if we are
       // about to include library_webgl2.js, first squeeze in library_webgl.js.
@@ -215,9 +222,9 @@ global.LibraryManager = {
       if (isUserLibrary) {
         origLibrary = this.library;
         this.library = new Proxy(this.library, {
-          set: (target, prop, value) => {
+          set(target, prop, value) {
             target[prop] = value;
-            if (!isJsLibraryConfigIdentifier(prop)) {
+            if (!isDecorator(prop)) {
               target[prop + '__user'] = true;
             }
             return true;
@@ -300,7 +307,7 @@ function getUnusedLibarySymbols() {
   const missingSyms = new Set();
   for (const [ident, value] of Object.entries(LibraryManager.library)) {
     if (typeof value === 'function' || typeof value === 'number') {
-      if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !isInternalSymbol(ident)) {
+      if (isJsOnlySymbol(ident) && !isDecorator(ident) && !isInternalSymbol(ident)) {
         const name = ident.substr(1);
         if (!librarySymbolSet.has(name)) {
           missingSyms.add(name);
@@ -352,7 +359,7 @@ function exportRuntime() {
       } else if (legacyRuntimeElements.has(exported)) {
         exported = legacyRuntimeElements.get(exported);
       }
-      return `Module["${name}"] = ${exported};`;
+      return `Module['${name}'] = ${exported};`;
     }
   }
 
@@ -368,17 +375,16 @@ function exportRuntime() {
     'removeRunDependency',
     'FS_createFolder',
     'FS_createPath',
-    'FS_createDataFile',
     'FS_createLazyFile',
     'FS_createLink',
     'FS_createDevice',
-    'FS_unlink',
+    'FS_readFile',
     'out',
     'err',
     'callMain',
     'abort',
-    'keepRuntimeAlive',
     'wasmMemory',
+    'wasmExports',
   ];
 
   // These are actually native wasm functions these days but we allow exporting
@@ -447,8 +453,11 @@ function exportRuntime() {
   // '$ which indicates they are JS methods.
   let runtimeElementsSet = new Set(runtimeElements);
   for (const ident of Object.keys(LibraryManager.library)) {
-    if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident) && !isInternalSymbol(ident)) {
+    if (isJsOnlySymbol(ident) && !isDecorator(ident) && !isInternalSymbol(ident)) {
       const jsname = ident.substr(1);
+      // Note that this assertion may be hit when a function is moved into the
+      // JS library. In that case the function should be removed from the list
+      // of runtime elements above.
       assert(!runtimeElementsSet.has(jsname), 'runtimeElements contains library symbol: ' + ident);
       runtimeElements.push(jsname);
     }

@@ -1,6 +1,6 @@
 if (!LibraryManager.library.glTexImage3D) throw 'This file should be getting processed after library_webgl2.js!';
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
 	orig_glTexImage3D__deps: LibraryManager.library.glTexImage3D__deps,
 	orig_glTexImage3D: LibraryManager.library.glTexImage3D,
 

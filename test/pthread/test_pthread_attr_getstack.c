@@ -18,7 +18,6 @@ void TestStack() {
   void *stbase;
   size_t stsize;
   char dummy;
-  intptr_t result;
 
   rc = pthread_attr_init(&attr);
   assert(rc == 0);

@@ -14,7 +14,7 @@
 int main() {
   // CLOEXEC is not supported
   assert(ioctl(STDOUT_FILENO, FIOCLEX, NULL) == -1);
-  assert(errno = EINVAL);
+  assert(errno == EINVAL);
 
   puts("success");
   return 0;

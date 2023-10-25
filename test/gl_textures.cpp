@@ -12,18 +12,6 @@
 #include <assert.h>
 #include <stdlib.h>
 
-void report_result(int result)
-{
-  if (result == 0) {
-    printf("Test successful!\n");
-  } else {
-    printf("Test failed!\n");
-  }
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
-}
-
 GLuint program;
 
 #define PIX_C(x, y) ((x)/256.0f + (y)/256.0f)
@@ -53,7 +41,13 @@ void draw()
       assert(fabs((int)eRed - red) <= 2);
     }
   emscripten_cancel_main_loop();
-  report_result(0);
+  printf("Test successful!\n");
+#if _REENTRANT
+  // In PROXY_TO_PTHREAD mode its currently not enough to cancel the main
+  // loop and have the application exit:
+  // https://github.com/emscripten-core/emscripten/issues/18773
+  exit(0);
+#endif
 }
 
 int main()
@@ -81,7 +75,7 @@ int main()
     char *buf = new char[maxLength];
     glGetShaderInfoLog(vs, maxLength, &maxLength, buf);
     printf("%s\n", buf);
-    return 0;
+    return 1;
   }
 
   GLuint ps = glCreateShader(GL_FRAGMENT_SHADER);
@@ -96,7 +90,7 @@ int main()
     char *buf = new char[maxLength];
     glGetShaderInfoLog(ps, maxLength, &maxLength, buf);
     printf("%s\n", buf);
-    return 0;
+    return 1;
   }
 
   program = glCreateProgram();
@@ -112,7 +106,7 @@ int main()
     char *buf = new char[maxLength];
     glGetProgramInfoLog(program, maxLength, &maxLength, buf);
     printf("%s\n", buf);
-    return 0;
+    return 1;
   }
 
   glUseProgram(program);

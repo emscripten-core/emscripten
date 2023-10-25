@@ -100,7 +100,7 @@ Directory::Handle::insertDataFile(const std::string& name, mode_t mode) {
     return nullptr;
   }
   cacheChild(name, child, DCacheKind::Normal);
-  setMTime(time(NULL));
+  updateMTime();
   return child;
 }
 
@@ -115,7 +115,7 @@ Directory::Handle::insertDirectory(const std::string& name, mode_t mode) {
     return nullptr;
   }
   cacheChild(name, child, DCacheKind::Normal);
-  setMTime(time(NULL));
+  updateMTime();
   return child;
 }
 
@@ -131,7 +131,7 @@ Directory::Handle::insertSymlink(const std::string& name,
     return nullptr;
   }
   cacheChild(name, child, DCacheKind::Normal);
-  setMTime(time(NULL));
+  updateMTime();
   return child;
 }
 
@@ -181,9 +181,8 @@ int Directory::Handle::insertMove(const std::string& name,
   file->locked().setParent(getDir());
 
   // TODO: Moving mount points probably shouldn't update the mtime.
-  auto now = time(NULL);
-  oldParent->locked().setMTime(now);
-  setMTime(now);
+  oldParent->locked().updateMTime();
+  updateMTime();
 
   return 0;
 }
@@ -204,7 +203,7 @@ int Directory::Handle::removeChild(const std::string& name) {
     entry->second.file->locked().setParent(nullptr);
     dcache.erase(entry);
   }
-  setMTime(time(NULL));
+  updateMTime();
   return 0;
 }
 

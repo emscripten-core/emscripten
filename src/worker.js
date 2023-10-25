@@ -28,23 +28,15 @@ if (ENVIRONMENT_IS_NODE) {
 
   Object.assign(global, {
     self: global,
-    require: require,
-    Module: Module,
+    require,
+    Module,
     location: {
       href: __filename
     },
     Worker: nodeWorkerThreads.Worker,
-    importScripts: function(f) {
-      (0, eval)(fs.readFileSync(f, 'utf8') + '//# sourceURL=' + f);
-    },
-    postMessage: function(msg) {
-      parentPort.postMessage(msg);
-    },
-    performance: global.performance || {
-      now: function() {
-        return Date.now();
-      }
-    },
+    importScripts: (f) => (0, eval)(fs.readFileSync(f, 'utf8') + '//# sourceURL=' + f),
+    postMessage: (msg) => parentPort.postMessage(msg),
+    performance: global.performance || { now: Date.now },
   });
 }
 #endif // ENVIRONMENT_MAY_BE_NODE
@@ -71,7 +63,7 @@ function threadPrintErr() {
 }
 function threadAlert() {
   var text = Array.prototype.slice.call(arguments).join(' ');
-  postMessage({cmd: 'alert', text: text, threadId: Module['_pthread_self']()});
+  postMessage({cmd: 'alert', text, threadId: Module['_pthread_self']()});
 }
 #if ASSERTIONS
 // We don't need out() for now, but may need to add it if we want to use it
@@ -107,7 +99,7 @@ Module['instantiateWasm'] = (info, receiveInstance) => {
 // Turn unhandled rejected promises into errors so that the main thread will be
 // notified about them.
 self.onunhandledrejection = (e) => {
-  throw e.reason ?? e;
+  throw e.reason || e;
 };
 
 function handleMessage(e) {
@@ -161,8 +153,11 @@ function handleMessage(e) {
       // Use `const` here to ensure that the variable is scoped only to
       // that iteration, allowing safe reference from a closure.
       for (const handler of e.data.handlers) {
-        Module[handler] = function() {
-          postMessage({ cmd: 'callHandler', handler, args: [...arguments] });
+        Module[handler] = (...args) => {
+#if RUNTIME_DEBUG
+          dbg(`calling handler on main thread: ${handler}`);
+#endif
+          postMessage({ cmd: 'callHandler', handler, args: args });
         }
       }
 
@@ -192,7 +187,7 @@ function handleMessage(e) {
       if (typeof e.data.urlOrBlob == 'string') {
 #if TRUSTED_TYPES
         if (typeof self.trustedTypes != 'undefined' && self.trustedTypes.createPolicy) {
-          var p = self.trustedTypes.createPolicy('emscripten#workerPolicy3', { createScriptURL: function(ignored) { return e.data.urlOrBlob } });
+          var p = self.trustedTypes.createPolicy('emscripten#workerPolicy3', { createScriptURL: (ignored) => e.data.urlOrBlob });
           importScripts(p.createScriptURL('ignored'));
         } else
 #endif
@@ -201,7 +196,7 @@ function handleMessage(e) {
         var objectUrl = URL.createObjectURL(e.data.urlOrBlob);
 #if TRUSTED_TYPES
         if (typeof self.trustedTypes != 'undefined' && self.trustedTypes.createPolicy) {
-          var p = self.trustedTypes.createPolicy('emscripten#workerPolicy3', { createScriptURL: function(ignored) { return objectUrl } });
+          var p = self.trustedTypes.createPolicy('emscripten#workerPolicy3', { createScriptURL: (ignored) => objectUrl });
           importScripts(p.createScriptURL('ignored'));
         } else
 #endif
@@ -218,7 +213,7 @@ function handleMessage(e) {
 #endif // MODULARIZE && EXPORT_ES6
     } else if (e.data.cmd === 'run') {
       // Pass the thread address to wasm to store it for fast access.
-      Module['__emscripten_thread_init'](e.data.pthread_ptr, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0, /*canBlock=*/1);
+      Module['__emscripten_thread_init'](e.data.pthread_ptr, /*is_main=*/0, /*is_runtime=*/0, /*can_block=*/1);
 
       // Await mailbox notifications with `Atomics.waitAsync` so we can start
       // using the fast `Atomics.notify` notification path.
@@ -271,12 +266,12 @@ function handleMessage(e) {
       // The received message looks like something that should be handled by this message
       // handler, (since there is a e.data.cmd field present), but is not one of the
       // recognized commands:
-      err('worker.js received unknown command ' + e.data.cmd);
+      err(`worker.js received unknown command ${e.data.cmd}`);
       err(e.data);
     }
   } catch(ex) {
 #if ASSERTIONS
-    err('worker.js onmessage() captured an uncaught exception: ' + ex);
+    err(`worker.js onmessage() captured an uncaught exception: ${ex}`);
     if (ex && ex.stack) err(ex.stack);
 #endif
     if (Module['__emscripten_thread_crashed']) {

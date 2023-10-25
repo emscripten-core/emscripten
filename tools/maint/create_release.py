@@ -59,15 +59,17 @@ def main():
   branch_name = 'version_' + release_version
 
   # Create a new git branch
-  subprocess.check_call(['git', 'checkout', '-b', branch_name], cwd=root_dir)
+  subprocess.check_call(['git', 'checkout', '-b', branch_name, 'origin/main'], cwd=root_dir)
 
   # Create auto-generated changes to the new git branch
   subprocess.check_call(['git', 'add', '-u', '.'], cwd=root_dir)
   subprocess.check_call(['git', 'commit', '-m', f'Mark {release_version} as released'], cwd=root_dir)
+  print('New release created in branch: `%s`' % branch_name)
 
-  print('New relase created in branch: `%s`' % branch_name)
+  # Push new branch to origin
+  subprocess.check_call(['git', 'push', 'origin', branch_name], cwd=root_dir)
 
-  # TODO(sbc): Maybe create the tag too, and even push both to `origin`?
+  # TODO(sbc): Maybe create the tag too
   return 0
 
 

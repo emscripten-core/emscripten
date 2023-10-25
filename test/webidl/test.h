@@ -33,6 +33,7 @@ public:
 class Child2 : public Parent {
 public:
   Child2() : Parent(9) { printf("Child2:%d\n", value); };
+  virtual ~Child2() = default;
   int getValCube() { return value*value*value; }
   static void printStatic() { printf("*static*\n"); }
 

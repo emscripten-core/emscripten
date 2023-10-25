@@ -56,7 +56,6 @@ void _embind_register_void(
 void _embind_register_bool(
     TYPEID boolType,
     const char* name,
-    size_t size,
     bool trueValue,
     bool falseValue);
 
@@ -249,6 +248,10 @@ void _embind_register_constant(
     const char* name,
     TYPEID constantType,
     double value);
+
+void _embind_register_user_type(
+    TYPEID type,
+    const char* typeName);
 
 // Register an InitFunc in the global linked list of init functions.
 void _embind_register_bindings(struct InitFunc* f);
@@ -2020,6 +2023,12 @@ void constant(const char* name, const ConstantType& v) {
         name,
         TypeID<const ConstantType&>::get(),
         static_cast<double>(asGenericValue(BT::toWireType(v))));
+}
+
+template <typename T>
+inline void register_type(const char* name) {
+  using namespace internal;
+  _embind_register_user_type(TypeID<T>::get(), name);
 }
 
 // EMSCRIPTEN_BINDINGS creates a static struct to initialize the binding which

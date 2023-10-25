@@ -2,7 +2,7 @@
 // https://github.com/google/closure-compiler/blob/master/src/com/google/javascript/jscomp/js/es6/util/assign.js
 
 #if !POLYFILL
-assert(false, "this file should never be included unless POLYFILL is set");
+#error "this file should never be included unless POLYFILL is set"
 #endif
 
 if (typeof Object.assign == 'undefined') {

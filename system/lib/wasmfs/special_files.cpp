@@ -12,6 +12,7 @@
 #include <wasi/api.h>
 
 #include "special_files.h"
+#include "wasmfs_internal.h"
 
 namespace wasmfs::SpecialFiles {
 
@@ -45,8 +46,15 @@ class StdinFile : public DataFile {
   }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
-    // TODO: Implement reading from stdin.
-    abort();
+    for (size_t i = 0; i < len; i++) {
+      auto c = _wasmfs_stdin_get_char();
+      if (c < 0) {
+        // No more input can be read, return what we did read.
+        return i;
+      }
+      buf[i] = c;
+    }
+    return len;
   };
 
   int flush() override { return 0; }

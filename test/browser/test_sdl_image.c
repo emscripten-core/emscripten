@@ -14,6 +14,8 @@
 #include <stdlib.h>
 
 int testImage(SDL_Surface* screen, const char* fileName) {
+  printf("testImage: %s\n", fileName);
+
   SDL_Surface *image = IMG_Load(fileName);
   if (!image)
   {

@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <memory.h>
 #include <pthread.h>
-#include <emscripten.h>
+#include <emscripten/console.h>
 #include <assert.h>
 
 #include <thread>
@@ -19,7 +19,7 @@ struct Test
 
 void *ThreadMain(void *arg)
 {
-	EM_ASM(out('Thread ' + $0 + ' finished, exit()ing.'), ((Test*)arg)->threadId);
+	emscripten_outf("Thread %d finished, exit()ing", ((Test*)arg)->threadId);
 	pthread_exit(0);
 }
 
@@ -28,7 +28,7 @@ void RunTest(int test)
   int NUM_THREADS = std::thread::hardware_concurrency();
   assert(NUM_THREADS > 0);
 
-	EM_ASM(out('Main: Test ' + $0 + ' starting, with num cores: ' + $1), test, NUM_THREADS);
+	emscripten_outf("Main: Test %d starting, with num cores: %d", test, NUM_THREADS);
 
   struct Test t[NUM_THREADS];
   pthread_t thread[NUM_THREADS];
@@ -37,10 +37,10 @@ void RunTest(int test)
 	pthread_attr_init(&attr);
 	pthread_attr_setstacksize(&attr, 4*1024);
 
-	printf("Main thread has thread ID %ld\n", (long)pthread_self());
+	emscripten_outf("Main thread has thread ID %ld", pthread_self());
 	assert(pthread_self() != 0);
 
-	EM_ASM(out('Main: Starting test ' + $0), test);
+	emscripten_outf("Main: Starting test %d", test);
 
 	for(int i = 0; i < NUM_THREADS; ++i)
 	{
@@ -59,7 +59,7 @@ void RunTest(int test)
 		assert(status == 0);
 	}
 
-	EM_ASM(out('Main: Test ' + $0 + ' finished.'), test);
+	emscripten_outf("Main: Test %d finished", test);
 }
 
 int main()

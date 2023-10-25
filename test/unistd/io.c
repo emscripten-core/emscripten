@@ -26,10 +26,10 @@ int main() {
 
     var device = FS.makedev(major++, 0);
     FS.registerDevice(device, {
-      open: function(stream) {
-        stream.payload = [65, 66, 67, 68];
-      },
       read: function(stream, buffer, offset, length, pos) {
+        if (!stream.payload) {
+          stream.payload = [65, 66, 67, 68];
+        }
         var bytesRead = 0;
         for (var i = 0; i < length; i++) {
           if (stream.payload.length) {

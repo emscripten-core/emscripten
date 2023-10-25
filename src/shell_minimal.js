@@ -4,8 +4,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if USE_CLOSURE_COMPILER
-
+#if MODULARIZE
+var Module = moduleArg;
+#elif USE_CLOSURE_COMPILER
 // if (!Module)` is crucial for Closure Compiler here as it will
 // otherwise replace every `Module` occurrence with the object below
 var /** @type{Object} */ Module;
@@ -15,7 +16,7 @@ if (!Module) /** @suppress{checkTypes}*/Module =
 #endif
   {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
 
-#elif !MODULARIZE && (ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL)
+#elif ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
 
 // When running on the web we expect Module to be defined externally, in the
 // HTML.  Otherwise we must define it here before its first use
@@ -171,7 +172,8 @@ var _scriptDir = (typeof document != 'undefined' && document.currentScript) ? do
 var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function',
   ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && !ENVIRONMENT_IS_WASM_WORKER;
 #else
-var ENVIRONMENT_IS_WORKER = ENVIRONMENT_IS_PTHREAD = typeof importScripts == 'function';
+var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function',
+  ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER;
 #endif
 
 var currentScriptUrl = typeof _scriptDir != 'undefined' ? _scriptDir : ((typeof document != 'undefined' && document.currentScript) ? document.currentScript.src : undefined);

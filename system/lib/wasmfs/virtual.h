@@ -112,9 +112,9 @@ protected:
 inline std::shared_ptr<File> devirtualize(std::shared_ptr<File> file) {
   if (file->is<DataFile>()) {
     return std::static_pointer_cast<VirtualDataFile>(file)->real;
-  } else if (auto dir = file->is<Directory>()) {
+  } else if (file->is<Directory>()) {
     return std::static_pointer_cast<VirtualDirectory>(file)->real;
-  } else if (auto link = file->is<Symlink>()) {
+  } else if (file->is<Symlink>()) {
     return std::static_pointer_cast<VirtualDirectory>(file)->real;
   }
   WASMFS_UNREACHABLE("unexpected file kind");

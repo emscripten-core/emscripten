@@ -6,9 +6,9 @@
 #include <emscripten/threading.h>
 #include <stdlib.h>
 
-#include "opfs_backend.h"
 #include "backend.h"
 #include "file.h"
+#include "opfs_backend.h"
 #include "support.h"
 #include "thread_utils.h"
 #include "wasmfs.h"
@@ -25,15 +25,11 @@ public:
 #ifdef __EMSCRIPTEN_PTHREADS__
   ProxyWorker proxy;
 
-  template<typename T>
-  void operator()(T func) {
-    proxy(func);
-  }
+  template<typename T> void operator()(T func) { proxy(func); }
 #else
   // When used with JSPI on the main thread the various wasmfs_opfs_* functions
   // can be directly executed since they are all async.
-  template <typename T>
-  void operator()(T func) {
+  template<typename T> void operator()(T func) {
     if constexpr (std::is_invocable_v<T&, ProxyingQueue::ProxyingCtx>) {
       // TODO: Find a way to remove this, since it's unused.
       ProxyingQueue::ProxyingCtx p;
@@ -406,8 +402,10 @@ extern "C" {
 backend_t wasmfs_create_opfs_backend() {
   // ProxyWorker cannot safely be synchronously spawned from the main browser
   // thread. See comment in thread_utils.h for more details.
-  assert(!emscripten_is_main_browser_thread() || emscripten_has_asyncify() == 2 &&
-         "Cannot safely create OPFS backend on main browser thread without JSPI");
+  assert(
+    !emscripten_is_main_browser_thread() ||
+    emscripten_has_asyncify() == 2 &&
+      "Cannot safely create OPFS backend on main browser thread without JSPI");
 
   return wasmFS.addBackend(std::make_unique<OPFSBackend>());
 }

@@ -16,5 +16,3 @@ ssize_t pwritev(int fd, const struct iovec *iov, int count, off_t ofs)
 		(long)(ofs), (long)(ofs>>32));
 #endif
 }
-
-weak_alias(pwritev, pwritev64);

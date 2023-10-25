@@ -29,9 +29,14 @@ from . import colored_logger
 # Configure logging before importing any other local modules so even
 # log message during import are shown as expected.
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
+EMCC_LOGGING = int(os.environ.get('EMCC_LOGGING', '1'))
+log_level = logging.ERROR
+if DEBUG:
+  log_level = logging.DEBUG
+elif EMCC_LOGGING:
+  log_level = logging.INFO
 # can add  %(asctime)s  to see timestamps
-logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
-                    level=logging.DEBUG if DEBUG else logging.INFO)
+logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s', level=log_level)
 colored_logger.enable()
 
 from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
@@ -44,13 +49,15 @@ from .settings import settings
 
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
-PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
+PRINT_SUBPROCS = int(os.getenv('EMCC_VERBOSE', '0'))
+SKIP_SUBPROCS = False
+
 # Minimum node version required to run the emscripten compiler.  This is distinct
 # from the minimum version required to execute the generated code.  This is not an
 # exact requirement, but is the oldest version of node that we do any testing with.
 # This version aligns with the current Ubuuntu TLS 20.04 (Focal).
 MINIMUM_NODE_VERSION = (10, 19, 0)
-EXPECTED_LLVM_VERSION = 17
+EXPECTED_LLVM_VERSION = 18
 
 # These get set by setup_temp_dirs
 TEMP_DIR = None
@@ -125,16 +132,6 @@ def run_process(cmd, check=True, input=None, *args, **kw):
 
 def get_num_cores():
   return int(os.environ.get('EMCC_CORES', os.cpu_count()))
-
-
-def mp_run_process(command_tuple):
-  cmd, env, route_stdout_to_temp_files_suffix = command_tuple
-  stdout = None
-  if route_stdout_to_temp_files_suffix:
-    stdout = get_temp_files().get(route_stdout_to_temp_files_suffix)
-  subprocess.run(cmd, stdout=stdout, stderr=None, env=env, check=True)
-  if route_stdout_to_temp_files_suffix:
-    return stdout.name
 
 
 def returncode_to_str(code):
@@ -230,6 +227,8 @@ def run_multiple_processes(commands,
 def check_call(cmd, *args, **kw):
   """Like `run_process` above but treat failures as fatal and exit_with_error."""
   print_compiler_stage(cmd)
+  if SKIP_SUBPROCS:
+    return 0
   try:
     return run_process(cmd, *args, **kw)
   except subprocess.CalledProcessError as e:
@@ -357,6 +356,15 @@ def node_bigint_flags():
   # wasm bigint was enabled by default in node v16.
   if node_version and node_version < (16, 0, 0):
     return ['--experimental-wasm-bigint']
+  else:
+    return []
+
+
+def node_reference_types_flags():
+  node_version = check_node_version()
+  # reference types were enabled by default in node v18.
+  if node_version and node_version < (18, 0, 0):
+    return ['--experimental-wasm-reftypes']
   else:
     return []
 
@@ -612,10 +620,20 @@ def target_environment_may_be(environment):
 
 
 def print_compiler_stage(cmd):
-  """Emulate the '-v' of clang/gcc by printing the name of the sub-command
-  before executing it."""
-  if PRINT_STAGES:
-    print(' "%s" %s' % (cmd[0], shlex_join(cmd[1:])), file=sys.stderr)
+  """Emulate the '-v/-###' flags of clang/gcc by printing the sub-commands
+  that we run."""
+
+  def maybe_quote(arg):
+    if all(c.isalnum() or c in './-_' for c in arg):
+      return arg
+    else:
+      return f'"{arg}"'
+
+  if SKIP_SUBPROCS:
+    print(' ' + ' '.join([maybe_quote(a) for a in cmd]), file=sys.stderr)
+    sys.stderr.flush()
+  elif PRINT_SUBPROCS:
+    print(' %s %s' % (maybe_quote(cmd[0]), shlex_join(cmd[1:])), file=sys.stderr)
     sys.stderr.flush()
 
 
@@ -633,7 +651,7 @@ def is_c_symbol(name):
   return name.startswith('_') or name in settings.WASM_SYSTEM_EXPORTS
 
 
-def treat_as_user_function(name):
+def treat_as_user_export(name):
   if name.startswith('dynCall_'):
     return False
   if name in settings.WASM_SYSTEM_EXPORTS:
@@ -651,7 +669,7 @@ def asmjs_mangle(name):
   # to simply `main` which is expected by the emscripten JS glue code.
   if name == '__main_argc_argv':
     name = 'main'
-  if treat_as_user_function(name):
+  if treat_as_user_export(name):
     return '_' + name
   return name
 
@@ -671,11 +689,6 @@ def unsuffixed(name):
 
 def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
-
-
-def strip_prefix(string, prefix):
-  assert string.startswith(prefix)
-  return string[len(prefix):]
 
 
 def make_writable(filename):
@@ -748,7 +761,6 @@ def get_llvm_target():
 def init():
   set_version_globals()
   setup_temp_dirs()
-  cache.setup(config.CACHE)
 
 
 # ============================================================================

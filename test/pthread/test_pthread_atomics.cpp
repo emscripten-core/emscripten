@@ -43,7 +43,7 @@ int rand_32()
 void *ThreadMain(void *arg)
 {
 	// Do some stdio to test proxying to the main thread.
-	printf("pthread %p starting\n", arg);
+	emscripten_outf("pthread %p starting\n", arg);
 
 	assert(pthread_self() != 0);
 	assert(globalUchar == 5);
@@ -52,7 +52,7 @@ void *ThreadMain(void *arg)
 	assert(globalFloat == 5.0f);
 	assert(globalDouble == 5.0);
 	struct Test *t = (struct Test*)arg;
-	EM_ASM(out('Thread ' + $0 + ' for test ' + $1 + ': starting computation.'), t->threadId, t->op);
+	emscripten_outf("Thread %d for test %d: starting computation", t->threadId, t->op);
 
 	for(int i = 0; i < 99999; ++i)
 		for(int j = 0; j < N; ++j)
@@ -92,7 +92,7 @@ void *ThreadMain(void *arg)
 				break;
 			}
 		}
-	EM_ASM(out('Thread ' + $0 + ' for test ' + $1 + ': finished, exit()ing.'), t->threadId, t->op);
+	emscripten_outf("Thread %d for test %d: finished, exit()ing", t->threadId, t->op);
 	pthread_exit(0);
 }
 
@@ -105,7 +105,7 @@ void RunTest(int test)
 	pthread_attr_init(&attr);
 	pthread_attr_setstacksize(&attr, 4*1024);
 
-	printf("Main thread has thread ID %d\n", (int)pthread_self());
+	emscripten_outf("Main thread has thread ID %d\n", (int)pthread_self());
 	assert(pthread_self() != 0);
 
 	switch(test)
@@ -115,7 +115,7 @@ void RunTest(int test)
 		default: memset(sharedData, 0, sizeof(sharedData)); break;
 	}
 
-	EM_ASM(out('Main: Starting test ' + $0), test);
+	emscripten_outf("Main: Starting test %d", test);
 
 	for(int i = 0; i < NUM_THREADS; ++i)
 	{
@@ -129,14 +129,14 @@ void RunTest(int test)
 
 	for(int i = 0; i < NUM_THREADS; ++i)
 	{
-		int status = 1;
+		intptr_t status = 1;
 		int rc = pthread_join(thread[i], (void**)&status);
 		assert(rc == 0);
 		assert(status == 0);
 	}
 
 	int val = sharedData[0];
-	EM_ASM(out('Main: Test ' + $0 + ' finished. Result: ' + $1), test, val);
+	emscripten_outf("Main: Test %d finished. Result: %d", test, val);
 	if (test != 6)
 	{
 		for(int i = 1; i < N; ++i)

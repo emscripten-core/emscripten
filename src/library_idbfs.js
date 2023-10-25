@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $IDBFS__deps: ['$FS', '$MEMFS', '$PATH'],
-  $IDBFS__postset: function() {
+  $IDBFS__postset: () => {
     addAtExit('IDBFS.quit();');
     return '';
   },
@@ -83,7 +83,7 @@ mergeInto(LibraryManager.library, {
         callback(null, db);
       };
       req.onerror = (e) => {
-        callback(this.error);
+        callback(e.target.error);
         e.preventDefault();
       };
     },
@@ -94,9 +94,7 @@ mergeInto(LibraryManager.library, {
         return p !== '.' && p !== '..';
       };
       function toAbsolute(root) {
-        return (p) => {
-          return PATH.join2(root, p);
-        }
+        return (p) => PATH.join2(root, p);
       };
 
       var check = FS.readdir(mount.mountpoint).filter(isRealDir).map(toAbsolute(mount.mountpoint));
@@ -129,7 +127,7 @@ mergeInto(LibraryManager.library, {
         try {
           var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readonly');
           transaction.onerror = (e) => {
-            callback(this.error);
+            callback(e.target.error);
             e.preventDefault();
           };
 
@@ -140,7 +138,7 @@ mergeInto(LibraryManager.library, {
             var cursor = event.target.result;
 
             if (!cursor) {
-              return callback(null, { type: 'remote', db: db, entries: entries });
+              return callback(null, { type: 'remote', db, entries });
             }
 
             entries[cursor.primaryKey] = { 'timestamp': cursor.key };
@@ -211,7 +209,7 @@ mergeInto(LibraryManager.library, {
       var req = store.get(path);
       req.onsuccess = (event) => { callback(null, event.target.result); };
       req.onerror = (e) => {
-        callback(this.error);
+        callback(e.target.error);
         e.preventDefault();
       };
     },
@@ -224,7 +222,7 @@ mergeInto(LibraryManager.library, {
       }
       req.onsuccess = () => { callback(null); };
       req.onerror = (e) => {
-        callback(this.error);
+        callback(e.target.error);
         e.preventDefault();
       };
     },
@@ -232,7 +230,7 @@ mergeInto(LibraryManager.library, {
       var req = store.delete(path);
       req.onsuccess = () => { callback(null); };
       req.onerror = (e) => {
-        callback(this.error);
+        callback(e.target.error);
         e.preventDefault();
       };
     },
@@ -312,3 +310,7 @@ mergeInto(LibraryManager.library, {
     }
   }
 });
+
+if (WASMFS) {
+  error("using -lidbfs is not currently supported in WasmFS.");
+}

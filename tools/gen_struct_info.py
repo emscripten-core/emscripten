@@ -65,7 +65,7 @@ import subprocess
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
-sys.path.append(__rootdir__)
+sys.path.insert(0, __rootdir__)
 
 from tools import building
 from tools import shared
@@ -250,6 +250,7 @@ def inspect_headers(headers, cflags):
                                '-nostdlib',
                                compiler_rt,
                                '-sBOOTSTRAPPING_STRUCT_INFO',
+                               '-sINCOMING_MODULE_JS_API=',
                                '-sSTRICT',
                                '-sASSERTIONS=0'] + node_flags
 

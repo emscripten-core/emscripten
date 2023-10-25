@@ -19,3 +19,12 @@ along with its entire output.
 Even for runtime issues it helps a lot if you can include the full link command.
 Adding `-v` to the link command will show all of the sub-commands run which
 can help us diagnose your issue.
+
+Note:  Where possible, please avoid attaching screen shots of code or console
+logs.  Instead, please include them as text so that they may be copied /
+searched.  To make code blocks more readable and syntax highlighted, please
+escape them with three backticks before and after, like this:
+
+```cpp
+int x = 20;
+```

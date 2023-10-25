@@ -89,18 +89,19 @@ void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) {
   } else {
     MYASSERT(!!strstr(callstack, ".js:"), "Callstack was %s!", callstack);
   }
-  MYASSERT(!!strstr(callstack, "at bar(int, char*, double)"), "Callstack was %s!", callstack);
-  MYASSERT(!!strstr(callstack, "at void Foo<int>()"), "Callstack was %s!", callstack);
+  MYASSERT(!!strstr(callstack, "bar(int, char*, double)"), "Callstack was %s!", callstack);
+  MYASSERT(!!strstr(callstack, "void Foo<int>()"), "Callstack was %s!", callstack);
 
   // 5. Clean up.
   delete[] callstack;
 
   // Test that obtaining a truncated callstack works. (https://github.com/emscripten-core/emscripten/issues/2171)
-  char *buffer = new char[21];
-  buffer[20] = 0x01; // Magic sentinel that should not change its value.
-  emscripten_get_callstack(EM_LOG_C_STACK | EM_LOG_NO_PATHS | EM_LOG_FUNC_PARAMS, buffer, 20);
-  MYASSERT(!!strstr(buffer, "at bar(int,"), "Truncated callstack was %s!", buffer);
-  MYASSERT(buffer[20] == 0x01, "");
+  const size_t callstack_buf_len = 50;
+  char *buffer = new char[callstack_buf_len+1];
+  buffer[callstack_buf_len] = 0x01; // Magic sentinel that should not change its value.
+  emscripten_get_callstack(EM_LOG_C_STACK | EM_LOG_NO_PATHS | EM_LOG_FUNC_PARAMS, buffer, callstack_buf_len);
+  MYASSERT(!!strstr(buffer, "bar(int,"), "Truncated callstack was %s!", buffer);
+  MYASSERT(buffer[callstack_buf_len] == 0x01, "");
   delete[] buffer;
 
   // Or alternatively use a fixed-size buffer for the callstack (and get a truncated output if it was too small).

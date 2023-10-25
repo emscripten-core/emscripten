@@ -4,7 +4,7 @@
 // found in the LICENSE file.
 
 #include <pthread.h>
-#include <emscripten/em_asm.h>
+#include <emscripten/console.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -26,14 +26,14 @@ static void *thread_start(void *arg)
     long k = *mem[i];
     if (k != n+i)
     {
-      EM_ASM(console.error('Memory corrupted! mem[i]: ' + $0 + ', i: ' + $1 + ', n: ' + $2), k, i, n);
+      emscripten_errf("Memory corrupted! mem[i]: %ld, i: %ld, n: %ld", k, i, n);
       pthread_exit((void*)1);
     }
 
     assert(*mem[i] == n+i);
     free(mem[i]);
   }
-  EM_ASM(console.log('Worker with task number ' + $0 + ' finished.'), n);
+  emscripten_outf("Worker with task number %ld finished", n);
   pthread_exit(0);
 }
 

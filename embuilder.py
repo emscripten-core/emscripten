@@ -64,10 +64,12 @@ MINIMAL_TASKS = [
     'libstandalonewasm-nocatch',
     'crt1',
     'crt1_proxy_main',
+    'crtbegin',
     'libunwind-except',
     'libnoexit',
     'sqlite3',
     'sqlite3-mt',
+    'libwebgpu_cpp',
 ]
 
 # Additional tasks on top of MINIMAL_TASKS that are necessary for PIC testing on
@@ -97,10 +99,11 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libsanitizer_common_rt',
     'libubsan_rt',
     'libwasm_workers_stub-debug',
-    'libwebgpu_cpp',
     'libfetch',
     'libfetch-mt',
     'libwasmfs',
+    'libwasmfs-debug',
+    'libwasmfs_no_fs',
     'giflib',
 ]
 
@@ -188,13 +191,14 @@ def main():
   # Check sanity so that if settings file has changed, the cache is cleared here.
   # Otherwise, the cache will clear in an emcc process, which is invoked while building
   # a system library into the cache, causing trouble.
+  cache.setup()
   shared.check_sanity()
 
   if args.lto:
     settings.LTO = args.lto
 
   if args.verbose:
-    shared.PRINT_STAGES = True
+    shared.PRINT_SUBPROCS = True
 
   if args.pic:
     settings.RELOCATABLE = 1

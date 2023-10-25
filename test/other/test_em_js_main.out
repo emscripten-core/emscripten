@@ -1,0 +1,4 @@
+in main
+hello from side module 42 + hello
+hello again
+hello from void func

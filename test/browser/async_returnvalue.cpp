@@ -11,14 +11,14 @@
 // A "sync" tunnel that adds 1.
 #if USE_EM_JS
 EM_JS(int, sync_tunnel, (int value), {
-  return Asyncify.handleSleep(function(wakeUp) {
+  return Asyncify.handleSleep((wakeUp) => {
     setTimeout(function() {
       wakeUp(value + 1);
     }, 1);
   });
 })
 EM_JS(int, sync_tunnel_bool, (bool value), {
-  return Asyncify.handleSleep(function(wakeUp) {
+  return Asyncify.handleSleep((wakeUp) => {
     setTimeout(function() {
       wakeUp(!value);
     }, 1);

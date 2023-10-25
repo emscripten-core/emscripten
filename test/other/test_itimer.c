@@ -28,7 +28,7 @@ void vtalarm_handler(int dummy) {
 }
 
 void prof_handler(int dummy) {
-  printf("Received SIGVTALRM!\n");
+  printf("Received SIGPROF!\n");
   got_alarm[ITIMER_PROF]++;
 }
 
@@ -46,7 +46,7 @@ void test_oneoff(int which) {
 
   rtn = getitimer(which, &val);
   assert(rtn == 0);
-  printf("ms remainging: %d\n", val.it_value.tv_usec / 1000);
+  printf("ms remaining: %d\n", val.it_value.tv_usec / 1000);
   assert(val.it_value.tv_usec || val.it_value.tv_sec);
 
   // Wait 100ms
@@ -55,13 +55,13 @@ void test_oneoff(int which) {
   // Verify less time remains
   rtn = getitimer(which, &val);
   assert(rtn == 0);
-  printf("ms remainging: %d\n", val.it_value.tv_usec / 1000);
+  printf("ms remaining: %d\n", val.it_value.tv_usec / 1000);
   assert(val.it_value.tv_sec == 0);
   assert(val.it_value.tv_usec > 0);
 
-  // Wait 1s
+  // Wait 1.5s
   assert(!got_alarm[which]);
-  usleep(1000 * 1000);
+  usleep(1500 * 1000);
 
   // Verify that the time fired and is no longer active
   assert(got_alarm[which]);

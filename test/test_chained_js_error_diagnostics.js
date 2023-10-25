@@ -1,4 +1,4 @@
-mergeInto(LibraryManager.library, {
+addToLibrary({
   bar__deps: ['nonexistent_function'],
   bar: function() {},
 

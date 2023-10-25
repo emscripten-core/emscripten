@@ -29,6 +29,14 @@ int main()
         FS.write(stream, data, 0, lengthBytesUTF8(str)+1, pos, /*canOwn=*/false);
 
         FS.close(stream);
+
+        var ex;
+        try {
+            FS.write(stream, data, 0, lengthBytesUTF8(str)+1, pos, /*canOwn=*/false);
+        } catch (err) {
+            ex = err;
+        }
+        assert(ex.name === 'ErrnoError' && ex.errno === 8 /* EBADF */)
     );
 
     std::ifstream file("testfile");

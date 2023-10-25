@@ -1,0 +1,24 @@
+# This file contains a list of commits that are not likely what you
+# are looking for in a blame, such as mass reformatting or renaming.
+# You can set this file as a default ignore file for blame by running
+# the following command.
+#
+# $ git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Remove tabs and fix formatting in test/sse/.  NFC (#18245)
+3cd47cff5da467ae7ca2a29490d8b04af897023f
+
+# [embind docs] Reformat and cleanup whitespace.
+9b1a5910c4f31cff4949541a42ac956ba45e4701
+
+# [NFC] WasmFS: Run clang-format (#19995)
+2384d4e16f5309a642481387edb3774913fab382
+
+# Don't indent code inside C++ namespace in embind.h. NFC (#14098)
+752f66a7434386b4a8ed6e0e6babdafc23d78047
+
+# Remove indentation from C++ namespaces in embind code. NFC (#16400)
+5dbf740fd2064c89bc1112897f960a49caa7b6d1
+
+# Fix indentation in embind code. NFC (#17447)
+14c106a0a8cbc539d6efe4a4e7b4ee7bbb73a0a6

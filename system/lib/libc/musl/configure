@@ -354,6 +354,14 @@ tryflag CFLAGS_C99FSE -fexcess-precision=standard \
 tryflag CFLAGS_C99FSE -frounding-math
 
 #
+# Semantically we want to insist that our sources follow the
+# C rules for type-based aliasing, but most if not all real-world
+# compilers are known or suspected to have critical bugs in their
+# type-based aliasing analysis. See for example GCC bug 107107.
+#
+tryflag CFLAGS_C99FSE -fno-strict-aliasing
+
+#
 # We may use the may_alias attribute if __GNUC__ is defined, so
 # if the compiler defines __GNUC__ but does not provide it,
 # it must be defined away as part of the CFLAGS.
@@ -722,11 +730,6 @@ fi
 
 test "$SUBARCH" \
 && printf "configured for %s variant: %s\n" "$ARCH" "$ARCH$SUBARCH"
-
-case "$ARCH$SUBARCH" in
-arm) ASMSUBARCH=el ;;
-*) ASMSUBARCH=$SUBARCH ;;
-esac
 
 #
 # Some archs (powerpc) have different possible long double formats

@@ -22,4 +22,6 @@
     output.push(text);
     console.log(text);
   };
+  // We manually report our result from the printErr hook above.
+  Module['REPORT_EXIT'] = false;
 })();

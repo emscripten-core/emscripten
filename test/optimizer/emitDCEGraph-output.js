@@ -1,5 +1,9 @@
 [
  {
+  "name": "emcc$defun$applySignatureConversions",
+  "reaches": []
+ },
+ {
   "name": "emcc$defun$rootedFunc1",
   "reaches": [],
   "root": true

@@ -1,4 +1,4 @@
-mergeInto(LibraryManager.library, {
+addToLibrary({
   get_externref_js: function () {
     var test_object = { foo: 1 };
     return test_object;

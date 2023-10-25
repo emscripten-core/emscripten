@@ -18,8 +18,133 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.41 (in development)
+3.1.48 (in development)
 -----------------------
+- A new top-level `bootstrap` script was added.  This script is for emscripten
+  developers and helps take a care of post-checkout tasks such as `npm install`.
+  If this script needs to be run (e.g. becuase package.json was changed, emcc
+  will exit with an error. (#19736)
+- If exceptions are disabled, using `new` together with `std::nothrow` no
+  longer aborts if the allocation fails. Instead `nullptr` is returned now.
+  This does not change the behavior of regular usage of `new`.
+
+3.1.47 - 10/09/23
+-----------------
+- The boost-headers port was updated to v1.83.0.
+- The `noExitRuntime` global is now a JS library symbol that will only be
+  included as needed.  User of `noExitRuntime` will now need to declare a
+  dependency on it.  It will get implicitly included if `noExitRuntime` is part
+  of `INCOMING_MODULE_JS_API.` (which it is by default), or it can be added to
+  either `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` or `noExitRuntime`. (#20336)
+- The egl, html5, sdl and webgpu libraries now support basic functionality with
+  `-sMEMORY64`. (#20276)
+- Value types in `emscripten/html5.h` that correspond the WebIDL `long` type are
+  now represented as `int` rather than `long` types so that they are 32-bit wide
+  on both wasm32 and wasm64.  (#20290)
+- `EM_JS` and `EM_ASM` that are present in side module now have their syntax
+  validated at build time. (#20258)
+- `MAIN_THREAD_EM_ASM_PTR` macro added for code that returns a pointer.  This
+  mirrors the existing `EM_ASM_PTR`. (#20261)
+- Emscripten now implements default POSIX signal handlers. These can
+  terminate or abort the program in response to `raise` cals. (#20257)
+- `emscripten::val` now prevents accidental access to the underlying JavaScript
+  value from threads other than its owner. This already didn't work correctly
+  in majority of cases, but now it will throw a clear assertion failure. (#20344)
+- `emscripten::val` can now be iterated over with a C++ range-based for loop.
+  (#20364)
+
+3.1.46 - 09/15/23
+-----------------
+- The `wasmTable` global is now a JS library function that will only be included
+  as needed.  Code that references `wasmTable` will no need to declare a
+  dependency on it.  It can also be explictly included using
+  `-sEXPORTED_RUNTIME_METHODS=wasmTable`.
+- libunwind updated to LLVM 16.0.6. (#20088)
+- The `--minify=0` commnad line flag will now preserve comments as well as
+  whitespace.  This means the resulting output can then be run though closure
+  compiler or some other tool that gives comments semantic meaning. (#20121)
+- `-sSTRICT` now implies `-sINCOMING_MODULE_API=[]` which is generally good
+  for code size.  If you `-sSTRICT` you now need to be explicit about the
+  incoming module APIs you are supplying.  Users who supply symbols on the
+  incoming module but forget to include them in `-sINCOMING_MODULE_API`
+  will see an error in debug builds so this change will not generate any
+  silent failures.
+- JS library decorators such as `__deps` and `__async` are now type checked so
+  that errors are not silently ignored.
+- The `USE_GLFW` settings now defaults to 0 rather than 2.  This matches other
+  other settings such as `USE_SDL` that default to 0 these days and also matches
+  the existing behaviour for `MINIMAL_RUNTIME` and `STRICT` mode.
+  If you use GLFW you now need to explictly opt into it using `-sUSE_GLFW` or
+  `-lglfw`. (#19939)
+- A new settings `TABLE_BASE` was introduced that can be used to place static
+  function addresses (table slots) at a certain offset.  This defaults to 1
+  which is the previously fixed value. (#20149)
+- Clang's error detection of unused variables `-Wunused-variable` improved,
+  which may require changes in user code (see #20169).
+
+3.1.45 - 08/23/23
+-----------------
+- The function used to add symbols the JS library has been renamed from
+  `mergeInto`, to the more specific `addToLibrary`.  This new function does not
+  require the passing of `LibraryManager.library` as a first argument.  The old
+  `mergeInto` continues to exist for backwards compat.
+- The `--log_html` option was removed from `emrun`.  This option was already not
+  working with python3.8 or above so we hope is safe to say that nobody was
+  relying on it.
+
+3.1.44 - 07/25/23
+-----------------
+- musl libc updated from v1.2.3 to v1.2.4. (#19812)
+- The `EM_LOG_FUNC_PARAMS` flag to `emscripten_log`/`emscripten_get_callstack`
+  has been deprecated and no longer has any effect.  It was based on a
+  long-deprecated JS API. (#19820)
+- The internal `read_` and `readAsync` functions no longer handle data URIs.
+  (Higher-level functions are expected to handle that themselves, before calling.)
+  This only effects builds that use `-sSINGLE_FILE` or `--memory-init-file`.
+  (#19792)
+- The `asm` property of the Module object (which held the raw exports of the
+  wasm module) has been removed.  Internally, this is now accessed via the
+  `wasmExports` global. If necessary, it is possible to export `wasmExports`
+  on the Module object using `-sEXPORTED_RUNTIME_METHODS=wasmExports`. (#19816)
+- Embind now supports generating TypeScript definition files using the
+  `--embind-emit-tsd <filename>` option.
+
+3.1.43 - 07/10/23
+-----------------
+- Handling i64 arguments and return values in JS functions is now much simpler
+  with the new `__i53abi` decorator.  When this is set to true, i64 values are
+  automatically converted to JS numbers (i53) at the JS boundary.  Parameters
+  outside of the i53 will show up as NaN in the JS code (#19711)
+- EM_JS functions are now supported in side modules (#19705)
+
+3.1.42 - 06/22/23
+-----------------
+- The default minimum Node version of Emscripten output was bumped from 10.19 to
+  16.0. To run the output JS in an older version of node, you can use e.g.
+  `-sMIN_NODE_VERSION=101900` which will apply the previous minimum version of
+  10.19.0. (#19192).
+- The log message that emcc will sometime print (for example when auto-building
+  system libraries) can now be completely supressed by running with
+  `EMCC_LOGGING=0`.
+- Runtime dynamic linking symbols such as dlopen and dlsym will no longer cause
+  a linker error when building without `-sMAIN_MODULE`.  Instead stub functions
+  will be included that fail at runtime.  This matches the behaviour of other
+  libc functions that we don't implement.  For those that prefer to get a linker
+  error we have the `-sALLOW_UNIMPLEMENTED_SYSCALLS` settings. (#19527)
+- The `modifyFunction` helper in `parseTools.js` was renamed to
+  `modifyJSFunction` and its callback function no longer takes the name of the
+  function being modified.  The name is not relevant for JS library functions
+  and can be safely ignored.
+- JS library functions can now be implemented using ES6 arrow notation, which
+  can save to a few bytes on JS code size. (#19539)
+
+3.1.41 - 06/06/23
+-----------------
+- A new setting (`CHECK_NULL_WRITES`) was added to disabled the checking of
+  address zero that is normally done when `STACK_OVERFLOW_CHECK` is enabled.
+  (#19487)
+- compiler-rt updated to LLVM 16. (#19506)
+- libcxx and libcxxabi updated to LLVM 16. (#)
 
 3.1.40 - 05/30/23
 -----------------
@@ -236,6 +361,7 @@ See docs/process.md for more on how version tagging works.
   occupy linear memory at all.  The default for `DEFAULT_PTHREAD_STACK_SIZE` was
   also reduced from 2MB to 64KB to match.
 - Improved error messages for writing custom JS libraries. (#18266)
+- EM_ASM code is now supported in side modules (#18228)
 
 3.1.26 - 11/17/22
 -----------------

@@ -102,7 +102,10 @@ struct pthread {
 	// Otherwise the notification has to fall back to the postMessage path.
 	_Atomic int waiting_async;
 #endif
-#if _REENTRANT
+#ifdef EMSCRIPTEN_DYNAMIC_LINKING
+	// When dynamic linking is enabled, threads use this to facilitate the
+	// synchronization of loaded code between threads.
+	// See emscripten_futex_wait.c.
 	_Atomic char sleeping;
 #endif
 };

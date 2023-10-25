@@ -1,2 +1,2 @@
-emscripten_memcpy_big
+emscripten_memcpy_js
 fd_write

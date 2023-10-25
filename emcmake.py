@@ -5,6 +5,7 @@
 # found in the LICENSE file.
 
 import os
+import shutil
 import sys
 from tools import shared
 from tools import config
@@ -47,9 +48,9 @@ variables so that emcc etc. are used. Typical usage:
   # toolchain was specified, to keep CMake from pulling in a native Visual
   # Studio, or Unix Makefiles.
   if utils.WINDOWS and not any(arg.startswith('-G') for arg in args):
-    if utils.which('mingw32-make'):
+    if shutil.which('mingw32-make'):
       args += ['-G', 'MinGW Makefiles']
-    elif utils.which('ninja'):
+    elif shutil.which('ninja'):
       args += ['-G', 'Ninja']
     else:
       print('emcmake: no compatible cmake generator found; Please install ninja or mingw32-make, or specify a generator explicitly using -G', file=sys.stderr)

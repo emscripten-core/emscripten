@@ -10,20 +10,20 @@
 #include <assert.h>
 #include <unistd.h>
 #include <errno.h>
-#include <emscripten/em_asm.h>
+#include <emscripten/console.h>
 
 _Atomic long res = 43;
 static void cleanup_handler(void *arg)
 {
-  EM_ASM(out('Called clean-up handler with arg ' + $0), arg);
   long a = (long)arg;
+  emscripten_outf("Called clean-up handler with arg %ld", a);
   res -= a;
 }
 
 static void *thread_start(void *arg)
 {
   pthread_cleanup_push(cleanup_handler, (void*)42);
-  EM_ASM(out('Thread started!'));
+  emscripten_out("Thread started!");
   for(;;)
   {
     pthread_testcancel();
@@ -38,7 +38,7 @@ int main()
 {
   int s = pthread_create(&thr, NULL, thread_start, (void*)0);
   assert(s == 0);
-  EM_ASM(out('Canceling thread..'););
+  emscripten_out("Canceling thread..");
   s = pthread_cancel(thr);
   assert(s == 0);
 
@@ -47,7 +47,7 @@ int main()
     int result = res;
     if (result == 1)
     {
-      EM_ASM_INT( { out('After canceling, shared variable = ' + $0 + '.'); }, result);
+      emscripten_outf("After canceling, shared variable = %d", result);
       return 0;
     }
   }

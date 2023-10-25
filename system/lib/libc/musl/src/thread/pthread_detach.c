@@ -11,8 +11,22 @@ static int __pthread_detach(pthread_t t)
 #endif
 	/* If the cas fails, detach state is either already-detached
 	 * or exiting/exited, and pthread_join will trap or cleanup. */
-	if (a_cas(&t->detach_state, DT_JOINABLE, DT_DETACHED) != DT_JOINABLE)
-		return __pthread_join(t, 0);
+#ifdef __EMSCRIPTEN__
+	int old_state = a_cas(&t->detach_state, DT_JOINABLE, DT_DETACHED);
+	if (old_state != DT_JOINABLE) {
+		// Even though the man page says this is undefined behaviour to attempt to
+		// detach an already-detached thread we have several tests in the posixtest
+		// suite that depend on this (pthread_join.c)
+		if (old_state == DT_DETACHED)
+			return EINVAL;
+#else
+	if (a_cas(&t->detach_state, DT_JOINABLE, DT_DETACHED) != DT_JOINABLE) {
+#endif
+		int cs;
+		__pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
+		__pthread_join(t, 0);
+		__pthread_setcancelstate(cs, 0);
+	}
 	return 0;
 }
 

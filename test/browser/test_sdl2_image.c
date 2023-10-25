@@ -74,8 +74,5 @@ int main() {
 
   printf("you should see an image.\n");
 
-  SDL_Quit();
-
   return result;
 }
-

@@ -74,4 +74,4 @@ var LibraryMemOps = {
 #endif
 };
 
-mergeInto(LibraryManager.library, LibraryMemOps);
+addToLibrary(LibraryMemOps);

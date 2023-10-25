@@ -11,6 +11,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#ifdef __EMSCRIPTEN__
+
 #include "cxxabi.h"
 #include "cxa_exception.h"
 #include "include/atomic_support.h"
@@ -85,7 +87,7 @@ extern "C" {
 //  object. Zero-fill the object. If memory can't be allocated, call
 //  std::terminate. Return a pointer to the memory to be used for the
 //  user's exception object.
-void *__cxa_allocate_exception(size_t thrown_size) _NOEXCEPT {
+void *__cxa_allocate_exception(size_t thrown_size) throw() {
     size_t actual_size = cxa_exception_size_from_exception_thrown_size(thrown_size);
 
     char *raw_buffer =
@@ -100,7 +102,7 @@ void *__cxa_allocate_exception(size_t thrown_size) _NOEXCEPT {
 
 
 //  Free a __cxa_exception object allocated with __cxa_allocate_exception.
-void __cxa_free_exception(void *thrown_object) _NOEXCEPT {
+void __cxa_free_exception(void *thrown_object) throw() {
     // Compute the size of the padding before the header.
     char *raw_buffer =
         ((char *)cxa_exception_from_thrown_object(thrown_object));
@@ -115,7 +117,7 @@ void __cxa_free_exception(void *thrown_object) _NOEXCEPT {
     Requires:  If thrown_object is not NULL, it is a native exception.
 */
 void
-__cxa_increment_exception_refcount(void *thrown_object) _NOEXCEPT {
+__cxa_increment_exception_refcount(void *thrown_object) throw() {
     if (thrown_object != NULL )
     {
         __cxa_exception* exception_header = cxa_exception_from_thrown_object(thrown_object);
@@ -133,7 +135,7 @@ __cxa_increment_exception_refcount(void *thrown_object) _NOEXCEPT {
     Requires:  If thrown_object is not NULL, it is a native exception.
 */
 _LIBCXXABI_NO_CFI
-void __cxa_decrement_exception_refcount(void *thrown_object) _NOEXCEPT {
+void __cxa_decrement_exception_refcount(void *thrown_object) throw() {
     if (thrown_object != NULL )
     {
         __cxa_exception* exception_header = cxa_exception_from_thrown_object(thrown_object);
@@ -153,3 +155,5 @@ void __cxa_decrement_exception_refcount(void *thrown_object) _NOEXCEPT {
 }  // extern "C"
 
 }  // abi
+
+#endif // __EMSCRIPTEN__

@@ -3,7 +3,7 @@ env.__indirect_function_table
 env.__memory_base
 env.__stack_pointer
 env.__table_base
-env.emscripten_memcpy_big
+env.emscripten_memcpy_js
 env.emscripten_resize_heap
 env.memory
 wasi_snapshot_preview1.fd_write

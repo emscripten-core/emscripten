@@ -13,8 +13,6 @@
 int futexLocation = 0;
 int testSuccess = 0;
 
-extern "C" int _emscripten_thread_supports_atomics_wait(void);
-
 EM_BOOL ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData)
 {
   int supportsAtomicWait = _emscripten_thread_supports_atomics_wait();

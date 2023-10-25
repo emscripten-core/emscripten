@@ -125,4 +125,12 @@ public:
   }
 };
 
+extern "C" {
+
+backend_t wasmfs_create_jsimpl_backend(void) {
+  return wasmFS.addBackend(std::make_unique<JSImplBackend>());
+}
+
+} // extern "C"
+
 } // namespace wasmfs

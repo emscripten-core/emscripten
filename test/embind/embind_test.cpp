@@ -2173,7 +2173,6 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("embind_test_accept_big_class_instance", &embind_test_accept_big_class_instance);
 
     class_<UniquePtrToConstructor>("UniquePtrToConstructor")
-        .constructor<std::unique_ptr<int>>()
         .function("getValue", &UniquePtrToConstructor::getValue)
         ;
 
@@ -2669,6 +2668,7 @@ struct BoundClass {
     UnboundClass property;
 };
 
+#ifndef SKIP_UNBOUND_TYPES
 EMSCRIPTEN_BINDINGS(incomplete) {
     constant("hasUnboundTypeNames", emscripten::has_unbound_type_names);
 
@@ -2694,6 +2694,7 @@ EMSCRIPTEN_BINDINGS(incomplete) {
         .property("property", &BoundClass::property)
         ;
 }
+#endif
 
 class Noncopyable {
     Noncopyable(const Noncopyable&) = delete;

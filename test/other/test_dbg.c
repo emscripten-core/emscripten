@@ -13,6 +13,7 @@ int main() {
 #ifndef NDEBUG
   // This symbol is only available in debug builds (i.e. -sASSERTIONS)
   emscripten_dbg("native dbg message");
+  emscripten_dbgn("hello world!", 5);
   emscripten_dbgf("formatted: %d", 42);
 #endif
   return 0;

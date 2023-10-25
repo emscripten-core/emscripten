@@ -1,4 +1,4 @@
-mergeInto(LibraryManager.library, {
+addToLibrary({
   // Test asynchronously calling a function on the main thread.
   report_result__proxy: 'async',
   report_result__sig: 'viii',

@@ -2,5 +2,5 @@
 
 int main()
 {
-	EM_ASM(foo = 2; var foo; console.log(foo));
+	EM_ASM(foo = 2; var foo; out(foo));
 }

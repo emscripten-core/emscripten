@@ -35,7 +35,6 @@
         "structs": {
             "stat": [
                 "st_dev",
-                "__st_ino_truncated",
                 "st_mode",
                 "st_nlink",
                 "st_uid",
@@ -89,10 +88,7 @@
             "F_UNLCK",
             "O_RDWR",
             "S_IRWXO",
-            "F_GETLK64",
-            "F_SETLKW64",
             "F_SETLKW",
-            "F_SETLK64",
             "F_GETLK",
             "S_ISVTX",
             "O_RDONLY",
@@ -150,6 +146,10 @@
                 "tm_isdst",
                 "tm_gmtoff",
                 "tm_zone"
+            ],
+            "timeval": [
+                "tv_sec",
+                "tv_usec"
             ],
             "timespec": [
                 "tv_sec",
@@ -306,7 +306,8 @@
             "TIOCGPGRP",
             "TIOCSPGRP",
             "TIOCGWINSZ",
-            "TIOCSWINSZ"
+            "TIOCSWINSZ",
+            "TCFLSH"
         ]
     },
     {
@@ -479,6 +480,41 @@
             "RTLD_GLOBAL",
             "RTLD_NODELETE"
         ]
+    },
+    {
+        "file": "termios.h",
+        "defines": [
+            "NCCS",
+            "ICRNL",
+            "IXON",
+            "IMAXBEL",
+            "IUTF8",
+            "OPOST",
+            "ONLCR",
+            "B38400",
+            "CSIZE",
+            "CREAD",
+            "ISIG",
+            "ICANON",
+            "ECHO",
+            "ECHOE",
+            "ECHOK",
+            "ECHOCTL",
+            "ECHOKE",
+            "IEXTEN"
+        ],
+        "structs": {
+            "termios": [
+                "c_iflag",
+                "c_oflag",
+                "c_cflag",
+                "c_lflag",
+                "c_line",
+                "c_cc",
+                "__c_ispeed",
+                "__c_ospeed"
+            ]
+        }
     },
     // ===========================================
     // SDL
@@ -914,21 +950,19 @@
     {
         "file": "emscripten/threading.h",
         "defines": [
-            "EM_PROXIED_RESIZE_OFFSCREENCANVAS",
-            "EM_FUNC_SIG_V",
-            "EM_FUNC_SIG_VI",
-            "EM_FUNC_SIG_VII",
-            "EM_FUNC_SIG_VIII",
-            "EM_FUNC_SIG_I",
-            "EM_FUNC_SIG_II",
-            "EM_FUNC_SIG_III",
-            "EM_FUNC_SIG_IIII",
             "EM_FUNC_SIG_PARAM_I",
             "EM_FUNC_SIG_PARAM_I64",
             "EM_FUNC_SIG_PARAM_F",
             "EM_FUNC_SIG_PARAM_D",
             "EM_FUNC_SIG_PARAM_B",
             "EM_FUNC_SIG_PARAM_F2I"
+        ]
+    },
+    {
+        "file": "emscripten/wasm_worker.h",
+        "defines": [
+            "ATOMICS_WAIT_NOT_EQUAL",
+            "ATOMICS_WAIT_TIMED_OUT"
         ]
     },
     {
@@ -939,9 +973,7 @@
             "EM_LOG_ERROR",
             "EM_LOG_C_STACK",
             "EM_LOG_JS_STACK",
-            "EM_LOG_DEMANGLE",
             "EM_LOG_NO_PATHS",
-            "EM_LOG_FUNC_PARAMS",
             "EM_LOG_DEBUG",
             "EM_LOG_INFO",
             "EM_TIMING_SETTIMEOUT",
@@ -1165,7 +1197,8 @@
                 "name",
                 "driverDescription",
                 "adapterType",
-                "backendType"
+                "backendType",
+                "compatibilityMode"
             ],
             "WGPUBindGroupEntry": [
                 "nextInChain",
@@ -1215,12 +1248,15 @@
                 "lineNum",
                 "linePos",
                 "offset",
-                "length"
+                "length",
+                "utf16LinePos",
+                "utf16Offset",
+                "utf16Length"
             ],
-            "WGPUComputePassTimestampWrite": [
+            "WGPUComputePassTimestampWrites": [
                 "querySet",
-                "queryIndex",
-                "location"
+                "beginningOfPassWriteIndex",
+                "endOfPassWriteIndex"
             ],
             "WGPUConstantEntry": [
                 "nextInChain",
@@ -1241,6 +1277,8 @@
                 "maxTextureDimension3D",
                 "maxTextureArrayLayers",
                 "maxBindGroups",
+                "maxBindGroupsPlusVertexBuffers",
+                "maxBindingsPerBindGroup",
                 "maxDynamicUniformBuffersPerPipelineLayout",
                 "maxDynamicStorageBuffersPerPipelineLayout",
                 "maxSampledTexturesPerShaderStage",
@@ -1253,11 +1291,13 @@
                 "minUniformBufferOffsetAlignment",
                 "minStorageBufferOffsetAlignment",
                 "maxVertexBuffers",
+                "maxBufferSize",
                 "maxVertexAttributes",
                 "maxVertexBufferArrayStride",
                 "maxInterStageShaderComponents",
                 "maxInterStageShaderVariables",
                 "maxColorAttachments",
+                "maxColorAttachmentBytesPerSample",
                 "maxComputeWorkgroupStorageSize",
                 "maxComputeInvocationsPerWorkgroup",
                 "maxComputeWorkgroupSizeX",
@@ -1334,16 +1374,18 @@
                 "chain",
                 "maxDrawCount"
             ],
-            "WGPURenderPassTimestampWrite": [
+            "WGPURenderPassTimestampWrites": [
                 "querySet",
-                "queryIndex",
-                "location"
+                "beginningOfPassWriteIndex",
+                "endOfPassWriteIndex"
             ],
             "WGPURequestAdapterOptions": [
                 "nextInChain",
                 "compatibleSurface",
                 "powerPreference",
-                "forceFallbackAdapter"
+                "backendType",
+                "forceFallbackAdapter",
+                "compatibilityMode"
             ],
             "WGPUSamplerBindingLayout": [
                 "nextInChain",
@@ -1374,7 +1416,7 @@
             ],
             "WGPUShaderModuleWGSLDescriptor": [
                 "chain",
-                "source"
+                "code"
             ],
             "WGPUStencilFaceState": [
                 "compare",
@@ -1461,7 +1503,6 @@
             "WGPUComputePassDescriptor": [
                 "nextInChain",
                 "label",
-                "timestampWriteCount",
                 "timestampWrites"
             ],
             "WGPUDepthStencilState": [
@@ -1497,6 +1538,7 @@
                 "constants"
             ],
             "WGPURenderPassColorAttachment": [
+                "nextInChain",
                 "view",
                 "resolveTarget",
                 "loadOp",
@@ -1553,7 +1595,9 @@
                 "requiredFeaturesCount",
                 "requiredFeatures",
                 "requiredLimits",
-                "defaultQueue"
+                "defaultQueue",
+                "deviceLostCallback",
+                "deviceLostUserdata"
             ],
             "WGPURenderPassDescriptor": [
                 "nextInChain",
@@ -1562,7 +1606,6 @@
                 "colorAttachments",
                 "depthStencilAttachment",
                 "occlusionQuerySet",
-                "timestampWriteCount",
                 "timestampWrites"
             ],
             "WGPUVertexState": [

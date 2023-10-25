@@ -119,6 +119,18 @@ EM_ASM_INT: Return an integer in a single brief statement.
 4. returned statement 45
 5. returned statement 46
 
+EM_ASM_PTR: Return a pointer back.
+1. got arg 42
+1. returned ptr 0x3
+2. got arg 42
+2. returned ptr 0x4
+3. got arg 42
+3. returned ptr 0x5
+4. got arg 42
+4. returned ptr 0x6
+5. got arg 42
+5. returned ptr 0x7
+
 EM_ASM_DOUBLE: Pass no parameters, return a double.
 1. returning double
 1. got double 3.500000

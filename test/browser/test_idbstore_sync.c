@@ -25,7 +25,9 @@ void test() {
   sum++;
 
   printf("checking\n");
+  exists = 5555;
   emscripten_idb_exists(DB, "the_secret", &exists, &error);
+  assert(exists != 5555);
   assert(!error);
   assert(exists);
   sum++;
@@ -48,6 +50,16 @@ void test() {
   printf("loading, should fail as we deleted\n");
   emscripten_idb_load(DB, "the_secret", &buffer, &num, &error);
   assert(error); // expected error!
+  sum++;
+
+  printf("storing %s again\n", SECRET);
+  emscripten_idb_store(DB, "the_secret", SECRET, strlen(SECRET)+1, &error);
+  assert(!error);
+  sum++;
+
+  printf("clearing the store\n");
+  emscripten_idb_clear(DB, &error);
+  assert(!error);
   sum++;
 
   printf("last checking\n");

@@ -4,7 +4,7 @@
 // found in the LICENSE file.
 
 #include <pthread.h>
-#include <emscripten/em_asm.h>
+#include <emscripten/console.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,7 +12,7 @@
 
 static void *thread1_start(void *arg)
 {
-  EM_ASM(out('thread1_start!'));
+  emscripten_out("thread1_start!");
 
   FILE *handle = fopen("file1.txt", "r");
   assert(handle);

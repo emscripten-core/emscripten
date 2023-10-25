@@ -171,15 +171,15 @@ Synchronizing audio thread with the main thread
 
 Wasm Audio Worklets API builds on top of the Emscripten Wasm Workers feature. This means that the Wasm Audio Worklet thread is modeled as if it was a Wasm Worker thread.
 
-To synchronize information between an Audio Worklet Node and other threads in the application, there are two options:
+To synchronize information between an Audio Worklet Node and other threads in the application, there are three options:
 
 1. Leverage the Web Audio "AudioParams" model. Each Audio Worklet Processor type is instantiated with a custom defined set of audio parameters that can affect the audio computation at sample precise accuracy. These parameters are passed in the ``params`` array into the audio processing function.
 
-The main browser thread that created the Web Audio context can adjust the values of these parameters whenever desired. See `MDN function: setValueAtTime <https://developer.mozilla.org/en-US/docs/Web/API/AudioParam/setValueAtTime>`_ .
+   The main browser thread that created the Web Audio context can adjust the values of these parameters whenever desired. See `MDN function: setValueAtTime <https://developer.mozilla.org/en-US/docs/Web/API/AudioParam/setValueAtTime>`_.
 
 2. Data can be shared with the Audio Worklet thread using GCC/Clang lock-free atomics operations, Emscripten atomics operations and the Wasm Worker API thread synchronization primitives. See :ref:`wasm_workers` for more information.
 
-3. Utilize the ``emscripten_audio_worklet_post_function_*()`` family of event passing functions. These functions operate similar to how the function family emscripten_wasm_worker_post_function_*()`` does. Posting functions enables a ``postMessage()`` style of communication, where the audio worklet thread and the main browser thread can send messages (function call dispatches) to each others.
+3. Utilize the ``emscripten_audio_worklet_post_function_*()`` family of event passing functions. These functions operate similar to the ``emscripten_wasm_worker_post_function_*()`` functions. They enable a ``postMessage()`` style of communication, where the audio worklet thread and the main browser thread can send messages (function call dispatches) to each other.
 
 
 More Examples

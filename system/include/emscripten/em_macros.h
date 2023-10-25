@@ -15,6 +15,14 @@
 #define EM_IMPORT(NAME)
 #endif
 
+#ifdef __cplusplus
+#define _EM_BEGIN_CDECL extern "C" {
+#define _EM_END_CDECL   }
+#else // __cplusplus
+#define _EM_BEGIN_CDECL
+#define _EM_END_CDECL
+#endif // __cplusplus
+
 /*
  * EM_JS_DEPS: Use this macro to declare indirect dependencies on JS symbols.
  * The first argument is just unique name for the set of dependencies.  The
@@ -36,8 +44,10 @@
  * it makes sense co-locate them with the EM_JS or EM_ASM code they correspond
  * to.
  */
-#define EM_JS_DEPS(tag, deps)            \
+#define EM_JS_DEPS(tag, deps)             \
+  _EM_BEGIN_CDECL                         \
   EMSCRIPTEN_KEEPALIVE                    \
   __attribute__((section("em_lib_deps"))) \
   __attribute__((aligned(1)))             \
-  char __em_lib_deps_##tag[] = deps;
+  char __em_lib_deps_##tag[] = deps;      \
+  _EM_END_CDECL

@@ -17,7 +17,7 @@
 #include <emscripten/heap.h>
 #include <emscripten/threading.h>
 
-#define STACK_ALIGN 16
+#define STACK_ALIGN __BIGGEST_ALIGNMENT__
 #define TSD_ALIGN (sizeof(void*))
 
 // Comment this line to enable tracing of thread creation and destruction:
@@ -340,7 +340,7 @@ void _emscripten_thread_exit(void* result) {
     // Mark the thread as no longer running, so it can be joined.
     // Once we publish this, any threads that are waiting to join with us can
     // proceed and this worker can be recycled and used on another thread.
-#ifdef __PIC__
+#ifdef EMSCRIPTEN_DYNAMIC_LINKING
     // When dynamic linking is enabled we need to keep track of zombie threads
     _emscripten_thread_exit_joinable(self);
 #endif

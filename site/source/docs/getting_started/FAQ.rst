@@ -81,7 +81,7 @@ The main tips for improving build time are:
   - For compiling your source files, use a parallel build system (for example,
     in ``make`` you can do something like ``make -j8`` to run using 8 cores).
   - For the link step, Emscripten can run some optimizations in parallel
-    (specifically, Binaryen optimizations for wasm, and our JavaScript
+    (specifically, Binaryen optimizations for Wasm, and our JavaScript
     optimizations). Increasing the number of cores results in an almost linear
     improvement. Emscripten will automatically use more cores if they are
     available, but you can control that with ``EMCC_CORES=N`` in the environment
@@ -152,7 +152,7 @@ the browser devtools (web console and network tab), or in your webserver's
 logging.
 
 
-What is "No WebAssembly support found. Build with -sWASM=0 to target JavaScript instead" or "no native wasm support detected"?
+What is "No WebAssembly support found. Build with -sWASM=0 to target JavaScript instead" or "no native Wasm support detected"?
 ===============================================================================================================================
 
 Those errors indicate that WebAssembly support is not present in the VM you are
@@ -404,8 +404,8 @@ what you want on the web: even though ``main()`` exited, you may have something
 asynchronous happening later that you want to execute.
 
 In some cases, though, you may want a more "commandline" experience, where we do
-shut down the runtime when ``main()`` exits. You can build with ``-s
-EXIT_RUNTIME``, and then we will call ``atexits`` and so forth. When you build
+shut down the runtime when ``main()`` exits. You can build with ``-sEXIT_RUNTIME``,
+and then we will call ``atexits`` and so forth. When you build
 with ``ASSERTIONS``, you should get a warning when you need this. For example,
 if your program prints something without a newline,
 
@@ -643,7 +643,7 @@ strings, so it accepts ``[a]`` or ``[a,b]`` etc.).
 
 
 Why do I get a Python ``SyntaxError: invalid syntax`` on ``file=..`` or on a string starting with ``f'..'``?
-============================================================================================================ 
+============================================================================================================
 
 Emscripten requires a recent-enough version of Python. An older Python version,
 like ``2.*``, will not support the print statement by default, so it will error on
@@ -695,7 +695,7 @@ This is a limitation of the asm.js target in :term:`Clang`. This code is not
 currently supported.
 
 
-How do I pass int64_t and uint64_t values from js into wasm functions?
+How do I pass int64_t and uint64_t values from js into Wasm functions?
 ======================================================================
 
 If you build using the `-sWASM_BIGINT` flag, then `int64_t` and `uint64_t` will

@@ -2,7 +2,7 @@ var d = Module, e, f, g = new TextDecoder("utf8"), h;
 
 WebAssembly.instantiate(d.wasm, {
     a: {
-        a: function(a) {
+        a: a => {
             var c = console, k = c.log;
             if (a) {
                 for (var l = a + void 0, b = a; !(b >= l) && e[b]; ) ++b;
@@ -11,7 +11,7 @@ WebAssembly.instantiate(d.wasm, {
             k.call(c, a);
         }
     }
-}).then((function(a) {
+}).then((a => {
     a = a.instance.exports;
     h = a.d;
     f = a.b;

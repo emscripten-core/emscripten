@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
-  $getCFunc: function(ident) {
+  $getCFunc: (ident) => {
     var func = Module['_' + ident]; // closure exported function
 #if ASSERTIONS
     assert(func, 'Cannot call unknown function ' + ident + ', make sure it is exported');
@@ -23,7 +23,7 @@ mergeInto(LibraryManager.library, {
    * @param {Arguments|Array=} args
    * @param {Object=} opts
    */`,
-  $ccall: function(ident, returnType, argTypes, args, opts) {
+  $ccall: (ident, returnType, argTypes, args, opts) => {
     // For fast lookup of conversion functions
     var toC = {
 #if MEMORY64
@@ -85,11 +85,14 @@ mergeInto(LibraryManager.library, {
       if (stack !== 0) stackRestore(stack);
       return convertReturnValue(ret);
     }
+#if ASYNCIFY
+  var asyncMode = opts && opts.async;
+#endif
+
 #if ASYNCIFY == 1
     // Keep the runtime alive through all calls. Note that this call might not be
     // async, but for simplicity we push and pop in all calls.
     runtimeKeepalivePush();
-    var asyncMode = opts && opts.async;
     if (Asyncify.currData != previousAsync) {
 #if ASSERTIONS
       // A change in async operation happened. If there was already an async
@@ -111,6 +114,10 @@ mergeInto(LibraryManager.library, {
     }
 #endif
 
+#if ASYNCIFY == 2
+    if (asyncMode) return ret.then(onDone);
+#endif
+
     ret = onDone(ret);
 #if ASYNCIFY == 1
     // If this is an async ccall, ensure we return a promise
@@ -126,7 +133,7 @@ mergeInto(LibraryManager.library, {
    * @param {Object=} opts
    */`,
   $cwrap__deps: ['$getCFunc', '$ccall'],
-  $cwrap: function(ident, returnType, argTypes, opts) {
+  $cwrap: (ident, returnType, argTypes, opts) => {
 #if !ASSERTIONS
     // When the function takes numbers and returns a number, we can just return
     // the original function
