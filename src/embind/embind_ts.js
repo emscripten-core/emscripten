@@ -604,6 +604,7 @@ var LibraryEmbind = {
   $makeLegalFunctionName: () => assert(false, 'stub function should not be called'),
   $newFunc: () => assert(false, 'stub function should not be called'),
   $runDestructors: () => assert(false, 'stub function should not be called'),
+  $createNamedFunction: () => assert(false, 'stub function should not be called'),
 };
 
 extraLibraryFuncs.push('$embindEmitTypes');
