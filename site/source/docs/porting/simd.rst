@@ -108,11 +108,11 @@ When developing SIMD code to use WebAssembly SIMD, implementors should be aware 
 
    * - i8x16.[shl|shr_s|shr_u]
      - x86
-     - Included for orthogonality, these instructions have no equivalent x86 instruction and are emulated with `5-11 x86 instructions in v8 <https://github.com/v8/v8/blob/b6520eda5eafc3b007a5641b37136dfc9d92f63d/src/compiler/backend/x64/code-generator-x64.cc#L3446-L3510>`_ (i.e. using 16x8 shifts).
+     - Included for orthogonality, these instructions have no equivalent x86 instruction and are emulated with `5-11 x86 instructions in v8 <https://github.com/v8/v8/blob/c8672adeebb105c7636334b9931831bf1945f4ec/src/codegen/shared-ia32-x64/macro-assembler-shared-ia32-x64.cc#L427-L552>`_ (i.e. using 16x8 shifts).
   
    * - i64x2.shr_s
      - x86
-     - Included for orthogonality, this instruction has no equivalent x86 instruction and is emulated with `6 x86 instructions in v8 <https://github.com/v8/v8/blob/b6520eda5eafc3b007a5641b37136dfc9d92f63d/src/compiler/backend/x64/code-generator-x64.cc#L2807-L2825>`_.
+     - Included for orthogonality, this instruction has no equivalent x86 instruction and is emulated with `6-12 x86 instructions in v8 <https://github.com/v8/v8/blob/c8672adeebb105c7636334b9931831bf1945f4ec/src/codegen/shared-ia32-x64/macro-assembler-shared-ia32-x64.cc#L996-L1057>`_.
 
    * - i8x16.swizzle
      - x86
@@ -120,7 +120,7 @@ When developing SIMD code to use WebAssembly SIMD, implementors should be aware 
 
    * - [f32x4|f64x2].[min|max]
      - x86
-     - As with the scalar versions, the NaN propagation semantics force runtimes to emulate with 8+ x86 instructions (e.g., see `v8's emulation <https://github.com/v8/v8/blob/b6520eda5eafc3b007a5641b37136dfc9d92f63d/src/compiler/backend/x64/code-generator-x64.cc#L2661-L2699>`_; if possible, use [f32x4|f64x2].[pmin|pmax] instead (1 x86 instruction).
+     - As with the scalar versions, the NaN propagation semantics force runtimes to emulate with 7-10 x86 instructions (e.g., see `v8's emulation <https://github.com/v8/v8/blob/c8672adeebb105c7636334b9931831bf1945f4ec/src/codegen/shared-ia32-x64/macro-assembler-shared-ia32-x64.cc#L202-L339>`_; if possible, use [f32x4|f64x2].[pmin|pmax] instead (1 x86 instruction).
 
    * - i32x4.trunc_sat_f32x4_[u|s]
      - x86
