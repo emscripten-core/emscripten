@@ -948,7 +948,15 @@ var LibraryPThread = {
     _exit(returnCode);
   },
 
-  $proxyToMainThread__deps: ['$withStackSave', '_emscripten_run_on_main_thread_js'],
+#if MEMORY64
+  // Calls proxyToMainThread but returns a bigint rather than a number
+  $proxyToMainThreadPtr__deps: ['$proxyToMainThread'],
+  $proxyToMainThreadPtr: function() {
+    return BigInt(proxyToMainThread.apply(null, arguments));
+  },
+#endif
+
+  $proxyToMainThread__deps: ['$withStackSave', '_emscripten_run_on_main_thread_js'].concat(i53ConversionDeps),
   $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...(number|boolean))} */',
   $proxyToMainThread: function(index, sync) {
     // Additional arguments are passed after those two, which are the actual
@@ -1032,6 +1040,19 @@ var LibraryPThread = {
     PThread.currentProxiedOperationCallerThread = callingThread;
     var rtn = func.apply(null, proxiedJSCallArgs);
     PThread.currentProxiedOperationCallerThread = 0;
+#if MEMORY64
+    // In memory64 mode some proxied functions return bigint/pointer but
+    // our return type is i53/double.
+    if (typeof rtn == "bigint") {
+      rtn = bigintToI53Checked(rtn);
+    }
+#endif
+#if ASSERTIONS
+    // Proxied functions can return any type except bigint.  All other types
+    // cooerce to f64/double (the return type of this function in C) but not
+    // bigint.
+    assert(typeof rtn != "bigint");
+#endif
     return rtn;
   },
 

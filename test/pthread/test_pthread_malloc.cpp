@@ -40,7 +40,7 @@ static void *thread_start(void *arg)
 int main()
 {
   pthread_t thr[NUM_THREADS];
-  for(int i = 0; i < NUM_THREADS; ++i)
+  for(intptr_t i = 0; i < NUM_THREADS; ++i)
     pthread_create(&thr[i], NULL, thread_start, (void*)(i*N));
   int result = 0;
   for(int i = 0; i < NUM_THREADS; ++i) {
