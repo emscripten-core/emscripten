@@ -821,6 +821,8 @@ jobs:
             browser64.test_fetch_sync_xhr
             browser64.test_fetch_implicit_append
             browser64.test_pthread_*
+            browser64.test_wget_*
+            browser64.test_emscripten_async_wget_*
             "
   test-browser-firefox:
     executor: bionic
