@@ -2547,7 +2547,7 @@ void *getBindBuffer() {
     self.btest('test_emscripten_async_wget2_data.cpp', expected='0')
 
   def test_emscripten_async_wget_side_module(self):
-    self.run_process([EMCC, test_file('browser_module.c'), '-o', 'lib.wasm', '-O2', '-sSIDE_MODULE'])
+    self.emcc(test_file('browser_module.c'), ['-o', 'lib.wasm', '-O2', '-sSIDE_MODULE'])
     self.btest_exit('browser_main.c', args=['-O2', '-sMAIN_MODULE=2'])
 
   @parameterized({
