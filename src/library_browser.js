@@ -99,6 +99,7 @@ var LibraryBrowser = {
       }
     },
     isFullscreen: false,
+    isHiDPIAware: false,
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
     workers: [],
@@ -253,6 +254,8 @@ var LibraryBrowser = {
           }, false);
         }
       }
+      Browser.isHiDPIAware = Module['isHiDPIAware'] || false;
+      console.log("Browser.isHiDPIAware=", Browser.isHiDPIAware)
     },
 
     createContext(/** @type {HTMLCanvasElement} */ canvas, useWebGL, setInModule, webGLContextAttributes) {
@@ -563,6 +566,12 @@ var LibraryBrowser = {
         var cw = Module["canvas"].width;
         var ch = Module["canvas"].height;
 
+        if(Browser.isHiDPIAware) {
+          const scale = Browser.getHiDPIScale();
+          cw /= scale;
+          ch /= scale;
+        }
+
         // Neither .scrollX or .pageXOffset are defined in a spec, but
         // we prefer .scrollX because it is currently in a spec draft.
         // (see: http://www.w3.org/TR/2013/WD-cssom-view-20131217/)
@@ -620,7 +629,11 @@ var LibraryBrowser = {
 
     updateResizeListeners() {
       var canvas = Module['canvas'];
-      Browser.resizeListeners.forEach((listener) => listener(canvas.width, canvas.height));
+      if(Browser.isHiDPIAware) {
+        Browser.resizeListeners.forEach((listener) => listener(canvas.clientWidth, canvas.clientHeight, canvas.width, canvas.height));
+      } else {
+        Browser.resizeListeners.forEach((listener) => listener(canvas.width, canvas.height, canvas.width, canvas.height));
+      }
     },
 
     setCanvasSize(width, height, noUpdates) {
@@ -654,6 +667,8 @@ var LibraryBrowser = {
     },
 
     updateCanvasDimensions(canvas, wNative, hNative) {
+      const scale = Browser.getHiDPIScale();
+
       if (wNative && hNative) {
         canvas.widthNative = wNative;
         canvas.heightNative = hNative;
@@ -678,25 +693,48 @@ var LibraryBrowser = {
          h = Math.round(h * factor);
       }
       if (Browser.resizeCanvas) {
-        if (canvas.width  != w) canvas.width  = w;
-        if (canvas.height != h) canvas.height = h;
+        if(Browser.isHiDPIAware) {
+          const wScaled = Math.floor(w * scale);
+          const hScaled = Math.floor(h * scale);
+          if (canvas.clientWidth  != w || canvas.width  != wScaled) { canvas.clientWidth  = w; canvas.width  = wScaled; }
+          if (canvas.clientHeight != h || canvas.height != hScaled) { canvas.clientHeight = h; canvas.height = hScaled; }
+        } else {
+          if (canvas.width  != w) canvas.width  = w;
+          if (canvas.height != h) canvas.height = h;
+        }
         if (typeof canvas.style != 'undefined') {
           canvas.style.removeProperty( "width");
           canvas.style.removeProperty("height");
         }
       } else {
-        if (canvas.width  != wNative) canvas.width  = wNative;
-        if (canvas.height != hNative) canvas.height = hNative;
-        if (typeof canvas.style != 'undefined') {
-          if (w != wNative || h != hNative) {
-            canvas.style.setProperty( "width", w + "px", "important");
-            canvas.style.setProperty("height", h + "px", "important");
-          } else {
-            canvas.style.removeProperty( "width");
-            canvas.style.removeProperty("height");
+        if(Browser.isHiDPIAware) {
+          const wNativeScaled = Math.floor(wNative * scale);
+          const hNativeScaled = Math.floor(hNative * scale);
+          if (canvas.clientWidth  != wNative || canvas.width  != wNativeScaled) { canvas.clientWidth  = wNative; canvas.width  = wNativeScaled; }
+          if (canvas.clientHeight != hNative || canvas.height != hNativeScaled) { canvas.clientHeight = hNative; canvas.height = hNativeScaled; }
+          console.log("updateCanvasDimensions / isHiDPIAware / " + canvas.clientWidth + " / " + canvas.width);
+        } else {
+          if (canvas.width  != wNative) canvas.width  = wNative;
+          if (canvas.height != hNative) canvas.height = hNative;
+          if (typeof canvas.style != 'undefined') {
+            if (w != wNative || h != hNative) {
+              canvas.style.setProperty( "width", w + "px", "important");
+              canvas.style.setProperty("height", h + "px", "important");
+            } else {
+              canvas.style.removeProperty( "width");
+              canvas.style.removeProperty("height");
+            }
           }
         }
       }
+    },
+
+    getDevicePixelRatio() {
+      return (typeof devicePixelRatio == 'number' && devicePixelRatio) || 1.0;
+    },
+
+    getHiDPIScale() {
+      return Browser.isHiDPIAware ? Browser.getDevicePixelRatio() : 1.0;
     },
   },
 
