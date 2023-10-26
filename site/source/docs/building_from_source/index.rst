@@ -34,10 +34,14 @@ For example, something like this can work:
 
       mkdir build
       cd build/
-      cmake ../llvm -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS='lld;clang' -DLLVM_TARGETS_TO_BUILD="host;WebAssembly" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF
+      cmake ../llvm -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS='lld;clang' -DLLVM_TARGETS_TO_BUILD="host;WebAssembly" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF  # -DLLVM_ENABLE_ASSERTIONS=ON
       cmake --build .
 
-Then point LLVM_ROOT in ``.emscripten`` to ``<llvm_src>/build/bin`` (no need to install).
+Then set the environment variable ``EM_LLVM_ROOT`` to ``<llvm_src>/build/bin`` (no need to install).
+
+If you need to match the emsdk releases of LLVM, `review the emscripten-release
+build and test scripts <https://chromium.googlesource.com/emscripten-releases/+/refs/heads/main#build-and-test-scripts-in>`_.
+Specifically `src/build.py <https://chromium.googlesource.com/emscripten-releases/+/refs/heads/main/src/build.py>`_.
 
 Please refer to the upstream docs for more detail.
 
