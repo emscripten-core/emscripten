@@ -13752,8 +13752,9 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
         self.assertContained('_emscripten_memcpy_js', js)
         self.assertNotIn('$emscripten_memcpy_bulkmem', funcs)
 
-    # By default we expect to find _emscripten_memcpy_big in the generaed JS and not in the
-    # native code.
+    # By default we expect to find `_emscripten_memcpy_js` in the generaed JS
+    # and not to find the `emscripten_memcpy_bulkmem` function on the wasm
+    # side.
     run([], expect_bulk_mem=False)
 
     # With bulk memory enabled we expect *not* to find it.

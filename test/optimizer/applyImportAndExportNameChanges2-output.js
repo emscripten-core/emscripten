@@ -191,7 +191,7 @@ function _emscripten_random() {
  return Math.random();
 }
 
-function _emscripten_memcpy_big(dest, src, num) {
+function _emscripten_memcpy_js(dest, src, num) {
  HEAPU8.set(HEAPU8.subarray(src, src + num), dest);
 }
 
@@ -219,7 +219,7 @@ var wasmImports = {
  g: ___syscall54,
  f: ___syscall6,
  e: _emscripten_get_now,
- d: _emscripten_memcpy_big,
+ d: _emscripten_memcpy_js,
  c: _emscripten_random
 };
 
