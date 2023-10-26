@@ -1051,7 +1051,7 @@
             "nextInChain": 0
         },
         "WGPUQuerySetDescriptor": {
-            "__size__": 40,
+            "__size__": 24,
             "count": 20,
             "label": 8,
             "nextInChain": 0,
