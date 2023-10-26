@@ -57,7 +57,7 @@ void *WaitingThread(void *arg)
 
 int main()
 {
-	for(int i = 0; i < NUM_THREADS; ++i)
+	for(intptr_t i = 0; i < NUM_THREADS; ++i)
 	{
 		pthread_create(waitingThreads+i, 0, WaitingThread, (void*)i);
 	}

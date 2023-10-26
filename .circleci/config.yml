@@ -820,6 +820,7 @@ jobs:
             browser64.test_fetch_xhr_abort
             browser64.test_fetch_sync_xhr
             browser64.test_fetch_implicit_append
+            browser64.test_pthread_*
             "
   test-browser-firefox:
     executor: bionic

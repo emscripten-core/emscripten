@@ -948,7 +948,15 @@ var LibraryPThread = {
     _exit(returnCode);
   },
 
-  $proxyToMainThread__deps: ['$withStackSave', '_emscripten_run_on_main_thread_js'],
+#if MEMORY64
+  // Calls proxyToMainThread but returns a bigint rather than a number
+  $proxyToMainThreadPtr__deps: ['$proxyToMainThread'],
+  $proxyToMainThreadPtr: function() {
+    return BigInt(proxyToMainThread.apply(null, arguments));
+  },
+#endif
+
+  $proxyToMainThread__deps: ['$withStackSave', '_emscripten_run_on_main_thread_js'].concat(i53ConversionDeps),
   $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...(number|boolean))} */',
   $proxyToMainThread: function(index, sync) {
     // Additional arguments are passed after those two, which are the actual
@@ -1032,6 +1040,19 @@ var LibraryPThread = {
     PThread.currentProxiedOperationCallerThread = callingThread;
     var rtn = func.apply(null, proxiedJSCallArgs);
     PThread.currentProxiedOperationCallerThread = 0;
+#if MEMORY64
+    // In memory64 mode some proxied functions return bigint/pointer but
+    // our return type is i53/double.
+    if (typeof rtn == "bigint") {
+      rtn = bigintToI53Checked(rtn);
+    }
+#endif
+#if ASSERTIONS
+    // Proxied functions can return any type except bigint.  All other types
+    // cooerce to f64/double (the return type of this function in C) but not
+    // bigint.
+    assert(typeof rtn != "bigint");
+#endif
     return rtn;
   },
 
@@ -1226,16 +1247,21 @@ var LibraryPThread = {
     // pthread_self to return 0 if there is no live runtime.
     var pthread_ptr = _pthread_self();
     if (pthread_ptr) {
-      // If we are using Atomics.waitAsync as our notification mechanism, wait for
-      // a notification before processing the mailbox to avoid missing any work.
+      // If we are using Atomics.waitAsync as our notification mechanism, wait
+      // for a notification before processing the mailbox to avoid missing any
+      // work that could otherwise arrive after we've finished processing the
+      // mailbox and before we're ready for the next notification.
       __emscripten_thread_mailbox_await(pthread_ptr);
-      callUserCallback(() => __emscripten_check_mailbox());
+      callUserCallback(__emscripten_check_mailbox);
     }
   },
 
   _emscripten_thread_mailbox_await__deps: ['$checkMailbox'],
   _emscripten_thread_mailbox_await: (pthread_ptr) => {
     if (typeof Atomics.waitAsync === 'function') {
+      // Wait on the pthread's initial self-pointer field because it is easy and
+      // safe to access from sending threads that need to notify the waiting
+      // thread.
       // TODO: How to make this work with wasm64?
       var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('pthread_ptr', 'i32') }}}, pthread_ptr);
 #if ASSERTIONS
@@ -1245,8 +1271,14 @@ var LibraryPThread = {
       var waitingAsync = pthread_ptr + {{{ C_STRUCTS.pthread.waiting_async }}};
       Atomics.store(HEAP32, {{{ getHeapOffset('waitingAsync', 'i32') }}}, 1);
     }
+    // If `Atomics.waitAsync` is not implemented, then we will always fall back
+    // to postMessage and there is no need to do anything here.
   },
 
+  // PostMessage is used to notify threads instead of Atomics.notify whenever
+  // the environment does not implement Atomics.waitAsync or when messaging a
+  // new thread that has not had a chance to initialize itself and execute
+  // Atomics.waitAsync to prepare for the notification.
   _emscripten_notify_mailbox_postmessage__deps: ['$checkMailbox'],
   _emscripten_notify_mailbox_postmessage: (targetThreadId, currThreadId, mainThreadId) => {
     if (targetThreadId == currThreadId) {

@@ -28,8 +28,8 @@ static void *thread_start(void *arg)
   pthread_exit((void*)0);
 }
 
-void CreateThread(int idx) {
-  emscripten_outf("Main: Spawning thread %d...", idx);
+void CreateThread(intptr_t idx) {
+  emscripten_outf("Main: Spawning thread %ld...", idx);
   int rc = pthread_create(&threads[idx], NULL, thread_start, (void*)idx);
   assert(rc == 0);
 }

@@ -246,10 +246,13 @@ function(${args}) {
             if (oneliner) {
               body = `return ${body}`;
             }
+            const rtnType = sig && sig.length ? sig[0] : null;
+            const proxyFunc = (MEMORY64 && rtnType == 'p') ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
+            deps.push('$' + proxyFunc);
             return `
 function(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
-  return proxyToMainThread(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
+  return ${proxyFunc}(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
 ${body}
 }\n`
           });

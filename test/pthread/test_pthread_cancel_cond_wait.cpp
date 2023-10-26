@@ -22,7 +22,7 @@ volatile int res = 43;
 
 static void cleanup_handler(void *arg) {
   emscripten_log(EM_LOG_CONSOLE, "Called clean-up handler with arg %p", arg);
-  int a = reinterpret_cast<int>(arg);
+  int a = reinterpret_cast<intptr_t>(arg);
   res -= a;
 
   pthread_mutex_unlock(&mutex);
