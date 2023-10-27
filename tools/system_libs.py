@@ -204,7 +204,10 @@ rule direct_cc
   description = CC $out
 
 rule archive
-  command = $EMAR cr $out $in
+  # Workaround command line too long issue (https://github.com/ninja-build/ninja/pull/217) by using a response file.
+  rspfile = $out.rsp
+  rspfile_content = $in
+  command = $EMAR cr $out @$rspfile
   description = AR $out
 
 '''
