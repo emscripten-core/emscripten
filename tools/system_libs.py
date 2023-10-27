@@ -3,6 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import re
 from .toolchain_profiler import ToolchainProfiler
 
 import itertools
@@ -152,6 +153,14 @@ def ensure_target_in_ninja_file(ninja_file, target):
     f.write(target + '\n')
 
 
+def escape_ninja_path(path):
+  """Escape a path to be used in a ninja file."""
+  # Replace Windows backslashes with forward slashes.
+  path = path.replace('\\', '/')
+  # Escape special Ninja chars.
+  return re.sub(r'([ :$])', r'$\1', path)
+
+
 def create_ninja_file(input_files, filename, libname, cflags, asflags=None, customize_build_flags=None):
   if asflags is None:
     asflags = []
@@ -195,7 +204,10 @@ rule direct_cc
   description = CC $out
 
 rule archive
-  command = $EMAR cr $out $in
+  # Workaround command line too long issue (https://github.com/ninja-build/ninja/pull/217) by using a response file.
+  rspfile = $out.rsp
+  rspfile_content = $in
+  command = $EMAR cr $out @$rspfile
   description = AR $out
 
 '''
@@ -205,8 +217,9 @@ rule archive
   case_insensitive = is_case_insensitive(os.path.dirname(filename))
   if suffix == '.o':
     assert len(input_files) == 1
-    depfile = shared.unsuffixed_basename(input_files[0]) + '.d'
-    out += f'build {libname}: direct_cc {input_files[0]}\n'
+    input_file = escape_ninja_path(input_files[0])
+    depfile = shared.unsuffixed_basename(input_file) + '.d'
+    out += f'build {escape_ninja_path(libname)}: direct_cc {input_file}\n'
     out += f'  with_depfile = {depfile}\n'
   else:
     objects = []
@@ -214,28 +227,30 @@ rule archive
       # Resolve duplicates by appending unique.
       # This is needed on case insensitve filesystem to handle,
       # for example, _exit.o and _Exit.o.
-      o = os.path.join(build_dir, shared.unsuffixed_basename(src) + '.o')
-      object_uuid = 0
+      object_basename = shared.unsuffixed_basename(src)
       if case_insensitive:
-        o = o.lower()
+        object_basename = object_basename.lower()
+      o = os.path.join(build_dir, object_basename + '.o')
+      object_uuid = 0
       # Find a unique basename
       while o in objects:
         object_uuid += 1
-        o = f'{o}__{object_uuid}.o'
+        o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
       objects.append(o)
       ext = shared.suffix(src)
       if ext == '.s':
-        out += f'build {o}: asm {src}\n'
+        cmd = 'asm'
         flags = asflags
       elif ext == '.S':
-        out += f'build {o}: asm_cpp {src}\n'
+        cmd = 'asm_cpp'
         flags = cflags
       elif ext == '.c':
-        out += f'build {o}: cc {src}\n'
+        cmd = 'cc'
         flags = cflags
       else:
-        out += f'build {o}: cxx {src}\n'
+        cmd = 'cxx'
         flags = cflags
+      out += f'build {escape_ninja_path(o)}: {cmd} {escape_ninja_path(src)}\n'
       if customize_build_flags:
         custom_flags = customize_build_flags(flags, src)
         if custom_flags != flags:
@@ -243,11 +258,11 @@ rule archive
       out += '\n'
 
     objects = sorted(objects, key=objectfile_sort_key)
-    objects = ' '.join(objects)
-    out += f'build {libname}: archive {objects}\n'
+    objects = ' '.join(escape_ninja_path(o) for o in objects)
+    out += f'build {escape_ninja_path(libname)}: archive {objects}\n'
 
   utils.write_file(filename, out)
-  ensure_target_in_ninja_file(get_top_level_ninja_file(), f'subninja {filename}')
+  ensure_target_in_ninja_file(get_top_level_ninja_file(), f'subninja {escape_ninja_path(filename)}')
 
 
 def is_case_insensitive(path):
