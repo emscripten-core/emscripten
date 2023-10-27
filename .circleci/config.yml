@@ -444,7 +444,7 @@ jobs:
       - run:
           name: get wasmer
           command: |
-            wget https://github.com/wasmerio/wasmer/releases/download/0.11.0/wasmer-linux-amd64.tar.gz
+            wget https://github.com/wasmerio/wasmer/releases/download/v4.2.3/wasmer-linux-amd64.tar.gz
             tar -xf wasmer-linux-amd64.tar.gz
             mkdir ~/vms
             cp bin/wasmer ~/vms
