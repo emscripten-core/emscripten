@@ -1006,38 +1006,20 @@ addToLibrary({
     var DAY_NUMBERS_SUN_FIRST = {SUN: 0, MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6};
     var DAY_NUMBERS_MON_FIRST = {MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6};
 
-    var pattern_out = "";
-    var in_percent = false;
     var capture = [];
-    // go through each character in the string finding 
-    // the %X %Y etc. patterns. We used to do this with find, but that 
-    // approach caused bugs when doing something like 
-    // %%Z (a literal % followed by a Z). This is less fragile.
-    for (var i = 0; i < pattern.length; i++) {
-      var c = pattern[i];
-      if (c === "%") {
-        if (in_percent) {
-          pattern_out += "%";
+    var pattern_out = pattern
+      .replace(/%(.)/g, (m, c) => EQUIVALENT_MATCHERS[c] || m)
+      .replace(/%(.)/g, (_, c) => {
+        let pat = DATE_PATTERNS[c];
+        if (pat){
+          capture.push(c);
+          return `(${pat})`;
+        } else {
+          return c;
         }
-        in_percent = !in_percent;
-      } else if (in_percent){
-        if (c in EQUIVALENT_MATCHERS){
-          // replace this pattern with the equivalent then
-          // reset the loop to this position
-          pattern=pattern.slice(0,i-1)+EQUIVALENT_MATCHERS[c]+pattern.slice(i+1)
-          i=i-2;
-        }else if (c in DATE_PATTERNS) {
-          capture.push(c)
-          pattern_out += "(" + DATE_PATTERNS[c] + ")";
-        }
-        in_percent = false;
-      } else {
-        pattern_out += c;
-      }
-    }
+      });
+      
     var matches = new RegExp('^'+pattern_out, "i").exec(UTF8ToString(buf))
-
-    // out(UTF8ToString(buf)+ ' is matched by '+((new RegExp('^'+pattern)).source)+' into: '+JSON.stringify(matches));
 
     function initDate() {
       function fixup(value, min, max) {
