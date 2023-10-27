@@ -10387,7 +10387,7 @@ int main () {
     random_printf_sources = [test_file('hello_random_printf.c'),
                              '-sMALLOC=none',
                              '-sSINGLE_FILE']
-    hello_webgl_sources = [test_file('minimal_webgl/main.cpp'),
+    hello_webgl_sources = [test_file('minimal_webgl/main.c'),
                            test_file('minimal_webgl/webgl.c'),
                            '--js-library', test_file('minimal_webgl/library_js.js'),
                            '-lwebgl.js',
@@ -10398,10 +10398,7 @@ int main () {
                           '-lembind',
                           '-fno-rtti',
                           '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0',
-                          '-sDYNAMIC_EXECUTION=0',
-                          '-lc++',
-                          '-lc++abi'
-                          ]
+                          '-sDYNAMIC_EXECUTION=0']
 
     sources = {
       'hello_world': hello_world_sources,
@@ -10442,7 +10439,7 @@ int main () {
       if not common.EMTEST_REBASELINE:
         raise
 
-    args = [EMCC, '-o', 'a.html'] + args + sources
+    args = [compiler_for(sources[0]), '-o', 'a.html'] + args + sources
     print(shared.shlex_join(args))
     self.run_process(args)
 
