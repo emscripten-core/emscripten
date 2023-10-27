@@ -139,7 +139,6 @@ def get_top_level_ninja_file():
 
 
 def run_ninja(build_dir):
-  diagnostics.warning('experimental', 'ninja support is experimental')
   cmd = ['ninja', '-C', build_dir, f'-j{shared.get_num_cores()}']
   if shared.PRINT_SUBPROCS:
     cmd.append('-v')
