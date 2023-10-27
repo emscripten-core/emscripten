@@ -1018,7 +1018,7 @@ addToLibrary({
           return c;
         }
       });
-      
+
     var matches = new RegExp('^'+pattern_out, "i").exec(UTF8ToString(buf))
 
     function initDate() {
@@ -1165,10 +1165,10 @@ addToLibrary({
         if (value.toLowerCase() === 'z'){
           date.gmtoff = 0;
         } else {          
-          var match = value.match(/^(?<hours>(?:\-|\+)\d\d):?(?<mins>\d\d)?/);
-          date.gmtoff = match.groups.hours * 3600;
-          if (match.groups.mins) {
-            date.gmtoff += date.gmtoff >0 ? match.groups.mins * 60 : -match.groups.mins * 60
+          var match = value.match(/^((?:\-|\+)\d\d):?(\d\d)?/);
+          date.gmtoff = match[1] * 3600;
+          if (match[2]) {
+            date.gmtoff += date.gmtoff >0 ? match[2] * 60 : -match[2] * 60
           }
         }
       }

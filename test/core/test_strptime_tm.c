@@ -83,6 +83,9 @@ int main() {
   strptime("12:34:56 01/02/03","%T %D",&tm);
   printf("%d,%d,%d,%d,%d,%d\n",tm.tm_year+1900,tm.tm_mon+1,tm.tm_mday,tm.tm_hour,tm.tm_min,tm.tm_sec);
 
+  // check regex special characters don't break things
+  strptime(".?12:34:56 01/02/03",".?%T %D",&tm);
+  printf("%d,%d,%d,%d,%d,%d\n",tm.tm_year+1900,tm.tm_mon+1,tm.tm_mday,tm.tm_hour,tm.tm_min,tm.tm_sec);
 
 
   // check timezone offsets
