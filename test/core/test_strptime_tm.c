@@ -98,5 +98,15 @@ int main() {
   strptime("2020-05-01T00:00-02:30","%Y-%m-%dT%H:%M%z",&tm);
   printf("%ld\n",tm.tm_gmtoff); // -9000
 
+  // check that the numbers of spaces in format string are ignored
+  strptime("12     34     56","%H %M %S",&tm);
+  printf("%d,%d,%d\n",tm.tm_hour,tm.tm_min,tm.tm_sec);
+
+  strptime("123456","%H %M %S",&tm);
+  printf("%d,%d,%d\n",tm.tm_hour,tm.tm_min,tm.tm_sec);
+
+  strptime("12 34    56","%H   %M %S",&tm);
+  printf("%d,%d,%d\n",tm.tm_hour,tm.tm_min,tm.tm_sec);
+
   return 0;
 }

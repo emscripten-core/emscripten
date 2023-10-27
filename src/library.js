@@ -990,7 +990,7 @@ addToLibrary({
       /* day of year */     'j': '00[1-9]|0?[1-9](?!\\d)|0?[1-9]\\d(?!\\d)|[1,2]\\d\\d|3[0-6]\\d',
       /* month */           'm': '0[1-9]|[1-9](?!\\d)|10|11|12',
       /* minutes */         'M': '0\\d|\\d(?!\\d)|[1-5]\\d',
-      /* whitespace */      'n': '\\s',
+      /* whitespace */      'n': '\\s*',
       /* AM/PM */           'p': 'AM|am|PM|pm|A\\.M\\.|a\\.m\\.|P\\.M\\.|p\\.m\\.',
       /* seconds */         'S': '0\\d|\\d(?!\\d)|[1-5]\\d|60',
       /* week number */     'U': '0\\d|\\d(?!\\d)|[1-4]\\d|50|51|52|53',
@@ -998,7 +998,7 @@ addToLibrary({
       /* weekday number */  'w': '[0-6]',
       /* 2-digit year */    'y': '\\d\\d',
       /* 4-digit year */    'Y': '\\d\\d\\d\\d',
-      /* whitespace */      't': '\\s',
+      /* whitespace */      't': '\\s*',
       /* time zone */       'z': 'Z|(?:[\\+\\-]\\d\\d:?(?:\\d\\d)?)'
     };
 
@@ -1017,7 +1017,9 @@ addToLibrary({
         } else {
           return c;
         }
-      });
+      }).replace( // any number of space or tab characters match zero or more spaces
+        /\s+/g,'\\s*'
+      );
 
     var matches = new RegExp('^'+pattern_out, "i").exec(UTF8ToString(buf))
 
