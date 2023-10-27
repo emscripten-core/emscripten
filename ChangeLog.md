@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.48 (in development)
 -----------------------
+- The minimum version of node required run the compiler was updated from
+  10.19 to 16.20.  This does not effect the node requirements of the generated
+  JavaScript code. (#20551)
 - A new top-level `bootstrap` script was added.  This script is for emscripten
   developers and helps take a care of post-checkout tasks such as `npm install`.
   If this script needs to be run (e.g. becuase package.json was changed, emcc

@@ -52,11 +52,12 @@ DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 PRINT_SUBPROCS = int(os.getenv('EMCC_VERBOSE', '0'))
 SKIP_SUBPROCS = False
 
-# Minimum node version required to run the emscripten compiler.  This is distinct
-# from the minimum version required to execute the generated code.  This is not an
-# exact requirement, but is the oldest version of node that we do any testing with.
-# This version aligns with the current Ubuuntu TLS 20.04 (Focal).
-MINIMUM_NODE_VERSION = (10, 19, 0)
+# Minimum node version required to run the emscripten compiler.  This is
+# distinct from the minimum version required to execute the generated code
+# (settings.MIN_NODE_VERSION).
+# This version currently matches the node version that we ship with emsdk
+# which means that we can say for sure that this version is well supported.
+MINIMUM_NODE_VERSION = (16, 20, 0)
 EXPECTED_LLVM_VERSION = 18
 
 # These get set by setup_temp_dirs
