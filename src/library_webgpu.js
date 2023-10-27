@@ -894,29 +894,32 @@ var LibraryWebGPU = {
   },
 
   wgpuDeviceCreateSampler: (deviceId, descriptor) => {
-    {{{ gpu.makeCheckDescriptor('descriptor') }}}
+    var desc;
+    if (descriptor) {
+      {{{ gpu.makeCheckDescriptor('descriptor') }}}
 
-    var desc = {
-      "label": undefined,
-      "addressModeU": WebGPU.AddressMode[
-          {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.addressModeU) }}}],
-      "addressModeV": WebGPU.AddressMode[
-          {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.addressModeV) }}}],
-      "addressModeW": WebGPU.AddressMode[
-          {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.addressModeW) }}}],
-      "magFilter": WebGPU.FilterMode[
-          {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.magFilter) }}}],
-      "minFilter": WebGPU.FilterMode[
-          {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.minFilter) }}}],
-      "mipmapFilter": WebGPU.MipmapFilterMode[
-          {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.mipmapFilter) }}}],
-      "lodMinClamp": {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSamplerDescriptor.lodMinClamp, 'float') }}},
-      "lodMaxClamp": {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSamplerDescriptor.lodMaxClamp, 'float') }}},
-      "compare": WebGPU.CompareFunction[
-          {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.compare) }}}],
-    };
-    var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSamplerDescriptor.label, '*') }}};
-    if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
+      desc = {
+        "label": undefined,
+        "addressModeU": WebGPU.AddressMode[
+            {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.addressModeU) }}}],
+        "addressModeV": WebGPU.AddressMode[
+            {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.addressModeV) }}}],
+        "addressModeW": WebGPU.AddressMode[
+            {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.addressModeW) }}}],
+        "magFilter": WebGPU.FilterMode[
+            {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.magFilter) }}}],
+        "minFilter": WebGPU.FilterMode[
+            {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.minFilter) }}}],
+        "mipmapFilter": WebGPU.MipmapFilterMode[
+            {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.mipmapFilter) }}}],
+        "lodMinClamp": {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSamplerDescriptor.lodMinClamp, 'float') }}},
+        "lodMaxClamp": {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSamplerDescriptor.lodMaxClamp, 'float') }}},
+        "compare": WebGPU.CompareFunction[
+            {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.compare) }}}],
+      };
+      var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSamplerDescriptor.label, '*') }}};
+      if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
+    }
 
     var device = WebGPU.mgrDevice.get(deviceId);
     return WebGPU.mgrSampler.create(device["createSampler"](desc));
