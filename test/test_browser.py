@@ -119,8 +119,7 @@ def also_with_wasm2js(f):
   def metafunc(self, with_wasm2js):
     assert self.get_setting('WASM') is None
     if with_wasm2js:
-      if self.is_wasm64():
-        self.skipTest('wasm2js is not compatible with MEMORY64')
+      self.require_wasm2js()
       self.set_setting('WASM', 0)
       f(self)
     else:
@@ -166,6 +165,7 @@ def is_jspi(args):
 def no_swiftshader(f):
   assert callable(f)
 
+  @wraps(f)
   def decorated(self, *args, **kwargs):
     if is_chrome() and '--use-gl=swiftshader' in EMTEST_BROWSER:
       self.skipTest('not compatible with swiftshader')
@@ -177,6 +177,7 @@ def no_swiftshader(f):
 def requires_threads(f):
   assert callable(f)
 
+  @wraps(f)
   def decorated(self, *args, **kwargs):
     if os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
       self.skipTest('EMTEST_LACKS_THREAD_SUPPORT is set')
@@ -185,7 +186,20 @@ def requires_threads(f):
   return decorated
 
 
+def requires_wasm2js(f):
+  assert callable(f)
+
+  @wraps(f)
+  def decorated(self, *args, **kwargs):
+    self.require_wasm2js()
+    return f(self, *args, **kwargs)
+
+  return decorated
+
+
 def also_with_threads(f):
+  assert callable(f)
+
   @wraps(f)
   def decorated(self, *args, **kwargs):
     f(self, *args, **kwargs)
@@ -193,6 +207,7 @@ def also_with_threads(f):
       print('(threads)')
       self.emcc_args += ['-pthread']
       f(self, *args, **kwargs)
+
   return decorated
 
 
@@ -222,6 +237,10 @@ class browser(BrowserCore):
   def require_wasm64(self):
     # All the browsers we run on support wasm64 (Chrome and Firefox).
     return True
+
+  def require_wasm2js(self):
+    if self.is_wasm64():
+      self.skipTest('wasm2js is not compatible with MEMORY64')
 
   def require_jspi(self):
     if not is_chrome():
@@ -5218,6 +5237,7 @@ Module["preRun"] = () => {
     self.btest('wasm_worker/hello_wasm_worker.c', expected='0', args=['-sWASM_WORKERS', '-sMINIMAL_RUNTIME=2'])
 
   # Tests Wasm Workers build in Wasm2JS mode.
+  @requires_wasm2js
   @also_with_minimal_runtime
   def test_wasm_worker_hello_wasm2js(self):
     self.btest('wasm_worker/hello_wasm_worker.c', expected='0', args=['-sWASM_WORKERS', '-sWASM=0'])

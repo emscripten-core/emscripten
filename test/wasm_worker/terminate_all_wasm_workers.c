@@ -52,7 +52,7 @@ int should_throw(void(*func)(emscripten_wasm_worker_t worker), emscripten_wasm_w
     }
     console.error('Function was expected to throw, but did not!');
     return 0;
-  }, (int)func, worker);
+  }, func, worker);
   return threw;
 }
 

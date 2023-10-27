@@ -4,12 +4,15 @@
  * SPDX-License-Identifier: MIT
  */
 
+#if WASM_WORKERS == 2
+// Helpers for _wasmWorkerBlobUrl used in WASM_WORKERS == 2 mode
 {{{
   global.captureModuleArg = () => MODULARIZE ? '' : 'self.Module=d;';
   global.instantiateModule = () => MODULARIZE ? `${EXPORT_NAME}(d);` : '';
-  global.instantiateWasm = () => MINIMAL_RUNTIME ? '' : 'd[`instantiateWasm`]=(i,r)=>{var n=new WebAssembly.Instance(d[`wasm`],i);r(n,d[`wasm`]);return n.exports};';
+  global.instantiateWasm = () => MINIMAL_RUNTIME ? '' : 'd[`instantiateWasm`]=(i,r)=>{var n=new WebAssembly.Instance(d[`wasm`],i);return r(n,d[`wasm`]);};';
   null;
 }}}
+#endif
 
 #if WASM_WORKERS
 
@@ -262,7 +265,7 @@ if (ENVIRONMENT_IS_WASM_WORKER) {
   emscripten_lock_async_acquire: (lock, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let dispatch = (val, ret) => {
       setTimeout(() => {
-        {{{ makeDynCall('viiii', 'asyncWaitFinished') }}}(lock, val, /*waitResult=*/ret, userData);
+        {{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}(lock, val, /*waitResult=*/ret, userData);
       }, 0);
     };
     let tryAcquireLock = () => {
