@@ -12966,6 +12966,8 @@ Module.postRun = () => {{
     # - arrow funcs
     # - for..of
     # - object.assign
+    # - nullish coalescing & chaining
+    # - logical assignment
     create_file('es6_library.js', '''\
     addToLibrary({
       foo: function(arg="hello") {
@@ -12973,7 +12975,7 @@ Module.postRun = () => {{
         let obj = Object.assign({}, {prop:1});
         err('prop: ' + obj.prop);
 
-        // arror funcs + const
+        // arrow funcs + const
         const bar = () => 2;
         err('bar: ' + bar());
 
@@ -12990,6 +12992,22 @@ Module.postRun = () => {{
         };
         global['foo'] = obj3;
         err('value2: ' + obj3.myMethod());
+
+        // Nullish coalescing
+        var definitely = global['maybe'] ?? {};
+
+        // Optional chaining
+        global['maybe']
+          ?.subObj
+          ?.[key]
+          ?.func
+          ?.();
+
+        // Logical assignment
+        var obj4 = null;
+        obj4 ??= 0;
+        obj4 ||= 1;
+        obj4 &&= 2;
       }
     });
     ''')
@@ -13004,6 +13022,11 @@ Module.postRun = () => {{
         self.assertContained(['() => 2', '()=>2'], js)
         self.assertContained('const ', js)
         self.assertContained('let ', js)
+        self.assertContained('?.[', js)
+        self.assertContained('?.(', js)
+        self.assertContained('??=', js)
+        self.assertContained('||=', js)
+        self.assertContained('&&=', js)
       else:
         self.verify_es5(filename)
         self.assertNotContained('foo(arg=', js)
@@ -13011,6 +13034,10 @@ Module.postRun = () => {{
         self.assertNotContained('()=>2', js)
         self.assertNotContained('const ', js)
         self.assertNotContained('let ', js)
+        self.assertNotContained('??', js)
+        self.assertNotContained('?.', js)
+        self.assertNotContained('||=', js)
+        self.assertNotContained('&&=', js)
 
     # Check that under normal circumstances none of these features get
     # removed / transpiled.
