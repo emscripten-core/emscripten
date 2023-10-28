@@ -1051,12 +1051,10 @@
             "nextInChain": 0
         },
         "WGPUQuerySetDescriptor": {
-            "__size__": 24,
+            "__size__": 16,
             "count": 12,
             "label": 4,
             "nextInChain": 0,
-            "pipelineStatistics": 16,
-            "pipelineStatisticsCount": 20,
             "type": 8
         },
         "WGPUQueueDescriptor": {

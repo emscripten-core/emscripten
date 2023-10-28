@@ -210,6 +210,10 @@ var LibraryEmbind = {
         ['bool', 'boolean'],
         ['float', 'number'],
         ['double', 'number'],
+#if WASM_BIGINT
+        ['int64_t', 'bigint'],
+        ['uint64_t', 'bigint'],
+#endif
         ['void', 'void'],
         ['std::string', jsString],
         ['std::basic_string<unsigned char>', jsString],
@@ -604,6 +608,7 @@ var LibraryEmbind = {
   $makeLegalFunctionName: () => assert(false, 'stub function should not be called'),
   $newFunc: () => assert(false, 'stub function should not be called'),
   $runDestructors: () => assert(false, 'stub function should not be called'),
+  $createNamedFunction: () => assert(false, 'stub function should not be called'),
 };
 
 extraLibraryFuncs.push('$embindEmitTypes');

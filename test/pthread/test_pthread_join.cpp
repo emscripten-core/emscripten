@@ -40,8 +40,8 @@ int main()
   assert(EM_ASM_INT(return PThread.runningWorkers.length) == 0);
   assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 8); // This test should be run with a prepopulated pool of size 8.
 
-  int n = 20;
-  emscripten_outf("Main: Spawning thread to compute fib(%d)...", n);
+  intptr_t n = 20;
+  emscripten_outf("Main: Spawning thread to compute fib(%ld)...", n);
   int s = pthread_create(&thr, NULL, thread_start, (void*)n);
   assert(s == 0);
   emscripten_out("Main: Waiting for thread to join");

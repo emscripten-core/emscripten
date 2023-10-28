@@ -444,7 +444,7 @@ jobs:
       - run:
           name: get wasmer
           command: |
-            wget https://github.com/wasmerio/wasmer/releases/download/0.11.0/wasmer-linux-amd64.tar.gz
+            wget https://github.com/wasmerio/wasmer/releases/download/v3.1.1/wasmer-linux-amd64.tar.gz
             tar -xf wasmer-linux-amd64.tar.gz
             mkdir ~/vms
             cp bin/wasmer ~/vms
@@ -820,6 +820,10 @@ jobs:
             browser64.test_fetch_xhr_abort
             browser64.test_fetch_sync_xhr
             browser64.test_fetch_implicit_append
+            browser64.test_pthread_*
+            browser64.test_wget_*
+            browser64.test_emscripten_async_wget_*
+            browser64.test_wasm_worker_*
             "
   test-browser-firefox:
     executor: bionic

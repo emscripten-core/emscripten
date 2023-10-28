@@ -169,6 +169,14 @@ def no_windows(note=''):
   return lambda f: f
 
 
+def no_wasm64(note=''):
+  assert not callable(note)
+
+  def decorated(f):
+    return skip_if(f, 'is_wasm64', note)
+  return decorated
+
+
 def only_windows(note=''):
   assert not callable(note)
   if not WINDOWS:
@@ -574,6 +582,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def is_browser_test(self):
     return False
 
+  def is_wasm64(self):
+    return self.get_setting('MEMORY64')
+
   def check_dylink(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
       self.skipTest('no dynamic linking with memory growth (without wasm)')
@@ -942,6 +953,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   # Build JavaScript code from source code
   def build(self, filename, libraries=None, includes=None, force_c=False, js_outfile=True, emcc_args=None, output_basename=None):
+    if not os.path.exists(filename):
+      filename = test_file(filename)
     suffix = '.js' if js_outfile else '.wasm'
     compiler = [compiler_for(filename, force_c)]
     if compiler[0] == EMCC:

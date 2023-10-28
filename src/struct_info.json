@@ -1337,9 +1337,7 @@
                 "nextInChain",
                 "label",
                 "type",
-                "count",
-                "pipelineStatistics",
-                "pipelineStatisticsCount"
+                "count"
             ],
             "WGPUQueueDescriptor": [
                 "nextInChain",

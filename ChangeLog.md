@@ -24,6 +24,9 @@ See docs/process.md for more on how version tagging works.
   developers and helps take a care of post-checkout tasks such as `npm install`.
   If this script needs to be run (e.g. becuase package.json was changed, emcc
   will exit with an error. (#19736)
+- If exceptions are disabled, using `new` together with `std::nothrow` no
+  longer aborts if the allocation fails. Instead `nullptr` is returned now.
+  This does not change the behavior of regular usage of `new`.
 
 3.1.47 - 10/09/23
 -----------------

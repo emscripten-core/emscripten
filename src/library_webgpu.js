@@ -400,7 +400,6 @@ var LibraryWebGPU = {
       'depth-clip-control',
       'depth32float-stencil8',
       'timestamp-query',
-      'pipeline-statistics-query',
       'texture-compression-bc',
       'texture-compression-etc2',
       'texture-compression-astc',
@@ -432,13 +431,6 @@ var LibraryWebGPU = {
       'nearest',
       'linear',
     ],
-    PipelineStatisticName: [
-      'vertex-shader-invocations',
-      'clipper-invocations',
-      'clipper-primitives-out',
-      'fragment-shader-invocations',
-      'compute-shader-invocations',
-    ],
     PowerPreference: [
       undefined,
       'low-power',
@@ -453,7 +445,6 @@ var LibraryWebGPU = {
     ],
     QueryType: [
       'occlusion',
-      'pipeline-statistics',
       'timestamp',
     ],
     SamplerBindingType: [
@@ -903,29 +894,32 @@ var LibraryWebGPU = {
   },
 
   wgpuDeviceCreateSampler: (deviceId, descriptor) => {
-    {{{ gpu.makeCheckDescriptor('descriptor') }}}
+    var desc;
+    if (descriptor) {
+      {{{ gpu.makeCheckDescriptor('descriptor') }}}
 
-    var desc = {
-      "label": undefined,
-      "addressModeU": WebGPU.AddressMode[
-          {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.addressModeU) }}}],
-      "addressModeV": WebGPU.AddressMode[
-          {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.addressModeV) }}}],
-      "addressModeW": WebGPU.AddressMode[
-          {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.addressModeW) }}}],
-      "magFilter": WebGPU.FilterMode[
-          {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.magFilter) }}}],
-      "minFilter": WebGPU.FilterMode[
-          {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.minFilter) }}}],
-      "mipmapFilter": WebGPU.MipmapFilterMode[
-          {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.mipmapFilter) }}}],
-      "lodMinClamp": {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSamplerDescriptor.lodMinClamp, 'float') }}},
-      "lodMaxClamp": {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSamplerDescriptor.lodMaxClamp, 'float') }}},
-      "compare": WebGPU.CompareFunction[
-          {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.compare) }}}],
-    };
-    var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSamplerDescriptor.label, '*') }}};
-    if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
+      desc = {
+        "label": undefined,
+        "addressModeU": WebGPU.AddressMode[
+            {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.addressModeU) }}}],
+        "addressModeV": WebGPU.AddressMode[
+            {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.addressModeV) }}}],
+        "addressModeW": WebGPU.AddressMode[
+            {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.addressModeW) }}}],
+        "magFilter": WebGPU.FilterMode[
+            {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.magFilter) }}}],
+        "minFilter": WebGPU.FilterMode[
+            {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.minFilter) }}}],
+        "mipmapFilter": WebGPU.MipmapFilterMode[
+            {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.mipmapFilter) }}}],
+        "lodMinClamp": {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSamplerDescriptor.lodMinClamp, 'float') }}},
+        "lodMaxClamp": {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSamplerDescriptor.lodMaxClamp, 'float') }}},
+        "compare": WebGPU.CompareFunction[
+            {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSamplerDescriptor.compare) }}}],
+      };
+      var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSamplerDescriptor.label, '*') }}};
+      if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
+    }
 
     var device = WebGPU.mgrDevice.get(deviceId);
     return WebGPU.mgrSampler.create(device["createSampler"](desc));
@@ -1120,24 +1114,10 @@ var LibraryWebGPU = {
   wgpuDeviceCreateQuerySet: (deviceId, descriptor) => {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
 
-    var pipelineStatistics;
-    var pipelineStatisticsCount =
-      {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUQuerySetDescriptor.pipelineStatisticsCount) }}};
-    if (pipelineStatisticsCount) {
-      var pipelineStatisticsPtr =
-        {{{ makeGetValue('descriptor', C_STRUCTS.WGPUQuerySetDescriptor.pipelineStatistics, '*') }}};
-      pipelineStatistics = [];
-      for (var i = 0; i < pipelineStatisticsCount; ++i) {
-        pipelineStatistics.push(WebGPU.PipelineStatisticName[
-          {{{ gpu.makeGetU32('pipelineStatisticsPtr', '4 * i') }}}]);
-      }
-    }
-
     var desc = {
       "type": WebGPU.QueryType[
         {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUQuerySetDescriptor.type) }}}],
       "count": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUQuerySetDescriptor.count) }}},
-      "pipelineStatistics": pipelineStatistics,
     };
 
     var device = WebGPU.mgrDevice.get(deviceId);
@@ -2053,16 +2033,6 @@ var LibraryWebGPU = {
     pass["dispatchWorkgroupsIndirect"](indirectBuffer, indirectOffset);
   },
 
-  wgpuComputePassEncoderBeginPipelineStatisticsQuery: (passId, querySetId, queryIndex) => {
-    var pass = WebGPU.mgrComputePassEncoder.get(passId);
-    var querySet = WebGPU.mgrQuerySet.get(querySetId);
-    pass["beginPipelineStatisticsQuery"](querySet, queryIndex);
-  },
-  wgpuComputePassEncoderEndPipelineStatisticsQuery: (passId) => {
-    var pass = WebGPU.mgrComputePassEncoder.get(passId);
-    pass["endPipelineStatisticsQuery"]();
-  },
-
   wgpuComputePassEncoderWriteTimestamp: (encoderId, querySetId, queryIndex) => {
     var pass = WebGPU.mgrComputePassEncoder.get(encoderId);
     var querySet = WebGPU.mgrQuerySet.get(querySetId);
@@ -2180,16 +2150,6 @@ var LibraryWebGPU = {
   wgpuRenderPassEncoderEndOcclusionQuery: (passId) => {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     pass["endOcclusionQuery"]();
-  },
-
-  wgpuRenderPassEncoderBeginPipelineStatisticsQuery: (passId, querySetId, queryIndex) => {
-    var pass = WebGPU.mgrRenderPassEncoder.get(passId);
-    var querySet = WebGPU.mgrQuerySet.get(querySetId);
-    pass["beginPipelineStatisticsQuery"](querySet, queryIndex);
-  },
-  wgpuRenderPassEncoderEndPipelineStatisticsQuery: (passId) => {
-    var pass = WebGPU.mgrRenderPassEncoder.get(passId);
-    pass["endPipelineStatisticsQuery"]();
   },
 
   wgpuRenderPassEncoderWriteTimestamp: (encoderId, querySetId, queryIndex) => {
