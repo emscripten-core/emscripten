@@ -32,7 +32,7 @@ def generate_minimal_runtime_load_statement(target_basename):
       download_wasm = "WebAssembly.compileStreaming(fetch('%s'))" % (target_basename + '.wasm')
   elif settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
     # Same compatibility story as above for https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-    if not feature_matrix.caniuse('instantiateStreaming'):
+    if not feature_matrix.caniuse('js.WebAssembly.instantiateStreaming'):
       download_wasm = "!WebAssembly.instantiateStreaming && binary('%s')" % (target_basename + '.wasm')
     else:
       # WebAssembly.instantiateStreaming() is unconditionally supported, so we do not download wasm in the .html file,
