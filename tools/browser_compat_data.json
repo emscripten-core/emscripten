@@ -6778,6 +6778,14 @@
 				"firefox": 76,
 				"safari": 140100
 			}
+		},
+		"performance": {
+			"#": {
+				"chrome": 24,
+				"firefox": 15,
+				"nodejs": 160000,
+				"safari": 80000
+			}
 		}
 	},
 	"wasm": {

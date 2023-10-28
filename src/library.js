@@ -2334,7 +2334,7 @@ addToLibrary({
     // respective time origins.
     _emscripten_get_now = () => performance.timeOrigin + {{{ getPerformanceNow() }}}();
 #else
-#if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 || AUDIO_WORKLET // https://caniuse.com/#feat=high-resolution-time
+#if !caniuse('js.performance') || AUDIO_WORKLET // https://caniuse.com/#feat=high-resolution-time
     // AudioWorkletGlobalScope does not have performance.now()
     // (https://github.com/WebAudio/web-audio-api/issues/2527), so if building
     // with
@@ -2363,7 +2363,7 @@ addToLibrary({
       return 1; // nanoseconds
     }
 #endif
-#if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
+#if !caniuse('js.performance')
     if (typeof performance == 'object' && performance && typeof performance['now'] == 'function') {
       return 1000; // microseconds (1/1000 of a millisecond)
     }
@@ -2377,7 +2377,7 @@ addToLibrary({
   // Represents whether emscripten_get_now is guaranteed monotonic; the Date.now
   // implementation is not :(
   $nowIsMonotonic__internal: true,
-#if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
+#if !caniuse('js.performance')
   $nowIsMonotonic: `
      ((typeof performance == 'object' && performance && typeof performance['now'] == 'function')
 #if ENVIRONMENT_MAY_BE_NODE

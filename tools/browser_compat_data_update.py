@@ -57,6 +57,9 @@ out['js'] = traverse_bcd(data['javascript']['builtins'])
 for api in ['AudioWorklet']:
   # Just add them to the same JS namespace.
   out['js'][api] = traverse_bcd(data['api'][api])
+# Manually add 'performance' because browser-compat-data currently doesn't match https://caniuse.com/high-resolution-time.
+# It shows when API is available, but not when it returns actually high-resolution time.
+out['js']['performance'] = {'#': {'chrome': 24, 'firefox': 15, 'nodejs': 160000, 'safari': 80000}}
 
 # BCD data is not as complete for Wasm features as webassembly.org, at least for now.
 data = requests.get('https://webassembly.org/features.json').json()
