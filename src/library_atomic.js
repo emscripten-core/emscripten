@@ -11,7 +11,7 @@ addToLibrary({
 //   https://www.chromestatus.com/feature/6243382101803008
 // However its implementation is faulty:
 //   https://bugs.chromium.org/p/chromium/issues/detail?id=1167541
-#if caniuse('js.Atomics.waitAsync') && MIN_CHROME_VERSION >= 91
+#if !caniuse('js.Atomics.waitAsync') || MIN_CHROME_VERSION < 91
   // Partially polyfill Atomics.waitAsync() if not available in the browser.
   // Also polyfill for old Chrome-based browsers, where Atomics.waitAsync is
   // broken until Chrome 91, see:

@@ -52,7 +52,7 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #include "polyfill/promise.js"
 #endif
 
-#if caniuse('js.Object.assign')
+#if !caniuse('js.Object.assign')
 #include "polyfill/objassign.js"
 #endif
 
