@@ -1061,7 +1061,7 @@ function caniuse(path) {
   };
 
   return Object.entries(userMinVersions).every(([browser, userMinVersion]) => {
-    const featureMinVersion = obj[browser] ?? TARGET_NOT_SUPPORTED;
+    const featureMinVersion = obj[browser] || TARGET_NOT_SUPPORTED;
     return userMinVersion >= featureMinVersion;
   });
 }
