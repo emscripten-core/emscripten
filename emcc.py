@@ -648,7 +648,7 @@ def get_binaryen_passes():
     passes += ['--safe-heap']
   # sign-ext is enabled by default by llvm.  If the target browser settings don't support
   # this we lower it away here using a binaryen pass.
-  if not feature_matrix.caniuse(feature_matrix.Feature.SIGN_EXT):
+  if not feature_matrix.caniuse('wasm.signExtensions'):
     logger.debug('lowering sign-ext feature due to incompatiable target browser engines')
     passes += ['--signext-lowering']
   if optimizing:
@@ -2512,7 +2512,7 @@ def phase_linker_setup(options, state, newargs):
   feature_matrix.apply_min_browser_versions()
 
   if not settings.BULK_MEMORY:
-    settings.BULK_MEMORY = feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY)
+    settings.BULK_MEMORY = feature_matrix.caniuse('wasm.bulkMemory')
 
   if settings.AUDIO_WORKLET:
     if settings.AUDIO_WORKLET == 1:
