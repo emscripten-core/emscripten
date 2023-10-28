@@ -899,10 +899,11 @@ def parse_s_args(args):
         # Special handling of browser version targets. A version -1 means that the specific version
         # is not supported at all. Replace those with INT32_MAX to make it possible to compare e.g.
         # #if MIN_FIREFOX_VERSION < 68
-        if re.match(r'MIN_.*_VERSION(=.*)?', key):
+        m = re.match(r'(MIN_.*_VERSION)=(.*)', key)
+        if m:
           try:
-            if int(key.split('=')[1]) < 0:
-              key = key.split('=')[0] + '=0x7FFFFFFF'
+            if int(m.group(2)) < 0:
+              key = f'{m.group(1)}={feature_matrix.TARGET_NOT_SUPPORTED}'
           except Exception:
             pass
 
@@ -2309,7 +2310,7 @@ def phase_linker_setup(options, state, newargs):
                                  settings.MIN_FIREFOX_VERSION < 44 or
                                  settings.MIN_CHROME_VERSION < 49 or
                                  settings.MIN_SAFARI_VERSION < 110000 or
-                                 settings.MIN_IE_VERSION != 0x7FFFFFFF)
+                                 settings.MIN_IE_VERSION != feature_matrix.TARGET_NOT_SUPPORTED)
 
     if options.use_closure_compiler is None and settings.TRANSPILE_TO_ES5:
       diagnostics.warning('transpile', 'enabling transpilation via closure due to browser version settings.  This warning can be suppressed by passing `--closure=1` or `--closure=0` to opt into our explicitly.')
@@ -2319,7 +2320,7 @@ def phase_linker_setup(options, state, newargs):
                           settings.MIN_FIREFOX_VERSION >= 45 and
                           settings.MIN_CHROME_VERSION >= 49 and
                           settings.MIN_SAFARI_VERSION >= 90000 and
-                          settings.MIN_IE_VERSION == 0x7FFFFFFF)
+                          settings.MIN_IE_VERSION == feature_matrix.TARGET_NOT_SUPPORTED)
 
   if not settings.DISABLE_EXCEPTION_CATCHING and settings.EXCEPTION_STACK_TRACES and not supports_es6_classes:
     diagnostics.warning('transpile', '-sEXCEPTION_STACK_TRACES requires an engine that support ES6 classes.')

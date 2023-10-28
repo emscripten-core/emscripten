@@ -21,13 +21,18 @@ with open(Path(__file__).parent / 'browser_compat_data.json', 'r') as f:
   browser_compat_data = load(f)
 
 
+# This value is used to indicate that a feature is not supported
+# in a given browser (by setting minimum versions to INT32_MAX).
+TARGET_NOT_SUPPORTED = 0x7FFFFFFF
+
+
 def get_min_versions(path):
   min_versions = reduce(getitem, path.split('.'), browser_compat_data)['#']
   return {
-    'MIN_CHROME_VERSION': min_versions.get('chrome', 0x7FFFFFFF),
-    'MIN_FIREFOX_VERSION': min_versions.get('firefox', 0x7FFFFFFF),
-    'MIN_SAFARI_VERSION': min_versions.get('safari', 0x7FFFFFFF),
-    'MIN_NODE_VERSION': min_versions.get('nodejs', 0x7FFFFFFF),
+    'MIN_CHROME_VERSION': min_versions.get('chrome', TARGET_NOT_SUPPORTED),
+    'MIN_FIREFOX_VERSION': min_versions.get('firefox', TARGET_NOT_SUPPORTED),
+    'MIN_SAFARI_VERSION': min_versions.get('safari', TARGET_NOT_SUPPORTED),
+    'MIN_NODE_VERSION': min_versions.get('nodejs', TARGET_NOT_SUPPORTED),
   }
 
 

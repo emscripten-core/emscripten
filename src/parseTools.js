@@ -1051,12 +1051,17 @@ function implicitSelf() {
 const caniuse_raw = JSON.parse(read('../tools/browser_compat_data.json'));
 
 function caniuse(path) {
-  let obj = path.split('.').reduce((obj, key) => obj[key], caniuse_raw);
-  let {
-    chrome = TARGET_NOT_SUPPORTED,
-    firefox = TARGET_NOT_SUPPORTED,
-    safari = TARGET_NOT_SUPPORTED,
-    nodejs = TARGET_NOT_SUPPORTED,
-  } = obj['#'];
-  return MIN_CHROME_VERSION >= chrome && MIN_FIREFOX_VERSION >= firefox && MIN_SAFARI_VERSION >= safari && MIN_NODE_VERSION >= nodejs;
+  const obj = path.split('.').reduce((obj, key) => obj[key], caniuse_raw)['#'];
+
+  const userMinVersions = {
+    chrome: MIN_CHROME_VERSION,
+    firefox: MIN_FIREFOX_VERSION,
+    safari: MIN_SAFARI_VERSION,
+    nodejs: MIN_NODE_VERSION,
+  };
+
+  return Object.entries(userMinVersions).every(([browser, userMinVersion]) => {
+    const featureMinVersion = obj[browser] ?? TARGET_NOT_SUPPORTED;
+    return userMinVersion >= featureMinVersion;
+  });
 }
