@@ -255,7 +255,6 @@ var LibraryBrowser = {
         }
       }
       Browser.isHiDPIAware = Module['isHiDPIAware'] || false;
-      console.log("Browser.isHiDPIAware=", Browser.isHiDPIAware)
     },
 
     createContext(/** @type {HTMLCanvasElement} */ canvas, useWebGL, setInModule, webGLContextAttributes) {

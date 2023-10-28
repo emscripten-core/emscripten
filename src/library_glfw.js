@@ -81,7 +81,6 @@ var LibraryGLFW = {
       this.keyFunc = null; // GLFWkeyfun
       this.charFunc = null; // GLFWcharfun
       this.userptr = null;
-      console.log("using yan-fork-main");
     },
 
   $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
