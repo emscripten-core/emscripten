@@ -1047,3 +1047,16 @@ function getPerformanceNow() {
 function implicitSelf() {
   return ENVIRONMENT.includes('node') ? 'self.' : '';
 }
+
+const caniuse_raw = JSON.parse(read('../tools/browser_compat_data.json'));
+
+function caniuse(path) {
+  let obj = path.split('.').reduce((obj, key) => obj[key], caniuse_raw);
+  let {
+    chrome = TARGET_NOT_SUPPORTED,
+    firefox = TARGET_NOT_SUPPORTED,
+    safari = TARGET_NOT_SUPPORTED,
+    nodejs = TARGET_NOT_SUPPORTED,
+  } = obj['#'];
+  return MIN_CHROME_VERSION >= chrome && MIN_FIREFOX_VERSION >= firefox && MIN_SAFARI_VERSION >= safari && MIN_NODE_VERSION >= nodejs;
+}
