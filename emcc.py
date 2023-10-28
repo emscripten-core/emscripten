@@ -54,7 +54,7 @@ from tools import js_manipulation
 from tools import webassembly
 from tools import config
 from tools import cache
-from tools.settings import default_setting, user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS, MIN_VERSION_SETTINGS
+from tools.settings import default_setting, user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
 from tools.utils import read_file, write_file, read_binary, delete_file, removeprefix
 
 logger = logging.getLogger('emcc')
@@ -458,7 +458,7 @@ def apply_user_settings():
       except Exception as e:
         exit_with_error('a problem occurred in evaluating the content after a "-s", specifically "%s=%s": %s', key, value, str(e))
 
-    if value == -1 and key in MIN_VERSION_SETTINGS:
+    if value == -1 and key.startswith('MIN_') and key.endswith('_VERSION'):
       value = feature_matrix.TARGET_NOT_SUPPORTED
 
     setattr(settings, user_key, value)

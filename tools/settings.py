@@ -93,14 +93,6 @@ INTERNAL_SETTINGS = {
     'SIDE_MODULE_IMPORTS',
 }
 
-# Settings that represent minimum engine versions.
-MIN_VERSION_SETTINGS = {
-    'MIN_CHROME_VERSION',
-    'MIN_FIREFOX_VERSION',
-    'MIN_SAFARI_VERSION',
-    'MIN_NODE_VERSION',
-}
-
 user_settings: Dict[str, str] = {}
 
 
