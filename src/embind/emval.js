@@ -297,7 +297,7 @@ var LibraryEmVal = {
     return id;
   },
 
-#if caniuse('js.Reflect.construct')
+#if !caniuse('js.Reflect.construct')
   $reflectConstruct: null,
   $reflectConstruct__postset: `
     if (typeof Reflect !== 'undefined') {
