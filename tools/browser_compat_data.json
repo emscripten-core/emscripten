@@ -1,0 +1,6887 @@
+{
+	"js": {
+		"AggregateError": {
+			"AggregateError": {
+				"#": {
+					"chrome": 85,
+					"firefox": 79,
+					"nodejs": 150000,
+					"safari": 140000
+				}
+			},
+			"#": {
+				"chrome": 85,
+				"firefox": 79,
+				"nodejs": 150000,
+				"safari": 140000
+			},
+			"errors": {
+				"#": {
+					"chrome": 85,
+					"firefox": 79,
+					"nodejs": 150000,
+					"safari": 140000
+				}
+			},
+			"serializable_object": {
+				"#": {
+					"firefox": 103
+				}
+			}
+		},
+		"Array": {
+			"@@iterator": {
+				"#": {
+					"chrome": 38,
+					"firefox": 36,
+					"nodejs": 1200,
+					"safari": 100000
+				}
+			},
+			"@@species": {
+				"#": {
+					"chrome": 51,
+					"firefox": 48,
+					"nodejs": 60500,
+					"safari": 100000
+				}
+			},
+			"@@unscopables": {
+				"#": {
+					"chrome": 38,
+					"firefox": 48,
+					"nodejs": 1200,
+					"safari": 100000
+				}
+			},
+			"Array": {},
+			"at": {
+				"#": {
+					"chrome": 92,
+					"firefox": 90,
+					"nodejs": 160600,
+					"safari": 150400
+				}
+			},
+			"concat": {},
+			"copyWithin": {
+				"#": {
+					"chrome": 45,
+					"firefox": 32,
+					"nodejs": 40000,
+					"safari": 90000
+				}
+			},
+			"entries": {
+				"#": {
+					"chrome": 38,
+					"firefox": 28,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"every": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"fill": {
+				"#": {
+					"chrome": 45,
+					"firefox": 31,
+					"nodejs": 40000,
+					"safari": 80000
+				}
+			},
+			"filter": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"find": {
+				"#": {
+					"chrome": 45,
+					"firefox": 25,
+					"nodejs": 40000,
+					"safari": 80000
+				}
+			},
+			"findIndex": {
+				"#": {
+					"chrome": 45,
+					"firefox": 25,
+					"nodejs": 40000,
+					"safari": 80000
+				}
+			},
+			"findLast": {
+				"#": {
+					"chrome": 97,
+					"firefox": 104,
+					"nodejs": 180000,
+					"safari": 150400
+				}
+			},
+			"findLastIndex": {
+				"#": {
+					"chrome": 97,
+					"firefox": 104,
+					"nodejs": 180000,
+					"safari": 150400
+				}
+			},
+			"flat": {
+				"#": {
+					"chrome": 69,
+					"firefox": 62,
+					"nodejs": 110000,
+					"safari": 120000
+				}
+			},
+			"flatMap": {
+				"#": {
+					"chrome": 69,
+					"firefox": 62,
+					"nodejs": 110000,
+					"safari": 120000
+				}
+			},
+			"forEach": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"from": {
+				"#": {
+					"chrome": 45,
+					"firefox": 32,
+					"nodejs": 40000,
+					"safari": 90000
+				}
+			},
+			"fromAsync": {
+				"#": {
+					"firefox": 115,
+					"safari": 160400
+				}
+			},
+			"includes": {
+				"#": {
+					"chrome": 47,
+					"firefox": 43,
+					"nodejs": 60000,
+					"safari": 90000
+				}
+			},
+			"indexOf": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"isArray": {
+				"#": {
+					"chrome": 4,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50000
+				}
+			},
+			"join": {},
+			"keys": {
+				"#": {
+					"chrome": 38,
+					"firefox": 28,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"lastIndexOf": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"length": {},
+			"map": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"of": {
+				"#": {
+					"chrome": 45,
+					"firefox": 25,
+					"nodejs": 40000,
+					"safari": 90000
+				}
+			},
+			"pop": {},
+			"push": {},
+			"reduce": {
+				"#": {
+					"chrome": 3,
+					"firefox": 3,
+					"nodejs": 1000,
+					"safari": 40000
+				}
+			},
+			"reduceRight": {
+				"#": {
+					"chrome": 3,
+					"firefox": 3,
+					"nodejs": 1000,
+					"safari": 40000
+				}
+			},
+			"reverse": {},
+			"shift": {},
+			"slice": {},
+			"some": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"sort": {
+				"stable": {
+					"#": {
+						"chrome": 70,
+						"firefox": 3,
+						"nodejs": 120000,
+						"safari": 100100
+					}
+				}
+			},
+			"splice": {},
+			"toLocaleString": {
+				"locales_parameter": {
+					"#": {
+						"chrome": 24,
+						"firefox": 52,
+						"nodejs": 130000,
+						"safari": 70000
+					}
+				},
+				"options_parameter": {
+					"#": {
+						"chrome": 24,
+						"firefox": 52,
+						"nodejs": 1200,
+						"safari": 70000
+					}
+				}
+			},
+			"toReversed": {
+				"#": {
+					"chrome": 110,
+					"firefox": 115,
+					"nodejs": 200000,
+					"safari": 160000
+				}
+			},
+			"toSorted": {
+				"#": {
+					"chrome": 110,
+					"firefox": 115,
+					"nodejs": 200000,
+					"safari": 160000
+				}
+			},
+			"toSpliced": {
+				"#": {
+					"chrome": 110,
+					"firefox": 115,
+					"nodejs": 200000,
+					"safari": 160000
+				}
+			},
+			"toString": {},
+			"unshift": {},
+			"values": {
+				"#": {
+					"chrome": 66,
+					"firefox": 60,
+					"nodejs": 100900,
+					"safari": 90000
+				}
+			},
+			"with": {
+				"#": {
+					"chrome": 110,
+					"firefox": 115,
+					"nodejs": 200000,
+					"safari": 160000
+				}
+			}
+		},
+		"ArrayBuffer": {
+			"@@species": {
+				"#": {
+					"chrome": 51,
+					"firefox": 48,
+					"nodejs": 60500,
+					"safari": 100000
+				}
+			},
+			"ArrayBuffer": {
+				"#": {
+					"chrome": 7,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				},
+				"maxByteLength_option": {
+					"#": {
+						"chrome": 111,
+						"nodejs": 200000,
+						"safari": 160400
+					}
+				},
+				"new_required": {
+					"#": {
+						"chrome": 7,
+						"firefox": 44,
+						"nodejs": 1200,
+						"safari": 50100
+					}
+				}
+			},
+			"#": {
+				"chrome": 7,
+				"firefox": 4,
+				"nodejs": 1000,
+				"safari": 50100
+			},
+			"byteLength": {
+				"#": {
+					"chrome": 7,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"detached": {
+				"#": {
+					"chrome": 114
+				}
+			},
+			"isView": {
+				"#": {
+					"chrome": 32,
+					"firefox": 29,
+					"nodejs": 40000,
+					"safari": 70000
+				}
+			},
+			"maxByteLength": {
+				"#": {
+					"chrome": 111,
+					"nodejs": 200000,
+					"safari": 160400
+				}
+			},
+			"resizable": {
+				"#": {
+					"chrome": 111,
+					"nodejs": 200000,
+					"safari": 160400
+				}
+			},
+			"resize": {
+				"#": {
+					"chrome": 111,
+					"nodejs": 200000,
+					"safari": 160400
+				}
+			},
+			"slice": {
+				"#": {
+					"chrome": 17,
+					"firefox": 12,
+					"nodejs": 1200,
+					"safari": 50100
+				}
+			},
+			"transfer": {
+				"#": {
+					"chrome": 114
+				}
+			},
+			"transferToFixedLength": {
+				"#": {
+					"chrome": 114
+				}
+			}
+		},
+		"AsyncFunction": {
+			"AsyncFunction": {
+				"#": {
+					"chrome": 55,
+					"firefox": 52,
+					"nodejs": 70600,
+					"safari": 100100
+				}
+			},
+			"#": {
+				"chrome": 55,
+				"firefox": 52,
+				"nodejs": 70600,
+				"safari": 100100
+			}
+		},
+		"AsyncGenerator": {
+			"#": {
+				"chrome": 63,
+				"firefox": 55,
+				"nodejs": 100000,
+				"safari": 120000
+			},
+			"next": {
+				"#": {
+					"chrome": 63,
+					"firefox": 55,
+					"nodejs": 100000,
+					"safari": 120000
+				}
+			},
+			"return": {
+				"#": {
+					"chrome": 63,
+					"firefox": 55,
+					"nodejs": 100000,
+					"safari": 120000
+				}
+			},
+			"throw": {
+				"#": {
+					"chrome": 63,
+					"firefox": 55,
+					"nodejs": 100000,
+					"safari": 120000
+				}
+			}
+		},
+		"AsyncGeneratorFunction": {
+			"AsyncGeneratorFunction": {
+				"#": {
+					"chrome": 63,
+					"firefox": 55,
+					"nodejs": 100000,
+					"safari": 120000
+				}
+			},
+			"#": {
+				"chrome": 63,
+				"firefox": 55,
+				"nodejs": 100000,
+				"safari": 120000
+			}
+		},
+		"AsyncIterator": {
+			"@@asyncIterator": {
+				"#": {
+					"chrome": 63,
+					"firefox": 57,
+					"nodejs": 100000,
+					"safari": 110100
+				}
+			},
+			"#": {
+				"chrome": 63,
+				"firefox": 57,
+				"nodejs": 100000,
+				"safari": 110100
+			}
+		},
+		"Atomics": {
+			"Atomic_operations_on_non_shared_buffers": {
+				"#": {
+					"firefox": 79
+				}
+			},
+			"#": {
+				"chrome": 68,
+				"firefox": 78,
+				"nodejs": 81000,
+				"safari": 150200
+			},
+			"add": {
+				"#": {
+					"chrome": 68,
+					"firefox": 78,
+					"nodejs": 81000,
+					"safari": 150200
+				}
+			},
+			"and": {
+				"#": {
+					"chrome": 68,
+					"firefox": 78,
+					"nodejs": 81000,
+					"safari": 150200
+				}
+			},
+			"compareExchange": {
+				"#": {
+					"chrome": 68,
+					"firefox": 78,
+					"nodejs": 81000,
+					"safari": 150200
+				}
+			},
+			"exchange": {
+				"#": {
+					"chrome": 68,
+					"firefox": 78,
+					"nodejs": 81000,
+					"safari": 150200
+				}
+			},
+			"isLockFree": {
+				"#": {
+					"chrome": 68,
+					"firefox": 78,
+					"nodejs": 81000,
+					"safari": 150200
+				}
+			},
+			"load": {
+				"#": {
+					"chrome": 68,
+					"firefox": 78,
+					"nodejs": 81000,
+					"safari": 150200
+				}
+			},
+			"notify": {
+				"#": {
+					"chrome": 68,
+					"firefox": 78,
+					"nodejs": 81000,
+					"safari": 150200
+				}
+			},
+			"or": {
+				"#": {
+					"chrome": 68,
+					"firefox": 78,
+					"nodejs": 81000,
+					"safari": 150200
+				}
+			},
+			"store": {
+				"#": {
+					"chrome": 68,
+					"firefox": 78,
+					"nodejs": 81000,
+					"safari": 150200
+				}
+			},
+			"sub": {
+				"#": {
+					"chrome": 68,
+					"firefox": 78,
+					"nodejs": 81000,
+					"safari": 150200
+				}
+			},
+			"wait": {
+				"#": {
+					"chrome": 68,
+					"firefox": 78,
+					"nodejs": 81000,
+					"safari": 150200
+				}
+			},
+			"waitAsync": {
+				"#": {
+					"chrome": 87,
+					"nodejs": 160000,
+					"safari": 160400
+				}
+			},
+			"xor": {
+				"#": {
+					"chrome": 68,
+					"firefox": 78,
+					"nodejs": 81000,
+					"safari": 150200
+				}
+			}
+		},
+		"BigInt": {
+			"BigInt": {
+				"#": {
+					"chrome": 67,
+					"firefox": 68,
+					"nodejs": 100400,
+					"safari": 140000
+				}
+			},
+			"#": {
+				"chrome": 67,
+				"firefox": 68,
+				"nodejs": 100400,
+				"safari": 140000
+			},
+			"asIntN": {
+				"#": {
+					"chrome": 67,
+					"firefox": 68,
+					"nodejs": 100400,
+					"safari": 140000
+				}
+			},
+			"asUintN": {
+				"#": {
+					"chrome": 67,
+					"firefox": 68,
+					"nodejs": 100400,
+					"safari": 140000
+				}
+			},
+			"toLocaleString": {
+				"#": {
+					"chrome": 67,
+					"firefox": 68,
+					"nodejs": 100400,
+					"safari": 140000
+				},
+				"locales": {
+					"#": {
+						"chrome": 76,
+						"firefox": 70,
+						"nodejs": 120900,
+						"safari": 140000
+					}
+				},
+				"options": {
+					"#": {
+						"chrome": 76,
+						"firefox": 70,
+						"nodejs": 120900,
+						"safari": 140000
+					}
+				}
+			},
+			"toString": {
+				"#": {
+					"chrome": 67,
+					"firefox": 68,
+					"nodejs": 100400,
+					"safari": 140000
+				}
+			},
+			"valueOf": {
+				"#": {
+					"chrome": 67,
+					"firefox": 68,
+					"nodejs": 100400,
+					"safari": 140000
+				}
+			}
+		},
+		"BigInt64Array": {
+			"BigInt64Array": {
+				"#": {
+					"chrome": 67,
+					"firefox": 68,
+					"nodejs": 100400,
+					"safari": 150000
+				}
+			},
+			"#": {
+				"chrome": 67,
+				"firefox": 68,
+				"nodejs": 100400,
+				"safari": 150000
+			}
+		},
+		"BigUint64Array": {
+			"BigUint64Array": {
+				"#": {
+					"chrome": 67,
+					"firefox": 68,
+					"nodejs": 100400,
+					"safari": 150000
+				}
+			},
+			"#": {
+				"chrome": 67,
+				"firefox": 68,
+				"nodejs": 100400,
+				"safari": 150000
+			}
+		},
+		"Boolean": {
+			"Boolean": {},
+			"toString": {},
+			"valueOf": {}
+		},
+		"DataView": {
+			"DataView": {
+				"#": {
+					"chrome": 9,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 50100
+				},
+				"new_required": {
+					"#": {
+						"chrome": 11,
+						"firefox": 40,
+						"nodejs": 1000,
+						"safari": 50100
+					}
+				},
+				"sharedarraybuffer_support": {
+					"#": {
+						"chrome": 68,
+						"firefox": 78,
+						"nodejs": 81000,
+						"safari": 150200
+					}
+				}
+			},
+			"#": {
+				"chrome": 9,
+				"firefox": 15,
+				"nodejs": 1000,
+				"safari": 50100
+			},
+			"buffer": {
+				"#": {
+					"chrome": 9,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 50100
+				},
+				"sharedarraybuffer_support": {
+					"#": {
+						"chrome": 60,
+						"firefox": 79,
+						"nodejs": 81000
+					}
+				}
+			},
+			"byteLength": {
+				"#": {
+					"chrome": 9,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"byteOffset": {
+				"#": {
+					"chrome": 9,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"getBigInt64": {
+				"#": {
+					"chrome": 67,
+					"firefox": 68,
+					"nodejs": 100400,
+					"safari": 150000
+				}
+			},
+			"getBigUint64": {
+				"#": {
+					"chrome": 67,
+					"firefox": 68,
+					"nodejs": 100400,
+					"safari": 150000
+				}
+			},
+			"getFloat32": {
+				"#": {
+					"chrome": 9,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"getFloat64": {
+				"#": {
+					"chrome": 9,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"getInt16": {
+				"#": {
+					"chrome": 9,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"getInt32": {
+				"#": {
+					"chrome": 9,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"getInt8": {
+				"#": {
+					"chrome": 9,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"getUint16": {
+				"#": {
+					"chrome": 9,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"getUint32": {
+				"#": {
+					"chrome": 9,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"getUint8": {
+				"#": {
+					"chrome": 9,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"setBigInt64": {
+				"#": {
+					"chrome": 67,
+					"firefox": 68,
+					"nodejs": 100400,
+					"safari": 150000
+				}
+			},
+			"setBigUint64": {
+				"#": {
+					"chrome": 67,
+					"firefox": 68,
+					"nodejs": 100400,
+					"safari": 150000
+				}
+			},
+			"setFloat32": {
+				"#": {
+					"chrome": 9,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"setFloat64": {
+				"#": {
+					"chrome": 9,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"setInt16": {
+				"#": {
+					"chrome": 9,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"setInt32": {
+				"#": {
+					"chrome": 9,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"setInt8": {
+				"#": {
+					"chrome": 9,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"setUint16": {
+				"#": {
+					"chrome": 9,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"setUint32": {
+				"#": {
+					"chrome": 9,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"setUint8": {
+				"#": {
+					"chrome": 9,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			}
+		},
+		"Date": {
+			"@@toPrimitive": {
+				"#": {
+					"chrome": 47,
+					"firefox": 44,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"Date": {},
+			"UTC": {
+				"optional_monthIndex": {
+					"#": {
+						"chrome": 57,
+						"firefox": 54,
+						"nodejs": 80000,
+						"safari": 120000
+					}
+				}
+			},
+			"getDate": {},
+			"getDay": {},
+			"getFullYear": {},
+			"getHours": {},
+			"getMilliseconds": {},
+			"getMinutes": {},
+			"getMonth": {},
+			"getSeconds": {},
+			"getTime": {},
+			"getTimezoneOffset": {},
+			"getUTCDate": {},
+			"getUTCDay": {},
+			"getUTCFullYear": {},
+			"getUTCHours": {},
+			"getUTCMilliseconds": {},
+			"getUTCMinutes": {},
+			"getUTCMonth": {},
+			"getUTCSeconds": {},
+			"getYear": {},
+			"now": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 40000
+				}
+			},
+			"parse": {
+				"iso_8601": {
+					"#": {
+						"chrome": 6,
+						"firefox": 4,
+						"nodejs": 1200,
+						"safari": 50100
+					}
+				}
+			},
+			"setDate": {},
+			"setFullYear": {},
+			"setHours": {},
+			"setMilliseconds": {},
+			"setMinutes": {},
+			"setMonth": {},
+			"setSeconds": {},
+			"setTime": {},
+			"setUTCDate": {},
+			"setUTCFullYear": {},
+			"setUTCHours": {},
+			"setUTCMilliseconds": {},
+			"setUTCMinutes": {},
+			"setUTCMonth": {},
+			"setUTCSeconds": {},
+			"setYear": {},
+			"toDateString": {},
+			"toGMTString": {},
+			"toISOString": {
+				"#": {
+					"chrome": 3,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 40000
+				}
+			},
+			"toJSON": {
+				"#": {
+					"chrome": 3,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 40000
+				}
+			},
+			"toLocaleDateString": {
+				"iana_time_zone_names": {
+					"#": {
+						"chrome": 24,
+						"firefox": 52,
+						"nodejs": 1200,
+						"safari": 70000
+					}
+				},
+				"locales": {
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 130000,
+						"safari": 100000
+					}
+				},
+				"options": {
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 1200,
+						"safari": 100000
+					}
+				}
+			},
+			"toLocaleString": {
+				"iana_time_zone_names": {
+					"#": {
+						"chrome": 24,
+						"firefox": 52,
+						"nodejs": 1200,
+						"safari": 70000
+					}
+				},
+				"locales": {
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 130000,
+						"safari": 100000
+					}
+				},
+				"options": {
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 1200,
+						"safari": 100000
+					}
+				}
+			},
+			"toLocaleTimeString": {
+				"iana_time_zone_names": {
+					"#": {
+						"chrome": 24,
+						"firefox": 52,
+						"nodejs": 1200,
+						"safari": 70000
+					}
+				},
+				"locales": {
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 130000,
+						"safari": 100000
+					}
+				},
+				"options": {
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 1200,
+						"safari": 100000
+					}
+				}
+			},
+			"toString": {},
+			"toTimeString": {},
+			"toUTCString": {},
+			"valueOf": {}
+		},
+		"Error": {
+			"Error": {
+				"fileName_parameter": {
+					"#": {
+						"firefox": 1
+					}
+				},
+				"lineNumber_parameter": {
+					"#": {
+						"firefox": 1
+					}
+				},
+				"options_cause_parameter": {
+					"#": {
+						"chrome": 93,
+						"firefox": 91,
+						"nodejs": 160900,
+						"safari": 150000
+					}
+				}
+			},
+			"cause": {
+				"#": {
+					"chrome": 93,
+					"firefox": 91,
+					"nodejs": 160900,
+					"safari": 150000
+				}
+			},
+			"columnNumber": {
+				"#": {
+					"firefox": 1
+				}
+			},
+			"fileName": {
+				"#": {
+					"firefox": 1
+				}
+			},
+			"lineNumber": {
+				"#": {
+					"firefox": 1
+				}
+			},
+			"message": {},
+			"name": {},
+			"serializable_object": {
+				"#": {
+					"chrome": 77,
+					"firefox": 103
+				}
+			},
+			"stack": {
+				"#": {
+					"chrome": 3,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 60000
+				}
+			},
+			"toString": {}
+		},
+		"EvalError": {
+			"EvalError": {},
+			"serializable_object": {
+				"#": {
+					"chrome": 77,
+					"firefox": 103
+				}
+			}
+		},
+		"FinalizationRegistry": {
+			"FinalizationRegistry": {
+				"#": {
+					"chrome": 84,
+					"firefox": 79,
+					"nodejs": 140600,
+					"safari": 140100
+				}
+			},
+			"#": {
+				"chrome": 84,
+				"firefox": 79,
+				"nodejs": 140600,
+				"safari": 140100
+			},
+			"register": {
+				"#": {
+					"chrome": 84,
+					"firefox": 79,
+					"nodejs": 140600,
+					"safari": 140100
+				}
+			},
+			"symbol_as_target": {
+				"#": {
+					"chrome": 108,
+					"safari": 160400
+				}
+			},
+			"unregister": {
+				"#": {
+					"chrome": 84,
+					"firefox": 79,
+					"nodejs": 140600,
+					"safari": 140100
+				}
+			}
+		},
+		"Float32Array": {
+			"Float32Array": {
+				"#": {
+					"chrome": 7,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				},
+				"constructor_without_parameters": {
+					"#": {
+						"chrome": 7,
+						"firefox": 55,
+						"nodejs": 1000,
+						"safari": 50100
+					}
+				},
+				"iterable_allowed": {
+					"#": {
+						"chrome": 39,
+						"firefox": 52,
+						"nodejs": 40000,
+						"safari": 100000
+					}
+				},
+				"new_required": {
+					"#": {
+						"chrome": 7,
+						"firefox": 44,
+						"nodejs": 1200,
+						"safari": 50100
+					}
+				}
+			},
+			"#": {
+				"chrome": 7,
+				"firefox": 4,
+				"nodejs": 1000,
+				"safari": 50100
+			}
+		},
+		"Float64Array": {
+			"Float64Array": {
+				"#": {
+					"chrome": 7,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				},
+				"constructor_without_parameters": {
+					"#": {
+						"chrome": 7,
+						"firefox": 55,
+						"nodejs": 1000,
+						"safari": 50100
+					}
+				},
+				"iterable_allowed": {
+					"#": {
+						"chrome": 39,
+						"firefox": 52,
+						"nodejs": 40000,
+						"safari": 100000
+					}
+				},
+				"new_required": {
+					"#": {
+						"chrome": 7,
+						"firefox": 44,
+						"nodejs": 1200,
+						"safari": 50100
+					}
+				}
+			},
+			"#": {
+				"chrome": 7,
+				"firefox": 4,
+				"nodejs": 1000,
+				"safari": 50100
+			}
+		},
+		"Function": {
+			"@@hasInstance": {
+				"#": {
+					"chrome": 50,
+					"firefox": 50,
+					"nodejs": 60500,
+					"safari": 100000
+				}
+			},
+			"Function": {},
+			"apply": {
+				"generic_arrays_as_arguments": {
+					"#": {
+						"chrome": 17,
+						"firefox": 4,
+						"nodejs": 1000,
+						"safari": 60000
+					}
+				}
+			},
+			"arguments": {},
+			"bind": {
+				"#": {
+					"chrome": 7,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"call": {},
+			"caller": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"displayName": {
+				"#": {
+					"firefox": 13
+				}
+			},
+			"length": {
+				"configurable_true": {
+					"#": {
+						"chrome": 43,
+						"firefox": 37,
+						"nodejs": 40000,
+						"safari": 100000
+					}
+				}
+			},
+			"name": {
+				"#": {
+					"chrome": 15,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 60000
+				},
+				"configurable_true": {
+					"#": {
+						"chrome": 43,
+						"firefox": 38,
+						"nodejs": 40000,
+						"safari": 100000
+					}
+				},
+				"inferred_names": {
+					"#": {
+						"chrome": 51,
+						"firefox": 53,
+						"nodejs": 60500,
+						"safari": 100000
+					}
+				}
+			},
+			"toString": {
+				"toString_revision": {
+					"#": {
+						"chrome": 66,
+						"firefox": 54
+					}
+				}
+			}
+		},
+		"Generator": {
+			"#": {
+				"chrome": 39,
+				"firefox": 26,
+				"nodejs": 40000,
+				"safari": 100000
+			},
+			"next": {
+				"#": {
+					"chrome": 39,
+					"firefox": 26,
+					"nodejs": 40000,
+					"safari": 100000
+				}
+			},
+			"return": {
+				"#": {
+					"chrome": 50,
+					"firefox": 38,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"throw": {
+				"#": {
+					"chrome": 39,
+					"firefox": 26,
+					"nodejs": 40000,
+					"safari": 100000
+				}
+			}
+		},
+		"GeneratorFunction": {
+			"GeneratorFunction": {
+				"#": {
+					"chrome": 39,
+					"firefox": 26,
+					"nodejs": 40000,
+					"safari": 100000
+				}
+			},
+			"#": {
+				"chrome": 39,
+				"firefox": 26,
+				"nodejs": 40000,
+				"safari": 100000
+			}
+		},
+		"Infinity": {},
+		"Int16Array": {
+			"Int16Array": {
+				"#": {
+					"chrome": 7,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				},
+				"constructor_without_parameters": {
+					"#": {
+						"chrome": 7,
+						"firefox": 55,
+						"nodejs": 1000,
+						"safari": 50100
+					}
+				},
+				"iterable_allowed": {
+					"#": {
+						"chrome": 39,
+						"firefox": 52,
+						"nodejs": 40000,
+						"safari": 100000
+					}
+				},
+				"new_required": {
+					"#": {
+						"chrome": 7,
+						"firefox": 44,
+						"nodejs": 1200,
+						"safari": 50100
+					}
+				}
+			},
+			"#": {
+				"chrome": 7,
+				"firefox": 4,
+				"nodejs": 1000,
+				"safari": 50100
+			}
+		},
+		"Int32Array": {
+			"Int32Array": {
+				"#": {
+					"chrome": 7,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				},
+				"constructor_without_parameters": {
+					"#": {
+						"chrome": 7,
+						"firefox": 55,
+						"nodejs": 1000,
+						"safari": 50100
+					}
+				},
+				"iterable_allowed": {
+					"#": {
+						"chrome": 39,
+						"firefox": 52,
+						"nodejs": 40000,
+						"safari": 100000
+					}
+				},
+				"new_required": {
+					"#": {
+						"chrome": 7,
+						"firefox": 44,
+						"nodejs": 1200,
+						"safari": 50100
+					}
+				}
+			},
+			"#": {
+				"chrome": 7,
+				"firefox": 4,
+				"nodejs": 1000,
+				"safari": 50100
+			}
+		},
+		"Int8Array": {
+			"Int8Array": {
+				"#": {
+					"chrome": 7,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				},
+				"constructor_without_parameters": {
+					"#": {
+						"chrome": 7,
+						"firefox": 55,
+						"nodejs": 1000,
+						"safari": 50100
+					}
+				},
+				"iterable_allowed": {
+					"#": {
+						"chrome": 39,
+						"firefox": 52,
+						"nodejs": 40000,
+						"safari": 100000
+					}
+				},
+				"new_required": {
+					"#": {
+						"chrome": 7,
+						"firefox": 44,
+						"nodejs": 1200,
+						"safari": 50100
+					}
+				}
+			},
+			"#": {
+				"chrome": 7,
+				"firefox": 4,
+				"nodejs": 1000,
+				"safari": 50100
+			}
+		},
+		"InternalError": {
+			"InternalError": {
+				"#": {
+					"firefox": 1
+				}
+			},
+			"#": {
+				"firefox": 1
+			}
+		},
+		"Intl": {
+			"@@toStringTag": {
+				"#": {
+					"chrome": 86,
+					"firefox": 83,
+					"nodejs": 150000,
+					"safari": 140000
+				}
+			},
+			"Collator": {
+				"Collator": {
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 130000,
+						"safari": 100000
+					},
+					"options_caseFirst_parameter": {
+						"#": {
+							"chrome": 24,
+							"firefox": 55,
+							"nodejs": 1200,
+							"safari": 110000
+						}
+					},
+					"options_collation_parameter": {
+						"#": {
+							"chrome": 87,
+							"firefox": 85,
+							"nodejs": 150000,
+							"safari": 140100
+						}
+					}
+				},
+				"#": {
+					"chrome": 24,
+					"firefox": 29,
+					"nodejs": 1200,
+					"safari": 100000
+				},
+				"compare": {
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 1200,
+						"safari": 100000
+					}
+				},
+				"resolvedOptions": {
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 1200,
+						"safari": 100000
+					}
+				},
+				"supportedLocalesOf": {
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 130000,
+						"safari": 100000
+					}
+				}
+			},
+			"DateTimeFormat": {
+				"DateTimeFormat": {
+					"IntlLegacyConstructedSymbol": {
+						"#": {
+							"chrome": 91,
+							"firefox": 54,
+							"nodejs": 160000,
+							"safari": 140100
+						}
+					},
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 130000,
+						"safari": 100000
+					},
+					"locales_parameter": {
+						"#": {
+							"chrome": 24,
+							"firefox": 29,
+							"nodejs": 130000,
+							"safari": 100000
+						}
+					},
+					"options_parameter": {
+						"#": {
+							"chrome": 24,
+							"firefox": 29,
+							"nodejs": 1200,
+							"safari": 100000
+						},
+						"options_dateStyle_parameter": {
+							"#": {
+								"chrome": 76,
+								"firefox": 79,
+								"nodejs": 120900,
+								"safari": 140100
+							}
+						},
+						"options_dayPeriod_parameter": {
+							"#": {
+								"chrome": 92,
+								"firefox": 90,
+								"safari": 140100
+							}
+						},
+						"options_fractionalSecondDigits_parameter": {
+							"#": {
+								"chrome": 84,
+								"firefox": 84,
+								"nodejs": 140600,
+								"safari": 140100
+							}
+						},
+						"options_hourCycle_parameter": {
+							"#": {
+								"chrome": 73,
+								"firefox": 58,
+								"nodejs": 120000,
+								"safari": 130000
+							}
+						},
+						"options_timeStyle_parameter": {
+							"#": {
+								"chrome": 76,
+								"firefox": 79,
+								"nodejs": 120900,
+								"safari": 140100
+							}
+						},
+						"options_timeZoneName_parameter": {
+							"#": {
+								"chrome": 24,
+								"firefox": 29,
+								"nodejs": 1200,
+								"safari": 100000
+							},
+							"options_timeZoneName_parameter_iana": {
+								"#": {
+									"firefox": 91,
+									"safari": 150400
+								}
+							}
+						},
+						"options_timeZone_parameter": {
+							"#": {
+								"chrome": 24,
+								"firefox": 29,
+								"nodejs": 1200,
+								"safari": 100000
+							},
+							"options_timeZone_parameter_iana": {
+								"#": {
+									"chrome": 24,
+									"firefox": 52,
+									"nodejs": 40000,
+									"safari": 100000
+								}
+							}
+						}
+					}
+				},
+				"#": {
+					"chrome": 24,
+					"firefox": 29,
+					"nodejs": 1200,
+					"safari": 100000
+				},
+				"format": {
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 1200,
+						"safari": 100000
+					}
+				},
+				"formatRange": {
+					"#": {
+						"chrome": 76,
+						"firefox": 91,
+						"nodejs": 120900,
+						"safari": 140100
+					}
+				},
+				"formatRangeToParts": {
+					"#": {
+						"chrome": 76,
+						"firefox": 91,
+						"nodejs": 120900,
+						"safari": 140100
+					}
+				},
+				"formatToParts": {
+					"#": {
+						"chrome": 57,
+						"firefox": 51,
+						"nodejs": 80000,
+						"safari": 110000
+					}
+				},
+				"resolvedOptions": {
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 1200,
+						"safari": 100000
+					},
+					"computed_timezone": {
+						"#": {
+							"chrome": 35,
+							"firefox": 53,
+							"nodejs": 81000,
+							"safari": 100000
+						}
+					}
+				},
+				"supportedLocalesOf": {
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 130000,
+						"safari": 100000
+					}
+				}
+			},
+			"DisplayNames": {
+				"DisplayNames": {
+					"#": {
+						"chrome": 81,
+						"firefox": 86,
+						"nodejs": 140000,
+						"safari": 140100
+					}
+				},
+				"#": {
+					"chrome": 81,
+					"firefox": 86,
+					"nodejs": 140000,
+					"safari": 140100
+				},
+				"of": {
+					"#": {
+						"chrome": 81,
+						"firefox": 86,
+						"nodejs": 140000,
+						"safari": 140100
+					}
+				},
+				"resolvedOptions": {
+					"#": {
+						"chrome": 81,
+						"firefox": 86,
+						"nodejs": 140000,
+						"safari": 140100
+					}
+				},
+				"supportedLocalesOf": {
+					"#": {
+						"chrome": 81,
+						"firefox": 86,
+						"nodejs": 140000,
+						"safari": 140100
+					}
+				}
+			},
+			"DurationFormat": {
+				"DurationFormat": {
+					"#": {
+						"safari": 160400
+					}
+				},
+				"#": {
+					"safari": 160400
+				},
+				"format": {
+					"#": {
+						"safari": 160400
+					}
+				},
+				"formatToParts": {
+					"#": {
+						"safari": 160400
+					}
+				},
+				"resolvedOptions": {
+					"#": {
+						"safari": 160400
+					}
+				},
+				"supportedLocalesOf": {
+					"#": {
+						"safari": 160400
+					}
+				}
+			},
+			"ListFormat": {
+				"ListFormat": {
+					"#": {
+						"chrome": 72,
+						"firefox": 78,
+						"nodejs": 130000,
+						"safari": 140100
+					}
+				},
+				"#": {
+					"chrome": 72,
+					"firefox": 78,
+					"nodejs": 120000,
+					"safari": 140100
+				},
+				"format": {
+					"#": {
+						"chrome": 72,
+						"firefox": 78,
+						"nodejs": 120000,
+						"safari": 140100
+					}
+				},
+				"formatToParts": {
+					"#": {
+						"chrome": 72,
+						"firefox": 78,
+						"nodejs": 120000,
+						"safari": 140100
+					}
+				},
+				"resolvedOptions": {
+					"#": {
+						"chrome": 72,
+						"firefox": 78,
+						"nodejs": 120000,
+						"safari": 140100
+					}
+				},
+				"supportedLocalesOf": {
+					"#": {
+						"chrome": 72,
+						"firefox": 78,
+						"nodejs": 130000,
+						"safari": 140100
+					}
+				}
+			},
+			"Locale": {
+				"Locale": {
+					"#": {
+						"chrome": 74,
+						"firefox": 75,
+						"nodejs": 120000,
+						"safari": 140000
+					}
+				},
+				"#": {
+					"chrome": 74,
+					"firefox": 75,
+					"nodejs": 120000,
+					"safari": 140000
+				},
+				"baseName": {
+					"#": {
+						"chrome": 74,
+						"firefox": 75,
+						"nodejs": 120000,
+						"safari": 140000
+					}
+				},
+				"calendar": {
+					"#": {
+						"chrome": 74,
+						"firefox": 75,
+						"nodejs": 120000,
+						"safari": 140000
+					}
+				},
+				"caseFirst": {
+					"#": {
+						"chrome": 74,
+						"firefox": 75,
+						"nodejs": 120000,
+						"safari": 140000
+					}
+				},
+				"collation": {
+					"#": {
+						"chrome": 74,
+						"firefox": 75,
+						"nodejs": 120000,
+						"safari": 140000
+					}
+				},
+				"getCalendars": {
+					"#": {
+						"chrome": 99,
+						"nodejs": 180000,
+						"safari": 170000
+					}
+				},
+				"getCollations": {
+					"#": {
+						"chrome": 99,
+						"nodejs": 180000,
+						"safari": 170000
+					}
+				},
+				"getHourCycles": {
+					"#": {
+						"chrome": 99,
+						"nodejs": 180000,
+						"safari": 170000
+					}
+				},
+				"getNumberingSystems": {
+					"#": {
+						"chrome": 99,
+						"nodejs": 180000,
+						"safari": 170000
+					}
+				},
+				"getTextInfo": {
+					"#": {
+						"chrome": 99,
+						"nodejs": 180000,
+						"safari": 170000
+					}
+				},
+				"getTimeZones": {
+					"#": {
+						"chrome": 99,
+						"nodejs": 180000,
+						"safari": 170000
+					}
+				},
+				"getWeekInfo": {
+					"#": {
+						"chrome": 99,
+						"nodejs": 180000,
+						"safari": 170000
+					}
+				},
+				"hourCycle": {
+					"#": {
+						"chrome": 74,
+						"firefox": 75,
+						"nodejs": 120000,
+						"safari": 140000
+					}
+				},
+				"language": {
+					"#": {
+						"chrome": 74,
+						"firefox": 75,
+						"nodejs": 120000,
+						"safari": 140000
+					}
+				},
+				"maximize": {
+					"#": {
+						"chrome": 74,
+						"firefox": 75,
+						"nodejs": 120000,
+						"safari": 140000
+					}
+				},
+				"minimize": {
+					"#": {
+						"chrome": 74,
+						"firefox": 75,
+						"nodejs": 120000,
+						"safari": 140000
+					}
+				},
+				"numberingSystem": {
+					"#": {
+						"chrome": 74,
+						"firefox": 75,
+						"nodejs": 120000,
+						"safari": 140000
+					}
+				},
+				"numeric": {
+					"#": {
+						"chrome": 74,
+						"firefox": 75,
+						"nodejs": 120000,
+						"safari": 140000
+					}
+				},
+				"region": {
+					"#": {
+						"chrome": 74,
+						"firefox": 75,
+						"nodejs": 120000,
+						"safari": 140000
+					}
+				},
+				"script": {
+					"#": {
+						"chrome": 74,
+						"firefox": 75,
+						"nodejs": 120000,
+						"safari": 140000
+					}
+				},
+				"toString": {
+					"#": {
+						"chrome": 74,
+						"firefox": 75,
+						"nodejs": 120000,
+						"safari": 140000
+					}
+				}
+			},
+			"NumberFormat": {
+				"NumberFormat": {
+					"IntlLegacyConstructedSymbol": {
+						"#": {
+							"chrome": 91,
+							"firefox": 54,
+							"nodejs": 160000,
+							"safari": 140100
+						}
+					},
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 1200,
+						"safari": 100000
+					},
+					"locales_parameter": {
+						"#": {
+							"chrome": 24,
+							"firefox": 29,
+							"nodejs": 130000,
+							"safari": 100000
+						}
+					},
+					"options_compactDisplay_parameter": {
+						"#": {
+							"chrome": 77,
+							"firefox": 78,
+							"nodejs": 121100,
+							"safari": 140100
+						}
+					},
+					"options_currencyDisplay_parameter": {
+						"#": {
+							"chrome": 77,
+							"firefox": 78,
+							"nodejs": 121100,
+							"safari": 140100
+						}
+					},
+					"options_currencySign_parameter": {
+						"#": {
+							"chrome": 77,
+							"firefox": 78,
+							"nodejs": 121100,
+							"safari": 140100
+						}
+					},
+					"options_currency_parameter": {
+						"#": {
+							"chrome": 24,
+							"firefox": 29,
+							"nodejs": 1200,
+							"safari": 100000
+						}
+					},
+					"options_localeMatcher_parameter": {
+						"#": {
+							"chrome": 24,
+							"firefox": 29,
+							"nodejs": 1200,
+							"safari": 100000
+						}
+					},
+					"options_maximumFractionDigits_parameter": {
+						"#": {
+							"chrome": 24,
+							"firefox": 29,
+							"nodejs": 1200,
+							"safari": 100000
+						}
+					},
+					"options_maximumSignificantDigits_parameter": {
+						"#": {
+							"chrome": 24,
+							"firefox": 29,
+							"nodejs": 1200,
+							"safari": 100000
+						}
+					},
+					"options_minimumFractionDigits_parameter": {
+						"#": {
+							"chrome": 24,
+							"firefox": 29,
+							"nodejs": 1200,
+							"safari": 100000
+						}
+					},
+					"options_minimumIntegerDigits_parameter": {
+						"#": {
+							"chrome": 24,
+							"firefox": 29,
+							"nodejs": 1200,
+							"safari": 100000
+						}
+					},
+					"options_minimumSignificantDigits_parameter": {
+						"#": {
+							"chrome": 24,
+							"firefox": 29,
+							"nodejs": 1200,
+							"safari": 100000
+						}
+					},
+					"options_notation_parameter": {
+						"#": {
+							"chrome": 77,
+							"firefox": 78,
+							"nodejs": 121100,
+							"safari": 140100
+						}
+					},
+					"options_numberingSystem_parameter": {
+						"#": {
+							"chrome": 24,
+							"firefox": 29,
+							"nodejs": 1200,
+							"safari": 100000
+						}
+					},
+					"options_roundingIncrement_parameter": {
+						"#": {
+							"chrome": 106,
+							"firefox": 116,
+							"nodejs": 190000,
+							"safari": 150400
+						}
+					},
+					"options_roundingMode_parameter": {
+						"#": {
+							"chrome": 106,
+							"firefox": 116,
+							"nodejs": 190000,
+							"safari": 150400
+						}
+					},
+					"options_roundingPriority_parameter": {
+						"#": {
+							"chrome": 106,
+							"firefox": 116,
+							"nodejs": 190000,
+							"safari": 150400
+						}
+					},
+					"options_signDisplay_parameter": {
+						"#": {
+							"chrome": 77,
+							"firefox": 78,
+							"nodejs": 121100,
+							"safari": 140100
+						},
+						"negative": {
+							"#": {
+								"chrome": 106,
+								"firefox": 93,
+								"nodejs": 190000,
+								"safari": 150400
+							}
+						}
+					},
+					"options_style_parameter": {
+						"#": {
+							"chrome": 24,
+							"firefox": 29,
+							"nodejs": 1200,
+							"safari": 100000
+						}
+					},
+					"options_trailingZeroDisplay_parameter": {
+						"#": {
+							"chrome": 106,
+							"firefox": 116,
+							"safari": 150400
+						}
+					},
+					"options_unitDisplay_parameter": {
+						"#": {
+							"chrome": 77,
+							"firefox": 78,
+							"nodejs": 121100,
+							"safari": 140100
+						}
+					},
+					"options_unit_parameter": {
+						"#": {
+							"chrome": 77,
+							"firefox": 78,
+							"nodejs": 121100,
+							"safari": 140100
+						}
+					},
+					"options_useGrouping_parameter": {
+						"#": {
+							"chrome": 24,
+							"firefox": 29,
+							"nodejs": 130000,
+							"safari": 100000
+						},
+						"string_values": {
+							"#": {
+								"chrome": 106,
+								"firefox": 116,
+								"nodejs": 190000,
+								"safari": 160400
+							}
+						}
+					}
+				},
+				"#": {
+					"chrome": 24,
+					"firefox": 29,
+					"nodejs": 1200,
+					"safari": 100000
+				},
+				"format": {
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 1200,
+						"safari": 100000
+					},
+					"number_parameter-string_decimal": {
+						"#": {
+							"chrome": 106,
+							"firefox": 116,
+							"nodejs": 190000,
+							"safari": 150400
+						}
+					}
+				},
+				"formatRange": {
+					"#": {
+						"chrome": 106,
+						"firefox": 116,
+						"nodejs": 190000,
+						"safari": 150400
+					}
+				},
+				"formatRangeToParts": {
+					"#": {
+						"chrome": 106,
+						"firefox": 116,
+						"nodejs": 190000,
+						"safari": 150400
+					}
+				},
+				"formatToParts": {
+					"#": {
+						"chrome": 64,
+						"firefox": 58,
+						"nodejs": 100000,
+						"safari": 130000
+					}
+				},
+				"resolvedOptions": {
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 1200,
+						"safari": 100000
+					},
+					"result_roundingIncrement_property": {
+						"#": {
+							"chrome": 106,
+							"firefox": 116,
+							"nodejs": 190000,
+							"safari": 160400
+						}
+					},
+					"result_roundingMode_property": {
+						"#": {
+							"chrome": 106,
+							"firefox": 116,
+							"nodejs": 190000,
+							"safari": 160400
+						}
+					},
+					"result_roundingPriority_property": {
+						"#": {
+							"chrome": 106,
+							"firefox": 116,
+							"nodejs": 190000,
+							"safari": 160400
+						}
+					},
+					"result_signDisplay_property": {
+						"#": {
+							"chrome": 106,
+							"firefox": 116,
+							"nodejs": 190000,
+							"safari": 160400
+						}
+					},
+					"result_trailingZeroDisplay_property": {
+						"#": {
+							"chrome": 106,
+							"firefox": 116,
+							"nodejs": 190000,
+							"safari": 160400
+						}
+					},
+					"result_useGrouping_property": {
+						"#": {
+							"chrome": 106,
+							"firefox": 116,
+							"nodejs": 190000,
+							"safari": 160400
+						}
+					}
+				},
+				"supportedLocalesOf": {
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 130000,
+						"safari": 100000
+					}
+				}
+			},
+			"PluralRules": {
+				"PluralRules": {
+					"#": {
+						"chrome": 63,
+						"firefox": 58,
+						"nodejs": 130000,
+						"safari": 130000
+					},
+					"options_roundingIncrement_parameter": {
+						"#": {
+							"firefox": 116
+						}
+					},
+					"options_roundingMode_parameter": {
+						"#": {
+							"firefox": 116
+						}
+					},
+					"options_roundingPriority_parameter": {
+						"#": {
+							"firefox": 116
+						}
+					},
+					"options_trailingZeroDisplay_parameter": {
+						"#": {
+							"firefox": 116
+						}
+					}
+				},
+				"#": {
+					"chrome": 63,
+					"firefox": 58,
+					"nodejs": 100000,
+					"safari": 130000
+				},
+				"resolvedOptions": {
+					"#": {
+						"chrome": 63,
+						"firefox": 58,
+						"nodejs": 100000,
+						"safari": 130000
+					},
+					"result_roundingIncrement_property": {
+						"#": {
+							"firefox": 116
+						}
+					},
+					"result_roundingMode_property": {
+						"#": {
+							"firefox": 116
+						}
+					},
+					"result_roundingPriority_property": {
+						"#": {
+							"firefox": 116
+						}
+					},
+					"result_trailingZeroDisplay_property": {
+						"#": {
+							"firefox": 116
+						}
+					}
+				},
+				"select": {
+					"#": {
+						"chrome": 63,
+						"firefox": 58,
+						"nodejs": 100000,
+						"safari": 130000
+					}
+				},
+				"selectRange": {
+					"#": {
+						"chrome": 106,
+						"firefox": 116,
+						"nodejs": 190000,
+						"safari": 150400
+					}
+				},
+				"supportedLocalesOf": {
+					"#": {
+						"chrome": 63,
+						"firefox": 58,
+						"nodejs": 100000,
+						"safari": 130000
+					}
+				}
+			},
+			"RelativeTimeFormat": {
+				"RelativeTimeFormat": {
+					"#": {
+						"chrome": 71,
+						"firefox": 65,
+						"nodejs": 130000,
+						"safari": 140000
+					}
+				},
+				"#": {
+					"chrome": 71,
+					"firefox": 65,
+					"nodejs": 120000,
+					"safari": 140000
+				},
+				"format": {
+					"#": {
+						"chrome": 71,
+						"firefox": 65,
+						"nodejs": 120000,
+						"safari": 140000
+					}
+				},
+				"formatToParts": {
+					"#": {
+						"chrome": 71,
+						"firefox": 70,
+						"nodejs": 120000,
+						"safari": 140000
+					}
+				},
+				"resolvedOptions": {
+					"#": {
+						"chrome": 71,
+						"firefox": 65,
+						"nodejs": 120000,
+						"safari": 140000
+					},
+					"numberingSystem": {
+						"#": {
+							"chrome": 73,
+							"firefox": 70,
+							"nodejs": 120000,
+							"safari": 140000
+						}
+					}
+				},
+				"supportedLocalesOf": {
+					"#": {
+						"chrome": 71,
+						"firefox": 65,
+						"nodejs": 130000,
+						"safari": 140000
+					}
+				}
+			},
+			"Segmenter": {
+				"Segmenter": {
+					"#": {
+						"chrome": 87,
+						"nodejs": 160000,
+						"safari": 140100
+					}
+				},
+				"#": {
+					"chrome": 87,
+					"nodejs": 160000,
+					"safari": 140100
+				},
+				"resolvedOptions": {
+					"#": {
+						"chrome": 87,
+						"nodejs": 160000,
+						"safari": 140100
+					}
+				},
+				"segment": {
+					"#": {
+						"chrome": 87,
+						"nodejs": 160000,
+						"safari": 140100
+					}
+				},
+				"supportedLocalesOf": {
+					"#": {
+						"chrome": 87,
+						"nodejs": 160000,
+						"safari": 140100
+					}
+				}
+			},
+			"Segments": {
+				"@@iterator": {
+					"#": {
+						"chrome": 87,
+						"nodejs": 160000,
+						"safari": 140100
+					}
+				},
+				"#": {
+					"chrome": 87,
+					"nodejs": 160000,
+					"safari": 140100
+				},
+				"containing": {
+					"#": {
+						"chrome": 87,
+						"nodejs": 160000,
+						"safari": 140100
+					}
+				}
+			},
+			"#": {
+				"chrome": 24,
+				"firefox": 29,
+				"nodejs": 1200,
+				"safari": 100000
+			},
+			"getCanonicalLocales": {
+				"#": {
+					"chrome": 54,
+					"firefox": 48,
+					"nodejs": 70000,
+					"safari": 100100
+				}
+			},
+			"supportedValuesOf": {
+				"#": {
+					"chrome": 99,
+					"firefox": 93,
+					"nodejs": 180000,
+					"safari": 150400
+				}
+			}
+		},
+		"Iterator": {
+			"@@iterator": {
+				"#": {
+					"chrome": 38,
+					"firefox": 36,
+					"nodejs": 1200,
+					"safari": 100000
+				}
+			},
+			"Iterator": {
+				"#": {
+					"chrome": 117
+				}
+			},
+			"#": {
+				"chrome": 38,
+				"firefox": 17,
+				"nodejs": 1200,
+				"safari": 100000
+			},
+			"drop": {
+				"#": {
+					"chrome": 117
+				}
+			},
+			"every": {
+				"#": {
+					"chrome": 117
+				}
+			},
+			"filter": {
+				"#": {
+					"chrome": 117
+				}
+			},
+			"find": {
+				"#": {
+					"chrome": 117
+				}
+			},
+			"flatMap": {
+				"#": {
+					"chrome": 117
+				}
+			},
+			"forEach": {
+				"#": {
+					"chrome": 117
+				}
+			},
+			"from": {
+				"#": {
+					"chrome": 117
+				}
+			},
+			"map": {
+				"#": {
+					"chrome": 117
+				}
+			},
+			"reduce": {
+				"#": {
+					"chrome": 117
+				}
+			},
+			"some": {
+				"#": {
+					"chrome": 117
+				}
+			},
+			"take": {
+				"#": {
+					"chrome": 117
+				}
+			},
+			"toArray": {
+				"#": {
+					"chrome": 117
+				}
+			}
+		},
+		"JSON": {
+			"#": {
+				"chrome": 3,
+				"firefox": 3,
+				"nodejs": 1000,
+				"safari": 40000
+			},
+			"json_superset": {
+				"#": {
+					"chrome": 66,
+					"firefox": 62,
+					"nodejs": 100000,
+					"safari": 120000
+				}
+			},
+			"parse": {
+				"#": {
+					"chrome": 3,
+					"firefox": 3,
+					"nodejs": 1000,
+					"safari": 40000
+				}
+			},
+			"stringify": {
+				"#": {
+					"chrome": 3,
+					"firefox": 3,
+					"nodejs": 1000,
+					"safari": 40000
+				},
+				"well_formed_stringify": {
+					"#": {
+						"chrome": 72,
+						"firefox": 64,
+						"nodejs": 120000,
+						"safari": 120100
+					}
+				}
+			}
+		},
+		"Map": {
+			"@@iterator": {
+				"#": {
+					"chrome": 38,
+					"firefox": 36,
+					"nodejs": 1200,
+					"safari": 100000
+				}
+			},
+			"@@species": {
+				"#": {
+					"chrome": 51,
+					"firefox": 41,
+					"nodejs": 60500,
+					"safari": 100000
+				}
+			},
+			"@@toStringTag": {
+				"#": {
+					"chrome": 44,
+					"firefox": 51,
+					"nodejs": 60000,
+					"safari": 90100
+				}
+			},
+			"Map": {
+				"#": {
+					"chrome": 38,
+					"firefox": 13,
+					"nodejs": 1200,
+					"safari": 80000
+				},
+				"iterable_allowed": {
+					"#": {
+						"chrome": 38,
+						"firefox": 13,
+						"nodejs": 1200,
+						"safari": 90000
+					}
+				},
+				"new_required": {
+					"#": {
+						"chrome": 38,
+						"firefox": 42,
+						"nodejs": 1200,
+						"safari": 90000
+					}
+				},
+				"null_allowed": {
+					"#": {
+						"chrome": 38,
+						"firefox": 37,
+						"nodejs": 1200,
+						"safari": 90000
+					}
+				}
+			},
+			"#": {
+				"chrome": 38,
+				"firefox": 13,
+				"nodejs": 1200,
+				"safari": 80000
+			},
+			"clear": {
+				"#": {
+					"chrome": 38,
+					"firefox": 19,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"delete": {
+				"#": {
+					"chrome": 38,
+					"firefox": 13,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"entries": {
+				"#": {
+					"chrome": 38,
+					"firefox": 20,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"forEach": {
+				"#": {
+					"chrome": 38,
+					"firefox": 25,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"get": {
+				"#": {
+					"chrome": 38,
+					"firefox": 13,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"groupBy": {
+				"#": {
+					"chrome": 117,
+					"firefox": 119
+				}
+			},
+			"has": {
+				"#": {
+					"chrome": 38,
+					"firefox": 13,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"key_equality_for_zeros": {
+				"#": {
+					"chrome": 38,
+					"firefox": 29,
+					"nodejs": 40000,
+					"safari": 90000
+				}
+			},
+			"keys": {
+				"#": {
+					"chrome": 38,
+					"firefox": 20,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"set": {
+				"#": {
+					"chrome": 38,
+					"firefox": 13,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"size": {
+				"#": {
+					"chrome": 38,
+					"firefox": 19,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"values": {
+				"#": {
+					"chrome": 38,
+					"firefox": 20,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			}
+		},
+		"Math": {
+			"E": {},
+			"LN10": {},
+			"LN2": {},
+			"LOG10E": {},
+			"LOG2E": {},
+			"PI": {},
+			"SQRT1_2": {},
+			"SQRT2": {},
+			"abs": {},
+			"acos": {},
+			"acosh": {
+				"#": {
+					"chrome": 38,
+					"firefox": 25,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"asin": {},
+			"asinh": {
+				"#": {
+					"chrome": 38,
+					"firefox": 25,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"atan": {},
+			"atan2": {},
+			"atanh": {
+				"#": {
+					"chrome": 38,
+					"firefox": 25,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"cbrt": {
+				"#": {
+					"chrome": 38,
+					"firefox": 25,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"ceil": {},
+			"clz32": {
+				"#": {
+					"chrome": 38,
+					"firefox": 31,
+					"nodejs": 1200,
+					"safari": 70000
+				}
+			},
+			"cos": {},
+			"cosh": {
+				"#": {
+					"chrome": 38,
+					"firefox": 25,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"exp": {},
+			"expm1": {
+				"#": {
+					"chrome": 38,
+					"firefox": 25,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"floor": {},
+			"fround": {
+				"#": {
+					"chrome": 38,
+					"firefox": 26,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"hypot": {
+				"#": {
+					"chrome": 38,
+					"firefox": 27,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"imul": {
+				"#": {
+					"chrome": 28,
+					"firefox": 20,
+					"nodejs": 1200,
+					"safari": 70000
+				}
+			},
+			"log": {},
+			"log10": {
+				"#": {
+					"chrome": 38,
+					"firefox": 25,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"log1p": {
+				"#": {
+					"chrome": 38,
+					"firefox": 25,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"log2": {
+				"#": {
+					"chrome": 38,
+					"firefox": 25,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"max": {},
+			"min": {},
+			"pow": {},
+			"random": {},
+			"round": {},
+			"sign": {
+				"#": {
+					"chrome": 38,
+					"firefox": 25,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			},
+			"sin": {},
+			"sinh": {
+				"#": {
+					"chrome": 38,
+					"firefox": 25,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"sqrt": {},
+			"tan": {},
+			"tanh": {
+				"#": {
+					"chrome": 38,
+					"firefox": 25,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"trunc": {
+				"#": {
+					"chrome": 38,
+					"firefox": 25,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			}
+		},
+		"NaN": {},
+		"Number": {
+			"EPSILON": {
+				"#": {
+					"chrome": 34,
+					"firefox": 25,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			},
+			"MAX_SAFE_INTEGER": {
+				"#": {
+					"chrome": 34,
+					"firefox": 31,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			},
+			"MAX_VALUE": {},
+			"MIN_SAFE_INTEGER": {
+				"#": {
+					"chrome": 34,
+					"firefox": 31,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			},
+			"MIN_VALUE": {},
+			"NEGATIVE_INFINITY": {},
+			"NaN": {},
+			"Number": {},
+			"POSITIVE_INFINITY": {},
+			"isFinite": {
+				"#": {
+					"chrome": 19,
+					"firefox": 16,
+					"nodejs": 1000,
+					"safari": 90000
+				}
+			},
+			"isInteger": {
+				"#": {
+					"chrome": 34,
+					"firefox": 16,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			},
+			"isNaN": {
+				"#": {
+					"chrome": 25,
+					"firefox": 15,
+					"nodejs": 1000,
+					"safari": 90000
+				}
+			},
+			"isSafeInteger": {
+				"#": {
+					"chrome": 34,
+					"firefox": 32,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			},
+			"parseFloat": {
+				"#": {
+					"chrome": 34,
+					"firefox": 25,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			},
+			"parseInt": {
+				"#": {
+					"chrome": 34,
+					"firefox": 25,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			},
+			"toExponential": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 20000
+				}
+			},
+			"toFixed": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 20000
+				}
+			},
+			"toLocaleString": {
+				"locales": {
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 130000,
+						"safari": 100000
+					}
+				},
+				"options": {
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 1200,
+						"safari": 100000
+					}
+				}
+			},
+			"toPrecision": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 20000
+				}
+			},
+			"toString": {},
+			"valueOf": {}
+		},
+		"Object": {
+			"Object": {},
+			"assign": {
+				"#": {
+					"chrome": 45,
+					"firefox": 34,
+					"nodejs": 40000,
+					"safari": 90000
+				}
+			},
+			"constructor": {},
+			"create": {
+				"#": {
+					"chrome": 5,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50000
+				}
+			},
+			"defineGetter": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"defineProperties": {
+				"#": {
+					"chrome": 5,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50000
+				}
+			},
+			"defineProperty": {
+				"#": {
+					"chrome": 5,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"defineSetter": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"entries": {
+				"#": {
+					"chrome": 54,
+					"firefox": 47,
+					"nodejs": 70000,
+					"safari": 100100
+				}
+			},
+			"freeze": {
+				"#": {
+					"chrome": 6,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"fromEntries": {
+				"#": {
+					"chrome": 73,
+					"firefox": 63,
+					"nodejs": 120000,
+					"safari": 120100
+				}
+			},
+			"getOwnPropertyDescriptor": {
+				"#": {
+					"chrome": 5,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50000
+				}
+			},
+			"getOwnPropertyDescriptors": {
+				"#": {
+					"chrome": 54,
+					"firefox": 50,
+					"nodejs": 70000,
+					"safari": 100000
+				}
+			},
+			"getOwnPropertyNames": {
+				"#": {
+					"chrome": 5,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50000
+				}
+			},
+			"getOwnPropertySymbols": {
+				"#": {
+					"chrome": 38,
+					"firefox": 36,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			},
+			"getPrototypeOf": {
+				"#": {
+					"chrome": 5,
+					"firefox": 3,
+					"nodejs": 1000,
+					"safari": 50000
+				}
+			},
+			"groupBy": {
+				"#": {
+					"chrome": 117,
+					"firefox": 119
+				}
+			},
+			"hasOwn": {
+				"#": {
+					"chrome": 93,
+					"firefox": 92,
+					"nodejs": 160900,
+					"safari": 150400
+				}
+			},
+			"hasOwnProperty": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"is": {
+				"#": {
+					"chrome": 19,
+					"firefox": 22,
+					"nodejs": 1000,
+					"safari": 90000
+				}
+			},
+			"isExtensible": {
+				"#": {
+					"chrome": 6,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"isFrozen": {
+				"#": {
+					"chrome": 6,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"isPrototypeOf": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"isSealed": {
+				"#": {
+					"chrome": 6,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"keys": {
+				"#": {
+					"chrome": 5,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50000
+				}
+			},
+			"lookupGetter": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"lookupSetter": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"preventExtensions": {
+				"ES2015_behavior": {
+					"#": {
+						"chrome": 44,
+						"firefox": 35,
+						"nodejs": 40000,
+						"safari": 90000
+					}
+				},
+				"#": {
+					"chrome": 6,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"propertyIsEnumerable": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"proto": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"seal": {
+				"#": {
+					"chrome": 6,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"setPrototypeOf": {
+				"#": {
+					"chrome": 34,
+					"firefox": 31,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			},
+			"toLocaleString": {},
+			"toString": {},
+			"valueOf": {},
+			"values": {
+				"#": {
+					"chrome": 54,
+					"firefox": 47,
+					"nodejs": 70000,
+					"safari": 100100
+				}
+			}
+		},
+		"Promise": {
+			"@@species": {
+				"#": {
+					"chrome": 51,
+					"firefox": 48,
+					"nodejs": 60500,
+					"safari": 100000
+				}
+			},
+			"Promise": {
+				"#": {
+					"chrome": 32,
+					"firefox": 29,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"#": {
+				"chrome": 32,
+				"firefox": 29,
+				"nodejs": 1200,
+				"safari": 80000
+			},
+			"all": {
+				"#": {
+					"chrome": 32,
+					"firefox": 29,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"allSettled": {
+				"#": {
+					"chrome": 76,
+					"firefox": 71,
+					"nodejs": 120900,
+					"safari": 130000
+				}
+			},
+			"any": {
+				"#": {
+					"chrome": 85,
+					"firefox": 79,
+					"nodejs": 150000,
+					"safari": 140000
+				}
+			},
+			"catch": {
+				"#": {
+					"chrome": 32,
+					"firefox": 29,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"finally": {
+				"#": {
+					"chrome": 63,
+					"firefox": 58,
+					"nodejs": 100000,
+					"safari": 110100
+				}
+			},
+			"incumbent_settings_object_tracking": {
+				"#": {
+					"firefox": 50
+				}
+			},
+			"race": {
+				"#": {
+					"chrome": 32,
+					"firefox": 29,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"reject": {
+				"#": {
+					"chrome": 32,
+					"firefox": 29,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"resolve": {
+				"#": {
+					"chrome": 32,
+					"firefox": 29,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"then": {
+				"#": {
+					"chrome": 32,
+					"firefox": 29,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			}
+		},
+		"Proxy": {
+			"Proxy": {
+				"#": {
+					"chrome": 49,
+					"firefox": 18,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"#": {
+				"chrome": 49,
+				"firefox": 18,
+				"nodejs": 60000,
+				"safari": 100000
+			},
+			"handler": {
+				"apply": {
+					"#": {
+						"chrome": 49,
+						"firefox": 18,
+						"nodejs": 60000,
+						"safari": 100000
+					}
+				},
+				"construct": {
+					"#": {
+						"chrome": 49,
+						"firefox": 18,
+						"nodejs": 60000,
+						"safari": 100000
+					}
+				},
+				"defineProperty": {
+					"#": {
+						"chrome": 49,
+						"firefox": 18,
+						"nodejs": 60000,
+						"safari": 100000
+					}
+				},
+				"deleteProperty": {
+					"#": {
+						"chrome": 49,
+						"firefox": 18,
+						"nodejs": 60000,
+						"safari": 100000
+					}
+				},
+				"get": {
+					"#": {
+						"chrome": 49,
+						"firefox": 18,
+						"nodejs": 60000,
+						"safari": 100000
+					}
+				},
+				"getOwnPropertyDescriptor": {
+					"#": {
+						"chrome": 49,
+						"firefox": 18,
+						"nodejs": 60000,
+						"safari": 100000
+					}
+				},
+				"getPrototypeOf": {
+					"#": {
+						"chrome": 49,
+						"firefox": 49,
+						"nodejs": 60000,
+						"safari": 100000
+					}
+				},
+				"has": {
+					"#": {
+						"chrome": 49,
+						"firefox": 18,
+						"nodejs": 60000,
+						"safari": 100000
+					}
+				},
+				"isExtensible": {
+					"#": {
+						"chrome": 49,
+						"firefox": 31,
+						"nodejs": 60000,
+						"safari": 100000
+					}
+				},
+				"ownKeys": {
+					"#": {
+						"chrome": 49,
+						"firefox": 18,
+						"nodejs": 60000,
+						"safari": 100000
+					}
+				},
+				"preventExtensions": {
+					"#": {
+						"chrome": 49,
+						"firefox": 22,
+						"nodejs": 60000,
+						"safari": 100000
+					}
+				},
+				"set": {
+					"#": {
+						"chrome": 49,
+						"firefox": 18,
+						"nodejs": 60000,
+						"safari": 100000
+					}
+				},
+				"setPrototypeOf": {
+					"#": {
+						"chrome": 49,
+						"firefox": 49,
+						"nodejs": 60000,
+						"safari": 100000
+					}
+				}
+			},
+			"revocable": {
+				"#": {
+					"chrome": 63,
+					"firefox": 34,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			}
+		},
+		"RangeError": {
+			"RangeError": {},
+			"serializable_object": {
+				"#": {
+					"chrome": 77,
+					"firefox": 103
+				}
+			}
+		},
+		"ReferenceError": {
+			"ReferenceError": {},
+			"serializable_object": {
+				"#": {
+					"chrome": 77,
+					"firefox": 103
+				}
+			}
+		},
+		"Reflect": {
+			"#": {
+				"chrome": 49,
+				"firefox": 42,
+				"nodejs": 60000,
+				"safari": 100000
+			},
+			"apply": {
+				"#": {
+					"chrome": 49,
+					"firefox": 42,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"construct": {
+				"#": {
+					"chrome": 49,
+					"firefox": 42,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"defineProperty": {
+				"#": {
+					"chrome": 49,
+					"firefox": 42,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"deleteProperty": {
+				"#": {
+					"chrome": 49,
+					"firefox": 42,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"get": {
+				"#": {
+					"chrome": 49,
+					"firefox": 42,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"getOwnPropertyDescriptor": {
+				"#": {
+					"chrome": 49,
+					"firefox": 42,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"getPrototypeOf": {
+				"#": {
+					"chrome": 49,
+					"firefox": 42,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"has": {
+				"#": {
+					"chrome": 49,
+					"firefox": 42,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"isExtensible": {
+				"#": {
+					"chrome": 49,
+					"firefox": 42,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"ownKeys": {
+				"#": {
+					"chrome": 49,
+					"firefox": 42,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"preventExtensions": {
+				"#": {
+					"chrome": 49,
+					"firefox": 42,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"set": {
+				"#": {
+					"chrome": 49,
+					"firefox": 42,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"setPrototypeOf": {
+				"#": {
+					"chrome": 49,
+					"firefox": 42,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			}
+		},
+		"RegExp": {
+			"@@match": {
+				"#": {
+					"chrome": 50,
+					"firefox": 49,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"@@matchAll": {
+				"#": {
+					"chrome": 73,
+					"firefox": 67,
+					"nodejs": 120000,
+					"safari": 130000
+				}
+			},
+			"@@replace": {
+				"#": {
+					"chrome": 50,
+					"firefox": 49,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"@@search": {
+				"#": {
+					"chrome": 50,
+					"firefox": 49,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"@@species": {
+				"#": {
+					"chrome": 50,
+					"firefox": 49,
+					"nodejs": 60500,
+					"safari": 100000
+				}
+			},
+			"@@split": {
+				"#": {
+					"chrome": 50,
+					"firefox": 49,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"RegExp": {},
+			"compile": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30100
+				}
+			},
+			"dotAll": {
+				"#": {
+					"chrome": 62,
+					"firefox": 78,
+					"nodejs": 81000,
+					"safari": 110100
+				}
+			},
+			"exec": {},
+			"flags": {
+				"#": {
+					"chrome": 49,
+					"firefox": 37,
+					"nodejs": 60000,
+					"safari": 90000
+				}
+			},
+			"global": {
+				"prototype_accessor": {
+					"#": {
+						"chrome": 48,
+						"firefox": 38,
+						"nodejs": 60000,
+						"safari": 10300
+					}
+				}
+			},
+			"hasIndices": {
+				"#": {
+					"chrome": 90,
+					"firefox": 88,
+					"nodejs": 160000,
+					"safari": 150000
+				}
+			},
+			"ignoreCase": {
+				"prototype_accessor": {
+					"#": {
+						"chrome": 48,
+						"firefox": 38,
+						"nodejs": 60000,
+						"safari": 10300
+					}
+				}
+			},
+			"input": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"lastIndex": {},
+			"lastMatch": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"lastParen": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"leftContext": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"multiline": {
+				"prototype_accessor": {
+					"#": {
+						"chrome": 48,
+						"firefox": 38,
+						"nodejs": 60000,
+						"safari": 10300
+					}
+				}
+			},
+			"n": {},
+			"rightContext": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				}
+			},
+			"source": {
+				"empty_regex_string": {
+					"#": {
+						"chrome": 6,
+						"firefox": 38,
+						"nodejs": 1000,
+						"safari": 50000
+					}
+				},
+				"escaping": {
+					"#": {
+						"chrome": 73,
+						"firefox": 38,
+						"nodejs": 120000,
+						"safari": 60000
+					}
+				},
+				"prototype_accessor": {
+					"#": {
+						"chrome": 48,
+						"firefox": 41,
+						"nodejs": 60000,
+						"safari": 10300
+					}
+				}
+			},
+			"sticky": {
+				"#": {
+					"chrome": 49,
+					"firefox": 3,
+					"nodejs": 60000,
+					"safari": 100000
+				},
+				"anchored_sticky_flag": {
+					"#": {
+						"chrome": 49,
+						"firefox": 44,
+						"nodejs": 60000,
+						"safari": 100000
+					}
+				},
+				"prototype_accessor": {
+					"#": {
+						"chrome": 49,
+						"firefox": 38,
+						"nodejs": 60000,
+						"safari": 100000
+					}
+				}
+			},
+			"test": {},
+			"toString": {
+				"escaping": {
+					"#": {
+						"chrome": 73,
+						"firefox": 38,
+						"nodejs": 120000,
+						"safari": 60000
+					}
+				}
+			},
+			"unicode": {
+				"#": {
+					"chrome": 50,
+					"firefox": 46,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"unicodeSets": {
+				"#": {
+					"chrome": 112,
+					"firefox": 116,
+					"nodejs": 200000,
+					"safari": 170000
+				}
+			}
+		},
+		"Set": {
+			"@@iterator": {
+				"#": {
+					"chrome": 43,
+					"firefox": 36,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			},
+			"@@species": {
+				"#": {
+					"chrome": 51,
+					"firefox": 41,
+					"nodejs": 60500,
+					"safari": 100000
+				}
+			},
+			"Set": {
+				"#": {
+					"chrome": 38,
+					"firefox": 13,
+					"nodejs": 1200,
+					"safari": 80000
+				},
+				"iterable_allowed": {
+					"#": {
+						"chrome": 38,
+						"firefox": 13,
+						"nodejs": 1200,
+						"safari": 90000
+					}
+				},
+				"new_required": {
+					"#": {
+						"chrome": 38,
+						"firefox": 42,
+						"nodejs": 1200,
+						"safari": 90000
+					}
+				},
+				"null_allowed": {
+					"#": {
+						"chrome": 38,
+						"firefox": 37,
+						"nodejs": 1200,
+						"safari": 90000
+					}
+				}
+			},
+			"#": {
+				"chrome": 38,
+				"firefox": 13,
+				"nodejs": 1200,
+				"safari": 80000
+			},
+			"add": {
+				"#": {
+					"chrome": 38,
+					"firefox": 13,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"clear": {
+				"#": {
+					"chrome": 38,
+					"firefox": 19,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"delete": {
+				"#": {
+					"chrome": 38,
+					"firefox": 13,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"difference": {
+				"#": {
+					"safari": 170000
+				}
+			},
+			"entries": {
+				"#": {
+					"chrome": 38,
+					"firefox": 24,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"forEach": {
+				"#": {
+					"chrome": 38,
+					"firefox": 25,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"has": {
+				"#": {
+					"chrome": 38,
+					"firefox": 13,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"intersection": {
+				"#": {
+					"safari": 170000
+				}
+			},
+			"isDisjointFrom": {
+				"#": {
+					"safari": 170000
+				}
+			},
+			"isSubsetOf": {
+				"#": {
+					"safari": 170000
+				}
+			},
+			"isSupersetOf": {
+				"#": {
+					"safari": 170000
+				}
+			},
+			"key_equality_for_zeros": {
+				"#": {
+					"chrome": 38,
+					"firefox": 29,
+					"nodejs": 40000,
+					"safari": 90000
+				}
+			},
+			"size": {
+				"#": {
+					"chrome": 38,
+					"firefox": 19,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"symmetricDifference": {
+				"#": {
+					"safari": 170000
+				}
+			},
+			"union": {
+				"#": {
+					"safari": 170000
+				}
+			},
+			"values": {
+				"#": {
+					"chrome": 38,
+					"firefox": 24,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			}
+		},
+		"SharedArrayBuffer": {
+			"@@species": {
+				"#": {
+					"chrome": 68,
+					"firefox": 79,
+					"nodejs": 81000,
+					"safari": 150200
+				}
+			},
+			"SharedArrayBuffer": {
+				"#": {
+					"chrome": 68,
+					"firefox": 79,
+					"nodejs": 81000,
+					"safari": 150200
+				},
+				"maxByteLength_option": {
+					"#": {
+						"chrome": 111,
+						"nodejs": 200000,
+						"safari": 160400
+					}
+				}
+			},
+			"#": {
+				"chrome": 68,
+				"firefox": 79,
+				"nodejs": 81000,
+				"safari": 150200
+			},
+			"byteLength": {
+				"#": {
+					"chrome": 68,
+					"firefox": 79,
+					"nodejs": 81000,
+					"safari": 150200
+				}
+			},
+			"grow": {
+				"#": {
+					"chrome": 111,
+					"nodejs": 200000,
+					"safari": 160400
+				}
+			},
+			"growable": {
+				"#": {
+					"chrome": 111,
+					"nodejs": 200000,
+					"safari": 160400
+				}
+			},
+			"maxByteLength": {
+				"#": {
+					"chrome": 111,
+					"nodejs": 200000,
+					"safari": 160400
+				}
+			},
+			"slice": {
+				"#": {
+					"chrome": 68,
+					"firefox": 79,
+					"nodejs": 81000,
+					"safari": 150200
+				}
+			}
+		},
+		"String": {
+			"@@iterator": {
+				"#": {
+					"chrome": 38,
+					"firefox": 36,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			},
+			"String": {},
+			"anchor": {},
+			"at": {
+				"#": {
+					"chrome": 92,
+					"firefox": 90,
+					"nodejs": 160600,
+					"safari": 150400
+				}
+			},
+			"big": {},
+			"blink": {},
+			"bold": {},
+			"charAt": {},
+			"charCodeAt": {},
+			"codePointAt": {
+				"#": {
+					"chrome": 41,
+					"firefox": 29,
+					"nodejs": 40000,
+					"safari": 90000
+				}
+			},
+			"concat": {},
+			"endsWith": {
+				"#": {
+					"chrome": 41,
+					"firefox": 17,
+					"nodejs": 40000,
+					"safari": 90000
+				}
+			},
+			"fixed": {},
+			"fontcolor": {},
+			"fontsize": {},
+			"fromCharCode": {},
+			"fromCodePoint": {
+				"#": {
+					"chrome": 41,
+					"firefox": 29,
+					"nodejs": 40000,
+					"safari": 90000
+				}
+			},
+			"includes": {
+				"#": {
+					"chrome": 41,
+					"firefox": 40,
+					"nodejs": 40000,
+					"safari": 90000
+				}
+			},
+			"indexOf": {},
+			"isWellFormed": {
+				"#": {
+					"chrome": 111,
+					"firefox": 119,
+					"nodejs": 200000,
+					"safari": 160400
+				}
+			},
+			"italics": {},
+			"lastIndexOf": {},
+			"length": {},
+			"link": {},
+			"localeCompare": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 30000
+				},
+				"locales": {
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 130000,
+						"safari": 100000
+					}
+				},
+				"options": {
+					"#": {
+						"chrome": 24,
+						"firefox": 29,
+						"nodejs": 1200,
+						"safari": 100000
+					}
+				}
+			},
+			"match": {},
+			"matchAll": {
+				"#": {
+					"chrome": 73,
+					"firefox": 67,
+					"nodejs": 120000,
+					"safari": 130000
+				}
+			},
+			"normalize": {
+				"#": {
+					"chrome": 34,
+					"firefox": 31,
+					"nodejs": 1200,
+					"safari": 100000
+				}
+			},
+			"padEnd": {
+				"#": {
+					"chrome": 57,
+					"firefox": 48,
+					"nodejs": 80000,
+					"safari": 100000
+				}
+			},
+			"padStart": {
+				"#": {
+					"chrome": 57,
+					"firefox": 48,
+					"nodejs": 80000,
+					"safari": 100000
+				}
+			},
+			"raw": {
+				"#": {
+					"chrome": 41,
+					"firefox": 34,
+					"nodejs": 40000,
+					"safari": 90000
+				}
+			},
+			"repeat": {
+				"#": {
+					"chrome": 41,
+					"firefox": 24,
+					"nodejs": 40000,
+					"safari": 90000
+				}
+			},
+			"replace": {},
+			"replaceAll": {
+				"#": {
+					"chrome": 85,
+					"firefox": 77,
+					"nodejs": 150000,
+					"safari": 130100
+				}
+			},
+			"search": {
+				"flags": {
+					"#": {}
+				}
+			},
+			"slice": {},
+			"small": {},
+			"split": {},
+			"startsWith": {
+				"#": {
+					"chrome": 41,
+					"firefox": 17,
+					"nodejs": 40000,
+					"safari": 90000
+				}
+			},
+			"strike": {},
+			"sub": {},
+			"substr": {},
+			"substring": {},
+			"sup": {},
+			"toLocaleLowerCase": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 10300
+				},
+				"locale": {
+					"#": {
+						"chrome": 58,
+						"firefox": 55,
+						"nodejs": 130000,
+						"safari": 100000
+					}
+				}
+			},
+			"toLocaleUpperCase": {
+				"#": {
+					"chrome": 1,
+					"firefox": 1,
+					"nodejs": 1000,
+					"safari": 10300
+				},
+				"locale": {
+					"#": {
+						"chrome": 58,
+						"firefox": 55,
+						"nodejs": 130000,
+						"safari": 100000
+					}
+				}
+			},
+			"toLowerCase": {},
+			"toString": {},
+			"toUpperCase": {},
+			"toWellFormed": {
+				"#": {
+					"chrome": 111,
+					"firefox": 119,
+					"nodejs": 200000,
+					"safari": 160400
+				}
+			},
+			"trim": {
+				"#": {
+					"chrome": 4,
+					"firefox": 3,
+					"nodejs": 1000,
+					"safari": 50000
+				}
+			},
+			"trimEnd": {
+				"#": {
+					"chrome": 66,
+					"firefox": 61,
+					"nodejs": 100000,
+					"safari": 120000
+				}
+			},
+			"trimStart": {
+				"#": {
+					"chrome": 66,
+					"firefox": 61,
+					"nodejs": 100000,
+					"safari": 120000
+				}
+			},
+			"unicode_code_point_escapes": {
+				"#": {
+					"chrome": 1,
+					"firefox": 40,
+					"nodejs": 1000,
+					"safari": 10000
+				}
+			},
+			"valueOf": {}
+		},
+		"Symbol": {
+			"@@toPrimitive": {
+				"#": {
+					"chrome": 47,
+					"firefox": 44,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"Symbol": {
+				"#": {
+					"chrome": 38,
+					"firefox": 36,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			},
+			"#": {
+				"chrome": 38,
+				"firefox": 36,
+				"nodejs": 1200,
+				"safari": 90000
+			},
+			"asyncIterator": {
+				"#": {
+					"chrome": 63,
+					"firefox": 57,
+					"nodejs": 100000,
+					"safari": 110100
+				}
+			},
+			"description": {
+				"#": {
+					"chrome": 70,
+					"firefox": 63,
+					"nodejs": 110000,
+					"safari": 120100
+				}
+			},
+			"for": {
+				"#": {
+					"chrome": 40,
+					"firefox": 36,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			},
+			"hasInstance": {
+				"#": {
+					"chrome": 50,
+					"firefox": 50,
+					"nodejs": 60500,
+					"safari": 100000
+				}
+			},
+			"isConcatSpreadable": {
+				"#": {
+					"chrome": 48,
+					"firefox": 48,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"iterator": {
+				"#": {
+					"chrome": 43,
+					"firefox": 36,
+					"nodejs": 1200,
+					"safari": 100000
+				}
+			},
+			"keyFor": {
+				"#": {
+					"chrome": 40,
+					"firefox": 36,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			},
+			"match": {
+				"#": {
+					"chrome": 50,
+					"firefox": 40,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"matchAll": {
+				"#": {
+					"chrome": 73,
+					"firefox": 67,
+					"nodejs": 120000,
+					"safari": 130000
+				}
+			},
+			"replace": {
+				"#": {
+					"chrome": 50,
+					"firefox": 49,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"search": {
+				"#": {
+					"chrome": 50,
+					"firefox": 49,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"species": {
+				"#": {
+					"chrome": 51,
+					"firefox": 41,
+					"nodejs": 60500,
+					"safari": 100000
+				}
+			},
+			"split": {
+				"#": {
+					"chrome": 50,
+					"firefox": 49,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"toPrimitive": {
+				"#": {
+					"chrome": 47,
+					"firefox": 44,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"toString": {
+				"#": {
+					"chrome": 38,
+					"firefox": 36,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			},
+			"toStringTag": {
+				"#": {
+					"chrome": 49,
+					"firefox": 51,
+					"nodejs": 60000,
+					"safari": 100000
+				},
+				"dom_objects": {
+					"#": {
+						"chrome": 50,
+						"firefox": 78,
+						"safari": 140000
+					}
+				}
+			},
+			"unscopables": {
+				"#": {
+					"chrome": 38,
+					"firefox": 48,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			},
+			"valueOf": {
+				"#": {
+					"chrome": 38,
+					"firefox": 36,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			}
+		},
+		"SyntaxError": {
+			"SyntaxError": {},
+			"serializable_object": {
+				"#": {
+					"chrome": 77,
+					"firefox": 103
+				}
+			}
+		},
+		"Temporal": {
+			"Calendar": {
+				"Calendar": {
+					"#": {}
+				},
+				"#": {},
+				"dateAdd": {
+					"#": {}
+				},
+				"dateFromFields": {
+					"#": {}
+				},
+				"dateUntil": {
+					"#": {}
+				},
+				"day": {
+					"#": {}
+				},
+				"dayOfWeek": {
+					"#": {}
+				},
+				"dayOfYear": {
+					"#": {}
+				},
+				"daysInMonth": {
+					"#": {}
+				},
+				"daysInWeek": {
+					"#": {}
+				},
+				"daysInYear": {
+					"#": {}
+				},
+				"era": {
+					"#": {}
+				},
+				"eraYear": {
+					"#": {}
+				},
+				"fields": {
+					"#": {}
+				},
+				"from": {
+					"#": {}
+				},
+				"id": {
+					"#": {}
+				},
+				"inLeapYear": {
+					"#": {}
+				},
+				"mergeFields": {
+					"#": {}
+				},
+				"month": {
+					"#": {}
+				},
+				"monthCode": {
+					"#": {}
+				},
+				"monthDayFromFields": {
+					"#": {}
+				},
+				"monthsInYear": {
+					"#": {}
+				},
+				"toJSON": {
+					"#": {}
+				},
+				"toString": {
+					"#": {}
+				},
+				"weekOfYear": {
+					"#": {}
+				},
+				"year": {
+					"#": {}
+				},
+				"yearMonthFromFields": {
+					"#": {}
+				}
+			},
+			"Duration": {
+				"Duration": {
+					"#": {}
+				},
+				"#": {},
+				"abs": {
+					"#": {}
+				},
+				"add": {
+					"#": {}
+				},
+				"blank": {
+					"#": {}
+				},
+				"compare": {
+					"#": {}
+				},
+				"days": {
+					"#": {}
+				},
+				"from": {
+					"#": {}
+				},
+				"hours": {
+					"#": {}
+				},
+				"microseconds": {
+					"#": {}
+				},
+				"milliseconds": {
+					"#": {}
+				},
+				"minutes": {
+					"#": {}
+				},
+				"months": {
+					"#": {}
+				},
+				"nanoseconds": {
+					"#": {}
+				},
+				"negated": {
+					"#": {}
+				},
+				"round": {
+					"#": {}
+				},
+				"seconds": {
+					"#": {}
+				},
+				"sign": {
+					"#": {}
+				},
+				"subtract": {
+					"#": {}
+				},
+				"toJSON": {
+					"#": {}
+				},
+				"toLocaleString": {
+					"#": {}
+				},
+				"toString": {
+					"#": {}
+				},
+				"total": {
+					"#": {}
+				},
+				"valueOf": {
+					"#": {}
+				},
+				"weeks": {
+					"#": {}
+				},
+				"with": {
+					"#": {}
+				},
+				"years": {
+					"#": {}
+				}
+			},
+			"Instant": {
+				"Instant": {
+					"#": {}
+				},
+				"#": {},
+				"add": {
+					"#": {}
+				},
+				"compare": {
+					"#": {}
+				},
+				"epochMicroseconds": {
+					"#": {}
+				},
+				"epochMilliseconds": {
+					"#": {}
+				},
+				"epochNanoseconds": {
+					"#": {}
+				},
+				"epochSeconds": {
+					"#": {}
+				},
+				"equals": {
+					"#": {}
+				},
+				"from": {
+					"#": {}
+				},
+				"fromEpochMicroseconds": {
+					"#": {}
+				},
+				"fromEpochMilliseconds": {
+					"#": {}
+				},
+				"fromEpochNanoseconds": {
+					"#": {}
+				},
+				"fromEpochSeconds": {
+					"#": {}
+				},
+				"round": {
+					"#": {}
+				},
+				"since": {
+					"#": {}
+				},
+				"subtract": {
+					"#": {}
+				},
+				"toJSON": {
+					"#": {}
+				},
+				"toLocaleString": {
+					"#": {}
+				},
+				"toString": {
+					"#": {}
+				},
+				"toZonedDateTime": {
+					"#": {}
+				},
+				"toZonedDateTimeISO": {
+					"#": {}
+				},
+				"until": {
+					"#": {}
+				},
+				"valueOf": {
+					"#": {}
+				}
+			},
+			"Now": {
+				"#": {},
+				"instant": {
+					"#": {}
+				},
+				"plainDate": {
+					"#": {}
+				},
+				"plainDateISO": {
+					"#": {}
+				},
+				"plainDateTime": {
+					"#": {}
+				},
+				"plainDateTimeISO": {
+					"#": {}
+				},
+				"timeZone": {
+					"#": {}
+				},
+				"zonedDateTime": {
+					"#": {}
+				},
+				"zonedDateTimeISO": {
+					"#": {}
+				}
+			},
+			"PlainDate": {
+				"PlainDate": {
+					"#": {}
+				},
+				"#": {},
+				"add": {
+					"#": {}
+				},
+				"calendar": {
+					"#": {}
+				},
+				"compare": {
+					"#": {}
+				},
+				"day": {
+					"#": {}
+				},
+				"dayOfWeek": {
+					"#": {}
+				},
+				"dayOfYear": {
+					"#": {}
+				},
+				"daysInMonth": {
+					"#": {}
+				},
+				"daysInWeek": {
+					"#": {}
+				},
+				"daysInYear": {
+					"#": {}
+				},
+				"equals": {
+					"#": {}
+				},
+				"era": {
+					"#": {}
+				},
+				"eraYear": {
+					"#": {}
+				},
+				"from": {
+					"#": {}
+				},
+				"getISOFields": {
+					"#": {}
+				},
+				"inLeapYear": {
+					"#": {}
+				},
+				"month": {
+					"#": {}
+				},
+				"monthCode": {
+					"#": {}
+				},
+				"monthsInYear": {
+					"#": {}
+				},
+				"since": {
+					"#": {}
+				},
+				"subtract": {
+					"#": {}
+				},
+				"toJSON": {
+					"#": {}
+				},
+				"toLocaleString": {
+					"#": {}
+				},
+				"toPlainDateTime": {
+					"#": {}
+				},
+				"toPlainMonthDay": {
+					"#": {}
+				},
+				"toPlainYearMonth": {
+					"#": {}
+				},
+				"toString": {
+					"#": {}
+				},
+				"toZonedDateTime": {
+					"#": {}
+				},
+				"until": {
+					"#": {}
+				},
+				"valueOf": {
+					"#": {}
+				},
+				"weekOfYear": {
+					"#": {}
+				},
+				"with": {
+					"#": {}
+				},
+				"withCalendar": {
+					"#": {}
+				},
+				"year": {
+					"#": {}
+				}
+			},
+			"PlainDateTime": {
+				"PlainDateTime": {
+					"#": {}
+				},
+				"#": {},
+				"add": {
+					"#": {}
+				},
+				"calendar": {
+					"#": {}
+				},
+				"compare": {
+					"#": {}
+				},
+				"day": {
+					"#": {}
+				},
+				"dayOfWeek": {
+					"#": {}
+				},
+				"dayOfYear": {
+					"#": {}
+				},
+				"daysInMonth": {
+					"#": {}
+				},
+				"daysInWeek": {
+					"#": {}
+				},
+				"daysInYear": {
+					"#": {}
+				},
+				"equals": {
+					"#": {}
+				},
+				"era": {
+					"#": {}
+				},
+				"eraYear": {
+					"#": {}
+				},
+				"from": {
+					"#": {}
+				},
+				"getISOFields": {
+					"#": {}
+				},
+				"hour": {
+					"#": {}
+				},
+				"inLeapYear": {
+					"#": {}
+				},
+				"microsecond": {
+					"#": {}
+				},
+				"millisecond": {
+					"#": {}
+				},
+				"minute": {
+					"#": {}
+				},
+				"month": {
+					"#": {}
+				},
+				"monthCode": {
+					"#": {}
+				},
+				"monthsInYear": {
+					"#": {}
+				},
+				"nanosecond": {
+					"#": {}
+				},
+				"round": {
+					"#": {}
+				},
+				"second": {
+					"#": {}
+				},
+				"since": {
+					"#": {}
+				},
+				"subtract": {
+					"#": {}
+				},
+				"toJSON": {
+					"#": {}
+				},
+				"toLocaleString": {
+					"#": {}
+				},
+				"toPlainDate": {
+					"#": {}
+				},
+				"toPlainMonthDay": {
+					"#": {}
+				},
+				"toPlainTime": {
+					"#": {}
+				},
+				"toPlainYearMonth": {
+					"#": {}
+				},
+				"toString": {
+					"#": {}
+				},
+				"toZonedDateTime": {
+					"#": {}
+				},
+				"until": {
+					"#": {}
+				},
+				"valueOf": {
+					"#": {}
+				},
+				"weekOfYear": {
+					"#": {}
+				},
+				"with": {
+					"#": {}
+				},
+				"withCalendar": {
+					"#": {}
+				},
+				"withPlainDate": {
+					"#": {}
+				},
+				"withPlainTime": {
+					"#": {}
+				},
+				"year": {
+					"#": {}
+				}
+			},
+			"PlainMonthDay": {
+				"PlainMonthDay": {
+					"#": {}
+				},
+				"#": {},
+				"calendar": {
+					"#": {}
+				},
+				"day": {
+					"#": {}
+				},
+				"equals": {
+					"#": {}
+				},
+				"from": {
+					"#": {}
+				},
+				"getISOFields": {
+					"#": {}
+				},
+				"monthCode": {
+					"#": {}
+				},
+				"toJSON": {
+					"#": {}
+				},
+				"toLocaleString": {
+					"#": {}
+				},
+				"toPlainDate": {
+					"#": {}
+				},
+				"toString": {
+					"#": {}
+				},
+				"valueOf": {
+					"#": {}
+				},
+				"with": {
+					"#": {}
+				}
+			},
+			"PlainTime": {
+				"PlainTime": {
+					"#": {}
+				},
+				"#": {},
+				"add": {
+					"#": {}
+				},
+				"calendar": {
+					"#": {}
+				},
+				"compare": {
+					"#": {}
+				},
+				"equals": {
+					"#": {}
+				},
+				"from": {
+					"#": {}
+				},
+				"getISOFields": {
+					"#": {}
+				},
+				"hour": {
+					"#": {}
+				},
+				"microsecond": {
+					"#": {}
+				},
+				"millisecond": {
+					"#": {}
+				},
+				"minute": {
+					"#": {}
+				},
+				"nanosecond": {
+					"#": {}
+				},
+				"round": {
+					"#": {}
+				},
+				"second": {
+					"#": {}
+				},
+				"since": {
+					"#": {}
+				},
+				"subtract": {
+					"#": {}
+				},
+				"toJSON": {
+					"#": {}
+				},
+				"toLocaleString": {
+					"#": {}
+				},
+				"toPlainDateTime": {
+					"#": {}
+				},
+				"toString": {
+					"#": {}
+				},
+				"toZonedDateTime": {
+					"#": {}
+				},
+				"until": {
+					"#": {}
+				},
+				"valueOf": {
+					"#": {}
+				},
+				"with": {
+					"#": {}
+				}
+			},
+			"PlainYearMonth": {
+				"PlainYearMonth": {
+					"#": {}
+				},
+				"#": {},
+				"add": {
+					"#": {}
+				},
+				"calendar": {
+					"#": {}
+				},
+				"compare": {
+					"#": {}
+				},
+				"daysInMonth": {
+					"#": {}
+				},
+				"daysInYear": {
+					"#": {}
+				},
+				"equals": {
+					"#": {}
+				},
+				"era": {
+					"#": {}
+				},
+				"eraYear": {
+					"#": {}
+				},
+				"from": {
+					"#": {}
+				},
+				"getISOFields": {
+					"#": {}
+				},
+				"inLeapYear": {
+					"#": {}
+				},
+				"month": {
+					"#": {}
+				},
+				"monthCode": {
+					"#": {}
+				},
+				"monthsInYear": {
+					"#": {}
+				},
+				"since": {
+					"#": {}
+				},
+				"subtract": {
+					"#": {}
+				},
+				"toJSON": {
+					"#": {}
+				},
+				"toLocaleString": {
+					"#": {}
+				},
+				"toPlainDate": {
+					"#": {}
+				},
+				"toString": {
+					"#": {}
+				},
+				"until": {
+					"#": {}
+				},
+				"valueOf": {
+					"#": {}
+				},
+				"with": {
+					"#": {}
+				},
+				"year": {
+					"#": {}
+				}
+			},
+			"TimeZone": {
+				"TimeZone": {
+					"#": {}
+				},
+				"#": {},
+				"from": {
+					"#": {}
+				},
+				"getInstantFor": {
+					"#": {}
+				},
+				"getNextTransition": {
+					"#": {}
+				},
+				"getOffsetNanosecondsFor": {
+					"#": {}
+				},
+				"getOffsetStringFor": {
+					"#": {}
+				},
+				"getPlainDateTimeFor": {
+					"#": {}
+				},
+				"getPossibleInstantsFor": {
+					"#": {}
+				},
+				"getPreviousTransition": {
+					"#": {}
+				},
+				"id": {
+					"#": {}
+				},
+				"toJSON": {
+					"#": {}
+				},
+				"toString": {
+					"#": {}
+				}
+			},
+			"ZonedDateTime": {
+				"ZonedDateTime": {
+					"#": {}
+				},
+				"#": {},
+				"add": {
+					"#": {}
+				},
+				"calendar": {
+					"#": {}
+				},
+				"compare": {
+					"#": {}
+				},
+				"day": {
+					"#": {}
+				},
+				"dayOfWeek": {
+					"#": {}
+				},
+				"dayOfYear": {
+					"#": {}
+				},
+				"daysInMonth": {
+					"#": {}
+				},
+				"daysInWeek": {
+					"#": {}
+				},
+				"daysInYear": {
+					"#": {}
+				},
+				"epochMicroseconds": {
+					"#": {}
+				},
+				"epochMilliseconds": {
+					"#": {}
+				},
+				"epochNanoseconds": {
+					"#": {}
+				},
+				"epochSeconds": {
+					"#": {}
+				},
+				"equals": {
+					"#": {}
+				},
+				"era": {
+					"#": {}
+				},
+				"eraYear": {
+					"#": {}
+				},
+				"from": {
+					"#": {}
+				},
+				"getISOFields": {
+					"#": {}
+				},
+				"hour": {
+					"#": {}
+				},
+				"hoursInDay": {
+					"#": {}
+				},
+				"inLeapYear": {
+					"#": {}
+				},
+				"microsecond": {
+					"#": {}
+				},
+				"millisecond": {
+					"#": {}
+				},
+				"minute": {
+					"#": {}
+				},
+				"month": {
+					"#": {}
+				},
+				"monthCode": {
+					"#": {}
+				},
+				"monthsInYear": {
+					"#": {}
+				},
+				"nanosecond": {
+					"#": {}
+				},
+				"offset": {
+					"#": {}
+				},
+				"offsetNanoseconds": {
+					"#": {}
+				},
+				"round": {
+					"#": {}
+				},
+				"second": {
+					"#": {}
+				},
+				"since": {
+					"#": {}
+				},
+				"startOfDay": {
+					"#": {}
+				},
+				"subtract": {
+					"#": {}
+				},
+				"timeZone": {
+					"#": {}
+				},
+				"toInstant": {
+					"#": {}
+				},
+				"toJSON": {
+					"#": {}
+				},
+				"toLocaleString": {
+					"#": {}
+				},
+				"toPlainDate": {
+					"#": {}
+				},
+				"toPlainDateTime": {
+					"#": {}
+				},
+				"toPlainMonthDay": {
+					"#": {}
+				},
+				"toPlainTime": {
+					"#": {}
+				},
+				"toPlainYearMonth": {
+					"#": {}
+				},
+				"toString": {
+					"#": {}
+				},
+				"until": {
+					"#": {}
+				},
+				"valueOf": {
+					"#": {}
+				},
+				"weekOfYear": {
+					"#": {}
+				},
+				"with": {
+					"#": {}
+				},
+				"withCalendar": {
+					"#": {}
+				},
+				"withPlainDate": {
+					"#": {}
+				},
+				"withPlainTime": {
+					"#": {}
+				},
+				"withTimeZone": {
+					"#": {}
+				},
+				"year": {
+					"#": {}
+				}
+			},
+			"#": {}
+		},
+		"TypeError": {
+			"TypeError": {},
+			"serializable_object": {
+				"#": {
+					"chrome": 77,
+					"firefox": 103
+				}
+			}
+		},
+		"TypedArray": {
+			"@@iterator": {
+				"#": {
+					"chrome": 38,
+					"firefox": 36,
+					"nodejs": 1200,
+					"safari": 100000
+				}
+			},
+			"@@species": {
+				"#": {
+					"chrome": 51,
+					"firefox": 48,
+					"nodejs": 60500,
+					"safari": 100000
+				}
+			},
+			"BYTES_PER_ELEMENT": {
+				"#": {
+					"chrome": 7,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"#": {
+				"chrome": 7,
+				"firefox": 4,
+				"nodejs": 1000,
+				"safari": 50100
+			},
+			"at": {
+				"#": {
+					"chrome": 92,
+					"firefox": 90,
+					"nodejs": 160600,
+					"safari": 150400
+				}
+			},
+			"buffer": {
+				"#": {
+					"chrome": 7,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"byteLength": {
+				"#": {
+					"chrome": 7,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"byteOffset": {
+				"#": {
+					"chrome": 7,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"constructor_without_parameters": {
+				"#": {
+					"chrome": 7,
+					"firefox": 55,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"copyWithin": {
+				"#": {
+					"chrome": 45,
+					"firefox": 34,
+					"nodejs": 40000,
+					"safari": 90100
+				}
+			},
+			"entries": {
+				"#": {
+					"chrome": 45,
+					"firefox": 37,
+					"nodejs": 1200,
+					"safari": 90100
+				}
+			},
+			"every": {
+				"#": {
+					"chrome": 45,
+					"firefox": 37,
+					"nodejs": 40000,
+					"safari": 90100
+				}
+			},
+			"fill": {
+				"#": {
+					"chrome": 45,
+					"firefox": 37,
+					"nodejs": 40000,
+					"safari": 90100
+				}
+			},
+			"filter": {
+				"#": {
+					"chrome": 45,
+					"firefox": 38,
+					"nodejs": 40000,
+					"safari": 90100
+				}
+			},
+			"find": {
+				"#": {
+					"chrome": 45,
+					"firefox": 37,
+					"nodejs": 40000,
+					"safari": 90100
+				}
+			},
+			"findIndex": {
+				"#": {
+					"chrome": 45,
+					"firefox": 37,
+					"nodejs": 40000,
+					"safari": 90100
+				}
+			},
+			"findLast": {
+				"#": {
+					"chrome": 97,
+					"firefox": 104,
+					"safari": 150400
+				}
+			},
+			"findLastIndex": {
+				"#": {
+					"chrome": 97,
+					"firefox": 104,
+					"safari": 150400
+				}
+			},
+			"forEach": {
+				"#": {
+					"chrome": 45,
+					"firefox": 38,
+					"nodejs": 40000,
+					"safari": 100000
+				}
+			},
+			"from": {
+				"#": {
+					"chrome": 45,
+					"firefox": 38,
+					"nodejs": 40000,
+					"safari": 100000
+				}
+			},
+			"includes": {
+				"#": {
+					"chrome": 47,
+					"firefox": 43,
+					"nodejs": 60000,
+					"safari": 100000
+				}
+			},
+			"indexOf": {
+				"#": {
+					"chrome": 45,
+					"firefox": 37,
+					"nodejs": 40000,
+					"safari": 90100
+				}
+			},
+			"index_properties_not_consulting_prototype": {
+				"#": {
+					"chrome": 7,
+					"firefox": 25,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"iterable_in_constructor": {
+				"#": {
+					"chrome": 39,
+					"firefox": 52,
+					"nodejs": 40000,
+					"safari": 100000
+				}
+			},
+			"join": {
+				"#": {
+					"chrome": 45,
+					"firefox": 37,
+					"nodejs": 40000,
+					"safari": 90100
+				}
+			},
+			"keys": {
+				"#": {
+					"chrome": 38,
+					"firefox": 37,
+					"nodejs": 1200,
+					"safari": 100000
+				}
+			},
+			"lastIndexOf": {
+				"#": {
+					"chrome": 45,
+					"firefox": 37,
+					"nodejs": 40000,
+					"safari": 100000
+				}
+			},
+			"length": {
+				"#": {
+					"chrome": 7,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"map": {
+				"#": {
+					"chrome": 45,
+					"firefox": 38,
+					"nodejs": 40000,
+					"safari": 90100
+				}
+			},
+			"name": {
+				"#": {
+					"chrome": 7,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"named_properties": {
+				"#": {
+					"chrome": 7,
+					"firefox": 30,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"new_required": {
+				"#": {
+					"chrome": 7,
+					"firefox": 44,
+					"nodejs": 1200,
+					"safari": 50100
+				}
+			},
+			"of": {
+				"#": {
+					"chrome": 45,
+					"firefox": 38,
+					"nodejs": 40000,
+					"safari": 90100
+				}
+			},
+			"reduce": {
+				"#": {
+					"chrome": 45,
+					"firefox": 37,
+					"nodejs": 40000,
+					"safari": 100000
+				}
+			},
+			"reduceRight": {
+				"#": {
+					"chrome": 45,
+					"firefox": 37,
+					"nodejs": 40000,
+					"safari": 100000
+				}
+			},
+			"reverse": {
+				"#": {
+					"chrome": 45,
+					"firefox": 37,
+					"nodejs": 40000,
+					"safari": 100000
+				}
+			},
+			"set": {
+				"#": {
+					"chrome": 7,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"slice": {
+				"#": {
+					"chrome": 45,
+					"firefox": 38,
+					"nodejs": 40000,
+					"safari": 100000
+				}
+			},
+			"some": {
+				"#": {
+					"chrome": 45,
+					"firefox": 37,
+					"nodejs": 40000,
+					"safari": 100000
+				}
+			},
+			"sort": {
+				"#": {
+					"chrome": 45,
+					"firefox": 46,
+					"nodejs": 40000,
+					"safari": 100000
+				}
+			},
+			"subarray": {
+				"#": {
+					"chrome": 7,
+					"firefox": 4,
+					"nodejs": 1200,
+					"safari": 50100
+				}
+			},
+			"toLocaleString": {
+				"#": {
+					"chrome": 7,
+					"firefox": 51,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"toReversed": {
+				"#": {
+					"chrome": 110,
+					"firefox": 115,
+					"nodejs": 200000,
+					"safari": 160000
+				}
+			},
+			"toSorted": {
+				"#": {
+					"chrome": 110,
+					"firefox": 115,
+					"nodejs": 200000,
+					"safari": 160000
+				}
+			},
+			"toString": {
+				"#": {
+					"chrome": 7,
+					"firefox": 51,
+					"nodejs": 1000,
+					"safari": 50100
+				}
+			},
+			"values": {
+				"#": {
+					"chrome": 38,
+					"firefox": 37,
+					"nodejs": 1200,
+					"safari": 100000
+				}
+			},
+			"with": {
+				"#": {
+					"chrome": 110,
+					"firefox": 115,
+					"nodejs": 200000,
+					"safari": 160000
+				}
+			}
+		},
+		"URIError": {
+			"URIError": {},
+			"serializable_object": {
+				"#": {
+					"chrome": 77,
+					"firefox": 103
+				}
+			}
+		},
+		"Uint16Array": {
+			"Uint16Array": {
+				"#": {
+					"chrome": 7,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				},
+				"constructor_without_parameters": {
+					"#": {
+						"chrome": 7,
+						"firefox": 55,
+						"nodejs": 1000,
+						"safari": 50100
+					}
+				},
+				"iterable_allowed": {
+					"#": {
+						"chrome": 39,
+						"firefox": 52,
+						"nodejs": 40000,
+						"safari": 100000
+					}
+				},
+				"new_required": {
+					"#": {
+						"chrome": 7,
+						"firefox": 44,
+						"nodejs": 1200,
+						"safari": 50100
+					}
+				}
+			},
+			"#": {
+				"chrome": 7,
+				"firefox": 4,
+				"nodejs": 1000,
+				"safari": 50100
+			}
+		},
+		"Uint32Array": {
+			"Uint32Array": {
+				"#": {
+					"chrome": 7,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				},
+				"constructor_without_parameters": {
+					"#": {
+						"chrome": 7,
+						"firefox": 55,
+						"nodejs": 1000,
+						"safari": 50100
+					}
+				},
+				"iterable_allowed": {
+					"#": {
+						"chrome": 39,
+						"firefox": 52,
+						"nodejs": 40000,
+						"safari": 100000
+					}
+				},
+				"new_required": {
+					"#": {
+						"chrome": 7,
+						"firefox": 44,
+						"nodejs": 1200,
+						"safari": 50100
+					}
+				}
+			},
+			"#": {
+				"chrome": 7,
+				"firefox": 4,
+				"nodejs": 1000,
+				"safari": 50100
+			}
+		},
+		"Uint8Array": {
+			"Uint8Array": {
+				"#": {
+					"chrome": 7,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				},
+				"constructor_without_parameters": {
+					"#": {
+						"chrome": 7,
+						"firefox": 55,
+						"nodejs": 1000,
+						"safari": 50100
+					}
+				},
+				"iterable_allowed": {
+					"#": {
+						"chrome": 39,
+						"firefox": 52,
+						"nodejs": 40000,
+						"safari": 100000
+					}
+				},
+				"new_required": {
+					"#": {
+						"chrome": 7,
+						"firefox": 44,
+						"nodejs": 1200,
+						"safari": 50100
+					}
+				}
+			},
+			"#": {
+				"chrome": 7,
+				"firefox": 4,
+				"nodejs": 1000,
+				"safari": 50100
+			}
+		},
+		"Uint8ClampedArray": {
+			"Uint8ClampedArray": {
+				"#": {
+					"chrome": 7,
+					"firefox": 4,
+					"nodejs": 1000,
+					"safari": 50100
+				},
+				"constructor_without_parameters": {
+					"#": {
+						"chrome": 7,
+						"firefox": 55,
+						"nodejs": 1000,
+						"safari": 50100
+					}
+				},
+				"iterable_allowed": {
+					"#": {
+						"chrome": 39,
+						"firefox": 52,
+						"nodejs": 40000,
+						"safari": 100000
+					}
+				},
+				"new_required": {
+					"#": {
+						"chrome": 7,
+						"firefox": 44,
+						"nodejs": 1200,
+						"safari": 50100
+					}
+				}
+			},
+			"#": {
+				"chrome": 7,
+				"firefox": 4,
+				"nodejs": 1000,
+				"safari": 50100
+			}
+		},
+		"WeakMap": {
+			"WeakMap": {
+				"#": {
+					"chrome": 36,
+					"firefox": 6,
+					"nodejs": 1200,
+					"safari": 80000
+				},
+				"iterable_allowed": {
+					"#": {
+						"chrome": 38,
+						"firefox": 36,
+						"nodejs": 1200,
+						"safari": 90000
+					}
+				},
+				"new_required": {
+					"#": {
+						"chrome": 36,
+						"firefox": 42,
+						"nodejs": 1200,
+						"safari": 90000
+					}
+				},
+				"null_allowed": {
+					"#": {
+						"chrome": 36,
+						"firefox": 37,
+						"nodejs": 1200,
+						"safari": 80000
+					}
+				}
+			},
+			"#": {
+				"chrome": 36,
+				"firefox": 6,
+				"nodejs": 1200,
+				"safari": 80000
+			},
+			"delete": {
+				"#": {
+					"chrome": 36,
+					"firefox": 6,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"get": {
+				"#": {
+					"chrome": 36,
+					"firefox": 6,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"has": {
+				"#": {
+					"chrome": 36,
+					"firefox": 6,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"set": {
+				"#": {
+					"chrome": 36,
+					"firefox": 6,
+					"nodejs": 1200,
+					"safari": 80000
+				}
+			},
+			"symbol_as_keys": {
+				"#": {
+					"chrome": 108,
+					"safari": 160400
+				}
+			}
+		},
+		"WeakRef": {
+			"WeakRef": {
+				"#": {
+					"chrome": 84,
+					"firefox": 79,
+					"nodejs": 140600,
+					"safari": 140100
+				}
+			},
+			"#": {
+				"chrome": 84,
+				"firefox": 79,
+				"nodejs": 140600,
+				"safari": 140100
+			},
+			"deref": {
+				"#": {
+					"chrome": 84,
+					"firefox": 79,
+					"nodejs": 140600,
+					"safari": 140100
+				}
+			},
+			"symbol_as_target": {
+				"#": {
+					"chrome": 108,
+					"safari": 160400
+				}
+			}
+		},
+		"WeakSet": {
+			"WeakSet": {
+				"#": {
+					"chrome": 36,
+					"firefox": 34,
+					"nodejs": 1200,
+					"safari": 90000
+				},
+				"iterable_allowed": {
+					"#": {
+						"chrome": 38,
+						"firefox": 34,
+						"nodejs": 1200,
+						"safari": 90000
+					}
+				},
+				"null_allowed": {
+					"#": {
+						"chrome": 36,
+						"firefox": 37,
+						"nodejs": 1200,
+						"safari": 90000
+					}
+				}
+			},
+			"#": {
+				"chrome": 36,
+				"firefox": 34,
+				"nodejs": 1200,
+				"safari": 90000
+			},
+			"add": {
+				"#": {
+					"chrome": 36,
+					"firefox": 34,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			},
+			"delete": {
+				"#": {
+					"chrome": 36,
+					"firefox": 34,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			},
+			"has": {
+				"#": {
+					"chrome": 36,
+					"firefox": 34,
+					"nodejs": 1200,
+					"safari": 90000
+				}
+			},
+			"symbol_as_keys": {
+				"#": {
+					"chrome": 108,
+					"safari": 160400
+				}
+			}
+		},
+		"WebAssembly": {
+			"CompileError": {
+				"CompileError": {
+					"#": {
+						"chrome": 57,
+						"firefox": 52,
+						"nodejs": 80000,
+						"safari": 110000
+					}
+				},
+				"#": {
+					"chrome": 57,
+					"firefox": 52,
+					"nodejs": 80000,
+					"safari": 110000
+				}
+			},
+			"Exception": {
+				"Exception": {
+					"#": {
+						"chrome": 95,
+						"firefox": 100,
+						"nodejs": 170000,
+						"safari": 150200
+					},
+					"options_parameter_traceStack": {
+						"#": {
+							"chrome": 95,
+							"firefox": 100,
+							"nodejs": 170000,
+							"safari": 150200
+						}
+					}
+				},
+				"#": {
+					"chrome": 95,
+					"firefox": 100,
+					"nodejs": 170000,
+					"safari": 150200
+				},
+				"getArg": {
+					"#": {
+						"chrome": 95,
+						"firefox": 100,
+						"nodejs": 170000,
+						"safari": 150200
+					}
+				},
+				"is": {
+					"#": {
+						"chrome": 95,
+						"firefox": 100,
+						"nodejs": 170000,
+						"safari": 150200
+					}
+				},
+				"stack": {
+					"#": {
+						"chrome": 95,
+						"firefox": 100,
+						"nodejs": 170000
+					}
+				}
+			},
+			"Global": {
+				"Global": {
+					"#": {
+						"chrome": 69,
+						"firefox": 62,
+						"nodejs": 110000,
+						"safari": 130100
+					}
+				},
+				"#": {
+					"chrome": 69,
+					"firefox": 62,
+					"nodejs": 110000,
+					"safari": 130100
+				},
+				"value": {
+					"#": {
+						"chrome": 69,
+						"firefox": 62,
+						"nodejs": 110000,
+						"safari": 130100
+					}
+				},
+				"valueOf": {
+					"#": {
+						"chrome": 69,
+						"firefox": 62,
+						"nodejs": 110000,
+						"safari": 130100
+					}
+				}
+			},
+			"Instance": {
+				"Instance": {
+					"#": {
+						"chrome": 57,
+						"firefox": 52,
+						"nodejs": 80000,
+						"safari": 110000
+					}
+				},
+				"#": {
+					"chrome": 57,
+					"firefox": 52,
+					"nodejs": 80000,
+					"safari": 110000
+				},
+				"exports": {
+					"#": {
+						"chrome": 57,
+						"firefox": 52,
+						"nodejs": 80000,
+						"safari": 110000
+					}
+				}
+			},
+			"LinkError": {
+				"LinkError": {
+					"#": {
+						"chrome": 57,
+						"firefox": 52,
+						"nodejs": 80000,
+						"safari": 110000
+					}
+				},
+				"#": {
+					"chrome": 57,
+					"firefox": 52,
+					"nodejs": 80000,
+					"safari": 110000
+				}
+			},
+			"Memory": {
+				"Memory": {
+					"#": {
+						"chrome": 57,
+						"firefox": 52,
+						"nodejs": 80000,
+						"safari": 110000
+					},
+					"shared": {
+						"#": {
+							"chrome": 74,
+							"firefox": 78,
+							"safari": 150200
+						}
+					}
+				},
+				"#": {
+					"chrome": 57,
+					"firefox": 52,
+					"nodejs": 80000,
+					"safari": 110000
+				},
+				"buffer": {
+					"#": {
+						"chrome": 57,
+						"firefox": 52,
+						"nodejs": 80000,
+						"safari": 110000
+					}
+				},
+				"grow": {
+					"#": {
+						"chrome": 57,
+						"firefox": 52,
+						"nodejs": 80000,
+						"safari": 110000
+					}
+				}
+			},
+			"Module": {
+				"Module": {
+					"#": {
+						"chrome": 57,
+						"firefox": 52,
+						"nodejs": 80000,
+						"safari": 110000
+					}
+				},
+				"#": {
+					"chrome": 57,
+					"firefox": 52,
+					"nodejs": 80000,
+					"safari": 110000
+				},
+				"customSections": {
+					"#": {
+						"chrome": 57,
+						"firefox": 52,
+						"nodejs": 80000,
+						"safari": 110000
+					}
+				},
+				"exports": {
+					"#": {
+						"chrome": 57,
+						"firefox": 52,
+						"nodejs": 80000,
+						"safari": 110000
+					}
+				},
+				"imports": {
+					"#": {
+						"chrome": 57,
+						"firefox": 52,
+						"nodejs": 80000,
+						"safari": 110000
+					}
+				}
+			},
+			"RuntimeError": {
+				"RuntimeError": {
+					"#": {
+						"chrome": 57,
+						"firefox": 52,
+						"nodejs": 80000,
+						"safari": 110000
+					}
+				},
+				"#": {
+					"chrome": 57,
+					"firefox": 52,
+					"nodejs": 80000,
+					"safari": 110000
+				}
+			},
+			"Table": {
+				"Table": {
+					"#": {
+						"chrome": 57,
+						"firefox": 52,
+						"nodejs": 80000,
+						"safari": 110000
+					}
+				},
+				"#": {
+					"chrome": 57,
+					"firefox": 52,
+					"nodejs": 80000,
+					"safari": 110000
+				},
+				"get": {
+					"#": {
+						"chrome": 57,
+						"firefox": 52,
+						"nodejs": 80000,
+						"safari": 110000
+					}
+				},
+				"grow": {
+					"#": {
+						"chrome": 57,
+						"firefox": 52,
+						"nodejs": 80000,
+						"safari": 110000
+					}
+				},
+				"length": {
+					"#": {
+						"chrome": 57,
+						"firefox": 52,
+						"nodejs": 80000,
+						"safari": 110000
+					}
+				},
+				"set": {
+					"#": {
+						"chrome": 57,
+						"firefox": 52,
+						"nodejs": 80000,
+						"safari": 110000
+					}
+				}
+			},
+			"Tag": {
+				"Tag": {
+					"#": {
+						"chrome": 95,
+						"firefox": 100,
+						"nodejs": 170000,
+						"safari": 150200
+					}
+				},
+				"#": {
+					"chrome": 95,
+					"firefox": 100,
+					"nodejs": 170000,
+					"safari": 150200
+				},
+				"type": {
+					"#": {
+						"nodejs": 170000,
+						"safari": 150200
+					}
+				}
+			},
+			"#": {
+				"chrome": 57,
+				"firefox": 52,
+				"nodejs": 80000,
+				"safari": 110000
+			},
+			"compile": {
+				"#": {
+					"chrome": 57,
+					"firefox": 52,
+					"nodejs": 80000,
+					"safari": 110000
+				}
+			},
+			"compileStreaming": {
+				"#": {
+					"chrome": 61,
+					"firefox": 58,
+					"nodejs": 180100,
+					"safari": 150000
+				}
+			},
+			"instantiate": {
+				"#": {
+					"chrome": 57,
+					"firefox": 52,
+					"nodejs": 80000,
+					"safari": 110000
+				}
+			},
+			"instantiateStreaming": {
+				"#": {
+					"chrome": 61,
+					"firefox": 58,
+					"nodejs": 180100,
+					"safari": 150000
+				}
+			},
+			"validate": {
+				"#": {
+					"chrome": 57,
+					"firefox": 52,
+					"nodejs": 80000,
+					"safari": 110000
+				}
+			}
+		},
+		"decodeURI": {
+			"#": {
+				"chrome": 1,
+				"firefox": 1,
+				"nodejs": 1000,
+				"safari": 10100
+			}
+		},
+		"decodeURIComponent": {
+			"#": {
+				"chrome": 1,
+				"firefox": 1,
+				"nodejs": 1000,
+				"safari": 10100
+			}
+		},
+		"encodeURI": {
+			"#": {
+				"chrome": 1,
+				"firefox": 1,
+				"nodejs": 1000,
+				"safari": 10100
+			}
+		},
+		"encodeURIComponent": {
+			"#": {
+				"chrome": 1,
+				"firefox": 1,
+				"nodejs": 1000,
+				"safari": 10100
+			}
+		},
+		"escape": {},
+		"eval": {},
+		"globalThis": {
+			"#": {
+				"chrome": 71,
+				"firefox": 65,
+				"nodejs": 120000,
+				"safari": 120100
+			}
+		},
+		"isFinite": {},
+		"isNaN": {},
+		"parseFloat": {},
+		"parseInt": {
+			"leading_zero_strings_as_decimal": {
+				"#": {
+					"chrome": 23,
+					"firefox": 21,
+					"nodejs": 1000,
+					"safari": 60000
+				}
+			}
+		},
+		"undefined": {},
+		"unescape": {}
+	},
+	"wasm": {
+		"bigInt": {
+			"#": {
+				"chrome": 85,
+				"firefox": 78,
+				"nodejs": 150000
+			}
+		},
+		"bulkMemory": {
+			"#": {
+				"chrome": 75,
+				"firefox": 79,
+				"safari": 150000,
+				"nodejs": 120500
+			}
+		},
+		"exceptions": {
+			"#": {
+				"chrome": 95,
+				"firefox": 100,
+				"safari": 150200,
+				"nodejs": 170000
+			}
+		},
+		"extendedConst": {
+			"#": {
+				"chrome": 114,
+				"firefox": 112
+			}
+		},
+		"gc": {
+			"#": {
+				"chrome": 119,
+				"firefox": 120
+			}
+		},
+		"jspi": {
+			"#": {}
+		},
+		"memory64": {
+			"#": {}
+		},
+		"multiMemory": {
+			"#": {}
+		},
+		"multiValue": {
+			"#": {
+				"chrome": 85,
+				"firefox": 78,
+				"nodejs": 150000
+			}
+		},
+		"mutableGlobals": {
+			"#": {
+				"chrome": 74,
+				"firefox": 61,
+				"nodejs": 120000
+			}
+		},
+		"referenceTypes": {
+			"#": {
+				"chrome": 96,
+				"firefox": 79,
+				"safari": 150000,
+				"nodejs": 170200
+			}
+		},
+		"relaxedSimd": {
+			"#": {
+				"chrome": 114
+			}
+		},
+		"saturatedFloatToInt": {
+			"#": {
+				"chrome": 75,
+				"firefox": 64,
+				"safari": 150000,
+				"nodejs": 120500
+			}
+		},
+		"signExtensions": {
+			"#": {
+				"chrome": 74,
+				"firefox": 62,
+				"nodejs": 120000
+			}
+		},
+		"simd": {
+			"#": {
+				"chrome": 91,
+				"firefox": 89,
+				"safari": 160400,
+				"nodejs": 160400
+			}
+		},
+		"tailCall": {
+			"#": {
+				"chrome": 112
+			}
+		},
+		"threads": {
+			"#": {
+				"chrome": 74,
+				"firefox": 79,
+				"nodejs": 160400
+			}
+		},
+		"typeReflection": {
+			"#": {}
+		}
+	}
+}
