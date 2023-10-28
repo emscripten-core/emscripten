@@ -148,8 +148,7 @@ function ready() {
 }
 
 #if POLYFILL
-// See https://caniuse.com/mdn-javascript_builtins_object_assign
-#if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 90000
+#if !caniuse('js.Object.assign')
 #include "polyfill/objassign.js"
 #endif
 #endif

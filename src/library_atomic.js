@@ -11,10 +11,7 @@ addToLibrary({
 //   https://www.chromestatus.com/feature/6243382101803008
 // However its implementation is faulty:
 //   https://bugs.chromium.org/p/chromium/issues/detail?id=1167541
-// Firefox Nightly 86.0a1 (2021-01-15) does not yet have it:
-//   https://bugzilla.mozilla.org/show_bug.cgi?id=1467846
-// And at the time of writing, no other browser has it either.
-#if MIN_EDGE_VERSION < 91 || MIN_CHROME_VERSION < 91 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || MIN_FIREFOX_VERSION != TARGET_NOT_SUPPORTED || ENVIRONMENT_MAY_BE_NODE
+#if caniuse('js.Atomics.waitAsync') && MIN_CHROME_VERSION >= 91
   // Partially polyfill Atomics.waitAsync() if not available in the browser.
   // Also polyfill for old Chrome-based browsers, where Atomics.waitAsync is
   // broken until Chrome 91, see:
