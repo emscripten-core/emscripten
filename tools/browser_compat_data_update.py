@@ -64,8 +64,12 @@ for feature in data['features']:
 for browser in ['Chrome', 'Firefox', 'Safari', 'Node.js']:
   normalized_browser = browser.lower().replace('.', '')
   for feature, support in data['browsers'][browser]['features'].items():
-    if type(support) is str:
-      out_wasm[feature]['#'][normalized_browser] = parse_version(support, normalized_browser)
+    if type(support) is list:
+      # If support is a list, first item is the version and 2nd is a text note.
+      support = support[0]
+    if type(support) is not str or support == 'flag':
+      continue
+    out_wasm[feature]['#'][normalized_browser] = parse_version(support, normalized_browser)
 
 
 with open('tools/browser_compat_data.json', 'w') as f:
