@@ -6771,7 +6771,14 @@
 			}
 		},
 		"undefined": {},
-		"unescape": {}
+		"unescape": {},
+		"AudioWorklet": {
+			"#": {
+				"chrome": 66,
+				"firefox": 76,
+				"safari": 140100
+			}
+		}
 	},
 	"wasm": {
 		"bigInt": {

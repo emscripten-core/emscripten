@@ -2,9 +2,6 @@ import json
 import requests
 
 
-out = {}
-
-
 def parse_version(version, browser):
   version = [int(x) for x in version.split('.')]
   if browser == 'safari' or browser == 'nodejs':
@@ -51,10 +48,15 @@ def traverse_bcd(obj):
   return out
 
 
+out = {}
+
 # Pull JavaScript builtins support from MDN's Browser Compat Data.
 data = requests.get('https://unpkg.com/@mdn/browser-compat-data/data.json').json()
 out['js'] = traverse_bcd(data['javascript']['builtins'])
-
+# There are a lot of browser APIs and very few we care about, so only pull them to keep JSON small.
+for api in ['AudioWorklet']:
+  # Just add them to the same JS namespace.
+  out['js'][api] = traverse_bcd(data['api'][api])
 
 # BCD data is not as complete for Wasm features as webassembly.org, at least for now.
 data = requests.get('https://webassembly.org/features.json').json()
@@ -70,7 +72,6 @@ for browser in ['Chrome', 'Firefox', 'Safari', 'Node.js']:
     if type(support) is not str or support == 'flag':
       continue
     out_wasm[feature]['#'][normalized_browser] = parse_version(support, normalized_browser)
-
 
 with open('tools/browser_compat_data.json', 'w') as f:
   json.dump(out, f, indent='\t')

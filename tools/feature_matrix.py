@@ -49,10 +49,12 @@ def caniuse(path):
   return all(check_version(setting_name) for setting_name in min_versions)
 
 
-def enable_feature(path):
+def enable_feature(setting_name, path):
   """Updates default settings for browser versions such that the given
   feature is available everywhere.
   """
+  if not settings[setting_name]:
+    return
   min_versions = get_min_versions(path)
   for name, min_version in min_versions.items():
     if settings[name] < min_version:
@@ -67,13 +69,16 @@ def enable_feature(path):
         settings[name] = min_version
 
 
-# apply minimum browser version defaults based on user settings. if
+# Apply minimum browser version defaults based on user settings. if
 # a user requests a feature that we know is only supported in browsers
 # from a specific version and above, we can assume that browser version.
+#
+# Be careful not to include features that might be used in older browsers
+# via polyfills, only features that can't be polyfilled.
 def apply_min_browser_versions():
-  if settings.WASM_BIGINT:
-    enable_feature('wasm.bigInt')
-  if settings.PTHREADS:
-    enable_feature('wasm.threads')
-  # if settings.AUDIO_WORKLET:
-  #   enable_feature(Feature.GLOBALTHIS, 'AUDIO_WORKLET')
+  enable_feature('WASM', 'js.WebAssembly')
+  enable_feature('WASM_BIGINT', 'wasm.bigInt')
+  enable_feature('SHARED_MEMORY', 'wasm.threads')
+  enable_feature('BULK_MEMORY', 'wasm.bulkMemory')
+  enable_feature('WASM_EXCEPTIONS', 'wasm.exceptions')
+  enable_feature('AUDIO_WORKLET', 'js.AudioWorklet')
