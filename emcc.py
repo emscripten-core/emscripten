@@ -2517,6 +2517,12 @@ def phase_linker_setup(options, state, newargs):
   settings.SUPPORTS_PROMISE_ANY = feature_matrix.caniuse(feature_matrix.Feature.PROMISE_ANY)
   if not settings.BULK_MEMORY:
     settings.BULK_MEMORY = feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY)
+    if settings.MEMORY64 and settings.MIN_NODE_VERSION < 180000:
+      logger.warning(
+        "Disabling bulk memory because it doesn't work correctly with wasm64 in Node.js < 18.\n"
+        "Set MIN_NODE_VERSION to 180000 or above to enable it."
+      )
+      settings.BULK_MEMORY = 0
 
   if settings.AUDIO_WORKLET:
     if settings.AUDIO_WORKLET == 1:
