@@ -49,12 +49,10 @@ def caniuse(path):
   return all(check_version(setting_name) for setting_name in min_versions)
 
 
-def enable_feature(setting_name, path):
+def enable_feature(path):
   """Updates default settings for browser versions such that the given
   feature is available everywhere.
   """
-  if not settings[setting_name]:
-    return
   min_versions = get_min_versions(path)
   for name, min_version in min_versions.items():
     if settings[name] < min_version:
@@ -69,6 +67,11 @@ def enable_feature(setting_name, path):
         settings[name] = min_version
 
 
+def enable_feature_if(setting_name, path):
+  if settings[setting_name]:
+    enable_feature(path)
+
+
 # Apply minimum browser version defaults based on user settings. if
 # a user requests a feature that we know is only supported in browsers
 # from a specific version and above, we can assume that browser version.
@@ -76,12 +79,13 @@ def enable_feature(setting_name, path):
 # Be careful not to include features that might be used in older browsers
 # via polyfills, only features that can't be polyfilled.
 def apply_min_browser_versions():
-  enable_feature('WASM', 'js.WebAssembly')
-  # TODO: enable this when we figure out if Node.js version data is correct.
-  # enable_feature('WASM', 'wasm.signExtensions')
-  # enable_feature('WASM', 'wasm.mutableGlobals')
-  enable_feature('WASM_BIGINT', 'wasm.bigInt')
-  enable_feature('SHARED_MEMORY', 'wasm.threads')
-  enable_feature('BULK_MEMORY', 'wasm.bulkMemory')
-  enable_feature('WASM_EXCEPTIONS', 'wasm.exceptions')
-  enable_feature('AUDIO_WORKLET', 'js.AudioWorklet')
+  if not settings.WASM2JS:
+    enable_feature('js.WebAssembly')
+    # TODO: enable this when we figure out if Node.js version data is correct.
+    # enable_feature('wasm.signExtensions')
+    # enable_feature('wasm.mutableGlobals')
+  enable_feature_if('WASM_BIGINT', 'wasm.bigInt')
+  enable_feature_if('SHARED_MEMORY', 'wasm.threads')
+  enable_feature_if('BULK_MEMORY', 'wasm.bulkMemory')
+  enable_feature_if('WASM_EXCEPTIONS', 'wasm.exceptions')
+  enable_feature_if('AUDIO_WORKLET', 'js.AudioWorklet')
