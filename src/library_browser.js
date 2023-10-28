@@ -712,7 +712,6 @@ var LibraryBrowser = {
           const hNativeScaled = Math.floor(hNative * scale);
           if (canvas.clientWidth  != wNative || canvas.width  != wNativeScaled) { canvas.clientWidth  = wNative; canvas.width  = wNativeScaled; }
           if (canvas.clientHeight != hNative || canvas.height != hNativeScaled) { canvas.clientHeight = hNative; canvas.height = hNativeScaled; }
-          console.log("updateCanvasDimensions / isHiDPIAware / " + canvas.clientWidth + " / " + canvas.width);
         } else {
           if (canvas.width  != wNative) canvas.width  = wNative;
           if (canvas.height != hNative) canvas.height = hNative;

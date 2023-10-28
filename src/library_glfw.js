@@ -81,6 +81,7 @@ var LibraryGLFW = {
       this.keyFunc = null; // GLFWkeyfun
       this.charFunc = null; // GLFWcharfun
       this.userptr = null;
+      console.log("using yan-fork-main");
     },
 
   $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
@@ -555,45 +556,57 @@ var LibraryGLFW = {
     onCanvasResize: (width, height, framebufferWidth, framebufferHeight) => {
       if (!GLFW.active) return;
 
-      var resizeNeeded = true;
-
-      // If the client is requesting fullscreen mode
-      if (document["fullscreen"] || document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
-        GLFW.active.storedX = GLFW.active.x;
-        GLFW.active.storedY = GLFW.active.y;
-        GLFW.active.storedWidth = GLFW.active.width;
-        GLFW.active.storedHeight = GLFW.active.height;
-        GLFW.active.x = GLFW.active.y = 0;
-        GLFW.active.width = screen.width;
-        GLFW.active.height = screen.height;
-        GLFW.active.fullscreen = true;
-
-      // If the client is reverting from fullscreen mode
-      } else if (GLFW.active.fullscreen == true) {
-        GLFW.active.x = GLFW.active.storedX;
-        GLFW.active.y = GLFW.active.storedY;
-        GLFW.active.width = GLFW.active.storedWidth;
-        GLFW.active.height = GLFW.active.storedHeight;
-        GLFW.active.fullscreen = false;
-
-      // If the width/height values do not match current active window sizes
-      } else if (GLFW.active.width != width || GLFW.active.height != height) {
-          GLFW.active.width = width;
-          GLFW.active.height = height;
-          GLFW.active.framebufferWidth = framebufferWidth;
-          GLFW.active.framebufferHeight = framebufferHeight;
-      } else {
-        resizeNeeded = false;
-      }
-
-      // If any of the above conditions were true, we need to resize the canvas
-      if (resizeNeeded) {
-        // resets the canvas size to counter the aspect preservation of Browser.updateCanvasDimensions
-        // TODO HIGH YP: this logic is fishy because onCanvasResize is called when the canvas changes size already
-        // Browser.setCanvasSize(GLFW.active.width, GLFW.active.height, true);
+      if(GLFW.active.width            != width            || GLFW.active.height            != height ||
+         GLFW.active.framebufferWidth != framebufferWidth || GLFW.active.framebufferHeight != framebufferHeight) {
+        GLFW.active.width = width;
+        GLFW.active.height = height;
+        GLFW.active.framebufferWidth = framebufferWidth;
+        GLFW.active.framebufferHeight = framebufferHeight;
         GLFW.onWindowSizeChanged();
         GLFW.onFramebufferSizeChanged();
       }
+
+      // TODO HIGH YP: no matter how hard I tried, I could never execute the fullscreen (resp. exit fullscreen) code path(s)
+      //               (https://developer.mozilla.org/en-US/docs/Web/API/Document/fullscreen is deprecated)
+      //               When selecting "View Full screen" in the browser (resp. exiting fullscreen), it does the "right"
+      //               thing and the parameters provided to this API are sufficient. So I don't think they need to be
+      //               stored/restored, and this is why I simplified this entire path.
+      // var resizeNeeded = true;
+      //
+      // // If the client is requesting fullscreen mode
+      // if (document["fullscreen"] || document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
+      //   GLFW.active.storedX = GLFW.active.x;
+      //   GLFW.active.storedY = GLFW.active.y;
+      //   GLFW.active.storedWidth = GLFW.active.width;
+      //   GLFW.active.storedHeight = GLFW.active.height;
+      //   GLFW.active.x = GLFW.active.y = 0;
+      //   GLFW.active.width = screen.width;
+      //   GLFW.active.height = screen.height;
+      //   GLFW.active.fullscreen = true;
+      //
+      // // If the client is reverting from fullscreen mode
+      // } else if (GLFW.active.fullscreen == true) {
+      //   GLFW.active.x = GLFW.active.storedX;
+      //   GLFW.active.y = GLFW.active.storedY;
+      //   GLFW.active.width = GLFW.active.storedWidth;
+      //   GLFW.active.height = GLFW.active.storedHeight;
+      //   GLFW.active.fullscreen = false;
+      //
+      // // If the width/height values do not match current active window sizes
+      // } else if (GLFW.active.width != width || GLFW.active.height != height) {
+      //   GLFW.active.width = width;
+      //   GLFW.active.height = height;
+      // } else {
+      //   resizeNeeded = false;
+      // }
+      //
+      // // If any of the above conditions were true, we need to resize the canvas
+      // if (resizeNeeded) {
+      //   // resets the canvas size to counter the aspect preservation of Browser.updateCanvasDimensions
+      //   Browser.setCanvasSize(GLFW.active.width, GLFW.active.height, true);
+      //   GLFW.onWindowSizeChanged();
+      //   GLFW.onFramebufferSizeChanged();
+      // }
     },
 
     onWindowSizeChanged: () => {
@@ -982,13 +995,18 @@ var LibraryGLFW = {
       if (!win) return;
 
       if (GLFW.active.id == win.id) {
-        if (width == screen.width && height == screen.height) {
-          Browser.requestFullscreen();
-        } else {
-          Browser.exitFullscreen();
-          Browser.setCanvasSize(width, height);
-          // Implementation note: callback onCanvasResize will update values accordingly
-        }
+        // TODO HIGH YP: Browser.requestFullscreen does not work and raises an error:
+        //               Failed to execute 'requestFullscreen' on 'Element': API can only be initiated by a user gesture
+        //               Commented out and simply setting the canvas size seem to do the right thing
+        // if (width == screen.width && height == screen.height) {
+        //   Browser.requestFullscreen();
+        // } else {
+        //   Browser.exitFullscreen();
+        //   Browser.setCanvasSize(width, height);
+        //   // Implementation note: callback onCanvasResize will update values accordingly
+        // }
+        Browser.setCanvasSize(width, height);
+        // Implementation note: callback onCanvasResize will update values accordingly
       }
 
       if (win.windowSizeFunc) {
