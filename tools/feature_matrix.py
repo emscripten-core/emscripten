@@ -77,8 +77,9 @@ def enable_feature(setting_name, path):
 # via polyfills, only features that can't be polyfilled.
 def apply_min_browser_versions():
   enable_feature('WASM', 'js.WebAssembly')
-  enable_feature('WASM', 'wasm.signExtensions')
-  enable_feature('WASM', 'wasm.mutableGlobals')
+  # TODO: enable this when we figure out if Node.js version data is correct.
+  # enable_feature('WASM', 'wasm.signExtensions')
+  # enable_feature('WASM', 'wasm.mutableGlobals')
   enable_feature('WASM_BIGINT', 'wasm.bigInt')
   enable_feature('SHARED_MEMORY', 'wasm.threads')
   enable_feature('BULK_MEMORY', 'wasm.bulkMemory')
