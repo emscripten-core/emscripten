@@ -6,7 +6,6 @@
 """Utilities for mapping browser versions to webassembly features."""
 
 import logging
-from enum import IntEnum, auto
 
 from .settings import settings, user_settings
 from . import diagnostics
