@@ -78,28 +78,12 @@
 					"safari": 80000
 				}
 			},
-			"every": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
-				}
-			},
 			"fill": {
 				"#": {
 					"chrome": 45,
 					"firefox": 31,
 					"nodejs": 40000,
 					"safari": 80000
-				}
-			},
-			"filter": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
 				}
 			},
 			"find": {
@@ -150,14 +134,6 @@
 					"safari": 120000
 				}
 			},
-			"forEach": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
-				}
-			},
 			"from": {
 				"#": {
 					"chrome": 45,
@@ -180,22 +156,6 @@
 					"safari": 90000
 				}
 			},
-			"indexOf": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
-				}
-			},
-			"isArray": {
-				"#": {
-					"chrome": 4,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50000
-				}
-			},
 			"keys": {
 				"#": {
 					"chrome": 38,
@@ -204,52 +164,12 @@
 					"safari": 80000
 				}
 			},
-			"lastIndexOf": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
-				}
-			},
-			"map": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
-				}
-			},
 			"of": {
 				"#": {
 					"chrome": 45,
 					"firefox": 25,
 					"nodejs": 40000,
 					"safari": 90000
-				}
-			},
-			"reduce": {
-				"#": {
-					"chrome": 3,
-					"firefox": 3,
-					"nodejs": 1000,
-					"safari": 40000
-				}
-			},
-			"reduceRight": {
-				"#": {
-					"chrome": 3,
-					"firefox": 3,
-					"nodejs": 1000,
-					"safari": 40000
-				}
-			},
-			"some": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
 				}
 			},
 			"sort": {
@@ -331,12 +251,6 @@
 				}
 			},
 			"ArrayBuffer": {
-				"#": {
-					"chrome": 7,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
-				},
 				"maxByteLength_option": {
 					"#": {
 						"chrome": 111,
@@ -351,20 +265,6 @@
 						"nodejs": 1200,
 						"safari": 50100
 					}
-				}
-			},
-			"#": {
-				"chrome": 7,
-				"firefox": 4,
-				"nodejs": 1000,
-				"safari": 50100
-			},
-			"byteLength": {
-				"#": {
-					"chrome": 7,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
 				}
 			},
 			"detached": {
@@ -722,12 +622,6 @@
 		},
 		"DataView": {
 			"DataView": {
-				"#": {
-					"chrome": 9,
-					"firefox": 15,
-					"nodejs": 1000,
-					"safari": 50100
-				},
 				"new_required": {
 					"#": {
 						"chrome": 11,
@@ -745,41 +639,13 @@
 					}
 				}
 			},
-			"#": {
-				"chrome": 9,
-				"firefox": 15,
-				"nodejs": 1000,
-				"safari": 50100
-			},
 			"buffer": {
-				"#": {
-					"chrome": 9,
-					"firefox": 15,
-					"nodejs": 1000,
-					"safari": 50100
-				},
 				"sharedarraybuffer_support": {
 					"#": {
 						"chrome": 60,
 						"firefox": 79,
 						"nodejs": 81000
 					}
-				}
-			},
-			"byteLength": {
-				"#": {
-					"chrome": 9,
-					"firefox": 15,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"byteOffset": {
-				"#": {
-					"chrome": 9,
-					"firefox": 15,
-					"nodejs": 1000,
-					"safari": 50100
 				}
 			},
 			"getBigInt64": {
@@ -798,70 +664,6 @@
 					"safari": 150000
 				}
 			},
-			"getFloat32": {
-				"#": {
-					"chrome": 9,
-					"firefox": 15,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"getFloat64": {
-				"#": {
-					"chrome": 9,
-					"firefox": 15,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"getInt16": {
-				"#": {
-					"chrome": 9,
-					"firefox": 15,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"getInt32": {
-				"#": {
-					"chrome": 9,
-					"firefox": 15,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"getInt8": {
-				"#": {
-					"chrome": 9,
-					"firefox": 15,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"getUint16": {
-				"#": {
-					"chrome": 9,
-					"firefox": 15,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"getUint32": {
-				"#": {
-					"chrome": 9,
-					"firefox": 15,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"getUint8": {
-				"#": {
-					"chrome": 9,
-					"firefox": 15,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
 			"setBigInt64": {
 				"#": {
 					"chrome": 67,
@@ -876,70 +678,6 @@
 					"firefox": 68,
 					"nodejs": 100400,
 					"safari": 150000
-				}
-			},
-			"setFloat32": {
-				"#": {
-					"chrome": 9,
-					"firefox": 15,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"setFloat64": {
-				"#": {
-					"chrome": 9,
-					"firefox": 15,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"setInt16": {
-				"#": {
-					"chrome": 9,
-					"firefox": 15,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"setInt32": {
-				"#": {
-					"chrome": 9,
-					"firefox": 15,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"setInt8": {
-				"#": {
-					"chrome": 9,
-					"firefox": 15,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"setUint16": {
-				"#": {
-					"chrome": 9,
-					"firefox": 15,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"setUint32": {
-				"#": {
-					"chrome": 9,
-					"firefox": 15,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"setUint8": {
-				"#": {
-					"chrome": 9,
-					"firefox": 15,
-					"nodejs": 1000,
-					"safari": 50100
 				}
 			}
 		},
@@ -962,14 +700,6 @@
 					}
 				}
 			},
-			"now": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 40000
-				}
-			},
 			"parse": {
 				"iso_8601": {
 					"#": {
@@ -978,22 +708,6 @@
 						"nodejs": 1200,
 						"safari": 50100
 					}
-				}
-			},
-			"toISOString": {
-				"#": {
-					"chrome": 3,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 40000
-				}
-			},
-			"toJSON": {
-				"#": {
-					"chrome": 3,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 40000
 				}
 			},
 			"toLocaleDateString": {
@@ -1124,14 +838,6 @@
 					"chrome": 77,
 					"firefox": 103
 				}
-			},
-			"stack": {
-				"#": {
-					"chrome": 3,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 60000
-				}
 			}
 		},
 		"EvalError": {
@@ -1182,12 +888,6 @@
 		},
 		"Float32Array": {
 			"Float32Array": {
-				"#": {
-					"chrome": 7,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
-				},
 				"constructor_without_parameters": {
 					"#": {
 						"chrome": 7,
@@ -1212,22 +912,10 @@
 						"safari": 50100
 					}
 				}
-			},
-			"#": {
-				"chrome": 7,
-				"firefox": 4,
-				"nodejs": 1000,
-				"safari": 50100
 			}
 		},
 		"Float64Array": {
 			"Float64Array": {
-				"#": {
-					"chrome": 7,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
-				},
 				"constructor_without_parameters": {
 					"#": {
 						"chrome": 7,
@@ -1252,12 +940,6 @@
 						"safari": 50100
 					}
 				}
-			},
-			"#": {
-				"chrome": 7,
-				"firefox": 4,
-				"nodejs": 1000,
-				"safari": 50100
 			}
 		},
 		"Function": {
@@ -1267,32 +949,6 @@
 					"firefox": 50,
 					"nodejs": 60500,
 					"safari": 100000
-				}
-			},
-			"apply": {
-				"generic_arrays_as_arguments": {
-					"#": {
-						"chrome": 17,
-						"firefox": 4,
-						"nodejs": 1000,
-						"safari": 60000
-					}
-				}
-			},
-			"bind": {
-				"#": {
-					"chrome": 7,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"caller": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
 				}
 			},
 			"displayName": {
@@ -1311,12 +967,6 @@
 				}
 			},
 			"name": {
-				"#": {
-					"chrome": 15,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 60000
-				},
 				"configurable_true": {
 					"#": {
 						"chrome": 43,
@@ -1393,12 +1043,6 @@
 		},
 		"Int16Array": {
 			"Int16Array": {
-				"#": {
-					"chrome": 7,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
-				},
 				"constructor_without_parameters": {
 					"#": {
 						"chrome": 7,
@@ -1423,22 +1067,10 @@
 						"safari": 50100
 					}
 				}
-			},
-			"#": {
-				"chrome": 7,
-				"firefox": 4,
-				"nodejs": 1000,
-				"safari": 50100
 			}
 		},
 		"Int32Array": {
 			"Int32Array": {
-				"#": {
-					"chrome": 7,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
-				},
 				"constructor_without_parameters": {
 					"#": {
 						"chrome": 7,
@@ -1463,22 +1095,10 @@
 						"safari": 50100
 					}
 				}
-			},
-			"#": {
-				"chrome": 7,
-				"firefox": 4,
-				"nodejs": 1000,
-				"safari": 50100
 			}
 		},
 		"Int8Array": {
 			"Int8Array": {
-				"#": {
-					"chrome": 7,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
-				},
 				"constructor_without_parameters": {
 					"#": {
 						"chrome": 7,
@@ -1503,12 +1123,6 @@
 						"safari": 50100
 					}
 				}
-			},
-			"#": {
-				"chrome": 7,
-				"firefox": 4,
-				"nodejs": 1000,
-				"safari": 50100
 			}
 		},
 		"InternalError": {
@@ -2662,12 +2276,6 @@
 			}
 		},
 		"JSON": {
-			"#": {
-				"chrome": 3,
-				"firefox": 3,
-				"nodejs": 1000,
-				"safari": 40000
-			},
 			"json_superset": {
 				"#": {
 					"chrome": 66,
@@ -2676,21 +2284,7 @@
 					"safari": 120000
 				}
 			},
-			"parse": {
-				"#": {
-					"chrome": 3,
-					"firefox": 3,
-					"nodejs": 1000,
-					"safari": 40000
-				}
-			},
 			"stringify": {
-				"#": {
-					"chrome": 3,
-					"firefox": 3,
-					"nodejs": 1000,
-					"safari": 40000
-				},
 				"well_formed_stringify": {
 					"#": {
 						"chrome": 72,
@@ -3070,22 +2664,6 @@
 					"safari": 90000
 				}
 			},
-			"toExponential": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 20000
-				}
-			},
-			"toFixed": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 20000
-				}
-			},
 			"toLocaleString": {
 				"locales": {
 					"#": {
@@ -3103,14 +2681,6 @@
 						"safari": 100000
 					}
 				}
-			},
-			"toPrecision": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 20000
-				}
 			}
 		},
 		"Object": {
@@ -3122,60 +2692,12 @@
 					"safari": 90000
 				}
 			},
-			"create": {
-				"#": {
-					"chrome": 5,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50000
-				}
-			},
-			"defineGetter": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
-				}
-			},
-			"defineProperties": {
-				"#": {
-					"chrome": 5,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50000
-				}
-			},
-			"defineProperty": {
-				"#": {
-					"chrome": 5,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"defineSetter": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
-				}
-			},
 			"entries": {
 				"#": {
 					"chrome": 54,
 					"firefox": 47,
 					"nodejs": 70000,
 					"safari": 100100
-				}
-			},
-			"freeze": {
-				"#": {
-					"chrome": 6,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
 				}
 			},
 			"fromEntries": {
@@ -3186,14 +2708,6 @@
 					"safari": 120100
 				}
 			},
-			"getOwnPropertyDescriptor": {
-				"#": {
-					"chrome": 5,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50000
-				}
-			},
 			"getOwnPropertyDescriptors": {
 				"#": {
 					"chrome": 54,
@@ -3202,28 +2716,12 @@
 					"safari": 100000
 				}
 			},
-			"getOwnPropertyNames": {
-				"#": {
-					"chrome": 5,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50000
-				}
-			},
 			"getOwnPropertySymbols": {
 				"#": {
 					"chrome": 38,
 					"firefox": 36,
 					"nodejs": 1200,
 					"safari": 90000
-				}
-			},
-			"getPrototypeOf": {
-				"#": {
-					"chrome": 5,
-					"firefox": 3,
-					"nodejs": 1000,
-					"safari": 50000
 				}
 			},
 			"groupBy": {
@@ -3240,76 +2738,12 @@
 					"safari": 150400
 				}
 			},
-			"hasOwnProperty": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
-				}
-			},
 			"is": {
 				"#": {
 					"chrome": 19,
 					"firefox": 22,
 					"nodejs": 1000,
 					"safari": 90000
-				}
-			},
-			"isExtensible": {
-				"#": {
-					"chrome": 6,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"isFrozen": {
-				"#": {
-					"chrome": 6,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"isPrototypeOf": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
-				}
-			},
-			"isSealed": {
-				"#": {
-					"chrome": 6,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"keys": {
-				"#": {
-					"chrome": 5,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50000
-				}
-			},
-			"lookupGetter": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
-				}
-			},
-			"lookupSetter": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
 				}
 			},
 			"preventExtensions": {
@@ -3320,36 +2754,6 @@
 						"nodejs": 40000,
 						"safari": 90000
 					}
-				},
-				"#": {
-					"chrome": 6,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"propertyIsEnumerable": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
-				}
-			},
-			"proto": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
-				}
-			},
-			"seal": {
-				"#": {
-					"chrome": 6,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
 				}
 			},
 			"setPrototypeOf": {
@@ -3777,14 +3181,6 @@
 					"safari": 100000
 				}
 			},
-			"compile": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30100
-				}
-			},
 			"dotAll": {
 				"#": {
 					"chrome": 62,
@@ -3829,38 +3225,6 @@
 					}
 				}
 			},
-			"input": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
-				}
-			},
-			"lastMatch": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
-				}
-			},
-			"lastParen": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
-				}
-			},
-			"leftContext": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
-				}
-			},
 			"multiline": {
 				"prototype_accessor": {
 					"#": {
@@ -3869,14 +3233,6 @@
 						"nodejs": 60000,
 						"safari": 10300
 					}
-				}
-			},
-			"rightContext": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
 				}
 			},
 			"source": {
@@ -4245,12 +3601,6 @@
 				}
 			},
 			"localeCompare": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 30000
-				},
 				"locales": {
 					"#": {
 						"chrome": 24,
@@ -4338,12 +3688,6 @@
 				}
 			},
 			"toLocaleLowerCase": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 10300
-				},
 				"locale": {
 					"#": {
 						"chrome": 58,
@@ -4354,12 +3698,6 @@
 				}
 			},
 			"toLocaleUpperCase": {
-				"#": {
-					"chrome": 1,
-					"firefox": 1,
-					"nodejs": 1000,
-					"safari": 10300
-				},
 				"locale": {
 					"#": {
 						"chrome": 58,
@@ -4375,14 +3713,6 @@
 					"firefox": 119,
 					"nodejs": 200000,
 					"safari": 160400
-				}
-			},
-			"trim": {
-				"#": {
-					"chrome": 4,
-					"firefox": 3,
-					"nodejs": 1000,
-					"safari": 50000
 				}
 			},
 			"trimEnd": {
@@ -5524,50 +4854,12 @@
 					"safari": 100000
 				}
 			},
-			"BYTES_PER_ELEMENT": {
-				"#": {
-					"chrome": 7,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"#": {
-				"chrome": 7,
-				"firefox": 4,
-				"nodejs": 1000,
-				"safari": 50100
-			},
 			"at": {
 				"#": {
 					"chrome": 92,
 					"firefox": 90,
 					"nodejs": 160600,
 					"safari": 150400
-				}
-			},
-			"buffer": {
-				"#": {
-					"chrome": 7,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"byteLength": {
-				"#": {
-					"chrome": 7,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
-			"byteOffset": {
-				"#": {
-					"chrome": 7,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
 				}
 			},
 			"constructor_without_parameters": {
@@ -5720,28 +5012,12 @@
 					"safari": 100000
 				}
 			},
-			"length": {
-				"#": {
-					"chrome": 7,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
-				}
-			},
 			"map": {
 				"#": {
 					"chrome": 45,
 					"firefox": 38,
 					"nodejs": 40000,
 					"safari": 90100
-				}
-			},
-			"name": {
-				"#": {
-					"chrome": 7,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
 				}
 			},
 			"named_properties": {
@@ -5790,14 +5066,6 @@
 					"firefox": 37,
 					"nodejs": 40000,
 					"safari": 100000
-				}
-			},
-			"set": {
-				"#": {
-					"chrome": 7,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
 				}
 			},
 			"slice": {
@@ -5891,12 +5159,6 @@
 		},
 		"Uint16Array": {
 			"Uint16Array": {
-				"#": {
-					"chrome": 7,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
-				},
 				"constructor_without_parameters": {
 					"#": {
 						"chrome": 7,
@@ -5921,22 +5183,10 @@
 						"safari": 50100
 					}
 				}
-			},
-			"#": {
-				"chrome": 7,
-				"firefox": 4,
-				"nodejs": 1000,
-				"safari": 50100
 			}
 		},
 		"Uint32Array": {
 			"Uint32Array": {
-				"#": {
-					"chrome": 7,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
-				},
 				"constructor_without_parameters": {
 					"#": {
 						"chrome": 7,
@@ -5961,22 +5211,10 @@
 						"safari": 50100
 					}
 				}
-			},
-			"#": {
-				"chrome": 7,
-				"firefox": 4,
-				"nodejs": 1000,
-				"safari": 50100
 			}
 		},
 		"Uint8Array": {
 			"Uint8Array": {
-				"#": {
-					"chrome": 7,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
-				},
 				"constructor_without_parameters": {
 					"#": {
 						"chrome": 7,
@@ -6001,22 +5239,10 @@
 						"safari": 50100
 					}
 				}
-			},
-			"#": {
-				"chrome": 7,
-				"firefox": 4,
-				"nodejs": 1000,
-				"safari": 50100
 			}
 		},
 		"Uint8ClampedArray": {
 			"Uint8ClampedArray": {
-				"#": {
-					"chrome": 7,
-					"firefox": 4,
-					"nodejs": 1000,
-					"safari": 50100
-				},
 				"constructor_without_parameters": {
 					"#": {
 						"chrome": 7,
@@ -6041,12 +5267,6 @@
 						"safari": 50100
 					}
 				}
-			},
-			"#": {
-				"chrome": 7,
-				"firefox": 4,
-				"nodejs": 1000,
-				"safari": 50100
 			}
 		},
 		"WeakMap": {
@@ -6565,38 +5785,6 @@
 					"nodejs": 80000,
 					"safari": 110000
 				}
-			}
-		},
-		"decodeURI": {
-			"#": {
-				"chrome": 1,
-				"firefox": 1,
-				"nodejs": 1000,
-				"safari": 10100
-			}
-		},
-		"decodeURIComponent": {
-			"#": {
-				"chrome": 1,
-				"firefox": 1,
-				"nodejs": 1000,
-				"safari": 10100
-			}
-		},
-		"encodeURI": {
-			"#": {
-				"chrome": 1,
-				"firefox": 1,
-				"nodejs": 1000,
-				"safari": 10100
-			}
-		},
-		"encodeURIComponent": {
-			"#": {
-				"chrome": 1,
-				"firefox": 1,
-				"nodejs": 1000,
-				"safari": 10100
 			}
 		},
 		"globalThis": {
