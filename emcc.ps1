@@ -16,7 +16,7 @@ $launcher = $env:EMSDK_PYTHON
 $launcherArgs = @()
 if (!$launcher) {
   # Use the global Python launcher that manages all Python installations.
-  $launcher = py
+  $launcher = Get-Command py.exe
   # ...but ask for Python 3
   $launcherArgs += '-3'
 }
