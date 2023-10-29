@@ -18,7 +18,10 @@ def traverse_bcd(obj):
   for key, value in obj.items():
     if not key.startswith('__'):
       # If it's a feature group, traverse it recursively.
-      out[key] = traverse_bcd(value)
+      value = traverse_bcd(value)
+      # Only add if it's not empty.
+      if value:
+        out[key] = value
     elif key == '__compat':
       # If it's a feature, parse its compat data into just minimum versions of the browsers.
       out_value = {}

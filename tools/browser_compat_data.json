@@ -54,7 +54,6 @@
 					"safari": 100000
 				}
 			},
-			"Array": {},
 			"at": {
 				"#": {
 					"chrome": 92,
@@ -63,7 +62,6 @@
 					"safari": 150400
 				}
 			},
-			"concat": {},
 			"copyWithin": {
 				"#": {
 					"chrome": 45,
@@ -198,7 +196,6 @@
 					"safari": 50000
 				}
 			},
-			"join": {},
 			"keys": {
 				"#": {
 					"chrome": 38,
@@ -215,7 +212,6 @@
 					"safari": 30000
 				}
 			},
-			"length": {},
 			"map": {
 				"#": {
 					"chrome": 1,
@@ -232,8 +228,6 @@
 					"safari": 90000
 				}
 			},
-			"pop": {},
-			"push": {},
 			"reduce": {
 				"#": {
 					"chrome": 3,
@@ -250,9 +244,6 @@
 					"safari": 40000
 				}
 			},
-			"reverse": {},
-			"shift": {},
-			"slice": {},
 			"some": {
 				"#": {
 					"chrome": 1,
@@ -271,7 +262,6 @@
 					}
 				}
 			},
-			"splice": {},
 			"toLocaleString": {
 				"locales_parameter": {
 					"#": {
@@ -314,8 +304,6 @@
 					"safari": 160000
 				}
 			},
-			"toString": {},
-			"unshift": {},
 			"values": {
 				"#": {
 					"chrome": 66,
@@ -732,11 +720,6 @@
 				"safari": 150000
 			}
 		},
-		"Boolean": {
-			"Boolean": {},
-			"toString": {},
-			"valueOf": {}
-		},
 		"DataView": {
 			"DataView": {
 				"#": {
@@ -969,7 +952,6 @@
 					"safari": 100000
 				}
 			},
-			"Date": {},
 			"UTC": {
 				"optional_monthIndex": {
 					"#": {
@@ -980,25 +962,6 @@
 					}
 				}
 			},
-			"getDate": {},
-			"getDay": {},
-			"getFullYear": {},
-			"getHours": {},
-			"getMilliseconds": {},
-			"getMinutes": {},
-			"getMonth": {},
-			"getSeconds": {},
-			"getTime": {},
-			"getTimezoneOffset": {},
-			"getUTCDate": {},
-			"getUTCDay": {},
-			"getUTCFullYear": {},
-			"getUTCHours": {},
-			"getUTCMilliseconds": {},
-			"getUTCMinutes": {},
-			"getUTCMonth": {},
-			"getUTCSeconds": {},
-			"getYear": {},
 			"now": {
 				"#": {
 					"chrome": 1,
@@ -1017,24 +980,6 @@
 					}
 				}
 			},
-			"setDate": {},
-			"setFullYear": {},
-			"setHours": {},
-			"setMilliseconds": {},
-			"setMinutes": {},
-			"setMonth": {},
-			"setSeconds": {},
-			"setTime": {},
-			"setUTCDate": {},
-			"setUTCFullYear": {},
-			"setUTCHours": {},
-			"setUTCMilliseconds": {},
-			"setUTCMinutes": {},
-			"setUTCMonth": {},
-			"setUTCSeconds": {},
-			"setYear": {},
-			"toDateString": {},
-			"toGMTString": {},
 			"toISOString": {
 				"#": {
 					"chrome": 3,
@@ -1128,11 +1073,7 @@
 						"safari": 100000
 					}
 				}
-			},
-			"toString": {},
-			"toTimeString": {},
-			"toUTCString": {},
-			"valueOf": {}
+			}
 		},
 		"Error": {
 			"Error": {
@@ -1178,8 +1119,6 @@
 					"firefox": 1
 				}
 			},
-			"message": {},
-			"name": {},
 			"serializable_object": {
 				"#": {
 					"chrome": 77,
@@ -1193,11 +1132,9 @@
 					"nodejs": 1000,
 					"safari": 60000
 				}
-			},
-			"toString": {}
+			}
 		},
 		"EvalError": {
-			"EvalError": {},
 			"serializable_object": {
 				"#": {
 					"chrome": 77,
@@ -1332,7 +1269,6 @@
 					"safari": 100000
 				}
 			},
-			"Function": {},
 			"apply": {
 				"generic_arrays_as_arguments": {
 					"#": {
@@ -1343,7 +1279,6 @@
 					}
 				}
 			},
-			"arguments": {},
 			"bind": {
 				"#": {
 					"chrome": 7,
@@ -1352,7 +1287,6 @@
 					"safari": 50100
 				}
 			},
-			"call": {},
 			"caller": {
 				"#": {
 					"chrome": 1,
@@ -1457,7 +1391,6 @@
 				"safari": 100000
 			}
 		},
-		"Infinity": {},
 		"Int16Array": {
 			"Int16Array": {
 				"#": {
@@ -2927,16 +2860,6 @@
 			}
 		},
 		"Math": {
-			"E": {},
-			"LN10": {},
-			"LN2": {},
-			"LOG10E": {},
-			"LOG2E": {},
-			"PI": {},
-			"SQRT1_2": {},
-			"SQRT2": {},
-			"abs": {},
-			"acos": {},
 			"acosh": {
 				"#": {
 					"chrome": 38,
@@ -2945,7 +2868,6 @@
 					"safari": 80000
 				}
 			},
-			"asin": {},
 			"asinh": {
 				"#": {
 					"chrome": 38,
@@ -2954,8 +2876,6 @@
 					"safari": 80000
 				}
 			},
-			"atan": {},
-			"atan2": {},
 			"atanh": {
 				"#": {
 					"chrome": 38,
@@ -2972,7 +2892,6 @@
 					"safari": 80000
 				}
 			},
-			"ceil": {},
 			"clz32": {
 				"#": {
 					"chrome": 38,
@@ -2981,7 +2900,6 @@
 					"safari": 70000
 				}
 			},
-			"cos": {},
 			"cosh": {
 				"#": {
 					"chrome": 38,
@@ -2990,7 +2908,6 @@
 					"safari": 80000
 				}
 			},
-			"exp": {},
 			"expm1": {
 				"#": {
 					"chrome": 38,
@@ -2999,7 +2916,6 @@
 					"safari": 80000
 				}
 			},
-			"floor": {},
 			"fround": {
 				"#": {
 					"chrome": 38,
@@ -3024,7 +2940,6 @@
 					"safari": 70000
 				}
 			},
-			"log": {},
 			"log10": {
 				"#": {
 					"chrome": 38,
@@ -3049,11 +2964,6 @@
 					"safari": 80000
 				}
 			},
-			"max": {},
-			"min": {},
-			"pow": {},
-			"random": {},
-			"round": {},
 			"sign": {
 				"#": {
 					"chrome": 38,
@@ -3062,7 +2972,6 @@
 					"safari": 90000
 				}
 			},
-			"sin": {},
 			"sinh": {
 				"#": {
 					"chrome": 38,
@@ -3071,8 +2980,6 @@
 					"safari": 80000
 				}
 			},
-			"sqrt": {},
-			"tan": {},
 			"tanh": {
 				"#": {
 					"chrome": 38,
@@ -3090,7 +2997,6 @@
 				}
 			}
 		},
-		"NaN": {},
 		"Number": {
 			"EPSILON": {
 				"#": {
@@ -3108,7 +3014,6 @@
 					"safari": 90000
 				}
 			},
-			"MAX_VALUE": {},
 			"MIN_SAFE_INTEGER": {
 				"#": {
 					"chrome": 34,
@@ -3117,11 +3022,6 @@
 					"safari": 90000
 				}
 			},
-			"MIN_VALUE": {},
-			"NEGATIVE_INFINITY": {},
-			"NaN": {},
-			"Number": {},
-			"POSITIVE_INFINITY": {},
 			"isFinite": {
 				"#": {
 					"chrome": 19,
@@ -3211,12 +3111,9 @@
 					"nodejs": 1000,
 					"safari": 20000
 				}
-			},
-			"toString": {},
-			"valueOf": {}
+			}
 		},
 		"Object": {
-			"Object": {},
 			"assign": {
 				"#": {
 					"chrome": 45,
@@ -3225,7 +3122,6 @@
 					"safari": 90000
 				}
 			},
-			"constructor": {},
 			"create": {
 				"#": {
 					"chrome": 5,
@@ -3464,9 +3360,6 @@
 					"safari": 90000
 				}
 			},
-			"toLocaleString": {},
-			"toString": {},
-			"valueOf": {},
 			"values": {
 				"#": {
 					"chrome": 54,
@@ -3708,7 +3601,6 @@
 			}
 		},
 		"RangeError": {
-			"RangeError": {},
 			"serializable_object": {
 				"#": {
 					"chrome": 77,
@@ -3717,7 +3609,6 @@
 			}
 		},
 		"ReferenceError": {
-			"ReferenceError": {},
 			"serializable_object": {
 				"#": {
 					"chrome": 77,
@@ -3886,7 +3777,6 @@
 					"safari": 100000
 				}
 			},
-			"RegExp": {},
 			"compile": {
 				"#": {
 					"chrome": 1,
@@ -3903,7 +3793,6 @@
 					"safari": 110100
 				}
 			},
-			"exec": {},
 			"flags": {
 				"#": {
 					"chrome": 49,
@@ -3948,7 +3837,6 @@
 					"safari": 30000
 				}
 			},
-			"lastIndex": {},
 			"lastMatch": {
 				"#": {
 					"chrome": 1,
@@ -3983,7 +3871,6 @@
 					}
 				}
 			},
-			"n": {},
 			"rightContext": {
 				"#": {
 					"chrome": 1,
@@ -4042,7 +3929,6 @@
 					}
 				}
 			},
-			"test": {},
 			"toString": {
 				"escaping": {
 					"#": {
@@ -4310,8 +4196,6 @@
 					"safari": 90000
 				}
 			},
-			"String": {},
-			"anchor": {},
 			"at": {
 				"#": {
 					"chrome": 92,
@@ -4320,11 +4204,6 @@
 					"safari": 150400
 				}
 			},
-			"big": {},
-			"blink": {},
-			"bold": {},
-			"charAt": {},
-			"charCodeAt": {},
 			"codePointAt": {
 				"#": {
 					"chrome": 41,
@@ -4333,7 +4212,6 @@
 					"safari": 90000
 				}
 			},
-			"concat": {},
 			"endsWith": {
 				"#": {
 					"chrome": 41,
@@ -4342,10 +4220,6 @@
 					"safari": 90000
 				}
 			},
-			"fixed": {},
-			"fontcolor": {},
-			"fontsize": {},
-			"fromCharCode": {},
 			"fromCodePoint": {
 				"#": {
 					"chrome": 41,
@@ -4362,7 +4236,6 @@
 					"safari": 90000
 				}
 			},
-			"indexOf": {},
 			"isWellFormed": {
 				"#": {
 					"chrome": 111,
@@ -4371,10 +4244,6 @@
 					"safari": 160400
 				}
 			},
-			"italics": {},
-			"lastIndexOf": {},
-			"length": {},
-			"link": {},
 			"localeCompare": {
 				"#": {
 					"chrome": 1,
@@ -4399,7 +4268,6 @@
 					}
 				}
 			},
-			"match": {},
 			"matchAll": {
 				"#": {
 					"chrome": 73,
@@ -4448,7 +4316,6 @@
 					"safari": 90000
 				}
 			},
-			"replace": {},
 			"replaceAll": {
 				"#": {
 					"chrome": 85,
@@ -4462,9 +4329,6 @@
 					"#": {}
 				}
 			},
-			"slice": {},
-			"small": {},
-			"split": {},
 			"startsWith": {
 				"#": {
 					"chrome": 41,
@@ -4473,11 +4337,6 @@
 					"safari": 90000
 				}
 			},
-			"strike": {},
-			"sub": {},
-			"substr": {},
-			"substring": {},
-			"sup": {},
 			"toLocaleLowerCase": {
 				"#": {
 					"chrome": 1,
@@ -4510,9 +4369,6 @@
 					}
 				}
 			},
-			"toLowerCase": {},
-			"toString": {},
-			"toUpperCase": {},
 			"toWellFormed": {
 				"#": {
 					"chrome": 111,
@@ -4552,8 +4408,7 @@
 					"nodejs": 1000,
 					"safari": 10000
 				}
-			},
-			"valueOf": {}
+			}
 		},
 		"Symbol": {
 			"@@toPrimitive": {
@@ -4731,7 +4586,6 @@
 			}
 		},
 		"SyntaxError": {
-			"SyntaxError": {},
 			"serializable_object": {
 				"#": {
 					"chrome": 77,
@@ -5646,7 +5500,6 @@
 			"#": {}
 		},
 		"TypeError": {
-			"TypeError": {},
 			"serializable_object": {
 				"#": {
 					"chrome": 77,
@@ -6029,7 +5882,6 @@
 			}
 		},
 		"URIError": {
-			"URIError": {},
 			"serializable_object": {
 				"#": {
 					"chrome": 77,
@@ -6747,8 +6599,6 @@
 				"safari": 10100
 			}
 		},
-		"escape": {},
-		"eval": {},
 		"globalThis": {
 			"#": {
 				"chrome": 71,
@@ -6757,9 +6607,6 @@
 				"safari": 120100
 			}
 		},
-		"isFinite": {},
-		"isNaN": {},
-		"parseFloat": {},
 		"parseInt": {
 			"leading_zero_strings_as_decimal": {
 				"#": {
@@ -6770,8 +6617,6 @@
 				}
 			}
 		},
-		"undefined": {},
-		"unescape": {},
 		"AudioWorklet": {
 			"#": {
 				"chrome": 66,
