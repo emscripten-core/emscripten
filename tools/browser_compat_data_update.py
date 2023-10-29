@@ -18,8 +18,6 @@ interesting_browsers = ["chrome", "firefox", "safari", "nodejs"]
 # Minimum browser year we're interested in feature-testing.
 # TODO: make it (much) higher.
 min_interesting_year = 2013
-# This is automatically filled below.
-min_interesting_versions = {}
 
 
 # Traverse the data structure. Find objects that have `__compat` key.
@@ -74,12 +72,14 @@ out = {}
 # Pull JavaScript builtins support from MDN's Browser Compat Data.
 data = requests.get("https://unpkg.com/@mdn/browser-compat-data/data.json").json()
 # Fill minimum browser versions based on year.
-for browser in interesting_browsers:
-    min_interesting_versions[browser] = min(
+min_interesting_versions = {
+    browser: min(
         parse_version(version, browser)
         for version, release in data["browsers"][browser]["releases"].items()
         if "release_date" in release and int(release["release_date"][:4]) >= min_interesting_year
     )
+    for browser in interesting_browsers
+}
 print("Minimum interesting versions: ", min_interesting_versions)
 out["js"] = traverse_bcd(data["javascript"]["builtins"])
 # There are a lot of browser APIs and very few we care about, so only pull them to keep JSON small.
