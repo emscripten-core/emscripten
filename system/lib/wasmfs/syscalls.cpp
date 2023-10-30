@@ -345,6 +345,15 @@ backend_t wasmfs_get_backend_by_path(const char* path) {
   return parsed.getFile()->getBackend();
 }
 
+file_t wasmfs_get_file_by_path(const char* path) {
+  auto parsed = path::parseFile(path);
+  if (parsed.getError()) {
+    // Could not find the file.
+    return NullFile;
+  }
+  return parsed.getFile().get();
+}
+
 static timespec ms_to_timespec(double ms) {
   long long seconds = ms / 1000;
   timespec ts;

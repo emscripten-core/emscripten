@@ -29,11 +29,15 @@ namespace wasmfs {
 class Backend;
 class Directory;
 class Symlink;
+class File;
 
 // This represents an opaque pointer to a Backend. A user may use this to
 // specify a backend in file operations.
 using backend_t = Backend*;
 const backend_t NullBackend = nullptr;
+
+using file_t = File*;
+const file_t NullFile = nullptr;
 
 // Access mode, file creation and file status flags for open.
 using oflags_t = uint32_t;

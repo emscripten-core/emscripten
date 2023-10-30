@@ -6,9 +6,12 @@
 
 addToLibrary({
 #if WASMFS
+  // Maps File pointers from C++ to the Blob data we have for them.
+  $WORKERFS$files: {},
+
   $WORKERFS__deps: [
     '$stringToUTF8OnStack', 'wasmfs_create_jsimpl_backend', '$wasmFS$backends',
-    '$PATH',
+    '$WORKERFS$files', '$PATH'
   ],
 #else
   $WORKERFS__deps: ['$FS'],
@@ -104,10 +107,13 @@ addToLibrary({
         FS.mkdir(path, mode);
       } else {
         console.log('maek file', path);
-        withStackSave(() => (
-          _wasmfs_create_file(stringToUTF8OnStack(path), mode, WORKERFS.backend)
-        ));
-        // XXX contents!
+        var fileIndex;
+        withStackSave(() => {
+          var stackPath = stringToUTF8OnStack(path);
+          _wasmfs_create_file(stackPath, mode, WORKERFS.backend)
+          fileIndex = _wasmfs_get_file_index(stackPath);
+        });
+        WORKERFS$files[fileIndex] = contents;
       }
     },
 #else

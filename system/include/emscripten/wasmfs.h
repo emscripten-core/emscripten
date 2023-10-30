@@ -16,11 +16,16 @@ extern "C" {
 
 typedef struct Backend* backend_t;
 
+typedef struct File* file_t;
+
 // Obtains the backend_t of a specified path.
 backend_t wasmfs_get_backend_by_path(char* path __attribute__((nonnull)));
 
 // Obtains the backend_t of a specified fd.
 backend_t wasmfs_get_backend_by_fd(int fd);
+
+// Obtains the file_t of a specified path.
+file_t wasmfs_get_file_by_path(char* path __attribute__((nonnull)));
 
 // Creates and opens a new file in the new file system under a specific backend.
 // Returns the file descriptor for the new file like `open`. Returns a negative
