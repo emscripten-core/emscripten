@@ -113,6 +113,7 @@ addToLibrary({
           _wasmfs_create_file(stackPath, mode, WORKERFS.backend)
           fileIndex = _wasmfs_get_file_index(stackPath);
         });
+        console.log('  file index', fileIndex);
         WORKERFS$files[fileIndex] = contents;
       }
     },
