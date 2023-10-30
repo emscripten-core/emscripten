@@ -655,7 +655,7 @@ for name in names:
   js_impl_methods: List[str] = []
 
   cons = interface.getExtendedAttribute('Constructor')
-  if type(cons) == list:
+  if type(cons) is list:
     raise Exception('do not use "Constructor", instead create methods with the name of the interface')
 
   js_impl = interface.getExtendedAttribute('JSImplementation')
