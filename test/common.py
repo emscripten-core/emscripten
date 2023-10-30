@@ -867,7 +867,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def set_setting(self, key, value=1):
     if value is None:
       self.clear_setting(key)
-    if type(value) == bool:
+    if type(value) is bool:
       value = int(value)
     self.settings_mods[key] = value
 
@@ -882,7 +882,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     for key, value in self.settings_mods.items():
       if value == 1:
         ret.append(f'-s{key}')
-      elif type(value) == list:
+      elif type(value) is list:
         ret.append(f'-s{key}={",".join(value)}')
       else:
         ret.append(f'-s{key}={value}')
@@ -1213,7 +1213,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       string = string()
 
     if regex:
-      if type(values) == str:
+      if type(values) is str:
         self.assertTrue(re.search(values, string), 'Expected regex "%s" to match on:\n%s' % (values, string))
       else:
         match_any = any(re.search(o, string) for o in values)
