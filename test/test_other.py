@@ -2862,53 +2862,52 @@ int f() {
 
   @is_slow_test
   @parameterized({
-    '': [[]],
-    'no_utf8': [['-sEMBIND_STD_STRING_IS_UTF8=0']],
-    'no_dynamic': [['-sDYNAMIC_EXECUTION=0']],
+    '': [],
+    'no_utf8': ['-sEMBIND_STD_STRING_IS_UTF8=0'],
+    'no_dynamic': ['-sDYNAMIC_EXECUTION=0'],
   })
-  @with_env_modify({'EMCC_CLOSURE_ARGS': '--externs ' + shlex.quote(test_file('embind/underscore-externs.js'))})
-  def test_embind(self, extra_args):
-    test_cases = [
-      (['-lembind']),
-      # Ensure embind compiles under C++17 where "noexcept" became part of the function signature.
-      (['-lembind', '-std=c++17']),
-      (['-lembind', '-O1']),
-      (['-lembind', '-O2']),
-      (['-lembind', '-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')]),
-      (['-lembind', '-O2', '--closure=1']),
+  @parameterized({
+    '': [],
+    # Ensure embind compiles under C++17 where "noexcept" became part of the function signature.
+    'cxx17': ['-std=c++17'],
+    'o1': ['-O1'],
+    'o2': ['-O2'],
+    'o2_mem_growth': ['-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')],
+    'o2_closure': ['-O2', '--closure=1', '--closure-args', '--externs ' + shlex.quote(test_file('embind/underscore-externs.js'))],
+  })
+  def test_embind(self, *extra_args):
+    self.emcc_args += [
+      '-lembind',
+      '-sRETAIN_COMPILER_SETTINGS',
+      '-sEXPORTED_RUNTIME_METHODS=getCompilerSetting',
+      '-sWASM_ASYNC_COMPILATION=0',
+      # This test uses a `CustomSmartPtr` class which has 1MB of data embedded in
+      # it which means we need more stack space than normal.
+      '-sSTACK_SIZE=2MB',
+      '--pre-js', test_file('embind/test.pre.js'),
+      '--post-js', test_file('embind/test.post.js'),
     ]
-    extra_args = extra_args + ['-sRETAIN_COMPILER_SETTINGS', '-sEXPORTED_RUNTIME_METHODS=getCompilerSetting']
-    test_cases = [t + extra_args for t in test_cases]
-    for args in test_cases:
-      print(args)
-      self.clear()
+    self.emcc_args += extra_args
 
-      testFiles = [
-        test_file('embind/underscore-1.4.2.js'),
-        test_file('embind/imvu_test_adapter.js'),
-        test_file('embind/embind.test.js'),
-      ]
+    js_file = self.build(test_file('embind/embind_test.cpp'))
 
-      self.run_process(
-        [EMXX, test_file('embind/embind_test.cpp'),
-         '--pre-js', test_file('embind/test.pre.js'),
-         '--post-js', test_file('embind/test.post.js'),
-         '-sWASM_ASYNC_COMPILATION=0',
-         # This test uses a `CustomSmartPtr` class which has 1MB of data embedded in
-         # it which means we need more stack space than normal.
-         '-sSTACK_SIZE=2MB'] + args)
+    testFiles = [
+      test_file('embind/underscore-1.4.2.js'),
+      test_file('embind/imvu_test_adapter.js'),
+      test_file('embind/embind.test.js'),
+    ]
 
-      if '-sDYNAMIC_EXECUTION=0' in args:
-        js_binary_str = read_file('a.out.js')
-        self.assertNotContained('new Function(', js_binary_str)
-        self.assertNotContained('eval(', js_binary_str)
+    if '-sDYNAMIC_EXECUTION=0' in extra_args:
+      js_binary_str = read_file(js_file)
+      self.assertNotContained('new Function(', js_binary_str)
+      self.assertNotContained('eval(', js_binary_str)
 
-      with open('a.out.js', 'ab') as f:
-        for tf in testFiles:
-          f.write(read_binary(tf))
+    with open(js_file, 'ab') as f:
+      for tf in testFiles:
+        f.write(read_binary(tf))
 
-      output = self.run_js('a.out.js')
-      self.assertNotContained('FAIL', output)
+    output = self.run_js(js_file)
+    self.assertNotContained('FAIL', output)
 
   @requires_node
   def test_embind_finalization(self):
