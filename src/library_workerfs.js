@@ -9,50 +9,9 @@ addToLibrary({
   $WORKERFS__deps: [
     '$stringToUTF8OnStack', 'wasmfs_create_jsimpl_backend', '$wasmFS$backends'
   ],
-  $WORKERFS: {
-    createBackend(opts) {
-      var backendPointer = _wasmfs_create_jsimpl_backend();
-      var root = stringToUTF8OnStack(opts.root);
-      var operations = {
-        allocFile: (file) => {
-          throw 'foo';
-        },
-        freeFile: (file) => {
-          throw 'foo';
-        },
-        getSize: (file) => {
-          throw 'foo';
-        },
-        read: (file, buffer, length, offset) => {
-          throw 'foo';
-          var bufferArray = Module.HEAP8.subarray(buffer, buffer + length);
-          try {
-            var bytesRead = operations.userRead(wasmFSDeviceStreams[file], bufferArray, 0, length, offset);
-          } catch (e) {
-            return -e.errno;
-          }
-          Module.HEAP8.set(bufferArray, buffer);
-          return bytesRead;
-        },
-        write: (file, buffer, length, offset) => {
-          throw 'foo';
-          var bufferArray = Module.HEAP8.subarray(buffer, buffer + length);
-          try {
-            var bytesWritten = operations.userWrite(wasmFSDeviceStreams[file], bufferArray, 0, length, offset);
-          } catch (e) {
-            return -e.errno;
-          }
-          Module.HEAP8.set(bufferArray, buffer);
-          return bytesWritten;
-        },
-      };
-
-      wasmFS$backends[backendPointer] = operations;
-      return backendPointer;
-    }
-  }
 #else
   $WORKERFS__deps: ['$FS'],
+#endif
   $WORKERFS: {
     DIR_MODE: {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */,
     FILE_MODE: {{{ cDefs.S_IFREG }}} | 511 /* 0777 */,
@@ -101,6 +60,52 @@ addToLibrary({
       });
       return root;
     },
+#if WASMFS
+    createBackend(opts) {
+      // Call the shared code to initialize things.
+      WORKERFS.mount({ opts: opts });
+
+      // Create the WasmFS backend and operations.
+      var backendPointer = _wasmfs_create_jsimpl_backend();
+      var root = stringToUTF8OnStack(opts.root);
+      var operations = {
+        allocFile: (file) => {
+          throw 'foo';
+        },
+        freeFile: (file) => {
+          throw 'foo';
+        },
+        getSize: (file) => {
+          throw 'foo';
+        },
+        read: (file, buffer, length, offset) => {
+          throw 'foo';
+          var bufferArray = Module.HEAP8.subarray(buffer, buffer + length);
+          try {
+            var bytesRead = operations.userRead(wasmFSDeviceStreams[file], bufferArray, 0, length, offset);
+          } catch (e) {
+            return -e.errno;
+          }
+          Module.HEAP8.set(bufferArray, buffer);
+          return bytesRead;
+        },
+        write: (file, buffer, length, offset) => {
+          throw 'foo';
+          var bufferArray = Module.HEAP8.subarray(buffer, buffer + length);
+          try {
+            var bytesWritten = operations.userWrite(wasmFSDeviceStreams[file], bufferArray, 0, length, offset);
+          } catch (e) {
+            return -e.errno;
+          }
+          Module.HEAP8.set(bufferArray, buffer);
+          return bytesWritten;
+        },
+      };
+
+      wasmFS$backends[backendPointer] = operations;
+      return backendPointer;
+    },
+#else
     createNode(parent, name, mode, dev, contents, mtime) {
       var node = FS.createNode(parent, name, mode);
       node.mode = mode;
@@ -201,6 +206,6 @@ addToLibrary({
         return position;
       },
     },
-  },
 #endif
+  },
 });

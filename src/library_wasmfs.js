@@ -65,6 +65,9 @@ FS.init();
 #if LibraryManager.has('library_fetchfs.js')
     '$FETCHFS',
 #endif
+#if LibraryManager.has('library_workerfs.js')
+    '$WORKERFS',
+#endif
     'malloc',
     'free',
     'wasmfs_create_jsimpl_backend',
