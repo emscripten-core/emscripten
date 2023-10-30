@@ -43,6 +43,7 @@ import jsrun
 import clang_native
 from tools import line_endings
 from tools import webassembly
+from tools.settings import settings
 
 scons_path = shutil.which('scons')
 emmake = shared.bat_suffix(path_from_root('emmake'))
@@ -700,21 +701,50 @@ f.close()
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   @crossplatform
-  def test_emcc_print_search_dirs(self):
-    output = self.run_process([EMCC, '-print-search-dirs'], stdout=PIPE).stdout
+  @parameterized({
+    '': [[]],
+    'lto': [['-flto']],
+    'wasm64': [['-sMEMORY64']],
+  })
+  def test_emcc_print_search_dirs(self, args):
+    output = self.run_process([EMCC, '-print-search-dirs'] + args, stdout=PIPE).stdout
     self.assertContained('programs: =', output)
     self.assertContained('libraries: =', output)
     libpath = output.split('libraries: =', 1)[1].strip()
     libpath = libpath.split(os.pathsep)
     libpath = [Path(p) for p in libpath]
-    print(libpath)
-    self.assertIn(cache.get_lib_dir(absolute=True), libpath)
+    settings.LTO = '-flto' in args
+    settings.MEMORY64 = int('-sMEMORY64' in args)
+    expected = cache.get_lib_dir(absolute=True)
+    self.assertIn(expected, libpath)
 
   @crossplatform
-  def test_emcc_print_file_name(self):
-    self.run_process([EMBUILDER, 'build', 'libc'])
-    output = self.run_process([EMCC, '-print-file-name=libc.a'], stdout=PIPE).stdout
+  @parameterized({
+    '': [[]],
+    'lto': [['-flto']],
+    'wasm64': [['-sMEMORY64']],
+  })
+  def test_emcc_print_libgcc_file_name(self, args):
+    output = self.run_process([EMCC, '-print-libgcc-file-name'] + args, stdout=PIPE).stdout
+    settings.LTO = '-flto' in args
+    settings.MEMORY64 = int('-sMEMORY64' in args)
+    libdir = cache.get_lib_dir(absolute=True)
+    expected = os.path.join(libdir, 'libcompiler_rt.a')
+    self.assertEqual(output.strip(), expected)
+
+  @crossplatform
+  @parameterized({
+    '': [[]],
+    'lto': [['-flto']],
+    'wasm64': [['-sMEMORY64', '-Wno-experimental']],
+  })
+  def test_emcc_print_file_name(self, args):
+    # make sure the corresponding version of libc exists in the cache
+    self.run_process([EMCC, test_file('hello_world.c'), '-O2'] + args)
+    output = self.run_process([EMCC, '-print-file-name=libc.a'] + args, stdout=PIPE).stdout
     filename = Path(output)
+    settings.LTO = '-flto' in args
+    settings.MEMORY64 = int('-sMEMORY64' in args)
     self.assertContained(cache.get_lib_name('libc.a'), str(filename))
 
   def test_emar_em_config_flag(self):
