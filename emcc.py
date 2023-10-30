@@ -3276,7 +3276,14 @@ def phase_embind_emit_tsd(options, in_wasm, wasm_target, memfile, js_syms):
   # The Wasm outfile may be modified by emscripten.run, so use a temporary file.
   outfile_wasm = in_temp('tsgen_a.out.wasm')
   emscripten.run(in_wasm, outfile_wasm, outfile_js, memfile, js_syms)
-  out = shared.run_js_tool(outfile_js, [], stdout=PIPE)
+  # Build the flags needed by Node.js to properly run the output file.
+  node_args = []
+  if settings.MEMORY64:
+    node_args += ['--experimental-wasm-memory64']
+  if settings.WASM_EXCEPTIONS:
+    node_args += ['--experimental-wasm-eh']
+  # Run the generated JS file with the proper flags to generate the TypeScript bindings.
+  out = shared.run_js_tool(outfile_js, [], node_args, stdout=PIPE)
   write_file(
     os.path.join(os.path.dirname(wasm_target), options.embind_emit_tsd), out)
   settings.restore(original_settings)
