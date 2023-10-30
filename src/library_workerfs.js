@@ -7,7 +7,8 @@
 addToLibrary({
 #if WASMFS
   $WORKERFS__deps: [
-    '$stringToUTF8OnStack', 'wasmfs_create_jsimpl_backend', '$wasmFS$backends'
+    '$stringToUTF8OnStack', 'wasmfs_create_jsimpl_backend', '$wasmFS$backends',
+    '$PATH',
   ],
 #else
   $WORKERFS__deps: ['$FS'],
@@ -104,6 +105,14 @@ addToLibrary({
 
       wasmFS$backends[backendPointer] = operations;
       return backendPointer;
+    },
+    createNode(parent, name, mode, dev, contents, mtime) {
+      var path = PATH.join(parent, name);
+      if (FS.analyzePath(path).exists) {
+        return;
+      }
+      FS.mknod(path, mode, dev);
+      // XXX contents!
     },
 #else
     createNode(parent, name, mode, dev, contents, mtime) {
