@@ -1,3 +1,5 @@
+<div id="top"></div>
+
 This document describes changes between tagged Emscripten SDK versions.
 
 Note that version numbers do not necessarily reflect the amount of changes
@@ -255,7 +257,9 @@ See docs/process.md for more on how version tagging works.
   (#18861)
 - The `emscripten_proxy_async_with_callback` API was replaced with a simpler
   `emscripten_proxy_callback` API that takes a second callback to be called if
-  the worker thread dies before completing the proxied work.  
+  the worker thread dies before completing the proxied work.
+
+  <p align="right">(<a href="#top">🔼 Back to top</a>)</p>
 
 3.1.32 - 02/17/23
 -----------------
@@ -477,6 +481,8 @@ See docs/process.md for more on how version tagging works.
   Although this is technically a breaking change for those who use these
   functions, there are assertion in debug builds that catch such usages and
   direct towards how to fix the issue.
+
+<p align="right">(<a href="#top">🔼 Back to top</a>)</p>
 
 3.1.20 - 08/24/2022
 -------------------
@@ -796,6 +802,8 @@ See docs/process.md for more on how version tagging works.
   If not specified, the encoding is autodetected as either UTF-8 or Python
   default "locale.getpreferredencoding()". (#15406, #15292, #15426)
 
+  <p align="right">(<a href="#top">🔼 Back to top</a>)</p>
+
 2.0.34 - 11/04/2021
 -------------------
 - Symbols marked as visibility hidden are no longer exported from C/C++
@@ -1015,6 +1023,8 @@ See docs/process.md for more on how version tagging works.
   WebAssembly equivalents. To enable them, define WASM_SIMD_COMPAT_SLOW
   in the preprocessor (#14152)
 
+  <p align="right">(<a href="#top">🔼 Back to top</a>)</p>
+
 2.0.20: 05/04/2021
 ------------------
 - This ChangeLog and the `emscripten-version.txt` file that is checked into
@@ -1231,6 +1241,8 @@ See docs/process.md for more on how version tagging works.
 - Fix JS pthreads proxying + WASM_BIGINT (#12935)
 - Optimize makeDynCall to use dynCall_xx function directly where needed (#12741)
 
+- <p align="right">(<a href="#top">🔼 Back to top</a>)</p>
+
 2.0.9: 11/16/2020
 -----------------
 - dlopen, in conformace with the spec, now checks that one of either RTDL_LAZY
@@ -1444,6 +1456,8 @@ See docs/process.md for more on how version tagging works.
   `-s RESERVED_FUNCTION_POINTERS=K` for any `K > 0` will simply turn on
   table growth. The only noticeable effect of this is that you will be able to
   add an unlimited amount of functions and not just `K`.
+
+<p align="right">(<a href="#top">🔼 Back to top</a>)</p>
 
 2.0.0: 08/10/2020
 -----------------
@@ -1815,6 +1829,8 @@ v1.39.6: 01/15/2020
   (default enabled) to allow disabling support for deferred fullscreen mode and
   pointer lock requests for applications that do not need deferring support.
 
+  <p align="right">(<a href="#top">🔼 Back to top</a>)</p>
+
 v1.39.5: 12/20/2019
 -------------------
 - Added support for streaming Wasm compilation in MINIMAL_RUNTIME (off by default)
@@ -2156,6 +2172,8 @@ v1.38.21: 11/30/2018
  - fastcomp: Remove `runPostSets` function and replace with normal static
    constructor function. See #7579
 
+   <p align="right">(<a href="#top">🔼 Back to top</a>)</p>
+
 v1.38.20: 11/20/2018
 --------------------
  - Remove SPLIT_MEMORY option.
@@ -2463,6 +2481,8 @@ v1.37.11: 5/1/2017
     - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.37.10...1.37.11
     - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.37.10...1.37.11
     - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.37.10...1.37.11
+  
+- <p align="right">(<a href="#top">🔼 Back to top</a>)</p>
 
 v1.37.10: 4/20/2017
 -------------------
@@ -2755,6 +2775,8 @@ v1.36.6: 8/8/2016
     - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.36.5...1.36.6
     - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.36.5...1.36.6
     - Emscripten-Clang: no changes.
+  
+<p align="right">(<a href="#top">🔼 Back to top</a>)</p>
 
 v1.36.5: 5/24/2016
 ------------------
@@ -3331,6 +3353,8 @@ v1.34.4: 8/4/2015
     - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.34.3...1.34.4
     - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.34.3...1.34.4
     - Emscripten-Clang: no changes.
+  
+  <p align="right">(<a href="#top">🔼 Back to top</a>)</p>
 
 v1.34.3: 7/15/2015
 ------------------
@@ -4023,6 +4047,8 @@ v1.24.0: 9/16/2014
     - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.23.5...1.24.0
     - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.23.5...1.24.0
     - Emscripten-Clang: no changes.
+  
+  <p align="right">(<a href="#top">🔼 Back to top</a>)</p>
 
 v1.23.5: 9/12/2014
 ------------------
@@ -4541,6 +4567,9 @@ v1.18.2: 5/19/2014
     - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.18.1...1.18.2
     - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.18.1...1.18.2
     - Emscripten-Clang: no changes.
+  
+
+<p align="right">(<a href="#top">🔼 Back to top</a>)</p>
 
 v1.18.1: 5/12/2014
 ------------------
@@ -4959,6 +4988,8 @@ v1.8.7: 1/13/2014
  - Removed a relooper limitation with fixed buffer size.
  - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.8.6...1.8.7
 
+ - <p align="right">(<a href="#top">🔼 Back to top</a>)</p>
+
 v1.8.6: 1/8/2014
 ------------------
  - Added support for the libuuid library, see http://linux.die.net/man/3/libuuid.
@@ -5289,6 +5320,8 @@ v1.5.4: 8/9/2013
  - Fix issues with GLES2 interop support.
  - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.5.3...1.5.4
 
+ - <p align="right">(<a href="#top">🔼 Back to top</a>)</p>
+
 v1.5.3: 6/28/2013
 ------------------
  - Added new optimization level --llvm-lto 3 to run even more aggressive LTO
@@ -5525,3 +5558,5 @@ v1.0.1a: 11/11/2012
 v1.0.1: 11/11/2012
 ------------------
  - First commit that introduced versioning to the Emscripten compiler.
+
+ - <p align="right">(<a href="#top">🔼 Back to top</a>)</p>
