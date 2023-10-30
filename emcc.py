@@ -748,7 +748,7 @@ def make_js_executable(script):
   if settings.MEMORY64 == 1:
     cmd += shared.node_memory64_flags()
   elif settings.WASM_BIGINT:
-    cmd += shared.node_bigint_flags()
+    cmd += shared.node_bigint_flags(config.NODE_JS)
   if len(cmd) > 1 or not os.path.isabs(cmd[0]):
     # Using -S (--split-string) here means that arguments to the executable are
     # correctly parsed.  We don't do this by default because old versions of env

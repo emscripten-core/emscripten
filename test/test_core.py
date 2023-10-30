@@ -526,7 +526,7 @@ class TestCoreBase(RunnerCore):
   def test_i64_invoke_bigint(self):
     self.set_setting('WASM_BIGINT')
     self.emcc_args += ['-fexceptions']
-    self.node_args += shared.node_bigint_flags()
+    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_core_test('test_i64_invoke_bigint.cpp')
 
   def test_vararg_copy(self):
@@ -2287,7 +2287,7 @@ int main(int argc, char **argv) {
     self.assertContained('emcc: error: using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `foo`', err)
 
     self.set_setting('WASM_BIGINT')
-    self.node_args += shared.node_bigint_flags()
+    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_core_test('test_em_js_i64.c')
 
   def test_em_js_address_taken(self):
@@ -6392,9 +6392,6 @@ Module.onRuntimeInitialized = () => {
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
-        if config.NODE_JS not in config.JS_ENGINES:
-          # NODEFS requires node
-          continue
         self.require_node()
       if self.get_setting('WASMFS'):
         if fs == 'NODEFS':
@@ -7867,14 +7864,14 @@ void* operator new(size_t size) {
   def test_embind_i64_val(self):
     self.set_setting('WASM_BIGINT')
     self.emcc_args += ['-lembind']
-    self.node_args += shared.node_bigint_flags()
+    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_run_in_out_file_test('embind/test_i64_val.cpp', assert_identical=True)
 
   @no_wasm2js('wasm_bigint')
   def test_embind_i64_binding(self):
     self.set_setting('WASM_BIGINT')
     self.emcc_args += ['-lembind']
-    self.node_args += shared.node_bigint_flags()
+    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_run_in_out_file_test('embind/test_i64_binding.cpp', assert_identical=True)
 
   def test_embind_no_rtti(self):
@@ -8915,7 +8912,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       # set us to test in just this engine
       self.require_engine(engine)
       # tell the compiler to build with just that engine
-      if engine == config.NODE_JS:
+      if engine == config.NODE_JS_TEST:
         right = 'node'
         wrong = 'shell'
       else:
@@ -9888,7 +9885,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('wasm2js does not support reference types')
   def test_externref_emjs(self, dynlink):
     self.emcc_args += ['-mreference-types']
-    self.node_args += shared.node_reference_types_flags()
+    self.node_args += shared.node_reference_types_flags(self.get_nodejs())
     if dynlink:
       self.set_setting('MAIN_MODULE', 2)
     self.do_core_test('test_externref_emjs.c')
@@ -9961,7 +9958,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
 def make_run(name, emcc_args, settings=None, env=None,
              require_v8=False, v8_args=None,
              require_node=False, node_args=None,
-             require_wasm64=False):
+             require_wasm64=False,
+             init=None):
   if env is None:
     env = {}
   if settings is None:
@@ -10009,6 +10007,9 @@ def make_run(name, emcc_args, settings=None, env=None,
     if require_wasm64:
       self.require_wasm64()
 
+    if init:
+      init(self)
+
   TT.setUp = setUp
 
   return TT
@@ -10047,7 +10048,7 @@ wasm64_4gb = make_run('wasm64_4gb', emcc_args=['-Wno-experimental', '--profiling
 # MEMORY64=2, or "lowered"
 wasm64l = make_run('wasm64l', emcc_args=['-O1', '-Wno-experimental', '--profiling-funcs'],
                    settings={'MEMORY64': 2},
-                   node_args=shared.node_bigint_flags())
+                   init=lambda self: shared.node_bigint_flags(self.get_nodejs()))
 
 lto0 = make_run('lto0', emcc_args=['-flto', '-O0'])
 lto1 = make_run('lto1', emcc_args=['-flto', '-O1'])
@@ -10084,7 +10085,7 @@ core2s = make_run('core2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
 core2ss = make_run('core2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
 
 bigint = make_run('bigint', emcc_args=['--profiling-funcs'], settings={'WASM_BIGINT': 1},
-                  node_args=shared.node_bigint_flags())
+                  init=lambda self: shared.node_bigint_flags(self.get_nodejs()))
 
 # Add DEFAULT_TO_CXX=0
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})

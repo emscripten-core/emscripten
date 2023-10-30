@@ -98,8 +98,8 @@ commands:
               wget https://nodejs.org/dist/v${version}/node-v${version}-linux-x64.tar.xz
             fi
             tar xf node-v${version}-linux-x64.tar.xz
-            echo "NODE_JS = [os.path.expanduser('~/node-v${version}-linux-x64/bin/node')]" >> ~/emsdk/.emscripten
-            echo "JS_ENGINES = [NODE_JS]" >> ~/emsdk/.emscripten
+            echo "NODE_JS_TEST = [os.path.expanduser('~/node-v${version}-linux-x64/bin/node')]" >> ~/emsdk/.emscripten
+            echo "JS_ENGINES = [NODE_JS_TEST]" >> ~/emsdk/.emscripten
             echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> ~/emsdk/.emscripten
             cat ~/emsdk/.emscripten
             echo "export PATH=\"$HOME/node-v${version}-linux-x64/bin:\$PATH\"" >> $BASH_ENV
