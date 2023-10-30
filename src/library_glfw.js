@@ -555,8 +555,39 @@ var LibraryGLFW = {
     onCanvasResize: (width, height, framebufferWidth, framebufferHeight) => {
       if (!GLFW.active) return;
 
-      if(GLFW.active.width            != width            || GLFW.active.height            != height ||
-         GLFW.active.framebufferWidth != framebufferWidth || GLFW.active.framebufferHeight != framebufferHeight) {
+      var resizeNeeded = false;
+
+      // If the client is requesting fullscreen mode
+      if (document["fullscreen"] || document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
+        if(!GLFW.active.fullscreen) {
+          resizeNeeded = width != screen.width || height != screen.height;
+          GLFW.active.storedX = GLFW.active.x;
+          GLFW.active.storedY = GLFW.active.y;
+          GLFW.active.storedWidth = GLFW.active.width;
+          GLFW.active.storedHeight = GLFW.active.height;
+          GLFW.active.x = GLFW.active.y = 0;
+          GLFW.active.width = screen.width;
+          GLFW.active.height = screen.height;
+          GLFW.active.fullscreen = true;
+        }
+      // If the client is reverting from fullscreen mode
+      } else if (GLFW.active.fullscreen == true) {
+        resizeNeeded = width != GLFW.active.storedWidth || height != GLFW.active.storedHeight;
+        GLFW.active.x = GLFW.active.storedX;
+        GLFW.active.y = GLFW.active.storedY;
+        GLFW.active.width = GLFW.active.storedWidth;
+        GLFW.active.height = GLFW.active.storedHeight;
+        GLFW.active.fullscreen = false;
+      }
+
+      if (resizeNeeded) {
+        // width or height is changed (fullscreen / exit fullscreen) which will call this listener back
+        // with proper framebufferWidth/framebufferHeight
+        Browser.setCanvasSize(GLFW.active.width, GLFW.active.height);
+      } else if(GLFW.active.width != width ||
+                GLFW.active.height != height ||
+                GLFW.active.framebufferWidth != framebufferWidth ||
+                GLFW.active.framebufferHeight != framebufferHeight) {
         GLFW.active.width = width;
         GLFW.active.height = height;
         GLFW.active.framebufferWidth = framebufferWidth;
@@ -564,48 +595,6 @@ var LibraryGLFW = {
         GLFW.onWindowSizeChanged();
         GLFW.onFramebufferSizeChanged();
       }
-
-      // TODO HIGH YP: no matter how hard I tried, I could never execute the fullscreen (resp. exit fullscreen) code path(s)
-      //               (https://developer.mozilla.org/en-US/docs/Web/API/Document/fullscreen is deprecated)
-      //               When selecting "View Full screen" in the browser (resp. exiting fullscreen), it does the "right"
-      //               thing and the parameters provided to this API are sufficient. So I don't think they need to be
-      //               stored/restored, and this is why I simplified this entire path.
-      // var resizeNeeded = true;
-      //
-      // // If the client is requesting fullscreen mode
-      // if (document["fullscreen"] || document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
-      //   GLFW.active.storedX = GLFW.active.x;
-      //   GLFW.active.storedY = GLFW.active.y;
-      //   GLFW.active.storedWidth = GLFW.active.width;
-      //   GLFW.active.storedHeight = GLFW.active.height;
-      //   GLFW.active.x = GLFW.active.y = 0;
-      //   GLFW.active.width = screen.width;
-      //   GLFW.active.height = screen.height;
-      //   GLFW.active.fullscreen = true;
-      //
-      // // If the client is reverting from fullscreen mode
-      // } else if (GLFW.active.fullscreen == true) {
-      //   GLFW.active.x = GLFW.active.storedX;
-      //   GLFW.active.y = GLFW.active.storedY;
-      //   GLFW.active.width = GLFW.active.storedWidth;
-      //   GLFW.active.height = GLFW.active.storedHeight;
-      //   GLFW.active.fullscreen = false;
-      //
-      // // If the width/height values do not match current active window sizes
-      // } else if (GLFW.active.width != width || GLFW.active.height != height) {
-      //   GLFW.active.width = width;
-      //   GLFW.active.height = height;
-      // } else {
-      //   resizeNeeded = false;
-      // }
-      //
-      // // If any of the above conditions were true, we need to resize the canvas
-      // if (resizeNeeded) {
-      //   // resets the canvas size to counter the aspect preservation of Browser.updateCanvasDimensions
-      //   Browser.setCanvasSize(GLFW.active.width, GLFW.active.height, true);
-      //   GLFW.onWindowSizeChanged();
-      //   GLFW.onFramebufferSizeChanged();
-      // }
     },
 
     onWindowSizeChanged: () => {
@@ -1055,6 +1044,8 @@ var LibraryGLFW = {
           GL.enableOffscreenFramebufferAttributes(contextAttributes);
 #endif
           Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
+        } else {
+          Browser.init();
         }
       }
 
@@ -1178,7 +1169,9 @@ var LibraryGLFW = {
     Module["canvas"].addEventListener('drop', GLFW.onDrop, true);
     Module["canvas"].addEventListener('dragover', GLFW.onDragover, true);
 
-    Browser.init(); // initializing browser before using it
+#if USE_GLFW == 3
+    Browser.isHiDPIAware = !!Module['isHiDPIAware'] || false;
+#endif
 
     Browser.resizeListeners.push((width, height, framebufferWidth, framebufferHeight) => {
       GLFW.onCanvasResize(width, height, framebufferWidth, framebufferHeight);

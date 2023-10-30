@@ -27,6 +27,7 @@ var LibraryBrowser = {
 #endif
     Module["requestAnimationFrame"] = (func) => Browser.requestAnimationFrame(func);
     Module["setCanvasSize"] = (width, height, noUpdates) => Browser.setCanvasSize(width, height, noUpdates);
+    Module["setHiDPIAware"] = (isHiDPIAware) => Browser.setHiDPIAware(isHiDPIAware);
     Module["pauseMainLoop"] = () => Browser.mainLoop.pause();
     Module["resumeMainLoop"] = () => Browser.mainLoop.resume();
     Module["getUserMedia"] = () => Browser.getUserMedia();
@@ -254,7 +255,6 @@ var LibraryBrowser = {
           }, false);
         }
       }
-      Browser.isHiDPIAware = Module['isHiDPIAware'] || false;
     },
 
     createContext(/** @type {HTMLCanvasElement} */ canvas, useWebGL, setInModule, webGLContextAttributes) {
@@ -333,7 +333,7 @@ var LibraryBrowser = {
           if (Browser.resizeCanvas) {
             Browser.setFullscreenCanvasSize();
           } else {
-            Browser.updateCanvasDimensions(canvas);
+            Browser.setCanvasSize(canvas);
           }
         } else {
           // remove the full screen specific parent of the canvas again to restore the HTML structure from before going full screen
@@ -343,7 +343,7 @@ var LibraryBrowser = {
           if (Browser.resizeCanvas) {
             Browser.setWindowedCanvasSize();
           } else {
-            Browser.updateCanvasDimensions(canvas);
+            Browser.setCanvasSize(canvas);
           }
         }
         if (Module['onFullScreen']) Module['onFullScreen'](Browser.isFullscreen);
@@ -692,36 +692,33 @@ var LibraryBrowser = {
          h = Math.round(h * factor);
       }
       if (Browser.resizeCanvas) {
-        if(Browser.isHiDPIAware) {
-          const wScaled = Math.floor(w * scale);
-          const hScaled = Math.floor(h * scale);
-          if (canvas.clientWidth  != w || canvas.width  != wScaled) { canvas.clientWidth  = w; canvas.width  = wScaled; }
-          if (canvas.clientHeight != h || canvas.height != hScaled) { canvas.clientHeight = h; canvas.height = hScaled; }
-        } else {
-          if (canvas.width  != w) canvas.width  = w;
-          if (canvas.height != h) canvas.height = h;
-        }
         if (typeof canvas.style != 'undefined') {
           canvas.style.removeProperty( "width");
           canvas.style.removeProperty("height");
         }
-      } else {
         if(Browser.isHiDPIAware) {
-          const wNativeScaled = Math.floor(wNative * scale);
-          const hNativeScaled = Math.floor(hNative * scale);
-          if (canvas.clientWidth  != wNative || canvas.width  != wNativeScaled) { canvas.clientWidth  = wNative; canvas.width  = wNativeScaled; }
-          if (canvas.clientHeight != hNative || canvas.height != hNativeScaled) { canvas.clientHeight = hNative; canvas.height = hNativeScaled; }
+          const wScaled = Math.floor(w * scale);
+          const hScaled = Math.floor(h * scale);
+          if (canvas.width  != wScaled) canvas.width  = wScaled;
+          if (canvas.height != hScaled) canvas.height = hScaled;
+          if (canvas.clientWidth  != w) canvas.clientWidth  = w;
+          if (canvas.clientHeight != h) canvas.clientHeight = h;
         } else {
-          if (canvas.width  != wNative) canvas.width  = wNative;
-          if (canvas.height != hNative) canvas.height = hNative;
-          if (typeof canvas.style != 'undefined') {
-            if (w != wNative || h != hNative) {
-              canvas.style.setProperty( "width", w + "px", "important");
-              canvas.style.setProperty("height", h + "px", "important");
-            } else {
-              canvas.style.removeProperty( "width");
-              canvas.style.removeProperty("height");
-            }
+          if (canvas.width  != w) canvas.width  = w;
+          if (canvas.height != h) canvas.height = h;
+        }
+      } else {
+        const wNativeScaled = Math.floor(wNative * scale);
+        const hNativeScaled = Math.floor(hNative * scale);
+        if (canvas.width  != wNativeScaled) canvas.width  = wNativeScaled;
+        if (canvas.height != hNativeScaled) canvas.height = hNativeScaled;
+        if (typeof canvas.style != 'undefined') {
+          if (wNativeScaled != wNative || hNativeScaled != hNative) {
+            canvas.style.setProperty( "width", wNative + "px", "important");
+            canvas.style.setProperty("height", hNative + "px", "important");
+          } else {
+            canvas.style.removeProperty( "width");
+            canvas.style.removeProperty("height");
           }
         }
       }
@@ -733,6 +730,15 @@ var LibraryBrowser = {
 
     getHiDPIScale() {
       return Browser.isHiDPIAware ? Browser.getDevicePixelRatio() : 1.0;
+    },
+
+    setHiDPIAware(isHiDPIAware) {
+      isHiDPIAware = !!isHiDPIAware; // coerce to boolean
+      if (Browser.isHiDPIAware != isHiDPIAware) {
+        Browser.isHiDPIAware = isHiDPIAware;
+        Browser.updateCanvasDimensions(Module['canvas']);
+        Browser.updateResizeListeners();
+      }
     },
   },
 
