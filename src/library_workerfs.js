@@ -10,7 +10,10 @@ addToLibrary({
   $WORKERFS$files: {},
 
   $WORKERFS__deps: [
-    '$stringToUTF8OnStack', 'wasmfs_create_jsimpl_backend', '$wasmFS$backends',
+    '$stringToUTF8OnStack', 'wasmfs_create_jsimpl_backend',
+    'wasmfs_create_file',
+    'wasmfs_get_file_index',
+    '$wasmFS$backends',
     '$WORKERFS$files', '$PATH'
   ],
 #else
@@ -71,7 +74,8 @@ addToLibrary({
       var root = stringToUTF8OnStack(opts.root || '/');
       var operations = {
         allocFile: (file) => {
-          throw 'foo';
+          // Nothin to do here; we already wrote to WORKERFS$files earlier when
+          // we received the Blob.
         },
         freeFile: (file) => {
           throw 'foo';
