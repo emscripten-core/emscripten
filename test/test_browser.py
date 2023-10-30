@@ -1413,21 +1413,9 @@ keydown(100);keyup(100); // trigger the end
     secret = str(time.time())
     self.btest_exit('fs/test_memfs_fsync.c', args=args + [f'-DSECRET="{secret}"'])
 
+  @also_with_wasmfs
   def test_fs_workerfs_read(self):
-    secret = 'a' * 10
-    secret2 = 'b' * 10
-    create_file('pre.js', '''
-      Module.preRun = () => {
-        var blob = new Blob(['%s']);
-        var file = new File(['%s'], 'file.txt');
-        FS.mkdir('/work');
-        FS.mount(WORKERFS, {
-          blobs: [{ name: 'blob.txt', data: blob }],
-          files: [file],
-        }, '/work');
-      };
-    ''' % (secret, secret2))
-    self.btest_exit('fs/test_workerfs_read.c', args=['-lworkerfs.js', '--pre-js', 'pre.js', f'-DSECRET="{secret }"', f'-DSECRET2="{secret2}"', '--proxy-to-worker', '-lworkerfs.js'])
+    self.btest_exit('fs/test_workerfs_read.c', args=['-lworkerfs.js', '--proxy-to-worker', '-lworkerfs.js', '-sFORCE_FILESYSTEM'])
 
   def test_fs_workerfs_package(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')

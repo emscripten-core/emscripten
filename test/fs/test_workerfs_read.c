@@ -15,7 +15,11 @@
 #include <fcntl.h>
 #include <dirent.h>
 
+#include <emscripten.h>
+
 #define SECRET_LEN 10
+#define SECRET  "aaaaaaaaaa"
+#define SECRET2 "bbbbbbbbbb"
 
 int main() {
   int fd;
@@ -26,6 +30,16 @@ int main() {
   char buf[100];
   char secret2[] = SECRET2;
   int len2 = SECRET_LEN / 2;
+
+  EM_ASM({
+    var blob = new Blob([UTF8ToString($0)]);
+    var file = new File([UTF8ToString($1)], 'file.txt');
+    FS.mkdir('/work');
+    FS.mount(WORKERFS, {
+      blobs: [{ name: 'blob.txt', data: blob }],
+      files: [file],
+    }, '/work');
+  }, SECRET, SECRET2);
 
   rtn = stat("/work/notexist.txt", &st);
   assert(rtn == -1 && errno == ENOENT);
