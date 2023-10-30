@@ -63,12 +63,9 @@ addToLibrary({
     },
 #if WASMFS
     createBackend(opts) {
-      // Call the shared code to initialize things.
-      WORKERFS.mount({ opts: opts });
-
       // Create the WasmFS backend and operations.
       var backendPointer = _wasmfs_create_jsimpl_backend();
-      var root = stringToUTF8OnStack(opts.root);
+      var root = stringToUTF8OnStack(opts.root || '/');
       var operations = {
         allocFile: (file) => {
           throw 'foo';
@@ -102,8 +99,15 @@ addToLibrary({
           return bytesWritten;
         },
       };
-
       wasmFS$backends[backendPointer] = operations;
+
+      // Stash the backend pointer where createNode can find it.
+      // TODO: support mulitple WORKERFS instances?
+      WORKERFS.backend = backendPointer;
+
+      // Call the shared code to initialize things.
+      WORKERFS.mount({ opts: opts });
+
       return backendPointer;
     },
     createNode(parent, name, mode, dev, contents, mtime) {
@@ -111,7 +115,9 @@ addToLibrary({
       if (FS.analyzePath(path).exists) {
         return;
       }
-      FS.mknod(path, mode, dev);
+      withStackSave(() => (
+        _wasmfs_create_file(stringToUTF8OnStack(path), mode, WORKERFS.backend)
+      ));
       // XXX contents!
     },
 #else
