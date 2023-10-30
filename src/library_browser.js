@@ -692,34 +692,20 @@ var LibraryBrowser = {
          h = Math.round(h * factor);
       }
       if (Browser.resizeCanvas) {
-        if (typeof canvas.style != 'undefined') {
+        wNative = w;
+        hNative = h;
+      }
+      const wNativeScaled = Math.floor(wNative * scale);
+      const hNativeScaled = Math.floor(hNative * scale);
+      if (canvas.width  != wNativeScaled) canvas.width  = wNativeScaled;
+      if (canvas.height != hNativeScaled) canvas.height = hNativeScaled;
+      if (typeof canvas.style != 'undefined') {
+        if (wNativeScaled != wNative || hNativeScaled != hNative) {
+          canvas.style.setProperty( "width", wNative + "px", "important");
+          canvas.style.setProperty("height", hNative + "px", "important");
+        } else {
           canvas.style.removeProperty( "width");
           canvas.style.removeProperty("height");
-        }
-        if(Browser.isHiDPIAware) {
-          const wScaled = Math.floor(w * scale);
-          const hScaled = Math.floor(h * scale);
-          if (canvas.width  != wScaled) canvas.width  = wScaled;
-          if (canvas.height != hScaled) canvas.height = hScaled;
-          if (canvas.clientWidth  != w) canvas.clientWidth  = w;
-          if (canvas.clientHeight != h) canvas.clientHeight = h;
-        } else {
-          if (canvas.width  != w) canvas.width  = w;
-          if (canvas.height != h) canvas.height = h;
-        }
-      } else {
-        const wNativeScaled = Math.floor(wNative * scale);
-        const hNativeScaled = Math.floor(hNative * scale);
-        if (canvas.width  != wNativeScaled) canvas.width  = wNativeScaled;
-        if (canvas.height != hNativeScaled) canvas.height = hNativeScaled;
-        if (typeof canvas.style != 'undefined') {
-          if (wNativeScaled != wNative || hNativeScaled != hNative) {
-            canvas.style.setProperty( "width", wNative + "px", "important");
-            canvas.style.setProperty("height", hNative + "px", "important");
-          } else {
-            canvas.style.removeProperty( "width");
-            canvas.style.removeProperty("height");
-          }
         }
       }
     },
@@ -736,7 +722,8 @@ var LibraryBrowser = {
       isHiDPIAware = !!isHiDPIAware; // coerce to boolean
       if (Browser.isHiDPIAware != isHiDPIAware) {
         Browser.isHiDPIAware = isHiDPIAware;
-        Browser.updateCanvasDimensions(Module['canvas']);
+        const canvas = Module['canvas'];
+        Browser.updateCanvasDimensions(canvas, canvas.clientWidth, canvas.clientHeight);
         Browser.updateResizeListeners();
       }
     },
