@@ -96,13 +96,19 @@ addToLibrary({
     },
     createNode(parent, name, mode, dev, contents, mtime) {
       var path = PATH.join(parent, name);
-      if (FS.analyzePath(path).exists) {
+      if (path === '/') {
         return;
       }
-      withStackSave(() => (
-        _wasmfs_create_file(stringToUTF8OnStack(path), mode, WORKERFS.backend)
-      ));
-      // XXX contents!
+      if (mode === WORKERFS.DIR_MODE) {
+        console.log('maek dir', path);
+        FS.mkdir(path, mode);
+      } else {
+        console.log('maek file', path);
+        withStackSave(() => (
+          _wasmfs_create_file(stringToUTF8OnStack(path), mode, WORKERFS.backend)
+        ));
+        // XXX contents!
+      }
     },
 #else
     createNode(parent, name, mode, dev, contents, mtime) {
