@@ -403,7 +403,7 @@ See docs/process.md for more on how version tagging works.
   helps wasm builds since wasm traps on such type mismatches in indirect calls.
   We recommend that users enable it to prevent such errors (which can be hard to
   debug otherwise). The older (less strict) behavior is also still possible with
-  `-Wcast-function-type -Wno-cast-funtion-type-strict` (or
+  `-Wcast-function-type -Wno-cast-function-type-strict` (or
   `-Wno-error=cast-function-type-strict` if you want the warnings to be visible
   but not errors). See https://reviews.llvm.org/D134831
 - libcxx and libcxxabi updated to LLVM 15. (#18113)
