@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 import re
+from time import time
 from .toolchain_profiler import ToolchainProfiler
 
 import itertools
@@ -88,7 +89,6 @@ def run_build_commands(commands):
   # to setup the sysroot itself.
   ensure_sysroot()
   shared.run_multiple_processes(commands, env=clean_env())
-  logger.info('compiled %d inputs' % len(commands))
 
 
 def objectfile_sort_key(filename):
@@ -520,7 +520,9 @@ class Library:
       cmd = self.customize_build_cmd(cmd, src)
       commands.append(cmd + ['-c', src, '-o', o])
       objects.append(o)
+    start_time = time()
     run_build_commands(commands)
+    logger.info(f'compiled {len(objects)} inputs in {time() - start_time:.2f}s')
     return objects
 
   def customize_build_cmd(self, cmd, _filename):
