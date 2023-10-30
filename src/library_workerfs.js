@@ -78,25 +78,9 @@ addToLibrary({
         },
         read: (file, buffer, length, offset) => {
           throw 'foo';
-          var bufferArray = Module.HEAP8.subarray(buffer, buffer + length);
-          try {
-            var bytesRead = operations.userRead(wasmFSDeviceStreams[file], bufferArray, 0, length, offset);
-          } catch (e) {
-            return -e.errno;
-          }
-          Module.HEAP8.set(bufferArray, buffer);
-          return bytesRead;
         },
         write: (file, buffer, length, offset) => {
           throw 'foo';
-          var bufferArray = Module.HEAP8.subarray(buffer, buffer + length);
-          try {
-            var bytesWritten = operations.userWrite(wasmFSDeviceStreams[file], bufferArray, 0, length, offset);
-          } catch (e) {
-            return -e.errno;
-          }
-          Module.HEAP8.set(bufferArray, buffer);
-          return bytesWritten;
         },
       };
       wasmFS$backends[backendPointer] = operations;
