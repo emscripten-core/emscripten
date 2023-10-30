@@ -152,7 +152,8 @@ def cap_max_workers_in_pool(max_workers):
 
 def run_multiple_processes(commands,
                            env=None,
-                           route_stdout_to_temp_files_suffix=None):
+                           route_stdout_to_temp_files_suffix=None,
+                           cwd=None):
   """Runs multiple subprocess commands.
 
   route_stdout_to_temp_files_suffix : string
@@ -204,7 +205,7 @@ def run_multiple_processes(commands,
       if DEBUG:
         logger.debug('Running subprocess %d/%d: %s' % (i + 1, len(commands), ' '.join(commands[i])))
       print_compiler_stage(commands[i])
-      proc = subprocess.Popen(commands[i], stdout=stdout, stderr=None, env=env)
+      proc = subprocess.Popen(commands[i], stdout=stdout, stderr=None, env=env, cwd=cwd)
       processes[i] = proc
       if route_stdout_to_temp_files_suffix:
         std_outs.append((i, stdout.name))
