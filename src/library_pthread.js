@@ -372,7 +372,12 @@ var LibraryPThread = {
         // it could load up the same file. In that case, developer must either deliver the Blob
         // object in Module['mainScriptUrlOrBlob'], or a URL to it, so that pthread Workers can
         // independently load up the same main application file.
-        'urlOrBlob': Module['mainScriptUrlOrBlob']
+        'urlOrBlob':
+#if expectToReceiveOnModule('mainScriptUrlOrBlob')
+        Module['mainScriptUrlOrBlob']
+#else
+        undefined
+#endif
 #if !EXPORT_ES6
         || _scriptDir
 #endif
@@ -438,8 +443,10 @@ var LibraryPThread = {
       var pthreadMainJs = Module['worker'];
 #else
 #if EXPORT_ES6 && USE_ES6_IMPORT_META
+#if expectToReceiveOnModule('locateFile')
       // If we're using module output and there's no explicit override, use bundler-friendly pattern.
       if (!Module['locateFile']) {
+#endif
 #if PTHREADS_DEBUG
         dbg('Allocating a new web worker from ' + new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url));
 #endif
@@ -456,7 +463,9 @@ var LibraryPThread = {
         } else
 #endif
         worker = new Worker(new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url), {type: 'module'});
+#if expectToReceiveOnModule('locateFile')
       } else {
+#endif
 #endif
       // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
       // via Module.locateFile() function. If not specified, then the default URL 'worker.js' relative
@@ -474,7 +483,7 @@ var LibraryPThread = {
       } else
 #endif
       worker = new Worker(pthreadMainJs{{{ EXPORT_ES6 ? ", {type: 'module'}" : '' }}});
-#if EXPORT_ES6 && USE_ES6_IMPORT_META
+#if EXPORT_ES6 && USE_ES6_IMPORT_META && expectToReceiveOnModule('locateFile')
     }
 #endif
     PThread.unusedWorkers.push(worker);

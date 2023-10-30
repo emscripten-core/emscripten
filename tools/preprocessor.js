@@ -55,6 +55,12 @@ const inputFile = arguments_[1];
 const expandMacros = arguments_.includes('--expandMacros');
 
 load(settingsFile);
+
+if (!ALL_INCOMING_MODULE_JS_API.length) {
+  ALL_INCOMING_MODULE_JS_API = INCOMING_MODULE_JS_API;
+}
+INCOMING_MODULE_JS_API = new Set(INCOMING_MODULE_JS_API);
+
 load('utility.js');
 load('modules.js');
 load('parseTools.js');

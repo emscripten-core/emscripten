@@ -180,9 +180,14 @@ function handleMessage(e) {
 #endif
 
 #if MODULARIZE && EXPORT_ES6
-      (e.data.urlOrBlob ? import(e.data.urlOrBlob) : import('./{{{ TARGET_JS_NAME }}}'))
+      (
+#if expectToReceiveOnModule('mainScriptUrlOrBlob')
+        e.data.urlOrBlob ? import(e.data.urlOrBlob) :
+#endif
+        import('./{{{ TARGET_JS_NAME }}}'))
       .then(exports => exports.default(Module));
 #else
+#if expectToReceiveOnModule('mainScriptUrlOrBlob')
       if (typeof e.data.urlOrBlob == 'string') {
 #if TRUSTED_TYPES
         if (typeof self.trustedTypes != 'undefined' && self.trustedTypes.createPolicy) {
@@ -209,6 +214,7 @@ function handleMessage(e) {
       {{{ EXPORT_NAME }}}(Module);
 #endif
 #endif
+#endif // expectToReceiveOnModule('mainScriptUrlOrBlob')
 #endif // MODULARIZE && EXPORT_ES6
     } else if (e.data.cmd === 'run') {
       // Pass the thread address to wasm to store it for fast access.

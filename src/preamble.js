@@ -613,15 +613,19 @@ function instrumentWasmTableWithAbort() {
 #endif
 
 var wasmBinaryFile;
-#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE
+#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE && expectToReceiveOnModule('locateFile')
 if (Module['locateFile']) {
 #endif
   wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
+#if expectToReceiveOnModule('locateFile')
   if (!isDataURI(wasmBinaryFile)) {
     wasmBinaryFile = locateFile(wasmBinaryFile);
   }
+#endif
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE // in single-file mode, repeating WASM_BINARY_FILE would emit the contents again
+#if expectToReceiveOnModule('locateFile')
 } else {
+#endif
 #if ENVIRONMENT_MAY_BE_SHELL
   if (ENVIRONMENT_IS_SHELL)
     wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
@@ -629,7 +633,9 @@ if (Module['locateFile']) {
 #endif
   // Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
   wasmBinaryFile = new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).href;
+#if expectToReceiveOnModule('locateFile')
 }
+#endif
 #endif
 
 function getBinarySync(file) {
