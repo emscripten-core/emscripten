@@ -13,6 +13,7 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 import contextlib
 import difflib
 import hashlib
+import itertools
 import logging
 import multiprocessing
 import os
@@ -83,6 +84,8 @@ EMRUN = shared.bat_suffix(shared.path_from_root('emrun'))
 WASM_DIS = Path(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-objdump')))
 PYTHON = sys.executable
+if not config.NODE_JS_TEST:
+  config.NODE_JS_TEST = config.NODE_JS
 
 
 def test_file(*path_components):
@@ -317,7 +320,8 @@ def also_with_wasm_bigint(f):
       if self.get_setting('WASM_BIGINT') is not None:
         self.skipTest('redundant in bigint test config')
       self.set_setting('WASM_BIGINT')
-      self.node_args += shared.node_bigint_flags()
+      nodejs = self.require_node()
+      self.node_args += shared.node_bigint_flags(nodejs)
       f(self)
     else:
       f(self)
@@ -381,7 +385,8 @@ def also_with_standalone_wasm(impure=False):
         # if we are impure, disallow all wasm engines
         if impure:
           self.wasm_engines = []
-        self.node_args += shared.node_bigint_flags()
+        nodejs = self.require_node()
+        self.node_args += shared.node_bigint_flags(nodejs)
         func(self)
 
     metafunc._parameterize = {'': (False,),
@@ -509,7 +514,14 @@ def parameterized(parameters):
       # runs test_something(4, 5, 6)
   """
   def decorator(func):
-    func._parameterize = parameters
+    prev = getattr(func, '_parameterize', None)
+    if prev:
+      # If we're parameterizing 2nd time, construct a cartesian product for various combinations.
+      func._parameterize = {
+        '_'.join(filter(None, [k1, k2])): v1 + v2 for (k1, v1), (k2, v2) in itertools.product(prev.items(), parameters.items())
+      }
+    else:
+      func._parameterize = parameters
     return func
   return decorator
 
@@ -606,19 +618,27 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.require_engine(config.V8_ENGINE)
     self.emcc_args.append('-sENVIRONMENT=shell')
 
+  def get_nodejs(self):
+    if config.NODE_JS_TEST not in self.js_engines:
+      return None
+    return config.NODE_JS_TEST
+
   def require_node(self):
-    if not config.NODE_JS or config.NODE_JS not in config.JS_ENGINES:
+    nodejs = self.get_nodejs()
+    if not nodejs:
       if 'EMTEST_SKIP_NODE' in os.environ:
         self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
       else:
         self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
-    self.require_engine(config.NODE_JS)
+    self.require_engine(nodejs)
+    return nodejs
 
   def require_node_canary(self):
-    if config.NODE_JS or config.NODE_JS in config.JS_ENGINES:
-      version = shared.check_node_version()
+    nodejs = self.get_nodejs()
+    if nodejs:
+      version = shared.get_node_version(nodejs)
       if version >= (20, 0, 0):
-        self.require_engine(config.NODE_JS)
+        self.require_engine(nodejs)
         return
 
     if 'EMTEST_SKIP_NODE_CANARY' in os.environ:
@@ -635,10 +655,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.wasm_engines = []
 
   def require_wasm64(self):
-    if config.NODE_JS and config.NODE_JS in self.js_engines:
-      version = shared.check_node_version()
+    nodejs = self.get_nodejs()
+    if nodejs:
+      version = shared.get_node_version(nodejs)
       if version >= (16, 0, 0):
-        self.js_engines = [config.NODE_JS]
+        self.js_engines = [nodejs]
         self.node_args += shared.node_memory64_flags()
         return
 
@@ -654,10 +675,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
   def require_simd(self):
-    if config.NODE_JS and config.NODE_JS in self.js_engines:
-      version = shared.check_node_version()
+    nodejs = self.get_nodejs()
+    if nodejs:
+      version = shared.get_node_version(nodejs)
       if version >= (16, 0, 0):
-        self.js_engines = [config.NODE_JS]
+        self.js_engines = [nodejs]
         return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
@@ -671,10 +693,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
 
   def require_wasm_eh(self):
-    if config.NODE_JS and config.NODE_JS in self.js_engines:
-      version = shared.check_node_version()
+    nodejs = self.get_nodejs()
+    if nodejs:
+      version = shared.get_node_version(nodejs)
       if version >= (17, 0, 0):
-        self.js_engines = [config.NODE_JS]
+        self.js_engines = [nodejs]
         return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
@@ -701,12 +724,13 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return
 
     exp_args = ['--experimental-wasm-stack-switching', '--experimental-wasm-type-reflection']
-    if config.NODE_JS and config.NODE_JS in self.js_engines:
-      version = shared.check_node_version()
+    nodejs = self.get_nodejs()
+    if nodejs:
+      version = shared.get_node_version(nodejs)
       # Support for JSPI came earlier than 19, but 19 is what currently works
       # with emscripten's implementation.
       if version >= (19, 0, 0):
-        self.js_engines = [config.NODE_JS]
+        self.js_engines = [nodejs]
         self.node_args += exp_args
         return
 
@@ -726,8 +750,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.emcc_args += ['-Wno-pthreads-mem-growth', '-pthread']
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
-    self.js_engines = [config.NODE_JS]
-    self.node_args += shared.node_pthread_flags()
+    nodejs = self.get_nodejs()
+    self.js_engines = [nodejs]
+    self.node_args += shared.node_pthread_flags(nodejs)
 
   def uses_memory_init_file(self):
     if self.get_setting('SIDE_MODULE') or (self.is_wasm() and not self.get_setting('WASM2JS')):
@@ -753,14 +778,16 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def setUp(self):
     super().setUp()
+    self.js_engines = config.JS_ENGINES.copy()
     self.settings_mods = {}
     self.emcc_args = ['-Wclosure', '-Werror', '-Wno-limited-postlink-optimizations']
     self.ldflags = []
     # Increate stack trace limit to maximise usefulness of test failure reports
     self.node_args = ['--stack-trace-limit=50']
 
-    node_version = shared.check_node_version()
-    if node_version:
+    nodejs = self.get_nodejs()
+    if nodejs:
+      node_version = shared.get_node_version(nodejs)
       if node_version < (11, 0, 0):
         self.node_args.append('--unhandled-rejections=strict')
         self.node_args.append('--experimental-wasm-se')
@@ -787,11 +814,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.env = {}
     self.temp_files_before_run = []
     self.uses_es6 = False
-    self.js_engines = config.JS_ENGINES.copy()
     self.required_engine = None
     self.wasm_engines = config.WASM_ENGINES.copy()
     self.use_all_engines = EMTEST_ALL_ENGINES
-    if self.js_engines[0] != config.NODE_JS:
+    if self.js_engines[0] != config.NODE_JS_TEST:
       # If our primary JS engine is something other than node then enable
       # shell support.
       default_envs = 'web,webview,worker,node'
@@ -867,7 +893,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def set_setting(self, key, value=1):
     if value is None:
       self.clear_setting(key)
-    if type(value) == bool:
+    if type(value) is bool:
       value = int(value)
     self.settings_mods[key] = value
 
@@ -882,7 +908,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     for key, value in self.settings_mods.items():
       if value == 1:
         ret.append(f'-s{key}')
-      elif type(value) == list:
+      elif type(value) is list:
         ret.append(f'-s{key}={",".join(value)}')
       else:
         ret.append(f'-s{key}={value}')
@@ -935,7 +961,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # use --quiet once its available
     # See: https://github.com/dollarshaveclub/es-check/pull/126/
     es_check_env = os.environ.copy()
-    es_check_env['PATH'] = os.path.dirname(config.NODE_JS[0]) + os.pathsep + es_check_env['PATH']
+    es_check_env['PATH'] = os.path.dirname(config.NODE_JS_TEST[0]) + os.pathsep + es_check_env['PATH']
     inputfile = os.path.abspath(filename)
     # For some reason es-check requires unix paths, even on windows
     if WINDOWS:
@@ -1091,7 +1117,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     timeout_error = None
     if not engine:
       engine = self.js_engines[0]
-    if engine == config.NODE_JS:
+    if engine == config.NODE_JS_TEST:
       engine = engine + self.node_args
     if engine == config.V8_ENGINE:
       engine = engine + self.v8_args
@@ -1213,7 +1239,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       string = string()
 
     if regex:
-      if type(values) == str:
+      if type(values) is str:
         self.assertTrue(re.search(values, string), 'Expected regex "%s" to match on:\n%s' % (values, string))
       else:
         match_any = any(re.search(o, string) for o in values)
@@ -2103,8 +2129,8 @@ class BrowserCore(RunnerCore):
     if not isinstance(expected, list):
       expected = [expected]
     if EMTEST_BROWSER == 'node':
-      self.require_node()
-      self.node_args += shared.node_pthread_flags()
+      nodejs = self.require_node()
+      self.node_args += shared.node_pthread_flags(nodejs)
       output = self.run_js('test.js')
       self.assertContained('RESULT: ' + expected[0], output)
     else:

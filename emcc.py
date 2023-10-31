@@ -754,7 +754,7 @@ def make_js_executable(script):
   if settings.MEMORY64 == 1:
     cmd += shared.node_memory64_flags()
   elif settings.WASM_BIGINT:
-    cmd += shared.node_bigint_flags()
+    cmd += shared.node_bigint_flags(config.NODE_JS)
   if len(cmd) > 1 or not os.path.isabs(cmd[0]):
     # Using -S (--split-string) here means that arguments to the executable are
     # correctly parsed.  We don't do this by default because old versions of env
@@ -2509,6 +2509,21 @@ def phase_linker_setup(options, state, newargs):
 
   if not settings.BULK_MEMORY:
     settings.BULK_MEMORY = feature_matrix.caniuse('wasm.bulkMemory')
+    if settings.MEMORY64 and settings.MIN_NODE_VERSION < 180000:
+      # Note that we do not update tools/feature_matrix.py for this, as this issue is
+      # wasm64-specific: bulk memory for wasm32 has shipped in Node.js 12.5, but
+      # bulk memory for wasm64 has shipped only in Node.js 18.
+      #
+      # Feature matrix currently cannot express such complex combinations of
+      # features, so the only options are to either choose the least common
+      # denominator and disable bulk memory altogether for Node.js < 18 or to
+      # special-case this situation here. The former would be limiting for
+      # wasm32 users, so instead we do the latter:
+      logger.warning(
+        "Disabling bulk memory because it doesn't work correctly with wasm64 in Node.js < 18.\n"
+        "Set MIN_NODE_VERSION to 180000 or above to enable it."
+      )
+      settings.BULK_MEMORY = 0
 
   if settings.AUDIO_WORKLET:
     if settings.AUDIO_WORKLET == 1:
