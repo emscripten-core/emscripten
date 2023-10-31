@@ -356,7 +356,7 @@ class other(RunnerCore):
     self.assertNotContained('import.meta.url', src)
     self.assertContained('export default Module;', src)
 
-  def test_emcc_output_mjs_no_import_expression(self):
+  def test_emcc_output_mjs_no_dynamic_import(self):
     # Ensure there are no imports using dynamic expressions
     self.run_process([EMCC, '-o', 'hello_world.mjs',
                       test_file('hello_world.c'),
@@ -369,7 +369,8 @@ class other(RunnerCore):
                     ])
     src = read_file('hello_world.mjs')
     self.assertNotContained('import(e.data.urlOrBlob)', src)
-    self.assertContained('import.meta.url', src)
+    self.assertContained('new URL("*.wasm",import.meta.url)')
+    self.assertContained('new URL("*.worker.js",import.meta.url)')
 
   def test_export_es6_implies_modularize(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6'])

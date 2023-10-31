@@ -367,21 +367,19 @@ var LibraryPThread = {
       worker.postMessage({
         'cmd': 'load',
         'handlers': handlers,
+#if expectToReceiveOnModule('mainScriptUrlOrBlob')
         // If the application main .js file was loaded from a Blob, then it is not possible
         // to access the URL of the current script that could be passed to a Web Worker so that
         // it could load up the same file. In that case, developer must either deliver the Blob
         // object in Module['mainScriptUrlOrBlob'], or a URL to it, so that pthread Workers can
         // independently load up the same main application file.
         'urlOrBlob':
-#if expectToReceiveOnModule('mainScriptUrlOrBlob')
         Module['mainScriptUrlOrBlob']
-#else
-        undefined
-#endif
 #if !EXPORT_ES6
         || _scriptDir
 #endif
         ,
+#endif
 #if WASM2JS
         // the polyfill WebAssembly.Memory instance has function properties,
         // which will fail in postMessage, so just send a custom object with the
@@ -466,12 +464,14 @@ var LibraryPThread = {
 #if expectToReceiveOnModule('locateFile')
       } else {
 #endif
-#endif
+#endif // EXPORT_ES6 && USE_ES6_IMPORT_META
+#if expectToReceiveOnModule('locateFile')
       // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
       // via Module.locateFile() function. If not specified, then the default URL 'worker.js' relative
       // to the main html file is loaded.
       var pthreadMainJs = locateFile('{{{ PTHREAD_WORKER_FILE }}}');
 #endif
+#endif // MINIMAL_RUNTIME
 #if PTHREADS_DEBUG
       dbg(`Allocating a new web worker from ${pthreadMainJs}`);
 #endif
@@ -482,9 +482,11 @@ var LibraryPThread = {
         worker = new Worker(p.createScriptURL('ignored'){{{ EXPORT_ES6 ? ", {type: 'module'}" : '' }}});
       } else
 #endif
+#if expectToReceiveOnModule('locateFile')
       worker = new Worker(pthreadMainJs{{{ EXPORT_ES6 ? ", {type: 'module'}" : '' }}});
-#if EXPORT_ES6 && USE_ES6_IMPORT_META && expectToReceiveOnModule('locateFile')
+#if EXPORT_ES6 && USE_ES6_IMPORT_META
     }
+#endif
 #endif
     PThread.unusedWorkers.push(worker);
     },
