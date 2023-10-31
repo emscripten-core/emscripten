@@ -438,6 +438,7 @@ jobs:
     resource_class: xlarge
     environment:
       EMCC_CORES: 16
+      EMCC_USE_NINJA: 1
     steps:
       - checkout
       - run:
