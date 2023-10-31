@@ -83,12 +83,14 @@ def clean_env():
   return safe_env
 
 
-def run_build_commands(commands, build_dir=None):
+def run_build_commands(commands, num_inputs, build_dir=None):
   # Before running a set of build commands make sure the common sysroot
   # headers are installed.  This prevents each sub-process from attempting
   # to setup the sysroot itself.
   ensure_sysroot()
+  start_time = time()
   shared.run_multiple_processes(commands, env=clean_env(), cwd=build_dir)
+  logger.info(f'compiled {num_inputs} inputs in {time() - start_time:.2f}s')
 
 
 def objectfile_sort_key(filename):
@@ -543,9 +545,7 @@ class Library:
         chunk_srcs = srcs[i:i + chunk_size]
         commands.append(building.get_command_with_possible_response_file(cmd + chunk_srcs))
 
-    start_time = time()
-    run_build_commands(commands, build_dir)
-    logger.info(f'compiled {len(objects)} inputs in {time() - start_time:.2f}s')
+    run_build_commands(commands, num_inputs=len(objects), build_dir=build_dir)
     return objects
 
   def customize_build_cmd(self, cmd, _filename):
