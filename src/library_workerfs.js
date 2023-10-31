@@ -12,7 +12,7 @@ addToLibrary({
   $WORKERFS__deps: [
     '$stringToUTF8OnStack', 'wasmfs_create_jsimpl_backend',
     'wasmfs_create_file',
-    'wasmfs_get_file_index',
+    'wasmfs_get_file_by_path',
     '$wasmFS$backends',
     '$WORKERFS$files', '$PATH'
   ],
@@ -115,7 +115,7 @@ addToLibrary({
         withStackSave(() => {
           var stackPath = stringToUTF8OnStack(path);
           _wasmfs_create_file(stackPath, mode, WORKERFS.backend)
-          fileIndex = _wasmfs_get_file_index(stackPath);
+          fileIndex = _wasmfs_get_file_by_path(stackPath);
         });
         console.log('  file index', fileIndex);
         WORKERFS$files[fileIndex] = contents;
