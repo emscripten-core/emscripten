@@ -38,7 +38,7 @@ if DEBUG:
 elif EMCC_LOGGING:
   log_level = logging.INFO
 # can add  %(asctime)s  to see timestamps
-logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s', level=log_level, filename=os.environ.get('EMCC_LOG_FILE'))
+logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s', filename=os.environ.get('EMCC_LOG_FILE'))
 colored_logger.enable()
 
 from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
