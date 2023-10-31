@@ -495,9 +495,10 @@ class Library:
     for src in self.get_files():
       ext = shared.suffix(src)
       if ext in ('.s', '.S', '.c'):
-        cmd = [shared.EMCC]
+        cmd = shared.EMCC
       else:
-        cmd = [shared.EMXX]
+        cmd = shared.EMXX
+      cmd = [cmd, '-c']
       if ext == '.s':
         # .s files are processed directly by the assembler.  In this case we can't pass
         # pre-processor flags such as `-I` and `-D` but we still want core flags such as
@@ -523,9 +524,12 @@ class Library:
         while o in objects:
           object_uuid += 1
           o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
-        commands.append(cmd + ['-c', src, '-o', o])
+        commands.append(cmd + [src, '-o', o])
       else:
-        batches.setdefault(tuple(cmd), set()).add(os.path.relpath(src, build_dir))
+        # Use relative paths to reduce the length of the command line.
+        # This allows to avoid switching to a response file as often.
+        src = os.path.relpath(src, build_dir)
+        batches.setdefault(tuple(cmd), []).append(src)
       objects.add(o)
 
     # Choose a chunk size that is large enough to avoid too many subprocesses
@@ -534,10 +538,10 @@ class Library:
     chunk_size = max(1, len(objects) // (2 * shared.get_num_cores()))
     # Convert batches to commands.
     for cmd, srcs in batches.items():
-      cmd = list(cmd) + ['-c']
-      srcs = list(srcs)
+      cmd = list(cmd)
       for i in range(0, len(srcs), chunk_size):
-        commands.append(cmd + srcs[i:i + chunk_size])
+        chunk_srcs = srcs[i:i + chunk_size]
+        commands.append(building.get_command_with_possible_response_file(cmd + chunk_srcs))
 
     start_time = time()
     run_build_commands(commands, build_dir)
