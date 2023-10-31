@@ -319,6 +319,7 @@ class other(RunnerCore):
     src = read_file('subdir/hello_world.mjs')
     self.assertContained("new URL('hello_world.wasm', import.meta.url)", src)
     self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url), {type: 'module'})", src)
+    self.assertContained("new Worker(pthreadMainJs, {type: 'module'})", src)
     self.assertContained('export default Module;', src)
     src = read_file('subdir/hello_world.worker.js')
     self.assertContained("import('./hello_world.mjs')", src)
@@ -333,6 +334,7 @@ class other(RunnerCore):
     src = read_file('hello_world.mjs')
     self.assertNotContained("new URL('data:", src)
     self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url), {type: 'module'})", src)
+    self.assertContained("new Worker(pthreadMainJs, {type: 'module'})", src)
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
   def test_emcc_output_mjs_closure(self):
@@ -2860,53 +2862,52 @@ int f() {
 
   @is_slow_test
   @parameterized({
-    '': [[]],
-    'no_utf8': [['-sEMBIND_STD_STRING_IS_UTF8=0']],
-    'no_dynamic': [['-sDYNAMIC_EXECUTION=0']],
+    '': [],
+    'no_utf8': ['-sEMBIND_STD_STRING_IS_UTF8=0'],
+    'no_dynamic': ['-sDYNAMIC_EXECUTION=0'],
   })
-  @with_env_modify({'EMCC_CLOSURE_ARGS': '--externs ' + shlex.quote(test_file('embind/underscore-externs.js'))})
-  def test_embind(self, extra_args):
-    test_cases = [
-      (['-lembind']),
-      # Ensure embind compiles under C++17 where "noexcept" became part of the function signature.
-      (['-lembind', '-std=c++17']),
-      (['-lembind', '-O1']),
-      (['-lembind', '-O2']),
-      (['-lembind', '-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')]),
-      (['-lembind', '-O2', '--closure=1']),
+  @parameterized({
+    '': [],
+    # Ensure embind compiles under C++17 where "noexcept" became part of the function signature.
+    'cxx17': ['-std=c++17'],
+    'o1': ['-O1'],
+    'o2': ['-O2'],
+    'o2_mem_growth': ['-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')],
+    'o2_closure': ['-O2', '--closure=1', '--closure-args', '--externs ' + shlex.quote(test_file('embind/underscore-externs.js'))],
+  })
+  def test_embind(self, *extra_args):
+    self.emcc_args += [
+      '-lembind',
+      '-sRETAIN_COMPILER_SETTINGS',
+      '-sEXPORTED_RUNTIME_METHODS=getCompilerSetting',
+      '-sWASM_ASYNC_COMPILATION=0',
+      # This test uses a `CustomSmartPtr` class which has 1MB of data embedded in
+      # it which means we need more stack space than normal.
+      '-sSTACK_SIZE=2MB',
+      '--pre-js', test_file('embind/test.pre.js'),
+      '--post-js', test_file('embind/test.post.js'),
     ]
-    extra_args = extra_args + ['-sRETAIN_COMPILER_SETTINGS', '-sEXPORTED_RUNTIME_METHODS=getCompilerSetting']
-    test_cases = [t + extra_args for t in test_cases]
-    for args in test_cases:
-      print(args)
-      self.clear()
+    self.emcc_args += extra_args
 
-      testFiles = [
-        test_file('embind/underscore-1.4.2.js'),
-        test_file('embind/imvu_test_adapter.js'),
-        test_file('embind/embind.test.js'),
-      ]
+    js_file = self.build(test_file('embind/embind_test.cpp'))
 
-      self.run_process(
-        [EMXX, test_file('embind/embind_test.cpp'),
-         '--pre-js', test_file('embind/test.pre.js'),
-         '--post-js', test_file('embind/test.post.js'),
-         '-sWASM_ASYNC_COMPILATION=0',
-         # This test uses a `CustomSmartPtr` class which has 1MB of data embedded in
-         # it which means we need more stack space than normal.
-         '-sSTACK_SIZE=2MB'] + args)
+    testFiles = [
+      test_file('embind/underscore-1.4.2.js'),
+      test_file('embind/imvu_test_adapter.js'),
+      test_file('embind/embind.test.js'),
+    ]
 
-      if '-sDYNAMIC_EXECUTION=0' in args:
-        js_binary_str = read_file('a.out.js')
-        self.assertNotContained('new Function(', js_binary_str)
-        self.assertNotContained('eval(', js_binary_str)
+    if '-sDYNAMIC_EXECUTION=0' in extra_args:
+      js_binary_str = read_file(js_file)
+      self.assertNotContained('new Function(', js_binary_str)
+      self.assertNotContained('eval(', js_binary_str)
 
-      with open('a.out.js', 'ab') as f:
-        for tf in testFiles:
-          f.write(read_binary(tf))
+    with open(js_file, 'ab') as f:
+      for tf in testFiles:
+        f.write(read_binary(tf))
 
-      output = self.run_js('a.out.js')
-      self.assertNotContained('FAIL', output)
+    output = self.run_js(js_file)
+    self.assertNotContained('FAIL', output)
 
   @requires_node
   def test_embind_finalization(self):
@@ -7478,7 +7479,7 @@ Resolved: "/" => "/"
     ''')
 
     # Run the test and confirm the output is as expected.
-    self.node_args += shared.node_bigint_flags()
+    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     out = self.run_js('testrun.js')
     self.assertContained('''\
 input = 0xaabbccdd11223344
@@ -7718,7 +7719,7 @@ int main() {}
       for engine in config.JS_ENGINES:
         if engine == config.V8_ENGINE:
           continue # ban v8, weird failures
-        actual = 'NODE' if engine == config.NODE_JS else 'SHELL'
+        actual = 'NODE' if engine == config.NODE_JS_TEST else 'SHELL'
         print(env, actual, engine)
         module = {'ENVIRONMENT': env}
         if env != actual:
@@ -9829,7 +9830,7 @@ test_module().then((test_module_instance) => {
   def test_node_eval(self):
     self.run_process([EMCC, '-sENVIRONMENT=node', test_file('hello_world.c'), '-o', 'a.js', '-O3'])
     js = read_file('a.js')
-    ret = self.run_process(config.NODE_JS + ['-e', js], stdout=PIPE).stdout
+    ret = self.run_process(config.NODE_JS_TEST + ['-e', js], stdout=PIPE).stdout
     self.assertContained('hello, world!', ret)
 
   def test_is_bitcode(self):
@@ -12221,7 +12222,7 @@ exec "$@"
     self.assertFileContents(path_from_root('src/generated_struct_info32.json'), read_file('out.json'))
 
     # Same again for wasm64
-    node_version = shared.check_node_version()
+    node_version = shared.get_node_version(self.get_nodejs())
     if node_version and node_version >= (14, 0, 0):
       self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '--wasm64', '-o', 'out.json'])
       self.assertFileContents(path_from_root('src/generated_struct_info64.json'), read_file('out.json'))
@@ -12730,7 +12731,7 @@ void foo() {}
     self.build('main.c', emcc_args=['--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION=0'])
     self.assertNotContained('unhandledRejection', read_file('main.js'))
 
-    if shared.check_node_version()[0] >= 15:
+    if shared.get_node_version(self.get_nodejs())[0] >= 15:
       self.skipTest('old behaviour of node JS cannot be tested on node v15 or above')
 
     output = self.run_js('main.js')
@@ -12928,7 +12929,7 @@ Module.postRun = () => {{
   def test_wasmfs_readfile_bigint(self):
     self.set_setting('FORCE_FILESYSTEM')
     self.set_setting('WASM_BIGINT')
-    self.node_args += shared.node_bigint_flags()
+    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_run_in_out_file_test('wasmfs/wasmfs_readfile.c')
 
   def test_wasmfs_jsfile(self):
@@ -13186,7 +13187,7 @@ int main() {
   @also_with_minimal_runtime
   def test_shared_memory(self):
     self.do_runf('wasm_worker/shared_memory.c', '0', emcc_args=[])
-    self.node_args += shared.node_pthread_flags()
+    self.node_args += shared.node_pthread_flags(self.get_nodejs())
     self.do_runf('wasm_worker/shared_memory.c', '1', emcc_args=['-sSHARED_MEMORY'])
     self.do_runf('wasm_worker/shared_memory.c', '1', emcc_args=['-sWASM_WORKERS'])
     self.do_runf('wasm_worker/shared_memory.c', '1', emcc_args=['-pthread'])
@@ -13226,7 +13227,7 @@ int main() {
 
   # Tests the internal test suite of tools/unsafe_optimizations.js
   def test_unsafe_optimizations(self):
-    self.run_process(config.NODE_JS + [path_from_root('tools', 'unsafe_optimizations.js'), '--test'])
+    self.run_process(config.NODE_JS_TEST + [path_from_root('tools', 'unsafe_optimizations.js'), '--test'])
 
   @requires_v8
   def test_extended_const(self):
@@ -13660,8 +13661,9 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.do_runf('hello_world.c', '4\nhello, world!',
                  emcc_args=['--post-js=post.js', '--js-library=lib.js'])
 
+  @requires_node
   def test_min_node_version(self):
-    node_version = shared.check_node_version()
+    node_version = shared.get_node_version(self.get_nodejs())
     node_version = '.'.join(str(x) for x in node_version)
     self.set_setting('MIN_NODE_VERSION', 210000)
     expected = 'This emscripten-generated code requires node v21.0.0 (detected v%s' % node_version
@@ -13719,7 +13721,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def run_wasi_test_suite_test(self, name):
     if not os.path.exists(path_from_root('test/third_party/wasi-test-suite')):
       self.fail('wasi-testsuite not found; run `git submodule update --init`')
-    self.node_args += shared.node_bigint_flags()
+    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     wasm = path_from_root('test', 'third_party', 'wasi-test-suite', name + '.wasm')
     with open(path_from_root('test', 'third_party', 'wasi-test-suite', name + '.json')) as f:
       config = json.load(f)

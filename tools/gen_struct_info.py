@@ -68,6 +68,7 @@ __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
 from tools import building
+from tools import config
 from tools import shared
 from tools import system_libs
 from tools import utils
@@ -280,7 +281,7 @@ def inspect_headers(headers, cflags):
   show('Calling generated program... ' + js_file[1])
   args = []
   if settings.MEMORY64:
-    args += shared.node_bigint_flags()
+    args += shared.node_bigint_flags(config.NODE_JS)
   info = shared.run_js_tool(js_file[1], node_args=args, stdout=shared.PIPE).splitlines()
 
   if not DEBUG:

@@ -52,11 +52,12 @@ DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 PRINT_SUBPROCS = int(os.getenv('EMCC_VERBOSE', '0'))
 SKIP_SUBPROCS = False
 
-# Minimum node version required to run the emscripten compiler.  This is distinct
-# from the minimum version required to execute the generated code.  This is not an
-# exact requirement, but is the oldest version of node that we do any testing with.
-# This version aligns with the current Ubuuntu TLS 20.04 (Focal).
-MINIMUM_NODE_VERSION = (10, 19, 0)
+# Minimum node version required to run the emscripten compiler.  This is
+# distinct from the minimum version required to execute the generated code
+# (settings.MIN_NODE_VERSION).
+# This version currently matches the node version that we ship with emsdk
+# which means that we can say for sure that this version is well supported.
+MINIMUM_NODE_VERSION = (16, 20, 0)
 EXPECTED_LLVM_VERSION = 18
 
 # These get set by setup_temp_dirs
@@ -333,13 +334,22 @@ def env_with_node_in_path():
   return env
 
 
+def _get_node_version_pair(nodejs):
+  actual = run_process(nodejs + ['--version'], stdout=PIPE).stdout.strip()
+  version = actual.replace('v', '')
+  version = version.split('-')[0].split('.')
+  version = tuple(int(v) for v in version)
+  return actual, version
+
+
+def get_node_version(nodejs):
+  return _get_node_version_pair(nodejs)[1]
+
+
 @memoize
 def check_node_version():
   try:
-    actual = run_process(config.NODE_JS + ['--version'], stdout=PIPE).stdout.strip()
-    version = actual.replace('v', '')
-    version = version.split('-')[0].split('.')
-    version = tuple(int(v) for v in version)
+    actual, version = _get_node_version_pair(config.NODE_JS)
   except Exception as e:
     diagnostics.warning('version-check', 'cannot check node version: %s', e)
     return
@@ -351,8 +361,8 @@ def check_node_version():
   return version
 
 
-def node_bigint_flags():
-  node_version = check_node_version()
+def node_bigint_flags(nodejs):
+  node_version = get_node_version(nodejs)
   # wasm bigint was enabled by default in node v16.
   if node_version and node_version < (16, 0, 0):
     return ['--experimental-wasm-bigint']
@@ -360,8 +370,8 @@ def node_bigint_flags():
     return []
 
 
-def node_reference_types_flags():
-  node_version = check_node_version()
+def node_reference_types_flags(nodejs):
+  node_version = get_node_version(nodejs)
   # reference types were enabled by default in node v18.
   if node_version and node_version < (18, 0, 0):
     return ['--experimental-wasm-reftypes']
@@ -373,8 +383,8 @@ def node_memory64_flags():
   return ['--experimental-wasm-memory64']
 
 
-def node_pthread_flags():
-  node_version = check_node_version()
+def node_pthread_flags(nodejs):
+  node_version = get_node_version(nodejs)
   # bulk memory and wasm threads were enabled by default in node v16.
   if node_version and node_version < (16, 0, 0):
     return ['--experimental-wasm-bulk-memory', '--experimental-wasm-threads']

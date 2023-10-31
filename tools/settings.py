@@ -239,7 +239,7 @@ class SettingsManager:
         value = bool(value)
       if value in ('True', 'False', 'true', 'false'):
         exit_with_error('attempt to set `%s` to `%s`; use 1/0 to set boolean settings' % (name, value))
-    if type(value) != expected_type:
+    if type(value) is not expected_type:
       exit_with_error('setting `%s` expects `%s` but got `%s`' % (name, expected_type.__name__, type(value).__name__))
 
   def __getitem__(self, key):

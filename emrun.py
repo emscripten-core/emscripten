@@ -770,7 +770,7 @@ def get_cpu_info():
       all_info = check_output(['cat', '/proc/cpuinfo']).strip()
       for line in all_info.split("\n"):
         if 'model name' in line:
-          cpu_name = re.sub('.*model name.*:', '', line, 1).strip()
+          cpu_name = re.sub('.*model name.*:', '', line, count=1).strip()
       lscpu = check_output(['lscpu'])
       frequency = int(float(re.search('CPU MHz: (.*)', lscpu).group(1).strip()) + 0.5)
       sockets = int(re.search(r'Socket\(s\): (.*)', lscpu).group(1).strip())
@@ -1298,7 +1298,7 @@ def list_pc_browsers():
   logi('')
   for browser in browsers:
     browser_exe = find_browser(browser)
-    if type(browser_exe) == list:
+    if type(browser_exe) is list:
       browser_exe = browser_exe[0]
     if browser_exe:
       logi('  - ' + browser + ': ' + browser_display_name(browser_exe) + ' ' + get_executable_version(browser_exe))
