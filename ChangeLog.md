@@ -30,6 +30,9 @@ See docs/process.md for more on how version tagging works.
 - If exceptions are disabled, using `new` together with `std::nothrow` no
   longer aborts if the allocation fails. Instead `nullptr` is returned now.
   This does not change the behavior of regular usage of `new`.
+- Default `MIN_CHROME_VERSION` was increased from 75 to 85 and default
+  `MIN_FIREFOX_VERSION` was increased from 68 to 79 to allow Emscripten
+  to use some ES2021 features for smaller JavaScript code size. (#20549)
 
 3.1.47 - 10/09/23
 -----------------
