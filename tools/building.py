@@ -294,9 +294,15 @@ def get_command_with_possible_response_file(cmd):
   # One of None, 0 or 1. (None: do default decision, 0: force disable, 1: force enable)
   force_response_files = os.getenv('EM_FORCE_RESPONSE_FILES')
 
-  # 8k is a bit of an arbitrary limit, but a reasonable one
-  # for max command line size before we use a response file
-  if (len(shared.shlex_join(cmd)) <= 8192 and force_response_files != '1') or force_response_files == '0':
+  # Different OS have different limits. The most limiting usually is Windows one
+  # which is set at 8191 characters. We could just use that, but it leads to
+  # problems when invoking shell wrappers (e.g. emcc.bat), which, in turn,
+  # pass arguments to some longer command like `(full path to Clang) ...args`.
+  # In that scenario, even if the initial command line is short enough, the
+  # subprocess can still run into the Command Line Too Long error.
+  # Reduce the limit by ~1K for now to be on the safe side, but we might need to
+  # adjust this in the future if it turns out not to be enough.
+  if (len(shared.shlex_join(cmd)) <= 7000 and force_response_files != '1') or force_response_files == '0':
     return cmd
 
   logger.debug('using response file for %s' % cmd[0])
