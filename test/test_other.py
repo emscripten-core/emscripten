@@ -8063,7 +8063,7 @@ int main() {
                                      test_file('other/test_unoptimized_code_size.js.size'),
                                      os.path.getsize('hello_world.js'))
 
-    self.build(test_file('hello_world.c'), emcc_args=['-O0','--output_eol=linux', '-sASSERTIONS=0'], output_basename='no_asserts')
+    self.build(test_file('hello_world.c'), emcc_args=['-O0', '--output_eol=linux', '-sASSERTIONS=0'], output_basename='no_asserts')
     self.check_expected_size_in_file('wasm',
                                      test_file('other/test_unoptimized_code_size_no_asserts.wasm.size'),
                                      os.path.getsize('no_asserts.wasm'))
