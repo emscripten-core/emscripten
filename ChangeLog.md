@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.48 (in development)
 -----------------------
+- The minimum version of node required run the compiler was updated from
+  10.19 to 16.20.  This does not effect the node requirements of the generated
+  JavaScript code. (#20551)
 - A new top-level `bootstrap` script was added.  This script is for emscripten
   developers and helps take a care of post-checkout tasks such as `npm install`.
   If this script needs to be run (e.g. becuase package.json was changed, emcc
@@ -27,6 +30,9 @@ See docs/process.md for more on how version tagging works.
 - If exceptions are disabled, using `new` together with `std::nothrow` no
   longer aborts if the allocation fails. Instead `nullptr` is returned now.
   This does not change the behavior of regular usage of `new`.
+- Default `MIN_CHROME_VERSION` was increased from 75 to 85 and default
+  `MIN_FIREFOX_VERSION` was increased from 68 to 79 to allow Emscripten
+  to use some ES2021 features for smaller JavaScript code size. (#20549)
 
 3.1.47 - 10/09/23
 -----------------

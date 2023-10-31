@@ -169,7 +169,7 @@ class Ports:
         commands.append(cmd)
         objects.append(obj)
 
-      system_libs.run_build_commands(commands)
+      system_libs.run_build_commands(commands, num_inputs=len(srcs))
       system_libs.create_lib(output_path, objects)
 
     return output_path
