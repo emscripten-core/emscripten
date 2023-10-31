@@ -458,6 +458,9 @@ def apply_user_settings():
       except Exception as e:
         exit_with_error('a problem occurred in evaluating the content after a "-s", specifically "%s=%s": %s', key, value, str(e))
 
+    # Special handling of browser version targets. A version -1 means that the specific version
+    # is not supported at all. Replace those with INT32_MAX to make it possible to compare e.g.
+    # #if MIN_FIREFOX_VERSION < 68
     if value == -1 and key.startswith('MIN_') and key.endswith('_VERSION'):
       value = feature_matrix.TARGET_NOT_SUPPORTED
 
