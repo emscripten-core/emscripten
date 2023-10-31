@@ -76,8 +76,8 @@ min_interesting_versions = {
     min(
         parse_version(version, browser)
         for version, release in data["browsers"][browser]["releases"].items()
-        if "release_date" in release
-        and int(release["release_date"][:4]) >= min_interesting_year)
+        if "release_date" in release and
+        int(release["release_date"][:4]) >= min_interesting_year)
     for browser in interesting_browsers
 }
 print("Minimum interesting versions: ", min_interesting_versions)
