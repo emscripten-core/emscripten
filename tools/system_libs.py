@@ -83,7 +83,7 @@ def clean_env():
   return safe_env
 
 
-def run_build_commands(commands, build_dir):
+def run_build_commands(commands, build_dir=None):
   # Before running a set of build commands make sure the common sysroot
   # headers are installed.  This prevents each sub-process from attempting
   # to setup the sysroot itself.
