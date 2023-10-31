@@ -98,6 +98,5 @@ def main():
   generate_entry_points(compiler_entry_points, os.path.join(tools_dir, 'run_python_compiler'))
 
 
-
 if __name__ == '__main__':
   sys.exit(main())
