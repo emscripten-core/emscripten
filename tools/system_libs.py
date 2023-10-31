@@ -512,7 +512,7 @@ class Library:
         object_basename = object_basename.lower()
       o = os.path.join(build_dir, object_basename + '.o')
       if o in objects:
-        # If we have seen file with same name before, we are on case-insensitive
+        # If we have seen a file with the same name before, we are on a case-insensitive
         # filesystem and need a separate command to compile this file with a
         # custom unique output object filename, as batch compile doesn't allow
         # such customization.
