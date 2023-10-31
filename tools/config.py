@@ -20,6 +20,7 @@ logger = logging.getLogger('config')
 # See parse_config_file below.
 EMSCRIPTEN_ROOT = __rootpath__
 NODE_JS = None
+NODE_JS_TEST = None
 BINARYEN_ROOT = None
 SPIDERMONKEY_ENGINE = None
 V8_ENGINE: Optional[List[str]] = None
@@ -61,7 +62,7 @@ def root_is_writable():
 
 def normalize_config_settings():
   global CACHE, PORTS, LLVM_ADD_VERSION, CLANG_ADD_VERSION, CLOSURE_COMPILER
-  global NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
+  global NODE_JS, NODE_JS_TEST, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
 
   # EM_CONFIG stuff
   if not JS_ENGINES:
@@ -74,6 +75,7 @@ def normalize_config_settings():
       new_spidermonkey += ['-w']
     SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
   NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
+  NODE_JS_TEST = fix_js_engine(NODE_JS_TEST, listify(NODE_JS_TEST))
   V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
   JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
   WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
@@ -120,6 +122,7 @@ def parse_config_file():
 
   CONFIG_KEYS = (
     'NODE_JS',
+    'NODE_JS_TEST',
     'BINARYEN_ROOT',
     'SPIDERMONKEY_ENGINE',
     'V8_ENGINE',
