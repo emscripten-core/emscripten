@@ -10,9 +10,9 @@ var Module = moduleArg;
 // if (!Module)` is crucial for Closure Compiler here as it will
 // otherwise replace every `Module` occurrence with the object below
 var /** @type{Object} */ Module;
-if (!Module) /** @suppress{checkTypes}*/Module = 
+if (!Module) /** @suppress{checkTypes}*/Module =
 #if AUDIO_WORKLET
-  globalThis.{{{ EXPORT_NAME }}} || 
+  globalThis.{{{ EXPORT_NAME }}} ||
 #endif
   {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
 
@@ -21,7 +21,7 @@ if (!Module) /** @suppress{checkTypes}*/Module =
 // When running on the web we expect Module to be defined externally, in the
 // HTML.  Otherwise we must define it here before its first use
 var Module =
-#if SUPPORTS_GLOBALTHIS
+#if caniuse('js.globalThis')
   // As a small code size optimization, we can use 'globalThis' to refer to the global scope Module variable.
   globalThis.{{{ EXPORT_NAME }}} || {};
 #else
@@ -148,8 +148,7 @@ function ready() {
 }
 
 #if POLYFILL
-// See https://caniuse.com/mdn-javascript_builtins_object_assign
-#if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 90000
+#if !caniuse('js.Object.assign')
 #include "polyfill/objassign.js"
 #endif
 #endif

@@ -6,131 +6,86 @@
 """Utilities for mapping browser versions to webassembly features."""
 
 import logging
-from enum import IntEnum, auto
 
 from .settings import settings, user_settings
 from . import diagnostics
 
+from json import load
+from functools import reduce
+from operator import getitem
+from pathlib import Path
+
 logger = logging.getLogger('feature_matrix')
 
-
-class Feature(IntEnum):
-  NON_TRAPPING_FPTOINT = auto()
-  SIGN_EXT = auto()
-  BULK_MEMORY = auto()
-  MUTABLE_GLOBALS = auto()
-  JS_BIGINT_INTEGRATION = auto()
-  THREADS = auto()
-  GLOBALTHIS = auto()
-  PROMISE_ANY = auto()
+with open(Path(__file__).parent / 'browser_compat_data.json', 'r') as f:
+  browser_compat_data = load(f)
 
 
-default_features = {Feature.SIGN_EXT, Feature.MUTABLE_GLOBALS}
-
-min_browser_versions = {
-  Feature.NON_TRAPPING_FPTOINT: {
-    'chrome': 75,
-    'firefox': 65,
-    'safari': 150000,
-  },
-  Feature.SIGN_EXT: {
-    'chrome': 74,
-    'firefox': 62,
-    'safari': 140100,
-  },
-  Feature.BULK_MEMORY: {
-    'chrome': 75,
-    'firefox': 79,
-    'safari': 150000,
-  },
-  Feature.MUTABLE_GLOBALS: {
-    'chrome': 74,
-    'firefox': 61,
-    'safari': 120000,
-  },
-  Feature.JS_BIGINT_INTEGRATION: {
-    'chrome': 67,
-    'firefox': 68,
-    'safari': 150000,
-  },
-  Feature.THREADS: {
-    'chrome': 74,
-    'firefox': 79,
-    'safari': 140100,
-  },
-  Feature.GLOBALTHIS: {
-    'chrome': 71,
-    'edge': 79,
-    'firefox': 65,
-    'safari': 120100,
-    'node': 120000,
-  },
-  Feature.PROMISE_ANY: {
-    'chrome': 85,
-    'firefox': 79,
-    'safari': 140000,
-    'node': 150000,
-  },
-}
+# This value is used to indicate that a feature is not supported
+# in a given browser (by setting minimum versions to INT32_MAX).
+TARGET_NOT_SUPPORTED = 0x7FFFFFFF
 
 
-def caniuse(feature):
-  min_versions = min_browser_versions[feature]
-
-  def report_missing(setting_name):
-    setting_value = getattr(settings, setting_name)
-    logger.debug(f'cannot use {feature.name} because {setting_name} is too old: {setting_value}')
-
-  if settings.MIN_CHROME_VERSION < min_versions['chrome']:
-    report_missing('MIN_CHROME_VERSION')
-    return False
-  # For edge we just use the same version requirements as chrome since,
-  # at least for modern versions of edge, they share version numbers.
-  if settings.MIN_EDGE_VERSION < min_versions['chrome']:
-    report_missing('MIN_EDGE_VERSION')
-    return False
-  if settings.MIN_FIREFOX_VERSION < min_versions['firefox']:
-    report_missing('MIN_FIREFOX_VERSION')
-    return False
-  if settings.MIN_SAFARI_VERSION < min_versions['safari']:
-    report_missing('MIN_SAFARI_VERSION')
-    return False
-  # IE don't support any non-MVP features
-  if settings.MIN_IE_VERSION != 0x7FFFFFFF:
-    report_missing('MIN_IE_VERSION')
-    return False
-  if 'node' in min_versions and settings.MIN_NODE_VERSION < min_versions['node']:
-    report_missing('MIN_NODE_VERSION')
-    return False
-  return True
+def get_min_versions(path):
+  min_versions = reduce(getitem, path.split('.'), browser_compat_data)['#']
+  return {
+    'MIN_CHROME_VERSION': min_versions.get('chrome', TARGET_NOT_SUPPORTED),
+    'MIN_FIREFOX_VERSION': min_versions.get('firefox', TARGET_NOT_SUPPORTED),
+    'MIN_SAFARI_VERSION': min_versions.get('safari', TARGET_NOT_SUPPORTED),
+    'MIN_NODE_VERSION': min_versions.get('nodejs', TARGET_NOT_SUPPORTED),
+  }
 
 
-def enable_feature(feature, reason):
+def caniuse(path):
+  min_versions = get_min_versions(path)
+
+  def check_version(setting_name):
+    setting_value = settings[setting_name]
+    if setting_value < min_versions[setting_name]:
+      logger.debug(f'cannot use {path} because {setting_name} is too old: {setting_value}')
+      return False
+    return True
+
+  return all(check_version(setting_name) for setting_name in min_versions)
+
+
+def enable_feature(path):
   """Updates default settings for browser versions such that the given
   feature is available everywhere.
   """
-  for name, min_version in min_browser_versions[feature].items():
-    name = f'MIN_{name.upper()}_VERSION'
+  min_versions = get_min_versions(path)
+  for name, min_version in min_versions.items():
     if settings[name] < min_version:
       if name in user_settings:
         # If the user explicitly chose an older version we issue a warning.
         diagnostics.warning(
             'compatibility',
-            f'{name}={user_settings[name]} is not compatible with {reason} '
+            f'{name}={user_settings[name]} is not compatible with {path} '
             f'({min_version} or above required)')
       else:
         # Otherwise we bump the minimum version to accommodate the feature.
-        setattr(settings, name, min_version)
+        settings[name] = min_version
 
 
-# apply minimum browser version defaults based on user settings. if
+def enable_feature_if(setting_name, path):
+  if settings[setting_name]:
+    enable_feature(path)
+
+
+# Apply minimum browser version defaults based on user settings. if
 # a user requests a feature that we know is only supported in browsers
 # from a specific version and above, we can assume that browser version.
+#
+# Be careful not to include features that might be used in older browsers
+# via polyfills, only features that can't be polyfilled.
 def apply_min_browser_versions():
-  if settings.WASM_BIGINT:
-    enable_feature(Feature.JS_BIGINT_INTEGRATION, 'WASM_BIGINT')
-  if settings.PTHREADS:
-    enable_feature(Feature.THREADS, 'pthreads')
-    enable_feature(Feature.BULK_MEMORY, 'pthreads')
-  if settings.AUDIO_WORKLET:
-    enable_feature(Feature.GLOBALTHIS, 'AUDIO_WORKLET')
+  if not settings.WASM2JS:
+    enable_feature('js.WebAssembly')
+    # TODO: enable this when we figure out if Node.js version data is correct.
+    # enable_feature('wasm.signExtensions')
+    # enable_feature('wasm.mutableGlobals')
+  enable_feature_if('WASM_BIGINT', 'wasm.bigInt')
+  enable_feature_if('SHARED_MEMORY', 'wasm.threads')
+  enable_feature_if('BULK_MEMORY', 'wasm.bulkMemory')
+  enable_feature_if('WASM_EXCEPTIONS', 'wasm.exceptions')
+  enable_feature_if('AUDIO_WORKLET', 'js.AudioWorklet')

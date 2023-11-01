@@ -3,6 +3,8 @@ import sys
 import os
 import logging
 
+from tools import feature_matrix
+
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
@@ -23,18 +25,14 @@ def generate_minimal_runtime_load_statement(target_basename):
   # Depending on whether streaming Wasm compilation is enabled or not, the minimal sized code to download Wasm looks a bit different.
   # Expand {{{ DOWNLOAD_WASM }}} block from here (if we added #define support, this could be done in the template directly)
   if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION:
-    if settings.MIN_SAFARI_VERSION != settings.TARGET_NOT_SUPPORTED or settings.ENVIRONMENT_MAY_BE_NODE or settings.MIN_FIREFOX_VERSION < 58 or settings.MIN_CHROME_VERSION < 61:
-      # Firefox 52 added Wasm support, but only Firefox 58 added compileStreaming.
-      # Chrome 57 added Wasm support, but only Chrome 61 added compileStreaming.
-      # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/compileStreaming
-      # In Safari and Node.js, WebAssembly.compileStreaming() is not supported, in which case fall back to regular download.
+    if not feature_matrix.caniuse('js.WebAssembly.compileStreaming'):
       download_wasm = "WebAssembly.compileStreaming ? WebAssembly.compileStreaming(fetch('%s')) : binary('%s')" % (target_basename + '.wasm', target_basename + '.wasm')
     else:
       # WebAssembly.compileStreaming() is unconditionally supported:
       download_wasm = "WebAssembly.compileStreaming(fetch('%s'))" % (target_basename + '.wasm')
   elif settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
     # Same compatibility story as above for https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-    if settings.MIN_SAFARI_VERSION != settings.TARGET_NOT_SUPPORTED or settings.ENVIRONMENT_MAY_BE_NODE or settings.MIN_FIREFOX_VERSION < 58 or settings.MIN_CHROME_VERSION < 61:
+    if not feature_matrix.caniuse('js.WebAssembly.instantiateStreaming'):
       download_wasm = "!WebAssembly.instantiateStreaming && binary('%s')" % (target_basename + '.wasm')
     else:
       # WebAssembly.instantiateStreaming() is unconditionally supported, so we do not download wasm in the .html file,

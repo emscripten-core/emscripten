@@ -458,6 +458,12 @@ def apply_user_settings():
       except Exception as e:
         exit_with_error('a problem occurred in evaluating the content after a "-s", specifically "%s=%s": %s', key, value, str(e))
 
+    # Special handling of browser version targets. A version -1 means that the specific version
+    # is not supported at all. Replace those with INT32_MAX to make it possible to compare e.g.
+    # #if MIN_FIREFOX_VERSION < 68
+    if value == -1 and key.startswith('MIN_') and key.endswith('_VERSION'):
+      value = feature_matrix.TARGET_NOT_SUPPORTED
+
     setattr(settings, user_key, value)
 
     if key == 'EXPORTED_FUNCTIONS':
@@ -648,7 +654,7 @@ def get_binaryen_passes():
     passes += ['--safe-heap']
   # sign-ext is enabled by default by llvm.  If the target browser settings don't support
   # this we lower it away here using a binaryen pass.
-  if not feature_matrix.caniuse(feature_matrix.Feature.SIGN_EXT):
+  if not feature_matrix.caniuse('wasm.signExtensions'):
     logger.debug('lowering sign-ext feature due to incompatiable target browser engines')
     passes += ['--signext-lowering']
   if optimizing:
@@ -895,16 +901,6 @@ def parse_s_args(args):
         # If not = is specified default to 1
         if '=' not in key:
           key += '=1'
-
-        # Special handling of browser version targets. A version -1 means that the specific version
-        # is not supported at all. Replace those with INT32_MAX to make it possible to compare e.g.
-        # #if MIN_FIREFOX_VERSION < 68
-        if re.match(r'MIN_.*_VERSION(=.*)?', key):
-          try:
-            if int(key.split('=')[1]) < 0:
-              key = key.split('=')[0] + '=0x7FFFFFFF'
-          except Exception:
-            pass
 
         settings_changes.append(key)
 
@@ -2327,7 +2323,7 @@ def phase_linker_setup(options, state, newargs):
                                  settings.MIN_FIREFOX_VERSION < 44 or
                                  settings.MIN_CHROME_VERSION < 49 or
                                  settings.MIN_SAFARI_VERSION < 110000 or
-                                 settings.MIN_IE_VERSION != 0x7FFFFFFF)
+                                 settings.MIN_IE_VERSION != feature_matrix.TARGET_NOT_SUPPORTED)
 
     if options.use_closure_compiler is None and settings.TRANSPILE_TO_ES5:
       diagnostics.warning('transpile', 'enabling transpilation via closure due to browser version settings.  This warning can be suppressed by passing `--closure=1` or `--closure=0` to opt into our explicitly.')
@@ -2337,7 +2333,7 @@ def phase_linker_setup(options, state, newargs):
                           settings.MIN_FIREFOX_VERSION >= 45 and
                           settings.MIN_CHROME_VERSION >= 49 and
                           settings.MIN_SAFARI_VERSION >= 90000 and
-                          settings.MIN_IE_VERSION == 0x7FFFFFFF)
+                          settings.MIN_IE_VERSION == feature_matrix.TARGET_NOT_SUPPORTED)
 
   if not settings.DISABLE_EXCEPTION_CATCHING and settings.EXCEPTION_STACK_TRACES and not supports_es6_classes:
     diagnostics.warning('transpile', '-sEXCEPTION_STACK_TRACES requires an engine that support ES6 classes.')
@@ -2529,12 +2525,8 @@ def phase_linker_setup(options, state, newargs):
   # Such setting must be set before this point
   feature_matrix.apply_min_browser_versions()
 
-  # TODO(sbc): Find make a generic way to expose the feature matrix to JS
-  # compiler rather then adding them all ad-hoc as internal settings
-  settings.SUPPORTS_GLOBALTHIS = feature_matrix.caniuse(feature_matrix.Feature.GLOBALTHIS)
-  settings.SUPPORTS_PROMISE_ANY = feature_matrix.caniuse(feature_matrix.Feature.PROMISE_ANY)
   if not settings.BULK_MEMORY:
-    settings.BULK_MEMORY = feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY)
+    settings.BULK_MEMORY = feature_matrix.caniuse('wasm.bulkMemory')
     if settings.MEMORY64 and settings.MIN_NODE_VERSION < 180000:
       # Note that we do not update tools/feature_matrix.py for this, as this issue is
       # wasm64-specific: bulk memory for wasm32 has shipped in Node.js 12.5, but

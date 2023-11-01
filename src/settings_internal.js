@@ -172,12 +172,6 @@ var MINIFY_WASM_EXPORT_NAMES = true;
 // Internal: represents a browser version that is not supported at all.
 var TARGET_NOT_SUPPORTED = 0x7FFFFFFF;
 
-// Used to track whether target environment supports the 'globalThis' attribute.
-var SUPPORTS_GLOBALTHIS = false;
-
-// Used to track whether target environment supports the 'Promise.any'.
-var SUPPORTS_PROMISE_ANY = false;
-
 // Wasm backend symbols that are considered system symbols and don't
 // have the normal C symbol name mangled applied (== prefix with an underscore)
 // (Also implicily on this list is any function that starts with string "dynCall_")

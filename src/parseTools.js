@@ -1047,3 +1047,21 @@ function getPerformanceNow() {
 function implicitSelf() {
   return ENVIRONMENT.includes('node') ? 'self.' : '';
 }
+
+const caniuse_raw = JSON.parse(read('../tools/browser_compat_data.json'));
+
+function caniuse(path) {
+  const obj = path.split('.').reduce((obj, key) => obj[key], caniuse_raw)['#'];
+
+  const userMinVersions = {
+    chrome: MIN_CHROME_VERSION,
+    firefox: MIN_FIREFOX_VERSION,
+    safari: MIN_SAFARI_VERSION,
+    nodejs: MIN_NODE_VERSION,
+  };
+
+  return Object.entries(userMinVersions).every(([browser, userMinVersion]) => {
+    const featureMinVersion = obj[browser] || TARGET_NOT_SUPPORTED;
+    return userMinVersion >= featureMinVersion;
+  });
+}
