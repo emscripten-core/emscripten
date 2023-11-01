@@ -3905,7 +3905,7 @@ var LibraryGLEmulation = {
 
 // Legacy GL emulation
 if (LEGACY_GL_EMULATION) {
-  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$GLEmulation');
+  extraLibraryFuncs.push('$GLEmulation');
 }
 
 recordGLProcAddressGet(LibraryGLEmulation);

@@ -20,31 +20,31 @@ WebAssembly is emitted by default, without the need for any special flags.
       emcc [..args..] -sWASM=0
 
 .. note:: Emscripten's WebAssembly support depends on `Binaryen <https://github.com/WebAssembly/binaryen>`_, which is provided by the emsdk (if you don't use the emsdk, you need to build it and set it up in your ``.emscripten`` file).
-.. note:: Deciding to compile to wasm or JS can be done at the linking stage: it doesn't affect the object files.
+.. note:: Deciding to compile to Wasm or JS can be done at the linking stage: it doesn't affect the object files.
 
 Backends
 --------
 
-Emscripten emits WebAssembly using the **upstream LLVM wasm backend**, since
+Emscripten emits WebAssembly using the **upstream LLVM Wasm backend**, since
 version ``1.39.0`` (October 2019). Previously emscripten also supported the
 old **fastcomp** backend which was removed in ``2.0.0`` (August 2020).
 
 There are some differences you may notice between the two backends, if you
 upgrade from fastcomp to upstream:
 
-* The wasm backend is strict about linking files with different features sets -
+* The Wasm backend is strict about linking files with different features sets -
   for example, if one file was built with atomics but another was not, it will
   error at link time. This prevents possible bugs, but may mean you need to make
   some build system fixes.
 
 * ``WASM=0`` behaves differently in the two backends. In fastcomp we emit
-  asm.js, while in upstream we emit JS (since not all wasm constructs can be
+  asm.js, while in upstream we emit JS (since not all Wasm constructs can be
   expressed in asm.js). Also, the JS support implements the same external
-  ``WebAssembly.*`` API, so in particular startup will be async just like wasm
+  ``WebAssembly.*`` API, so in particular startup will be async just like Wasm
   by default, and you can control that with ``WASM_ASYNC_COMPILATION`` (even
   though ``WASM=0``).
 
-* The wasm backend uses wasm object files by default. That means that it does
+* The Wasm backend uses Wasm object files by default. That means that it does
   codegen at the compile step, which makes the link step much faster - like a
   normal native compiler. For comparison, in fastcomp the compile step emits
   LLVM IR in object files.
@@ -67,7 +67,7 @@ upgrade from fastcomp to upstream:
     perform some minor types of link time optimization even without LTO being
     set. The LLVM backend requires actually setting LTO for those things.
 
-* `wasm-ld`, the linker used by the wasm backend, requires libraries (`.a`
+* `wasm-ld`, the linker used by the Wasm backend, requires libraries (`.a`
   archives) to contain symbol indexes.  This matches the behaviour the native
   GNU linker.  While `emar` will create such indexes by default, native tools
   such as GNU `ar` and GNU `strip` are not aware of the WebAssembly object
@@ -75,14 +75,14 @@ upgrade from fastcomp to upstream:
   `strip` on an archive file that contains WebAssembly object files it will
   remove the index which makes the archive unusable at link time.
 
-* Also see the `blocker bugs on the wasm backend <https://github.com/emscripten-core/emscripten/projects/1>`_, and the `wasm backend tagged issues <https://github.com/emscripten-core/emscripten/issues?utf8=✓&q=is%3Aissue+is%3Aopen+label%3A"LLVM+wasm+backend">`_.
+* Also see the `blocker bugs on the Wasm backend <https://github.com/emscripten-core/emscripten/projects/1>`_, and the `Wasm backend tagged issues <https://github.com/emscripten-core/emscripten/issues?utf8=✓&q=is%3Aissue+is%3Aopen+label%3A"LLVM+wasm+backend">`_.
 
 Trapping
 ========
 
 WebAssembly can trap - throw an exception - on things like division by zero, rounding a very large float to an int, and so forth. In asm.js such things were silently ignored, as in JavaScript they do not throw, so this is a difference between JavaScript and WebAssembly that you may notice, with the browser reporting an error like ``float unrepresentable in integer range``, ``integer result unrepresentable``, ``integer overflow``, or ``Out of bounds Trunc operation``.
 
-The LLVM wasm backend avoids traps by adding more code around each possible trap (basically clamping the value if it would trap). This can increase code size and decrease speed, if you don't need that extra code. The proper solution for this is to use newer wasm instructions that do not trap, by calling emcc or clang with ``-mnontrapping-fptoint``. That code may not run in older VMs, though.
+The LLVM Wasm backend avoids traps by adding more code around each possible trap (basically clamping the value if it would trap). This can increase code size and decrease speed, if you don't need that extra code. The proper solution for this is to use newer Wasm instructions that do not trap, by calling emcc or clang with ``-mnontrapping-fptoint``. That code may not run in older VMs, though.
 
 Compiler output
 ===============
@@ -112,7 +112,7 @@ Another noticeable effect is that WebAssembly is compiled asynchronously by defa
 Web server setup
 ================
 
-To serve wasm in the most efficient way over the network, make sure your web server has the proper MIME type for ``.wasm`` files, which is application/wasm. That will allow streaming compilation, where the browser can start to compile code as it downloads.
+To serve Wasm in the most efficient way over the network, make sure your web server has the proper MIME type for ``.wasm`` files, which is application/wasm. That will allow streaming compilation, where the browser can start to compile code as it downloads.
 
 In Apache, you can do this with
 

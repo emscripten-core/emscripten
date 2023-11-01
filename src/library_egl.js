@@ -81,7 +81,7 @@ var LibraryEGL = {
         {{{ makeSetValue('numConfigs', '0', '1', 'i32') }}}; // Total number of supported configs: 1.
       }
       if (config && config_size > 0) {
-        {{{ makeSetValue('config', '0', '62002' /* Magic ID for the only EGLConfig supported by Emscripten */, 'i32') }}};
+        {{{ makeSetValue('config', '0', '62002' /* Magic ID for the only EGLConfig supported by Emscripten */, '*') }}};
       }
 
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);

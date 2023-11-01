@@ -12,7 +12,7 @@ var WasiLibrary = {
     this.message = `Program terminated with exit(${status})`;
     this.status = status;
   },
-  proc_exit__deps: ['$ExitStatus'],
+  proc_exit__deps: ['$ExitStatus', '$keepRuntimeAlive'],
 #endif
 
   proc_exit__nothrow: true,

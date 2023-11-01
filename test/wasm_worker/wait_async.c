@@ -3,7 +3,7 @@
 #include <emscripten/threading.h>
 #include <assert.h>
 
-// Test emscripten_wasm_wait_i64() and emscripten_wasm_notify() functions.
+// Test emscripten_atomic_wait_u64() and emscripten_atomic_notify() functions.
 
 volatile int32_t addr = 0;
 
@@ -14,7 +14,7 @@ void worker_main()
   emscripten_console_log("worker: addr = 1234");
   emscripten_atomic_store_u32((void*)&addr, 1234);
   emscripten_console_log("worker: notify async waiting main thread");
-  emscripten_wasm_notify((int32_t*)&addr, 1);
+  emscripten_atomic_notify((int32_t*)&addr, 1);
 }
 
 

@@ -36,6 +36,9 @@ import clang_native
 
 logger = logging.getLogger("test_core")
 
+EM_SIGINT = 2
+EM_SIGABRT = 6
+
 
 def wasm_simd(f):
   @wraps(f)
@@ -2195,9 +2198,12 @@ int main(int argc, char **argv) {
     self.emcc_args.append('-std=gnu89')
     self.do_core_test('test_em_asm_2.cpp', force_c=True)
 
-  # Tests various different ways to invoke the MAIN_THREAD_EM_ASM(), MAIN_THREAD_EM_ASM_INT() and MAIN_THREAD_EM_ASM_DOUBLE() macros.
-  # This test is identical to test_em_asm_2, just search-replaces EM_ASM to MAIN_THREAD_EM_ASM on the test file. That way if new
-  # test cases are added to test_em_asm_2.cpp for EM_ASM, they will also get tested in MAIN_THREAD_EM_ASM form.
+  # Tests various different ways to invoke the MAIN_THREAD_EM_ASM(),
+  # MAIN_THREAD_EM_ASM_INT(), MAIN_THREAD_EM_ASM_PTR, and
+  # MAIN_THREAD_EM_ASM_DOUBLE() macros.  This test is identical to
+  # test_em_asm_2, just search-replaces EM_ASM to MAIN_THREAD_EM_ASM on the test
+  # file. That way if new test cases are added to test_em_asm_2.cpp for EM_ASM,
+  # they will also get tested in MAIN_THREAD_EM_ASM form.
   def test_main_thread_em_asm(self):
     src = read_file(test_file('core/test_em_asm_2.cpp'))
     create_file('src.cpp', src.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
@@ -2914,6 +2920,15 @@ The current type of b is: 9
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.do_runf(test_file('pthread/test_pthread_run_script.c'))
+
+  @node_pthreads
+  def test_pthread_wait32_notify(self):
+    self.do_run_in_out_file_test(test_file('wasm_worker/wait32_notify.c'))
+
+  @node_pthreads
+  @no_wasm2js('https://github.com/WebAssembly/binaryen/issues/5991')
+  def test_pthread_wait64_notify(self):
+    self.do_run_in_out_file_test(test_file('wasm_worker/wait64_notify.c'))
 
   def test_tcgetattr(self):
     self.do_runf(test_file('termios/test_tcgetattr.c'), 'success')
@@ -6179,6 +6194,22 @@ Module.onRuntimeInitialized = () => {
   def test_signals(self):
     self.do_core_test(test_file('test_signals.c'))
 
+  @parameterized({
+    'sigint': (EM_SIGINT, 128 + EM_SIGINT, True),
+    'sigabrt': (EM_SIGABRT, 7, False)
+  })
+  @crossplatform
+  def test_sigaction_default(self, signal, exit_code, assert_identical):
+    self.set_setting('EXIT_RUNTIME')
+    # TODO: re-enable assertions when https://github.com/emscripten-core/emscripten/issues/20315 is fixed.
+    self.set_setting('ASSERTIONS', 0)
+    self.do_core_test(
+      test_file('test_sigaction_default.c'),
+      args=[str(signal)],
+      assert_identical=assert_identical,
+      assert_returncode=exit_code
+    )
+
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @requires_node
   def test_unistd_access(self):
@@ -7754,6 +7785,61 @@ void* operator new(size_t size) {
     err = self.expect_fail([EMCC, test_file('embind/test_val_assignment.cpp'), '-lembind', '-c'])
     self.assertContained('candidate function not viable: expects an lvalue for object argument', err)
 
+  @node_pthreads
+  def test_embind_val_cross_thread(self):
+    self.emcc_args += ['--bind']
+    create_file('test_embind_val_cross_thread.cpp', r'''
+      #include <emscripten.h>
+      #include <emscripten/val.h>
+      #include <thread>
+      #include <stdio.h>
+
+      using emscripten::val;
+
+      int main(int argc, char **argv) {
+        // Store a value handle from the main thread.
+        val value(0);
+        std::thread([&] {
+          // Set to a value handle from a different thread.
+          value = val(1);
+        }).join();
+        // Try to access the stored handle from the main thread.
+        // Without the check (if compiled with -DNDEBUG) this will incorrectly
+        // print "0" instead of "1" since the handle with the same ID
+        // resolves to different values on different threads.
+        printf("%d\n", value.as<int>());
+      }
+    ''')
+    self.do_runf('test_embind_val_cross_thread.cpp', 'val accessed from wrong thread', assert_returncode=NON_ZERO)
+
+  @node_pthreads
+  def test_embind_val_cross_thread_deleted(self):
+    self.emcc_args += ['--bind']
+    create_file('test_embind_val_cross_thread.cpp', r'''
+      #include <emscripten.h>
+      #include <emscripten/val.h>
+      #include <thread>
+      #include <stdio.h>
+      #include <optional>
+
+      using emscripten::val;
+
+      int main(int argc, char **argv) {
+        // Create a storage for value handles on the main thread.
+        std::optional<val> opt_value;
+        std::thread([&] {
+          // Set to a value handle from a different thread.
+          val& value = opt_value.emplace(1);
+          // Move out from the optional storage so that we free the value on the same thread.
+          val moved_out = std::move(value);
+        }).join();
+        // Now std::optional is initialized but with a deleted value handle.
+        // There should be no cross-thread error here when it tries to free that value,
+        // because the value has already been deleted on the correct thread.
+      }
+    ''')
+    self.do_runf('test_embind_val_cross_thread.cpp')
+
   def test_embind_dynamic_initialization(self):
     self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_dynamic_initialization.cpp')
@@ -7872,7 +7958,7 @@ void* operator new(size_t size) {
 
     # Export things on "TheModule". This matches the typical use pattern of the bound library
     # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
-    self.emcc_args += ['--post-js=glue.js', '--extern-post-js=extern-post.js']
+    self.emcc_args += ['-Wall', '--post-js=glue.js', '--extern-post-js=extern-post.js']
     if mode == 'ALL':
       self.emcc_args += ['-sASSERTIONS']
     if allow_memory_growth:
@@ -8184,26 +8270,6 @@ void* operator new(size_t size) {
     print('.. _Exit')
     self.do_runf('exit.c', 'hello, world!\nI see exit status: 118', assert_returncode=118, emcc_args=['-DCAPITAL_EXIT'])
 
-  def test_noexitruntime(self):
-    src = r'''
-      #include <emscripten.h>
-      #include <stdio.h>
-      static int testPre = TEST_PRE;
-      struct Global {
-        Global() {
-          printf("in Global()\n");
-          if (testPre) { EM_ASM(noExitRuntime = true;); }
-        }
-        ~Global() { printf("ERROR: in ~Global()\n"); }
-      } global;
-      int main() {
-        if (!testPre) { EM_ASM(noExitRuntime = true;); }
-        printf("in main()\n");
-      }
-    '''
-    self.do_run(src.replace('TEST_PRE', '0'), 'in Global()\nin main()')
-    self.do_run(src.replace('TEST_PRE', '1'), 'in Global()\nin main()')
-
   def test_minmax(self):
     self.do_runf(test_file('test_minmax.c'), 'NAN != NAN\nSuccess!')
 
@@ -8218,6 +8284,12 @@ void* operator new(size_t size) {
 
   def test_vswprintf_utf8(self):
     self.do_core_test('test_vswprintf_utf8.c')
+
+  # Test async sleeps in the presence of invoke_* calls, which can happen with
+  # longjmp or exceptions.
+  def test_asyncify_longjmp(self):
+    self.set_setting('ASYNCIFY')
+    self.do_core_test('test_asyncify_longjmp.c')
 
   # Test that a main with arguments is automatically asyncified.
   @with_asyncify_and_jspi
@@ -9780,6 +9852,19 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['--js-library', test_file('core/test_externref.js')]
     self.emcc_args += ['-mreference-types']
     self.do_core_test('test_externref.c', libraries=['asm.o'])
+
+  @parameterized({
+    '': [False],
+    'dynlink': [True]
+  })
+  @requires_node
+  @no_wasm2js('wasm2js does not support reference types')
+  def test_externref_emjs(self, dynlink):
+    self.emcc_args += ['-mreference-types']
+    self.node_args += shared.node_reference_types_flags()
+    if dynlink:
+      self.set_setting('MAIN_MODULE', 2)
+    self.do_core_test('test_externref_emjs.c')
 
   def test_syscall_intercept(self):
     self.do_core_test('test_syscall_intercept.c')

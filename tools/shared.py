@@ -356,6 +356,15 @@ def node_bigint_flags():
     return []
 
 
+def node_reference_types_flags():
+  node_version = check_node_version()
+  # reference types were enabled by default in node v18.
+  if node_version and node_version < (18, 0, 0):
+    return ['--experimental-wasm-reftypes']
+  else:
+    return []
+
+
 def node_memory64_flags():
   return ['--experimental-wasm-memory64']
 

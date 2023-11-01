@@ -13,3 +13,12 @@
 
 # [NFC] WasmFS: Run clang-format (#19995)
 2384d4e16f5309a642481387edb3774913fab382
+
+# Don't indent code inside C++ namespace in embind.h. NFC (#14098)
+752f66a7434386b4a8ed6e0e6babdafc23d78047
+
+# Remove indentation from C++ namespaces in embind code. NFC (#16400)
+5dbf740fd2064c89bc1112897f960a49caa7b6d1
+
+# Fix indentation in embind code. NFC (#17447)
+14c106a0a8cbc539d6efe4a4e7b4ee7bbb73a0a6

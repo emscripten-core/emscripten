@@ -1044,7 +1044,7 @@ var LibraryBrowser = {
   // Runs natively in pthread, no __proxy needed.
   emscripten_set_main_loop_arg__deps: ['$setMainLoop'],
   emscripten_set_main_loop_arg: (func, arg, fps, simulateInfiniteLoop) => {
-    var browserIterationFunc = () => {{{ makeDynCall('vi', 'func') }}}(arg);
+    var browserIterationFunc = () => {{{ makeDynCall('vp', 'func') }}}(arg);
     setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop, arg);
   },
 
@@ -1067,7 +1067,7 @@ var LibraryBrowser = {
   // Runs natively in pthread, no __proxy needed.
   _emscripten_push_main_loop_blocker: (func, arg, name) => {
     Browser.mainLoop.queue.push({ func: () => {
-      {{{ makeDynCall('vi', 'func') }}}(arg);
+      {{{ makeDynCall('vp', 'func') }}}(arg);
     }, name: UTF8ToString(name), counted: true });
     Browser.mainLoop.updateStatus();
   },
@@ -1075,7 +1075,7 @@ var LibraryBrowser = {
   // Runs natively in pthread, no __proxy needed.
   _emscripten_push_uncounted_main_loop_blocker: (func, arg, name) => {
     Browser.mainLoop.queue.push({ func: () => {
-      {{{ makeDynCall('vi', 'func') }}}(arg);
+      {{{ makeDynCall('vp', 'func') }}}(arg);
     }, name: UTF8ToString(name), counted: false });
     Browser.mainLoop.updateStatus();
   },

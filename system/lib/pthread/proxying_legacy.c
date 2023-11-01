@@ -149,10 +149,6 @@ static void _do_call(void* arg) {
   // C function pointer
   assert(EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(q->functionEnum) <= EM_QUEUED_CALL_MAX_ARGS);
   switch (q->functionEnum) {
-    case EM_PROXIED_RESIZE_OFFSCREENCANVAS:
-      q->returnValue.i =
-        _emscripten_set_offscreencanvas_size(q->args[0].cp, q->args[1].i, q->args[2].i);
-      break;
     case EM_FUNC_SIG_V:
       ((em_func_v)q->functionPtr)();
       break;

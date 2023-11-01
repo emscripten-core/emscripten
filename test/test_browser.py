@@ -23,7 +23,7 @@ from urllib.request import urlopen
 
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
-from common import read_file, requires_v8, also_with_minimal_runtime, also_with_wasm64, EMRUN
+from common import read_file, requires_v8, also_with_minimal_runtime, EMRUN
 from tools import shared
 from tools import ports
 from tools import utils
@@ -126,26 +126,6 @@ def also_with_wasm2js(f):
 
   metafunc._parameterize = {'': (False,),
                             'wasm2js': (True,)}
-  return metafunc
-
-
-def also_with_wasm2js_or_wasm64(f):
-  assert callable(f)
-
-  def metafunc(self, with_wasm2js, with_wasm64):
-    if with_wasm2js:
-      self.set_setting('WASM', 0)
-      f(self)
-    elif with_wasm64:
-      self.set_setting('MEMORY64')
-      self.emcc_args.append('-Wno-experimental')
-      f(self)
-    else:
-      f(self)
-
-  metafunc._parameterize = {'': (False, False),
-                            'wasm2js': (True, False),
-                            'wasm64': (False, True)}
   return metafunc
 
 
@@ -1502,7 +1482,6 @@ keydown(100);keyup(100); // trigger the end
     self.run_process([FILE_PACKAGER, 'more.data', '--preload', 'data.dat', '--separate-metadata', '--js-output=more.js'])
     self.btest(Path('browser/separate_metadata_later.cpp'), '1', args=['-sFORCE_FILESYSTEM'])
 
-  @also_with_wasm64
   def test_idbstore(self):
     secret = str(time.time())
     for stage in [0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5, 0, 4, 6, 5]:
@@ -1512,19 +1491,14 @@ keydown(100);keyup(100); // trigger the end
                       output_basename=f'idbstore_{stage}')
 
   @parameterized({
-      'asyncify': (1, False),
-      'asyncify_wasm64': (1, True),
-      'jspi': (2, False),
+    'asyncify': (1,),
+    'jspi': (2,),
   })
-  def test_idbstore_sync(self, asyncify, wasm64):
-    if wasm64:
-      self.require_wasm64()
-      self.set_setting('MEMORY64')
-      self.emcc_args.append('-Wno-experimental')
+  def test_idbstore_sync(self, asyncify):
     if asyncify == 2:
       self.require_jspi()
     secret = str(time.time())
-    self.btest('test_idbstore_sync.c', '8', args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '-sASYNCIFY=' + str(asyncify)])
+    self.btest('test_idbstore_sync.c', '8', args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', f'-sASYNCIFY={asyncify}'])
 
   def test_idbstore_sync_worker(self):
     secret = str(time.time())
@@ -1681,8 +1655,9 @@ keydown(100);keyup(100); // trigger the end
     ''' % self.port)
 
     for file_data in [1, 0]:
-      cmd = [EMCC, test_file('hello_world_worker.cpp'), '-o', 'worker.js'] + (['--preload-file', 'file.dat'] if file_data else [])
-      print(cmd)
+      cmd = [EMCC, test_file('hello_world_worker.cpp'), '-o', 'worker.js'] + self.get_emcc_args()
+      if file_data:
+        cmd += ['--preload-file', 'file.dat']
       self.run_process(cmd)
       self.assertExists('worker.js')
       self.run_browser('main.html', '/report_result?hello from worker, and :' + ('data for w' if file_data else '') + ':')
@@ -2294,7 +2269,6 @@ void *getBindBuffer() {
     self.btest('s3tc.c', reference='s3tc.png', args=['--preload-file', 'screenshot.dds', '-sLEGACY_GL_EMULATION', '-sGL_FFP_ONLY', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
-  @also_with_wasm64
   def test_anisotropic(self):
     shutil.copyfile(test_file('browser/water.dds'), 'water.dds')
     self.btest('test_anisotropic.c', reference='browser/test_anisotropic.png', reference_slack=2, args=['--preload-file', 'water.dds', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-Wno-incompatible-pointer-types'])
@@ -2376,7 +2350,7 @@ void *getBindBuffer() {
         return 0;
       }
     ''')
-    self.run_process([EMCC, 'supp.c', '-o', 'supp.wasm', '-sSIDE_MODULE', '-O2'])
+    self.run_process([EMCC, 'supp.c', '-o', 'supp.wasm', '-sSIDE_MODULE', '-O2'] + self.get_emcc_args())
     self.btest_exit('main.c', args=['-sMAIN_MODULE=2', '-O2', 'supp.wasm'])
 
   @parameterized({
@@ -3414,15 +3388,6 @@ Module["preRun"] = () => {
     for opts in [0, 3]:
       print(opts)
       self.btest_exit('async_virtual_2.cpp', args=['-O' + str(opts), '-sASSERTIONS', '-sSAFE_HEAP', '-profiling', '-sASYNCIFY'])
-
-  # Test async sleeps in the presence of invoke_* calls, which can happen with
-  # longjmp or exceptions.
-  @parameterized({
-    'O0': ([],), # noqa
-    'O3': (['-O3'],), # noqa
-  })
-  def test_async_longjmp(self, args):
-    self.btest_exit('async_longjmp.cpp', args=args + ['-sASYNCIFY'])
 
   def test_async_mainloop(self):
     for opts in [0, 3]:
@@ -4664,8 +4629,17 @@ Module["preRun"] = () => {
   def test_webgpu_basic_rendering(self, args):
     self.btest_exit('webgpu_basic_rendering.cpp', args=['-sUSE_WEBGPU'] + args)
 
+  @requires_graphics_hardware
+  @requires_threads
+  def test_webgpu_basic_rendering_pthreads(self):
+    self.btest_exit('webgpu_basic_rendering.cpp', args=['-sUSE_WEBGPU', '-pthread', '-sPROXY_TO_PTHREAD'])
+
   def test_webgpu_get_device(self):
     self.btest_exit('webgpu_get_device.cpp', args=['-sUSE_WEBGPU', '-sASSERTIONS', '--closure=1'])
+
+  @requires_threads
+  def test_webgpu_get_device_pthreads(self):
+    self.btest_exit('webgpu_get_device.cpp', args=['-sUSE_WEBGPU', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Tests the feature that shell html page can preallocate the typed array and place it
   # to Module.buffer before loading the script page.
@@ -4675,7 +4649,7 @@ Module["preRun"] = () => {
     self.btest_exit('test_preallocated_heap.cpp', args=['-sWASM=0', '-sINITIAL_MEMORY=16MB', '-sABORTING_MALLOC=0', '--shell-file', test_file('test_preallocated_heap_shell.html')])
 
   # Tests emscripten_fetch() usage to XHR data directly to memory without persisting results to IndexedDB.
-  @also_with_wasm2js_or_wasm64
+  @also_with_wasm2js
   def test_fetch_to_memory(self):
     # Test error reporting in the negative case when the file URL doesn't exist. (http 404)
     self.btest_exit('fetch/to_memory.cpp',
@@ -4699,14 +4673,14 @@ Module["preRun"] = () => {
                     args=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sFETCH_DEBUG', '-sFETCH', '-DFILE_DOES_NOT_EXIST'],
                     also_wasm2js=True)
 
-  @also_with_wasm2js_or_wasm64
+  @also_with_wasm2js
   def test_fetch_to_indexdb(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/to_indexeddb.cpp',
                     args=['-sFETCH_DEBUG', '-sFETCH'])
 
   # Tests emscripten_fetch() usage to persist an XHR into IndexedDB and subsequently load up from there.
-  @also_with_wasm2js_or_wasm64
+  @also_with_wasm2js
   def test_fetch_cached_xhr(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/cached_xhr.cpp',
@@ -4714,14 +4688,14 @@ Module["preRun"] = () => {
 
   # Tests that response headers get set on emscripten_fetch_t values.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
-  @also_with_wasm2js_or_wasm64
+  @also_with_wasm2js
   @requires_threads
   def test_fetch_response_headers(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/response_headers.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Test emscripten_fetch() usage to stream a XHR in to memory without storing the full file in memory
-  @also_with_wasm2js_or_wasm64
+  @also_with_wasm2js
   def test_fetch_stream_file(self):
     self.skipTest('moz-chunked-arraybuffer was firefox-only and has been removed')
     # Strategy: create a large 128MB file, and compile with a small 16MB Emscripten heap, so that the tested file
@@ -4735,11 +4709,9 @@ Module["preRun"] = () => {
     self.btest_exit('fetch/stream_file.cpp',
                     args=['-sFETCH_DEBUG', '-sFETCH', '-sINITIAL_MEMORY=536870912'])
 
-  @also_with_wasm64
   def test_fetch_headers_received(self):
     self.btest_exit('fetch/headers_received.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
 
-  @also_with_wasm64
   def test_fetch_xhr_abort(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/xhr_abort.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
@@ -4747,7 +4719,7 @@ Module["preRun"] = () => {
   # Tests emscripten_fetch() usage in synchronous mode when used from the main
   # thread proxied to a Worker with -sPROXY_TO_PTHREAD option.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
-  @also_with_wasm64
+  @also_with_wasm2js
   @requires_threads
   def test_fetch_sync_xhr(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
@@ -4756,7 +4728,6 @@ Module["preRun"] = () => {
   # Tests emscripten_fetch() usage when user passes none of the main 3 flags (append/replace/no_download).
   # In that case, in append is implicitly understood.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
-  @also_with_wasm64
   @requires_threads
   def test_fetch_implicit_append(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
@@ -5322,12 +5293,12 @@ Module["preRun"] = () => {
   def test_wasm_worker_hardware_concurrency_is_lock_free(self):
     self.btest('wasm_worker/hardware_concurrency_is_lock_free.c', expected='0', args=['-sWASM_WORKERS'])
 
-  # Tests emscripten_wasm_wait_i32() and emscripten_wasm_notify() functions.
+  # Tests emscripten_atomic_wait_u32() and emscripten_atomic_notify() functions.
   @also_with_minimal_runtime
   def test_wasm_worker_wait32_notify(self):
     self.btest('wasm_worker/wait32_notify.c', expected='2', args=['-sWASM_WORKERS'])
 
-  # Tests emscripten_wasm_wait_i64() and emscripten_wasm_notify() functions.
+  # Tests emscripten_atomic_wait_u64() and emscripten_atomic_notify() functions.
   @also_with_minimal_runtime
   def test_wasm_worker_wait64_notify(self):
     self.btest('wasm_worker/wait64_notify.c', expected='2', args=['-sWASM_WORKERS'])
@@ -5517,7 +5488,6 @@ Module["preRun"] = () => {
     self.do_run_in_out_file_test('browser', 'test_2GB_fail.cpp')
 
   @no_firefox('no 4GB support yet')
-  @also_with_wasm64
   @requires_v8
   def test_zzz_zzz_4gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
@@ -5731,3 +5701,10 @@ class emrun(RunnerCore):
       self.assertContained('Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', stdout)
       self.assertContained('Testing char sequences: %20%21 &auml;', stdout)
       self.assertContained('hello, error stream!', stderr)
+
+
+class browser64(browser):
+  def setUp(self):
+    super().setUp()
+    self.set_setting('MEMORY64')
+    self.emcc_args.append('-Wno-experimental')

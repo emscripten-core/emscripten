@@ -11,6 +11,16 @@ LibraryJSEventLoop = {
     throw 'unwind';
   },
 
+  $safeSetTimeout__deps: ['$callUserCallback'],
+  $safeSetTimeout__docs: '/** @param {number=} timeout */',
+  $safeSetTimeout: (func, timeout) => {
+    {{{ runtimeKeepalivePush() }}}
+    return setTimeout(() => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(func);
+    }, timeout);
+  },
+
   // Just like setImmediate but returns an i32 that can be passed back
   // to wasm rather than a JS object.
   $setImmediateWrapped: (func) => {
@@ -72,13 +82,10 @@ LibraryJSEventLoop = {
 
   emscripten_set_immediate__deps: ['$polyfillSetImmediate', '$callUserCallback'],
   emscripten_set_immediate: (cb, userData) => {
-    polyfillSetImmediate();
     {{{ runtimeKeepalivePush(); }}}
-    return emSetImmediate(function() {
+    return emSetImmediate(() => {
       {{{ runtimeKeepalivePop(); }}}
-      callUserCallback(function() {
-        {{{ makeDynCall('vp', 'cb') }}}(userData);
-      });
+      callUserCallback(() => {{{ makeDynCall('vp', 'cb') }}}(userData));
     });
   },
 
@@ -90,9 +97,8 @@ LibraryJSEventLoop = {
 
   emscripten_set_immediate_loop__deps: ['$polyfillSetImmediate', '$callUserCallback'],
   emscripten_set_immediate_loop: (cb, userData) => {
-    polyfillSetImmediate();
     function tick() {
-      callUserCallback(function() {
+      callUserCallback(() => {
         if ({{{ makeDynCall('ip', 'cb') }}}(userData)) {
           emSetImmediate(tick);
         } else {
@@ -116,8 +122,8 @@ LibraryJSEventLoop = {
       var t = _emscripten_get_now();
       var n = t + msecs;
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function() {
-        if ({{{ makeDynCall('idi', 'cb') }}}(t, userData)) {
+      callUserCallback(() => {
+        if ({{{ makeDynCall('idp', 'cb') }}}(t, userData)) {
           // Save a little bit of code space: modern browsers should treat
           // negative setTimeout as timeout of 0
           // (https://stackoverflow.com/questions/8430966/is-calling-settimeout-with-a-negative-delay-ok)
@@ -133,10 +139,8 @@ LibraryJSEventLoop = {
   emscripten_set_interval__deps: ['$callUserCallback'],
   emscripten_set_interval: (cb, msecs, userData) => {
     {{{ runtimeKeepalivePush() }}}
-    return setInterval(function() {
-      callUserCallback(function() {
-        {{{ makeDynCall('vi', 'cb') }}}(userData)
-      });
+    return setInterval(() => {
+      callUserCallback(() => {{{ makeDynCall('vp', 'cb') }}}(userData));
     }, msecs);
   },
 

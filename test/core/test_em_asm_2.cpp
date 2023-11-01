@@ -111,6 +111,15 @@ int main()
   // Note that expressions do not evaluate to return values, but the "return" keyword is needed. That is, the following line would return undefined and store i <- 0.
   // i = EM_ASM_INT(HEAP8.length); printf("returned statement %d\n", i);
 
+  void* p;
+
+  printf("\nEM_ASM_PTR: Return a pointer back.\n");
+  p = EM_ASM_PTR(out('1. got arg ' + $0); return 3;, 42); printf("1. returned ptr %p\n", p);
+  p = EM_ASM_PTR("out('2. got arg ' + $0); return 4;", 42); printf("2. returned ptr %p\n", p);
+  p = EM_ASM_PTR({"out('3. got arg ' + $0); return 5;"}, 42); printf("3. returned ptr %p\n", p);
+  p = EM_ASM_PTR({out('4. got arg ' + $0); return 6;}, 42); printf("4. returned ptr %p\n", p);
+  p = EM_ASM_PTR("{out('5. got arg ' + $0); return 7;}", 42); printf("5. returned ptr %p\n", p);
+
   double d;
 
   printf("\nEM_ASM_DOUBLE: Pass no parameters, return a double.\n");

@@ -17,6 +17,7 @@
 #include <emscripten/wire.h>
 #include <cstdint> // uintptr_t
 #include <vector>
+#include <type_traits>
 
 
 namespace emscripten {
@@ -98,11 +99,6 @@ EM_GENERIC_WIRE_TYPE _emval_call_method(
     const char* methodName,
     EM_DESTRUCTORS* destructors,
     EM_VAR_ARGS argv);
-void _emval_call_void_method(
-    EM_METHOD_CALLER caller,
-    EM_VAL handle,
-    const char* methodName,
-    EM_VAR_ARGS argv);
 EM_VAL _emval_typeof(EM_VAL value);
 bool _emval_instanceof(EM_VAL object, EM_VAL constructor);
 bool _emval_is_number(EM_VAL object);
@@ -111,6 +107,8 @@ bool _emval_in(EM_VAL item, EM_VAL object);
 bool _emval_delete(EM_VAL object, EM_VAL property);
 [[noreturn]] bool _emval_throw(EM_VAL object);
 EM_VAL _emval_await(EM_VAL promise);
+EM_VAL _emval_iter_begin(EM_VAL iterable);
+EM_VAL _emval_iter_next(EM_VAL iterator);
 
 } // extern "C"
 
@@ -144,7 +142,9 @@ public:
       : destructors(d)
   {}
   ~DestructorsRunner() {
-    _emval_run_destructors(destructors);
+    if (destructors) {
+      _emval_run_destructors(destructors);
+    }
   }
 
   DestructorsRunner(const DestructorsRunner&) = delete;
@@ -169,10 +169,15 @@ struct GenericWireTypeConverter<Pointee*> {
 };
 
 template<typename T>
-T fromGenericWireType(double g) {
+T fromGenericWireType(EM_GENERIC_WIRE_TYPE g) {
   typedef typename BindingType<T>::WireType WireType;
   WireType wt = GenericWireTypeConverter<WireType>::from(g);
   return BindingType<T>::fromWireType(wt);
+}
+
+template<>
+inline void fromGenericWireType<void>(EM_GENERIC_WIRE_TYPE g) {
+  (void)g;
 }
 
 template<typename... Args>
@@ -270,7 +275,7 @@ struct MethodCaller {
     auto caller = Signature<ReturnType, Args...>::get_method_caller();
 
     WireTypePack<Args...> argv(std::forward<Args>(args)...);
-    EM_DESTRUCTORS destructors;
+    EM_DESTRUCTORS destructors = nullptr;
     EM_GENERIC_WIRE_TYPE result = _emval_call_method(
       caller,
       handle,
@@ -279,20 +284,6 @@ struct MethodCaller {
       argv);
     DestructorsRunner rd(destructors);
     return fromGenericWireType<ReturnType>(result);
-  }
-};
-
-template<typename... Args>
-struct MethodCaller<void, Args...> {
-  static void call(EM_VAL handle, const char* methodName, Args&&... args) {
-    auto caller = Signature<void, Args...>::get_method_caller();
-
-    WireTypePack<Args...> argv(std::forward<Args>(args)...);
-    _emval_call_void_method(
-      caller,
-      handle,
-      methodName,
-      argv);
   }
 };
 
@@ -385,48 +376,51 @@ public:
   explicit val(T&& value) {
     using namespace internal;
 
-    typedef internal::BindingType<T> BT;
     WireTypePack<T> argv(std::forward<T>(value));
-    handle = _emval_take_value(internal::TypeID<T>::get(), argv);
+    new (this) val(_emval_take_value(internal::TypeID<T>::get(), argv));
   }
 
-  val() : handle(EM_VAL(internal::_EMVAL_UNDEFINED)) {}
+  val() : val(EM_VAL(internal::_EMVAL_UNDEFINED)) {}
 
   explicit val(const char* v)
-      : handle(internal::_emval_new_cstring(v))
+      : val(internal::_emval_new_cstring(v))
   {}
 
-  val(val&& v) : handle(v.handle) {
+  // Note: unlike other constructors, this doesn't use as_handle() because
+  // it just moves a value and doesn't need to go via incref/decref.
+  // This means it's safe to move values across threads - an error will
+  // only arise if you access or free it from the wrong thread later.
+  val(val&& v) : handle(v.handle), thread(v.thread) {
     v.handle = 0;
   }
 
-  val(const val& v) : handle(v.handle) {
+  val(const val& v) : val(v.as_handle()) {
     internal::_emval_incref(handle);
   }
 
   ~val() {
-    internal::_emval_decref(handle);
+    if (handle) {
+      internal::_emval_decref(as_handle());
+      handle = 0;
+    }
   }
 
   EM_VAL as_handle() const {
+#ifdef _REENTRANT
+    assert(pthread_equal(thread, pthread_self()) && "val accessed from wrong thread");
+#endif
     return handle;
   }
 
   val& operator=(val&& v) & {
-    auto v_handle = v.handle;
-    v.handle = 0;
-    if (handle) {
-      internal::_emval_decref(handle);
-    }
-    handle = v_handle;
+    val tmp(std::move(v));
+    this->~val();
+    new (this) val(std::move(tmp));
     return *this;
   }
 
   val& operator=(const val& v) & {
-    internal::_emval_incref(v.handle);
-    internal::_emval_decref(handle);
-    handle = v.handle;
-    return *this;
+    return *this = val(v);
   }
 
   bool hasOwnProperty(const char* key) const {
@@ -434,27 +428,27 @@ public:
   }
 
   bool isNull() const {
-    return handle == EM_VAL(internal::_EMVAL_NULL);
+    return as_handle() == EM_VAL(internal::_EMVAL_NULL);
   }
 
   bool isUndefined() const {
-    return handle == EM_VAL(internal::_EMVAL_UNDEFINED);
+    return as_handle() == EM_VAL(internal::_EMVAL_UNDEFINED);
   }
 
   bool isTrue() const {
-    return handle == EM_VAL(internal::_EMVAL_TRUE);
+    return as_handle() == EM_VAL(internal::_EMVAL_TRUE);
   }
 
   bool isFalse() const {
-    return handle == EM_VAL(internal::_EMVAL_FALSE);
+    return as_handle() == EM_VAL(internal::_EMVAL_FALSE);
   }
 
   bool isNumber() const {
-    return internal::_emval_is_number(handle);
+    return internal::_emval_is_number(as_handle());
   }
 
   bool isString() const {
-    return internal::_emval_is_string(handle);
+    return internal::_emval_is_string(as_handle());
   }
 
   bool isArray() const {
@@ -462,11 +456,11 @@ public:
   }
 
   bool equals(const val& v) const {
-    return internal::_emval_equals(handle, v.handle);
+    return internal::_emval_equals(as_handle(), v.as_handle());
   }
 
   bool operator==(const val& v) const {
-    return internal::_emval_equals(handle, v.handle);
+    return internal::_emval_equals(as_handle(), v.as_handle());
   }
 
   bool operator!=(const val& v) const {
@@ -474,11 +468,11 @@ public:
   }
 
   bool strictlyEquals(const val& v) const {
-    return internal::_emval_strictly_equals(handle, v.handle);
+    return internal::_emval_strictly_equals(as_handle(), v.as_handle());
   }
 
   bool operator>(const val& v) const {
-    return internal::_emval_greater_than(handle, v.handle);
+    return internal::_emval_greater_than(as_handle(), v.as_handle());
   }
 
   bool operator>=(const val& v) const {
@@ -486,7 +480,7 @@ public:
   }
 
   bool operator<(const val& v) const {
-    return internal::_emval_less_than(handle, v.handle);
+    return internal::_emval_less_than(as_handle(), v.as_handle());
   }
 
   bool operator<=(const val& v) const {
@@ -494,7 +488,7 @@ public:
   }
 
   bool operator!() const {
-    return internal::_emval_not(handle);
+    return internal::_emval_not(as_handle());
   }
 
   template<typename... Args>
@@ -504,17 +498,17 @@ public:
 
   template<typename T>
   val operator[](const T& key) const {
-    return val(internal::_emval_get_property(handle, val_ref(key).handle));
+    return val(internal::_emval_get_property(as_handle(), val_ref(key).as_handle()));
   }
 
   template<typename K, typename V>
   void set(const K& key, const V& value) {
-    internal::_emval_set_property(handle, val_ref(key).handle, val_ref(value).handle);
+    internal::_emval_set_property(as_handle(), val_ref(key).as_handle(), val_ref(value).as_handle());
   }
 
   template<typename T>
   bool delete_(const T& property) const {
-    return internal::_emval_delete(handle, val_ref(property).handle);
+    return internal::_emval_delete(as_handle(), val_ref(property).as_handle());
   }
 
   template<typename... Args>
@@ -526,7 +520,7 @@ public:
   ReturnValue call(const char* name, Args&&... args) const {
     using namespace internal;
 
-    return MethodCaller<ReturnValue, Args...>::call(handle, name, std::forward<Args>(args)...);
+    return MethodCaller<ReturnValue, Args...>::call(as_handle(), name, std::forward<Args>(args)...);
   }
 
   template<typename T, typename ...Policies>
@@ -538,7 +532,7 @@ public:
 
     EM_DESTRUCTORS destructors;
     EM_GENERIC_WIRE_TYPE result = _emval_as(
-        handle,
+        as_handle(),
         targetType.getTypes()[0],
         &destructors);
     DestructorsRunner dr(destructors);
@@ -552,7 +546,7 @@ public:
     typedef BindingType<int64_t> BT;
     typename WithPolicies<>::template ArgTypeList<int64_t> targetType;
 
-    return _emval_as_int64(handle, targetType.getTypes()[0]);
+    return _emval_as_int64(as_handle(), targetType.getTypes()[0]);
   }
 
   template<>
@@ -562,41 +556,48 @@ public:
     typedef BindingType<uint64_t> BT;
     typename WithPolicies<>::template ArgTypeList<uint64_t> targetType;
 
-    return  _emval_as_uint64(handle, targetType.getTypes()[0]);
+    return  _emval_as_uint64(as_handle(), targetType.getTypes()[0]);
   }
-
-// If code is not being compiled with GNU extensions enabled, typeof() is not a reserved keyword, so support that as a member function.
-#if __STRICT_ANSI__
-  val typeof() const {
-    return val(internal::_emval_typeof(handle));
-  }
-#endif
 
 // Prefer calling val::typeOf() over val::typeof(), since this form works in both C++11 and GNU++11 build modes. "typeof" is a reserved word in GNU++11 extensions.
   val typeOf() const {
-    return val(internal::_emval_typeof(handle));
+    return val(internal::_emval_typeof(as_handle()));
   }
 
+// If code is not being compiled with GNU extensions enabled, typeof() is a valid identifier, so support that as a member function.
+#if __is_identifier(typeof)
+  [[deprecated("Use typeOf() instead.")]]
+  val typeof() const {
+    return typeOf();
+  }
+#endif
+
   bool instanceof(const val& v) const {
-    return internal::_emval_instanceof(handle, v.handle);
+    return internal::_emval_instanceof(as_handle(), v.as_handle());
   }
 
   bool in(const val& v) const {
-    return internal::_emval_in(handle, v.handle);
+    return internal::_emval_in(as_handle(), v.as_handle());
   }
 
   [[noreturn]] void throw_() const {
-    internal::_emval_throw(handle);
+    internal::_emval_throw(as_handle());
   }
 
   val await() const {
-    return val(internal::_emval_await(handle));
+    return val(internal::_emval_await(as_handle()));
   }
 
+  struct iterator;
+
+  iterator begin() const;
+  // our iterators are sentinel-based range iterators; use nullptr as the end sentinel
+  constexpr nullptr_t end() const { return nullptr; }
+
 private:
-  // takes ownership, assumes handle already incref'd
+  // takes ownership, assumes handle already incref'd and lives on the same thread
   explicit val(EM_VAL handle)
-      : handle(handle)
+      : handle(handle), thread(pthread_self())
   {}
 
   template<typename WrapperType>
@@ -608,7 +609,7 @@ private:
 
     WithPolicies<>::ArgTypeList<Args...> argList;
     WireTypePack<Args...> argv(std::forward<Args>(args)...);
-    return val(impl(handle, argList.getCount(), argList.getTypes(), argv));
+    return val(impl(as_handle(), argList.getCount(), argList.getTypes(), argv));
   }
 
   template<typename T>
@@ -620,19 +621,50 @@ private:
     return v;
   }
 
+  pthread_t thread;
   EM_VAL handle;
 
   friend struct internal::BindingType<val>;
 };
 
+struct val::iterator {
+  iterator() = delete;
+  // Make sure iterator is only moveable, not copyable as it represents a mutable state.
+  iterator(iterator&&) = default;
+  iterator(const val& v) : iter(internal::_emval_iter_begin(v.as_handle())) {
+    this->operator++();
+  }
+  val&& operator*() { return std::move(cur_value); }
+  const val& operator*() const { return cur_value; }
+  void operator++() { cur_value = val(internal::_emval_iter_next(iter.as_handle())); }
+  bool operator!=(nullptr_t) const { return cur_value.as_handle() != nullptr; }
+
+private:
+  val iter;
+  val cur_value;
+};
+
+inline val::iterator val::begin() const {
+  return iterator(*this);
+}
+
+// Declare a custom type that can be used in conjuction with
+// emscripten::register_type to emit custom TypeScript defintions for val types.
+#define EMSCRIPTEN_DECLARE_VAL_TYPE(name)                                          \
+struct name : public val {                                                     \
+  name(val const &other) : val(other) {}                                       \
+};
+
 namespace internal {
 
-template<>
-struct BindingType<val> {
+template<typename T>
+struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
+                                              !std::is_const<T>::value>::type> {
   typedef EM_VAL WireType;
   static WireType toWireType(const val& v) {
-    _emval_incref(v.handle);
-    return v.handle;
+    EM_VAL handle = v.as_handle();
+    _emval_incref(handle);
+    return handle;
   }
   static val fromWireType(WireType v) {
     return val::take_ownership(v);
@@ -643,11 +675,11 @@ struct BindingType<val> {
 
 template <typename T, typename... Policies>
 std::vector<T> vecFromJSArray(const val& v, Policies... policies) {
-  const size_t l = v["length"].as<size_t>();
+  const uint32_t l = v["length"].as<uint32_t>();
 
   std::vector<T> rv;
   rv.reserve(l);
-  for (size_t i = 0; i < l; ++i) {
+  for (uint32_t i = 0; i < l; ++i) {
     rv.push_back(v[i].as<T>(std::forward<Policies>(policies)...));
   }
 

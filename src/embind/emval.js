@@ -13,7 +13,7 @@
 
 // -- jshint doesn't understand library syntax, so we need to mark the symbols exposed here
 /*global getStringOrSymbol, emval_handles, Emval, __emval_unregister, count_emval_handles, emval_symbols, __emval_decref, emval_newers*/
-/*global craftEmvalAllocator, emval_addMethodCaller, emval_methodCallers, addToLibrary, emval_allocateDestructors, global, emval_lookupTypes, makeLegalFunctionName*/
+/*global craftEmvalAllocator, emval_addMethodCaller, emval_methodCallers, addToLibrary, global, emval_lookupTypes, makeLegalFunctionName*/
 /*global emval_get_global*/
 
 var LibraryEmVal = {
@@ -370,13 +370,6 @@ var LibraryEmVal = {
     return a;
   },
 
-  $emval_allocateDestructors__deps: ['$Emval'],
-  $emval_allocateDestructors: (destructorsRef) => {
-    var destructors = [];
-    {{{ makeSetValue('destructorsRef', '0', 'Emval.toHandle(destructors)', '*') }}};
-    return destructors;
-  },
-
   // Leave id 0 undefined.  It's not a big deal, but might be confusing
   // to have null be a valid method caller.
   $emval_methodCallers: [undefined],
@@ -388,66 +381,60 @@ var LibraryEmVal = {
     return id;
   },
 
-  $emval_registeredMethods: {},
   _emval_get_method_caller__deps: [
     '$emval_addMethodCaller', '$emval_lookupTypes',,
-    '$makeLegalFunctionName', '$emval_registeredMethods',
+    '$makeLegalFunctionName',
 #if DYNAMIC_EXECUTION
     '$newFunc',
 #endif
   ],
   _emval_get_method_caller: (argCount, argTypes) => {
     var types = emval_lookupTypes(argCount, argTypes);
-    var retType = types[0];
-    var signatureName = retType.name + "_$" + types.slice(1).map(function (t) { return t.name; }).join("_") + "$";
-    var returnId = emval_registeredMethods[signatureName];
-    if (returnId !== undefined) {
-      return returnId;
-    }
+    var retType = types.shift();
+    argCount--; // remove the shifted off return type
 
 #if !DYNAMIC_EXECUTION
-    var argN = new Array(argCount - 1);
+    var argN = new Array(argCount);
     var invokerFunction = (handle, name, destructors, args) => {
       var offset = 0;
-      for (var i = 0; i < argCount - 1; ++i) {
-        argN[i] = types[i + 1]['readValueFromPointer'](args + offset);
-        offset += types[i + 1]['argPackAdvance'];
+      for (var i = 0; i < argCount; ++i) {
+        argN[i] = types[i]['readValueFromPointer'](args + offset);
+        offset += types[i]['argPackAdvance'];
       }
       var rv = handle[name].apply(handle, argN);
-      for (var i = 0; i < argCount - 1; ++i) {
-        if (types[i + 1].deleteObject) {
-          types[i + 1].deleteObject(argN[i]);
+      for (var i = 0; i < argCount; ++i) {
+        if (types[i].deleteObject) {
+          types[i].deleteObject(argN[i]);
         }
       }
-      if (!retType.isVoid) {
-        return retType['toWireType'](destructors, rv);
-      }
+      return retType['toWireType'](destructors, rv);
     };
 #else
     var params = ["retType"];
     var args = [retType];
 
     var argsList = ""; // 'arg0, arg1, arg2, ... , argN'
-    for (var i = 0; i < argCount - 1; ++i) {
+    for (var i = 0; i < argCount; ++i) {
       argsList += (i !== 0 ? ", " : "") + "arg" + i;
       params.push("argType" + i);
-      args.push(types[1 + i]);
+      args.push(types[i]);
     }
 
+    var signatureName = retType.name + "_$" + types.map(t => t.name).join("_") + "$";
     var functionName = makeLegalFunctionName("methodCaller_" + signatureName);
     var functionBody =
         "return function " + functionName + "(handle, name, destructors, args) {\n";
 
     var offset = 0;
-    for (var i = 0; i < argCount - 1; ++i) {
+    for (var i = 0; i < argCount; ++i) {
         functionBody +=
         "    var arg" + i + " = argType" + i + ".readValueFromPointer(args" + (offset ? ("+"+offset) : "") + ");\n";
-        offset += types[i + 1]['argPackAdvance'];
+        offset += types[i]['argPackAdvance'];
     }
     functionBody +=
         "    var rv = handle[name](" + argsList + ");\n";
-    for (var i = 0; i < argCount - 1; ++i) {
-        if (types[i + 1]['deleteObject']) {
+    for (var i = 0; i < argCount; ++i) {
+        if (types[i]['deleteObject']) {
             functionBody +=
             "    argType" + i + ".deleteObject(arg" + i + ");\n";
         }
@@ -462,25 +449,21 @@ var LibraryEmVal = {
     params.push(functionBody);
     var invokerFunction = newFunc(Function, params).apply(null, args);
 #endif
-    returnId = emval_addMethodCaller(invokerFunction);
-    emval_registeredMethods[signatureName] = returnId;
-    return returnId;
+    return emval_addMethodCaller(invokerFunction);
   },
 
-  _emval_call_method__deps: ['$emval_allocateDestructors', '$getStringOrSymbol', '$emval_methodCallers', '$Emval'],
+  _emval_call_method__deps: ['$getStringOrSymbol', '$emval_methodCallers', '$Emval'],
   _emval_call_method: (caller, handle, methodName, destructorsRef, args) => {
     caller = emval_methodCallers[caller];
     handle = Emval.toValue(handle);
     methodName = getStringOrSymbol(methodName);
-    return caller(handle, methodName, emval_allocateDestructors(destructorsRef), args);
-  },
-
-  _emval_call_void_method__deps: ['$emval_allocateDestructors', '$getStringOrSymbol', '$emval_methodCallers', '$Emval'],
-  _emval_call_void_method: (caller, handle, methodName, args) => {
-    caller = emval_methodCallers[caller];
-    handle = Emval.toValue(handle);
-    methodName = getStringOrSymbol(methodName);
-    caller(handle, methodName, null, args);
+    var destructors = [];
+    var result = caller(handle, methodName, destructors, args);
+    // void and any other types w/o destructors don't need to allocate a handle
+    if (destructors.length) {
+      {{{ makeSetValue('destructorsRef', '0', 'Emval.toHandle(destructors)', '*') }}};
+    }
+    return result;
   },
 
   _emval_typeof__deps: ['$Emval'],
@@ -538,6 +521,19 @@ var LibraryEmVal = {
     });
   },
 #endif
+
+  _emval_iter_begin__deps: ['$Emval'],
+  _emval_iter_begin: (iterable) => {
+    iterable = Emval.toValue(iterable);
+    return Emval.toHandle(iterable[Symbol.iterator]());
+  },
+
+  _emval_iter_next__deps: ['$Emval'],
+  _emval_iter_next: (iterator) => {
+    iterator = Emval.toValue(iterator);
+    var result = iterator.next();
+    return result.done ? 0 : Emval.toHandle(result.value);
+  },
 };
 
 addToLibrary(LibraryEmVal);

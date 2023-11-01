@@ -254,7 +254,7 @@ will call terminate, assuming that there was no handler for the
 exception.
 */
 
-#if defined(__USING_WASM_EXCEPTIONS__) && !defined(NDEBUG)
+#if defined(__EMSCRIPTEN__) && defined(__USING_WASM_EXCEPTIONS__) && !defined(NDEBUG)
 extern "C" {
 void __throw_exception_with_stack_trace(_Unwind_Exception*);
 } // extern "C"
@@ -262,7 +262,7 @@ void __throw_exception_with_stack_trace(_Unwind_Exception*);
 
 void
 #ifdef __USING_WASM_EXCEPTIONS__
-// In wasm, destructors return their argument
+// In Wasm, a destructor returns its argument
 __cxa_throw(void *thrown_object, std::type_info *tinfo, void *(_LIBCXXABI_DTOR_FUNC *dest)(void *)) {
 #else
 __cxa_throw(void *thrown_object, std::type_info *tinfo, void (_LIBCXXABI_DTOR_FUNC *dest)(void *)) {
@@ -287,14 +287,10 @@ __cxa_throw(void *thrown_object, std::type_info *tinfo, void (_LIBCXXABI_DTOR_FU
 
 #ifdef __USING_SJLJ_EXCEPTIONS__
     _Unwind_SjLj_RaiseException(&exception_header->unwindHeader);
-#elif __USING_WASM_EXCEPTIONS__
-#ifdef NDEBUG
-    _Unwind_RaiseException(&exception_header->unwindHeader);
-#else
+#elif defined(__EMSCRIPTEN__) && defined(__USING_WASM_EXCEPTIONS__) && !defined(NDEBUG)
     // In debug mode, call a JS library function to use WebAssembly.Exception JS
     // API, which enables us to include stack traces
     __throw_exception_with_stack_trace(&exception_header->unwindHeader);
-#endif
 #else
     _Unwind_RaiseException(&exception_header->unwindHeader);
 #endif
@@ -644,6 +640,10 @@ void __cxa_rethrow() {
     }
 #ifdef __USING_SJLJ_EXCEPTIONS__
     _Unwind_SjLj_RaiseException(&exception_header->unwindHeader);
+#elif defined(__EMSCRIPTEN__) && defined(__USING_WASM_EXCEPTIONS__) && !defined(NDEBUG)
+    // In debug mode, call a JS library function to use WebAssembly.Exception JS
+    // API, which enables us to include stack traces
+    __throw_exception_with_stack_trace(&exception_header->unwindHeader);
 #else
     _Unwind_RaiseException(&exception_header->unwindHeader);
 #endif
@@ -769,8 +769,13 @@ __cxa_rethrow_primary_exception(void* thrown_object)
         dep_exception_header->unwindHeader.exception_cleanup = dependent_exception_cleanup;
 #ifdef __USING_SJLJ_EXCEPTIONS__
         _Unwind_SjLj_RaiseException(&dep_exception_header->unwindHeader);
+#elif defined(__EMSCRIPTEN__) && defined(__USING_WASM_EXCEPTIONS__) && !defined(NDEBUG)
+        // In debug mode, call a JS library function to use
+        // WebAssembly.Exception JS API, which enables us to include stack
+        // traces
+        __throw_exception_with_stack_trace(&exception_header->unwindHeader);
 #else
-        _Unwind_RaiseException(&dep_exception_header->unwindHeader);
+        _Unwind_RaiseException(&exception_header->unwindHeader);
 #endif
         // Some sort of unwinding error.  Note that terminate is a handler.
         __cxa_begin_catch(&dep_exception_header->unwindHeader);

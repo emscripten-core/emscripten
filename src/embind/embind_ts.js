@@ -25,6 +25,12 @@ var LibraryEmbind = {
       this.type = type;
     }
   },
+  $UserType: class UserType {
+    constructor(typeId, name) {
+      this.typeId = typeId;
+      this.name = name;
+    }
+  },
   $FunctionDefinition: class FunctionDefinition {
     constructor(name, returnType, argumentTypes, thisType = null) {
       this.name = name;
@@ -257,12 +263,14 @@ var LibraryEmbind = {
   $registerIntegerType: (id) => {
     registerType(id, new IntegerType(id));
   },
-  $createFunctionDefinition__deps: ['$FunctionDefinition', '$heap32VectorToArray', '$readLatin1String', '$Argument', '$whenDependentTypesAreResolved'],
+  $createFunctionDefinition__deps: ['$FunctionDefinition', '$heap32VectorToArray', '$readLatin1String', '$Argument', '$whenDependentTypesAreResolved', '$getFunctionName', '$getFunctionArgsName'],
   $createFunctionDefinition: (name, argCount, rawArgTypesAddr, hasThis, cb) => {
     const argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = typeof name === 'string' ? name : readLatin1String(name);
 
-    whenDependentTypesAreResolved([], argTypes, function(argTypes) {
+    whenDependentTypesAreResolved([], argTypes, function (argTypes) {
+      const argsName = getFunctionArgsName(name);
+      name = getFunctionName(name);
       const returnType = argTypes[0];
       let thisType = null;
       let argStart = 1;
@@ -270,9 +278,15 @@ var LibraryEmbind = {
         thisType = argTypes[1];
         argStart = 2;
       }
+      if (argsName.length)
+        assert(argsName.length == (argTypes.length - hasThis - 1), 'Argument names should match number of parameters.');
       const args = [];
-      for (let i = argStart; i < argTypes.length; i++) {
-        args.push(new Argument(`_${i - argStart}`, argTypes[i]));
+      for (let i = argStart, x = 0; i < argTypes.length; i++) {
+        if (x < argsName.length) {
+          args.push(new Argument(argsName[x++], argTypes[i]));
+        } else {
+          args.push(new Argument(`_${i - argStart}`, argTypes[i]));
+        }
       }
       const funcDef = new FunctionDefinition(name, returnType, args, thisType);
       cb(funcDef);
@@ -307,6 +321,11 @@ var LibraryEmbind = {
   },
   _embind_register_emval: (rawType, name) => {
     registerPrimitiveType(rawType, name);
+  },
+  _embind_register_user_type__deps: ['$registerType', '$readLatin1String', '$UserType'],
+  _embind_register_user_type: (rawType, name) => {
+    name = readLatin1String(name);
+    registerType(rawType, new UserType(rawType, name));
   },
   _embind_register_memory_view: (rawType, dataTypeIndex, name) => {
     // TODO
@@ -583,6 +602,6 @@ var LibraryEmbind = {
   $runDestructors: () => assert(false, 'stub function should not be called'),
 };
 
-DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$embindEmitTypes');
+extraLibraryFuncs.push('$embindEmitTypes');
 
 addToLibrary(LibraryEmbind);

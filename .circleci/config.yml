@@ -267,6 +267,37 @@ commands:
           test_targets: << parameters.test_targets >>
           title: << parameters.title >>
       - upload-test-results
+  run-tests-chrome:
+    description: "Runs browser tests under chrome"
+    parameters:
+      test_targets:
+        description: "Test suites to run"
+        type: string
+      title:
+        description: "Name of given test suite"
+        type: string
+        default: ""
+    steps:
+      - prepare-for-tests
+      - download-chrome
+      - run:
+          name: run tests (<< parameters.title >>)
+          environment:
+            EMTEST_LACKS_SOUND_HARDWARE: "1"
+            EMTEST_DETECT_TEMPFILE_LEAKS: "0"
+            # --no-sandbox because we are running as root and chrome requires
+            # this flag for now: https://crbug.com/638180
+            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features"
+            CHROME_FLAGS_HEADLESS: "--headless=new --remote-debugging-port=1234"
+            CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-memory64 --experimental-wasm-stack-switching --experimental-wasm-type-reflection\""
+            CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
+          command: |
+            export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
+            # There are tests in the browser test suite that using libraries
+            # that are not included by "./embuilder build ALL".  For example the
+            # PIC version of libSDL which is used by test_sdl2_misc_main_module
+            export EM_FROZEN_CACHE=""
+            test/runner << parameters.test_targets >>
   setup-macos:
     steps:
       - run:
@@ -335,40 +366,6 @@ commands:
             # posix and emrun suites are disabled because firefox errors on
             #  "Firefox is already running, but is not responding."
             # TODO: find out a way to shut down and restart firefox
-      - upload-test-results
-  test-chrome:
-    description: "Runs emscripten browser tests under chrome"
-    steps:
-      - prepare-for-tests
-      - download-chrome
-      - run:
-          name: run tests
-          environment:
-            EMTEST_LACKS_SOUND_HARDWARE: "1"
-            EMTEST_DETECT_TEMPFILE_LEAKS: "0"
-            # --no-sandbox because we are running as root and chrome requires
-            # this flag for now: https://crbug.com/638180
-            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features"
-            CHROME_FLAGS_HEADLESS: "--headless=new --remote-debugging-port=1234"
-            CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-memory64 --experimental-wasm-stack-switching --experimental-wasm-type-reflection\""
-            CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
-          command: |
-            export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
-            # There are tests in the browser test suite that using libraries
-            # that are not included by "./embuilder build ALL".  For example the
-            # PIC version of libSDL which is used by test_sdl2_misc_main_module
-            export EM_FROZEN_CACHE=""
-            echo
-            echo "browser"
-            echo
-            # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
-            test/runner browser skip:browser.test_zzz_zzz_4gb_fail skip:browser.test_zzz_zzz_4gb_fail_wasm64
-            echo
-            echo "emrun"
-            echo
-            # TODO(sbc): Re-enable once we figure out why the emrun tests are
-            # locking up.
-            # test/runner emrun
       - upload-test-results
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
@@ -502,6 +499,7 @@ jobs:
             asan.test_async_hello_jspi
             asan.test_cubescript
             asan.test_wasm_worker_hello
+            asan.test_externref_emjs_dynlink
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
             lsan.test_pthread_create"
@@ -763,11 +761,71 @@ jobs:
   test-browser-chrome:
     executor: bionic
     steps:
-      - test-chrome
+      - run-tests-chrome:
+          title: "browser"
+          # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
+          test_targets: "browser skip:browser.test_zzz_zzz_4gb_fail"
+  test-browser-chrome-wasm64:
+    executor: bionic
+    steps:
+      - run-tests-chrome:
+          title: "browser64"
+          test_targets: "
+            browser64.test_sdl_swsurface
+            browser64.test_sdl_surface_lock_opts
+            browser64.test_sdl_canvas
+            browser64.test_sdl_canvas_proxy
+            browser64.test_sdl_canvas_alpha
+            browser64.test_canvas_focus
+            browser64.test_sdl_text
+            browser64.test_sdl_mouse
+            browser64.test_sdl_mouse_offsets
+            browser64.test_sdl_joystick_1
+            browser64.test_sdl_joystick_2
+            browser64.test_idbstore
+            browser64.test_idbstore_sync_asyncify
+            browser64.test_idbstore_sync_jspi
+            browser64.test_sdl_pumpevents
+            browser64.test_sdl_canvas_size
+            browser64.test_sdl_gl_read
+            browser64.test_sdl_gl_mapbuffers
+            browser64.test_sdl_ogl
+            browser64.test_sdl_ogl_defaultmatrixmode
+            browser64.test_sdl_ogl_p
+            browser64.test_sdl_ogl_proc_alias
+            browser64.test_sdl_fog_simple
+            browser64.test_sdl_fog_negative
+            browser64.test_sdl_fog_density
+            browser64.test_sdl_fog_exp2
+            browser64.test_sdl_fog_linear
+            browser64.test_egl
+            browser64.test_egl_width_height
+            browser64.test_egl_createcontext_error
+            browser64.test_glgears_animation
+            browser64.test_glgears_deriv
+            browser64.test_anisotropic
+            browser64.test_webgpu_get_device
+            browser64.test_fetch_to_memory
+            browser64.test_fetch_to_indexdb
+            browser64.test_fetch_cached_xhr
+            browser64.test_fetch_response_headers
+            browser64.test_fetch_stream_file
+            browser64.test_fetch_headers_received
+            browser64.test_fetch_xhr_abort
+            browser64.test_fetch_sync_xhr
+            browser64.test_fetch_implicit_append
+            "
   test-browser-firefox:
     executor: bionic
     steps:
       - test-firefox
+  # TODO(sbc): Re-enable once we figure out why the emrun tests are
+  # locking up.
+  #test-browser-chrome-emrun:
+  #  executor: bionic
+  #  steps:
+  #    - run-tests-chrome:
+  #        test_targets: "emrun"
   test-sockets-chrome:
     executor: bionic
     steps:
@@ -911,6 +969,9 @@ workflows:
           requires:
             - build-linux
       - test-browser-chrome:
+          requires:
+            - build-linux
+      - test-browser-chrome-wasm64:
           requires:
             - build-linux
       - test-browser-firefox:

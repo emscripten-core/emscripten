@@ -3,6 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import copy
 import difflib
 import os
 import re
@@ -246,6 +247,12 @@ class SettingsManager:
 
   def __setitem__(self, key, value):
     self.attrs[key] = value
+
+  def backup(self):
+    return copy.deepcopy(self.attrs)
+
+  def restore(self, previous):
+    self.attrs.update(previous)
 
 
 settings = SettingsManager()

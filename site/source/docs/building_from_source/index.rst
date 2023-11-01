@@ -14,8 +14,8 @@ Get the ``main`` branches, or check the `Packaging <https://github.com/emscripte
 Building LLVM
 -------------
 
-For using the LLVM wasm backend (recommended), simply build normal upstream LLVM from the `monorepo <https://github.com/llvm/llvm-project>`_.
-Include clang and wasm-ld (using something like ``-DLLVM_ENABLE_PROJECTS='lld;clang'``) and the wasm backend (which is included by default; just don't disable it), following `that project's instructions <http://llvm.org/docs/CMake.html>`_.
+Build LLVM from the `git repo <https://github.com/llvm/llvm-project>`_.
+Include clang and wasm-ld (using something like ``-DLLVM_ENABLE_PROJECTS='lld;clang'``) and the Wasm backend (which is included by default; just don't disable it), following `that project's instructions <http://llvm.org/docs/CMake.html>`_.
 For example, something like this can work:
 
   ::

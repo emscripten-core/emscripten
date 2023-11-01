@@ -551,10 +551,6 @@ static struct dso* _dlopen(const char* file, int flags) {
   int cs;
   pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
   do_write_lock();
-#ifdef _REENTRANT
-  // Make sure we are in sync before performing any write operations.
-  dlsync();
-#endif
 
   char buf[2*NAME_MAX+2];
   file = resolve_path(buf, file, sizeof buf);
@@ -596,10 +592,6 @@ void emscripten_dlopen(const char* filename, int flags, void* user_data,
     return;
   }
   do_write_lock();
-#ifdef _REENTRANT
-  // Make sure we are in sync before performing any write operations.
-  dlsync();
-#endif
   char buf[2*NAME_MAX+2];
   filename = resolve_path(buf, filename, sizeof buf);
   struct dso* p = find_existing(filename);

@@ -18,8 +18,33 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.46 (in development)
+3.1.47 (in development)
 -----------------------
+- The boost-headers port was updated to v1.83.0.
+- The `noExitRuntime` global is now a JS library symbol that will only be
+  included as needed.  User of `noExitRuntime` will now need to declare a
+  dependency on it.  It will get implicitly included if `noExitRuntime` is part
+  of `INCOMING_MODULE_JS_API.` (which it is by default), or it can be added to
+  either `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` or `noExitRuntime`. (#20336)
+- The egl, html5, sdl and webgpu libraries now support basic functionality with
+  `-sMEMORY64`. (#20276)
+- Value types in `emscripten/html5.h` that correspond the WebIDL `long` type are
+  now represented as `int` rather than `long` types so that they are 32-bit wide
+  on both wasm32 and wasm64.  (#20290)
+- `EM_JS` and `EM_ASM` that are present in side module now have their syntax
+  validated at build time. (#20258)
+- `MAIN_THREAD_EM_ASM_PTR` macro added for code that returns a pointer.  This
+  mirrors the existing `EM_ASM_PTR`. (#20261)
+- Emscripten now implements default POSIX signal handlers. These can
+  terminate or abort the program in response to `raise` cals. (#20257)
+- `emscripten::val` now prevents accidental access to the underlying JavaScript
+  value from threads other than its owner. This already didn't work correctly
+  in majority of cases, but now it will throw a clear assertion failure. (#20344)
+- `emscripten::val` can now be iterated over with a C++ range-based for loop.
+  (#20364)
+
+3.1.46 - 09/15/23
+-----------------
 - The `wasmTable` global is now a JS library function that will only be included
   as needed.  Code that references `wasmTable` will no need to declare a
   dependency on it.  It can also be explictly included using
@@ -44,7 +69,8 @@ See docs/process.md for more on how version tagging works.
 - A new settings `TABLE_BASE` was introduced that can be used to place static
   function addresses (table slots) at a certain offset.  This defaults to 1
   which is the previously fixed value. (#20149)
-- Clang's error detection of unused variables `-Wunused-variable` improved, which may require changes in user code (see #20169).
+- Clang's error detection of unused variables `-Wunused-variable` improved,
+  which may require changes in user code (see #20169).
 
 3.1.45 - 08/23/23
 -----------------

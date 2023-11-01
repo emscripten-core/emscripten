@@ -1120,7 +1120,7 @@ int emscripten_resize_heap(size_t size) {
   assert(old_size < size);
   ssize_t diff = (size - old_size + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE;
   size_t result = __builtin_wasm_memory_grow(0, diff);
-  // Its seems v8 has a bug in memory.grow that causes it to return 
+  // Its seems v8 has a bug in memory.grow that causes it to return
   // (uint32_t)-1 even with memory64:
   // https://bugs.chromium.org/p/v8/issues/detail?id=13948
   if (result != (uint32_t)-1 && result != (size_t)-1) {
@@ -1314,3 +1314,5 @@ weak char* _emscripten_sanitizer_get_option(const char* name) {
 weak char* emscripten_get_module_name(char* buf, size_t length) {
   return strncpy(buf, "<unknown>", length);
 }
+
+weak void _emscripten_runtime_keepalive_clear() {}

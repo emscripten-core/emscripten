@@ -45,11 +45,11 @@ individual test, or use wildcards to run some tests in some modes. For example:
 
 The *core* test modes (defined at the bottom of `test/test_core.py
 <https://github.com/emscripten-core/emscripten/blob/main/test/test_core.py>`_)
-let you run a specific test in either asm.js or wasm, and with different
-optimization flags. There are also non-core test modes, that run tests in more
-special manner (in particular, in those tests it is not possible to say "run the
-test with a different optimization flag" - that is what the core tests are for).
-The non-core test modes include
+let you run the tests in variety of different configurations and with different
+optimization flags.  For example, wasm2js or wasm64.  There are also non-core
+test suites, that run tests in more special manner (in particular, in those tests
+it is not possible to say "run the test with a different optimization flag" -
+that is what the core tests are for).  The non-core test suites include
 
  * `other`: Non-core tests running in the shell.
  * `browser`: Tests that run in a browser.
@@ -119,8 +119,8 @@ commands:
 
 .. code-block:: bash
 
-  # Run all core wasm tests
-  test/runner wasm*
+  # Run all core tests
+  test/runner core*
 
   # Run "other" test suite
   test/runner other

@@ -51,14 +51,14 @@ int main()
   assert(r == EMSCRIPTEN_RESULT_INVALID_PARAM);
 
   emscripten_console_log("Notifying an async wait should not trigger the callback function");
-  int64_t numWoken = emscripten_wasm_notify((int32_t*)&addr, EMSCRIPTEN_NOTIFY_ALL_WAITERS);
+  int64_t numWoken = emscripten_atomic_notify((int32_t*)&addr, EMSCRIPTEN_NOTIFY_ALL_WAITERS);
 
   emscripten_console_log("Notifying an async wait should return 0 threads woken");
   assert(numWoken == 0);
 
   addr = 2;
   emscripten_console_log("Notifying an async wait even after changed value should not trigger the callback function");
-  numWoken = emscripten_wasm_notify((int32_t*)&addr, EMSCRIPTEN_NOTIFY_ALL_WAITERS);
+  numWoken = emscripten_atomic_notify((int32_t*)&addr, EMSCRIPTEN_NOTIFY_ALL_WAITERS);
 
   emscripten_console_log("Notifying an async wait should return 0 threads woken");
   assert(numWoken == 0);
@@ -69,12 +69,12 @@ int main()
 
 #if 0
   emscripten_console_log("Notifying an async wait without value changing should still trigger the callback");
-  numWoken = emscripten_wasm_notify((int32_t*)&addr, EMSCRIPTEN_NOTIFY_ALL_WAITERS);
+  numWoken = emscripten_atomic_notify((int32_t*)&addr, EMSCRIPTEN_NOTIFY_ALL_WAITERS);
   assert(numWoken == 1);
 #else
   // TODO: Switch to the above test instead after the Atomics.waitAsync() polyfill is dropped.
   addr = 3;
   emscripten_console_log("Notifying an async wait after value changing should trigger the callback");
-  numWoken = emscripten_wasm_notify((int32_t*)&addr, EMSCRIPTEN_NOTIFY_ALL_WAITERS);
+  numWoken = emscripten_atomic_notify((int32_t*)&addr, EMSCRIPTEN_NOTIFY_ALL_WAITERS);
 #endif
 }

@@ -24,7 +24,6 @@ out = err = () => {};
 #endif
 
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
-{{{ makeModuleReceiveWithVar('noExitRuntime', undefined, EXIT_RUNTIME ? 'false' : 'true') }}}
 
 #if WASM != 2 && MAYBE_WASM2JS
 #if !WASM2JS
@@ -195,12 +194,6 @@ var runtimeInitialized = false;
 #if EXIT_RUNTIME
 var runtimeExited = false;
 #endif
-
-var runtimeKeepaliveCounter = 0;
-
-function keepRuntimeAlive() {
-  return noExitRuntime || runtimeKeepaliveCounter > 0;
-}
 
 function preRun() {
 #if ASSERTIONS && PTHREADS

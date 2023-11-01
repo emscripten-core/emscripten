@@ -8,8 +8,7 @@
 #include "polyfill/atob.js"
 #endif
 
-// Converts a string of base64 into a byte array.
-// Throws error on invalid input.
+// Converts a string of base64 into a byte array (Uint8Array).
 function intArrayFromBase64(s) {
 #if ENVIRONMENT_MAY_BE_NODE
   if (typeof ENVIRONMENT_IS_NODE != 'undefined' && ENVIRONMENT_IS_NODE) {
@@ -18,16 +17,12 @@ function intArrayFromBase64(s) {
   }
 #endif
 
-  try {
-    var decoded = atob(s);
-    var bytes = new Uint8Array(decoded.length);
-    for (var i = 0 ; i < decoded.length ; ++i) {
-      bytes[i] = decoded.charCodeAt(i);
-    }
-    return bytes;
-  } catch (_) {
-    throw new Error('Converting base64 string to bytes failed.');
+  var decoded = atob(s);
+  var bytes = new Uint8Array(decoded.length);
+  for (var i = 0 ; i < decoded.length ; ++i) {
+    bytes[i] = decoded.charCodeAt(i);
   }
+  return bytes;
 }
 
 // If filename is a base64 data URI, parses and returns data (Buffer on node,

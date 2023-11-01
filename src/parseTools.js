@@ -425,7 +425,7 @@ function makeSetValueImpl(ptr, pos, value, type) {
 function makeHEAPView(which, start, end) {
   const size = parseInt(which.replace('U', '').replace('F', '')) / 8;
   const shift = Math.log2(size);
-  const mod = size == 1 ? '' : CAN_ADDRESS_2GB ? ('>>>' + shift) : ('>>' + shift);
+  const mod = size == 1 ? '' : (CAN_ADDRESS_2GB || MEMORY64) ? ('>>>' + shift) : ('>>' + shift);
   return `HEAP${which}.subarray((${start})${mod}, (${end})${mod})`;
 }
 
@@ -689,6 +689,7 @@ function modifyJSFunction(text, func) {
   let async_;
   let args;
   let rest;
+  let oneliner = false;
   let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   if (match) {
     async_ = match[1] || '';
@@ -701,6 +702,8 @@ function modifyJSFunction(text, func) {
       async_ = match[3] || '';
       args = match[4];
       rest = text.substr(match[0].length);
+      rest = rest.trim();
+      oneliner = rest[0] != '{';
     } else {
       // Match a function without a name (we could probably use a single regex
       // for both, but it would be more complex).
@@ -712,9 +715,8 @@ function modifyJSFunction(text, func) {
     }
   }
   let body = rest;
-  const bodyStart = rest.indexOf('{');
-  let oneliner = bodyStart < 0;
   if (!oneliner) {
+    const bodyStart = rest.indexOf('{');
     const bodyEnd = rest.lastIndexOf('}');
     assert(bodyEnd > 0);
     body = rest.substring(bodyStart + 1, bodyEnd);
@@ -740,6 +742,18 @@ const runOnMainThread = runIfMainThread;
 
 function expectToReceiveOnModule(name) {
   return INCOMING_MODULE_JS_API.has(name);
+}
+
+// Return true if the user requested that a library symbol be included
+// either via DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS.
+function isSymbolNeeded(symName) {
+  if (DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.includes(symName)) {
+    return true;
+  }
+  if (symName.startsWith('$') && symName.slice(1) in EXPORTED_RUNTIME_METHODS) {
+    return true;
+  }
+  return false;
 }
 
 function makeRemovedModuleAPIAssert(moduleName, localName) {

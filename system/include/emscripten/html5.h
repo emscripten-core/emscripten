@@ -100,15 +100,15 @@ extern "C" {
 
 typedef struct EmscriptenKeyboardEvent {
   double timestamp;
-  unsigned long location;
+  unsigned int location;
   EM_BOOL ctrlKey;
   EM_BOOL shiftKey;
   EM_BOOL altKey;
   EM_BOOL metaKey;
   EM_BOOL repeat;
-  unsigned long charCode;
-  unsigned long keyCode;
-  unsigned long which;
+  unsigned int charCode;
+  unsigned int keyCode;
+  unsigned int which;
   EM_UTF8 key[EM_HTML5_SHORT_STRING_LEN_BYTES];
   EM_UTF8 code[EM_HTML5_SHORT_STRING_LEN_BYTES];
   EM_UTF8 charValue[EM_HTML5_SHORT_STRING_LEN_BYTES];
@@ -123,24 +123,24 @@ EMSCRIPTEN_RESULT emscripten_set_keyup_callback_on_thread(const char *target __a
 
 typedef struct EmscriptenMouseEvent {
   double timestamp;
-  long screenX;
-  long screenY;
-  long clientX;
-  long clientY;
+  int screenX;
+  int screenY;
+  int clientX;
+  int clientY;
   EM_BOOL ctrlKey;
   EM_BOOL shiftKey;
   EM_BOOL altKey;
   EM_BOOL metaKey;
   unsigned short button;
   unsigned short buttons;
-  long movementX;
-  long movementY;
-  long targetX;
-  long targetY;
+  int movementX;
+  int movementY;
+  int targetX;
+  int targetY;
   // canvasX and canvasY are deprecated - there no longer exists a Module['canvas'] object, so canvasX/Y are no longer reported (register a listener on canvas directly to get canvas coordinates, or translate manually)
-  long canvasX;
-  long canvasY;
-  long padding;
+  int canvasX;
+  int canvasY;
+  int padding;
 } EmscriptenMouseEvent;
 
 
@@ -166,7 +166,7 @@ typedef struct EmscriptenWheelEvent {
   double deltaX;
   double deltaY;
   double deltaZ;
-  unsigned long deltaMode;
+  unsigned int deltaMode;
 } EmscriptenWheelEvent;
 
 
@@ -174,7 +174,7 @@ typedef EM_BOOL (*em_wheel_callback_func)(int eventType, const EmscriptenWheelEv
 EMSCRIPTEN_RESULT emscripten_set_wheel_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_wheel_callback_func callback, pthread_t targetThread);
 
 typedef struct EmscriptenUiEvent {
-  long detail;
+  int detail;
   int documentBodyClientWidth;
   int documentBodyClientHeight;
   int windowInnerWidth;
@@ -345,20 +345,20 @@ EMSCRIPTEN_RESULT emscripten_get_visibility_status(EmscriptenVisibilityChangeEve
 
 typedef struct EmscriptenTouchPoint
 {
-  long identifier;
-  long screenX;
-  long screenY;
-  long clientX;
-  long clientY;
-  long pageX;
-  long pageY;
+  int identifier;
+  int screenX;
+  int screenY;
+  int clientX;
+  int clientY;
+  int pageX;
+  int pageY;
   EM_BOOL isChanged;
   EM_BOOL onTarget;
-  long targetX;
-  long targetY;
+  int targetX;
+  int targetY;
   // canvasX and canvasY are deprecated - there no longer exists a Module['canvas'] object, so canvasX/Y are no longer reported (register a listener on canvas directly to get canvas coordinates, or translate manually)
-  long canvasX;
-  long canvasY;
+  int canvasX;
+  int canvasY;
 } EmscriptenTouchPoint;
 
 typedef struct EmscriptenTouchEvent {
@@ -387,7 +387,7 @@ typedef struct EmscriptenGamepadEvent {
   double analogButton[64];
   EM_BOOL digitalButton[64];
   EM_BOOL connected;
-  long index;
+  int index;
   EM_UTF8 id[EM_HTML5_MEDIUM_STRING_LEN_BYTES];
   EM_UTF8 mapping[EM_HTML5_MEDIUM_STRING_LEN_BYTES];
 } EmscriptenGamepadEvent;

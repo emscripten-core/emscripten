@@ -250,6 +250,7 @@ def inspect_headers(headers, cflags):
                                '-nostdlib',
                                compiler_rt,
                                '-sBOOTSTRAPPING_STRUCT_INFO',
+                               '-sINCOMING_MODULE_JS_API=',
                                '-sSTRICT',
                                '-sASSERTIONS=0'] + node_flags
 

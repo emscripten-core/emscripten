@@ -1176,8 +1176,6 @@ def run(args):
   # Strip args[0] (program name)
   args = args[1:]
 
-  misc_temp_files = shared.get_temp_files()
-
   # Handle some global flags
 
   # read response files very early on
@@ -1223,7 +1221,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if '--cflags' in args:
     # fake running the command, to see the full args we pass to clang
     args = [x for x in args if x != '--cflags']
-    with misc_temp_files.get_file(suffix='.o') as temp_target:
+    with shared.get_temp_files().get_file(suffix='.o') as temp_target:
       input_file = 'hello_world.c'
       compiler = shared.EMCC
       if run_via_emxx:
@@ -1274,7 +1272,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if state.mode == Mode.POST_LINK_ONLY:
     settings.limit_settings(None)
     target, wasm_target = phase_linker_setup(options, state, newargs)
-    process_libraries(state, [], options)
+    process_libraries(state, [])
     if len(input_files) != 1:
       exit_with_error('--post-link requires a single input file')
     phase_post_link(options, state, input_files[0][1], wasm_target, target, {})
@@ -1327,6 +1325,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       for sym in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE:
         add_js_deps(sym)
+      for sym in js_info['extraLibraryFuncs']:
+        add_js_deps(sym)
       for sym in settings.EXPORTED_RUNTIME_METHODS:
         add_js_deps(shared.demangle_c_symbol_name(sym))
     if settings.ASYNCIFY:
@@ -1360,7 +1360,7 @@ def phase_calculate_linker_inputs(options, state, linker_inputs):
   state.link_flags = filter_link_flags(state.link_flags, using_lld)
 
   # Decide what we will link
-  process_libraries(state, linker_inputs, options.embind_emit_tsd)
+  process_libraries(state, linker_inputs)
 
   linker_args = [val for _, val in sorted(linker_inputs + state.link_flags)]
 
@@ -1802,6 +1802,9 @@ def phase_linker_setup(options, state, newargs):
   system_libpath = '-L' + str(cache.get_lib_dir(absolute=True))
   add_link_flag(state, sys.maxsize, system_libpath)
 
+  if 'noExitRuntime' in settings.INCOMING_MODULE_JS_API:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$noExitRuntime')
+
   if settings.OPT_LEVEL >= 1:
     default_setting('ASSERTIONS', 0)
 
@@ -1842,27 +1845,6 @@ def phase_linker_setup(options, state, newargs):
   if options.js_transform and settings.GENERATE_SOURCE_MAP:
     logger.warning('disabling source maps because a js transform is being done')
     settings.GENERATE_SOURCE_MAP = 0
-
-  if options.embind_emit_tsd:
-    # Ignore any -o command line arguments when running in --embind-emit-tsd
-    # With this option we don't actually output the program itself only the
-    # TS bindings.
-    options.output_file = in_temp('a.out.js')
-    # Don't invoke the program's `main` function.
-    settings.INVOKE_RUN = False
-    # Ignore -sMODULARIZE which could otherwise effect how we run the module
-    # to generate the bindings.
-    settings.MODULARIZE = False
-    # Don't include any custom user JS or files.
-    options.pre_js = []
-    options.post_js = []
-    options.extern_pre_js = []
-    options.extern_post_js = []
-    options.use_preload_cache = False
-    options.preload_files = []
-    options.embed_files = []
-    # Force node since that is where the tool runs.
-    settings.ENVIRONMENT = 'node'
 
   # options.output_file is the user-specified one, target is what we will generate
   if options.output_file:
@@ -3204,6 +3186,9 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms):
   else:
     memfile = shared.replace_or_append_suffix(target, '.mem')
 
+  if options.embind_emit_tsd:
+    phase_embind_emit_tsd(options, in_wasm, wasm_target, memfile, js_syms)
+
   phase_emscript(options, in_wasm, wasm_target, memfile, js_syms)
 
   if options.js_transform:
@@ -3230,6 +3215,48 @@ def phase_emscript(options, in_wasm, wasm_target, memfile, js_syms):
 
   emscripten.run(in_wasm, wasm_target, final_js, memfile, js_syms)
   save_intermediate('original')
+
+
+@ToolchainProfiler.profile_block('embind emit tsd')
+def phase_embind_emit_tsd(options, in_wasm, wasm_target, memfile, js_syms):
+  logger.debug('emit tsd')
+  # Save settings so they can be restored after TS generation.
+  original_settings = settings.backup()
+
+  # Ignore any options or settings that can conflict with running the TS
+  # generation output.
+  # Don't invoke the program's `main` function.
+  settings.INVOKE_RUN = False
+  # Ignore -sMODULARIZE which could otherwise effect how we run the module
+  # to generate the bindings.
+  settings.MODULARIZE = False
+  # Don't include any custom user JS or files.
+  settings.PRE_JS_FILES = []
+  settings.POST_JS_FILES = []
+  # Force node since that is where the tool runs.
+  settings.ENVIRONMENT = 'node'
+  settings.MINIMAL_RUNTIME = 0
+  # Required function to trigger TS generation.
+  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']
+  settings.EXPORT_ES6 = False
+  # Disable minify since the binaryen pass has not been run yet to change the
+  # import names.
+  settings.MINIFY_WASM_IMPORTED_MODULES = False
+  setup_environment_settings()
+  # Embind may be included multiple times, de-duplicate the list first.
+  settings.JS_LIBRARIES = dedup_list(settings.JS_LIBRARIES)
+  # Replace embind with the TypeScript generation version.
+  embind_index = settings.JS_LIBRARIES.index('embind/embind.js')
+  settings.JS_LIBRARIES[embind_index] = 'embind/embind_ts.js'
+
+  outfile_js = in_temp('tsgen_a.out.js')
+  # The Wasm outfile may be modified by emscripten.run, so use a temporary file.
+  outfile_wasm = in_temp('tsgen_a.out.wasm')
+  emscripten.run(in_wasm, outfile_wasm, outfile_js, memfile, js_syms)
+  out = shared.run_js_tool(outfile_js, [], stdout=PIPE)
+  write_file(
+    os.path.join(os.path.dirname(wasm_target), options.embind_emit_tsd), out)
+  settings.restore(original_settings)
 
 
 @ToolchainProfiler.profile_block('source transforms')
@@ -3351,10 +3378,6 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   if options.executable:
     make_js_executable(js_target)
 
-  if options.embind_emit_tsd:
-    out = shared.run_js_tool(js_target, [], stdout=PIPE)
-    write_file(options.embind_emit_tsd, out)
-
 
 def version_string():
   # if the emscripten folder is not a git repo, don't run git show - that can
@@ -3452,6 +3475,8 @@ def parse_args(newargs):
         settings.LTO = arg.split('=')[1]
       else:
         settings.LTO = 'full'
+    elif arg == "-fno-lto":
+      settings.LTO = 0
     elif check_arg('--llvm-lto'):
       logger.warning('--llvm-lto ignored when using llvm backend')
       consume_arg()
@@ -4221,7 +4246,7 @@ def find_library(lib, lib_dirs):
   return None
 
 
-def process_libraries(state, linker_inputs, embind_emit_tsd):
+def process_libraries(state, linker_inputs):
   new_flags = []
   libraries = []
   suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
@@ -4236,7 +4261,7 @@ def process_libraries(state, linker_inputs, embind_emit_tsd):
 
     logger.debug('looking for library "%s"', lib)
 
-    js_libs, native_lib = building.map_to_js_libs(lib, embind_emit_tsd)
+    js_libs, native_lib = building.map_to_js_libs(lib)
     if js_libs is not None:
       libraries += [(i, js_lib) for js_lib in js_libs]
       # If native_lib is returned then include it in the link

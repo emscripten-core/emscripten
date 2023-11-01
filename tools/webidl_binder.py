@@ -294,18 +294,6 @@ function ensureFloat64(value) {
 
 ''']
 
-mid_c += ['''
-EM_JS(void, array_bounds_check_error, (size_t idx, size_t size), {
-  throw 'Array index ' + idx + ' out of bounds: [0,' + size + ')';
-});
-
-static void array_bounds_check(size_t array_size, size_t array_idx) {
-  if (array_idx < 0 || array_idx >= array_size) {
-    array_bounds_check_error(array_idx, array_size);
-  }
-}
-''']
-
 C_FLOATS = ['float', 'double']
 
 
@@ -613,6 +601,23 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
           (', ' if js_call_args else '') + js_call_args))
 
 
+def add_bounds_check_impl():
+  if hasattr(add_bounds_check_impl, 'done'):
+    return
+  add_bounds_check_impl.done = True
+  mid_c.append('''
+EM_JS(void, array_bounds_check_error, (size_t idx, size_t size), {
+  throw 'Array index ' + idx + ' out of bounds: [0,' + size + ')';
+});
+
+static void array_bounds_check(size_t array_size, size_t array_idx) {
+  if (array_idx < 0 || array_idx >= array_size) {
+    array_bounds_check_error(array_idx, array_size);
+  }
+}
+''')
+
+
 for name, interface in interfaces.items():
   js_impl = interface.getExtendedAttribute('JSImplementation')
   if not js_impl:
@@ -715,7 +720,10 @@ for name in names:
       get_call_content = take_addr_if_nonpointer(m) + 'self->' + attr + '[arg0]'
       set_call_content = 'self->' + attr + '[arg0] = ' + deref_if_nonpointer(m) + 'arg1'
       if m.getExtendedAttribute('BoundsChecked'):
+
         bounds_check = "array_bounds_check(sizeof(self->%s) / sizeof(self->%s[0]), arg0)" % (attr, attr)
+        add_bounds_check_impl()
+
         get_call_content = "(%s, %s)" % (bounds_check, get_call_content)
         set_call_content = "(%s, %s)" % (bounds_check, set_call_content)
     else:
