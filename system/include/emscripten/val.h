@@ -646,11 +646,12 @@ inline val::iterator val::begin() const {
   return iterator(*this);
 }
 
-// Declare a custom type that can be used in conjuction with
-// emscripten::register_type to emit custom TypeScript defintions for val types.
-#define EMSCRIPTEN_DECLARE_VAL_TYPE(name)                                          \
-struct name : public val {                                                     \
-  name(val const &other) : val(other) {}                                       \
+// Declare a custom type that can be used in conjunction with
+// emscripten::register_type to emit custom TypeScript definitions for val
+// types.
+#define EMSCRIPTEN_DECLARE_VAL_TYPE(name)                                      \
+struct name : public ::emscripten::val {                                       \
+  explicit name(val const &other) : val(other) {}                              \
 };
 
 namespace internal {
@@ -664,8 +665,8 @@ struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
     _emval_incref(handle);
     return handle;
   }
-  static val fromWireType(WireType v) {
-    return val::take_ownership(v);
+  static T fromWireType(WireType v) {
+    return T(val::take_ownership(v));
   }
 };
 
