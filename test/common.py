@@ -2136,8 +2136,9 @@ class BrowserCore(RunnerCore):
     else:
       self.run_browser(outfile + url_suffix, expected=['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
 
-    # Tests can opt into being run under asmjs as well
-    if 'WASM=0' not in original_args and (also_wasm2js or self.also_wasm2js):
+    # Tests can opt into being run under wasmj2s as well
+    # Ignore this under MEMORY64 where wasm2js is not yet supported.
+    if 'WASM=0' not in original_args and (also_wasm2js or self.also_wasm2js) and not self.is_wasm64():
       print('WASM=0')
       self.btest(filename, expected, reference, reference_slack, manual_reference, post_build,
                  original_args + ['-sWASM=0'], also_proxied=False, timeout=timeout)
