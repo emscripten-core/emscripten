@@ -592,7 +592,9 @@ var LibraryPThread = {
       PThread.outstandingPromises[pthread_ptr].resolve();
     }
 #endif
+#if ASSERTIONS
     assert(worker);
+#endif
     PThread.returnWorkerToPool(worker);
   },
 
