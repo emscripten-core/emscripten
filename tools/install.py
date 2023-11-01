@@ -19,7 +19,6 @@ import sys
 
 EXCLUDES = [os.path.normpath(x) for x in '''
 test/third_party
-tools/maint
 site
 node_modules
 Makefile
