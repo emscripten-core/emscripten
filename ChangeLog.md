@@ -33,6 +33,10 @@ See docs/process.md for more on how version tagging works.
 - Default `MIN_CHROME_VERSION` was increased from 75 to 85 and default
   `MIN_FIREFOX_VERSION` was increased from 68 to 79 to allow Emscripten
   to use some ES2021 features for smaller JavaScript code size. (#20549)
+- Emscripten now generates PowerShell wrappers for its CLIs. This allows to
+  sidestep some of the issues with legacy cmd.exe, but developers must
+  explicitly opt-in to running PowerShell scripts in system settings or
+  via the `Set-ExecutionPolicy` command. (#20416)
 
 3.1.47 - 10/09/23
 -----------------
