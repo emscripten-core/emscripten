@@ -1275,7 +1275,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   newargs, input_files = phase_setup(options, state, newargs)
 
-  if '-dumpmachine' in newargs:
+  if '-dumpmachine' in newargs or '-print-target-triple' in newargs or '--print-target-triple' in newargs:
     print(shared.get_llvm_target())
     return 0
 
