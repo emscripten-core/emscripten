@@ -706,8 +706,10 @@ f.close()
     'lto': [['-flto']],
     'wasm64': [['-sMEMORY64']],
   })
-  def test_emcc_print_search_dirs(self, args):
+  def test_print_search_dirs(self, args):
     output = self.run_process([EMCC, '-print-search-dirs'] + args, stdout=PIPE).stdout
+    output2 = self.run_process([EMCC, '-print-search-dirs'] + args, stdout=PIPE).stdout
+    self.assertEqual(output, output2)
     self.assertContained('programs: =', output)
     self.assertContained('libraries: =', output)
     libpath = output.split('libraries: =', 1)[1].strip()
@@ -724,8 +726,10 @@ f.close()
     'lto': [['-flto']],
     'wasm64': [['-sMEMORY64']],
   })
-  def test_emcc_print_libgcc_file_name(self, args):
+  def test_print_libgcc_file_name(self, args):
     output = self.run_process([EMCC, '-print-libgcc-file-name'] + args, stdout=PIPE).stdout
+    output2 = self.run_process([EMCC, '--print-libgcc-file-name'] + args, stdout=PIPE).stdout
+    self.assertEqual(output, output2)
     settings.LTO = '-flto' in args
     settings.MEMORY64 = int('-sMEMORY64' in args)
     libdir = cache.get_lib_dir(absolute=True)
@@ -738,10 +742,12 @@ f.close()
     'lto': [['-flto']],
     'wasm64': [['-sMEMORY64', '-Wno-experimental']],
   })
-  def test_emcc_print_file_name(self, args):
+  def test_print_file_name(self, args):
     # make sure the corresponding version of libc exists in the cache
     self.run_process([EMCC, test_file('hello_world.c'), '-O2'] + args)
     output = self.run_process([EMCC, '-print-file-name=libc.a'] + args, stdout=PIPE).stdout
+    output2 = self.run_process([EMCC, '--print-file-name=libc.a'] + args, stdout=PIPE).stdout
+    self.assertEqual(output, output2)
     filename = Path(output)
     settings.LTO = '-flto' in args
     settings.MEMORY64 = int('-sMEMORY64' in args)
