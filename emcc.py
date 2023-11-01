@@ -1279,18 +1279,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     print(shared.get_llvm_target())
     return 0
 
-  if '-print-search-dirs' in newargs:
+  if '-print-search-dirs' in newargs or '--print-search-dirs' in newargs:
     print(f'programs: ={config.LLVM_ROOT}')
     print(f'libraries: ={cache.get_lib_dir(absolute=True)}')
     return 0
 
-  if '-print-libgcc-file-name' in newargs:
+  if '-print-libgcc-file-name' in newargs or '--print-libgcc-file-name' in newargs:
     settings.limit_settings(None)
     compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt']
     print(compiler_rt.get_path(absolute=True))
     return 0
 
-  print_file_name = [a for a in args if a.startswith('-print-file-name=')]
+  print_file_name = [a for a in newargs if a.startswith('-print-file-name=') or a.startswith('--print-file-name=')]
   if print_file_name:
     libname = print_file_name[-1].split('=')[1]
     system_libpath = cache.get_lib_dir(absolute=True)
