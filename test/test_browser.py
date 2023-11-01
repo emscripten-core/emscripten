@@ -774,25 +774,29 @@ If manually bisecting:
     # Test Emscripten-specific extensions to optimize SDL_LockSurface and SDL_UnlockSurface.
     self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-DTEST_SDL_LOCK_OPTS', '-lSDL', '-lGL'])
 
+  @parameterized({
+    '': ([],),
+    'meminit_file':  (['--memory-init-file=1', '-sWASM=0'],),
+  })
   @also_with_wasmfs
-  def test_sdl_image(self):
+  def test_sdl_image(self, args):
     # load an image file, get pixel data. Also O2 coverage for --preload-file, and memory-init
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
     src = test_file('browser/test_sdl_image.c')
+    if '-sWASM=0' in args:
+      self.require_wasm2js()
 
-    for args in [[], ['--memory-init-file=1', '-sWASM=0']]:
-      for dest, dirname, basename in [('screenshot.jpg', '/', 'screenshot.jpg'),
-                                      ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
-        self.btest_exit(src, args=args + [
-          '-O2', '-lSDL', '-lGL',
-          '--preload-file', dest, '-DSCREENSHOT_DIRNAME="' + dirname + '"', '-DSCREENSHOT_BASENAME="' + basename + '"', '--use-preload-plugins'
-        ])
+    for dest, dirname, basename in [('screenshot.jpg', '/', 'screenshot.jpg'),
+                                    ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
+      self.btest_exit(src, args=args + [
+        '-O2', '-lSDL', '-lGL',
+        '--preload-file', dest, '-DSCREENSHOT_DIRNAME="' + dirname + '"', '-DSCREENSHOT_BASENAME="' + basename + '"', '--use-preload-plugins'
+      ])
 
   @also_with_wasmfs
   def test_sdl_image_jpeg(self):
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpeg')
-    src = test_file('browser/test_sdl_image.c')
-    self.btest_exit(src, args=[
+    self.btest_exit('test_sdl_image.c', args=[
       '--preload-file', 'screenshot.jpeg',
       '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"', '--use-preload-plugins',
       '-lSDL', '-lGL',
@@ -1992,10 +1996,12 @@ keydown(100);keyup(100); // trigger the end
   def test_glframebufferattachmentinfo(self):
     self.btest('glframebufferattachmentinfo.c', '1', args=['-lGLESv2', '-lEGL'])
 
+  @no_wasm64('TODO: LEGACY_GL_EMULATION + wasm64')
   @requires_graphics_hardware
   def test_sdl_glshader(self):
     self.btest('test_sdl_glshader.c', reference='browser/test_sdl_glshader.png', args=['-O2', '--closure=1', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
+  @no_wasm64('TODO: LEGACY_GL_EMULATION + wasm64')
   @requires_graphics_hardware
   def test_sdl_glshader2(self):
     self.btest_exit('test_sdl_glshader2.c', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], also_proxied=True)
@@ -3421,6 +3427,7 @@ Module["preRun"] = () => {
       self.btest_exit('async_mainloop.cpp', args=['-O' + str(opts), '-sASYNCIFY'])
 
   @requires_sound_hardware
+  @no_wasm64('https://github.com/WebAssembly/binaryen/issues/6073')
   def test_sdl_audio_beep_sleep(self):
     self.btest_exit('test_sdl_audio_beep_sleep.cpp', args=['-Os', '-sASSERTIONS', '-sDISABLE_EXCEPTION_CATCHING=0', '-profiling', '-sSAFE_HEAP', '-lSDL', '-sASYNCIFY'], timeout=90)
 
