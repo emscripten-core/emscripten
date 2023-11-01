@@ -23,7 +23,7 @@ from urllib.request import urlopen
 
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
-from common import read_file, requires_v8, also_with_minimal_runtime, EMRUN
+from common import read_file, requires_v8, also_with_minimal_runtime, EMRUN, no_wasm64
 from tools import shared
 from tools import ports
 from tools import utils
@@ -119,6 +119,7 @@ def also_with_wasm2js(f):
   def metafunc(self, with_wasm2js):
     assert self.get_setting('WASM') is None
     if with_wasm2js:
+      self.require_wasm2js()
       self.set_setting('WASM', 0)
       f(self)
     else:
@@ -164,6 +165,7 @@ def is_jspi(args):
 def no_swiftshader(f):
   assert callable(f)
 
+  @wraps(f)
   def decorated(self, *args, **kwargs):
     if is_chrome() and '--use-gl=swiftshader' in EMTEST_BROWSER:
       self.skipTest('not compatible with swiftshader')
@@ -175,6 +177,7 @@ def no_swiftshader(f):
 def requires_threads(f):
   assert callable(f)
 
+  @wraps(f)
   def decorated(self, *args, **kwargs):
     if os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
       self.skipTest('EMTEST_LACKS_THREAD_SUPPORT is set')
@@ -183,7 +186,20 @@ def requires_threads(f):
   return decorated
 
 
+def requires_wasm2js(f):
+  assert callable(f)
+
+  @wraps(f)
+  def decorated(self, *args, **kwargs):
+    self.require_wasm2js()
+    return f(self, *args, **kwargs)
+
+  return decorated
+
+
 def also_with_threads(f):
+  assert callable(f)
+
   @wraps(f)
   def decorated(self, *args, **kwargs):
     f(self, *args, **kwargs)
@@ -191,6 +207,7 @@ def also_with_threads(f):
       print('(threads)')
       self.emcc_args += ['-pthread']
       f(self, *args, **kwargs)
+
   return decorated
 
 
@@ -220,6 +237,10 @@ class browser(BrowserCore):
   def require_wasm64(self):
     # All the browsers we run on support wasm64 (Chrome and Firefox).
     return True
+
+  def require_wasm2js(self):
+    if self.is_wasm64():
+      self.skipTest('wasm2js is not compatible with MEMORY64')
 
   def require_jspi(self):
     if not is_chrome():
@@ -1937,7 +1958,8 @@ keydown(100);keyup(100); // trigger the end
   @parameterized({
     '': ([],),
     'worker': (['--proxy-to-worker'],),
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD'],)
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+    'strict': (['-sSTRICT'],),
   })
   @requires_threads
   def test_emscripten_main_loop_setimmediate(self, args):
@@ -2544,7 +2566,7 @@ void *getBindBuffer() {
     self.btest('test_emscripten_async_wget2_data.cpp', expected='0')
 
   def test_emscripten_async_wget_side_module(self):
-    self.run_process([EMCC, test_file('browser_module.c'), '-o', 'lib.wasm', '-O2', '-sSIDE_MODULE'])
+    self.emcc(test_file('browser_module.c'), ['-o', 'lib.wasm', '-O2', '-sSIDE_MODULE'])
     self.btest_exit('browser_main.c', args=['-O2', '-sMAIN_MODULE=2'])
 
   @parameterized({
@@ -2585,8 +2607,12 @@ void *getBindBuffer() {
   # This does not actually verify anything except that --cpuprofiler and --memoryprofiler compiles.
   # Run interactive.test_cpuprofiler_memoryprofiler for interactive testing.
   @requires_graphics_hardware
-  def test_cpuprofiler_memoryprofiler(self):
-    self.btest_exit('hello_world_gles.c', args=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '--cpuprofiler', '--memoryprofiler', '-lGL', '-lglut', '-DANIMATE'])
+  @parameterized({
+    '': ([],),
+    'modularized': (['-sMODULARIZE=1', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')],),
+  })
+  def test_cpuprofiler_memoryprofiler(self, opts):
+    self.btest_exit('hello_world_gles.c', args=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '--cpuprofiler', '--memoryprofiler', '-lGL', '-lglut', '-DANIMATE'] + opts)
 
   def test_uuid(self):
     # Run with ./runner browser.test_uuid
@@ -4103,7 +4129,7 @@ Module["preRun"] = () => {
 
     # Test that it is possible to define "Module.locateFile" string to locate where worker.js will be loaded from.
     create_file('shell.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
-    self.compile_btest(['main.cpp', '--shell-file', 'shell.html', '-sWASM=0', '-pthread', '-sPTHREAD_POOL_SIZE', '-o', 'test.html'], reporting=Reporting.JS_ONLY)
+    self.compile_btest(['main.cpp', '--shell-file', 'shell.html', '-pthread', '-sPTHREAD_POOL_SIZE', '-o', 'test.html'], reporting=Reporting.JS_ONLY)
     shutil.move('test.worker.js', Path('cdn/test.worker.js'))
     if os.path.exists('test.html.mem'):
       shutil.copyfile('test.html.mem', Path('cdn/test.html.mem'))
@@ -4111,7 +4137,7 @@ Module["preRun"] = () => {
 
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
     create_file('shell2.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.worker.js") return "cdn/test.worker.js"; else return filename; }, '))
-    self.compile_btest(['main.cpp', '--shell-file', 'shell2.html', '-sWASM=0', '-pthread', '-sPTHREAD_POOL_SIZE', '-o', 'test2.html'], reporting=Reporting.JS_ONLY)
+    self.compile_btest(['main.cpp', '--shell-file', 'shell2.html', '-pthread', '-sPTHREAD_POOL_SIZE', '-o', 'test2.html'], reporting=Reporting.JS_ONLY)
     delete_file('test.worker.js')
     self.run_browser('test2.html', '/report_result?exit:0')
 
@@ -4182,6 +4208,8 @@ Module["preRun"] = () => {
 
   @requires_threads
   def test_pthread_global_data_initialization_in_sync_compilation_mode(self):
+    if self.is_wasm64():
+      self.skipTest('wasm2js is not compatible with MEMORY64')
     mem_init_modes = [[], ['-sWASM=0', '--memory-init-file', '0'], ['-sWASM=0', '--memory-init-file', '1']]
     for mem_init_mode in mem_init_modes:
       print(mem_init_mode)
@@ -4225,6 +4253,7 @@ Module["preRun"] = () => {
     # same stack size as the main thread normally would.
     self.btest('core/test_safe_stack.c', expected='abort:stack overflow', args=['-pthread', '-sPROXY_TO_PTHREAD', '-sSTACK_OVERFLOW_CHECK=2', '-sSTACK_SIZE=64KB'])
 
+  @no_wasm64('TODO: ASAN in memory64')
   @parameterized({
     'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
     'no_leak': ['test_pthread_lsan_no_leak', []],
@@ -4234,6 +4263,7 @@ Module["preRun"] = () => {
   def test_pthread_lsan(self, name, args):
     self.btest(Path('pthread', name + '.cpp'), expected='1', args=['-fsanitize=leak', '-sINITIAL_MEMORY=256MB', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
+  @no_wasm64('TODO: ASAN in memory64')
   @parameterized({
     # Reusing the LSan test files for ASan.
     'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
@@ -4243,10 +4273,12 @@ Module["preRun"] = () => {
   def test_pthread_asan(self, name, args):
     self.btest(Path('pthread', name + '.cpp'), expected='1', args=['-fsanitize=address', '-sINITIAL_MEMORY=256MB', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
+  @no_wasm64('TODO: ASAN in memory64')
   @requires_threads
   def test_pthread_asan_use_after_free(self):
     self.btest('pthread/test_pthread_asan_use_after_free.cpp', expected='1', args=['-fsanitize=address', '-sINITIAL_MEMORY=256MB', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread/test_pthread_asan_use_after_free.js')])
 
+  @no_wasm64('TODO: ASAN in memory64')
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/20006')
   @also_with_wasmfs
   @requires_threads
@@ -4850,7 +4882,7 @@ Module["preRun"] = () => {
   @requires_threads
   def test_pthread_growth_mainthread(self, emcc_args):
     self.emcc_args.remove('-Werror')
-    self.btest_exit('pthread/test_pthread_memory_growth_mainthread.c', args=['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + emcc_args, also_wasm2js=False)
+    self.btest_exit('pthread/test_pthread_memory_growth_mainthread.c', args=['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + emcc_args)
 
   # Tests memory growth in a pthread.
   @parameterized({
@@ -4862,7 +4894,7 @@ Module["preRun"] = () => {
   @requires_threads
   def test_pthread_growth(self, emcc_args):
     self.emcc_args.remove('-Werror')
-    self.btest_exit('pthread/test_pthread_memory_growth.c', args=['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB', '-g'] + emcc_args, also_wasm2js=False)
+    self.btest_exit('pthread/test_pthread_memory_growth.c', args=['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB', '-g'] + emcc_args)
 
   # Tests that time in a pthread is relative to the main thread, so measurements
   # on different threads are still monotonic, as if checking a single central
@@ -5205,6 +5237,7 @@ Module["preRun"] = () => {
     self.btest('wasm_worker/hello_wasm_worker.c', expected='0', args=['-sWASM_WORKERS', '-sMINIMAL_RUNTIME=2'])
 
   # Tests Wasm Workers build in Wasm2JS mode.
+  @requires_wasm2js
   @also_with_minimal_runtime
   def test_wasm_worker_hello_wasm2js(self):
     self.btest('wasm_worker/hello_wasm_worker.c', expected='0', args=['-sWASM_WORKERS', '-sWASM=0'])
@@ -5296,17 +5329,17 @@ Module["preRun"] = () => {
   # Tests emscripten_atomic_wait_u32() and emscripten_atomic_notify() functions.
   @also_with_minimal_runtime
   def test_wasm_worker_wait32_notify(self):
-    self.btest('wasm_worker/wait32_notify.c', expected='2', args=['-sWASM_WORKERS'])
+    self.btest('atomic/test_wait32_notify.c', expected='3', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_wait_u64() and emscripten_atomic_notify() functions.
   @also_with_minimal_runtime
   def test_wasm_worker_wait64_notify(self):
-    self.btest('wasm_worker/wait64_notify.c', expected='2', args=['-sWASM_WORKERS'])
+    self.btest('atomic/test_wait64_notify.c', expected='3', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_wait_async() function.
   @also_with_minimal_runtime
   def test_wasm_worker_wait_async(self):
-    self.btest('wasm_worker/wait_async.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest('atomic/test_wait_async.c', expected='0', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_cancel_wait_async() function.
   @also_with_minimal_runtime
@@ -5580,6 +5613,13 @@ Module["preRun"] = () => {
   })
   def test_audio_worklet_post_function(self, args):
     self.btest('webaudio/audioworklet_post_function.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args, expected='1')
+
+  @parameterized({
+    '': ([],),
+    'closure': (['--closure', '1', '-Oz'],),
+  })
+  def test_audio_worklet_modularize(self, args):
+    self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMODULARIZE=1', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')] + args)
 
   def test_error_reporting(self):
     # Test catching/reporting Error objects

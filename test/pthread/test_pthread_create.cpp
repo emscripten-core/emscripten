@@ -46,12 +46,12 @@ void *ThreadMain(void *arg)
 			}
 		}
 	// Ensure all elements are in place.
-	int numGood = 0;
+	intptr_t numGood = 0;
 	for(unsigned int i = 0; i < N; ++i)
 		if (n[i] == i) ++numGood;
 		else emscripten_errf("n[%d]=%d", i, n[i]);
 
-	emscripten_outf("Thread idx %ld with param %d: all done with result %d.", idx, param, numGood);
+	emscripten_outf("Thread idx %ld with param %d: all done with result %ld.", idx, param, numGood);
 	pthread_exit((void*)numGood);
 }
 
@@ -59,7 +59,7 @@ pthread_t thread[NUM_THREADS];
 
 int numThreadsToCreate = 1000;
 
-void CreateThread(int i)
+void CreateThread(intptr_t i)
 {
 	static int counter = 1;
 	global_shared_data[i] = (counter++ * 12141231) & 0x7FFFFFFF; // Arbitrary random'ish data for perturbing the sort for this thread task.
@@ -81,7 +81,7 @@ int main()
 		{
 			if (thread[i])
 			{
-				int status;
+				intptr_t status;
 				int rc = pthread_join(thread[i], (void**)&status);
 				assert(rc == 0);
 				emscripten_errf("Main: Joined thread idx %d (param %d) with status %d", i, global_shared_data[i], (int)status);

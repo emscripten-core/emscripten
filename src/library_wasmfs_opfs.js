@@ -53,9 +53,7 @@ addToLibrary({
   },
 
   $wasmfsOPFSCreateAsyncAccessHandle__deps: ['$FileSystemAsyncAccessHandle'],
-  $wasmfsOPFSCreateAsyncAccessHandle: (fileHandle) => {
-    return new FileSystemAsyncAccessHandle(fileHandle);
-  },
+  $wasmfsOPFSCreateAsyncAccessHandle: (fileHandle) => new FileSystemAsyncAccessHandle(fileHandle),
 #endif
 
 #if PTHREADS

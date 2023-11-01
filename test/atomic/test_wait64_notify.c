@@ -34,7 +34,8 @@ void run_test() {
   assert(ret == ATOMICS_WAIT_TIMED_OUT);
 
   emscripten_out("Waiting for infinitely long should return 'ok'");
-  ret = emscripten_atomic_wait_u64((int64_t*)&addr, 0x100000000ull, /*timeout=*/-1);
+  emscripten_atomic_store_u64((void*)&addr, 0x300000000ull);
+  ret = emscripten_atomic_wait_u64((int64_t*)&addr, 0x300000000ull, /*timeout=*/-1);
   assert(ret == ATOMICS_WAIT_OK);
 
   emscripten_out("Test finished");
@@ -65,7 +66,7 @@ void* thread_main(void* arg) {
 #endif
 
 EM_BOOL main_loop(double time, void *userData) {
-  if (addr == 0x100000000ull) {
+  if (addr == 0x300000000ull) {
     // Burn one second to make sure worker finishes its test.
     emscripten_out("main: seen worker running");
     double t0 = emscripten_performance_now();
@@ -73,8 +74,11 @@ EM_BOOL main_loop(double time, void *userData) {
 
     // Wake the waiter
     emscripten_out("main: waking worker");
-    addr = 0x200000000ull;
     emscripten_atomic_notify((int32_t*)&addr, 1);
+
+#ifndef __EMSCRIPTEN_WASM_WORKERS__
+    pthread_join(t, NULL);
+#endif
 
     return EM_FALSE;
   }

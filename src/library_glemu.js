@@ -930,9 +930,7 @@ var LibraryGLEmulation = {
 
       // Exports:
       return {
-        create: () => {
-          return new CMapTree();
-        },
+        create: () => new CMapTree(),
       };
     },
 

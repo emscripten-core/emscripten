@@ -57,6 +57,10 @@ commands:
             # In order make our external version of emscripten use the emsdk
             # config we need to explicitly set EM_CONFIG here.
             echo "export EM_CONFIG=~/emsdk/.emscripten" >> $BASH_ENV
+  bootstrap:
+    description: "bootstrap"
+    steps:
+      - run: ./bootstrap
   npm-install:
     description: "npm ci"
     steps:
@@ -94,8 +98,8 @@ commands:
               wget https://nodejs.org/dist/v${version}/node-v${version}-linux-x64.tar.xz
             fi
             tar xf node-v${version}-linux-x64.tar.xz
-            echo "NODE_JS = [os.path.expanduser('~/node-v${version}-linux-x64/bin/node')]" >> ~/emsdk/.emscripten
-            echo "JS_ENGINES = [NODE_JS]" >> ~/emsdk/.emscripten
+            echo "NODE_JS_TEST = [os.path.expanduser('~/node-v${version}-linux-x64/bin/node')]" >> ~/emsdk/.emscripten
+            echo "JS_ENGINES = [NODE_JS_TEST]" >> ~/emsdk/.emscripten
             echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> ~/emsdk/.emscripten
             cat ~/emsdk/.emscripten
             echo "export PATH=\"$HOME/node-v${version}-linux-x64/bin:\$PATH\"" >> $BASH_ENV
@@ -156,6 +160,7 @@ commands:
             echo "final .emscripten:"
             cat ~/emsdk/.emscripten
       - emsdk-env
+      - bootstrap
       - npm-install
   build-libs:
     description: "Build all libraries"
@@ -214,6 +219,7 @@ commands:
           name: submodule update
           command: git submodule update --init
       - emsdk-env
+      - bootstrap
       - npm-install
       - pip-install
   upload-test-results:
@@ -438,7 +444,7 @@ jobs:
       - run:
           name: get wasmer
           command: |
-            wget https://github.com/wasmerio/wasmer/releases/download/0.11.0/wasmer-linux-amd64.tar.gz
+            wget https://github.com/wasmerio/wasmer/releases/download/v3.1.1/wasmer-linux-amd64.tar.gz
             tar -xf wasmer-linux-amd64.tar.gz
             mkdir ~/vms
             cp bin/wasmer ~/vms
@@ -814,6 +820,10 @@ jobs:
             browser64.test_fetch_xhr_abort
             browser64.test_fetch_sync_xhr
             browser64.test_fetch_implicit_append
+            browser64.test_pthread_*
+            browser64.test_wget_*
+            browser64.test_emscripten_async_wget_*
+            browser64.test_wasm_worker_*
             "
   test-browser-firefox:
     executor: bionic

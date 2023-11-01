@@ -140,6 +140,10 @@ var MALLOC = "dlmalloc";
 //      which it did not previously. If you don't want that, just stop passing
 //      it in at link time.
 //
+// Note that this setting does not affect the behavior of operator new in C++.
+// This function will always abort on allocation failure if exceptions are disabled.
+// If you want new to return 0 on failure, use it with std::nothrow.
+//
 // [link]
 var ABORTING_MALLOC = true;
 
@@ -1764,10 +1768,10 @@ var AUTO_NATIVE_LIBRARIES = true;
 // versions >= MIN_FIREFOX_VERSION
 // are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
 // for Firefox versions older than < majorVersion.
-// Firefox ESR 68 was released on July 9, 2019.
+// Firefox 79 was released on 2020-07-28.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
-var MIN_FIREFOX_VERSION = 68;
+var MIN_FIREFOX_VERSION = 79;
 
 // Specifies the oldest version of desktop Safari to target. Version is encoded
 // in MMmmVV, e.g. 70101 denotes Safari 7.1.1.
@@ -1806,10 +1810,10 @@ var MIN_EDGE_VERSION = 0x7FFFFFFF;
 
 // Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
 // drop support for Chrome 57 and older.
-// Chrome 75.0.3770 was released on 2019-06-04
+// Chrome 85 was released on 2020-08-25.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
-var MIN_CHROME_VERSION = 75;
+var MIN_CHROME_VERSION = 85;
 
 // Specifies minimum node version to target for the generated code.  This is
 // distinct from the minimum version required run the emscripten compiler.

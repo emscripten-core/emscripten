@@ -891,16 +891,15 @@
             "utf16Offset": 64
         },
         "WGPUComputePassDescriptor": {
-            "__size__": 32,
+            "__size__": 24,
             "label": 8,
             "nextInChain": 0,
-            "timestampWriteCount": 16,
-            "timestampWrites": 24
+            "timestampWrites": 16
         },
-        "WGPUComputePassTimestampWrite": {
+        "WGPUComputePassTimestampWrites": {
             "__size__": 16,
-            "location": 12,
-            "queryIndex": 8,
+            "beginningOfPassWriteIndex": 8,
+            "endOfPassWriteIndex": 12,
             "querySet": 0
         },
         "WGPUComputePipelineDescriptor": {
@@ -1052,12 +1051,10 @@
             "nextInChain": 0
         },
         "WGPUQuerySetDescriptor": {
-            "__size__": 40,
+            "__size__": 24,
             "count": 20,
             "label": 8,
             "nextInChain": 0,
-            "pipelineStatistics": 24,
-            "pipelineStatisticsCount": 32,
             "type": 16
         },
         "WGPUQueueDescriptor": {
@@ -1103,25 +1100,24 @@
             "view": 0
         },
         "WGPURenderPassDescriptor": {
-            "__size__": 64,
+            "__size__": 56,
             "colorAttachmentCount": 16,
             "colorAttachments": 24,
             "depthStencilAttachment": 32,
             "label": 8,
             "nextInChain": 0,
             "occlusionQuerySet": 40,
-            "timestampWriteCount": 48,
-            "timestampWrites": 56
+            "timestampWrites": 48
         },
         "WGPURenderPassDescriptorMaxDrawCount": {
             "__size__": 24,
             "chain": 0,
             "maxDrawCount": 16
         },
-        "WGPURenderPassTimestampWrite": {
+        "WGPURenderPassTimestampWrites": {
             "__size__": 16,
-            "location": 12,
-            "queryIndex": 8,
+            "beginningOfPassWriteIndex": 8,
+            "endOfPassWriteIndex": 12,
             "querySet": 0
         },
         "WGPURenderPipelineDescriptor": {

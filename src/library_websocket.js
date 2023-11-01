@@ -403,9 +403,7 @@ var LibraryWebSocket = {
   },
 
   emscripten_websocket_is_supported__proxy: 'sync',
-  emscripten_websocket_is_supported: () => {
-    return typeof WebSocket != 'undefined';
-  },
+  emscripten_websocket_is_supported: () => typeof WebSocket != 'undefined',
 
   emscripten_websocket_deinitialize__deps: ['$WS'],
   emscripten_websocket_deinitialize__proxy: 'sync',

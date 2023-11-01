@@ -2375,9 +2375,7 @@ var LibraryHTML5 = {
 
   $setCanvasElementSizeMainThread__proxy: 'sync',
   $setCanvasElementSizeMainThread__deps: ['$setCanvasElementSizeCallingThread'],
-  $setCanvasElementSizeMainThread: (target, width, height) => {
-    return setCanvasElementSizeCallingThread(target, width, height);
-  },
+  $setCanvasElementSizeMainThread: (target, width, height) => setCanvasElementSizeCallingThread(target, width, height),
 
   emscripten_set_canvas_element_size__deps: ['$JSEvents', '$setCanvasElementSizeCallingThread', '$setCanvasElementSizeMainThread', '$findCanvasEventTarget'],
   emscripten_set_canvas_element_size: (target, width, height) => {

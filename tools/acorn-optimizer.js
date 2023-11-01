@@ -319,7 +319,16 @@ function runJSDCE(ast, aggressive) {
           const old = node.declarations;
           let removedHere = 0;
           node.declarations = node.declarations.filter((node) => {
-            const curr = node.id.name;
+            assert(node.type === 'VariableDeclarator');
+            const id = node.id;
+            if (id.type === 'ObjectPattern' || id.type === 'ArrayPattern') {
+              // TODO: DCE into object patterns, that is, things like
+              //         let { a, b } = ..
+              //         let [ a, b ] = ..
+              return true;
+            }
+            assert(id.type === 'Identifier');
+            const curr = id.name;
             const value = node.init;
             const keep = !(curr in names) || (value && hasSideEffects(value));
             if (!keep) removedHere = 1;
@@ -361,12 +370,20 @@ function runJSDCE(ast, aggressive) {
         ensureData(scopes[scopes.length - 1], node.id.name).def = 1;
       }
       const scope = {};
+      scopes.push(scope);
       node.params.forEach((param) => {
+        if (param.type === 'RestElement') {
+          param = param.argument;
+        }
+        if (param.type === 'AssignmentPattern') {
+          c(param.right);
+          param = param.left;
+        }
+        assert(param.type === 'Identifier', param.type);
         const name = param.name;
         ensureData(scope, name).def = 1;
         scope[name].param = 1;
       });
-      scopes.push(scope);
       c(node.body);
       // we can ignore self-references, i.e., references to ourselves inside
       // ourselves, for named defined (defun) functions
@@ -390,8 +407,25 @@ function runJSDCE(ast, aggressive) {
 
     recursiveWalk(ast, {
       VariableDeclarator(node, c) {
-        const name = node.id.name;
-        ensureData(scopes[scopes.length - 1], name).def = 1;
+        const id = node.id;
+        if (id.type === 'ObjectPattern') {
+          id.properties.forEach((node) => {
+            const value = node.value;
+            assert(value.type === 'Identifier');
+            const name = value.name;
+            ensureData(scopes[scopes.length - 1], name).def = 1;
+          });
+        } else if (id.type === 'ArrayPattern') {
+          id.elements.forEach((node) => {
+            assert(node.type === 'Identifier');
+            const name = node.name;
+            ensureData(scopes[scopes.length - 1], name).def = 1;
+          });
+        } else {
+          assert(id.type === 'Identifier');
+          const name = id.name;
+          ensureData(scopes[scopes.length - 1], name).def = 1;
+        }
         if (node.init) c(node.init);
       },
       ObjectExpression(node, c) {
@@ -1010,7 +1044,7 @@ function applyDCEGraphRemovals(ast) {
 
 // Need a parser to pass to acorn.Node constructor.
 // Create it once and reuse it.
-const stubParser = new acorn.Parser({ecmaVersion: 2020});
+const stubParser = new acorn.Parser({ecmaVersion: 2021});
 
 function createNode(props) {
   const node = new acorn.Node(stubParser);
@@ -1974,7 +2008,7 @@ let ast;
 try {
   ast = acorn.parse(input, {
     // Keep in sync with --language_in that we pass to closure in building.py
-    ecmaVersion: 2020,
+    ecmaVersion: 2021,
     preserveParens: closureFriendly,
     onComment: closureFriendly ? sourceComments : undefined,
     sourceType: exportES6 ? 'module' : 'script',

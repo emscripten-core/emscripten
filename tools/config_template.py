@@ -27,13 +27,14 @@ JAVA = 'java' # executable
 #
 # Alternative JS engines to use during testing:
 #
+# NODE_JS_TEST = 'node' # executable
 # SPIDERMONKEY_ENGINE = ['js'] # executable
 # V8_ENGINE = 'd8' # executable
 #
 # All JS engines to use when running the automatic tests. Not all the engines in
 # this list must exist (if they don't, they will be skipped in the test runner).
 #
-# JS_ENGINES = [NODE_JS] # add V8_ENGINE or SPIDERMONKEY_ENGINE if you have them installed too.
+# JS_ENGINES = [NODE_JS_TEST] # add V8_ENGINE or SPIDERMONKEY_ENGINE if you have them installed too.
 #
 # import os
 # WASMER = os.path.expanduser(os.path.join('~', '.wasmer', 'bin', 'wasmer'))

@@ -76,9 +76,7 @@ addToLibrary({
       var paths = Array.prototype.slice.call(arguments);
       return PATH.normalize(paths.join('/'));
     },
-    join2: (l, r) => {
-      return PATH.normalize(l + '/' + r);
-    },
+    join2: (l, r) => PATH.normalize(l + '/' + r),
   },
   // The FS-using parts are split out into a separate object, so simple path
   // usage does not require the FS.

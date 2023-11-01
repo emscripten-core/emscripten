@@ -912,6 +912,7 @@ def create_pointer_conversion_wrappers(metadata):
     '__main_argc_argv': '__PP',
     'emscripten_stack_set_limits': '_pp',
     '__set_stack_limits': '_pp',
+    '__set_thread_state': '_p___',
     '__cxa_can_catch': '_ppp',
     '__cxa_increment_exception_refcount': '_p',
     '__cxa_decrement_exception_refcount': '_p',

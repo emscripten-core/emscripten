@@ -613,7 +613,7 @@ var emscriptenMemoryProfiler = {
         if (calls.length > 0) {
           if (sortOrder != 'fixed') {
             var sortIdx = (sortOrder == 'count') ? 0 : 1;
-            calls.sort((a,b) => { return b[sortIdx] - a[sortIdx]; });
+            calls.sort((a,b) => b[sortIdx] - a[sortIdx]);
           }
           html += '<h4>Allocation sites with more than ' + self.formatBytes(self.trackedCallstackMinSizeBytes) + ' of accumulated allocations, or more than ' + self.trackedCallstackMinAllocCount + ' simultaneously outstanding allocations:</h4>'
           for (var i in calls) {
@@ -636,5 +636,8 @@ function memoryprofiler_add_hooks() {
 if (typeof document != 'undefined' && typeof window != 'undefined' && typeof process == 'undefined') {
   emscriptenMemoryProfiler.initialize();
 }
+
+// Declared in globalThis so that `onclick` handlers work when `-sMODULARIZE=1`
+globalThis.emscriptenMemoryProfiler = emscriptenMemoryProfiler;
 
 #endif

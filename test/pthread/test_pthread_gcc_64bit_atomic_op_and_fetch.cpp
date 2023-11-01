@@ -129,7 +129,7 @@ int main()
 				and_and_fetch_data = HILO(65536 + (1<<(NUM_THREADS+1))-1, (1<<(NUM_THREADS+1))-1);
 				for(int i = 0; i < NUM_THREADS; ++i)
 				{
-					threadArg[i] = DUP(~(1UL<<i));
+					threadArg[i] = DUP(~(1U<<i));
 					pthread_create(&thread[i], NULL, thread_and_and_fetch, (void*)&threadArg[i]);
 				}
 				for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
@@ -149,7 +149,7 @@ int main()
 				xor_and_fetch_data = HILO(32768 + (1<<NUM_THREADS), 1<<NUM_THREADS);
 				for(int i = 0; i < NUM_THREADS; ++i)
 				{
-					threadArg[i] = DUP(~(1UL<<i));
+					threadArg[i] = DUP(~(1U<<i));
 					pthread_create(&thread[i], NULL, thread_xor_and_fetch, (void*)&threadArg[i]);
 				}
 				for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);

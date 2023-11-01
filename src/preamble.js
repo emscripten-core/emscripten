@@ -49,6 +49,10 @@ if (typeof WebAssembly != 'object') {
 #include "runtime_asan.js"
 #endif
 
+#if SUPPORT_BASE64_EMBEDDING || FORCE_FILESYSTEM
+#include "base64Utils.js"
+#endif
+
 // Wasm globals
 
 var wasmMemory;
@@ -785,7 +789,7 @@ function instantiateSync(file, info) {
 }
 #endif
 
-#if PTHREADS && (LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER)
+#if (PTHREADS || WASM_WORKERS) && (LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER)
 // When using postMessage to send an object, it is processed by the structured
 // clone algorithm.  The prototype, and hence methods, on that object is then
 // lost. This function adds back the lost prototype.  This does not work with
@@ -1082,22 +1086,18 @@ function createWasm() {
   // path.
   if (Module['instantiateWasm']) {
 
-#if USE_OFFSET_CONVERTER && PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) {
+#if USE_OFFSET_CONVERTER
 #if ASSERTIONS
-      assert(Module['wasmOffsetData'], 'wasmOffsetData not found on Module object');
+{{{ runIfWorkerThread("assert(Module['wasmOffsetData'], 'wasmOffsetData not found on Module object');") }}}
 #endif
-      wasmOffsetConverter = resetPrototype(WasmOffsetConverter, Module['wasmOffsetData']);
-    }
+{{{ runIfWorkerThread("wasmOffsetConverter = resetPrototype(WasmOffsetConverter, Module['wasmOffsetData']);") }}}
 #endif
 
-#if LOAD_SOURCE_MAP && PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) {
+#if LOAD_SOURCE_MAP
 #if ASSERTIONS
-      assert(Module['wasmSourceMapData'], 'wasmSourceMapData not found on Module object');
+{{{ runIfWorkerThread("assert(Module['wasmSourceMapData'], 'wasmSourceMapData not found on Module object');") }}}
 #endif
-      wasmSourceMap = resetPrototype(WasmSourceMap, Module['wasmSourceMapData']);
-    }
+{{{ runIfWorkerThread("wasmSourceMap = resetPrototype(WasmSourceMap, Module['wasmSourceMapData']);") }}}
 #endif
 
     try {

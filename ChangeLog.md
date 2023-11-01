@@ -18,8 +18,28 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.47 (in development)
+3.1.48 (in development)
 -----------------------
+- The minimum version of node required run the compiler was updated from
+  10.19 to 16.20.  This does not effect the node requirements of the generated
+  JavaScript code. (#20551)
+- A new top-level `bootstrap` script was added.  This script is for emscripten
+  developers and helps take a care of post-checkout tasks such as `npm install`.
+  If this script needs to be run (e.g. becuase package.json was changed, emcc
+  will exit with an error. (#19736)
+- If exceptions are disabled, using `new` together with `std::nothrow` no
+  longer aborts if the allocation fails. Instead `nullptr` is returned now.
+  This does not change the behavior of regular usage of `new`.
+- Default `MIN_CHROME_VERSION` was increased from 75 to 85 and default
+  `MIN_FIREFOX_VERSION` was increased from 68 to 79 to allow Emscripten
+  to use some ES2021 features for smaller JavaScript code size. (#20549)
+- Emscripten now generates PowerShell wrappers for its CLIs. This allows to
+  sidestep some of the issues with legacy cmd.exe, but developers must
+  explicitly opt-in to running PowerShell scripts in system settings or
+  via the `Set-ExecutionPolicy` command. (#20416)
+
+3.1.47 - 10/09/23
+-----------------
 - The boost-headers port was updated to v1.83.0.
 - The `noExitRuntime` global is now a JS library symbol that will only be
   included as needed.  User of `noExitRuntime` will now need to declare a
@@ -105,6 +125,7 @@ See docs/process.md for more on how version tagging works.
   with the new `__i53abi` decorator.  When this is set to true, i64 values are
   automatically converted to JS numbers (i53) at the JS boundary.  Parameters
   outside of the i53 will show up as NaN in the JS code (#19711)
+- EM_JS functions are now supported in side modules (#19705)
 
 3.1.42 - 06/22/23
 -----------------
@@ -350,6 +371,7 @@ See docs/process.md for more on how version tagging works.
   occupy linear memory at all.  The default for `DEFAULT_PTHREAD_STACK_SIZE` was
   also reduced from 2MB to 64KB to match.
 - Improved error messages for writing custom JS libraries. (#18266)
+- EM_ASM code is now supported in side modules (#18228)
 
 3.1.26 - 11/17/22
 -----------------
@@ -391,7 +413,7 @@ See docs/process.md for more on how version tagging works.
   helps wasm builds since wasm traps on such type mismatches in indirect calls.
   We recommend that users enable it to prevent such errors (which can be hard to
   debug otherwise). The older (less strict) behavior is also still possible with
-  `-Wcast-function-type -Wno-cast-funtion-type-strict` (or
+  `-Wcast-function-type -Wno-cast-function-type-strict` (or
   `-Wno-error=cast-function-type-strict` if you want the warnings to be visible
   but not errors). See https://reviews.llvm.org/D134831
 - libcxx and libcxxabi updated to LLVM 15. (#18113)

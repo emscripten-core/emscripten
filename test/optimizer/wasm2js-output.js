@@ -28,7 +28,7 @@ function instantiate(H, I, J) {
   var w = E.NaN;
   var x = E.Infinity;
   var y = F.fd_write;
-  var z = F.emscripten_memcpy_big;
+  var z = F.emscripten_memcpy_js;
   var A = 5245632;
   var B = 0;
   

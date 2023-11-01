@@ -59,6 +59,14 @@ from tools.utils import read_file, write_file, read_binary, delete_file, removep
 
 logger = logging.getLogger('emcc')
 
+# In git checkouts of emscripten `bootstrap.py` exists to run post-checkout
+# steps.  In packaged versions (e.g. emsdk) this file does not exist (because
+# it is excluded in tools/install.py) and these steps are assumed to have been
+# run already.
+if os.path.exists(utils.path_from_root('.git')) and os.path.exists(utils.path_from_root('bootstrap.py')):
+  import bootstrap
+  bootstrap.check()
+
 # endings = dot + a suffix, compare against result of shared.suffix()
 C_ENDINGS = ['.c', '.i']
 CXX_ENDINGS = ['.cppm', '.pcm', '.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii']
@@ -627,6 +635,14 @@ def should_run_binaryen_optimizer():
 def get_binaryen_passes():
   passes = []
   optimizing = should_run_binaryen_optimizer()
+  # wasm-emscripten-finalize will strip the features section for us
+  # automatically, but if we did not modify the wasm then we didn't run it,
+  # and in an optimized build we strip it manually here. (note that in an
+  # unoptimized build we might end up with the features section, if we neither
+  # optimize nor run wasm-emscripten-finalize, but a few extra bytes in the
+  # binary don't matter in an unoptimized build)
+  if optimizing:
+    passes += ['--strip-target-features']
   # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
   if settings.SAFE_HEAP:
     passes += ['--safe-heap']
@@ -732,7 +748,7 @@ def make_js_executable(script):
   if settings.MEMORY64 == 1:
     cmd += shared.node_memory64_flags()
   elif settings.WASM_BIGINT:
-    cmd += shared.node_bigint_flags()
+    cmd += shared.node_bigint_flags(config.NODE_JS)
   if len(cmd) > 1 or not os.path.isabs(cmd[0]):
     # Using -S (--split-string) here means that arguments to the executable are
     # correctly parsed.  We don't do this by default because old versions of env
@@ -1210,10 +1226,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 ''')
     return 0
 
-  if '-dumpmachine' in args:
-    print(shared.get_llvm_target())
-    return 0
-
   if '-dumpversion' in args: # gcc's doc states "Print the compiler version [...] and don't do anything else."
     print(shared.EMSCRIPTEN_VERSION)
     return 0
@@ -1237,15 +1249,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       print(shared.shlex_join(parts[1:]))
     return 0
 
-  passthrough_flags = ['-print-search-dirs', '-print-libgcc-file-name']
-  if any(a in args for a in passthrough_flags) or any(a.startswith('-print-file-name=') for a in args):
-    return run_process([clang] + args + get_cflags(args, run_via_emxx), check=False).returncode
-
   ## Process argument and setup the compiler
   state = EmccState(args)
   options, newargs = phase_parse_arguments(state)
 
-  shared.check_sanity()
+  if not shared.SKIP_SUBPROCS:
+    shared.check_sanity()
 
   if 'EMMAKEN_NO_SDK' in os.environ:
     exit_with_error('EMMAKEN_NO_SDK is no longer supported.  The standard -nostdlib and -nostdinc flags should be used instead')
@@ -1265,6 +1274,35 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   settings.limit_settings(COMPILE_TIME_SETTINGS)
 
   newargs, input_files = phase_setup(options, state, newargs)
+
+  if '-dumpmachine' in newargs:
+    print(shared.get_llvm_target())
+    return 0
+
+  if '-print-search-dirs' in newargs or '--print-search-dirs' in newargs:
+    print(f'programs: ={config.LLVM_ROOT}')
+    print(f'libraries: ={cache.get_lib_dir(absolute=True)}')
+    return 0
+
+  if '-print-libgcc-file-name' in newargs or '--print-libgcc-file-name' in newargs:
+    settings.limit_settings(None)
+    compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt']
+    print(compiler_rt.get_path(absolute=True))
+    return 0
+
+  print_file_name = [a for a in newargs if a.startswith('-print-file-name=') or a.startswith('--print-file-name=')]
+  if print_file_name:
+    libname = print_file_name[-1].split('=')[1]
+    system_libpath = cache.get_lib_dir(absolute=True)
+    fullpath = os.path.join(system_libpath, libname)
+    if os.path.exists(fullpath):
+      print(fullpath)
+    else:
+      print(libname)
+    return 0
+
+  if not input_files and not state.link_flags:
+    exit_with_error('no input files')
 
   if options.reproduce:
     create_reproduce_file(options.reproduce, args)
@@ -1312,7 +1350,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     return 0
 
   js_syms = {}
-  if not settings.SIDE_MODULE or settings.ASYNCIFY:
+  if (not settings.SIDE_MODULE or settings.ASYNCIFY) and not shared.SKIP_SUBPROCS:
     js_info = get_js_sym_info()
     if not settings.SIDE_MODULE:
       js_syms = js_info['deps']
@@ -1541,9 +1579,6 @@ def phase_setup(options, state, newargs):
     elif arg == '-':
       input_files.append((i, arg))
       newargs[i] = ''
-
-  if not input_files and not state.link_flags:
-    exit_with_error('no input files')
 
   newargs = [a for a in newargs if a]
 
@@ -2487,7 +2522,7 @@ def phase_linker_setup(options, state, newargs):
     # set location of Wasm Worker bootstrap JS file
     if settings.WASM_WORKERS == 1:
       settings.WASM_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.ww.js'
-    settings.JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_wasm_worker.js')))
+    settings.JS_LIBRARIES.append((0, 'library_wasm_worker.js'))
 
   # Set min browser versions based on certain settings such as WASM_BIGINT,
   # PTHREADS, AUDIO_WORKLET
@@ -2500,6 +2535,21 @@ def phase_linker_setup(options, state, newargs):
   settings.SUPPORTS_PROMISE_ANY = feature_matrix.caniuse(feature_matrix.Feature.PROMISE_ANY)
   if not settings.BULK_MEMORY:
     settings.BULK_MEMORY = feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY)
+    if settings.MEMORY64 and settings.MIN_NODE_VERSION < 180000:
+      # Note that we do not update tools/feature_matrix.py for this, as this issue is
+      # wasm64-specific: bulk memory for wasm32 has shipped in Node.js 12.5, but
+      # bulk memory for wasm64 has shipped only in Node.js 18.
+      #
+      # Feature matrix currently cannot express such complex combinations of
+      # features, so the only options are to either choose the least common
+      # denominator and disable bulk memory altogether for Node.js < 18 or to
+      # special-case this situation here. The former would be limiting for
+      # wasm32 users, so instead we do the latter:
+      logger.warning(
+        "Disabling bulk memory because it doesn't work correctly with wasm64 in Node.js < 18.\n"
+        "Set MIN_NODE_VERSION to 180000 or above to enable it."
+      )
+      settings.BULK_MEMORY = 0
 
   if settings.AUDIO_WORKLET:
     if settings.AUDIO_WORKLET == 1:
@@ -3112,7 +3162,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
       cmd += ['-Xclang', '-split-dwarf-file', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
       cmd += ['-Xclang', '-split-dwarf-output', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
     shared.check_call(cmd)
-    if output_file not in ('-', os.devnull):
+    if output_file not in ('-', os.devnull) and not shared.SKIP_SUBPROCS:
       assert os.path.exists(output_file)
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
@@ -3213,6 +3263,9 @@ def phase_emscript(options, in_wasm, wasm_target, memfile, js_syms):
 
   settings.SUPPORT_BASE64_EMBEDDING = embed_memfile(options)
 
+  if shared.SKIP_SUBPROCS:
+    return
+
   emscripten.run(in_wasm, wasm_target, final_js, memfile, js_syms)
   save_intermediate('original')
 
@@ -3239,10 +3292,15 @@ def phase_embind_emit_tsd(options, in_wasm, wasm_target, memfile, js_syms):
   # Required function to trigger TS generation.
   settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']
   settings.EXPORT_ES6 = False
+  # Disable proxying and thread pooling so a worker is not automatically created.
+  settings.PROXY_TO_PTHREAD = False
+  settings.PTHREAD_POOL_SIZE = 0
   # Disable minify since the binaryen pass has not been run yet to change the
   # import names.
   settings.MINIFY_WASM_IMPORTED_MODULES = False
   setup_environment_settings()
+  # Embind may be included multiple times, de-duplicate the list first.
+  settings.JS_LIBRARIES = dedup_list(settings.JS_LIBRARIES)
   # Replace embind with the TypeScript generation version.
   embind_index = settings.JS_LIBRARIES.index('embind/embind.js')
   settings.JS_LIBRARIES[embind_index] = 'embind/embind_ts.js'
@@ -3296,6 +3354,9 @@ def create_worker_file(input_file, target_dir, output_file):
 @ToolchainProfiler.profile_block('final emitting')
 def phase_final_emitting(options, state, target, wasm_target, memfile):
   global final_js
+
+  if shared.SKIP_SUBPROCS:
+    return
 
   target_dir = os.path.dirname(os.path.abspath(target))
   if settings.PTHREADS:
@@ -3583,7 +3644,9 @@ def parse_args(newargs):
     elif check_flag('--ignore-dynamic-linking'):
       options.ignore_dynamic_linking = True
     elif arg == '-v':
-      shared.PRINT_STAGES = True
+      shared.PRINT_SUBPROCS = True
+    elif arg == '-###':
+      shared.SKIP_SUBPROCS = True
     elif check_arg('--shell-file'):
       options.shell_path = consume_arg_file()
     elif check_arg('--source-map-base'):
@@ -3599,7 +3662,7 @@ def parse_args(newargs):
     elif check_flag('--jcache'):
       logger.error('jcache is no longer supported')
     elif check_arg('--cache'):
-      config.CACHE = os.path.normpath(consume_arg())
+      config.CACHE = os.path.abspath(consume_arg())
       cache.setup()
       # Ensure child processes share the same cache (e.g. when using emcc to compiler system
       # libraries)
@@ -3790,12 +3853,12 @@ def phase_binaryen(target, options, wasm_target):
       with ToolchainProfiler.profile_block('use_unsigned_pointers_in_js'):
         final_js = building.use_unsigned_pointers_in_js(final_js)
 
-    # pthreads memory growth requires some additional JS fixups.
+    # shared memory growth requires some additional JS fixups.
     # note that we must do this after handling of unsigned pointers. unsigning
     # adds some >>> 0 things, while growth will replace a HEAP8 with a call to
     # a method to get the heap, and that call would not be recognized by the
     # unsigning pass
-    if settings.PTHREADS and settings.ALLOW_MEMORY_GROWTH:
+    if settings.SHARED_MEMORY and settings.ALLOW_MEMORY_GROWTH:
       with ToolchainProfiler.profile_block('apply_wasm_memory_growth'):
         final_js = building.apply_wasm_memory_growth(final_js)
 
@@ -3953,15 +4016,10 @@ def modularize():
 
   return %(return_value)s
 }
-%(capture_module_function_for_audio_worklet)s
 ''' % {
     'maybe_async': async_emit,
     'src': src,
     'return_value': return_value,
-    # Given the async nature of how the Module function and Module object come into existence in AudioWorkletGlobalScope,
-    # store the Module function under a different variable name so that AudioWorkletGlobalScope will be able to reference
-    # it without aliasing/conflicting with the Module variable name.
-    'capture_module_function_for_audio_worklet': 'globalThis.AudioWorkletModule = Module;' if settings.AUDIO_WORKLET and settings.MODULARIZE else ''
   }
 
   if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
@@ -3986,12 +4044,17 @@ var %(EXPORT_NAME)s = (() => {
   %(script_url_node)s
   return (%(src)s);
 })();
+%(capture_module_function_for_audio_worklet)s;
 ''' % {
       'node_imports': node_es6_imports(),
       'EXPORT_NAME': settings.EXPORT_NAME,
       'script_url': script_url,
       'script_url_node': script_url_node,
-      'src': src
+      'src': src,
+      # Given the async nature of how the Module function and Module object come into existence in AudioWorkletGlobalScope,
+      # store the Module function under a different variable name so that AudioWorkletGlobalScope will be able to reference
+      # it without aliasing/conflicting with the Module variable name.
+      'capture_module_function_for_audio_worklet': 'globalThis.AudioWorkletModule = ' + settings.EXPORT_NAME if settings.AUDIO_WORKLET and settings.MODULARIZE else ''
     }
 
   final_js += '.modular.js'
