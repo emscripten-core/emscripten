@@ -8917,6 +8917,10 @@ int main() {
   def test_single_file_shell(self):
     self.do_runf('hello_world.c', emcc_args=['-sSINGLE_FILE'])
 
+  @requires_v8
+  def test_single_file_shell_sync_compile(self):
+    self.do_runf('hello_world.c', emcc_args=['-sSINGLE_FILE', '-sWASM_ASYNC_COMPILATION=0'])
+
   def test_emar_M(self):
     create_file('file1', ' ')
     create_file('file2', ' ')

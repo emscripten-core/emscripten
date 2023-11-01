@@ -49,6 +49,10 @@ if (typeof WebAssembly != 'object') {
 #include "runtime_asan.js"
 #endif
 
+#if SUPPORT_BASE64_EMBEDDING || FORCE_FILESYSTEM
+#include "base64Utils.js"
+#endif
+
 // Wasm globals
 
 var wasmMemory;
