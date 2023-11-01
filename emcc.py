@@ -1249,10 +1249,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       print(shared.shlex_join(parts[1:]))
     return 0
 
-  passthrough_flags = ['-print-search-dirs', '-print-libgcc-file-name']
-  if any(a in args for a in passthrough_flags) or any(a.startswith('-print-file-name=') for a in args):
-    return run_process([clang] + args + get_cflags(args, run_via_emxx), check=False).returncode
-
   ## Process argument and setup the compiler
   state = EmccState(args)
   options, newargs = phase_parse_arguments(state)
@@ -1281,6 +1277,28 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   if '-dumpmachine' in newargs:
     print(shared.get_llvm_target())
+    return 0
+
+  if '-print-search-dirs' in newargs:
+    print(f'programs: ={config.LLVM_ROOT}')
+    print(f'libraries: ={cache.get_lib_dir(absolute=True)}')
+    return 0
+
+  if '-print-libgcc-file-name' in newargs:
+    settings.limit_settings(None)
+    compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt']
+    print(compiler_rt.get_path(absolute=True))
+    return 0
+
+  print_file_name = [a for a in args if a.startswith('-print-file-name=')]
+  if print_file_name:
+    libname = print_file_name[-1].split('=')[1]
+    system_libpath = cache.get_lib_dir(absolute=True)
+    fullpath = os.path.join(system_libpath, libname)
+    if os.path.exists(fullpath):
+      print(fullpath)
+    else:
+      print(libname)
     return 0
 
   if not input_files and not state.link_flags:
