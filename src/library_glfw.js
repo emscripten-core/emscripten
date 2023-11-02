@@ -1165,10 +1165,6 @@ var LibraryGLFW = {
     Module["canvas"].addEventListener('drop', GLFW.onDrop, true);
     Module["canvas"].addEventListener('dragover', GLFW.onDragover, true);
 
-#if USE_GLFW == 3
-    Browser.isHiDPIAware = !!Module['isHiDPIAware'] || false;
-#endif
-
     Browser.resizeListeners.push((width, height, framebufferWidth, framebufferHeight) => {
       GLFW.onCanvasResize(width, height, framebufferWidth, framebufferHeight);
     });
