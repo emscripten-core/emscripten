@@ -333,7 +333,8 @@ var LibraryBrowser = {
           if (Browser.resizeCanvas) {
             Browser.setFullscreenCanvasSize();
           } else {
-            Browser.setCanvasSize(canvas);
+            Browser.updateCanvasDimensions(canvas);
+            Browser.updateResizeListeners();
           }
         } else {
           // remove the full screen specific parent of the canvas again to restore the HTML structure from before going full screen
@@ -343,7 +344,8 @@ var LibraryBrowser = {
           if (Browser.resizeCanvas) {
             Browser.setWindowedCanvasSize();
           } else {
-            Browser.setCanvasSize(canvas);
+            Browser.updateCanvasDimensions(canvas);
+            Browser.updateResizeListeners();
           }
         }
         if (Module['onFullScreen']) Module['onFullScreen'](Browser.isFullscreen);
