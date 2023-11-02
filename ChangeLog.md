@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.48 (in development)
 -----------------------
+- The JS `assert` function is no longer available in release builds when
+  `-sSTRICT` is used.  This should only affect users with custom JS library code
+  which doesn't use `#if ASSERTIONS` guards around their `assert` calls.  This
+  behaviour matches that of `MINIMAL_RUNTIME`. (#20592)
 - The minimum version of node required run the compiler was updated from
   10.19 to 16.20.  This does not effect the node requirements of the generated
   JavaScript code. (#20551)
