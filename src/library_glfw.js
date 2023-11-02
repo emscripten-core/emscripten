@@ -983,18 +983,14 @@ var LibraryGLFW = {
       if (!win) return;
 
       if (GLFW.active.id == win.id) {
-        // TODO HIGH YP: Browser.requestFullscreen does not work and raises an error:
-        //               Failed to execute 'requestFullscreen' on 'Element': API can only be initiated by a user gesture
-        //               Commented out and simply setting the canvas size seem to do the right thing
-        // if (width == screen.width && height == screen.height) {
-        //   Browser.requestFullscreen();
-        // } else {
-        //   Browser.exitFullscreen();
-        //   Browser.setCanvasSize(width, height);
-        //   // Implementation note: callback onCanvasResize will update values accordingly
-        // }
-        Browser.setCanvasSize(width, height);
-        // Implementation note: callback onCanvasResize will update values accordingly
+        if (width == screen.width && height == screen.height) {
+          Browser.requestFullscreen();
+        } else {
+          Browser.exitFullscreen();
+          Browser.setCanvasSize(width, height);
+          win.width = width;
+          win.height = height;
+        }
       }
 
       if (win.windowSizeFunc) {
