@@ -559,7 +559,7 @@ var LibraryGLFW = {
 
       // If the client is requesting fullscreen mode
       if (document["fullscreen"] || document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
-        if(!GLFW.active.fullscreen) {
+        if (!GLFW.active.fullscreen) {
           resizeNeeded = width != screen.width || height != screen.height;
           GLFW.active.storedX = GLFW.active.x;
           GLFW.active.storedY = GLFW.active.y;
@@ -584,10 +584,10 @@ var LibraryGLFW = {
         // width or height is changed (fullscreen / exit fullscreen) which will call this listener back
         // with proper framebufferWidth/framebufferHeight
         Browser.setCanvasSize(GLFW.active.width, GLFW.active.height);
-      } else if(GLFW.active.width != width ||
-                GLFW.active.height != height ||
-                GLFW.active.framebufferWidth != framebufferWidth ||
-                GLFW.active.framebufferHeight != framebufferHeight) {
+      } else if (GLFW.active.width != width ||
+                 GLFW.active.height != height ||
+                 GLFW.active.framebufferWidth != framebufferWidth ||
+                 GLFW.active.framebufferHeight != framebufferHeight) {
         GLFW.active.width = width;
         GLFW.active.height = height;
         GLFW.active.framebufferWidth = framebufferWidth;

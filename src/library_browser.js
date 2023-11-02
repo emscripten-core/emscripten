@@ -565,7 +565,7 @@ var LibraryBrowser = {
         var cw = Module["canvas"].width;
         var ch = Module["canvas"].height;
 
-        if(Browser.isHiDPIAware) {
+        if (Browser.isHiDPIAware) {
           const scale = Browser.getHiDPIScale();
           cw /= scale;
           ch /= scale;
@@ -628,7 +628,7 @@ var LibraryBrowser = {
 
     updateResizeListeners() {
       var canvas = Module['canvas'];
-      if(Browser.isHiDPIAware) {
+      if (Browser.isHiDPIAware) {
         Browser.resizeListeners.forEach((listener) => listener(canvas.clientWidth, canvas.clientHeight, canvas.width, canvas.height));
       } else {
         Browser.resizeListeners.forEach((listener) => listener(canvas.width, canvas.height, canvas.width, canvas.height));
