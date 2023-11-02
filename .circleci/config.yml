@@ -436,9 +436,6 @@ jobs:
     # cost for the same work), but given this blocks almost all the other jobs
     # we want it to finish asap
     resource_class: xlarge
-    environment:
-      EMCC_CORES: 16
-      EMCC_USE_NINJA: 1
     steps:
       - checkout
       - run:
