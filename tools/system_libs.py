@@ -914,7 +914,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
   src_dir = 'system/lib/compiler-rt/lib/builtins'
   includes = ['system/lib/libc']
   # gcc_personality_v0.c depends on libunwind, which don't include by default.
-  src_files = glob_in_path(src_dir, '*.c', excludes=['gcc_personality_v0.c', 'truncdfbf2.c', 'truncsfbf2.c'])
+  src_files = glob_in_path(src_dir, '*.c', excludes=['gcc_personality_v0.c', 'truncdfbf2.c', 'truncsfbf2.c', 'crtbegin.c', 'crtend.c'])
   src_files += files_in_path(
       path='system/lib/compiler-rt',
       filenames=[
@@ -1599,7 +1599,10 @@ class libcxx(NoExceptLibrary, MTLibrary):
     'locale_win32.cpp',
     'thread_win32.cpp',
     'support.cpp',
-    'int128_builtins.cpp'
+    'int128_builtins.cpp',
+    'crtbegin.c',
+    'crtend.c',
+    'libdispatch.cpp'
   ]
 
 
