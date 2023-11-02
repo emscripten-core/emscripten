@@ -781,11 +781,6 @@ jobs:
             browser64.test_idbstore
             browser64.test_idbstore_sync_asyncify
             browser64.test_idbstore_sync_jspi
-            browser64.test_egl
-            browser64.test_egl_width_height
-            browser64.test_egl_createcontext_error
-            browser64.test_glgears_animation
-            browser64.test_glgears_deriv
             browser64.test_anisotropic
             browser64.test_webgpu_get_device
             browser64.test_fetch_*
@@ -794,6 +789,11 @@ jobs:
             browser64.test_emscripten_async_wget_*
             browser64.test_wasm_worker_*
             browser64.test_sdl_*
+            browser64.test_egl*
+            browser64.test_gl_*
+            browser64.test_glgears*
+            browser64.test_glfw*
+            browser64.test_glew
             "
   test-browser-firefox:
     executor: bionic
