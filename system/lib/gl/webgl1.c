@@ -73,7 +73,7 @@ EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_get_current_context(void) {
   return (EMSCRIPTEN_WEBGL_CONTEXT_HANDLE)pthread_getspecific(currentActiveWebGLContext);
 }
 
-EMSCRIPTEN_RESULT EMSCRIPTEN_KEEPALIVE emscripten_webgl_commit_frame(void) {
+EMSCRIPTEN_RESULT emscripten_webgl_commit_frame(void) {
   GL_FUNCTION_TRACE(__func__);
   if (pthread_getspecific(currentThreadOwnsItsWebGLContext))
     return emscripten_webgl_do_commit_frame();
