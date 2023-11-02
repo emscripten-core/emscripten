@@ -41,8 +41,6 @@ from .shared import unsuffixed, unsuffixed_basename, get_file_suffix
 from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS, DEPRECATED_SETTINGS
 from .minimal_runtime_shell import generate_minimal_runtime_html
 
-import tools.line_endings
-
 logger = logging.getLogger('link')
 
 DEFAULT_SHELL_HTML = utils.path_from_root('src/shell.html')
@@ -2090,7 +2088,7 @@ def create_worker_file(input_file, target_dir, output_file, options):
     contents = building.acorn_optimizer(output_file, ['--minify-whitespace'], return_output=True, worker_js=True)
     write_file(output_file, contents)
 
-  tools.line_endings.convert_line_endings_in_file(output_file, os.linesep, options.output_eol)
+  utils.convert_line_endings_in_file(output_file, options.output_eol)
 
 
 @ToolchainProfiler.profile_block('final emitting')
@@ -2160,14 +2158,14 @@ def phase_final_emitting(options, target, js_target, wasm_target):
     generate_html(target, options, js_target, target_basename,
                   wasm_target)
   elif settings.PROXY_TO_WORKER:
-    generate_worker_js(target, js_target, target_basename)
+    generate_worker_js(target, options, js_target, target_basename)
 
   if settings.SPLIT_MODULE:
     diagnostics.warning('experimental', 'the SPLIT_MODULE setting is experimental and subject to change')
     do_split_module(wasm_target, options)
 
   if not settings.SINGLE_FILE:
-    tools.line_endings.convert_line_endings_in_file(js_target, os.linesep, options.output_eol)
+    utils.convert_line_endings_in_file(js_target, options.output_eol)
 
   if options.executable:
     make_js_executable(js_target)
@@ -2672,10 +2670,10 @@ def generate_html(target, options, js_target, target_basename, wasm_target):
   if settings.MINIFY_HTML and (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1):
     minify_html(target)
 
-  tools.line_endings.convert_line_endings_in_file(target, os.linesep, options.output_eol)
+  utils.convert_line_endings_in_file(target, options.output_eol)
 
 
-def generate_worker_js(target, js_target, target_basename):
+def generate_worker_js(target, options, js_target, target_basename):
   if settings.SINGLE_FILE:
     # compiler output is embedded as base64 data URL
     proxy_worker_filename = get_subresource_location_js(js_target)
@@ -2686,7 +2684,7 @@ def generate_worker_js(target, js_target, target_basename):
     proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
 
   target_contents = worker_js_script(proxy_worker_filename)
-  write_file(target, target_contents)
+  utils.write_file(target, target_contents, options.output_eol)
 
 
 def worker_js_script(proxy_worker_filename):
