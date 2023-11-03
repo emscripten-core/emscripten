@@ -1767,6 +1767,8 @@ def setup_pthreads(target):
     '_pthread_self',
     'checkMailbox',
   ]
+  if settings.EMBIND:
+    worker_imports.append('__embind_initialize_bindings')
   settings.EXPORTED_FUNCTIONS += worker_imports
   building.user_requested_exports.update(worker_imports)
 
@@ -2497,6 +2499,9 @@ def phase_linker_setup(options, state, newargs):
     # overrides that.
     default_setting('ABORTING_MALLOC', 0)
 
+  if '-lembind' in [x for _, x in state.link_flags]:
+    settings.EMBIND = 1
+
   if settings.PTHREADS:
     setup_pthreads(target)
     settings.JS_LIBRARIES.append((0, 'library_pthread.js'))
@@ -2614,9 +2619,6 @@ def phase_linker_setup(options, state, newargs):
   # Also, if using library_exports.js API, disable minification so that the feature can work.
   if not settings.DECLARE_ASM_MODULE_EXPORTS or '-lexports.js' in [x for _, x in state.link_flags]:
     settings.MINIFY_WASM_EXPORT_NAMES = 0
-
-  if '-lembind' in [x for _, x in state.link_flags]:
-    settings.EMBIND = 1
 
   # Enable minification of wasm imports and exports when appropriate, if we
   # are emitting an optimized JS+wasm combo (then the JS knows how to load the minified names).

@@ -20,7 +20,8 @@ using namespace emscripten;
 using namespace internal;
 
 extern "C" {
-const char* EMSCRIPTEN_KEEPALIVE __getTypeName(const std::type_info* ti) {
+
+const char* __getTypeName(const std::type_info* ti) {
   if (has_unbound_type_names) {
 #ifdef USE_CXA_DEMANGLE
     int stat;
@@ -51,7 +52,7 @@ const char* EMSCRIPTEN_KEEPALIVE __getTypeName(const std::type_info* ti) {
 
 static InitFunc* init_funcs = nullptr;
 
-EMSCRIPTEN_KEEPALIVE void _embind_initialize_bindings() {
+void _embind_initialize_bindings() {
   for (auto* f = init_funcs; f; f = f->next) {
     f->init_func();
   }
