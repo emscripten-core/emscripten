@@ -7857,15 +7857,22 @@ void* operator new(size_t size) {
     self.do_runf('test_embind_val_cross_thread.cpp')
 
   def test_embind_val_coro(self):
-    create_file('post.js', "Module.onRuntimeInitialized = () => Module.asyncCoro().then(console.log);")
+    create_file('post.js', r'''Module.onRuntimeInitialized = () => {
+      Module.asyncCoro().then(console.log);
+    }''')
     self.emcc_args += ['-std=c++20', '--bind', '--post-js=post.js']
-    self.do_runf(test_file('embind/test_val_coro.cpp'), '34\n')
+    self.do_runf('embind/test_val_coro.cpp', '34\n')
 
   def test_embind_val_coro_caught(self):
     self.set_setting('EXCEPTION_STACK_TRACES')
-    create_file('post.js', "Module.onRuntimeInitialized = () => Module.throwingCoro().then(console.log, err => console.error(`caught: ${err.stack}`));")
+    create_file('post.js', r'''Module.onRuntimeInitialized = () => {
+      Module.throwingCoro().then(
+        console.log,
+        err => console.error(`caught: ${err.stack}`)
+      });
+    ''')
     self.emcc_args += ['-std=c++20', '--bind', '--post-js=post.js', '-fexceptions']
-    self.do_runf(test_file('embind/test_val_coro.cpp'), 'caught: std::runtime_error: error in a coroutine\n')
+    self.do_runf('embind/test_val_coro.cpp', 'caught: std::runtime_error: error in a coroutine\n')
 
   def test_embind_dynamic_initialization(self):
     self.emcc_args += ['-lembind']
