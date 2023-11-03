@@ -661,29 +661,11 @@ inline val::iterator val::begin() const {
 
 #if _LIBCPP_STD_VER >= 20
 namespace internal {
-struct val_awaiter {
-  val_awaiter(val&& promise)
-    : state(std::in_place_index<STATE_PROMISE>, std::move(promise)) {}
-
-  // just in case, ensure nobody moves / copies this type around
-  val_awaiter(val_awaiter&&) = delete;
-
-  bool await_ready() { return false; }
-
-  void await_suspend(std::coroutine_handle<val::promise_type> handle) {
-    internal::_emval_coro_suspend(std::get<STATE_PROMISE>(state).as_handle(), this);
-    state.emplace<STATE_CORO>(handle);
-  }
-
-  void resume_with(val&& result) {
-    auto coro = std::move(std::get<STATE_CORO>(state));
-    state.emplace<STATE_RESULT>(std::move(result));
-    coro.resume();
-  }
-
-  val await_resume() { return std::move(std::get<STATE_RESULT>(state)); }
-
-private:
+// Awaiter defines a set of well-known methods that compiler uses
+// to drive the argument of the `co_await` operator (regardless
+// of the type of the parent coroutine).
+// This one is used for Promises represented by the `val` type.
+class val_awaiter {
   // State machine holding awaiter's current state. One of:
   //  - initially created with promise
   //  - waiting with a given coroutine handle
@@ -693,17 +675,54 @@ private:
   constexpr static std::size_t STATE_PROMISE = 0;
   constexpr static std::size_t STATE_CORO = 1;
   constexpr static std::size_t STATE_RESULT = 2;
+
+public:
+  val_awaiter(val&& promise)
+    : state(std::in_place_index<STATE_PROMISE>, std::move(promise)) {}
+
+  // just in case, ensure nobody moves / copies this type around
+  val_awaiter(val_awaiter&&) = delete;
+
+  // Promises don't have a synchronously accessible "ready" state.
+  bool await_ready() { return false; }
+
+  // On suspend, store the coroutine handle and invoke a helper that will do
+  // a rough equivalent of `promise.then(value => this.resume_with(value))`.
+  void await_suspend(std::coroutine_handle<val::promise_type> handle) {
+    internal::_emval_coro_suspend(std::get<STATE_PROMISE>(state).as_handle(), this);
+    state.emplace<STATE_CORO>(handle);
+  }
+
+  // When JS invokes `resume_with` with some value, store that value and resume
+  // the coroutine.
+  void resume_with(val&& result) {
+    auto coro = std::move(std::get<STATE_CORO>(state));
+    state.emplace<STATE_RESULT>(std::move(result));
+    coro.resume();
+  }
+
+  // `await_resume` finalizes the awaiter and should return the result
+  // of the `co_await ...` expression - in our case, the stored value.
+  val await_resume() { return std::move(std::get<STATE_RESULT>(state)); }
 };
 
 extern "C" {
+  // JS FFI helper for `val_awaiter::resume_with`.
   void _emval_coro_resume(val_awaiter* awaiter, EM_VAL result) {
     awaiter->resume_with(val::take_ownership(result));
   }
 }
 }
 
-// Note: this type can't be internal because coroutines look for the public `promise_type` member.
-struct val::promise_type {
+// `promise_type` is a well-known subtype with well-known method names
+// that compiler uses to drive the coroutine itself
+// (`T::promise_type` is used for any coroutine with declared return type `T`).
+class val::promise_type {
+  val promise, resolve, reject_with_current_exception;
+
+public:
+  // Create a `new Promise` and store it alongside the `resolve` and `reject`
+  // callbacks that can be used to fulfill it.
   promise_type() {
     EM_VAL resolve_handle;
     EM_VAL reject_handle;
@@ -712,27 +731,29 @@ struct val::promise_type {
     reject_with_current_exception = val(reject_handle);
   }
 
+  // Return the stored promise as the actual return value of the coroutine.
   val get_return_object() { return promise; }
 
+  // For similarity with JS async functions, our coroutines are eagerly evaluated.
   auto initial_suspend() noexcept { return std::suspend_never{}; }
-
   auto final_suspend() noexcept { return std::suspend_never{}; }
 
+  // On an unhandled exception, reject the stored promise instead of throwing
+  // it asynchronously where it can't be handled.
   void unhandled_exception() {
     reject_with_current_exception();
   }
 
+  // Resolve the stored promise on `co_return value`.
   template<typename T>
   void return_value(T&& value) {
     resolve(std::forward<T>(value));
   }
 
+  // Return our awaiter on `co_await promise`.
   internal::val_awaiter await_transform(val promise) {
     return {std::move(promise)};
   }
-
-private:
-  val promise, resolve, reject_with_current_exception;
 };
 #endif
 
