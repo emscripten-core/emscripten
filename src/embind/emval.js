@@ -462,6 +462,35 @@ var LibraryEmVal = {
     var result = iterator.next();
     return result.done ? 0 : Emval.toHandle(result.value);
   },
+
+  _emval_coro_suspend__deps: ['$Emval', '_emval_coro_resume'],
+  _emval_coro_suspend: (promiseHandle, awaiterPtr) => {
+    Emval.toValue(promiseHandle).then(result => {
+      __emval_coro_resume(awaiterPtr, Emval.toHandle(result));
+    });
+  },
+
+  _emval_coro_make_promise__deps: ['$Emval', '__cxa_rethrow'],
+  _emval_coro_make_promise: (resolveHandlePtr, rejectHandlePtr) => {
+    return Emval.toHandle(new Promise((resolve, reject) => {
+      const rejectWithCurrentException = () => {
+        try {
+          // Use __cxa_rethrow which already has mechanism for generating
+          // user-friendly error message and stacktrace from C++ exception
+          // if EXCEPTION_STACK_TRACES is enabled and numeric exception
+          // with metadata optimised out otherwise.
+          ___cxa_rethrow();
+        } catch (e) {
+          // But catch it so that it rejects the promise instead of throwing
+          // in an unpredictable place during async execution.
+          reject(e);
+        }
+      };
+
+      {{{ makeSetValue('resolveHandlePtr', '0', 'Emval.toHandle(resolve)', '*') }}};
+      {{{ makeSetValue('rejectHandlePtr', '0', 'Emval.toHandle(rejectWithCurrentException)', '*') }}};
+    }));
+  },
 };
 
 addToLibrary(LibraryEmVal);

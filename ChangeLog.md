@@ -41,6 +41,8 @@ See docs/process.md for more on how version tagging works.
   sidestep some of the issues with legacy cmd.exe, but developers must
   explicitly opt-in to running PowerShell scripts in system settings or
   via the `Set-ExecutionPolicy` command. (#20416)
+- `emscripten::val` now supports C++20 `co_await` operator for JavaScript
+  `Promise`s. (#20420)
 
 3.1.47 - 10/09/23
 -----------------
