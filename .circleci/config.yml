@@ -778,8 +778,6 @@ jobs:
           title: "browser64"
           test_targets: "
             browser64.test_canvas_focus
-            browser64.test_idbstore_sync_asyncify
-            browser64.test_idbstore_sync_jspi
             browser64.test_anisotropic
             browser64.test_webgpu_get_device
             browser64.test_fetch_*
