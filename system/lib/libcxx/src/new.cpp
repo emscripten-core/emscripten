@@ -35,7 +35,7 @@ operator new(std::size_t size) _THROW_BAD_ALLOC
         if (nh)
             nh();
         else
-#ifndef _LIBCPP_NO_EXCEPTIONS
+#ifndef _LIBCPP_HAS_NO_EXCEPTIONS
             throw std::bad_alloc();
 #else
 #ifdef __EMSCRIPTEN__
@@ -53,7 +53,7 @@ operator new(std::size_t size) _THROW_BAD_ALLOC
     return p;
 }
 
-#if defined(__EMSCRIPTEN__) && defined(_LIBCPP_NO_EXCEPTIONS)
+#if defined(__EMSCRIPTEN__) && defined(_LIBCPP_HAS_NO_EXCEPTIONS)
 void* _new_nothrow(size_t size) noexcept
 {
     /// We cannot call ::operator new(size) here because it would abort
@@ -78,23 +78,23 @@ _LIBCPP_WEAK
 void*
 operator new(size_t size, const std::nothrow_t&) noexcept
 {
-#if defined(__EMSCRIPTEN__) && defined(_LIBCPP_NO_EXCEPTIONS)
+#if defined(__EMSCRIPTEN__) && defined(_LIBCPP_HAS_NO_EXCEPTIONS)
     return _new_nothrow(size);
 #else
     void* p = nullptr;
-#ifndef _LIBCPP_NO_EXCEPTIONS
+#ifndef _LIBCPP_HAS_NO_EXCEPTIONS
     try
     {
-#endif // _LIBCPP_NO_EXCEPTIONS
+#endif // _LIBCPP_HAS_NO_EXCEPTIONS
         p = ::operator new(size);
-#ifndef _LIBCPP_NO_EXCEPTIONS
+#ifndef _LIBCPP_HAS_NO_EXCEPTIONS
     }
     catch (...)
     {
     }
-#endif // _LIBCPP_NO_EXCEPTIONS
+#endif // _LIBCPP_HAS_NO_EXCEPTIONS
     return p;
-#endif // __EMSCRIPTEN__ && _LIBCPP_NO_EXCEPTIONS
+#endif // __EMSCRIPTEN__ && _LIBCPP_HAS_NO_EXCEPTIONS
 }
 
 _LIBCPP_WEAK
@@ -108,23 +108,23 @@ _LIBCPP_WEAK
 void*
 operator new[](size_t size, const std::nothrow_t&) noexcept
 {
-#if defined(__EMSCRIPTEN__) && defined(_LIBCPP_NO_EXCEPTIONS)
+#if defined(__EMSCRIPTEN__) && defined(_LIBCPP_HAS_NO_EXCEPTIONS)
     return _new_nothrow(size);
 #else
     void* p = nullptr;
-#ifndef _LIBCPP_NO_EXCEPTIONS
+#ifndef _LIBCPP_HAS_NO_EXCEPTIONS
     try
     {
-#endif // _LIBCPP_NO_EXCEPTIONS
+#endif // _LIBCPP_HAS_NO_EXCEPTIONS
         p = ::operator new[](size);
-#ifndef _LIBCPP_NO_EXCEPTIONS
+#ifndef _LIBCPP_HAS_NO_EXCEPTIONS
     }
     catch (...)
     {
     }
-#endif // _LIBCPP_NO_EXCEPTIONS
+#endif // _LIBCPP_HAS_NO_EXCEPTIONS
     return p;
-#endif // __EMSCRIPTEN__ && _LIBCPP_NO_EXCEPTIONS
+#endif // __EMSCRIPTEN__ && _LIBCPP_HAS_NO_EXCEPTIONS
 }
 
 _LIBCPP_WEAK
@@ -193,7 +193,7 @@ operator new(std::size_t size, std::align_val_t alignment) _THROW_BAD_ALLOC
         if (nh)
             nh();
         else {
-#ifndef _LIBCPP_NO_EXCEPTIONS
+#ifndef _LIBCPP_HAS_NO_EXCEPTIONS
             throw std::bad_alloc();
 #else
             break;
@@ -208,17 +208,17 @@ void*
 operator new(size_t size, std::align_val_t alignment, const std::nothrow_t&) noexcept
 {
     void* p = nullptr;
-#ifndef _LIBCPP_NO_EXCEPTIONS
+#ifndef _LIBCPP_HAS_NO_EXCEPTIONS
     try
     {
-#endif // _LIBCPP_NO_EXCEPTIONS
+#endif // _LIBCPP_HAS_NO_EXCEPTIONS
         p = ::operator new(size, alignment);
-#ifndef _LIBCPP_NO_EXCEPTIONS
+#ifndef _LIBCPP_HAS_NO_EXCEPTIONS
     }
     catch (...)
     {
     }
-#endif // _LIBCPP_NO_EXCEPTIONS
+#endif // _LIBCPP_HAS_NO_EXCEPTIONS
     return p;
 }
 
@@ -234,17 +234,17 @@ void*
 operator new[](size_t size, std::align_val_t alignment, const std::nothrow_t&) noexcept
 {
     void* p = nullptr;
-#ifndef _LIBCPP_NO_EXCEPTIONS
+#ifndef _LIBCPP_HAS_NO_EXCEPTIONS
     try
     {
-#endif // _LIBCPP_NO_EXCEPTIONS
+#endif // _LIBCPP_HAS_NO_EXCEPTIONS
         p = ::operator new[](size, alignment);
-#ifndef _LIBCPP_NO_EXCEPTIONS
+#ifndef _LIBCPP_HAS_NO_EXCEPTIONS
     }
     catch (...)
     {
     }
-#endif // _LIBCPP_NO_EXCEPTIONS
+#endif // _LIBCPP_HAS_NO_EXCEPTIONS
     return p;
 }
 
