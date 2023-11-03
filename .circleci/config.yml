@@ -786,6 +786,7 @@ jobs:
             browser64.test_emscripten_async_wget_*
             browser64.test_wasm_worker_*
             browser64.test_sdl_*
+            browser64.test_sdl1_*
             browser64.test_egl*
             browser64.test_gl_*
             browser64.test_glgears*
@@ -793,6 +794,7 @@ jobs:
             browser64.test_glew
             browser64.test_idbstore*
             browser64.test_fs_idbfs*
+            browser64.test_webgl*
             "
   test-browser-firefox:
     executor: bionic
