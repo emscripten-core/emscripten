@@ -595,17 +595,17 @@ void ScanRootRegions(Frontier *frontier,
 static void ProcessRootRegions(Frontier *frontier) {
   if (!flags()->use_root_regions || !HasRootRegions())
     return;
+  InternalMmapVector<Region> mapped_regions;
 #if SANITIZER_EMSCRIPTEN
-  ScanRootRegion(frontier, root_region, 0, emscripten_get_heap_size(), true);
+  mapped_regions.push_back({0, emscripten_get_heap_size()});
 #else
   MemoryMappingLayout proc_maps(/*cache_enabled*/ true);
   MemoryMappedSegment segment;
-  InternalMmapVector<Region> mapped_regions;
   while (proc_maps.Next(&segment))
     if (segment.IsReadable())
       mapped_regions.push_back({segment.start, segment.end});
-  ScanRootRegions(frontier, mapped_regions);
 #endif // SANITIZER_EMSCRIPTEN
+  ScanRootRegions(frontier, mapped_regions);
 }
 
 static void FloodFillTag(Frontier *frontier, ChunkTag tag) {

@@ -105,14 +105,14 @@ void LockStuffAndStopTheWorld(StopTheWorldCallback callback,
                               CheckForLeaksParam *argument) {
   // Currently, on Emscripten this does nothing and just calls the callback.
   // This works fine on a single-threaded environment.
-  LockThreadRegistry();
+  LockThreads();
   LockAllocator();
   StopTheWorld(callback, argument);
   UnlockAllocator();
-  UnlockThreadRegistry();
+  UnlockThreads();
 }
 
-u32 GetCurrentThread();
+u32 GetCurrentThreadId();
 
 // This is based on ProcessThreads in lsan_common.cc.
 // We changed this to be a callback that gets called per thread by
@@ -142,7 +142,7 @@ static void ProcessThreadsCallback(ThreadContextBase *tctx, void *arg) {
 
     // We can't get the SP for other threads to narrow down the range, but we
     // we can for the current thread.
-    if (tctx->tid == GetCurrentThread()) {
+    if (tctx->tid == GetCurrentThreadId()) {
       uptr sp = (uptr) __builtin_frame_address(0);
       if (sp < stack_begin || sp >= stack_end) {
         // SP is outside the recorded stack range (e.g. the thread is running a
