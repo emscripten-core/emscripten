@@ -7868,11 +7868,11 @@ void* operator new(size_t size) {
     create_file('post.js', r'''Module.onRuntimeInitialized = () => {
       Module.throwingCoro().then(
         console.log,
-        err => console.error(`caught: ${err.stack}`)
+        err => console.error(`rejected with: ${err.stack}`)
       });
     ''')
     self.emcc_args += ['-std=c++20', '--bind', '--post-js=post.js', '-fexceptions']
-    self.do_runf('embind/test_val_coro.cpp', 'caught: std::runtime_error: error in a coroutine\n')
+    self.do_runf('embind/test_val_coro.cpp', 'rejected with: std::runtime_error: bang from throwingCoro!\n')
 
   def test_embind_dynamic_initialization(self):
     self.emcc_args += ['-lembind']

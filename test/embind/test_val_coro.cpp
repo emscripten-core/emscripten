@@ -31,7 +31,7 @@ val asyncCoro() {
 }
 
 val throwingCoro() {
-  throw std::runtime_error("error in a coroutine");
+  throw std::runtime_error("bang from throwingCoro!");
   co_return 56;
 }
 
