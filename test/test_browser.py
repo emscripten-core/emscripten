@@ -1640,6 +1640,7 @@ keydown(100);keyup(100); // trigger the end
   def test_egl(self):
     self._test_egl_base()
 
+  @no_wasm64('TODO: wasm64 + OFB')
   @requires_threads
   @requires_graphics_hardware
   def test_egl_with_proxy_to_pthread(self):
@@ -2017,26 +2018,32 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   @requires_threads
   def test_gl_textures(self, args):
+    if args and self.is_wasm64():
+      self.skipTest('TODO: wasm64 + OFB')
     self.btest_exit('gl_textures.cpp', args=['-lGL'] + args)
 
   @requires_graphics_hardware
+  @no_wasm64('TODO: wasm64 + LEGACY_GL_EMULATION')
   def test_gl_ps(self):
     # pointers and a shader
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('gl_ps.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1)
 
   @requires_graphics_hardware
+  @no_wasm64('TODO: wasm64 + LEGACY_GL_EMULATION')
   def test_gl_ps_packed(self):
     # packed data that needs to be strided
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('gl_ps_packed.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1)
 
   @requires_graphics_hardware
+  @no_wasm64('TODO: wasm64 + LEGACY_GL_EMULATION')
   def test_gl_ps_strides(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('gl_ps_strides.c', reference='gl_ps_strides.png', args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'])
 
   @requires_graphics_hardware
+  @no_wasm64('TODO: wasm64 + LEGACY_GL_EMULATION')
   def test_gl_ps_worker(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('gl_ps_worker.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1, also_proxied=True)

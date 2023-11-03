@@ -62,23 +62,23 @@ var LibraryGLFW = {
       this.domKeys = new Array();
       this.shouldClose = 0;
       this.title = null;
-      this.windowPosFunc = null; // GLFWwindowposfun
-      this.windowSizeFunc = null; // GLFWwindowsizefun
-      this.windowCloseFunc = null; // GLFWwindowclosefun
-      this.windowRefreshFunc = null; // GLFWwindowrefreshfun
-      this.windowFocusFunc = null; // GLFWwindowfocusfun
-      this.windowIconifyFunc = null; // GLFWwindowiconifyfun
-      this.windowMaximizeFunc = null; // GLFWwindowmaximizefun
-      this.framebufferSizeFunc = null; // GLFWframebuffersizefun
-      this.windowContentScaleFunc = null; // GLFWwindowcontentscalefun
-      this.mouseButtonFunc = null; // GLFWmousebuttonfun
-      this.cursorPosFunc = null; // GLFWcursorposfun
-      this.cursorEnterFunc = null; // GLFWcursorenterfun
-      this.scrollFunc = null; // GLFWscrollfun
-      this.dropFunc = null; // GLFWdropfun
-      this.keyFunc = null; // GLFWkeyfun
-      this.charFunc = null; // GLFWcharfun
-      this.userptr = null;
+      this.windowPosFunc = 0; // GLFWwindowposfun
+      this.windowSizeFunc = 0; // GLFWwindowsizefun
+      this.windowCloseFunc = 0; // GLFWwindowclosefun
+      this.windowRefreshFunc = 0; // GLFWwindowrefreshfun
+      this.windowFocusFunc = 0; // GLFWwindowfocusfun
+      this.windowIconifyFunc = 0; // GLFWwindowiconifyfun
+      this.windowMaximizeFunc = 0; // GLFWwindowmaximizefun
+      this.framebufferSizeFunc = 0; // GLFWframebuffersizefun
+      this.windowContentScaleFunc = 0; // GLFWwindowcontentscalefun
+      this.mouseButtonFunc = 0; // GLFWmousebuttonfun
+      this.cursorPosFunc = 0; // GLFWcursorposfun
+      this.cursorEnterFunc = 0; // GLFWcursorenterfun
+      this.scrollFunc = 0; // GLFWscrollfun
+      this.dropFunc = 0; // GLFWdropfun
+      this.keyFunc = 0; // GLFWkeyfun
+      this.charFunc = 0; // GLFWcharfun
+      this.userptr = 0;
     },
 
   $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
@@ -94,9 +94,9 @@ var LibraryGLFW = {
       return GLFW.windows[id - 1];
     },
 
-    joystickFunc: null, // GLFWjoystickfun
-    errorFunc: null, // GLFWerrorfun
-    monitorFunc: null, // GLFWmonitorfun
+    joystickFunc: 0, // GLFWjoystickfun
+    errorFunc: 0, // GLFWerrorfun
+    monitorFunc: 0, // GLFWmonitorfun
     active: null, // active window
     scale: null,
     windows: null,
@@ -372,7 +372,7 @@ var LibraryGLFW = {
       {{{ makeDynCall('vii', 'GLFW.active.charFunc') }}}(charCode, 1);
 #endif
 #if USE_GLFW == 3
-      {{{ makeDynCall('vii', 'GLFW.active.charFunc') }}}(GLFW.active.id, charCode);
+      {{{ makeDynCall('vpi', 'GLFW.active.charFunc') }}}(GLFW.active.id, charCode);
 #endif
     },
 
@@ -394,7 +394,7 @@ var LibraryGLFW = {
 #endif
 #if USE_GLFW == 3
         if (repeat) status = 2; // GLFW_REPEAT
-        {{{ makeDynCall('viiiii', 'GLFW.active.keyFunc') }}}(GLFW.active.id, key, keyCode, status, GLFW.getModBits(GLFW.active));
+        {{{ makeDynCall('vpiiii', 'GLFW.active.keyFunc') }}}(GLFW.active.id, key, keyCode, status, GLFW.getModBits(GLFW.active));
 #endif
       }
     },
@@ -510,7 +510,7 @@ var LibraryGLFW = {
         {{{ makeDynCall('vii', 'GLFW.active.mouseButtonFunc') }}}(eventButton, status);
 #endif
 #if USE_GLFW == 3
-        {{{ makeDynCall('viiii', 'GLFW.active.mouseButtonFunc') }}}(GLFW.active.id, eventButton, status, GLFW.getModBits(GLFW.active));
+        {{{ makeDynCall('vpiii', 'GLFW.active.mouseButtonFunc') }}}(GLFW.active.id, eventButton, status, GLFW.getModBits(GLFW.active));
 #endif
       }
     },
@@ -601,7 +601,7 @@ var LibraryGLFW = {
         {{{ makeDynCall('vii', 'GLFW.active.windowSizeFunc') }}}(GLFW.active.width, GLFW.active.height);
 #endif
 #if USE_GLFW == 3
-        {{{ makeDynCall('viii', 'GLFW.active.windowSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
+        {{{ makeDynCall('vpii', 'GLFW.active.windowSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
 #endif
       }
     },
@@ -611,7 +611,7 @@ var LibraryGLFW = {
 
 #if USE_GLFW == 3
       if (GLFW.active.framebufferSizeFunc) {
-        {{{ makeDynCall('viii', 'GLFW.active.framebufferSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
+        {{{ makeDynCall('vpii', 'GLFW.active.framebufferSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
       }
 #endif
     },
@@ -642,8 +642,10 @@ var LibraryGLFW = {
     },
 
     setJoystickCallback: (cbfun) => {
+      var prevcbfun = GLFW.joystickFunc;
       GLFW.joystickFunc = cbfun;
       GLFW.refreshJoysticks();
+      return prevcbfun;
     },
 
     joys: {}, // glfw joystick data
@@ -780,7 +782,7 @@ var LibraryGLFW = {
           var data = e.target.result;
           FS.writeFile(path, new Uint8Array(data));
           if (++written === count) {
-            {{{ makeDynCall('viii', 'GLFW.active.dropFunc') }}}(GLFW.active.id, count, filenames);
+            {{{ makeDynCall('vpii', 'GLFW.active.dropFunc') }}}(GLFW.active.id, count, filenames);
 
             for (var i = 0; i < filenamesArray.length; ++i) {
               _free(filenamesArray[i]);
@@ -994,7 +996,7 @@ var LibraryGLFW = {
         {{{ makeDynCall('vii', 'win.windowSizeFunc') }}}(width, height);
 #endif
 #if USE_GLFW == 3
-        {{{ makeDynCall('viii', 'win.windowSizeFunc') }}}(win.id, width, height);
+        {{{ makeDynCall('vpii', 'win.windowSizeFunc') }}}(win.id, width, height);
 #endif
       }
     },
@@ -1064,7 +1066,7 @@ var LibraryGLFW = {
 
 #if USE_GLFW == 3
       if (win.windowCloseFunc) {
-        {{{ makeDynCall('vi', 'win.windowCloseFunc') }}}(win.id);
+        {{{ makeDynCall('vp', 'win.windowCloseFunc') }}}(win.id);
       }
 #endif
 
@@ -1220,7 +1222,7 @@ var LibraryGLFW = {
   glfwExtensionSupported__deps: ['glGetString'],
   glfwExtensionSupported: (extension) => {
     if (!GLFW.extensions) {
-      GLFW.extensions = UTF8ToString(_glGetString(0x1F03)).split(' ');
+      GLFW.extensions = GL.getExtensions();
     }
 
     if (GLFW.extensions.includes(extension)) return 1;
@@ -1758,7 +1760,7 @@ var LibraryGLFW = {
   },
 
   glfwCreateThread: (fun, arg) => {
-    {{{ makeDynCall('vi', 'fun') }}}(arg);
+    {{{ makeDynCall('vp', 'fun') }}}(arg);
     // One single thread
     return 0;
   },

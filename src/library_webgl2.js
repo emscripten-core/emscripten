@@ -24,12 +24,7 @@ var LibraryWebGL2 = {
     }
     switch (name) {
       case 0x1F03 /* GL_EXTENSIONS */:
-        var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
-#if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-        exts = exts.concat(exts.map(function(e) { return "GL_" + e; }));
-#endif
-        exts = exts.map(function(e) { return stringToNewUTF8(e); });
-
+        var exts = GL.getExtensions().map((e) => stringToNewUTF8(e));
         stringiCache = GL.stringiCache[name] = exts;
         if (index < 0 || index >= stringiCache.length) {
           GL.recordError(0x501/*GL_INVALID_VALUE*/);

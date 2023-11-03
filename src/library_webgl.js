@@ -1126,6 +1126,14 @@ var LibraryGL = {
       });
     },
 #endif
+
+    getExtensions() {
+      var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+#if GL_EXTENSIONS_IN_PREFIXED_FORMAT
+      exts = exts.concat(exts.map((e) => "GL_" + e));
+#endif
+      return exts;
+    },
   },
 
   glPixelStorei: (pname, param) => {
@@ -1141,11 +1149,7 @@ var LibraryGL = {
     if (!ret) {
       switch (name_) {
         case 0x1F03 /* GL_EXTENSIONS */:
-          var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
-#if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-          exts = exts.concat(exts.map((e) => "GL_" + e));
-#endif
-          ret = stringToNewUTF8(exts.join(' '));
+          ret = stringToNewUTF8(GL.getExtensions().join(' '));
           break;
         case 0x1F00 /* GL_VENDOR */:
         case 0x1F01 /* GL_RENDERER */:
