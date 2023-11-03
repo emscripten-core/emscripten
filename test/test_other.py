@@ -2900,9 +2900,11 @@ int f() {
         emscripten::function("bar", &bar);
       }
     ''')
-    self.emcc_args.remove('-Wclosure')
+    self.set_setting('INCOMING_MODULE_JS_API', 'onRuntimeInitialized')
+    self.set_setting('STRICT')
+    self.set_setting('NO_DYNAMIC_EXECUTION')
     self.do_runf('main.cpp', '10\nok\n',
-                 emcc_args=['-lembind', '-O2', '--closure', '1', '-sNO_DYNAMIC_EXECUTION', '--post-js', 'post.js'])
+                 emcc_args=['--no-entry', '-lembind', '-O2', '--closure=1', '--minify=0', '--post-js=post.js'])
 
   @is_slow_test
   @parameterized({
