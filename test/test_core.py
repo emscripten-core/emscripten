@@ -7869,7 +7869,7 @@ void* operator new(size_t size) {
       Module.throwingCoro().then(
         console.log,
         err => console.error(`rejected with: ${err.stack}`)
-      });
+      );
     ''')
     self.emcc_args += ['-std=c++20', '--bind', '--post-js=post.js', '-fexceptions']
     self.do_runf('embind/test_val_coro.cpp', 'rejected with: std::runtime_error: bang from throwingCoro!\n')
