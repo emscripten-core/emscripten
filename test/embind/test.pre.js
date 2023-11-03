@@ -1,1 +1,1 @@
-(function(){return this;})()['Module'] = (function() {
+globalThis['Module'] = (function() {
