@@ -716,11 +716,11 @@ var LibraryBrowser = {
       new Uint8Array(data.object.contents), true, true,
       () => {
         {{{ runtimeKeepalivePop() }}}
-        if (onload) {{{ makeDynCall('vi', 'onload') }}}(file);
+        if (onload) {{{ makeDynCall('vp', 'onload') }}}(file);
       },
       () => {
         {{{ runtimeKeepalivePop() }}}
-        if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(file);
+        if (onerror) {{{ makeDynCall('vp', 'onerror') }}}(file);
       },
       true // don'tCreateFile - it's already there
     );
@@ -743,11 +743,11 @@ var LibraryBrowser = {
       true, true,
       () => {
         {{{ runtimeKeepalivePop() }}}
-        if (onload) {{{ makeDynCall('vii', 'onload') }}}(arg, cname);
+        if (onload) {{{ makeDynCall('vpp', 'onload') }}}(arg, cname);
       },
       () => {
         {{{ runtimeKeepalivePop() }}}
-        if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(arg);
+        if (onerror) {{{ makeDynCall('vp', 'onerror') }}}(arg);
       },
       true // don'tCreateFile - it's already there
     );
@@ -1224,7 +1224,7 @@ var LibraryBrowser = {
       {{{ runtimeKeepalivePush() }}}
       callbackId = info.callbacks.length;
       info.callbacks.push({
-        func: {{{ makeDynCall('viii', 'callback') }}},
+        func: {{{ makeDynCall('vpip', 'callback') }}},
         arg
       });
       info.awaited++;

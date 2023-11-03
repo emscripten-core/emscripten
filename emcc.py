@@ -1275,7 +1275,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   newargs, input_files = phase_setup(options, state, newargs)
 
-  if '-dumpmachine' in newargs:
+  if '-dumpmachine' in newargs or '-print-target-triple' in newargs or '--print-target-triple' in newargs:
     print(shared.get_llvm_target())
     return 0
 
@@ -2535,7 +2535,7 @@ def phase_linker_setup(options, state, newargs):
   settings.SUPPORTS_PROMISE_ANY = feature_matrix.caniuse(feature_matrix.Feature.PROMISE_ANY)
   if not settings.BULK_MEMORY:
     settings.BULK_MEMORY = feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY)
-    if settings.MEMORY64 and settings.MIN_NODE_VERSION < 180000:
+    if settings.BULK_MEMORY and settings.MEMORY64 and settings.MIN_NODE_VERSION < 180000:
       # Note that we do not update tools/feature_matrix.py for this, as this issue is
       # wasm64-specific: bulk memory for wasm32 has shipped in Node.js 12.5, but
       # bulk memory for wasm64 has shipped only in Node.js 18.
@@ -2545,10 +2545,6 @@ def phase_linker_setup(options, state, newargs):
       # denominator and disable bulk memory altogether for Node.js < 18 or to
       # special-case this situation here. The former would be limiting for
       # wasm32 users, so instead we do the latter:
-      logger.warning(
-        "Disabling bulk memory because it doesn't work correctly with wasm64 in Node.js < 18.\n"
-        "Set MIN_NODE_VERSION to 180000 or above to enable it."
-      )
       settings.BULK_MEMORY = 0
 
   if settings.AUDIO_WORKLET:

@@ -421,11 +421,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.assertContained('errors generated.', stderr.splitlines()[-2])
 
   def test_dumpmachine(self):
-    output = self.run_process([EMCC, '-dumpmachine'], stdout=PIPE, stderr=PIPE)
-    self.assertContained('wasm32-unknown-emscripten', output.stdout)
+    output = self.run_process([EMCC, '-dumpmachine'], stdout=PIPE, stderr=PIPE).stdout
+    self.assertContained('wasm32-unknown-emscripten', output)
 
-    output = self.run_process([EMCC, '-sMEMORY64', '-dumpmachine'], stdout=PIPE, stderr=PIPE)
-    self.assertContained('wasm64-unknown-emscripten', output.stdout)
+    # Test the -print-target-triple llvm alias for -dumpmachine
+    output = self.run_process([EMCC, '-print-target-triple'], stdout=PIPE, stderr=PIPE).stdout
+    self.assertContained('wasm32-unknown-emscripten', output)
+
+    output = self.run_process([EMCC, '--print-target-triple'], stdout=PIPE, stderr=PIPE).stdout
+    self.assertContained('wasm32-unknown-emscripten', output)
+
+    # Test that -sMEMORY64 triggers the wasm64 triple
+    output = self.run_process([EMCC, '-sMEMORY64', '-dumpmachine'], stdout=PIPE, stderr=PIPE).stdout
+    self.assertContained('wasm64-unknown-emscripten', output)
 
   @parameterized({
     'c': [EMCC, '.c'],

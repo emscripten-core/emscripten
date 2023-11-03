@@ -777,53 +777,23 @@ jobs:
       - run-tests-chrome:
           title: "browser64"
           test_targets: "
-            browser64.test_sdl_swsurface
-            browser64.test_sdl_surface_lock_opts
-            browser64.test_sdl_canvas
-            browser64.test_sdl_canvas_proxy
-            browser64.test_sdl_canvas_alpha
             browser64.test_canvas_focus
-            browser64.test_sdl_text
-            browser64.test_sdl_mouse
-            browser64.test_sdl_mouse_offsets
-            browser64.test_sdl_joystick_1
-            browser64.test_sdl_joystick_2
             browser64.test_idbstore
             browser64.test_idbstore_sync_asyncify
             browser64.test_idbstore_sync_jspi
-            browser64.test_sdl_pumpevents
-            browser64.test_sdl_canvas_size
-            browser64.test_sdl_gl_read
-            browser64.test_sdl_gl_mapbuffers
-            browser64.test_sdl_ogl
-            browser64.test_sdl_ogl_defaultmatrixmode
-            browser64.test_sdl_ogl_p
-            browser64.test_sdl_ogl_proc_alias
-            browser64.test_sdl_fog_simple
-            browser64.test_sdl_fog_negative
-            browser64.test_sdl_fog_density
-            browser64.test_sdl_fog_exp2
-            browser64.test_sdl_fog_linear
-            browser64.test_egl
-            browser64.test_egl_width_height
-            browser64.test_egl_createcontext_error
-            browser64.test_glgears_animation
-            browser64.test_glgears_deriv
             browser64.test_anisotropic
             browser64.test_webgpu_get_device
-            browser64.test_fetch_to_memory
-            browser64.test_fetch_to_indexdb
-            browser64.test_fetch_cached_xhr
-            browser64.test_fetch_response_headers
-            browser64.test_fetch_stream_file
-            browser64.test_fetch_headers_received
-            browser64.test_fetch_xhr_abort
-            browser64.test_fetch_sync_xhr
-            browser64.test_fetch_implicit_append
+            browser64.test_fetch_*
             browser64.test_pthread_*
             browser64.test_wget_*
             browser64.test_emscripten_async_wget_*
             browser64.test_wasm_worker_*
+            browser64.test_sdl_*
+            browser64.test_egl*
+            browser64.test_gl_*
+            browser64.test_glgears*
+            browser64.test_glfw*
+            browser64.test_glew
             "
   test-browser-firefox:
     executor: bionic
