@@ -40,6 +40,7 @@ int emscripten_builtin_pthread_create(void *thread, void *attr,
                                       void *(*callback)(void *), void *arg);
 int emscripten_builtin_pthread_join(void *th, void **ret);
 int emscripten_builtin_pthread_detach(void *th);
+int emscripten_builtin_pthread_exit(void *th);
 }
 #endif
 
