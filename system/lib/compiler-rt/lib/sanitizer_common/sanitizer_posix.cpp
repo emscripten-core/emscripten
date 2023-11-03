@@ -159,7 +159,11 @@ bool MprotectReadOnly(uptr addr, uptr size) {
 }
 
 bool MprotectReadWrite(uptr addr, uptr size) {
+#if SANITIZER_EMSCRIPTEN
+  return true;
+#else
   return 0 == internal_mprotect((void *)addr, size, PROT_READ | PROT_WRITE);
+#endif
 }
 
 #if !SANITIZER_APPLE
