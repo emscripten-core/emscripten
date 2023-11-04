@@ -1168,7 +1168,7 @@ var LibraryGL = {
 #endif
           }
 #endif
-          ret = s && stringToNewUTF8(s);
+          ret = s ? stringToNewUTF8(s) : 0;
           break;
 
 #if GL_EMULATE_GLES_VERSION_STRING_FORMAT
@@ -1783,7 +1783,7 @@ var LibraryGL = {
   },
 
   // Queries EXT
-  glGenQueriesEXT__sig: 'vii',
+  glGenQueriesEXT__sig: 'vip',
   glGenQueriesEXT: (n, ids) => {
     for (var i = 0; i < n; i++) {
       var query = GLctx.disjointTimerQueryExt['createQueryEXT']();
@@ -1802,7 +1802,7 @@ var LibraryGL = {
     }
   },
 
-  glDeleteQueriesEXT__sig: 'vii',
+  glDeleteQueriesEXT__sig: 'vip',
   glDeleteQueriesEXT: (n, ids) => {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
@@ -1844,7 +1844,7 @@ var LibraryGL = {
     GLctx.disjointTimerQueryExt['queryCounterEXT'](GL.queries[id], target);
   },
 
-  glGetQueryivEXT__sig: 'viii',
+  glGetQueryivEXT__sig: 'viip',
   glGetQueryivEXT: (target, pname, params) => {
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
@@ -1858,7 +1858,7 @@ var LibraryGL = {
     {{{ makeSetValue('params', '0', 'GLctx.disjointTimerQueryExt[\'getQueryEXT\'](target, pname)', 'i32') }}};
   },
 
-  glGetQueryObjectivEXT__sig: 'viii',
+  glGetQueryObjectivEXT__sig: 'viip',
   glGetQueryObjectivEXT: (id, pname, params) => {
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
@@ -1884,7 +1884,7 @@ var LibraryGL = {
   },
   glGetQueryObjectuivEXT: 'glGetQueryObjectivEXT',
 
-  glGetQueryObjecti64vEXT__sig: 'viii',
+  glGetQueryObjecti64vEXT__sig: 'viip',
   glGetQueryObjecti64vEXT__deps: ['$writeI53ToI64'],
   glGetQueryObjecti64vEXT: (id, pname, params) => {
     if (!params) {
@@ -3840,7 +3840,7 @@ var LibraryGL = {
       drawcount);
   },
 
-  glMultiDrawArraysInstancedWEBGL__sig: 'viiiii',
+  glMultiDrawArraysInstancedWEBGL__sig: 'vipppi',
   glMultiDrawArraysInstancedANGLE: 'glMultiDrawArraysInstancedWEBGL',
   glMultiDrawArraysInstancedWEBGL: (mode, firsts, counts, instanceCounts, drawcount) => {
     GLctx.multiDrawWebgl['multiDrawArraysInstancedWEBGL'](
@@ -3854,10 +3854,34 @@ var LibraryGL = {
       drawcount);
   },
 
+#if MEMORY64
+  // Convert an array of i64 offsets to an array of i32 offsets returning a
+  // pointer to the new (stack allocated) array.
+  $convertOffsets__internal: true,
+  $convertOffsets: (offsets, count) => {
+    var offsets32 = stackAlloc(count * 4);
+    var i64ptr = offsets >> 3;
+    var i32ptr = offsets32 >> 2;
+    for (var i = 0; i < count; i++, i32ptr++, i64ptr++) {
+      var i64val = HEAPU64[i64ptr];
+      assert(i64val >= 0 && i32ptr <= 0xffffffff);
+      HEAPU32[i32ptr] = Number(i64val);
+    }
+    return offsets32;
+  },
+#endif
+
   glMultiDrawElementsWEBGL__sig: 'vipipi',
   glMultiDrawElements: 'glMultiDrawElementsWEBGL',
   glMultiDrawElementsANGLE: 'glMultiDrawElementsWEBGL',
+#if MEMORY64
+  glMultiDrawElementsWEBGL__deps: ['$convertOffsets'],
+#endif
   glMultiDrawElementsWEBGL: (mode, counts, type, offsets, drawcount) => {
+#if MEMORY64
+    var stack = stackSave();
+    offsets = convertOffsets(offsets, drawcount);
+#endif
     GLctx.multiDrawWebgl['multiDrawElementsWEBGL'](
       mode,
       HEAP32,
@@ -3866,11 +3890,21 @@ var LibraryGL = {
       HEAP32,
       offsets >> 2,
       drawcount);
+#if MEMORY64
+    stackRestore(stack);
+#endif
   },
 
-  glMultiDrawElementsInstancedWEBGL__sig: 'viiiiii',
+  glMultiDrawElementsInstancedWEBGL__sig: 'vipippi',
   glMultiDrawElementsInstancedANGLE: 'glMultiDrawElementsInstancedWEBGL',
+#if MEMORY64
+  glMultiDrawElementsInstancedWEBGL__deps: ['$convertOffsets'],
+#endif
   glMultiDrawElementsInstancedWEBGL: (mode, counts, type, offsets, instanceCounts, drawcount) => {
+#if MEMORY64
+    var stack = stackSave();
+    offsets = convertOffsets(offsets, drawcount);
+#endif
     GLctx.multiDrawWebgl['multiDrawElementsInstancedWEBGL'](
       mode,
       HEAP32,
@@ -3881,6 +3915,9 @@ var LibraryGL = {
       HEAP32,
       instanceCounts >> 2,
       drawcount);
+#if MEMORY64
+    stackRestore(stack);
+#endif
   },
 
   // As a small peculiarity, we currently allow building with -sFULL_ES3 to emulate client side arrays,
