@@ -393,7 +393,7 @@ var LibraryBrowser = {
 
       canvasContainer.addEventListener("fullscreenchange", () => { Browser.log("canvasContainer.fullscreenchange"); }, false);
       try {
-        return canvasContainer.requestFullscreen().catch((err) => {
+        return canvasContainer.requestFullscreen({ navigationUI: "hide" }).catch((err) => {
           Browser.fnStart("canvasContainer.fullscreenerror.catch");
           try {
             fullscreenChange();
