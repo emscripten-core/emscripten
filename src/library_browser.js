@@ -309,12 +309,27 @@ var LibraryBrowser = {
       return ctx;
     },
 
+    indent: 0,
+    fnStart(name) { Browser.log(name + " {"); Browser.indent++; },
+    fnEnd(name) { Browser.indent--; Browser.log("} // " + name)},
+    log(text) {
+      console.log(" ".repeat(Browser.indent) + text);
+    },
+
     destroyContext(canvas, useWebGL, setInModule) {},
 
     fullscreenHandlersInstalled: false,
     lockPointer: undefined,
     resizeCanvas: undefined,
+    // requesting full screen is an async operation, as a result:
+    // this function returns null if already in full screen otherwise the requestFullscreen Promise
     requestFullscreen(lockPointer, resizeCanvas) {
+      Browser.fnStart("requestFullscreen");
+      if (Browser.isFullscreen) {
+        Browser.log("requestFullscreen: already fullscreen");
+        Browser.fnEnd("requestFullscreen");
+        return null;
+      } // already full screen...
       Browser.lockPointer = lockPointer;
       Browser.resizeCanvas = resizeCanvas;
       if (typeof Browser.lockPointer == 'undefined') Browser.lockPointer = true;
@@ -322,11 +337,13 @@ var LibraryBrowser = {
 
       var canvas = Module['canvas'];
       function fullscreenChange() {
+        Browser.fnStart("requestFullscreen.fullscreenChange");
         Browser.isFullscreen = false;
         var canvasContainer = canvas.parentNode;
         if ((document['fullscreenElement'] || document['mozFullScreenElement'] ||
              document['msFullscreenElement'] || document['webkitFullscreenElement'] ||
              document['webkitCurrentFullScreenElement']) === canvasContainer) {
+          Browser.log("fullscreenChange entering fullscreen");
           canvas.exitFullscreen = Browser.exitFullscreen;
           if (Browser.lockPointer) canvas.requestPointerLock();
           Browser.isFullscreen = true;
@@ -337,6 +354,7 @@ var LibraryBrowser = {
             Browser.updateResizeListeners();
           }
         } else {
+          Browser.log("fullscreenChange exiting fullscreen");
           // remove the full screen specific parent of the canvas again to restore the HTML structure from before going full screen
           canvasContainer.parentNode.insertBefore(canvas, canvasContainer);
           canvasContainer.parentNode.removeChild(canvasContainer);
@@ -350,6 +368,7 @@ var LibraryBrowser = {
         }
         if (Module['onFullScreen']) Module['onFullScreen'](Browser.isFullscreen);
         if (Module['onFullscreen']) Module['onFullscreen'](Browser.isFullscreen);
+        Browser.fnEnd("requestFullscreen.fullscreenChange");
       }
 
       if (!Browser.fullscreenHandlersInstalled) {
@@ -372,7 +391,21 @@ var LibraryBrowser = {
                                          (canvasContainer['webkitRequestFullscreen'] ? () => canvasContainer['webkitRequestFullscreen'](Element['ALLOW_KEYBOARD_INPUT']) : null) ||
                                          (canvasContainer['webkitRequestFullScreen'] ? () => canvasContainer['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) : null);
 
-      canvasContainer.requestFullscreen();
+      canvasContainer.addEventListener("fullscreenchange", () => { Browser.log("canvasContainer.fullscreenchange"); }, false);
+      try {
+        return canvasContainer.requestFullscreen().catch((err) => {
+          Browser.fnStart("canvasContainer.fullscreenerror.catch");
+          try {
+            fullscreenChange();
+            // propagating the error so that the calling code can handle it as well
+            throw err;
+          } finally {
+            Browser.fnEnd("canvasContainer.fullscreenerror.catch");
+          }
+        });
+      } finally {
+        Browser.fnEnd("requestFullscreen");
+      }
     },
 
 #if ASSERTIONS
@@ -382,11 +415,14 @@ var LibraryBrowser = {
 #endif
 
     exitFullscreen() {
+      Browser.fnStart("exitFullscreen");
       // This is workaround for chrome. Trying to exit from fullscreen
       // not in fullscreen state will cause "TypeError: Document not active"
       // in chrome. See https://github.com/emscripten-core/emscripten/pull/8236
       if (!Browser.isFullscreen) {
-        return false;
+        Browser.log("exitFullscreen: not fullscreen");
+        Browser.fnEnd("exitFullscreen");
+        return null;
       }
 
       var CFS = document['exitFullscreen'] ||
@@ -395,8 +431,11 @@ var LibraryBrowser = {
                 document['msExitFullscreen'] ||
                 document['webkitCancelFullScreen'] ||
           (() => {});
-      CFS.apply(document, []);
-      return true;
+      try {
+        return CFS.apply(document, []);
+      } finally {
+        Browser.fnEnd("exitFullscreen");
+      }
     },
 
     nextRAF: 0,
@@ -629,6 +668,7 @@ var LibraryBrowser = {
     resizeListeners: [],
 
     updateResizeListeners() {
+      Browser.fnStart("updateResizeListeners");
       var canvas = Module['canvas'];
       var cw = canvas.width, ch = canvas.height;
       if (Browser.isHiDPIAware) {
@@ -636,6 +676,7 @@ var LibraryBrowser = {
         ch = canvas.clientHeight;
       }
       Browser.resizeListeners.forEach((listener) => listener(cw, ch, canvas.width, canvas.height));
+      Browser.fnEnd("updateResizeListeners");
     },
 
     setCanvasSize(width, height, noUpdates) {
@@ -669,6 +710,8 @@ var LibraryBrowser = {
     },
 
     updateCanvasDimensions(canvas, wNative, hNative) {
+      Browser.fnStart("updateCanvasDimensions");
+      Browser.log("args=" + wNative + "x" + hNative)
       const scale = Browser.getHiDPIScale();
 
       if (wNative && hNative) {
@@ -711,6 +754,7 @@ var LibraryBrowser = {
           canvas.style.removeProperty("height");
         }
       }
+      Browser.fnEnd("updateCanvasDimensions");
     },
 
     getDevicePixelRatio() {

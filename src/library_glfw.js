@@ -555,11 +555,15 @@ var LibraryGLFW = {
     onCanvasResize: (width, height, framebufferWidth, framebufferHeight) => {
       if (!GLFW.active) return;
 
+      Browser.fnStart("onCanvasResize");
+      Browser.log(width + "x" + height);
+
       var resizeNeeded = false;
 
       // If the client is requesting fullscreen mode
       if (document["fullscreen"] || document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
         if (!GLFW.active.fullscreen) {
+          Browser.log("onCanvasResize document is fullscreen => and !GLFW.active.fullscreen");
           resizeNeeded = width != screen.width || height != screen.height;
           GLFW.active.storedX = GLFW.active.x;
           GLFW.active.storedY = GLFW.active.y;
@@ -569,9 +573,12 @@ var LibraryGLFW = {
           GLFW.active.width = screen.width;
           GLFW.active.height = screen.height;
           GLFW.active.fullscreen = true;
+        } else {
+          Browser.log("onCanvasResize document is fullscreen => and GLFW.active.fullscreen");
         }
       // If the client is reverting from fullscreen mode
       } else if (GLFW.active.fullscreen == true) {
+        Browser.log("onCanvasResize document is no longer fullscreen");
         resizeNeeded = width != GLFW.active.storedWidth || height != GLFW.active.storedHeight;
         GLFW.active.x = GLFW.active.storedX;
         GLFW.active.y = GLFW.active.storedY;
@@ -583,11 +590,13 @@ var LibraryGLFW = {
       if (resizeNeeded) {
         // width or height is changed (fullscreen / exit fullscreen) which will call this listener back
         // with proper framebufferWidth/framebufferHeight
+        Browser.log("onCanvasResize resizeNeeded ", GLFW.active.width + "x" + GLFW.active.height);
         Browser.setCanvasSize(GLFW.active.width, GLFW.active.height);
       } else if (GLFW.active.width != width ||
                  GLFW.active.height != height ||
                  GLFW.active.framebufferWidth != framebufferWidth ||
                  GLFW.active.framebufferHeight != framebufferHeight) {
+        Browser.log("onCanvasResize no resize needed");
         GLFW.active.width = width;
         GLFW.active.height = height;
         GLFW.active.framebufferWidth = framebufferWidth;
@@ -595,6 +604,8 @@ var LibraryGLFW = {
         GLFW.onWindowSizeChanged();
         GLFW.onFramebufferSizeChanged();
       }
+
+      Browser.fnEnd("onCanvasResize");
     },
 
     onWindowSizeChanged: () => {
@@ -984,12 +995,43 @@ var LibraryGLFW = {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
 
+      Browser.fnStart("setWindowSize");
+      Browser.log(win.width + "x" + win.height + " => " + width + "x" + height);
+
       if (GLFW.active.id == win.id) {
-        if (width == screen.width && height == screen.height) {
-          Browser.requestFullscreen();
+        if (win.width != width || win.height != height) {
+          const setCanvasSizeAction = () => { Browser.setCanvasSize(width, height); }
+          if (width == screen.width && height == screen.height) {
+            Browser.log("setWindowSize: requesting fullscreen");
+            const promise = Browser.requestFullscreen();
+            if(promise) {
+              promise.catch((err) => {
+                Browser.fnStart("setWindowSize.requestFullscreen.catch");
+                Browser.log("setWindowSize.requestFullscreen: error detected: " + err);
+                setCanvasSizeAction();
+                Browser.fnEnd("setWindowSize.requestFullscreen.catch");
+              });
+            } else {
+              Browser.log("setWindowSize (already fullscreen): setCanvasSize");
+              setCanvasSizeAction();
+            }
+          } else {
+            if (Browser.isFullscreen) {
+              Browser.log("setWindowSize: exit fullscreen");
+              Browser.exitFullscreen().then(() => {
+                Browser.log("setWindowSize: (then) setCanvasSize");
+                setCanvasSizeAction();
+              }).catch((err) => {
+                Browser.log("setWindowSize.exitFullscreen: error detected: " + err);
+                setCanvasSizeAction();
+              });
+            } else {
+              Browser.log("setWindowSize: setCanvasSize");
+              setCanvasSizeAction();
+            }
+          }
         } else {
-          Browser.exitFullscreen();
-          Browser.setCanvasSize(width, height);
+          Browser.log("setWindowSize: no size change (ignored)");
         }
       }
 
@@ -1001,6 +1043,8 @@ var LibraryGLFW = {
         {{{ makeDynCall('vpii', 'win.windowSizeFunc') }}}(win.id, width, height);
 #endif
       }
+
+      Browser.fnEnd("setWindowSize");
     },
 
     createWindow: (width, height, title, monitor, share) => {
