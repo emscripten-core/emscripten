@@ -116,7 +116,7 @@ addToLibrary({
 #endif
   $UTF8ToString: (ptr, maxBytesToRead) => {
 #if ASSERTIONS
-    assert(typeof ptr == 'number');
+    assert(typeof ptr == 'number', `UTF8ToString expects a number (got ${typeof ptr})`);
 #endif
 #if CAN_ADDRESS_2GB
     ptr >>>= 0;
@@ -158,7 +158,7 @@ addToLibrary({
     outIdx >>>= 0;
 #endif
 #if ASSERTIONS
-    assert(typeof str === 'string');
+    assert(typeof str === 'string', `stringToUTF8Array expects a string (got ${typeof str})`);
 #endif
     // Parameter maxBytesToWrite is not optional. Negative values, 0, null,
     // undefined and false each don't write out any bytes.
