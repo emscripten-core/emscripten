@@ -90,8 +90,11 @@ def maybe_copy(src, dest):
   headers will be "re-installed" but we skip the actual filesystem mods
   to avoid racing with other processes that might be reading these files.
   """
-  if os.path.exists(dest) and utils.read_file(src) == utils.read_file(dest):
-    return
+  try:
+    if os.path.exists(dest) and utils.read_file(src) == utils.read_file(dest):
+      return
+  except UnicodeDecodeError as e:
+    ...
   shutil.copyfile(src, dest)
 
 
