@@ -73,9 +73,7 @@ var IDBStore = {
         }
         return callback(null, result);
       };
-      req.onerror = (error) => {
-        callback(error);
-      };
+      req.onerror = callback;
     });
   },
   setFile(dbName, id, data, callback) {
@@ -83,7 +81,7 @@ var IDBStore = {
       if (err) return callback(err);
       var req = store.put(data, id);
       req.onsuccess = (event) => callback();
-      req.onerror = (error) => callback(error);
+      req.onerror = callback;
     });
   },
   deleteFile(dbName, id, callback) {
@@ -91,7 +89,7 @@ var IDBStore = {
       if (err) return callback(err);
       var req = store.delete(id);
       req.onsuccess = (event) => callback();
-      req.onerror = (error) => callback(error);
+      req.onerror = callback;
     });
   },
   existsFile(dbName, id, callback) {
@@ -99,7 +97,7 @@ var IDBStore = {
       if (err) return callback(err);
       var req = store.count(id);
       req.onsuccess = (event) => callback(null, event.target.result > 0);
-      req.onerror = (error) => callback(error);
+      req.onerror = callback;
     });
   },
   clearStore(dbName, callback) {
@@ -107,7 +105,7 @@ var IDBStore = {
       if (err) return callback(err);
       var req = store.clear();
       req.onsuccess = (event) => callback();
-      req.onerror = (error) => callback(error);
+      req.onerror = callback;
     });
   },
 };
