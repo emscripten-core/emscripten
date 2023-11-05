@@ -3022,6 +3022,10 @@ Module["preRun"] = () => {
       self.btest('test_glfw3.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'] + args + opts, expected='1')
 
   @requires_graphics_hardware
+  def test_glfw3_fullscreen(self):
+      self.btest('test_glfw3_fullscreen.c', args=['-sUSE_GLFW=3', '-sASYNCIFY', '-lglfw', '-lGL'], expected='1')
+
+  @requires_graphics_hardware
   def test_glfw_events(self):
     self.btest('test_glfw_events.c', args=['-sUSE_GLFW=2', "-DUSE_GLFW=2", '-lglfw', '-lGL'], expected='1')
     self.btest('test_glfw_events.c', args=['-sUSE_GLFW=3', "-DUSE_GLFW=3", '-lglfw', '-lGL'], expected='1')
