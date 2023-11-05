@@ -93,7 +93,7 @@ def maybe_copy(src, dest):
   try:
     if os.path.exists(dest) and utils.read_file(src) == utils.read_file(dest):
       return
-  except UnicodeDecodeError as e:
+  except UnicodeDecodeError:
     ...
   shutil.copyfile(src, dest)
 
