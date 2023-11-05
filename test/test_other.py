@@ -43,6 +43,7 @@ import jsrun
 import clang_native
 from tools import line_endings
 from tools import webassembly
+from tools.settings import settings
 
 scons_path = shutil.which('scons')
 emmake = shared.bat_suffix(path_from_root('emmake'))
@@ -420,11 +421,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.assertContained('errors generated.', stderr.splitlines()[-2])
 
   def test_dumpmachine(self):
-    output = self.run_process([EMCC, '-dumpmachine'], stdout=PIPE, stderr=PIPE)
-    self.assertContained('wasm32-unknown-emscripten', output.stdout)
+    output = self.run_process([EMCC, '-dumpmachine'], stdout=PIPE, stderr=PIPE).stdout
+    self.assertContained('wasm32-unknown-emscripten', output)
 
-    output = self.run_process([EMCC, '-sMEMORY64', '-dumpmachine'], stdout=PIPE, stderr=PIPE)
-    self.assertContained('wasm64-unknown-emscripten', output.stdout)
+    # Test the -print-target-triple llvm alias for -dumpmachine
+    output = self.run_process([EMCC, '-print-target-triple'], stdout=PIPE, stderr=PIPE).stdout
+    self.assertContained('wasm32-unknown-emscripten', output)
+
+    output = self.run_process([EMCC, '--print-target-triple'], stdout=PIPE, stderr=PIPE).stdout
+    self.assertContained('wasm32-unknown-emscripten', output)
+
+    # Test that -sMEMORY64 triggers the wasm64 triple
+    output = self.run_process([EMCC, '-sMEMORY64', '-dumpmachine'], stdout=PIPE, stderr=PIPE).stdout
+    self.assertContained('wasm64-unknown-emscripten', output)
 
   @parameterized({
     'c': [EMCC, '.c'],
@@ -700,21 +709,56 @@ f.close()
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   @crossplatform
-  def test_emcc_print_search_dirs(self):
-    output = self.run_process([EMCC, '-print-search-dirs'], stdout=PIPE).stdout
+  @parameterized({
+    '': [[]],
+    'lto': [['-flto']],
+    'wasm64': [['-sMEMORY64']],
+  })
+  def test_print_search_dirs(self, args):
+    output = self.run_process([EMCC, '-print-search-dirs'] + args, stdout=PIPE).stdout
+    output2 = self.run_process([EMCC, '-print-search-dirs'] + args, stdout=PIPE).stdout
+    self.assertEqual(output, output2)
     self.assertContained('programs: =', output)
     self.assertContained('libraries: =', output)
     libpath = output.split('libraries: =', 1)[1].strip()
     libpath = libpath.split(os.pathsep)
     libpath = [Path(p) for p in libpath]
-    print(libpath)
-    self.assertIn(cache.get_lib_dir(absolute=True), libpath)
+    settings.LTO = '-flto' in args
+    settings.MEMORY64 = int('-sMEMORY64' in args)
+    expected = cache.get_lib_dir(absolute=True)
+    self.assertIn(expected, libpath)
 
   @crossplatform
-  def test_emcc_print_file_name(self):
-    self.run_process([EMBUILDER, 'build', 'libc'])
-    output = self.run_process([EMCC, '-print-file-name=libc.a'], stdout=PIPE).stdout
+  @parameterized({
+    '': [[]],
+    'lto': [['-flto']],
+    'wasm64': [['-sMEMORY64']],
+  })
+  def test_print_libgcc_file_name(self, args):
+    output = self.run_process([EMCC, '-print-libgcc-file-name'] + args, stdout=PIPE).stdout
+    output2 = self.run_process([EMCC, '--print-libgcc-file-name'] + args, stdout=PIPE).stdout
+    self.assertEqual(output, output2)
+    settings.LTO = '-flto' in args
+    settings.MEMORY64 = int('-sMEMORY64' in args)
+    libdir = cache.get_lib_dir(absolute=True)
+    expected = os.path.join(libdir, 'libcompiler_rt.a')
+    self.assertEqual(output.strip(), expected)
+
+  @crossplatform
+  @parameterized({
+    '': [[]],
+    'lto': [['-flto']],
+    'wasm64': [['-sMEMORY64', '-Wno-experimental']],
+  })
+  def test_print_file_name(self, args):
+    # make sure the corresponding version of libc exists in the cache
+    self.run_process([EMCC, test_file('hello_world.c'), '-O2'] + args)
+    output = self.run_process([EMCC, '-print-file-name=libc.a'] + args, stdout=PIPE).stdout
+    output2 = self.run_process([EMCC, '--print-file-name=libc.a'] + args, stdout=PIPE).stdout
+    self.assertEqual(output, output2)
     filename = Path(output)
+    settings.LTO = '-flto' in args
+    settings.MEMORY64 = int('-sMEMORY64' in args)
     self.assertContained(cache.get_lib_name('libc.a'), str(filename))
 
   def test_emar_em_config_flag(self):
@@ -2856,59 +2900,60 @@ int f() {
         emscripten::function("bar", &bar);
       }
     ''')
-    self.emcc_args.remove('-Wclosure')
+    self.set_setting('INCOMING_MODULE_JS_API', 'onRuntimeInitialized')
+    self.set_setting('STRICT')
+    self.set_setting('NO_DYNAMIC_EXECUTION')
     self.do_runf('main.cpp', '10\nok\n',
-                 emcc_args=['-lembind', '-O2', '--closure', '1', '-sNO_DYNAMIC_EXECUTION', '--post-js', 'post.js'])
+                 emcc_args=['--no-entry', '-lembind', '-O2', '--closure=1', '--minify=0', '--post-js=post.js'])
 
   @is_slow_test
   @parameterized({
-    '': [[]],
-    'no_utf8': [['-sEMBIND_STD_STRING_IS_UTF8=0']],
-    'no_dynamic': [['-sDYNAMIC_EXECUTION=0']],
+    '': [],
+    'no_utf8': ['-sEMBIND_STD_STRING_IS_UTF8=0'],
+    'no_dynamic': ['-sDYNAMIC_EXECUTION=0'],
   })
-  @with_env_modify({'EMCC_CLOSURE_ARGS': '--externs ' + shlex.quote(test_file('embind/underscore-externs.js'))})
-  def test_embind(self, extra_args):
-    test_cases = [
-      (['-lembind']),
-      # Ensure embind compiles under C++17 where "noexcept" became part of the function signature.
-      (['-lembind', '-std=c++17']),
-      (['-lembind', '-O1']),
-      (['-lembind', '-O2']),
-      (['-lembind', '-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')]),
-      (['-lembind', '-O2', '--closure=1']),
+  @parameterized({
+    '': [],
+    # Ensure embind compiles under C++17 where "noexcept" became part of the function signature.
+    'cxx17': ['-std=c++17'],
+    'o1': ['-O1'],
+    'o2': ['-O2'],
+    'o2_mem_growth': ['-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')],
+    'o2_closure': ['-O2', '--closure=1', '--closure-args', '--externs ' + shlex.quote(test_file('embind/underscore-externs.js'))],
+  })
+  def test_embind(self, *extra_args):
+    self.emcc_args += [
+      '-lembind',
+      '-sRETAIN_COMPILER_SETTINGS',
+      '-sEXPORTED_RUNTIME_METHODS=getCompilerSetting',
+      '-sWASM_ASYNC_COMPILATION=0',
+      # This test uses a `CustomSmartPtr` class which has 1MB of data embedded in
+      # it which means we need more stack space than normal.
+      '-sSTACK_SIZE=2MB',
+      '--pre-js', test_file('embind/test.pre.js'),
+      '--post-js', test_file('embind/test.post.js'),
     ]
-    extra_args = extra_args + ['-sRETAIN_COMPILER_SETTINGS', '-sEXPORTED_RUNTIME_METHODS=getCompilerSetting']
-    test_cases = [t + extra_args for t in test_cases]
-    for args in test_cases:
-      print(args)
-      self.clear()
+    self.emcc_args += extra_args
 
-      testFiles = [
-        test_file('embind/underscore-1.4.2.js'),
-        test_file('embind/imvu_test_adapter.js'),
-        test_file('embind/embind.test.js'),
-      ]
+    js_file = self.build(test_file('embind/embind_test.cpp'))
 
-      self.run_process(
-        [EMXX, test_file('embind/embind_test.cpp'),
-         '--pre-js', test_file('embind/test.pre.js'),
-         '--post-js', test_file('embind/test.post.js'),
-         '-sWASM_ASYNC_COMPILATION=0',
-         # This test uses a `CustomSmartPtr` class which has 1MB of data embedded in
-         # it which means we need more stack space than normal.
-         '-sSTACK_SIZE=2MB'] + args)
+    testFiles = [
+      test_file('embind/underscore-1.4.2.js'),
+      test_file('embind/imvu_test_adapter.js'),
+      test_file('embind/embind.test.js'),
+    ]
 
-      if '-sDYNAMIC_EXECUTION=0' in args:
-        js_binary_str = read_file('a.out.js')
-        self.assertNotContained('new Function(', js_binary_str)
-        self.assertNotContained('eval(', js_binary_str)
+    if '-sDYNAMIC_EXECUTION=0' in extra_args:
+      js_binary_str = read_file(js_file)
+      self.assertNotContained('new Function(', js_binary_str)
+      self.assertNotContained('eval(', js_binary_str)
 
-      with open('a.out.js', 'ab') as f:
-        for tf in testFiles:
-          f.write(read_binary(tf))
+    with open(js_file, 'ab') as f:
+      for tf in testFiles:
+        f.write(read_binary(tf))
 
-      output = self.run_js('a.out.js')
-      self.assertNotContained('FAIL', output)
+    output = self.run_js(js_file)
+    self.assertNotContained('FAIL', output)
 
   @requires_node
   def test_embind_finalization(self):
@@ -7480,7 +7525,7 @@ Resolved: "/" => "/"
     ''')
 
     # Run the test and confirm the output is as expected.
-    self.node_args += shared.node_bigint_flags()
+    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     out = self.run_js('testrun.js')
     self.assertContained('''\
 input = 0xaabbccdd11223344
@@ -7720,7 +7765,7 @@ int main() {}
       for engine in config.JS_ENGINES:
         if engine == config.V8_ENGINE:
           continue # ban v8, weird failures
-        actual = 'NODE' if engine == config.NODE_JS else 'SHELL'
+        actual = 'NODE' if engine == config.NODE_JS_TEST else 'SHELL'
         print(env, actual, engine)
         module = {'ENVIRONMENT': env}
         if env != actual:
@@ -8056,7 +8101,7 @@ int main() {
     # under control to a certain extent.  This test allows us to track major
     # changes to the size of the unoptimized and unminified code size.
     # Run with `--rebase` when this test fails.
-    self.build(test_file('hello_world.c'), emcc_args=['-O0'])
+    self.build(test_file('hello_world.c'), emcc_args=['-O0', '--output_eol=linux'])
     self.check_expected_size_in_file('wasm',
                                      test_file('other/test_unoptimized_code_size.wasm.size'),
                                      os.path.getsize('hello_world.wasm'))
@@ -8064,7 +8109,7 @@ int main() {
                                      test_file('other/test_unoptimized_code_size.js.size'),
                                      os.path.getsize('hello_world.js'))
 
-    self.build(test_file('hello_world.c'), emcc_args=['-O0', '-sASSERTIONS=0'], output_basename='no_asserts')
+    self.build(test_file('hello_world.c'), emcc_args=['-O0', '--output_eol=linux', '-sASSERTIONS=0'], output_basename='no_asserts')
     self.check_expected_size_in_file('wasm',
                                      test_file('other/test_unoptimized_code_size_no_asserts.wasm.size'),
                                      os.path.getsize('no_asserts.wasm'))
@@ -8072,7 +8117,7 @@ int main() {
                                      test_file('other/test_unoptimized_code_size_no_asserts.js.size'),
                                      os.path.getsize('no_asserts.js'))
 
-    self.build(test_file('hello_world.c'), emcc_args=['-O0', '-sSTRICT'], output_basename='strict')
+    self.build(test_file('hello_world.c'), emcc_args=['-O0', '--output_eol=linux', '-sSTRICT'], output_basename='strict')
     self.check_expected_size_in_file('wasm',
                                      test_file('other/test_unoptimized_code_size_strict.wasm.size'),
                                      os.path.getsize('strict.wasm'))
@@ -8090,7 +8135,7 @@ int main() {
     expected_basename = test_file('other/metadce', self.id().split('.')[-1])
 
     # Run once without closure and parse output to find wasmImports
-    build_cmd = [compiler_for(filename), filename] + args + self.get_emcc_args()
+    build_cmd = [compiler_for(filename), filename, '--output_eol=linux'] + args + self.get_emcc_args()
     self.run_process(build_cmd + ['-g2'])
     # find the imports we send from JS
     # TODO(sbc): Find a way to do that that doesn't depend on internal details of
@@ -8887,6 +8932,10 @@ int main() {
   @requires_v8
   def test_single_file_shell(self):
     self.do_runf('hello_world.c', emcc_args=['-sSINGLE_FILE'])
+
+  @requires_v8
+  def test_single_file_shell_sync_compile(self):
+    self.do_runf('hello_world.c', emcc_args=['-sSINGLE_FILE', '-sWASM_ASYNC_COMPILATION=0'])
 
   def test_emar_M(self):
     create_file('file1', ' ')
@@ -9831,7 +9880,7 @@ test_module().then((test_module_instance) => {
   def test_node_eval(self):
     self.run_process([EMCC, '-sENVIRONMENT=node', test_file('hello_world.c'), '-o', 'a.js', '-O3'])
     js = read_file('a.js')
-    ret = self.run_process(config.NODE_JS + ['-e', js], stdout=PIPE).stdout
+    ret = self.run_process(config.NODE_JS_TEST + ['-e', js], stdout=PIPE).stdout
     self.assertContained('hello, world!', ret)
 
   def test_is_bitcode(self):
@@ -10936,11 +10985,10 @@ int main(void) {
 
   def test_INCOMING_MODULE_JS_API(self):
     def test(args):
-      self.run_process([EMCC, test_file('hello_world.c'), '-O3', '--closure=1', '-sENVIRONMENT=node,shell'] + args)
+      self.run_process([EMCC, test_file('hello_world.c'), '-O3', '--closure=1', '-sENVIRONMENT=node,shell', '--output_eol=linux'] + args)
       for engine in config.JS_ENGINES:
         self.assertContained('hello, world!', self.run_js('a.out.js', engine=engine))
-      # ignore \r which on windows can increase the size
-      return len(read_file('a.out.js').replace('\r', ''))
+      return os.path.getsize('a.out.js')
     normal = test([])
     changed = test(['-sINCOMING_MODULE_JS_API=[]'])
     print('sizes', normal, changed)
@@ -12219,13 +12267,13 @@ exec "$@"
   def test_gen_struct_info(self):
     # This test will start failing whenever the struct info changes (e.g. offset or defines
     # change).  However it's easy to rebaseline with --rebaseline.
-    self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
+    self.run_process([PYTHON, path_from_root('tools/maint/gen_struct_info.py'), '-o', 'out.json'])
     self.assertFileContents(path_from_root('src/generated_struct_info32.json'), read_file('out.json'))
 
     # Same again for wasm64
-    node_version = shared.check_node_version()
+    node_version = shared.get_node_version(self.get_nodejs())
     if node_version and node_version >= (14, 0, 0):
-      self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '--wasm64', '-o', 'out.json'])
+      self.run_process([PYTHON, path_from_root('tools/maint/gen_struct_info.py'), '--wasm64', '-o', 'out.json'])
       self.assertFileContents(path_from_root('src/generated_struct_info64.json'), read_file('out.json'))
 
   @crossplatform
@@ -12233,7 +12281,7 @@ exec "$@"
     # This tests is fragile and will need updating any time a JS library
     # function is added or its signature changed.  However it's easy to
     # rebaseline with --rebaseline.
-    self.run_process([PYTHON, path_from_root('tools/gen_sig_info.py'), '-o', 'out.js'])
+    self.run_process([PYTHON, path_from_root('tools/maint/gen_sig_info.py'), '-o', 'out.js'])
     self.assertFileContents(path_from_root('src/library_sigs.js'), read_file('out.js'))
 
   def test_gen_struct_info_env(self):
@@ -12242,7 +12290,7 @@ exec "$@"
     # linking) to effect the internal building and running of this code.
     # For example -O2 causes printf -> iprintf which will fail with undefined symbol iprintf.
     with env_modify({'EMCC_CFLAGS': '-O2 BAD_ARG', 'EMCC_FORCE_STDLIBS': '1', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
-      self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
+      self.run_process([PYTHON, path_from_root('tools/maint/gen_struct_info.py'), '-o', 'out.json'])
 
   def test_relocatable_limited_exports(self):
     # Building with RELOCATABLE should *not* automatically export all sybmols.
@@ -12732,7 +12780,7 @@ void foo() {}
     self.build('main.c', emcc_args=['--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION=0'])
     self.assertNotContained('unhandledRejection', read_file('main.js'))
 
-    if shared.check_node_version()[0] >= 15:
+    if shared.get_node_version(self.get_nodejs())[0] >= 15:
       self.skipTest('old behaviour of node JS cannot be tested on node v15 or above')
 
     output = self.run_js('main.js')
@@ -12930,7 +12978,7 @@ Module.postRun = () => {{
   def test_wasmfs_readfile_bigint(self):
     self.set_setting('FORCE_FILESYSTEM')
     self.set_setting('WASM_BIGINT')
-    self.node_args += shared.node_bigint_flags()
+    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_run_in_out_file_test('wasmfs/wasmfs_readfile.c')
 
   def test_wasmfs_jsfile(self):
@@ -12968,6 +13016,8 @@ Module.postRun = () => {{
     # - arrow funcs
     # - for..of
     # - object.assign
+    # - nullish coalescing & chaining
+    # - logical assignment
     create_file('es6_library.js', '''\
     addToLibrary({
       foo: function(arg="hello") {
@@ -12975,7 +13025,7 @@ Module.postRun = () => {{
         let obj = Object.assign({}, {prop:1});
         err('prop: ' + obj.prop);
 
-        // arror funcs + const
+        // arrow funcs + const
         const bar = () => 2;
         err('bar: ' + bar());
 
@@ -12992,6 +13042,22 @@ Module.postRun = () => {{
         };
         global['foo'] = obj3;
         err('value2: ' + obj3.myMethod());
+
+        // Nullish coalescing
+        var definitely = global['maybe'] ?? {};
+
+        // Optional chaining
+        global['maybe']
+          ?.subObj
+          ?.[key]
+          ?.func
+          ?.();
+
+        // Logical assignment
+        var obj4 = null;
+        obj4 ??= 0;
+        obj4 ||= 1;
+        obj4 &&= 2;
       }
     });
     ''')
@@ -13006,6 +13072,11 @@ Module.postRun = () => {{
         self.assertContained(['() => 2', '()=>2'], js)
         self.assertContained('const ', js)
         self.assertContained('let ', js)
+        self.assertContained('?.[', js)
+        self.assertContained('?.(', js)
+        self.assertContained('??=', js)
+        self.assertContained('||=', js)
+        self.assertContained('&&=', js)
       else:
         self.verify_es5(filename)
         self.assertNotContained('foo(arg=', js)
@@ -13013,6 +13084,10 @@ Module.postRun = () => {{
         self.assertNotContained('()=>2', js)
         self.assertNotContained('const ', js)
         self.assertNotContained('let ', js)
+        self.assertNotContained('??', js)
+        self.assertNotContained('?.', js)
+        self.assertNotContained('||=', js)
+        self.assertNotContained('&&=', js)
 
     # Check that under normal circumstances none of these features get
     # removed / transpiled.
@@ -13161,7 +13236,7 @@ int main() {
   @also_with_minimal_runtime
   def test_shared_memory(self):
     self.do_runf('wasm_worker/shared_memory.c', '0', emcc_args=[])
-    self.node_args += shared.node_pthread_flags()
+    self.node_args += shared.node_pthread_flags(self.get_nodejs())
     self.do_runf('wasm_worker/shared_memory.c', '1', emcc_args=['-sSHARED_MEMORY'])
     self.do_runf('wasm_worker/shared_memory.c', '1', emcc_args=['-sWASM_WORKERS'])
     self.do_runf('wasm_worker/shared_memory.c', '1', emcc_args=['-pthread'])
@@ -13201,7 +13276,7 @@ int main() {
 
   # Tests the internal test suite of tools/unsafe_optimizations.js
   def test_unsafe_optimizations(self):
-    self.run_process(config.NODE_JS + [path_from_root('tools', 'unsafe_optimizations.js'), '--test'])
+    self.run_process(config.NODE_JS_TEST + [path_from_root('tools', 'unsafe_optimizations.js'), '--test'])
 
   @requires_v8
   def test_extended_const(self):
@@ -13635,8 +13710,9 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.do_runf('hello_world.c', '4\nhello, world!',
                  emcc_args=['--post-js=post.js', '--js-library=lib.js'])
 
+  @requires_node
   def test_min_node_version(self):
-    node_version = shared.check_node_version()
+    node_version = shared.get_node_version(self.get_nodejs())
     node_version = '.'.join(str(x) for x in node_version)
     self.set_setting('MIN_NODE_VERSION', 210000)
     expected = 'This emscripten-generated code requires node v21.0.0 (detected v%s' % node_version
@@ -13694,7 +13770,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def run_wasi_test_suite_test(self, name):
     if not os.path.exists(path_from_root('test/third_party/wasi-test-suite')):
       self.fail('wasi-testsuite not found; run `git submodule update --init`')
-    self.node_args += shared.node_bigint_flags()
+    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     wasm = path_from_root('test', 'third_party', 'wasi-test-suite', name + '.wasm')
     with open(path_from_root('test', 'third_party', 'wasi-test-suite', name + '.json')) as f:
       config = json.load(f)

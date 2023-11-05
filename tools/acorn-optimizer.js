@@ -1044,7 +1044,7 @@ function applyDCEGraphRemovals(ast) {
 
 // Need a parser to pass to acorn.Node constructor.
 // Create it once and reuse it.
-const stubParser = new acorn.Parser({ecmaVersion: 2020});
+const stubParser = new acorn.Parser({ecmaVersion: 2021});
 
 function createNode(props) {
   const node = new acorn.Node(stubParser);
@@ -2008,7 +2008,7 @@ let ast;
 try {
   ast = acorn.parse(input, {
     // Keep in sync with --language_in that we pass to closure in building.py
-    ecmaVersion: 2020,
+    ecmaVersion: 2021,
     preserveParens: closureFriendly,
     onComment: closureFriendly ? sourceComments : undefined,
     sourceType: exportES6 ? 'module' : 'script',

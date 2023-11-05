@@ -71,7 +71,6 @@ void _emscripten_thread_mailbox_init(pthread_t thread) {
 }
 
 // Exported for use in worker.js, but otherwise an internal function.
-EMSCRIPTEN_KEEPALIVE
 void _emscripten_check_mailbox() {
   // Before we attempt to execute a request from another thread make sure we
   // are in sync with all the loaded code.

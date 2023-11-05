@@ -99,7 +99,7 @@ FS.init();
       FS.ErrnoError.prototype.constructor = FS.ErrnoError;
     },
     createDataFile(parent, name, fileData, canRead, canWrite, canOwn) {
-      return FS_createDataFile(parent, name, fileData, canRead, canWrite, canOwn);
+      FS_createDataFile(parent, name, fileData, canRead, canWrite, canOwn);
     },
     createPath(parent, path, canRead, canWrite) {
       // Cache file path directory names.

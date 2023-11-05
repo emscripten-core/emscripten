@@ -49,6 +49,10 @@ if (typeof WebAssembly != 'object') {
 #include "runtime_asan.js"
 #endif
 
+#if SUPPORT_BASE64_EMBEDDING || FORCE_FILESYSTEM
+#include "base64Utils.js"
+#endif
+
 // Wasm globals
 
 var wasmMemory;
@@ -71,6 +75,11 @@ var ABORT = false;
 // but only when noExitRuntime is false.
 var EXITSTATUS;
 
+#if ASSERTIONS || !STRICT
+// In STRICT mode, we only define assert() when ASSERTIONS is set.  i.e. we
+// don't define it at all in release modes.  This matches the behaviour of
+// MINIMAL_RUNTIME.
+// TODO(sbc): Make this the default even without STRICT enabled.
 /** @type {function(*, string=)} */
 function assert(condition, text) {
   if (!condition) {
@@ -84,6 +93,7 @@ function assert(condition, text) {
 #endif
   }
 }
+#endif
 
 #if ASSERTIONS
 // We used to include malloc/free by default in the past. Show a helpful error in

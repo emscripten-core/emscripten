@@ -774,25 +774,29 @@ If manually bisecting:
     # Test Emscripten-specific extensions to optimize SDL_LockSurface and SDL_UnlockSurface.
     self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-DTEST_SDL_LOCK_OPTS', '-lSDL', '-lGL'])
 
+  @parameterized({
+    '': ([],),
+    'meminit_file':  (['--memory-init-file=1', '-sWASM=0'],),
+  })
   @also_with_wasmfs
-  def test_sdl_image(self):
+  def test_sdl_image(self, args):
     # load an image file, get pixel data. Also O2 coverage for --preload-file, and memory-init
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
     src = test_file('browser/test_sdl_image.c')
+    if '-sWASM=0' in args:
+      self.require_wasm2js()
 
-    for args in [[], ['--memory-init-file=1', '-sWASM=0']]:
-      for dest, dirname, basename in [('screenshot.jpg', '/', 'screenshot.jpg'),
-                                      ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
-        self.btest_exit(src, args=args + [
-          '-O2', '-lSDL', '-lGL',
-          '--preload-file', dest, '-DSCREENSHOT_DIRNAME="' + dirname + '"', '-DSCREENSHOT_BASENAME="' + basename + '"', '--use-preload-plugins'
-        ])
+    for dest, dirname, basename in [('screenshot.jpg', '/', 'screenshot.jpg'),
+                                    ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
+      self.btest_exit(src, args=args + [
+        '-O2', '-lSDL', '-lGL',
+        '--preload-file', dest, '-DSCREENSHOT_DIRNAME="' + dirname + '"', '-DSCREENSHOT_BASENAME="' + basename + '"', '--use-preload-plugins'
+      ])
 
   @also_with_wasmfs
   def test_sdl_image_jpeg(self):
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpeg')
-    src = test_file('browser/test_sdl_image.c')
-    self.btest_exit(src, args=[
+    self.btest_exit('test_sdl_image.c', args=[
       '--preload-file', 'screenshot.jpeg',
       '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"', '--use-preload-plugins',
       '-lSDL', '-lGL',
@@ -1326,7 +1330,8 @@ keydown(100);keyup(100); // trigger the end
     # perform tests with attributes activated
     self.btest_exit('test_webgl_context_attributes_glut.c', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-lglut', '-lGLEW'])
     self.btest_exit('test_webgl_context_attributes_sdl.c', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-lSDL', '-lGLEW'])
-    self.btest_exit('test_webgl_context_attributes_sdl2.c', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-sUSE_SDL=2', '-lGLEW'])
+    if not self.is_wasm64():
+      self.btest_exit('test_webgl_context_attributes_sdl2.c', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-sUSE_SDL=2', '-lGLEW'])
     self.btest_exit('test_webgl_context_attributes_glfw.c', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-lglfw', '-lGLEW'])
 
     # perform tests with attributes desactivated
@@ -1636,6 +1641,7 @@ keydown(100);keyup(100); // trigger the end
   def test_egl(self):
     self._test_egl_base()
 
+  @no_wasm64('TODO: wasm64 + OFB')
   @requires_threads
   @requires_graphics_hardware
   def test_egl_with_proxy_to_pthread(self):
@@ -1992,10 +1998,12 @@ keydown(100);keyup(100); // trigger the end
   def test_glframebufferattachmentinfo(self):
     self.btest('glframebufferattachmentinfo.c', '1', args=['-lGLESv2', '-lEGL'])
 
+  @no_wasm64('TODO: LEGACY_GL_EMULATION + wasm64')
   @requires_graphics_hardware
   def test_sdl_glshader(self):
     self.btest('test_sdl_glshader.c', reference='browser/test_sdl_glshader.png', args=['-O2', '--closure=1', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
+  @no_wasm64('TODO: LEGACY_GL_EMULATION + wasm64')
   @requires_graphics_hardware
   def test_sdl_glshader2(self):
     self.btest_exit('test_sdl_glshader2.c', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], also_proxied=True)
@@ -2011,26 +2019,32 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   @requires_threads
   def test_gl_textures(self, args):
+    if args and self.is_wasm64():
+      self.skipTest('TODO: wasm64 + OFB')
     self.btest_exit('gl_textures.cpp', args=['-lGL'] + args)
 
   @requires_graphics_hardware
+  @no_wasm64('TODO: wasm64 + LEGACY_GL_EMULATION')
   def test_gl_ps(self):
     # pointers and a shader
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('gl_ps.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1)
 
   @requires_graphics_hardware
+  @no_wasm64('TODO: wasm64 + LEGACY_GL_EMULATION')
   def test_gl_ps_packed(self):
     # packed data that needs to be strided
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('gl_ps_packed.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1)
 
   @requires_graphics_hardware
+  @no_wasm64('TODO: wasm64 + LEGACY_GL_EMULATION')
   def test_gl_ps_strides(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('gl_ps_strides.c', reference='gl_ps_strides.png', args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'])
 
   @requires_graphics_hardware
+  @no_wasm64('TODO: wasm64 + LEGACY_GL_EMULATION')
   def test_gl_ps_worker(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('gl_ps_worker.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1, also_proxied=True)
@@ -2736,14 +2750,15 @@ Module["preRun"] = () => {
     self.btest_exit('webgl_unmasked_vendor_webgl.c', args=['-lGL'])
 
   @requires_graphics_hardware
-  def test_webgl2(self):
-    for opts in [
-      ['-sMIN_CHROME_VERSION=0', '-Wno-transpile'],
-      ['-O2', '-g1', '--closure=1', '-sWORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG'],
-      ['-sFULL_ES2'],
-    ]:
-      print(opts)
-      self.btest_exit('webgl2.cpp', args=['-sMAX_WEBGL_VERSION=2', '-lGL'] + opts)
+  @parameterized({
+    'legacy_browser': (['-sMIN_CHROME_VERSION=0', '-Wno-transpile'],),
+    'closure': (['-O2', '-g1', '--closure=1', '-sWORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG'],),
+    'full_es2': (['-sFULL_ES2'],),
+  })
+  def test_webgl2(self, args):
+    if '-sMIN_CHROME_VERSION=0' in args and self.is_wasm64():
+      self.skipTest('wasm64 not supported by legacy browsers')
+    self.btest_exit('webgl2.cpp', args=['-sMAX_WEBGL_VERSION=2', '-lGL'] + args)
 
   # Tests the WebGL 2 glGetBufferSubData() functionality.
   @requires_graphics_hardware
@@ -3421,6 +3436,7 @@ Module["preRun"] = () => {
       self.btest_exit('async_mainloop.cpp', args=['-O' + str(opts), '-sASYNCIFY'])
 
   @requires_sound_hardware
+  @no_wasm64('https://github.com/WebAssembly/binaryen/issues/6073')
   def test_sdl_audio_beep_sleep(self):
     self.btest_exit('test_sdl_audio_beep_sleep.cpp', args=['-Os', '-sASSERTIONS', '-sDISABLE_EXCEPTION_CATCHING=0', '-profiling', '-sSAFE_HEAP', '-lSDL', '-sASYNCIFY'], timeout=90)
 
@@ -4488,6 +4504,7 @@ Module["preRun"] = () => {
   @requires_threads
   @requires_offscreen_canvas
   @requires_graphics_hardware
+  @no_wasm64('TODO: wasm64 + OFFSCREENCANVAS')
   def test_webgl_offscreen_canvas_in_pthread(self, args):
     self.btest('gl_in_pthread.cpp', expected='1', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
 
@@ -4507,6 +4524,7 @@ Module["preRun"] = () => {
   @requires_threads
   @requires_offscreen_canvas
   @requires_graphics_hardware
+  @no_wasm64('TODO: wasm64 + OFFSCREENCANVAS')
   def test_webgl_offscreen_canvas_only_in_pthread(self):
     self.btest_exit('gl_only_in_pthread.cpp', args=['-pthread', '-sPTHREAD_POOL_SIZE', '-sOFFSCREENCANVAS_SUPPORT', '-lGL', '-sOFFSCREEN_FRAMEBUFFER'])
 
@@ -4519,15 +4537,16 @@ Module["preRun"] = () => {
   # For testing WebGL draft extensions like this, if using chrome as the browser,
   # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
   @requires_graphics_hardware
-  def test_webgl_multi_draw(self):
-    self.btest('webgl_multi_draw_test.c', reference='browser/webgl_multi_draw.png',
-               args=['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DMULTI_DRAW_ARRAYS=1', '-DEXPLICIT_SWAP=1'])
-    self.btest('webgl_multi_draw_test.c', reference='browser/webgl_multi_draw.png',
-               args=['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DMULTI_DRAW_ARRAYS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
-    self.btest('webgl_multi_draw_test.c', reference='browser/webgl_multi_draw.png',
-               args=['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DMULTI_DRAW_ELEMENTS=1', '-DEXPLICIT_SWAP=1'])
-    self.btest('webgl_multi_draw_test.c', reference='browser/webgl_multi_draw.png',
-               args=['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DMULTI_DRAW_ELEMENTS_INSTANCED=1', '-DEXPLICIT_SWAP=1'])
+  @parameterized({
+    'arrays': (['-DMULTI_DRAW_ARRAYS'],),
+    'arrays_instanced': (['-DMULTI_DRAW_ARRAYS_INSTANCED'],),
+    'elements': (['-DMULTI_DRAW_ELEMENTS'],),
+    'elements_instanced': (['-DMULTI_DRAW_ELEMENTS_INSTANCED'],),
+  })
+  def test_webgl_multi_draw(self, args):
+    self.btest('webgl_multi_draw_test.c',
+               reference='browser/webgl_multi_draw.png',
+               args=['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP'] + args)
 
   # Tests for base_vertex/base_instance extension
   # For testing WebGL draft extensions like this, if using chrome as the browser,
@@ -4566,6 +4585,7 @@ Module["preRun"] = () => {
 
   # Tests that -sOFFSCREEN_FRAMEBUFFER rendering works.
   @requires_graphics_hardware
+  @no_wasm64('TODO: wasm64 + OFB')
   def test_webgl_offscreen_framebuffer(self):
     # Tests all the different possible versions of libgl
     for threads in [[], ['-pthread', '-sPROXY_TO_PTHREAD']]:
@@ -4618,6 +4638,7 @@ Module["preRun"] = () => {
   @requires_threads
   @requires_offscreen_canvas
   @requires_graphics_hardware
+  @no_wasm64('TODO: wasm64 + OFFSCREENCANVAS')
   def test_webgl_offscreen_canvas_in_proxied_pthread(self, asyncify):
     cmd = ['-pthread', '-sOFFSCREENCANVAS_SUPPORT', '-lGL', '-sGL_DEBUG', '-sPROXY_TO_PTHREAD']
     if asyncify:
@@ -4634,6 +4655,7 @@ Module["preRun"] = () => {
   @requires_threads
   @requires_graphics_hardware
   @requires_offscreen_canvas
+  @no_wasm64('TODO: wasm64 + OFFSCREENCANVAS')
   def test_webgl_resize_offscreencanvas_from_main_thread(self, args):
     for args2 in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
       for args3 in [[], ['-sOFFSCREENCANVAS_SUPPORT', '-sOFFSCREEN_FRAMEBUFFER']]:

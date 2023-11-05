@@ -6,10 +6,6 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
-#if SUPPORT_BASE64_EMBEDDING || FORCE_FILESYSTEM
-#include "base64Utils.js"
-#endif
-
 #if HEADLESS
 if (!ENVIRONMENT_IS_WEB) {
 #include "headlessCanvas.js"

@@ -592,7 +592,9 @@ var LibraryPThread = {
       PThread.outstandingPromises[pthread_ptr].resolve();
     }
 #endif
+#if ASSERTIONS
     assert(worker);
+#endif
     PThread.returnWorkerToPool(worker);
   },
 
@@ -1241,6 +1243,7 @@ var LibraryPThread = {
 #endif // MAIN_MODULE
 
   $checkMailbox__deps: ['$callUserCallback',
+                        '_emscripten_check_mailbox',
                         '_emscripten_thread_mailbox_await'],
   $checkMailbox: () => {
     // Only check the mailbox if we have a live pthread runtime. We implement

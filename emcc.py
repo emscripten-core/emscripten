@@ -748,7 +748,7 @@ def make_js_executable(script):
   if settings.MEMORY64 == 1:
     cmd += shared.node_memory64_flags()
   elif settings.WASM_BIGINT:
-    cmd += shared.node_bigint_flags()
+    cmd += shared.node_bigint_flags(config.NODE_JS)
   if len(cmd) > 1 or not os.path.isabs(cmd[0]):
     # Using -S (--split-string) here means that arguments to the executable are
     # correctly parsed.  We don't do this by default because old versions of env
@@ -1249,10 +1249,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       print(shared.shlex_join(parts[1:]))
     return 0
 
-  passthrough_flags = ['-print-search-dirs', '-print-libgcc-file-name']
-  if any(a in args for a in passthrough_flags) or any(a.startswith('-print-file-name=') for a in args):
-    return run_process([clang] + args + get_cflags(args, run_via_emxx), check=False).returncode
-
   ## Process argument and setup the compiler
   state = EmccState(args)
   options, newargs = phase_parse_arguments(state)
@@ -1279,8 +1275,30 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   newargs, input_files = phase_setup(options, state, newargs)
 
-  if '-dumpmachine' in newargs:
+  if '-dumpmachine' in newargs or '-print-target-triple' in newargs or '--print-target-triple' in newargs:
     print(shared.get_llvm_target())
+    return 0
+
+  if '-print-search-dirs' in newargs or '--print-search-dirs' in newargs:
+    print(f'programs: ={config.LLVM_ROOT}')
+    print(f'libraries: ={cache.get_lib_dir(absolute=True)}')
+    return 0
+
+  if '-print-libgcc-file-name' in newargs or '--print-libgcc-file-name' in newargs:
+    settings.limit_settings(None)
+    compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt']
+    print(compiler_rt.get_path(absolute=True))
+    return 0
+
+  print_file_name = [a for a in newargs if a.startswith('-print-file-name=') or a.startswith('--print-file-name=')]
+  if print_file_name:
+    libname = print_file_name[-1].split('=')[1]
+    system_libpath = cache.get_lib_dir(absolute=True)
+    fullpath = os.path.join(system_libpath, libname)
+    if os.path.exists(fullpath):
+      print(fullpath)
+    else:
+      print(libname)
     return 0
 
   if not input_files and not state.link_flags:
@@ -1749,6 +1767,8 @@ def setup_pthreads(target):
     '_pthread_self',
     'checkMailbox',
   ]
+  if settings.EMBIND:
+    worker_imports.append('__embind_initialize_bindings')
   settings.EXPORTED_FUNCTIONS += worker_imports
   building.user_requested_exports.update(worker_imports)
 
@@ -2479,6 +2499,9 @@ def phase_linker_setup(options, state, newargs):
     # overrides that.
     default_setting('ABORTING_MALLOC', 0)
 
+  if '-lembind' in [x for _, x in state.link_flags]:
+    settings.EMBIND = 1
+
   if settings.PTHREADS:
     setup_pthreads(target)
     settings.JS_LIBRARIES.append((0, 'library_pthread.js'))
@@ -2517,6 +2540,17 @@ def phase_linker_setup(options, state, newargs):
   settings.SUPPORTS_PROMISE_ANY = feature_matrix.caniuse(feature_matrix.Feature.PROMISE_ANY)
   if not settings.BULK_MEMORY:
     settings.BULK_MEMORY = feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY)
+    if settings.BULK_MEMORY and settings.MEMORY64 and settings.MIN_NODE_VERSION < 180000:
+      # Note that we do not update tools/feature_matrix.py for this, as this issue is
+      # wasm64-specific: bulk memory for wasm32 has shipped in Node.js 12.5, but
+      # bulk memory for wasm64 has shipped only in Node.js 18.
+      #
+      # Feature matrix currently cannot express such complex combinations of
+      # features, so the only options are to either choose the least common
+      # denominator and disable bulk memory altogether for Node.js < 18 or to
+      # special-case this situation here. The former would be limiting for
+      # wasm32 users, so instead we do the latter:
+      settings.BULK_MEMORY = 0
 
   if settings.AUDIO_WORKLET:
     if settings.AUDIO_WORKLET == 1:
@@ -2585,9 +2619,6 @@ def phase_linker_setup(options, state, newargs):
   # Also, if using library_exports.js API, disable minification so that the feature can work.
   if not settings.DECLARE_ASM_MODULE_EXPORTS or '-lexports.js' in [x for _, x in state.link_flags]:
     settings.MINIFY_WASM_EXPORT_NAMES = 0
-
-  if '-lembind' in [x for _, x in state.link_flags]:
-    settings.EMBIND = 1
 
   # Enable minification of wasm imports and exports when appropriate, if we
   # are emitting an optimized JS+wasm combo (then the JS knows how to load the minified names).
@@ -3636,7 +3667,7 @@ def parse_args(newargs):
     elif check_flag('--jcache'):
       logger.error('jcache is no longer supported')
     elif check_arg('--cache'):
-      config.CACHE = os.path.normpath(consume_arg())
+      config.CACHE = os.path.abspath(consume_arg())
       cache.setup()
       # Ensure child processes share the same cache (e.g. when using emcc to compiler system
       # libraries)

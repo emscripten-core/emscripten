@@ -46,10 +46,10 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
     }
 
   See :ref:`embind-val-guide` for other examples.
-  
+
 
   .. warning:: JavaScript values can't be shared across threads, so neither can ``val`` instances that bind them.
-    
+
     For example, if you want to cache some JavaScript global as a ``val``, you need to retrieve and bind separate instances of that global by its name in each thread.
     The easiest way to do this is with a ``thread_local`` declaration:
 
@@ -108,11 +108,11 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
 
   .. _val_as_handle:
   .. cpp:function:: EM_VAL as_handle() const
-    
+
     Returns a raw handle representing this ``val``. This can be used for
     passing raw value handles to JavaScript and retrieving the values on the
     other side via ``Emval.toValue`` function. Example:
-    
+
     .. code:: cpp
 
       EM_JS(void, log_value, (EM_VAL val_handle), {
@@ -130,16 +130,16 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
     from JavaScript, where the JavaScript side should wrap a value with
     ``Emval.toHandle``, pass it to C++, and then C++ can use ``take_ownership``
     to convert it to a ``val`` instance. Example:
-    
+
     .. code:: cpp
-    
+
       EM_ASYNC_JS(EM_VAL, fetch_json_from_url, (const char *url_ptr), {
         var url = UTF8ToString(url);
         var response = await fetch(url);
         var json = await response.json();
         return Emval.toHandle(json);
       });
-      
+
       val obj = val::take_ownership(fetch_json_from_url("https://httpbin.org/json"));
       std::string author = obj["slideshow"]["author"].as<std::string>();
 
@@ -169,12 +169,12 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
 
 
   .. cpp:function:: val(val&& v)
-    
+
     Moves ownership of a value to a new ``val`` instance.
 
 
   .. cpp:function:: val(const val& v)
-    
+
     Creates another reference to the same value behind the provided ``val`` instance.
 
 
@@ -184,7 +184,7 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
 
 
   .. cpp:function:: val& operator=(val&& v)
-    
+
     Removes a reference to the currently bound value and takes over the provided one.
 
 
@@ -217,7 +217,7 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
 
 
   .. cpp:function:: val operator()(Args&&... args) const
-    
+
     Assumes that current value is a function, and invokes it with provided arguments.
 
 
@@ -262,6 +262,42 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
 
       .. note:: This method requires :ref:`Asyncify` to be enabled.
 
+  .. cpp:function:: val operator co_await() const
+
+   The ``co_await`` operator allows awaiting JavaScript promises represented by ``val``.
+
+   It's compatible with any C++20 coroutines, but should be normally used inside
+   a ``val``-returning coroutine which will also become a ``Promise``.
+
+   For example, it allows you to implement the equivalent of this JavaScript ``async``/``await`` function:
+
+    .. code:: javascript
+
+      async function foo() {
+        const response = await fetch("http://url");
+        const json = await response.json();
+        return json;
+      }
+
+      export { foo };
+
+    as a C++ coroutine:
+
+    .. code:: cpp
+
+      val foo() {
+        val response = co_await val::global("fetch")(std::string("http://url"));
+        val json = co_await response.call<val>("json");
+        return json;
+      }
+
+      EMSCRIPTEN_BINDINGS(module) {
+        function("foo", &foo);
+      }
+
+   Unlike the ``await()`` method, it doesn't need Asyncify as it uses native C++ coroutine transform.
+
+   :returns: A ``val`` representing the fulfilled value of this promise.
 
 .. cpp:type: EMSCRIPTEN_SYMBOL(name)
 

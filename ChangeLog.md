@@ -20,6 +20,13 @@ See docs/process.md for more on how version tagging works.
 
 3.1.48 (in development)
 -----------------------
+- The JS `assert` function is no longer available in release builds when
+  `-sSTRICT` is used.  This should only affect users with custom JS library code
+  which doesn't use `#if ASSERTIONS` guards around their `assert` calls.  This
+  behaviour matches that of `MINIMAL_RUNTIME`. (#20592)
+- The minimum version of node required run the compiler was updated from
+  10.19 to 16.20.  This does not effect the node requirements of the generated
+  JavaScript code. (#20551)
 - A new top-level `bootstrap` script was added.  This script is for emscripten
   developers and helps take a care of post-checkout tasks such as `npm install`.
   If this script needs to be run (e.g. becuase package.json was changed, emcc
@@ -27,6 +34,15 @@ See docs/process.md for more on how version tagging works.
 - If exceptions are disabled, using `new` together with `std::nothrow` no
   longer aborts if the allocation fails. Instead `nullptr` is returned now.
   This does not change the behavior of regular usage of `new`.
+- Default `MIN_CHROME_VERSION` was increased from 75 to 85 and default
+  `MIN_FIREFOX_VERSION` was increased from 68 to 79 to allow Emscripten
+  to use some ES2021 features for smaller JavaScript code size. (#20549)
+- Emscripten now generates PowerShell wrappers for its CLIs. This allows to
+  sidestep some of the issues with legacy cmd.exe, but developers must
+  explicitly opt-in to running PowerShell scripts in system settings or
+  via the `Set-ExecutionPolicy` command. (#20416)
+- `emscripten::val` now supports C++20 `co_await` operator for JavaScript
+  `Promise`s. (#20420)
 
 3.1.47 - 10/09/23
 -----------------
@@ -403,7 +419,7 @@ See docs/process.md for more on how version tagging works.
   helps wasm builds since wasm traps on such type mismatches in indirect calls.
   We recommend that users enable it to prevent such errors (which can be hard to
   debug otherwise). The older (less strict) behavior is also still possible with
-  `-Wcast-function-type -Wno-cast-funtion-type-strict` (or
+  `-Wcast-function-type -Wno-cast-function-type-strict` (or
   `-Wno-error=cast-function-type-strict` if you want the warnings to be visible
   but not errors). See https://reviews.llvm.org/D134831
 - libcxx and libcxxabi updated to LLVM 15. (#18113)

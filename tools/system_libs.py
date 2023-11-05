@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 import re
+from time import time
 from .toolchain_profiler import ToolchainProfiler
 
 import itertools
@@ -82,13 +83,14 @@ def clean_env():
   return safe_env
 
 
-def run_build_commands(commands):
+def run_build_commands(commands, num_inputs, build_dir=None):
   # Before running a set of build commands make sure the common sysroot
   # headers are installed.  This prevents each sub-process from attempting
   # to setup the sysroot itself.
   ensure_sysroot()
-  shared.run_multiple_processes(commands, env=clean_env())
-  logger.info('compiled %d inputs' % len(commands))
+  start_time = time()
+  shared.run_multiple_processes(commands, env=clean_env(), cwd=build_dir)
+  logger.info(f'compiled {num_inputs} inputs in {time() - start_time:.2f}s')
 
 
 def objectfile_sort_key(filename):
@@ -483,8 +485,9 @@ class Library:
     By default, this builds all the source files returned by `self.get_files()`,
     with the `cflags` returned by `self.get_cflags()`.
     """
+    batches = {}
     commands = []
-    objects = []
+    objects = set()
     cflags = self.get_cflags()
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
@@ -492,24 +495,12 @@ class Library:
                  '-fdebug-compilation-dir=/emsdk/emscripten']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
-      object_basename = shared.unsuffixed_basename(src)
-      # Resolve duplicates by appending unique.
-      # This is needed on case insensitve filesystem to handle,
-      # for example, _exit.o and _Exit.o.
-      if case_insensitive:
-        object_basename = object_basename.lower()
-      o = os.path.join(build_dir, object_basename + '.o')
-      object_uuid = 0
-      # Find a unique basename
-      while o in objects:
-        object_uuid += 1
-        o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
       ext = shared.suffix(src)
       if ext in ('.s', '.S', '.c'):
-        cmd = [shared.EMCC]
+        cmd = shared.EMCC
       else:
-        cmd = [shared.EMXX]
-
+        cmd = shared.EMXX
+      cmd = [cmd, '-c']
       if ext == '.s':
         # .s files are processed directly by the assembler.  In this case we can't pass
         # pre-processor flags such as `-I` and `-D` but we still want core flags such as
@@ -518,9 +509,43 @@ class Library:
       else:
         cmd += cflags
       cmd = self.customize_build_cmd(cmd, src)
-      commands.append(cmd + ['-c', src, '-o', o])
-      objects.append(o)
-    run_build_commands(commands)
+
+      object_basename = shared.unsuffixed_basename(src)
+      if case_insensitive:
+        object_basename = object_basename.lower()
+      o = os.path.join(build_dir, object_basename + '.o')
+      if o in objects:
+        # If we have seen a file with the same name before, we are on a case-insensitive
+        # filesystem and need a separate command to compile this file with a
+        # custom unique output object filename, as batch compile doesn't allow
+        # such customization.
+        #
+        # This is needed to handle, for example, _exit.o and _Exit.o.
+        object_uuid = 0
+        # Find a unique basename
+        while o in objects:
+          object_uuid += 1
+          o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
+        commands.append(cmd + [src, '-o', o])
+      else:
+        # Use relative paths to reduce the length of the command line.
+        # This allows to avoid switching to a response file as often.
+        src = os.path.relpath(src, build_dir)
+        batches.setdefault(tuple(cmd), []).append(src)
+      objects.add(o)
+
+    # Choose a chunk size that is large enough to avoid too many subprocesses
+    # but not too large to avoid task starvation.
+    # For now the heuristic is to split inputs by 2x number of cores.
+    chunk_size = max(1, len(objects) // (2 * shared.get_num_cores()))
+    # Convert batches to commands.
+    for cmd, srcs in batches.items():
+      cmd = list(cmd)
+      for i in range(0, len(srcs), chunk_size):
+        chunk_srcs = srcs[i:i + chunk_size]
+        commands.append(building.get_command_with_possible_response_file(cmd + chunk_srcs))
+
+    run_build_commands(commands, num_inputs=len(objects), build_dir=build_dir)
     return objects
 
   def customize_build_cmd(self, cmd, _filename):
