@@ -795,6 +795,8 @@ jobs:
             browser64.test_idbstore*
             browser64.test_fs_idbfs*
             browser64.test_webgl*
+            browser64.test_glbook
+            browser64.test_gles2_emulation*
             "
   test-browser-firefox:
     executor: bionic
