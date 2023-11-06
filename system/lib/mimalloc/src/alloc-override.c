@@ -272,6 +272,12 @@ void* _aligned_malloc(size_t alignment, size_t size)    { return mi_aligned_allo
   void  __libc_free(void* p)                            MI_FORWARD0(mi_free, p)
   void* __libc_memalign(size_t alignment, size_t size)  { return mi_memalign(alignment, size); }
 
+#ifdef __EMSCRIPTEN__ // emscripten adds some more on top of WASI
+  void* emscripten_builtin_malloc(size_t size)                      MI_FORWARD1(mi_malloc, size)
+  void*  emscripten_builtin_free(void* p)                           MI_FORWARD0(mi_free, p)
+  void* emscripten_builtin_memalign(size_t alignment, size_t size)  { return mi_memalign(alignment, size); }
+#endif
+
 #elif defined(__GLIBC__) && defined(__linux__)
   // forward __libc interface (needed for glibc-based Linux distributions)
   void* __libc_malloc(size_t size)                      MI_FORWARD1(mi_malloc,size)
@@ -295,10 +301,3 @@ void* _aligned_malloc(size_t alignment, size_t size)    { return mi_aligned_allo
 #endif
 
 #endif // MI_MALLOC_OVERRIDE && !_WIN32
-
-#ifdef __EMSCRIPTEN__
-  extern __typeof(malloc) emscripten_builtin_malloc __attribute__((alias("malloc")));
-  extern __typeof(free) emscripten_builtin_free __attribute__((alias("free")));
-  extern __typeof(memalign) emscripten_builtin_memalign __attribute__((alias("memalign")));
-#endif
-

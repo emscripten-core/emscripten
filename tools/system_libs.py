@@ -1729,9 +1729,12 @@ class libmimalloc(MTLibrary):
 
   cflags = [
     '-fno-builtin',
+    '-Wno-deprecated-pragma',
     # build emmalloc as only a system allocator, without exporting itself onto
     # malloc/free in the global scope
     '-DEMMALLOC_NO_STD_EXPORTS',
+    # build mimalloc with an override of malloc/free
+    '-DMI_MALLOC_OVERRIDE',
   ]
 
   # malloc/free/calloc are runtime functions and can be generated during LTO
