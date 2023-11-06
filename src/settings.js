@@ -157,7 +157,7 @@ var ABORTING_MALLOC = true;
 //
 // (This option was formerly called TOTAL_MEMORY.)
 // [link]
-var INITIAL_MEMORY = 16777216;
+var INITIAL_MEMORY = 2 * 16777216;
 
 // Set the maximum size of memory in the wasm module (in bytes). This is only
 // relevant when ALLOW_MEMORY_GROWTH is set, as without growth, the size of
