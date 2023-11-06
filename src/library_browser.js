@@ -21,16 +21,16 @@ var LibraryBrowser = {
   ],
   $Browser__postset: `
     // exports
-    Module["requestFullscreen"] = (lockPointer, resizeCanvas) => Browser.requestFullscreen(lockPointer, resizeCanvas);
+    Module["requestFullscreen"] = Browser.requestFullscreen;
 #if ASSERTIONS
-    Module["requestFullScreen"] = () => Browser.requestFullScreen();
+    Module["requestFullScreen"] = Browser.requestFullScreen;
 #endif
-    Module["requestAnimationFrame"] = (func) => Browser.requestAnimationFrame(func);
-    Module["setCanvasSize"] = (width, height, noUpdates) => Browser.setCanvasSize(width, height, noUpdates);
-    Module["pauseMainLoop"] = () => Browser.mainLoop.pause();
-    Module["resumeMainLoop"] = () => Browser.mainLoop.resume();
-    Module["getUserMedia"] = () => Browser.getUserMedia();
-    Module["createContext"] = (canvas, useWebGL, setInModule, webGLContextAttributes) => Browser.createContext(canvas, useWebGL, setInModule, webGLContextAttributes);
+    Module["requestAnimationFrame"] = Browser.requestAnimationFrame;
+    Module["setCanvasSize"] = Browser.setCanvasSize;
+    Module["pauseMainLoop"] = Browser.mainLoop.pause;
+    Module["resumeMainLoop"] = Browser.mainLoop.resume;
+    Module["getUserMedia"] = Browser.getUserMedia;
+    Module["createContext"] = Browser.createContext;
     var preloadedImages = {};
     var preloadedAudios = {};`,
 
