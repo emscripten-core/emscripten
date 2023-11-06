@@ -537,7 +537,7 @@ class Library:
     # Choose a chunk size that is large enough to avoid too many subprocesses
     # but not too large to avoid task starvation.
     # For now the heuristic is to split inputs by 2x number of cores.
-    chunk_size = max(1, len(objects) // (2 * shared.get_num_cores()))
+    chunk_size = 1 # mimalloc max(1, len(objects) // (2 * shared.get_num_cores()))
     # Convert batches to commands.
     for cmd, srcs in batches.items():
       cmd = list(cmd)
@@ -1647,7 +1647,7 @@ class libmalloc(MTLibrary):
 
   def __init__(self, **kwargs):
     self.malloc = kwargs.pop('malloc')
-    if self.malloc not in ('dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose', 'none'):
+    if self.malloc not in ('dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose', 'mimalloc', 'none'):
       raise Exception('malloc must be one of "emmalloc[-debug|-memvalidate][-verbose]", "dlmalloc" or "none", see settings.js')
 
     self.use_errno = kwargs.pop('use_errno')
@@ -1696,7 +1696,7 @@ class libmalloc(MTLibrary):
     return name
 
   def can_use(self):
-    return super().can_use() and settings.MALLOC != 'none'
+    return super().can_use() and settings.MALLOC != 'none' and settings.MALLOC != 'mimalloc'
 
   @classmethod
   def vary_on(cls):
@@ -1738,10 +1738,13 @@ class libmimalloc(MTLibrary):
   # Therefor they cannot themselves be part of LTO.
   force_object_files = True
 
+  includes = ['system/lib/mimalloc/include']
+
   # build all of mimalloc, and also emmalloc which is used as the system
   # allocator underneath it.
+  src_dir = '/'
   src_files = files_in_path(
-    path='system/lib/mimalloc',
+    path='system/lib/mimalloc/src',
     filenames=[
       'alloc.c',
       'alloc-aligned.c',
@@ -1758,7 +1761,10 @@ class libmimalloc(MTLibrary):
       'segment-map.c',
       'stats.c',
       'prim/prim.c',
-    ]) + 'system/lib/emmalloc.c'
+    ]) + ['system/lib/emmalloc.c']
+
+  def can_use(self):
+    return super().can_use() and settings.MALLOC == 'mimalloc'
 
 
 class libal(Library):
