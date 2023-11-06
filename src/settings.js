@@ -121,7 +121,7 @@ var STACK_SIZE = 64*1024;
 // the extra security checks it does (such as noticing metadata corruption in
 // its internal data structures, which emmalloc does not do).
 // [link]
-var MALLOC = "dlmalloc";
+var MALLOC = "mimalloc";
 
 // If 1, then when malloc would fail we abort(). This is nonstandard behavior,
 // but makes sense for the web since we have a fixed amount of memory that
