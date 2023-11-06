@@ -40,7 +40,7 @@ terms of the MIT license. A copy of the license can be found in the file
 #define mi_decl_cache_align
 #endif
 
-#if defined(__EMSCRIPTEN__) && !defined(__wasi__)
+#if defined(__EMSCRIPTEN__) && !defined(__wasi__) // reach shared wasm code
 #define __wasi__
 #endif
 
