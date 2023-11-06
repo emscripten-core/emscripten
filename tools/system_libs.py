@@ -1724,6 +1724,43 @@ class libmalloc(MTLibrary):
             [dict(malloc='emmalloc-verbose', **combo) for combo in combos if combo['verbose'] and not combo['memvalidate']])
 
 
+class libmimalloc(MTLibrary):
+  name = 'libmimalloc'
+
+  cflags = [
+    '-fno-builtin',
+    # build emmalloc as only a system allocator, without exporting itself onto
+    # malloc/free in the global scope
+    '-DEMMALLOC_NO_STD_EXPORTS',
+  ]
+
+  # malloc/free/calloc are runtime functions and can be generated during LTO
+  # Therefor they cannot themselves be part of LTO.
+  force_object_files = True
+
+  # build all of mimalloc, and also emmalloc which is used as the system
+  # allocator underneath it.
+  src_files = files_in_path(
+    path='system/lib/mimalloc',
+    filenames=[
+      'alloc.c',
+      'alloc-aligned.c',
+      'alloc-posix.c',
+      'arena.c',
+      'bitmap.c',
+      'heap.c',
+      'init.c',
+      'options.c',
+      'os.c',
+      'page.c',
+      'random.c', 
+      'segment.c',
+      'segment-map.c',
+      'stats.c',
+      'prim/prim.c',
+    ]) + 'system/lib/emmalloc.c'
+
+
 class libal(Library):
   name = 'libal'
 
@@ -2242,7 +2279,9 @@ def get_libs_to_link(args, forced, only_forced):
     if not settings.EXIT_RUNTIME:
       add_library('libnoexit')
     add_library('libc')
-    if settings.MALLOC != 'none':
+    if settings.MALLOC == 'mimalloc':
+      add_library('libmimalloc')
+    elif settings.MALLOC != 'none':
       add_library('libmalloc')
   add_library('libcompiler_rt')
   if settings.LINK_AS_CXX:

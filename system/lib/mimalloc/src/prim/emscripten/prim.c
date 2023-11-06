@@ -12,6 +12,37 @@ terms of the MIT license. A copy of the license can be found in the file
 #include "mimalloc/atomic.h"
 #include "mimalloc/prim.h"
 
+// Design
+// ======
+//
+// mimalloc is built on top of emmalloc. emmalloc is a minimal allocator on top
+// of sbrk. The reason for having three layers here is that we want mimalloc to
+// be able to allocate and release system memory properly, the same way it would
+// when using VirtualAlloc on Windows or mmap on POSIX, and sbrk is too limited.
+// Specifically, sbrk can only go up and down, and not "skip" over regions, and
+// so we end up either never freeing memory to the system, or we can get stuck
+// with holes.
+//
+// Atm wasm generally does *not* free memory back the system: once grown, we do
+// not shrink back down (https://github.com/WebAssembly/design/issues/1397).
+// However, that is expected to improve
+// (https://github.com/WebAssembly/memory-control/blob/main/proposals/memory-control/Overview.md)
+// and so we do not want to bake those limitations in here.
+//
+// Even without that issue, we want our system allocator to handle holes, that
+// is, it should merge freed regions and allow allocating new content there of
+// the full size, etc., so that we do not waste space. That means that the
+// system allocator really does need to handle the general problem of allocating
+// and freeing variable-sized chunks of memory in a random order, like malloc/
+// free do. And so it makes sense to layer mimalloc on top of such an
+// implementation.
+//
+// emmalloc makes sense for the lower level because it is small and simple while
+// still fully handling merging of holes etc. It is not the most efficient
+// allocator, but out assumption is that mimalloc needs to be fast while the
+// system allocator underneath it is called much less frequently.
+//
+
 //---------------------------------------------
 // init
 //---------------------------------------------
