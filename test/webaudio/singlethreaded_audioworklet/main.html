@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Emscripten-Generated Code</title>
+  </head>
+  <body>
+    <h1>Audio Worklet and WebAssembly</h1>
+    <p>A basic pattern to use Audio Worklet with WebAssembly. The
+      AudioWorkletProcessor simply bypasses (copies) the audio via the WebAssembly
+      function.</p>
+    <p>See
+      <a href="https://developer.chrome.com/blog/audio-worklet-design-pattern/"
+        target="_blank">Chrome Developers Article: Audio Worklet Design Pattern</a>
+      for more details.</p>
+
+    <div class="demo-box">
+      <button id="button-start" disabled>START</button>
+    </div>
+
+    <script type='text/javascript'>
+      // Copyright (c) 2018 The Chromium Authors. All rights reserved.
+      // Use of this source code is governed by a BSD-style license that can be
+      // found in the LICENSE file.
+
+      const audioContext = new AudioContext();
+
+      const startAudio = async (context) => {
+        await context.audioWorklet.addModule('wasm-worklet-processor.js');
+        const oscillator = new OscillatorNode(context);
+        const bypasser = new AudioWorkletNode(context, 'wasm-worklet-processor');
+        oscillator.connect(bypasser).connect(context.destination);
+        oscillator.start();
+      };
+
+      // A simple onLoad handler. It also handles user gesture to unlock the audio
+      // playback.
+      window.addEventListener('load', async () => {
+        const buttonEl = document.getElementById('button-start');
+        buttonEl.disabled = false;
+        buttonEl.addEventListener('click', async () => {
+          await startAudio(audioContext);
+          audioContext.resume();
+          buttonEl.disabled = true;
+          buttonEl.textContent = 'Playing...';
+
+          // report success
+          setTimeout(function() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'http://localhost:8888/report_result?0', true);
+            xhr.send();
+            audioContext.close(); // stop the audio output after 1 second, should be enough to verify output and not be annoying
+            window.close();
+          }, 1000);
+        }, false);
+      });
+    </script>
+  </body>
+</html>

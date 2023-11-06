@@ -283,3 +283,18 @@ class interactive(BrowserCore):
   # Tests that AUDIO_WORKLET+MINIMAL_RUNTIME+MODULARIZE combination works together.
   def test_audio_worklet_modularize(self):
     self.btest('webaudio/audioworklet.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMINIMAL_RUNTIME', '-sMODULARIZE'])
+
+  # This test verifies -sAUDIO_WORKLET=2 mode, where Emscripten output WebAssembly Module is compiled to be manually loadable
+  # inside a hand-written Audio Worklet processor node. The main page will not have any Emscripten produced code in it.
+  @parameterized({
+    'debug': (['-g'],), # Build with verbose debug flags with assertions enabled
+    'optimized': (['-Oz', '-sMINIMAL_RUNTIME'],), # Build with as optimized minimal flags as possible
+  })
+  def test_audio_worklet_singlethreaded(self, args):
+    # Deploy test files from test/ source directory over to the test working directory
+    for f in ['main.html', 'wasm-worklet-processor.js']:
+      shutil.copyfile(test_file(f'webaudio/singlethreaded_audioworklet/{f}'), f)
+    # Build and run the test
+    self.compile_btest([test_file('webaudio/singlethreaded_audioworklet/SimpleKernel.cc'), '-o', 'simple-kernel.wasmmodule.js',
+      '--bind', '-sBINARYEN_ASYNC_COMPILATION=0', '-sSINGLE_FILE=1', '-sEXPORTED_FUNCTIONS=_malloc', '-sAUDIO_WORKLET=2', '--post-js', test_file('webaudio/singlethreaded_audioworklet/export_sync_es6_module.js')] + args)
+    self.run_browser('main.html', '/report_result?0')

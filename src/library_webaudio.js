@@ -1,12 +1,37 @@
-#if AUDIO_WORKLET && !WASM_WORKERS
-#error "Building with -sAUDIO_WORKLET also requires enabling -sWASM_WORKERS!"
+/*
+Emscripten can target Audio Worklets in two different ways:
+
+1) -sAUDIO_WORKLET + -sWASM_WORKERS mode: User compiles a multithreaded WebAssembly program Module, which is then
+                                          shared to the Audio Worklet scope via postMessage()ing the Module over.
+                                          Audio Worklet and main program utilize the same shared WebAssembly Memory,
+                                          and can synchronize using lock-free atomics.
+2) -sAUDIO_WORKLET=2 mode: User compiles a singlethreaded WebAssembly program Module, which is loaded into Audio
+                           Worklet scope manually by a custom web page & JS audio engine developed by the user. Main
+                           web page does not contain any Emscripten-compiled content, no shared memory or multi-
+                           threading is in use.
+*/
+
+#if AUDIO_WORKLET == 1 && !WASM_WORKERS
+#error "Building with -sAUDIO_WORKLET=1 also requires enabling -sWASM_WORKERS!"
 #endif
 #if AUDIO_WORKLET && TEXTDECODER == 2
 #error "-sAUDIO_WORKLET does not support -sTEXTDECODER=2 since TextDecoder is not available in AudioWorkletGlobalScope! Use e.g. -sTEXTDECODER=1 when building with -sAUDIO_WORKLET"
 #endif
-#if AUDIO_WORKLET && SINGLE_FILE
-#error "-sAUDIO_WORKLET does not support -sSINGLE_FILE"
+#if AUDIO_WORKLET == 1 && SINGLE_FILE
+#error "-sAUDIO_WORKLET=1 does not support -sSINGLE_FILE"
 #endif
+
+#if AUDIO_WORKLET == 2 && SHARED_MEMORY
+#error "Building with -sAUDIO_WORKLET=2 does not support shared memory! (-sWASM_WORKERS nor -pthread). To target Audio Worklets with shared memory, use -sAUDIO_WORKLET=1 mode."
+#endif
+#if AUDIO_WORKLET == 2 && BINARYEN_ASYNC_COMPILATION
+#error "Building with -sAUDIO_WORKLET=2 requires -sBINARYEN_ASYNC_COMPILATION=0"
+#endif
+#if AUDIO_WORKLET == 2 && !SINGLE_FILE
+#error "Building with -sAUDIO_WORKLET=2 requires -sSINGLE_FILE=1"
+#endif
+
+#if AUDIO_WORKLET == 1 // None of the code below is used in -sAUDIO_WORKLET=2 mode.
 
 let LibraryWebAudio = {
   $EmAudio: {},
@@ -334,3 +359,4 @@ let LibraryWebAudio = {
 };
 
 addToLibrary(LibraryWebAudio);
+#endif // ~AUDIO_WORKLET==1

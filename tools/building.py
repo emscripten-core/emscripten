@@ -361,6 +361,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
     cmd += ['--exportES6']
   if settings.VERBOSE:
     cmd += ['verbose']
+  cmd += ['--exportES6'] # XXXXXXXXXX figure out how to pass this without passing EXPORT_ES6 maybe?
   if return_output:
     return check_call(cmd, stdout=PIPE).stdout
 
