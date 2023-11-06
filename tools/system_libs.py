@@ -1735,6 +1735,8 @@ class libmimalloc(MTLibrary):
     '-DEMMALLOC_NO_STD_EXPORTS',
     # build mimalloc with an override of malloc/free
     '-DMI_MALLOC_OVERRIDE',
+    # TODO: add build modes that include debug checks 1,2,3
+    '-DMI_DEBUG=0',
   ]
 
   # malloc/free/calloc are runtime functions and can be generated during LTO
