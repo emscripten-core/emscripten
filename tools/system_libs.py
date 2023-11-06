@@ -537,7 +537,7 @@ class Library:
     # Choose a chunk size that is large enough to avoid too many subprocesses
     # but not too large to avoid task starvation.
     # For now the heuristic is to split inputs by 2x number of cores.
-    chunk_size = 1 # mimalloc max(1, len(objects) // (2 * shared.get_num_cores()))
+    chunk_size = max(1, len(objects) // (2 * shared.get_num_cores()))
     # Convert batches to commands.
     for cmd, srcs in batches.items():
       cmd = list(cmd)
