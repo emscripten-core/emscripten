@@ -1745,26 +1745,27 @@ class libmimalloc(MTLibrary):
 
   # build all of mimalloc, and also emmalloc which is used as the system
   # allocator underneath it.
-  src_dir = '/'
-  src_files = files_in_path(
-    path='system/lib/mimalloc/src',
-    filenames=[
-      'alloc.c',
-      'alloc-aligned.c',
-      'alloc-posix.c',
-      'arena.c',
-      'bitmap.c',
-      'heap.c',
-      'init.c',
-      'options.c',
-      'os.c',
-      'page.c',
-      'random.c', 
-      'segment.c',
-      'segment-map.c',
-      'stats.c',
-      'prim/prim.c',
-    ]) + ['system/lib/emmalloc.c']
+  def get_files(self):
+    return files_in_path(
+      path='system/lib/mimalloc/src',
+      filenames=[
+        'alloc.c',
+        'alloc-aligned.c',
+        'alloc-posix.c',
+        'arena.c',
+        'bitmap.c',
+        'heap.c',
+        'init.c',
+        'options.c',
+        'os.c',
+        'page.c',
+        'random.c', 
+        'segment.c',
+        'segment-map.c',
+        'stats.c',
+        'prim/prim.c',
+      ]
+    ) + ['system/lib/emmalloc.c']
 
   def can_use(self):
     return super().can_use() and settings.MALLOC == 'mimalloc'
