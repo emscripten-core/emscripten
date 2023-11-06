@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.48 (in development)
+3.1.49 (in development)
 -----------------------
+
+3.1.48 - 11/05/23
+-----------------
 - The JS `assert` function is no longer available in release builds when
   `-sSTRICT` is used.  This should only affect users with custom JS library code
   which doesn't use `#if ASSERTIONS` guards around their `assert` calls.  This
