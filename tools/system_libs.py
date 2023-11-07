@@ -1767,7 +1767,9 @@ class libmimalloc(MTLibrary):
         'stats.c',
         'prim/prim.c',
       ]
-    ) + ['system/lib/emmalloc.c']
+    ) + files_in_path(
+      path='system/lib/',
+      filenames=['emmalloc.c'])
 
   def can_use(self):
     return super().can_use() and settings.MALLOC == 'mimalloc'
