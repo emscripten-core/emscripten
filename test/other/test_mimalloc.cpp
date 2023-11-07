@@ -19,7 +19,10 @@ pthread_t thread[MAX_WORKERS] = {};
 
 std::atomic<int> running = 0;
 
+#ifndef TOTAL
 #define TOTAL   50000000
+#endif
+
 #define AT_ONCE     1024
 #define BASE_SIZE   1000
 
@@ -63,10 +66,9 @@ void *ThreadMain(void *arg) {
     double end = emscripten_date_now();
     printf("total time %.2f\n", end - start);
 #endif
+    printf("Done.\n");
   }
-#if WORKERS > 0
   pthread_exit(0);
-#endif
 }
 
 void CreateThread(int i) {
@@ -105,6 +107,4 @@ int main() {
   // One worker, just run it.
   ThreadMain(NULL);
 #endif
-
-  printf("Done.\n");
 }
