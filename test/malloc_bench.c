@@ -85,7 +85,7 @@ void randoms() {
           total_allocated += size;
         }
       } else {
-        if (calloc_ && USE_CALLOC) {
+        if (!calloc_ || !USE_CALLOC) {
           bins[bin] = malloc(size);
           allocated[bin] = size;
           total_allocated += size;
