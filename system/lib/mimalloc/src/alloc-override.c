@@ -274,7 +274,7 @@ void* _aligned_malloc(size_t alignment, size_t size)    { return mi_aligned_allo
 
 #ifdef __EMSCRIPTEN__ // emscripten adds some more on top of WASI
   void* emscripten_builtin_malloc(size_t size)                      MI_FORWARD1(mi_malloc, size)
-  void*  emscripten_builtin_free(void* p)                           MI_FORWARD0(mi_free, p)
+  void* emscripten_builtin_free(void* p)                            MI_FORWARD0(mi_free, p)
   void* emscripten_builtin_memalign(size_t alignment, size_t size)  { return mi_memalign(alignment, size); }
 #endif
 
