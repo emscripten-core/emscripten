@@ -3011,6 +3011,7 @@ int f() {
                   '-sUSE_PTHREADS',
                   '-sPROXY_TO_PTHREAD',
                   '-sPTHREAD_POOL_SIZE=1',
+                  '-sSINGLE_FILE',
                   '-lembind', # Test duplicated link option.
                   ]
     self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
@@ -14165,3 +14166,8 @@ addToLibrary({
     self.do_runf(test_file('other/test_unused_destructor.c'), emcc_args=['-flto', '-O2'])
     # Verify that the string constant in the destructor is not included in the binary
     self.assertNotIn(b'hello from dtor', read_binary('test_unused_destructor.wasm'))
+
+  def test_strip_all(self):
+    # Test that even with `-Wl,--strip-all` the target features section is generated
+    # by wasm-ld so that later phases (e.g. wasm-opt) can read it.
+    self.do_runf('hello_world.c', emcc_args=['-Wl,--strip-all', '-pthread'])

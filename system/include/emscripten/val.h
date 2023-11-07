@@ -18,7 +18,7 @@
 #include <cstdint> // uintptr_t
 #include <vector>
 #include <type_traits>
-#if _LIBCPP_STD_VER >= 20
+#if __cplusplus >= 202002L
 #include <coroutine>
 #include <variant>
 #endif
@@ -114,7 +114,7 @@ EM_VAL _emval_await(EM_VAL promise);
 EM_VAL _emval_iter_begin(EM_VAL iterable);
 EM_VAL _emval_iter_next(EM_VAL iterator);
 
-#if _LIBCPP_STD_VER >= 20
+#if __cplusplus >= 202002L
 void _emval_coro_suspend(EM_VAL promise, void* coro_ptr);
 EM_VAL _emval_coro_make_promise(EM_VAL *resolve, EM_VAL *reject);
 #endif
@@ -301,7 +301,7 @@ public:
 
   template<typename Iter>
   static val array(Iter begin, Iter end) {
-#if _LIBCPP_STD_VER >= 20
+#if __cplusplus >= 202002L
     if constexpr (std::contiguous_iterator<Iter> &&
                   internal::typeSupportsMemoryView<
                     typename std::iterator_traits<Iter>::value_type>()) {
@@ -595,7 +595,7 @@ public:
   // our iterators are sentinel-based range iterators; use nullptr as the end sentinel
   constexpr nullptr_t end() const { return nullptr; }
 
-#if _LIBCPP_STD_VER >= 20
+#if __cplusplus >= 202002L
   struct promise_type;
 #endif
 
@@ -659,7 +659,7 @@ inline val::iterator val::begin() const {
   return iterator(*this);
 }
 
-#if _LIBCPP_STD_VER >= 20
+#if __cplusplus >= 202002L
 namespace internal {
 // Awaiter defines a set of well-known methods that compiler uses
 // to drive the argument of the `co_await` operator (regardless
