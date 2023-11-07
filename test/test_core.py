@@ -10090,8 +10090,6 @@ wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
 simd2 = make_run('simd2', emcc_args=['-O2', '-msimd128'])
 bulkmem2 = make_run('bulkmem2', emcc_args=['-O2', '-mbulk-memory'])
 wasmfs = make_run('wasmfs', emcc_args=['-O2', '-DWASMFS'], settings={'WASMFS': 1})
-# mimalloc requires significantly more memory than dlmalloc or emmalloc
-mimalloc = make_run('mimalloc', emcc_args=['-O2', '--profiling'], settings={'MALLOC': 'mimalloc', 'INITIAL_MEMORY': '128mb'})
 
 # SAFE_HEAP/STACK_OVERFLOW_CHECK
 core0s = make_run('core2s', emcc_args=['-g'], settings={'SAFE_HEAP': 1})

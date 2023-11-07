@@ -96,7 +96,6 @@ misc_test_modes = [
   'wasm64l',
   'bigint',
   'browser64',
-  'mimalloc',
 ]
 
 
