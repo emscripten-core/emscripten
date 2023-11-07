@@ -5606,8 +5606,6 @@ Module["preRun"] = () => {
     'memvalidate_verbose': (['-sMALLOC=emmalloc-memvalidate-verbose'],),
   })
   def test_emmalloc_3gb(self, args):
-    if self.is_wasm64() and 'verbose' in args[0]:
-      self.skipTest('https://github.com/emscripten-core/emscripten/pull/20654')
     self.btest_exit('alloc_3gb.c',
                     args=['-sMAXIMUM_MEMORY=4GB', '-sALLOW_MEMORY_GROWTH=1'] + args)
 
