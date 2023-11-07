@@ -7445,7 +7445,8 @@ Resolved: "/" => "/"
       for malloc, name in (
         ('dlmalloc', 'dlmalloc'),
         (None, 'default'),
-        ('emmalloc', 'emmalloc')
+        ('emmalloc', 'emmalloc'),
+        ('mimalloc', 'mimalloc'),
       ):
         print(malloc, name)
         args = opts[:]
@@ -7459,6 +7460,8 @@ Resolved: "/" => "/"
       self.assertEqual(sizes['dlmalloc'], sizes['default'])
       # emmalloc is much smaller
       self.assertLess(sizes['emmalloc'], sizes['dlmalloc'] - 5000)
+      # mimalloc is much larger
+      self.assertGreater(sizes['mimalloc'], sizes['dlmalloc'] - 25000)
     run([])
     run(['-O2'])
 
