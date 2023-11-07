@@ -919,8 +919,13 @@ class benchmark(common.RunnerCore):
     self.do_benchmark('memset_16mb', read_file(test_file('benchmark/benchmark_memset.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')])
 
   def test_malloc(self):
+    src = read_file(test_file('benchmark/benchmark_malloc.cpp'))
+    self.do_benchmark('malloc', src, 'Done.', shared_args=['-DWORKERS=1'], emcc_args=['-sEXIT_RUNTIME'])
 
   def test_malloc_mt(self):
+    # Multithreaded malloc test. For emcc we use mimalloc here.
+    src = read_file(test_file('benchmark/benchmark_malloc.cpp'))
+    self.do_benchmark('malloc', src, 'Done.', shared_args=['-DWORKERS=4', '-pthread'], emcc_args=['-sEXIT_RUNTIME', '-sMALLOC=mimalloc'])
 
   def test_matrix_multiply(self):
     def output_parser(output):
