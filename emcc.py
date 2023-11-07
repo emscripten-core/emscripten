@@ -3310,7 +3310,7 @@ def phase_embind_emit_tsd(options, in_wasm, wasm_target, memfile, js_syms):
   # Build the flags needed by Node.js to properly run the output file.
   node_args = []
   if settings.MEMORY64:
-    node_args += ['--experimental-wasm-memory64']
+    node_args += shared.node_memory64_flags()
   if settings.WASM_EXCEPTIONS:
     node_args += ['--experimental-wasm-eh']
   # Run the generated JS file with the proper flags to generate the TypeScript bindings.
