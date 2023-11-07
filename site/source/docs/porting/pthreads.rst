@@ -154,15 +154,14 @@ Allocator performance
 The default system allocator in Emscripten, ``dlmalloc``, is very efficient in a
 single-threaded program, but it has a single global lock which means if there is
 contention on ``malloc`` then you can see overhead. You can use ``mimalloc``
-instead by using ``-sMALLOC=mimalloc``, which is more complex allocator that is
+instead by using ``-sMALLOC=mimalloc``, which is a more sophisticated allocator
 tuned for multithreaded performance. ``mimalloc`` has separate allocation
 contexts on each thread, allowing performance to scale a lot better under
 ``malloc/free`` contention.
 
-Note that ``mimalloc`` is larger in code size than ``dlmalloc``. It also uses
-more memory at runtime (there is a tradeoff between efficiency of memory usage
-and execution speed), so you may need to adjust ``INITIAL_MEMORY`` to a higher
-value.
+Note that ``mimalloc`` is larger in code size than ``dlmalloc``, and also uses
+more memory at runtime (so you may need to adjust ``INITIAL_MEMORY`` to a higher
+value), so this are tradeoffs here.
 
 Running code and tests
 ======================
