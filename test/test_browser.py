@@ -2970,7 +2970,7 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   def test_glfw3_hi_dpi_aware(self):
-    self.btest('test_glfw3_hi_dpi_aware.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'], expected='1')
+    self.btest_exit('test_glfw3_hi_dpi_aware.c', args=['-sUSE_GLFW=3', '-sASYNCIFY', '-lglfw', '-lGL'])
 
   @requires_graphics_hardware
   @parameterized({

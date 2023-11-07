@@ -630,11 +630,12 @@ var LibraryBrowser = {
 
     updateResizeListeners() {
       var canvas = Module['canvas'];
+      var cw = canvas.width, ch = canvas.height;
       if (Browser.isHiDPIAware) {
-        Browser.resizeListeners.forEach((listener) => listener(canvas.clientWidth, canvas.clientHeight, canvas.width, canvas.height));
-      } else {
-        Browser.resizeListeners.forEach((listener) => listener(canvas.width, canvas.height, canvas.width, canvas.height));
+        cw = canvas.clientWidth;
+        ch = canvas.clientHeight;
       }
+      Browser.resizeListeners.forEach((listener) => listener(cw, ch, canvas.width, canvas.height));
     },
 
     setCanvasSize(width, height, noUpdates) {
@@ -737,12 +738,12 @@ var LibraryBrowser = {
 
         // handling dynamic changes to devicePixelRatio
         if (Browser.devicePixelRatioMQS) {
-          Browser.devicePixelRatioMQS.removeEventListener("change", Browser.onDevicePixelRatioChange);
+          Browser.devicePixelRatioMQS.removeEventListener('change', Browser.onDevicePixelRatioChange);
           Browser.devicePixelRatioMQS = null;
         }
         if (Browser.isHiDPIAware) {
-          Browser.devicePixelRatioMQS = window.matchMedia("(resolution: " + Browser.getDevicePixelRatio() + "dppx)");
-          Browser.devicePixelRatioMQS.addEventListener("change", Browser.onDevicePixelRatioChange);
+          Browser.devicePixelRatioMQS = window.matchMedia('(resolution: ' + Browser.getDevicePixelRatio() + 'dppx)');
+          Browser.devicePixelRatioMQS.addEventListener('change', Browser.onDevicePixelRatioChange);
         }
       }
     },

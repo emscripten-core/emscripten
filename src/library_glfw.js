@@ -990,8 +990,6 @@ var LibraryGLFW = {
         } else {
           Browser.exitFullscreen();
           Browser.setCanvasSize(width, height);
-          win.width = width;
-          win.height = height;
         }
       }
 
