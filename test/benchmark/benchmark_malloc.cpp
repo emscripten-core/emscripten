@@ -26,7 +26,7 @@ std::atomic<int> running = 0;
 void *ThreadMain(void *arg) {
   puts("thread started");
   running++;
-  void* allocations[AT_ONCE];
+  void** allocations = (void**)malloc(AT_ONCE * sizeof(void*));
   for (int i = 0; i < AT_ONCE; i++) {
     allocations[i] = NULL;
   }
@@ -55,6 +55,7 @@ void *ThreadMain(void *arg) {
     total += *data;
     free(allocation);
   }
+  free(allocations);
   printf("thread exiting with total %d\n", total);
   running--;
   if (running == 0) {
