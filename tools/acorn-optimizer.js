@@ -371,7 +371,7 @@ function runJSDCE(ast, aggressive) {
       }
       const scope = {};
       scopes.push(scope);
-      node.params.forEach((param) => {
+      node.params.forEach(function traverse(param) {
         if (param.type === 'RestElement') {
           param = param.argument;
         }
@@ -379,10 +379,20 @@ function runJSDCE(ast, aggressive) {
           c(param.right);
           param = param.left;
         }
-        assert(param.type === 'Identifier', param.type);
-        const name = param.name;
-        ensureData(scope, name).def = 1;
-        scope[name].param = 1;
+        if (param.type === 'ArrayPattern') {
+          for (var elem of param.elements) {
+            traverse(elem);
+          }
+        } else if (param.type === 'ObjectPattern') {
+          for (var prop of param.properties) {
+            traverse(prop.key);
+          }
+        } else {
+          assert(param.type === 'Identifier', param.type);
+          const name = param.name;
+          ensureData(scope, name).def = 1;
+          scope[name].param = 1;
+        }
       });
       c(node.body);
       // we can ignore self-references, i.e., references to ourselves inside
