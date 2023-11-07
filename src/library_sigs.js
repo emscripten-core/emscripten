@@ -545,7 +545,7 @@ sigs = {
   eglGetCurrentContext__sig: 'p',
   eglGetCurrentDisplay__sig: 'p',
   eglGetCurrentSurface__sig: 'pi',
-  eglGetDisplay__sig: 'pi',
+  eglGetDisplay__sig: 'pp',
   eglGetError__sig: 'i',
   eglInitialize__sig: 'ippp',
   eglMakeCurrent__sig: 'ipppp',

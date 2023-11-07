@@ -238,9 +238,17 @@ commands:
         type: string
         default: ""
     steps:
+      - when:
+          # We only set EMTEST_RETRY_FLAKY on pull requests.  When we run
+          # normal CI jobs on branches like main we still want to be able to
+          # detect flakyness.
+          condition: ${CIRCLE_PULL_REQUEST}
+          steps:
+            set-retry-flaky-tests
       - run:
           name: run tests (<< parameters.title >>)
           command: |
+            env
             ./test/runner << parameters.test_targets >>
             $EMSDK_PYTHON ./test/check_clean.py
   freeze-cache:
@@ -249,6 +257,12 @@ commands:
       - run:
           name: Add EM_FROZEN_CACHE to bash env
           command: echo "export EM_FROZEN_CACHE=1" >> $BASH_ENV
+  set-retry-flaky-tests:
+    description: "Set EMTEST_RETRY_FLAKY"
+    steps:
+      - run:
+          name: Add EMTEST_RETRY_FLAKY to bash env
+          command: echo "export EMTEST_RETRY_FLAKY=2" >> $BASH_ENV
   run-tests-linux:
     description: "Runs emscripten tests"
     parameters:
@@ -795,6 +809,8 @@ jobs:
             browser64.test_idbstore*
             browser64.test_fs_idbfs*
             browser64.test_webgl*
+            browser64.test_glbook
+            browser64.test_gles2_emulation*
             "
   test-browser-firefox:
     executor: bionic

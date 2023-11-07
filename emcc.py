@@ -3297,12 +3297,13 @@ def phase_embind_emit_tsd(options, in_wasm, wasm_target, memfile, js_syms):
   # import names.
   settings.MINIFY_WASM_IMPORTED_MODULES = False
   setup_environment_settings()
+  # Use a separate Wasm file so the JS does not need to be modified after emscripten.run.
+  settings.SINGLE_FILE = False
   # Embind may be included multiple times, de-duplicate the list first.
   settings.JS_LIBRARIES = dedup_list(settings.JS_LIBRARIES)
   # Replace embind with the TypeScript generation version.
   embind_index = settings.JS_LIBRARIES.index('embind/embind.js')
   settings.JS_LIBRARIES[embind_index] = 'embind/embind_ts.js'
-
   outfile_js = in_temp('tsgen_a.out.js')
   # The Wasm outfile may be modified by emscripten.run, so use a temporary file.
   outfile_wasm = in_temp('tsgen_a.out.wasm')
