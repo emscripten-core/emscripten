@@ -56,6 +56,7 @@ EMTEST_SAVE_DIR = None
 EMTEST_ALL_ENGINES = None
 EMTEST_SKIP_SLOW = None
 EMTEST_SKIP_FLAKY = None
+EMTEST_RETRY_FLAKY = None
 EMTEST_LACKS_NATIVE_CLANG = None
 EMTEST_VERBOSE = None
 EMTEST_REBASELINE = None
@@ -148,9 +149,27 @@ def is_slow_test(func):
 
 def flaky(note=''):
   assert not callable(note)
+
   if EMTEST_SKIP_FLAKY:
     return unittest.skip(note)
-  return lambda f: f
+
+  if not EMTEST_RETRY_FLAKY:
+    return lambda f: f
+
+  def decorated(f):
+    @wraps(f)
+    def modified(*args, **kwargs):
+      for i in range(EMTEST_RETRY_FLAKY):
+        try:
+          return f(*args, **kwargs)
+        except AssertionError as exc:
+          preserved_exc = exc
+          logging.info(f'Retrying flaky test (attempt {i}/{EMTEST_RETRY_FLAKY} failed): {exc}')
+      raise AssertionError('Flaky test has failed too many times') from preserved_exc
+
+    return modified
+
+  return decorated
 
 
 def disabled(note=''):
@@ -288,6 +307,7 @@ def with_env_modify(updates):
   assert not callable(updates)
 
   def decorated(f):
+    @wraps(f)
     def modified(self, *args, **kwargs):
       with env_modify(updates):
         return f(self, *args, **kwargs)
