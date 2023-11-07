@@ -4,7 +4,7 @@
 // found in the LICENSE file.
 
 // Used internally to test performance of emmalloc against other
-// malloc implementations.  (Also run as part of the emscripten test suite).
+// malloc implementations.  (Not run as part of the emscripten test suite).
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -85,7 +85,7 @@ void randoms() {
           total_allocated += size;
         }
       } else {
-        if (!calloc_ || !USE_CALLOC) {
+        if (calloc_ && USE_CALLOC) {
           bins[bin] = malloc(size);
           allocated[bin] = size;
           total_allocated += size;
