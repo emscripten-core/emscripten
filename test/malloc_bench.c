@@ -14,7 +14,7 @@
 
 const int BINS = 32768;
 const int BIN_MASK = BINS - 1;
-const int ITERS = 6 * 1024; // Add * 1024 for heavy benchmarking
+const int ITERS = 6 * 1024 * 1024;
 //  12, 64: emmalloc slower
 //  12, 28: emmalloc much sbrkier and also slower
 // 256, 512: emmalloc faster without USE_MEMORY
