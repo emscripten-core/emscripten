@@ -6739,11 +6739,11 @@ void* operator new(size_t size) {
   @no_wasm64('TODO: investigate why this takes 1GB of INITIAL_MEMORY there')
   @parameterized({
     '': ([],),
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+    'pthreads': (['-pthread'],),
   })
-  @node_pthreads
   def test_mimalloc(self, args):
     self.emcc_args += args
+    print(args, self.emcc_args)
     self.set_setting('MALLOC', 'mimalloc')
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY', '256mb')
@@ -7695,7 +7695,6 @@ void* operator new(size_t size) {
     '': ([],),
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
-  @node_pthreads
   def test_embind_2(self, args):
     self.maybe_closure()
     self.emcc_args += ['-lembind', '--post-js', 'post.js'] + args
