@@ -48,7 +48,7 @@ IGNORE_COMPILATION = 0
 
 OPTIMIZATIONS = '-O3'
 
-PROFILING = 1
+PROFILING = 0
 
 LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
 
@@ -211,7 +211,7 @@ class EmscriptenBenchmarker(Benchmarker):
     ] + LLVM_FEATURE_FLAGS
     if shared_args:
       cmd += shared_args
-    if PROFILING:
+    if common.EMTEST_FORCE64:
       cmd += ['--profiling']
     else:
       cmd += ['--closure=1', '-sMINIMAL_RUNTIME']
@@ -220,6 +220,8 @@ class EmscriptenBenchmarker(Benchmarker):
     cmd += emcc_args + self.extra_args
     if '-sFILESYSTEM' not in cmd and '-sFORCE_FILESYSTEM' not in cmd:
       cmd += ['-sFILESYSTEM=0']
+    if PROFILING:
+      cmd += ['--profiling-funcs']
     self.cmd = cmd
     run_process(cmd, env=self.env)
     if self.binaryen_opts:
@@ -329,9 +331,9 @@ if config.V8_ENGINE and config.V8_ENGINE in config.JS_ENGINES:
     ]
   else:
     benchmarkers += [
-      # EmscriptenBenchmarker(default_v8_name, aot_v8),
-      # EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
-      # EmscriptenBenchmarker(default_v8_name + '-ctors', aot_v8, ['-sEVAL_CTORS']),
+      EmscriptenBenchmarker(default_v8_name, aot_v8),
+      EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
+      EmscriptenBenchmarker(default_v8_name + '-ctors', aot_v8, ['-sEVAL_CTORS']),
     ]
   if os.path.exists(CHEERP_BIN):
     benchmarkers += [
@@ -355,7 +357,7 @@ if config.NODE_JS and config.NODE_JS in config.JS_ENGINES:
     ]
   else:
     benchmarkers += [
-      EmscriptenBenchmarker('Node.js', config.NODE_JS),
+      # EmscriptenBenchmarker('Node.js', config.NODE_JS),
     ]
 
 
