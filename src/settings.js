@@ -121,7 +121,7 @@ var STACK_SIZE = 64*1024;
 // the extra security checks it does (such as noticing metadata corruption in
 // its internal data structures, which emmalloc does not do).
 // [link]
-var MALLOC = "mimalloc";
+var MALLOC = "dlmalloc";
 
 // If 1, then when malloc would fail we abort(). This is nonstandard behavior,
 // but makes sense for the web since we have a fixed amount of memory that
@@ -157,7 +157,7 @@ var ABORTING_MALLOC = true;
 //
 // (This option was formerly called TOTAL_MEMORY.)
 // [link]
-var INITIAL_MEMORY = 2 * 16777216;
+var INITIAL_MEMORY = 16777216;
 
 // Set the maximum size of memory in the wasm module (in bytes). This is only
 // relevant when ALLOW_MEMORY_GROWTH is set, as without growth, the size of
