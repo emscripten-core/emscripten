@@ -89,7 +89,7 @@ def maybe_copy(src, dest):
   building/installing a new flavor of a given library.  In this case the
   headers will be "re-installed" but we skip the actual filesystem mods
   to avoid racing with other processes that might be reading these files.
-  """  
+  """
   if os.path.exists(dest) and utils.read_binary(src) == utils.read_binary(dest):
     return
   shutil.copyfile(src, dest)
