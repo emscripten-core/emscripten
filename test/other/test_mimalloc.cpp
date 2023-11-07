@@ -20,7 +20,7 @@ pthread_t thread[MAX_WORKERS] = {};
 std::atomic<int> running = 0;
 
 #ifndef TOTAL
-#define TOTAL   50000000
+#define TOTAL  100000000
 #endif
 
 #define AT_ONCE     1024
