@@ -55,13 +55,6 @@ void _mi_prim_mem_init( mi_os_mem_config_t* config ) {
   config->has_virtual_reserve = false;
 }
 
-//---------------------------------------------
-// Free, Allocation: We use emmalloc as the
-// "system allocator". That is a small
-// allocator that still has the ability to
-// properly return memory to the OS.
-//---------------------------------------------
-
 extern void emmalloc_free(void*);
 
 int _mi_prim_free(void* addr, size_t size ) {
