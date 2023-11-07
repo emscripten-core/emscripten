@@ -148,6 +148,22 @@ The Emscripten implementation for the pthreads API should follow the POSIX stand
 
 Also note that when compiling code that uses pthreads, an additional JavaScript file ``NAME.worker.js`` is generated alongside the output .js file (where ``NAME`` is the basename of the main file being emitted). That file must be deployed with the rest of the generated code files. By default, ``NAME.worker.js`` will be loaded relative to the main HTML page URL. If it is desirable to load the file from a different location e.g. in a CDN environment, then one can define the ``Module.locateFile(filename)`` function in the main HTML ``Module`` object to return the URL of the target location of the ``NAME.worker.js`` entry point. If this function is not defined in ``Module``, then the default location relative to the main HTML file is used.
 
+Allocator performance
+=====================
+
+The default system allocator in Emscripten, ``dlmalloc``, is very efficient in a
+single-threaded program, but it has a single global lock which means if there is
+contention on ``malloc`` then you can see overhead. You can use ``mimalloc``
+instead by using ``-sMALLOC=mimalloc``, which is more complex allocator that is
+tuned for multithreaded performance. ``mimalloc`` has separate allocation
+contexts on each thread, allowing performance to scale a lot better under
+``malloc/free`` contention.
+
+Note that ``mimalloc`` is larger in code size than ``dlmalloc``. It also uses
+more memory at runtime (there is a tradeoff between efficiency of memory usage
+and execution speed), so you may need to adjust ``INITIAL_MEMORY`` to a higher
+value.
+
 Running code and tests
 ======================
 
