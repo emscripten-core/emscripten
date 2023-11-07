@@ -4,7 +4,7 @@
 // found in the LICENSE file.
 
 // Used internally to test performance of emmalloc against other
-// malloc implementations.  (Not run as part of the emscripten test suite).
+// malloc implementations.  (Also run as part of the emscripten test suite).
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -14,7 +14,7 @@
 
 const int BINS = 32768;
 const int BIN_MASK = BINS - 1;
-const int ITERS = 6 * 1024 * 1024;
+const int ITERS = 6 * 1024; // Add * 1024 for heavy benchmarking
 //  12, 64: emmalloc slower
 //  12, 28: emmalloc much sbrkier and also slower
 // 256, 512: emmalloc faster without USE_MEMORY
@@ -85,7 +85,7 @@ void randoms() {
           total_allocated += size;
         }
       } else {
-        if (calloc_ && USE_CALLOC) {
+        if (!calloc_ || !USE_CALLOC) {
           bins[bin] = malloc(size);
           allocated[bin] = size;
           total_allocated += size;

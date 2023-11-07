@@ -6676,7 +6676,6 @@ int main(void) {
   @no_lsan('depends on the specifics of memory size, which for lsan we are forced to increase')
   @no_wasmfs('wasmfs does some malloc/free during startup, fragmenting the heap, leading to differences later')
   def test_dlmalloc(self):
-    # needed with typed arrays
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY', '128mb')
 
@@ -6736,6 +6735,14 @@ void* operator new(size_t size) {
       self.skipTest('we do unsafe stuff here')
     # present part of the symbols of dlmalloc, not all. malloc is harder to link than new which is weak.
     self.do_core_test('test_dlmalloc_partial_2.c', assert_returncode=NON_ZERO)
+
+  @no_wasm64('TODO: investigate why this takes 1GB of INITIAL_MEMORY there')
+  def test_mimalloc(self):
+    self.set_setting('MALLOC', 'mimalloc')
+    if not self.has_changed_setting('INITIAL_MEMORY'):
+      self.set_setting('INITIAL_MEMORY', '256mb')
+    self.set_setting('TOTAL_STACK', '1mb')
+    self.do_runf('malloc_bench.c', 'allocations:      5876\n')
 
   def test_libcxx(self):
     self.do_runf('hashtest.cpp',
