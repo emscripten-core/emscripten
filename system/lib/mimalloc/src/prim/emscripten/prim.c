@@ -39,7 +39,7 @@ terms of the MIT license. A copy of the license can be found in the file
 //
 // emmalloc makes sense for the lower level because it is small and simple while
 // still fully handling merging of holes etc. It is not the most efficient
-// allocator, but out assumption is that mimalloc needs to be fast while the
+// allocator, but our assumption is that mimalloc needs to be fast while the
 // system allocator underneath it is called much less frequently.
 //
 
