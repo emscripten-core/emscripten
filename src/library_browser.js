@@ -741,7 +741,7 @@ var LibraryBrowser = {
           Browser.devicePixelRatioMQS = null;
         }
         if (Browser.isHiDPIAware) {
-          Browser.devicePixelRatioMQS = matchMedia("(resolution: " + Browser.getDevicePixelRatio() + "dppx)");
+          Browser.devicePixelRatioMQS = window.matchMedia("(resolution: " + Browser.getDevicePixelRatio() + "dppx)");
           Browser.devicePixelRatioMQS.addEventListener("change", Browser.onDevicePixelRatioChange);
         }
       }
