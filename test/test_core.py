@@ -6737,7 +6737,13 @@ void* operator new(size_t size) {
     self.do_core_test('test_dlmalloc_partial_2.c', assert_returncode=NON_ZERO)
 
   @no_wasm64('TODO: investigate why this takes 1GB of INITIAL_MEMORY there')
-  def test_mimalloc(self):
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+  })
+  @node_pthreads
+  def test_mimalloc(self, args):
+    self.emcc_args += args
     self.set_setting('MALLOC', 'mimalloc')
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY', '256mb')
@@ -10100,7 +10106,7 @@ simd2 = make_run('simd2', emcc_args=['-O2', '-msimd128'])
 bulkmem2 = make_run('bulkmem2', emcc_args=['-O2', '-mbulk-memory'])
 wasmfs = make_run('wasmfs', emcc_args=['-O2', '-DWASMFS'], settings={'WASMFS': 1})
 # mimalloc requires significantly more memory than dlmalloc or emmalloc
-mimalloc = make_run('mimalloc', emcc_args=['-O2'], settings={'MALLOC': 'mimalloc', 'INITIAL_MEMORY': '128mb'})
+mimalloc = make_run('mimalloc', emcc_args=['-O2', '--profiling'], settings={'MALLOC': 'mimalloc', 'INITIAL_MEMORY': '128mb'})
 
 # SAFE_HEAP/STACK_OVERFLOW_CHECK
 core0s = make_run('core2s', emcc_args=['-g'], settings={'SAFE_HEAP': 1})

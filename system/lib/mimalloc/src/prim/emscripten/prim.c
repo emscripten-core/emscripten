@@ -204,9 +204,8 @@ bool _mi_prim_getenv(const char* name, char* result, size_t result_size) {
 //----------------------------------------------------------------
 
 bool _mi_prim_random_buf(void* buf, size_t buf_len) {
-  MI_UNUSED(buf);
-  MI_UNUSED(buf_len);
-  return false;
+  int err = getentropy(buf, buf_len);
+  return !err;
 }
 
 
