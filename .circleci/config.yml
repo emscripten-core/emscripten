@@ -515,7 +515,7 @@ jobs:
           # also run a corez test of dynamic linking + forced syslibs.
           title: "core2+extras"
           test_targets: "
-            core2
+            mimalloc
             browser.test_pthread_join
             corez.test_dylink_syslibs_all"
       - upload-test-results
