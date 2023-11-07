@@ -1839,19 +1839,19 @@ keydown(100);keyup(100); // trigger the end
       'Chapter_13/ParticleSystem/CH13_ParticleSystem.o',
     ], configure=None)
 
-    def book_path(*pathelems):
-      return test_file('third_party/glbook', *pathelems)
+    def book_path(path):
+      return test_file('third_party/glbook', path)
 
     for program in programs:
       print(program)
       basename = os.path.basename(program)
       args = ['-lGL', '-lEGL', '-lX11']
       if basename == 'CH10_MultiTexture.o':
-        shutil.copyfile(book_path('Chapter_10', 'MultiTexture', 'basemap.tga'), 'basemap.tga')
-        shutil.copyfile(book_path('Chapter_10', 'MultiTexture', 'lightmap.tga'), 'lightmap.tga')
+        shutil.copyfile(book_path('Chapter_10/MultiTexture/basemap.tga'), 'basemap.tga')
+        shutil.copyfile(book_path('Chapter_10/MultiTexture/lightmap.tga'), 'lightmap.tga')
         args += ['--preload-file', 'basemap.tga', '--preload-file', 'lightmap.tga']
       elif basename == 'CH13_ParticleSystem.o':
-        shutil.copyfile(book_path('Chapter_13', 'ParticleSystem', 'smoke.tga'), 'smoke.tga')
+        shutil.copyfile(book_path('Chapter_13/ParticleSystem/smoke.tga'), 'smoke.tga')
         args += ['--preload-file', 'smoke.tga', '-O2'] # test optimizations and closure here as well for more coverage
 
       self.btest(program,
@@ -1865,23 +1865,22 @@ keydown(100);keyup(100); // trigger the end
     'full_es3': (['-sFULL_ES3'],)
   })
   def test_gles2_emulation(self, args):
-    print(args)
     shutil.copyfile(test_file('third_party/glbook/Chapter_10/MultiTexture/basemap.tga'), 'basemap.tga')
     shutil.copyfile(test_file('third_party/glbook/Chapter_10/MultiTexture/lightmap.tga'), 'lightmap.tga')
     shutil.copyfile(test_file('third_party/glbook/Chapter_13/ParticleSystem/smoke.tga'), 'smoke.tga')
 
     for source, reference in [
-      (Path('third_party/glbook/Chapter_2', 'Hello_Triangle', 'Hello_Triangle_orig.c'), test_file('third_party/glbook/CH02_HelloTriangle.png')),
-      # (Path('third_party/glbook/Chapter_8', 'Simple_VertexShader', 'Simple_VertexShader_orig.c'), test_file('third_party/glbook/CH08_SimpleVertexShader.png')), # XXX needs INT extension in WebGL
-      (Path('third_party/glbook/Chapter_9', 'TextureWrap', 'TextureWrap_orig.c'), test_file('third_party/glbook/CH09_TextureWrap.png')),
-      # (Path('third_party/glbook/Chapter_9', 'Simple_TextureCubemap', 'Simple_TextureCubemap_orig.c'), test_file('third_party/glbook/CH09_TextureCubemap.png')), # XXX needs INT extension in WebGL
-      (Path('third_party/glbook/Chapter_9', 'Simple_Texture2D', 'Simple_Texture2D_orig.c'), test_file('third_party/glbook/CH09_SimpleTexture2D.png')),
-      (Path('third_party/glbook/Chapter_10', 'MultiTexture', 'MultiTexture_orig.c'), test_file('third_party/glbook/CH10_MultiTexture.png')),
-      (Path('third_party/glbook/Chapter_13', 'ParticleSystem', 'ParticleSystem_orig.c'), test_file('third_party/glbook/CH13_ParticleSystem.png')),
+      ('third_party/glbook/Chapter_2/Hello_Triangle/Hello_Triangle_orig.c', 'third_party/glbook/CH02_HelloTriangle.png'),
+      # ('third_party/glbook/Chapter_8/Simple_VertexShader/Simple_VertexShader_orig.c', 'third_party/glbook/CH08_SimpleVertexShader.png'), # XXX needs INT extension in WebGL
+      ('third_party/glbook/Chapter_9/TextureWrap/TextureWrap_orig.c', 'third_party/glbook/CH09_TextureWrap.png'),
+      # ('third_party/glbook/Chapter_9/Simple_TextureCubemap/Simple_TextureCubemap_orig.c', 'third_party/glbook/CH09_TextureCubemap.png'), # XXX needs INT extension in WebGL
+      ('third_party/glbook/Chapter_9/Simple_Texture2D/Simple_Texture2D_orig.c', 'third_party/glbook/CH09_SimpleTexture2D.png'),
+      ('third_party/glbook/Chapter_10/MultiTexture/MultiTexture_orig.c', 'third_party/glbook/CH10_MultiTexture.png'),
+      ('third_party/glbook/Chapter_13/ParticleSystem/ParticleSystem_orig.c', 'third_party/glbook/CH13_ParticleSystem.png'),
     ]:
       print(source)
       self.btest(source,
-                 reference=reference,
+                 reference=test_file(reference),
                  args=['-I' + test_file('third_party/glbook/Common'),
                        test_file('third_party/glbook/Common/esUtil.c'),
                        test_file('third_party/glbook/Common/esShader.c'),

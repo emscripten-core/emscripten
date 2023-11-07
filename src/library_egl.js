@@ -102,18 +102,13 @@ var LibraryEGL = {
   eglGetDisplay__proxy: 'sync',
   eglGetDisplay: (nativeDisplayType) => {
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
-    // Note: As a 'conformant' implementation of EGL, we would prefer to init here only if the user
-    //       calls this function with EGL_DEFAULT_DISPLAY. Other display IDs would be preferred to be unsupported
-    //       and EGL_NO_DISPLAY returned. Uncomment the following code lines to do this.
-    // Instead, an alternative route has been preferred, namely that the Emscripten EGL implementation
-    // "emulates" X11, and eglGetDisplay is expected to accept/receive a pointer to an X11 Display object.
-    // Therefore, be lax and allow anything to be passed in, and return the magic handle to our default EGLDisplay object.
-
-//    if (nativeDisplayType == 0 /* EGL_DEFAULT_DISPLAY */) {
-        return {{{ eglDefaultDisplay }}};
-//    }
-//    else
-//      return 0; // EGL_NO_DISPLAY
+    // Emscripten EGL implementation "emulates" X11, and eglGetDisplay is
+    // expected to accept/receive a pointer to an X11 Display object (or
+    // EGL_DEFAULT_DISPLAY).
+    if (nativeDisplayType != 0 /* EGL_DEFAULT_DISPLAY */ && nativeDisplayType != 1 /* see library_xlib.js */) {
+      return 0; // EGL_NO_DISPLAY
+    }
+    return {{{ eglDefaultDisplay }}};
   },
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglInitialize(EGLDisplay dpy, EGLint *major, EGLint *minor);
