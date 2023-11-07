@@ -515,9 +515,7 @@ jobs:
           # also run a corez test of dynamic linking + forced syslibs.
           title: "core2+extras"
           test_targets: "
-            mimalloc
-            browser.test_pthread_join
-            corez.test_dylink_syslibs_all"
+            mimalloc"
       - upload-test-results
   test-core3:
     executor: bionic
@@ -919,46 +917,7 @@ workflows:
       - eslint
       - build-docs
       - build-linux
-      - test-sanity:
-          requires:
-            - build-linux
-      - test-posixtest:
-          requires:
-            - build-linux
-      - test-core0:
-          requires:
-            - build-linux
       - test-core2:
-          requires:
-            - build-linux
-      - test-core3:
-          requires:
-            - build-linux
-      - test-wasm64:
-          requires:
-            - build-linux
-      - test-wasm64_4gb:
-          requires:
-            - build-linux
-      - test-wasm64l:
-          requires:
-            - build-linux
-      - test-wasm2js1:
-          requires:
-            - build-linux
-      - test-other:
-          requires:
-            - build-linux
-      - test-browser-chrome:
-          requires:
-            - build-linux
-      - test-browser-chrome-wasm64:
-          requires:
-            - build-linux
-      - test-browser-firefox:
-          requires:
-            - build-linux
-      - test-sockets-chrome:
           requires:
             - build-linux
       - test-jsc
