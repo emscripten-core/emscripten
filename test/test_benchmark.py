@@ -48,7 +48,7 @@ IGNORE_COMPILATION = 0
 
 OPTIMIZATIONS = '-O3'
 
-PROFILING = 0
+PROFILING = 1
 
 LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
 
@@ -211,7 +211,7 @@ class EmscriptenBenchmarker(Benchmarker):
     ] + LLVM_FEATURE_FLAGS
     if shared_args:
       cmd += shared_args
-    if common.EMTEST_FORCE64:
+    if PROFILING:
       cmd += ['--profiling']
     else:
       cmd += ['--closure=1', '-sMINIMAL_RUNTIME']
@@ -220,8 +220,6 @@ class EmscriptenBenchmarker(Benchmarker):
     cmd += emcc_args + self.extra_args
     if '-sFILESYSTEM' not in cmd and '-sFORCE_FILESYSTEM' not in cmd:
       cmd += ['-sFILESYSTEM=0']
-    if PROFILING:
-      cmd += ['--profiling-funcs']
     self.cmd = cmd
     run_process(cmd, env=self.env)
     if self.binaryen_opts:
@@ -331,9 +329,9 @@ if config.V8_ENGINE and config.V8_ENGINE in config.JS_ENGINES:
     ]
   else:
     benchmarkers += [
-      EmscriptenBenchmarker(default_v8_name, aot_v8),
-      EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
-      EmscriptenBenchmarker(default_v8_name + '-ctors', aot_v8, ['-sEVAL_CTORS']),
+      # EmscriptenBenchmarker(default_v8_name, aot_v8),
+      # EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
+      # EmscriptenBenchmarker(default_v8_name + '-ctors', aot_v8, ['-sEVAL_CTORS']),
     ]
   if os.path.exists(CHEERP_BIN):
     benchmarkers += [
@@ -357,7 +355,7 @@ if config.NODE_JS and config.NODE_JS in config.JS_ENGINES:
     ]
   else:
     benchmarkers += [
-      # EmscriptenBenchmarker('Node.js', config.NODE_JS),
+      EmscriptenBenchmarker('Node.js', config.NODE_JS),
     ]
 
 
@@ -917,10 +915,6 @@ class benchmark(common.RunnerCore):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_16mb', read_file(test_file('benchmark/benchmark_memset.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')])
-
-  def test_malloc(self):
-    src = read_file(test_file('benchmark/benchmark_malloc.cpp'))
-    self.do_benchmark('malloc', src, 'Done.', shared_args=['-DWORKERS=1'], emcc_args=['-sEXIT_RUNTIME'])
 
   def test_malloc_mt(self):
     # Multithreaded malloc test. For emcc we use mimalloc here.
