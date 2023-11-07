@@ -7678,14 +7678,14 @@ void* operator new(size_t size) {
     ''')
     self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
 
-  @parameterized({
-    '': ([],),
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
-  })
   @node_pthreads
-  def test_embind_2(self, args):
+  def test_embind_2(self):
     self.maybe_closure()
-    self.emcc_args += ['-lembind', '--post-js', 'post.js'] + args
+    self.emcc_args += [
+      '-lembind', '--post-js', 'post.js',
+      # for extra coverage, test using pthreads
+      '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'
+    ]
     create_file('post.js', '''
       function printLerp() {
         out('lerp ' + Module['lerp'](100, 200, 66) + '.');
