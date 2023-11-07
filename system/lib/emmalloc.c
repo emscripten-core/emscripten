@@ -374,11 +374,11 @@ static void dump_memory_regions()
     Region *r = (Region*)root;
     assert(debug_region_is_consistent(r));
     uint8_t *lastRegionEnd = root->endPtr;
-    MAIN_THREAD_ASYNC_EM_ASM(out('Region block 0x'+($0>>>0).toString(16)+' - 0x'+($1>>>0).toString(16)+ ' ('+($2>>>0)+' bytes):'),
+    MAIN_THREAD_ASYNC_EM_ASM(out('Region block '+ptrToString($0)+' - '+ptrToString($1)+ ' ('+($2>>>0)+' bytes):'),
       r, lastRegionEnd, lastRegionEnd-(uint8_t*)r);
     while((uint8_t*)r < lastRegionEnd)
     {
-      MAIN_THREAD_ASYNC_EM_ASM(out('Region 0x'+($0>>>0).toString(16)+', size: '+($1>>>0)+' ('+($2?"used":"--FREE--")+')'),
+      MAIN_THREAD_ASYNC_EM_ASM(out('Region '+ptrToString($0)+', size: '+($1>>>0)+' ('+($2?"used":"--FREE--")+')'),
         r, r->size, region_ceiling_size(r) == r->size);
 
       assert(debug_region_is_consistent(r));
@@ -399,7 +399,7 @@ static void dump_memory_regions()
     Region *fr = freeRegionBuckets[i].next;
     while(fr != &freeRegionBuckets[i])
     {
-      MAIN_THREAD_ASYNC_EM_ASM(out('In bucket '+$0+', free region 0x'+($1>>>0).toString(16)+', size: ' + ($2>>>0) + ' (size at ceiling: '+($3>>>0)+'), prev: 0x' + ($4>>>0).toString(16) + ', next: 0x' + ($5>>>0).toString(16)),
+      MAIN_THREAD_ASYNC_EM_ASM(out('In bucket '+$0+', free region '+ptrToString($1)+', size: ' + ($2>>>0) + ' (size at ceiling: '+($3>>>0)+'), prev: ' + ptrToString($4) + ', next: ' + ptrToString($5)),
         i, fr, fr->size, size_of_region_from_ceiling(fr), fr->prev, fr->next);
       assert(debug_region_is_consistent(fr));
       assert(region_is_free(fr));
@@ -430,7 +430,7 @@ static int validate_memory_regions()
     Region *r = (Region*)root;
     if (!debug_region_is_consistent(r))
     {
-      MAIN_THREAD_ASYNC_EM_ASM(err('Used region 0x'+($0>>>0).toString(16)+', size: '+($1>>>0)+' ('+($2?"used":"--FREE--")+') is corrupt (size markers in the beginning and at the end of the region do not match!)'),
+      MAIN_THREAD_ASYNC_EM_ASM(err('Used region '+ptrToString($0)+', size: '+($1>>>0)+' ('+($2?"used":"--FREE--")+') is corrupt (size markers in the beginning and at the end of the region do not match!)'),
         r, r->size, region_ceiling_size(r) == r->size);
       return 1;
     }
@@ -439,7 +439,7 @@ static int validate_memory_regions()
     {
       if (!debug_region_is_consistent(r))
       {
-        MAIN_THREAD_ASYNC_EM_ASM(err('Used region 0x'+($0>>>0).toString(16)+', size: '+($1>>>0)+' ('+($2?"used":"--FREE--")+') is corrupt (size markers in the beginning and at the end of the region do not match!)'),
+        MAIN_THREAD_ASYNC_EM_ASM(err('Used region '+ptrToString($0)+', size: '+($1>>>0)+' ('+($2?"used":"--FREE--")+') is corrupt (size markers in the beginning and at the end of the region do not match!)'),
           r, r->size, region_ceiling_size(r) == r->size);
         return 1;
       }
@@ -457,7 +457,7 @@ static int validate_memory_regions()
     {
       if (!debug_region_is_consistent(fr) || !region_is_free(fr) || fr->prev != prev || fr->next == fr || fr->prev == fr)
       {
-        MAIN_THREAD_ASYNC_EM_ASM(out('In bucket '+$0+', free region 0x'+($1>>>0).toString(16)+', size: ' + ($2>>>0) + ' (size at ceiling: '+($3>>>0)+'), prev: 0x' + ($4>>>0).toString(16) + ', next: 0x' + ($5>>>0).toString(16) + ' is corrupt!'),
+        MAIN_THREAD_ASYNC_EM_ASM(out('In bucket '+$0+', free region '+ptrToString($1)+', size: ' + ($2>>>0) + ' (size at ceiling: '+($3>>>0)+'), prev: ' + ptrToString($4) + ', next: ' + ptrToString($5) + ' is corrupt!'),
           i, fr, fr->size, size_of_region_from_ceiling(fr), fr->prev, fr->next);
         return 1;
       }
@@ -496,7 +496,7 @@ static bool claim_more_memory(size_t numBytes)
     return false;
   }
 #ifdef EMMALLOC_VERBOSE
-  MAIN_THREAD_ASYNC_EM_ASM(out('claim_more_memory: claimed ' + ptrToString($0) + ' - ' + ptrToString($1) + ' (' + ($2>>>0) + ' bytes) via sbrk()'), startPtr, startPtr + numBytes, numBytes);
+  MAIN_THREAD_ASYNC_EM_ASM(out('claim_more_memory: claimed ' + ptrToString($0) + ' - ' + ptrToString($1) + ' (' + ($2) + ' bytes) via sbrk()'), startPtr, startPtr + numBytes, numBytes);
 #endif
   assert(HAS_ALIGNMENT(startPtr, alignof(size_t)));
   uint8_t *endPtr = startPtr + numBytes;
@@ -646,7 +646,7 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
 #endif
 
 #ifdef EMMALLOC_VERBOSE
-  MAIN_THREAD_ASYNC_EM_ASM(out('attempt_allocate - succeeded allocating memory, region ptr=' + ptrToString($0) + ', align=' + $1 + ', payload size=' + ($2>>>0) + ' bytes)'), freeRegion, alignment, size);
+  MAIN_THREAD_ASYNC_EM_ASM(out('attempt_allocate - succeeded allocating memory, region ptr=' + ptrToString($0) + ', align=' + $1 + ', payload size=' + ($2) + ' bytes)'), freeRegion, alignment, size);
 #endif
 
   return (uint8_t*)freeRegion + sizeof(size_t);
@@ -875,7 +875,7 @@ void emmalloc_free(void *ptr)
     return;
 
 #ifdef EMMALLOC_VERBOSE
-  MAIN_THREAD_ASYNC_EM_ASM(out('free(ptr=0x'+($0>>>0).toString(16)+')'), ptr);
+  MAIN_THREAD_ASYNC_EM_ASM(out('free(ptr='+ptrToString($0)+')'), ptr);
 #endif
 
   uint8_t *regionStartPtr = (uint8_t*)ptr - sizeof(size_t);
@@ -891,9 +891,9 @@ void emmalloc_free(void *ptr)
     if (debug_region_is_consistent(region))
       // LLVM wasm backend bug: cannot use MAIN_THREAD_ASYNC_EM_ASM() here, that generates internal compiler error
       // Reproducible by running e.g. other.test_alloc_3GB
-      EM_ASM(err('Double free at region ptr 0x' + ($0>>>0).toString(16) + ', region->size: 0x' + ($1>>>0).toString(16) + ', region->sizeAtCeiling: 0x' + ($2>>>0).toString(16) + ')'), region, size, region_ceiling_size(region));
+      EM_ASM(err('Double free at region ptr ' + ptrToString($0) + ', region->size: ' + ptrToString($1) + ', region->sizeAtCeiling: ' + ptrToString($2) + ')'), region, size, region_ceiling_size(region));
     else
-      MAIN_THREAD_ASYNC_EM_ASM(err('Corrupt region at region ptr 0x' + ($0>>>0).toString(16) + ' region->size: 0x' + ($1>>>0).toString(16) + ', region->sizeAtCeiling: 0x' + ($2>>>0).toString(16) + ')'), region, size, region_ceiling_size(region));
+      MAIN_THREAD_ASYNC_EM_ASM(err('Corrupt region at region ptr ' + ptrToString($0) + ' region->size: ' + ptrToString($1) + ', region->sizeAtCeiling: ' + ptrToString($2) + ')'), region, size, region_ceiling_size(region));
   }
 #endif
   assert(size >= sizeof(Region));
@@ -947,7 +947,7 @@ static int attempt_region_resize(Region *region, size_t size)
   assert(HAS_ALIGNMENT(size, sizeof(size_t)));
 
 #ifdef EMMALLOC_VERBOSE
-  MAIN_THREAD_ASYNC_EM_ASM(out('attempt_region_resize(region=0x' + ($0>>>0).toString(16) + ', size=' + ($1>>>0) + ' bytes)'), region, size);
+  MAIN_THREAD_ASYNC_EM_ASM(out('attempt_region_resize(region=' + ptrToString($0) + ', size=' + ($1>>>0) + ' bytes)'), region, size);
 #endif
 
   // First attempt to resize this region, if the next region that follows this one
@@ -1015,7 +1015,7 @@ static int acquire_and_attempt_region_resize(Region *region, size_t size)
 void *emmalloc_aligned_realloc(void *ptr, size_t alignment, size_t size)
 {
 #ifdef EMMALLOC_VERBOSE
-  MAIN_THREAD_ASYNC_EM_ASM(out('aligned_realloc(ptr=0x' + ($0>>>0).toString(16) + ', alignment=' + $1 + ', size=' + ($2>>>0)), ptr, alignment, size);
+  MAIN_THREAD_ASYNC_EM_ASM(out('aligned_realloc(ptr=' + ptrToString($0) + ', alignment=' + $1 + ', size=' + ($2>>>0)), ptr, alignment, size);
 #endif
 
   if (!ptr)
