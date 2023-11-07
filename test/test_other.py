@@ -3011,6 +3011,7 @@ int f() {
                   '-sUSE_PTHREADS',
                   '-sPROXY_TO_PTHREAD',
                   '-sPTHREAD_POOL_SIZE=1',
+                  '-sSINGLE_FILE',
                   '-lembind', # Test duplicated link option.
                   ]
     self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
