@@ -221,6 +221,15 @@ Enable :ref:`debugging-EMCC_DEBUG` to output files for each compilation phase, i
 
 .. _optimizing-code-unsafe-optimisations:
 
+Allocation
+----------
+
+The default ``malloc/free`` implementation used is ``dlmalloc``. You can also
+pick ``emmalloc`` (``-sMALLOC=emmalloc``) which is smaller but less fast, or
+``mimalloc`` (``-sMALLOC=mimalloc``) which is larger but scales better in a
+multithreaded application with contention on ``malloc/free`` (see
+:ref:`Allocator_performance`).
+
 Unsafe optimizations
 ====================
 
