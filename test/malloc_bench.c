@@ -85,12 +85,12 @@ void randoms() {
           total_allocated += size;
         }
       } else {
-        if (!calloc_ || !USE_CALLOC) {
-          bins[bin] = malloc(size);
+        if (calloc_ && USE_CALLOC) {
+          bins[bin] = calloc(size, 1);
           allocated[bin] = size;
           total_allocated += size;
         } else {
-          bins[bin] = calloc(size, 1);
+          bins[bin] = malloc(size);
           allocated[bin] = size;
           total_allocated += size;
         }
