@@ -269,6 +269,11 @@ def link_lld(args, target, external_symbols=None):
   if settings.STRICT:
     args.append('--fatal-warnings')
 
+  if '--strip-all' in args:
+    # Tell wasm-ld to always generate a target_features section even if --strip-all
+    # is passed.
+    args.append('--keep-section=target_features')
+
   cmd = [WASM_LD, '-o', target] + args
   for a in llvm_backend_args():
     cmd += ['-mllvm', a]

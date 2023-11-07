@@ -3440,7 +3440,6 @@ Module["preRun"] = () => {
       self.btest_exit('async_mainloop.cpp', args=['-O' + str(opts), '-sASYNCIFY'])
 
   @requires_sound_hardware
-  @no_wasm64('https://github.com/WebAssembly/binaryen/issues/6073')
   def test_sdl_audio_beep_sleep(self):
     self.btest_exit('test_sdl_audio_beep_sleep.cpp', args=['-Os', '-sASSERTIONS', '-sDISABLE_EXCEPTION_CATCHING=0', '-profiling', '-sSAFE_HEAP', '-lSDL', '-sASYNCIFY'], timeout=90)
 
