@@ -1761,7 +1761,7 @@ class libmimalloc(MTLibrary):
         'options.c',
         'os.c',
         'page.c',
-        'random.c', 
+        'random.c',
         'segment.c',
         'segment-map.c',
         'stats.c',
