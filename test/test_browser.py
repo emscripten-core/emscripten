@@ -2969,6 +2969,10 @@ Module["preRun"] = () => {
     self.btest('test_glfw_events.c', args=['-sUSE_GLFW=3', "-DUSE_GLFW=3", '-lglfw', '-lGL'], expected='1')
 
   @requires_graphics_hardware
+  def test_glfw3_hi_dpi_aware(self):
+    self.btest('test_glfw3_hi_dpi_aware.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'], expected='1')
+
+  @requires_graphics_hardware
   @parameterized({
     '': ([],),
     'memfile': (['-sWASM=0', '--memory-init-file=1'],)

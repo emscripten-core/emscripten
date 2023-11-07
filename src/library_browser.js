@@ -720,6 +720,13 @@ var LibraryBrowser = {
       return Browser.isHiDPIAware ? Browser.getDevicePixelRatio() : 1.0;
     },
 
+    devicePixelRatioMQS: null,
+    onDevicePixelRatioChange() {
+      const canvas = Module['canvas'];
+      Browser.updateCanvasDimensions(canvas, canvas.clientWidth, canvas.clientHeight);
+      Browser.updateResizeListeners();
+    },
+
     setHiDPIAware(isHiDPIAware) {
       isHiDPIAware = !!isHiDPIAware; // coerce to boolean
       if (Browser.isHiDPIAware != isHiDPIAware) {
@@ -727,6 +734,16 @@ var LibraryBrowser = {
         const canvas = Module['canvas'];
         Browser.updateCanvasDimensions(canvas, canvas.clientWidth, canvas.clientHeight);
         Browser.updateResizeListeners();
+
+        // handling dynamic changes to devicePixelRatio
+        if (Browser.devicePixelRatioMQS) {
+          Browser.devicePixelRatioMQS.removeEventListener("change", Browser.onDevicePixelRatioChange);
+          Browser.devicePixelRatioMQS = null;
+        }
+        if (Browser.isHiDPIAware) {
+          Browser.devicePixelRatioMQS = matchMedia("(resolution: " + Browser.getDevicePixelRatio() + "dppx)");
+          Browser.devicePixelRatioMQS.addEventListener("change", Browser.onDevicePixelRatioChange);
+        }
       }
     },
   },
