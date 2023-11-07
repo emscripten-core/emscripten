@@ -7506,7 +7506,7 @@ Resolved: "/" => "/"
   })
   def test_mimalloc(self, args):
     args = args + [
-      '-O2',  
+      '-O2',
       '-sMALLOC=mimalloc',
       '-sINITIAL_MEMORY=128mb',
       '-sTOTAL_STACK=1mb',
