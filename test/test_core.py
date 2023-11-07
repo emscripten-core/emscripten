@@ -6736,20 +6736,6 @@ void* operator new(size_t size) {
     # present part of the symbols of dlmalloc, not all. malloc is harder to link than new which is weak.
     self.do_core_test('test_dlmalloc_partial_2.c', assert_returncode=NON_ZERO)
 
-  @no_wasm64('TODO: investigate why this takes 1GB of INITIAL_MEMORY there')
-  @parameterized({
-    '': ([],),
-    'pthreads': (['-pthread'],),
-  })
-  def test_mimalloc(self, args):
-    self.emcc_args += args
-    print(args, self.emcc_args)
-    self.set_setting('MALLOC', 'mimalloc')
-    if not self.has_changed_setting('INITIAL_MEMORY'):
-      self.set_setting('INITIAL_MEMORY', '256mb')
-    self.set_setting('TOTAL_STACK', '1mb')
-    self.do_runf('malloc_bench.c', 'allocations:      5876\n')
-
   def test_libcxx(self):
     self.do_runf('hashtest.cpp',
                  'june -> 30\nPrevious (in alphabetical order) is july\nNext (in alphabetical order) is march')

@@ -7501,6 +7501,14 @@ Resolved: "/" => "/"
     self.assertEqual(less, none)
 
   @parameterized({
+    '': ([],),
+    'pthreads': (['-pthread'],),
+  })
+  def test_mimalloc(self, args):
+    self.do_other_test('malloc_bench.c',
+                        emcc_args=args + ['-sMALLOC=mimalloc', '-sINITIAL_MEMORY=128mb', '-sTOTAL_STACK=1mb'])
+
+  @parameterized({
     '': ([], 'testbind.js'),
     'bigint': (['-sWASM_BIGINT'], 'testbind_bigint.js'),
   })
