@@ -7681,6 +7681,7 @@ void* operator new(size_t size) {
     '': ([],),
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
+  @node_pthreads
   def test_embind_2(self, args):
     self.maybe_closure()
     self.emcc_args += ['-lembind', '--post-js', 'post.js'] + args
