@@ -5488,14 +5488,13 @@ int main()
     self.assertContained('Caught exception: std::exception', self.run_js('a.out.js'))
 
   def test_strftime_zZ(self):
-    create_file('src.cpp', r'''
-#include <cerrno>
-#include <cstring>
-#include <ctime>
-#include <iostream>
+    create_file('src.c', r'''
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
+#include <time.h>
 
-int main()
-{
+int main() {
   // Buffer to hold the current hour of the day.  Format is HH + nul
   // character.
   char hour[3];
@@ -5508,61 +5507,53 @@ int main()
   // sufficiently large to hold most timezone names.
   char timezone[128];
 
-  std::tm tm;
+  struct tm tm;
 
   // Get the current timestamp.
-  const std::time_t now = std::time(NULL);
+  const time_t now = time(NULL);
 
   // What time is that here?
-  if (::localtime_r(&now, &tm) == NULL) {
+  if (localtime_r(&now, &tm) == NULL) {
     const int error = errno;
-    std::cout
-      << "Failed to get localtime for timestamp=" << now << "; errno=" << error
-      << "; " << std::strerror(error) << std::endl;
+    printf("Failed to get localtime for timestamp=%lld; errno=%d; %s", now, errno, strerror(error));
     return 1;
   }
 
   size_t result = 0;
 
   // Get the formatted hour of the day.
-  if ((result = std::strftime(hour, 3, "%H", &tm)) != 2) {
+  if ((result = strftime(hour, 3, "%H", &tm)) != 2) {
     const int error = errno;
-    std::cout
-      << "Failed to format hour for timestamp=" << now << "; result="
-      << result << "; errno=" << error << "; " << std::strerror(error)
-      << std::endl;
+    printf("Failed to format hour for timestamp=%lld; result=%zu; errno=%d; %s\n",
+           now, result, error, strerror(error));
     return 1;
   }
-  std::cout << "The current hour of the day is: " << hour << std::endl;
+  printf("The current hour of the day is: %s\n", hour);
 
   // Get the formatted UTC offset in ISO 8601 format.
-  if ((result = std::strftime(utcOffset, 6, "%z", &tm)) != 5) {
+  if ((result = strftime(utcOffset, 6, "%z", &tm)) != 5) {
     const int error = errno;
-    std::cout
-      << "Failed to format UTC offset for timestamp=" << now << "; result="
-      << result << "; errno=" << error << "; " << std::strerror(error)
-      << std::endl;
+    printf("Failed to format UTC offset for timestamp=%lld; result=%zu; errno=%d; %s\n",
+           now, result, error, strerror(error));
     return 1;
   }
-  std::cout << "The current timezone offset is: " << utcOffset << std::endl;
+  printf("The current timezone offset is: %s\n", utcOffset);
 
   // Get the formatted timezone name or abbreviation.  We don't know how long
   // this will be, so just expect some data to be written to the buffer.
-  if ((result = std::strftime(timezone, 128, "%Z", &tm)) == 0) {
+  if ((result = strftime(timezone, 128, "%Z", &tm)) == 0) {
     const int error = errno;
-    std::cout
-      << "Failed to format timezone for timestamp=" << now << "; result="
-      << result << "; errno=" << error << "; " << std::strerror(error)
-      << std::endl;
+    printf("Failed to format timezone for timestamp=%lld; result=%zu; errno=%d; %s\n",
+           now, result, error, strerror(error));
     return 1;
   }
-  std::cout << "The current timezone is: " << timezone << std::endl;
+  printf("The current timezone is: %s\n", timezone);
 
-  std::cout << "ok!\n";
+  printf("ok!\n");
+  return 0;
 }
 ''')
-    self.run_process([EMXX, 'src.cpp'])
-    self.assertContained('ok!', self.run_js('a.out.js'))
+    self.do_runf('src.c', 'ok!')
 
   def test_strptime_symmetry(self):
     self.do_runf('strptime_symmetry.cpp', 'TEST PASSED')
