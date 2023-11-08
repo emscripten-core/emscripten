@@ -708,7 +708,8 @@ public:
 
 extern "C" {
   // JS FFI helper for `val_awaiter::resume_with`.
-  inline void _emval_coro_resume(val_awaiter* awaiter, EM_VAL result) {
+  __attribute__((weak))
+  void _emval_coro_resume(val_awaiter* awaiter, EM_VAL result) {
     awaiter->resume_with(val::take_ownership(result));
   }
 }
