@@ -7502,19 +7502,21 @@ Resolved: "/" => "/"
     self.assertEqual(less, none)
 
   @parameterized({
-    '': (['-DWORKERS=1'],),
-    'pthreads': (['-pthread', '-DWORKERS=4'],),
+    # atm we only test mimalloc here, as we don't need extra coverage for
+    # dlmalloc/emmalloc, and this is the main test we have for mimalloc
+    'mimalloc':          ('mimalloc', ['-DWORKERS=1'],),
+    'mimalloc_pthreads': ('mimalloc', ['-DWORKERS=4', '-pthread'],),
   })
-  def test_mimalloc(self, args):
+  def test_malloc_multithreading(self, allocator, args):
     args = args + [
       '-O2',
-      '-sMALLOC=mimalloc',
-      '-sINITIAL_MEMORY=128mb',
-      '-sTOTAL_STACK=1mb',
       '-sEXIT_RUNTIME',
       '-DTOTAL=10000',
+      '-sINITIAL_MEMORY=128mb',
+      '-sTOTAL_STACK=1mb',
+      f'-sMALLOC={allocator}',
     ]
-    self.do_other_test('test_mimalloc.cpp', emcc_args=args)
+    self.do_other_test('test_malloc_multithreading.cpp', emcc_args=args)
 
   @parameterized({
     '': ([], 'testbind.js'),
