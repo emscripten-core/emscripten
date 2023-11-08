@@ -1747,31 +1747,22 @@ class libmimalloc(MTLibrary):
 
   # Build all of mimalloc, and also emmalloc which is used as the system
   # allocator underneath it.
-  def get_files(self):
-    # Note we cannot use a glob here, as mimalloc includes some files at the
-    # source level (e.g. alloc-override.c is included inside alloc.c).
-    return files_in_path(
-      path='system/lib/mimalloc/src',
-      filenames=[
-        'alloc.c',
-        'alloc-aligned.c',
-        'alloc-posix.c',
-        'arena.c',
-        'bitmap.c',
-        'heap.c',
-        'init.c',
-        'options.c',
-        'os.c',
-        'page.c',
-        'random.c',
-        'segment.c',
-        'segment-map.c',
-        'stats.c',
-        'prim/prim.c',
-      ]
-    ) + files_in_path(
-      path='system/lib/',
-      filenames=['emmalloc.c'])
+  src_dir = 'system/lib/'
+  src_files = glob_in_path(
+    path='system/lib/mimalloc/src',
+    glob_pattern='*.c',
+    # mimalloc includes some files at the source level, so exclude them here.
+    excludes=[
+      'alloc-override.c',
+      'page-queue.c',
+      'static.c',
+    ]
+  ) + files_in_path(
+    path='system/lib/mimalloc/src/prim',
+    filenames=['prim.c']
+  ) + files_in_path(
+    path='system/lib/',
+    filenames=['emmalloc.c'])
 
   def can_use(self):
     return super().can_use() and settings.MALLOC == 'mimalloc'
