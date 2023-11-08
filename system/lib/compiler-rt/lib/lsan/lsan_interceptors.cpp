@@ -461,7 +461,11 @@ INTERCEPTOR(int, pthread_create, void *th, void *attr,
 #endif
 
   __sanitizer_pthread_attr_t myattr;
+#if SANITIZER_EMSCRIPTEN
   if (!attr || attr == __ATTRP_C11_THREAD) {
+#else
+  if (!attr) {
+#endif
     pthread_attr_init(&myattr);
     attr = &myattr;
   }
