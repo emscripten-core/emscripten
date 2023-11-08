@@ -2385,8 +2385,8 @@ addToLibrary({
 #endif
     );`,
 #else
-  // Modern environment where performance.now() is supported: (rely on minifier to return true unconditionally from this function)
-  $nowIsMonotonic: 'true;',
+  // Modern environment where performance.now() is supported
+  $nowIsMonotonic: 1,
 #endif
 
   _emscripten_get_now_is_monotonic__internal: true,
