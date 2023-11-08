@@ -211,7 +211,7 @@ class EmscriptenBenchmarker(Benchmarker):
     ] + LLVM_FEATURE_FLAGS
     if shared_args:
       cmd += shared_args
-    if common.EMTEST_FORCE64:
+    if PROFILING:
       cmd += ['--profiling']
     else:
       cmd += ['--closure=1', '-sMINIMAL_RUNTIME']
@@ -220,8 +220,6 @@ class EmscriptenBenchmarker(Benchmarker):
     cmd += emcc_args + self.extra_args
     if '-sFILESYSTEM' not in cmd and '-sFORCE_FILESYSTEM' not in cmd:
       cmd += ['-sFILESYSTEM=0']
-    if PROFILING:
-      cmd += ['--profiling-funcs']
     self.cmd = cmd
     run_process(cmd, env=self.env)
     if self.binaryen_opts:

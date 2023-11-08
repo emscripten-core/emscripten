@@ -28,7 +28,7 @@ from common import RunnerCore, path_from_root, requires_native_clang, test_file,
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_node_canary, compiler_for, crossplatform
-from common import with_both_sjlj, also_with_standalone_wasm, can_do_standalone
+from common import with_both_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
 
@@ -131,14 +131,6 @@ def no_wasm2js(note=''):
 
   def decorated(f):
     return skip_if(f, 'is_wasm2js', note)
-  return decorated
-
-
-def no_wasm64(note=''):
-  assert not callable(note)
-
-  def decorated(f):
-    return skip_if(f, 'is_wasm64', note)
   return decorated
 
 
@@ -356,12 +348,6 @@ def is_sanitizing(args):
 
 
 class TestCoreBase(RunnerCore):
-  def is_wasm2js(self):
-    return self.get_setting('WASM') == 0
-
-  def is_wasm64(self):
-    return self.get_setting('MEMORY64')
-
   # A simple check whether the compiler arguments cause optimization.
   def is_optimizing(self):
     return '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args
