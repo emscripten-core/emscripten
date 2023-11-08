@@ -1752,11 +1752,7 @@ class libmimalloc(MTLibrary):
     path='system/lib/mimalloc/src',
     glob_pattern='*.c',
     # mimalloc includes some files at the source level, so exclude them here.
-    excludes=[
-      'alloc-override.c',
-      'page-queue.c',
-      'static.c',
-    ]
+    excludes=['alloc-override.c', 'page-queue.c', 'static.c']
   ) + files_in_path(
     path='system/lib/mimalloc/src/prim',
     filenames=['prim.c']
