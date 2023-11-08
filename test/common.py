@@ -611,6 +611,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def is_wasm(self):
     return self.get_setting('WASM') != 0
 
+  def is_wasm2js(self):
+    return not self.is_wasm()
+
   def is_browser_test(self):
     return False
 
