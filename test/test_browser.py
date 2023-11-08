@@ -5438,10 +5438,10 @@ Module["preRun"] = () => {
   @requires_v8
   def test_zzz_zzz_4gb(self):
     # TODO Convert to an actual browser test when it reaches stable.
-    #      For now, keep this in browser as this suite runs serially, which
-    #      means we don't compete for memory with anything else (and run it
-    #      at the very very end, to reduce the risk of it OOM-killing the
-    #      browser).
+    # For now, keep this in browser as this suite runs serially, which
+    # means we don't compete for memory with anything else (and run it
+    # at the very very end, to reduce the risk of it OOM-killing the
+    # browser).
 
     # test that we can allocate in the 2-4GB range, if we enable growth and
     # set the max appropriately
@@ -5451,9 +5451,11 @@ Module["preRun"] = () => {
   # Tests that emmalloc supports up to 4GB Wasm heaps.
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_emmalloc_4gb(self):
-    self.btest('mem_growth.cpp',
-               expected='-65536', # == 4*1024*1024*1024 - 65536 casted to signed
-               args=['-sMALLOC=emmalloc', '-sABORTING_MALLOC=0', '-sALLOW_MEMORY_GROWTH=1', '-sMAXIMUM_MEMORY=4GB'])
+    # For now, keep this in browser as this suite runs serially, which
+    # means we don't compete for memory with anything else (and run it
+    # at the very very end, to reduce the risk of it OOM-killing the
+    # browser).
+    self.btest_exit('test_mem_growth.c', args=['-sMALLOC=emmalloc', '-sABORTING_MALLOC=0', '-sALLOW_MEMORY_GROWTH=1', '-sMAXIMUM_MEMORY=4GB'])
 
   # Test that it is possible to malloc() a huge 3GB memory block in 4GB mode using emmalloc.
   # Also test emmalloc-memvalidate and emmalloc-memvalidate-verbose build configurations.
