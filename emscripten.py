@@ -281,7 +281,7 @@ def create_named_globals(metadata):
   return '\n'.join(named_globals)
 
 
-def emscript(in_wasm, out_wasm, outfile_js, memfile, js_syms):
+def emscript(in_wasm, out_wasm, outfile_js, js_syms):
   # Overview:
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
   #     to use emscripten's wasm<->JS ABI
@@ -294,7 +294,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, js_syms):
     # set file locations, so that JS glue can find what it needs
     settings.WASM_BINARY_FILE = js_manipulation.escape_for_js_string(os.path.basename(out_wasm))
 
-  metadata = finalize_wasm(in_wasm, out_wasm, memfile, js_syms)
+  metadata = finalize_wasm(in_wasm, out_wasm, js_syms)
 
   if settings.RELOCATABLE and settings.MEMORY64 == 2:
     metadata.imports += ['__memory_base32']
@@ -439,12 +439,6 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, js_syms):
     module = None
 
 
-def remove_trailing_zeros(memfile):
-  mem_data = utils.read_binary(memfile)
-  mem_data = mem_data.rstrip(b'\0')
-  utils.write_binary(memfile, mem_data)
-
-
 @ToolchainProfiler.profile()
 def get_metadata(infile, outfile, modify_wasm, args):
   metadata = extract_metadata.extract_metadata(infile)
@@ -463,7 +457,7 @@ def get_metadata(infile, outfile, modify_wasm, args):
   return metadata
 
 
-def finalize_wasm(infile, outfile, memfile, js_syms):
+def finalize_wasm(infile, outfile, js_syms):
   building.save_intermediate(infile, 'base.wasm')
   args = []
 
@@ -501,10 +495,6 @@ def finalize_wasm(infile, outfile, memfile, js_syms):
       modify_wasm = True
     else:
       args.append('--no-legalize-javascript-ffi')
-  if memfile:
-    args.append(f'--separate-data-segments={memfile}')
-    args.append(f'--global-base={settings.GLOBAL_BASE}')
-    modify_wasm = True
   if settings.SIDE_MODULE:
     args.append('--side-module')
   if settings.STACK_OVERFLOW_CHECK >= 2:
@@ -553,13 +543,6 @@ def finalize_wasm(infile, outfile, memfile, js_syms):
 
   if settings.GENERATE_SOURCE_MAP:
     building.save_intermediate(outfile + '.map', 'post_finalize.map')
-
-  if memfile:
-    # we have a separate .mem file. binaryen did not strip any trailing zeros,
-    # because it's an ABI question as to whether it is valid to do so or not.
-    # we can do so here, since we make sure to zero out that memory (even in
-    # the dynamic linking case, our loader zeros it out)
-    remove_trailing_zeros(memfile)
 
   expected_exports = set(settings.EXPORTED_FUNCTIONS)
   expected_exports.update(asmjs_mangle(s) for s in settings.REQUIRED_EXPORTS)
@@ -984,5 +967,5 @@ function applySignatureConversions(wasmExports) {
   return wrappers
 
 
-def run(in_wasm, out_wasm, outfile_js, memfile, js_syms):
-  emscript(in_wasm, out_wasm, outfile_js, memfile, js_syms)
+def run(in_wasm, out_wasm, outfile_js, js_syms):
+  emscript(in_wasm, out_wasm, outfile_js, js_syms)
