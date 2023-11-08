@@ -1745,9 +1745,11 @@ class libmimalloc(MTLibrary):
 
   includes = ['system/lib/mimalloc/include']
 
-  # build all of mimalloc, and also emmalloc which is used as the system
+  # Build all of mimalloc, and also emmalloc which is used as the system
   # allocator underneath it.
   def get_files(self):
+    # Note we cannot use a glob here, as mimalloc includes some files at the
+    # source level (e.g. alloc-override.c is included inside alloc.c).
     return files_in_path(
       path='system/lib/mimalloc/src',
       filenames=[
