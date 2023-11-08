@@ -9,7 +9,7 @@
 #define MAX_HEAP (4*1024*1024*1024ll)
 #else
 // We don't allow the full 4Gb on wasm32 since that size would wrap
-// back to zero.  Se getHeapMax in library.js.
+// back to zero.  See getHeapMax in library.js.
 #define MAX_HEAP (4*1024*1024*1024ll - 65536)
 #endif
 
