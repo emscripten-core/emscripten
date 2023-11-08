@@ -90,7 +90,7 @@ def maybe_copy(src, dest):
   headers will be "re-installed" but we skip the actual filesystem mods
   to avoid racing with other processes that might be reading these files.
   """
-  if os.path.exists(dest) and utils.read_file(src) == utils.read_file(dest):
+  if os.path.exists(dest) and utils.read_binary(src) == utils.read_binary(dest):
     return
   shutil.copyfile(src, dest)
 
