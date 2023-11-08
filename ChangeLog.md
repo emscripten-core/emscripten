@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.49 (in development)
 -----------------------
+- Add a port of mimalloc, a fast and scalable multithreaded allocator. To use
+  it, build with `-sMALLOC=mimalloc`. (#20651)
 
 3.1.48 - 11/05/23
 -----------------
