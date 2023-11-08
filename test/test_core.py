@@ -2971,7 +2971,7 @@ The current type of b is: 9
     self.do_core_test('test_strptime_reentrant.c')
 
   def test_strftime(self):
-    self.do_core_test('test_strftime.cpp')
+    self.do_core_test('test_strftime.c')
 
   def test_trickystring(self):
     self.do_core_test('test_trickystring.c')
