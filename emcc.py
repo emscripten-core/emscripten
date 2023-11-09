@@ -1089,10 +1089,14 @@ def dedup_list(lst):
   return list(dict.fromkeys(lst))
 
 
+def check_output_file(f):
+  if os.path.isdir(f):
+    exit_with_error(f'cannot write output file `{f}`: Is a directory')
+
+
 def move_file(src, dst):
   logging.debug('move: %s -> %s', src, dst)
-  if os.path.isdir(dst):
-    exit_with_error(f'cannot write output file `{dst}`: Is a directory')
+  check_output_file(dst)
   src = os.path.abspath(src)
   dst = os.path.abspath(dst)
   if src == dst:
@@ -4205,11 +4209,8 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   shell = shell.replace('{{{ SHELL_LOGO }}}', utils.read_file(utils.path_from_root('media/powered_by_logo_mini.svg')))
   shell = tools.line_endings.convert_line_endings(shell, '\n', options.output_eol)
 
-  try:
-    # Force UTF-8 output for consistency across platforms and with the web.
-    utils.write_binary(target, shell.encode('utf-8'))
-  except OSError as e:
-    exit_with_error(f'cannot write output file: {e}')
+  check_output_file(target)
+  write_file(target, shell)
 
 
 def minify_html(filename):
