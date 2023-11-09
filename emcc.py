@@ -4099,7 +4099,8 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   script = ScriptSource()
 
   shell = read_and_preprocess(options.shell_path)
-  assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
+  if '{{{ SCRIPT }}}' not in shell:
+    exit_with_error('HTML shell must contain {{{ SCRIPT }}}, see src/shell.html for an example')
   base_js_target = os.path.basename(js_target)
 
   if settings.PROXY_TO_WORKER:
@@ -4199,12 +4200,14 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     script.src = None
     script.inline = js_contents
 
-  html_contents = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
-  html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', options.output_eol)
+  shell = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
+  shell = shell.replace('{{{ SHELL_CSS }}}', utils.read_file(utils.path_from_root('src/shell.css')))
+  shell = shell.replace('{{{ SHELL_LOGO }}}', utils.read_file(utils.path_from_root('media/powered_by_logo_mini.svg')))
+  shell = tools.line_endings.convert_line_endings(shell, '\n', options.output_eol)
 
   try:
     # Force UTF-8 output for consistency across platforms and with the web.
-    utils.write_binary(target, html_contents.encode('utf-8'))
+    utils.write_binary(target, shell.encode('utf-8'))
   except OSError as e:
     exit_with_error(f'cannot write output file: {e}')
 
