@@ -28,7 +28,7 @@ static void InitWebGLTls() {
 }
 
 EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *target, const EmscriptenWebGLContextAttributes *attributes) {
-  GL_FUNCTION_TRACE(__func__);
+  GL_FUNCTION_TRACE();
   if (!attributes) {
     emscripten_err("emscripten_webgl_create_context: attributes pointer is null!");
     return 0;
@@ -46,7 +46,7 @@ EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *targ
 }
 
 EMSCRIPTEN_RESULT emscripten_webgl_make_context_current(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context) {
-  GL_FUNCTION_TRACE(__func__);
+  GL_FUNCTION_TRACE();
   if (emscripten_webgl_get_current_context() == context)
     return EMSCRIPTEN_RESULT_SUCCESS;
 
@@ -74,7 +74,7 @@ EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_get_current_context(void) {
 }
 
 EMSCRIPTEN_RESULT emscripten_webgl_commit_frame(void) {
-  GL_FUNCTION_TRACE(__func__);
+  GL_FUNCTION_TRACE();
   if (pthread_getspecific(currentThreadOwnsItsWebGLContext))
     return emscripten_webgl_do_commit_frame();
   else
@@ -102,7 +102,7 @@ ASYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glBlendFunc, GLenum, GLenum);
 ASYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void, glBlendFuncSeparate, GLenum, GLenum, GLenum, GLenum);
 
 void glBufferData(GLenum target, GLsizeiptr size, const void *data, GLenum usage) {
-  GL_FUNCTION_TRACE(__func__);
+  GL_FUNCTION_TRACE();
   if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) {
     emscripten_glBufferData(target, size, data, usage);
     return;
@@ -121,7 +121,7 @@ void glBufferData(GLenum target, GLsizeiptr size, const void *data, GLenum usage
 }
 
 void glBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, const void *data) {
-  GL_FUNCTION_TRACE(__func__);
+  GL_FUNCTION_TRACE();
   if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) {
     emscripten_glBufferSubData(target, offset, size, data);
     return;
@@ -256,7 +256,7 @@ static ssize_t ImageSize(int width, int height, GLenum format, GLenum type) {
 }
 
 void glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const void *pixels) {
-  GL_FUNCTION_TRACE(__func__);
+  GL_FUNCTION_TRACE();
   if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) {
     emscripten_glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
     return;
@@ -281,7 +281,7 @@ ASYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glTexParameteri, GLenum, GLenum, GLi
 VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glTexParameteriv, GLenum, GLenum, const GLint *);
 
 void glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const void *pixels) {
-  GL_FUNCTION_TRACE(__func__);
+  GL_FUNCTION_TRACE();
   if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) {
     emscripten_glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
     return;
@@ -303,7 +303,7 @@ void glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, G
 ASYNC_GL_FUNCTION_2(EM_FUNC_SIG_VIF, void, glUniform1f, GLint, GLfloat);
 
 void glUniform1fv(GLint location, GLsizei count, const GLfloat *value) {
-  GL_FUNCTION_TRACE(__func__);
+  GL_FUNCTION_TRACE();
   if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) {
     emscripten_glUniform1fv(location, count, value);
     return;
@@ -325,7 +325,7 @@ void glUniform1fv(GLint location, GLsizei count, const GLfloat *value) {
 ASYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glUniform1i, GLint, GLint);
 
 void glUniform1iv(GLint location, GLsizei count, const GLint *value) {
-  GL_FUNCTION_TRACE(__func__);
+  GL_FUNCTION_TRACE();
   if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) {
     emscripten_glUniform1iv(location, count, value);
     return;
@@ -346,7 +346,7 @@ void glUniform1iv(GLint location, GLsizei count, const GLint *value) {
 ASYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIFF, void, glUniform2f, GLint, GLfloat, GLfloat);
 
 void glUniform2fv(GLint location, GLsizei count, const GLfloat *value) {
-  GL_FUNCTION_TRACE(__func__);
+  GL_FUNCTION_TRACE();
   if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) {
     emscripten_glUniform2fv(location, count, value);
     return;
@@ -368,7 +368,7 @@ void glUniform2fv(GLint location, GLsizei count, const GLfloat *value) {
 ASYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glUniform2i, GLint, GLint, GLint);
 
 void glUniform2iv(GLint location, GLsizei count, const GLint *value) {
-  GL_FUNCTION_TRACE(__func__);
+  GL_FUNCTION_TRACE();
   if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) {
     emscripten_glUniform2iv(location, count, value);
     return;
@@ -389,7 +389,7 @@ void glUniform2iv(GLint location, GLsizei count, const GLint *value) {
 ASYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIFFF, void, glUniform3f, GLint, GLfloat, GLfloat, GLfloat);
 
 void glUniform3fv(GLint location, GLsizei count, const GLfloat *value) {
-  GL_FUNCTION_TRACE(__func__);
+  GL_FUNCTION_TRACE();
   if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) {
     emscripten_glUniform3fv(location, count, value);
     return;
@@ -411,7 +411,7 @@ void glUniform3fv(GLint location, GLsizei count, const GLfloat *value) {
 ASYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void, glUniform3i, GLint, GLint, GLint, GLint);
 
 void glUniform3iv(GLint location, GLsizei count, const GLint *value) {
-  GL_FUNCTION_TRACE(__func__);
+  GL_FUNCTION_TRACE();
   if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) {
     emscripten_glUniform3iv(location, count, value);
     return;
@@ -432,7 +432,7 @@ void glUniform3iv(GLint location, GLsizei count, const GLint *value) {
 ASYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIFFFF, void, glUniform4f, GLint, GLfloat, GLfloat, GLfloat, GLfloat);
 
 void glUniform4fv(GLint location, GLsizei count, const GLfloat *value) {
-  GL_FUNCTION_TRACE(__func__);
+  GL_FUNCTION_TRACE();
   if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) {
     emscripten_glUniform4fv(location, count, value);
     return;
@@ -454,7 +454,7 @@ void glUniform4fv(GLint location, GLsizei count, const GLfloat *value) {
 ASYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIIIII, void, glUniform4i, GLint, GLint, GLint, GLint, GLint);
 
 void glUniform4iv(GLint location, GLsizei count, const GLint *value) {
-  GL_FUNCTION_TRACE(__func__);
+  GL_FUNCTION_TRACE();
   if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) {
     emscripten_glUniform4iv(location, count, value);
     return;
@@ -474,7 +474,7 @@ void glUniform4iv(GLint location, GLsizei count, const GLint *value) {
 }
 
 void glUniformMatrix2fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value) {
-  GL_FUNCTION_TRACE(__func__);
+  GL_FUNCTION_TRACE();
   if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) {
     emscripten_glUniformMatrix2fv(location, count, transpose, value);
     return;
@@ -493,7 +493,7 @@ void glUniformMatrix2fv(GLint location, GLsizei count, GLboolean transpose, cons
 }
 
 void glUniformMatrix3fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value) {
-  GL_FUNCTION_TRACE(__func__);
+  GL_FUNCTION_TRACE();
   if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) {
     emscripten_glUniformMatrix3fv(location, count, transpose, value);
     return;
@@ -512,7 +512,7 @@ void glUniformMatrix3fv(GLint location, GLsizei count, GLboolean transpose, cons
 }
 
 void glUniformMatrix4fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value) {
-  GL_FUNCTION_TRACE(__func__);
+  GL_FUNCTION_TRACE();
   if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) {
     emscripten_glUniformMatrix4fv(location, count, transpose, value);
     return;
