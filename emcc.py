@@ -632,7 +632,13 @@ def should_run_binaryen_optimizer():
   return settings.OPT_LEVEL >= 2
 
 
-def get_binaryen_passes():
+def remove_trailing_zeros(memfile):
+  mem_data = utils.read_binary(memfile)
+  mem_data = mem_data.rstrip(b'\0')
+  utils.write_binary(memfile, mem_data)
+
+
+def get_binaryen_passes(memfile):
   passes = []
   optimizing = should_run_binaryen_optimizer()
   # wasm-emscripten-finalize will strip the features section for us
@@ -716,6 +722,12 @@ def get_binaryen_passes():
 
   if settings.MEMORY64 == 2:
     passes += ['--memory64-lowering']
+
+  if memfile:
+    passes += [
+      f'--separate-data-segments={memfile}',
+      f'--pass-arg=separate-data-segments-global-base@{settings.GLOBAL_BASE}'
+    ]
 
   if settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
     passes += ['--ignore-implicit-traps']
@@ -3233,25 +3245,20 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms):
 
   settings.TARGET_JS_NAME = os.path.basename(state.js_target)
 
+  if options.embind_emit_tsd:
+    phase_embind_emit_tsd(options, in_wasm, wasm_target, js_syms)
+
+  phase_emscript(options, in_wasm, wasm_target, js_syms)
+
+  if options.js_transform:
+    phase_source_transforms(options)
+
   if settings.MEM_INIT_IN_WASM:
     memfile = None
   else:
     memfile = shared.replace_or_append_suffix(target, '.mem')
 
-  if options.embind_emit_tsd:
-    phase_embind_emit_tsd(options, in_wasm, wasm_target, memfile, js_syms)
-
-  phase_emscript(options, in_wasm, wasm_target, memfile, js_syms)
-
-  if options.js_transform:
-    phase_source_transforms(options)
-
-  if memfile and not settings.MINIMAL_RUNTIME:
-    # MINIMAL_RUNTIME doesn't use `var memoryInitializer` but instead expects Module['mem'] to
-    # be loaded before the module.  See src/postamble_minimal.js.
-    phase_memory_initializer(memfile)
-
-  phase_binaryen(target, options, wasm_target)
+  phase_binaryen(target, options, wasm_target, memfile)
 
   # If we are not emitting any JS then we are all done now
   if options.oformat != OFormat.WASM:
@@ -3259,7 +3266,7 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms):
 
 
 @ToolchainProfiler.profile_block('emscript')
-def phase_emscript(options, in_wasm, wasm_target, memfile, js_syms):
+def phase_emscript(options, in_wasm, wasm_target, js_syms):
   # Emscripten
   logger.debug('emscript')
 
@@ -3268,12 +3275,12 @@ def phase_emscript(options, in_wasm, wasm_target, memfile, js_syms):
   if shared.SKIP_SUBPROCS:
     return
 
-  emscripten.run(in_wasm, wasm_target, final_js, memfile, js_syms)
+  emscripten.run(in_wasm, wasm_target, final_js, js_syms)
   save_intermediate('original')
 
 
 @ToolchainProfiler.profile_block('embind emit tsd')
-def phase_embind_emit_tsd(options, in_wasm, wasm_target, memfile, js_syms):
+def phase_embind_emit_tsd(options, in_wasm, wasm_target, js_syms):
   logger.debug('emit tsd')
   # Save settings so they can be restored after TS generation.
   original_settings = settings.backup()
@@ -3311,7 +3318,7 @@ def phase_embind_emit_tsd(options, in_wasm, wasm_target, memfile, js_syms):
   outfile_js = in_temp('tsgen_a.out.js')
   # The Wasm outfile may be modified by emscripten.run, so use a temporary file.
   outfile_wasm = in_temp('tsgen_a.out.wasm')
-  emscripten.run(in_wasm, outfile_wasm, outfile_js, memfile, js_syms)
+  emscripten.run(in_wasm, outfile_wasm, outfile_js, js_syms)
   out = shared.run_js_tool(outfile_js, [], stdout=PIPE)
   write_file(
     os.path.join(os.path.dirname(wasm_target), options.embind_emit_tsd), out)
@@ -3797,7 +3804,7 @@ def parse_args(newargs):
 
 
 @ToolchainProfiler.profile_block('binaryen')
-def phase_binaryen(target, options, wasm_target):
+def phase_binaryen(target, options, wasm_target, memfile):
   global final_js
   logger.debug('using binaryen')
   # whether we need to emit -g (function name debug info) in the final wasm
@@ -3820,7 +3827,7 @@ def phase_binaryen(target, options, wasm_target):
   # run wasm-opt if we have work for it: either passes, or if we are using
   # source maps (which requires some extra processing to keep the source map
   # but remove DWARF)
-  passes = get_binaryen_passes()
+  passes = get_binaryen_passes(memfile)
   if passes:
     # if asyncify is used, we will use it in the next stage, and so if it is
     # the only reason we need intermediate debug info, we can stop keeping it
@@ -3836,6 +3843,18 @@ def phase_binaryen(target, options, wasm_target):
                             args=passes,
                             debug=intermediate_debug_info)
       building.save_intermediate(wasm_target, 'byn.wasm')
+
+    if memfile:
+      # we have a separate .mem file. binaryen did not strip any trailing zeros,
+      # because it's an ABI question as to whether it is valid to do so or not.
+      # we can do so here, since we make sure to zero out that memory (even in
+      # the dynamic linking case, our loader zeros it out)
+      remove_trailing_zeros(memfile)
+
+      # MINIMAL_RUNTIME doesn't use `var memoryInitializer` but instead expects Module['mem'] to
+      # be loaded before the module.  See src/postamble_minimal.js.
+      if not settings.MINIMAL_RUNTIME:
+        phase_memory_initializer(memfile)
 
   if settings.EVAL_CTORS:
     with ToolchainProfiler.profile_block('eval_ctors'):
