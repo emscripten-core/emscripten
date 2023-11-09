@@ -14162,3 +14162,11 @@ addToLibrary({
     # Test that even with `-Wl,--strip-all` the target features section is generated
     # by wasm-ld so that later phases (e.g. wasm-opt) can read it.
     self.do_runf('hello_world.c', emcc_args=['-Wl,--strip-all', '-pthread'])
+
+  def test_embind_no_duplicate_symbols(self):
+    # Embind implementation lives almost entirely in headers, which have special rules
+    # around symbol deduplication during linking. Ensure that including Embind headers
+    # in two different object files doesn't lead to linking errors.
+    create_file('a.cpp', '#include <emscripten/bind.h>')
+    create_file('b.cpp', '#include <emscripten/bind.h>')
+    self.run_process([EMXX, '-std=c++23', '-lembind', 'a.cpp', 'b.cpp'])
