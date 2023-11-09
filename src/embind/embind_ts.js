@@ -98,7 +98,8 @@ var LibraryEmbind = {
     printModuleEntry(nameMap, out) {
       out.push(`  ${this.name}: {new`);
       // TODO Handle constructor overloading
-      const constructor = this.constructors[this.constructors.length > 1 ? 1 : 0];
+      // Use the last defined constructor for now.
+      const constructor = this.constructors[this.constructors.length - 1];
       constructor.printSignature(nameMap, out);
       for (const method of this.staticMethods) {
         out.push('; ');

@@ -47,6 +47,10 @@ export interface ClassWithConstructor {
   delete(): void;
 }
 
+export interface ClassWithTwoConstructors {
+  delete(): void;
+}
+
 export interface ClassWithSmartPtrConstructor {
   fn(_0: number): number;
   delete(): void;
@@ -76,6 +80,7 @@ export interface MainModule {
   IntVec: {new(): IntVec};
   Foo: {new(): Foo};
   ClassWithConstructor: {new(_0: number, _1: ValArr): ClassWithConstructor};
+  ClassWithTwoConstructors: {new(_0: number): ClassWithTwoConstructors};
   ClassWithSmartPtrConstructor: {new(_0: number, _1: ValArr): ClassWithSmartPtrConstructor};
   BaseClass: {new(): BaseClass};
   DerivedClass: {new(): DerivedClass};
