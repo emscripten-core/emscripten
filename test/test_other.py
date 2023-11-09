@@ -7904,6 +7904,7 @@ int main() {
     output = self.run_process([common.LLVM_OBJDUMP, '-t', 'test.o'], stdout=PIPE).stdout
     self.assertContained('foo', output)
 
+  @crossplatform
   def test_output_eol(self):
     for params in [[], ['--proxy-to-worker'], ['--proxy-to-worker', '-sWASM=0']]:
       for output_suffix in ['html', 'js']:
@@ -7922,7 +7923,7 @@ int main() {
               expected_ending = '\r\n'
 
             ret = line_endings.check_line_endings(f, expect_only=expected_ending)
-            assert ret == 0
+            self.assertEqual(ret, 0)
 
           for f in files:
             delete_file(f)
@@ -9779,6 +9780,7 @@ console.error('JSLIB: none of the above');
     self.assertContained('JSLIB: EXIT_RUNTIME', err)
     self.assertNotContained('JSLIB: MAIN_MODULE', err)
 
+  @crossplatform
   def test_html_preprocess(self):
     src_file = test_file('module/test_stdin.c')
     output_file = 'test_stdin.html'
@@ -9786,7 +9788,7 @@ console.error('JSLIB: none of the above');
 
     self.run_process([EMCC, '-o', output_file, src_file, '--shell-file', shell_file, '-sASSERTIONS=0'], stdout=PIPE, stderr=PIPE)
     output = read_file(output_file)
-    self.assertContained("""<style>
+    self.assertContained('''<style>
 /* Disable preprocessing inside style block as syntax is ambiguous with CSS */
 #include {background-color: black;}
 #if { background-color: red;}
@@ -9799,7 +9801,7 @@ T2:ASSERTIONS != 1
 T3:ASSERTIONS < 2
 T4:(else) ASSERTIONS <= 1
 T5:(else) ASSERTIONS
-T6:!ASSERTIONS""", output)
+T6:!ASSERTIONS''', output)
 
     self.run_process([EMCC, '-o', output_file, src_file, '--shell-file', shell_file, '-sASSERTIONS'], stdout=PIPE, stderr=PIPE)
     output = read_file(output_file)

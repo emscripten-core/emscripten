@@ -4207,7 +4207,6 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   shell = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
   shell = shell.replace('{{{ SHELL_CSS }}}', utils.read_file(utils.path_from_root('src/shell.css')))
   shell = shell.replace('{{{ SHELL_LOGO }}}', utils.read_file(utils.path_from_root('media/powered_by_logo_mini.svg')))
-  shell = tools.line_endings.convert_line_endings(shell, '\n', options.output_eol)
 
   check_output_file(target)
   write_file(target, shell)
@@ -4276,6 +4275,8 @@ def generate_html(target, options, js_target, target_basename,
 
   if settings.MINIFY_HTML and (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1):
     minify_html(target)
+
+  tools.line_endings.convert_line_endings_in_file(target, os.linesep, options.output_eol)
 
 
 def generate_worker_js(target, js_target, target_basename):
