@@ -1250,4 +1250,8 @@ function runMemoryInitializer() {
 var asyncifyStubs = {};
 #endif
 
+#if EMBIND_AOT
+// <<< EMBIND_AOT_OUTPUT >>>
+#endif
+
 // === Body ===

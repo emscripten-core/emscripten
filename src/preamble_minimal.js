@@ -150,4 +150,8 @@ var runtimeInitialized = false;
 #include "runtime_exceptions.js"
 #include "runtime_debug.js"
 
+#if EMBIND_AOT
+// <<< EMBIND_AOT_OUTPUT >>>
+#endif
+
 // === Body ===

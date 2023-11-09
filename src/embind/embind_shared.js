@@ -168,6 +168,110 @@ var LibraryEmbindShared = {
         throwBindingError(humanName + " has unknown type " + getTypeName(rawType));
     }
     return impl;
+  },
+
+  $usesDestructorStack(argTypes) {
+    for (var i = 1; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here.
+      if (argTypes[i] !== null && argTypes[i].destructorFunction === undefined) { // The type does not define a destructor function - must use dynamic stack
+        return true;
+      }
+    }
+    return false;
+  },
+
+  $createJsInvoker__deps: ['$usesDestructorStack'],
+  $createJsInvoker(humanName, argTypes, isClassMethodFunc, returns, isAsync) {
+    var needsDestructorStack = usesDestructorStack(argTypes);
+    var argCount = argTypes.length;
+    var argsList = "";
+    var argsListWired = "";
+    for (var i = 0; i < argCount - 2; ++i) {
+      argsList += (i!==0?", ":"")+"arg"+i;
+      argsListWired += (i!==0?", ":"")+"arg"+i+"Wired";
+    }
+
+    var invokerFnBody = `
+      return function (${argsList}) {
+      if (arguments.length !== ${argCount - 2}) {
+        throwBindingError('function ${humanName} called with ' + arguments.length + ' arguments, expected ${argCount - 2}');
+      }`;
+
+#if EMSCRIPTEN_TRACING
+    invokerFnBody += `Module.emscripten_trace_enter_context('embind::${humanName}');\n`;
+#endif
+
+    if (needsDestructorStack) {
+      invokerFnBody += "var destructors = [];\n";
+    }
+
+    var dtorStack = needsDestructorStack ? "destructors" : "null";
+    var args1 = ["throwBindingError", "invoker", "fn", "runDestructors", "retType", "classParam"];
+
+#if EMSCRIPTEN_TRACING
+    args1.push("Module");
+#endif
+
+    if (isClassMethodFunc) {
+      invokerFnBody += "var thisWired = classParam['toWireType']("+dtorStack+", this);\n";
+    }
+
+    for (var i = 0; i < argCount - 2; ++i) {
+      invokerFnBody += "var arg"+i+"Wired = argType"+i+"['toWireType']("+dtorStack+", arg"+i+"); // "+argTypes[i+2].name+"\n";
+      args1.push("argType"+i);
+    }
+
+    if (isClassMethodFunc) {
+      argsListWired = "thisWired" + (argsListWired.length > 0 ? ", " : "") + argsListWired;
+    }
+
+    invokerFnBody +=
+        (returns || isAsync ? "var rv = ":"") + "invoker(fn"+(argsListWired.length>0?", ":"")+argsListWired+");\n";
+
+#if ASYNCIFY == 1
+    args1.push("Asyncify");
+#endif
+#if ASYNCIFY
+    invokerFnBody += "function onDone(" + (returns ? "rv" : "") + ") {\n";
+#endif
+
+    if (needsDestructorStack) {
+      invokerFnBody += "runDestructors(destructors);\n";
+    } else {
+      for (var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
+        var paramName = (i === 1 ? "thisWired" : ("arg"+(i - 2)+"Wired"));
+        if (argTypes[i].destructorFunction !== null) {
+          invokerFnBody += paramName+"_dtor("+paramName+"); // "+argTypes[i].name+"\n";
+          args1.push(paramName+"_dtor");
+        }
+      }
+    }
+
+    if (returns) {
+      invokerFnBody += "var ret = retType['fromWireType'](rv);\n" +
+#if EMSCRIPTEN_TRACING
+                       "Module.emscripten_trace_exit_context();\n" +
+#endif
+                       "return ret;\n";
+    } else {
+#if EMSCRIPTEN_TRACING
+      invokerFnBody += "Module.emscripten_trace_exit_context();\n";
+#endif
+    }
+
+#if ASYNCIFY == 1
+    invokerFnBody += "}\n";
+    invokerFnBody += "return Asyncify.currData ? Asyncify.whenDone().then(onDone) : onDone(" + (returns ? "rv" : "") +");\n"
+#elif ASYNCIFY == 2
+    invokerFnBody += "}\n";
+    invokerFnBody += "return " + (isAsync ? "rv.then(onDone)" : "onDone(" + (returns ? "rv" : "") + ")") + ";";
+#endif
+
+    invokerFnBody += "}\n";
+
+#if ASSERTIONS
+    invokerFnBody = `if (arguments.length !== ${args1.length}){ throw new Error("${humanName} Expected ${args1.length} closure arguments " + arguments.length + " given."); }\n${invokerFnBody}`;
+#endif
+    return [args1, invokerFnBody];
   }
 };
 
