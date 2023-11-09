@@ -4552,7 +4552,13 @@ def main(args):
 
 if __name__ == '__main__':
   try:
-    sys.exit(main(sys.argv))
+    argv = []
+    for i in sys.argv:
+      if '*' in i:
+        argv.extend(glob.glob(i))
+      else:
+        argv.append(i)
+    sys.exit(main(argv))
   except KeyboardInterrupt:
     logger.debug('KeyboardInterrupt')
     sys.exit(1)

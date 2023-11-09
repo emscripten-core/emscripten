@@ -6,12 +6,19 @@
 
 import sys
 import emcc
+import glob
 
 emcc.run_via_emxx = True
 
 if __name__ == '__main__':
   try:
-    sys.exit(emcc.main(sys.argv))
+    argv = []
+    for i in sys.argv:
+      if '*' in i:
+        argv.extend(glob.glob(i))
+      else:
+        argv.append(i)
+    sys.exit(emcc.main(argv))
   except KeyboardInterrupt:
     emcc.logger.debug('KeyboardInterrupt')
     sys.exit(1)
