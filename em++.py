@@ -6,18 +6,13 @@
 
 import sys
 import emcc
-import glob
+from tools.utils import handle_wildcard_argv
 
 emcc.run_via_emxx = True
 
 if __name__ == '__main__':
   try:
-    argv = []
-    for i in sys.argv:
-      if '*' in i:
-        argv.extend(glob.glob(i))
-      else:
-        argv.append(i)
+    argv = handle_wildcard_argv(sys.argv)
     sys.exit(emcc.main(argv))
   except KeyboardInterrupt:
     emcc.logger.debug('KeyboardInterrupt')

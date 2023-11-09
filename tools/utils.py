@@ -7,6 +7,7 @@ import contextlib
 import os
 import shutil
 import sys
+import glob
 from pathlib import Path
 
 from . import diagnostics
@@ -109,3 +110,9 @@ def delete_contents(dirname, exclude=None):
       delete_dir(entry)
     else:
       delete_file(entry)
+
+def handle_wildcard_argv(argv):
+  """Handle wildcard argv for Windows only"""
+  if WINDOWS:
+     return [j for i in argv for j in glob.glob(i)]
+  return argv
