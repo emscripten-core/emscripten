@@ -111,6 +111,7 @@ def delete_contents(dirname, exclude=None):
     else:
       delete_file(entry)
 
+
 def handle_wildcard_argv(argv):
   """Handle wildcard argv for Windows only"""
   if WINDOWS:
