@@ -4,6 +4,7 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  */
+#include <assert.h>
 #include <emscripten/threading.h>
 #include <emscripten/console.h>
 #include <string.h>
@@ -27,8 +28,20 @@ static void InitWebGLTls() {
   pthread_key_create(&currentThreadOwnsItsWebGLContext, NULL);
 }
 
-static pthread_t GetCurrentTargetThread() {
-  return *(void**)(pthread_getspecific(currentActiveWebGLContext) + 4);
+// When OFFSCREEN_FRAMEBUFFER is enabled the EMSCRIPTEN_WEBGL_CONTEXT_HANDLE
+// is a pointer to a struct with two fields.  See registerContext in
+// library_webgl.js
+typedef struct WebGLContextHandle {
+  uint32_t explicit_swap_control;
+  pthread_t owning_thread;
+} WebGLContextHandle;
+
+static inline pthread_t GetOwningThread(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE handle) {
+  return ((WebGLContextHandle*)handle)->owning_thread;
+}
+
+static inline pthread_t GetCurrentTargetThread() {
+  return GetOwningThread(emscripten_webgl_get_current_context());
 }
 
 EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *target, const EmscriptenWebGLContextAttributes *attributes) {
@@ -54,8 +67,7 @@ EMSCRIPTEN_RESULT emscripten_webgl_make_context_current(EMSCRIPTEN_WEBGL_CONTEXT
   if (emscripten_webgl_get_current_context() == context)
     return EMSCRIPTEN_RESULT_SUCCESS;
 
-  void *owningThread = *(void**)(context + 4);
-  if (owningThread == pthread_self()) {
+  if (context && GetOwningThread(context) == pthread_self()) {
     EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current_calling_thread(context);
     if (r == EMSCRIPTEN_RESULT_SUCCESS) {
       pthread_setspecific(currentActiveWebGLContext, (void*)context);
