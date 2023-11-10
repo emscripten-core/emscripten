@@ -20,12 +20,34 @@ val promise_sleep(int ms, int result = 0) {
   return val::take_ownership(promise_sleep_impl(ms, result));
 }
 
+// Test that we can subclass and make custom awaitable types.
+template <typename T>
+class typed_promise: public val {
+public:
+  typed_promise(val&& promise): val(std::move(promise)) {}
+
+  auto operator co_await() const {
+    struct typed_awaiter: val::awaiter {
+      using val::awaiter::awaiter;
+
+      T await_resume() {
+        return val::awaiter::await_resume().template as<T>();
+      }
+    };
+
+    return typed_awaiter(*this);
+  }
+};
+
 val asyncCoro() {
   // check that just sleeping works
   co_await promise_sleep(1);
   // check that sleeping and receiving value works
   val v = co_await promise_sleep(1, 12);
   assert(v.as<int>() == 12);
+  // check that awaiting a subclassed promise works and returns the correct type
+  int x = co_await typed_promise<int>(promise_sleep(1, 23));
+  assert(x == 23);
   // check that returning value works (checked by JS in tests)
   co_return 34;
 }
