@@ -18,25 +18,24 @@
 }}}
 
 var LibraryGL = {
-
-  // For functions such as glDrawBuffers, glInvalidateFramebuffer and glInvalidateSubFramebuffer that need to pass a short array to the WebGL API,
-  // create a set of short fixed-length arrays to avoid having to generate any garbage when calling those functions.
+  // For functions such as glDrawBuffers, glInvalidateFramebuffer and
+  // glInvalidateSubFramebuffer that need to pass a short array to the WebGL
+  // API, create a set of short fixed-length arrays to avoid having to generate
+  // any garbage when calling those functions.
   $tempFixedLengthArray__postset: 'for (var i = 0; i < 32; ++i) tempFixedLengthArray.push(new Array(i));',
   $tempFixedLengthArray: [],
 
   $miniTempWebGLFloatBuffers: [],
-  $miniTempWebGLFloatBuffers__postset:
-      'var miniTempWebGLFloatBuffersStorage = new Float32Array(' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + ');\n'
-    + 'for (/**@suppress{duplicate}*/var i = 0; i < ' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + '; ++i) {\n'
-    + 'miniTempWebGLFloatBuffers[i] = miniTempWebGLFloatBuffersStorage.subarray(0, i+1);\n'
-    + '}\n',
+  $miniTempWebGLFloatBuffers__postset: `var miniTempWebGLFloatBuffersStorage = new Float32Array({{{ GL_POOL_TEMP_BUFFERS_SIZE }}});
+for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; ++i) {
+  miniTempWebGLFloatBuffers[i] = miniTempWebGLFloatBuffersStorage.subarray(0, i+1);
+}`,
 
   $miniTempWebGLIntBuffers: [],
-  $miniTempWebGLIntBuffers__postset:
-      'var miniTempWebGLIntBuffersStorage = new Int32Array(' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + ');\n'
-    + 'for (/**@suppress{duplicate}*/var i = 0; i < ' + {{{ GL_POOL_TEMP_BUFFERS_SIZE }}} + '; ++i) {\n'
-    + 'miniTempWebGLIntBuffers[i] = miniTempWebGLIntBuffersStorage.subarray(0, i+1);\n'
-    + '}\n',
+  $miniTempWebGLIntBuffers__postset: `var miniTempWebGLIntBuffersStorage = new Int32Array({{{ GL_POOL_TEMP_BUFFERS_SIZE }}});
+for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; ++i) {
+  miniTempWebGLIntBuffers[i] = miniTempWebGLIntBuffersStorage.subarray(0, i+1);
+}`,
 
   $heapObjectForWebGLType: (type) => {
     // Micro-optimization for size: Subtract lowest GL enum number (0x1400/* GL_BYTE */) from type to compare
@@ -161,8 +160,8 @@ var LibraryGL = {
     debug: true,
 #endif
 
-/* We do not depend on the exact initial values of falsey member fields - these fields can be populated on-demand
-   to save code size.
+/* We do not depend on the exact initial values of falsey member fields - these
+   fields can be populated on-demand to save code size.
    (but still documented here to keep track of what is supposed to be present)
 #if GL_TRACK_ERRORS
     lastError: 0,
@@ -191,8 +190,11 @@ var LibraryGL = {
 #else            // without pthreads, it's just an integer ID
     contexts: [],
 #endif
-    offscreenCanvases: {}, // DOM ID -> OffscreenCanvas mappings of <canvas> elements that have their rendering control transferred to offscreen.
-    queries: [], // on WebGL1 stores WebGLTimerQueryEXT, on WebGL2 WebGLQuery
+    // DOM ID -> OffscreenCanvas mappings of <canvas> elements that have their
+    // rendering control transferred to offscreen.
+    offscreenCanvases: {},
+    // on WebGL1 stores WebGLTimerQueryEXT, on WebGL2 WebGLQuery
+    queries: [],
 #if MAX_WEBGL_VERSION >= 2
     samplers: [],
     transformFeedbacks: [],
@@ -223,8 +225,10 @@ var LibraryGL = {
 
     unpackAlignment: 4, // default alignment is 4 bytes
 
-    // Records a GL error condition that occurred, stored until user calls glGetError() to fetch it. As per GLES2 spec, only the first error
-    // is remembered, and subsequent errors are discarded until the user has cleared the stored error by a call to glGetError().
+    // Records a GL error condition that occurred, stored until user calls
+    // glGetError() to fetch it. As per GLES2 spec, only the first error is
+    // remembered, and subsequent errors are discarded until the user has
+    // cleared the stored error by a call to glGetError().
     recordError: function recordError(errorCode) {
 #if GL_TRACK_ERRORS
       if (!GL.lastError) {
@@ -232,7 +236,8 @@ var LibraryGL = {
       }
 #endif
     },
-    // Get a new ID for a texture/buffer/etc., while keeping the table dense and fast. Creation is fairly rare so it is worth optimizing lookups later.
+    // Get a new ID for a texture/buffer/etc., while keeping the table dense and
+    // fast. Creation is fairly rare so it is worth optimizing lookups later.
     getNewId: (table) => {
       var ret = GL.counter++;
       for (var i = table.length; i < ret; i++) {
@@ -242,19 +247,24 @@ var LibraryGL = {
     },
 
 #if FULL_ES2 || LEGACY_GL_EMULATION
-    // When user GL code wants to render from client-side memory, we need to upload the vertex data to a temp VBO
-    // for rendering. Maintain a set of temp VBOs that are created-on-demand to appropriate sizes, and never destroyed.
-    // Also, for best performance the VBOs are double-buffered, i.e. every second frame we switch the set of VBOs we
-    // upload to, so that rendering from the previous frame is not disturbed by uploading from new data to it, which
-    // could cause a GPU-CPU pipeline stall.
-    // Note that index buffers are not double-buffered (at the moment) in this manner.
+    // When user GL code wants to render from client-side memory, we need to
+    // upload the vertex data to a temp VBO for rendering. Maintain a set of
+    // temp VBOs that are created-on-demand to appropriate sizes, and never
+    // destroyed.  Also, for best performance the VBOs are double-buffered, i.e.
+    // every second frame we switch the set of VBOs we upload to, so that
+    // rendering from the previous frame is not disturbed by uploading from new
+    // data to it, which could cause a GPU-CPU pipeline stall.
+    // Note that index buffers are not double-buffered (at the moment) in this
+    // manner.
     MAX_TEMP_BUFFER_SIZE: {{{ GL_MAX_TEMP_BUFFER_SIZE }}},
-    // Maximum number of temp VBOs of one size to maintain, after that we start reusing old ones, which is safe but can give
-    // a performance impact. If CPU-GPU stalls are a problem, increasing this might help.
+    // Maximum number of temp VBOs of one size to maintain, after that we start
+    // reusing old ones, which is safe but can give a performance impact. If
+    // CPU-GPU stalls are a problem, increasing this might help.
     numTempVertexBuffersPerSize: 64, // (const)
 
-    // Precompute a lookup table for the function ceil(log2(x)), i.e. how many bits are needed to represent x, or,
-    // if x was rounded up to next pow2, which index is the single '1' bit at?
+    // Precompute a lookup table for the function ceil(log2(x)), i.e. how many
+    // bits are needed to represent x, or, if x was rounded up to next pow2,
+    // which index is the single '1' bit at?
     // Then log2ceilLookup[x] returns ceil(log2(x)).
     log2ceilLookup: (i) => 32 - Math.clz32(i === 0 ? 0 : i - 1),
 
@@ -340,9 +350,10 @@ var LibraryGL = {
       return GL.currentContext.tempIndexBuffers[idx];
     },
 
-    // Called at start of each new WebGL rendering frame. This swaps the doublebuffered temp VB memory pointers,
-    // so that every second frame utilizes different set of temp buffers. The aim is to keep the set of buffers
-    // being rendered, and the set of buffers being updated disjoint.
+    // Called at start of each new WebGL rendering frame. This swaps the
+    // doublebuffered temp VB memory pointers, so that every second frame
+    // utilizes different set of temp buffers. The aim is to keep the set of
+    // buffers being rendered, and the set of buffers being updated disjoint.
     newRenderingFrameStarted: function newRenderingFrameStarted() {
       if (!GL.currentContext) {
         return;
@@ -416,7 +427,8 @@ var LibraryGL = {
     preDrawHandleClientVertexAttribBindings: function preDrawHandleClientVertexAttribBindings(count) {
       GL.resetBufferBinding = false;
 
-      // TODO: initial pass to detect ranges we need to upload, might not need an upload per attrib
+      // TODO: initial pass to detect ranges we need to upload, might not need
+      // an upload per attrib
       for (var i = 0; i < GL.currentContext.maxVertexAttribs; ++i) {
         var cb = GL.currentContext.clientBuffers[i];
         if (!cb.clientside || !cb.enabled) continue;
@@ -543,13 +555,17 @@ var LibraryGL = {
       if (glCtx.webGlTracerAlreadyHooked) return;
       glCtx.webGlTracerAlreadyHooked = true;
 
-      // Hot GL functions are ones that you'd expect to find during render loops (render calls, dynamic resource uploads), cold GL functions are load time functions (shader compilation, texture/mesh creation)
-      // Distinguishing between these two allows pinpointing locations of troublesome GL usage that might cause performance issues.
+      // Hot GL functions are ones that you'd expect to find during render loops
+      // (render calls, dynamic resource uploads), cold GL functions are load
+      // time functions (shader compilation, texture/mesh creation).
+      // Distinguishing between these two allows pinpointing locations of
+      // troublesome GL usage that might cause performance issues.
       for (var f in glCtx) {
         if (typeof glCtx[f] != 'function' || f.startsWith('real_')) continue;
         this.hookWebGLFunction(f, glCtx);
       }
-      // The above injection won't work for texImage2D and texSubImage2D, which have multiple overloads.
+      // The above injection won't work for texImage2D and texSubImage2D, which
+      // have multiple overloads.
       glCtx['texImage2D'] = (a1, a2, a3, a4, a5, a6, a7, a8, a9) => {
         var ret = (a7 !== undefined) ? glCtx['real_texImage2D'](a1, a2, a3, a4, a5, a6, a7, a8, a9) : glCtx['real_texImage2D'](a1, a2, a3, a4, a5, a6);
         return ret;
@@ -579,8 +595,9 @@ var LibraryGL = {
     // Returns the context handle to the new context.
     createContext: (/** @type {HTMLCanvasElement} */ canvas, webGLContextAttributes) => {
 #if OFFSCREEN_FRAMEBUFFER
-      // In proxied operation mode, rAF()/setTimeout() functions do not delimit frame boundaries, so can't have WebGL implementation
-      // try to detect when it's ok to discard contents of the rendered backbuffer.
+      // In proxied operation mode, rAF()/setTimeout() functions do not delimit
+      // frame boundaries, so can't have WebGL implementation try to detect when
+      // it's ok to discard contents of the rendered backbuffer.
       if (webGLContextAttributes.renderViaOffscreenBackBuffer) webGLContextAttributes['preserveDrawingBuffer'] = true;
 #endif
 
@@ -589,9 +606,11 @@ var LibraryGL = {
 #endif
 
 #if MAX_WEBGL_VERSION >= 2 && MIN_CHROME_VERSION <= 57
-      // BUG: Workaround Chrome WebGL 2 issue: the first shipped versions of WebGL 2 in Chrome 57 did not actually implement
-      // the new garbage free WebGL 2 entry points that take an offset and a length to an existing heap (instead of having to
-      // create a completely new heap view). In Chrome the entry points only were added in to Chrome 58 and newer. For
+      // BUG: Workaround Chrome WebGL 2 issue: the first shipped versions of
+      // WebGL 2 in Chrome 57 did not actually implement the new garbage free
+      // WebGL 2 entry points that take an offset and a length to an existing
+      // heap (instead of having to create a completely new heap view). In
+      // Chrome the entry points only were added in to Chrome 58 and newer. For
       // Chrome 57 (and older), disable WebGL 2 support altogether.
       function getChromeVersion() {
         var chromeVersion = navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./);
@@ -609,13 +628,16 @@ var LibraryGL = {
 #endif
 
 #if GL_PREINITIALIZED_CONTEXT
-      // If WebGL context has already been preinitialized for the page on the JS side, reuse that context instead. This is useful for example when
-      // the main page precompiles shaders for the application, in which case the WebGL context is created already before any Emscripten compiled
-      // code has been downloaded.
+      // If WebGL context has already been preinitialized for the page on the JS
+      // side, reuse that context instead. This is useful for example when the
+      // main page precompiles shaders for the application, in which case the
+      // WebGL context is created already before any Emscripten compiled code
+      // has been downloaded.
       if (Module['preinitializedWebGLContext']) {
         var ctx = Module['preinitializedWebGLContext'];
 #if MAX_WEBGL_VERSION >= 2
-        // The ctx object may not be of a known class (e.g. it may be a debug wrapper), so we ask it for its version rather than use instanceof.
+        // The ctx object may not be of a known class (e.g. it may be a debug
+        // wrapper), so we ask it for its version rather than use instanceof.
         webGLContextAttributes.majorVersion = Number(ctx.getParameter(ctx.VERSION).match(/^WebGL (\d+).\d+/)[1]);
 #else
         webGLContextAttributes.majorVersion = 1;
@@ -624,11 +646,15 @@ var LibraryGL = {
 #endif
 
 #if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED && GL_WORKAROUND_SAFARI_GETCONTEXT_BUG
-      // BUG: Workaround Safari WebGL issue: After successfully acquiring WebGL context on a canvas,
-      // calling .getContext() will always return that context independent of which 'webgl' or 'webgl2'
-      // context version was passed. See https://bugs.webkit.org/show_bug.cgi?id=222758 and
-      // https://github.com/emscripten-core/emscripten/issues/13295.
-      // TODO: Once the bug is fixed and shipped in Safari, adjust the Safari version field in above check.
+      // BUG: Workaround Safari WebGL issue: After successfully acquiring WebGL
+      // context on a canvas, calling .getContext() will always return that
+      // context independent of which 'webgl' or 'webgl2'
+      // context version was passed. See:
+      //   https://bugs.webkit.org/show_bug.cgi?id=222758
+      // and:
+      //   https://github.com/emscripten-core/emscripten/issues/13295.
+      // TODO: Once the bug is fixed and shipped in Safari, adjust the Safari
+      // version field in above check.
       if (!canvas.getContextSafariWebGL2Fixed) {
         canvas.getContextSafariWebGL2Fixed = canvas.getContext;
         /** @type {function(this:HTMLCanvasElement, string, (Object|null)=): (Object|null)} */
@@ -689,8 +715,9 @@ var LibraryGL = {
         for (var i = 0; i < 8 && ctx.getError(); ++i) /*no-op*/;
         var ext = ctx.getExtension('OES_texture_half_float');
         if (!ext) return; // no half-float extension - nothing needed to fix.
-        // Bug on Safari on iOS and macOS: texImage2D() and texSubImage2D() do not allow uploading pixel data to half float textures,
-        // rendering them useless.
+        // Bug on Safari on iOS and macOS: texImage2D() and texSubImage2D() do
+        // not allow uploading pixel data to half float textures, rendering them
+        // useless.
         // See https://bugs.webkit.org/show_bug.cgi?id=183321, https://bugs.webkit.org/show_bug.cgi?id=169999,
         // https://stackoverflow.com/questions/54248633/cannot-create-half-float-oes-texture-from-uint16array-on-ipad
         ctx.texImage2D(0xDE1/*GL_TEXTURE_2D*/, 0, 0x1908/*GL_RGBA*/, 1, 1, 0, 0x1908/*GL_RGBA*/, 0x8d61/*HALF_FLOAT_OES*/, new Uint16Array(4));
@@ -703,7 +730,8 @@ var LibraryGL = {
 #if GL_ASSERTIONS
             warnOnce('Removed broken support for half-float textures. See e.g. https://bugs.webkit.org/show_bug.cgi?id=183321');
 #endif
-            // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+            // .getSupportedExtensions() can return null if context is lost, so
+            // coerce to empty array.
             return (this.realGetSupportedExtensions() || []).filter((ext) => !ext.includes('texture_half_float'));
           }
         }
@@ -720,9 +748,11 @@ var LibraryGL = {
       webGLContextAttributes.preserveDrawingBuffer = true;
     },
 
-    // If WebGL is being proxied from a pthread to the main thread, we can't directly render to the WebGL default back buffer
-    // because of WebGL's implicit swap behavior. Therefore in such modes, create an offscreen render target surface to
-    // which rendering is performed to, and finally flipped to the main screen.
+    // If WebGL is being proxied from a pthread to the main thread, we can't
+    // directly render to the WebGL default back buffer because of WebGL's
+    // implicit swap behavior. Therefore in such modes, create an offscreen
+    // render target surface to which rendering is performed to, and finally
+    // flipped to the main screen.
     createOffscreenFramebuffer: (context) => {
       var gl = context.GLctx;
 
@@ -752,7 +782,8 @@ var LibraryGL = {
       // Create render targets to the FBO
       context.defaultColorTarget = gl.createTexture();
       context.defaultDepthTarget = gl.createRenderbuffer();
-      GL.resizeOffscreenFramebuffer(context); // Size them up correctly (use the same mechanism when resizing on demand)
+      // Size them up correctly (use the same mechanism when resizing on demand)
+      GL.resizeOffscreenFramebuffer(context);
 
       gl.bindTexture(0xDE1 /*GL_TEXTURE_2D*/, context.defaultColorTarget);
       gl.texParameteri(0xDE1 /*GL_TEXTURE_2D*/, 0x2801 /*GL_TEXTURE_MIN_FILTER*/, 0x2600 /*GL_NEAREST*/);
@@ -990,7 +1021,10 @@ var LibraryGL = {
           return s;
         }
         try {
-          var p = g.createProgram(); // Note: we do not delete this program so it stays part of the context we created, but that is ok - it does not do anything and we want to keep this detection size minimal.
+          // Note: we do not delete this program so it stays part of the context
+          // we created, but that is ok - it does not do anything and we want to
+          // keep this detection size minimal.
+          var p = g.createProgram();
           g.attachShader(p, b("attribute vec4 p;void main(){gl_Position=p;}", 0x8B31 /*GL_VERTEX_SHADER*/));
           g.attachShader(p, b("precision lowp float;uniform vec4 u;void main(){gl_FragColor=u;}", 0x8B30 /*GL_FRAGMENT_SHADER*/));
           g.linkProgram(p);
@@ -998,13 +1032,23 @@ var LibraryGL = {
           h[4] = 1;
           g.useProgram(p);
           var l = g.getUniformLocation(p, "u");
-          g.uniform4fv(l, h.subarray(4, 8)); // Uploading a 4-vector GL uniform from last four elements of array [0,0,0,0,1,0,0,0], i.e. uploading vec4=(1,0,0,0) at offset=4.
-          return !g.getUniform(p, l)[0]; // in proper WebGL we expect to read back the vector we just uploaded: (1,0,0,0). On buggy browser would instead have uploaded offset=0 of above array, i.e. vec4=(0,0,0,0)
-        } catch(e) { return false; } // If we get an exception, we assume we got some other error, and do not trigger this workaround.
+          // Uploading a 4-vector GL uniform from last four elements of array
+          // [0,0,0,0,1,0,0,0], i.e. uploading vec4=(1,0,0,0) at offset=4.
+          g.uniform4fv(l, h.subarray(4, 8));
+          // in proper WebGL we expect to read back the vector we just uploaded:
+          // (1,0,0,0). On buggy browser would instead have uploaded offset=0 of
+          // above array, i.e. vec4=(0,0,0,0)
+          return !g.getUniform(p, l)[0];i
+        } catch(e) {
+          // If we get an exception, we assume we got some other error, and do
+          // not trigger this workaround.
+          return false;
+        }
       })();
 #endif
 
-      // Store the created context object so that we can access the context given a canvas without having to pass the parameters again.
+      // Store the created context object so that we can access the context
+      // given a canvas without having to pass the parameters again.
       if (ctx.canvas) ctx.canvas.GLctxObject = context;
       GL.contexts[handle] = context;
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
@@ -1017,7 +1061,16 @@ var LibraryGL = {
       context.maxVertexAttribs = context.GLctx.getParameter(0x8869 /*GL_MAX_VERTEX_ATTRIBS*/);
       context.clientBuffers = [];
       for (var i = 0; i < context.maxVertexAttribs; i++) {
-        context.clientBuffers[i] = { enabled: false, clientside: false, size: 0, type: 0, normalized: 0, stride: 0, ptr: 0, vertexAttribPointerAdaptor: null };
+        context.clientBuffers[i] = {
+          enabled: false,
+          clientside: false,
+          size: 0,
+          type: 0,
+          normalized: 0,
+          stride: 0,
+          ptr: 0,
+          vertexAttribPointerAdaptor: null,
+        };
       }
 
       GL.generateTempBuffers(false, context);
@@ -1028,7 +1081,9 @@ var LibraryGL = {
 #else
 
 #if GL_DEBUG
-      if (webGLContextAttributes.renderViaOffscreenBackBuffer) dbg('renderViaOffscreenBackBuffer=true specified in WebGL context creation attributes, pass linker flag -sOFFSCREEN_FRAMEBUFFER to enable support!');
+      if (webGLContextAttributes.renderViaOffscreenBackBuffer) {
+        dbg('renderViaOffscreenBackBuffer=true specified in WebGL context creation attributes, pass linker flag -sOFFSCREEN_FRAMEBUFFER to enable support!');
+      }
 #endif
 
 #endif
@@ -1046,8 +1101,10 @@ var LibraryGL = {
       }
 #endif
 
-      GL.currentContext = GL.contexts[contextHandle]; // Active Emscripten GL layer context object.
-      Module.ctx = GLctx = GL.currentContext && GL.currentContext.GLctx; // Active WebGL context object.
+      // Active Emscripten GL layer context object.
+      GL.currentContext = GL.contexts[contextHandle];
+      // Active WebGL context object.
+      Module.ctx = GLctx = GL.currentContext && GL.currentContext.GLctx;
       return !(contextHandle && !GLctx);
     },
 
@@ -1056,9 +1113,19 @@ var LibraryGL = {
     },
 
     deleteContext: (contextHandle) => {
-      if (GL.currentContext === GL.contexts[contextHandle]) GL.currentContext = null;
-      if (typeof JSEvents == 'object') JSEvents.removeAllHandlersOnTarget(GL.contexts[contextHandle].GLctx.canvas); // Release all JS event handlers on the DOM element that the GL context is associated with since the context is now deleted.
-      if (GL.contexts[contextHandle] && GL.contexts[contextHandle].GLctx.canvas) GL.contexts[contextHandle].GLctx.canvas.GLctxObject = undefined; // Make sure the canvas object no longer refers to the context object so there are no GC surprises.
+      if (GL.currentContext === GL.contexts[contextHandle]) {
+        GL.currentContext = null;
+      }
+      if (typeof JSEvents == 'object') {
+        // Release all JS event handlers on the DOM element that the GL context is
+        // associated with since the context is now deleted.
+        JSEvents.removeAllHandlersOnTarget(GL.contexts[contextHandle].GLctx.canvas);
+      }
+      // Make sure the canvas object no longer refers to the context object so
+      // there are no GC surprises.
+      if (GL.contexts[contextHandle] && GL.contexts[contextHandle].GLctx.canvas) {
+        GL.contexts[contextHandle].GLctx.canvas.GLctxObject = undefined;
+      }
 #if PTHREADS
       _free(GL.contexts[contextHandle].handle);
 #endif
@@ -1066,11 +1133,14 @@ var LibraryGL = {
     },
 
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
-    // In WebGL, extensions must be explicitly enabled to be active, see http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.14.14
-    // In GLES2, all extensions are enabled by default without additional operations. Init all extensions we need to give to GLES2 user
-    // code here, so that GLES2 code can operate without changing behavior.
+    // In WebGL, extensions must be explicitly enabled to be active, see
+    // http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.14.14
+    // In GLES2, all extensions are enabled by default without additional
+    // operations. Init all extensions we need to give to GLES2 user code here,
+    // so that GLES2 code can operate without changing behavior.
     initExtensions: (context) => {
-      // If this function is called without a specific context object, init the extensions of the currently active context.
+      // If this function is called without a specific context object, init the
+      // extensions of the currently active context.
       if (!context) context = GL.currentContext;
 
       if (context.initExtensionsDone) return;
@@ -1078,14 +1148,16 @@ var LibraryGL = {
 
       var GLctx = context.GLctx;
 
-      // Detect the presence of a few extensions manually, ction GL interop layer itself will need to know if they exist.
+      // Detect the presence of a few extensions manually, ction GL interop
+      // layer itself will need to know if they exist.
 #if LEGACY_GL_EMULATION
       context.compressionExt = GLctx.getExtension('WEBGL_compressed_texture_s3tc');
       context.anisotropicExt = GLctx.getExtension('EXT_texture_filter_anisotropic');
 #endif
 
 #if MIN_WEBGL_VERSION == 1
-      // Extensions that are only available in WebGL 1 (the calls will be no-ops if called on a WebGL 2 context active)
+      // Extensions that are only available in WebGL 1 (the calls will be no-ops
+      // if called on a WebGL 2 context active)
       webgl_enable_ANGLE_instanced_arrays(GLctx);
       webgl_enable_OES_vertex_array_object(GLctx);
       webgl_enable_WEBGL_draw_buffers(GLctx);
@@ -1115,10 +1187,12 @@ var LibraryGL = {
 
       webgl_enable_WEBGL_multi_draw(GLctx);
 
-      // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+      // .getSupportedExtensions() can return null if context is lost, so coerce
+      // to empty array.
       var exts = GLctx.getSupportedExtensions() || [];
       exts.forEach((ext) => {
-        // WEBGL_lose_context, WEBGL_debug_renderer_info and WEBGL_debug_shaders are not enabled by default.
+        // WEBGL_lose_context, WEBGL_debug_renderer_info and WEBGL_debug_shaders
+        // are not enabled by default.
         if (!ext.includes('lose_context') && !ext.includes('debug')) {
           // Call .getExtension() to enable that extension permanently.
           GLctx.getExtension(ext);
@@ -1128,7 +1202,8 @@ var LibraryGL = {
 #endif
 
     getExtensions() {
-      var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+      // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+      var exts = GLctx.getSupportedExtensions() || [];
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
       exts = exts.concat(exts.map((e) => "GL_" + e));
 #endif
@@ -1164,7 +1239,8 @@ var LibraryGL = {
           if (!s) {
             GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
-            err('GL_INVALID_ENUM in glGetString: Received empty parameter for query name ' + name_ + '!'); // This occurs e.g. if one attempts GL_UNMASKED_VENDOR_WEBGL when it is not supported.
+            // This occurs e.g. if one attempts GL_UNMASKED_VENDOR_WEBGL when it is not supported.
+            err('GL_INVALID_ENUM in glGetString: Received empty parameter for query name ' + name_ + '!');
 #endif
           }
 #endif
@@ -1213,9 +1289,10 @@ var LibraryGL = {
   $emscriptenWebGLGet__deps: ['$writeI53ToI64'],
   $emscriptenWebGLGet: (name_, p, type) => {
     // Guard against user passing a null pointer.
-    // Note that GLES2 spec does not say anything about how passing a null pointer should be treated.
-    // Testing on desktop core GL 3, the application crashes on glGetIntegerv to a null pointer, but
-    // better to report an error instead of doing anything random.
+    // Note that GLES2 spec does not say anything about how passing a null
+    // pointer should be treated.  Testing on desktop core GL 3, the application
+    // crashes on glGetIntegerv to a null pointer, but better to report an error
+    // instead of doing anything random.
     if (!p) {
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGet' + type + 'v(name=' + name_ + ': Function called with null out pointer!');
@@ -1237,7 +1314,9 @@ var LibraryGL = {
 #endif
         }
 #endif
-        return; // Do not write anything to the out pointer, since no binary formats are supported.
+        // Do not write anything to the out pointer, since no binary formats are
+        // supported.
+        return;
 #if MAX_WEBGL_VERSION >= 2
       case 0x87FE: // GL_NUM_PROGRAM_BINARY_FORMATS
 #endif
@@ -1245,8 +1324,10 @@ var LibraryGL = {
         ret = 0;
         break;
       case 0x86A2: // GL_NUM_COMPRESSED_TEXTURE_FORMATS
-        // WebGL doesn't have GL_NUM_COMPRESSED_TEXTURE_FORMATS (it's obsolete since GL_COMPRESSED_TEXTURE_FORMATS returns a JS array that can be queried for length),
-        // so implement it ourselves to allow C++ GLES2 code get the length.
+        // WebGL doesn't have GL_NUM_COMPRESSED_TEXTURE_FORMATS (it's obsolete
+        // since GL_COMPRESSED_TEXTURE_FORMATS returns a JS array that can be
+        // queried for length), so implement it ourselves to allow C++ GLES2
+        // code get the length.
         var formats = GLctx.getParameter(0x86A3 /*GL_COMPRESSED_TEXTURE_FORMATS*/);
         ret = formats ? formats.length : 0;
         break;
@@ -1263,14 +1344,17 @@ var LibraryGL = {
       case 0x821D: // GL_NUM_EXTENSIONS
 #if GL_TRACK_ERRORS
         if (GL.currentContext.version < 2) {
-          GL.recordError(0x502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
+          // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
+          GL.recordError(0x502 /* GL_INVALID_OPERATION */);
           return;
         }
 #endif
         // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
         var exts = GLctx.getSupportedExtensions() || [];
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-        ret = 2 * exts.length; // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
+        // each extension is duplicated, first in unprefixed WebGL form, and
+        // then a second time with "GL_" prefix.
+        ret = 2 * exts.length;
 #else
         ret = exts.length;
 #endif
@@ -1305,8 +1389,9 @@ var LibraryGL = {
           return;
         case "object":
           if (result === null) {
-            // null is a valid result for some (e.g., which buffer is bound - perhaps nothing is bound), but otherwise
-            // can mean an invalid name_, which we need to report as an error
+            // null is a valid result for some (e.g., which buffer is bound -
+            // perhaps nothing is bound), but otherwise can mean an invalid
+            // name_, which we need to report as an error
             switch (name_) {
               case 0x8894: // ARRAY_BUFFER_BINDING
               case 0x8B8D: // CURRENT_PROGRAM
@@ -1390,25 +1475,21 @@ var LibraryGL = {
   },
 
   glGetIntegerv__deps: ['$emscriptenWebGLGet'],
-  glGetIntegerv: (name_, p) => {
-    emscriptenWebGLGet(name_, p, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}});
-  },
+  glGetIntegerv: (name_, p) => emscriptenWebGLGet(name_, p, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}),
 
   glGetFloatv__deps: ['$emscriptenWebGLGet'],
-  glGetFloatv: (name_, p) => {
-    emscriptenWebGLGet(name_, p, {{{ cDefs.EM_FUNC_SIG_PARAM_F }}});
-  },
+  glGetFloatv: (name_, p) => emscriptenWebGLGet(name_, p, {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}),
 
   glGetBooleanv__deps: ['$emscriptenWebGLGet'],
-  glGetBooleanv: (name_, p) => {
-    emscriptenWebGLGet(name_, p, {{{ cDefs.EM_FUNC_SIG_PARAM_B }}});
-  },
+  glGetBooleanv: (name_, p) => emscriptenWebGLGet(name_, p, {{{ cDefs.EM_FUNC_SIG_PARAM_B }}}),
 
   glDeleteTextures: (n, textures) => {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('textures', 'i*4', 'i32') }}};
       var texture = GL.textures[id];
-      if (!texture) continue; // GL spec: "glDeleteTextures silently ignores 0s and names that do not correspond to existing textures".
+      // GL spec: "glDeleteTextures silently ignores 0s and names that do not
+      // correspond to existing textures".
+      if (!texture) continue;
       GLctx.deleteTexture(texture);
       texture.name = 0;
       GL.textures[id] = null;
@@ -1417,7 +1498,9 @@ var LibraryGL = {
 
   glCompressedTexImage2D: (target, level, internalFormat, width, height, border, imageSize, data) => {
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) {
+      // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
+      // those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding || !imageSize) {
         GLctx.compressedTexImage2D(target, level, internalFormat, width, height, border, imageSize, data);
       } else {
@@ -1432,7 +1515,9 @@ var LibraryGL = {
 
   glCompressedTexSubImage2D: (target, level, xoffset, yoffset, width, height, format, imageSize, data) => {
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) {
+      // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
+      // those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding || !imageSize) {
         GLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, imageSize, data);
       } else {
@@ -1457,8 +1542,10 @@ var LibraryGL = {
   },
 
   $colorChannelsInGlTextureFormat: (format) => {
-    // Micro-optimizations for size: map format to size by subtracting smallest enum value (0x1902) from all values first.
-    // Also omit the most common size value (1) from the list, which is assumed by formats not on the list.
+    // Micro-optimizations for size: map format to size by subtracting smallest
+    // enum value (0x1902) from all values first.  Also omit the most common
+    // size value (1) from the list, which is assumed by formats not on the
+    // list.
     var colorChannels = {
       // 0x1902 /* GL_DEPTH_COMPONENT */ - 0x1902: 1,
       // 0x1906 /* GL_ALPHA */ - 0x1902: 1,
@@ -1512,8 +1599,9 @@ var LibraryGL = {
 #if MAX_WEBGL_VERSION >= 2
 #if WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION
     if ({{{ isCurrentContextWebGL2() }}}) {
-      // WebGL 1 unsized texture internalFormats are no longer supported in WebGL 2, so patch those format
-      // enums to the ones that are present in WebGL 2.
+      // WebGL 1 unsized texture internalFormats are no longer supported in
+      // WebGL 2, so patch those format enums to the ones that are present in
+      // WebGL 2.
       if (format == 0x1902/*GL_DEPTH_COMPONENT*/ && internalFormat == 0x1902/*GL_DEPTH_COMPONENT*/ && type == 0x1405/*GL_UNSIGNED_INT*/) {
         internalFormat = 0x81A6 /*GL_DEPTH_COMPONENT24*/;
       }
@@ -1529,7 +1617,8 @@ var LibraryGL = {
     }
 #endif
     if ({{{ isCurrentContextWebGL2() }}}) {
-      // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
+      // those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
       } else if (pixels) {
@@ -1553,14 +1642,16 @@ var LibraryGL = {
 #if MAX_WEBGL_VERSION >= 2
 #if WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION
     if ({{{ isCurrentContextWebGL2() }}}) {
-      // In WebGL 1 to do half float textures, one uses the type enum GL_HALF_FLOAT_OES, but in
-      // WebGL 2 when half float textures were adopted to the core spec, the enum changed value
-      // which breaks backwards compatibility. Route old enum number to the new one.
+      // In WebGL 1 to do half float textures, one uses the type enum
+      // GL_HALF_FLOAT_OES, but in WebGL 2 when half float textures were adopted
+      // to the core spec, the enum changed value which breaks backwards
+      // compatibility. Route old enum number to the new one.
       if (type == 0x8d61/*GL_HALF_FLOAT_OES*/) type = 0x140B /*GL_HALF_FLOAT*/;
     }
 #endif
     if ({{{ isCurrentContextWebGL2() }}}) {
-      // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
+      // those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
       } else if (pixels) {
@@ -1584,7 +1675,9 @@ var LibraryGL = {
   ],
   glReadPixels: (x, y, width, height, format, type, pixels) => {
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) {
+      // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
+      // those always when possible.
       if (GLctx.currentPixelPackBufferBinding) {
         GLctx.readPixels(x, y, width, height, format, type, pixels);
       } else {
@@ -1614,8 +1707,9 @@ var LibraryGL = {
 
   glGetTexParameterfv: (target, pname, params) => {
     if (!params) {
-      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
-      // if p == null, issue a GL error to notify user about it.
+      // GLES2 specification does not specify how to behave if params is a null
+      // pointer. Since calling this function does not make sense if p == null,
+      // issue a GL error to notify user about it.
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetTexParameterfv(target=' + target +', pname=' + pname + ', params=0): Function called with null out pointer!');
 #endif
@@ -1627,8 +1721,9 @@ var LibraryGL = {
 
   glGetTexParameteriv: (target, pname, params) => {
     if (!params) {
-      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
-      // if p == null, issue a GL error to notify user about it.
+      // GLES2 specification does not specify how to behave if params is a null
+      // pointer. Since calling this function does not make sense if p == null,
+      // issue a GL error to notify user about it.
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetTexParameteriv(target=' + target +', pname=' + pname + ', params=0): Function called with null out pointer!');
 #endif
@@ -1654,10 +1749,13 @@ var LibraryGL = {
     return GLctx.isTexture(texture);
   },
 
-  // The code path for creating textures, buffers, framebuffers and other objects is so identical to each other (and not in fast path), that
-  // merge the functions together to only have one generated copy of this. 'createFunction' refers to the WebGL context function name to do
-  // the actual creation, 'objectTable' points to the GL object table where to populate the created objects, and 'functionName' carries
-  // the name of the caller for debug information.
+  // The code path for creating textures, buffers, framebuffers and other
+  // objects is so identical to each other (and not in fast path), that merge
+  // the functions together to only have one generated copy of this.
+  // 'createFunction' refers to the WebGL context function name to do the actual
+  // creation, 'objectTable' points to the GL object table where to populate the
+  // created objects, and 'functionName' carries the name of the caller for
+  // debug information.
   $__glGenObject: (n, buffers, createFunction, objectTable
 #if GL_ASSERTIONS
     , functionName
@@ -1723,8 +1821,9 @@ var LibraryGL = {
 
   glGetBufferParameteriv: (target, value, data) => {
     if (!data) {
-      // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
-      // if data == null, issue a GL error to notify user about it.
+      // GLES2 specification does not specify how to behave if data is a null
+      // pointer. Since calling this function does not make sense if data ==
+      // null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetBufferParameteriv(target=' + target + ', value=' + value + ', data=0): Function called with null out pointer!');
 #endif
@@ -1753,10 +1852,13 @@ var LibraryGL = {
 #endif
 
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      // If size is zero, WebGL would interpret uploading the whole input arraybuffer (starting from given offset), which would
-      // not make sense in WebAssembly, so avoid uploading if size is zero. However we must still call bufferData to establish a
-      // backing storage of zero bytes.
+    if ({{{ isCurrentContextWebGL2() }}}) {
+      // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
+      // those always when possible.  If size is zero, WebGL would interpret
+      // uploading the whole input arraybuffer (starting from given offset),
+      // which would not make sense in WebAssembly, so avoid uploading if size
+      // is zero. However we must still call bufferData to establish a backing
+      // storage of zero bytes.
       if (data && size) {
         GLctx.bufferData(target, HEAPU8, usage, data, size);
       } else {
@@ -1764,8 +1866,10 @@ var LibraryGL = {
       }
     } else {
 #endif
-      // N.b. here first form specifies a heap subarray, second form an integer size, so the ?: code here is polymorphic. It is advised to avoid
-      // randomly mixing both uses in calling code, to avoid any potential JS engine JIT issues.
+      // N.b. here first form specifies a heap subarray, second form an integer
+      // size, so the ?: code here is polymorphic. It is advised to avoid
+      // randomly mixing both uses in calling code, to avoid any potential JS
+      // engine JIT issues.
       GLctx.bufferData(target, data ? HEAPU8.subarray(data, data+size) : size, usage);
 #if MAX_WEBGL_VERSION >= 2
     }
@@ -1774,7 +1878,9 @@ var LibraryGL = {
 
   glBufferSubData: (target, offset, size, data) => {
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) {
+      // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
+      // those always when possible.
       size && GLctx.bufferSubData(target, offset, HEAPU8, data, size);
       return;
     }
@@ -1974,12 +2080,15 @@ var LibraryGL = {
     return GLctx.isRenderbuffer(rb);
   },
 
-  $emscriptenWebGLGetUniform__docs: '/** @suppress{checkTypes} */', // This function intentionally assigns `HEAP32[x] = someBoolean;` Don't let Closure mind about that.
+  // This function intentionally assigns `HEAP32[x] = someBoolean;` Don't let
+  // Closure mind about that.
+  $emscriptenWebGLGetUniform__docs: '/** @suppress{checkTypes} */',
   $emscriptenWebGLGetUniform__deps: ['$webglGetUniformLocation', '$webglPrepareUniformLocationsBeforeFirstUse'],
   $emscriptenWebGLGetUniform: (program, location, params, type) => {
     if (!params) {
-      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
-      // if params == null, issue a GL error to notify user about it.
+      // GLES2 specification does not specify how to behave if params is a null
+      // pointer. Since calling this function does not make sense if params ==
+      // null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetUniform*v(program=' + program + ', location=' + location + ', params=0): Function called with null out pointer!');
 #endif
@@ -2024,13 +2133,14 @@ var LibraryGL = {
     emscriptenWebGLGetUniform(program, location, params, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}});
   },
 
-  // Returns the WebGLUniformLocation object corresponding to the location index integer on
-  // the currently active shader in this GL context.
+  // Returns the WebGLUniformLocation object corresponding to the location index
+  // integer on the currently active shader in this GL context.
   $webglGetUniformLocation: (location) => {
     var p = GLctx.currentProgram;
 
 #if !GL_TRACK_ERRORS && ASSERTIONS
-    // In -sGL_TRACK_ERRORS=0 build mode do not allow calling glUniform*() without an active GL program.
+    // In -sGL_TRACK_ERRORS=0 build mode do not allow calling glUniform*()
+    // without an active GL program.
     assert(p, 'Attempted to call glUniform*() without an active GL program set! (build with -sGL_TRACK_ERRORS for standards-conformant behavior)');
 #endif
 
@@ -2038,10 +2148,10 @@ var LibraryGL = {
     if (p) {
 #endif
       var webglLoc = p.uniformLocsById[location];
-      // p.uniformLocsById[location] stores either an integer, or a WebGLUniformLocation.
-
-      // If an integer, we have not yet bound the location, so do it now. The integer value specifies the array index
-      // we should bind to.
+      // p.uniformLocsById[location] stores either an integer, or a
+      // WebGLUniformLocation.
+      // If an integer, we have not yet bound the location, so do it now. The
+      // integer value specifies the array index we should bind to.
       if (typeof webglLoc == 'number') {
         p.uniformLocsById[location] = webglLoc = GLctx.getUniformLocation(p, p.uniformArrayNamesById[location] + (webglLoc > 0 ? '[' + webglLoc + ']' : ''));
       }
@@ -2102,9 +2212,11 @@ var LibraryGL = {
     }
   },
 
-  // Returns the index of '[' character in an uniform that represents an array of uniforms (e.g. colors[10])
-  // Closure does counterproductive inlining: https://github.com/google/closure-compiler/issues/3203, so prevent
-  // inlining manually.
+  // Returns the index of '[' character in an uniform that represents an array
+  // of uniforms (e.g. colors[10])
+  // Closure does counterproductive inlining:
+  // https://github.com/google/closure-compiler/issues/3203, so prevent inlining
+  // manually.
   $webglGetLeftBracePos__docs: '/** @noinline */',
   $webglGetLeftBracePos: (name) => name.slice(-1) == ']' && name.lastIndexOf('['),
 
@@ -2126,11 +2238,14 @@ var LibraryGL = {
       var arrayIndex = 0;
       var uniformBaseName = name;
 
-      // Invariant: when populating integer IDs for uniform locations, we must maintain the precondition that
-      // arrays reside in contiguous addresses, i.e. for a 'vec4 colors[10];', colors[4] must be at location colors[0]+4.
-      // However, user might call glGetUniformLocation(program, "colors") for an array, so we cannot discover based on the user
-      // input arguments whether the uniform we are dealing with is an array. The only way to discover which uniforms are arrays
-      // is to enumerate over all the active uniforms in the program.
+      // Invariant: when populating integer IDs for uniform locations, we must
+      // maintain the precondition that arrays reside in contiguous addresses,
+      // i.e. for a 'vec4 colors[10];', colors[4] must be at location
+      // colors[0]+4.  However, user might call glGetUniformLocation(program,
+      // "colors") for an array, so we cannot discover based on the user input
+      // arguments whether the uniform we are dealing with is an array. The only
+      // way to discover which uniforms are arrays is to enumerate over all the
+      // active uniforms in the program.
       var leftBrace = webglGetLeftBracePos(name);
 
       // If user passed an array accessor "[index]", parse the array index off the accessor.
@@ -2143,10 +2258,12 @@ var LibraryGL = {
       }
 
       // Have we cached the location of this uniform before?
-      var sizeAndId = program.uniformSizeAndIdsByName[uniformBaseName]; // A pair [array length, GLint of the uniform location]
+      // A pair [array length, GLint of the uniform location]
+      var sizeAndId = program.uniformSizeAndIdsByName[uniformBaseName];
 
-      // If an uniform with this name exists, and if its index is within the array limits (if it's even an array),
-      // query the WebGLlocation, or return an existing cached location.
+      // If an uniform with this name exists, and if its index is within the
+      // array limits (if it's even an array), query the WebGLlocation, or
+      // return an existing cached location.
       if (sizeAndId && arrayIndex < sizeAndId[0]) {
         arrayIndex += sizeAndId[1]; // Add the base location of the uniform to the array index offset.
         if ((uniformLocsById[arrayIndex] = uniformLocsById[arrayIndex] || GLctx.getUniformLocation(program, name))) {
@@ -2156,19 +2273,23 @@ var LibraryGL = {
     }
 #if GL_TRACK_ERRORS
     else {
-      // N.b. we are currently unable to distinguish between GL program IDs that never existed vs GL program IDs that have been deleted,
-      // so report GL_INVALID_VALUE in both cases.
+      // N.b. we are currently unable to distinguish between GL program IDs that
+      // never existed vs GL program IDs that have been deleted, so report
+      // GL_INVALID_VALUE in both cases.
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
     }
 #endif
     return -1;
   },
 
-  $emscriptenWebGLGetVertexAttrib__docs: '/** @suppress{checkTypes} */', // This function intentionally assigns `HEAP32[x] = someBoolean;` Don't let Closure mind about that.
+  // This function intentionally assigns `HEAP32[x] = someBoolean;` Don't let
+  // Closure mind about that.
+  $emscriptenWebGLGetVertexAttrib__docs: '/** @suppress{checkTypes} */',
   $emscriptenWebGLGetVertexAttrib: (index, pname, params, type) => {
     if (!params) {
-      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
-      // if params == null, issue a GL error to notify user about it.
+      // GLES2 specification does not specify how to behave if params is a null
+      // pointer. Since calling this function does not make sense if params ==
+      // null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetVertexAttrib*v(index=' + index + ', pname=' + pname + ', params=0): Function called with null out pointer!');
 #endif
@@ -2208,22 +2329,25 @@ var LibraryGL = {
 
   glGetVertexAttribfv__deps: ['$emscriptenWebGLGetVertexAttrib'],
   glGetVertexAttribfv: (index, pname, params) => {
-    // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttrib*f(),
-    // otherwise the results are undefined. (GLES3 spec 6.1.12)
+    // N.B. This function may only be called if the vertex attribute was
+    // specified using the function glVertexAttrib*f(), otherwise the results
+    // are undefined. (GLES3 spec 6.1.12)
     emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefs.EM_FUNC_SIG_PARAM_F }}});
   },
 
   glGetVertexAttribiv__deps: ['$emscriptenWebGLGetVertexAttrib'],
   glGetVertexAttribiv: (index, pname, params) => {
-    // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttrib*f(),
-    // otherwise the results are undefined. (GLES3 spec 6.1.12)
+    // N.B. This function may only be called if the vertex attribute was
+    // specified using the function glVertexAttrib*f(), otherwise the results
+    // are undefined. (GLES3 spec 6.1.12)
     emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefs.EM_FUNC_SIG_PARAM_F2I }}});
   },
 
   glGetVertexAttribPointerv: (index, pname, pointer) => {
     if (!pointer) {
-      // GLES2 specification does not specify how to behave if pointer is a null pointer. Since calling this function does not make sense
-      // if pointer == null, issue a GL error to notify user about it.
+      // GLES2 specification does not specify how to behave if pointer is a null
+      // pointer. Since calling this function does not make sense if pointer ==
+      // null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetVertexAttribPointerv(index=' + index + ', pname=' + pname + ', pointer=0): Function called with null out pointer!');
 #endif
@@ -2456,7 +2580,9 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
+    // those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) {
       count && GLctx.uniform4iv(webglGetUniformLocation(location), HEAP32, value>>2, count*4);
       return;
     }
@@ -2547,7 +2673,9 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
+    // those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) {
       count && GLctx.uniform2fv(webglGetUniformLocation(location), HEAPF32, value>>2, count*2);
       return;
     }
@@ -2592,7 +2720,9 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
+    // those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) {
       count && GLctx.uniform3fv(webglGetUniformLocation(location), HEAPF32, value>>2, count*3);
       return;
     }
@@ -2638,7 +2768,9 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
+    // those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) {
       count && GLctx.uniform4fv(webglGetUniformLocation(location), HEAPF32, value>>2, count*4);
       return;
     }
@@ -2689,7 +2821,9 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
+    // those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) {
       count && GLctx.uniformMatrix2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*4);
       return;
     }
@@ -2736,7 +2870,9 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
+    // those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) {
       count && GLctx.uniformMatrix3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*9);
       return;
     }
@@ -2788,7 +2924,9 @@ var LibraryGL = {
 #else
 
 #if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
+    // those always when possible.
+    if ({{{ isCurrentContextWebGL2() }}}) {
       count && GLctx.uniformMatrix4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*16);
       return;
     }
@@ -2849,9 +2987,11 @@ var LibraryGL = {
 
 #if MAX_WEBGL_VERSION >= 2
     if (target == 0x88EB /*GL_PIXEL_PACK_BUFFER*/) {
-      // In WebGL 2 glReadPixels entry point, we need to use a different WebGL 2 API function call when a buffer is bound to
-      // GL_PIXEL_PACK_BUFFER_BINDING point, so must keep track whether that binding point is non-null to know what is
-      // the proper API function to call.
+      // In WebGL 2 glReadPixels entry point, we need to use a different WebGL 2
+      // API function call when a buffer is bound to
+      // GL_PIXEL_PACK_BUFFER_BINDING point, so must keep track whether that
+      // binding point is non-null to know what is the proper API function to
+      // call.
       GLctx.currentPixelPackBufferBinding = buffer;
     } else if (target == 0x88EC /*GL_PIXEL_UNPACK_BUFFER*/) {
       // In WebGL 2 gl(Compressed)Tex(Sub)Image[23]D entry points, we need to
@@ -2912,7 +3052,8 @@ var LibraryGL = {
 #endif
     program = GL.programs[program];
     var info = GLctx[funcName](program, index);
-    if (info) { // If an error occurs, nothing will be written to length, size and type and name.
+    if (info) {
+      // If an error occurs, nothing will be written to length, size and type and name.
       var numBytesWrittenExclNull = name && stringToUTF8(info.name, name, bufSize);
       if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
       if (size) {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
@@ -2945,7 +3086,9 @@ var LibraryGL = {
   glDeleteShader: (id) => {
     if (!id) return;
     var shader = GL.shaders[id];
-    if (!shader) { // glDeleteShader actually signals an error when deleting a nonexisting object, unlike some other GL delete functions.
+    if (!shader) {
+      // glDeleteShader actually signals an error when deleting a nonexisting
+      // object, unlike some other GL delete functions.
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
@@ -3029,12 +3172,13 @@ var LibraryGL = {
 #endif
 
 #if ASSERTIONS
-    // These are not expected to be meaningful in WebGL, but issue a warning if they are present, to give some diagnostics about if they are present.
+    // These are not expected to be meaningful in WebGL, but issue a warning if
+    // they are present, to give some diagnostics about if they are present.
     if (source.includes('__FILE__')) warnOnce(`When compiling shader: ${source}: Preprocessor variable __FILE__ is not handled by -sGL_EXPLICIT_UNIFORM_LOCATION/-sGL_EXPLICIT_UNIFORM_BINDING options!`);
     if (source.includes('__LINE__')) warnOnce(`When compiling shader: ${source}: Preprocessor variable __LINE__ is not handled by -sGL_EXPLICIT_UNIFORM_LOCATION/-sGL_EXPLICIT_UNIFORM_BINDING options!`);
 #endif
-    // Remove comments and C-preprocess the input shader first, so that we can appropriately
-    // parse the layout location directives.
+    // Remove comments and C-preprocess the input shader first, so that we can
+    // appropriately parse the layout location directives.
     source = preprocess_c_code(remove_cpp_comments_in_shaders(source), {
       'GL_FRAGMENT_PRECISION_HIGH': () => 1,
       'GL_ES': () => 1,
@@ -3085,7 +3229,8 @@ var LibraryGL = {
     // layout(binding = 1) uniform MainBlock { ... };
     var bindingRegex = /layout\s*\(.*?binding\s*=\s*(-?\d+).*?\)\s*uniform\s+(\w+)\s+(\w+)?/g, samplerBindings = {}, uniformBindings = {}, bindingMatch;
     while (bindingMatch = bindingRegex.exec(source)) {
-      // We have a layout(binding=x) enabled uniform. Parse the array length of that uniform, if it is an array, i.e. a
+      // We have a layout(binding=x) enabled uniform. Parse the array length of
+      // that uniform, if it is an array, i.e. a
       //    layout(binding = 3) uniform sampler2D mainTexture[arrayLength];
       // or
       //    layout(binding = 1, std140) uniform MainBlock { ... } name[arrayLength];
@@ -3123,8 +3268,8 @@ var LibraryGL = {
     }
 
     // Remove all the layout(binding = x) directives so that they do not make
-    // their way to the actual WebGL shader compiler. These regexes get quite hairy, check against
-    // https://regex101.com/ when working on these.
+    // their way to the actual WebGL shader compiler. These regexes get quite
+    // hairy, check against https://regex101.com/ when working on these.
     source = source.replace(/layout\s*\(.*?binding\s*=\s*([-\d]+).*?\)/g, ''); // "layout(binding = 3)" -> ""
     source = source.replace(/(layout\s*\((.*?)),\s*binding\s*=\s*([-\d]+)\)/g, '$1)'); // "layout(std140, binding = 1)" -> "layout(std140)"
     source = source.replace(/layout\s*\(\s*binding\s*=\s*([-\d]+)\s*,(.*?)\)/g, 'layout($2)'); // "layout(binding = 1, std140)" -> "layout(std140)"
@@ -3182,8 +3327,9 @@ var LibraryGL = {
 
   glGetShaderiv : (shader, pname, p) => {
     if (!p) {
-      // GLES2 specification does not specify how to behave if p is a null pointer. Since calling this function does not make sense
-      // if p == null, issue a GL error to notify user about it.
+      // GLES2 specification does not specify how to behave if p is a null
+      // pointer. Since calling this function does not make sense if p == null,
+      // issue a GL error to notify user about it.
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetShaderiv(shader=' + shader + ', pname=' + pname + ', p=0): Function called with null out pointer!');
 #endif
@@ -3217,8 +3363,9 @@ var LibraryGL = {
 
   glGetProgramiv : (program, pname, p) => {
     if (!p) {
-      // GLES2 specification does not specify how to behave if p is a null pointer. Since calling this function does not make sense
-      // if p == null, issue a GL error to notify user about it.
+      // GLES2 specification does not specify how to behave if p is a null
+      // pointer. Since calling this function does not make sense if p == null,
+      // issue a GL error to notify user about it.
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetProgramiv(program=' + program + ', pname=' + pname + ', p=0): Function called with null out pointer!');
 #endif
@@ -3282,7 +3429,8 @@ var LibraryGL = {
     var program = GLctx.createProgram();
     // Store additional information needed for each shader program:
     program.name = id;
-    // Lazy cache results of glGetProgramiv(GL_ACTIVE_UNIFORM_MAX_LENGTH/GL_ACTIVE_ATTRIBUTE_MAX_LENGTH/GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH)
+    // Lazy cache results of
+    // glGetProgramiv(GL_ACTIVE_UNIFORM_MAX_LENGTH/GL_ACTIVE_ATTRIBUTE_MAX_LENGTH/GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH)
     program.maxUniformLength = program.maxAttributeLength = program.maxUniformBlockNameLength = 0;
     program.uniformIdCounter = 1;
     GL.programs[id] = program;
@@ -3292,7 +3440,9 @@ var LibraryGL = {
   glDeleteProgram: (id) => {
     if (!id) return;
     var program = GL.programs[id];
-    if (!program) { // glDeleteProgram actually signals an error when deleting a nonexisting object, unlike some other GL delete functions.
+    if (!program) {
+      // glDeleteProgram actually signals an error when deleting a nonexisting
+      // object, unlike some other GL delete functions.
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
