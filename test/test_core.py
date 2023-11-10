@@ -2449,6 +2449,8 @@ int main(int argc, char **argv) {
     else:
       self.emcc_args += ['--pre-js', test_file('core/test_module_wasm_memory.js')]
     self.set_setting('IMPORTED_MEMORY')
+    self.set_setting('STRICT')
+    self.set_setting('INCOMING_MODULE_JS_API', ['wasmMemory'])
     self.do_runf('core/test_module_wasm_memory.c', 'success')
 
   def test_ssr(self): # struct self-ref
