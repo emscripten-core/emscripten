@@ -146,6 +146,14 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
       Instance: 1,
       VertexBufferNotUsed: 2,
     },
+    CreatePipelineAsyncStatus: {
+      Success: 0,
+      ValidationError: 1,
+      InternalError: 2,
+      DeviceLost: 3,
+      DeviceDestroyed: 4,
+      Unknown: 5,
+    },
   };
   null;
 }}}
@@ -1180,9 +1188,8 @@ var LibraryWebGPU = {
     abort('TODO: wgpuDeviceCreateComputePipelineAsync unimplemented');
   },
 
-  wgpuDeviceCreateRenderPipeline: (deviceId, descriptor) => {
+  $generateRenderPipelineDesc: (descriptor) => {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
-
     function makePrimitiveState(rsPtr) {
       if (!rsPtr) return undefined;
       {{{ gpu.makeCheckDescriptor('rsPtr') }}}
@@ -1372,13 +1379,42 @@ var LibraryWebGPU = {
     };
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPipelineDescriptor.label, '*') }}};
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
+    return desc;
+  },
 
+  wgpuDeviceCreateRenderPipeline__deps: ['$generateRenderPipelineDesc'],
+  wgpuDeviceCreateRenderPipeline: (deviceId, descriptor) => {
+    var desc = generateRenderPipelineDesc(descriptor);
     var device = WebGPU.mgrDevice.get(deviceId);
     return WebGPU.mgrRenderPipeline.create(device["createRenderPipeline"](desc));
   },
 
+  wgpuDeviceCreateRenderPipelineAsync__deps: ['$callUserCallback', '$stringToUTF8OnStack', '$generateRenderPipelineDesc'],
   wgpuDeviceCreateRenderPipelineAsync: (deviceId, descriptor, callback, userdata) => {
-    abort('TODO: wgpuDeviceCreateRenderPipelineAsync unimplemented');
+    var desc = generateRenderPipelineDesc(descriptor);
+    var device = WebGPU.mgrDevice.get(deviceId);
+    {{{ runtimeKeepalivePush() }}}
+    device["createRenderPipelineAsync"](desc).then((pipeline) => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        var pipelineId = WebGPU.mgrRenderPipeline.create(pipeline);
+        {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Success }}}, pipelineId, 0, userdata);
+      });
+    }, (pipelineError) => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        withStackSave(() => {
+          var messagePtr = stringToUTF8OnStack(pipelineError.message);
+          if (pipelineError.reason === 'validation') {
+            {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.ValidationError }}}, 0, messagePtr, userdata);
+          } else if (pipelineError.reason === 'internal') {
+            {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.InternalError }}}, 0, messagePtr, userdata);
+          } else {
+            {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Unknown }}}, 0, messagePtr, userdata);
+          }
+        });
+      });
+    });
   },
 
   wgpuDeviceCreateShaderModule: (deviceId, descriptor) => {
