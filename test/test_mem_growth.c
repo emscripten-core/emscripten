@@ -5,7 +5,13 @@
 #include <emscripten/html5.h>
 #include <emscripten/heap.h>
 
-#define EXPECTED_FINAL_HEAP_SIZE (4*1024*1024*1024ll - 65536)
+#ifdef __wasm64__
+#define MAX_HEAP (4*1024*1024*1024ll)
+#else
+// We don't allow the full 4Gb on wasm32 since that size would wrap
+// back to zero.  See getHeapMax in library.js.
+#define MAX_HEAP (4*1024*1024*1024ll - 65536)
+#endif
 
 int main() {
   size_t prevheapsize = 0;
@@ -20,7 +26,7 @@ int main() {
     void *ptr = malloc(16*1024*1024);
     if (!ptr) {
       printf("Cannot malloc anymore. Final heap size: %zu\n", emscripten_get_heap_size());
-      assert(emscripten_get_heap_size() == EXPECTED_FINAL_HEAP_SIZE);
+      assert(emscripten_get_heap_size() == MAX_HEAP);
       return 0;
     }
     count++;

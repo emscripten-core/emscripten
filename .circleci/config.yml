@@ -790,28 +790,7 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser64"
-          test_targets: "
-            browser64.test_canvas_focus
-            browser64.test_anisotropic
-            browser64.test_webgpu_get_device
-            browser64.test_fetch_*
-            browser64.test_pthread_*
-            browser64.test_wget_*
-            browser64.test_emscripten_async_wget_*
-            browser64.test_wasm_worker_*
-            browser64.test_sdl_*
-            browser64.test_sdl1_*
-            browser64.test_egl*
-            browser64.test_gl_*
-            browser64.test_glgears*
-            browser64.test_glfw*
-            browser64.test_glew
-            browser64.test_idbstore*
-            browser64.test_fs_idbfs*
-            browser64.test_webgl*
-            browser64.test_glbook
-            browser64.test_gles2_emulation*
-            "
+          test_targets: "browser64 skip:browser64.test_zzz_zzz_4gb_fail"
   test-browser-firefox:
     executor: bionic
     steps:

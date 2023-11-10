@@ -6,14 +6,15 @@ FAQ
 
 This FAQ contains answers to many questions asked on IRC and the mailing list.
 
+
 How do I compile code?
 ======================
 
 See the :ref:`Emscripten Tutorial <Tutorial>` and :ref:`emcc <emccdoc>`.
 
 
-Why do I get multiple errors building basic code and the tests?
-===============================================================
+Why do I get errors building basic code and the tests?
+======================================================
 
 All the tests in the :ref:`Emscripten test suite <emscripten-test-suite>` are
 known to build and pass on our test infrastructure, so if you see failures
@@ -60,9 +61,10 @@ Why is code compilation slow?
 =============================
 
 Emscripten makes some trade-offs that make the generated code faster and
-smaller, at the cost of longer compilation times. For example, we build parts of
-the standard library along with your code, which enables some additional
-optimizations, but takes a little longer to compile.
+smaller, at the cost of longer link times. For example, we build parts of
+the standard library with `-flto` (Link Time Optimization), which enables some
+additional optimizations, but can take longer to build.  We also (in optimized
+builds) run the Binaryen optimizer on the entire output even without LTO.
 
 .. note:: You can determine what compilation steps take longest by compiling
    with ``EMCC_DEBUG=1`` in the environment and then reviewing the debug logs
@@ -95,9 +97,9 @@ Make sure you optimize code by building with ``-O2`` (even more :ref:`aggressive
 optimization <emcc-O3>` is available, at the cost of significantly increased
 compilation time).
 
-.. note: This is necessary both for each source file, and for the final stage of
-   linking and compiling to JavaScript. For more information see
-   :ref:`Building-Projects` and :ref:`Optimizing-Code`.
+.. note: This is necessary both when compiling each source file, and at link
+   time, which is when Emscripten applies many of its optimizations.  For more
+   information see :ref:`Building-Projects` and :ref:`Optimizing-Code`.
 
 
 Why is my compiled code big?
@@ -114,7 +116,7 @@ Why does compiling code that works on another machine gives me errors?
 
 Make sure you are using the Emscripten bundled system headers. Using :ref:`emcc
 <emccdoc>` will do so by default, but problems may occur if you use your local
-system headers with ``emcc`` or compile into LLVM bitcode yourself.
+system headers with ``emcc``.
 
 
 How can I reduce startup time?
@@ -152,55 +154,44 @@ the browser devtools (web console and network tab), or in your webserver's
 logging.
 
 
-What is "No WebAssembly support found. Build with -sWASM=0 to target JavaScript instead" or "no native Wasm support detected"?
-===============================================================================================================================
+Why do I get ``machine type must be wasm32`` or ``unknown file type`` during linking?
+=====================================================================================
 
-Those errors indicate that WebAssembly support is not present in the VM you are
-trying to run the code in. Compile with ``-sWASM=0`` to disable WebAssembly
-(and emit equivalent JS instead), if you want your code to run in such
-environments. Note that all modern browsers support WebAssembly, so this should
-only matter if you need to target legacy browsers.
+This means that one or more of this linker input files were not build by
+Emscripten (or, more-specifically, not built for the correct target architecture).
 
-``-sWASM=0`` output should run exactly the same as a WebAssembly build, but may
-be larger, start up slower, and run slower, so it's better to ship WebAssembly
-whenever you can.
+Most often the file in question will be an ELF file or Mach-O file built for the
+host machine.  You can run the ``file`` command-line utility to see what they
+actually contain.
 
+Common issues are:
 
-Why do I get ``machine type must be wasm32`` or ``is not a valid input file`` during linking?
-=============================================================================================
-
-The first error means the linker inputs did not contain wasm32 code - that is,
-they contain instructions in some other format, like native x86 or ARM or
-something like that. You can run the ``file`` command-line utility to see what
-they actually contain. Common issues are:
-
+* Attempting to link against libraries built for the host system.  For example,
+  if you have something like ``-L/usr/lib`` in your link command that is almost
+  always going to cause these errors since the libraries that exist in those
+  system directories are almost certainly not built with/for Emscripten.
+  This solution is to use Emscripten to build all the libraries that you depend
+  on, and never use host libraries.
+* Some libraries or object files in your project were built using the host
+  compiler rather then the emscripten compiler.  If you are using autoconf
+  or cmake make sure you use the emconfigure/emmake wrapper, see
+  :ref:`Building-Projects`.
 * LLVM IR from the old backend, if you built the project with a version before
   1.39.0 (which used the old backend by default), and are doing an incremental
   rebuild now. To fix that, do a complete rebuild from scratch of all your
   project's files, including libraries (this error often happens if you have
   prebuilt libraries from a third party; those must be recompiled too with the
   new backend).
-* The build system was run without emscripten integration, and emitted native
-  code. To fix that, use emconfigure/emmake, see :ref:`Building-Projects`. In
-  this case ``emcc.py`` will show that second error,
-  "is not a valid input file".
 
 
 Why does my code fail to compile with an error message about inline assembly (or ``{"text":"asm"}``)?
 =====================================================================================================
 
-Emscripten cannot compile inline assembly code (because it is CPU specific, and
-Emscripten is not a CPU emulator).
+Emscripten cannot compile inline assembly code (unless that assembly code
+is specifically written to target WebAssembly).
 
 You will need to find where inline assembly is used, and disable it or replace
 it with platform-independent code.
-
-.. note:: Emscripten automatically unsets the following ``#define`` values, as these are commonly set in projects to enable platform dependent code (inline assembly):
-
-  ::
-
-    #undef __i386__
-    #undef __x86_64__
 
 
 .. _faq-my-html-app-hangs:
@@ -246,7 +237,7 @@ See also: :ref:`faq-my-html-app-hangs`
 Why doesn't my SDL app work?
 =============================
 
-See the :term:`SDL` automatic tests for working examples: ``python test/runner.py browser``.
+See the :term:`SDL` automatic tests for working examples: ``test/runner.py browser``.
 
 
 How do I link against system libraries like SDL, boost, etc.?
@@ -283,8 +274,10 @@ Emscripten has partial support for SDL1 and 2 audio, and OpenAL.
 To use SDL1 audio, include it as ``#include <SDL/SDL_mixer.h>``. You can use it
 that way alongside SDL1, SDL2, or another library for platform integration.
 
-To use SDL2 audio, include it as ``#include <SDL2/SDL_mixer.h>`` and use `-sUSE_SDL_MIXER=2`.
-Format support is currently limited to OGG, WAV, MID, and MOD.
+To use SDL2 audio, include it as ``#include <SDL2/SDL_mixer.h>`` and use
+`-sUSE_SDL_MIXER=2`.  Format support is currently limited to OGG, WAV, MID, and
+MOD.
+
 
 How can my compiled program access files?
 =========================================
@@ -422,10 +415,11 @@ printed. In an ``ASSERTIONS`` build you'll get a notification saying ``stdio
 streams had content in them that was not flushed. you should set EXIT_RUNTIME to
 1``.
 
+
 .. _faq-dead-code-elimination:
 
-Why do functions in my C/C++ source code vanish when I compile to JavaScript, and/or I get ``No functions to process``?
-=======================================================================================================================
+Why do functions in my C/C++ source code vanish when I compile to WebAssembly?
+==============================================================================
 
 Emscripten does dead code elimination of functions that are not called from the
 compiled code. While this does minimize code size, it can remove functions that
@@ -522,6 +516,7 @@ closure, as shown:
     return Module;
     })();
 
+
 .. _faq-export-stuff:
 
 Why do I get ``TypeError: Module.someThing is not a function``?
@@ -558,6 +553,7 @@ will export ``ccall``. In both cases you can then access the exported function o
    ``ASSERTIONS`` enabled, which we hope will minimize any annoyance. See
    ``ChangeLog.md`` for details.
 
+
 .. _faq-runtime-change:
 
 Why does ``Runtime`` no longer exist? Why do I get an error trying to access ``Runtime.someThing``?
@@ -590,18 +586,11 @@ with
 Why do I get a ``NameError`` or ``a problem occurred in evaluating content after a "-s"`` when I use a ``-s`` option?
 =====================================================================================================================
 
-That may occur when using the old list syntax for ``-s`` settings:
+This can occur if you have non-trival strings in ``-s`` argument and are having
+trouble getting the shell quoting / escaping correct.
 
-::
-
-  # this fails on most Linuxes
-  emcc a.c -sEXPORTED_RUNTIME_METHODS=['foo']
-
-  # this fails on macOS
-  emcc a.c -sEXPORTED_RUNTIME_METHODS="['foo']"
-
-A new, simpler way to specify these lists is to simply use
-comma separated lists:
+Using the simpler list form (without quotes, spaces or square brackets) can
+sometimes help:
 
 ::
 
@@ -628,7 +617,7 @@ Simple things like this should just work in a ``CMakeLists.txt`` file:
 However, some ``-s`` options may require quoting, or the space between ``-s``
 and the next argument may confuse CMake, when using things like
 ``target_link_options``. To avoid those problems, you can use ``-sX=Y``
-notation, that is, without a space:
+notation, that is, without spaces and without square brackets or quotes:
 
 ::
 
@@ -639,7 +628,7 @@ notation, that is, without a space:
 
 Note also that ``_main`` does not need to be quoted, even though it's a string
 name (``emcc`` knows that the argument to ``EXPORTED_FUNCTIONS`` is a list of
-strings, so it accepts ``[a]`` or ``[a,b]`` etc.).
+strings, so it accepts ``a`` or ``a,b`` etc.).
 
 
 Why do I get a Python ``SyntaxError: invalid syntax`` on ``file=..`` or on a string starting with ``f'..'``?
@@ -660,23 +649,6 @@ default is not new enough. For example,
 you can use ``PYTHON_VERSION``.
 
 
-Why does running LLVM bitcode generated by emcc through **lli** break with errors about ``impure_ptr``?
-=======================================================================================================
-
-.. note:: :term:`lli` is not maintained, and has odd errors and crashes. We do
-   include **tools/nativize_llvm.py** (which compiles bitcode to a native
-   executable) but it will also hit the ``impure_ptr`` error.
-
-The issue is that *newlib* uses ``impure_ptr`` code, while *glibc* uses
-something else. The result is that bitcode built with the Emscripten will not
-run locally unless your machine uses *newlib* (basically, only embedded
-systems).
-
-The ``impure_ptr`` error only occurs during explicit use of ``stdout`` etc., so
-``printf(..)`` will work, but ``fprintf(stdout, ..)`` will not. **Usually it is
-simple to modify your code to avoid this problem.**
-
-
 Why do I get a stack size error when optimizing: ``RangeError: Maximum call stack size exceeded`` or similar?
 =============================================================================================================
 
@@ -686,13 +658,6 @@ On Linux and Mac macOS, you can just do ``NODE_JS = ['node',
 '--stack_size=8192']`` in the :ref:`compiler-configuration-file`. On Windows,
 you will also need ``--max-stack-size=8192``, and also run ``editbin
 /stack:33554432 node.exe``.
-
-
-Why do I get ``error: cannot compile this aggregate va_arg expression yet`` and it says ``compiler frontend failed to generate LLVM bitcode, halting`` afterwards?
-==================================================================================================================================================================
-
-This is a limitation of the asm.js target in :term:`Clang`. This code is not
-currently supported.
 
 
 How do I pass int64_t and uint64_t values from js into Wasm functions?
@@ -733,10 +698,11 @@ Another option is to use an iframe, in which case the default HTML shell will
 just work, as each will have its own canvas, etc. But this is overkill for small
 programs, which can run modularly as described above.
 
+
 Can I build JavaScript that only runs on the Web?
 =================================================
 
-Yes, you can see the `ENVIRONMENT` option in ``settings.js``. For example,
+Yes, you can use the `ENVIRONMENT` option in ``settings.js``. For example,
 building with ``emcc -sENVIRONMENT=web`` will emit code that only runs on the
 Web, and does not include support code for Node.js and other environments.
 
@@ -744,8 +710,8 @@ This can be useful to reduce code size, and also works around issues like the
 Node.js support code using ``require()``, which Webpack will process and include
 unnecessary code for.
 
+
 Why the weird name for the project?
 ===================================
 
 I don't know why; it's a perfectly `cromulent <http://en.wikipedia.org/wiki/Lisa_the_Iconoclast>`_ word!
-
