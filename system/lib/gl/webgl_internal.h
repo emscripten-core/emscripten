@@ -62,7 +62,6 @@ void _emscripten_proxied_gl_context_activated_from_main_browser_thread(EMSCRIPTE
 
 #include <pthread.h>
 
-extern pthread_key_t currentActiveWebGLContext;
 extern pthread_key_t currentThreadOwnsItsWebGLContext;
 
 // When building with multithreading, return pointers to C functions that can perform proxying.

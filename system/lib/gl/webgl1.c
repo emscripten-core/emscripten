@@ -18,13 +18,17 @@
 
 #if defined(__EMSCRIPTEN_PTHREADS__) && defined(__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__)
 
-pthread_key_t currentActiveWebGLContext;
+static pthread_key_t currentActiveWebGLContext;
 pthread_key_t currentThreadOwnsItsWebGLContext;
 static pthread_once_t tlsInit = PTHREAD_ONCE_INIT;
 
 static void InitWebGLTls() {
   pthread_key_create(&currentActiveWebGLContext, NULL);
   pthread_key_create(&currentThreadOwnsItsWebGLContext, NULL);
+}
+
+static pthread_t GetCurrentTargetThread() {
+  return *(void**)(pthread_getspecific(currentActiveWebGLContext) + 4);
 }
 
 EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *target, const EmscriptenWebGLContextAttributes *attributes) {
@@ -111,7 +115,7 @@ void glBufferData(GLenum target, GLsizeiptr size, const void *data, GLenum usage
   if (size < 256*1024) { // run small buffer sizes asynchronously by copying - large buffers run synchronously
     void *ptr = memdup(data, size);
     if (ptr || !data) { // glBufferData(data=0) can always be handled asynchronously
-      emscripten_dispatch_to_thread(*(void**)(pthread_getspecific(currentActiveWebGLContext) + 4), EM_FUNC_SIG_VIIII, &emscripten_glBufferData, ptr, target, size, ptr, usage);
+      emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIIII, &emscripten_glBufferData, ptr, target, size, ptr, usage);
       return;
     }
     // Fall through on allocation failure and run synchronously.
@@ -130,7 +134,7 @@ void glBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, const void
   if (size < 256*1024) { // run small buffer sizes asynchronously by copying - large buffers run synchronously
     void *ptr = memdup(data, size);
     if (ptr || !data) {
-      emscripten_dispatch_to_thread(*(void**)(pthread_getspecific(currentActiveWebGLContext) + 4), EM_FUNC_SIG_VIIII, &emscripten_glBufferSubData, ptr, target, offset, size, ptr);
+      emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIIII, &emscripten_glBufferSubData, ptr, target, offset, size, ptr);
       return;
     }
     // Fall through on allocation failure and run synchronously.
@@ -266,7 +270,7 @@ void glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei widt
   if (!pixels || (sz >= 0 && sz < 256*1024)) { // run small buffer sizes asynchronously by copying - large buffers run synchronously
     void *ptr = memdup(pixels, sz);
     if (ptr || !pixels) {
-      emscripten_dispatch_to_thread(*(void**)(pthread_getspecific(currentActiveWebGLContext) + 4), EM_FUNC_SIG_VIIIIIIIII, &emscripten_glTexImage2D, ptr, target, level, internalformat, width, height, border, format, type, ptr);
+      emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIIIIIIIII, &emscripten_glTexImage2D, ptr, target, level, internalformat, width, height, border, format, type, ptr);
       return;
     }
     // Fall through on allocation failure and run synchronously.
@@ -291,7 +295,7 @@ void glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, G
   if (!pixels || (sz >= 0 && sz < 256*1024)) { // run small buffer sizes asynchronously by copying - large buffers run synchronously
     void *ptr = memdup(pixels, sz);
     if (ptr || !pixels) {
-      emscripten_dispatch_to_thread(*(void**)(pthread_getspecific(currentActiveWebGLContext) + 4), EM_FUNC_SIG_VIIIIIIIII, &emscripten_glTexSubImage2D, ptr, target, level, xoffset, yoffset, width, height, format, type, ptr);
+      emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIIIIIIIII, &emscripten_glTexSubImage2D, ptr, target, level, xoffset, yoffset, width, height, format, type, ptr);
       return;
     }
     // Fall through on allocation failure and run synchronously.
@@ -313,7 +317,7 @@ void glUniform1fv(GLint location, GLsizei count, const GLfloat *value) {
   if (sz < 256*1024) { // run small buffer sizes asynchronously by copying - large buffers run synchronously
     void *ptr = memdup(value, sz);
     if (ptr) {
-      emscripten_dispatch_to_thread(*(void**)(pthread_getspecific(currentActiveWebGLContext) + 4), EM_FUNC_SIG_VIII, &emscripten_glUniform1fv, ptr, location, count, (GLfloat*)ptr);
+      emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIII, &emscripten_glUniform1fv, ptr, location, count, (GLfloat*)ptr);
       return;
     }
     // Fall through on allocation failure and run synchronously.
@@ -335,7 +339,7 @@ void glUniform1iv(GLint location, GLsizei count, const GLint *value) {
   if (sz < 256*1024) { // run small buffer sizes asynchronously by copying - large buffers run synchronously
     void *ptr = memdup(value, sz);
     if (ptr) {
-      emscripten_dispatch_to_thread(*(void**)(pthread_getspecific(currentActiveWebGLContext) + 4), EM_FUNC_SIG_VIII, &emscripten_glUniform1iv, ptr, location, count, (GLint*)ptr);
+      emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIII, &emscripten_glUniform1iv, ptr, location, count, (GLint*)ptr);
       return;
     }
     // Fall through on allocation failure and run synchronously.
@@ -356,7 +360,7 @@ void glUniform2fv(GLint location, GLsizei count, const GLfloat *value) {
   if (sz < 256*1024) { // run small buffer sizes asynchronously by copying - large buffers run synchronously
     void *ptr = memdup(value, sz);
     if (ptr) {
-      emscripten_dispatch_to_thread(*(void**)(pthread_getspecific(currentActiveWebGLContext) + 4), EM_FUNC_SIG_VIII, &emscripten_glUniform2fv, ptr, location, count, (GLfloat*)ptr);
+      emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIII, &emscripten_glUniform2fv, ptr, location, count, (GLfloat*)ptr);
       return;
     }
     // Fall through on allocation failure and run synchronously.
@@ -378,7 +382,7 @@ void glUniform2iv(GLint location, GLsizei count, const GLint *value) {
   if (sz < 256*1024) { // run small buffer sizes asynchronously by copying - large buffers run synchronously
     void *ptr = memdup(value, sz);
     if (ptr) {
-      emscripten_dispatch_to_thread(*(void**)(pthread_getspecific(currentActiveWebGLContext) + 4), EM_FUNC_SIG_VIII, &emscripten_glUniform2iv, ptr, location, count, (GLint*)ptr);
+      emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIII, &emscripten_glUniform2iv, ptr, location, count, (GLint*)ptr);
       return;
     }
     // Fall through on allocation failure and run synchronously.
@@ -399,7 +403,7 @@ void glUniform3fv(GLint location, GLsizei count, const GLfloat *value) {
   if (sz < 256*1024) { // run small buffer sizes asynchronously by copying - large buffers run synchronously
     void *ptr = memdup(value, sz);
     if (ptr) {
-      emscripten_dispatch_to_thread(*(void**)(pthread_getspecific(currentActiveWebGLContext) + 4), EM_FUNC_SIG_VIII, &emscripten_glUniform3fv, ptr, location, count, (GLfloat*)ptr);
+      emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIII, &emscripten_glUniform3fv, ptr, location, count, (GLfloat*)ptr);
       return;
     }
     // Fall through on allocation failure and run synchronously.
@@ -421,7 +425,7 @@ void glUniform3iv(GLint location, GLsizei count, const GLint *value) {
   if (sz < 256*1024) { // run small buffer sizes asynchronously by copying - large buffers run synchronously
     void *ptr = memdup(value, sz);
     if (ptr) {
-      emscripten_dispatch_to_thread(*(void**)(pthread_getspecific(currentActiveWebGLContext) + 4), EM_FUNC_SIG_VIII, &emscripten_glUniform3iv, ptr, location, count, (GLint*)ptr);
+      emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIII, &emscripten_glUniform3iv, ptr, location, count, (GLint*)ptr);
       return;
     }
     // Fall through on allocation failure and run synchronously.
@@ -442,7 +446,7 @@ void glUniform4fv(GLint location, GLsizei count, const GLfloat *value) {
   if (sz < 256*1024) { // run small buffer sizes asynchronously by copying - large buffers run synchronously
     void *ptr = memdup(value, sz);
     if (ptr) {
-      emscripten_dispatch_to_thread(*(void**)(pthread_getspecific(currentActiveWebGLContext) + 4), EM_FUNC_SIG_VIII, &emscripten_glUniform4fv, ptr, location, count, (GLfloat*)ptr);
+      emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIII, &emscripten_glUniform4fv, ptr, location, count, (GLfloat*)ptr);
       return;
     }
     // Fall through on allocation failure and run synchronously.
@@ -464,7 +468,7 @@ void glUniform4iv(GLint location, GLsizei count, const GLint *value) {
   if (sz < 256*1024) { // run small buffer sizes asynchronously by copying - large buffers run synchronously
     void *ptr = memdup(value, sz);
     if (ptr) {
-      emscripten_dispatch_to_thread(*(void**)(pthread_getspecific(currentActiveWebGLContext) + 4), EM_FUNC_SIG_VIII, &emscripten_glUniform4iv, ptr, location, count, (GLint*)ptr);
+      emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIII, &emscripten_glUniform4iv, ptr, location, count, (GLint*)ptr);
       return;
     }
     // Fall through on allocation failure and run synchronously.
@@ -483,7 +487,7 @@ void glUniformMatrix2fv(GLint location, GLsizei count, GLboolean transpose, cons
   if (sz < 256*1024) { // run small buffer sizes asynchronously by copying - large buffers run synchronously
     void *ptr = memdup(value, sz);
     if (ptr) {
-      emscripten_dispatch_to_thread(*(void**)(pthread_getspecific(currentActiveWebGLContext) + 4), EM_FUNC_SIG_VIIII, &emscripten_glUniformMatrix2fv, ptr, location, count, transpose, (GLfloat*)ptr);
+      emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIIII, &emscripten_glUniformMatrix2fv, ptr, location, count, transpose, (GLfloat*)ptr);
       return;
     }
     // Fall through on allocation failure and run synchronously.
@@ -502,7 +506,7 @@ void glUniformMatrix3fv(GLint location, GLsizei count, GLboolean transpose, cons
   if (sz < 256*1024) { // run small buffer sizes asynchronously by copying - large buffers run synchronously
     void *ptr = memdup(value, sz);
     if (ptr) {
-      emscripten_dispatch_to_thread(*(void**)(pthread_getspecific(currentActiveWebGLContext) + 4), EM_FUNC_SIG_VIIII, &emscripten_glUniformMatrix3fv, ptr, location, count, transpose, (GLfloat*)ptr);
+      emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIIII, &emscripten_glUniformMatrix3fv, ptr, location, count, transpose, (GLfloat*)ptr);
       return;
     }
     // Fall through on allocation failure and run synchronously.
@@ -521,7 +525,7 @@ void glUniformMatrix4fv(GLint location, GLsizei count, GLboolean transpose, cons
   if (sz < 256*1024) { // run small buffer sizes asynchronously by copying - large buffers run synchronously
     void *ptr = memdup(value, sz);
     if (ptr) {
-      emscripten_dispatch_to_thread(*(void**)(pthread_getspecific(currentActiveWebGLContext) + 4), EM_FUNC_SIG_VIIII, &emscripten_glUniformMatrix4fv, ptr, location, count, transpose, (GLfloat*)ptr);
+      emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIIII, &emscripten_glUniformMatrix4fv, ptr, location, count, transpose, (GLfloat*)ptr);
       return;
     }
     // Fall through on allocation failure and run synchronously.
