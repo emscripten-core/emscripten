@@ -63,6 +63,10 @@ void _embind_register_bindings(InitFunc* f) {
   init_funcs = f;
 }
 
+void _emval_coro_resume(val_awaiter* awaiter, EM_VAL result) {
+  awaiter->resume_with(val::take_ownership(result));
+}
+
 }
 
 namespace {
