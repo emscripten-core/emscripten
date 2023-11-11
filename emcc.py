@@ -4225,7 +4225,9 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
 
   shell = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
   shell = shell.replace('{{{ SHELL_CSS }}}', utils.read_file(utils.path_from_root('src/shell.css')))
-  shell = shell.replace('{{{ SHELL_LOGO }}}', utils.read_file(utils.path_from_root('media/powered_by_logo_mini.svg')))
+  shellLogo = utils.read_binary(utils.path_from_root('media/powered_by_logo_shell.png'))
+  shellLogo64 = base64_encode(shellLogo)
+  shell = shell.replace('{{{ SHELL_LOGO }}}', f'<img id="emscripten_logo" src="data:image/png;base64,{shellLogo64}">')
 
   check_output_file(target)
   write_file(target, shell)
