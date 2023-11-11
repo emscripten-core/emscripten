@@ -705,14 +705,6 @@ public:
   // of the `co_await ...` expression - in our case, the stored value.
   val await_resume() { return std::move(std::get<STATE_RESULT>(state)); }
 };
-
-extern "C" {
-  // JS FFI helper for `val_awaiter::resume_with`.
-  __attribute__((weak))
-  void _emval_coro_resume(val_awaiter* awaiter, EM_VAL result) {
-    awaiter->resume_with(val::take_ownership(result));
-  }
-}
 }
 
 // `promise_type` is a well-known subtype with well-known method names
