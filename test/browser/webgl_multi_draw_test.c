@@ -15,16 +15,14 @@
 
 #include <GLES2/gl2.h>
 
-GLuint compile_shader(GLenum shaderType, const char *src)
-{
+GLuint compile_shader(GLenum shaderType, const char *src) {
   GLuint shader = glCreateShader(shaderType);
   glShaderSource(shader, 1, &src, NULL);
   glCompileShader(shader);
 
   GLint isCompiled = 0;
   glGetShaderiv(shader, GL_COMPILE_STATUS, &isCompiled);
-  if (!isCompiled)
-  {
+  if (!isCompiled) {
     GLint maxLength = 0;
     glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
     char *buf = (char*)malloc(maxLength);
@@ -34,18 +32,17 @@ GLuint compile_shader(GLenum shaderType, const char *src)
     return 0;
   }
 
-   return shader;
+  return shader;
 }
 
-GLuint create_program(GLuint vertexShader, GLuint fragmentShader)
-{
-   GLuint program = glCreateProgram();
-   glAttachShader(program, vertexShader);
-   glAttachShader(program, fragmentShader);
-   glBindAttribLocation(program, 0, "apos");
-   glBindAttribLocation(program, 1, "acolor");
-   glLinkProgram(program);
-   return program;
+GLuint create_program(GLuint vertexShader, GLuint fragmentShader) {
+  GLuint program = glCreateProgram();
+  glAttachShader(program, vertexShader);
+  glAttachShader(program, fragmentShader);
+  glBindAttribLocation(program, 0, "apos");
+  glBindAttribLocation(program, 1, "acolor");
+  glLinkProgram(program);
+  return program;
 }
 
 int main()

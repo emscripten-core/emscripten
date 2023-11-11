@@ -561,7 +561,7 @@ class TestCoreBase(RunnerCore):
     self.do_core_test('test_bswap64.cpp')
 
   def test_sha1(self):
-    self.do_runf('sha1.c', 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
+    self.do_runf('third_party/sha1.c', 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
 
   def test_core_types(self):
     self.do_runf('core/test_core_types.c')
@@ -6611,7 +6611,7 @@ int main(void) {
     # TODO: Should we remove this test?
     self.skipTest('Relies on double value rounding, extremely sensitive')
 
-    src = read_file(test_file('raytrace.cpp')).replace('double', 'float')
+    src = read_file(test_file('third_party/raytrace.cpp')).replace('double', 'float')
     output = read_file(test_file('raytrace.ppm'))
     self.do_run(src, output, args=['3', '16'])
 

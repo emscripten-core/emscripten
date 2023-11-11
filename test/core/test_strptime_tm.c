@@ -9,13 +9,11 @@
 #include <stdio.h>
 #include <string.h>
 
-void ReadMonth(const char *month)
-{
-    struct tm value = {0};
-    if(strptime(month, "%b", &value))
-    {
-        printf("%s: %d\n", month, value.tm_mon);
-    }
+void ReadMonth(const char *month) {
+  struct tm value = {0};
+  if (strptime(month, "%b", &value)) {
+    printf("%s: %d\n", month, value.tm_mon);
+  }
 }
 
 int main() {
@@ -65,8 +63,8 @@ int main() {
   // check that %% is handled correctly for normal strings
   strptime("2020-05-01T00:01%z","%Y-%m-%dT%H:%M%%z",&tm);
   printf("%d\n",tm.tm_min);
-  
-  // check that %% is handled correctly even if the letter after it is 
+
+  // check that %% is handled correctly even if the letter after it is
   // in EQUIVALENT_MATCHERS
   strptime("%D2020-05-01T00:01","%%D%Y-%m-%dT%H:%M",&tm);
   printf("%d,%d\n",tm.tm_year+1900,tm.tm_min);

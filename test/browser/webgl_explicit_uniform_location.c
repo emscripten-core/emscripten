@@ -11,8 +11,7 @@
 #include <GLES2/gl2.h>
 #include <webgl/webgl1_ext.h>
 
-GLuint CompileShader(GLenum type, const char *src)
-{
+GLuint CompileShader(GLenum type, const char *src) {
   GLuint shader = glCreateShader(type);
   glShaderSource(shader, 1, &src, NULL);
   glCompileShader(shader);
@@ -20,18 +19,16 @@ GLuint CompileShader(GLenum type, const char *src)
   return shader;
 }
 
-GLuint CreateProgram(GLuint vertexShader, GLuint fragmentShader)
-{
-   GLuint program = glCreateProgram();
-   glAttachShader(program, vertexShader);
-   glAttachShader(program, fragmentShader);
-   glBindAttribLocation(program, 0, "apos");
-   glLinkProgram(program);
-   return program;
+GLuint CreateProgram(GLuint vertexShader, GLuint fragmentShader) {
+  GLuint program = glCreateProgram();
+  glAttachShader(program, vertexShader);
+  glAttachShader(program, fragmentShader);
+  glBindAttribLocation(program, 0, "apos");
+  glLinkProgram(program);
+  return program;
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
   attr.majorVersion = 2;
