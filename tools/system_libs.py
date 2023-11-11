@@ -1808,6 +1808,7 @@ class libembind(Library):
 
   def get_cflags(self):
     cflags = super().get_cflags()
+    cflags.append('-std=c++20')
     if not self.with_rtti:
       cflags += ['-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
     return cflags

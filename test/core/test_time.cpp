@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -10,8 +11,7 @@
 #include <assert.h>
 #include <math.h>
 
-void check_gmtime_localtime(time_t time)
-{
+void check_gmtime_localtime(time_t time) {
   char gmbuf[32], locbuf[32];
   const char fmt[] = "%Y-%m-%d %H:%M:%S";
   struct tm *gm;
@@ -162,6 +162,15 @@ int main() {
   mktime(&tm_winter); mktime(&tm_summer);
   printf("mktime guesses DST (winter): %d\n", tm_winter.tm_isdst == oldDstWinter);
   printf("mktime guesses DST (summer): %d\n", tm_summer.tm_isdst == oldDstSummer);
+
+  // Verify that timestamps outside of the range supported by date.getNow()
+  // cause failure with EOVERFLOW.
+  struct tm tm_big = {0};
+  tm_big.tm_year = 292278994;
+  time_t tbig = mktime(&tm_big);
+  printf("tbig: %lld\n", tbig);
+  assert(tbig == -1);
+  assert(errno == EOVERFLOW);
 
   // Verify localtime_r() doesn't clobber static data.
   time_t t3 = 60*60*24*5; // Jan 5 1970
