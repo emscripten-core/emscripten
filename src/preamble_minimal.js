@@ -23,7 +23,7 @@
 #include "runtime_asan.js"
 #endif
 
-#if ASSERTIONS || SAFE_HEAP
+#if ASSERTIONS
 /** @type {function(*, string=)} */
 function assert(condition, text) {
   if (!condition) throw text;
