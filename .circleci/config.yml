@@ -553,6 +553,7 @@ jobs:
             core2ss.test_pthread_dylink
             core2ss.test_pthread_thread_local_storage
             core2s.test_dylink_syslibs_missing_assertions
+            core2s.test_module_wasm_memory
             wasm2js3.test_memorygrowth_2
             wasmfs.test_hello_world
             wasmfs.test_hello_world_standalone
