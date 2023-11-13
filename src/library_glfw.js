@@ -444,7 +444,7 @@ var LibraryGLFW = {
         {{{ makeDynCall('vii', 'GLFW.active.cursorPosFunc') }}}(Browser.mouseX, Browser.mouseY);
 #endif
 #if USE_GLFW == 3
-        {{{ makeDynCall('vidd', 'GLFW.active.cursorPosFunc') }}}(GLFW.active.id, Browser.mouseX, Browser.mouseY);
+        {{{ makeDynCall('vpdd', 'GLFW.active.cursorPosFunc') }}}(GLFW.active.id, Browser.mouseX, Browser.mouseY);
 #endif
       }
     },
@@ -470,7 +470,7 @@ var LibraryGLFW = {
 
 #if USE_GLFW == 3
       if (GLFW.active.cursorEnterFunc) {
-        {{{ makeDynCall('vii', 'GLFW.active.cursorEnterFunc') }}}(GLFW.active.id, 1);
+        {{{ makeDynCall('vpi', 'GLFW.active.cursorEnterFunc') }}}(GLFW.active.id, 1);
       }
 #endif
     },
@@ -482,7 +482,7 @@ var LibraryGLFW = {
 
 #if USE_GLFW == 3
       if (GLFW.active.cursorEnterFunc) {
-        {{{ makeDynCall('vii', 'GLFW.active.cursorEnterFunc') }}}(GLFW.active.id, 0);
+        {{{ makeDynCall('vpi', 'GLFW.active.cursorEnterFunc') }}}(GLFW.active.id, 0);
       }
 #endif
     },
@@ -544,7 +544,7 @@ var LibraryGLFW = {
         sx = event.deltaX;
       }
 
-      {{{ makeDynCall('vidd', 'GLFW.active.scrollFunc') }}}(GLFW.active.id, sx, sy);
+      {{{ makeDynCall('vpdd', 'GLFW.active.scrollFunc') }}}(GLFW.active.id, sx, sy);
 #endif
 
       event.preventDefault();
@@ -622,7 +622,7 @@ var LibraryGLFW = {
 
 #if USE_GLFW == 3
       if (GLFW.active.windowContentScaleFunc) {
-        {{{ makeDynCall('viff', 'GLFW.active.windowContentScaleFunc') }}}(GLFW.active.id, GLFW.scale, GLFW.scale);
+        {{{ makeDynCall('vpff', 'GLFW.active.windowContentScaleFunc') }}}(GLFW.active.id, GLFW.scale, GLFW.scale);
       }
 #endif
     },
