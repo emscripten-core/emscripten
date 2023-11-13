@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 3.1.49 (in development)
 -----------------------
+- The `glfwSetWindowSize` function no longer switches to fullscreen when the
+  width/height provided as parameters match the screen size. This behavior
+  now matches the behavior of SDL and glut. In order to switch to fullscreen,
+  the client code should invoke `Module.requestFullscreen(...)` from a user 
+  triggered event otherwise the browser raises an error. (#20600)
 
 3.1.48 - 11/05/23
 -----------------
