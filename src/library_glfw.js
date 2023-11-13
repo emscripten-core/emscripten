@@ -981,9 +981,9 @@ var LibraryGLFW = {
       if (!win) return;
 
       if (GLFW.active.id == win.id) {
-          Browser.setCanvasSize(width, height);
-          win.width = width;
-          win.height = height;
+        Browser.setCanvasSize(width, height);
+        win.width = width;
+        win.height = height;
       }
 
       if (win.windowSizeFunc) {
