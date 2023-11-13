@@ -2318,7 +2318,7 @@ def phase_linker_setup(options, state, newargs):
 
   setup_environment_settings()
 
-  if options.use_closure_compiler != 0:
+  if options.use_closure_compiler != 0 and settings.POLYFILL:
     # Emscripten requires certain ES6 constructs by default in library code
     # - https://caniuse.com/let              : EDGE:12 FF:44 CHROME:49 SAFARI:11
     # - https://caniuse.com/const            : EDGE:12 FF:36 CHROME:49 SAFARI:11
