@@ -7466,6 +7466,10 @@ Resolved: "/" => "/"
     test(['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=1GB'])
     test(['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB'])
 
+  def test_emmalloc_high_align(self):
+    self.do_other_test('test_emmalloc_high_align.c',
+                       emcc_args=['-sMALLOC=emmalloc', '-sINITIAL_MEMORY=128MB'])
+
   def test_2GB_plus(self):
     # when the heap size can be over 2GB, we rewrite pointers to be unsigned
     def test(page_diff):

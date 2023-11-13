@@ -791,6 +791,13 @@ static void *allocate_memory(size_t alignment, size_t size)
 
   // We were unable to find a free memory region. Must sbrk() in more memory!
   size_t numBytesToClaim = size+sizeof(Region)*3;
+  // Take into account the alignment as well. For typical alignment we don't
+  // need to add anything here (so we do nothing if the alignment is equal to
+  // MALLOC_ALIGNMENT), but it can matter if the alignment is very high. In that
+  // case, not adding the alignment can lead to this sbrk not giving us enough
+  // (in which case, the next attempt fails and will sbrk the same amount again,
+  // potentially allocating a lot more memory than necessary).
+  numBytesToClaim += alignment - MALLOC_ALIGNMENT;
   assert(numBytesToClaim > size); // 32-bit wraparound should not happen here, allocation size has been validated above!
   bool success = claim_more_memory(numBytesToClaim);
   if (success)
