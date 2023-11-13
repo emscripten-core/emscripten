@@ -1641,7 +1641,6 @@ keydown(100);keyup(100); // trigger the end
   def test_egl(self):
     self._test_egl_base()
 
-  @no_wasm64('TODO: wasm64 + OFB')
   @requires_threads
   @requires_graphics_hardware
   def test_egl_with_proxy_to_pthread(self):
@@ -2021,9 +2020,7 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   @requires_threads
   def test_gl_textures(self, args):
-    if args and self.is_wasm64():
-      self.skipTest('TODO: wasm64 + OFB')
-    self.btest_exit('gl_textures.cpp', args=['-lGL'] + args)
+    self.btest_exit('gl_textures.cpp', args=['-lGL', '-g', '-sSTACK_SIZE=1MB'] + args)
 
   @requires_graphics_hardware
   @no_wasm64('TODO: wasm64 + LEGACY_GL_EMULATION')
@@ -2832,13 +2829,8 @@ Module["preRun"] = () => {
     'offscreenframbuffer': (['-sOFFSCREEN_FRAMEBUFFER', '-pthread', '-sPROXY_TO_PTHREAD'],),
   })
   def test_html5_webgl_api(self, args):
-    if '-sOFFSCREENCANVAS_SUPPORT' in args:
-      if os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'):
-        return
-      if self.is_wasm64():
-        self.skipTest('TODO: wasm64 + OFFSCREENCANVAS')
-    if '-sOFFSCREEN_FRAMEBUFFER' in args and self.is_wasm64():
-      self.skipTest('TODO: wasm64 + OFB')
+    if '-sOFFSCREENCANVAS_SUPPORT' in args and os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'):
+      return
     self.btest_exit('html5_webgl.c', args=['-sMAX_WEBGL_VERSION=2', '-lGL'] + args)
 
   @parameterized({
@@ -4619,7 +4611,6 @@ Module["preRun"] = () => {
   @requires_threads
   @requires_offscreen_canvas
   @requires_graphics_hardware
-  @no_wasm64('TODO: wasm64 + OFFSCREENCANVAS')
   def test_webgl_offscreen_canvas_in_pthread(self, args):
     self.btest('gl_in_pthread.cpp', expected='1', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
 
@@ -4636,11 +4627,9 @@ Module["preRun"] = () => {
   def test_webgl_offscreen_canvas_in_mainthread_after_pthread(self, args):
     self.btest('gl_in_mainthread_after_pthread.cpp', expected='0', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
 
-  @no_wasm64()
   @requires_threads
   @requires_offscreen_canvas
   @requires_graphics_hardware
-  @no_wasm64('TODO: wasm64 + OFFSCREENCANVAS')
   def test_webgl_offscreen_canvas_only_in_pthread(self):
     self.btest_exit('gl_only_in_pthread.cpp', args=['-pthread', '-sPTHREAD_POOL_SIZE', '-sOFFSCREENCANVAS_SUPPORT', '-lGL', '-sOFFSCREEN_FRAMEBUFFER'])
 
@@ -4652,7 +4641,6 @@ Module["preRun"] = () => {
   # Tests for WEBGL_multi_draw extension
   # For testing WebGL draft extensions like this, if using chrome as the browser,
   # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
-  @no_wasm64()
   @requires_graphics_hardware
   @parameterized({
     'arrays': (['-DMULTI_DRAW_ARRAYS'],),
@@ -4701,16 +4689,17 @@ Module["preRun"] = () => {
     self.btest_exit('webgl_timer_query.c', args=args + ['-lGL'])
 
   # Tests that -sOFFSCREEN_FRAMEBUFFER rendering works.
-  @no_wasm64()
   @requires_graphics_hardware
-  @no_wasm64('TODO: wasm64 + OFB')
-  def test_webgl_offscreen_framebuffer(self):
+  @parameterized({
+    '': ([],),
+    'threads': (['-pthread', '-sPROXY_TO_PTHREAD'],)
+  })
+  def test_webgl_offscreen_framebuffer(self, threads):
     # Tests all the different possible versions of libgl
-    for threads in [[], ['-pthread', '-sPROXY_TO_PTHREAD']]:
-      for version in [[], ['-sFULL_ES3'], ['-sFULL_ES3']]:
-        args = ['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1'] + threads + version
-        print('with args: %s' % str(args))
-        self.btest_exit('webgl_draw_triangle.c', args=args)
+    for version in [[], ['-sFULL_ES3'], ['-sFULL_ES3']]:
+      args = ['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1'] + threads + version
+      print('with args: %s' % str(args))
+      self.btest_exit('webgl_draw_triangle.c', args=args)
 
   # Tests that VAOs can be used even if WebGL enableExtensionsByDefault is set to 0.
   @requires_graphics_hardware
@@ -4753,11 +4742,9 @@ Module["preRun"] = () => {
     '': ([False],),
     'asyncify': ([True],),
   })
-  @no_wasm64()
   @requires_threads
   @requires_offscreen_canvas
   @requires_graphics_hardware
-  @no_wasm64('TODO: wasm64 + OFFSCREENCANVAS')
   def test_webgl_offscreen_canvas_in_proxied_pthread(self, asyncify):
     cmd = ['-pthread', '-sOFFSCREENCANVAS_SUPPORT', '-lGL', '-sGL_DEBUG', '-sPROXY_TO_PTHREAD']
     if asyncify:
@@ -4767,7 +4754,6 @@ Module["preRun"] = () => {
     print(str(cmd))
     self.btest_exit('gl_in_proxy_pthread.cpp', args=cmd)
 
-  @no_wasm64()
   @parameterized({
     'proxy': (['-sPROXY_TO_PTHREAD'],),
     '': ([],),
@@ -4775,7 +4761,6 @@ Module["preRun"] = () => {
   @requires_threads
   @requires_graphics_hardware
   @requires_offscreen_canvas
-  @no_wasm64('TODO: wasm64 + OFFSCREENCANVAS')
   def test_webgl_resize_offscreencanvas_from_main_thread(self, args):
     for args2 in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
       for args3 in [[], ['-sOFFSCREENCANVAS_SUPPORT', '-sOFFSCREEN_FRAMEBUFFER']]:
@@ -4981,21 +4966,21 @@ Module["preRun"] = () => {
     self.btest_exit('pthread/test_pthread_run_script.c', args=['-O3'] + args)
 
   # Tests emscripten_set_canvas_element_size() and OffscreenCanvas functionality in different build configurations.
-  @no_wasm64()
   @requires_threads
   @requires_graphics_hardware
-  def test_emscripten_animate_canvas_element_size(self):
-    for args in [
-      ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1'],
-      ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-sPROXY_TO_PTHREAD', '-pthread', '-sOFFSCREEN_FRAMEBUFFER'],
-      ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-sPROXY_TO_PTHREAD', '-pthread', '-sOFFSCREEN_FRAMEBUFFER', '-DTEST_EXPLICIT_CONTEXT_SWAP=1'],
-      ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-sPROXY_TO_PTHREAD', '-pthread', '-sOFFSCREEN_FRAMEBUFFER'],
-      ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-sPROXY_TO_PTHREAD', '-pthread', '-sOFFSCREEN_FRAMEBUFFER', '-DTEST_MANUALLY_SET_ELEMENT_CSS_SIZE=1'],
-      ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-sOFFSCREENCANVAS_SUPPORT'],
-    ]:
-      cmd = ['-lGL', '-O3', '-g2', '--shell-file', test_file('canvas_animate_resize_shell.html'), '-sGL_DEBUG', '--threadprofiler', '-sASSERTIONS'] + args
-      print(' '.join(cmd))
-      self.btest_exit('canvas_animate_resize.cpp', args=cmd)
+  @parameterized({
+    '': ([], True),
+    'offscreen': (['-sOFFSCREENCANVAS_SUPPORT'], True),
+    'pthread': (['-sPROXY_TO_PTHREAD', '-pthread', '-sOFFSCREEN_FRAMEBUFFER'], True),
+    'pthread_ofb_main_loop': (['-sPROXY_TO_PTHREAD', '-pthread', '-sOFFSCREEN_FRAMEBUFFER', '-DTEST_EXPLICIT_CONTEXT_SWAP=1'], True),
+    'pthread_ofb': (['-sPROXY_TO_PTHREAD', '-pthread', '-sOFFSCREEN_FRAMEBUFFER', '-DTEST_EXPLICIT_CONTEXT_SWAP=1'], False),
+    'manual_css': (['-sPROXY_TO_PTHREAD', '-pthread', '-sOFFSCREEN_FRAMEBUFFER', '-DTEST_EXPLICIT_CONTEXT_SWAP=1', '-DTEST_MANUALLY_SET_ELEMENT_CSS_SIZE=1'], False),
+  })
+  def test_emscripten_animate_canvas_element_size(self, args, main_loop):
+    cmd = ['-lGL', '-O3', '-g2', '--shell-file', test_file('canvas_animate_resize_shell.html'), '-sGL_DEBUG', '--threadprofiler', '-sASSERTIONS'] + args
+    if main_loop:
+      cmd.append('-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1')
+    self.btest_exit('canvas_animate_resize.cpp', args=cmd)
 
   # Tests the absolute minimum pthread-enabled application.
   @parameterized({

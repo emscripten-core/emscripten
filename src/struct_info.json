@@ -951,7 +951,7 @@
         "file": "emscripten/threading.h",
         "defines": [
             "EM_FUNC_SIG_PARAM_I",
-            "EM_FUNC_SIG_PARAM_I64",
+            "EM_FUNC_SIG_PARAM_J",
             "EM_FUNC_SIG_PARAM_F",
             "EM_FUNC_SIG_PARAM_D",
             "EM_FUNC_SIG_PARAM_B",
