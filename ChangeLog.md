@@ -59,6 +59,16 @@ See docs/process.md for more on how version tagging works.
   now matches the behavior of SDL and glut. In order to switch to fullscreen,
   the client code should invoke `Module.requestFullscreen(...)` from a user 
   triggered event otherwise the browser raises an error. (#20600)
+- The Module exports provided by `library_browser.js` are now only included on
+  demand.  If you use any of the following exports on the Module object you will
+  now need to export them via the `-sEXPORTED_RUNTIME_METHODS` setting (#20703):
+   - requestFullscreen
+   - requestAnimationFrame
+   - setCanvasSize
+   - pauseMainLoop
+   - resumeMainLoop
+   - getUserMedia
+   - createContext
 
 3.1.48 - 11/05/23
 -----------------

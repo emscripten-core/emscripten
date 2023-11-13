@@ -1821,6 +1821,10 @@ def phase_linker_setup(options, state, newargs):
   if settings.USE_CLOSURE_COMPILER or not settings.MINIFY_WHITESPACE:
     settings.MAYBE_CLOSURE_COMPILER = 1
 
+  if options.oformat == OFormat.HTML:
+    # The default shell.html uses the `requestFullscreen` export
+    settings.EXPORTED_RUNTIME_METHODS.append('requestFullscreen')
+
   return target, wasm_target
 
 
