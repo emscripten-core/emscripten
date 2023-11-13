@@ -1299,7 +1299,7 @@ var LibraryEmbind = {
     '$GenericWireTypeSize',
   ],
   $init_RegisteredPointer: () => {
-    Object.assign(RegisteredPointer.prototype, {
+    assign(RegisteredPointer.prototype, {
       getPointee(ptr) {
         if (this.rawGetPointee) {
           ptr = this.rawGetPointee(ptr);
@@ -1564,7 +1564,7 @@ var LibraryEmbind = {
     '$detachFinalizer',
   ],
   $init_ClassHandle: () => {
-    Object.assign(ClassHandle.prototype, {
+    assign(ClassHandle.prototype, {
       "isAliasOf"(other) {
         if (!(this instanceof ClassHandle)) {
           return false;
@@ -2250,7 +2250,7 @@ var LibraryEmbind = {
     };
 
     ctor.prototype = Object.create(wrapperPrototype);
-    Object.assign(ctor.prototype, properties);
+    assign(ctor.prototype, properties);
     return Emval.toHandle(ctor);
   },
 

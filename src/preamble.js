@@ -786,7 +786,7 @@ function instantiateSync(file, info) {
 // WasmOffsetConverter.
 function resetPrototype(constructor, attrs) {
   var object = Object.create(constructor.prototype);
-  return Object.assign(object, attrs);
+  return assign(object, attrs);
 }
 #endif
 

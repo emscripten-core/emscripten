@@ -957,7 +957,7 @@ var LibraryDylink = {
 #endif
       if (!flags.global) {
         if (localScope) {
-          Object.assign(localScope, dso.exports);
+          assign(localScope, dso.exports);
         }
       } else if (!dso.global) {
         // The library was previously loaded only locally but not
@@ -1043,7 +1043,7 @@ var LibraryDylink = {
       if (dso.global) {
         mergeLibSymbols(exports, libName);
       } else if (localScope) {
-        Object.assign(localScope, exports);
+        assign(localScope, exports);
       }
       dso.exports = exports;
     }

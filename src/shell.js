@@ -79,12 +79,14 @@ Module['ready'] = new Promise((resolve, reject) => {
 // refer to Module (if they choose; they can also define Module)
 {{{ preJS() }}}
 
+var assign = Object.assign;
+
 // Sometimes an existing Module object exists with properties
 // meant to overwrite the default module functionality. Here
 // we collect those properties and reapply _after_ we configure
 // the current environment's defaults to avoid having to be so
 // defensive during initialization.
-var moduleOverrides = Object.assign({}, Module);
+var moduleOverrides = assign({}, Module);
 
 var arguments_ = [];
 var thisProgram = './this.program';
@@ -446,7 +448,7 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 
 // Merge back in the overrides
-Object.assign(Module, moduleOverrides);
+assign(Module, moduleOverrides);
 // Free the object hierarchy contained in the overrides, this lets the GC
 // reclaim data used e.g. in memoryInitializerRequest, which is a large typed array.
 moduleOverrides = null;

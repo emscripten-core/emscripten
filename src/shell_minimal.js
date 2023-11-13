@@ -158,6 +158,8 @@ function ready() {
 // refer to Module (if they choose; they can also define Module)
 {{{ preJS() }}}
 
+var assign = Object.assign;
+
 #if PTHREADS
 
 #if !MODULARIZE

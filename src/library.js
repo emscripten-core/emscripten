@@ -3179,7 +3179,7 @@ addToLibrary({
     var argCache = [];
     return function() {
       argCache.length = 0;
-      Object.assign(argCache, arguments);
+      assign(argCache, arguments);
       return dynCall(sig, ptr, argCache);
     };
   },
@@ -3622,7 +3622,7 @@ addToLibrary({
   },
 
   $handleAllocatorInit: function() {
-    Object.assign(HandleAllocator.prototype, /** @lends {HandleAllocator.prototype} */ {
+    assign(HandleAllocator.prototype, /** @lends {HandleAllocator.prototype} */ {
       get(id) {
   #if ASSERTIONS
         assert(this.allocated[id] !== undefined, `invalid handle: ${id}`);
