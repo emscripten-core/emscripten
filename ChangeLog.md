@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 3.1.49 (in development)
 -----------------------
+- Fix 3.1.48 regression in acorn optimizer pass related to JS destructuring
+  (#20635)
+- Fix 3.1.48 regression with usage of assert in runtime_init_memory.js. (#20671)
+- Many MEMORY64 fixes for browser and graphics APIs (#20678)
+- Fix handling of %% and time zones in strptime (#20470)
 
 3.1.48 - 11/05/23
 -----------------
