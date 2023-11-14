@@ -18,8 +18,12 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.49 (in development)
+3.1.50 (in development)
 -----------------------
+
+3.1.49 - 11/14/23
+-----------------
+- Many MEMORY64 fixes for browser and graphics APIs (#20678)
 - The `glfwSetWindowSize` function no longer switches to fullscreen when the
   width/height provided as parameters match the screen size. This behavior
   now matches the behavior of SDL and glut. In order to switch to fullscreen,
