@@ -794,7 +794,16 @@ static void *allocate_memory(size_t alignment, size_t size)
   // case, not adding the alignment can lead to this sbrk not giving us enough
   // (in which case, the next attempt fails and will sbrk the same amount again,
   // potentially allocating a lot more memory than necessary).
-  numBytesToClaim += alignment - MALLOC_ALIGNMENT;
+  //
+  // Note that this is not necessarily optimal, as the extra allocation size for
+  // the alignment might not be needed (if we are lucky and already aligned),
+  // and even if it helps us allocate it will not immediately be ready for reuse
+  // (as it will be added to the currently-in-use region before us, so it is not
+  // in a free list). As a compromise however it seems reasonable in practice as
+  // a way to handle large aligned regions to avoid even worse waste.
+  if (alignment > MALLOC_ALIGNMENT) {
+    numBytesToClaim += MALLOC_ALIGNMENT;
+  }
   assert(numBytesToClaim > size); // 32-bit wraparound should not happen here, allocation size has been validated above!
   bool success = claim_more_memory(numBytesToClaim);
   if (success)
