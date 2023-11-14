@@ -2625,6 +2625,9 @@ def phase_linker_setup(options, state, newargs):
         exit_with_error('EXPORT_ES6 and ENVIRONMENT=*node* requires USE_ES6_IMPORT_META to be set')
       settings.USE_ES6_IMPORT_META = 1
 
+  if 'EXPORT_NAME' in user_settings and not settings.MODULARIZE:
+    exit_with_error('EXPORT_NAME requires MODULARIZE to be set')
+
   if settings.MODULARIZE and not settings.DECLARE_ASM_MODULE_EXPORTS:
     # When MODULARIZE option is used, currently requires declaring all module exports
     # individually - TODO: this could be optimized
@@ -4279,7 +4282,7 @@ def generate_html(target, options, js_target, target_basename,
                   wasm_target, memfile):
   logger.debug('generating HTML')
 
-  if settings.EXPORT_NAME != 'Module' and \
+  if 'EXPORT_NAME' in user_settings and \
      not settings.MINIMAL_RUNTIME and \
      options.shell_path == DEFAULT_SHELL_HTML:
     # the minimal runtime shell HTML is designed to support changing the export

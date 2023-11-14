@@ -1205,7 +1205,6 @@ var DETERMINISTIC = false;
 // `EXPORT_NAME` option. We recommend renaming it to a more typical name for a
 // factory function, e.g. `createModule`.
 //
-//
 // You use the factory function like so:
 //
 //   const module = await EXPORT_NAME();
@@ -1272,6 +1271,7 @@ var BENCHMARK = false;
 
 // Global variable to export the module as for environments without a
 // standardized module loading system (e.g. the browser and SM shell).
+// Only makes sense when MODULARIZE is also specified.
 // [link]
 var EXPORT_NAME = 'Module';
 

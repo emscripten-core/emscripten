@@ -366,6 +366,10 @@ class other(RunnerCore):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sMODULARIZE=0'])
     self.assertContained('EXPORT_ES6 requires MODULARIZE to be set', err)
 
+  def test_export_name_requires_modularize(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORT_NAME=foo'])
+    self.assertContained('EXPORT_NAME requires MODULARIZE to be set', err)
+
   def test_export_es6_node_requires_import_meta(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'),
                             '-sENVIRONMENT=node', '-sEXPORT_ES6', '-sUSE_ES6_IMPORT_META=0'])
@@ -6236,7 +6240,7 @@ int main(void) {
     self.assertContained('hello, world!\n', output)
 
   def test_EXPORT_NAME_with_html(self):
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', 'a.html', '-sEXPORT_NAME=Other'])
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', 'a.html', '-sEXPORT_NAME=Other', '-sMODULARIZE'])
     self.assertContained('Customizing EXPORT_NAME requires that the HTML be customized to use that name', err)
 
   def test_modularize_sync_compilation(self):
@@ -7550,8 +7554,8 @@ high = 1234
   def test_dash_s_response_file_string(self):
     create_file('response_file.txt', 'MyModule\n')
     create_file('response_file.json', '"MyModule"\n')
-    self.run_process([EMXX, test_file('hello_world.cpp'), '-sEXPORT_NAME=@response_file.txt'])
-    self.run_process([EMXX, test_file('hello_world.cpp'), '-sEXPORT_NAME=@response_file.json'])
+    self.run_process([EMXX, test_file('hello_world.cpp'), '-sMODULARIZE', '-sEXPORT_NAME=@response_file.txt'])
+    self.run_process([EMXX, test_file('hello_world.cpp'), '-sMODULARIZE', '-sEXPORT_NAME=@response_file.json'])
 
   def test_dash_s_response_file_list(self):
     create_file('response_file.txt', '_main\n_malloc\n')
@@ -12551,7 +12555,7 @@ kill -9 $$
     self.run_process([EMCC, '-c', '-Werror', '-Wno-deprecated', 'test.c'])
 
   def test_bad_export_name(self):
-    err = self.expect_fail([EMCC, '-sEXPORT_NAME=foo bar', test_file('hello_world.c')])
+    err = self.expect_fail([EMCC, '-sMODULARIZE', '-sEXPORT_NAME=foo bar', test_file('hello_world.c')])
     self.assertContained('error: EXPORT_NAME is not a valid JS identifier: `foo bar`', err)
 
   def test_offset_convertor_plus_wasm2js(self):
