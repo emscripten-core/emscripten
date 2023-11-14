@@ -45,7 +45,7 @@ ASYNC_GL_FUNCTION_10(EM_FUNC_SIG_VIIIIIIIIII, void, glBlitFramebuffer, GLint, GL
 ASYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIIIII, void, glRenderbufferStorageMultisample, GLenum, GLsizei, GLenum, GLsizei, GLsizei);
 ASYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIIIII, void, glFramebufferTextureLayer, GLenum, GLenum, GLuint, GLint, GLint);
 #ifdef __EMSCRIPTEN_FULL_ES3__
-RET_SYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void *, glMapBufferRange, GLenum, GLintptr, GLsizeiptr, GLbitfield);
+RET_PTR_SYNC_GL_FUNCTION_4(EM_FUNC_SIG_PIIII, void *, glMapBufferRange, GLenum, GLintptr, GLsizeiptr, GLbitfield);
 ASYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glFlushMappedBufferRange, GLenum, GLintptr, GLsizeiptr);
 #endif
 ASYNC_GL_FUNCTION_1(EM_FUNC_SIG_VI, void, glBindVertexArray, GLuint);
@@ -80,7 +80,7 @@ VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glClearBufferiv, GLenum, GLint, 
 VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glClearBufferuiv, GLenum, GLint, const GLuint *);
 VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glClearBufferfv, GLenum, GLint, const GLfloat *);
 ASYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIFI, void, glClearBufferfi, GLenum, GLint, GLfloat, GLint);
-RET_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_III, const GLubyte *, glGetStringi, GLenum, GLuint);
+RET_PTR_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_PII, const GLubyte *, glGetStringi, GLenum, GLuint);
 ASYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIIIII, void, glCopyBufferSubData, GLenum, GLenum, GLintptr, GLintptr, GLsizeiptr);
 VOID_SYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void, glGetUniformIndices, GLuint, GLsizei, const GLchar *const*, GLuint *);
 VOID_SYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIIIII, void, glGetActiveUniformsiv, GLuint, GLsizei, const GLuint *, GLenum, GLint *);
@@ -90,7 +90,7 @@ VOID_SYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIIIII, void, glGetActiveUniformBlockName, G
 ASYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glUniformBlockBinding, GLuint, GLuint, GLuint);
 ASYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void, glDrawArraysInstanced, GLenum, GLint, GLsizei, GLsizei);
 ASYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIIIII, void, glDrawElementsInstanced, GLenum, GLsizei, GLenum, const void *, GLsizei); // TODO: Not async if rendering from client side memory
-RET_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_III, GLsync, glFenceSync, GLenum, GLbitfield);
+RET_PTR_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_PII, GLsync, glFenceSync, GLenum, GLbitfield);
 RET_SYNC_GL_FUNCTION_1(EM_FUNC_SIG_II, GLboolean, glIsSync, GLsync);
 ASYNC_GL_FUNCTION_1(EM_FUNC_SIG_VI, void, glDeleteSync, GLsync);
 GLenum glClientWaitSync(GLsync p0, GLbitfield p1, GLuint64 p2) {

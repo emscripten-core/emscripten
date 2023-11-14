@@ -7,13 +7,14 @@
 
 #pragma once
 
+#include <stdint.h>
 #include <emscripten/html5.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef int EMSCRIPTEN_WEBGL_CONTEXT_HANDLE;
+typedef intptr_t EMSCRIPTEN_WEBGL_CONTEXT_HANDLE;
 
 typedef int EMSCRIPTEN_WEBGL_CONTEXT_PROXY_MODE;
 #define EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW 0

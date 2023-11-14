@@ -42,9 +42,9 @@ EMSCRIPTEN_KEEPALIVE int _emscripten_proxy_main(int argc, char** argv) {
   // Use the size of the current stack, which is the normal size of the stack
   // that main() would have without PROXY_TO_PTHREAD.
   pthread_attr_setstacksize(&attr, emscripten_stack_get_base() - emscripten_stack_get_end());
-  // Pass special ID -1 to the list of transferred canvases to denote that the thread creation
-  // should instead take a list of canvases that are specified from the command line with
-  // -sOFFSCREENCANVASES_TO_PTHREAD linker flag.
+  // Pass special ID -1 to the list of transferred canvases to denote that the
+  // thread creation should instead take a list of canvases that are specified
+  // from the command line with -sOFFSCREENCANVASES_TO_PTHREAD linker flag.
   emscripten_pthread_attr_settransferredcanvases(&attr, (const char*)-1);
   _main_argc = argc;
   _main_argv = argv;

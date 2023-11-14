@@ -9,6 +9,7 @@
 #include <stdatomic.h>
 
 #include <emscripten/threading.h>
+#include <emscripten/console.h>
 
 #include "../internal/pthread_impl.h"
 
@@ -17,7 +18,7 @@
 
 typedef union em_variant_val {
   int i;
-  int64_t i64;
+  int64_t j;
   float f;
   double d;
   void *vp;
@@ -83,6 +84,23 @@ typedef int (*em_func_iiiiiiii)(int, int, int, int, int, int, int);
 typedef int (*em_func_iiiiiiiii)(int, int, int, int, int, int, int, int);
 typedef int (*em_func_iiiiiiiiii)(int, int, int, int, int, int, int, int, int);
 
+#ifdef __wasm64__
+typedef int (*em_func_ij)(uint64_t);
+typedef uint64_t (*em_func_ji)(int);
+typedef int (*em_func_ijj)(uint64_t, uint64_t);
+typedef int (*em_func_iij)(int, uint64_t);
+typedef uint64_t (*em_func_jjj)(uint64_t, uint64_t);
+typedef void (*em_func_vij)(int, uint64_t);
+typedef void (*em_func_viij)(int, int, uint64_t);
+typedef void (*em_func_viji)(int, uint64_t, int);
+typedef void (*em_func_vijji)(int, uint64_t, uint64_t, int);
+typedef void (*em_func_viijj)(int, int, uint64_t, uint64_t);
+typedef void (*em_func_viiij)(int, int, int, uint64_t);
+typedef void (*em_func_viiiiij)(int, int, int, int, int, uint64_t);
+typedef void (*em_func_viiiiiij)(int, int, int, int, int, int, uint64_t);
+typedef void (*em_func_viiiiiiiij)(int, int, int, int, int, int, int, int, uint64_t);
+#endif
+
 // Allocator and deallocator for em_queued_call objects.
 static em_queued_call* em_queued_call_malloc() {
   em_queued_call* call = (em_queued_call*)malloc(sizeof(em_queued_call));
@@ -111,8 +129,8 @@ static void init_em_queued_call_args(em_queued_call* q,
       case EM_FUNC_SIG_PARAM_I:
         q->args[i].i = va_arg(args, int);
         break;
-      case EM_FUNC_SIG_PARAM_I64:
-        q->args[i].i64 = va_arg(args, int64_t);
+      case EM_FUNC_SIG_PARAM_J:
+        q->args[i].j = va_arg(args, int64_t);
         break;
       case EM_FUNC_SIG_PARAM_F:
         q->args[i].f = (float)va_arg(args, double);
@@ -120,6 +138,8 @@ static void init_em_queued_call_args(em_queued_call* q,
       case EM_FUNC_SIG_PARAM_D:
         q->args[i].d = va_arg(args, double);
         break;
+      default:
+        assert(false && "unknown proxy param type");
     }
     argumentsType >>= EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_SHIFT;
   }
@@ -225,6 +245,50 @@ static void _do_call(void* arg) {
         q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i, q->args[7].i, q->args[8].i,
         q->args[9].i, q->args[10].i);
       break;
+#ifdef __wasm64__
+    case EM_FUNC_SIG_IP:
+      q->returnValue.i = ((em_func_ij)q->functionPtr)(q->args[0].j);
+      break;
+    case EM_FUNC_SIG_PI:
+      q->returnValue.j = ((em_func_ji)q->functionPtr)(q->args[0].i);
+      break;
+    case EM_FUNC_SIG_IIP:
+      q->returnValue.i = ((em_func_iij)q->functionPtr)(q->args[0].i, q->args[1].j);
+      break;
+    case EM_FUNC_SIG_PPP:
+      q->returnValue.j = ((em_func_jjj)q->functionPtr)(q->args[0].j, q->args[1].j);
+      break;
+    case EM_FUNC_SIG_VIP:
+      ((em_func_vij)q->functionPtr)(q->args[0].i, q->args[1].j);
+      break;
+    case EM_FUNC_SIG_VIIP:
+      ((em_func_viij)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].j);
+      break;
+    case EM_FUNC_SIG_VIIPP:
+      ((em_func_viijj)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].j, q->args[3].j);
+      break;
+    case EM_FUNC_SIG_VIIIP:
+      ((em_func_viiij)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].j);
+      break;
+    case EM_FUNC_SIG_VIPPI:
+      ((em_func_vijji)q->functionPtr)(q->args[0].i, q->args[1].j, q->args[2].j, q->args[3].i);
+      break;
+    case EM_FUNC_SIG_VIPI:
+      ((em_func_viji)q->functionPtr)(q->args[0].i, q->args[1].j, q->args[3].i);
+      break;
+    case EM_FUNC_SIG_VIIIIIP:
+      ((em_func_viiiiij)q->functionPtr)(
+        q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].j);
+      break;
+    case EM_FUNC_SIG_VIIIIIIP:
+      ((em_func_viiiiiij)q->functionPtr)(
+        q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].j);
+      break;
+    case EM_FUNC_SIG_VIIIIIIIIP:
+      ((em_func_viiiiiiiij)q->functionPtr)(
+        q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i, q->args[7].i, q->args[8].j);
+      break;
+#endif
     case EM_FUNC_SIG_I:
       q->returnValue.i = ((em_func_i)q->functionPtr)();
       break;
@@ -404,6 +468,20 @@ int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void* fun
   sync_run_in_main_thread(&q);
   return q.returnValue.i;
 }
+
+#ifdef __wasm64__
+void* emscripten_sync_run_in_main_runtime_thread_ptr_(EM_FUNC_SIGNATURE sig, void* func_ptr, ...) {
+  em_queued_call q = {sig, func_ptr};
+
+  va_list args;
+  va_start(args, func_ptr);
+  init_em_queued_call_args(&q, sig, args);
+  va_end(args);
+  sync_run_in_main_thread(&q);
+  emscripten_outf("sync_run_in_main_ptr: %p\n", q.returnValue.vp);
+  return q.returnValue.vp;
+}
+#endif
 
 void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void* func_ptr, ...) {
   em_queued_call* q = em_queued_call_malloc();

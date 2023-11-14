@@ -56,7 +56,7 @@ EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *targ
     (attributes->proxyContextToMainThread == EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK && !emscripten_supports_offscreencanvas())) {
     EmscriptenWebGLContextAttributes attrs = *attributes;
     attrs.renderViaOffscreenBackBuffer = EM_TRUE;
-    return (EMSCRIPTEN_WEBGL_CONTEXT_HANDLE)emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_III, &emscripten_webgl_do_create_context, target, &attrs);
+    return (EMSCRIPTEN_WEBGL_CONTEXT_HANDLE)emscripten_sync_run_in_main_runtime_thread_ptr(EM_FUNC_SIG_PPP, &emscripten_webgl_do_create_context, target, &attrs);
   } else {
     return emscripten_webgl_do_create_context(target, attributes);
   }
@@ -75,7 +75,7 @@ EMSCRIPTEN_RESULT emscripten_webgl_make_context_current(EMSCRIPTEN_WEBGL_CONTEXT
     }
     return r;
   } else {
-    EMSCRIPTEN_RESULT r = emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_II, &emscripten_webgl_make_context_current_calling_thread, context);
+    EMSCRIPTEN_RESULT r = emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_IP, &emscripten_webgl_make_context_current_calling_thread, context);
     if (r == EMSCRIPTEN_RESULT_SUCCESS) {
       pthread_setspecific(currentActiveWebGLContext, (void*)context);
       pthread_setspecific(currentThreadOwnsItsWebGLContext, (void*)0);
@@ -106,7 +106,7 @@ static void *memdup(const void *ptr, size_t sz) {
 
 ASYNC_GL_FUNCTION_1(EM_FUNC_SIG_VI, void, glActiveTexture, GLenum);
 ASYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glAttachShader, GLuint, GLuint);
-VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glBindAttribLocation, GLuint, GLuint, const GLchar*);
+VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIIP, void, glBindAttribLocation, GLuint, GLuint, const GLchar*);
 ASYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glBindBuffer, GLenum, GLuint);
 ASYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glBindFramebuffer, GLenum, GLuint);
 ASYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glBindRenderbuffer, GLenum, GLuint);
@@ -127,13 +127,13 @@ void glBufferData(GLenum target, GLsizeiptr size, const void *data, GLenum usage
   if (size < 256*1024) { // run small buffer sizes asynchronously by copying - large buffers run synchronously
     void *ptr = memdup(data, size);
     if (ptr || !data) { // glBufferData(data=0) can always be handled asynchronously
-      emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIIII, &emscripten_glBufferData, ptr, target, size, ptr, usage);
+      emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIPPI, &emscripten_glBufferData, ptr, target, size, ptr, usage);
       return;
     }
     // Fall through on allocation failure and run synchronously.
   }
 
-  emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VIIII, &emscripten_glBufferData, target, size, data, usage);
+  emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VIPPI, &emscripten_glBufferData, target, size, data, usage);
 }
 
 void glBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, const void *data) {
@@ -195,37 +195,37 @@ VOID_SYNC_GL_FUNCTION_0(EM_FUNC_SIG_V, void, glFlush); // TODO: THIS COULD POTEN
 ASYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void, glFramebufferRenderbuffer, GLenum, GLenum, GLenum, GLuint);
 ASYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIIIII, void, glFramebufferTexture2D, GLenum, GLenum, GLenum, GLuint, GLint);
 ASYNC_GL_FUNCTION_1(EM_FUNC_SIG_VI, void, glFrontFace, GLenum);
-VOID_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glGenBuffers, GLsizei, GLuint *);
+VOID_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_VIP, void, glGenBuffers, GLsizei, GLuint *);
 ASYNC_GL_FUNCTION_1(EM_FUNC_SIG_VI, void, glGenerateMipmap, GLenum);
-VOID_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glGenFramebuffers, GLsizei, GLuint *);
-VOID_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glGenRenderbuffers, GLsizei, GLuint *);
-VOID_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glGenTextures, GLsizei, GLuint *);
+VOID_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_VIP, void, glGenFramebuffers, GLsizei, GLuint *);
+VOID_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_VIP, void, glGenRenderbuffers, GLsizei, GLuint *);
+VOID_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_VIP, void, glGenTextures, GLsizei, GLuint *);
 VOID_SYNC_GL_FUNCTION_7(EM_FUNC_SIG_VIIIIIII, void, glGetActiveAttrib, GLuint, GLuint, GLsizei, GLsizei *, GLint *, GLenum *, GLchar *);
 VOID_SYNC_GL_FUNCTION_7(EM_FUNC_SIG_VIIIIIII, void, glGetActiveUniform, GLuint, GLuint, GLsizei, GLsizei *, GLint *, GLenum *, GLchar *);
 VOID_SYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void, glGetAttachedShaders, GLuint, GLsizei, GLsizei *, GLuint *);
-RET_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_III, GLint, glGetAttribLocation, GLuint, const GLchar *);
+RET_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_IIP, GLint, glGetAttribLocation, GLuint, const GLchar *);
 VOID_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glGetBooleanv, GLenum, GLboolean *);
-VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetBufferParameteriv, GLenum, GLenum, GLint *);
+VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIIP, void, glGetBufferParameteriv, GLenum, GLenum, GLint *);
 RET_SYNC_GL_FUNCTION_0(EM_FUNC_SIG_I, GLenum, glGetError);
-VOID_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glGetFloatv, GLenum, GLfloat *);
+VOID_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_VIP, void, glGetFloatv, GLenum, GLfloat *);
 VOID_SYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void, glGetFramebufferAttachmentParameteriv, GLenum, GLenum, GLenum, GLint *);
-VOID_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glGetIntegerv, GLenum, GLint *);
-VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetProgramiv, GLuint, GLenum, GLint *);
-VOID_SYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void, glGetProgramInfoLog, GLuint, GLsizei, GLsizei *, GLchar *);
-VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetRenderbufferParameteriv, GLenum, GLenum, GLint *);
-VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetShaderiv, GLuint, GLenum, GLint *);
-VOID_SYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void, glGetShaderInfoLog, GLuint, GLsizei, GLsizei *, GLchar *);
-VOID_SYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void, glGetShaderPrecisionFormat, GLenum, GLenum, GLint *, GLint *);
-VOID_SYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void, glGetShaderSource, GLuint, GLsizei, GLsizei *, GLchar *);
-RET_SYNC_GL_FUNCTION_1(EM_FUNC_SIG_II, const GLubyte *, glGetString, GLenum);
-VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetTexParameterfv, GLenum, GLenum, GLfloat *);
-VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetTexParameteriv, GLenum, GLenum, GLint *);
-VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetUniformfv, GLuint, GLint, GLfloat *);
-VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetUniformiv, GLuint, GLint, GLint *);
-RET_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_III, GLint, glGetUniformLocation, GLuint, const GLchar *);
-VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetVertexAttribfv, GLuint, GLenum, GLfloat *);
-VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetVertexAttribiv, GLuint, GLenum, GLint *);
-VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetVertexAttribPointerv, GLuint, GLenum, void **);
+VOID_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_VIP, void, glGetIntegerv, GLenum, GLint *);
+VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIIP, void, glGetProgramiv, GLuint, GLenum, GLint *);
+VOID_SYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIPP, void, glGetProgramInfoLog, GLuint, GLsizei, GLsizei *, GLchar *);
+VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIIP, void, glGetRenderbufferParameteriv, GLenum, GLenum, GLint *);
+VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIIP, void, glGetShaderiv, GLuint, GLenum, GLint *);
+VOID_SYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIPP, void, glGetShaderInfoLog, GLuint, GLsizei, GLsizei *, GLchar *);
+VOID_SYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIPP, void, glGetShaderPrecisionFormat, GLenum, GLenum, GLint *, GLint *);
+VOID_SYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIPP, void, glGetShaderSource, GLuint, GLsizei, GLsizei *, GLchar *);
+RET_PTR_SYNC_GL_FUNCTION_1(EM_FUNC_SIG_PI, const GLubyte *, glGetString, GLenum);
+VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIIP, void, glGetTexParameterfv, GLenum, GLenum, GLfloat *);
+VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIIP, void, glGetTexParameteriv, GLenum, GLenum, GLint *);
+VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIIP, void, glGetUniformfv, GLuint, GLint, GLfloat *);
+VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIIP, void, glGetUniformiv, GLuint, GLint, GLint *);
+RET_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_IIP, GLint, glGetUniformLocation, GLuint, const GLchar *);
+VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIIP, void, glGetVertexAttribfv, GLuint, GLenum, GLfloat *);
+VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIIP, void, glGetVertexAttribiv, GLuint, GLenum, GLint *);
+VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIIP, void, glGetVertexAttribPointerv, GLuint, GLenum, void **);
 ASYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glHint, GLenum, GLenum);
 RET_SYNC_GL_FUNCTION_1(EM_FUNC_SIG_II, GLboolean, glIsBuffer, GLuint);
 RET_SYNC_GL_FUNCTION_1(EM_FUNC_SIG_II, GLboolean, glIsEnabled, GLenum);
@@ -238,13 +238,13 @@ ASYNC_GL_FUNCTION_1(EM_FUNC_SIG_VF, void, glLineWidth, GLfloat);
 ASYNC_GL_FUNCTION_1(EM_FUNC_SIG_VI, void, glLinkProgram, GLuint);
 ASYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glPixelStorei, GLenum, GLint);
 ASYNC_GL_FUNCTION_2(EM_FUNC_SIG_VFF, void, glPolygonOffset, GLfloat, GLfloat);
-VOID_SYNC_GL_FUNCTION_7(EM_FUNC_SIG_VIIIIIII, void, glReadPixels, GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void *);
+VOID_SYNC_GL_FUNCTION_7(EM_FUNC_SIG_VIIIIIIP, void, glReadPixels, GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void *);
 ASYNC_GL_FUNCTION_0(EM_FUNC_SIG_V, void, glReleaseShaderCompiler);
 ASYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void, glRenderbufferStorage, GLenum, GLenum, GLsizei, GLsizei);
 ASYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glSampleCoverage, GLfloat, GLboolean);
 ASYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void, glScissor, GLint, GLint, GLsizei, GLsizei);
 VOID_SYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIIIII, void, glShaderBinary, GLsizei, const GLuint *, GLenum, const void *, GLsizei);
-VOID_SYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void, glShaderSource, GLuint, GLsizei, const GLchar *const*, const GLint *);
+VOID_SYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIPP, void, glShaderSource, GLuint, GLsizei, const GLchar *const*, const GLint *);
 ASYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glStencilFunc, GLenum, GLint, GLuint);
 ASYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void, glStencilFuncSeparate, GLenum, GLenum, GLint, GLuint);
 ASYNC_GL_FUNCTION_1(EM_FUNC_SIG_VI, void, glStencilMask, GLuint);
@@ -282,13 +282,13 @@ void glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei widt
   if (!pixels || (sz >= 0 && sz < 256*1024)) { // run small buffer sizes asynchronously by copying - large buffers run synchronously
     void *ptr = memdup(pixels, sz);
     if (ptr || !pixels) {
-      emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIIIIIIIII, &emscripten_glTexImage2D, ptr, target, level, internalformat, width, height, border, format, type, ptr);
+     emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIIIIIIIIP, &emscripten_glTexImage2D, ptr, target, level, internalformat, width, height, border, format, type, ptr);
       return;
     }
     // Fall through on allocation failure and run synchronously.
   }
 
-  emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VIIIIIIIII, &emscripten_glTexImage2D, target, level, internalformat, width, height, border, format, type, pixels);
+  emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VIIIIIIIIP, &emscripten_glTexImage2D, target, level, internalformat, width, height, border, format, type, pixels);
 }
 
 ASYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIIF, void, glTexParameterf, GLenum, GLenum, GLfloat);
@@ -537,13 +537,13 @@ void glUniformMatrix4fv(GLint location, GLsizei count, GLboolean transpose, cons
   if (sz < 256*1024) { // run small buffer sizes asynchronously by copying - large buffers run synchronously
     void *ptr = memdup(value, sz);
     if (ptr) {
-      emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIIII, &emscripten_glUniformMatrix4fv, ptr, location, count, transpose, (GLfloat*)ptr);
+      emscripten_dispatch_to_thread(GetCurrentTargetThread(), EM_FUNC_SIG_VIIIP, &emscripten_glUniformMatrix4fv, ptr, location, count, transpose, (GLfloat*)ptr);
       return;
     }
     // Fall through on allocation failure and run synchronously.
   }
 
-  emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VIIII, &emscripten_glUniformMatrix4fv, location, count, transpose, value);
+  emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VIIIP, &emscripten_glUniformMatrix4fv, location, count, transpose, value);
 }
 
 ASYNC_GL_FUNCTION_1(EM_FUNC_SIG_VI, void, glUseProgram, GLuint);
@@ -559,9 +559,9 @@ VOID_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glVertexAttrib4fv, GLuint, const 
 
 // TODO: The following #define FULL_ES2 does not yet exist, we'll need to compile this file twice, for FULL_ES2 mode and without
 #if FULL_ES2
-VOID_SYNC_GL_FUNCTION_6(EM_FUNC_SIG_VIIIIII, void, glVertexAttribPointer, GLuint, GLint, GLenum, GLboolean, GLsizei, const void *);
+VOID_SYNC_GL_FUNCTION_6(EM_FUNC_SIG_PIIIIIP, void, glVertexAttribPointer, GLuint, GLint, GLenum, GLboolean, GLsizei, const void *);
 #else
-ASYNC_GL_FUNCTION_6(EM_FUNC_SIG_VIIIIII, void, glVertexAttribPointer, GLuint, GLint, GLenum, GLboolean, GLsizei, const void *);
+ASYNC_GL_FUNCTION_6(EM_FUNC_SIG_VIIIIIP, void, glVertexAttribPointer, GLuint, GLint, GLenum, GLboolean, GLsizei, const void *);
 #endif
 ASYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void, glViewport, GLint, GLint, GLsizei, GLsizei);
 
