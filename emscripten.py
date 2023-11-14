@@ -702,6 +702,9 @@ def add_standard_wasm_imports(send_items_map):
   for s in extra_sent_items:
     send_items_map[s] = s
 
+  if shared.Settings.INSTRUMENT:
+    send_items_map['log_function'] = '''log_function'''
+
 
 def create_sending(metadata, library_symbols):
   # Map of wasm imports to mangled/external/JS names

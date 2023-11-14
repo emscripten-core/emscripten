@@ -2078,6 +2078,10 @@ var LEGACY_RUNTIME = false;
 // [link]
 var SIGNATURE_CONVERSIONS = [];
 
+// Logs all Wasm functions that are executed. The user will have to provide a log_function
+// in Javascript to choose how the functions should be logged.
+var INSTRUMENT = 0;
+
 //===========================================
 // Internal, used for testing only, from here
 //===========================================
