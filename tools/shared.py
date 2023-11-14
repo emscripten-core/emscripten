@@ -5,6 +5,7 @@
 
 from .toolchain_profiler import ToolchainProfiler
 
+from enum import Enum, unique, auto
 from functools import wraps
 from subprocess import PIPE
 import atexit
@@ -578,6 +579,10 @@ def get_emscripten_temp_dir():
   return EMSCRIPTEN_TEMP_DIR
 
 
+def in_temp(name):
+  return os.path.join(get_emscripten_temp_dir(), os.path.basename(name))
+
+
 def get_canonical_temp_dir(temp_dir):
   return os.path.join(temp_dir, 'emscripten_temp')
 
@@ -702,6 +707,16 @@ def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
 
 
+def get_file_suffix(filename):
+  """Parses the essential suffix of a filename, discarding Unix-style version
+  numbers in the name. For example for 'libz.so.1.2.8' returns '.so'"""
+  while filename:
+    filename, suffix = os.path.splitext(filename)
+    if not suffix[1:].isdigit():
+      return suffix
+  return ''
+
+
 def make_writable(filename):
   assert os.path.isfile(filename)
   old_mode = stat.S_IMODE(os.stat(filename).st_mode)
@@ -774,6 +789,18 @@ def init():
   setup_temp_dirs()
 
 
+@unique
+class OFormat(Enum):
+  # Output a relocatable object file.  We use this
+  # today for `-r` and `-shared`.
+  OBJECT = auto()
+  WASM = auto()
+  JS = auto()
+  MJS = auto()
+  HTML = auto()
+  BARE = auto()
+
+
 # ============================================================================
 # End declarations.
 # ============================================================================
@@ -802,5 +829,11 @@ EMCONFIGURE = bat_suffix(path_from_root('emconfigure'))
 EM_NM = bat_suffix(path_from_root('emnm'))
 FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
 WASM_SOURCEMAP = bat_suffix(path_from_root('tools/wasm-sourcemap'))
+# Windows .dll suffix is not included in this list, since those are never
+# linked to directly on the command line.
+DYNAMICLIB_ENDINGS = ['.dylib', '.so']
+STATICLIB_ENDINGS = ['.a']
+
+run_via_emxx = False
 
 init()
