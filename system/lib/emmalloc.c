@@ -656,8 +656,7 @@ static size_t validate_alloc_alignment(size_t alignment)
 {
   // Cannot perform allocations that are less than 4 byte aligned, because the Region
   // control structures need to be aligned. Also round up to minimum outputted alignment.
-  alignment = MAX(alignment, MALLOC_ALIGNMENT);
-  return alignment;
+  return MAX(alignment, MALLOC_ALIGNMENT);
 }
 
 static size_t validate_alloc_size(size_t size)
