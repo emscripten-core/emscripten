@@ -94,6 +94,14 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
       OffsetOutOfRange: 7,
       SizeOutOfRange: 8,
     },
+    CreatePipelineAsyncStatus: {
+      Success: 0,
+      ValidationError: 1,
+      InternalError: 2,
+      DeviceLost: 3,
+      DeviceDestroyed: 4,
+      Unknown: 5,
+    },
     ErrorType: {
       NoError: 0,
       Validation: 1,
@@ -145,14 +153,6 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
       Vertex: 0,
       Instance: 1,
       VertexBufferNotUsed: 2,
-    },
-    CreatePipelineAsyncStatus: {
-      Success: 0,
-      ValidationError: 1,
-      InternalError: 2,
-      DeviceLost: 3,
-      DeviceDestroyed: 4,
-      Unknown: 5,
     },
   };
   null;
@@ -1188,6 +1188,7 @@ var LibraryWebGPU = {
     abort('TODO: wgpuDeviceCreateComputePipelineAsync unimplemented');
   },
 
+  $generateRenderPipelineDesc__internal: true,
   $generateRenderPipelineDesc: (descriptor) => {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
     function makePrimitiveState(rsPtr) {
