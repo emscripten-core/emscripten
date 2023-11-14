@@ -55,7 +55,7 @@ from tools import webassembly
 from tools import config
 from tools import cache
 from tools.settings import default_setting, user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
-from tools.utils import read_file, write_file, read_binary, delete_file, removeprefix
+from tools.utils import read_file, write_file, read_binary, delete_file, removeprefix, handle_wildcard_argv
 
 logger = logging.getLogger('emcc')
 
@@ -4571,7 +4571,8 @@ def main(args):
 
 if __name__ == '__main__':
   try:
-    sys.exit(main(sys.argv))
+    argv = handle_wildcard_argv(sys.argv)
+    sys.exit(main(argv))
   except KeyboardInterrupt:
     logger.debug('KeyboardInterrupt')
     sys.exit(1)

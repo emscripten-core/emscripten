@@ -6,12 +6,14 @@
 
 import sys
 import emcc
+from tools.utils import handle_wildcard_argv
 
 emcc.run_via_emxx = True
 
 if __name__ == '__main__':
   try:
-    sys.exit(emcc.main(sys.argv))
+    argv = handle_wildcard_argv(sys.argv)
+    sys.exit(emcc.main(argv))
   except KeyboardInterrupt:
     emcc.logger.debug('KeyboardInterrupt')
     sys.exit(1)
