@@ -454,6 +454,21 @@ void test_fs_utime() {
     remove("utimetest");
 }
 
+EM_JS(void, test_fs_ioctl, (), {
+    var stdinStream = FS.open("/dev/stdin");
+    assert(FS.ioctl(stdinStream, 21509 /* TCGETA */, 0) === 0);
+    var ex;
+    try {
+        FS.ioctl(stdinStream, 0, 0);
+    } catch (e) {
+        ex = e;
+    }
+    assert(ex.name === 'ErrnoError' && ex.errno === 28 /* EINVAL */);
+
+    var stdoutStream = FS.open("/dev/stdout", "w");
+    assert(FS.ioctl(stdoutStream, 21523 /* TIOCGWINSZ */, 0) === 0);
+});
+
 void cleanup() {
     remove("testfile");
     remove("renametestfile");
@@ -477,6 +492,11 @@ int main() {
 #endif
     test_fs_mkdirTree();
     test_fs_utime();
+#if WASMFS
+    // The legacy API does not provide stream.stream_ops.ioctl methods 
+    // to stdin/stdout, causing FS.ioctl() to always return ENOTTY.
+    test_fs_ioctl();
+#endif
 
     cleanup();
 

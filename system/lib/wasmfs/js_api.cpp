@@ -6,6 +6,7 @@
 #include <dirent.h>
 #include <syscall_arch.h>
 #include <unistd.h>
+#include <stdarg.h>
 
 #include "backend.h"
 #include "file.h"
@@ -301,6 +302,10 @@ int _wasmfs_mount(char* path, wasmfs::backend_t created_backend) {
 // WasmFS will always remove the mounted directory, regardless of if the
 // directory existed before.
 int _wasmfs_unmount(char* path) { return wasmfs_unmount((intptr_t)path); }
+
+int _wasmfs_ioctl(int fd, int request, int arg) {
+  return __syscall_ioctl(fd, request, arg);
+}
 
 // Helper method that identifies what a path is:
 //   ENOENT - if nothing exists there

@@ -467,8 +467,10 @@ FS.init();
     // TODO: syncfs
     llseek(stream, offset, whence) {
       return FS.handleError(__wasmfs_llseek(stream.fd, {{{ splitI64('offset') }}}, whence));
+    },
+    ioctl(stream, cmd, arg) {
+      return FS.handleError(__wasmfs_ioctl(stream.fd, cmd, arg));
     }
-    // TODO: ioctl
 
 #endif
   },
