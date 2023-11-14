@@ -1944,9 +1944,9 @@ var USE_OFFSET_CONVERTER = false;
 var LOAD_SOURCE_MAP = false;
 
 // Default to c++ mode even when run as `emcc` rather then `emc++`.
-// When this is disabled `em++` is required when compiling and linking C++
-// programs. This which matches the behaviour of gcc/g++ and clang/clang++.
-// [compile+link]
+// When this is disabled `em++` is required linking C++ programs. Disabling
+// this will match the behaviour of gcc/g++ and clang/clang++.
+// [link]
 var DEFAULT_TO_CXX = true;
 
 // While LLVM's wasm32 has long double = float128, we don't support printing

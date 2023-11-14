@@ -1494,9 +1494,6 @@ def phase_setup(options, state, newargs):
     diagnostics.warning('deprecated', 'RUNTIME_LINKED_LIBS is deprecated; you can simply list the libraries directly on the commandline now')
     newargs += settings.RUNTIME_LINKED_LIBS
 
-  if settings.STRICT:
-    default_setting('DEFAULT_TO_CXX', 0)
-
   # Find input files
 
   # These three arrays are used to store arguments of different types for
@@ -2067,6 +2064,7 @@ def phase_linker_setup(options, state, newargs):
   if settings.STRICT:
     if not settings.MODULARIZE and not settings.EXPORT_ES6:
       default_setting('STRICT_JS', 1)
+    default_setting('DEFAULT_TO_CXX', 0)
     default_setting('AUTO_JS_LIBRARIES', 0)
     default_setting('AUTO_NATIVE_LIBRARIES', 0)
     default_setting('AUTO_ARCHIVE_INDEXES', 0)
@@ -3039,12 +3037,14 @@ def phase_compile_inputs(options, state, newargs, input_files):
       return True
     return flag.startswith(('-l', '-L', '-Wl,'))
 
-  CXX = [shared.CLANG_CXX]
-  CC = [shared.CLANG_CC]
+  if run_via_emxx:
+    compiler = [shared.CLANG_CXX]
+  else:
+    compiler = [shared.CLANG_CC]
+
   if config.COMPILER_WRAPPER:
     logger.debug('using compiler wrapper: %s', config.COMPILER_WRAPPER)
-    CXX.insert(0, config.COMPILER_WRAPPER)
-    CC.insert(0, config.COMPILER_WRAPPER)
+    compiler.insert(0, config.COMPILER_WRAPPER)
 
   compile_args = [a for a in newargs if a and not is_link_flag(a)]
   system_libs.ensure_sysroot()
@@ -3062,39 +3062,16 @@ def phase_compile_inputs(options, state, newargs, input_files):
     return ''
 
   language_mode = get_language_mode(newargs)
-
-  def use_cxx(src):
-    if 'c++' in language_mode or run_via_emxx:
-      return True
-    suffix = shared.suffix(src)
-    # Next consider the filename
-    if suffix in C_ENDINGS + OBJC_ENDINGS:
-      return False
-    if suffix in CXX_ENDINGS:
-      return True
-    # Finally fall back to the default
-    if settings.DEFAULT_TO_CXX:
-      # Default to using C++ even when run as `emcc`.
-      # This means that emcc will act as a C++ linker when no source files are
-      # specified.
-      # This differs to clang and gcc where the default is always C unless run as
-      # clang++/g++.
-      return True
-    return False
-
-  def get_compiler(src_file):
-    if use_cxx(src_file):
-      return CXX
-    return CC
+  use_cxx = 'c++' in language_mode or run_via_emxx
 
   def get_clang_command(src_file):
-    return get_compiler(src_file) + get_cflags(state.orig_args, use_cxx(src_file)) + compile_args + [src_file]
+    return compiler + get_cflags(state.orig_args, use_cxx) + compile_args + [src_file]
 
   def get_clang_command_preprocessed(src_file):
-    return get_compiler(src_file) + get_clang_flags(state.orig_args) + compile_args + [src_file]
+    return compiler + get_clang_flags(state.orig_args) + compile_args + [src_file]
 
   def get_clang_command_asm(src_file):
-    return get_compiler(src_file) + get_target_flags() + compile_args + [src_file]
+    return compiler + get_target_flags() + compile_args + [src_file]
 
   # preprocessor-only (-E) support
   if state.mode == Mode.PREPROCESS_ONLY:
