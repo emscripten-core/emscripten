@@ -20,6 +20,13 @@ See docs/process.md for more on how version tagging works.
 
 3.1.50 (in development)
 -----------------------
+- When compiling, Emscripten will now invoke `clang` or `clang++` depending only
+  on whether `emcc` or `em++` was run.  Previously it would determine which to
+  run based on individual file extensions.  One side effect of this is that you
+  may now see a clang warning when building `.c` source files using `em++`:
+  `warning: treating 'c' input as 'c++' when in C++ mode`.  This also means that
+  the `DEFAULT_TO_CXX` setting now only applies when linking and not when
+  compiling. (#20712)
 
 3.1.49 - 11/14/23
 -----------------

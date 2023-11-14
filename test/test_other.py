@@ -11720,29 +11720,16 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     create_file('foo.h', '#include <string.h>')
     create_file('cxxfoo.h', '#include <string>')
 
-    # The default bahviour is to default to C++, which means the C++ header can be compiled even
-    # with emcc.
-    self.run_process([EMCC, '-c', 'cxxfoo.h'])
+    # Compiling a C++ header using `em++` works.
+    self.run_process([EMXX, '-c', 'cxxfoo.h'])
 
-    # But this means that C flags can't be passed (since we are assuming C++)
-    err = self.expect_fail([EMCC, '-std=gnu11', '-c', 'foo.h'])
-    self.assertContained("'-std=gnu11' not allowed with 'C++'", err)
-
-    # If we disable DEFAULT_TO_CXX the emcc can be used with C-only flags (e.g. -std=gnu11),
-    self.run_process([EMCC, '-std=gnu11', '-c', 'foo.h', '-sDEFAULT_TO_CXX=0'])
-
-    # But can't be used to build C++ headers
-    err = self.expect_fail([EMCC, '-c', 'cxxfoo.h', '-sDEFAULT_TO_CXX=0'])
-    self.assertContained("'string' file not found", err)
-
-    # Check that STRICT also disables DEFAULT_TO_CXX
+    # Compiling the same header using `emcc` fails, just like `clang`
     err = self.expect_fail([EMCC, '-c', 'cxxfoo.h', '-sSTRICT'])
     self.assertContained("'string' file not found", err)
 
-    # Using em++ should alwasy work for C++ headers
-    self.run_process([EMXX, '-c', 'cxxfoo.h', '-sDEFAULT_TO_CXX=0'])
-    # Or using emcc with `-x c++`
-    self.run_process([EMCC, '-c', 'cxxfoo.h', '-sDEFAULT_TO_CXX=0', '-x', 'c++-header'])
+    # But it works if we pass and explicit language mode.
+    self.run_process([EMCC, '-c', 'cxxfoo.h', '-x', 'c++-header'])
+    self.run_process([EMCC, '-c', 'cxxfoo.h', '-x', 'c++'])
 
   @parameterized({
     '': ([],),
