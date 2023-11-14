@@ -657,8 +657,6 @@ static size_t validate_alloc_alignment(size_t alignment)
   // Cannot perform allocations that are less than 4 byte aligned, because the Region
   // control structures need to be aligned. Also round up to minimum outputted alignment.
   alignment = MAX(alignment, MALLOC_ALIGNMENT);
-  // Arbitrary upper limit on alignment - very likely a programming bug if alignment is higher than this.
-  assert(alignment <= 1024*1024);
   return alignment;
 }
 
