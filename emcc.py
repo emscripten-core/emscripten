@@ -1426,7 +1426,7 @@ def phase_calculate_linker_inputs(options, state, linker_inputs):
   else:
     linker_args = filter_out_duplicate_dynamic_libs(linker_args)
 
-  if settings.MAIN_MODULE:
+  if settings.MAIN_MODULE or settings.SIDE_MODULE:
     dylibs = [a for a in linker_args if building.is_wasm_dylib(a)]
     process_dynamic_libs(dylibs, state.lib_dirs)
 
