@@ -16,9 +16,9 @@ void _emscripten_proxied_gl_context_activated_from_main_browser_thread(EMSCRIPTE
 #if defined(__EMSCRIPTEN_PTHREADS__) && defined(__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__)
 
 #ifdef EMSCRIPTEN_WEBGL_TRACE
-#define GL_FUNCTION_TRACE(func) printf(#func "\n")
+#define GL_FUNCTION_TRACE() emscripten_out(__FUNCTION__)
 #else
-#define GL_FUNCTION_TRACE(func) ((void)0)
+#define GL_FUNCTION_TRACE() ((void)0)
 #endif
 
 #define ASYNC_GL_FUNCTION_0(sig, ret, functionName) ret functionName(void) { GL_FUNCTION_TRACE(); if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) emscripten_##functionName(); else emscripten_async_run_in_main_runtime_thread(sig, &emscripten_##functionName); }
@@ -36,8 +36,11 @@ void _emscripten_proxied_gl_context_activated_from_main_browser_thread(EMSCRIPTE
 
 #define RET_SYNC_GL_FUNCTION_0(sig, ret, functionName) ret functionName(void) { GL_FUNCTION_TRACE(); if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) return emscripten_##functionName(); else return (ret)emscripten_sync_run_in_main_runtime_thread(sig, &emscripten_##functionName); }
 #define RET_SYNC_GL_FUNCTION_1(sig, ret, functionName, t0) ret functionName(t0 p0) { GL_FUNCTION_TRACE(); if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) return emscripten_##functionName(p0); else return (ret)emscripten_sync_run_in_main_runtime_thread(sig, &emscripten_##functionName, p0); }
+#define RET_PTR_SYNC_GL_FUNCTION_1(sig, ret, functionName, t0) ret functionName(t0 p0) { GL_FUNCTION_TRACE(); if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) return emscripten_##functionName(p0); else return (ret)emscripten_sync_run_in_main_runtime_thread_ptr(sig, &emscripten_##functionName, p0); }
+#define RET_PTR_SYNC_GL_FUNCTION_2(sig, ret, functionName, t0, t1) ret functionName(t0 p0, t1 p1) { GL_FUNCTION_TRACE(); if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) return emscripten_##functionName(p0, p1); else return (ret)emscripten_sync_run_in_main_runtime_thread_ptr(sig, &emscripten_##functionName, p0, p1); }
 #define RET_SYNC_GL_FUNCTION_2(sig, ret, functionName, t0, t1) ret functionName(t0 p0, t1 p1) { GL_FUNCTION_TRACE(); if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) return emscripten_##functionName(p0, p1); else return (ret)emscripten_sync_run_in_main_runtime_thread(sig, &emscripten_##functionName, p0, p1); }
 #define RET_SYNC_GL_FUNCTION_3(sig, ret, functionName, t0, t1, t2) ret functionName(t0 p0, t1 p1, t2 p2) { GL_FUNCTION_TRACE(); if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) return emscripten_##functionName(p0, p1, p2); else return (ret)emscripten_sync_run_in_main_runtime_thread(sig, &emscripten_##functionName, p0, p1, p2); }
+#define RET_PTR_SYNC_GL_FUNCTION_4(sig, ret, functionName, t0, t1, t2, t3) ret functionName(t0 p0, t1 p1, t2 p2, t3 p3) { GL_FUNCTION_TRACE(); if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) return emscripten_##functionName(p0, p1, p2, p3); else return (ret)emscripten_sync_run_in_main_runtime_thread_ptr(sig, &emscripten_##functionName, p0, p1, p2, p3); }
 #define RET_SYNC_GL_FUNCTION_4(sig, ret, functionName, t0, t1, t2, t3) ret functionName(t0 p0, t1 p1, t2 p2, t3 p3) { GL_FUNCTION_TRACE(); if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) return emscripten_##functionName(p0, p1, p2, p3); else return (ret)emscripten_sync_run_in_main_runtime_thread(sig, &emscripten_##functionName, p0, p1, p2, p3); }
 #define RET_SYNC_GL_FUNCTION_5(sig, ret, functionName, t0, t1, t2, t3, t4) ret functionName(t0 p0, t1 p1, t2 p2, t3 p3, t4 p4) { GL_FUNCTION_TRACE(); if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) return emscripten_##functionName(p0, p1, p2, p3, p4); else return (ret)emscripten_sync_run_in_main_runtime_thread(sig, &emscripten_##functionName, p0, p1, p2, p3, p4); }
 #define RET_SYNC_GL_FUNCTION_6(sig, ret, functionName, t0, t1, t2, t3, t4, t5) ret functionName(t0 p0, t1 p1, t2 p2, t3 p3, t4 p4, t5 p5) { GL_FUNCTION_TRACE(); if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) return emscripten_##functionName(p0, p1, p2, p3, p4, p5); else return (ret)emscripten_sync_run_in_main_runtime_thread(sig, &emscripten_##functionName, p0, p1, p2, p3, p4, p5); }

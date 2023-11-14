@@ -991,15 +991,16 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 
     registerContext: (ctx, webGLContextAttributes) => {
 #if PTHREADS
-      // with pthreads a context is a location in memory with some synchronized data between threads
-      var handle = _malloc(8);
+      // with pthreads a context is a location in memory with some synchronized
+      // data between threads
+      var handle = _malloc({{{ 2 * POINTER_SIZE }}});
 #if GL_ASSERTIONS
       assert(handle, 'malloc() failed in GL.registerContext!');
 #endif
 #if GL_SUPPORT_EXPLICIT_SWAP_CONTROL
-      {{{ makeSetValue('handle', 0, 'webGLContextAttributes.explicitSwapControl', 'i32')}}}; // explicitSwapControl
+      {{{ makeSetValue('handle', 0, 'webGLContextAttributes.explicitSwapControl', 'i32')}}};
 #endif
-      {{{ makeSetValue('handle', 4, '_pthread_self()', 'i32')}}}; // the thread pointer of the thread that owns the control of the context
+      {{{ makeSetValue('handle', POINTER_SIZE, '_pthread_self()', '*')}}}; // the thread pointer of the thread that owns the control of the context
 #else // PTHREADS
       // without pthreads a context is just an integer ID
       var handle = GL.getNewId(GL.contexts);
@@ -1307,7 +1308,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
         break;
       case 0x8DF8: // GL_SHADER_BINARY_FORMATS
 #if GL_TRACK_ERRORS
-        if (type != {{{ cDefs.EM_FUNC_SIG_PARAM_I }}} && type != {{{ cDefs.EM_FUNC_SIG_PARAM_I64 }}}) {
+        if (type != {{{ cDefs.EM_FUNC_SIG_PARAM_I }}} && type != {{{ cDefs.EM_FUNC_SIG_PARAM_J }}}) {
           GL.recordError(0x500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
           err(`GL_INVALID_ENUM in glGet${type}v(GL_SHADER_BINARY_FORMATS): Invalid parameter type!`);
@@ -1464,7 +1465,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     }
 
     switch (type) {
-      case {{{ cDefs.EM_FUNC_SIG_PARAM_I64 }}}: writeI53ToI64(p, ret); break;
+      case {{{ cDefs.EM_FUNC_SIG_PARAM_J }}}: writeI53ToI64(p, ret); break;
       case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('p', '0', 'ret', 'i32') }}}; break;
       case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}:   {{{ makeSetValue('p', '0', 'ret', 'float') }}}; break;
       case {{{ cDefs.EM_FUNC_SIG_PARAM_B }}}: {{{ makeSetValue('p', '0', 'ret ? 1 : 0', 'i8') }}}; break;

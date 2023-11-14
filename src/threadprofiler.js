@@ -44,12 +44,12 @@ var emscriptenThreadProfiler = {
       var profilerBlock = Atomics.load(HEAPU32, (threadPtr + 8 /* {{{ C_STRUCTS.pthread.profilerBlock }}}*/) >> 2);
       var threadName = PThread.getThreadName(threadPtr);
       if (threadName) {
-        threadName = '"' + threadName + '" (' + ptrToString(threadPtr) + ')';
+        threadName = `"${threadName}" (${ptrToString(threadPtr)})`;
       } else {
-        threadName = '(' + ptrToString(threadPtr) + ')';
+        threadName = `(${ptrToString(threadPtr)}})`;
       }
 
-      console.log('Thread ' + threadName + ' now: ' + PThread.threadStatusAsString(threadPtr) + '. ');
+      console.log(`Thread ${threadName} now: ${PThread.threadStatusAsString(threadPtr)}. `);
     }
   },
 
@@ -72,19 +72,20 @@ var emscriptenThreadProfiler = {
       var profilerBlock = Atomics.load(HEAPU32, (threadPtr + 8 /* {{{ C_STRUCTS.pthread.profilerBlock }}}*/) >> 2);
       var threadName = PThread.getThreadName(threadPtr);
       if (threadName) {
-        threadName = '"' + threadName + '" (' + ptrToString(threadPtr) + ')';
+        threadName = `"${threadName}" (${ptrToString(threadPtr)})`;
       } else {
-        threadName = '(' + ptrToString(threadPtr) + ')';
+        threadName = `(${ptrToString(threadPtr)})`;
       }
 
-      str += 'Thread ' + threadName + ' now: ' + PThread.threadStatusAsString(threadPtr) + '. ';
+      str += `Thread ${threadName} now: ${PThread.threadStatusAsString(threadPtr)}. `;
 
       var threadTimesInStatus = [];
       var totalTime = 0;
-      for (var j = 0; j < 7/*EM_THREAD_STATUS_NUMFIELDS*/; ++j) {
-        threadTimesInStatus.push(HEAPF64[((profilerBlock + 16/*C_STRUCTS.thread_profiler_block.timeSpentInStatus*/) >> 3) + j]);
+      var offset = profilerBlock + 16/*C_STRUCTS.thread_profiler_block.timeSpentInStatus*/;
+      for (var j = 0; j < 7/*EM_THREAD_STATUS_NUMFIELDS*/; ++j, offset += 8) {
+        threadTimesInStatus.push(Number(getValue(offset, 'double')));
         totalTime += threadTimesInStatus[j];
-        HEAPF64[((profilerBlock + 16/*C_STRUCTS.thread_profiler_block.timeSpentInStatus*/) >> 3) + j] = 0;
+        setValue(offset, 0, 'double');
       }
       var recent = '';
       if (threadTimesInStatus[1] > 0) recent += (threadTimesInStatus[1] / totalTime * 100.0).toFixed(1) + '% running. ';
@@ -92,7 +93,7 @@ var emscriptenThreadProfiler = {
       if (threadTimesInStatus[3] > 0) recent += (threadTimesInStatus[3] / totalTime * 100.0).toFixed(1) + '% waiting for futex. ';
       if (threadTimesInStatus[4] > 0) recent += (threadTimesInStatus[4] / totalTime * 100.0).toFixed(1) + '% waiting for mutex. ';
       if (threadTimesInStatus[5] > 0) recent += (threadTimesInStatus[5] / totalTime * 100.0).toFixed(1) + '% waiting for proxied ops. ';
-      if (recent.length > 0) str += 'Recent activity: ' + recent;
+      if (recent.length > 0) str += `Recent activity: ${recent}`;
       str += '<br />';
     }
     this.threadProfilerDiv.innerHTML = str;
