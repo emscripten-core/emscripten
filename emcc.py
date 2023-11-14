@@ -924,47 +924,6 @@ def parse_s_args(args):
   return (settings_changes, newargs)
 
 
-def emsdk_cflags(user_args):
-  cflags = ['--sysroot=' + cache.get_sysroot(absolute=True)]
-
-  def array_contains_any_of(hay, needles):
-    for n in needles:
-      if n in hay:
-        return True
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
-    if '-msimd128' not in user_args and '-mrelaxed-simd' not in user_args:
-      exit_with_error('Passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128 (or -mrelaxed-simd)!')
-    cflags += ['-D__SSE__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[1:]):
-    cflags += ['-D__SSE2__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[2:]):
-    cflags += ['-D__SSE3__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[3:]):
-    cflags += ['-D__SSSE3__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[4:]):
-    cflags += ['-D__SSE4_1__=1']
-
-  # Handle both -msse4.2 and its alias -msse4.
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[5:]):
-    cflags += ['-D__SSE4_2__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[7:]):
-    cflags += ['-D__AVX__=1']
-
-  if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
-    cflags += ['-D__ARM_NEON__=1']
-
-  if not settings.USE_SDL:
-    cflags += ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'fakesdl')]
-
-  return cflags + ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'compat')]
-
-
 def get_target_flags():
   return ['-target', shared.get_llvm_target()]
 
@@ -1020,6 +979,7 @@ def get_cflags(user_args, is_cxx):
   # Flags we pass to the compiler when building C/C++ code
   # We add these to the user's flags (newargs), but not when building .s or .S assembly files
   cflags = get_clang_flags(user_args)
+  cflags.append('--sysroot=' + cache.get_sysroot(absolute=True))
 
   if settings.EMSCRIPTEN_TRACING:
     cflags.append('-D__EMSCRIPTEN_TRACING__=1')
@@ -1048,10 +1008,43 @@ def get_cflags(user_args, is_cxx):
 
   ports.add_cflags(cflags, settings)
 
-  if '-nostdinc' in user_args:
-    return cflags
+  def array_contains_any_of(hay, needles):
+    for n in needles:
+      if n in hay:
+        return True
 
-  cflags += emsdk_cflags(user_args)
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
+    if '-msimd128' not in user_args and '-mrelaxed-simd' not in user_args:
+      exit_with_error('Passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128 (or -mrelaxed-simd)!')
+    cflags += ['-D__SSE__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[1:]):
+    cflags += ['-D__SSE2__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[2:]):
+    cflags += ['-D__SSE3__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[3:]):
+    cflags += ['-D__SSSE3__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[4:]):
+    cflags += ['-D__SSE4_1__=1']
+
+  # Handle both -msse4.2 and its alias -msse4.
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[5:]):
+    cflags += ['-D__SSE4_2__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[7:]):
+    cflags += ['-D__AVX__=1']
+
+  if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
+    cflags += ['-D__ARM_NEON__=1']
+
+  if '-nostdinc' not in user_args:
+    if not settings.USE_SDL:
+      cflags += ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'fakesdl')]
+    cflags += ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'compat')]
+
   return cflags
 
 
