@@ -985,18 +985,7 @@ var LibraryGLFW = {
       if (!win) return;
 
       if (GLFW.active.id == win.id) {
-        Browser.setCanvasSize(width, height);
-        win.width = width;
-        win.height = height;
-      }
-
-      if (win.windowSizeFunc) {
-#if USE_GLFW == 2
-        {{{ makeDynCall('vii', 'win.windowSizeFunc') }}}(width, height);
-#endif
-#if USE_GLFW == 3
-        {{{ makeDynCall('vpii', 'win.windowSizeFunc') }}}(win.id, width, height);
-#endif
+        Browser.setCanvasSize(width, height); // triggers the listener (onCanvasResize) + windowSizeFunc
       }
     },
 
