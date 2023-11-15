@@ -12990,7 +12990,7 @@ Module.postRun = () => {{
   })
   @crossplatform
   def test_es5_transpile(self, args):
-    self.emcc_args += args
+    self.emcc_args += ['-Wno-transpile'] + args
 
     # Create a library file that uses the following ES6 features
     # - let/const
@@ -13006,6 +13006,11 @@ Module.postRun = () => {{
         let obj = Object.assign({}, {prop:1});
         err('prop: ' + obj.prop);
 
+        // for .. of
+        for (var elem of [42, 43]) {
+          err('array elem: ' + elem);
+        }
+
         // arrow funcs + const
         const bar = () => 2;
         err('bar: ' + bar());
@@ -13015,14 +13020,14 @@ Module.postRun = () => {{
         var obj2 = {
           [key]: 42,
         };
-        err('value: ' + obj2[key]);
+        err('computed prop: ' + obj2[key]);
 
         // Method syntax
         var obj3 = {
           myMethod() { return 43 },
         };
         global['foo'] = obj3;
-        err('value2: ' + obj3.myMethod());
+        err('myMethod: ' + obj3.myMethod());
 
         // Nullish coalescing
         var definitely = global['maybe'] ?? {};
@@ -13042,6 +13047,15 @@ Module.postRun = () => {{
       }
     });
     ''')
+    expected = '''\
+prop: 1
+array elem: 42
+array elem: 43
+bar: 2
+computed prop: 42
+myMethod: 43
+'''
+
     create_file('test.c', 'extern void foo(); int main() { foo(); }')
     self.emcc_args += ['--js-library', 'es6_library.js']
     self.uses_es6 = True
@@ -13073,7 +13087,7 @@ Module.postRun = () => {{
     # Check that under normal circumstances none of these features get
     # removed / transpiled.
     print('base case')
-    self.do_runf('test.c', 'prop: 1\nbar: 2\n')
+    self.do_runf('test.c', expected)
     check_for_es6('test.js', True)
 
     # If we select and older browser than closure will kick in by default
@@ -13081,18 +13095,18 @@ Module.postRun = () => {{
     print('with old browser')
     self.emcc_args.remove('-Werror')
     self.set_setting('MIN_CHROME_VERSION', '10')
-    self.do_runf('test.c', 'prop: 1\nbar: 2\n', output_basename='test_old')
+    self.do_runf('test.c', expected, output_basename='test_old')
     check_for_es6('test_old.js', False)
 
     # If we add `--closure=0` that transpiler (closure) is not run at all
     print('with old browser + --closure=0')
-    self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=0'], output_basename='test_no_closure')
+    self.do_runf('test.c', expected, emcc_args=['--closure=0'], output_basename='test_no_closure')
     check_for_es6('test_no_closure.js', True)
 
     # If we use `--closure=1` closure will run in full optimization mode
     # and also transpile to ES5
     print('with old browser + --closure=1')
-    self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=1'], output_basename='test_closure')
+    self.do_runf('test.c', expected, emcc_args=['--closure=1'], output_basename='test_closure')
     check_for_es6('test_closure.js', False)
 
   def test_gmtime_noleak(self):
