@@ -37,7 +37,7 @@ if DEBUG:
 elif EMCC_LOGGING:
   log_level = logging.INFO
 # can add  %(asctime)s  to see timestamps
-logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s', level=log_level)
+logging.basicConfig(format='%(asctime)s %(name)s:%(levelname)s: %(message)s', level=log_level)
 colored_logger.enable()
 
 from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
@@ -412,9 +412,10 @@ def set_version_globals():
 
 
 def generate_sanity():
-  return f'{EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}|{get_clang_version()}'
+  return f'{EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}\n'
 
 
+@memoize
 def perform_sanity_checks():
   # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
   check_node_version()
@@ -485,14 +486,10 @@ def check_sanity(force=False):
       pass
     if sanity_data == expected:
       logger.debug(f'sanity file up-to-date: {sanity_file}')
-      # Even if the sanity file is up-to-date we still need to at least
-      # check the llvm version. This comes at no extra performance cost
-      # since the version was already extracted and cached by the
-      # generate_sanity() call above.
+      # Even if the sanity file is up-to-date we still run the checks
+      # when force is set.
       if force:
         perform_sanity_checks()
-      else:
-        check_llvm_version()
       return True # all is well
     return False
 
