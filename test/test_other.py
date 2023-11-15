@@ -14159,3 +14159,8 @@ addToLibrary({
     create_file('a.cpp', '#include <emscripten/bind.h>')
     create_file('b.cpp', '#include <emscripten/bind.h>')
     self.run_process([EMXX, '-std=c++23', '-lembind', 'a.cpp', 'b.cpp'])
+
+  def test_no_pthread(self):
+    self.do_runf('hello_world.c', emcc_args=['-pthread', '-no-pthread'])
+    self.assertExists('hello_world.js')
+    self.assertNotExists('hello_world.worker.js')
