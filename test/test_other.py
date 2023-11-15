@@ -589,7 +589,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.clear()
     err = self.expect_fail(cmd + ['-o', 'out.o'])
 
-    self.assertContained('cannot specify -o with -c/-S/-E/-M and multiple source files', err)
+    self.assertContained('clang: error: cannot specify -o when generating multiple output files', err)
     self.assertNotExists('twopart_main.o')
     self.assertNotExists('twopart_side.o')
     self.assertNotExists(test_file('twopart_main.o'))
@@ -5280,10 +5280,11 @@ int main() {
     self.assertEqual(os.listdir('.'), [])
     self.assertContained('hello_world.c', stdout)
 
-  def test_emit_llvm(self):
+  def test_emit_llvm_asm(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-S', '-emit-llvm'])
     self.assertIsLLVMAsm('hello_world.ll')
 
+  def test_emit_llvm(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-c', '-emit-llvm'])
     self.assertTrue(building.is_bitcode('hello_world.bc'))
 
@@ -11414,7 +11415,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
   def test_linker_input_unused(self):
     self.run_process([EMXX, '-c', test_file('hello_world.cpp')])
     err = self.run_process([EMCC, 'hello_world.o', '-c', '-o', 'out.o'], stderr=PIPE).stderr
-    self.assertContained("warning: hello_world.o: linker input file unused because linking not done [-Wunused-command-line-argument", err)
+    self.assertContained("clang: warning: hello_world.o: 'linker' input unused [-Wunused-command-line-argument]", err)
     # In this case the compiler does not produce any output file.
     self.assertNotExists('out.o')
 
