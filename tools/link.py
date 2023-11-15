@@ -626,6 +626,12 @@ def phase_linker_setup(options, state, newargs):
   system_libpath = '-L' + str(cache.get_lib_dir(absolute=True))
   state.add_link_flag(sys.maxsize, system_libpath)
 
+  # We used to do this check during on startup during `check_sanity`, but
+  # we now only do it when linking, in order to reduce the overhead when
+  # only compiling.
+  if not shared.SKIP_SUBPROCS:
+    shared.check_llvm_version()
+
   autoconf = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in state.orig_args or 'conftest.cpp' in state.orig_args
   if autoconf:
     # configure tests want a more shell-like style, where we emit return codes on exit()
