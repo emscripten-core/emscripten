@@ -3747,6 +3747,10 @@ def parse_args(newargs):
       settings.PTHREADS = 1
       # Also set the legacy setting name, in case use JS code depends on it.
       settings.USE_PTHREADS = 1
+    elif arg == '-no-pthread':
+      settings.PTHREADS = 0
+      # Also set the legacy setting name, in case use JS code depends on it.
+      settings.USE_PTHREADS = 0
     elif arg == '-pthreads':
       exit_with_error('unrecognized command-line option `-pthreads`; did you mean `-pthread`?')
     elif arg in ('-fno-diagnostics-color', '-fdiagnostics-color=never'):
