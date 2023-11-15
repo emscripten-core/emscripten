@@ -8311,6 +8311,7 @@ void* operator new(size_t size) {
   # longjmp or exceptions.
   def test_asyncify_longjmp(self):
     self.set_setting('ASYNCIFY')
+    self.set_setting('STRICT')
     self.do_core_test('test_asyncify_longjmp.c')
 
   # Test that a main with arguments is automatically asyncified.
