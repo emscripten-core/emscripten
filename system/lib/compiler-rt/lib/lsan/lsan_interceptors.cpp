@@ -453,32 +453,25 @@ INTERCEPTOR(int, pthread_create, void *th, void *attr,
   ENSURE_LSAN_INITED;
   EnsureMainThreadIDIsCorrect();
 
-#if !SANITIZER_EMSCRIPTEN
+#if SANITIZER_EMSCRIPTEN
+  // In Emscripten sanitizer, attr can be nonzero but __ATTRP_C11_THREAD in case
+  // of C11 threads, in which case we need to run pthread_attr_init as well, so
+  // we treat __ATTRP_C11_THREAD like the nullptr in this function.
+  if (attr == __ATTRP_C11_THREAD)
+    attr = nullptr;
+#endif
+
   bool detached = [attr]() {
     int d = 0;
     return attr && !pthread_attr_getdetachstate(attr, &d) && IsStateDetached(d);
   }();
-#endif
 
   __sanitizer_pthread_attr_t myattr;
-#if SANITIZER_EMSCRIPTEN
-  if (!attr || attr == __ATTRP_C11_THREAD) {
-#else
   if (!attr) {
-#endif
     pthread_attr_init(&myattr);
     attr = &myattr;
   }
   AdjustStackSize(attr);
-#if SANITIZER_EMSCRIPTEN
-  // In Emscripten sanitizer, attr can be nonzero but __ATTRP_C11_THREAD, in
-  // which case pthread_attr_getdetachstate needs to run after pthread_attr_init
-  // above.
-  bool detached = [attr]() {
-    int d = 0;
-    return attr && !pthread_attr_getdetachstate(attr, &d) && IsStateDetached(d);
-  }();
-#endif
   uptr this_tid = GetCurrentThreadId();
   int result;
   {
