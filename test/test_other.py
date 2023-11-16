@@ -7438,7 +7438,8 @@ Resolved: "/" => "/"
       for malloc, name in (
         ('dlmalloc', 'dlmalloc'),
         (None, 'default'),
-        ('emmalloc', 'emmalloc')
+        ('emmalloc', 'emmalloc'),
+        ('mimalloc', 'mimalloc'),
       ):
         print(malloc, name)
         args = opts[:]
@@ -7452,6 +7453,8 @@ Resolved: "/" => "/"
       self.assertEqual(sizes['dlmalloc'], sizes['default'])
       # emmalloc is much smaller
       self.assertLess(sizes['emmalloc'], sizes['dlmalloc'] - 5000)
+      # mimalloc is much larger
+      self.assertGreater(sizes['mimalloc'], sizes['dlmalloc'] - 25000)
     run([])
     run(['-O2'])
 
@@ -7489,6 +7492,23 @@ Resolved: "/" => "/"
     # not specifying maximum memory does not result in unsigned pointers, as the
     # default maximum memory is 2GB.
     self.assertEqual(less, none)
+
+  @parameterized({
+    # atm we only test mimalloc here, as we don't need extra coverage for
+    # dlmalloc/emmalloc, and this is the main test we have for mimalloc
+    'mimalloc':          ('mimalloc', ['-DWORKERS=1'],),
+    'mimalloc_pthreads': ('mimalloc', ['-DWORKERS=4', '-pthread'],),
+  })
+  def test_malloc_multithreading(self, allocator, args):
+    args = args + [
+      '-O2',
+      '-sEXIT_RUNTIME',
+      '-DTOTAL=10000',
+      '-sINITIAL_MEMORY=128mb',
+      '-sTOTAL_STACK=1mb',
+      f'-sMALLOC={allocator}',
+    ]
+    self.do_other_test('test_malloc_multithreading.cpp', emcc_args=args)
 
   @parameterized({
     '': ([], 'testbind.js'),

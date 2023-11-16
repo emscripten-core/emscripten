@@ -108,6 +108,9 @@ var STACK_SIZE = 64*1024;
 //  * emmalloc-verbose - use emmalloc with assertions + verbose logging.
 //  * emmalloc-memvalidate-verbose - use emmalloc with assertions + heap
 //                                   consistency checking + verbose logging.
+//  * mimalloc - a powerful mulithreaded allocator. This is recommended in
+//               large applications that have malloc() contention, but it is
+//               larger and uses more memory.
 //  * none     - no malloc() implementation is provided, but you must implement
 //               malloc() and free() yourself.
 // dlmalloc is necessary for split memory and other special modes, and will be
