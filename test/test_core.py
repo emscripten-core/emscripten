@@ -2449,6 +2449,8 @@ int main(int argc, char **argv) {
     else:
       self.emcc_args += ['--pre-js', test_file('core/test_module_wasm_memory.js')]
     self.set_setting('IMPORTED_MEMORY')
+    self.set_setting('STRICT')
+    self.set_setting('INCOMING_MODULE_JS_API', ['wasmMemory'])
     self.do_runf('core/test_module_wasm_memory.c', 'success')
 
   def test_ssr(self): # struct self-ref
@@ -2971,7 +2973,7 @@ The current type of b is: 9
     self.do_core_test('test_strptime_reentrant.c')
 
   def test_strftime(self):
-    self.do_core_test('test_strftime.cpp')
+    self.do_core_test('test_strftime.c')
 
   def test_trickystring(self):
     self.do_core_test('test_trickystring.c')
@@ -7663,14 +7665,14 @@ void* operator new(size_t size) {
     ''')
     self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
 
-  @parameterized({
-    '': ([],),
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
-  })
   @node_pthreads
-  def test_embind_2(self, args):
+  def test_embind_2(self):
     self.maybe_closure()
-    self.emcc_args += ['-lembind', '--post-js', 'post.js'] + args
+    self.emcc_args += [
+      '-lembind', '--post-js', 'post.js',
+      # for extra coverage, test using pthreads
+      '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'
+    ]
     create_file('post.js', '''
       function printLerp() {
         out('lerp ' + Module['lerp'](100, 200, 66) + '.');
@@ -8308,6 +8310,7 @@ void* operator new(size_t size) {
   # longjmp or exceptions.
   def test_asyncify_longjmp(self):
     self.set_setting('ASYNCIFY')
+    self.set_setting('STRICT')
     self.do_core_test('test_asyncify_longjmp.c')
 
   # Test that a main with arguments is automatically asyncified.

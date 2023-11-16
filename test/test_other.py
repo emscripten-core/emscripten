@@ -589,7 +589,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.clear()
     err = self.expect_fail(cmd + ['-o', 'out.o'])
 
-    self.assertContained('cannot specify -o with -c/-S/-E/-M and multiple source files', err)
+    self.assertContained('clang: error: cannot specify -o when generating multiple output files', err)
     self.assertNotExists('twopart_main.o')
     self.assertNotExists('twopart_side.o')
     self.assertNotExists(test_file('twopart_main.o'))
@@ -5280,10 +5280,11 @@ int main() {
     self.assertEqual(os.listdir('.'), [])
     self.assertContained('hello_world.c', stdout)
 
-  def test_emit_llvm(self):
+  def test_emit_llvm_asm(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-S', '-emit-llvm'])
     self.assertIsLLVMAsm('hello_world.ll')
 
+  def test_emit_llvm(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-c', '-emit-llvm'])
     self.assertTrue(building.is_bitcode('hello_world.bc'))
 
@@ -5488,14 +5489,13 @@ int main()
     self.assertContained('Caught exception: std::exception', self.run_js('a.out.js'))
 
   def test_strftime_zZ(self):
-    create_file('src.cpp', r'''
-#include <cerrno>
-#include <cstring>
-#include <ctime>
-#include <iostream>
+    create_file('src.c', r'''
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
+#include <time.h>
 
-int main()
-{
+int main() {
   // Buffer to hold the current hour of the day.  Format is HH + nul
   // character.
   char hour[3];
@@ -5508,61 +5508,53 @@ int main()
   // sufficiently large to hold most timezone names.
   char timezone[128];
 
-  std::tm tm;
+  struct tm tm;
 
   // Get the current timestamp.
-  const std::time_t now = std::time(NULL);
+  const time_t now = time(NULL);
 
   // What time is that here?
-  if (::localtime_r(&now, &tm) == NULL) {
+  if (localtime_r(&now, &tm) == NULL) {
     const int error = errno;
-    std::cout
-      << "Failed to get localtime for timestamp=" << now << "; errno=" << error
-      << "; " << std::strerror(error) << std::endl;
+    printf("Failed to get localtime for timestamp=%lld; errno=%d; %s", now, errno, strerror(error));
     return 1;
   }
 
   size_t result = 0;
 
   // Get the formatted hour of the day.
-  if ((result = std::strftime(hour, 3, "%H", &tm)) != 2) {
+  if ((result = strftime(hour, 3, "%H", &tm)) != 2) {
     const int error = errno;
-    std::cout
-      << "Failed to format hour for timestamp=" << now << "; result="
-      << result << "; errno=" << error << "; " << std::strerror(error)
-      << std::endl;
+    printf("Failed to format hour for timestamp=%lld; result=%zu; errno=%d; %s\n",
+           now, result, error, strerror(error));
     return 1;
   }
-  std::cout << "The current hour of the day is: " << hour << std::endl;
+  printf("The current hour of the day is: %s\n", hour);
 
   // Get the formatted UTC offset in ISO 8601 format.
-  if ((result = std::strftime(utcOffset, 6, "%z", &tm)) != 5) {
+  if ((result = strftime(utcOffset, 6, "%z", &tm)) != 5) {
     const int error = errno;
-    std::cout
-      << "Failed to format UTC offset for timestamp=" << now << "; result="
-      << result << "; errno=" << error << "; " << std::strerror(error)
-      << std::endl;
+    printf("Failed to format UTC offset for timestamp=%lld; result=%zu; errno=%d; %s\n",
+           now, result, error, strerror(error));
     return 1;
   }
-  std::cout << "The current timezone offset is: " << utcOffset << std::endl;
+  printf("The current timezone offset is: %s\n", utcOffset);
 
   // Get the formatted timezone name or abbreviation.  We don't know how long
   // this will be, so just expect some data to be written to the buffer.
-  if ((result = std::strftime(timezone, 128, "%Z", &tm)) == 0) {
+  if ((result = strftime(timezone, 128, "%Z", &tm)) == 0) {
     const int error = errno;
-    std::cout
-      << "Failed to format timezone for timestamp=" << now << "; result="
-      << result << "; errno=" << error << "; " << std::strerror(error)
-      << std::endl;
+    printf("Failed to format timezone for timestamp=%lld; result=%zu; errno=%d; %s\n",
+           now, result, error, strerror(error));
     return 1;
   }
-  std::cout << "The current timezone is: " << timezone << std::endl;
+  printf("The current timezone is: %s\n", timezone);
 
-  std::cout << "ok!\n";
+  printf("ok!\n");
+  return 0;
 }
 ''')
-    self.run_process([EMXX, 'src.cpp'])
-    self.assertContained('ok!', self.run_js('a.out.js'))
+    self.do_runf('src.c', 'ok!')
 
   def test_strptime_symmetry(self):
     self.do_runf('strptime_symmetry.cpp', 'TEST PASSED')
@@ -7933,6 +7925,7 @@ int main() {
     output = self.run_process([common.LLVM_OBJDUMP, '-t', 'test.o'], stdout=PIPE).stdout
     self.assertContained('foo', output)
 
+  @crossplatform
   def test_output_eol(self):
     for params in [[], ['--proxy-to-worker'], ['--proxy-to-worker', '-sWASM=0']]:
       for output_suffix in ['html', 'js']:
@@ -7951,7 +7944,7 @@ int main() {
               expected_ending = '\r\n'
 
             ret = line_endings.check_line_endings(f, expect_only=expected_ending)
-            assert ret == 0
+            self.assertEqual(ret, 0)
 
           for f in files:
             delete_file(f)
@@ -8024,9 +8017,7 @@ int main() {
     self.assertContained(['Is a directory', 'is a directory'], ret)
 
     ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', '.', '--oformat=html'])
-    self.assertContained('emcc: error: cannot write output file:', ret)
-    # Linux/Mac and Windows's error codes and messages are different
-    self.assertContained(['Is a directory', 'Permission denied'], ret)
+    self.assertContained('emcc: error: cannot write output file `.`: Is a directory', ret)
 
   def test_binaryen_ctors(self):
     # ctor order must be identical to js builds, deterministically
@@ -9083,6 +9074,7 @@ end
     'gl_emu': (['-sLEGACY_GL_EMULATION', '-sMAXIMUM_MEMORY=4GB', '-sALLOW_MEMORY_GROWTH'],),
     'no_exception_throwing': (['-sDISABLE_EXCEPTION_THROWING'],),
     'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
+    'embind': (['-lembind'],),
   })
   def test_full_js_library(self, args):
     self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY'] + args)
@@ -9810,6 +9802,7 @@ console.error('JSLIB: none of the above');
     self.assertContained('JSLIB: EXIT_RUNTIME', err)
     self.assertNotContained('JSLIB: MAIN_MODULE', err)
 
+  @crossplatform
   def test_html_preprocess(self):
     src_file = test_file('module/test_stdin.c')
     output_file = 'test_stdin.html'
@@ -9817,7 +9810,7 @@ console.error('JSLIB: none of the above');
 
     self.run_process([EMCC, '-o', output_file, src_file, '--shell-file', shell_file, '-sASSERTIONS=0'], stdout=PIPE, stderr=PIPE)
     output = read_file(output_file)
-    self.assertContained("""<style>
+    self.assertContained('''<style>
 /* Disable preprocessing inside style block as syntax is ambiguous with CSS */
 #include {background-color: black;}
 #if { background-color: red;}
@@ -9830,7 +9823,7 @@ T2:ASSERTIONS != 1
 T3:ASSERTIONS < 2
 T4:(else) ASSERTIONS <= 1
 T5:(else) ASSERTIONS
-T6:!ASSERTIONS""", output)
+T6:!ASSERTIONS''', output)
 
     self.run_process([EMCC, '-o', output_file, src_file, '--shell-file', shell_file, '-sASSERTIONS'], stdout=PIPE, stderr=PIPE)
     output = read_file(output_file)
@@ -11442,7 +11435,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
   def test_linker_input_unused(self):
     self.run_process([EMXX, '-c', test_file('hello_world.cpp')])
     err = self.run_process([EMCC, 'hello_world.o', '-c', '-o', 'out.o'], stderr=PIPE).stderr
-    self.assertContained("warning: hello_world.o: linker input file unused because linking not done [-Wunused-command-line-argument", err)
+    self.assertContained("clang: warning: hello_world.o: 'linker' input unused [-Wunused-command-line-argument]", err)
     # In this case the compiler does not produce any output file.
     self.assertNotExists('out.o')
 
@@ -11748,29 +11741,16 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     create_file('foo.h', '#include <string.h>')
     create_file('cxxfoo.h', '#include <string>')
 
-    # The default bahviour is to default to C++, which means the C++ header can be compiled even
-    # with emcc.
-    self.run_process([EMCC, '-c', 'cxxfoo.h'])
+    # Compiling a C++ header using `em++` works.
+    self.run_process([EMXX, '-c', 'cxxfoo.h'])
 
-    # But this means that C flags can't be passed (since we are assuming C++)
-    err = self.expect_fail([EMCC, '-std=gnu11', '-c', 'foo.h'])
-    self.assertContained("'-std=gnu11' not allowed with 'C++'", err)
-
-    # If we disable DEFAULT_TO_CXX the emcc can be used with C-only flags (e.g. -std=gnu11),
-    self.run_process([EMCC, '-std=gnu11', '-c', 'foo.h', '-sDEFAULT_TO_CXX=0'])
-
-    # But can't be used to build C++ headers
-    err = self.expect_fail([EMCC, '-c', 'cxxfoo.h', '-sDEFAULT_TO_CXX=0'])
-    self.assertContained("'string' file not found", err)
-
-    # Check that STRICT also disables DEFAULT_TO_CXX
+    # Compiling the same header using `emcc` fails, just like `clang`
     err = self.expect_fail([EMCC, '-c', 'cxxfoo.h', '-sSTRICT'])
     self.assertContained("'string' file not found", err)
 
-    # Using em++ should alwasy work for C++ headers
-    self.run_process([EMXX, '-c', 'cxxfoo.h', '-sDEFAULT_TO_CXX=0'])
-    # Or using emcc with `-x c++`
-    self.run_process([EMCC, '-c', 'cxxfoo.h', '-sDEFAULT_TO_CXX=0', '-x', 'c++-header'])
+    # But it works if we pass and explicit language mode.
+    self.run_process([EMCC, '-c', 'cxxfoo.h', '-x', 'c++-header'])
+    self.run_process([EMCC, '-c', 'cxxfoo.h', '-x', 'c++'])
 
   @parameterized({
     '': ([],),
@@ -13030,7 +13010,7 @@ Module.postRun = () => {{
   })
   @crossplatform
   def test_es5_transpile(self, args):
-    self.emcc_args += args
+    self.emcc_args += ['-Wno-transpile'] + args
 
     # Create a library file that uses the following ES6 features
     # - let/const
@@ -13046,6 +13026,11 @@ Module.postRun = () => {{
         let obj = Object.assign({}, {prop:1});
         err('prop: ' + obj.prop);
 
+        // for .. of
+        for (var elem of [42, 43]) {
+          err('array elem: ' + elem);
+        }
+
         // arrow funcs + const
         const bar = () => 2;
         err('bar: ' + bar());
@@ -13055,14 +13040,14 @@ Module.postRun = () => {{
         var obj2 = {
           [key]: 42,
         };
-        err('value: ' + obj2[key]);
+        err('computed prop: ' + obj2[key]);
 
         // Method syntax
         var obj3 = {
           myMethod() { return 43 },
         };
         global['foo'] = obj3;
-        err('value2: ' + obj3.myMethod());
+        err('myMethod: ' + obj3.myMethod());
 
         // Nullish coalescing
         var definitely = global['maybe'] ?? {};
@@ -13082,6 +13067,15 @@ Module.postRun = () => {{
       }
     });
     ''')
+    expected = '''\
+prop: 1
+array elem: 42
+array elem: 43
+bar: 2
+computed prop: 42
+myMethod: 43
+'''
+
     create_file('test.c', 'extern void foo(); int main() { foo(); }')
     self.emcc_args += ['--js-library', 'es6_library.js']
     self.uses_es6 = True
@@ -13113,7 +13107,7 @@ Module.postRun = () => {{
     # Check that under normal circumstances none of these features get
     # removed / transpiled.
     print('base case')
-    self.do_runf('test.c', 'prop: 1\nbar: 2\n')
+    self.do_runf('test.c', expected)
     check_for_es6('test.js', True)
 
     # If we select and older browser than closure will kick in by default
@@ -13121,18 +13115,18 @@ Module.postRun = () => {{
     print('with old browser')
     self.emcc_args.remove('-Werror')
     self.set_setting('MIN_CHROME_VERSION', '10')
-    self.do_runf('test.c', 'prop: 1\nbar: 2\n', output_basename='test_old')
+    self.do_runf('test.c', expected, output_basename='test_old')
     check_for_es6('test_old.js', False)
 
     # If we add `--closure=0` that transpiler (closure) is not run at all
     print('with old browser + --closure=0')
-    self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=0'], output_basename='test_no_closure')
+    self.do_runf('test.c', expected, emcc_args=['--closure=0'], output_basename='test_no_closure')
     check_for_es6('test_no_closure.js', True)
 
     # If we use `--closure=1` closure will run in full optimization mode
     # and also transpile to ES5
     print('with old browser + --closure=1')
-    self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=1'], output_basename='test_closure')
+    self.do_runf('test.c', expected, emcc_args=['--closure=1'], output_basename='test_closure')
     check_for_es6('test_closure.js', False)
 
   def test_gmtime_noleak(self):
@@ -14191,3 +14185,16 @@ addToLibrary({
     # Test that even with `-Wl,--strip-all` the target features section is generated
     # by wasm-ld so that later phases (e.g. wasm-opt) can read it.
     self.do_runf('hello_world.c', emcc_args=['-Wl,--strip-all', '-pthread'])
+
+  def test_embind_no_duplicate_symbols(self):
+    # Embind implementation lives almost entirely in headers, which have special rules
+    # around symbol deduplication during linking. Ensure that including Embind headers
+    # in two different object files doesn't lead to linking errors.
+    create_file('a.cpp', '#include <emscripten/bind.h>')
+    create_file('b.cpp', '#include <emscripten/bind.h>')
+    self.run_process([EMXX, '-std=c++23', '-lembind', 'a.cpp', 'b.cpp'])
+
+  def test_no_pthread(self):
+    self.do_runf('hello_world.c', emcc_args=['-pthread', '-no-pthread'])
+    self.assertExists('hello_world.js')
+    self.assertNotExists('hello_world.worker.js')

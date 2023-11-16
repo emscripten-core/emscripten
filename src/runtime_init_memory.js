@@ -11,8 +11,10 @@
 
 {{{ makeModuleReceiveWithVar('INITIAL_MEMORY', undefined, INITIAL_MEMORY) }}}
 
+#if ASSERTIONS
 assert(INITIAL_MEMORY >= {{{STACK_SIZE}}}, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + {{{STACK_SIZE}}} + ')');
-
+#endif
+  
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 
 #if PTHREADS
