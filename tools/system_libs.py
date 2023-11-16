@@ -1581,8 +1581,6 @@ class libcxx(NoExceptLibrary, MTLibrary):
     '-DLIBCXX_BUILDING_LIBCXXABI=1',
     '-D_LIBCPP_BUILDING_LIBRARY',
     '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS',
-    # This increases too much code size
-    '-D_LIBCPP_AVAILABILITY_HAS_NO_VERBOSE_ABORT',
     # TODO(sbc): clang recently introduced this new warning which is triggered
     # by `filesystem/directory_iterator.cpp`: https://reviews.llvm.org/D119670
     '-Wno-unqualified-std-cast-call',
