@@ -29,10 +29,10 @@ See docs/process.md for more on how version tagging works.
   `warning: treating 'c' input as 'c++' when in C++ mode`.  This also means that
   the `DEFAULT_TO_CXX` setting now only applies when linking and not when
   compiling. (#20712)
-- JavaScript library code can now use the full range ES6 features and we rely
+- JavaScript library code can now use the full range of ES6 features and we rely
   on closure compiler to transpile for ES5 when targetting older browsers.
-  For those that want to would rather perform transpilation seperately outside
-  of emscripten you can use the `-sPOLYFILL=0` setting.  (#20700)
+  For those that would rather perform transpilation seperately outside of
+  emscripten you can use the `-sPOLYFILL=0` setting. (#20700)
 
 3.1.49 - 11/14/23
 -----------------
