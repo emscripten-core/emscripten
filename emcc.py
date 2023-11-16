@@ -924,47 +924,6 @@ def parse_s_args(args):
   return (settings_changes, newargs)
 
 
-def emsdk_cflags(user_args):
-  cflags = ['--sysroot=' + cache.get_sysroot(absolute=True)]
-
-  def array_contains_any_of(hay, needles):
-    for n in needles:
-      if n in hay:
-        return True
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
-    if '-msimd128' not in user_args and '-mrelaxed-simd' not in user_args:
-      exit_with_error('Passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128 (or -mrelaxed-simd)!')
-    cflags += ['-D__SSE__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[1:]):
-    cflags += ['-D__SSE2__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[2:]):
-    cflags += ['-D__SSE3__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[3:]):
-    cflags += ['-D__SSSE3__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[4:]):
-    cflags += ['-D__SSE4_1__=1']
-
-  # Handle both -msse4.2 and its alias -msse4.
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[5:]):
-    cflags += ['-D__SSE4_2__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[7:]):
-    cflags += ['-D__AVX__=1']
-
-  if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
-    cflags += ['-D__ARM_NEON__=1']
-
-  if not settings.USE_SDL:
-    cflags += ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'fakesdl')]
-
-  return cflags + ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'compat')]
-
-
 def get_target_flags():
   return ['-target', shared.get_llvm_target()]
 
@@ -1020,6 +979,7 @@ def get_cflags(user_args, is_cxx):
   # Flags we pass to the compiler when building C/C++ code
   # We add these to the user's flags (newargs), but not when building .s or .S assembly files
   cflags = get_clang_flags(user_args)
+  cflags.append('--sysroot=' + cache.get_sysroot(absolute=True))
 
   if settings.EMSCRIPTEN_TRACING:
     cflags.append('-D__EMSCRIPTEN_TRACING__=1')
@@ -1048,10 +1008,43 @@ def get_cflags(user_args, is_cxx):
 
   ports.add_cflags(cflags, settings)
 
-  if '-nostdinc' in user_args:
-    return cflags
+  def array_contains_any_of(hay, needles):
+    for n in needles:
+      if n in hay:
+        return True
 
-  cflags += emsdk_cflags(user_args)
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
+    if '-msimd128' not in user_args and '-mrelaxed-simd' not in user_args:
+      exit_with_error('Passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128 (or -mrelaxed-simd)!')
+    cflags += ['-D__SSE__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[1:]):
+    cflags += ['-D__SSE2__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[2:]):
+    cflags += ['-D__SSE3__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[3:]):
+    cflags += ['-D__SSSE3__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[4:]):
+    cflags += ['-D__SSE4_1__=1']
+
+  # Handle both -msse4.2 and its alias -msse4.
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[5:]):
+    cflags += ['-D__SSE4_2__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[7:]):
+    cflags += ['-D__AVX__=1']
+
+  if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
+    cflags += ['-D__ARM_NEON__=1']
+
+  if '-nostdinc' not in user_args:
+    if not settings.USE_SDL:
+      cflags += ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'fakesdl')]
+    cflags += ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'compat')]
+
   return cflags
 
 
@@ -1339,9 +1332,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     logger.debug('stopping after compile phase')
     for flag in state.link_flags:
       diagnostics.warning('unused-command-line-argument', "argument unused during compilation: '%s'" % flag[1])
-    for f in linker_inputs:
-      diagnostics.warning('unused-command-line-argument', "%s: linker input file unused because linking not done" % f[1])
-
     return 0
 
   # We have now passed the compile phase, allow reading/writing of all settings.
@@ -1501,9 +1491,6 @@ def phase_setup(options, state, newargs):
     diagnostics.warning('deprecated', 'RUNTIME_LINKED_LIBS is deprecated; you can simply list the libraries directly on the commandline now')
     newargs += settings.RUNTIME_LINKED_LIBS
 
-  if settings.STRICT:
-    default_setting('DEFAULT_TO_CXX', 0)
-
   # Find input files
 
   # These three arrays are used to store arguments of different types for
@@ -1637,8 +1624,6 @@ def phase_setup(options, state, newargs):
     elif '-M' in newargs or '-MM' in newargs:
       options.default_object_extension = '.mout' # not bitcode, not js; but just dependency rule of the input file
 
-    if options.output_file and len(input_files) > 1:
-      exit_with_error('cannot specify -o with -c/-S/-E/-M and multiple source files')
   else:
     for arg in state.orig_args:
       if any(arg.startswith(f) for f in COMPILE_ONLY_FLAGS):
@@ -2074,6 +2059,7 @@ def phase_linker_setup(options, state, newargs):
   if settings.STRICT:
     if not settings.MODULARIZE and not settings.EXPORT_ES6:
       default_setting('STRICT_JS', 1)
+    default_setting('DEFAULT_TO_CXX', 0)
     default_setting('AUTO_JS_LIBRARIES', 0)
     default_setting('AUTO_NATIVE_LIBRARIES', 0)
     default_setting('AUTO_ARCHIVE_INDEXES', 0)
@@ -2332,7 +2318,7 @@ def phase_linker_setup(options, state, newargs):
 
   setup_environment_settings()
 
-  if options.use_closure_compiler != 0:
+  if options.use_closure_compiler != 0 and settings.POLYFILL:
     # Emscripten requires certain ES6 constructs by default in library code
     # - https://caniuse.com/let              : EDGE:12 FF:44 CHROME:49 SAFARI:11
     # - https://caniuse.com/const            : EDGE:12 FF:36 CHROME:49 SAFARI:11
@@ -3039,6 +3025,19 @@ def phase_linker_setup(options, state, newargs):
   return target, wasm_target
 
 
+def get_clang_output_extension(state):
+  if '-emit-llvm' in state.orig_args:
+    if state.has_dash_S:
+      return '.ll'
+    else:
+      return '.bc'
+
+  if state.has_dash_S:
+    return '.s'
+  else:
+    return '.o'
+
+
 @ToolchainProfiler.profile_block('compile inputs')
 def phase_compile_inputs(options, state, newargs, input_files):
   def is_link_flag(flag):
@@ -3046,12 +3045,14 @@ def phase_compile_inputs(options, state, newargs, input_files):
       return True
     return flag.startswith(('-l', '-L', '-Wl,'))
 
-  CXX = [shared.CLANG_CXX]
-  CC = [shared.CLANG_CC]
+  if run_via_emxx:
+    compiler = [shared.CLANG_CXX]
+  else:
+    compiler = [shared.CLANG_CC]
+
   if config.COMPILER_WRAPPER:
     logger.debug('using compiler wrapper: %s', config.COMPILER_WRAPPER)
-    CXX.insert(0, config.COMPILER_WRAPPER)
-    CC.insert(0, config.COMPILER_WRAPPER)
+    compiler.insert(0, config.COMPILER_WRAPPER)
 
   compile_args = [a for a in newargs if a and not is_link_flag(a)]
   system_libs.ensure_sysroot()
@@ -3069,65 +3070,64 @@ def phase_compile_inputs(options, state, newargs, input_files):
     return ''
 
   language_mode = get_language_mode(newargs)
+  use_cxx = 'c++' in language_mode or run_via_emxx
 
-  def use_cxx(src):
-    if 'c++' in language_mode or run_via_emxx:
-      return True
-    suffix = shared.suffix(src)
-    # Next consider the filename
-    if suffix in C_ENDINGS + OBJC_ENDINGS:
-      return False
-    if suffix in CXX_ENDINGS:
-      return True
-    # Finally fall back to the default
-    if settings.DEFAULT_TO_CXX:
-      # Default to using C++ even when run as `emcc`.
-      # This means that emcc will act as a C++ linker when no source files are
-      # specified.
-      # This differs to clang and gcc where the default is always C unless run as
-      # clang++/g++.
-      return True
-    return False
+  def get_clang_command():
+    return compiler + get_cflags(state.orig_args, use_cxx) + compile_args
 
-  def get_compiler(src_file):
-    if use_cxx(src_file):
-      return CXX
-    return CC
+  def get_clang_command_preprocessed():
+    return compiler + get_clang_flags(state.orig_args) + compile_args
 
-  def get_clang_command(src_file):
-    return get_compiler(src_file) + get_cflags(state.orig_args, use_cxx(src_file)) + compile_args + [src_file]
-
-  def get_clang_command_preprocessed(src_file):
-    return get_compiler(src_file) + get_clang_flags(state.orig_args) + compile_args + [src_file]
-
-  def get_clang_command_asm(src_file):
-    return get_compiler(src_file) + get_target_flags() + compile_args + [src_file]
+  def get_clang_command_asm():
+    return compiler + get_target_flags() + compile_args
 
   # preprocessor-only (-E) support
   if state.mode == Mode.PREPROCESS_ONLY:
-    for input_file in [x[1] for x in input_files]:
-      cmd = get_clang_command(input_file)
-      if options.output_file:
-        cmd += ['-o', options.output_file]
-      # Do not compile, but just output the result from preprocessing stage or
-      # output the dependency rule. Warning: clang and gcc behave differently
-      # with -MF! (clang seems to not recognize it)
-      logger.debug(('just preprocessor ' if state.has_dash_E else 'just dependencies: ') + ' '.join(cmd))
-      shared.check_call(cmd)
+    inputs = [i[1] for i in input_files]
+    cmd = get_clang_command() + inputs
+    if options.output_file:
+      cmd += ['-o', options.output_file]
+    # Do not compile, but just output the result from preprocessing stage or
+    # output the dependency rule. Warning: clang and gcc behave differently
+    # with -MF! (clang seems to not recognize it)
+    logger.debug(('just preprocessor ' if state.has_dash_E else 'just dependencies: ') + ' '.join(cmd))
+    shared.check_call(cmd)
     return []
 
   # Precompiled headers support
   if state.mode == Mode.PCH:
-    headers = [header for _, header in input_files]
-    for header in headers:
+    inputs = [i[1] for i in input_files]
+    for header in inputs:
       if not shared.suffix(header) in HEADER_ENDINGS:
-        exit_with_error(f'cannot mix precompiled headers with non-header inputs: {headers} : {header}')
-      cmd = get_clang_command(header)
-      if options.output_file:
-        cmd += ['-o', options.output_file]
-      logger.debug(f"running (for precompiled headers): {cmd[0]} {' '.join(cmd[1:])}")
-      shared.check_call(cmd)
-      return []
+        exit_with_error(f'cannot mix precompiled headers with non-header inputs: {inputs} : {header}')
+    cmd = get_clang_command() + inputs
+    if options.output_file:
+      cmd += ['-o', options.output_file]
+    logger.debug(f"running (for precompiled headers): {cmd[0]} {' '.join(cmd[1:])}")
+    shared.check_call(cmd)
+    return []
+
+  if state.mode == Mode.COMPILE_ONLY:
+    inputs = [i[1] for i in input_files]
+    if all(get_file_suffix(i) in ASSEMBLY_ENDINGS for i in inputs):
+      cmd = get_clang_command_asm() + inputs
+    else:
+      cmd = get_clang_command() + inputs
+    if options.output_file:
+      cmd += ['-o', options.output_file]
+      if get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
+        diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
+    shared.check_call(cmd)
+    if not options.output_file:
+      # Rename object files to match --default-obj-ext
+      # TODO: Remove '--default-obj-ext' to reduce this complexity
+      ext = get_clang_output_extension(state)
+      if options.default_object_extension != ext:
+        for i in inputs:
+          output = unsuffixed_basename(i) + ext
+          new_output = unsuffixed_basename(i) + options.default_object_extension
+          move_file(output, new_output)
+    return []
 
   linker_inputs = []
   seen_names = {}
@@ -3138,32 +3138,21 @@ def phase_compile_inputs(options, state, newargs, input_files):
     return unsuffixed(name) + '_' + seen_names[name] + shared.suffix(name)
 
   def get_object_filename(input_file):
-    if state.mode == Mode.COMPILE_ONLY:
-      # In compile-only mode we don't use any temp file.  The object files
-      # are written directly to their final output locations.
-      if options.output_file:
-        assert len(input_files) == 1
-        if get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
-          diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
-        return options.output_file
-      else:
-        return unsuffixed_basename(input_file) + options.default_object_extension
-    else:
-      return in_temp(unsuffixed(uniquename(input_file)) + options.default_object_extension)
+    return in_temp(unsuffixed(uniquename(input_file)) + options.default_object_extension)
 
   def compile_source_file(i, input_file):
     logger.debug(f'compiling source file: {input_file}')
     output_file = get_object_filename(input_file)
-    if state.mode not in (Mode.COMPILE_ONLY, Mode.PREPROCESS_ONLY):
-      linker_inputs.append((i, output_file))
+    linker_inputs.append((i, output_file))
     if get_file_suffix(input_file) in ASSEMBLY_ENDINGS:
-      cmd = get_clang_command_asm(input_file)
+      cmd = get_clang_command_asm()
     elif get_file_suffix(input_file) in PREPROCESSED_ENDINGS:
-      cmd = get_clang_command_preprocessed(input_file)
+      cmd = get_clang_command_preprocessed()
     else:
-      cmd = get_clang_command(input_file)
+      cmd = get_clang_command()
       if get_file_suffix(input_file) in ['.pcm']:
         cmd = [c for c in cmd if not c.startswith('-fprebuilt-module-path=')]
+    cmd += [input_file]
     if not state.has_dash_c:
       cmd += ['-c']
     cmd += ['-o', output_file]
@@ -3758,6 +3747,10 @@ def parse_args(newargs):
       settings.PTHREADS = 1
       # Also set the legacy setting name, in case use JS code depends on it.
       settings.USE_PTHREADS = 1
+    elif arg == '-no-pthread':
+      settings.PTHREADS = 0
+      # Also set the legacy setting name, in case use JS code depends on it.
+      settings.USE_PTHREADS = 0
     elif arg == '-pthreads':
       exit_with_error('unrecognized command-line option `-pthreads`; did you mean `-pthread`?')
     elif arg in ('-fno-diagnostics-color', '-fdiagnostics-color=never'):
@@ -4225,7 +4218,9 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
 
   shell = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
   shell = shell.replace('{{{ SHELL_CSS }}}', utils.read_file(utils.path_from_root('src/shell.css')))
-  shell = shell.replace('{{{ SHELL_LOGO }}}', utils.read_file(utils.path_from_root('media/powered_by_logo_mini.svg')))
+  shell_logo = utils.read_binary(utils.path_from_root('media/powered_by_logo_shell.png'))
+  shell_logo_b64 = base64_encode(shell_logo)
+  shell = shell.replace('{{{ SHELL_LOGO }}}', f'<img id="emscripten_logo" src="data:image/png;base64,{shell_logo_b64}">')
 
   check_output_file(target)
   write_file(target, shell)
