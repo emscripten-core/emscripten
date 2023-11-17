@@ -94,6 +94,12 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
       OffsetOutOfRange: 7,
       SizeOutOfRange: 8,
     },
+    CompilationInfoRequestStatus: {
+      Success: 0,
+      Error: 1,
+      DeviceLost: 2,
+      Unknown: 3,
+    },
     CreatePipelineAsyncStatus: {
       Success: 0,
       ValidationError: 1,
@@ -1774,9 +1780,34 @@ var LibraryWebGPU = {
 
   // wgpuShaderModule
 
+  wgpuShaderModuleGetCompilationInfo__deps: ['$callUserCallback', '$stringToUTF8OnStack'],
   wgpuShaderModuleGetCompilationInfo: (shaderModuleId, callback, userdata) => {
     var shaderModule = WebGPU.mgrShaderModule.get(shaderModuleId);
-    abort('TODO: wgpuShaderModuleGetCompilationInfo unimplemented');
+    {{{ runtimeKeepalivePush() }}}
+    shaderModule["getCompilationInfo"]().then((compilationInfo) => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        withStackSave(() => {
+          var compilationMessagesPtr = stackAlloc({{{ C_STRUCTS.WGPUCompilationMessage.__size__ }}} * compilationInfo.messages.length);
+          for (var i = 0; i < compilationInfo.messages.length; ++i) {
+            var compilationMessage = compilationInfo.messages[i];
+            var compilationMessagePtr = compilationMessagesPtr + {{{ C_STRUCTS.WGPUCompilationMessage.__size__ }}} * i;
+            {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.type, 'compilationMessage.type', 'i64') }}};
+            {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.lineNum, 'compilationMessage.lineNum', 'i64') }}};
+            {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.linePos, 'compilationMessage.linePos', 'i64') }}};
+            {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.offset, 'compilationMessage.offset', 'i64') }}};
+            {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.length, 'compilationMessage.length', 'i64') }}};
+            var messagePtr = stringToUTF8OnStack(compilationMessage.message);
+            {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.message, 'messagePtr', '*') }}};
+          }
+          var compilationInfoPtr = stackAlloc({{{ C_STRUCTS.WGPUCompilationInfo.__size__ }}});
+          {{{ makeSetValue('compilationInfoPtr', C_STRUCTS.WGPUCompilationInfo.messageCount, 'compilationInfo.messages.length', 'i32') }}}
+          {{{ makeSetValue('compilationInfoPtr', C_STRUCTS.WGPUCompilationInfo.messages, 'compilationMessagePtr', '*') }}};
+
+          {{{ makeDynCall('vipp', 'callback') }}}({{{ gpu.CompilationInfoRequestStatus.Success }}}, compilationInfoPtr, userdata);
+        });
+      });
+    });
   },
   wgpuShaderModuleSetLabel: (shaderModuleId, labelPtr) => {
     var shaderModule = WebGPU.mgrShaderModule.get(shaderModuleId);

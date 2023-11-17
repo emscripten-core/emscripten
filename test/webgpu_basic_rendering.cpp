@@ -88,6 +88,11 @@ void init() {
         wgpu::ShaderModuleDescriptor descriptor{};
         descriptor.nextInChain = &wgslDesc;
         shaderModule = device.CreateShaderModule(&descriptor);
+        shaderModule.GetCompilationInfo([](WGPUCompilationInfoRequestStatus status, const WGPUCompilationInfo* info, void*) {
+            assert(status == WGPUCompilationInfoRequestStatus_Success);
+            assert(info->messageCount == 0);
+            std::printf("Shader compile succeeded\n");
+        }, nullptr);
     }
 
     {
