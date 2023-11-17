@@ -903,44 +903,46 @@ window.close = () => {
   def test_sdl_canvas_alpha(self):
     # N.B. On Linux with Intel integrated graphics cards, this test needs Firefox 49 or newer.
     # See https://github.com/emscripten-core/emscripten/issues/4069.
-    create_file('flag_0.js', '''
-      Module['arguments'] = ['-0'];
-    ''')
+    create_file('flag_0.js', "Module['arguments'] = ['-0'];")
 
     self.btest('test_sdl_canvas_alpha.c', args=['-lSDL', '-lGL'], reference='browser/test_sdl_canvas_alpha.png', reference_slack=12)
     self.btest('test_sdl_canvas_alpha.c', args=['--pre-js', 'flag_0.js', '-lSDL', '-lGL'], reference='browser/test_sdl_canvas_alpha_flag_0.png', reference_slack=12)
 
   @parameterized({
-    '': ([False],),
+    '': ([],),
+    'eventhandler': (['-DTEST_EMSCRIPTEN_SDL_SETEVENTHANDLER'],),
+  })
+  @parameterized({
+    '': ([],),
+    'asyncify': (['-DTEST_SLEEP', '-sASSERTIONS', '-sSAFE_HEAP', '-sASYNCIFY'],),
+  })
+  @parameterized({
+    '': (False,),
     'delay': (True,)
   })
-  def test_sdl_key(self, delay):
-    for defines in [
-      [],
-      ['-DTEST_EMSCRIPTEN_SDL_SETEVENTHANDLER']
-    ]:
-      for async_ in [
-        [],
-        ['-DTEST_SLEEP', '-sASSERTIONS', '-sSAFE_HEAP', '-sASYNCIFY']
-      ]:
-        print(delay, defines, async_)
+  def test_sdl_key(self, delay, async_, defines):
+    if delay:
+      settimeout_start = 'setTimeout(function() {'
+      settimeout_end = '}, 1);'
+    else:
+      settimeout_start = ''
+      settimeout_end = ''
+    create_file('pre.js', '''
+      function keydown(c) {
+       %s
+        var event = new KeyboardEvent("keydown", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
+        document.dispatchEvent(event);
+       %s
+      }
 
-        create_file('pre.js', '''
-          function keydown(c) {
-           %s
-            var event = new KeyboardEvent("keydown", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
-            document.dispatchEvent(event);
-           %s
-          }
-
-          function keyup(c) {
-           %s
-            var event = new KeyboardEvent("keyup", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
-            document.dispatchEvent(event);
-           %s
-          }
-        ''' % ('setTimeout(function() {' if delay else '', '}, 1);' if delay else '', 'setTimeout(function() {' if delay else '', '}, 1);' if delay else ''))
-        self.btest_exit('test_sdl_key.c', 223092870, args=defines + async_ + ['--pre-js=pre.js', '-lSDL', '-lGL'])
+      function keyup(c) {
+       %s
+        var event = new KeyboardEvent("keyup", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
+        document.dispatchEvent(event);
+       %s
+      }
+    ''' % (settimeout_start, settimeout_end, settimeout_start, settimeout_end))
+    self.btest_exit('test_sdl_key.c', 223092870, args=defines + async_ + ['--pre-js=pre.js', '-lSDL', '-lGL'])
 
   def test_sdl_key_proxy(self):
     create_file('pre.js', '''
