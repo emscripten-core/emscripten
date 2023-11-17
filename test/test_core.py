@@ -2935,6 +2935,7 @@ The current type of b is: 9
   @node_pthreads
   def test_pthread_wait_async(self):
     self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('STRICT')
     self.do_run_in_out_file_test('atomic/test_wait_async.c')
 
   def test_tcgetattr(self):

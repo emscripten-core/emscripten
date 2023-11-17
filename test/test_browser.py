@@ -1895,8 +1895,12 @@ keydown(100);keyup(100); // trigger the end
   def test_clientside_vertex_arrays_es3(self):
     self.btest('clientside_vertex_arrays_es3.c', reference='gl_triangle.png', args=['-sFULL_ES3', '-sUSE_GLFW=3', '-lglfw', '-lGLESv2'])
 
-  def test_emscripten_api(self):
-    self.btest_exit('emscripten_api_browser.c', args=['-sEXPORTED_FUNCTIONS=_main,_third', '-lSDL'])
+  @parameterized({
+    '': ([],),
+    'closure_strict': (['--closure=1', '-sSTRICT'],),
+  })
+  def test_emscripten_api(self, args):
+    self.btest_exit('emscripten_api_browser.c', args=args + ['-sEXPORTED_FUNCTIONS=_main,_third', '-lSDL'])
 
   @also_with_wasmfs
   def test_emscripten_async_load_script(self):
@@ -2000,9 +2004,13 @@ keydown(100);keyup(100); // trigger the end
     self.btest('glframebufferattachmentinfo.c', '1', args=['-lGLESv2', '-lEGL'])
 
   @no_wasm64('TODO: LEGACY_GL_EMULATION + wasm64')
+  @parameterized({
+    '': ([],),
+    'strict': (['-sSTRICT'],),
+  })
   @requires_graphics_hardware
-  def test_sdl_glshader(self):
-    self.btest('test_sdl_glshader.c', reference='browser/test_sdl_glshader.png', args=['-O2', '--closure=1', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
+  def test_sdl_glshader(self, args):
+    self.btest('test_sdl_glshader.c', reference='browser/test_sdl_glshader.png', args=args + ['-O2', '--closure=1', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @no_wasm64('TODO: LEGACY_GL_EMULATION + wasm64')
   @requires_graphics_hardware
@@ -2362,6 +2370,7 @@ void *getBindBuffer() {
     '': ([],),
     'strict': (['-lopenal', '-sSTRICT'],),
     'closure': (['--closure=1'],),
+    'closure_strict': (['--closure=1', '-sSTRICT'],),
   })
   def test_openal_error(self, args):
     self.btest_exit('openal_error.c', args=args)
@@ -4959,6 +4968,7 @@ Module["preRun"] = () => {
   @parameterized({
     '': ([],),
     'mt': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+    'mt_closure_strict': (['-pthread', '-sPROXY_TO_PTHREAD', '--closure=1', '-sSTRICT'],),
   })
   @requires_threads
   def test_pthread_run_script(self, args):
