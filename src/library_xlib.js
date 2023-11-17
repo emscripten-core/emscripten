@@ -5,9 +5,8 @@
  */
 
 var LibraryXlib = {
-  XOpenDisplay: (name) => {
-    return 1; // We support 1 display, the canvas
-  },
+  // We support 1 display, the canvas
+  XOpenDisplay: (name) => 1,
 
   XCreateWindow__deps: ['$Browser'],
   XCreateWindow: (display, parent, x, y, width, height, border_width, depth, class_, visual, valuemask, attributes) => {

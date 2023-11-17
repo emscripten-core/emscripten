@@ -40,6 +40,7 @@ int emscripten_builtin_pthread_create(void *thread, void *attr,
                                       void *(*callback)(void *), void *arg);
 int emscripten_builtin_pthread_join(void *th, void **ret);
 int emscripten_builtin_pthread_detach(void *th);
+void emscripten_builtin_pthread_exit(void *th);
 }
 #endif
 
@@ -208,7 +209,7 @@ INTERCEPTOR(void*, pvalloc, uptr size) {
 #endif // SANITIZER_INTERCEPT_PVALLOC
 
 #if SANITIZER_INTERCEPT_CFREE
-INTERCEPTOR(void, cfree, void *p) ALIAS(WRAPPER_NAME(free));
+INTERCEPTOR(void, cfree, void *p) ALIAS(WRAP(free));
 #define LSAN_MAYBE_INTERCEPT_CFREE INTERCEPT_FUNCTION(cfree)
 #else
 #define LSAN_MAYBE_INTERCEPT_CFREE
@@ -426,16 +427,10 @@ INTERCEPTOR(char *, strerror, int errnum) {
 
 #if SANITIZER_POSIX
 
-struct ThreadParam {
-  void *(*callback)(void *arg);
-  void *param;
-  atomic_uintptr_t tid;
-};
-
-extern "C" void *__lsan_thread_start_func(void *arg) {
-  ThreadParam *p = (ThreadParam*)arg;
-  void* (*callback)(void *arg) = p->callback;
-  void *param = p->param;
+template <bool Detached>
+static void *ThreadStartFunc(void *arg) {
+  u32 parent_tid = (uptr)arg;
+  uptr tid = ThreadCreate(parent_tid, Detached);
   // Wait until the last iteration to maximize the chance that we are the last
   // destructor to run.
 #if !SANITIZER_NETBSD && !SANITIZER_FREEBSD
@@ -444,74 +439,111 @@ extern "C" void *__lsan_thread_start_func(void *arg) {
     Report("LeakSanitizer: failed to set thread key.\n");
     Die();
   }
-#endif
-  int tid = 0;
-  while ((tid = atomic_load(&p->tid, memory_order_acquire)) == 0)
-    internal_sched_yield();
+#  endif
   ThreadStart(tid, GetTid());
-#if SANITIZER_EMSCRIPTEN
-  emscripten_builtin_free(p);
-#else
-  atomic_store(&p->tid, 0, memory_order_release);
-#endif
-  return callback(param);
+  auto self = GetThreadSelf();
+  auto args = GetThreadArgRetval().GetArgs(self);
+  void *retval = (*args.routine)(args.arg_retval);
+  GetThreadArgRetval().Finish(self, retval);
+  return retval;
 }
 
 INTERCEPTOR(int, pthread_create, void *th, void *attr,
             void *(*callback)(void *), void *param) {
   ENSURE_LSAN_INITED;
   EnsureMainThreadIDIsCorrect();
+
+#if SANITIZER_EMSCRIPTEN
+  // In Emscripten sanitizer, attr can be nonzero but __ATTRP_C11_THREAD in case
+  // of C11 threads, in which case we need to run pthread_attr_init as well, so
+  // we treat __ATTRP_C11_THREAD like the nullptr in this function.
+  if (attr == __ATTRP_C11_THREAD)
+    attr = nullptr;
+#endif
+
+  bool detached = [attr]() {
+    int d = 0;
+    return attr && !pthread_attr_getdetachstate(attr, &d) && IsStateDetached(d);
+  }();
+
   __sanitizer_pthread_attr_t myattr;
-  if (!attr || attr == __ATTRP_C11_THREAD) {
+  if (!attr) {
     pthread_attr_init(&myattr);
     attr = &myattr;
   }
   AdjustStackSize(attr);
-  int detached = 0;
-  pthread_attr_getdetachstate(attr, &detached);
-#if SANITIZER_EMSCRIPTEN
-  ThreadParam *p = (ThreadParam *) emscripten_builtin_malloc(sizeof(ThreadParam));
-  p->callback = callback;
-  p->param = param;
-  atomic_store(&p->tid, 0, memory_order_relaxed);
-#else
-  ThreadParam p;
-  p.callback = callback;
-  p.param = param;
-  atomic_store(&p.tid, 0, memory_order_relaxed);
-#endif
-  int res;
+  uptr this_tid = GetCurrentThreadId();
+  int result;
   {
     // Ignore all allocations made by pthread_create: thread stack/TLS may be
     // stored by pthread for future reuse even after thread destruction, and
     // the linked list it's stored in doesn't even hold valid pointers to the
     // objects, the latter are calculated by obscure pointer arithmetic.
     ScopedInterceptorDisabler disabler;
-#if SANITIZER_EMSCRIPTEN
-    res = REAL(pthread_create)(th, attr, __lsan_thread_start_func, p);
-#else
-    res = REAL(pthread_create)(th, attr, __lsan_thread_start_func, &p);
-#endif
-  }
-  if (res == 0) {
-    int tid = ThreadCreate(GetCurrentThread(), IsStateDetached(detached));
-    CHECK_NE(tid, kMainTid);
-#if SANITIZER_EMSCRIPTEN
-    atomic_store(&p->tid, tid, memory_order_release);
-#else
-    atomic_store(&p.tid, tid, memory_order_release);
-    while (atomic_load(&p.tid, memory_order_acquire) != 0)
-      internal_sched_yield();
-#endif
+    GetThreadArgRetval().Create(detached, {callback, param}, [&]() -> uptr {
+      result = REAL(pthread_create)(
+          th, attr, detached ? ThreadStartFunc<true> : ThreadStartFunc<false>,
+          (void *)this_tid);
+      return result ? 0 : *(uptr *)(th);
+    });
   }
   if (attr == &myattr)
     pthread_attr_destroy(&myattr);
-  return res;
+  return result;
 }
 
-INTERCEPTOR(int, pthread_join, void *t, void **arg) {
-  return REAL(pthread_join)(t, arg);
+INTERCEPTOR(int, pthread_join, void *thread, void **retval) {
+  int result;
+  GetThreadArgRetval().Join((uptr)thread, [&]() {
+    result = REAL(pthread_join)(thread, retval);
+    return !result;
+  });
+  return result;
 }
+
+INTERCEPTOR(int, pthread_detach, void *thread) {
+  int result;
+  GetThreadArgRetval().Detach((uptr)thread, [&]() {
+    result = REAL(pthread_detach)(thread);
+    return !result;
+  });
+  return result;
+}
+
+INTERCEPTOR(void, pthread_exit, void *retval) {
+  GetThreadArgRetval().Finish(GetThreadSelf(), retval);
+  REAL(pthread_exit)(retval);
+}
+
+#  if SANITIZER_INTERCEPT_TRYJOIN
+INTERCEPTOR(int, pthread_tryjoin_np, void *thread, void **ret) {
+  int result;
+  GetThreadArgRetval().Join((uptr)thread, [&]() {
+    result = REAL(pthread_tryjoin_np)(thread, ret);
+    return !result;
+  });
+  return result;
+}
+#    define LSAN_MAYBE_INTERCEPT_TRYJOIN INTERCEPT_FUNCTION(pthread_tryjoin_np)
+#  else
+#    define LSAN_MAYBE_INTERCEPT_TRYJOIN
+#  endif  // SANITIZER_INTERCEPT_TRYJOIN
+
+#  if SANITIZER_INTERCEPT_TIMEDJOIN
+INTERCEPTOR(int, pthread_timedjoin_np, void *thread, void **ret,
+            const struct timespec *abstime) {
+  int result;
+  GetThreadArgRetval().Join((uptr)thread, [&]() {
+    result = REAL(pthread_timedjoin_np)(thread, ret, abstime);
+    return !result;
+  });
+  return result;
+}
+#    define LSAN_MAYBE_INTERCEPT_TIMEDJOIN \
+      INTERCEPT_FUNCTION(pthread_timedjoin_np)
+#  else
+#    define LSAN_MAYBE_INTERCEPT_TIMEDJOIN
+#  endif  // SANITIZER_INTERCEPT_TIMEDJOIN
 
 DEFINE_REAL_PTHREAD_FUNCTIONS
 
@@ -522,6 +554,7 @@ INTERCEPTOR(void, _exit, int status) {
 }
 
 #define COMMON_INTERCEPT_FUNCTION(name) INTERCEPT_FUNCTION(name)
+#define SIGNAL_INTERCEPTOR_ENTER() ENSURE_LSAN_INITED
 #include "sanitizer_common/sanitizer_signal_interceptors.inc"
 #endif
 
@@ -549,6 +582,10 @@ void InitializeInterceptors() {
   LSAN_MAYBE_INTERCEPT_MALLOPT;
   INTERCEPT_FUNCTION(pthread_create);
   INTERCEPT_FUNCTION(pthread_join);
+  INTERCEPT_FUNCTION(pthread_detach);
+  INTERCEPT_FUNCTION(pthread_exit);
+  LSAN_MAYBE_INTERCEPT_TIMEDJOIN;
+  LSAN_MAYBE_INTERCEPT_TRYJOIN;
   INTERCEPT_FUNCTION(_exit);
 
   LSAN_MAYBE_INTERCEPT__LWP_EXIT;

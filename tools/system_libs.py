@@ -914,7 +914,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
   src_dir = 'system/lib/compiler-rt/lib/builtins'
   includes = ['system/lib/libc']
   # gcc_personality_v0.c depends on libunwind, which don't include by default.
-  src_files = glob_in_path(src_dir, '*.c', excludes=['gcc_personality_v0.c', 'truncdfbf2.c', 'truncsfbf2.c'])
+  src_files = glob_in_path(src_dir, '*.c', excludes=['gcc_personality_v0.c', 'truncdfbf2.c', 'truncsfbf2.c', 'crtbegin.c', 'crtend.c'])
   src_files += files_in_path(
       path='system/lib/compiler-rt',
       filenames=[
@@ -1599,7 +1599,8 @@ class libcxx(NoExceptLibrary, MTLibrary):
     'locale_win32.cpp',
     'thread_win32.cpp',
     'support.cpp',
-    'int128_builtins.cpp'
+    'int128_builtins.cpp',
+    'libdispatch.cpp',
   ]
 
 
@@ -1647,7 +1648,7 @@ class libmalloc(MTLibrary):
 
   def __init__(self, **kwargs):
     self.malloc = kwargs.pop('malloc')
-    if self.malloc not in ('dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose', 'none'):
+    if self.malloc not in ('dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose', 'mimalloc', 'none'):
       raise Exception('malloc must be one of "emmalloc[-debug|-memvalidate][-verbose]", "dlmalloc" or "none", see settings.js')
 
     self.use_errno = kwargs.pop('use_errno')
@@ -1696,7 +1697,7 @@ class libmalloc(MTLibrary):
     return name
 
   def can_use(self):
-    return super().can_use() and settings.MALLOC != 'none'
+    return super().can_use() and settings.MALLOC != 'none' and settings.MALLOC != 'mimalloc'
 
   @classmethod
   def vary_on(cls):
@@ -1722,6 +1723,48 @@ class libmalloc(MTLibrary):
             [dict(malloc='emmalloc-memvalidate-verbose', **combo) for combo in combos if combo['memvalidate'] and combo['verbose']] +
             [dict(malloc='emmalloc-memvalidate', **combo) for combo in combos if combo['memvalidate'] and not combo['verbose']] +
             [dict(malloc='emmalloc-verbose', **combo) for combo in combos if combo['verbose'] and not combo['memvalidate']])
+
+
+class libmimalloc(MTLibrary):
+  name = 'libmimalloc'
+
+  cflags = [
+    '-fno-builtin',
+    '-Wno-deprecated-pragma',
+    # build emmalloc as only a system allocator, without exporting itself onto
+    # malloc/free in the global scope
+    '-DEMMALLOC_NO_STD_EXPORTS',
+    # build mimalloc with an override of malloc/free
+    '-DMI_MALLOC_OVERRIDE',
+    # TODO: add build modes that include debug checks 1,2,3
+    '-DMI_DEBUG=0',
+  ]
+
+  # malloc/free/calloc are runtime functions and can be generated during LTO
+  # Therefor they cannot themselves be part of LTO.
+  force_object_files = True
+
+  includes = ['system/lib/mimalloc/include']
+
+  # Build all of mimalloc, and also emmalloc which is used as the system
+  # allocator underneath it.
+  src_dir = 'system/lib/'
+  src_files = glob_in_path(
+    path='system/lib/mimalloc/src',
+    glob_pattern='*.c',
+    # mimalloc includes some files at the source level, so exclude them here.
+    excludes=['alloc-override.c', 'page-queue.c', 'static.c']
+  )
+  src_files += files_in_path(
+    path='system/lib/mimalloc/src/prim',
+    filenames=['prim.c']
+  )
+  src_files += files_in_path(
+    path='system/lib/',
+    filenames=['emmalloc.c'])
+
+  def can_use(self):
+    return super().can_use() and settings.MALLOC == 'mimalloc'
 
 
 class libal(Library):
@@ -1808,6 +1851,7 @@ class libembind(Library):
 
   def get_cflags(self):
     cflags = super().get_cflags()
+    cflags.append('-std=c++20')
     if not self.with_rtti:
       cflags += ['-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
     return cflags
@@ -2242,7 +2286,9 @@ def get_libs_to_link(args, forced, only_forced):
     if not settings.EXIT_RUNTIME:
       add_library('libnoexit')
     add_library('libc')
-    if settings.MALLOC != 'none':
+    if settings.MALLOC == 'mimalloc':
+      add_library('libmimalloc')
+    elif settings.MALLOC != 'none':
       add_library('libmalloc')
   add_library('libcompiler_rt')
   if settings.LINK_AS_CXX:

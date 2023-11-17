@@ -173,7 +173,7 @@ shown below):
 
     FILE *file = fopen("test/hello_world_file.txt", "rb");
 
-  We compile the example from the directory "above" **tests** to ensure that
+  We compile the example from the directory "above" **test** to ensure the
   virtual filesystem is created with the correct structure relative to the
   compile-time directory.
 
