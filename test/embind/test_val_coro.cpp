@@ -27,9 +27,7 @@ public:
   typed_promise(val&& promise): val(std::move(promise)) {}
 
   auto operator co_await() const {
-    struct typed_awaiter: val::awaiter {
-      using val::awaiter::awaiter;
-
+    struct typed_awaiter: public val::awaiter {
       T await_resume() {
         return val::awaiter::await_resume().template as<T>();
       }
