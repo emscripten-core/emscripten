@@ -33,6 +33,8 @@ See docs/process.md for more on how version tagging works.
   on closure compiler to transpile for ES5 when targetting older browsers.
   For those that would rather perform transpilation seperately outside of
   emscripten you can use the `-sPOLYFILL=0` setting. (#20700)
+- libcxx, libcxxabi, libunwind, and compiler-rt were updated to LLVM 17.0.4.
+  (#20705, #20707, and #20708)
 
 3.1.49 - 11/14/23
 -----------------
