@@ -1599,7 +1599,8 @@ class libcxx(NoExceptLibrary, MTLibrary):
     'locale_win32.cpp',
     'thread_win32.cpp',
     'support.cpp',
-    'int128_builtins.cpp'
+    'int128_builtins.cpp',
+    'libdispatch.cpp',
   ]
 
 
