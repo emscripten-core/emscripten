@@ -909,17 +909,17 @@ Out of the box, *embind* provides converters for many standard C++ types:
 +---------------------+--------------------------------------------------------------------+
 | ``unsigned int``    | Number                                                             |
 +---------------------+--------------------------------------------------------------------+
-| ``long``            | Number                                                             |
+| ``long``            | Number, BigInt*                                                    |
 +---------------------+--------------------------------------------------------------------+
-| ``unsigned long``   | Number                                                             |
+| ``unsigned long``   | Number, BigInt*                                                    |
 +---------------------+--------------------------------------------------------------------+
 | ``float``           | Number                                                             |
 +---------------------+--------------------------------------------------------------------+
 | ``double``          | Number                                                             |
 +---------------------+--------------------------------------------------------------------+
-| ``int64_t``         | BigInt*                                                            |
+| ``int64_t``         | BigInt**                                                           |
 +---------------------+--------------------------------------------------------------------+
-| ``uint64_t``        | BigInt*                                                            |
+| ``uint64_t``        | BigInt**                                                           |
 +---------------------+--------------------------------------------------------------------+
 | ``std::string``     | ArrayBuffer, Uint8Array, Uint8ClampedArray, Int8Array, or String   |
 +---------------------+--------------------------------------------------------------------+
@@ -928,7 +928,9 @@ Out of the box, *embind* provides converters for many standard C++ types:
 | ``emscripten::val`` | anything                                                           |
 +---------------------+--------------------------------------------------------------------+
 
-\*Requires BigInt support to be enabled with the `-sWASM_BIGINT` flag.
+\*BigInt when MEMORY64 is used, Number otherwise.
+
+\*\*Requires BigInt support to be enabled with the `-sWASM_BIGINT` flag.
 
 For convenience, *embind* provides factory functions to register
 ``std::vector<T>`` (:cpp:func:`register_vector`) and ``std::map<K, V>``
