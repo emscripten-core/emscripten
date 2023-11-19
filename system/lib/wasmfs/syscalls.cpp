@@ -1492,8 +1492,11 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
       flags = va_arg(v1, int);
       va_end(v1);
       // This syscall should ignore most flags.
+      // We are adding nonblock as we are running in nonblocking
+      // by default, but some libraries and apps still want to set it,
+      // so we allow it
       flags = flags & ~(O_RDONLY | O_WRONLY | O_RDWR | O_CREAT | O_EXCL |
-                        O_NOCTTY | O_TRUNC);
+                        O_NOCTTY | O_TRUNC | O_NONBLOCK);
       // Also ignore this flag which musl always adds constantly, but does not
       // matter for us.
       flags = flags & ~O_LARGEFILE;
