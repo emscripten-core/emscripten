@@ -106,6 +106,7 @@ var LibraryGLFW = {
     initialTime: null,
     extensions: null,
     hints: null,
+    primaryTouchId: null,
     defaultHints: {
       0x00020001:0, // GLFW_FOCUSED
       0x00020002:0, // GLFW_ICONIFIED
@@ -435,7 +436,30 @@ var LibraryGLFW = {
     onMousemove: (event) => {
       if (!GLFW.active) return;
 
-      Browser.calculateMouseEvent(event);
+      if (event.type === 'touchmove') {
+        // Handling for touch events that are being converted to mouse input.
+
+        // Don't let the browser fire a duplicate mouse event.
+        event.preventDefault();
+
+        let primaryChanged = false;
+        for (let i of event.changedTouches) {
+          // If our chosen primary touch moved, update Browser mouse coords
+          if (GLFW.primaryTouchId === i.identifier) {
+            Browser.setMouseCoords(i.pageX, i.pageY);
+            primaryChanged = true;
+          }
+        }
+
+        if (!primaryChanged) {
+          // Do not send mouse events if some touch other than the primary triggered this.
+          return;
+        }
+
+      } else {
+        // Handling for non-touch mouse input events.
+        Browser.calculateMouseEvent(event);
+      }
 
       if (event.target != Module["canvas"] || !GLFW.active.cursorPosFunc) return;
 
@@ -490,11 +514,51 @@ var LibraryGLFW = {
     onMouseButtonChanged: (event, status) => {
       if (!GLFW.active) return;
 
-      Browser.calculateMouseEvent(event);
-
       if (event.target != Module["canvas"]) return;
 
-      var eventButton = GLFW.DOMToGLFWMouseButton(event);
+      // Is this from a touch event?
+      const isTouchType = event.type === 'touchstart' || event.type === 'touchend' || event.type === 'touchcancel';
+
+      // Only emulating mouse left-click behavior for touches.
+      let eventButton = 0;
+      if (isTouchType) {
+        // Handling for touch events that are being converted to mouse input.
+
+        // Don't let the browser fire a duplicate mouse event.
+        event.preventDefault();
+
+        let primaryChanged = false;
+
+        // Set a primary touch if we have none.
+        if (GLFW.primaryTouchId === null && event.type === 'touchstart' && event.targetTouches.length > 0) {
+          // Pick the first touch that started in the canvas and treat it as primary.
+          const chosenTouch = event.targetTouches[0];
+          GLFW.primaryTouchId = chosenTouch.identifier;
+
+          Browser.setMouseCoords(chosenTouch.pageX, chosenTouch.pageY);
+          Browser.setMouseCoords(chosenTouch.pageX, chosenTouch.pageY);
+          primaryChanged = true;
+        } else if (event.type === 'touchend' || event.type === 'touchcancel') {
+          // Clear the primary touch if it ended.
+          for (let i of event.changedTouches) {
+            // If our chosen primary touch ended, remove it.
+            if (GLFW.primaryTouchId === i.identifier) {
+              GLFW.primaryTouchId = null;
+              primaryChanged = true;
+            }
+          }
+        }
+
+        if (!primaryChanged) {
+          // Do not send mouse events if some touch other than the primary triggered this.
+          return;
+        }
+
+      } else {
+        // Handling for non-touch mouse input events.
+        Browser.calculateMouseEvent(event);
+        eventButton = GLFW.DOMToGLFWMouseButton(event);
+      }
 
       if (status == 1) { // GLFW_PRESS
         GLFW.active.buttons |= (1 << eventButton);
@@ -505,6 +569,7 @@ var LibraryGLFW = {
         GLFW.active.buttons &= ~(1 << eventButton);
       }
 
+      // Send mouse event to GLFW.
       if (GLFW.active.mouseButtonFunc) {
 #if USE_GLFW == 2
         {{{ makeDynCall('vii', 'GLFW.active.mouseButtonFunc') }}}(eventButton, status);
