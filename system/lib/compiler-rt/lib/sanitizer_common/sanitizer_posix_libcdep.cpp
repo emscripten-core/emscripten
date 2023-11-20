@@ -83,6 +83,7 @@ bool DontDumpShadowMemory(uptr addr, uptr length) {
 #endif  // MADV_DONTDUMP
 }
 
+#if !SANITIZER_EMSCRIPTEN
 static rlim_t getlim(int res) {
   rlimit rlim;
   CHECK_EQ(0, getrlimit(res, &rlim));
@@ -127,6 +128,7 @@ void SetAddressSpaceUnlimited() {
   setlim(RLIMIT_AS, RLIM_INFINITY);
   CHECK(AddressSpaceIsUnlimited());
 }
+#endif
 
 void Abort() {
 #if !SANITIZER_GO
