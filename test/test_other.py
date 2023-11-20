@@ -3047,6 +3047,12 @@ int f() {
     self.run_process(args + ['-sWASM_BIGINT'])
     self.assertFileContents(test_file('other/embind_tsgen_bigint.d.ts'), read_file('embind_tsgen_bigint.d.ts'))
 
+  def test_embind_tsgen_memory64(self):
+    # Check that when memory64 is enabled longs & unsigned longs are mapped to bigint in the generated TS bindings
+    self.run_process([EMCC, test_file('other/embind_tsgen_memory64.cpp'),
+                      '-lembind', '--embind-emit-tsd', 'embind_tsgen_memory64.d.ts', '-sMEMORY64'])
+    self.assertFileContents(test_file('other/embind_tsgen_memory64.d.ts'), read_file('embind_tsgen_memory64.d.ts'))
+
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, config.LLVM_ROOT)
