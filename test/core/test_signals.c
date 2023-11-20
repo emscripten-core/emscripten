@@ -144,11 +144,21 @@ void test_sigaction() {
   assert(action2.sa_handler == handler1);
 }
 
+void test_sigemptyset() {
+  sigset_t s = { 0 };
+  assert(sigisemptyset(&s));
+  sigaddset(&s, SIGUSR1);
+  assert(!sigisemptyset(&s));
+  sigemptyset(&s);
+  assert(sigisemptyset(&s));
+}
+
 int main() {
   test_sigaction();
   test_bad_signal();
   test_raise_sigusr1();
   test_sigpenging();
   test_sigwaitinfo();
+  test_sigemptyset();
   return 0;
 }
