@@ -4788,7 +4788,7 @@ Module["preRun"] = () => {
   })
   @requires_graphics_hardware
   def test_webgpu_basic_rendering(self, args):
-    self.btest_exit('webgpu_basic_rendering.cpp', args=['-sUSE_WEBGPU'] + args)
+    self.btest_exit('webgpu_basic_rendering.cpp', args=['-sUSE_WEBGPU', '-sEXPORTED_FUNCTIONS=_main,_malloc,_free'] + args)
 
   @requires_graphics_hardware
   @requires_threads
