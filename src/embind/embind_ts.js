@@ -210,6 +210,10 @@ var LibraryEmbind = {
         ['bool', 'boolean'],
         ['float', 'number'],
         ['double', 'number'],
+#if MEMORY64
+        ['long', 'bigint'],
+        ['unsigned long', 'bigint'],
+#endif
 #if WASM_BIGINT
         ['int64_t', 'bigint'],
         ['uint64_t', 'bigint'],
