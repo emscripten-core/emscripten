@@ -10050,7 +10050,7 @@ _d
   # Sockets and networking
 
   def test_inet(self):
-    self.do_runf('sha1.c', 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
+    self.do_runf('third_party/sha1.c', 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
     src = r'''
       #include <stdio.h>
       #include <arpa/inet.h>

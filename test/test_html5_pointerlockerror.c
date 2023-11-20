@@ -10,8 +10,7 @@
 #include <string.h>
 #include <emscripten/html5.h>
 
-void report_result(int result)
-{
+void report_result(int result) {
   if (result == 0) {
     printf("Test successful!\n");
   } else {
@@ -39,8 +38,7 @@ const char *emscripten_result_to_string(EMSCRIPTEN_RESULT result) {
 
 int gotClick = 0;
 
-EM_BOOL click_callback(int eventType, const EmscriptenMouseEvent *e, void *userData)
-{
+EM_BOOL click_callback(int eventType, const EmscriptenMouseEvent *e, void *userData) {
   if (e->screenX != 0 && e->screenY != 0 && e->clientX != 0 && e->clientY != 0 && e->canvasX != 0 && e->canvasY != 0 && e->targetX != 0 && e->targetY != 0)
   {
     if (eventType == EMSCRIPTEN_EVENT_CLICK && !gotClick) {
@@ -78,8 +76,7 @@ EM_BOOL pointerlockerror_callback(int eventType, const void *reserved, void *use
   return 0;
 }
 
-int main()
-{
+int main() {
   printf("'pointerlockerror' event test:\n");
   printf("Reject the pointer lock request after clicking on canvas.\n");
 

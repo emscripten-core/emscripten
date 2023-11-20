@@ -11,8 +11,7 @@
 
 #include <GLES2/gl2.h>
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     assert(display != EGL_NO_DISPLAY);
     assert(eglGetError() == EGL_SUCCESS);
