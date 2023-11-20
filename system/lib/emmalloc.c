@@ -802,7 +802,7 @@ static void *allocate_memory(size_t alignment, size_t size)
   // in a free list). As a compromise however it seems reasonable in practice as
   // a way to handle large aligned regions to avoid even worse waste.
   if (alignment > MALLOC_ALIGNMENT) {
-    numBytesToClaim += MALLOC_ALIGNMENT;
+    numBytesToClaim += alignment;
   }
   assert(numBytesToClaim > size); // 32-bit wraparound should not happen here, allocation size has been validated above!
   bool success = claim_more_memory(numBytesToClaim);
