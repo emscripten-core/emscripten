@@ -13,6 +13,8 @@ canvas.emscripten { border: 0px none; background-color: black; }
 #emscripten_logo {
   display: inline-block;
   margin: 0;
+  padding: 6px;
+  width: 265px;
 }
 
 .spinner {

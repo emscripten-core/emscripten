@@ -20,22 +20,21 @@
 #include <emscripten/html5.h>
 
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
-    std::stringstream ss(s);
-    std::string item;
-    while (std::getline(ss, item, delim)) {
-        elems.push_back(item);
-    }
-    return elems;
+  std::stringstream ss(s);
+  std::string item;
+  while (std::getline(ss, item, delim)) {
+    elems.push_back(item);
+  }
+  return elems;
 }
 
 std::vector<std::string> split(const std::string &s, char delim) {
-    std::vector<std::string> elems;
-    split(s, delim, elems);
-    return elems;
+  std::vector<std::string> elems;
+  split(s, delim, elems);
+  return elems;
 }
 
-GLint GetInt(GLenum param)
-{
+GLint GetInt(GLenum param) {
   GLint value;
   glGetIntegerv(param, &value);
   return value;
@@ -47,8 +46,7 @@ void final(void*) {
 
 EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context;
 
-void loop()
-{
+void loop() {
   EMSCRIPTEN_RESULT res;
   if (!context) {
     // new rendering frame started without a context
@@ -76,8 +74,7 @@ void loop()
   }
 }
 
-int main()
-{
+int main() {
   bool first = true;
   EmscriptenWebGLContextAttributes attrs;
   int depth = 0;
@@ -146,7 +143,7 @@ int main()
     printf("RGBA: %d%d%d%d, Depth: %d, Stencil: %d, Samples: %d\n",
       GetInt(GL_RED_BITS), GetInt(GL_GREEN_BITS), GetInt(GL_BLUE_BITS), GetInt(GL_ALPHA_BITS),
       numDepthBits, numStencilBits, numSamples);
-    
+
     if (!depth && stencil && numDepthBits && numStencilBits && EM_ASM_INT(navigator.userAgent.toLowerCase().indexOf('firefox')) > -1)
     {
       numDepthBits = 0;

@@ -222,7 +222,9 @@ _Noreturn void __pthread_exit(void* status) {
    exit(0);
 }
 
+weak_alias(__pthread_exit, emscripten_builtin_pthread_exit);
 weak_alias(__pthread_exit, pthread_exit);
+weak_alias(__pthread_exit, thrd_exit);
 
 int __pthread_detach(pthread_t t) {
   return 0;

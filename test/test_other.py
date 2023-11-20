@@ -589,7 +589,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.clear()
     err = self.expect_fail(cmd + ['-o', 'out.o'])
 
-    self.assertContained('cannot specify -o with -c/-S/-E/-M and multiple source files', err)
+    self.assertContained('clang: error: cannot specify -o when generating multiple output files', err)
     self.assertNotExists('twopart_main.o')
     self.assertNotExists('twopart_side.o')
     self.assertNotExists(test_file('twopart_main.o'))
@@ -5280,10 +5280,11 @@ int main() {
     self.assertEqual(os.listdir('.'), [])
     self.assertContained('hello_world.c', stdout)
 
-  def test_emit_llvm(self):
+  def test_emit_llvm_asm(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-S', '-emit-llvm'])
     self.assertIsLLVMAsm('hello_world.ll')
 
+  def test_emit_llvm(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-c', '-emit-llvm'])
     self.assertTrue(building.is_bitcode('hello_world.bc'))
 
@@ -7437,7 +7438,8 @@ Resolved: "/" => "/"
       for malloc, name in (
         ('dlmalloc', 'dlmalloc'),
         (None, 'default'),
-        ('emmalloc', 'emmalloc')
+        ('emmalloc', 'emmalloc'),
+        ('mimalloc', 'mimalloc'),
       ):
         print(malloc, name)
         args = opts[:]
@@ -7451,6 +7453,8 @@ Resolved: "/" => "/"
       self.assertEqual(sizes['dlmalloc'], sizes['default'])
       # emmalloc is much smaller
       self.assertLess(sizes['emmalloc'], sizes['dlmalloc'] - 5000)
+      # mimalloc is much larger
+      self.assertGreater(sizes['mimalloc'], sizes['dlmalloc'] - 25000)
     run([])
     run(['-O2'])
 
@@ -7492,6 +7496,23 @@ Resolved: "/" => "/"
     # not specifying maximum memory does not result in unsigned pointers, as the
     # default maximum memory is 2GB.
     self.assertEqual(less, none)
+
+  @parameterized({
+    # atm we only test mimalloc here, as we don't need extra coverage for
+    # dlmalloc/emmalloc, and this is the main test we have for mimalloc
+    'mimalloc':          ('mimalloc', ['-DWORKERS=1'],),
+    'mimalloc_pthreads': ('mimalloc', ['-DWORKERS=4', '-pthread'],),
+  })
+  def test_malloc_multithreading(self, allocator, args):
+    args = args + [
+      '-O2',
+      '-sEXIT_RUNTIME',
+      '-DTOTAL=10000',
+      '-sINITIAL_MEMORY=128mb',
+      '-sTOTAL_STACK=1mb',
+      f'-sMALLOC={allocator}',
+    ]
+    self.do_other_test('test_malloc_multithreading.cpp', emcc_args=args)
 
   @parameterized({
     '': ([], 'testbind.js'),
@@ -10033,7 +10054,7 @@ _d
   # Sockets and networking
 
   def test_inet(self):
-    self.do_runf('sha1.c', 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
+    self.do_runf('third_party/sha1.c', 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
     src = r'''
       #include <stdio.h>
       #include <arpa/inet.h>
@@ -11418,7 +11439,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
   def test_linker_input_unused(self):
     self.run_process([EMXX, '-c', test_file('hello_world.cpp')])
     err = self.run_process([EMCC, 'hello_world.o', '-c', '-o', 'out.o'], stderr=PIPE).stderr
-    self.assertContained("warning: hello_world.o: linker input file unused because linking not done [-Wunused-command-line-argument", err)
+    self.assertContained("clang: warning: hello_world.o: 'linker' input unused [-Wunused-command-line-argument]", err)
     # In this case the compiler does not produce any output file.
     self.assertNotExists('out.o')
 
@@ -11724,29 +11745,16 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     create_file('foo.h', '#include <string.h>')
     create_file('cxxfoo.h', '#include <string>')
 
-    # The default bahviour is to default to C++, which means the C++ header can be compiled even
-    # with emcc.
-    self.run_process([EMCC, '-c', 'cxxfoo.h'])
+    # Compiling a C++ header using `em++` works.
+    self.run_process([EMXX, '-c', 'cxxfoo.h'])
 
-    # But this means that C flags can't be passed (since we are assuming C++)
-    err = self.expect_fail([EMCC, '-std=gnu11', '-c', 'foo.h'])
-    self.assertContained("'-std=gnu11' not allowed with 'C++'", err)
-
-    # If we disable DEFAULT_TO_CXX the emcc can be used with C-only flags (e.g. -std=gnu11),
-    self.run_process([EMCC, '-std=gnu11', '-c', 'foo.h', '-sDEFAULT_TO_CXX=0'])
-
-    # But can't be used to build C++ headers
-    err = self.expect_fail([EMCC, '-c', 'cxxfoo.h', '-sDEFAULT_TO_CXX=0'])
-    self.assertContained("'string' file not found", err)
-
-    # Check that STRICT also disables DEFAULT_TO_CXX
+    # Compiling the same header using `emcc` fails, just like `clang`
     err = self.expect_fail([EMCC, '-c', 'cxxfoo.h', '-sSTRICT'])
     self.assertContained("'string' file not found", err)
 
-    # Using em++ should alwasy work for C++ headers
-    self.run_process([EMXX, '-c', 'cxxfoo.h', '-sDEFAULT_TO_CXX=0'])
-    # Or using emcc with `-x c++`
-    self.run_process([EMCC, '-c', 'cxxfoo.h', '-sDEFAULT_TO_CXX=0', '-x', 'c++-header'])
+    # But it works if we pass and explicit language mode.
+    self.run_process([EMCC, '-c', 'cxxfoo.h', '-x', 'c++-header'])
+    self.run_process([EMCC, '-c', 'cxxfoo.h', '-x', 'c++'])
 
   @parameterized({
     '': ([],),
@@ -13006,7 +13014,7 @@ Module.postRun = () => {{
   })
   @crossplatform
   def test_es5_transpile(self, args):
-    self.emcc_args += args
+    self.emcc_args += ['-Wno-transpile'] + args
 
     # Create a library file that uses the following ES6 features
     # - let/const
@@ -13022,6 +13030,11 @@ Module.postRun = () => {{
         let obj = Object.assign({}, {prop:1});
         err('prop: ' + obj.prop);
 
+        // for .. of
+        for (var elem of [42, 43]) {
+          err('array elem: ' + elem);
+        }
+
         // arrow funcs + const
         const bar = () => 2;
         err('bar: ' + bar());
@@ -13031,14 +13044,14 @@ Module.postRun = () => {{
         var obj2 = {
           [key]: 42,
         };
-        err('value: ' + obj2[key]);
+        err('computed prop: ' + obj2[key]);
 
         // Method syntax
         var obj3 = {
           myMethod() { return 43 },
         };
         global['foo'] = obj3;
-        err('value2: ' + obj3.myMethod());
+        err('myMethod: ' + obj3.myMethod());
 
         // Nullish coalescing
         var definitely = global['maybe'] ?? {};
@@ -13058,6 +13071,15 @@ Module.postRun = () => {{
       }
     });
     ''')
+    expected = '''\
+prop: 1
+array elem: 42
+array elem: 43
+bar: 2
+computed prop: 42
+myMethod: 43
+'''
+
     create_file('test.c', 'extern void foo(); int main() { foo(); }')
     self.emcc_args += ['--js-library', 'es6_library.js']
     self.uses_es6 = True
@@ -13089,7 +13111,7 @@ Module.postRun = () => {{
     # Check that under normal circumstances none of these features get
     # removed / transpiled.
     print('base case')
-    self.do_runf('test.c', 'prop: 1\nbar: 2\n')
+    self.do_runf('test.c', expected)
     check_for_es6('test.js', True)
 
     # If we select and older browser than closure will kick in by default
@@ -13097,18 +13119,18 @@ Module.postRun = () => {{
     print('with old browser')
     self.emcc_args.remove('-Werror')
     self.set_setting('MIN_CHROME_VERSION', '10')
-    self.do_runf('test.c', 'prop: 1\nbar: 2\n', output_basename='test_old')
+    self.do_runf('test.c', expected, output_basename='test_old')
     check_for_es6('test_old.js', False)
 
     # If we add `--closure=0` that transpiler (closure) is not run at all
     print('with old browser + --closure=0')
-    self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=0'], output_basename='test_no_closure')
+    self.do_runf('test.c', expected, emcc_args=['--closure=0'], output_basename='test_no_closure')
     check_for_es6('test_no_closure.js', True)
 
     # If we use `--closure=1` closure will run in full optimization mode
     # and also transpile to ES5
     print('with old browser + --closure=1')
-    self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=1'], output_basename='test_closure')
+    self.do_runf('test.c', expected, emcc_args=['--closure=1'], output_basename='test_closure')
     check_for_es6('test_closure.js', False)
 
   def test_gmtime_noleak(self):
@@ -14175,3 +14197,8 @@ addToLibrary({
     create_file('a.cpp', '#include <emscripten/bind.h>')
     create_file('b.cpp', '#include <emscripten/bind.h>')
     self.run_process([EMXX, '-std=c++23', '-lembind', 'a.cpp', 'b.cpp'])
+
+  def test_no_pthread(self):
+    self.do_runf('hello_world.c', emcc_args=['-pthread', '-no-pthread'])
+    self.assertExists('hello_world.js')
+    self.assertNotExists('hello_world.worker.js')

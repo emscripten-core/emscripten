@@ -33,7 +33,7 @@ void test(const char* file) {
   char buf[BUFSIZE];
   fgets(buf, BUFSIZE, f);
   buf[BUFSIZE-1] = 0;
-  for(int i = 0; i < BUFSIZE; ++i) {
+  for (int i = 0; i < BUFSIZE; ++i) {
     buf[i] = tolower(buf[i]);
   }
   assert(strstr(buf, "emscripten"));

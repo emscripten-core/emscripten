@@ -5,6 +5,7 @@
 
 from .toolchain_profiler import ToolchainProfiler
 
+from enum import Enum, unique, auto
 from functools import wraps
 from subprocess import PIPE
 import atexit
@@ -411,9 +412,10 @@ def set_version_globals():
 
 
 def generate_sanity():
-  return f'{EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}|{get_clang_version()}'
+  return f'{EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}\n'
 
 
+@memoize
 def perform_sanity_checks():
   # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
   check_node_version()
@@ -484,14 +486,10 @@ def check_sanity(force=False):
       pass
     if sanity_data == expected:
       logger.debug(f'sanity file up-to-date: {sanity_file}')
-      # Even if the sanity file is up-to-date we still need to at least
-      # check the llvm version. This comes at no extra performance cost
-      # since the version was already extracted and cached by the
-      # generate_sanity() call above.
+      # Even if the sanity file is up-to-date we still run the checks
+      # when force is set.
       if force:
         perform_sanity_checks()
-      else:
-        check_llvm_version()
       return True # all is well
     return False
 
@@ -576,6 +574,10 @@ def get_emscripten_temp_dir():
       # this global var might change later
       prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR)
   return EMSCRIPTEN_TEMP_DIR
+
+
+def in_temp(name):
+  return os.path.join(get_emscripten_temp_dir(), os.path.basename(name))
 
 
 def get_canonical_temp_dir(temp_dir):
@@ -702,6 +704,16 @@ def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
 
 
+def get_file_suffix(filename):
+  """Parses the essential suffix of a filename, discarding Unix-style version
+  numbers in the name. For example for 'libz.so.1.2.8' returns '.so'"""
+  while filename:
+    filename, suffix = os.path.splitext(filename)
+    if not suffix[1:].isdigit():
+      return suffix
+  return ''
+
+
 def make_writable(filename):
   assert os.path.isfile(filename)
   old_mode = stat.S_IMODE(os.stat(filename).st_mode)
@@ -774,6 +786,18 @@ def init():
   setup_temp_dirs()
 
 
+@unique
+class OFormat(Enum):
+  # Output a relocatable object file.  We use this
+  # today for `-r` and `-shared`.
+  OBJECT = auto()
+  WASM = auto()
+  JS = auto()
+  MJS = auto()
+  HTML = auto()
+  BARE = auto()
+
+
 # ============================================================================
 # End declarations.
 # ============================================================================
@@ -802,5 +826,11 @@ EMCONFIGURE = bat_suffix(path_from_root('emconfigure'))
 EM_NM = bat_suffix(path_from_root('emnm'))
 FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
 WASM_SOURCEMAP = bat_suffix(path_from_root('tools/wasm-sourcemap'))
+# Windows .dll suffix is not included in this list, since those are never
+# linked to directly on the command line.
+DYNAMICLIB_ENDINGS = ['.dylib', '.so']
+STATICLIB_ENDINGS = ['.a']
+
+run_via_emxx = False
 
 init()

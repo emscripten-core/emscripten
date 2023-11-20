@@ -156,7 +156,9 @@ addToLibrary({
               } finally {
                 if (!ABORT) {
                   var y = Asyncify.exportCallStack.pop();
+#if ASSERTIONS
                   assert(y === x);
+#endif
 #if ASYNCIFY_DEBUG >= 2
                   dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length)} finally ${x}`);
 #endif

@@ -12,33 +12,28 @@
 #include <emscripten.h>
 #include <emscripten/html5.h>
 
-void report_result(int result)
-{
+void report_result(int result) {
   printf("Test finished with result %d\n", result);
   emscripten_force_exit(result);
 }
 
-void finish(void*)
-{
+void finish(void*) {
   report_result(0);
 }
 
-EM_BOOL context_lost(int eventType, const void *reserved, void *userData)
-{
+EM_BOOL context_lost(int eventType, const void *reserved, void *userData) {
   printf("C code received a signal for WebGL context lost! This should not happen!\n");
   report_result(1);
   return 0;
 }
 
-EM_BOOL context_restored(int eventType, const void *reserved, void *userData)
-{
+EM_BOOL context_restored(int eventType, const void *reserved, void *userData) {
   printf("C code received a signal for WebGL context restored! This should not happen!\n");
   report_result(1);
   return 0;
 }
 
-int main()
-{
+int main() {
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#canvas", &attrs);
