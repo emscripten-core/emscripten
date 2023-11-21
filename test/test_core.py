@@ -7089,6 +7089,8 @@ void* operator new(size_t size) {
   @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test
   def test_poppler(self):
+    # See https://github.com/emscripten-core/emscripten/issues/20757
+    self.emcc_args.append('-Wno-deprecated-declarations')
     poppler = self.get_poppler_library()
     pdf_data = read_binary(test_file('poppler/paper.pdf'))
     create_file('paper.pdf.js', str(list(bytearray(pdf_data))))
@@ -7647,6 +7649,9 @@ void* operator new(size_t size) {
   })
   def test_embind(self, args):
     self.maybe_closure()
+    # This test explicitly creates std::string from unsigned char pointers
+    # which is deprecated in upstream LLVM.
+    self.emcc_args.append('-Wno-deprecated-declarations')
     create_file('test_embind.cpp', r'''
       #include <stdio.h>
       #include <emscripten/val.h>
