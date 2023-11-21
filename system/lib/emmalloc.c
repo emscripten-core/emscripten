@@ -486,6 +486,12 @@ static bool claim_more_memory(size_t numBytes)
   validate_memory_regions();
 #endif
 
+  // Make sure we send sbrk requests of aligned sizes. If we do not do that then
+  // it will not return contiguous regions, which leads to use creating more
+  // root regions below, inefficiently. (Note that we assume our alignment is
+  // identical to sbrk's, see the assumptions at the start of this file.)
+  numBytes = (size_t)ALIGN_UP(numBytes, MALLOC_ALIGNMENT);
+
   // Claim memory via sbrk
   uint8_t *startPtr = (uint8_t*)sbrk(numBytes);
   if ((intptr_t)startPtr == -1)
@@ -510,6 +516,9 @@ static bool claim_more_memory(size_t numBytes)
   uint8_t *previousSbrkEndAddress = listOfAllRegions ? listOfAllRegions->endPtr : 0;
   if (startPtr == previousSbrkEndAddress)
   {
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(err('claim_more_memory: expanding previous'));
+#endif
     Region *prevEndSentinel = prev_region((Region*)startPtr);
     assert(debug_region_is_consistent(prevEndSentinel));
     assert(region_is_in_use(prevEndSentinel));
@@ -536,6 +545,9 @@ static bool claim_more_memory(size_t numBytes)
   else
   {
     // Create a root region at the start of the heap block
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(err('claim_more_memory: creating new root region'));
+#endif
     create_used_region(startPtr, sizeof(Region));
 
     // Dynamic heap start region:
@@ -583,6 +595,11 @@ void emmalloc_blank_slate_from_orbit()
 static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
 {
   ASSERT_MALLOC_IS_ACQUIRED();
+
+#ifdef EMMALLOC_VERBOSE
+  MAIN_THREAD_ASYNC_EM_ASM(out('waka attempt_allocate(freeRegion=' + ptrToString($0) + ',alignment=' + Number($1) + ',size=' + Number($2) + ')'), freeRegion, alignment, size);
+#endif
+
   assert(freeRegion);
   // Look at the next potential free region to allocate into.
   // First, we should check if the free region has enough of payload bytes contained
