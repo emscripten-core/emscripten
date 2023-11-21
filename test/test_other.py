@@ -80,7 +80,18 @@ def uses_canonical_tmp(func):
   return decorated
 
 
+def with_both_compilers(f):
+  assert callable(f)
+
+  f._parameterize = {'': (EMCC,),
+                     'emxx': (EMXX,)}
+  return f
+
+
 def also_with_wasmfs(f):
+  assert callable(f)
+
+  @wraps(f)
   def metafunc(self, wasmfs):
     if wasmfs:
       self.set_setting('WASMFS')
@@ -107,6 +118,9 @@ def wasmfs_all_backends(f):
 
 
 def also_with_wasmfs_all_backends(f):
+  assert callable(f)
+
+  @wraps(f)
   def metafunc(self, backend):
     if backend:
       self.set_setting('WASMFS')
@@ -243,20 +257,20 @@ class other(RunnerCore):
   # This needs to work because many tools run `emcc -v` internally and it should
   # always work even if the user has `EMCC_CFLAGS` set.
   @with_env_modify({'EMCC_CFLAGS': '-should -be -ignored'})
+  @with_both_compilers
   @crossplatform
-  def test_emcc_v(self):
-    for compiler in [EMCC, EMXX]:
-      # -v, without input files
-      proc = self.run_process([compiler, '-v'], stdout=PIPE, stderr=PIPE)
-      self.assertEqual(proc.stdout, '')
-      # assert that the emcc message comes first.  We had a bug where the sub-process output
-      # from clang would be flushed to stderr first.
-      self.assertContained('emcc (Emscripten gcc/clang-like replacement', proc.stderr)
-      self.assertTrue(proc.stderr.startswith('emcc (Emscripten gcc/clang-like replacement'))
-      self.assertContained('clang version ', proc.stderr)
-      self.assertContained('GNU', proc.stderr)
-      self.assertContained('Target: wasm32-unknown-emscripten', proc.stderr)
-      self.assertNotContained('this is dangerous', proc.stderr)
+  def test_emcc_v(self, compiler):
+    # -v, without input files
+    proc = self.run_process([compiler, '-v'], stdout=PIPE, stderr=PIPE)
+    self.assertEqual(proc.stdout, '')
+    # assert that the emcc message comes first.  We had a bug where the sub-process output
+    # from clang would be flushed to stderr first.
+    self.assertContained('emcc (Emscripten gcc/clang-like replacement', proc.stderr)
+    self.assertTrue(proc.stderr.startswith('emcc (Emscripten gcc/clang-like replacement'))
+    self.assertContained('clang version ', proc.stderr)
+    self.assertContained('GNU', proc.stderr)
+    self.assertContained('Target: wasm32-unknown-emscripten', proc.stderr)
+    self.assertNotContained('this is dangerous', proc.stderr)
 
   def test_log_subcommands(self):
     # `-v` when combined with other arguments will trace the subcommands
@@ -281,16 +295,16 @@ class other(RunnerCore):
     proc = self.run_process([EMCC, '--check'], stdout=PIPE, stderr=PIPE)
     self.assertContained('Running sanity checks', proc.stderr)
 
-  def test_emcc_generate_config(self):
+  @with_both_compilers
+  def test_emcc_generate_config(self, compiler):
     config_path = './emscripten_config'
     with env_modify({'EM_CONFIG': config_path}):
-      for compiler in [EMCC, EMXX]:
-        self.assertNotExists(config_path)
-        self.run_process([compiler, '--generate-config'])
-        self.assertExists(config_path)
-        config_contents = read_file(config_path)
-        self.assertContained('LLVM_ROOT', config_contents)
-        os.remove(config_path)
+      self.assertNotExists(config_path)
+      self.run_process([compiler, '--generate-config'])
+      self.assertExists(config_path)
+      config_contents = read_file(config_path)
+      self.assertContained('LLVM_ROOT', config_contents)
+      os.remove(config_path)
 
   @parameterized({
     '': ([],),
@@ -385,7 +399,8 @@ class other(RunnerCore):
 
   @parameterized({
     'c': [EMCC, '.c'],
-    'cxx': [EMXX, '.cpp']})
+    'cxx': [EMXX, '.cpp'],
+  })
   def test_emcc_basics(self, compiler, suffix):
     # emcc src.cpp ==> writes a.out.js and a.out.wasm
     self.run_process([compiler, test_file('hello_world' + suffix)])
@@ -1050,23 +1065,23 @@ f.close()
     err = self.run_process([EMXX, test_file('hello_world.cpp'), '-v'], stderr=PIPE).stderr
     verify_includes(err)
 
-  def test_failure_error_code(self):
-    for compiler in [EMCC, EMXX]:
-      # Test that if one file is missing from the build, then emcc shouldn't succeed, and shouldn't produce an output file.
-      self.expect_fail([compiler, test_file('hello_world.c'), 'this_file_is_missing.c', '-o', 'out.js'])
-      self.assertFalse(os.path.exists('out.js'))
+  @with_both_compilers
+  def test_failure_error_code(self, compiler):
+    # Test that if one file is missing from the build, then emcc shouldn't succeed, and shouldn't produce an output file.
+    self.expect_fail([compiler, test_file('hello_world.c'), 'this_file_is_missing.c', '-o', 'out.js'])
+    self.assertFalse(os.path.exists('out.js'))
 
-  def test_failure_modularize_and_catch_rejection(self):
-    for compiler in [EMCC, EMXX]:
-      # Test that if sMODULARIZE and sNODEJS_CATCH_REJECTION are both enabled, then emcc shouldn't succeed, and shouldn't produce an output file.
-      self.expect_fail([compiler, test_file('hello_world.c'), '-sMODULARIZE', '-sNODEJS_CATCH_REJECTION', '-o', 'out.js'])
-      self.assertFalse(os.path.exists('out.js'))
+  @with_both_compilers
+  def test_failure_modularize_and_catch_rejection(self, compiler):
+    # Test that if sMODULARIZE and sNODEJS_CATCH_REJECTION are both enabled, then emcc shouldn't succeed, and shouldn't produce an output file.
+    self.expect_fail([compiler, test_file('hello_world.c'), '-sMODULARIZE', '-sNODEJS_CATCH_REJECTION', '-o', 'out.js'])
+    self.assertFalse(os.path.exists('out.js'))
 
-  def test_failure_modularize_and_catch_exit(self):
-    for compiler in [EMCC, EMXX]:
-      # Test that if sMODULARIZE and sNODEJS_CATCH_EXIT are both enabled, then emcc shouldn't succeed, and shouldn't produce an output file.
-      self.expect_fail([compiler, test_file('hello_world.c'), '-sMODULARIZE', '-sNODEJS_CATCH_EXIT', '-o', 'out.js'])
-      self.assertFalse(os.path.exists('out.js'))
+  @with_both_compilers
+  def test_failure_modularize_and_catch_exit(self, compiler):
+    # Test that if sMODULARIZE and sNODEJS_CATCH_EXIT are both enabled, then emcc shouldn't succeed, and shouldn't produce an output file.
+    self.expect_fail([compiler, test_file('hello_world.c'), '-sMODULARIZE', '-sNODEJS_CATCH_EXIT', '-o', 'out.js'])
+    self.assertFalse(os.path.exists('out.js'))
 
   def test_use_cxx(self):
     create_file('empty_file', ' ')
@@ -1075,18 +1090,18 @@ f.close()
     dash_xcpp = self.run_process([EMCC, '-v', '-xc++', 'empty_file'], stderr=PIPE).stderr
     self.assertContained('-x c++', dash_xcpp)
 
-  def test_cxx11(self):
+  @with_both_compilers
+  def test_cxx11(self, compiler):
     for std in ['-std=c++11', '--std=c++11']:
-      for compiler in [EMCC, EMXX]:
-        self.run_process([compiler, std, test_file('hello_cxx11.cpp')])
+      self.run_process([compiler, std, test_file('hello_cxx11.cpp')])
 
   # Regression test for issue #4522: Incorrect CC vs CXX detection
-  def test_incorrect_c_detection(self):
+  @with_both_compilers
+  def test_incorrect_c_detection(self, compiler):
     # This auto-detection only works for the compile phase.
     # For linking you need to use `em++` or pass `-x c++`
     create_file('test.c', 'foo\n')
-    for compiler in [EMCC, EMXX]:
-      self.run_process([compiler, '-c', '-lembind', '--embed-file', 'test.c', test_file('hello_world.cpp')])
+    self.run_process([compiler, '-c', '-lembind', '--embed-file', 'test.c', test_file('hello_world.cpp')])
 
   def test_odd_suffixes(self):
     for suffix in ['CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC']:
