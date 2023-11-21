@@ -597,7 +597,7 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
   ASSERT_MALLOC_IS_ACQUIRED();
 
 #ifdef EMMALLOC_VERBOSE
-  MAIN_THREAD_ASYNC_EM_ASM(out('waka attempt_allocate(freeRegion=' + ptrToString($0) + ',alignment=' + Number($1) + ',size=' + Number($2) + ')'), freeRegion, alignment, size);
+  MAIN_THREAD_ASYNC_EM_ASM(out('attempt_allocate(freeRegion=' + ptrToString($0) + ',alignment=' + Number($1) + ',size=' + Number($2) + ')'), freeRegion, alignment, size);
 #endif
 
   assert(freeRegion);
