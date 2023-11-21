@@ -2923,6 +2923,9 @@ int f() {
   })
   def test_embind(self, *extra_args):
     self.emcc_args += [
+      # This test explicitly creates std::string from unsigned char pointers
+      # which is deprecated in upstream LLVM.
+      '-Wno-deprecated-declarations',
       '-lembind',
       '-sRETAIN_COMPILER_SETTINGS',
       '-sEXPORTED_RUNTIME_METHODS=getCompilerSetting',
