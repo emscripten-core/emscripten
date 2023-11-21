@@ -4,13 +4,7 @@
 
 #define __BYTE_ORDER __LITTLE_ENDIAN
 
-// Can't use __LONG_MAX__ here since musl's libs does pre-processor comparison
-// with 0x7fffffffL directly.
-#if __LP64__
-#define LONG_MAX  0x7fffffffffffffffL
-#else
-#define LONG_MAX  0x7fffffffL
-#endif
+#define LONG_MAX  __LONG_MAX__
 
 #define _Addr __PTRDIFF_TYPE__
 #define _Int64 __INT64_TYPE__
