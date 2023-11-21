@@ -6,41 +6,36 @@ int func2Executed = 0;
 
 EM_BOOL func1(double time, void *userData);
 
-EM_BOOL func2(double time, void *userData)
-{
-	assert((long)userData == 2);
-	assert(time > 0);
-	++func2Executed;
+EM_BOOL func2(double time, void *userData) {
+  assert((long)userData == 2);
+  assert(time > 0);
+  ++func2Executed;
 
-	if (func2Executed == 1)
-	{
-		// Test canceling an animation frame: register rAF() but then cancel it immediately
-		long id = emscripten_request_animation_frame(func1, (void*)2);
-		emscripten_cancel_animation_frame(id);
+  if (func2Executed == 1) {
+    // Test canceling an animation frame: register rAF() but then cancel it immediately
+    long id = emscripten_request_animation_frame(func1, (void*)2);
+    emscripten_cancel_animation_frame(id);
 
-		emscripten_request_animation_frame(func2, (void*)2);
-	}
-	if (func2Executed == 2)
-	{
-		assert(func1Executed == 1);
-	}
-	return 0;
+    emscripten_request_animation_frame(func2, (void*)2);
+  }
+  if (func2Executed == 2) {
+    assert(func1Executed == 1);
+  }
+  return 0;
 }
 
-EM_BOOL func1(double time, void *userData)
-{
-	assert((long)userData == 1);
-	assert(time > 0);
-	++func1Executed;
+EM_BOOL func1(double time, void *userData) {
+  assert((long)userData == 1);
+  assert(time > 0);
+  ++func1Executed;
 
-	assert(func1Executed == 1);
+  assert(func1Executed == 1);
 
-	emscripten_request_animation_frame(func2, (void*)2);
+  emscripten_request_animation_frame(func2, (void*)2);
 
-	return 0;
+  return 0;
 }
 
-int main()
-{
-	emscripten_request_animation_frame(func1, (void*)1);
+int main() {
+  emscripten_request_animation_frame(func1, (void*)1);
 }

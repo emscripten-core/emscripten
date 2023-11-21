@@ -513,7 +513,8 @@ def closure_transpile(filename):
   user_args = []
   closure_cmd, env = get_closure_compiler_and_env(user_args)
   closure_cmd += ['--language_out', 'ES5']
-  closure_cmd += ['--compilation_level', 'WHITESPACE_ONLY']
+  closure_cmd += ['--compilation_level', 'SIMPLE_OPTIMIZATIONS']
+  closure_cmd += ['--formatting', 'PRETTY_PRINT']
   return run_closure_cmd(closure_cmd, filename, env)
 
 

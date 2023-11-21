@@ -16,8 +16,7 @@
 
 EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context;
 
-int main()
-{
+int main() {
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);
   attrs.enableExtensionsByDefault = true;
@@ -58,8 +57,7 @@ int main()
   printf("GL_IMPLEMENTATION_COLOR_READ_FORMAT for FBO with float renderbuffer: 0x%x\n", format);
 
   // Try glReadPixels() in that format.
-  if (format == GL_RGBA && type == GL_UNSIGNED_BYTE)
-  {
+  if (format == GL_RGBA && type == GL_UNSIGNED_BYTE) {
     printf("Oops, WebGL implementation returns an implementation defined color type(==GL_UNSIGNED_BYTE) & format(==GL_RGBA) that should "
            "not be possible to be used to sample WebGL floating point color renderbuffer according to WEBGL_color_buffer_float.\n");
   }

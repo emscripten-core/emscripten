@@ -4,6 +4,8 @@
 
 #define __BYTE_ORDER __LITTLE_ENDIAN
 
+#define LONG_MAX  __LONG_MAX__
+
 #define _Addr __PTRDIFF_TYPE__
 #define _Int64 __INT64_TYPE__
 #define _Reg __PTRDIFF_TYPE__

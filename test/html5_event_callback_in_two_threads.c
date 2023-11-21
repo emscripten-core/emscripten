@@ -14,8 +14,7 @@ volatile int saw_keydown_event_on_enter_key_on_application_thread = 0;
 volatile int saw_keydown_event_on_enter_key_on_main_runtime_thread = 0;
 volatile int saw_keypress_event_on_enter_key = 0;
 
-void ReportResult(int code)
-{
+void ReportResult(int code) {
   printf("Test finished with code: %d\n", code);
 #ifdef REPORT_RESULT
   REPORT_RESULT(code);
@@ -23,18 +22,18 @@ void ReportResult(int code)
   exit(code);
 }
 
-EM_BOOL keydown_callback_on_application_thread(int eventType, const EmscriptenKeyboardEvent *e, void *userData)
-{
+EM_BOOL keydown_callback_on_application_thread(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
   int dom_pk_code = emscripten_compute_dom_pk_code(e->code);
   printf("keydown_callback_on_application_thread received on pthread: %p, application_thread_id: %p, dom_pk_code: %s\n", pthread_self(), application_thread_id, emscripten_dom_pk_code_to_string(dom_pk_code));
   assert(pthread_self() == application_thread_id);
 
-  if (dom_pk_code == DOM_PK_ENTER) saw_keydown_event_on_enter_key_on_application_thread = 1;
+  if (dom_pk_code == DOM_PK_ENTER) {
+    saw_keydown_event_on_enter_key_on_application_thread = 1;
+  }
   return 0;
 }
 
-EM_BOOL keydown_callback_on_main_runtime_thread(int eventType, const EmscriptenKeyboardEvent *e, void *userData)
-{
+EM_BOOL keydown_callback_on_main_runtime_thread(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
   int dom_pk_code = emscripten_compute_dom_pk_code(e->code);
   printf("keydown_callback_on_main_runtime_thread received on pthread: %p, main_runtime_thread_id; %p, dom_pk_code: %s\n", pthread_self(), main_runtime_thread_id, emscripten_dom_pk_code_to_string(dom_pk_code));
   assert(pthread_self() == main_runtime_thread_id);
@@ -47,20 +46,21 @@ EM_BOOL keydown_callback_on_main_runtime_thread(int eventType, const EmscriptenK
   keydown_callback_on_application_thread(eventType, e, userData);
 #endif
 
-  if (dom_pk_code == DOM_PK_ENTER) saw_keydown_event_on_enter_key_on_main_runtime_thread = 1;
+  if (dom_pk_code == DOM_PK_ENTER) {
+    saw_keydown_event_on_enter_key_on_main_runtime_thread = 1;
+  }
 
-  return dom_pk_code == DOM_PK_ENTER; // Suppress default event handling for the enter/return key so that it should not generate the keypress event.
+  // Suppress default event handling for the enter/return key so that it should
+  // not generate the keypress event.
+  return dom_pk_code == DOM_PK_ENTER;
 }
 
-
-EM_BOOL keypress_callback_on_application_thread(int eventType, const EmscriptenKeyboardEvent *e, void *userData)
-{
+EM_BOOL keypress_callback_on_application_thread(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
   int dom_pk_code = emscripten_compute_dom_pk_code(e->code);
   printf("keypress_callback_on_application_thread received on pthread: %p, application_thread_id; %p, dom_pk_code: %s\n", pthread_self(), application_thread_id, emscripten_dom_pk_code_to_string(dom_pk_code));
   assert(pthread_self() == application_thread_id);
 
-  if (dom_pk_code == DOM_PK_ENTER)
-  {
+  if (dom_pk_code == DOM_PK_ENTER) {
     saw_keypress_event_on_enter_key = 1;
     printf("Test failed! KeyPress event came through even though it was suppressed in KeyDown handler!\n");
     ReportResult(12345); // FAIL
@@ -68,26 +68,21 @@ EM_BOOL keypress_callback_on_application_thread(int eventType, const EmscriptenK
   return 0;
 }
 
-EM_BOOL keyup_callback_on_application_thread(int eventType, const EmscriptenKeyboardEvent *e, void *userData)
-{
+EM_BOOL keyup_callback_on_application_thread(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
   int dom_pk_code = emscripten_compute_dom_pk_code(e->code);
   printf("keyup_callback_on_application_thread received on pthread: %p, application_thread_id; %p, dom_pk_code: %s\n", pthread_self(), application_thread_id, emscripten_dom_pk_code_to_string(dom_pk_code));
   assert(pthread_self() == application_thread_id);
 
-  if (dom_pk_code == DOM_PK_ENTER)
-  {
-    if (!saw_keydown_event_on_enter_key_on_application_thread)
-    {
+  if (dom_pk_code == DOM_PK_ENTER) {
+    if (!saw_keydown_event_on_enter_key_on_application_thread) {
       printf("Test failed! KeyUp event came through, but a KeyDown event should have first been processed on the application thread!\n");
       ReportResult(12346); // FAIL
     }
-    if (!saw_keydown_event_on_enter_key_on_main_runtime_thread)
-    {
+    if (!saw_keydown_event_on_enter_key_on_main_runtime_thread) {
       printf("Test failed! KeyUp event came through, but a KeyDown event should have first been processed on the main runtime thread!\n");
       ReportResult(12347); // FAIL
     }
-    if (saw_keypress_event_on_enter_key)
-    {
+    if (saw_keypress_event_on_enter_key) {
       printf("Test failed! KeyUp event came through, but a KeyPress event was first seen, suppressing it did not work!\n");
       ReportResult(12348); // FAIL
     }
@@ -97,8 +92,7 @@ EM_BOOL keyup_callback_on_application_thread(int eventType, const EmscriptenKeyb
   return 0;
 }
 
-int main()
-{
+int main() {
   main_runtime_thread_id = emscripten_main_runtime_thread_id();
   assert(main_runtime_thread_id);
   application_thread_id = pthread_self();

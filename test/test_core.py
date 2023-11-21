@@ -561,7 +561,7 @@ class TestCoreBase(RunnerCore):
     self.do_core_test('test_bswap64.cpp')
 
   def test_sha1(self):
-    self.do_runf('sha1.c', 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
+    self.do_runf('third_party/sha1.c', 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
 
   def test_core_types(self):
     self.do_runf('core/test_core_types.c')
@@ -6611,7 +6611,7 @@ int main(void) {
     # TODO: Should we remove this test?
     self.skipTest('Relies on double value rounding, extremely sensitive')
 
-    src = read_file(test_file('raytrace.cpp')).replace('double', 'float')
+    src = read_file(test_file('third_party/raytrace.cpp')).replace('double', 'float')
     output = read_file(test_file('raytrace.ppm'))
     self.do_run(src, output, args=['3', '16'])
 
@@ -6664,7 +6664,6 @@ int main(void) {
   @no_lsan('depends on the specifics of memory size, which for lsan we are forced to increase')
   @no_wasmfs('wasmfs does some malloc/free during startup, fragmenting the heap, leading to differences later')
   def test_dlmalloc(self):
-    # needed with typed arrays
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY', '128mb')
 
@@ -7090,6 +7089,8 @@ void* operator new(size_t size) {
   @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test
   def test_poppler(self):
+    # See https://github.com/emscripten-core/emscripten/issues/20757
+    self.emcc_args.append('-Wno-deprecated-declarations')
     poppler = self.get_poppler_library()
     pdf_data = read_binary(test_file('poppler/paper.pdf'))
     create_file('paper.pdf.js', str(list(bytearray(pdf_data))))
@@ -7648,6 +7649,9 @@ void* operator new(size_t size) {
   })
   def test_embind(self, args):
     self.maybe_closure()
+    # This test explicitly creates std::string from unsigned char pointers
+    # which is deprecated in upstream LLVM.
+    self.emcc_args.append('-Wno-deprecated-declarations')
     create_file('test_embind.cpp', r'''
       #include <stdio.h>
       #include <emscripten/val.h>
@@ -8311,6 +8315,7 @@ void* operator new(size_t size) {
   # longjmp or exceptions.
   def test_asyncify_longjmp(self):
     self.set_setting('ASYNCIFY')
+    self.set_setting('STRICT')
     self.do_core_test('test_asyncify_longjmp.c')
 
   # Test that a main with arguments is automatically asyncified.

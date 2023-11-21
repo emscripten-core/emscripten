@@ -520,6 +520,7 @@ jobs:
             asan.test_cubescript
             asan.test_wasm_worker_hello
             asan.test_externref_emjs_dynlink
+            asan.test_asyncify_longjmp
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
             lsan.test_pthread_create"

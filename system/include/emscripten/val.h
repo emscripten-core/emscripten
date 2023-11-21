@@ -596,7 +596,10 @@ public:
   constexpr nullptr_t end() const { return nullptr; }
 
 #if __cplusplus >= 202002L
-  struct promise_type;
+  class awaiter;
+  awaiter operator co_await() const;
+
+  class promise_type;
 #endif
 
 private:
@@ -660,12 +663,11 @@ inline val::iterator val::begin() const {
 }
 
 #if __cplusplus >= 202002L
-namespace internal {
 // Awaiter defines a set of well-known methods that compiler uses
 // to drive the argument of the `co_await` operator (regardless
 // of the type of the parent coroutine).
 // This one is used for Promises represented by the `val` type.
-class val_awaiter {
+class val::awaiter {
   // State machine holding awaiter's current state. One of:
   //  - initially created with promise
   //  - waiting with a given coroutine handle
@@ -677,11 +679,11 @@ class val_awaiter {
   constexpr static std::size_t STATE_RESULT = 2;
 
 public:
-  val_awaiter(val&& promise)
-    : state(std::in_place_index<STATE_PROMISE>, std::move(promise)) {}
+  awaiter(const val& promise)
+    : state(std::in_place_index<STATE_PROMISE>, promise) {}
 
   // just in case, ensure nobody moves / copies this type around
-  val_awaiter(val_awaiter&&) = delete;
+  awaiter(awaiter&&) = delete;
 
   // Promises don't have a synchronously accessible "ready" state.
   bool await_ready() { return false; }
@@ -705,6 +707,9 @@ public:
   // of the `co_await ...` expression - in our case, the stored value.
   val await_resume() { return std::move(std::get<STATE_RESULT>(state)); }
 };
+
+inline val::awaiter val::operator co_await() const {
+  return {*this};
 }
 
 // `promise_type` is a well-known subtype with well-known method names
@@ -741,11 +746,6 @@ public:
   template<typename T>
   void return_value(T&& value) {
     resolve(std::forward<T>(value));
-  }
-
-  // Return our awaiter on `co_await promise`.
-  internal::val_awaiter await_transform(val promise) {
-    return {std::move(promise)};
   }
 };
 #endif
