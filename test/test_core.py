@@ -7649,9 +7649,6 @@ void* operator new(size_t size) {
   })
   def test_embind(self, args):
     self.maybe_closure()
-    # This test explicitly creates std::string from unsigned char pointers
-    # which is deprecated in upstream LLVM.
-    self.emcc_args.append('-Wno-deprecated-declarations')
     create_file('test_embind.cpp', r'''
       #include <stdio.h>
       #include <emscripten/val.h>
