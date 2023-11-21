@@ -785,14 +785,14 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser"
-          # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
-          test_targets: "browser skip:browser.test_zzz_zzz_4gb_fail"
+          # skip test_4gb_fail as it OOMs on the current bot
+          test_targets: "browser skip:browser.test_4gb_fail"
   test-browser-chrome-wasm64:
     executor: bionic
     steps:
       - run-tests-chrome:
           title: "browser64"
-          test_targets: "browser64 skip:browser64.test_zzz_zzz_4gb_fail"
+          test_targets: "browser64 skip:browser64.test_4gb_fail"
   test-browser-firefox:
     executor: bionic
     steps:

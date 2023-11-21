@@ -6199,7 +6199,7 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('test_sigalrm.c', 'Received alarm!')
 
   def test_signals(self):
-    self.do_core_test(test_file('test_signals.c'))
+    self.do_core_test('test_signals.c')
 
   @parameterized({
     'sigint': (EM_SIGINT, 128 + EM_SIGINT, True),
@@ -7089,6 +7089,8 @@ void* operator new(size_t size) {
   @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test
   def test_poppler(self):
+    # See https://github.com/emscripten-core/emscripten/issues/20757
+    self.emcc_args.append('-Wno-deprecated-declarations')
     poppler = self.get_poppler_library()
     pdf_data = read_binary(test_file('poppler/paper.pdf'))
     create_file('paper.pdf.js', str(list(bytearray(pdf_data))))
