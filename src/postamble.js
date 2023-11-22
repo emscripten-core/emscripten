@@ -82,10 +82,6 @@ function callMain() {
 #endif // MAIN_READS_PARAMS
 
   try {
-#if BENCHMARK
-    var start = Date.now();
-#endif
-
 #if ABORT_ON_WASM_EXCEPTIONS
     // See abortWrapperDepth in preamble.js!
     abortWrapperDepth += 1;
@@ -99,10 +95,6 @@ function callMain() {
 #else
     var ret = entryFunction(argc, {{{ to64('argv') }}});
 #endif // STANDALONE_WASM
-
-#if BENCHMARK
-    Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
-#endif
 
 #if ASYNCIFY == 2 && !PROXY_TO_PTHREAD
     // The current spec of JSPI returns a promise only if the function suspends
