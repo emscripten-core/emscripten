@@ -5887,3 +5887,13 @@ class browser64(browser):
     self.set_setting('MEMORY64')
     self.emcc_args.append('-Wno-experimental')
     self.require_wasm64()
+
+
+class browser64_4gb(browser):
+  def setUp(self):
+    super().setUp()
+    self.set_setting('MEMORY64')
+    self.set_setting('INITIAL_MEMORY', '4200mb')
+    self.set_setting('GLOBAL_BASE', '4gb')
+    self.emcc_args.append('-Wno-experimental')
+    self.require_wasm64()
