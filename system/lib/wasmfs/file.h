@@ -91,6 +91,15 @@ public:
 
   bool isSeekable() const { return seekable; }
 
+  bool supportsFlags(oflags_t flags) {
+    // This method exists to see if we can support setting flags
+    // with fcntl on this specific file.  Right now, we only support
+    // 2 flags, O_APPEND and O_NONBLOCK, so we return true as all our
+    // possible file types support this.  A child class just needs
+    // to override this to change the behaviour for a specific flag
+    return true;
+  }
+
   class Handle;
   Handle locked();
 
