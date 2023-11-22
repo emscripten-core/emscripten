@@ -15,6 +15,11 @@ namespace wasmfs {
 
 ssize_t MemoryDataFile::write(const uint8_t* buf, size_t len, off_t offset) {
   if (offset + len > buffer.size()) {
+    size_t newSize = offset + len;
+    if (newSize <= offset + len) {
+      // Overflow: the necessary size fits in an off_t, but not in a size_t.
+      return -EIO;
+    }
     buffer.resize(offset + len);
   }
   std::memcpy(&buffer[offset], buf, len);
