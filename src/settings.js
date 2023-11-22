@@ -1268,11 +1268,6 @@ var EXPORT_ES6 = false;
 // [link]
 var USE_ES6_IMPORT_META = true;
 
-// If 1, will just time how long main() takes to execute, and not print out
-// anything at all whatsoever. This is useful for benchmarking.
-// [link]
-var BENCHMARK = false;
-
 // Global variable to export the module as for environments without a
 // standardized module loading system (e.g. the browser and SM shell).
 // [link]
