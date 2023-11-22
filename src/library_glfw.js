@@ -996,6 +996,13 @@ var LibraryGLFW = {
       }
     },
 
+    defaultWindowHints: () => {
+      GLFW.hints = {};
+      for (var k in GLFW.defaultHints) {
+        GLFW.hints[k] = GLFW.defaultHints[k];
+      }
+    },
+
     createWindow: (width, height, title, monitor, share) => {
       var i, id;
       for (i = 0; i < GLFW.windows.length && GLFW.windows[i] !== null; i++) {
@@ -1124,7 +1131,7 @@ var LibraryGLFW = {
     if (GLFW.windows) return 1; // GL_TRUE
 
     GLFW.initialTime = GLFW.getTime();
-    GLFW.hints = GLFW.defaultHints;
+    GLFW.defaultWindowHints();
     GLFW.windows = new Array()
     GLFW.active = null;
     GLFW.scale  = _emscripten_get_device_pixel_ratio();
@@ -1320,9 +1327,7 @@ var LibraryGLFW = {
 
   glfwSetGammaRamp: (monitor, ramp) => { throw "glfwSetGammaRamp not implemented."; },
 
-  glfwDefaultWindowHints: () => {
-    GLFW.hints = GLFW.defaultHints;
-  },
+  glfwDefaultWindowHints: () => GLFW.defaultWindowHints(),
 
   glfwWindowHint: (target, hint) => {
     GLFW.hints[target] = hint;

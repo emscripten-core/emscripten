@@ -3000,6 +3000,10 @@ Module["preRun"] = () => {
         in_html('200')
 
   @requires_graphics_hardware
+  def test_glfw3_default_hints(self):
+      self.btest_exit('test_glfw3_default_hints.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
+
+  @requires_graphics_hardware
   @parameterized({
     'no_gl': (['-DCLIENT_API=GLFW_NO_API'],),
     'gl_es': (['-DCLIENT_API=GLFW_OPENGL_ES_API'],)
