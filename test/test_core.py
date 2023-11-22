@@ -6199,7 +6199,7 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('test_sigalrm.c', 'Received alarm!')
 
   def test_signals(self):
-    self.do_core_test(test_file('test_signals.c'))
+    self.do_core_test('test_signals.c')
 
   @parameterized({
     'sigint': (EM_SIGINT, 128 + EM_SIGINT, True),
@@ -7649,9 +7649,6 @@ void* operator new(size_t size) {
   })
   def test_embind(self, args):
     self.maybe_closure()
-    # This test explicitly creates std::string from unsigned char pointers
-    # which is deprecated in upstream LLVM.
-    self.emcc_args.append('-Wno-deprecated-declarations')
     create_file('test_embind.cpp', r'''
       #include <stdio.h>
       #include <emscripten/val.h>
