@@ -90,6 +90,9 @@ var LibraryGLFW = {
     '$FS',
 #endif
   ],
+  $GLFW__postset: `
+    // making setHiDPIAware public for users of glfw (dynamic switching)
+    Module["setHiDPIAware"] = GLFW.setHiDPIAware;`,
   $GLFW: {
     WindowFromId: (id) => {
       if (id <= 0 || !GLFW.windows) return null;
@@ -115,7 +118,7 @@ var LibraryGLFW = {
       0x00020004:1, // GLFW_VISIBLE
       0x00020005:1, // GLFW_DECORATED
       0x0002000A:0, // GLFW_TRANSPARENT_FRAMEBUFFER
-      0x0002200C:0, // GLFW_SCALE_TO_MONITOR. can we emulate this?
+      0x0002200C:0, // GLFW_SCALE_TO_MONITOR
 
       0x00021001:8, // GLFW_RED_BITS
       0x00021002:8, // GLFW_GREEN_BITS
@@ -989,6 +992,13 @@ var LibraryGLFW = {
       }
     },
 
+    defaultWindowHints: () => {
+      GLFW.hints = {};
+      for (var k in GLFW.defaultHints) {
+        GLFW.hints[k] = GLFW.defaultHints[k];
+      }
+    },
+
     createWindow: (width, height, title, monitor, share) => {
       var i, id;
       for (i = 0; i < GLFW.windows.length && GLFW.windows[i] !== null; i++) {
@@ -1001,6 +1011,8 @@ var LibraryGLFW = {
 
       // not valid
       if (width <= 0 || height <= 0) return 0;
+
+      GLFW.setHiDPIAware(GLFW.hints[0x0002200C] > 0); // GLFW_SCALE_TO_MONITOR
 
       if (monitor) {
         Browser.requestFullscreen();
@@ -1068,9 +1080,14 @@ var LibraryGLFW = {
         if (GLFW.windows[i] !== null) return;
 
       Module.ctx = Browser.destroyContext(Module['canvas'], true, true);
+      Browser.setHiDPIAware(false);
     },
 
-    swapBuffers: (winid) => {
+    setHiDPIAware(isHiDPIAware) {
+      Browser.setHiDPIAware(isHiDPIAware);
+    },
+
+      swapBuffers: (winid) => {
     },
 
     GLFW2ParamToGLFW3Param: (param) => {
@@ -1118,7 +1135,7 @@ var LibraryGLFW = {
     if (GLFW.windows) return 1; // GL_TRUE
 
     GLFW.initialTime = GLFW.getTime();
-    GLFW.hints = GLFW.defaultHints;
+    GLFW.defaultWindowHints();
     GLFW.windows = new Array()
     GLFW.active = null;
     GLFW.scale  = _emscripten_get_device_pixel_ratio();
@@ -1315,9 +1332,7 @@ var LibraryGLFW = {
 
   glfwSetGammaRamp: (monitor, ramp) => { throw "glfwSetGammaRamp not implemented."; },
 
-  glfwDefaultWindowHints: () => {
-    GLFW.hints = GLFW.defaultHints;
-  },
+  glfwDefaultWindowHints: () => GLFW.defaultWindowHints(),
 
   glfwWindowHint: (target, hint) => {
     GLFW.hints[target] = hint;

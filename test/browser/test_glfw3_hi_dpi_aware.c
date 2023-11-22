@@ -99,7 +99,7 @@ int main() {
   {
     printf("Use case #3\n");
     setDevicePixelRatio(1.0);
-    setBrowserIsHiDPIAware(true);
+    glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
     window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #3", NULL, NULL);
     assert(window != NULL);
     assert(getBrowserIsHiDPIAware());
@@ -114,7 +114,7 @@ int main() {
   {
     printf("Use case #4\n");
     setDevicePixelRatio(2.0);
-    setBrowserIsHiDPIAware(true);
+    glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
     window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #4", NULL, NULL);
     assert(window != NULL);
     assert(getBrowserIsHiDPIAware());
@@ -128,6 +128,7 @@ int main() {
   // Expected outcome is that the window sizes is adjusted automatically
   {
     printf("Use case #5\n");
+    glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
     window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #5", NULL, NULL);
     assert(window != NULL);
     assert(getBrowserIsHiDPIAware());
@@ -142,6 +143,7 @@ int main() {
   {
     printf("Use case #6\n");
     setDevicePixelRatio(1.0);
+    glfwDefaultWindowHints(); // reset GLFW_SCALE_TO_MONITOR
     window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #6", NULL, NULL);
     assert(window != NULL);
     assert(!getBrowserIsHiDPIAware());
@@ -156,7 +158,7 @@ int main() {
   {
     printf("Use case #7\n");
     setDevicePixelRatio(2.0);
-    setBrowserIsHiDPIAware(true);
+    glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
     window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #7", NULL, NULL);
     assert(window != NULL);
     assert(getBrowserIsHiDPIAware());

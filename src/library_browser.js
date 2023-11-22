@@ -27,7 +27,6 @@ var LibraryBrowser = {
 #endif
     Module["requestAnimationFrame"] = Browser.requestAnimationFrame;
     Module["setCanvasSize"] = Browser.setCanvasSize;
-    Module["setHiDPIAware"] = Browser.setHiDPIAware;
     Module["pauseMainLoop"] = Browser.mainLoop.pause;
     Module["resumeMainLoop"] = Browser.mainLoop.resume;
     Module["getUserMedia"] = Browser.getUserMedia;
