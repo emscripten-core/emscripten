@@ -11,13 +11,15 @@
 #include "backend.h"
 #include "wasmfs.h"
 
+#include <emscripten.h>
+
 namespace wasmfs {
 
 ssize_t MemoryDataFile::write(const uint8_t* buf, size_t len, off_t offset) {
   if (offset + len > buffer.size()) {
-    size_t newSize = offset + len;
-    if (newSize <= offset + len) {
-      // Overflow: the necessary size fits in an off_t, but not in a size_t.
+    if (offset + len > buffer.max_size()) {
+      // Overflow: the necessary size fits in an off_t, but cannot fit in the
+      // container.
       return -EIO;
     }
     buffer.resize(offset + len);
