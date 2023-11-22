@@ -11,8 +11,6 @@
 #include "backend.h"
 #include "wasmfs.h"
 
-#include <emscripten.h>
-
 namespace wasmfs {
 
 ssize_t MemoryDataFile::write(const uint8_t* buf, size_t len, off_t offset) {
