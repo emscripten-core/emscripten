@@ -792,7 +792,13 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser64"
-          test_targets: "browser64 skip:browser64.test_4gb_fail"
+          # skip test_4gb_fail as it OOMs on the current bot
+          # Run a few tests in browser64_4gb mode too.
+          test_targets: "
+            browser64
+            skip:browser64.test_4gb_fail
+            browser64_4gb.test_emscripten_log
+            "
   test-browser-firefox:
     executor: bionic
     steps:
