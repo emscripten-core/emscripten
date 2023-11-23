@@ -997,10 +997,7 @@ var LibraryGLFW = {
     },
 
     defaultWindowHints: () => {
-      GLFW.hints = {};
-      for (var k in GLFW.defaultHints) {
-        GLFW.hints[k] = GLFW.defaultHints[k];
-      }
+      GLFW.hints = Object.assign({}, GLFW.defaultHints);
     },
 
     createWindow: (width, height, title, monitor, share) => {

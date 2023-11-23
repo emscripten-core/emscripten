@@ -9,8 +9,7 @@
 #include <assert.h>
 #include <emscripten/html5.h>
 
-static void checkDefaultWindowHints()
-{
+static void checkDefaultWindowHints() {
   int ok = EM_ASM_INT({
     var res = 1;
     for (var k in TEST_GLFW3_DEFAULTS_HINTS) {
