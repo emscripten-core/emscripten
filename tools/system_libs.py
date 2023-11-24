@@ -472,7 +472,7 @@ class Library:
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
       cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
-                 '-fdebug-compilation-dir=/emsdk/emscripten']
+                 f'-fdebug-compilation-dir={build_dir}']
     asflags = get_base_cflags(preprocess=False)
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
@@ -492,7 +492,7 @@ class Library:
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
       cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
-                 '-fdebug-compilation-dir=/emsdk/emscripten']
+                 f'-fdebug-compilation-dir={build_dir}']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
       ext = shared.suffix(src)
