@@ -61,23 +61,43 @@ int main() {
 
   assert(glfwInit() == GL_TRUE);
 
-  // make sure the defaults are the ones expected
-  checkDefaultWindowHints();
+  // Use case: after glfwInit, default window hints are correct
+  {
+    checkDefaultWindowHints();
+  }
 
-  // GLFW_DEPTH_BITS
-  assert(EM_ASM_INT(return GLFW.hints[0x00021005];) == 24);
-  glfwWindowHint(GLFW_DEPTH_BITS, 16);
-  assert(EM_ASM_INT(return GLFW.hints[0x00021005];) == 16);
+  // Use case: updates a window hint
+  // Expected results: window hint is properly updated
+  //                   default window hints are not affected
+  {
+    // GLFW_DEPTH_BITS
+    assert(EM_ASM_INT(return GLFW.hints[0x00021005];) == 24);
+    glfwWindowHint(GLFW_DEPTH_BITS, 16);
+    assert(EM_ASM_INT(return GLFW.hints[0x00021005];) == 16);
+    checkDefaultWindowHints();
+  }
 
-  // default hints should NOT be touched!
-  checkDefaultWindowHints();
+  // Use case: resets window hints to default
+  // Expected results: previously changed window hint is back to its default value
+  //                   default window hints are not affected
+  {
+    glfwDefaultWindowHints();
+    assert(EM_ASM_INT(return GLFW.hints[0x00021005];) == 24);
+    checkDefaultWindowHints();
+  }
 
-  // reset hints
-  glfwDefaultWindowHints();
-  assert(EM_ASM_INT(return GLFW.hints[0x00021005];) == 24);
-
-  // still not touched
-  checkDefaultWindowHints();
+  // Use case: change window hint, create window, then change window hint
+  // Expected results: the window hint set at creation time (which is now a
+  //                   window attribute that can be read with glfwGetWindowAttrib)
+  //                   does not change
+  {
+    glfwDefaultWindowHints();
+    glfwWindowHint(GLFW_DEPTH_BITS, 16);
+    GLFWwindow* window = glfwCreateWindow(640, 480, "test_glfw3_default_hints.c", NULL, NULL);
+    assert(glfwGetWindowAttrib(window, GLFW_DEPTH_BITS) == 16);
+    glfwWindowHint(GLFW_DEPTH_BITS, 24);
+    assert(glfwGetWindowAttrib(window, GLFW_DEPTH_BITS) == 16);
+  }
 
   glfwTerminate();
 
