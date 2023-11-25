@@ -178,6 +178,19 @@ def remove_dead_entries(entries):
     block_start = cur_entry
 
 
+def parse_debug_info_contents(text):
+  map_stmt_list_to_comp_dir = {}
+  chunks = re.split(r"0x[0-9a-f]*: DW_TAG_compile_unit", text)
+  for chunk in chunks[1:]:
+    stmt_list_match = re.search(r"DW_AT_stmt_list\s+\((0x[0-9a-f]*)\)", chunk)
+    if stmt_list_match is not None:
+      stmt_list = stmt_list_match.group(1)
+      comp_dir_match = re.search(r"DW_AT_comp_dir\s+\(\"([^\"]+)\"\)", chunk)
+      comp_dir = comp_dir_match.group(1) if comp_dir_match is not None else ''
+      map_stmt_list_to_comp_dir[stmt_list] = comp_dir
+  return map_stmt_list_to_comp_dir
+
+
 def read_dwarf_entries(wasm, options):
   if options.dwarfdump_output:
     output = Path(options.dwarfdump_output).read_bytes()
@@ -198,12 +211,10 @@ def read_dwarf_entries(wasm, options):
 
   entries = []
   debug_line_chunks = re.split(r"debug_line\[(0x[0-9a-f]*)\]", output.decode('utf-8'))
-  maybe_debug_info_content = debug_line_chunks[0]
+  map_stmt_list_to_comp_dir = parse_debug_info_contents(debug_line_chunks[0])
   for i in range(1, len(debug_line_chunks), 2):
     stmt_list = debug_line_chunks[i]
-    comp_dir_match = re.search(r"DW_AT_stmt_list\s+\(" + stmt_list + r"\)\s+" +
-                               r"DW_AT_comp_dir\s+\(\"([^\"]+)", maybe_debug_info_content)
-    comp_dir = comp_dir_match.group(1) if comp_dir_match is not None else ""
+    comp_dir = map_stmt_list_to_comp_dir.get(stmt_list, '')
 
     line_chunk = debug_line_chunks[i + 1]
 
