@@ -523,7 +523,8 @@ jobs:
             asan.test_asyncify_longjmp
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
-            lsan.test_pthread_create"
+            lsan.test_pthread_create
+            lsan.test_pthread_exit_main_stub"
       - freeze-cache
       - run-tests:
           # also run a single test of EMTEST_BROWSER=node.
