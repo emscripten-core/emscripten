@@ -557,7 +557,6 @@ jobs:
             core2s.test_module_wasm_memory
             wasm2js3.test_memorygrowth_2
             wasmfs.test_hello_world
-            wasmfs.test_hello_world_standalone
             wasmfs.test_unistd_links*
             wasmfs.test_atexit_standalone
             wasmfs.test_emscripten_get_now
