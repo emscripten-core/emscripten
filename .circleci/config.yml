@@ -688,7 +688,11 @@ jobs:
             echo "JSC_ENGINE = [os.path.expanduser('~/.jsvu/bin/javascriptcore')]" >> ~/emsdk/.emscripten
             echo "JS_ENGINES = [JSC_ENGINE]" >> ~/emsdk/.emscripten
       - run-tests:
-          test_targets: "core0.test_hello_world other.test_modularize_incoming other.test_modularize_incoming_export_name"
+          test_targets: "
+            core0.test_hello_world
+            core0.test_hello_argc
+            other.test_modularize_incoming
+            other.test_modularize_incoming_export_name"
   test-spidermonkey:
     executor: linux-python
     steps:
