@@ -56,10 +56,17 @@ uintptr_t* emscripten_get_sbrk_ptr() {
 // Enforce preserving a minimal alignof(maxalign_t) alignment for sbrk.
 #define SBRK_ALIGNMENT (__alignof__(max_align_t))
 
-void *sbrk(intptr_t increment_) {
+#define ALIGN_UP(ptr, alignment) ((uintptr_t)((((uintptr_t)(ptr)) + ((alignment)-1)) & ~((alignment)-1)))
+
+// First bumps sbrk() up to the given alignment, and then by the given increment.
+// Returns old brk pointer. Note that the old brk pointer might not be aligned
+// to the requested alignment, but the caller is guaranteed that they can round
+// up the returned pointer to the alignment they requested, and the given
+// increment will fit. That is, ROUND_UP(old_brk, alignment) + increment == new_brk.
+void *sbrk_aligned(uintptr_t alignment, intptr_t increment_) {
   uintptr_t old_size;
   uintptr_t increment = (uintptr_t)increment_;
-  increment = (increment + (SBRK_ALIGNMENT-1)) & ~(SBRK_ALIGNMENT-1);
+  uintptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
 #ifdef __EMSCRIPTEN_SHARED_MEMORY__
   // Our default dlmalloc uses locks around each malloc/free, so no additional
   // work is necessary to keep things threadsafe, but we also make sure sbrk
@@ -68,13 +75,12 @@ void *sbrk(intptr_t increment_) {
   uintptr_t expected;
   while (1) {
 #endif // __EMSCRIPTEN_SHARED_MEMORY__
-    uintptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
 #ifdef __EMSCRIPTEN_SHARED_MEMORY__
     uintptr_t old_brk = __c11_atomic_load((_Atomic(uintptr_t)*)sbrk_ptr, __ATOMIC_SEQ_CST);
 #else
     uintptr_t old_brk = *sbrk_ptr;
 #endif
-    uintptr_t new_brk = old_brk + increment;
+    uintptr_t new_brk = ALIGN_UP(old_brk, alignment) + increment;
     // Check for an overflow, which would indicate that we are trying to
     // allocate over maximum addressable memory.
     if (increment > 0 && new_brk <= old_brk) {
@@ -115,6 +121,10 @@ void *sbrk(intptr_t increment_) {
 Error:
   SET_ERRNO();
   return (void*)-1;
+}
+
+void *sbrk(intptr_t increment_) {
+  return sbrk_aligned(SBRK_ALIGNMENT, ALIGN_UP(increment_, SBRK_ALIGNMENT));
 }
 
 int brk(void* ptr) {

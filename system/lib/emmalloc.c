@@ -478,25 +478,20 @@ int emmalloc_validate_memory_regions()
   return memoryError;
 }
 
-static bool claim_more_memory(size_t numBytes)
+void *sbrk_aligned(uintptr_t alignment, intptr_t increment);
+
+static bool claim_more_memory(size_t alignment, size_t numBytes)
 {
 #ifdef EMMALLOC_VERBOSE
-  MAIN_THREAD_ASYNC_EM_ASM(out('claim_more_memory(numBytes='+Number($0)+ ')'), numBytes);
+  MAIN_THREAD_ASYNC_EM_ASM(out('claim_more_memory(alignment='+Number($0)+', numBytes='+Number($1)+ ')'), alignment, numBytes);
 #endif
 
 #ifdef EMMALLOC_MEMVALIDATE
   validate_memory_regions();
 #endif
 
-  // Make sure we always send sbrk requests with the same alignment that sbrk()
-  // allocates memory at. Otherwise we will not properly interpret returned memory
-  // to form a seamlessly contiguous region with earlier root regions, which would
-  // lead to inefficiently treating the sbrk()ed region to be a new disjoint root
-  // region.
-  numBytes = (size_t)ALIGN_UP(numBytes, MALLOC_ALIGNMENT);
-
   // Claim memory via sbrk
-  uint8_t *startPtr = (uint8_t*)sbrk(numBytes);
+  uint8_t *startPtr = (uint8_t*)sbrk_aligned(alignment, numBytes);
   if ((intptr_t)startPtr == -1)
   {
 #ifdef EMMALLOC_VERBOSE
@@ -508,7 +503,8 @@ static bool claim_more_memory(size_t numBytes)
   MAIN_THREAD_ASYNC_EM_ASM(out('claim_more_memory: claimed ' + ptrToString($0) + ' - ' + ptrToString($1) + ' (' + Number($2) + ' bytes) via sbrk()'), startPtr, startPtr + numBytes, numBytes);
 #endif
   assert(HAS_ALIGNMENT(startPtr, alignof(size_t)));
-  uint8_t *endPtr = startPtr + numBytes;
+  uint8_t *endPtr = ALIGN_UP(startPtr, alignment) + numBytes;
+  assert((uintptr_t)sbrk(0) >= (uintptr_t)endPtr);
 
   // Create a sentinel region at the end of the new heap block
   Region *endSentinelRegion = (Region*)(endPtr - sizeof(Region));
@@ -585,7 +581,7 @@ static void initialize_emmalloc_heap()
 #endif
 
   // Start with a tiny dynamic region.
-  claim_more_memory(3*sizeof(Region));
+  claim_more_memory(MALLOC_ALIGNMENT, 3*sizeof(Region));
 }
 
 void emmalloc_blank_slate_from_orbit()
@@ -810,24 +806,8 @@ static void *allocate_memory(size_t alignment, size_t size)
 
   // We were unable to find a free memory region. Must sbrk() in more memory!
   size_t numBytesToClaim = size+sizeof(Region)*3;
-  // Take into account the alignment as well. For typical alignment we don't
-  // need to add anything here (so we do nothing if the alignment is equal to
-  // MALLOC_ALIGNMENT), but it can matter if the alignment is very high. In that
-  // case, not adding the alignment can lead to this sbrk not giving us enough
-  // (in which case, the next attempt fails and will sbrk the same amount again,
-  // potentially allocating a lot more memory than necessary).
-  //
-  // Note that this is not necessarily optimal, as the extra allocation size for
-  // the alignment might not be needed (if we are lucky and already aligned),
-  // and even if it helps us allocate it will not immediately be ready for reuse
-  // (as it will be added to the currently-in-use region before us, so it is not
-  // in a free list). As a compromise however it seems reasonable in practice as
-  // a way to handle large aligned regions to avoid even worse waste.
-  if (alignment > MALLOC_ALIGNMENT) {
-    numBytesToClaim += alignment;
-  }
   assert(numBytesToClaim > size); // 32-bit wraparound should not happen here, allocation size has been validated above!
-  bool success = claim_more_memory(numBytesToClaim);
+  bool success = claim_more_memory(alignment, numBytesToClaim);
   if (success)
     return allocate_memory(alignment, size); // Recurse back to itself to try again
 
