@@ -414,6 +414,9 @@ class TestCoreBase(RunnerCore):
                             configure_args=configure_args,
                             cache_name_extra=configure_commands[0])
 
+  def test_hello_world(self):
+    self.do_core_test('test_hello_world.c')
+
   def test_wasm_synchronous_compilation(self):
     self.set_setting('STRICT_JS')
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
