@@ -36,7 +36,7 @@ def make_command(filename, engine, args=None):
   jsengine = os.path.basename(engine[0])
   # Use "'d8' in" because the name can vary, e.g. d8_g, d8, etc.
   is_d8 = 'd8' in jsengine or 'v8' in jsengine
-  is_jsc = 'jsc' in jsengine or 'javascriptcore' in jsengine
+  is_jsc = 'jsc' in jsengine
   is_wasmer = 'wasmer' in jsengine
   is_wasmtime = 'wasmtime' in jsengine
   command_flags = []
