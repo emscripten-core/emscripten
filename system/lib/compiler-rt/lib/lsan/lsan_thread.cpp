@@ -45,7 +45,10 @@ void InitializeThreads() {
   thread_arg_retval = new (thread_arg_retval_placeholder) ThreadArgRetval();
 }
 
-ThreadArgRetval &GetThreadArgRetval() { return *thread_arg_retval; }
+ThreadArgRetval &GetThreadArgRetval() {
+  ENSURE_LSAN_INITED;
+  return *thread_arg_retval;
+}
 
 ThreadContextLsanBase::ThreadContextLsanBase(int tid)
     : ThreadContextBase(tid) {}
