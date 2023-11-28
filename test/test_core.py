@@ -536,25 +536,31 @@ class TestCoreBase(RunnerCore):
     self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_core_test('test_i64_invoke_bigint.cpp')
 
+  @only_wasm2js('tests va_arg()')
   def test_vararg_copy(self):
     self.do_run_in_out_file_test('va_arg/test_va_copy.c')
 
   def test_llvm_fabs(self):
     self.do_core_test('test_llvm_fabs.c')
 
+  @only_wasm2js('tests va_arg()')
   def test_double_varargs(self):
     self.do_core_test('test_double_varargs.c')
 
+  @only_wasm2js('tests va_arg()')
   def test_trivial_struct_varargs(self):
     self.do_core_test('test_trivial_struct_varargs.c')
 
+  @only_wasm2js('tests va_arg()')
   def test_struct_varargs(self):
     self.do_core_test('test_struct_varargs.c')
 
+  @only_wasm2js('tests va_arg()')
   def test_zero_struct_varargs(self):
     self.do_core_test('test_zero_struct_varargs.c')
 
-  def zzztest_nested_struct_varargs(self):
+  @only_wasm2js('tests va_arg()')
+  def test_nested_struct_varargs(self):
     self.do_core_test('test_nested_struct_varargs.c')
 
   def test_i32_mul_precise(self):
