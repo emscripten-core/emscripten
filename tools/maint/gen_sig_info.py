@@ -20,7 +20,7 @@ import glob
 
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
-__rootdir__ = os.path.dirname(__scriptdir__)
+__rootdir__ = os.path.dirname(os.path.dirname(__scriptdir__))
 sys.path.insert(0, __rootdir__)
 
 from tools import shared, utils, webassembly
@@ -175,7 +175,9 @@ def ignore_symbol(s, cxx):
   if s.startswith('gl') and any(s.endswith(x) for x in ('NV', 'EXT', 'WEBGL', 'ARB', 'ANGLE')):
     return True
   if s in ('__stack_base', '__memory_base', '__table_base', '__global_base', '__heap_base',
-           '__stack_pointer', '__stack_high', '__stack_low', '_load_secondary_module'):
+           '__stack_pointer', '__stack_high', '__stack_low', '_load_secondary_module',
+           '__asyncify_state', '__asyncify_data',
+           ):
     return True
   if cxx and s in ('__asctime_r') or s.startswith('__cxa_find_matching_catch'):
     return True
@@ -389,11 +391,11 @@ def main(args):
                               'USE_SDL': 0,
                               'MAX_WEBGL_VERSION': 0,
                               'AUTO_JS_LIBRARIES': 0,
-                              'ASYNCIFY': 1}, cxx=True)
+                              'ASYNCIFY': 1}, cxx=True, extra_cflags=['-std=c++20'])
   extract_sig_info(sig_info, {'LEGACY_GL_EMULATION': 1}, ['-DGLES'])
   extract_sig_info(sig_info, {'USE_GLFW': 2, 'FULL_ES3': 1, 'MAX_WEBGL_VERSION': 2})
   extract_sig_info(sig_info, {'STANDALONE_WASM': 1})
-  extract_sig_info(sig_info, {'MAIN_MODULE': 2, 'RELOCATABLE': 1, 'USE_WEBGPU': 1})
+  extract_sig_info(sig_info, {'MAIN_MODULE': 2, 'RELOCATABLE': 1, 'USE_WEBGPU': 1, 'ASYNCIFY': 1})
 
   write_sig_library(args.output, sig_info)
   if args.update:

@@ -716,11 +716,11 @@ var LibraryBrowser = {
       new Uint8Array(data.object.contents), true, true,
       () => {
         {{{ runtimeKeepalivePop() }}}
-        if (onload) {{{ makeDynCall('vi', 'onload') }}}(file);
+        if (onload) {{{ makeDynCall('vp', 'onload') }}}(file);
       },
       () => {
         {{{ runtimeKeepalivePop() }}}
-        if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(file);
+        if (onerror) {{{ makeDynCall('vp', 'onerror') }}}(file);
       },
       true // don'tCreateFile - it's already there
     );
@@ -743,11 +743,11 @@ var LibraryBrowser = {
       true, true,
       () => {
         {{{ runtimeKeepalivePop() }}}
-        if (onload) {{{ makeDynCall('vii', 'onload') }}}(arg, cname);
+        if (onload) {{{ makeDynCall('vpp', 'onload') }}}(arg, cname);
       },
       () => {
         {{{ runtimeKeepalivePop() }}}
-        if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(arg);
+        if (onerror) {{{ makeDynCall('vp', 'onerror') }}}(arg);
       },
       true // don'tCreateFile - it's already there
     );
@@ -844,31 +844,35 @@ var LibraryBrowser = {
       };
       Browser.mainLoop.method = 'rAF';
     } else if (mode == {{{ cDefs.EM_TIMING_SETIMMEDIATE}}}) {
-      if (typeof setImmediate == 'undefined') {
-        // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
-        var setImmediates = [];
-        var emscriptenMainLoopMessageId = 'setimmediate';
-        /** @param {Event} event */
-        var Browser_setImmediate_messageHandler = (event) => {
-          // When called in current thread or Worker, the main loop ID is structured slightly different to accommodate for --proxy-to-worker runtime listening to Worker events,
-          // so check for both cases.
-          if (event.data === emscriptenMainLoopMessageId || event.data.target === emscriptenMainLoopMessageId) {
-            event.stopPropagation();
-            setImmediates.shift()();
-          }
-        };
-        addEventListener("message", Browser_setImmediate_messageHandler, true);
-        setImmediate = /** @type{function(function(): ?, ...?): number} */(function Browser_emulated_setImmediate(func) {
-          setImmediates.push(func);
-          if (ENVIRONMENT_IS_WORKER) {
-            if (Module['setImmediates'] === undefined) Module['setImmediates'] = [];
-            Module['setImmediates'].push(func);
-            postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js
-          } else postMessage(emscriptenMainLoopMessageId, "*"); // On the main thread, can just send the message to itself.
-        });
+      if (typeof Browser.setImmediate == 'undefined') {
+        if (typeof setImmediate == 'undefined') {
+          // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
+          var setImmediates = [];
+          var emscriptenMainLoopMessageId = 'setimmediate';
+          /** @param {Event} event */
+          var Browser_setImmediate_messageHandler = (event) => {
+            // When called in current thread or Worker, the main loop ID is structured slightly different to accommodate for --proxy-to-worker runtime listening to Worker events,
+            // so check for both cases.
+            if (event.data === emscriptenMainLoopMessageId || event.data.target === emscriptenMainLoopMessageId) {
+              event.stopPropagation();
+              setImmediates.shift()();
+            }
+          };
+          addEventListener("message", Browser_setImmediate_messageHandler, true);
+          Browser.setImmediate = /** @type{function(function(): ?, ...?): number} */(function Browser_emulated_setImmediate(func) {
+            setImmediates.push(func);
+            if (ENVIRONMENT_IS_WORKER) {
+              if (Module['setImmediates'] === undefined) Module['setImmediates'] = [];
+              Module['setImmediates'].push(func);
+              postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js
+            } else postMessage(emscriptenMainLoopMessageId, "*"); // On the main thread, can just send the message to itself.
+          });
+        } else {
+          Browser.setImmediate = setImmediate;
+        }
       }
       Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler_setImmediate() {
-        setImmediate(Browser.mainLoop.runner);
+        Browser.setImmediate(Browser.mainLoop.runner);
       };
       Browser.mainLoop.method = 'immediate';
     }
@@ -1220,7 +1224,7 @@ var LibraryBrowser = {
       {{{ runtimeKeepalivePush() }}}
       callbackId = info.callbacks.length;
       info.callbacks.push({
-        func: {{{ makeDynCall('viii', 'callback') }}},
+        func: {{{ makeDynCall('vpip', 'callback') }}},
         arg
       });
       info.awaited++;

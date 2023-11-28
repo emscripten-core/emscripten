@@ -99,7 +99,7 @@ FS.init();
       FS.ErrnoError.prototype.constructor = FS.ErrnoError;
     },
     createDataFile(parent, name, fileData, canRead, canWrite, canOwn) {
-      return FS_createDataFile(parent, name, fileData, canRead, canWrite, canOwn);
+      FS_createDataFile(parent, name, fileData, canRead, canWrite, canOwn);
     },
     createPath(parent, path, canRead, canWrite) {
       // Cache file path directory names.
@@ -391,7 +391,7 @@ FS.init();
             return -e.errno;
           }
           Module.HEAP8.set(bufferArray, buffer);
-          return bytesWritten;       
+          return bytesWritten;
         },
       };
 
@@ -506,12 +506,10 @@ FS.init();
   },
 
   $FS_mknod__deps: ['_wasmfs_mknod'],
-  $FS_mknod: (path, mode, dev) => {
-    return FS.handleError(withStackSave(() => {
-      var pathBuffer = stringToUTF8OnStack(path);
-      return __wasmfs_mknod(pathBuffer, mode, dev);
-    }));
-  },
+  $FS_mknod: (path, mode, dev) => FS.handleError(withStackSave(() => {
+    var pathBuffer = stringToUTF8OnStack(path);
+    return __wasmfs_mknod(pathBuffer, mode, dev);
+  })),
 
   $FS_create__deps: ['$FS_mknod'],
   $FS_create: (path, mode) => {

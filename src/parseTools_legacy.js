@@ -132,3 +132,6 @@ function asmFFICoercion(value, type) {
   if (type === 'float') value = asmCoercion(value, 'float');
   return value;
 }
+
+// Legacy name for runIfMainThread.
+const runOnMainThread = runIfMainThread;

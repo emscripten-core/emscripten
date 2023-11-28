@@ -83,9 +83,7 @@ var LibraryGL = {
     return HEAPU16;
   },
 
-  $heapAccessShiftForWebGLHeap: (heap) => {
-    return 31 - Math.clz32(heap.BYTES_PER_ELEMENT);
-  },
+  $heapAccessShiftForWebGLHeap: (heap) => 31 - Math.clz32(heap.BYTES_PER_ELEMENT),
 
 #if MIN_WEBGL_VERSION == 1
   $webgl_enable_ANGLE_instanced_arrays: (ctx) => {
@@ -100,9 +98,7 @@ var LibraryGL = {
   },
 
   emscripten_webgl_enable_ANGLE_instanced_arrays__deps: ['$webgl_enable_ANGLE_instanced_arrays'],
-  emscripten_webgl_enable_ANGLE_instanced_arrays: (ctx) => {
-    return webgl_enable_ANGLE_instanced_arrays(GL.contexts[ctx].GLctx);
-  },
+  emscripten_webgl_enable_ANGLE_instanced_arrays: (ctx) => webgl_enable_ANGLE_instanced_arrays(GL.contexts[ctx].GLctx),
 
   $webgl_enable_OES_vertex_array_object: (ctx) => {
     // Extension available in WebGL 1 from Firefox 25 and WebKit 536.28/desktop Safari 6.0.3 onwards. Core feature in WebGL 2.
@@ -117,9 +113,7 @@ var LibraryGL = {
   },
 
   emscripten_webgl_enable_OES_vertex_array_object__deps: ['$webgl_enable_OES_vertex_array_object'],
-  emscripten_webgl_enable_OES_vertex_array_object: (ctx) => {
-    return webgl_enable_OES_vertex_array_object(GL.contexts[ctx].GLctx);
-  },
+  emscripten_webgl_enable_OES_vertex_array_object: (ctx) => webgl_enable_OES_vertex_array_object(GL.contexts[ctx].GLctx),
 
   $webgl_enable_WEBGL_draw_buffers: (ctx) => {
     // Extension available in WebGL 1 from Firefox 28 onwards. Core feature in WebGL 2.
@@ -131,9 +125,7 @@ var LibraryGL = {
   },
 
   emscripten_webgl_enable_WEBGL_draw_buffers__deps: ['$webgl_enable_WEBGL_draw_buffers'],
-  emscripten_webgl_enable_WEBGL_draw_buffers: (ctx) => {
-    return webgl_enable_WEBGL_draw_buffers(GL.contexts[ctx].GLctx);
-  },
+  emscripten_webgl_enable_WEBGL_draw_buffers: (ctx) => webgl_enable_WEBGL_draw_buffers(GL.contexts[ctx].GLctx),
 #endif
 
   $webgl_enable_WEBGL_multi_draw: (ctx) => {
@@ -142,9 +134,7 @@ var LibraryGL = {
   },
 
   emscripten_webgl_enable_WEBGL_multi_draw__deps: ['$webgl_enable_WEBGL_multi_draw'],
-  emscripten_webgl_enable_WEBGL_multi_draw: (ctx) => {
-    return webgl_enable_WEBGL_multi_draw(GL.contexts[ctx].GLctx);
-  },
+  emscripten_webgl_enable_WEBGL_multi_draw: (ctx) => webgl_enable_WEBGL_multi_draw(GL.contexts[ctx].GLctx),
 
   $GL__postset: 'var GLctx;',
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
@@ -266,9 +256,7 @@ var LibraryGL = {
     // Precompute a lookup table for the function ceil(log2(x)), i.e. how many bits are needed to represent x, or,
     // if x was rounded up to next pow2, which index is the single '1' bit at?
     // Then log2ceilLookup[x] returns ceil(log2(x)).
-    log2ceilLookup: (i) => {
-      return 32 - Math.clz32(i === 0 ? 0 : i - 1);
-    },
+    log2ceilLookup: (i) => 32 - Math.clz32(i === 0 ? 0 : i - 1),
 
     generateTempBuffers: (quads, context) => {
       var largestIndex = GL.log2ceilLookup(GL.MAX_TEMP_BUFFER_SIZE);
@@ -1138,6 +1126,14 @@ var LibraryGL = {
       });
     },
 #endif
+
+    getExtensions() {
+      var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+#if GL_EXTENSIONS_IN_PREFIXED_FORMAT
+      exts = exts.concat(exts.map((e) => "GL_" + e));
+#endif
+      return exts;
+    },
   },
 
   glPixelStorei: (pname, param) => {
@@ -1153,11 +1149,7 @@ var LibraryGL = {
     if (!ret) {
       switch (name_) {
         case 0x1F03 /* GL_EXTENSIONS */:
-          var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
-#if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-          exts = exts.concat(exts.map((e) => "GL_" + e));
-#endif
-          ret = stringToNewUTF8(exts.join(' '));
+          ret = stringToNewUTF8(GL.getExtensions().join(' '));
           break;
         case 0x1F00 /* GL_VENDOR */:
         case 0x1F01 /* GL_RENDERER */:
@@ -1176,7 +1168,7 @@ var LibraryGL = {
 #endif
           }
 #endif
-          ret = s && stringToNewUTF8(s);
+          ret = s ? stringToNewUTF8(s) : 0;
           break;
 
 #if GL_EMULATE_GLES_VERSION_STRING_FORMAT
@@ -1791,7 +1783,7 @@ var LibraryGL = {
   },
 
   // Queries EXT
-  glGenQueriesEXT__sig: 'vii',
+  glGenQueriesEXT__sig: 'vip',
   glGenQueriesEXT: (n, ids) => {
     for (var i = 0; i < n; i++) {
       var query = GLctx.disjointTimerQueryExt['createQueryEXT']();
@@ -1810,7 +1802,7 @@ var LibraryGL = {
     }
   },
 
-  glDeleteQueriesEXT__sig: 'vii',
+  glDeleteQueriesEXT__sig: 'vip',
   glDeleteQueriesEXT: (n, ids) => {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
@@ -1852,7 +1844,7 @@ var LibraryGL = {
     GLctx.disjointTimerQueryExt['queryCounterEXT'](GL.queries[id], target);
   },
 
-  glGetQueryivEXT__sig: 'viii',
+  glGetQueryivEXT__sig: 'viip',
   glGetQueryivEXT: (target, pname, params) => {
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
@@ -1866,7 +1858,7 @@ var LibraryGL = {
     {{{ makeSetValue('params', '0', 'GLctx.disjointTimerQueryExt[\'getQueryEXT\'](target, pname)', 'i32') }}};
   },
 
-  glGetQueryObjectivEXT__sig: 'viii',
+  glGetQueryObjectivEXT__sig: 'viip',
   glGetQueryObjectivEXT: (id, pname, params) => {
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
@@ -1892,7 +1884,7 @@ var LibraryGL = {
   },
   glGetQueryObjectuivEXT: 'glGetQueryObjectivEXT',
 
-  glGetQueryObjecti64vEXT__sig: 'viii',
+  glGetQueryObjecti64vEXT__sig: 'viip',
   glGetQueryObjecti64vEXT__deps: ['$writeI53ToI64'],
   glGetQueryObjecti64vEXT: (id, pname, params) => {
     if (!params) {
@@ -2114,9 +2106,7 @@ var LibraryGL = {
   // Closure does counterproductive inlining: https://github.com/google/closure-compiler/issues/3203, so prevent
   // inlining manually.
   $webglGetLeftBracePos__docs: '/** @noinline */',
-  $webglGetLeftBracePos: (name) => {
-    return name.slice(-1) == ']' && name.lastIndexOf('[');
-  },
+  $webglGetLeftBracePos: (name) => name.slice(-1) == ']' && name.lastIndexOf('['),
 
   glGetUniformLocation__deps: ['$jstoi_q', '$webglPrepareUniformLocationsBeforeFirstUse', '$webglGetLeftBracePos'],
   glGetUniformLocation: (program, name) => {
@@ -3850,7 +3840,7 @@ var LibraryGL = {
       drawcount);
   },
 
-  glMultiDrawArraysInstancedWEBGL__sig: 'viiiii',
+  glMultiDrawArraysInstancedWEBGL__sig: 'vipppi',
   glMultiDrawArraysInstancedANGLE: 'glMultiDrawArraysInstancedWEBGL',
   glMultiDrawArraysInstancedWEBGL: (mode, firsts, counts, instanceCounts, drawcount) => {
     GLctx.multiDrawWebgl['multiDrawArraysInstancedWEBGL'](
@@ -3864,10 +3854,34 @@ var LibraryGL = {
       drawcount);
   },
 
+#if MEMORY64
+  // Convert an array of i64 offsets to an array of i32 offsets returning a
+  // pointer to the new (stack allocated) array.
+  $convertOffsets__internal: true,
+  $convertOffsets: (offsets, count) => {
+    var offsets32 = stackAlloc(count * 4);
+    var i64ptr = offsets >> 3;
+    var i32ptr = offsets32 >> 2;
+    for (var i = 0; i < count; i++, i32ptr++, i64ptr++) {
+      var i64val = HEAPU64[i64ptr];
+      assert(i64val >= 0 && i32ptr <= 0xffffffff);
+      HEAPU32[i32ptr] = Number(i64val);
+    }
+    return offsets32;
+  },
+#endif
+
   glMultiDrawElementsWEBGL__sig: 'vipipi',
   glMultiDrawElements: 'glMultiDrawElementsWEBGL',
   glMultiDrawElementsANGLE: 'glMultiDrawElementsWEBGL',
+#if MEMORY64
+  glMultiDrawElementsWEBGL__deps: ['$convertOffsets'],
+#endif
   glMultiDrawElementsWEBGL: (mode, counts, type, offsets, drawcount) => {
+#if MEMORY64
+    var stack = stackSave();
+    offsets = convertOffsets(offsets, drawcount);
+#endif
     GLctx.multiDrawWebgl['multiDrawElementsWEBGL'](
       mode,
       HEAP32,
@@ -3876,11 +3890,21 @@ var LibraryGL = {
       HEAP32,
       offsets >> 2,
       drawcount);
+#if MEMORY64
+    stackRestore(stack);
+#endif
   },
 
-  glMultiDrawElementsInstancedWEBGL__sig: 'viiiiii',
+  glMultiDrawElementsInstancedWEBGL__sig: 'vipippi',
   glMultiDrawElementsInstancedANGLE: 'glMultiDrawElementsInstancedWEBGL',
+#if MEMORY64
+  glMultiDrawElementsInstancedWEBGL__deps: ['$convertOffsets'],
+#endif
   glMultiDrawElementsInstancedWEBGL: (mode, counts, type, offsets, instanceCounts, drawcount) => {
+#if MEMORY64
+    var stack = stackSave();
+    offsets = convertOffsets(offsets, drawcount);
+#endif
     GLctx.multiDrawWebgl['multiDrawElementsInstancedWEBGL'](
       mode,
       HEAP32,
@@ -3891,6 +3915,9 @@ var LibraryGL = {
       HEAP32,
       instanceCounts >> 2,
       drawcount);
+#if MEMORY64
+    stackRestore(stack);
+#endif
   },
 
   // As a small peculiarity, we currently allow building with -sFULL_ES3 to emulate client side arrays,

@@ -290,7 +290,7 @@ class sockets(BrowserCore):
     # Basic test of node client against both a Websockified and compiled echo server.
     with harness_class(test_file('sockets/test_sockets_echo_server.c'), args, port) as harness:
       expected = 'do_msg_read: read 14 bytes'
-      self.do_runf(test_file('sockets/test_sockets_echo_client.c'), expected, emcc_args=['-DSOCKK=%d' % harness.listen_port] + args)
+      self.do_runf('sockets/test_sockets_echo_client.c', expected, emcc_args=['-DSOCKK=%d' % harness.listen_port] + args)
 
   @requires_native_clang
   def test_nodejs_sockets_echo_subprotocol(self):

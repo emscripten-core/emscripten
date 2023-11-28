@@ -8,3 +8,4 @@ Waiting for >0 nanoseconds should return 'timed-out'
 Waiting for infinitely long should return 'ok'
 main: seen worker running
 main: waking worker
+Test finished

@@ -18,6 +18,10 @@
 #include <cstdint> // uintptr_t
 #include <vector>
 #include <type_traits>
+#if _LIBCPP_STD_VER >= 20
+#include <coroutine>
+#include <variant>
+#endif
 
 
 namespace emscripten {
@@ -30,6 +34,11 @@ namespace internal {
 
 template<typename WrapperType>
 val wrapped_extend(const std::string&, const val&);
+
+enum class EM_METHOD_CALLER_KIND {
+  FUNCTION = 0,
+  CONSTRUCTOR = 1,
+};
 
 // Implemented in JavaScript.  Don't call these directly.
 extern "C" {
@@ -62,12 +71,6 @@ EM_VAL _emval_new_u16string(const char16_t*);
 
 EM_VAL _emval_take_value(TYPEID type, EM_VAR_ARGS argv);
 
-EM_VAL _emval_new(
-    EM_VAL value,
-    unsigned argCount,
-    const TYPEID argTypes[],
-    EM_VAR_ARGS argv);
-
 EM_VAL _emval_get_global(const char* name);
 EM_VAL _emval_get_module_property(const char* name);
 EM_VAL _emval_get_property(EM_VAL object, EM_VAL key);
@@ -82,17 +85,18 @@ bool _emval_greater_than(EM_VAL first, EM_VAL second);
 bool _emval_less_than(EM_VAL first, EM_VAL second);
 bool _emval_not(EM_VAL object);
 
-EM_VAL _emval_call(
-    EM_VAL value,
-    unsigned argCount,
-    const TYPEID argTypes[],
+EM_GENERIC_WIRE_TYPE _emval_call(
+    EM_METHOD_CALLER caller,
+    EM_VAL func,
+    EM_DESTRUCTORS* destructors,
     EM_VAR_ARGS argv);
 
 // DO NOT call this more than once per signature. It will
 // leak generated function objects!
 EM_METHOD_CALLER _emval_get_method_caller(
     unsigned argCount, // including return value
-    const TYPEID argTypes[]);
+    const TYPEID argTypes[],
+    EM_METHOD_CALLER_KIND asCtor);
 EM_GENERIC_WIRE_TYPE _emval_call_method(
     EM_METHOD_CALLER caller,
     EM_VAL handle,
@@ -110,6 +114,11 @@ EM_VAL _emval_await(EM_VAL promise);
 EM_VAL _emval_iter_begin(EM_VAL iterable);
 EM_VAL _emval_iter_next(EM_VAL iterator);
 
+#if _LIBCPP_STD_VER >= 20
+void _emval_coro_suspend(EM_VAL promise, void* coro_ptr);
+EM_VAL _emval_coro_make_promise(EM_VAL *resolve, EM_VAL *reject);
+#endif
+
 } // extern "C"
 
 template<const char* address>
@@ -119,19 +128,18 @@ struct symbol_registrar {
   }
 };
 
-template<typename ReturnType, typename... Args>
+template<EM_METHOD_CALLER_KIND Kind, typename ReturnType, typename... Args>
 struct Signature {
   /*
   typedef typename BindingType<ReturnType>::WireType (*MethodCaller)(
-      EM_VAL value,
-      const char* methodName,
+      EM_VAL object,
+      EM_VAL method,
       EM_DESTRUCTORS* destructors,
       typename BindingType<Args>::WireType...);
   */
-
   static EM_METHOD_CALLER get_method_caller() {
-    constexpr WithPolicies<>::ArgTypeList<ReturnType, Args...> args;
-    thread_local EM_METHOD_CALLER mc = _emval_get_method_caller(args.getCount(), args.getTypes());
+    static constexpr WithPolicies<>::ArgTypeList<ReturnType, Args...> args;
+    thread_local EM_METHOD_CALLER mc = _emval_get_method_caller(args.getCount(), args.getTypes(), Kind);
     return mc;
   }
 };
@@ -267,24 +275,6 @@ struct WireTypePack {
 
 private:
   std::array<GenericWireType, PackSize<Args...>::value> elements;
-};
-
-template<typename ReturnType, typename... Args>
-struct MethodCaller {
-  static ReturnType call(EM_VAL handle, const char* methodName, Args&&... args) {
-    auto caller = Signature<ReturnType, Args...>::get_method_caller();
-
-    WireTypePack<Args...> argv(std::forward<Args>(args)...);
-    EM_DESTRUCTORS destructors = nullptr;
-    EM_GENERIC_WIRE_TYPE result = _emval_call_method(
-      caller,
-      handle,
-      methodName,
-      &destructors,
-      argv);
-    DestructorsRunner rd(destructors);
-    return fromGenericWireType<ReturnType>(result);
-  }
 };
 
 } // end namespace internal
@@ -460,11 +450,11 @@ public:
   }
 
   bool operator==(const val& v) const {
-    return internal::_emval_equals(as_handle(), v.as_handle());
+    return equals(v);
   }
 
   bool operator!=(const val& v) const {
-    return !(*this == v);
+    return !equals(v);
   }
 
   bool strictlyEquals(const val& v) const {
@@ -491,11 +481,6 @@ public:
     return internal::_emval_not(as_handle());
   }
 
-  template<typename... Args>
-  val new_(Args&&... args) const {
-    return internalCall(internal::_emval_new, std::forward<Args>(args)...);
-  }
-
   template<typename T>
   val operator[](const T& key) const {
     return val(internal::_emval_get_property(as_handle(), val_ref(key).as_handle()));
@@ -512,15 +497,31 @@ public:
   }
 
   template<typename... Args>
+  val new_(Args&&... args) const {
+    using namespace internal;
+
+    return internalCall<EM_METHOD_CALLER_KIND::CONSTRUCTOR, val>(_emval_call, std::forward<Args>(args)...);
+  }
+
+  template<typename... Args>
   val operator()(Args&&... args) const {
-    return internalCall(internal::_emval_call, std::forward<Args>(args)...);
+    using namespace internal;
+
+    return internalCall<EM_METHOD_CALLER_KIND::FUNCTION, val>(_emval_call, std::forward<Args>(args)...);
   }
 
   template<typename ReturnValue, typename... Args>
   ReturnValue call(const char* name, Args&&... args) const {
     using namespace internal;
 
-    return MethodCaller<ReturnValue, Args...>::call(as_handle(), name, std::forward<Args>(args)...);
+    return internalCall<EM_METHOD_CALLER_KIND::FUNCTION, ReturnValue>(
+      [name](EM_METHOD_CALLER caller,
+             EM_VAL handle,
+             EM_DESTRUCTORS* destructorsRef,
+             EM_VAR_ARGS argv) {
+        return _emval_call_method(caller, handle, name, destructorsRef, argv);
+      },
+      std::forward<Args>(args)...);
   }
 
   template<typename T, typename ...Policies>
@@ -530,7 +531,7 @@ public:
     typedef BindingType<T> BT;
     typename WithPolicies<Policies...>::template ArgTypeList<T> targetType;
 
-    EM_DESTRUCTORS destructors;
+    EM_DESTRUCTORS destructors = nullptr;
     EM_GENERIC_WIRE_TYPE result = _emval_as(
         as_handle(),
         targetType.getTypes()[0],
@@ -594,6 +595,10 @@ public:
   // our iterators are sentinel-based range iterators; use nullptr as the end sentinel
   constexpr nullptr_t end() const { return nullptr; }
 
+#if _LIBCPP_STD_VER >= 20
+  struct promise_type;
+#endif
+
 private:
   // takes ownership, assumes handle already incref'd and lives on the same thread
   explicit val(EM_VAL handle)
@@ -603,13 +608,19 @@ private:
   template<typename WrapperType>
   friend val internal::wrapped_extend(const std::string& , const val& );
 
-  template<typename Implementation, typename... Args>
-  val internalCall(Implementation impl, Args&&... args) const {
+  template<internal::EM_METHOD_CALLER_KIND Kind, typename Ret, typename Implementation, typename... Args>
+  Ret internalCall(Implementation impl, Args&&... args) const {
     using namespace internal;
 
-    WithPolicies<>::ArgTypeList<Args...> argList;
     WireTypePack<Args...> argv(std::forward<Args>(args)...);
-    return val(impl(as_handle(), argList.getCount(), argList.getTypes(), argv));
+    EM_DESTRUCTORS destructors = nullptr;
+    EM_GENERIC_WIRE_TYPE result = impl(
+      Signature<Kind, Ret, Args...>::get_method_caller(),
+      as_handle(),
+      &destructors,
+      argv);
+    DestructorsRunner rd(destructors);
+    return fromGenericWireType<Ret>(result);
   }
 
   template<typename T>
@@ -648,11 +659,110 @@ inline val::iterator val::begin() const {
   return iterator(*this);
 }
 
-// Declare a custom type that can be used in conjuction with
-// emscripten::register_type to emit custom TypeScript defintions for val types.
-#define EMSCRIPTEN_DECLARE_VAL_TYPE(name)                                          \
-struct name : public val {                                                     \
-  name(val const &other) : val(other) {}                                       \
+#if _LIBCPP_STD_VER >= 20
+namespace internal {
+// Awaiter defines a set of well-known methods that compiler uses
+// to drive the argument of the `co_await` operator (regardless
+// of the type of the parent coroutine).
+// This one is used for Promises represented by the `val` type.
+class val_awaiter {
+  // State machine holding awaiter's current state. One of:
+  //  - initially created with promise
+  //  - waiting with a given coroutine handle
+  //  - completed with a result
+  std::variant<val, std::coroutine_handle<val::promise_type>, val> state;
+
+  constexpr static std::size_t STATE_PROMISE = 0;
+  constexpr static std::size_t STATE_CORO = 1;
+  constexpr static std::size_t STATE_RESULT = 2;
+
+public:
+  val_awaiter(val&& promise)
+    : state(std::in_place_index<STATE_PROMISE>, std::move(promise)) {}
+
+  // just in case, ensure nobody moves / copies this type around
+  val_awaiter(val_awaiter&&) = delete;
+
+  // Promises don't have a synchronously accessible "ready" state.
+  bool await_ready() { return false; }
+
+  // On suspend, store the coroutine handle and invoke a helper that will do
+  // a rough equivalent of `promise.then(value => this.resume_with(value))`.
+  void await_suspend(std::coroutine_handle<val::promise_type> handle) {
+    internal::_emval_coro_suspend(std::get<STATE_PROMISE>(state).as_handle(), this);
+    state.emplace<STATE_CORO>(handle);
+  }
+
+  // When JS invokes `resume_with` with some value, store that value and resume
+  // the coroutine.
+  void resume_with(val&& result) {
+    auto coro = std::move(std::get<STATE_CORO>(state));
+    state.emplace<STATE_RESULT>(std::move(result));
+    coro.resume();
+  }
+
+  // `await_resume` finalizes the awaiter and should return the result
+  // of the `co_await ...` expression - in our case, the stored value.
+  val await_resume() { return std::move(std::get<STATE_RESULT>(state)); }
+};
+
+extern "C" {
+  // JS FFI helper for `val_awaiter::resume_with`.
+  void _emval_coro_resume(val_awaiter* awaiter, EM_VAL result) {
+    awaiter->resume_with(val::take_ownership(result));
+  }
+}
+}
+
+// `promise_type` is a well-known subtype with well-known method names
+// that compiler uses to drive the coroutine itself
+// (`T::promise_type` is used for any coroutine with declared return type `T`).
+class val::promise_type {
+  val promise, resolve, reject_with_current_exception;
+
+public:
+  // Create a `new Promise` and store it alongside the `resolve` and `reject`
+  // callbacks that can be used to fulfill it.
+  promise_type() {
+    EM_VAL resolve_handle;
+    EM_VAL reject_handle;
+    promise = val(internal::_emval_coro_make_promise(&resolve_handle, &reject_handle));
+    resolve = val(resolve_handle);
+    reject_with_current_exception = val(reject_handle);
+  }
+
+  // Return the stored promise as the actual return value of the coroutine.
+  val get_return_object() { return promise; }
+
+  // For similarity with JS async functions, our coroutines are eagerly evaluated.
+  auto initial_suspend() noexcept { return std::suspend_never{}; }
+  auto final_suspend() noexcept { return std::suspend_never{}; }
+
+  // On an unhandled exception, reject the stored promise instead of throwing
+  // it asynchronously where it can't be handled.
+  void unhandled_exception() {
+    reject_with_current_exception();
+  }
+
+  // Resolve the stored promise on `co_return value`.
+  template<typename T>
+  void return_value(T&& value) {
+    resolve(std::forward<T>(value));
+  }
+
+  // Return our awaiter on `co_await promise`.
+  internal::val_awaiter await_transform(val promise) {
+    return {std::move(promise)};
+  }
+};
+#endif
+
+// Declare a custom type that can be used in conjunction with
+// emscripten::register_type to emit custom TypeScript definitions for val
+// types.
+#define EMSCRIPTEN_DECLARE_VAL_TYPE(name)                                      \
+struct name : public ::emscripten::val {                                       \
+  explicit name(val const &other) : val(other) {}                              \
 };
 
 namespace internal {
@@ -666,8 +776,8 @@ struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
     _emval_incref(handle);
     return handle;
   }
-  static val fromWireType(WireType v) {
-    return val::take_ownership(v);
+  static T fromWireType(WireType v) {
+    return T(val::take_ownership(v));
   }
 };
 

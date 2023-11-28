@@ -3,6 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import re
+from time import time
 from .toolchain_profiler import ToolchainProfiler
 
 import itertools
@@ -81,13 +83,14 @@ def clean_env():
   return safe_env
 
 
-def run_build_commands(commands):
+def run_build_commands(commands, num_inputs, build_dir=None):
   # Before running a set of build commands make sure the common sysroot
   # headers are installed.  This prevents each sub-process from attempting
   # to setup the sysroot itself.
   ensure_sysroot()
-  shared.run_multiple_processes(commands, env=clean_env())
-  logger.info('compiled %d inputs' % len(commands))
+  start_time = time()
+  shared.run_multiple_processes(commands, env=clean_env(), cwd=build_dir)
+  logger.info(f'compiled {num_inputs} inputs in {time() - start_time:.2f}s')
 
 
 def objectfile_sort_key(filename):
@@ -138,9 +141,8 @@ def get_top_level_ninja_file():
 
 
 def run_ninja(build_dir):
-  diagnostics.warning('experimental', 'ninja support is experimental')
   cmd = ['ninja', '-C', build_dir, f'-j{shared.get_num_cores()}']
-  if shared.PRINT_STAGES:
+  if shared.PRINT_SUBPROCS:
     cmd.append('-v')
   shared.check_call(cmd, env=clean_env())
 
@@ -150,6 +152,14 @@ def ensure_target_in_ninja_file(ninja_file, target):
     return
   with open(ninja_file, 'a') as f:
     f.write(target + '\n')
+
+
+def escape_ninja_path(path):
+  """Escape a path to be used in a ninja file."""
+  # Replace Windows backslashes with forward slashes.
+  path = path.replace('\\', '/')
+  # Escape special Ninja chars.
+  return re.sub(r'([ :$])', r'$\1', path)
 
 
 def create_ninja_file(input_files, filename, libname, cflags, asflags=None, customize_build_flags=None):
@@ -195,7 +205,10 @@ rule direct_cc
   description = CC $out
 
 rule archive
-  command = $EMAR cr $out $in
+  # Workaround command line too long issue (https://github.com/ninja-build/ninja/pull/217) by using a response file.
+  rspfile = $out.rsp
+  rspfile_content = $in
+  command = $EMAR cr $out @$rspfile
   description = AR $out
 
 '''
@@ -205,8 +218,9 @@ rule archive
   case_insensitive = is_case_insensitive(os.path.dirname(filename))
   if suffix == '.o':
     assert len(input_files) == 1
-    depfile = shared.unsuffixed_basename(input_files[0]) + '.d'
-    out += f'build {libname}: direct_cc {input_files[0]}\n'
+    input_file = escape_ninja_path(input_files[0])
+    depfile = shared.unsuffixed_basename(input_file) + '.d'
+    out += f'build {escape_ninja_path(libname)}: direct_cc {input_file}\n'
     out += f'  with_depfile = {depfile}\n'
   else:
     objects = []
@@ -214,28 +228,30 @@ rule archive
       # Resolve duplicates by appending unique.
       # This is needed on case insensitve filesystem to handle,
       # for example, _exit.o and _Exit.o.
-      o = os.path.join(build_dir, shared.unsuffixed_basename(src) + '.o')
-      object_uuid = 0
+      object_basename = shared.unsuffixed_basename(src)
       if case_insensitive:
-        o = o.lower()
+        object_basename = object_basename.lower()
+      o = os.path.join(build_dir, object_basename + '.o')
+      object_uuid = 0
       # Find a unique basename
       while o in objects:
         object_uuid += 1
-        o = f'{o}__{object_uuid}.o'
+        o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
       objects.append(o)
       ext = shared.suffix(src)
       if ext == '.s':
-        out += f'build {o}: asm {src}\n'
+        cmd = 'asm'
         flags = asflags
       elif ext == '.S':
-        out += f'build {o}: asm_cpp {src}\n'
+        cmd = 'asm_cpp'
         flags = cflags
       elif ext == '.c':
-        out += f'build {o}: cc {src}\n'
+        cmd = 'cc'
         flags = cflags
       else:
-        out += f'build {o}: cxx {src}\n'
+        cmd = 'cxx'
         flags = cflags
+      out += f'build {escape_ninja_path(o)}: {cmd} {escape_ninja_path(src)}\n'
       if customize_build_flags:
         custom_flags = customize_build_flags(flags, src)
         if custom_flags != flags:
@@ -243,11 +259,11 @@ rule archive
       out += '\n'
 
     objects = sorted(objects, key=objectfile_sort_key)
-    objects = ' '.join(objects)
-    out += f'build {libname}: archive {objects}\n'
+    objects = ' '.join(escape_ninja_path(o) for o in objects)
+    out += f'build {escape_ninja_path(libname)}: archive {objects}\n'
 
   utils.write_file(filename, out)
-  ensure_target_in_ninja_file(get_top_level_ninja_file(), f'subninja {filename}')
+  ensure_target_in_ninja_file(get_top_level_ninja_file(), f'subninja {escape_ninja_path(filename)}')
 
 
 def is_case_insensitive(path):
@@ -469,8 +485,9 @@ class Library:
     By default, this builds all the source files returned by `self.get_files()`,
     with the `cflags` returned by `self.get_cflags()`.
     """
+    batches = {}
     commands = []
-    objects = []
+    objects = set()
     cflags = self.get_cflags()
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
@@ -478,24 +495,12 @@ class Library:
                  '-fdebug-compilation-dir=/emsdk/emscripten']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
-      object_basename = shared.unsuffixed_basename(src)
-      # Resolve duplicates by appending unique.
-      # This is needed on case insensitve filesystem to handle,
-      # for example, _exit.o and _Exit.o.
-      if case_insensitive:
-        object_basename = object_basename.lower()
-      o = os.path.join(build_dir, object_basename + '.o')
-      object_uuid = 0
-      # Find a unique basename
-      while o in objects:
-        object_uuid += 1
-        o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
       ext = shared.suffix(src)
       if ext in ('.s', '.S', '.c'):
-        cmd = [shared.EMCC]
+        cmd = shared.EMCC
       else:
-        cmd = [shared.EMXX]
-
+        cmd = shared.EMXX
+      cmd = [cmd, '-c']
       if ext == '.s':
         # .s files are processed directly by the assembler.  In this case we can't pass
         # pre-processor flags such as `-I` and `-D` but we still want core flags such as
@@ -504,9 +509,43 @@ class Library:
       else:
         cmd += cflags
       cmd = self.customize_build_cmd(cmd, src)
-      commands.append(cmd + ['-c', src, '-o', o])
-      objects.append(o)
-    run_build_commands(commands)
+
+      object_basename = shared.unsuffixed_basename(src)
+      if case_insensitive:
+        object_basename = object_basename.lower()
+      o = os.path.join(build_dir, object_basename + '.o')
+      if o in objects:
+        # If we have seen a file with the same name before, we are on a case-insensitive
+        # filesystem and need a separate command to compile this file with a
+        # custom unique output object filename, as batch compile doesn't allow
+        # such customization.
+        #
+        # This is needed to handle, for example, _exit.o and _Exit.o.
+        object_uuid = 0
+        # Find a unique basename
+        while o in objects:
+          object_uuid += 1
+          o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
+        commands.append(cmd + [src, '-o', o])
+      else:
+        # Use relative paths to reduce the length of the command line.
+        # This allows to avoid switching to a response file as often.
+        src = os.path.relpath(src, build_dir)
+        batches.setdefault(tuple(cmd), []).append(src)
+      objects.add(o)
+
+    # Choose a chunk size that is large enough to avoid too many subprocesses
+    # but not too large to avoid task starvation.
+    # For now the heuristic is to split inputs by 2x number of cores.
+    chunk_size = max(1, len(objects) // (2 * shared.get_num_cores()))
+    # Convert batches to commands.
+    for cmd, srcs in batches.items():
+      cmd = list(cmd)
+      for i in range(0, len(srcs), chunk_size):
+        chunk_srcs = srcs[i:i + chunk_size]
+        commands.append(building.get_command_with_possible_response_file(cmd + chunk_srcs))
+
+    run_build_commands(commands, num_inputs=len(objects), build_dir=build_dir)
     return objects
 
   def customize_build_cmd(self, cmd, _filename):
@@ -890,9 +929,6 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
 
 class libnoexit(Library):
   name = 'libnoexit'
-  # __cxa_atexit calls can be generated during LTO the implemenation cannot
-  # itself be LTO.  See `get_libcall_files` below for more details.
-  force_object_files = True
   src_dir = 'system/lib/libc'
   src_files = ['atexit_dummy.c']
 

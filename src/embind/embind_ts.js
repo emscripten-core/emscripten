@@ -143,11 +143,15 @@ var LibraryEmbind = {
       out.push(`export interface ${this.name}Value<T extends number> {\n`);
       out.push('  value: T;\n}\n');
       out.push(`export type ${this.name} = `);
-      const outItems = [];
-      for (const [name, value] of this.items) {
-        outItems.push(`${this.name}Value<${value}>`);
+      if (this.items.length === 0) {
+        out.push('never/* Empty Enumerator */');
+      } else {
+        const outItems = [];
+        for (const [name, value] of this.items) {
+          outItems.push(`${this.name}Value<${value}>`);
+        }
+        out.push(outItems.join('|'));
       }
-      out.push(outItems.join('|'));
       out.push(';\n\n');
     }
 
@@ -206,6 +210,10 @@ var LibraryEmbind = {
         ['bool', 'boolean'],
         ['float', 'number'],
         ['double', 'number'],
+#if WASM_BIGINT
+        ['int64_t', 'bigint'],
+        ['uint64_t', 'bigint'],
+#endif
         ['void', 'void'],
         ['std::string', jsString],
         ['std::basic_string<unsigned char>', jsString],
@@ -600,6 +608,7 @@ var LibraryEmbind = {
   $makeLegalFunctionName: () => assert(false, 'stub function should not be called'),
   $newFunc: () => assert(false, 'stub function should not be called'),
   $runDestructors: () => assert(false, 'stub function should not be called'),
+  $createNamedFunction: () => assert(false, 'stub function should not be called'),
 };
 
 extraLibraryFuncs.push('$embindEmitTypes');

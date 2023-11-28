@@ -7,7 +7,7 @@ var wasmImports = {
   memset: _memset,
   sbrk: _sbrk,
   memcpy: _memcpy,
-  emscripten_memcpy_big: _emscripten_memcpy_big,
+  emscripten_memcpy_js: _emscripten_memcpy_js,
   __syscall54: ___syscall54,
   __syscall140: ___syscall140,
   __syscall146: ___syscall146

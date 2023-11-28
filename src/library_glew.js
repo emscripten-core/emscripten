@@ -100,7 +100,7 @@ var LibraryGLEW = {
 
     extensionIsSupported(name) {
       if (!GLEW.extensions) {
-        GLEW.extensions = UTF8ToString(_glGetString(0x1F03)).split(' ');
+        GLEW.extensions = GL.getExtensions();
       }
 
       if (GLEW.extensions.includes(name))

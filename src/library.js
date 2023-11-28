@@ -643,9 +643,7 @@ addToLibrary({
   $MONTH_DAYS_REGULAR_CUMULATIVE: [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334],
   $MONTH_DAYS_LEAP_CUMULATIVE: [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335],
 
-  $isLeapYear: (year) => {
-      return year%4 === 0 && (year%100 !== 0 || year%400 === 0);
-  },
+  $isLeapYear: (year) => year%4 === 0 && (year%100 !== 0 || year%400 === 0),
 
   $ydayFromDate__deps: ['$isLeapYear', '$MONTH_DAYS_LEAP_CUMULATIVE', '$MONTH_DAYS_REGULAR_CUMULATIVE'],
   $ydayFromDate: (date) => {
@@ -1252,7 +1250,9 @@ addToLibrary({
   // errno.h
   // ==========================================================================
 
-  $ERRNO_CODES__postset: `ERRNO_CODES = {
+  // We use a string literal here to avoid the string quotes on the object
+  // keys being removed when processed by jsifier.
+  $ERRNO_CODES: `{
     'EPERM': {{{ cDefs.EPERM }}},
     'ENOENT': {{{ cDefs.ENOENT }}},
     'ESRCH': {{{ cDefs.ESRCH }}},
@@ -1374,8 +1374,7 @@ addToLibrary({
     'ENOTRECOVERABLE': {{{ cDefs.ENOTRECOVERABLE }}},
     'EOWNERDEAD': {{{ cDefs.EOWNERDEAD }}},
     'ESTRPIPE': {{{ cDefs.ESTRPIPE }}},
-  };`,
-  $ERRNO_CODES: {},
+  }`,
   $ERRNO_MESSAGES: {
     0: 'Success',
     {{{ cDefs.EPERM }}}: 'Not super-user',

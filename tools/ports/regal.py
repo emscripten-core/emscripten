@@ -106,8 +106,6 @@ def get(ports, settings, shared):
       '-I' + source_path_regal,
       '-I' + source_path_lookup3,
       '-I' + source_path_boost,
-      '-Wall',
-      '-Werror',
       '-Wno-deprecated-register',
       '-Wno-unused-parameter'
     ]

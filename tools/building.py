@@ -79,6 +79,7 @@ def get_building_env():
   env['PKG_CONFIG_PATH'] = os.environ.get('EM_PKG_CONFIG_PATH', '')
   env['EMSCRIPTEN'] = path_from_root()
   env['PATH'] = cache.get_sysroot_dir('bin') + os.pathsep + env['PATH']
+  env['ACLOCAL_PATH'] = cache.get_sysroot_dir('share/aclocal')
   env['CROSS_COMPILE'] = path_from_root('em') # produces /path/to/emscripten/em , which then can have 'cc', 'ar', etc appended to it
   return env
 
@@ -176,6 +177,15 @@ def lld_flags_for_executable(external_symbols):
 
   if settings.LINKABLE:
     cmd.append('--export-dynamic')
+
+  if settings.LTO and not settings.EXIT_RUNTIME:
+    # The WebAssembly backend can generate new references to `__cxa_atexit` at
+    # LTO time.  This `-u` flag forces the `__cxa_atexit` symbol to be
+    # included at LTO time.  For other such symbols we exclude them from LTO
+    # and always build them as normal object files, but that would inhibit the
+    # LowerGlobalDtors optimization which allows destructors to be completely
+    # removed when __cxa_atexit is a no-op.
+    cmd.append('-u__cxa_atexit')
 
   c_exports = [e for e in settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
   # Strip the leading underscores
@@ -284,9 +294,15 @@ def get_command_with_possible_response_file(cmd):
   # One of None, 0 or 1. (None: do default decision, 0: force disable, 1: force enable)
   force_response_files = os.getenv('EM_FORCE_RESPONSE_FILES')
 
-  # 8k is a bit of an arbitrary limit, but a reasonable one
-  # for max command line size before we use a response file
-  if (len(shared.shlex_join(cmd)) <= 8192 and force_response_files != '1') or force_response_files == '0':
+  # Different OS have different limits. The most limiting usually is Windows one
+  # which is set at 8191 characters. We could just use that, but it leads to
+  # problems when invoking shell wrappers (e.g. emcc.bat), which, in turn,
+  # pass arguments to some longer command like `(full path to Clang) ...args`.
+  # In that scenario, even if the initial command line is short enough, the
+  # subprocess can still run into the Command Line Too Long error.
+  # Reduce the limit by ~1K for now to be on the safe side, but we might need to
+  # adjust this in the future if it turns out not to be enough.
+  if (len(shared.shlex_join(cmd)) <= 7000 and force_response_files != '1') or force_response_files == '0':
     return cmd
 
   logger.debug('using response file for %s' % cmd[0])
@@ -557,7 +573,7 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
 
   args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
   # Keep in sync with ecmaVersion in tools/acorn-optimizer.js
-  args += ['--language_in', 'ECMASCRIPT_2020']
+  args += ['--language_in', 'ECMASCRIPT_2021']
   # Tell closure not to do any transpiling or inject any polyfills.
   # At some point we may want to look into using this as way to convert to ES5 but
   # babel is perhaps a better tool for that.

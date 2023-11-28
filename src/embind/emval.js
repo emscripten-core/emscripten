@@ -12,8 +12,8 @@
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 // -- jshint doesn't understand library syntax, so we need to mark the symbols exposed here
-/*global getStringOrSymbol, emval_handles, Emval, __emval_unregister, count_emval_handles, emval_symbols, __emval_decref, emval_newers*/
-/*global craftEmvalAllocator, emval_addMethodCaller, emval_methodCallers, addToLibrary, global, emval_lookupTypes, makeLegalFunctionName*/
+/*global getStringOrSymbol, emval_handles, Emval, __emval_unregister, count_emval_handles, emval_symbols, __emval_decref*/
+/*global emval_addMethodCaller, emval_methodCallers, addToLibrary, global, emval_lookupTypes, makeLegalFunctionName*/
 /*global emval_get_global*/
 
 var LibraryEmVal = {
@@ -105,9 +105,7 @@ var LibraryEmVal = {
   },
 
   _emval_new_array__deps: ['$Emval'],
-  _emval_new_array: () => {
-    return Emval.toHandle([]);
-  },
+  _emval_new_array: () => Emval.toHandle([]),
 
   _emval_new_array_from_memory_view__deps: ['$Emval'],
   _emval_new_array_from_memory_view: (view) => {
@@ -119,103 +117,22 @@ var LibraryEmVal = {
   },
 
   _emval_new_object__deps: ['$Emval'],
-  _emval_new_object: () => {
-    return Emval.toHandle({});
-  },
+  _emval_new_object: () => Emval.toHandle({}),
 
   _emval_new_cstring__deps: ['$getStringOrSymbol', '$Emval'],
-  _emval_new_cstring: (v) => {
-    return Emval.toHandle(getStringOrSymbol(v));
-  },
+  _emval_new_cstring: (v) => Emval.toHandle(getStringOrSymbol(v)),
 
   _emval_new_u8string__deps: ['$Emval'],
-  _emval_new_u8string: (v) => {
-    return Emval.toHandle(UTF8ToString(v));
-  },
+  _emval_new_u8string: (v) => Emval.toHandle(UTF8ToString(v)),
 
   _emval_new_u16string__deps: ['$Emval'],
-  _emval_new_u16string: (v) => {
-    return Emval.toHandle(UTF16ToString(v));
-  },
+  _emval_new_u16string: (v) => Emval.toHandle(UTF16ToString(v)),
 
   _emval_take_value__deps: ['$Emval', '$requireRegisteredType'],
   _emval_take_value: (type, arg) => {
     type = requireRegisteredType(type, '_emval_take_value');
     var v = type['readValueFromPointer'](arg);
     return Emval.toHandle(v);
-  },
-
-  $emval_newers: {}, // arity -> function
-  $craftEmvalAllocator__deps: ['$Emval', '$requireRegisteredType'],
-  $craftEmvalAllocator: (argCount) => {
-    /*This function returns a new function that looks like this:
-    function emval_allocator_3(constructor, argTypes, args) {
-        var argType0 = requireRegisteredType(HEAP32[(argTypes >> 2)], "parameter 0");
-        var arg0 = argType0['readValueFromPointer'](args);
-        var argType1 = requireRegisteredType(HEAP32[(argTypes >> 2) + 1], "parameter 1");
-        var arg1 = argType1['readValueFromPointer'](args + 8);
-        var argType2 = requireRegisteredType(HEAP32[(argTypes >> 2) + 2], "parameter 2");
-        var arg2 = argType2['readValueFromPointer'](args + 16);
-        var obj = new constructor(arg0, arg1, arg2);
-        return Emval.toHandle(obj);
-    } */
-#if !DYNAMIC_EXECUTION
-    var argsList = new Array(argCount + 1);
-    return function(constructor, argTypes, args) {
-      argsList[0] = constructor;
-      for (var i = 0; i < argCount; ++i) {
-        var argType = requireRegisteredType({{{ makeGetValue('argTypes', 'i * ' + POINTER_SIZE, '*') }}}, 'parameter ' + i);
-        argsList[i + 1] = argType['readValueFromPointer'](args);
-        args += argType['argPackAdvance'];
-      }
-      var obj = new (constructor.bind.apply(constructor, argsList));
-      return Emval.toHandle(obj);
-    };
-#else
-    var argsList = "";
-    for (var i = 0; i < argCount; ++i) {
-      argsList += (i!==0?", ":"")+"arg"+i; // 'arg0, arg1, ..., argn'
-    }
-
-    // The body of the generated function does not have access to enclosing
-    // scope where HEAPU64/HEAPU32/etc are defined, and we cannot pass them
-    // directly as arguments (like we do the Module object) since memory
-    // growth can cause them to be re-bound.
-    var getMemory = () => {{{ MEMORY64 ? "HEAPU64" : "HEAPU32" }}};
-
-    var functionBody =
-        "return function emval_allocator_"+argCount+"(constructor, argTypes, args) {\n" +
-        "  var {{{ MEMORY64 ? 'HEAPU64' : 'HEAPU32' }}} = getMemory();\n";
-
-    for (var i = 0; i < argCount; ++i) {
-        functionBody +=
-            "var argType"+i+" = requireRegisteredType({{{ makeGetValue('argTypes', '0', '*') }}}, 'parameter "+i+"');\n" +
-            "var arg"+i+" = argType"+i+".readValueFromPointer(args);\n" +
-            "args += argType"+i+"['argPackAdvance'];\n" +
-            "argTypes += {{{ POINTER_SIZE }}};\n";
-    }
-    functionBody +=
-        "var obj = new constructor("+argsList+");\n" +
-        "return valueToHandle(obj);\n" +
-        "}\n";
-
-    /*jshint evil:true*/
-    return (new Function("requireRegisteredType", "Module", "valueToHandle", "getMemory" , functionBody))(
-        requireRegisteredType, Module, Emval.toHandle, getMemory);
-#endif
-  },
-
-  _emval_new__deps: ['$craftEmvalAllocator', '$emval_newers', '$Emval'],
-  _emval_new: (handle, argCount, argTypes, args) => {
-    handle = Emval.toValue(handle);
-
-    var newer = emval_newers[argCount];
-    if (!newer) {
-      newer = craftEmvalAllocator(argCount);
-      emval_newers[argCount] = newer;
-    }
-
-    return newer(handle, argTypes, args);
   },
 
 #if !DYNAMIC_EXECUTION
@@ -286,14 +203,22 @@ var LibraryEmVal = {
     handle[key] = value;
   },
 
-  _emval_as__deps: ['$Emval', '$requireRegisteredType'],
+  $emval_returnValue__deps: ['$Emval'],
+  $emval_returnValue: (returnType, destructorsRef, handle) => {
+    var destructors = [];
+    var result = returnType['toWireType'](destructors, handle);
+    if (destructors.length) {
+      // void, primitives and any other types w/o destructors don't need to allocate a handle
+      {{{ makeSetValue('destructorsRef', '0', 'Emval.toHandle(destructors)', '*') }}};
+    }
+    return result;
+  },
+
+  _emval_as__deps: ['$Emval', '$requireRegisteredType', '$emval_returnValue'],
   _emval_as: (handle, returnType, destructorsRef) => {
     handle = Emval.toValue(handle);
     returnType = requireRegisteredType(returnType, 'emval::as');
-    var destructors = [];
-    var rd = Emval.toHandle(destructors);
-    {{{ makeSetValue('destructorsRef', '0', 'rd', '*') }}};
-    return returnType['toWireType'](destructors, handle);
+    return emval_returnValue(returnType, destructorsRef, handle);
   },
 
   _emval_as_int64__deps: ['$Emval', '$requireRegisteredType'],
@@ -344,20 +269,11 @@ var LibraryEmVal = {
     return !object;
   },
 
-  _emval_call__deps: ['$emval_lookupTypes', '$Emval'],
-  _emval_call: (handle, argCount, argTypes, argv) => {
+  _emval_call__deps: ['$emval_methodCallers', '$Emval'],
+  _emval_call: (caller, handle, destructorsRef, args) => {
+    caller = emval_methodCallers[caller];
     handle = Emval.toValue(handle);
-    var types = emval_lookupTypes(argCount, argTypes);
-
-    var args = new Array(argCount);
-    for (var i = 0; i < argCount; ++i) {
-      var type = types[i];
-      args[i] = type['readValueFromPointer'](argv);
-      argv += type['argPackAdvance'];
-    }
-
-    var rv = handle.apply(undefined, args);
-    return Emval.toHandle(rv);
+    return caller(null, handle, destructorsRef, args);
   },
 
   $emval_lookupTypes__deps: ['$requireRegisteredType'],
@@ -381,89 +297,101 @@ var LibraryEmVal = {
     return id;
   },
 
+#if MIN_CHROME_VERSION < 49 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 42 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101
+  $reflectConstruct: null,
+  $reflectConstruct__postset: `
+    if (typeof Reflect !== 'undefined') {
+      reflectConstruct = Reflect.construct;
+    } else {
+      reflectConstruct = function(target, args) {
+        // limited polyfill for Reflect.construct that handles variadic args and native objects, but not new.target
+        return new (target.bind.apply(target, [null].concat(args)))();
+      };
+    }
+  `,
+#else
+  $reflectConstruct: 'Reflect.construct',
+#endif
+
   _emval_get_method_caller__deps: [
-    '$emval_addMethodCaller', '$emval_lookupTypes',,
-    '$makeLegalFunctionName',
+    '$emval_addMethodCaller', '$emval_lookupTypes',
+    '$createNamedFunction',
+    '$reflectConstruct', '$emval_returnValue',
 #if DYNAMIC_EXECUTION
     '$newFunc',
 #endif
   ],
-  _emval_get_method_caller: (argCount, argTypes) => {
+  _emval_get_method_caller: (argCount, argTypes, kind) => {
     var types = emval_lookupTypes(argCount, argTypes);
     var retType = types.shift();
     argCount--; // remove the shifted off return type
 
 #if !DYNAMIC_EXECUTION
     var argN = new Array(argCount);
-    var invokerFunction = (handle, name, destructors, args) => {
+    var invokerFunction = (obj, func, destructorsRef, args) => {
       var offset = 0;
       for (var i = 0; i < argCount; ++i) {
         argN[i] = types[i]['readValueFromPointer'](args + offset);
         offset += types[i]['argPackAdvance'];
       }
-      var rv = handle[name].apply(handle, argN);
+      var rv = kind === /* CONSTRUCTOR */ 1 ? reflectConstruct(func, argN) : func.apply(obj, argN);
       for (var i = 0; i < argCount; ++i) {
         if (types[i].deleteObject) {
           types[i].deleteObject(argN[i]);
         }
       }
-      return retType['toWireType'](destructors, rv);
+      return emval_returnValue(retType, destructorsRef, rv);
     };
 #else
-    var params = ["retType"];
-    var args = [retType];
-
-    var argsList = ""; // 'arg0, arg1, arg2, ... , argN'
-    for (var i = 0; i < argCount; ++i) {
-      argsList += (i !== 0 ? ", " : "") + "arg" + i;
-      params.push("argType" + i);
-      args.push(types[i]);
-    }
-
-    var signatureName = retType.name + "_$" + types.map(t => t.name).join("_") + "$";
-    var functionName = makeLegalFunctionName("methodCaller_" + signatureName);
     var functionBody =
-        "return function " + functionName + "(handle, name, destructors, args) {\n";
+      `return function (obj, func, destructorsRef, args) {\n`;
 
     var offset = 0;
-    for (var i = 0; i < argCount; ++i) {
-        functionBody +=
-        "    var arg" + i + " = argType" + i + ".readValueFromPointer(args" + (offset ? ("+"+offset) : "") + ");\n";
-        offset += types[i]['argPackAdvance'];
+    var argsList = []; // 'obj?, arg0, arg1, arg2, ... , argN'
+    if (kind === /* FUNCTION */ 0) {
+      argsList.push("obj");
     }
-    functionBody +=
-        "    var rv = handle[name](" + argsList + ");\n";
+    var params = ["retType"];
+    var args = [retType];
     for (var i = 0; i < argCount; ++i) {
-        if (types[i]['deleteObject']) {
-            functionBody +=
-            "    argType" + i + ".deleteObject(arg" + i + ");\n";
-        }
+      argsList.push("arg" + i);
+      params.push("argType" + i);
+      args.push(types[i]);
+      functionBody +=
+        `  var arg${i} = argType${i}.readValueFromPointer(args${offset ? "+" + offset : ""});\n`;
+      offset += types[i]['argPackAdvance'];
+    }
+    var invoker = kind === /* CONSTRUCTOR */ 1 ? 'new func' : 'func.call';
+    functionBody +=
+      `  var rv = ${invoker}(${argsList.join(", ")});\n`;
+    for (var i = 0; i < argCount; ++i) {
+      if (types[i]['deleteObject']) {
+        functionBody +=
+          `  argType${i}.deleteObject(arg${i});\n`;
+      }
     }
     if (!retType.isVoid) {
-        functionBody +=
-        "    return retType.toWireType(destructors, rv);\n";
+      params.push("emval_returnValue");
+      args.push(emval_returnValue);
+      functionBody +=
+        "  return emval_returnValue(retType, destructorsRef, rv);\n";
     }
     functionBody +=
-        "};\n";
+      "};\n";
 
     params.push(functionBody);
     var invokerFunction = newFunc(Function, params).apply(null, args);
 #endif
-    return emval_addMethodCaller(invokerFunction);
+    var functionName = `methodCaller<(${types.map(t => t.name).join(', ')}) => ${retType.name}>`;
+    return emval_addMethodCaller(createNamedFunction(functionName, invokerFunction));
   },
 
   _emval_call_method__deps: ['$getStringOrSymbol', '$emval_methodCallers', '$Emval'],
-  _emval_call_method: (caller, handle, methodName, destructorsRef, args) => {
+  _emval_call_method: (caller, objHandle, methodName, destructorsRef, args) => {
     caller = emval_methodCallers[caller];
-    handle = Emval.toValue(handle);
+    objHandle = Emval.toValue(objHandle);
     methodName = getStringOrSymbol(methodName);
-    var destructors = [];
-    var result = caller(handle, methodName, destructors, args);
-    // void and any other types w/o destructors don't need to allocate a handle
-    if (destructors.length) {
-      {{{ makeSetValue('destructorsRef', '0', 'Emval.toHandle(destructors)', '*') }}};
-    }
-    return result;
+    return caller(objHandle, objHandle[methodName], destructorsRef, args);
   },
 
   _emval_typeof__deps: ['$Emval'],
@@ -533,6 +461,35 @@ var LibraryEmVal = {
     iterator = Emval.toValue(iterator);
     var result = iterator.next();
     return result.done ? 0 : Emval.toHandle(result.value);
+  },
+
+  _emval_coro_suspend__deps: ['$Emval', '_emval_coro_resume'],
+  _emval_coro_suspend: (promiseHandle, awaiterPtr) => {
+    Emval.toValue(promiseHandle).then(result => {
+      __emval_coro_resume(awaiterPtr, Emval.toHandle(result));
+    });
+  },
+
+  _emval_coro_make_promise__deps: ['$Emval', '__cxa_rethrow'],
+  _emval_coro_make_promise: (resolveHandlePtr, rejectHandlePtr) => {
+    return Emval.toHandle(new Promise((resolve, reject) => {
+      const rejectWithCurrentException = () => {
+        try {
+          // Use __cxa_rethrow which already has mechanism for generating
+          // user-friendly error message and stacktrace from C++ exception
+          // if EXCEPTION_STACK_TRACES is enabled and numeric exception
+          // with metadata optimised out otherwise.
+          ___cxa_rethrow();
+        } catch (e) {
+          // But catch it so that it rejects the promise instead of throwing
+          // in an unpredictable place during async execution.
+          reject(e);
+        }
+      };
+
+      {{{ makeSetValue('resolveHandlePtr', '0', 'Emval.toHandle(resolve)', '*') }}};
+      {{{ makeSetValue('rejectHandlePtr', '0', 'Emval.toHandle(rejectWithCurrentException)', '*') }}};
+    }));
   },
 };
 

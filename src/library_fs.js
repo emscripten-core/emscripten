@@ -1593,7 +1593,6 @@ FS.staticInit();` +
         FS.close(stream);
         FS.chmod(node, mode);
       }
-      return node;
     },
     createDevice(parent, name, input, output) {
       var path = PATH.join2(typeof parent == 'string' ? parent : FS.getPath(parent), name);
@@ -1872,7 +1871,7 @@ FS.staticInit();` +
 
   $FS_createDataFile__deps: ['$FS'],
   $FS_createDataFile: (parent, name, fileData, canRead, canWrite, canOwn) => {
-    return FS.createDataFile(parent, name, fileData, canRead, canWrite, canOwn);
+    FS.createDataFile(parent, name, fileData, canRead, canWrite, canOwn);
   },
 
   $FS_unlink__deps: ['$FS'],

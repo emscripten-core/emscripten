@@ -426,13 +426,13 @@ The following table highlights the availability and expected performance of diff
    * - _mm_add_sd
      - ⚠️ emulated with a shuffle
    * - _mm_adds_epi16
-     - ✅ wasm_i16x8_add_saturate
+     - ✅ wasm_i16x8_add_sat
    * - _mm_adds_epi8
-     - ✅ wasm_i8x16_add_saturate
+     - ✅ wasm_i8x16_add_sat
    * - _mm_adds_epu16
-     - ✅ wasm_u16x8_add_saturate
+     - ✅ wasm_u16x8_add_sat
    * - _mm_adds_epu8
-     - ✅ wasm_u8x16_add_saturate
+     - ✅ wasm_u8x16_add_sat
    * - _mm_and_pd
      - 🟡 wasm_v128_and. VM must guess type.
    * - _mm_and_si128
@@ -804,13 +804,13 @@ The following table highlights the availability and expected performance of diff
    * - _mm_sub_sd
      - ⚠️ emulated with a shuffle
    * - _mm_subs_epi16
-     - ✅ wasm_i16x8_sub_saturate
+     - ✅ wasm_i16x8_sub_sat
    * - _mm_subs_epi8
-     - ✅ wasm_i8x16_sub_saturate
+     - ✅ wasm_i8x16_sub_sat
    * - _mm_subs_epu16
-     - ✅ wasm_u16x8_sub_saturate
+     - ✅ wasm_u16x8_sub_sat
    * - _mm_subs_epu8
-     - ✅ wasm_u8x16_sub_saturate
+     - ✅ wasm_u8x16_sub_sat
    * - _mm_ucomieq_sd
      - ❌ scalarized
    * - _mm_ucomige_sd
@@ -848,9 +848,9 @@ The following table highlights the availability and expected performance of diff
    * - _mm_unpacklo_pd
      - 💡 emulated with a shuffle
    * - _mm_xor_pd
-     - 🟡 wasm_v128_or. VM must guess type.
+     - 🟡 wasm_v128_xor. VM must guess type.
    * - _mm_xor_si128
-     - 🟡 wasm_v128_or. VM must guess type.
+     - 🟡 wasm_v128_xor. VM must guess type.
 
 ⚫ The following extensions that SSE2 instruction set brought to 64-bit wide MMX registers are not available:
  - _mm_add_si64, _mm_movepi64_pi64, _mm_movpi64_epi64, _mm_mul_su32, _mm_sub_si64, _mm_cvtpd_pi32, _mm_cvtpi32_pd, _mm_cvttpd_pi32

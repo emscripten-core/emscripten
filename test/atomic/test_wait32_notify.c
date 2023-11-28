@@ -33,7 +33,8 @@ void run_test() {
   assert(ret == ATOMICS_WAIT_TIMED_OUT);
 
   emscripten_out("Waiting for infinitely long should return 'ok'");
-  ret = emscripten_atomic_wait_u32((int32_t*)&addr, 1, /*timeout=*/-1);
+  emscripten_atomic_store_u32((void*)&addr, 3);
+  ret = emscripten_atomic_wait_u32((int32_t*)&addr, 3, /*timeout=*/-1);
   assert(ret == ATOMICS_WAIT_OK);
 
   emscripten_out("Test finished");
@@ -42,8 +43,6 @@ void run_test() {
 
 // This test run in both wasm workers and pthreads mode
 #ifdef __EMSCRIPTEN_WASM_WORKERS__
-
-char stack[1024];
 
 void worker_main() {
   run_test();
@@ -66,7 +65,7 @@ void* thread_main(void* arg) {
 
 
 EM_BOOL main_loop(double time, void *userData) {
-  if (addr == 1) {
+  if (addr == 3) {
     // Burn one second to make sure worker finishes its test.
     emscripten_out("main: seen worker running");
     double t0 = emscripten_performance_now();
@@ -74,7 +73,6 @@ EM_BOOL main_loop(double time, void *userData) {
 
     // Wake the waiter
     emscripten_out("main: waking worker");
-    addr = 2;
     emscripten_atomic_notify((int32_t*)&addr, 1);
 
 #ifndef __EMSCRIPTEN_WASM_WORKERS__
@@ -90,6 +88,7 @@ int main() {
   emscripten_out("main: creating worker");
 
 #ifdef __EMSCRIPTEN_WASM_WORKERS__
+  static char stack[1024];
   emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));
   emscripten_wasm_worker_post_function_v(worker, worker_main);
 #else

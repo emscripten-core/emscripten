@@ -370,12 +370,20 @@ function runJSDCE(ast, aggressive) {
         ensureData(scopes[scopes.length - 1], node.id.name).def = 1;
       }
       const scope = {};
+      scopes.push(scope);
       node.params.forEach((param) => {
+        if (param.type === 'RestElement') {
+          param = param.argument;
+        }
+        if (param.type === 'AssignmentPattern') {
+          c(param.right);
+          param = param.left;
+        }
+        assert(param.type === 'Identifier', param.type);
         const name = param.name;
         ensureData(scope, name).def = 1;
         scope[name].param = 1;
       });
-      scopes.push(scope);
       c(node.body);
       // we can ignore self-references, i.e., references to ourselves inside
       // ourselves, for named defined (defun) functions
@@ -1036,7 +1044,7 @@ function applyDCEGraphRemovals(ast) {
 
 // Need a parser to pass to acorn.Node constructor.
 // Create it once and reuse it.
-const stubParser = new acorn.Parser({ecmaVersion: 2020});
+const stubParser = new acorn.Parser({ecmaVersion: 2021});
 
 function createNode(props) {
   const node = new acorn.Node(stubParser);
@@ -2000,7 +2008,7 @@ let ast;
 try {
   ast = acorn.parse(input, {
     // Keep in sync with --language_in that we pass to closure in building.py
-    ecmaVersion: 2020,
+    ecmaVersion: 2021,
     preserveParens: closureFriendly,
     onComment: closureFriendly ? sourceComments : undefined,
     sourceType: exportES6 ? 'module' : 'script',

@@ -1253,10 +1253,10 @@
                 "utf16Offset",
                 "utf16Length"
             ],
-            "WGPUComputePassTimestampWrite": [
+            "WGPUComputePassTimestampWrites": [
                 "querySet",
-                "queryIndex",
-                "location"
+                "beginningOfPassWriteIndex",
+                "endOfPassWriteIndex"
             ],
             "WGPUConstantEntry": [
                 "nextInChain",
@@ -1337,9 +1337,7 @@
                 "nextInChain",
                 "label",
                 "type",
-                "count",
-                "pipelineStatistics",
-                "pipelineStatisticsCount"
+                "count"
             ],
             "WGPUQueueDescriptor": [
                 "nextInChain",
@@ -1374,10 +1372,10 @@
                 "chain",
                 "maxDrawCount"
             ],
-            "WGPURenderPassTimestampWrite": [
+            "WGPURenderPassTimestampWrites": [
                 "querySet",
-                "queryIndex",
-                "location"
+                "beginningOfPassWriteIndex",
+                "endOfPassWriteIndex"
             ],
             "WGPURequestAdapterOptions": [
                 "nextInChain",
@@ -1503,7 +1501,6 @@
             "WGPUComputePassDescriptor": [
                 "nextInChain",
                 "label",
-                "timestampWriteCount",
                 "timestampWrites"
             ],
             "WGPUDepthStencilState": [
@@ -1607,7 +1604,6 @@
                 "colorAttachments",
                 "depthStencilAttachment",
                 "occlusionQuerySet",
-                "timestampWriteCount",
                 "timestampWrites"
             ],
             "WGPUVertexState": [

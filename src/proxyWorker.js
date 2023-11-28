@@ -200,16 +200,14 @@ document.createElement = (what) => {
         }
       };
       canvas.boundingClientRect = {};
-      canvas.getBoundingClientRect = () => {
-        return {
-          width: canvas.boundingClientRect.width,
-          height: canvas.boundingClientRect.height,
-          top: canvas.boundingClientRect.top,
-          left: canvas.boundingClientRect.left,
-          bottom: canvas.boundingClientRect.bottom,
-          right: canvas.boundingClientRect.right
-        };
-      };
+      canvas.getBoundingClientRect = () => ({
+        width: canvas.boundingClientRect.width,
+        height: canvas.boundingClientRect.height,
+        top: canvas.boundingClientRect.top,
+        left: canvas.boundingClientRect.left,
+        bottom: canvas.boundingClientRect.bottom,
+        right: canvas.boundingClientRect.right
+      });
       canvas.style = new PropertyBag();
       canvas.exitPointerLock = () => {};
 
@@ -222,9 +220,7 @@ document.createElement = (what) => {
             postMessage({ target: 'canvas', op: 'resize', width: canvas.width_, height: canvas.height_ });
           }
         },
-        get: () => {
-          return canvas.width_;
-        }
+        get: () => canvas.width_
       });
       Object.defineProperty(canvas, 'height', {
         set: (value) => {
@@ -233,9 +229,7 @@ document.createElement = (what) => {
             postMessage({ target: 'canvas', op: 'resize', width: canvas.width_, height: canvas.height_ });
           }
         },
-        get: () => {
-          return canvas.height_;
-        }
+        get: () => canvas.height_
       });
 
       var style = {
