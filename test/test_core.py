@@ -524,8 +524,8 @@ class TestCoreBase(RunnerCore):
   def test_i64_qdouble(self):
     self.do_core_test('test_i64_qdouble.c')
 
+  @only_wasm2js('tests va_arg() with i64 params')
   def test_i64_varargs(self):
-    # tests va_arg() with i64 params.
     self.do_core_test('test_i64_varargs.c', args='waka fleefl asdfasdfasdfasdf'.split())
 
   @no_wasm2js('wasm_bigint')
