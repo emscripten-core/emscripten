@@ -63,6 +63,12 @@ class ClassWithConstructor {
   int fn(int x) { return 0; }
 };
 
+class ClassWithTwoConstructors {
+ public:
+  ClassWithTwoConstructors() {}
+  ClassWithTwoConstructors(int) {}
+};
+
 class ClassWithSmartPtrConstructor {
  public:
   ClassWithSmartPtrConstructor(int, const ValArr&) {}
@@ -153,6 +159,11 @@ EMSCRIPTEN_BINDINGS(Test) {
   class_<ClassWithConstructor>("ClassWithConstructor")
       .constructor<int, const ValArr&>()
       .function("fn", &ClassWithConstructor::fn);
+
+  // The last defined constructor should be used in the definition.
+  class_<ClassWithTwoConstructors>("ClassWithTwoConstructors")
+      .constructor<>()
+      .constructor<int>();
 
   class_<ClassWithSmartPtrConstructor>("ClassWithSmartPtrConstructor")
       .smart_ptr_constructor(
