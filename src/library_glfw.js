@@ -111,6 +111,7 @@ var LibraryGLFW = {
     initialTime: null,
     extensions: null,
     isHiDPIAware: false,
+    devicePixelRatioMQS: null,
     hints: null,
     defaultHints: {
       0x00020001:0, // GLFW_FOCUSED
@@ -1293,8 +1294,8 @@ var LibraryGLFW = {
       return GLFW.isHiDPIAware ? GLFW.getDevicePixelRatio() : 1.0;
     },
 
-    devicePixelRatioMQS: null,
     onDevicePixelRatioChange() {
+      GLFW.onWindowContentScaleChanged(GLFW.getDevicePixelRatio());
       const canvas = Module['canvas'];
       Browser.updateCanvasDimensions(canvas, canvas.clientWidth, canvas.clientHeight);
       Browser.updateResizeListeners();
@@ -1307,16 +1308,6 @@ var LibraryGLFW = {
         const canvas = Module['canvas'];
         Browser.updateCanvasDimensions(canvas, canvas.clientWidth, canvas.clientHeight);
         Browser.updateResizeListeners();
-
-        // handling dynamic changes to devicePixelRatio
-        if (GLFW.devicePixelRatioMQS) {
-          GLFW.devicePixelRatioMQS.removeEventListener('change', GLFW.onDevicePixelRatioChange);
-          GLFW.devicePixelRatioMQS = null;
-        }
-        if (GLFW.isHiDPIAware) {
-          GLFW.devicePixelRatioMQS = window.matchMedia('(resolution: ' + GLFW.getDevicePixelRatio() + 'dppx)');
-          GLFW.devicePixelRatioMQS.addEventListener('change', GLFW.onDevicePixelRatioChange);
-        }
       }
     },
 
@@ -1377,13 +1368,11 @@ var LibraryGLFW = {
     window.addEventListener("keypress", GLFW.onKeyPress, true);
     window.addEventListener("keyup", GLFW.onKeyup, true);
     window.addEventListener("blur", GLFW.onBlur, true);
-    // from https://stackoverflow.com/a/70514686/7484780 . maybe add this to browser.js?
-    // no idea how to remove this listener.
-    (function updatePixelRatio(){
-      window.matchMedia("(resolution: " + window.devicePixelRatio + "dppx)")
-      .addEventListener('change', updatePixelRatio, {once: true});
-      GLFW.onWindowContentScaleChanged(_emscripten_get_device_pixel_ratio());
-      })();
+
+    // watch for devicePixelRatio changes
+    GLFW.devicePixelRatioMQS = window.matchMedia('(resolution: ' + GLFW.getDevicePixelRatio() + 'dppx)');
+    GLFW.devicePixelRatioMQS.addEventListener('change', GLFW.onDevicePixelRatioChange);
+
     Module["canvas"].addEventListener("touchmove", GLFW.onMousemove, true);
     Module["canvas"].addEventListener("touchstart", GLFW.onMouseButtonDown, true);
     Module["canvas"].addEventListener("touchcancel", GLFW.onMouseButtonUp, true);
@@ -1436,6 +1425,8 @@ var LibraryGLFW = {
     Module["canvas"].removeEventListener('drop', GLFW.onDrop, true);
     Module["canvas"].removeEventListener('dragover', GLFW.onDragover, true);
 
+    if (GLFW.devicePixelRatioMQS)
+      GLFW.devicePixelRatioMQS.removeEventListener('change', GLFW.onDevicePixelRatioChange);
 
     Module["canvas"].width = Module["canvas"].height = 1;
     GLFW.windows = null;
