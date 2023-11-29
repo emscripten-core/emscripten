@@ -1537,9 +1537,9 @@ def parse_args():
                       help='Expose the port directly to the Android device '
                            'and connect to it as localhost, establishing '
                            'cross origin isolation. Implies --android. A '
-                           'reverse socket connection is created (by adb '
-                           'reverse) and needs to be removed manually (adb '
-                           'reverse --remove).')
+                           'reverse socket connection is created by adb '
+                           'reverse, and remains after emrun terminates (it '
+                           'can be removed by adb reverse --remove).')
 
   parser.add_argument('--system_info', action='store_true',
                       help='Prints information about the current system at startup.')
