@@ -14,23 +14,25 @@
 
 using namespace std;
 
-uint64_t getbigint(){
+uint64_t getbigint() {
     int ran = rand() % 100;// v1 in the range 0 to 99
     ++ran;
-    if(ran > -1)
+    if (ran > -1) {
         throw new std::runtime_error("error!!");
+    }
 
     return 1152921504606846975 + ran;
 }
-int main()
-{   
+
+int main() {
     float safeY = 0.0f;
     uint64_t mybig = 0;
 
-    try{
+    try {
         mybig = getbigint();
     }
-    catch(std::runtime_error){};
+    catch (std::runtime_error) {
+    }
 
     return 0;
 }

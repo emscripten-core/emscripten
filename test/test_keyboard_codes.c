@@ -22,8 +22,7 @@ static inline const char *emscripten_event_type_to_string(int eventType) {
   return events[eventType];
 }
 
-int interpret_charcode_for_keyevent(int eventType, const EmscriptenKeyboardEvent *e)
-{
+int interpret_charcode_for_keyevent(int eventType, const EmscriptenKeyboardEvent *e) {
   // Only KeyPress events carry a charCode. For KeyDown and KeyUp events, these don't seem to be present yet, until later when the KeyDown
   // is transformed to KeyPress. Sometimes it can be useful to already at KeyDown time to know what the charCode of the resulting
   // KeyPress will be. The following attempts to do this:
@@ -34,25 +33,21 @@ int interpret_charcode_for_keyevent(int eventType, const EmscriptenKeyboardEvent
   return e->keyCode;
 }
 
-int number_of_characters_in_utf8_string(const char *str)
-{
+int number_of_characters_in_utf8_string(const char *str) {
   if (!str) return 0;
   int num_chars = 0;
-  while(*str)
-  {
+  while (*str) {
     if ((*str++ & 0xC0) != 0x80) ++num_chars; // Skip all continuation bytes
   }
   return num_chars;
 }
 
-int emscripten_key_event_is_printable_character(const EmscriptenKeyboardEvent *keyEvent)
-{
+int emscripten_key_event_is_printable_character(const EmscriptenKeyboardEvent *keyEvent) {
   // Not sure if this is correct, but heuristically looks good. Improvements on corner cases welcome.
   return number_of_characters_in_utf8_string(keyEvent->key) == 1;
 }
 
-EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData)
-{
+EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
   int dom_pk_code = emscripten_compute_dom_pk_code(e->code);
 
   printf("%s, key: \"%s\" (printable: %s), code: \"%s\" = %s (%d), location: %lu,%s%s%s%s repeat: %d, locale: \"%s\", char: \"%s\", charCode: %lu (interpreted: %d), keyCode: %s(%lu), which: %lu\n",
@@ -73,8 +68,7 @@ EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *user
     || eventType == EMSCRIPTEN_EVENT_KEYPRESS || eventType == EMSCRIPTEN_EVENT_KEYUP; // Don't perform any default actions on these.
 }
 
-int main()
-{
+int main() {
   printf("Press any keys on the keyboard to test the appropriate generated EmscriptenKeyboardEvent structure.\n");
   emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, key_callback);
   emscripten_set_keyup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, key_callback);

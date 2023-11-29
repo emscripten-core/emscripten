@@ -23,7 +23,7 @@ from urllib.request import urlopen
 
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
-from common import read_file, requires_v8, also_with_minimal_runtime, EMRUN, no_wasm64
+from common import read_file, also_with_minimal_runtime, EMRUN, no_wasm64
 from tools import shared
 from tools import ports
 from tools import utils
@@ -233,10 +233,6 @@ class browser(BrowserCore):
       '-Wno-pointer-sign',
       '-Wno-int-conversion',
     ]
-
-  def require_wasm64(self):
-    # All the browsers we run on support wasm64 (Chrome and Firefox).
-    return True
 
   def require_wasm2js(self):
     if self.is_wasm64():
@@ -1691,9 +1687,7 @@ keydown(100);keyup(100); // trigger the end
       self.run_browser('main.html', '/report_result?hello from worker, and :' + ('data for w' if file_data else '') + ':')
 
     # code should run standalone too
-    # (doesn't work under browser64 due to `require_wasm64` hack in this class)
-    if not self.is_wasm64():
-      self.assertContained('you should not see this text when in a worker!', self.run_js('worker.js'))
+    self.assertContained('you should not see this text when in a worker!', self.run_js('worker.js'))
 
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/19608')
   def test_mmap_lazyfile(self):
@@ -5561,8 +5555,7 @@ Module["preRun"] = () => {
     self.btest('wasm_worker/proxied_function.c', expected='0', args=['--js-library', test_file('wasm_worker/proxied_function.js'), '-sWASM_WORKERS', '-sASSERTIONS=0'])
 
   @no_firefox('no 4GB support yet')
-  @requires_v8
-  def test_zzz_zzz_4gb(self):
+  def test_4gb(self):
     # TODO Convert to an actual browser test when it reaches stable.
     # For now, keep this in browser as this suite runs serially, which
     # means we don't compete for memory with anything else (and run it
@@ -5572,11 +5565,11 @@ Module["preRun"] = () => {
     # test that we can allocate in the 2-4GB range, if we enable growth and
     # set the max appropriately
     self.emcc_args += ['-O2', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB']
-    self.do_run_in_out_file_test('browser', 'test_4GB.cpp')
+    self.do_run_in_out_file_test('browser/test_4GB.cpp')
 
   # Tests that emmalloc supports up to 4GB Wasm heaps.
   @no_firefox('no 4GB support yet')
-  def test_zzz_zzz_emmalloc_4gb(self):
+  def test_emmalloc_4gb(self):
     # For now, keep this in browser as this suite runs serially, which
     # means we don't compete for memory with anything else (and run it
     # at the very very end, to reduce the risk of it OOM-killing the
@@ -5653,12 +5646,11 @@ Module["preRun"] = () => {
     self.btest(test, args=args, expected="0")
 
   @no_firefox('no 4GB support yet')
-  def test_zzz_zzz_emmalloc_memgrowth(self, *args):
+  def test_emmalloc_memgrowth(self, *args):
     self.btest('emmalloc_memgrowth.cpp', expected='0', args=['-sMALLOC=emmalloc', '-sALLOW_MEMORY_GROWTH=1', '-sABORTING_MALLOC=0', '-sASSERTIONS=2', '-sMINIMAL_RUNTIME=1', '-sMAXIMUM_MEMORY=4GB'])
 
   @no_firefox('no 4GB support yet')
-  @requires_v8
-  def test_zzz_zzz_2gb_fail(self):
+  def test_2gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
     #      For now, keep this in browser as this suite runs serially, which
     #      means we don't compete for memory with anything else (and run it
@@ -5668,12 +5660,10 @@ Module["preRun"] = () => {
     # test that growth doesn't go beyond 2GB without the max being set for that,
     # and that we can catch an allocation failure exception for that
     self.emcc_args += ['-O2', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=2GB']
-    self.do_run_in_out_file_test('browser', 'test_2GB_fail.cpp')
+    self.do_run_in_out_file_test('browser/test_2GB_fail.cpp')
 
   @no_firefox('no 4GB support yet')
-  @requires_v8
-  @no_wasm64()
-  def test_zzz_zzz_4gb_fail(self):
+  def test_4gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
     #      For now, keep this in browser as this suite runs serially, which
     #      means we don't compete for memory with anything else (and run it
@@ -5682,12 +5672,9 @@ Module["preRun"] = () => {
 
     # test that we properly report an allocation error that would overflow over
     # 4GB.
-    if self.get_setting('MEMORY64'):
-      self.set_setting('MAXIMUM_MEMORY', '6GB')
-    else:
-      self.set_setting('MAXIMUM_MEMORY', '4GB')
+    self.set_setting('MAXIMUM_MEMORY', '4GB')
     self.emcc_args += ['-O2', '-sALLOW_MEMORY_GROWTH', '-sABORTING_MALLOC=0', '-sASSERTIONS']
-    self.do_run_in_out_file_test('browser', 'test_4GB_fail.cpp')
+    self.do_run_in_out_file_test('browser/test_4GB_fail.cpp')
 
   # Tests that Emscripten-compiled applications can be run when a slash in the URL query or fragment of the js file
   def test_browser_run_with_slash_in_query_and_hash(self):
@@ -5898,5 +5885,15 @@ class browser64(browser):
   def setUp(self):
     super().setUp()
     self.set_setting('MEMORY64')
+    self.emcc_args.append('-Wno-experimental')
+    self.require_wasm64()
+
+
+class browser64_4gb(browser):
+  def setUp(self):
+    super().setUp()
+    self.set_setting('MEMORY64')
+    self.set_setting('INITIAL_MEMORY', '4200mb')
+    self.set_setting('GLOBAL_BASE', '4gb')
     self.emcc_args.append('-Wno-experimental')
     self.require_wasm64()

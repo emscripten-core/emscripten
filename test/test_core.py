@@ -134,6 +134,14 @@ def no_wasm2js(note=''):
   return decorated
 
 
+def only_wasm2js(note=''):
+  assert not callable(note)
+
+  def decorated(f):
+    return skip_if(f, 'is_wasm2js', note, negate=True)
+  return decorated
+
+
 def also_with_noderawfs(func):
   assert callable(func)
 
@@ -406,8 +414,6 @@ class TestCoreBase(RunnerCore):
                             configure_args=configure_args,
                             cache_name_extra=configure_commands[0])
 
-  @also_with_standalone_wasm()
-  @also_with_wasmfs
   def test_hello_world(self):
     self.do_core_test('test_hello_world.c')
 
@@ -426,13 +432,9 @@ class TestCoreBase(RunnerCore):
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_hello_argc.c', args=['hello', 'world'])
 
-  @also_with_wasmfs
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_intvars(self):
     self.do_core_test('test_intvars.cpp')
-
-  @also_with_wasmfs
-  def test_sintvars(self):
-    self.do_core_test('test_sintvars.c')
 
   def test_int53(self):
     if common.EMTEST_REBASELINE:
@@ -561,7 +563,7 @@ class TestCoreBase(RunnerCore):
     self.do_core_test('test_bswap64.cpp')
 
   def test_sha1(self):
-    self.do_runf('sha1.c', 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
+    self.do_runf('third_party/sha1.c', 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
 
   def test_core_types(self):
     self.do_runf('core/test_core_types.c')
@@ -6199,7 +6201,7 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('test_sigalrm.c', 'Received alarm!')
 
   def test_signals(self):
-    self.do_core_test(test_file('test_signals.c'))
+    self.do_core_test('test_signals.c')
 
   @parameterized({
     'sigint': (EM_SIGINT, 128 + EM_SIGINT, True),
@@ -6611,7 +6613,7 @@ int main(void) {
     # TODO: Should we remove this test?
     self.skipTest('Relies on double value rounding, extremely sensitive')
 
-    src = read_file(test_file('raytrace.cpp')).replace('double', 'float')
+    src = read_file(test_file('third_party/raytrace.cpp')).replace('double', 'float')
     output = read_file(test_file('raytrace.ppm'))
     self.do_run(src, output, args=['3', '16'])
 
@@ -7089,6 +7091,8 @@ void* operator new(size_t size) {
   @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test
   def test_poppler(self):
+    # See https://github.com/emscripten-core/emscripten/issues/20757
+    self.emcc_args.append('-Wno-deprecated-declarations')
     poppler = self.get_poppler_library()
     pdf_data = read_binary(test_file('poppler/paper.pdf'))
     create_file('paper.pdf.js', str(list(bytearray(pdf_data))))

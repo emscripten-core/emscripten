@@ -50,8 +50,7 @@ void verify() {
 #endif
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     SDL_Surface *screen;
     if ( SDL_Init(SDL_INIT_VIDEO) != 0 ) {
         printf("Unable to initialize SDL: %s\n", SDL_GetError());

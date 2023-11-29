@@ -13,8 +13,7 @@
 #include <string.h>
 #include "SDL/SDL.h"
 
-int main()
-{
+int main() {
   SDL_Surface *screen;
 
   assert(SDL_Init(SDL_INIT_VIDEO) == 0);

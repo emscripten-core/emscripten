@@ -48,7 +48,7 @@ void mainn() {
 
 int main() {
   // Create initial threads.
-  for(long i = 0; i < NUM_THREADS; ++i) {
+  for (long i = 0; i < NUM_THREADS; ++i) {
     CreateThread(i);
   }
 

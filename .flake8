@@ -6,7 +6,6 @@ exclude =
  ./tools/scons/, # third-party code
  ./test/third_party/, # third-party code
  ./site/source/conf.py,
- ./tools/debug/,
  ./system/lib/, # system libraries
  ./cache/, # download/built content
  .git

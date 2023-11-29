@@ -68,9 +68,7 @@ var LibraryEmbind = {
       this.methods = [];
       this.staticMethods = [];
       this.staticProperties = [];
-      this.constructors = [
-        new FunctionDefinition('default', this, [])
-      ];
+      this.constructors = [];
       this.base = base;
       this.properties = [];
     }
@@ -96,18 +94,25 @@ var LibraryEmbind = {
     }
 
     printModuleEntry(nameMap, out) {
-      out.push(`  ${this.name}: {new`);
-      // TODO Handle constructor overloading
-      const constructor = this.constructors[this.constructors.length > 1 ? 1 : 0];
-      constructor.printSignature(nameMap, out);
+      out.push(`  ${this.name}: {`);
+      const entries = [];
+      for(const construct of this.constructors) {
+        const entry = [];
+        entry.push('new');
+        construct.printSignature(nameMap, entry);
+        entries.push(entry.join(''));
+      }
       for (const method of this.staticMethods) {
-        out.push('; ');
-        method.printFunction(nameMap, out);
+        const entry = [];
+        method.printFunction(nameMap, entry);
+        entries.push(entry.join(''));
       }
       for (const prop of this.staticProperties) {
-        out.push('; ');
-        prop.print(nameMap, out);
+        const entry = [];
+        prop.print(nameMap, entry);
+        entries.push(entry.join(''));
       }
+      out.push(entries.join('; '));
       out.push('};\n');
     }
   },
@@ -210,6 +215,10 @@ var LibraryEmbind = {
         ['bool', 'boolean'],
         ['float', 'number'],
         ['double', 'number'],
+#if MEMORY64
+        ['long', 'bigint'],
+        ['unsigned long', 'bigint'],
+#endif
 #if WASM_BIGINT
         ['int64_t', 'bigint'],
         ['uint64_t', 'bigint'],

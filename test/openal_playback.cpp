@@ -19,14 +19,10 @@
 #define EMSCRIPTEN_KEEPALIVE
 #endif
 
-extern "C"
-{
-void EMSCRIPTEN_KEEPALIVE test_finished()
-{
+void EMSCRIPTEN_KEEPALIVE test_finished() {
 #ifdef REPORT_RESULT
   REPORT_RESULT(1);
 #endif
-
 }
 
 #if defined(TEST_ALC_SOFT_PAUSE_DEVICE)
@@ -38,8 +34,7 @@ void EMSCRIPTEN_KEEPALIVE test_finished()
 #endif
 }
 
-void playSource(void* arg)
-{
+void playSource(void* arg) {
   ALuint source = static_cast<ALuint>(reinterpret_cast<intptr_t>(arg));
   ALint state;
 
@@ -78,8 +73,7 @@ void playSource(void* arg)
 #endif
 }
 
-void main_tick(void *arg)
-{
+void main_tick(void *arg) {
   ALuint source = static_cast<ALuint>(reinterpret_cast<intptr_t>(arg));
   double t = emscripten_get_now() * 0.001;
 

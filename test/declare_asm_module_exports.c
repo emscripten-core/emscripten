@@ -2,7 +2,9 @@
 #include <emscripten.h>
 #include <stdio.h>
 
-int EMSCRIPTEN_KEEPALIVE cFunction(void) { return 1; }
+int EMSCRIPTEN_KEEPALIVE cFunction(void) {
+  return 1;
+}
 
 EM_JS(int, jsFunction, (), {
   return _cFunction();

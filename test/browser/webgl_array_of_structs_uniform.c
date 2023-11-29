@@ -13,8 +13,7 @@
 #include <GLES2/gl2.h>
 #include <GLES3/gl3.h>
 
-GLuint compile_shader(GLenum shaderType, const char *src)
-{
+GLuint compile_shader(GLenum shaderType, const char *src) {
   GLuint shader = glCreateShader(shaderType);
   glShaderSource(shader, 1, &src, NULL);
   glCompileShader(shader);
@@ -32,22 +31,20 @@ GLuint compile_shader(GLenum shaderType, const char *src)
     return 0;
   }
 
-   return shader;
+  return shader;
 }
 
-GLuint create_program(GLuint vertexShader, GLuint fragmentShader)
-{
-   GLuint program = glCreateProgram();
-   glAttachShader(program, vertexShader);
-   glAttachShader(program, fragmentShader);
-   glBindAttribLocation(program, 0, "apos");
-   glBindAttribLocation(program, 1, "acolor");
-   glLinkProgram(program);
-   return program;
+GLuint create_program(GLuint vertexShader, GLuint fragmentShader) {
+  GLuint program = glCreateProgram();
+  glAttachShader(program, vertexShader);
+  glAttachShader(program, fragmentShader);
+  glBindAttribLocation(program, 0, "apos");
+  glBindAttribLocation(program, 1, "acolor");
+  glLinkProgram(program);
+  return program;
 }
 
-int main()
-{
+int main() {
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
   attr.majorVersion = 2;
@@ -80,8 +77,7 @@ int main()
   GLuint program = create_program(vs, fs);
   glUseProgram(program);
 
-  struct P
-  {
+  struct P {
     float x, y;
     int idx;
   };

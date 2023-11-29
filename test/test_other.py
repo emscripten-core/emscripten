@@ -80,7 +80,18 @@ def uses_canonical_tmp(func):
   return decorated
 
 
+def with_both_compilers(f):
+  assert callable(f)
+
+  f._parameterize = {'': (EMCC,),
+                     'emxx': (EMXX,)}
+  return f
+
+
 def also_with_wasmfs(f):
+  assert callable(f)
+
+  @wraps(f)
   def metafunc(self, wasmfs):
     if wasmfs:
       self.set_setting('WASMFS')
@@ -107,6 +118,9 @@ def wasmfs_all_backends(f):
 
 
 def also_with_wasmfs_all_backends(f):
+  assert callable(f)
+
+  @wraps(f)
   def metafunc(self, backend):
     if backend:
       self.set_setting('WASMFS')
@@ -243,20 +257,20 @@ class other(RunnerCore):
   # This needs to work because many tools run `emcc -v` internally and it should
   # always work even if the user has `EMCC_CFLAGS` set.
   @with_env_modify({'EMCC_CFLAGS': '-should -be -ignored'})
+  @with_both_compilers
   @crossplatform
-  def test_emcc_v(self):
-    for compiler in [EMCC, EMXX]:
-      # -v, without input files
-      proc = self.run_process([compiler, '-v'], stdout=PIPE, stderr=PIPE)
-      self.assertEqual(proc.stdout, '')
-      # assert that the emcc message comes first.  We had a bug where the sub-process output
-      # from clang would be flushed to stderr first.
-      self.assertContained('emcc (Emscripten gcc/clang-like replacement', proc.stderr)
-      self.assertTrue(proc.stderr.startswith('emcc (Emscripten gcc/clang-like replacement'))
-      self.assertContained('clang version ', proc.stderr)
-      self.assertContained('GNU', proc.stderr)
-      self.assertContained('Target: wasm32-unknown-emscripten', proc.stderr)
-      self.assertNotContained('this is dangerous', proc.stderr)
+  def test_emcc_v(self, compiler):
+    # -v, without input files
+    proc = self.run_process([compiler, '-v'], stdout=PIPE, stderr=PIPE)
+    self.assertEqual(proc.stdout, '')
+    # assert that the emcc message comes first.  We had a bug where the sub-process output
+    # from clang would be flushed to stderr first.
+    self.assertContained('emcc (Emscripten gcc/clang-like replacement', proc.stderr)
+    self.assertTrue(proc.stderr.startswith('emcc (Emscripten gcc/clang-like replacement'))
+    self.assertContained('clang version ', proc.stderr)
+    self.assertContained('GNU', proc.stderr)
+    self.assertContained('Target: wasm32-unknown-emscripten', proc.stderr)
+    self.assertNotContained('this is dangerous', proc.stderr)
 
   def test_log_subcommands(self):
     # `-v` when combined with other arguments will trace the subcommands
@@ -281,16 +295,16 @@ class other(RunnerCore):
     proc = self.run_process([EMCC, '--check'], stdout=PIPE, stderr=PIPE)
     self.assertContained('Running sanity checks', proc.stderr)
 
-  def test_emcc_generate_config(self):
+  @with_both_compilers
+  def test_emcc_generate_config(self, compiler):
     config_path = './emscripten_config'
     with env_modify({'EM_CONFIG': config_path}):
-      for compiler in [EMCC, EMXX]:
-        self.assertNotExists(config_path)
-        self.run_process([compiler, '--generate-config'])
-        self.assertExists(config_path)
-        config_contents = read_file(config_path)
-        self.assertContained('LLVM_ROOT', config_contents)
-        os.remove(config_path)
+      self.assertNotExists(config_path)
+      self.run_process([compiler, '--generate-config'])
+      self.assertExists(config_path)
+      config_contents = read_file(config_path)
+      self.assertContained('LLVM_ROOT', config_contents)
+      os.remove(config_path)
 
   @parameterized({
     '': ([],),
@@ -385,7 +399,8 @@ class other(RunnerCore):
 
   @parameterized({
     'c': [EMCC, '.c'],
-    'cxx': [EMXX, '.cpp']})
+    'cxx': [EMXX, '.cpp'],
+  })
   def test_emcc_basics(self, compiler, suffix):
     # emcc src.cpp ==> writes a.out.js and a.out.wasm
     self.run_process([compiler, test_file('hello_world' + suffix)])
@@ -1050,23 +1065,23 @@ f.close()
     err = self.run_process([EMXX, test_file('hello_world.cpp'), '-v'], stderr=PIPE).stderr
     verify_includes(err)
 
-  def test_failure_error_code(self):
-    for compiler in [EMCC, EMXX]:
-      # Test that if one file is missing from the build, then emcc shouldn't succeed, and shouldn't produce an output file.
-      self.expect_fail([compiler, test_file('hello_world.c'), 'this_file_is_missing.c', '-o', 'out.js'])
-      self.assertFalse(os.path.exists('out.js'))
+  @with_both_compilers
+  def test_failure_error_code(self, compiler):
+    # Test that if one file is missing from the build, then emcc shouldn't succeed, and shouldn't produce an output file.
+    self.expect_fail([compiler, test_file('hello_world.c'), 'this_file_is_missing.c', '-o', 'out.js'])
+    self.assertFalse(os.path.exists('out.js'))
 
-  def test_failure_modularize_and_catch_rejection(self):
-    for compiler in [EMCC, EMXX]:
-      # Test that if sMODULARIZE and sNODEJS_CATCH_REJECTION are both enabled, then emcc shouldn't succeed, and shouldn't produce an output file.
-      self.expect_fail([compiler, test_file('hello_world.c'), '-sMODULARIZE', '-sNODEJS_CATCH_REJECTION', '-o', 'out.js'])
-      self.assertFalse(os.path.exists('out.js'))
+  @with_both_compilers
+  def test_failure_modularize_and_catch_rejection(self, compiler):
+    # Test that if sMODULARIZE and sNODEJS_CATCH_REJECTION are both enabled, then emcc shouldn't succeed, and shouldn't produce an output file.
+    self.expect_fail([compiler, test_file('hello_world.c'), '-sMODULARIZE', '-sNODEJS_CATCH_REJECTION', '-o', 'out.js'])
+    self.assertFalse(os.path.exists('out.js'))
 
-  def test_failure_modularize_and_catch_exit(self):
-    for compiler in [EMCC, EMXX]:
-      # Test that if sMODULARIZE and sNODEJS_CATCH_EXIT are both enabled, then emcc shouldn't succeed, and shouldn't produce an output file.
-      self.expect_fail([compiler, test_file('hello_world.c'), '-sMODULARIZE', '-sNODEJS_CATCH_EXIT', '-o', 'out.js'])
-      self.assertFalse(os.path.exists('out.js'))
+  @with_both_compilers
+  def test_failure_modularize_and_catch_exit(self, compiler):
+    # Test that if sMODULARIZE and sNODEJS_CATCH_EXIT are both enabled, then emcc shouldn't succeed, and shouldn't produce an output file.
+    self.expect_fail([compiler, test_file('hello_world.c'), '-sMODULARIZE', '-sNODEJS_CATCH_EXIT', '-o', 'out.js'])
+    self.assertFalse(os.path.exists('out.js'))
 
   def test_use_cxx(self):
     create_file('empty_file', ' ')
@@ -1075,18 +1090,18 @@ f.close()
     dash_xcpp = self.run_process([EMCC, '-v', '-xc++', 'empty_file'], stderr=PIPE).stderr
     self.assertContained('-x c++', dash_xcpp)
 
-  def test_cxx11(self):
+  @with_both_compilers
+  def test_cxx11(self, compiler):
     for std in ['-std=c++11', '--std=c++11']:
-      for compiler in [EMCC, EMXX]:
-        self.run_process([compiler, std, test_file('hello_cxx11.cpp')])
+      self.run_process([compiler, std, test_file('hello_cxx11.cpp')])
 
   # Regression test for issue #4522: Incorrect CC vs CXX detection
-  def test_incorrect_c_detection(self):
+  @with_both_compilers
+  def test_incorrect_c_detection(self, compiler):
     # This auto-detection only works for the compile phase.
     # For linking you need to use `em++` or pass `-x c++`
     create_file('test.c', 'foo\n')
-    for compiler in [EMCC, EMXX]:
-      self.run_process([compiler, '-c', '-lembind', '--embed-file', 'test.c', test_file('hello_world.cpp')])
+    self.run_process([compiler, '-c', '-lembind', '--embed-file', 'test.c', test_file('hello_world.cpp')])
 
   def test_odd_suffixes(self):
     for suffix in ['CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC']:
@@ -2923,6 +2938,9 @@ int f() {
   })
   def test_embind(self, *extra_args):
     self.emcc_args += [
+      # This test explicitly creates std::string from unsigned char pointers
+      # which is deprecated in upstream LLVM.
+      '-Wno-deprecated-declarations',
       '-lembind',
       '-sRETAIN_COMPILER_SETTINGS',
       '-sEXPORTED_RUNTIME_METHODS=getCompilerSetting',
@@ -3046,6 +3064,12 @@ int f() {
     # Check that TypeScript generation works when bigint support is enabled
     self.run_process(args + ['-sWASM_BIGINT'])
     self.assertFileContents(test_file('other/embind_tsgen_bigint.d.ts'), read_file('embind_tsgen_bigint.d.ts'))
+
+  def test_embind_tsgen_memory64(self):
+    # Check that when memory64 is enabled longs & unsigned longs are mapped to bigint in the generated TS bindings
+    self.run_process([EMCC, test_file('other/embind_tsgen_memory64.cpp'),
+                      '-lembind', '--embind-emit-tsd', 'embind_tsgen_memory64.d.ts', '-sMEMORY64'])
+    self.assertFileContents(test_file('other/embind_tsgen_memory64.d.ts'), read_file('embind_tsgen_memory64.d.ts'))
 
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
@@ -7470,6 +7494,10 @@ Resolved: "/" => "/"
     test(['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=1GB'])
     test(['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB'])
 
+  def test_emmalloc_high_align(self):
+    self.do_other_test('test_emmalloc_high_align.c',
+                       emcc_args=['-sMALLOC=emmalloc', '-sINITIAL_MEMORY=128MB'])
+
   def test_2GB_plus(self):
     # when the heap size can be over 2GB, we rewrite pointers to be unsigned
     def test(page_diff):
@@ -8712,12 +8740,12 @@ int main() {
     rethrow_src1 = r'''
       #include <stdexcept>
 
-      void bar() {
+      void important_function() {
         throw std::runtime_error("my message");
       }
       void foo() {
         try {
-          bar();
+          important_function();
         } catch (...) {
           throw; // rethrowing by throw;
         }
@@ -8730,12 +8758,12 @@ int main() {
     rethrow_src2 = r'''
       #include <stdexcept>
 
-      void bar() {
+      void important_function() {
         throw std::runtime_error("my message");
       }
       void foo() {
         try {
-          bar();
+          important_function();
         } catch (...) {
           auto e = std::current_exception();
           std::rethrow_exception(e); // rethrowing by std::rethrow_exception
@@ -8755,10 +8783,10 @@ int main() {
     self.set_setting('ASSERTIONS', 1)
     err = self.do_run(rethrow_src1, assert_all=True, assert_returncode=NON_ZERO,
                       expected_output=rethrow_stack_trace_checks, regex=True)
-    self.assertNotContained('bar', err)
+    self.assertNotContained('important_function', err)
     err = self.do_run(rethrow_src2, assert_all=True, assert_returncode=NON_ZERO,
                       expected_output=rethrow_stack_trace_checks, regex=True)
-    self.assertNotContained('bar', err)
+    self.assertNotContained('important_function', err)
 
   @requires_node
   def test_jsrun(self):
@@ -10050,7 +10078,7 @@ _d
   # Sockets and networking
 
   def test_inet(self):
-    self.do_runf('sha1.c', 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
+    self.do_runf('third_party/sha1.c', 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
     src = r'''
       #include <stdio.h>
       #include <arpa/inet.h>
@@ -14198,3 +14226,6 @@ addToLibrary({
     self.do_runf('hello_world.c', emcc_args=['-pthread', '-no-pthread'])
     self.assertExists('hello_world.js')
     self.assertNotExists('hello_world.worker.js')
+
+  def test_sysroot_includes_first(self):
+    self.do_other_test('test_stdint_limits.c', emcc_args=['-std=c11', '-iwithsysroot/include'])

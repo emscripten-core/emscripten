@@ -274,7 +274,7 @@ int main() {
 
       if (this_tm.tm_year != prev_tm.tm_year) {
         assert(this_tm.tm_yday == 0 && prev_tm.tm_yday == 364); //flipped over to 2003, 2002 was non-leap
-      } else if(this_tm.tm_mday != prev_tm.tm_mday) {
+      } else if (this_tm.tm_mday != prev_tm.tm_mday) {
         assert(this_tm.tm_yday == prev_tm.tm_yday + 1);
       }
 
