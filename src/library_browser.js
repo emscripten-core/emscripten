@@ -99,7 +99,6 @@ var LibraryBrowser = {
       }
     },
     isFullscreen: false,
-    isHiDPIAware: false,
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
     workers: [],
@@ -333,7 +332,6 @@ var LibraryBrowser = {
             Browser.setFullscreenCanvasSize();
           } else {
             Browser.updateCanvasDimensions(canvas);
-            Browser.updateResizeListeners();
           }
         } else {
           // remove the full screen specific parent of the canvas again to restore the HTML structure from before going full screen
@@ -344,7 +342,6 @@ var LibraryBrowser = {
             Browser.setWindowedCanvasSize();
           } else {
             Browser.updateCanvasDimensions(canvas);
-            Browser.updateResizeListeners();
           }
         }
         if (Module['onFullScreen']) Module['onFullScreen'](Browser.isFullscreen);
@@ -566,12 +563,6 @@ var LibraryBrowser = {
         var cw = Module["canvas"].width;
         var ch = Module["canvas"].height;
 
-        if (Browser.isHiDPIAware) {
-          const scale = Browser.getHiDPIScale();
-          cw /= scale;
-          ch /= scale;
-        }
-
         // Neither .scrollX or .pageXOffset are defined in a spec, but
         // we prefer .scrollX because it is currently in a spec draft.
         // (see: http://www.w3.org/TR/2013/WD-cssom-view-20131217/)
@@ -629,12 +620,7 @@ var LibraryBrowser = {
 
     updateResizeListeners() {
       var canvas = Module['canvas'];
-      var cw = canvas.width, ch = canvas.height;
-      if (Browser.isHiDPIAware) {
-        cw = canvas.clientWidth;
-        ch = canvas.clientHeight;
-      }
-      Browser.resizeListeners.forEach((listener) => listener(cw, ch, canvas.width, canvas.height));
+      Browser.resizeListeners.forEach((listener) => listener(canvas.width, canvas.height));
     },
 
     setCanvasSize(width, height, noUpdates) {
@@ -668,8 +654,6 @@ var LibraryBrowser = {
     },
 
     updateCanvasDimensions(canvas, wNative, hNative) {
-      const scale = Browser.getHiDPIScale();
-
       if (wNative && hNative) {
         canvas.widthNative = wNative;
         canvas.heightNative = hNative;
@@ -694,55 +678,23 @@ var LibraryBrowser = {
          h = Math.round(h * factor);
       }
       if (Browser.resizeCanvas) {
-        wNative = w;
-        hNative = h;
-      }
-      const wNativeScaled = Math.floor(wNative * scale);
-      const hNativeScaled = Math.floor(hNative * scale);
-      if (canvas.width  != wNativeScaled) canvas.width  = wNativeScaled;
-      if (canvas.height != hNativeScaled) canvas.height = hNativeScaled;
-      if (typeof canvas.style != 'undefined') {
-        if (wNativeScaled != wNative || hNativeScaled != hNative) {
-          canvas.style.setProperty( "width", wNative + "px", "important");
-          canvas.style.setProperty("height", hNative + "px", "important");
-        } else {
+        if (canvas.width  != w) canvas.width  = w;
+        if (canvas.height != h) canvas.height = h;
+        if (typeof canvas.style != 'undefined') {
           canvas.style.removeProperty( "width");
           canvas.style.removeProperty("height");
         }
-      }
-    },
-
-    getDevicePixelRatio() {
-      return (typeof devicePixelRatio == 'number' && devicePixelRatio) || 1.0;
-    },
-
-    getHiDPIScale() {
-      return Browser.isHiDPIAware ? Browser.getDevicePixelRatio() : 1.0;
-    },
-
-    devicePixelRatioMQS: null,
-    onDevicePixelRatioChange() {
-      const canvas = Module['canvas'];
-      Browser.updateCanvasDimensions(canvas, canvas.clientWidth, canvas.clientHeight);
-      Browser.updateResizeListeners();
-    },
-
-    setHiDPIAware(isHiDPIAware) {
-      isHiDPIAware = !!isHiDPIAware; // coerce to boolean
-      if (Browser.isHiDPIAware != isHiDPIAware) {
-        Browser.isHiDPIAware = isHiDPIAware;
-        const canvas = Module['canvas'];
-        Browser.updateCanvasDimensions(canvas, canvas.clientWidth, canvas.clientHeight);
-        Browser.updateResizeListeners();
-
-        // handling dynamic changes to devicePixelRatio
-        if (Browser.devicePixelRatioMQS) {
-          Browser.devicePixelRatioMQS.removeEventListener('change', Browser.onDevicePixelRatioChange);
-          Browser.devicePixelRatioMQS = null;
-        }
-        if (Browser.isHiDPIAware) {
-          Browser.devicePixelRatioMQS = window.matchMedia('(resolution: ' + Browser.getDevicePixelRatio() + 'dppx)');
-          Browser.devicePixelRatioMQS.addEventListener('change', Browser.onDevicePixelRatioChange);
+      } else {
+        if (canvas.width  != wNative) canvas.width  = wNative;
+        if (canvas.height != hNative) canvas.height = hNative;
+        if (typeof canvas.style != 'undefined') {
+          if (w != wNative || h != hNative) {
+            canvas.style.setProperty( "width", w + "px", "important");
+            canvas.style.setProperty("height", h + "px", "important");
+          } else {
+            canvas.style.removeProperty( "width");
+            canvas.style.removeProperty("height");
+          }
         }
       }
     },
