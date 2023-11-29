@@ -523,7 +523,8 @@ jobs:
             asan.test_asyncify_longjmp
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
-            lsan.test_pthread_create"
+            lsan.test_pthread_create
+            lsan.test_pthread_exit_main_stub"
       - freeze-cache
       - run-tests:
           # also run a single test of EMTEST_BROWSER=node.
@@ -557,7 +558,6 @@ jobs:
             core2s.test_module_wasm_memory
             wasm2js3.test_memorygrowth_2
             wasmfs.test_hello_world
-            wasmfs.test_hello_world_standalone
             wasmfs.test_unistd_links*
             wasmfs.test_atexit_standalone
             wasmfs.test_emscripten_get_now
@@ -688,7 +688,10 @@ jobs:
             echo "JSC_ENGINE = [os.path.expanduser('~/.jsvu/bin/javascriptcore')]" >> ~/emsdk/.emscripten
             echo "JS_ENGINES = [JSC_ENGINE]" >> ~/emsdk/.emscripten
       - run-tests:
-          test_targets: "core0.test_hello_world other.test_modularize_incoming other.test_modularize_incoming_export_name"
+          test_targets: "
+            core0.test_hello_argc
+            other.test_modularize_incoming
+            other.test_modularize_incoming_export_name"
   test-spidermonkey:
     executor: linux-python
     steps:
@@ -710,7 +713,9 @@ jobs:
             echo "SPIDERMONKEY_ENGINE = [os.path.expanduser('~/.jsvu/bin/spidermonkey')]" >> ~/emsdk/.emscripten
             echo "JS_ENGINES = [SPIDERMONKEY_ENGINE]" >> ~/emsdk/.emscripten
       - run-tests:
-          test_targets: "core0.test_hello_world core2.test_demangle_stacks_symbol_map"
+          test_targets: "
+            core0.test_hello_argc
+            core2.test_demangle_stacks_symbol_map"
   test-node-compat:
     # We don't use `bionic` here since its too old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
@@ -792,7 +797,13 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser64"
-          test_targets: "browser64 skip:browser64.test_4gb_fail"
+          # skip test_4gb_fail as it OOMs on the current bot
+          # Run a few tests in browser64_4gb mode too.
+          test_targets: "
+            browser64
+            skip:browser64.test_4gb_fail
+            browser64_4gb.test_emscripten_log
+            "
   test-browser-firefox:
     executor: bionic
     steps:

@@ -311,15 +311,16 @@ var LibraryWebGPU = {
     makeProgrammableStageDescriptor: (ptr) => {
       if (!ptr) return undefined;
       {{{ gpu.makeCheckDescriptor('ptr') }}}
-      return {
+      var desc = {
         "module": WebGPU.mgrShaderModule.get(
           {{{ makeGetValue('ptr', C_STRUCTS.WGPUProgrammableStageDescriptor.module, '*') }}}),
-        "entryPoint": UTF8ToString(
-          {{{ makeGetValue('ptr', C_STRUCTS.WGPUProgrammableStageDescriptor.entryPoint, '*') }}}),
         "constants": WebGPU.makePipelineConstants(
           {{{ gpu.makeGetU32('ptr', C_STRUCTS.WGPUProgrammableStageDescriptor.constantCount) }}},
           {{{ makeGetValue('ptr', C_STRUCTS.WGPUProgrammableStageDescriptor.constants, '*') }}}),
       };
+      var entryPointPtr = {{{ makeGetValue('ptr', C_STRUCTS.WGPUProgrammableStageDescriptor.entryPoint, '*') }}};
+      if (entryPointPtr) desc["entryPoint"] = UTF8ToString(entryPointPtr);
+      return desc;
     },
 
     // Map from enum string back to enum number, for callbacks.
@@ -1323,18 +1324,19 @@ var LibraryWebGPU = {
     function makeVertexState(viPtr) {
       if (!viPtr) return undefined;
       {{{ gpu.makeCheckDescriptor('viPtr') }}}
-      return {
+      var desc = {
         "module": WebGPU.mgrShaderModule.get(
           {{{ makeGetValue('viPtr', C_STRUCTS.WGPUVertexState.module, '*') }}}),
-        "entryPoint": UTF8ToString(
-          {{{ makeGetValue('viPtr', C_STRUCTS.WGPUVertexState.entryPoint, '*') }}}),
         "constants": WebGPU.makePipelineConstants(
           {{{ gpu.makeGetU32('viPtr', C_STRUCTS.WGPUVertexState.constantCount) }}},
           {{{ makeGetValue('viPtr', C_STRUCTS.WGPUVertexState.constants, '*') }}}),
         "buffers": makeVertexBuffers(
           {{{ gpu.makeGetU32('viPtr', C_STRUCTS.WGPUVertexState.bufferCount) }}},
           {{{ makeGetValue('viPtr', C_STRUCTS.WGPUVertexState.buffers, '*') }}}),
-      };
+        };
+      var entryPointPtr = {{{ makeGetValue('viPtr', C_STRUCTS.WGPUVertexState.entryPoint, '*') }}};
+      if (entryPointPtr) desc["entryPoint"] = UTF8ToString(entryPointPtr);
+      return desc;
     }
 
     function makeMultisampleState(msPtr) {
@@ -1350,18 +1352,19 @@ var LibraryWebGPU = {
     function makeFragmentState(fsPtr) {
       if (!fsPtr) return undefined;
       {{{ gpu.makeCheckDescriptor('fsPtr') }}}
-      return {
+      var desc = {
         "module": WebGPU.mgrShaderModule.get(
           {{{ makeGetValue('fsPtr', C_STRUCTS.WGPUFragmentState.module, '*') }}}),
-        "entryPoint": UTF8ToString(
-          {{{ makeGetValue('fsPtr', C_STRUCTS.WGPUFragmentState.entryPoint, '*') }}}),
         "constants": WebGPU.makePipelineConstants(
           {{{ gpu.makeGetU32('fsPtr', C_STRUCTS.WGPUFragmentState.constantCount) }}},
           {{{ makeGetValue('fsPtr', C_STRUCTS.WGPUFragmentState.constants, '*') }}}),
         "targets": makeColorStates(
           {{{ gpu.makeGetU32('fsPtr', C_STRUCTS.WGPUFragmentState.targetCount) }}},
           {{{ makeGetValue('fsPtr', C_STRUCTS.WGPUFragmentState.targets, '*') }}}),
-      };
+        };
+      var entryPointPtr = {{{ makeGetValue('fsPtr', C_STRUCTS.WGPUFragmentState.entryPoint, '*') }}};
+      if (entryPointPtr) desc["entryPoint"] = UTF8ToString(entryPointPtr);
+      return desc;
     }
 
     var desc = {

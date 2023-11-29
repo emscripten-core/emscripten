@@ -134,6 +134,14 @@ def no_wasm2js(note=''):
   return decorated
 
 
+def only_wasm2js(note=''):
+  assert not callable(note)
+
+  def decorated(f):
+    return skip_if(f, 'is_wasm2js', note, negate=True)
+  return decorated
+
+
 def also_with_noderawfs(func):
   assert callable(func)
 
@@ -406,8 +414,6 @@ class TestCoreBase(RunnerCore):
                             configure_args=configure_args,
                             cache_name_extra=configure_commands[0])
 
-  @also_with_standalone_wasm()
-  @also_with_wasmfs
   def test_hello_world(self):
     self.do_core_test('test_hello_world.c')
 
@@ -426,13 +432,9 @@ class TestCoreBase(RunnerCore):
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_hello_argc.c', args=['hello', 'world'])
 
-  @also_with_wasmfs
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_intvars(self):
     self.do_core_test('test_intvars.cpp')
-
-  @also_with_wasmfs
-  def test_sintvars(self):
-    self.do_core_test('test_sintvars.c')
 
   def test_int53(self):
     if common.EMTEST_REBASELINE:

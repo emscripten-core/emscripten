@@ -1637,7 +1637,7 @@ namespace wgpu {
     struct ProgrammableStageDescriptor {
         ChainedStruct const * nextInChain = nullptr;
         ShaderModule module;
-        char const * entryPoint;
+        char const * entryPoint = nullptr;
         size_t constantCount = 0;
         ConstantEntry const * constants;
     };
@@ -1726,7 +1726,7 @@ namespace wgpu {
     struct VertexState {
         ChainedStruct const * nextInChain = nullptr;
         ShaderModule module;
-        char const * entryPoint;
+        char const * entryPoint = nullptr;
         size_t constantCount = 0;
         ConstantEntry const * constants;
         size_t bufferCount = 0;
@@ -1736,7 +1736,7 @@ namespace wgpu {
     struct FragmentState {
         ChainedStruct const * nextInChain = nullptr;
         ShaderModule module;
-        char const * entryPoint;
+        char const * entryPoint = nullptr;
         size_t constantCount = 0;
         ConstantEntry const * constants;
         size_t targetCount;

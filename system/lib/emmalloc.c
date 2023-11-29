@@ -11,7 +11,7 @@
  *
  *  - sbrk() is used to claim new memory (sbrk handles geometric/linear
  *  - overallocation growth)
- *  - sbrk() can be used by other code outside emmalloc.
+ *  - sbrk() can also be called by other code, not reserved to emmalloc only.
  *  - sbrk() is very fast in most cases (internal wasm call).
  *  - sbrk() returns pointers with an alignment of alignof(max_align_t)
  *
@@ -27,6 +27,8 @@
  *    merged.
  *  - Memory allocation takes constant time, unless the alloc needs to sbrk()
  *    or memory is very close to being exhausted.
+ *  - Free and used regions are managed inside "root regions", which are slabs
+ *    of memory acquired via calls to sbrk().
  *
  * Debugging:
  *
@@ -486,10 +488,11 @@ static bool claim_more_memory(size_t numBytes)
   validate_memory_regions();
 #endif
 
-  // Make sure we send sbrk requests of aligned sizes. If we do not do that then
-  // it will not return contiguous regions, which leads to use creating more
-  // root regions below, inefficiently. (Note that we assume our alignment is
-  // identical to sbrk's, see the assumptions at the start of this file.)
+  // Make sure we always send sbrk requests with the same alignment that sbrk()
+  // allocates memory at. Otherwise we will not properly interpret returned memory
+  // to form a seamlessly contiguous region with earlier root regions, which would
+  // lead to inefficiently treating the sbrk()ed region to be a new disjoint root
+  // region.
   numBytes = (size_t)ALIGN_UP(numBytes, MALLOC_ALIGNMENT);
 
   // Claim memory via sbrk
@@ -517,7 +520,7 @@ static bool claim_more_memory(size_t numBytes)
   if (startPtr == previousSbrkEndAddress)
   {
 #ifdef EMMALLOC_VERBOSE
-    MAIN_THREAD_ASYNC_EM_ASM(err('claim_more_memory: expanding previous'));
+    MAIN_THREAD_ASYNC_EM_ASM(err('claim_more_memory: sbrk() returned a region contiguous to last root region, expanding the existing root region'));
 #endif
     Region *prevEndSentinel = prev_region((Region*)startPtr);
     assert(debug_region_is_consistent(prevEndSentinel));
@@ -544,9 +547,11 @@ static bool claim_more_memory(size_t numBytes)
   }
   else
   {
-    // Create a root region at the start of the heap block
+    // Unfortunately some other user has sbrk()ed to acquire a slab of memory for themselves, and now the sbrk()ed
+    // memory we got is not contiguous with our previous managed root regions.
+    // So create a new root region at the start of the sbrk()ed heap block.
 #ifdef EMMALLOC_VERBOSE
-    MAIN_THREAD_ASYNC_EM_ASM(err('claim_more_memory: creating new root region'));
+    MAIN_THREAD_ASYNC_EM_ASM(err('claim_more_memory: sbrk() returned a disjoint region to last root region, some external code must have sbrk()ed outside emmalloc(). Creating a new root region'));
 #endif
     create_used_region(startPtr, sizeof(Region));
 
@@ -671,12 +676,9 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
 
 static size_t validate_alloc_alignment(size_t alignment)
 {
-  // Cannot perform allocations that are less than 4 byte aligned, because the Region
-  // control structures need to be aligned. Also round up to minimum outputted alignment.
-  alignment = MAX(alignment, MALLOC_ALIGNMENT);
-  // Arbitrary upper limit on alignment - very likely a programming bug if alignment is higher than this.
-  assert(alignment <= 1024*1024);
-  return alignment;
+  // Cannot perform allocations that are less our minimal alignment, because
+  // the Region control structures need to be aligned themselves.
+  return MAX(alignment, MALLOC_ALIGNMENT);
 }
 
 static size_t validate_alloc_size(size_t size)
@@ -808,6 +810,22 @@ static void *allocate_memory(size_t alignment, size_t size)
 
   // We were unable to find a free memory region. Must sbrk() in more memory!
   size_t numBytesToClaim = size+sizeof(Region)*3;
+  // Take into account the alignment as well. For typical alignment we don't
+  // need to add anything here (so we do nothing if the alignment is equal to
+  // MALLOC_ALIGNMENT), but it can matter if the alignment is very high. In that
+  // case, not adding the alignment can lead to this sbrk not giving us enough
+  // (in which case, the next attempt fails and will sbrk the same amount again,
+  // potentially allocating a lot more memory than necessary).
+  //
+  // Note that this is not necessarily optimal, as the extra allocation size for
+  // the alignment might not be needed (if we are lucky and already aligned),
+  // and even if it helps us allocate it will not immediately be ready for reuse
+  // (as it will be added to the currently-in-use region before us, so it is not
+  // in a free list). As a compromise however it seems reasonable in practice as
+  // a way to handle large aligned regions to avoid even worse waste.
+  if (alignment > MALLOC_ALIGNMENT) {
+    numBytesToClaim += alignment;
+  }
   assert(numBytesToClaim > size); // 32-bit wraparound should not happen here, allocation size has been validated above!
   bool success = claim_more_memory(numBytesToClaim);
   if (success)

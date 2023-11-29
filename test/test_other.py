@@ -7494,6 +7494,10 @@ Resolved: "/" => "/"
     test(['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=1GB'])
     test(['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB'])
 
+  def test_emmalloc_high_align(self):
+    self.do_other_test('test_emmalloc_high_align.c',
+                       emcc_args=['-sMALLOC=emmalloc', '-sINITIAL_MEMORY=128MB'])
+
   def test_2GB_plus(self):
     # when the heap size can be over 2GB, we rewrite pointers to be unsigned
     def test(page_diff):
@@ -8736,12 +8740,12 @@ int main() {
     rethrow_src1 = r'''
       #include <stdexcept>
 
-      void bar() {
+      void important_function() {
         throw std::runtime_error("my message");
       }
       void foo() {
         try {
-          bar();
+          important_function();
         } catch (...) {
           throw; // rethrowing by throw;
         }
@@ -8754,12 +8758,12 @@ int main() {
     rethrow_src2 = r'''
       #include <stdexcept>
 
-      void bar() {
+      void important_function() {
         throw std::runtime_error("my message");
       }
       void foo() {
         try {
-          bar();
+          important_function();
         } catch (...) {
           auto e = std::current_exception();
           std::rethrow_exception(e); // rethrowing by std::rethrow_exception
@@ -8779,10 +8783,10 @@ int main() {
     self.set_setting('ASSERTIONS', 1)
     err = self.do_run(rethrow_src1, assert_all=True, assert_returncode=NON_ZERO,
                       expected_output=rethrow_stack_trace_checks, regex=True)
-    self.assertNotContained('bar', err)
+    self.assertNotContained('important_function', err)
     err = self.do_run(rethrow_src2, assert_all=True, assert_returncode=NON_ZERO,
                       expected_output=rethrow_stack_trace_checks, regex=True)
-    self.assertNotContained('bar', err)
+    self.assertNotContained('important_function', err)
 
   @requires_node
   def test_jsrun(self):
