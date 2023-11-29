@@ -110,6 +110,7 @@ var LibraryGLFW = {
     versionString: null,
     initialTime: null,
     extensions: null,
+    isHiDPIAware: false,
     hints: null,
     defaultHints: {
       0x00020001:0, // GLFW_FOCUSED
@@ -1080,14 +1081,243 @@ var LibraryGLFW = {
         if (GLFW.windows[i] !== null) return;
 
       Module.ctx = Browser.destroyContext(Module['canvas'], true, true);
-      Browser.setHiDPIAware(false);
+      GLFW.setHiDPIAware(false);
+    },
+
+    swapBuffers: (winid) => {
+    },
+
+    // Overrides Browser.requestFullscreen to notify listeners even if Browser.resizeCanvas is false
+    requestFullscreen(lockPointer, resizeCanvas) {
+      Browser.lockPointer = lockPointer;
+      Browser.resizeCanvas = resizeCanvas;
+      if (typeof Browser.lockPointer == 'undefined') Browser.lockPointer = true;
+      if (typeof Browser.resizeCanvas == 'undefined') Browser.resizeCanvas = false;
+
+      var canvas = Module['canvas'];
+      function fullscreenChange() {
+        Browser.isFullscreen = false;
+        var canvasContainer = canvas.parentNode;
+        if ((document['fullscreenElement'] || document['mozFullScreenElement'] ||
+          document['msFullscreenElement'] || document['webkitFullscreenElement'] ||
+          document['webkitCurrentFullScreenElement']) === canvasContainer) {
+          canvas.exitFullscreen = Browser.exitFullscreen;
+          if (Browser.lockPointer) canvas.requestPointerLock();
+          Browser.isFullscreen = true;
+          if (Browser.resizeCanvas) {
+            Browser.setFullscreenCanvasSize();
+          } else {
+            Browser.updateCanvasDimensions(canvas);
+            Browser.updateResizeListeners();
+          }
+        } else {
+          // remove the full screen specific parent of the canvas again to restore the HTML structure from before going full screen
+          canvasContainer.parentNode.insertBefore(canvas, canvasContainer);
+          canvasContainer.parentNode.removeChild(canvasContainer);
+
+          if (Browser.resizeCanvas) {
+            Browser.setWindowedCanvasSize();
+          } else {
+            Browser.updateCanvasDimensions(canvas);
+            Browser.updateResizeListeners();
+          }
+        }
+        if (Module['onFullScreen']) Module['onFullScreen'](Browser.isFullscreen);
+        if (Module['onFullscreen']) Module['onFullscreen'](Browser.isFullscreen);
+      }
+
+      if (!Browser.fullscreenHandlersInstalled) {
+        Browser.fullscreenHandlersInstalled = true;
+        document.addEventListener('fullscreenchange', fullscreenChange, false);
+        document.addEventListener('mozfullscreenchange', fullscreenChange, false);
+        document.addEventListener('webkitfullscreenchange', fullscreenChange, false);
+        document.addEventListener('MSFullscreenChange', fullscreenChange, false);
+      }
+
+      // create a new parent to ensure the canvas has no siblings. this allows browsers to optimize full screen performance when its parent is the full screen root
+      var canvasContainer = document.createElement("div");
+      canvas.parentNode.insertBefore(canvasContainer, canvas);
+      canvasContainer.appendChild(canvas);
+
+      // use parent of canvas as full screen root to allow aspect ratio correction (Firefox stretches the root to screen size)
+      canvasContainer.requestFullscreen = canvasContainer['requestFullscreen'] ||
+        canvasContainer['mozRequestFullScreen'] ||
+        canvasContainer['msRequestFullscreen'] ||
+        (canvasContainer['webkitRequestFullscreen'] ? () => canvasContainer['webkitRequestFullscreen'](Element['ALLOW_KEYBOARD_INPUT']) : null) ||
+        (canvasContainer['webkitRequestFullScreen'] ? () => canvasContainer['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) : null);
+
+      canvasContainer.requestFullscreen();
+    },
+
+    // Overrides Browser.updateCanvasDimensions to account for hi dpi scaling
+    updateCanvasDimensions(canvas, wNative, hNative) {
+      const scale = GLFW.getHiDPIScale();
+
+      if (wNative && hNative) {
+        canvas.widthNative = wNative;
+        canvas.heightNative = hNative;
+      } else {
+        wNative = canvas.widthNative;
+        hNative = canvas.heightNative;
+      }
+      var w = wNative;
+      var h = hNative;
+      if (Module['forcedAspectRatio'] && Module['forcedAspectRatio'] > 0) {
+        if (w/h < Module['forcedAspectRatio']) {
+          w = Math.round(h * Module['forcedAspectRatio']);
+        } else {
+          h = Math.round(w / Module['forcedAspectRatio']);
+        }
+      }
+      if (((document['fullscreenElement'] || document['mozFullScreenElement'] ||
+        document['msFullscreenElement'] || document['webkitFullscreenElement'] ||
+        document['webkitCurrentFullScreenElement']) === canvas.parentNode) && (typeof screen != 'undefined')) {
+        var factor = Math.min(screen.width / w, screen.height / h);
+        w = Math.round(w * factor);
+        h = Math.round(h * factor);
+      }
+      if (Browser.resizeCanvas) {
+        wNative = w;
+        hNative = h;
+      }
+      const wNativeScaled = Math.floor(wNative * scale);
+      const hNativeScaled = Math.floor(hNative * scale);
+      if (canvas.width  != wNativeScaled) canvas.width  = wNativeScaled;
+      if (canvas.height != hNativeScaled) canvas.height = hNativeScaled;
+      if (typeof canvas.style != 'undefined') {
+        if (wNativeScaled != wNative || hNativeScaled != hNative) {
+          canvas.style.setProperty( "width", wNative + "px", "important");
+          canvas.style.setProperty("height", hNative + "px", "important");
+        } else {
+          canvas.style.removeProperty( "width");
+          canvas.style.removeProperty("height");
+        }
+      }
+    },
+
+    // Overrides Browser.calculateMouseEvent to account for hi dpi scaling
+    calculateMouseEvent(event) { // event should be mousemove, mousedown or mouseup
+      if (Browser.pointerLock) {
+        // When the pointer is locked, calculate the coordinates
+        // based on the movement of the mouse.
+        // Workaround for Firefox bug 764498
+        if (event.type != 'mousemove' &&
+          ('mozMovementX' in event)) {
+          Browser.mouseMovementX = Browser.mouseMovementY = 0;
+        } else {
+          Browser.mouseMovementX = Browser.getMovementX(event);
+          Browser.mouseMovementY = Browser.getMovementY(event);
+        }
+
+        // check if SDL is available
+        if (typeof SDL != "undefined") {
+          Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
+          Browser.mouseY = SDL.mouseY + Browser.mouseMovementY;
+        } else {
+          // just add the mouse delta to the current absolut mouse position
+          // FIXME: ideally this should be clamped against the canvas size and zero
+          Browser.mouseX += Browser.mouseMovementX;
+          Browser.mouseY += Browser.mouseMovementY;
+        }
+      } else {
+        // Otherwise, calculate the movement based on the changes
+        // in the coordinates.
+        var rect = Module["canvas"].getBoundingClientRect();
+        var cw = Module["canvas"].width;
+        var ch = Module["canvas"].height;
+
+        if (GLFW.isHiDPIAware) {
+          const scale = GLFW.getHiDPIScale();
+          cw /= scale;
+          ch /= scale;
+        }
+
+        // Neither .scrollX or .pageXOffset are defined in a spec, but
+        // we prefer .scrollX because it is currently in a spec draft.
+        // (see: http://www.w3.org/TR/2013/WD-cssom-view-20131217/)
+        var scrollX = ((typeof window.scrollX != 'undefined') ? window.scrollX : window.pageXOffset);
+        var scrollY = ((typeof window.scrollY != 'undefined') ? window.scrollY : window.pageYOffset);
+        #if ASSERTIONS
+        // If this assert lands, it's likely because the browser doesn't support scrollX or pageXOffset
+        // and we have no viable fallback.
+        assert((typeof scrollX != 'undefined') && (typeof scrollY != 'undefined'), 'Unable to retrieve scroll position, mouse positions likely broken.');
+        #endif
+
+        if (event.type === 'touchstart' || event.type === 'touchend' || event.type === 'touchmove') {
+          var touch = event.touch;
+          if (touch === undefined) {
+            return; // the "touch" property is only defined in SDL
+
+          }
+          var adjustedX = touch.pageX - (scrollX + rect.left);
+          var adjustedY = touch.pageY - (scrollY + rect.top);
+
+          adjustedX = adjustedX * (cw / rect.width);
+          adjustedY = adjustedY * (ch / rect.height);
+
+          var coords = { x: adjustedX, y: adjustedY };
+
+          if (event.type === 'touchstart') {
+            Browser.lastTouches[touch.identifier] = coords;
+            Browser.touches[touch.identifier] = coords;
+          } else if (event.type === 'touchend' || event.type === 'touchmove') {
+            var last = Browser.touches[touch.identifier];
+            if (!last) last = coords;
+            Browser.lastTouches[touch.identifier] = last;
+            Browser.touches[touch.identifier] = coords;
+          }
+          return;
+        }
+
+        var x = event.pageX - (scrollX + rect.left);
+        var y = event.pageY - (scrollY + rect.top);
+
+        // the canvas might be CSS-scaled compared to its backbuffer;
+        // SDL-using content will want mouse coordinates in terms
+        // of backbuffer units.
+        x = x * (cw / rect.width);
+        y = y * (ch / rect.height);
+
+        Browser.mouseMovementX = x - Browser.mouseX;
+        Browser.mouseMovementY = y - Browser.mouseY;
+        Browser.mouseX = x;
+        Browser.mouseY = y;
+      }
+    },
+
+    getDevicePixelRatio() {
+      return (typeof devicePixelRatio == 'number' && devicePixelRatio) || 1.0;
+    },
+
+    getHiDPIScale() {
+      return GLFW.isHiDPIAware ? GLFW.getDevicePixelRatio() : 1.0;
+    },
+
+    devicePixelRatioMQS: null,
+    onDevicePixelRatioChange() {
+      const canvas = Module['canvas'];
+      Browser.updateCanvasDimensions(canvas, canvas.clientWidth, canvas.clientHeight);
+      Browser.updateResizeListeners();
     },
 
     setHiDPIAware(isHiDPIAware) {
-      Browser.setHiDPIAware(isHiDPIAware);
-    },
+      isHiDPIAware = !!isHiDPIAware; // coerce to boolean
+      if (GLFW.isHiDPIAware != isHiDPIAware) {
+        GLFW.isHiDPIAware = isHiDPIAware;
+        const canvas = Module['canvas'];
+        Browser.updateCanvasDimensions(canvas, canvas.clientWidth, canvas.clientHeight);
+        Browser.updateResizeListeners();
 
-      swapBuffers: (winid) => {
+        // handling dynamic changes to devicePixelRatio
+        if (GLFW.devicePixelRatioMQS) {
+          GLFW.devicePixelRatioMQS.removeEventListener('change', GLFW.onDevicePixelRatioChange);
+          GLFW.devicePixelRatioMQS = null;
+        }
+        if (GLFW.isHiDPIAware) {
+          GLFW.devicePixelRatioMQS = window.matchMedia('(resolution: ' + GLFW.getDevicePixelRatio() + 'dppx)');
+          GLFW.devicePixelRatioMQS.addEventListener('change', GLFW.onDevicePixelRatioChange);
+        }
+      }
     },
 
     GLFW2ParamToGLFW3Param: (param) => {
@@ -1168,8 +1398,18 @@ var LibraryGLFW = {
     Module["canvas"].addEventListener('drop', GLFW.onDrop, true);
     Module["canvas"].addEventListener('dragover', GLFW.onDragover, true);
 
-    Browser.resizeListeners.push((width, height, framebufferWidth, framebufferHeight) => {
-      GLFW.onCanvasResize(width, height, framebufferWidth, framebufferHeight);
+    // Overriding implementation to account for HiDPI
+    Browser.requestFullscreen = GLFW.requestFullscreen
+    Browser.calculateMouseEvent = GLFW.calculateMouseEvent;
+    Browser.updateCanvasDimensions = GLFW.updateCanvasDimensions;
+
+    Browser.resizeListeners.push((width, height) => {
+      if (GLFW.isHiDPIAware) {
+        var canvas = Module['canvas'];
+        GLFW.onCanvasResize(canvas.clientWidth, canvas.clientHeight, width, height);
+      } else {
+        GLFW.onCanvasResize(width, height, width, height);
+      }
     });
 
     return 1; // GL_TRUE

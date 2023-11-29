@@ -16,25 +16,25 @@
 static void installMockDevicePixelRatio() {
   printf("installing mock devicePixelRatio...\n");
   EM_ASM(
-      Browser.mockDevicePixelRatio = 1.0;
-      Browser.getDevicePixelRatio = () => { console.log("mock getDevicePixelRatio"); return Browser.mockDevicePixelRatio; };
+      GLFW.mockDevicePixelRatio = 1.0;
+      GLFW.getDevicePixelRatio = () => { console.log("mock getDevicePixelRatio"); return GLFW.mockDevicePixelRatio; };
       );
 }
 
 static void setDevicePixelRatio(float ratio) {
   printf("setDevicePixelRatio %.0f\n", ratio);
   EM_ASM({
-    Browser.mockDevicePixelRatio = $0;
+    GLFW.mockDevicePixelRatio = $0;
     // mocking/simulating the fact that an event should be raised when devicePixelRatio changes
-    if (Browser.devicePixelRatioMQS) {
-      Browser.onDevicePixelRatioChange();
+    if (GLFW.devicePixelRatioMQS) {
+      GLFW.onDevicePixelRatioChange();
     }
   }, ratio);
 }
 
 static void setBrowserIsHiDPIAware(bool isHiDPIAware) {
   printf("setBrowserIsHiDPIAware %s\n", isHiDPIAware ? "true" : "false");
-  EM_ASM({Browser.setHiDPIAware($0)}, isHiDPIAware ? 1 : 0);
+  EM_ASM({GLFW.setHiDPIAware($0)}, isHiDPIAware ? 1 : 0);
 }
 
 static void checkWindowSize(GLFWwindow *window, int expectedWidth, int expectedHeight, float ratio) {
@@ -52,7 +52,7 @@ static void checkWindowSize(GLFWwindow *window, int expectedWidth, int expectedH
 }
 
 static bool getBrowserIsHiDPIAware() {
-  return EM_ASM_INT(return Browser.isHiDPIAware ? 1 : 0) != 0;
+  return EM_ASM_INT(return GLFW.isHiDPIAware ? 1 : 0) != 0;
 }
 
 int main() {
