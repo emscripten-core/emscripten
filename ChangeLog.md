@@ -35,6 +35,10 @@ See docs/process.md for more on how version tagging works.
   emscripten you can use the `-sPOLYFILL=0` setting. (#20700)
 - libcxx, libcxxabi, libunwind, and compiler-rt were updated to LLVM 17.0.4.
   (#20705, #20707, and #20708)
+- Remove `BENCHMARK` setting. That has not been used by the benchmark suite for
+  some time now (at least not by default), and is much less useful these days
+  given lazy compilation in VMs (which makes it impossible to truly benchmark
+  execution separately from compilation, which `BENCHMARK` hoped to do).
 
 3.1.49 - 11/14/23
 -----------------

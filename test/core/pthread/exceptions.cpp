@@ -61,7 +61,7 @@ void loop() {
 
 int main() {
   // Create initial threads.
-  for(int i = 0; i < NUM_THREADS; ++i) {
+  for (int i = 0; i < NUM_THREADS; ++i) {
     printf("make\n");
     CreateThread(i);
   }

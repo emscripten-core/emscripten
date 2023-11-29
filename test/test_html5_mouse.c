@@ -10,8 +10,7 @@
 #include <string.h>
 #include <emscripten/html5.h>
 
-void report_result(int result)
-{
+void report_result(int result) {
   if (result == 0) {
     printf("Test successful!\n");
   } else {
@@ -55,8 +54,7 @@ int gotDblClick = 0;
 int gotMouseMove = 0;
 int gotWheel = 0;
 
-void instruction()
-{
+void instruction() {
   if (!gotClick) { printf("Please click on the canvas.\n"); return; }
   if (!gotMouseDown) { printf("Please click on the canvas.\n"); return; }
   if (!gotMouseUp) { printf("Please click on the canvas.\n"); return; }
@@ -67,15 +65,13 @@ void instruction()
   if (gotClick && gotMouseDown && gotMouseUp && gotDblClick && gotMouseMove && gotWheel) report_result(0);
 }
 
-EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData)
-{
+EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData) {
   printf("%s, screen: (%d,%d), client: (%d,%d),%s%s%s%s button: %hu, buttons: %hu, movement: (%d,%d), target: (%d, %d)\n",
     emscripten_event_type_to_string(eventType), e->screenX, e->screenY, e->clientX, e->clientY,
     e->ctrlKey ? " CTRL" : "", e->shiftKey ? " SHIFT" : "", e->altKey ? " ALT" : "", e->metaKey ? " META" : "", 
     e->button, e->buttons, e->movementX, e->movementY, e->targetX, e->targetY);
 
-  if (e->screenX != 0 && e->screenY != 0 && e->clientX != 0 && e->clientY != 0 && e->targetX != 0 && e->targetY != 0)
-  {
+  if (e->screenX != 0 && e->screenY != 0 && e->clientX != 0 && e->clientY != 0 && e->targetX != 0 && e->targetY != 0) {
     if (eventType == EMSCRIPTEN_EVENT_CLICK) gotClick = 1;
     if (eventType == EMSCRIPTEN_EVENT_MOUSEDOWN && e->buttons != 0) gotMouseDown = 1;
     if (eventType == EMSCRIPTEN_EVENT_DBLCLICK) gotDblClick = 1;
@@ -83,8 +79,7 @@ EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userD
     if (eventType == EMSCRIPTEN_EVENT_MOUSEMOVE && (e->movementX != 0 || e->movementY != 0)) gotMouseMove = 1;
   }
 
-  if (eventType == EMSCRIPTEN_EVENT_CLICK && e->screenX == -500000)
-  {
+  if (eventType == EMSCRIPTEN_EVENT_CLICK && e->screenX == -500000) {
     printf("ERROR! Received an event to a callback that should have been unregistered!\n");
     gotClick = 0;
     report_result(1);
@@ -94,8 +89,7 @@ EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userD
   return 0;
 }
 
-EM_BOOL wheel_callback(int eventType, const EmscriptenWheelEvent *e, void *userData)
-{
+EM_BOOL wheel_callback(int eventType, const EmscriptenWheelEvent *e, void *userData) {
   printf("%s, screen: (%d,%d), client: (%d,%d),%s%s%s%s button: %hu, buttons: %hu, target: (%d, %d), delta:(%g,%g,%g), deltaMode:%u\n",
     emscripten_event_type_to_string(eventType), e->mouse.screenX, e->mouse.screenY, e->mouse.clientX, e->mouse.clientY,
     e->mouse.ctrlKey ? " CTRL" : "", e->mouse.shiftKey ? " SHIFT" : "", e->mouse.altKey ? " ALT" : "", e->mouse.metaKey ? " META" : "", 
@@ -109,8 +103,7 @@ EM_BOOL wheel_callback(int eventType, const EmscriptenWheelEvent *e, void *userD
   return 0;
 }
 
-int main()
-{
+int main() {
   // Make the canvas area stand out from the background.
   emscripten_set_canvas_element_size("#canvas", 400, 300);
   EM_ASM(Module['canvas'].style.backgroundColor = 'black';);
@@ -134,7 +127,7 @@ int main()
     function sendEvent(type, data) {
       var event = document.createEvent('Event');
       event.initEvent(type, true, true);
-      for(var d in data) event[d] = data[d];
+      for (var d in data) event[d] = data[d];
       window.dispatchEvent(event);
     }
     sendEvent('click', { screenX: 123, screenY: 456, clientX: 123, clientY: 456, button: 0, buttons: 1 });
@@ -146,8 +139,7 @@ int main()
   TEST_RESULT(emscripten_get_mouse_status);
 
   if (mouseEvent.screenX != 123 || mouseEvent.screenY != 456
-    || mouseEvent.clientX != 123 || mouseEvent.clientY != 456)
-  {
+    || mouseEvent.clientX != 123 || mouseEvent.clientY != 456) {
     printf("ERROR! Incorrect mouse status\n");
     report_result(1);
   }
@@ -160,7 +152,7 @@ int main()
     function sendEvent(type, data) {
       var event = document.createEvent('Event');
       event.initEvent(type, true, true);
-      for(var d in data) event[d] = data[d];
+      for (var d in data) event[d] = data[d];
       window.dispatchEvent(event);
     }
     sendEvent('click', { screenX: -500000, screenY: -500000, clientX: -500000, clientY: -500000, button: 0, buttons: 0 }); // Send a dummy event that should not be received.

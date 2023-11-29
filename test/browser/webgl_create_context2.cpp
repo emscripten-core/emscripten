@@ -10,8 +10,7 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 
-int main()
-{
+int main() {
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);
   // Test that creating a context with #canvas target when -sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0

@@ -44,8 +44,6 @@ if 'benchmark.' in str(sys.argv):
 
 non_core = unittest.skipIf(CORE_BENCHMARKS, "only running core benchmarks")
 
-IGNORE_COMPILATION = 0
-
 OPTIMIZATIONS = '-O3'
 
 PROFILING = 0
@@ -73,10 +71,7 @@ class Benchmarker():
         raise ValueError('Incorrect benchmark output:\n' + output)
 
       if not output_parser or args == ['0']: # if arg is 0, we are not running code, and have no output to parse
-        if IGNORE_COMPILATION:
-          curr = float(re.search(r'took +([\d\.]+) milliseconds', output).group(1)) / 1000
-        else:
-          curr = time.time() - start
+        curr = time.time() - start
       else:
         try:
           curr = output_parser(output)
@@ -206,7 +201,6 @@ class EmscriptenBenchmarker(Benchmarker):
       OPTIMIZATIONS,
       '-sINITIAL_MEMORY=256MB',
       '-sENVIRONMENT=node,shell',
-      '-sBENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
     ] + LLVM_FEATURE_FLAGS
     if shared_args:
@@ -369,7 +363,7 @@ class benchmark(common.RunnerCore):
     for benchmarker in benchmarkers:
       benchmarker.prepare()
 
-    fingerprint = ['ignoring compilation' if IGNORE_COMPILATION else 'including compilation', time.asctime()]
+    fingerprint = ['including compilation', time.asctime()]
     try:
       fingerprint.append('em: ' + run_process(['git', 'show'], stdout=PIPE).stdout.splitlines()[0])
     except Exception:
