@@ -448,6 +448,7 @@ var LibraryGLFW = {
           if (GLFW.primaryTouchId === i.identifier) {
             Browser.setMouseCoords(i.pageX, i.pageY);
             primaryChanged = true;
+            break;
           }
         }
 
@@ -536,7 +537,6 @@ var LibraryGLFW = {
           GLFW.primaryTouchId = chosenTouch.identifier;
 
           Browser.setMouseCoords(chosenTouch.pageX, chosenTouch.pageY);
-          Browser.setMouseCoords(chosenTouch.pageX, chosenTouch.pageY);
           primaryChanged = true;
         } else if (event.type === 'touchend' || event.type === 'touchcancel') {
           // Clear the primary touch if it ended.
@@ -545,6 +545,7 @@ var LibraryGLFW = {
             if (GLFW.primaryTouchId === i.identifier) {
               GLFW.primaryTouchId = null;
               primaryChanged = true;
+              break;
             }
           }
         }
