@@ -58,15 +58,21 @@ uintptr_t* emscripten_get_sbrk_ptr() {
 // Enforce preserving a minimal alignof(maxalign_t) alignment for sbrk.
 #define SBRK_ALIGNMENT (__alignof__(max_align_t))
 
+#ifdef __EMSCRIPTEN_SHARED_MEMORY__
+#define READ_SBRK_PTR(sbrk_ptr) (__c11_atomic_load((_Atomic(uintptr_t)*)(sbrk_ptr), __ATOMIC_SEQ_CST))
+#else
+#define READ_SBRK_PTR(sbrk_ptr) (*(sbrk_ptr))
+#endif
+
 void *sbrk(intptr_t increment_) {
   uintptr_t increment = (uintptr_t)increment_;
   increment = (increment + (SBRK_ALIGNMENT-1)) & ~(SBRK_ALIGNMENT-1);
-  _Atomic(uintptr_t)* sbrk_ptr = (_Atomic(uintptr_t)*)emscripten_get_sbrk_ptr();
+  uintptr_t *sbrk_ptr = (uintptr_t*)emscripten_get_sbrk_ptr();
 
   // To make sbrk thread-safe, implement a CAS loop to update the
   // value of sbrk_ptr.
   while (1) {
-    uintptr_t old_brk = __c11_atomic_load(sbrk_ptr, __ATOMIC_SEQ_CST);
+    uintptr_t old_brk = READ_SBRK_PTR(sbrk_ptr);
     uintptr_t new_brk = old_brk + increment;
     // Check for a) an overflow, which would indicate that we are trying to
     // allocate over maximum addressable memory. and b) if necessary,
@@ -82,7 +88,7 @@ void *sbrk(intptr_t increment_) {
     // by iterating the loop body again.
     uintptr_t expected = old_brk;
 
-    __c11_atomic_compare_exchange_strong(sbrk_ptr,
+    __c11_atomic_compare_exchange_strong((_Atomic(uintptr_t)*)sbrk_ptr,
       &expected, new_brk, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
 
     if (expected != old_brk) continue; // CAS failed, another thread raced in between.
