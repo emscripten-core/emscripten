@@ -91,8 +91,7 @@ void _embind_register_std_wstring(
     const char* name);
 
 void _embind_register_emval(
-    TYPEID emvalType,
-    const char* name);
+    TYPEID emvalType);
 
 void _embind_register_memory_view(
     TYPEID memoryViewType,

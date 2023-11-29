@@ -463,8 +463,9 @@ var LibraryEmbind = {
   _embind_register_std_wstring: (rawType, charSize, name) => {
     registerPrimitiveType(rawType, name, 'function');
   },
-  _embind_register_emval: (rawType, name) => {
-    registerPrimitiveType(rawType, name, 'none');
+  _embind_register_emval__deps: ['$registerType', '$PrimitiveType'],
+  _embind_register_emval: (rawType) => {
+    registerType(rawType, new PrimitiveType(rawType, 'emscripten::val', 'none'));
   },
   _embind_register_user_type__deps: ['$registerType', '$readLatin1String', '$UserType'],
   _embind_register_user_type: (rawType, name) => {
