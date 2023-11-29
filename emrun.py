@@ -1648,9 +1648,9 @@ def run():
     if len(options.cmdlineparams):
       url += '?' + '&'.join(options.cmdlineparams)
     if options.android_tunnel:
-        hostname = 'localhost'
+      hostname = 'localhost'
     elif options.android:
-        hostname = socket.gethostbyname(socket.gethostname())
+      hostname = socket.gethostbyname(socket.gethostname())
     else:
       hostname = options.hostname
     # create url for browser after opening the server so we have the final port number in case we are binding to port 0
@@ -1688,7 +1688,7 @@ def run():
       # 5. Locate the name of the main activity for the browser in manifest.txt and add an entry to above list in form 'appname/mainactivityname'
 
       if options.android_tunnel:
-         subprocess.check_call([ADB, 'reverse', 'tcp:' + str(options.port), 'tcp:' + str(options.port)])
+        subprocess.check_call([ADB, 'reverse', 'tcp:' + str(options.port), 'tcp:' + str(options.port)])
 
       url = url.replace('&', '\\&')
       browser = [ADB, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-n', browser_app, '-d', url]
