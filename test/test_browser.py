@@ -3001,7 +3001,7 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   def test_glfw3_default_hints(self):
-      self.btest_exit('test_glfw3_default_hints.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
+    self.btest_exit('test_glfw3_default_hints.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
 
   @requires_graphics_hardware
   @parameterized({

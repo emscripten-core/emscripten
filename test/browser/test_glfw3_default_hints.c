@@ -13,7 +13,7 @@ static void checkDefaultWindowHints() {
   int ok = EM_ASM_INT({
     var res = 1;
     for (var k in TEST_GLFW3_DEFAULTS_HINTS) {
-      if(GLFW.defaultHints[k] !== TEST_GLFW3_DEFAULTS_HINTS[k])
+      if (GLFW.defaultHints[k] !== TEST_GLFW3_DEFAULTS_HINTS[k])
         res = 0;
     }
     return res;
