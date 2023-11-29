@@ -134,6 +134,10 @@ def no_wasm2js(note=''):
   return decorated
 
 
+# Some tests are marked as only-wasm2js because they test basic codegen in a way
+# that is mainly useful for the wasm2js compiler and not LLVM. LLVM tests its
+# own codegen, while wasm2js testing is split between the binaryen repo (which
+# tests wat files) and this repo (which tests C/C++ files).
 def only_wasm2js(note=''):
   assert not callable(note)
 
@@ -452,11 +456,8 @@ class TestCoreBase(RunnerCore):
     else:
       self.do_core_test('test_convertI32PairToI53Checked.cpp', interleaved_output=False)
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64(self):
-    # test shifts etc. on 64-bit integers as well as printf() on them. we need
-    # the math testing only for wasm2js but do not apply @only_wasm2js since we
-    # do want some testing of 64-bit printf in our libc (which is not tested in
-    # clang upstream).
     self.do_core_test('test_i64.c')
 
   @only_wasm2js('test shifts etc. on 64-bit integers')
