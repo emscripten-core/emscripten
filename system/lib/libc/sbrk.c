@@ -25,6 +25,8 @@
 
 #ifdef __EMSCRIPTEN_TRACING__
 void emscripten_memprof_sbrk_grow(intptr_t old, intptr_t new);
+#else
+#define emscripten_memprof_sbrk_grow(...) ((void)0)
 #endif
 
 #include <emscripten/heap.h>
@@ -56,65 +58,47 @@ uintptr_t* emscripten_get_sbrk_ptr() {
 // Enforce preserving a minimal alignof(maxalign_t) alignment for sbrk.
 #define SBRK_ALIGNMENT (__alignof__(max_align_t))
 
+#ifdef __EMSCRIPTEN_SHARED_MEMORY__
+#define READ_SBRK_PTR(sbrk_ptr) (__c11_atomic_load((_Atomic(uintptr_t)*)(sbrk_ptr), __ATOMIC_SEQ_CST))
+#else
+#define READ_SBRK_PTR(sbrk_ptr) (*(sbrk_ptr))
+#endif
+
 void *sbrk(intptr_t increment_) {
-  uintptr_t old_size;
   uintptr_t increment = (uintptr_t)increment_;
   increment = (increment + (SBRK_ALIGNMENT-1)) & ~(SBRK_ALIGNMENT-1);
-#ifdef __EMSCRIPTEN_SHARED_MEMORY__
-  // Our default dlmalloc uses locks around each malloc/free, so no additional
-  // work is necessary to keep things threadsafe, but we also make sure sbrk
-  // itself is threadsafe so alternative allocators work. We do that by looping
-  // and retrying if we hit interference with another thread.
-  uintptr_t expected;
+  uintptr_t *sbrk_ptr = (uintptr_t*)emscripten_get_sbrk_ptr();
+
+  // To make sbrk thread-safe, implement a CAS loop to update the
+  // value of sbrk_ptr.
   while (1) {
-#endif // __EMSCRIPTEN_SHARED_MEMORY__
-    uintptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
-#ifdef __EMSCRIPTEN_SHARED_MEMORY__
-    uintptr_t old_brk = __c11_atomic_load((_Atomic(uintptr_t)*)sbrk_ptr, __ATOMIC_SEQ_CST);
-#else
-    uintptr_t old_brk = *sbrk_ptr;
-#endif
+    uintptr_t old_brk = READ_SBRK_PTR(sbrk_ptr);
     uintptr_t new_brk = old_brk + increment;
-    // Check for an overflow, which would indicate that we are trying to
-    // allocate over maximum addressable memory.
-    if (increment > 0 && new_brk <= old_brk) {
-      goto Error;
-    }
-    old_size = emscripten_get_heap_size();
-    if (new_brk > old_size) {
-      // Try to grow memory.
-      if (!emscripten_resize_heap(new_brk)) {
-        goto Error;
-      }
+    // Check for a) an overflow, which would indicate that we are trying to
+    // allocate over maximum addressable memory. and b) if necessary,
+    // increase the WebAssembly Memory size, and abort if that fails.
+    if ((increment > 0 && new_brk <= old_brk)
+     || (new_brk > emscripten_get_heap_size() && !emscripten_resize_heap(new_brk))) {
+      SET_ERRNO();
+      return (void*)-1;
     }
 #ifdef __EMSCRIPTEN_SHARED_MEMORY__
     // Attempt to update the dynamic top to new value. Another thread may have
     // beat this one to the update, in which case we will need to start over
     // by iterating the loop body again.
-    expected = old_brk;
-    __c11_atomic_compare_exchange_strong(
-        (_Atomic(uintptr_t)*)sbrk_ptr,
-        &expected, new_brk,
-        __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
-    if (expected != old_brk) {
-      continue;
-    }
-#else // __EMSCRIPTEN_SHARED_MEMORY__
+    uintptr_t expected = old_brk;
+
+    __c11_atomic_compare_exchange_strong((_Atomic(uintptr_t)*)sbrk_ptr,
+      &expected, new_brk, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+
+    if (expected != old_brk) continue; // CAS failed, another thread raced in between.
+#else
     *sbrk_ptr = new_brk;
-#endif // __EMSCRIPTEN_SHARED_MEMORY__
-
-#ifdef __EMSCRIPTEN_TRACING__
-    emscripten_memprof_sbrk_grow(old_brk, new_brk);
 #endif
+
+    emscripten_memprof_sbrk_grow(old_brk, new_brk);
     return (void*)old_brk;
-
-#ifdef __EMSCRIPTEN_SHARED_MEMORY__
   }
-#endif // __EMSCRIPTEN_SHARED_MEMORY__
-
-Error:
-  SET_ERRNO();
-  return (void*)-1;
 }
 
 int brk(void* ptr) {
