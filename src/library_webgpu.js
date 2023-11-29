@@ -329,6 +329,16 @@ var LibraryWebGPU = {
     },
 
     // Map from enum string back to enum number, for callbacks.
+    BufferMapState: {
+      'unmapped': 0,
+      'pending': 1,
+      'mapped': 2,
+    },
+    CompilationMessageType : {
+      'error' : 0,
+      'warning' : 1,
+      'info' : 2,
+    },
     DeviceLostReason: {
       'undefined': 0,
       'destroyed': 1,
@@ -336,11 +346,6 @@ var LibraryWebGPU = {
     PreferredFormat: {
       'rgba8unorm': 0x12,
       'bgra8unorm': 0x17,
-    },
-    BufferMapState: {
-      'unmapped': 0,
-      'pending': 1,
-      'mapped': 2,
     },
 
     // This section is auto-generated. See system/include/webgpu/README.md for details.
@@ -1785,7 +1790,7 @@ var LibraryWebGPU = {
 
   // wgpuShaderModule
 
-  wgpuShaderModuleGetCompilationInfo__deps: ['$callUserCallback', '$stringToUTF8', '$lengthBytesUTF8'],
+  wgpuShaderModuleGetCompilationInfo__deps: ['$callUserCallback', '$stringToUTF8', '$lengthBytesUTF8', 'malloc', 'free'],
   wgpuShaderModuleGetCompilationInfo: (shaderModuleId, callback, userdata) => {
     var shaderModule = WebGPU.mgrShaderModule.get(shaderModuleId);
     {{{ runtimeKeepalivePush() }}}
@@ -1793,16 +1798,16 @@ var LibraryWebGPU = {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
         var compilationMessagesPtr = _malloc({{{ C_STRUCTS.WGPUCompilationMessage.__size__ }}} * compilationInfo.messages.length);
-        var compilationMessagePtrs = []; // save these to free later
+        var messageStringPtrs = []; // save these to free later
         for (var i = 0; i < compilationInfo.messages.length; ++i) {
           var compilationMessage = compilationInfo.messages[i];
           var compilationMessagePtr = compilationMessagesPtr + {{{ C_STRUCTS.WGPUCompilationMessage.__size__ }}} * i;
           var messageSize = lengthBytesUTF8(compilationMessage.message) + 1;
           var messagePtr = _malloc(messageSize);
-          compilationMessagePtrs.push(messagePtr);
+          messageStringPtrs.push(messagePtr);
           stringToUTF8(compilationMessage.message, messagePtr, messageSize);
           {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.message, 'messagePtr', '*') }}};
-          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.type, 'WebGPU.CompilationMessageType.indexOf(compilationMessage.type)', 'i32') }}};
+          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.type, WebGPU.CompilationMessageType[compilationMessage.type], 'i32') }}};
           {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.lineNum, 'compilationMessage.lineNum', 'i64') }}};
           {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.linePos, 'compilationMessage.linePos', 'i64') }}};
           {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.offset, 'compilationMessage.offset', 'i64') }}};
@@ -1819,7 +1824,7 @@ var LibraryWebGPU = {
 
         {{{ makeDynCall('vipp', 'callback') }}}({{{ gpu.CompilationInfoRequestStatus.Success }}}, compilationInfoPtr, userdata);
 
-        compilationMessagePtrs.forEach((ptr) => {
+        messageStringPtrs.forEach((ptr) => {
           _free(ptr);
         });
         _free(compilationMessagesPtr);
