@@ -987,7 +987,10 @@ function emitDCEGraph(ast) {
   print(JSON.stringify(graph, null, ' '));
 }
 
-// Apply graph removals from running wasm-metadce
+// Apply graph removals from running wasm-metadce. This only removes imports and
+// exports from JS side, effectively disentangling the wasm and JS sides that
+// way (and we leave further DCE on the JS and wasm sides to their respective
+// optimizers, closure compiler and binaryen).
 function applyDCEGraphRemovals(ast) {
   const unused = new Set(extraInfo.unused);
 
