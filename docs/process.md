@@ -93,8 +93,9 @@ How:
    resulting SHA be `<LTO-sha>`. An example of this CL is
    https://chromium-review.googlesource.com/c/emscripten-releases/+/3781978.
    After landing the CL, wait for a couple hours before proceeding because
-   building and creating a binary for the new commit will take some time. If the
-   binary is not ready, `create_release.py` in the next step will fail.
+   building and archiving for the new commit will take some time. Check
+   https://ci.chromium.org/p/emscripten-releases/g/main/console to see if the
+   commit has passed "Archive Binaries" phase for all three platforms.
 1. Run [`scripts/create_release.py`][create_release_emsdk] in the emsdk
    repository. When we do both an LTO and a non-LTO release, run:
    ```
