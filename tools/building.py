@@ -817,7 +817,7 @@ def metadce(js_file, wasm_file, debug_info):
       elif name.startswith('emcc$export$'):
         unused.append(name)
   if not unused:
-    # nothing to do
+    # nothing found to be unused, so we have nothing to remove
     return js_file
   # remove them
   passes = ['applyDCEGraphRemovals']
