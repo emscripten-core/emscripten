@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.50 (in development)
+3.1.51 (in development)
 -----------------------
+
+3.1.50 - 11/29/23
+-----------------
 - Add a port of mimalloc, a fast and scalable multithreaded allocator. To use
   it, build with `-sMALLOC=mimalloc`. (#20651)
 - When compiling, Emscripten will now invoke `clang` or `clang++` depending only
@@ -39,6 +42,9 @@ See docs/process.md for more on how version tagging works.
   some time now (at least not by default), and is much less useful these days
   given lazy compilation in VMs (which makes it impossible to truly benchmark
   execution separately from compilation, which `BENCHMARK` hoped to do).
+- Update GLFW handling of touch events to avoid sending duplicate mousedown and
+  and mouseup events. Maps touchmove to mousemove events for a single primary
+  touch. (#20805)
 
 3.1.49 - 11/14/23
 -----------------
