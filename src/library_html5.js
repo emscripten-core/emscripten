@@ -234,7 +234,7 @@ var LibraryHTML5 = {
       if (!target) return '';
       if (target == window) return '#window';
       if (target == screen) return '#screen';
-      return (target && target.nodeName) ? target.nodeName : '';
+      return target?.nodeName || '';
     },
 
     fullscreenEnabled() {
@@ -1070,7 +1070,7 @@ var LibraryHTML5 = {
     // If transitioning to windowed mode, report info about the element that just was fullscreen.
     var reportedElement = isFullscreen ? fullscreenElement : JSEvents.previousFullscreenElement;
     var nodeName = JSEvents.getNodeNameForTarget(reportedElement);
-    var id = (reportedElement && reportedElement.id) ? reportedElement.id : '';
+    var id = reportedElement?.id || '';
     stringToUTF8(nodeName, eventStruct + {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.nodeName }}}, {{{ cDefs.EM_HTML5_LONG_STRING_LEN_BYTES }}});
     stringToUTF8(id, eventStruct + {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.id }}}, {{{ cDefs.EM_HTML5_LONG_STRING_LEN_BYTES }}});
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.elementWidth, 'reportedElement ? reportedElement.clientWidth : 0', 'i32') }}};
@@ -1550,7 +1550,7 @@ var LibraryHTML5 = {
   emscripten_enter_soft_fullscreen__proxy: 'sync',
   emscripten_enter_soft_fullscreen: (target, fullscreenStrategy) => {
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
-    if (!target) target = '#canvas';
+    target ||= '#canvas';
 #endif
     target = findEventTarget(target);
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
@@ -1608,7 +1608,7 @@ var LibraryHTML5 = {
   emscripten_exit_soft_fullscreen__deps: ['$restoreOldWindowedStyle'],
   emscripten_exit_soft_fullscreen__proxy: 'sync',
   emscripten_exit_soft_fullscreen: () => {
-    if (restoreOldWindowedStyle) restoreOldWindowedStyle();
+    restoreOldWindowedStyle?.();
     restoreOldWindowedStyle = null;
 
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
@@ -1655,7 +1655,7 @@ var LibraryHTML5 = {
 #endif
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenPointerlockChangeEvent.isActive, 'isPointerlocked', 'i32') }}};
     var nodeName = JSEvents.getNodeNameForTarget(pointerLockElement);
-    var id = (pointerLockElement && pointerLockElement.id) ? pointerLockElement.id : '';
+    var id = pointerLockElement?.id || '';
     stringToUTF8(nodeName, eventStruct + {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.nodeName }}}, {{{ cDefs.EM_HTML5_LONG_STRING_LEN_BYTES }}});
     stringToUTF8(id, eventStruct + {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.id }}}, {{{ cDefs.EM_HTML5_LONG_STRING_LEN_BYTES }}});
   },
@@ -2323,7 +2323,7 @@ var LibraryHTML5 = {
     if (!canvas.controlTransferredOffscreen) {
 #endif
       var autoResizeViewport = false;
-      if (canvas.GLctxObject && canvas.GLctxObject.GLctx) {
+      if (canvas.GLctxObject?.GLctx) {
         var prevViewport = canvas.GLctxObject.GLctx.getParameter(0xBA2 /* GL_VIEWPORT */);
         // TODO: Perhaps autoResizeViewport should only be true if FBO 0 is currently active?
         autoResizeViewport = (prevViewport[0] === 0 && prevViewport[1] === 0 && prevViewport[2] === canvas.width && prevViewport[3] === canvas.height);

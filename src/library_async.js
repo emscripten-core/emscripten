@@ -435,7 +435,7 @@ addToLibrary({
     // WebAssembly.Functions.
     asyncExports: null,
     isAsyncExport(func) {
-      return Asyncify.asyncExports && Asyncify.asyncExports.has(func);
+      return Asyncify.asyncExports?.has(func);
     },
     handleAsync: async (startAsync) => {
       {{{ runtimeKeepalivePush(); }}}

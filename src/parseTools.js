@@ -767,7 +767,7 @@ function isSymbolNeeded(symName) {
 
 function makeRemovedModuleAPIAssert(moduleName, localName) {
   if (!ASSERTIONS) return '';
-  if (!localName) localName = moduleName;
+  localName ||= moduleName;
   return `legacyModuleProp('${moduleName}', '${localName}');`;
 }
 
@@ -779,7 +779,7 @@ function checkReceiving(name) {
 
 // Make code to receive a value on the incoming Module object.
 function makeModuleReceive(localName, moduleName) {
-  if (!moduleName) moduleName = localName;
+  moduleName ||= localName;
   checkReceiving(moduleName);
   let ret = '';
   if (expectToReceiveOnModule(moduleName)) {
@@ -801,7 +801,7 @@ function makeModuleReceiveExpr(name, defaultValue) {
 }
 
 function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert) {
-  if (!moduleName) moduleName = localName;
+  moduleName ||= localName;
   checkReceiving(moduleName);
   let ret = `var ${localName}`;
   if (!expectToReceiveOnModule(moduleName)) {

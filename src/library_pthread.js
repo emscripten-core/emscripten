@@ -773,8 +773,8 @@ var LibraryPThread = {
       transferredCanvasNames = '{{{ OFFSCREENCANVASES_TO_PTHREAD }}}';
     } else
 #endif
-    if (transferredCanvasNames) transferredCanvasNames = UTF8ToString(transferredCanvasNames).trim();
-    if (transferredCanvasNames) transferredCanvasNames = transferredCanvasNames.split(',');
+    transferredCanvasNames &&= UTF8ToString(transferredCanvasNames).trim();
+    transferredCanvasNames &&= transferredCanvasNames.split(',');
 #if GL_DEBUG
     dbg(`pthread_create: transferredCanvasNames="${transferredCanvasNames}"`);
 #endif

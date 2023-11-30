@@ -24,7 +24,7 @@ LibraryJSEventLoop = {
   // Just like setImmediate but returns an i32 that can be passed back
   // to wasm rather than a JS object.
   $setImmediateWrapped: (func) => {
-    if (!setImmediateWrapped.mapping) setImmediateWrapped.mapping = [];
+    setImmediateWrapped.mapping ||= [];
     var id = setImmediateWrapped.mapping.length;
     setImmediateWrapped.mapping[id] = setImmediate(() => {
       setImmediateWrapped.mapping[id] = undefined;

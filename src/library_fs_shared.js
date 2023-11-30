@@ -57,16 +57,16 @@ addToLibrary({
     var dep = getUniqueRunDependency(`cp ${fullname}`); // might have several active requests for the same fullname
     function processData(byteArray) {
       function finish(byteArray) {
-        if (preFinish) preFinish();
+        preFinish?.();
         if (!dontCreateFile) {
           FS_createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
         }
-        if (onload) onload();
+        onload?.();
         removeRunDependency(dep);
       }
 #if !MINIMAL_RUNTIME
       if (FS_handledByPreloadPlugin(byteArray, fullname, finish, () => {
-        if (onerror) onerror();
+        onerror?.();
         removeRunDependency(dep);
       })) {
         return;

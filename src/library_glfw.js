@@ -729,7 +729,7 @@ var LibraryGLFW = {
     refreshJoysticks: () => {
       // Produce a new Gamepad API sample if we are ticking a new game frame, or if not using emscripten_set_main_loop() at all to drive animation.
       if (Browser.mainLoop.currentFrameNumber !== GLFW.lastGamepadStateFrame || !Browser.mainLoop.currentFrameNumber) {
-        GLFW.lastGamepadState = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads : []);
+        GLFW.lastGamepadState = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads || []);
         GLFW.lastGamepadStateFrame = Browser.mainLoop.currentFrameNumber;
 
         for (var joy = 0; joy < GLFW.lastGamepadState.length; ++joy) {
@@ -1469,9 +1469,7 @@ var LibraryGLFW = {
 
   glfwExtensionSupported__deps: ['glGetString'],
   glfwExtensionSupported: (extension) => {
-    if (!GLFW.extensions) {
-      GLFW.extensions = GL.getExtensions();
-    }
+    GLFW.extensions ||= GL.getExtensions();
 
     if (GLFW.extensions.includes(extension)) return 1;
 
@@ -1489,9 +1487,7 @@ var LibraryGLFW = {
 
 #if USE_GLFW == 3
   glfwGetVersionString: () => {
-    if (!GLFW.versionString) {
-      GLFW.versionString = stringToNewUTF8("3.2.1 JS WebGL Emscripten");
-    }
+    GLFW.versionString ||= stringToNewUTF8("3.2.1 JS WebGL Emscripten");
     return GLFW.versionString;
   },
 
@@ -1545,9 +1541,7 @@ var LibraryGLFW = {
   },
 
   glfwGetMonitorName: (mon) => {
-    if (!GLFW.monitorString) {
-      GLFW.monitorString = stringToNewUTF8("HTML5 WebGL Canvas");
-    }
+    GLFW.monitorString ||= stringToNewUTF8("HTML5 WebGL Canvas");
     return GLFW.monitorString;
   },
 

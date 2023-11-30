@@ -134,9 +134,7 @@ var SUPPORT_BASE64_EMBEDDING;
 // Worker
 
 var filename;
-if (!filename) {
-  filename = '<<< filename >>>';
-}
+filename ||= '<<< filename >>>';
 
 var workerURL = filename;
 if (SUPPORT_BASE64_EMBEDDING) {
@@ -174,7 +172,7 @@ worker.onmessage = (event) => {
   //dump('\nclient got ' + JSON.stringify(event.data).substr(0, 150) + '\n');
   if (!workerResponded) {
     workerResponded = true;
-    if (Module.setStatus) Module.setStatus('');
+    Module.setStatus?.('');
     if (SUPPORT_BASE64_EMBEDDING && workerURL !== filename) URL.revokeObjectURL(workerURL);
   }
 
@@ -205,7 +203,7 @@ worker.onmessage = (event) => {
         case 'resize': {
           Module.canvas.width = data.width;
           Module.canvas.height = data.height;
-          if (Module.ctx && Module.ctx.getImageData) Module.canvasData = Module.ctx.getImageData(0, 0, data.width, data.height);
+          if (Module.ctx?.getImageData) Module.canvasData = Module.ctx.getImageData(0, 0, data.width, data.height);
           worker.postMessage({ target: 'canvas', boundingClientRect: cloneObject(Module.canvas.getBoundingClientRect()) });
           break;
         }

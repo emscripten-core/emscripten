@@ -65,7 +65,7 @@ function EventListener() {
   this.listeners = {};
 
   this.addEventListener = function addEventListener(event, func) {
-    if (!this.listeners[event]) this.listeners[event] = [];
+    this.listeners[event] ||= [];
     this.listeners[event].push(func);
   };
 
@@ -211,8 +211,8 @@ document.createElement = (what) => {
       canvas.style = new PropertyBag();
       canvas.exitPointerLock = () => {};
 
-      canvas.width_ = canvas.width_ || 0;
-      canvas.height_ = canvas.height_ || 0;
+      canvas.width_ ||= 0;
+      canvas.height_ ||= 0;
       Object.defineProperty(canvas, 'width', {
         set: (value) => {
           canvas.width_ = value;
@@ -344,7 +344,7 @@ var clientFrameId = 0;
 
 var postMainLoop = Module['postMainLoop'];
 Module['postMainLoop'] = () => {
-  if (postMainLoop) postMainLoop();
+  postMainLoop?.();
   // frame complete, send a frame id
   postMessage({ target: 'tick', id: frameId++ });
   commandBuffer = [];
@@ -372,7 +372,7 @@ var messageResenderTimeout = null;
 var calledMain = false;
 
 // Set calledMain to true during postRun which happens onces main returns
-if (!Module['postRun']) Module['postRun'] = [];
+Module['postRun'] ||= [];
 if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
 Module['postRun'].push(() => { calledMain = true; });
 

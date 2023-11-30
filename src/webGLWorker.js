@@ -738,7 +738,7 @@ function WebGLWorker() {
           }
           if (!obj[name]) {
             obj[name] = { what: type, name: fullname, size, location: -1, type: getTypeId(m[1]) };
-            if (vec) vec.push(name);
+            vec?.push(name);
           }
         });
       });

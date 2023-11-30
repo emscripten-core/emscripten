@@ -31,10 +31,10 @@ var LibraryHtml5WebGL = {
     }
 
     HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.alpha }}}>>2)] =
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.depth }}}>>2)] = 
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.antialias }}}>>2)] = 
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha }}}>>2)] = 
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)] = 
+    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.depth }}}>>2)] =
+    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.antialias }}}>>2)] =
+    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha }}}>>2)] =
+    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)] =
     HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault }}}>>2)] = 1;
 
 #if PTHREADS
@@ -473,7 +473,7 @@ var LibraryHtml5WebGL = {
   emscripten_webgl_get_vertex_attrib_o__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_vertex_attrib_o: (index, param) => {
     var obj = GLctx.getVertexAttrib(index, param);
-    return obj && obj.name;
+    return obj?.name;
   },
 
   emscripten_webgl_get_vertex_attrib_v__proxy: 'sync_on_current_webgl_context_thread',
@@ -502,7 +502,7 @@ var LibraryHtml5WebGL = {
   emscripten_webgl_get_parameter_o__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_parameter_o: (param) => {
     var obj = GLctx.getParameter(param);
-    return obj && obj.name;
+    return obj?.name;
   },
 
   emscripten_webgl_get_parameter_utf8__deps: ['$stringToNewUTF8'],

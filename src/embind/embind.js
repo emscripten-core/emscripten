@@ -1307,9 +1307,7 @@ var LibraryEmbind = {
         return ptr;
       },
       destructor(ptr) {
-        if (this.rawDestructor) {
-          this.rawDestructor(ptr);
-        }
+        this.rawDestructor?.(ptr);
       },
       'argPackAdvance': GenericWireTypeSize,
       'readValueFromPointer': readPointer,
@@ -1743,12 +1741,8 @@ var LibraryEmbind = {
                            rawDestructor) => {
     name = readLatin1String(name);
     getActualType = embind__requireFunction(getActualTypeSignature, getActualType);
-    if (upcast) {
-      upcast = embind__requireFunction(upcastSignature, upcast);
-    }
-    if (downcast) {
-      downcast = embind__requireFunction(downcastSignature, downcast);
-    }
+    upcast &&= embind__requireFunction(upcastSignature, upcast);
+    downcast &&= embind__requireFunction(downcastSignature, downcast);
     rawDestructor = embind__requireFunction(destructorSignature, rawDestructor);
     var legalFunctionName = makeLegalFunctionName(name);
 
@@ -1803,9 +1797,7 @@ var LibraryEmbind = {
 
         if (registeredClass.baseClass) {
           // Keep track of class hierarchy. Used to allow sub-classes to inherit class functions.
-          if (registeredClass.baseClass.__derivedClasses === undefined) {
-            registeredClass.baseClass.__derivedClasses = [];
-          }
+          registeredClass.baseClass.__derivedClasses ??= [];
 
           registeredClass.baseClass.__derivedClasses.push(registeredClass);
         }

@@ -295,7 +295,7 @@ function checkUnflushedContent() {
       var stream = info.object;
       var rdev = stream.rdev;
       var tty = TTY.ttys[rdev];
-      if (tty && tty.output && tty.output.length) {
+      if (tty?.output?.length) {
         has = true;
       }
     });

@@ -95,7 +95,7 @@ var LibraryBrowser = {
           }
         }
         callUserCallback(func);
-        if (Module['postMainLoop']) Module['postMainLoop']();
+        Module['postMainLoop']?.();
       }
     },
     isFullscreen: false,
@@ -140,11 +140,11 @@ var LibraryBrowser = {
           ctx.drawImage(img, 0, 0);
           preloadedImages[name] = canvas;
           URL.revokeObjectURL(url);
-          if (onload) onload(byteArray);
+          onload?.(byteArray);
         };
         img.onerror = (event) => {
           err(`Image ${url} could not be decoded`);
-          if (onerror) onerror();
+          onerror?.();
         };
         img.src = url;
       };
@@ -160,13 +160,13 @@ var LibraryBrowser = {
           if (done) return;
           done = true;
           preloadedAudios[name] = audio;
-          if (onload) onload(byteArray);
+          onload?.(byteArray);
         }
         function fail() {
           if (done) return;
           done = true;
           preloadedAudios[name] = new Audio(); // empty shim
-          if (onerror) onerror();
+          onerror?.();
         }
         var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
         var url = URL.createObjectURL(b); // XXX we never revoke this!
@@ -344,8 +344,8 @@ var LibraryBrowser = {
             Browser.updateCanvasDimensions(canvas);
           }
         }
-        if (Module['onFullScreen']) Module['onFullScreen'](Browser.isFullscreen);
-        if (Module['onFullscreen']) Module['onFullscreen'](Browser.isFullscreen);
+        Module['onFullScreen']?.(Browser.isFullscreen);
+        Module['onFullscreen']?.(Browser.isFullscreen);
       }
 
       if (!Browser.fullscreenHandlersInstalled) {
@@ -459,10 +459,8 @@ var LibraryBrowser = {
     },
 
     getUserMedia(func) {
-      if (!window.getUserMedia) {
-        window.getUserMedia = navigator['getUserMedia'] ||
+      window.getUserMedia ||= navigator['getUserMedia'] ||
                               navigator['mozGetUserMedia'];
-      }
       window.getUserMedia(func);
     },
 
@@ -610,7 +608,7 @@ var LibraryBrowser = {
             Browser.touches[touch.identifier] = coords;
           } else if (event.type === 'touchend' || event.type === 'touchmove') {
             var last = Browser.touches[touch.identifier];
-            if (!last) last = coords;
+            last ||= coords;
             Browser.lastTouches[touch.identifier] = last;
             Browser.touches[touch.identifier] = coords;
           }
@@ -732,14 +730,15 @@ var LibraryBrowser = {
     return 0;
   },
 
+  $Browser_asyncPrepareDataCounter: 0,
+
   emscripten_run_preload_plugins_data__proxy: 'sync',
-  emscripten_run_preload_plugins_data__deps: ['$stringToNewUTF8'],
+  emscripten_run_preload_plugins_data__deps: ['$stringToNewUTF8', '$Browser_asyncPrepareDataCounter'],
   emscripten_run_preload_plugins_data: (data, size, suffix, arg, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
 
     var _suffix = UTF8ToString(suffix);
-    if (!Browser.asyncPrepareDataCounter) Browser.asyncPrepareDataCounter = 0;
-    var name = 'prepare_data_' + (Browser.asyncPrepareDataCounter++) + '.' + _suffix;
+    var name = 'prepare_data_' + (Browser_asyncPrepareDataCounter++) + '.' + _suffix;
     var cname = stringToNewUTF8(name);
     FS.createPreloadedFile(
       '/',
@@ -795,7 +794,7 @@ var LibraryBrowser = {
 
     var loadError = () => {
       {{{ runtimeKeepalivePop() }}}
-      if (onerror) onerror();
+      onerror?.();
     };
 
 #if ENVIRONMENT_MAY_BE_NODE && DYNAMIC_EXECUTION
@@ -1029,7 +1028,7 @@ var LibraryBrowser = {
       // to queue the newest produced audio samples.
       // TODO: Consider adding pre- and post- rAF callbacks so that GL.newRenderingFrameStarted() and SDL.audio.queueNewAudioData()
       //       do not need to be hardcoded into this function, but can be more generic.
-      if (typeof SDL == 'object' && SDL.audio && SDL.audio.queueNewAudioData) SDL.audio.queueNewAudioData();
+      if (typeof SDL == 'object') SDL.audio?.queueNewAudioData?.();
 
       Browser.mainLoop.scheduler();
     }

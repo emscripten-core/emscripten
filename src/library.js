@@ -2418,7 +2418,7 @@ addToLibrary({
   _emscripten_get_now_is_monotonic: () => nowIsMonotonic,
 
   $warnOnce: (text) => {
-    if (!warnOnce.shown) warnOnce.shown = {};
+    warnOnce.shown ||= {};
     if (!warnOnce.shown[text]) {
       warnOnce.shown[text] = 1;
 #if ENVIRONMENT_MAY_BE_NODE
@@ -2498,7 +2498,7 @@ addToLibrary({
 
       if (flags & {{{ cDefs.EM_LOG_C_STACK }}}) {
         var orig = emscripten_source_map.originalPositionFor({line: lineno, column: column});
-        haveSourceMap = (orig && orig.source);
+        haveSourceMap = orig?.source;
         if (haveSourceMap) {
           if (flags & {{{ cDefs.EM_LOG_NO_PATHS }}}) {
             orig.source = orig.source.substring(orig.source.replace(/\\/g, "/").lastIndexOf('/')+1);
@@ -3139,7 +3139,7 @@ addToLibrary({
 #else
     assert(('dynCall_' + sig) in Module, `bad function pointer type - dynCall function not found for sig '${sig}'`);
 #endif
-    if (args && args.length) {
+    if (args?.length) {
 #if WASM_BIGINT
       // j (64-bit integer) is fine, and is implemented as a BigInt. Without
       // legalization, the number of parameters should match (j is not expanded

@@ -865,6 +865,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       )
       if node_version < emcc_min_node_version:
         self.emcc_args += building.get_emcc_node_flags(node_version)
+        self.emcc_args.append('-Wno-transpile')
 
     self.v8_args = ['--wasm-staging']
     self.env = {}

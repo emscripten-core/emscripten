@@ -336,9 +336,7 @@ var LibraryEmVal = {
       }
       var rv = kind === /* CONSTRUCTOR */ 1 ? reflectConstruct(func, argN) : func.apply(obj, argN);
       for (var i = 0; i < argCount; ++i) {
-        if (types[i].deleteObject) {
-          types[i].deleteObject(argN[i]);
-        }
+        types[i].deleteObject?.(argN[i]);
       }
       return emval_returnValue(retType, destructorsRef, rv);
     };

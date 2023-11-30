@@ -64,7 +64,7 @@ function warnOnce(a, msg) {
     a = false;
   }
   if (!a) {
-    if (!warnOnce.msgs) warnOnce.msgs = {};
+    warnOnce.msgs ||= {};
     if (msg in warnOnce.msgs) return;
     warnOnce.msgs[msg] = true;
     warn(msg);
@@ -244,7 +244,7 @@ globalThis.Benchmarker = function() {
     }
     lastTime = now;
     ids.push(id);
-    totals[id] = totals[id] || 0;
+    totals[id] ||= 0;
   };
   this.stop = function(id) {
     const now = Date.now();
