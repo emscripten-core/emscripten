@@ -91,8 +91,8 @@ var LibraryGLFW = {
 #endif
   ],
   $GLFW__postset: `
-    // making setHiDPIAware public for users of glfw (dynamic switching)
-    Module["setHiDPIAware"] = GLFW.setHiDPIAware;`,
+    // making glfwSetHiDPIAware public for users of glfw (dynamic switching)
+    Module["glfwSetHiDPIAware"] = GLFW.setHiDPIAware;`,
   $GLFW: {
     WindowFromId: (id) => {
       if (id <= 0 || !GLFW.windows) return null;
@@ -1354,7 +1354,7 @@ var LibraryGLFW = {
 /*******************************************************************************
  * GLFW FUNCTIONS
  ******************************************************************************/
-  glfwInit__deps: ['emscripten_get_device_pixel_ratio', 'malloc', 'free'],
+  glfwInit__deps: ['malloc', 'free'],
   glfwInit: () => {
     if (GLFW.windows) return 1; // GL_TRUE
 
@@ -1362,7 +1362,7 @@ var LibraryGLFW = {
     GLFW.defaultWindowHints();
     GLFW.windows = new Array()
     GLFW.active = null;
-    GLFW.scale  = _emscripten_get_device_pixel_ratio();
+    GLFW.scale  = GLFW.getDevicePixelRatio();
 
 
     window.addEventListener("gamepadconnected", GLFW.onGamepadConnected, true);
