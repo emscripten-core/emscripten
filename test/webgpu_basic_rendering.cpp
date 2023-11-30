@@ -88,6 +88,11 @@ void init() {
         wgpu::ShaderModuleDescriptor descriptor{};
         descriptor.nextInChain = &wgslDesc;
         shaderModule = device.CreateShaderModule(&descriptor);
+        shaderModule.GetCompilationInfo([](WGPUCompilationInfoRequestStatus status, const WGPUCompilationInfo* info, void*) {
+            assert(status == WGPUCompilationInfoRequestStatus_Success);
+            assert(info->messageCount == 0);
+            std::printf("Shader compile succeeded\n");
+        }, nullptr);
     }
 
     {
@@ -110,7 +115,6 @@ void init() {
 
         wgpu::FragmentState fragmentState{};
         fragmentState.module = shaderModule;
-        fragmentState.entryPoint = "main_f";
         fragmentState.targetCount = 1;
         fragmentState.targets = &colorTargetState;
 
@@ -121,7 +125,6 @@ void init() {
         wgpu::RenderPipelineDescriptor descriptor{};
         descriptor.layout = device.CreatePipelineLayout(&pl);
         descriptor.vertex.module = shaderModule;
-        descriptor.vertex.entryPoint = "main_v";
         descriptor.fragment = &fragmentState;
         descriptor.primitive.topology = wgpu::PrimitiveTopology::TriangleList;
         descriptor.depthStencil = &depthStencilState;

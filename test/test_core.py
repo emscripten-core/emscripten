@@ -134,6 +134,18 @@ def no_wasm2js(note=''):
   return decorated
 
 
+# Some tests are marked as only-wasm2js because they test basic codegen in a way
+# that is mainly useful for the wasm2js compiler and not LLVM. LLVM tests its
+# own codegen, while wasm2js testing is split between the binaryen repo (which
+# tests wat files) and this repo (which tests C/C++ files).
+def only_wasm2js(note=''):
+  assert not callable(note)
+
+  def decorated(f):
+    return skip_if(f, 'is_wasm2js', note, negate=True)
+  return decorated
+
+
 def also_with_noderawfs(func):
   assert callable(func)
 
@@ -406,8 +418,6 @@ class TestCoreBase(RunnerCore):
                             configure_args=configure_args,
                             cache_name_extra=configure_commands[0])
 
-  @also_with_standalone_wasm()
-  @also_with_wasmfs
   def test_hello_world(self):
     self.do_core_test('test_hello_world.c')
 
@@ -426,13 +436,9 @@ class TestCoreBase(RunnerCore):
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_hello_argc.c', args=['hello', 'world'])
 
-  @also_with_wasmfs
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_intvars(self):
     self.do_core_test('test_intvars.cpp')
-
-  @also_with_wasmfs
-  def test_sintvars(self):
-    self.do_core_test('test_sintvars.c')
 
   def test_int53(self):
     if common.EMTEST_REBASELINE:
@@ -450,60 +456,80 @@ class TestCoreBase(RunnerCore):
     else:
       self.do_core_test('test_convertI32PairToI53Checked.cpp', interleaved_output=False)
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64(self):
+    # test shifts etc. on 64-bit integers as well as printf() on them. we need
+    # the math testing only for wasm2js but do not apply @only_wasm2js since we
+    # do want some testing of 64-bit printf in our libc (which is not tested in
+    # clang upstream).
     self.do_core_test('test_i64.c')
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64_2(self):
     self.do_core_test('test_i64_2.cpp')
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64_3(self):
     self.do_core_test('test_i64_3.cpp')
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64_4(self):
     # stuff that also needs sign corrections
-
     self.do_core_test('test_i64_4.c')
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64_b(self):
     self.do_core_test('test_i64_b.cpp')
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64_cmp(self):
     self.do_core_test('test_i64_cmp.cpp')
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64_cmp2(self):
     self.do_core_test('test_i64_cmp2.c')
 
+  @only_wasm2js('test unions of i64 and double')
   def test_i64_double(self):
     self.do_core_test('test_i64_double.cpp')
 
+  @only_wasm2js('test 64-bit multiply')
   def test_i64_umul(self):
     self.do_core_test('test_i64_umul.c')
 
+  @only_wasm2js('test 64-bit math')
   @also_with_standalone_wasm()
   @no_ubsan('contains UB')
   def test_i64_precise(self):
     self.do_core_test('test_i64_precise.c')
 
+  @only_wasm2js('test 64-bit multiply')
   def test_i64_precise_needed(self):
     self.do_core_test('test_i64_precise_needed.c')
 
   def test_i64_llabs(self):
+    # test the libc llabs() method
     self.do_core_test('test_i64_llabs.c')
 
   def test_i64_zextneg(self):
+    # test zero/sign-extension in printf arguments
     self.do_core_test('test_i64_zextneg.c')
 
+  @only_wasm2js('test 64-bit math')
   def test_i64_7z(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_i64_7z.c', args=['hallo'])
 
+  @only_wasm2js('test 64-bit math with short values')
   def test_i64_i16(self):
     self.do_core_test('test_i64_i16.c')
 
+  @only_wasm2js('test 64-bit/double conversions')
   def test_i64_qdouble(self):
     self.do_core_test('test_i64_qdouble.c')
 
+  @only_wasm2js('tests va_arg() with i64 params')
   def test_i64_varargs(self):
     self.do_core_test('test_i64_varargs.c', args='waka fleefl asdfasdfasdfasdf'.split())
 
@@ -515,25 +541,31 @@ class TestCoreBase(RunnerCore):
     self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_core_test('test_i64_invoke_bigint.cpp')
 
+  @only_wasm2js('tests va_arg()')
   def test_vararg_copy(self):
     self.do_run_in_out_file_test('va_arg/test_va_copy.c')
 
   def test_llvm_fabs(self):
     self.do_core_test('test_llvm_fabs.c')
 
+  @only_wasm2js('tests va_arg()')
   def test_double_varargs(self):
     self.do_core_test('test_double_varargs.c')
 
+  @only_wasm2js('tests va_arg()')
   def test_trivial_struct_varargs(self):
     self.do_core_test('test_trivial_struct_varargs.c')
 
+  @only_wasm2js('tests va_arg()')
   def test_struct_varargs(self):
     self.do_core_test('test_struct_varargs.c')
 
+  @only_wasm2js('tests va_arg()')
   def test_zero_struct_varargs(self):
     self.do_core_test('test_zero_struct_varargs.c')
 
-  def zzztest_nested_struct_varargs(self):
+  @only_wasm2js('tests va_arg()')
+  def test_nested_struct_varargs(self):
     self.do_core_test('test_nested_struct_varargs.c')
 
   def test_i32_mul_precise(self):

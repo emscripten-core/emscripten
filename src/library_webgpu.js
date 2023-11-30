@@ -94,6 +94,12 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
       OffsetOutOfRange: 7,
       SizeOutOfRange: 8,
     },
+    CompilationInfoRequestStatus: {
+      Success: 0,
+      Error: 1,
+      DeviceLost: 2,
+      Unknown: 3,
+    },
     CreatePipelineAsyncStatus: {
       Success: 0,
       ValidationError: 1,
@@ -311,18 +317,29 @@ var LibraryWebGPU = {
     makeProgrammableStageDescriptor: (ptr) => {
       if (!ptr) return undefined;
       {{{ gpu.makeCheckDescriptor('ptr') }}}
-      return {
+      var desc = {
         "module": WebGPU.mgrShaderModule.get(
           {{{ makeGetValue('ptr', C_STRUCTS.WGPUProgrammableStageDescriptor.module, '*') }}}),
-        "entryPoint": UTF8ToString(
-          {{{ makeGetValue('ptr', C_STRUCTS.WGPUProgrammableStageDescriptor.entryPoint, '*') }}}),
         "constants": WebGPU.makePipelineConstants(
           {{{ gpu.makeGetU32('ptr', C_STRUCTS.WGPUProgrammableStageDescriptor.constantCount) }}},
           {{{ makeGetValue('ptr', C_STRUCTS.WGPUProgrammableStageDescriptor.constants, '*') }}}),
       };
+      var entryPointPtr = {{{ makeGetValue('ptr', C_STRUCTS.WGPUProgrammableStageDescriptor.entryPoint, '*') }}};
+      if (entryPointPtr) desc["entryPoint"] = UTF8ToString(entryPointPtr);
+      return desc;
     },
 
     // Map from enum string back to enum number, for callbacks.
+    BufferMapState: {
+      'unmapped': 0,
+      'pending': 1,
+      'mapped': 2,
+    },
+    CompilationMessageType : {
+      'error': 0,
+      'warning': 1,
+      'info': 2,
+    },
     DeviceLostReason: {
       'undefined': 0,
       'destroyed': 1,
@@ -330,11 +347,6 @@ var LibraryWebGPU = {
     PreferredFormat: {
       'rgba8unorm': 0x12,
       'bgra8unorm': 0x17,
-    },
-    BufferMapState: {
-      'unmapped': 0,
-      'pending': 1,
-      'mapped': 2,
     },
 
     // This section is auto-generated. See system/include/webgpu/README.md for details.
@@ -392,6 +404,11 @@ var LibraryWebGPU = {
       'error',
       'device-lost',
       'unknown',
+    ],
+    CompilationMessageType: [
+      'error',
+      'warning',
+      'info',
     ],
     CullMode: [
       'none',
@@ -1323,18 +1340,19 @@ var LibraryWebGPU = {
     function makeVertexState(viPtr) {
       if (!viPtr) return undefined;
       {{{ gpu.makeCheckDescriptor('viPtr') }}}
-      return {
+      var desc = {
         "module": WebGPU.mgrShaderModule.get(
           {{{ makeGetValue('viPtr', C_STRUCTS.WGPUVertexState.module, '*') }}}),
-        "entryPoint": UTF8ToString(
-          {{{ makeGetValue('viPtr', C_STRUCTS.WGPUVertexState.entryPoint, '*') }}}),
         "constants": WebGPU.makePipelineConstants(
           {{{ gpu.makeGetU32('viPtr', C_STRUCTS.WGPUVertexState.constantCount) }}},
           {{{ makeGetValue('viPtr', C_STRUCTS.WGPUVertexState.constants, '*') }}}),
         "buffers": makeVertexBuffers(
           {{{ gpu.makeGetU32('viPtr', C_STRUCTS.WGPUVertexState.bufferCount) }}},
           {{{ makeGetValue('viPtr', C_STRUCTS.WGPUVertexState.buffers, '*') }}}),
-      };
+        };
+      var entryPointPtr = {{{ makeGetValue('viPtr', C_STRUCTS.WGPUVertexState.entryPoint, '*') }}};
+      if (entryPointPtr) desc["entryPoint"] = UTF8ToString(entryPointPtr);
+      return desc;
     }
 
     function makeMultisampleState(msPtr) {
@@ -1350,18 +1368,19 @@ var LibraryWebGPU = {
     function makeFragmentState(fsPtr) {
       if (!fsPtr) return undefined;
       {{{ gpu.makeCheckDescriptor('fsPtr') }}}
-      return {
+      var desc = {
         "module": WebGPU.mgrShaderModule.get(
           {{{ makeGetValue('fsPtr', C_STRUCTS.WGPUFragmentState.module, '*') }}}),
-        "entryPoint": UTF8ToString(
-          {{{ makeGetValue('fsPtr', C_STRUCTS.WGPUFragmentState.entryPoint, '*') }}}),
         "constants": WebGPU.makePipelineConstants(
           {{{ gpu.makeGetU32('fsPtr', C_STRUCTS.WGPUFragmentState.constantCount) }}},
           {{{ makeGetValue('fsPtr', C_STRUCTS.WGPUFragmentState.constants, '*') }}}),
         "targets": makeColorStates(
           {{{ gpu.makeGetU32('fsPtr', C_STRUCTS.WGPUFragmentState.targetCount) }}},
           {{{ makeGetValue('fsPtr', C_STRUCTS.WGPUFragmentState.targets, '*') }}}),
-      };
+        };
+      var entryPointPtr = {{{ makeGetValue('fsPtr', C_STRUCTS.WGPUFragmentState.entryPoint, '*') }}};
+      if (entryPointPtr) desc["entryPoint"] = UTF8ToString(entryPointPtr);
+      return desc;
     }
 
     var desc = {
@@ -1775,9 +1794,47 @@ var LibraryWebGPU = {
 
   // wgpuShaderModule
 
+  wgpuShaderModuleGetCompilationInfo__deps: ['$callUserCallback', '$stringToUTF8', '$lengthBytesUTF8', 'malloc', 'free'],
   wgpuShaderModuleGetCompilationInfo: (shaderModuleId, callback, userdata) => {
     var shaderModule = WebGPU.mgrShaderModule.get(shaderModuleId);
-    abort('TODO: wgpuShaderModuleGetCompilationInfo unimplemented');
+    {{{ runtimeKeepalivePush() }}}
+    shaderModule["getCompilationInfo"]().then((compilationInfo) => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        var compilationMessagesPtr = _malloc({{{ C_STRUCTS.WGPUCompilationMessage.__size__ }}} * compilationInfo.messages.length);
+        var messageStringPtrs = []; // save these to free later
+        for (var i = 0; i < compilationInfo.messages.length; ++i) {
+          var compilationMessage = compilationInfo.messages[i];
+          var compilationMessagePtr = compilationMessagesPtr + {{{ C_STRUCTS.WGPUCompilationMessage.__size__ }}} * i;
+          var messageSize = lengthBytesUTF8(compilationMessage.message) + 1;
+          var messagePtr = _malloc(messageSize);
+          messageStringPtrs.push(messagePtr);
+          stringToUTF8(compilationMessage.message, messagePtr, messageSize);
+          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.message, 'messagePtr', '*') }}};
+          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.type, 'WebGPU.CompilationMessageType[compilationMessage.type]', 'i32') }}};
+          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.lineNum, 'compilationMessage.lineNum', 'i64') }}};
+          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.linePos, 'compilationMessage.linePos', 'i64') }}};
+          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.offset, 'compilationMessage.offset', 'i64') }}};
+          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.length, 'compilationMessage.length', 'i64') }}};
+          // TODO: Convert JavaScript's UTF-16-code-unit offsets to UTF-8-code-unit offsets.
+          // https://github.com/webgpu-native/webgpu-headers/issues/246
+          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.utf16LinePos, 'compilationMessage.linePos', 'i64') }}};
+          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.utf16Offset, 'compilationMessage.offset', 'i64') }}};
+          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.utf16Length, 'compilationMessage.length', 'i64') }}};
+        }
+        var compilationInfoPtr = _malloc({{{ C_STRUCTS.WGPUCompilationInfo.__size__ }}});
+        {{{ makeSetValue('compilationInfoPtr', C_STRUCTS.WGPUCompilationInfo.messageCount, 'compilationInfo.messages.length', '*') }}}
+        {{{ makeSetValue('compilationInfoPtr', C_STRUCTS.WGPUCompilationInfo.messages, 'compilationMessagesPtr', '*') }}};
+
+        {{{ makeDynCall('vipp', 'callback') }}}({{{ gpu.CompilationInfoRequestStatus.Success }}}, compilationInfoPtr, userdata);
+
+        messageStringPtrs.forEach((ptr) => {
+          _free(ptr);
+        });
+        _free(compilationMessagesPtr);
+        _free(compilationInfoPtr);
+      });
+    });
   },
   wgpuShaderModuleSetLabel: (shaderModuleId, labelPtr) => {
     var shaderModule = WebGPU.mgrShaderModule.get(shaderModuleId);
