@@ -329,11 +329,6 @@ EMSCRIPTEN_FUNCS();
       if not os.environ.get('EMCC_NO_OPT_SORT'):
         funcs.sort(key=lambda x: (len(x[1]), x[0]), reverse=True)
 
-      if 'last' in passes and len(funcs):
-        count = funcs[0][1].count('\n')
-        if count > 3000:
-          print('warning: Output contains some very large functions (%s lines in %s), consider building source files with -Os or -Oz)' % (count, funcs[0][0]), file=sys.stderr)
-
       for func in funcs:
         f.write(func[1])
       funcs = None
