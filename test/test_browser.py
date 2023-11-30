@@ -1329,7 +1329,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest_exit('test_webgl_context_attributes_glut.c', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-lglut', '-lGLEW'])
     self.btest_exit('test_webgl_context_attributes_sdl.c', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-lSDL', '-lGLEW'])
     if not self.is_wasm64():
-      self.btest_exit('test_webgl_context_attributes_sdl2.c', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-sUSE_SDL=2', '-lGLEW'])
+      self.btest_exit('test_webgl_context_attributes_sdl2.c', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-sUSE_SDL=2', '-lGLEW', '-sGL_ENABLE_GET_PROC_ADDRESS=1'])
     self.btest_exit('test_webgl_context_attributes_glfw.c', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-lglfw', '-lGLEW'])
 
     # perform tests with attributes desactivated
@@ -1584,7 +1584,7 @@ keydown(100);keyup(100); // trigger the end
   def test_sdl_ogl_proc_alias(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('test_sdl_ogl_proc_alias.c', reference='screenshot-gray-purple.png', reference_slack=1,
-               args=['-O2', '-g2', '-sINLINING_LIMIT', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
+               args=['-O2', '-g2', '-sINLINING_LIMIT', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-sGL_ENABLE_GET_PROC_ADDRESS', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_fog_simple(self):
@@ -1619,11 +1619,11 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   def test_glfw(self):
     # Using only the `-l` flag
-    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-lglfw', '-lGL'])
+    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-lglfw', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
     # Using only the `-s` flag
-    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-sUSE_GLFW=2', '-lGL'])
+    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-sUSE_GLFW=2', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
     # Using both `-s` and `-l` flags
-    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-sUSE_GLFW=2', '-lglfw', '-lGL'])
+    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-sUSE_GLFW=2', '-lglfw', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
 
   def test_glfw_minimal(self):
     self.btest_exit('test_glfw_minimal.c', args=['-lglfw', '-lGL'])
@@ -1633,7 +1633,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest_exit('test_glfw_time.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
 
   def _test_egl_base(self, *args):
-    self.btest_exit('test_egl.c', args=['-O2', '-lEGL', '-lGL'] + list(args))
+    self.btest_exit('test_egl.c', args=['-O2', '-lEGL', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'] + list(args))
 
   @requires_graphics_hardware
   def test_egl(self):
@@ -1815,7 +1815,7 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_fulles2_sdlproc(self):
-    self.btest_exit('full_es2_sdlproc.c', assert_returncode=1, args=['-sGL_TESTING', '-DHAVE_BUILTIN_SINCOS', '-sFULL_ES2', '-lGL', '-lSDL', '-lglut'])
+    self.btest_exit('full_es2_sdlproc.c', assert_returncode=1, args=['-sGL_TESTING', '-DHAVE_BUILTIN_SINCOS', '-sFULL_ES2', '-lGL', '-lSDL', '-lglut', '-sGL_ENABLE_GET_PROC_ADDRESS'])
 
   @requires_graphics_hardware
   def test_glgears_deriv(self):
@@ -1998,12 +1998,12 @@ keydown(100);keyup(100); // trigger the end
   @no_wasm64('TODO: LEGACY_GL_EMULATION + wasm64')
   @requires_graphics_hardware
   def test_sdl_glshader(self):
-    self.btest('test_sdl_glshader.c', reference='browser/test_sdl_glshader.png', args=['-O2', '--closure=1', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
+    self.btest('test_sdl_glshader.c', reference='browser/test_sdl_glshader.png', args=['-O2', '--closure=1', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
 
   @no_wasm64('TODO: LEGACY_GL_EMULATION + wasm64')
   @requires_graphics_hardware
   def test_sdl_glshader2(self):
-    self.btest_exit('test_sdl_glshader2.c', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], also_proxied=True)
+    self.btest_exit('test_sdl_glshader2.c', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-sGL_ENABLE_GET_PROC_ADDRESS'], also_proxied=True)
 
   @requires_graphics_hardware
   def test_gl_glteximage(self):
@@ -2145,7 +2145,7 @@ void *getBindBuffer() {
   return glBindBuffer;
 }
 ''')
-    self.btest('third_party/cubegeom/cubegeom_proc.c', reference='third_party/cubegeom/cubegeom.png', args=opts + ['side.c', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
+    self.btest('third_party/cubegeom/cubegeom_proc.c', reference='third_party/cubegeom/cubegeom.png', args=opts + ['side.c', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
 
   @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @also_with_wasmfs
@@ -2225,12 +2225,12 @@ void *getBindBuffer() {
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre2_vao(self):
-    self.btest('third_party/cubegeom/cubegeom_pre2_vao.c', reference='third_party/cubegeom/cubegeom_pre_vao.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
+    self.btest('third_party/cubegeom/cubegeom_pre2_vao.c', reference='third_party/cubegeom/cubegeom_pre_vao.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
 
   @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   def test_cubegeom_pre2_vao2(self):
-    self.btest('third_party/cubegeom/cubegeom_pre2_vao2.c', reference='third_party/cubegeom/cubegeom_pre2_vao2.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
+    self.btest('third_party/cubegeom/cubegeom_pre2_vao2.c', reference='third_party/cubegeom/cubegeom_pre2_vao2.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
 
   @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
@@ -3002,7 +3002,7 @@ Module["preRun"] = () => {
   @requires_graphics_hardware
   @parameterized({
     'no_gl': (['-DCLIENT_API=GLFW_NO_API'],),
-    'gl_es': (['-DCLIENT_API=GLFW_OPENGL_ES_API'],)
+    'gl_es': (['-DCLIENT_API=GLFW_OPENGL_ES_API', '-sGL_ENABLE_GET_PROC_ADDRESS'],)
   })
   def test_glfw3(self, args):
     for opts in [[], ['-sLEGACY_GL_EMULATION'], ['-Os', '--closure=1']]:

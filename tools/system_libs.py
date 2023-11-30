@@ -1780,7 +1780,7 @@ class libGL(MTLibrary):
   name = 'libGL'
 
   src_dir = 'system/lib/gl'
-  src_files = ['gl.c', 'webgl1.c', 'libprocaddr.c']
+  src_files = ['gl.c', 'webgl1.c', 'libprocaddr.c', 'webgl2.c']
 
   cflags = ['-Oz', '-fno-inline-functions']
 
@@ -1789,10 +1789,7 @@ class libGL(MTLibrary):
     self.is_webgl2 = kwargs.pop('is_webgl2')
     self.is_ofb = kwargs.pop('is_ofb')
     self.is_full_es3 = kwargs.pop('is_full_es3')
-    if self.is_webgl2 or self.is_full_es3:
-      # Don't use append or += here, otherwise we end up adding to
-      # the class member.
-      self.src_files = self.src_files + ['webgl2.c']
+    self.is_enable_get_proc_address = kwargs.pop('is_enable_get_proc_address')
     super().__init__(**kwargs)
 
   def get_base_name(self):
@@ -1805,23 +1802,26 @@ class libGL(MTLibrary):
       name += '-ofb'
     if self.is_full_es3:
       name += '-full_es3'
+    if self.is_enable_get_proc_address:
+      name += '-getprocaddr'
     return name
 
   def get_cflags(self):
     cflags = super().get_cflags()
     if self.is_legacy:
       cflags += ['-DLEGACY_GL_EMULATION=1']
-    if self.is_webgl2:
-      cflags += ['-DMAX_WEBGL_VERSION=2']
+    cflags += [f'-DMAX_WEBGL_VERSION={2 if self.is_webgl2 else 1}']
     if self.is_ofb:
       cflags += ['-D__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__']
     if self.is_full_es3:
       cflags += ['-D__EMSCRIPTEN_FULL_ES3__']
+    if self.is_enable_get_proc_address:
+      cflags += ['-DGL_ENABLE_GET_PROC_ADDRESS=1']
     return cflags
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_legacy', 'is_webgl2', 'is_ofb', 'is_full_es3']
+    return super().vary_on() + ['is_legacy', 'is_webgl2', 'is_ofb', 'is_full_es3', 'is_enable_get_proc_address']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -1830,6 +1830,7 @@ class libGL(MTLibrary):
       is_webgl2=settings.MAX_WEBGL_VERSION >= 2,
       is_ofb=settings.OFFSCREEN_FRAMEBUFFER,
       is_full_es3=settings.FULL_ES3,
+      is_enable_get_proc_address=settings.GL_ENABLE_GET_PROC_ADDRESS,
       **kwargs
     )
 

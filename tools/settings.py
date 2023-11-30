@@ -81,6 +81,9 @@ COMPILE_TIME_SETTINGS = {
     'OPT_LEVEL',
     'DEBUG_LEVEL',
 
+    # Affects ports
+    'GL_ENABLE_GET_PROC_ADDRESS', # NOTE: if SDL2 is updated to not rely on eglGetProcAddress(), this can be removed
+
     # This is legacy setting that we happen to handle very early on
     'RUNTIME_LINKED_LIBS',
 }.union(PORTS_SETTINGS)

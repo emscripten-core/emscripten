@@ -4,6 +4,8 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  */
+#if defined(__EMSCRIPTEN_FULL_ES3__) || MAX_WEBGL_VERSION >= 2
+
 #include <emscripten/threading.h>
 #include <emscripten.h>
 #include <string.h>
@@ -162,6 +164,8 @@ GL_APICALL void GL_APIENTRY glDrawBuffersWEBGL(GLsizei n, const GLenum *bufs) { 
 
 #endif // ~__EMSCRIPTEN_PTHREADS__) && __EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__
 
+#if GL_ENABLE_GET_PROC_ADDRESS
+
 // Returns a function pointer to the given WebGL 2 extension function, when queried without
 // a GL extension suffix such as "EXT", "OES", or "ANGLE". This function is used by
 // emscripten_GetProcAddress() to implement legacy GL emulation semantics for portability.
@@ -319,3 +323,7 @@ void *emscripten_webgl2_get_proc_address(const char *name) {
 
   return 0;
 }
+
+#endif // GL_ENABLE_GET_PROC_ADDRESS
+
+#endif // defined(__EMSCRIPTEN_FULL_ES3__) || MAX_WEBGL_VERSION >= 2

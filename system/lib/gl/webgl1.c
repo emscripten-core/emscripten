@@ -579,6 +579,8 @@ RET_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetQueryObjectui64vEXT, GLenum,
 
 #endif // ~(__EMSCRIPTEN_PTHREADS__ && __EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__)
 
+#if GL_ENABLE_GET_PROC_ADDRESS
+
 // Returns a function pointer to the given WebGL 1 extension function, when queried without
 // a GL extension suffix such as "EXT", "OES", or "ANGLE". This function is used by
 // emscripten_GetProcAddress() to implement legacy GL emulation semantics for portability.
@@ -797,3 +799,5 @@ void *emscripten_webgl1_get_proc_address(const char *name) {
 
   return 0;
 }
+
+#endif
