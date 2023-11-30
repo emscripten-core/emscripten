@@ -32,8 +32,8 @@ static void setDevicePixelRatio(float ratio) {
   }, ratio);
 }
 
-static void setBrowserIsHiDPIAware(bool isHiDPIAware) {
-  printf("setBrowserIsHiDPIAware %s\n", isHiDPIAware ? "true" : "false");
+static void setGLFWIsHiDPIAware(bool isHiDPIAware) {
+  printf("setGLFWIsHiDPIAware %s\n", isHiDPIAware ? "true" : "false");
   EM_ASM({GLFW.setHiDPIAware($0)}, isHiDPIAware ? 1 : 0);
 }
 
@@ -51,7 +51,7 @@ static void checkWindowSize(GLFWwindow *window, int expectedWidth, int expectedH
   assert(fbw == (int) (expectedWidth * ratio) && fbh == (int) (expectedHeight * ratio));
 }
 
-static bool getBrowserIsHiDPIAware() {
+static bool getGLFWIsHiDPIAware() {
   return EM_ASM_INT(return GLFW.isHiDPIAware ? 1 : 0) != 0;
 }
 
@@ -63,38 +63,38 @@ int main() {
 
   installMockDevicePixelRatio();
 
-  // by default, Browser is NOT Hi DPI aware
-  assert(!getBrowserIsHiDPIAware());
+  // by default, GLFW is NOT Hi DPI aware
+  assert(!getGLFWIsHiDPIAware());
 
-  // Use case 1: Browser is NOT Hi DPI Aware | devicePixelRatio is 1.0
+  // Use case 1: GLFW is NOT Hi DPI Aware | devicePixelRatio is 1.0
   // Expected outcome is window size and frame buffer size are the same
   {
     printf("Use case #1\n");
     window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #1", NULL, NULL);
     assert(window != NULL);
-    assert(!getBrowserIsHiDPIAware());
+    assert(!getGLFWIsHiDPIAware());
     checkWindowSize(window, 640, 480, 1.0);
     glfwSetWindowSize(window, 600, 400);
     checkWindowSize(window, 600, 400, 1.0);
     glfwDestroyWindow(window);
   }
 
-  // Use case 2: Browser is NOT Hi DPI Aware | devicePixelRatio is 2.0
+  // Use case 2: GLFW is NOT Hi DPI Aware | devicePixelRatio is 2.0
   // Expected outcome is window size and frame buffer size are the same (because
-  // browser is not Hi DPI Aware)
+  // GLFW is not Hi DPI Aware)
   {
     printf("Use case #2\n");
     setDevicePixelRatio(2.0);
     window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #2", NULL, NULL);
     assert(window != NULL);
-    assert(!getBrowserIsHiDPIAware());
+    assert(!getGLFWIsHiDPIAware());
     checkWindowSize(window, 640, 480, 1.0);
     glfwSetWindowSize(window, 600, 400);
     checkWindowSize(window, 600, 400, 1.0);
     glfwDestroyWindow(window);
   }
 
-  // Use case 3: Browser is Hi DPI Aware | devicePixelRatio is 1.0
+  // Use case 3: GLFW is Hi DPI Aware | devicePixelRatio is 1.0
   // Expected outcome is window size and frame buffer size are the same
   {
     printf("Use case #3\n");
@@ -102,14 +102,14 @@ int main() {
     glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
     window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #3", NULL, NULL);
     assert(window != NULL);
-    assert(getBrowserIsHiDPIAware());
+    assert(getGLFWIsHiDPIAware());
     checkWindowSize(window, 640, 480, 1.0);
     glfwSetWindowSize(window, 600, 400);
     checkWindowSize(window, 600, 400, 1.0);
     glfwDestroyWindow(window);
   }
 
-  // Use case 4: Browser is Hi DPI Aware | devicePixelRatio is 2.0
+  // Use case 4: GLFW is Hi DPI Aware | devicePixelRatio is 2.0
   // Expected outcome is frame buffer size is 2x window size
   {
     printf("Use case #4\n");
@@ -117,28 +117,28 @@ int main() {
     glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
     window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #4", NULL, NULL);
     assert(window != NULL);
-    assert(getBrowserIsHiDPIAware());
+    assert(getGLFWIsHiDPIAware());
     checkWindowSize(window, 640, 480, 2.0);
     glfwSetWindowSize(window, 600, 400);
     checkWindowSize(window, 600, 400, 2.0);
     glfwDestroyWindow(window);
   }
 
-  // Use case 5: Browser Hi DPI Awareness changes | devicePixelRatio 2.0
+  // Use case 5: GLFW Hi DPI Awareness changes | devicePixelRatio 2.0
   // Expected outcome is that the window sizes is adjusted automatically
   {
     printf("Use case #5\n");
     glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
     window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #5", NULL, NULL);
     assert(window != NULL);
-    assert(getBrowserIsHiDPIAware());
+    assert(getGLFWIsHiDPIAware());
     checkWindowSize(window, 640, 480, 2.0);
-    setBrowserIsHiDPIAware(false);
+    setGLFWIsHiDPIAware(false);
     checkWindowSize(window, 640, 480, 1.0);
     glfwDestroyWindow(window);
   }
 
-  // Use case 6: Browser is NOT Hi DPI Aware | devicePixelRatio changes
+  // Use case 6: GLFW is NOT Hi DPI Aware | devicePixelRatio changes
   // Expected outcome is that the window sizes does not change
   {
     printf("Use case #6\n");
@@ -146,14 +146,14 @@ int main() {
     glfwDefaultWindowHints(); // reset GLFW_SCALE_TO_MONITOR
     window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #6", NULL, NULL);
     assert(window != NULL);
-    assert(!getBrowserIsHiDPIAware());
+    assert(!getGLFWIsHiDPIAware());
     checkWindowSize(window, 640, 480, 1.0);
     setDevicePixelRatio(2.0);
     checkWindowSize(window, 640, 480, 1.0);
     glfwDestroyWindow(window);
   }
 
-  // Use case 7: Browser is Hi DPI Aware | devicePixelRatio changes
+  // Use case 7: GLFW is Hi DPI Aware | devicePixelRatio changes
   // Expected outcome is that the window sizes is adjusted automatically
   {
     printf("Use case #7\n");
@@ -161,7 +161,7 @@ int main() {
     glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
     window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #7", NULL, NULL);
     assert(window != NULL);
-    assert(getBrowserIsHiDPIAware());
+    assert(getGLFWIsHiDPIAware());
     checkWindowSize(window, 640, 480, 2.0);
     setDevicePixelRatio(1.0);
     checkWindowSize(window, 640, 480, 1.0);
