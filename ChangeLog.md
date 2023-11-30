@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.50 (in development)
+3.1.51 (in development)
 -----------------------
+
+3.1.50 - 11/29/23
+-----------------
 - Add a port of mimalloc, a fast and scalable multithreaded allocator. To use
   it, build with `-sMALLOC=mimalloc`. (#20651)
 - When compiling, Emscripten will now invoke `clang` or `clang++` depending only
