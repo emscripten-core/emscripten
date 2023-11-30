@@ -1262,88 +1262,34 @@ var LibraryGLFW = {
       }
     },
 
-    // Overrides Browser.calculateMouseEvent to account for hi dpi scaling
-    calculateMouseEvent(event) { // event should be mousemove, mousedown or mouseup
-      if (Browser.pointerLock) {
-        // When the pointer is locked, calculate the coordinates
-        // based on the movement of the mouse.
-        // Workaround for Firefox bug 764498
-        if (event.type != 'mousemove' &&
-          ('mozMovementX' in event)) {
-          Browser.mouseMovementX = Browser.mouseMovementY = 0;
-        } else {
-          Browser.mouseMovementX = Browser.getMovementX(event);
-          Browser.mouseMovementY = Browser.getMovementY(event);
-        }
+    // Overrides Browser.calculateMouseCoords to account for hi dpi scaling
+    calculateMouseCoords(pageX, pageY) {
+      // Calculate the movement based on the changes
+      // in the coordinates.
+      var rect = Module["canvas"].getBoundingClientRect();
+      var cw = Module["canvas"].clientWidth;
+      var ch = Module["canvas"].clientHeight;
 
-        // just add the mouse delta to the current absolut mouse position
-        // FIXME: ideally this should be clamped against the canvas size and zero
-        Browser.mouseX += Browser.mouseMovementX;
-        Browser.mouseY += Browser.mouseMovementY;
-      } else {
-        // Otherwise, calculate the movement based on the changes
-        // in the coordinates.
-        var rect = Module["canvas"].getBoundingClientRect();
-        var cw = Module["canvas"].width;
-        var ch = Module["canvas"].height;
+      // Neither .scrollX or .pageXOffset are defined in a spec, but
+      // we prefer .scrollX because it is currently in a spec draft.
+      // (see: http://www.w3.org/TR/2013/WD-cssom-view-20131217/)
+      var scrollX = ((typeof window.scrollX != 'undefined') ? window.scrollX : window.pageXOffset);
+      var scrollY = ((typeof window.scrollY != 'undefined') ? window.scrollY : window.pageYOffset);
+#if ASSERTIONS
+      // If this assert lands, it's likely because the browser doesn't support scrollX or pageXOffset
+      // and we have no viable fallback.
+      assert((typeof scrollX != 'undefined') && (typeof scrollY != 'undefined'), 'Unable to retrieve scroll position, mouse positions likely broken.');
+#endif
+      var adjustedX = pageX - (scrollX + rect.left);
+      var adjustedY = pageY - (scrollY + rect.top);
 
-        if (GLFW.isHiDPIAware) {
-          const scale = GLFW.getHiDPIScale();
-          cw /= scale;
-          ch /= scale;
-        }
+      // the canvas might be CSS-scaled compared to its backbuffer;
+      // SDL-using content will want mouse coordinates in terms
+      // of backbuffer units.
+      adjustedX = adjustedX * (cw / rect.width);
+      adjustedY = adjustedY * (ch / rect.height);
 
-        // Neither .scrollX or .pageXOffset are defined in a spec, but
-        // we prefer .scrollX because it is currently in a spec draft.
-        // (see: http://www.w3.org/TR/2013/WD-cssom-view-20131217/)
-        var scrollX = ((typeof window.scrollX != 'undefined') ? window.scrollX : window.pageXOffset);
-        var scrollY = ((typeof window.scrollY != 'undefined') ? window.scrollY : window.pageYOffset);
-        #if ASSERTIONS
-        // If this assert lands, it's likely because the browser doesn't support scrollX or pageXOffset
-        // and we have no viable fallback.
-        assert((typeof scrollX != 'undefined') && (typeof scrollY != 'undefined'), 'Unable to retrieve scroll position, mouse positions likely broken.');
-        #endif
-
-        if (event.type === 'touchstart' || event.type === 'touchend' || event.type === 'touchmove') {
-          var touch = event.touch;
-          if (touch === undefined) {
-            return; // the "touch" property is only defined in SDL
-
-          }
-          var adjustedX = touch.pageX - (scrollX + rect.left);
-          var adjustedY = touch.pageY - (scrollY + rect.top);
-
-          adjustedX = adjustedX * (cw / rect.width);
-          adjustedY = adjustedY * (ch / rect.height);
-
-          var coords = { x: adjustedX, y: adjustedY };
-
-          if (event.type === 'touchstart') {
-            Browser.lastTouches[touch.identifier] = coords;
-            Browser.touches[touch.identifier] = coords;
-          } else if (event.type === 'touchend' || event.type === 'touchmove') {
-            var last = Browser.touches[touch.identifier];
-            if (!last) last = coords;
-            Browser.lastTouches[touch.identifier] = last;
-            Browser.touches[touch.identifier] = coords;
-          }
-          return;
-        }
-
-        var x = event.pageX - (scrollX + rect.left);
-        var y = event.pageY - (scrollY + rect.top);
-
-        // the canvas might be CSS-scaled compared to its backbuffer;
-        // SDL-using content will want mouse coordinates in terms
-        // of backbuffer units.
-        x = x * (cw / rect.width);
-        y = y * (ch / rect.height);
-
-        Browser.mouseMovementX = x - Browser.mouseX;
-        Browser.mouseMovementY = y - Browser.mouseY;
-        Browser.mouseX = x;
-        Browser.mouseY = y;
-      }
+      return { x: adjustedX, y: adjustedY };
     },
 
     getDevicePixelRatio() {
@@ -1449,7 +1395,7 @@ var LibraryGLFW = {
 
     // Overriding implementation to account for HiDPI
     Browser.requestFullscreen = GLFW.requestFullscreen
-    Browser.calculateMouseEvent = GLFW.calculateMouseEvent;
+    Browser.calculateMouseCoords = GLFW.calculateMouseCoords;
     Browser.updateCanvasDimensions = GLFW.updateCanvasDimensions;
 
     Browser.resizeListeners.push((width, height) => {
