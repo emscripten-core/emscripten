@@ -27,7 +27,8 @@ import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
-from common import read_file, read_binary, requires_v8, requires_node, requires_node_canary, compiler_for, crossplatform
+from common import read_file, read_binary, requires_v8, requires_node, requires_node_canary
+from common import compiler_for, crossplatform, no_4gb, no_2gb
 from common import with_both_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
@@ -252,37 +253,6 @@ def no_lsan(note):
     @wraps(f)
     def decorated(self, *args, **kwargs):
       if '-fsanitize=leak' in self.emcc_args:
-        self.skipTest(note)
-      f(self, *args, **kwargs)
-    return decorated
-  return decorator
-
-
-def no_4gb(note):
-  assert not callable(note)
-
-  def decorator(f):
-    assert callable(f)
-
-    @wraps(f)
-    def decorated(self, *args, **kwargs):
-      if self.get_setting('INITIAL_MEMORY') == '4200mb':
-        self.skipTest(note)
-      f(self, *args, **kwargs)
-    return decorated
-  return decorator
-
-
-def no_2gb(note):
-  assert not callable(note)
-
-  def decorator(f):
-    assert callable(f)
-
-    @wraps(f)
-    def decorated(self, *args, **kwargs):
-      # 2200mb is the value used by the core_2gb test mode
-      if self.get_setting('INITIAL_MEMORY') == '2200mb':
         self.skipTest(note)
       f(self, *args, **kwargs)
     return decorated
