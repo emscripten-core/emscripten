@@ -1210,16 +1210,10 @@ var LibraryGLFW = {
           Browser.mouseMovementY = Browser.getMovementY(event);
         }
 
-        // check if SDL is available
-        if (typeof SDL != "undefined") {
-          Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
-          Browser.mouseY = SDL.mouseY + Browser.mouseMovementY;
-        } else {
-          // just add the mouse delta to the current absolut mouse position
-          // FIXME: ideally this should be clamped against the canvas size and zero
-          Browser.mouseX += Browser.mouseMovementX;
-          Browser.mouseY += Browser.mouseMovementY;
-        }
+        // just add the mouse delta to the current absolut mouse position
+        // FIXME: ideally this should be clamped against the canvas size and zero
+        Browser.mouseX += Browser.mouseMovementX;
+        Browser.mouseY += Browser.mouseMovementY;
       } else {
         // Otherwise, calculate the movement based on the changes
         // in the coordinates.
