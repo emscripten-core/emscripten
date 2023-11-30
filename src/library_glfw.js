@@ -1061,13 +1061,6 @@ var LibraryGLFW = {
     },
 
     defaultWindowHints: () => {
-      GLFW.hints = {};
-      for (var k in GLFW.defaultHints) {
-        GLFW.hints[k] = GLFW.defaultHints[k];
-      }
-    },
-
-    defaultWindowHints: () => {
       GLFW.hints = Object.assign({}, GLFW.defaultHints);
     },
 
