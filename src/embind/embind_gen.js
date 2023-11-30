@@ -53,7 +53,7 @@ var LibraryEmbind = {
         argOut.push(`${arg.name}: ${nameMap(arg.type)}`);
       }
       out.push(argOut.join(', '));
-      out.push(`): ${nameMap(this.returnType)}`);
+      out.push(`): ${nameMap(this.returnType, true)}`);
     }
 
     printFunction(nameMap, out) {
@@ -298,29 +298,31 @@ var LibraryEmbind = {
     constructor(definitions) {
       this.definitions = definitions;
       const jsString = 'ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string';
+      // The mapping is in the format of '<c++ name>' => ['toWireType', 'fromWireType']
+      // or if the to/from wire types are the same use a single element.
       this.builtInToJsName = new Map([
-        ['bool', 'boolean'],
-        ['float', 'number'],
-        ['double', 'number'],
+        ['bool', ['boolean']],
+        ['float', ['number']],
+        ['double', ['number']],
 #if MEMORY64
-        ['long', 'bigint'],
-        ['unsigned long', 'bigint'],
+        ['long', ['bigint']],
+        ['unsigned long', ['bigint']],
 #endif
 #if WASM_BIGINT
-        ['int64_t', 'bigint'],
-        ['uint64_t', 'bigint'],
+        ['int64_t', ['bigint']],
+        ['uint64_t', ['bigint']],
 #endif
-        ['void', 'void'],
-        ['std::string', jsString],
-        ['std::basic_string<unsigned char>', jsString],
-        ['std::wstring', jsString],
-        ['std::u16string', jsString],
-        ['std::u32string', jsString],
-        ['emscripten::val', 'any'],
+        ['void', ['void']],
+        ['std::string', [jsString, 'string']],
+        ['std::basic_string<unsigned char>', [jsString, 'string']],
+        ['std::wstring', ['string']],
+        ['std::u16string', ['string']],
+        ['std::u32string', ['string']],
+        ['emscripten::val', ['any']],
       ]);
     }
 
-    typeToJsName(type) {
+    typeToJsName(type, isFromWireType = false) {
       if (type instanceof IntegerType) {
         return 'number';
       }
@@ -328,7 +330,8 @@ var LibraryEmbind = {
         if (!this.builtInToJsName.has(type.name)) {
           throw new Error(`Missing primitive type to TS type for '${type.name}'`);
         }
-        return this.builtInToJsName.get(type.name)
+        const [toWireType, fromWireType = toWireType] = this.builtInToJsName.get(type.name);
+        return isFromWireType ? fromWireType : toWireType;
       }
       if (type instanceof PointerDefinition) {
         return this.typeToJsName(type.classType);
