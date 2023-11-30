@@ -1142,7 +1142,7 @@ def phase_linker_setup(options, state, newargs):
                                  settings.MIN_IE_VERSION != 0x7FFFFFFF)
 
     if options.use_closure_compiler is None and settings.TRANSPILE_TO_ES5:
-      diagnostics.warning('transpile', 'enabling transpilation via closure due to browser version settings.  This warning can be suppressed by passing `--closure=1` or `--closure=0` to opt into our explicitly.')
+      diagnostics.warning('transpile', 'enabling transpilation via closure due to browser version settings.  This warning can be suppressed by passing `--closure=1` or `--closure=0` to opt into this explicitly.')
 
   # https://caniuse.com/class: EDGE:13 FF:45 CHROME:49 SAFARI:9
   supports_es6_classes = (settings.MIN_EDGE_VERSION >= 13 and
