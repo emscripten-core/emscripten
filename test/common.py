@@ -199,6 +199,37 @@ def no_wasm64(note=''):
   return decorated
 
 
+def no_2gb(note):
+  assert not callable(note)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      # 2200mb is the value used by the core_2gb test mode
+      if self.get_setting('INITIAL_MEMORY') == '2200mb':
+        self.skipTest(note)
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
+def no_4gb(note):
+  assert not callable(note)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      if self.get_setting('INITIAL_MEMORY') == '4200mb':
+        self.skipTest(note)
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
 def only_windows(note=''):
   assert not callable(note)
   if not WINDOWS:
