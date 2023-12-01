@@ -6412,9 +6412,19 @@ Module.onRuntimeInitialized = () => {
   def test_unary_literal(self):
     self.do_core_test('test_unary_literal.cpp')
 
+  @crossplatform
+  # Explictly set LANG here since new versions of node expose
+  # `navigator.languages` which emscripten will honor and we
+  # want the test output to be consistent.
+  @with_env_modify({'LANG': 'en_US.UTF-8'})
   def test_env(self):
     self.do_core_test('test_env.c', regex=True)
 
+  @crossplatform
+  # Explictly set LANG here since new versions of node expose
+  # `navigator.languages` which emscripten will honor and we
+  # want the test output to be consistent.
+  @with_env_modify({'LANG': 'en_US.UTF-8'})
   def test_environ(self):
     self.do_core_test('test_environ.c', regex=True)
 
