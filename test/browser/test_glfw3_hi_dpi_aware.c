@@ -32,9 +32,9 @@ static void setDevicePixelRatio(float ratio) {
   }, ratio);
 }
 
-static void setGLFWIsHiDPIAware(bool isHiDPIAware) {
+static void setGLFWIsHiDPIAware(GLFWwindow *window, bool isHiDPIAware) {
   printf("setGLFWIsHiDPIAware %s\n", isHiDPIAware ? "true" : "false");
-  EM_ASM({GLFW.setHiDPIAware($0)}, isHiDPIAware ? 1 : 0);
+  glfwSetWindowAttrib(window, GLFW_SCALE_TO_MONITOR, isHiDPIAware ? GLFW_TRUE : GLFW_FALSE);
 }
 
 static void checkWindowSize(GLFWwindow *window, int expectedWidth, int expectedHeight, float ratio) {
@@ -52,7 +52,12 @@ static void checkWindowSize(GLFWwindow *window, int expectedWidth, int expectedH
 }
 
 static bool getGLFWIsHiDPIAware() {
-  return EM_ASM_INT(return GLFW.isHiDPIAware ? 1 : 0) != 0;
+  return EM_ASM_INT(return GLFW.isHiDPIAware() ? 1 : 0) != 0;
+}
+
+static void checkHiDPIAware(GLFWwindow *window, bool expectedAwareness) {
+  assert(getGLFWIsHiDPIAware() == expectedAwareness);
+  assert(glfwGetWindowAttrib(window, GLFW_SCALE_TO_MONITOR) == (expectedAwareness ? GLFW_TRUE : GLFW_FALSE));
 }
 
 int main() {
@@ -72,7 +77,7 @@ int main() {
     printf("Use case #1\n");
     window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #1", NULL, NULL);
     assert(window != NULL);
-    assert(!getGLFWIsHiDPIAware());
+    checkHiDPIAware(window, false);
     checkWindowSize(window, 640, 480, 1.0);
     glfwSetWindowSize(window, 600, 400);
     checkWindowSize(window, 600, 400, 1.0);
@@ -87,7 +92,7 @@ int main() {
     setDevicePixelRatio(2.0);
     window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #2", NULL, NULL);
     assert(window != NULL);
-    assert(!getGLFWIsHiDPIAware());
+    checkHiDPIAware(window, false);
     checkWindowSize(window, 640, 480, 1.0);
     glfwSetWindowSize(window, 600, 400);
     checkWindowSize(window, 600, 400, 1.0);
@@ -102,7 +107,7 @@ int main() {
     glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
     window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #3", NULL, NULL);
     assert(window != NULL);
-    assert(getGLFWIsHiDPIAware());
+    checkHiDPIAware(window, true);
     checkWindowSize(window, 640, 480, 1.0);
     glfwSetWindowSize(window, 600, 400);
     checkWindowSize(window, 600, 400, 1.0);
@@ -117,7 +122,7 @@ int main() {
     glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
     window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #4", NULL, NULL);
     assert(window != NULL);
-    assert(getGLFWIsHiDPIAware());
+    checkHiDPIAware(window, true);
     checkWindowSize(window, 640, 480, 2.0);
     glfwSetWindowSize(window, 600, 400);
     checkWindowSize(window, 600, 400, 2.0);
@@ -131,10 +136,11 @@ int main() {
     glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
     window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #5", NULL, NULL);
     assert(window != NULL);
-    assert(getGLFWIsHiDPIAware());
+    checkHiDPIAware(window, true);
     checkWindowSize(window, 640, 480, 2.0);
-    setGLFWIsHiDPIAware(false);
+    setGLFWIsHiDPIAware(window, false);
     checkWindowSize(window, 640, 480, 1.0);
+    checkHiDPIAware(window, false);
     glfwDestroyWindow(window);
   }
 
@@ -146,7 +152,7 @@ int main() {
     glfwDefaultWindowHints(); // reset GLFW_SCALE_TO_MONITOR
     window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #6", NULL, NULL);
     assert(window != NULL);
-    assert(!getGLFWIsHiDPIAware());
+    checkHiDPIAware(window, false);
     checkWindowSize(window, 640, 480, 1.0);
     setDevicePixelRatio(2.0);
     checkWindowSize(window, 640, 480, 1.0);
@@ -161,7 +167,7 @@ int main() {
     glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
     window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #7", NULL, NULL);
     assert(window != NULL);
-    assert(getGLFWIsHiDPIAware());
+    checkHiDPIAware(window, true);
     checkWindowSize(window, 640, 480, 2.0);
     setDevicePixelRatio(1.0);
     checkWindowSize(window, 640, 480, 1.0);

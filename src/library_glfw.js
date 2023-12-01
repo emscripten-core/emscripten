@@ -90,9 +90,6 @@ var LibraryGLFW = {
     '$FS',
 #endif
   ],
-  $GLFW__postset: `
-    // making glfwSetHiDPIAware public for users of glfw (dynamic switching)
-    Module["glfwSetHiDPIAware"] = GLFW.setHiDPIAware;`,
   $GLFW: {
     WindowFromId: (id) => {
       if (id <= 0 || !GLFW.windows) return null;
@@ -110,7 +107,6 @@ var LibraryGLFW = {
     versionString: null,
     initialTime: null,
     extensions: null,
-    isHiDPIAware: false,
     devicePixelRatioMQS: null,
     hints: null,
     primaryTouchId: null,
@@ -1077,8 +1073,6 @@ var LibraryGLFW = {
       // not valid
       if (width <= 0 || height <= 0) return 0;
 
-      GLFW.setHiDPIAware(GLFW.hints[0x0002200C] > 0); // GLFW_SCALE_TO_MONITOR
-
       if (monitor) {
         Browser.requestFullscreen();
       } else {
@@ -1123,6 +1117,7 @@ var LibraryGLFW = {
       }
 
       GLFW.active = win;
+      GLFW.adjustCanvasDimensions();
       return win.id;
     },
 
@@ -1145,7 +1140,6 @@ var LibraryGLFW = {
         if (GLFW.windows[i] !== null) return;
 
       Module.ctx = Browser.destroyContext(Module['canvas'], true, true);
-      GLFW.setHiDPIAware(false);
     },
 
     swapBuffers: (winid) => {
@@ -1289,29 +1283,39 @@ var LibraryGLFW = {
       return { x: adjustedX, y: adjustedY };
     },
 
+    setWindowAttrib: (winid, attrib, value) => {
+      var win = GLFW.WindowFromId(winid);
+      if (!win) return;
+      const isHiDPIAware = GLFW.isHiDPIAware();
+      win.attributes[attrib] = value;
+      if (isHiDPIAware !== GLFW.isHiDPIAware())
+        GLFW.adjustCanvasDimensions();
+    },
+
     getDevicePixelRatio() {
       return (typeof devicePixelRatio == 'number' && devicePixelRatio) || 1.0;
     },
 
-    getHiDPIScale() {
-      return GLFW.isHiDPIAware ? GLFW.getDevicePixelRatio() : 1.0;
+    isHiDPIAware() {
+      if (GLFW.active)
+        return GLFW.active.attributes[0x0002200C] > 0; // GLFW_SCALE_TO_MONITOR
+      else
+        return false;
     },
 
-    onDevicePixelRatioChange() {
-      GLFW.onWindowContentScaleChanged(GLFW.getDevicePixelRatio());
+    adjustCanvasDimensions() {
       const canvas = Module['canvas'];
       Browser.updateCanvasDimensions(canvas, canvas.clientWidth, canvas.clientHeight);
       Browser.updateResizeListeners();
     },
 
-    setHiDPIAware(isHiDPIAware) {
-      isHiDPIAware = !!isHiDPIAware; // coerce to boolean
-      if (GLFW.isHiDPIAware != isHiDPIAware) {
-        GLFW.isHiDPIAware = isHiDPIAware;
-        const canvas = Module['canvas'];
-        Browser.updateCanvasDimensions(canvas, canvas.clientWidth, canvas.clientHeight);
-        Browser.updateResizeListeners();
-      }
+    getHiDPIScale() {
+      return GLFW.isHiDPIAware() ? GLFW.scale : 1.0;
+    },
+
+    onDevicePixelRatioChange() {
+      GLFW.onWindowContentScaleChanged(GLFW.getDevicePixelRatio());
+      GLFW.adjustCanvasDimensions();
     },
 
     GLFW2ParamToGLFW3Param: (param) => {
@@ -1396,7 +1400,7 @@ var LibraryGLFW = {
     Browser.updateCanvasDimensions = GLFW.updateCanvasDimensions;
 
     Browser.resizeListeners.push((width, height) => {
-      if (GLFW.isHiDPIAware) {
+      if (GLFW.isHiDPIAware()) {
         var canvas = Module['canvas'];
         GLFW.onCanvasResize(canvas.clientWidth, canvas.clientHeight, width, height);
       } else {
@@ -1662,11 +1666,7 @@ var LibraryGLFW = {
     return win.attributes[attrib];
   },
 
-  glfwSetWindowAttrib: (winid, attrib, value) => {
-    var win = GLFW.WindowFromId(winid);
-    if (!win) return;
-    win.attributes[attrib] = value;
-  },
+  glfwSetWindowAttrib: (winid, attrib, value) => GLFW.setWindowAttrib(winid, attrib, value),
 
   glfwSetWindowUserPointer: (winid, ptr) => {
     var win = GLFW.WindowFromId(winid);
