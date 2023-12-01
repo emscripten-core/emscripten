@@ -731,7 +731,7 @@ jobs:
       - install-emsdk
       - install-node-canary
       - run-tests:
-          title: "selected subset"
+          title: "node (canary)"
           test_targets: "
             other.test_deterministic
             other.test_gen_struct_info
@@ -747,7 +747,7 @@ jobs:
       - install-node-version:
           node_version: "10.19.0"
       - run-tests:
-          title: "selected subset"
+          title: "node (oldest / 10.19.0)"
           test_targets: "
             other.test_gen_struct_info
             other.test_native_call_before_init
@@ -761,7 +761,7 @@ jobs:
       - run-tests:
           # Run tests that on older versions of node would require flags, but
           # those flags should not be injected on newer versions.
-          title: "selected subset"
+          title: "node (latest)"
           test_targets: "-v
             other.test_gen_struct_info
             other.test_native_call_before_init
@@ -802,6 +802,7 @@ jobs:
           test_targets: "
             browser64
             skip:browser64.test_4gb_fail
+            browser64_4gb.test_async_*
             browser64_4gb.test_emscripten_log
             "
   test-browser-firefox:
