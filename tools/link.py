@@ -1972,6 +1972,8 @@ def phase_embind_emit_tsd(options, wasm_target, js_syms):
 @ToolchainProfiler.profile_block('embind aot js')
 def phase_embind_aot(wasm_target, js_syms):
   out = run_embind_gen(wasm_target, js_syms, {})
+  if DEBUG:
+    write_file(in_temp('embind_aot.js'), out)
   src = read_file(final_js)
   src = do_replace(src, '<<< EMBIND_AOT_OUTPUT >>>', out)
   write_file(final_js, src)
