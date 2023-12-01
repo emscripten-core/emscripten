@@ -24,6 +24,7 @@ from . import building
 from . import cache
 from . import config
 from . import diagnostics
+from . import emscripten
 from . import feature_matrix
 from . import filelock
 from . import js_manipulation
@@ -41,7 +42,6 @@ from .settings import settings, default_setting, user_settings
 from .minimal_runtime_shell import generate_minimal_runtime_html
 
 import tools.line_endings
-import emscripten
 
 logger = logging.getLogger('link')
 
