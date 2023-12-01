@@ -363,14 +363,14 @@ var LibraryEmbind = {
     }
 
     print() {
-      const out = ['var InvokerFunctions = {\n'];
+      const out = ['{\n'];
       for (const def of this.definitions) {
         if (!def.printJs) {
           continue;
         }
         def.printJs(out);
       }
-      out.push('};')
+      out.push('}')
       console.log(out.join(''));
     }
   },

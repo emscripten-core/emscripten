@@ -35,6 +35,9 @@ var LibraryEmbind = {
   $PureVirtualError__deps: ['$extendError'],
   $PureVirtualError: undefined,
   $GenericWireTypeSize: {{{ 2 * POINTER_SIZE }}},
+#if EMBIND_AOT
+  $InvokerFunctions: '<<< EMBIND_AOT_OUTPUT >>>',
+#endif
 
   $init_embind__deps: [
     '$getInheritedInstanceCount', '$getLiveInheritedInstances',
@@ -765,6 +768,9 @@ var LibraryEmbind = {
 #if !EMBIND_AOT
     '$createJsInvoker',
 #endif
+#endif
+#if EMBIND_AOT
+    '$InvokerFunctions',
 #endif
 #if ASYNCIFY
     '$Asyncify',
