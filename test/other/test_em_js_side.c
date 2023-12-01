@@ -14,8 +14,9 @@ EM_JS(void, js_side_func_void, (), {
   out(`hello from void func`);
 });
 
-void test_side() {
+int test_side() {
   js_side_func(42, "hello");
   js_side_func2("hello again");
   js_side_func_void();
+  return 0;
 }
