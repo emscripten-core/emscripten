@@ -25,7 +25,9 @@ var Fetch = {
       dbg(`fetch: indexedDB.open(dbname="${dbname}", dbversion="${dbversion}");`);
 #endif
       var openRequest = indexedDB.open(dbname, dbversion);
-    } catch (e) { return onerror(e); }
+    } catch (e) {
+      return onerror(e);
+    }
 
     openRequest.onupgradeneeded = (event) => {
 #if FETCH_DEBUG
@@ -38,7 +40,7 @@ var Fetch = {
       db.createObjectStore('FILES');
     };
     openRequest.onsuccess = (event) => onsuccess(event.target.result);
-    openRequest.onerror = (error) => onerror(error);
+    openRequest.onerror = onerror;
   },
 #endif
 

@@ -28,7 +28,7 @@ from common import RunnerCore, path_from_root, requires_native_clang, test_file,
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_node_canary, compiler_for, crossplatform
-from common import with_both_sjlj, also_with_standalone_wasm, can_do_standalone
+from common import with_both_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
 
@@ -134,11 +134,15 @@ def no_wasm2js(note=''):
   return decorated
 
 
-def no_wasm64(note=''):
+# Some tests are marked as only-wasm2js because they test basic codegen in a way
+# that is mainly useful for the wasm2js compiler and not LLVM. LLVM tests its
+# own codegen, while wasm2js testing is split between the binaryen repo (which
+# tests wat files) and this repo (which tests C/C++ files).
+def only_wasm2js(note=''):
   assert not callable(note)
 
   def decorated(f):
-    return skip_if(f, 'is_wasm64', note)
+    return skip_if(f, 'is_wasm2js', note, negate=True)
   return decorated
 
 
@@ -356,12 +360,6 @@ def is_sanitizing(args):
 
 
 class TestCoreBase(RunnerCore):
-  def is_wasm2js(self):
-    return self.get_setting('WASM') == 0
-
-  def is_wasm64(self):
-    return self.get_setting('MEMORY64')
-
   # A simple check whether the compiler arguments cause optimization.
   def is_optimizing(self):
     return '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args
@@ -420,8 +418,6 @@ class TestCoreBase(RunnerCore):
                             configure_args=configure_args,
                             cache_name_extra=configure_commands[0])
 
-  @also_with_standalone_wasm()
-  @also_with_wasmfs
   def test_hello_world(self):
     self.do_core_test('test_hello_world.c')
 
@@ -440,13 +436,9 @@ class TestCoreBase(RunnerCore):
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_hello_argc.c', args=['hello', 'world'])
 
-  @also_with_wasmfs
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_intvars(self):
     self.do_core_test('test_intvars.cpp')
-
-  @also_with_wasmfs
-  def test_sintvars(self):
-    self.do_core_test('test_sintvars.c')
 
   def test_int53(self):
     if common.EMTEST_REBASELINE:
@@ -464,60 +456,80 @@ class TestCoreBase(RunnerCore):
     else:
       self.do_core_test('test_convertI32PairToI53Checked.cpp', interleaved_output=False)
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64(self):
+    # test shifts etc. on 64-bit integers as well as printf() on them. we need
+    # the math testing only for wasm2js but do not apply @only_wasm2js since we
+    # do want some testing of 64-bit printf in our libc (which is not tested in
+    # clang upstream).
     self.do_core_test('test_i64.c')
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64_2(self):
     self.do_core_test('test_i64_2.cpp')
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64_3(self):
     self.do_core_test('test_i64_3.cpp')
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64_4(self):
     # stuff that also needs sign corrections
-
     self.do_core_test('test_i64_4.c')
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64_b(self):
     self.do_core_test('test_i64_b.cpp')
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64_cmp(self):
     self.do_core_test('test_i64_cmp.cpp')
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64_cmp2(self):
     self.do_core_test('test_i64_cmp2.c')
 
+  @only_wasm2js('test unions of i64 and double')
   def test_i64_double(self):
     self.do_core_test('test_i64_double.cpp')
 
+  @only_wasm2js('test 64-bit multiply')
   def test_i64_umul(self):
     self.do_core_test('test_i64_umul.c')
 
+  @only_wasm2js('test 64-bit math')
   @also_with_standalone_wasm()
   @no_ubsan('contains UB')
   def test_i64_precise(self):
     self.do_core_test('test_i64_precise.c')
 
+  @only_wasm2js('test 64-bit multiply')
   def test_i64_precise_needed(self):
     self.do_core_test('test_i64_precise_needed.c')
 
   def test_i64_llabs(self):
+    # test the libc llabs() method
     self.do_core_test('test_i64_llabs.c')
 
   def test_i64_zextneg(self):
+    # test zero/sign-extension in printf arguments
     self.do_core_test('test_i64_zextneg.c')
 
+  @only_wasm2js('test 64-bit math')
   def test_i64_7z(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_i64_7z.c', args=['hallo'])
 
+  @only_wasm2js('test 64-bit math with short values')
   def test_i64_i16(self):
     self.do_core_test('test_i64_i16.c')
 
+  @only_wasm2js('test 64-bit/double conversions')
   def test_i64_qdouble(self):
     self.do_core_test('test_i64_qdouble.c')
 
+  @only_wasm2js('tests va_arg() with i64 params')
   def test_i64_varargs(self):
     self.do_core_test('test_i64_varargs.c', args='waka fleefl asdfasdfasdfasdf'.split())
 
@@ -529,25 +541,31 @@ class TestCoreBase(RunnerCore):
     self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_core_test('test_i64_invoke_bigint.cpp')
 
+  @only_wasm2js('tests va_arg()')
   def test_vararg_copy(self):
     self.do_run_in_out_file_test('va_arg/test_va_copy.c')
 
   def test_llvm_fabs(self):
     self.do_core_test('test_llvm_fabs.c')
 
+  @only_wasm2js('tests va_arg()')
   def test_double_varargs(self):
     self.do_core_test('test_double_varargs.c')
 
+  @only_wasm2js('tests va_arg()')
   def test_trivial_struct_varargs(self):
     self.do_core_test('test_trivial_struct_varargs.c')
 
+  @only_wasm2js('tests va_arg()')
   def test_struct_varargs(self):
     self.do_core_test('test_struct_varargs.c')
 
+  @only_wasm2js('tests va_arg()')
   def test_zero_struct_varargs(self):
     self.do_core_test('test_zero_struct_varargs.c')
 
-  def zzztest_nested_struct_varargs(self):
+  @only_wasm2js('tests va_arg()')
+  def test_nested_struct_varargs(self):
     self.do_core_test('test_nested_struct_varargs.c')
 
   def test_i32_mul_precise(self):
@@ -575,7 +593,7 @@ class TestCoreBase(RunnerCore):
     self.do_core_test('test_bswap64.cpp')
 
   def test_sha1(self):
-    self.do_runf('sha1.c', 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
+    self.do_runf('third_party/sha1.c', 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
 
   def test_core_types(self):
     self.do_runf('core/test_core_types.c')
@@ -2463,6 +2481,8 @@ int main(int argc, char **argv) {
     else:
       self.emcc_args += ['--pre-js', test_file('core/test_module_wasm_memory.js')]
     self.set_setting('IMPORTED_MEMORY')
+    self.set_setting('STRICT')
+    self.set_setting('INCOMING_MODULE_JS_API', ['wasmMemory'])
     self.do_runf('core/test_module_wasm_memory.c', 'success')
 
   def test_ssr(self): # struct self-ref
@@ -2985,7 +3005,7 @@ The current type of b is: 9
     self.do_core_test('test_strptime_reentrant.c')
 
   def test_strftime(self):
-    self.do_core_test('test_strftime.cpp')
+    self.do_core_test('test_strftime.c')
 
   def test_trickystring(self):
     self.do_core_test('test_trickystring.c')
@@ -6211,7 +6231,7 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('test_sigalrm.c', 'Received alarm!')
 
   def test_signals(self):
-    self.do_core_test(test_file('test_signals.c'))
+    self.do_core_test('test_signals.c')
 
   @parameterized({
     'sigint': (EM_SIGINT, 128 + EM_SIGINT, True),
@@ -6623,7 +6643,7 @@ int main(void) {
     # TODO: Should we remove this test?
     self.skipTest('Relies on double value rounding, extremely sensitive')
 
-    src = read_file(test_file('raytrace.cpp')).replace('double', 'float')
+    src = read_file(test_file('third_party/raytrace.cpp')).replace('double', 'float')
     output = read_file(test_file('raytrace.ppm'))
     self.do_run(src, output, args=['3', '16'])
 
@@ -6676,7 +6696,6 @@ int main(void) {
   @no_lsan('depends on the specifics of memory size, which for lsan we are forced to increase')
   @no_wasmfs('wasmfs does some malloc/free during startup, fragmenting the heap, leading to differences later')
   def test_dlmalloc(self):
-    # needed with typed arrays
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY', '128mb')
 
@@ -7102,6 +7121,8 @@ void* operator new(size_t size) {
   @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test
   def test_poppler(self):
+    # See https://github.com/emscripten-core/emscripten/issues/20757
+    self.emcc_args.append('-Wno-deprecated-declarations')
     poppler = self.get_poppler_library()
     pdf_data = read_binary(test_file('poppler/paper.pdf'))
     create_file('paper.pdf.js', str(list(bytearray(pdf_data))))
@@ -7678,14 +7699,14 @@ void* operator new(size_t size) {
     ''')
     self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
 
-  @parameterized({
-    '': ([],),
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
-  })
   @node_pthreads
-  def test_embind_2(self, args):
+  def test_embind_2(self):
     self.maybe_closure()
-    self.emcc_args += ['-lembind', '--post-js', 'post.js'] + args
+    self.emcc_args += [
+      '-lembind', '--post-js', 'post.js',
+      # for extra coverage, test using pthreads
+      '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'
+    ]
     create_file('post.js', '''
       function printLerp() {
         out('lerp ' + Module['lerp'](100, 200, 66) + '.');
@@ -8323,6 +8344,7 @@ void* operator new(size_t size) {
   # longjmp or exceptions.
   def test_asyncify_longjmp(self):
     self.set_setting('ASYNCIFY')
+    self.set_setting('STRICT')
     self.do_core_test('test_asyncify_longjmp.c')
 
   # Test that a main with arguments is automatically asyncified.

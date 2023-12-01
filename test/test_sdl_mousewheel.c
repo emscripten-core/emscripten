@@ -12,8 +12,7 @@
 #include <string.h>
 #include <SDL/SDL.h>
 
-void report_result(int result)
-{
+void report_result(int result) {
   if (result == 0) {
     printf("Test successful!\n");
   } else {
@@ -30,16 +29,14 @@ int gotWheelDown = 0;
 int gotWheelButtonDown = 0;
 int gotWheelClick = 0;
 
-void instruction()
-{
+void instruction() {
   if (!gotWheelUp || !gotWheelButtonUp) printf("Please scroll the mouse wheel upwards by a single notch (slowly move your finger away from you towards the display).\n");
   else if (!gotWheelDown || !gotWheelButtonDown) printf("Please scroll the mouse wheel downwards by a single notch (slowly move your finger towards you).\n");
   else if (!gotWheelClick) printf("Please click the wheel button.\n");
   else if (gotWheelUp && gotWheelButtonUp && gotWheelDown && gotWheelButtonDown && gotWheelClick) report_result(0);
 }
 
-void main_tick()
-{
+void main_tick() {
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
     switch(event.type) {
@@ -67,8 +64,7 @@ void main_tick()
   }
 }
 
-int main()
-{
+int main() {
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_HWSURFACE);
   SDL_FillRect(screen, NULL, 0xFF000000);
@@ -80,7 +76,7 @@ int main()
     function sendEvent(type, data) {
       var event = document.createEvent('Event');
       event.initEvent(type, true, true);
-      for(var d in data) event[d] = data[d];
+      for (var d in data) event[d] = data[d];
       Module['canvas'].dispatchEvent(event);
     }
     // Scroll up by a tiny amount.

@@ -108,6 +108,9 @@ var STACK_SIZE = 64*1024;
 //  * emmalloc-verbose - use emmalloc with assertions + verbose logging.
 //  * emmalloc-memvalidate-verbose - use emmalloc with assertions + heap
 //                                   consistency checking + verbose logging.
+//  * mimalloc - a powerful mulithreaded allocator. This is recommended in
+//               large applications that have malloc() contention, but it is
+//               larger and uses more memory.
 //  * none     - no malloc() implementation is provided, but you must implement
 //               malloc() and free() yourself.
 // dlmalloc is necessary for split memory and other special modes, and will be
@@ -1265,11 +1268,6 @@ var EXPORT_ES6 = false;
 // [link]
 var USE_ES6_IMPORT_META = true;
 
-// If 1, will just time how long main() takes to execute, and not print out
-// anything at all whatsoever. This is useful for benchmarking.
-// [link]
-var BENCHMARK = false;
-
 // Global variable to export the module as for environments without a
 // standardized module loading system (e.g. the browser and SM shell).
 // [link]
@@ -1944,9 +1942,9 @@ var USE_OFFSET_CONVERTER = false;
 var LOAD_SOURCE_MAP = false;
 
 // Default to c++ mode even when run as `emcc` rather then `emc++`.
-// When this is disabled `em++` is required when compiling and linking C++
-// programs. This which matches the behaviour of gcc/g++ and clang/clang++.
-// [compile+link]
+// When this is disabled `em++` is required linking C++ programs. Disabling
+// this will match the behaviour of gcc/g++ and clang/clang++.
+// [link]
 var DEFAULT_TO_CXX = true;
 
 // While LLVM's wasm32 has long double = float128, we don't support printing

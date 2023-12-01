@@ -238,9 +238,17 @@ commands:
         type: string
         default: ""
     steps:
+      - when:
+          # We only set EMTEST_RETRY_FLAKY on pull requests.  When we run
+          # normal CI jobs on branches like main we still want to be able to
+          # detect flakyness.
+          condition: ${CIRCLE_PULL_REQUEST}
+          steps:
+            set-retry-flaky-tests
       - run:
           name: run tests (<< parameters.title >>)
           command: |
+            env
             ./test/runner << parameters.test_targets >>
             $EMSDK_PYTHON ./test/check_clean.py
   freeze-cache:
@@ -249,6 +257,12 @@ commands:
       - run:
           name: Add EM_FROZEN_CACHE to bash env
           command: echo "export EM_FROZEN_CACHE=1" >> $BASH_ENV
+  set-retry-flaky-tests:
+    description: "Set EMTEST_RETRY_FLAKY"
+    steps:
+      - run:
+          name: Add EMTEST_RETRY_FLAKY to bash env
+          command: echo "export EMTEST_RETRY_FLAKY=2" >> $BASH_ENV
   run-tests-linux:
     description: "Runs emscripten tests"
     parameters:
@@ -506,9 +520,11 @@ jobs:
             asan.test_cubescript
             asan.test_wasm_worker_hello
             asan.test_externref_emjs_dynlink
+            asan.test_asyncify_longjmp
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
-            lsan.test_pthread_create"
+            lsan.test_pthread_create
+            lsan.test_pthread_exit_main_stub"
       - freeze-cache
       - run-tests:
           # also run a single test of EMTEST_BROWSER=node.
@@ -539,9 +555,9 @@ jobs:
             core2ss.test_pthread_dylink
             core2ss.test_pthread_thread_local_storage
             core2s.test_dylink_syslibs_missing_assertions
+            core2s.test_module_wasm_memory
             wasm2js3.test_memorygrowth_2
             wasmfs.test_hello_world
-            wasmfs.test_hello_world_standalone
             wasmfs.test_unistd_links*
             wasmfs.test_atexit_standalone
             wasmfs.test_emscripten_get_now
@@ -672,7 +688,10 @@ jobs:
             echo "JSC_ENGINE = [os.path.expanduser('~/.jsvu/bin/javascriptcore')]" >> ~/emsdk/.emscripten
             echo "JS_ENGINES = [JSC_ENGINE]" >> ~/emsdk/.emscripten
       - run-tests:
-          test_targets: "core0.test_hello_world other.test_modularize_incoming other.test_modularize_incoming_export_name"
+          test_targets: "
+            core0.test_hello_argc
+            other.test_modularize_incoming
+            other.test_modularize_incoming_export_name"
   test-spidermonkey:
     executor: linux-python
     steps:
@@ -694,7 +713,9 @@ jobs:
             echo "SPIDERMONKEY_ENGINE = [os.path.expanduser('~/.jsvu/bin/spidermonkey')]" >> ~/emsdk/.emscripten
             echo "JS_ENGINES = [SPIDERMONKEY_ENGINE]" >> ~/emsdk/.emscripten
       - run-tests:
-          test_targets: "core0.test_hello_world core2.test_demangle_stacks_symbol_map"
+          test_targets: "
+            core0.test_hello_argc
+            core2.test_demangle_stacks_symbol_map"
   test-node-compat:
     # We don't use `bionic` here since its too old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
@@ -769,32 +790,19 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser"
-          # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
-          test_targets: "browser skip:browser.test_zzz_zzz_4gb_fail"
+          # skip test_4gb_fail as it OOMs on the current bot
+          test_targets: "browser skip:browser.test_4gb_fail"
   test-browser-chrome-wasm64:
     executor: bionic
     steps:
       - run-tests-chrome:
           title: "browser64"
+          # skip test_4gb_fail as it OOMs on the current bot
+          # Run a few tests in browser64_4gb mode too.
           test_targets: "
-            browser64.test_canvas_focus
-            browser64.test_anisotropic
-            browser64.test_webgpu_get_device
-            browser64.test_fetch_*
-            browser64.test_pthread_*
-            browser64.test_wget_*
-            browser64.test_emscripten_async_wget_*
-            browser64.test_wasm_worker_*
-            browser64.test_sdl_*
-            browser64.test_sdl1_*
-            browser64.test_egl*
-            browser64.test_gl_*
-            browser64.test_glgears*
-            browser64.test_glfw*
-            browser64.test_glew
-            browser64.test_idbstore*
-            browser64.test_fs_idbfs*
-            browser64.test_webgl*
+            browser64
+            skip:browser64.test_4gb_fail
+            browser64_4gb.test_emscripten_log
             "
   test-browser-firefox:
     executor: bionic

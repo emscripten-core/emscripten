@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
     }
   }
   if (SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
-  SDL_Flip(screen); 
+  SDL_Flip(screen);
 
   printf("you should see a smoothly-colored square - no sharp lines but the square borders!\n");
   printf("and here is some text that should be HTML-friendly: amp: |&| double-quote: |\"| quote: |'| less-than, greater-than, html-like tags: |<cheez></cheez>|\nanother line.\n");
@@ -44,4 +44,3 @@ int main(int argc, char** argv) {
 
   return 0;
 }
-

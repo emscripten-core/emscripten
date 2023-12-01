@@ -6,6 +6,7 @@ export interface Test {
   functionFour(_0: boolean): number;
   functionFive(x: number, y: number): number;
   constFn(): number;
+  longFn(_0: number): number;
   functionThree(_0: ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string): number;
   functionSix(str: ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string): number;
   delete(): void;
@@ -47,6 +48,10 @@ export interface ClassWithConstructor {
   delete(): void;
 }
 
+export interface ClassWithTwoConstructors {
+  delete(): void;
+}
+
 export interface ClassWithSmartPtrConstructor {
   fn(_0: number): number;
   delete(): void;
@@ -65,7 +70,7 @@ export interface DerivedClass extends BaseClass {
 export type ValArr = [ number, number, number ];
 
 export interface MainModule {
-  Test: {new(): Test; staticFunction(_0: number): number; staticFunctionWithParam(x: number): number; staticProperty: number};
+  Test: {staticFunction(_0: number): number; staticFunctionWithParam(x: number): number; staticProperty: number};
   class_returning_fn(): Test;
   class_unique_ptr_returning_fn(): Test;
   a_class_instance: Test;
@@ -74,11 +79,12 @@ export interface MainModule {
   EmptyEnum: {};
   enum_returning_fn(): Bar;
   IntVec: {new(): IntVec};
-  Foo: {new(): Foo};
+  Foo: {};
   ClassWithConstructor: {new(_0: number, _1: ValArr): ClassWithConstructor};
+  ClassWithTwoConstructors: {new(): ClassWithTwoConstructors; new(_0: number): ClassWithTwoConstructors};
   ClassWithSmartPtrConstructor: {new(_0: number, _1: ValArr): ClassWithSmartPtrConstructor};
-  BaseClass: {new(): BaseClass};
-  DerivedClass: {new(): DerivedClass};
+  BaseClass: {};
+  DerivedClass: {};
   a_bool: boolean;
   an_int: number;
   global_fn(_0: number, _1: number): number;

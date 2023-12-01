@@ -447,7 +447,9 @@ static void AsanInitInternal() {
 
   ReplaceSystemMalloc();
 
+#if !SANITIZER_EMSCRIPTEN
   DisableCoreDumperIfNecessary();
+#endif
 
   InitializeShadowMemory();
 

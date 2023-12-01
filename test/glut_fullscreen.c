@@ -25,8 +25,7 @@
 int fullscreen;
 #endif
 
-void trace(char* tag)
-{
+void trace(char* tag) {
   static char* prev_tag = NULL;
   static int prev_screen_width;
   static int prev_screen_height;

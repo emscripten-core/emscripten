@@ -44,8 +44,6 @@ if 'benchmark.' in str(sys.argv):
 
 non_core = unittest.skipIf(CORE_BENCHMARKS, "only running core benchmarks")
 
-IGNORE_COMPILATION = 0
-
 OPTIMIZATIONS = '-O3'
 
 PROFILING = 0
@@ -73,10 +71,7 @@ class Benchmarker():
         raise ValueError('Incorrect benchmark output:\n' + output)
 
       if not output_parser or args == ['0']: # if arg is 0, we are not running code, and have no output to parse
-        if IGNORE_COMPILATION:
-          curr = float(re.search(r'took +([\d\.]+) milliseconds', output).group(1)) / 1000
-        else:
-          curr = time.time() - start
+        curr = time.time() - start
       else:
         try:
           curr = output_parser(output)
@@ -206,12 +201,11 @@ class EmscriptenBenchmarker(Benchmarker):
       OPTIMIZATIONS,
       '-sINITIAL_MEMORY=256MB',
       '-sENVIRONMENT=node,shell',
-      '-sBENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
     ] + LLVM_FEATURE_FLAGS
     if shared_args:
       cmd += shared_args
-    if common.EMTEST_FORCE64:
+    if PROFILING:
       cmd += ['--profiling']
     else:
       cmd += ['--closure=1', '-sMINIMAL_RUNTIME']
@@ -220,8 +214,6 @@ class EmscriptenBenchmarker(Benchmarker):
     cmd += emcc_args + self.extra_args
     if '-sFILESYSTEM' not in cmd and '-sFORCE_FILESYSTEM' not in cmd:
       cmd += ['-sFILESYSTEM=0']
-    if PROFILING:
-      cmd += ['--profiling-funcs']
     self.cmd = cmd
     run_process(cmd, env=self.env)
     if self.binaryen_opts:
@@ -371,7 +363,7 @@ class benchmark(common.RunnerCore):
     for benchmarker in benchmarkers:
       benchmarker.prepare()
 
-    fingerprint = ['ignoring compilation' if IGNORE_COMPILATION else 'including compilation', time.asctime()]
+    fingerprint = ['including compilation', time.asctime()]
     try:
       fingerprint.append('em: ' + run_process(['git', 'show'], stdout=PIPE).stdout.splitlines()[0])
     except Exception:
@@ -917,6 +909,12 @@ class benchmark(common.RunnerCore):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_16mb', read_file(test_file('benchmark/benchmark_memset.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')])
+
+  def test_malloc_multithreading(self):
+    # Multithreaded malloc test. For emcc we use mimalloc here.
+    src = read_file(test_file('other/test_malloc_multithreading.cpp'))
+    # TODO measure with different numbers of cores and not fixed 4
+    self.do_benchmark('malloc_multithreading', src, 'Done.', shared_args=['-DWORKERS=4', '-pthread'], emcc_args=['-sEXIT_RUNTIME', '-sMALLOC=mimalloc'])
 
   def test_matrix_multiply(self):
     def output_parser(output):

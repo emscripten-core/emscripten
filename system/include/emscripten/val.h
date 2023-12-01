@@ -18,7 +18,7 @@
 #include <cstdint> // uintptr_t
 #include <vector>
 #include <type_traits>
-#if _LIBCPP_STD_VER >= 20
+#if __cplusplus >= 202002L
 #include <coroutine>
 #include <variant>
 #endif
@@ -114,7 +114,7 @@ EM_VAL _emval_await(EM_VAL promise);
 EM_VAL _emval_iter_begin(EM_VAL iterable);
 EM_VAL _emval_iter_next(EM_VAL iterator);
 
-#if _LIBCPP_STD_VER >= 20
+#if __cplusplus >= 202002L
 void _emval_coro_suspend(EM_VAL promise, void* coro_ptr);
 EM_VAL _emval_coro_make_promise(EM_VAL *resolve, EM_VAL *reject);
 #endif
@@ -301,7 +301,7 @@ public:
 
   template<typename Iter>
   static val array(Iter begin, Iter end) {
-#if _LIBCPP_STD_VER >= 20
+#if __cplusplus >= 202002L
     if constexpr (std::contiguous_iterator<Iter> &&
                   internal::typeSupportsMemoryView<
                     typename std::iterator_traits<Iter>::value_type>()) {
@@ -595,8 +595,11 @@ public:
   // our iterators are sentinel-based range iterators; use nullptr as the end sentinel
   constexpr nullptr_t end() const { return nullptr; }
 
-#if _LIBCPP_STD_VER >= 20
-  struct promise_type;
+#if __cplusplus >= 202002L
+  class awaiter;
+  awaiter operator co_await() const;
+
+  class promise_type;
 #endif
 
 private:
@@ -659,13 +662,12 @@ inline val::iterator val::begin() const {
   return iterator(*this);
 }
 
-#if _LIBCPP_STD_VER >= 20
-namespace internal {
+#if __cplusplus >= 202002L
 // Awaiter defines a set of well-known methods that compiler uses
 // to drive the argument of the `co_await` operator (regardless
 // of the type of the parent coroutine).
 // This one is used for Promises represented by the `val` type.
-class val_awaiter {
+class val::awaiter {
   // State machine holding awaiter's current state. One of:
   //  - initially created with promise
   //  - waiting with a given coroutine handle
@@ -677,11 +679,11 @@ class val_awaiter {
   constexpr static std::size_t STATE_RESULT = 2;
 
 public:
-  val_awaiter(val&& promise)
-    : state(std::in_place_index<STATE_PROMISE>, std::move(promise)) {}
+  awaiter(const val& promise)
+    : state(std::in_place_index<STATE_PROMISE>, promise) {}
 
   // just in case, ensure nobody moves / copies this type around
-  val_awaiter(val_awaiter&&) = delete;
+  awaiter(awaiter&&) = delete;
 
   // Promises don't have a synchronously accessible "ready" state.
   bool await_ready() { return false; }
@@ -706,12 +708,8 @@ public:
   val await_resume() { return std::move(std::get<STATE_RESULT>(state)); }
 };
 
-extern "C" {
-  // JS FFI helper for `val_awaiter::resume_with`.
-  void _emval_coro_resume(val_awaiter* awaiter, EM_VAL result) {
-    awaiter->resume_with(val::take_ownership(result));
-  }
-}
+inline val::awaiter val::operator co_await() const {
+  return {*this};
 }
 
 // `promise_type` is a well-known subtype with well-known method names
@@ -748,11 +746,6 @@ public:
   template<typename T>
   void return_value(T&& value) {
     resolve(std::forward<T>(value));
-  }
-
-  // Return our awaiter on `co_await promise`.
-  internal::val_awaiter await_transform(val promise) {
-    return {std::move(promise)};
   }
 };
 #endif

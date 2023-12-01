@@ -12,6 +12,8 @@ class Test {
   int function_three(const std::string&) { return 1; }
   int function_four(bool x) { return 2; }
 
+  long long_fn(unsigned long a) { return 3; }
+
   int const_fn() const { return 0; }
 
   int getX() const { return x; }
@@ -61,6 +63,12 @@ class ClassWithConstructor {
   int fn(int x) { return 0; }
 };
 
+class ClassWithTwoConstructors {
+ public:
+  ClassWithTwoConstructors() {}
+  ClassWithTwoConstructors(int) {}
+};
+
 class ClassWithSmartPtrConstructor {
  public:
   ClassWithSmartPtrConstructor(int, const ValArr&) {}
@@ -101,6 +109,7 @@ EMSCRIPTEN_BINDINGS(Test) {
       .function("functionFour", &Test::function_four)
       .function("functionFive(x, y)", &Test::function_one)
       .function("functionSix(str)", &Test::function_three)
+      .function("longFn", &Test::long_fn)
       .function("constFn", &Test::const_fn)
       .property("x", &Test::getX, &Test::setX)
       .property("y", &Test::getY)
@@ -150,6 +159,11 @@ EMSCRIPTEN_BINDINGS(Test) {
   class_<ClassWithConstructor>("ClassWithConstructor")
       .constructor<int, const ValArr&>()
       .function("fn", &ClassWithConstructor::fn);
+
+  // The last defined constructor should be used in the definition.
+  class_<ClassWithTwoConstructors>("ClassWithTwoConstructors")
+      .constructor<>()
+      .constructor<int>();
 
   class_<ClassWithSmartPtrConstructor>("ClassWithSmartPtrConstructor")
       .smart_ptr_constructor(

@@ -1,4 +1,3 @@
-env.__cxa_throw
 env.abort
 env.emscripten_memcpy_js
 env.emscripten_resize_heap

@@ -18,8 +18,39 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.48 (in development)
+3.1.50 (in development)
 -----------------------
+- Add a port of mimalloc, a fast and scalable multithreaded allocator. To use
+  it, build with `-sMALLOC=mimalloc`. (#20651)
+- When compiling, Emscripten will now invoke `clang` or `clang++` depending only
+  on whether `emcc` or `em++` was run.  Previously it would determine which to
+  run based on individual file extensions.  One side effect of this is that you
+  may now see a clang warning when building `.c` source files using `em++`:
+  `warning: treating 'c' input as 'c++' when in C++ mode`.  This also means that
+  the `DEFAULT_TO_CXX` setting now only applies when linking and not when
+  compiling. (#20712)
+- JavaScript library code can now use the full range of ES6 features and we rely
+  on closure compiler to transpile for ES5 when targetting older browsers.
+  For those that would rather perform transpilation seperately outside of
+  emscripten you can use the `-sPOLYFILL=0` setting. (#20700)
+- libcxx, libcxxabi, libunwind, and compiler-rt were updated to LLVM 17.0.4.
+  (#20705, #20707, and #20708)
+- Remove `BENCHMARK` setting. That has not been used by the benchmark suite for
+  some time now (at least not by default), and is much less useful these days
+  given lazy compilation in VMs (which makes it impossible to truly benchmark
+  execution separately from compilation, which `BENCHMARK` hoped to do).
+
+3.1.49 - 11/14/23
+-----------------
+- Many MEMORY64 fixes for browser and graphics APIs (#20678)
+- The `glfwSetWindowSize` function no longer switches to fullscreen when the
+  width/height provided as parameters match the screen size. This behavior
+  now matches the behavior of SDL and glut. In order to switch to fullscreen,
+  the client code should invoke `Module.requestFullscreen(...)` from a user 
+  triggered event otherwise the browser raises an error. (#20600)
+
+3.1.48 - 11/05/23
+-----------------
 - The JS `assert` function is no longer available in release builds when
   `-sSTRICT` is used.  This should only affect users with custom JS library code
   which doesn't use `#if ASSERTIONS` guards around their `assert` calls.  This

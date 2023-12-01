@@ -206,6 +206,7 @@ def lld_flags_for_executable(external_symbols):
 
   if settings.RELOCATABLE:
     cmd.append('--experimental-pic')
+    cmd.append('--unresolved-symbols=import-dynamic')
     if settings.SIDE_MODULE:
       cmd.append('-shared')
     else:
@@ -268,6 +269,11 @@ def link_lld(args, target, external_symbols=None):
 
   if settings.STRICT:
     args.append('--fatal-warnings')
+
+  if '--strip-all' in args:
+    # Tell wasm-ld to always generate a target_features section even if --strip-all
+    # is passed.
+    args.append('--keep-section=target_features')
 
   cmd = [WASM_LD, '-o', target] + args
   for a in llvm_backend_args():
@@ -508,7 +514,8 @@ def closure_transpile(filename):
   user_args = []
   closure_cmd, env = get_closure_compiler_and_env(user_args)
   closure_cmd += ['--language_out', 'ES5']
-  closure_cmd += ['--compilation_level', 'WHITESPACE_ONLY']
+  closure_cmd += ['--compilation_level', 'SIMPLE_OPTIMIZATIONS']
+  closure_cmd += ['--formatting', 'PRETTY_PRINT']
   return run_closure_cmd(closure_cmd, filename, env)
 
 

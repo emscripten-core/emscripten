@@ -63,6 +63,7 @@ int main()
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   emscripten_webgl_make_context_current(ctx);
   GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+  assert(vs);
   const char *vss = "attribute vec4 vPosition; uniform mat4 mat; varying vec2 texCoord; void main() { gl_Position = vPosition; texCoord = (vPosition.xy + vec2(1.0)) * vec2(0.5); }";
   glShaderSource(vs, 1, &vss, 0);
   glCompileShader(vs);
@@ -94,6 +95,7 @@ int main()
   }
 
   program = glCreateProgram();
+  assert(program);
   glAttachShader(program, vs);
   glAttachShader(program, ps);
   glBindAttribLocation(program, 0, "vPosition");
@@ -113,6 +115,7 @@ int main()
 
   GLuint vbo;
   glGenBuffers(1, &vbo);
+  assert(vbo);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
   float verts[] = { -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1 };

@@ -23,6 +23,14 @@
 #error "EVAL_CTORS is not compatible with pthreads yet (passive segments)"
 #endif
 
+{{{
+#if MEMORY64
+globalThis.MAX_PTR = Number((2n ** 64n) - 1n);
+#else
+globalThis.MAX_PTR = (2 ** 32) - 1
+#endif
+}}}
+
 var LibraryPThread = {
   $PThread__postset: 'PThread.init();',
   $PThread__deps: ['_emscripten_thread_init',
@@ -143,7 +151,7 @@ var LibraryPThread = {
 
 #if PTHREADS_PROFILING
     getThreadName(pthreadPtr) {
-      var profilerBlock = {{{ makeGetValue('pthreadPtr', C_STRUCTS.pthread.profilerBlock, POINTER_TYPE) }}};
+      var profilerBlock = {{{ makeGetValue('pthreadPtr', C_STRUCTS.pthread.profilerBlock, '*') }}};
       if (!profilerBlock) return "";
       return UTF8ToString(profilerBlock + {{{ C_STRUCTS.thread_profiler_block.name }}});
     },
@@ -162,7 +170,7 @@ var LibraryPThread = {
     },
 
     threadStatusAsString(pthreadPtr) {
-      var profilerBlock = {{{ makeGetValue('pthreadPtr', C_STRUCTS.pthread.profilerBlock, POINTER_TYPE) }}};
+      var profilerBlock = {{{ makeGetValue('pthreadPtr', C_STRUCTS.pthread.profilerBlock, '*') }}};
       var status = (profilerBlock == 0) ? 0 : Atomics.load(HEAPU32, {{{ getHeapOffset('profilerBlock + ' + C_STRUCTS.thread_profiler_block.threadStatus, 'i32') }}});
       return PThread.threadStatusToString(status);
     },
@@ -761,13 +769,14 @@ var LibraryPThread = {
     // Deduce which WebGL canvases (HTMLCanvasElements or OffscreenCanvases) should be passed over to the
     // Worker that hosts the spawned pthread.
     // Comma-delimited list of CSS selectors that must identify canvases by IDs: "#canvas1, #canvas2, ..."
-    var transferredCanvasNames = attr ? {{{ makeGetValue('attr', C_STRUCTS.pthread_attr_t._a_transferredcanvases, POINTER_TYPE) }}} : 0;
+    var transferredCanvasNames = attr ? {{{ makeGetValue('attr', C_STRUCTS.pthread_attr_t._a_transferredcanvases, '*') }}} : 0;
 #if OFFSCREENCANVASES_TO_PTHREAD
-    // Proxied canvases string pointer -1 is used as a special token to fetch
-    // whatever canvases were passed to build in -s
-    // OFFSCREENCANVASES_TO_PTHREAD= command line.
-    if (transferredCanvasNames == (-1 >>> 0)) transferredCanvasNames = '{{{ OFFSCREENCANVASES_TO_PTHREAD }}}';
-    else
+    // Proxied canvases string pointer -1/MAX_PTR is used as a special token to
+    // fetch whatever canvases were passed to build in
+    // -sOFFSCREENCANVASES_TO_PTHREAD= command line.
+    if (transferredCanvasNames == {{{ MAX_PTR }}}) {
+      transferredCanvasNames = '{{{ OFFSCREENCANVASES_TO_PTHREAD }}}';
+    } else
 #endif
     if (transferredCanvasNames) transferredCanvasNames = UTF8ToString(transferredCanvasNames).trim();
     if (transferredCanvasNames) transferredCanvasNames = transferredCanvasNames.split(',');
@@ -816,10 +825,10 @@ var LibraryPThread = {
             // Create a shared information block in heap so that we can control
             // the canvas size from any thread.
             if (!canvas.canvasSharedPtr) {
-              canvas.canvasSharedPtr = _malloc(12);
+              canvas.canvasSharedPtr = _malloc({{{ 8 + POINTER_SIZE }}});
               {{{ makeSetValue('canvas.canvasSharedPtr', 0, 'canvas.width', 'i32') }}};
               {{{ makeSetValue('canvas.canvasSharedPtr', 4, 'canvas.height', 'i32') }}};
-              {{{ makeSetValue('canvas.canvasSharedPtr', 8, 0, 'i32') }}}; // pthread ptr to the thread that owns this canvas, filled in below.
+              {{{ makeSetValue('canvas.canvasSharedPtr', 8, 0, '*') }}}; // pthread ptr to the thread that owns this canvas, filled in below.
             }
             offscreenCanvasInfo = {
               offscreenCanvas: canvas.transferControlToOffscreen(),
