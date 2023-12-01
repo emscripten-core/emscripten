@@ -212,11 +212,8 @@ def read_dwarf_entries(wasm, options):
   entries = []
   debug_line_chunks = re.split(r"debug_line\[(0x[0-9a-f]*)\]", output.decode('utf-8'))
   map_stmt_list_to_comp_dir = extract_comp_dir_map(debug_line_chunks[0])
-  for i in range(1, len(debug_line_chunks), 2):
-    stmt_list = debug_line_chunks[i]
+  for stmt_list, line_chunk in zip(debug_line_chunks[1::2], debug_line_chunks[2::2]):
     comp_dir = map_stmt_list_to_comp_dir.get(stmt_list, '')
-
-    line_chunk = debug_line_chunks[i + 1]
 
     # include_directories[  1] = "/Users/yury/Work/junk/sqlite-playground/src"
     # file_names[  1]:
