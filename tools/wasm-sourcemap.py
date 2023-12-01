@@ -178,7 +178,7 @@ def remove_dead_entries(entries):
     block_start = cur_entry
 
 
-def parse_debug_info_contents(text):
+def extract_comp_dir_map(text):
   map_stmt_list_to_comp_dir = {}
   chunks = re.split(r"0x[0-9a-f]*: DW_TAG_compile_unit", text)
   for chunk in chunks[1:]:
@@ -211,7 +211,7 @@ def read_dwarf_entries(wasm, options):
 
   entries = []
   debug_line_chunks = re.split(r"debug_line\[(0x[0-9a-f]*)\]", output.decode('utf-8'))
-  map_stmt_list_to_comp_dir = parse_debug_info_contents(debug_line_chunks[0])
+  map_stmt_list_to_comp_dir = extract_comp_dir_map(debug_line_chunks[0])
   for i in range(1, len(debug_line_chunks), 2):
     stmt_list = debug_line_chunks[i]
     comp_dir = map_stmt_list_to_comp_dir.get(stmt_list, '')
