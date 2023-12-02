@@ -130,7 +130,7 @@ var LibraryEmbindShared = {
     const argsIndex = signature.indexOf("(");
     if (argsIndex !== -1) {
 #if ASSERTIONS
-      assert(signature[signature.length - 1] == ")", "Parentheses for argument names should match.");
+      assert(signature.includes(")"), "Parentheses for argument names should match.");
 #endif
       return signature.substr(0, argsIndex);
     } else {
@@ -140,13 +140,14 @@ var LibraryEmbindShared = {
   $getFunctionArgsName__deps: [],
   $getFunctionArgsName: (signature) => {
     signature = signature.trim();
-    const argsIndex = signature.indexOf("(") + 1;
-    if (argsIndex !== 0) {
+    const argsStartIndex = signature.indexOf("(") + 1;
+    const argsEndIndex = signature.lastIndexOf(")");
+    if (argsStartIndex !== 0) {
 #if ASSERTIONS
-      assert(signature[signature.length - 1] == ")", "Parentheses for argument names should match.");
+      assert(argsEndIndex !== -1, "Parentheses for argument names should match.");
 #endif
       return signature
-        .substr(argsIndex, signature.length - argsIndex - 1)
+        .substr(argsStartIndex, argsEndIndex - argsStartIndex)
         .replaceAll(" ", "")
         .split(",")
         .map(arg => {
@@ -163,6 +164,15 @@ var LibraryEmbindShared = {
     } else {
       return [];
     }
+  },
+  $getFunctionReturnName__deps: [],
+  $getFunctionReturnName: (signature) => {
+    signature = signature.trim();
+    const argsEndIndex = signature.lastIndexOf(")");
+    if (argsEndIndex < 0 || argsEndIndex === signature.length - 1) {
+      return undefined;
+    }
+    return signature.substr(argsEndIndex + 2).trim();
   },
   $heap32VectorToArray: (count, firstElement) => {
     var array = [];

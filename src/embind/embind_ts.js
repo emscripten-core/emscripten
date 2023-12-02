@@ -289,15 +289,16 @@ var LibraryEmbind = {
   $registerIntegerType: (id) => {
     registerType(id, new IntegerType(id));
   },
-  $createFunctionDefinition__deps: ['$FunctionDefinition', '$heap32VectorToArray', '$readLatin1String', '$Argument', '$whenDependentTypesAreResolved', '$getFunctionName', '$getFunctionArgsName', '$UserOverriddenType'],
+  $createFunctionDefinition__deps: ['$FunctionDefinition', '$heap32VectorToArray', '$readLatin1String', '$Argument', '$whenDependentTypesAreResolved', '$getFunctionName', '$getFunctionArgsName', '$getFunctionReturnName', '$UserOverriddenType'],
   $createFunctionDefinition: (name, argCount, rawArgTypesAddr, hasThis, cb) => {
     const argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = typeof name === 'string' ? name : readLatin1String(name);
 
     whenDependentTypesAreResolved([], argTypes, function (argTypes) {
       const argsName = getFunctionArgsName(name);
+      const userReturnType = getFunctionReturnName(name);
+      const returnType = userReturnType ? new UserOverriddenType(argTypes[0], userReturnType) : argTypes[0];
       name = getFunctionName(name);
-      const returnType = argTypes[0];
       let thisType = null;
       let argStart = 1;
       if (hasThis) {
