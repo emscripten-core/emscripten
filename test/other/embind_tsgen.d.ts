@@ -9,7 +9,8 @@ export interface Test {
   longFn(_0: number): number;
   functionThree(_0: ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string): number;
   functionSix(str: ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string): number;
-  valFn(param: string[]): [number];
+  valFn(param: number): [number];
+  templatedValFn<T extends number, U extends T[]>(param: T): U;
   delete(): void;
 }
 
