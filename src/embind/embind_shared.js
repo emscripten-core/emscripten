@@ -145,7 +145,21 @@ var LibraryEmbindShared = {
 #if ASSERTIONS
       assert(signature[signature.length - 1] == ")", "Parentheses for argument names should match.");
 #endif
-      return signature.substr(argsIndex, signature.length - argsIndex - 1).replaceAll(" ", "").split(",").filter(n => n.length);
+      return signature
+        .substr(argsIndex, signature.length - argsIndex - 1)
+        .replaceAll(" ", "")
+        .split(",")
+        .map(arg => {
+          const colonIndex = arg.indexOf(":");
+          if (colonIndex === -1) {
+            return { name: arg };
+          }
+          // Use substr instead of split to allow colons in the type name (e.g. for inline objects)
+          const name = arg.substr(0, colonIndex);
+          const tsType = arg.substr(colonIndex + 1);
+          return { name, tsType };
+        })
+        .filter(arg => arg.name.length);
     } else {
       return [];
     }

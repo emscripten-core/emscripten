@@ -19,6 +19,12 @@ var LibraryEmbind = {
       this.typeId = typeId;
     }
   },
+  $UserOverriddenType: class UserOverriddenType {
+    constructor(typeId, name) {
+      this.typeId = typeId;
+      this.name = name;
+    }
+  },
   $Argument: class Argument {
     constructor(name, type) {
       this.name = name;
@@ -234,6 +240,9 @@ var LibraryEmbind = {
     }
 
     typeToJsName(type) {
+      if (type instanceof UserOverriddenType) {
+        return type.name;
+      }
       if (type instanceof IntegerType) {
         return 'number';
       }
@@ -280,7 +289,7 @@ var LibraryEmbind = {
   $registerIntegerType: (id) => {
     registerType(id, new IntegerType(id));
   },
-  $createFunctionDefinition__deps: ['$FunctionDefinition', '$heap32VectorToArray', '$readLatin1String', '$Argument', '$whenDependentTypesAreResolved', '$getFunctionName', '$getFunctionArgsName'],
+  $createFunctionDefinition__deps: ['$FunctionDefinition', '$heap32VectorToArray', '$readLatin1String', '$Argument', '$whenDependentTypesAreResolved', '$getFunctionName', '$getFunctionArgsName', '$UserOverriddenType'],
   $createFunctionDefinition: (name, argCount, rawArgTypesAddr, hasThis, cb) => {
     const argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = typeof name === 'string' ? name : readLatin1String(name);
@@ -300,7 +309,8 @@ var LibraryEmbind = {
       const args = [];
       for (let i = argStart, x = 0; i < argTypes.length; i++) {
         if (x < argsName.length) {
-          args.push(new Argument(argsName[x++], argTypes[i]));
+          const { name: argName, tsType } = argsName[x++];
+          args.push(new Argument(argName, tsType ? new UserOverriddenType(argTypes[i], tsType) : argTypes[i]));
         } else {
           args.push(new Argument(`_${i - argStart}`, argTypes[i]));
         }
