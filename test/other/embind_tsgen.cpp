@@ -16,6 +16,8 @@ class Test {
 
   int const_fn() const { return 0; }
 
+  val val_fn(val param) { return val::array(std::vector<int>(1)); }
+
   int getX() const { return x; }
   void setX(int x_) { x = x_; }
 
@@ -111,6 +113,7 @@ EMSCRIPTEN_BINDINGS(Test) {
       .function("functionSix(str)", &Test::function_three)
       .function("longFn", &Test::long_fn)
       .function("constFn", &Test::const_fn)
+      .function("valFn(param: string[]): [number]", &Test::val_fn)
       .property("x", &Test::getX, &Test::setX)
       .property("y", &Test::getY)
       .class_function("staticFunction", &Test::static_function)
