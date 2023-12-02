@@ -1227,9 +1227,7 @@ var LibraryGLFW = {
     Module["canvas"].addEventListener('drop', GLFW.onDrop, true);
     Module["canvas"].addEventListener('dragover', GLFW.onDragover, true);
 
-    Browser.resizeListeners.push((width, height) => {
-       GLFW.onCanvasResize(width, height);
-    });
+    Browser.resizeListeners.push(GLFW.onCanvasResize);
     return 1; // GL_TRUE
   },
 
