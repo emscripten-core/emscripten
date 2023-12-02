@@ -9798,6 +9798,18 @@ int main() {
                       '-sSEPARATE_DWARF_URL=http://somewhere.com/hosted.wasm'])
     self.assertIn(b'somewhere.com/hosted.wasm', read_binary('a.out.wasm'))
 
+  def test_dwarf_system_lib(self):
+    self.run_process([EMBUILDER, 'build', 'libemmalloc', '--force'])
+    libc = os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libemmalloc.a')
+    self.assertExists(libc)
+
+    dwdump = self.run_process(
+        [LLVM_DWARFDUMP, libc, '-debug-info', '-debug-line', '--recurse-depth=0'],
+        stdout=PIPE).stdout
+    # Check that the embedded location of the source file is correct.
+    self.assertIn('DW_AT_name\t("/emsdk/emscripten/system/lib/emmalloc.c")', dwdump)
+    self.assertIn('DW_AT_comp_dir\t("/emsdk/emscripten")', dwdump)
+
   @parameterized({
     'O0': (['-O0'],),
     'O1': (['-O1'],),
