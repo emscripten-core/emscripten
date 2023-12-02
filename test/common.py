@@ -884,7 +884,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         for filename in filenames:
           self.temp_files_before_run.append(os.path.normpath(os.path.join(root, filename)))
 
-    if EMTEST_SAVE_DIR:
+    if self.runningInParallel():
+      self.working_dir = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
+    else:
       self.working_dir = path_from_root('out/test')
       if os.path.exists(self.working_dir):
         if EMTEST_SAVE_DIR == 2:
@@ -899,18 +901,13 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       else:
         print('Creating new test output directory')
         ensure_dir(self.working_dir)
-    else:
-      self.working_dir = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
     os.chdir(self.working_dir)
 
-    if not EMTEST_SAVE_DIR:
-      self.has_prev_ll = False
-      for temp_file in os.listdir(shared.TEMP_DIR):
-        if temp_file.endswith('.ll'):
-          self.has_prev_ll = True
+  def runningInParallel(self):
+    return getattr(self, 'is_parallel', False)
 
   def tearDown(self):
-    if not EMTEST_SAVE_DIR:
+    if self.runningInParallel() and not EMTEST_SAVE_DIR:
       # rmtree() fails on Windows if the current working directory is inside the tree.
       os.chdir(os.path.dirname(self.get_dir()))
       force_delete_dir(self.get_dir())
