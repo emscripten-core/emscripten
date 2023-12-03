@@ -9800,6 +9800,8 @@ int main() {
 
   @crossplatform
   def test_dwarf_system_lib(self):
+    if config.FROZEN_CACHE:
+      self.skipTest("test doesn't work with frozen cache")
     self.run_process([EMBUILDER, 'build', 'libemmalloc', '--force'])
     libc = os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libemmalloc.a')
     self.assertExists(libc)
