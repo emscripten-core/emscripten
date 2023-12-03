@@ -9798,6 +9798,7 @@ int main() {
                       '-sSEPARATE_DWARF_URL=http://somewhere.com/hosted.wasm'])
     self.assertIn(b'somewhere.com/hosted.wasm', read_binary('a.out.wasm'))
 
+  @crossplatform
   def test_dwarf_system_lib(self):
     self.run_process([EMBUILDER, 'build', 'libemmalloc', '--force'])
     libc = os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libemmalloc.a')
