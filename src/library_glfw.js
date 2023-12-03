@@ -1206,6 +1206,9 @@ var LibraryGLFW = {
     window.addEventListener("keypress", GLFW.onKeyPress, true);
     window.addEventListener("keyup", GLFW.onKeyup, true);
     window.addEventListener("blur", GLFW.onBlur, true);
+    window.addEventListener("resize", () => {
+      GLFW.onCanvasResize(window.innerWidth, window.innerHeight);
+    });
     // from https://stackoverflow.com/a/70514686/7484780 . maybe add this to browser.js?
     // no idea how to remove this listener.
     (function updatePixelRatio(){
