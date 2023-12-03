@@ -23,6 +23,11 @@ function _asan_js_load_1u(ptr) {
   return HEAPU8[ptr];
 }
 /** @suppress{duplicate} */
+function _asan_js_load_1uc(ptr) {
+  if (runtimeInitialized) return __asan_c_load_1uc(ptr);
+  return HEAPU8C[ptr];
+}
+/** @suppress{duplicate} */
 function _asan_js_load_2(ptr) {
   if (runtimeInitialized) return __asan_c_load_2(ptr);
   return HEAP16[ptr];
@@ -62,6 +67,11 @@ function _asan_js_store_1(ptr, val) {
 function _asan_js_store_1u(ptr, val) {
   if (runtimeInitialized) return __asan_c_store_1u(ptr, val);
   return HEAPU8[ptr] = val;
+}
+/** @suppress{duplicate} */
+function _asan_js_store_1uc(ptr, val) {
+  if (runtimeInitialized) return __asan_c_store_1uc(ptr, val);
+  return HEAPU8C[ptr] = val;
 }
 /** @suppress{duplicate} */
 function _asan_js_store_2(ptr, val) {

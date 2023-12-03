@@ -1085,6 +1085,7 @@ function isEmscriptenHEAP(name) {
   switch (name) {
     case 'HEAP8':
     case 'HEAPU8':
+    case 'HEAPU8C':
     case 'HEAP16':
     case 'HEAPU16':
     case 'HEAP32':

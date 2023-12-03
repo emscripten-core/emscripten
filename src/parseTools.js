@@ -509,6 +509,7 @@ function getHeapForType(type) {
     case 'i1':     // fallthrough
     case 'i8':     return 'HEAP8';
     case 'u8':     return 'HEAPU8';
+    case 'u8c':    return 'HEAPU8C';
     case 'i16':    return 'HEAP16';
     case 'u16':    return 'HEAPU16';
     case 'i32':    return 'HEAP32';

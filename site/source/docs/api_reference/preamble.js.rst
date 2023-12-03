@@ -330,6 +330,11 @@ The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) t
   View for 8-bit unsigned memory.
 
 
+.. js:data:: HEAPU8C
+
+  View for 8-bit unsigned clamped memory.
+
+
 .. js:data:: HEAPU16
 
   View for 16-bit unsigned memory.

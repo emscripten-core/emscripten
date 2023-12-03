@@ -56,7 +56,7 @@ if (Module['doWasm2JS']) {
 Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
 #endif
 
-var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
+var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU8C, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
 #if WASM_BIGINT
   HEAP64, HEAPU64,
 #endif
@@ -76,6 +76,7 @@ function updateMemoryViews() {
   {{{ maybeExport('HEAP8') }}} HEAP8 = new Int8Array(b);
   {{{ maybeExport('HEAP16') }}} HEAP16 = new Int16Array(b);
   {{{ maybeExport('HEAPU8') }}} HEAPU8 = new Uint8Array(b);
+  {{{ maybeExport('HEAPU8C') }}} HEAPU8C = new Uint8ClampedArray(b);
   {{{ maybeExport('HEAPU16') }}} HEAPU16 = new Uint16Array(b);
   {{{ maybeExport('HEAP32') }}} HEAP32 = new Int32Array(b);
   {{{ maybeExportIfAudioWorklet('HEAPU32') }}} HEAPU32 = new Uint32Array(b);
