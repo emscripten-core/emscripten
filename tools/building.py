@@ -810,9 +810,15 @@ def metadce(js_file, wasm_file, debug_info):
   for line in out.splitlines():
     if line.startswith(PREFIX):
       name = line.replace(PREFIX, '').strip()
+      # we only remove imports and exports in applyDCEGraphRemovals
       if name in import_name_map:
         name = import_name_map[name]
-      unused.append(name)
+        unused.append(name)
+      elif name.startswith('emcc$export$'):
+        unused.append(name)
+  if not unused:
+    # nothing found to be unused, so we have nothing to remove
+    return js_file
   # remove them
   passes = ['applyDCEGraphRemovals']
   if settings.MINIFY_WHITESPACE:
