@@ -116,10 +116,7 @@ addToLibrary({
       },
       readdir(node) {
         var entries = ['.', '..'];
-        for (var key in node.contents) {
-          if (!node.contents.hasOwnProperty(key)) {
-            continue;
-          }
+        for (var key of Object.keys(node.contents)) {
           entries.push(key);
         }
         return entries;
