@@ -12270,7 +12270,7 @@ exec "$@"
 
     self.emcc_args += ['-g']
     self.emcc_args += ['-sMAIN_MODULE=2']
-    self.emcc_args += ['-sEXPORTED_FUNCTIONS=_printf']
+    self.emcc_args += ['-sEXPORTED_FUNCTIONS=_printf,_malloc,_free']
     self.emcc_args += ['-sSPLIT_MODULE', '-Wno-experimental']
     self.emcc_args += ['--embed-file', 'libhello.wasm']
     self.emcc_args += ['--post-js', post_js]
