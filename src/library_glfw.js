@@ -619,6 +619,9 @@ var LibraryGLFW = {
       event.preventDefault();
     },
 
+    // width/height are the dimensions in screen coordinates the user interact with (ex: drawing, mouse coordinates...)
+    // framebufferWidth/framebufferHeight are the dimensions in pixel coordinates used for rendering
+    // in a HiDPI scenario framebufferWidth = devicePixelRatio * width
     onCanvasResize: (width, height, framebufferWidth, framebufferHeight) => {
       if (!GLFW.active) return;
 
