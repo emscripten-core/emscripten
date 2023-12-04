@@ -6706,7 +6706,7 @@ const _NOINLINE   = 0b00000100;
 const _KEY        = 0b00001000;
 const _MANGLEPROP = 0b00010000;
 
-// XXX Emscripten: export TreeWalker for walking through AST in acorn-optimizer.js.
+// XXX Emscripten: export TreeWalker for walking through AST in acorn-optimizer.mjs.
 exports.TreeWalker = TreeWalker;
 
 /***********************************************************************

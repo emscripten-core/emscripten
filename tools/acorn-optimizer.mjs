@@ -1,10 +1,8 @@
 #!/usr/bin/env node
 
-'use strict';
-
-const acorn = require('acorn');
-const terser = require('../third_party/terser/terser');
-const fs = require('fs');
+import * as acorn from 'acorn';
+import * as terser from '../third_party/terser/terser.js';
+import * as fs from 'fs';
 
 // Utilities
 
