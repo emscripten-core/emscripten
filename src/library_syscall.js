@@ -603,8 +603,13 @@ var SyscallsLibrary = {
       if (stream.stream_ops.poll) {
         var timeoutInMillis = -1;
         if (timeout) {
-          var tv_sec = (readfds ? {{{ makeGetValue('timeout', C_STRUCTS.timeval.tv_sec, 'i32') }}} : 0),
-              tv_usec = (readfds ? {{{ makeGetValue('timeout', C_STRUCTS.timeval.tv_usec, 'i32') }}} : 0);
+          // select(2) is declared to accept "struct timeval { time_t tv_sec; suseconds_t tv_usec; }".
+          // However, musl passes the two values to the syscall as an array of long values.
+          // Note that sizeof(time_t) != sizeof(long) in wasm32. The former is 8, while the latter is 4.
+          // This means using "C_STRUCTS.timeval.tv_usec" leads to a wrong offset.
+          // So, instead, we use POINTER_SIZE.
+          var tv_sec = (readfds ? {{{ makeGetValue('timeout', 0, 'i32') }}} : 0),
+              tv_usec = (readfds ? {{{ makeGetValue('timeout', POINTER_SIZE, 'i32') }}} : 0);
           timeoutInMillis = (tv_sec + tv_usec / 1000000) * 1000;
         }
         flags = stream.stream_ops.poll(stream, timeoutInMillis);
