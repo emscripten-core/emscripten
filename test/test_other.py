@@ -2416,7 +2416,7 @@ int f() {
         delete_file('a.out.js')
         print('checking "%s" %s' % (args, value))
         extra = ['-s', action + '_ON_UNDEFINED_SYMBOLS=%d' % value] if action else []
-        proc = self.run_process([EMCC, '-sUSE_SDL', 'main.c'] + extra + args, stderr=PIPE, check=False)
+        proc = self.run_process([EMCC, '-sUSE_SDL', '-sGL_ENABLE_GET_PROC_ADDRESS', 'main.c'] + extra + args, stderr=PIPE, check=False)
         if common.EMTEST_VERBOSE:
           print(proc.stderr)
         if value or action is None:
@@ -2460,9 +2460,16 @@ int f() {
 
   def test_GetProcAddress_LEGACY_GL_EMULATION(self):
     # without legacy gl emulation, getting a proc from there should fail
-    self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.cpp', args=['0'], emcc_args=['-sLEGACY_GL_EMULATION=0'])
+    self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.cpp', args=['0'], emcc_args=['-sLEGACY_GL_EMULATION=0', '-sGL_ENABLE_GET_PROC_ADDRESS'])
     # with it, it should work
-    self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.cpp', args=['1'], emcc_args=['-sLEGACY_GL_EMULATION'])
+    self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.cpp', args=['1'], emcc_args=['-sLEGACY_GL_EMULATION', '-sGL_ENABLE_GET_PROC_ADDRESS'])
+
+  # Verifies that is user is building without -sGL_ENABLE_GET_PROC_ADDRESS, then
+  # at link time they should get a helpful error message guiding them to enable
+  # the option.
+  def test_get_proc_address_error_message(self):
+    err = self.expect_fail([EMCC, test_file('other/test_GetProcAddress_LEGACY_GL_EMULATION.cpp')])
+    self.assertContained('error: linker: Undefined symbol: SDL_GL_GetProcAddress(). Please pass -sGL_ENABLE_GET_PROC_ADDRESS at link time to link in SDL_GL_GetProcAddress().', err)
 
   def test_prepost(self):
     create_file('main.c', '''
@@ -12608,7 +12615,7 @@ kill -9 $$
     # Test that libGL can be linked explicitly via `-lGL` rather than implicitly.
     # Here we use NO_AUTO_NATIVE_LIBRARIES to disable the implicitly linking that normally
     # includes the native GL library.
-    self.run_process([EMCC, test_file('other/test_explicit_gl_linking.c'), '-sNO_AUTO_NATIVE_LIBRARIES', '-lGL'])
+    self.run_process([EMCC, test_file('other/test_explicit_gl_linking.c'), '-sNO_AUTO_NATIVE_LIBRARIES', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
 
   def test_no_main_with_PROXY_TO_PTHREAD(self):
     create_file('lib.c', r'''

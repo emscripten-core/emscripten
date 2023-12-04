@@ -9850,6 +9850,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @needs_dylink
   def test_gl_main_module(self):
     self.set_setting('MAIN_MODULE')
+    self.emcc_args += ['-sGL_ENABLE_GET_PROC_ADDRESS']
     self.do_runf('core/test_gl_get_proc_address.c')
 
   @needs_dylink

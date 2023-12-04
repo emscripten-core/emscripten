@@ -1569,6 +1569,8 @@ GLAPI void APIENTRY emscripten_glGetObjectParameteriv (GLhandleARB obj, GLenum p
 GLAPI void APIENTRY emscripten_glGetInfoLog (GLhandleARB obj, GLsizei maxLength, GLsizei *length, GLcharARB *infoLog);
 GLAPI void APIENTRY emscripten_glBindProgram (GLenum target, GLuint program);
 
+#if GL_ENABLE_GET_PROC_ADDRESS
+
 extern void *emscripten_webgl1_get_proc_address(const char *name);
 extern void *_webgl1_match_ext_proc_address_without_suffix(const char *name);
 extern void *emscripten_webgl2_get_proc_address(const char *name);
@@ -1837,3 +1839,5 @@ extern void *emscripten_webgl_get_proc_address(const char *name)
 #endif
   return ptr;
 }
+
+#endif

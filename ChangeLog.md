@@ -45,6 +45,11 @@ See docs/process.md for more on how version tagging works.
 - Update GLFW handling of touch events to avoid sending duplicate mousedown and
   and mouseup events. Maps touchmove to mousemove events for a single primary
   touch. (#20805)
+- Breaking change: Using the `*glGetProcAddress()` family of functions now
+  requires passing a linker flag -sGL_ENABLE_GET_PROC_ADDRESS. This prevents
+  ports of native GL renderers from later accidentally attempting to activate
+  "dormant" features if web browser implementations gain new WebGL extensions in
+  the future, which `*glGetProcAddress()` is not able to support. (#20802)
 
 3.1.49 - 11/14/23
 -----------------
