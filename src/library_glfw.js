@@ -1395,7 +1395,7 @@ var LibraryGLFW = {
     Module["canvas"].addEventListener('dragover', GLFW.onDragover, true);
 
     // Overriding implementation to account for HiDPI
-    Browser.requestFullscreen = GLFW.requestFullscreen
+    Browser.requestFullscreen = GLFW.requestFullscreen;
     Browser.calculateMouseCoords = GLFW.calculateMouseCoords;
     Browser.updateCanvasDimensions = GLFW.updateCanvasDimensions;
 
