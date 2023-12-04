@@ -107,7 +107,7 @@ var LibraryGLFW = {
     versionString: null,
     initialTime: null,
     extensions: null,
-    devicePixelRatioMQS: null,
+    devicePixelRatioMQL: null, // MediaQueryList from window.matchMedia
     hints: null,
     primaryTouchId: null,
     defaultHints: {
@@ -1377,8 +1377,8 @@ var LibraryGLFW = {
     window.addEventListener("blur", GLFW.onBlur, true);
 
     // watch for devicePixelRatio changes
-    GLFW.devicePixelRatioMQS = window.matchMedia('(resolution: ' + GLFW.getDevicePixelRatio() + 'dppx)');
-    GLFW.devicePixelRatioMQS.addEventListener('change', GLFW.onDevicePixelRatioChange);
+    GLFW.devicePixelRatioMQL = window.matchMedia('(resolution: ' + GLFW.getDevicePixelRatio() + 'dppx)');
+    GLFW.devicePixelRatioMQL.addEventListener('change', GLFW.onDevicePixelRatioChange);
 
     Module["canvas"].addEventListener("touchmove", GLFW.onMousemove, true);
     Module["canvas"].addEventListener("touchstart", GLFW.onMouseButtonDown, true);
@@ -1432,8 +1432,8 @@ var LibraryGLFW = {
     Module["canvas"].removeEventListener('drop', GLFW.onDrop, true);
     Module["canvas"].removeEventListener('dragover', GLFW.onDragover, true);
 
-    if (GLFW.devicePixelRatioMQS)
-      GLFW.devicePixelRatioMQS.removeEventListener('change', GLFW.onDevicePixelRatioChange);
+    if (GLFW.devicePixelRatioMQL)
+      GLFW.devicePixelRatioMQL.removeEventListener('change', GLFW.onDevicePixelRatioChange);
 
     Module["canvas"].width = Module["canvas"].height = 1;
     GLFW.windows = null;
