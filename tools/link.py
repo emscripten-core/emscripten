@@ -1875,6 +1875,9 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms):
 
   phase_emscript(options, in_wasm, wasm_target, js_syms)
 
+  if settings.EMBIND_AOT:
+    phase_embind_aot(wasm_target, js_syms)
+
   if options.embind_emit_tsd:
     phase_embind_emit_tsd(options, wasm_target, js_syms)
 
@@ -1907,11 +1910,10 @@ def phase_emscript(options, in_wasm, wasm_target, js_syms):
   save_intermediate('original')
 
 
-@ToolchainProfiler.profile_block('embind emit tsd')
-def phase_embind_emit_tsd(options, wasm_target, js_syms):
-  logger.debug('emit tsd')
+def run_embind_gen(wasm_target, js_syms, extra_settings):
   # Save settings so they can be restored after TS generation.
   original_settings = settings.backup()
+  settings.attrs.update(extra_settings)
 
   # Ignore any options or settings that can conflict with running the TS
   # generation output.
@@ -1944,7 +1946,7 @@ def phase_embind_emit_tsd(options, wasm_target, js_syms):
   settings.JS_LIBRARIES = dedup_list(settings.JS_LIBRARIES)
   # Replace embind with the TypeScript generation version.
   embind_index = settings.JS_LIBRARIES.index('embind/embind.js')
-  settings.JS_LIBRARIES[embind_index] = 'embind/embind_ts.js'
+  settings.JS_LIBRARIES[embind_index] = 'embind/embind_gen.js'
   outfile_js = in_temp('tsgen_a.out.js')
   # The Wasm outfile may be modified by emscripten.run, so use a temporary file.
   outfile_wasm = in_temp('tsgen_a.out.wasm')
@@ -1955,9 +1957,26 @@ def phase_embind_emit_tsd(options, wasm_target, js_syms):
     node_args += shared.node_memory64_flags()
   # Run the generated JS file with the proper flags to generate the TypeScript bindings.
   out = shared.run_js_tool(outfile_js, [], node_args, stdout=PIPE)
-  write_file(
-    os.path.join(os.path.dirname(wasm_target), options.embind_emit_tsd), out)
   settings.restore(original_settings)
+  return out
+
+
+@ToolchainProfiler.profile_block('embind emit tsd')
+def phase_embind_emit_tsd(options, wasm_target, js_syms):
+  logger.debug('emit tsd')
+  out = run_embind_gen(wasm_target, js_syms, {'EMBIND_JS': False})
+  out_file = os.path.join(os.path.dirname(wasm_target), options.embind_emit_tsd)
+  write_file(out_file, out)
+
+
+@ToolchainProfiler.profile_block('embind aot js')
+def phase_embind_aot(wasm_target, js_syms):
+  out = run_embind_gen(wasm_target, js_syms, {})
+  if DEBUG:
+    write_file(in_temp('embind_aot.js'), out)
+  src = read_file(final_js)
+  src = do_replace(src, '<<< EMBIND_AOT_OUTPUT >>>', out)
+  write_file(final_js, src)
 
 
 @ToolchainProfiler.profile_block('source transforms')
