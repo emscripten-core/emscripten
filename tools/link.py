@@ -1671,17 +1671,8 @@ def phase_linker_setup(options, state, newargs):
     # need to be able to call these explicitly.
     settings.REQUIRED_EXPORTS += ['__funcs_on_exit']
 
-  # Some settings require malloc/free to be exported explictly.
-  # In most cases, the inclustion of native symbols like malloc and free
-  # is taken care of by wasm-ld use its normal symbol resolution process.
-  # However, when JS symbols are exported explictly via
-  # DEFAULT_LIBRARY_FUNCS_TO_INCLUDE and they depend on native symbols
-  # we need to explictly require those exports.
-  if settings.BUILD_AS_WORKER or \
-     settings.ASYNCIFY or \
-     settings.FORCE_FILESYSTEM or \
-     options.memory_profiler or \
-     sanitize:
+  # The worker code in src/postamble.js depends on malloc/free being exported
+  if settings.BUILD_AS_WORKER:
     settings.REQUIRED_EXPORTS += ['malloc', 'free']
 
   if not settings.DISABLE_EXCEPTION_CATCHING:
