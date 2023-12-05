@@ -139,6 +139,12 @@ def no_wasm2js(note=''):
 # that is mainly useful for the wasm2js compiler and not LLVM. LLVM tests its
 # own codegen, while wasm2js testing is split between the binaryen repo (which
 # tests wat files) and this repo (which tests C/C++ files).
+#
+# Note that some tests here may seem excessive, e.g., testing 16-bit math, as
+# LLVM turns those things into i32 values in wasm anyhow before wasm2js.
+# However, it is still useful to test wasm2js there as LLVM emits patterns of
+# shifts and such around those values to ensure they operate as 16-bit, and we
+# want coverage of that.
 def only_wasm2js(note=''):
   assert not callable(note)
 
@@ -538,17 +544,21 @@ class TestCoreBase(RunnerCore):
   def test_nested_struct_varargs(self):
     self.do_core_test('test_nested_struct_varargs.c')
 
+  @only_wasm2js('tests 32-bit multiplication')
   def test_i32_mul_precise(self):
     self.do_core_test('test_i32_mul_precise.c')
 
+  @only_wasm2js('tests operations on 16-bit values')
   def test_i16_emcc_intrinsic(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_i16_emcc_intrinsic.c')
 
+  @only_wasm2js('tests 64-bit conversions')
   def test_double_i64_conversion(self):
     self.do_core_test('test_double_i64_conversion.c')
 
+  @only_wasm2js('tests float32 ops')
   def test_float32_precise(self):
     self.do_core_test('test_float32_precise.c')
 
@@ -558,6 +568,7 @@ class TestCoreBase(RunnerCore):
   def test_literal_negative_zero(self):
     self.do_core_test('test_literal_negative_zero.c')
 
+  @only_wasm2js('tests byte conversions')
   @also_with_standalone_wasm()
   def test_bswap64(self):
     self.do_core_test('test_bswap64.cpp')
