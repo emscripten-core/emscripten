@@ -33,7 +33,6 @@ import tarfile
 from enum import Enum, auto, unique
 from subprocess import PIPE
 from tools import log
-from urllib.parse import quote
 
 
 from tools import shared, system_libs, utils, ports
