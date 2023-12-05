@@ -1875,29 +1875,29 @@ class BrowserCore(RunnerCore):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
 
-  @staticmethod
-  def browser_open(url):
-    if not EMTEST_BROWSER:
-      logger.info('Using default system browser')
-      webbrowser.open_new(url)
-      return
+  @classmethod
+  def browser_restart(cls):
+    # Kill existing browser
+    logger.info("Restarting browser process")
+    cls.browser_proc.terminate()
+    # If the browser doesn't shut down gracefully (in response to SIGTERM)
+    # after 2 seconds kill it with force (SIGKILL).
+    try:
+      cls.browser_proc.wait(2)
+    except subprocess.TimeoutExpired:
+      cls.browser_proc.kill()
+      cls.browser_proc.wait()
+    cls.browser_open(cls.harness_url)
 
+  @classmethod
+  def browser_open(cls, url):
+    global EMTEST_BROWSER
+    if not EMTEST_BROWSER:
+      logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
+      EMTEST_BROWSER = 'google-chrome'
     browser_args = shlex.split(EMTEST_BROWSER)
-    # If the given browser is a scalar, treat it like one of the possible types
-    # from https://docs.python.org/2/library/webbrowser.html
-    if len(browser_args) == 1:
-      try:
-        # This throws if the type of browser isn't available
-        webbrowser.get(browser_args[0]).open_new(url)
-        logger.info('Using Emscripten browser: %s', browser_args[0])
-        return
-      except webbrowser.Error:
-        # Ignore the exception and fallback to the custom command logic
-        pass
-    # Else assume the given browser is a specific program with additional
-    # parameters and delegate to that
-    logger.info('Using Emscripten browser: %s', str(browser_args))
-    subprocess.Popen(browser_args + [url])
+    logger.info('Launching browser: %s', str(browser_args))
+    cls.browser_proc = subprocess.Popen(browser_args + [url])
 
   @classmethod
   def setUpClass(cls):
@@ -1912,7 +1912,8 @@ class BrowserCore(RunnerCore):
     cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_in_queue, cls.harness_out_queue, cls.port))
     cls.harness_server.start()
     print('[Browser harness server on process %d]' % cls.harness_server.pid)
-    cls.browser_open('http://localhost:%s/run_harness' % cls.port)
+    cls.harness_url = 'http://localhost:%s/run_harness' % cls.port
+    cls.browser_open(cls.harness_url)
 
   @classmethod
   def tearDownClass(cls):
@@ -1944,7 +1945,7 @@ class BrowserCore(RunnerCore):
     if not has_browser():
       return
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
-      self.skipTest('too many unresponsive tests, skipping browser launch - check your setup!')
+      self.skipTest('too many unresponsive tests, skipping remaining tests')
     self.assert_out_queue_empty('previous test')
     if DEBUG:
       print('[browser launch:', html_file, ']')
@@ -1969,6 +1970,7 @@ class BrowserCore(RunnerCore):
         if not received_output:
           BrowserCore.unresponsive_tests += 1
           print('[unresponsive tests: %d]' % BrowserCore.unresponsive_tests)
+          self.browser_restart()
         if output is None:
           # the browser harness reported an error already, and sent a None to tell
           # us to also fail the test

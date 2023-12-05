@@ -840,6 +840,7 @@ jobs:
       EMTEST_SKIP_SIMD: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_BROWSER: "0"
     steps:
       - checkout
       - run:
