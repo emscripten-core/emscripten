@@ -1021,6 +1021,9 @@ The following JavaScript can be used to interact with the above C++.
 TypeScript Definitions
 ======================
 
+Generating
+----------
+
 Embind supports generating TypeScript definition files from :cpp:func:`EMSCRIPTEN_BINDINGS`
 blocks. To generate **.d.ts** files invoke *emcc* with the
 :ref:`embind-emit-tsd <emcc-embind-emit-tsd>` option::
@@ -1032,6 +1035,29 @@ that is then run in *node* to generate the definition files.
 Not all of embind's features are currently supported, but many of the commonly used
 ones are.  Examples of input and output can be seen in `embind_tsgen.cpp`_ and
 `embind_tsgen.d.ts`_.
+
+Custom ``val`` Definitions
+--------------------------
+
+:cpp:class:`emscripten::val` types are mapped to TypeScript's `any` type by default,
+which does not provide much useful information for API's that consume or
+produce `val` types. To give better type information, custom `val` types can be
+registered using :cpp:func:`EMSCRIPTEN_DECLARE_VAL_TYPE` in combination with
+:cpp:class:`emscripten::register_type`. An example below:
+
+.. code:: cpp
+
+    EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
+
+    int function_with_callback_param(CallbackType ct) {
+        ct(val("hello"));
+        return 0;
+    }
+
+    EMSCRIPTEN_BINDINGS(custom_val) {
+        function("function_with_callback_param", &function_with_callback_param);
+        register_type<CallbackType>("(message: string) => void");
+    }
 
 Performance
 ===========
