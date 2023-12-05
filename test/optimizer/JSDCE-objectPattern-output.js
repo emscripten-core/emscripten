@@ -5,7 +5,7 @@ let z = 50;
 globalThis.f = function(r) {
  let {a: a, b: b} = r;
  let {z: c} = r;
- let [i, {foo: p, bar: q}] = r;
+ let [, i, {foo: p, bar: q}] = r;
  return g(a, b, c, d, z);
 };
 
